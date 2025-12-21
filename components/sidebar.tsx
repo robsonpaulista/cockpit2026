@@ -24,19 +24,19 @@ import { cn } from '@/lib/utils'
 import { MenuItem } from '@/types'
 
 const menuItems: MenuItem[] = [
-  { id: 'home', label: 'Visão Geral', icon: 'LayoutDashboard', href: '/' },
-  { id: 'fases', label: 'Fases da Campanha', icon: 'Calendar', href: '/fases' },
-  { id: 'campo', label: 'Campo & Agenda', icon: 'MapPin', href: '/campo' },
-  { id: 'narrativas', label: 'Banco de Narrativas', icon: 'FileText', href: '/narrativas' },
-  { id: 'conteudo', label: 'Conteúdo & Redes', icon: 'MessageSquare', href: '/conteudo' },
-  { id: 'noticias', label: 'Notícias & Crises', icon: 'Newspaper', href: '/noticias' },
-  { id: 'territorio', label: 'Território & Base', icon: 'MapPin', href: '/territorio' },
-  { id: 'mobilizacao', label: 'Mobilização', icon: 'Users', href: '/mobilizacao' },
-  { id: 'whatsapp', label: 'WhatsApp', icon: 'MessageCircle', href: '/whatsapp' },
-  { id: 'pesquisa', label: 'Pesquisa & Relato', icon: 'BarChart3', href: '/pesquisa' },
-  { id: 'operacao', label: 'Operação & Equipe', icon: 'Settings', href: '/operacao' },
-  { id: 'juridico', label: 'Jurídico', icon: 'Scale', href: '/juridico' },
-  { id: 'relatorios', label: 'Relatórios', icon: 'FileBarChart', href: '/relatorios' },
+  { id: 'home', label: 'Visão Geral', icon: 'LayoutDashboard', href: '/dashboard' },
+  { id: 'fases', label: 'Fases da Campanha', icon: 'Calendar', href: '/dashboard/fases' },
+  { id: 'campo', label: 'Campo & Agenda', icon: 'MapPin', href: '/dashboard/campo' },
+  { id: 'narrativas', label: 'Banco de Narrativas', icon: 'FileText', href: '/dashboard/narrativas' },
+  { id: 'conteudo', label: 'Conteúdo & Redes', icon: 'MessageSquare', href: '/dashboard/conteudo' },
+  { id: 'noticias', label: 'Notícias & Crises', icon: 'Newspaper', href: '/dashboard/noticias' },
+  { id: 'territorio', label: 'Território & Base', icon: 'MapPin', href: '/dashboard/territorio' },
+  { id: 'mobilizacao', label: 'Mobilização', icon: 'Users', href: '/dashboard/mobilizacao' },
+  { id: 'whatsapp', label: 'WhatsApp', icon: 'MessageCircle', href: '/dashboard/whatsapp' },
+  { id: 'pesquisa', label: 'Pesquisa & Relato', icon: 'BarChart3', href: '/dashboard/pesquisa' },
+  { id: 'operacao', label: 'Operação & Equipe', icon: 'Settings', href: '/dashboard/operacao' },
+  { id: 'juridico', label: 'Jurídico', icon: 'Scale', href: '/dashboard/juridico' },
+  { id: 'relatorios', label: 'Relatórios', icon: 'FileBarChart', href: '/dashboard/relatorios' },
 ]
 
 const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
@@ -93,18 +93,34 @@ export function Sidebar() {
         )}
       >
         <div className="flex flex-col h-full">
-          {/* Logo */}
+          {/* Logo - Simplificado, logo está no header agora */}
           <div className="h-16 flex items-center justify-between px-4 border-b border-border">
-            {!collapsed && (
-              <h1 className="text-xl font-semibold text-primary">Cockpit 2026</h1>
+            {(!collapsed || mobileOpen) && (
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
+                  <span className="text-white text-sm font-bold">C</span>
+                </div>
+                <span className="text-sm font-semibold text-text-strong">Cockpit 2026</span>
+              </div>
             )}
-            <button
-              onClick={toggleCollapse}
-              className="hidden lg:flex items-center justify-center w-8 h-8 rounded-lg hover:bg-primary-soft transition-premium"
-              aria-label="Toggle sidebar"
-            >
-              <ChevronLeft className={cn('w-4 h-4 text-text-muted transition-transform', collapsed && 'rotate-180')} />
-            </button>
+            {!collapsed && (
+              <button
+                onClick={toggleCollapse}
+                className="hidden lg:flex items-center justify-center w-8 h-8 rounded-lg hover:bg-primary-soft transition-premium"
+                aria-label="Toggle sidebar"
+              >
+                <ChevronLeft className="w-4 h-4 text-text-muted" />
+              </button>
+            )}
+            {collapsed && !mobileOpen && (
+              <button
+                onClick={toggleCollapse}
+                className="hidden lg:flex items-center justify-center w-8 h-8 rounded-lg hover:bg-primary-soft transition-premium"
+                aria-label="Toggle sidebar"
+              >
+                <ChevronLeft className="w-4 h-4 text-text-muted rotate-180" />
+              </button>
+            )}
           </div>
 
           {/* Menu Items */}
