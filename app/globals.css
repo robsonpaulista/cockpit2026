@@ -1,0 +1,43 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  
+  body {
+    @apply bg-background text-text-strong font-sans antialiased;
+  }
+
+  h1 {
+    @apply text-2xl font-semibold text-text-strong;
+  }
+
+  h2 {
+    @apply text-lg font-semibold text-text-strong;
+  }
+
+  h3 {
+    @apply text-base font-semibold text-text-strong;
+  }
+}
+
+@layer utilities {
+  .transition-premium {
+    transition-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+}
+
