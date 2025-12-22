@@ -1,43 +1,13 @@
 'use client'
 
+import { useEffect, useState } from 'react'
 import { Header } from '@/components/header'
 import { KPICard } from '@/components/kpi-card'
 import { AlertCard } from '@/components/alert-card'
-import { mockNews, mockAlerts } from '@/lib/mock-data'
-import { Newspaper, AlertTriangle, TrendingUp, Clock } from 'lucide-react'
-import { KPI } from '@/types'
+import { Newspaper, AlertTriangle, TrendingUp, RefreshCw, Plus, Filter } from 'lucide-react'
+import { FeedManagerModal } from '@/components/feed-manager-modal'
+import { KPI, NewsItem } from '@/types'
 import { formatDate } from '@/lib/utils'
-
-const noticiasKPIs: KPI[] = [
-  {
-    id: 'mencoes',
-    label: 'Menções 24h',
-    value: '142',
-    variation: 12,
-    status: 'success',
-  },
-  {
-    id: 'risco',
-    label: 'Risco Alto Aberto',
-    value: 2,
-    variation: -1,
-    status: 'warning',
-  },
-  {
-    id: 'resposta',
-    label: 'Tempo de Resposta',
-    value: '2.5h',
-    variation: -0.5,
-    status: 'success',
-  },
-  {
-    id: 'share',
-    label: 'Share of Voice',
-    value: '42%',
-    variation: 3.2,
-    status: 'success',
-  },
-]
 
 const sentimentColors = {
   positive: 'bg-status-success/10 text-status-success border-status-success/30',
@@ -52,6 +22,175 @@ const riskColors = {
 }
 
 export default function NoticiasPage() {
+  const [news, setNews] = useState<NewsItem[]>([])
+  const [allFeeds, setAllFeeds] = useState<any[]>([])
+  const [temasAlta, setTemasAlta] = useState<any[]>([])
+  const [metrics, setMetrics] = useState<any>(null)
+  const [loading, setLoading] = useState(true)
+  const [showFeedManager, setShowFeedManager] = useState(false)
+  const [filterSentiment, setFilterSentiment] = useState<string>('all')
+  const [filterRisk, setFilterRisk] = useState<string>('all')
+  const [selectedFeeds, setSelectedFeeds] = useState<string[]>([]) // Array de IDs de feeds selecionados
+
+  useEffect(() => {
+    fetchData()
+  }, [])
+
+  const fetchData = async () => {
+    setLoading(true)
+    try {
+      await Promise.all([
+        fetchNews(),
+        fetchAllFeeds(),
+        fetchTemasAlta(),
+        fetchMetrics(),
+      ])
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const fetchNews = async () => {
+    try {
+      const params = new URLSearchParams()
+      if (filterSentiment !== 'all') params.append('sentiment', filterSentiment)
+      if (filterRisk !== 'all') params.append('risk_level', filterRisk)
+      
+      // Aplicar filtro apenas quando há feeds selecionados E não são todos
+      // Se todos estão selecionados ou nenhum está selecionado, mostrar todas
+      if (selectedFeeds.length > 0 && selectedFeeds.length < allFeeds.length) {
+        params.append('feed_ids', selectedFeeds.join(','))
+      }
+      // Casos:
+      // - selectedFeeds.length === 0: não filtra (mostra todas)
+      // - selectedFeeds.length === allFeeds.length: não filtra (mostra todas)
+      // - 0 < selectedFeeds.length < allFeeds.length: filtra pelos selecionados
+      
+      params.append('limit', '50')
+
+      const response = await fetch(`/api/noticias?${params}`)
+      if (response.ok) {
+        const data = await response.json()
+        setNews(data)
+      } else {
+        const error = await response.json()
+        console.error('Erro na API:', error)
+      }
+    } catch (error) {
+      console.error('Erro ao buscar notícias:', error)
+    }
+  }
+
+  const fetchAllFeeds = async () => {
+    try {
+      const response = await fetch('/api/noticias/all-feeds')
+      if (response.ok) {
+        const data = await response.json()
+        setAllFeeds(data)
+        // Por padrão, selecionar todos os feeds apenas na primeira vez
+        if (selectedFeeds.length === 0 && data.length > 0) {
+          setSelectedFeeds(data.map((f: any) => `${f.type}-${f.id}`))
+        }
+      }
+    } catch (error) {
+      console.error('Erro ao buscar feeds:', error)
+    }
+  }
+
+  const fetchTemasAlta = async () => {
+    try {
+      const response = await fetch('/api/noticias/temas-alta?days=7&limit=5')
+      if (response.ok) {
+        const data = await response.json()
+        setTemasAlta(data)
+      }
+    } catch (error) {
+      console.error('Erro ao buscar temas em alta:', error)
+    }
+  }
+
+  const fetchMetrics = async () => {
+    try {
+      const response = await fetch('/api/noticias/metrics?days=24')
+      if (response.ok) {
+        const data = await response.json()
+        setMetrics(data)
+      }
+    } catch (error) {
+      console.error('Erro ao buscar métricas:', error)
+    }
+  }
+
+  const handleManageFeeds = () => {
+    setShowFeedManager(true)
+  }
+
+  useEffect(() => {
+    fetchNews()
+  }, [filterSentiment, filterRisk, selectedFeeds])
+
+  const noticiasKPIs: KPI[] = metrics
+    ? [
+        {
+          id: 'mencoes',
+          label: 'Menções 24h',
+          value: metrics.mentions_24h?.toString() || '0',
+          variation: 0,
+          status: 'success',
+        },
+        {
+          id: 'risco',
+          label: 'Risco Alto Aberto',
+          value: metrics.high_risk_crises_open || 0,
+          variation: 0,
+          status: metrics.high_risk_crises_open > 0 ? 'warning' : 'success',
+        },
+        {
+          id: 'resposta',
+          label: 'Tempo de Resposta',
+          value: `${metrics.avg_response_time_hours || 0}h`,
+          variation: 0,
+          status: 'success',
+        },
+        {
+          id: 'share',
+          label: 'Share of Voice',
+          value: `${metrics.share_of_voice || 0}%`,
+          variation: 0,
+          status: 'success',
+        },
+      ]
+    : [
+        {
+          id: 'mencoes',
+          label: 'Menções 24h',
+          value: '0',
+          variation: 0,
+          status: 'neutral',
+        },
+        {
+          id: 'risco',
+          label: 'Risco Alto Aberto',
+          value: 0,
+          variation: 0,
+          status: 'neutral',
+        },
+        {
+          id: 'resposta',
+          label: 'Tempo de Resposta',
+          value: '0h',
+          variation: 0,
+          status: 'neutral',
+        },
+        {
+          id: 'share',
+          label: 'Share of Voice',
+          value: '0%',
+          variation: 0,
+          status: 'neutral',
+        },
+      ]
+
   return (
     <div className="min-h-screen bg-background">
       <Header title="Notícias, Crises & Radar de Adversários" subtitle="Sala de Situação" />
@@ -75,139 +214,215 @@ export default function NoticiasPage() {
                   <Newspaper className="w-5 h-5 text-primary" />
                   Inbox de Notícias
                 </h2>
-                <button className="px-4 py-2 text-sm font-medium bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors">
-                  Gerar Resposta
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={handleManageFeeds}
+                    className="px-4 py-2 text-sm font-medium bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors flex items-center gap-2"
+                  >
+                    <Plus className="w-4 h-4" />
+                    Gerenciar Feeds RSS
+                  </button>
+                </div>
               </div>
 
-              <div className="space-y-4">
-                {mockNews.map((news) => (
-                  <div
-                    key={news.id}
-                    className="p-4 rounded-xl border border-border hover:border-primary/20 hover:shadow-card transition-all duration-200 ease-premium"
+              {/* Filtros */}
+              <div className="space-y-3 mb-4">
+                <div className="flex items-center gap-2">
+                  <Filter className="w-4 h-4 text-text-muted" />
+                  <select
+                    value={filterSentiment}
+                    onChange={(e) => setFilterSentiment(e.target.value)}
+                    className="text-sm border border-border rounded-lg px-3 py-1.5 bg-surface"
                   >
-                    <div className="flex items-start justify-between mb-2">
-                      <div className="flex-1">
-                        <h3 className="text-sm font-semibold text-text-strong mb-1">{news.title}</h3>
-                        <div className="flex items-center gap-2 text-xs text-text-muted mb-3">
-                          <span>{news.source}</span>
-                          <span>•</span>
-                          <span>{formatDate(news.timestamp)}</span>
+                    <option value="all">Todos os sentimentos</option>
+                    <option value="positive">Positivo</option>
+                    <option value="negative">Negativo</option>
+                    <option value="neutral">Neutro</option>
+                  </select>
+                  <select
+                    value={filterRisk}
+                    onChange={(e) => setFilterRisk(e.target.value)}
+                    className="text-sm border border-border rounded-lg px-3 py-1.5 bg-surface"
+                  >
+                    <option value="all">Todos os riscos</option>
+                    <option value="high">Alto</option>
+                    <option value="medium">Médio</option>
+                    <option value="low">Baixo</option>
+                  </select>
+                </div>
+                
+                {/* Filtros de Origem por Feed */}
+                {allFeeds.length > 0 && (
+                  <div className="flex items-start gap-4 flex-wrap">
+                    <span className="text-xs font-medium text-text-muted pt-1">Feeds:</span>
+                    <div className="flex flex-wrap gap-3">
+                      {allFeeds.map((feed) => {
+                        const feedId = `${feed.type}-${feed.id}`
+                        return (
+                          <label key={feedId} className="flex items-center gap-2 cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={selectedFeeds.includes(feedId)}
+                              onChange={(e) => {
+                                if (e.target.checked) {
+                                  setSelectedFeeds([...selectedFeeds, feedId])
+                                } else {
+                                  setSelectedFeeds(selectedFeeds.filter(id => id !== feedId))
+                                }
+                              }}
+                              className="w-4 h-4 rounded border-border text-primary focus:ring-primary"
+                            />
+                            <span className="text-sm text-text-strong">{feed.name}</span>
+                            {feed.type === 'adversary_feed' && (
+                              <span className="px-1.5 py-0.5 text-xs rounded bg-status-error/10 text-status-error">
+                                Adversário
+                              </span>
+                            )}
+                          </label>
+                        )
+                      })}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {loading ? (
+                <div className="space-y-4">
+                  {[1, 2, 3].map((i) => (
+                    <div key={i} className="h-24 bg-background rounded-xl animate-pulse" />
+                  ))}
+                </div>
+              ) : news.length === 0 ? (
+                <div className="text-center py-8">
+                  <p className="text-text-muted mb-4">Nenhuma notícia coletada ainda.</p>
+                  <button
+                    onClick={handleManageFeeds}
+                    className="px-4 py-2 text-sm font-medium bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors"
+                  >
+                    Configurar Feeds RSS
+                  </button>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {news.map((item) => (
+                    <div
+                      key={item.id}
+                      className="p-4 rounded-xl border border-border hover:border-primary/20 hover:shadow-card transition-all duration-200 ease-premium"
+                    >
+                      <div className="flex items-start justify-between mb-2">
+                        <div className="flex-1">
+                          <h3 className="text-sm font-semibold text-text-strong mb-1">
+                            {item.url ? (
+                              <a
+                                href={item.url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="hover:text-primary transition-colors"
+                              >
+                                {item.title}
+                              </a>
+                            ) : (
+                              item.title
+                            )}
+                          </h3>
+                          <div className="flex items-center gap-2 text-xs text-text-muted mb-3">
+                            <span>{item.source}</span>
+                            <span>•</span>
+                            <span>
+                              {formatDate(
+                                item.published_at || item.collected_at || new Date().toISOString()
+                              )}
+                            </span>
+                          </div>
                         </div>
                       </div>
-                    </div>
 
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span
-                        className={`px-2 py-1 text-xs font-medium rounded-lg border ${sentimentColors[news.sentiment]}`}
-                      >
-                        {news.sentiment === 'positive'
-                          ? 'Positivo'
-                          : news.sentiment === 'negative'
-                          ? 'Negativo'
-                          : 'Neutro'}
-                      </span>
-                      <span
-                        className={`px-2 py-1 text-xs font-medium rounded-lg ${riskColors[news.risk]}`}
-                      >
-                        Risco {news.risk === 'high' ? 'Alto' : news.risk === 'medium' ? 'Médio' : 'Baixo'}
-                      </span>
-                      <span className="px-2 py-1 text-xs font-medium bg-primary-soft text-primary rounded-lg">
-                        {news.theme}
-                      </span>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        {item.sentiment && (
+                          <span
+                            className={`px-2 py-1 text-xs font-medium rounded-lg border ${sentimentColors[item.sentiment]}`}
+                          >
+                            {item.sentiment === 'positive'
+                              ? 'Positivo'
+                              : item.sentiment === 'negative'
+                              ? 'Negativo'
+                              : 'Neutro'}
+                          </span>
+                        )}
+                        {item.risk_level && (
+                          <span
+                            className={`px-2 py-1 text-xs font-medium rounded-lg ${riskColors[item.risk_level]}`}
+                          >
+                            Risco{' '}
+                            {item.risk_level === 'high'
+                              ? 'Alto'
+                              : item.risk_level === 'medium'
+                              ? 'Médio'
+                              : 'Baixo'}
+                          </span>
+                        )}
+                        {item.theme && (
+                          <span className="px-2 py-1 text-xs font-medium bg-primary-soft text-primary rounded-lg">
+                            {item.theme}
+                          </span>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              )}
             </div>
 
-            {/* Radar de Adversários */}
-            <div className="mt-6 bg-surface rounded-2xl border border-border p-6">
-              <h2 className="text-lg font-semibold text-text-strong mb-4">Radar de Adversários</h2>
-
-              <div className="space-y-4">
-                {[
-                  {
-                    adversario: 'Adversário A',
-                    temas: ['Saúde', 'Educação'],
-                    ataques: '3 ataques diretos',
-                    presenca: '38%',
-                  },
-                  {
-                    adversario: 'Adversário B',
-                    temas: ['Economia', 'Segurança'],
-                    ataques: '1 ataque indireto',
-                    presenca: '28%',
-                  },
-                ].map((adversario, idx) => (
-                  <div
-                    key={idx}
-                    className="p-4 rounded-xl border border-border bg-background"
-                  >
-                    <div className="flex items-start justify-between mb-2">
-                      <h3 className="text-sm font-semibold text-text-strong">{adversario.adversario}</h3>
-                      <span className="text-xs text-text-muted">Presença: {adversario.presenca}</span>
-                    </div>
-                    <p className="text-xs text-text-muted mb-2">{adversario.ataques}</p>
-                    <div className="flex flex-wrap gap-2">
-                      {adversario.temas.map((tema) => (
-                        <span
-                          key={tema}
-                          className="px-2 py-1 text-xs bg-status-error/10 text-status-error rounded-lg"
-                        >
-                          {tema}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
           </div>
 
-          {/* Alertas Críticos */}
+          {/* Sidebar */}
           <div>
-            <div className="bg-surface rounded-2xl border border-border p-6 mb-6">
-              <h2 className="text-lg font-semibold text-text-strong mb-4 flex items-center gap-2">
-                <AlertTriangle className="w-5 h-5 text-status-error" />
-                Alertas Críticos
-              </h2>
-              <div className="space-y-3">
-                {mockAlerts.filter((a) => a.type === 'critical').map((alert) => (
-                  <AlertCard key={alert.id} alert={alert} />
-                ))}
-              </div>
-            </div>
-
             {/* Temas em Alta */}
-            <div className="bg-surface rounded-2xl border border-border p-6">
+            <div className="bg-surface rounded-2xl border border-border p-6 mb-6">
               <h2 className="text-lg font-semibold text-text-strong mb-4 flex items-center gap-2">
                 <TrendingUp className="w-5 h-5 text-primary" />
                 Temas em Alta
               </h2>
-              <div className="space-y-3">
-                {[
-                  { tema: 'Saúde', mencoes: 45, tendencia: '+12%' },
-                  { tema: 'Educação', mencoes: 38, tendencia: '+8%' },
-                  { tema: 'Segurança', mencoes: 32, tendencia: '+5%' },
-                ].map((item, idx) => (
-                  <div
-                    key={idx}
-                    className="flex items-center justify-between p-3 rounded-xl bg-background"
-                  >
-                    <div>
-                      <p className="text-sm font-medium text-text-strong">{item.tema}</p>
-                      <p className="text-xs text-text-muted">{item.mencoes} menções</p>
+              {temasAlta.length === 0 ? (
+                <div className="text-center py-4">
+                  <p className="text-xs text-text-muted">Nenhum tema ainda</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {temasAlta.map((item, idx) => (
+                    <div
+                      key={idx}
+                      className="flex items-center justify-between p-3 rounded-xl bg-background"
+                    >
+                      <div>
+                        <p className="text-sm font-medium text-text-strong">{item.tema}</p>
+                        <p className="text-xs text-text-muted">{item.mencoes} menções</p>
+                      </div>
+                      <span className="text-sm font-semibold text-status-success">
+                        {item.tendencia}
+                      </span>
                     </div>
-                    <span className="text-sm font-semibold text-status-success">{item.tendencia}</span>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         </div>
       </div>
+
+      {/* Modal de Gerenciamento de Feeds (Unificado) */}
+      {showFeedManager && (
+        <FeedManagerModal
+          onClose={() => {
+            setShowFeedManager(false)
+            fetchAllFeeds()
+            fetchNews()
+          }}
+          onCollect={() => {
+            fetchData()
+          }}
+        />
+      )}
     </div>
   )
 }
-

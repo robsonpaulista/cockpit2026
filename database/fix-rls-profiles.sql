@@ -40,3 +40,4 @@ WHERE tablename = 'profiles';
 -- Se ainda não funcionar, temporariamente desabilite RLS (APENAS PARA TESTE):
 -- ALTER TABLE profiles DISABLE ROW LEVEL SECURITY;
 
+

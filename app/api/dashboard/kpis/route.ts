@@ -62,14 +62,14 @@ export async function GET() {
       })
     }
 
-    // Calcular variação 7 dias
-    const { data: weekAgoMetric } = await supabase
+    // Calcular variação 7 dias (buscar registros ordenados e pegar o 8º)
+    const { data: allMetrics } = await supabase
       .from('daily_metrics')
-      .select('ife_score')
+      .select('ife_score, date')
       .order('date', { ascending: false })
-      .limit(1)
-      .offset(7)
-      .single()
+      .limit(8)
+    
+    const weekAgoMetric = allMetrics && allMetrics.length >= 8 ? allMetrics[7] : null
 
     const ifeVariation = weekAgoMetric
       ? ((latestMetric.ife_score - weekAgoMetric.ife_score) / weekAgoMetric.ife_score) * 100

@@ -54,12 +54,14 @@ CREATE TABLE IF NOT EXISTS campaign_phases (
 
 -- Tabela de cidades/territórios
 CREATE TABLE IF NOT EXISTS cities (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id TEXT PRIMARY KEY, -- Pode ser UUID ou código IBGE (ex: 'ibge-2200051')
   name TEXT NOT NULL,
   state TEXT NOT NULL,
   macro_region TEXT,
+  microrregiao TEXT,
   priority INTEGER DEFAULT 0,
-  created_at TIMESTAMPTZ DEFAULT NOW()
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(name, state)
 );
 
 -- Agendas
@@ -189,6 +191,95 @@ CREATE TABLE IF NOT EXISTS narrative_usage (
 );
 
 -- ============================================
+-- NOTÍCIAS, CRISES & RADAR DE ADVERSÁRIOS
+-- ============================================
+
+-- Crises (criada primeiro porque news referencia)
+CREATE TABLE IF NOT EXISTS crises (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  title TEXT NOT NULL,
+  description TEXT,
+  severity TEXT NOT NULL CHECK (severity IN ('low', 'medium', 'high', 'critical')),
+  status TEXT NOT NULL DEFAULT 'open' CHECK (status IN ('open', 'monitoring', 'resolved', 'archived')),
+  detected_at TIMESTAMPTZ DEFAULT NOW(),
+  resolved_at TIMESTAMPTZ,
+  response_time INTEGER, -- Tempo de resposta em minutos
+  narrative_id UUID REFERENCES narratives(id), -- Narrativa sugerida para resposta
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Notícias (criada depois de crises porque referencia crises)
+CREATE TABLE IF NOT EXISTS news (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  title TEXT NOT NULL,
+  source TEXT NOT NULL,
+  url TEXT,
+  content TEXT,
+  sentiment TEXT CHECK (sentiment IN ('positive', 'negative', 'neutral')),
+  risk_level TEXT CHECK (risk_level IN ('low', 'medium', 'high')),
+  theme TEXT,
+  actor TEXT,
+  published_at TIMESTAMPTZ,
+  collected_at TIMESTAMPTZ DEFAULT NOW(),
+  processed BOOLEAN DEFAULT FALSE,
+  crisis_id UUID REFERENCES crises(id), -- Referência à crise relacionada (se houver)
+  feed_id UUID REFERENCES news_feeds(id) ON DELETE SET NULL, -- Referência ao feed RSS do usuário que coletou esta notícia
+  adversary_id UUID REFERENCES adversaries(id) ON DELETE SET NULL, -- Referência ao adversário cujo feed RSS coletou esta notícia (NULL para notícias gerais)
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Criar índice único para evitar duplicatas por URL
+CREATE UNIQUE INDEX IF NOT EXISTS idx_news_url_unique ON news(url) WHERE url IS NOT NULL;
+
+-- Adversários
+CREATE TABLE IF NOT EXISTS adversaries (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  name TEXT NOT NULL,
+  type TEXT CHECK (type IN ('candidate', 'party', 'media', 'influencer', 'other')),
+  themes JSONB DEFAULT '[]'::jsonb, -- Temas que abordam
+  presence_score INTEGER DEFAULT 0 CHECK (presence_score >= 0 AND presence_score <= 100), -- Share of Voice
+  last_updated TIMESTAMPTZ DEFAULT NOW(),
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Ataques de adversários (registro de menções/ataques)
+CREATE TABLE IF NOT EXISTS adversary_attacks (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  adversary_id UUID REFERENCES adversaries(id) ON DELETE CASCADE,
+  news_id UUID REFERENCES news(id) ON DELETE CASCADE,
+  attack_type TEXT CHECK (attack_type IN ('direct', 'indirect', 'false_claim', 'omission')),
+  detected_at TIMESTAMPTZ DEFAULT NOW(),
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Alertas de notícias
+CREATE TABLE IF NOT EXISTS news_alerts (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  news_id UUID REFERENCES news(id) ON DELETE CASCADE,
+  user_id UUID REFERENCES profiles(id),
+  type TEXT CHECK (type IN ('risk_high', 'crisis_detected', 'adversary_attack', 'sentiment_negative')),
+  sent_at TIMESTAMPTZ DEFAULT NOW(),
+  read_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Feeds RSS configurados (por candidato/usuário)
+CREATE TABLE IF NOT EXISTS news_feeds (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  user_id UUID REFERENCES profiles(id) ON DELETE CASCADE,
+  name TEXT NOT NULL, -- Nome do feed (ex: "Meu Nome", "Meu Nome + Piauí")
+  rss_url TEXT NOT NULL,
+  active BOOLEAN DEFAULT TRUE,
+  auto_classify BOOLEAN DEFAULT TRUE,
+  last_collected_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- ============================================
 -- KPIs E MÉTRICAS (para Dashboard)
 -- ============================================
 
@@ -218,6 +309,13 @@ CREATE INDEX IF NOT EXISTS idx_demands_status ON demands(status);
 CREATE INDEX IF NOT EXISTS idx_leaderships_city ON leaderships(city_id);
 CREATE INDEX IF NOT EXISTS idx_leaderships_score ON leaderships(support_score);
 CREATE INDEX IF NOT EXISTS idx_daily_metrics_date ON daily_metrics(date);
+CREATE INDEX IF NOT EXISTS idx_news_collected_at ON news(collected_at);
+CREATE INDEX IF NOT EXISTS idx_news_risk_level ON news(risk_level);
+CREATE INDEX IF NOT EXISTS idx_news_sentiment ON news(sentiment);
+CREATE INDEX IF NOT EXISTS idx_news_theme ON news(theme);
+CREATE INDEX IF NOT EXISTS idx_crises_status ON crises(status);
+CREATE INDEX IF NOT EXISTS idx_crises_severity ON crises(severity);
+CREATE INDEX IF NOT EXISTS idx_adversary_attacks_detected_at ON adversary_attacks(detected_at);
 
 -- Trigger para atualizar updated_at
 CREATE OR REPLACE FUNCTION update_updated_at_column()
@@ -249,6 +347,18 @@ CREATE TRIGGER update_leaderships_updated_at BEFORE UPDATE ON leaderships
 CREATE TRIGGER update_narratives_updated_at BEFORE UPDATE ON narratives
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
+CREATE TRIGGER update_news_updated_at BEFORE UPDATE ON news
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+CREATE TRIGGER update_crises_updated_at BEFORE UPDATE ON crises
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+CREATE TRIGGER update_adversaries_updated_at BEFORE UPDATE ON adversaries
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+CREATE TRIGGER update_news_feeds_updated_at BEFORE UPDATE ON news_feeds
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
 CREATE TRIGGER update_daily_metrics_updated_at BEFORE UPDATE ON daily_metrics
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
@@ -266,6 +376,12 @@ ALTER TABLE promises ENABLE ROW LEVEL SECURITY;
 ALTER TABLE leaderships ENABLE ROW LEVEL SECURITY;
 ALTER TABLE contacts ENABLE ROW LEVEL SECURITY;
 ALTER TABLE narratives ENABLE ROW LEVEL SECURITY;
+ALTER TABLE news ENABLE ROW LEVEL SECURITY;
+ALTER TABLE crises ENABLE ROW LEVEL SECURITY;
+ALTER TABLE adversaries ENABLE ROW LEVEL SECURITY;
+ALTER TABLE adversary_attacks ENABLE ROW LEVEL SECURITY;
+ALTER TABLE news_alerts ENABLE ROW LEVEL SECURITY;
+ALTER TABLE news_feeds ENABLE ROW LEVEL SECURITY;
 ALTER TABLE daily_metrics ENABLE ROW LEVEL SECURITY;
 
 -- Políticas básicas (ajustar conforme necessidade)
@@ -278,6 +394,16 @@ CREATE POLICY "Users can update own profile" ON profiles
 
 -- Por enquanto, permitir leitura para todos autenticados (ajustar depois)
 CREATE POLICY "Authenticated users can read campaign_phases" ON campaign_phases
+  FOR SELECT USING (auth.role() = 'authenticated');
+
+-- Notícias, Crises e Adversários: todos autenticados podem ler
+CREATE POLICY "Authenticated users can read news" ON news
+  FOR SELECT USING (auth.role() = 'authenticated');
+
+CREATE POLICY "Authenticated users can read crises" ON crises
+  FOR SELECT USING (auth.role() = 'authenticated');
+
+CREATE POLICY "Authenticated users can read adversaries" ON adversaries
   FOR SELECT USING (auth.role() = 'authenticated');
 
 -- TODO: Implementar políticas mais granulares baseadas em roles

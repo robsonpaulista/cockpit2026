@@ -13,8 +13,9 @@ interface KPICardProps {
 
 export function KPICard({ kpi, href = '#' }: KPICardProps) {
   const hasVariation = kpi.variation !== undefined
-  const isPositive = hasVariation && kpi.variation > 0
-  const isNegative = hasVariation && kpi.variation < 0
+  const variationValue = kpi.variation ?? 0
+  const isPositive = hasVariation && variationValue > 0
+  const isNegative = hasVariation && variationValue < 0
   const VariationIcon = isPositive ? TrendingUp : isNegative ? TrendingDown : Minus
 
   const statusColors = {
@@ -66,7 +67,7 @@ export function KPICard({ kpi, href = '#' }: KPICardProps) {
             )}
           >
             <VariationIcon className="w-3 h-3" />
-            <span>{Math.abs(kpi.variation)}%</span>
+            <span>{Math.abs(variationValue)}%</span>
             <span className="text-text-muted ml-1">7d</span>
           </div>
         )}

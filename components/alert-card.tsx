@@ -73,3 +73,4 @@ export function AlertCard({ alert }: AlertCardProps) {
   return content
 }
 
+
