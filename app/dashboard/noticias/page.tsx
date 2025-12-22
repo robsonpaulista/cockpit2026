@@ -4,8 +4,9 @@ import { useEffect, useState } from 'react'
 import { Header } from '@/components/header'
 import { KPICard } from '@/components/kpi-card'
 import { AlertCard } from '@/components/alert-card'
-import { Newspaper, AlertTriangle, TrendingUp, RefreshCw, Plus, Filter } from 'lucide-react'
+import { Newspaper, AlertTriangle, TrendingUp, RefreshCw, Plus, Filter, Edit2 } from 'lucide-react'
 import { FeedManagerModal } from '@/components/feed-manager-modal'
+import { EditNewsModal } from '@/components/edit-news-modal'
 import { KPI, NewsItem } from '@/types'
 import { formatDate } from '@/lib/utils'
 
@@ -28,6 +29,7 @@ export default function NoticiasPage() {
   const [metrics, setMetrics] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [showFeedManager, setShowFeedManager] = useState(false)
+  const [editingNews, setEditingNews] = useState<NewsItem | null>(null)
   const [filterSentiment, setFilterSentiment] = useState<string>('all')
   const [filterRisk, setFilterRisk] = useState<string>('all')
   const [selectedFeeds, setSelectedFeeds] = useState<string[]>([]) // Array de IDs de feeds selecionados
@@ -338,34 +340,53 @@ export default function NoticiasPage() {
                       </div>
 
                       <div className="flex items-center gap-2 flex-wrap">
-                        {item.sentiment && (
-                          <span
-                            className={`px-2 py-1 text-xs font-medium rounded-lg border ${sentimentColors[item.sentiment]}`}
-                          >
-                            {item.sentiment === 'positive'
-                              ? 'Positivo'
-                              : item.sentiment === 'negative'
-                              ? 'Negativo'
-                              : 'Neutro'}
-                          </span>
-                        )}
-                        {item.risk_level && (
-                          <span
-                            className={`px-2 py-1 text-xs font-medium rounded-lg ${riskColors[item.risk_level]}`}
-                          >
-                            Risco{' '}
-                            {item.risk_level === 'high'
-                              ? 'Alto'
-                              : item.risk_level === 'medium'
-                              ? 'Médio'
-                              : 'Baixo'}
-                          </span>
-                        )}
-                        {item.theme && (
-                          <span className="px-2 py-1 text-xs font-medium bg-primary-soft text-primary rounded-lg">
-                            {item.theme}
-                          </span>
-                        )}
+                        <button
+                          onClick={() => setEditingNews(item)}
+                          className="flex items-center gap-2 flex-wrap group hover:opacity-80 transition-opacity"
+                          title="Clique para editar classificações"
+                        >
+                          <Edit2 className="w-3 h-3 text-text-muted group-hover:text-primary transition-colors" />
+                          {item.sentiment ? (
+                            <span
+                              className={`px-2 py-1 text-xs font-medium rounded-lg border cursor-pointer hover:shadow-sm transition-all ${sentimentColors[item.sentiment]}`}
+                            >
+                              {item.sentiment === 'positive'
+                                ? 'Positivo'
+                                : item.sentiment === 'negative'
+                                ? 'Negativo'
+                                : 'Neutro'}
+                            </span>
+                          ) : (
+                            <span className="px-2 py-1 text-xs text-text-muted border border-dashed border-border rounded-lg">
+                              Sem sentimento
+                            </span>
+                          )}
+                          {item.risk_level ? (
+                            <span
+                              className={`px-2 py-1 text-xs font-medium rounded-lg cursor-pointer hover:shadow-sm transition-all ${riskColors[item.risk_level]}`}
+                            >
+                              Risco{' '}
+                              {item.risk_level === 'high'
+                                ? 'Alto'
+                                : item.risk_level === 'medium'
+                                ? 'Médio'
+                                : 'Baixo'}
+                            </span>
+                          ) : (
+                            <span className="px-2 py-1 text-xs text-text-muted border border-dashed border-border rounded-lg">
+                              Sem risco
+                            </span>
+                          )}
+                          {item.theme ? (
+                            <span className="px-2 py-1 text-xs font-medium bg-primary-soft text-primary rounded-lg cursor-pointer hover:shadow-sm transition-all">
+                              {item.theme}
+                            </span>
+                          ) : (
+                            <span className="px-2 py-1 text-xs text-text-muted border border-dashed border-border rounded-lg">
+                              Sem tema
+                            </span>
+                          )}
+                        </button>
                       </div>
                     </div>
                   ))}
@@ -420,6 +441,20 @@ export default function NoticiasPage() {
           }}
           onCollect={() => {
             fetchData()
+          }}
+        />
+      )}
+
+      {/* Modal de Edição de Notícia */}
+      {editingNews && (
+        <EditNewsModal
+          news={editingNews}
+          onClose={() => setEditingNews(null)}
+          onUpdate={() => {
+            fetchNews()
+            fetchTemasAlta() // Atualizar temas em alta após edição
+            fetchMetrics() // Atualizar métricas também
+            setEditingNews(null)
           }}
         />
       )}
