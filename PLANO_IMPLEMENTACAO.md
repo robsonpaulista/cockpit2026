@@ -742,3 +742,6 @@ POST /api/relatorios/schedule
 - Logs para debug e monitoramento
 - Testes unitários e de integração (futuro)
 
+
+
+

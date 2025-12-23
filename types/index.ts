@@ -99,3 +99,46 @@ export interface CampaignPhase {
   automations: string[]
 }
 
+export interface Territory {
+  id: string
+  name: string
+  description?: string
+  vocations?: string[]
+  created_at?: string
+  updated_at?: string
+}
+
+export interface TerritoryLeader {
+  id: string
+  territory_id: string
+  name: string
+  phone?: string
+  email?: string
+  role?: string
+  status: 'ativo' | 'inativo'
+  notes?: string
+  user_id?: string
+  created_at?: string
+  updated_at?: string
+  territory?: Territory
+}
+
+export interface Task {
+  id: string
+  territory_id: string
+  leader_id?: string
+  title: string
+  description?: string
+  status: 'backlog' | 'em-andamento' | 'em-revisao' | 'concluido' | 'cancelado'
+  priority: 'baixa' | 'media' | 'alta' | 'urgente'
+  due_date?: string
+  completed_at?: string
+  created_by?: string
+  assigned_to?: string
+  created_at?: string
+  updated_at?: string
+  territory?: Territory
+  leader?: TerritoryLeader
+  assigned_leader?: TerritoryLeader
+}
+

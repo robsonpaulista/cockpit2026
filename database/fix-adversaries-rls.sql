@@ -18,3 +18,5 @@ CREATE POLICY "Authenticated users can delete adversaries" ON adversaries
   FOR DELETE USING (auth.role() = 'authenticated');
 
 
+
+

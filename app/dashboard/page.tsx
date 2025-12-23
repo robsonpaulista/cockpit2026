@@ -29,32 +29,133 @@ const topicsData = [
 export default function Home() {
   const [kpis, setKpis] = useState<KPI[]>(mockKPIs)
   const [loading, setLoading] = useState(true)
+  const [pollsData, setPollsData] = useState<Array<{ date: string; intencao: number }>>([])
+  const [candidatoPadrao, setCandidatoPadrao] = useState<string>('')
+  const [territoriosFrios, setTerritoriosFrios] = useState<Array<{ cidade: string; motivo: string }>>([])
 
   useEffect(() => {
+    // Buscar candidato padrão do localStorage
+    const candidatoSalvo = localStorage.getItem('candidatoPadraoPesquisa')
+    if (candidatoSalvo) {
+      setCandidatoPadrao(candidatoSalvo)
+    }
+  }, [])
+
+  // Buscar histórico quando candidato padrão mudar
+  useEffect(() => {
+    const fetchHistoricoIntencao = async (candidato: string) => {
+      try {
+        const response = await fetch(`/api/pesquisa/historico-intencao?candidato=${encodeURIComponent(candidato)}`)
+        if (response.ok) {
+          const data = await response.json()
+          setPollsData(data.data || [])
+        } else {
+          setPollsData([])
+        }
+      } catch (error) {
+        console.error('Erro ao buscar histórico de intenção:', error)
+        setPollsData([])
+      }
+    }
+
+    if (candidatoPadrao) {
+      fetchHistoricoIntencao(candidatoPadrao)
+    } else {
+      setPollsData([])
+    }
+  }, [candidatoPadrao])
+
+  // Buscar Territórios Frios
+  useEffect(() => {
+    const fetchTerritoriosFrios = async () => {
+      try {
+        const savedConfig = localStorage.getItem('territorio_sheets_config')
+        if (savedConfig) {
+          const config = JSON.parse(savedConfig)
+          const response = await fetch('/api/dashboard/territorios-frios', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ territorioConfig: config }),
+          })
+          
+          if (response.ok) {
+            const data = await response.json()
+            setTerritoriosFrios(
+              data.territoriosFrios?.map((t: any) => ({
+                cidade: t.cidade,
+                motivo: t.motivo,
+              })) || []
+            )
+          }
+        }
+      } catch (error) {
+        console.error('Erro ao buscar Territórios Frios:', error)
+      }
+    }
+
+    fetchTerritoriosFrios()
+  }, [])
+
+  useEffect(() => {
+    // Buscar KPIs do Território (mesma API que a página Território & Base usa)
+    const fetchTerritorioKPIs = async () => {
+      try {
+        const savedConfig = localStorage.getItem('territorio_sheets_config')
+        if (savedConfig) {
+          const config = JSON.parse(savedConfig)
+          const response = await fetch('/api/territorio/kpis', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              spreadsheetId: config.spreadsheetId,
+              sheetName: config.sheetName,
+              range: config.range,
+              serviceAccountEmail: config.serviceAccountEmail,
+              credentials: config.credentials,
+            }),
+          })
+          
+          if (response.ok) {
+            return await response.json()
+          }
+        }
+      } catch (error) {
+        console.error('Erro ao buscar KPIs do Território:', error)
+      }
+      return null
+    }
+
     // Buscar KPIs da API
-    fetch('/api/dashboard/kpis')
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.ife) {
-          setKpis([
-            {
-              id: 'ife',
-              label: 'Índice de Força Eleitoral',
-              value: data.ife.value,
-              variation: data.ife.variation,
-              status: data.ife.status,
-            },
+    Promise.all([
+      fetch('/api/dashboard/kpis').then((res) => res.json()),
+      fetchTerritorioKPIs(),
+    ]).then(([data, territorioKPIs]) => {
+      if (data.ife) {
+        // Se temos KPIs do território, usar os valores calculados (mesmos da página Território & Base)
+        const expectativa2026 = territorioKPIs?.expectativa2026 ?? null
+        const cidadesUnicas = territorioKPIs?.cidadesUnicas ?? null
+        
+        setKpis([
+          {
+            id: 'ife',
+            label: 'Expectativa 2026',
+            value: expectativa2026 !== null ? expectativa2026.toLocaleString('pt-BR') : data.ife.value,
+            variation: data.ife.variation,
+            status: data.ife.status,
+          },
             {
               id: 'presenca',
               label: 'Presença Territorial',
-              value: data.presenca.value,
+              value: cidadesUnicas !== null ? `${cidadesUnicas}/224` : data.presenca.value,
               variation: data.presenca.variation,
               status: data.presenca.status,
             },
             {
               id: 'base',
               label: 'Capilaridade da Base',
-              value: data.base.value,
+              value: territorioKPIs?.liderancas !== null && territorioKPIs?.liderancas !== undefined 
+                ? territorioKPIs.liderancas 
+                : data.base.value,
               variation: data.base.variation,
               status: data.base.status,
             },
@@ -91,7 +192,7 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-background">
-      <Header title="Visão Geral" subtitle="Dashboard Executivo - Visão estratégica em 30 segundos" />
+      <Header title="Visão Geral" subtitle="Dashboard Executivo - Visão estratégica em 30 segundos" showFilters={false} />
 
       <div className="px-4 py-6 lg:px-6">
         {/* Linha 1 - KPIs Centrais */}
@@ -114,55 +215,85 @@ export default function Home() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Linha 2 - Leitura Estratégica */}
           <div className="lg:col-span-2 space-y-6">
-            {/* Gráfico de Tendência */}
+            {/* Gráfico de Histórico de Pesquisas */}
             <div className="bg-surface rounded-2xl border border-border p-6">
               <div className="flex items-center justify-between mb-4">
-                <h2 className="text-lg font-semibold text-text-strong">Tendência IFE + Sentimento</h2>
-                <span className="text-sm text-text-muted">Últimos 30 dias</span>
+                <h2 className="text-lg font-semibold text-text-strong">Histórico de Pesquisas de Intenção de Votos</h2>
+                {candidatoPadrao && (
+                  <span className="text-sm text-text-muted">{candidatoPadrao}</span>
+                )}
               </div>
               <div className="h-64">
-                <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={trendData}>
-                    <defs>
-                      <linearGradient id="colorIfe" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#1E4ED8" stopOpacity={0.3} />
-                        <stop offset="95%" stopColor="#1E4ED8" stopOpacity={0} />
-                      </linearGradient>
-                      <linearGradient id="colorSentimento" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#16A34A" stopOpacity={0.3} />
-                        <stop offset="95%" stopColor="#16A34A" stopOpacity={0} />
-                      </linearGradient>
-                    </defs>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
-                    <XAxis dataKey="date" stroke="#64748B" fontSize={12} />
-                    <YAxis stroke="#64748B" fontSize={12} />
-                    <Tooltip
-                      contentStyle={{
-                        backgroundColor: '#FFFFFF',
-                        border: '1px solid #E5E7EB',
-                        borderRadius: '8px',
-                      }}
-                    />
-                    <Area
-                      type="monotone"
-                      dataKey="ife"
-                      stroke="#1E4ED8"
-                      strokeWidth={2}
-                      fillOpacity={1}
-                      fill="url(#colorIfe)"
-                      name="IFE"
-                    />
-                    <Area
-                      type="monotone"
-                      dataKey="sentimento"
-                      stroke="#16A34A"
-                      strokeWidth={2}
-                      fillOpacity={1}
-                      fill="url(#colorSentimento)"
-                      name="Sentimento"
-                    />
-                  </AreaChart>
-                </ResponsiveContainer>
+                {pollsData.length > 0 ? (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart data={pollsData}>
+                      <defs>
+                        <linearGradient id="colorIntencao" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="#1E4ED8" stopOpacity={0.3} />
+                          <stop offset="95%" stopColor="#1E4ED8" stopOpacity={0} />
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
+                      <XAxis dataKey="date" stroke="#64748B" fontSize={12} />
+                      <YAxis 
+                        stroke="#64748B" 
+                        fontSize={12}
+                        domain={[0, 100]}
+                        label={{ value: 'Intenção (%)', angle: -90, position: 'insideLeft' }}
+                      />
+                      <Tooltip
+                        contentStyle={{
+                          backgroundColor: '#FFFFFF',
+                          border: '1px solid #E5E7EB',
+                          borderRadius: '8px',
+                        }}
+                        formatter={(value: number) => [`${value}%`, 'Intenção de Voto']}
+                      />
+                      <Area
+                        type="monotone"
+                        dataKey="intencao"
+                        stroke="#1E4ED8"
+                        strokeWidth={2}
+                        fillOpacity={1}
+                        fill="url(#colorIntencao)"
+                        name="Intenção de Voto"
+                      />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <div className="flex items-center justify-center h-full text-text-muted">
+                    {candidatoPadrao 
+                      ? 'Nenhuma pesquisa encontrada para este candidato'
+                      : 'Selecione um candidato padrão na página Pesquisa & Relato'}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Territórios Frios */}
+            <div className="bg-surface rounded-2xl border border-border p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg font-semibold text-text-strong flex items-center gap-2">
+                  <MapPin className="w-5 h-5 text-status-warning" />
+                  Territórios Frios (Alerta)
+                </h2>
+              </div>
+              <div className="space-y-3">
+                {territoriosFrios.length > 0 ? (
+                  territoriosFrios.map((territorio) => (
+                    <div
+                      key={territorio.cidade}
+                      className="p-3 rounded-xl border border-status-warning/30 bg-status-warning/5 hover:bg-status-warning/10 transition-colors"
+                    >
+                      <p className="text-sm font-medium text-text-strong">{territorio.cidade}</p>
+                      <p className="text-xs text-text-muted mt-1">{territorio.motivo}</p>
+                    </div>
+                  ))
+                ) : (
+                  <p className="text-sm text-text-muted text-center py-4">
+                    Nenhum território frio identificado no momento
+                  </p>
+                )}
               </div>
             </div>
 
@@ -190,31 +321,6 @@ export default function Home() {
                         <p className="text-xs text-text-muted">Sentimento</p>
                       </div>
                     </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Territórios Frios */}
-            <div className="bg-surface rounded-2xl border border-border p-6">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-lg font-semibold text-text-strong flex items-center gap-2">
-                  <MapPin className="w-5 h-5 text-status-warning" />
-                  Territórios Frios (Alerta)
-                </h2>
-              </div>
-              <div className="space-y-3">
-                {[
-                  { cidade: 'São Paulo', motivo: 'Baixa presença + alta demanda' },
-                  { cidade: 'Rio de Janeiro', motivo: 'Sentimento em queda' },
-                  { cidade: 'Belo Horizonte', motivo: 'Base inativa' },
-                ].map((territorio) => (
-                  <div
-                    key={territorio.cidade}
-                    className="p-3 rounded-xl border border-status-warning/30 bg-status-warning/5 hover:bg-status-warning/10 transition-colors"
-                  >
-                    <p className="text-sm font-medium text-text-strong">{territorio.cidade}</p>
-                    <p className="text-xs text-text-muted mt-1">{territorio.motivo}</p>
                   </div>
                 ))}
               </div>

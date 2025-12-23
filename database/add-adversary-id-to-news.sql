@@ -8,3 +8,5 @@ CREATE INDEX IF NOT EXISTS idx_news_adversary_id ON news(adversary_id);
 -- Comentário
 COMMENT ON COLUMN news.adversary_id IS 'Referência ao adversário cujo feed RSS coletou esta notícia (NULL para notícias gerais)';
 
+
+

@@ -111,3 +111,6 @@ O código agora tem logs. Veja no console do navegador:
 3. **Teste criando o perfil manualmente** via SQL
 4. **Me avise o que aparece no console!**
 
+
+
+

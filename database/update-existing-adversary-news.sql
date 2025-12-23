@@ -24,3 +24,5 @@ SELECT
   COUNT(*) - COUNT(adversary_id) as noticias_sem_adversary_id
 FROM news;
 
+
+

@@ -23,3 +23,5 @@ WHERE table_name = 'cities'
 ORDER BY ordinal_position;
 
 
+
+

@@ -162,3 +162,6 @@ Após configurar:
 2. ✅ Testar autenticação
 3. ✅ Conectar dashboard a dados reais
 
+
+
+

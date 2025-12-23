@@ -6,3 +6,5 @@ ADD COLUMN IF NOT EXISTS google_alerts_rss_url TEXT;
 COMMENT ON COLUMN adversaries.google_alerts_rss_url IS 'URL do feed RSS do Google Alerts para monitorar este adversário';
 
 
+
+

@@ -245,3 +245,5 @@ ON CONFLICT (name, state) DO UPDATE SET
 SELECT COUNT(*) as total_municipios FROM cities WHERE state = 'PI';
 
 
+
+

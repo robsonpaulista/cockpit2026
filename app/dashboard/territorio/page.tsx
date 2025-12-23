@@ -286,18 +286,18 @@ export default function TerritorioPage() {
     }
 
     return [
-      {
-        id: 'liderancas',
+  {
+    id: 'liderancas',
         label: 'Lideranças Atuais',
         value: liderancasFiltradas.length,
-        status: 'success',
-      },
-      {
+    status: 'success',
+  },
+  {
         id: 'total',
         label: 'Total de Registros',
         value: liderancas.length,
-        status: 'success',
-      },
+    status: 'success',
+  },
       ...(expectativaVotosCol && totalExpectativaVotos > 0
         ? [
             {
@@ -314,9 +314,9 @@ export default function TerritorioPage() {
         value: cidadeCol
           ? new Set(dadosParaKPIs.map((l) => l[cidadeCol]).filter(Boolean)).size
           : 0,
-        status: 'success',
-      },
-    ]
+    status: 'success',
+  },
+]
   }
 
   const kpis = calcularKPIs()
@@ -599,7 +599,7 @@ export default function TerritorioPage() {
             })
 
             return (
-              <div className="space-y-3">
+          <div className="space-y-3">
                 {cidadesOrdenadas.map((cidade) => {
                   const liderancasCidade = liderancasPorCidade[cidade]
                   const totalExpectativaCidade = liderancasCidade.reduce((sum, l) => {
@@ -631,9 +631,9 @@ export default function TerritorioPage() {
                           ) : (
                             <ChevronRight className="w-4 h-4 text-text-muted" />
                           )}
-                          <div className="p-2 rounded-lg bg-primary-soft">
-                            <Users className="w-4 h-4 text-primary" />
-                          </div>
+                    <div className="p-2 rounded-lg bg-primary-soft">
+                      <Users className="w-4 h-4 text-primary" />
+                    </div>
                           <div className="flex-1 text-left">
                             <p className="text-sm font-semibold text-text-strong">{cidade}</p>
                             <p className="text-xs text-text-muted">
@@ -688,9 +688,9 @@ export default function TerritorioPage() {
                                           </span>
                                         )}
                                       </div>
-                                    </div>
-                                  </div>
-                                  <div className="flex items-center gap-4">
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-4">
                                     {expectativaVotosCol && lider[expectativaVotosCol] && (
                                       <div className="text-right">
                                         <p className="text-xs text-text-muted mb-0.5">Expectativa de Votos 2026</p>
@@ -700,12 +700,12 @@ export default function TerritorioPage() {
                                       </div>
                                     )}
                                     {scoreCol && lider[scoreCol] && (
-                                      <div className="text-right">
+                    <div className="text-right">
                                         <p className="text-xs text-text-muted mb-0.5">Score</p>
                                         <p className="text-sm font-semibold text-text-strong">
                                           {lider[scoreCol]}
                                         </p>
-                                      </div>
+                    </div>
                                     )}
                                     {statusCol && lider[statusCol] && (
                                       <span
@@ -718,8 +718,8 @@ export default function TerritorioPage() {
                                         {lider[statusCol]}
                                       </span>
                                     )}
-                                  </div>
-                                </div>
+                  </div>
+                </div>
                                 {/* Mostrar outras colunas importantes */}
                                 {headers.length > 3 && (() => {
                                   // Filtrar e priorizar colunas
@@ -751,9 +751,9 @@ export default function TerritorioPage() {
                                         <div key={header} className="text-xs">
                                           <span className="text-text-muted">{header}:</span>{' '}
                                           <span className="text-text-strong">{lider[header] || '-'}</span>
-                                        </div>
-                                      ))}
-                                    </div>
+              </div>
+            ))}
+          </div>
                                   )
                                 })()}
                               </div>

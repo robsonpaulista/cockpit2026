@@ -8,3 +8,5 @@ CREATE INDEX IF NOT EXISTS idx_news_feed_id ON news(feed_id);
 -- Comentário
 COMMENT ON COLUMN news.feed_id IS 'Referência ao feed RSS do usuário que coletou esta notícia (NULL para notícias de adversários ou outras fontes)';
 
+
+

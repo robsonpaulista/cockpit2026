@@ -59,3 +59,5 @@ SELECT 'Fases criadas:' as info, COUNT(*) as total FROM campaign_phases;
 SELECT 'Cidades criadas:' as info, COUNT(*) as total FROM cities;
 
 
+
+

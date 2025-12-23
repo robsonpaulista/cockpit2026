@@ -40,9 +40,10 @@ const phaseOptions: FilterOption[] = [
 interface HeaderProps {
   title: string
   subtitle?: string
+  showFilters?: boolean
 }
 
-export function Header({ title, subtitle }: HeaderProps) {
+export function Header({ title, subtitle, showFilters = true }: HeaderProps) {
   const [period, setPeriod] = useState('30d')
   const [region, setRegion] = useState('estado')
   const [theme, setTheme] = useState('todos')
@@ -60,6 +61,7 @@ export function Header({ title, subtitle }: HeaderProps) {
         </div>
 
         {/* Filters */}
+        {showFilters && (
         <div className="flex flex-wrap gap-3">
           {/* Período */}
           <div className="flex items-center gap-2">
@@ -139,9 +141,12 @@ export function Header({ title, subtitle }: HeaderProps) {
             </button>
           )}
         </div>
+        )}
       </div>
     </header>
   )
 }
+
+
 
 
