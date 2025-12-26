@@ -7,7 +7,7 @@ import { AlertCard } from '@/components/alert-card'
 import { ActionCard } from '@/components/action-card'
 import { mockKPIs, mockAlerts, mockActions } from '@/lib/mock-data'
 import { KPI, Alert, NewsItem } from '@/types'
-import { TrendingUp, MapPin } from 'lucide-react'
+import { TrendingUp, MapPin, Flag, MessageSquare } from 'lucide-react'
 import { LineChart, Line, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LabelList } from 'recharts'
 
 const trendData = [
@@ -36,6 +36,13 @@ export default function Home() {
   const [loadingTerritorios, setLoadingTerritorios] = useState(true)
   const [criticalAlerts, setCriticalAlerts] = useState<Alert[]>([])
   const [loadingAlerts, setLoadingAlerts] = useState(true)
+  const [bandeirasStats, setBandeirasStats] = useState<{
+    totalUsos: number
+    totalPerformance: number
+    totalBandeiras: number
+    topBandeiras: Array<{ theme: string; usage_count: number; performance_score: number }>
+  } | null>(null)
+  const [loadingBandeiras, setLoadingBandeiras] = useState(true)
 
   const fetchCriticalAlerts = async () => {
     setLoadingAlerts(true)
@@ -144,6 +151,68 @@ export default function Home() {
     }
 
     fetchTerritoriosFrios()
+  }, [])
+
+  // Buscar estatísticas das bandeiras
+  useEffect(() => {
+    const fetchBandeirasStats = async () => {
+      setLoadingBandeiras(true)
+      try {
+        // Buscar todas as narrativas ativas
+        const response = await fetch('/api/narrativas?status=ativa')
+        if (response.ok) {
+          const narrativas = await response.json()
+          
+          // Buscar estatísticas para cada narrativa
+          const statsPromises = narrativas.map(async (narrativa: any) => {
+            try {
+              const statsResponse = await fetch(`/api/narrativas/stats?theme=${encodeURIComponent(narrativa.theme)}`)
+              if (statsResponse.ok) {
+                const stats = await statsResponse.json()
+                return {
+                  theme: narrativa.theme,
+                  usage_count: stats.usage_count || 0,
+                  performance_score: stats.performance_score || 0,
+                }
+              }
+            } catch (error) {
+              console.error(`Erro ao buscar stats para ${narrativa.theme}:`, error)
+            }
+            return {
+              theme: narrativa.theme,
+              usage_count: 0,
+              performance_score: 0,
+            }
+          })
+
+          const allStats = await Promise.all(statsPromises)
+          
+          // Calcular totais
+          const totalUsos = allStats.reduce((sum, stat) => sum + stat.usage_count, 0)
+          const totalPerformance = allStats.length > 0
+            ? Math.round(allStats.reduce((sum, stat) => sum + stat.performance_score, 0) / allStats.length)
+            : 0
+          
+          // Top 3 bandeiras por uso
+          const topBandeiras = allStats
+            .sort((a, b) => b.usage_count - a.usage_count)
+            .slice(0, 3)
+
+          setBandeirasStats({
+            totalUsos,
+            totalPerformance,
+            totalBandeiras: narrativas.length,
+            topBandeiras,
+          })
+        }
+      } catch (error) {
+        console.error('Erro ao buscar estatísticas das bandeiras:', error)
+      } finally {
+        setLoadingBandeiras(false)
+      }
+    }
+
+    fetchBandeirasStats()
   }, [])
 
   useEffect(() => {
@@ -428,6 +497,79 @@ export default function Home() {
                   </div>
                 )}
               </div>
+            </div>
+
+            {/* Bandeiras de Campanha - Usos e Performance */}
+            <div>
+              <h2 className="text-lg font-semibold text-text-strong mb-4 flex items-center gap-2">
+                <Flag className="w-5 h-5 text-primary" />
+                Bandeiras de Campanha
+              </h2>
+              {loadingBandeiras ? (
+                <div className="bg-surface rounded-xl border border-border p-4 animate-pulse space-y-3">
+                  <div className="h-4 bg-background rounded w-3/4" />
+                  <div className="h-4 bg-background rounded w-1/2" />
+                  <div className="h-4 bg-background rounded w-2/3" />
+                </div>
+              ) : bandeirasStats ? (
+                <div className="bg-surface rounded-xl border border-border p-4 space-y-4">
+                  {/* KPIs principais */}
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="bg-blue-50 rounded-lg p-3">
+                      <div className="flex items-center gap-2 mb-1">
+                        <TrendingUp className="w-4 h-4 text-blue-600" />
+                        <span className="text-xs text-blue-600 font-medium">Total de Usos</span>
+                      </div>
+                      <p className="text-2xl font-bold text-blue-700">{bandeirasStats.totalUsos}</p>
+                    </div>
+                    <div className="bg-green-50 rounded-lg p-3">
+                      <div className="flex items-center gap-2 mb-1">
+                        <MessageSquare className="w-4 h-4 text-green-600" />
+                        <span className="text-xs text-green-600 font-medium">Performance Média</span>
+                      </div>
+                      <p className="text-2xl font-bold text-green-700">{bandeirasStats.totalPerformance}%</p>
+                    </div>
+                  </div>
+
+                  {/* Top 3 Bandeiras */}
+                  {bandeirasStats.topBandeiras.length > 0 && (
+                    <div>
+                      <p className="text-xs font-medium text-text-muted mb-2">Top 3 Bandeiras por Uso</p>
+                      <div className="space-y-2">
+                        {bandeirasStats.topBandeiras.map((bandeira, index) => (
+                          <div
+                            key={bandeira.theme}
+                            className="flex items-center justify-between p-2 bg-background rounded-lg"
+                          >
+                            <div className="flex items-center gap-2">
+                              <div className="w-6 h-6 rounded-full bg-primary-soft text-primary flex items-center justify-center text-xs font-semibold">
+                                {index + 1}
+                              </div>
+                              <span className="text-sm text-text-strong">{bandeira.theme}</span>
+                            </div>
+                            <div className="flex items-center gap-3 text-xs">
+                              <span className="text-text-muted">{bandeira.usage_count} usos</span>
+                              <span className="text-text-muted">{bandeira.performance_score}%</span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {bandeirasStats.totalBandeiras === 0 && (
+                    <p className="text-sm text-text-muted text-center py-2">
+                      Nenhuma bandeira ativa cadastrada
+                    </p>
+                  )}
+                </div>
+              ) : (
+                <div className="bg-surface rounded-xl border border-border p-4">
+                  <p className="text-sm text-text-muted text-center">
+                    Erro ao carregar estatísticas das bandeiras
+                  </p>
+                </div>
+              )}
             </div>
 
             {/* Pendências Jurídicas */}

@@ -27,17 +27,17 @@ import { useSidebar } from '@/contexts/sidebar-context'
 const menuItems: MenuItem[] = [
   { id: 'home', label: 'Visão Geral', icon: 'LayoutDashboard', href: '/dashboard' },
   { id: 'fases', label: 'Fases da Campanha', icon: 'Calendar', href: '/dashboard/fases' },
+  { id: 'narrativas', label: 'Bandeiras de Campanha', icon: 'FileText', href: '/dashboard/narrativas' },
   { id: 'campo', label: 'Campo & Agenda', icon: 'MapPin', href: '/dashboard/campo' },
-  { id: 'narrativas', label: 'Banco de Narrativas', icon: 'FileText', href: '/dashboard/narrativas' },
+  { id: 'territorio', label: 'Território & Base', icon: 'MapPin', href: '/dashboard/territorio' },
+  { id: 'chapas', label: 'Chapas', icon: 'Vote', href: '/dashboard/chapas' },
   { id: 'conteudo', label: 'Conteúdo & Redes', icon: 'MessageSquare', href: '/dashboard/conteudo' },
   { id: 'noticias', label: 'Notícias & Crises', icon: 'Newspaper', href: '/dashboard/noticias' },
-  { id: 'territorio', label: 'Território & Base', icon: 'MapPin', href: '/dashboard/territorio' },
   { id: 'mobilizacao', label: 'Mobilização', icon: 'Users', href: '/dashboard/mobilizacao' },
   { id: 'whatsapp', label: 'WhatsApp', icon: 'MessageCircle', href: '/dashboard/whatsapp' },
   { id: 'pesquisa', label: 'Pesquisa & Relato', icon: 'BarChart3', href: '/dashboard/pesquisa' },
   { id: 'operacao', label: 'Operação & Equipe', icon: 'Settings', href: '/dashboard/operacao' },
   { id: 'juridico', label: 'Jurídico', icon: 'Scale', href: '/dashboard/juridico' },
-  { id: 'chapas', label: 'Chapas', icon: 'Vote', href: '/dashboard/chapas' },
   { id: 'relatorios', label: 'Relatórios', icon: 'FileBarChart', href: '/dashboard/relatorios' },
 ]
 
