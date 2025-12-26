@@ -74,12 +74,9 @@ export default function NoticiasPage() {
       if (response.ok) {
         const data = await response.json()
         setNews(data)
-      } else {
-        const error = await response.json()
-        console.error('Erro na API:', error)
       }
     } catch (error) {
-      console.error('Erro ao buscar notícias:', error)
+      // Erro silencioso
     }
   }
 
@@ -95,7 +92,7 @@ export default function NoticiasPage() {
         }
       }
     } catch (error) {
-      console.error('Erro ao buscar feeds:', error)
+      // Erro silencioso
     }
   }
 
@@ -107,7 +104,7 @@ export default function NoticiasPage() {
         setTemasAlta(data)
       }
     } catch (error) {
-      console.error('Erro ao buscar temas em alta:', error)
+      // Erro silencioso
     }
   }
 
@@ -119,7 +116,7 @@ export default function NoticiasPage() {
         setMetrics(data)
       }
     } catch (error) {
-      console.error('Erro ao buscar métricas:', error)
+      // Erro silencioso
     }
   }
 

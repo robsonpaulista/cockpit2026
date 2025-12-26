@@ -30,6 +30,7 @@ export default function TerritorioPage() {
   const [filtroCidade, setFiltroCidade] = useState<string>('')
   const [filtroNome, setFiltroNome] = useState<string>('')
   const [filtroCargo, setFiltroCargo] = useState<string>('')
+  const [filtroFaixaVotos, setFiltroFaixaVotos] = useState<string>('')
 
   useEffect(() => {
     // Carregar configuração salva
@@ -194,6 +195,45 @@ export default function TerritorioPage() {
       filtradas = filtradas.filter((l) => {
         const cargo = String(l[cargoCol] || '').toLowerCase()
         return cargo.includes(filtroCargo.toLowerCase())
+      })
+    }
+
+    // Aplicar filtro por faixa de votos esperados (considerando o total de cada cidade)
+    if (filtroFaixaVotos && expectativaVotosCol) {
+      // Agrupar por cidade e calcular total de votos por cidade
+      const votosPorCidade = filtradas.reduce((acc, l) => {
+        const cidade = l[cidadeCol] || 'Sem cidade'
+        if (!acc[cidade]) {
+          acc[cidade] = 0
+        }
+        acc[cidade] += normalizeNumber(l[expectativaVotosCol])
+        return acc
+      }, {} as Record<string, number>)
+
+      // Filtrar cidades que estão na faixa selecionada
+      const cidadesNaFaixa = Object.keys(votosPorCidade).filter((cidade) => {
+        const totalVotos = votosPorCidade[cidade]
+        
+        switch (filtroFaixaVotos) {
+          case 'ate-100':
+            return totalVotos <= 100
+          case 'ate-300':
+            return totalVotos <= 300
+          case 'ate-500':
+            return totalVotos <= 500
+          case 'acima-500':
+            return totalVotos > 500
+          case 'acima-1000':
+            return totalVotos > 1000
+          default:
+            return true
+        }
+      })
+
+      // Filtrar lideranças para manter apenas as das cidades na faixa
+      filtradas = filtradas.filter((l) => {
+        const cidade = l[cidadeCol] || 'Sem cidade'
+        return cidadesNaFaixa.includes(cidade)
       })
     }
 
@@ -385,7 +425,7 @@ export default function TerritorioPage() {
         {config && liderancas.length > 0 && (
           <div className="mb-6 bg-surface rounded-2xl border border-border p-4">
             <h3 className="text-sm font-semibold text-text-strong mb-4">Filtros</h3>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
               {/* Filtro por Cidade */}
               <div>
                 <label className="block text-xs font-medium text-text-muted mb-2">
@@ -429,8 +469,29 @@ export default function TerritorioPage() {
                   />
                 </div>
               )}
+
+              {/* Filtro por Faixa de Votos Esperados */}
+              {expectativaVotosCol && (
+                <div>
+                  <label className="block text-xs font-medium text-text-muted mb-2">
+                    Faixa de Votos Esperados
+                  </label>
+                  <select
+                    value={filtroFaixaVotos}
+                    onChange={(e) => setFiltroFaixaVotos(e.target.value)}
+                    className="w-full px-3 py-2 text-sm border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-soft bg-surface"
+                  >
+                    <option value="">Todas as faixas</option>
+                    <option value="ate-100">Até 100</option>
+                    <option value="ate-300">Até 300</option>
+                    <option value="ate-500">Até 500</option>
+                    <option value="acima-500">Acima de 500</option>
+                    <option value="acima-1000">Acima de 1000</option>
+                  </select>
+                </div>
+              )}
             </div>
-            {(filtroCidade || filtroNome || filtroCargo) && (
+            {(filtroCidade || filtroNome || filtroCargo || filtroFaixaVotos) && (
               <div className="mt-4 flex items-center justify-between">
                 <span className="text-xs text-text-muted">
                   {liderancasFiltradas.length} resultado{liderancasFiltradas.length !== 1 ? 's' : ''} encontrado{liderancasFiltradas.length !== 1 ? 's' : ''}
@@ -440,6 +501,7 @@ export default function TerritorioPage() {
                     setFiltroCidade('')
                     setFiltroNome('')
                     setFiltroCargo('')
+                    setFiltroFaixaVotos('')
                   }}
                   className="text-xs text-primary hover:underline"
                 >

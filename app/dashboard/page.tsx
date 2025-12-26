@@ -6,9 +6,9 @@ import { KPICard } from '@/components/kpi-card'
 import { AlertCard } from '@/components/alert-card'
 import { ActionCard } from '@/components/action-card'
 import { mockKPIs, mockAlerts, mockActions } from '@/lib/mock-data'
-import { KPI } from '@/types'
+import { KPI, Alert, NewsItem } from '@/types'
 import { TrendingUp, MapPin } from 'lucide-react'
-import { LineChart, Line, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
+import { LineChart, Line, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LabelList } from 'recharts'
 
 const trendData = [
   { date: '01/10', ife: 65, sentimento: 60 },
@@ -32,6 +32,41 @@ export default function Home() {
   const [pollsData, setPollsData] = useState<Array<{ date: string; intencao: number }>>([])
   const [candidatoPadrao, setCandidatoPadrao] = useState<string>('')
   const [territoriosFrios, setTerritoriosFrios] = useState<Array<{ cidade: string; motivo: string }>>([])
+  const [criticalAlerts, setCriticalAlerts] = useState<Alert[]>([])
+
+  const fetchCriticalAlerts = async () => {
+    try {
+      const response = await fetch('/api/noticias?sentiment=negative&risk_level=high&limit=5')
+      if (response.ok) {
+        const news: NewsItem[] = await response.json()
+        // Converter notícias para o formato de Alert
+        const alerts: Alert[] = news.map((item) => {
+          const dateStr = item.published_at || item.collected_at
+          const timestamp = dateStr 
+            ? new Date(typeof dateStr === 'string' ? dateStr : dateStr.toString())
+            : new Date()
+          
+          return {
+            id: item.id,
+            type: 'critical' as const,
+            title: item.title.length > 60 ? `${item.title.substring(0, 60)}...` : item.title,
+            description: item.theme 
+              ? `Notícia sobre ${item.theme} em portal local`
+              : `Notícia crítica em portal local`,
+            timestamp,
+            actionUrl: item.url || `/dashboard/noticias`,
+          }
+        })
+        setCriticalAlerts(alerts)
+      } else {
+        // Se não houver notícias críticas, deixar vazio
+        setCriticalAlerts([])
+      }
+    } catch (error) {
+      // Em caso de erro, deixar vazio ao invés de usar mock
+      setCriticalAlerts([])
+    }
+  }
 
   useEffect(() => {
     // Buscar candidato padrão do localStorage
@@ -39,6 +74,9 @@ export default function Home() {
     if (candidatoSalvo) {
       setCandidatoPadrao(candidatoSalvo)
     }
+    
+    // Buscar alertas críticos (notícias negativas com risco alto)
+    fetchCriticalAlerts()
   }, [])
 
   // Buscar histórico quando candidato padrão mudar
@@ -53,7 +91,6 @@ export default function Home() {
           setPollsData([])
         }
       } catch (error) {
-        console.error('Erro ao buscar histórico de intenção:', error)
         setPollsData([])
       }
     }
@@ -89,7 +126,7 @@ export default function Home() {
           }
         }
       } catch (error) {
-        console.error('Erro ao buscar Territórios Frios:', error)
+        // Erro silencioso
       }
     }
 
@@ -120,7 +157,7 @@ export default function Home() {
           }
         }
       } catch (error) {
-        console.error('Erro ao buscar KPIs do Território:', error)
+        // Erro silencioso
       }
       return null
     }
@@ -184,8 +221,7 @@ export default function Home() {
         }
         setLoading(false)
       })
-      .catch((error) => {
-        console.error('Erro ao carregar KPIs:', error)
+      .catch(() => {
         setLoading(false)
       })
   }, [])
@@ -257,7 +293,14 @@ export default function Home() {
                         fillOpacity={1}
                         fill="url(#colorIntencao)"
                         name="Intenção de Voto"
-                      />
+                      >
+                        <LabelList 
+                          dataKey="intencao" 
+                          position="top" 
+                          formatter={(value: number) => `${value}%`}
+                          style={{ fill: '#1E4ED8', fontSize: '12px', fontWeight: 500 }}
+                        />
+                      </Area>
                     </AreaChart>
                   </ResponsiveContainer>
                 ) : (
@@ -336,9 +379,15 @@ export default function Home() {
                 Alertas Críticos
               </h2>
               <div className="space-y-3">
-                {mockAlerts.filter((a) => a.type === 'critical').map((alert) => (
-                  <AlertCard key={alert.id} alert={alert} />
-                ))}
+                {criticalAlerts.length > 0 ? (
+                  criticalAlerts.map((alert) => (
+                    <AlertCard key={alert.id} alert={alert} />
+                  ))
+                ) : (
+                  <div className="text-center py-4">
+                    <p className="text-sm text-text-muted">Nenhum alerta crítico no momento</p>
+                  </div>
+                )}
               </div>
             </div>
 

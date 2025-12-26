@@ -55,9 +55,11 @@ export function PollModal({ poll, onClose, onUpdate }: PollModalProps) {
   const [filteredCities, setFilteredCities] = useState<City[]>([])
   const [loadingCities, setLoadingCities] = useState(true)
   const [submitting, setSubmitting] = useState(false)
+  const [candidatosExistentes, setCandidatosExistentes] = useState<string[]>([])
 
   useEffect(() => {
     fetchCities()
+    fetchCandidatosExistentes()
   }, [])
 
   useEffect(() => {
@@ -132,6 +134,26 @@ export function PollModal({ poll, onClose, onUpdate }: PollModalProps) {
     }
   }
 
+  const fetchCandidatosExistentes = async () => {
+    try {
+      const response = await fetch('/api/pesquisa')
+      if (response.ok) {
+        const data = await response.json()
+        // Extrair nomes únicos de candidatos, ordenados alfabeticamente
+        const candidatos = Array.from(
+          new Set(
+            data
+              .map((p: Poll) => p.candidato_nome)
+              .filter((nome: string) => nome && nome.trim() !== '')
+          )
+        ).sort((a: string, b: string) => a.localeCompare(b)) as string[]
+        setCandidatosExistentes(candidatos)
+      }
+    } catch (error) {
+      console.error('Erro ao buscar candidatos existentes:', error)
+    }
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setSubmitting(true)
@@ -156,6 +178,9 @@ export function PollModal({ poll, onClose, onUpdate }: PollModalProps) {
 
       if (response.ok) {
         onUpdate()
+        
+        // Atualizar lista de candidatos existentes após salvar
+        await fetchCandidatosExistentes()
         
         // Se for edição, fechar o modal
         if (poll?.id) {
@@ -233,12 +258,23 @@ export function PollModal({ poll, onClose, onUpdate }: PollModalProps) {
             </label>
             <input
               type="text"
+              list="candidatos-list"
               value={formData.candidato_nome}
               onChange={(e) => setFormData({ ...formData, candidato_nome: e.target.value })}
-              placeholder="Nome completo do candidato"
+              placeholder="Digite ou selecione um candidato existente"
               required
               className="w-full px-4 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-soft bg-surface"
             />
+            <datalist id="candidatos-list">
+              {candidatosExistentes.map((candidato) => (
+                <option key={candidato} value={candidato} />
+              ))}
+            </datalist>
+            {candidatosExistentes.length > 0 && (
+              <p className="text-xs text-text-muted mt-1">
+                {candidatosExistentes.length} candidato{candidatosExistentes.length !== 1 ? 's' : ''} cadastrado{candidatosExistentes.length !== 1 ? 's' : ''} anteriormente. Você pode selecionar ou digitar um novo nome.
+              </p>
+            )}
           </div>
 
           {/* Cidade */}
