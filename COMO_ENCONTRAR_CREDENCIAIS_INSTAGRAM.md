@@ -80,3 +80,4 @@ Se preferir gerar novas credenciais:
 4. Gere um token de longa duração
 5. Obtenha o Business Account ID em: https://business.facebook.com/
 
+

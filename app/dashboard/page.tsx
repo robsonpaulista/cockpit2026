@@ -30,11 +30,15 @@ export default function Home() {
   const [kpis, setKpis] = useState<KPI[]>(mockKPIs)
   const [loading, setLoading] = useState(true)
   const [pollsData, setPollsData] = useState<Array<{ date: string; intencao: number }>>([])
+  const [loadingPolls, setLoadingPolls] = useState(true)
   const [candidatoPadrao, setCandidatoPadrao] = useState<string>('')
   const [territoriosFrios, setTerritoriosFrios] = useState<Array<{ cidade: string; motivo: string }>>([])
+  const [loadingTerritorios, setLoadingTerritorios] = useState(true)
   const [criticalAlerts, setCriticalAlerts] = useState<Alert[]>([])
+  const [loadingAlerts, setLoadingAlerts] = useState(true)
 
   const fetchCriticalAlerts = async () => {
+    setLoadingAlerts(true)
     try {
       const response = await fetch('/api/noticias?sentiment=negative&risk_level=high&limit=5')
       if (response.ok) {
@@ -65,6 +69,8 @@ export default function Home() {
     } catch (error) {
       // Em caso de erro, deixar vazio ao invés de usar mock
       setCriticalAlerts([])
+    } finally {
+      setLoadingAlerts(false)
     }
   }
 
@@ -82,6 +88,7 @@ export default function Home() {
   // Buscar histórico quando candidato padrão mudar
   useEffect(() => {
     const fetchHistoricoIntencao = async (candidato: string) => {
+      setLoadingPolls(true)
       try {
         const response = await fetch(`/api/pesquisa/historico-intencao?candidato=${encodeURIComponent(candidato)}`)
         if (response.ok) {
@@ -92,6 +99,8 @@ export default function Home() {
         }
       } catch (error) {
         setPollsData([])
+      } finally {
+        setLoadingPolls(false)
       }
     }
 
@@ -99,12 +108,14 @@ export default function Home() {
       fetchHistoricoIntencao(candidatoPadrao)
     } else {
       setPollsData([])
+      setLoadingPolls(false)
     }
   }, [candidatoPadrao])
 
   // Buscar Territórios Frios
   useEffect(() => {
     const fetchTerritoriosFrios = async () => {
+      setLoadingTerritorios(true)
       try {
         const savedConfig = localStorage.getItem('territorio_sheets_config')
         if (savedConfig) {
@@ -127,6 +138,8 @@ export default function Home() {
         }
       } catch (error) {
         // Erro silencioso
+      } finally {
+        setLoadingTerritorios(false)
       }
     }
 
@@ -260,7 +273,14 @@ export default function Home() {
                 )}
               </div>
               <div className="h-64">
-                {pollsData.length > 0 ? (
+                {loadingPolls ? (
+                  <div className="h-full flex items-center justify-center">
+                    <div className="w-full h-full space-y-4">
+                      <div className="h-8 bg-surface rounded-lg animate-pulse" />
+                      <div className="h-48 bg-surface rounded-lg animate-pulse" />
+                    </div>
+                  </div>
+                ) : pollsData.length > 0 ? (
                   <ResponsiveContainer width="100%" height="100%">
                     <AreaChart data={pollsData}>
                       <defs>
@@ -322,7 +342,16 @@ export default function Home() {
                 </h2>
               </div>
               <div className="space-y-3">
-                {territoriosFrios.length > 0 ? (
+                {loadingTerritorios ? (
+                  <>
+                    {[1, 2, 3].map((i) => (
+                      <div key={i} className="p-3 rounded-xl border border-border bg-surface animate-pulse">
+                        <div className="h-4 bg-background rounded w-1/3 mb-2" />
+                        <div className="h-3 bg-background rounded w-2/3" />
+                      </div>
+                    ))}
+                  </>
+                ) : territoriosFrios.length > 0 ? (
                   territoriosFrios.map((territorio) => (
                     <div
                       key={territorio.cidade}
@@ -379,7 +408,17 @@ export default function Home() {
                 Alertas Críticos
               </h2>
               <div className="space-y-3">
-                {criticalAlerts.length > 0 ? (
+                {loadingAlerts ? (
+                  <>
+                    {[1, 2, 3].map((i) => (
+                      <div key={i} className="bg-surface rounded-xl border border-border p-4 animate-pulse">
+                        <div className="h-4 bg-background rounded w-3/4 mb-2" />
+                        <div className="h-3 bg-background rounded w-1/2 mb-2" />
+                        <div className="h-3 bg-background rounded w-1/4" />
+                      </div>
+                    ))}
+                  </>
+                ) : criticalAlerts.length > 0 ? (
                   criticalAlerts.map((alert) => (
                     <AlertCard key={alert.id} alert={alert} />
                   ))
