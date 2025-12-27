@@ -24,10 +24,15 @@ export async function GET(request: Request) {
       })
     }
 
-    // Buscar todas as pesquisas do candidato padrão
+    // Buscar todas as pesquisas do candidato padrão com join na tabela cities
     const { data: polls, error } = await supabase
       .from('polls')
-      .select('*')
+      .select(`
+        *,
+        cities (
+          name
+        )
+      `)
       .eq('user_id', user.id)
       .eq('candidato_nome', candidatoPadrao)
       .order('data', { ascending: true })
@@ -43,10 +48,15 @@ export async function GET(request: Request) {
       })
     }
 
-    // Agrupar por data e calcular média quando houver múltiplas pesquisas no mesmo dia
-    const dadosPorData = new Map<string, { intencao: number; count: number }>()
+    // Agrupar por data e manter informações de instituto e cidade
+    const dadosPorData = new Map<string, { 
+      intencao: number
+      count: number
+      institutos: string[]
+      cidades: string[]
+    }>()
 
-    polls.forEach((poll) => {
+    polls.forEach((poll: any) => {
       // Extrair data sem conversão de timezone para evitar diferença de 1 dia
       let dataStr = poll.data.includes('T') ? poll.data.split('T')[0] : poll.data
       
@@ -73,23 +83,36 @@ export async function GET(request: Request) {
         }
       }
 
+      const cidadeNome = poll.cities?.name || (poll.cidade_id ? 'Cidade não encontrada' : 'Estado')
+      const instituto = poll.instituto || 'Não informado'
+
       if (dadosPorData.has(dataFormatada)) {
         const existente = dadosPorData.get(dataFormatada)!
         existente.intencao += poll.intencao
         existente.count += 1
+        if (!existente.institutos.includes(instituto)) {
+          existente.institutos.push(instituto)
+        }
+        if (!existente.cidades.includes(cidadeNome)) {
+          existente.cidades.push(cidadeNome)
+        }
       } else {
         dadosPorData.set(dataFormatada, {
           intencao: poll.intencao,
           count: 1,
+          institutos: [instituto],
+          cidades: [cidadeNome],
         })
       }
     })
 
     // Converter para array e calcular média
     const dadosFormatados = Array.from(dadosPorData.entries())
-      .map(([date, { intencao, count }]) => ({
+      .map(([date, { intencao, count, institutos, cidades }]) => ({
         date,
         intencao: Math.round((intencao / count) * 10) / 10, // Arredondar para 1 casa decimal
+        instituto: institutos.join(', '), // Se houver múltiplos, separar por vírgula
+        cidade: cidades.join(', '), // Se houver múltiplos, separar por vírgula
       }))
       .sort((a, b) => {
         // Ordenar por data (converter DD/MM de volta para comparação)

@@ -165,26 +165,9 @@ export async function POST(request: Request) {
           .eq('id', feed_id)
       }
 
-      // Verificar se alguma notícia de alto risco foi coletada
-      const highRiskNews = processedNews.filter(n => n.risk_level === 'high')
-      
-      if (highRiskNews.length > 0) {
-        // Criar alertas para notícias de alto risco
-        const alerts = highRiskNews.map(news => ({
-          news_id: data?.find(n => n.url === news.url)?.id,
-          user_id: user.id,
-          type: 'risk_high',
-        })).filter(a => a.news_id)
-
-        if (alerts.length > 0) {
-          await supabase.from('news_alerts').insert(alerts)
-        }
-      }
-
       return NextResponse.json({
         message: `${data?.length || 0} notícias coletadas com sucesso`,
         collected: data?.length || 0,
-        high_risk: highRiskNews.length,
         adversaries_detected: adversaryAttacks.length,
         data,
       })

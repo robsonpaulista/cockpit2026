@@ -76,3 +76,7 @@ CREATE TRIGGER update_narratives_updated_at
   FOR EACH ROW
   EXECUTE FUNCTION update_narratives_updated_at();
 
+
+
+
+

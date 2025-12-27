@@ -92,7 +92,7 @@ export default function NoticiasPage() {
                         <div className="flex items-center gap-2 text-xs text-text-muted mb-3">
                           <span>{news.source}</span>
                           <span>•</span>
-                          <span>{formatDate(news.timestamp)}</span>
+                          <span>{news.timestamp ? formatDate(news.timestamp) : '-'}</span>
                         </div>
                       </div>
                     </div>
@@ -108,7 +108,7 @@ export default function NoticiasPage() {
                           : 'Neutro'}
                       </span>
                       <span
-                        className={`px-2 py-1 text-xs font-medium rounded-lg ${riskColors[news.risk]}`}
+                        className={`px-2 py-1 text-xs font-medium rounded-lg ${riskColors[news.risk || 'low']}`}
                       >
                         Risco {news.risk === 'high' ? 'Alto' : news.risk === 'medium' ? 'Médio' : 'Baixo'}
                       </span>

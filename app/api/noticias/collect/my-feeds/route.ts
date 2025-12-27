@@ -43,7 +43,6 @@ export async function POST() {
     }
 
     let totalCollected = 0
-    let totalHighRisk = 0
     const results: any[] = []
 
     for (const feed of feeds) {
@@ -117,10 +116,6 @@ export async function POST() {
         const collected = data?.length || 0
         totalCollected += collected
 
-        // Contar alto risco
-        const highRiskCount = processedNews.filter(n => n.risk_level === 'high').length
-        totalHighRisk += highRiskCount
-
         // Atualizar last_collected_at
         await supabase
           .from('news_feeds')
@@ -181,27 +176,10 @@ export async function POST() {
           }
         }
 
-        // Criar alertas para alto risco
-        if (highRiskCount > 0) {
-          const alerts = processedNews
-            .filter(n => n.risk_level === 'high')
-            .map(news => ({
-              news_id: data?.find(n => n.url === news.url)?.id,
-              user_id: user.id,
-              type: 'risk_high',
-            }))
-            .filter(a => a.news_id)
-
-          if (alerts.length > 0) {
-            await supabase.from('news_alerts').insert(alerts)
-          }
-        }
-
         results.push({
           feed_id: feed.id,
           feed_name: feed.name,
           collected,
-          high_risk: highRiskCount,
           adversaries_detected: adversaryAttacks.length,
         })
       } catch (error) {
@@ -224,7 +202,6 @@ export async function POST() {
     return NextResponse.json({
       message: `Coleta concluída: ${totalCollected} notícias coletadas de ${feeds.length} feed(s)`,
       collected: totalCollected,
-      high_risk: totalHighRisk,
       adversaries_detected: totalAdversariesDetected,
       feeds_processed: feeds.length,
       results,

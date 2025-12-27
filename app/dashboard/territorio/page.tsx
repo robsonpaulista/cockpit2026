@@ -4,7 +4,8 @@ import { useEffect, useState } from 'react'
 import { Header } from '@/components/header'
 import { KPICard } from '@/components/kpi-card'
 import { GoogleSheetsConfigModal } from '@/components/google-sheets-config-modal'
-import { Users, Settings, RefreshCw, AlertCircle, ChevronDown, ChevronRight } from 'lucide-react'
+import { Users, Settings, RefreshCw, AlertCircle, ChevronDown, ChevronRight, Network } from 'lucide-react'
+import { MindMapModal } from '@/components/mind-map-modal'
 import { KPI } from '@/types'
 
 interface Lideranca {
@@ -31,6 +32,8 @@ export default function TerritorioPage() {
   const [filtroNome, setFiltroNome] = useState<string>('')
   const [filtroCargo, setFiltroCargo] = useState<string>('')
   const [filtroFaixaVotos, setFiltroFaixaVotos] = useState<string>('')
+  const [showMindMap, setShowMindMap] = useState(false)
+  const [candidatoPadrao, setCandidatoPadrao] = useState<string>('')
 
   useEffect(() => {
     // Carregar configuração salva
@@ -47,6 +50,12 @@ export default function TerritorioPage() {
     } else {
       setLoading(false)
       setShowConfig(true) // Mostrar modal se não houver configuração
+    }
+
+    // Carregar candidato padrão do localStorage
+    const savedCandidato = localStorage.getItem('candidato_padrao')
+    if (savedCandidato) {
+      setCandidatoPadrao(savedCandidato)
     }
   }, [])
 
@@ -414,7 +423,7 @@ export default function TerritorioPage() {
 
         {/* KPIs */}
         <section className="mb-8">
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             {kpis.map((kpi) => (
               <KPICard key={kpi.id} kpi={kpi} />
             ))}
@@ -525,7 +534,18 @@ export default function TerritorioPage() {
                 </p>
               )}
             </div>
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2">
+              {/* Botão Mapa Mental */}
+              {config && liderancasFiltradas.length > 0 && (
+                <button
+                  onClick={() => setShowMindMap(true)}
+                  className="px-3 py-2 text-sm font-medium bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors flex items-center gap-2"
+                  title="Ver Mapa de Lideranças"
+                >
+                  <Network className="w-4 h-4" />
+                  Mapa Mental
+                </button>
+              )}
               {config && liderancasFiltradas.length > 0 && (() => {
                 // Contar cidades únicas
                 const cidadesUnicas = new Set(liderancasFiltradas.map(l => l[cidadeCol] || 'Sem cidade')).size
@@ -651,10 +671,10 @@ export default function TerritorioPage() {
 
             // Ordenar cidades por total de expectativa de votos (decrescente)
             const cidadesOrdenadas = Object.keys(liderancasPorCidade).sort((a, b) => {
-              const totalA = liderancasPorCidade[a].reduce((sum, l) => {
+              const totalA = liderancasPorCidade[a].reduce((sum: number, l: Lideranca) => {
                 return sum + (expectativaVotosCol ? normalizeNumber(l[expectativaVotosCol]) : 0)
               }, 0)
-              const totalB = liderancasPorCidade[b].reduce((sum, l) => {
+              const totalB = liderancasPorCidade[b].reduce((sum: number, l: Lideranca) => {
                 return sum + (expectativaVotosCol ? normalizeNumber(l[expectativaVotosCol]) : 0)
               }, 0)
               return totalB - totalA
@@ -664,7 +684,7 @@ export default function TerritorioPage() {
           <div className="space-y-3">
                 {cidadesOrdenadas.map((cidade) => {
                   const liderancasCidade = liderancasPorCidade[cidade]
-                  const totalExpectativaCidade = liderancasCidade.reduce((sum, l) => {
+                  const totalExpectativaCidade = liderancasCidade.reduce((sum: number, l: Lideranca) => {
                     return sum + (expectativaVotosCol ? normalizeNumber(l[expectativaVotosCol]) : 0)
                   }, 0)
                   const isExpanded = expandedCities.has(cidade)
@@ -716,7 +736,7 @@ export default function TerritorioPage() {
                       {/* Lista de Lideranças da Cidade */}
                       {isExpanded && (
                         <div className="border-t border-border bg-surface">
-                          {liderancasCidade.map((lider, idx) => {
+                          {liderancasCidade.map((lider: Lideranca, idx: number) => {
                             const numValue = expectativaVotosCol && lider[expectativaVotosCol]
                               ? normalizeNumber(lider[expectativaVotosCol])
                               : 0
@@ -840,6 +860,17 @@ export default function TerritorioPage() {
           currentConfig={config || undefined}
         />
       )}
+
+      {/* Modal de Mapa Mental */}
+      <MindMapModal
+        isOpen={showMindMap}
+        onClose={() => setShowMindMap(false)}
+        liderancas={liderancasFiltradas}
+        candidatoPadrao={candidatoPadrao || 'Candidato'}
+        cidadeCol={cidadeCol || 'cidade'}
+        nomeCol={nomeCol || 'nome'}
+        expectativaVotosCol={expectativaVotosCol || null}
+      />
     </div>
   )
 }

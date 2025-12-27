@@ -32,7 +32,7 @@ export async function PUT(
     // Se status mudou para concluido, marcar completed_at
     if (validatedData.status === 'concluido') {
       updateData.completed_at = new Date().toISOString()
-    } else if (validatedData.status && validatedData.status !== 'concluido') {
+    } else if (validatedData.status) {
       updateData.completed_at = null
     }
 

@@ -138,27 +138,35 @@ export function Sidebar() {
                       href={item.href}
                       onClick={() => setMobileOpen(false)}
                       className={cn(
-                        'flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 ease-premium group',
-                        'hover:bg-primary-soft',
-                        isActive && 'bg-primary-soft text-primary'
+                        'relative flex items-center gap-3 px-3 py-2.5 rounded-xl',
+                        'transition-all duration-300 ease-premium group',
+                        'hover:bg-primary-soft hover:translate-x-1 hover:shadow-sm',
+                        isActive && 'bg-primary-soft text-primary shadow-sm'
                       )}
                     >
+                      {/* Indicador de ativo */}
+                      {isActive && (
+                        <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-primary rounded-r-full" />
+                      )}
+                      
                       <div className={cn(
-                        'w-5 h-5 flex-shrink-0 transition-colors',
+                        'w-5 h-5 flex-shrink-0 transition-all duration-300',
+                        'group-hover:scale-110',
                         isActive ? 'text-primary' : 'text-text-muted group-hover:text-primary'
                       )}>
                         <Icon className="w-full h-full" />
                       </div>
                       {(!collapsed || mobileOpen) && (
                         <span className={cn(
-                          'text-sm font-medium transition-colors',
-                          isActive ? 'text-primary' : 'text-text-strong group-hover:text-primary'
+                          'text-sm font-medium transition-all duration-300',
+                          'group-hover:translate-x-0.5',
+                          isActive ? 'text-primary font-semibold' : 'text-text-strong group-hover:text-primary'
                         )}>
                           {item.label}
                         </span>
                       )}
                       {item.badge && (!collapsed || mobileOpen) && (
-                        <span className="ml-auto px-2 py-0.5 text-xs font-medium bg-status-error text-white rounded-full">
+                        <span className="ml-auto px-2 py-0.5 text-xs font-medium bg-status-error text-white rounded-full transition-transform duration-300 group-hover:scale-110">
                           {item.badge}
                         </span>
                       )}

@@ -25,7 +25,7 @@ export async function GET(request: Request) {
     const { data, error } = await supabase
       .from('adversaries')
       .select('*')
-      .order('presence_score', { ascending: false, nullsLast: true })
+      .order('presence_score', { ascending: false })
       .order('last_updated', { ascending: false })
 
     if (error) {

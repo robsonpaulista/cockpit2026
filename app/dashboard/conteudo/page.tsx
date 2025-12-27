@@ -618,7 +618,7 @@ export default function ConteudoPage() {
           <div className="mb-4">
             <h2 className="text-xl font-semibold text-text-strong mb-2">Visão Geral</h2>
             <p className="text-sm text-text-muted">Análise de desempenho e audiência das redes sociais</p>
-          </div>
+                      </div>
           
           {/* Sub-tabs dentro da Visão Geral */}
           <div className="flex gap-2 border-b border-border">
@@ -644,7 +644,7 @@ export default function ConteudoPage() {
               <Users className="inline-block w-4 h-4 mr-2" />
               Audiência
             </button>
-                      </div>
+                    </div>
 
           {/* Conteúdo da sub-tab Posts & Insights */}
           {activeSubTab === 'posts' && (
@@ -653,7 +653,7 @@ export default function ConteudoPage() {
                 <div className="text-center py-12">
                   <Loader2 className="w-8 h-8 text-primary animate-spin mx-auto mb-4" />
                   <p className="text-text-muted">Carregando dados do Instagram...</p>
-                    </div>
+                  </div>
               ) : !isConfigured ? (
                 <div className="text-center py-12">
                   <AlertCircle className="w-12 h-12 text-text-muted mx-auto mb-4" />
@@ -666,7 +666,7 @@ export default function ConteudoPage() {
                   >
                     Conectar Instagram
                   </button>
-                  </div>
+              </div>
               ) : contentStats ? (
                 <>
                   {/* Campeões por Indicador */}
@@ -935,7 +935,7 @@ export default function ConteudoPage() {
                   </div>
 
                   {/* Comparativo de Aceitação por Tipo de Conteúdo */}
-                  <div className="bg-surface rounded-2xl border border-border p-6">
+            <div className="bg-surface rounded-2xl border border-border p-6">
                     <div className="mb-6">
                       <h2 className="text-xl font-semibold text-text-strong mb-2 flex items-center gap-2">
                         <BarChart4 className="w-5 h-5 text-primary" />
@@ -1210,7 +1210,7 @@ export default function ConteudoPage() {
                           <h3 className="text-lg font-semibold text-text-strong mb-4">
                             Engajamento Médio por Tema
                           </h3>
-                          <div className="space-y-4">
+              <div className="space-y-4">
                             {sortedThemes.map(([theme, stats], index) => {
                               const percentage = maxEngagement > 0 ? (stats.avgEngagement / maxEngagement) * 100 : 0
                               const isBest = index === 0
@@ -1373,7 +1373,7 @@ export default function ConteudoPage() {
                                     </div>
                                   </div>
                                   <div className="space-y-2">
-                                    <div>
+                      <div>
                                       <div className="flex items-center justify-between mb-1">
                                         <span className="text-xs text-text-muted flex items-center gap-1">
                                           <Heart className="h-3 w-3 text-red-500" />
@@ -1382,20 +1382,20 @@ export default function ConteudoPage() {
                                         <span className="text-xs font-semibold text-text-strong">
                                           {stats.avgLikes.toLocaleString('pt-BR')}
                                         </span>
-                                      </div>
+                        </div>
                                       <div className="h-4 bg-surface-secondary rounded-full overflow-hidden border border-border">
                                         <div
                                           className="h-full bg-gradient-to-r from-red-500 to-red-600 rounded-full transition-all duration-500"
                                           style={{ width: `${likesPercentage}%` }}
                                         />
-                                      </div>
+                      </div>
                                     </div>
                                     <div>
                                       <div className="flex items-center justify-between mb-1">
                                         <span className="text-xs text-text-muted flex items-center gap-1">
                                           <MessageCircle className="h-3 w-3 text-blue-500" />
                                           Comentários
-                                        </span>
+                        </span>
                                         <span className="text-xs font-semibold text-text-strong">
                                           {stats.avgComments.toLocaleString('pt-BR')}
                                         </span>
@@ -1424,8 +1424,8 @@ export default function ConteudoPage() {
                     Nenhum dado disponível. Classifique algumas postagens para ver os comparativos.
                         </p>
                       </div>
-              )}
-            </div>
+                      )}
+                    </div>
           )}
 
           {/* Conteúdo da sub-tab Audiência - Estrutura correta */}
@@ -1448,7 +1448,7 @@ export default function ConteudoPage() {
                   >
                     Conectar Instagram
                   </button>
-                </div>
+                      </div>
               ) : (
                 <>
               {/* Card de Publicações por Tipo de Conteúdo */}
@@ -1579,7 +1579,7 @@ export default function ConteudoPage() {
                                       : 'bg-blue-500'
                                   }`}
                                 >
-                                  {typeLabels[post.type]}
+                                  {typeLabels[post.type as keyof typeof typeLabels] || post.type}
                                 </div>
                                 {classification?.isBoosted && (
                                   <div className="bg-yellow-500 text-white text-xs px-2 py-1 rounded flex items-center gap-1">

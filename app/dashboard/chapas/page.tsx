@@ -846,7 +846,7 @@ export default function ChapasPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <Header />
+      <Header title="Chapas" subtitle="Simulador de Cálculo Eleitoral - Método D'Hondt" />
       <div className="container mx-auto p-4">
         {/* Notificação de auto-save */}
         {notificacaoAutoSave && (
@@ -1335,7 +1335,7 @@ export default function ChapasPage() {
                                 if (!isNaN(num) && num >= 0) {
                                   const novoVotosLegenda = { ...votosLegenda, [partido.nome]: num }
                                   setVotosLegenda(novoVotosLegenda)
-                                  setVotosLegendaTemp({ ...votosLegendaTemp, [partido.nome]: undefined })
+                                  setVotosLegendaTemp({ ...votosLegendaTemp, [partido.nome]: '' })
                                   
                                   if (cenarioAtivo) {
                                     const partidosConvertidos = converterPartidosParaCenario()

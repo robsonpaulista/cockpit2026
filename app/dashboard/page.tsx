@@ -5,10 +5,11 @@ import { Header } from '@/components/header'
 import { KPICard } from '@/components/kpi-card'
 import { AlertCard } from '@/components/alert-card'
 import { ActionCard } from '@/components/action-card'
+import { AIAgent } from '@/components/ai-agent'
 import { mockKPIs, mockAlerts, mockActions } from '@/lib/mock-data'
 import { KPI, Alert, NewsItem } from '@/types'
-import { TrendingUp, MapPin, Flag, MessageSquare } from 'lucide-react'
-import { LineChart, Line, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LabelList } from 'recharts'
+import { TrendingUp, MapPin, Flag, MessageSquare, ThermometerSun, ThermometerSnowflake, Flame, Activity } from 'lucide-react'
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 
 const trendData = [
   { date: '01/10', ife: 65, sentimento: 60 },
@@ -25,14 +26,23 @@ const topicsData = [
   { tema: 'Economia', mencoes: 28, sentimento: 70 },
   { tema: 'Infraestrutura', mencoes: 22, sentimento: 75 },
 ]
-
 export default function Home() {
   const [kpis, setKpis] = useState<KPI[]>(mockKPIs)
   const [loading, setLoading] = useState(true)
-  const [pollsData, setPollsData] = useState<Array<{ date: string; intencao: number }>>([])
+  const [pollsData, setPollsData] = useState<Array<{ date: string; intencao: number; instituto?: string; cidade?: string }>>([])
   const [loadingPolls, setLoadingPolls] = useState(true)
   const [candidatoPadrao, setCandidatoPadrao] = useState<string>('')
-  const [territoriosFrios, setTerritoriosFrios] = useState<Array<{ cidade: string; motivo: string }>>([])
+  const [territoriosFrios, setTerritoriosFrios] = useState<Array<{ cidade: string; motivo: string; expectativaVotos?: number; visitas?: number }>>([])
+  const [territoriosQuentes, setTerritoriosQuentes] = useState<Array<{ cidade: string; motivo: string; expectativaVotos?: number; visitas?: number }>>([])
+  const [territoriosMornos, setTerritoriosMornos] = useState<Array<{ cidade: string; motivo: string; expectativaVotos?: number; visitas?: number }>>([])
+  const [territorioStats, setTerritorioStats] = useState<{
+    totalCidades: number
+    cidadesVisitadas: number
+    cidadesNaoVisitadas: number
+    totalVisitas: number
+    totalExpectativa: number
+    percentualCobertura: number
+  } | null>(null)
   const [loadingTerritorios, setLoadingTerritorios] = useState(true)
   const [criticalAlerts, setCriticalAlerts] = useState<Alert[]>([])
   const [loadingAlerts, setLoadingAlerts] = useState(true)
@@ -43,6 +53,7 @@ export default function Home() {
     topBandeiras: Array<{ theme: string; usage_count: number; performance_score: number }>
   } | null>(null)
   const [loadingBandeiras, setLoadingBandeiras] = useState(true)
+  const [projecaoChapa, setProjecaoChapa] = useState<number>(0)
 
   const fetchCriticalAlerts = async () => {
     setLoadingAlerts(true)
@@ -100,7 +111,8 @@ export default function Home() {
         const response = await fetch(`/api/pesquisa/historico-intencao?candidato=${encodeURIComponent(candidato)}`)
         if (response.ok) {
           const data = await response.json()
-          setPollsData(data.data || [])
+          const polls = data.data || []
+          setPollsData(polls)
         } else {
           setPollsData([])
         }
@@ -119,9 +131,9 @@ export default function Home() {
     }
   }, [candidatoPadrao])
 
-  // Buscar Territórios Frios
+  // Buscar Análise de Territórios
   useEffect(() => {
-    const fetchTerritoriosFrios = async () => {
+    const fetchTerritorios = async () => {
       setLoadingTerritorios(true)
       try {
         const savedConfig = localStorage.getItem('territorio_sheets_config')
@@ -135,12 +147,41 @@ export default function Home() {
           
           if (response.ok) {
             const data = await response.json()
+            
+            // Territórios frios
             setTerritoriosFrios(
               data.territoriosFrios?.map((t: any) => ({
                 cidade: t.cidade,
                 motivo: t.motivo,
+                expectativaVotos: t.expectativaVotos,
+                visitas: t.visitas,
               })) || []
             )
+            
+            // Territórios quentes
+            setTerritoriosQuentes(
+              data.territoriosQuentes?.map((t: any) => ({
+                cidade: t.cidade,
+                motivo: t.motivo,
+                expectativaVotos: t.expectativaVotos,
+                visitas: t.visitas,
+              })) || []
+            )
+            
+            // Territórios mornos
+            setTerritoriosMornos(
+              data.territoriosMornos?.map((t: any) => ({
+                cidade: t.cidade,
+                motivo: t.motivo,
+                expectativaVotos: t.expectativaVotos,
+                visitas: t.visitas,
+              })) || []
+            )
+            
+            // Estatísticas
+            if (data.estatisticas) {
+              setTerritorioStats(data.estatisticas)
+            }
           }
         }
       } catch (error) {
@@ -150,7 +191,7 @@ export default function Home() {
       }
     }
 
-    fetchTerritoriosFrios()
+    fetchTerritorios()
   }, [])
 
   // Buscar estatísticas das bandeiras
@@ -244,11 +285,27 @@ export default function Home() {
       return null
     }
 
+    // Buscar projeção de chapas (eleitos do Republicanos)
+    const fetchProjecaoChapa = async () => {
+      try {
+        const response = await fetch('/api/chapas/projecao-republicanos')
+        if (response.ok) {
+          const data = await response.json()
+          return data.eleitos || 0
+        }
+      } catch (error) {
+        // Erro silencioso
+      }
+      return 0
+    }
+
     // Buscar KPIs da API
     Promise.all([
       fetch('/api/dashboard/kpis').then((res) => res.json()),
       fetchTerritorioKPIs(),
-    ]).then(([data, territorioKPIs]) => {
+      fetchProjecaoChapa(),
+    ]).then(([data, territorioKPIs, projecaoEleitos]) => {
+      setProjecaoChapa(projecaoEleitos)
       if (data.ife) {
         // Se temos KPIs do território, usar os valores calculados (mesmos da página Território & Base)
         const expectativa2026 = territorioKPIs?.expectativa2026 ?? null
@@ -279,11 +336,11 @@ export default function Home() {
               status: data.base.status,
             },
             {
-              id: 'engajamento',
-              label: 'Engajamento Útil',
-              value: data.engajamento.value,
-              variation: data.engajamento.variation,
-              status: data.engajamento.status,
+              id: 'projecao',
+              label: 'Projeção Chapa Federal',
+              value: projecaoEleitos,
+              variation: 0,
+              status: projecaoEleitos >= 2 ? 'success' : projecaoEleitos >= 1 ? 'warning' : 'error',
             },
             {
               id: 'sentimento',
@@ -382,14 +439,52 @@ export default function Home() {
                         fillOpacity={1}
                         fill="url(#colorIntencao)"
                         name="Intenção de Voto"
-                      >
-                        <LabelList 
-                          dataKey="intencao" 
-                          position="top" 
-                          formatter={(value: number) => `${value}%`}
-                          style={{ fill: '#1E4ED8', fontSize: '12px', fontWeight: 500 }}
-                        />
-                      </Area>
+                        dot={(props: any) => {
+                          const { cx, cy, payload } = props
+                          if (!payload) return <circle cx={cx} cy={cy} r={4} fill="#1E4ED8" />
+                          
+                          const instituto = payload.instituto || ''
+                          const cidade = payload.cidade || ''
+                          const value = payload.intencao || 0
+                          
+                          const infoParts = []
+                          if (instituto && instituto !== 'Não informado') {
+                            infoParts.push(instituto)
+                          }
+                          if (cidade && cidade !== 'Estado' && cidade !== 'Cidade não encontrada') {
+                            infoParts.push(cidade)
+                          }
+                          const infoText = infoParts.length > 0 ? infoParts.join(' - ') : ''
+                          
+                          return (
+                            <g>
+                              <circle cx={cx} cy={cy} r={4} fill="#1E4ED8" />
+                              <text
+                                x={cx}
+                                y={cy - 20}
+                                fill="#1E4ED8"
+                                fontSize="12"
+                                fontWeight="600"
+                                textAnchor="middle"
+                              >
+                                {`${value}%`}
+                              </text>
+                              {infoText && (
+                                <text
+                                  x={cx}
+                                  y={cy - 8}
+                                  fill="#64748B"
+                                  fontSize="9"
+                                  fontWeight="400"
+                                  textAnchor="middle"
+                                >
+                                  {infoText}
+                                </text>
+                              )}
+                            </g>
+                          )
+                        }}
+                      />
                     </AreaChart>
                   </ResponsiveContainer>
                 ) : (
@@ -402,40 +497,162 @@ export default function Home() {
               </div>
             </div>
 
-            {/* Territórios Frios */}
+            {/* Análise de Territórios */}
             <div className="bg-surface rounded-2xl border border-border p-6">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-lg font-semibold text-text-strong flex items-center gap-2">
-                  <MapPin className="w-5 h-5 text-status-warning" />
-                  Territórios Frios (Alerta)
+                  <Activity className="w-5 h-5 text-primary" />
+                  Análise de Territórios
                 </h2>
               </div>
-              <div className="space-y-3">
-                {loadingTerritorios ? (
-                  <>
+
+              {loadingTerritorios ? (
+                <div className="space-y-4">
+                  <div className="grid grid-cols-3 gap-3">
                     {[1, 2, 3].map((i) => (
-                      <div key={i} className="p-3 rounded-xl border border-border bg-surface animate-pulse">
-                        <div className="h-4 bg-background rounded w-1/3 mb-2" />
-                        <div className="h-3 bg-background rounded w-2/3" />
-                      </div>
+                      <div key={i} className="h-16 bg-background rounded-xl animate-pulse" />
                     ))}
-                  </>
-                ) : territoriosFrios.length > 0 ? (
-                  territoriosFrios.map((territorio) => (
-                    <div
-                      key={territorio.cidade}
-                      className="p-3 rounded-xl border border-status-warning/30 bg-status-warning/5 hover:bg-status-warning/10 transition-colors"
-                    >
-                      <p className="text-sm font-medium text-text-strong">{territorio.cidade}</p>
-                      <p className="text-xs text-text-muted mt-1">{territorio.motivo}</p>
+                  </div>
+                  {[1, 2, 3].map((i) => (
+                    <div key={i} className="p-3 rounded-xl border border-border bg-surface animate-pulse">
+                      <div className="h-4 bg-background rounded w-1/3 mb-2" />
+                      <div className="h-3 bg-background rounded w-2/3" />
                     </div>
-                  ))
-                ) : (
-                  <p className="text-sm text-text-muted text-center py-4">
-                    Nenhum território frio identificado no momento
-                  </p>
-                )}
-              </div>
+                  ))}
+                </div>
+              ) : (
+                <>
+                  {/* Estatísticas Gerais */}
+                  {territorioStats && (
+                    <div className="grid grid-cols-3 gap-3 mb-5">
+                      <div className="bg-primary/5 border border-primary/20 rounded-xl p-3 text-center">
+                        <p className="text-2xl font-bold text-primary">{territorioStats.cidadesVisitadas}</p>
+                        <p className="text-[10px] text-text-muted mt-0.5">Cidades Visitadas</p>
+                      </div>
+                      <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 text-center">
+                        <p className="text-2xl font-bold text-blue-600">{territorioStats.totalVisitas}</p>
+                        <p className="text-[10px] text-text-muted mt-0.5">Total de Visitas</p>
+                      </div>
+                      <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3 text-center">
+                        <p className="text-2xl font-bold text-emerald-600">{territorioStats.percentualCobertura}%</p>
+                        <p className="text-[10px] text-text-muted mt-0.5">Cobertura</p>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Tabs de Territórios */}
+                  <div className="space-y-4">
+                    {/* Territórios Quentes */}
+                    {territoriosQuentes.length > 0 && (
+                      <div>
+                        <div className="flex items-center gap-2 mb-2">
+                          <Flame className="w-4 h-4 text-emerald-500" />
+                          <span className="text-xs font-semibold text-emerald-600">Territórios Quentes</span>
+                          <span className="text-[10px] text-text-muted">({territoriosQuentes.length})</span>
+                        </div>
+                        <div className="space-y-2">
+                          {territoriosQuentes.slice(0, 3).map((territorio) => (
+                            <div
+                              key={territorio.cidade}
+                              className="p-2.5 rounded-lg border border-emerald-200 bg-emerald-50/50 hover:bg-emerald-50 transition-colors flex items-center justify-between"
+                            >
+                              <div className="flex items-center gap-2">
+                                <div className="w-6 h-6 rounded-full bg-emerald-500 text-white flex items-center justify-center text-xs font-bold">
+                                  {territorio.visitas}
+                                </div>
+                                <div>
+                                  <p className="text-sm font-medium text-text-strong">{territorio.cidade}</p>
+                                  <p className="text-[10px] text-text-muted">{territorio.motivo}</p>
+                                </div>
+                              </div>
+                              {territorio.expectativaVotos && territorio.expectativaVotos > 0 && (
+                                <span className="text-xs font-semibold text-emerald-600">
+                                  {territorio.expectativaVotos.toLocaleString('pt-BR')} votos
+                                </span>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Territórios Mornos */}
+                    {territoriosMornos.length > 0 && (
+                      <div>
+                        <div className="flex items-center gap-2 mb-2">
+                          <ThermometerSun className="w-4 h-4 text-amber-500" />
+                          <span className="text-xs font-semibold text-amber-600">Territórios Mornos</span>
+                          <span className="text-[10px] text-text-muted">({territoriosMornos.length})</span>
+                        </div>
+                        <div className="space-y-2">
+                          {territoriosMornos.slice(0, 3).map((territorio) => (
+                            <div
+                              key={territorio.cidade}
+                              className="p-2.5 rounded-lg border border-amber-200 bg-amber-50/50 hover:bg-amber-50 transition-colors flex items-center justify-between"
+                            >
+                              <div className="flex items-center gap-2">
+                                <div className="w-6 h-6 rounded-full bg-amber-400 text-white flex items-center justify-center text-xs font-bold">
+                                  {territorio.visitas || 0}
+                                </div>
+                                <div>
+                                  <p className="text-sm font-medium text-text-strong">{territorio.cidade}</p>
+                                  <p className="text-[10px] text-text-muted">{territorio.motivo}</p>
+                                </div>
+                              </div>
+                              {territorio.expectativaVotos && territorio.expectativaVotos > 0 && (
+                                <span className="text-xs font-semibold text-amber-600">
+                                  {territorio.expectativaVotos.toLocaleString('pt-BR')} votos
+                                </span>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Territórios Frios */}
+                    {territoriosFrios.length > 0 ? (
+                      <div>
+                        <div className="flex items-center gap-2 mb-2">
+                          <ThermometerSnowflake className="w-4 h-4 text-red-500" />
+                          <span className="text-xs font-semibold text-red-600">Territórios Frios (Alerta)</span>
+                          <span className="text-[10px] text-text-muted">({territoriosFrios.length})</span>
+                        </div>
+                        <div className="space-y-2">
+                          {territoriosFrios.slice(0, 4).map((territorio) => (
+                            <div
+                              key={territorio.cidade}
+                              className="p-2.5 rounded-lg border border-red-200 bg-red-50/50 hover:bg-red-50 transition-colors flex items-center justify-between"
+                            >
+                              <div className="flex items-center gap-2">
+                                <div className="w-6 h-6 rounded-full bg-red-500 text-white flex items-center justify-center text-xs font-bold">
+                                  {territorio.visitas || 0}
+                                </div>
+                                <div>
+                                  <p className="text-sm font-medium text-text-strong">{territorio.cidade}</p>
+                                  <p className="text-[10px] text-text-muted">{territorio.motivo}</p>
+                                </div>
+                              </div>
+                              {territorio.expectativaVotos && territorio.expectativaVotos > 0 && (
+                                <span className="text-xs font-semibold text-red-600">
+                                  {territorio.expectativaVotos.toLocaleString('pt-BR')} votos
+                                </span>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="text-center py-3">
+                        <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-emerald-50 text-emerald-600 rounded-full text-xs font-medium">
+                          <Flame className="w-3.5 h-3.5" />
+                          Excelente! Nenhum território em estado crítico
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </>
+              )}
             </div>
 
             {/* Top 5 Temas Emergentes */}
@@ -619,6 +836,26 @@ export default function Home() {
           </div>
         </div>
       </div>
+
+      {/* Agente de IA */}
+      <AIAgent
+        loadingKPIs={loading}
+        loadingPolls={loadingPolls}
+        loadingTerritorios={loadingTerritorios}
+        loadingAlerts={loadingAlerts}
+        loadingBandeiras={loadingBandeiras}
+        kpisCount={kpis.length}
+        expectativa2026={kpis.find(k => k.id === 'ife')?.value}
+        presencaTerritorial={kpis.find(k => k.id === 'presenca')?.value?.toString()}
+        pollsCount={pollsData.length}
+        candidatoPadrao={candidatoPadrao}
+        territoriosFriosCount={territoriosFrios.length}
+        alertsCriticosCount={criticalAlerts.length}
+        bandeirasCount={bandeirasStats?.totalBandeiras || 0}
+        bandeirasPerformance={bandeirasStats?.totalPerformance || 0}
+        criticalAlerts={criticalAlerts.map(a => ({ id: a.id, title: a.title, actionUrl: a.actionUrl }))}
+        territoriosFrios={territoriosFrios}
+      />
     </div>
   )
 }

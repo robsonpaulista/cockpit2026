@@ -59,9 +59,9 @@ export function TaskModal({ task, territories, leaders, onClose, onSave, initial
     try {
       await onSave({
         ...formData,
-        leader_id: formData.leader_id || null,
-        assigned_to: formData.assigned_to || null,
-        due_date: formData.due_date || null,
+        leader_id: formData.leader_id || undefined,
+        assigned_to: formData.assigned_to || undefined,
+        due_date: formData.due_date || undefined,
       })
       onClose()
     } catch (error) {

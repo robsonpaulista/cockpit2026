@@ -96,7 +96,7 @@ export async function POST(request: Request) {
               .select()
 
             totalCollected += data?.length || 0
-            totalHighRisk += processedNews.filter(n => n.risk_level === 'high').length
+            totalHighRisk += processedNews.filter((n: any) => n.risk_level === 'high').length
           }
         } catch (error) {
           console.error(`Erro ao processar feed ${url}:`, error)
@@ -175,7 +175,7 @@ export async function POST(request: Request) {
           totalCollected += data?.length || 0
 
           // Contar alto risco
-          const highRiskCount = processedNews.filter(n => n.risk_level === 'high').length
+          const highRiskCount = processedNews.filter((n: any) => n.risk_level === 'high').length
           totalHighRisk += highRiskCount
 
           // Atualizar last_collected_at do feed
@@ -241,7 +241,7 @@ export async function POST(request: Request) {
           // Criar alertas para alto risco
           if (highRiskCount > 0 && feed.user_id) {
             const alerts = processedNews
-              .filter(n => n.risk_level === 'high')
+              .filter((n: any) => n.risk_level === 'high')
               .map(news => ({
                 news_id: data?.find(n => n.url === news.url)?.id,
                 user_id: feed.user_id,

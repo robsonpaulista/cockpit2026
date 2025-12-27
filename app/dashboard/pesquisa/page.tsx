@@ -662,6 +662,7 @@ export default function PesquisaPage() {
                           // Se há apenas um item, mostra formato detalhado
                           if (items.length === 1) {
                             const item = items[0]
+                            if (!item) return null
                             return (
                               <div className="bg-white border border-gray-200 rounded-md p-3 shadow-lg">
                                 <p className="text-sm font-semibold text-gray-900 mb-2">{item.candidatoNome}</p>
@@ -685,13 +686,15 @@ export default function PesquisaPage() {
                           }
                           
                           // Se há múltiplos itens (vários candidatos na mesma data), mostra lista
+                          const firstItem = items[0]
+                          if (!firstItem) return null
                           return (
                             <div className="bg-white border border-gray-200 rounded-md p-3 shadow-lg">
                               <div className="mb-2">
-                                <p className="text-sm font-semibold text-gray-900">{items[0].data}</p>
-                                {items[0].instituto && (
+                                <p className="text-sm font-semibold text-gray-900">{firstItem.data}</p>
+                                {firstItem.instituto && (
                                   <p className="text-xs text-gray-600 mt-1">
-                                    <span className="font-medium">Instituto:</span> {items[0].instituto}
+                                    <span className="font-medium">Instituto:</span> {firstItem.instituto}
                                   </p>
                                 )}
                               </div>
@@ -978,6 +981,7 @@ export default function PesquisaPage() {
                           if (items.length === 0) return null
                           if (items.length === 1) {
                             const item = items[0]
+                            if (!item) return null
                             return (
                               <div className="bg-white border border-gray-200 rounded-md p-3 shadow-lg">
                                 <p className="text-sm font-semibold text-gray-900 mb-2">{item.candidatoNome}</p>
@@ -999,13 +1003,15 @@ export default function PesquisaPage() {
                               </div>
                             )
                           }
+                          const firstItem2 = items[0]
+                          if (!firstItem2) return null
                           return (
                             <div className="bg-white border border-gray-200 rounded-md p-3 shadow-lg">
                               <div className="mb-2">
-                                <p className="text-sm font-semibold text-gray-900">{items[0].data}</p>
-                                {items[0].instituto && (
+                                <p className="text-sm font-semibold text-gray-900">{firstItem2.data}</p>
+                                {firstItem2.instituto && (
                                   <p className="text-xs text-gray-600 mt-1">
-                                    <span className="font-medium">Instituto:</span> {items[0].instituto}
+                                    <span className="font-medium">Instituto:</span> {firstItem2.instituto}
                                   </p>
                                 )}
                               </div>

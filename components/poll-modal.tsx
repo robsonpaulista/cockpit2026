@@ -146,7 +146,7 @@ export function PollModal({ poll, onClose, onUpdate }: PollModalProps) {
               .map((p: Poll) => p.candidato_nome)
               .filter((nome: string) => nome && nome.trim() !== '')
           )
-        ).sort((a: string, b: string) => a.localeCompare(b)) as string[]
+        ).sort((a, b) => String(a).localeCompare(String(b))) as string[]
         setCandidatosExistentes(candidatos)
       }
     } catch (error) {
