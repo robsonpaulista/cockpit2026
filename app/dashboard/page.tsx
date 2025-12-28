@@ -8,7 +8,7 @@ import { ActionCard } from '@/components/action-card'
 import { AIAgent } from '@/components/ai-agent'
 import { mockKPIs, mockAlerts, mockActions } from '@/lib/mock-data'
 import { KPI, Alert, NewsItem } from '@/types'
-import { TrendingUp, MapPin, Flag, MessageSquare, ThermometerSun, ThermometerSnowflake, Flame, Activity } from 'lucide-react'
+import { TrendingUp, MapPin, Flag, MessageSquare, ThermometerSun, ThermometerSnowflake, Flame, Activity, Newspaper, ExternalLink } from 'lucide-react'
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 
 const trendData = [
@@ -54,6 +54,28 @@ export default function Home() {
   } | null>(null)
   const [loadingBandeiras, setLoadingBandeiras] = useState(true)
   const [projecaoChapa, setProjecaoChapa] = useState<number>(0)
+  const [ultimasNoticias, setUltimasNoticias] = useState<NewsItem[]>([])
+  const [loadingNoticias, setLoadingNoticias] = useState(true)
+  const [paginaNoticias, setPaginaNoticias] = useState(0)
+  const noticiasPorPagina = 5
+
+  // Buscar últimas notícias do candidato
+  const fetchUltimasNoticias = async () => {
+    setLoadingNoticias(true)
+    try {
+      const response = await fetch('/api/noticias/candidato?limit=10')
+      if (response.ok) {
+        const data = await response.json()
+        setUltimasNoticias(data)
+      } else {
+        setUltimasNoticias([])
+      }
+    } catch (error) {
+      setUltimasNoticias([])
+    } finally {
+      setLoadingNoticias(false)
+    }
+  }
 
   const fetchCriticalAlerts = async () => {
     setLoadingAlerts(true)
@@ -101,6 +123,9 @@ export default function Home() {
     
     // Buscar alertas críticos (notícias negativas com risco alto)
     fetchCriticalAlerts()
+    
+    // Buscar últimas notícias do candidato
+    fetchUltimasNoticias()
   }, [])
 
   // Buscar histórico quando candidato padrão mudar
@@ -711,6 +736,109 @@ export default function Home() {
                 ) : (
                   <div className="text-center py-4">
                     <p className="text-sm text-text-muted">Nenhum alerta crítico no momento</p>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Últimas Notícias do Candidato */}
+            <div>
+              <div className="flex items-center justify-between mb-3">
+                <h2 className="text-lg font-semibold text-text-strong flex items-center gap-2">
+                  <Newspaper className="w-5 h-5 text-primary" />
+                  Últimas Notícias
+                </h2>
+                {ultimasNoticias.length > noticiasPorPagina && (
+                  <div className="flex items-center gap-1">
+                    <button
+                      onClick={() => setPaginaNoticias(Math.max(0, paginaNoticias - 1))}
+                      disabled={paginaNoticias === 0}
+                      className="p-1.5 rounded-lg hover:bg-background disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                    >
+                      <svg className="w-4 h-4 text-text-muted" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                      </svg>
+                    </button>
+                    <span className="text-xs text-text-muted px-1">
+                      {paginaNoticias + 1}/{Math.ceil(ultimasNoticias.length / noticiasPorPagina)}
+                    </span>
+                    <button
+                      onClick={() => setPaginaNoticias(Math.min(Math.ceil(ultimasNoticias.length / noticiasPorPagina) - 1, paginaNoticias + 1))}
+                      disabled={paginaNoticias >= Math.ceil(ultimasNoticias.length / noticiasPorPagina) - 1}
+                      className="p-1.5 rounded-lg hover:bg-background disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                    >
+                      <svg className="w-4 h-4 text-text-muted" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                      </svg>
+                    </button>
+                  </div>
+                )}
+              </div>
+              <div className="space-y-2">
+                {loadingNoticias ? (
+                  <>
+                    {[1, 2, 3, 4, 5].map((i) => (
+                      <div key={i} className="bg-surface rounded-xl border border-border p-3 animate-pulse">
+                        <div className="h-3 bg-background rounded w-3/4 mb-2" />
+                        <div className="h-2 bg-background rounded w-1/2" />
+                      </div>
+                    ))}
+                  </>
+                ) : ultimasNoticias.length > 0 ? (
+                  <div className="bg-surface rounded-xl border border-border divide-y divide-border overflow-hidden">
+                    {ultimasNoticias
+                      .slice(paginaNoticias * noticiasPorPagina, (paginaNoticias + 1) * noticiasPorPagina)
+                      .map((noticia) => {
+                        const sentimentColor = noticia.sentiment === 'positive' 
+                          ? 'bg-emerald-500' 
+                          : noticia.sentiment === 'negative' 
+                            ? 'bg-red-500' 
+                            : 'bg-slate-400'
+                        
+                        const dataPublicacao = noticia.published_at || noticia.collected_at
+                        const dataFormatada = dataPublicacao 
+                          ? new Date(dataPublicacao).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })
+                          : ''
+                        
+                        return (
+                          <a
+                            key={noticia.id}
+                            href={noticia.url || '#'}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-start gap-3 p-3 hover:bg-background/50 transition-colors group"
+                          >
+                            <div className={`w-1.5 h-1.5 rounded-full mt-2 flex-shrink-0 ${sentimentColor}`} />
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm text-text-strong line-clamp-2 group-hover:text-primary transition-colors">
+                                {noticia.title}
+                              </p>
+                              <div className="flex items-center gap-2 mt-1">
+                                <span className="text-[10px] text-text-muted">{noticia.source}</span>
+                                {dataFormatada && (
+                                  <>
+                                    <span className="text-[10px] text-text-muted">·</span>
+                                    <span className="text-[10px] text-text-muted">{dataFormatada}</span>
+                                  </>
+                                )}
+                                {noticia.theme && (
+                                  <>
+                                    <span className="text-[10px] text-text-muted">·</span>
+                                    <span className="text-[10px] text-primary font-medium">{noticia.theme}</span>
+                                  </>
+                                )}
+                              </div>
+                            </div>
+                            {noticia.url && (
+                              <ExternalLink className="w-3.5 h-3.5 text-text-muted opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0 mt-1" />
+                            )}
+                          </a>
+                        )
+                      })}
+                  </div>
+                ) : (
+                  <div className="text-center py-4 bg-surface rounded-xl border border-border">
+                    <p className="text-sm text-text-muted">Nenhuma notícia coletada</p>
                   </div>
                 )}
               </div>

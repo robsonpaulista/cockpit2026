@@ -6,6 +6,7 @@ import { InstagramConfigModal } from '@/components/instagram-config-modal'
 import { 
   MessageSquare, 
   TrendingUp, 
+  TrendingDown,
   Users, 
   Share2, 
   Play, 
@@ -25,14 +26,18 @@ import {
   RefreshCw,
   AlertCircle,
   Loader2,
-  Camera
+  Camera,
+  Activity
 } from 'lucide-react'
 import { 
   fetchInstagramData, 
   loadInstagramConfig, 
   saveInstagramConfig, 
   clearInstagramConfig,
-  InstagramMetrics 
+  saveInstagramSnapshot,
+  fetchInstagramHistory,
+  InstagramMetrics,
+  InstagramHistoryResponse
 } from '@/lib/instagramApi'
 
 const producao = [
@@ -147,6 +152,8 @@ export default function ConteudoPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [dateRange, setDateRange] = useState('30d')
+  const [metricsHistory, setMetricsHistory] = useState<InstagramHistoryResponse | null>(null)
+  const [loadingHistory, setLoadingHistory] = useState(false)
   
   // Estados para temas customizados
   const [customThemes, setCustomThemes] = useState<string[]>([])
@@ -356,6 +363,20 @@ export default function ConteudoPage() {
     }
   }, [])
 
+  // Função para buscar histórico de métricas
+  const loadMetricsHistory = async () => {
+    setLoadingHistory(true)
+    try {
+      const days = dateRange === '7d' ? 7 : dateRange === '14d' ? 14 : dateRange === '90d' ? 90 : 30
+      const history = await fetchInstagramHistory(days)
+      setMetricsHistory(history)
+    } catch (err) {
+      console.error('Erro ao buscar histórico:', err)
+    } finally {
+      setLoadingHistory(false)
+    }
+  }
+
   // Função para buscar dados do Instagram
   const fetchData = async (instagramConfig: { token: string; businessAccountId: string }, forceRefresh = false) => {
     setLoading(true)
@@ -372,6 +393,12 @@ export default function ConteudoPage() {
       if (data) {
         setMetrics(data)
         setIsConfigured(true)
+        
+        // Salvar snapshot diário automaticamente
+        await saveInstagramSnapshot(data)
+        
+        // Buscar histórico de métricas
+        loadMetricsHistory()
       } else {
         setError('Erro ao buscar dados do Instagram')
       }
@@ -1451,6 +1478,158 @@ export default function ConteudoPage() {
                       </div>
               ) : (
                 <>
+              {/* Card de Evolução de Seguidores e Métricas */}
+              <div className="bg-surface rounded-2xl border border-border p-6">
+                <div className="flex items-start justify-between mb-6">
+                  <div>
+                    <h3 className="text-lg font-semibold text-text-strong mb-1 flex items-center gap-2">
+                      <TrendingUp className="w-5 h-5 text-primary" />
+                      Evolução de Seguidores & Métricas
+                    </h3>
+                    <p className="text-sm text-text-muted">
+                      Acompanhe o crescimento da sua audiência e visitas ao perfil ao longo do tempo
+                    </p>
+                  </div>
+                  <button 
+                    onClick={loadMetricsHistory}
+                    disabled={loadingHistory}
+                    className="px-4 py-2 text-sm font-medium border border-border rounded-lg hover:bg-background transition-colors flex items-center gap-2"
+                  >
+                    {loadingHistory ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <RefreshCw className="w-4 h-4" />
+                    )}
+                    Atualizar
+                  </button>
+                </div>
+
+                {/* Cards de Resumo */}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+                  {/* Seguidores Atuais */}
+                  <div className="bg-gradient-to-br from-primary/10 to-primary/5 rounded-xl border border-primary/20 p-4">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Users className="w-4 h-4 text-primary" />
+                      <span className="text-xs font-medium text-primary uppercase tracking-wide">Seguidores</span>
+                    </div>
+                    <p className="text-2xl font-bold text-text-strong">
+                      {metrics?.followers?.total?.toLocaleString('pt-BR') || '0'}
+                    </p>
+                    {metricsHistory?.summary && metricsHistory.summary.growth !== 0 && (
+                      <p className={`text-xs mt-1 flex items-center gap-1 ${metricsHistory.summary.growth > 0 ? 'text-status-success' : 'text-status-error'}`}>
+                        {metricsHistory.summary.growth > 0 ? (
+                          <TrendingUp className="w-3 h-3" />
+                        ) : (
+                          <TrendingDown className="w-3 h-3" />
+                        )}
+                        {metricsHistory.summary.growth > 0 ? '+' : ''}{metricsHistory.summary.growth.toLocaleString('pt-BR')} ({metricsHistory.summary.growthPercentage}%)
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Visitas ao Perfil */}
+                  <div className="bg-gradient-to-br from-indigo-500/10 to-indigo-500/5 rounded-xl border border-indigo-500/20 p-4">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Eye className="w-4 h-4 text-indigo-500" />
+                      <span className="text-xs font-medium text-indigo-500 uppercase tracking-wide">Visitas ao Perfil</span>
+                    </div>
+                    <p className="text-2xl font-bold text-text-strong">
+                      {(metrics?.insights?.profileViews || 0).toLocaleString('pt-BR')}
+                    </p>
+                    {metricsHistory?.summary && metricsHistory.summary.totalProfileViews > 0 && (
+                      <p className="text-xs mt-1 text-text-muted">
+                        {metricsHistory.summary.totalProfileViews.toLocaleString('pt-BR')} no período
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Alcance */}
+                  <div className="bg-gradient-to-br from-cyan-500/10 to-cyan-500/5 rounded-xl border border-cyan-500/20 p-4">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Activity className="w-4 h-4 text-cyan-500" />
+                      <span className="text-xs font-medium text-cyan-500 uppercase tracking-wide">Alcance</span>
+                    </div>
+                    <p className="text-2xl font-bold text-text-strong">
+                      {(metrics?.insights?.reach || 0).toLocaleString('pt-BR')}
+                    </p>
+                    <p className="text-xs mt-1 text-text-muted">Contas únicas alcançadas</p>
+                  </div>
+
+                  {/* Cliques no Site */}
+                  <div className="bg-gradient-to-br from-amber-500/10 to-amber-500/5 rounded-xl border border-amber-500/20 p-4">
+                    <div className="flex items-center gap-2 mb-2">
+                      <ExternalLink className="w-4 h-4 text-amber-500" />
+                      <span className="text-xs font-medium text-amber-500 uppercase tracking-wide">Cliques no Link</span>
+                    </div>
+                    <p className="text-2xl font-bold text-text-strong">
+                      {(metrics?.insights?.websiteClicks || 0).toLocaleString('pt-BR')}
+                    </p>
+                    <p className="text-xs mt-1 text-text-muted">Cliques no link da bio</p>
+                  </div>
+                </div>
+
+                {/* Histórico de Evolução */}
+                {metricsHistory?.history && metricsHistory.history.length > 0 && (
+                  <div className="border-t border-border pt-6">
+                    <h4 className="text-sm font-semibold text-text-strong mb-4">Histórico de Seguidores</h4>
+                    <div className="overflow-x-auto">
+                      <div className="flex gap-2 min-w-max pb-2">
+                        {metricsHistory.history.slice(-14).map((snapshot, index, arr) => {
+                          const prevSnapshot = index > 0 ? arr[index - 1] : null
+                          const diff = prevSnapshot ? snapshot.followers_count - prevSnapshot.followers_count : 0
+                          
+                          return (
+                            <div 
+                              key={snapshot.id} 
+                              className="flex flex-col items-center p-3 bg-background rounded-lg border border-border min-w-[80px]"
+                            >
+                              <span className="text-xs text-text-muted mb-1">
+                                {new Date(snapshot.snapshot_date).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}
+                              </span>
+                              <span className="text-sm font-semibold text-text-strong">
+                                {snapshot.followers_count.toLocaleString('pt-BR')}
+                              </span>
+                              {diff !== 0 && (
+                                <span className={`text-xs mt-0.5 ${diff > 0 ? 'text-status-success' : 'text-status-error'}`}>
+                                  {diff > 0 ? '+' : ''}{diff}
+                                </span>
+                              )}
+                              {snapshot.profile_views > 0 && (
+                                <span className="text-xs text-indigo-500 mt-1 flex items-center gap-0.5">
+                                  <Eye className="w-3 h-3" /> {snapshot.profile_views}
+                                </span>
+                              )}
+                            </div>
+                          )
+                        })}
+                      </div>
+                    </div>
+                    {metricsHistory.history.length === 0 && (
+                      <div className="text-center py-6 text-text-muted">
+                        <BarChart4 className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                        <p className="text-sm">Dados de histórico serão coletados automaticamente</p>
+                        <p className="text-xs mt-1">Volte amanhã para ver a evolução</p>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {(!metricsHistory?.history || metricsHistory.history.length === 0) && !loadingHistory && (
+                  <div className="border-t border-border pt-6 text-center py-6 text-text-muted">
+                    <BarChart4 className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                    <p className="text-sm">Dados de histórico serão coletados automaticamente</p>
+                    <p className="text-xs mt-1">Volte amanhã para ver a evolução dos seguidores</p>
+                  </div>
+                )}
+
+                {loadingHistory && (
+                  <div className="border-t border-border pt-6 text-center py-6">
+                    <Loader2 className="w-6 h-6 animate-spin mx-auto text-primary" />
+                    <p className="text-sm text-text-muted mt-2">Carregando histórico...</p>
+                  </div>
+                )}
+              </div>
+
               {/* Card de Publicações por Tipo de Conteúdo */}
               <div className="bg-surface rounded-2xl border border-border p-6">
                 <div className="flex items-start justify-between mb-4">

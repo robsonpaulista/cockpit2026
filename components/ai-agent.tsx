@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useMemo, useCallback, useRef } from 'react'
 import { useRouter } from 'next/navigation'
-import { Bot, Sparkles, TrendingUp, AlertTriangle, MapPin, BarChart3, CheckCircle2, Send, ExternalLink, ArrowRight, Loader2, Users, Calendar, Vote, FileText } from 'lucide-react'
+import { Bot, Sparkles, TrendingUp, AlertTriangle, MapPin, BarChart3, CheckCircle2, Send, ExternalLink, ArrowRight, Loader2, Users, Calendar, Vote, FileText, Flag, Target, Building2, Clock, CheckCheck, XCircle, Circle, ChevronRight, Zap, MessageSquare, HelpCircle, Instagram, Heart, Eye, Share2, Image, Video, Play } from 'lucide-react'
 
 interface DataInsight {
   id: string
@@ -183,7 +183,7 @@ export function AIAgent({
         loaded: false,
       })
     } else if (expectativa2026) {
-      let kpiMessage = `📊 Expectativa 2026: ${typeof expectativa2026 === 'number' ? expectativa2026.toLocaleString('pt-BR') : expectativa2026} votos`
+      let kpiMessage = `Expectativa 2026: ${typeof expectativa2026 === 'number' ? expectativa2026.toLocaleString('pt-BR') : expectativa2026} votos`
       if (presencaTerritorial) {
         kpiMessage += ` | Presença: ${presencaTerritorial}`
       }
@@ -208,7 +208,7 @@ export function AIAgent({
       list.push({
         id: 'alerts-done',
         icon: <AlertTriangle className="w-4 h-4" />,
-        message: `🚨 ${alertsCriticosCount} alerta${alertsCriticosCount > 1 ? 's' : ''} crítico${alertsCriticosCount > 1 ? 's' : ''}!`,
+        message: `${alertsCriticosCount} alerta${alertsCriticosCount > 1 ? 's' : ''} crítico${alertsCriticosCount > 1 ? 's' : ''}!`,
         type: 'warning',
         loaded: true,
       })
@@ -226,7 +226,7 @@ export function AIAgent({
       list.push({
         id: 'territorios-done',
         icon: <MapPin className="w-4 h-4" />,
-        message: `⚠️ ${territoriosFriosCount} território${territoriosFriosCount > 1 ? 's' : ''} frio${territoriosFriosCount > 1 ? 's' : ''}`,
+        message: `${territoriosFriosCount} território${territoriosFriosCount > 1 ? 's' : ''} frio${territoriosFriosCount > 1 ? 's' : ''}`,
         type: 'warning',
         loaded: true,
       })
@@ -242,7 +242,7 @@ export function AIAgent({
     try {
       const savedConfig = localStorage.getItem('territorio_sheets_config')
       if (!savedConfig) {
-        return `❌ Não encontrei configuração de território. Configure a planilha em Território & Base.`
+        return `Não encontrei configuração de território. Configure a planilha em Território & Base.`
       }
 
       const config = JSON.parse(savedConfig)
@@ -253,7 +253,7 @@ export function AIAgent({
       })
 
       if (!response.ok) {
-        return `❌ Erro ao buscar dados do território.`
+        return `Erro ao buscar dados do território.`
       }
 
       const data = await response.json()
@@ -268,7 +268,7 @@ export function AIAgent({
       const funcaoCol = headers.find((h: string) => /função|funcao|cargo|papel/i.test(h))
       
       if (!cidadeCol) {
-        return `❌ Não encontrei a coluna de cidade na planilha.`
+        return `Não encontrei a coluna de cidade na planilha.`
       }
 
       // Buscar registros da cidade
@@ -279,7 +279,7 @@ export function AIAgent({
       })
 
       if (registrosCidade.length === 0) {
-        return `🔍 Não encontrei registros para "${cidade}". Verifique o nome da cidade.`
+        return `Não encontrei registros para "${cidade}". Verifique o nome da cidade.`
       }
 
       // Calcular totais
@@ -306,32 +306,32 @@ export function AIAgent({
       liderancas.sort((a, b) => b.expectativa - a.expectativa)
 
       const cidadeFormatada = cidade.charAt(0).toUpperCase() + cidade.slice(1).toLowerCase()
-      let resposta = `📍 **${cidadeFormatada}**\n\n`
-      resposta += `🗳️ Expectativa 2026: **${Math.round(totalExpectativa).toLocaleString('pt-BR')} votos**\n`
-      resposta += `👥 Lideranças: **${registrosCidade.length}**`
+      let resposta = `**${cidadeFormatada}**\n\n`
+      resposta += `Expectativa 2026: **${Math.round(totalExpectativa).toLocaleString('pt-BR')} votos**\n`
+      resposta += `Lideranças: **${registrosCidade.length}**`
       
       if (liderancas.length > 0 && liderancas.length <= 8) {
-        resposta += `\n\n📋 **Lideranças:**\n`
+        resposta += `\n\n**Lideranças:**\n`
         liderancas.forEach(l => {
-          resposta += `• ${l.nome}`
+          resposta += `› ${l.nome}`
           if (l.expectativa > 0) resposta += ` (${l.expectativa.toLocaleString('pt-BR')} votos)`
-          if (l.funcao) resposta += ` - ${l.funcao}`
+          if (l.funcao) resposta += ` — ${l.funcao}`
           resposta += '\n'
         })
       } else if (liderancas.length > 8) {
-        resposta += `\n\n📋 **Top 8 Lideranças:**\n`
+        resposta += `\n\n**Top 8 Lideranças:**\n`
         liderancas.slice(0, 8).forEach(l => {
-          resposta += `• ${l.nome}`
+          resposta += `› ${l.nome}`
           if (l.expectativa > 0) resposta += ` (${l.expectativa.toLocaleString('pt-BR')} votos)`
           resposta += '\n'
         })
-        resposta += `...e mais ${liderancas.length - 8} liderança(s)`
+        resposta += `+ ${liderancas.length - 8} liderança(s)`
       }
 
       return resposta
     } catch (error) {
       console.error('Erro ao buscar expectativa:', error)
-      return `❌ Erro ao buscar dados. Tente novamente.`
+      return `Erro ao buscar dados. Tente novamente.`
     }
   }
 
@@ -340,7 +340,7 @@ export function AIAgent({
     try {
       const savedConfig = localStorage.getItem('territorio_sheets_config')
       if (!savedConfig) {
-        return `❌ Configure a planilha de território primeiro em Território & Base.`
+        return `Configure a planilha de território primeiro em Território & Base.`
       }
 
       const config = JSON.parse(savedConfig)
@@ -351,7 +351,7 @@ export function AIAgent({
       })
 
       if (!response.ok) {
-        return `❌ Erro ao buscar dados do território.`
+        return `Erro ao buscar dados do território.`
       }
 
       const data = await response.json()
@@ -367,7 +367,7 @@ export function AIAgent({
       const bairroCol = headers.find((h: string) => /bairro|região|regiao|localidade/i.test(h))
       
       if (!cidadeCol) {
-        return `❌ Não encontrei a coluna de cidade na planilha.`
+        return `Não encontrei a coluna de cidade na planilha.`
       }
 
       // Buscar registros da cidade
@@ -378,12 +378,12 @@ export function AIAgent({
       })
 
       if (registrosCidade.length === 0) {
-        return `🔍 Não encontrei lideranças em "${cidade}".`
+        return `Não encontrei lideranças em "${cidade}".`
       }
 
       const cidadeFormatada = cidade.charAt(0).toUpperCase() + cidade.slice(1).toLowerCase()
-      let resposta = `👥 **Lideranças em ${cidadeFormatada}**\n\n`
-      resposta += `📊 Total: **${registrosCidade.length}** liderança(s)\n\n`
+      let resposta = `**Lideranças em ${cidadeFormatada}**\n\n`
+      resposta += `Total: **${registrosCidade.length}** liderança(s)\n\n`
 
       // Mostrar detalhes
       const maxShow = 10
@@ -406,13 +406,13 @@ export function AIAgent({
       })
 
       if (registrosCidade.length > maxShow) {
-        resposta += `...e mais ${registrosCidade.length - maxShow} liderança(s)`
+        resposta += `+ ${registrosCidade.length - maxShow} liderança(s)`
       }
 
       return resposta
     } catch (error) {
       console.error('Erro ao buscar lideranças:', error)
-      return `❌ Erro ao buscar lideranças. Tente novamente.`
+      return `Erro ao buscar lideranças. Tente novamente.`
     }
   }
 
@@ -421,7 +421,7 @@ export function AIAgent({
     try {
       const response = await fetch('/api/campo/agendas')
       if (!response.ok) {
-        return `❌ Erro ao buscar agendas.`
+        return `Erro ao buscar agendas.`
       }
 
       const agendas = await response.json()
@@ -435,11 +435,11 @@ export function AIAgent({
       })
 
       if (agendasCidade.length === 0) {
-        return `📅 Não encontrei agendas em "${cidade}".`
+        return `Não encontrei agendas em "${cidade}".`
       }
 
       const cidadeFormatada = agendasCidade[0]?.cities?.name || cidade
-      let resposta = `📅 **Agendas em ${cidadeFormatada}**\n\n`
+      let resposta = `**Agendas em ${cidadeFormatada}**\n\n`
 
       // Ordenar por data (mais recente primeiro)
       agendasCidade.sort((a: { date: string }, b: { date: string }) => new Date(b.date).getTime() - new Date(a.date).getTime())
@@ -449,13 +449,13 @@ export function AIAgent({
       
       agendasMostrar.forEach((agenda: { date: string; type: string; status: string; description?: string }, index: number) => {
         const data = new Date(agenda.date).toLocaleDateString('pt-BR')
-        const tipo = agenda.type === 'visita' ? '🚗 Visita' : 
-                     agenda.type === 'evento' ? '🎉 Evento' :
-                     agenda.type === 'reuniao' ? '🤝 Reunião' : '📌 Outro'
-        const status = agenda.status === 'concluida' ? '✅' : 
-                       agenda.status === 'cancelada' ? '❌' : '⏳'
+        const tipo = agenda.type === 'visita' ? 'Visita' : 
+                     agenda.type === 'evento' ? 'Evento' :
+                     agenda.type === 'reuniao' ? 'Reunião' : 'Outro'
+        const statusIcon = agenda.status === 'concluida' ? '●' : 
+                           agenda.status === 'cancelada' ? '○' : '◐'
         
-        resposta += `${status} **${data}** - ${tipo}\n`
+        resposta += `${statusIcon} **${data}** — ${tipo}\n`
         if (agenda.description) {
           resposta += `   ${agenda.description}\n`
         }
@@ -463,17 +463,17 @@ export function AIAgent({
       })
 
       if (agendasCidade.length > 5) {
-        resposta += `\n...e mais ${agendasCidade.length - 5} agenda(s)`
+        resposta += `\n+ ${agendasCidade.length - 5} agenda(s)`
       }
 
       // Estatísticas
       const concluidas = agendasCidade.filter((a: { status: string }) => a.status === 'concluida').length
-      resposta += `\n\n📊 Total: ${agendasCidade.length} | Concluídas: ${concluidas}`
+      resposta += `\n\nTotal: ${agendasCidade.length} | Concluídas: ${concluidas}`
 
       return resposta
     } catch (error) {
       console.error('Erro ao buscar agendas:', error)
-      return `❌ Erro ao buscar agendas. Tente novamente.`
+      return `Erro ao buscar agendas. Tente novamente.`
     }
   }
 
@@ -482,41 +482,59 @@ export function AIAgent({
     try {
       const response = await fetch('/api/chapas/projecao-republicanos')
       if (!response.ok) {
-        return `❌ Erro ao buscar projeção da chapa.`
+        return `Erro ao buscar projeção da chapa.`
       }
 
       const data = await response.json()
       
       if (data.message && !data.eleitos) {
-        return `📊 **Projeção Chapa Federal**\n\n⚠️ ${data.message}\n\nAcesse a página Chapas para configurar o cenário base.`
+        return `**Projeção Chapa Federal**\n\n${data.message}\n\nAcesse a página Chapas para configurar o cenário base.`
       }
 
-      let resposta = `📊 **Projeção Chapa Federal**\n\n`
-      resposta += `🗳️ **${data.partido}**: ${data.eleitos} deputado${data.eleitos !== 1 ? 's' : ''} eleito${data.eleitos !== 1 ? 's' : ''}\n`
+      let resposta = `**Projeção Chapa Federal**\n\n`
+      resposta += `**${data.partido}**: ${data.eleitos} deputado${data.eleitos !== 1 ? 's' : ''} eleito${data.eleitos !== 1 ? 's' : ''}\n`
       
       if (data.cenario) {
-        resposta += `📋 Cenário: ${data.cenario}\n`
+        resposta += `Cenário: ${data.cenario}\n`
       }
       
       if (data.quociente) {
-        resposta += `📐 Quociente Eleitoral: ${data.quociente.toLocaleString('pt-BR')}\n`
+        resposta += `Quociente Eleitoral: ${data.quociente.toLocaleString('pt-BR')}\n`
+      }
+
+      // Mostrar candidatos do Republicanos
+      if (data.candidatos && data.candidatos.length > 0) {
+        resposta += `\n**Candidatos REPUBLICANOS:**\n`
+        data.candidatos.forEach((c: { nome: string; votos: number; eleito: boolean }) => {
+          const status = c.eleito ? '●' : '○'
+          resposta += `${status} ${c.nome}: ${c.votos.toLocaleString('pt-BR')} votos${c.eleito ? ' — Eleito' : ''}\n`
+        })
+        
+        // Votos de legenda
+        if (data.votosLegenda && data.votosLegenda > 0) {
+          resposta += `Votos de Legenda: ${data.votosLegenda.toLocaleString('pt-BR')}\n`
+        }
       }
 
       // Mostrar distribuição se existir
       if (data.distribuicao && data.distribuicao.length > 0) {
-        resposta += `\n📈 **Distribuição por partido:**\n`
+        resposta += `\n**Distribuição por partido:**\n`
         data.distribuicao
           .filter((p: { vagas: number }) => p.vagas > 0)
           .sort((a: { vagas: number }, b: { vagas: number }) => b.vagas - a.vagas)
-          .forEach((p: { partido: string; vagas: number }) => {
-            resposta += `• ${p.partido}: ${p.vagas} vaga${p.vagas !== 1 ? 's' : ''}\n`
+          .forEach((p: { partido: string; vagas: number; votosLegenda?: number }) => {
+            let linha = `› ${p.partido}: ${p.vagas} vaga${p.vagas !== 1 ? 's' : ''}`
+            if (p.votosLegenda && p.votosLegenda > 0) {
+              linha += ` (legenda: ${p.votosLegenda.toLocaleString('pt-BR')})`
+            }
+            resposta += linha + '\n'
           })
       }
 
       return resposta
     } catch (error) {
       console.error('Erro ao buscar projeção:', error)
-      return `❌ Erro ao buscar projeção. Tente novamente.`
+      return `Erro ao buscar projeção. Tente novamente.`
     }
   }
 
@@ -525,7 +543,7 @@ export function AIAgent({
     try {
       const response = await fetch('/api/campo/demands')
       if (!response.ok) {
-        return `❌ Erro ao buscar demandas.`
+        return `Erro ao buscar demandas.`
       }
 
       const demandas = await response.json()
@@ -539,35 +557,504 @@ export function AIAgent({
       })
 
       if (demandasCidade.length === 0) {
-        return `📝 Não encontrei demandas registradas em "${cidade}".`
+        return `Não encontrei demandas registradas em "${cidade}".`
       }
 
       const cidadeFormatada = demandasCidade[0]?.cities?.name || cidade
-      let resposta = `📝 **Demandas em ${cidadeFormatada}**\n\n`
+      let resposta = `**Demandas em ${cidadeFormatada}**\n\n`
 
       // Agrupar por status
       const pendentes = demandasCidade.filter((d: { status: string }) => d.status === 'pendente' || d.status === 'em_andamento')
       const concluidas = demandasCidade.filter((d: { status: string }) => d.status === 'concluida')
 
-      resposta += `📊 Total: ${demandasCidade.length} | Pendentes: ${pendentes.length} | Concluídas: ${concluidas.length}\n\n`
+      resposta += `Total: ${demandasCidade.length} | Pendentes: ${pendentes.length} | Concluídas: ${concluidas.length}\n\n`
 
       // Mostrar demandas pendentes primeiro
       if (pendentes.length > 0) {
-        resposta += `⏳ **Pendentes:**\n`
+        resposta += `**Pendentes:**\n`
         pendentes.slice(0, 5).forEach((d: { title: string; priority: string; created_at: string }) => {
-          const prioridade = d.priority === 'alta' ? '🔴' : d.priority === 'media' ? '🟡' : '🟢'
+          const prioridade = d.priority === 'alta' ? '▲' : d.priority === 'media' ? '■' : '▼'
           const data = new Date(d.created_at).toLocaleDateString('pt-BR')
           resposta += `${prioridade} ${d.title} (${data})\n`
         })
         if (pendentes.length > 5) {
-          resposta += `...e mais ${pendentes.length - 5}\n`
+          resposta += `+ ${pendentes.length - 5}\n`
         }
       }
 
       return resposta
     } catch (error) {
       console.error('Erro ao buscar demandas:', error)
-      return `❌ Erro ao buscar demandas. Tente novamente.`
+      return `Erro ao buscar demandas. Tente novamente.`
+    }
+  }
+
+  // Buscar métricas do Instagram
+  const fetchInstagramMetrics = async (): Promise<string> => {
+    try {
+      const savedConfig = localStorage.getItem('instagramToken')
+      const savedBusinessId = localStorage.getItem('instagramBusinessAccountId')
+      
+      if (!savedConfig || !savedBusinessId) {
+        return `Configure o Instagram na página Conteúdo & Redes Sociais para ver as métricas.`
+      }
+
+      const response = await fetch('/api/instagram', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          token: savedConfig,
+          businessAccountId: savedBusinessId,
+          timeRange: '30d',
+        }),
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}))
+        if (errorData.error?.includes('Token')) {
+          return `Token do Instagram expirado. Reconecte na página Conteúdo & Redes Sociais.`
+        }
+        return `Erro ao buscar dados do Instagram. Verifique sua conexão.`
+      }
+
+      const data = await response.json()
+      
+      let resposta = `**Instagram @${data.username}**\n\n`
+      
+      // Seguidores
+      resposta += `**Seguidores:** ${(data.followers?.total || 0).toLocaleString('pt-BR')}\n`
+      
+      // Métricas de perfil
+      if (data.insights) {
+        if (data.insights.profileViews > 0) {
+          resposta += `**Visitas ao Perfil:** ${data.insights.profileViews.toLocaleString('pt-BR')}\n`
+        }
+        if (data.insights.reach > 0) {
+          resposta += `**Alcance:** ${data.insights.reach.toLocaleString('pt-BR')}\n`
+        }
+        if (data.insights.websiteClicks > 0) {
+          resposta += `**Cliques no Link:** ${data.insights.websiteClicks.toLocaleString('pt-BR')}\n`
+        }
+        if (data.insights.totalInteractions > 0) {
+          resposta += `**Interações:** ${data.insights.totalInteractions.toLocaleString('pt-BR')}\n`
+        }
+      }
+
+      // Total de posts
+      if (data.posts && data.posts.length > 0) {
+        resposta += `\n**Publicações analisadas:** ${data.posts.length}\n`
+        
+        // Métricas agregadas
+        const totalLikes = data.posts.reduce((sum: number, p: { metrics?: { likes?: number } }) => sum + (p.metrics?.likes || 0), 0)
+        const totalComments = data.posts.reduce((sum: number, p: { metrics?: { comments?: number } }) => sum + (p.metrics?.comments || 0), 0)
+        const totalViews = data.posts.reduce((sum: number, p: { metrics?: { views?: number } }) => sum + (p.metrics?.views || 0), 0)
+        
+        resposta += `**Total Curtidas:** ${totalLikes.toLocaleString('pt-BR')}\n`
+        resposta += `**Total Comentários:** ${totalComments.toLocaleString('pt-BR')}\n`
+        if (totalViews > 0) {
+          resposta += `**Total Visualizações:** ${totalViews.toLocaleString('pt-BR')}\n`
+        }
+      }
+
+      return resposta
+    } catch (error) {
+      console.error('Erro ao buscar Instagram:', error)
+      return `Erro ao buscar dados do Instagram. Tente novamente.`
+    }
+  }
+
+  // Buscar histórico de evolução do Instagram
+  const fetchInstagramHistory = async (): Promise<string> => {
+    try {
+      const response = await fetch('/api/instagram/snapshot?days=30')
+      
+      if (!response.ok) {
+        return `Não há dados históricos ainda. Os dados são coletados automaticamente ao acessar a página Conteúdo.`
+      }
+
+      const data = await response.json()
+      
+      if (!data.history || data.history.length === 0) {
+        return `Ainda não há histórico de métricas. Acesse a página Conteúdo & Redes Sociais para começar a coletar dados.`
+      }
+
+      let resposta = `**Evolução Instagram (${data.summary.periodDays} dias)**\n\n`
+      
+      // Resumo
+      resposta += `**Seguidores Atuais:** ${data.summary.currentFollowers.toLocaleString('pt-BR')}\n`
+      
+      if (data.summary.growth !== 0) {
+        const crescimento = data.summary.growth > 0 ? '+' : ''
+        resposta += `**Crescimento:** ${crescimento}${data.summary.growth.toLocaleString('pt-BR')} (${data.summary.growthPercentage}%)\n`
+      }
+      
+      if (data.summary.totalProfileViews > 0) {
+        resposta += `**Visitas ao Perfil:** ${data.summary.totalProfileViews.toLocaleString('pt-BR')}\n`
+      }
+
+      // Últimos registros
+      if (data.history.length > 1) {
+        resposta += `\n**Últimos ${Math.min(7, data.history.length)} dias:**\n`
+        const ultimos = data.history.slice(-7).reverse()
+        ultimos.forEach((h: { snapshot_date: string; followers_count: number; profile_views?: number }) => {
+          const dataFormatada = new Date(h.snapshot_date).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })
+          resposta += `› ${dataFormatada}: ${h.followers_count.toLocaleString('pt-BR')} seguidores`
+          if (h.profile_views && h.profile_views > 0) {
+            resposta += ` (${h.profile_views} visitas)`
+          }
+          resposta += '\n'
+        })
+      }
+
+      return resposta
+    } catch (error) {
+      console.error('Erro ao buscar histórico:', error)
+      return `Erro ao buscar histórico. Tente novamente.`
+    }
+  }
+
+  // Buscar posts com melhor performance
+  const fetchTopPosts = async (metrica: 'likes' | 'comments' | 'views' | 'shares' | 'all'): Promise<string> => {
+    try {
+      const savedConfig = localStorage.getItem('instagramToken')
+      const savedBusinessId = localStorage.getItem('instagramBusinessAccountId')
+      
+      if (!savedConfig || !savedBusinessId) {
+        return `Configure o Instagram na página Conteúdo & Redes Sociais.`
+      }
+
+      const response = await fetch('/api/instagram', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          token: savedConfig,
+          businessAccountId: savedBusinessId,
+          timeRange: '30d',
+        }),
+      })
+
+      if (!response.ok) {
+        return `Erro ao buscar posts do Instagram.`
+      }
+
+      const data = await response.json()
+      const posts = data.posts || []
+
+      if (posts.length === 0) {
+        return `Não encontrei publicações no período analisado.`
+      }
+
+      // Ordenar por métrica
+      let sortedPosts = [...posts]
+      let tituloMetrica = ''
+      
+      switch (metrica) {
+        case 'likes':
+          sortedPosts.sort((a, b) => (b.metrics?.likes || 0) - (a.metrics?.likes || 0))
+          tituloMetrica = 'Mais Curtidas'
+          break
+        case 'comments':
+          sortedPosts.sort((a, b) => (b.metrics?.comments || 0) - (a.metrics?.comments || 0))
+          tituloMetrica = 'Mais Comentários'
+          break
+        case 'views':
+          sortedPosts.sort((a, b) => (b.metrics?.views || 0) - (a.metrics?.views || 0))
+          tituloMetrica = 'Mais Visualizações'
+          break
+        case 'shares':
+          sortedPosts.sort((a, b) => (b.metrics?.shares || 0) - (a.metrics?.shares || 0))
+          tituloMetrica = 'Mais Compartilhados'
+          break
+        default:
+          // Ordenar por engajamento total
+          sortedPosts.sort((a, b) => {
+            const engA = (a.metrics?.likes || 0) + (a.metrics?.comments || 0) * 2 + (a.metrics?.shares || 0) * 3
+            const engB = (b.metrics?.likes || 0) + (b.metrics?.comments || 0) * 2 + (b.metrics?.shares || 0) * 3
+            return engB - engA
+          })
+          tituloMetrica = 'Melhor Performance'
+      }
+
+      let resposta = `**Posts com ${tituloMetrica}**\n\n`
+
+      // Top 5 posts
+      const top5 = sortedPosts.slice(0, 5)
+      top5.forEach((post: { type: string; postedAt: string; caption?: string; metrics?: { likes?: number; comments?: number; views?: number; shares?: number } }, index: number) => {
+        const tipo = post.type === 'video' ? '▶ Vídeo' : post.type === 'carousel' ? '◫ Carrossel' : '▣ Imagem'
+        const data = new Date(post.postedAt).toLocaleDateString('pt-BR')
+        
+        // Pegar primeira linha da legenda (título) - até 150 caracteres
+        let titulo = 'Sem legenda'
+        if (post.caption) {
+          // Pegar a primeira linha ou até o primeiro emoji/quebra
+          const primeiraLinha = post.caption.split('\n')[0].trim()
+          titulo = primeiraLinha.length > 150 ? primeiraLinha.substring(0, 150) + '...' : primeiraLinha
+        }
+        
+        resposta += `**${index + 1}. ${titulo}**\n`
+        resposta += `${tipo} — ${data}\n`
+        
+        const metricas = []
+        if (post.metrics?.likes) metricas.push(`♥ ${post.metrics.likes.toLocaleString('pt-BR')}`)
+        if (post.metrics?.comments) metricas.push(`💬 ${post.metrics.comments.toLocaleString('pt-BR')}`)
+        if (post.metrics?.views) metricas.push(`👁 ${post.metrics.views.toLocaleString('pt-BR')}`)
+        if (post.metrics?.shares) metricas.push(`↗ ${post.metrics.shares.toLocaleString('pt-BR')}`)
+        
+        if (metricas.length > 0) {
+          resposta += `${metricas.join(' | ')}\n`
+        }
+        resposta += '\n'
+      })
+
+      return resposta
+    } catch (error) {
+      console.error('Erro ao buscar posts:', error)
+      return `Erro ao buscar posts. Tente novamente.`
+    }
+  }
+
+  // Buscar posts por tipo de conteúdo
+  const fetchPostsByType = async (): Promise<string> => {
+    try {
+      const savedConfig = localStorage.getItem('instagramToken')
+      const savedBusinessId = localStorage.getItem('instagramBusinessAccountId')
+      
+      if (!savedConfig || !savedBusinessId) {
+        return `Configure o Instagram na página Conteúdo & Redes Sociais.`
+      }
+
+      const response = await fetch('/api/instagram', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          token: savedConfig,
+          businessAccountId: savedBusinessId,
+          timeRange: '30d',
+        }),
+      })
+
+      if (!response.ok) {
+        return `Erro ao buscar dados do Instagram.`
+      }
+
+      const data = await response.json()
+      const posts = data.posts || []
+
+      if (posts.length === 0) {
+        return `Não encontrei publicações no período analisado.`
+      }
+
+      // Agrupar por tipo
+      const porTipo: Record<string, { count: number; likes: number; comments: number; views: number }> = {
+        image: { count: 0, likes: 0, comments: 0, views: 0 },
+        video: { count: 0, likes: 0, comments: 0, views: 0 },
+        carousel: { count: 0, likes: 0, comments: 0, views: 0 },
+      }
+
+      posts.forEach((post: { type: string; metrics?: { likes?: number; comments?: number; views?: number } }) => {
+        const tipo = post.type || 'image'
+        if (!porTipo[tipo]) {
+          porTipo[tipo] = { count: 0, likes: 0, comments: 0, views: 0 }
+        }
+        porTipo[tipo].count++
+        porTipo[tipo].likes += post.metrics?.likes || 0
+        porTipo[tipo].comments += post.metrics?.comments || 0
+        porTipo[tipo].views += post.metrics?.views || 0
+      })
+
+      let resposta = `**Publicações por Tipo de Conteúdo**\n\n`
+      resposta += `Total: ${posts.length} publicações\n\n`
+
+      const tipos = [
+        { key: 'image', label: 'Imagens', icon: '▣' },
+        { key: 'video', label: 'Vídeos/Reels', icon: '▶' },
+        { key: 'carousel', label: 'Carrosséis', icon: '◫' },
+      ]
+
+      tipos.forEach(({ key, label, icon }) => {
+        const stats = porTipo[key]
+        if (stats && stats.count > 0) {
+          const mediaLikes = Math.round(stats.likes / stats.count)
+          const mediaComments = Math.round(stats.comments / stats.count)
+          
+          resposta += `**${icon} ${label}:** ${stats.count} posts\n`
+          resposta += `   Média: ${mediaLikes.toLocaleString('pt-BR')} curtidas, ${mediaComments.toLocaleString('pt-BR')} comentários\n`
+          
+          if (stats.views > 0) {
+            const mediaViews = Math.round(stats.views / stats.count)
+            resposta += `   Visualizações: ${mediaViews.toLocaleString('pt-BR')} (média)\n`
+          }
+          resposta += '\n'
+        }
+      })
+
+      // Identificar melhor tipo
+      const melhorTipo = tipos
+        .map(t => ({
+          ...t,
+          engajamento: porTipo[t.key]?.count > 0 
+            ? (porTipo[t.key].likes + porTipo[t.key].comments * 2) / porTipo[t.key].count 
+            : 0
+        }))
+        .filter(t => porTipo[t.key]?.count > 0)
+        .sort((a, b) => b.engajamento - a.engajamento)[0]
+
+      if (melhorTipo) {
+        resposta += `**Melhor tipo:** ${melhorTipo.label} (maior engajamento médio)`
+      }
+
+      return resposta
+    } catch (error) {
+      console.error('Erro ao buscar posts por tipo:', error)
+      return `Erro ao buscar dados. Tente novamente.`
+    }
+  }
+
+  // Buscar performance por tema de postagens
+  const fetchThemePerformance = async (): Promise<string> => {
+    try {
+      const savedConfig = localStorage.getItem('instagramToken')
+      const savedBusinessId = localStorage.getItem('instagramBusinessAccountId')
+      
+      if (!savedConfig || !savedBusinessId) {
+        return `Configure o Instagram na página Conteúdo & Redes Sociais.`
+      }
+
+      // Buscar classificações de temas do Supabase
+      const classificationsResponse = await fetch('/api/instagram/classifications')
+      if (!classificationsResponse.ok) {
+        return `Erro ao buscar classificações. Faça login novamente.`
+      }
+
+      const classificationsData = await classificationsResponse.json()
+      if (!classificationsData.success || !classificationsData.classifications) {
+        return `Nenhum post foi classificado por tema ainda.\n\nAcesse Conteúdo & Redes Sociais e classifique os posts por tema para ver a performance.`
+      }
+
+      const classifications: Record<string, { theme?: string; isBoosted?: boolean }> = classificationsData.classifications
+
+      if (Object.keys(classifications).length === 0) {
+        return `Nenhum post foi classificado por tema ainda.\n\nAcesse Conteúdo & Redes Sociais e classifique os posts por tema para ver a performance.`
+      }
+
+      // Buscar posts do Instagram
+      const response = await fetch('/api/instagram', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          token: savedConfig,
+          businessAccountId: savedBusinessId,
+          timeRange: '30d',
+        }),
+      })
+
+      if (!response.ok) {
+        return `Erro ao buscar dados do Instagram.`
+      }
+
+      const data = await response.json()
+      const posts = data.posts || []
+
+      if (posts.length === 0) {
+        return `Não encontrei publicações no período analisado.`
+      }
+
+      // Calcular estatísticas por tema
+      const themeStats: Record<string, { 
+        posts: number
+        likes: number
+        comments: number
+        views: number
+        shares: number
+        saves: number
+      }> = {}
+
+      posts.forEach((post: { id: string; postedAt?: string; caption?: string; metrics?: { likes?: number; comments?: number; views?: number; shares?: number; saves?: number } }) => {
+        // Gerar identificador do post (mesmo método usado na página de Conteúdo)
+        // Prioridade: post.id, senão usa data + caption hash
+        let identifier = post.id
+        if (!identifier && post.postedAt && post.caption) {
+          const dateStr = new Date(post.postedAt).toISOString().split('T')[0]
+          const captionHash = post.caption.substring(0, 50).replace(/[^a-zA-Z0-9]/g, '').toLowerCase()
+          identifier = `${dateStr}_${captionHash}`
+        }
+
+        const classification = classifications[identifier]
+        
+        if (classification?.theme) {
+          const theme = classification.theme
+          if (!themeStats[theme]) {
+            themeStats[theme] = { posts: 0, likes: 0, comments: 0, views: 0, shares: 0, saves: 0 }
+          }
+          
+          themeStats[theme].posts++
+          themeStats[theme].likes += post.metrics?.likes || 0
+          themeStats[theme].comments += post.metrics?.comments || 0
+          themeStats[theme].views += post.metrics?.views || 0
+          themeStats[theme].shares += post.metrics?.shares || 0
+          themeStats[theme].saves += post.metrics?.saves || 0
+        }
+      })
+
+      const temas = Object.keys(themeStats)
+      
+      if (temas.length === 0) {
+        return `Nenhum post foi classificado por tema ainda.\n\nAcesse Conteúdo & Redes Sociais e classifique os posts por tema para ver a performance.`
+      }
+
+      // Calcular engajamento médio e ordenar
+      const temasComEngajamento = temas.map(tema => {
+        const stats = themeStats[tema]
+        const engajamentoMedio = stats.posts > 0 
+          ? Math.round((stats.likes + stats.comments * 2 + stats.shares * 3) / stats.posts)
+          : 0
+        const mediaLikes = stats.posts > 0 ? Math.round(stats.likes / stats.posts) : 0
+        const mediaComments = stats.posts > 0 ? Math.round(stats.comments / stats.posts) : 0
+        const mediaViews = stats.posts > 0 ? Math.round(stats.views / stats.posts) : 0
+        
+        return {
+          tema,
+          ...stats,
+          engajamentoMedio,
+          mediaLikes,
+          mediaComments,
+          mediaViews,
+        }
+      }).sort((a, b) => b.engajamentoMedio - a.engajamentoMedio)
+
+      const melhor = temasComEngajamento[0]
+      const totalClassificados = temasComEngajamento.reduce((sum, t) => sum + t.posts, 0)
+
+      let resposta = `**Performance por Tema**\n`
+      resposta += `${totalClassificados} posts em ${temas.length} temas\n\n`
+      
+      resposta += `🏆 **${melhor.tema}** é o tema com melhor engajamento\n\n`
+
+      // Mostrar top 5 de forma limpa
+      const top5 = temasComEngajamento.slice(0, 5)
+      top5.forEach((t, index) => {
+        const pos = index + 1
+        const barra = '█'.repeat(Math.min(Math.round((t.engajamentoMedio / melhor.engajamentoMedio) * 8), 8))
+        resposta += `${pos}. ${t.tema} ${barra}\n`
+        resposta += `   ${t.posts} posts · ${t.mediaLikes} curtidas · ${t.mediaComments} comentários\n`
+      })
+
+      if (temasComEngajamento.length > 5) {
+        resposta += `\n+${temasComEngajamento.length - 5} outros temas`
+      }
+
+      return resposta
+    } catch (error) {
+      console.error('Erro ao buscar performance por tema:', error)
+      return `Erro ao buscar dados. Tente novamente.`
     }
   }
 
@@ -576,7 +1063,7 @@ export function AIAgent({
     try {
       const response = await fetch('/api/pesquisa')
       if (!response.ok) {
-        return `❌ Erro ao buscar pesquisas.`
+        return `Erro ao buscar pesquisas.`
       }
 
       const pesquisas = await response.json()
@@ -591,10 +1078,10 @@ export function AIAgent({
       })
 
       if (pesquisasFiltradas.length === 0) {
-        return `📊 Não encontrei pesquisas para "${termo}".`
+        return `Não encontrei pesquisas para "${termo}".`
       }
 
-      let resposta = `📊 **Pesquisas para "${termo}"**\n\n`
+      let resposta = `**Pesquisas para "${termo}"**\n\n`
 
       // Ordenar por data
       pesquisasFiltradas.sort((a: { data_pesquisa: string }, b: { data_pesquisa: string }) => new Date(b.data_pesquisa).getTime() - new Date(a.data_pesquisa).getTime())
@@ -604,21 +1091,21 @@ export function AIAgent({
       
       pesquisasMostrar.forEach((p: { data_pesquisa: string; candidato_nome: string; intencao_voto: number; instituto?: string; cidade_nome?: string }, index: number) => {
         const data = new Date(p.data_pesquisa).toLocaleDateString('pt-BR')
-        resposta += `📅 **${data}**\n`
-        resposta += `   👤 ${p.candidato_nome}: **${p.intencao_voto}%**\n`
-        if (p.instituto) resposta += `   🏢 ${p.instituto}\n`
-        if (p.cidade_nome) resposta += `   📍 ${p.cidade_nome}\n`
+        resposta += `**${data}**\n`
+        resposta += `   ${p.candidato_nome}: **${p.intencao_voto}%**\n`
+        if (p.instituto) resposta += `   ${p.instituto}\n`
+        if (p.cidade_nome) resposta += `   ${p.cidade_nome}\n`
         if (index < pesquisasMostrar.length - 1) resposta += '\n'
       })
 
       if (pesquisasFiltradas.length > 5) {
-        resposta += `\n...e mais ${pesquisasFiltradas.length - 5} pesquisa(s)`
+        resposta += `\n+ ${pesquisasFiltradas.length - 5} pesquisa(s)`
       }
 
       return resposta
     } catch (error) {
       console.error('Erro ao buscar pesquisas:', error)
-      return `❌ Erro ao buscar pesquisas. Tente novamente.`
+      return `Erro ao buscar pesquisas. Tente novamente.`
     }
   }
 
@@ -727,6 +1214,209 @@ export function AIAgent({
       }
     }
     
+    // ===== INSTAGRAM - MÉTRICAS GERAIS =====
+    if ((queryLower.includes('instagram') || queryLower.includes('insta') || queryLower.includes('rede') || queryLower.includes('social')) &&
+        (queryLower.includes('metrica') || queryLower.includes('dado') || queryLower.includes('numero') || 
+         queryLower.includes('resumo') || queryLower.includes('como') || queryLower.includes('performance') ||
+         queryLower.includes('estatistica') || !queryLower.includes('seguidor') && !queryLower.includes('post') && !queryLower.includes('publicacao'))) {
+      const resposta = await fetchInstagramMetrics()
+      return {
+        id: Date.now().toString(),
+        role: 'assistant',
+        content: resposta,
+        action: {
+          type: 'navigate',
+          url: '/dashboard/conteudo',
+          label: 'Ver Conteúdo & Redes Sociais',
+        },
+      }
+    }
+
+    // ===== INSTAGRAM - SEGUIDORES E EVOLUÇÃO =====
+    if ((queryLower.includes('seguidor') || queryLower.includes('followers') || queryLower.includes('crescimento') || 
+         queryLower.includes('evolucao') || queryLower.includes('evolução')) &&
+        (queryLower.includes('instagram') || queryLower.includes('insta') || queryLower.includes('perfil') || 
+         queryLower.includes('rede') || queryLower.includes('social') || queryLower.includes('quantos'))) {
+      const resposta = await fetchInstagramHistory()
+      return {
+        id: Date.now().toString(),
+        role: 'assistant',
+        content: resposta,
+        action: {
+          type: 'navigate',
+          url: '/dashboard/conteudo',
+          label: 'Ver Evolução Completa',
+        },
+      }
+    }
+
+    // ===== INSTAGRAM - VISITAS AO PERFIL =====
+    if ((queryLower.includes('visita') || queryLower.includes('visualiza') || queryLower.includes('view')) && 
+        (queryLower.includes('perfil') || queryLower.includes('instagram') || queryLower.includes('insta'))) {
+      const resposta = await fetchInstagramMetrics()
+      return {
+        id: Date.now().toString(),
+        role: 'assistant',
+        content: resposta,
+        action: {
+          type: 'navigate',
+          url: '/dashboard/conteudo',
+          label: 'Ver Métricas do Perfil',
+        },
+      }
+    }
+
+    // ===== INSTAGRAM - POSTS MAIS CURTIDOS =====
+    if ((queryLower.includes('curtida') || queryLower.includes('like') || queryLower.includes('curtiu')) &&
+        (queryLower.includes('post') || queryLower.includes('publicacao') || queryLower.includes('publicação') || 
+         queryLower.includes('foto') || queryLower.includes('video') || queryLower.includes('mais') ||
+         queryLower.includes('instagram') || queryLower.includes('insta'))) {
+      const resposta = await fetchTopPosts('likes')
+      return {
+        id: Date.now().toString(),
+        role: 'assistant',
+        content: resposta,
+        action: {
+          type: 'navigate',
+          url: '/dashboard/conteudo',
+          label: 'Ver Todos os Posts',
+        },
+      }
+    }
+
+    // ===== INSTAGRAM - POSTS MAIS COMENTADOS =====
+    if ((queryLower.includes('comentario') || queryLower.includes('comentário') || queryLower.includes('comment')) &&
+        (queryLower.includes('post') || queryLower.includes('publicacao') || queryLower.includes('mais') ||
+         queryLower.includes('instagram') || queryLower.includes('insta'))) {
+      const resposta = await fetchTopPosts('comments')
+      return {
+        id: Date.now().toString(),
+        role: 'assistant',
+        content: resposta,
+        action: {
+          type: 'navigate',
+          url: '/dashboard/conteudo',
+          label: 'Ver Todos os Posts',
+        },
+      }
+    }
+
+    // ===== INSTAGRAM - POSTS MAIS VISUALIZADOS =====
+    if ((queryLower.includes('visualiza') || queryLower.includes('view') || queryLower.includes('assistiu') || queryLower.includes('viu')) &&
+        (queryLower.includes('post') || queryLower.includes('video') || queryLower.includes('reel') ||
+         queryLower.includes('mais') || queryLower.includes('instagram') || queryLower.includes('insta'))) {
+      const resposta = await fetchTopPosts('views')
+      return {
+        id: Date.now().toString(),
+        role: 'assistant',
+        content: resposta,
+        action: {
+          type: 'navigate',
+          url: '/dashboard/conteudo',
+          label: 'Ver Todos os Posts',
+        },
+      }
+    }
+
+    // ===== INSTAGRAM - POSTS MAIS COMPARTILHADOS =====
+    if ((queryLower.includes('compartilh') || queryLower.includes('share') || queryLower.includes('enviou')) &&
+        (queryLower.includes('post') || queryLower.includes('publicacao') || queryLower.includes('mais') ||
+         queryLower.includes('instagram') || queryLower.includes('insta'))) {
+      const resposta = await fetchTopPosts('shares')
+      return {
+        id: Date.now().toString(),
+        role: 'assistant',
+        content: resposta,
+        action: {
+          type: 'navigate',
+          url: '/dashboard/conteudo',
+          label: 'Ver Todos os Posts',
+        },
+      }
+    }
+
+    // ===== INSTAGRAM - MELHOR POST / PERFORMANCE GERAL =====
+    if ((queryLower.includes('melhor') || queryLower.includes('top') || queryLower.includes('destaque') || queryLower.includes('sucesso')) &&
+        (queryLower.includes('post') || queryLower.includes('publicacao') || queryLower.includes('publicação') ||
+         queryLower.includes('conteudo') || queryLower.includes('conteúdo') || queryLower.includes('instagram') || queryLower.includes('insta'))) {
+      const resposta = await fetchTopPosts('all')
+      return {
+        id: Date.now().toString(),
+        role: 'assistant',
+        content: resposta,
+        action: {
+          type: 'navigate',
+          url: '/dashboard/conteudo',
+          label: 'Ver Análise Completa',
+        },
+      }
+    }
+
+    // ===== INSTAGRAM - PUBLICAÇÕES POR TIPO =====
+    if ((queryLower.includes('tipo') || queryLower.includes('formato') || queryLower.includes('categoria')) &&
+        (queryLower.includes('conteudo') || queryLower.includes('conteúdo') || queryLower.includes('publicacao') || 
+         queryLower.includes('publicação') || queryLower.includes('post') || queryLower.includes('instagram'))) {
+      const resposta = await fetchPostsByType()
+      return {
+        id: Date.now().toString(),
+        role: 'assistant',
+        content: resposta,
+        action: {
+          type: 'navigate',
+          url: '/dashboard/conteudo',
+          label: 'Ver Análise por Tipo',
+        },
+      }
+    }
+
+    // ===== INSTAGRAM - REELS =====
+    if (queryLower.includes('reel') || queryLower.includes('reels')) {
+      const resposta = await fetchTopPosts('views')
+      return {
+        id: Date.now().toString(),
+        role: 'assistant',
+        content: resposta,
+        action: {
+          type: 'navigate',
+          url: '/dashboard/conteudo',
+          label: 'Ver Reels',
+        },
+      }
+    }
+
+    // ===== INSTAGRAM - ENGAJAMENTO =====
+    if (queryLower.includes('engajamento') || queryLower.includes('engajament') || queryLower.includes('interacao') || queryLower.includes('interação')) {
+      const resposta = await fetchInstagramMetrics()
+      return {
+        id: Date.now().toString(),
+        role: 'assistant',
+        content: resposta,
+        action: {
+          type: 'navigate',
+          url: '/dashboard/conteudo',
+          label: 'Ver Métricas de Engajamento',
+        },
+      }
+    }
+
+    // ===== INSTAGRAM - PERFORMANCE POR TEMA =====
+    if ((queryLower.includes('tema') || queryLower.includes('assunto') || queryLower.includes('categoria') || queryLower.includes('classificacao') || queryLower.includes('classificação')) &&
+        (queryLower.includes('performance') || queryLower.includes('melhor') || queryLower.includes('engaj') || 
+         queryLower.includes('funciona') || queryLower.includes('resultado') || queryLower.includes('comparar') ||
+         queryLower.includes('qual') || queryLower.includes('ranking'))) {
+      const resposta = await fetchThemePerformance()
+      return {
+        id: Date.now().toString(),
+        role: 'assistant',
+        content: resposta,
+        action: {
+          type: 'navigate',
+          url: '/dashboard/conteudo',
+          label: 'Ver Análise por Tema',
+        },
+      }
+    }
+    
     // ===== ALERTAS/NOTÍCIAS =====
     if (queryLower.includes('alerta') || queryLower.includes('noticia') || 
         queryLower.includes('crise') || queryLower.includes('critico') || queryLower.includes('crítico')) {
@@ -735,7 +1425,7 @@ export function AIAgent({
         return {
           id: Date.now().toString(),
           role: 'assistant',
-          content: `🚨 Encontrei ${criticalAlerts.length} alerta${criticalAlerts.length > 1 ? 's' : ''} crítico${criticalAlerts.length > 1 ? 's' : ''}:\n\n📰 "${alert.title}"`,
+          content: `Encontrei ${criticalAlerts.length} alerta${criticalAlerts.length > 1 ? 's' : ''} crítico${criticalAlerts.length > 1 ? 's' : ''}:\n\n"${alert.title}"`,
           action: {
             type: alert.actionUrl?.startsWith('http') ? 'link' : 'navigate',
             url: alert.actionUrl || '/dashboard/noticias',
@@ -746,7 +1436,7 @@ export function AIAgent({
         return {
           id: Date.now().toString(),
           role: 'assistant',
-          content: '✅ Não há alertas críticos no momento. O radar de crises está limpo!',
+          content: 'Não há alertas críticos no momento. O radar de crises está limpo.',
         }
       }
     }
@@ -755,11 +1445,11 @@ export function AIAgent({
     if ((queryLower.includes('territorio') || queryLower.includes('território') || queryLower.includes('frio')) && !cidade) {
       if (territoriosFrios.length > 0) {
         const top3 = territoriosFrios.slice(0, 3)
-        const cidadesTexto = top3.map(t => `• ${t.cidade}: ${t.motivo}${t.expectativaVotos ? ` (${t.expectativaVotos.toLocaleString('pt-BR')} votos)` : ''}`).join('\n')
+        const cidadesTexto = top3.map(t => `› ${t.cidade}: ${t.motivo}${t.expectativaVotos ? ` (${t.expectativaVotos.toLocaleString('pt-BR')} votos)` : ''}`).join('\n')
         return {
           id: Date.now().toString(),
           role: 'assistant',
-          content: `🗺️ **${territoriosFriosCount} territórios frios:**\n\n${cidadesTexto}`,
+          content: `**${territoriosFriosCount} territórios frios:**\n\n${cidadesTexto}`,
           action: {
             type: 'navigate',
             url: '/dashboard/territorio',
@@ -770,7 +1460,7 @@ export function AIAgent({
         return {
           id: Date.now().toString(),
           role: 'assistant',
-          content: '✅ Excelente! Todos os territórios estão com boa cobertura.',
+          content: 'Excelente! Todos os territórios estão com boa cobertura.',
           action: {
             type: 'navigate',
             url: '/dashboard/territorio',
@@ -786,7 +1476,7 @@ export function AIAgent({
         return {
           id: Date.now().toString(),
           role: 'assistant',
-          content: `🎯 Você tem **${bandeirasCount} bandeira${bandeirasCount > 1 ? 's' : ''}** ativa${bandeirasCount > 1 ? 's' : ''} com performance média de **${bandeirasPerformance}%**.`,
+          content: `Você tem **${bandeirasCount} bandeira${bandeirasCount > 1 ? 's' : ''}** ativa${bandeirasCount > 1 ? 's' : ''} com performance média de **${bandeirasPerformance}%**.`,
           action: {
             type: 'navigate',
             url: '/dashboard/narrativas',
@@ -801,7 +1491,7 @@ export function AIAgent({
       return {
         id: Date.now().toString(),
         role: 'assistant',
-        content: `📈 **Expectativa de votos 2026:** ${typeof expectativa2026 === 'number' ? expectativa2026.toLocaleString('pt-BR') : expectativa2026 || 'não calculada'}\n\n🗺️ **Presença territorial:** ${presencaTerritorial || 'não calculada'}`,
+        content: `**Expectativa de votos 2026:** ${typeof expectativa2026 === 'number' ? expectativa2026.toLocaleString('pt-BR') : expectativa2026 || 'não calculada'}\n\n**Presença territorial:** ${presencaTerritorial || 'não calculada'}`,
         action: {
           type: 'navigate',
           url: '/dashboard/territorio',
@@ -815,7 +1505,7 @@ export function AIAgent({
       return {
         id: Date.now().toString(),
         role: 'assistant',
-        content: '📅 Acesse a página Campo & Agenda para ver suas visitas, fazer check-in e gerenciar demandas.',
+        content: 'Acesse a página Campo & Agenda para ver suas visitas, fazer check-in e gerenciar demandas.',
         action: {
           type: 'navigate',
           url: '/dashboard/campo',
@@ -844,7 +1534,7 @@ export function AIAgent({
     return {
       id: Date.now().toString(),
       role: 'assistant',
-      content: `🤖 **O que posso fazer:**\n\n📍 **Por cidade:**\n• "expectativa em Teresina"\n• "lideranças em Picos"\n• "agendas em Paes Landim"\n• "demandas em Floriano"\n\n📊 **Geral:**\n• "projeção chapa federal"\n• "quantos deputados elegemos?"\n• "alertas críticos"\n• "territórios frios"\n• "bandeiras de campanha"\n\nDigite sua pergunta!`,
+      content: `**O que posso fazer:**\n\n**Por cidade:**\n› expectativa em Teresina\n› lideranças em Picos\n› agendas em Paes Landim\n\n**Redes Sociais:**\n› métricas do Instagram\n› quantos seguidores tenho?\n› posts mais curtidos\n› melhores posts\n› publicações por tipo\n› qual tema tem melhor performance?\n\n**Geral:**\n› projeção chapa federal\n› alertas críticos\n› territórios frios\n\nDigite sua pergunta!`,
     }
   }, [criticalAlerts, territoriosFrios, territoriosFriosCount, bandeirasCount, bandeirasPerformance, expectativa2026, presencaTerritorial])
 
@@ -869,7 +1559,7 @@ export function AIAgent({
       setChatMessages(prev => [...prev, {
         id: Date.now().toString(),
         role: 'assistant',
-        content: '❌ Desculpe, ocorreu um erro. Tente novamente.',
+        content: 'Desculpe, ocorreu um erro. Tente novamente.',
       }])
     } finally {
       setIsProcessing(false)
@@ -1069,14 +1759,15 @@ export function AIAgent({
                 {chatMessages.length === 0 && (
                   <div className="p-3 rounded-xl bg-blue-50 border border-blue-100">
                     <p className="text-sm text-blue-700">
-                      👋 Olá! Pergunte-me qualquer coisa sobre a campanha.
+                      Olá! Pergunte-me qualquer coisa sobre a campanha.
                     </p>
                     <div className="mt-3 space-y-1">
                       <p className="text-xs text-blue-600 font-medium">Exemplos:</p>
-                      <p className="text-xs text-blue-500">• "expectativa em Teresina"</p>
-                      <p className="text-xs text-blue-500">• "lideranças em Picos"</p>
-                      <p className="text-xs text-blue-500">• "agendas em Paes Landim"</p>
-                      <p className="text-xs text-blue-500">• "projeção chapa federal"</p>
+                      <p className="text-xs text-blue-500">› expectativa em Teresina</p>
+                      <p className="text-xs text-blue-500">› projeção chapa federal</p>
+                      <p className="text-xs text-blue-500">› métricas do Instagram</p>
+                      <p className="text-xs text-blue-500">› posts mais curtidos</p>
+                      <p className="text-xs text-blue-500">› evolução de seguidores</p>
                     </div>
                   </div>
                 )}

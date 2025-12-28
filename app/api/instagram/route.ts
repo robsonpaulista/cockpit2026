@@ -141,7 +141,7 @@ export async function POST(request: Request) {
 
     const mediaData = await mediaResponse.json()
 
-    // 3. Buscar insights básicos
+    // 3. Buscar insights básicos (métricas diárias)
     const basicInsightsResponse = await fetch(
       `https://graph.facebook.com/v18.0/${instagramBusinessId}/insights?metric=reach,accounts_engaged,total_interactions&period=day&access_token=${token}`
     )
@@ -149,6 +149,20 @@ export async function POST(request: Request) {
     let insightsData: any = { data: [] }
     if (basicInsightsResponse.ok) {
       insightsData = await basicInsightsResponse.json()
+    }
+
+    // 3.1 Buscar métricas de perfil (profile_views, website_clicks, impressions)
+    let profileInsightsData: any = { data: [] }
+    try {
+      const profileInsightsResponse = await fetch(
+        `https://graph.facebook.com/v18.0/${instagramBusinessId}/insights?metric=profile_views,website_clicks,impressions&period=day&access_token=${token}`
+      )
+      if (profileInsightsResponse.ok) {
+        profileInsightsData = await profileInsightsResponse.json()
+      }
+    } catch (error) {
+      // Algumas métricas podem não estar disponíveis para todas as contas
+      console.log('Métricas de perfil não disponíveis:', error)
     }
 
     // 4. Processar posts
@@ -275,8 +289,16 @@ export async function POST(request: Request) {
 
     // 5. Processar insights
     const getInsightValue = (metricName: string) => {
+      // Buscar primeiro nos insights básicos
       const dataArr = insightsData?.data ?? []
-      const insight = dataArr.find((i: any) => i.name === metricName)
+      let insight = dataArr.find((i: any) => i.name === metricName)
+      if (insight?.values?.[0]?.value !== undefined) {
+        return insight.values[0].value
+      }
+      
+      // Buscar nos insights de perfil
+      const profileDataArr = profileInsightsData?.data ?? []
+      insight = profileDataArr.find((i: any) => i.name === metricName)
       return insight?.values?.[0]?.value || 0
     }
 
@@ -388,6 +410,11 @@ export async function POST(request: Request) {
         periodStart.setDate(periodStart.getDate() - 30)
     }
 
+    // Obter métricas de perfil
+    const profileViews = getInsightValue('profile_views')
+    const websiteClicks = getInsightValue('website_clicks')
+    const impressions = getInsightValue('impressions')
+
     // Criar objeto de resposta
     const instagramMetrics: InstagramMetrics = {
       username: instagramData.username || '',
@@ -402,10 +429,10 @@ export async function POST(request: Request) {
       posts,
       insights: {
         reach: getInsightValue('reach'),
-        impressions: 0,
-        profileViews: 0,
-        websiteClicks: 0,
-        totalViews: 0,
+        impressions: impressions,
+        profileViews: profileViews,
+        websiteClicks: websiteClicks,
+        totalViews: impressions,
         totalInteractions: getInsightValue('total_interactions'),
         totalReach: getInsightValue('reach'),
         periodMetrics: {
@@ -414,8 +441,8 @@ export async function POST(request: Request) {
           newFollowers: 0,
           totalReach: getInsightValue('reach'),
           totalInteractions: getInsightValue('total_interactions'),
-          totalViews: 0,
-          linkClicks: 0,
+          totalViews: impressions,
+          linkClicks: websiteClicks,
         },
       },
       demographics,

@@ -158,6 +158,94 @@ export function clearInstagramConfig(): void {
   }
 }
 
+/**
+ * Interface para snapshot de métricas
+ */
+export interface InstagramSnapshot {
+  id: string
+  user_id: string
+  snapshot_date: string
+  followers_count: number
+  profile_views: number
+  website_clicks: number
+  reach: number
+  impressions: number
+  accounts_engaged: number
+  total_interactions: number
+  media_count: number
+  instagram_username: string
+  created_at: string
+}
+
+/**
+ * Interface para histórico de métricas
+ */
+export interface InstagramHistoryResponse {
+  history: InstagramSnapshot[]
+  summary: {
+    totalSnapshots: number
+    currentFollowers: number
+    growth: number
+    growthPercentage: number
+    totalProfileViews: number
+    periodDays: number
+  }
+}
+
+/**
+ * Salvar snapshot de métricas do Instagram
+ */
+export async function saveInstagramSnapshot(metrics: InstagramMetrics): Promise<boolean> {
+  try {
+    const response = await fetch('/api/instagram/snapshot', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        followers_count: metrics.followers.total,
+        profile_views: metrics.insights.profileViews,
+        website_clicks: metrics.insights.websiteClicks,
+        reach: metrics.insights.reach,
+        impressions: metrics.insights.impressions,
+        accounts_engaged: 0,
+        total_interactions: metrics.insights.totalInteractions,
+        media_count: metrics.posts.length,
+        instagram_username: metrics.username,
+      }),
+    })
+
+    if (!response.ok) {
+      console.error('Erro ao salvar snapshot')
+      return false
+    }
+
+    return true
+  } catch (error) {
+    console.error('Erro ao salvar snapshot:', error)
+    return false
+  }
+}
+
+/**
+ * Buscar histórico de métricas do Instagram
+ */
+export async function fetchInstagramHistory(days: number = 30): Promise<InstagramHistoryResponse | null> {
+  try {
+    const response = await fetch(`/api/instagram/snapshot?days=${days}`)
+
+    if (!response.ok) {
+      console.error('Erro ao buscar histórico')
+      return null
+    }
+
+    return await response.json()
+  } catch (error) {
+    console.error('Erro ao buscar histórico:', error)
+    return null
+  }
+}
+
 
 
 

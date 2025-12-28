@@ -130,19 +130,23 @@ export async function GET() {
     }
 
     // Agrupar por partido e calcular votos totais
-    const partidosAgrupados = new Map<string, { votos: number; votosLegenda: number }>()
+    const partidosAgrupados = new Map<string, { votos: number; votosLegenda: number; candidatos: Array<{ nome: string; votos: number }> }>()
     
     partidosData.forEach(p => {
-      const atual = partidosAgrupados.get(p.partido_nome) || { votos: 0, votosLegenda: 0 }
+      const atual = partidosAgrupados.get(p.partido_nome) || { votos: 0, votosLegenda: 0, candidatos: [] }
       atual.votos += p.candidato_votos || 0
       atual.votosLegenda = p.votos_legenda || 0
+      if (p.candidato_nome && p.candidato_votos) {
+        atual.candidatos.push({ nome: p.candidato_nome, votos: p.candidato_votos })
+      }
       partidosAgrupados.set(p.partido_nome, atual)
     })
 
     const partidos = Array.from(partidosAgrupados.entries()).map(([nome, dados]) => ({
       nome,
       votos: dados.votos,
-      votosLegenda: dados.votosLegenda
+      votosLegenda: dados.votosLegenda,
+      candidatos: dados.candidatos.sort((a, b) => b.votos - a.votos)
     }))
 
     // Calcular distribuição
@@ -152,21 +156,41 @@ export async function GET() {
     const distribuicao = calcularDistribuicaoDHondt(partidos, quociente, numVagas)
 
     // Encontrar vagas do Republicanos
-    const republicanos = distribuicao.partidosComVagas.find(
+    const republicanosPartido = partidos.find(
+      p => p.nome.toUpperCase() === 'REPUBLICANOS'
+    )
+    const republicanosDistribuicao = distribuicao.partidosComVagas.find(
       p => p.partido.toUpperCase() === 'REPUBLICANOS'
     )
 
-    const eleitosRepublicanos = republicanos?.vagasObtidas || 0
+    const eleitosRepublicanos = republicanosDistribuicao?.vagasObtidas || 0
+
+    // Preparar candidatos do Republicanos com status de eleito
+    const candidatosRepublicanos = republicanosPartido?.candidatos.map((c, index) => ({
+      nome: c.nome,
+      votos: c.votos,
+      eleito: index < eleitosRepublicanos
+    })) || []
+
+    // Votos de legenda do Republicanos
+    const votosLegendaRepublicanos = republicanosPartido?.votosLegenda || 0
 
     return NextResponse.json({
       eleitos: eleitosRepublicanos,
       partido: 'REPUBLICANOS',
       cenario: cenarioBase.nome,
       quociente,
-      distribuicao: distribuicao.partidosComVagas.map(p => ({
-        partido: p.partido,
-        vagas: p.vagasObtidas
-      }))
+      votosLegenda: votosLegendaRepublicanos,
+      candidatos: candidatosRepublicanos,
+      distribuicao: distribuicao.partidosComVagas.map(p => {
+        const partidoOriginal = partidos.find(po => po.nome === p.partido)
+        return {
+          partido: p.partido,
+          vagas: p.vagasObtidas,
+          votosLegenda: partidoOriginal?.votosLegenda || 0,
+          candidatos: partidoOriginal?.candidatos || []
+        }
+      })
     })
   } catch (error: any) {
     return NextResponse.json(
