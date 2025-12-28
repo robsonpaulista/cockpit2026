@@ -35,6 +35,7 @@ export default function Home() {
   const [territoriosFrios, setTerritoriosFrios] = useState<Array<{ cidade: string; motivo: string; expectativaVotos?: number; visitas?: number }>>([])
   const [territoriosQuentes, setTerritoriosQuentes] = useState<Array<{ cidade: string; motivo: string; expectativaVotos?: number; visitas?: number }>>([])
   const [territoriosMornos, setTerritoriosMornos] = useState<Array<{ cidade: string; motivo: string; expectativaVotos?: number; visitas?: number }>>([])
+  const [cidadesNaoVisitadasLista, setCidadesNaoVisitadasLista] = useState<Array<{ cidade: string; motivo: string; expectativaVotos?: number }>>([])
   const [territorioStats, setTerritorioStats] = useState<{
     totalCidades: number
     cidadesVisitadas: number
@@ -200,6 +201,15 @@ export default function Home() {
                 motivo: t.motivo,
                 expectativaVotos: t.expectativaVotos,
                 visitas: t.visitas,
+              })) || []
+            )
+
+            // Cidades não visitadas
+            setCidadesNaoVisitadasLista(
+              data.cidadesNaoVisitadasLista?.map((t: any) => ({
+                cidade: t.cidade,
+                motivo: t.motivo,
+                expectativaVotos: t.expectativaVotos,
               })) || []
             )
             
@@ -668,10 +678,44 @@ export default function Home() {
                         </div>
                       </div>
                     ) : (
-                      <div className="text-center py-3">
+                      <div className="text-center py-2 mb-3">
                         <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-emerald-50 text-emerald-600 rounded-full text-xs font-medium">
                           <Flame className="w-3.5 h-3.5" />
-                          Excelente! Nenhum território em estado crítico
+                          Nenhum território em estado crítico
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Cidades Não Visitadas - sempre mostrar */}
+                    {cidadesNaoVisitadasLista.length > 0 && (
+                      <div>
+                        <div className="flex items-center gap-2 mb-2">
+                          <MapPin className="w-4 h-4 text-gray-500" />
+                          <span className="text-xs font-semibold text-gray-600">Cidades Não Visitadas</span>
+                          <span className="text-[10px] text-text-muted">({cidadesNaoVisitadasLista.length})</span>
+                        </div>
+                        <div className="space-y-2">
+                          {cidadesNaoVisitadasLista.slice(0, 5).map((cidade) => (
+                            <div
+                              key={cidade.cidade}
+                              className="p-2.5 rounded-lg border border-gray-200 bg-gray-50/50 hover:bg-gray-100 transition-colors flex items-center justify-between"
+                            >
+                              <div className="flex items-center gap-2">
+                                <div className="w-6 h-6 rounded-full bg-gray-400 text-white flex items-center justify-center text-xs font-bold">
+                                  0
+                                </div>
+                                <div>
+                                  <p className="text-sm font-medium text-text-strong">{cidade.cidade}</p>
+                                  <p className="text-[10px] text-text-muted">{cidade.motivo}</p>
+                                </div>
+                              </div>
+                              {cidade.expectativaVotos && cidade.expectativaVotos > 0 && (
+                                <span className="text-xs font-semibold text-gray-600">
+                                  {cidade.expectativaVotos.toLocaleString('pt-BR')} votos
+                                </span>
+                              )}
+                            </div>
+                          ))}
                         </div>
                       </div>
                     )}

@@ -113,3 +113,4 @@ COMMENT ON COLUMN instagram_metrics_history.profile_views IS 'Número de visitas
 COMMENT ON COLUMN instagram_metrics_history.reach IS 'Alcance total (contas únicas alcançadas)';
 COMMENT ON COLUMN instagram_metrics_history.impressions IS 'Total de impressões (visualizações do conteúdo)';
 
+

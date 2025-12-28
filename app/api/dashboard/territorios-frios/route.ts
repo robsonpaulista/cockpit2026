@@ -410,6 +410,17 @@ export async function POST(request: Request) {
       .sort((a, b) => b.expectativaVotos - a.expectativaVotos)
       .slice(0, 5)
 
+    // Cidades não visitadas (0 visitas) ordenadas por expectativa de votos
+    const cidadesNaoVisitadasLista = analiseCidades
+      .filter((c) => c.visitas === 0 && c.status !== 'sem-dados')
+      .sort((a, b) => b.expectativaVotos - a.expectativaVotos)
+      .slice(0, 10)
+      .map((c) => ({
+        cidade: c.cidade,
+        expectativaVotos: c.expectativaVotos,
+        motivo: 'Ainda não visitada',
+      }))
+
     // Estatísticas gerais
     const totalCidades = analiseCidades.filter((c) => c.status !== 'sem-dados').length
     const totalVisitas = Object.values(visitasPorCidade).reduce((a, b) => a + b, 0)
@@ -421,6 +432,7 @@ export async function POST(request: Request) {
       territoriosFrios,
       territoriosQuentes,
       territoriosMornos,
+      cidadesNaoVisitadasLista,
       estatisticas: {
         totalCidades,
         cidadesVisitadas,
