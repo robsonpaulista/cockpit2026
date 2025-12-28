@@ -79,7 +79,7 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json().catch(() => ({}))
-    const { territorioConfig } = body
+    let { territorioConfig } = body
 
     // 1. Buscar expectativa de votos por cidade do Território & Base
     // Usar chave normalizada para comparação, manter nome original para exibição
@@ -87,18 +87,55 @@ export async function POST(request: Request) {
     let liderancasPorCidade: Record<string, number> = {}
     let nomeOriginalCidade: Record<string, string> = {} // Mapeia chave normalizada -> nome para exibição
 
+    // Função auxiliar para formatar a chave privada
+    const formatPrivateKey = (key: string): string => {
+      // Primeiro, substituir \\n (escape duplo) por quebra de linha real
+      let formattedKey = key.replace(/\\\\n/g, '\n')
+      // Depois, substituir \n literal por quebra de linha real
+      formattedKey = formattedKey.replace(/\\n/g, '\n')
+      return formattedKey
+    }
+
+    // Verificar se há configuração nas variáveis de ambiente
+    const envPrivateKey = process.env.GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY
+    const envEmail = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL
+    const envSpreadsheetId = process.env.GOOGLE_SHEETS_SPREADSHEET_ID
+    const envSheetName = process.env.GOOGLE_SHEETS_NAME || 'Sheet1'
+    const envRange = process.env.GOOGLE_SHEETS_RANGE
+
+    const hasEnvConfig = !!(envPrivateKey && envEmail && envSpreadsheetId)
+
+    // Se não tiver config do localStorage mas tiver do servidor, usar do servidor
+    if (!territorioConfig && hasEnvConfig) {
+      territorioConfig = {
+        spreadsheetId: envSpreadsheetId,
+        sheetName: envSheetName,
+        range: envRange,
+        credentials: {
+          type: 'service_account',
+          private_key: formatPrivateKey(envPrivateKey),
+          client_email: envEmail,
+          token_uri: 'https://oauth2.googleapis.com/token',
+        },
+      }
+    }
+
     if (territorioConfig) {
       try {
         const config = territorioConfig
         
         // Validar formato das credenciais JSON
         let credentialsObj
-        try {
-          credentialsObj = typeof config.credentials === 'string' 
-            ? JSON.parse(config.credentials) 
-            : config.credentials
-        } catch (e) {
-          throw new Error('Credenciais JSON inválidas')
+        if (typeof config.credentials === 'object') {
+          credentialsObj = config.credentials
+        } else {
+          try {
+            credentialsObj = typeof config.credentials === 'string' 
+              ? JSON.parse(config.credentials) 
+              : config.credentials
+          } catch (e) {
+            throw new Error('Credenciais JSON inválidas')
+          }
         }
 
         // Importar googleapis dinamicamente

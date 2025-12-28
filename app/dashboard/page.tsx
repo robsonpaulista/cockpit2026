@@ -162,61 +162,61 @@ export default function Home() {
     const fetchTerritorios = async () => {
       setLoadingTerritorios(true)
       try {
+        // Tentar buscar usando configuração do servidor ou localStorage
         const savedConfig = localStorage.getItem('territorio_sheets_config')
-        if (savedConfig) {
-          const config = JSON.parse(savedConfig)
-          const response = await fetch('/api/dashboard/territorios-frios', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ territorioConfig: config }),
-          })
+        const bodyPayload = savedConfig ? { territorioConfig: JSON.parse(savedConfig) } : {}
+        
+        const response = await fetch('/api/dashboard/territorios-frios', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(bodyPayload),
+        })
+        
+        if (response.ok) {
+          const data = await response.json()
           
-          if (response.ok) {
-            const data = await response.json()
-            
-            // Territórios frios
-            setTerritoriosFrios(
-              data.territoriosFrios?.map((t: any) => ({
-                cidade: t.cidade,
-                motivo: t.motivo,
-                expectativaVotos: t.expectativaVotos,
-                visitas: t.visitas,
-              })) || []
-            )
-            
-            // Territórios quentes
-            setTerritoriosQuentes(
-              data.territoriosQuentes?.map((t: any) => ({
-                cidade: t.cidade,
-                motivo: t.motivo,
-                expectativaVotos: t.expectativaVotos,
-                visitas: t.visitas,
-              })) || []
-            )
-            
-            // Territórios mornos
-            setTerritoriosMornos(
-              data.territoriosMornos?.map((t: any) => ({
-                cidade: t.cidade,
-                motivo: t.motivo,
-                expectativaVotos: t.expectativaVotos,
-                visitas: t.visitas,
-              })) || []
-            )
+          // Territórios frios
+          setTerritoriosFrios(
+            data.territoriosFrios?.map((t: any) => ({
+              cidade: t.cidade,
+              motivo: t.motivo,
+              expectativaVotos: t.expectativaVotos,
+              visitas: t.visitas,
+            })) || []
+          )
+          
+          // Territórios quentes
+          setTerritoriosQuentes(
+            data.territoriosQuentes?.map((t: any) => ({
+              cidade: t.cidade,
+              motivo: t.motivo,
+              expectativaVotos: t.expectativaVotos,
+              visitas: t.visitas,
+            })) || []
+          )
+          
+          // Territórios mornos
+          setTerritoriosMornos(
+            data.territoriosMornos?.map((t: any) => ({
+              cidade: t.cidade,
+              motivo: t.motivo,
+              expectativaVotos: t.expectativaVotos,
+              visitas: t.visitas,
+            })) || []
+          )
 
-            // Cidades não visitadas
-            setCidadesNaoVisitadasLista(
-              data.cidadesNaoVisitadasLista?.map((t: any) => ({
-                cidade: t.cidade,
-                motivo: t.motivo,
-                expectativaVotos: t.expectativaVotos,
-              })) || []
-            )
-            
-            // Estatísticas
-            if (data.estatisticas) {
-              setTerritorioStats(data.estatisticas)
-            }
+          // Cidades não visitadas
+          setCidadesNaoVisitadasLista(
+            data.cidadesNaoVisitadasLista?.map((t: any) => ({
+              cidade: t.cidade,
+              motivo: t.motivo,
+              expectativaVotos: t.expectativaVotos,
+            })) || []
+          )
+          
+          // Estatísticas
+          if (data.estatisticas) {
+            setTerritorioStats(data.estatisticas)
           }
         }
       } catch (error) {

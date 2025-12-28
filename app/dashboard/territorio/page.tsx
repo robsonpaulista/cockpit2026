@@ -34,30 +34,81 @@ export default function TerritorioPage() {
   const [filtroFaixaVotos, setFiltroFaixaVotos] = useState<string>('')
   const [showMindMap, setShowMindMap] = useState(false)
   const [candidatoPadrao, setCandidatoPadrao] = useState<string>('')
+  const [serverConfigured, setServerConfigured] = useState(false)
 
   useEffect(() => {
-    // Carregar configuração salva
-    const savedConfig = localStorage.getItem('territorio_sheets_config')
-    if (savedConfig) {
+    const initConfig = async () => {
+      // 1. Verificar se há configuração no servidor (variáveis de ambiente)
       try {
-        const parsed = JSON.parse(savedConfig)
-        setConfig(parsed)
-        fetchData(parsed)
+        const serverConfigRes = await fetch('/api/territorio/config')
+        const serverConfig = await serverConfigRes.json()
+        
+        if (serverConfig.configured) {
+          // Usar configuração do servidor
+          setServerConfigured(true)
+          fetchDataFromServer()
+          
+          // Carregar candidato padrão
+          const savedCandidato = localStorage.getItem('candidato_padrao')
+          if (savedCandidato) setCandidatoPadrao(savedCandidato)
+          return
+        }
       } catch (e) {
-        console.error('Erro ao carregar configuração:', e)
-        setLoading(false)
+        console.log('Servidor sem configuração, usando localStorage')
       }
-    } else {
-      setLoading(false)
-      setShowConfig(true) // Mostrar modal se não houver configuração
+
+      // 2. Fallback: Verificar localStorage
+      const savedConfig = localStorage.getItem('territorio_sheets_config')
+      if (savedConfig) {
+        try {
+          const parsed = JSON.parse(savedConfig)
+          setConfig(parsed)
+          fetchData(parsed)
+        } catch (e) {
+          console.error('Erro ao carregar configuração:', e)
+          setLoading(false)
+        }
+      } else {
+        setLoading(false)
+        setShowConfig(true) // Mostrar modal se não houver configuração
+      }
+
+      // Carregar candidato padrão do localStorage
+      const savedCandidato = localStorage.getItem('candidato_padrao')
+      if (savedCandidato) {
+        setCandidatoPadrao(savedCandidato)
+      }
     }
 
-    // Carregar candidato padrão do localStorage
-    const savedCandidato = localStorage.getItem('candidato_padrao')
-    if (savedCandidato) {
-      setCandidatoPadrao(savedCandidato)
-    }
+    initConfig()
   }, [])
+
+  // Buscar dados usando configuração do servidor
+  const fetchDataFromServer = async () => {
+    setLoading(true)
+    setError(null)
+
+    try {
+      const response = await fetch('/api/territorio/google-sheets', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({}), // Servidor usa variáveis de ambiente
+      })
+
+      const data = await response.json()
+
+      if (response.ok) {
+        setLiderancas(data.records || [])
+        setHeaders(data.headers || [])
+      } else {
+        setError(data.error || 'Erro ao buscar dados')
+      }
+    } catch (err: any) {
+      setError(err.message || 'Erro ao conectar com Google Sheets')
+    } finally {
+      setLoading(false)
+    }
+  }
 
   const fetchData = async (sheetsConfig: SheetsConfig) => {
     setLoading(true)

@@ -1,33 +1,68 @@
 import { NextResponse } from 'next/server'
 import { google } from 'googleapis'
 
+// Função auxiliar para formatar a chave privada
+function formatPrivateKey(key: string): string {
+  // Primeiro, substituir \\n (escape duplo) por quebra de linha real
+  let formattedKey = key.replace(/\\\\n/g, '\n')
+  // Depois, substituir \n literal por quebra de linha real
+  formattedKey = formattedKey.replace(/\\n/g, '\n')
+  return formattedKey
+}
+
+// Função auxiliar para obter credenciais (prioriza variáveis de ambiente)
+function getCredentials(bodyCredentials?: string) {
+  // Prioridade 1: Variáveis de ambiente
+  const envPrivateKey = process.env.GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY
+  const envEmail = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL
+
+  if (envPrivateKey && envEmail) {
+    return {
+      type: 'service_account',
+      private_key: formatPrivateKey(envPrivateKey),
+      client_email: envEmail,
+      token_uri: 'https://oauth2.googleapis.com/token',
+    }
+  }
+
+  // Prioridade 2: Credenciais do corpo da requisição
+  if (bodyCredentials) {
+    try {
+      return typeof bodyCredentials === 'string' ? JSON.parse(bodyCredentials) : bodyCredentials
+    } catch {
+      return null
+    }
+  }
+
+  return null
+}
+
+// Função auxiliar para obter configuração da planilha
+function getSheetConfig(body: any) {
+  return {
+    spreadsheetId: body.spreadsheetId || process.env.GOOGLE_SHEETS_SPREADSHEET_ID,
+    sheetName: body.sheetName || process.env.GOOGLE_SHEETS_NAME || 'Sheet1',
+    range: body.range || process.env.GOOGLE_SHEETS_RANGE,
+  }
+}
+
 // Função para buscar dados do Google Sheets usando Service Account
 export async function POST(request: Request) {
   try {
     const body = await request.json()
-    const { spreadsheetId, sheetName, range, serviceAccountEmail, credentials } = body
+    const { spreadsheetId, sheetName, range } = getSheetConfig(body)
+    const credentialsObj = getCredentials(body.credentials)
 
     if (!spreadsheetId || !sheetName) {
       return NextResponse.json(
-        { error: 'spreadsheet_id e sheet_name são obrigatórios' },
+        { error: 'spreadsheet_id e sheet_name são obrigatórios. Configure nas variáveis de ambiente ou envie no corpo da requisição.' },
         { status: 400 }
       )
     }
 
-    if (!serviceAccountEmail || !credentials) {
+    if (!credentialsObj) {
       return NextResponse.json(
-        { error: 'Email do Service Account e credenciais são obrigatórios' },
-        { status: 400 }
-      )
-    }
-
-    // Validar formato das credenciais JSON
-    let credentialsObj
-    try {
-      credentialsObj = typeof credentials === 'string' ? JSON.parse(credentials) : credentials
-    } catch (e) {
-      return NextResponse.json(
-        { error: 'Credenciais JSON inválidas' },
+        { error: 'Credenciais não encontradas. Configure GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY e GOOGLE_SERVICE_ACCOUNT_EMAIL nas variáveis de ambiente.' },
         { status: 400 }
       )
     }
