@@ -378,7 +378,7 @@ export function PollModal({ poll, onClose, onUpdate }: PollModalProps) {
                 type="number"
                 min="0"
                 max="100"
-                step="0.1"
+                step="0.01"
                 value={formData.intencao}
                 onChange={(e) => setFormData({ ...formData, intencao: parseFloat(e.target.value) || 0 })}
                 required
@@ -394,7 +394,7 @@ export function PollModal({ poll, onClose, onUpdate }: PollModalProps) {
                 type="number"
                 min="0"
                 max="100"
-                step="0.1"
+                step="0.01"
                 value={formData.rejeicao}
                 onChange={(e) => setFormData({ ...formData, rejeicao: parseFloat(e.target.value) || 0 })}
                 required

@@ -441,9 +441,15 @@ export default function TerritorioPage() {
         {/* Botão de Configuração */}
         <div className="mb-6 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            {config && (
+            {(config || serverConfigured) && (
               <button
-                onClick={() => fetchData(config)}
+                onClick={() => {
+                  if (serverConfigured) {
+                    fetchDataFromServer()
+                  } else if (config) {
+                    fetchData(config)
+                  }
+                }}
                 disabled={loading}
                 className="px-4 py-2 text-sm font-medium border border-border rounded-lg hover:bg-background transition-colors disabled:opacity-50 flex items-center gap-2"
               >
@@ -457,7 +463,7 @@ export default function TerritorioPage() {
             className="px-4 py-2 text-sm font-medium bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors flex items-center gap-2"
           >
             <Settings className="w-4 h-4" />
-            {config ? 'Configurar Planilha' : 'Conectar Planilha'}
+            {(config || serverConfigured) ? 'Configurar Planilha' : 'Conectar Planilha'}
           </button>
         </div>
 
@@ -472,17 +478,19 @@ export default function TerritorioPage() {
           </div>
         )}
 
-        {/* KPIs */}
-        <section className="mb-8">
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            {kpis.map((kpi) => (
-              <KPICard key={kpi.id} kpi={kpi} />
-            ))}
-          </div>
-        </section>
+        {/* KPIs - Só mostrar se houver configuração e dados */}
+        {(config || serverConfigured) && liderancas.length > 0 && (
+          <section className="mb-8">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              {kpis.map((kpi) => (
+                <KPICard key={kpi.id} kpi={kpi} />
+              ))}
+            </div>
+          </section>
+        )}
 
         {/* Filtros */}
-        {config && liderancas.length > 0 && (
+        {(config || serverConfigured) && liderancas.length > 0 && (
           <div className="mb-6 bg-surface rounded-2xl border border-border p-4">
             <h3 className="text-sm font-semibold text-text-strong mb-4">Filtros</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -577,9 +585,9 @@ export default function TerritorioPage() {
           <div className="flex items-center justify-between mb-6">
             <div>
               <h2 className="text-lg font-semibold text-text-strong">
-                {config ? 'Lideranças Atuais' : 'Lideranças'}
+                {(config || serverConfigured) ? 'Lideranças Atuais' : 'Lideranças'}
               </h2>
-              {config && (liderancaAtualCol || expectativaVotosCol) && (
+              {(config || serverConfigured) && (liderancaAtualCol || expectativaVotosCol) && (
                 <p className="text-xs text-text-muted mt-1">
                   Mostrando lideranças com "Liderança Atual?" = SIM ou com "Expectativa de Votos 2026"
                 </p>
@@ -587,7 +595,7 @@ export default function TerritorioPage() {
             </div>
             <div className="flex items-center gap-2">
               {/* Botão Mapa Mental */}
-              {config && liderancasFiltradas.length > 0 && (
+              {(config || serverConfigured) && liderancasFiltradas.length > 0 && (
                 <button
                   onClick={() => setShowMindMap(true)}
                   className="px-3 py-2 text-sm font-medium bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors flex items-center gap-2"
@@ -597,7 +605,7 @@ export default function TerritorioPage() {
                   Mapa Mental
                 </button>
               )}
-              {config && liderancasFiltradas.length > 0 && (() => {
+              {(config || serverConfigured) && liderancasFiltradas.length > 0 && (() => {
                 // Contar cidades únicas
                 const cidadesUnicas = new Set(liderancasFiltradas.map(l => l[cidadeCol] || 'Sem cidade')).size
                 const todasExpandidas = expandedCities.size === cidadesUnicas && cidadesUnicas > 0
@@ -630,7 +638,7 @@ export default function TerritorioPage() {
                   </button>
                 )
               })()}
-              {config && (
+              {(config || serverConfigured) && (
                 <div className="text-right">
                   <span className="text-sm font-semibold text-text-strong block">
                     {liderancasFiltradas.length}
@@ -649,7 +657,7 @@ export default function TerritorioPage() {
                 <div key={i} className="h-20 bg-background rounded-xl animate-pulse" />
               ))}
             </div>
-          ) : !config ? (
+          ) : !(config || serverConfigured) ? (
             <div className="text-center py-12">
               <Users className="w-12 h-12 text-text-muted mx-auto mb-4" />
               <p className="text-text-muted mb-4">
@@ -785,9 +793,17 @@ export default function TerritorioPage() {
                       </button>
 
                       {/* Lista de Lideranças da Cidade */}
-                      {isExpanded && (
-                        <div className="border-t border-border bg-surface">
-                          {liderancasCidade.map((lider: Lideranca, idx: number) => {
+                      {isExpanded && (() => {
+                        // Ordenar lideranças por expectativa de votos (decrescente)
+                        const liderancasOrdenadas = [...liderancasCidade].sort((a, b) => {
+                          const expectativaA = expectativaVotosCol ? normalizeNumber(a[expectativaVotosCol]) : 0
+                          const expectativaB = expectativaVotosCol ? normalizeNumber(b[expectativaVotosCol]) : 0
+                          return expectativaB - expectativaA
+                        })
+
+                        return (
+                          <div className="border-t border-border bg-surface">
+                            {liderancasOrdenadas.map((lider: Lideranca, idx: number) => {
                             const numValue = expectativaVotosCol && lider[expectativaVotosCol]
                               ? normalizeNumber(lider[expectativaVotosCol])
                               : 0
@@ -892,8 +908,9 @@ export default function TerritorioPage() {
                               </div>
                             )
                           })}
-                        </div>
-                      )}
+                          </div>
+                        )
+                      })()}
                     </div>
                   )
                 })}

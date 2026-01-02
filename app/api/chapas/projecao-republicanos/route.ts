@@ -1,83 +1,60 @@
 import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
 
-// Função para calcular vagas diretas
-function calcularVagasDiretas(votos: number, quociente: number): number {
-  if (quociente <= 0) return 0
-  return Math.floor(votos / quociente)
-}
-
-// Função para calcular o quociente mínimo (80% do quociente eleitoral)
-function getQuocienteMinimo(quociente: number): number {
-  return quociente * 0.8
-}
-
-// Função para verificar se partido atingiu o mínimo
-function partidoAtingiuMinimo(votos: number, quociente: number): boolean {
-  return votos >= getQuocienteMinimo(quociente)
+interface PartidoCenario {
+  nome: string
+  votosTotal: number
+  vagasObtidas: number
 }
 
 // Função para calcular distribuição D'Hondt
 function calcularDistribuicaoDHondt(
-  partidos: Array<{ nome: string; votos: number; votosLegenda: number }>,
+  partidos: Array<{ nome: string; votosTotal: number; atingiuMinimo: boolean }>,
   quociente: number,
   numVagas: number
 ) {
-  // Calcular vagas diretas para cada partido
-  const partidosComVagas = partidos.map(partido => {
-    const votosPartido = partido.votos + (partido.votosLegenda || 0)
-    const vagasDiretas = calcularVagasDiretas(votosPartido, quociente)
-    const atingiuMinimo = partidoAtingiuMinimo(votosPartido, quociente)
-    
+  const partidosElegiveis = partidos.filter(p => p.atingiuMinimo)
+  
+  const partidosComVagas: PartidoCenario[] = partidosElegiveis.map(partido => {
+    const vagasDiretas = Math.floor(partido.votosTotal / quociente)
     return {
-      partido: partido.nome,
-      votos: votosPartido,
-      vagasDiretas,
-      vagasObtidas: vagasDiretas,
-      atingiuMinimo
+      nome: partido.nome,
+      votosTotal: partido.votosTotal,
+      vagasObtidas: vagasDiretas
     }
   })
-
-  // Total de vagas diretas distribuídas
-  const vagasDistribuidas = partidosComVagas.reduce((acc, p) => acc + p.vagasDiretas, 0)
+  
+  const vagasDistribuidas = partidosComVagas.reduce((total, p) => total + p.vagasObtidas, 0)
   const vagasRestantes = numVagas - vagasDistribuidas
-
-  // Distribuição de sobras usando método D'Hondt
-  if (vagasRestantes > 0) {
-    const partidosElegiveis = partidosComVagas.filter(p => p.atingiuMinimo)
+  
+  // Distribuir vagas restantes pelo método D'Hondt
+  for (let i = 0; i < vagasRestantes; i++) {
+    const quocientesPartidarios = partidosComVagas.map(p => ({
+      nome: p.nome,
+      quocientePartidario: p.votosTotal / (p.vagasObtidas + 1)
+    }))
     
-    for (let i = 0; i < vagasRestantes; i++) {
-      let melhorPartido = null
-      let melhorQuociente = 0
-
-      for (const partido of partidosElegiveis) {
-        const divisor = partido.vagasObtidas + 1
-        const quocientePartido = partido.votos / divisor
-
-        if (quocientePartido > melhorQuociente) {
-          melhorQuociente = quocientePartido
-          melhorPartido = partido
-        }
+    quocientesPartidarios.sort((a, b) => b.quocientePartidario - a.quocientePartidario)
+    
+    const ganhador = quocientesPartidarios[0]
+    if (ganhador && ganhador.nome) {
+      const partidoGanhador = partidosComVagas.find(p => p.nome === ganhador.nome)
+      if (partidoGanhador) {
+        partidoGanhador.vagasObtidas++
       }
-
-      if (melhorPartido) {
-        melhorPartido.vagasObtidas++
-      }
+    } else {
+      break
     }
   }
-
-  return {
-    partidosComVagas,
-    vagasDistribuidas,
-    vagasRestantes,
-    totalVagas: numVagas
-  }
+  
+  return partidosComVagas
 }
 
 export async function GET() {
   try {
     const supabase = createClient()
 
+    // Verificar autenticação
     const {
       data: { user },
     } = await supabase.auth.getUser()
@@ -86,121 +63,120 @@ export async function GET() {
       return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
     }
 
-    // Buscar cenário base
-    const { data: cenarioBase, error: cenarioError } = await supabase
+    // Buscar cenário ativo
+    const { data: cenarioAtivo, error: cenarioError } = await supabase
       .from('chapas_cenarios')
       .select('id, nome, quociente_eleitoral')
       .eq('user_id', user.id)
-      .eq('tipo', 'base')
+      .eq('ativo', true)
+      .limit(1)
       .single()
 
-    if (cenarioError || !cenarioBase) {
-      // Se não existe cenário base, retornar 0
-      return NextResponse.json({
-        eleitos: 0,
-        partido: 'REPUBLICANOS',
-        cenario: null,
-        message: 'Cenário base não encontrado'
-      })
+    // Se não há cenário ativo, buscar o base
+    let cenarioId = 'base'
+    let quociente = 190000
+    let cenarioNome = 'Cenário Base'
+
+    if (!cenarioError && cenarioAtivo) {
+      cenarioId = cenarioAtivo.id
+      quociente = cenarioAtivo.quociente_eleitoral || 190000
+      cenarioNome = cenarioAtivo.nome
+    } else {
+      // Tentar buscar o cenário base
+      const { data: cenarioBase } = await supabase
+        .from('chapas_cenarios')
+        .select('id, nome, quociente_eleitoral')
+        .eq('user_id', user.id)
+        .eq('id', 'base')
+        .single()
+
+      if (cenarioBase) {
+        quociente = cenarioBase.quociente_eleitoral || 190000
+        cenarioNome = cenarioBase.nome
+      }
     }
 
-    // Buscar partidos do cenário base
+    // Buscar partidos do cenário
     const { data: partidosData, error: partidosError } = await supabase
       .from('chapas_partidos')
-      .select('partido_nome, candidato_nome, candidato_votos, votos_legenda')
+      .select('partido_nome, votos_legenda, candidato_nome, candidato_votos')
       .eq('user_id', user.id)
-      .eq('cenario_id', cenarioBase.id)
+      .eq('cenario_id', cenarioId)
 
     if (partidosError) {
-      return NextResponse.json({
-        eleitos: 0,
-        partido: 'REPUBLICANOS',
-        cenario: cenarioBase.nome,
-        error: partidosError.message
-      })
+      console.error('Erro ao buscar partidos:', partidosError)
+      return NextResponse.json(
+        { message: 'Cenário base não configurado. Acesse a página Chapas para configurar.' },
+        { status: 200 }
+      )
     }
 
     if (!partidosData || partidosData.length === 0) {
-      return NextResponse.json({
-        eleitos: 0,
-        partido: 'REPUBLICANOS',
-        cenario: cenarioBase.nome,
-        message: 'Nenhum partido encontrado no cenário base'
-      })
+      return NextResponse.json(
+        { message: 'Cenário base não configurado. Acesse a página Chapas para configurar.' },
+        { status: 200 }
+      )
     }
 
     // Agrupar por partido e calcular votos totais
-    const partidosAgrupados = new Map<string, { votos: number; votosLegenda: number; candidatos: Array<{ nome: string; votos: number }> }>()
-    
-    partidosData.forEach(p => {
-      const atual = partidosAgrupados.get(p.partido_nome) || { votos: 0, votosLegenda: 0, candidatos: [] }
-      atual.votos += p.candidato_votos || 0
-      atual.votosLegenda = p.votos_legenda || 0
-      if (p.candidato_nome && p.candidato_votos) {
-        atual.candidatos.push({ nome: p.candidato_nome, votos: p.candidato_votos })
+    const partidosMap: { [key: string]: { votosLegenda: number; votosCandidatos: number } } = {}
+
+    partidosData.forEach(item => {
+      if (!partidosMap[item.partido_nome]) {
+        partidosMap[item.partido_nome] = {
+          votosLegenda: item.votos_legenda || 0,
+          votosCandidatos: 0
+        }
       }
-      partidosAgrupados.set(p.partido_nome, atual)
+      
+      // Ignorar linhas de legenda (já contabilizadas em votos_legenda)
+      if (item.candidato_nome !== 'LEGENDA' && item.candidato_nome !== 'VOTOS LEGENDA') {
+        partidosMap[item.partido_nome].votosCandidatos += item.candidato_votos || 0
+      }
     })
 
-    const partidos = Array.from(partidosAgrupados.entries()).map(([nome, dados]) => ({
-      nome,
-      votos: dados.votos,
-      votosLegenda: dados.votosLegenda,
-      candidatos: dados.candidatos.sort((a, b) => b.votos - a.votos)
-    }))
+    // Calcular votos totais por partido
+    const partidosComVotos = Object.entries(partidosMap).map(([nome, dados]) => {
+      const votosTotal = dados.votosCandidatos + dados.votosLegenda
+      const quocienteMinimo = quociente * 0.8
+      const atingiuMinimo = votosTotal >= quocienteMinimo
+      
+      return {
+        nome,
+        votosTotal,
+        atingiuMinimo
+      }
+    })
 
-    // Calcular distribuição
-    const quociente = cenarioBase.quociente_eleitoral || 190000
-    const numVagas = 10 // Número de vagas padrão
-    
-    const distribuicao = calcularDistribuicaoDHondt(partidos, quociente, numVagas)
+    // Calcular distribuição D'Hondt (assumindo 10 vagas, pode ser parametrizado depois)
+    const numVagas = 10
+    const distribuicao = calcularDistribuicaoDHondt(partidosComVotos, quociente, numVagas)
 
-    // Encontrar vagas do Republicanos
-    const republicanosPartido = partidos.find(
-      p => p.nome.toUpperCase() === 'REPUBLICANOS'
-    )
-    const republicanosDistribuicao = distribuicao.partidosComVagas.find(
-      p => p.partido.toUpperCase() === 'REPUBLICANOS'
-    )
+    // Encontrar o partido REPUBLICANOS
+    const republicanos = distribuicao.find(p => p.nome === 'REPUBLICANOS')
 
-    const eleitosRepublicanos = republicanosDistribuicao?.vagasObtidas || 0
-
-    // Preparar candidatos do Republicanos com status de eleito
-    const candidatosRepublicanos = republicanosPartido?.candidatos.map((c, index) => ({
-      nome: c.nome,
-      votos: c.votos,
-      eleito: index < eleitosRepublicanos
-    })) || []
-
-    // Votos de legenda do Republicanos
-    const votosLegendaRepublicanos = republicanosPartido?.votosLegenda || 0
+    if (!republicanos) {
+      return NextResponse.json({
+        partido: 'REPUBLICANOS',
+        eleitos: 0,
+        cenario: cenarioNome,
+        quociente,
+        message: 'Partido REPUBLICANOS não encontrado no cenário.'
+      })
+    }
 
     return NextResponse.json({
-      eleitos: eleitosRepublicanos,
       partido: 'REPUBLICANOS',
-      cenario: cenarioBase.nome,
-      quociente,
-      votosLegenda: votosLegendaRepublicanos,
-      candidatos: candidatosRepublicanos,
-      distribuicao: distribuicao.partidosComVagas.map(p => {
-        const partidoOriginal = partidos.find(po => po.nome === p.partido)
-        return {
-          partido: p.partido,
-          vagas: p.vagasObtidas,
-          votosLegenda: partidoOriginal?.votosLegenda || 0,
-          candidatos: partidoOriginal?.candidatos || []
-        }
-      })
+      eleitos: republicanos.vagasObtidas,
+      cenario: cenarioNome,
+      quociente
     })
-  } catch (error: any) {
+  } catch (error: unknown) {
+    console.error('Erro ao calcular projeção:', error)
+    const errorMessage = error instanceof Error ? error.message : 'Erro interno do servidor'
     return NextResponse.json(
-      { error: 'Erro interno do servidor', eleitos: 0 },
+      { error: errorMessage },
       { status: 500 }
     )
   }
 }
-
-
-
-
-
