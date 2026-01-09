@@ -133,10 +133,19 @@ export function saveInstagramConfig(token: string, businessAccountId: string): v
   }
 }
 
+// Credenciais padrão do .env.local (fallback)
+const DEFAULT_INSTAGRAM_CONFIG = {
+  token: process.env.NEXT_PUBLIC_INSTAGRAM_TOKEN || 'EAAH0ZCYS7AIoBPHat72ae03bCYeaOwPqRNPX1Cpgjbm3R6a47q2tNPK1tygbmb2YiPVvGIqzaronYi5ZClJUSoDlYP8zmmFbB0ZAna8L6ZChbgSEaoBjZA5EOXbT0eb0L4y5fFMZBKsoIOPgWLh83h2VGLdfqMjrdhlbZBYqKxGHHfdizveZAiJCY9Vf4WRr',
+  businessAccountId: process.env.NEXT_PUBLIC_INSTAGRAM_BUSINESS_ID || '104597578951001'
+}
+
 /**
  * Carregar configurações do Instagram do localStorage
+ * Sempre retorna credenciais (localStorage ou padrão)
+ * Nunca retorna null para evitar mostrar modal automaticamente
+ * Igual ao comportamento do projeto mutirao_catarata
  */
-export function loadInstagramConfig(): { token: string; businessAccountId: string } | null {
+export function loadInstagramConfig(): { token: string; businessAccountId: string } {
   if (typeof window !== 'undefined') {
     const token = localStorage.getItem('instagramToken')
     const businessAccountId = localStorage.getItem('instagramBusinessAccountId')
@@ -144,8 +153,32 @@ export function loadInstagramConfig(): { token: string; businessAccountId: strin
     if (token && businessAccountId) {
       return { token, businessAccountId }
     }
+    
+    // Se não houver no localStorage, usar credenciais padrão e salvar automaticamente
+    // Isso evita mostrar modal automaticamente - igual ao outro projeto
+    const defaultConfig = {
+      token: DEFAULT_INSTAGRAM_CONFIG.token,
+      businessAccountId: DEFAULT_INSTAGRAM_CONFIG.businessAccountId
+    }
+    
+    // Salvar automaticamente no localStorage para próxima vez
+    // Só salvar se as credenciais forem válidas (não são placeholders)
+    if (defaultConfig.token && defaultConfig.businessAccountId && 
+        defaultConfig.token !== 'EAAH...' && 
+        defaultConfig.token.length > 20 && // Token real tem mais de 20 caracteres
+        defaultConfig.businessAccountId !== '123456789' &&
+        defaultConfig.businessAccountId.length > 5) { // Business ID real tem mais de 5 caracteres
+      saveInstagramConfig(defaultConfig.token, defaultConfig.businessAccountId)
+    }
+    
+    return defaultConfig
   }
-  return null
+  
+  // Fallback para SSR
+  return {
+    token: DEFAULT_INSTAGRAM_CONFIG.token,
+    businessAccountId: DEFAULT_INSTAGRAM_CONFIG.businessAccountId
+  }
 }
 
 /**

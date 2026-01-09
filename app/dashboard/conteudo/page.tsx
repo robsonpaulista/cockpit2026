@@ -353,27 +353,24 @@ export default function ConteudoPage() {
 
   // Carregar configuração ao montar
   useEffect(() => {
+    // loadInstagramConfig sempre retorna credenciais (localStorage ou padrão)
+    // Nunca retorna null, então sempre temos credenciais disponíveis
     const savedConfig = loadInstagramConfig()
-    if (savedConfig) {
-      // Sempre definir como configurado se houver credenciais salvas
-      setConfig(savedConfig)
-      setIsConfigured(true)
-      setShowConfig(false) // Garantir que modal não está aberto
-      
-      // Tentar carregar dados silenciosamente sem mostrar modal
-      fetchData(savedConfig).catch((err) => {
-        // Se houver erro, verificar se é erro de token expirado
-        // Se for erro temporário, não limpar credenciais nem mostrar modal
-        console.error('Erro ao carregar dados do Instagram:', err)
-        // Não limpar credenciais nem mostrar modal automaticamente
-        // O usuário pode clicar em "Atualizar" para tentar novamente
-        // Ou clicar em "Configurar" se quiser atualizar as credenciais
-      })
-    } else {
-      // Só mostrar como não configurado se realmente não houver credenciais
-      setIsConfigured(false)
-    }
-    // NUNCA mostrar modal automaticamente - só se o usuário clicar em "Configurar"
+    
+    // Sempre definir como configurado (igual ao projeto mutirao_catarata)
+    setConfig(savedConfig)
+    setIsConfigured(true)
+    setShowConfig(false) // NUNCA mostrar modal automaticamente
+    
+    // Tentar carregar dados silenciosamente sem mostrar modal
+    fetchData(savedConfig).catch((err) => {
+      // Se houver erro, não limpar credenciais nem mostrar modal
+      // O usuário pode clicar em "Atualizar" para tentar novamente
+      // Ou clicar em "Configurar" se quiser atualizar as credenciais
+      console.error('Erro ao carregar dados do Instagram:', err)
+    })
+    
+    // NUNCA mostrar modal automaticamente - só se o usuário clicar em "Configurar" ou "Desconectar"
   }, [])
 
   // Função para buscar histórico de métricas
@@ -443,6 +440,7 @@ export default function ConteudoPage() {
     setConfig(null)
     setIsConfigured(false)
     setMetrics(null)
+    // Só mostrar modal quando usuário explicitamente desconectar
     setShowConfig(true)
   }
 
@@ -629,14 +627,23 @@ export default function ConteudoPage() {
         <div className="mb-6 flex items-center justify-between">
           <div className="flex items-center gap-2">
             {config && (
-              <button
-                onClick={handleRefresh}
-                disabled={loading}
-                className="px-4 py-2 text-sm font-medium border border-border rounded-lg hover:bg-background transition-colors disabled:opacity-50 flex items-center gap-2"
-              >
-                <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-                Atualizar
-              </button>
+              <>
+                <button
+                  onClick={handleRefresh}
+                  disabled={loading}
+                  className="px-4 py-2 text-sm font-medium border border-border rounded-lg hover:bg-background transition-colors disabled:opacity-50 flex items-center gap-2"
+                >
+                  <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+                  Atualizar
+                </button>
+                <button
+                  onClick={handleDisconnect}
+                  className="px-4 py-2 text-sm font-medium border border-status-error/30 text-status-error rounded-lg hover:bg-status-error/10 transition-colors flex items-center gap-2"
+                >
+                  <X className="w-4 h-4" />
+                  Desconectar
+                </button>
+              </>
             )}
           </div>
           <button
