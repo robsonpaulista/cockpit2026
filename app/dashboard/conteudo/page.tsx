@@ -355,12 +355,25 @@ export default function ConteudoPage() {
   useEffect(() => {
     const savedConfig = loadInstagramConfig()
     if (savedConfig) {
+      // Sempre definir como configurado se houver credenciais salvas
       setConfig(savedConfig)
       setIsConfigured(true)
-      fetchData(savedConfig)
+      setShowConfig(false) // Garantir que modal não está aberto
+      
+      // Tentar carregar dados silenciosamente sem mostrar modal
+      fetchData(savedConfig).catch((err) => {
+        // Se houver erro, verificar se é erro de token expirado
+        // Se for erro temporário, não limpar credenciais nem mostrar modal
+        console.error('Erro ao carregar dados do Instagram:', err)
+        // Não limpar credenciais nem mostrar modal automaticamente
+        // O usuário pode clicar em "Atualizar" para tentar novamente
+        // Ou clicar em "Configurar" se quiser atualizar as credenciais
+      })
     } else {
-      setShowConfig(true)
+      // Só mostrar como não configurado se realmente não houver credenciais
+      setIsConfigured(false)
     }
+    // NUNCA mostrar modal automaticamente - só se o usuário clicar em "Configurar"
   }, [])
 
   // Função para buscar histórico de métricas
@@ -393,6 +406,7 @@ export default function ConteudoPage() {
       if (data) {
         setMetrics(data)
         setIsConfigured(true)
+        setShowConfig(false) // Garantir que o modal não está aberto
         
         // Salvar snapshot diário automaticamente
         await saveInstagramSnapshot(data)
@@ -403,7 +417,12 @@ export default function ConteudoPage() {
         setError('Erro ao buscar dados do Instagram')
       }
     } catch (err: any) {
-      setError(err.message || 'Erro ao conectar com Instagram')
+      const errorMessage = err.message || 'Erro ao conectar com Instagram'
+      setError(errorMessage)
+      
+      // Não limpar credenciais automaticamente em caso de erro
+      // Apenas mostrar erro, mas manter credenciais salvas
+      // O usuário pode tentar novamente ou atualizar as credenciais manualmente
     } finally {
       setLoading(false)
     }
@@ -2010,7 +2029,18 @@ export default function ConteudoPage() {
       {/* Modal de Configuração do Instagram */}
       {showConfig && (
         <InstagramConfigModal
-          onClose={() => setShowConfig(false)}
+          onClose={() => {
+            setShowConfig(false)
+            // Não limpar credenciais ao fechar - manter as que estão salvas
+            // Se não houver config salva, tentar carregar novamente
+            if (!config) {
+              const savedConfig = loadInstagramConfig()
+              if (savedConfig) {
+                setConfig(savedConfig)
+                setIsConfigured(true)
+              }
+            }
+          }}
           onSave={handleSaveConfig}
           currentConfig={config || undefined}
         />

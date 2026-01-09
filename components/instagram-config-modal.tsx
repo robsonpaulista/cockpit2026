@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { X, Save, ExternalLink, Info, Loader2 } from 'lucide-react'
 import { validateInstagramToken } from '@/lib/instagramApi'
 
@@ -18,13 +18,38 @@ export function InstagramConfigModal({
   onSave,
   currentConfig,
 }: InstagramConfigModalProps) {
+  // Carregar credenciais do localStorage se não vierem via props
+  const loadSavedConfig = () => {
+    if (typeof window !== 'undefined') {
+      const savedToken = localStorage.getItem('instagramToken')
+      const savedBusinessId = localStorage.getItem('instagramBusinessAccountId')
+      if (savedToken && savedBusinessId) {
+        return { token: savedToken, businessAccountId: savedBusinessId }
+      }
+    }
+    return null
+  }
+
+  const savedConfig = currentConfig || loadSavedConfig()
+  
   const [formData, setFormData] = useState({
-    token: currentConfig?.token || '',
-    businessAccountId: currentConfig?.businessAccountId || '',
+    token: savedConfig?.token || '',
+    businessAccountId: savedConfig?.businessAccountId || '',
   })
   const [showToken, setShowToken] = useState(false)
   const [validating, setValidating] = useState(false)
   const [validationResult, setValidationResult] = useState<{ success: boolean; message: string } | null>(null)
+
+  // Atualizar formData quando currentConfig mudar ou quando modal for aberto
+  useEffect(() => {
+    const updatedConfig = currentConfig || loadSavedConfig()
+    if (updatedConfig) {
+      setFormData({
+        token: updatedConfig.token || '',
+        businessAccountId: updatedConfig.businessAccountId || '',
+      })
+    }
+  }, [currentConfig])
 
   const handleValidate = async () => {
     if (!formData.token || !formData.businessAccountId) {
@@ -214,6 +239,9 @@ export function InstagramConfigModal({
     </div>
   )
 }
+
+
+
 
 
 
