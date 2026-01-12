@@ -47,6 +47,7 @@ export function EditNewsModal({ news, onClose, onUpdate }: EditNewsModalProps) {
     sentiment: '',
     risk_level: '',
     theme: '',
+    notes: '',
   })
   const [customTheme, setCustomTheme] = useState('')
   const [submitting, setSubmitting] = useState(false)
@@ -57,6 +58,7 @@ export function EditNewsModal({ news, onClose, onUpdate }: EditNewsModalProps) {
         sentiment: news.sentiment || '',
         risk_level: news.risk_level || '',
         theme: news.theme || '',
+        notes: news.notes || '',
       })
       // Se o tema não está na lista comum, colocar em customTheme
       if (news.theme && !commonThemes.includes(news.theme)) {
@@ -83,6 +85,8 @@ export function EditNewsModal({ news, onClose, onUpdate }: EditNewsModalProps) {
           sentiment: formData.sentiment || null,
           risk_level: formData.risk_level || null,
           theme: themeToSave || null,
+          reviewed: true, // Marcar como revisado quando salvar classificação manual
+          notes: formData.notes || null,
         }),
       })
 
@@ -212,6 +216,20 @@ export function EditNewsModal({ news, onClose, onUpdate }: EditNewsModalProps) {
                 className="w-full mt-2 px-4 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-soft bg-surface"
               />
             )}
+          </div>
+
+          {/* Notas */}
+          <div>
+            <label className="block text-sm font-medium text-text-strong mb-2">
+              Notas (Opcional)
+            </label>
+            <textarea
+              value={formData.notes}
+              onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+              placeholder="Adicione notas sobre esta notícia (contexto, observações, etc.)"
+              rows={3}
+              className="w-full px-4 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-soft bg-surface resize-none"
+            />
           </div>
 
           {/* Botões */}

@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
+import { logError } from '@/lib/logger'
 import { google } from 'googleapis'
 
 const demandSchema = z.object({
@@ -159,6 +160,8 @@ async function fetchDemandsFromSheets() {
 }
 
 export async function GET(request: Request) {
+  let userId: string | undefined
+
   try {
     const supabase = createClient()
 
@@ -169,6 +172,8 @@ export async function GET(request: Request) {
     if (!user) {
       return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
     }
+
+    userId = user.id
 
     const { searchParams } = new URL(request.url)
     const status = searchParams.get('status')
@@ -224,6 +229,10 @@ export async function GET(request: Request) {
 
     return NextResponse.json(allDemands)
   } catch (error) {
+    logError('Erro ao buscar demandas', error, {
+      userId,
+      endpoint: '/api/campo/demands',
+    })
     return NextResponse.json(
       { error: 'Erro interno do servidor' },
       { status: 500 }

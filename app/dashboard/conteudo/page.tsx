@@ -27,7 +27,8 @@ import {
   AlertCircle,
   Loader2,
   Camera,
-  Activity
+  Activity,
+  MapPin
 } from 'lucide-react'
 import { 
   fetchInstagramData, 
@@ -139,7 +140,7 @@ const defaultThemes = [
 ]
 
 export default function ConteudoPage() {
-  const [activeSubTab, setActiveSubTab] = useState<'posts' | 'audience'>('posts')
+  const [activeSubTab, setActiveSubTab] = useState<'posts' | 'audience' | 'locations'>('posts')
   const [overviewThemeFilter, setOverviewThemeFilter] = useState<string>('all')
   const [overviewBoostedFilter, setOverviewBoostedFilter] = useState<string>('all')
   const [postClassifications, setPostClassifications] = useState<Record<string, { theme?: string; isBoosted?: boolean }>>({})
@@ -401,6 +402,14 @@ export default function ConteudoPage() {
       )
 
       if (data) {
+        console.log('[Frontend] Dados do Instagram recebidos:', {
+          username: data.username,
+          followers: data.followers?.total,
+          hasDemographics: !!data.demographics,
+          hasTopLocations: !!data.demographics?.topLocations,
+          topLocationsCount: data.demographics?.topLocations ? Object.keys(data.demographics.topLocations).length : 0,
+          topLocations: data.demographics?.topLocations
+        })
         setMetrics(data)
         setIsConfigured(true)
         setShowConfig(false) // Garantir que o modal não está aberto
@@ -696,6 +705,17 @@ export default function ConteudoPage() {
             >
               <Users className="inline-block w-4 h-4 mr-2" />
               Audiência
+            </button>
+            <button
+              onClick={() => setActiveSubTab('locations')}
+              className={`px-4 py-2 text-sm font-medium transition-colors ${
+                activeSubTab === 'locations'
+                  ? 'text-primary border-b-2 border-primary'
+                  : 'text-text-muted hover:text-text-strong'
+              }`}
+            >
+              <MapPin className="inline-block w-4 h-4 mr-2" />
+              Seguidores por Cidade
             </button>
                     </div>
 
@@ -2027,6 +2047,157 @@ export default function ConteudoPage() {
                 </div>
               </div>
               </>
+              )}
+            </div>
+          )}
+
+          {/* Conteúdo da sub-tab Seguidores por Cidade */}
+          {activeSubTab === 'locations' && (
+            <div className="space-y-6">
+              {loading && !metrics ? (
+                <div className="text-center py-12">
+                  <Loader2 className="w-8 h-8 text-primary animate-spin mx-auto mb-4" />
+                  <p className="text-text-muted">Carregando dados do Instagram...</p>
+                </div>
+              ) : !isConfigured ? (
+                <div className="text-center py-12">
+                  <AlertCircle className="w-12 h-12 text-text-muted mx-auto mb-4" />
+                  <p className="text-text-muted mb-4">
+                    Configure suas credenciais do Instagram para visualizar os dados
+                  </p>
+                  <button
+                    onClick={() => setShowConfig(true)}
+                    className="px-4 py-2 text-sm font-medium bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors"
+                  >
+                    Conectar Instagram
+                  </button>
+                </div>
+              ) : (
+                <>
+                  {/* Card de Seguidores por Cidade */}
+                  <div className="bg-surface rounded-2xl border border-border p-6">
+                    <div className="flex items-start justify-between mb-6">
+                      <div>
+                        <h3 className="text-lg font-semibold text-text-strong mb-1 flex items-center gap-2">
+                          <MapPin className="w-5 h-5 text-primary" />
+                          Distribuição de Seguidores por Cidade
+                        </h3>
+                        <p className="text-sm text-text-muted">
+                          Visualize de quais cidades vêm seus seguidores do Instagram
+                        </p>
+                      </div>
+                    </div>
+
+                    {metrics?.demographics?.topLocations && Object.keys(metrics.demographics.topLocations).length > 0 ? (
+                      <>
+                        {/* Resumo */}
+                        <div className="mb-6 p-4 bg-gradient-to-br from-primary/10 to-primary/5 rounded-xl border border-primary/20">
+                          <div className="flex items-center gap-4">
+                            <div>
+                              <p className="text-sm text-text-muted mb-1">Total de Cidades</p>
+                              <p className="text-2xl font-bold text-text-strong">
+                                {Object.keys(metrics.demographics.topLocations).length}
+                              </p>
+                            </div>
+                            <div className="h-12 w-px bg-border" />
+                            <div>
+                              <p className="text-sm text-text-muted mb-1">Total de Seguidores Mapeados</p>
+                              <p className="text-2xl font-bold text-text-strong">
+                                {Object.values(metrics.demographics.topLocations).reduce((sum, count) => sum + count, 0).toLocaleString('pt-BR')}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Lista de Cidades */}
+                        <div className="space-y-2">
+                          {Object.entries(metrics.demographics?.topLocations || {})
+                            .sort(([, a], [, b]) => b - a)
+                            .map(([city, count], index) => {
+                              const totalFollowers = metrics?.followers?.total || 0
+                              const percentage = totalFollowers > 0 ? ((count / totalFollowers) * 100).toFixed(1) : 0
+                              const topLocations = metrics?.demographics?.topLocations || {}
+                              const maxCount = Math.max(...Object.values(topLocations), 0)
+                              const barWidth = maxCount > 0 ? (count / maxCount) * 100 : 0
+
+                              return (
+                                <div
+                                  key={city}
+                                  className="p-4 bg-background rounded-lg border border-border hover:border-primary/30 transition-colors"
+                                >
+                                  <div className="flex items-center justify-between mb-2">
+                                    <div className="flex items-center gap-3 flex-1 min-w-0">
+                                      <div className={`flex items-center justify-center w-8 h-8 rounded-full font-semibold text-sm ${
+                                        index === 0 
+                                          ? 'bg-primary text-white' 
+                                          : index === 1 
+                                          ? 'bg-primary/80 text-white'
+                                          : index === 2
+                                          ? 'bg-primary/60 text-white'
+                                          : 'bg-primary/20 text-primary'
+                                      }`}>
+                                        {index + 1}
+                                      </div>
+                                      <div className="flex-1 min-w-0">
+                                        <p className="font-semibold text-text-strong truncate">{city}</p>
+                                        <p className="text-xs text-text-muted">
+                                          {percentage}% do total de seguidores
+                                        </p>
+                                      </div>
+                                    </div>
+                                    <div className="flex items-center gap-4 ml-4">
+                                      <div className="text-right">
+                                        <p className="text-lg font-bold text-text-strong">
+                                          {count.toLocaleString('pt-BR')}
+                                        </p>
+                                        <p className="text-xs text-text-muted">seguidores</p>
+                                      </div>
+                                    </div>
+                                  </div>
+                                  <div className="mt-2">
+                                    <div className="w-full bg-background rounded-full h-2 overflow-hidden">
+                                      <div
+                                        className="h-full bg-gradient-to-r from-primary to-primary/80 rounded-full transition-all duration-500"
+                                        style={{ width: `${barWidth}%` }}
+                                      />
+                                    </div>
+                                  </div>
+                                </div>
+                              )
+                            })}
+                        </div>
+                      </>
+                    ) : (
+                      <div className="text-center py-12">
+                        <MapPin className="w-12 h-12 text-text-muted mx-auto mb-4 opacity-50" />
+                        <p className="text-text-muted mb-2 font-semibold">
+                          Dados de localização não disponíveis via API
+                        </p>
+                        <div className="space-y-3 text-sm text-text-muted max-w-lg mx-auto">
+                          <p className="text-status-warning">
+                            ⚠️ A métrica <code className="px-2 py-1 bg-background rounded text-xs">audience_city</code> foi <strong>depreciada pelo Instagram</strong> no Graph API v18 (janeiro de 2024) e não está mais disponível.
+                          </p>
+                          <div className="p-4 bg-background rounded-lg border border-border text-left space-y-2">
+                            <p className="font-semibold text-text-strong">Informação:</p>
+                            <p>
+                              O Instagram removeu o acesso programático a dados demográficos detalhados (incluindo localização por cidade) para proteger a privacidade dos usuários.
+                            </p>
+                            <p className="pt-2 border-t border-border">
+                              <strong>Alternativas disponíveis:</strong>
+                            </p>
+                            <ul className="list-disc list-inside space-y-1 ml-2">
+                              <li>Acessar os insights nativos do Instagram no app (menu Insights)</li>
+                              <li>Utilizar ferramentas de analytics de terceiros que agregam dados públicos</li>
+                            </ul>
+                          </div>
+                          <p className="text-xs text-text-muted italic">
+                            Esta limitação é uma política do Instagram/Meta e não pode ser contornada via API.
+                          </p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </>
               )}
             </div>
           )}

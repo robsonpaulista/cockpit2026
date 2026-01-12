@@ -1,6 +1,9 @@
 import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
+import { logger, logError } from '@/lib/logger'
+
+const isDev = process.env.NODE_ENV === 'development'
 
 const narrativeSchema = z.object({
   theme: z.string().min(1, 'Tema é obrigatório'),
@@ -58,8 +61,11 @@ export async function GET(request: Request) {
     const { data, error } = await query
 
     if (error) {
-      console.error('Erro ao buscar narrativas:', error)
-      return NextResponse.json({ error: error.message }, { status: 500 })
+      logError('Erro ao buscar narrativas', error, {
+        userId: user.id,
+        endpoint: '/api/narrativas',
+      })
+      return NextResponse.json({ error: 'Erro ao buscar narrativas' }, { status: 500 })
     }
 
     return NextResponse.json(data || [])
@@ -73,6 +79,8 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
+  let userId: string | undefined
+
   try {
     const supabase = createClient()
 
@@ -83,6 +91,8 @@ export async function POST(request: Request) {
     if (!user) {
       return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
     }
+
+    userId = user.id
 
     const body = await request.json()
     const validatedData = narrativeSchema.parse(body)
@@ -104,20 +114,31 @@ export async function POST(request: Request) {
       .single()
 
     if (error) {
-      console.error('Erro ao criar narrativa:', error)
-      return NextResponse.json({ error: error.message }, { status: 500 })
+      logError('Erro ao criar narrativa', error, {
+        userId,
+        endpoint: '/api/narrativas',
+      })
+      return NextResponse.json({ error: 'Erro ao criar narrativa' }, { status: 500 })
     }
 
+    logger.info('Narrativa criada', { userId, narrativeId: data.id })
     return NextResponse.json(data, { status: 201 })
   } catch (error: any) {
     if (error instanceof z.ZodError) {
+      logger.warn('Validação de narrativa falhou', {
+        userId,
+        errors: error.errors,
+      })
       return NextResponse.json(
-        { error: 'Dados inválidos', details: error.errors },
+        { error: 'Dados inválidos', details: isDev ? error.errors : undefined },
         { status: 400 }
       )
     }
 
-    console.error('Erro ao criar narrativa:', error)
+    logError('Erro ao criar narrativa', error, {
+      userId,
+      endpoint: '/api/narrativas',
+    })
     return NextResponse.json(
       { error: 'Erro interno do servidor' },
       { status: 500 }

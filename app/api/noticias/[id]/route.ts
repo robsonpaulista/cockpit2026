@@ -13,6 +13,8 @@ const updateNewsSchema = z.object({
   actor: z.string().optional(),
   published_at: z.string().optional(),
   processed: z.boolean().optional(),
+  reviewed: z.boolean().optional(), // Classificação manual
+  notes: z.string().optional(), // Notas da classificação manual
   crisis_id: z.string().uuid().optional().nullable(),
 })
 

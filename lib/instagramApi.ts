@@ -134,9 +134,11 @@ export function saveInstagramConfig(token: string, businessAccountId: string): v
 }
 
 // Credenciais padrão do .env.local (fallback)
+// ⚠️ SEGURANÇA: NUNCA hardcodar tokens aqui!
+// Use variáveis de ambiente ou localStorage do cliente
 const DEFAULT_INSTAGRAM_CONFIG = {
-  token: process.env.NEXT_PUBLIC_INSTAGRAM_TOKEN || 'EAAH0ZCYS7AIoBPHat72ae03bCYeaOwPqRNPX1Cpgjbm3R6a47q2tNPK1tygbmb2YiPVvGIqzaronYi5ZClJUSoDlYP8zmmFbB0ZAna8L6ZChbgSEaoBjZA5EOXbT0eb0L4y5fFMZBKsoIOPgWLh83h2VGLdfqMjrdhlbZBYqKxGHHfdizveZAiJCY9Vf4WRr',
-  businessAccountId: process.env.NEXT_PUBLIC_INSTAGRAM_BUSINESS_ID || '104597578951001'
+  token: process.env.NEXT_PUBLIC_INSTAGRAM_TOKEN || '', // Sem fallback hardcoded por segurança
+  businessAccountId: process.env.NEXT_PUBLIC_INSTAGRAM_BUSINESS_ID || '' // Sem fallback hardcoded por segurança
 }
 
 /**

@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { checkRateLimit, RATE_LIMITS } from '@/lib/rate-limit'
+import { logger, logError } from '@/lib/logger'
 
 // Interface para os dados do Instagram
 interface InstagramMetrics {
@@ -70,6 +72,34 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
     }
 
+    // ✅ Rate limiting - Proteção contra abuso da API do Instagram
+    const rateLimitResult = checkRateLimit(
+      `instagram:${user.id}`,
+      RATE_LIMITS.INSTAGRAM
+    )
+
+    if (!rateLimitResult.success) {
+      logger.warn('Rate limit excedido na API do Instagram', {
+        userId: user.id,
+        endpoint: '/api/instagram',
+        resetAt: new Date(rateLimitResult.resetAt).toISOString(),
+      })
+
+      return NextResponse.json(
+        {
+          error: 'Muitas requisições. Aguarde antes de tentar novamente.',
+        },
+        {
+          status: 429,
+          headers: {
+            'X-RateLimit-Limit': String(RATE_LIMITS.INSTAGRAM.maxRequests),
+            'X-RateLimit-Remaining': String(rateLimitResult.remaining),
+            'X-RateLimit-Reset': String(rateLimitResult.resetAt),
+          },
+        }
+      )
+    }
+
     const body = await request.json()
     const { token, businessAccountId, timeRange = '30d', forceRefresh = false } = body
 
@@ -79,6 +109,13 @@ export async function POST(request: Request) {
         { status: 400 }
       )
     }
+
+    logger.info('Requisição Instagram API', {
+      userId: user.id,
+      businessAccountId,
+      timeRange,
+      forceRefresh,
+    })
 
     // Validar token primeiro
     const validationResponse = await fetch(
@@ -355,43 +392,98 @@ export async function POST(request: Request) {
         }
       }
 
-      // Buscar dados de localização
-      const countryResponse = await fetch(
-        `https://graph.facebook.com/v18.0/${instagramBusinessId}/insights?metric=audience_country&period=lifetime&access_token=${token}`
+      // Buscar dados de localização por cidade (mais detalhado)
+      const cityResponse = await fetch(
+        `https://graph.facebook.com/v18.0/${instagramBusinessId}/insights?metric=audience_city&period=lifetime&access_token=${token}`
       )
 
-      if (countryResponse.ok) {
-        const countryData = await countryResponse.json()
-        
-        if (countryData.data && Array.isArray(countryData.data) && countryData.data.length > 0) {
-          const countryMetric = countryData.data[0]
-          let countryValues: any = null
+      let topLocations: Record<string, number> = {}
 
-          if (countryMetric.values && Array.isArray(countryMetric.values) && countryMetric.values.length > 0) {
-            countryValues = countryMetric.values[0]?.value || countryMetric.values[0]
-          } else if (countryMetric.value) {
-            countryValues = countryMetric.value
-          } else if (countryMetric.values && typeof countryMetric.values === 'object') {
-            countryValues = countryMetric.values
+      if (cityResponse.ok) {
+        const cityData = await cityResponse.json()
+        
+        // Log para debug
+        console.log('[Instagram API] Resposta audience_city:', JSON.stringify(cityData, null, 2))
+        
+        if (cityData.data && Array.isArray(cityData.data) && cityData.data.length > 0) {
+          const cityMetric = cityData.data[0]
+          let cityValues: any = null
+
+          if (cityMetric.values && Array.isArray(cityMetric.values) && cityMetric.values.length > 0) {
+            cityValues = cityMetric.values[0]?.value || cityMetric.values[0]
+          } else if (cityMetric.value) {
+            cityValues = cityMetric.value
+          } else if (cityMetric.values && typeof cityMetric.values === 'object') {
+            cityValues = cityMetric.values
           }
 
-          if (countryValues && typeof countryValues === 'object' && countryValues !== null) {
-            const topLocations: Record<string, number> = {}
-            Object.keys(countryValues).forEach((country) => {
-              const value = Number(countryValues[country]) || 0
+          console.log('[Instagram API] cityValues processado:', cityValues)
+
+          if (cityValues && typeof cityValues === 'object' && cityValues !== null) {
+            Object.keys(cityValues).forEach((city) => {
+              const value = Number(cityValues[city]) || 0
               if (value > 0) {
-                topLocations[country] = value
+                topLocations[city] = value
               }
             })
+            console.log('[Instagram API] topLocations (cidades):', Object.keys(topLocations).length, 'cidades encontradas')
+          }
+        } else {
+          console.log('[Instagram API] Nenhum dado encontrado em audience_city.data')
+        }
+      } else {
+        const errorData = await cityResponse.json().catch(() => ({}))
+        console.log('[Instagram API] Erro ao buscar audience_city:', cityResponse.status, errorData)
+      }
 
-            if (Object.keys(topLocations).length > 0) {
-              demographics = {
-                ...demographics,
-                topLocations,
-              }
+      // Se não houver dados de cidade, buscar dados de país como fallback
+      if (Object.keys(topLocations).length === 0) {
+        console.log('[Instagram API] Nenhuma cidade encontrada, buscando países como fallback')
+        const countryResponse = await fetch(
+          `https://graph.facebook.com/v18.0/${instagramBusinessId}/insights?metric=audience_country&period=lifetime&access_token=${token}`
+        )
+
+        if (countryResponse.ok) {
+          const countryData = await countryResponse.json()
+          console.log('[Instagram API] Resposta audience_country:', JSON.stringify(countryData, null, 2))
+          
+          if (countryData.data && Array.isArray(countryData.data) && countryData.data.length > 0) {
+            const countryMetric = countryData.data[0]
+            let countryValues: any = null
+
+            if (countryMetric.values && Array.isArray(countryMetric.values) && countryMetric.values.length > 0) {
+              countryValues = countryMetric.values[0]?.value || countryMetric.values[0]
+            } else if (countryMetric.value) {
+              countryValues = countryMetric.value
+            } else if (countryMetric.values && typeof countryMetric.values === 'object') {
+              countryValues = countryMetric.values
+            }
+
+            if (countryValues && typeof countryValues === 'object' && countryValues !== null) {
+              Object.keys(countryValues).forEach((country) => {
+                const value = Number(countryValues[country]) || 0
+                if (value > 0) {
+                  topLocations[country] = value
+                }
+              })
+              console.log('[Instagram API] topLocations (países):', Object.keys(topLocations).length, 'países encontrados')
             }
           }
+        } else {
+          const errorData = await countryResponse.json().catch(() => ({}))
+          console.log('[Instagram API] Erro ao buscar audience_country:', countryResponse.status, errorData)
         }
+      }
+
+      // Adicionar dados de localização aos demográficos se disponíveis
+      if (Object.keys(topLocations).length > 0) {
+        demographics = {
+          ...demographics,
+          topLocations,
+        }
+        console.log('[Instagram API] Demographics com topLocations adicionado:', Object.keys(topLocations).length, 'localizações')
+      } else {
+        console.log('[Instagram API] Nenhuma localização encontrada para adicionar aos demographics')
       }
     } catch (error) {
       console.error('Erro ao buscar dados demográficos:', error)
@@ -447,6 +539,14 @@ export async function POST(request: Request) {
       },
       demographics,
     }
+
+    // Log final para debug
+    console.log('[Instagram API] Dados finais demographics:', demographics ? {
+      hasGender: !!demographics.gender,
+      hasAge: !!demographics.age,
+      hasTopLocations: !!demographics.topLocations,
+      topLocationsCount: demographics.topLocations ? Object.keys(demographics.topLocations).length : 0
+    } : 'null')
 
     return NextResponse.json(instagramMetrics)
   } catch (error: any) {

@@ -37,6 +37,7 @@ export interface NewsItem {
   id: string
   title: string
   source: string
+  source_type?: 'google_alerts' | 'gdelt' | 'media_cloud' // Tipo de fonte
   url?: string
   content?: string
   sentiment: 'positive' | 'negative' | 'neutral'
@@ -46,6 +47,9 @@ export interface NewsItem {
   published_at?: Date | string
   collected_at?: Date | string
   processed?: boolean
+  reviewed?: boolean // Indica se foi revisado/classificado manualmente
+  notes?: string // Notas da classificação manual
+  publisher?: string // Domínio/publicador da notícia
   crisis_id?: string
   adversary_id?: string // ID do adversário cujo feed RSS coletou esta notícia (null para notícias gerais)
   timestamp?: Date
