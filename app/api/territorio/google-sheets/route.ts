@@ -11,10 +11,41 @@ function formatPrivateKey(key: string): string {
 }
 
 // Função auxiliar para obter credenciais (prioriza variáveis de ambiente)
-function getCredentials(bodyCredentials?: string) {
-  // Prioridade 1: Variáveis de ambiente
-  const envPrivateKey = process.env.GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY
-  const envEmail = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL
+function getCredentials(bodyCredentials?: string, context: 'territorio' | 'demandas' | 'default' = 'default') {
+  // Prioridade 1: Credenciais do body (mais alta prioridade)
+  if (bodyCredentials) {
+    try {
+      const parsed = typeof bodyCredentials === 'string' 
+        ? JSON.parse(bodyCredentials) 
+        : bodyCredentials
+      return {
+        type: 'service_account',
+        private_key: formatPrivateKey(parsed.private_key || parsed.privateKey),
+        client_email: parsed.client_email || parsed.clientEmail || parsed.email,
+        token_uri: parsed.token_uri || 'https://oauth2.googleapis.com/token',
+      }
+    } catch (e) {
+      // Se falhar, continuar para variáveis de ambiente
+    }
+  }
+
+  // Prioridade 2: Variáveis de ambiente específicas por contexto
+  let envPrivateKey: string | undefined
+  let envEmail: string | undefined
+
+  if (context === 'territorio') {
+    envPrivateKey = process.env.GOOGLE_SERVICE_ACCOUNT_TERRITORIO_PRIVATE_KEY
+    envEmail = process.env.GOOGLE_SERVICE_ACCOUNT_TERRITORIO_EMAIL
+  } else if (context === 'demandas') {
+    envPrivateKey = process.env.GOOGLE_SERVICE_ACCOUNT_DEMANDAS_PRIVATE_KEY
+    envEmail = process.env.GOOGLE_SERVICE_ACCOUNT_DEMANDAS_EMAIL
+  }
+
+  // Prioridade 3: Variáveis genéricas (fallback para compatibilidade)
+  if (!envPrivateKey || !envEmail) {
+    envPrivateKey = process.env.GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY
+    envEmail = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL
+  }
 
   if (envPrivateKey && envEmail) {
     return {
@@ -51,7 +82,8 @@ export async function POST(request: Request) {
   try {
     const body = await request.json()
     const { spreadsheetId, sheetName, range } = getSheetConfig(body)
-    const credentialsObj = getCredentials(body.credentials)
+    // Usar contexto 'territorio' para buscar credenciais específicas
+    const credentialsObj = getCredentials(body.credentials, 'territorio')
 
     if (!spreadsheetId || !sheetName) {
       return NextResponse.json(

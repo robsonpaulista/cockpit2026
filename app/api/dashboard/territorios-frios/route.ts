@@ -97,8 +97,16 @@ export async function POST(request: Request) {
     }
 
     // Verificar se há configuração nas variáveis de ambiente
-    const envPrivateKey = process.env.GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY
-    const envEmail = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL
+    // Prioridade: variáveis específicas para Território
+    let envPrivateKey = process.env.GOOGLE_SERVICE_ACCOUNT_TERRITORIO_PRIVATE_KEY
+    let envEmail = process.env.GOOGLE_SERVICE_ACCOUNT_TERRITORIO_EMAIL
+    
+    // Fallback: variáveis genéricas (compatibilidade)
+    if (!envPrivateKey || !envEmail) {
+      envPrivateKey = process.env.GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY
+      envEmail = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL
+    }
+    
     const envSpreadsheetId = process.env.GOOGLE_SHEETS_SPREADSHEET_ID
     const envSheetName = process.env.GOOGLE_SHEETS_NAME || 'Sheet1'
     const envRange = process.env.GOOGLE_SHEETS_RANGE

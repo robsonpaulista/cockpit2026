@@ -37,19 +37,15 @@ export async function POST(request: Request) {
       return NextResponse.json(
         {
           error: 'Muitas requisições de coleta. Aguarde antes de tentar novamente.',
-        resetAt: rateLimitResult.resetAt,
-        remaining: rateLimitResult.remaining,
-        limit: RATE_LIMITS.NEWS_COLLECT.maxRequests,
-        window: '1 hora',
-        message: 'Você pode coletar notícias até 10 vezes por hora.',
-        collected: 0,
-        results: [],
-        search_terms_used: [],
-        message: 'Rate limit excedido. Aguarde antes de tentar novamente.',
-        collected: 0,
-        results: [],
-        search_terms_used: [],
-      },
+          resetAt: rateLimitResult.resetAt,
+          remaining: rateLimitResult.remaining,
+          limit: RATE_LIMITS.NEWS_COLLECT.maxRequests,
+          window: '1 hora',
+          message: 'Você pode coletar notícias até 10 vezes por hora.',
+          collected: 0,
+          results: [],
+          search_terms_used: [],
+        },
       {
         status: 429,
         headers: {
@@ -440,12 +436,28 @@ export async function POST(request: Request) {
       }
     }
 
-    return NextResponse.json({
-      message: `Coleta concluída: ${totalCollected} notícias coletadas de todas as fontes`,
-      collected: totalCollected,
-      results,
-      search_terms_used: searchTerms,
+    logger.info('Coleta de notícias concluída', {
+      userId: user.id,
+      totalCollected,
+      sourcesCount: results.length,
+      searchTermsCount: searchTerms.length,
     })
+
+    return NextResponse.json(
+      {
+        message: `Coleta concluída: ${totalCollected} notícias coletadas de todas as fontes`,
+        collected: totalCollected,
+        results,
+        search_terms_used: searchTerms,
+      },
+      {
+        headers: {
+          'X-RateLimit-Limit': String(RATE_LIMITS.NEWS_COLLECT.maxRequests),
+          'X-RateLimit-Remaining': String(rateLimitResult.remaining),
+          'X-RateLimit-Reset': String(rateLimitResult.resetAt),
+        },
+      }
+    )
   } catch (error) {
     logError('Erro ao coletar de todas as fontes', error, {
       userId: user?.id,

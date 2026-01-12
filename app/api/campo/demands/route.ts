@@ -23,8 +23,15 @@ function formatPrivateKey(key: string): string {
 
 // Função auxiliar para obter credenciais (prioriza variáveis de ambiente)
 function getCredentials() {
-  const envPrivateKey = process.env.GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY
-  const envEmail = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL
+  // Prioridade 1: Variáveis específicas para Demandas
+  let envPrivateKey = process.env.GOOGLE_SERVICE_ACCOUNT_DEMANDAS_PRIVATE_KEY
+  let envEmail = process.env.GOOGLE_SERVICE_ACCOUNT_DEMANDAS_EMAIL
+
+  // Prioridade 2: Variáveis genéricas (fallback para compatibilidade)
+  if (!envPrivateKey || !envEmail) {
+    envPrivateKey = process.env.GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY
+    envEmail = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL
+  }
 
   if (envPrivateKey && envEmail) {
     return {
