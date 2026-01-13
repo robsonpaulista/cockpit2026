@@ -10,6 +10,7 @@ import { mockKPIs, mockAlerts, mockActions } from '@/lib/mock-data'
 import { KPI, Alert, NewsItem } from '@/types'
 import { TrendingUp, MapPin, Flag, MessageSquare, ThermometerSun, ThermometerSnowflake, Flame, Activity, Maximize2, X } from 'lucide-react'
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
+import { getEleitoradoByCity } from '@/lib/eleitores'
 
 const trendData = [
   { date: '01/10', ife: 65, sentimento: 60 },
@@ -55,6 +56,7 @@ export default function Home() {
   const [loadingBandeiras, setLoadingBandeiras] = useState(true)
   const [projecaoChapa, setProjecaoChapa] = useState<number>(0)
   const [graficoPollsTelaCheia, setGraficoPollsTelaCheia] = useState(false)
+  const [expectativasPorCidade, setExpectativasPorCidade] = useState<Record<string, number>>({})
 
   // Calcular média das pesquisas diretamente a partir dos dados do gráfico
   const mediaPesquisas = pollsData.length > 0
@@ -119,6 +121,49 @@ export default function Home() {
           const data = await response.json()
           const polls = data.data || []
           setPollsData(polls)
+          
+          // Buscar expectativas de votos por cidade para as pesquisas que têm cidade
+          const cidadesUnicas = new Set<string>()
+          polls.forEach((poll: { cidade?: string }) => {
+            if (poll.cidade && poll.cidade !== 'Estado' && poll.cidade !== 'Cidade não encontrada') {
+              cidadesUnicas.add(poll.cidade)
+            }
+          })
+          
+          // Buscar expectativas para cada cidade
+          const savedConfig = localStorage.getItem('territorio_sheets_config')
+          if (savedConfig && cidadesUnicas.size > 0) {
+            const config = JSON.parse(savedConfig)
+            const expectativas: Record<string, number> = {}
+            
+            await Promise.all(
+              Array.from(cidadesUnicas).map(async (cidade) => {
+                try {
+                  const expectativaResponse = await fetch('/api/territorio/expectativa-por-cidade', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                      spreadsheetId: config.spreadsheetId,
+                      sheetName: config.sheetName,
+                      range: config.range,
+                      serviceAccountEmail: config.serviceAccountEmail,
+                      credentials: config.credentials,
+                      cidade,
+                    }),
+                  })
+                  
+                  if (expectativaResponse.ok) {
+                    const expectativaData = await expectativaResponse.json()
+                    expectativas[cidade] = expectativaData.expectativaVotos || 0
+                  }
+                } catch (error) {
+                  // Erro silencioso
+                }
+              })
+            )
+            
+            setExpectativasPorCidade(expectativas)
+          }
         } else {
           setPollsData([])
         }
@@ -316,28 +361,33 @@ export default function Home() {
         // Se temos KPIs do território, usar os valores calculados (mesmos da página Território & Base)
         const expectativa2026 = territorioKPIs?.expectativa2026 ?? null
         const cidadesUnicas = territorioKPIs?.cidadesUnicas ?? null
+        const liderancas = territorioKPIs?.liderancas ?? null
         
         setKpis([
           {
             id: 'ife',
             label: 'Expectativa 2026',
-            value: expectativa2026 !== null ? expectativa2026.toLocaleString('pt-BR') : data.ife.value,
+            value: expectativa2026 !== null && expectativa2026 !== undefined 
+              ? (typeof expectativa2026 === 'number' ? expectativa2026.toLocaleString('pt-BR') : String(expectativa2026))
+              : (typeof data.ife.value === 'number' ? data.ife.value.toLocaleString('pt-BR') : data.ife.value),
             variation: data.ife.variation,
             status: data.ife.status,
           },
             {
               id: 'presenca',
               label: 'Presença Territorial',
-              value: cidadesUnicas !== null ? `${cidadesUnicas}/224` : data.presenca.value,
+              value: cidadesUnicas !== null && cidadesUnicas !== undefined 
+                ? `${cidadesUnicas}/224` 
+                : data.presenca.value,
               variation: data.presenca.variation,
               status: data.presenca.status,
             },
             {
               id: 'base',
               label: 'Capilaridade da Base',
-              value: territorioKPIs?.liderancas !== null && territorioKPIs?.liderancas !== undefined 
-                ? territorioKPIs.liderancas 
-                : data.base.value,
+              value: liderancas !== null && liderancas !== undefined 
+                ? (typeof liderancas === 'number' ? liderancas.toLocaleString('pt-BR') : String(liderancas))
+                : (typeof data.base.value === 'number' ? data.base.value.toLocaleString('pt-BR') : data.base.value),
               variation: data.base.variation,
               status: data.base.status,
             },
@@ -472,22 +522,102 @@ export default function Home() {
                         content={({ active, payload, label }) => {
                           if (active && payload && payload.length > 0) {
                             const data = payload[0].payload as { date: string; intencao: number; instituto?: string; cidade?: string }
+                            const intencaoPercent = data.intencao || 0
+                            const cidade = data.cidade && data.cidade !== 'Estado' && data.cidade !== 'Cidade não encontrada' ? data.cidade : null
+                            
+                            // Calcular feedback comparativo
+                            let feedbackText = null
+                            if (cidade) {
+                              const eleitorado = getEleitoradoByCity(cidade)
+                              const expectativaVotos = expectativasPorCidade[cidade] || 0
+                              
+                              if (eleitorado && eleitorado > 0) {
+                                const votosProporcionais = Math.round((intencaoPercent / 100) * eleitorado)
+                                
+                                if (expectativaVotos > 0) {
+                                  const diferenca = votosProporcionais - expectativaVotos
+                                  const percentualDiferenca = ((diferenca / expectativaVotos) * 100).toFixed(1)
+                                  
+                                  let status = 'neutral'
+                                  let statusText = 'dentro do padrão'
+                                  
+                                  if (Math.abs(parseFloat(percentualDiferenca)) <= 10) {
+                                    status = 'success'
+                                    statusText = 'dentro do padrão'
+                                  } else if (diferenca > 0) {
+                                    status = 'success'
+                                    statusText = `acima do esperado (+${Math.abs(parseFloat(percentualDiferenca))}%)`
+                                  } else {
+                                    status = 'error'
+                                    statusText = `abaixo do esperado (${percentualDiferenca}%)`
+                                  }
+                                  
+                                  feedbackText = {
+                                    cidade,
+                                    eleitorado,
+                                    intencaoPercent,
+                                    votosProporcionais,
+                                    expectativaVotos,
+                                    diferenca,
+                                    status,
+                                    statusText,
+                                  }
+                                } else {
+                                  feedbackText = {
+                                    cidade,
+                                    eleitorado,
+                                    intencaoPercent,
+                                    votosProporcionais,
+                                    expectativaVotos: null,
+                                    status: 'neutral',
+                                    statusText: 'expectativa não disponível',
+                                  }
+                                }
+                              }
+                            }
+                            
                             return (
-                              <div className="bg-white border border-gray-200 rounded-lg shadow-lg p-3">
+                              <div className="bg-white border border-gray-200 rounded-lg shadow-lg p-3 min-w-[280px]">
                                 <p className="font-semibold text-text-strong mb-2">{label}</p>
                                 <p className="text-sm text-text-strong mb-1">
                                   <span className="font-medium">Intenção de Voto:</span>{' '}
-                                  <span className="text-primary">{data.intencao}%</span>
+                                  <span className="text-primary">{intencaoPercent}%</span>
                                 </p>
                                 {data.instituto && data.instituto !== 'Não informado' && (
                                   <p className="text-sm text-text-muted mb-1">
                                     <span className="font-medium">Instituto:</span> {data.instituto}
                                   </p>
                                 )}
-                                {data.cidade && data.cidade !== 'Estado' && data.cidade !== 'Cidade não encontrada' && (
-                                  <p className="text-sm text-text-muted">
-                                    <span className="font-medium">Cidade:</span> {data.cidade}
-                                  </p>
+                                {cidade && (
+                                  <div className="mt-3 pt-3 border-t border-gray-200">
+                                    <p className="text-sm font-medium text-text-strong mb-2">Análise Comparativa - {cidade}</p>
+                                    {feedbackText ? (
+                                      <>
+                                        <p className="text-xs text-text-muted mb-1">
+                                          <span className="font-medium">Eleitorado:</span> {feedbackText.eleitorado.toLocaleString('pt-BR')} eleitores
+                                        </p>
+                                        <p className="text-xs text-text-muted mb-1">
+                                          <span className="font-medium">Votos Proporcionais:</span> {feedbackText.votosProporcionais.toLocaleString('pt-BR')} votos ({intencaoPercent}% × {feedbackText.eleitorado.toLocaleString('pt-BR')})
+                                        </p>
+                                        {feedbackText.expectativaVotos !== null && (
+                                          <>
+                                            <p className="text-xs text-text-muted mb-1">
+                                              <span className="font-medium">Expectativa (Território & Base):</span> {feedbackText.expectativaVotos.toLocaleString('pt-BR')} votos
+                                            </p>
+                                            <p className={`text-xs font-medium mt-2 pt-2 border-t border-gray-100 ${
+                                              feedbackText.status === 'success' ? 'text-green-600' :
+                                              feedbackText.status === 'error' ? 'text-red-600' :
+                                              'text-gray-600'
+                                            }`}>
+                                              Status: {feedbackText.statusText}
+                                            </p>
+                                          </>
+                                        )}
+                                      </>
+                                    ) : (
+                                      <p className="text-xs text-text-muted">Dados de eleitorado não disponíveis para esta cidade</p>
+                                    )}
+                                  </div>
                                 )}
                               </div>
                             )
@@ -969,22 +1099,102 @@ export default function Home() {
                       content={({ active, payload, label }) => {
                         if (active && payload && payload.length > 0) {
                           const data = payload[0].payload as { date: string; intencao: number; instituto?: string; cidade?: string }
+                          const intencaoPercent = data.intencao || 0
+                          const cidade = data.cidade && data.cidade !== 'Estado' && data.cidade !== 'Cidade não encontrada' ? data.cidade : null
+                          
+                          // Calcular feedback comparativo
+                          let feedbackText = null
+                          if (cidade) {
+                            const eleitorado = getEleitoradoByCity(cidade)
+                            const expectativaVotos = expectativasPorCidade[cidade] || 0
+                            
+                            if (eleitorado && eleitorado > 0) {
+                              const votosProporcionais = Math.round((intencaoPercent / 100) * eleitorado)
+                              
+                              if (expectativaVotos > 0) {
+                                const diferenca = votosProporcionais - expectativaVotos
+                                const percentualDiferenca = ((diferenca / expectativaVotos) * 100).toFixed(1)
+                                
+                                let status = 'neutral'
+                                let statusText = 'dentro do padrão'
+                                
+                                if (Math.abs(parseFloat(percentualDiferenca)) <= 10) {
+                                  status = 'success'
+                                  statusText = 'dentro do padrão'
+                                } else if (diferenca > 0) {
+                                  status = 'success'
+                                  statusText = `acima do esperado (+${Math.abs(parseFloat(percentualDiferenca))}%)`
+                                } else {
+                                  status = 'error'
+                                  statusText = `abaixo do esperado (${percentualDiferenca}%)`
+                                }
+                                
+                                feedbackText = {
+                                  cidade,
+                                  eleitorado,
+                                  intencaoPercent,
+                                  votosProporcionais,
+                                  expectativaVotos,
+                                  diferenca,
+                                  status,
+                                  statusText,
+                                }
+                              } else {
+                                feedbackText = {
+                                  cidade,
+                                  eleitorado,
+                                  intencaoPercent,
+                                  votosProporcionais,
+                                  expectativaVotos: null,
+                                  status: 'neutral',
+                                  statusText: 'expectativa não disponível',
+                                }
+                              }
+                            }
+                          }
+                          
                           return (
-                            <div className="bg-white border border-gray-200 rounded-lg shadow-lg p-3">
+                            <div className="bg-white border border-gray-200 rounded-lg shadow-lg p-3 min-w-[280px]">
                               <p className="font-semibold text-text-strong mb-2">{label}</p>
                               <p className="text-sm text-text-strong mb-1">
                                 <span className="font-medium">Intenção de Voto:</span>{' '}
-                                <span className="text-primary">{data.intencao}%</span>
+                                <span className="text-primary">{intencaoPercent}%</span>
                               </p>
                               {data.instituto && data.instituto !== 'Não informado' && (
                                 <p className="text-sm text-text-muted mb-1">
                                   <span className="font-medium">Instituto:</span> {data.instituto}
                                 </p>
                               )}
-                              {data.cidade && data.cidade !== 'Estado' && data.cidade !== 'Cidade não encontrada' && (
-                                <p className="text-sm text-text-muted">
-                                  <span className="font-medium">Cidade:</span> {data.cidade}
-                                </p>
+                              {cidade && (
+                                <div className="mt-3 pt-3 border-t border-gray-200">
+                                  <p className="text-sm font-medium text-text-strong mb-2">Análise Comparativa - {cidade}</p>
+                                  {feedbackText ? (
+                                    <>
+                                      <p className="text-xs text-text-muted mb-1">
+                                        <span className="font-medium">Eleitorado:</span> {feedbackText.eleitorado.toLocaleString('pt-BR')} eleitores
+                                      </p>
+                                      <p className="text-xs text-text-muted mb-1">
+                                        <span className="font-medium">Votos Proporcionais:</span> {feedbackText.votosProporcionais.toLocaleString('pt-BR')} votos ({intencaoPercent}% × {feedbackText.eleitorado.toLocaleString('pt-BR')})
+                                      </p>
+                                      {feedbackText.expectativaVotos !== null && (
+                                        <>
+                                          <p className="text-xs text-text-muted mb-1">
+                                            <span className="font-medium">Expectativa (Território & Base):</span> {feedbackText.expectativaVotos.toLocaleString('pt-BR')} votos
+                                          </p>
+                                          <p className={`text-xs font-medium mt-2 pt-2 border-t border-gray-100 ${
+                                            feedbackText.status === 'success' ? 'text-green-600' :
+                                            feedbackText.status === 'error' ? 'text-red-600' :
+                                            'text-gray-600'
+                                          }`}>
+                                            Status: {feedbackText.statusText}
+                                          </p>
+                                        </>
+                                      )}
+                                    </>
+                                  ) : (
+                                    <p className="text-xs text-text-muted">Dados de eleitorado não disponíveis para esta cidade</p>
+                                  )}
+                                </div>
                               )}
                             </div>
                           )

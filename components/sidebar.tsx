@@ -87,7 +87,7 @@ export function Sidebar() {
       {/* Sidebar */}
       <aside
         className={cn(
-          'fixed top-0 left-0 h-full bg-surface border-r border-border transition-all duration-300 ease-premium z-40',
+          'fixed top-0 left-0 h-full bg-surface border-r border-border transition-all duration-300 ease-premium z-40 overflow-visible',
           'lg:translate-x-0',
           mobileOpen ? 'translate-x-0' : '-translate-x-full',
           collapsed ? 'lg:w-20' : 'lg:w-64',
@@ -126,20 +126,20 @@ export function Sidebar() {
           </div>
 
           {/* Menu Items */}
-          <nav className="flex-1 overflow-y-auto py-4 px-2 scrollbar-hide">
+          <nav className="flex-1 overflow-y-auto overflow-x-visible py-4 px-2 scrollbar-hide">
             <ul className="space-y-1">
               {menuItems.map((item) => {
                 const Icon = iconMap[item.icon] || LayoutDashboard
                 const isActive = pathname === item.href
 
                 return (
-                  <li key={item.id}>
+                  <li key={item.id} className="relative group">
                     <Link
                       href={item.href}
                       onClick={() => setMobileOpen(false)}
                       className={cn(
                         'relative flex items-center gap-3 px-3 py-2.5 rounded-xl',
-                        'transition-all duration-300 ease-premium group',
+                        'transition-all duration-300 ease-premium',
                         'hover:bg-primary-soft hover:translate-x-1 hover:shadow-sm',
                         isActive && 'bg-primary-soft text-primary shadow-sm'
                       )}
@@ -171,6 +171,15 @@ export function Sidebar() {
                         </span>
                       )}
                     </Link>
+                    
+                    {/* Tooltip quando sidebar está recolhida - fora do Link para não ser cortado */}
+                    {collapsed && !mobileOpen && (
+                      <div className="absolute left-full ml-2 px-3 py-2 bg-surface border border-border text-text-strong text-xs font-medium rounded-lg whitespace-nowrap opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity duration-200 z-[100] shadow-lg top-1/2 -translate-y-1/2">
+                        {item.label}
+                        <div className="absolute right-full top-1/2 -translate-y-1/2 border-4 border-transparent border-r-surface" />
+                        <div className="absolute right-full top-1/2 -translate-y-1/2 -mr-[1px] border-4 border-transparent border-r-border" />
+                      </div>
+                    )}
                   </li>
                 )
               })}
