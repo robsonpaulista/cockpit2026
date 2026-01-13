@@ -156,7 +156,9 @@ export async function POST(request: Request) {
         })
 
         const sheets = google.sheets({ version: 'v4', auth })
-        const rangeToRead = config.range ? `${config.sheetName}!${config.range}` : config.sheetName
+        // Nomes de abas com espaços precisam estar entre aspas simples
+        const safeSheetName = config.sheetName.includes(' ') ? `'${config.sheetName}'` : config.sheetName
+        const rangeToRead = config.range ? `${safeSheetName}!${config.range}` : safeSheetName
 
         const response = await sheets.spreadsheets.values.get({
           spreadsheetId: config.spreadsheetId,
