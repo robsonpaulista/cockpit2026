@@ -12,48 +12,56 @@ interface ProtectedRouteProps {
 export function ProtectedRoute({ children, requiredRole }: ProtectedRouteProps) {
   const { user, loading } = useAuth()
   const router = useRouter()
-  const [hasChecked, setHasChecked] = useState(false)
+  const [hasAuthRedirect, setHasAuthRedirect] = useState(false)
+  const [mounted, setMounted] = useState(false)
+
+  // Verificar localStorage apenas no cliente após montar
+  useEffect(() => {
+    setMounted(true)
+    const authRedirect = localStorage.getItem('auth_redirect')
+    if (authRedirect === 'dashboard') {
+      setHasAuthRedirect(true)
+    }
+  }, [])
 
   useEffect(() => {
-    // Aguardar loading terminar antes de fazer qualquer verificação
-    if (loading) {
-      return
-    }
+    if (!mounted) return
 
-    // Evitar múltiplas verificações
-    if (hasChecked) {
-      return
-    }
-
-    // Dar um pequeno delay para garantir que a sessão foi estabelecida
-    const timeout = setTimeout(() => {
-      setHasChecked(true)
-
-      if (!user) {
-        // Apenas redirecionar se realmente não houver usuário após delay
-        router.replace('/login')
-        return
-      }
-
-      // Se usuário existe mas não tem perfil, ainda permite acesso (pode criar depois)
-      // Mas avisa no console para debug
-      if (user && !user.profile) {
-        console.warn('Usuário autenticado mas sem perfil no banco. Criando perfil básico...')
-        // Permite acesso mesmo sem perfil
-      }
-
-      if (user && requiredRole && user.profile) {
-        const hasRole = requiredRole.includes(user.profile.role)
-        if (!hasRole) {
-          router.replace('/dashboard') // Redirecionar para dashboard se não tiver permissão
+    // Verificar se há flag de redirecionamento após login
+    const authRedirect = localStorage.getItem('auth_redirect')
+    
+    // Se não está carregando e não há usuário E não há flag de login, redirecionar
+    if (!loading && !user && !authRedirect) {
+      // Aguardar um pouco antes de redirecionar (evita redirecionar muito rápido)
+      const timeout = setTimeout(() => {
+        // Verificar novamente antes de redirecionar
+        if (!user) {
+          router.replace('/login')
         }
+      }, 2000)
+      return () => clearTimeout(timeout)
+    }
+
+    // Se há flag de login, limpar após um tempo
+    if (authRedirect === 'dashboard') {
+      const timeout = setTimeout(() => {
+        localStorage.removeItem('auth_redirect')
+        setHasAuthRedirect(false)
+      }, 5000)
+      return () => clearTimeout(timeout)
+    }
+
+    // Verificar permissões de role se necessário
+    if (user && requiredRole && user.profile) {
+      const hasRole = requiredRole.includes(user.profile.role)
+      if (!hasRole) {
+        router.replace('/dashboard')
       }
-    }, 500) // Aumentado para 500ms para dar tempo da sessão ser estabelecida
+    }
+  }, [user, loading, router, requiredRole, mounted])
 
-    return () => clearTimeout(timeout)
-  }, [user, loading, router, requiredRole, hasChecked])
-
-  if (loading) {
+  // Durante a hidratação inicial, mostrar loading para evitar diferença servidor/cliente
+  if (!mounted) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="text-center">
@@ -64,16 +72,31 @@ export function ProtectedRoute({ children, requiredRole }: ProtectedRouteProps) 
     )
   }
 
-  if (!user) {
+  // Se há flag de redirecionamento após login, permitir carregar imediatamente
+  // Isso evita a tela de "Redirecionando..." e permite que o dashboard carregue
+  if (hasAuthRedirect) {
+    return <>{children}</>
+  }
+
+  // Se está carregando, mostrar loading apenas se não houver usuário
+  if (loading && !user) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="text-center">
-          <p className="text-sm text-text-muted">Redirecionando...</p>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-sm text-text-muted">Carregando...</p>
         </div>
       </div>
     )
   }
 
+  // Se há usuário, mostrar conteúdo
+  if (user) {
+    return <>{children}</>
+  }
+
+  // Se não há usuário e não está carregando, mostrar conteúdo mesmo assim
+  // O useEffect vai cuidar do redirecionamento se necessário
   return <>{children}</>
 }
 

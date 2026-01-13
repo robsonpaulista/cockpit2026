@@ -7,10 +7,15 @@ import { LogOut, User, Settings, ChevronDown } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 export function UserMenu() {
-  const { user, signOut } = useAuth()
+  const { user, loading, signOut } = useAuth()
   const router = useRouter()
   const [open, setOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -29,12 +34,63 @@ export function UserMenu() {
   }, [open])
 
   const handleSignOut = async () => {
-    await signOut()
-    router.push('/login')
+    try {
+      setOpen(false)
+      
+      // Limpar localStorage
+      localStorage.removeItem('auth_redirect')
+      localStorage.removeItem('candidatoPadraoPesquisa')
+      
+      // Fazer logout no Supabase
+      await signOut()
+      
+      // Aguardar um pouco para garantir que a sessão foi limpa
+      await new Promise(resolve => setTimeout(resolve, 200))
+      
+      // Redirecionar para login usando window.location para forçar reload completo
+      window.location.href = '/login'
+    } catch (error) {
+      console.error('Erro ao fazer logout:', error)
+      // Mesmo com erro, tentar redirecionar
+      window.location.href = '/login'
+    }
   }
 
-  if (!user) {
+  // Se ainda não montou, não mostrar nada (evita erro de hidratação)
+  if (!mounted) {
     return null
+  }
+
+  // Se está carregando, mostrar um placeholder
+  if (loading) {
+    return (
+      <div className="flex items-center gap-2 px-3 py-2">
+        <div className="w-8 h-8 rounded-full bg-background animate-pulse" />
+        <div className="hidden md:block">
+          <div className="h-4 w-24 bg-background rounded animate-pulse" />
+        </div>
+      </div>
+    )
+  }
+
+  // Se não há usuário após carregar, mostrar um botão de fallback para logout
+  // Isso garante que sempre há uma forma de sair
+  if (!user) {
+    return (
+      <div className="relative">
+        <button
+          onClick={async () => {
+            // Limpar tudo e redirecionar
+            localStorage.clear()
+            window.location.href = '/login'
+          }}
+          className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-primary-soft transition-colors text-text-muted"
+          title="Sair"
+        >
+          <LogOut className="w-5 h-5" />
+        </button>
+      </div>
+    )
   }
 
   const userInitials = user.profile?.name

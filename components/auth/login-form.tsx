@@ -17,23 +17,34 @@ export function LoginForm() {
     setLoading(true)
     setError(null)
 
-    const { data, error: signInError } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    })
+    try {
+      const { data, error: signInError } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      })
 
-    if (signInError) {
-      setError(signInError.message)
-      setLoading(false)
-      return
-    }
+      if (signInError) {
+        setError(signInError.message)
+        setLoading(false)
+        return
+      }
 
-    if (data.user) {
-      // Aguardar um pouco para garantir que a sessão foi estabelecida
-      // Usar window.location.href para forçar reload completo e estabelecer sessão
-      setTimeout(() => {
+      if (data.user && data.session) {
+        // Login bem-sucedido - salvar flag no localStorage para o ProtectedRoute saber
+        localStorage.setItem('auth_redirect', 'dashboard')
+        
+        // Aguardar um pouco para garantir que a sessão foi estabelecida
+        await new Promise(resolve => setTimeout(resolve, 300))
+        
+        // Redirecionar de forma simples e direta
         window.location.href = '/dashboard'
-      }, 300)
+      } else {
+        setError('Erro ao fazer login. Tente novamente.')
+        setLoading(false)
+      }
+    } catch (err: any) {
+      setError(err.message || 'Erro ao fazer login. Tente novamente.')
+      setLoading(false)
     }
   }
 

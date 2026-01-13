@@ -123,8 +123,24 @@ export function useAuth() {
   }, [])
 
   const signOut = async () => {
-    await supabase.auth.signOut()
-    setUser(null)
+    try {
+      // Fazer logout no Supabase
+      const { error } = await supabase.auth.signOut()
+      
+      if (error) {
+        console.error('Erro ao fazer logout:', error)
+      }
+      
+      // Limpar estado do usuário
+      setUser(null)
+      
+      // Limpar qualquer sessão armazenada
+      localStorage.removeItem('auth_redirect')
+    } catch (error) {
+      console.error('Erro ao fazer logout:', error)
+      // Mesmo com erro, limpar o estado local
+      setUser(null)
+    }
   }
 
   return {

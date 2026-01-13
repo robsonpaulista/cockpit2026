@@ -10,12 +10,15 @@ export default function LoginPage() {
   const supabase = createClient()
 
   useEffect(() => {
-    // Se já estiver autenticado, redirecionar para dashboard
-    supabase.auth.getUser().then(({ data: { user } }) => {
+    // Verificar se já está autenticado ao carregar a página
+    const checkAuth = async () => {
+      const { data: { user } } = await supabase.auth.getUser()
       if (user) {
         router.replace('/dashboard')
       }
-    })
+    }
+
+    checkAuth()
   }, [router, supabase])
 
   return <LoginForm />

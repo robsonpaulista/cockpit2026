@@ -49,36 +49,44 @@ export async function GET(request: Request) {
     }
 
     // Agrupar por data e manter informações de instituto e cidade
+    // Usar a data completa (YYYY-MM-DD) como chave para garantir ordenação correta
     const dadosPorData = new Map<string, { 
       intencao: number
       count: number
       institutos: string[]
       cidades: string[]
+      dataOriginal: string // Manter data original para ordenação
     }>()
 
     polls.forEach((poll: any) => {
       // Extrair data sem conversão de timezone para evitar diferença de 1 dia
       let dataStr = poll.data.includes('T') ? poll.data.split('T')[0] : poll.data
       
-      // Se a data está no formato YYYY-MM-DD, converter diretamente sem usar Date
-      // para evitar problemas de timezone
+      // Normalizar para formato YYYY-MM-DD para ordenação correta
+      let dataNormalizada: string
       let dataFormatada: string
+      
       if (/^\d{4}-\d{2}-\d{2}$/.test(dataStr)) {
+        // Já está no formato YYYY-MM-DD
+        dataNormalizada = dataStr
         const [ano, mes, dia] = dataStr.split('-')
-        dataFormatada = `${dia}/${mes}`
+        dataFormatada = `${dia}/${mes}/${ano}` // Incluir ano na formatação
       } else {
-        // Se já está em outro formato, tentar parsear
+        // Tentar parsear outros formatos
         const partes = dataStr.split(/[-/]/)
         if (partes.length === 3) {
-          // Assumir formato YYYY-MM-DD ou DD/MM/YYYY
           if (partes[0].length === 4) {
-            // YYYY-MM-DD
-            dataFormatada = `${partes[2]}/${partes[1]}`
+            // YYYY-MM-DD ou YYYY/MM/DD
+            dataNormalizada = `${partes[0]}-${partes[1]}-${partes[2]}`
+            dataFormatada = `${partes[2]}/${partes[1]}/${partes[0]}`
           } else {
             // DD/MM/YYYY ou DD-MM-YYYY
-            dataFormatada = `${partes[0]}/${partes[1]}`
+            dataNormalizada = `${partes[2]}-${partes[1]}-${partes[0]}`
+            dataFormatada = `${partes[0]}/${partes[1]}/${partes[2]}`
           }
         } else {
+          // Formato desconhecido, usar como está
+          dataNormalizada = dataStr
           dataFormatada = dataStr
         }
       }
@@ -86,8 +94,8 @@ export async function GET(request: Request) {
       const cidadeNome = poll.cities?.name || (poll.cidade_id ? 'Cidade não encontrada' : 'Estado')
       const instituto = poll.instituto || 'Não informado'
 
-      if (dadosPorData.has(dataFormatada)) {
-        const existente = dadosPorData.get(dataFormatada)!
+      if (dadosPorData.has(dataNormalizada)) {
+        const existente = dadosPorData.get(dataNormalizada)!
         existente.intencao += poll.intencao
         existente.count += 1
         if (!existente.institutos.includes(instituto)) {
@@ -97,29 +105,34 @@ export async function GET(request: Request) {
           existente.cidades.push(cidadeNome)
         }
       } else {
-        dadosPorData.set(dataFormatada, {
+        dadosPorData.set(dataNormalizada, {
           intencao: poll.intencao,
           count: 1,
           institutos: [instituto],
           cidades: [cidadeNome],
+          dataOriginal: dataNormalizada,
         })
       }
     })
 
     // Converter para array e calcular média
     const dadosFormatados = Array.from(dadosPorData.entries())
-      .map(([date, { intencao, count, institutos, cidades }]) => ({
-        date,
-        intencao: Math.round((intencao / count) * 10) / 10, // Arredondar para 1 casa decimal
-        instituto: institutos.join(', '), // Se houver múltiplos, separar por vírgula
-        cidade: cidades.join(', '), // Se houver múltiplos, separar por vírgula
-      }))
+      .map(([dataNormalizada, { intencao, count, institutos, cidades, dataOriginal }]) => {
+        // Formatar data para exibição (DD/MM apenas, sem ano para manter visual limpo)
+        const [ano, mes, dia] = dataOriginal.split('-')
+        const dataExibicao = `${dia}/${mes}`
+        
+        return {
+          date: dataExibicao,
+          dateOriginal: dataOriginal, // Manter para ordenação correta
+          intencao: Math.round((intencao / count) * 10) / 10, // Arredondar para 1 casa decimal
+          instituto: institutos.join(', '), // Se houver múltiplos, separar por vírgula
+          cidade: cidades.join(', '), // Se houver múltiplos, separar por vírgula
+        }
+      })
       .sort((a, b) => {
-        // Ordenar por data (converter DD/MM de volta para comparação)
-        const [diaA, mesA] = a.date.split('/').map(Number)
-        const [diaB, mesB] = b.date.split('/').map(Number)
-        if (mesA !== mesB) return mesA - mesB
-        return diaA - diaB
+        // Ordenar usando a data original completa (YYYY-MM-DD) para garantir ordem cronológica correta
+        return a.dateOriginal.localeCompare(b.dateOriginal)
       })
 
     return NextResponse.json({

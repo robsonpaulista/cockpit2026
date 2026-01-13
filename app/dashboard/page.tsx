@@ -8,7 +8,7 @@ import { ActionCard } from '@/components/action-card'
 import { AIAgent } from '@/components/ai-agent'
 import { mockKPIs, mockAlerts, mockActions } from '@/lib/mock-data'
 import { KPI, Alert, NewsItem } from '@/types'
-import { TrendingUp, MapPin, Flag, MessageSquare, ThermometerSun, ThermometerSnowflake, Flame, Activity } from 'lucide-react'
+import { TrendingUp, MapPin, Flag, MessageSquare, ThermometerSun, ThermometerSnowflake, Flame, Activity, Maximize2, X } from 'lucide-react'
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 
 const trendData = [
@@ -54,6 +54,12 @@ export default function Home() {
   } | null>(null)
   const [loadingBandeiras, setLoadingBandeiras] = useState(true)
   const [projecaoChapa, setProjecaoChapa] = useState<number>(0)
+  const [graficoPollsTelaCheia, setGraficoPollsTelaCheia] = useState(false)
+
+  // Calcular média das pesquisas diretamente a partir dos dados do gráfico
+  const mediaPesquisas = pollsData.length > 0
+    ? Math.round((pollsData.reduce((sum, poll) => sum + (poll.intencao || 0), 0) / pollsData.length) * 10) / 10
+    : null
 
   const fetchCriticalAlerts = async () => {
     setLoadingAlerts(true)
@@ -344,10 +350,10 @@ export default function Home() {
             },
             {
               id: 'sentimento',
-              label: 'Sentimento Público',
-              value: `${data.sentimento.value}%`,
-              variation: data.sentimento.variation,
-              status: data.sentimento.status,
+              label: 'Média Pesquisas',
+              value: '-',
+              variation: 0,
+              status: 'neutral',
             },
             {
               id: 'risco',
@@ -365,6 +371,28 @@ export default function Home() {
       })
   }, [])
 
+  // KPIs com média de pesquisas atualizada em tempo real
+  const kpisComMedia = kpis.map((kpi): KPI => {
+    if (kpi.id === 'sentimento') {
+      let status: 'success' | 'warning' | 'error' | 'neutral' = 'neutral'
+      if (mediaPesquisas !== null) {
+        if (mediaPesquisas >= 50) {
+          status = 'success'
+        } else if (mediaPesquisas >= 30) {
+          status = 'warning'
+        } else {
+          status = 'error'
+        }
+      }
+      return {
+        ...kpi,
+        value: mediaPesquisas !== null ? `${mediaPesquisas}%` : '-',
+        status,
+      }
+    }
+    return kpi
+  })
+
   return (
     <div className="min-h-screen bg-background">
       <Header title="Visão Geral" subtitle="Dashboard Executivo - Visão estratégica em 30 segundos" showFilters={false} />
@@ -380,7 +408,7 @@ export default function Home() {
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
-              {kpis.map((kpi) => (
+              {kpisComMedia.map((kpi) => (
                 <KPICard key={kpi.id} kpi={kpi} href={`/${kpi.id}`} />
               ))}
             </div>
@@ -393,9 +421,20 @@ export default function Home() {
             {/* Gráfico de Histórico de Pesquisas */}
             <div className="bg-surface rounded-2xl border border-border p-6">
               <div className="flex items-center justify-between mb-4">
-                <h2 className="text-lg font-semibold text-text-strong">Histórico de Pesquisas de Intenção de Votos</h2>
-                {candidatoPadrao && (
-                  <span className="text-sm text-text-muted">{candidatoPadrao}</span>
+                <div className="flex items-center gap-3">
+                  <h2 className="text-lg font-semibold text-text-strong">Histórico de Pesquisas de Intenção de Votos</h2>
+                  {candidatoPadrao && (
+                    <span className="text-sm text-text-muted">{candidatoPadrao}</span>
+                  )}
+                </div>
+                {pollsData.length > 0 && (
+                  <button
+                    onClick={() => setGraficoPollsTelaCheia(true)}
+                    className="p-2 rounded-lg hover:bg-background transition-colors text-text-muted hover:text-text-strong"
+                    title="Visualizar em tela cheia"
+                  >
+                    <Maximize2 className="w-5 h-5" />
+                  </button>
                 )}
               </div>
               <div className="h-64">
@@ -861,6 +900,159 @@ export default function Home() {
           </div>
         </div>
       </div>
+
+      {/* Modal de Gráfico em Tela Cheia */}
+      {graficoPollsTelaCheia && (
+        <div className="fixed inset-0 z-50 bg-background flex flex-col">
+          {/* Header */}
+          <div className="bg-surface border-b border-border p-4 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <h2 className="text-xl font-semibold text-text-strong">Histórico de Pesquisas de Intenção de Votos</h2>
+              {candidatoPadrao && (
+                <span className="text-sm text-text-muted">{candidatoPadrao}</span>
+              )}
+            </div>
+            <button
+              onClick={() => setGraficoPollsTelaCheia(false)}
+              className="p-2 rounded-lg hover:bg-background transition-colors"
+              title="Fechar tela cheia"
+            >
+              <X className="w-6 h-6 text-text-muted" />
+            </button>
+          </div>
+
+          {/* Gráfico em tela cheia */}
+          <div className="flex-1 p-6 overflow-auto">
+            {loadingPolls ? (
+              <div className="h-full flex items-center justify-center">
+                <div className="w-full h-full space-y-4">
+                  <div className="h-8 bg-surface rounded-lg animate-pulse" />
+                  <div className="h-48 bg-surface rounded-lg animate-pulse" />
+                </div>
+              </div>
+            ) : pollsData.length === 0 ? (
+              <div className="h-full flex items-center justify-center">
+                <p className="text-text-muted">Nenhuma pesquisa encontrada</p>
+              </div>
+            ) : (
+              <div className="h-full min-h-[600px]">
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={pollsData} margin={{ top: 20, right: 30, left: 20, bottom: 60 }}>
+                    <defs>
+                      <linearGradient id="colorIntencaoFullscreen" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#1E4ED8" stopOpacity={0.3} />
+                        <stop offset="95%" stopColor="#1E4ED8" stopOpacity={0} />
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
+                    <XAxis 
+                      dataKey="date" 
+                      stroke="#64748B" 
+                      fontSize={14}
+                      angle={-45}
+                      textAnchor="end"
+                      height={80}
+                    />
+                    <YAxis 
+                      stroke="#64748B" 
+                      fontSize={14}
+                      domain={[0, 100]}
+                      label={{ value: 'Intenção (%)', angle: -90, position: 'insideLeft', style: { fontSize: 14 } }}
+                    />
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: '#FFFFFF',
+                        border: '1px solid #E5E7EB',
+                        borderRadius: '8px',
+                        padding: '12px',
+                      }}
+                      content={({ active, payload, label }) => {
+                        if (active && payload && payload.length > 0) {
+                          const data = payload[0].payload as { date: string; intencao: number; instituto?: string; cidade?: string }
+                          return (
+                            <div className="bg-white border border-gray-200 rounded-lg shadow-lg p-3">
+                              <p className="font-semibold text-text-strong mb-2">{label}</p>
+                              <p className="text-sm text-text-strong mb-1">
+                                <span className="font-medium">Intenção de Voto:</span>{' '}
+                                <span className="text-primary">{data.intencao}%</span>
+                              </p>
+                              {data.instituto && data.instituto !== 'Não informado' && (
+                                <p className="text-sm text-text-muted mb-1">
+                                  <span className="font-medium">Instituto:</span> {data.instituto}
+                                </p>
+                              )}
+                              {data.cidade && data.cidade !== 'Estado' && data.cidade !== 'Cidade não encontrada' && (
+                                <p className="text-sm text-text-muted">
+                                  <span className="font-medium">Cidade:</span> {data.cidade}
+                                </p>
+                              )}
+                            </div>
+                          )
+                        }
+                        return null
+                      }}
+                    />
+                    <Area
+                      type="monotone"
+                      dataKey="intencao"
+                      stroke="#1E4ED8"
+                      strokeWidth={3}
+                      fillOpacity={1}
+                      fill="url(#colorIntencaoFullscreen)"
+                      name="Intenção de Voto"
+                      dot={(props: any) => {
+                        const { cx, cy, payload } = props
+                        if (!payload) return <circle cx={cx} cy={cy} r={5} fill="#1E4ED8" />
+                        
+                        const instituto = payload.instituto || ''
+                        const cidade = payload.cidade || ''
+                        const value = payload.intencao || 0
+                        
+                        const infoParts = []
+                        if (instituto && instituto !== 'Não informado') {
+                          infoParts.push(instituto)
+                        }
+                        if (cidade && cidade !== 'Estado' && cidade !== 'Cidade não encontrada') {
+                          infoParts.push(cidade)
+                        }
+                        const infoText = infoParts.length > 0 ? infoParts.join(' - ') : ''
+                        
+                        return (
+                          <g>
+                            <circle cx={cx} cy={cy} r={5} fill="#1E4ED8" />
+                            <text
+                              x={cx}
+                              y={cy - 25}
+                              fill="#1E4ED8"
+                              fontSize="14"
+                              fontWeight="600"
+                              textAnchor="middle"
+                            >
+                              {`${value}%`}
+                            </text>
+                            {infoText && (
+                              <text
+                                x={cx}
+                                y={cy - 10}
+                                fill="#64748B"
+                                fontSize="11"
+                                fontWeight="400"
+                                textAnchor="middle"
+                              >
+                                {infoText}
+                              </text>
+                            )}
+                          </g>
+                        )
+                      }}
+                    />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Agente de IA */}
       <AIAgent
