@@ -46,15 +46,15 @@ export async function POST(request: Request) {
           results: [],
           search_terms_used: [],
         },
-      {
-        status: 429,
-        headers: {
-          'X-RateLimit-Limit': String(RATE_LIMITS.NEWS_COLLECT.maxRequests),
-          'X-RateLimit-Remaining': String(rateLimitResult.remaining),
-          'X-RateLimit-Reset': String(rateLimitResult.resetAt),
-        },
-      }
-    )
+        {
+          status: 429,
+          headers: {
+            'X-RateLimit-Limit': String(RATE_LIMITS.NEWS_COLLECT.maxRequests),
+            'X-RateLimit-Remaining': String(rateLimitResult.remaining),
+            'X-RateLimit-Reset': String(rateLimitResult.resetAt),
+          },
+        }
+      );
 
     const body = await request.json().catch(() => ({}))
     const { 
@@ -92,8 +92,8 @@ export async function POST(request: Request) {
     logger.info('Iniciando coleta de notícias', {
       userId: user.id,
       feedsCount: feeds.length,
-      includeGdelt: body.include_gdelt,
-      includeMediaCloud: body.include_media_cloud,
+      includeGdelt: include_gdelt,
+      includeMediaCloud: include_media_cloud,
     })
 
     let totalCollected = 0
@@ -159,6 +159,7 @@ export async function POST(request: Request) {
 
               return {
                 ...item,
+                user_id: user.id,
                 source_type: 'google_alerts',
                 sentiment,
                 risk_level: risk,
@@ -169,6 +170,7 @@ export async function POST(request: Request) {
             })
           : newNews.map(item => ({
               ...item,
+              user_id: user.id,
               source_type: 'google_alerts',
               processed: false,
               feed_id: feed.id,
@@ -269,6 +271,7 @@ export async function POST(request: Request) {
 
           // GDELT: armazenar dados brutos, sem classificação automática
           const processedNews = newNews.map(item => ({
+            user_id: user.id,
             title: item.title,
             source: item.source,
             source_type: 'gdelt',
@@ -380,6 +383,7 @@ export async function POST(request: Request) {
 
             // Media Cloud: armazenar dados brutos, sem classificação automática
             const processedNews = newNews.map(item => ({
+              user_id: user.id,
               title: item.title,
               source: item.source,
               source_type: 'media_cloud',
@@ -451,23 +455,24 @@ export async function POST(request: Request) {
         search_terms_used: searchTerms,
       },
       {
+        status: 200,
         headers: {
           'X-RateLimit-Limit': String(RATE_LIMITS.NEWS_COLLECT.maxRequests),
           'X-RateLimit-Remaining': String(rateLimitResult.remaining),
           'X-RateLimit-Reset': String(rateLimitResult.resetAt),
         },
-      },
-    )
+      }
+    );
   } catch (error) {
     logError('Erro ao coletar de todas as fontes', error, {
       endpoint: '/api/noticias/collect/all-sources',
-    })
+    });
     return NextResponse.json(
       { 
         error: 'Erro ao coletar notícias',
-        message: error instanceof Error ? error.message : 'Erro desconhecido'
+        message: error instanceof Error ? error.message : 'Erro desconhecido',
       },
       { status: 500 }
-    )
+    );
   }
 }
