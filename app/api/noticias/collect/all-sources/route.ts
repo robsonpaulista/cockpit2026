@@ -456,7 +456,7 @@ export async function POST(request: Request) {
           'X-RateLimit-Remaining': String(rateLimitResult.remaining),
           'X-RateLimit-Reset': String(rateLimitResult.resetAt),
         },
-      }
+      },
     )
   } catch (error) {
     logError('Erro ao coletar de todas as fontes', error, {

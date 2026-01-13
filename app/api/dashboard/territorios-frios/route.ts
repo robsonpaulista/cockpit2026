@@ -114,7 +114,7 @@ export async function POST(request: Request) {
     const hasEnvConfig = !!(envPrivateKey && envEmail && envSpreadsheetId)
 
     // Se não tiver config do localStorage mas tiver do servidor, usar do servidor
-    if (!territorioConfig && hasEnvConfig) {
+    if (!territorioConfig && hasEnvConfig && envPrivateKey && envEmail) {
       territorioConfig = {
         spreadsheetId: envSpreadsheetId,
         sheetName: envSheetName,
