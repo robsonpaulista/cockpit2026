@@ -1,4 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
+
+export const dynamic = 'force-dynamic'
 import { NextResponse } from 'next/server'
 import { fetchGoogleAlerts, analyzeSentiment, analyzeRisk, extractTheme } from '@/lib/services/google-alerts'
 import { fetchGDELTRecent } from '@/lib/services/gdelt'

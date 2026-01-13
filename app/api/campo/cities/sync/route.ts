@@ -1,4 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
+
+export const dynamic = 'force-dynamic'
 import { NextResponse } from 'next/server'
 import { fetchMunicipiosPiaui } from '@/lib/services/ibge'
 

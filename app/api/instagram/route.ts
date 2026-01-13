@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+
+export const dynamic = 'force-dynamic'
 import { checkRateLimit, RATE_LIMITS } from '@/lib/rate-limit'
 import { logger, logError } from '@/lib/logger'
 

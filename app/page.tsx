@@ -10,17 +10,36 @@ export default function HomePage() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    // Verificar se usuário está autenticado
-    supabase.auth.getUser().then(({ data: { user } }) => {
+    // Timeout de segurança para evitar loading infinito
+    const timeout = setTimeout(() => {
       setLoading(false)
-      if (user) {
-        // Redirecionar para dashboard se autenticado
-        router.replace('/dashboard')
-      } else {
-        // Redirecionar para login se não autenticado
+      router.replace('/login')
+    }, 5000)
+
+    // Verificar se usuário está autenticado
+    supabase.auth.getUser()
+      .then(({ data: { user }, error }) => {
+        clearTimeout(timeout)
+        setLoading(false)
+        if (error) {
+          console.error('Erro ao verificar autenticação:', error)
+          router.replace('/login')
+          return
+        }
+        if (user) {
+          // Redirecionar para dashboard se autenticado
+          router.replace('/dashboard')
+        } else {
+          // Redirecionar para login se não autenticado
+          router.replace('/login')
+        }
+      })
+      .catch((error) => {
+        clearTimeout(timeout)
+        setLoading(false)
+        console.error('Erro ao verificar autenticação:', error)
         router.replace('/login')
-      }
-    })
+      })
   }, [router, supabase])
 
   // Mostrar loading enquanto verifica autenticação

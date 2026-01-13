@@ -3,6 +3,8 @@ import { NextResponse } from 'next/server'
 import { validateEnv } from '@/lib/env'
 import { logger } from '@/lib/logger'
 
+export const dynamic = 'force-dynamic'
+
 /**
  * Health Check Endpoint
  * Verifica se o sistema está funcionando corretamente

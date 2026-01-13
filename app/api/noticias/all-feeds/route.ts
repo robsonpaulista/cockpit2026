@@ -1,6 +1,8 @@
 import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
 
+export const dynamic = 'force-dynamic'
+
 // Retorna todos os feeds unificados (do usuário + adversários)
 export async function GET() {
   try {

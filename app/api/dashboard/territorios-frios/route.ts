@@ -1,4 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
+
+export const dynamic = 'force-dynamic'
 import { NextResponse } from 'next/server'
 
 // Função para normalizar nomes de cidades (para comparação)
