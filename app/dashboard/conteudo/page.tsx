@@ -32,7 +32,8 @@ import {
 } from 'lucide-react'
 import { 
   fetchInstagramData, 
-  loadInstagramConfig, 
+  loadInstagramConfig,
+  loadInstagramConfigAsync,
   saveInstagramConfig, 
   clearInstagramConfig,
   saveInstagramSnapshot,
@@ -354,24 +355,28 @@ export default function ConteudoPage() {
 
   // Carregar configuração ao montar
   useEffect(() => {
-    // loadInstagramConfig sempre retorna credenciais (localStorage ou padrão)
-    // Nunca retorna null, então sempre temos credenciais disponíveis
-    const savedConfig = loadInstagramConfig()
+    const loadConfig = async () => {
+      // Primeiro tenta localStorage, depois busca do servidor (variáveis de ambiente)
+      const savedConfig = await loadInstagramConfigAsync()
+      
+      if (savedConfig.token && savedConfig.businessAccountId) {
+        setConfig(savedConfig)
+        setIsConfigured(true)
+        setShowConfig(false)
+        
+        // Tentar carregar dados silenciosamente
+        fetchData(savedConfig).catch((err) => {
+          console.error('Erro ao carregar dados do Instagram:', err)
+        })
+      } else {
+        // Sem credenciais disponíveis
+        setConfig({ token: '', businessAccountId: '' })
+        setIsConfigured(false)
+        setError('Token e Business Account ID são obrigatórios')
+      }
+    }
     
-    // Sempre definir como configurado (igual ao projeto mutirao_catarata)
-    setConfig(savedConfig)
-    setIsConfigured(true)
-    setShowConfig(false) // NUNCA mostrar modal automaticamente
-    
-    // Tentar carregar dados silenciosamente sem mostrar modal
-    fetchData(savedConfig).catch((err) => {
-      // Se houver erro, não limpar credenciais nem mostrar modal
-      // O usuário pode clicar em "Atualizar" para tentar novamente
-      // Ou clicar em "Configurar" se quiser atualizar as credenciais
-      console.error('Erro ao carregar dados do Instagram:', err)
-    })
-    
-    // NUNCA mostrar modal automaticamente - só se o usuário clicar em "Configurar" ou "Desconectar"
+    loadConfig()
   }, [])
 
   // Função para buscar histórico de métricas

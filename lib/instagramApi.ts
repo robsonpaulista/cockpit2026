@@ -133,19 +133,29 @@ export function saveInstagramConfig(token: string, businessAccountId: string): v
   }
 }
 
-// Credenciais padrão do .env.local (fallback)
-// ⚠️ SEGURANÇA: NUNCA hardcodar tokens aqui!
-// Use variáveis de ambiente ou localStorage do cliente
-const DEFAULT_INSTAGRAM_CONFIG = {
-  token: process.env.NEXT_PUBLIC_INSTAGRAM_TOKEN || '', // Sem fallback hardcoded por segurança
-  businessAccountId: process.env.NEXT_PUBLIC_INSTAGRAM_BUSINESS_ID || '' // Sem fallback hardcoded por segurança
+/**
+ * Buscar configurações do Instagram da API do servidor
+ * Isso é mais seguro pois as credenciais não ficam expostas no código do cliente
+ */
+export async function fetchInstagramConfigFromServer(): Promise<{ token: string; businessAccountId: string } | null> {
+  try {
+    const response = await fetch('/api/instagram/config')
+    if (response.ok) {
+      const data = await response.json()
+      if (data.token && data.businessAccountId) {
+        return { token: data.token, businessAccountId: data.businessAccountId }
+      }
+    }
+    return null
+  } catch (error) {
+    console.error('Erro ao buscar config do servidor:', error)
+    return null
+  }
 }
 
 /**
- * Carregar configurações do Instagram do localStorage
- * Sempre retorna credenciais (localStorage ou padrão)
- * Nunca retorna null para evitar mostrar modal automaticamente
- * Igual ao comportamento do projeto mutirao_catarata
+ * Carregar configurações do Instagram
+ * Prioridade: 1) localStorage, 2) API do servidor
  */
 export function loadInstagramConfig(): { token: string; businessAccountId: string } {
   if (typeof window !== 'undefined') {
@@ -155,32 +165,36 @@ export function loadInstagramConfig(): { token: string; businessAccountId: strin
     if (token && businessAccountId) {
       return { token, businessAccountId }
     }
-    
-    // Se não houver no localStorage, usar credenciais padrão e salvar automaticamente
-    // Isso evita mostrar modal automaticamente - igual ao outro projeto
-    const defaultConfig = {
-      token: DEFAULT_INSTAGRAM_CONFIG.token,
-      businessAccountId: DEFAULT_INSTAGRAM_CONFIG.businessAccountId
-    }
-    
-    // Salvar automaticamente no localStorage para próxima vez
-    // Só salvar se as credenciais forem válidas (não são placeholders)
-    if (defaultConfig.token && defaultConfig.businessAccountId && 
-        defaultConfig.token !== 'EAAH...' && 
-        defaultConfig.token.length > 20 && // Token real tem mais de 20 caracteres
-        defaultConfig.businessAccountId !== '123456789' &&
-        defaultConfig.businessAccountId.length > 5) { // Business ID real tem mais de 5 caracteres
-      saveInstagramConfig(defaultConfig.token, defaultConfig.businessAccountId)
-    }
-    
-    return defaultConfig
   }
   
-  // Fallback para SSR
-  return {
-    token: DEFAULT_INSTAGRAM_CONFIG.token,
-    businessAccountId: DEFAULT_INSTAGRAM_CONFIG.businessAccountId
+  // Retorna vazio - o componente deve chamar loadInstagramConfigAsync para buscar do servidor
+  return { token: '', businessAccountId: '' }
+}
+
+/**
+ * Carregar configurações do Instagram de forma assíncrona
+ * Verifica localStorage primeiro, depois busca do servidor
+ */
+export async function loadInstagramConfigAsync(): Promise<{ token: string; businessAccountId: string }> {
+  if (typeof window !== 'undefined') {
+    // Primeiro, verificar localStorage
+    const token = localStorage.getItem('instagramToken')
+    const businessAccountId = localStorage.getItem('instagramBusinessAccountId')
+    
+    if (token && businessAccountId) {
+      return { token, businessAccountId }
+    }
+    
+    // Se não houver no localStorage, buscar do servidor (variáveis de ambiente)
+    const serverConfig = await fetchInstagramConfigFromServer()
+    if (serverConfig && serverConfig.token && serverConfig.businessAccountId) {
+      // Salvar no localStorage para próximas vezes
+      saveInstagramConfig(serverConfig.token, serverConfig.businessAccountId)
+      return serverConfig
+    }
   }
+  
+  return { token: '', businessAccountId: '' }
 }
 
 /**

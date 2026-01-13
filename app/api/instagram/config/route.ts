@@ -66,13 +66,22 @@ export async function GET() {
       return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
     }
 
-    // Retornar configuração salva (se houver no banco)
-    // Por enquanto, retornar vazio pois usamos localStorage no cliente
+    // Retornar credenciais das variáveis de ambiente do servidor (seguro)
+    // Usa variáveis SEM NEXT_PUBLIC_ para não expor no browser
+    const token = process.env.INSTAGRAM_TOKEN || ''
+    const businessAccountId = process.env.INSTAGRAM_BUSINESS_ID || ''
+
+    // Só retornar se ambos estiverem configurados
+    if (token && businessAccountId) {
+      return NextResponse.json({ token, businessAccountId })
+    }
+
+    // Se não houver variáveis de ambiente, retornar vazio
     return NextResponse.json({ token: null, businessAccountId: null })
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Erro ao buscar configuração:', error)
     return NextResponse.json(
-      { error: error.message || 'Erro interno do servidor' },
+      { error: error instanceof Error ? error.message : 'Erro interno do servidor' },
       { status: 500 }
     )
   }
