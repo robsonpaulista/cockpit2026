@@ -107,9 +107,11 @@ export async function POST(request: Request) {
 
     const sheets = google.sheets({ version: 'v4', auth })
 
-    // Construir range - nomes de abas com espaços precisam estar entre aspas simples
-    const safeSheetName = sheetName.includes(' ') ? `'${sheetName}'` : sheetName
-    const rangeToRead = range ? `${safeSheetName}!${range}` : safeSheetName
+    // Construir range - aspas simples só são necessárias quando há range de células
+    // Ex: 'Nome da Aba'!A1:Z100 (com aspas) vs Nome da Aba (sem aspas)
+    const rangeToRead = range 
+      ? (sheetName.includes(' ') ? `'${sheetName}'!${range}` : `${sheetName}!${range}`)
+      : sheetName
 
     // Buscar dados
     const response = await sheets.spreadsheets.values.get({
