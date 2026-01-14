@@ -2,6 +2,8 @@ import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
 
+export const dynamic = 'force-dynamic'
+
 const updateNewsSchema = z.object({
   title: z.string().min(1).optional(),
   source: z.string().min(1).optional(),

@@ -1,5 +1,72 @@
 import { NextResponse } from 'next/server'
 
+export const dynamic = 'force-dynamic'
+
+// Função auxiliar para formatar a chave privada
+function formatPrivateKey(key: string): string {
+  let formattedKey = key.replace(/\\\\n/g, '\n')
+  formattedKey = formattedKey.replace(/\\n/g, '\n')
+  return formattedKey
+}
+
+// Função auxiliar para obter credenciais (prioriza variáveis de ambiente)
+function getCredentials(bodyCredentials?: string, context: 'territorio' | 'demandas' | 'default' = 'default') {
+  // Prioridade 1: Credenciais do body (mais alta prioridade)
+  if (bodyCredentials) {
+    try {
+      const parsed = typeof bodyCredentials === 'string' 
+        ? JSON.parse(bodyCredentials) 
+        : bodyCredentials
+      return {
+        type: 'service_account',
+        private_key: formatPrivateKey(parsed.private_key || parsed.privateKey),
+        client_email: parsed.client_email || parsed.clientEmail || parsed.email,
+        token_uri: parsed.token_uri || 'https://oauth2.googleapis.com/token',
+      }
+    } catch (e) {
+      // Se falhar, continuar para variáveis de ambiente
+    }
+  }
+
+  // Prioridade 2: Variáveis de ambiente específicas por contexto
+  let envPrivateKey: string | undefined
+  let envEmail: string | undefined
+
+  if (context === 'territorio') {
+    envPrivateKey = process.env.GOOGLE_SERVICE_ACCOUNT_TERRITORIO_PRIVATE_KEY
+    envEmail = process.env.GOOGLE_SERVICE_ACCOUNT_TERRITORIO_EMAIL
+  } else if (context === 'demandas') {
+    envPrivateKey = process.env.GOOGLE_SERVICE_ACCOUNT_DEMANDAS_PRIVATE_KEY
+    envEmail = process.env.GOOGLE_SERVICE_ACCOUNT_DEMANDAS_EMAIL
+  }
+
+  // Prioridade 3: Variáveis genéricas (fallback para compatibilidade)
+  if (!envPrivateKey || !envEmail) {
+    envPrivateKey = process.env.GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY
+    envEmail = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL
+  }
+
+  if (envPrivateKey && envEmail) {
+    return {
+      type: 'service_account',
+      private_key: formatPrivateKey(envPrivateKey),
+      client_email: envEmail,
+      token_uri: 'https://oauth2.googleapis.com/token',
+    }
+  }
+
+  return null
+}
+
+// Função auxiliar para obter configuração da planilha
+function getSheetConfig(body: any) {
+  return {
+    spreadsheetId: body.spreadsheetId || process.env.GOOGLE_SHEETS_SPREADSHEET_ID,
+    sheetName: body.sheetName || process.env.GOOGLE_SHEETS_NAME || 'Sheet1',
+    range: body.range || process.env.GOOGLE_SHEETS_RANGE,
+  }
+}
+
 // Função para normalizar números (mesma lógica da página território)
 function normalizeNumber(value: any): number {
   if (typeof value === 'number') return value
@@ -47,29 +114,24 @@ function normalizeNumber(value: any): number {
 export async function POST(request: Request) {
   try {
     const body = await request.json()
-    const { spreadsheetId, sheetName, range, serviceAccountEmail, credentials } = body
+    const { spreadsheetId: bodySpreadsheetId, sheetName: bodySheetName, range, serviceAccountEmail, credentials } = body
+    
+    // Obter configuração (prioriza body, depois variáveis de ambiente)
+    const { spreadsheetId, sheetName } = getSheetConfig(body)
 
     if (!spreadsheetId || !sheetName) {
       return NextResponse.json(
-        { error: 'spreadsheet_id e sheet_name são obrigatórios' },
+        { error: 'spreadsheet_id e sheet_name são obrigatórios. Configure nas variáveis de ambiente ou envie no corpo da requisição.' },
         { status: 400 }
       )
     }
 
-    if (!serviceAccountEmail || !credentials) {
-      return NextResponse.json(
-        { error: 'Email do Service Account e credenciais são obrigatórios' },
-        { status: 400 }
-      )
-    }
+    // Obter credenciais (prioriza body, depois variáveis de ambiente)
+    const credentialsObj = getCredentials(credentials, 'territorio')
 
-    // Validar formato das credenciais JSON
-    let credentialsObj
-    try {
-      credentialsObj = typeof credentials === 'string' ? JSON.parse(credentials) : credentials
-    } catch (e) {
+    if (!credentialsObj) {
       return NextResponse.json(
-        { error: 'Credenciais JSON inválidas' },
+        { error: 'Credenciais não encontradas. Configure GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY e GOOGLE_SERVICE_ACCOUNT_EMAIL nas variáveis de ambiente ou envie no corpo da requisição.' },
         { status: 400 }
       )
     }

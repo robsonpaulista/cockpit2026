@@ -131,9 +131,28 @@ export default function Home() {
           })
           
           // Buscar expectativas para cada cidade
-          const savedConfig = localStorage.getItem('territorio_sheets_config')
-          if (savedConfig && cidadesUnicas.size > 0) {
-            const config = JSON.parse(savedConfig)
+          let config = null
+          
+          // Primeiro tentar configuração do servidor
+          try {
+            const serverConfigRes = await fetch('/api/territorio/config')
+            const serverConfig = await serverConfigRes.json()
+            if (serverConfig.configured) {
+              config = {} // Servidor usa variáveis de ambiente
+            }
+          } catch (e) {
+            // Continuar para localStorage
+          }
+          
+          // Fallback: localStorage
+          if (!config && typeof window !== 'undefined') {
+            const savedConfig = localStorage.getItem('territorio_sheets_config')
+            if (savedConfig) {
+              config = JSON.parse(savedConfig)
+            }
+          }
+          
+          if (config && cidadesUnicas.size > 0) {
             const expectativas: Record<string, number> = {}
             
             await Promise.all(
@@ -142,14 +161,18 @@ export default function Home() {
                   const expectativaResponse = await fetch('/api/territorio/expectativa-por-cidade', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                      spreadsheetId: config.spreadsheetId,
-                      sheetName: config.sheetName,
-                      range: config.range,
-                      serviceAccountEmail: config.serviceAccountEmail,
-                      credentials: config.credentials,
-                      cidade,
-                    }),
+                    body: JSON.stringify(
+                      config.spreadsheetId 
+                        ? {
+                            spreadsheetId: config.spreadsheetId,
+                            sheetName: config.sheetName,
+                            range: config.range,
+                            serviceAccountEmail: config.serviceAccountEmail,
+                            credentials: config.credentials,
+                            cidade,
+                          }
+                        : { cidade } // Servidor usa variáveis de ambiente
+                    ),
                   })
                   
                   if (expectativaResponse.ok) {
@@ -187,13 +210,34 @@ export default function Home() {
     const fetchTerritorios = async () => {
       setLoadingTerritorios(true)
       try {
-        const savedConfig = localStorage.getItem('territorio_sheets_config')
-        if (savedConfig) {
-          const config = JSON.parse(savedConfig)
+        let config = null
+        
+        // 1. Primeiro verificar configuração do servidor
+        try {
+          const serverConfigRes = await fetch('/api/territorio/config')
+          const serverConfig = await serverConfigRes.json()
+          if (serverConfig.configured) {
+            config = {} // Servidor usa variáveis de ambiente
+          }
+        } catch (e) {
+          // Continuar para localStorage
+        }
+        
+        // 2. Fallback: localStorage
+        if (!config && typeof window !== 'undefined') {
+          const savedConfig = localStorage.getItem('territorio_sheets_config')
+          if (savedConfig) {
+            config = JSON.parse(savedConfig)
+          }
+        }
+        
+        if (config) {
           const response = await fetch('/api/dashboard/territorios-frios', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ territorioConfig: config }),
+            body: JSON.stringify({ 
+              territorioConfig: config.spreadsheetId ? config : {} 
+            }),
           })
           
           if (response.ok) {
@@ -311,23 +355,47 @@ export default function Home() {
     // Buscar KPIs do Território (mesma API que a página Território & Base usa)
     const fetchTerritorioKPIs = async () => {
       try {
-        const savedConfig = localStorage.getItem('territorio_sheets_config')
-        if (savedConfig) {
-          const config = JSON.parse(savedConfig)
-          const response = await fetch('/api/territorio/kpis', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              spreadsheetId: config.spreadsheetId,
-              sheetName: config.sheetName,
-              range: config.range,
-              serviceAccountEmail: config.serviceAccountEmail,
-              credentials: config.credentials,
-            }),
-          })
+        // 1. Primeiro verificar se há configuração no servidor (variáveis de ambiente)
+        try {
+          const serverConfigRes = await fetch('/api/territorio/config')
+          const serverConfig = await serverConfigRes.json()
           
-          if (response.ok) {
-            return await response.json()
+          if (serverConfig.configured) {
+            // Usar configuração do servidor (sem enviar credenciais no body)
+            const response = await fetch('/api/territorio/kpis', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({}), // Servidor usa variáveis de ambiente
+            })
+            
+            if (response.ok) {
+              return await response.json()
+            }
+          }
+        } catch (e) {
+          // Continuar para localStorage se servidor não tiver configuração
+        }
+
+        // 2. Fallback: Verificar localStorage
+        if (typeof window !== 'undefined') {
+          const savedConfig = localStorage.getItem('territorio_sheets_config')
+          if (savedConfig) {
+            const config = JSON.parse(savedConfig)
+            const response = await fetch('/api/territorio/kpis', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                spreadsheetId: config.spreadsheetId,
+                sheetName: config.sheetName,
+                range: config.range,
+                serviceAccountEmail: config.serviceAccountEmail,
+                credentials: config.credentials,
+              }),
+            })
+            
+            if (response.ok) {
+              return await response.json()
+            }
           }
         }
       } catch (error) {

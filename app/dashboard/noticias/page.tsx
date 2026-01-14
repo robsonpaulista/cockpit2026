@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { Header } from '@/components/header'
 import { KPICard } from '@/components/kpi-card'
 import { AlertCard } from '@/components/alert-card'
-import { Newspaper, AlertTriangle, TrendingUp, RefreshCw, Plus, Filter, Edit2 } from 'lucide-react'
+import { Newspaper, AlertTriangle, TrendingUp, RefreshCw, Plus, Filter, Edit2, Trash2 } from 'lucide-react'
 import { FeedManagerModal } from '@/components/feed-manager-modal'
 import { EditNewsModal } from '@/components/edit-news-modal'
 import { KPI, NewsItem } from '@/types'
@@ -33,6 +33,7 @@ export default function NoticiasPage() {
   const [filterSentiment, setFilterSentiment] = useState<string>('all')
   const [filterRisk, setFilterRisk] = useState<string>('all')
   const [selectedFeeds, setSelectedFeeds] = useState<string[]>([]) // Array de IDs de feeds selecionados
+  const [deletingNewsId, setDeletingNewsId] = useState<string | null>(null)
 
   useEffect(() => {
     fetchData()
@@ -127,6 +128,35 @@ export default function NoticiasPage() {
   useEffect(() => {
     fetchNews()
   }, [filterSentiment, filterRisk, selectedFeeds])
+
+  const handleDeleteNews = async (newsId: string) => {
+    if (!confirm('Tem certeza que deseja excluir esta notícia?')) {
+      return
+    }
+
+    setDeletingNewsId(newsId)
+    try {
+      const response = await fetch(`/api/noticias/${newsId}`, {
+        method: 'DELETE',
+      })
+
+      if (response.ok) {
+        // Remover da lista local
+        setNews(news.filter(item => item.id !== newsId))
+        // Atualizar métricas e temas
+        fetchTemasAlta()
+        fetchMetrics()
+      } else {
+        const error = await response.json()
+        alert(`Erro ao excluir notícia: ${error.error || 'Erro desconhecido'}`)
+      }
+    } catch (error) {
+      console.error('Erro ao excluir notícia:', error)
+      alert('Erro ao excluir notícia. Tente novamente.')
+    } finally {
+      setDeletingNewsId(null)
+    }
+  }
 
   const noticiasKPIs: KPI[] = metrics
     ? [
@@ -334,6 +364,18 @@ export default function NoticiasPage() {
                             </span>
                           </div>
                         </div>
+                        <button
+                          onClick={() => handleDeleteNews(item.id)}
+                          disabled={deletingNewsId === item.id}
+                          className="ml-2 p-1.5 rounded-lg hover:bg-status-error/10 text-text-muted hover:text-status-error transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                          title="Excluir notícia"
+                        >
+                          {deletingNewsId === item.id ? (
+                            <RefreshCw className="w-4 h-4 animate-spin" />
+                          ) : (
+                            <Trash2 className="w-4 h-4" />
+                          )}
+                        </button>
                       </div>
 
                       <div className="flex items-center gap-2 flex-wrap">
