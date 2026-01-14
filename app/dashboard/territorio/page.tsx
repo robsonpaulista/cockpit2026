@@ -4,8 +4,9 @@ import { useEffect, useState } from 'react'
 import { Header } from '@/components/header'
 import { KPICard } from '@/components/kpi-card'
 import { GoogleSheetsConfigModal } from '@/components/google-sheets-config-modal'
-import { Users, Settings, RefreshCw, AlertCircle, ChevronDown, ChevronRight, Network } from 'lucide-react'
+import { Users, Settings, RefreshCw, AlertCircle, ChevronDown, ChevronRight, Network, FileText } from 'lucide-react'
 import { MindMapModal } from '@/components/mind-map-modal'
+import { CityDemandsModal } from '@/components/city-demands-modal'
 import { KPI } from '@/types'
 
 interface Lideranca {
@@ -35,6 +36,8 @@ export default function TerritorioPage() {
   const [showMindMap, setShowMindMap] = useState(false)
   const [candidatoPadrao, setCandidatoPadrao] = useState<string>('')
   const [serverConfigured, setServerConfigured] = useState(false)
+  const [showCityDemands, setShowCityDemands] = useState(false)
+  const [selectedCityForDemands, setSelectedCityForDemands] = useState<string>('')
 
   useEffect(() => {
     const initConfig = async () => {
@@ -754,43 +757,56 @@ export default function TerritorioPage() {
                       className="rounded-xl border border-border overflow-hidden"
                     >
                       {/* Cabeçalho da Cidade */}
-                      <button
-                        onClick={() => {
-                          const newExpanded = new Set(expandedCities)
-                          if (isExpanded) {
-                            newExpanded.delete(cidade)
-                          } else {
-                            newExpanded.add(cidade)
-                          }
-                          setExpandedCities(newExpanded)
-                        }}
-                        className="w-full p-4 bg-background hover:bg-background/80 transition-colors flex items-center justify-between"
-                      >
-                        <div className="flex items-center gap-3 flex-1">
+                      <div className="w-full p-4 bg-background flex items-center justify-between">
+                        <button
+                          onClick={() => {
+                            const newExpanded = new Set(expandedCities)
+                            if (isExpanded) {
+                              newExpanded.delete(cidade)
+                            } else {
+                              newExpanded.add(cidade)
+                            }
+                            setExpandedCities(newExpanded)
+                          }}
+                          className="flex items-center gap-3 flex-1 hover:bg-background/80 transition-colors rounded-lg p-2 -m-2"
+                        >
                           {isExpanded ? (
                             <ChevronDown className="w-4 h-4 text-text-muted" />
                           ) : (
                             <ChevronRight className="w-4 h-4 text-text-muted" />
                           )}
-                    <div className="p-2 rounded-lg bg-primary-soft">
-                      <Users className="w-4 h-4 text-primary" />
-                    </div>
+                          <div className="p-2 rounded-lg bg-primary-soft">
+                            <Users className="w-4 h-4 text-primary" />
+                          </div>
                           <div className="flex-1 text-left">
                             <p className="text-sm font-semibold text-text-strong">{cidade}</p>
                             <p className="text-xs text-text-muted">
                               {liderancasCidade.length} liderança{liderancasCidade.length !== 1 ? 's' : ''}
                             </p>
                           </div>
+                        </button>
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              setSelectedCityForDemands(cidade)
+                              setShowCityDemands(true)
+                            }}
+                            className="p-2 rounded-lg hover:bg-background transition-colors text-text-muted hover:text-primary"
+                            title="Ver demandas desta cidade"
+                          >
+                            <FileText className="w-4 h-4" />
+                          </button>
+                          {expectativaVotosCol && totalExpectativaCidade > 0 && (
+                            <div className="text-right ml-2">
+                              <p className="text-xs text-text-muted mb-0.5">Total Esperado</p>
+                              <p className="text-sm font-semibold text-primary">
+                                {Math.round(totalExpectativaCidade).toLocaleString('pt-BR')}
+                              </p>
+                            </div>
+                          )}
                         </div>
-                        {expectativaVotosCol && totalExpectativaCidade > 0 && (
-                          <div className="text-right">
-                            <p className="text-xs text-text-muted mb-0.5">Total Esperado</p>
-                            <p className="text-sm font-semibold text-primary">
-                              {Math.round(totalExpectativaCidade).toLocaleString('pt-BR')}
-                            </p>
-                          </div>
-                        )}
-                      </button>
+                      </div>
 
                       {/* Lista de Lideranças da Cidade */}
                       {isExpanded && (() => {
@@ -938,6 +954,16 @@ export default function TerritorioPage() {
         cidadeCol={cidadeCol || 'cidade'}
         nomeCol={nomeCol || 'nome'}
         expectativaVotosCol={expectativaVotosCol || null}
+      />
+
+      {/* Modal de Demandas por Cidade */}
+      <CityDemandsModal
+        isOpen={showCityDemands}
+        onClose={() => {
+          setShowCityDemands(false)
+          setSelectedCityForDemands('')
+        }}
+        cidade={selectedCityForDemands}
       />
     </div>
   )

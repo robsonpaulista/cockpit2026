@@ -240,12 +240,30 @@ export function AIAgent({
   // Buscar dados de expectativa e lideranças por cidade
   const fetchExpectativaCidade = async (cidade: string): Promise<string> => {
     try {
-      const savedConfig = localStorage.getItem('territorio_sheets_config')
-      if (!savedConfig) {
-        return `Não encontrei configuração de território. Configure a planilha em Território & Base.`
+      // 1. Primeiro verificar configuração do servidor (variáveis de ambiente)
+      let config = null
+      try {
+        const serverConfigRes = await fetch('/api/territorio/config')
+        const serverConfig = await serverConfigRes.json()
+        if (serverConfig.configured) {
+          config = {} // Servidor usa variáveis de ambiente
+        }
+      } catch (e) {
+        // Continuar para localStorage
+      }
+      
+      // 2. Fallback: localStorage (apenas se servidor não configurado)
+      if (!config && typeof window !== 'undefined') {
+        const savedConfig = localStorage.getItem('territorio_sheets_config')
+        if (savedConfig) {
+          config = JSON.parse(savedConfig)
+        }
       }
 
-      const config = JSON.parse(savedConfig)
+      if (!config) {
+        return `Não encontrei configuração de território. A configuração deve ser feita via variáveis de ambiente no servidor.`
+      }
+
       const response = await fetch('/api/territorio/google-sheets', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -338,12 +356,30 @@ export function AIAgent({
   // Buscar lideranças detalhadas de uma cidade
   const fetchLiderancasCidade = async (cidade: string): Promise<string> => {
     try {
-      const savedConfig = localStorage.getItem('territorio_sheets_config')
-      if (!savedConfig) {
-        return `Configure a planilha de território primeiro em Território & Base.`
+      // 1. Primeiro verificar configuração do servidor (variáveis de ambiente)
+      let config = null
+      try {
+        const serverConfigRes = await fetch('/api/territorio/config')
+        const serverConfig = await serverConfigRes.json()
+        if (serverConfig.configured) {
+          config = {} // Servidor usa variáveis de ambiente
+        }
+      } catch (e) {
+        // Continuar para localStorage
+      }
+      
+      // 2. Fallback: localStorage (apenas se servidor não configurado)
+      if (!config && typeof window !== 'undefined') {
+        const savedConfig = localStorage.getItem('territorio_sheets_config')
+        if (savedConfig) {
+          config = JSON.parse(savedConfig)
+        }
       }
 
-      const config = JSON.parse(savedConfig)
+      if (!config) {
+        return `Não encontrei configuração de território. A configuração deve ser feita via variáveis de ambiente no servidor.`
+      }
+
       const response = await fetch('/api/territorio/google-sheets', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -541,46 +577,47 @@ export function AIAgent({
   // Buscar demandas de uma cidade
   const fetchDemandasCidade = async (cidade: string): Promise<string> => {
     try {
-      const response = await fetch('/api/campo/demands')
+      // Usar API com filtro por cidade
+      const response = await fetch(`/api/campo/demands?cidade=${encodeURIComponent(cidade)}`)
       if (!response.ok) {
         return `Erro ao buscar demandas.`
       }
 
       const demandas = await response.json()
-      const cidadeNorm = normalizeText(cidade)
-      
-      // Filtrar demandas da cidade
-      const demandasCidade = demandas.filter((d: { cities?: { name?: string } }) => {
-        if (!d.cities?.name) return false
-        const nomeCidade = normalizeText(d.cities.name)
-        return nomeCidade.includes(cidadeNorm) || cidadeNorm.includes(nomeCidade)
-      })
 
-      if (demandasCidade.length === 0) {
+      if (demandas.length === 0) {
         return `Não encontrei demandas registradas em "${cidade}".`
       }
 
-      const cidadeFormatada = demandasCidade[0]?.cities?.name || cidade
+      const cidadeFormatada = cidade.charAt(0).toUpperCase() + cidade.slice(1).toLowerCase()
       let resposta = `**Demandas em ${cidadeFormatada}**\n\n`
 
+      resposta += `Total: **${demandas.length}** demanda${demandas.length !== 1 ? 's' : ''}\n\n`
+
       // Agrupar por status
-      const pendentes = demandasCidade.filter((d: { status: string }) => d.status === 'pendente' || d.status === 'em_andamento')
-      const concluidas = demandasCidade.filter((d: { status: string }) => d.status === 'concluida')
-
-      resposta += `Total: ${demandasCidade.length} | Pendentes: ${pendentes.length} | Concluídas: ${concluidas.length}\n\n`
-
-      // Mostrar demandas pendentes primeiro
-      if (pendentes.length > 0) {
-        resposta += `**Pendentes:**\n`
-        pendentes.slice(0, 5).forEach((d: { title: string; priority: string; created_at: string }) => {
-          const prioridade = d.priority === 'alta' ? '▲' : d.priority === 'media' ? '■' : '▼'
-          const data = new Date(d.created_at).toLocaleDateString('pt-BR')
-          resposta += `${prioridade} ${d.title} (${data})\n`
-        })
-        if (pendentes.length > 5) {
-          resposta += `+ ${pendentes.length - 5}\n`
+      const statusGroups: Record<string, any[]> = {}
+      demandas.forEach((d: any) => {
+        const status = d.status || 'Sem status'
+        if (!statusGroups[status]) {
+          statusGroups[status] = []
         }
-      }
+        statusGroups[status].push(d)
+      })
+
+      // Mostrar por status
+      Object.keys(statusGroups).forEach(status => {
+        const grupo = statusGroups[status]
+        resposta += `**${status}:** ${grupo.length}\n`
+        grupo.slice(0, 3).forEach((d: any) => {
+          resposta += `› ${d.title || 'Sem título'}`
+          if (d.lideranca) resposta += ` (${d.lideranca})`
+          resposta += '\n'
+        })
+        if (grupo.length > 3) {
+          resposta += `+ ${grupo.length - 3} mais\n`
+        }
+        resposta += '\n'
+      })
 
       return resposta
     } catch (error) {
@@ -1193,8 +1230,39 @@ export function AIAgent({
         content: resposta,
         action: {
           type: 'navigate',
-          url: '/dashboard/campo',
-          label: 'Ver Demandas',
+          url: '/dashboard/territorio',
+          label: 'Ver Demandas da Cidade',
+        },
+      }
+    }
+
+    // ===== TERRITÓRIO & BASE (GERAL) =====
+    if ((queryLower.includes('territorio') || queryLower.includes('território') || queryLower.includes('base') || 
+         queryLower.includes('lideranca') || queryLower.includes('liderança') || queryLower.includes('capilaridade')) &&
+        !cidade && !queryLower.includes('frio')) {
+      return {
+        id: Date.now().toString(),
+        role: 'assistant',
+        content: `**Território & Base**\n\nA página Território & Base mostra:\n\n• **Lideranças Atuais** - Lista de lideranças por cidade com expectativa de votos\n• **KPIs** - Expectativa 2026, Presença Territorial, Capilaridade da Base\n• **Demandas por Cidade** - Clique no ícone de documento ao lado de cada cidade para ver as demandas\n• **Mapa Mental** - Visualização das relações entre lideranças\n• **Filtros** - Por cidade, nome, cargo e faixa de votos\n\nPara ver detalhes de uma cidade específica, pergunte: "expectativa em [cidade]" ou "lideranças em [cidade]".`,
+        action: {
+          type: 'navigate',
+          url: '/dashboard/territorio',
+          label: 'Ver Território & Base',
+        },
+      }
+    }
+
+    // ===== DEMANDAS (GERAL) =====
+    if ((queryLower.includes('demanda') || queryLower.includes('pedido') || queryLower.includes('solicitacao') || 
+         queryLower.includes('solicitação')) && !cidade) {
+      return {
+        id: Date.now().toString(),
+        role: 'assistant',
+        content: `**Demandas**\n\nAs demandas são solicitadas por lideranças e organizadas por cidade. Elas vêm da planilha "Cadastro de Demandas" do Google Sheets.\n\n**Para ver demandas de uma cidade específica:**\n• Pergunte: "demandas em [cidade]" ou "pedidos em [cidade]"\n• Ou acesse Território & Base e clique no ícone de documento ao lado da cidade\n\n**Informações exibidas:**\n• Status (da coluna STATUS da planilha)\n• Liderança que fez o pedido\n• Título e descrição\n• Prioridade e tema\n• Prazo SLA`,
+        action: {
+          type: 'navigate',
+          url: '/dashboard/territorio',
+          label: 'Ver Território & Base',
         },
       }
     }
@@ -1534,7 +1602,7 @@ export function AIAgent({
     return {
       id: Date.now().toString(),
       role: 'assistant',
-      content: `**O que posso fazer:**\n\n**Por cidade:**\n› expectativa em Teresina\n› lideranças em Picos\n› agendas em Paes Landim\n\n**Redes Sociais:**\n› métricas do Instagram\n› quantos seguidores tenho?\n› posts mais curtidos\n› melhores posts\n› publicações por tipo\n› qual tema tem melhor performance?\n\n**Geral:**\n› projeção chapa federal\n› alertas críticos\n› territórios frios\n\nDigite sua pergunta!`,
+      content: `**O que posso fazer:**\n\n**Por cidade:**\n› expectativa em Teresina\n› lideranças em Picos\n› agendas em Paes Landim\n› demandas em Parnaíba\n› pedidos em Teresina\n\n**Território & Base:**\n› território e base\n› capilaridade\n› presença territorial\n› expectativa 2026\n› demandas\n\n**Redes Sociais:**\n› métricas do Instagram\n› quantos seguidores tenho?\n› posts mais curtidos\n› melhores posts\n› publicações por tipo\n› qual tema tem melhor performance?\n\n**Geral:**\n› projeção chapa federal\n› alertas críticos\n› territórios frios\n\nDigite sua pergunta!`,
     }
   }, [criticalAlerts, territoriosFrios, territoriosFriosCount, bandeirasCount, bandeirasPerformance, expectativa2026, presencaTerritorial])
 

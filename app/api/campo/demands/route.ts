@@ -99,13 +99,26 @@ async function fetchDemandsFromSheets() {
       ))
     }
 
-    const titleCol = findColumn(['titulo', 'title', 'título', 'nome'])
-    const descriptionCol = findColumn(['descrição', 'description', 'descricao', 'detalhes', 'detalhe'])
-    const statusCol = findColumn(['status', 'situação', 'situacao'])
-    const themeCol = findColumn(['tema', 'theme', 'assunto'])
+    // Buscar título - tentar múltiplas opções
+    const titleCol = findColumn(['titulo', 'title', 'título', 'nome', 'solicitação', 'SOLICITAÇÃO', 'solicitacao', 'pauta', 'PAUTA', 'ação/objeto', 'AÇÃO/OBJETO'])
+    const descriptionCol = findColumn(['descrição', 'description', 'descricao', 'detalhes', 'detalhe', 'obs status', 'OBS STATUS', 'observação', 'observacao'])
+    const statusCol = findColumn(['status', 'situação', 'situacao', 'STATUS'])
+    const themeCol = findColumn(['tema', 'theme', 'assunto', 'pauta', 'PAUTA'])
     const priorityCol = findColumn(['prioridade', 'priority', 'urgência', 'urgencia'])
-    const cityCol = findColumn(['cidade', 'city', 'município', 'municipio'])
-    const dateCol = findColumn(['data', 'date', 'criado_em', 'created_at', 'data_criação'])
+    const liderancaCol = findColumn(['liderança', 'LIDERANÇA', 'lideranca', 'LIDERANCA', 'lider', 'LIDER', 'solicitante', 'SOLICITANTE'])
+    // Incluir MUNICIPIO em maiúsculas e outras variações
+    const cityCol = findColumn(['cidade', 'city', 'município', 'municipio', 'MUNICIPIO', 'MUNICÍPIO', 'local', 'localidade'])
+    const dateCol = findColumn(['data', 'date', 'criado_em', 'created_at', 'data_criação', 'DATA DEMANDA', 'data demanda'])
+    
+    // Log para debug
+    console.log('[DEBUG] Colunas identificadas:', {
+      headers,
+      cityCol,
+      titleCol,
+      statusCol,
+      descriptionCol,
+      liderancaCol
+    })
 
     // Converter linhas em objetos de demanda
     const demandsFromSheets = rows.slice(1)
@@ -115,18 +128,10 @@ async function fetchDemandsFromSheets() {
           record[header] = row[colIndex] || null
         })
 
-        // Mapear status do Sheets para o formato esperado
-        let status = 'nova'
-        if (statusCol && record[statusCol]) {
-          const statusValue = String(record[statusCol]).toLowerCase().trim()
-          if (statusValue.includes('andamento') || statusValue.includes('progresso')) {
-            status = 'em-andamento'
-          } else if (statusValue.includes('encaminhado') || statusValue.includes('encaminhada')) {
-            status = 'encaminhado'
-          } else if (statusValue.includes('resolvido') || statusValue.includes('resolvida') || statusValue.includes('concluído') || statusValue.includes('concluido')) {
-            status = 'resolvido'
-          }
-        }
+        // Usar status diretamente da planilha (sem mapeamento)
+        const status = statusCol && record[statusCol] 
+          ? String(record[statusCol]).trim() 
+          : null
 
         // Mapear prioridade
         let priority: 'high' | 'medium' | 'low' = 'medium'
@@ -142,25 +147,73 @@ async function fetchDemandsFromSheets() {
         // Criar ID único baseado na planilha (não é UUID real, mas serve para identificar)
         const id = `sheets-${spreadsheetId}-${sheetName}-${index}`
 
+        const cidadeValue = cityCol ? (record[cityCol] || null) : null
+        
+        // Determinar título - usar SOLICITAÇÃO ou PAUTA se titleCol não foi encontrado
+        let title = 'Sem título'
+        if (titleCol && record[titleCol]) {
+          title = String(record[titleCol]).trim()
+        } else {
+          // Fallback: tentar SOLICITAÇÃO ou PAUTA
+          const solicitacaoCol = headers.find(h => /solicitação|solicitacao|SOLICITAÇÃO/i.test(h))
+          const pautaCol = headers.find(h => /pauta|PAUTA/i.test(h))
+          if (solicitacaoCol && record[solicitacaoCol]) {
+            title = String(record[solicitacaoCol]).trim()
+          } else if (pautaCol && record[pautaCol]) {
+            title = String(record[pautaCol]).trim()
+          }
+        }
+        
+        // Se ainda não tem título, usar ID ou primeira coluna não vazia
+        if (title === 'Sem título' || title === '') {
+          const idCol = headers.find(h => /^id$/i.test(h))
+          if (idCol && record[idCol]) {
+            title = `Demanda ${record[idCol]}`
+          } else {
+            // Usar primeira coluna não vazia como título
+            const firstNonEmpty = headers.find(h => record[h] && String(record[h]).trim() !== '')
+            if (firstNonEmpty) {
+              title = String(record[firstNonEmpty]).trim()
+            }
+          }
+        }
+        
+        // Log para debug das primeiras demandas (após determinar título)
+        if (index < 3) {
+          console.log(`[DEBUG] Demanda ${index + 1}:`, {
+            title,
+            cidade: cidadeValue,
+            cityCol,
+            titleCol,
+            recordKeys: Object.keys(record),
+            recordCityCol: cityCol ? record[cityCol] : 'N/A',
+            recordSolicitacao: record['SOLICITAÇÃO'] || record['SOLICITACAO'] || 'N/A'
+          })
+        }
+        
         return {
           id,
-          title: titleCol ? (record[titleCol] || 'Sem título') : 'Sem título',
+          title,
           description: descriptionCol ? record[descriptionCol] : null,
-          status,
+          status: status || undefined,
           theme: themeCol ? record[themeCol] : null,
           priority,
+          lideranca: liderancaCol ? record[liderancaCol] : null,
           visit_id: null, // Demandas do Sheets não têm visit_id
           sla_deadline: dateCol ? record[dateCol] : null,
           created_at: dateCol ? record[dateCol] : new Date().toISOString(),
           // Adicionar informação de origem
           from_sheets: true,
           sheets_data: {
-            cidade: cityCol ? record[cityCol] : null,
+            cidade: cidadeValue,
             ...record
           }
         }
       })
-      .filter((demand: any) => demand.title && demand.title !== 'Sem título') // Filtrar linhas vazias
+      .filter((demand: any) => {
+        // Filtrar apenas linhas completamente vazias (sem título e sem cidade)
+        return demand.title && demand.title !== 'Sem título' && demand.title.trim() !== ''
+      })
 
     return demandsFromSheets
   } catch (error: any) {
@@ -188,6 +241,7 @@ export async function GET(request: Request) {
 
     const { searchParams } = new URL(request.url)
     const status = searchParams.get('status')
+    const cidade = searchParams.get('cidade')
 
     let query = supabase
       .from('demands')
@@ -218,16 +272,148 @@ export async function GET(request: Request) {
 
     // Buscar demandas do Google Sheets
     const demandsFromSheets = await fetchDemandsFromSheets()
+    console.log(`[DEBUG] Total de demandas do Google Sheets carregadas: ${demandsFromSheets.length}`)
 
-    // Aplicar filtro de status nas demandas do Sheets se necessário
+    // Função auxiliar para normalizar nome de cidade
+    const normalizeCityName = (city: string): string => {
+      return city
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .trim()
+    }
+
+    // Filtrar demandas do banco por cidade se necessário
+    let filteredDbDemands = demandsFromDb || []
+    if (cidade) {
+      const cidadeNormalizada = normalizeCityName(cidade)
+      filteredDbDemands = filteredDbDemands.filter((demand: any) => {
+        // Verificar se a demanda está associada a uma cidade através de visits -> agendas -> cities
+        // visits pode ser um objeto único ou um array
+        const visits = demand.visits
+        if (!visits) return false
+
+        // Se visits é um array, verificar cada um
+        if (Array.isArray(visits)) {
+          return visits.some((visit: any) => {
+            const agendas = visit?.agendas
+            if (!agendas) return false
+            
+            // agendas pode ser um objeto único ou um array
+            const agendasArray = Array.isArray(agendas) ? agendas : [agendas]
+            return agendasArray.some((agenda: any) => {
+              const cities = agenda?.cities
+              if (!cities) return false
+              
+              // cities pode ser um objeto único ou um array
+              const citiesArray = Array.isArray(cities) ? cities : [cities]
+              return citiesArray.some((city: any) => {
+                const cityName = city?.name
+                if (!cityName) return false
+                const cityNameNormalized = normalizeCityName(cityName)
+                return cityNameNormalized === cidadeNormalizada ||
+                       cityNameNormalized.includes(cidadeNormalizada) ||
+                       cidadeNormalizada.includes(cityNameNormalized)
+              })
+            })
+          })
+        } else {
+          // visits é um objeto único
+          const agendas = visits?.agendas
+          if (!agendas) return false
+          
+          const agendasArray = Array.isArray(agendas) ? agendas : [agendas]
+          return agendasArray.some((agenda: any) => {
+            const cities = agenda?.cities
+            if (!cities) return false
+            
+            const citiesArray = Array.isArray(cities) ? cities : [cities]
+            return citiesArray.some((city: any) => {
+              const cityName = city?.name
+              if (!cityName) return false
+              const cityNameNormalized = normalizeCityName(cityName)
+              return cityNameNormalized === cidadeNormalizada ||
+                     cityNameNormalized.includes(cidadeNormalizada) ||
+                     cidadeNormalizada.includes(cityNameNormalized)
+            })
+          })
+        }
+      })
+    }
+
+    // Aplicar filtros nas demandas do Sheets
     let filteredSheetsDemands = demandsFromSheets
     if (status) {
-      filteredSheetsDemands = demandsFromSheets.filter(d => d.status === status)
+      filteredSheetsDemands = filteredSheetsDemands.filter(d => d.status === status)
+    }
+    if (cidade) {
+      const cidadeNormalizada = normalizeCityName(cidade)
+      console.log(`[DEBUG] Filtrando demandas por cidade: "${cidade}" (normalizada: "${cidadeNormalizada}")`)
+      console.log(`[DEBUG] Total de demandas do Sheets antes do filtro: ${filteredSheetsDemands.length}`)
+      
+      // Se não houver demandas, logar para debug
+      if (filteredSheetsDemands.length === 0) {
+        console.log('[DEBUG] Nenhuma demanda do Sheets encontrada. Verifique se as variáveis de ambiente estão configuradas.')
+      }
+      
+      filteredSheetsDemands = filteredSheetsDemands.filter((d: any) => {
+        // Tentar múltiplas formas de acessar a cidade
+        // Primeiro verificar sheets_data (que contém todos os dados da planilha)
+        let demandCity: string | null = null
+        
+        if (d.sheets_data) {
+          // Procurar em todas as chaves que possam conter cidade (case-insensitive)
+          const possibleCityKeys = Object.keys(d.sheets_data).filter(key => 
+            /cidade|city|município|municipio|MUNICIPIO|MUNICÍPIO|local|localidade/i.test(key)
+          )
+          
+          if (possibleCityKeys.length > 0) {
+            demandCity = d.sheets_data[possibleCityKeys[0]]
+          }
+          
+          // Se não encontrou, tentar acessar diretamente com diferentes variações
+          if (!demandCity) {
+            demandCity = d.sheets_data.cidade || d.sheets_data.Cidade || d.sheets_data.CIDADE || 
+                         d.sheets_data.municipio || d.sheets_data.Municipio || d.sheets_data.MUNICIPIO ||
+                         d.sheets_data.município || d.sheets_data.Município || d.sheets_data.MUNICÍPIO || null
+          }
+        }
+        
+        // Fallback: tentar acessar diretamente no objeto
+        if (!demandCity) {
+          demandCity = d.cidade || d.Cidade || d.CIDADE || null
+        }
+        
+        if (!demandCity || String(demandCity).trim() === '') {
+          // Log apenas para as primeiras 3 demandas para não poluir o log
+          if (filteredSheetsDemands.indexOf(d) < 3) {
+            console.log(`[DEBUG] Demanda sem cidade: "${d.title}"`, {
+              sheets_data_keys: d.sheets_data ? Object.keys(d.sheets_data) : [],
+              demand_keys: Object.keys(d).filter(k => !k.startsWith('_'))
+            })
+          }
+          return false
+        }
+        
+        const demandCityStr = String(demandCity).trim()
+        const demandCityNormalized = normalizeCityName(demandCityStr)
+        const matches = demandCityNormalized === cidadeNormalizada ||
+                        demandCityNormalized.includes(cidadeNormalizada) ||
+                        cidadeNormalizada.includes(demandCityNormalized)
+        
+        if (matches && filteredSheetsDemands.indexOf(d) < 5) {
+          console.log(`[DEBUG] Match encontrado: "${demandCityStr}" (normalizada: "${demandCityNormalized}") === "${cidade}" (normalizada: "${cidadeNormalizada}")`)
+        }
+        
+        return matches
+      })
+      
+      console.log(`[DEBUG] Total de demandas do Sheets após filtro: ${filteredSheetsDemands.length}`)
     }
 
     // Combinar demandas do banco com as do Sheets
     const allDemands = [
-      ...(demandsFromDb || []),
+      ...filteredDbDemands,
       ...filteredSheetsDemands
     ]
 
