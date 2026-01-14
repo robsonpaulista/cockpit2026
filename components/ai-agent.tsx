@@ -51,6 +51,42 @@ function normalizeText(text: string): string {
     .trim()
 }
 
+// Função para normalizar números (mesma lógica da página território)
+function normalizeNumber(value: any): number {
+  if (typeof value === 'number') return value
+  
+  const str = String(value).trim()
+  if (!str) return 0
+  
+  let cleaned = str.replace(/[^\d.,]/g, '')
+  
+  if (cleaned.includes(',') && cleaned.includes('.')) {
+    if (cleaned.lastIndexOf(',') > cleaned.lastIndexOf('.')) {
+      cleaned = cleaned.replace(/\./g, '').replace(',', '.')
+    } else {
+      cleaned = cleaned.replace(/,/g, '')
+    }
+  } else if (cleaned.includes(',')) {
+    const parts = cleaned.split(',')
+    if (parts.length === 2) {
+      // Se tem 3 dígitos após vírgula = separador de milhar (ex: 1,000 = 1000)
+      if (parts[1].length === 3) {
+        cleaned = cleaned.replace(/,/g, '')
+      } else if (parts[1].length <= 2) {
+        // 1-2 dígitos após vírgula = separador decimal (ex: 1,50 = 1.50)
+        cleaned = cleaned.replace(',', '.')
+      } else {
+        cleaned = cleaned.replace(/,/g, '')
+      }
+    } else {
+      cleaned = cleaned.replace(/,/g, '')
+    }
+  }
+  
+  const numValue = parseFloat(cleaned)
+  return isNaN(numValue) ? 0 : numValue
+}
+
 // Lista de cidades do Piauí para melhor reconhecimento
 const cidadesPiaui = [
   'teresina', 'picos', 'parnaiba', 'floriano', 'piripiri', 'campo maior', 'oeiras', 
@@ -307,8 +343,7 @@ export function AIAgent({
       registrosCidade.forEach((r: Record<string, unknown>) => {
         let expectativa = 0
         if (expectativaCol && r[expectativaCol]) {
-          const valor = String(r[expectativaCol]).replace(/[^\d.,]/g, '').replace(',', '.')
-          expectativa = parseFloat(valor) || 0
+          expectativa = normalizeNumber(r[expectativaCol])
           totalExpectativa += expectativa
         }
         if (nomeCol && r[nomeCol]) {
@@ -425,8 +460,8 @@ export function AIAgent({
       const maxShow = 10
       const liderancasOrdenadas = [...registrosCidade].sort((a: Record<string, unknown>, b: Record<string, unknown>) => {
         if (!expectativaCol) return 0
-        const va = parseFloat(String(a[expectativaCol] || '0').replace(/[^\d.,]/g, '').replace(',', '.')) || 0
-        const vb = parseFloat(String(b[expectativaCol] || '0').replace(/[^\d.,]/g, '').replace(',', '.')) || 0
+        const va = normalizeNumber(a[expectativaCol] || '0')
+        const vb = normalizeNumber(b[expectativaCol] || '0')
         return vb - va
       })
 
@@ -435,7 +470,7 @@ export function AIAgent({
         if (funcaoCol && r[funcaoCol]) resposta += `   Função: ${r[funcaoCol]}\n`
         if (bairroCol && r[bairroCol]) resposta += `   Bairro: ${r[bairroCol]}\n`
         if (expectativaCol && r[expectativaCol]) {
-          const exp = parseFloat(String(r[expectativaCol]).replace(/[^\d.,]/g, '').replace(',', '.')) || 0
+          const exp = normalizeNumber(r[expectativaCol])
           if (exp > 0) resposta += `   Votos 2026: ${Math.round(exp).toLocaleString('pt-BR')}\n`
         }
         resposta += '\n'
