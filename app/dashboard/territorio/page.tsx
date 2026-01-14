@@ -424,6 +424,55 @@ export default function TerritorioPage() {
 
   const kpis = calcularKPIs()
 
+  // Calcular totais por cargo
+  const calcularTotaisPorCargo = () => {
+    if (!cargoCol || liderancasFiltradas.length === 0) return []
+
+    const totaisPorCargo: Record<string, number> = {}
+    
+    liderancasFiltradas.forEach((lider) => {
+      const cargo = String(lider[cargoCol] || '').trim()
+      if (cargo) {
+        // Normalizar cargo (remover variações)
+        const cargoNormalizado = cargo.toLowerCase()
+        
+        // Agrupar por tipos de cargo
+        let tipoCargo = 'Outros'
+        
+        if (cargoNormalizado.includes('vereador') || cargoNormalizado.includes('vereadora')) {
+          tipoCargo = 'Vereadores'
+        } else if (cargoNormalizado.includes('prefeito') || cargoNormalizado.includes('prefeita')) {
+          tipoCargo = 'Prefeitos'
+        } else if (cargoNormalizado.includes('vice-prefeito') || cargoNormalizado.includes('vice prefeito') || cargoNormalizado.includes('vice-prefeita')) {
+          tipoCargo = 'Vice-Prefeitos'
+        } else if (cargoNormalizado.includes('deputado') || cargoNormalizado.includes('deputada')) {
+          tipoCargo = 'Deputados'
+        } else if (cargoNormalizado.includes('senador') || cargoNormalizado.includes('senadora')) {
+          tipoCargo = 'Senadores'
+        } else if (cargoNormalizado.includes('governador') || cargoNormalizado.includes('governadora')) {
+          tipoCargo = 'Governadores'
+        } else if (cargoNormalizado.includes('presidente')) {
+          tipoCargo = 'Presidentes'
+        } else if (cargoNormalizado.includes('secretário') || cargoNormalizado.includes('secretaria') || cargoNormalizado.includes('secretario')) {
+          tipoCargo = 'Secretários'
+        } else if (cargoNormalizado.includes('coordenador') || cargoNormalizado.includes('coordenadora')) {
+          tipoCargo = 'Coordenadores'
+        } else if (cargoNormalizado.includes('lider') || cargoNormalizado.includes('líder')) {
+          tipoCargo = 'Líderes'
+        }
+        
+        totaisPorCargo[tipoCargo] = (totaisPorCargo[tipoCargo] || 0) + 1
+      }
+    })
+
+    // Converter para array e ordenar por quantidade (decrescente)
+    return Object.entries(totaisPorCargo)
+      .map(([cargo, total]) => ({ cargo, total }))
+      .sort((a, b) => b.total - a.total)
+  }
+
+  const totaisPorCargo = calcularTotaisPorCargo()
+
   // Identificar colunas para exibição (nomeCol, cidadeCol e cargoCol já foram definidos no escopo superior)
   const scoreCol = headers.find((h) =>
     /score|pontuação|pontuacao|nota/i.test(h)
@@ -487,6 +536,30 @@ export default function TerritorioPage() {
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
               {kpis.map((kpi) => (
                 <KPICard key={kpi.id} kpi={kpi} />
+              ))}
+            </div>
+          </section>
+        )}
+
+        {/* Cards de Totais por Cargo */}
+        {(config || serverConfigured) && liderancas.length > 0 && totaisPorCargo.length > 0 && (
+          <section className="mb-8">
+            <h3 className="text-sm font-semibold text-text-strong mb-4">Lideranças por Cargo</h3>
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
+              {totaisPorCargo.map((item) => (
+                <div
+                  key={item.cargo}
+                  className="bg-surface rounded-xl border border-border p-4 hover:bg-background/50 transition-colors"
+                >
+                  <div className="text-center">
+                    <p className="text-2xl font-bold text-primary mb-1">
+                      {item.total}
+                    </p>
+                    <p className="text-xs text-text-muted font-medium">
+                      {item.cargo}
+                    </p>
+                  </div>
+                </div>
               ))}
             </div>
           </section>
