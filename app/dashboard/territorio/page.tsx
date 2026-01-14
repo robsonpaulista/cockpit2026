@@ -427,18 +427,17 @@ export default function TerritorioPage() {
 
   const kpis = calcularKPIs()
 
-  // Calcular totais por cargo - usar os cargos exatamente como aparecem na tabela
+  // Calcular totais por cargo - contar todas as lideranças, uma por uma
   const calcularTotaisPorCargo = () => {
     if (!cargoCol || liderancasFiltradas.length === 0) return []
 
     const totaisPorCargo: Record<string, number> = {}
     
+    // Contar cada liderança por cargo (sem distinct, sem agrupamento por nome)
     liderancasFiltradas.forEach((lider) => {
-      const cargo = String(lider[cargoCol] || '').trim()
-      if (cargo) {
-        // Usar o cargo exatamente como está na tabela, sem normalizar ou agrupar
-        totaisPorCargo[cargo] = (totaisPorCargo[cargo] || 0) + 1
-      }
+      const cargo = String(lider[cargoCol] || 'Sem cargo').trim()
+      // Incrementar contador para este cargo (cada liderança conta)
+      totaisPorCargo[cargo] = (totaisPorCargo[cargo] || 0) + 1
     })
 
     // Converter para array e ordenar por quantidade (decrescente)
