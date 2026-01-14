@@ -427,7 +427,7 @@ export default function TerritorioPage() {
 
   const kpis = calcularKPIs()
 
-  // Calcular totais por cargo
+  // Calcular totais por cargo - usar os cargos exatamente como aparecem na tabela
   const calcularTotaisPorCargo = () => {
     if (!cargoCol || liderancasFiltradas.length === 0) return []
 
@@ -436,83 +436,8 @@ export default function TerritorioPage() {
     liderancasFiltradas.forEach((lider) => {
       const cargo = String(lider[cargoCol] || '').trim()
       if (cargo) {
-        // Normalizar cargo (remover variações e acentos)
-        const cargoNormalizado = cargo.toLowerCase()
-          .normalize('NFD')
-          .replace(/[\u0300-\u036f]/g, '')
-          .trim()
-        
-        // Função auxiliar para verificar múltiplas variações
-        const matches = (...patterns: string[]) => {
-          return patterns.some(pattern => cargoNormalizado.includes(pattern))
-        }
-        
-        // Agrupar por tipos de cargo (verificar na ordem de especificidade)
-        let tipoCargo = 'Outros'
-        
-        // Verificar tipos mais específicos primeiro
-        if (matches('vice-prefeito', 'vice prefeito', 'viceprefeito', 'vice-prefeita', 'vice prefeita', 'viceprefeita')) {
-          tipoCargo = 'Vice-Prefeitos'
-        } else if (matches('vereador', 'vereadora')) {
-          tipoCargo = 'Vereadores'
-        } else if (matches('prefeito', 'prefeita')) {
-          tipoCargo = 'Prefeitos'
-        } else if (matches('deputado federal', 'deputada federal')) {
-          tipoCargo = 'Deputados Federais'
-        } else if (matches('deputado estadual', 'deputada estadual')) {
-          tipoCargo = 'Deputados Estaduais'
-        } else if (matches('deputado', 'deputada')) {
-          tipoCargo = 'Deputados'
-        } else if (matches('senador', 'senadora')) {
-          tipoCargo = 'Senadores'
-        } else if (matches('governador', 'governadora')) {
-          tipoCargo = 'Governadores'
-        } else if (matches('vice-governador', 'vice governador', 'vicegovernador', 'vice-governadora', 'vice governadora', 'vicegovernadora')) {
-          tipoCargo = 'Vice-Governadores'
-        } else if (matches('presidente')) {
-          tipoCargo = 'Presidentes'
-        } else if (matches('secretario', 'secretaria', 'secretário', 'secretária')) {
-          tipoCargo = 'Secretários'
-        } else if (matches('coordenador', 'coordenadora')) {
-          tipoCargo = 'Coordenadores'
-        } else if (matches('lider', 'lideranca', 'liderança')) {
-          tipoCargo = 'Líderes'
-        } else if (matches('vice-lider', 'vice lider', 'vicelider', 'vice-líder', 'vice líder', 'vicelíder')) {
-          tipoCargo = 'Vice-Líderes'
-        } else if (matches('presidente de camara', 'presidente de câmara', 'presidente camara', 'presidente câmara')) {
-          tipoCargo = 'Presidentes de Câmara'
-        } else if (matches('presidente de camara municipal', 'presidente de câmara municipal', 'presidente camara municipal', 'presidente câmara municipal')) {
-          tipoCargo = 'Presidentes de Câmara'
-        } else if (matches('vereador presidente', 'vereadora presidente')) {
-          tipoCargo = 'Vereadores'
-        } else if (matches('membro', 'membra')) {
-          tipoCargo = 'Membros'
-        } else if (matches('assessor', 'assessora')) {
-          tipoCargo = 'Assessores'
-        } else if (matches('consultor', 'consultora')) {
-          tipoCargo = 'Consultores'
-        } else if (matches('diretor', 'diretora')) {
-          tipoCargo = 'Diretores'
-        } else if (matches('chefe', 'chefa')) {
-          tipoCargo = 'Chefes'
-        } else if (matches('superintendente')) {
-          tipoCargo = 'Superintendentes'
-        } else if (matches('gerente')) {
-          tipoCargo = 'Gerentes'
-        } else if (matches('subsecretario', 'subsecretário', 'subsecretaria', 'subsecretária')) {
-          tipoCargo = 'Subsecretários'
-        } else if (matches('adjunto', 'adjunta')) {
-          tipoCargo = 'Adjuntos'
-        } else if (matches('suplente')) {
-          tipoCargo = 'Suplentes'
-        } else if (matches('titular')) {
-          tipoCargo = 'Titulares'
-        } else {
-          // Se não se encaixar em nenhuma categoria, usar o cargo original (capitalizado)
-          tipoCargo = cargo.charAt(0).toUpperCase() + cargo.slice(1).toLowerCase()
-        }
-        
-        totaisPorCargo[tipoCargo] = (totaisPorCargo[tipoCargo] || 0) + 1
+        // Usar o cargo exatamente como está na tabela, sem normalizar ou agrupar
+        totaisPorCargo[cargo] = (totaisPorCargo[cargo] || 0) + 1
       }
     })
 
