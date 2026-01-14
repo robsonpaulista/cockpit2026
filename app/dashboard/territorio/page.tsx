@@ -206,9 +206,12 @@ export default function TerritorioPage() {
   const cidadeCol = headers.find((h) =>
     /cidade|city|município|municipio/i.test(h)
   ) || headers[1] || 'Coluna 2'
-  const cargoCol = headers.find((h) =>
-    /cargo.*2024|cargo/i.test(h)
-  )
+  const cargoCol = headers.find((h) => {
+    const normalized = h.toLowerCase().trim()
+    // Procurar por colunas de cargo (priorizar Cargo 2024, mas aceitar outras variações)
+    return /cargo.*2024|cargo.*atual|cargo/i.test(normalized) && 
+           !/expectativa|votos|telefone|email|whatsapp|contato|endereco|endereço/i.test(normalized)
+  })
 
   // Filtrar lideranças: incluir "Liderança Atual?" = SIM OU que tenham "Expectativa de Votos 2026"
   const liderancasFiltradas = (() => {
@@ -433,32 +436,80 @@ export default function TerritorioPage() {
     liderancasFiltradas.forEach((lider) => {
       const cargo = String(lider[cargoCol] || '').trim()
       if (cargo) {
-        // Normalizar cargo (remover variações)
+        // Normalizar cargo (remover variações e acentos)
         const cargoNormalizado = cargo.toLowerCase()
+          .normalize('NFD')
+          .replace(/[\u0300-\u036f]/g, '')
+          .trim()
         
-        // Agrupar por tipos de cargo
+        // Função auxiliar para verificar múltiplas variações
+        const matches = (...patterns: string[]) => {
+          return patterns.some(pattern => cargoNormalizado.includes(pattern))
+        }
+        
+        // Agrupar por tipos de cargo (verificar na ordem de especificidade)
         let tipoCargo = 'Outros'
         
-        if (cargoNormalizado.includes('vereador') || cargoNormalizado.includes('vereadora')) {
-          tipoCargo = 'Vereadores'
-        } else if (cargoNormalizado.includes('prefeito') || cargoNormalizado.includes('prefeita')) {
-          tipoCargo = 'Prefeitos'
-        } else if (cargoNormalizado.includes('vice-prefeito') || cargoNormalizado.includes('vice prefeito') || cargoNormalizado.includes('vice-prefeita')) {
+        // Verificar tipos mais específicos primeiro
+        if (matches('vice-prefeito', 'vice prefeito', 'viceprefeito', 'vice-prefeita', 'vice prefeita', 'viceprefeita')) {
           tipoCargo = 'Vice-Prefeitos'
-        } else if (cargoNormalizado.includes('deputado') || cargoNormalizado.includes('deputada')) {
+        } else if (matches('vereador', 'vereadora')) {
+          tipoCargo = 'Vereadores'
+        } else if (matches('prefeito', 'prefeita')) {
+          tipoCargo = 'Prefeitos'
+        } else if (matches('deputado federal', 'deputada federal')) {
+          tipoCargo = 'Deputados Federais'
+        } else if (matches('deputado estadual', 'deputada estadual')) {
+          tipoCargo = 'Deputados Estaduais'
+        } else if (matches('deputado', 'deputada')) {
           tipoCargo = 'Deputados'
-        } else if (cargoNormalizado.includes('senador') || cargoNormalizado.includes('senadora')) {
+        } else if (matches('senador', 'senadora')) {
           tipoCargo = 'Senadores'
-        } else if (cargoNormalizado.includes('governador') || cargoNormalizado.includes('governadora')) {
+        } else if (matches('governador', 'governadora')) {
           tipoCargo = 'Governadores'
-        } else if (cargoNormalizado.includes('presidente')) {
+        } else if (matches('vice-governador', 'vice governador', 'vicegovernador', 'vice-governadora', 'vice governadora', 'vicegovernadora')) {
+          tipoCargo = 'Vice-Governadores'
+        } else if (matches('presidente')) {
           tipoCargo = 'Presidentes'
-        } else if (cargoNormalizado.includes('secretário') || cargoNormalizado.includes('secretaria') || cargoNormalizado.includes('secretario')) {
+        } else if (matches('secretario', 'secretaria', 'secretário', 'secretária')) {
           tipoCargo = 'Secretários'
-        } else if (cargoNormalizado.includes('coordenador') || cargoNormalizado.includes('coordenadora')) {
+        } else if (matches('coordenador', 'coordenadora')) {
           tipoCargo = 'Coordenadores'
-        } else if (cargoNormalizado.includes('lider') || cargoNormalizado.includes('líder')) {
+        } else if (matches('lider', 'lideranca', 'liderança')) {
           tipoCargo = 'Líderes'
+        } else if (matches('vice-lider', 'vice lider', 'vicelider', 'vice-líder', 'vice líder', 'vicelíder')) {
+          tipoCargo = 'Vice-Líderes'
+        } else if (matches('presidente de camara', 'presidente de câmara', 'presidente camara', 'presidente câmara')) {
+          tipoCargo = 'Presidentes de Câmara'
+        } else if (matches('presidente de camara municipal', 'presidente de câmara municipal', 'presidente camara municipal', 'presidente câmara municipal')) {
+          tipoCargo = 'Presidentes de Câmara'
+        } else if (matches('vereador presidente', 'vereadora presidente')) {
+          tipoCargo = 'Vereadores'
+        } else if (matches('membro', 'membra')) {
+          tipoCargo = 'Membros'
+        } else if (matches('assessor', 'assessora')) {
+          tipoCargo = 'Assessores'
+        } else if (matches('consultor', 'consultora')) {
+          tipoCargo = 'Consultores'
+        } else if (matches('diretor', 'diretora')) {
+          tipoCargo = 'Diretores'
+        } else if (matches('chefe', 'chefa')) {
+          tipoCargo = 'Chefes'
+        } else if (matches('superintendente')) {
+          tipoCargo = 'Superintendentes'
+        } else if (matches('gerente')) {
+          tipoCargo = 'Gerentes'
+        } else if (matches('subsecretario', 'subsecretário', 'subsecretaria', 'subsecretária')) {
+          tipoCargo = 'Subsecretários'
+        } else if (matches('adjunto', 'adjunta')) {
+          tipoCargo = 'Adjuntos'
+        } else if (matches('suplente')) {
+          tipoCargo = 'Suplentes'
+        } else if (matches('titular')) {
+          tipoCargo = 'Titulares'
+        } else {
+          // Se não se encaixar em nenhuma categoria, usar o cargo original (capitalizado)
+          tipoCargo = cargo.charAt(0).toUpperCase() + cargo.slice(1).toLowerCase()
         }
         
         totaisPorCargo[tipoCargo] = (totaisPorCargo[tipoCargo] || 0) + 1
