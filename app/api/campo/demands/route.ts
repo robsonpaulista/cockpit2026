@@ -108,7 +108,9 @@ async function fetchDemandsFromSheets() {
     const liderancaCol = findColumn(['liderança', 'LIDERANÇA', 'lideranca', 'LIDERANCA', 'lider', 'LIDER', 'solicitante', 'SOLICITANTE'])
     // Incluir MUNICIPIO em maiúsculas e outras variações
     const cityCol = findColumn(['cidade', 'city', 'município', 'municipio', 'MUNICIPIO', 'MUNICÍPIO', 'local', 'localidade'])
-    const dateCol = findColumn(['data', 'date', 'criado_em', 'created_at', 'data_criação', 'DATA DEMANDA', 'data demanda'])
+    // Priorizar 'DATA DEMANDA' especificamente
+    const dataDemandaCol = headers.find(h => /^DATA DEMANDA$/i.test(h.trim())) || findColumn(['DATA DEMANDA', 'data demanda', 'data_demanda'])
+    const dateCol = dataDemandaCol || findColumn(['data', 'date', 'criado_em', 'created_at', 'data_criação'])
     
     // Log para debug
     console.log('[DEBUG] Colunas identificadas:', {
@@ -200,8 +202,9 @@ async function fetchDemandsFromSheets() {
           priority,
           lideranca: liderancaCol ? record[liderancaCol] : null,
           visit_id: null, // Demandas do Sheets não têm visit_id
+          data_demanda: dataDemandaCol ? record[dataDemandaCol] : (dateCol ? record[dateCol] : null),
           sla_deadline: dateCol ? record[dateCol] : null,
-          created_at: dateCol ? record[dateCol] : new Date().toISOString(),
+          created_at: dataDemandaCol ? record[dataDemandaCol] : (dateCol ? record[dateCol] : new Date().toISOString()),
           // Adicionar informação de origem
           from_sheets: true,
           sheets_data: {

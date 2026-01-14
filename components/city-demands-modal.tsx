@@ -12,6 +12,7 @@ interface Demand {
   priority?: string
   lideranca?: string
   visit_id?: string
+  data_demanda?: string
   sla_deadline?: string
   created_at?: string
   from_sheets?: boolean
@@ -31,6 +32,8 @@ export function CityDemandsModal({ isOpen, onClose, cidade }: CityDemandsModalPr
   const [demands, setDemands] = useState<Demand[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [filtroStatus, setFiltroStatus] = useState<string>('todos')
+  const [filtroLideranca, setFiltroLideranca] = useState<string>('todos')
 
   const fetchDemands = useCallback(async () => {
     if (!cidade) return
@@ -141,7 +144,12 @@ export function CityDemandsModal({ isOpen, onClose, cidade }: CityDemandsModalPr
   const formatDate = (dateString?: string) => {
     if (!dateString) return '-'
     try {
+      // Tentar parsear como data
       const date = new Date(dateString)
+      if (isNaN(date.getTime())) {
+        // Se não for uma data válida, retornar o valor original
+        return dateString
+      }
       return date.toLocaleDateString('pt-BR', {
         day: '2-digit',
         month: '2-digit',
@@ -151,6 +159,44 @@ export function CityDemandsModal({ isOpen, onClose, cidade }: CityDemandsModalPr
       return dateString
     }
   }
+
+  // Filtrar e ordenar demandas
+  const demandsFiltradasEOrdenadas = demands
+    .filter((demand) => {
+      // Filtro por status
+      if (filtroStatus !== 'todos' && demand.status !== filtroStatus) {
+        return false
+      }
+      // Filtro por liderança
+      if (filtroLideranca !== 'todos' && demand.lideranca !== filtroLideranca) {
+        return false
+      }
+      return true
+    })
+    .sort((a, b) => {
+      // Ordenar por STATUS primeiro
+      const statusA = a.status || ''
+      const statusB = b.status || ''
+      if (statusA !== statusB) {
+        return statusA.localeCompare(statusB)
+      }
+      // Depois por DATA DEMANDA
+      const dataA = a.data_demanda || a.created_at || ''
+      const dataB = b.data_demanda || b.created_at || ''
+      if (dataA && dataB) {
+        const dateA = new Date(dataA).getTime()
+        const dateB = new Date(dataB).getTime()
+        if (!isNaN(dateA) && !isNaN(dateB)) {
+          return dateB - dateA // Mais recentes primeiro
+        }
+      }
+      return 0
+    })
+
+  // Obter status únicos para filtro
+  const statusUnicos = Array.from(new Set(demands.map(d => d.status).filter(Boolean))) as string[]
+  // Obter lideranças únicas para filtro
+  const liderancasUnicas = Array.from(new Set(demands.map(d => d.lideranca).filter(Boolean))) as string[]
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
@@ -162,7 +208,7 @@ export function CityDemandsModal({ isOpen, onClose, cidade }: CityDemandsModalPr
               {cidade}
             </h2>
             <span className="text-xs text-text-muted">
-              {loading ? '...' : `${demands.length} demanda${demands.length !== 1 ? 's' : ''}`}
+              {loading ? '...' : `${demandsFiltradasEOrdenadas.length} demanda${demandsFiltradasEOrdenadas.length !== 1 ? 's' : ''}`}
             </span>
           </div>
           <button
@@ -172,6 +218,74 @@ export function CityDemandsModal({ isOpen, onClose, cidade }: CityDemandsModalPr
             <X className="w-4 h-4 text-text-muted" />
           </button>
         </div>
+
+        {/* Filtros */}
+        {!loading && !error && demands.length > 0 && (
+          <div className="px-4 py-3 border-b border-border space-y-3">
+            {/* Filtro por Status */}
+            <div>
+              <label className="text-xs font-medium text-text-muted mb-2 block">Filtrar por Status:</label>
+              <div className="flex flex-wrap gap-2">
+                <label className="flex items-center gap-1.5 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="filtro-status"
+                    value="todos"
+                    checked={filtroStatus === 'todos'}
+                    onChange={(e) => setFiltroStatus(e.target.value)}
+                    className="w-3.5 h-3.5 text-primary"
+                  />
+                  <span className="text-xs text-text-strong">Todos</span>
+                </label>
+                {statusUnicos.map((status) => (
+                  <label key={status} className="flex items-center gap-1.5 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="filtro-status"
+                      value={status}
+                      checked={filtroStatus === status}
+                      onChange={(e) => setFiltroStatus(e.target.value)}
+                      className="w-3.5 h-3.5 text-primary"
+                    />
+                    <span className="text-xs text-text-strong">{status}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+            {/* Filtro por Liderança */}
+            {liderancasUnicas.length > 0 && (
+              <div>
+                <label className="text-xs font-medium text-text-muted mb-2 block">Filtrar por Liderança:</label>
+                <div className="flex flex-wrap gap-2">
+                  <label className="flex items-center gap-1.5 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="filtro-lideranca"
+                      value="todos"
+                      checked={filtroLideranca === 'todos'}
+                      onChange={(e) => setFiltroLideranca(e.target.value)}
+                      className="w-3.5 h-3.5 text-primary"
+                    />
+                    <span className="text-xs text-text-strong">Todos</span>
+                  </label>
+                  {liderancasUnicas.map((lideranca) => (
+                    <label key={lideranca} className="flex items-center gap-1.5 cursor-pointer">
+                      <input
+                        type="radio"
+                        name="filtro-lideranca"
+                        value={lideranca}
+                        checked={filtroLideranca === lideranca}
+                        onChange={(e) => setFiltroLideranca(e.target.value)}
+                        className="w-3.5 h-3.5 text-primary"
+                      />
+                      <span className="text-xs text-text-strong">{lideranca}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Content Compacto */}
         <div className="flex-1 overflow-y-auto p-3">
@@ -184,14 +298,14 @@ export function CityDemandsModal({ isOpen, onClose, cidade }: CityDemandsModalPr
             <div className="p-3 bg-status-error/10 border border-status-error/30 rounded-lg">
               <p className="text-xs text-status-error">{error}</p>
             </div>
-          ) : demands.length === 0 ? (
+          ) : demandsFiltradasEOrdenadas.length === 0 ? (
             <div className="text-center py-8">
               <AlertCircle className="w-8 h-8 text-text-muted mx-auto mb-2" />
               <p className="text-sm text-text-muted">Nenhuma demanda encontrada</p>
             </div>
           ) : (
             <div className="space-y-2">
-              {demands.map((demand, index) => (
+              {demandsFiltradasEOrdenadas.map((demand, index) => (
                 <div
                   key={demand.id || `demand-${index}`}
                   className="border border-border rounded-lg p-3 hover:bg-background/50 transition-colors"
@@ -211,6 +325,11 @@ export function CityDemandsModal({ isOpen, onClose, cidade }: CityDemandsModalPr
 
                   {/* Informações secundárias em linha compacta */}
                   <div className="flex flex-wrap items-center gap-1.5 text-xs">
+                    {demand.data_demanda && (
+                      <span className="text-text-muted">
+                        <span className="font-medium">Data:</span> {formatDate(demand.data_demanda)}
+                      </span>
+                    )}
                     {demand.lideranca && (
                       <span className="text-text-muted">
                         <span className="font-medium">Por:</span> {demand.lideranca}
@@ -224,11 +343,6 @@ export function CityDemandsModal({ isOpen, onClose, cidade }: CityDemandsModalPr
                     {demand.theme && (
                       <span className="text-text-muted">
                         {demand.theme}
-                      </span>
-                    )}
-                    {demand.sla_deadline && (
-                      <span className="text-text-muted">
-                        SLA: {formatDate(demand.sla_deadline)}
                       </span>
                     )}
                   </div>
