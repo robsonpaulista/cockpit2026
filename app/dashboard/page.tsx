@@ -878,9 +878,10 @@ export default function Home() {
                       totalCidades = total || 224
                     }
                     
-                    // Calcular visitas baseado nos territórios
+                    // Usar dados da API que calcula corretamente baseado em visitas realizadas
+                    const cidadesVisitadas = territorioStats?.cidadesVisitadas || 0
                     const totalVisitas = territorioStats?.totalVisitas || 0
-                    const percentualCobertura = totalCidades > 0 ? Math.round((cidadesAtivas / totalCidades) * 100) : 0
+                    const percentualCobertura = territorioStats?.percentualCobertura || 0
                     
                     return (
                       <div className="grid grid-cols-3 gap-3 mb-5">
@@ -895,10 +896,10 @@ export default function Home() {
                         <div className="relative p-5 rounded-2xl border border-border bg-surface hover:shadow-lg hover:-translate-y-0.5 hover:border-primary/30 transition-all duration-300 cursor-pointer group overflow-hidden before:absolute before:left-0 before:top-0 before:bottom-0 before:w-0.5 before:bg-blue-500 before:opacity-0 group-hover:opacity-100 before:rounded-l-2xl">
                           <div className="flex items-center gap-2 mb-2">
                             <Activity className="w-4 h-4 text-blue-600" />
-                            <p className="text-xs font-medium text-text-muted">Total de Visitas</p>
+                            <p className="text-xs font-medium text-text-muted">Cidades Visitadas</p>
                           </div>
-                          <p className="text-3xl font-bold text-blue-600 group-hover:scale-105 transition-transform">{totalVisitas}</p>
-                          <p className="text-xs text-text-muted mt-1">visitas realizadas</p>
+                          <p className="text-3xl font-bold text-blue-600 group-hover:scale-105 transition-transform">{cidadesVisitadas}</p>
+                          <p className="text-xs text-text-muted mt-1">de {totalCidades} municípios</p>
                         </div>
                         <div className="relative p-5 rounded-2xl border border-border bg-surface hover:shadow-lg hover:-translate-y-0.5 hover:border-emerald-500/30 transition-all duration-300 cursor-pointer group overflow-hidden before:absolute before:left-0 before:top-0 before:bottom-0 before:w-0.5 before:bg-emerald-500 before:opacity-0 group-hover:opacity-100 before:rounded-l-2xl">
                           <div className="flex items-center gap-2 mb-2">
