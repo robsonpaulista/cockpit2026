@@ -21,13 +21,6 @@ const trendData = [
   { date: '29/10', ife: 72, sentimento: 68 },
 ]
 
-const topicsData = [
-  { tema: 'Saúde', mencoes: 45, sentimento: 72 },
-  { tema: 'Educação', mencoes: 38, sentimento: 68 },
-  { tema: 'Segurança', mencoes: 32, sentimento: 65 },
-  { tema: 'Economia', mencoes: 28, sentimento: 70 },
-  { tema: 'Infraestrutura', mencoes: 22, sentimento: 75 },
-]
 export default function Home() {
   const [kpis, setKpis] = useState<KPI[]>(mockKPIs)
   const [loading, setLoading] = useState(true)
@@ -840,19 +833,27 @@ export default function Home() {
             </div>
 
             {/* Análise de Territórios */}
-            <div className="bg-surface rounded-2xl border border-border p-6">
+            <div className="bg-surface rounded-2xl border border-border p-6 relative overflow-hidden">
+              {/* Linha vertical de destaque */}
+              <div className="absolute left-0 top-0 bottom-0 w-1 bg-primary opacity-20" />
+              
               <div className="flex items-center justify-between mb-4">
-                <h2 className="text-lg font-semibold text-text-strong flex items-center gap-2">
-                  <Activity className="w-5 h-5 text-primary" />
-                  Análise de Territórios
-                </h2>
+                <div className="flex items-center gap-3">
+                  <h2 className="text-lg font-semibold text-text-strong flex items-center gap-2">
+                    <Activity className="w-5 h-5 text-primary" />
+                    Análise de Territórios
+                  </h2>
+                  <span className="text-xs text-text-muted bg-surface px-2 py-1 rounded border border-border">
+                    Fonte própria
+                  </span>
+                </div>
               </div>
 
               {loadingTerritorios ? (
                 <div className="space-y-4">
                   <div className="grid grid-cols-3 gap-3">
                     {[1, 2, 3].map((i) => (
-                      <div key={i} className="h-16 bg-background rounded-xl animate-pulse" />
+                      <div key={i} className="h-20 bg-background rounded-xl animate-pulse" />
                     ))}
                   </div>
                   {[1, 2, 3].map((i) => (
@@ -864,23 +865,52 @@ export default function Home() {
                 </div>
               ) : (
                 <>
-                  {/* Estatísticas Gerais */}
-                  {territorioStats && (
-                    <div className="grid grid-cols-3 gap-3 mb-5">
-                      <div className="bg-primary/5 border border-primary/20 rounded-xl p-3 text-center">
-                        <p className="text-2xl font-bold text-primary">{territorioStats.cidadesVisitadas}</p>
-                        <p className="text-[10px] text-text-muted mt-0.5">Cidades Visitadas</p>
+                  {/* Estatísticas Gerais - Calculadas a partir do KPI Base Ativa no Território */}
+                  {(() => {
+                    // Pegar o KPI de presença (Base Ativa no Território) que mostra "X/224"
+                    const presencaKpi = kpisComMedia.find(k => k.id === 'presenca')
+                    let cidadesAtivas = 0
+                    let totalCidades = 224
+                    
+                    if (presencaKpi && typeof presencaKpi.value === 'string' && presencaKpi.value.includes('/')) {
+                      const [cidades, total] = presencaKpi.value.split('/').map(v => parseInt(v.trim()) || 0)
+                      cidadesAtivas = cidades
+                      totalCidades = total || 224
+                    }
+                    
+                    // Calcular visitas baseado nos territórios
+                    const totalVisitas = territorioStats?.totalVisitas || 0
+                    const percentualCobertura = totalCidades > 0 ? Math.round((cidadesAtivas / totalCidades) * 100) : 0
+                    
+                    return (
+                      <div className="grid grid-cols-3 gap-3 mb-5">
+                        <div className="relative p-5 rounded-2xl border-2 border-primary/30 bg-gradient-to-br from-primary-soft to-surface hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300 cursor-pointer group overflow-hidden before:absolute before:left-0 before:top-0 before:bottom-0 before:w-1 before:bg-primary before:rounded-l-2xl">
+                          <div className="flex items-center gap-2 mb-2">
+                            <MapPin className="w-4 h-4 text-primary" />
+                            <p className="text-xs font-medium text-text-muted">Cidades com Presença</p>
+                          </div>
+                          <p className="text-3xl font-bold text-text-strong group-hover:text-primary transition-colors">{cidadesAtivas}</p>
+                          <p className="text-xs text-text-muted mt-1">de {totalCidades} municípios</p>
+                        </div>
+                        <div className="relative p-5 rounded-2xl border border-border bg-surface hover:shadow-lg hover:-translate-y-0.5 hover:border-primary/30 transition-all duration-300 cursor-pointer group overflow-hidden before:absolute before:left-0 before:top-0 before:bottom-0 before:w-0.5 before:bg-blue-500 before:opacity-0 group-hover:opacity-100 before:rounded-l-2xl">
+                          <div className="flex items-center gap-2 mb-2">
+                            <Activity className="w-4 h-4 text-blue-600" />
+                            <p className="text-xs font-medium text-text-muted">Total de Visitas</p>
+                          </div>
+                          <p className="text-3xl font-bold text-blue-600 group-hover:scale-105 transition-transform">{totalVisitas}</p>
+                          <p className="text-xs text-text-muted mt-1">visitas realizadas</p>
+                        </div>
+                        <div className="relative p-5 rounded-2xl border border-border bg-surface hover:shadow-lg hover:-translate-y-0.5 hover:border-emerald-500/30 transition-all duration-300 cursor-pointer group overflow-hidden before:absolute before:left-0 before:top-0 before:bottom-0 before:w-0.5 before:bg-emerald-500 before:opacity-0 group-hover:opacity-100 before:rounded-l-2xl">
+                          <div className="flex items-center gap-2 mb-2">
+                            <TrendingUp className="w-4 h-4 text-emerald-600" />
+                            <p className="text-xs font-medium text-text-muted">Cobertura</p>
+                          </div>
+                          <p className="text-3xl font-bold text-emerald-600 group-hover:scale-105 transition-transform">{percentualCobertura}%</p>
+                          <p className="text-xs text-text-muted mt-1">do território coberto</p>
+                        </div>
                       </div>
-                      <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 text-center">
-                        <p className="text-2xl font-bold text-blue-600">{territorioStats.totalVisitas}</p>
-                        <p className="text-[10px] text-text-muted mt-0.5">Total de Visitas</p>
-                      </div>
-                      <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3 text-center">
-                        <p className="text-2xl font-bold text-emerald-600">{territorioStats.percentualCobertura}%</p>
-                        <p className="text-[10px] text-text-muted mt-0.5">Cobertura</p>
-                      </div>
-                    </div>
-                  )}
+                    )
+                  })()}
 
                   {/* Tabs de Territórios */}
                   <div className="space-y-4">
@@ -997,34 +1027,6 @@ export default function Home() {
               )}
             </div>
 
-            {/* Top 5 Temas Emergentes */}
-            <div className="bg-surface rounded-2xl border border-border p-6">
-              <h2 className="text-lg font-semibold text-text-strong mb-4">Top 5 Temas Emergentes</h2>
-              <div className="space-y-3">
-                {topicsData.map((topic, index) => (
-                  <div
-                    key={topic.tema}
-                    className="flex items-center justify-between p-3 rounded-xl bg-background hover:bg-primary-soft transition-colors"
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-lg bg-primary-soft text-primary flex items-center justify-center text-sm font-semibold">
-                        {index + 1}
-                      </div>
-                      <div>
-                        <p className="text-sm font-medium text-text-strong">{topic.tema}</p>
-                        <p className="text-xs text-text-muted">{topic.mencoes} menções</p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-4">
-                      <div className="text-right">
-                        <p className="text-sm font-semibold text-text-strong">{topic.sentimento}%</p>
-                        <p className="text-xs text-text-muted">Sentimento</p>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
           </div>
 
           {/* Coluna Direita - Ações e Alertas */}
@@ -1059,34 +1061,48 @@ export default function Home() {
             </div>
 
             {/* Bandeiras de Campanha - Usos e Performance */}
-            <div>
-              <h2 className="text-lg font-semibold text-text-strong mb-4 flex items-center gap-2">
-                <Flag className="w-5 h-5 text-primary" />
-                Bandeiras de Campanha
-              </h2>
+            <div className="bg-surface rounded-2xl border border-border p-6 relative overflow-hidden">
+              {/* Linha vertical de destaque */}
+              <div className="absolute left-0 top-0 bottom-0 w-1 bg-primary opacity-20" />
+              
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-3">
+                  <h2 className="text-lg font-semibold text-text-strong flex items-center gap-2">
+                    <Flag className="w-5 h-5 text-primary" />
+                    Bandeiras de Campanha
+                  </h2>
+                  <span className="text-xs text-text-muted bg-surface px-2 py-1 rounded border border-border">
+                    Fonte própria
+                  </span>
+                </div>
+              </div>
               {loadingBandeiras ? (
-                <div className="bg-surface rounded-xl border border-border p-4 animate-pulse space-y-3">
-                  <div className="h-4 bg-background rounded w-3/4" />
-                  <div className="h-4 bg-background rounded w-1/2" />
-                  <div className="h-4 bg-background rounded w-2/3" />
+                <div className="space-y-3">
+                  <div className="grid grid-cols-2 gap-3">
+                    {[1, 2].map((i) => (
+                      <div key={i} className="h-20 bg-background rounded-xl animate-pulse" />
+                    ))}
+                  </div>
                 </div>
               ) : bandeirasStats ? (
-                <div className="bg-surface rounded-xl border border-border p-4 space-y-4">
+                <div className="space-y-4">
                   {/* KPIs principais */}
                   <div className="grid grid-cols-2 gap-3">
-                    <div className="bg-blue-50 rounded-lg p-3">
-                      <div className="flex items-center gap-2 mb-1">
+                    <div className="relative p-5 rounded-2xl border-2 border-blue-500/30 bg-gradient-to-br from-blue-50 to-surface hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300 cursor-pointer group overflow-hidden before:absolute before:left-0 before:top-0 before:bottom-0 before:w-1 before:bg-blue-500 before:rounded-l-2xl">
+                      <div className="flex items-center gap-2 mb-2">
                         <TrendingUp className="w-4 h-4 text-blue-600" />
-                        <span className="text-xs text-blue-600 font-medium">Total de Usos</span>
+                        <p className="text-xs font-medium text-text-muted">Total de Usos</p>
                       </div>
-                      <p className="text-2xl font-bold text-blue-700">{bandeirasStats.totalUsos}</p>
+                      <p className="text-3xl font-bold text-blue-600 group-hover:scale-105 transition-transform">{bandeirasStats.totalUsos}</p>
+                      <p className="text-xs text-text-muted mt-1">bandeiras utilizadas</p>
                     </div>
-                    <div className="bg-green-50 rounded-lg p-3">
-                      <div className="flex items-center gap-2 mb-1">
-                        <MessageSquare className="w-4 h-4 text-green-600" />
-                        <span className="text-xs text-green-600 font-medium">Performance Média</span>
+                    <div className="relative p-5 rounded-2xl border-2 border-emerald-500/30 bg-gradient-to-br from-emerald-50 to-surface hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300 cursor-pointer group overflow-hidden before:absolute before:left-0 before:top-0 before:bottom-0 before:w-1 before:bg-emerald-500 before:rounded-l-2xl">
+                      <div className="flex items-center gap-2 mb-2">
+                        <MessageSquare className="w-4 h-4 text-emerald-600" />
+                        <p className="text-xs font-medium text-text-muted">Performance Média</p>
                       </div>
-                      <p className="text-2xl font-bold text-green-700">{bandeirasStats.totalPerformance}%</p>
+                      <p className="text-3xl font-bold text-emerald-600 group-hover:scale-105 transition-transform">{bandeirasStats.totalPerformance}%</p>
+                      <p className="text-xs text-text-muted mt-1">engajamento médio</p>
                     </div>
                   </div>
 
@@ -1156,25 +1172,6 @@ export default function Home() {
               </div>
             </div>
 
-            {/* Próximas 24h */}
-            <div className="bg-primary-soft rounded-2xl border border-primary/30 p-6">
-              <h2 className="text-lg font-semibold text-text-strong mb-4">Próximas 24h</h2>
-              <div className="space-y-3">
-                {[
-                  { hora: '09:00', evento: 'Agenda: Visita a São Paulo', tipo: 'Agenda' },
-                  { hora: '14:00', evento: 'Entrevista - TV Local', tipo: 'Mídia' },
-                  { hora: '16:00', evento: 'Reunião - Coordenação', tipo: 'Reunião' },
-                ].map((item, index) => (
-                  <div key={index} className="flex items-start gap-3">
-                    <div className="text-sm font-medium text-primary">{item.hora}</div>
-                    <div className="flex-1">
-                      <p className="text-sm text-text-strong">{item.evento}</p>
-                      <p className="text-xs text-text-muted">{item.tipo}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
           </div>
         </div>
       </div>
