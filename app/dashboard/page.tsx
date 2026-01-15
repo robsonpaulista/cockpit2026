@@ -50,6 +50,10 @@ export default function Home() {
   const [loadingBandeiras, setLoadingBandeiras] = useState(true)
   const [projecaoChapa, setProjecaoChapa] = useState<number>(0)
   const [graficoPollsTelaCheia, setGraficoPollsTelaCheia] = useState(false)
+  const [analiseTerritoriosTelaCheia, setAnaliseTerritoriosTelaCheia] = useState(false)
+  const [bandeirasTelaCheia, setBandeirasTelaCheia] = useState(false)
+  const [alertasTelaCheia, setAlertasTelaCheia] = useState(false)
+  const [insightTelaCheia, setInsightTelaCheia] = useState(false)
   const [expectativasPorCidade, setExpectativasPorCidade] = useState<Record<string, number>>({})
 
   // Calcular média das pesquisas diretamente a partir dos dados do gráfico
@@ -428,7 +432,7 @@ export default function Home() {
         setKpis([
           {
             id: 'ife',
-            label: 'Expectativa de Voto – 2026',
+            label: 'Expectativa de Votos',
             value: expectativa2026 !== null && expectativa2026 !== undefined 
               ? (typeof expectativa2026 === 'number' ? expectativa2026.toLocaleString('pt-BR') : String(expectativa2026))
               : (typeof data.ife.value === 'number' ? data.ife.value.toLocaleString('pt-BR') : data.ife.value),
@@ -507,7 +511,7 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-background">
-      <Header title="Visão Geral" subtitle="Dashboard Executivo - Visão estratégica em 30 segundos" showFilters={false} />
+      <Header title="" subtitle="Visão estratégica Dep Federal Jadyel Alencar eleições 2026" showFilters={false} />
 
       <div className="px-4 py-6 lg:px-6">
         {/* KPI Hero - Expectativa 2026 */}
@@ -554,15 +558,24 @@ export default function Home() {
         {/* Bloco de Leitura Rápida / Insight */}
         {!loading && (
           <section className="mb-8">
-            <div className="bg-gradient-to-r from-primary-soft to-surface rounded-2xl border border-primary/20 p-5">
+            <div className="bg-gradient-to-r from-primary-soft to-surface rounded-2xl border border-primary/20 p-5 relative">
               <div className="flex items-start gap-3">
                 <div className="p-2 rounded-lg bg-primary/20 flex-shrink-0">
                   <Lightbulb className="w-5 h-5 text-primary" />
                 </div>
                 <div className="flex-1">
-                  <h3 className="text-base font-semibold text-text-strong mb-2 flex items-center gap-2">
-                    💡 Leitura Rápida
-                  </h3>
+                  <div className="flex items-center justify-between mb-2">
+                    <h3 className="text-base font-semibold text-text-strong flex items-center gap-2">
+                      💡 Leitura Rápida
+                    </h3>
+                    <button
+                      onClick={() => setInsightTelaCheia(true)}
+                      className="p-1.5 rounded-lg hover:bg-background/50 transition-colors text-text-muted hover:text-text-strong"
+                      title="Visualizar em tela cheia"
+                    >
+                      <Maximize2 className="w-4 h-4" />
+                    </button>
+                  </div>
                   <p className="text-sm text-text-muted leading-relaxed">
                     {(() => {
                       const presencaKpi = kpisComMedia.find(k => k.id === 'presenca')
@@ -847,6 +860,13 @@ export default function Home() {
                     Fonte própria
                   </span>
                 </div>
+                <button
+                  onClick={() => setAnaliseTerritoriosTelaCheia(true)}
+                  className="p-2 rounded-lg hover:bg-background transition-colors text-text-muted hover:text-text-strong"
+                  title="Visualizar em tela cheia"
+                >
+                  <Maximize2 className="w-5 h-5" />
+                </button>
               </div>
 
               {loadingTerritorios ? (
@@ -1039,10 +1059,19 @@ export default function Home() {
           <div className="space-y-6">
             {/* Alertas Críticos */}
             <div>
-              <h2 className="text-lg font-semibold text-text-strong mb-4 flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-status-error" />
-                Alertas Críticos
-              </h2>
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg font-semibold text-text-strong flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-status-error" />
+                  Alertas Críticos
+                </h2>
+                <button
+                  onClick={() => setAlertasTelaCheia(true)}
+                  className="p-2 rounded-lg hover:bg-background transition-colors text-text-muted hover:text-text-strong"
+                  title="Visualizar em tela cheia"
+                >
+                  <Maximize2 className="w-5 h-5" />
+                </button>
+              </div>
               <div className="space-y-3">
                 {loadingAlerts ? (
                   <>
@@ -1081,6 +1110,13 @@ export default function Home() {
                     Fonte própria
                   </span>
                 </div>
+                <button
+                  onClick={() => setBandeirasTelaCheia(true)}
+                  className="p-2 rounded-lg hover:bg-background transition-colors text-text-muted hover:text-text-strong"
+                  title="Visualizar em tela cheia"
+                >
+                  <Maximize2 className="w-5 h-5" />
+                </button>
               </div>
               {loadingBandeiras ? (
                 <div className="space-y-3">
@@ -1100,7 +1136,7 @@ export default function Home() {
                         <p className="text-xs font-medium text-text-muted">Total de Usos</p>
                       </div>
                       <p className="text-3xl font-bold text-blue-600 group-hover:scale-105 transition-transform">{bandeirasStats.totalUsos}</p>
-                      <p className="text-xs text-text-muted mt-1">bandeiras utilizadas</p>
+                      <p className="text-xs text-text-muted mt-1">notícias/postagens</p>
                     </div>
                     <div className="relative p-5 rounded-2xl border-2 border-emerald-500/30 bg-gradient-to-br from-emerald-50 to-surface hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300 cursor-pointer group overflow-hidden before:absolute before:left-0 before:top-0 before:bottom-0 before:w-1 before:bg-emerald-500 before:rounded-l-2xl">
                       <div className="flex items-center gap-2 mb-2">
@@ -1181,6 +1217,371 @@ export default function Home() {
           </div>
         </div>
       </div>
+
+      {/* Modal de Análise de Territórios em Tela Cheia */}
+      {analiseTerritoriosTelaCheia && (
+        <div className="fixed inset-0 z-50 bg-background flex flex-col">
+          <div className="bg-surface border-b border-border p-4 flex items-center justify-between">
+            <h2 className="text-xl font-semibold text-text-strong flex items-center gap-2">
+              <Activity className="w-6 h-6 text-primary" />
+              Análise de Territórios
+            </h2>
+            <button
+              onClick={() => setAnaliseTerritoriosTelaCheia(false)}
+              className="p-2 rounded-lg hover:bg-background transition-colors"
+              title="Fechar tela cheia"
+            >
+              <X className="w-6 h-6 text-text-muted" />
+            </button>
+          </div>
+          <div className="flex-1 p-6 overflow-auto">
+            <div className="max-w-7xl mx-auto">
+              {/* Replicar conteúdo da seção Análise de Territórios aqui */}
+              {loadingTerritorios ? (
+                <div className="space-y-4">
+                  <div className="grid grid-cols-3 gap-3">
+                    {[1, 2, 3].map((i) => (
+                      <div key={i} className="h-20 bg-background rounded-xl animate-pulse" />
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <>
+                  {/* Estatísticas Gerais */}
+                  {(() => {
+                    const presencaKpi = kpisComMedia.find(k => k.id === 'presenca')
+                    let cidadesAtivas = 0
+                    let totalCidades = 224
+                    
+                    if (presencaKpi && typeof presencaKpi.value === 'string' && presencaKpi.value.includes('/')) {
+                      const [cidades, total] = presencaKpi.value.split('/').map(v => parseInt(v.trim()) || 0)
+                      cidadesAtivas = cidades
+                      totalCidades = total || 224
+                    }
+                    
+                    const cidadesVisitadas = territorioStats?.cidadesVisitadas || 0
+                    const percentualCobertura = cidadesAtivas > 0 
+                      ? Math.round((cidadesVisitadas / cidadesAtivas) * 100) 
+                      : 0
+                    
+                    return (
+                      <div className="grid grid-cols-3 gap-4 mb-6">
+                        <div className="relative p-6 rounded-2xl border-2 border-primary/30 bg-gradient-to-br from-primary-soft to-surface">
+                          <div className="flex items-center gap-2 mb-2">
+                            <MapPin className="w-5 h-5 text-primary" />
+                            <p className="text-sm font-medium text-text-muted">Cidades com Presença</p>
+                          </div>
+                          <p className="text-4xl font-bold text-text-strong">{cidadesAtivas}</p>
+                          <p className="text-sm text-text-muted mt-1">de {totalCidades} municípios</p>
+                        </div>
+                        <div className="relative p-6 rounded-2xl border border-border bg-surface">
+                          <div className="flex items-center gap-2 mb-2">
+                            <Activity className="w-5 h-5 text-blue-600" />
+                            <p className="text-sm font-medium text-text-muted">Cidades Visitadas</p>
+                          </div>
+                          <p className="text-4xl font-bold text-blue-600">{cidadesVisitadas}</p>
+                          <p className="text-sm text-text-muted mt-1">de {cidadesAtivas} com presença</p>
+                        </div>
+                        <div className="relative p-6 rounded-2xl border border-border bg-surface">
+                          <div className="flex items-center gap-2 mb-2">
+                            <TrendingUp className="w-5 h-5 text-emerald-600" />
+                            <p className="text-sm font-medium text-text-muted">Cobertura</p>
+                          </div>
+                          <p className="text-4xl font-bold text-emerald-600">{percentualCobertura}%</p>
+                          <p className="text-sm text-text-muted mt-1">das cidades com presença</p>
+                        </div>
+                      </div>
+                    )
+                  })()}
+                  
+                  {/* Territórios Quentes, Mornos e Frios */}
+                  <div className="space-y-6">
+                    {territoriosQuentes.length > 0 && (
+                      <div>
+                        <div className="flex items-center gap-2 mb-3">
+                          <Flame className="w-5 h-5 text-emerald-500" />
+                          <span className="text-base font-semibold text-emerald-600">Territórios Quentes</span>
+                          <span className="text-sm text-text-muted">({territoriosQuentes.length})</span>
+                        </div>
+                        <div className="space-y-2">
+                          {territoriosQuentes.map((territorio) => (
+                            <div
+                              key={territorio.cidade}
+                              className="p-3 rounded-lg border border-emerald-200 bg-emerald-50/50 flex items-center justify-between"
+                            >
+                              <div className="flex items-center gap-3">
+                                <div className="w-8 h-8 rounded-full bg-emerald-500 text-white flex items-center justify-center text-sm font-bold">
+                                  {territorio.visitas}
+                                </div>
+                                <div>
+                                  <p className="text-base font-medium text-text-strong">{territorio.cidade}</p>
+                                  <p className="text-xs text-text-muted">{territorio.motivo}</p>
+                                </div>
+                              </div>
+                              {territorio.expectativaVotos && territorio.expectativaVotos > 0 && (
+                                <span className="text-sm font-semibold text-emerald-600">
+                                  {territorio.expectativaVotos.toLocaleString('pt-BR')} votos
+                                </span>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    
+                    {territoriosMornos.length > 0 && (
+                      <div>
+                        <div className="flex items-center gap-2 mb-3">
+                          <ThermometerSun className="w-5 h-5 text-amber-500" />
+                          <span className="text-base font-semibold text-amber-600">Territórios Mornos</span>
+                          <span className="text-sm text-text-muted">({territoriosMornos.length})</span>
+                        </div>
+                        <div className="space-y-2">
+                          {territoriosMornos.map((territorio) => (
+                            <div
+                              key={territorio.cidade}
+                              className="p-3 rounded-lg border border-amber-200 bg-amber-50/50 flex items-center justify-between"
+                            >
+                              <div className="flex items-center gap-3">
+                                <div className="w-8 h-8 rounded-full bg-amber-400 text-white flex items-center justify-center text-sm font-bold">
+                                  {territorio.visitas || 0}
+                                </div>
+                                <div>
+                                  <p className="text-base font-medium text-text-strong">{territorio.cidade}</p>
+                                  <p className="text-xs text-text-muted">{territorio.motivo}</p>
+                                </div>
+                              </div>
+                              {territorio.expectativaVotos && territorio.expectativaVotos > 0 && (
+                                <span className="text-sm font-semibold text-amber-600">
+                                  {territorio.expectativaVotos.toLocaleString('pt-BR')} votos
+                                </span>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    
+                    {territoriosFrios.length > 0 && (
+                      <div>
+                        <div className="flex items-center gap-2 mb-3">
+                          <ThermometerSnowflake className="w-5 h-5 text-red-500" />
+                          <span className="text-base font-semibold text-red-600">Territórios Frios (Alerta)</span>
+                          <span className="text-sm text-text-muted">({territoriosFrios.length})</span>
+                        </div>
+                        <div className="space-y-2">
+                          {territoriosFrios.map((territorio) => (
+                            <div
+                              key={territorio.cidade}
+                              className="p-3 rounded-lg border border-red-200 bg-red-50/50 flex items-center justify-between"
+                            >
+                              <div className="flex items-center gap-3">
+                                <div className="w-8 h-8 rounded-full bg-red-500 text-white flex items-center justify-center text-sm font-bold">
+                                  {territorio.visitas || 0}
+                                </div>
+                                <div>
+                                  <p className="text-base font-medium text-text-strong">{territorio.cidade}</p>
+                                  <p className="text-xs text-text-muted">{territorio.motivo}</p>
+                                </div>
+                              </div>
+                              {territorio.expectativaVotos && territorio.expectativaVotos > 0 && (
+                                <span className="text-sm font-semibold text-red-600">
+                                  {territorio.expectativaVotos.toLocaleString('pt-BR')} votos
+                                </span>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Bandeiras em Tela Cheia */}
+      {bandeirasTelaCheia && (
+        <div className="fixed inset-0 z-50 bg-background flex flex-col">
+          <div className="bg-surface border-b border-border p-4 flex items-center justify-between">
+            <h2 className="text-xl font-semibold text-text-strong flex items-center gap-2">
+              <Flag className="w-6 h-6 text-primary" />
+              Bandeiras de Campanha
+            </h2>
+            <button
+              onClick={() => setBandeirasTelaCheia(false)}
+              className="p-2 rounded-lg hover:bg-background transition-colors"
+              title="Fechar tela cheia"
+            >
+              <X className="w-6 h-6 text-text-muted" />
+            </button>
+          </div>
+          <div className="flex-1 p-6 overflow-auto">
+            <div className="max-w-7xl mx-auto">
+              {loadingBandeiras ? (
+                <div className="space-y-3">
+                  <div className="grid grid-cols-2 gap-4">
+                    {[1, 2].map((i) => (
+                      <div key={i} className="h-32 bg-background rounded-xl animate-pulse" />
+                    ))}
+                  </div>
+                </div>
+              ) : bandeirasStats ? (
+                <div className="space-y-6">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="relative p-6 rounded-2xl border-2 border-blue-500/30 bg-gradient-to-br from-blue-50 to-surface">
+                      <div className="flex items-center gap-2 mb-2">
+                        <TrendingUp className="w-5 h-5 text-blue-600" />
+                        <p className="text-sm font-medium text-text-muted">Total de Usos</p>
+                      </div>
+                      <p className="text-4xl font-bold text-blue-600">{bandeirasStats.totalUsos}</p>
+                      <p className="text-sm text-text-muted mt-1">notícias/postagens</p>
+                    </div>
+                    <div className="relative p-6 rounded-2xl border-2 border-emerald-500/30 bg-gradient-to-br from-emerald-50 to-surface">
+                      <div className="flex items-center gap-2 mb-2">
+                        <MessageSquare className="w-5 h-5 text-emerald-600" />
+                        <p className="text-sm font-medium text-text-muted">Performance Média</p>
+                      </div>
+                      <p className="text-4xl font-bold text-emerald-600">{bandeirasStats.totalPerformance}%</p>
+                      <p className="text-sm text-text-muted mt-1">engajamento médio</p>
+                    </div>
+                  </div>
+                  
+                  {bandeirasStats.topBandeiras.length > 0 && (
+                    <div>
+                      <p className="text-base font-medium text-text-muted mb-3">Top Bandeiras por Uso</p>
+                      <div className="space-y-2">
+                        {bandeirasStats.topBandeiras.map((bandeira, index) => (
+                          <div
+                            key={bandeira.theme}
+                            className="flex items-center justify-between p-3 bg-surface rounded-lg border border-border"
+                          >
+                            <div className="flex items-center gap-3">
+                              <div className="w-8 h-8 rounded-full bg-primary-soft text-primary flex items-center justify-center text-sm font-semibold">
+                                {index + 1}
+                              </div>
+                              <span className="text-base text-text-strong">{bandeira.theme}</span>
+                            </div>
+                            <div className="flex items-center gap-4 text-sm">
+                              <span className="text-text-muted">{bandeira.usage_count} usos</span>
+                              <span className="text-text-muted">{bandeira.performance_score}%</span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <p className="text-text-muted text-center">Erro ao carregar estatísticas das bandeiras</p>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Alertas em Tela Cheia */}
+      {alertasTelaCheia && (
+        <div className="fixed inset-0 z-50 bg-background flex flex-col">
+          <div className="bg-surface border-b border-border p-4 flex items-center justify-between">
+            <h2 className="text-xl font-semibold text-text-strong flex items-center gap-2">
+              <span className="w-3 h-3 rounded-full bg-status-error" />
+              Alertas Críticos
+            </h2>
+            <button
+              onClick={() => setAlertasTelaCheia(false)}
+              className="p-2 rounded-lg hover:bg-background transition-colors"
+              title="Fechar tela cheia"
+            >
+              <X className="w-6 h-6 text-text-muted" />
+            </button>
+          </div>
+          <div className="flex-1 p-6 overflow-auto">
+            <div className="max-w-5xl mx-auto">
+              {loadingAlerts ? (
+                <div className="space-y-3">
+                  {[1, 2, 3, 4, 5].map((i) => (
+                    <div key={i} className="bg-surface rounded-xl border border-border p-4 animate-pulse">
+                      <div className="h-4 bg-background rounded w-3/4 mb-2" />
+                      <div className="h-3 bg-background rounded w-1/2 mb-2" />
+                      <div className="h-3 bg-background rounded w-1/4" />
+                    </div>
+                  ))}
+                </div>
+              ) : criticalAlerts.length > 0 ? (
+                <div className="space-y-3">
+                  {criticalAlerts.map((alert) => (
+                    <AlertCard key={alert.id} alert={alert} />
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-8">
+                  <p className="text-text-muted">Nenhum alerta crítico no momento</p>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Insight em Tela Cheia */}
+      {insightTelaCheia && (
+        <div className="fixed inset-0 z-50 bg-background flex flex-col">
+          <div className="bg-surface border-b border-border p-4 flex items-center justify-between">
+            <h2 className="text-xl font-semibold text-text-strong flex items-center gap-2">
+              <Lightbulb className="w-6 h-6 text-primary" />
+              Leitura Rápida
+            </h2>
+            <button
+              onClick={() => setInsightTelaCheia(false)}
+              className="p-2 rounded-lg hover:bg-background transition-colors"
+              title="Fechar tela cheia"
+            >
+              <X className="w-6 h-6 text-text-muted" />
+            </button>
+          </div>
+          <div className="flex-1 p-6 overflow-auto">
+            <div className="max-w-4xl mx-auto">
+              <div className="bg-gradient-to-r from-primary-soft to-surface rounded-2xl border border-primary/20 p-8">
+                <div className="flex items-start gap-4">
+                  <div className="p-3 rounded-lg bg-primary/20 flex-shrink-0">
+                    <Lightbulb className="w-8 h-8 text-primary" />
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-lg text-text-muted leading-relaxed">
+                      {(() => {
+                        const presencaKpi = kpisComMedia.find(k => k.id === 'presenca')
+                        const baseKpi = kpisComMedia.find(k => k.id === 'base')
+                        const riscoKpi = kpisComMedia.find(k => k.id === 'risco')
+                        
+                        const insights: string[] = []
+                        
+                        if (presencaKpi && presencaKpi.variation && presencaKpi.variation > 0) {
+                          insights.push(`Presença territorial cresceu ${presencaKpi.variation}% no último mês`)
+                        }
+                        
+                        if (riscoKpi && riscoKpi.status === 'error') {
+                          insights.push(`há risco de saturação em territórios-chave`)
+                        }
+                        
+                        if (baseKpi && baseKpi.value) {
+                          insights.push(`Base ativa com ${baseKpi.value} lideranças mapeadas`)
+                        }
+                        
+                        return insights.length > 0 
+                          ? insights.join(', ') + '.'
+                          : 'Análise estratégica em tempo real dos indicadores de performance.'
+                      })()}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Modal de Gráfico em Tela Cheia */}
       {graficoPollsTelaCheia && (
