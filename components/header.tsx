@@ -56,7 +56,7 @@ export function Header({ title, subtitle, showFilters = true }: HeaderProps) {
         <div className="mb-4">
           <h1 className="text-2xl lg:text-3xl font-semibold text-text-strong">{title}</h1>
           {subtitle && (
-            <p className="mt-1 text-sm text-text-muted">{subtitle}</p>
+            <p className="mt-1 text-base lg:text-lg text-text-muted font-medium">{subtitle}</p>
           )}
         </div>
 
