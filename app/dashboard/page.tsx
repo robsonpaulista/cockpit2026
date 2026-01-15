@@ -3,12 +3,13 @@
 import { useEffect, useState } from 'react'
 import { Header } from '@/components/header'
 import { KPICard } from '@/components/kpi-card'
+import { KPIHeroCard } from '@/components/kpi-hero-card'
 import { AlertCard } from '@/components/alert-card'
 import { ActionCard } from '@/components/action-card'
 import { AIAgent } from '@/components/ai-agent'
 import { mockKPIs, mockAlerts, mockActions } from '@/lib/mock-data'
 import { KPI, Alert, NewsItem } from '@/types'
-import { TrendingUp, MapPin, Flag, MessageSquare, ThermometerSun, ThermometerSnowflake, Flame, Activity, Maximize2, X } from 'lucide-react'
+import { TrendingUp, MapPin, Flag, MessageSquare, ThermometerSun, ThermometerSnowflake, Flame, Activity, Maximize2, X, Lightbulb } from 'lucide-react'
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 import { getEleitoradoByCity } from '@/lib/eleitores'
 
@@ -434,7 +435,7 @@ export default function Home() {
         setKpis([
           {
             id: 'ife',
-            label: 'Expectativa 2026',
+            label: 'Expectativa de Voto – 2026',
             value: expectativa2026 !== null && expectativa2026 !== undefined 
               ? (typeof expectativa2026 === 'number' ? expectativa2026.toLocaleString('pt-BR') : String(expectativa2026))
               : (typeof data.ife.value === 'number' ? data.ife.value.toLocaleString('pt-BR') : data.ife.value),
@@ -443,7 +444,7 @@ export default function Home() {
           },
             {
               id: 'presenca',
-              label: 'Presença Territorial',
+              label: 'Base Ativa no Território',
               value: cidadesUnicas !== null && cidadesUnicas !== undefined 
                 ? `${cidadesUnicas}/224` 
                 : data.presenca.value,
@@ -452,7 +453,7 @@ export default function Home() {
             },
             {
               id: 'base',
-              label: 'Capilaridade da Base',
+              label: 'Lideranças Mapeadas',
               value: liderancas !== null && liderancas !== undefined 
                 ? (typeof liderancas === 'number' ? liderancas.toLocaleString('pt-BR') : String(liderancas))
                 : (typeof data.base.value === 'number' ? data.base.value.toLocaleString('pt-BR') : data.base.value),
@@ -516,44 +517,123 @@ export default function Home() {
       <Header title="Visão Geral" subtitle="Dashboard Executivo - Visão estratégica em 30 segundos" showFilters={false} />
 
       <div className="px-4 py-6 lg:px-6">
-        {/* Linha 1 - KPIs Centrais */}
+        {/* KPI Hero - Expectativa 2026 */}
+        <section className="mb-6">
+          {loading ? (
+            <div className="h-40 bg-surface rounded-2xl border border-border animate-pulse" />
+          ) : (
+            (() => {
+              const heroKpi = kpisComMedia.find(k => k.id === 'ife')
+              if (!heroKpi) return null
+              
+              const variationText = heroKpi.variation !== undefined && heroKpi.variation !== 0
+                ? `${heroKpi.variation > 0 ? '+' : ''}${heroKpi.variation}% vs última medição`
+                : undefined
+              
+              return (
+                <KPIHeroCard 
+                  kpi={heroKpi} 
+                  subtitle={variationText}
+                  href="/ife"
+                />
+              )
+            })()
+          )}
+        </section>
+
+        {/* KPIs Secundários */}
         <section className="mb-8">
           {loading ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
-              {[1, 2, 3, 4, 5, 6].map((i) => (
-                <div key={i} className="h-32 bg-surface rounded-2xl border border-border animate-pulse" />
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
+              {[1, 2, 3, 4, 5].map((i) => (
+                <div key={i} className="h-28 bg-surface rounded-2xl border border-border animate-pulse" />
               ))}
             </div>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
-              {kpisComMedia.map((kpi) => (
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
+              {kpisComMedia.filter(kpi => kpi.id !== 'ife').map((kpi) => (
                 <KPICard key={kpi.id} kpi={kpi} href={`/${kpi.id}`} />
               ))}
             </div>
           )}
         </section>
 
+        {/* Bloco de Leitura Rápida / Insight */}
+        {!loading && (
+          <section className="mb-8">
+            <div className="bg-gradient-to-r from-primary-soft to-surface rounded-2xl border border-primary/20 p-5">
+              <div className="flex items-start gap-3">
+                <div className="p-2 rounded-lg bg-primary/20 flex-shrink-0">
+                  <Lightbulb className="w-5 h-5 text-primary" />
+                </div>
+                <div className="flex-1">
+                  <h3 className="text-base font-semibold text-text-strong mb-2 flex items-center gap-2">
+                    💡 Leitura Rápida
+                  </h3>
+                  <p className="text-sm text-text-muted leading-relaxed">
+                    {(() => {
+                      const presencaKpi = kpisComMedia.find(k => k.id === 'presenca')
+                      const baseKpi = kpisComMedia.find(k => k.id === 'base')
+                      const riscoKpi = kpisComMedia.find(k => k.id === 'risco')
+                      
+                      const insights: string[] = []
+                      
+                      if (presencaKpi && presencaKpi.variation && presencaKpi.variation > 0) {
+                        insights.push(`Presença territorial cresceu ${presencaKpi.variation}% no último mês`)
+                      }
+                      
+                      if (riscoKpi && riscoKpi.status === 'error') {
+                        insights.push(`há risco de saturação em territórios-chave`)
+                      }
+                      
+                      if (baseKpi && baseKpi.value) {
+                        insights.push(`Base ativa com ${baseKpi.value} lideranças mapeadas`)
+                      }
+                      
+                      return insights.length > 0 
+                        ? insights.join(', ') + '.'
+                        : 'Análise estratégica em tempo real dos indicadores de performance.'
+                    })()}
+                  </p>
+                </div>
+              </div>
+            </div>
+          </section>
+        )}
+
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Linha 2 - Leitura Estratégica */}
           <div className="lg:col-span-2 space-y-6">
             {/* Gráfico de Histórico de Pesquisas */}
-            <div className="bg-surface rounded-2xl border border-border p-6">
+            <div className="bg-surface rounded-2xl border border-border p-6 relative overflow-hidden">
+              {/* Linha vertical de destaque */}
+              <div className="absolute left-0 top-0 bottom-0 w-1 bg-primary opacity-20" />
+              
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-3">
                   <h2 className="text-lg font-semibold text-text-strong">Histórico de Pesquisas de Intenção de Votos</h2>
                   {candidatoPadrao && (
-                    <span className="text-sm text-text-muted">{candidatoPadrao}</span>
+                    <span className="text-sm text-text-muted bg-primary-soft px-2 py-0.5 rounded-full border border-primary/20">
+                      {candidatoPadrao}
+                    </span>
                   )}
                 </div>
-                {pollsData.length > 0 && (
-                  <button
-                    onClick={() => setGraficoPollsTelaCheia(true)}
-                    className="p-2 rounded-lg hover:bg-background transition-colors text-text-muted hover:text-text-strong"
-                    title="Visualizar em tela cheia"
-                  >
-                    <Maximize2 className="w-5 h-5" />
-                  </button>
-                )}
+                <div className="flex items-center gap-2">
+                  {pollsData.length > 0 && (
+                    <>
+                      <span className="text-xs text-text-muted bg-surface px-2 py-1 rounded border border-border">
+                        Fonte própria
+                      </span>
+                      <button
+                        onClick={() => setGraficoPollsTelaCheia(true)}
+                        className="p-2 rounded-lg hover:bg-background transition-colors text-text-muted hover:text-text-strong"
+                        title="Visualizar em tela cheia"
+                      >
+                        <Maximize2 className="w-5 h-5" />
+                      </button>
+                    </>
+                  )}
+                </div>
               </div>
               <div className="h-64">
                 {loadingPolls ? (
@@ -568,11 +648,11 @@ export default function Home() {
                     <AreaChart data={pollsData}>
                       <defs>
                         <linearGradient id="colorIntencao" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%" stopColor="#1E4ED8" stopOpacity={0.3} />
-                          <stop offset="95%" stopColor="#1E4ED8" stopOpacity={0} />
+                          <stop offset="5%" stopColor="#1E4ED8" stopOpacity={0.4} />
+                          <stop offset="95%" stopColor="#1E4ED8" stopOpacity={0.05} />
                         </linearGradient>
                       </defs>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
+                      <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" strokeWidth={1} opacity={0.5} />
                       <XAxis dataKey="date" stroke="#64748B" fontSize={12} />
                       <YAxis 
                         stroke="#64748B" 
@@ -697,7 +777,7 @@ export default function Home() {
                         type="monotone"
                         dataKey="intencao"
                         stroke="#1E4ED8"
-                        strokeWidth={2}
+                        strokeWidth={3}
                         fillOpacity={1}
                         fill="url(#colorIntencao)"
                         name="Intenção de Voto"
