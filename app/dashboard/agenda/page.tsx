@@ -278,11 +278,10 @@ export default function AgendaPage() {
   }
 
   const isSameDay = (date1: Date, date2: Date): boolean => {
-    return (
-      date1.getFullYear() === date2.getFullYear() &&
-      date1.getMonth() === date2.getMonth() &&
-      date1.getDate() === date2.getDate()
-    )
+    // Normalizar datas para o timezone local (meia-noite local)
+    const d1 = new Date(date1.getFullYear(), date1.getMonth(), date1.getDate())
+    const d2 = new Date(date2.getFullYear(), date2.getMonth(), date2.getDate())
+    return d1.getTime() === d2.getTime()
   }
 
   // Filtrar eventos por data selecionada
@@ -431,8 +430,14 @@ export default function AgendaPage() {
                   type="date"
                   value={selectedDate ? selectedDate.toISOString().split('T')[0] : ''}
                   onChange={(e) => {
-                    const date = e.target.value ? new Date(e.target.value) : null
-                    setSelectedDate(date)
+                    if (e.target.value) {
+                      // Criar data no timezone local para evitar problemas de timezone
+                      const [year, month, day] = e.target.value.split('-').map(Number)
+                      const date = new Date(year, month - 1, day) // month é 0-indexed
+                      setSelectedDate(date)
+                    } else {
+                      setSelectedDate(null)
+                    }
                   }}
                   min="2026-01-01"
                   className="px-4 py-2 border border-border rounded-lg bg-background text-text-strong focus:outline-none focus:ring-2 focus:ring-primary-soft"
