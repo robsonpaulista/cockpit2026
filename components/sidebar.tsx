@@ -29,6 +29,7 @@ const menuItems: MenuItem[] = [
   { id: 'fases', label: 'Fases da Campanha', icon: 'Calendar', href: '/dashboard/fases' },
   { id: 'narrativas', label: 'Bandeiras de Campanha', icon: 'FileText', href: '/dashboard/narrativas' },
   { id: 'campo', label: 'Campo & Agenda', icon: 'MapPin', href: '/dashboard/campo' },
+  { id: 'agenda', label: 'Agenda', icon: 'Calendar', href: '/dashboard/agenda' },
   { id: 'territorio', label: 'Território & Base', icon: 'MapPin', href: '/dashboard/territorio' },
   { id: 'chapas', label: 'Chapas', icon: 'Vote', href: '/dashboard/chapas' },
   { id: 'conteudo', label: 'Conteúdo & Redes', icon: 'MessageSquare', href: '/dashboard/conteudo' },
