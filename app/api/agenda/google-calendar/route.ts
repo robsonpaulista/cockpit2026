@@ -52,7 +52,7 @@ function getCredentials(bodyCredentials?: string) {
 export async function POST(request: Request) {
   try {
     const body = await request.json()
-    const { calendarId, serviceAccountEmail, credentials } = body
+    const { calendarId, serviceAccountEmail, credentials, subjectUser } = body
 
     if (!calendarId) {
       return NextResponse.json(
@@ -78,7 +78,17 @@ export async function POST(request: Request) {
       scopes: ['https://www.googleapis.com/auth/calendar.readonly'],
     })
 
-    const calendar = google.calendar({ version: 'v3', auth })
+    // Obter cliente e configurar Domain-Wide Delegation se subjectUser for fornecido
+    const client = await auth.getClient()
+    
+    // ✅ ESSENCIAL: impersonar o usuário (Domain-Wide Delegation)
+    // Se subjectUser for fornecido, usar Domain-Wide Delegation
+    if (subjectUser) {
+      // @ts-ignore - subject é uma propriedade válida para Domain-Wide Delegation
+      client.subject = subjectUser
+    }
+
+    const calendar = google.calendar({ version: 'v3', auth: client as any })
 
     // Buscar eventos (próximos 50 eventos)
     const now = new Date()
@@ -110,7 +120,7 @@ export async function POST(request: Request) {
     
     if (error.code === 403) {
       return NextResponse.json(
-        { error: 'Acesso negado. Verifique se o calendário foi compartilhado com o Service Account.' },
+        { error: 'Acesso negado. Verifique se o Domain-Wide Delegation foi configurado corretamente no Admin Console do Workspace e se o email do usuário real está correto.' },
         { status: 403 }
       )
     }

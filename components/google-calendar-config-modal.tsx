@@ -9,10 +9,12 @@ interface GoogleCalendarConfigModalProps {
     calendarId: string
     serviceAccountEmail: string
     credentials: string
+    subjectUser?: string
   }) => void
   currentConfig?: {
     calendarId: string
     serviceAccountEmail?: string
+    subjectUser?: string
   }
 }
 
@@ -25,6 +27,7 @@ export function GoogleCalendarConfigModal({
     calendarId: currentConfig?.calendarId || '',
     serviceAccountEmail: currentConfig?.serviceAccountEmail || '',
     credentials: '',
+    subjectUser: currentConfig?.subjectUser || '', // Email do usuário real do Workspace
   })
   const [showCredentials, setShowCredentials] = useState(false)
   const [testing, setTesting] = useState(false)
@@ -47,6 +50,14 @@ export function GoogleCalendarConfigModal({
       return
     }
 
+    if (!formData.subjectUser) {
+      setTestResult({
+        success: false,
+        message: '❌ Email do usuário real (Workspace) é obrigatório para Domain-Wide Delegation',
+      })
+      return
+    }
+
     setTesting(true)
     setTestResult(null)
 
@@ -58,6 +69,7 @@ export function GoogleCalendarConfigModal({
           calendarId: formData.calendarId,
           serviceAccountEmail: formData.serviceAccountEmail,
           credentials: formData.credentials,
+          subjectUser: formData.subjectUser || undefined, // Email do usuário real para Domain-Wide Delegation
         }),
       })
 
@@ -87,13 +99,14 @@ export function GoogleCalendarConfigModal({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     if (!formData.serviceAccountEmail || !formData.credentials || !formData.calendarId) {
-      alert('Todos os campos são obrigatórios')
+      alert('ID do Calendário, Email do Service Account e Credenciais são obrigatórios')
       return
     }
     onSave({
       calendarId: formData.calendarId,
       serviceAccountEmail: formData.serviceAccountEmail,
       credentials: formData.credentials,
+      subjectUser: formData.subjectUser || undefined, // Opcional, mas recomendado para Workspace
     })
     onClose()
   }
@@ -135,7 +148,8 @@ export function GoogleCalendarConfigModal({
                   <li>O email da Service Account (formato: nome@projeto.iam.gserviceaccount.com)</li>
                   <li>O arquivo JSON com as credenciais da Service Account</li>
                   <li>O ID do calendário (geralmente o email do calendário ou 'primary')</li>
-                  <li>Compartilhar o calendário com o email da Service Account</li>
+                  <li><strong>Domain-Wide Delegation configurado</strong> no admin do Workspace</li>
+                  <li>O email do usuário real do Workspace (para impersonação)</li>
                 </ul>
                 <p className="pt-2">
                   <a
@@ -214,12 +228,31 @@ export function GoogleCalendarConfigModal({
             </p>
           </div>
 
+          {/* Email do Usuário Real (Domain-Wide Delegation) */}
+          <div>
+            <label className="block text-sm font-medium text-text-strong mb-2">
+              Email do Usuário Real (Workspace) <span className="text-status-warning">*</span>
+            </label>
+            <input
+              type="email"
+              value={formData.subjectUser}
+              onChange={(e) => setFormData({ ...formData, subjectUser: e.target.value })}
+              placeholder="agenda@jadyeldajupi.com.br"
+              className="w-full px-4 py-2.5 border border-border rounded-lg bg-surface text-text-strong focus:outline-none focus:ring-2 focus:ring-primary-soft"
+              required
+            />
+            <p className="mt-1.5 text-xs text-text-muted">
+              Email do usuário real do Google Workspace que possui o calendário. 
+              <strong className="text-text-strong"> Obrigatório para Domain-Wide Delegation.</strong>
+            </p>
+          </div>
+
           {/* Teste de Conexão */}
           <div>
             <button
               type="button"
               onClick={handleTest}
-              disabled={testing || !formData.calendarId || !formData.serviceAccountEmail || !formData.credentials}
+              disabled={testing || !formData.calendarId || !formData.serviceAccountEmail || !formData.credentials || !formData.subjectUser}
               className="w-full px-4 py-2.5 border border-border rounded-lg bg-background text-text-strong hover:bg-primary-soft transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {testing ? 'Testando...' : 'Testar Conexão'}
@@ -248,7 +281,7 @@ export function GoogleCalendarConfigModal({
             </button>
             <button
               type="submit"
-              disabled={!formData.calendarId || !formData.serviceAccountEmail || !formData.credentials}
+              disabled={!formData.calendarId || !formData.serviceAccountEmail || !formData.credentials || !formData.subjectUser}
               className="flex-1 px-4 py-2.5 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
               <Save className="w-4 h-4" />

@@ -29,22 +29,34 @@
 2. Procure por **"Google Calendar API"**
 3. Clique em **"Enable"** para habilitar a API
 
-### Passo 4: Compartilhar Calendário com Service Account
+### Passo 4: Configurar Domain-Wide Delegation (Obrigatório para Workspace)
 
-1. Abra o [Google Calendar](https://calendar.google.com/)
-2. No lado esquerdo, encontre o calendário que deseja compartilhar
-3. Clique nos **três pontos** ao lado do nome do calendário
-4. Selecione **"Configurações e compartilhamento"**
-5. Role até a seção **"Compartilhar com pessoas específicas"**
-6. Clique em **"Adicionar pessoas"**
-7. Cole o **email do Service Account** (formato: `nome@projeto.iam.gserviceaccount.com`)
-8. Selecione o nível de permissão:
-   - **"Ver todos os detalhes do evento"** (recomendado para leitura completa)
-   - Ou **"Ver apenas disponibilidade (ocultar detalhes)"** (se preferir privacidade)
-9. Clique em **"Enviar"**
-10. **NÃO** marque "Notificar pessoas"
+**⚠️ IMPORTANTE**: Para Google Workspace, você precisa configurar Domain-Wide Delegation ao invés de compartilhar o calendário diretamente.
 
-### Passo 5: Obter o ID do Calendário
+1. No Google Cloud Console, vá para a Service Account criada
+2. Clique na Service Account e vá para a aba **"Details"**
+3. Copie o **Client ID** (um número longo)
+4. Acesse o [Admin Console do Google Workspace](https://admin.google.com/)
+5. Vá em **Segurança** > **Controles de acesso à API** > **Domain-wide delegation**
+6. Clique em **"Adicionar novo"**
+7. Cole o **Client ID** da Service Account
+8. No campo **Escopos OAuth**, adicione:
+   ```
+   https://www.googleapis.com/auth/calendar.readonly
+   ```
+9. Clique em **"Autorizar"**
+
+**Nota**: Você precisa ser administrador do Google Workspace para fazer isso.
+
+### Passo 5: Identificar o Email do Usuário Real
+
+Para Domain-Wide Delegation, você precisa do email do usuário real do Workspace que possui o calendário:
+
+- Exemplo: `agenda@jadyeldajupi.com.br`
+- Este é o email do usuário real, não o Service Account
+- O Service Account vai "impersonar" este usuário para acessar o calendário
+
+### Passo 6: Obter o ID do Calendário
 
 O ID do calendário pode ser:
 
@@ -57,14 +69,15 @@ O ID do calendário pode ser:
 2. Role até o calendário desejado
 3. O ID aparece no campo **"ID do calendário"** ou **"Integrar calendário"**
 
-### Passo 6: Configurar no Sistema
+### Passo 7: Configurar no Sistema
 
 1. Acesse a página **"Agenda"** no dashboard
 2. Clique no botão **"Configurar"** ou **"Reconfigurar"**
 3. Preencha os campos:
-   - **ID do Calendário**: Use "primary" ou o email/ID do calendário
+   - **ID do Calendário**: Use "primary" para o calendário principal
    - **Email do Service Account**: O email da Service Account criada
    - **Credenciais JSON**: Cole todo o conteúdo do arquivo JSON baixado
+   - **Email do Usuário Real (Workspace)**: O email do usuário real que possui o calendário (ex: `agenda@jadyeldajupi.com.br`)
 4. Clique em **"Testar Conexão"** para verificar
 5. Se o teste for bem-sucedido, clique em **"Salvar Configuração"**
 
@@ -89,15 +102,22 @@ GOOGLE_SERVICE_ACCOUNT_CALENDAR_EMAIL=calendar@projeto.iam.gserviceaccount.com
 ## ❓ Problemas Comuns
 
 ### Erro 403: Acesso Negado
-- Verifique se o calendário foi compartilhado com o email do Service Account
-- Verifique se o nível de permissão está correto
+- Verifique se o Domain-Wide Delegation foi configurado corretamente no Admin Console
+- Verifique se o Client ID da Service Account foi autorizado
+- Verifique se o escopo OAuth está correto: `https://www.googleapis.com/auth/calendar.readonly`
+- Verifique se o email do usuário real (subjectUser) está correto
 
 ### Erro 404: Calendário Não Encontrado
 - Verifique se o ID do calendário está correto
-- Use "primary" para o calendário principal
+- Use "primary" para o calendário principal do usuário real
 
 ### Erro: API não habilitada
 - Certifique-se de que a Google Calendar API está habilitada no Google Cloud Console
+
+### Erro: Domain-Wide Delegation não configurado
+- Você precisa ser administrador do Google Workspace
+- Verifique se o Client ID foi autorizado no Admin Console
+- Verifique se o escopo OAuth está correto
 
 ## 🎯 Próximos Passos
 

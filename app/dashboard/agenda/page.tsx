@@ -9,6 +9,7 @@ interface CalendarConfig {
   calendarId: string
   serviceAccountEmail: string
   credentials: string
+  subjectUser?: string // Email do usuário real do Workspace para Domain-Wide Delegation
 }
 
 interface CalendarEvent {
@@ -70,6 +71,7 @@ export default function AgendaPage() {
           calendarId: config.calendarId,
           serviceAccountEmail: config.serviceAccountEmail,
           credentials: config.credentials,
+          subjectUser: config.subjectUser, // Email do usuário real para Domain-Wide Delegation
         }),
       })
 
@@ -87,7 +89,12 @@ export default function AgendaPage() {
     }
   }
 
-  const handleSaveConfig = (newConfig: CalendarConfig) => {
+  const handleSaveConfig = (newConfig: {
+    calendarId: string
+    serviceAccountEmail: string
+    credentials: string
+    subjectUser?: string
+  }) => {
     setConfig(newConfig)
     localStorage.setItem('google_calendar_config', JSON.stringify(newConfig))
     fetchEvents()
