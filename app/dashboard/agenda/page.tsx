@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState, useCallback, useMemo } from 'react'
+import type React from 'react'
 import { Header } from '@/components/header'
 import { GoogleCalendarConfigModal } from '@/components/google-calendar-config-modal'
 import { Calendar, CalendarDays, Clock, MapPin, Users, Settings, Loader2, Maximize2, X, CheckCircle2, XCircle, AlertCircle } from 'lucide-react'
@@ -725,22 +726,10 @@ export default function AgendaPage() {
                               </div>
                             )}
                           </div>
-                          <div className="text-right flex flex-col items-end justify-between">
-                            <div>
-                              <p className="text-sm font-medium text-text-strong">
-                                {event.start.dateTime 
-                                  ? formatDate(event.start.dateTime)
-                                  : event.start.date
-                                  ? formatDate(event.start.date)
-                                  : '-'}
-                              </p>
-                              {isPast && (
-                                <p className="text-xs text-text-muted mt-1">Passado</p>
-                              )}
-                            </div>
+                          <div className="text-right">
                             {/* Descrição no canto inferior direito */}
                             {event.description && (
-                              <p className="text-sm font-bold text-text-strong mt-2 text-right max-w-xs">
+                              <p className="text-sm font-bold text-text-strong text-right max-w-xs">
                                 {event.description.replace(/^\([^)]+\)\s*/, '').trim()}
                               </p>
                             )}
