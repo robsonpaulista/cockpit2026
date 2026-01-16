@@ -47,16 +47,17 @@ export default function AgendaPage() {
   const [attendanceStatuses, setAttendanceStatuses] = useState<Record<string, { attended: boolean; notes?: string }>>({})
   const [upcomingEventAlert, setUpcomingEventAlert] = useState<string | null>(null)
 
-  // Função para extrair origem do título ou descrição (ex: "(THE - PI)")
+  // Função para extrair origem do início do título (ex: "(THE - PI)" ou "(BSB)")
   const extractOrigin = (text?: string): string | undefined => {
     if (!text) return undefined
-    const match = text.match(/\(([^)]+)\)/)
+    // Procurar no início do texto por parênteses
+    const match = text.match(/^\(([^)]+)\)/)
     return match ? match[1] : undefined
   }
 
-  // Função para remover origem do texto
-  const removeOrigin = (text: string): string => {
-    return text.replace(/\([^)]+\)\s*/, '').trim()
+  // Função para remover origem do título
+  const removeOriginFromTitle = (title: string): string => {
+    return title.replace(/^\([^)]+\)\s*/, '').trim()
   }
 
   // Função para obter cor baseada na origem
@@ -94,20 +95,15 @@ export default function AgendaPage() {
   useEffect(() => {
     if (config) {
       fetchEvents()
+      
+      // Atualização automática silenciosa a cada 10 segundos
+      const interval = setInterval(() => {
+        fetchEvents()
+      }, 10000) // 10 segundos
+
+      return () => clearInterval(interval)
     }
-  }, [config, fetchEvents])
-
-  // Atualização automática a cada 10 segundos (silenciosa)
-  useEffect(() => {
-    if (!config) return
-
-    const interval = setInterval(() => {
-      // Atualizar silenciosamente sem mostrar loading
-      fetchEvents(true)
-    }, 10000) // 10 segundos
-
-    return () => clearInterval(interval)
-  }, [config, fetchEvents])
+  }, [config])
 
   // Carregar status de atendimentos quando eventos mudarem
   useEffect(() => {
@@ -144,13 +140,11 @@ export default function AgendaPage() {
     return () => clearInterval(interval)
   }, [events])
 
-  const fetchEvents = useCallback(async (silent = false) => {
+  const fetchEvents = async () => {
     if (!config) return
 
-    if (!silent) {
-      setLoading(true)
-      setError(null)
-    }
+    setLoading(true)
+    setError(null)
 
     try {
       const response = await fetch('/api/agenda/google-calendar', {
@@ -167,32 +161,21 @@ export default function AgendaPage() {
       const data = await response.json()
 
       if (response.ok) {
-        // Processar eventos: extrair origem do título ou descrição
-        const processedEvents = (data.events || []).map((event: CalendarEvent) => {
-          const summaryOrigin = event.summary ? extractOrigin(event.summary) : undefined
-          const descOrigin = event.description ? extractOrigin(event.description) : undefined
-          const origin = summaryOrigin || descOrigin
-          return {
-            ...event,
-            origin,
-          }
-        })
+        // Processar eventos: extrair origem do título (summary) e adicionar aos eventos
+        const processedEvents = (data.events || []).map((event: CalendarEvent) => ({
+          ...event,
+          origin: extractOrigin(event.summary), // Extrair do título, não da descrição
+        }))
         setEvents(processedEvents)
       } else {
-        if (!silent) {
-          setError(data.error || 'Erro ao buscar eventos')
-        }
+        setError(data.error || 'Erro ao buscar eventos')
       }
     } catch (err: any) {
-      if (!silent) {
-        setError(err.message || 'Erro ao conectar com Google Calendar')
-      }
+      setError(err.message || 'Erro ao conectar com Google Calendar')
     } finally {
-      if (!silent) {
-        setLoading(false)
-      }
+      setLoading(false)
     }
-  }, [config])
+  }
 
   const loadAttendanceStatuses = async () => {
     if (!user?.id) return
@@ -319,23 +302,17 @@ export default function AgendaPage() {
     if (!selectedDate) return events
 
     return events.filter((event) => {
-      const eventDate = event.start.dateTime 
-        ? new Date(event.start.dateTime) 
-        : event.start.date 
-        ? new Date(event.start.date) 
-        : null
+      const eventDate = getEventDate(event)
       if (!eventDate) return false
-      const d1 = new Date(eventDate.getFullYear(), eventDate.getMonth(), eventDate.getDate())
-      const d2 = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), selectedDate.getDate())
-      return d1.getTime() === d2.getTime()
+      return isSameDay(eventDate, selectedDate)
     })
   }, [events, selectedDate])
 
   // Ordenar eventos por data
   const sortedEvents = useMemo(() => {
     return [...filteredEvents].sort((a, b) => {
-      const dateA = a.start.dateTime ? new Date(a.start.dateTime).getTime() : a.start.date ? new Date(a.start.date).getTime() : 0
-      const dateB = b.start.dateTime ? new Date(b.start.dateTime).getTime() : b.start.date ? new Date(b.start.date).getTime() : 0
+      const dateA = getEventDate(a)?.getTime() || 0
+      const dateB = getEventDate(b)?.getTime() || 0
       return dateA - dateB
     })
   }, [filteredEvents])
@@ -344,15 +321,9 @@ export default function AgendaPage() {
   const todayEvents = useMemo(() => {
     const today = new Date()
     return events.filter((event) => {
-      const eventDate = event.start.dateTime 
-        ? new Date(event.start.dateTime) 
-        : event.start.date 
-        ? new Date(event.start.date) 
-        : null
+      const eventDate = getEventDate(event)
       if (!eventDate) return false
-      const d1 = new Date(eventDate.getFullYear(), eventDate.getMonth(), eventDate.getDate())
-      const d2 = new Date(today.getFullYear(), today.getMonth(), today.getDate())
-      return d1.getTime() === d2.getTime()
+      return isSameDay(eventDate, today)
     })
   }, [events])
 
@@ -361,16 +332,12 @@ export default function AgendaPage() {
     const now = new Date()
     return events
       .filter((event) => {
-        const eventDate = event.start.dateTime 
-          ? new Date(event.start.dateTime) 
-          : event.start.date 
-          ? new Date(event.start.date) 
-          : null
+        const eventDate = getEventDate(event)
         return eventDate && eventDate >= now
       })
       .sort((a, b) => {
-        const dateA = a.start.dateTime ? new Date(a.start.dateTime).getTime() : a.start.date ? new Date(a.start.date).getTime() : 0
-        const dateB = b.start.dateTime ? new Date(b.start.dateTime).getTime() : b.start.date ? new Date(b.start.date).getTime() : 0
+        const dateA = getEventDate(a)?.getTime() || 0
+        const dateB = getEventDate(b)?.getTime() || 0
         return dateA - dateB
       })
       .slice(0, 10)
@@ -539,28 +506,33 @@ export default function AgendaPage() {
                     return (
                       <div
                         key={event.id}
-                        className={`p-4 rounded-xl border border-border hover:bg-background/50 transition-colors ${
+                        className={`p-4 rounded-xl border border-border hover:bg-background/50 transition-colors relative ${
                           isUpcoming ? 'ring-2 ring-status-warning animate-pulse' : ''
                         } ${isPast ? 'opacity-75' : ''}`}
                       >
                         <div className="flex items-start justify-between gap-4">
                           <div className="flex-1">
-                            <div className="flex items-center gap-2 mb-1 flex-wrap">
+                            <div className="flex items-center gap-2 mb-1">
                               {event.origin && (
                                 <span className={`px-2 py-0.5 rounded text-xs font-medium text-white ${getOriginColor(event.origin)}`}>
-                                  ({event.origin})
+                                  {event.origin}
                                 </span>
                               )}
                               <h4 className="text-base font-semibold text-text-strong">
-                                {removeOrigin(event.summary || 'Sem título')}
+                                {removeOriginFromTitle(event.summary || 'Sem título')}
                               </h4>
                             </div>
-                            {event.description && (
-                              <p className="text-sm text-text-muted mb-2 line-clamp-2">
-                                {removeOrigin(event.description)}
-                              </p>
-                            )}
                             <div className="flex flex-wrap items-center gap-3 text-xs text-text-muted">
+                              <div className="flex items-center gap-1">
+                                <Clock className="w-3.5 h-3.5" />
+                                <span className="text-base font-bold text-text-strong">
+                                  {event.start.dateTime 
+                                    ? formatTime(event.start.dateTime)
+                                    : event.start.date
+                                    ? formatDate(event.start.date)
+                                    : '-'}
+                                </span>
+                              </div>
                               {event.location && (
                                 <div className="flex items-center gap-1">
                                   <MapPin className="w-3.5 h-3.5" />
@@ -609,23 +581,24 @@ export default function AgendaPage() {
                               </div>
                             )}
                           </div>
-                          <div className="text-right flex flex-col items-end justify-end">
-                            <p className="text-lg font-bold text-text-strong">
-                              {event.start.dateTime 
-                                ? formatTime(event.start.dateTime)
-                                : event.start.date
-                                ? formatDate(event.start.date)
-                                : '-'}
-                            </p>
-                            <p className="text-xs text-text-muted mt-1">
-                              {event.start.dateTime 
-                                ? formatDate(event.start.dateTime).split(',')[0]
-                                : event.start.date
-                                ? formatDate(event.start.date).split(',')[0]
-                                : '-'}
-                            </p>
-                            {isPast && (
-                              <p className="text-xs text-text-muted mt-1">Passado</p>
+                          <div className="text-right flex flex-col items-end justify-between">
+                            <div>
+                              <p className="text-sm font-medium text-text-strong">
+                                {event.start.dateTime 
+                                  ? formatDate(event.start.dateTime)
+                                  : event.start.date
+                                  ? formatDate(event.start.date)
+                                  : '-'}
+                              </p>
+                              {isPast && (
+                                <p className="text-xs text-text-muted mt-1">Passado</p>
+                              )}
+                            </div>
+                            {/* Descrição no canto inferior direito */}
+                            {event.description && (
+                              <p className="text-sm font-bold text-text-strong mt-2 text-right max-w-xs">
+                                {event.description.replace(/^\([^)]+\)\s*/, '').trim()}
+                              </p>
                             )}
                           </div>
                         </div>
@@ -687,37 +660,42 @@ export default function AgendaPage() {
                           isUpcoming ? 'ring-2 ring-status-warning animate-pulse' : ''
                         } ${isPast ? 'opacity-75' : ''}`}
                       >
-                      <div className="flex items-start justify-between gap-4">
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2 mb-2 flex-wrap">
-                            {event.origin && (
-                              <span className={`px-2 py-1 rounded text-xs font-medium text-white ${getOriginColor(event.origin)}`}>
-                                ({event.origin})
-                              </span>
-                            )}
-                            <h4 className="text-lg font-semibold text-text-strong">
-                              {removeOrigin(event.summary || 'Sem título')}
-                            </h4>
-                          </div>
-                          {event.description && (
-                            <p className="text-sm text-text-muted mb-3">
-                              {removeOrigin(event.description)}
-                            </p>
-                          )}
-                          <div className="flex flex-wrap items-center gap-4 text-sm text-text-muted">
-                            {event.location && (
+                        <div className="flex items-start justify-between gap-4">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-2">
+                              {event.origin && (
+                                <span className={`px-2 py-1 rounded text-xs font-medium text-white ${getOriginColor(event.origin)}`}>
+                                  {event.origin}
+                                </span>
+                              )}
+                              <h4 className="text-lg font-semibold text-text-strong">
+                                {removeOriginFromTitle(event.summary || 'Sem título')}
+                              </h4>
+                            </div>
+                            <div className="flex flex-wrap items-center gap-4 text-sm text-text-muted">
                               <div className="flex items-center gap-2">
-                                <MapPin className="w-4 h-4" />
-                                <span>{event.location}</span>
+                                <Clock className="w-4 h-4" />
+                                <span className="text-lg font-bold text-text-strong">
+                                  {event.start.dateTime 
+                                    ? formatTime(event.start.dateTime)
+                                    : event.start.date
+                                    ? formatDate(event.start.date)
+                                    : '-'}
+                                </span>
                               </div>
-                            )}
-                            {event.attendees && event.attendees.length > 0 && (
-                              <div className="flex items-center gap-2">
-                                <Users className="w-4 h-4" />
-                                <span>{event.attendees.length} participante(s)</span>
-                              </div>
-                            )}
-                          </div>
+                              {event.location && (
+                                <div className="flex items-center gap-2">
+                                  <MapPin className="w-4 h-4" />
+                                  <span>{event.location}</span>
+                                </div>
+                              )}
+                              {event.attendees && event.attendees.length > 0 && (
+                                <div className="flex items-center gap-2">
+                                  <Users className="w-4 h-4" />
+                                  <span>{event.attendees.length} participante(s)</span>
+                                </div>
+                              )}
+                            </div>
                             {/* Status de Atendimento */}
                             {user?.id && (
                               <div className="mt-4 flex items-center gap-4">
@@ -753,25 +731,28 @@ export default function AgendaPage() {
                               </div>
                             )}
                           </div>
-                        </div>
-                        <div className="text-right flex flex-col items-end justify-end">
-                          <p className="text-xl font-bold text-text-strong">
-                            {event.start.dateTime 
-                              ? formatTime(event.start.dateTime)
-                              : event.start.date
-                              ? formatDate(event.start.date)
-                              : '-'}
-                          </p>
-                          <p className="text-xs text-text-muted mt-1">
-                            {event.start.dateTime 
-                              ? formatDate(event.start.dateTime).split(',')[0]
-                              : event.start.date
-                              ? formatDate(event.start.date).split(',')[0]
-                              : '-'}
-                          </p>
+                          <div className="text-right flex flex-col items-end justify-between">
+                            <div>
+                              <p className="text-sm font-medium text-text-strong">
+                                {event.start.dateTime 
+                                  ? formatDate(event.start.dateTime)
+                                  : event.start.date
+                                  ? formatDate(event.start.date)
+                                  : '-'}
+                              </p>
+                              {isPast && (
+                                <p className="text-xs text-text-muted mt-1">Passado</p>
+                              )}
+                            </div>
+                            {/* Descrição no canto inferior direito */}
+                            {event.description && (
+                              <p className="text-sm font-bold text-text-strong mt-2 text-right max-w-xs">
+                                {event.description.replace(/^\([^)]+\)\s*/, '').trim()}
+                              </p>
+                            )}
+                          </div>
                         </div>
                       </div>
-                    </div>
                     )
                   })}
                 </div>
