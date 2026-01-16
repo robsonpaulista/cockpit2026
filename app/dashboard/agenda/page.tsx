@@ -47,11 +47,16 @@ export default function AgendaPage() {
   const [attendanceStatuses, setAttendanceStatuses] = useState<Record<string, { attended: boolean; notes?: string }>>({})
   const [upcomingEventAlert, setUpcomingEventAlert] = useState<string | null>(null)
 
-  // Função para extrair origem da descrição (ex: "(THE - PI)")
-  const extractOrigin = (description?: string): string | undefined => {
-    if (!description) return undefined
-    const match = description.match(/\(([^)]+)\)/)
+  // Função para extrair origem do título ou descrição (ex: "(THE - PI)")
+  const extractOrigin = (text?: string): string | undefined => {
+    if (!text) return undefined
+    const match = text.match(/\(([^)]+)\)/)
     return match ? match[1] : undefined
+  }
+
+  // Função para remover origem do texto
+  const removeOrigin = (text: string): string => {
+    return text.replace(/\([^)]+\)\s*/, '').trim()
   }
 
   // Função para obter cor baseada na origem
@@ -92,6 +97,18 @@ export default function AgendaPage() {
     }
   }, [config])
 
+  // Atualização automática a cada 10 segundos (silenciosa)
+  useEffect(() => {
+    if (!config) return
+
+    const interval = setInterval(() => {
+      // Atualizar silenciosamente sem mostrar loading
+      fetchEvents(true)
+    }, 10000) // 10 segundos
+
+    return () => clearInterval(interval)
+  }, [config, fetchEvents])
+
   // Carregar status de atendimentos quando eventos mudarem
   useEffect(() => {
     if (events.length > 0 && user?.id) {
@@ -127,11 +144,13 @@ export default function AgendaPage() {
     return () => clearInterval(interval)
   }, [events])
 
-  const fetchEvents = async () => {
+  const fetchEvents = useCallback(async (silent = false) => {
     if (!config) return
 
-    setLoading(true)
-    setError(null)
+    if (!silent) {
+      setLoading(true)
+      setError(null)
+    }
 
     try {
       const response = await fetch('/api/agenda/google-calendar', {
@@ -148,21 +167,28 @@ export default function AgendaPage() {
       const data = await response.json()
 
       if (response.ok) {
-        // Processar eventos: extrair origem e adicionar aos eventos
-        const processedEvents = (data.events || []).map((event: CalendarEvent) => ({
-          ...event,
-          origin: extractOrigin(event.description),
-        }))
+        // Processar eventos: extrair origem do título ou descrição
+        const processedEvents = (data.events || []).map((event: CalendarEvent) => {
+          const origin = extractOrigin(event.summary) || extractOrigin(event.description)
+          return {
+            ...event,
+            origin,
+          }
+        })
         setEvents(processedEvents)
       } else {
         setError(data.error || 'Erro ao buscar eventos')
       }
     } catch (err: any) {
-      setError(err.message || 'Erro ao conectar com Google Calendar')
+      if (!silent) {
+        setError(err.message || 'Erro ao conectar com Google Calendar')
+      }
     } finally {
-      setLoading(false)
+      if (!silent) {
+        setLoading(false)
+      }
     }
-  }
+  }, [config])
 
   const loadAttendanceStatuses = async () => {
     if (!user?.id) return
@@ -499,32 +525,22 @@ export default function AgendaPage() {
                       >
                         <div className="flex items-start justify-between gap-4">
                           <div className="flex-1">
-                            <div className="flex items-center gap-2 mb-1">
-                              <h4 className="text-base font-semibold text-text-strong">
-                                {event.summary || 'Sem título'}
-                              </h4>
+                            <div className="flex items-center gap-2 mb-1 flex-wrap">
                               {event.origin && (
                                 <span className={`px-2 py-0.5 rounded text-xs font-medium text-white ${getOriginColor(event.origin)}`}>
-                                  {event.origin}
+                                  ({event.origin})
                                 </span>
                               )}
+                              <h4 className="text-base font-semibold text-text-strong">
+                                {removeOrigin(event.summary || 'Sem título')}
+                              </h4>
                             </div>
                             {event.description && (
                               <p className="text-sm text-text-muted mb-2 line-clamp-2">
-                                {event.description.replace(/\([^)]+\)/, '').trim()}
+                                {removeOrigin(event.description)}
                               </p>
                             )}
                             <div className="flex flex-wrap items-center gap-3 text-xs text-text-muted">
-                              <div className="flex items-center gap-1">
-                                <Clock className="w-3.5 h-3.5" />
-                                <span>
-                                  {event.start.dateTime 
-                                    ? formatTime(event.start.dateTime)
-                                    : event.start.date
-                                    ? formatDate(event.start.date)
-                                    : '-'}
-                                </span>
-                              </div>
                               {event.location && (
                                 <div className="flex items-center gap-1">
                                   <MapPin className="w-3.5 h-3.5" />
@@ -573,12 +589,19 @@ export default function AgendaPage() {
                               </div>
                             )}
                           </div>
-                          <div className="text-right">
-                            <p className="text-sm font-medium text-text-strong">
+                          <div className="text-right flex flex-col items-end justify-end">
+                            <p className="text-lg font-bold text-text-strong">
                               {event.start.dateTime 
-                                ? formatDate(event.start.dateTime)
+                                ? formatTime(event.start.dateTime)
                                 : event.start.date
                                 ? formatDate(event.start.date)
+                                : '-'}
+                            </p>
+                            <p className="text-xs text-text-muted mt-1">
+                              {event.start.dateTime 
+                                ? formatDate(event.start.dateTime).split(',')[0]
+                                : event.start.date
+                                ? formatDate(event.start.date).split(',')[0]
                                 : '-'}
                             </p>
                             {isPast && (
@@ -644,56 +667,47 @@ export default function AgendaPage() {
                           isUpcoming ? 'ring-2 ring-status-warning animate-pulse' : ''
                         } ${isPast ? 'opacity-75' : ''}`}
                       >
-                        <div className="flex items-start justify-between gap-4">
-                          <div className="flex-1">
-                            <div className="flex items-center gap-2 mb-2">
-                              <h4 className="text-lg font-semibold text-text-strong">
-                                {event.summary || 'Sem título'}
-                              </h4>
-                              {event.origin && (
-                                <span className={`px-2 py-1 rounded text-xs font-medium text-white ${getOriginColor(event.origin)}`}>
-                                  {event.origin}
-                                </span>
-                              )}
-                            </div>
-                            {event.description && (
-                              <p className="text-sm text-text-muted mb-3">
-                                {event.description.replace(/\([^)]+\)/, '').trim()}
-                              </p>
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-2 flex-wrap">
+                            {event.origin && (
+                              <span className={`px-2 py-1 rounded text-xs font-medium text-white ${getOriginColor(event.origin)}`}>
+                                ({event.origin})
+                              </span>
                             )}
-                            <div className="flex flex-wrap items-center gap-4 text-sm text-text-muted">
+                            <h4 className="text-lg font-semibold text-text-strong">
+                              {removeOrigin(event.summary || 'Sem título')}
+                            </h4>
+                          </div>
+                          {event.description && (
+                            <p className="text-sm text-text-muted mb-3">
+                              {removeOrigin(event.description)}
+                            </p>
+                          )}
+                          <div className="flex flex-wrap items-center gap-4 text-sm text-text-muted">
+                            {event.location && (
                               <div className="flex items-center gap-2">
-                                <Clock className="w-4 h-4" />
-                                <span>
-                                  {event.start.dateTime 
-                                    ? formatDate(event.start.dateTime)
-                                    : event.start.date
-                                    ? formatDate(event.start.date)
-                                    : '-'}
-                                </span>
+                                <MapPin className="w-4 h-4" />
+                                <span>{event.location}</span>
                               </div>
-                              {event.location && (
-                                <div className="flex items-center gap-2">
-                                  <MapPin className="w-4 h-4" />
-                                  <span>{event.location}</span>
-                                </div>
-                              )}
-                              {event.attendees && event.attendees.length > 0 && (
-                                <div className="flex items-center gap-2">
-                                  <Users className="w-4 h-4" />
-                                  <span>{event.attendees.length} participante(s)</span>
-                                </div>
-                              )}
-                            </div>
-                            {/* Checkboxes de Atendimento */}
+                            )}
+                            {event.attendees && event.attendees.length > 0 && (
+                              <div className="flex items-center gap-2">
+                                <Users className="w-4 h-4" />
+                                <span>{event.attendees.length} participante(s)</span>
+                              </div>
+                            )}
+                          </div>
+                            {/* Status de Atendimento */}
                             {user?.id && (
                               <div className="mt-4 flex items-center gap-4">
                                 <label className="flex items-center gap-2 cursor-pointer">
                                   <input
-                                    type="checkbox"
+                                    type="radio"
+                                    name={`attendance-fullscreen-${event.id}`}
                                     checked={attendance?.attended === true}
-                                    onChange={(e) => handleAttendanceChange(event.id, e.target.checked)}
-                                    className="w-4 h-4 rounded border-border text-primary focus:ring-2 focus:ring-primary-soft"
+                                    onChange={() => handleAttendanceChange(event.id, true)}
+                                    className="w-4 h-4 border-border text-primary focus:ring-2 focus:ring-primary-soft"
                                   />
                                   <span className="text-sm text-text-muted flex items-center gap-1">
                                     <CheckCircle2 className="w-4 h-4 text-green-600" />
@@ -702,21 +716,42 @@ export default function AgendaPage() {
                                 </label>
                                 <label className="flex items-center gap-2 cursor-pointer">
                                   <input
-                                    type="checkbox"
+                                    type="radio"
+                                    name={`attendance-fullscreen-${event.id}`}
                                     checked={attendance?.attended === false}
-                                    onChange={(e) => handleAttendanceChange(event.id, !e.target.checked)}
-                                    className="w-4 h-4 rounded border-border text-primary focus:ring-2 focus:ring-primary-soft"
+                                    onChange={() => handleAttendanceChange(event.id, false)}
+                                    className="w-4 h-4 border-border text-primary focus:ring-2 focus:ring-primary-soft"
                                   />
                                   <span className="text-sm text-text-muted flex items-center gap-1">
                                     <XCircle className="w-4 h-4 text-red-600" />
                                     Não Atendido
                                   </span>
                                 </label>
+                                {attendance === undefined && (
+                                  <span className="text-xs text-text-muted">Não marcado</span>
+                                )}
                               </div>
                             )}
                           </div>
                         </div>
+                        <div className="text-right flex flex-col items-end justify-end">
+                          <p className="text-xl font-bold text-text-strong">
+                            {event.start.dateTime 
+                              ? formatTime(event.start.dateTime)
+                              : event.start.date
+                              ? formatDate(event.start.date)
+                              : '-'}
+                          </p>
+                          <p className="text-xs text-text-muted mt-1">
+                            {event.start.dateTime 
+                              ? formatDate(event.start.dateTime).split(',')[0]
+                              : event.start.date
+                              ? formatDate(event.start.date).split(',')[0]
+                              : '-'}
+                          </p>
+                        </div>
                       </div>
+                    </div>
                     )
                   })}
                 </div>
