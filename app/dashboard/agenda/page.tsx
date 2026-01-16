@@ -141,10 +141,10 @@ export default function AgendaPage() {
     if (config) {
       fetchEvents()
       
-      // Atualização automática silenciosa a cada 10 segundos
+      // Atualização automática silenciosa a cada 30 segundos
       const interval = setInterval(() => {
         fetchEvents()
-      }, 10000) // 10 segundos
+      }, 30000) // 30 segundos
 
       return () => clearInterval(interval)
     }
