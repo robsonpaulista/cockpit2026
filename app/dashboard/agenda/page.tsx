@@ -95,7 +95,7 @@ export default function AgendaPage() {
     if (config) {
       fetchEvents()
     }
-  }, [config])
+  }, [config, fetchEvents])
 
   // Atualização automática a cada 10 segundos (silenciosa)
   useEffect(() => {
@@ -169,7 +169,9 @@ export default function AgendaPage() {
       if (response.ok) {
         // Processar eventos: extrair origem do título ou descrição
         const processedEvents = (data.events || []).map((event: CalendarEvent) => {
-          const origin = extractOrigin(event.summary) || extractOrigin(event.description)
+          const summaryOrigin = event.summary ? extractOrigin(event.summary) : undefined
+          const descOrigin = event.description ? extractOrigin(event.description) : undefined
+          const origin = summaryOrigin || descOrigin
           return {
             ...event,
             origin,
@@ -177,7 +179,9 @@ export default function AgendaPage() {
         })
         setEvents(processedEvents)
       } else {
-        setError(data.error || 'Erro ao buscar eventos')
+        if (!silent) {
+          setError(data.error || 'Erro ao buscar eventos')
+        }
       }
     } catch (err: any) {
       if (!silent) {
@@ -315,17 +319,23 @@ export default function AgendaPage() {
     if (!selectedDate) return events
 
     return events.filter((event) => {
-      const eventDate = getEventDate(event)
+      const eventDate = event.start.dateTime 
+        ? new Date(event.start.dateTime) 
+        : event.start.date 
+        ? new Date(event.start.date) 
+        : null
       if (!eventDate) return false
-      return isSameDay(eventDate, selectedDate)
+      const d1 = new Date(eventDate.getFullYear(), eventDate.getMonth(), eventDate.getDate())
+      const d2 = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), selectedDate.getDate())
+      return d1.getTime() === d2.getTime()
     })
   }, [events, selectedDate])
 
   // Ordenar eventos por data
   const sortedEvents = useMemo(() => {
     return [...filteredEvents].sort((a, b) => {
-      const dateA = getEventDate(a)?.getTime() || 0
-      const dateB = getEventDate(b)?.getTime() || 0
+      const dateA = a.start.dateTime ? new Date(a.start.dateTime).getTime() : a.start.date ? new Date(a.start.date).getTime() : 0
+      const dateB = b.start.dateTime ? new Date(b.start.dateTime).getTime() : b.start.date ? new Date(b.start.date).getTime() : 0
       return dateA - dateB
     })
   }, [filteredEvents])
@@ -334,9 +344,15 @@ export default function AgendaPage() {
   const todayEvents = useMemo(() => {
     const today = new Date()
     return events.filter((event) => {
-      const eventDate = getEventDate(event)
+      const eventDate = event.start.dateTime 
+        ? new Date(event.start.dateTime) 
+        : event.start.date 
+        ? new Date(event.start.date) 
+        : null
       if (!eventDate) return false
-      return isSameDay(eventDate, today)
+      const d1 = new Date(eventDate.getFullYear(), eventDate.getMonth(), eventDate.getDate())
+      const d2 = new Date(today.getFullYear(), today.getMonth(), today.getDate())
+      return d1.getTime() === d2.getTime()
     })
   }, [events])
 
@@ -345,12 +361,16 @@ export default function AgendaPage() {
     const now = new Date()
     return events
       .filter((event) => {
-        const eventDate = getEventDate(event)
+        const eventDate = event.start.dateTime 
+          ? new Date(event.start.dateTime) 
+          : event.start.date 
+          ? new Date(event.start.date) 
+          : null
         return eventDate && eventDate >= now
       })
       .sort((a, b) => {
-        const dateA = getEventDate(a)?.getTime() || 0
-        const dateB = getEventDate(b)?.getTime() || 0
+        const dateA = a.start.dateTime ? new Date(a.start.dateTime).getTime() : a.start.date ? new Date(a.start.date).getTime() : 0
+        const dateB = b.start.dateTime ? new Date(b.start.dateTime).getTime() : b.start.date ? new Date(b.start.date).getTime() : 0
         return dateA - dateB
       })
       .slice(0, 10)
