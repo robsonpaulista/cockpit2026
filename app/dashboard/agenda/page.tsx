@@ -47,17 +47,28 @@ export default function AgendaPage() {
   const [attendanceStatuses, setAttendanceStatuses] = useState<Record<string, { attended: boolean; notes?: string }>>({})
   const [upcomingEventAlert, setUpcomingEventAlert] = useState<string | null>(null)
 
-  // Função para extrair origem do início do título (ex: "(THE - PI)" ou "(BSB)")
-  const extractOrigin = (text?: string): string | undefined => {
-    if (!text) return undefined
+  // Função para destacar origem no texto (ex: "(THE - PI)" ou "(BSB)")
+  const highlightOriginInText = (text: string): React.ReactNode => {
+    if (!text) return text
+    
     // Procurar no início do texto por parênteses
-    const match = text.match(/^\(([^)]+)\)/)
-    return match ? match[1] : undefined
-  }
-
-  // Função para remover origem do título
-  const removeOriginFromTitle = (title: string): string => {
-    return title.replace(/^\([^)]+\)\s*/, '').trim()
+    const match = text.match(/^(\([^)]+\))(.*)/)
+    if (match) {
+      const origin = match[1] // "(THE - PI)"
+      const rest = match[2] // resto do texto
+      const originText = match[1].replace(/[()]/g, '') // "THE - PI"
+      
+      return (
+        <>
+          <span className={`px-2 py-0.5 rounded text-xs font-medium text-white ${getOriginColor(originText)}`}>
+            {origin}
+          </span>
+          {rest}
+        </>
+      )
+    }
+    
+    return text
   }
 
   // Função para obter cor baseada na origem
@@ -113,12 +124,8 @@ export default function AgendaPage() {
       const data = await response.json()
 
       if (response.ok) {
-        // Processar eventos: extrair origem do título (summary) e adicionar aos eventos
-        const processedEvents = (data.events || []).map((event: CalendarEvent) => ({
-          ...event,
-          origin: extractOrigin(event.summary), // Extrair do título, não da descrição
-        }))
-        setEvents(processedEvents)
+        // Não precisa processar origem separadamente, vamos destacar diretamente no texto
+        setEvents(data.events || [])
       } else {
         setError(data.error || 'Erro ao buscar eventos')
       }
@@ -513,16 +520,9 @@ export default function AgendaPage() {
                       >
                         <div className="flex items-start justify-between gap-4">
                           <div className="flex-1">
-                            <div className="flex items-center gap-2 mb-1">
-                              {event.origin && (
-                                <span className={`px-2 py-0.5 rounded text-xs font-medium text-white ${getOriginColor(event.origin)}`}>
-                                  {event.origin}
-                                </span>
-                              )}
-                              <h4 className="text-base font-semibold text-text-strong">
-                                {removeOriginFromTitle(event.summary || 'Sem título')}
-                              </h4>
-                            </div>
+                            <h4 className="text-base font-semibold text-text-strong mb-1 flex items-center gap-2 flex-wrap">
+                              {highlightOriginInText(event.summary || 'Sem título')}
+                            </h4>
                             <div className="flex flex-wrap items-center gap-3 text-xs text-text-muted">
                               <div className="flex items-center gap-1">
                                 <Clock className="w-3.5 h-3.5" />
@@ -663,16 +663,9 @@ export default function AgendaPage() {
                       >
                         <div className="flex items-start justify-between gap-4">
                           <div className="flex-1">
-                            <div className="flex items-center gap-2 mb-2">
-                              {event.origin && (
-                                <span className={`px-2 py-1 rounded text-xs font-medium text-white ${getOriginColor(event.origin)}`}>
-                                  {event.origin}
-                                </span>
-                              )}
-                              <h4 className="text-lg font-semibold text-text-strong">
-                                {removeOriginFromTitle(event.summary || 'Sem título')}
-                              </h4>
-                            </div>
+                            <h4 className="text-lg font-semibold text-text-strong mb-2 flex items-center gap-2 flex-wrap">
+                              {highlightOriginInText(event.summary || 'Sem título')}
+                            </h4>
                             <div className="flex flex-wrap items-center gap-4 text-sm text-text-muted">
                               <div className="flex items-center gap-2">
                                 <Clock className="w-4 h-4" />
