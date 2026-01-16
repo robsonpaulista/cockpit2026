@@ -92,6 +92,43 @@ export default function AgendaPage() {
     setLoading(false)
   }, [])
 
+  const fetchEvents = useCallback(async () => {
+    if (!config) return
+
+    setLoading(true)
+    setError(null)
+
+    try {
+      const response = await fetch('/api/agenda/google-calendar', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          calendarId: config.calendarId,
+          serviceAccountEmail: config.serviceAccountEmail,
+          credentials: config.credentials,
+          subjectUser: config.subjectUser,
+        }),
+      })
+
+      const data = await response.json()
+
+      if (response.ok) {
+        // Processar eventos: extrair origem do título (summary) e adicionar aos eventos
+        const processedEvents = (data.events || []).map((event: CalendarEvent) => ({
+          ...event,
+          origin: extractOrigin(event.summary), // Extrair do título, não da descrição
+        }))
+        setEvents(processedEvents)
+      } else {
+        setError(data.error || 'Erro ao buscar eventos')
+      }
+    } catch (err: any) {
+      setError(err.message || 'Erro ao conectar com Google Calendar')
+    } finally {
+      setLoading(false)
+    }
+  }, [config])
+
   useEffect(() => {
     if (config) {
       fetchEvents()
@@ -103,7 +140,7 @@ export default function AgendaPage() {
 
       return () => clearInterval(interval)
     }
-  }, [config])
+  }, [config, fetchEvents])
 
   // Carregar status de atendimentos quando eventos mudarem
   useEffect(() => {
@@ -140,42 +177,6 @@ export default function AgendaPage() {
     return () => clearInterval(interval)
   }, [events])
 
-  const fetchEvents = async () => {
-    if (!config) return
-
-    setLoading(true)
-    setError(null)
-
-    try {
-      const response = await fetch('/api/agenda/google-calendar', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          calendarId: config.calendarId,
-          serviceAccountEmail: config.serviceAccountEmail,
-          credentials: config.credentials,
-          subjectUser: config.subjectUser,
-        }),
-      })
-
-      const data = await response.json()
-
-      if (response.ok) {
-        // Processar eventos: extrair origem do título (summary) e adicionar aos eventos
-        const processedEvents = (data.events || []).map((event: CalendarEvent) => ({
-          ...event,
-          origin: extractOrigin(event.summary), // Extrair do título, não da descrição
-        }))
-        setEvents(processedEvents)
-      } else {
-        setError(data.error || 'Erro ao buscar eventos')
-      }
-    } catch (err: any) {
-      setError(err.message || 'Erro ao conectar com Google Calendar')
-    } finally {
-      setLoading(false)
-    }
-  }
 
   const loadAttendanceStatuses = async () => {
     if (!user?.id) return
