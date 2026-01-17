@@ -216,11 +216,18 @@ export function ExecutiveBriefingModal({
       const { default: html2canvas } = await import('html2canvas')
       
       // Aguardar um pouco para garantir que o conteúdo está renderizado
+      await new Promise(resolve => setTimeout(resolve, 200))
+      
+      // Forçar scroll para o topo para capturar todo o conteúdo
+      if (contentRef.current) {
+        contentRef.current.scrollTop = 0
+      }
+      
       await new Promise(resolve => setTimeout(resolve, 100))
       
       // Configurações para captura completa do conteúdo
       const canvas = await html2canvas(contentRef.current, {
-        scale: 1,
+        scale: 1.5,
         useCORS: true,
         logging: false,
         backgroundColor: '#ffffff',
@@ -228,6 +235,8 @@ export function ExecutiveBriefingModal({
         height: contentRef.current.scrollHeight,
         windowWidth: contentRef.current.scrollWidth,
         windowHeight: contentRef.current.scrollHeight,
+        scrollX: 0,
+        scrollY: 0,
       })
 
       if (!canvas || canvas.width === 0 || canvas.height === 0) {
