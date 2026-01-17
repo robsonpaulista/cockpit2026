@@ -374,102 +374,125 @@ export function ExecutiveBriefingModal({
             <>
               {/* Lideranças */}
               <section>
-                <div className="flex items-center gap-1.5 mb-1.5">
+                <div className="flex items-center gap-1.5 mb-2">
                   <Users className="w-3.5 h-3.5 text-primary" />
                   <h3 className="text-sm font-semibold text-text-strong">Lideranças e Expectativa de Votos</h3>
+                  {expectativaVotosCol && (
+                    <span className="ml-auto text-xs font-bold text-primary">
+                      Total: {Math.round(totalExpectativa).toLocaleString('pt-BR')} votos
+                    </span>
+                  )}
                 </div>
                 {liderancasOrdenadas.length === 0 ? (
                   <p className="text-xs text-text-muted">Nenhuma liderança encontrada</p>
                 ) : (
-                  <div className="space-y-0.5">
-                    {expectativaVotosCol && (
-                      <div className="p-1.5 rounded bg-primary-soft border border-primary/20 mb-1.5">
-                        <p className="text-xs text-text-muted">Total de Expectativa de Votos</p>
-                        <p className="text-lg font-bold text-primary">
-                          {Math.round(totalExpectativa).toLocaleString('pt-BR')}
-                        </p>
-                      </div>
-                    )}
-                    <div className="space-y-0.5">
-                      {liderancasOrdenadas.map((lider, idx) => {
-                        const expectativa = expectativaVotosCol ? normalizeNumber(lider[expectativaVotosCol]) : 0
-                        const nome = nomeCol ? (lider[nomeCol] || 'Sem nome') : 'Sem nome'
-                        
-                        return (
-                          <div key={idx} className="p-1.5 rounded border border-border hover:bg-background/50 transition-colors">
-                            <div className="flex items-center justify-between gap-2">
-                              <div className="flex-1 min-w-0">
-                                <p className="text-xs font-medium text-text-strong truncate">{nome}</p>
-                                {lider.funcao && (
-                                  <p className="text-xs text-text-muted truncate">{lider.funcao}</p>
-                                )}
-                              </div>
-                              {expectativa > 0 && (
-                                <div className="text-right flex-shrink-0">
-                                  <p className="text-xs font-semibold text-primary whitespace-nowrap">
-                                    {Math.round(expectativa).toLocaleString('pt-BR')} votos
-                                  </p>
-                                </div>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-xs border-collapse">
+                      <thead>
+                        <tr className="bg-background border-b border-border">
+                          <th className="text-left p-1.5 font-semibold text-text-strong">Nome</th>
+                          {liderancasOrdenadas.some(l => l.funcao) && (
+                            <th className="text-left p-1.5 font-semibold text-text-strong">Função</th>
+                          )}
+                          {expectativaVotosCol && (
+                            <th className="text-right p-1.5 font-semibold text-text-strong">Expectativa de Votos</th>
+                          )}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {liderancasOrdenadas.map((lider, idx) => {
+                          const expectativa = expectativaVotosCol ? normalizeNumber(lider[expectativaVotosCol]) : 0
+                          const nome = nomeCol ? (lider[nomeCol] || 'Sem nome') : 'Sem nome'
+                          
+                          return (
+                            <tr key={idx} className="border-b border-border hover:bg-background/50 transition-colors">
+                              <td className="p-1.5 text-text-strong">{nome}</td>
+                              {liderancasOrdenadas.some(l => l.funcao) && (
+                                <td className="p-1.5 text-text-muted">{lider.funcao || '-'}</td>
                               )}
-                            </div>
-                          </div>
-                        )
-                      })}
-                    </div>
+                              {expectativaVotosCol && (
+                                <td className="p-1.5 text-right font-semibold text-primary">
+                                  {expectativa > 0 ? `${Math.round(expectativa).toLocaleString('pt-BR')} votos` : '-'}
+                                </td>
+                              )}
+                            </tr>
+                          )
+                        })}
+                      </tbody>
+                    </table>
                   </div>
                 )}
               </section>
 
               {/* Demandas */}
               <section>
-                <div className="flex items-center gap-1.5 mb-1.5">
+                <div className="flex items-center gap-1.5 mb-2">
                   <FileText className="w-3.5 h-3.5 text-primary" />
                   <h3 className="text-sm font-semibold text-text-strong">Demandas por Status</h3>
                 </div>
                 {demandsOrdenadas.length === 0 ? (
                   <p className="text-xs text-text-muted">Nenhuma demanda encontrada</p>
                 ) : (
-                  <div className="space-y-1">
-                    {demandsOrdenadas.map((demand, idx) => {
-                      const status = demand.status || 'Sem status'
-                      const statusLower = status.toLowerCase().trim()
-                      const isFinalizada = statusLower.includes('resolvido') || statusLower.includes('concluído') || statusLower.includes('concluido') || statusLower.includes('finalizado') || statusLower.includes('finalizada')
-                      const isAndamento = statusLower.includes('andamento') || statusLower.includes('progresso') || statusLower.includes('em andamento')
-                      
-                      return (
-                        <div key={idx} className="p-1.5 rounded border border-border hover:bg-background/50 transition-colors">
-                          <div className="flex items-start justify-between gap-2">
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-1 mb-0.5">
-                                {isFinalizada ? (
-                                  <CheckCircle className="w-3 h-3 text-status-success flex-shrink-0" />
-                                ) : isAndamento ? (
-                                  <Clock className="w-3 h-3 text-status-warning flex-shrink-0" />
-                                ) : (
-                                  <AlertCircle className="w-3 h-3 text-text-muted flex-shrink-0" />
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-xs border-collapse">
+                      <thead>
+                        <tr className="bg-background border-b border-border">
+                          <th className="text-left p-1.5 font-semibold text-text-strong">Título</th>
+                          <th className="text-left p-1.5 font-semibold text-text-strong">Status</th>
+                          {demandsOrdenadas.some(d => d.lideranca) && (
+                            <th className="text-left p-1.5 font-semibold text-text-strong">Liderança</th>
+                          )}
+                          {demandsOrdenadas.some(d => d.data_demanda) && (
+                            <th className="text-left p-1.5 font-semibold text-text-strong">Data</th>
+                          )}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {demandsOrdenadas.map((demand, idx) => {
+                          const status = demand.status || 'Sem status'
+                          const statusLower = status.toLowerCase().trim()
+                          const isFinalizada = statusLower.includes('resolvido') || statusLower.includes('concluído') || statusLower.includes('concluido') || statusLower.includes('finalizado') || statusLower.includes('finalizada')
+                          const isAndamento = statusLower.includes('andamento') || statusLower.includes('progresso') || statusLower.includes('em andamento')
+                          
+                          return (
+                            <tr key={idx} className="border-b border-border hover:bg-background/50 transition-colors">
+                              <td className="p-1.5 text-text-strong">
+                                <div className="flex items-center gap-1">
+                                  {isFinalizada ? (
+                                    <CheckCircle className="w-3 h-3 text-status-success flex-shrink-0" />
+                                  ) : isAndamento ? (
+                                    <Clock className="w-3 h-3 text-status-warning flex-shrink-0" />
+                                  ) : (
+                                    <AlertCircle className="w-3 h-3 text-text-muted flex-shrink-0" />
+                                  )}
+                                  <span>{demand.title}</span>
+                                </div>
+                                {demand.description && (
+                                  <p className="text-text-muted mt-0.5 text-xs">{demand.description}</p>
                                 )}
-                                <p className="text-xs font-medium text-text-strong truncate">{demand.title}</p>
-                              </div>
-                              {demand.description && (
-                                <p className="text-xs text-text-muted line-clamp-1">{demand.description}</p>
-                              )}
-                              <div className="flex items-center gap-1.5 mt-1">
-                                <span className={`text-xs px-1 py-0.5 rounded ${
+                              </td>
+                              <td className="p-1.5">
+                                <span className={`text-xs px-1.5 py-0.5 rounded ${
                                   isFinalizada ? 'bg-status-success/10 text-status-success' :
                                   isAndamento ? 'bg-status-warning/10 text-status-warning' :
                                   'bg-text-muted/10 text-text-muted'
                                 }`}>
                                   {status}
                                 </span>
-                                {demand.lideranca && (
-                                  <span className="text-xs text-text-muted truncate">{demand.lideranca}</span>
-                                )}
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      )
-                    })}
+                              </td>
+                              {demandsOrdenadas.some(d => d.lideranca) && (
+                                <td className="p-1.5 text-text-muted">{demand.lideranca || '-'}</td>
+                              )}
+                              {demandsOrdenadas.some(d => d.data_demanda) && (
+                                <td className="p-1.5 text-text-muted">
+                                  {demand.data_demanda ? new Date(demand.data_demanda).toLocaleDateString('pt-BR') : '-'}
+                                </td>
+                              )}
+                            </tr>
+                          )
+                        })}
+                      </tbody>
+                    </table>
                   </div>
                 )}
               </section>
@@ -477,70 +500,68 @@ export function ExecutiveBriefingModal({
               {/* Pesquisas de Intenção de Voto */}
               {polls.length > 0 && (
                 <section>
-                  <div className="flex items-center gap-1.5 mb-1.5">
+                  <div className="flex items-center gap-1.5 mb-2">
                     <TrendingUp className="w-3.5 h-3.5 text-primary" />
                     <h3 className="text-sm font-semibold text-text-strong">Pesquisas de Intenção de Voto</h3>
                   </div>
-                  <div className="space-y-1.5">
-                    {polls.map((poll) => {
-                      const pollEleitorado = getEleitoradoByCity(cidade)
-                      const pollVotosProporcionais = pollEleitorado ? Math.round((poll.intencao / 100) * pollEleitorado) : null
-                      
-                      return (
-                        <div key={poll.id} className="p-1.5 rounded border border-border bg-background/50">
-                          <div className="flex items-start justify-between mb-1.5">
-                            <div className="flex-1 min-w-0">
-                              <p className="text-xs font-semibold text-text-strong">{poll.instituto}</p>
-                              <p className="text-xs text-text-muted">
-                                {new Date(poll.data).toLocaleDateString('pt-BR')} • {poll.candidato_nome}
-                              </p>
-                            </div>
-                            <div className="text-right flex-shrink-0 ml-2">
-                              <p className="text-sm font-bold text-primary">{poll.intencao.toFixed(1)}%</p>
-                              <p className="text-xs text-text-muted">Intenção</p>
-                            </div>
-                          </div>
-                          
-                          {/* Dados detalhados (como no popup) */}
-                          {pollEleitorado && pollEleitorado > 0 && (
-                            <div className="mt-1.5 pt-1.5 border-t border-border space-y-0.5 text-xs">
-                              <div className="flex justify-between">
-                                <span className="text-text-muted">Eleitorado:</span>
-                                <span className="font-medium text-text-strong">{pollEleitorado.toLocaleString('pt-BR')} eleitores</span>
-                              </div>
-                              {pollVotosProporcionais !== null && (
-                                <div className="flex justify-between">
-                                  <span className="text-text-muted">Votos Proporcionais:</span>
-                                  <span className="font-medium text-text-strong">
-                                    {pollVotosProporcionais.toLocaleString('pt-BR')} votos ({poll.intencao.toFixed(1)}% × {pollEleitorado.toLocaleString('pt-BR')})
-                                  </span>
-                                </div>
-                              )}
-                              <div className="flex justify-between">
-                                <span className="text-text-muted">Rejeição:</span>
-                                <span className="font-medium text-status-error">{poll.rejeicao.toFixed(1)}%</span>
-                              </div>
-                              <div className="flex justify-between">
-                                <span className="text-text-muted">Tipo:</span>
-                                <span className="font-medium text-text-strong">
-                                  {poll.tipo === 'estimulada' ? 'Estimulada' : 'Espontânea'}
-                                </span>
-                              </div>
-                              <div className="flex justify-between">
-                                <span className="text-text-muted">Cargo:</span>
-                                <span className="font-medium text-text-strong">
-                                  {poll.cargo === 'dep_federal' ? 'Deputado Federal' :
-                                   poll.cargo === 'dep_estadual' ? 'Deputado Estadual' :
-                                   poll.cargo === 'governador' ? 'Governador' :
-                                   poll.cargo === 'senador' ? 'Senador' :
-                                   poll.cargo === 'presidente' ? 'Presidente' : poll.cargo}
-                                </span>
-                              </div>
-                            </div>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-xs border-collapse">
+                      <thead>
+                        <tr className="bg-background border-b border-border">
+                          <th className="text-left p-1.5 font-semibold text-text-strong">Candidato</th>
+                          <th className="text-right p-1.5 font-semibold text-text-strong">Intenção</th>
+                          <th className="text-right p-1.5 font-semibold text-text-strong">Rejeição</th>
+                          <th className="text-left p-1.5 font-semibold text-text-strong">Instituto</th>
+                          <th className="text-left p-1.5 font-semibold text-text-strong">Data</th>
+                          <th className="text-left p-1.5 font-semibold text-text-strong">Tipo</th>
+                          <th className="text-left p-1.5 font-semibold text-text-strong">Cargo</th>
+                          {eleitorado && eleitorado > 0 && (
+                            <>
+                              <th className="text-right p-1.5 font-semibold text-text-strong">Eleitorado</th>
+                              <th className="text-right p-1.5 font-semibold text-text-strong">Votos Proporcionais</th>
+                            </>
                           )}
-                        </div>
-                      )
-                    })}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {polls.map((poll) => {
+                          const pollEleitorado = getEleitoradoByCity(cidade)
+                          const pollVotosProporcionais = pollEleitorado ? Math.round((poll.intencao / 100) * pollEleitorado) : null
+                          
+                          return (
+                            <tr key={poll.id} className="border-b border-border hover:bg-background/50 transition-colors">
+                              <td className="p-1.5 text-text-strong font-medium">{poll.candidato_nome}</td>
+                              <td className="p-1.5 text-right font-bold text-primary">{poll.intencao.toFixed(1)}%</td>
+                              <td className="p-1.5 text-right text-status-error">{poll.rejeicao.toFixed(1)}%</td>
+                              <td className="p-1.5 text-text-muted">{poll.instituto}</td>
+                              <td className="p-1.5 text-text-muted">{new Date(poll.data).toLocaleDateString('pt-BR')}</td>
+                              <td className="p-1.5 text-text-muted">
+                                {poll.tipo === 'estimulada' ? 'Estimulada' : 'Espontânea'}
+                              </td>
+                              <td className="p-1.5 text-text-muted">
+                                {poll.cargo === 'dep_federal' ? 'Dep. Federal' :
+                                 poll.cargo === 'dep_estadual' ? 'Dep. Estadual' :
+                                 poll.cargo === 'governador' ? 'Governador' :
+                                 poll.cargo === 'senador' ? 'Senador' :
+                                 poll.cargo === 'presidente' ? 'Presidente' : poll.cargo}
+                              </td>
+                              {eleitorado && eleitorado > 0 && (
+                                <>
+                                  <td className="p-1.5 text-right text-text-muted">
+                                    {pollEleitorado ? pollEleitorado.toLocaleString('pt-BR') : '-'}
+                                  </td>
+                                  <td className="p-1.5 text-right text-text-strong font-medium">
+                                    {pollVotosProporcionais !== null 
+                                      ? `${pollVotosProporcionais.toLocaleString('pt-BR')} votos` 
+                                      : '-'}
+                                  </td>
+                                </>
+                              )}
+                            </tr>
+                          )
+                        })}
+                      </tbody>
+                    </table>
                   </div>
                 </section>
               )}
