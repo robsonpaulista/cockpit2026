@@ -1029,6 +1029,22 @@ export default function TerritorioPage() {
         }}
         cidade={selectedCityForDemands}
       />
+
+      {/* Modal de Briefing Executivo */}
+      {showExecutiveBriefing && (
+        <ExecutiveBriefingModal
+          isOpen={showExecutiveBriefing}
+          onClose={() => {
+            setShowExecutiveBriefing(false)
+            setSelectedCityForBriefing('')
+            setSelectedCityLiderancas([])
+          }}
+          cidade={selectedCityForBriefing}
+          liderancas={selectedCityLiderancas}
+          expectativaVotosCol={expectativaVotosCol}
+          nomeCol={nomeCol}
+        />
+      )}
     </div>
   )
 }
