@@ -254,50 +254,46 @@ export function ExecutiveBriefingModal({
       const availableHeight = pdfHeight - titleHeight - margin
       
       // Adicionar imagem em múltiplas páginas se necessário
-      let yPosition = titleHeight + 2
-      let remainingHeight = imgScaledHeight
-      let sourceY = 0
+      const pageContentHeight = pdfHeight - titleHeight - margin
+      let currentY = 0
+      let pageNumber = 0
 
-      while (remainingHeight > 0) {
+      while (currentY < imgScaledHeight) {
         // Adicionar página se não for a primeira
-        if (yPosition > titleHeight + 2) {
+        if (pageNumber > 0) {
           pdf.addPage()
           yPosition = margin
-        }
-
-        // Calcular quanto cabe nesta página
-        const pageContentHeight = yPosition === margin ? pdfHeight - margin : pdfHeight - yPosition
-        const heightToAdd = Math.min(remainingHeight, pageContentHeight)
-
-        // Adicionar imagem (cortar se necessário)
-        if (heightToAdd < remainingHeight) {
-          // Cortar a imagem para esta página
-          const sourceHeight = (heightToAdd / ratio)
-          const tempCanvas = document.createElement('canvas')
-          tempCanvas.width = imgWidth
-          tempCanvas.height = sourceHeight
-          const ctx = tempCanvas.getContext('2d')
-          if (ctx) {
-            ctx.drawImage(canvas, 0, sourceY, imgWidth, sourceHeight, 0, 0, imgWidth, sourceHeight)
-            const pageImgData = tempCanvas.toDataURL('image/png', 0.95)
-            pdf.addImage(pageImgData, 'PNG', margin, yPosition, imgScaledWidth, heightToAdd)
-          }
         } else {
-          // Última página - adicionar imagem completa
-          const tempCanvas = document.createElement('canvas')
-          tempCanvas.width = imgWidth
-          tempCanvas.height = imgHeight - sourceY
-          const ctx = tempCanvas.getContext('2d')
-          if (ctx) {
-            ctx.drawImage(canvas, 0, sourceY, imgWidth, imgHeight - sourceY, 0, 0, imgWidth, imgHeight - sourceY)
-            const pageImgData = tempCanvas.toDataURL('image/png', 0.95)
-            pdf.addImage(pageImgData, 'PNG', margin, yPosition, imgScaledWidth, heightToAdd)
-          }
+          yPosition = titleHeight + 2
         }
 
-        yPosition += heightToAdd
-        sourceY += (heightToAdd / ratio)
-        remainingHeight -= heightToAdd
+        // Calcular altura disponível nesta página
+        const availableHeight = pageNumber === 0 
+          ? pdfHeight - titleHeight - margin - 2 
+          : pdfHeight - (margin * 2)
+        
+        // Calcular altura da parte da imagem que cabe nesta página
+        const heightToAdd = Math.min(imgScaledHeight - currentY, availableHeight)
+        
+        // Calcular posição Y na imagem original (em pixels do canvas)
+        const sourceY = Math.floor((currentY / imgScaledHeight) * imgHeight)
+        const sourceHeight = Math.ceil((heightToAdd / imgScaledHeight) * imgHeight)
+
+        // Criar canvas temporário para esta página
+        const tempCanvas = document.createElement('canvas')
+        tempCanvas.width = imgWidth
+        tempCanvas.height = sourceHeight
+        const tempCtx = tempCanvas.getContext('2d')
+        
+        if (tempCtx) {
+          // Copiar parte da imagem original para o canvas temporário
+          tempCtx.drawImage(canvas, 0, sourceY, imgWidth, sourceHeight, 0, 0, imgWidth, sourceHeight)
+          const pageImgData = tempCanvas.toDataURL('image/png', 0.95)
+          pdf.addImage(pageImgData, 'PNG', margin, yPosition, imgScaledWidth, heightToAdd)
+        }
+
+        currentY += heightToAdd
+        pageNumber++
       }
 
       pdf.save(`Briefing-Executivo-${cidade.replace(/\s+/g, '-')}-${new Date().toISOString().split('T')[0]}.pdf`)
