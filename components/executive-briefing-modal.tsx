@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback, useRef } from 'react'
 import { X, Users, FileText, TrendingUp, CheckCircle, Clock, AlertCircle, Loader2, Download } from 'lucide-react'
 import { getEleitoradoByCity } from '@/lib/eleitores'
-import { jsPDF } from 'jspdf'
+import jsPDF from 'jspdf'
 
 interface Lideranca {
   [key: string]: any
@@ -215,41 +215,89 @@ export function ExecutiveBriefingModal({
     try {
       const { default: html2canvas } = await import('html2canvas')
       
+      // Configurações para captura completa do conteúdo
       const canvas = await html2canvas(contentRef.current, {
-        scale: 2,
+        scale: 1,
         useCORS: true,
         logging: false,
         backgroundColor: '#ffffff',
+        width: contentRef.current.scrollWidth,
+        height: contentRef.current.scrollHeight,
+        windowWidth: contentRef.current.scrollWidth,
+        windowHeight: contentRef.current.scrollHeight,
       })
 
-      const imgData = canvas.toDataURL('image/png')
+      const imgData = canvas.toDataURL('image/png', 0.95)
       const pdf = new jsPDF('p', 'mm', 'a4')
       const pdfWidth = pdf.internal.pageSize.getWidth()
       const pdfHeight = pdf.internal.pageSize.getHeight()
+      
+      // Margens
+      const margin = 8
+      const contentWidth = pdfWidth - (margin * 2)
+      
+      // Calcular dimensões da imagem
       const imgWidth = canvas.width
       const imgHeight = canvas.height
-      const ratio = Math.min(pdfWidth / imgWidth, pdfHeight / imgHeight)
-      const imgScaledWidth = imgWidth * ratio
+      const ratio = contentWidth / imgWidth
+      const imgScaledWidth = contentWidth
       const imgScaledHeight = imgHeight * ratio
 
-      // Adicionar título
-      pdf.setFontSize(18)
-      pdf.text('Briefing Executivo', pdfWidth / 2, 15, { align: 'center' })
-      pdf.setFontSize(12)
-      pdf.text(cidade, pdfWidth / 2, 22, { align: 'center' })
+      // Adicionar título na primeira página
+      const titleHeight = 15
+      pdf.setFontSize(14)
+      pdf.text('Briefing Executivo', pdfWidth / 2, 10, { align: 'center' })
+      pdf.setFontSize(9)
+      pdf.text(cidade, pdfWidth / 2, 16, { align: 'center' })
       
-      // Adicionar imagem
-      pdf.addImage(imgData, 'PNG', 0, 30, imgScaledWidth, imgScaledHeight)
+      // Calcular altura disponível para conteúdo (após título)
+      const availableHeight = pdfHeight - titleHeight - margin
       
-      // Se a imagem for maior que uma página, adicionar páginas adicionais
-      let heightLeft = imgScaledHeight
-      let position = 30
+      // Adicionar imagem em múltiplas páginas se necessário
+      let yPosition = titleHeight + 2
+      let remainingHeight = imgScaledHeight
+      let sourceY = 0
 
-      while (heightLeft >= 0) {
-        position = heightLeft - imgScaledHeight + 30
-        pdf.addPage()
-        pdf.addImage(imgData, 'PNG', 0, position, imgScaledWidth, imgScaledHeight)
-        heightLeft -= pdfHeight
+      while (remainingHeight > 0) {
+        // Adicionar página se não for a primeira
+        if (yPosition > titleHeight + 2) {
+          pdf.addPage()
+          yPosition = margin
+        }
+
+        // Calcular quanto cabe nesta página
+        const pageContentHeight = yPosition === margin ? pdfHeight - margin : pdfHeight - yPosition
+        const heightToAdd = Math.min(remainingHeight, pageContentHeight)
+
+        // Adicionar imagem (cortar se necessário)
+        if (heightToAdd < remainingHeight) {
+          // Cortar a imagem para esta página
+          const sourceHeight = (heightToAdd / ratio)
+          const tempCanvas = document.createElement('canvas')
+          tempCanvas.width = imgWidth
+          tempCanvas.height = sourceHeight
+          const ctx = tempCanvas.getContext('2d')
+          if (ctx) {
+            ctx.drawImage(canvas, 0, sourceY, imgWidth, sourceHeight, 0, 0, imgWidth, sourceHeight)
+            const pageImgData = tempCanvas.toDataURL('image/png', 0.95)
+            pdf.addImage(pageImgData, 'PNG', margin, yPosition, imgScaledWidth, heightToAdd)
+          }
+        } else {
+          // Última página - adicionar imagem completa
+          const tempCanvas = document.createElement('canvas')
+          tempCanvas.width = imgWidth
+          tempCanvas.height = imgHeight - sourceY
+          const ctx = tempCanvas.getContext('2d')
+          if (ctx) {
+            ctx.drawImage(canvas, 0, sourceY, imgWidth, imgHeight - sourceY, 0, 0, imgWidth, imgHeight - sourceY)
+            const pageImgData = tempCanvas.toDataURL('image/png', 0.95)
+            pdf.addImage(pageImgData, 'PNG', margin, yPosition, imgScaledWidth, heightToAdd)
+          }
+        }
+
+        yPosition += heightToAdd
+        sourceY += (heightToAdd / ratio)
+        remainingHeight -= heightToAdd
       }
 
       pdf.save(`Briefing-Executivo-${cidade.replace(/\s+/g, '-')}-${new Date().toISOString().split('T')[0]}.pdf`)
@@ -290,7 +338,7 @@ export function ExecutiveBriefingModal({
         </div>
 
         {/* Content */}
-        <div className="flex-1 overflow-y-auto p-6 space-y-4" ref={contentRef}>
+        <div className="flex-1 overflow-y-auto p-4 space-y-3" ref={contentRef} style={{ backgroundColor: '#ffffff' }}>
           {loading ? (
             <div className="flex items-center justify-center py-12">
               <Loader2 className="w-6 h-6 text-primary animate-spin" />
@@ -304,29 +352,29 @@ export function ExecutiveBriefingModal({
             <>
               {/* Lideranças */}
               <section>
-                <div className="flex items-center gap-2 mb-3">
-                  <Users className="w-4 h-4 text-primary" />
-                  <h3 className="text-base font-semibold text-text-strong">Lideranças e Expectativa de Votos</h3>
+                <div className="flex items-center gap-1.5 mb-1.5">
+                  <Users className="w-3.5 h-3.5 text-primary" />
+                  <h3 className="text-sm font-semibold text-text-strong">Lideranças e Expectativa de Votos</h3>
                 </div>
                 {liderancasOrdenadas.length === 0 ? (
                   <p className="text-xs text-text-muted">Nenhuma liderança encontrada</p>
                 ) : (
-                  <div className="space-y-1">
+                  <div className="space-y-0.5">
                     {expectativaVotosCol && (
-                      <div className="p-2 rounded-lg bg-primary-soft border border-primary/20 mb-2">
+                      <div className="p-1.5 rounded bg-primary-soft border border-primary/20 mb-1.5">
                         <p className="text-xs text-text-muted">Total de Expectativa de Votos</p>
-                        <p className="text-xl font-bold text-primary">
+                        <p className="text-lg font-bold text-primary">
                           {Math.round(totalExpectativa).toLocaleString('pt-BR')}
                         </p>
                       </div>
                     )}
-                    <div className="space-y-1">
+                    <div className="space-y-0.5">
                       {liderancasOrdenadas.map((lider, idx) => {
                         const expectativa = expectativaVotosCol ? normalizeNumber(lider[expectativaVotosCol]) : 0
                         const nome = nomeCol ? (lider[nomeCol] || 'Sem nome') : 'Sem nome'
                         
                         return (
-                          <div key={idx} className="p-2 rounded-lg border border-border hover:bg-background/50 transition-colors">
+                          <div key={idx} className="p-1.5 rounded border border-border hover:bg-background/50 transition-colors">
                             <div className="flex items-center justify-between gap-2">
                               <div className="flex-1 min-w-0">
                                 <p className="text-xs font-medium text-text-strong truncate">{nome}</p>
@@ -352,14 +400,14 @@ export function ExecutiveBriefingModal({
 
               {/* Demandas */}
               <section>
-                <div className="flex items-center gap-2 mb-3">
-                  <FileText className="w-4 h-4 text-primary" />
-                  <h3 className="text-base font-semibold text-text-strong">Demandas por Status</h3>
+                <div className="flex items-center gap-1.5 mb-1.5">
+                  <FileText className="w-3.5 h-3.5 text-primary" />
+                  <h3 className="text-sm font-semibold text-text-strong">Demandas por Status</h3>
                 </div>
                 {demandsOrdenadas.length === 0 ? (
                   <p className="text-xs text-text-muted">Nenhuma demanda encontrada</p>
                 ) : (
-                  <div className="space-y-1.5">
+                  <div className="space-y-1">
                     {demandsOrdenadas.map((demand, idx) => {
                       const status = demand.status || 'Sem status'
                       const statusLower = status.toLowerCase().trim()
@@ -367,24 +415,24 @@ export function ExecutiveBriefingModal({
                       const isAndamento = statusLower.includes('andamento') || statusLower.includes('progresso') || statusLower.includes('em andamento')
                       
                       return (
-                        <div key={idx} className="p-2 rounded-lg border border-border hover:bg-background/50 transition-colors">
+                        <div key={idx} className="p-1.5 rounded border border-border hover:bg-background/50 transition-colors">
                           <div className="flex items-start justify-between gap-2">
                             <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-1.5 mb-0.5">
+                              <div className="flex items-center gap-1 mb-0.5">
                                 {isFinalizada ? (
-                                  <CheckCircle className="w-3.5 h-3.5 text-status-success flex-shrink-0" />
+                                  <CheckCircle className="w-3 h-3 text-status-success flex-shrink-0" />
                                 ) : isAndamento ? (
-                                  <Clock className="w-3.5 h-3.5 text-status-warning flex-shrink-0" />
+                                  <Clock className="w-3 h-3 text-status-warning flex-shrink-0" />
                                 ) : (
-                                  <AlertCircle className="w-3.5 h-3.5 text-text-muted flex-shrink-0" />
+                                  <AlertCircle className="w-3 h-3 text-text-muted flex-shrink-0" />
                                 )}
                                 <p className="text-xs font-medium text-text-strong truncate">{demand.title}</p>
                               </div>
                               {demand.description && (
-                                <p className="text-xs text-text-muted mt-0.5 line-clamp-1">{demand.description}</p>
+                                <p className="text-xs text-text-muted line-clamp-1">{demand.description}</p>
                               )}
-                              <div className="flex items-center gap-2 mt-1.5">
-                                <span className={`text-xs px-1.5 py-0.5 rounded ${
+                              <div className="flex items-center gap-1.5 mt-1">
+                                <span className={`text-xs px-1 py-0.5 rounded ${
                                   isFinalizada ? 'bg-status-success/10 text-status-success' :
                                   isAndamento ? 'bg-status-warning/10 text-status-warning' :
                                   'bg-text-muted/10 text-text-muted'
@@ -407,33 +455,33 @@ export function ExecutiveBriefingModal({
               {/* Pesquisas de Intenção de Voto */}
               {polls.length > 0 && (
                 <section>
-                  <div className="flex items-center gap-2 mb-3">
-                    <TrendingUp className="w-4 h-4 text-primary" />
-                    <h3 className="text-base font-semibold text-text-strong">Pesquisas de Intenção de Voto</h3>
+                  <div className="flex items-center gap-1.5 mb-1.5">
+                    <TrendingUp className="w-3.5 h-3.5 text-primary" />
+                    <h3 className="text-sm font-semibold text-text-strong">Pesquisas de Intenção de Voto</h3>
                   </div>
-                  <div className="space-y-3">
+                  <div className="space-y-1.5">
                     {polls.map((poll) => {
                       const pollEleitorado = getEleitoradoByCity(cidade)
                       const pollVotosProporcionais = pollEleitorado ? Math.round((poll.intencao / 100) * pollEleitorado) : null
                       
                       return (
-                        <div key={poll.id} className="p-3 rounded-lg border border-border bg-background/50">
-                          <div className="flex items-start justify-between mb-2">
+                        <div key={poll.id} className="p-1.5 rounded border border-border bg-background/50">
+                          <div className="flex items-start justify-between mb-1.5">
                             <div className="flex-1 min-w-0">
                               <p className="text-xs font-semibold text-text-strong">{poll.instituto}</p>
-                              <p className="text-xs text-text-muted mt-0.5">
+                              <p className="text-xs text-text-muted">
                                 {new Date(poll.data).toLocaleDateString('pt-BR')} • {poll.candidato_nome}
                               </p>
                             </div>
                             <div className="text-right flex-shrink-0 ml-2">
-                              <p className="text-base font-bold text-primary">{poll.intencao.toFixed(1)}%</p>
+                              <p className="text-sm font-bold text-primary">{poll.intencao.toFixed(1)}%</p>
                               <p className="text-xs text-text-muted">Intenção</p>
                             </div>
                           </div>
                           
                           {/* Dados detalhados (como no popup) */}
                           {pollEleitorado && pollEleitorado > 0 && (
-                            <div className="mt-2 pt-2 border-t border-border space-y-0.5 text-xs">
+                            <div className="mt-1.5 pt-1.5 border-t border-border space-y-0.5 text-xs">
                               <div className="flex justify-between">
                                 <span className="text-text-muted">Eleitorado:</span>
                                 <span className="font-medium text-text-strong">{pollEleitorado.toLocaleString('pt-BR')} eleitores</span>
@@ -477,9 +525,9 @@ export function ExecutiveBriefingModal({
 
               {polls.length === 0 && (
                 <section>
-                  <div className="flex items-center gap-2 mb-3">
-                    <TrendingUp className="w-4 h-4 text-text-muted" />
-                    <h3 className="text-base font-semibold text-text-muted">Pesquisas de Intenção de Voto</h3>
+                  <div className="flex items-center gap-1.5 mb-1.5">
+                    <TrendingUp className="w-3.5 h-3.5 text-text-muted" />
+                    <h3 className="text-sm font-semibold text-text-muted">Pesquisas de Intenção de Voto</h3>
                   </div>
                   <p className="text-xs text-text-muted">Nenhuma pesquisa encontrada para esta cidade</p>
                 </section>
