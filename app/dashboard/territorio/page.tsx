@@ -4,9 +4,10 @@ import { useEffect, useState } from 'react'
 import { Header } from '@/components/header'
 import { KPICard } from '@/components/kpi-card'
 import { GoogleSheetsConfigModal } from '@/components/google-sheets-config-modal'
-import { Users, Settings, RefreshCw, AlertCircle, ChevronDown, ChevronRight, Network, FileText } from 'lucide-react'
+import { Users, Settings, RefreshCw, AlertCircle, ChevronDown, ChevronRight, Network, FileText, Briefcase } from 'lucide-react'
 import { MindMapModal } from '@/components/mind-map-modal'
 import { CityDemandsModal } from '@/components/city-demands-modal'
+import { ExecutiveBriefingModal } from '@/components/executive-briefing-modal'
 import { KPI } from '@/types'
 
 interface Lideranca {
@@ -38,6 +39,9 @@ export default function TerritorioPage() {
   const [serverConfigured, setServerConfigured] = useState(false)
   const [showCityDemands, setShowCityDemands] = useState(false)
   const [selectedCityForDemands, setSelectedCityForDemands] = useState<string>('')
+  const [showExecutiveBriefing, setShowExecutiveBriefing] = useState(false)
+  const [selectedCityForBriefing, setSelectedCityForBriefing] = useState<string>('')
+  const [selectedCityLiderancas, setSelectedCityLiderancas] = useState<Lideranca[]>([])
 
   useEffect(() => {
     const initConfig = async () => {
@@ -834,6 +838,18 @@ export default function TerritorioPage() {
                           </div>
                         </button>
                         <div className="flex items-center gap-2">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              setSelectedCityForBriefing(cidade)
+                              setSelectedCityLiderancas(liderancasCidade)
+                              setShowExecutiveBriefing(true)
+                            }}
+                            className="p-2 rounded-lg hover:bg-background transition-colors text-text-muted hover:text-primary"
+                            title="Briefing Executivo"
+                          >
+                            <Briefcase className="w-4 h-4" />
+                          </button>
                           <button
                             onClick={(e) => {
                               e.stopPropagation()

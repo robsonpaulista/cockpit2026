@@ -1,0 +1,435 @@
+'use client'
+
+import { useEffect, useState, useCallback } from 'react'
+import { X, Users, FileText, TrendingUp, CheckCircle, Clock, AlertCircle, Loader2 } from 'lucide-react'
+import { getEleitoradoByCity } from '@/lib/eleitores'
+
+interface Lideranca {
+  [key: string]: any
+}
+
+interface Demand {
+  id?: string
+  title: string
+  description?: string
+  status?: string
+  theme?: string
+  priority?: string
+  lideranca?: string
+  data_demanda?: string
+}
+
+interface Poll {
+  id: string
+  data: string
+  instituto: string
+  candidato_nome: string
+  tipo: string
+  cargo: string
+  cidade_id?: string | null
+  cities?: {
+    id: string
+    name: string
+  } | null
+  intencao: number
+  rejeicao: number
+}
+
+interface ExecutiveBriefingModalProps {
+  isOpen: boolean
+  onClose: () => void
+  cidade: string
+  liderancas: Lideranca[]
+  expectativaVotosCol?: string
+  nomeCol?: string
+}
+
+export function ExecutiveBriefingModal({
+  isOpen,
+  onClose,
+  cidade,
+  liderancas,
+  expectativaVotosCol,
+  nomeCol,
+}: ExecutiveBriefingModalProps) {
+  const [demands, setDemands] = useState<Demand[]>([])
+  const [polls, setPolls] = useState<Poll[]>([])
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  // Função para normalizar números
+  const normalizeNumber = (value: any): number => {
+    if (typeof value === 'number') return value
+    
+    const str = String(value).trim()
+    if (!str) return 0
+    
+    let cleaned = str.replace(/[^\d.,]/g, '')
+    
+    if (cleaned.includes(',') && cleaned.includes('.')) {
+      if (cleaned.lastIndexOf(',') > cleaned.lastIndexOf('.')) {
+        cleaned = cleaned.replace(/\./g, '').replace(',', '.')
+      } else {
+        cleaned = cleaned.replace(/,/g, '')
+      }
+    } else if (cleaned.includes(',')) {
+      const parts = cleaned.split(',')
+      if (parts.length === 2) {
+        if (parts[1].length === 3) {
+          cleaned = cleaned.replace(/,/g, '')
+        } else if (parts[1].length <= 2) {
+          cleaned = cleaned.replace(',', '.')
+        } else {
+          cleaned = cleaned.replace(/,/g, '')
+        }
+      } else {
+        cleaned = cleaned.replace(/,/g, '')
+      }
+    }
+    
+    const numValue = parseFloat(cleaned)
+    return isNaN(numValue) ? 0 : numValue
+  }
+
+  // Buscar demandas da cidade
+  const fetchDemands = useCallback(async () => {
+    if (!cidade) return []
+    
+    try {
+      const response = await fetch(`/api/campo/demands?cidade=${encodeURIComponent(cidade)}`)
+      
+      if (!response.ok) {
+        throw new Error('Erro ao buscar demandas')
+      }
+
+      const data = await response.json()
+      return data || []
+    } catch (err) {
+      console.error('Erro ao buscar demandas:', err)
+      return []
+    }
+  }, [cidade])
+
+  // Buscar pesquisas da cidade
+  const fetchPolls = useCallback(async () => {
+    if (!cidade) return []
+    
+    try {
+      // Buscar todas as pesquisas primeiro
+      const response = await fetch('/api/pesquisa')
+      
+      if (!response.ok) {
+        throw new Error('Erro ao buscar pesquisas')
+      }
+
+      const allPolls: Poll[] = await response.json()
+      
+      // Filtrar por cidade - normalizar nome da cidade para comparação
+      const normalizedCidade = cidade.toLowerCase().trim().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+      
+      const cidadePolls = allPolls.filter((poll) => {
+        const pollCidade = poll.cities?.name || ''
+        const normalizedPollCidade = pollCidade.toLowerCase().trim().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+        
+        return normalizedPollCidade === normalizedCidade || 
+               normalizedPollCidade.includes(normalizedCidade) || 
+               normalizedCidade.includes(normalizedPollCidade)
+      })
+      
+      return cidadePolls
+    } catch (err) {
+      console.error('Erro ao buscar pesquisas:', err)
+      return []
+    }
+  }, [cidade])
+
+  useEffect(() => {
+    if (isOpen && cidade) {
+      setLoading(true)
+      setError(null)
+      
+      Promise.all([fetchDemands(), fetchPolls()])
+        .then(([demandsData, pollsData]) => {
+          setDemands(demandsData)
+          setPolls(pollsData)
+        })
+        .catch((err) => {
+          setError(err instanceof Error ? err.message : 'Erro ao carregar dados')
+        })
+        .finally(() => {
+          setLoading(false)
+        })
+    } else {
+      setDemands([])
+      setPolls([])
+      setError(null)
+    }
+  }, [isOpen, cidade, fetchDemands, fetchPolls])
+
+  if (!isOpen) return null
+
+  // Ordenar lideranças por expectativa de votos
+  const liderancasOrdenadas = [...liderancas].sort((a, b) => {
+    const expectativaA = expectativaVotosCol ? normalizeNumber(a[expectativaVotosCol]) : 0
+    const expectativaB = expectativaVotosCol ? normalizeNumber(b[expectativaVotosCol]) : 0
+    return expectativaB - expectativaA
+  })
+
+  // Ordenar demandas: finalizadas primeiro, depois em andamento, depois demais
+  const demandsOrdenadas = [...demands].sort((a, b) => {
+    const statusA = (a.status || '').toLowerCase().trim()
+    const statusB = (b.status || '').toLowerCase().trim()
+    
+    const isFinalizadaA = statusA.includes('resolvido') || statusA.includes('concluído') || statusA.includes('concluido') || statusA.includes('finalizado') || statusA.includes('finalizada')
+    const isFinalizadaB = statusB.includes('resolvido') || statusB.includes('concluído') || statusB.includes('concluido') || statusB.includes('finalizado') || statusB.includes('finalizada')
+    
+    const isAndamentoA = statusA.includes('andamento') || statusA.includes('progresso') || statusA.includes('em andamento')
+    const isAndamentoB = statusB.includes('andamento') || statusB.includes('progresso') || statusB.includes('em andamento')
+    
+    if (isFinalizadaA && !isFinalizadaB) return -1
+    if (!isFinalizadaA && isFinalizadaB) return 1
+    if (isAndamentoA && !isAndamentoB) return -1
+    if (!isAndamentoA && isAndamentoB) return 1
+    
+    return 0
+  })
+
+  // Calcular totais
+  const totalExpectativa = liderancas.reduce((sum, lider) => {
+    return sum + (expectativaVotosCol ? normalizeNumber(lider[expectativaVotosCol]) : 0)
+  }, 0)
+
+  // Obter eleitorado e calcular votos proporcionais se houver pesquisa
+  const eleitorado = getEleitoradoByCity(cidade)
+  const ultimaPesquisa = polls.length > 0 ? polls.sort((a, b) => new Date(b.data).getTime() - new Date(a.data).getTime())[0] : null
+  const votosProporcionais = eleitorado && ultimaPesquisa ? Math.round((ultimaPesquisa.intencao / 100) * eleitorado) : null
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div className="bg-surface rounded-xl border border-border w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
+        {/* Header */}
+        <div className="flex items-center justify-between p-6 border-b border-border">
+          <div>
+            <h2 className="text-xl font-semibold text-text-strong">Briefing Executivo</h2>
+            <p className="text-sm text-text-muted mt-1">{cidade}</p>
+          </div>
+          <button
+            onClick={onClose}
+            className="p-1.5 rounded-lg hover:bg-background transition-colors"
+          >
+            <X className="w-5 h-5 text-text-muted" />
+          </button>
+        </div>
+
+        {/* Content */}
+        <div className="flex-1 overflow-y-auto p-6 space-y-6">
+          {loading ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="w-6 h-6 text-primary animate-spin" />
+              <span className="ml-2 text-sm text-text-muted">Carregando dados...</span>
+            </div>
+          ) : error ? (
+            <div className="p-4 rounded-xl border border-status-error/30 bg-status-error/10">
+              <p className="text-sm text-status-error">{error}</p>
+            </div>
+          ) : (
+            <>
+              {/* Lideranças */}
+              <section>
+                <div className="flex items-center gap-2 mb-4">
+                  <Users className="w-5 h-5 text-primary" />
+                  <h3 className="text-lg font-semibold text-text-strong">Lideranças e Expectativa de Votos</h3>
+                </div>
+                {liderancasOrdenadas.length === 0 ? (
+                  <p className="text-sm text-text-muted">Nenhuma liderança encontrada</p>
+                ) : (
+                  <div className="space-y-2">
+                    {expectativaVotosCol && (
+                      <div className="p-3 rounded-lg bg-primary-soft border border-primary/20 mb-4">
+                        <p className="text-sm text-text-muted">Total de Expectativa de Votos</p>
+                        <p className="text-2xl font-bold text-primary">
+                          {Math.round(totalExpectativa).toLocaleString('pt-BR')}
+                        </p>
+                      </div>
+                    )}
+                    <div className="space-y-2">
+                      {liderancasOrdenadas.map((lider, idx) => {
+                        const expectativa = expectativaVotosCol ? normalizeNumber(lider[expectativaVotosCol]) : 0
+                        const nome = nomeCol ? (lider[nomeCol] || 'Sem nome') : 'Sem nome'
+                        
+                        return (
+                          <div key={idx} className="p-3 rounded-lg border border-border hover:bg-background/50 transition-colors">
+                            <div className="flex items-center justify-between">
+                              <div className="flex-1">
+                                <p className="text-sm font-medium text-text-strong">{nome}</p>
+                                {lider.funcao && (
+                                  <p className="text-xs text-text-muted mt-0.5">{lider.funcao}</p>
+                                )}
+                              </div>
+                              {expectativa > 0 && (
+                                <div className="text-right">
+                                  <p className="text-sm font-semibold text-primary">
+                                    {Math.round(expectativa).toLocaleString('pt-BR')} votos
+                                  </p>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </div>
+                )}
+              </section>
+
+              {/* Demandas */}
+              <section>
+                <div className="flex items-center gap-2 mb-4">
+                  <FileText className="w-5 h-5 text-primary" />
+                  <h3 className="text-lg font-semibold text-text-strong">Demandas por Status</h3>
+                </div>
+                {demandsOrdenadas.length === 0 ? (
+                  <p className="text-sm text-text-muted">Nenhuma demanda encontrada</p>
+                ) : (
+                  <div className="space-y-2">
+                    {demandsOrdenadas.map((demand, idx) => {
+                      const status = demand.status || 'Sem status'
+                      const statusLower = status.toLowerCase().trim()
+                      const isFinalizada = statusLower.includes('resolvido') || statusLower.includes('concluído') || statusLower.includes('concluido') || statusLower.includes('finalizado') || statusLower.includes('finalizada')
+                      const isAndamento = statusLower.includes('andamento') || statusLower.includes('progresso') || statusLower.includes('em andamento')
+                      
+                      return (
+                        <div key={idx} className="p-3 rounded-lg border border-border hover:bg-background/50 transition-colors">
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2 mb-1">
+                                {isFinalizada ? (
+                                  <CheckCircle className="w-4 h-4 text-status-success" />
+                                ) : isAndamento ? (
+                                  <Clock className="w-4 h-4 text-status-warning" />
+                                ) : (
+                                  <AlertCircle className="w-4 h-4 text-text-muted" />
+                                )}
+                                <p className="text-sm font-medium text-text-strong">{demand.title}</p>
+                              </div>
+                              {demand.description && (
+                                <p className="text-xs text-text-muted mt-1 line-clamp-2">{demand.description}</p>
+                              )}
+                              <div className="flex items-center gap-3 mt-2">
+                                <span className={`text-xs px-2 py-0.5 rounded ${
+                                  isFinalizada ? 'bg-status-success/10 text-status-success' :
+                                  isAndamento ? 'bg-status-warning/10 text-status-warning' :
+                                  'bg-text-muted/10 text-text-muted'
+                                }`}>
+                                  {status}
+                                </span>
+                                {demand.lideranca && (
+                                  <span className="text-xs text-text-muted">{demand.lideranca}</span>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                )}
+              </section>
+
+              {/* Pesquisas de Intenção de Voto */}
+              {polls.length > 0 && (
+                <section>
+                  <div className="flex items-center gap-2 mb-4">
+                    <TrendingUp className="w-5 h-5 text-primary" />
+                    <h3 className="text-lg font-semibold text-text-strong">Pesquisas de Intenção de Voto</h3>
+                  </div>
+                  <div className="space-y-4">
+                    {polls.map((poll) => {
+                      const pollEleitorado = getEleitoradoByCity(cidade)
+                      const pollVotosProporcionais = pollEleitorado ? Math.round((poll.intencao / 100) * pollEleitorado) : null
+                      
+                      return (
+                        <div key={poll.id} className="p-4 rounded-lg border border-border bg-background/50">
+                          <div className="flex items-start justify-between mb-3">
+                            <div>
+                              <p className="text-sm font-semibold text-text-strong">{poll.instituto}</p>
+                              <p className="text-xs text-text-muted mt-0.5">
+                                {new Date(poll.data).toLocaleDateString('pt-BR')} • {poll.candidato_nome}
+                              </p>
+                            </div>
+                            <div className="text-right">
+                              <p className="text-lg font-bold text-primary">{poll.intencao.toFixed(1)}%</p>
+                              <p className="text-xs text-text-muted">Intenção</p>
+                            </div>
+                          </div>
+                          
+                          {/* Dados detalhados (como no popup) */}
+                          {pollEleitorado && pollEleitorado > 0 && (
+                            <div className="mt-3 pt-3 border-t border-border space-y-1 text-xs">
+                              <div className="flex justify-between">
+                                <span className="text-text-muted">Eleitorado:</span>
+                                <span className="font-medium text-text-strong">{pollEleitorado.toLocaleString('pt-BR')} eleitores</span>
+                              </div>
+                              {pollVotosProporcionais !== null && (
+                                <div className="flex justify-between">
+                                  <span className="text-text-muted">Votos Proporcionais:</span>
+                                  <span className="font-medium text-text-strong">
+                                    {pollVotosProporcionais.toLocaleString('pt-BR')} votos ({poll.intencao.toFixed(1)}% × {pollEleitorado.toLocaleString('pt-BR')})
+                                  </span>
+                                </div>
+                              )}
+                              <div className="flex justify-between">
+                                <span className="text-text-muted">Rejeição:</span>
+                                <span className="font-medium text-status-error">{poll.rejeicao.toFixed(1)}%</span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span className="text-text-muted">Tipo:</span>
+                                <span className="font-medium text-text-strong">
+                                  {poll.tipo === 'estimulada' ? 'Estimulada' : 'Espontânea'}
+                                </span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span className="text-text-muted">Cargo:</span>
+                                <span className="font-medium text-text-strong">
+                                  {poll.cargo === 'dep_federal' ? 'Deputado Federal' :
+                                   poll.cargo === 'dep_estadual' ? 'Deputado Estadual' :
+                                   poll.cargo === 'governador' ? 'Governador' :
+                                   poll.cargo === 'senador' ? 'Senador' :
+                                   poll.cargo === 'presidente' ? 'Presidente' : poll.cargo}
+                                </span>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )
+                    })}
+                  </div>
+                </section>
+              )}
+
+              {polls.length === 0 && (
+                <section>
+                  <div className="flex items-center gap-2 mb-4">
+                    <TrendingUp className="w-5 h-5 text-text-muted" />
+                    <h3 className="text-lg font-semibold text-text-muted">Pesquisas de Intenção de Voto</h3>
+                  </div>
+                  <p className="text-sm text-text-muted">Nenhuma pesquisa encontrada para esta cidade</p>
+                </section>
+              )}
+            </>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div className="p-4 border-t border-border bg-background">
+          <button
+            onClick={onClose}
+            className="w-full px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors"
+          >
+            Fechar
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
