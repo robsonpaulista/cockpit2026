@@ -215,6 +215,9 @@ export function ExecutiveBriefingModal({
     try {
       const { default: html2canvas } = await import('html2canvas')
       
+      // Aguardar um pouco para garantir que o conteúdo está renderizado
+      await new Promise(resolve => setTimeout(resolve, 100))
+      
       // Configurações para captura completa do conteúdo
       const canvas = await html2canvas(contentRef.current, {
         scale: 1,
@@ -227,7 +230,10 @@ export function ExecutiveBriefingModal({
         windowHeight: contentRef.current.scrollHeight,
       })
 
-      const imgData = canvas.toDataURL('image/png', 0.95)
+      if (!canvas || canvas.width === 0 || canvas.height === 0) {
+        throw new Error('Canvas inválido')
+      }
+
       const pdf = new jsPDF('p', 'mm', 'a4')
       const pdfWidth = pdf.internal.pageSize.getWidth()
       const pdfHeight = pdf.internal.pageSize.getHeight()
@@ -244,27 +250,22 @@ export function ExecutiveBriefingModal({
       const imgScaledHeight = imgHeight * ratio
 
       // Adicionar título na primeira página
-      const titleHeight = 15
+      const titleHeight = 18
       pdf.setFontSize(14)
       pdf.text('Briefing Executivo', pdfWidth / 2, 10, { align: 'center' })
       pdf.setFontSize(9)
       pdf.text(cidade, pdfWidth / 2, 16, { align: 'center' })
       
-      // Calcular altura disponível para conteúdo (após título)
-      const availableHeight = pdfHeight - titleHeight - margin
-      
       // Adicionar imagem em múltiplas páginas se necessário
-      const pageContentHeight = pdfHeight - titleHeight - margin
       let currentY = 0
       let pageNumber = 0
+      let yPosition = titleHeight + 2
 
       while (currentY < imgScaledHeight) {
         // Adicionar página se não for a primeira
         if (pageNumber > 0) {
           pdf.addPage()
           yPosition = margin
-        } else {
-          yPosition = titleHeight + 2
         }
 
         // Calcular altura disponível nesta página
@@ -279,27 +280,52 @@ export function ExecutiveBriefingModal({
         const sourceY = Math.floor((currentY / imgScaledHeight) * imgHeight)
         const sourceHeight = Math.ceil((heightToAdd / imgScaledHeight) * imgHeight)
 
+        // Limitar sourceHeight para não ultrapassar o tamanho do canvas
+        const actualSourceHeight = Math.min(sourceHeight, imgHeight - sourceY)
+
+        if (actualSourceHeight <= 0) break
+
         // Criar canvas temporário para esta página
         const tempCanvas = document.createElement('canvas')
         tempCanvas.width = imgWidth
-        tempCanvas.height = sourceHeight
+        tempCanvas.height = actualSourceHeight
         const tempCtx = tempCanvas.getContext('2d')
         
-        if (tempCtx) {
-          // Copiar parte da imagem original para o canvas temporário
-          tempCtx.drawImage(canvas, 0, sourceY, imgWidth, sourceHeight, 0, 0, imgWidth, sourceHeight)
+        if (!tempCtx) {
+          throw new Error('Não foi possível criar contexto do canvas')
+        }
+
+        // Copiar parte da imagem original para o canvas temporário
+        try {
+          tempCtx.drawImage(canvas, 0, sourceY, imgWidth, actualSourceHeight, 0, 0, imgWidth, actualSourceHeight)
           const pageImgData = tempCanvas.toDataURL('image/png', 0.95)
-          pdf.addImage(pageImgData, 'PNG', margin, yPosition, imgScaledWidth, heightToAdd)
+          
+          if (!pageImgData || pageImgData === 'data:,') {
+            throw new Error('Erro ao gerar imagem da página')
+          }
+
+          // Ajustar altura escalada baseada na altura real da fonte
+          const actualScaledHeight = (actualSourceHeight / imgHeight) * imgScaledHeight
+          pdf.addImage(pageImgData, 'PNG', margin, yPosition, imgScaledWidth, actualScaledHeight)
+        } catch (drawError) {
+          console.error('Erro ao desenhar no canvas:', drawError)
+          throw drawError
         }
 
         currentY += heightToAdd
         pageNumber++
+        
+        // Proteção contra loop infinito
+        if (pageNumber > 100) {
+          throw new Error('Muitas páginas geradas. Interrompendo.')
+        }
       }
 
       pdf.save(`Briefing-Executivo-${cidade.replace(/\s+/g, '-')}-${new Date().toISOString().split('T')[0]}.pdf`)
     } catch (err) {
       console.error('Erro ao exportar PDF:', err)
-      alert('Erro ao exportar PDF. Tente novamente.')
+      const errorMessage = err instanceof Error ? err.message : 'Erro desconhecido'
+      alert(`Erro ao exportar PDF: ${errorMessage}. Tente novamente.`)
     } finally {
       setExporting(false)
     }
