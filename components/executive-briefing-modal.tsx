@@ -216,12 +216,17 @@ export function ExecutiveBriefingModal({
       const { default: html2canvas } = await import('html2canvas')
       
       // Aguardar um pouco para garantir que o conteúdo está renderizado
-      await new Promise(resolve => setTimeout(resolve, 200))
+      await new Promise(resolve => setTimeout(resolve, 300))
       
-      // Forçar scroll para o topo para capturar todo o conteúdo
-      if (contentRef.current) {
-        contentRef.current.scrollTop = 0
+      // Garantir que o container está no topo e visível
+      if (!contentRef.current) {
+        throw new Error('Elemento de conteúdo não encontrado')
       }
+      
+      contentRef.current.scrollTop = 0
+      // Garantir que não há overflow escondido
+      const originalOverflow = contentRef.current.style.overflow
+      contentRef.current.style.overflow = 'visible'
       
       await new Promise(resolve => setTimeout(resolve, 100))
       
@@ -237,7 +242,22 @@ export function ExecutiveBriefingModal({
         windowHeight: contentRef.current.scrollHeight,
         scrollX: 0,
         scrollY: 0,
+        onclone: (clonedDoc) => {
+          // Garantir que todas as seções estão visíveis no clone
+          const clonedContent = clonedDoc.body.querySelector('[ref]') || clonedDoc.body
+          if (clonedContent) {
+            const clonedElements = clonedContent.querySelectorAll('section')
+            clonedElements.forEach((el) => {
+              (el as HTMLElement).style.display = 'block'
+              (el as HTMLElement).style.visibility = 'visible'
+              (el as HTMLElement).style.opacity = '1'
+            })
+          }
+        },
       })
+      
+      // Restaurar overflow original
+      contentRef.current.style.overflow = originalOverflow
 
       if (!canvas || canvas.width === 0 || canvas.height === 0) {
         throw new Error('Canvas inválido')
