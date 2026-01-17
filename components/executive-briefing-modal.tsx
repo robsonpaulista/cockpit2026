@@ -243,14 +243,36 @@ export function ExecutiveBriefingModal({
         scrollX: 0,
         scrollY: 0,
         onclone: (clonedDoc) => {
-          // Garantir que todas as seções estão visíveis no clone
-          const clonedContent = clonedDoc.body.querySelector('[ref]') || clonedDoc.body
+          // Garantir que todas as seções e tabelas estão visíveis no clone
+          const clonedContent = clonedDoc.body
           if (clonedContent) {
-            const clonedElements = clonedContent.querySelectorAll('section')
-            clonedElements.forEach((el) => {
-              (el as HTMLElement).style.display = 'block'
-              (el as HTMLElement).style.visibility = 'visible'
-              (el as HTMLElement).style.opacity = '1'
+            // Garantir que todas as seções estão visíveis
+            const clonedSections = clonedContent.querySelectorAll('section')
+            clonedSections.forEach((el) => {
+              const htmlEl = el as HTMLElement
+              htmlEl.style.display = 'block'
+              htmlEl.style.visibility = 'visible'
+              htmlEl.style.opacity = '1'
+              htmlEl.style.height = 'auto'
+              htmlEl.style.maxHeight = 'none'
+              htmlEl.style.overflow = 'visible'
+            })
+            
+            // Garantir que todas as tabelas estão visíveis
+            const clonedTables = clonedContent.querySelectorAll('table')
+            clonedTables.forEach((el) => {
+              const htmlEl = el as HTMLElement
+              htmlEl.style.display = 'table'
+              htmlEl.style.visibility = 'visible'
+              htmlEl.style.opacity = '1'
+            })
+            
+            // Garantir que divs com overflow estão visíveis
+            const clonedDivs = clonedContent.querySelectorAll('div[style*="overflow"]')
+            clonedDivs.forEach((el) => {
+              const htmlEl = el as HTMLElement
+              htmlEl.style.overflow = 'visible'
+              htmlEl.style.maxHeight = 'none'
             })
           }
         },
