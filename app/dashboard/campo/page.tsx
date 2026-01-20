@@ -105,32 +105,24 @@ export default function CampoPage() {
   }
 
   const handleCheckin = async (agendaId: string) => {
-    // Solicitar permissão de geolocalização
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        async (position) => {
-          try {
-            const response = await fetch(`/api/campo/visits/${agendaId}/checkin`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                latitude: position.coords.latitude,
-                longitude: position.coords.longitude,
-              }),
-            })
+    try {
+      const response = await fetch(`/api/campo/visits/${agendaId}/checkin`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          // Latitude e longitude são opcionais
+          // Não solicitamos localização pois nem sempre a pessoa estará em campo
+        }),
+      })
 
-            if (response.ok) {
-              fetchAgendas()
-            }
-          } catch (error) {
-            console.error('Erro ao fazer check-in:', error)
-          }
-        },
-        (error) => {
-          console.error('Erro ao obter localização:', error)
-          alert('Não foi possível obter sua localização')
-        }
-      )
+      if (response.ok) {
+        fetchAgendas()
+      } else {
+        const errorData = await response.json()
+        console.error('Erro ao fazer check-in:', errorData)
+      }
+    } catch (error) {
+      console.error('Erro ao fazer check-in:', error)
     }
   }
 

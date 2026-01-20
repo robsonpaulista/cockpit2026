@@ -28,15 +28,28 @@ export async function POST(
 
     let visitData
 
+    // Preparar dados de atualização (latitude e longitude são opcionais)
+    const updateData: {
+      checkin_time: string
+      latitude?: number | null
+      longitude?: number | null
+    } = {
+      checkin_time: new Date().toISOString(),
+    }
+
+    // Incluir coordenadas apenas se fornecidas
+    if (latitude !== undefined && latitude !== null) {
+      updateData.latitude = latitude
+    }
+    if (longitude !== undefined && longitude !== null) {
+      updateData.longitude = longitude
+    }
+
     if (existingVisit) {
       // Atualizar visita existente
       const { data, error } = await supabase
         .from('visits')
-        .update({
-          checkin_time: new Date().toISOString(),
-          latitude,
-          longitude,
-        })
+        .update(updateData)
         .eq('id', existingVisit.id)
         .select()
         .single()
@@ -48,14 +61,27 @@ export async function POST(
       visitData = data
     } else {
       // Criar nova visita
+      const insertData: {
+        agenda_id: string
+        checkin_time: string
+        latitude?: number | null
+        longitude?: number | null
+      } = {
+        agenda_id: params.id,
+        checkin_time: new Date().toISOString(),
+      }
+
+      // Incluir coordenadas apenas se fornecidas
+      if (latitude !== undefined && latitude !== null) {
+        insertData.latitude = latitude
+      }
+      if (longitude !== undefined && longitude !== null) {
+        insertData.longitude = longitude
+      }
+
       const { data, error } = await supabase
         .from('visits')
-        .insert({
-          agenda_id: params.id,
-          checkin_time: new Date().toISOString(),
-          latitude,
-          longitude,
-        })
+        .insert(insertData)
         .select()
         .single()
 
