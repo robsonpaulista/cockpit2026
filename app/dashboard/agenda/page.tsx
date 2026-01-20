@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback, useMemo } from 'react'
 import type React from 'react'
 import { Header } from '@/components/header'
 import { GoogleCalendarConfigModal } from '@/components/google-calendar-config-modal'
-import { Calendar, CalendarDays, Clock, MapPin, Users, Settings, Loader2, Maximize2, X, CheckCircle2, XCircle, AlertCircle } from 'lucide-react'
+import { Calendar, CalendarDays, Clock, MapPin, Users, Settings, Loader2, Maximize2, X, CheckCircle2, XCircle, AlertCircle, RefreshCw } from 'lucide-react'
 import { useAuth } from '@/hooks/use-auth'
 
 interface CalendarConfig {
@@ -47,6 +47,7 @@ export default function AgendaPage() {
   const [selectedDate, setSelectedDate] = useState<Date | null>(null)
   const [attendanceStatuses, setAttendanceStatuses] = useState<Record<string, { attended: boolean; notes?: string }>>({})
   const [upcomingEventAlert, setUpcomingEventAlert] = useState<string | null>(null)
+  const [isRefreshing, setIsRefreshing] = useState(false)
 
   // Função para destacar origem no texto (ex: "(THE - PI)" ou "(BSB)")
   const highlightOriginInText = (text: string): React.ReactNode => {
@@ -104,10 +105,14 @@ export default function AgendaPage() {
     setLoading(false)
   }, [])
 
-  const fetchEvents = useCallback(async () => {
+  const fetchEvents = useCallback(async (isManual = false) => {
     if (!config) return
 
-    setLoading(true)
+    if (isManual) {
+      setIsRefreshing(true)
+    } else {
+      setLoading(true)
+    }
     setError(null)
 
     try {
@@ -133,18 +138,22 @@ export default function AgendaPage() {
     } catch (err: any) {
       setError(err.message || 'Erro ao conectar com Google Calendar')
     } finally {
-      setLoading(false)
+      if (isManual) {
+        setIsRefreshing(false)
+      } else {
+        setLoading(false)
+      }
     }
   }, [config])
 
   useEffect(() => {
     if (config) {
-      fetchEvents()
+      fetchEvents(false) // Carregamento inicial (sem loading duplicado)
       
-      // Atualização automática silenciosa a cada 30 segundos
+      // Atualização automática silenciosa a cada 30 minutos
       const interval = setInterval(() => {
-        fetchEvents()
-      }, 30000) // 30 segundos
+        fetchEvents(false) // false = atualização automática (sem loading)
+      }, 1800000) // 30 minutos (30 * 60 * 1000)
 
       return () => clearInterval(interval)
     }
@@ -225,7 +234,7 @@ export default function AgendaPage() {
   }) => {
     setConfig(newConfig)
     localStorage.setItem('google_calendar_config', JSON.stringify(newConfig))
-    fetchEvents()
+    fetchEvents(true) // Atualização manual após salvar configuração
   }
 
   const handleAttendanceChange = async (eventId: string, attended: boolean) => {
@@ -367,13 +376,26 @@ export default function AgendaPage() {
                 : 'Configure sua conexão com o Google Calendar para visualizar seus eventos'}
             </p>
           </div>
-          <button
-            onClick={() => setShowConfig(true)}
-            className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors"
-          >
-            <Settings className="w-4 h-4" />
-            {config ? 'Reconfigurar' : 'Configurar'}
-          </button>
+          <div className="flex items-center gap-2">
+            {config && (
+              <button
+                onClick={() => fetchEvents(true)}
+                disabled={isRefreshing || loading}
+                className="flex items-center gap-2 px-4 py-2 bg-surface border border-border text-text-strong rounded-lg hover:bg-background transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                title="Atualizar eventos manualmente"
+              >
+                <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+                {isRefreshing ? 'Atualizando...' : 'Atualizar'}
+              </button>
+            )}
+            <button
+              onClick={() => setShowConfig(true)}
+              className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors"
+            >
+              <Settings className="w-4 h-4" />
+              {config ? 'Reconfigurar' : 'Configurar'}
+            </button>
+          </div>
         </div>
 
         {error && (
