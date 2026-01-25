@@ -940,8 +940,8 @@ export default function Home() {
                     )
                   })()}
 
-                  {/* Mapa de Presença Interativo */}
-                  {showMapaPresenca && (() => {
+                  {/* Mapa de Presença Interativo - Oculto quando modal está aberto */}
+                  {showMapaPresenca && !analiseTerritoriosTelaCheia && (() => {
                     const presencaKpi = kpisComMedia.find(k => k.id === 'presenca')
                     let cidadesAtivas = 0
                     let totalCidades = 224
