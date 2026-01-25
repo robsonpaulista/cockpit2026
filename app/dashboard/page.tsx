@@ -950,7 +950,7 @@ export default function Home() {
                   })()}
 
                   {/* Mapa de Presença Interativo - Oculto quando modal está aberto */}
-                  {showMapaPresenca && !analiseTerritoriosTelaCheia && (() => {
+                  {showMapaPresenca && !analiseTerritoriosTelaCheia && !mapaTelaCheia && (() => {
                     const presencaKpi = kpisComMedia.find(k => k.id === 'presenca')
                     let cidadesAtivas = 0
                     let totalCidades = 224
@@ -983,6 +983,7 @@ export default function Home() {
                         <MapaPresenca
                           cidadesComPresenca={cidadesComPresencaList.length > 0 ? cidadesComPresencaList : Array.from({length: cidadesAtivas}, (_, i) => `Cidade ${i+1}`)}
                           totalCidades={totalCidades}
+                          onFullscreen={() => setMapaTelaCheia(true)}
                         />
                       </div>
                     ) : null
