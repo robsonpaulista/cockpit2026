@@ -96,9 +96,9 @@ export function Sidebar() {
           'w-64'
         )}
         style={{
-          background: 'linear-gradient(180deg, #072E66 0%, #0A3F8C 45%, #0B4FAE 100%)',
-          backgroundAttachment: 'fixed'
-        }}
+          background: 'linear-gradient(180deg, #072E66 0%, #0A3F8C 45%, #0B4FAE 100%) !important',
+          backgroundImage: 'linear-gradient(180deg, #072E66 0%, #0A3F8C 45%, #0B4FAE 100%)',
+        } as React.CSSProperties}
       >
         <div className="flex flex-col h-full">
           {/* Logo */}
