@@ -50,13 +50,13 @@ export function Header({ title, subtitle, showFilters = true }: HeaderProps) {
   const [phase, setPhase] = useState('todas')
 
   return (
-    <header className="sticky top-0 z-20 bg-surface border-b border-border">
+    <header className="sticky top-0 z-20 bg-surface border-b border-card">
       <div className="px-4 py-4 lg:px-6">
         {/* Title Section */}
         <div className="mb-4">
-          <h1 className="text-2xl lg:text-3xl font-semibold text-text-strong">{title}</h1>
+          <h1 className="text-2xl lg:text-3xl font-semibold text-primary">{title}</h1>
           {subtitle && (
-            <p className="mt-1 text-base lg:text-lg text-text-muted font-medium">{subtitle}</p>
+            <p className="mt-1 text-base lg:text-lg text-secondary font-medium">{subtitle}</p>
           )}
         </div>
 
@@ -65,11 +65,11 @@ export function Header({ title, subtitle, showFilters = true }: HeaderProps) {
         <div className="flex flex-wrap gap-3">
           {/* Período */}
           <div className="flex items-center gap-2">
-            <Calendar className="w-4 h-4 text-text-muted" />
+            <Calendar className="w-4 h-4 text-secondary" />
             <select
               value={period}
               onChange={(e) => setPeriod(e.target.value)}
-              className="px-3 py-1.5 text-sm border border-border rounded-lg bg-surface hover:border-primary transition-premium focus:outline-none focus:ring-2 focus:ring-primary-soft"
+              className="px-3 py-1.5 text-sm border border-card rounded-lg bg-surface hover:border-accent-gold transition-premium focus:outline-none focus:ring-2 focus:ring-accent-gold-soft"
             >
               {periodOptions.map((option) => (
                 <option key={option.value} value={option.value}>
@@ -81,11 +81,11 @@ export function Header({ title, subtitle, showFilters = true }: HeaderProps) {
 
           {/* Região */}
           <div className="flex items-center gap-2">
-            <MapPin className="w-4 h-4 text-text-muted" />
+            <MapPin className="w-4 h-4 text-secondary" />
             <select
               value={region}
               onChange={(e) => setRegion(e.target.value)}
-              className="px-3 py-1.5 text-sm border border-border rounded-lg bg-surface hover:border-primary transition-premium focus:outline-none focus:ring-2 focus:ring-primary-soft"
+              className="px-3 py-1.5 text-sm border border-card rounded-lg bg-surface hover:border-accent-gold transition-premium focus:outline-none focus:ring-2 focus:ring-accent-gold-soft"
             >
               {regionOptions.map((option) => (
                 <option key={option.value} value={option.value}>
@@ -97,11 +97,11 @@ export function Header({ title, subtitle, showFilters = true }: HeaderProps) {
 
           {/* Tema */}
           <div className="flex items-center gap-2">
-            <FolderOpen className="w-4 h-4 text-text-muted" />
+            <FolderOpen className="w-4 h-4 text-secondary" />
             <select
               value={theme}
               onChange={(e) => setTheme(e.target.value)}
-              className="px-3 py-1.5 text-sm border border-border rounded-lg bg-surface hover:border-primary transition-premium focus:outline-none focus:ring-2 focus:ring-primary-soft"
+              className="px-3 py-1.5 text-sm border border-card rounded-lg bg-surface hover:border-accent-gold transition-premium focus:outline-none focus:ring-2 focus:ring-accent-gold-soft"
             >
               {themeOptions.map((option) => (
                 <option key={option.value} value={option.value}>
@@ -116,7 +116,7 @@ export function Header({ title, subtitle, showFilters = true }: HeaderProps) {
             <select
               value={phase}
               onChange={(e) => setPhase(e.target.value)}
-              className="px-3 py-1.5 text-sm border border-border rounded-lg bg-surface hover:border-primary transition-premium focus:outline-none focus:ring-2 focus:ring-primary-soft"
+              className="px-3 py-1.5 text-sm border border-card rounded-lg bg-surface hover:border-accent-gold transition-premium focus:outline-none focus:ring-2 focus:ring-accent-gold-soft"
             >
               {phaseOptions.map((option) => (
                 <option key={option.value} value={option.value}>
@@ -135,7 +135,7 @@ export function Header({ title, subtitle, showFilters = true }: HeaderProps) {
                 setTheme('todos')
                 setPhase('todas')
               }}
-              className="ml-auto px-3 py-1.5 text-sm text-text-muted hover:text-primary transition-colors"
+              className="ml-auto px-3 py-1.5 text-sm text-secondary hover:text-accent-gold transition-colors"
             >
               Limpar filtros
             </button>

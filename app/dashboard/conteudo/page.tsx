@@ -43,7 +43,7 @@ import {
 } from '@/lib/instagramApi'
 
 const producao = [
-  { etapa: 'Roteiro', quantidade: 3, cor: 'bg-primary-soft border-primary/30' },
+  { etapa: 'Roteiro', quantidade: 3, cor: 'bg-accent-gold-soft border-accent-gold/30' },
   { etapa: 'Gravação', quantidade: 2, cor: 'bg-status-warning/10 border-status-warning/30' },
   { etapa: 'Edição', quantidade: 4, cor: 'bg-status-warning/10 border-status-warning/30' },
   { etapa: 'Aprovação', quantidade: 1, cor: 'bg-status-success/10 border-status-success/30' },
@@ -327,7 +327,7 @@ export default function ConteudoPage() {
     
     if (comparison.isEqual) {
       return (
-        <span className="text-xs text-text-muted" title={`Igual ao post anterior`}>
+        <span className="text-xs text-secondary" title={`Igual ao post anterior`}>
           =
         </span>
       )
@@ -645,7 +645,7 @@ export default function ConteudoPage() {
                 <button
                   onClick={handleRefresh}
                   disabled={loading}
-                  className="px-4 py-2 text-sm font-medium border border-border rounded-lg hover:bg-background transition-colors disabled:opacity-50 flex items-center gap-2"
+                  className="px-4 py-2 text-sm font-medium border border-card rounded-lg hover:bg-background transition-colors disabled:opacity-50 flex items-center gap-2"
                 >
                   <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
                   Atualizar
@@ -662,7 +662,7 @@ export default function ConteudoPage() {
           </div>
           <button
             onClick={() => setShowConfig(true)}
-            className="px-4 py-2 text-sm font-medium bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors flex items-center gap-2"
+            className="px-4 py-2 text-sm font-medium bg-accent-gold text-white rounded-lg hover:bg-accent-gold transition-colors flex items-center gap-2"
           >
             <Settings className="w-4 h-4" />
             {config ? 'Configurar Instagram' : 'Conectar Instagram'}
@@ -675,7 +675,7 @@ export default function ConteudoPage() {
             <AlertCircle className="w-5 h-5 text-status-error flex-shrink-0 mt-0.5" />
             <div className="flex-1">
               <p className="text-sm font-medium text-status-error">Erro ao carregar dados</p>
-              <p className="text-xs text-text-muted mt-1">{error}</p>
+              <p className="text-xs text-secondary mt-1">{error}</p>
             </div>
           </div>
         )}
@@ -683,18 +683,18 @@ export default function ConteudoPage() {
         {/* Visão Geral com sub-tabs */}
         <div className="space-y-6">
           <div className="mb-4">
-            <h2 className="text-xl font-semibold text-text-strong mb-2">Visão Geral</h2>
-            <p className="text-sm text-text-muted">Análise de desempenho e audiência das redes sociais</p>
+            <h2 className="text-xl font-semibold text-primary mb-2">Visão Geral</h2>
+            <p className="text-sm text-secondary">Análise de desempenho e audiência das redes sociais</p>
                       </div>
           
           {/* Sub-tabs dentro da Visão Geral */}
-          <div className="flex gap-2 border-b border-border">
+          <div className="flex gap-2 border-b border-card">
             <button
               onClick={() => setActiveSubTab('posts')}
               className={`px-4 py-2 text-sm font-medium transition-colors ${
                 activeSubTab === 'posts'
-                  ? 'text-primary border-b-2 border-primary'
-                  : 'text-text-muted hover:text-text-strong'
+                  ? 'text-accent-gold border-b-2 border-accent-gold'
+                  : 'text-secondary hover:text-primary'
               }`}
             >
               <Calendar className="inline-block w-4 h-4 mr-2" />
@@ -704,8 +704,8 @@ export default function ConteudoPage() {
               onClick={() => setActiveSubTab('audience')}
               className={`px-4 py-2 text-sm font-medium transition-colors ${
                 activeSubTab === 'audience'
-                  ? 'text-primary border-b-2 border-primary'
-                  : 'text-text-muted hover:text-text-strong'
+                  ? 'text-accent-gold border-b-2 border-accent-gold'
+                  : 'text-secondary hover:text-primary'
               }`}
             >
               <Users className="inline-block w-4 h-4 mr-2" />
@@ -715,8 +715,8 @@ export default function ConteudoPage() {
               onClick={() => setActiveSubTab('locations')}
               className={`px-4 py-2 text-sm font-medium transition-colors ${
                 activeSubTab === 'locations'
-                  ? 'text-primary border-b-2 border-primary'
-                  : 'text-text-muted hover:text-text-strong'
+                  ? 'text-accent-gold border-b-2 border-accent-gold'
+                  : 'text-secondary hover:text-primary'
               }`}
             >
               <MapPin className="inline-block w-4 h-4 mr-2" />
@@ -729,18 +729,18 @@ export default function ConteudoPage() {
             <div className="space-y-6">
               {loading && !metrics ? (
                 <div className="text-center py-12">
-                  <Loader2 className="w-8 h-8 text-primary animate-spin mx-auto mb-4" />
-                  <p className="text-text-muted">Carregando dados do Instagram...</p>
+                  <Loader2 className="w-8 h-8 text-accent-gold animate-spin mx-auto mb-4" />
+                  <p className="text-secondary">Carregando dados do Instagram...</p>
                   </div>
               ) : !isConfigured ? (
                 <div className="text-center py-12">
-                  <AlertCircle className="w-12 h-12 text-text-muted mx-auto mb-4" />
-                  <p className="text-text-muted mb-4">
+                  <AlertCircle className="w-12 h-12 text-secondary mx-auto mb-4" />
+                  <p className="text-secondary mb-4">
                     Configure suas credenciais do Instagram para visualizar os dados
                   </p>
                   <button
                     onClick={() => setShowConfig(true)}
-                    className="px-4 py-2 text-sm font-medium bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors"
+                    className="px-4 py-2 text-sm font-medium bg-accent-gold text-white rounded-lg hover:bg-accent-gold transition-colors"
                   >
                     Conectar Instagram
                   </button>
@@ -748,19 +748,19 @@ export default function ConteudoPage() {
               ) : contentStats ? (
                 <>
                   {/* Campeões por Indicador */}
-                  <div className="bg-surface rounded-2xl border border-border p-6">
+                  <div className="bg-surface rounded-2xl border border-card p-6">
                     <div className="mb-6">
-                      <h2 className="text-xl font-semibold text-text-strong mb-2 flex items-center gap-2">
-                        <BarChart4 className="w-5 h-5 text-primary" />
+                      <h2 className="text-xl font-semibold text-primary mb-2 flex items-center gap-2">
+                        <BarChart4 className="w-5 h-5 text-accent-gold" />
                         Campeões por Indicador
                       </h2>
-                      <p className="text-sm text-text-muted">
+                      <p className="text-sm text-secondary">
                         Postagens que se destacaram em cada métrica
                       </p>
                       {(overviewThemeFilter !== 'all' || overviewBoostedFilter !== 'all') && (
                         <div className="flex items-center gap-2 mt-3">
                           {overviewThemeFilter !== 'all' && (
-                            <span className="px-2 py-1 bg-primary/10 text-primary rounded text-xs font-medium">
+                            <span className="px-2 py-1 bg-accent-gold-soft text-accent-gold rounded text-xs font-medium">
                               Tema: {overviewThemeFilter}
                             </span>
                           )}
@@ -780,8 +780,8 @@ export default function ConteudoPage() {
                       if (filteredPostsForChampions.length === 0) {
                         return (
                           <div className="text-center py-8">
-                            <FileText className="h-12 w-12 text-text-muted mx-auto mb-4" />
-                            <p className="text-text-muted">
+                            <FileText className="h-12 w-12 text-secondary mx-auto mb-4" />
+                            <p className="text-secondary">
                               Nenhuma postagem encontrada para os filtros selecionados
                             </p>
                           </div>
@@ -830,12 +830,12 @@ export default function ConteudoPage() {
                                     {bestLikes.metrics.likes.toLocaleString('pt-BR')}
                                   </div>
                                 </div>
-                                <p className="text-xs text-text-muted line-clamp-2">{bestLikes.caption || 'Sem legenda'}</p>
+                                <p className="text-xs text-secondary line-clamp-2">{bestLikes.caption || 'Sem legenda'}</p>
                                 <a 
                                   href={bestLikes.url} 
                                   target="_blank" 
                                   rel="noopener noreferrer"
-                                  className="text-xs text-primary hover:underline flex items-center gap-1"
+                                  className="text-xs text-accent-gold hover:underline flex items-center gap-1"
                                 >
                                   <ExternalLink className="h-3 w-3" /> Ver postagem
                                 </a>
@@ -863,12 +863,12 @@ export default function ConteudoPage() {
                                     {bestComments.metrics.comments.toLocaleString('pt-BR')}
                                   </div>
                                 </div>
-                                <p className="text-xs text-text-muted line-clamp-2">{bestComments.caption || 'Sem legenda'}</p>
+                                <p className="text-xs text-secondary line-clamp-2">{bestComments.caption || 'Sem legenda'}</p>
                                 <a 
                                   href={bestComments.url} 
                                   target="_blank" 
                                   rel="noopener noreferrer"
-                                  className="text-xs text-primary hover:underline flex items-center gap-1"
+                                  className="text-xs text-accent-gold hover:underline flex items-center gap-1"
                                 >
                                   <ExternalLink className="h-3 w-3" /> Ver postagem
                                 </a>
@@ -896,12 +896,12 @@ export default function ConteudoPage() {
                                     {bestViews.metrics.views.toLocaleString('pt-BR')}
                                   </div>
                                 </div>
-                                <p className="text-xs text-text-muted line-clamp-2">{bestViews.caption || 'Sem legenda'}</p>
+                                <p className="text-xs text-secondary line-clamp-2">{bestViews.caption || 'Sem legenda'}</p>
                                 <a 
                                   href={bestViews.url} 
                                   target="_blank" 
                                   rel="noopener noreferrer"
-                                  className="text-xs text-primary hover:underline flex items-center gap-1"
+                                  className="text-xs text-accent-gold hover:underline flex items-center gap-1"
                                 >
                                   <ExternalLink className="h-3 w-3" /> Ver postagem
                                 </a>
@@ -929,12 +929,12 @@ export default function ConteudoPage() {
                                     {bestShares.metrics.shares.toLocaleString('pt-BR')}
                                   </div>
                                 </div>
-                                <p className="text-xs text-text-muted line-clamp-2">{bestShares.caption || 'Sem legenda'}</p>
+                                <p className="text-xs text-secondary line-clamp-2">{bestShares.caption || 'Sem legenda'}</p>
                                 <a 
                                   href={bestShares.url} 
                                   target="_blank" 
                                   rel="noopener noreferrer"
-                                  className="text-xs text-primary hover:underline flex items-center gap-1"
+                                  className="text-xs text-accent-gold hover:underline flex items-center gap-1"
                                 >
                                   <ExternalLink className="h-3 w-3" /> Ver postagem
                                 </a>
@@ -962,12 +962,12 @@ export default function ConteudoPage() {
                                     {bestSaves.metrics.saves.toLocaleString('pt-BR')}
                                   </div>
                                 </div>
-                                <p className="text-xs text-text-muted line-clamp-2">{bestSaves.caption || 'Sem legenda'}</p>
+                                <p className="text-xs text-secondary line-clamp-2">{bestSaves.caption || 'Sem legenda'}</p>
                                 <a 
                                   href={bestSaves.url} 
                                   target="_blank" 
                                   rel="noopener noreferrer"
-                                  className="text-xs text-primary hover:underline flex items-center gap-1"
+                                  className="text-xs text-accent-gold hover:underline flex items-center gap-1"
                                 >
                                   <ExternalLink className="h-3 w-3" /> Ver postagem
                                 </a>
@@ -995,12 +995,12 @@ export default function ConteudoPage() {
                                     {bestEngagement.metrics.engagement.toLocaleString('pt-BR')}
                                   </div>
                                 </div>
-                                <p className="text-xs text-text-muted line-clamp-2">{bestEngagement.caption || 'Sem legenda'}</p>
+                                <p className="text-xs text-secondary line-clamp-2">{bestEngagement.caption || 'Sem legenda'}</p>
                                 <a 
                                   href={bestEngagement.url} 
                                   target="_blank" 
                                   rel="noopener noreferrer"
-                                  className="text-xs text-primary hover:underline flex items-center gap-1"
+                                  className="text-xs text-accent-gold hover:underline flex items-center gap-1"
                                 >
                                   <ExternalLink className="h-3 w-3" /> Ver postagem
                                 </a>
@@ -1013,30 +1013,30 @@ export default function ConteudoPage() {
                   </div>
 
                   {/* Comparativo de Aceitação por Tipo de Conteúdo */}
-            <div className="bg-surface rounded-2xl border border-border p-6">
+            <div className="bg-surface rounded-2xl border border-card p-6">
                     <div className="mb-6">
-                      <h2 className="text-xl font-semibold text-text-strong mb-2 flex items-center gap-2">
-                        <BarChart4 className="w-5 h-5 text-primary" />
+                      <h2 className="text-xl font-semibold text-primary mb-2 flex items-center gap-2">
+                        <BarChart4 className="w-5 h-5 text-accent-gold" />
                         Comparativo de Aceitação por Tipo de Conteúdo
                       </h2>
-                      <p className="text-sm text-text-muted">
+                      <p className="text-sm text-secondary">
                         Análise comparativa de desempenho entre Imagens, Vídeos e Carrosséis
                       </p>
                     </div>
 
                     <div className="grid md:grid-cols-3 gap-4">
                       {/* Imagens */}
-                      <div className="border-2 border-border rounded-xl p-4 bg-surface">
+                      <div className="border-2 border-card rounded-xl p-4 bg-surface">
                         <div className="mb-4">
-                          <h3 className="text-lg font-semibold text-text-strong flex items-center gap-2 mb-1">
+                          <h3 className="text-lg font-semibold text-primary flex items-center gap-2 mb-1">
                             <Camera className="h-5 w-5 text-blue-500" />
                             Imagens
                           </h3>
-                          <p className="text-sm text-text-muted">{contentStats.image.posts} postagens</p>
+                          <p className="text-sm text-secondary">{contentStats.image.posts} postagens</p>
                         </div>
                         <div className="space-y-3">
                       <div>
-                            <p className="text-xs text-text-muted mb-2">Média por postagem</p>
+                            <p className="text-xs text-secondary mb-2">Média por postagem</p>
                             <div className="space-y-2 text-sm">
                               <div className="flex justify-between">
                                 <span className="flex items-center gap-1">
@@ -1081,7 +1081,7 @@ export default function ConteudoPage() {
                               </div>
                               <div className="flex justify-between">
                                 <span className="flex items-center gap-1">
-                                  <TrendingUp className="h-3 w-3 text-primary" />
+                                  <TrendingUp className="h-3 w-3 text-accent-gold" />
                                   Engajamento:
                                 </span>
                                 <span className="font-semibold">{contentStats.image.avgEngagement.toLocaleString('pt-BR')}</span>
@@ -1092,17 +1092,17 @@ export default function ConteudoPage() {
                     </div>
 
                       {/* Vídeos */}
-                      <div className="border-2 border-border rounded-xl p-4 bg-surface">
+                      <div className="border-2 border-card rounded-xl p-4 bg-surface">
                         <div className="mb-4">
-                          <h3 className="text-lg font-semibold text-text-strong flex items-center gap-2 mb-1">
+                          <h3 className="text-lg font-semibold text-primary flex items-center gap-2 mb-1">
                             <Camera className="h-5 w-5 text-red-500" />
                             Vídeos
                           </h3>
-                          <p className="text-sm text-text-muted">{contentStats.video.posts} postagens</p>
+                          <p className="text-sm text-secondary">{contentStats.video.posts} postagens</p>
                         </div>
                         <div className="space-y-3">
                       <div>
-                            <p className="text-xs text-text-muted mb-2">Média por postagem</p>
+                            <p className="text-xs text-secondary mb-2">Média por postagem</p>
                             <div className="space-y-2 text-sm">
                               <div className="flex justify-between">
                                 <span className="flex items-center gap-1">
@@ -1147,7 +1147,7 @@ export default function ConteudoPage() {
                               </div>
                               <div className="flex justify-between">
                                 <span className="flex items-center gap-1">
-                                  <TrendingUp className="h-3 w-3 text-primary" />
+                                  <TrendingUp className="h-3 w-3 text-accent-gold" />
                                   Engajamento:
                                 </span>
                                 <span className="font-semibold">{contentStats.video.avgEngagement.toLocaleString('pt-BR')}</span>
@@ -1158,17 +1158,17 @@ export default function ConteudoPage() {
                       </div>
 
                       {/* Carrosséis */}
-                      <div className="border-2 border-border rounded-xl p-4 bg-surface">
+                      <div className="border-2 border-card rounded-xl p-4 bg-surface">
                         <div className="mb-4">
-                          <h3 className="text-lg font-semibold text-text-strong flex items-center gap-2 mb-1">
+                          <h3 className="text-lg font-semibold text-primary flex items-center gap-2 mb-1">
                             <Camera className="h-5 w-5 text-blue-700" />
                             Carrosséis
                           </h3>
-                          <p className="text-sm text-text-muted">{contentStats.carousel.posts} postagens</p>
+                          <p className="text-sm text-secondary">{contentStats.carousel.posts} postagens</p>
                         </div>
                         <div className="space-y-3">
                           <div>
-                            <p className="text-xs text-text-muted mb-2">Média por postagem</p>
+                            <p className="text-xs text-secondary mb-2">Média por postagem</p>
                             <div className="space-y-2 text-sm">
                               <div className="flex justify-between">
                                 <span className="flex items-center gap-1">
@@ -1213,7 +1213,7 @@ export default function ConteudoPage() {
                               </div>
                               <div className="flex justify-between">
                                 <span className="flex items-center gap-1">
-                                  <TrendingUp className="h-3 w-3 text-primary" />
+                                  <TrendingUp className="h-3 w-3 text-accent-gold" />
                                   Engajamento:
                                 </span>
                                 <span className="font-semibold">{contentStats.carousel.avgEngagement.toLocaleString('pt-BR')}</span>
@@ -1236,56 +1236,56 @@ export default function ConteudoPage() {
                     const maxEngagement = bestTheme[1].avgEngagement
                     
                     return (
-                      <div className="bg-surface rounded-2xl border border-border p-6 mt-6 space-y-6">
+                      <div className="bg-surface rounded-2xl border border-card p-6 mt-6 space-y-6">
                         <div className="mb-6">
-                          <h2 className="text-xl font-semibold text-text-strong mb-2 flex items-center gap-2">
-                            <BarChart4 className="w-5 h-5 text-primary" />
+                          <h2 className="text-xl font-semibold text-primary mb-2 flex items-center gap-2">
+                            <BarChart4 className="w-5 h-5 text-accent-gold" />
                             Comparativo de Indicadores por Tema
                           </h2>
-                          <p className="text-sm text-text-muted">
+                          <p className="text-sm text-secondary">
                             Análise comparativa de desempenho entre temas de classificação
                           </p>
                         </div>
 
                         {/* KPIs Principais - Gestão à Vista */}
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                          <div className="bg-gradient-to-br from-primary/10 to-primary/5 border-2 border-primary/30 rounded-xl p-5">
+                          <div className="bg-gradient-to-br from-primary/10 to-primary/5 border-2 border-accent-gold/30 rounded-xl p-5">
                             <div className="flex items-center justify-between mb-3">
-                              <span className="text-sm font-medium text-text-strong">🏆 Tema Mais Engajado</span>
-                              <TrendingUp className="h-5 w-5 text-primary" />
+                              <span className="text-sm font-medium text-primary">🏆 Tema Mais Engajado</span>
+                              <TrendingUp className="h-5 w-5 text-accent-gold" />
                             </div>
-                            <p className="text-2xl font-bold text-primary mb-1">{bestTheme[0]}</p>
-                            <p className="text-xs text-text-muted">
+                            <p className="text-2xl font-bold text-accent-gold mb-1">{bestTheme[0]}</p>
+                            <p className="text-xs text-secondary">
                               {bestTheme[1].avgEngagement.toLocaleString('pt-BR')} engajamento médio
                             </p>
                           </div>
 
                           <div className="bg-gradient-to-br from-green-500/10 to-green-500/5 border-2 border-green-500/30 rounded-xl p-5">
                             <div className="flex items-center justify-between mb-3">
-                              <span className="text-sm font-medium text-text-strong">📊 Total Classificado</span>
+                              <span className="text-sm font-medium text-primary">📊 Total Classificado</span>
                               <FileText className="h-5 w-5 text-green-500" />
                             </div>
                             <p className="text-2xl font-bold text-green-500 mb-1">{totalPosts}</p>
-                            <p className="text-xs text-text-muted">
+                            <p className="text-xs text-secondary">
                               {sortedThemes.length} {sortedThemes.length === 1 ? 'tema' : 'temas'} diferentes
                             </p>
                           </div>
 
                           <div className="bg-gradient-to-br from-blue-500/10 to-blue-500/5 border-2 border-blue-500/30 rounded-xl p-5">
                             <div className="flex items-center justify-between mb-3">
-                              <span className="text-sm font-medium text-text-strong">📈 Engajamento Médio</span>
+                              <span className="text-sm font-medium text-primary">📈 Engajamento Médio</span>
                               <BarChart4 className="h-5 w-5 text-blue-500" />
                             </div>
                             <p className="text-2xl font-bold text-blue-500 mb-1">{Math.round(avgEngagement).toLocaleString('pt-BR')}</p>
-                            <p className="text-xs text-text-muted">
+                            <p className="text-xs text-secondary">
                               Média geral de engajamento
                             </p>
                           </div>
                         </div>
 
                         {/* Gráfico de Barras: Engajamento por Tema */}
-                        <div className="bg-surface rounded-xl border border-border p-6">
-                          <h3 className="text-lg font-semibold text-text-strong mb-4">
+                        <div className="bg-surface rounded-xl border border-card p-6">
+                          <h3 className="text-lg font-semibold text-primary mb-4">
                             Engajamento Médio por Tema
                           </h3>
               <div className="space-y-4">
@@ -1298,18 +1298,18 @@ export default function ConteudoPage() {
                                   <div className="flex items-center justify-between">
                                     <div className="flex items-center gap-2 flex-1 min-w-0">
                                       {isBest && <TrendingUp className="h-4 w-4 text-green-500 flex-shrink-0" />}
-                                      <span className={`font-medium text-sm ${isBest ? 'text-green-600' : 'text-text-strong'} truncate`}>
+                                      <span className={`font-medium text-sm ${isBest ? 'text-green-600' : 'text-primary'} truncate`}>
                                         {theme}
                                       </span>
-                                      <span className="text-xs text-text-muted ml-2">
+                                      <span className="text-xs text-secondary ml-2">
                                         ({stats.posts} {stats.posts === 1 ? 'post' : 'posts'})
                                       </span>
                                     </div>
-                                    <span className={`text-lg font-bold ml-4 ${isBest ? 'text-green-600' : 'text-primary'}`}>
+                                    <span className={`text-lg font-bold ml-4 ${isBest ? 'text-green-600' : 'text-accent-gold'}`}>
                                       {stats.avgEngagement.toLocaleString('pt-BR')}
                                     </span>
                                   </div>
-                                  <div className="relative h-8 bg-surface-secondary rounded-lg overflow-hidden border border-border">
+                                  <div className="relative h-8 bg-surface-secondary rounded-lg overflow-hidden border border-card">
                                     <div
                                       className={`h-full rounded-lg transition-all duration-500 ${
                                         isBest 
@@ -1319,7 +1319,7 @@ export default function ConteudoPage() {
                                       style={{ width: `${percentage}%` }}
                                     />
                                     <div className="absolute inset-0 flex items-center justify-center">
-                                      <span className="text-xs font-semibold text-text-strong">
+                                      <span className="text-xs font-semibold text-primary">
                                         {percentage.toFixed(0)}% do melhor tema
                                       </span>
                                     </div>
@@ -1331,27 +1331,27 @@ export default function ConteudoPage() {
                         </div>
 
                         {/* Tabela Comparativa Detalhada */}
-                        <div className="bg-surface rounded-xl border border-border overflow-hidden">
-                          <div className="p-4 border-b border-border bg-surface-secondary">
-                            <h3 className="text-lg font-semibold text-text-strong">
+                        <div className="bg-surface rounded-xl border border-card overflow-hidden">
+                          <div className="p-4 border-b border-card bg-surface-secondary">
+                            <h3 className="text-lg font-semibold text-primary">
                               Tabela Comparativa Detalhada
                             </h3>
-                            <p className="text-sm text-text-muted mt-1">
+                            <p className="text-sm text-secondary mt-1">
                               Métricas completas de cada tema classificado
                             </p>
                           </div>
                           <div className="overflow-x-auto">
                             <table className="w-full text-sm">
                               <thead>
-                                <tr className="border-b border-border bg-surface-secondary">
-                                  <th className="text-left p-4 font-semibold text-text-strong">Tema</th>
-                                  <th className="text-right p-4 font-semibold text-text-strong">Postagens</th>
-                                  <th className="text-right p-4 font-semibold text-text-strong">Curtidas (média)</th>
-                                  <th className="text-right p-4 font-semibold text-text-strong">Comentários (média)</th>
-                                  <th className="text-right p-4 font-semibold text-text-strong">Visualizações (média)</th>
-                                  <th className="text-right p-4 font-semibold text-text-strong">Compartilhamentos (média)</th>
-                                  <th className="text-right p-4 font-semibold text-text-strong">Salvamentos (média)</th>
-                                  <th className="text-right p-4 font-semibold text-text-strong">Engajamento (média)</th>
+                                <tr className="border-b border-card bg-surface-secondary">
+                                  <th className="text-left p-4 font-semibold text-primary">Tema</th>
+                                  <th className="text-right p-4 font-semibold text-primary">Postagens</th>
+                                  <th className="text-right p-4 font-semibold text-primary">Curtidas (média)</th>
+                                  <th className="text-right p-4 font-semibold text-primary">Comentários (média)</th>
+                                  <th className="text-right p-4 font-semibold text-primary">Visualizações (média)</th>
+                                  <th className="text-right p-4 font-semibold text-primary">Compartilhamentos (média)</th>
+                                  <th className="text-right p-4 font-semibold text-primary">Salvamentos (média)</th>
+                                  <th className="text-right p-4 font-semibold text-primary">Engajamento (média)</th>
                                 </tr>
                               </thead>
                               <tbody>
@@ -1360,32 +1360,32 @@ export default function ConteudoPage() {
                                   return (
                                     <tr 
                                       key={theme} 
-                                      className={`border-b border-border hover:bg-surface-secondary transition-colors ${
+                                      className={`border-b border-card hover:bg-surface-secondary transition-colors ${
                                         isBest ? 'bg-green-500/5' : ''
                                       }`}
                                     >
                                       <td className="p-4 font-medium">
                                         <div className="flex items-center gap-2">
                                           {isBest && <TrendingUp className="h-4 w-4 text-green-500" />}
-                                          <span className={isBest ? 'text-green-600 font-semibold' : 'text-text-strong'}>
+                                          <span className={isBest ? 'text-green-600 font-semibold' : 'text-primary'}>
                                             {theme}
                                           </span>
                                         </div>
                                       </td>
-                                      <td className="text-right p-4 text-text-strong">{stats.posts}</td>
-                                      <td className="text-right p-4 text-text-strong">
+                                      <td className="text-right p-4 text-primary">{stats.posts}</td>
+                                      <td className="text-right p-4 text-primary">
                                         <div className="flex items-center justify-end gap-2">
                                           <Heart className="h-3 w-3 text-red-500" />
                                           {stats.avgLikes.toLocaleString('pt-BR')}
                                         </div>
                                       </td>
-                                      <td className="text-right p-4 text-text-strong">
+                                      <td className="text-right p-4 text-primary">
                                         <div className="flex items-center justify-end gap-2">
                                           <MessageCircle className="h-3 w-3 text-blue-500" />
                                           {stats.avgComments.toLocaleString('pt-BR')}
                                         </div>
                                       </td>
-                                      <td className="text-right p-4 text-text-muted">
+                                      <td className="text-right p-4 text-secondary">
                                         {stats.avgViews > 0 ? (
                                           <div className="flex items-center justify-end gap-2">
                                             <Eye className="h-3 w-3 text-blue-500" />
@@ -1393,7 +1393,7 @@ export default function ConteudoPage() {
                                           </div>
                                         ) : 'N/A'}
                                       </td>
-                                      <td className="text-right p-4 text-text-muted">
+                                      <td className="text-right p-4 text-secondary">
                                         {stats.avgShares > 0 ? (
                                           <div className="flex items-center justify-end gap-2">
                                             <Share2 className="h-3 w-3 text-green-500" />
@@ -1401,7 +1401,7 @@ export default function ConteudoPage() {
                                           </div>
                                         ) : 'N/A'}
                                       </td>
-                                      <td className="text-right p-4 text-text-muted">
+                                      <td className="text-right p-4 text-secondary">
                                         {stats.avgSaves > 0 ? (
                                           <div className="flex items-center justify-end gap-2">
                                             <Download className="h-3 w-3 text-orange-500" />
@@ -1409,7 +1409,7 @@ export default function ConteudoPage() {
                                           </div>
                                         ) : 'N/A'}
                                       </td>
-                                      <td className={`text-right p-4 font-bold ${isBest ? 'text-green-600' : 'text-primary'}`}>
+                                      <td className={`text-right p-4 font-bold ${isBest ? 'text-green-600' : 'text-accent-gold'}`}>
                                         {stats.avgEngagement.toLocaleString('pt-BR')}
                                       </td>
                                     </tr>
@@ -1421,11 +1421,11 @@ export default function ConteudoPage() {
                         </div>
 
                         {/* Comparativo Visual: Curtidas vs Comentários */}
-                        <div className="bg-surface rounded-xl border border-border p-6">
-                          <h3 className="text-lg font-semibold text-text-strong mb-4">
+                        <div className="bg-surface rounded-xl border border-card p-6">
+                          <h3 className="text-lg font-semibold text-primary mb-4">
                             Comparativo Visual: Curtidas vs Comentários
                           </h3>
-                          <p className="text-sm text-text-muted mb-6">
+                          <p className="text-sm text-secondary mb-6">
                             Análise comparativa entre interações por tema
                           </p>
                           <div className="space-y-6">
@@ -1438,8 +1438,8 @@ export default function ConteudoPage() {
                               return (
                                 <div key={theme} className="space-y-3">
                                   <div className="flex items-center justify-between">
-                                    <span className="font-medium text-text-strong">{theme}</span>
-                                    <div className="flex items-center gap-4 text-xs text-text-muted">
+                                    <span className="font-medium text-primary">{theme}</span>
+                                    <div className="flex items-center gap-4 text-xs text-secondary">
                                       <span className="flex items-center gap-1">
                                         <Heart className="h-3 w-3 text-red-500" />
                                         {stats.avgLikes.toLocaleString('pt-BR')}
@@ -1453,15 +1453,15 @@ export default function ConteudoPage() {
                                   <div className="space-y-2">
                       <div>
                                       <div className="flex items-center justify-between mb-1">
-                                        <span className="text-xs text-text-muted flex items-center gap-1">
+                                        <span className="text-xs text-secondary flex items-center gap-1">
                                           <Heart className="h-3 w-3 text-red-500" />
                                           Curtidas
                                         </span>
-                                        <span className="text-xs font-semibold text-text-strong">
+                                        <span className="text-xs font-semibold text-primary">
                                           {stats.avgLikes.toLocaleString('pt-BR')}
                                         </span>
                         </div>
-                                      <div className="h-4 bg-surface-secondary rounded-full overflow-hidden border border-border">
+                                      <div className="h-4 bg-surface-secondary rounded-full overflow-hidden border border-card">
                                         <div
                                           className="h-full bg-gradient-to-r from-red-500 to-red-600 rounded-full transition-all duration-500"
                                           style={{ width: `${likesPercentage}%` }}
@@ -1470,15 +1470,15 @@ export default function ConteudoPage() {
                                     </div>
                                     <div>
                                       <div className="flex items-center justify-between mb-1">
-                                        <span className="text-xs text-text-muted flex items-center gap-1">
+                                        <span className="text-xs text-secondary flex items-center gap-1">
                                           <MessageCircle className="h-3 w-3 text-blue-500" />
                                           Comentários
                         </span>
-                                        <span className="text-xs font-semibold text-text-strong">
+                                        <span className="text-xs font-semibold text-primary">
                                           {stats.avgComments.toLocaleString('pt-BR')}
                                         </span>
                                       </div>
-                                      <div className="h-4 bg-surface-secondary rounded-full overflow-hidden border border-border">
+                                      <div className="h-4 bg-surface-secondary rounded-full overflow-hidden border border-card">
                                         <div
                                           className="h-full bg-gradient-to-r from-blue-500 to-blue-600 rounded-full transition-all duration-500"
                                           style={{ width: `${commentsPercentage}%` }}
@@ -1497,8 +1497,8 @@ export default function ConteudoPage() {
                 </>
               ) : (
                 <div className="text-center py-12">
-                  <FileText className="w-12 h-12 text-text-muted mx-auto mb-4" />
-                  <p className="text-text-muted">
+                  <FileText className="w-12 h-12 text-secondary mx-auto mb-4" />
+                  <p className="text-secondary">
                     Nenhum dado disponível. Classifique algumas postagens para ver os comparativos.
                         </p>
                       </div>
@@ -1511,18 +1511,18 @@ export default function ConteudoPage() {
             <div className="space-y-6">
               {loading && !metrics ? (
                 <div className="text-center py-12">
-                  <Loader2 className="w-8 h-8 text-primary animate-spin mx-auto mb-4" />
-                  <p className="text-text-muted">Carregando dados do Instagram...</p>
+                  <Loader2 className="w-8 h-8 text-accent-gold animate-spin mx-auto mb-4" />
+                  <p className="text-secondary">Carregando dados do Instagram...</p>
                 </div>
               ) : !isConfigured ? (
                 <div className="text-center py-12">
-                  <AlertCircle className="w-12 h-12 text-text-muted mx-auto mb-4" />
-                  <p className="text-text-muted mb-4">
+                  <AlertCircle className="w-12 h-12 text-secondary mx-auto mb-4" />
+                  <p className="text-secondary mb-4">
                     Configure suas credenciais do Instagram para visualizar os dados
                   </p>
                   <button
                     onClick={() => setShowConfig(true)}
-                    className="px-4 py-2 text-sm font-medium bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors"
+                    className="px-4 py-2 text-sm font-medium bg-accent-gold text-white rounded-lg hover:bg-accent-gold transition-colors"
                   >
                     Conectar Instagram
                   </button>
@@ -1530,21 +1530,21 @@ export default function ConteudoPage() {
               ) : (
                 <>
               {/* Card de Evolução de Seguidores e Métricas */}
-              <div className="bg-surface rounded-2xl border border-border p-6">
+              <div className="bg-surface rounded-2xl border border-card p-6">
                 <div className="flex items-start justify-between mb-6">
                   <div>
-                    <h3 className="text-lg font-semibold text-text-strong mb-1 flex items-center gap-2">
-                      <TrendingUp className="w-5 h-5 text-primary" />
+                    <h3 className="text-lg font-semibold text-primary mb-1 flex items-center gap-2">
+                      <TrendingUp className="w-5 h-5 text-accent-gold" />
                       Evolução de Seguidores & Métricas
                     </h3>
-                    <p className="text-sm text-text-muted">
+                    <p className="text-sm text-secondary">
                       Acompanhe o crescimento da sua audiência e visitas ao perfil ao longo do tempo
                     </p>
                   </div>
                   <button 
                     onClick={loadMetricsHistory}
                     disabled={loadingHistory}
-                    className="px-4 py-2 text-sm font-medium border border-border rounded-lg hover:bg-background transition-colors flex items-center gap-2"
+                    className="px-4 py-2 text-sm font-medium border border-card rounded-lg hover:bg-background transition-colors flex items-center gap-2"
                   >
                     {loadingHistory ? (
                       <Loader2 className="w-4 h-4 animate-spin" />
@@ -1558,12 +1558,12 @@ export default function ConteudoPage() {
                 {/* Cards de Resumo */}
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
                   {/* Seguidores Atuais */}
-                  <div className="bg-gradient-to-br from-primary/10 to-primary/5 rounded-xl border border-primary/20 p-4">
+                  <div className="bg-gradient-to-br from-primary/10 to-primary/5 rounded-xl border border-accent-gold/20 p-4">
                     <div className="flex items-center gap-2 mb-2">
-                      <Users className="w-4 h-4 text-primary" />
-                      <span className="text-xs font-medium text-primary uppercase tracking-wide">Seguidores</span>
+                      <Users className="w-4 h-4 text-accent-gold" />
+                      <span className="text-xs font-medium text-accent-gold uppercase tracking-wide">Seguidores</span>
                     </div>
-                    <p className="text-2xl font-bold text-text-strong">
+                    <p className="text-2xl font-bold text-primary">
                       {metrics?.followers?.total?.toLocaleString('pt-BR') || '0'}
                     </p>
                     {metricsHistory?.summary && metricsHistory.summary.growth !== 0 && (
@@ -1584,11 +1584,11 @@ export default function ConteudoPage() {
                       <Eye className="w-4 h-4 text-indigo-500" />
                       <span className="text-xs font-medium text-indigo-500 uppercase tracking-wide">Visitas ao Perfil</span>
                     </div>
-                    <p className="text-2xl font-bold text-text-strong">
+                    <p className="text-2xl font-bold text-primary">
                       {(metrics?.insights?.profileViews || 0).toLocaleString('pt-BR')}
                     </p>
                     {metricsHistory?.summary && metricsHistory.summary.totalProfileViews > 0 && (
-                      <p className="text-xs mt-1 text-text-muted">
+                      <p className="text-xs mt-1 text-secondary">
                         {metricsHistory.summary.totalProfileViews.toLocaleString('pt-BR')} no período
                       </p>
                     )}
@@ -1600,10 +1600,10 @@ export default function ConteudoPage() {
                       <Activity className="w-4 h-4 text-cyan-500" />
                       <span className="text-xs font-medium text-cyan-500 uppercase tracking-wide">Alcance</span>
                     </div>
-                    <p className="text-2xl font-bold text-text-strong">
+                    <p className="text-2xl font-bold text-primary">
                       {(metrics?.insights?.reach || 0).toLocaleString('pt-BR')}
                     </p>
-                    <p className="text-xs mt-1 text-text-muted">Contas únicas alcançadas</p>
+                    <p className="text-xs mt-1 text-secondary">Contas únicas alcançadas</p>
                   </div>
 
                   {/* Cliques no Site */}
@@ -1612,17 +1612,17 @@ export default function ConteudoPage() {
                       <ExternalLink className="w-4 h-4 text-amber-500" />
                       <span className="text-xs font-medium text-amber-500 uppercase tracking-wide">Cliques no Link</span>
                     </div>
-                    <p className="text-2xl font-bold text-text-strong">
+                    <p className="text-2xl font-bold text-primary">
                       {(metrics?.insights?.websiteClicks || 0).toLocaleString('pt-BR')}
                     </p>
-                    <p className="text-xs mt-1 text-text-muted">Cliques no link da bio</p>
+                    <p className="text-xs mt-1 text-secondary">Cliques no link da bio</p>
                   </div>
                 </div>
 
                 {/* Histórico de Evolução */}
                 {metricsHistory?.history && metricsHistory.history.length > 0 && (
-                  <div className="border-t border-border pt-6">
-                    <h4 className="text-sm font-semibold text-text-strong mb-4">Histórico de Seguidores</h4>
+                  <div className="border-t border-card pt-6">
+                    <h4 className="text-sm font-semibold text-primary mb-4">Histórico de Seguidores</h4>
                     <div className="overflow-x-auto">
                       <div className="flex gap-2 min-w-max pb-2">
                         {metricsHistory.history.slice(-14).map((snapshot, index, arr) => {
@@ -1632,12 +1632,12 @@ export default function ConteudoPage() {
                           return (
                             <div 
                               key={snapshot.id} 
-                              className="flex flex-col items-center p-3 bg-background rounded-lg border border-border min-w-[80px]"
+                              className="flex flex-col items-center p-3 bg-background rounded-lg border border-card min-w-[80px]"
                             >
-                              <span className="text-xs text-text-muted mb-1">
+                              <span className="text-xs text-secondary mb-1">
                                 {new Date(snapshot.snapshot_date).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}
                               </span>
-                              <span className="text-sm font-semibold text-text-strong">
+                              <span className="text-sm font-semibold text-primary">
                                 {snapshot.followers_count.toLocaleString('pt-BR')}
                               </span>
                               {diff !== 0 && (
@@ -1656,7 +1656,7 @@ export default function ConteudoPage() {
                       </div>
                     </div>
                     {metricsHistory.history.length === 0 && (
-                      <div className="text-center py-6 text-text-muted">
+                      <div className="text-center py-6 text-secondary">
                         <BarChart4 className="w-8 h-8 mx-auto mb-2 opacity-50" />
                         <p className="text-sm">Dados de histórico serão coletados automaticamente</p>
                         <p className="text-xs mt-1">Volte amanhã para ver a evolução</p>
@@ -1666,7 +1666,7 @@ export default function ConteudoPage() {
                 )}
 
                 {(!metricsHistory?.history || metricsHistory.history.length === 0) && !loadingHistory && (
-                  <div className="border-t border-border pt-6 text-center py-6 text-text-muted">
+                  <div className="border-t border-card pt-6 text-center py-6 text-secondary">
                     <BarChart4 className="w-8 h-8 mx-auto mb-2 opacity-50" />
                     <p className="text-sm">Dados de histórico serão coletados automaticamente</p>
                     <p className="text-xs mt-1">Volte amanhã para ver a evolução dos seguidores</p>
@@ -1674,43 +1674,43 @@ export default function ConteudoPage() {
                 )}
 
                 {loadingHistory && (
-                  <div className="border-t border-border pt-6 text-center py-6">
-                    <Loader2 className="w-6 h-6 animate-spin mx-auto text-primary" />
-                    <p className="text-sm text-text-muted mt-2">Carregando histórico...</p>
+                  <div className="border-t border-card pt-6 text-center py-6">
+                    <Loader2 className="w-6 h-6 animate-spin mx-auto text-accent-gold" />
+                    <p className="text-sm text-secondary mt-2">Carregando histórico...</p>
                   </div>
                 )}
               </div>
 
               {/* Card de Publicações por Tipo de Conteúdo */}
-              <div className="bg-surface rounded-2xl border border-border p-6">
+              <div className="bg-surface rounded-2xl border border-card p-6">
                 <div className="flex items-start justify-between mb-4">
                       <div>
-                    <h3 className="text-lg font-semibold text-text-strong mb-1">
+                    <h3 className="text-lg font-semibold text-primary mb-1">
                       Publicações por Tipo de Conteúdo
                     </h3>
-                    <p className="text-sm text-text-muted">
+                    <p className="text-sm text-secondary">
                       Visualize todas as postagens para identificar qual conteúdo tem melhor aceitação. Comparação com o post anterior.
                         </p>
                       </div>
-                  <button className="px-4 py-2 text-sm font-medium border border-border rounded-lg hover:bg-background transition-colors flex items-center gap-2">
+                  <button className="px-4 py-2 text-sm font-medium border border-card rounded-lg hover:bg-background transition-colors flex items-center gap-2">
                     <BarChart4 className="w-4 h-4" />
                     Ver Comparativo
                   </button>
                     </div>
 
                 {/* Filtros */}
-                <div className="mt-4 pt-4 border-t border-border">
+                <div className="mt-4 pt-4 border-t border-card">
                   <div className="flex items-center gap-4 flex-wrap">
                     <div className="flex items-center gap-2">
-                      <Filter className="h-5 w-5 text-text-muted" />
-                      <span className="text-sm font-medium text-text-strong">Filtros:</span>
+                      <Filter className="h-5 w-5 text-secondary" />
+                      <span className="text-sm font-medium text-primary">Filtros:</span>
                   </div>
                     <div className="flex items-center gap-2">
-                      <span className="text-sm text-text-muted">Tema:</span>
+                      <span className="text-sm text-secondary">Tema:</span>
                       <select
                         value={overviewThemeFilter}
                         onChange={(e) => setOverviewThemeFilter(e.target.value)}
-                        className="px-3 py-1.5 text-sm border border-border rounded-lg bg-surface focus:outline-none focus:ring-2 focus:ring-primary-soft"
+                        className="px-3 py-1.5 text-sm border border-card rounded-lg bg-surface focus:outline-none focus:ring-2 focus:ring-accent-gold-soft"
                       >
                         <option value="all">Todos os temas</option>
                         {availableThemes.map((theme) => (
@@ -1721,11 +1721,11 @@ export default function ConteudoPage() {
                       </select>
               </div>
                     <div className="flex items-center gap-2">
-                      <span className="text-sm text-text-muted">Impulsionamento:</span>
+                      <span className="text-sm text-secondary">Impulsionamento:</span>
                       <select
                         value={overviewBoostedFilter}
                         onChange={(e) => setOverviewBoostedFilter(e.target.value)}
-                        className="px-3 py-1.5 text-sm border border-border rounded-lg bg-surface focus:outline-none focus:ring-2 focus:ring-primary-soft"
+                        className="px-3 py-1.5 text-sm border border-card rounded-lg bg-surface focus:outline-none focus:ring-2 focus:ring-accent-gold-soft"
                       >
                         <option value="all">Todas</option>
                         <option value="boosted">Impulsionadas</option>
@@ -1739,12 +1739,12 @@ export default function ConteudoPage() {
                             setOverviewThemeFilter('all')
                             setOverviewBoostedFilter('all')
                           }}
-                          className="px-3 py-1.5 text-xs font-medium border border-border rounded-lg hover:bg-background transition-colors flex items-center gap-1"
+                          className="px-3 py-1.5 text-xs font-medium border border-card rounded-lg hover:bg-background transition-colors flex items-center gap-1"
                         >
                           <X className="h-4 w-4" />
                           Limpar filtros
                         </button>
-                        <span className="text-sm text-text-muted">
+                        <span className="text-sm text-secondary">
                           {filteredPosts.length} {filteredPosts.length === 1 ? 'postagem encontrada' : 'postagens encontradas'}
                         </span>
                       </>
@@ -1756,8 +1756,8 @@ export default function ConteudoPage() {
                 <div className="mt-6 space-y-4">
                   {filteredPosts.length === 0 ? (
                     <div className="text-center py-8">
-                      <FileText className="h-12 w-12 text-text-muted mx-auto mb-4" />
-                      <p className="text-text-muted">
+                      <FileText className="h-12 w-12 text-secondary mx-auto mb-4" />
+                      <p className="text-secondary">
                         Nenhuma postagem encontrada para os filtros selecionados
                   </p>
                 </div>
@@ -1791,7 +1791,7 @@ export default function ConteudoPage() {
                       return (
                         <div
                           key={post.id}
-                          className="border-2 border-border rounded-lg overflow-hidden"
+                          className="border-2 border-card rounded-lg overflow-hidden"
                         >
                           <div className="flex flex-col sm:flex-row">
                             <div className="w-full sm:w-48 h-48 bg-background relative flex-shrink-0">
@@ -1828,7 +1828,7 @@ export default function ConteudoPage() {
                             <div className="p-3 flex-1 h-48 flex flex-col overflow-hidden">
                               <div className="flex justify-between items-start mb-1.5 flex-shrink-0">
                                 <div>
-                                  <span className="text-xs text-text-muted">
+                                  <span className="text-xs text-secondary">
                                     {new Date(post.postedAt).toLocaleDateString('pt-BR', {
                                       day: '2-digit',
                                       month: '2-digit',
@@ -1842,7 +1842,7 @@ export default function ConteudoPage() {
                                   href={post.url}
                                   target="_blank"
                                   rel="noopener noreferrer"
-                                  className="text-primary hover:underline text-xs flex items-center"
+                                  className="text-accent-gold hover:underline text-xs flex items-center"
                                 >
                                   <ExternalLink className="h-3 w-3 mr-1" /> Ver
                                 </a>
@@ -1865,7 +1865,7 @@ export default function ConteudoPage() {
                                         saveClassification(post, e.target.value, classification?.isBoosted ?? false)
                                       }
                                     }}
-                                    className="h-7 text-xs w-full px-2 border border-border rounded-lg bg-surface focus:outline-none focus:ring-2 focus:ring-primary-soft"
+                                    className="h-7 text-xs w-full px-2 border border-card rounded-lg bg-surface focus:outline-none focus:ring-2 focus:ring-accent-gold-soft"
                                   >
                                     <option value="">Tema</option>
                                     {availableThemes.map((theme) => (
@@ -1880,10 +1880,10 @@ export default function ConteudoPage() {
                                   {showAddTheme === getPostIdentifier(post) && (
                                     <div 
                                       ref={themeModalRef}
-                                      className="absolute top-full left-0 mt-1 z-50 bg-surface border border-border rounded-lg shadow-lg p-3 min-w-[200px]"
+                                      className="absolute top-full left-0 mt-1 z-50 bg-surface border border-card rounded-lg shadow-lg p-3 min-w-[200px]"
                                     >
                                       <div className="flex flex-col gap-2">
-                                        <label className="text-xs font-medium text-text-strong">
+                                        <label className="text-xs font-medium text-primary">
                                           Novo Tema
                                         </label>
                                         <input
@@ -1900,7 +1900,7 @@ export default function ConteudoPage() {
                                             }
                                           }}
                                           placeholder="Digite o nome do tema"
-                                          className="text-xs px-2 py-1.5 border border-border rounded bg-background focus:outline-none focus:ring-2 focus:ring-primary-soft"
+                                          className="text-xs px-2 py-1.5 border border-card rounded bg-background focus:outline-none focus:ring-2 focus:ring-accent-gold-soft"
                                           autoFocus
                                         />
                                         {newTheme.trim() && availableThemes.includes(newTheme.trim()) && (
@@ -1916,7 +1916,7 @@ export default function ConteudoPage() {
                                               handleAddTheme(getPostIdentifier(post), classification?.isBoosted ?? false)
                                             }}
                                             disabled={!newTheme.trim() || availableThemes.includes(newTheme.trim())}
-                                            className="flex-1 px-2 py-1.5 text-xs bg-primary text-white rounded hover:bg-primary-dark transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                            className="flex-1 px-2 py-1.5 text-xs bg-accent-gold text-white rounded hover:bg-accent-gold transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                                           >
                                             Adicionar
                                           </button>
@@ -1927,7 +1927,7 @@ export default function ConteudoPage() {
                                               setShowAddTheme(null)
                                               setNewTheme('')
                                             }}
-                                            className="px-2 py-1.5 text-xs border border-border rounded hover:bg-background transition-colors"
+                                            className="px-2 py-1.5 text-xs border border-card rounded hover:bg-background transition-colors"
                                           >
                                             Cancelar
                                           </button>
@@ -1945,7 +1945,7 @@ export default function ConteudoPage() {
                                       e.target.value === 'sim'
                                     )
                                   }
-                                  className="h-7 text-xs w-[90px] px-2 border border-border rounded-lg bg-surface focus:outline-none focus:ring-2 focus:ring-primary-soft"
+                                  className="h-7 text-xs w-[90px] px-2 border border-card rounded-lg bg-surface focus:outline-none focus:ring-2 focus:ring-accent-gold-soft"
                                 >
                                   <option value="nao">Não</option>
                                   <option value="sim">Sim</option>
@@ -1962,7 +1962,7 @@ export default function ConteudoPage() {
                                     </span>
                     </div>
                                   <div className="flex items-center justify-center gap-0.5 mt-0.5">
-                                    <span className="text-[10px] text-text-muted">Curtidas</span>
+                                    <span className="text-[10px] text-secondary">Curtidas</span>
                                     {previousPost && (
                                       <ComparisonBadge comparison={likesComparison} label="Curtidas" />
                                     )}
@@ -1976,7 +1976,7 @@ export default function ConteudoPage() {
                                     </span>
             </div>
                                   <div className="flex items-center justify-center gap-0.5 mt-0.5">
-                                    <span className="text-[10px] text-text-muted">Coment.</span>
+                                    <span className="text-[10px] text-secondary">Coment.</span>
                                     {previousPost && (
                                       <ComparisonBadge
                                         comparison={commentsComparison}
@@ -1995,7 +1995,7 @@ export default function ConteudoPage() {
                                     </span>
       </div>
                                   <div className="flex items-center justify-center gap-0.5 mt-0.5">
-                                    <span className="text-[10px] text-text-muted">Visual.</span>
+                                    <span className="text-[10px] text-secondary">Visual.</span>
                                     {previousPost && viewsComparison && (
                                       <ComparisonBadge
                                         comparison={viewsComparison}
@@ -2014,7 +2014,7 @@ export default function ConteudoPage() {
                                     </span>
                                   </div>
                                   <div className="flex items-center justify-center gap-0.5 mt-0.5">
-                                    <span className="text-[10px] text-text-muted">Compart.</span>
+                                    <span className="text-[10px] text-secondary">Compart.</span>
                                     {previousPost && sharesComparison && (
                                       <ComparisonBadge
                                         comparison={sharesComparison}
@@ -2033,7 +2033,7 @@ export default function ConteudoPage() {
                                     </span>
                                   </div>
                                   <div className="flex items-center justify-center gap-0.5 mt-0.5">
-                                    <span className="text-[10px] text-text-muted">Salvam.</span>
+                                    <span className="text-[10px] text-secondary">Salvam.</span>
                                     {previousPost && savesComparison && (
                                       <ComparisonBadge
                                         comparison={savesComparison}
@@ -2061,18 +2061,18 @@ export default function ConteudoPage() {
             <div className="space-y-6">
               {loading && !metrics ? (
                 <div className="text-center py-12">
-                  <Loader2 className="w-8 h-8 text-primary animate-spin mx-auto mb-4" />
-                  <p className="text-text-muted">Carregando dados do Instagram...</p>
+                  <Loader2 className="w-8 h-8 text-accent-gold animate-spin mx-auto mb-4" />
+                  <p className="text-secondary">Carregando dados do Instagram...</p>
                 </div>
               ) : !isConfigured ? (
                 <div className="text-center py-12">
-                  <AlertCircle className="w-12 h-12 text-text-muted mx-auto mb-4" />
-                  <p className="text-text-muted mb-4">
+                  <AlertCircle className="w-12 h-12 text-secondary mx-auto mb-4" />
+                  <p className="text-secondary mb-4">
                     Configure suas credenciais do Instagram para visualizar os dados
                   </p>
                   <button
                     onClick={() => setShowConfig(true)}
-                    className="px-4 py-2 text-sm font-medium bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors"
+                    className="px-4 py-2 text-sm font-medium bg-accent-gold text-white rounded-lg hover:bg-accent-gold transition-colors"
                   >
                     Conectar Instagram
                   </button>
@@ -2080,14 +2080,14 @@ export default function ConteudoPage() {
               ) : (
                 <>
                   {/* Card de Seguidores por Cidade */}
-                  <div className="bg-surface rounded-2xl border border-border p-6">
+                  <div className="bg-surface rounded-2xl border border-card p-6">
                     <div className="flex items-start justify-between mb-6">
                       <div>
-                        <h3 className="text-lg font-semibold text-text-strong mb-1 flex items-center gap-2">
-                          <MapPin className="w-5 h-5 text-primary" />
+                        <h3 className="text-lg font-semibold text-primary mb-1 flex items-center gap-2">
+                          <MapPin className="w-5 h-5 text-accent-gold" />
                           Distribuição de Seguidores por Cidade
                         </h3>
-                        <p className="text-sm text-text-muted">
+                        <p className="text-sm text-secondary">
                           Visualize de quais cidades vêm seus seguidores do Instagram
                         </p>
                       </div>
@@ -2096,18 +2096,18 @@ export default function ConteudoPage() {
                     {metrics?.demographics?.topLocations && Object.keys(metrics.demographics.topLocations).length > 0 ? (
                       <>
                         {/* Resumo */}
-                        <div className="mb-6 p-4 bg-gradient-to-br from-primary/10 to-primary/5 rounded-xl border border-primary/20">
+                        <div className="mb-6 p-4 bg-gradient-to-br from-primary/10 to-primary/5 rounded-xl border border-accent-gold/20">
                           <div className="flex items-center gap-4">
                             <div>
-                              <p className="text-sm text-text-muted mb-1">Total de Cidades</p>
-                              <p className="text-2xl font-bold text-text-strong">
+                              <p className="text-sm text-secondary mb-1">Total de Cidades</p>
+                              <p className="text-2xl font-bold text-primary">
                                 {Object.keys(metrics.demographics.topLocations).length}
                               </p>
                             </div>
                             <div className="h-12 w-px bg-border" />
                             <div>
-                              <p className="text-sm text-text-muted mb-1">Total de Seguidores Mapeados</p>
-                              <p className="text-2xl font-bold text-text-strong">
+                              <p className="text-sm text-secondary mb-1">Total de Seguidores Mapeados</p>
+                              <p className="text-2xl font-bold text-primary">
                                 {Object.values(metrics.demographics.topLocations).reduce((sum, count) => sum + count, 0).toLocaleString('pt-BR')}
                               </p>
                             </div>
@@ -2128,34 +2128,34 @@ export default function ConteudoPage() {
                               return (
                                 <div
                                   key={city}
-                                  className="p-4 bg-background rounded-lg border border-border hover:border-primary/30 transition-colors"
+                                  className="p-4 bg-background rounded-lg border border-card hover:border-accent-gold/30 transition-colors"
                                 >
                                   <div className="flex items-center justify-between mb-2">
                                     <div className="flex items-center gap-3 flex-1 min-w-0">
                                       <div className={`flex items-center justify-center w-8 h-8 rounded-full font-semibold text-sm ${
                                         index === 0 
-                                          ? 'bg-primary text-white' 
+                                          ? 'bg-accent-gold text-white' 
                                           : index === 1 
-                                          ? 'bg-primary/80 text-white'
+                                          ? 'bg-accent-gold/80 text-white'
                                           : index === 2
-                                          ? 'bg-primary/60 text-white'
-                                          : 'bg-primary/20 text-primary'
+                                          ? 'bg-accent-gold/60 text-white'
+                                          : 'bg-accent-gold-soft text-accent-gold'
                                       }`}>
                                         {index + 1}
                                       </div>
                                       <div className="flex-1 min-w-0">
-                                        <p className="font-semibold text-text-strong truncate">{city}</p>
-                                        <p className="text-xs text-text-muted">
+                                        <p className="font-semibold text-primary truncate">{city}</p>
+                                        <p className="text-xs text-secondary">
                                           {percentage}% do total de seguidores
                                         </p>
                                       </div>
                                     </div>
                                     <div className="flex items-center gap-4 ml-4">
                                       <div className="text-right">
-                                        <p className="text-lg font-bold text-text-strong">
+                                        <p className="text-lg font-bold text-primary">
                                           {count.toLocaleString('pt-BR')}
                                         </p>
-                                        <p className="text-xs text-text-muted">seguidores</p>
+                                        <p className="text-xs text-secondary">seguidores</p>
                                       </div>
                                     </div>
                                   </div>
@@ -2174,20 +2174,20 @@ export default function ConteudoPage() {
                       </>
                     ) : (
                       <div className="text-center py-12">
-                        <MapPin className="w-12 h-12 text-text-muted mx-auto mb-4 opacity-50" />
-                        <p className="text-text-muted mb-2 font-semibold">
+                        <MapPin className="w-12 h-12 text-secondary mx-auto mb-4 opacity-50" />
+                        <p className="text-secondary mb-2 font-semibold">
                           Dados de localização não disponíveis via API
                         </p>
-                        <div className="space-y-3 text-sm text-text-muted max-w-lg mx-auto">
+                        <div className="space-y-3 text-sm text-secondary max-w-lg mx-auto">
                           <p className="text-status-warning">
                             ⚠️ A métrica <code className="px-2 py-1 bg-background rounded text-xs">audience_city</code> foi <strong>depreciada pelo Instagram</strong> no Graph API v18 (janeiro de 2024) e não está mais disponível.
                           </p>
-                          <div className="p-4 bg-background rounded-lg border border-border text-left space-y-2">
-                            <p className="font-semibold text-text-strong">Informação:</p>
+                          <div className="p-4 bg-background rounded-lg border border-card text-left space-y-2">
+                            <p className="font-semibold text-primary">Informação:</p>
                             <p>
                               O Instagram removeu o acesso programático a dados demográficos detalhados (incluindo localização por cidade) para proteger a privacidade dos usuários.
                             </p>
-                            <p className="pt-2 border-t border-border">
+                            <p className="pt-2 border-t border-card">
                               <strong>Alternativas disponíveis:</strong>
                             </p>
                             <ul className="list-disc list-inside space-y-1 ml-2">
@@ -2195,7 +2195,7 @@ export default function ConteudoPage() {
                               <li>Utilizar ferramentas de analytics de terceiros que agregam dados públicos</li>
                             </ul>
                           </div>
-                          <p className="text-xs text-text-muted italic">
+                          <p className="text-xs text-secondary italic">
                             Esta limitação é uma política do Instagram/Meta e não pode ser contornada via API.
                           </p>
                         </div>

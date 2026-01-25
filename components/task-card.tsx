@@ -33,12 +33,12 @@ export function TaskCard({ task, onClick, onMove }: TaskCardProps) {
 
   return (
     <div
-      className="bg-surface border border-border rounded-lg p-3 cursor-pointer hover:shadow-md transition-shadow"
+      className="bg-surface border border-card rounded-lg p-3 cursor-pointer hover:shadow-md transition-shadow"
       onClick={onClick}
     >
       {/* Título e prioridade */}
       <div className="flex items-start justify-between mb-2">
-        <h4 className="text-sm font-semibold text-text-strong flex-1 line-clamp-2">
+        <h4 className="text-sm font-semibold text-primary flex-1 line-clamp-2">
           {task.title}
         </h4>
         <span className={`text-xs px-2 py-0.5 rounded-full ml-2 ${priorityColors[task.priority]}`}>
@@ -48,7 +48,7 @@ export function TaskCard({ task, onClick, onMove }: TaskCardProps) {
 
       {/* Descrição */}
       {task.description && (
-        <p className="text-xs text-text-muted mb-2 line-clamp-2">
+        <p className="text-xs text-secondary mb-2 line-clamp-2">
           {task.description}
         </p>
       )}
@@ -57,7 +57,7 @@ export function TaskCard({ task, onClick, onMove }: TaskCardProps) {
       <div className="space-y-1 mt-3">
         {/* Território */}
         {task.territory && (
-          <div className="flex items-center gap-1 text-xs text-text-muted">
+          <div className="flex items-center gap-1 text-xs text-secondary">
             <MapPin className="w-3 h-3" />
             <span className="truncate">{task.territory.name}</span>
           </div>
@@ -65,7 +65,7 @@ export function TaskCard({ task, onClick, onMove }: TaskCardProps) {
 
         {/* Líder atribuído */}
         {task.assigned_leader && (
-          <div className="flex items-center gap-1 text-xs text-text-muted">
+          <div className="flex items-center gap-1 text-xs text-secondary">
             <User className="w-3 h-3" />
             <span className="truncate">{task.assigned_leader.name}</span>
           </div>
@@ -73,7 +73,7 @@ export function TaskCard({ task, onClick, onMove }: TaskCardProps) {
 
         {/* Data de vencimento */}
         {task.due_date && (
-          <div className={`flex items-center gap-1 text-xs ${isOverdue ? 'text-red-600 font-semibold' : 'text-text-muted'}`}>
+          <div className={`flex items-center gap-1 text-xs ${isOverdue ? 'text-red-600 font-semibold' : 'text-secondary'}`}>
             <Clock className="w-3 h-3" />
             <span>
               {formatDate(task.due_date)}

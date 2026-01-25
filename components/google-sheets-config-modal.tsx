@@ -119,22 +119,22 @@ export function GoogleSheetsConfigModal({
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-surface rounded-2xl border border-border p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+      <div className="bg-surface rounded-2xl border border-card p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between mb-6">
-          <h2 className="text-xl font-semibold text-text-strong">
+          <h2 className="text-xl font-semibold text-primary">
             Configurar Google Sheets
           </h2>
           <button
             onClick={onClose}
             className="p-2 rounded-lg hover:bg-background transition-colors"
           >
-            <X className="w-5 h-5 text-text-muted" />
+            <X className="w-5 h-5 text-secondary" />
           </button>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-text-strong mb-2">
+            <label className="block text-sm font-medium text-primary mb-2">
               URL ou ID da Planilha
             </label>
             <input
@@ -149,15 +149,15 @@ export function GoogleSheetsConfigModal({
               }}
               placeholder="https://docs.google.com/spreadsheets/d/1ABC... ou apenas o ID"
               required
-              className="w-full px-4 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-soft bg-surface"
+              className="w-full px-4 py-2 border border-card rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-gold-soft bg-surface"
             />
-            <p className="text-xs text-text-muted mt-1">
+            <p className="text-xs text-secondary mt-1">
               Cole a URL completa da planilha ou apenas o ID. A planilha precisa estar pública.
             </p>
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-text-strong mb-2">
+            <label className="block text-sm font-medium text-primary mb-2">
               Nome da Aba (Sheet)
             </label>
             <input
@@ -166,15 +166,15 @@ export function GoogleSheetsConfigModal({
               onChange={(e) => setFormData({ ...formData, sheetName: e.target.value })}
               placeholder="Sheet1"
               required
-              className="w-full px-4 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-soft bg-surface"
+              className="w-full px-4 py-2 border border-card rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-gold-soft bg-surface"
             />
-            <p className="text-xs text-text-muted mt-1">
+            <p className="text-xs text-secondary mt-1">
               Nome exato da aba que contém os dados (padrão: Sheet1)
             </p>
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-text-strong mb-2">
+            <label className="block text-sm font-medium text-primary mb-2">
               Intervalo (Opcional)
             </label>
             <input
@@ -182,29 +182,29 @@ export function GoogleSheetsConfigModal({
               value={formData.range}
               onChange={(e) => setFormData({ ...formData, range: e.target.value })}
               placeholder="A1:Z100"
-              className="w-full px-4 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-soft bg-surface"
+              className="w-full px-4 py-2 border border-card rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-gold-soft bg-surface"
             />
-            <p className="text-xs text-text-muted mt-1">
+            <p className="text-xs text-secondary mt-1">
               Especifique um intervalo específico (ex: A1:Z100). Deixe vazio para buscar toda a aba.
             </p>
           </div>
 
           {/* Informações sobre Service Account */}
-          <div className="p-4 rounded-xl border border-primary/30 bg-primary-soft/50">
+          <div className="p-4 rounded-xl border border-accent-gold/30 bg-accent-gold-soft/50">
             <div className="flex items-start gap-3">
-              <Info className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" />
+              <Info className="w-5 h-5 text-accent-gold flex-shrink-0 mt-0.5" />
               <div className="flex-1">
-                <p className="text-sm font-medium text-text-strong mb-2">
+                <p className="text-sm font-medium text-primary mb-2">
                   Autenticação com Service Account
                 </p>
-                <p className="text-xs text-text-muted mb-3">
+                <p className="text-xs text-secondary mb-3">
                   Para acessar planilhas privadas, você precisa configurar um Service Account no Google Cloud Console e compartilhar a planilha com o email do Service Account.
                 </p>
                 <a
                   href="https://console.cloud.google.com/iam-admin/serviceaccounts"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-xs text-primary hover:underline"
+                  className="text-xs text-accent-gold hover:underline"
                 >
                   Criar Service Account no Google Cloud Console →
                 </a>
@@ -213,7 +213,7 @@ export function GoogleSheetsConfigModal({
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-text-strong mb-2">
+            <label className="block text-sm font-medium text-primary mb-2">
               Email do Service Account *
             </label>
             <input
@@ -222,22 +222,22 @@ export function GoogleSheetsConfigModal({
               onChange={(e) => setFormData({ ...formData, serviceAccountEmail: e.target.value })}
               placeholder="seu-service-account@projeto.iam.gserviceaccount.com"
               required
-              className="w-full px-4 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-soft bg-surface"
+              className="w-full px-4 py-2 border border-card rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-gold-soft bg-surface"
             />
-            <p className="text-xs text-text-muted mt-1">
+            <p className="text-xs text-secondary mt-1">
               Email do Service Account que terá acesso à planilha. Compartilhe a planilha com este email.
             </p>
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-text-strong mb-2">
+            <label className="block text-sm font-medium text-primary mb-2">
               Credenciais JSON do Service Account *
             </label>
             <div className="space-y-2">
               <button
                 type="button"
                 onClick={() => setShowCredentials(!showCredentials)}
-                className="text-xs text-primary hover:underline"
+                className="text-xs text-accent-gold hover:underline"
               >
                 {showCredentials ? 'Ocultar' : 'Mostrar'} campo de credenciais
               </button>
@@ -248,22 +248,22 @@ export function GoogleSheetsConfigModal({
                   placeholder='Cole aqui o conteúdo completo do arquivo JSON das credenciais do Service Account'
                   required
                   rows={8}
-                  className="w-full px-4 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-soft bg-surface font-mono text-xs"
+                  className="w-full px-4 py-2 border border-card rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-gold-soft bg-surface font-mono text-xs"
                 />
               )}
             </div>
-            <p className="text-xs text-text-muted mt-1">
+            <p className="text-xs text-secondary mt-1">
               Cole o conteúdo completo do arquivo JSON baixado do Google Cloud Console. As credenciais são armazenadas apenas no seu navegador.
             </p>
           </div>
 
           {/* Teste de Conexão */}
-          <div className="pt-4 border-t border-border">
+          <div className="pt-4 border-t border-card">
             <button
               type="button"
               onClick={handleTest}
               disabled={testing || !formData.spreadsheetId || !formData.sheetName || !formData.serviceAccountEmail || !formData.credentials}
-              className="w-full px-4 py-2 text-sm font-medium border border-border rounded-lg hover:bg-background transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+              className="w-full px-4 py-2 text-sm font-medium border border-card rounded-lg hover:bg-background transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
             >
               <ExternalLink className="w-4 h-4" />
               {testing ? 'Testando conexão...' : 'Testar Conexão'}
@@ -280,11 +280,11 @@ export function GoogleSheetsConfigModal({
           </div>
 
           {/* Botões */}
-          <div className="flex items-center gap-3 pt-4 border-t border-border">
+          <div className="flex items-center gap-3 pt-4 border-t border-card">
             <button
               type="submit"
               disabled={!formData.spreadsheetId || !formData.sheetName || !formData.serviceAccountEmail || !formData.credentials}
-              className="flex-1 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+              className="flex-1 px-4 py-2 bg-accent-gold text-white rounded-lg hover:bg-accent-gold transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
             >
               <Save className="w-4 h-4" />
               Salvar Configuração
@@ -292,7 +292,7 @@ export function GoogleSheetsConfigModal({
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 border border-border rounded-lg hover:bg-background transition-colors"
+              className="px-4 py-2 border border-card rounded-lg hover:bg-background transition-colors"
             >
               Cancelar
             </button>

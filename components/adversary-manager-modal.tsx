@@ -182,16 +182,16 @@ export function AdversaryManagerModal({ onClose, onUpdate }: AdversaryManagerMod
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-surface rounded-2xl border border-border p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+      <div className="bg-surface rounded-2xl border border-card p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between mb-6">
-          <h2 className="text-xl font-semibold text-text-strong">
+          <h2 className="text-xl font-semibold text-primary">
             Gerenciar Adversários
           </h2>
           <button
             onClick={onClose}
             className="p-2 rounded-lg hover:bg-background transition-colors"
           >
-            <X className="w-5 h-5 text-text-muted" />
+            <X className="w-5 h-5 text-secondary" />
           </button>
         </div>
 
@@ -204,10 +204,10 @@ export function AdversaryManagerModal({ onClose, onUpdate }: AdversaryManagerMod
           </div>
         ) : adversaries.length === 0 ? (
           <div className="text-center py-8">
-            <p className="text-text-muted mb-4">Nenhum adversário cadastrado ainda.</p>
+            <p className="text-secondary mb-4">Nenhum adversário cadastrado ainda.</p>
             <button
               onClick={() => setShowAddForm(true)}
-              className="px-4 py-2 text-sm font-medium bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors"
+              className="px-4 py-2 text-sm font-medium bg-accent-gold text-white rounded-lg hover:bg-accent-gold transition-colors"
             >
               Adicionar Primeiro Adversário
             </button>
@@ -217,16 +217,16 @@ export function AdversaryManagerModal({ onClose, onUpdate }: AdversaryManagerMod
             {adversaries.map((adversary) => (
               <div
                 key={adversary.id}
-                className="p-4 rounded-xl border border-border bg-background"
+                className="p-4 rounded-xl border border-card bg-background"
               >
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-1">
-                      <h3 className="text-sm font-semibold text-text-strong">
+                      <h3 className="text-sm font-semibold text-primary">
                         {adversary.name}
                       </h3>
                       {adversary.type && (
-                        <span className="px-2 py-0.5 text-xs rounded-lg bg-primary-soft text-primary">
+                        <span className="px-2 py-0.5 text-xs rounded-lg bg-accent-gold-soft text-accent-gold">
                           {adversaryTypes.find((t) => t.value === adversary.type)?.label ||
                             'Outro'}
                         </span>
@@ -237,7 +237,7 @@ export function AdversaryManagerModal({ onClose, onUpdate }: AdversaryManagerMod
                         </span>
                       )}
                     {adversary.google_alerts_rss_url && (
-                      <span className="px-2 py-0.5 text-xs rounded-lg bg-primary/10 text-primary">
+                      <span className="px-2 py-0.5 text-xs rounded-lg bg-accent-gold-soft text-accent-gold">
                         Feed RSS configurado
                       </span>
                     )}
@@ -255,11 +255,11 @@ export function AdversaryManagerModal({ onClose, onUpdate }: AdversaryManagerMod
                     </div>
                   )}
                   {adversary.google_alerts_rss_url && (
-                    <div className="mt-3 pt-3 border-t border-border">
+                    <div className="mt-3 pt-3 border-t border-card">
                       <button
                         onClick={() => handleCollectNews(adversary.id)}
                         disabled={collectingNews === adversary.id || collectingAll}
-                        className="flex items-center gap-2 px-3 py-1.5 text-xs font-medium bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="flex items-center gap-2 px-3 py-1.5 text-xs font-medium bg-accent-gold text-white rounded-lg hover:bg-accent-gold transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         <RefreshCw className={`w-3 h-3 ${collectingNews === adversary.id ? 'animate-spin' : ''}`} />
                         {collectingNews === adversary.id ? 'Coletando...' : 'Coletar Notícias'}
@@ -270,7 +270,7 @@ export function AdversaryManagerModal({ onClose, onUpdate }: AdversaryManagerMod
                 <div className="flex items-center gap-2">
                   <button
                     onClick={() => handleEdit(adversary)}
-                    className="p-2 text-primary hover:bg-primary/10 rounded-lg transition-colors"
+                    className="p-2 text-accent-gold hover:bg-accent-gold-soft rounded-lg transition-colors"
                   >
                     <Edit2 className="w-4 h-4" />
                   </button>
@@ -289,13 +289,13 @@ export function AdversaryManagerModal({ onClose, onUpdate }: AdversaryManagerMod
 
         {/* Formulário de Adicionar/Editar */}
         {showAddForm && (
-          <div className="border-t border-border pt-6 mt-6">
-            <h3 className="text-sm font-semibold text-text-strong mb-4">
+          <div className="border-t border-card pt-6 mt-6">
+            <h3 className="text-sm font-semibold text-primary mb-4">
               {editingAdversary ? 'Editar Adversário' : 'Adicionar Novo Adversário'}
             </h3>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-text-strong mb-2">
+                <label className="block text-sm font-medium text-primary mb-2">
                   Nome do Adversário *
                 </label>
                 <input
@@ -304,12 +304,12 @@ export function AdversaryManagerModal({ onClose, onUpdate }: AdversaryManagerMod
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                   placeholder="Ex: Candidato X, Partido Y, Jornal Z"
                   required
-                  className="w-full px-4 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-soft"
+                  className="w-full px-4 py-2 border border-card rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-gold-soft"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-text-strong mb-2">
+                <label className="block text-sm font-medium text-primary mb-2">
                   Tipo
                 </label>
                 <select
@@ -317,7 +317,7 @@ export function AdversaryManagerModal({ onClose, onUpdate }: AdversaryManagerMod
                   onChange={(e) =>
                     setFormData({ ...formData, type: e.target.value as Adversary['type'] })
                   }
-                  className="w-full px-4 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-soft"
+                  className="w-full px-4 py-2 border border-card rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-gold-soft"
                 >
                   {adversaryTypes.map((type) => (
                     <option key={type.value} value={type.value}>
@@ -328,7 +328,7 @@ export function AdversaryManagerModal({ onClose, onUpdate }: AdversaryManagerMod
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-text-strong mb-2">
+                <label className="block text-sm font-medium text-primary mb-2">
                   Temas que Aborda
                 </label>
                 <div className="flex flex-wrap gap-2">
@@ -339,8 +339,8 @@ export function AdversaryManagerModal({ onClose, onUpdate }: AdversaryManagerMod
                       onClick={() => toggleTheme(theme)}
                       className={`px-3 py-1.5 text-xs rounded-lg border transition-colors ${
                         formData.themes.includes(theme)
-                          ? 'bg-primary text-white border-primary'
-                          : 'bg-surface border-border text-text-strong hover:border-primary/50'
+                          ? 'bg-accent-gold text-white border-accent-gold'
+                          : 'bg-surface border-card text-primary hover:border-accent-gold/50'
                       }`}
                     >
                       {theme}
@@ -348,14 +348,14 @@ export function AdversaryManagerModal({ onClose, onUpdate }: AdversaryManagerMod
                   ))}
                 </div>
                 {formData.themes.length > 0 && (
-                  <p className="text-xs text-text-muted mt-2">
+                  <p className="text-xs text-secondary mt-2">
                     {formData.themes.length} tema(s) selecionado(s)
                   </p>
                 )}
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-text-strong mb-2">
+                <label className="block text-sm font-medium text-primary mb-2">
                   Share of Voice (Presença) - 0 a 100
                 </label>
                 <input
@@ -366,15 +366,15 @@ export function AdversaryManagerModal({ onClose, onUpdate }: AdversaryManagerMod
                   onChange={(e) =>
                     setFormData({ ...formData, presence_score: parseInt(e.target.value) || 0 })
                   }
-                  className="w-full px-4 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-soft"
+                  className="w-full px-4 py-2 border border-card rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-gold-soft"
                 />
-                <p className="text-xs text-text-muted mt-1">
+                <p className="text-xs text-secondary mt-1">
                   Percentual de presença nas notícias (calculado automaticamente)
                 </p>
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-text-strong mb-2">
+                <label className="block text-sm font-medium text-primary mb-2">
                   URL do Feed RSS do Google Alerts
                 </label>
                 <input
@@ -384,9 +384,9 @@ export function AdversaryManagerModal({ onClose, onUpdate }: AdversaryManagerMod
                     setFormData({ ...formData, google_alerts_rss_url: e.target.value })
                   }
                   placeholder="https://www.google.com/alerts/feeds/..."
-                  className="w-full px-4 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-soft"
+                  className="w-full px-4 py-2 border border-card rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-gold-soft"
                 />
-                <p className="text-xs text-text-muted mt-1">
+                <p className="text-xs text-secondary mt-1">
                   URL do feed RSS do Google Alerts para monitorar este adversário automaticamente
                 </p>
               </div>
@@ -395,7 +395,7 @@ export function AdversaryManagerModal({ onClose, onUpdate }: AdversaryManagerMod
                 <button
                   type="submit"
                   disabled={submitting}
-                  className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors disabled:opacity-50"
+                  className="px-4 py-2 bg-accent-gold text-white rounded-lg hover:bg-accent-gold transition-colors disabled:opacity-50"
                 >
                   {submitting
                     ? 'Salvando...'
@@ -410,7 +410,7 @@ export function AdversaryManagerModal({ onClose, onUpdate }: AdversaryManagerMod
                     setEditingAdversary(null)
                     setFormData({ name: '', type: 'other', themes: [], presence_score: 0, google_alerts_rss_url: '' })
                   }}
-                  className="px-4 py-2 border border-border rounded-lg hover:bg-background transition-colors"
+                  className="px-4 py-2 border border-card rounded-lg hover:bg-background transition-colors"
                 >
                   Cancelar
                 </button>
@@ -426,7 +426,7 @@ export function AdversaryManagerModal({ onClose, onUpdate }: AdversaryManagerMod
               <button
                 onClick={() => handleCollectNews()}
                 disabled={collectingAll}
-                className="w-full px-4 py-2 text-sm font-medium bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                className="w-full px-4 py-2 text-sm font-medium bg-accent-gold text-white rounded-lg hover:bg-accent-gold transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
                 <RefreshCw className={`w-4 h-4 ${collectingAll ? 'animate-spin' : ''}`} />
                 {collectingAll ? 'Coletando Notícias de Todos os Adversários...' : 'Coletar Notícias de Todos os Adversários'}
@@ -434,7 +434,7 @@ export function AdversaryManagerModal({ onClose, onUpdate }: AdversaryManagerMod
             )}
             <button
               onClick={() => setShowAddForm(true)}
-              className="w-full px-4 py-2 text-sm font-medium border border-border rounded-lg hover:bg-background transition-colors flex items-center justify-center gap-2"
+              className="w-full px-4 py-2 text-sm font-medium border border-card rounded-lg hover:bg-background transition-colors flex items-center justify-center gap-2"
             >
               <Plus className="w-4 h-4" />
               Adicionar Novo Adversário

@@ -135,7 +135,7 @@ export default function NarrativasPage() {
           <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
             <button
               onClick={handleNew}
-              className="px-4 py-2 text-sm font-medium bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors flex items-center gap-2"
+              className="px-4 py-2 text-sm font-medium bg-accent-gold text-white rounded-lg hover:bg-accent-gold transition-colors flex items-center gap-2"
             >
               <Plus className="w-4 h-4" />
               Nova Narrativa
@@ -144,20 +144,20 @@ export default function NarrativasPage() {
             {/* Filtros */}
             <div className="flex flex-wrap gap-3 items-center">
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted" />
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-secondary" />
                 <input
                   type="text"
                   placeholder="Buscar..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10 pr-4 py-2 text-sm bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                  className="pl-10 pr-4 py-2 text-sm bg-background border border-card rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-gold"
                 />
               </div>
 
               <select
                 value={filterTheme}
                 onChange={(e) => setFilterTheme(e.target.value)}
-                className="px-4 py-2 text-sm bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                className="px-4 py-2 text-sm bg-background border border-card rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-gold"
               >
                 <option value="">Todos os temas</option>
                 {uniqueThemes.map((theme) => (
@@ -170,7 +170,7 @@ export default function NarrativasPage() {
               <select
                 value={filterStatus}
                 onChange={(e) => setFilterStatus(e.target.value)}
-                className="px-4 py-2 text-sm bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                className="px-4 py-2 text-sm bg-background border border-card rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-gold"
               >
                 <option value="">Todos os status</option>
                 <option value="ativa">Ativa</option>
@@ -187,7 +187,7 @@ export default function NarrativasPage() {
             {[1, 2].map((i) => (
               <div
                 key={i}
-                className="bg-surface rounded-2xl border border-border p-6 animate-pulse"
+                className="bg-surface rounded-2xl border border-card p-6 animate-pulse"
               >
                 <div className="h-6 bg-background rounded mb-4" />
                 <div className="h-4 bg-background rounded mb-2" />
@@ -197,8 +197,8 @@ export default function NarrativasPage() {
           </div>
         ) : narrativas.length === 0 ? (
           <div className="text-center py-12">
-            <FileText className="w-12 h-12 text-text-muted mx-auto mb-4" />
-            <p className="text-text-muted">
+            <FileText className="w-12 h-12 text-secondary mx-auto mb-4" />
+            <p className="text-secondary">
               {searchTerm || filterTheme || filterStatus
                 ? 'Nenhuma narrativa encontrada com os filtros aplicados'
                 : 'Nenhuma narrativa cadastrada. Clique em "Nova Narrativa" para começar.'}
@@ -209,12 +209,12 @@ export default function NarrativasPage() {
             {narrativas.map((narrativa) => (
               <div
                 key={narrativa.id}
-                className="bg-surface rounded-2xl border border-border p-6 hover:shadow-card-hover transition-all duration-200 ease-premium relative group"
+                className="bg-surface rounded-2xl border border-card p-6 hover:shadow-card-hover transition-all duration-200 ease-out relative group"
               >
                 <div className="flex items-start justify-between mb-4">
                   <div>
-                    <h3 className="text-lg font-semibold text-text-strong">{narrativa.theme}</h3>
-                    <p className="text-sm text-text-muted mt-1">Público: {narrativa.target_audience}</p>
+                    <h3 className="text-lg font-semibold text-primary">{narrativa.theme}</h3>
+                    <p className="text-sm text-secondary mt-1">Público: {narrativa.target_audience}</p>
                   </div>
                   <div className="flex items-center gap-2">
                     <span className={`px-2 py-1 text-xs font-medium rounded-lg ${
@@ -229,7 +229,7 @@ export default function NarrativasPage() {
                     <div className="opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
                       <button
                         onClick={() => handleEdit(narrativa)}
-                        className="p-1.5 text-primary hover:bg-primary-soft rounded-lg transition-colors"
+                        className="p-1.5 text-accent-gold hover:bg-accent-gold-soft rounded-lg transition-colors"
                         title="Editar"
                       >
                         <Edit className="w-4 h-4" />
@@ -246,17 +246,17 @@ export default function NarrativasPage() {
                 </div>
 
                 <div className="mb-4">
-                  <p className="text-sm font-medium text-text-strong mb-2">Mensagem-chave</p>
-                  <p className="text-sm text-text-muted">{narrativa.key_message}</p>
+                  <p className="text-sm font-medium text-primary mb-2">Mensagem-chave</p>
+                  <p className="text-sm text-secondary">{narrativa.key_message}</p>
                 </div>
 
                 {narrativa.arguments && narrativa.arguments.length > 0 && (
                   <div className="mb-4">
-                    <p className="text-sm font-medium text-text-strong mb-2">Argumentos</p>
+                    <p className="text-sm font-medium text-primary mb-2">Argumentos</p>
                     <ul className="space-y-1">
                       {narrativa.arguments.map((arg, idx) => (
-                        <li key={idx} className="text-sm text-text-muted flex items-start gap-2">
-                          <span className="text-primary mt-1">•</span>
+                        <li key={idx} className="text-sm text-secondary flex items-start gap-2">
+                          <span className="text-accent-gold mt-1">•</span>
                           <span>{arg}</span>
                         </li>
                       ))}
@@ -266,15 +266,15 @@ export default function NarrativasPage() {
 
                 {narrativa.tested_phrases && narrativa.tested_phrases.length > 0 && (
                   <div className="mb-4">
-                    <p className="text-sm font-medium text-text-strong mb-2">Frases testadas</p>
+                    <p className="text-sm font-medium text-primary mb-2">Frases testadas</p>
                     <ul className="space-y-1">
                       {narrativa.tested_phrases.slice(0, 2).map((phrase, idx) => (
-                        <li key={idx} className="text-sm text-text-muted italic">
+                        <li key={idx} className="text-sm text-secondary italic">
                           "{phrase}"
                         </li>
                       ))}
                       {narrativa.tested_phrases.length > 2 && (
-                        <li className="text-xs text-text-muted">
+                        <li className="text-xs text-secondary">
                           +{narrativa.tested_phrases.length - 2} mais
                         </li>
                       )}
@@ -282,32 +282,32 @@ export default function NarrativasPage() {
                   </div>
                 )}
 
-                <div className="pt-4 border-t border-border space-y-3">
+                <div className="pt-4 border-t border-card space-y-3">
                   {/* Resumo de usos */}
                   <div className="flex items-center gap-4">
                     <div className="flex items-center gap-2">
-                      <TrendingUp className="w-4 h-4 text-text-muted" />
-                      <span className="text-sm font-medium text-text-strong">{narrativa.usage_count || 0} usos</span>
+                      <TrendingUp className="w-4 h-4 text-secondary" />
+                      <span className="text-sm font-medium text-primary">{narrativa.usage_count || 0} usos</span>
                     </div>
                     <div className="flex items-center gap-2">
-                      <MessageSquare className="w-4 h-4 text-text-muted" />
-                      <span className="text-sm font-medium text-text-strong">{narrativa.performance_score || 0}% performance</span>
+                      <MessageSquare className="w-4 h-4 text-secondary" />
+                      <span className="text-sm font-medium text-primary">{narrativa.performance_score || 0}% performance</span>
                     </div>
                   </div>
                   
                   {/* Detalhamento dos usos */}
                   <div className="grid grid-cols-2 gap-2 text-xs">
                     <div className="flex items-center justify-between px-2 py-1.5 bg-blue-50 rounded-lg">
-                      <span className="text-text-muted">Instagram:</span>
+                      <span className="text-secondary">Instagram:</span>
                       <span className="font-medium text-blue-700">{narrativa.instagram_count || 0}</span>
                     </div>
                     <div className="flex items-center justify-between px-2 py-1.5 bg-green-50 rounded-lg">
-                      <span className="text-text-muted">Notícias:</span>
+                      <span className="text-secondary">Notícias:</span>
                       <span className="font-medium text-green-700">{narrativa.news_count || 0}</span>
                     </div>
                     {(narrativa.boosted_count || 0) > 0 && (
                       <div className="col-span-2 flex items-center justify-between px-2 py-1.5 bg-purple-50 rounded-lg">
-                        <span className="text-text-muted">Posts Impulsionados:</span>
+                        <span className="text-secondary">Posts Impulsionados:</span>
                         <span className="font-medium text-purple-700">{narrativa.boosted_count || 0}</span>
                       </div>
                     )}

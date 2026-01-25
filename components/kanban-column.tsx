@@ -21,8 +21,8 @@ export function KanbanColumn({ title, status, tasks, onTaskClick, onTaskMove, co
       <div className="mb-4">
         <div className="flex items-center gap-2 mb-1">
           <div className="w-3 h-3 rounded-full" style={{ backgroundColor: color }} />
-          <h3 className="text-sm font-semibold text-text-strong">{title}</h3>
-          <span className="text-xs text-text-muted bg-background px-2 py-0.5 rounded-full">
+          <h3 className="text-sm font-semibold text-primary">{title}</h3>
+          <span className="text-xs text-secondary bg-background px-2 py-0.5 rounded-full">
             {filteredTasks.length}
           </span>
         </div>
@@ -31,7 +31,7 @@ export function KanbanColumn({ title, status, tasks, onTaskClick, onTaskMove, co
       {/* Lista de tarefas */}
       <div className="flex-1 space-y-3 overflow-y-auto pb-4">
         {filteredTasks.length === 0 ? (
-          <div className="text-center py-8 text-text-muted text-sm">
+          <div className="text-center py-8 text-secondary text-sm">
             Nenhuma tarefa
           </div>
         ) : (

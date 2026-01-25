@@ -208,23 +208,23 @@ export function PollModal({ poll, onClose, onUpdate }: PollModalProps) {
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-surface rounded-2xl border border-border p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+      <div className="bg-surface rounded-2xl border border-card p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between mb-6">
-          <h2 className="text-xl font-semibold text-text-strong">
+          <h2 className="text-xl font-semibold text-primary">
             {poll?.id ? 'Editar Pesquisa' : 'Nova Pesquisa'}
           </h2>
           <button
             onClick={onClose}
             className="p-2 rounded-lg hover:bg-background transition-colors"
           >
-            <X className="w-5 h-5 text-text-muted" />
+            <X className="w-5 h-5 text-secondary" />
           </button>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           {/* Data */}
           <div>
-            <label className="block text-sm font-medium text-text-strong mb-2">
+            <label className="block text-sm font-medium text-primary mb-2">
               Data *
             </label>
             <input
@@ -232,13 +232,13 @@ export function PollModal({ poll, onClose, onUpdate }: PollModalProps) {
               value={formData.data}
               onChange={(e) => setFormData({ ...formData, data: e.target.value })}
               required
-              className="w-full px-4 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-soft bg-surface"
+              className="w-full px-4 py-2 border border-card rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-gold-soft bg-surface"
             />
           </div>
 
           {/* Instituto */}
           <div>
-            <label className="block text-sm font-medium text-text-strong mb-2">
+            <label className="block text-sm font-medium text-primary mb-2">
               Instituto *
             </label>
             <input
@@ -247,13 +247,13 @@ export function PollModal({ poll, onClose, onUpdate }: PollModalProps) {
               onChange={(e) => setFormData({ ...formData, instituto: e.target.value })}
               placeholder="Nome do instituto"
               required
-              className="w-full px-4 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-soft bg-surface"
+              className="w-full px-4 py-2 border border-card rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-gold-soft bg-surface"
             />
           </div>
 
           {/* Nome do Candidato */}
           <div>
-            <label className="block text-sm font-medium text-text-strong mb-2">
+            <label className="block text-sm font-medium text-primary mb-2">
               Nome do Candidato *
             </label>
             <input
@@ -263,7 +263,7 @@ export function PollModal({ poll, onClose, onUpdate }: PollModalProps) {
               onChange={(e) => setFormData({ ...formData, candidato_nome: e.target.value })}
               placeholder="Digite ou selecione um candidato existente"
               required
-              className="w-full px-4 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-soft bg-surface"
+              className="w-full px-4 py-2 border border-card rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-gold-soft bg-surface"
             />
             <datalist id="candidatos-list">
               {candidatosExistentes.map((candidato) => (
@@ -271,7 +271,7 @@ export function PollModal({ poll, onClose, onUpdate }: PollModalProps) {
               ))}
             </datalist>
             {candidatosExistentes.length > 0 && (
-              <p className="text-xs text-text-muted mt-1">
+              <p className="text-xs text-secondary mt-1">
                 {candidatosExistentes.length} candidato{candidatosExistentes.length !== 1 ? 's' : ''} cadastrado{candidatosExistentes.length !== 1 ? 's' : ''} anteriormente. Você pode selecionar ou digitar um novo nome.
               </p>
             )}
@@ -279,12 +279,12 @@ export function PollModal({ poll, onClose, onUpdate }: PollModalProps) {
 
           {/* Cidade */}
           <div>
-            <label className="block text-sm font-medium text-text-strong mb-2">
+            <label className="block text-sm font-medium text-primary mb-2">
               Município (Piauí)
             </label>
             {loadingCities ? (
-              <div className="w-full px-4 py-2 border border-border rounded-lg bg-background animate-pulse">
-                <span className="text-sm text-text-muted">Carregando municípios...</span>
+              <div className="w-full px-4 py-2 border border-card rounded-lg bg-background animate-pulse">
+                <span className="text-sm text-secondary">Carregando municípios...</span>
               </div>
             ) : (
               <>
@@ -302,12 +302,12 @@ export function PollModal({ poll, onClose, onUpdate }: PollModalProps) {
                       setFilteredCities(filtered)
                     }
                   }}
-                  className="w-full px-4 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-soft mb-2 bg-surface"
+                  className="w-full px-4 py-2 border border-card rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-gold-soft mb-2 bg-surface"
                 />
                 <select
                   value={formData.cidade_id || ''}
                   onChange={(e) => setFormData({ ...formData, cidade_id: e.target.value || null })}
-                  className="w-full px-4 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-soft bg-surface"
+                  className="w-full px-4 py-2 border border-card rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-gold-soft bg-surface"
                   style={{ maxHeight: '200px', overflowY: 'auto' }}
                 >
                   <option value="">Selecione um município (opcional)</option>
@@ -318,7 +318,7 @@ export function PollModal({ poll, onClose, onUpdate }: PollModalProps) {
                   ))}
                 </select>
                 {cities.length > 0 && (
-                  <p className="text-xs text-text-muted mt-1">
+                  <p className="text-xs text-secondary mt-1">
                     {filteredCities.length === cities.length 
                       ? `${cities.length} municípios do Piauí disponíveis`
                       : `${filteredCities.length} de ${cities.length} municípios encontrados`
@@ -332,14 +332,14 @@ export function PollModal({ poll, onClose, onUpdate }: PollModalProps) {
           {/* Tipo e Cargo */}
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-text-strong mb-2">
+              <label className="block text-sm font-medium text-primary mb-2">
                 Tipo *
               </label>
               <select
                 value={formData.tipo}
                 onChange={(e) => setFormData({ ...formData, tipo: e.target.value as Poll['tipo'] })}
                 required
-                className="w-full px-4 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-soft bg-surface"
+                className="w-full px-4 py-2 border border-card rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-gold-soft bg-surface"
               >
                 {tipoOptions.map((option) => (
                   <option key={option.value} value={option.value}>
@@ -350,14 +350,14 @@ export function PollModal({ poll, onClose, onUpdate }: PollModalProps) {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-text-strong mb-2">
+              <label className="block text-sm font-medium text-primary mb-2">
                 Cargo *
               </label>
               <select
                 value={formData.cargo}
                 onChange={(e) => setFormData({ ...formData, cargo: e.target.value as Poll['cargo'] })}
                 required
-                className="w-full px-4 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-soft bg-surface"
+                className="w-full px-4 py-2 border border-card rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-gold-soft bg-surface"
               >
                 {cargoOptions.map((option) => (
                   <option key={option.value} value={option.value}>
@@ -371,7 +371,7 @@ export function PollModal({ poll, onClose, onUpdate }: PollModalProps) {
           {/* Intenção e Rejeição */}
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-text-strong mb-2">
+              <label className="block text-sm font-medium text-primary mb-2">
                 Intenção (%) *
               </label>
               <input
@@ -382,12 +382,12 @@ export function PollModal({ poll, onClose, onUpdate }: PollModalProps) {
                 value={formData.intencao}
                 onChange={(e) => setFormData({ ...formData, intencao: parseFloat(e.target.value) || 0 })}
                 required
-                className="w-full px-4 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-soft bg-surface"
+                className="w-full px-4 py-2 border border-card rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-gold-soft bg-surface"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-text-strong mb-2">
+              <label className="block text-sm font-medium text-primary mb-2">
                 Rejeição (%) *
               </label>
               <input
@@ -398,17 +398,17 @@ export function PollModal({ poll, onClose, onUpdate }: PollModalProps) {
                 value={formData.rejeicao}
                 onChange={(e) => setFormData({ ...formData, rejeicao: parseFloat(e.target.value) || 0 })}
                 required
-                className="w-full px-4 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-soft bg-surface"
+                className="w-full px-4 py-2 border border-card rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-gold-soft bg-surface"
               />
             </div>
           </div>
 
           {/* Botões */}
-          <div className="flex items-center gap-3 pt-4 border-t border-border">
+          <div className="flex items-center gap-3 pt-4 border-t border-card">
             <button
               type="submit"
               disabled={submitting}
-              className="flex-1 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+              className="flex-1 px-4 py-2 bg-accent-gold text-white rounded-lg hover:bg-accent-gold transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
             >
               <Save className="w-4 h-4" />
               {submitting ? 'Salvando...' : poll?.id ? 'Salvar Alterações' : 'Salvar e Adicionar Outro'}
@@ -420,7 +420,7 @@ export function PollModal({ poll, onClose, onUpdate }: PollModalProps) {
                   onUpdate()
                   onClose()
                 }}
-                className="px-4 py-2 border border-border rounded-lg hover:bg-background transition-colors"
+                className="px-4 py-2 border border-card rounded-lg hover:bg-background transition-colors"
               >
                 Salvar e Fechar
               </button>
@@ -428,7 +428,7 @@ export function PollModal({ poll, onClose, onUpdate }: PollModalProps) {
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 border border-border rounded-lg hover:bg-background transition-colors"
+              className="px-4 py-2 border border-card rounded-lg hover:bg-background transition-colors"
             >
               {poll?.id ? 'Cancelar' : 'Fechar'}
             </button>

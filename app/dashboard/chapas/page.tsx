@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState, useRef } from 'react'
 import { Header } from '@/components/header'
-import { Trash2, Plus, RefreshCw, Check, Printer, Info, Eye, EyeOff, X } from 'lucide-react'
+import { Trash2, Plus, RefreshCw, Check, Printer, Info, Eye, EyeOff, X, Maximize2, Minimize2 } from 'lucide-react'
 import {
   CenarioCompleto,
   PartidoCenario,
@@ -14,13 +14,13 @@ import {
 } from '@/lib/chapasService'
 import CenariosTabs from '@/components/cenarios-tabs'
 
-// Configuração de cores dos partidos
+// Configuração de cores dos partidos - Tema Premium Bege/Ouro
 const coresPartidos = {
-  'PT': { cor: 'bg-red-600', corTexto: 'text-white' },
-  'PSD/MDB': { cor: 'bg-yellow-400', corTexto: 'text-gray-900' },
-  'PP': { cor: 'bg-sky-400', corTexto: 'text-white' },
-  'REPUBLICANOS': { cor: 'bg-blue-900', corTexto: 'text-white' },
-  'PODEMOS': { cor: 'bg-green-600', corTexto: 'text-white' }
+  'PT': { cor: 'bg-accent-gold', corTexto: 'text-white' },
+  'PSD/MDB': { cor: 'bg-accent-gold-soft', corTexto: 'text-text-primary' },
+  'PP': { cor: 'bg-text-secondary', corTexto: 'text-white' },
+  'REPUBLICANOS': { cor: 'bg-text-primary', corTexto: 'text-white' },
+  'PODEMOS': { cor: 'bg-accent-gold', corTexto: 'text-white' }
 }
 
 // Interface para partido local
@@ -83,6 +83,8 @@ export default function ChapasPage() {
   
   // Estado para gerenciar partidos ocultos
   const [partidosOcultos, setPartidosOcultos] = useState<{ [partidoNome: string]: boolean }>({})
+  const [isFullscreen, setIsFullscreen] = useState(false)
+  const fullscreenRef = useRef<HTMLDivElement>(null)
 
   const mostrarNotificacaoAutoSave = (mensagem: string) => {
     setNotificacaoAutoSave(mensagem)
@@ -96,6 +98,34 @@ export default function ChapasPage() {
       [partidoNome]: !prev[partidoNome]
     }))
   }
+
+  // Função para toggle fullscreen
+  const toggleFullscreen = async () => {
+    try {
+      if (!isFullscreen) {
+        if (fullscreenRef.current?.requestFullscreen) {
+          await fullscreenRef.current.requestFullscreen()
+          setIsFullscreen(true)
+        }
+      } else {
+        if (document.fullscreenElement) {
+          await document.exitFullscreen()
+          setIsFullscreen(false)
+        }
+      }
+    } catch (err) {
+      console.error('Erro ao alternar fullscreen:', err)
+    }
+  }
+
+  // Listener para detectar saída de fullscreen
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      setIsFullscreen(!!document.fullscreenElement)
+    }
+    document.addEventListener('fullscreenchange', handleFullscreenChange)
+    return () => document.removeEventListener('fullscreenchange', handleFullscreenChange)
+  }, [])
 
   // Função para carregar dados do cenário base
   const carregarDadosSupabase = async () => {
@@ -846,7 +876,7 @@ export default function ChapasPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <Header title="Chapas" subtitle="Simulador de Cálculo Eleitoral - Método D'Hondt" />
+      <Header title="Chapas Eleitorais" />
       <div className="container mx-auto p-4">
         {/* Notificação de auto-save */}
         {notificacaoAutoSave && (
@@ -860,24 +890,36 @@ export default function ChapasPage() {
         {!dadosCarregados && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
             <div className="bg-white rounded-lg p-6 flex flex-col items-center gap-4">
-              <RefreshCw className="h-8 w-8 animate-spin text-blue-600" />
+              <RefreshCw className="h-8 w-8 animate-spin text-accent-gold" />
               <span className="text-gray-700">Carregando dados...</span>
             </div>
           </div>
         )}
         
-        <div ref={contentRef} className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full space-y-4 py-4">
-          {/* Header com controles */}
-          <div className="flex items-center justify-between mb-4">
-            <h1 className="text-2xl font-bold text-gray-900">Chapas Eleitorais</h1>
-            <div className="flex items-center gap-2">
-              <button
-                onClick={salvarMudancasCenario}
-                disabled={salvandoMudancas}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2"
-              >
-                {salvandoMudancas ? (
-                  <>
+        <div ref={fullscreenRef} className={`${isFullscreen ? 'bg-white p-4 max-h-screen overflow-y-auto' : 'bg-transparent'} transition-all duration-300`}>
+          <div ref={contentRef} className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full space-y-4 py-4">
+            {/* Header com controles */}
+            <div className="flex items-center justify-between mb-4">
+              <h1 className="text-2xl font-bold text-gray-900">Chapas Eleitorais</h1>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={toggleFullscreen}
+                  title={isFullscreen ? 'Sair de tela cheia' : 'Tela cheia'}
+                  className="p-2 rounded-lg hover:bg-bg-app text-text-secondary hover:text-accent-gold transition-colors"
+                >
+                  {isFullscreen ? (
+                    <Minimize2 className="h-5 w-5" />
+                  ) : (
+                    <Maximize2 className="h-5 w-5" />
+                  )}
+                </button>
+                <button
+                  onClick={salvarMudancasCenario}
+                  disabled={salvandoMudancas}
+                  className="px-4 py-2 bg-accent-gold text-white rounded-lg hover:bg-accent-gold/90 disabled:opacity-50 flex items-center gap-2"
+                >
+                  {salvandoMudancas ? (
+                    <>
                     <RefreshCw className="h-4 w-4 animate-spin" />
                     Salvando...
                   </>
@@ -947,81 +989,79 @@ export default function ChapasPage() {
 
           {/* Resumo do Quociente */}
           <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-3">
-            <div className="flex flex-wrap items-center gap-4 text-xs">
-              <div className="flex items-center gap-2">
-                <span className="font-semibold text-gray-700">Número de Vagas:</span>
-                <input
-                  type="number"
-                  value={numVagas}
-                  onChange={(e) => setNumVagas(Math.max(1, parseInt(e.target.value) || 10))}
-                  className="text-sm font-bold text-gray-700 bg-transparent border-b border-gray-200 focus:border-blue-400 outline-none w-20 text-center px-1"
-                  min="1"
-                  max="20"
-                />
-              </div>
+            <div className="flex flex-wrap items-center gap-4 text-xs justify-between">
+              <div className="flex flex-wrap items-center gap-4">
+                <div className="flex items-center gap-2">
+                  <span className="font-semibold text-gray-700">Vagas:</span>
+                  <input
+                    type="number"
+                    value={numVagas}
+                    onChange={(e) => setNumVagas(Math.max(1, parseInt(e.target.value) || 10))}
+                    className="text-sm font-bold text-gray-700 bg-transparent border-b border-gray-200 focus:border-accent-gold outline-none w-20 text-center px-1"
+                    min="1"
+                    max="20"
+                  />
+                </div>
 
-              <div className="flex items-center gap-2">
-                <span className="font-semibold text-gray-700">QE 2026:</span>
-                <input
-                  type="text"
-                  inputMode="numeric"
-                  pattern="[0-9.]*"
-                  value={quociente.toLocaleString('pt-BR')}
-                  onChange={e => {
-                    const raw = e.target.value.replace(/\./g, '')
-                    const num = Number(raw)
-                    if (!isNaN(num) && num >= 0) {
-                      setQuociente(num)
-                    }
-                  }}
-                  onBlur={async () => {
-                    if (cenarioAtivo) {
-                      const partidosConvertidos = converterPartidosParaCenario()
-                      await atualizarCenario(cenarioAtivo.id, partidosConvertidos, quociente)
-                      mostrarNotificacaoAutoSave('Quociente eleitoral atualizado')
-                    }
-                  }}
-                  className="text-sm font-bold text-gray-700 bg-transparent border-b border-gray-200 focus:border-blue-400 outline-none w-32 text-center px-1"
-                />
-              </div>
+                <div className="flex items-center gap-2">
+                  <span className="font-semibold text-gray-700">QE 2026:</span>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    pattern="[0-9.]*"
+                    value={quociente.toLocaleString('pt-BR')}
+                    onChange={e => {
+                      const raw = e.target.value.replace(/\./g, '')
+                      const num = Number(raw)
+                      if (!isNaN(num) && num >= 0) {
+                        setQuociente(num)
+                      }
+                    }}
+                    onBlur={async () => {
+                      if (cenarioAtivo) {
+                        const partidosConvertidos = converterPartidosParaCenario()
+                        await atualizarCenario(cenarioAtivo.id, partidosConvertidos, quociente)
+                        mostrarNotificacaoAutoSave('Quociente eleitoral atualizado')
+                      }
+                    }}
+                    className="text-sm font-bold text-gray-700 bg-transparent border-b border-gray-200 focus:border-accent-gold outline-none w-32 text-center px-1"
+                  />
+                </div>
 
-              <div className="flex items-center gap-2">
-                <span className="font-semibold text-gray-700">Mínimo:</span>
-                <span className="text-sm font-bold text-gray-700">{getQuocienteMinimo().toLocaleString('pt-BR')}</span>
-              </div>
+                <div className="flex items-center gap-2">
+                  <span className="font-semibold text-gray-700">Mínimo:</span>
+                  <span className="text-sm font-bold text-gray-700">{getQuocienteMinimo().toLocaleString('pt-BR')}</span>
+                </div>
 
-              <div className="flex items-center gap-2">
-                <span className="font-semibold text-gray-700">Elegíveis:</span>
-                <span className="text-sm font-bold text-gray-700">
-                  {partidos.filter(p => partidoAtingiuMinimo(p.nome) && !partidosOcultos[p.nome]).length}/{partidos.filter(p => !partidosOcultos[p.nome]).length}
-                </span>
-              </div>
+                <div className="flex items-center gap-2">
+                  <span className="font-semibold text-gray-700">Elegíveis:</span>
+                  <span className="text-sm font-bold text-gray-700">
+                    {partidos.filter(p => partidoAtingiuMinimo(p.nome) && !partidosOcultos[p.nome]).length}/{partidos.filter(p => !partidosOcultos[p.nome]).length}
+                  </span>
+                </div>
 
-              <div className="flex items-center gap-2">
-                <span className="font-semibold text-gray-700">Total de Votos:</span>
-                <span className="text-sm font-bold text-gray-700">
-                  {partidos
-                    .filter(p => !partidosOcultos[p.nome])
-                    .reduce((total, partido) => total + getVotosProjetados(partido.candidatos, partido.nome), 0)
-                    .toLocaleString('pt-BR')}
-                </span>
+                <div className="flex items-center gap-2">
+                  <span className="font-semibold text-gray-700">Total de Votos:</span>
+                  <span className="text-sm font-bold text-gray-700">
+                    {partidos
+                      .filter(p => !partidosOcultos[p.nome])
+                      .reduce((total, partido) => total + getVotosProjetados(partido.candidatos, partido.nome), 0)
+                      .toLocaleString('pt-BR')}
+                  </span>
+                </div>
               </div>
+              <button
+                onClick={() => setDialogNovoPartidoAberto(true)}
+                className="px-4 py-2 bg-accent-gold text-white rounded-lg hover:bg-accent-gold/90 flex items-center gap-2 whitespace-nowrap"
+              >
+                <Plus className="h-4 w-4" />
+                Adicionar Partido
+              </button>
             </div>
           </div>
 
-          {/* Botão para adicionar novo partido */}
-          <div className="flex justify-end">
-            <button
-              onClick={() => setDialogNovoPartidoAberto(true)}
-              className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center gap-2"
-            >
-              <Plus className="h-4 w-4" />
-              Adicionar Partido
-            </button>
-          </div>
-
           {/* Grid de partidos */}
-          <div className="w-full grid grid-cols-1 md:grid-cols-5 gap-6">
+          <div className="w-full grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
             {ordenarPartidos(partidos)
               .filter(partido => !partidosOcultos[partido.nome])
               .map((partido, pIdx) => {
@@ -1032,19 +1072,19 @@ export default function ChapasPage() {
                 const votosProjetados = getVotosProjetados(partido.candidatos, partido.nome)
                 
                 return (
-                  <div key={partido.nome} className={`flex flex-col items-center bg-white rounded-lg shadow-sm border p-3 h-full min-h-[420px] ${
+                  <div key={partido.nome} className={`flex flex-col items-center bg-white rounded-lg shadow-sm border border-card p-4 h-full ${
                     atingiuMinimo 
-                      ? 'border-gray-100' 
-                      : 'border-red-300 bg-red-50'
+                      ? 'border-border-card' 
+                      : 'border-status-error/50 bg-status-error/5'
                   }`}>
-                    <div className={`w-full py-1 font-bold text-base mb-2 rounded ${
+                    <div className={`w-full py-2 px-3 font-bold text-sm mb-3 rounded text-center ${
                       atingiuMinimo 
-                        ? 'bg-gray-200 text-gray-800' 
-                        : 'bg-red-200 text-red-800'
+                        ? 'bg-bg-surface text-text-primary' 
+                        : 'bg-status-error/10 text-status-error'
                     }`}>
                       <div className="flex items-center justify-center relative">
-                        <span className="px-6">{partido.nome}</span>
-                        <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
+                        <span className="px-2">{partido.nome}</span>
+                        <div className="absolute right-0 top-1/2 -translate-y-1/2 flex items-center gap-1">
                           <button
                             type="button"
                             onClick={() => {
@@ -1052,30 +1092,30 @@ export default function ChapasPage() {
                                 handleExcluirPartido(partido.nome)
                               }
                             }}
-                            className="text-red-500 hover:text-red-700 transition-colors"
+                            className="text-status-error hover:text-status-error/80 transition-colors p-1"
                             title="Remover partido"
                           >
-                            <Trash2 className="h-4 w-4" />
+                            <Trash2 className="h-3.5 w-3.5" />
                           </button>
                           <button
                             type="button"
                             onClick={() => togglePartidoVisibilidade(partido.nome)}
-                            className="text-gray-500 hover:text-gray-700 transition-colors"
+                            className="text-text-secondary hover:text-text-primary transition-colors p-1"
                             title={partidosOcultos[partido.nome] ? 'Mostrar partido' : 'Ocultar partido'}
                           >
                             {partidosOcultos[partido.nome] ? (
-                              <EyeOff className="h-4 w-4" />
+                              <EyeOff className="h-3.5 w-3.5" />
                             ) : (
-                              <Eye className="h-4 w-4" />
+                              <Eye className="h-3.5 w-3.5" />
                             )}
                           </button>
                           {partido.nome === 'REPUBLICANOS' && (
                             <button
                               type="button"
                               onClick={() => setOpenAnaliseRepublicanos(true)}
-                              className="text-gray-700 hover:text-blue-700 transition-colors"
+                              className="text-text-primary hover:text-accent-gold transition-colors p-1"
                             >
-                              <Info className="h-4 w-4" />
+                              <Info className="h-3.5 w-3.5" />
                             </button>
                           )}
                         </div>
@@ -1083,16 +1123,14 @@ export default function ChapasPage() {
                     </div>
                     
                     {!atingiuMinimo && (
-                      <div className="w-full mb-2 p-2 bg-red-100 border border-red-200 rounded text-xs text-red-700 text-center">
-                        <div className="font-semibold">⚠️ Partido não atingiu o mínimo</div>
-                        <div>Votos: {votosProjetados.toLocaleString('pt-BR')}</div>
-                        <div>Mínimo: {quocienteMinimo.toLocaleString('pt-BR')} (80% do QE)</div>
-                        <div className="text-red-600 font-medium">Não participa da disputa das sobras</div>
+                      <div className="w-full mb-2 p-2 bg-status-error/10 border border-status-error/30 rounded text-xs text-status-error text-center">
+                        <div className="font-semibold">⚠️ Não atingiu mínimo</div>
+                        <div className="text-[10px] mt-1">{votosProjetados.toLocaleString('pt-BR')} / {quocienteMinimo.toLocaleString('pt-BR')}</div>
                       </div>
                     )}
                     
-                    <div className="w-full flex flex-col flex-1">
-                      <div className="space-y-2">
+                    <div className="w-full flex flex-col flex-1 overflow-y-auto">
+                      <div className="space-y-0.5">
                         <table className="w-full text-xs">
                           <tbody>
                             {(() => {
@@ -1100,7 +1138,7 @@ export default function ChapasPage() {
                               return homens.map((c, idx) => (
                                 <tr 
                                   key={`homem-${c.nome}-${idx}`}
-                                  className="group relative hover:bg-gray-50 transition-colors"
+                                  className="group relative hover:bg-bg-app transition-colors"
                                   onMouseEnter={() => setHoveredRow({ partidoIdx: pIdx, candidatoNome: c.nome })}
                                   onMouseLeave={() => {
                                     if (!(editingName?.partidoIdx === pIdx && editingName?.candidatoNome === c.nome)) {
@@ -1108,11 +1146,11 @@ export default function ChapasPage() {
                                     }
                                   }}
                                 >
-                                  <td className="pr-2 text-left whitespace-nowrap font-normal align-top w-2/3">
-                                    <div className="flex items-center gap-2">
-                                      <span className="text-sm text-gray-500">{idx + 1}.</span>
+                                  <td className="pr-1 text-left font-normal align-top">
+                                    <div className="flex items-center gap-1">
+                                      <span className="text-xs text-text-secondary">{idx + 1}.</span>
                                       {modoImpressao ? (
-                                        <span className="text-xs font-medium">{c.nome}</span>
+                                        <span className="text-xs font-medium text-text-primary">{c.nome}</span>
                                       ) : (
                                         <input
                                           type="text"
@@ -1134,7 +1172,7 @@ export default function ChapasPage() {
                                               e.currentTarget.blur()
                                             }
                                           }}
-                                          className="bg-transparent border-b border-gray-200 focus:border-blue-400 outline-none w-full text-xs py-0.5 px-1"
+                                          className="bg-transparent border-b border-border-card focus:border-accent-gold outline-none w-32 text-xs py-0.5 px-1 text-text-primary"
                                         />
                                       )}
                                     </div>
@@ -1199,7 +1237,7 @@ export default function ChapasPage() {
                           </tbody>
                         </table>
 
-                        <div className="border-t-2 border-gray-300 my-2"></div>
+                        <div className="border-t border-border-card my-1"></div>
 
                         <table className="w-full text-xs">
                           <tbody>
@@ -1208,7 +1246,7 @@ export default function ChapasPage() {
                               return mulheres.map((c, idx) => (
                                 <tr 
                                   key={`mulher-${c.nome}-${idx}`}
-                                  className="group relative hover:bg-gray-50 transition-colors"
+                                  className="group relative hover:bg-bg-app transition-colors"
                                   onMouseEnter={() => setHoveredRow({ partidoIdx: pIdx, candidatoNome: c.nome })}
                                   onMouseLeave={() => {
                                     if (!(editingName?.partidoIdx === pIdx && editingName?.candidatoNome === c.nome)) {
@@ -1216,11 +1254,11 @@ export default function ChapasPage() {
                                     }
                                   }}
                                 >
-                                  <td className="pr-2 text-left whitespace-nowrap font-normal align-top w-2/3">
-                                    <div className="flex items-center gap-2">
-                                      <span className="text-sm text-gray-500">{idx + 1}.</span>
+                                  <td className="pr-1 text-left font-normal align-top">
+                                    <div className="flex items-center gap-1">
+                                      <span className="text-xs text-text-secondary">{idx + 1}.</span>
                                       {modoImpressao ? (
-                                        <span className="text-xs font-medium">{c.nome}</span>
+                                        <span className="text-xs font-medium text-text-primary">{c.nome}</span>
                                       ) : (
                                         <input
                                           type="text"
@@ -1242,14 +1280,14 @@ export default function ChapasPage() {
                                               e.currentTarget.blur()
                                             }
                                           }}
-                                          className="bg-transparent border-b border-gray-200 focus:border-blue-400 outline-none w-full text-xs py-0.5 px-1"
+                                          className="bg-transparent border-b border-border-card focus:border-accent-gold outline-none w-32 text-xs py-0.5 px-1 text-text-primary"
                                         />
                                       )}
                                     </div>
                                   </td>
-                                  <td className="text-right whitespace-nowrap font-normal align-top">
+                                  <td className="pl-1 text-right whitespace-nowrap font-normal align-top">
                                     {modoImpressao ? (
-                                      <span className="text-xs font-medium">
+                                      <span className="text-xs font-semibold text-accent-gold">
                                         {Number(c.votos).toLocaleString('pt-BR')}
                                       </span>
                                     ) : (
@@ -1273,12 +1311,12 @@ export default function ChapasPage() {
                                               setEditVoto(null)
                                             }
                                           }}
-                                          className="bg-transparent border-b border-gray-200 focus:border-blue-400 outline-none w-full text-xs py-0.5 px-1 text-right"
+                                          className="bg-transparent border-b border-border-card focus:border-accent-gold outline-none text-xs py-0.5 px-1 text-right text-text-primary"
                                           style={{ textAlign: 'right' }}
                                         />
                                       ) : (
                                         <span
-                                          className="cursor-pointer select-text"
+                                          className="cursor-pointer select-text text-accent-gold font-semibold"
                                           onClick={() => setEditVoto({ partidoIdx: pIdx, candidatoNome: c.nome })}
                                         >
                                           {Number(c.votos).toLocaleString('pt-BR')}
@@ -1286,7 +1324,7 @@ export default function ChapasPage() {
                                       )
                                     )}
                                   </td>
-                                  <td className="pl-2 text-right whitespace-nowrap font-normal align-top w-8">
+                                  <td className="pl-1 text-right font-normal align-top w-6">
                                     {(hoveredRow?.partidoIdx === pIdx && hoveredRow?.candidatoNome === c.nome) || 
                                      (editingName?.partidoIdx === pIdx && editingName?.candidatoNome === c.nome) ? (
                                       <button
@@ -1295,9 +1333,9 @@ export default function ChapasPage() {
                                             handleExcluirCandidato(pIdx, c.nome)
                                           }
                                         }}
-                                        className="text-red-500 hover:text-red-700 hover:bg-red-50 p-1 rounded"
+                                        className="text-status-error hover:text-status-error/80 hover:bg-status-error/10 p-0.5 rounded"
                                       >
-                                        <Trash2 className="h-4 w-4" />
+                                        <Trash2 className="h-3.5 w-3.5" />
                                       </button>
                                     ) : null}
                                   </td>
@@ -1357,7 +1395,7 @@ export default function ChapasPage() {
 
                       <button
                         onClick={() => setDialogAberto(pIdx)}
-                        className="mt-2 px-3 py-1 text-xs bg-blue-50 text-blue-600 rounded hover:bg-blue-100 flex items-center gap-1 justify-center"
+                        className="mt-2 px-3 py-1 text-xs bg-accent-gold-soft text-accent-gold rounded hover:bg-accent-gold-soft/80 flex items-center gap-1 justify-center"
                       >
                         <Plus className="h-3 w-3" />
                         Adicionar Candidato
@@ -1598,7 +1636,7 @@ export default function ChapasPage() {
                                   {candidatos.map((candidato, index) => (
                                     <div key={index} className="flex items-center justify-between p-2 bg-gray-50 rounded text-xs">
                                       <div className="flex items-center gap-2">
-                                        <span className="font-bold text-blue-600">#{candidato.posicao}</span>
+                                        <span className="font-bold text-accent-gold">#{candidato.posicao}</span>
                                         <span className="font-medium">{candidato.nome}</span>
                                       </div>
                                       <div className="text-right">
@@ -1628,6 +1666,7 @@ export default function ChapasPage() {
             </div>
           </div>
         </div>
+        </div>
 
         {/* Modal para adicionar novo candidato */}
         {dialogAberto !== null && (
@@ -1654,7 +1693,7 @@ export default function ChapasPage() {
                     value={novoCandidato.nome}
                     onChange={(e) => setNovoCandidato(prev => ({ ...prev, nome: e.target.value }))}
                     disabled={salvandoCandidato}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-gold"
                   />
                 </div>
                 <div>
@@ -1666,7 +1705,7 @@ export default function ChapasPage() {
                     value={novoCandidato.votos}
                     onChange={(e) => setNovoCandidato(prev => ({ ...prev, votos: parseInt(e.target.value) || 0 }))}
                     disabled={salvandoCandidato}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-gold"
                   />
                 </div>
                 <div>
@@ -1680,7 +1719,7 @@ export default function ChapasPage() {
                         checked={novoCandidato.genero === 'homem'}
                         onChange={(e) => setNovoCandidato(prev => ({ ...prev, genero: e.target.value as 'homem' | 'mulher' }))}
                         disabled={salvandoCandidato}
-                        className="w-4 h-4 text-blue-600"
+                        className="w-4 h-4 text-accent-gold"
                       />
                       <span className="text-sm">Homem</span>
                     </label>
@@ -1692,7 +1731,7 @@ export default function ChapasPage() {
                         checked={novoCandidato.genero === 'mulher'}
                         onChange={(e) => setNovoCandidato(prev => ({ ...prev, genero: e.target.value as 'homem' | 'mulher' }))}
                         disabled={salvandoCandidato}
-                        className="w-4 h-4 text-blue-600"
+                        className="w-4 h-4 text-accent-gold"
                       />
                       <span className="text-sm">Mulher</span>
                     </label>
@@ -1712,7 +1751,7 @@ export default function ChapasPage() {
                   <button
                     onClick={() => handleAdicionarCandidato(dialogAberto)}
                     disabled={salvandoCandidato || !novoCandidato.nome.trim()}
-                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+                    className="px-4 py-2 bg-accent-gold text-white rounded-lg hover:bg-accent-gold/90 disabled:opacity-50"
                   >
                     {salvandoCandidato ? 'Salvando...' : 'Adicionar'}
                   </button>
@@ -1747,7 +1786,7 @@ export default function ChapasPage() {
                     value={novoPartido.nome}
                     onChange={(e) => setNovoPartido(prev => ({ ...prev, nome: e.target.value }))}
                     disabled={salvandoPartido}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-gold"
                   />
                 </div>
                 <div>
@@ -1760,7 +1799,7 @@ export default function ChapasPage() {
                       setNovoPartido(prev => ({ ...prev, cor, corTexto }))
                     }}
                     disabled={salvandoPartido}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-gold"
                   >
                     <option value="bg-gray-500">Cinza</option>
                     <option value="bg-red-600">Vermelho</option>
@@ -1788,7 +1827,7 @@ export default function ChapasPage() {
                   <button
                     onClick={handleAdicionarPartido}
                     disabled={salvandoPartido || !novoPartido.nome.trim()}
-                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+                    className="px-4 py-2 bg-accent-gold text-white rounded-lg hover:bg-accent-gold/90 disabled:opacity-50"
                   >
                     {salvandoPartido ? 'Salvando...' : 'Adicionar Partido'}
                   </button>
@@ -1876,7 +1915,7 @@ export default function ChapasPage() {
               <div className="mt-4 flex justify-end">
                 <button
                   onClick={() => setOpenAnaliseRepublicanos(false)}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                  className="px-4 py-2 bg-accent-gold text-white rounded-lg hover:bg-accent-gold/90"
                 >
                   Fechar
                 </button>

@@ -81,7 +81,7 @@ export default function FasesPage() {
         <div className="px-4 py-6 lg:px-6">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {[1, 2, 3, 4].map((i) => (
-              <div key={i} className="h-64 bg-surface rounded-2xl border border-border animate-pulse" />
+              <div key={i} className="h-64 bg-surface rounded-2xl border border-card animate-pulse" />
             ))}
           </div>
         </div>
@@ -95,7 +95,7 @@ export default function FasesPage() {
 
       <div className="px-4 py-6 lg:px-6">
         <div className="mb-6 flex items-center justify-between">
-          <p className="text-sm text-text-muted">
+          <p className="text-sm text-secondary">
             O sistema se adapta automaticamente conforme a fase eleitoral ativa, ajustando métricas,
             restrições jurídicas e automações disponíveis.
           </p>
@@ -104,7 +104,7 @@ export default function FasesPage() {
               setEditingPhase(null)
               setShowModal(true)
             }}
-            className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors flex items-center gap-2"
+            className="px-4 py-2 bg-accent-gold text-white rounded-lg hover:bg-accent-gold transition-colors flex items-center gap-2"
           >
             <Plus className="w-4 h-4" />
             Nova Fase
@@ -112,11 +112,11 @@ export default function FasesPage() {
         </div>
 
         {phases.length === 0 ? (
-          <div className="bg-surface rounded-2xl border border-border p-12 text-center">
-            <p className="text-text-muted mb-4">Nenhuma fase cadastrada ainda.</p>
+          <div className="bg-surface rounded-2xl border border-card p-12 text-center">
+            <p className="text-secondary mb-4">Nenhuma fase cadastrada ainda.</p>
             <button
               onClick={() => setShowModal(true)}
-              className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors"
+              className="px-4 py-2 bg-accent-gold text-white rounded-lg hover:bg-accent-gold transition-colors"
             >
               Criar Primeira Fase
             </button>
@@ -126,23 +126,23 @@ export default function FasesPage() {
             {phases.map((phase) => (
               <div
                 key={phase.id}
-                className={`bg-surface rounded-2xl border-2 p-6 transition-all duration-200 ease-premium hover:shadow-card-hover ${
+                className={`bg-surface rounded-2xl border-2 p-6 transition-all duration-200 ease-out hover:shadow-card-hover ${
                   phase.active
-                    ? 'border-primary bg-primary-soft/30'
-                    : 'border-border'
+                    ? 'border-accent-gold bg-accent-gold-soft/30'
+                    : 'border-card'
                 }`}
               >
                 <div className="flex items-start justify-between mb-4">
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-2">
                       {phase.active ? (
-                        <CheckCircle2 className="w-5 h-5 text-primary" />
+                        <CheckCircle2 className="w-5 h-5 text-accent-gold" />
                       ) : (
-                        <Circle className="w-5 h-5 text-text-muted" />
+                        <Circle className="w-5 h-5 text-secondary" />
                       )}
-                      <h3 className="text-xl font-semibold text-text-strong">{phase.name}</h3>
+                      <h3 className="text-xl font-semibold text-primary">{phase.name}</h3>
                     </div>
-                    <div className="flex items-center gap-4 text-sm text-text-muted">
+                    <div className="flex items-center gap-4 text-sm text-secondary">
                       <span>{formatDate(new Date(phase.start_date))}</span>
                       <span>→</span>
                       <span>{formatDate(new Date(phase.end_date))}</span>
@@ -150,7 +150,7 @@ export default function FasesPage() {
                   </div>
                   <div className="flex items-center gap-2">
                     {phase.active && (
-                      <span className="px-3 py-1 text-xs font-medium bg-primary text-white rounded-full">
+                      <span className="px-3 py-1 text-xs font-medium bg-accent-gold text-white rounded-full">
                         Ativa
                       </span>
                     )}
@@ -159,7 +159,7 @@ export default function FasesPage() {
                       className="p-2 rounded-lg hover:bg-background transition-colors"
                       title={phase.active ? 'Desativar' : 'Ativar'}
                     >
-                      <Power className={`w-4 h-4 ${phase.active ? 'text-primary' : 'text-text-muted'}`} />
+                      <Power className={`w-4 h-4 ${phase.active ? 'text-accent-gold' : 'text-secondary'}`} />
                     </button>
                     <button
                       onClick={() => {
@@ -169,7 +169,7 @@ export default function FasesPage() {
                       className="p-2 rounded-lg hover:bg-background transition-colors"
                       title="Editar"
                     >
-                      <Edit2 className="w-4 h-4 text-text-muted" />
+                      <Edit2 className="w-4 h-4 text-secondary" />
                     </button>
                     <button
                       onClick={() => handleDelete(phase.id)}
@@ -184,8 +184,8 @@ export default function FasesPage() {
                 <div className="space-y-4">
                   {/* Indicadores Prioritários */}
                   <div>
-                    <h4 className="text-sm font-semibold text-text-strong mb-2 flex items-center gap-2">
-                      <CheckCircle2 className="w-4 h-4 text-primary" />
+                    <h4 className="text-sm font-semibold text-primary mb-2 flex items-center gap-2">
+                      <CheckCircle2 className="w-4 h-4 text-accent-gold" />
                       Indicadores Prioritários
                     </h4>
                     <div className="flex flex-wrap gap-2">
@@ -193,40 +193,40 @@ export default function FasesPage() {
                         phase.indicators.map((indicator, idx) => (
                           <span
                             key={idx}
-                            className="px-2 py-1 text-xs bg-primary-soft text-primary rounded-lg"
+                            className="px-2 py-1 text-xs bg-accent-gold-soft text-accent-gold rounded-lg"
                           >
                             {indicator}
                           </span>
                         ))
                       ) : (
-                        <span className="text-xs text-text-muted">Nenhum indicador definido</span>
+                        <span className="text-xs text-secondary">Nenhum indicador definido</span>
                       )}
                     </div>
                   </div>
 
                   {/* Restrições */}
                   <div>
-                    <h4 className="text-sm font-semibold text-text-strong mb-2 flex items-center gap-2">
+                    <h4 className="text-sm font-semibold text-primary mb-2 flex items-center gap-2">
                       <AlertCircle className="w-4 h-4 text-status-warning" />
                       Restrições
                     </h4>
                     <ul className="space-y-1">
                       {phase.restrictions?.length > 0 ? (
                         phase.restrictions.map((restriction, idx) => (
-                          <li key={idx} className="text-sm text-text-muted flex items-start gap-2">
+                          <li key={idx} className="text-sm text-secondary flex items-start gap-2">
                             <span className="text-status-warning mt-1">•</span>
                             <span>{restriction}</span>
                           </li>
                         ))
                       ) : (
-                        <li className="text-xs text-text-muted">Nenhuma restrição definida</li>
+                        <li className="text-xs text-secondary">Nenhuma restrição definida</li>
                       )}
                     </ul>
                   </div>
 
                   {/* Automações */}
                   <div>
-                    <h4 className="text-sm font-semibold text-text-strong mb-2 flex items-center gap-2">
+                    <h4 className="text-sm font-semibold text-primary mb-2 flex items-center gap-2">
                       <Clock className="w-4 h-4 text-status-success" />
                       Automações Ativas
                     </h4>
@@ -241,7 +241,7 @@ export default function FasesPage() {
                           </span>
                         ))
                       ) : (
-                        <span className="text-xs text-text-muted">Nenhuma automação definida</span>
+                        <span className="text-xs text-secondary">Nenhuma automação definida</span>
                       )}
                     </div>
                   </div>
@@ -253,10 +253,10 @@ export default function FasesPage() {
 
         {/* Info Box */}
         <div className="mt-8 bg-beige rounded-2xl border border-beige-dark p-6">
-          <h3 className="text-lg font-semibold text-text-strong mb-2">
+          <h3 className="text-lg font-semibold text-primary mb-2">
             Como funciona o sistema de fases?
           </h3>
-          <p className="text-sm text-text-muted">
+          <p className="text-sm text-secondary">
             Cada fase eleitoral possui configurações específicas que ajustam automaticamente as
             funcionalidades do sistema. Na reta final, por exemplo, o modo de alerta jurídico é
             ativado automaticamente, e certos tipos de conteúdo são restringidos conforme a legislação
@@ -344,9 +344,9 @@ function PhaseModal({ phase, onClose, onSuccess }: PhaseModalProps) {
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-surface rounded-2xl border border-border p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+      <div className="bg-surface rounded-2xl border border-card p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between mb-6">
-          <h2 className="text-xl font-semibold text-text-strong">
+          <h2 className="text-xl font-semibold text-primary">
             {phase ? 'Editar Fase' : 'Nova Fase'}
           </h2>
           <button
@@ -359,7 +359,7 @@ function PhaseModal({ phase, onClose, onSuccess }: PhaseModalProps) {
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-text-strong mb-2">
+            <label className="block text-sm font-medium text-primary mb-2">
               Nome da Fase *
             </label>
             <input
@@ -367,14 +367,14 @@ function PhaseModal({ phase, onClose, onSuccess }: PhaseModalProps) {
               value={formData.name}
               onChange={(e) => setFormData({ ...formData, name: e.target.value })}
               required
-              className="w-full px-4 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-soft"
+              className="w-full px-4 py-2 border border-card rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-gold-soft"
               placeholder="Ex: Campanha Oficial"
             />
           </div>
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-text-strong mb-2">
+              <label className="block text-sm font-medium text-primary mb-2">
                 Data de Início *
               </label>
               <input
@@ -382,11 +382,11 @@ function PhaseModal({ phase, onClose, onSuccess }: PhaseModalProps) {
                 value={formData.start_date}
                 onChange={(e) => setFormData({ ...formData, start_date: e.target.value })}
                 required
-                className="w-full px-4 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-soft"
+                className="w-full px-4 py-2 border border-card rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-gold-soft"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-text-strong mb-2">
+              <label className="block text-sm font-medium text-primary mb-2">
                 Data de Fim *
               </label>
               <input
@@ -394,7 +394,7 @@ function PhaseModal({ phase, onClose, onSuccess }: PhaseModalProps) {
                 value={formData.end_date}
                 onChange={(e) => setFormData({ ...formData, end_date: e.target.value })}
                 required
-                className="w-full px-4 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-soft"
+                className="w-full px-4 py-2 border border-card rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-gold-soft"
               />
             </div>
           </div>
@@ -407,45 +407,45 @@ function PhaseModal({ phase, onClose, onSuccess }: PhaseModalProps) {
                 onChange={(e) => setFormData({ ...formData, active: e.target.checked })}
                 className="w-4 h-4"
               />
-              <span className="text-sm font-medium text-text-strong">Marcar como ativa</span>
+              <span className="text-sm font-medium text-primary">Marcar como ativa</span>
             </label>
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-text-strong mb-2">
+            <label className="block text-sm font-medium text-primary mb-2">
               Indicadores (separados por vírgula)
             </label>
             <input
               type="text"
               value={formData.indicators}
               onChange={(e) => setFormData({ ...formData, indicators: e.target.value })}
-              className="w-full px-4 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-soft"
+              className="w-full px-4 py-2 border border-card rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-gold-soft"
               placeholder="IFE, Presença Territorial, Sentimento"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-text-strong mb-2">
+            <label className="block text-sm font-medium text-primary mb-2">
               Restrições (separadas por vírgula)
             </label>
             <input
               type="text"
               value={formData.restrictions}
               onChange={(e) => setFormData({ ...formData, restrictions: e.target.value })}
-              className="w-full px-4 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-soft"
+              className="w-full px-4 py-2 border border-card rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-gold-soft"
               placeholder="Sem conteúdo eleitoral explícito"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-text-strong mb-2">
+            <label className="block text-sm font-medium text-primary mb-2">
               Automações (separadas por vírgula)
             </label>
             <input
               type="text"
               value={formData.automations}
               onChange={(e) => setFormData({ ...formData, automations: e.target.value })}
-              className="w-full px-4 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-soft"
+              className="w-full px-4 py-2 border border-card rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-gold-soft"
               placeholder="WhatsApp, Mobilização, Alertas Jurídicos"
             />
           </div>
@@ -460,14 +460,14 @@ function PhaseModal({ phase, onClose, onSuccess }: PhaseModalProps) {
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 border border-border rounded-lg hover:bg-background transition-colors"
+              className="px-4 py-2 border border-card rounded-lg hover:bg-background transition-colors"
             >
               Cancelar
             </button>
             <button
               type="submit"
               disabled={loading}
-              className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors disabled:opacity-50"
+              className="px-4 py-2 bg-accent-gold text-white rounded-lg hover:bg-accent-gold transition-colors disabled:opacity-50"
             >
               {loading ? 'Salvando...' : phase ? 'Atualizar' : 'Criar'}
             </button>

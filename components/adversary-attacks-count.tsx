@@ -47,8 +47,8 @@ export function AdversaryAttacksCount({ adversaryId }: AdversaryAttacksCountProp
   if (totalAttacks === 0) return null
 
   return (
-    <div className="mt-2 pt-2 border-t border-border">
-      <div className="flex items-center gap-2 text-xs text-text-muted">
+    <div className="mt-2 pt-2 border-t border-card">
+      <div className="flex items-center gap-2 text-xs text-secondary">
         <AlertTriangle className="w-3 h-3 text-status-error" />
         <span>
           {totalAttacks} menção(ões) nos últimos 7 dias

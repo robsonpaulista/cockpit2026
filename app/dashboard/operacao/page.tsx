@@ -179,17 +179,17 @@ export default function OperacaoPage() {
 
       <div className="px-4 py-6 lg:px-6">
         {/* Controles Globais */}
-        <div className="bg-surface rounded-2xl border border-border p-4 mb-6 flex items-center justify-between">
+        <div className="bg-surface rounded-2xl border border-card p-4 mb-6 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <button
               onClick={expandAllTerritories}
-              className="px-3 py-1.5 text-sm font-medium text-text-muted hover:text-text-strong rounded-lg hover:bg-background transition-colors"
+              className="px-3 py-1.5 text-sm font-medium text-secondary hover:text-primary rounded-lg hover:bg-background transition-colors"
             >
               Expandir Todos
             </button>
             <button
               onClick={collapseAllTerritories}
-              className="px-3 py-1.5 text-sm font-medium text-text-muted hover:text-text-strong rounded-lg hover:bg-background transition-colors"
+              className="px-3 py-1.5 text-sm font-medium text-secondary hover:text-primary rounded-lg hover:bg-background transition-colors"
             >
               Recolher Todos
             </button>
@@ -198,7 +198,7 @@ export default function OperacaoPage() {
 
         {/* Fluxo de Status - Protocolo */}
         <div className="mb-6">
-          <div className="bg-surface rounded-2xl border border-border p-6">
+          <div className="bg-surface rounded-2xl border border-card p-6">
             <div className="relative py-8">
               <div className="flex items-start justify-between relative">
                 {/* Linha conectora horizontal - atrás dos círculos */}
@@ -209,26 +209,26 @@ export default function OperacaoPage() {
                   <div className="relative mb-3 z-20">
                     <div className={`w-12 h-12 rounded-full flex items-center justify-center transition-all relative z-20 ${
                       backlogCount > 0 
-                        ? 'bg-primary border-2 border-primary' 
-                        : 'bg-surface border-2 border-border'
+                        ? 'bg-accent-gold border-2 border-accent-gold' 
+                        : 'bg-surface border-2 border-card'
                     }`}>
                       <ListTodo className={`w-6 h-6 ${
-                        backlogCount > 0 ? 'text-white' : 'text-text-muted'
+                        backlogCount > 0 ? 'text-white' : 'text-secondary'
                       }`} />
                     </div>
                     {backlogCount > 0 && (
-                      <div className="absolute -top-1 -right-1 w-5 h-5 bg-primary rounded-full flex items-center justify-center border-2 border-surface">
+                      <div className="absolute -top-1 -right-1 w-5 h-5 bg-accent-gold rounded-full flex items-center justify-center border-2 border-surface">
                         <span className="text-xs font-bold text-white">{backlogCount}</span>
                       </div>
                     )}
                   </div>
                   <p className={`text-xs font-medium text-center ${
-                    backlogCount > 0 ? 'text-text-strong font-semibold' : 'text-text-muted'
+                    backlogCount > 0 ? 'text-primary font-semibold' : 'text-secondary'
                   }`}>
                     Backlog
                   </p>
                   <p className={`text-xs mt-1 ${
-                    backlogCount > 0 ? 'text-text-strong font-semibold' : 'text-text-muted'
+                    backlogCount > 0 ? 'text-primary font-semibold' : 'text-secondary'
                   }`}>
                     {backlogCount}
                   </p>
@@ -238,7 +238,7 @@ export default function OperacaoPage() {
                 <div className="hidden sm:block flex-1 h-0.5 relative z-0" style={{ top: '1.5rem' }}>
                   <div className={`w-full h-full ${
                     inProgressCount > 0 || completedCount > 0 
-                      ? 'bg-primary' 
+                      ? 'bg-accent-gold' 
                       : 'bg-border'
                   }`} />
                 </div>
@@ -248,26 +248,26 @@ export default function OperacaoPage() {
                   <div className="relative mb-3 z-20">
                     <div className={`w-12 h-12 rounded-full flex items-center justify-center transition-all relative z-20 ${
                       inProgressCount > 0 
-                        ? 'bg-primary border-2 border-primary' 
-                        : 'bg-surface border-2 border-border'
+                        ? 'bg-accent-gold border-2 border-accent-gold' 
+                        : 'bg-surface border-2 border-card'
                     }`}>
                       <PlayCircle className={`w-6 h-6 ${
-                        inProgressCount > 0 ? 'text-white' : 'text-text-muted'
+                        inProgressCount > 0 ? 'text-white' : 'text-secondary'
                       }`} />
                     </div>
                     {inProgressCount > 0 && (
-                      <div className="absolute -top-1 -right-1 w-5 h-5 bg-primary rounded-full flex items-center justify-center border-2 border-surface">
+                      <div className="absolute -top-1 -right-1 w-5 h-5 bg-accent-gold rounded-full flex items-center justify-center border-2 border-surface">
                         <span className="text-xs font-bold text-white">{inProgressCount}</span>
                       </div>
                     )}
                   </div>
                   <p className={`text-xs font-medium text-center ${
-                    inProgressCount > 0 ? 'text-text-strong font-semibold' : 'text-text-muted'
+                    inProgressCount > 0 ? 'text-primary font-semibold' : 'text-secondary'
                   }`}>
                     Em Andamento
                   </p>
                   <p className={`text-xs mt-1 ${
-                    inProgressCount > 0 ? 'text-text-strong font-semibold' : 'text-text-muted'
+                    inProgressCount > 0 ? 'text-primary font-semibold' : 'text-secondary'
                   }`}>
                     {inProgressCount}
                   </p>
@@ -288,10 +288,10 @@ export default function OperacaoPage() {
                     <div className={`w-12 h-12 rounded-full flex items-center justify-center transition-all relative z-20 ${
                       completedCount > 0 
                         ? 'bg-status-success border-2 border-status-success' 
-                        : 'bg-surface border-2 border-border'
+                        : 'bg-surface border-2 border-card'
                     }`}>
                       <CheckCircle2 className={`w-6 h-6 ${
-                        completedCount > 0 ? 'text-white' : 'text-text-muted'
+                        completedCount > 0 ? 'text-white' : 'text-secondary'
                       }`} />
                     </div>
                     {completedCount > 0 && (
@@ -301,12 +301,12 @@ export default function OperacaoPage() {
                     )}
                   </div>
                   <p className={`text-xs font-medium text-center ${
-                    completedCount > 0 ? 'text-text-strong font-semibold' : 'text-text-muted'
+                    completedCount > 0 ? 'text-primary font-semibold' : 'text-secondary'
                   }`}>
                     Concluídas
                   </p>
                   <p className={`text-xs mt-1 ${
-                    completedCount > 0 ? 'text-text-strong font-semibold' : 'text-text-muted'
+                    completedCount > 0 ? 'text-primary font-semibold' : 'text-secondary'
                   }`}>
                     {completedCount}
                   </p>
@@ -327,10 +327,10 @@ export default function OperacaoPage() {
                     <div className={`w-12 h-12 rounded-full flex items-center justify-center transition-all relative z-20 ${
                       overdueCount > 0 
                         ? 'bg-status-error border-2 border-status-error' 
-                        : 'bg-surface border-2 border-border'
+                        : 'bg-surface border-2 border-card'
                     }`}>
                       <AlertCircle className={`w-6 h-6 ${
-                        overdueCount > 0 ? 'text-white' : 'text-text-muted'
+                        overdueCount > 0 ? 'text-white' : 'text-secondary'
                       }`} />
                     </div>
                     {overdueCount > 0 && (
@@ -340,12 +340,12 @@ export default function OperacaoPage() {
                     )}
                   </div>
                   <p className={`text-xs font-medium text-center ${
-                    overdueCount > 0 ? 'text-text-strong font-semibold' : 'text-text-muted'
+                    overdueCount > 0 ? 'text-primary font-semibold' : 'text-secondary'
                   }`}>
                     Atrasadas
                   </p>
                   <p className={`text-xs mt-1 ${
-                    overdueCount > 0 ? 'text-text-strong font-semibold' : 'text-text-muted'
+                    overdueCount > 0 ? 'text-primary font-semibold' : 'text-secondary'
                   }`}>
                     {overdueCount}
                   </p>
@@ -357,8 +357,8 @@ export default function OperacaoPage() {
 
         {/* Lista de Territórios */}
         {loading ? (
-          <div className="bg-surface rounded-2xl border border-border p-12 text-center">
-            <p className="text-text-muted">Carregando...</p>
+          <div className="bg-surface rounded-2xl border border-card p-12 text-center">
+            <p className="text-secondary">Carregando...</p>
           </div>
         ) : (
           <div className="space-y-6">
@@ -368,7 +368,7 @@ export default function OperacaoPage() {
               const isExpanded = expandedTerritories.has(territory.id)
 
               return (
-                <div key={territory.id} className="bg-surface rounded-2xl border border-border">
+                <div key={territory.id} className="bg-surface rounded-2xl border border-card">
                   {/* Header expansível */}
                   <div 
                     className="p-4 cursor-pointer hover:bg-background/50 transition-colors flex items-center justify-between"
@@ -376,13 +376,13 @@ export default function OperacaoPage() {
                   >
                     <div className="flex items-center gap-3">
                       {isExpanded ? (
-                        <ChevronDown className="w-5 h-5 text-text-muted" />
+                        <ChevronDown className="w-5 h-5 text-secondary" />
                       ) : (
-                        <ChevronRight className="w-5 h-5 text-text-muted" />
+                        <ChevronRight className="w-5 h-5 text-secondary" />
                       )}
                       <div>
-                        <h3 className="text-lg font-semibold text-text-strong">{territory.name}</h3>
-                        <p className="text-xs text-text-muted">
+                        <h3 className="text-lg font-semibold text-primary">{territory.name}</h3>
+                        <p className="text-xs text-secondary">
                           {territoryLeaders.length} {territoryLeaders.length === 1 ? 'líder' : 'líderes'} • {territoryTasks.length} {territoryTasks.length === 1 ? 'tarefa' : 'tarefas'}
                         </p>
                       </div>
@@ -394,7 +394,7 @@ export default function OperacaoPage() {
                         setEditingLeader(null)
                         setShowLeaderModal(true)
                       }}
-                      className="px-3 py-1.5 text-sm font-medium bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors flex items-center gap-2"
+                      className="px-3 py-1.5 text-sm font-medium bg-accent-gold text-white rounded-lg hover:bg-accent-gold transition-colors flex items-center gap-2"
                     >
                       <Users className="w-4 h-4" />
                       Novo Líder
@@ -403,18 +403,18 @@ export default function OperacaoPage() {
 
                   {/* Conteúdo expansível */}
                   {isExpanded && (
-                    <div className="px-4 pb-4 space-y-6 border-t border-border">
+                    <div className="px-4 pb-4 space-y-6 border-t border-card">
                       {/* Informações do Território */}
                       <div className="pt-4">
                         {territory.description && (
-                          <p className="text-sm text-text-muted mb-3">{territory.description}</p>
+                          <p className="text-sm text-secondary mb-3">{territory.description}</p>
                         )}
                         {territory.vocations && territory.vocations.length > 0 && (
                           <div className="flex flex-wrap gap-2">
                             {territory.vocations.map((vocation, idx) => (
                               <span
                                 key={idx}
-                                className="text-xs px-2 py-1 bg-primary-soft text-primary rounded-full"
+                                className="text-xs px-2 py-1 bg-accent-gold-soft text-accent-gold rounded-full"
                               >
                                 {vocation}
                               </span>
@@ -426,18 +426,18 @@ export default function OperacaoPage() {
                       {/* Lista de Líderes */}
                       {territoryLeaders.length > 0 ? (
                         <div>
-                          <h4 className="text-sm font-semibold text-text-strong mb-3">Líderes</h4>
+                          <h4 className="text-sm font-semibold text-primary mb-3">Líderes</h4>
                           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                             {territoryLeaders.map((leader) => (
                               <div
                                 key={leader.id}
-                                className="border border-border rounded-lg p-4 hover:shadow-md transition-shadow"
+                                className="border border-card rounded-lg p-4 hover:shadow-md transition-shadow"
                               >
                                 <div className="flex items-start justify-between mb-2">
                                   <div className="flex-1">
-                                    <h4 className="font-semibold text-text-strong">{leader.name}</h4>
+                                    <h4 className="font-semibold text-primary">{leader.name}</h4>
                                     {leader.role && (
-                                      <p className="text-sm text-text-muted">{leader.role}</p>
+                                      <p className="text-sm text-secondary">{leader.role}</p>
                                     )}
                                   </div>
                                   <div className="flex gap-1">
@@ -450,7 +450,7 @@ export default function OperacaoPage() {
                                       className="p-1 rounded hover:bg-background transition-colors"
                                       title="Editar"
                                     >
-                                      <Edit2 className="w-4 h-4 text-text-muted" />
+                                      <Edit2 className="w-4 h-4 text-secondary" />
                                     </button>
                                     <button
                                       onClick={(e) => {
@@ -465,10 +465,10 @@ export default function OperacaoPage() {
                                   </div>
                                 </div>
                                 {leader.phone && (
-                                  <p className="text-xs text-text-muted">📞 {leader.phone}</p>
+                                  <p className="text-xs text-secondary">📞 {leader.phone}</p>
                                 )}
                                 {leader.email && (
-                                  <p className="text-xs text-text-muted">✉️ {leader.email}</p>
+                                  <p className="text-xs text-secondary">✉️ {leader.email}</p>
                                 )}
                                 <span className={`inline-block mt-2 text-xs px-2 py-1 rounded-full ${
                                   leader.status === 'ativo' 
@@ -482,7 +482,7 @@ export default function OperacaoPage() {
                           </div>
                         </div>
                       ) : (
-                        <div className="text-center py-4 text-text-muted text-sm">
+                        <div className="text-center py-4 text-secondary text-sm">
                           Nenhum líder cadastrado neste território
                         </div>
                       )}
@@ -490,14 +490,14 @@ export default function OperacaoPage() {
                       {/* Kanban */}
                       <div>
                         <div className="flex items-center justify-between mb-4">
-                          <h4 className="text-sm font-semibold text-text-strong">Tarefas</h4>
+                          <h4 className="text-sm font-semibold text-primary">Tarefas</h4>
                           <button
                             onClick={() => {
                               setSelectedTerritoryForTask(territory.id)
                               setEditingTask(null)
                               setShowTaskModal(true)
                             }}
-                            className="px-3 py-1.5 text-sm font-medium bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors flex items-center gap-2"
+                            className="px-3 py-1.5 text-sm font-medium bg-accent-gold text-white rounded-lg hover:bg-accent-gold transition-colors flex items-center gap-2"
                           >
                             <Plus className="w-4 h-4" />
                             Nova Tarefa

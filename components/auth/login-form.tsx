@@ -51,19 +51,19 @@ export function LoginForm() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-background px-4">
       <div className="w-full max-w-md">
-        <div className="bg-surface rounded-2xl border border-border p-8 shadow-card">
+        <div className="bg-surface rounded-2xl border border-card p-8 shadow-card">
           <div className="mb-6">
-            <h1 className="text-2xl font-semibold text-text-strong mb-2">
+            <h1 className="text-2xl font-semibold text-primary mb-2">
               Cockpit 2026
             </h1>
-            <p className="text-sm text-text-muted">
+            <p className="text-sm text-secondary">
               Sistema Operacional de Gestão de Campanha
             </p>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label htmlFor="email" className="block text-sm font-medium text-text-strong mb-2">
+              <label htmlFor="email" className="block text-sm font-medium text-primary mb-2">
                 Email
               </label>
               <input
@@ -72,13 +72,13 @@ export function LoginForm() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
-                className="w-full px-4 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-soft focus:border-primary transition-premium"
+                className="w-full px-4 py-2 border border-card rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-gold-soft focus:border-accent-gold transition-premium"
                 placeholder="seu@email.com"
               />
             </div>
 
             <div>
-              <label htmlFor="password" className="block text-sm font-medium text-text-strong mb-2">
+              <label htmlFor="password" className="block text-sm font-medium text-primary mb-2">
                 Senha
               </label>
               <input
@@ -87,7 +87,7 @@ export function LoginForm() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
-                className="w-full px-4 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-soft focus:border-primary transition-premium"
+                className="w-full px-4 py-2 border border-card rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-gold-soft focus:border-accent-gold transition-premium"
                 placeholder="••••••••"
               />
             </div>
@@ -101,7 +101,7 @@ export function LoginForm() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full py-2.5 bg-primary text-white rounded-lg font-medium hover:bg-primary-dark transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full py-2.5 bg-accent-gold text-white rounded-lg font-medium hover:bg-accent-gold transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {loading ? 'Entrando...' : 'Entrar'}
             </button>

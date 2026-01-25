@@ -13,7 +13,7 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
     <div className="flex h-screen overflow-hidden">
       <Sidebar />
       <div className={cn(
-        'flex-1 flex flex-col overflow-hidden transition-all duration-300 ease-premium',
+        'flex-1 flex flex-col overflow-hidden transition-all duration-300 ease-out',
         collapsed ? 'lg:ml-20' : 'lg:ml-64'
       )}>
         <DashboardHeader />

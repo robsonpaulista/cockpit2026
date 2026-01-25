@@ -369,8 +369,8 @@ export default function AgendaPage() {
         {/* Botão de Configuração */}
         <div className="mb-6 flex items-center justify-between">
           <div>
-            <h2 className="text-xl font-semibold text-text-strong mb-2">Eventos do Google Calendar</h2>
-            <p className="text-sm text-text-muted">
+            <h2 className="text-xl font-semibold text-primary mb-2">Eventos do Google Calendar</h2>
+            <p className="text-sm text-secondary">
               {config 
                 ? `Conectado ao calendário: ${config.calendarId}` 
                 : 'Configure sua conexão com o Google Calendar para visualizar seus eventos'}
@@ -381,7 +381,7 @@ export default function AgendaPage() {
               <button
                 onClick={() => fetchEvents(true)}
                 disabled={isRefreshing || loading}
-                className="flex items-center gap-2 px-4 py-2 bg-surface border border-border text-text-strong rounded-lg hover:bg-background transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex items-center gap-2 px-4 py-2 bg-surface border border-card text-primary rounded-lg hover:bg-background transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 title="Atualizar eventos manualmente"
               >
                 <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
@@ -390,7 +390,7 @@ export default function AgendaPage() {
             )}
             <button
               onClick={() => setShowConfig(true)}
-              className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors"
+              className="flex items-center gap-2 px-4 py-2 bg-accent-gold text-white rounded-lg hover:bg-accent-gold/90 transition-colors"
             >
               <Settings className="w-4 h-4" />
               {config ? 'Reconfigurar' : 'Configurar'}
@@ -417,56 +417,56 @@ export default function AgendaPage() {
         )}
 
         {!config ? (
-          <div className="bg-surface rounded-2xl border border-border p-8 text-center">
-            <Calendar className="w-16 h-16 text-text-muted mx-auto mb-4" />
-            <h3 className="text-lg font-semibold text-text-strong mb-2">
+          <div className="bg-surface rounded-2xl border border-card p-8 text-center">
+            <Calendar className="w-16 h-16 text-secondary mx-auto mb-4" />
+            <h3 className="text-lg font-semibold text-primary mb-2">
               Nenhuma configuração encontrada
             </h3>
-            <p className="text-sm text-text-muted mb-4">
+            <p className="text-sm text-secondary mb-4">
               Configure sua conexão com o Google Calendar para começar a visualizar seus eventos.
             </p>
             <button
               onClick={() => setShowConfig(true)}
-              className="px-6 py-3 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors"
+              className="px-6 py-3 bg-accent-gold text-white rounded-lg hover:bg-accent-gold/90 transition-colors"
             >
               Configurar Google Calendar
             </button>
           </div>
         ) : loading ? (
           <div className="flex items-center justify-center py-12">
-            <Loader2 className="w-6 h-6 text-primary animate-spin" />
-            <span className="ml-2 text-sm text-text-muted">Carregando eventos...</span>
+            <Loader2 className="w-6 h-6 text-accent-gold animate-spin" />
+            <span className="ml-2 text-sm text-secondary">Carregando eventos...</span>
           </div>
         ) : (
           <>
             {/* Estatísticas */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-              <div className="bg-surface rounded-xl border border-border p-4">
+              <div className="bg-surface rounded-xl border border-card p-4">
                 <div className="flex items-center gap-2 mb-2">
-                  <CalendarDays className="w-5 h-5 text-primary" />
-                  <span className="text-sm font-medium text-text-muted">Total de Eventos</span>
+                  <CalendarDays className="w-5 h-5 text-accent-gold" />
+                  <span className="text-sm font-medium text-secondary">Total de Eventos</span>
                 </div>
-                <p className="text-2xl font-bold text-text-strong">{events.length}</p>
+                <p className="text-2xl font-bold text-primary">{events.length}</p>
               </div>
-              <div className="bg-surface rounded-xl border border-border p-4">
+              <div className="bg-surface rounded-xl border border-card p-4">
                 <div className="flex items-center gap-2 mb-2">
                   <Clock className="w-5 h-5 text-blue-600" />
-                  <span className="text-sm font-medium text-text-muted">Próximos Eventos</span>
+                  <span className="text-sm font-medium text-secondary">Próximos Eventos</span>
                 </div>
                 <p className="text-2xl font-bold text-blue-600">{upcomingEvents.length}</p>
               </div>
-              <div className="bg-surface rounded-xl border border-border p-4">
+              <div className="bg-surface rounded-xl border border-card p-4">
                 <div className="flex items-center gap-2 mb-2">
                   <Users className="w-5 h-5 text-emerald-600" />
-                  <span className="text-sm font-medium text-text-muted">Hoje</span>
+                  <span className="text-sm font-medium text-secondary">Hoje</span>
                 </div>
                 <p className="text-2xl font-bold text-emerald-600">{todayEvents.length}</p>
               </div>
             </div>
 
             {/* Filtro de Data */}
-            <div className="mb-6 bg-surface rounded-xl border border-border p-4">
-              <label className="block text-sm font-medium text-text-strong mb-2">
+            <div className="mb-6 bg-surface rounded-xl border border-card p-4">
+              <label className="block text-sm font-medium text-primary mb-2">
                 Filtrar por Data
               </label>
               <div className="flex items-center gap-3">
@@ -484,36 +484,36 @@ export default function AgendaPage() {
                     }
                   }}
                   min="2026-01-01"
-                  className="px-4 py-2 border border-border rounded-lg bg-background text-text-strong focus:outline-none focus:ring-2 focus:ring-primary-soft"
+                  className="px-4 py-2 border border-card rounded-lg bg-background text-primary focus:outline-none focus:ring-2 focus:ring-accent-gold-soft"
                 />
                 {selectedDate && (
                   <button
                     onClick={() => setSelectedDate(null)}
-                    className="px-4 py-2 text-sm text-text-muted hover:text-text-strong transition-colors"
+                    className="px-4 py-2 text-sm text-secondary hover:text-primary transition-colors"
                   >
                     Limpar filtro
                   </button>
                 )}
               </div>
               {selectedDate && (
-                <p className="mt-2 text-sm text-text-muted">
+                <p className="mt-2 text-sm text-secondary">
                   Mostrando eventos de {formatDateOnly(selectedDate)} ({sortedEvents.length} evento{sortedEvents.length !== 1 ? 's' : ''})
                 </p>
               )}
             </div>
 
             {/* Lista de Eventos */}
-            <div className="bg-surface rounded-2xl border border-border p-6 relative overflow-hidden">
-              <div className="absolute left-0 top-0 bottom-0 w-1 bg-primary opacity-20" />
+            <div className="bg-surface rounded-2xl border border-card p-6 relative overflow-hidden">
+              <div className="absolute left-0 top-0 bottom-0 w-1 bg-accent-gold opacity-20" />
               
               <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-semibold text-text-strong flex items-center gap-2">
-                  <Calendar className="w-5 h-5 text-primary" />
+                <h3 className="text-lg font-semibold text-primary flex items-center gap-2">
+                  <Calendar className="w-5 h-5 text-accent-gold" />
                   {selectedDate ? `Eventos de ${formatDateOnly(selectedDate)}` : 'Todos os Eventos'}
                 </h3>
                 <button
                   onClick={() => setShowFullscreen(true)}
-                  className="p-2 rounded-lg hover:bg-background transition-colors text-text-muted hover:text-text-strong"
+                  className="p-2 rounded-lg hover:bg-background transition-colors text-secondary hover:text-primary"
                   title="Visualizar em tela cheia"
                 >
                   <Maximize2 className="w-5 h-5" />
@@ -522,7 +522,7 @@ export default function AgendaPage() {
 
               {sortedEvents.length === 0 ? (
                 <div className="text-center py-8">
-                  <p className="text-sm text-text-muted">
+                  <p className="text-sm text-secondary">
                     {selectedDate ? 'Nenhum evento encontrado para esta data' : 'Nenhum evento encontrado'}
                   </p>
                 </div>
@@ -537,19 +537,19 @@ export default function AgendaPage() {
                     return (
                       <div
                         key={event.id}
-                        className={`p-4 rounded-xl border border-border hover:bg-background/50 transition-colors relative ${
+                        className={`p-4 rounded-xl border border-card hover:bg-background/50 transition-colors relative ${
                           isUpcoming ? 'ring-2 ring-status-warning animate-pulse' : ''
                         } ${isPast ? 'opacity-75' : ''}`}
                       >
                         <div className="flex items-start justify-between gap-4">
                           <div className="flex-1">
-                            <h4 className="text-base font-semibold text-text-strong mb-1 flex items-center gap-2 flex-wrap">
+                            <h4 className="text-base font-semibold text-primary mb-1 flex items-center gap-2 flex-wrap">
                               {highlightOriginInText(event.summary || 'Sem título')}
                             </h4>
-                            <div className="flex flex-wrap items-center gap-3 text-xs text-text-muted">
+                            <div className="flex flex-wrap items-center gap-3 text-xs text-secondary">
                               <div className="flex items-center gap-1">
                                 <Clock className="w-3.5 h-3.5" />
-                                <span className="text-base font-bold text-text-strong">
+                                <span className="text-base font-bold text-primary">
                                   {event.start.dateTime 
                                     ? formatTime(event.start.dateTime)
                                     : event.start.date
@@ -579,9 +579,9 @@ export default function AgendaPage() {
                                     name={`attendance-${event.id}`}
                                     checked={attendance?.attended === true}
                                     onChange={() => handleAttendanceChange(event.id, true)}
-                                    className="w-4 h-4 border-border text-primary focus:ring-2 focus:ring-primary-soft"
+                                    className="w-4 h-4 border-card text-accent-gold focus:ring-2 focus:ring-accent-gold-soft"
                                   />
-                                  <span className="text-sm text-text-muted flex items-center gap-1">
+                                  <span className="text-sm text-secondary flex items-center gap-1">
                                     <CheckCircle2 className="w-4 h-4 text-green-600" />
                                     Atendido
                                   </span>
@@ -592,22 +592,22 @@ export default function AgendaPage() {
                                     name={`attendance-${event.id}`}
                                     checked={attendance?.attended === false}
                                     onChange={() => handleAttendanceChange(event.id, false)}
-                                    className="w-4 h-4 border-border text-primary focus:ring-2 focus:ring-primary-soft"
+                                    className="w-4 h-4 border-card text-accent-gold focus:ring-2 focus:ring-accent-gold-soft"
                                   />
-                                  <span className="text-sm text-text-muted flex items-center gap-1">
+                                  <span className="text-sm text-secondary flex items-center gap-1">
                                     <XCircle className="w-4 h-4 text-red-600" />
                                     Não Atendido
                                   </span>
                                 </label>
                                 {attendance === undefined && (
-                                  <span className="text-xs text-text-muted">Não marcado</span>
+                                  <span className="text-xs text-secondary">Não marcado</span>
                                 )}
                               </div>
                             )}
                           </div>
                           <div className="text-right flex flex-col items-end justify-between">
                             <div>
-                              <p className="text-sm font-medium text-text-strong">
+                              <p className="text-sm font-medium text-primary">
                                 {event.start.dateTime 
                                   ? formatDate(event.start.dateTime)
                                   : event.start.date
@@ -615,12 +615,12 @@ export default function AgendaPage() {
                                   : '-'}
                               </p>
                               {isPast && (
-                                <p className="text-xs text-text-muted mt-1">Passado</p>
+                                <p className="text-xs text-secondary mt-1">Passado</p>
                               )}
                             </div>
                             {/* Descrição no canto inferior direito */}
                             {event.description && (
-                              <p className="text-sm font-bold text-text-strong mt-2 text-right max-w-xs">
+                              <p className="text-sm font-bold text-primary mt-2 text-right max-w-xs">
                                 {event.description.replace(/^\([^)]+\)\s*/, '').trim()}
                               </p>
                             )}
@@ -648,9 +648,9 @@ export default function AgendaPage() {
       {/* Modal de Tela Cheia */}
       {showFullscreen && (
         <div className="fixed inset-0 z-50 bg-background flex flex-col">
-          <div className="bg-surface border-b border-border p-4 flex items-center justify-between">
-            <h2 className="text-xl font-semibold text-text-strong flex items-center gap-2">
-              <Calendar className="w-6 h-6 text-primary" />
+          <div className="bg-surface border-b border-card p-4 flex items-center justify-between">
+            <h2 className="text-xl font-semibold text-primary flex items-center gap-2">
+              <Calendar className="w-6 h-6 text-accent-gold" />
               {selectedDate ? `Eventos de ${formatDateOnly(selectedDate)}` : 'Todos os Eventos'}
             </h2>
             <button
@@ -658,14 +658,14 @@ export default function AgendaPage() {
               className="p-2 rounded-lg hover:bg-background transition-colors"
               title="Fechar tela cheia"
             >
-              <X className="w-6 h-6 text-text-muted" />
+              <X className="w-6 h-6 text-secondary" />
             </button>
           </div>
           <div className="flex-1 p-6 overflow-auto">
             <div className="max-w-5xl mx-auto">
               {sortedEvents.length === 0 ? (
                 <div className="text-center py-12">
-                  <p className="text-text-muted">
+                  <p className="text-secondary">
                     {selectedDate ? 'Nenhum evento encontrado para esta data' : 'Nenhum evento encontrado'}
                   </p>
                 </div>
@@ -680,19 +680,19 @@ export default function AgendaPage() {
                     return (
                       <div
                         key={event.id}
-                        className={`p-5 rounded-xl border border-border hover:bg-background/50 transition-colors ${
+                        className={`p-5 rounded-xl border border-card hover:bg-background/50 transition-colors ${
                           isUpcoming ? 'ring-2 ring-status-warning animate-pulse' : ''
                         } ${isPast ? 'opacity-75' : ''}`}
                       >
                         <div className="flex items-start justify-between gap-4">
                           <div className="flex-1">
-                            <h4 className="text-lg font-semibold text-text-strong mb-2 flex items-center gap-2 flex-wrap">
+                            <h4 className="text-lg font-semibold text-primary mb-2 flex items-center gap-2 flex-wrap">
                               {highlightOriginInText(event.summary || 'Sem título')}
                             </h4>
-                            <div className="flex flex-wrap items-center gap-4 text-sm text-text-muted">
+                            <div className="flex flex-wrap items-center gap-4 text-sm text-secondary">
                               <div className="flex items-center gap-2">
                                 <Clock className="w-4 h-4" />
-                                <span className="text-lg font-bold text-text-strong">
+                                <span className="text-lg font-bold text-primary">
                                   {event.start.dateTime 
                                     ? formatTime(event.start.dateTime)
                                     : event.start.date
@@ -722,9 +722,9 @@ export default function AgendaPage() {
                                     name={`attendance-fullscreen-${event.id}`}
                                     checked={attendance?.attended === true}
                                     onChange={() => handleAttendanceChange(event.id, true)}
-                                    className="w-4 h-4 border-border text-primary focus:ring-2 focus:ring-primary-soft"
+                                    className="w-4 h-4 border-card text-accent-gold focus:ring-2 focus:ring-accent-gold-soft"
                                   />
-                                  <span className="text-sm text-text-muted flex items-center gap-1">
+                                  <span className="text-sm text-secondary flex items-center gap-1">
                                     <CheckCircle2 className="w-4 h-4 text-green-600" />
                                     Atendido
                                   </span>
@@ -735,15 +735,15 @@ export default function AgendaPage() {
                                     name={`attendance-fullscreen-${event.id}`}
                                     checked={attendance?.attended === false}
                                     onChange={() => handleAttendanceChange(event.id, false)}
-                                    className="w-4 h-4 border-border text-primary focus:ring-2 focus:ring-primary-soft"
+                                    className="w-4 h-4 border-card text-accent-gold focus:ring-2 focus:ring-accent-gold-soft"
                                   />
-                                  <span className="text-sm text-text-muted flex items-center gap-1">
+                                  <span className="text-sm text-secondary flex items-center gap-1">
                                     <XCircle className="w-4 h-4 text-red-600" />
                                     Não Atendido
                                   </span>
                                 </label>
                                 {attendance === undefined && (
-                                  <span className="text-xs text-text-muted">Não marcado</span>
+                                  <span className="text-xs text-secondary">Não marcado</span>
                                 )}
                               </div>
                             )}
@@ -751,7 +751,7 @@ export default function AgendaPage() {
                           <div className="text-right">
                             {/* Descrição no canto inferior direito */}
                             {event.description && (
-                              <p className="text-sm font-bold text-text-strong text-right max-w-xs">
+                              <p className="text-sm font-bold text-primary text-right max-w-xs">
                                 {event.description.replace(/^\([^)]+\)\s*/, '').trim()}
                               </p>
                             )}

@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback, useRef } from 'react'
 import { X, Users, FileText, TrendingUp, CheckCircle, Clock, AlertCircle, Loader2, Download } from 'lucide-react'
 import { getEleitoradoByCity } from '@/lib/eleitores'
 import jsPDF from 'jspdf'
+import { LineChart, Line, ResponsiveContainer, XAxis, YAxis, CartesianGrid, Tooltip, LabelList } from 'recharts'
 
 interface Lideranca {
   [key: string]: any
@@ -384,18 +385,18 @@ export function ExecutiveBriefingModal({
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-surface rounded-xl border border-border w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
+      <div className="bg-surface rounded-xl border border-card w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-border">
+        <div className="flex items-center justify-between p-6 border-b border-card">
           <div>
-            <h2 className="text-xl font-semibold text-text-strong">Briefing Executivo</h2>
-            <p className="text-sm text-text-muted mt-1">{cidade}</p>
+            <h2 className="text-xl font-semibold text-primary">Briefing Executivo</h2>
+            <p className="text-sm text-secondary mt-1">{cidade}</p>
           </div>
           <div className="flex items-center gap-2">
             <button
               onClick={handleExportPDF}
               disabled={exporting || loading}
-              className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex items-center gap-2 px-4 py-2 bg-accent-gold text-white rounded-lg hover:bg-accent-gold/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               title="Exportar para PDF"
             >
               <Download className="w-4 h-4" />
@@ -405,7 +406,7 @@ export function ExecutiveBriefingModal({
               onClick={onClose}
               className="p-1.5 rounded-lg hover:bg-background transition-colors"
             >
-              <X className="w-5 h-5 text-text-muted" />
+              <X className="w-5 h-5 text-secondary" />
             </button>
           </div>
         </div>
@@ -414,8 +415,8 @@ export function ExecutiveBriefingModal({
         <div className="flex-1 overflow-y-auto p-4 space-y-3" ref={contentRef} style={{ backgroundColor: '#ffffff' }}>
           {loading ? (
             <div className="flex items-center justify-center py-12">
-              <Loader2 className="w-6 h-6 text-primary animate-spin" />
-              <span className="ml-2 text-sm text-text-muted">Carregando dados...</span>
+              <Loader2 className="w-6 h-6 text-accent-gold animate-spin" />
+              <span className="ml-2 text-sm text-secondary">Carregando dados...</span>
             </div>
           ) : error ? (
             <div className="p-4 rounded-xl border border-status-error/30 bg-status-error/10">
@@ -426,27 +427,27 @@ export function ExecutiveBriefingModal({
               {/* Lideranças */}
               <section>
                 <div className="flex items-center gap-1.5 mb-2">
-                  <Users className="w-3.5 h-3.5 text-primary" />
-                  <h3 className="text-sm font-semibold text-text-strong">Lideranças e Expectativa de Votos</h3>
+                  <Users className="w-3.5 h-3.5 text-accent-gold" />
+                  <h3 className="text-sm font-semibold text-primary">Lideranças e Expectativa de Votos</h3>
                   {expectativaVotosCol && (
-                    <span className="ml-auto text-xs font-bold text-primary">
+                    <span className="ml-auto text-xs font-bold text-accent-gold">
                       Total: {Math.round(totalExpectativa).toLocaleString('pt-BR')} votos
                     </span>
                   )}
                 </div>
                 {liderancasOrdenadas.length === 0 ? (
-                  <p className="text-xs text-text-muted">Nenhuma liderança encontrada</p>
+                  <p className="text-xs text-secondary">Nenhuma liderança encontrada</p>
                 ) : (
                   <div className="overflow-x-auto">
                     <table className="w-full text-xs border-collapse">
                       <thead>
-                        <tr className="bg-background border-b border-border">
-                          <th className="text-left p-1.5 font-semibold text-text-strong">Nome</th>
+                        <tr className="bg-background border-b border-card">
+                          <th className="text-left p-1.5 font-semibold text-primary">Nome</th>
                           {liderancasOrdenadas.some(l => l.funcao) && (
-                            <th className="text-left p-1.5 font-semibold text-text-strong">Função</th>
+                            <th className="text-left p-1.5 font-semibold text-primary">Função</th>
                           )}
                           {expectativaVotosCol && (
-                            <th className="text-right p-1.5 font-semibold text-text-strong">Expectativa de Votos</th>
+                            <th className="text-right p-1.5 font-semibold text-primary">Expectativa de Votos</th>
                           )}
                         </tr>
                       </thead>
@@ -456,13 +457,13 @@ export function ExecutiveBriefingModal({
                           const nome = nomeCol ? (lider[nomeCol] || 'Sem nome') : 'Sem nome'
                           
                           return (
-                            <tr key={idx} className="border-b border-border hover:bg-background/50 transition-colors">
-                              <td className="p-1.5 text-text-strong">{nome}</td>
+                            <tr key={idx} className="border-b border-card hover:bg-background/50 transition-colors">
+                              <td className="p-1.5 text-primary">{nome}</td>
                               {liderancasOrdenadas.some(l => l.funcao) && (
-                                <td className="p-1.5 text-text-muted">{lider.funcao || '-'}</td>
+                                <td className="p-1.5 text-secondary">{lider.funcao || '-'}</td>
                               )}
                               {expectativaVotosCol && (
-                                <td className="p-1.5 text-right font-semibold text-primary">
+                                <td className="p-1.5 text-right font-semibold text-accent-gold">
                                   {expectativa > 0 ? `${Math.round(expectativa).toLocaleString('pt-BR')} votos` : '-'}
                                 </td>
                               )}
@@ -478,23 +479,23 @@ export function ExecutiveBriefingModal({
               {/* Demandas */}
               <section>
                 <div className="flex items-center gap-1.5 mb-2">
-                  <FileText className="w-3.5 h-3.5 text-primary" />
-                  <h3 className="text-sm font-semibold text-text-strong">Demandas por Status</h3>
+                  <FileText className="w-3.5 h-3.5 text-accent-gold" />
+                  <h3 className="text-sm font-semibold text-primary">Demandas por Status</h3>
                 </div>
                 {demandsOrdenadas.length === 0 ? (
-                  <p className="text-xs text-text-muted">Nenhuma demanda encontrada</p>
+                  <p className="text-xs text-secondary">Nenhuma demanda encontrada</p>
                 ) : (
                   <div className="overflow-x-auto">
                     <table className="w-full text-xs border-collapse">
                       <thead>
-                        <tr className="bg-background border-b border-border">
-                          <th className="text-left p-1.5 font-semibold text-text-strong">Título</th>
-                          <th className="text-left p-1.5 font-semibold text-text-strong">Status</th>
+                        <tr className="bg-background border-b border-card">
+                          <th className="text-left p-1.5 font-semibold text-primary">Título</th>
+                          <th className="text-left p-1.5 font-semibold text-primary">Status</th>
                           {demandsOrdenadas.some(d => d.lideranca) && (
-                            <th className="text-left p-1.5 font-semibold text-text-strong">Liderança</th>
+                            <th className="text-left p-1.5 font-semibold text-primary">Liderança</th>
                           )}
                           {demandsOrdenadas.some(d => d.data_demanda) && (
-                            <th className="text-left p-1.5 font-semibold text-text-strong">Data</th>
+                            <th className="text-left p-1.5 font-semibold text-primary">Data</th>
                           )}
                         </tr>
                       </thead>
@@ -506,36 +507,36 @@ export function ExecutiveBriefingModal({
                           const isAndamento = statusLower.includes('andamento') || statusLower.includes('progresso') || statusLower.includes('em andamento')
                           
                           return (
-                            <tr key={idx} className="border-b border-border hover:bg-background/50 transition-colors">
-                              <td className="p-1.5 text-text-strong">
+                            <tr key={idx} className="border-b border-card hover:bg-background/50 transition-colors">
+                              <td className="p-1.5 text-primary">
                                 <div className="flex items-center gap-1">
                                   {isFinalizada ? (
                                     <CheckCircle className="w-3 h-3 text-status-success flex-shrink-0" />
                                   ) : isAndamento ? (
                                     <Clock className="w-3 h-3 text-status-warning flex-shrink-0" />
                                   ) : (
-                                    <AlertCircle className="w-3 h-3 text-text-muted flex-shrink-0" />
+                                    <AlertCircle className="w-3 h-3 text-secondary flex-shrink-0" />
                                   )}
                                   <span>{demand.title}</span>
                                 </div>
                                 {demand.description && (
-                                  <p className="text-text-muted mt-0.5 text-xs">{demand.description}</p>
+                                  <p className="text-secondary mt-0.5 text-xs">{demand.description}</p>
                                 )}
                               </td>
                               <td className="p-1.5">
                                 <span className={`text-xs px-1.5 py-0.5 rounded ${
                                   isFinalizada ? 'bg-status-success/10 text-status-success' :
                                   isAndamento ? 'bg-status-warning/10 text-status-warning' :
-                                  'bg-text-muted/10 text-text-muted'
+                                  'bg-text-muted/10 text-secondary'
                                 }`}>
                                   {status}
                                 </span>
                               </td>
                               {demandsOrdenadas.some(d => d.lideranca) && (
-                                <td className="p-1.5 text-text-muted">{demand.lideranca || '-'}</td>
+                                <td className="p-1.5 text-secondary">{demand.lideranca || '-'}</td>
                               )}
                               {demandsOrdenadas.some(d => d.data_demanda) && (
-                                <td className="p-1.5 text-text-muted">
+                                <td className="p-1.5 text-secondary">
                                   {demand.data_demanda ? new Date(demand.data_demanda).toLocaleDateString('pt-BR') : '-'}
                                 </td>
                               )}
@@ -551,68 +552,176 @@ export function ExecutiveBriefingModal({
               {/* Pesquisas de Intenção de Voto */}
               {polls.length > 0 && (
                 <section>
-                  <div className="flex items-center gap-1.5 mb-2">
-                    <TrendingUp className="w-3.5 h-3.5 text-primary" />
-                    <h3 className="text-sm font-semibold text-text-strong">Pesquisas de Intenção de Voto</h3>
+                  <div className="flex items-center gap-1.5 mb-3">
+                    <TrendingUp className="w-3.5 h-3.5 text-accent-gold" />
+                    <h3 className="text-sm font-semibold text-primary">Pesquisas de Intenção de Voto</h3>
                   </div>
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-xs border-collapse">
-                      <thead>
-                        <tr className="bg-background border-b border-border">
-                          <th className="text-left p-1.5 font-semibold text-text-strong">Candidato</th>
-                          <th className="text-right p-1.5 font-semibold text-text-strong">Intenção</th>
-                          <th className="text-right p-1.5 font-semibold text-text-strong">Rejeição</th>
-                          <th className="text-left p-1.5 font-semibold text-text-strong">Instituto</th>
-                          <th className="text-left p-1.5 font-semibold text-text-strong">Data</th>
-                          <th className="text-left p-1.5 font-semibold text-text-strong">Tipo</th>
-                          <th className="text-left p-1.5 font-semibold text-text-strong">Cargo</th>
-                          {eleitorado && eleitorado > 0 && (
-                            <>
-                              <th className="text-right p-1.5 font-semibold text-text-strong">Eleitorado</th>
-                              <th className="text-right p-1.5 font-semibold text-text-strong">Votos Proporcionais</th>
-                            </>
-                          )}
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {polls.map((poll) => {
-                          const pollEleitorado = getEleitoradoByCity(cidade)
-                          const pollVotosProporcionais = pollEleitorado ? Math.round((poll.intencao / 100) * pollEleitorado) : null
+                  <div className="h-96 bg-white rounded-lg border border-card p-4">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <LineChart 
+                        data={(() => {
+                          // Preparar dados para o gráfico
+                          const datasUnicas = new Map<string, any>()
                           
-                          return (
-                            <tr key={poll.id} className="border-b border-border hover:bg-background/50 transition-colors">
-                              <td className="p-1.5 text-text-strong font-medium">{poll.candidato_nome}</td>
-                              <td className="p-1.5 text-right font-bold text-primary">{poll.intencao.toFixed(1)}%</td>
-                              <td className="p-1.5 text-right text-status-error">{poll.rejeicao.toFixed(1)}%</td>
-                              <td className="p-1.5 text-text-muted">{poll.instituto}</td>
-                              <td className="p-1.5 text-text-muted">{new Date(poll.data).toLocaleDateString('pt-BR')}</td>
-                              <td className="p-1.5 text-text-muted">
-                                {poll.tipo === 'estimulada' ? 'Estimulada' : 'Espontânea'}
-                              </td>
-                              <td className="p-1.5 text-text-muted">
-                                {poll.cargo === 'dep_federal' ? 'Dep. Federal' :
-                                 poll.cargo === 'dep_estadual' ? 'Dep. Estadual' :
-                                 poll.cargo === 'governador' ? 'Governador' :
-                                 poll.cargo === 'senador' ? 'Senador' :
-                                 poll.cargo === 'presidente' ? 'Presidente' : poll.cargo}
-                              </td>
-                              {eleitorado && eleitorado > 0 && (
-                                <>
-                                  <td className="p-1.5 text-right text-text-muted">
-                                    {pollEleitorado ? pollEleitorado.toLocaleString('pt-BR') : '-'}
-                                  </td>
-                                  <td className="p-1.5 text-right text-text-strong font-medium">
-                                    {pollVotosProporcionais !== null 
-                                      ? `${pollVotosProporcionais.toLocaleString('pt-BR')} votos` 
-                                      : '-'}
-                                  </td>
-                                </>
-                              )}
-                            </tr>
-                          )
-                        })}
-                      </tbody>
-                    </table>
+                          polls.forEach((poll) => {
+                            const dateStr = poll.data
+                            let formattedDate: string
+                            if (dateStr.includes('T')) {
+                              formattedDate = new Date(dateStr).toLocaleDateString('pt-BR', { 
+                                day: '2-digit', 
+                                month: '2-digit',
+                                year: 'numeric'
+                              })
+                            } else {
+                              const [year, month, day] = dateStr.split('-').map(Number)
+                              formattedDate = new Date(year, month - 1, day).toLocaleDateString('pt-BR', { 
+                                day: '2-digit', 
+                                month: '2-digit',
+                                year: 'numeric'
+                              })
+                            }
+                            
+                            if (!datasUnicas.has(formattedDate)) {
+                              datasUnicas.set(formattedDate, {
+                                data: formattedDate,
+                                dataOriginal: formattedDate,
+                              })
+                            }
+                            
+                            const dataObj = datasUnicas.get(formattedDate)
+                            const key = `intencao_${poll.candidato_nome.replace(/\s+/g, '_')}`
+                            dataObj[key] = poll.intencao
+                            dataObj[`instituto_${poll.candidato_nome.replace(/\s+/g, '_')}`] = poll.instituto
+                          })
+                          
+                          return Array.from(datasUnicas.values()).sort((a, b) => {
+                            const dateA = new Date(a.dataOriginal.split('/').reverse().join('-'))
+                            const dateB = new Date(b.dataOriginal.split('/').reverse().join('-'))
+                            return dateA.getTime() - dateB.getTime()
+                          })
+                        })()} 
+                        margin={{ top: 25, right: 100, left: 50, bottom: 50 }}
+                      >
+                        <CartesianGrid strokeDasharray="3 3" stroke="#E8E8E8" strokeWidth={1} horizontal={true} vertical={false} />
+                        <XAxis 
+                          dataKey="data" 
+                          stroke="#888888" 
+                          fontSize={11}
+                          angle={-45}
+                          textAnchor="end"
+                          height={60}
+                          tick={{ fill: '#666666', fontWeight: 500 }}
+                        />
+                        <YAxis 
+                          domain={[0, 100]}
+                          stroke="#888888"
+                          fontSize={11}
+                          tick={{ fill: '#666666', fontWeight: 500 }}
+                          ticks={[0, 20, 40, 60, 80, 100]}
+                          label={{ 
+                            value: 'Intenção (%)', 
+                            angle: -90, 
+                            position: 'insideLeft',
+                            style: { textAnchor: 'middle', fill: '#666666', fontSize: 12, fontWeight: 600 }
+                          }}
+                        />
+                        <Tooltip
+                          content={({ active, payload }) => {
+                            if (active && payload && payload.length) {
+                              const items = payload.map((item: any) => {
+                                const dataKey = item.dataKey?.toString() || ''
+                                const candidatoNome = dataKey.replace('intencao_', '').replace(/_/g, ' ') || ''
+                                const institutoKey = `instituto_${dataKey.replace('intencao_', '') || ''}`
+                                const instituto = item.payload?.[institutoKey] || ''
+                                const valor = item.value
+                                
+                                return {
+                                  candidatoNome,
+                                  instituto,
+                                  valor,
+                                  data: item.payload?.data,
+                                  color: item.color || item.stroke || '#666'
+                                }
+                              }).filter(Boolean).sort((a: any, b: any) => (b.valor || 0) - (a.valor || 0))
+                              
+                              if (items.length === 0) return null
+                              
+                              const firstItem = items[0]
+                              if (!firstItem) return null
+                              return (
+                                <div className="bg-white border border-gray-200 rounded-md p-3 shadow-lg text-xs">
+                                  <p className="text-xs font-semibold text-gray-900 mb-1">{firstItem.data}</p>
+                                  {firstItem.instituto && (
+                                    <p className="text-xs text-gray-600 mb-2 pb-2 border-b border-gray-200">{firstItem.instituto}</p>
+                                  )}
+                                  <div className="space-y-1.5">
+                                    {items.map((item: any, idx: number) => (
+                                      <div key={idx} className="flex items-center justify-between gap-3">
+                                        <div className="flex items-center gap-2">
+                                          <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: item.color }} />
+                                          <span className="text-xs font-medium text-gray-700">{item.candidatoNome}</span>
+                                        </div>
+                                        {item.valor !== undefined && (
+                                          <span className="text-xs font-bold text-gray-900">{item.valor.toFixed(1)}%</span>
+                                        )}
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              )
+                            }
+                            return null
+                          }}
+                        />
+                        {(() => {
+                          // Obter candidatos únicos
+                          const candidatosUnicos = Array.from(new Set(polls.map(p => p.candidato_nome).filter(Boolean)))
+                          // Cores sóbrias e profissionais
+                          const cores = [
+                            '#2C3E50', // Azul escuro
+                            '#34495E', // Cinza azulado
+                            '#7F8C8D', // Cinza
+                            '#16A085', // Verde teal
+                            '#8E44AD', // Roxo
+                            '#C0392B', // Vermelho escuro
+                            '#D68910', // Laranja escuro
+                            '#1F618D', // Azul marinho
+                            '#117A65', // Verde escuro
+                            '#6C3483'  // Roxo escuro
+                          ]
+                          
+                          return candidatosUnicos.map((candidato, index) => {
+                            const key = `intencao_${candidato.replace(/\s+/g, '_')}`
+                            const cor = cores[index % cores.length]
+                            
+                            return (
+                              <Line
+                                key={`line_${candidato}`}
+                                type="monotone"
+                                dataKey={key}
+                                stroke={cor}
+                                strokeWidth={2.5}
+                                dot={{ r: 3.5, fill: cor, strokeWidth: 1.5, stroke: '#fff' }}
+                                activeDot={{ r: 5.5, stroke: cor, strokeWidth: 2 }}
+                                animationDuration={500}
+                              >
+                                <LabelList
+                                  dataKey={key}
+                                  position="top"
+                                  offset={8}
+                                  formatter={(value: number) => value !== undefined && value !== null ? `${value.toFixed(0)}%` : ''}
+                                  style={{ 
+                                    fill: cor, 
+                                    fontSize: '11px', 
+                                    fontWeight: 700
+                                  }}
+                                />
+                              </Line>
+                            )
+                          })
+                        })()}
+                      </LineChart>
+                    </ResponsiveContainer>
                   </div>
                 </section>
               )}
@@ -620,10 +729,10 @@ export function ExecutiveBriefingModal({
               {polls.length === 0 && (
                 <section>
                   <div className="flex items-center gap-1.5 mb-1.5">
-                    <TrendingUp className="w-3.5 h-3.5 text-text-muted" />
-                    <h3 className="text-sm font-semibold text-text-muted">Pesquisas de Intenção de Voto</h3>
+                    <TrendingUp className="w-3.5 h-3.5 text-secondary" />
+                    <h3 className="text-sm font-semibold text-secondary">Pesquisas de Intenção de Voto</h3>
                   </div>
-                  <p className="text-xs text-text-muted">Nenhuma pesquisa encontrada para esta cidade</p>
+                  <p className="text-xs text-secondary">Nenhuma pesquisa encontrada para esta cidade</p>
                 </section>
               )}
             </>
@@ -631,10 +740,10 @@ export function ExecutiveBriefingModal({
         </div>
 
         {/* Footer */}
-        <div className="p-4 border-t border-border bg-background">
+        <div className="p-4 border-t border-card bg-background">
           <button
             onClick={onClose}
-            className="w-full px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors"
+            className="w-full px-4 py-2 bg-accent-gold text-white rounded-lg hover:bg-accent-gold/90 transition-colors"
           >
             Fechar
           </button>

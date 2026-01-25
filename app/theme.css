@@ -1,0 +1,375 @@
+/* 
+ * Premium Theme Refinements — Cockpit 2026
+ * Estilos adicionais para garantir consistência premium
+ */
+
+/* Scrollbar customizado */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--bg-app);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--accent-gold-soft);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--accent-gold);
+}
+
+/* Firefox */
+* {
+  scrollbar-color: var(--accent-gold-soft) var(--bg-app);
+  scrollbar-width: thin;
+}
+
+/* Selection */
+::selection {
+  background-color: var(--accent-gold);
+  color: white;
+}
+
+::-moz-selection {
+  background-color: var(--accent-gold);
+  color: white;
+}
+
+/* Links */
+a {
+  color: var(--accent-gold);
+  transition: color 200ms ease-out;
+}
+
+a:hover {
+  color: var(--accent-gold-soft);
+  text-decoration: underline;
+}
+
+/* Inputs com focus customizado */
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible {
+  outline: 2px solid var(--accent-gold);
+  outline-offset: 2px;
+}
+
+/* Placeholder text */
+::placeholder {
+  color: var(--text-muted);
+  opacity: 0.7;
+}
+
+/* Buttons Base */
+button {
+  transition: all 200ms ease-out;
+  border-radius: 12px;
+}
+
+button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Animação suave de fade */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideInRight {
+  from {
+    opacity: 0;
+    transform: translateX(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes slideInLeft {
+  from {
+    opacity: 0;
+    transform: translateX(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/* Aplicar fade em novos elementos */
+.fade-in {
+  animation: fadeIn 300ms ease-out;
+}
+
+.slide-in-right {
+  animation: slideInRight 300ms ease-out;
+}
+
+.slide-in-left {
+  animation: slideInLeft 300ms ease-out;
+}
+
+/* Tooltip customizado */
+[data-tooltip] {
+  position: relative;
+}
+
+[data-tooltip]:hover::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  bottom: 120%;
+  left: 50%;
+  transform: translateX(-50%);
+  background-color: var(--text-primary);
+  color: var(--bg-surface);
+  padding: 6px 12px;
+  border-radius: 8px;
+  font-size: 12px;
+  white-space: nowrap;
+  z-index: 1000;
+  opacity: 0;
+  animation: fadeIn 200ms ease-out forwards 100ms;
+  pointer-events: none;
+}
+
+/* Loader customizado (spinner) */
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.spinner {
+  width: 24px;
+  height: 24px;
+  border: 3px solid var(--accent-gold-soft);
+  border-top-color: var(--accent-gold);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+/* Skeleton loading */
+@keyframes shimmer {
+  0% {
+    background-position: -1000px 0;
+  }
+  100% {
+    background-position: 1000px 0;
+  }
+}
+
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    var(--bg-surface) 0%,
+    var(--accent-gold-soft) 50%,
+    var(--bg-surface) 100%
+  );
+  background-size: 1000px 100%;
+  animation: shimmer 2s infinite;
+  border-radius: 14px;
+}
+
+/* Glass morphism effect (suave) */
+.glass {
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.5);
+}
+
+/* Overlay suave */
+.overlay-fade {
+  background: linear-gradient(
+    135deg,
+    rgba(0, 0, 0, 0) 0%,
+    rgba(0, 0, 0, 0.05) 100%
+  );
+}
+
+/* Print styles */
+@media print {
+  * {
+    background: transparent !important;
+    color: black !important;
+    box-shadow: none !important;
+    text-shadow: none !important;
+  }
+
+  a,
+  a:visited {
+    text-decoration: underline;
+  }
+
+  a[href]:after {
+    content: " (" attr(href) ")";
+  }
+
+  img {
+    max-width: 100% !important;
+  }
+
+  @page {
+    margin: 0.5cm;
+  }
+}
+
+/* Accessibility */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Dark mode (if ever needed) - commented for now */
+/*
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg-app: #1a1a1a;
+    --bg-surface: #2a2a2a;
+    --text-primary: #f5f5f5;
+    --text-secondary: #d0d0d0;
+  }
+}
+*/
+
+/* Focus visible para acessibilidade */
+:focus-visible {
+  outline: 2px solid var(--accent-gold);
+  outline-offset: 2px;
+}
+
+/* Disable outline para mouse users */
+:focus:not(:focus-visible) {
+  outline: none;
+}
+
+/* Código inline */
+code {
+  background-color: var(--accent-gold-soft);
+  color: var(--accent-gold);
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-family: 'Monaco', 'Menlo', 'Consolas', monospace;
+  font-size: 0.9em;
+}
+
+pre {
+  background-color: var(--bg-app);
+  border: 1px solid var(--border-card);
+  padding: 12px;
+  border-radius: 8px;
+  overflow-x: auto;
+  margin: 12px 0;
+}
+
+/* Tables */
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 12px 0;
+}
+
+thead {
+  background-color: var(--accent-gold-soft);
+  border-bottom: 2px solid var(--accent-gold);
+}
+
+th,
+td {
+  padding: 12px;
+  text-align: left;
+  border-bottom: 1px solid var(--border-card);
+}
+
+tbody tr:hover {
+  background-color: var(--bg-surface);
+}
+
+/* Blockquote */
+blockquote {
+  border-left: 4px solid var(--accent-gold);
+  padding-left: 16px;
+  color: var(--text-secondary);
+  font-style: italic;
+  margin: 12px 0;
+}
+
+/* Divider */
+hr {
+  border: none;
+  height: 1px;
+  background: var(--border-card);
+  margin: 20px 0;
+}
+
+/* Badges / Tags */
+.badge {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+  background-color: var(--accent-gold-soft);
+  color: var(--accent-gold);
+  border: 1px solid var(--accent-gold);
+}
+
+/* Success, Warning, Danger variants */
+.badge.success {
+  background-color: rgba(46, 125, 50, 0.1);
+  color: var(--success);
+  border-color: var(--success);
+}
+
+.badge.warning {
+  background-color: rgba(199, 120, 0, 0.1);
+  color: var(--warning);
+  border-color: var(--warning);
+}
+
+.badge.danger {
+  background-color: rgba(159, 42, 42, 0.1);
+  color: var(--danger);
+  border-color: var(--danger);
+}
+
+/* Breadcrumb */
+.breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  color: var(--text-secondary);
+  margin-bottom: 16px;
+}
+
+.breadcrumb a {
+  color: var(--accent-gold);
+}
+
+.breadcrumb .separator {
+  color: var(--border-card);
+}
+
+.breadcrumb .active {
+  color: var(--text-primary);
+  font-weight: 600;
+}

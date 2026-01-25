@@ -70,7 +70,7 @@ export function CityDemandsModal({ isOpen, onClose, cidade }: CityDemandsModalPr
   if (!isOpen) return null
 
   const getStatusIcon = (status?: string) => {
-    if (!status) return <AlertCircle className="w-4 h-4 text-text-muted" />
+    if (!status) return <AlertCircle className="w-4 h-4 text-secondary" />
     
     const statusLower = status.toLowerCase().trim()
     
@@ -81,10 +81,10 @@ export function CityDemandsModal({ isOpen, onClose, cidade }: CityDemandsModalPr
       return <Clock className="w-4 h-4 text-status-warning" />
     }
     if (statusLower.includes('encaminhado') || statusLower.includes('encaminhada')) {
-      return <Clock className="w-4 h-4 text-primary" />
+      return <Clock className="w-4 h-4 text-accent-gold" />
     }
     
-    return <AlertCircle className="w-4 h-4 text-text-muted" />
+    return <AlertCircle className="w-4 h-4 text-secondary" />
   }
 
   const getStatusLabel = (status?: string) => {
@@ -93,7 +93,7 @@ export function CityDemandsModal({ isOpen, onClose, cidade }: CityDemandsModalPr
   }
 
   const getStatusColor = (status?: string) => {
-    if (!status) return 'bg-text-muted/10 text-text-muted border-text-muted/30'
+    if (!status) return 'bg-text-muted/10 text-secondary border-text-muted/30'
     
     const statusLower = status.toLowerCase().trim()
     
@@ -105,14 +105,14 @@ export function CityDemandsModal({ isOpen, onClose, cidade }: CityDemandsModalPr
       return 'bg-status-warning/10 text-status-warning border-status-warning/30'
     }
     if (statusLower.includes('encaminhado') || statusLower.includes('encaminhada')) {
-      return 'bg-primary/10 text-primary border-primary/30'
+      return 'bg-accent-gold-soft text-accent-gold border-accent-gold/30'
     }
     if (statusLower.includes('nova') || statusLower.includes('pendente')) {
-      return 'bg-text-muted/10 text-text-muted border-text-muted/30'
+      return 'bg-text-muted/10 text-secondary border-text-muted/30'
     }
     
     // Padrão padrão para outros status
-    return 'bg-text-muted/10 text-text-muted border-text-muted/30'
+    return 'bg-text-muted/10 text-secondary border-text-muted/30'
   }
 
   const getPriorityColor = (priority?: string) => {
@@ -124,7 +124,7 @@ export function CityDemandsModal({ isOpen, onClose, cidade }: CityDemandsModalPr
       case 'low':
         return 'bg-status-success/10 text-status-success border-status-success/30'
       default:
-        return 'bg-text-muted/10 text-text-muted border-text-muted/30'
+        return 'bg-text-muted/10 text-secondary border-text-muted/30'
     }
   }
 
@@ -200,14 +200,14 @@ export function CityDemandsModal({ isOpen, onClose, cidade }: CityDemandsModalPr
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-surface rounded-xl border border-border w-full max-w-3xl max-h-[85vh] overflow-hidden flex flex-col">
+      <div className="bg-surface rounded-xl border border-card w-full max-w-3xl max-h-[85vh] overflow-hidden flex flex-col">
         {/* Header Compacto */}
-        <div className="flex items-center justify-between px-4 py-3 border-b border-border">
+        <div className="flex items-center justify-between px-4 py-3 border-b border-card">
           <div className="flex items-center gap-2">
-            <h2 className="text-lg font-semibold text-text-strong">
+            <h2 className="text-lg font-semibold text-primary">
               {cidade}
             </h2>
-            <span className="text-xs text-text-muted">
+            <span className="text-xs text-secondary">
               {loading ? '...' : `${demandsFiltradasEOrdenadas.length} demanda${demandsFiltradasEOrdenadas.length !== 1 ? 's' : ''}`}
             </span>
           </div>
@@ -215,16 +215,16 @@ export function CityDemandsModal({ isOpen, onClose, cidade }: CityDemandsModalPr
             onClick={onClose}
             className="p-1.5 rounded-lg hover:bg-background transition-colors"
           >
-            <X className="w-4 h-4 text-text-muted" />
+            <X className="w-4 h-4 text-secondary" />
           </button>
         </div>
 
         {/* Filtros */}
         {!loading && !error && demands.length > 0 && (
-          <div className="px-4 py-3 border-b border-border space-y-3">
+          <div className="px-4 py-3 border-b border-card space-y-3">
             {/* Filtro por Status */}
             <div>
-              <label className="text-xs font-medium text-text-muted mb-2 block">Filtrar por Status:</label>
+              <label className="text-xs font-medium text-secondary mb-2 block">Filtrar por Status:</label>
               <div className="flex flex-wrap gap-2">
                 <label className="flex items-center gap-1.5 cursor-pointer">
                   <input
@@ -233,9 +233,9 @@ export function CityDemandsModal({ isOpen, onClose, cidade }: CityDemandsModalPr
                     value="todos"
                     checked={filtroStatus === 'todos'}
                     onChange={(e) => setFiltroStatus(e.target.value)}
-                    className="w-3.5 h-3.5 text-primary"
+                    className="w-3.5 h-3.5 text-accent-gold"
                   />
-                  <span className="text-xs text-text-strong">Todos</span>
+                  <span className="text-xs text-primary">Todos</span>
                 </label>
                 {statusUnicos.map((status) => (
                   <label key={status} className="flex items-center gap-1.5 cursor-pointer">
@@ -245,9 +245,9 @@ export function CityDemandsModal({ isOpen, onClose, cidade }: CityDemandsModalPr
                       value={status}
                       checked={filtroStatus === status}
                       onChange={(e) => setFiltroStatus(e.target.value)}
-                      className="w-3.5 h-3.5 text-primary"
+                      className="w-3.5 h-3.5 text-accent-gold"
                     />
-                    <span className="text-xs text-text-strong">{status}</span>
+                    <span className="text-xs text-primary">{status}</span>
                   </label>
                 ))}
               </div>
@@ -255,7 +255,7 @@ export function CityDemandsModal({ isOpen, onClose, cidade }: CityDemandsModalPr
             {/* Filtro por Liderança */}
             {liderancasUnicas.length > 0 && (
               <div>
-                <label className="text-xs font-medium text-text-muted mb-2 block">Filtrar por Liderança:</label>
+                <label className="text-xs font-medium text-secondary mb-2 block">Filtrar por Liderança:</label>
                 <div className="flex flex-wrap gap-2">
                   <label className="flex items-center gap-1.5 cursor-pointer">
                     <input
@@ -264,9 +264,9 @@ export function CityDemandsModal({ isOpen, onClose, cidade }: CityDemandsModalPr
                       value="todos"
                       checked={filtroLideranca === 'todos'}
                       onChange={(e) => setFiltroLideranca(e.target.value)}
-                      className="w-3.5 h-3.5 text-primary"
+                      className="w-3.5 h-3.5 text-accent-gold"
                     />
-                    <span className="text-xs text-text-strong">Todos</span>
+                    <span className="text-xs text-primary">Todos</span>
                   </label>
                   {liderancasUnicas.map((lideranca) => (
                     <label key={lideranca} className="flex items-center gap-1.5 cursor-pointer">
@@ -276,9 +276,9 @@ export function CityDemandsModal({ isOpen, onClose, cidade }: CityDemandsModalPr
                         value={lideranca}
                         checked={filtroLideranca === lideranca}
                         onChange={(e) => setFiltroLideranca(e.target.value)}
-                        className="w-3.5 h-3.5 text-primary"
+                        className="w-3.5 h-3.5 text-accent-gold"
                       />
-                      <span className="text-xs text-text-strong">{lideranca}</span>
+                      <span className="text-xs text-primary">{lideranca}</span>
                     </label>
                   ))}
                 </div>
@@ -291,8 +291,8 @@ export function CityDemandsModal({ isOpen, onClose, cidade }: CityDemandsModalPr
         <div className="flex-1 overflow-y-auto p-3">
           {loading ? (
             <div className="flex items-center justify-center py-8">
-              <Loader2 className="w-5 h-5 text-primary animate-spin" />
-              <span className="ml-2 text-sm text-text-muted">Carregando...</span>
+              <Loader2 className="w-5 h-5 text-accent-gold animate-spin" />
+              <span className="ml-2 text-sm text-secondary">Carregando...</span>
             </div>
           ) : error ? (
             <div className="p-3 bg-status-error/10 border border-status-error/30 rounded-lg">
@@ -300,21 +300,21 @@ export function CityDemandsModal({ isOpen, onClose, cidade }: CityDemandsModalPr
             </div>
           ) : demandsFiltradasEOrdenadas.length === 0 ? (
             <div className="text-center py-8">
-              <AlertCircle className="w-8 h-8 text-text-muted mx-auto mb-2" />
-              <p className="text-sm text-text-muted">Nenhuma demanda encontrada</p>
+              <AlertCircle className="w-8 h-8 text-secondary mx-auto mb-2" />
+              <p className="text-sm text-secondary">Nenhuma demanda encontrada</p>
             </div>
           ) : (
             <div className="space-y-2">
               {demandsFiltradasEOrdenadas.map((demand, index) => (
                 <div
                   key={demand.id || `demand-${index}`}
-                  className="border border-border rounded-lg p-3 hover:bg-background/50 transition-colors"
+                  className="border border-card rounded-lg p-3 hover:bg-background/50 transition-colors"
                 >
                   {/* Linha principal: Título + Status */}
                   <div className="flex items-start justify-between gap-2 mb-2">
                     <div className="flex items-start gap-2 flex-1 min-w-0">
                       {getStatusIcon(demand.status)}
-                      <h3 className="text-sm font-semibold text-text-strong leading-tight">
+                      <h3 className="text-sm font-semibold text-primary leading-tight">
                         {demand.title}
                       </h3>
                     </div>
@@ -326,12 +326,12 @@ export function CityDemandsModal({ isOpen, onClose, cidade }: CityDemandsModalPr
                   {/* Informações secundárias em linha compacta */}
                   <div className="flex flex-wrap items-center gap-1.5 text-xs">
                     {demand.data_demanda && (
-                      <span className="text-text-muted">
+                      <span className="text-secondary">
                         <span className="font-medium">Data:</span> {formatDate(demand.data_demanda)}
                       </span>
                     )}
                     {demand.lideranca && (
-                      <span className="text-text-muted">
+                      <span className="text-secondary">
                         <span className="font-medium">Por:</span> {demand.lideranca}
                       </span>
                     )}
@@ -341,7 +341,7 @@ export function CityDemandsModal({ isOpen, onClose, cidade }: CityDemandsModalPr
                       </span>
                     )}
                     {demand.theme && (
-                      <span className="text-text-muted">
+                      <span className="text-secondary">
                         {demand.theme}
                       </span>
                     )}
@@ -349,7 +349,7 @@ export function CityDemandsModal({ isOpen, onClose, cidade }: CityDemandsModalPr
 
                   {/* Descrição apenas se houver e for relevante */}
                   {demand.description && demand.description.trim() && (
-                    <p className="text-xs text-text-muted mt-1.5 line-clamp-1">
+                    <p className="text-xs text-secondary mt-1.5 line-clamp-1">
                       {demand.description}
                     </p>
                   )}

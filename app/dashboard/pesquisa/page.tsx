@@ -412,20 +412,20 @@ export default function PesquisaPage() {
   const domainMin = 0
   const domainMax = 100
 
-  // Cores suaves e profissionais para cada candidato (estilo Power BI)
+  // Cores com padrão da aplicação - Accent Gold como principal + complementares
   const cores = [
-    '#4A90E2', // Azul suave
-    '#50C878', // Verde suave
-    '#E74C3C', // Vermelho suave
-    '#F39C12', // Laranja suave
-    '#9B59B6', // Roxo suave
-    '#E91E63', // Rosa suave
-    '#1ABC9C', // Turquesa suave
-    '#95A5A6', // Cinza azulado
-    '#3498DB', // Azul claro
-    '#2ECC71', // Verde claro
-    '#E67E22', // Laranja claro
-    '#34495E', // Azul escuro
+    '#C6A15B', // Accent Gold (principal)
+    '#E8D9B8', // Accent Gold Soft (complementar)
+    '#1C1C1C', // Text Primary (contraste)
+    '#6B6B6B', // Text Secondary (suave)
+    '#2E7D32', // Success (para crescimento)
+    '#9F2A2A', // Danger (para redução)
+    '#C77800', // Warning (atenção)
+    '#6B7280', // Info (informativo)
+    '#16A085', // Verde complementar
+    '#8E44AD', // Roxo complementar
+    '#C0392B', // Vermelho complementar
+    '#D68910', // Laranja complementar
   ]
 
   const kpis = calcularKPIs()
@@ -436,9 +436,9 @@ export default function PesquisaPage() {
 
       <div className="px-4 py-6 lg:px-6">
         {/* Seletor de Candidato Padrão e Botão Nova Pesquisa */}
-        <div className="bg-surface rounded-2xl border border-border p-4 mb-6">
+        <div className="bg-surface rounded-2xl border border-card p-4 mb-6">
           <div className="flex items-center gap-4 flex-wrap">
-            <label className="text-sm font-semibold text-text-strong whitespace-nowrap">
+            <label className="text-sm font-semibold text-primary whitespace-nowrap">
               Candidato Padrão para KPIs:
             </label>
             <select
@@ -448,7 +448,7 @@ export default function PesquisaPage() {
                 setCandidatoPadrao(novoCandidato)
                 localStorage.setItem('candidatoPadraoPesquisa', novoCandidato)
               }}
-              className="flex-1 max-w-xs px-3 py-2 text-sm border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-soft bg-surface"
+              className="flex-1 max-w-xs px-3 py-2 text-sm border border-card rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-gold-soft bg-surface"
             >
               <option value="">Selecione um candidato</option>
               {Array.from(new Set(polls.map(p => p.candidato_nome).filter(Boolean)))
@@ -464,7 +464,7 @@ export default function PesquisaPage() {
                 setEditingPoll(null)
                 setShowModal(true)
               }}
-              className="ml-auto px-4 py-2 text-sm font-medium bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors flex items-center gap-2"
+              className="ml-auto px-4 py-2 text-sm font-medium bg-accent-gold text-white rounded-lg hover:bg-accent-gold transition-colors flex items-center gap-2"
             >
               <Plus className="w-4 h-4" />
               Nova Pesquisa
@@ -482,12 +482,12 @@ export default function PesquisaPage() {
         </section>
 
         {/* Filtros */}
-        <div className="bg-surface rounded-2xl border border-border p-4 mb-6">
-          <h3 className="text-sm font-semibold text-text-strong mb-4">Filtros</h3>
+        <div className="bg-surface rounded-2xl border border-card p-4 mb-6">
+          <h3 className="text-sm font-semibold text-primary mb-4">Filtros</h3>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {/* Filtro por Tipo */}
             <div>
-              <label className="block text-xs font-medium text-text-muted mb-2">Tipo</label>
+              <label className="block text-xs font-medium text-secondary mb-2">Tipo</label>
               <div className="flex items-center gap-4">
                 <label className="flex items-center gap-2 cursor-pointer">
                   <input
@@ -496,9 +496,9 @@ export default function PesquisaPage() {
                     value="todas"
                     checked={tipoGrafico === 'todas'}
                     onChange={(e) => setTipoGrafico(e.target.value as 'todas')}
-                    className="w-4 h-4 text-primary focus:ring-primary"
+                    className="w-4 h-4 text-accent-gold focus:ring-accent-gold"
                   />
-                  <span className="text-sm text-text-strong">Todas</span>
+                  <span className="text-sm text-primary">Todas</span>
                 </label>
                 <label className="flex items-center gap-2 cursor-pointer">
                   <input
@@ -507,9 +507,9 @@ export default function PesquisaPage() {
                     value="estimulada"
                     checked={tipoGrafico === 'estimulada'}
                     onChange={(e) => setTipoGrafico(e.target.value as 'estimulada')}
-                    className="w-4 h-4 text-primary focus:ring-primary"
+                    className="w-4 h-4 text-accent-gold focus:ring-accent-gold"
                   />
-                  <span className="text-sm text-text-strong">Estimulada</span>
+                  <span className="text-sm text-primary">Estimulada</span>
                 </label>
                 <label className="flex items-center gap-2 cursor-pointer">
                   <input
@@ -518,20 +518,20 @@ export default function PesquisaPage() {
                     value="espontanea"
                     checked={tipoGrafico === 'espontanea'}
                     onChange={(e) => setTipoGrafico(e.target.value as 'espontanea')}
-                    className="w-4 h-4 text-primary focus:ring-primary"
+                    className="w-4 h-4 text-accent-gold focus:ring-accent-gold"
                   />
-                  <span className="text-sm text-text-strong">Espontânea</span>
+                  <span className="text-sm text-primary">Espontânea</span>
                 </label>
               </div>
             </div>
 
             {/* Filtro por Cargo */}
             <div>
-              <label className="block text-xs font-medium text-text-muted mb-2">Cargo</label>
+              <label className="block text-xs font-medium text-secondary mb-2">Cargo</label>
               <select
                 value={filtroCargo}
                 onChange={(e) => setFiltroCargo(e.target.value)}
-                className="w-full px-3 py-2 text-sm border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-soft bg-surface"
+                className="w-full px-3 py-2 text-sm border border-card rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-gold-soft bg-surface"
               >
                 <option value="">Todos</option>
                 <option value="dep_estadual">Dep. Estadual</option>
@@ -544,11 +544,11 @@ export default function PesquisaPage() {
 
             {/* Filtro por Cidade */}
             <div>
-              <label className="block text-xs font-medium text-text-muted mb-2">Cidade</label>
+              <label className="block text-xs font-medium text-secondary mb-2">Cidade</label>
               <select
                 value={filtroCidade}
                 onChange={(e) => setFiltroCidade(e.target.value)}
-                className="w-full px-3 py-2 text-sm border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-soft bg-surface"
+                className="w-full px-3 py-2 text-sm border border-card rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-gold-soft bg-surface"
               >
                 <option value="">Todas</option>
                 {cities.map((city) => (
@@ -562,24 +562,24 @@ export default function PesquisaPage() {
         </div>
 
         {/* Gráfico de Tendência - Ocupa linha inteira */}
-        <div className="bg-surface rounded-2xl border border-border p-6 mb-6">
+        <div className="bg-surface rounded-2xl border border-card p-6 mb-6">
             <div className="flex items-center justify-between mb-6">
-              <h2 className="text-lg font-semibold text-text-strong">Tendência</h2>
+              <h2 className="text-lg font-semibold text-primary">Tendência</h2>
               <button
                 onClick={() => setGraficoTelaCheia(true)}
                 className="p-2 rounded-lg hover:bg-background transition-colors"
                 title="Visualizar em tela cheia"
               >
-                <Maximize2 className="w-5 h-5 text-text-muted" />
+                <Maximize2 className="w-5 h-5 text-secondary" />
               </button>
             </div>
             {loading ? (
               <div className="h-64 flex items-center justify-center">
-                <p className="text-text-muted">Carregando...</p>
+                <p className="text-secondary">Carregando...</p>
               </div>
             ) : pesquisaData.length === 0 ? (
               <div className="h-64 flex items-center justify-center">
-                <p className="text-text-muted">
+                <p className="text-secondary">
                   {tipoGrafico === 'todas' 
                     ? 'Nenhuma pesquisa cadastrada'
                     : `Nenhuma pesquisa ${tipoLabels[tipoGrafico]} cadastrada`
@@ -765,36 +765,36 @@ export default function PesquisaPage() {
           </div>
 
         {/* Relato de Rua - Movido para baixo */}
-        <div className="bg-surface rounded-2xl border border-border p-6 mb-6">
-          <h2 className="text-lg font-semibold text-text-strong mb-6">Relato de Rua</h2>
+        <div className="bg-surface rounded-2xl border border-card p-6 mb-6">
+          <h2 className="text-lg font-semibold text-primary mb-6">Relato de Rua</h2>
           <div className="space-y-4">
             <div className="p-4 rounded-xl bg-background">
-              <p className="text-sm font-medium text-text-strong mb-2">Humor do eleitor</p>
-              <p className="text-sm text-text-muted">Positivo em 68% das interações</p>
+              <p className="text-sm font-medium text-primary mb-2">Humor do eleitor</p>
+              <p className="text-sm text-secondary">Positivo em 68% das interações</p>
             </div>
             <div className="p-4 rounded-xl bg-background">
-              <p className="text-sm font-medium text-text-strong mb-2">Frases recorrentes</p>
-              <p className="text-sm text-text-muted">"Precisa melhorar saúde"</p>
+              <p className="text-sm font-medium text-primary mb-2">Frases recorrentes</p>
+              <p className="text-sm text-secondary">"Precisa melhorar saúde"</p>
             </div>
           </div>
         </div>
 
         {/* Lista de Pesquisas */}
-        <div className="bg-surface rounded-2xl border border-border p-6">
-          <h2 className="text-lg font-semibold text-text-strong mb-6">Pesquisas Cadastradas</h2>
+        <div className="bg-surface rounded-2xl border border-card p-6">
+          <h2 className="text-lg font-semibold text-primary mb-6">Pesquisas Cadastradas</h2>
           {loading ? (
             <div className="text-center py-8">
-              <p className="text-text-muted">Carregando...</p>
+              <p className="text-secondary">Carregando...</p>
             </div>
           ) : polls.length === 0 ? (
             <div className="text-center py-12">
-              <p className="text-text-muted mb-4">Nenhuma pesquisa cadastrada ainda</p>
+              <p className="text-secondary mb-4">Nenhuma pesquisa cadastrada ainda</p>
               <button
                 onClick={() => {
                   setEditingPoll(null)
                   setShowModal(true)
                 }}
-                className="px-4 py-2 text-sm font-medium bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors"
+                className="px-4 py-2 text-sm font-medium bg-accent-gold text-white rounded-lg hover:bg-accent-gold transition-colors"
               >
                 Adicionar Primeira Pesquisa
               </button>
@@ -803,22 +803,22 @@ export default function PesquisaPage() {
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead>
-                  <tr className="border-b border-border">
-                    <th className="text-left py-3 px-4 text-sm font-semibold text-text-strong">Data</th>
-                    <th className="text-left py-3 px-4 text-sm font-semibold text-text-strong">Instituto</th>
-                    <th className="text-left py-3 px-4 text-sm font-semibold text-text-strong">Candidato</th>
-                    <th className="text-left py-3 px-4 text-sm font-semibold text-text-strong">Cidade</th>
-                    <th className="text-left py-3 px-4 text-sm font-semibold text-text-strong">Tipo</th>
-                    <th className="text-left py-3 px-4 text-sm font-semibold text-text-strong">Cargo</th>
-                    <th className="text-right py-3 px-4 text-sm font-semibold text-text-strong">Intenção</th>
-                    <th className="text-right py-3 px-4 text-sm font-semibold text-text-strong">Rejeição</th>
-                    <th className="text-center py-3 px-4 text-sm font-semibold text-text-strong">Ações</th>
+                  <tr className="border-b border-card">
+                    <th className="text-left py-3 px-4 text-sm font-semibold text-primary">Data</th>
+                    <th className="text-left py-3 px-4 text-sm font-semibold text-primary">Instituto</th>
+                    <th className="text-left py-3 px-4 text-sm font-semibold text-primary">Candidato</th>
+                    <th className="text-left py-3 px-4 text-sm font-semibold text-primary">Cidade</th>
+                    <th className="text-left py-3 px-4 text-sm font-semibold text-primary">Tipo</th>
+                    <th className="text-left py-3 px-4 text-sm font-semibold text-primary">Cargo</th>
+                    <th className="text-right py-3 px-4 text-sm font-semibold text-primary">Intenção</th>
+                    <th className="text-right py-3 px-4 text-sm font-semibold text-primary">Rejeição</th>
+                    <th className="text-center py-3 px-4 text-sm font-semibold text-primary">Ações</th>
                   </tr>
                 </thead>
                 <tbody>
                   {polls.map((poll) => (
-                    <tr key={poll.id} className="border-b border-border hover:bg-background/50 transition-colors">
-                      <td className="py-3 px-4 text-sm text-text-strong">
+                    <tr key={poll.id} className="border-b border-card hover:bg-background/50 transition-colors">
+                      <td className="py-3 px-4 text-sm text-primary">
                         {(() => {
                           // Tratar data como local para evitar problemas de timezone
                           const dateStr = poll.data
@@ -832,16 +832,16 @@ export default function PesquisaPage() {
                           }
                         })()}
                       </td>
-                      <td className="py-3 px-4 text-sm text-text-strong">{poll.instituto}</td>
-                      <td className="py-3 px-4 text-sm font-semibold text-text-strong">
+                      <td className="py-3 px-4 text-sm text-primary">{poll.instituto}</td>
+                      <td className="py-3 px-4 text-sm font-semibold text-primary">
                         {poll.candidato_nome}
                       </td>
-                      <td className="py-3 px-4 text-sm text-text-muted">
+                      <td className="py-3 px-4 text-sm text-secondary">
                         {poll.cities?.name || '-'}
                       </td>
-                      <td className="py-3 px-4 text-sm text-text-muted">{tipoLabels[poll.tipo]}</td>
-                      <td className="py-3 px-4 text-sm text-text-muted">{cargoLabels[poll.cargo]}</td>
-                      <td className="py-3 px-4 text-sm text-right font-semibold text-primary">
+                      <td className="py-3 px-4 text-sm text-secondary">{tipoLabels[poll.tipo]}</td>
+                      <td className="py-3 px-4 text-sm text-secondary">{cargoLabels[poll.cargo]}</td>
+                      <td className="py-3 px-4 text-sm text-right font-semibold text-accent-gold">
                         {poll.intencao.toFixed(1)}%
                       </td>
                       <td className="py-3 px-4 text-sm text-right font-semibold text-status-error">
@@ -857,7 +857,7 @@ export default function PesquisaPage() {
                             className="p-2 rounded-lg hover:bg-background transition-colors"
                             title="Editar"
                           >
-                            <Edit2 className="w-4 h-4 text-text-muted" />
+                            <Edit2 className="w-4 h-4 text-secondary" />
                           </button>
                           <button
                             onClick={() => handleDelete(poll.id)}
@@ -893,14 +893,14 @@ export default function PesquisaPage() {
       {graficoTelaCheia && (
         <div className="fixed inset-0 z-50 bg-background flex flex-col">
           {/* Header */}
-          <div className="bg-surface border-b border-border p-4 flex items-center justify-between">
-            <h2 className="text-xl font-semibold text-text-strong">Tendência - Visualização em Tela Cheia</h2>
+          <div className="bg-surface border-b border-card p-4 flex items-center justify-between">
+            <h2 className="text-xl font-semibold text-primary">Tendência - Visualização em Tela Cheia</h2>
             <button
               onClick={() => setGraficoTelaCheia(false)}
               className="p-2 rounded-lg hover:bg-background transition-colors"
               title="Fechar tela cheia"
             >
-              <X className="w-6 h-6 text-text-muted" />
+              <X className="w-6 h-6 text-secondary" />
             </button>
           </div>
 
@@ -908,11 +908,11 @@ export default function PesquisaPage() {
           <div className="flex-1 p-6 overflow-auto">
             {loading ? (
               <div className="h-full flex items-center justify-center">
-                <p className="text-text-muted">Carregando...</p>
+                <p className="text-secondary">Carregando...</p>
               </div>
             ) : pesquisaData.length === 0 ? (
               <div className="h-full flex items-center justify-center">
-                <p className="text-text-muted">
+                <p className="text-secondary">
                   {tipoGrafico === 'todas' 
                     ? 'Nenhuma pesquisa cadastrada'
                     : `Nenhuma pesquisa ${tipoLabels[tipoGrafico]} cadastrada`

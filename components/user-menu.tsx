@@ -84,7 +84,7 @@ export function UserMenu() {
             localStorage.clear()
             window.location.href = '/login'
           }}
-          className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-primary-soft transition-colors text-text-muted"
+          className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-accent-gold-soft transition-colors text-secondary"
           title="Sair"
         >
           <LogOut className="w-5 h-5" />
@@ -113,9 +113,9 @@ export function UserMenu() {
     <div className="relative" ref={menuRef}>
       <button
         onClick={() => setOpen(!open)}
-        className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-primary-soft transition-colors"
+        className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-accent-gold-soft transition-colors"
       >
-        <div className="w-8 h-8 rounded-full bg-primary text-white flex items-center justify-center text-sm font-semibold">
+        <div className="w-8 h-8 rounded-full bg-accent-gold text-white flex items-center justify-center text-sm font-semibold">
           {user.profile?.avatar_url ? (
             <img
               src={user.profile.avatar_url}
@@ -127,32 +127,32 @@ export function UserMenu() {
           )}
         </div>
         <div className="hidden md:block text-left">
-          <p className="text-sm font-medium text-text-strong">
+          <p className="text-sm font-medium text-primary">
             {user.profile?.name || user.email}
           </p>
           {user.profile?.role && (
-            <p className="text-xs text-text-muted">
+            <p className="text-xs text-secondary">
               {roleLabels[user.profile.role] || user.profile.role}
             </p>
           )}
         </div>
         <ChevronDown
           className={cn(
-            'w-4 h-4 text-text-muted transition-transform',
+            'w-4 h-4 text-secondary transition-transform',
             open && 'rotate-180'
           )}
         />
       </button>
 
       {open && (
-        <div className="absolute right-0 mt-2 w-56 bg-surface border border-border rounded-xl shadow-card z-50 overflow-hidden">
-          <div className="p-4 border-b border-border">
-            <p className="text-sm font-semibold text-text-strong">
+        <div className="absolute right-0 mt-2 w-56 bg-surface border border-card rounded-xl shadow-card z-50 overflow-hidden">
+          <div className="p-4 border-b border-card">
+            <p className="text-sm font-semibold text-primary">
               {user.profile?.name || 'Usuário'}
             </p>
-            <p className="text-xs text-text-muted mt-1">{user.email}</p>
+            <p className="text-xs text-secondary mt-1">{user.email}</p>
             {user.profile?.role && (
-              <span className="inline-block mt-2 px-2 py-1 text-xs font-medium bg-primary-soft text-primary rounded-lg">
+              <span className="inline-block mt-2 px-2 py-1 text-xs font-medium bg-accent-gold-soft text-accent-gold rounded-lg">
                 {roleLabels[user.profile.role] || user.profile.role}
               </span>
             )}
@@ -164,9 +164,9 @@ export function UserMenu() {
                 setOpen(false)
                 // TODO: Navegar para página de perfil quando criarmos
               }}
-              className="w-full flex items-center gap-3 px-3 py-2 text-sm text-text-strong hover:bg-background rounded-lg transition-colors"
+              className="w-full flex items-center gap-3 px-3 py-2 text-sm text-primary hover:bg-background rounded-lg transition-colors"
             >
-              <User className="w-4 h-4 text-text-muted" />
+              <User className="w-4 h-4 text-secondary" />
               <span>Meu Perfil</span>
             </button>
 
@@ -175,13 +175,13 @@ export function UserMenu() {
                 setOpen(false)
                 // TODO: Navegar para configurações quando criarmos
               }}
-              className="w-full flex items-center gap-3 px-3 py-2 text-sm text-text-strong hover:bg-background rounded-lg transition-colors"
+              className="w-full flex items-center gap-3 px-3 py-2 text-sm text-primary hover:bg-background rounded-lg transition-colors"
             >
-              <Settings className="w-4 h-4 text-text-muted" />
+              <Settings className="w-4 h-4 text-secondary" />
               <span>Configurações</span>
             </button>
 
-            <div className="my-1 border-t border-border" />
+            <div className="my-1 border-t border-card" />
 
             <button
               onClick={handleSignOut}

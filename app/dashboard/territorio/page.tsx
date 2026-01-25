@@ -482,7 +482,7 @@ export default function TerritorioPage() {
                   }
                 }}
                 disabled={loading}
-                className="px-4 py-2 text-sm font-medium border border-border rounded-lg hover:bg-background transition-colors disabled:opacity-50 flex items-center gap-2"
+                className="px-4 py-2 text-sm font-medium border border-card rounded-lg hover:bg-background transition-colors disabled:opacity-50 flex items-center gap-2"
               >
                 <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
                 Atualizar
@@ -491,7 +491,7 @@ export default function TerritorioPage() {
           </div>
           <button
             onClick={() => setShowConfig(true)}
-            className="px-4 py-2 text-sm font-medium bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors flex items-center gap-2"
+            className="px-4 py-2 text-sm font-medium bg-accent-gold text-white rounded-lg hover:bg-accent-gold transition-colors flex items-center gap-2"
           >
             <Settings className="w-4 h-4" />
             {(config || serverConfigured) ? 'Configurar Planilha' : 'Conectar Planilha'}
@@ -504,7 +504,7 @@ export default function TerritorioPage() {
             <AlertCircle className="w-5 h-5 text-status-error flex-shrink-0 mt-0.5" />
             <div className="flex-1">
               <p className="text-sm font-medium text-status-error">Erro ao carregar dados</p>
-              <p className="text-xs text-text-muted mt-1">{error}</p>
+              <p className="text-xs text-secondary mt-1">{error}</p>
             </div>
           </div>
         )}
@@ -523,18 +523,18 @@ export default function TerritorioPage() {
         {/* Cards de Totais por Cargo */}
         {(config || serverConfigured) && liderancas.length > 0 && totaisPorCargo.length > 0 && (
           <section className="mb-8">
-            <h3 className="text-sm font-semibold text-text-strong mb-4">Lideranças por Cargo</h3>
+            <h3 className="text-sm font-semibold text-primary mb-4">Lideranças por Cargo</h3>
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
               {totaisPorCargo.map((item) => (
                 <div
                   key={item.cargo}
-                  className="bg-surface rounded-xl border border-border p-4 hover:bg-background/50 transition-colors"
+                  className="bg-surface rounded-xl border border-card p-4 hover:bg-background/50 transition-colors"
                 >
                   <div className="text-center">
-                    <p className="text-2xl font-bold text-primary mb-1">
+                    <p className="text-2xl font-bold text-accent-gold mb-1">
                       {item.total}
                     </p>
-                    <p className="text-xs text-text-muted font-medium">
+                    <p className="text-xs text-secondary font-medium">
                       {item.cargo}
                     </p>
                   </div>
@@ -546,12 +546,12 @@ export default function TerritorioPage() {
 
         {/* Filtros */}
         {(config || serverConfigured) && liderancas.length > 0 && (
-          <div className="mb-6 bg-surface rounded-2xl border border-border p-4">
-            <h3 className="text-sm font-semibold text-text-strong mb-4">Filtros</h3>
+          <div className="mb-6 bg-surface rounded-2xl border border-card p-4">
+            <h3 className="text-sm font-semibold text-primary mb-4">Filtros</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
               {/* Filtro por Cidade */}
               <div>
-                <label className="block text-xs font-medium text-text-muted mb-2">
+                <label className="block text-xs font-medium text-secondary mb-2">
                   Cidade
                 </label>
                 <input
@@ -559,13 +559,13 @@ export default function TerritorioPage() {
                   value={filtroCidade}
                   onChange={(e) => setFiltroCidade(e.target.value)}
                   placeholder="Filtrar por cidade..."
-                  className="w-full px-3 py-2 text-sm border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-soft bg-surface"
+                  className="w-full px-3 py-2 text-sm border border-card rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-gold-soft bg-surface"
                 />
               </div>
 
               {/* Filtro por Nome */}
               <div>
-                <label className="block text-xs font-medium text-text-muted mb-2">
+                <label className="block text-xs font-medium text-secondary mb-2">
                   Liderança (Nome)
                 </label>
                 <input
@@ -573,14 +573,14 @@ export default function TerritorioPage() {
                   value={filtroNome}
                   onChange={(e) => setFiltroNome(e.target.value)}
                   placeholder="Filtrar por nome..."
-                  className="w-full px-3 py-2 text-sm border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-soft bg-surface"
+                  className="w-full px-3 py-2 text-sm border border-card rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-gold-soft bg-surface"
                 />
               </div>
 
               {/* Filtro por Cargo */}
               {cargoCol && (
                 <div>
-                  <label className="block text-xs font-medium text-text-muted mb-2">
+                  <label className="block text-xs font-medium text-secondary mb-2">
                     Cargo
                   </label>
                   <input
@@ -588,7 +588,7 @@ export default function TerritorioPage() {
                     value={filtroCargo}
                     onChange={(e) => setFiltroCargo(e.target.value)}
                     placeholder="Filtrar por cargo..."
-                    className="w-full px-3 py-2 text-sm border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-soft bg-surface"
+                    className="w-full px-3 py-2 text-sm border border-card rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-gold-soft bg-surface"
                   />
                 </div>
               )}
@@ -596,13 +596,13 @@ export default function TerritorioPage() {
               {/* Filtro por Faixa de Votos Esperados */}
               {expectativaVotosCol && (
                 <div>
-                  <label className="block text-xs font-medium text-text-muted mb-2">
+                  <label className="block text-xs font-medium text-secondary mb-2">
                     Faixa de Votos Esperados
                   </label>
                   <select
                     value={filtroFaixaVotos}
                     onChange={(e) => setFiltroFaixaVotos(e.target.value)}
-                    className="w-full px-3 py-2 text-sm border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-soft bg-surface"
+                    className="w-full px-3 py-2 text-sm border border-card rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-gold-soft bg-surface"
                   >
                     <option value="">Todas as faixas</option>
                     <option value="ate-100">Até 100</option>
@@ -616,7 +616,7 @@ export default function TerritorioPage() {
             </div>
             {(filtroCidade || filtroNome || filtroCargo || filtroFaixaVotos) && (
               <div className="mt-4 flex items-center justify-between">
-                <span className="text-xs text-text-muted">
+                <span className="text-xs text-secondary">
                   {liderancasFiltradas.length} resultado{liderancasFiltradas.length !== 1 ? 's' : ''} encontrado{liderancasFiltradas.length !== 1 ? 's' : ''}
                 </span>
                 <button
@@ -626,7 +626,7 @@ export default function TerritorioPage() {
                     setFiltroCargo('')
                     setFiltroFaixaVotos('')
                   }}
-                  className="text-xs text-primary hover:underline"
+                  className="text-xs text-accent-gold hover:underline"
                 >
                   Limpar filtros
                 </button>
@@ -636,14 +636,14 @@ export default function TerritorioPage() {
         )}
 
         {/* Lista de Lideranças */}
-        <div className="bg-surface rounded-2xl border border-border p-6">
+        <div className="bg-surface rounded-2xl border border-card p-6">
           <div className="flex items-center justify-between mb-6">
             <div>
-              <h2 className="text-lg font-semibold text-text-strong">
+              <h2 className="text-lg font-semibold text-primary">
                 {(config || serverConfigured) ? 'Lideranças Atuais' : 'Lideranças'}
               </h2>
               {(config || serverConfigured) && (liderancaAtualCol || expectativaVotosCol) && (
-                <p className="text-xs text-text-muted mt-1">
+                <p className="text-xs text-secondary mt-1">
                   Mostrando lideranças com "Liderança Atual?" = SIM ou com "Expectativa de Votos 2026"
                 </p>
               )}
@@ -653,7 +653,7 @@ export default function TerritorioPage() {
               {(config || serverConfigured) && liderancasFiltradas.length > 0 && (
                 <button
                   onClick={() => setShowMindMap(true)}
-                  className="px-3 py-2 text-sm font-medium bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors flex items-center gap-2"
+                  className="px-3 py-2 text-sm font-medium bg-accent-gold text-white rounded-lg hover:bg-accent-gold transition-colors flex items-center gap-2"
                   title="Ver Mapa de Lideranças"
                 >
                   <Network className="w-4 h-4" />
@@ -677,7 +677,7 @@ export default function TerritorioPage() {
                         setExpandedCities(todasCidades)
                       }
                     }}
-                    className="px-3 py-1.5 text-xs font-medium border border-border rounded-lg hover:bg-background transition-colors flex items-center gap-2"
+                    className="px-3 py-1.5 text-xs font-medium border border-card rounded-lg hover:bg-background transition-colors flex items-center gap-2"
                   >
                     {todasExpandidas ? (
                       <>
@@ -695,10 +695,10 @@ export default function TerritorioPage() {
               })()}
               {(config || serverConfigured) && (
                 <div className="text-right">
-                  <span className="text-sm font-semibold text-text-strong block">
+                  <span className="text-sm font-semibold text-primary block">
                     {liderancasFiltradas.length}
                   </span>
-                  <span className="text-xs text-text-muted">
+                  <span className="text-xs text-secondary">
                     de {liderancas.length} registros
                   </span>
                 </div>
@@ -714,27 +714,27 @@ export default function TerritorioPage() {
             </div>
           ) : !(config || serverConfigured) ? (
             <div className="text-center py-12">
-              <Users className="w-12 h-12 text-text-muted mx-auto mb-4" />
-              <p className="text-text-muted mb-4">
+              <Users className="w-12 h-12 text-secondary mx-auto mb-4" />
+              <p className="text-secondary mb-4">
                 Configure uma planilha do Google Sheets para começar
               </p>
               <button
                 onClick={() => setShowConfig(true)}
-                className="px-4 py-2 text-sm font-medium bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors"
+                className="px-4 py-2 text-sm font-medium bg-accent-gold text-white rounded-lg hover:bg-accent-gold transition-colors"
               >
                 Conectar Planilha
               </button>
             </div>
           ) : liderancas.length === 0 ? (
             <div className="text-center py-12">
-              <p className="text-text-muted">Nenhum dado encontrado na planilha</p>
+              <p className="text-secondary">Nenhum dado encontrado na planilha</p>
             </div>
           ) : liderancasFiltradas.length === 0 && liderancaAtualCol ? (
             <div className="text-center py-12">
-              <p className="text-text-muted mb-2">
+              <p className="text-secondary mb-2">
                 Nenhuma liderança atual encontrada
               </p>
-              <p className="text-xs text-text-muted">
+              <p className="text-xs text-secondary">
                 Verifique se há registros com "Liderança Atual?" = SIM na planilha
               </p>
             </div>
@@ -806,7 +806,7 @@ export default function TerritorioPage() {
                   return (
                     <div
                       key={cidade}
-                      className="rounded-xl border border-border overflow-hidden"
+                      className="rounded-xl border border-card overflow-hidden"
                     >
                       {/* Cabeçalho da Cidade */}
                       <div className="w-full p-4 bg-background flex items-center justify-between">
@@ -823,16 +823,16 @@ export default function TerritorioPage() {
                           className="flex items-center gap-3 flex-1 hover:bg-background/80 transition-colors rounded-lg p-2 -m-2"
                         >
                           {isExpanded ? (
-                            <ChevronDown className="w-4 h-4 text-text-muted" />
+                            <ChevronDown className="w-4 h-4 text-secondary" />
                           ) : (
-                            <ChevronRight className="w-4 h-4 text-text-muted" />
+                            <ChevronRight className="w-4 h-4 text-secondary" />
                           )}
-                          <div className="p-2 rounded-lg bg-primary-soft">
-                            <Users className="w-4 h-4 text-primary" />
+                          <div className="p-2 rounded-lg bg-accent-gold-soft">
+                            <Users className="w-4 h-4 text-accent-gold" />
                           </div>
                           <div className="flex-1 text-left">
-                            <p className="text-sm font-semibold text-text-strong">{cidade}</p>
-                            <p className="text-xs text-text-muted">
+                            <p className="text-sm font-semibold text-primary">{cidade}</p>
+                            <p className="text-xs text-secondary">
                               {liderancasCidade.length} liderança{liderancasCidade.length !== 1 ? 's' : ''}
                             </p>
                           </div>
@@ -845,7 +845,7 @@ export default function TerritorioPage() {
                               setSelectedCityLiderancas(liderancasCidade)
                               setShowExecutiveBriefing(true)
                             }}
-                            className="p-2 rounded-lg hover:bg-background transition-colors text-text-muted hover:text-primary"
+                            className="p-2 rounded-lg hover:bg-background transition-colors text-secondary hover:text-accent-gold"
                             title="Briefing Executivo"
                           >
                             <Briefcase className="w-4 h-4" />
@@ -856,15 +856,15 @@ export default function TerritorioPage() {
                               setSelectedCityForDemands(cidade)
                               setShowCityDemands(true)
                             }}
-                            className="p-2 rounded-lg hover:bg-background transition-colors text-text-muted hover:text-primary"
+                            className="p-2 rounded-lg hover:bg-background transition-colors text-secondary hover:text-accent-gold"
                             title="Ver demandas desta cidade"
                           >
                             <FileText className="w-4 h-4" />
                           </button>
                           {expectativaVotosCol && totalExpectativaCidade > 0 && (
                             <div className="text-right ml-2">
-                              <p className="text-xs text-text-muted mb-0.5">Total Esperado</p>
-                              <p className="text-sm font-semibold text-primary">
+                              <p className="text-xs text-secondary mb-0.5">Total Esperado</p>
+                              <p className="text-sm font-semibold text-accent-gold">
                                 {Math.round(totalExpectativaCidade).toLocaleString('pt-BR')}
                               </p>
                             </div>
@@ -882,7 +882,7 @@ export default function TerritorioPage() {
                         })
 
                         return (
-                          <div className="border-t border-border bg-surface">
+                          <div className="border-t border-card bg-surface">
                             {liderancasOrdenadas.map((lider: Lideranca, idx: number) => {
                             const numValue = expectativaVotosCol && lider[expectativaVotosCol]
                               ? normalizeNumber(lider[expectativaVotosCol])
@@ -897,18 +897,18 @@ export default function TerritorioPage() {
                             return (
                               <div
                                 key={idx}
-                                className={`p-4 border-b border-border last:border-b-0 hover:bg-background/50 transition-colors ${
+                                className={`p-4 border-b border-card last:border-b-0 hover:bg-background/50 transition-colors ${
                                   isDestaque ? 'bg-status-warning/5 border-l-4 border-l-status-warning' : ''
                                 }`}
                               >
                                 <div className="flex items-center justify-between">
                                   <div className="flex items-center gap-3 flex-1">
-                                    <div className="p-2 rounded-lg bg-primary-soft/50">
-                                      <Users className="w-3 h-3 text-primary" />
+                                    <div className="p-2 rounded-lg bg-accent-gold-soft/50">
+                                      <Users className="w-3 h-3 text-accent-gold" />
                                     </div>
                                     <div className="flex-1 min-w-0">
                                       <div className="flex items-center gap-2">
-                                        <p className="text-sm font-semibold text-text-strong truncate">
+                                        <p className="text-sm font-semibold text-primary truncate">
                                           {lider[nomeCol] || 'Sem nome'}
                                         </p>
                                         {isDestaque && (
@@ -922,16 +922,16 @@ export default function TerritorioPage() {
                   <div className="flex items-center gap-4">
                                     {expectativaVotosCol && lider[expectativaVotosCol] && (
                                       <div className="text-right">
-                                        <p className="text-xs text-text-muted mb-0.5">Expectativa de Votos 2026</p>
-                                        <p className="text-sm font-semibold text-primary">
+                                        <p className="text-xs text-secondary mb-0.5">Expectativa de Votos 2026</p>
+                                        <p className="text-sm font-semibold text-accent-gold">
                                           {numValue.toLocaleString('pt-BR')}
                                         </p>
                                       </div>
                                     )}
                                     {scoreCol && lider[scoreCol] && (
                     <div className="text-right">
-                                        <p className="text-xs text-text-muted mb-0.5">Score</p>
-                                        <p className="text-sm font-semibold text-text-strong">
+                                        <p className="text-xs text-secondary mb-0.5">Score</p>
+                                        <p className="text-sm font-semibold text-primary">
                                           {lider[scoreCol]}
                                         </p>
                     </div>
@@ -941,7 +941,7 @@ export default function TerritorioPage() {
                                         className={`px-2 py-1 text-xs rounded-lg ${
                                           /ativo|active|sim/i.test(String(lider[statusCol]))
                                             ? 'bg-status-success/10 text-status-success'
-                                            : 'bg-text-muted/10 text-text-muted'
+                                            : 'bg-text-muted/10 text-secondary'
                                         }`}
                                       >
                                         {lider[statusCol]}
@@ -975,11 +975,11 @@ export default function TerritorioPage() {
                                   if (outrasColunas.length === 0) return null
 
                                   return (
-                                    <div className="mt-3 pt-3 border-t border-border flex flex-wrap gap-2">
+                                    <div className="mt-3 pt-3 border-t border-card flex flex-wrap gap-2">
                                       {outrasColunas.map((header) => (
                                         <div key={header} className="text-xs">
-                                          <span className="text-text-muted">{header}:</span>{' '}
-                                          <span className="text-text-strong">{lider[header] || '-'}</span>
+                                          <span className="text-secondary">{header}:</span>{' '}
+                                          <span className="text-primary">{lider[header] || '-'}</span>
               </div>
             ))}
           </div>

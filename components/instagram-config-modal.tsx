@@ -102,28 +102,28 @@ export function InstagramConfigModal({
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-surface rounded-2xl border border-border p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto">
+      <div className="bg-surface rounded-2xl border border-card p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between mb-6">
-          <h2 className="text-xl font-semibold text-text-strong">
+          <h2 className="text-xl font-semibold text-primary">
             Configurar Instagram
           </h2>
           <button
             onClick={onClose}
             className="p-2 rounded-lg hover:bg-background transition-colors"
           >
-            <X className="w-5 h-5 text-text-muted" />
+            <X className="w-5 h-5 text-secondary" />
           </button>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="bg-primary-soft border border-primary/30 rounded-lg p-4 mb-4">
+          <div className="bg-accent-gold-soft border border-accent-gold/30 rounded-lg p-4 mb-4">
             <div className="flex items-start gap-3">
-              <Info className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" />
+              <Info className="w-5 h-5 text-accent-gold flex-shrink-0 mt-0.5" />
               <div className="flex-1">
-                <p className="text-sm font-medium text-text-strong mb-1">
+                <p className="text-sm font-medium text-primary mb-1">
                   Como obter as credenciais:
                 </p>
-                <ol className="text-xs text-text-muted space-y-1 list-decimal list-inside">
+                <ol className="text-xs text-secondary space-y-1 list-decimal list-inside">
                   <li>Acesse o Facebook Developers</li>
                   <li>Crie ou selecione um App</li>
                   <li>Obtenha o Access Token</li>
@@ -133,7 +133,7 @@ export function InstagramConfigModal({
                   href="https://developers.facebook.com/docs/instagram-api/getting-started"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-xs text-primary hover:underline mt-2 inline-flex items-center gap-1"
+                  className="text-xs text-accent-gold hover:underline mt-2 inline-flex items-center gap-1"
                 >
                   Ver documentação <ExternalLink className="w-3 h-3" />
                 </a>
@@ -142,7 +142,7 @@ export function InstagramConfigModal({
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-text-strong mb-2">
+            <label className="block text-sm font-medium text-primary mb-2">
               Access Token *
             </label>
             <div className="relative">
@@ -152,12 +152,12 @@ export function InstagramConfigModal({
                 onChange={(e) => setFormData({ ...formData, token: e.target.value })}
                 placeholder="EAAH..."
                 required
-                className="w-full px-4 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-soft bg-surface pr-10"
+                className="w-full px-4 py-2 border border-card rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-gold-soft bg-surface pr-10"
               />
               <button
                 type="button"
                 onClick={() => setShowToken(!showToken)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted hover:text-text-strong"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-secondary hover:text-primary"
               >
                 {showToken ? 'Ocultar' : 'Mostrar'}
               </button>
@@ -165,7 +165,7 @@ export function InstagramConfigModal({
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-text-strong mb-2">
+            <label className="block text-sm font-medium text-primary mb-2">
               Business Account ID (ID da Página do Facebook) *
             </label>
             <input
@@ -174,9 +174,9 @@ export function InstagramConfigModal({
               onChange={(e) => setFormData({ ...formData, businessAccountId: e.target.value })}
               placeholder="123456789"
               required
-              className="w-full px-4 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-soft bg-surface"
+              className="w-full px-4 py-2 border border-card rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-gold-soft bg-surface"
             />
-            <p className="text-xs text-text-muted mt-1">
+            <p className="text-xs text-secondary mt-1">
               ID da página do Facebook que está conectada à conta Instagram Business
             </p>
           </div>
@@ -186,7 +186,7 @@ export function InstagramConfigModal({
               type="button"
               onClick={handleValidate}
               disabled={validating || !formData.token || !formData.businessAccountId}
-              className="px-4 py-2 text-sm font-medium border border-border rounded-lg hover:bg-background transition-colors disabled:opacity-50 flex items-center gap-2"
+              className="px-4 py-2 text-sm font-medium border border-card rounded-lg hover:bg-background transition-colors disabled:opacity-50 flex items-center gap-2"
             >
               {validating ? (
                 <>
@@ -217,18 +217,18 @@ export function InstagramConfigModal({
             </div>
           )}
 
-          <div className="flex items-center justify-end gap-3 pt-4 border-t border-border">
+          <div className="flex items-center justify-end gap-3 pt-4 border-t border-card">
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 border border-border rounded-lg hover:bg-background transition-colors"
+              className="px-4 py-2 border border-card rounded-lg hover:bg-background transition-colors"
             >
               Cancelar
             </button>
             <button
               type="submit"
               disabled={!validationResult?.success}
-              className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors disabled:opacity-50 flex items-center gap-2"
+              className="px-4 py-2 bg-accent-gold text-white rounded-lg hover:bg-accent-gold transition-colors disabled:opacity-50 flex items-center gap-2"
             >
               <Save className="w-4 h-4" />
               Salvar Configuração

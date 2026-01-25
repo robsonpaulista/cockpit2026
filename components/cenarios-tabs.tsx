@@ -244,7 +244,7 @@ export default function CenariosTabs({
           <div className="flex items-center gap-2">
             <h3 className="text-sm font-medium text-gray-700">Cenários</h3>
             <div className="flex items-center gap-2">
-              <RefreshCw className="h-4 w-4 animate-spin text-blue-600" />
+              <RefreshCw className="h-4 w-4 animate-spin text-accent-gold" />
               <span className="text-xs text-gray-500">Carregando...</span>
             </div>
           </div>
@@ -279,7 +279,7 @@ export default function CenariosTabs({
         </p>
         <button 
           onClick={() => setDialogAberto(true)}
-          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-2 mx-auto"
+          className="px-4 py-2 bg-accent-gold text-white rounded-lg hover:bg-accent-gold/90 flex items-center gap-2 mx-auto"
         >
           <Plus className="h-4 w-4" />
           Criar Primeiro Cenário
@@ -296,15 +296,15 @@ export default function CenariosTabs({
           <h3 className="text-sm font-medium text-gray-700">Cenários</h3>
           {loading && (
             <div className="flex items-center gap-1">
-              <RefreshCw className="h-3 w-3 animate-spin text-blue-600" />
+              <RefreshCw className="h-3 w-3 animate-spin text-accent-gold" />
               <span className="text-xs text-gray-500">Atualizando...</span>
             </div>
           )}
           {cenarioAtivo && !loading && (
             <span className={`px-2 py-1 rounded text-xs ${
               cenarioAtivo.tipo === 'base' 
-                ? 'bg-blue-600 text-white' 
-                : 'bg-gray-200 text-gray-800'
+                ? 'bg-accent-gold text-white' 
+                : 'bg-bg-surface text-text-primary border border-border-card'
             }`}>
               {cenarioAtivo.tipo === 'base' ? 'BASE' : 'SIMULAÇÃO'}
             </span>
@@ -331,17 +331,17 @@ export default function CenariosTabs({
               onClick={() => handleTabChange(cenario.id)}
               className={`flex items-center justify-between gap-1 px-2 py-2 text-xs relative group ${
                 activeTab === cenario.id || cenario.ativo
-                  ? 'border-b-2 border-blue-600 text-blue-600 font-medium'
+                  ? 'border-b-2 border-accent-gold text-accent-gold font-medium'
                   : 'text-gray-600 hover:text-gray-900'
               }`}
             >
               <div className="flex items-center gap-1 min-w-0 flex-1">
                 <span className="truncate text-xs">{cenario.nome}</span>
                 {loading && (
-                  <RefreshCw className="h-3 w-3 animate-spin text-blue-600 flex-shrink-0" />
+                  <RefreshCw className="h-3 w-3 animate-spin text-accent-gold flex-shrink-0" />
                 )}
                 {cenario.tipo === 'base' && !loading && (
-                  <span className="px-1 py-0 text-xs bg-blue-600 text-white rounded flex-shrink-0">
+                  <span className="px-1 py-0 text-xs bg-accent-gold text-white rounded flex-shrink-0">
                     B
                   </span>
                 )}
@@ -365,7 +365,7 @@ export default function CenariosTabs({
                       handleAtivarCenario(cenario.id)
                     }}
                     disabled={loading}
-                    className="h-5 w-5 p-0 text-xs hover:bg-blue-100 text-blue-600 rounded flex items-center justify-center"
+                    className="h-5 w-5 p-0 text-xs hover:bg-accent-gold-soft text-accent-gold rounded flex items-center justify-center"
                     title="Ativar"
                   >
                     <Check className="h-3 w-3" />
@@ -379,7 +379,7 @@ export default function CenariosTabs({
                       onSalvarMudancas(cenario.id)
                     }}
                     disabled={salvandoMudancas}
-                    className="h-5 w-5 p-0 text-xs hover:bg-blue-100 text-blue-600 rounded flex items-center justify-center"
+                    className="h-5 w-5 p-0 text-xs hover:bg-accent-gold-soft text-accent-gold rounded flex items-center justify-center"
                     title={cenario.tipo === 'base' ? 'Salvar' : 'Salvar Mudanças'}
                   >
                     {salvandoMudancas ? (
@@ -397,7 +397,7 @@ export default function CenariosTabs({
                       onLimparCenario(cenario.id)
                     }}
                     disabled={loading}
-                    className="h-5 w-5 p-0 text-xs hover:bg-blue-100 text-blue-600 rounded flex items-center justify-center"
+                    className="h-5 w-5 p-0 text-xs hover:bg-accent-gold-soft text-accent-gold rounded flex items-center justify-center"
                     title="Limpar Cenário"
                   >
                     <RotateCcw className="h-3 w-3" />
@@ -411,7 +411,7 @@ export default function CenariosTabs({
                       onImprimirPDF(cenario.id)
                     }}
                     disabled={loading}
-                    className="h-5 w-5 p-0 text-xs hover:bg-blue-100 text-blue-600 rounded flex items-center justify-center"
+                    className="h-5 w-5 p-0 text-xs hover:bg-accent-gold-soft text-accent-gold rounded flex items-center justify-center"
                     title="Gerar PDF"
                   >
                     <Printer className="h-3 w-3" />
@@ -426,7 +426,7 @@ export default function CenariosTabs({
                         handleDuplicarCenario(cenario)
                       }}
                       disabled={loading}
-                      className="h-5 w-5 p-0 text-xs hover:bg-blue-100 text-blue-600 rounded flex items-center justify-center"
+                      className="h-5 w-5 p-0 text-xs hover:bg-accent-gold-soft text-accent-gold rounded flex items-center justify-center"
                       title="Duplicar"
                     >
                       <Copy className="h-3 w-3" />
@@ -487,7 +487,7 @@ export default function CenariosTabs({
                   placeholder="Ex: Cenário Otimista"
                   value={novoCenario.nome}
                   onChange={(e) => setNovoCenario(prev => ({ ...prev, nome: e.target.value }))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-gold"
                 />
               </div>
               <div>
@@ -497,7 +497,7 @@ export default function CenariosTabs({
                   value={novoCenario.descricao}
                   onChange={(e) => setNovoCenario(prev => ({ ...prev, descricao: e.target.value }))}
                   rows={3}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-gold"
                 />
               </div>
               <div>
@@ -505,7 +505,7 @@ export default function CenariosTabs({
                 <select
                   value={novoCenario.cenarioOrigem}
                   onChange={(e) => setNovoCenario(prev => ({ ...prev, cenarioOrigem: e.target.value }))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-gold"
                 >
                   <option value="">Selecione um cenário base</option>
                   {cenarios.map((cenario) => (
@@ -529,7 +529,7 @@ export default function CenariosTabs({
                 <button
                   onClick={handleCriarCenario}
                   disabled={loading || !novoCenario.nome.trim()}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+                  className="px-4 py-2 bg-accent-gold text-white rounded-lg hover:bg-accent-gold/90 disabled:opacity-50"
                 >
                   {loading ? 'Criando...' : 'Criar Cenário'}
                 </button>

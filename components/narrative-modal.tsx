@@ -178,29 +178,29 @@ export function NarrativeModal({ narrative, onClose, onUpdate }: NarrativeModalP
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-surface rounded-2xl border border-border shadow-card max-w-3xl w-full max-h-[90vh] overflow-y-auto">
-        <div className="sticky top-0 bg-surface border-b border-border p-6 flex items-center justify-between">
-          <h2 className="text-xl font-semibold text-text-strong">
+      <div className="bg-surface rounded-2xl border border-card shadow-card max-w-3xl w-full max-h-[90vh] overflow-y-auto">
+        <div className="sticky top-0 bg-surface border-b border-card p-6 flex items-center justify-between">
+          <h2 className="text-xl font-semibold text-primary">
             {narrative ? 'Editar Narrativa' : 'Nova Narrativa'}
           </h2>
           <button
             onClick={onClose}
-            className="p-2 hover:bg-primary-soft rounded-lg transition-colors"
+            className="p-2 hover:bg-accent-gold-soft rounded-lg transition-colors"
           >
-            <X className="w-5 h-5 text-text-muted" />
+            <X className="w-5 h-5 text-secondary" />
           </button>
         </div>
 
         <form onSubmit={handleSubmit} className="p-6 space-y-6">
           {/* Tema */}
           <div>
-            <label className="block text-sm font-medium text-text-strong mb-2">
+            <label className="block text-sm font-medium text-primary mb-2">
               Tema *
             </label>
             <select
               value={formData.theme}
               onChange={(e) => setFormData({ ...formData, theme: e.target.value })}
-              className="w-full px-4 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+              className="w-full px-4 py-2 bg-background border border-card rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-gold"
               required
             >
               <option value="">Selecione um tema</option>
@@ -216,7 +216,7 @@ export function NarrativeModal({ narrative, onClose, onUpdate }: NarrativeModalP
                 value={customTheme}
                 onChange={(e) => setCustomTheme(e.target.value)}
                 placeholder="Digite o tema personalizado"
-                className="w-full mt-2 px-4 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                className="w-full mt-2 px-4 py-2 bg-background border border-card rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-gold"
                 required
               />
             )}
@@ -224,7 +224,7 @@ export function NarrativeModal({ narrative, onClose, onUpdate }: NarrativeModalP
 
           {/* Público-alvo */}
           <div>
-            <label className="block text-sm font-medium text-text-strong mb-2">
+            <label className="block text-sm font-medium text-primary mb-2">
               Público-alvo *
             </label>
             <input
@@ -232,14 +232,14 @@ export function NarrativeModal({ narrative, onClose, onUpdate }: NarrativeModalP
               value={formData.target_audience}
               onChange={(e) => setFormData({ ...formData, target_audience: e.target.value })}
               placeholder="Ex: Famílias, Jovens, Empresários..."
-              className="w-full px-4 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+              className="w-full px-4 py-2 bg-background border border-card rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-gold"
               required
             />
           </div>
 
           {/* Mensagem-chave */}
           <div>
-            <label className="block text-sm font-medium text-text-strong mb-2">
+            <label className="block text-sm font-medium text-primary mb-2">
               Mensagem-chave *
             </label>
             <textarea
@@ -247,20 +247,20 @@ export function NarrativeModal({ narrative, onClose, onUpdate }: NarrativeModalP
               onChange={(e) => setFormData({ ...formData, key_message: e.target.value })}
               placeholder="A mensagem principal que deve ser transmitida"
               rows={3}
-              className="w-full px-4 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary resize-none"
+              className="w-full px-4 py-2 bg-background border border-card rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-gold resize-none"
               required
             />
           </div>
 
           {/* Argumentos */}
           <div>
-            <label className="block text-sm font-medium text-text-strong mb-2">
+            <label className="block text-sm font-medium text-primary mb-2">
               Argumentos
             </label>
             <div className="space-y-2">
               {formData.arguments.map((arg, index) => (
                 <div key={index} className="flex items-center gap-2">
-                  <span className="flex-1 px-3 py-2 bg-background border border-border rounded-lg text-sm">
+                  <span className="flex-1 px-3 py-2 bg-background border border-card rounded-lg text-sm">
                     {arg}
                   </span>
                   <button
@@ -284,12 +284,12 @@ export function NarrativeModal({ narrative, onClose, onUpdate }: NarrativeModalP
                     }
                   }}
                   placeholder="Adicionar argumento"
-                  className="flex-1 px-3 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-sm"
+                  className="flex-1 px-3 py-2 bg-background border border-card rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-gold text-sm"
                 />
                 <button
                   type="button"
                   onClick={addArgument}
-                  className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors flex items-center gap-2"
+                  className="px-4 py-2 bg-accent-gold text-white rounded-lg hover:bg-accent-gold transition-colors flex items-center gap-2"
                 >
                   <Plus className="w-4 h-4" />
                 </button>
@@ -299,13 +299,13 @@ export function NarrativeModal({ narrative, onClose, onUpdate }: NarrativeModalP
 
           {/* Frases testadas */}
           <div>
-            <label className="block text-sm font-medium text-text-strong mb-2">
+            <label className="block text-sm font-medium text-primary mb-2">
               Frases testadas
             </label>
             <div className="space-y-2">
               {formData.tested_phrases.map((phrase, index) => (
                 <div key={index} className="flex items-center gap-2">
-                  <span className="flex-1 px-3 py-2 bg-background border border-border rounded-lg text-sm">
+                  <span className="flex-1 px-3 py-2 bg-background border border-card rounded-lg text-sm">
                     {phrase}
                   </span>
                   <button
@@ -329,12 +329,12 @@ export function NarrativeModal({ narrative, onClose, onUpdate }: NarrativeModalP
                     }
                   }}
                   placeholder="Adicionar frase testada"
-                  className="flex-1 px-3 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-sm"
+                  className="flex-1 px-3 py-2 bg-background border border-card rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-gold text-sm"
                 />
                 <button
                   type="button"
                   onClick={addPhrase}
-                  className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors flex items-center gap-2"
+                  className="px-4 py-2 bg-accent-gold text-white rounded-lg hover:bg-accent-gold transition-colors flex items-center gap-2"
                 >
                   <Plus className="w-4 h-4" />
                 </button>
@@ -344,13 +344,13 @@ export function NarrativeModal({ narrative, onClose, onUpdate }: NarrativeModalP
 
           {/* Status */}
           <div>
-            <label className="block text-sm font-medium text-text-strong mb-2">
+            <label className="block text-sm font-medium text-primary mb-2">
               Status
             </label>
             <select
               value={formData.status}
               onChange={(e) => setFormData({ ...formData, status: e.target.value as any })}
-              className="w-full px-4 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+              className="w-full px-4 py-2 bg-background border border-card rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-gold"
             >
               {statusOptions.map((status) => (
                 <option key={status.value} value={status.value}>
@@ -361,18 +361,18 @@ export function NarrativeModal({ narrative, onClose, onUpdate }: NarrativeModalP
           </div>
 
           {/* Botões */}
-          <div className="flex items-center justify-end gap-3 pt-4 border-t border-border">
+          <div className="flex items-center justify-end gap-3 pt-4 border-t border-card">
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 text-sm font-medium text-text-muted hover:text-text-strong transition-colors"
+              className="px-4 py-2 text-sm font-medium text-secondary hover:text-primary transition-colors"
             >
               Cancelar
             </button>
             <button
               type="submit"
               disabled={submitting}
-              className="px-4 py-2 text-sm font-medium bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="px-4 py-2 text-sm font-medium bg-accent-gold text-white rounded-lg hover:bg-accent-gold transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <Save className="w-4 h-4" />
               {submitting ? 'Salvando...' : 'Salvar'}

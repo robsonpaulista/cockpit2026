@@ -135,22 +135,22 @@ export function DemandModal({ demand, onClose, onSuccess }: DemandModalProps) {
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-surface rounded-2xl border border-border p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto">
+      <div className="bg-surface rounded-2xl border border-card p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between mb-6">
-          <h2 className="text-xl font-semibold text-text-strong">
+          <h2 className="text-xl font-semibold text-primary">
             {demand?.id ? 'Editar Demanda' : 'Nova Demanda'}
           </h2>
           <button
             onClick={onClose}
             className="p-2 rounded-lg hover:bg-background transition-colors"
           >
-            <X className="w-5 h-5 text-text-muted" />
+            <X className="w-5 h-5 text-secondary" />
           </button>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-text-strong mb-2">
+            <label className="block text-sm font-medium text-primary mb-2">
               Título da Demanda *
             </label>
             <input
@@ -159,12 +159,12 @@ export function DemandModal({ demand, onClose, onSuccess }: DemandModalProps) {
               onChange={(e) => setFormData({ ...formData, title: e.target.value })}
               required
               placeholder="Ex: Asfaltar rua principal do bairro X"
-              className="w-full px-4 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-soft"
+              className="w-full px-4 py-2 border border-card rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-gold-soft"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-text-strong mb-2">
+            <label className="block text-sm font-medium text-primary mb-2">
               Descrição
             </label>
             <textarea
@@ -172,19 +172,19 @@ export function DemandModal({ demand, onClose, onSuccess }: DemandModalProps) {
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
               rows={4}
               placeholder="Detalhes da demanda, contexto, observações..."
-              className="w-full px-4 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-soft"
+              className="w-full px-4 py-2 border border-card rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-gold-soft"
             />
           </div>
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-text-strong mb-2">
+              <label className="block text-sm font-medium text-primary mb-2">
                 Tema
               </label>
               <select
                 value={formData.theme}
                 onChange={(e) => setFormData({ ...formData, theme: e.target.value })}
-                className="w-full px-4 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-soft"
+                className="w-full px-4 py-2 border border-card rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-gold-soft"
               >
                 <option value="">Selecione um tema</option>
                 <option value="infraestrutura">Infraestrutura</option>
@@ -199,14 +199,14 @@ export function DemandModal({ demand, onClose, onSuccess }: DemandModalProps) {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-text-strong mb-2">
+              <label className="block text-sm font-medium text-primary mb-2">
                 Prioridade *
               </label>
               <select
                 value={formData.priority}
                 onChange={(e) => setFormData({ ...formData, priority: e.target.value })}
                 required
-                className="w-full px-4 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-soft"
+                className="w-full px-4 py-2 border border-card rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-gold-soft"
               >
                 <option value="low">Baixa</option>
                 <option value="medium">Média</option>
@@ -217,18 +217,18 @@ export function DemandModal({ demand, onClose, onSuccess }: DemandModalProps) {
 
           {!demand?.id && (
             <div>
-              <label className="block text-sm font-medium text-text-strong mb-2">
+              <label className="block text-sm font-medium text-primary mb-2">
                 Associar a uma Agenda (Opcional)
               </label>
               {loadingAgendas ? (
-                <div className="w-full px-4 py-2 border border-border rounded-lg bg-background animate-pulse">
-                  <span className="text-sm text-text-muted">Carregando agendas...</span>
+                <div className="w-full px-4 py-2 border border-card rounded-lg bg-background animate-pulse">
+                  <span className="text-sm text-secondary">Carregando agendas...</span>
                 </div>
               ) : (
                 <select
                   value={formData.visit_id}
                   onChange={(e) => setFormData({ ...formData, visit_id: e.target.value })}
-                  className="w-full px-4 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-soft"
+                  className="w-full px-4 py-2 border border-card rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-gold-soft"
                 >
                   <option value="">Não associar a nenhuma agenda</option>
                   {agendas.map((agenda) => (
@@ -238,23 +238,23 @@ export function DemandModal({ demand, onClose, onSuccess }: DemandModalProps) {
                   ))}
                 </select>
               )}
-              <p className="text-xs text-text-muted mt-1">
+              <p className="text-xs text-secondary mt-1">
                 Você pode associar esta demanda a uma agenda existente ou criar independentemente
               </p>
             </div>
           )}
 
           <div>
-            <label className="block text-sm font-medium text-text-strong mb-2">
+            <label className="block text-sm font-medium text-primary mb-2">
               Prazo SLA (Opcional)
             </label>
             <input
               type="date"
               value={formData.sla_deadline}
               onChange={(e) => setFormData({ ...formData, sla_deadline: e.target.value })}
-              className="w-full px-4 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-soft"
+              className="w-full px-4 py-2 border border-card rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-gold-soft"
             />
-            <p className="text-xs text-text-muted mt-1">
+            <p className="text-xs text-secondary mt-1">
               Data limite para resolução desta demanda
             </p>
           </div>
@@ -269,14 +269,14 @@ export function DemandModal({ demand, onClose, onSuccess }: DemandModalProps) {
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 border border-border rounded-lg hover:bg-background transition-colors"
+              className="px-4 py-2 border border-card rounded-lg hover:bg-background transition-colors"
             >
               Cancelar
             </button>
             <button
               type="submit"
               disabled={loading}
-              className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors disabled:opacity-50"
+              className="px-4 py-2 bg-accent-gold text-white rounded-lg hover:bg-accent-gold transition-colors disabled:opacity-50"
             >
               {loading ? 'Salvando...' : demand?.id ? 'Atualizar' : 'Criar Demanda'}
             </button>

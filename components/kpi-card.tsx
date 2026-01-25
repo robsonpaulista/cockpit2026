@@ -78,19 +78,19 @@ export function KPICard({ kpi, href = '#' }: KPICardProps) {
   const content = (
     <div
       className={cn(
-        'relative p-5 rounded-2xl border border-border bg-surface',
-        'hover:shadow-lg hover:-translate-y-1 hover:border-primary/30',
-        'transition-all duration-300 ease-premium',
-        'cursor-pointer group overflow-hidden',
-        'before:absolute before:left-0 before:top-0 before:bottom-0 before:w-0.5 before:bg-primary before:opacity-0 group-hover:opacity-100 before:transition-opacity before:duration-300'
+        'relative p-6 rounded-[14px] border border-border bg-white',
+        'shadow-[0_8px_24px_rgba(17,24,39,0.06)]',
+        'hover:shadow-[0_12px_32px_rgba(17,24,39,0.10)] hover:-translate-y-0.5',
+        'transition-all duration-200 ease-out',
+        'cursor-pointer group overflow-hidden'
       )}
     >
       {/* Label and Icon */}
-      <div className="flex items-center gap-2 mb-3">
-        <div className="p-1.5 rounded-lg bg-primary-soft group-hover:bg-primary/20 group-hover:scale-110 transition-all duration-300">
-          <Icon className="w-4 h-4 text-primary" />
+      <div className="flex items-center gap-3 mb-4">
+        <div className="w-10 h-10 rounded-full bg-primary-100 flex items-center justify-center group-hover:scale-110 transition-all duration-200">
+          <Icon className="w-5 h-5 text-primary" />
         </div>
-        <p className="text-sm font-medium text-text-muted group-hover:text-text-strong transition-colors">
+        <p className="text-sm font-medium text-muted">
           {kpi.label}
         </p>
       </div>
@@ -98,19 +98,11 @@ export function KPICard({ kpi, href = '#' }: KPICardProps) {
       {/* Value */}
       <div>
         <p className={cn(
-          'text-3xl font-bold text-text-strong group-hover:text-primary transition-all duration-300',
+          'text-[30px] font-bold text-text leading-none',
           isAnimating && 'scale-105'
         )}>
           {displayValue}
         </p>
-        {kpi.variation !== undefined && kpi.variation !== 0 && (
-          <p className={cn(
-            'text-xs mt-1',
-            kpi.variation > 0 ? 'text-status-success' : 'text-status-error'
-          )}>
-            {kpi.variation > 0 ? '+' : ''}{kpi.variation}%
-          </p>
-        )}
       </div>
     </div>
   )

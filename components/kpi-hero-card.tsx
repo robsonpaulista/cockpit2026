@@ -3,16 +3,18 @@
 import { cn } from '@/lib/utils'
 import { KPI } from '@/types'
 import Link from 'next/link'
-import { TrendingUp, Sparkles } from 'lucide-react'
+import { TrendingUp, TrendingDown, ArrowUpRight } from 'lucide-react'
 import { useEffect, useState } from 'react'
 
 interface KPIHeroCardProps {
   kpi: KPI
   subtitle?: string
   href?: string
+  variation?: number // Variação percentual vs última medição
+  variationLabel?: string // Label da variação (ex: "vs última medição")
 }
 
-export function KPIHeroCard({ kpi, subtitle, href = '#' }: KPIHeroCardProps) {
+export function KPIHeroCard({ kpi, subtitle, href = '#', variation, variationLabel = 'vs última medição' }: KPIHeroCardProps) {
   const [displayValue, setDisplayValue] = useState<string | number>('0')
   const [isAnimating, setIsAnimating] = useState(false)
 
@@ -57,61 +59,69 @@ export function KPIHeroCard({ kpi, subtitle, href = '#' }: KPIHeroCardProps) {
   const content = (
     <div
       className={cn(
-        'relative p-4 rounded-2xl border-2 border-primary/40 bg-gradient-to-br from-primary-soft to-surface',
-        'hover:shadow-card-hover hover:-translate-y-1 hover:border-primary/60',
-        'transition-all duration-300 ease-premium',
+        'relative p-8 rounded-[14px] border border-border bg-white',
+        'shadow-[0_8px_24px_rgba(17,24,39,0.06)]',
+        'hover:shadow-[0_12px_32px_rgba(17,24,39,0.10)] hover:-translate-y-0.5',
+        'transition-all duration-200 ease-out',
         'cursor-pointer group overflow-hidden',
-        'before:absolute before:left-0 before:top-0 before:bottom-0 before:w-1 before:bg-primary before:rounded-l-2xl'
+        'w-full'
       )}
     >
+      {/* Top strip azul sutil */}
+      <div className="absolute top-0 left-0 right-0 h-1 bg-primary-50" />
+      
       {/* Badge "Atualizado hoje" */}
-      <div className="absolute top-3 right-3">
-        <span className="px-2 py-0.5 text-[10px] font-medium bg-primary/10 text-primary rounded-full border border-primary/20">
+      <div className="absolute top-6 right-6">
+        <span className="px-2.5 py-1 text-xs font-medium bg-primary-100 text-primary-700 rounded-full">
           Atualizado hoje
         </span>
       </div>
 
       {/* Label and Icon */}
-      <div className="flex items-center gap-2.5 mb-3">
-        <div className="p-1.5 rounded-lg bg-primary/20 group-hover:bg-primary/30 transition-colors duration-300">
-          <TrendingUp className="w-4 h-4 text-primary" />
+      <div className="flex items-center gap-3 mb-6">
+        <div className="w-10 h-10 rounded-full bg-primary-100 flex items-center justify-center">
+          <TrendingUp className="w-5 h-5 text-primary" />
         </div>
         <div>
-          <p className="text-sm font-semibold text-text-strong group-hover:text-primary transition-colors">
+          <p className="text-sm font-medium text-muted">
             {kpi.label}
           </p>
           {subtitle && (
-            <p className="text-xs text-text-muted mt-0.5">{subtitle}</p>
+            <p className="text-xs text-muted mt-0.5">{subtitle}</p>
           )}
         </div>
       </div>
 
-      {/* Value - Maior e mais destacado */}
-      <div className="mb-1.5">
+      {/* Value - Enorme e destacado */}
+      <div className="mb-4">
         <p className={cn(
-          'text-3xl font-bold text-text-strong group-hover:text-primary transition-all duration-300',
+          'text-[56px] font-extrabold text-text leading-none',
           isAnimating && 'scale-105'
         )}>
           {displayValue}
         </p>
       </div>
 
-      {/* Variation indicator */}
-      {kpi.variation !== undefined && kpi.variation !== 0 && (
-        <div className="flex items-center gap-1.5 mt-1.5">
+      {/* Variação percentual */}
+      {variation !== undefined && (
+        <div className="flex items-center gap-2 mb-4">
+          {variation >= 0 ? (
+            <ArrowUpRight className="w-4 h-4 text-primary" />
+          ) : (
+            <TrendingDown className="w-4 h-4 text-status-danger" />
+          )}
           <span className={cn(
-            'text-xs font-medium',
-            kpi.variation > 0 ? 'text-status-success' : 'text-status-error'
+            'text-sm font-semibold',
+            variation >= 0 ? 'text-primary' : 'text-status-danger'
           )}>
-            {kpi.variation > 0 ? '+' : ''}{kpi.variation}%
+            {variation >= 0 ? '+' : ''}{variation.toFixed(1)}% {variationLabel}
           </span>
-          <span className="text-[10px] text-text-muted">vs última medição</span>
         </div>
       )}
 
-      {/* Tag de fonte */}
-      <div className="mt-2 pt-2 border-t border-border/50">
-        <span className="text-[10px] text-text-muted font-medium">Fonte própria</span>
+      {/* Divider e fonte */}
+      <div className="mt-6 pt-4 border-t border-border">
+        <span className="text-xs text-muted font-medium">Fonte própria</span>
       </div>
     </div>
   )

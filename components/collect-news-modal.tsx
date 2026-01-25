@@ -57,22 +57,22 @@ export function CollectNewsModal({ onClose, onSuccess }: CollectNewsModalProps) 
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-surface rounded-2xl border border-border p-6 w-full max-w-md">
+      <div className="bg-surface rounded-2xl border border-card p-6 w-full max-w-md">
         <div className="flex items-center justify-between mb-6">
-          <h2 className="text-xl font-semibold text-text-strong">
+          <h2 className="text-xl font-semibold text-primary">
             Coletar do Google Alerts
           </h2>
           <button
             onClick={onClose}
             className="p-2 rounded-lg hover:bg-background transition-colors"
           >
-            <X className="w-5 h-5 text-text-muted" />
+            <X className="w-5 h-5 text-secondary" />
           </button>
         </div>
 
         <div className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-text-strong mb-2">
+            <label className="block text-sm font-medium text-primary mb-2">
               URL do Feed RSS do Google Alerts
             </label>
             <input
@@ -80,9 +80,9 @@ export function CollectNewsModal({ onClose, onSuccess }: CollectNewsModalProps) 
               value={rssUrl}
               onChange={(e) => setRssUrl(e.target.value)}
               placeholder="https://www.google.com/alerts/feeds/..."
-              className="w-full px-4 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-soft"
+              className="w-full px-4 py-2 border border-card rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-gold-soft"
             />
-            <p className="text-xs text-text-muted mt-1">
+            <p className="text-xs text-secondary mt-1">
               Cole a URL do feed RSS do Google Alerts aqui
             </p>
           </div>
@@ -110,14 +110,14 @@ export function CollectNewsModal({ onClose, onSuccess }: CollectNewsModalProps) 
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 border border-border rounded-lg hover:bg-background transition-colors"
+              className="px-4 py-2 border border-card rounded-lg hover:bg-background transition-colors"
             >
               Cancelar
             </button>
             <button
               onClick={handleCollect}
               disabled={loading || !rssUrl.trim()}
-              className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors disabled:opacity-50 flex items-center gap-2"
+              className="px-4 py-2 bg-accent-gold text-white rounded-lg hover:bg-accent-gold transition-colors disabled:opacity-50 flex items-center gap-2"
             >
               {loading ? (
                 <>

@@ -43,9 +43,9 @@ export default function WhatsAppPage() {
           </div>
         </section>
 
-        <div className="bg-surface rounded-2xl border border-border p-6">
-          <h2 className="text-lg font-semibold text-text-strong mb-6">Campanhas</h2>
-          <p className="text-sm text-text-muted">Gestão de campanhas WhatsApp em desenvolvimento...</p>
+        <div className="bg-surface rounded-2xl border border-card p-6">
+          <h2 className="text-lg font-semibold text-primary mb-6">Campanhas</h2>
+          <p className="text-sm text-secondary">Gestão de campanhas WhatsApp em desenvolvimento...</p>
         </div>
       </div>
     </div>

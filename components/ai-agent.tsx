@@ -1748,22 +1748,22 @@ export function AIAgent({
       {isMinimized ? (
         <button
           onClick={() => setIsMinimized(false)}
-          className="w-14 h-14 rounded-full bg-gradient-to-br from-blue-600 to-blue-800 shadow-lg shadow-blue-500/30 flex items-center justify-center hover:scale-110 transition-transform relative"
+          className="w-14 h-14 rounded-full bg-gradient-to-br from-accent-gold to-accent-gold shadow-lg shadow-accent-gold/30 flex items-center justify-center hover:scale-110 transition-transform relative"
         >
           <Bot className="w-7 h-7 text-white" />
           {!allLoaded && (
             <span className="absolute -top-1 -right-1 w-4 h-4 bg-amber-400 rounded-full animate-pulse" />
           )}
           {allLoaded && (alertsCriticosCount > 0 || territoriosFriosCount > 0) && (
-            <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 rounded-full text-[10px] font-bold text-white flex items-center justify-center">
+            <span className="absolute -top-1 -right-1 w-5 h-5 bg-status-danger rounded-full text-[10px] font-bold text-white flex items-center justify-center">
               {alertsCriticosCount + territoriosFriosCount}
             </span>
           )}
         </button>
       ) : (
-        <div className="bg-white rounded-2xl shadow-2xl shadow-blue-500/20 border border-blue-100 overflow-hidden flex flex-col max-h-[600px]">
+        <div className="bg-surface rounded-2xl shadow-card shadow-accent-gold/10 border border-card overflow-hidden flex flex-col max-h-[600px]">
           {/* Header */}
-          <div className="bg-gradient-to-r from-blue-600 to-blue-800 px-4 py-3 flex items-center justify-between flex-shrink-0">
+          <div className="bg-gradient-to-r from-accent-gold to-accent-gold px-4 py-3 flex items-center justify-between flex-shrink-0">
             <div className="flex items-center gap-3">
               <div className="relative">
                 <div className="w-10 h-10 rounded-full bg-white/20 backdrop-blur flex items-center justify-center">
@@ -1773,7 +1773,7 @@ export function AIAgent({
                   <span className="absolute inset-0 rounded-full bg-white/30 animate-ping" />
                 )}
                 {allLoaded && (
-                  <span className="absolute -bottom-0.5 -right-0.5 w-4 h-4 bg-emerald-400 rounded-full flex items-center justify-center">
+                  <span className="absolute -bottom-0.5 -right-0.5 w-4 h-4 bg-status-success rounded-full flex items-center justify-center">
                     <CheckCircle2 className="w-3 h-3 text-white" />
                   </span>
                 )}
@@ -1796,9 +1796,9 @@ export function AIAgent({
           </div>
 
           {!chatMode && (
-            <div className="h-1 bg-blue-100 flex-shrink-0">
+            <div className="h-1 bg-accent-gold-soft flex-shrink-0">
               <div 
-                className="h-full bg-gradient-to-r from-blue-500 to-blue-700 transition-all duration-500"
+                className="h-full bg-gradient-to-r from-accent-gold to-accent-gold transition-all duration-500"
                 style={{ width: `${progress}%` }}
               />
             </div>
@@ -1860,17 +1860,17 @@ export function AIAgent({
             ) : (
               <div className="space-y-3">
                 {chatMessages.length === 0 && (
-                  <div className="p-3 rounded-xl bg-blue-50 border border-blue-100">
-                    <p className="text-sm text-blue-700">
+                  <div className="p-3 rounded-xl bg-accent-gold-soft border border-accent-gold">
+                    <p className="text-sm text-primary font-medium">
                       Olá! Pergunte-me qualquer coisa sobre a campanha.
                     </p>
                     <div className="mt-3 space-y-1">
-                      <p className="text-xs text-blue-600 font-medium">Exemplos:</p>
-                      <p className="text-xs text-blue-500">› expectativa em Teresina</p>
-                      <p className="text-xs text-blue-500">› projeção chapa federal</p>
-                      <p className="text-xs text-blue-500">› métricas do Instagram</p>
-                      <p className="text-xs text-blue-500">› posts mais curtidos</p>
-                      <p className="text-xs text-blue-500">› evolução de seguidores</p>
+                      <p className="text-xs text-accent-gold font-bold">Exemplos:</p>
+                      <p className="text-xs text-accent-gold">› expectativa em Teresina</p>
+                      <p className="text-xs text-accent-gold">› projeção chapa federal</p>
+                      <p className="text-xs text-accent-gold">› métricas do Instagram</p>
+                      <p className="text-xs text-accent-gold">› posts mais curtidos</p>
+                      <p className="text-xs text-accent-gold">› evolução de seguidores</p>
                     </div>
                   </div>
                 )}
@@ -1878,14 +1878,14 @@ export function AIAgent({
                 {chatMessages.map((msg) => (
                   <div key={msg.id} className={`${msg.role === 'user' ? 'flex justify-end' : ''}`}>
                     <div className={`p-3 rounded-xl max-w-[95%] ${
-                      msg.role === 'user' ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-700'
+                      msg.role === 'user' ? 'bg-accent-gold text-white' : 'bg-app border border-card text-primary'
                     }`}>
                       <p className="text-sm whitespace-pre-line">{msg.content}</p>
                       
                       {msg.action && (
                         <button
                           onClick={() => handleAction(msg.action)}
-                          className="mt-2 flex items-center gap-2 px-3 py-1.5 bg-blue-600 text-white text-xs font-medium rounded-lg hover:bg-blue-700 transition-colors w-full justify-center"
+                          className="mt-2 flex items-center gap-2 px-3 py-1.5 bg-accent-gold text-white text-xs font-bold rounded-lg hover:bg-accent-gold transition-colors w-full justify-center"
                         >
                           {msg.action.type === 'link' ? (
                             <ExternalLink className="w-3.5 h-3.5" />
@@ -1900,9 +1900,9 @@ export function AIAgent({
                 ))}
                 
                 {isProcessing && (
-                  <div className="flex items-center gap-2 p-3 rounded-xl bg-slate-100">
-                    <Loader2 className="w-4 h-4 text-blue-500 animate-spin" />
-                    <span className="text-xs text-slate-500">Buscando dados...</span>
+                  <div className="flex items-center gap-2 p-3 rounded-xl bg-accent-gold-soft">
+                    <Loader2 className="w-4 h-4 text-accent-gold animate-spin" />
+                    <span className="text-xs text-primary font-medium">Buscando dados...</span>
                   </div>
                 )}
               </div>
@@ -1910,7 +1910,7 @@ export function AIAgent({
           </div>
 
           {chatMode && (
-            <div className="p-3 border-t border-slate-200 flex-shrink-0">
+            <div className="p-3 border-t border-card flex-shrink-0">
               <div className="flex items-center gap-2">
                 <input
                   type="text"
@@ -1918,13 +1918,13 @@ export function AIAgent({
                   onChange={(e) => setUserInput(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}
                   placeholder="Ex: expectativa em Teresina..."
-                  className="flex-1 px-3 py-2 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="flex-1 px-3 py-2 text-sm border border-card rounded-xl focus:outline-none focus:ring-2 focus:ring-accent-gold focus:border-transparent"
                   disabled={isProcessing}
                 />
                 <button
                   onClick={handleSendMessage}
                   disabled={!userInput.trim() || isProcessing}
-                  className="p-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="p-2 bg-accent-gold text-white rounded-xl hover:bg-accent-gold transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <Send className="w-4 h-4" />
                 </button>

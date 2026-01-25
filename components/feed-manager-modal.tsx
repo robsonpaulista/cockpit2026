@@ -278,16 +278,16 @@ export function FeedManagerModal({ onClose, onCollect }: FeedManagerModalProps) 
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-surface rounded-2xl border border-border p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+      <div className="bg-surface rounded-2xl border border-card p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between mb-6">
-          <h2 className="text-xl font-semibold text-text-strong">
+          <h2 className="text-xl font-semibold text-primary">
             Gerenciar Feeds RSS
           </h2>
           <button
             onClick={onClose}
             className="p-2 rounded-lg hover:bg-background transition-colors"
           >
-            <X className="w-5 h-5 text-text-muted" />
+            <X className="w-5 h-5 text-secondary" />
           </button>
         </div>
 
@@ -297,7 +297,7 @@ export function FeedManagerModal({ onClose, onCollect }: FeedManagerModalProps) 
             <button
               onClick={handleCollect}
               disabled={collecting}
-              className="w-full px-4 py-2 text-sm font-medium bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+              className="w-full px-4 py-2 text-sm font-medium bg-accent-gold text-white rounded-lg hover:bg-accent-gold transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
             >
               {collecting ? (
                 <>
@@ -323,10 +323,10 @@ export function FeedManagerModal({ onClose, onCollect }: FeedManagerModalProps) 
           </div>
         ) : feeds.length === 0 ? (
           <div className="text-center py-8">
-            <p className="text-text-muted mb-4">Nenhum feed configurado ainda.</p>
+            <p className="text-secondary mb-4">Nenhum feed configurado ainda.</p>
             <button
               onClick={() => setShowAddForm(true)}
-              className="px-4 py-2 text-sm font-medium bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors"
+              className="px-4 py-2 text-sm font-medium bg-accent-gold text-white rounded-lg hover:bg-accent-gold transition-colors"
             >
               Adicionar Primeiro Feed
             </button>
@@ -336,17 +336,17 @@ export function FeedManagerModal({ onClose, onCollect }: FeedManagerModalProps) 
             {feeds.map((feed) => (
               <div
                 key={`${feed.type}-${feed.id}`}
-                className="p-4 rounded-xl border border-border bg-background"
+                className="p-4 rounded-xl border border-card bg-background"
               >
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-1">
-                      <h3 className="text-sm font-semibold text-text-strong">{feed.name}</h3>
+                      <h3 className="text-sm font-semibold text-primary">{feed.name}</h3>
                       <span
                         className={`px-2 py-0.5 text-xs rounded-lg ${
                           feed.type === 'adversary_feed'
                             ? 'bg-status-error/10 text-status-error'
-                            : 'bg-primary/10 text-primary'
+                            : 'bg-accent-gold-soft text-accent-gold'
                         }`}
                       >
                         {feed.type === 'adversary_feed' ? 'Adversário' : 'Candidato'}
@@ -357,9 +357,9 @@ export function FeedManagerModal({ onClose, onCollect }: FeedManagerModalProps) 
                         </span>
                       )}
                     </div>
-                    <p className="text-xs text-text-muted mb-2 break-all">{feed.rss_url}</p>
+                    <p className="text-xs text-secondary mb-2 break-all">{feed.rss_url}</p>
                     {feed.last_collected_at && (
-                      <p className="text-xs text-text-muted">
+                      <p className="text-xs text-secondary">
                         Última coleta: {new Date(feed.last_collected_at).toLocaleString('pt-BR')}
                       </p>
                     )}
@@ -367,7 +367,7 @@ export function FeedManagerModal({ onClose, onCollect }: FeedManagerModalProps) 
                   <div className="flex items-center gap-2">
                     <button
                       onClick={() => handleCollectFromFeed(feed)}
-                      className="p-2 text-primary hover:bg-primary/10 rounded-lg transition-colors"
+                      className="p-2 text-accent-gold hover:bg-accent-gold-soft rounded-lg transition-colors"
                       title="Coletar notícias deste feed"
                     >
                       <RefreshCw className="w-4 h-4" />
@@ -386,7 +386,7 @@ export function FeedManagerModal({ onClose, onCollect }: FeedManagerModalProps) 
                     )}
                     <button
                       onClick={() => handleEdit(feed)}
-                      className="p-2 text-primary hover:bg-primary/10 rounded-lg transition-colors"
+                      className="p-2 text-accent-gold hover:bg-accent-gold-soft rounded-lg transition-colors"
                       title="Editar feed"
                     >
                       <Edit2 className="w-4 h-4" />
@@ -407,27 +407,27 @@ export function FeedManagerModal({ onClose, onCollect }: FeedManagerModalProps) 
 
         {/* Formulário de Adicionar/Editar */}
         {showAddForm && (
-          <div className="border-t border-border pt-6 mt-6">
-            <h3 className="text-sm font-semibold text-text-strong mb-4">
+          <div className="border-t border-card pt-6 mt-6">
+            <h3 className="text-sm font-semibold text-primary mb-4">
               {editingFeed ? 'Editar Feed' : 'Adicionar Novo Feed'}
             </h3>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-text-strong mb-2">
+                <label className="block text-sm font-medium text-primary mb-2">
                   Tipo de Feed
                 </label>
                 <select
                   value={formData.type}
                   onChange={(e) => setFormData({ ...formData, type: e.target.value as 'user_feed' | 'adversary_feed' })}
                   disabled={!!editingFeed} // Não permite mudar tipo ao editar
-                  className="w-full px-4 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-soft"
+                  className="w-full px-4 py-2 border border-card rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-gold-soft"
                 >
                   <option value="user_feed">Feed do Candidato</option>
                   <option value="adversary_feed">Radar de Adversários</option>
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-medium text-text-strong mb-2">
+                <label className="block text-sm font-medium text-primary mb-2">
                   Nome do Feed
                 </label>
                 <input
@@ -436,11 +436,11 @@ export function FeedManagerModal({ onClose, onCollect }: FeedManagerModalProps) 
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                   placeholder="Ex: Meu Nome + Piauí"
                   required
-                  className="w-full px-4 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-soft"
+                  className="w-full px-4 py-2 border border-card rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-gold-soft"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-text-strong mb-2">
+                <label className="block text-sm font-medium text-primary mb-2">
                   URL do Feed RSS
                 </label>
                 <input
@@ -449,7 +449,7 @@ export function FeedManagerModal({ onClose, onCollect }: FeedManagerModalProps) 
                   onChange={(e) => setFormData({ ...formData, rss_url: e.target.value })}
                   placeholder="https://www.google.com/alerts/feeds/..."
                   required
-                  className="w-full px-4 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-soft"
+                  className="w-full px-4 py-2 border border-card rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-gold-soft"
                 />
               </div>
               {formData.type === 'user_feed' && (
@@ -461,7 +461,7 @@ export function FeedManagerModal({ onClose, onCollect }: FeedManagerModalProps) 
                     onChange={(e) => setFormData({ ...formData, auto_classify: e.target.checked })}
                     className="w-4 h-4"
                   />
-                  <label htmlFor="auto_classify" className="text-sm text-text-strong">
+                  <label htmlFor="auto_classify" className="text-sm text-primary">
                     Classificar automaticamente (sentimento, risco, tema)
                   </label>
                 </div>
@@ -470,7 +470,7 @@ export function FeedManagerModal({ onClose, onCollect }: FeedManagerModalProps) 
                 <button
                   type="submit"
                   disabled={submitting}
-                  className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors disabled:opacity-50"
+                  className="px-4 py-2 bg-accent-gold text-white rounded-lg hover:bg-accent-gold transition-colors disabled:opacity-50"
                 >
                   {submitting
                     ? editingFeed
@@ -487,7 +487,7 @@ export function FeedManagerModal({ onClose, onCollect }: FeedManagerModalProps) 
                     setEditingFeed(null)
                     setFormData({ name: '', rss_url: '', auto_classify: true, type: 'user_feed' })
                   }}
-                  className="px-4 py-2 border border-border rounded-lg hover:bg-background transition-colors"
+                  className="px-4 py-2 border border-card rounded-lg hover:bg-background transition-colors"
                 >
                   Cancelar
                 </button>
@@ -500,7 +500,7 @@ export function FeedManagerModal({ onClose, onCollect }: FeedManagerModalProps) 
         {!showAddForm && (
           <button
             onClick={() => setShowAddForm(true)}
-            className="w-full px-4 py-2 text-sm font-medium border border-border rounded-lg hover:bg-background transition-colors flex items-center justify-center gap-2"
+            className="w-full px-4 py-2 text-sm font-medium border border-card rounded-lg hover:bg-background transition-colors flex items-center justify-center gap-2"
           >
             <Plus className="w-4 h-4" />
             Adicionar Novo Feed

@@ -108,23 +108,23 @@ export function EditNewsModal({ news, onClose, onUpdate }: EditNewsModalProps) {
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-surface rounded-2xl border border-border p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+      <div className="bg-surface rounded-2xl border border-card p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between mb-6">
-          <h2 className="text-xl font-semibold text-text-strong">
+          <h2 className="text-xl font-semibold text-primary">
             Editar Classificação da Notícia
           </h2>
           <button
             onClick={onClose}
             className="p-2 rounded-lg hover:bg-background transition-colors"
           >
-            <X className="w-5 h-5 text-text-muted" />
+            <X className="w-5 h-5 text-secondary" />
           </button>
         </div>
 
         {/* Preview da Notícia */}
-        <div className="mb-6 p-4 rounded-xl border border-border bg-background">
-          <h3 className="text-sm font-semibold text-text-strong mb-2">{news.title}</h3>
-          <div className="flex items-center gap-2 text-xs text-text-muted">
+        <div className="mb-6 p-4 rounded-xl border border-card bg-background">
+          <h3 className="text-sm font-semibold text-primary mb-2">{news.title}</h3>
+          <div className="flex items-center gap-2 text-xs text-secondary">
             <span>{news.source}</span>
             <span>•</span>
             <span>
@@ -138,7 +138,7 @@ export function EditNewsModal({ news, onClose, onUpdate }: EditNewsModalProps) {
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* Sentimento */}
           <div>
-            <label className="block text-sm font-medium text-text-strong mb-2">
+            <label className="block text-sm font-medium text-primary mb-2">
               Sentimento
             </label>
             <div className="grid grid-cols-3 gap-2">
@@ -153,8 +153,8 @@ export function EditNewsModal({ news, onClose, onUpdate }: EditNewsModalProps) {
                         ? 'bg-status-success/10 text-status-success border-status-success/30'
                         : option.value === 'negative'
                         ? 'bg-status-error/10 text-status-error border-status-error/30'
-                        : 'bg-primary-soft text-primary border-primary/30'
-                      : 'bg-background border-border text-text-strong hover:bg-background/80'
+                        : 'bg-accent-gold-soft text-accent-gold border-accent-gold/30'
+                      : 'bg-background border-card text-primary hover:bg-background/80'
                   }`}
                 >
                   {option.label}
@@ -165,7 +165,7 @@ export function EditNewsModal({ news, onClose, onUpdate }: EditNewsModalProps) {
 
           {/* Nível de Risco */}
           <div>
-            <label className="block text-sm font-medium text-text-strong mb-2">
+            <label className="block text-sm font-medium text-primary mb-2">
               Nível de Risco
             </label>
             <div className="grid grid-cols-3 gap-2">
@@ -181,7 +181,7 @@ export function EditNewsModal({ news, onClose, onUpdate }: EditNewsModalProps) {
                         : option.value === 'medium'
                         ? 'bg-status-warning/10 text-status-warning'
                         : 'bg-status-success/10 text-status-success'
-                      : 'bg-background border border-border text-text-strong hover:bg-background/80'
+                      : 'bg-background border border-card text-primary hover:bg-background/80'
                   }`}
                 >
                   {option.label}
@@ -192,13 +192,13 @@ export function EditNewsModal({ news, onClose, onUpdate }: EditNewsModalProps) {
 
           {/* Tema */}
           <div>
-            <label className="block text-sm font-medium text-text-strong mb-2">
+            <label className="block text-sm font-medium text-primary mb-2">
               Tema
             </label>
             <select
               value={formData.theme}
               onChange={(e) => setFormData({ ...formData, theme: e.target.value })}
-              className="w-full px-4 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-soft bg-surface"
+              className="w-full px-4 py-2 border border-card rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-gold-soft bg-surface"
             >
               <option value="">Selecione um tema</option>
               {commonThemes.map((theme) => (
@@ -213,14 +213,14 @@ export function EditNewsModal({ news, onClose, onUpdate }: EditNewsModalProps) {
                 value={customTheme}
                 onChange={(e) => setCustomTheme(e.target.value)}
                 placeholder="Digite o tema personalizado"
-                className="w-full mt-2 px-4 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-soft bg-surface"
+                className="w-full mt-2 px-4 py-2 border border-card rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-gold-soft bg-surface"
               />
             )}
           </div>
 
           {/* Notas */}
           <div>
-            <label className="block text-sm font-medium text-text-strong mb-2">
+            <label className="block text-sm font-medium text-primary mb-2">
               Notas (Opcional)
             </label>
             <textarea
@@ -228,16 +228,16 @@ export function EditNewsModal({ news, onClose, onUpdate }: EditNewsModalProps) {
               onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
               placeholder="Adicione notas sobre esta notícia (contexto, observações, etc.)"
               rows={3}
-              className="w-full px-4 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-soft bg-surface resize-none"
+              className="w-full px-4 py-2 border border-card rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-gold-soft bg-surface resize-none"
             />
           </div>
 
           {/* Botões */}
-          <div className="flex items-center gap-3 pt-4 border-t border-border">
+          <div className="flex items-center gap-3 pt-4 border-t border-card">
             <button
               type="submit"
               disabled={submitting}
-              className="flex-1 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+              className="flex-1 px-4 py-2 bg-accent-gold text-white rounded-lg hover:bg-accent-gold transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
             >
               <Save className="w-4 h-4" />
               {submitting ? 'Salvando...' : 'Salvar Alterações'}
@@ -245,7 +245,7 @@ export function EditNewsModal({ news, onClose, onUpdate }: EditNewsModalProps) {
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 border border-border rounded-lg hover:bg-background transition-colors"
+              className="px-4 py-2 border border-card rounded-lg hover:bg-background transition-colors"
             >
               Cancelar
             </button>
