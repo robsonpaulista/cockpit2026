@@ -1,0 +1,1107 @@
+[
+  {
+    "nome": "A Velino Lopes",
+    "lat": -10.134487,
+    "lng": -43.956305
+  },
+  {
+    "nome": "Acauã",
+    "lat": -8.219542,
+    "lng": -41.083059
+  },
+  {
+    "nome": "Agricolândia",
+    "lat": -5.796763,
+    "lng": -42.666371
+  },
+  {
+    "nome": "Água Branca",
+    "lat": -5.888564,
+    "lng": -42.636961
+  },
+  {
+    "nome": "Alagoinha Do Piauí",
+    "lat": -7.000392,
+    "lng": -40.92817
+  },
+  {
+    "nome": "Alegrete Do Piauí",
+    "lat": -7.241964,
+    "lng": -40.856587
+  },
+  {
+    "nome": "Alto Longá",
+    "lat": -5.256341,
+    "lng": -42.209582
+  },
+  {
+    "nome": "Altos",
+    "lat": -5.038879,
+    "lng": -42.46116
+  },
+  {
+    "nome": "Alvorada Do Gurguéia",
+    "lat": -8.424183,
+    "lng": -43.777016
+  },
+  {
+    "nome": "Amarante",
+    "lat": -6.243045,
+    "lng": -42.843343
+  },
+  {
+    "nome": "Angical Do Piauí",
+    "lat": -6.087864,
+    "lng": -42.740047
+  },
+  {
+    "nome": "Anísio De Abreu",
+    "lat": -9.185643,
+    "lng": -43.04941
+  },
+  {
+    "nome": "Antônio Almeida",
+    "lat": -7.212759,
+    "lng": -44.188929
+  },
+  {
+    "nome": "Aroazes",
+    "lat": -6.110221,
+    "lng": -41.78218
+  },
+  {
+    "nome": "Aroeiras Do Itaim",
+    "lat": -7.276906,
+    "lng": -41.564868
+  },
+  {
+    "nome": "Arraial",
+    "lat": -6.650753,
+    "lng": -42.541809
+  },
+  {
+    "nome": "Assunção Do Piauí",
+    "lat": -5.864996,
+    "lng": -41.038851
+  },
+  {
+    "nome": "Baixa Grande Do Ribeiro",
+    "lat": -7.849031,
+    "lng": -45.218977
+  },
+  {
+    "nome": "Barras",
+    "lat": -4.244675,
+    "lng": -42.292161
+  },
+  {
+    "nome": "Barreiras Do Piauí",
+    "lat": -9.929605,
+    "lng": -45.470172
+  },
+  {
+    "nome": "Barro Duro",
+    "lat": -5.816732,
+    "lng": -42.514656
+  },
+  {
+    "nome": "Batalha",
+    "lat": -4.0223,
+    "lng": -42.07868
+  },
+  {
+    "nome": "Bela Vista Do Piauí",
+    "lat": -7.988091,
+    "lng": -41.867522
+  },
+  {
+    "nome": "Belém Do Piauí",
+    "lat": -7.366524,
+    "lng": -40.968786
+  },
+  {
+    "nome": "Beneditinos",
+    "lat": -5.456758,
+    "lng": -42.36382
+  },
+  {
+    "nome": "Bertolínia",
+    "lat": -7.633377,
+    "lng": -43.949778
+  },
+  {
+    "nome": "Betânia Do Piauí",
+    "lat": -8.143761,
+    "lng": -40.79891
+  },
+  {
+    "nome": "Boa Hora",
+    "lat": -4.414041,
+    "lng": -42.135748
+  },
+  {
+    "nome": "Bocaina",
+    "lat": -6.941236,
+    "lng": -41.316752
+  },
+  {
+    "nome": "Bom Jesus",
+    "lat": -9.071239,
+    "lng": -44.358951
+  },
+  {
+    "nome": "Bom Princípio Do Piauí",
+    "lat": -3.196314,
+    "lng": -41.640333
+  },
+  {
+    "nome": "Bonfim Do Piauí",
+    "lat": -9.160502,
+    "lng": -42.886482
+  },
+  {
+    "nome": "Boqueirão Do Piauí",
+    "lat": -4.481806,
+    "lng": -42.121232
+  },
+  {
+    "nome": "Brasileira",
+    "lat": -4.133696,
+    "lng": -41.785855
+  },
+  {
+    "nome": "Brejo Do Piauí",
+    "lat": -8.20314,
+    "lng": -42.822917
+  },
+  {
+    "nome": "Buriti Dos Lopes",
+    "lat": -3.182592,
+    "lng": -41.869481
+  },
+  {
+    "nome": "Buriti Dos Montes",
+    "lat": -5.30584,
+    "lng": -41.093349
+  },
+  {
+    "nome": "Cabeceiras Do Piauí",
+    "lat": -4.4773,
+    "lng": -42.306889
+  },
+  {
+    "nome": "Cajazeiras Do Piauí",
+    "lat": -6.796667,
+    "lng": -42.390278
+  },
+  {
+    "nome": "Cajueiro Da Praia",
+    "lat": -2.931114,
+    "lng": -41.340801
+  },
+  {
+    "nome": "Caldeirão Grande Do Piauí",
+    "lat": -7.331404,
+    "lng": -40.6366
+  },
+  {
+    "nome": "Campinas Do Piauí",
+    "lat": -7.659299,
+    "lng": -41.877487
+  },
+  {
+    "nome": "Campo Alegre Do Fidalgo",
+    "lat": -8.382357,
+    "lng": -41.834399
+  },
+  {
+    "nome": "Campo Grande Do Piauí",
+    "lat": -7.128274,
+    "lng": -41.031486
+  },
+  {
+    "nome": "Campo Largo Do Piauí",
+    "lat": -3.804411,
+    "lng": -42.639991
+  },
+  {
+    "nome": "Campo Maior",
+    "lat": -4.821697,
+    "lng": -42.164124
+  },
+  {
+    "nome": "Canavieira",
+    "lat": -7.688215,
+    "lng": -43.72333
+  },
+  {
+    "nome": "Canto Do Buriti",
+    "lat": -8.111101,
+    "lng": -42.951721
+  },
+  {
+    "nome": "Capitão De Campos",
+    "lat": -4.457,
+    "lng": -41.943999
+  },
+  {
+    "nome": "Capitão Gervásio Oliveira",
+    "lat": -8.496548,
+    "lng": -41.813973
+  },
+  {
+    "nome": "Caracol",
+    "lat": -9.279333,
+    "lng": -43.328998
+  },
+  {
+    "nome": "Caraúbas Do Piauí",
+    "lat": -3.475249,
+    "lng": -41.842517
+  },
+  {
+    "nome": "Caridade Do Piauí",
+    "lat": -7.734349,
+    "lng": -40.984763
+  },
+  {
+    "nome": "Castelo Do Piauí",
+    "lat": -5.318693,
+    "lng": -41.549865
+  },
+  {
+    "nome": "Caxingó",
+    "lat": -3.419044,
+    "lng": -41.895476
+  },
+  {
+    "nome": "Cocal",
+    "lat": -3.472792,
+    "lng": -41.554623
+  },
+  {
+    "nome": "Cocal De Telha",
+    "lat": -4.557098,
+    "lng": -41.958668
+  },
+  {
+    "nome": "Cocal Dos Alves",
+    "lat": -3.620471,
+    "lng": -41.440197
+  },
+  {
+    "nome": "Coivaras",
+    "lat": -5.092242,
+    "lng": -42.207951
+  },
+  {
+    "nome": "Colônia Do Gurguéia",
+    "lat": -8.183697,
+    "lng": -43.793999
+  },
+  {
+    "nome": "Colônia Do Piauí",
+    "lat": -7.226512,
+    "lng": -42.175555
+  },
+  {
+    "nome": "Conceição Do Canindé",
+    "lat": -7.876378,
+    "lng": -41.594193
+  },
+  {
+    "nome": "Coronel José Dias",
+    "lat": -8.813971,
+    "lng": -42.523195
+  },
+  {
+    "nome": "Corrente",
+    "lat": -10.433349,
+    "lng": -45.163348
+  },
+  {
+    "nome": "Cristalândia Do Piauí",
+    "lat": -10.644311,
+    "lng": -45.189262
+  },
+  {
+    "nome": "Cristino Castro",
+    "lat": -8.822731,
+    "lng": -44.222972
+  },
+  {
+    "nome": "Curimatá",
+    "lat": -10.032608,
+    "lng": -44.3002
+  },
+  {
+    "nome": "Currais",
+    "lat": -9.011755,
+    "lng": -44.406194
+  },
+  {
+    "nome": "Curral Novo Do Piauí",
+    "lat": -7.831302,
+    "lng": -40.895704
+  },
+  {
+    "nome": "Curralinhos",
+    "lat": -5.608252,
+    "lng": -42.837602
+  },
+  {
+    "nome": "Demerv Al Lobão",
+    "lat": -5.358752,
+    "lng": -42.677583
+  },
+  {
+    "nome": "Dirceu Arcoverde",
+    "lat": -9.339386,
+    "lng": -42.434792
+  },
+  {
+    "nome": "Dom Expedito Lopes",
+    "lat": -6.953319,
+    "lng": -41.639632
+  },
+  {
+    "nome": "Dom Inocêncio",
+    "lat": -9.005158,
+    "lng": -41.969733
+  },
+  {
+    "nome": "Domingos Mourão",
+    "lat": -4.249498,
+    "lng": -41.268267
+  },
+  {
+    "nome": "Elesbão Veloso",
+    "lat": -6.199475,
+    "lng": -42.135458
+  },
+  {
+    "nome": "Eliseu Martins",
+    "lat": -8.096286,
+    "lng": -43.670481
+  },
+  {
+    "nome": "Esperantina",
+    "lat": -3.888631,
+    "lng": -42.232422
+  },
+  {
+    "nome": "Fartura Do Piauí",
+    "lat": -9.48342,
+    "lng": -42.791176
+  },
+  {
+    "nome": "Flores Do Piauí",
+    "lat": -7.787931,
+    "lng": -42.918009
+  },
+  {
+    "nome": "Floresta Do Piauí",
+    "lat": -7.466821,
+    "lng": -41.788328
+  },
+  {
+    "nome": "Floriano",
+    "lat": -6.771821,
+    "lng": -43.024136
+  },
+  {
+    "nome": "Francinópolis",
+    "lat": -6.393341,
+    "lng": -42.259062
+  },
+  {
+    "nome": "Francisco Ayres",
+    "lat": -6.626064,
+    "lng": -42.688149
+  },
+  {
+    "nome": "Francisco Macedo",
+    "lat": -7.331,
+    "lng": -40.787999
+  },
+  {
+    "nome": "Francisco Santos",
+    "lat": -6.994914,
+    "lng": -41.128789
+  },
+  {
+    "nome": "Fronteiras",
+    "lat": -7.081727,
+    "lng": -40.614601
+  },
+  {
+    "nome": "Geminiano",
+    "lat": -7.154759,
+    "lng": -41.340879
+  },
+  {
+    "nome": "Gilbués",
+    "lat": -9.830008,
+    "lng": -45.342267
+  },
+  {
+    "nome": "Guadalupe",
+    "lat": -6.782848,
+    "lng": -43.559441
+  },
+  {
+    "nome": "Guaribas",
+    "lat": -9.386465,
+    "lng": -43.694341
+  },
+  {
+    "nome": "Hugo Napoleão",
+    "lat": -5.988597,
+    "lng": -42.559755
+  },
+  {
+    "nome": "Ilha Grande",
+    "lat": -2.857737,
+    "lng": -41.81858
+  },
+  {
+    "nome": "Inhuma",
+    "lat": -6.665001,
+    "lng": -41.704127
+  },
+  {
+    "nome": "Ipiranga Do Piauí",
+    "lat": -6.824215,
+    "lng": -41.738086
+  },
+  {
+    "nome": "Isaías Coelho",
+    "lat": -7.735968,
+    "lng": -41.673495
+  },
+  {
+    "nome": "Itainópolis",
+    "lat": -7.443357,
+    "lng": -41.468713
+  },
+  {
+    "nome": "Itaueira",
+    "lat": -7.59989,
+    "lng": -43.0249
+  },
+  {
+    "nome": "Jacobina Do Piauí",
+    "lat": -7.930634,
+    "lng": -41.207506
+  },
+  {
+    "nome": "Jaicós",
+    "lat": -7.362286,
+    "lng": -41.137126
+  },
+  {
+    "nome": "Jardim Do Mulato",
+    "lat": -6.099,
+    "lng": -42.629999
+  },
+  {
+    "nome": "Jatobá Do Piauí",
+    "lat": -4.770254,
+    "lng": -41.816965
+  },
+  {
+    "nome": "Jerumenha",
+    "lat": -7.09128,
+    "lng": -43.503319
+  },
+  {
+    "nome": "João Costa",
+    "lat": -8.50736,
+    "lng": -42.426379
+  },
+  {
+    "nome": "Joaquim Pires",
+    "lat": -3.501636,
+    "lng": -42.186462
+  },
+  {
+    "nome": "Joca Marques",
+    "lat": -3.480399,
+    "lng": -42.425517
+  },
+  {
+    "nome": "José De Freitas",
+    "lat": -4.751458,
+    "lng": -42.574586
+  },
+  {
+    "nome": "Juazeiro Do Piauí",
+    "lat": -5.174589,
+    "lng": -41.697561
+  },
+  {
+    "nome": "Júlio Borges",
+    "lat": -10.32253,
+    "lng": -44.238142
+  },
+  {
+    "nome": "Jurema",
+    "lat": -9.219924,
+    "lng": -43.133676
+  },
+  {
+    "nome": "Lagoa Alegre",
+    "lat": -4.515394,
+    "lng": -42.630876
+  },
+  {
+    "nome": "Lagoa De São Francisco",
+    "lat": -4.385053,
+    "lng": -41.596883
+  },
+  {
+    "nome": "Lagoa Do Barro Do Piauí",
+    "lat": -8.476734,
+    "lng": -41.5342
+  },
+  {
+    "nome": "Lagoa Do Piauí",
+    "lat": -5.418639,
+    "lng": -42.643659
+  },
+  {
+    "nome": "Lagoa Do Sítio",
+    "lat": -6.507664,
+    "lng": -41.565304
+  },
+  {
+    "nome": "Lagoinha Do Piauí",
+    "lat": -5.830742,
+    "lng": -42.622325
+  },
+  {
+    "nome": "Landri Sales",
+    "lat": -7.259218,
+    "lng": -43.936418
+  },
+  {
+    "nome": "Luís Correia",
+    "lat": -2.88438,
+    "lng": -41.664142
+  },
+  {
+    "nome": "Luzilândia",
+    "lat": -3.468296,
+    "lng": -42.371757
+  },
+  {
+    "nome": "Madeiro",
+    "lat": -3.486245,
+    "lng": -42.498072
+  },
+  {
+    "nome": "Manoel Emídio",
+    "lat": -8.01234,
+    "lng": -43.87549
+  },
+  {
+    "nome": "Marcolândia",
+    "lat": -7.441691,
+    "lng": -40.660179
+  },
+  {
+    "nome": "Marcos Parente",
+    "lat": -7.115649,
+    "lng": -43.892602
+  },
+  {
+    "nome": "Massapê Do Piauí",
+    "lat": -7.474687,
+    "lng": -41.110323
+  },
+  {
+    "nome": "Matias Olímpio",
+    "lat": -3.714917,
+    "lng": -42.550654
+  },
+  {
+    "nome": "Miguel Alves",
+    "lat": -4.168575,
+    "lng": -42.896301
+  },
+  {
+    "nome": "Miguel Leão",
+    "lat": -5.68077,
+    "lng": -42.743594
+  },
+  {
+    "nome": "Milton Brandão",
+    "lat": -4.682946,
+    "lng": -41.417343
+  },
+  {
+    "nome": "Monsenhor Gil",
+    "lat": -5.561999,
+    "lng": -42.607493
+  },
+  {
+    "nome": "Monsenhor Hipólito",
+    "lat": -6.992754,
+    "lng": -41.026003
+  },
+  {
+    "nome": "Monte Alegre Do Piauí",
+    "lat": -9.753638,
+    "lng": -45.303735
+  },
+  {
+    "nome": "Morro Cabeça No Tempo",
+    "lat": -9.718905,
+    "lng": -43.907246
+  },
+  {
+    "nome": "Morro Do Chapéu Do Piauí",
+    "lat": -3.733374,
+    "lng": -42.302442
+  },
+  {
+    "nome": "Murici Dos Portelas",
+    "lat": -3.319,
+    "lng": -42.094
+  },
+  {
+    "nome": "Nazaré Do Piauí",
+    "lat": -6.970235,
+    "lng": -42.677316
+  },
+  {
+    "nome": "Nazária",
+    "lat": -5.352268,
+    "lng": -42.811532
+  },
+  {
+    "nome": "Nossa Senhora De Nazaré",
+    "lat": -4.630188,
+    "lng": -42.172954
+  },
+  {
+    "nome": "Nossa Senhora Dos Remédios",
+    "lat": -3.975744,
+    "lng": -42.618408
+  },
+  {
+    "nome": "Nov A Santa Rita",
+    "lat": -8.097073,
+    "lng": -42.047127
+  },
+  {
+    "nome": "Novo Oriente Do Piauí",
+    "lat": -6.44901,
+    "lng": -41.926124
+  },
+  {
+    "nome": "Novo Santo Antônio",
+    "lat": -5.287487,
+    "lng": -41.932533
+  },
+  {
+    "nome": "Oeiras",
+    "lat": -7.019153,
+    "lng": -42.128298
+  },
+  {
+    "nome": "Padre Marcos",
+    "lat": -7.351011,
+    "lng": -40.899665
+  },
+  {
+    "nome": "Paes Landim",
+    "lat": -7.773745,
+    "lng": -42.247444
+  },
+  {
+    "nome": "Pajeú Do Piauí",
+    "lat": -7.855085,
+    "lng": -42.82481
+  },
+  {
+    "nome": "Palmeira Do Piauí",
+    "lat": -8.730761,
+    "lng": -44.246618
+  },
+  {
+    "nome": "Palmeirais",
+    "lat": -5.970864,
+    "lng": -43.056021
+  },
+  {
+    "nome": "Paquetá",
+    "lat": -7.103031,
+    "lng": -41.700031
+  },
+  {
+    "nome": "Parnaguá",
+    "lat": -10.216642,
+    "lng": -44.630018
+  },
+  {
+    "nome": "Parnaíba",
+    "lat": -2.905847,
+    "lng": -41.775388
+  },
+  {
+    "nome": "Passagem Franca Do Piauí",
+    "lat": -5.860365,
+    "lng": -42.44363
+  },
+  {
+    "nome": "Patos Do Piauí",
+    "lat": -7.67231,
+    "lng": -41.240817
+  },
+  {
+    "nome": "Paulistana",
+    "lat": -8.134357,
+    "lng": -41.143072
+  },
+  {
+    "nome": "Pavussu",
+    "lat": -7.96059,
+    "lng": -43.228438
+  },
+  {
+    "nome": "Pedro Ii",
+    "lat": -4.425845,
+    "lng": -41.448184
+  },
+  {
+    "nome": "Pedro Laurentino",
+    "lat": -8.068068,
+    "lng": -42.284744
+  },
+  {
+    "nome": "Picos",
+    "lat": -7.077213,
+    "lng": -41.467003
+  },
+  {
+    "nome": "Pimenteiras",
+    "lat": -6.238391,
+    "lng": -41.411273
+  },
+  {
+    "nome": "Pio Ix",
+    "lat": -6.830017,
+    "lng": -40.608301
+  },
+  {
+    "nome": "Piracuruca",
+    "lat": -3.93335,
+    "lng": -41.708779
+  },
+  {
+    "nome": "Piripiri",
+    "lat": -4.271574,
+    "lng": -41.771569
+  },
+  {
+    "nome": "Porto",
+    "lat": -3.888154,
+    "lng": -42.69982
+  },
+  {
+    "nome": "Porto Alegre Do Piauí",
+    "lat": -6.964228,
+    "lng": -44.183668
+  },
+  {
+    "nome": "Prata Do Piauí",
+    "lat": -5.672653,
+    "lng": -42.204644
+  },
+  {
+    "nome": "Queimada Nov A",
+    "lat": -8.570637,
+    "lng": -41.410614
+  },
+  {
+    "nome": "Redenção Do Gurguéia",
+    "lat": -9.479368,
+    "lng": -44.581145
+  },
+  {
+    "nome": "Regeneração",
+    "lat": -6.23115,
+    "lng": -42.684193
+  },
+  {
+    "nome": "Riacho Frio",
+    "lat": -10.124378,
+    "lng": -44.950326
+  },
+  {
+    "nome": "Ribeira Do Piauí",
+    "lat": -7.690278,
+    "lng": -42.712778
+  },
+  {
+    "nome": "Ribeiro Gonçalves",
+    "lat": -7.556505,
+    "lng": -45.244737
+  },
+  {
+    "nome": "Rio Grande Do Piauí",
+    "lat": -7.780291,
+    "lng": -43.136886
+  },
+  {
+    "nome": "Santa Cruz Do Piauí",
+    "lat": -7.178499,
+    "lng": -41.760932
+  },
+  {
+    "nome": "Santa Cruz Dos Milagres",
+    "lat": -5.805808,
+    "lng": -41.950644
+  },
+  {
+    "nome": "Santa Filomena",
+    "lat": -9.112278,
+    "lng": -45.911607
+  },
+  {
+    "nome": "Santa Luz",
+    "lat": -8.948795,
+    "lng": -44.129567
+  },
+  {
+    "nome": "Santa Rosa Do Piauí",
+    "lat": -6.79581,
+    "lng": -42.281375
+  },
+  {
+    "nome": "Santana Do Piauí",
+    "lat": -6.946961,
+    "lng": -41.517767
+  },
+  {
+    "nome": "Santo Antônio De Lisboa",
+    "lat": -6.986762,
+    "lng": -41.225202
+  },
+  {
+    "nome": "Santo Antônio Dos Milagres",
+    "lat": -6.046473,
+    "lng": -42.712322
+  },
+  {
+    "nome": "Santo Inácio Do Piauí",
+    "lat": -7.42072,
+    "lng": -41.906252
+  },
+  {
+    "nome": "São Braz Do Piauí",
+    "lat": -9.057967,
+    "lng": -43.007646
+  },
+  {
+    "nome": "São Félix Do Piauí",
+    "lat": -5.934853,
+    "lng": -42.117179
+  },
+  {
+    "nome": "São Francisco De Assis Do Piauí",
+    "lat": -8.239207,
+    "lng": -41.681028
+  },
+  {
+    "nome": "São Francisco Do Piauí",
+    "lat": -7.246299,
+    "lng": -42.54101
+  },
+  {
+    "nome": "São Gonçalo Do Gurguéia",
+    "lat": -10.03195,
+    "lng": -45.309219
+  },
+  {
+    "nome": "São Gonçalo Do Piauí",
+    "lat": -5.993934,
+    "lng": -42.709537
+  },
+  {
+    "nome": "São João Da Canabra V A",
+    "lat": -6.812029,
+    "lng": -41.341483
+  },
+  {
+    "nome": "São João Da Fronteira",
+    "lat": -3.954975,
+    "lng": -41.256921
+  },
+  {
+    "nome": "São João Da Serra",
+    "lat": -5.510805,
+    "lng": -41.892309
+  },
+  {
+    "nome": "São João Da V Arjota",
+    "lat": -6.940817,
+    "lng": -41.888912
+  },
+  {
+    "nome": "São João Do Arraial",
+    "lat": -3.818597,
+    "lng": -42.44586
+  },
+  {
+    "nome": "São João Do Piauí",
+    "lat": -8.354661,
+    "lng": -42.255898
+  },
+  {
+    "nome": "São José Do Divino",
+    "lat": -3.814114,
+    "lng": -41.830793
+  },
+  {
+    "nome": "São José Do Peixe",
+    "lat": -7.485535,
+    "lng": -42.567162
+  },
+  {
+    "nome": "São José Do Piauí",
+    "lat": -6.87194,
+    "lng": -41.47311
+  },
+  {
+    "nome": "São Julião",
+    "lat": -7.083906,
+    "lng": -40.824638
+  },
+  {
+    "nome": "São Lourenço Do Piauí",
+    "lat": -9.164633,
+    "lng": -42.549552
+  },
+  {
+    "nome": "São Luis Do Piauí",
+    "lat": -6.819363,
+    "lng": -41.317454
+  },
+  {
+    "nome": "São Miguel Da Baixa Grande",
+    "lat": -5.856457,
+    "lng": -42.193423
+  },
+  {
+    "nome": "São Miguel Do Fidalgo",
+    "lat": -7.597133,
+    "lng": -42.367591
+  },
+  {
+    "nome": "São Miguel Do Tapuio",
+    "lat": -5.497291,
+    "lng": -41.316451
+  },
+  {
+    "nome": "São Pedro Do Piauí",
+    "lat": -5.92078,
+    "lng": -42.719211
+  },
+  {
+    "nome": "São Raimundo Nonato",
+    "lat": -9.012412,
+    "lng": -42.698659
+  },
+  {
+    "nome": "Sebastião Barros",
+    "lat": -10.816978,
+    "lng": -44.833718
+  },
+  {
+    "nome": "Sebastião Leal",
+    "lat": -7.568029,
+    "lng": -44.059982
+  },
+  {
+    "nome": "Sigefredo Pacheco",
+    "lat": -4.916647,
+    "lng": -41.731123
+  },
+  {
+    "nome": "Simões",
+    "lat": -7.591095,
+    "lng": -40.813731
+  },
+  {
+    "nome": "Simplício Mendes",
+    "lat": -7.852944,
+    "lng": -41.907533
+  },
+  {
+    "nome": "Socorro Do Piauí",
+    "lat": -7.86773,
+    "lng": -42.492179
+  },
+  {
+    "nome": "Sussuapara",
+    "lat": -7.036868,
+    "lng": -41.376699
+  },
+  {
+    "nome": "Tamboril Do Piauí",
+    "lat": -8.409369,
+    "lng": -42.921107
+  },
+  {
+    "nome": "Tanque Do Piauí",
+    "lat": -6.597869,
+    "lng": -42.279515
+  },
+  {
+    "nome": "Teresina",
+    "lat": -5.091944,
+    "lng": -42.803364
+  },
+  {
+    "nome": "União",
+    "lat": -4.585709,
+    "lng": -42.858285
+  },
+  {
+    "nome": "Uruçuí",
+    "lat": -7.239439,
+    "lng": -44.557683
+  },
+  {
+    "nome": "V Alença Do Piauí",
+    "lat": -6.403013,
+    "lng": -41.737498
+  },
+  {
+    "nome": "Várzea Branca",
+    "lat": -9.238003,
+    "lng": -42.969221
+  },
+  {
+    "nome": "Várzea Grande",
+    "lat": -6.548993,
+    "lng": -42.247973
+  },
+  {
+    "nome": "Vera Mendes",
+    "lat": -7.597481,
+    "lng": -41.467336
+  },
+  {
+    "nome": "Vila Nov A Do Piauí",
+    "lat": -7.132718,
+    "lng": -40.934514
+  },
+  {
+    "nome": "Wall Ferraz",
+    "lat": -7.231511,
+    "lng": -41.905037
+  }
+]
