@@ -1355,7 +1355,7 @@ export default function Home() {
                     })()
 
                     return cidadesAtivas > 0 ? (
-                      <div className="mb-8 w-full">
+                      <div className="mb-8">
                         <MapaPresenca
                           cidadesComPresenca={cidadesComPresencaList.length > 0 ? cidadesComPresencaList : Array.from({length: cidadesAtivas}, (_, i) => `Cidade ${i+1}`)}
                           totalCidades={totalCidades}
