@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import dynamic from 'next/dynamic'
+import { Maximize2 } from 'lucide-react'
 import municipiosPiaui from '@/lib/municipios-piaui.json'
 
 // Dynamic import do wrapper Leaflet (client-only)
@@ -34,8 +35,24 @@ export function MapaPresenca({ cidadesComPresenca, totalCidades, onFullscreen, f
 
   return (
     <div className="w-full space-y-4">
+      {/* Header com botão de tela cheia */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <h3 className="text-sm font-medium text-secondary">Mapa de Presença Territorial</h3>
+        </div>
+        {onFullscreen && (
+          <button
+            onClick={onFullscreen}
+            className="p-2 rounded-lg hover:bg-background transition-colors text-secondary hover:text-primary"
+            title="Visualizar mapa em tela cheia"
+          >
+            <Maximize2 className="w-4 h-4" />
+          </button>
+        )}
+      </div>
+      
       {/* Mapa */}
-      <div className={`w-full ${fullscreen ? 'h-[calc(100vh-300px)]' : 'h-96'} bg-surface rounded-2xl border border-card overflow-hidden`}>
+      <div className={`w-full ${fullscreen ? 'h-[calc(100vh-300px)]' : 'h-96'} bg-surface rounded-2xl border border-card overflow-hidden relative`}>
         <MapWrapperLeaflet 
           cidadesComPresenca={cidadesComPresenca}
           municipiosPiaui={municipiosPiaui}

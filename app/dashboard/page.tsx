@@ -8,7 +8,15 @@ import { AlertCard } from '@/components/alert-card'
 import { ActionCard } from '@/components/action-card'
 import { AIAgent } from '@/components/ai-agent'
 import { MapaPresenca } from '@/components/mapa-presenca'
+import dynamic from 'next/dynamic'
+import municipiosPiaui from '@/lib/municipios-piaui.json'
 import { mockKPIs, mockAlerts, mockActions } from '@/lib/mock-data'
+
+// Dynamic import do wrapper Leaflet (client-only)
+const MapWrapperLeaflet = dynamic(
+  () => import('@/components/mapa-wrapper-leaflet').then(mod => mod.MapWrapperLeaflet),
+  { ssr: false }
+)
 import { KPI, Alert, NewsItem } from '@/types'
 import { TrendingUp, MapPin, Flag, MessageSquare, ThermometerSun, ThermometerSnowflake, Flame, Activity, Maximize2, X, Lightbulb } from 'lucide-react'
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
@@ -53,6 +61,7 @@ export default function Home() {
   const [graficoPollsTelaCheia, setGraficoPollsTelaCheia] = useState(false)
   const [analiseTerritoriosTelaCheia, setAnaliseTerritoriosTelaCheia] = useState(false)
   const [showMapaPresenca, setShowMapaPresenca] = useState(true)
+  const [mapaTelaCheia, setMapaTelaCheia] = useState(false)
   const [bandeirasTelaCheia, setBandeirasTelaCheia] = useState(false)
   const [alertasTelaCheia, setAlertasTelaCheia] = useState(false)
   const [insightTelaCheia, setInsightTelaCheia] = useState(false)
@@ -1472,6 +1481,71 @@ export default function Home() {
           </div>
         </div>
       )}
+
+      {/* Modal de Mapa em Tela Cheia */}
+      {mapaTelaCheia && (() => {
+        const presencaKpi = kpisComMedia.find(k => k.id === 'presenca')
+        let cidadesAtivas = 0
+        let totalCidades = 224
+        
+        if (presencaKpi && typeof presencaKpi.value === 'string' && presencaKpi.value.includes('/')) {
+          const [cidades, total] = presencaKpi.value.split('/').map(v => parseInt(v.trim()) || 0)
+          cidadesAtivas = cidades
+          totalCidades = total || 224
+        }
+
+        const cidadesComPresencaList = (() => {
+          const cidades = new Set<string>()
+          territoriosQuentes.forEach(t => cidades.add(t.cidade))
+          territoriosMornos.forEach(t => cidades.add(t.cidade))
+          return Array.from(cidades)
+        })()
+
+        return (
+          <div className="fixed inset-0 z-50 bg-background flex flex-col">
+            <div className="bg-surface border-b border-card p-4 flex items-center justify-between">
+              <h2 className="text-xl font-semibold text-primary flex items-center gap-2">
+                <MapPin className="w-6 h-6 text-accent-gold" />
+                Mapa de Presença Territorial
+              </h2>
+              <button
+                onClick={() => setMapaTelaCheia(false)}
+                className="p-2 rounded-lg hover:bg-background transition-colors"
+                title="Fechar mapa"
+              >
+                <X className="w-6 h-6 text-secondary" />
+              </button>
+            </div>
+            <div className="flex-1 overflow-hidden">
+              {cidadesAtivas > 0 ? (
+                <div className="w-full h-full">
+                  <div className="w-full h-full bg-surface overflow-hidden">
+                    <MapWrapperLeaflet 
+                      cidadesComPresenca={cidadesComPresencaList.length > 0 ? cidadesComPresencaList : Array.from({length: cidadesAtivas}, (_, i) => `Cidade ${i+1}`)}
+                      municipiosPiaui={municipiosPiaui}
+                    />
+                  </div>
+                </div>
+              ) : (
+                <div className="h-full flex items-center justify-center">
+                  <p className="text-secondary">Nenhuma cidade com presença ativa</p>
+                </div>
+              )}
+            </div>
+            {/* Legenda fixa no rodapé */}
+            <div className="bg-surface border-t border-card p-3 flex items-center justify-center gap-6 text-xs text-secondary">
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 rounded-full bg-accent-gold border border-accent-gold"></div>
+                <span>Presença Ativa</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 rounded-full bg-[#E5DED4] border border-[#D4D0C8]"></div>
+                <span>Sem Ação</span>
+              </div>
+            </div>
+          </div>
+        )
+      })()}
 
       {/* Modal de Bandeiras em Tela Cheia */}
       {bandeirasTelaCheia && (
