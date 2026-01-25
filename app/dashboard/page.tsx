@@ -7,6 +7,7 @@ import { KPIHeroCard } from '@/components/kpi-hero-card'
 import { AlertCard } from '@/components/alert-card'
 import { ActionCard } from '@/components/action-card'
 import { AIAgent } from '@/components/ai-agent'
+import { MapaPresenca } from '@/components/mapa-presenca'
 import { mockKPIs, mockAlerts, mockActions } from '@/lib/mock-data'
 import { KPI, Alert, NewsItem } from '@/types'
 import { TrendingUp, MapPin, Flag, MessageSquare, ThermometerSun, ThermometerSnowflake, Flame, Activity, Maximize2, X, Lightbulb } from 'lucide-react'
@@ -51,6 +52,7 @@ export default function Home() {
   const [projecaoChapa, setProjecaoChapa] = useState<number>(0)
   const [graficoPollsTelaCheia, setGraficoPollsTelaCheia] = useState(false)
   const [analiseTerritoriosTelaCheia, setAnaliseTerritoriosTelaCheia] = useState(false)
+  const [showMapaPresenca, setShowMapaPresenca] = useState(true)
   const [bandeirasTelaCheia, setBandeirasTelaCheia] = useState(false)
   const [alertasTelaCheia, setAlertasTelaCheia] = useState(false)
   const [insightTelaCheia, setInsightTelaCheia] = useState(false)
@@ -517,7 +519,7 @@ export default function Home() {
         {/* KPI Hero - Expectativa 2026 */}
         <section className="mb-6">
           {loading ? (
-            <div className="h-40 bg-surface rounded-2xl border border-border animate-pulse" />
+            <div className="h-40 bg-surface rounded-2xl border border-card animate-pulse" />
           ) : (
             (() => {
               const heroKpi = kpisComMedia.find(k => k.id === 'ife')
@@ -543,7 +545,7 @@ export default function Home() {
           {loading ? (
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
               {[1, 2, 3, 4, 5].map((i) => (
-                <div key={i} className="h-28 bg-surface rounded-2xl border border-border animate-pulse" />
+                <div key={i} className="h-28 bg-surface rounded-2xl border border-card animate-pulse" />
               ))}
             </div>
           ) : (
@@ -558,25 +560,25 @@ export default function Home() {
         {/* Bloco de Leitura Rápida / Insight */}
         {!loading && (
           <section className="mb-8">
-            <div className="bg-gradient-to-r from-primary-soft to-surface rounded-2xl border border-primary/20 p-5 relative">
+            <div className="bg-gradient-to-r from-primary-soft to-surface rounded-2xl border border-accent-gold/20 p-5 relative">
               <div className="flex items-start gap-3">
-                <div className="p-2 rounded-lg bg-primary/20 flex-shrink-0">
-                  <Lightbulb className="w-5 h-5 text-primary" />
+                <div className="p-2 rounded-lg bg-accent-gold-soft flex-shrink-0">
+                  <Lightbulb className="w-5 h-5 text-accent-gold" />
                 </div>
                 <div className="flex-1">
                   <div className="flex items-center justify-between mb-2">
-                    <h3 className="text-base font-semibold text-text-strong flex items-center gap-2">
+                    <h3 className="text-base font-semibold text-primary flex items-center gap-2">
                       💡 Leitura Rápida
                     </h3>
                     <button
                       onClick={() => setInsightTelaCheia(true)}
-                      className="p-1.5 rounded-lg hover:bg-background/50 transition-colors text-text-muted hover:text-text-strong"
+                      className="p-1.5 rounded-lg hover:bg-background/50 transition-colors text-secondary hover:text-primary"
                       title="Visualizar em tela cheia"
                     >
                       <Maximize2 className="w-4 h-4" />
                     </button>
                   </div>
-                  <p className="text-sm text-text-muted leading-relaxed">
+                  <p className="text-sm text-secondary leading-relaxed">
                     {(() => {
                       const presencaKpi = kpisComMedia.find(k => k.id === 'presenca')
                       const baseKpi = kpisComMedia.find(k => k.id === 'base')
@@ -611,15 +613,15 @@ export default function Home() {
           {/* Linha 2 - Leitura Estratégica */}
           <div className="lg:col-span-2 space-y-6">
             {/* Gráfico de Histórico de Pesquisas */}
-            <div className="bg-surface rounded-2xl border border-border p-6 relative overflow-hidden">
+            <div className="bg-surface rounded-2xl border border-card p-6 relative overflow-hidden">
               {/* Linha vertical de destaque */}
-              <div className="absolute left-0 top-0 bottom-0 w-1 bg-primary opacity-20" />
+              <div className="absolute left-0 top-0 bottom-0 w-1 bg-accent-gold opacity-20" />
               
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-3">
-                  <h2 className="text-lg font-semibold text-text-strong">Histórico de Pesquisas de Intenção de Votos</h2>
+                  <h2 className="text-lg font-semibold text-primary">Histórico de Pesquisas de Intenção de Votos</h2>
                   {candidatoPadrao && (
-                    <span className="text-sm text-text-muted bg-primary-soft px-2 py-0.5 rounded-full border border-primary/20">
+                    <span className="text-sm text-secondary bg-accent-gold-soft px-2 py-0.5 rounded-full border border-accent-gold/20">
                       {candidatoPadrao}
                     </span>
                   )}
@@ -627,12 +629,12 @@ export default function Home() {
                 <div className="flex items-center gap-2">
                   {pollsData.length > 0 && (
                     <>
-                      <span className="text-xs text-text-muted bg-surface px-2 py-1 rounded border border-border">
+                      <span className="text-xs text-secondary bg-surface px-2 py-1 rounded border border-card">
                         Fonte própria
                       </span>
                       <button
                         onClick={() => setGraficoPollsTelaCheia(true)}
-                        className="p-2 rounded-lg hover:bg-background transition-colors text-text-muted hover:text-text-strong"
+                        className="p-2 rounded-lg hover:bg-background transition-colors text-secondary hover:text-primary"
                         title="Visualizar em tela cheia"
                       >
                         <Maximize2 className="w-5 h-5" />
@@ -654,8 +656,8 @@ export default function Home() {
                     <AreaChart data={pollsData}>
                       <defs>
                         <linearGradient id="colorIntencao" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%" stopColor="#1E4ED8" stopOpacity={0.4} />
-                          <stop offset="95%" stopColor="#1E4ED8" stopOpacity={0.05} />
+                          <stop offset="5%" stopColor="#C6A15B" stopOpacity={0.4} />
+                          <stop offset="95%" stopColor="#C6A15B" stopOpacity={0.05} />
                         </linearGradient>
                       </defs>
                       <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" strokeWidth={1} opacity={0.5} />
@@ -732,30 +734,30 @@ export default function Home() {
                             
                             return (
                               <div className="bg-white border border-gray-200 rounded-lg shadow-lg p-3 min-w-[280px]">
-                                <p className="font-semibold text-text-strong mb-2">{label}</p>
-                                <p className="text-sm text-text-strong mb-1">
+                                <p className="font-semibold text-primary mb-2">{label}</p>
+                                <p className="text-sm text-primary mb-1">
                                   <span className="font-medium">Intenção de Voto:</span>{' '}
-                                  <span className="text-primary">{intencaoPercent}%</span>
+                                  <span className="text-accent-gold">{intencaoPercent}%</span>
                                 </p>
                                 {data.instituto && data.instituto !== 'Não informado' && (
-                                  <p className="text-sm text-text-muted mb-1">
+                                  <p className="text-sm text-secondary mb-1">
                                     <span className="font-medium">Instituto:</span> {data.instituto}
                                   </p>
                                 )}
                                 {cidade && (
                                   <div className="mt-3 pt-3 border-t border-gray-200">
-                                    <p className="text-sm font-medium text-text-strong mb-2">Análise Comparativa - {cidade}</p>
+                                    <p className="text-sm font-medium text-primary mb-2">Análise Comparativa - {cidade}</p>
                                     {feedbackText ? (
                                       <>
-                                        <p className="text-xs text-text-muted mb-1">
+                                        <p className="text-xs text-secondary mb-1">
                                           <span className="font-medium">Eleitorado:</span> {feedbackText.eleitorado.toLocaleString('pt-BR')} eleitores
                                         </p>
-                                        <p className="text-xs text-text-muted mb-1">
+                                        <p className="text-xs text-secondary mb-1">
                                           <span className="font-medium">Votos Proporcionais:</span> {feedbackText.votosProporcionais.toLocaleString('pt-BR')} votos ({intencaoPercent}% × {feedbackText.eleitorado.toLocaleString('pt-BR')})
                                         </p>
                                         {feedbackText.expectativaVotos !== null && (
                                           <>
-                                            <p className="text-xs text-text-muted mb-1">
+                                            <p className="text-xs text-secondary mb-1">
                                               <span className="font-medium">Expectativa (Território & Base):</span> {feedbackText.expectativaVotos.toLocaleString('pt-BR')} votos
                                             </p>
                                             <p className={`text-xs font-medium mt-2 pt-2 border-t border-gray-100 ${
@@ -769,7 +771,7 @@ export default function Home() {
                                         )}
                                       </>
                                     ) : (
-                                      <p className="text-xs text-text-muted">Dados de eleitorado não disponíveis para esta cidade</p>
+                                      <p className="text-xs text-secondary">Dados de eleitorado não disponíveis para esta cidade</p>
                                     )}
                                   </div>
                                 )}
@@ -782,14 +784,14 @@ export default function Home() {
                       <Area
                         type="monotone"
                         dataKey="intencao"
-                        stroke="#1E4ED8"
+                        stroke="#C6A15B"
                         strokeWidth={3}
                         fillOpacity={1}
                         fill="url(#colorIntencao)"
                         name="Intenção de Voto"
                         dot={(props: any) => {
                           const { cx, cy, payload } = props
-                          if (!payload) return <circle cx={cx} cy={cy} r={4} fill="#1E4ED8" />
+                          if (!payload) return <circle cx={cx} cy={cy} r={4} fill="#C6A15B" />
                           
                           const instituto = payload.instituto || ''
                           const cidade = payload.cidade || ''
@@ -806,11 +808,11 @@ export default function Home() {
                           
                           return (
                             <g>
-                              <circle cx={cx} cy={cy} r={4} fill="#1E4ED8" />
+                              <circle cx={cx} cy={cy} r={4} fill="#C6A15B" />
                               <text
                                 x={cx}
                                 y={cy - 20}
-                                fill="#1E4ED8"
+                                fill="#C6A15B"
                                 fontSize="12"
                                 fontWeight="600"
                                 textAnchor="middle"
@@ -836,7 +838,7 @@ export default function Home() {
                     </AreaChart>
                   </ResponsiveContainer>
                 ) : (
-                  <div className="flex items-center justify-center h-full text-text-muted">
+                  <div className="flex items-center justify-center h-full text-secondary">
                     {candidatoPadrao 
                       ? 'Nenhuma pesquisa encontrada para este candidato'
                       : 'Selecione um candidato padrão na página Pesquisa & Relato'}
@@ -846,23 +848,23 @@ export default function Home() {
             </div>
 
             {/* Análise de Territórios */}
-            <div className="bg-surface rounded-2xl border border-border p-6 relative overflow-hidden">
+            <div className="bg-surface rounded-2xl border border-card p-6 relative overflow-hidden">
               {/* Linha vertical de destaque */}
-              <div className="absolute left-0 top-0 bottom-0 w-1 bg-primary opacity-20" />
+              <div className="absolute left-0 top-0 bottom-0 w-1 bg-accent-gold opacity-20" />
               
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-3">
-                  <h2 className="text-lg font-semibold text-text-strong flex items-center gap-2">
-                    <Activity className="w-5 h-5 text-primary" />
+                  <h2 className="text-lg font-semibold text-primary flex items-center gap-2">
+                    <Activity className="w-5 h-5 text-accent-gold" />
                     Análise de Territórios
                   </h2>
-                  <span className="text-xs text-text-muted bg-surface px-2 py-1 rounded border border-border">
+                  <span className="text-xs text-secondary bg-surface px-2 py-1 rounded border border-card">
                     Fonte própria
                   </span>
                 </div>
                 <button
                   onClick={() => setAnaliseTerritoriosTelaCheia(true)}
-                  className="p-2 rounded-lg hover:bg-background transition-colors text-text-muted hover:text-text-strong"
+                  className="p-2 rounded-lg hover:bg-background transition-colors text-secondary hover:text-primary"
                   title="Visualizar em tela cheia"
                 >
                   <Maximize2 className="w-5 h-5" />
@@ -877,7 +879,7 @@ export default function Home() {
                     ))}
                   </div>
                   {[1, 2, 3].map((i) => (
-                    <div key={i} className="p-3 rounded-xl border border-border bg-surface animate-pulse">
+                    <div key={i} className="p-3 rounded-xl border border-card bg-surface animate-pulse">
                       <div className="h-4 bg-background rounded w-1/3 mb-2" />
                       <div className="h-3 bg-background rounded w-2/3" />
                     </div>
@@ -910,32 +912,71 @@ export default function Home() {
                     
                     return (
                       <div className="grid grid-cols-3 gap-3 mb-5">
-                        <div className="relative p-5 rounded-2xl border-2 border-primary/30 bg-gradient-to-br from-primary-soft to-surface hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300 cursor-pointer group overflow-hidden before:absolute before:left-0 before:top-0 before:bottom-0 before:w-1 before:bg-primary before:rounded-l-2xl">
+                        <div className="relative p-5 rounded-2xl border-2 border-accent-gold/30 bg-gradient-to-br from-primary-soft to-surface hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300 cursor-pointer group overflow-hidden before:absolute before:left-0 before:top-0 before:bottom-0 before:w-1 before:bg-accent-gold before:rounded-l-2xl">
                           <div className="flex items-center gap-2 mb-2">
-                            <MapPin className="w-4 h-4 text-primary" />
-                            <p className="text-xs font-medium text-text-muted">Cidades com Presença</p>
+                            <MapPin className="w-4 h-4 text-accent-gold" />
+                            <p className="text-xs font-medium text-secondary">Cidades com Presença</p>
                           </div>
-                          <p className="text-3xl font-bold text-text-strong group-hover:text-primary transition-colors">{cidadesAtivas}</p>
-                          <p className="text-xs text-text-muted mt-1">de {totalCidades} municípios</p>
+                          <p className="text-3xl font-bold text-primary group-hover:text-accent-gold transition-colors">{cidadesAtivas}</p>
+                          <p className="text-xs text-secondary mt-1">de {totalCidades} municípios</p>
                         </div>
-                        <div className="relative p-5 rounded-2xl border border-border bg-surface hover:shadow-lg hover:-translate-y-0.5 hover:border-primary/30 transition-all duration-300 cursor-pointer group overflow-hidden before:absolute before:left-0 before:top-0 before:bottom-0 before:w-0.5 before:bg-blue-500 before:opacity-0 group-hover:opacity-100 before:rounded-l-2xl">
+                        <div className="relative p-5 rounded-2xl border border-card bg-surface hover:shadow-lg hover:-translate-y-0.5 hover:border-accent-gold/30 transition-all duration-300 cursor-pointer group overflow-hidden before:absolute before:left-0 before:top-0 before:bottom-0 before:w-0.5 before:bg-blue-500 before:opacity-0 group-hover:opacity-100 before:rounded-l-2xl">
                           <div className="flex items-center gap-2 mb-2">
                             <Activity className="w-4 h-4 text-blue-600" />
-                            <p className="text-xs font-medium text-text-muted">Cidades Visitadas</p>
+                            <p className="text-xs font-medium text-secondary">Cidades Visitadas</p>
                           </div>
                           <p className="text-3xl font-bold text-blue-600 group-hover:scale-105 transition-transform">{cidadesVisitadas}</p>
-                          <p className="text-xs text-text-muted mt-1">de {cidadesAtivas} com presença</p>
+                          <p className="text-xs text-secondary mt-1">de {cidadesAtivas} com presença</p>
                         </div>
-                        <div className="relative p-5 rounded-2xl border border-border bg-surface hover:shadow-lg hover:-translate-y-0.5 hover:border-emerald-500/30 transition-all duration-300 cursor-pointer group overflow-hidden before:absolute before:left-0 before:top-0 before:bottom-0 before:w-0.5 before:bg-emerald-500 before:opacity-0 group-hover:opacity-100 before:rounded-l-2xl">
+                        <div className="relative p-5 rounded-2xl border border-card bg-surface hover:shadow-lg hover:-translate-y-0.5 hover:border-emerald-500/30 transition-all duration-300 cursor-pointer group overflow-hidden before:absolute before:left-0 before:top-0 before:bottom-0 before:w-0.5 before:bg-emerald-500 before:opacity-0 group-hover:opacity-100 before:rounded-l-2xl">
                           <div className="flex items-center gap-2 mb-2">
                             <TrendingUp className="w-4 h-4 text-emerald-600" />
-                            <p className="text-xs font-medium text-text-muted">Cobertura</p>
+                            <p className="text-xs font-medium text-secondary">Cobertura</p>
                           </div>
                           <p className="text-3xl font-bold text-emerald-600 group-hover:scale-105 transition-transform">{percentualCobertura}%</p>
-                          <p className="text-xs text-text-muted mt-1">das cidades com presença</p>
+                          <p className="text-xs text-secondary mt-1">das cidades com presença</p>
                         </div>
                       </div>
                     )
+                  })()}
+
+                  {/* Mapa de Presença Interativo */}
+                  {showMapaPresenca && (() => {
+                    const presencaKpi = kpisComMedia.find(k => k.id === 'presenca')
+                    let cidadesAtivas = 0
+                    let totalCidades = 224
+                    
+                    if (presencaKpi && typeof presencaKpi.value === 'string' && presencaKpi.value.includes('/')) {
+                      const [cidades, total] = presencaKpi.value.split('/').map(v => parseInt(v.trim()) || 0)
+                      cidadesAtivas = cidades
+                      totalCidades = total || 224
+                    }
+
+                    const cidadesComPresencaList = (() => {
+                      // Se há cidades com presença ativa, usar essas
+                      // Caso contrário, mostrar lista vazia (sem presença detectada)
+                      const cidades = new Set<string>()
+                      
+                      // Cidades de territórios quentes
+                      territoriosQuentes.forEach(t => cidades.add(t.cidade))
+                      // Cidades de territórios mornos
+                      territoriosMornos.forEach(t => cidades.add(t.cidade))
+                      // Cidades de territórios ativos
+                      if (territorioStats?.cidadesVisitadas) {
+                        // Quando temos dados de cidadesVisitadas, significa que temos presença nessas cidades
+                      }
+                      
+                      return Array.from(cidades)
+                    })()
+
+                    return cidadesAtivas > 0 ? (
+                      <div className="mb-6">
+                        <MapaPresenca
+                          cidadesComPresenca={cidadesComPresencaList.length > 0 ? cidadesComPresencaList : Array.from({length: cidadesAtivas}, (_, i) => `Cidade ${i+1}`)}
+                          totalCidades={totalCidades}
+                        />
+                      </div>
+                    ) : null
                   })()}
 
                   {/* Tabs de Territórios */}
@@ -946,7 +987,7 @@ export default function Home() {
                         <div className="flex items-center gap-2 mb-2">
                           <Flame className="w-4 h-4 text-emerald-500" />
                           <span className="text-xs font-semibold text-emerald-600">Territórios Quentes</span>
-                          <span className="text-[10px] text-text-muted">({territoriosQuentes.length})</span>
+                          <span className="text-[10px] text-secondary">({territoriosQuentes.length})</span>
                         </div>
                         <div className="space-y-2">
                           {territoriosQuentes.slice(0, 3).map((territorio) => (
@@ -959,8 +1000,8 @@ export default function Home() {
                                   {territorio.visitas}
                                 </div>
                                 <div>
-                                  <p className="text-sm font-medium text-text-strong">{territorio.cidade}</p>
-                                  <p className="text-[10px] text-text-muted">{territorio.motivo}</p>
+                                  <p className="text-sm font-medium text-primary">{territorio.cidade}</p>
+                                  <p className="text-[10px] text-secondary">{territorio.motivo}</p>
                                 </div>
                               </div>
                               {territorio.expectativaVotos && territorio.expectativaVotos > 0 && (
@@ -980,7 +1021,7 @@ export default function Home() {
                         <div className="flex items-center gap-2 mb-2">
                           <ThermometerSun className="w-4 h-4 text-amber-500" />
                           <span className="text-xs font-semibold text-amber-600">Territórios Mornos</span>
-                          <span className="text-[10px] text-text-muted">({territoriosMornos.length})</span>
+                          <span className="text-[10px] text-secondary">({territoriosMornos.length})</span>
                         </div>
                         <div className="space-y-2">
                           {territoriosMornos.slice(0, 3).map((territorio) => (
@@ -993,8 +1034,8 @@ export default function Home() {
                                   {territorio.visitas || 0}
                                 </div>
                                 <div>
-                                  <p className="text-sm font-medium text-text-strong">{territorio.cidade}</p>
-                                  <p className="text-[10px] text-text-muted">{territorio.motivo}</p>
+                                  <p className="text-sm font-medium text-primary">{territorio.cidade}</p>
+                                  <p className="text-[10px] text-secondary">{territorio.motivo}</p>
                                 </div>
                               </div>
                               {territorio.expectativaVotos && territorio.expectativaVotos > 0 && (
@@ -1014,7 +1055,7 @@ export default function Home() {
                         <div className="flex items-center gap-2 mb-2">
                           <ThermometerSnowflake className="w-4 h-4 text-red-500" />
                           <span className="text-xs font-semibold text-red-600">Territórios Frios (Alerta)</span>
-                          <span className="text-[10px] text-text-muted">({territoriosFrios.length})</span>
+                          <span className="text-[10px] text-secondary">({territoriosFrios.length})</span>
                         </div>
                         <div className="space-y-2">
                           {territoriosFrios.slice(0, 4).map((territorio) => (
@@ -1027,8 +1068,8 @@ export default function Home() {
                                   {territorio.visitas || 0}
                                 </div>
                                 <div>
-                                  <p className="text-sm font-medium text-text-strong">{territorio.cidade}</p>
-                                  <p className="text-[10px] text-text-muted">{territorio.motivo}</p>
+                                  <p className="text-sm font-medium text-primary">{territorio.cidade}</p>
+                                  <p className="text-[10px] text-secondary">{territorio.motivo}</p>
                                 </div>
                               </div>
                               {territorio.expectativaVotos && territorio.expectativaVotos > 0 && (
@@ -1060,13 +1101,13 @@ export default function Home() {
             {/* Alertas Críticos */}
             <div>
               <div className="flex items-center justify-between mb-4">
-                <h2 className="text-lg font-semibold text-text-strong flex items-center gap-2">
+                <h2 className="text-lg font-semibold text-primary flex items-center gap-2">
                   <span className="w-2 h-2 rounded-full bg-status-error" />
                   Alertas Críticos
                 </h2>
                 <button
                   onClick={() => setAlertasTelaCheia(true)}
-                  className="p-2 rounded-lg hover:bg-background transition-colors text-text-muted hover:text-text-strong"
+                  className="p-2 rounded-lg hover:bg-background transition-colors text-secondary hover:text-primary"
                   title="Visualizar em tela cheia"
                 >
                   <Maximize2 className="w-5 h-5" />
@@ -1076,7 +1117,7 @@ export default function Home() {
                 {loadingAlerts ? (
                   <>
                     {[1, 2, 3].map((i) => (
-                      <div key={i} className="bg-surface rounded-xl border border-border p-4 animate-pulse">
+                      <div key={i} className="bg-surface rounded-xl border border-card p-4 animate-pulse">
                         <div className="h-4 bg-background rounded w-3/4 mb-2" />
                         <div className="h-3 bg-background rounded w-1/2 mb-2" />
                         <div className="h-3 bg-background rounded w-1/4" />
@@ -1089,30 +1130,30 @@ export default function Home() {
                   ))
                 ) : (
                   <div className="text-center py-4">
-                    <p className="text-sm text-text-muted">Nenhum alerta crítico no momento</p>
+                    <p className="text-sm text-secondary">Nenhum alerta crítico no momento</p>
                   </div>
                 )}
               </div>
             </div>
 
             {/* Bandeiras de Campanha - Usos e Performance */}
-            <div className="bg-surface rounded-2xl border border-border p-6 relative overflow-hidden">
+            <div className="bg-surface rounded-2xl border border-card p-6 relative overflow-hidden">
               {/* Linha vertical de destaque */}
-              <div className="absolute left-0 top-0 bottom-0 w-1 bg-primary opacity-20" />
+              <div className="absolute left-0 top-0 bottom-0 w-1 bg-accent-gold opacity-20" />
               
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-3">
-                  <h2 className="text-lg font-semibold text-text-strong flex items-center gap-2">
-                    <Flag className="w-5 h-5 text-primary" />
+                  <h2 className="text-lg font-semibold text-primary flex items-center gap-2">
+                    <Flag className="w-5 h-5 text-accent-gold" />
                     Bandeiras de Campanha
                   </h2>
-                  <span className="text-xs text-text-muted bg-surface px-2 py-1 rounded border border-border">
+                  <span className="text-xs text-secondary bg-surface px-2 py-1 rounded border border-card">
                     Fonte própria
                   </span>
                 </div>
                 <button
                   onClick={() => setBandeirasTelaCheia(true)}
-                  className="p-2 rounded-lg hover:bg-background transition-colors text-text-muted hover:text-text-strong"
+                  className="p-2 rounded-lg hover:bg-background transition-colors text-secondary hover:text-primary"
                   title="Visualizar em tela cheia"
                 >
                   <Maximize2 className="w-5 h-5" />
@@ -1133,25 +1174,25 @@ export default function Home() {
                     <div className="relative p-5 rounded-2xl border-2 border-blue-500/30 bg-gradient-to-br from-blue-50 to-surface hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300 cursor-pointer group overflow-hidden before:absolute before:left-0 before:top-0 before:bottom-0 before:w-1 before:bg-blue-500 before:rounded-l-2xl">
                       <div className="flex items-center gap-2 mb-2">
                         <TrendingUp className="w-4 h-4 text-blue-600" />
-                        <p className="text-xs font-medium text-text-muted">Total de Usos</p>
+                        <p className="text-xs font-medium text-secondary">Total de Usos</p>
                       </div>
                       <p className="text-3xl font-bold text-blue-600 group-hover:scale-105 transition-transform">{bandeirasStats.totalUsos}</p>
-                      <p className="text-xs text-text-muted mt-1">notícias/postagens</p>
+                      <p className="text-xs text-secondary mt-1">notícias/postagens</p>
                     </div>
                     <div className="relative p-5 rounded-2xl border-2 border-emerald-500/30 bg-gradient-to-br from-emerald-50 to-surface hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300 cursor-pointer group overflow-hidden before:absolute before:left-0 before:top-0 before:bottom-0 before:w-1 before:bg-emerald-500 before:rounded-l-2xl">
                       <div className="flex items-center gap-2 mb-2">
                         <MessageSquare className="w-4 h-4 text-emerald-600" />
-                        <p className="text-xs font-medium text-text-muted">Performance Média</p>
+                        <p className="text-xs font-medium text-secondary">Performance Média</p>
                       </div>
                       <p className="text-3xl font-bold text-emerald-600 group-hover:scale-105 transition-transform">{bandeirasStats.totalPerformance}%</p>
-                      <p className="text-xs text-text-muted mt-1">engajamento médio</p>
+                      <p className="text-xs text-secondary mt-1">engajamento médio</p>
                     </div>
                   </div>
 
                   {/* Top 3 Bandeiras */}
                   {bandeirasStats.topBandeiras.length > 0 && (
                     <div>
-                      <p className="text-xs font-medium text-text-muted mb-2">Top 3 Bandeiras por Uso</p>
+                      <p className="text-xs font-medium text-secondary mb-2">Top 3 Bandeiras por Uso</p>
                       <div className="space-y-2">
                         {bandeirasStats.topBandeiras.map((bandeira, index) => (
                           <div
@@ -1159,14 +1200,14 @@ export default function Home() {
                             className="flex items-center justify-between p-2 bg-background rounded-lg"
                           >
                             <div className="flex items-center gap-2">
-                              <div className="w-6 h-6 rounded-full bg-primary-soft text-primary flex items-center justify-center text-xs font-semibold">
+                              <div className="w-6 h-6 rounded-full bg-accent-gold-soft text-accent-gold flex items-center justify-center text-xs font-semibold">
                                 {index + 1}
                               </div>
-                              <span className="text-sm text-text-strong">{bandeira.theme}</span>
+                              <span className="text-sm text-primary">{bandeira.theme}</span>
                             </div>
                             <div className="flex items-center gap-3 text-xs">
-                              <span className="text-text-muted">{bandeira.usage_count} usos</span>
-                              <span className="text-text-muted">{bandeira.performance_score}%</span>
+                              <span className="text-secondary">{bandeira.usage_count} usos</span>
+                              <span className="text-secondary">{bandeira.performance_score}%</span>
                             </div>
                           </div>
                         ))}
@@ -1175,14 +1216,14 @@ export default function Home() {
                   )}
 
                   {bandeirasStats.totalBandeiras === 0 && (
-                    <p className="text-sm text-text-muted text-center py-2">
+                    <p className="text-sm text-secondary text-center py-2">
                       Nenhuma bandeira ativa cadastrada
                     </p>
                   )}
                 </div>
               ) : (
-                <div className="bg-surface rounded-xl border border-border p-4">
-                  <p className="text-sm text-text-muted text-center">
+                <div className="bg-surface rounded-xl border border-card p-4">
+                  <p className="text-sm text-secondary text-center">
                     Erro ao carregar estatísticas das bandeiras
                   </p>
                 </div>
@@ -1191,7 +1232,7 @@ export default function Home() {
 
             {/* Pendências Jurídicas */}
             <div>
-              <h2 className="text-lg font-semibold text-text-strong mb-4 flex items-center gap-2">
+              <h2 className="text-lg font-semibold text-primary mb-4 flex items-center gap-2">
                 <span className="w-2 h-2 rounded-full bg-status-warning" />
                 Pendências Jurídicas
               </h2>
@@ -1204,7 +1245,7 @@ export default function Home() {
 
             {/* Ações Recomendadas */}
             <div className="bg-beige rounded-2xl border border-beige-dark p-6">
-              <h2 className="text-lg font-semibold text-text-strong mb-4">
+              <h2 className="text-lg font-semibold text-primary mb-4">
                 Ações Recomendadas Automáticas
               </h2>
               <div className="space-y-3">
@@ -1221,9 +1262,9 @@ export default function Home() {
       {/* Modal de Análise de Territórios em Tela Cheia */}
       {analiseTerritoriosTelaCheia && (
         <div className="fixed inset-0 z-50 bg-background flex flex-col">
-          <div className="bg-surface border-b border-border p-4 flex items-center justify-between">
-            <h2 className="text-xl font-semibold text-text-strong flex items-center gap-2">
-              <Activity className="w-6 h-6 text-primary" />
+          <div className="bg-surface border-b border-card p-4 flex items-center justify-between">
+            <h2 className="text-xl font-semibold text-primary flex items-center gap-2">
+              <Activity className="w-6 h-6 text-accent-gold" />
               Análise de Territórios
             </h2>
             <button
@@ -1231,11 +1272,11 @@ export default function Home() {
               className="p-2 rounded-lg hover:bg-background transition-colors"
               title="Fechar tela cheia"
             >
-              <X className="w-6 h-6 text-text-muted" />
+              <X className="w-6 h-6 text-secondary" />
             </button>
           </div>
           <div className="flex-1 p-6 overflow-auto">
-            <div className="max-w-7xl mx-auto">
+            <div className="w-full max-w-7xl mx-auto">
               {/* Replicar conteúdo da seção Análise de Territórios aqui */}
               {loadingTerritorios ? (
                 <div className="space-y-4">
@@ -1266,32 +1307,62 @@ export default function Home() {
                     
                     return (
                       <div className="grid grid-cols-3 gap-4 mb-6">
-                        <div className="relative p-6 rounded-2xl border-2 border-primary/30 bg-gradient-to-br from-primary-soft to-surface">
+                        <div className="relative p-6 rounded-2xl border-2 border-accent-gold/30 bg-gradient-to-br from-primary-soft to-surface">
                           <div className="flex items-center gap-2 mb-2">
-                            <MapPin className="w-5 h-5 text-primary" />
-                            <p className="text-sm font-medium text-text-muted">Cidades com Presença</p>
+                            <MapPin className="w-5 h-5 text-accent-gold" />
+                            <p className="text-sm font-medium text-secondary">Cidades com Presença</p>
                           </div>
-                          <p className="text-4xl font-bold text-text-strong">{cidadesAtivas}</p>
-                          <p className="text-sm text-text-muted mt-1">de {totalCidades} municípios</p>
+                          <p className="text-4xl font-bold text-primary">{cidadesAtivas}</p>
+                          <p className="text-sm text-secondary mt-1">de {totalCidades} municípios</p>
                         </div>
-                        <div className="relative p-6 rounded-2xl border border-border bg-surface">
+                        <div className="relative p-6 rounded-2xl border border-card bg-surface">
                           <div className="flex items-center gap-2 mb-2">
                             <Activity className="w-5 h-5 text-blue-600" />
-                            <p className="text-sm font-medium text-text-muted">Cidades Visitadas</p>
+                            <p className="text-sm font-medium text-secondary">Cidades Visitadas</p>
                           </div>
                           <p className="text-4xl font-bold text-blue-600">{cidadesVisitadas}</p>
-                          <p className="text-sm text-text-muted mt-1">de {cidadesAtivas} com presença</p>
+                          <p className="text-sm text-secondary mt-1">de {cidadesAtivas} com presença</p>
                         </div>
-                        <div className="relative p-6 rounded-2xl border border-border bg-surface">
+                        <div className="relative p-6 rounded-2xl border border-card bg-surface">
                           <div className="flex items-center gap-2 mb-2">
                             <TrendingUp className="w-5 h-5 text-emerald-600" />
-                            <p className="text-sm font-medium text-text-muted">Cobertura</p>
+                            <p className="text-sm font-medium text-secondary">Cobertura</p>
                           </div>
                           <p className="text-4xl font-bold text-emerald-600">{percentualCobertura}%</p>
-                          <p className="text-sm text-text-muted mt-1">das cidades com presença</p>
+                          <p className="text-sm text-secondary mt-1">das cidades com presença</p>
                         </div>
                       </div>
                     )
+                  })()}
+                  
+                  {/* Mapa de Presença Interativo */}
+                  {showMapaPresenca && (() => {
+                    const presencaKpi = kpisComMedia.find(k => k.id === 'presenca')
+                    let cidadesAtivas = 0
+                    let totalCidades = 224
+                    
+                    if (presencaKpi && typeof presencaKpi.value === 'string' && presencaKpi.value.includes('/')) {
+                      const [cidades, total] = presencaKpi.value.split('/').map(v => parseInt(v.trim()) || 0)
+                      cidadesAtivas = cidades
+                      totalCidades = total || 224
+                    }
+
+                    const cidadesComPresencaList = (() => {
+                      const cidades = new Set<string>()
+                      territoriosQuentes.forEach(t => cidades.add(t.cidade))
+                      territoriosMornos.forEach(t => cidades.add(t.cidade))
+                      return Array.from(cidades)
+                    })()
+
+                    return cidadesAtivas > 0 ? (
+                      <div className="mb-8 w-full">
+                        <MapaPresenca
+                          cidadesComPresenca={cidadesComPresencaList.length > 0 ? cidadesComPresencaList : Array.from({length: cidadesAtivas}, (_, i) => `Cidade ${i+1}`)}
+                          totalCidades={totalCidades}
+                          fullscreen={true}
+                        />
+                      </div>
+                    ) : null
                   })()}
                   
                   {/* Territórios Quentes, Mornos e Frios */}
@@ -1301,7 +1372,7 @@ export default function Home() {
                         <div className="flex items-center gap-2 mb-3">
                           <Flame className="w-5 h-5 text-emerald-500" />
                           <span className="text-base font-semibold text-emerald-600">Territórios Quentes</span>
-                          <span className="text-sm text-text-muted">({territoriosQuentes.length})</span>
+                          <span className="text-sm text-secondary">({territoriosQuentes.length})</span>
                         </div>
                         <div className="space-y-2">
                           {territoriosQuentes.map((territorio) => (
@@ -1314,8 +1385,8 @@ export default function Home() {
                                   {territorio.visitas}
                                 </div>
                                 <div>
-                                  <p className="text-base font-medium text-text-strong">{territorio.cidade}</p>
-                                  <p className="text-xs text-text-muted">{territorio.motivo}</p>
+                                  <p className="text-base font-medium text-primary">{territorio.cidade}</p>
+                                  <p className="text-xs text-secondary">{territorio.motivo}</p>
                                 </div>
                               </div>
                               {territorio.expectativaVotos && territorio.expectativaVotos > 0 && (
@@ -1334,7 +1405,7 @@ export default function Home() {
                         <div className="flex items-center gap-2 mb-3">
                           <ThermometerSun className="w-5 h-5 text-amber-500" />
                           <span className="text-base font-semibold text-amber-600">Territórios Mornos</span>
-                          <span className="text-sm text-text-muted">({territoriosMornos.length})</span>
+                          <span className="text-sm text-secondary">({territoriosMornos.length})</span>
                         </div>
                         <div className="space-y-2">
                           {territoriosMornos.map((territorio) => (
@@ -1347,8 +1418,8 @@ export default function Home() {
                                   {territorio.visitas || 0}
                                 </div>
                                 <div>
-                                  <p className="text-base font-medium text-text-strong">{territorio.cidade}</p>
-                                  <p className="text-xs text-text-muted">{territorio.motivo}</p>
+                                  <p className="text-base font-medium text-primary">{territorio.cidade}</p>
+                                  <p className="text-xs text-secondary">{territorio.motivo}</p>
                                 </div>
                               </div>
                               {territorio.expectativaVotos && territorio.expectativaVotos > 0 && (
@@ -1367,7 +1438,7 @@ export default function Home() {
                         <div className="flex items-center gap-2 mb-3">
                           <ThermometerSnowflake className="w-5 h-5 text-red-500" />
                           <span className="text-base font-semibold text-red-600">Territórios Frios (Alerta)</span>
-                          <span className="text-sm text-text-muted">({territoriosFrios.length})</span>
+                          <span className="text-sm text-secondary">({territoriosFrios.length})</span>
                         </div>
                         <div className="space-y-2">
                           {territoriosFrios.map((territorio) => (
@@ -1380,8 +1451,8 @@ export default function Home() {
                                   {territorio.visitas || 0}
                                 </div>
                                 <div>
-                                  <p className="text-base font-medium text-text-strong">{territorio.cidade}</p>
-                                  <p className="text-xs text-text-muted">{territorio.motivo}</p>
+                                  <p className="text-base font-medium text-primary">{territorio.cidade}</p>
+                                  <p className="text-xs text-secondary">{territorio.motivo}</p>
                                 </div>
                               </div>
                               {territorio.expectativaVotos && territorio.expectativaVotos > 0 && (
@@ -1405,9 +1476,9 @@ export default function Home() {
       {/* Modal de Bandeiras em Tela Cheia */}
       {bandeirasTelaCheia && (
         <div className="fixed inset-0 z-50 bg-background flex flex-col">
-          <div className="bg-surface border-b border-border p-4 flex items-center justify-between">
-            <h2 className="text-xl font-semibold text-text-strong flex items-center gap-2">
-              <Flag className="w-6 h-6 text-primary" />
+          <div className="bg-surface border-b border-card p-4 flex items-center justify-between">
+            <h2 className="text-xl font-semibold text-primary flex items-center gap-2">
+              <Flag className="w-6 h-6 text-accent-gold" />
               Bandeiras de Campanha
             </h2>
             <button
@@ -1415,7 +1486,7 @@ export default function Home() {
               className="p-2 rounded-lg hover:bg-background transition-colors"
               title="Fechar tela cheia"
             >
-              <X className="w-6 h-6 text-text-muted" />
+              <X className="w-6 h-6 text-secondary" />
             </button>
           </div>
           <div className="flex-1 p-6 overflow-auto">
@@ -1434,39 +1505,39 @@ export default function Home() {
                     <div className="relative p-6 rounded-2xl border-2 border-blue-500/30 bg-gradient-to-br from-blue-50 to-surface">
                       <div className="flex items-center gap-2 mb-2">
                         <TrendingUp className="w-5 h-5 text-blue-600" />
-                        <p className="text-sm font-medium text-text-muted">Total de Usos</p>
+                        <p className="text-sm font-medium text-secondary">Total de Usos</p>
                       </div>
                       <p className="text-4xl font-bold text-blue-600">{bandeirasStats.totalUsos}</p>
-                      <p className="text-sm text-text-muted mt-1">notícias/postagens</p>
+                      <p className="text-sm text-secondary mt-1">notícias/postagens</p>
                     </div>
                     <div className="relative p-6 rounded-2xl border-2 border-emerald-500/30 bg-gradient-to-br from-emerald-50 to-surface">
                       <div className="flex items-center gap-2 mb-2">
                         <MessageSquare className="w-5 h-5 text-emerald-600" />
-                        <p className="text-sm font-medium text-text-muted">Performance Média</p>
+                        <p className="text-sm font-medium text-secondary">Performance Média</p>
                       </div>
                       <p className="text-4xl font-bold text-emerald-600">{bandeirasStats.totalPerformance}%</p>
-                      <p className="text-sm text-text-muted mt-1">engajamento médio</p>
+                      <p className="text-sm text-secondary mt-1">engajamento médio</p>
                     </div>
                   </div>
                   
                   {bandeirasStats.topBandeiras.length > 0 && (
                     <div>
-                      <p className="text-base font-medium text-text-muted mb-3">Top Bandeiras por Uso</p>
+                      <p className="text-base font-medium text-secondary mb-3">Top Bandeiras por Uso</p>
                       <div className="space-y-2">
                         {bandeirasStats.topBandeiras.map((bandeira, index) => (
                           <div
                             key={bandeira.theme}
-                            className="flex items-center justify-between p-3 bg-surface rounded-lg border border-border"
+                            className="flex items-center justify-between p-3 bg-surface rounded-lg border border-card"
                           >
                             <div className="flex items-center gap-3">
-                              <div className="w-8 h-8 rounded-full bg-primary-soft text-primary flex items-center justify-center text-sm font-semibold">
+                              <div className="w-8 h-8 rounded-full bg-accent-gold-soft text-accent-gold flex items-center justify-center text-sm font-semibold">
                                 {index + 1}
                               </div>
-                              <span className="text-base text-text-strong">{bandeira.theme}</span>
+                              <span className="text-base text-primary">{bandeira.theme}</span>
                             </div>
                             <div className="flex items-center gap-4 text-sm">
-                              <span className="text-text-muted">{bandeira.usage_count} usos</span>
-                              <span className="text-text-muted">{bandeira.performance_score}%</span>
+                              <span className="text-secondary">{bandeira.usage_count} usos</span>
+                              <span className="text-secondary">{bandeira.performance_score}%</span>
                             </div>
                           </div>
                         ))}
@@ -1475,7 +1546,7 @@ export default function Home() {
                   )}
                 </div>
               ) : (
-                <p className="text-text-muted text-center">Erro ao carregar estatísticas das bandeiras</p>
+                <p className="text-secondary text-center">Erro ao carregar estatísticas das bandeiras</p>
               )}
             </div>
           </div>
@@ -1485,8 +1556,8 @@ export default function Home() {
       {/* Modal de Alertas em Tela Cheia */}
       {alertasTelaCheia && (
         <div className="fixed inset-0 z-50 bg-background flex flex-col">
-          <div className="bg-surface border-b border-border p-4 flex items-center justify-between">
-            <h2 className="text-xl font-semibold text-text-strong flex items-center gap-2">
+          <div className="bg-surface border-b border-card p-4 flex items-center justify-between">
+            <h2 className="text-xl font-semibold text-primary flex items-center gap-2">
               <span className="w-3 h-3 rounded-full bg-status-error" />
               Alertas Críticos
             </h2>
@@ -1495,7 +1566,7 @@ export default function Home() {
               className="p-2 rounded-lg hover:bg-background transition-colors"
               title="Fechar tela cheia"
             >
-              <X className="w-6 h-6 text-text-muted" />
+              <X className="w-6 h-6 text-secondary" />
             </button>
           </div>
           <div className="flex-1 p-6 overflow-auto">
@@ -1503,7 +1574,7 @@ export default function Home() {
               {loadingAlerts ? (
                 <div className="space-y-3">
                   {[1, 2, 3, 4, 5].map((i) => (
-                    <div key={i} className="bg-surface rounded-xl border border-border p-4 animate-pulse">
+                    <div key={i} className="bg-surface rounded-xl border border-card p-4 animate-pulse">
                       <div className="h-4 bg-background rounded w-3/4 mb-2" />
                       <div className="h-3 bg-background rounded w-1/2 mb-2" />
                       <div className="h-3 bg-background rounded w-1/4" />
@@ -1518,7 +1589,7 @@ export default function Home() {
                 </div>
               ) : (
                 <div className="text-center py-8">
-                  <p className="text-text-muted">Nenhum alerta crítico no momento</p>
+                  <p className="text-secondary">Nenhum alerta crítico no momento</p>
                 </div>
               )}
             </div>
@@ -1529,9 +1600,9 @@ export default function Home() {
       {/* Modal de Insight em Tela Cheia */}
       {insightTelaCheia && (
         <div className="fixed inset-0 z-50 bg-background flex flex-col">
-          <div className="bg-surface border-b border-border p-4 flex items-center justify-between">
-            <h2 className="text-xl font-semibold text-text-strong flex items-center gap-2">
-              <Lightbulb className="w-6 h-6 text-primary" />
+          <div className="bg-surface border-b border-card p-4 flex items-center justify-between">
+            <h2 className="text-xl font-semibold text-primary flex items-center gap-2">
+              <Lightbulb className="w-6 h-6 text-accent-gold" />
               Leitura Rápida
             </h2>
             <button
@@ -1539,18 +1610,18 @@ export default function Home() {
               className="p-2 rounded-lg hover:bg-background transition-colors"
               title="Fechar tela cheia"
             >
-              <X className="w-6 h-6 text-text-muted" />
+              <X className="w-6 h-6 text-secondary" />
             </button>
           </div>
           <div className="flex-1 p-6 overflow-auto">
             <div className="max-w-4xl mx-auto">
-              <div className="bg-gradient-to-r from-primary-soft to-surface rounded-2xl border border-primary/20 p-8">
+              <div className="bg-gradient-to-r from-primary-soft to-surface rounded-2xl border border-accent-gold/20 p-8">
                 <div className="flex items-start gap-4">
-                  <div className="p-3 rounded-lg bg-primary/20 flex-shrink-0">
-                    <Lightbulb className="w-8 h-8 text-primary" />
+                  <div className="p-3 rounded-lg bg-accent-gold-soft flex-shrink-0">
+                    <Lightbulb className="w-8 h-8 text-accent-gold" />
                   </div>
                   <div className="flex-1">
-                    <p className="text-lg text-text-muted leading-relaxed">
+                    <p className="text-lg text-secondary leading-relaxed">
                       {(() => {
                         const presencaKpi = kpisComMedia.find(k => k.id === 'presenca')
                         const baseKpi = kpisComMedia.find(k => k.id === 'base')
@@ -1587,11 +1658,11 @@ export default function Home() {
       {graficoPollsTelaCheia && (
         <div className="fixed inset-0 z-50 bg-background flex flex-col">
           {/* Header */}
-          <div className="bg-surface border-b border-border p-4 flex items-center justify-between">
+          <div className="bg-surface border-b border-card p-4 flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <h2 className="text-xl font-semibold text-text-strong">Histórico de Pesquisas de Intenção de Votos</h2>
+              <h2 className="text-xl font-semibold text-primary">Histórico de Pesquisas de Intenção de Votos</h2>
               {candidatoPadrao && (
-                <span className="text-sm text-text-muted">{candidatoPadrao}</span>
+                <span className="text-sm text-secondary">{candidatoPadrao}</span>
               )}
             </div>
             <button
@@ -1599,7 +1670,7 @@ export default function Home() {
               className="p-2 rounded-lg hover:bg-background transition-colors"
               title="Fechar tela cheia"
             >
-              <X className="w-6 h-6 text-text-muted" />
+              <X className="w-6 h-6 text-secondary" />
             </button>
           </div>
 
@@ -1614,7 +1685,7 @@ export default function Home() {
               </div>
             ) : pollsData.length === 0 ? (
               <div className="h-full flex items-center justify-center">
-                <p className="text-text-muted">Nenhuma pesquisa encontrada</p>
+                <p className="text-secondary">Nenhuma pesquisa encontrada</p>
               </div>
             ) : (
               <div className="h-full min-h-[600px]">
@@ -1622,8 +1693,8 @@ export default function Home() {
                   <AreaChart data={pollsData} margin={{ top: 20, right: 30, left: 20, bottom: 60 }}>
                     <defs>
                       <linearGradient id="colorIntencaoFullscreen" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#1E4ED8" stopOpacity={0.3} />
-                        <stop offset="95%" stopColor="#1E4ED8" stopOpacity={0} />
+                        <stop offset="5%" stopColor="#C6A15B" stopOpacity={0.3} />
+                        <stop offset="95%" stopColor="#C6A15B" stopOpacity={0} />
                       </linearGradient>
                     </defs>
                     <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
@@ -1707,30 +1778,30 @@ export default function Home() {
                           
                           return (
                             <div className="bg-white border border-gray-200 rounded-lg shadow-lg p-3 min-w-[280px]">
-                              <p className="font-semibold text-text-strong mb-2">{label}</p>
-                              <p className="text-sm text-text-strong mb-1">
+                              <p className="font-semibold text-primary mb-2">{label}</p>
+                              <p className="text-sm text-primary mb-1">
                                 <span className="font-medium">Intenção de Voto:</span>{' '}
-                                <span className="text-primary">{intencaoPercent}%</span>
+                                <span className="text-accent-gold">{intencaoPercent}%</span>
                               </p>
                               {data.instituto && data.instituto !== 'Não informado' && (
-                                <p className="text-sm text-text-muted mb-1">
+                                <p className="text-sm text-secondary mb-1">
                                   <span className="font-medium">Instituto:</span> {data.instituto}
                                 </p>
                               )}
                               {cidade && (
                                 <div className="mt-3 pt-3 border-t border-gray-200">
-                                  <p className="text-sm font-medium text-text-strong mb-2">Análise Comparativa - {cidade}</p>
+                                  <p className="text-sm font-medium text-primary mb-2">Análise Comparativa - {cidade}</p>
                                   {feedbackText ? (
                                     <>
-                                      <p className="text-xs text-text-muted mb-1">
+                                      <p className="text-xs text-secondary mb-1">
                                         <span className="font-medium">Eleitorado:</span> {feedbackText.eleitorado.toLocaleString('pt-BR')} eleitores
                                       </p>
-                                      <p className="text-xs text-text-muted mb-1">
+                                      <p className="text-xs text-secondary mb-1">
                                         <span className="font-medium">Votos Proporcionais:</span> {feedbackText.votosProporcionais.toLocaleString('pt-BR')} votos ({intencaoPercent}% × {feedbackText.eleitorado.toLocaleString('pt-BR')})
                                       </p>
                                       {feedbackText.expectativaVotos !== null && (
                                         <>
-                                          <p className="text-xs text-text-muted mb-1">
+                                          <p className="text-xs text-secondary mb-1">
                                             <span className="font-medium">Expectativa (Território & Base):</span> {feedbackText.expectativaVotos.toLocaleString('pt-BR')} votos
                                           </p>
                                           <p className={`text-xs font-medium mt-2 pt-2 border-t border-gray-100 ${
@@ -1744,7 +1815,7 @@ export default function Home() {
                                       )}
                                     </>
                                   ) : (
-                                    <p className="text-xs text-text-muted">Dados de eleitorado não disponíveis para esta cidade</p>
+                                    <p className="text-xs text-secondary">Dados de eleitorado não disponíveis para esta cidade</p>
                                   )}
                                 </div>
                               )}
@@ -1757,14 +1828,14 @@ export default function Home() {
                     <Area
                       type="monotone"
                       dataKey="intencao"
-                      stroke="#1E4ED8"
+                      stroke="#C6A15B"
                       strokeWidth={3}
                       fillOpacity={1}
                       fill="url(#colorIntencaoFullscreen)"
                       name="Intenção de Voto"
                       dot={(props: any) => {
                         const { cx, cy, payload } = props
-                        if (!payload) return <circle cx={cx} cy={cy} r={5} fill="#1E4ED8" />
+                        if (!payload) return <circle cx={cx} cy={cy} r={5} fill="#C6A15B" />
                         
                         const instituto = payload.instituto || ''
                         const cidade = payload.cidade || ''
@@ -1781,11 +1852,11 @@ export default function Home() {
                         
                         return (
                           <g>
-                            <circle cx={cx} cy={cy} r={5} fill="#1E4ED8" />
+                            <circle cx={cx} cy={cy} r={5} fill="#C6A15B" />
                             <text
                               x={cx}
                               y={cy - 25}
-                              fill="#1E4ED8"
+                              fill="#C6A15B"
                               fontSize="14"
                               fontWeight="600"
                               textAnchor="middle"

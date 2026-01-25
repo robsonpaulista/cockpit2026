@@ -14,9 +14,10 @@ interface MapaPresencaProps {
   cidadesComPresenca: string[]
   totalCidades: number
   onFullscreen?: () => void
+  fullscreen?: boolean
 }
 
-export function MapaPresenca({ cidadesComPresenca, totalCidades, onFullscreen }: MapaPresencaProps) {
+export function MapaPresenca({ cidadesComPresenca, totalCidades, onFullscreen, fullscreen = false }: MapaPresencaProps) {
   const [clientReady, setClientReady] = useState(false)
 
   useEffect(() => {
@@ -34,7 +35,7 @@ export function MapaPresenca({ cidadesComPresenca, totalCidades, onFullscreen }:
   return (
     <div className="w-full space-y-4">
       {/* Mapa */}
-      <div className="w-full h-96 bg-surface rounded-2xl border border-card overflow-hidden">
+      <div className={`w-full ${fullscreen ? 'h-[calc(100vh-300px)]' : 'h-96'} bg-surface rounded-2xl border border-card overflow-hidden`}>
         <MapWrapperLeaflet 
           cidadesComPresenca={cidadesComPresenca}
           municipiosPiaui={municipiosPiaui}
