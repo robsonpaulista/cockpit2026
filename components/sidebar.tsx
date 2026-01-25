@@ -96,7 +96,8 @@ export function Sidebar() {
           'w-64'
         )}
         style={{
-          background: 'linear-gradient(180deg, #072E66 0%, #0A3F8C 45%, #0B4FAE 100%)'
+          background: 'linear-gradient(180deg, #072E66 0%, #0A3F8C 45%, #0B4FAE 100%)',
+          backgroundAttachment: 'fixed'
         }}
       >
         <div className="flex flex-col h-full">
