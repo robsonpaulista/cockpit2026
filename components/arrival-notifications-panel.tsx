@@ -38,7 +38,8 @@ export function ArrivalNotificationsPanel({
       .filter((event) => {
         const attendance = attendanceStatuses[event.id]
         // Deve ter arrival_time E não ter attended definido (ou seja, ainda não foi marcado como atendido/não atendido)
-        return attendance?.arrival_time && attendance?.attended === undefined
+        // Verifica tanto undefined quanto null (que pode vir do banco)
+        return attendance?.arrival_time && (attendance?.attended === undefined || attendance?.attended === null)
       })
       .map((event) => ({
         event,

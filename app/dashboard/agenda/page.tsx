@@ -213,13 +213,14 @@ export default function AgendaPage() {
       })
 
       const results = await Promise.all(promises)
-      const statuses: Record<string, { attended: boolean; notes?: string }> = {}
+      const statuses: Record<string, { attended: boolean; notes?: string; arrival_time?: string }> = {}
       
       results.forEach(({ eventId, attendance }) => {
         if (attendance) {
           statuses[eventId] = {
             attended: attendance.attended,
             notes: attendance.notes,
+            arrival_time: attendance.arrival_time,
           }
         }
       })
