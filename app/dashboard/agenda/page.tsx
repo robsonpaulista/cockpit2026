@@ -97,17 +97,61 @@ export default function AgendaPage() {
   }
 
   useEffect(() => {
-    const savedConfig = localStorage.getItem('google_calendar_config')
-    if (savedConfig) {
+    const loadConfig = async () => {
+      if (!user?.id) {
+        setLoading(false)
+        return
+      }
+
       try {
-        const parsed = JSON.parse(savedConfig)
-        setConfig(parsed)
-      } catch (e) {
-        console.error('Erro ao carregar configuração:', e)
+        // Primeiro tenta buscar do banco de dados
+        const response = await fetch('/api/agenda/google-calendar-config')
+        if (response.ok) {
+          const data = await response.json()
+          if (data.config) {
+            setConfig(data.config)
+            // Também salva no localStorage como cache
+            localStorage.setItem('google_calendar_config', JSON.stringify(data.config))
+            setLoading(false)
+            return
+          }
+        }
+
+        // Fallback: tenta buscar do localStorage (para compatibilidade)
+        const savedConfig = localStorage.getItem('google_calendar_config')
+        if (savedConfig) {
+          try {
+            const parsed = JSON.parse(savedConfig)
+            setConfig(parsed)
+            // Migra para o banco se existir no localStorage
+            await fetch('/api/agenda/google-calendar-config', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(parsed),
+            })
+          } catch (e) {
+            console.error('Erro ao carregar configuração do localStorage:', e)
+          }
+        }
+      } catch (error) {
+        console.error('Erro ao carregar configuração:', error)
+        // Fallback para localStorage em caso de erro
+        const savedConfig = localStorage.getItem('google_calendar_config')
+        if (savedConfig) {
+          try {
+            const parsed = JSON.parse(savedConfig)
+            setConfig(parsed)
+          } catch (e) {
+            console.error('Erro ao carregar configuração do localStorage:', e)
+          }
+        }
+      } finally {
+        setLoading(false)
       }
     }
-    setLoading(false)
-  }, [])
+
+    loadConfig()
+  }, [user?.id])
 
   const fetchEvents = useCallback(async (isManual = false) => {
     if (!config) return
@@ -231,15 +275,35 @@ export default function AgendaPage() {
     }
   }
 
-  const handleSaveConfig = (newConfig: {
+  const handleSaveConfig = async (newConfig: {
     calendarId: string
     serviceAccountEmail: string
     credentials: string
     subjectUser?: string
   }) => {
-    setConfig(newConfig)
-    localStorage.setItem('google_calendar_config', JSON.stringify(newConfig))
-    fetchEvents(true) // Atualização manual após salvar configuração
+    try {
+      // Salvar no banco de dados
+      const response = await fetch('/api/agenda/google-calendar-config', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newConfig),
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        setConfig(data.config || newConfig)
+        // Também salva no localStorage como cache
+        localStorage.setItem('google_calendar_config', JSON.stringify(data.config || newConfig))
+        fetchEvents(true) // Atualização manual após salvar configuração
+      } else {
+        const errorData = await response.json()
+        console.error('Erro ao salvar configuração:', errorData.error)
+        alert('Erro ao salvar configuração. Tente novamente.')
+      }
+    } catch (error) {
+      console.error('Erro ao salvar configuração:', error)
+      alert('Erro ao salvar configuração. Tente novamente.')
+    }
   }
 
   const handleAttendanceChange = async (eventId: string, attended: boolean) => {

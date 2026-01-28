@@ -10,7 +10,7 @@ interface GoogleCalendarConfigModalProps {
     serviceAccountEmail: string
     credentials: string
     subjectUser?: string
-  }) => void
+  }) => Promise<void> | void
   currentConfig?: {
     calendarId: string
     serviceAccountEmail?: string
@@ -96,19 +96,24 @@ export function GoogleCalendarConfigModal({
     }
   }
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!formData.serviceAccountEmail || !formData.credentials || !formData.calendarId) {
       alert('ID do Calendário, Email do Service Account e Credenciais são obrigatórios')
       return
     }
-    onSave({
-      calendarId: formData.calendarId,
-      serviceAccountEmail: formData.serviceAccountEmail,
-      credentials: formData.credentials,
-      subjectUser: formData.subjectUser || undefined, // Opcional, mas recomendado para Workspace
-    })
-    onClose()
+    try {
+      await onSave({
+        calendarId: formData.calendarId,
+        serviceAccountEmail: formData.serviceAccountEmail,
+        credentials: formData.credentials,
+        subjectUser: formData.subjectUser || undefined, // Opcional, mas recomendado para Workspace
+      })
+      onClose()
+    } catch (error) {
+      // Erro já foi tratado no handleSaveConfig
+      console.error('Erro ao salvar configuração:', error)
+    }
   }
 
   return (
