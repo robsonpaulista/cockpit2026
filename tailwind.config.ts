@@ -14,20 +14,26 @@ const config: Config = {
         'bg-surface': '#FBF9F6',
         'bg-sidebar': '#EFE9E1',
         
-        // Texto
-        'text-primary': '#1C1C1C',
-        'text-secondary': '#6B6B6B',
-        'text-muted': '#9A9A9A',
+        // Texto (definido como objeto para usar text-text-primary)
+        text: {
+          primary: '#1C1C1C',
+          secondary: '#6B6B6B',
+          muted: '#9A9A9A',
+          strong: '#1C1C1C', // Compatibilidade
+        },
         
         // Acentos Premium
         'accent-gold': '#C6A15B',
         'accent-gold-soft': '#E8D9B8',
         
-        // Estados
-        'status-success': '#2E7D32',
-        'status-warning': '#C77800',
-        'status-danger': '#9F2A2A',
-        'status-info': '#6B7280',
+        // Estados (definido como objeto para usar text-status-success)
+        status: {
+          success: '#2E7D32',
+          warning: '#C77800',
+          danger: '#9F2A2A',
+          error: '#9F2A2A',
+          info: '#6B7280',
+        },
         
         // Bordas
         'border-card': '#E5DED4',
@@ -40,19 +46,10 @@ const config: Config = {
         },
         background: '#F7F4EF',
         surface: '#FBF9F6',
-        text: {
-          strong: '#1C1C1C',
-          muted: '#6B6B6B',
-        },
         border: '#E5DED4',
         beige: {
           DEFAULT: '#F7F4EF',
           dark: '#EFE9E1',
-        },
-        status: {
-          success: '#2E7D32',
-          warning: '#C77800',
-          error: '#9F2A2A',
         },
       },
       fontFamily: {
