@@ -5,45 +5,25 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
 @import './theme.css';
 
-/* Design Tokens - Tema Institucional Azul */
+/* Design Tokens - Tema Premium Bege */
 :root {
-  /* Azul (acento principal) */
-  --primary: #0B4FAE;
-  --primary-700: #0A3F8C;
-  --primary-900: #072E66;
-  --primary-100: #EAF2FF;
-  --primary-50: #F5F9FF;
+  --bg-app: #F7F4EF;
+  --bg-surface: #FBF9F6;
+  --bg-sidebar: #EFE9E1;
   
-  /* Neutros */
-  --bg: #F8FAFC;
-  --card: #FFFFFF;
-  --text: #0F172A;
-  --muted: #64748B;
-  --border: #E5E7EB;
+  --text-primary: #1C1C1C;
+  --text-secondary: #6B6B6B;
+  --text-muted: #9A9A9A;
   
-  /* Sombras / radius */
-  --radius: 14px;
-  --shadow: 0 8px 24px rgba(17, 24, 39, 0.06);
-  --shadow-strong: 0 12px 32px rgba(17, 24, 39, 0.10);
-  
-  /* Legado (compatibilidade) */
-  --bg-app: #F8FAFC;
-  --bg-surface: #FFFFFF;
-  --bg-sidebar: linear-gradient(180deg, #072E66 0%, #0A3F8C 45%, #0B4FAE 100%);
-  
-  --text-primary: #0F172A;
-  --text-secondary: #64748B;
-  --text-muted: #64748B;
-  
-  --accent-gold: #0B4FAE;
-  --accent-gold-soft: #EAF2FF;
+  --accent-gold: #C6A15B;
+  --accent-gold-soft: #E8D9B8;
   
   --success: #2E7D32;
   --warning: #C77800;
   --danger: #9F2A2A;
   --info: #6B7280;
   
-  --border-card: #E5E7EB;
+  --border-card: #E5DED4;
 }
 
 @layer base {
@@ -56,59 +36,63 @@
   }
   
   body {
-    @apply bg-bg-app text-text-primary font-sans antialiased;
+    @apply bg-bg-app font-sans antialiased;
+    color: var(--text-primary);
   }
 
   h1 {
-    @apply text-[22px] font-semibold text-text;
+    @apply text-4xl font-bold;
+    color: var(--text-primary);
   }
 
   h2 {
-    @apply text-xl font-semibold text-text;
+    @apply text-2xl font-semibold;
+    color: var(--text-primary);
   }
 
   h3 {
-    @apply text-lg font-semibold text-text;
+    @apply text-lg font-semibold;
+    color: var(--text-primary);
   }
   
   h4 {
-    @apply text-base font-semibold text-text;
+    @apply text-base font-semibold;
+    color: var(--text-primary);
   }
 }
 
 @layer utilities {
   /* Card Padrão */
   .card-premium {
-    @apply bg-white border border-border rounded-[14px] p-5 shadow-[0_8px_24px_rgba(17,24,39,0.06)] transition-all duration-200 ease-out;
+    @apply bg-bg-surface border border-border-card rounded-[14px] p-5 shadow-card transition-all duration-200 ease-out;
   }
   
   .card-premium:hover {
-    @apply shadow-[0_12px_32px_rgba(17,24,39,0.10)] -translate-y-0.5;
+    @apply shadow-card-hover -translate-y-0.5;
   }
   
-  /* Card Hero */
+  /* Card Hero com Borda Ouro */
   .card-hero {
-    @apply card-premium;
+    @apply card-premium border-t-4 border-t-accent-gold;
   }
   
   /* Texto Números (Protagonistas) */
   .number-hero {
-    @apply text-[56px] font-extrabold text-text leading-none;
+    @apply text-4xl font-black;
+    color: var(--text-primary);
   }
   
   .number-large {
-    @apply text-[30px] font-bold text-text leading-none;
+    @apply text-3xl font-bold;
+    color: var(--text-primary);
   }
   
   .number-medium {
-    @apply text-[26px] font-bold text-text leading-none;
+    @apply text-2xl font-bold;
+    color: var(--text-primary);
   }
   
   /* Indicadores & Badges */
-  .badge {
-    @apply px-3 py-1.5 text-xs font-medium bg-primary-100 text-primary-700 rounded-full;
-  }
-  
   .badge-success {
     @apply bg-opacity-10 text-status-success bg-status-success;
   }
@@ -123,7 +107,8 @@
   
   /* Sidebar Active */
   .sidebar-item-active {
-    @apply bg-accent-gold-soft text-text-primary;
+    @apply bg-accent-gold-soft;
+    color: var(--text-primary);
   }
   
   .sidebar-icon {
@@ -146,11 +131,13 @@
   
   /* Texto Premium */
   .text-premium {
-    @apply text-text-secondary font-medium;
+    @apply font-medium;
+    color: var(--text-secondary);
   }
   
   .text-muted-premium {
-    @apply text-text-muted font-normal;
+    @apply font-normal;
+    color: var(--text-muted);
   }
   
   .transition-premium {
