@@ -76,57 +76,53 @@ export function Sidebar() {
       {/* Mobile Menu Button */}
       <button
         onClick={toggleMobile}
-        className="fixed top-4 left-4 z-50 lg:hidden p-2 rounded-lg bg-white border border-border shadow-card hover:shadow-card-hover transition-all duration-200"
+        className="fixed top-4 left-4 z-50 lg:hidden p-2 rounded-lg bg-bg-surface border border-border-card shadow-card hover:shadow-card-hover transition-premium"
         aria-label="Toggle menu"
       >
         {mobileOpen ? (
-          <X className="w-5 h-5 text-primary" />
+          <X className="w-5 h-5 text-accent-gold" />
         ) : (
-          <Menu className="w-5 h-5 text-primary" />
+          <Menu className="w-5 h-5 text-accent-gold" />
         )}
       </button>
 
       {/* Sidebar */}
       <aside
         className={cn(
-          'fixed top-0 left-0 h-full transition-all duration-300 ease-out z-40 overflow-visible',
+          'fixed top-0 left-0 h-full bg-sidebar border-r border-card transition-all duration-300 ease-out z-40 overflow-visible',
           'lg:translate-x-0',
           mobileOpen ? 'translate-x-0' : '-translate-x-full',
           collapsed ? 'lg:w-20' : 'lg:w-64',
           'w-64'
         )}
-        style={{
-          background: 'linear-gradient(180deg, #072E66 0%, #0A3F8C 45%, #0B4FAE 100%) !important',
-          backgroundImage: 'linear-gradient(180deg, #072E66 0%, #0A3F8C 45%, #0B4FAE 100%)',
-        } as React.CSSProperties}
       >
         <div className="flex flex-col h-full">
           {/* Logo */}
-          <div className="h-16 flex items-center justify-between px-4 border-b border-white/10">
+          <div className="h-16 flex items-center justify-between px-4 border-b border-card">
             {(!collapsed || mobileOpen) && (
               <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center backdrop-blur-sm">
+                <div className="w-8 h-8 rounded-lg bg-accent-gold flex items-center justify-center">
                   <span className="text-white text-sm font-bold">C</span>
                 </div>
-                <span className="text-sm font-semibold text-white">Cockpit 2026</span>
+                <span className="text-sm font-semibold text-text-primary">Cockpit 2026</span>
               </div>
             )}
             {!collapsed && (
               <button
                 onClick={toggleCollapse}
-                className="hidden lg:flex items-center justify-center w-8 h-8 rounded-lg hover:bg-white/10 transition-all duration-200"
+                className="hidden lg:flex items-center justify-center w-8 h-8 rounded-lg hover:bg-accent-gold-soft transition-premium"
                 aria-label="Toggle sidebar"
               >
-                <ChevronLeft className="w-4 h-4 text-white/78" />
+                <ChevronLeft className="w-4 h-4 text-accent-gold" />
               </button>
             )}
             {collapsed && !mobileOpen && (
               <button
                 onClick={toggleCollapse}
-                className="hidden lg:flex items-center justify-center w-8 h-8 rounded-lg hover:bg-white/10 transition-all duration-200"
+                className="hidden lg:flex items-center justify-center w-8 h-8 rounded-lg hover:bg-accent-gold-soft transition-premium"
                 aria-label="Toggle sidebar"
               >
-                <ChevronLeft className="w-4 h-4 text-white/78 rotate-180" />
+                <ChevronLeft className="w-4 h-4 text-accent-gold rotate-180" />
               </button>
             )}
           </div>
@@ -137,7 +133,7 @@ export function Sidebar() {
               {menuItems.map((item, index) => {
                 const Icon = iconMap[item.icon] || LayoutDashboard
                 const isActive = pathname === item.href
-                const itemRef = useRef<HTMLDivElement>(null)
+                const itemRef = useRef<HTMLLIElement>(null)
                 const [tooltipPos, setTooltipPos] = useState<{ top: number } | null>(null)
 
                 const handleMouseEnter = () => {
@@ -157,26 +153,21 @@ export function Sidebar() {
                       href={item.href}
                       onClick={() => setMobileOpen(false)}
                       className={cn(
-                        'relative flex items-center gap-3 px-3 py-2.5 rounded-[12px]',
+                        'relative flex items-center gap-3 px-3 py-2.5 rounded-[10px]',
                         'transition-all duration-200 ease-out',
-                        'hover:bg-white/8',
-                        isActive 
-                          ? 'bg-white text-[#072E66] shadow-[0_6px_18px_rgba(0,0,0,0.14)]' 
-                          : 'text-white/86'
+                        'hover:bg-accent-gold-soft hover:text-text-primary',
+                        isActive && 'bg-accent-gold-soft text-text-primary shadow-sm'
                       )}
-                      style={isActive ? {} : {
-                        borderLeft: isActive ? 'none' : '3px solid transparent'
-                      }}
                     >
-                      {/* Borda esquerda no hover (não ativo) */}
-                      {!isActive && (
-                        <div className="absolute left-0 top-1/2 -translate-y-1/2 w-0 h-0 group-hover:w-0.5 group-hover:h-6 bg-white/25 rounded-r-full transition-all duration-200" />
+                      {/* Indicador de ativo */}
+                      {isActive && (
+                        <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-accent-gold rounded-r-full" />
                       )}
                       
                       <div className={cn(
                         'w-5 h-5 flex-shrink-0 transition-all duration-200',
                         'group-hover:scale-110',
-                        isActive ? 'text-[#0B4FAE]' : 'text-white/78 group-hover:text-white/90'
+                        isActive ? 'text-accent-gold font-bold' : 'text-secondary group-hover:text-accent-gold'
                       )}>
                         <Icon className="w-full h-full" />
                       </div>
@@ -184,7 +175,7 @@ export function Sidebar() {
                         <span className={cn(
                           'text-sm transition-all duration-200',
                           'group-hover:translate-x-0.5',
-                          isActive ? 'text-[#072E66] font-semibold' : 'text-white/86 group-hover:text-white'
+                          isActive ? 'text-text-primary font-semibold' : 'text-text-secondary group-hover:text-text-primary'
                         )}>
                           {item.label}
                         </span>
