@@ -9,37 +9,19 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        // Azul Institucional
-        primary: {
-          DEFAULT: '#0B4FAE',
-          '50': '#F5F9FF',
-          '100': '#EAF2FF',
-          '700': '#0A3F8C',
-          '900': '#072E66',
-        },
+        // Fundos Premium Bege
+        'bg-app': '#F7F4EF',
+        'bg-surface': '#FBF9F6',
+        'bg-sidebar': '#EFE9E1',
         
-        // Neutros
-        bg: '#F8FAFC',
-        card: '#FFFFFF',
-        text: {
-          DEFAULT: '#0F172A',
-          muted: '#64748B',
-        },
-        border: '#E5E7EB',
+        // Texto
+        'text-primary': '#1C1C1C',
+        'text-secondary': '#6B6B6B',
+        'text-muted': '#9A9A9A',
         
-        // Fundos (legado)
-        'bg-app': '#F8FAFC',
-        'bg-surface': '#FFFFFF',
-        'bg-sidebar': '#072E66',
-        
-        // Texto (legado)
-        'text-primary': '#0F172A',
-        'text-secondary': '#64748B',
-        'text-muted': '#64748B',
-        
-        // Acentos (legado - usando azul)
-        'accent-gold': '#0B4FAE',
-        'accent-gold-soft': '#EAF2FF',
+        // Acentos Premium
+        'accent-gold': '#C6A15B',
+        'accent-gold-soft': '#E8D9B8',
         
         // Estados
         'status-success': '#2E7D32',
@@ -47,15 +29,25 @@ const config: Config = {
         'status-danger': '#9F2A2A',
         'status-info': '#6B7280',
         
-        // Bordas (legado)
-        'border-card': '#E5E7EB',
+        // Bordas
+        'border-card': '#E5DED4',
         
-        // Compatibilidade
-        background: '#F8FAFC',
-        surface: '#FFFFFF',
+        // Legado (para compatibilidade)
+        primary: {
+          DEFAULT: '#C6A15B',
+          dark: '#A68347',
+          soft: '#E8D9B8',
+        },
+        background: '#F7F4EF',
+        surface: '#FBF9F6',
+        text: {
+          strong: '#1C1C1C',
+          muted: '#6B6B6B',
+        },
+        border: '#E5DED4',
         beige: {
-          DEFAULT: '#F8FAFC',
-          dark: '#F1F5F9',
+          DEFAULT: '#F7F4EF',
+          dark: '#EFE9E1',
         },
         status: {
           success: '#2E7D32',
@@ -70,11 +62,8 @@ const config: Config = {
         '2xl': '16px',
       },
       boxShadow: {
-        'card': '0 8px 24px rgba(17, 24, 39, 0.06)',
-        'card-hover': '0 12px 32px rgba(17, 24, 39, 0.10)',
-      },
-      borderRadius: {
-        'card': '14px',
+        'card': '0 6px 18px rgba(0, 0, 0, 0.06)',
+        'card-hover': '0 8px 24px rgba(0, 0, 0, 0.08)',
       },
       transitionTimingFunction: {
         'premium': 'cubic-bezier(0.22, 1, 0.36, 1)',
