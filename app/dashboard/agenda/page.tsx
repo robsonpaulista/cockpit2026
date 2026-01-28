@@ -4,8 +4,10 @@ import { useEffect, useState, useCallback, useMemo } from 'react'
 import type React from 'react'
 import { Header } from '@/components/header'
 import { GoogleCalendarConfigModal } from '@/components/google-calendar-config-modal'
-import { Calendar, CalendarDays, Clock, MapPin, Users, Settings, Loader2, Maximize2, X, CheckCircle2, XCircle, AlertCircle, RefreshCw } from 'lucide-react'
+import { Calendar, CalendarDays, Clock, MapPin, Users, Settings, Loader2, Maximize2, X, CheckCircle2, XCircle, AlertCircle, RefreshCw, UserCheck } from 'lucide-react'
 import { useAuth } from '@/hooks/use-auth'
+import { ArrivalTimer } from '@/components/arrival-timer'
+import { ArrivalNotificationsPanel } from '@/components/arrival-notifications-panel'
 
 interface CalendarConfig {
   calendarId: string
@@ -33,6 +35,7 @@ interface CalendarEvent {
   attendance?: {
     attended: boolean
     notes?: string
+    arrival_time?: string
   }
 }
 
@@ -45,7 +48,8 @@ export default function AgendaPage() {
   const [showConfig, setShowConfig] = useState(false)
   const [showFullscreen, setShowFullscreen] = useState(false)
   const [selectedDate, setSelectedDate] = useState<Date | null>(null)
-  const [attendanceStatuses, setAttendanceStatuses] = useState<Record<string, { attended: boolean; notes?: string }>>({})
+  const [attendanceStatuses, setAttendanceStatuses] = useState<Record<string, { attended: boolean; notes?: string; arrival_time?: string }>>({})
+  const [confirmingArrival, setConfirmingArrival] = useState<Record<string, boolean>>({})
   const [upcomingEventAlert, setUpcomingEventAlert] = useState<string | null>(null)
   const [isRefreshing, setIsRefreshing] = useState(false)
 
@@ -257,11 +261,52 @@ export default function AgendaPage() {
           [eventId]: {
             attended: data.attendance.attended,
             notes: data.attendance.notes,
+            arrival_time: data.attendance.arrival_time,
           },
         }))
       }
     } catch (err) {
       console.error('Erro ao salvar status de atendimento:', err)
+    }
+  }
+
+  const handleConfirmArrival = async (eventId: string, eventSummary?: string) => {
+    if (!user?.id) return
+
+    // Mensagem de confirmação
+    const eventName = eventSummary || 'este evento'
+    const confirmMessage = `Deseja realmente confirmar a chegada para "${eventName}"?\n\nEsta ação registrará o horário atual como momento da chegada.`
+    
+    if (!window.confirm(confirmMessage)) {
+      return
+    }
+
+    setConfirmingArrival((prev) => ({ ...prev, [eventId]: true }))
+
+    try {
+      const response = await fetch('/api/agenda/attendance/confirm-arrival', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          eventId,
+        }),
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        setAttendanceStatuses((prev) => ({
+          ...prev,
+          [eventId]: {
+            ...prev[eventId],
+            arrival_time: data.attendance.arrival_time,
+          },
+        }))
+      }
+    } catch (err) {
+      console.error('Erro ao confirmar chegada:', err)
+      alert('Erro ao confirmar chegada. Tente novamente.')
+    } finally {
+      setConfirmingArrival((prev) => ({ ...prev, [eventId]: false }))
     }
   }
 
@@ -361,11 +406,26 @@ export default function AgendaPage() {
       .slice(0, 10)
   }, [events])
 
+  // Verificar se há avisos ativos para aplicar margem condicionalmente
+  const hasActiveArrivals = useMemo(() => {
+    return events.some((event) => {
+      const attendance = attendanceStatuses[event.id]
+      return attendance?.arrival_time && attendance?.attended === undefined
+    })
+  }, [events, attendanceStatuses])
+
   return (
     <div className="min-h-screen bg-background">
       <Header title="Agenda" subtitle="Integração com Google Calendar" showFilters={false} />
 
-      <div className="px-4 py-6 lg:px-6">
+      {/* Quadro de Avisos na Lateral Direita */}
+      <ArrivalNotificationsPanel
+        events={events}
+        attendanceStatuses={attendanceStatuses}
+        formatTime={formatTime}
+      />
+
+      <div className={`px-4 py-6 lg:px-6 ${hasActiveArrivals ? 'mr-80' : ''}`}>
         {/* Botão de Configuração */}
         <div className="mb-6 flex items-center justify-between">
           <div>
@@ -572,7 +632,7 @@ export default function AgendaPage() {
                             </div>
                             {/* Status de Atendimento */}
                             {user?.id && (
-                              <div className="mt-3 flex items-center gap-4">
+                              <div className="mt-3 flex items-center gap-4 flex-wrap">
                                 <label className="flex items-center gap-2 cursor-pointer">
                                   <input
                                     type="radio"
@@ -600,7 +660,29 @@ export default function AgendaPage() {
                                   </span>
                                 </label>
                                 {attendance === undefined && (
-                                  <span className="text-xs text-secondary">Não marcado</span>
+                                    <span className="text-xs text-secondary">Não marcado</span>
+                                  )}
+                                {/* Botão de Confirmar Chegada e Timer */}
+                                {attendance?.arrival_time ? (
+                                  <ArrivalTimer arrivalTime={attendance.arrival_time} />
+                                ) : (
+                                  <button
+                                    onClick={() => handleConfirmArrival(event.id, event.summary)}
+                                    disabled={confirmingArrival[event.id]}
+                                    className="flex items-center gap-2 px-3 py-1.5 text-sm bg-accent-gold text-white rounded-lg hover:bg-accent-gold/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                  >
+                                    {confirmingArrival[event.id] ? (
+                                      <>
+                                        <Loader2 className="w-4 h-4 animate-spin" />
+                                        Confirmando...
+                                      </>
+                                    ) : (
+                                      <>
+                                        <UserCheck className="w-4 h-4" />
+                                        Confirmar Chegada
+                                      </>
+                                    )}
+                                  </button>
                                 )}
                               </div>
                             )}
@@ -648,6 +730,14 @@ export default function AgendaPage() {
       {/* Modal de Tela Cheia */}
       {showFullscreen && (
         <div className="fixed inset-0 z-50 bg-background flex flex-col">
+          {/* Quadro de Avisos na Lateral Direita - dentro do modal */}
+          <ArrivalNotificationsPanel
+            events={events}
+            attendanceStatuses={attendanceStatuses}
+            formatTime={formatTime}
+            zIndex={60}
+          />
+          
           <div className="bg-surface border-b border-card p-4 flex items-center justify-between">
             <h2 className="text-xl font-semibold text-primary flex items-center gap-2">
               <Calendar className="w-6 h-6 text-accent-gold" />
@@ -661,7 +751,7 @@ export default function AgendaPage() {
               <X className="w-6 h-6 text-secondary" />
             </button>
           </div>
-          <div className="flex-1 p-6 overflow-auto">
+          <div className={`flex-1 p-6 overflow-auto ${hasActiveArrivals ? 'mr-80' : ''}`}>
             <div className="max-w-5xl mx-auto">
               {sortedEvents.length === 0 ? (
                 <div className="text-center py-12">
@@ -715,7 +805,7 @@ export default function AgendaPage() {
                             </div>
                             {/* Status de Atendimento */}
                             {user?.id && (
-                              <div className="mt-4 flex items-center gap-4">
+                              <div className="mt-4 flex items-center gap-4 flex-wrap">
                                 <label className="flex items-center gap-2 cursor-pointer">
                                   <input
                                     type="radio"
@@ -744,6 +834,28 @@ export default function AgendaPage() {
                                 </label>
                                 {attendance === undefined && (
                                   <span className="text-xs text-secondary">Não marcado</span>
+                                )}
+                                {/* Botão de Confirmar Chegada e Timer */}
+                                {attendance?.arrival_time ? (
+                                  <ArrivalTimer arrivalTime={attendance.arrival_time} />
+                                ) : (
+                                  <button
+                                    onClick={() => handleConfirmArrival(event.id, event.summary)}
+                                    disabled={confirmingArrival[event.id]}
+                                    className="flex items-center gap-2 px-3 py-1.5 text-sm bg-accent-gold text-white rounded-lg hover:bg-accent-gold/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                  >
+                                    {confirmingArrival[event.id] ? (
+                                      <>
+                                        <Loader2 className="w-4 h-4 animate-spin" />
+                                        Confirmando...
+                                      </>
+                                    ) : (
+                                      <>
+                                        <UserCheck className="w-4 h-4" />
+                                        Confirmar Chegada
+                                      </>
+                                    )}
+                                  </button>
                                 )}
                               </div>
                             )}
