@@ -15,11 +15,11 @@ import {
   BarChart3,
   Settings,
   Scale,
-  FileBarChart,
   Menu,
   X,
   ChevronLeft,
   Vote,
+  Building2,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { MenuItem } from '@/types'
@@ -40,7 +40,7 @@ const menuItems: MenuItem[] = [
   { id: 'pesquisa', label: 'Pesquisa & Relato', icon: 'BarChart3', href: '/dashboard/pesquisa' },
   { id: 'operacao', label: 'Operação & Equipe', icon: 'Settings', href: '/dashboard/operacao' },
   { id: 'juridico', label: 'Jurídico', icon: 'Scale', href: '/dashboard/juridico' },
-  { id: 'relatorios', label: 'Relatórios', icon: 'FileBarChart', href: '/dashboard/relatorios' },
+  { id: 'obras', label: 'Obras', icon: 'Building2', href: '/dashboard/obras' },
 ]
 
 const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
@@ -56,7 +56,7 @@ const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
   Settings,
   Scale,
   Vote,
-  FileBarChart,
+  Building2,
 }
 
 export function Sidebar() {
