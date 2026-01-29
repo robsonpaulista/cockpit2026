@@ -57,7 +57,7 @@ export function KPIHeroCard({ kpi, subtitle, href = '#' }: KPIHeroCardProps) {
   const content = (
     <div
       className={cn(
-        'relative p-5 rounded-[14px] border border-border-card bg-bg-surface',
+        'relative p-5 rounded-[14px] border border-border-card bg-bg-surface shadow-card',
         'hover:shadow-card-hover hover:-translate-y-0.5',
         'transition-all duration-200 ease-out',
         'cursor-pointer group overflow-hidden',
@@ -66,7 +66,7 @@ export function KPIHeroCard({ kpi, subtitle, href = '#' }: KPIHeroCardProps) {
     >
       {/* Badge "Atualizado hoje" */}
       <div className="absolute top-4 right-4">
-        <span className="px-2.5 py-1 text-xs font-medium bg-accent-gold-soft text-accent-gold rounded-full border border-accent-gold">
+        <span className="px-2.5 py-1 text-xs font-medium bg-accent-gold-soft text-accent-gold rounded-full border border-border-card">
           Atualizado hoje
         </span>
       </div>
@@ -81,7 +81,7 @@ export function KPIHeroCard({ kpi, subtitle, href = '#' }: KPIHeroCardProps) {
             {kpi.label}
           </p>
           {subtitle && (
-            <p className="text-xs text-secondary mt-0.5">{subtitle}</p>
+            <p className="text-xs text-text-secondary mt-0.5">{subtitle}</p>
           )}
         </div>
       </div>
@@ -97,8 +97,8 @@ export function KPIHeroCard({ kpi, subtitle, href = '#' }: KPIHeroCardProps) {
       </div>
 
       {/* Divider */}
-      <div className="mt-3 pt-3 border-t border-card">
-        <span className="text-xs text-secondary font-medium">Fonte própria</span>
+      <div className="mt-3 pt-3 border-t border-border-card">
+        <span className="text-xs text-text-secondary font-medium">Fonte própria</span>
       </div>
     </div>
   )

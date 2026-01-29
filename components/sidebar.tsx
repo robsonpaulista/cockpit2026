@@ -20,10 +20,12 @@ import {
   ChevronLeft,
   Vote,
   Building2,
+  Shield,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { MenuItem } from '@/types'
 import { useSidebar } from '@/contexts/sidebar-context'
+import { usePermissions } from '@/hooks/use-permissions'
 
 const menuItems: MenuItem[] = [
   { id: 'home', label: 'Visão Geral', icon: 'LayoutDashboard', href: '/dashboard' },
@@ -41,6 +43,7 @@ const menuItems: MenuItem[] = [
   { id: 'operacao', label: 'Operação & Equipe', icon: 'Settings', href: '/dashboard/operacao' },
   { id: 'juridico', label: 'Jurídico', icon: 'Scale', href: '/dashboard/juridico' },
   { id: 'obras', label: 'Obras', icon: 'Building2', href: '/dashboard/obras' },
+  { id: 'usuarios', label: 'Gestão de Usuários', icon: 'Shield', href: '/dashboard/usuarios' },
 ]
 
 const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
@@ -57,11 +60,25 @@ const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
   Scale,
   Vote,
   Building2,
+  Shield,
+}
+
+function pageKeyForItem(id: string): string {
+  return id === 'home' ? 'dashboard' : id
 }
 
 export function Sidebar() {
   const { collapsed, setCollapsed, mobileOpen, setMobileOpen } = useSidebar()
   const pathname = usePathname()
+  const { canAccess, isAdmin, loading: permLoading } = usePermissions()
+
+  const visibleItems = permLoading
+    ? menuItems
+    : menuItems.filter((item) => {
+        if (item.id === 'home') return true
+        if (item.id === 'usuarios') return isAdmin
+        return canAccess(pageKeyForItem(item.id))
+      })
 
   const toggleCollapse = () => {
     setCollapsed(!collapsed)
@@ -130,7 +147,7 @@ export function Sidebar() {
           {/* Menu Items */}
           <nav className="flex-1 overflow-y-auto overflow-x-visible py-4 px-2 scrollbar-hide">
             <ul className="space-y-1">
-              {menuItems.map((item, index) => {
+              {visibleItems.map((item) => {
                 const Icon = iconMap[item.icon] || LayoutDashboard
                 const isActive = pathname === item.href
                 const itemRef = useRef<HTMLLIElement>(null)

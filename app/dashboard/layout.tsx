@@ -3,6 +3,7 @@
 import { Sidebar } from '@/components/sidebar'
 import { ProtectedRoute } from '@/components/protected-route'
 import { DashboardHeader } from '@/components/dashboard-header'
+import { DashboardPermissionGuard } from '@/components/dashboard-permission-guard'
 import { SidebarProvider, useSidebar } from '@/contexts/sidebar-context'
 import { cn } from '@/lib/utils'
 
@@ -18,7 +19,7 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
       )}>
         <DashboardHeader />
         <main className="flex-1 overflow-y-auto">
-          {children}
+          <DashboardPermissionGuard>{children}</DashboardPermissionGuard>
         </main>
       </div>
     </div>

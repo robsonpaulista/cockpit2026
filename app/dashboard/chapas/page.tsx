@@ -898,9 +898,9 @@ export default function ChapasPage() {
         
         <div ref={fullscreenRef} className={`${isFullscreen ? 'bg-white p-4 max-h-screen overflow-y-auto' : 'bg-transparent'} transition-all duration-300`}>
           <div ref={contentRef} className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full space-y-4 py-4">
-            {/* Header com controles */}
+            {/* Controles (título na navbar) */}
             <div className="flex items-center justify-between mb-4">
-              <h1 className="text-2xl font-bold text-gray-900">Chapas Eleitorais</h1>
+              <div />
               <div className="flex items-center gap-2">
                 <button
                   onClick={toggleFullscreen}

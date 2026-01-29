@@ -42,6 +42,7 @@ interface CalendarEvent {
 export default function AgendaPage() {
   const { user } = useAuth()
   const [config, setConfig] = useState<CalendarConfig | null>(null)
+  const [configLoaded, setConfigLoaded] = useState(false)
   const [events, setEvents] = useState<CalendarEvent[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -99,31 +100,30 @@ export default function AgendaPage() {
   useEffect(() => {
     const loadConfig = async () => {
       if (!user?.id) {
+        setConfigLoaded(true)
         setLoading(false)
         return
       }
 
+      setConfigLoaded(false)
       try {
-        // Primeiro tenta buscar do banco de dados
         const response = await fetch('/api/agenda/google-calendar-config')
         if (response.ok) {
           const data = await response.json()
           if (data.config) {
             setConfig(data.config)
-            // Também salva no localStorage como cache
             localStorage.setItem('google_calendar_config', JSON.stringify(data.config))
+            setConfigLoaded(true)
             setLoading(false)
             return
           }
         }
 
-        // Fallback: tenta buscar do localStorage (para compatibilidade)
         const savedConfig = localStorage.getItem('google_calendar_config')
         if (savedConfig) {
           try {
             const parsed = JSON.parse(savedConfig)
             setConfig(parsed)
-            // Migra para o banco se existir no localStorage
             await fetch('/api/agenda/google-calendar-config', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
@@ -135,7 +135,6 @@ export default function AgendaPage() {
         }
       } catch (error) {
         console.error('Erro ao carregar configuração:', error)
-        // Fallback para localStorage em caso de erro
         const savedConfig = localStorage.getItem('google_calendar_config')
         if (savedConfig) {
           try {
@@ -146,6 +145,7 @@ export default function AgendaPage() {
           }
         }
       } finally {
+        setConfigLoaded(true)
         setLoading(false)
       }
     }
@@ -496,9 +496,11 @@ export default function AgendaPage() {
           <div>
             <h2 className="text-xl font-semibold text-primary mb-2">Eventos do Google Calendar</h2>
             <p className="text-sm text-secondary">
-              {config 
-                ? `Conectado ao calendário: ${config.calendarId}` 
-                : 'Configure sua conexão com o Google Calendar para visualizar seus eventos'}
+              {!configLoaded
+                ? 'Carregando...'
+                : config
+                  ? `Conectado ao calendário: ${config.calendarId}`
+                  : 'Configure sua conexão com o Google Calendar para visualizar seus eventos'}
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -515,7 +517,8 @@ export default function AgendaPage() {
             )}
             <button
               onClick={() => setShowConfig(true)}
-              className="flex items-center gap-2 px-4 py-2 bg-accent-gold text-white rounded-lg hover:bg-accent-gold/90 transition-colors"
+              disabled={!configLoaded}
+              className="flex items-center gap-2 px-4 py-2 bg-accent-gold text-white rounded-lg hover:bg-accent-gold/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <Settings className="w-4 h-4" />
               {config ? 'Reconfigurar' : 'Configurar'}
@@ -541,7 +544,12 @@ export default function AgendaPage() {
           </div>
         )}
 
-        {!config ? (
+        {!configLoaded ? (
+          <div className="flex items-center justify-center py-12">
+            <Loader2 className="w-6 h-6 text-accent-gold animate-spin" />
+            <span className="ml-2 text-sm text-secondary">Carregando configuração...</span>
+          </div>
+        ) : !config ? (
           <div className="bg-surface rounded-2xl border border-card p-8 text-center">
             <Calendar className="w-16 h-16 text-secondary mx-auto mb-4" />
             <h3 className="text-lg font-semibold text-primary mb-2">

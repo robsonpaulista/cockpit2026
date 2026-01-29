@@ -51,14 +51,11 @@ export function Header({ title, subtitle, showFilters = true }: HeaderProps) {
 
   return (
     <header className="sticky top-0 z-20 bg-surface border-b border-card">
-      <div className="px-4 py-4 lg:px-6">
-        {/* Title Section */}
-        <div className="mb-4">
-          <h1 className="text-2xl lg:text-3xl font-semibold text-primary">{title}</h1>
-          {subtitle && (
-            <p className="mt-1 text-base lg:text-lg text-secondary font-medium">{subtitle}</p>
-          )}
-        </div>
+      <div className="px-4 py-3 lg:px-6">
+        {/* Subtítulo (título da página fica na navbar) */}
+        {subtitle && (
+          <p className="text-base lg:text-lg text-secondary font-medium mb-3">{subtitle}</p>
+        )}
 
         {/* Filters */}
         {showFilters && (
