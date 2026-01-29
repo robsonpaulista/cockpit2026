@@ -119,7 +119,8 @@ export function ObrasImportModal({ onClose, onSuccess }: ObrasImportModalProps) 
           })
 
           // Se os dados têm colunas __EMPTY, tentar usar a primeira linha como cabeçalho
-          if (jsonData.length > 0 && Object.keys(jsonData[0]).some(key => key.startsWith('__EMPTY'))) {
+          const firstRow = jsonData[0] as Record<string, unknown> | undefined
+          if (jsonData.length > 0 && firstRow && typeof firstRow === 'object' && Object.keys(firstRow).some(key => key.startsWith('__EMPTY'))) {
             console.log('Detectado __EMPTY, tentando usar primeira linha como cabeçalho')
             jsonData = XLSX.utils.sheet_to_json(worksheet, { 
               defval: null,
@@ -135,16 +136,17 @@ export function ObrasImportModal({ onClose, onSuccess }: ObrasImportModalProps) 
           }
 
           console.log('Dados lidos do Excel:', jsonData.slice(0, 2)) // Debug: mostrar primeiras 2 linhas
-          console.log('Colunas detectadas:', Object.keys(jsonData[0] || {}))
+          const row0 = (jsonData[0] ?? {}) as Record<string, unknown>
+          console.log('Colunas detectadas:', Object.keys(row0))
           
           // Verificar se os dados têm colunas válidas (não apenas __EMPTY)
           if (jsonData.length > 0) {
-            const firstRowKeys = Object.keys(jsonData[0])
+            const firstRowKeys = Object.keys(row0)
             const hasValidColumns = firstRowKeys.some(key => 
               !key.startsWith('__EMPTY') && 
               key.trim() !== '' &&
-              jsonData[0][key] !== null && 
-              jsonData[0][key] !== undefined
+              row0[key] !== null && 
+              row0[key] !== undefined
             )
             
             if (!hasValidColumns) {
