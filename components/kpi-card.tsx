@@ -78,19 +78,18 @@ export function KPICard({ kpi, href = '#' }: KPICardProps) {
   const content = (
     <div
       className={cn(
-        'relative p-6 rounded-[14px] border border-border bg-white',
-        'shadow-[0_8px_24px_rgba(17,24,39,0.06)]',
-        'hover:shadow-[0_12px_32px_rgba(17,24,39,0.10)] hover:-translate-y-0.5',
+        'relative p-5 rounded-[14px] border border-card bg-surface',
+        'hover:shadow-card-hover hover:-translate-y-0.5',
         'transition-all duration-200 ease-out',
         'cursor-pointer group overflow-hidden'
       )}
     >
       {/* Label and Icon */}
-      <div className="flex items-center gap-3 mb-4">
-        <div className="w-10 h-10 rounded-full bg-primary-100 flex items-center justify-center group-hover:scale-110 transition-all duration-200">
-          <Icon className="w-5 h-5 text-primary" />
+      <div className="flex items-center gap-2 mb-3">
+        <div className="p-2 rounded-lg bg-accent-gold-soft group-hover:scale-110 transition-all duration-200">
+          <Icon className="w-4 h-4 text-accent-gold" />
         </div>
-        <p className="text-sm font-medium text-muted">
+        <p className="text-sm font-medium text-secondary group-hover:text-primary transition-colors">
           {kpi.label}
         </p>
       </div>
@@ -98,7 +97,7 @@ export function KPICard({ kpi, href = '#' }: KPICardProps) {
       {/* Value */}
       <div>
         <p className={cn(
-          'text-[30px] font-bold text-text leading-none',
+          'text-3xl font-bold text-primary group-hover:text-accent-gold transition-all duration-200',
           isAnimating && 'scale-105'
         )}>
           {displayValue}

@@ -8,20 +8,17 @@ import { ObrasImportModal } from '@/components/obras-import-modal'
 
 interface Obra {
   id: string
-  nome_obra: string
-  localizacao?: string
-  cidade?: string
-  estado?: string
-  tipo_obra?: string
+  municipio?: string
+  obra: string
+  orgao?: string
+  sei?: string
+  sei_medicao?: string
   status?: string
-  data_inicio?: string
-  data_prevista_conclusao?: string
-  data_conclusao?: string
-  valor_orcado?: number
-  valor_executado?: number
-  percentual_execucao?: number
-  responsavel?: string
-  observacoes?: string
+  publicacao_os?: string
+  solicitacao_medicao?: string
+  data_medicao?: string
+  status_medicao?: string
+  valor_total?: number
   created_at?: string
   updated_at?: string
 }
@@ -30,24 +27,24 @@ export default function ObrasPage() {
   const [obras, setObras] = useState<Obra[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
-  const [filterCidade, setFilterCidade] = useState('')
-  const [filterEstado, setFilterEstado] = useState('')
+  const [filterMunicipio, setFilterMunicipio] = useState('')
   const [filterStatus, setFilterStatus] = useState('')
-  const [filterTipo, setFilterTipo] = useState('')
+  const [filterStatusMedicao, setFilterStatusMedicao] = useState('')
+  const [filterOrgao, setFilterOrgao] = useState('')
   const [showImportModal, setShowImportModal] = useState(false)
 
   useEffect(() => {
     fetchObras()
-  }, [filterCidade, filterEstado, filterStatus, filterTipo])
+  }, [filterMunicipio, filterStatus, filterStatusMedicao, filterOrgao])
 
   const fetchObras = async () => {
     setLoading(true)
     try {
       const params = new URLSearchParams()
-      if (filterCidade) params.append('cidade', filterCidade)
-      if (filterEstado) params.append('estado', filterEstado)
+      if (filterMunicipio) params.append('municipio', filterMunicipio)
       if (filterStatus) params.append('status', filterStatus)
-      if (filterTipo) params.append('tipo', filterTipo)
+      if (filterStatusMedicao) params.append('status_medicao', filterStatusMedicao)
+      if (filterOrgao) params.append('orgao', filterOrgao)
 
       const response = await fetch(`/api/obras?${params.toString()}`)
       if (response.ok) {
@@ -68,30 +65,30 @@ export default function ObrasPage() {
     const term = searchTerm.toLowerCase()
     return obras.filter((obra) => {
       return (
-        obra.nome_obra?.toLowerCase().includes(term) ||
-        obra.localizacao?.toLowerCase().includes(term) ||
-        obra.cidade?.toLowerCase().includes(term) ||
-        obra.responsavel?.toLowerCase().includes(term) ||
-        obra.tipo_obra?.toLowerCase().includes(term)
+        obra.obra?.toLowerCase().includes(term) ||
+        obra.municipio?.toLowerCase().includes(term) ||
+        obra.orgao?.toLowerCase().includes(term) ||
+        obra.sei?.toLowerCase().includes(term) ||
+        obra.sei_medicao?.toLowerCase().includes(term)
       )
     })
   }, [obras, searchTerm])
 
   // Obter valores únicos para filtros
-  const cidades = useMemo(() => {
-    return Array.from(new Set(obras.map((o) => o.cidade).filter(Boolean))).sort()
-  }, [obras])
-
-  const estados = useMemo(() => {
-    return Array.from(new Set(obras.map((o) => o.estado).filter(Boolean))).sort()
+  const municipios = useMemo(() => {
+    return Array.from(new Set(obras.map((o) => o.municipio).filter(Boolean))).sort()
   }, [obras])
 
   const statusList = useMemo(() => {
     return Array.from(new Set(obras.map((o) => o.status).filter(Boolean))).sort()
   }, [obras])
 
-  const tipos = useMemo(() => {
-    return Array.from(new Set(obras.map((o) => o.tipo_obra).filter(Boolean))).sort()
+  const statusMedicaoList = useMemo(() => {
+    return Array.from(new Set(obras.map((o) => o.status_medicao).filter(Boolean))).sort()
+  }, [obras])
+
+  const orgaos = useMemo(() => {
+    return Array.from(new Set(obras.map((o) => o.orgao).filter(Boolean))).sort()
   }, [obras])
 
   const formatCurrency = (value?: number) => {
@@ -143,33 +140,17 @@ export default function ObrasPage() {
               </div>
             </div>
 
-            {/* Filtro Cidade */}
+            {/* Filtro Município */}
             <div>
               <select
-                value={filterCidade}
-                onChange={(e) => setFilterCidade(e.target.value)}
+                value={filterMunicipio}
+                onChange={(e) => setFilterMunicipio(e.target.value)}
                 className="w-full px-4 py-2 border border-card rounded-lg bg-background text-primary focus:outline-none focus:ring-2 focus:ring-accent-gold-soft"
               >
-                <option value="">Todas as cidades</option>
-                {cidades.map((cidade) => (
-                  <option key={cidade} value={cidade}>
-                    {cidade}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {/* Filtro Estado */}
-            <div>
-              <select
-                value={filterEstado}
-                onChange={(e) => setFilterEstado(e.target.value)}
-                className="w-full px-4 py-2 border border-card rounded-lg bg-background text-primary focus:outline-none focus:ring-2 focus:ring-accent-gold-soft"
-              >
-                <option value="">Todos os estados</option>
-                {estados.map((estado) => (
-                  <option key={estado} value={estado}>
-                    {estado}
+                <option value="">Todos os municípios</option>
+                {municipios.map((municipio) => (
+                  <option key={municipio} value={municipio}>
+                    {municipio}
                   </option>
                 ))}
               </select>
@@ -190,19 +171,35 @@ export default function ObrasPage() {
                 ))}
               </select>
             </div>
+
+            {/* Filtro Status Medição */}
+            <div>
+              <select
+                value={filterStatusMedicao}
+                onChange={(e) => setFilterStatusMedicao(e.target.value)}
+                className="w-full px-4 py-2 border border-card rounded-lg bg-background text-primary focus:outline-none focus:ring-2 focus:ring-accent-gold-soft"
+              >
+                <option value="">Todos os status de medição</option>
+                {statusMedicaoList.map((status) => (
+                  <option key={status} value={status}>
+                    {status}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
 
-          {/* Filtro Tipo */}
+          {/* Filtro Órgão */}
           <div className="mt-4">
             <select
-              value={filterTipo}
-              onChange={(e) => setFilterTipo(e.target.value)}
+              value={filterOrgao}
+              onChange={(e) => setFilterOrgao(e.target.value)}
               className="w-full px-4 py-2 border border-card rounded-lg bg-background text-primary focus:outline-none focus:ring-2 focus:ring-accent-gold-soft"
             >
-              <option value="">Todos os tipos</option>
-              {tipos.map((tipo) => (
-                <option key={tipo} value={tipo}>
-                  {tipo}
+              <option value="">Todos os órgãos</option>
+              {orgaos.map((orgao) => (
+                <option key={orgao} value={orgao}>
+                  {orgao}
                 </option>
               ))}
             </select>
@@ -224,25 +221,25 @@ export default function ObrasPage() {
               <span className="text-sm font-medium text-secondary">Valor Total Orçado</span>
             </div>
             <p className="text-2xl font-bold text-green-600">
-              {formatCurrency(obras.reduce((sum, o) => sum + (o.valor_orcado || 0), 0))}
+              {formatCurrency(obras.reduce((sum, o) => sum + (o.valor_total || 0), 0))}
             </p>
           </div>
           <div className="bg-surface rounded-xl border border-card p-4">
             <div className="flex items-center gap-2 mb-2">
-              <DollarSign className="w-5 h-5 text-blue-600" />
-              <span className="text-sm font-medium text-secondary">Valor Total Executado</span>
+              <Calendar className="w-5 h-5 text-blue-600" />
+              <span className="text-sm font-medium text-secondary">Com Medição</span>
             </div>
             <p className="text-2xl font-bold text-blue-600">
-              {formatCurrency(obras.reduce((sum, o) => sum + (o.valor_executado || 0), 0))}
+              {obras.filter((o) => o.data_medicao).length}
             </p>
           </div>
           <div className="bg-surface rounded-xl border border-card p-4">
             <div className="flex items-center gap-2 mb-2">
               <Calendar className="w-5 h-5 text-purple-600" />
-              <span className="text-sm font-medium text-secondary">Em Andamento</span>
+              <span className="text-sm font-medium text-secondary">Órgãos Diferentes</span>
             </div>
             <p className="text-2xl font-bold text-purple-600">
-              {obras.filter((o) => o.status?.toLowerCase().includes('andamento')).length}
+              {orgaos.length}
             </p>
           </div>
         </div>
@@ -272,7 +269,7 @@ export default function ObrasPage() {
             <div className="text-center py-12">
               <Building2 className="w-16 h-16 text-secondary mx-auto mb-4 opacity-50" />
               <p className="text-sm text-secondary">
-                {searchTerm || filterCidade || filterEstado || filterStatus || filterTipo
+                {searchTerm || filterMunicipio || filterStatus || filterStatusMedicao || filterOrgao
                   ? 'Nenhuma obra encontrada com os filtros aplicados'
                   : 'Nenhuma obra cadastrada ainda'}
               </p>
@@ -283,25 +280,31 @@ export default function ObrasPage() {
                 <thead className="bg-background border-b border-card">
                   <tr>
                     <th className="px-6 py-3 text-left text-xs font-semibold text-secondary uppercase tracking-wider">
+                      Município
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-semibold text-secondary uppercase tracking-wider">
                       Obra
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-semibold text-secondary uppercase tracking-wider">
-                      Localização
+                      Órgão
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-semibold text-secondary uppercase tracking-wider">
-                      Tipo
+                      SEI
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-semibold text-secondary uppercase tracking-wider">
                       Status
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-semibold text-secondary uppercase tracking-wider">
-                      Execução
+                      Pub. OS
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-semibold text-secondary uppercase tracking-wider">
-                      Valor Orçado
+                      Data Medição
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-semibold text-secondary uppercase tracking-wider">
-                      Responsável
+                      Status Medição
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-semibold text-secondary uppercase tracking-wider">
+                      Valor Total
                     </th>
                   </tr>
                 </thead>
@@ -309,35 +312,26 @@ export default function ObrasPage() {
                   {filteredObras.map((obra) => (
                     <tr key={obra.id} className="hover:bg-background/50 transition-colors">
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm font-semibold text-primary">{obra.nome_obra}</div>
-                        {obra.data_inicio && (
+                        <div className="text-sm font-semibold text-primary">{obra.municipio || '-'}</div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="text-sm font-semibold text-primary">{obra.obra}</div>
+                        {obra.sei_medicao && (
                           <div className="text-xs text-secondary mt-1">
-                            Início: {formatDateFull(obra.data_inicio)}
+                            SEI Medição: {obra.sei_medicao}
                           </div>
                         )}
                       </td>
-                      <td className="px-6 py-4">
-                        <div className="flex items-center gap-2 text-sm text-secondary">
-                          <MapPin className="w-4 h-4" />
-                          <div>
-                            {obra.cidade && obra.estado ? (
-                              <>
-                                <div>{obra.cidade}</div>
-                                <div className="text-xs">{obra.estado}</div>
-                              </>
-                            ) : (
-                              <div>{obra.localizacao || '-'}</div>
-                            )}
-                          </div>
-                        </div>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className="text-sm text-secondary">{obra.orgao || '-'}</span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <span className="text-sm text-secondary">{obra.tipo_obra || '-'}</span>
+                        <span className="text-sm text-secondary font-mono">{obra.sei || '-'}</span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span
                           className={`px-2 py-1 text-xs font-medium rounded-full ${
-                            obra.status?.toLowerCase().includes('concluída')
+                            obra.status?.toLowerCase().includes('concluída') || obra.status?.toLowerCase().includes('concluida')
                               ? 'bg-green-100 text-green-800'
                               : obra.status?.toLowerCase().includes('andamento')
                               ? 'bg-blue-100 text-blue-800'
@@ -350,32 +344,36 @@ export default function ObrasPage() {
                         </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm font-semibold text-primary">
-                          {formatPercent(obra.percentual_execucao)}
+                        <div className="text-sm text-secondary">
+                          {obra.publicacao_os ? formatDateFull(obra.publicacao_os) : '-'}
                         </div>
-                        {obra.percentual_execucao !== undefined && (
-                          <div className="w-24 h-2 bg-background rounded-full mt-1 overflow-hidden">
-                            <div
-                              className="h-full bg-accent-gold transition-all"
-                              style={{ width: `${Math.min(obra.percentual_execucao, 100)}%` }}
-                            />
+                        {obra.solicitacao_medicao && (
+                          <div className="text-xs text-secondary mt-1">
+                            Solicitada: {formatDateFull(obra.solicitacao_medicao)}
                           </div>
                         )}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm font-semibold text-primary">
-                          {formatCurrency(obra.valor_orcado)}
+                        <div className="text-sm text-secondary">
+                          {obra.data_medicao ? formatDateFull(obra.data_medicao) : '-'}
                         </div>
-                        {obra.valor_executado && (
-                          <div className="text-xs text-secondary">
-                            Executado: {formatCurrency(obra.valor_executado)}
-                          </div>
-                        )}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="flex items-center gap-2 text-sm text-secondary">
-                          <User className="w-4 h-4" />
-                          <span>{obra.responsavel || '-'}</span>
+                        <span
+                          className={`px-2 py-1 text-xs font-medium rounded-full ${
+                            obra.status_medicao?.toLowerCase().includes('concluída') || obra.status_medicao?.toLowerCase().includes('concluida')
+                              ? 'bg-green-100 text-green-800'
+                              : obra.status_medicao?.toLowerCase().includes('pendente')
+                              ? 'bg-yellow-100 text-yellow-800'
+                              : 'bg-gray-100 text-gray-800'
+                          }`}
+                        >
+                          {obra.status_medicao || '-'}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm font-semibold text-primary">
+                          {formatCurrency(obra.valor_total)}
                         </div>
                       </td>
                     </tr>

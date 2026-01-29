@@ -569,25 +569,25 @@ export default function Home() {
         {/* Bloco de Leitura Rápida / Insight */}
         {!loading && (
           <section className="mb-8">
-            <div className="bg-primary-50 rounded-[14px] border border-primary-100 p-6 relative shadow-[0_8px_24px_rgba(17,24,39,0.06)]">
+            <div className="bg-gradient-to-r from-primary-soft to-surface rounded-2xl border border-accent-gold/20 p-5 relative">
               <div className="flex items-start gap-3">
-                <div className="w-10 h-10 rounded-full bg-primary-100 flex items-center justify-center flex-shrink-0">
-                  <Lightbulb className="w-5 h-5 text-primary" />
+                <div className="p-2 rounded-lg bg-accent-gold-soft flex-shrink-0">
+                  <Lightbulb className="w-5 h-5 text-accent-gold" />
                 </div>
                 <div className="flex-1">
-                  <div className="flex items-center justify-between mb-3">
-                    <h3 className="text-sm font-semibold text-text flex items-center gap-2">
-                      Leitura Rápida
+                  <div className="flex items-center justify-between mb-2">
+                    <h3 className="text-base font-semibold text-primary flex items-center gap-2">
+                      💡 Leitura Rápida
                     </h3>
                     <button
                       onClick={() => setInsightTelaCheia(true)}
-                      className="p-1.5 rounded-lg hover:bg-white/50 transition-colors text-muted hover:text-primary"
+                      className="p-1.5 rounded-lg hover:bg-background/50 transition-colors text-secondary hover:text-primary"
                       title="Visualizar em tela cheia"
                     >
                       <Maximize2 className="w-4 h-4" />
                     </button>
                   </div>
-                  <p className="text-sm text-muted leading-relaxed">
+                  <p className="text-sm text-secondary leading-relaxed">
                     {(() => {
                       const presencaKpi = kpisComMedia.find(k => k.id === 'presenca')
                       const baseKpi = kpisComMedia.find(k => k.id === 'base')

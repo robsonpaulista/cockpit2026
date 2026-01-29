@@ -15,24 +15,24 @@ export async function GET(request: Request) {
     }
 
     const { searchParams } = new URL(request.url)
-    const cidade = searchParams.get('cidade')
-    const estado = searchParams.get('estado')
+    const municipio = searchParams.get('municipio')
     const status = searchParams.get('status')
-    const tipo = searchParams.get('tipo')
+    const statusMedicao = searchParams.get('status_medicao')
+    const orgao = searchParams.get('orgao')
 
     let query = supabase.from('obras').select('*').order('created_at', { ascending: false })
 
-    if (cidade) {
-      query = query.eq('cidade', cidade)
-    }
-    if (estado) {
-      query = query.eq('estado', estado)
+    if (municipio) {
+      query = query.eq('municipio', municipio)
     }
     if (status) {
       query = query.eq('status', status)
     }
-    if (tipo) {
-      query = query.eq('tipo_obra', tipo)
+    if (statusMedicao) {
+      query = query.eq('status_medicao', statusMedicao)
+    }
+    if (orgao) {
+      query = query.eq('orgao', orgao)
     }
 
     const { data, error } = await query
@@ -68,23 +68,20 @@ export async function POST(request: Request) {
 
     const body = await request.json()
     const {
-      nome_obra,
-      localizacao,
-      cidade,
-      estado,
-      tipo_obra,
+      municipio,
+      obra,
+      orgao,
+      sei,
+      sei_medicao,
       status,
-      data_inicio,
-      data_prevista_conclusao,
-      data_conclusao,
-      valor_orcado,
-      valor_executado,
-      percentual_execucao,
-      responsavel,
-      observacoes,
+      publicacao_os,
+      solicitacao_medicao,
+      data_medicao,
+      status_medicao,
+      valor_total,
     } = body
 
-    if (!nome_obra) {
+    if (!obra) {
       return NextResponse.json(
         { error: 'Nome da obra é obrigatório' },
         { status: 400 }
@@ -94,20 +91,17 @@ export async function POST(request: Request) {
     const { data, error } = await supabase
       .from('obras')
       .insert({
-        nome_obra,
-        localizacao: localizacao || null,
-        cidade: cidade || null,
-        estado: estado || null,
-        tipo_obra: tipo_obra || null,
+        municipio: municipio || null,
+        obra: obra,
+        orgao: orgao || null,
+        sei: sei || null,
+        sei_medicao: sei_medicao || null,
         status: status || null,
-        data_inicio: data_inicio || null,
-        data_prevista_conclusao: data_prevista_conclusao || null,
-        data_conclusao: data_conclusao || null,
-        valor_orcado: valor_orcado || null,
-        valor_executado: valor_executado || null,
-        percentual_execucao: percentual_execucao || null,
-        responsavel: responsavel || null,
-        observacoes: observacoes || null,
+        publicacao_os: publicacao_os || null,
+        solicitacao_medicao: solicitacao_medicao || null,
+        data_medicao: data_medicao || null,
+        status_medicao: status_medicao || null,
+        valor_total: valor_total || null,
       })
       .select()
       .single()

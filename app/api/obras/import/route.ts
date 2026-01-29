@@ -24,23 +24,20 @@ export async function POST(request: Request) {
       )
     }
 
-    // Preparar dados para inserção
+    // Preparar dados para inserção - mapear colunas do Excel
     const obrasToInsert = obras.map((obra: any) => ({
-      nome_obra: obra.nome_obra || obra.Nome || obra.nome || '',
-      localizacao: obra.localizacao || obra.Localização || obra.localizacao || null,
-      cidade: obra.cidade || obra.Cidade || null,
-      estado: obra.estado || obra.Estado || null,
-      tipo_obra: obra.tipo_obra || obra.Tipo || obra.tipo || null,
-      status: obra.status || obra.Status || null,
-      data_inicio: obra.data_inicio || obra['Data Início'] || obra.dataInicio || null,
-      data_prevista_conclusao: obra.data_prevista_conclusao || obra['Data Prevista'] || obra.dataPrevista || null,
-      data_conclusao: obra.data_conclusao || obra['Data Conclusão'] || obra.dataConclusao || null,
-      valor_orcado: obra.valor_orcado || obra['Valor Orçado'] || obra.valorOrcado || null,
-      valor_executado: obra.valor_executado || obra['Valor Executado'] || obra.valorExecutado || null,
-      percentual_execucao: obra.percentual_execucao || obra['% Execução'] || obra.percentualExecucao || null,
-      responsavel: obra.responsavel || obra.Responsável || obra.responsavel || null,
-      observacoes: obra.observacoes || obra.Observações || obra.observacoes || null,
-    })).filter((obra: any) => obra.nome_obra) // Filtrar obras sem nome
+      municipio: obra.Municipio || obra.municipio || null,
+      obra: obra.Obra || obra.obra || obra.nome_obra || obra.Nome || '',
+      orgao: obra['Orgão'] || obra.Orgão || obra.orgao || obra.Orgao || null,
+      sei: obra.SEI || obra.sei || null,
+      sei_medicao: obra['SEI MEDIÇÃO'] || obra['SEI MEDICAO'] || obra.sei_medicao || obra.SEI_MEDICAO || null,
+      status: obra.Status || obra.status || null,
+      publicacao_os: obra['PUBLICAÇÃO DA OS'] || obra['PUBLICAÇÃO DA OS'] || obra.publicacao_os || obra.PUBLICACAO_OS || null,
+      solicitacao_medicao: obra['Solicitação Medição'] || obra['Solicitação Medicao'] || obra.solicitacao_medicao || obra.Solicitacao_Medicao || null,
+      data_medicao: obra['Data Medição'] || obra['Data Medicao'] || obra.data_medicao || obra.Data_Medicao || null,
+      status_medicao: obra['Status Medição'] || obra['Status Medicao'] || obra.status_medicao || obra.Status_Medicao || null,
+      valor_total: obra['Valor Total'] || obra.Valor_Total || obra.valor_total || obra.valorTotal || null,
+    })).filter((obra: any) => obra.obra) // Filtrar obras sem nome
 
     if (obrasToInsert.length === 0) {
       return NextResponse.json(

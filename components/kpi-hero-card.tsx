@@ -3,18 +3,16 @@
 import { cn } from '@/lib/utils'
 import { KPI } from '@/types'
 import Link from 'next/link'
-import { TrendingUp, TrendingDown, ArrowUpRight } from 'lucide-react'
+import { TrendingUp, Sparkles } from 'lucide-react'
 import { useEffect, useState } from 'react'
 
 interface KPIHeroCardProps {
   kpi: KPI
   subtitle?: string
   href?: string
-  variation?: number // Variação percentual vs última medição
-  variationLabel?: string // Label da variação (ex: "vs última medição")
 }
 
-export function KPIHeroCard({ kpi, subtitle, href = '#', variation, variationLabel = 'vs última medição' }: KPIHeroCardProps) {
+export function KPIHeroCard({ kpi, subtitle, href = '#' }: KPIHeroCardProps) {
   const [displayValue, setDisplayValue] = useState<string | number>('0')
   const [isAnimating, setIsAnimating] = useState(false)
 
@@ -59,69 +57,48 @@ export function KPIHeroCard({ kpi, subtitle, href = '#', variation, variationLab
   const content = (
     <div
       className={cn(
-        'relative p-8 rounded-[14px] border border-border bg-white',
-        'shadow-[0_8px_24px_rgba(17,24,39,0.06)]',
-        'hover:shadow-[0_12px_32px_rgba(17,24,39,0.10)] hover:-translate-y-0.5',
+        'relative p-5 rounded-[14px] border border-border-card bg-bg-surface',
+        'hover:shadow-card-hover hover:-translate-y-0.5',
         'transition-all duration-200 ease-out',
         'cursor-pointer group overflow-hidden',
-        'w-full'
+        'border-t-4 border-t-accent-gold'
       )}
     >
-      {/* Top strip azul sutil */}
-      <div className="absolute top-0 left-0 right-0 h-1 bg-primary-50" />
-      
       {/* Badge "Atualizado hoje" */}
-      <div className="absolute top-6 right-6">
-        <span className="px-2.5 py-1 text-xs font-medium bg-primary-100 text-primary-700 rounded-full">
+      <div className="absolute top-4 right-4">
+        <span className="px-2.5 py-1 text-xs font-medium bg-accent-gold-soft text-accent-gold rounded-full border border-accent-gold">
           Atualizado hoje
         </span>
       </div>
 
       {/* Label and Icon */}
-      <div className="flex items-center gap-3 mb-6">
-        <div className="w-10 h-10 rounded-full bg-primary-100 flex items-center justify-center">
-          <TrendingUp className="w-5 h-5 text-primary" />
+      <div className="flex items-center gap-2.5 mb-4">
+        <div className="p-2 rounded-lg bg-accent-gold-soft group-hover:bg-accent-gold-soft transition-colors duration-300">
+          <TrendingUp className="w-4 h-4 text-accent-gold" />
         </div>
         <div>
-          <p className="text-sm font-medium text-muted">
+          <p className="text-sm font-semibold text-text-primary group-hover:text-accent-gold transition-colors">
             {kpi.label}
           </p>
           {subtitle && (
-            <p className="text-xs text-muted mt-0.5">{subtitle}</p>
+            <p className="text-xs text-secondary mt-0.5">{subtitle}</p>
           )}
         </div>
       </div>
 
-      {/* Value - Enorme e destacado */}
-      <div className="mb-4">
+      {/* Value - Maior e mais destacado */}
+      <div className="mb-2">
         <p className={cn(
-          'text-[56px] font-extrabold text-text leading-none',
+          'text-4xl font-black text-text-primary group-hover:text-accent-gold transition-all duration-300',
           isAnimating && 'scale-105'
         )}>
           {displayValue}
         </p>
       </div>
 
-      {/* Variação percentual */}
-      {variation !== undefined && (
-        <div className="flex items-center gap-2 mb-4">
-          {variation >= 0 ? (
-            <ArrowUpRight className="w-4 h-4 text-primary" />
-          ) : (
-            <TrendingDown className="w-4 h-4 text-status-danger" />
-          )}
-          <span className={cn(
-            'text-sm font-semibold',
-            variation >= 0 ? 'text-primary' : 'text-status-danger'
-          )}>
-            {variation >= 0 ? '+' : ''}{variation.toFixed(1)}% {variationLabel}
-          </span>
-        </div>
-      )}
-
-      {/* Divider e fonte */}
-      <div className="mt-6 pt-4 border-t border-border">
-        <span className="text-xs text-muted font-medium">Fonte própria</span>
+      {/* Divider */}
+      <div className="mt-3 pt-3 border-t border-card">
+        <span className="text-xs text-secondary font-medium">Fonte própria</span>
       </div>
     </div>
   )

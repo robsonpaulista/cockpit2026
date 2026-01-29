@@ -5,30 +5,27 @@
 -- Tabela para armazenar dados de obras
 CREATE TABLE IF NOT EXISTS obras (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  nome_obra TEXT NOT NULL,
-  localizacao TEXT,
-  cidade TEXT,
-  estado TEXT,
-  tipo_obra TEXT,
+  municipio TEXT,
+  obra TEXT NOT NULL,
+  orgao TEXT,
+  sei TEXT,
+  sei_medicao TEXT,
   status TEXT,
-  data_inicio DATE,
-  data_prevista_conclusao DATE,
-  data_conclusao DATE,
-  valor_orcado DECIMAL(15, 2),
-  valor_executado DECIMAL(15, 2),
-  percentual_execucao DECIMAL(5, 2),
-  responsavel TEXT,
-  observacoes TEXT,
+  publicacao_os DATE,
+  solicitacao_medicao DATE,
+  data_medicao DATE,
+  status_medicao TEXT,
+  valor_total DECIMAL(15, 2),
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
 -- Índices
-CREATE INDEX IF NOT EXISTS idx_obras_cidade ON obras(cidade);
-CREATE INDEX IF NOT EXISTS idx_obras_estado ON obras(estado);
+CREATE INDEX IF NOT EXISTS idx_obras_municipio ON obras(municipio);
 CREATE INDEX IF NOT EXISTS idx_obras_status ON obras(status);
-CREATE INDEX IF NOT EXISTS idx_obras_tipo ON obras(tipo_obra);
-CREATE INDEX IF NOT EXISTS idx_obras_data_inicio ON obras(data_inicio);
+CREATE INDEX IF NOT EXISTS idx_obras_status_medicao ON obras(status_medicao);
+CREATE INDEX IF NOT EXISTS idx_obras_orgao ON obras(orgao);
+CREATE INDEX IF NOT EXISTS idx_obras_publicacao_os ON obras(publicacao_os);
 
 -- Trigger para atualizar updated_at
 CREATE OR REPLACE FUNCTION update_obras_updated_at()
@@ -60,12 +57,14 @@ CREATE POLICY "Authenticated users can manage obras"
 
 -- Comentários nas colunas
 COMMENT ON TABLE obras IS 'Tabela para armazenar informações sobre obras';
-COMMENT ON COLUMN obras.nome_obra IS 'Nome da obra';
-COMMENT ON COLUMN obras.localizacao IS 'Endereço/localização da obra';
-COMMENT ON COLUMN obras.cidade IS 'Cidade onde a obra está localizada';
-COMMENT ON COLUMN obras.estado IS 'Estado onde a obra está localizada';
-COMMENT ON COLUMN obras.tipo_obra IS 'Tipo da obra (ex: Asfaltamento, Construção, Reforma)';
-COMMENT ON COLUMN obras.status IS 'Status da obra (ex: Em andamento, Concluída, Paralisada)';
-COMMENT ON COLUMN obras.valor_orcado IS 'Valor orçado para a obra';
-COMMENT ON COLUMN obras.valor_executado IS 'Valor já executado na obra';
-COMMENT ON COLUMN obras.percentual_execucao IS 'Percentual de execução da obra (0-100)';
+COMMENT ON COLUMN obras.municipio IS 'Município onde a obra está localizada';
+COMMENT ON COLUMN obras.obra IS 'Nome/descrição da obra';
+COMMENT ON COLUMN obras.orgao IS 'Órgão responsável pela obra';
+COMMENT ON COLUMN obras.sei IS 'Número do SEI (Sistema Eletrônico de Informações)';
+COMMENT ON COLUMN obras.sei_medicao IS 'Número do SEI da medição';
+COMMENT ON COLUMN obras.status IS 'Status da obra';
+COMMENT ON COLUMN obras.publicacao_os IS 'Data de publicação da OS (Ordem de Serviço)';
+COMMENT ON COLUMN obras.solicitacao_medicao IS 'Data de solicitação da medição';
+COMMENT ON COLUMN obras.data_medicao IS 'Data da medição';
+COMMENT ON COLUMN obras.status_medicao IS 'Status da medição';
+COMMENT ON COLUMN obras.valor_total IS 'Valor total da obra';
