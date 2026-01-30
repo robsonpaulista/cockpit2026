@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useMemo } from 'react'
 import { Header } from '@/components/header'
-import { Building2, MapPin, Calendar, DollarSign, User, Filter, Search, Plus, Edit, Trash2, Loader2, Upload, RefreshCw, Maximize2, Minimize2 } from 'lucide-react'
+import { Building2, MapPin, Calendar, DollarSign, User, Filter, Search, Plus, Edit, Trash2, Loader2, Upload, RefreshCw, Maximize2, Minimize2, FileSearch } from 'lucide-react'
 import { formatDate } from '@/lib/utils'
 import { ObrasImportModal } from '@/components/obras-import-modal'
 import { ObraFormModal } from '@/components/obra-form-modal'
@@ -15,6 +15,8 @@ interface Obra {
   sei?: string
   sei_url?: string | null
   sei_medicao?: string
+  sei_ultimo_andamento?: string | null
+  sei_ultimo_andamento_data?: string | null
   status?: string
   publicacao_os?: string
   solicitacao_medicao?: string
@@ -46,6 +48,8 @@ export default function ObrasPage() {
   const [editingCell, setEditingCell] = useState<{ obraId: string; field: EditableField } | null>(null)
   const [editingValue, setEditingValue] = useState('')
   const [savingCell, setSavingCell] = useState(false)
+  const [seiStatusUpdating, setSeiStatusUpdating] = useState(false)
+  const [seiStatusProgress, setSeiStatusProgress] = useState({ current: 0, total: 0, lastError: '' })
 
   useEffect(() => {
     fetchObras()
@@ -89,6 +93,63 @@ export default function ObrasPage() {
     const m = String(d.getMonth() + 1).padStart(2, '0')
     const day = String(d.getDate()).padStart(2, '0')
     return `${y}-${m}-${day}`
+  }
+
+  const SEI_ANDAMENTO_DELAY_MS = 3500
+
+  const handleAtualizarAndamentosSei = async () => {
+    const comLink = obras.filter((o) => o.sei_url?.trim())
+    if (comLink.length === 0) {
+      alert('Nenhuma obra com link do SEI preenchido.')
+      return
+    }
+    if (!window.confirm(`Atualizar último andamento SEI de ${comLink.length} obra(s)? Será feita uma requisição por obra, com intervalo de alguns segundos para evitar bloqueio.`)) {
+      return
+    }
+    setSeiStatusUpdating(true)
+    setSeiStatusProgress({ current: 0, total: comLink.length, lastError: '' })
+    let ok = 0
+    let lastError = ''
+    for (let i = 0; i < comLink.length; i++) {
+      const obra = comLink[i]
+      const url = obra.sei_url!.startsWith('http') ? obra.sei_url! : 'https://' + obra.sei_url!
+      setSeiStatusProgress({ current: i + 1, total: comLink.length, lastError })
+      try {
+        const res = await fetch('/api/obras/sei-status', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ url }),
+        })
+        const data = await res.json().catch(() => ({}))
+        if (res.ok && data.descricao != null) {
+          const patchRes = await fetch(`/api/obras/${obra.id}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              sei_ultimo_andamento: data.descricao,
+              sei_ultimo_andamento_data: data.dataIso ?? data.data ?? null,
+            }),
+          })
+          if (patchRes.ok) {
+            ok++
+            const { obra: updated } = await patchRes.json()
+            setObras((prev) => prev.map((o) => (o.id === obra.id ? { ...o, ...updated } : o)))
+          }
+        } else {
+          lastError = data.error || data.details || `Status ${res.status}`
+          setSeiStatusProgress((p) => ({ ...p, lastError }))
+        }
+      } catch (e) {
+        lastError = e instanceof Error ? e.message : 'Erro de rede'
+        setSeiStatusProgress((p) => ({ ...p, lastError }))
+      }
+      if (i < comLink.length - 1) {
+        await new Promise((r) => setTimeout(r, SEI_ANDAMENTO_DELAY_MS))
+      }
+    }
+    setSeiStatusProgress((p) => ({ ...p, lastError }))
+    setSeiStatusUpdating(false)
+    alert(`Concluído: ${ok} de ${comLink.length} andamentos atualizados.${lastError ? ` Último erro: ${lastError}` : ''}`)
   }
 
   const startEditCell = (obra: Obra, field: EditableField) => {
@@ -409,6 +470,15 @@ export default function ObrasPage() {
                 Importar do Excel
               </button>
               <button
+                onClick={handleAtualizarAndamentosSei}
+                disabled={seiStatusUpdating || obras.filter((o) => o.sei_url?.trim()).length === 0}
+                className="flex items-center gap-2 px-4 py-2 border border-border-card rounded-lg hover:bg-bg-app transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                title="Buscar último andamento (andamento/Aberto) em cada link SEI"
+              >
+                <FileSearch className={`w-4 h-4 ${seiStatusUpdating ? 'animate-pulse' : ''}`} />
+                {seiStatusUpdating ? `Andamentos SEI (${seiStatusProgress.current}/${seiStatusProgress.total})` : 'Atualizar andamentos SEI'}
+              </button>
+              <button
                 onClick={() => setFullscreen((f) => !f)}
                 className="flex items-center gap-2 px-4 py-2 border border-border-card rounded-lg hover:bg-bg-app transition-colors"
                 title={fullscreen ? 'Sair da tela cheia' : 'Tela cheia'}
@@ -452,6 +522,9 @@ export default function ObrasPage() {
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-semibold text-secondary uppercase tracking-wider">
                       Valor Total
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-semibold text-secondary uppercase tracking-wider min-w-[200px]">
+                      Últ. andamento SEI
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-semibold text-secondary uppercase tracking-wider">
                       Status
@@ -533,6 +606,29 @@ export default function ObrasPage() {
                         <div className="text-sm font-semibold text-primary">
                           {formatCurrency(obra.valor_total)}
                         </div>
+                      </td>
+                      <td className="px-6 py-4 max-w-[280px]">
+                        {obra.sei_ultimo_andamento || obra.sei_ultimo_andamento_data ? (
+                          <div className="text-sm">
+                            {obra.sei_ultimo_andamento_data && (
+                              <div className="text-text-secondary font-mono text-xs mb-0.5">
+                                {(() => {
+                                  try {
+                                    const d = new Date(obra.sei_ultimo_andamento_data)
+                                    return Number.isNaN(d.getTime()) ? obra.sei_ultimo_andamento_data : d.toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })
+                                  } catch {
+                                    return obra.sei_ultimo_andamento_data
+                                  }
+                                })()}
+                              </div>
+                            )}
+                            <div className="text-text-primary line-clamp-2" title={obra.sei_ultimo_andamento ?? undefined}>
+                              {obra.sei_ultimo_andamento || '-'}
+                            </div>
+                          </div>
+                        ) : (
+                          <span className="text-sm text-text-secondary">—</span>
+                        )}
                       </td>
                       <td
                         className="px-6 py-4 whitespace-nowrap cursor-pointer align-top"

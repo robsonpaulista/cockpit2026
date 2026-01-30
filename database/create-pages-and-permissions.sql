@@ -85,3 +85,4 @@ COMMENT ON TABLE profile_permissions IS 'Permissões de acesso por página por u
 
 -- Tornar o primeiro usuário admin (execute manualmente se necessário):
 -- UPDATE profiles SET is_admin = true WHERE email = 'seu@email.com';
+
