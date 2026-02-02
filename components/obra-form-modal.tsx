@@ -4,10 +4,14 @@ import { useState, useEffect, useMemo } from 'react'
 import { X, Loader2, AlertCircle } from 'lucide-react'
 import municipiosPiaui from '@/lib/municipios-piaui.json'
 
+export const OBRAS_TIPOS = ['pavimentação', 'obras diversas'] as const
+export type ObraTipo = (typeof OBRAS_TIPOS)[number]
+
 export interface ObraFormData {
   id?: string
   municipio?: string
   obra: string
+  tipo?: string | null
   orgao?: string
   sei?: string
   sei_medicao?: string
@@ -21,6 +25,7 @@ export interface ObraFormData {
 
 interface ObraFormModalProps {
   obra?: ObraFormData | null
+  defaultTipo?: string
   onClose: () => void
   onSuccess: () => void
 }
@@ -32,13 +37,14 @@ function toYyyyMmDd(dateString?: string): string {
   return m ? m[0] : ''
 }
 
-export function ObraFormModal({ obra, onClose, onSuccess }: ObraFormModalProps) {
+export function ObraFormModal({ obra, defaultTipo, onClose, onSuccess }: ObraFormModalProps) {
   const isEdit = Boolean(obra?.id)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [form, setForm] = useState<ObraFormData>({
     municipio: '',
     obra: '',
+    tipo: '',
     orgao: '',
     sei: '',
     sei_medicao: '',
@@ -68,6 +74,7 @@ export function ObraFormModal({ obra, onClose, onSuccess }: ObraFormModalProps) 
         id: obra.id,
         municipio: municipioVal,
         obra: obra.obra ?? '',
+        tipo: (obra as { tipo?: string }).tipo ?? '',
         orgao: obra.orgao ?? '',
         sei: obra.sei ?? '',
         sei_medicao: obra.sei_medicao ?? '',
@@ -82,6 +89,7 @@ export function ObraFormModal({ obra, onClose, onSuccess }: ObraFormModalProps) 
       setForm({
         municipio: '',
         obra: '',
+        tipo: defaultTipo ?? '',
         orgao: '',
         sei: '',
         sei_medicao: '',
@@ -93,7 +101,7 @@ export function ObraFormModal({ obra, onClose, onSuccess }: ObraFormModalProps) 
         valor_total: null,
       })
     }
-  }, [obra, municipios])
+  }, [obra, defaultTipo, municipios])
 
   const update = (key: keyof ObraFormData, value: string | number | null) => {
     setForm((prev) => ({ ...prev, [key]: value }))
@@ -118,6 +126,7 @@ export function ObraFormModal({ obra, onClose, onSuccess }: ObraFormModalProps) 
       const payload = {
         municipio: (form.municipio ?? '').trim() || null,
         obra: (form.obra ?? '').trim(),
+        tipo: (form.tipo ?? '').trim() || null,
         orgao: (form.orgao ?? '').trim() || null,
         sei: (form.sei ?? '').trim() || null,
         sei_medicao: (form.sei_medicao ?? '').trim() || null,
@@ -208,6 +217,21 @@ export function ObraFormModal({ obra, onClose, onSuccess }: ObraFormModalProps) 
                 placeholder="Nome ou descrição da obra"
                 required
               />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-primary mb-1">Tipo</label>
+              <select
+                value={form.tipo ?? ''}
+                onChange={(e) => update('tipo', e.target.value)}
+                className="w-full px-3 py-2 border border-card rounded-lg bg-background focus:outline-none focus:ring-2 focus:ring-accent-gold-soft"
+              >
+                <option value="">Selecione o tipo</option>
+                {OBRAS_TIPOS.map((t) => (
+                  <option key={t} value={t}>
+                    {t.charAt(0).toUpperCase() + t.slice(1)}
+                  </option>
+                ))}
+              </select>
             </div>
             <div>
               <label className="block text-sm font-medium text-primary mb-1">Órgão</label>

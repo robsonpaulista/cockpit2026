@@ -19,6 +19,7 @@ export async function GET(request: Request) {
     const status = searchParams.get('status')
     const statusMedicao = searchParams.get('status_medicao')
     const orgao = searchParams.get('orgao')
+    const tipo = searchParams.get('tipo')
 
     let query = supabase.from('obras').select('*').order('created_at', { ascending: false })
 
@@ -33,6 +34,9 @@ export async function GET(request: Request) {
     }
     if (orgao) {
       query = query.eq('orgao', orgao)
+    }
+    if (tipo) {
+      query = query.eq('tipo', tipo)
     }
 
     const { data, error } = await query
@@ -71,6 +75,7 @@ export async function POST(request: Request) {
       municipio,
       obra,
       orgao,
+      tipo,
       sei,
       sei_medicao,
       status,
@@ -94,6 +99,7 @@ export async function POST(request: Request) {
         municipio: municipio || null,
         obra: obra,
         orgao: orgao || null,
+        tipo: tipo || null,
         sei: sei || null,
         sei_medicao: sei_medicao || null,
         status: status || null,

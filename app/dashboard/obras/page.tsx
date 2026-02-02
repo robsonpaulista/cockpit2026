@@ -5,12 +5,15 @@ import { Header } from '@/components/header'
 import { Building2, MapPin, Calendar, DollarSign, User, Filter, Search, Plus, Edit, Trash2, Loader2, Upload, RefreshCw, Maximize2, Minimize2, FileSearch } from 'lucide-react'
 import { formatDate } from '@/lib/utils'
 import { ObrasImportModal } from '@/components/obras-import-modal'
-import { ObraFormModal } from '@/components/obra-form-modal'
+import { ObraFormModal, OBRAS_TIPOS } from '@/components/obra-form-modal'
+
+type ObraTipoAba = 'pavimentação' | 'obras diversas'
 
 interface Obra {
   id: string
   municipio?: string
   obra: string
+  tipo?: string | null
   orgao?: string
   sei?: string
   sei_url?: string | null
@@ -35,6 +38,7 @@ export default function ObrasPage() {
   const [filterStatus, setFilterStatus] = useState('')
   const [filterStatusMedicao, setFilterStatusMedicao] = useState('')
   const [filterOrgao, setFilterOrgao] = useState('')
+  const [activeTab, setActiveTab] = useState<ObraTipoAba>('pavimentação')
   const [showImportModal, setShowImportModal] = useState(false)
   const [showFormModal, setShowFormModal] = useState(false)
   const [formObra, setFormObra] = useState<Obra | null>(null)
@@ -255,12 +259,15 @@ export default function ObrasPage() {
     }
   }
 
-  // Filtrar obras por termo de busca
+  // Filtrar obras por aba (tipo) e depois por termo de busca
   const filteredObras = useMemo(() => {
-    if (!searchTerm) return obras
-
+    const porTipo = obras.filter((obra) => {
+      const t = (obra.tipo ?? '').trim() || 'obras diversas'
+      return t === activeTab
+    })
+    if (!searchTerm) return porTipo
     const term = searchTerm.toLowerCase()
-    return obras.filter((obra) => {
+    return porTipo.filter((obra) => {
       return (
         obra.obra?.toLowerCase().includes(term) ||
         obra.municipio?.toLowerCase().includes(term) ||
@@ -269,7 +276,7 @@ export default function ObrasPage() {
         obra.sei_medicao?.toLowerCase().includes(term)
       )
     })
-  }, [obras, searchTerm])
+  }, [obras, searchTerm, activeTab])
 
   // Obter valores únicos para filtros
   const municipios = useMemo(() => {
@@ -489,6 +496,27 @@ export default function ObrasPage() {
             </div>
           </div>
 
+          {/* Abas por tipo */}
+          <div className="flex border-b border-border-card">
+            {(OBRAS_TIPOS as readonly string[]).map((tipo) => (
+              <button
+                key={tipo}
+                type="button"
+                onClick={() => setActiveTab(tipo as ObraTipoAba)}
+                className={`px-6 py-3 text-sm font-medium transition-colors border-b-2 -mb-px ${
+                  activeTab === tipo
+                    ? 'border-accent-gold text-accent-gold'
+                    : 'border-transparent text-text-secondary hover:text-text-primary'
+                }`}
+              >
+                {tipo.charAt(0).toUpperCase() + tipo.slice(1)}
+                <span className="ml-2 text-xs text-text-secondary">
+                  ({obras.filter((o) => ((o.tipo ?? '').trim() || 'obras diversas') === tipo).length})
+                </span>
+              </button>
+            ))}
+          </div>
+
           {loading ? (
             <div className="flex items-center justify-center py-12">
               <Loader2 className="w-6 h-6 text-accent-gold animate-spin" />
@@ -500,7 +528,7 @@ export default function ObrasPage() {
               <p className="text-sm text-secondary">
                 {searchTerm || filterMunicipio || filterStatus || filterStatusMedicao || filterOrgao
                   ? 'Nenhuma obra encontrada com os filtros aplicados'
-                  : 'Nenhuma obra cadastrada ainda'}
+                  : `Nenhuma obra do tipo "${activeTab === 'pavimentação' ? 'Pavimentação' : 'Obras diversas'}" cadastrada.`}
               </p>
             </div>
           ) : (
@@ -839,6 +867,7 @@ export default function ObrasPage() {
       {showFormModal && (
         <ObraFormModal
           obra={formObra}
+          defaultTipo={formObra ? undefined : activeTab}
           onClose={() => {
             setShowFormModal(false)
             setFormObra(null)

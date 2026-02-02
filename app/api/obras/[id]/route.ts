@@ -27,6 +27,7 @@ export async function PATCH(
       municipio,
       obra,
       orgao,
+      tipo,
       sei,
       sei_medicao,
       sei_url,
@@ -44,6 +45,7 @@ export async function PATCH(
     if (municipio !== undefined) updates.municipio = municipio ?? null
     if (obra !== undefined) updates.obra = obra ?? null
     if (orgao !== undefined) updates.orgao = orgao ?? null
+    if (tipo !== undefined) updates.tipo = tipo ?? null
     if (sei !== undefined) updates.sei = sei ?? null
     if (sei_medicao !== undefined) updates.sei_medicao = sei_medicao ?? null
     if (sei_url !== undefined) updates.sei_url = sei_url ?? null
