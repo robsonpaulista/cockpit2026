@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useMemo } from 'react'
 import { Header } from '@/components/header'
-import { Building2, MapPin, Calendar, DollarSign, User, Filter, Search, Plus, Edit, Trash2, Loader2, Upload, RefreshCw, Maximize2, Minimize2, FileSearch } from 'lucide-react'
+import { Building2, MapPin, Calendar, DollarSign, User, Filter, Search, Plus, Edit, Trash2, Loader2, Upload, RefreshCw, Maximize2, Minimize2, FileSearch, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react'
 import { formatDate } from '@/lib/utils'
 import { ObrasImportModal } from '@/components/obras-import-modal'
 import { ObraFormModal, OBRAS_TIPOS } from '@/components/obra-form-modal'
@@ -54,6 +54,9 @@ export default function ObrasPage() {
   const [savingCell, setSavingCell] = useState(false)
   const [seiStatusUpdating, setSeiStatusUpdating] = useState(false)
   const [seiStatusProgress, setSeiStatusProgress] = useState({ current: 0, total: 0, lastError: '' })
+  type SortColumn = 'municipio' | 'obra' | 'orgao' | 'sei' | 'valor_total' | 'sei_ultimo_andamento' | 'status' | 'publicacao_os' | 'data_medicao' | 'status_medicao'
+  const [sortColumn, setSortColumn] = useState<SortColumn | null>(null)
+  const [sortAsc, setSortAsc] = useState(true)
 
   useEffect(() => {
     fetchObras()
@@ -289,6 +292,48 @@ export default function ObrasPage() {
       )
     })
   }, [obras, searchTerm, activeTab])
+
+  const toggleSort = (col: SortColumn) => {
+    if (sortColumn === col) {
+      setSortAsc((a) => !a)
+    } else {
+      setSortColumn(col)
+      setSortAsc(true)
+    }
+  }
+
+  const sortedObras = useMemo(() => {
+    if (!sortColumn) return filteredObras
+    const getVal = (o: Obra): string | number => {
+      switch (sortColumn) {
+        case 'municipio': return (o.municipio ?? '').toLowerCase()
+        case 'obra': return (o.obra ?? '').toLowerCase()
+        case 'orgao': return (o.orgao ?? '').toLowerCase()
+        case 'sei': return (o.sei ?? '').toLowerCase()
+        case 'valor_total': return o.valor_total ?? 0
+        case 'sei_ultimo_andamento': return o.sei_ultimo_andamento_data ? new Date(o.sei_ultimo_andamento_data).getTime() : 0
+        case 'status': return (o.status ?? '').toLowerCase()
+        case 'publicacao_os': {
+          const d = parseDateOnly(o.publicacao_os ?? '')
+          return d ? d.getTime() : 0
+        }
+        case 'data_medicao': {
+          const d = parseDateOnly(o.data_medicao ?? '')
+          return d ? d.getTime() : 0
+        }
+        case 'status_medicao': return (o.status_medicao ?? '').toLowerCase()
+        default: return ''
+      }
+    }
+    return [...filteredObras].sort((a, b) => {
+      const va = getVal(a)
+      const vb = getVal(b)
+      const cmp = typeof va === 'string' && typeof vb === 'string'
+        ? va.localeCompare(vb, 'pt-BR')
+        : (Number(va) - Number(vb))
+      return sortAsc ? cmp : -cmp
+    })
+  }, [filteredObras, sortColumn, sortAsc])
 
   // Obter valores únicos para filtros
   const municipios = useMemo(() => {
@@ -548,43 +593,38 @@ export default function ObrasPage() {
               <table className="w-full">
                 <thead className="bg-background border-b border-card">
                   <tr>
-                    <th className="sticky left-0 z-10 px-6 py-3 text-left text-xs font-semibold text-secondary uppercase tracking-wider bg-background border-r border-card min-w-[120px]">
-                      Município
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-semibold text-secondary uppercase tracking-wider min-w-[320px]">
-                      Obra
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-semibold text-secondary uppercase tracking-wider">
-                      Órgão
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-semibold text-secondary uppercase tracking-wider">
-                      SEI
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-semibold text-secondary uppercase tracking-wider">
-                      Valor Total
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-semibold text-secondary uppercase tracking-wider min-w-[200px]">
-                      Últ. andamento SEI
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-semibold text-secondary uppercase tracking-wider">
-                      Status
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-semibold text-secondary uppercase tracking-wider">
-                      Pub. OS
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-semibold text-secondary uppercase tracking-wider">
-                      Data Medição
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-semibold text-secondary uppercase tracking-wider">
-                      Status Medição
-                    </th>
+                    {(['municipio', 'obra', 'orgao', 'sei', 'valor_total', 'sei_ultimo_andamento', 'status', 'publicacao_os', 'data_medicao', 'status_medicao'] as const).map((col) => {
+                      const labels: Record<SortColumn, string> = {
+                        municipio: 'Município', obra: 'Obra', orgao: 'Órgão', sei: 'SEI',
+                        valor_total: 'Valor Total', sei_ultimo_andamento: 'Últ. andamento SEI',
+                        status: 'Status', publicacao_os: 'Pub. OS', data_medicao: 'Data Medição', status_medicao: 'Status Medição',
+                      }
+                      const isActive = sortColumn === col
+                      const thClass = col === 'municipio' ? 'sticky left-0 z-10 px-6 py-3 text-left text-xs font-semibold text-secondary uppercase tracking-wider bg-background border-r border-card min-w-[120px]' :
+                        col === 'obra' ? 'px-6 py-3 text-left text-xs font-semibold text-secondary uppercase tracking-wider min-w-[320px]' :
+                        col === 'sei_ultimo_andamento' ? 'px-6 py-3 text-left text-xs font-semibold text-secondary uppercase tracking-wider min-w-[200px]' :
+                        'px-6 py-3 text-left text-xs font-semibold text-secondary uppercase tracking-wider'
+                      return (
+                        <th key={col} className={thClass}>
+                          <button
+                            type="button"
+                            onClick={() => toggleSort(col)}
+                            className="flex items-center gap-1 hover:text-primary transition-colors w-full text-left"
+                            title={`Ordenar ${labels[col]} (${sortColumn === col && !sortAsc ? 'A→Z' : 'Z→A'})`}
+                          >
+                            {labels[col]}
+                            {isActive ? (sortAsc ? <ArrowUp className="w-3.5 h-3.5" /> : <ArrowDown className="w-3.5 h-3.5" />) : <ArrowUpDown className="w-3.5 h-3.5 opacity-50" />}
+                          </button>
+                        </th>
+                      )
+                    })}
                     <th className="px-6 py-3 text-left text-xs font-semibold text-secondary uppercase tracking-wider w-28">
                       Ações
                     </th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-card bg-surface">
-                  {filteredObras.map((obra) => (
+                  {sortedObras.map((obra) => (
                     <tr key={obra.id} className="group hover:bg-background/50 transition-colors">
                       <td className="sticky left-0 z-10 px-6 py-4 whitespace-nowrap bg-surface group-hover:bg-background/50 border-r border-card min-w-[120px]">
                         <div className="text-sm font-semibold text-primary">{obra.municipio || '-'}</div>
