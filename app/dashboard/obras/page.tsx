@@ -102,7 +102,19 @@ export default function ObrasPage() {
   const SEI_ANDAMENTO_DELAY_MS = 3500
 
   const handleAtualizarAndamentosSei = async () => {
-    const comLink = obras.filter((o) => o.sei_url?.trim())
+    // Buscar TODAS as obras (sem filtros) para incluir as de qualquer aba/filtro
+    let todasObras: Obra[] = []
+    try {
+      const res = await fetch('/api/obras')
+      if (res.ok) {
+        const data = await res.json()
+        todasObras = data.obras ?? []
+      }
+    } catch {
+      alert('Erro ao carregar a lista de obras.')
+      return
+    }
+    const comLink = todasObras.filter((o) => o.sei_url?.trim())
     if (comLink.length === 0) {
       alert('Nenhuma obra com link do SEI preenchido.')
       return
