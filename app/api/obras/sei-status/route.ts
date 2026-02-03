@@ -15,32 +15,28 @@ function stripHtml(html: string): string {
 }
 
 /**
- * Parse "DD/MM/YYYY HH:mm" (horário local Brasil) para ISO string para TIMESTAMPTZ.
+ * Parse "DD/MM/YYYY HH:mm" (horário Brasília, UTC-3) para ISO string (UTC) para TIMESTAMPTZ.
+ * O SEI exibe datas no fuso do Brasil; o servidor (ex. Vercel) roda em UTC.
+ * Interpretar explicitamente como UTC-3 evita diferença de 3h na exibição.
  */
 function parseSeiDate(str: string): string | null {
   const m = str.trim().match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})\s+(\d{1,2}):(\d{2})/)
   if (!m) return null
   const [, day, month, year, hour, min] = m
-  const d = new Date(
-    parseInt(year!, 10),
-    parseInt(month!, 10) - 1,
-    parseInt(day!, 10),
-    parseInt(hour!, 10),
-    parseInt(min!, 10)
-  )
+  const pad = (n: string) => n.padStart(2, '0')
+  const isoLocal = `${year}-${pad(month)}-${pad(day)}T${pad(hour)}:${min}:00-03:00`
+  const d = new Date(isoLocal)
   return Number.isNaN(d.getTime()) ? null : d.toISOString()
 }
 
 /**
- * Extrai data (primeira célula) de uma linha HTML e retorna timestamp para comparação.
+ * Extrai data e descrição de uma linha andamentoConcluido. Retorna ts, dataIso e descricao.
  */
-function extractDateTimestampFromRow(rowContent: string): number | null {
-  const tdRegex = /<td[^>]*>([\s\S]*?)<\/td>/i
-  const m = rowContent.match(tdRegex)
-  if (!m) return null
-  const dataStr = stripHtml(m[1]).trim()
-  const iso = parseSeiDate(dataStr)
-  return iso ? new Date(iso).getTime() : null
+function extractConcluidoFromRow(rowContent: string): { ts: number; dataIso: string; descricao: string } | null {
+  const out = extractCellsFromRow(rowContent)
+  if (!out || !out.dataIso) return null
+  const ts = new Date(out.dataIso).getTime()
+  return { ts, dataIso: out.dataIso, descricao: out.descricao || 'Andamento concluído' }
 }
 
 /**
@@ -52,6 +48,9 @@ function parseAndamentoAbertoFromHtml(html: string): {
   dataIso: string | null
   descricao: string
   alerta_andamento_desatualizado: boolean
+  sei_data_mais_recente_concluido: string | null
+  sei_descricao_mais_recente_concluido: string | null
+  todos_andamentos_concluidos?: boolean
 } | null {
   // Normalizar: collapse espaços e quebras para facilitar regex
   const normalized = html.replace(/\s+/g, ' ')
@@ -67,9 +66,12 @@ function parseAndamentoAbertoFromHtml(html: string): {
     if (bySummary) tableBlock = bySummary[1]
   }
   if (!tableBlock) {
-    // Última tentativa: qualquer tabela que contenha "andamentoAberto" no conteúdo
     const anyTableWithAndamento = normalized.match(/<table[^>]*>([\s\S]*?andamentoAberto[\s\S]*?)<\/table>/i)
     if (anyTableWithAndamento) tableBlock = anyTableWithAndamento[1]
+  }
+  if (!tableBlock) {
+    const anyTableWithConcluido = normalized.match(/<table[^>]*>([\s\S]*?andamentoConcluido[\s\S]*?)<\/table>/i)
+    if (anyTableWithConcluido) tableBlock = anyTableWithConcluido[1]
   }
 
   let tbodyContent = tableBlock ?? normalized
@@ -90,19 +92,24 @@ function parseAndamentoAbertoFromHtml(html: string): {
       const out = extractCellsFromRow(rowMatch[1])
       if (out) {
         const abertoTs = out.dataIso ? new Date(out.dataIso).getTime() : null
-        let alerta = false
+        let maisRecente: { ts: number; dataIso: string; descricao: string } | null = null
         if (abertoTs != null) {
           const concluidoRegex = /<tr[^>]*class="[^"]*andamentoConcluido[^"]*"[^>]*>([\s\S]*?)<\/tr>/gi
           let m: RegExpExecArray | null
           while ((m = concluidoRegex.exec(tbodyContent)) !== null) {
-            const ts = extractDateTimestampFromRow(m[1])
-            if (ts != null && ts > abertoTs) {
-              alerta = true
-              break
+            const parsed = extractConcluidoFromRow(m[1])
+            if (parsed != null && parsed.ts > abertoTs && (maisRecente == null || parsed.ts > maisRecente.ts)) {
+              maisRecente = parsed
             }
           }
         }
-        return { ...out, alerta_andamento_desatualizado: alerta }
+        const alerta = maisRecente != null
+        return {
+          ...out,
+          alerta_andamento_desatualizado: alerta,
+          sei_data_mais_recente_concluido: maisRecente?.dataIso ?? null,
+          sei_descricao_mais_recente_concluido: maisRecente?.descricao ?? null,
+        }
       }
     }
   }
@@ -124,24 +131,58 @@ function parseAndamentoAbertoFromHtml(html: string): {
           const out = extractCellsFromRow(rowContentMatch[1])
           if (out) {
             const abertoTs = out.dataIso ? new Date(out.dataIso).getTime() : null
-            let alerta = false
+            let maisRecente: { ts: number; dataIso: string; descricao: string } | null = null
             if (abertoTs != null) {
               const concluidoRegex = /<tr[^>]*class="[^"]*andamentoConcluido[^"]*"[^>]*>([\s\S]*?)<\/tr>/gi
               let m: RegExpExecArray | null
               while ((m = concluidoRegex.exec(tbodyContent)) !== null) {
-                const ts = extractDateTimestampFromRow(m[1])
-                if (ts != null && ts > abertoTs) {
-                  alerta = true
-                  break
+                const parsed = extractConcluidoFromRow(m[1])
+                if (parsed != null && parsed.ts > abertoTs && (maisRecente == null || parsed.ts > maisRecente.ts)) {
+                  maisRecente = parsed
                 }
               }
             }
-            return { ...out, alerta_andamento_desatualizado: alerta }
+            const alerta = maisRecente != null
+            return {
+              ...out,
+              alerta_andamento_desatualizado: alerta,
+              sei_data_mais_recente_concluido: maisRecente?.dataIso ?? null,
+              sei_descricao_mais_recente_concluido: maisRecente?.descricao ?? null,
+            }
           }
         }
       }
     }
   }
+
+  // Fallback: todos os protocolos concluídos — não há andamentoAberto, retorna o mais recente andamentoConcluido
+  const concluidoRegex = /<tr[^>]*class="[^"]*andamentoConcluido[^"]*"[^>]*>([\s\S]*?)<\/tr>/gi
+  let maisRecente: { ts: number; dataIso: string; descricao: string; data: string } | null = null
+  let m: RegExpExecArray | null
+  while ((m = concluidoRegex.exec(tbodyContent)) !== null) {
+    const parsed = extractConcluidoFromRow(m[1])
+    if (parsed != null && (maisRecente == null || parsed.ts > maisRecente.ts)) {
+      const cells = extractCellsFromRow(m[1])
+      maisRecente = {
+        ts: parsed.ts,
+        dataIso: parsed.dataIso,
+        descricao: parsed.descricao,
+        data: cells?.data ?? '',
+      }
+    }
+  }
+  if (maisRecente) {
+    return {
+      data: maisRecente.data,
+      dataIso: maisRecente.dataIso,
+      descricao: maisRecente.descricao,
+      alerta_andamento_desatualizado: false,
+      sei_data_mais_recente_concluido: null,
+      sei_descricao_mais_recente_concluido: null,
+      todos_andamentos_concluidos: true,
+    }
+  }
+
   return null
 }
 
@@ -194,6 +235,12 @@ export async function POST(request: Request) {
         const payload: Record<string, string | null | boolean> = {}
         if (item.sei_ultimo_andamento !== undefined) payload.sei_ultimo_andamento = item.sei_ultimo_andamento ?? null
         if (item.sei_alerta_andamento_desatualizado !== undefined) payload.sei_alerta_andamento_desatualizado = Boolean(item.sei_alerta_andamento_desatualizado)
+        if (item.sei_data_mais_recente_concluido !== undefined) {
+          const raw = item.sei_data_mais_recente_concluido
+          payload.sei_data_mais_recente_concluido = (typeof raw === 'string' && raw.trim() ? (parseSeiDate(raw) ?? raw) : raw) ?? null
+        }
+        if (item.sei_descricao_mais_recente_concluido !== undefined) payload.sei_descricao_mais_recente_concluido = item.sei_descricao_mais_recente_concluido ?? null
+        if (item.sei_todos_andamentos_concluidos !== undefined) payload.sei_todos_andamentos_concluidos = Boolean(item.sei_todos_andamentos_concluidos)
         if (item.sei_ultimo_andamento_data !== undefined) {
           const raw = item.sei_ultimo_andamento_data
           payload.sei_ultimo_andamento_data = (typeof raw === 'string' && raw.trim() ? (parseSeiDate(raw) ?? raw) : raw) ?? null
@@ -271,6 +318,9 @@ export async function POST(request: Request) {
       dataIso: parsed.dataIso,
       descricao: parsed.descricao,
       alerta_andamento_desatualizado: parsed.alerta_andamento_desatualizado ?? false,
+      sei_data_mais_recente_concluido: parsed.sei_data_mais_recente_concluido ?? null,
+      sei_descricao_mais_recente_concluido: parsed.sei_descricao_mais_recente_concluido ?? null,
+      todos_andamentos_concluidos: parsed.todos_andamentos_concluidos ?? false,
     })
   } catch (error: unknown) {
     console.error('Erro ao buscar andamento SEI:', error)

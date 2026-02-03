@@ -34,6 +34,9 @@ export async function PATCH(
       sei_ultimo_andamento,
       sei_ultimo_andamento_data,
       sei_alerta_andamento_desatualizado,
+      sei_data_mais_recente_concluido,
+      sei_descricao_mais_recente_concluido,
+      sei_todos_andamentos_concluidos,
       status,
       publicacao_os,
       solicitacao_medicao,
@@ -53,6 +56,9 @@ export async function PATCH(
     if (sei_ultimo_andamento !== undefined) updates.sei_ultimo_andamento = sei_ultimo_andamento ?? null
     if (sei_ultimo_andamento_data !== undefined) updates.sei_ultimo_andamento_data = sei_ultimo_andamento_data ?? null
     if (sei_alerta_andamento_desatualizado !== undefined) updates.sei_alerta_andamento_desatualizado = Boolean(sei_alerta_andamento_desatualizado)
+    if (sei_data_mais_recente_concluido !== undefined) updates.sei_data_mais_recente_concluido = sei_data_mais_recente_concluido ?? null
+    if (sei_descricao_mais_recente_concluido !== undefined) updates.sei_descricao_mais_recente_concluido = sei_descricao_mais_recente_concluido ?? null
+    if (sei_todos_andamentos_concluidos !== undefined) updates.sei_todos_andamentos_concluidos = Boolean(sei_todos_andamentos_concluidos)
     if (status !== undefined) updates.status = status ?? null
     if (publicacao_os !== undefined) updates.publicacao_os = publicacao_os || null
     if (solicitacao_medicao !== undefined) updates.solicitacao_medicao = solicitacao_medicao || null

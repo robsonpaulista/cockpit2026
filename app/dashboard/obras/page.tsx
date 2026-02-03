@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useMemo } from 'react'
 import { Header } from '@/components/header'
-import { Building2, MapPin, Calendar, DollarSign, User, Filter, Search, Plus, Edit, Trash2, Loader2, Upload, RefreshCw, Maximize2, Minimize2, FileSearch, ArrowUpDown, ArrowUp, ArrowDown, AlertTriangle } from 'lucide-react'
+import { Building2, MapPin, Calendar, DollarSign, User, Filter, Search, Plus, Edit, Trash2, Loader2, Upload, RefreshCw, Maximize2, Minimize2, FileSearch, ArrowUpDown, ArrowUp, ArrowDown, AlertTriangle, CheckCircle } from 'lucide-react'
 import { formatDate } from '@/lib/utils'
 import { ObrasImportModal } from '@/components/obras-import-modal'
 import { ObraFormModal, OBRAS_TIPOS } from '@/components/obra-form-modal'
@@ -21,6 +21,9 @@ interface Obra {
   sei_ultimo_andamento?: string | null
   sei_ultimo_andamento_data?: string | null
   sei_alerta_andamento_desatualizado?: boolean
+  sei_data_mais_recente_concluido?: string | null
+  sei_descricao_mais_recente_concluido?: string | null
+  sei_todos_andamentos_concluidos?: boolean
   status?: string
   publicacao_os?: string
   solicitacao_medicao?: string
@@ -149,6 +152,9 @@ export default function ObrasPage() {
               sei_ultimo_andamento: data.descricao,
               sei_ultimo_andamento_data: data.dataIso ?? data.data ?? null,
               sei_alerta_andamento_desatualizado: data.alerta_andamento_desatualizado ?? false,
+              sei_data_mais_recente_concluido: data.sei_data_mais_recente_concluido ?? null,
+              sei_descricao_mais_recente_concluido: data.sei_descricao_mais_recente_concluido ?? null,
+              sei_todos_andamentos_concluidos: data.todos_andamentos_concluidos ?? false,
             }),
           })
           if (patchRes.ok) {
@@ -194,6 +200,9 @@ export default function ObrasPage() {
             sei_ultimo_andamento: data.descricao,
             sei_ultimo_andamento_data: data.dataIso ?? data.data ?? null,
             sei_alerta_andamento_desatualizado: data.alerta_andamento_desatualizado ?? false,
+            sei_data_mais_recente_concluido: data.sei_data_mais_recente_concluido ?? null,
+            sei_descricao_mais_recente_concluido: data.sei_descricao_mais_recente_concluido ?? null,
+            sei_todos_andamentos_concluidos: data.todos_andamentos_concluidos ?? false,
           }),
         })
         if (patchRes.ok) {
@@ -732,8 +741,30 @@ export default function ObrasPage() {
                       <td className="px-6 py-4 max-w-[280px]">
                         {obra.sei_ultimo_andamento || obra.sei_ultimo_andamento_data ? (
                           <div className="text-sm">
+                            {obra.sei_todos_andamentos_concluidos && (
+                              <div className="flex items-center gap-1 text-emerald-600 mb-1" title="Todos os protocolos foram concluídos. Exibindo o último andamento.">
+                                <CheckCircle className="w-4 h-4 shrink-0" />
+                                <span className="text-xs font-medium">Todos concluídos</span>
+                              </div>
+                            )}
                             {obra.sei_alerta_andamento_desatualizado && (
-                              <div className="flex items-center gap-1 text-amber-600 mb-1" title="Existem andamentos concluídos mais recentes que o andamento aberto. Verifique o SEI.">
+                              <div
+                                className="flex items-center gap-1 text-amber-600 mb-1"
+                                title={
+                                  obra.sei_data_mais_recente_concluido
+                                    ? (() => {
+                                        try {
+                                          const d = new Date(obra.sei_data_mais_recente_concluido)
+                                          const fmt = Number.isNaN(d.getTime()) ? obra.sei_data_mais_recente_concluido : d.toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })
+                                          const hist = obra.sei_descricao_mais_recente_concluido?.trim()
+                                          return hist ? `Registro mais recente: ${fmt} - ${hist}. Verifique o SEI.` : `Registro mais recente: ${fmt}. Verifique o SEI.`
+                                        } catch {
+                                          return obra.sei_descricao_mais_recente_concluido?.trim() ? `Registro mais recente: ${obra.sei_descricao_mais_recente_concluido}. Verifique o SEI.` : 'Registro mais recente. Verifique o SEI.'
+                                        }
+                                      })()
+                                    : 'Registro mais recente. Verifique o SEI.'
+                                }
+                              >
                                 <AlertTriangle className="w-4 h-4 shrink-0" />
                                 <span className="text-xs font-medium">Andamento desatualizado</span>
                               </div>
