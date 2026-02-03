@@ -32,13 +32,26 @@ function parseSeiDate(str: string): string | null {
 }
 
 /**
- * Parseia o HTML da página SEI e retorna o último andamento (linha andamento/Aberto).
- * Procura tabela "Histórico de Andamentos" (id tblHistorico ou summary) e tr com class andamentoAberto.
+ * Extrai data (primeira célula) de uma linha HTML e retorna timestamp para comparação.
+ */
+function extractDateTimestampFromRow(rowContent: string): number | null {
+  const tdRegex = /<td[^>]*>([\s\S]*?)<\/td>/i
+  const m = rowContent.match(tdRegex)
+  if (!m) return null
+  const dataStr = stripHtml(m[1]).trim()
+  const iso = parseSeiDate(dataStr)
+  return iso ? new Date(iso).getTime() : null
+}
+
+/**
+ * Parseia o HTML da página SEI e retorna o último andamento (linha andamento/Aberto)
+ * e verifica se existem andamentoConcluido com data mais recente (caso atípico).
  */
 function parseAndamentoAbertoFromHtml(html: string): {
   data: string
   dataIso: string | null
   descricao: string
+  alerta_andamento_desatualizado: boolean
 } | null {
   // Normalizar: collapse espaços e quebras para facilitar regex
   const normalized = html.replace(/\s+/g, ' ')
@@ -75,7 +88,22 @@ function parseAndamentoAbertoFromHtml(html: string): {
     const rowMatch = tbodyContent.match(re)
     if (rowMatch) {
       const out = extractCellsFromRow(rowMatch[1])
-      if (out) return out
+      if (out) {
+        const abertoTs = out.dataIso ? new Date(out.dataIso).getTime() : null
+        let alerta = false
+        if (abertoTs != null) {
+          const concluidoRegex = /<tr[^>]*class="[^"]*andamentoConcluido[^"]*"[^>]*>([\s\S]*?)<\/tr>/gi
+          let m: RegExpExecArray | null
+          while ((m = concluidoRegex.exec(tbodyContent)) !== null) {
+            const ts = extractDateTimestampFromRow(m[1])
+            if (ts != null && ts > abertoTs) {
+              alerta = true
+              break
+            }
+          }
+        }
+        return { ...out, alerta_andamento_desatualizado: alerta }
+      }
     }
   }
 
@@ -94,7 +122,22 @@ function parseAndamentoAbertoFromHtml(html: string): {
         const rowContentMatch = rowHtml.match(/<tr[^>]*>([\s\S]*?)<\/tr>/i)
         if (rowContentMatch) {
           const out = extractCellsFromRow(rowContentMatch[1])
-          if (out) return out
+          if (out) {
+            const abertoTs = out.dataIso ? new Date(out.dataIso).getTime() : null
+            let alerta = false
+            if (abertoTs != null) {
+              const concluidoRegex = /<tr[^>]*class="[^"]*andamentoConcluido[^"]*"[^>]*>([\s\S]*?)<\/tr>/gi
+              let m: RegExpExecArray | null
+              while ((m = concluidoRegex.exec(tbodyContent)) !== null) {
+                const ts = extractDateTimestampFromRow(m[1])
+                if (ts != null && ts > abertoTs) {
+                  alerta = true
+                  break
+                }
+              }
+            }
+            return { ...out, alerta_andamento_desatualizado: alerta }
+          }
         }
       }
     }
@@ -148,8 +191,9 @@ export async function POST(request: Request) {
           errors.push('Item sem obraId')
           continue
         }
-        const payload: Record<string, string | null> = {}
+        const payload: Record<string, string | null | boolean> = {}
         if (item.sei_ultimo_andamento !== undefined) payload.sei_ultimo_andamento = item.sei_ultimo_andamento ?? null
+        if (item.sei_alerta_andamento_desatualizado !== undefined) payload.sei_alerta_andamento_desatualizado = Boolean(item.sei_alerta_andamento_desatualizado)
         if (item.sei_ultimo_andamento_data !== undefined) {
           const raw = item.sei_ultimo_andamento_data
           payload.sei_ultimo_andamento_data = (typeof raw === 'string' && raw.trim() ? (parseSeiDate(raw) ?? raw) : raw) ?? null
@@ -226,6 +270,7 @@ export async function POST(request: Request) {
       data: parsed.data,
       dataIso: parsed.dataIso,
       descricao: parsed.descricao,
+      alerta_andamento_desatualizado: parsed.alerta_andamento_desatualizado ?? false,
     })
   } catch (error: unknown) {
     console.error('Erro ao buscar andamento SEI:', error)

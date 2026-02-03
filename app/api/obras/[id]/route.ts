@@ -33,6 +33,7 @@ export async function PATCH(
       sei_url,
       sei_ultimo_andamento,
       sei_ultimo_andamento_data,
+      sei_alerta_andamento_desatualizado,
       status,
       publicacao_os,
       solicitacao_medicao,
@@ -51,6 +52,7 @@ export async function PATCH(
     if (sei_url !== undefined) updates.sei_url = sei_url ?? null
     if (sei_ultimo_andamento !== undefined) updates.sei_ultimo_andamento = sei_ultimo_andamento ?? null
     if (sei_ultimo_andamento_data !== undefined) updates.sei_ultimo_andamento_data = sei_ultimo_andamento_data ?? null
+    if (sei_alerta_andamento_desatualizado !== undefined) updates.sei_alerta_andamento_desatualizado = Boolean(sei_alerta_andamento_desatualizado)
     if (status !== undefined) updates.status = status ?? null
     if (publicacao_os !== undefined) updates.publicacao_os = publicacao_os || null
     if (solicitacao_medicao !== undefined) updates.solicitacao_medicao = solicitacao_medicao || null

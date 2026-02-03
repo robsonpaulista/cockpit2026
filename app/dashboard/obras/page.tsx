@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useMemo } from 'react'
 import { Header } from '@/components/header'
-import { Building2, MapPin, Calendar, DollarSign, User, Filter, Search, Plus, Edit, Trash2, Loader2, Upload, RefreshCw, Maximize2, Minimize2, FileSearch, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react'
+import { Building2, MapPin, Calendar, DollarSign, User, Filter, Search, Plus, Edit, Trash2, Loader2, Upload, RefreshCw, Maximize2, Minimize2, FileSearch, ArrowUpDown, ArrowUp, ArrowDown, AlertTriangle } from 'lucide-react'
 import { formatDate } from '@/lib/utils'
 import { ObrasImportModal } from '@/components/obras-import-modal'
 import { ObraFormModal, OBRAS_TIPOS } from '@/components/obra-form-modal'
@@ -20,6 +20,7 @@ interface Obra {
   sei_medicao?: string
   sei_ultimo_andamento?: string | null
   sei_ultimo_andamento_data?: string | null
+  sei_alerta_andamento_desatualizado?: boolean
   status?: string
   publicacao_os?: string
   solicitacao_medicao?: string
@@ -147,6 +148,7 @@ export default function ObrasPage() {
             body: JSON.stringify({
               sei_ultimo_andamento: data.descricao,
               sei_ultimo_andamento_data: data.dataIso ?? data.data ?? null,
+              sei_alerta_andamento_desatualizado: data.alerta_andamento_desatualizado ?? false,
             }),
           })
           if (patchRes.ok) {
@@ -169,6 +171,46 @@ export default function ObrasPage() {
     setSeiStatusProgress((p) => ({ ...p, lastError }))
     setSeiStatusUpdating(false)
     alert(`Concluído: ${ok} de ${comLink.length} andamentos atualizados.${lastError ? ` Último erro: ${lastError}` : ''}`)
+  }
+
+  const [updatingSeiObraId, setUpdatingSeiObraId] = useState<string | null>(null)
+
+  const handleAtualizarAndamentoSeiUnico = async (obra: Obra) => {
+    if (!obra.sei_url?.trim()) return
+    const url = obra.sei_url.startsWith('http') ? obra.sei_url : 'https://' + obra.sei_url
+    setUpdatingSeiObraId(obra.id)
+    try {
+      const res = await fetch('/api/obras/sei-status', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (res.ok && data.descricao != null) {
+        const patchRes = await fetch(`/api/obras/${obra.id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            sei_ultimo_andamento: data.descricao,
+            sei_ultimo_andamento_data: data.dataIso ?? data.data ?? null,
+            sei_alerta_andamento_desatualizado: data.alerta_andamento_desatualizado ?? false,
+          }),
+        })
+        if (patchRes.ok) {
+          const { obra: updated } = await patchRes.json()
+          setObras((prev) => prev.map((o) => (o.id === obra.id ? { ...o, ...updated } : o)))
+        } else {
+          const err = (await patchRes.json().catch(() => ({}))).error
+          alert(err || 'Erro ao salvar andamento.')
+        }
+      } else {
+        alert(data.error || 'Não foi possível obter o andamento do SEI.')
+      }
+    } catch (e) {
+      alert(e instanceof Error ? e.message : 'Erro ao atualizar.')
+    } finally {
+      setUpdatingSeiObraId(null)
+    }
   }
 
   const startEditCell = (obra: Obra, field: EditableField) => {
@@ -690,6 +732,12 @@ export default function ObrasPage() {
                       <td className="px-6 py-4 max-w-[280px]">
                         {obra.sei_ultimo_andamento || obra.sei_ultimo_andamento_data ? (
                           <div className="text-sm">
+                            {obra.sei_alerta_andamento_desatualizado && (
+                              <div className="flex items-center gap-1 text-amber-600 mb-1" title="Existem andamentos concluídos mais recentes que o andamento aberto. Verifique o SEI.">
+                                <AlertTriangle className="w-4 h-4 shrink-0" />
+                                <span className="text-xs font-medium">Andamento desatualizado</span>
+                              </div>
+                            )}
                             {obra.sei_ultimo_andamento_data && (
                               <div className="text-text-secondary font-mono text-xs mb-0.5">
                                 {(() => {
@@ -849,6 +897,17 @@ export default function ObrasPage() {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="flex items-center gap-1">
+                          {obra.sei_url?.trim() && (
+                            <button
+                              type="button"
+                              onClick={() => handleAtualizarAndamentoSeiUnico(obra)}
+                              disabled={updatingSeiObraId === obra.id || seiStatusUpdating}
+                              className="p-2 rounded-lg hover:bg-background transition-colors disabled:opacity-50"
+                              title="Atualizar andamento SEI desta obra"
+                            >
+                              <RefreshCw className={`w-4 h-4 text-secondary ${updatingSeiObraId === obra.id ? 'animate-spin' : ''}`} />
+                            </button>
+                          )}
                           <button
                             type="button"
                             onClick={() => {
