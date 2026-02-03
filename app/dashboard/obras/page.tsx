@@ -20,6 +20,8 @@ interface Obra {
   sei_medicao?: string
   sei_ultimo_andamento?: string | null
   sei_ultimo_andamento_data?: string | null
+  sei_ultimo_status?: string | null
+  sei_ultimo_status_data?: string | null
   sei_alerta_andamento_desatualizado?: boolean
   sei_data_mais_recente_concluido?: string | null
   sei_descricao_mais_recente_concluido?: string | null
@@ -58,7 +60,7 @@ export default function ObrasPage() {
   const [savingCell, setSavingCell] = useState(false)
   const [seiStatusUpdating, setSeiStatusUpdating] = useState(false)
   const [seiStatusProgress, setSeiStatusProgress] = useState({ current: 0, total: 0, lastError: '' })
-  type SortColumn = 'municipio' | 'obra' | 'orgao' | 'sei' | 'valor_total' | 'sei_ultimo_andamento' | 'status' | 'publicacao_os' | 'data_medicao' | 'status_medicao'
+  type SortColumn = 'municipio' | 'obra' | 'orgao' | 'sei' | 'valor_total' | 'sei_ultimo_andamento' | 'sei_ultimo_status' | 'status' | 'publicacao_os' | 'data_medicao' | 'status_medicao'
   const [sortColumn, setSortColumn] = useState<SortColumn | null>(null)
   const [sortAsc, setSortAsc] = useState(true)
 
@@ -155,6 +157,8 @@ export default function ObrasPage() {
               sei_data_mais_recente_concluido: data.sei_data_mais_recente_concluido ?? null,
               sei_descricao_mais_recente_concluido: data.sei_descricao_mais_recente_concluido ?? null,
               sei_todos_andamentos_concluidos: data.todos_andamentos_concluidos ?? false,
+              sei_ultimo_status: data.sei_ultimo_status ?? null,
+              sei_ultimo_status_data: data.sei_ultimo_status_data ?? null,
             }),
           })
           if (patchRes.ok) {
@@ -203,6 +207,8 @@ export default function ObrasPage() {
             sei_data_mais_recente_concluido: data.sei_data_mais_recente_concluido ?? null,
             sei_descricao_mais_recente_concluido: data.sei_descricao_mais_recente_concluido ?? null,
             sei_todos_andamentos_concluidos: data.todos_andamentos_concluidos ?? false,
+            sei_ultimo_status: data.sei_ultimo_status ?? null,
+            sei_ultimo_status_data: data.sei_ultimo_status_data ?? null,
           }),
         })
         if (patchRes.ok) {
@@ -363,6 +369,7 @@ export default function ObrasPage() {
         case 'sei': return (o.sei ?? '').toLowerCase()
         case 'valor_total': return o.valor_total ?? 0
         case 'sei_ultimo_andamento': return o.sei_ultimo_andamento_data ? new Date(o.sei_ultimo_andamento_data).getTime() : 0
+        case 'sei_ultimo_status': return o.sei_ultimo_status_data ? new Date(o.sei_ultimo_status_data).getTime() : (o.sei_ultimo_status ?? '').toLowerCase()
         case 'status': return (o.status ?? '').toLowerCase()
         case 'publicacao_os': {
           const d = parseDateOnly(o.publicacao_os ?? '')
@@ -644,16 +651,16 @@ export default function ObrasPage() {
               <table className="w-full">
                 <thead className="bg-background border-b border-card">
                   <tr>
-                    {(['municipio', 'obra', 'orgao', 'sei', 'valor_total', 'sei_ultimo_andamento', 'status', 'publicacao_os', 'data_medicao', 'status_medicao'] as const).map((col) => {
+                    {(['municipio', 'obra', 'orgao', 'sei', 'valor_total', 'sei_ultimo_andamento', 'sei_ultimo_status', 'status', 'publicacao_os', 'data_medicao', 'status_medicao'] as const).map((col) => {
                       const labels: Record<SortColumn, string> = {
                         municipio: 'Município', obra: 'Obra', orgao: 'Órgão', sei: 'SEI',
-                        valor_total: 'Valor Total', sei_ultimo_andamento: 'Últ. andamento SEI',
+                        valor_total: 'Valor Total', sei_ultimo_andamento: 'Últ. andamento SEI', sei_ultimo_status: 'Últ. Status SEI',
                         status: 'Status', publicacao_os: 'Pub. OS', data_medicao: 'Data Medição', status_medicao: 'Status Medição',
                       }
                       const isActive = sortColumn === col
                       const thClass = col === 'municipio' ? 'sticky left-0 z-10 px-6 py-3 text-left text-xs font-semibold text-secondary uppercase tracking-wider bg-background border-r border-card min-w-[120px]' :
                         col === 'obra' ? 'px-6 py-3 text-left text-xs font-semibold text-secondary uppercase tracking-wider min-w-[320px]' :
-                        col === 'sei_ultimo_andamento' ? 'px-6 py-3 text-left text-xs font-semibold text-secondary uppercase tracking-wider min-w-[200px]' :
+                        (col === 'sei_ultimo_andamento' || col === 'sei_ultimo_status') ? 'px-6 py-3 text-left text-xs font-semibold text-secondary uppercase tracking-wider min-w-[200px]' :
                         'px-6 py-3 text-left text-xs font-semibold text-secondary uppercase tracking-wider'
                       return (
                         <th key={col} className={thClass}>
@@ -783,6 +790,29 @@ export default function ObrasPage() {
                             )}
                             <div className="text-text-primary line-clamp-2" title={obra.sei_ultimo_andamento ?? undefined}>
                               {obra.sei_ultimo_andamento || '-'}
+                            </div>
+                          </div>
+                        ) : (
+                          <span className="text-sm text-text-secondary">—</span>
+                        )}
+                      </td>
+                      <td className="px-6 py-4 max-w-[220px]">
+                        {obra.sei_ultimo_status || obra.sei_ultimo_status_data ? (
+                          <div className="text-sm">
+                            {obra.sei_ultimo_status_data && (
+                              <div className="text-text-secondary font-mono text-xs mb-0.5">
+                                {(() => {
+                                  try {
+                                    const d = new Date(obra.sei_ultimo_status_data)
+                                    return Number.isNaN(d.getTime()) ? obra.sei_ultimo_status_data : d.toLocaleDateString('pt-BR')
+                                  } catch {
+                                    return obra.sei_ultimo_status_data
+                                  }
+                                })()}
+                              </div>
+                            )}
+                            <div className="text-text-primary line-clamp-2" title={obra.sei_ultimo_status ?? undefined}>
+                              {obra.sei_ultimo_status || '—'}
                             </div>
                           </div>
                         ) : (

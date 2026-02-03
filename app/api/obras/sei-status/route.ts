@@ -15,6 +15,190 @@ function stripHtml(html: string): string {
 }
 
 /**
+ * Parse DD/MM/YYYY para ISO (apenas data).
+ */
+function parseSeiDateOnly(str: string): string | null {
+  const m = str.trim().match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/)
+  if (!m) return null
+  const [, day, month, year] = m
+  const pad = (n: string) => n.padStart(2, '0')
+  const isoLocal = `${year}-${pad(month)}-${pad(day)}T12:00:00-03:00`
+  const d = new Date(isoLocal)
+  return Number.isNaN(d.getTime()) ? null : d.toISOString()
+}
+
+/**
+ * Encontra o bloco completo <table>...</table> contando aninhamento.
+ */
+function extractTableById(html: string, tableId: string): string | null {
+  const re = new RegExp(`<table[^>]*id=["']?${tableId}["']?[^>]*>`, 'i')
+  const openMatch = html.match(re)
+  if (!openMatch || openMatch.index === undefined) return null
+  const contentStart = openMatch.index + openMatch[0].length
+  let depth = 1
+  let i = contentStart
+  const lower = html.toLowerCase()
+  while (i < html.length) {
+    const nextOpen = lower.indexOf('<table', i)
+    const nextClose = lower.indexOf('</table>', i)
+    if (nextClose === -1) return null
+    if (nextOpen !== -1 && nextOpen < nextClose) {
+      depth++
+      i = nextOpen + 6
+      continue
+    }
+    depth--
+    if (depth === 0) return html.slice(contentStart, nextClose)
+    i = nextClose + 8
+  }
+  return null
+}
+
+/**
+ * Encontra tabela pelo texto do caption ou summary (ex: "Lista de Protocolos", "Lista de Documentos").
+ */
+function extractTableByCaptionOrSummary(html: string, ...keywords: string[]): string | null {
+  const lower = html.toLowerCase()
+  for (const kw of keywords) {
+    let needle = lower.indexOf(kw.toLowerCase())
+    while (needle !== -1) {
+      const before = html.slice(Math.max(0, needle - 2000), needle)
+      const tableOpen = before.lastIndexOf('<table')
+      if (tableOpen !== -1) {
+        const absStart = Math.max(0, needle - 2000) + tableOpen
+        const contentStart = html.indexOf('>', absStart) + 1
+        let depth = 1
+        let i = contentStart
+        while (i < html.length) {
+          const nextOpen = lower.indexOf('<table', i)
+          const nextClose = lower.indexOf('</table>', i)
+          if (nextClose === -1) break
+          if (nextOpen !== -1 && nextOpen < nextClose) {
+            depth++
+            i = nextOpen + 6
+            continue
+          }
+          depth--
+          if (depth === 0) return html.slice(contentStart, nextClose)
+          i = nextClose + 8
+        }
+      }
+      needle = lower.indexOf(kw.toLowerCase(), needle + 1)
+    }
+  }
+  return null
+}
+
+/**
+ * Extrai o último tr (infraTrClara ou infraTrEscura) da tabela tblDocumentos (Lista de Protocolos).
+ * Retorna o texto do status (ex: "SEFAZ: Autorização de Reserva Orçamentária") e a data.
+ */
+function parseUltimoStatusTblDocumentos(html: string): {
+  sei_ultimo_status: string | null
+  sei_ultimo_status_data: string | null
+} {
+  let tableContent = extractTableById(html, 'tblDocumentos')
+  if (!tableContent) {
+    tableContent = extractTableByCaptionOrSummary(
+      html,
+      'Lista de Protocolos',
+      'Lista de Documentos'
+    )
+  }
+  if (!tableContent) return { sei_ultimo_status: null, sei_ultimo_status_data: null }
+
+  const tbodyStart = tableContent.toLowerCase().indexOf('<tbody')
+  const tbodyEnd = tableContent.toLowerCase().indexOf('</tbody>')
+  const tbody = tbodyStart !== -1 && tbodyEnd > tbodyStart
+    ? tableContent.slice(tableContent.indexOf('>', tbodyStart) + 1, tbodyEnd)
+    : tableContent
+
+  // Match <tr> with class containing infraTrClara ou infraTrEscura
+  const trClassRe = /<tr[^>]*class=["'][^"']*infraTr(Clara|Escura)[^"']*["'][^>]*>/gi
+  const matches: number[] = []
+  let m: RegExpExecArray | null
+  while ((m = trClassRe.exec(tbody)) !== null) matches.push(m.index)
+  let lastTrStart = matches.length > 0 ? matches[matches.length - 1]! : -1
+
+  // Fallback: <tr> com infraTrClara/infraTrEscura em qualquer lugar da tag (ex: outro ordem de atributos)
+  if (lastTrStart === -1) {
+    const flexRe = /<tr[^>]*infraTr(Clara|Escura)[^>]*>/gi
+    const flexMatches: number[] = []
+    while ((m = flexRe.exec(tbody)) !== null) flexMatches.push(m.index)
+    if (flexMatches.length > 0) lastTrStart = flexMatches[flexMatches.length - 1]!
+  }
+
+  let source = tbody
+  if (lastTrStart === -1) {
+    const fullRe = /<tr[^>]*infraTr(Clara|Escura)[^>]*>/gi
+    const fullMatches: number[] = []
+    let fm: RegExpExecArray | null
+    while ((fm = fullRe.exec(html)) !== null) fullMatches.push(fm.index)
+    if (fullMatches.length > 0) {
+      source = html
+      lastTrStart = fullMatches[fullMatches.length - 1]!
+    }
+  }
+  if (lastTrStart === -1) return { sei_ultimo_status: null, sei_ultimo_status_data: null }
+
+  const fromTr = source.slice(lastTrStart)
+  const trTagEnd = fromTr.indexOf('>') + 1
+  const rowContent = fromTr.slice(trTagEnd)
+  const lowerRow = rowContent.toLowerCase()
+  let depth = 1
+  let pos = 0
+  let endPos = -1
+  while (pos < lowerRow.length) {
+    const nextTr = lowerRow.indexOf('<tr', pos)
+    const nextTrClose = lowerRow.indexOf('</tr>', pos)
+    if (nextTrClose === -1) break
+    if (nextTr !== -1 && nextTr < nextTrClose) {
+      depth++
+      pos = nextTr + 3
+      continue
+    }
+    depth--
+    if (depth === 0) {
+      endPos = nextTrClose
+      break
+    }
+    pos = nextTrClose + 5
+  }
+  const rowHtml = endPos !== -1 ? rowContent.slice(0, endPos) : rowContent
+  const tdRegex = /<td[^>]*>([\s\S]*?)<\/td>/gi
+  const cells: string[] = []
+  let td: RegExpExecArray | null
+  while ((td = tdRegex.exec(rowHtml)) !== null) cells.push(stripHtml(td[1]))
+  // Status: célula no formato "ORGAO: Descrição" (ex: "SEFAZ: Autorização de Reserva Orçamentária")
+  const statusPattern = /^[A-Z][A-Z0-9\-]+:\s*.+/
+  let status: string | null = (cells[2]?.trim() && statusPattern.test(cells[2].trim())) ? cells[2].trim() : null
+  if (!status) {
+    const found = cells.find((c) => c && statusPattern.test(c.trim()))
+    status = found?.trim() ?? null
+  }
+  // Fallback: qualquer célula que pareça descrição de status (contém ":" e texto razoável)
+  if (!status) {
+    const desc = cells.find((c) => {
+      const t = c?.trim() ?? ''
+      return t.length > 8 && t.includes(':') && !/^\d{1,2}\/\d{1,2}\/\d{4}/.test(t)
+    })
+    status = desc?.trim() ?? null
+  }
+  // Data: primeira célula no formato DD/MM/YYYY (ex: 02/02/2026)
+  const datePattern = /^\d{1,2}\/\d{1,2}\/\d{4}$/
+  let dataStr: string | null = (cells[3]?.trim() && datePattern.test(cells[3].trim())) ? cells[3].trim() : null
+  if (!dataStr) {
+    const found = cells.find((c) => c && datePattern.test(c.trim()))
+    dataStr = found?.trim() ?? null
+  }
+  const dataIso = dataStr ? parseSeiDateOnly(dataStr) : null
+  return {
+    sei_ultimo_status: status || null,
+    sei_ultimo_status_data: dataIso ?? dataStr,
+  }
+}
+
+/**
  * Parse "DD/MM/YYYY HH:mm" (horário Brasília, UTC-3) para ISO string (UTC) para TIMESTAMPTZ.
  * O SEI exibe datas no fuso do Brasil; o servidor (ex. Vercel) roda em UTC.
  * Interpretar explicitamente como UTC-3 evita diferença de 3h na exibição.
@@ -241,6 +425,11 @@ export async function POST(request: Request) {
         }
         if (item.sei_descricao_mais_recente_concluido !== undefined) payload.sei_descricao_mais_recente_concluido = item.sei_descricao_mais_recente_concluido ?? null
         if (item.sei_todos_andamentos_concluidos !== undefined) payload.sei_todos_andamentos_concluidos = Boolean(item.sei_todos_andamentos_concluidos)
+        if (item.sei_ultimo_status !== undefined) payload.sei_ultimo_status = item.sei_ultimo_status ?? null
+        if (item.sei_ultimo_status_data !== undefined) {
+          const raw = item.sei_ultimo_status_data
+          payload.sei_ultimo_status_data = (typeof raw === 'string' && raw.trim() ? (parseSeiDateOnly(raw) ?? parseSeiDate(raw) ?? raw) : raw) ?? null
+        }
         if (item.sei_ultimo_andamento_data !== undefined) {
           const raw = item.sei_ultimo_andamento_data
           payload.sei_ultimo_andamento_data = (typeof raw === 'string' && raw.trim() ? (parseSeiDate(raw) ?? raw) : raw) ?? null
@@ -301,11 +490,25 @@ export async function POST(request: Request) {
       )
     }
 
-    const html = await res.text()
-    const parsed = parseAndamentoAbertoFromHtml(html)
+    const buf = await res.arrayBuffer()
+    let html = new TextDecoder('utf-8').decode(buf)
+    let parsed = parseAndamentoAbertoFromHtml(html)
+    let ultimoStatus = parseUltimoStatusTblDocumentos(html)
+    // Se Últ. Status veio vazio, tentar página em Latin-1 (comum em portais gov).
+    if (!ultimoStatus.sei_ultimo_status && !ultimoStatus.sei_ultimo_status_data) {
+      const htmlLatin1 = new TextDecoder('iso-8859-1').decode(buf)
+      const statusLatin1 = parseUltimoStatusTblDocumentos(htmlLatin1)
+      if (statusLatin1.sei_ultimo_status || statusLatin1.sei_ultimo_status_data) {
+        ultimoStatus = statusLatin1
+        html = htmlLatin1
+      }
+      if (!parsed && htmlLatin1 !== html) {
+        parsed = parseAndamentoAbertoFromHtml(htmlLatin1)
+        if (parsed) html = htmlLatin1
+      }
+    }
 
     if (!parsed) {
-      // 200 com found: false para o cliente não interpretar como "rota não existe"
       return NextResponse.json({
         found: false,
         error: 'Não foi possível encontrar o andamento aberto na página (tabela Histórico de Andamentos). A página pode ser carregada por JavaScript ou a estrutura do SEI mudou.',
@@ -321,13 +524,12 @@ export async function POST(request: Request) {
       sei_data_mais_recente_concluido: parsed.sei_data_mais_recente_concluido ?? null,
       sei_descricao_mais_recente_concluido: parsed.sei_descricao_mais_recente_concluido ?? null,
       todos_andamentos_concluidos: parsed.todos_andamentos_concluidos ?? false,
+      sei_ultimo_status: ultimoStatus.sei_ultimo_status ?? null,
+      sei_ultimo_status_data: ultimoStatus.sei_ultimo_status_data ?? null,
     })
-  } catch (error: unknown) {
-    console.error('Erro ao buscar andamento SEI:', error)
+  } catch {
     return NextResponse.json(
-      {
-        error: error instanceof Error ? error.message : 'Erro interno ao processar página SEI',
-      },
+      { error: 'Erro interno ao processar página SEI' },
       { status: 500 }
     )
   }

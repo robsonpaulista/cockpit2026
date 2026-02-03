@@ -21,6 +21,7 @@ import {
   Vote,
   Building2,
   Shield,
+  Search,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { MenuItem } from '@/types'
@@ -43,6 +44,7 @@ const menuItems: MenuItem[] = [
   { id: 'operacao', label: 'Operação & Equipe', icon: 'Settings', href: '/dashboard/operacao' },
   { id: 'juridico', label: 'Jurídico', icon: 'Scale', href: '/dashboard/juridico' },
   { id: 'obras', label: 'Obras', icon: 'Building2', href: '/dashboard/obras' },
+  { id: 'sei-pesquisa', label: 'Pesquisa SEI (teste)', icon: 'Search', href: '/dashboard/sei-pesquisa' },
   { id: 'usuarios', label: 'Gestão de Usuários', icon: 'Shield', href: '/dashboard/usuarios' },
 ]
 
@@ -61,6 +63,7 @@ const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
   Vote,
   Building2,
   Shield,
+  Search,
 }
 
 function pageKeyForItem(id: string): string {
