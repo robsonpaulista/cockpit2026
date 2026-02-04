@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useMemo, useRef } from 'react'
 import { Header } from '@/components/header'
-import { Building2, MapPin, Calendar, DollarSign, User, Filter, Search, Plus, Edit, Trash2, Loader2, Upload, RefreshCw, Maximize2, Minimize2, FileSearch, ArrowUpDown, ArrowUp, ArrowDown, AlertTriangle, CheckCircle, Columns3, FileDown } from 'lucide-react'
+import { Building2, MapPin, DollarSign, Filter, Search, Plus, Edit, Trash2, Loader2, Upload, RefreshCw, Maximize2, Minimize2, FileSearch, ArrowUpDown, ArrowUp, ArrowDown, AlertTriangle, CheckCircle, Columns3, FileDown } from 'lucide-react'
 import * as XLSX from 'xlsx'
 import { formatDate } from '@/lib/utils'
 import { ObrasImportModal } from '@/components/obras-import-modal'
@@ -592,42 +592,44 @@ export default function ObrasPage() {
         </div>
 
         {/* Estatísticas */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-          <div className="bg-bg-surface rounded-xl border border-border-card shadow-card p-4">
-            <div className="flex items-center gap-2 mb-2">
-              <Building2 className="w-5 h-5 text-accent-gold" />
-              <span className="text-sm font-medium text-text-secondary">Total de Obras</span>
+        {(() => {
+          const tipoNorm = (t: string | null | undefined) => ((t ?? '').trim() || 'obras diversas') as ObraTipoAba
+          const totalPavimentacao = obras.filter((o) => tipoNorm(o.tipo) === 'pavimentação').reduce((s, o) => s + (o.valor_total || 0), 0)
+          const totalObrasDiversas = obras.filter((o) => tipoNorm(o.tipo) === 'obras diversas').reduce((s, o) => s + (o.valor_total || 0), 0)
+          const totalGeral = obras.reduce((s, o) => s + (o.valor_total || 0), 0)
+          return (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+              <div className="bg-bg-surface rounded-xl border border-border-card shadow-card p-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <Building2 className="w-5 h-5 text-accent-gold" />
+                  <span className="text-sm font-medium text-text-secondary">Total de Obras</span>
+                </div>
+                <p className="text-2xl font-bold text-text-primary">{obras.length}</p>
+              </div>
+              <div className="bg-bg-surface rounded-xl border border-border-card shadow-card p-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <DollarSign className="w-5 h-5 text-accent-gold" />
+                  <span className="text-sm font-medium text-text-secondary">Total Pavimentação</span>
+                </div>
+                <p className="text-2xl font-bold text-text-primary">{formatCurrency(totalPavimentacao)}</p>
+              </div>
+              <div className="bg-bg-surface rounded-xl border border-border-card shadow-card p-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <DollarSign className="w-5 h-5 text-accent-gold" />
+                  <span className="text-sm font-medium text-text-secondary">Total Obras Diversas</span>
+                </div>
+                <p className="text-2xl font-bold text-text-primary">{formatCurrency(totalObrasDiversas)}</p>
+              </div>
+              <div className="bg-bg-surface rounded-xl border border-border-card shadow-card p-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <DollarSign className="w-5 h-5 text-accent-gold" />
+                  <span className="text-sm font-medium text-text-secondary">Total Geral</span>
+                </div>
+                <p className="text-2xl font-bold text-text-primary">{formatCurrency(totalGeral)}</p>
+              </div>
             </div>
-            <p className="text-2xl font-bold text-text-primary">{obras.length}</p>
-          </div>
-          <div className="bg-bg-surface rounded-xl border border-border-card shadow-card p-4">
-            <div className="flex items-center gap-2 mb-2">
-              <DollarSign className="w-5 h-5 text-accent-gold" />
-              <span className="text-sm font-medium text-text-secondary">Valor Total Orçado</span>
-            </div>
-            <p className="text-2xl font-bold text-text-primary">
-              {formatCurrency(obras.reduce((sum, o) => sum + (o.valor_total || 0), 0))}
-            </p>
-          </div>
-          <div className="bg-bg-surface rounded-xl border border-border-card shadow-card p-4">
-            <div className="flex items-center gap-2 mb-2">
-              <Calendar className="w-5 h-5 text-accent-gold" />
-              <span className="text-sm font-medium text-text-secondary">Com Medição</span>
-            </div>
-            <p className="text-2xl font-bold text-text-primary">
-              {obras.filter((o) => o.data_medicao).length}
-            </p>
-          </div>
-          <div className="bg-bg-surface rounded-xl border border-border-card shadow-card p-4">
-            <div className="flex items-center gap-2 mb-2">
-              <User className="w-5 h-5 text-accent-gold" />
-              <span className="text-sm font-medium text-text-secondary">Órgãos Diferentes</span>
-            </div>
-            <p className="text-2xl font-bold text-text-primary">
-              {orgaos.length}
-            </p>
-          </div>
-        </div>
+          )
+        })()}
 
         {/* Tabela de Obras */}
         <div className="bg-bg-surface rounded-2xl border border-border-card shadow-card overflow-hidden">
