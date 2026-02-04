@@ -1,8 +1,9 @@
 'use client'
 
-import { useEffect, useState, useMemo } from 'react'
+import { useEffect, useState, useMemo, useRef } from 'react'
 import { Header } from '@/components/header'
-import { Building2, MapPin, Calendar, DollarSign, User, Filter, Search, Plus, Edit, Trash2, Loader2, Upload, RefreshCw, Maximize2, Minimize2, FileSearch, ArrowUpDown, ArrowUp, ArrowDown, AlertTriangle, CheckCircle } from 'lucide-react'
+import { Building2, MapPin, Calendar, DollarSign, User, Filter, Search, Plus, Edit, Trash2, Loader2, Upload, RefreshCw, Maximize2, Minimize2, FileSearch, ArrowUpDown, ArrowUp, ArrowDown, AlertTriangle, CheckCircle, Columns3, FileDown } from 'lucide-react'
+import * as XLSX from 'xlsx'
 import { formatDate } from '@/lib/utils'
 import { ObrasImportModal } from '@/components/obras-import-modal'
 import { ObraFormModal, OBRAS_TIPOS } from '@/components/obra-form-modal'
@@ -61,6 +62,26 @@ export default function ObrasPage() {
   const [seiStatusUpdating, setSeiStatusUpdating] = useState(false)
   const [seiStatusProgress, setSeiStatusProgress] = useState({ current: 0, total: 0, lastError: '' })
   type SortColumn = 'municipio' | 'obra' | 'orgao' | 'sei' | 'valor_total' | 'sei_ultimo_andamento' | 'sei_ultimo_status' | 'status' | 'publicacao_os' | 'data_medicao' | 'status_medicao'
+  const TABLE_COLUMNS: SortColumn[] = ['municipio', 'obra', 'orgao', 'sei', 'valor_total', 'sei_ultimo_andamento', 'sei_ultimo_status', 'status', 'publicacao_os', 'data_medicao', 'status_medicao']
+  const COLUMN_LABELS: Record<SortColumn, string> = {
+    municipio: 'Município', obra: 'Obra', orgao: 'Órgão', sei: 'SEI',
+    valor_total: 'Valor Total', sei_ultimo_andamento: 'Últ. andamento SEI', sei_ultimo_status: 'Últ. Status SEI',
+    status: 'Status', publicacao_os: 'Pub. OS', data_medicao: 'Data Medição', status_medicao: 'Status Medição',
+  }
+  const [visibleColumns, setVisibleColumns] = useState<Record<SortColumn, boolean>>(() => {
+    if (typeof window === 'undefined') return TABLE_COLUMNS.reduce((acc, c) => ({ ...acc, [c]: true }), {} as Record<SortColumn, boolean>)
+    try {
+      const saved = window.localStorage.getItem('obras-visible-columns')
+      if (saved) {
+        const parsed = JSON.parse(saved) as Record<string, boolean>
+        const out = TABLE_COLUMNS.reduce((acc, c) => ({ ...acc, [c]: parsed[c] !== false }), {} as Record<SortColumn, boolean>)
+        return out
+      }
+    } catch { /* ignore */ }
+    return TABLE_COLUMNS.reduce((acc, c) => ({ ...acc, [c]: true }), {} as Record<SortColumn, boolean>)
+  })
+  const [showColumnPicker, setShowColumnPicker] = useState(false)
+  const columnPickerRef = useRef<HTMLDivElement>(null)
   const [sortColumn, setSortColumn] = useState<SortColumn | null>(null)
   const [sortAsc, setSortAsc] = useState(true)
 
@@ -71,10 +92,61 @@ export default function ObrasPage() {
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape' && fullscreen) setFullscreen(false)
+      if (e.key === 'Escape' && showColumnPicker) setShowColumnPicker(false)
     }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
-  }, [fullscreen])
+  }, [fullscreen, showColumnPicker])
+
+  useEffect(() => {
+    if (!showColumnPicker) return
+    const onMouseDown = (e: MouseEvent) => {
+      if (columnPickerRef.current && !columnPickerRef.current.contains(e.target as Node)) {
+        setShowColumnPicker(false)
+      }
+    }
+    window.addEventListener('mousedown', onMouseDown)
+    return () => window.removeEventListener('mousedown', onMouseDown)
+  }, [showColumnPicker])
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem('obras-visible-columns', JSON.stringify(visibleColumns))
+    } catch { /* ignore */ }
+  }, [visibleColumns])
+
+  const toggleColumn = (col: SortColumn) => {
+    setVisibleColumns((prev) => {
+      const next = { ...prev, [col]: !prev[col] }
+      const visibleCount = TABLE_COLUMNS.filter((c) => next[c]).length
+      if (visibleCount === 0) return prev
+      return next
+    })
+  }
+
+  const visibleColsList = useMemo(() => TABLE_COLUMNS.filter((c) => visibleColumns[c]), [visibleColumns])
+
+  const handleExportExcel = () => {
+    const rows = sortedObras.map((o) => {
+      const row: Record<string, string | number> = {}
+      visibleColsList.forEach((col) => {
+        const label = COLUMN_LABELS[col]
+        const v = o[col]
+        if (col === 'valor_total') row[label] = typeof v === 'number' ? v : 0
+        else if (col === 'publicacao_os' || col === 'data_medicao') row[label] = v && typeof v === 'string' ? (formatDateFull(v) ?? v) : ''
+        else if (col === 'sei_ultimo_andamento' || col === 'sei_ultimo_status') {
+          const dataStr = col === 'sei_ultimo_andamento' ? o.sei_ultimo_andamento_data : o.sei_ultimo_status_data
+          const dataFmt = dataStr && typeof dataStr === 'string' ? (() => { try { const d = new Date(dataStr); return Number.isNaN(d.getTime()) ? dataStr : d.toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }); } catch { return dataStr; } })() : ''
+          row[label] = [dataFmt, (v && String(v)) || ''].filter(Boolean).join(' — ') || '-'
+        } else row[label] = v != null ? String(v) : ''
+      })
+      return row
+    })
+    const ws = XLSX.utils.json_to_sheet(rows.length ? rows : [{ '': 'Nenhum registro' }])
+    const wb = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(wb, ws, 'Lista de Obras')
+    XLSX.writeFile(wb, `lista-obras-${new Date().toISOString().slice(0, 10)}.xlsx`)
+  }
 
   const handleSeiCellDoubleClick = (obra: Obra) => {
     if (obra.sei_url?.trim()) {
@@ -608,6 +680,43 @@ export default function ObrasPage() {
                 {fullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
                 {fullscreen ? 'Sair da tela cheia' : 'Tela cheia'}
               </button>
+              <div className="relative" ref={columnPickerRef}>
+                <button
+                  type="button"
+                  onClick={() => setShowColumnPicker((v) => !v)}
+                  className="flex items-center gap-2 px-4 py-2 border border-border-card rounded-lg hover:bg-bg-app transition-colors"
+                  title="Mostrar ou ocultar colunas"
+                >
+                  <Columns3 className="w-4 h-4" />
+                  Colunas
+                </button>
+                {showColumnPicker && (
+                  <div className="absolute right-0 top-full mt-1 z-20 min-w-[200px] py-2 bg-bg-surface border border-border-card rounded-lg shadow-lg">
+                    <div className="px-3 py-1.5 text-xs font-semibold text-secondary uppercase">Colunas visíveis</div>
+                    {TABLE_COLUMNS.map((col) => (
+                      <label key={col} className="flex items-center gap-2 px-3 py-1.5 hover:bg-background cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={visibleColumns[col]}
+                          onChange={() => toggleColumn(col)}
+                          className="rounded border-card"
+                        />
+                        <span className="text-sm">{COLUMN_LABELS[col]}</span>
+                      </label>
+                    ))}
+                  </div>
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={handleExportExcel}
+                disabled={sortedObras.length === 0}
+                className="flex items-center gap-2 px-4 py-2 border border-border-card rounded-lg hover:bg-bg-app transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                title="Exportar lista visível para Excel"
+              >
+                <FileDown className="w-4 h-4" />
+                Exportar Excel
+              </button>
             </div>
           </div>
 
@@ -651,26 +760,24 @@ export default function ObrasPage() {
               <table className="w-full">
                 <thead className="bg-background border-b border-card">
                   <tr>
-                    {(['municipio', 'obra', 'orgao', 'sei', 'valor_total', 'sei_ultimo_andamento', 'sei_ultimo_status', 'status', 'publicacao_os', 'data_medicao', 'status_medicao'] as const).map((col) => {
-                      const labels: Record<SortColumn, string> = {
-                        municipio: 'Município', obra: 'Obra', orgao: 'Órgão', sei: 'SEI',
-                        valor_total: 'Valor Total', sei_ultimo_andamento: 'Últ. andamento SEI', sei_ultimo_status: 'Últ. Status SEI',
-                        status: 'Status', publicacao_os: 'Pub. OS', data_medicao: 'Data Medição', status_medicao: 'Status Medição',
-                      }
+                    {visibleColsList.map((col) => {
                       const isActive = sortColumn === col
-                      const thClass = col === 'municipio' ? 'sticky left-0 z-10 px-6 py-3 text-left text-xs font-semibold text-secondary uppercase tracking-wider bg-background border-r border-card min-w-[120px]' :
-                        col === 'obra' ? 'px-6 py-3 text-left text-xs font-semibold text-secondary uppercase tracking-wider min-w-[320px]' :
-                        (col === 'sei_ultimo_andamento' || col === 'sei_ultimo_status') ? 'px-6 py-3 text-left text-xs font-semibold text-secondary uppercase tracking-wider min-w-[200px]' :
-                        'px-6 py-3 text-left text-xs font-semibold text-secondary uppercase tracking-wider'
+                      const isFirstVisible = visibleColsList[0] === col
+                      const stickyClass = isFirstVisible ? 'sticky left-0 z-10 bg-background border-r border-card' : ''
+                      const thClass = [
+                        'px-6 py-3 text-left text-xs font-semibold text-secondary uppercase tracking-wider',
+                        stickyClass,
+                        col === 'municipio' ? 'min-w-[120px]' : col === 'obra' ? 'min-w-[320px]' : (col === 'sei_ultimo_andamento' || col === 'sei_ultimo_status') ? 'min-w-[200px]' : '',
+                      ].filter(Boolean).join(' ')
                       return (
                         <th key={col} className={thClass}>
                           <button
                             type="button"
                             onClick={() => toggleSort(col)}
                             className="flex items-center gap-1 hover:text-primary transition-colors w-full text-left"
-                            title={`Ordenar ${labels[col]} (${sortColumn === col && !sortAsc ? 'A→Z' : 'Z→A'})`}
+                            title={`Ordenar ${COLUMN_LABELS[col]} (${sortColumn === col && !sortAsc ? 'A→Z' : 'Z→A'})`}
                           >
-                            {labels[col]}
+                            {COLUMN_LABELS[col]}
                             {isActive ? (sortAsc ? <ArrowUp className="w-3.5 h-3.5" /> : <ArrowDown className="w-3.5 h-3.5" />) : <ArrowUpDown className="w-3.5 h-3.5 opacity-50" />}
                           </button>
                         </th>
@@ -684,17 +791,24 @@ export default function ObrasPage() {
                 <tbody className="divide-y divide-card bg-surface">
                   {sortedObras.map((obra) => (
                     <tr key={obra.id} className="group hover:bg-background/50 transition-colors">
-                      <td className="sticky left-0 z-10 px-6 py-4 whitespace-nowrap bg-surface group-hover:bg-background/50 border-r border-card min-w-[120px]">
-                        <div className="text-sm font-semibold text-primary">{obra.municipio || '-'}</div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap min-w-[320px]">
-                        <span className="text-sm font-semibold text-primary">{obra.obra}</span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className="text-sm text-secondary">{obra.orgao || '-'}</span>
-                      </td>
+                      {visibleColumns.municipio && (
+                        <td className={`px-6 py-4 whitespace-nowrap min-w-[120px] ${visibleColsList[0] === 'municipio' ? 'sticky left-0 z-10 bg-surface group-hover:bg-background/50 border-r border-card' : ''}`}>
+                          <div className="text-sm font-semibold text-primary">{obra.municipio || '-'}</div>
+                        </td>
+                      )}
+                      {visibleColumns.obra && (
+                        <td className={`px-6 py-4 whitespace-nowrap min-w-[320px] ${visibleColsList[0] === 'obra' ? 'sticky left-0 z-10 bg-surface group-hover:bg-background/50 border-r border-card' : ''}`}>
+                          <span className="text-sm font-semibold text-primary">{obra.obra}</span>
+                        </td>
+                      )}
+                      {visibleColumns.orgao && (
+                        <td className={`px-6 py-4 whitespace-nowrap ${visibleColsList[0] === 'orgao' ? 'sticky left-0 z-10 bg-surface group-hover:bg-background/50 border-r border-card' : ''}`}>
+                          <span className="text-sm text-secondary">{obra.orgao || '-'}</span>
+                        </td>
+                      )}
+                      {visibleColumns.sei && (
                       <td
-                        className="px-6 py-4 whitespace-nowrap cursor-pointer align-top"
+                        className={`px-6 py-4 whitespace-nowrap cursor-pointer align-top min-w-[280px] ${visibleColsList[0] === 'sei' ? 'sticky left-0 z-10 bg-surface group-hover:bg-background/50 border-r border-card' : ''}`}
                         onDoubleClick={() => handleSeiCellDoubleClick(obra)}
                         title="Duplo clique para definir link do SEI no site do governo"
                       >
@@ -740,12 +854,16 @@ export default function ObrasPage() {
                           <span className="text-sm text-secondary font-mono">{obra.sei || '-'}</span>
                         )}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
+                      )}
+                      {visibleColumns.valor_total && (
+                      <td className={`px-6 py-4 whitespace-nowrap ${visibleColsList[0] === 'valor_total' ? 'sticky left-0 z-10 bg-surface group-hover:bg-background/50 border-r border-card' : ''}`}>
                         <div className="text-sm font-semibold text-primary">
                           {formatCurrency(obra.valor_total)}
                         </div>
                       </td>
-                      <td className="px-6 py-4 max-w-[280px]">
+                      )}
+                      {visibleColumns.sei_ultimo_andamento && (
+                      <td className={`px-6 py-4 max-w-[280px] ${visibleColsList[0] === 'sei_ultimo_andamento' ? 'sticky left-0 z-10 bg-surface group-hover:bg-background/50 border-r border-card' : ''}`}>
                         {obra.sei_ultimo_andamento || obra.sei_ultimo_andamento_data ? (
                           <div className="text-sm">
                             {obra.sei_todos_andamentos_concluidos && (
@@ -796,7 +914,9 @@ export default function ObrasPage() {
                           <span className="text-sm text-text-secondary">—</span>
                         )}
                       </td>
-                      <td className="px-6 py-4 max-w-[220px]">
+                      )}
+                      {visibleColumns.sei_ultimo_status && (
+                      <td className={`px-6 py-4 max-w-[220px] ${visibleColsList[0] === 'sei_ultimo_status' ? 'sticky left-0 z-10 bg-surface group-hover:bg-background/50 border-r border-card' : ''}`}>
                         {obra.sei_ultimo_status || obra.sei_ultimo_status_data ? (
                           <div className="text-sm">
                             {obra.sei_ultimo_status_data && (
@@ -819,8 +939,10 @@ export default function ObrasPage() {
                           <span className="text-sm text-text-secondary">—</span>
                         )}
                       </td>
+                      )}
+                      {visibleColumns.status && (
                       <td
-                        className="px-6 py-4 whitespace-nowrap cursor-pointer align-top"
+                        className={`px-6 py-4 whitespace-nowrap cursor-pointer align-top ${visibleColsList[0] === 'status' ? 'sticky left-0 z-10 bg-surface group-hover:bg-background/50 border-r border-card' : ''}`}
                         onDoubleClick={() => startEditCell(obra, 'status')}
                         title="Duplo clique para editar"
                       >
@@ -858,8 +980,10 @@ export default function ObrasPage() {
                           </span>
                         )}
                       </td>
+                      )}
+                      {visibleColumns.publicacao_os && (
                       <td
-                        className="px-6 py-4 whitespace-nowrap cursor-pointer align-top"
+                        className={`px-6 py-4 whitespace-nowrap cursor-pointer align-top ${visibleColsList[0] === 'publicacao_os' ? 'sticky left-0 z-10 bg-surface group-hover:bg-background/50 border-r border-card' : ''}`}
                         onDoubleClick={() => startEditCell(obra, 'publicacao_os')}
                         title="Duplo clique para editar"
                       >
@@ -890,8 +1014,10 @@ export default function ObrasPage() {
                           </div>
                         )}
                       </td>
+                      )}
+                      {visibleColumns.data_medicao && (
                       <td
-                        className="px-6 py-4 whitespace-nowrap cursor-pointer align-top"
+                        className={`px-6 py-4 whitespace-nowrap cursor-pointer align-top ${visibleColsList[0] === 'data_medicao' ? 'sticky left-0 z-10 bg-surface group-hover:bg-background/50 border-r border-card' : ''}`}
                         onDoubleClick={() => startEditCell(obra, 'data_medicao')}
                         title="Duplo clique para editar"
                       >
@@ -919,8 +1045,10 @@ export default function ObrasPage() {
                           </div>
                         )}
                       </td>
+                      )}
+                      {visibleColumns.status_medicao && (
                       <td
-                        className="px-6 py-4 whitespace-nowrap cursor-pointer align-top"
+                        className={`px-6 py-4 whitespace-nowrap cursor-pointer align-top ${visibleColsList[0] === 'status_medicao' ? 'sticky left-0 z-10 bg-surface group-hover:bg-background/50 border-r border-card' : ''}`}
                         onDoubleClick={() => startEditCell(obra, 'status_medicao')}
                         title="Duplo clique para editar"
                       >
@@ -956,6 +1084,7 @@ export default function ObrasPage() {
                           </span>
                         )}
                       </td>
+                      )}
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="flex items-center gap-1">
                           {obra.sei_url?.trim() && (

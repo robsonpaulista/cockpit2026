@@ -4,7 +4,9 @@ import { Sidebar } from '@/components/sidebar'
 import { ProtectedRoute } from '@/components/protected-route'
 import { DashboardHeader } from '@/components/dashboard-header'
 import { DashboardPermissionGuard } from '@/components/dashboard-permission-guard'
+import { NavigationLoadingBar } from '@/components/navigation-loading-bar'
 import { SidebarProvider, useSidebar } from '@/contexts/sidebar-context'
+import { NavigationLoadingProvider } from '@/contexts/navigation-loading-context'
 import { cn } from '@/lib/utils'
 
 function DashboardContent({ children }: { children: React.ReactNode }) {
@@ -12,6 +14,7 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="flex h-screen overflow-hidden">
+      <NavigationLoadingBar />
       <Sidebar />
       <div className={cn(
         'flex-1 flex flex-col overflow-hidden transition-all duration-300 ease-out',
@@ -33,9 +36,11 @@ export default function DashboardLayout({
 }) {
   return (
     <ProtectedRoute>
-      <SidebarProvider>
-        <DashboardContent>{children}</DashboardContent>
-      </SidebarProvider>
+      <NavigationLoadingProvider>
+        <SidebarProvider>
+          <DashboardContent>{children}</DashboardContent>
+        </SidebarProvider>
+      </NavigationLoadingProvider>
     </ProtectedRoute>
   )
 }

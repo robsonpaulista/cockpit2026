@@ -26,6 +26,7 @@ import {
 import { cn } from '@/lib/utils'
 import { MenuItem } from '@/types'
 import { useSidebar } from '@/contexts/sidebar-context'
+import { useNavigationLoading } from '@/contexts/navigation-loading-context'
 import { usePermissions } from '@/hooks/use-permissions'
 
 const menuItems: MenuItem[] = [
@@ -72,6 +73,7 @@ function pageKeyForItem(id: string): string {
 
 export function Sidebar() {
   const { collapsed, setCollapsed, mobileOpen, setMobileOpen } = useSidebar()
+  const { setNavigating } = useNavigationLoading()
   const pathname = usePathname()
   const { canAccess, isAdmin, loading: permLoading } = usePermissions()
 
@@ -171,7 +173,10 @@ export function Sidebar() {
                   <li key={item.id} className="relative group" ref={itemRef} onMouseEnter={handleMouseEnter} onMouseLeave={handleMouseLeave}>
                     <Link
                       href={item.href}
-                      onClick={() => setMobileOpen(false)}
+                      onClick={() => {
+                        if (item.href !== pathname) setNavigating(true)
+                        setMobileOpen(false)
+                      }}
                       className={cn(
                         'relative flex items-center gap-3 px-3 py-2.5 rounded-[10px]',
                         'transition-all duration-200 ease-out',
