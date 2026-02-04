@@ -169,26 +169,20 @@ function parseUltimoStatusTblDocumentos(html: string): {
   const cells: string[] = []
   let td: RegExpExecArray | null
   while ((td = tdRegex.exec(rowHtml)) !== null) cells.push(stripHtml(td[1]))
-  // Status: célula no formato "ORGAO: Descrição" (ex: "SEFAZ: Autorização de Reserva Orçamentária")
-  const statusPattern = /^[A-Z][A-Z0-9\-]+:\s*.+/
-  let status: string | null = (cells[2]?.trim() && statusPattern.test(cells[2].trim())) ? cells[2].trim() : null
+
+  const dateOnlyPattern = /^\d{1,2}\/\d{1,2}\/\d{4}$/
+  const isDateCell = (t: string) => dateOnlyPattern.test(t.trim()) || /^\d{1,2}\/\d{1,2}\/\d{4}\s/.test(t.trim())
+
+  // Últ. Status SEI = texto da coluna de status da última linha (qualquer formato). Na Lista de Protocolos a 3ª coluna é o status.
+  let status: string | null = (cells[2]?.trim() && !isDateCell(cells[2])) ? cells[2].trim() : null
   if (!status) {
-    const found = cells.find((c) => c && statusPattern.test(c.trim()))
-    status = found?.trim() ?? null
-  }
-  // Fallback: qualquer célula que pareça descrição de status (contém ":" e texto razoável)
-  if (!status) {
-    const desc = cells.find((c) => {
-      const t = c?.trim() ?? ''
-      return t.length > 8 && t.includes(':') && !/^\d{1,2}\/\d{1,2}\/\d{4}/.test(t)
-    })
-    status = desc?.trim() ?? null
+    const nonDate = cells.find((c) => (c?.trim() ?? '') && !isDateCell(c))
+    status = nonDate?.trim() ?? null
   }
   // Data: primeira célula no formato DD/MM/YYYY (ex: 02/02/2026)
-  const datePattern = /^\d{1,2}\/\d{1,2}\/\d{4}$/
-  let dataStr: string | null = (cells[3]?.trim() && datePattern.test(cells[3].trim())) ? cells[3].trim() : null
+  let dataStr: string | null = (cells[3]?.trim() && dateOnlyPattern.test(cells[3].trim())) ? cells[3].trim() : null
   if (!dataStr) {
-    const found = cells.find((c) => c && datePattern.test(c.trim()))
+    const found = cells.find((c) => c && dateOnlyPattern.test(c.trim()))
     dataStr = found?.trim() ?? null
   }
   const dataIso = dataStr ? parseSeiDateOnly(dataStr) : null
