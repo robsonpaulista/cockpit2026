@@ -16,8 +16,9 @@ const MapWrapperLeaflet = dynamic(
   { ssr: false }
 )
 import { KPI, Alert, NewsItem } from '@/types'
-import { TrendingUp, MapPin, Flag, MessageSquare, ThermometerSun, ThermometerSnowflake, Flame, Activity, Maximize2, X, Lightbulb, AlertTriangle } from 'lucide-react'
+import { TrendingUp, MapPin, Flag, MessageSquare, ThermometerSun, ThermometerSnowflake, Flame, Activity, Maximize2, X, Lightbulb, AlertTriangle, Users, Heart, Eye } from 'lucide-react'
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
+import { loadInstagramConfigAsync, fetchInstagramData } from '@/lib/instagramApi'
 import { getEleitoradoByCity, getAllEleitores } from '@/lib/eleitores'
 
 const trendData = [
@@ -53,7 +54,21 @@ export default function Home() {
     totalUsos: number
     totalPerformance: number
     totalBandeiras: number
-    topBandeiras: Array<{ theme: string; usage_count: number; performance_score: number }>
+    topBandeiras: Array<{
+      theme: string
+      usage_count: number
+      performance_score: number
+      totalLikes: number
+      totalComments: number
+      totalEngagement: number
+      totalViews: number
+      avgLikes: number
+      avgEngagement: number
+      avgViews: number
+      posts: number
+      boostedCount: number
+    }>
+    hasInstagramData: boolean
   } | null>(null)
   const [loadingBandeiras, setLoadingBandeiras] = useState(true)
   const [projecaoChapa, setProjecaoChapa] = useState<number>(0)
@@ -344,58 +359,131 @@ export default function Home() {
     fetchTerritorios()
   }, [])
 
-  // Buscar estatísticas das bandeiras
+  // Buscar estatísticas das bandeiras com métricas de desempenho do Instagram
   useEffect(() => {
     const fetchBandeirasStats = async () => {
       setLoadingBandeiras(true)
       try {
-        // Buscar todas as narrativas ativas
-        const response = await fetch('/api/narrativas?status=ativa')
-        if (response.ok) {
-          const narrativas = await response.json()
-          
-          // Buscar estatísticas para cada narrativa
-          const statsPromises = narrativas.map(async (narrativa: any) => {
-            try {
-              const statsResponse = await fetch(`/api/narrativas/stats?theme=${encodeURIComponent(narrativa.theme)}`)
-              if (statsResponse.ok) {
-                const stats = await statsResponse.json()
-                return {
-                  theme: narrativa.theme,
-                  usage_count: stats.usage_count || 0,
-                  performance_score: stats.performance_score || 0,
-                }
+        // 1. Buscar narrativas ativas e stats básicos
+        const narrativasResponse = await fetch('/api/narrativas?status=ativa')
+        const narrativas = narrativasResponse.ok ? await narrativasResponse.json() : []
+
+        const statsPromises = narrativas.map(async (narrativa: Record<string, string>) => {
+          try {
+            const statsResponse = await fetch(`/api/narrativas/stats?theme=${encodeURIComponent(narrativa.theme)}`)
+            if (statsResponse.ok) {
+              const stats = await statsResponse.json()
+              return {
+                theme: narrativa.theme,
+                usage_count: stats.usage_count || 0,
+                performance_score: stats.performance_score || 0,
+                boosted_count: stats.boosted_count || 0,
               }
-            } catch (error) {
-              console.error(`Erro ao buscar stats para ${narrativa.theme}:`, error)
             }
-            return {
-              theme: narrativa.theme,
-              usage_count: 0,
-              performance_score: 0,
+          } catch { /* silêncio */ }
+          return { theme: narrativa.theme, usage_count: 0, performance_score: 0, boosted_count: 0 }
+        })
+        const allNarrativaStats = await Promise.all(statsPromises)
+
+        // 2. Buscar dados do Instagram (mesma lógica da página Conteúdo)
+        let instagramPosts: Array<{ id: string; postedAt: string; caption: string; metrics: { likes: number; comments: number; engagement: number; views?: number; shares?: number; saves?: number } }> = []
+        let hasInstagramData = false
+
+        try {
+          const igConfig = await loadInstagramConfigAsync()
+          if (igConfig.token && igConfig.businessAccountId) {
+            const igData = await fetchInstagramData(igConfig.token, igConfig.businessAccountId, '30d', false)
+            if (igData && igData.posts) {
+              instagramPosts = igData.posts
+              hasInstagramData = true
             }
-          })
+          }
+        } catch (err) {
+          console.error('Erro ao carregar dados Instagram para bandeiras:', err)
+        }
 
-          const allStats = await Promise.all(statsPromises)
-          
-          // Calcular totais
-          const totalUsos = allStats.reduce((sum, stat) => sum + stat.usage_count, 0)
-          const totalPerformance = allStats.length > 0
-            ? Math.round(allStats.reduce((sum, stat) => sum + stat.performance_score, 0) / allStats.length)
-            : 0
-          
-          // Top 3 bandeiras por uso
-          const topBandeiras = allStats
-            .sort((a, b) => b.usage_count - a.usage_count)
-            .slice(0, 3)
+        // 3. Buscar classificações dos posts (mesma API da página Conteúdo)
+        let postClassifications: Record<string, { theme?: string; isBoosted?: boolean }> = {}
+        try {
+          const classResponse = await fetch('/api/instagram/classifications')
+          if (classResponse.ok) {
+            const classData = await classResponse.json()
+            if (classData.success && classData.classifications) {
+              postClassifications = classData.classifications
+            }
+          }
+        } catch { /* silêncio */ }
 
-          setBandeirasStats({
-            totalUsos,
-            totalPerformance,
-            totalBandeiras: narrativas.length,
-            topBandeiras,
+        // 4. Função para gerar identifier (mesma da página Conteúdo)
+        const getPostIdentifier = (post: { id: string; postedAt?: string; caption?: string }) => {
+          if (post.id) return post.id
+          if (post.postedAt && post.caption) {
+            const dateStr = new Date(post.postedAt).toISOString().split('T')[0]
+            const captionHash = post.caption.substring(0, 50).replace(/[^a-zA-Z0-9]/g, '').toLowerCase()
+            return `${dateStr}_${captionHash}`
+          }
+          return post.id
+        }
+
+        // 5. Agregar métricas do Instagram por tema (mesma lógica de themeStats da Conteúdo)
+        const themeMetrics: Record<string, {
+          posts: number; totalLikes: number; totalComments: number
+          totalEngagement: number; totalViews: number
+        }> = {}
+
+        if (instagramPosts.length > 0 && Object.keys(postClassifications).length > 0) {
+          instagramPosts.forEach((post) => {
+            const identifier = getPostIdentifier(post)
+            const classification = postClassifications[identifier]
+
+            if (classification?.theme) {
+              const theme = classification.theme
+              if (!themeMetrics[theme]) {
+                themeMetrics[theme] = { posts: 0, totalLikes: 0, totalComments: 0, totalEngagement: 0, totalViews: 0 }
+              }
+              themeMetrics[theme].posts++
+              themeMetrics[theme].totalLikes += post.metrics.likes || 0
+              themeMetrics[theme].totalComments += post.metrics.comments || 0
+              themeMetrics[theme].totalEngagement += post.metrics.engagement || 0
+              themeMetrics[theme].totalViews += post.metrics.views || 0
+            }
           })
         }
+
+        // 6. Combinar narrativa stats com métricas do Instagram
+        const combinedStats = allNarrativaStats.map((ns) => {
+          const igMetrics = themeMetrics[ns.theme]
+          const posts = igMetrics?.posts || 0
+          return {
+            theme: ns.theme,
+            usage_count: ns.usage_count,
+            performance_score: ns.performance_score,
+            totalLikes: igMetrics?.totalLikes || 0,
+            totalComments: igMetrics?.totalComments || 0,
+            totalEngagement: igMetrics?.totalEngagement || 0,
+            totalViews: igMetrics?.totalViews || 0,
+            avgLikes: posts > 0 ? Math.round((igMetrics?.totalLikes || 0) / posts) : 0,
+            avgEngagement: posts > 0 ? Math.round((igMetrics?.totalEngagement || 0) / posts) : 0,
+            avgViews: posts > 0 ? Math.round((igMetrics?.totalViews || 0) / posts) : 0,
+            posts,
+            boostedCount: ns.boosted_count || 0,
+          }
+        })
+
+        // 7. Ordenar e montar resultado
+        combinedStats.sort((a, b) => b.usage_count - a.usage_count)
+        const totalUsos = combinedStats.reduce((sum, s) => sum + s.usage_count, 0)
+        const totalPerformance = combinedStats.length > 0
+          ? Math.round(combinedStats.reduce((sum, s) => sum + s.performance_score, 0) / combinedStats.length)
+          : 0
+
+        setBandeirasStats({
+          totalUsos,
+          totalPerformance,
+          totalBandeiras: combinedStats.length,
+          topBandeiras: combinedStats.slice(0, 5),
+          hasInstagramData,
+        })
       } catch (error) {
         console.error('Erro ao buscar estatísticas das bandeiras:', error)
       } finally {
@@ -758,9 +846,9 @@ export default function Home() {
           </section>
         )}
 
+        {/* Grid 1: Gráfico + Alertas */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-          {/* Coluna Principal */}
-          <div className="lg:col-span-2 space-y-4">
+          <div className="lg:col-span-2">
             {/* Gráfico de Histórico de Pesquisas - Compacto */}
             <div className="bg-surface rounded-2xl border border-card p-4 relative overflow-hidden">
               {/* Linha vertical de destaque */}
@@ -996,30 +1084,76 @@ export default function Home() {
               </div>
             </div>
 
+          </div>
+
+          {/* Alertas Críticos - Compacto */}
+          <div className="bg-surface rounded-2xl border border-card p-4 relative overflow-hidden">
+            {/* Linha vertical de destaque */}
+            <div className="absolute left-0 top-0 bottom-0 w-1 bg-status-warning opacity-30" />
+            
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="text-base font-semibold text-primary flex items-center gap-2">
+                <AlertTriangle className="w-4 h-4 text-status-warning" />
+                Alertas
+              </h2>
+              <button
+                onClick={() => setAlertasTelaCheia(true)}
+                className="p-1.5 rounded-lg hover:bg-background transition-colors text-secondary hover:text-primary"
+                title="Ver todos"
+              >
+                <Maximize2 className="w-4 h-4" />
+              </button>
+            </div>
+            <div className="space-y-2 max-h-[200px] overflow-y-auto">
+              {loadingAlerts ? (
+                <>
+                  {[1, 2].map((i) => (
+                    <div key={i} className="bg-background rounded-lg p-3 animate-pulse">
+                      <div className="h-3 bg-surface rounded w-3/4 mb-1.5" />
+                      <div className="h-2 bg-surface rounded w-1/2" />
+                    </div>
+                  ))}
+                </>
+              ) : criticalAlerts.length > 0 ? (
+                criticalAlerts.slice(0, 3).map((alert) => (
+                  <AlertCard key={alert.id} alert={alert} />
+                ))
+              ) : (
+                <div className="text-center py-3">
+                  <p className="text-xs text-secondary">Nenhum alerta no momento</p>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Grid 2: Análise de Territórios + Bandeiras */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mt-4">
+          <div className="lg:col-span-2">
             {/* Análise de Territórios - Compacto */}
-            <div className="bg-surface rounded-2xl border border-card p-4 relative overflow-hidden">
+            <div className="bg-surface rounded-2xl border border-card p-3 relative overflow-hidden h-full">
               {/* Linha vertical de destaque */}
               <div className="absolute left-0 top-0 bottom-0 w-1 bg-accent-gold opacity-20" />
               
-              <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center gap-2">
-                  <Activity className="w-4 h-4 text-accent-gold" />
-                  <h2 className="text-base font-semibold text-primary">Análise de Territórios</h2>
-                  <span className="text-[10px] text-secondary bg-background px-1.5 py-0.5 rounded">Fonte própria</span>
+                  <Activity className="w-3.5 h-3.5 text-accent-gold" />
+                  <h2 className="text-sm font-semibold text-primary">Análise de Territórios</h2>
+                  <span className="text-[9px] text-secondary bg-background px-1.5 py-0.5 rounded">Fonte própria</span>
                 </div>
                 <button
                   onClick={() => setAnaliseTerritoriosTelaCheia(true)}
-                  className="p-1.5 rounded-lg hover:bg-background transition-colors text-secondary hover:text-primary"
+                  className="p-1 rounded-lg hover:bg-background transition-colors text-secondary hover:text-primary"
                   title="Ver detalhes"
                 >
-                  <Maximize2 className="w-4 h-4" />
+                  <Maximize2 className="w-3.5 h-3.5" />
                 </button>
               </div>
 
               {loadingTerritorios ? (
-                <div className="grid grid-cols-3 gap-2">
+                <div className="grid grid-cols-3 gap-1.5">
                   {[1, 2, 3].map((i) => (
-                    <div key={i} className="h-16 bg-background rounded-lg animate-pulse" />
+                    <div key={i} className="h-12 bg-background rounded-lg animate-pulse" />
                   ))}
                 </div>
               ) : (
@@ -1040,54 +1174,109 @@ export default function Home() {
                     const percentualCobertura = cidadesAtivas > 0 
                       ? Math.round((cidadesVisitadas / cidadesAtivas) * 100) 
                       : 0
+
+                    // Calcular eleitorado: total do estado, com presença e sem presença
+                    const normalizeName = (name: string) => name.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim()
+                    const cidadesComLiderancasNorm = new Set(cidadesComLiderancas.map(normalizeName))
+                    
+                    let eleitoradoTotal = 0
+                    let eleitoradoComPresenca = 0
+                    let eleitoradoSemPresenca = 0
+                    
+                    Object.entries(eleitoresPorCidade).forEach(([cidade, eleitorado]) => {
+                      eleitoradoTotal += eleitorado
+                      if (cidadesComLiderancasNorm.has(normalizeName(cidade))) {
+                        eleitoradoComPresenca += eleitorado
+                      } else {
+                        eleitoradoSemPresenca += eleitorado
+                      }
+                    })
+
+                    const percentualEleitoradoCoberto = eleitoradoTotal > 0
+                      ? Math.round((eleitoradoComPresenca / eleitoradoTotal) * 100)
+                      : 0
                     
                     return (
-                      <div className="grid grid-cols-3 gap-2 mb-3">
-                        <div className="p-3 rounded-xl border border-accent-gold/30 bg-gradient-to-br from-primary-soft to-surface">
-                          <div className="flex items-center gap-1.5 mb-1">
-                            <MapPin className="w-3 h-3 text-accent-gold" />
-                            <p className="text-[10px] font-medium text-secondary">Presença</p>
+                      <>
+                        <div className="grid grid-cols-3 gap-1.5 mb-1.5">
+                          <div className="p-2 rounded-lg border border-accent-gold/30 bg-gradient-to-br from-primary-soft to-surface">
+                            <div className="flex items-center gap-1 mb-0.5">
+                              <MapPin className="w-2.5 h-2.5 text-accent-gold" />
+                              <p className="text-[9px] font-medium text-secondary">Presença</p>
+                            </div>
+                            <p className="text-lg font-bold text-primary leading-tight">{cidadesAtivas}</p>
+                            <p className="text-[9px] text-secondary">de {totalCidades}</p>
                           </div>
-                          <p className="text-xl font-bold text-primary">{cidadesAtivas}</p>
-                          <p className="text-[10px] text-secondary">de {totalCidades}</p>
-                        </div>
-                        <div className="p-3 rounded-xl border border-card bg-surface">
-                          <div className="flex items-center gap-1.5 mb-1">
-                            <Activity className="w-3 h-3 text-blue-600" />
-                            <p className="text-[10px] font-medium text-secondary">Visitadas</p>
+                          <div className="p-2 rounded-lg border border-card bg-surface">
+                            <div className="flex items-center gap-1 mb-0.5">
+                              <Activity className="w-2.5 h-2.5 text-accent-gold" />
+                              <p className="text-[9px] font-medium text-secondary">Visitadas</p>
+                            </div>
+                            <p className="text-lg font-bold text-primary leading-tight">{cidadesVisitadas}</p>
+                            <p className="text-[9px] text-secondary">cidades</p>
                           </div>
-                          <p className="text-xl font-bold text-blue-600">{cidadesVisitadas}</p>
-                          <p className="text-[10px] text-secondary">cidades</p>
-                        </div>
-                        <div className="p-3 rounded-xl border border-card bg-surface">
-                          <div className="flex items-center gap-1.5 mb-1">
-                            <TrendingUp className="w-3 h-3 text-emerald-600" />
-                            <p className="text-[10px] font-medium text-secondary">Cobertura</p>
+                          <div className="p-2 rounded-lg border border-card bg-surface">
+                            <div className="flex items-center gap-1 mb-0.5">
+                              <TrendingUp className="w-2.5 h-2.5 text-accent-gold" />
+                              <p className="text-[9px] font-medium text-secondary">Cobertura</p>
+                            </div>
+                            <p className="text-lg font-bold text-primary leading-tight">{percentualCobertura}%</p>
+                            <p className="text-[9px] text-secondary">das ativas</p>
                           </div>
-                          <p className="text-xl font-bold text-emerald-600">{percentualCobertura}%</p>
-                          <p className="text-[10px] text-secondary">das ativas</p>
                         </div>
-                      </div>
+
+                        {/* Eleitorado */}
+                        {eleitoradoTotal > 0 && (
+                          <div className="p-2 rounded-lg border border-card bg-surface mb-1.5">
+                            <div className="flex items-center gap-1.5 mb-1">
+                              <Users className="w-2.5 h-2.5 text-accent-gold" />
+                              <p className="text-[9px] font-medium text-secondary">Eleitorado</p>
+                              <span className="ml-auto text-[9px] font-semibold text-accent-gold">{percentualEleitoradoCoberto}% coberto</span>
+                            </div>
+                            <div className="w-full h-1.5 bg-background rounded-full overflow-hidden mb-1">
+                              <div 
+                                className="h-full bg-accent-gold rounded-full transition-all duration-500"
+                                style={{ width: `${percentualEleitoradoCoberto}%` }}
+                              />
+                            </div>
+                            <p className="text-[9px] text-secondary mb-1.5">Potencial de expansão: <span className="font-semibold text-accent-gold">{Math.round(eleitoradoSemPresenca / 1000).toLocaleString('pt-BR')} mil eleitores</span></p>
+                            <div className="grid grid-cols-3 gap-1 text-center">
+                              <div>
+                                <p className="text-xs font-bold text-primary">{eleitoradoTotal.toLocaleString('pt-BR')}</p>
+                                <p className="text-[8px] text-secondary">Total PI</p>
+                              </div>
+                              <div>
+                                <p className="text-xs font-bold text-accent-gold">{eleitoradoComPresenca.toLocaleString('pt-BR')}</p>
+                                <p className="text-[8px] text-secondary">Com presença</p>
+                              </div>
+                              <div>
+                                <p className="text-xs font-bold text-secondary">{eleitoradoSemPresenca.toLocaleString('pt-BR')}</p>
+                                <p className="text-[8px] text-secondary">Sem presença</p>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                      </>
                     )
                   })()}
 
                   {/* Resumo de Territórios - Inline */}
-                  <div className="flex items-center gap-3 text-xs">
+                  <div className="flex items-center gap-2 text-[10px]">
                     {territoriosQuentes.length > 0 && (
-                      <div className="flex items-center gap-1.5 px-2 py-1 bg-emerald-50 rounded-full">
-                        <Flame className="w-3 h-3 text-emerald-500" />
+                      <div className="flex items-center gap-1 px-1.5 py-0.5 bg-emerald-50 rounded-full">
+                        <Flame className="w-2.5 h-2.5 text-emerald-500" />
                         <span className="text-emerald-700 font-medium">{territoriosQuentes.length} quentes</span>
                       </div>
                     )}
                     {territoriosMornos.length > 0 && (
-                      <div className="flex items-center gap-1.5 px-2 py-1 bg-amber-50 rounded-full">
-                        <ThermometerSun className="w-3 h-3 text-amber-500" />
+                      <div className="flex items-center gap-1 px-1.5 py-0.5 bg-amber-50 rounded-full">
+                        <ThermometerSun className="w-2.5 h-2.5 text-amber-500" />
                         <span className="text-amber-700 font-medium">{territoriosMornos.length} mornos</span>
                       </div>
                     )}
                     {territoriosFrios.length > 0 && (
-                      <div className="flex items-center gap-1.5 px-2 py-1 bg-red-50 rounded-full">
-                        <ThermometerSnowflake className="w-3 h-3 text-red-500" />
+                      <div className="flex items-center gap-1 px-1.5 py-0.5 bg-red-50 rounded-full">
+                        <ThermometerSnowflake className="w-2.5 h-2.5 text-red-500" />
                         <span className="text-red-700 font-medium">{territoriosFrios.length} frios</span>
                       </div>
                     )}
@@ -1098,50 +1287,8 @@ export default function Home() {
 
           </div>
 
-          {/* Coluna Direita - Ações e Alertas */}
-          <div className="space-y-4">
-            {/* Alertas Críticos - Compacto */}
-            <div className="bg-surface rounded-2xl border border-card p-4 relative overflow-hidden">
-              {/* Linha vertical de destaque */}
-              <div className="absolute left-0 top-0 bottom-0 w-1 bg-status-warning opacity-30" />
-              
-              <div className="flex items-center justify-between mb-3">
-                <h2 className="text-base font-semibold text-primary flex items-center gap-2">
-                  <AlertTriangle className="w-4 h-4 text-status-warning" />
-                  Alertas
-                </h2>
-                <button
-                  onClick={() => setAlertasTelaCheia(true)}
-                  className="p-1.5 rounded-lg hover:bg-background transition-colors text-secondary hover:text-primary"
-                  title="Ver todos"
-                >
-                  <Maximize2 className="w-4 h-4" />
-                </button>
-              </div>
-              <div className="space-y-2 max-h-[200px] overflow-y-auto">
-                {loadingAlerts ? (
-                  <>
-                    {[1, 2].map((i) => (
-                      <div key={i} className="bg-background rounded-lg p-3 animate-pulse">
-                        <div className="h-3 bg-surface rounded w-3/4 mb-1.5" />
-                        <div className="h-2 bg-surface rounded w-1/2" />
-                      </div>
-                    ))}
-                  </>
-                ) : criticalAlerts.length > 0 ? (
-                  criticalAlerts.slice(0, 3).map((alert) => (
-                    <AlertCard key={alert.id} alert={alert} />
-                  ))
-                ) : (
-                  <div className="text-center py-3">
-                    <p className="text-xs text-secondary">Nenhum alerta no momento</p>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Bandeiras de Campanha - Compacto */}
-            <div className="bg-surface rounded-2xl border border-card p-4 relative overflow-hidden">
+          {/* Bandeiras de Campanha - Compacto (mesma altura que Análise de Territórios) */}
+          <div className="bg-surface rounded-2xl border border-card p-4 relative overflow-hidden flex flex-col">
               {/* Linha vertical de destaque */}
               <div className="absolute left-0 top-0 bottom-0 w-1 bg-accent-gold opacity-20" />
               
@@ -1149,7 +1296,7 @@ export default function Home() {
                 <div className="flex items-center gap-2">
                   <Flag className="w-4 h-4 text-accent-gold" />
                   <h2 className="text-base font-semibold text-primary">Bandeiras</h2>
-                  <span className="text-[10px] text-secondary bg-background px-1.5 py-0.5 rounded">Fonte própria</span>
+                  <span className="text-[10px] text-secondary bg-background px-1.5 py-0.5 rounded">últimos 30 dias</span>
                 </div>
                 <button
                   onClick={() => setBandeirasTelaCheia(true)}
@@ -1160,42 +1307,81 @@ export default function Home() {
                 </button>
               </div>
               {loadingBandeiras ? (
-                <div className="space-y-1.5">
+                <div className="space-y-1.5 flex-1 flex flex-col justify-center">
                   {[1, 2, 3].map((i) => (
-                    <div key={i} className="h-8 bg-background rounded animate-pulse" />
+                    <div key={i} className="h-12 bg-background rounded animate-pulse" />
                   ))}
                 </div>
               ) : bandeirasStats ? (
-                <div>
-                  {/* Top 3 Bandeiras */}
+                <div className="flex-1 flex flex-col min-h-0 overflow-y-auto">
+                  {/* Top 3 Bandeiras com métricas de desempenho */}
                   {bandeirasStats.topBandeiras.length > 0 ? (
-                    <div className="space-y-1.5">
-                      {bandeirasStats.topBandeiras.slice(0, 3).map((bandeira, index) => (
-                        <div
-                          key={bandeira.theme}
-                          className="flex items-center justify-between p-2 bg-background rounded-lg"
-                        >
-                          <div className="flex items-center gap-2">
-                            <div className="w-5 h-5 rounded-full bg-accent-gold-soft text-accent-gold flex items-center justify-center text-[10px] font-semibold">
-                              {index + 1}
+                    <div className="flex flex-col justify-evenly flex-1 gap-2">
+                      {bandeirasStats.topBandeiras.slice(0, 3).map((bandeira, index) => {
+                        const maxUsage = bandeirasStats.topBandeiras[0]?.usage_count || 1
+                        const percentRelativo = Math.round((bandeira.usage_count / maxUsage) * 100)
+                        const hasMetrics = bandeira.posts > 0
+                        return (
+                          <div
+                            key={bandeira.theme}
+                            className="p-3 bg-background rounded-lg"
+                          >
+                            {/* Linha superior: nome + menções + % */}
+                            <div className="flex items-center justify-between mb-1.5">
+                              <div className="flex items-center gap-2">
+                                <div className="w-6 h-6 rounded-full bg-accent-gold-soft text-accent-gold flex items-center justify-center text-xs font-semibold">
+                                  {index + 1}
+                                </div>
+                                <span className="text-sm text-primary truncate max-w-[130px]">{bandeira.theme}</span>
+                              </div>
+                              <div className="flex items-center gap-2 text-xs">
+                                <span className="text-secondary">{bandeira.usage_count} menções</span>
+                                <span 
+                                  className="text-accent-gold font-medium cursor-help"
+                                  title={`${percentRelativo}% de frequência relativa à bandeira mais citada (${maxUsage} menções)`}
+                                >
+                                  {percentRelativo}%
+                                </span>
+                              </div>
                             </div>
-                            <span className="text-xs text-primary truncate max-w-[120px]">{bandeira.theme}</span>
+                            {/* Linha inferior: métricas de desempenho */}
+                            {hasMetrics ? (
+                              <div className="flex items-center gap-3 pl-8 text-[10px]">
+                                <span className="flex items-center gap-0.5 text-secondary" title="Visualizações totais">
+                                  <Eye className="w-3 h-3" />
+                                  {bandeira.totalViews > 999
+                                    ? `${(bandeira.totalViews / 1000).toFixed(1)}k`
+                                    : bandeira.totalViews.toLocaleString('pt-BR')}
+                                </span>
+                                <span className="flex items-center gap-0.5 text-rose-500" title="Curtidas totais">
+                                  <Heart className="w-3 h-3" />
+                                  {bandeira.totalLikes > 999
+                                    ? `${(bandeira.totalLikes / 1000).toFixed(1)}k`
+                                    : bandeira.totalLikes.toLocaleString('pt-BR')}
+                                </span>
+                                <span className="flex items-center gap-0.5 text-blue-500" title="Engajamento total (curtidas + comentários)">
+                                  <MessageSquare className="w-3 h-3" />
+                                  {bandeira.totalEngagement > 999
+                                    ? `${(bandeira.totalEngagement / 1000).toFixed(1)}k`
+                                    : bandeira.totalEngagement.toLocaleString('pt-BR')}
+                                </span>
+                                <span className="text-secondary ml-auto">{bandeira.posts} post{bandeira.posts !== 1 ? 's' : ''}</span>
+                              </div>
+                            ) : (
+                              <p className="text-[10px] text-secondary pl-8 opacity-60">Sem dados do Instagram</p>
+                            )}
                           </div>
-                          <div className="flex items-center gap-2 text-[10px]">
-                            <span className="text-secondary">{bandeira.usage_count} usos</span>
-                            <span className="text-emerald-600 font-medium">{bandeira.performance_score}%</span>
-                          </div>
-                        </div>
-                      ))}
+                        )
+                      })}
                     </div>
                   ) : (
-                    <p className="text-xs text-secondary text-center py-2">
+                    <p className="text-xs text-secondary text-center py-2 flex-1 flex items-center justify-center">
                       Nenhuma bandeira ativa
                     </p>
                   )}
                 </div>
               ) : (
-                <div className="bg-surface rounded-xl border border-card p-4">
+                <div className="bg-surface rounded-xl border border-card p-4 flex-1 flex items-center justify-center">
                   <p className="text-sm text-secondary text-center">
                     Erro ao carregar estatísticas das bandeiras
                   </p>
@@ -1203,7 +1389,6 @@ export default function Home() {
               )}
             </div>
 
-          </div>
         </div>
       </div>
 
@@ -1485,46 +1670,119 @@ export default function Home() {
                 </div>
               ) : bandeirasStats ? (
                 <div className="space-y-6">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="relative p-6 rounded-2xl border-2 border-blue-500/30 bg-gradient-to-br from-blue-50 to-surface">
+                  {/* Cards de resumo */}
+                  <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div className="relative p-5 rounded-2xl border-2 border-accent-gold/30 bg-gradient-to-br from-amber-50 to-surface">
+                      <div className="flex items-center gap-2 mb-2">
+                        <Flag className="w-5 h-5 text-accent-gold" />
+                        <p className="text-sm font-medium text-secondary">Bandeiras Ativas</p>
+                      </div>
+                      <p className="text-3xl font-bold text-accent-gold">{bandeirasStats.totalBandeiras}</p>
+                    </div>
+                    <div className="relative p-5 rounded-2xl border-2 border-blue-500/30 bg-gradient-to-br from-blue-50 to-surface">
                       <div className="flex items-center gap-2 mb-2">
                         <TrendingUp className="w-5 h-5 text-blue-600" />
-                        <p className="text-sm font-medium text-secondary">Total de Usos</p>
+                        <p className="text-sm font-medium text-secondary">Total de Menções</p>
                       </div>
-                      <p className="text-4xl font-bold text-blue-600">{bandeirasStats.totalUsos}</p>
-                      <p className="text-sm text-secondary mt-1">notícias/postagens</p>
+                      <p className="text-3xl font-bold text-blue-600">{bandeirasStats.totalUsos}</p>
+                      <p className="text-xs text-secondary mt-1">últimos 30 dias</p>
                     </div>
-                    <div className="relative p-6 rounded-2xl border-2 border-emerald-500/30 bg-gradient-to-br from-emerald-50 to-surface">
+                    <div className="relative p-5 rounded-2xl border-2 border-rose-500/30 bg-gradient-to-br from-rose-50 to-surface">
                       <div className="flex items-center gap-2 mb-2">
-                        <MessageSquare className="w-5 h-5 text-emerald-600" />
-                        <p className="text-sm font-medium text-secondary">Performance Média</p>
+                        <Heart className="w-5 h-5 text-rose-500" />
+                        <p className="text-sm font-medium text-secondary">Curtidas Totais</p>
                       </div>
-                      <p className="text-4xl font-bold text-emerald-600">{bandeirasStats.totalPerformance}%</p>
-                      <p className="text-sm text-secondary mt-1">engajamento médio</p>
+                      <p className="text-3xl font-bold text-rose-500">
+                        {bandeirasStats.topBandeiras.reduce((s, b) => s + b.totalLikes, 0).toLocaleString('pt-BR')}
+                      </p>
+                    </div>
+                    <div className="relative p-5 rounded-2xl border-2 border-emerald-500/30 bg-gradient-to-br from-emerald-50 to-surface">
+                      <div className="flex items-center gap-2 mb-2">
+                        <Eye className="w-5 h-5 text-emerald-600" />
+                        <p className="text-sm font-medium text-secondary">Visualizações</p>
+                      </div>
+                      <p className="text-3xl font-bold text-emerald-600">
+                        {bandeirasStats.topBandeiras.reduce((s, b) => s + b.totalViews, 0).toLocaleString('pt-BR')}
+                      </p>
                     </div>
                   </div>
                   
+                  {/* Lista detalhada de bandeiras */}
                   {bandeirasStats.topBandeiras.length > 0 && (
                     <div>
-                      <p className="text-base font-medium text-secondary mb-3">Top Bandeiras por Uso</p>
-                      <div className="space-y-2">
-                        {bandeirasStats.topBandeiras.map((bandeira, index) => (
-                          <div
-                            key={bandeira.theme}
-                            className="flex items-center justify-between p-3 bg-surface rounded-lg border border-card"
-                          >
-                            <div className="flex items-center gap-3">
-                              <div className="w-8 h-8 rounded-full bg-accent-gold-soft text-accent-gold flex items-center justify-center text-sm font-semibold">
-                                {index + 1}
+                      <p className="text-base font-medium text-secondary mb-3">Desempenho por Bandeira</p>
+                      <div className="space-y-3">
+                        {bandeirasStats.topBandeiras.map((bandeira, index) => {
+                          const maxUsage = bandeirasStats.topBandeiras[0]?.usage_count || 1
+                          const percentRelativo = Math.round((bandeira.usage_count / maxUsage) * 100)
+                          const hasMetrics = bandeira.posts > 0
+                          return (
+                            <div
+                              key={bandeira.theme}
+                              className="p-4 bg-surface rounded-xl border border-card"
+                            >
+                              {/* Header da bandeira */}
+                              <div className="flex items-center justify-between mb-2">
+                                <div className="flex items-center gap-3">
+                                  <div className="w-8 h-8 rounded-full bg-accent-gold-soft text-accent-gold flex items-center justify-center text-sm font-semibold">
+                                    {index + 1}
+                                  </div>
+                                  <span className="text-base font-medium text-primary">{bandeira.theme}</span>
+                                </div>
+                                <div className="flex items-center gap-4 text-sm">
+                                  <span className="text-secondary">{bandeira.usage_count} menções</span>
+                                  <span 
+                                    className="text-accent-gold font-medium cursor-help"
+                                    title={`${percentRelativo}% de frequência relativa à bandeira mais citada (${maxUsage} menções)`}
+                                  >
+                                    {percentRelativo}%
+                                  </span>
+                                </div>
                               </div>
-                              <span className="text-base text-primary">{bandeira.theme}</span>
+                              {/* Métricas de desempenho */}
+                              {hasMetrics ? (
+                                <div className="grid grid-cols-4 gap-3 mt-3 pt-3 border-t border-card">
+                                  <div className="text-center">
+                                    <div className="flex items-center justify-center gap-1 mb-1">
+                                      <Eye className="w-3.5 h-3.5 text-secondary" />
+                                      <span className="text-[10px] text-secondary uppercase">Visualizações</span>
+                                    </div>
+                                    <p className="text-sm font-semibold text-primary">{bandeira.totalViews.toLocaleString('pt-BR')}</p>
+                                    <p className="text-[10px] text-secondary">média {bandeira.avgViews.toLocaleString('pt-BR')}/post</p>
+                                  </div>
+                                  <div className="text-center">
+                                    <div className="flex items-center justify-center gap-1 mb-1">
+                                      <Heart className="w-3.5 h-3.5 text-rose-500" />
+                                      <span className="text-[10px] text-secondary uppercase">Curtidas</span>
+                                    </div>
+                                    <p className="text-sm font-semibold text-rose-500">{bandeira.totalLikes.toLocaleString('pt-BR')}</p>
+                                    <p className="text-[10px] text-secondary">média {bandeira.avgLikes.toLocaleString('pt-BR')}/post</p>
+                                  </div>
+                                  <div className="text-center">
+                                    <div className="flex items-center justify-center gap-1 mb-1">
+                                      <MessageSquare className="w-3.5 h-3.5 text-blue-500" />
+                                      <span className="text-[10px] text-secondary uppercase">Engajamento</span>
+                                    </div>
+                                    <p className="text-sm font-semibold text-blue-500">{bandeira.totalEngagement.toLocaleString('pt-BR')}</p>
+                                    <p className="text-[10px] text-secondary">média {bandeira.avgEngagement.toLocaleString('pt-BR')}/post</p>
+                                  </div>
+                                  <div className="text-center">
+                                    <div className="flex items-center justify-center gap-1 mb-1">
+                                      <Activity className="w-3.5 h-3.5 text-accent-gold" />
+                                      <span className="text-[10px] text-secondary uppercase">Posts</span>
+                                    </div>
+                                    <p className="text-sm font-semibold text-accent-gold">{bandeira.posts}</p>
+                                    <p className="text-[10px] text-secondary">{bandeira.boostedCount > 0 ? `${bandeira.boostedCount} impuls.` : 'orgânico'}</p>
+                                  </div>
+                                </div>
+                              ) : (
+                                <p className="text-xs text-secondary mt-2 pt-2 border-t border-card opacity-60">
+                                  Sem dados de desempenho do Instagram para esta bandeira
+                                </p>
+                              )}
                             </div>
-                            <div className="flex items-center gap-4 text-sm">
-                              <span className="text-secondary">{bandeira.usage_count} usos</span>
-                              <span className="text-secondary">{bandeira.performance_score}%</span>
-                            </div>
-                          </div>
-                        ))}
+                          )
+                        })}
                       </div>
                     </div>
                   )}
