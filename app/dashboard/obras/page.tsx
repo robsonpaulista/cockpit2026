@@ -1,7 +1,6 @@
 'use client'
 
 import { useEffect, useState, useMemo, useRef } from 'react'
-import { Header } from '@/components/header'
 import { Building2, MapPin, DollarSign, Filter, Search, Plus, Edit, Trash2, Loader2, Upload, RefreshCw, Maximize2, Minimize2, FileSearch, ArrowUpDown, ArrowUp, ArrowDown, AlertTriangle, CheckCircle, Columns3, FileDown } from 'lucide-react'
 import * as XLSX from 'xlsx'
 import { formatDate } from '@/lib/utils'
@@ -1150,7 +1149,6 @@ export default function ObrasPage() {
         </div>
       ) : (
         <>
-          <Header title="Obras" subtitle="Gestão de obras e projetos" showFilters={false} />
           <div className="px-4 py-6 lg:px-6">{obrasMainContent}</div>
         </>
       )}

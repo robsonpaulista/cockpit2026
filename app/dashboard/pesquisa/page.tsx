@@ -1,7 +1,6 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Header } from '@/components/header'
 import { KPICard } from '@/components/kpi-card'
 import { PollModal } from '@/components/poll-modal'
 import { Plus, Edit2, Trash2, Maximize2, X } from 'lucide-react'
@@ -432,7 +431,6 @@ export default function PesquisaPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      <Header title="Pesquisa & Relato de Rua" subtitle="Dado quantitativo + percepção qualitativa" />
 
       <div className="px-4 py-6 lg:px-6">
         {/* Seletor de Candidato Padrão e Botão Nova Pesquisa */}

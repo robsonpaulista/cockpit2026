@@ -2,7 +2,6 @@
 
 import { useEffect, useState, useCallback, useMemo } from 'react'
 import type React from 'react'
-import { Header } from '@/components/header'
 import { GoogleCalendarConfigModal } from '@/components/google-calendar-config-modal'
 import { Calendar, CalendarDays, Clock, MapPin, Users, Settings, Loader2, Maximize2, X, CheckCircle2, XCircle, AlertCircle, RefreshCw, UserCheck } from 'lucide-react'
 import { useAuth } from '@/hooks/use-auth'
@@ -481,7 +480,6 @@ export default function AgendaPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      <Header title="Agenda" subtitle="Integração com Google Calendar" showFilters={false} />
 
       {/* Quadro de Avisos na Lateral Direita */}
       <ArrivalNotificationsPanel

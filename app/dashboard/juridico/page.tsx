@@ -1,12 +1,10 @@
 'use client'
 
-import { Header } from '@/components/header'
 import { Scale, CheckCircle2, Clock, AlertTriangle } from 'lucide-react'
 
 export default function JuridicoPage() {
   return (
     <div className="min-h-screen bg-background">
-      <Header title="Compliance & Jurídico Eleitoral" subtitle="Proteção jurídica total" />
 
       <div className="px-4 py-6 lg:px-6">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-8">

@@ -1,7 +1,6 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Header } from '@/components/header'
 import { KPICard } from '@/components/kpi-card'
 import { AlertCard } from '@/components/alert-card'
 import { Newspaper, AlertTriangle, TrendingUp, RefreshCw, Plus, Filter, Edit2, Trash2 } from 'lucide-react'
@@ -222,7 +221,6 @@ export default function NoticiasPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      <Header title="Notícias, Crises & Radar de Adversários" subtitle="Sala de Situação" />
 
       <div className="px-4 py-6 lg:px-6">
         {/* KPIs */}

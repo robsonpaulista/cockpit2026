@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useMemo, useEffect, useRef } from 'react'
-import { Header } from '@/components/header'
 import { InstagramConfigModal } from '@/components/instagram-config-modal'
 import { 
   MessageSquare, 
@@ -634,7 +633,6 @@ export default function ConteudoPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      <Header title="Conteúdo & Redes Sociais" subtitle="Comunicação orientada a resultado" />
 
       <div className="px-4 py-6 lg:px-6">
         {/* Botões de Configuração e Atualização */}

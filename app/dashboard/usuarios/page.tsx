@@ -2,7 +2,6 @@
 
 import { useEffect, useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
-import { Header } from '@/components/header'
 import { usePermissions } from '@/hooks/use-permissions'
 import {
   Users as UsersIcon,
@@ -142,7 +141,6 @@ export default function UsuariosPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      <Header title="Gestão de Usuários" subtitle="Usuários e permissões por página" showFilters={false} />
 
       <div className="px-4 py-6 lg:px-6">
         {error && (

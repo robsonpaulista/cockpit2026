@@ -90,12 +90,12 @@ export async function POST(request: Request) {
 
     const calendar = google.calendar({ version: 'v3', auth: client as any })
 
-    // Buscar eventos a partir de 01/01/2026 (incluindo eventos passados)
-    const startDate = new Date('2026-01-01T00:00:00Z')
+    // Buscar eventos a partir de 01/01/2026
+    const startDate = new Date('2026-01-01T00:00:00-03:00')
     const response = await calendar.events.list({
       calendarId: calendarId,
       timeMin: startDate.toISOString(),
-      maxResults: 2500, // Aumentar limite para buscar mais eventos
+      maxResults: 500,
       singleEvents: true,
       orderBy: 'startTime',
     })

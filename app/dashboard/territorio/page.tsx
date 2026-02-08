@@ -1,7 +1,6 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Header } from '@/components/header'
 import { KPICard } from '@/components/kpi-card'
 import { GoogleSheetsConfigModal } from '@/components/google-sheets-config-modal'
 import { Users, Settings, RefreshCw, AlertCircle, ChevronDown, ChevronRight, Network, FileText, Briefcase } from 'lucide-react'
@@ -466,7 +465,6 @@ export default function TerritorioPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      <Header title="Território & Base" subtitle="CRM Político - Organize articulação e apoio real" />
 
       <div className="px-4 py-6 lg:px-6">
         {/* Botão de Configuração */}
@@ -511,36 +509,29 @@ export default function TerritorioPage() {
 
         {/* KPIs - Só mostrar se houver configuração e dados */}
         {(config || serverConfigured) && liderancas.length > 0 && (
-          <section className="mb-8">
+          <section className="mb-6">
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
               {kpis.map((kpi) => (
                 <KPICard key={kpi.id} kpi={kpi} />
               ))}
             </div>
-          </section>
-        )}
-
-        {/* Cards de Totais por Cargo */}
-        {(config || serverConfigured) && liderancas.length > 0 && totaisPorCargo.length > 0 && (
-          <section className="mb-8">
-            <h3 className="text-sm font-semibold text-primary mb-4">Lideranças por Cargo</h3>
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
-              {totaisPorCargo.map((item) => (
-                <div
-                  key={item.cargo}
-                  className="bg-surface rounded-xl border border-card p-4 hover:bg-background/50 transition-colors"
-                >
-                  <div className="text-center">
-                    <p className="text-2xl font-bold text-accent-gold mb-1">
-                      {item.total}
-                    </p>
-                    <p className="text-xs text-secondary font-medium">
-                      {item.cargo}
-                    </p>
-                  </div>
-                </div>
-              ))}
-            </div>
+            
+            {/* Distribuição por Cargo - Compacto */}
+            {totaisPorCargo.length > 0 && (
+              <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-secondary">
+                <span className="font-medium text-primary">Por cargo:</span>
+                {totaisPorCargo.slice(0, 6).map((item, index) => (
+                  <span key={item.cargo} className="inline-flex items-center">
+                    <span className="font-semibold text-accent-gold">{item.total}</span>
+                    <span className="ml-1">{item.cargo}</span>
+                    {index < Math.min(totaisPorCargo.length - 1, 5) && <span className="ml-2">·</span>}
+                  </span>
+                ))}
+                {totaisPorCargo.length > 6 && (
+                  <span className="text-text-muted">+{totaisPorCargo.length - 6} outros</span>
+                )}
+              </div>
+            )}
           </section>
         )}
 

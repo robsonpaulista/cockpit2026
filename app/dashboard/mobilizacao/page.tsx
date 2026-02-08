@@ -1,6 +1,5 @@
 'use client'
 
-import { Header } from '@/components/header'
 import { KPICard } from '@/components/kpi-card'
 import { Users, Activity, Share2 } from 'lucide-react'
 import { KPI } from '@/types'
@@ -32,7 +31,6 @@ const mobilizacaoKPIs: KPI[] = [
 export default function MobilizacaoPage() {
   return (
     <div className="min-h-screen bg-background">
-      <Header title="Mobilização & Voluntários" subtitle="Transforme apoio em multiplicação" />
 
       <div className="px-4 py-6 lg:px-6">
         <section className="mb-8">

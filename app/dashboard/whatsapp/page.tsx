@@ -1,6 +1,5 @@
 'use client'
 
-import { Header } from '@/components/header'
 import { KPICard } from '@/components/kpi-card'
 import { MessageCircle, Users, MousePointerClick } from 'lucide-react'
 import { KPI } from '@/types'
@@ -32,7 +31,6 @@ const whatsappKPIs: KPI[] = [
 export default function WhatsAppPage() {
   return (
     <div className="min-h-screen bg-background">
-      <Header title="WhatsApp & Comunidades" subtitle="Comunicação direta, segmentada e mensurável" />
 
       <div className="px-4 py-6 lg:px-6">
         <section className="mb-8">

@@ -1,7 +1,6 @@
 'use client'
 
 import React, { useEffect, useState, useRef } from 'react'
-import { Header } from '@/components/header'
 import { Trash2, Plus, RefreshCw, Check, Printer, Info, Eye, EyeOff, X, Maximize2, Minimize2 } from 'lucide-react'
 import {
   CenarioCompleto,
@@ -876,7 +875,6 @@ export default function ChapasPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <Header title="Chapas Eleitorais" />
       <div className="container mx-auto p-4">
         {/* Notificação de auto-save */}
         {notificacaoAutoSave && (

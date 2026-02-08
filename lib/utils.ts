@@ -14,7 +14,7 @@ export function formatPercent(num: number): string {
 }
 
 export function formatDate(date: Date | string): string {
-  const dateObj = typeof date === 'string' ? new Date(date) : date
+  const dateObj = typeof date === 'string' ? new Date(date + (date.length === 10 ? 'T12:00:00' : '')) : date
   return new Intl.DateTimeFormat('pt-BR', {
     day: '2-digit',
     month: 'short',
@@ -23,7 +23,7 @@ export function formatDate(date: Date | string): string {
 }
 
 export function formatDateShort(date: Date | string): string {
-  const dateObj = typeof date === 'string' ? new Date(date) : date
+  const dateObj = typeof date === 'string' ? new Date(date + (date.length === 10 ? 'T12:00:00' : '')) : date
   return new Intl.DateTimeFormat('pt-BR', {
     day: '2-digit',
     month: '2-digit',

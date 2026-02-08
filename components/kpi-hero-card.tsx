@@ -3,16 +3,23 @@
 import { cn } from '@/lib/utils'
 import { KPI } from '@/types'
 import Link from 'next/link'
-import { TrendingUp, Sparkles } from 'lucide-react'
+import { TrendingUp, TrendingDown, Trophy } from 'lucide-react'
 import { useEffect, useState } from 'react'
+
+interface InfoLine {
+  text: string
+  type?: 'positive' | 'negative' | 'neutral'
+  icon?: 'trending' | 'trophy'
+}
 
 interface KPIHeroCardProps {
   kpi: KPI
   subtitle?: string
+  infoLines?: InfoLine[]
   href?: string
 }
 
-export function KPIHeroCard({ kpi, subtitle, href = '#' }: KPIHeroCardProps) {
+export function KPIHeroCard({ kpi, subtitle, infoLines, href = '#' }: KPIHeroCardProps) {
   const [displayValue, setDisplayValue] = useState<string | number>('0')
   const [isAnimating, setIsAnimating] = useState(false)
 
@@ -54,51 +61,74 @@ export function KPIHeroCard({ kpi, subtitle, href = '#' }: KPIHeroCardProps) {
     }
   }, [kpi.value])
 
+  const getInfoLineColor = (type?: 'positive' | 'negative' | 'neutral') => {
+    switch (type) {
+      case 'positive': return 'text-emerald-600'
+      case 'negative': return 'text-red-500'
+      default: return 'text-text-secondary'
+    }
+  }
+
+  const getInfoLineIcon = (line: InfoLine) => {
+    if (line.icon === 'trophy') return <Trophy className="w-3 h-3 flex-shrink-0" />
+    if (line.icon === 'trending' && line.type === 'positive') return <TrendingUp className="w-3 h-3 flex-shrink-0" />
+    if (line.icon === 'trending' && line.type === 'negative') return <TrendingDown className="w-3 h-3 flex-shrink-0" />
+    return null
+  }
+
   const content = (
     <div
       className={cn(
-        'relative p-5 rounded-[14px] border border-border-card bg-bg-surface shadow-card',
+        'relative p-4 rounded-[14px] border border-border-card bg-bg-surface shadow-card',
         'hover:shadow-card-hover hover:-translate-y-0.5',
         'transition-all duration-200 ease-out',
         'cursor-pointer group overflow-hidden',
         'border-t-4 border-t-accent-gold'
       )}
     >
-      {/* Badge "Atualizado hoje" */}
-      <div className="absolute top-4 right-4">
-        <span className="px-2.5 py-1 text-xs font-medium bg-accent-gold-soft text-accent-gold rounded-full border border-border-card">
-          Atualizado hoje
-        </span>
-      </div>
-
-      {/* Label and Icon */}
-      <div className="flex items-center gap-2.5 mb-4">
-        <div className="p-2 rounded-lg bg-accent-gold-soft group-hover:bg-accent-gold-soft transition-colors duration-300">
-          <TrendingUp className="w-4 h-4 text-accent-gold" />
+      {/* Layout horizontal compacto */}
+      <div className="flex items-center gap-3">
+        <div className="p-2 rounded-lg bg-accent-gold-soft flex-shrink-0">
+          <TrendingUp className="w-5 h-5 text-accent-gold" />
         </div>
-        <div>
+        <div className="flex-1 min-w-0">
           <p className="text-sm font-semibold text-text-primary group-hover:text-accent-gold transition-colors">
             {kpi.label}
           </p>
-          {subtitle && (
-            <p className="text-xs text-text-secondary mt-0.5">{subtitle}</p>
+          {subtitle && !infoLines && (
+            <p className="text-xs text-text-secondary">{subtitle}</p>
+          )}
+          {infoLines && infoLines.length > 0 && (
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 mt-0.5">
+              {infoLines.map((line, idx) => (
+                <span
+                  key={idx}
+                  className={cn(
+                    'text-[11px] font-medium flex items-center gap-1',
+                    getInfoLineColor(line.type)
+                  )}
+                >
+                  {getInfoLineIcon(line)}
+                  {line.text}
+                </span>
+              ))}
+            </div>
           )}
         </div>
-      </div>
-
-      {/* Value - Maior e mais destacado */}
-      <div className="mb-2">
-        <p className={cn(
-          'text-4xl font-black text-text-primary group-hover:text-accent-gold transition-all duration-300',
-          isAnimating && 'scale-105'
-        )}>
-          {displayValue}
-        </p>
-      </div>
-
-      {/* Divider */}
-      <div className="mt-3 pt-3 border-t border-border-card">
-        <span className="text-xs text-text-secondary font-medium">Fonte própria</span>
+        <div className="text-right flex-shrink-0">
+          <div className="flex items-center gap-2 justify-end">
+            <p className={cn(
+              'text-3xl font-black text-text-primary group-hover:text-accent-gold transition-all duration-300',
+              isAnimating && 'scale-105'
+            )}>
+              {displayValue}
+            </p>
+            <span className="px-1.5 py-0.5 text-[9px] font-medium bg-accent-gold-soft text-accent-gold rounded border border-accent-gold/20">
+              Hoje
+            </span>
+          </div>
+          <span className="text-[10px] text-text-secondary">Fonte própria</span>
+        </div>
       </div>
     </div>
   )

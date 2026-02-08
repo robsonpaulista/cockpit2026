@@ -1,7 +1,6 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Header } from '@/components/header'
 import { Plus, Users, Edit2, Trash2, ChevronDown, ChevronRight, ListTodo, PlayCircle, CheckCircle2, AlertCircle } from 'lucide-react'
 import { Territory, TerritoryLeader, Task } from '@/types'
 import { KanbanColumn } from '@/components/kanban-column'
@@ -175,7 +174,6 @@ export default function OperacaoPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      <Header title="Operação & Equipe" subtitle="Garanta ritmo e escala" />
 
       <div className="px-4 py-6 lg:px-6">
         {/* Controles Globais */}

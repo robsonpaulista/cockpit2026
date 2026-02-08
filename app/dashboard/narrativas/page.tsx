@@ -1,7 +1,6 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Header } from '@/components/header'
 import { FileText, TrendingUp, MessageSquare, Search, Edit, Trash2, Plus } from 'lucide-react'
 import { NarrativeModal } from '@/components/narrative-modal'
 
@@ -127,7 +126,6 @@ export default function NarrativasPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      <Header title="Bandeiras de Campanha" subtitle="Garanta coerência e evite improviso" />
 
       <div className="px-4 py-6 lg:px-6">
         {/* Barra de ações e filtros */}

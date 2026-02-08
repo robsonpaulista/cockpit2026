@@ -26,7 +26,7 @@ export const mockKPIs: KPI[] = [
   {
     id: 'projecao',
     label: 'Projeção Chapa Federal',
-    value: 0,
+    value: '0 vagas',
     variation: 0,
     status: 'warning',
   },
@@ -40,7 +40,7 @@ export const mockKPIs: KPI[] = [
   {
     id: 'risco',
     label: 'Risco de Crise',
-    value: 2,
+    value: '2 alertas',
     variation: -1,
     status: 'success',
   },

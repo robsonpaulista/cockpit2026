@@ -16,9 +16,17 @@ import {
 } from 'lucide-react'
 import { useEffect, useState } from 'react'
 
+interface KPIInfoLine {
+  text: string
+  type?: 'positive' | 'negative' | 'neutral'
+}
+
 interface KPICardProps {
   kpi: KPI
   href?: string
+  subtitle?: string
+  subtitleType?: 'positive' | 'negative' | 'neutral'
+  infoLines?: KPIInfoLine[]
 }
 
 const getKpiIcon = (id: string) => {
@@ -39,7 +47,7 @@ const getKpiIcon = (id: string) => {
   return iconMap[id] || Sparkles
 }
 
-export function KPICard({ kpi, href = '#' }: KPICardProps) {
+export function KPICard({ kpi, href = '#', subtitle, subtitleType = 'neutral', infoLines }: KPICardProps) {
   const Icon = getKpiIcon(kpi.id)
   const [displayValue, setDisplayValue] = useState<string | number>('0')
   const [isAnimating, setIsAnimating] = useState(false)
@@ -78,36 +86,60 @@ export function KPICard({ kpi, href = '#' }: KPICardProps) {
   const content = (
     <div
       className={cn(
-        'relative p-5 rounded-[14px] border border-border-card bg-bg-surface shadow-card',
+        'relative p-3 rounded-[14px] border border-border-card bg-bg-surface shadow-card',
         'hover:shadow-card-hover hover:-translate-y-0.5',
         'transition-all duration-200 ease-out',
-        'cursor-pointer group overflow-hidden'
+        'cursor-pointer group overflow-hidden',
+        'h-full min-h-[90px] flex flex-col justify-between'
       )}
     >
       {/* Label and Icon */}
-      <div className="flex items-center gap-2 mb-3">
-        <div className="p-2 rounded-lg bg-accent-gold-soft group-hover:scale-110 transition-all duration-200">
-          <Icon className="w-4 h-4 text-accent-gold" />
+      <div className="flex items-center gap-2">
+        <div className="p-1.5 rounded-lg bg-accent-gold-soft group-hover:scale-110 transition-all duration-200 flex-shrink-0">
+          <Icon className="w-3.5 h-3.5 text-accent-gold" />
         </div>
-        <p className="text-sm font-medium text-text-secondary group-hover:text-text-primary transition-colors">
+        <p className="text-xs font-medium text-text-secondary group-hover:text-text-primary transition-colors line-clamp-2">
           {kpi.label}
         </p>
       </div>
 
       {/* Value */}
-      <div>
+      <div className="mt-auto pt-2">
         <p className={cn(
-          'text-3xl font-bold text-text-primary group-hover:text-accent-gold transition-all duration-200',
+          'text-2xl font-bold text-text-primary group-hover:text-accent-gold transition-all duration-200',
           isAnimating && 'scale-105'
         )}>
           {displayValue}
         </p>
+        {infoLines && infoLines.length > 0 ? (
+          <div className="flex flex-col gap-0 mt-0.5">
+            {infoLines.map((line, idx) => (
+              <p key={idx} className={cn(
+                'text-[10px] font-medium leading-tight',
+                line.type === 'positive' && 'text-emerald-600',
+                line.type === 'negative' && 'text-red-500',
+                (!line.type || line.type === 'neutral') && 'text-text-secondary'
+              )}>
+                {line.text}
+              </p>
+            ))}
+          </div>
+        ) : subtitle ? (
+          <p className={cn(
+            'text-[10px] font-medium mt-0.5 leading-tight',
+            subtitleType === 'positive' && 'text-emerald-600',
+            subtitleType === 'negative' && 'text-red-500',
+            subtitleType === 'neutral' && 'text-text-secondary'
+          )}>
+            {subtitle}
+          </p>
+        ) : null}
       </div>
     </div>
   )
 
   if (href) {
-    return <Link href={href}>{content}</Link>
+    return <Link href={href} className="h-full">{content}</Link>
   }
 
   return content

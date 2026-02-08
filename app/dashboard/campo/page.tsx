@@ -1,9 +1,8 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Header } from '@/components/header'
 import { KPICard } from '@/components/kpi-card'
-import { MapPin, Calendar, CheckCircle2, Clock, Plus, Filter } from 'lucide-react'
+import { MapPin, Calendar, CheckCircle2, Clock, Plus, Filter, Pencil } from 'lucide-react'
 import { AgendaModal } from '@/components/agenda-modal'
 import { DemandModal } from '@/components/demand-modal'
 import { KPI } from '@/types'
@@ -139,7 +138,6 @@ export default function CampoPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      <Header title="Campo & Agenda" subtitle="Transforme agenda em entrega, narrativa e relacionamento" />
 
       <div className="px-4 py-6 lg:px-6">
         {/* KPIs */}
@@ -191,16 +189,16 @@ export default function CampoPage() {
                   {agendas.map((agenda) => (
                     <div
                       key={agenda.id}
-                      className="p-4 rounded-xl border border-card hover:border-accent-gold/20 hover:shadow-card transition-all duration-200 ease-out"
+                      className="p-4 rounded-xl border border-card hover:border-accent-gold/20 hover:shadow-card transition-all duration-200 ease-out group"
                     >
                       <div className="flex items-start justify-between">
-                        <div className="flex-1">
+                        <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-3 mb-2">
-                            <div className="p-2 rounded-lg bg-accent-gold-soft">
+                            <div className="p-2 rounded-lg bg-accent-gold-soft flex-shrink-0">
                               <Calendar className="w-4 h-4 text-accent-gold" />
                             </div>
-                            <div>
-                              <h3 className="text-sm font-semibold text-primary">
+                            <div className="flex-1 min-w-0">
+                              <h3 className="text-sm font-semibold text-primary truncate">
                                 {agenda.cities?.name || 'Cidade não informada'}
                               </h3>
                               <p className="text-xs text-secondary">
@@ -209,7 +207,7 @@ export default function CampoPage() {
                             </div>
                           </div>
                           {agenda.description && (
-                            <p className="text-sm text-secondary mt-2">{agenda.description}</p>
+                            <p className="text-sm text-secondary mt-2 line-clamp-2">{agenda.description}</p>
                           )}
                           {agenda.status === 'concluida' && agenda.visits && agenda.visits[0] && (
                             <div className="flex items-center gap-4 mt-3 text-xs text-secondary">
@@ -226,11 +224,22 @@ export default function CampoPage() {
                             </div>
                           )}
                         </div>
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 flex-shrink-0">
+                          {/* Botão Editar */}
+                          <button
+                            onClick={() => {
+                              setEditingAgenda(agenda)
+                              setShowAgendaModal(true)
+                            }}
+                            className="p-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-all text-secondary hover:text-accent-gold hover:bg-accent-gold-soft"
+                            title="Editar agenda"
+                          >
+                            <Pencil className="w-3.5 h-3.5" />
+                          </button>
                           {agenda.status === 'planejada' && (
                             <button
                               onClick={() => handleCheckin(agenda.id)}
-                              className="px-3 py-1.5 text-xs font-medium bg-accent-gold text-white rounded-lg hover:bg-accent-gold transition-colors"
+                              className="px-3 py-1.5 text-xs font-medium bg-accent-gold text-white rounded-lg hover:bg-accent-gold/90 transition-colors"
                             >
                               Check-in
                             </button>
@@ -238,6 +247,10 @@ export default function CampoPage() {
                           {agenda.status === 'concluida' ? (
                             <span className="px-2 py-1 text-xs font-medium bg-status-success/10 text-status-success rounded-lg">
                               Concluída
+                            </span>
+                          ) : agenda.status === 'cancelada' ? (
+                            <span className="px-2 py-1 text-xs font-medium bg-status-error/10 text-status-error rounded-lg">
+                              Cancelada
                             </span>
                           ) : (
                             <span className="px-2 py-1 text-xs font-medium bg-accent-gold-soft text-accent-gold rounded-lg">
@@ -393,6 +406,12 @@ export default function CampoPage() {
             setEditingAgenda(null)
           }}
           onSuccess={() => {
+            setShowAgendaModal(false)
+            setEditingAgenda(null)
+            fetchAgendas()
+            fetchKPIs()
+          }}
+          onDelete={() => {
             setShowAgendaModal(false)
             setEditingAgenda(null)
             fetchAgendas()

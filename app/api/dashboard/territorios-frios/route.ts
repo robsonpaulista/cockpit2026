@@ -115,9 +115,10 @@ export async function POST(request: Request) {
 
     const hasEnvConfig = !!(envPrivateKey && envEmail && envSpreadsheetId)
 
-    // Se não tiver config do localStorage mas tiver do servidor, usar do servidor
-    if (!territorioConfig && hasEnvConfig && envPrivateKey && envEmail) {
-      territorioConfig = {
+    // Se não tiver config do localStorage ou estiver incompleto, usar do servidor
+    if (hasEnvConfig && envPrivateKey && envEmail) {
+      // Criar config do servidor
+      const serverConfig = {
         spreadsheetId: envSpreadsheetId,
         sheetName: envSheetName,
         range: envRange,
@@ -128,11 +129,30 @@ export async function POST(request: Request) {
           token_uri: 'https://oauth2.googleapis.com/token',
         },
       }
+      
+      // Se não tiver config do cliente, usar o do servidor
+      // Se tiver config do cliente mas sem spreadsheetId, fazer merge com servidor
+      if (!territorioConfig) {
+        territorioConfig = serverConfig
+      } else if (!territorioConfig.spreadsheetId) {
+        // Merge: usar dados do servidor mas permitir override do cliente
+        territorioConfig = {
+          ...serverConfig,
+          ...territorioConfig,
+          spreadsheetId: serverConfig.spreadsheetId, // Garantir que sempre use do servidor se cliente não tem
+        }
+      }
     }
 
     if (territorioConfig) {
       try {
         const config = territorioConfig
+        
+        // Validar que spreadsheetId existe
+        if (!config.spreadsheetId || !config.sheetName) {
+          // Sem spreadsheetId, não é possível buscar dados - pular silenciosamente
+          throw new Error('Configuração incompleta')
+        }
         
         // Validar formato das credenciais JSON
         let credentialsObj
@@ -478,11 +498,17 @@ export async function POST(request: Request) {
     const cidadesVisitadas = Object.keys(visitasPorCidade).length
     const cidadesNaoVisitadas = totalCidades - cidadesVisitadas
 
+    // Lista de cidades que possuem ao menos 1 liderança (nomes formatados)
+    const cidadesComLiderancas = Object.entries(liderancasPorCidade)
+      .filter(([, count]) => count > 0)
+      .map(([cidadeKey]) => nomeOriginalCidade[cidadeKey] || formatCityName(cidadeKey))
+
     return NextResponse.json({
       territoriosFrios,
       territoriosQuentes,
       territoriosMornos,
       cidadesNaoVisitadasLista,
+      cidadesComLiderancas,
       estatisticas: {
         totalCidades,
         cidadesVisitadas,

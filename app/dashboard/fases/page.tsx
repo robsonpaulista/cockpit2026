@@ -1,7 +1,6 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Header } from '@/components/header'
 import { CheckCircle2, Circle, Clock, AlertCircle, Plus, Edit2, Trash2, Power } from 'lucide-react'
 import { formatDate } from '@/lib/utils'
 
@@ -77,7 +76,6 @@ export default function FasesPage() {
   if (loading) {
     return (
       <div className="min-h-screen bg-background">
-        <Header title="Painel de Fases da Campanha" />
         <div className="px-4 py-6 lg:px-6">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {[1, 2, 3, 4].map((i) => (
@@ -91,8 +89,6 @@ export default function FasesPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      <Header title="Painel de Fases da Campanha" subtitle="Adapte o sistema ao calendário eleitoral" />
-
       <div className="px-4 py-6 lg:px-6">
         <div className="mb-6 flex items-center justify-between">
           <p className="text-sm text-secondary">

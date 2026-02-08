@@ -1,16 +1,14 @@
 'use client'
 
-import { useEffect, useState } from 'react'
-import { Header } from '@/components/header'
+import { useEffect, useState, useMemo } from 'react'
 import { KPICard } from '@/components/kpi-card'
 import { KPIHeroCard } from '@/components/kpi-hero-card'
 import { AlertCard } from '@/components/alert-card'
-import { ActionCard } from '@/components/action-card'
 import { AIAgent } from '@/components/ai-agent'
 import { MapaPresenca } from '@/components/mapa-presenca'
 import dynamic from 'next/dynamic'
 import municipiosPiaui from '@/lib/municipios-piaui.json'
-import { mockKPIs, mockAlerts, mockActions } from '@/lib/mock-data'
+import { mockKPIs, mockAlerts } from '@/lib/mock-data'
 
 // Dynamic import do wrapper Leaflet (client-only)
 const MapWrapperLeaflet = dynamic(
@@ -18,9 +16,9 @@ const MapWrapperLeaflet = dynamic(
   { ssr: false }
 )
 import { KPI, Alert, NewsItem } from '@/types'
-import { TrendingUp, MapPin, Flag, MessageSquare, ThermometerSun, ThermometerSnowflake, Flame, Activity, Maximize2, X, Lightbulb } from 'lucide-react'
+import { TrendingUp, MapPin, Flag, MessageSquare, ThermometerSun, ThermometerSnowflake, Flame, Activity, Maximize2, X, Lightbulb, AlertTriangle } from 'lucide-react'
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
-import { getEleitoradoByCity } from '@/lib/eleitores'
+import { getEleitoradoByCity, getAllEleitores } from '@/lib/eleitores'
 
 const trendData = [
   { date: '01/10', ife: 65, sentimento: 60 },
@@ -39,6 +37,7 @@ export default function Home() {
   const [territoriosFrios, setTerritoriosFrios] = useState<Array<{ cidade: string; motivo: string; expectativaVotos?: number; visitas?: number }>>([])
   const [territoriosQuentes, setTerritoriosQuentes] = useState<Array<{ cidade: string; motivo: string; expectativaVotos?: number; visitas?: number }>>([])
   const [territoriosMornos, setTerritoriosMornos] = useState<Array<{ cidade: string; motivo: string; expectativaVotos?: number; visitas?: number }>>([])
+  const [cidadesComLiderancas, setCidadesComLiderancas] = useState<string[]>([])
   const [territorioStats, setTerritorioStats] = useState<{
     totalCidades: number
     cidadesVisitadas: number
@@ -58,6 +57,17 @@ export default function Home() {
   } | null>(null)
   const [loadingBandeiras, setLoadingBandeiras] = useState(true)
   const [projecaoChapa, setProjecaoChapa] = useState<number>(0)
+  const [rankingExpectativa, setRankingExpectativa] = useState<{ posicao: number; totalCandidatos: number } | null>(null)
+  const [segundaVagaInfo, setSegundaVagaInfo] = useState<{
+    vagasAtuais: number
+    distancia: number
+    tipo: 'margem' | 'faltam'
+    competidorProximo: string | null
+    qpRepublicanos: number
+    qpCompetidor: number
+    rodada: number
+  } | null>(null)
+  const [rankingPesquisas, setRankingPesquisas] = useState<{ posicao: number; totalCandidatos: number; projecaoVotos: number | null; cidadesComPesquisa: number } | null>(null)
   const [graficoPollsTelaCheia, setGraficoPollsTelaCheia] = useState(false)
   const [analiseTerritoriosTelaCheia, setAnaliseTerritoriosTelaCheia] = useState(false)
   const [showMapaPresenca, setShowMapaPresenca] = useState(true)
@@ -66,6 +76,19 @@ export default function Home() {
   const [alertasTelaCheia, setAlertasTelaCheia] = useState(false)
   const [insightTelaCheia, setInsightTelaCheia] = useState(false)
   const [expectativasPorCidade, setExpectativasPorCidade] = useState<Record<string, number>>({})
+
+  // Votos da eleição anterior (2022) para cálculo comparativo
+  const VOTOS_ELEICAO_ANTERIOR = 83175
+
+  // Mapa de eleitores por cidade (para uso no mapa)
+  const eleitoresPorCidade = useMemo(() => {
+    const mapa: Record<string, number> = {}
+    const eleitores = getAllEleitores()
+    eleitores.forEach(e => {
+      mapa[e.municipio] = e.eleitorado
+    })
+    return mapa
+  }, [])
 
   // Calcular média das pesquisas diretamente a partir dos dados do gráfico
   const mediaPesquisas = pollsData.length > 0
@@ -208,8 +231,26 @@ export default function Home() {
 
     if (candidatoPadrao) {
       fetchHistoricoIntencao(candidatoPadrao)
+      
+      // Buscar ranking e projeção de votos do candidato nas pesquisas estimuladas dep_federal
+      fetch(`/api/pesquisa/ranking-estimulada?candidato=${encodeURIComponent(candidatoPadrao)}`)
+        .then(res => res.ok ? res.json() : null)
+        .then(data => {
+          if (data && data.posicao > 0) {
+            setRankingPesquisas({
+              posicao: data.posicao,
+              totalCandidatos: data.totalCandidatos,
+              projecaoVotos: data.projecaoVotos ?? null,
+              cidadesComPesquisa: data.cidadesComPesquisa ?? 0,
+            })
+          } else {
+            setRankingPesquisas(null)
+          }
+        })
+        .catch(() => setRankingPesquisas(null))
     } else {
       setPollsData([])
+      setRankingPesquisas(null)
       setLoadingPolls(false)
     }
   }, [candidatoPadrao])
@@ -281,6 +322,11 @@ export default function Home() {
                 visitas: t.visitas,
               })) || []
             )
+            
+            // Cidades com lideranças (para o mapa)
+            if (data.cidadesComLiderancas) {
+              setCidadesComLiderancas(data.cidadesComLiderancas)
+            }
             
             // Estatísticas
             if (data.estatisticas) {
@@ -413,30 +459,57 @@ export default function Home() {
       return null
     }
 
-    // Buscar projeção de chapas (eleitos do Republicanos)
-    const fetchProjecaoChapa = async () => {
+    // Buscar projeção de chapas (eleitos do Republicanos) + ranking + análise 2ª vaga
+    const fetchProjecaoChapaComRanking = async (votosExpectativa?: number): Promise<{
+      eleitos: number
+      ranking: { posicao: number; totalCandidatos: number } | null
+      segundaVaga: { vagasAtuais: number; distancia: number; tipo: 'margem' | 'faltam'; competidorProximo: string | null; qpRepublicanos: number; qpCompetidor: number; rodada: number } | null
+    }> => {
       try {
-        const response = await fetch('/api/chapas/projecao-republicanos')
+        const params = votosExpectativa && votosExpectativa > 0
+          ? `?votosExpectativa=${Math.round(votosExpectativa)}`
+          : ''
+        const response = await fetch(`/api/chapas/projecao-republicanos${params}`)
         if (response.ok) {
           const data = await response.json()
-          return data.eleitos || 0
+          return {
+            eleitos: data.eleitos || 0,
+            ranking: data.ranking || null,
+            segundaVaga: data.segundaVaga || null,
+          }
         }
       } catch (error) {
         // Erro silencioso
       }
-      return 0
+      return { eleitos: 0, ranking: null, segundaVaga: null }
     }
 
     // Buscar KPIs da API
     Promise.all([
       fetch('/api/dashboard/kpis').then((res) => res.json()),
       fetchTerritorioKPIs(),
-      fetchProjecaoChapa(),
-    ]).then(([data, territorioKPIs, projecaoEleitos]) => {
-      setProjecaoChapa(projecaoEleitos)
+    ]).then(async ([data, territorioKPIs]) => {
       if (data.ife) {
         // Se temos KPIs do território, usar os valores calculados (mesmos da página Território & Base)
         const expectativa2026 = territorioKPIs?.expectativa2026 ?? null
+
+        // Calcular votos para ranking
+        let votosParaRanking = expectativa2026 ?? 0
+        if (!votosParaRanking && data.ife.value) {
+          const valorStr = String(data.ife.value).replace(/\./g, '').replace(/,/g, '.')
+          votosParaRanking = parseFloat(valorStr) || 0
+        }
+
+        // Buscar projeção + ranking + análise 2ª vaga na mesma chamada
+        const { eleitos: projecaoEleitos, ranking, segundaVaga } = await fetchProjecaoChapaComRanking(votosParaRanking)
+        setProjecaoChapa(projecaoEleitos)
+        if (ranking && ranking.posicao > 0) {
+          setRankingExpectativa(ranking)
+        }
+        if (segundaVaga) {
+          setSegundaVagaInfo(segundaVaga)
+        }
+
         const cidadesUnicas = territorioKPIs?.cidadesUnicas ?? null
         const liderancas = territorioKPIs?.liderancas ?? null
         
@@ -471,7 +544,7 @@ export default function Home() {
             {
               id: 'projecao',
               label: 'Projeção Chapa Federal',
-              value: projecaoEleitos,
+              value: `${projecaoEleitos} ${projecaoEleitos === 1 ? 'vaga' : 'vagas'}`,
               variation: 0,
               status: projecaoEleitos >= 2 ? 'success' : projecaoEleitos >= 1 ? 'warning' : 'error',
             },
@@ -485,7 +558,7 @@ export default function Home() {
             {
               id: 'risco',
               label: 'Risco de Crise',
-              value: data.risco.value,
+              value: `${data.risco.value} ${Number(data.risco.value) === 1 ? 'alerta' : 'alertas'}`,
               variation: data.risco.variation,
               status: data.risco.status,
             },
@@ -522,11 +595,9 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-background">
-      <Header title="" subtitle="Visão estratégica Dep Federal Jadyel Alencar eleições 2026" showFilters={false} />
-
       <div className="px-4 py-6 lg:px-6">
         {/* KPI Hero - Expectativa 2026 */}
-        <section className="mb-6">
+        <section className="mb-4">
           {loading ? (
             <div className="h-40 bg-surface rounded-2xl border border-card animate-pulse" />
           ) : (
@@ -534,14 +605,35 @@ export default function Home() {
               const heroKpi = kpisComMedia.find(k => k.id === 'ife')
               if (!heroKpi) return null
               
-              const variationText = heroKpi.variation !== undefined && heroKpi.variation !== 0
-                ? `${heroKpi.variation > 0 ? '+' : ''}${heroKpi.variation}% vs última medição`
-                : undefined
+              // Calcular % de crescimento vs eleição anterior (83.175 votos)
+              const valorAtual = typeof heroKpi.value === 'string'
+                ? parseFloat(heroKpi.value.replace(/[^\d]/g, '')) || 0
+                : typeof heroKpi.value === 'number' ? heroKpi.value : 0
+              
+              const infoLines: Array<{ text: string; type?: 'positive' | 'negative' | 'neutral'; icon?: 'trending' | 'trophy' }> = []
+              
+              if (valorAtual > 0 && VOTOS_ELEICAO_ANTERIOR > 0) {
+                const percentualCrescimento = ((valorAtual - VOTOS_ELEICAO_ANTERIOR) / VOTOS_ELEICAO_ANTERIOR) * 100
+                const sinal = percentualCrescimento >= 0 ? '+' : ''
+                infoLines.push({
+                  text: `${sinal}${percentualCrescimento.toFixed(1).replace('.', ',')}% vs eleição anterior (${VOTOS_ELEICAO_ANTERIOR.toLocaleString('pt-BR')} votos)`,
+                  type: percentualCrescimento >= 0 ? 'positive' : 'negative',
+                  icon: 'trending',
+                })
+              }
+              
+              if (rankingExpectativa && rankingExpectativa.posicao > 0) {
+                infoLines.push({
+                  text: `${rankingExpectativa.posicao}º lugar projetado (chapa)`,
+                  type: 'neutral',
+                  icon: 'trophy',
+                })
+              }
               
               return (
                 <KPIHeroCard 
                   kpi={heroKpi} 
-                  subtitle={variationText}
+                  infoLines={infoLines.length > 0 ? infoLines : undefined}
                   href="/ife"
                 />
               )
@@ -550,109 +642,157 @@ export default function Home() {
         </section>
 
         {/* KPIs Secundários */}
-        <section className="mb-8">
+        <section className="mb-4">
           {loading ? (
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 items-stretch">
               {[1, 2, 3, 4, 5].map((i) => (
-                <div key={i} className="h-28 bg-surface rounded-2xl border border-card animate-pulse" />
+                <div key={i} className="min-h-[90px] bg-surface rounded-2xl border border-card animate-pulse" />
               ))}
             </div>
           ) : (
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
-              {kpisComMedia.filter(kpi => kpi.id !== 'ife').map((kpi) => (
-                <KPICard key={kpi.id} kpi={kpi} href={`/${kpi.id}`} />
-              ))}
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 items-stretch">
+              {kpisComMedia.filter(kpi => kpi.id !== 'ife').map((kpi) => {
+                // Subtítulo para Base Ativa no Território (% de cobertura)
+                let cardSubtitle: string | undefined
+                let cardSubtitleType: 'positive' | 'negative' | 'neutral' | undefined
+                let cardInfoLines: Array<{ text: string; type?: 'positive' | 'negative' | 'neutral' }> | undefined
+                
+                if (kpi.id === 'presenca' && typeof kpi.value === 'string' && kpi.value.includes('/')) {
+                  const [cidades, total] = kpi.value.split('/').map(v => parseInt(v.trim()) || 0)
+                  if (total > 0) {
+                    const percentual = Math.round((cidades / total) * 100)
+                    cardSubtitle = `${percentual}% de cobertura`
+                    cardSubtitleType = percentual >= 50 ? 'positive' : percentual >= 30 ? 'neutral' : 'negative'
+                  }
+                }
+                
+                // Info lines para Média Pesquisas (ranking + projeção de votos)
+                if (kpi.id === 'sentimento' && rankingPesquisas && rankingPesquisas.posicao > 0) {
+                  const lines: Array<{ text: string; type?: 'positive' | 'negative' | 'neutral' }> = []
+                  
+                  // Linha 1: ranking entre candidatos
+                  const rankType = rankingPesquisas.posicao <= 3 ? 'positive' as const : rankingPesquisas.posicao <= 5 ? 'neutral' as const : 'negative' as const
+                  lines.push({
+                    text: `${rankingPesquisas.posicao}º de ${rankingPesquisas.totalCandidatos} candidatos`,
+                    type: rankType,
+                  })
+                  
+                  // Linha 2: projeção de votos baseada nas pesquisas
+                  if (rankingPesquisas.projecaoVotos && rankingPesquisas.projecaoVotos > 0) {
+                    lines.push({
+                      text: `≈ ${rankingPesquisas.projecaoVotos.toLocaleString('pt-BR')} votos (${rankingPesquisas.cidadesComPesquisa} cid.)`,
+                      type: 'neutral',
+                    })
+                  }
+                  
+                  cardInfoLines = lines
+                }
+                
+                // Subtítulo para Projeção Chapa Federal (distância 2ª vaga via D'Hondt)
+                if (kpi.id === 'projecao' && segundaVagaInfo && segundaVagaInfo.distancia > 0) {
+                  const competidor = segundaVagaInfo.competidorProximo || '?'
+                  if (segundaVagaInfo.tipo === 'margem') {
+                    cardSubtitle = `+${segundaVagaInfo.distancia.toLocaleString('pt-BR')} votos vs ${competidor}`
+                    cardSubtitleType = segundaVagaInfo.distancia > 20000 ? 'positive' : segundaVagaInfo.distancia > 5000 ? 'neutral' : 'negative'
+                  } else {
+                    cardSubtitle = `-${segundaVagaInfo.distancia.toLocaleString('pt-BR')} votos p/ 2ª vaga (${competidor})`
+                    cardSubtitleType = 'negative'
+                  }
+                }
+                
+                return (
+                  <KPICard 
+                    key={kpi.id} 
+                    kpi={kpi} 
+                    href={`/${kpi.id}`}
+                    subtitle={cardSubtitle}
+                    subtitleType={cardSubtitleType}
+                    infoLines={cardInfoLines}
+                  />
+                )
+              })}
             </div>
           )}
         </section>
 
-        {/* Bloco de Leitura Rápida / Insight */}
+        {/* Bloco de Leitura Rápida / Insight - Compacto */}
         {!loading && (
-          <section className="mb-8">
-            <div className="bg-gradient-to-r from-primary-soft to-surface rounded-2xl border border-accent-gold/20 p-5 relative">
-              <div className="flex items-start gap-3">
-                <div className="p-2 rounded-lg bg-accent-gold-soft flex-shrink-0">
-                  <Lightbulb className="w-5 h-5 text-accent-gold" />
-                </div>
-                <div className="flex-1">
-                  <div className="flex items-center justify-between mb-2">
-                    <h3 className="text-base font-semibold text-primary flex items-center gap-2">
-                      💡 Leitura Rápida
-                    </h3>
-                    <button
-                      onClick={() => setInsightTelaCheia(true)}
-                      className="p-1.5 rounded-lg hover:bg-background/50 transition-colors text-secondary hover:text-primary"
-                      title="Visualizar em tela cheia"
-                    >
-                      <Maximize2 className="w-4 h-4" />
-                    </button>
-                  </div>
-                  <p className="text-sm text-secondary leading-relaxed">
-                    {(() => {
-                      const presencaKpi = kpisComMedia.find(k => k.id === 'presenca')
-                      const baseKpi = kpisComMedia.find(k => k.id === 'base')
-                      const riscoKpi = kpisComMedia.find(k => k.id === 'risco')
-                      
-                      const insights: string[] = []
-                      
-                      if (presencaKpi && presencaKpi.variation && presencaKpi.variation > 0) {
-                        insights.push(`Presença territorial cresceu ${presencaKpi.variation}% no último mês`)
-                      }
-                      
-                      if (riscoKpi && riscoKpi.status === 'error') {
-                        insights.push(`há risco de saturação em territórios-chave`)
-                      }
-                      
-                      if (baseKpi && baseKpi.value) {
-                        insights.push(`Base ativa com ${baseKpi.value} lideranças mapeadas`)
-                      }
-                      
-                      return insights.length > 0 
-                        ? insights.join(', ') + '.'
-                        : 'Análise estratégica em tempo real dos indicadores de performance.'
-                    })()}
-                  </p>
-                </div>
+          <section className="mb-4">
+            <div className="bg-gradient-to-r from-primary-soft to-surface rounded-xl border border-accent-gold/20 px-4 py-3">
+              <div className="flex items-center gap-3">
+                <Lightbulb className="w-4 h-4 text-accent-gold flex-shrink-0" />
+                <p className="text-sm text-secondary flex-1">
+                  {(() => {
+                    const presencaKpi = kpisComMedia.find(k => k.id === 'presenca')
+                    const baseKpi = kpisComMedia.find(k => k.id === 'base')
+                    const riscoKpi = kpisComMedia.find(k => k.id === 'risco')
+                    
+                    const insights: string[] = []
+                    
+                    if (presencaKpi && presencaKpi.variation && presencaKpi.variation > 0) {
+                      insights.push(`Presença territorial cresceu ${presencaKpi.variation}% no último mês`)
+                    }
+                    
+                    if (riscoKpi && riscoKpi.status === 'error') {
+                      insights.push(`há risco de saturação em territórios-chave`)
+                    }
+                    
+                    if (baseKpi && baseKpi.value) {
+                      insights.push(`Base ativa com ${baseKpi.value} lideranças mapeadas`)
+                    }
+                    
+                    return insights.length > 0 
+                      ? insights.join(', ') + '.'
+                      : 'Análise estratégica em tempo real dos indicadores de performance.'
+                  })()}
+                </p>
+                <button
+                  onClick={() => setInsightTelaCheia(true)}
+                  className="p-1 rounded hover:bg-background/50 transition-colors text-secondary hover:text-primary"
+                  title="Visualizar em tela cheia"
+                >
+                  <Maximize2 className="w-4 h-4" />
+                </button>
               </div>
             </div>
           </section>
         )}
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Linha 2 - Leitura Estratégica */}
-          <div className="lg:col-span-2 space-y-6">
-            {/* Gráfico de Histórico de Pesquisas */}
-            <div className="bg-surface rounded-2xl border border-card p-6 relative overflow-hidden">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+          {/* Coluna Principal */}
+          <div className="lg:col-span-2 space-y-4">
+            {/* Gráfico de Histórico de Pesquisas - Compacto */}
+            <div className="bg-surface rounded-2xl border border-card p-4 relative overflow-hidden">
               {/* Linha vertical de destaque */}
               <div className="absolute left-0 top-0 bottom-0 w-1 bg-accent-gold opacity-20" />
               
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-3">
-                  <h2 className="text-lg font-semibold text-primary">Histórico de Pesquisas de Intenção de Votos</h2>
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  <h2 className="text-base font-semibold text-primary">Histórico de Pesquisas</h2>
                   {candidatoPadrao && (
-                    <span className="text-sm text-secondary bg-accent-gold-soft px-2 py-0.5 rounded-full border border-accent-gold/20">
+                    <span className="text-xs text-secondary bg-accent-gold-soft px-2 py-0.5 rounded-full border border-accent-gold/20">
                       {candidatoPadrao}
                     </span>
                   )}
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1">
                   {pollsData.length > 0 && (
                     <>
-                      <span className="text-xs text-secondary bg-surface px-2 py-1 rounded border border-card">
+                      <span className="text-[10px] text-secondary bg-background px-1.5 py-0.5 rounded">
                         Fonte própria
                       </span>
                       <button
                         onClick={() => setGraficoPollsTelaCheia(true)}
-                        className="p-2 rounded-lg hover:bg-background transition-colors text-secondary hover:text-primary"
+                        className="p-1.5 rounded-lg hover:bg-background transition-colors text-secondary hover:text-primary"
                         title="Visualizar em tela cheia"
                       >
-                        <Maximize2 className="w-5 h-5" />
+                        <Maximize2 className="w-4 h-4" />
                       </button>
                     </>
                   )}
                 </div>
               </div>
-              <div className="h-64">
+              <div className="h-48">
                 {loadingPolls ? (
                   <div className="h-full flex items-center justify-center">
                     <div className="w-full h-full space-y-4">
@@ -856,49 +996,36 @@ export default function Home() {
               </div>
             </div>
 
-            {/* Análise de Territórios */}
-            <div className="bg-surface rounded-2xl border border-card p-6 relative overflow-hidden">
+            {/* Análise de Territórios - Compacto */}
+            <div className="bg-surface rounded-2xl border border-card p-4 relative overflow-hidden">
               {/* Linha vertical de destaque */}
               <div className="absolute left-0 top-0 bottom-0 w-1 bg-accent-gold opacity-20" />
               
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-3">
-                  <h2 className="text-lg font-semibold text-primary flex items-center gap-2">
-                    <Activity className="w-5 h-5 text-accent-gold" />
-                    Análise de Territórios
-                  </h2>
-                  <span className="text-xs text-secondary bg-surface px-2 py-1 rounded border border-card">
-                    Fonte própria
-                  </span>
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  <Activity className="w-4 h-4 text-accent-gold" />
+                  <h2 className="text-base font-semibold text-primary">Análise de Territórios</h2>
+                  <span className="text-[10px] text-secondary bg-background px-1.5 py-0.5 rounded">Fonte própria</span>
                 </div>
                 <button
                   onClick={() => setAnaliseTerritoriosTelaCheia(true)}
-                  className="p-2 rounded-lg hover:bg-background transition-colors text-secondary hover:text-primary"
-                  title="Visualizar em tela cheia"
+                  className="p-1.5 rounded-lg hover:bg-background transition-colors text-secondary hover:text-primary"
+                  title="Ver detalhes"
                 >
-                  <Maximize2 className="w-5 h-5" />
+                  <Maximize2 className="w-4 h-4" />
                 </button>
               </div>
 
               {loadingTerritorios ? (
-                <div className="space-y-4">
-                  <div className="grid grid-cols-3 gap-3">
-                    {[1, 2, 3].map((i) => (
-                      <div key={i} className="h-20 bg-background rounded-xl animate-pulse" />
-                    ))}
-                  </div>
+                <div className="grid grid-cols-3 gap-2">
                   {[1, 2, 3].map((i) => (
-                    <div key={i} className="p-3 rounded-xl border border-card bg-surface animate-pulse">
-                      <div className="h-4 bg-background rounded w-1/3 mb-2" />
-                      <div className="h-3 bg-background rounded w-2/3" />
-                    </div>
+                    <div key={i} className="h-16 bg-background rounded-lg animate-pulse" />
                   ))}
                 </div>
               ) : (
                 <>
-                  {/* Estatísticas Gerais - Calculadas a partir do KPI Base Ativa no Território */}
+                  {/* Estatísticas Compactas */}
                   {(() => {
-                    // Pegar o KPI de presença (Base Ativa no Território) que mostra "X/224"
                     const presencaKpi = kpisComMedia.find(k => k.id === 'presenca')
                     let cidadesAtivas = 0
                     let totalCidades = 224
@@ -909,194 +1036,59 @@ export default function Home() {
                       totalCidades = total || 224
                     }
                     
-                    // Usar dados da API para visitas
                     const cidadesVisitadas = territorioStats?.cidadesVisitadas || 0
-                    const totalVisitas = territorioStats?.totalVisitas || 0
-                    
-                    // Calcular cobertura corretamente: (Cidades Visitadas / Cidades com Presença) * 100
-                    // Isso mostra quantas das cidades onde temos presença foram visitadas
                     const percentualCobertura = cidadesAtivas > 0 
                       ? Math.round((cidadesVisitadas / cidadesAtivas) * 100) 
                       : 0
                     
                     return (
-                      <div className="grid grid-cols-3 gap-3 mb-5">
-                        <div className="relative p-5 rounded-2xl border-2 border-accent-gold/30 bg-gradient-to-br from-primary-soft to-surface hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300 cursor-pointer group overflow-hidden before:absolute before:left-0 before:top-0 before:bottom-0 before:w-1 before:bg-accent-gold before:rounded-l-2xl">
-                          <div className="flex items-center gap-2 mb-2">
-                            <MapPin className="w-4 h-4 text-accent-gold" />
-                            <p className="text-xs font-medium text-secondary">Cidades com Presença</p>
+                      <div className="grid grid-cols-3 gap-2 mb-3">
+                        <div className="p-3 rounded-xl border border-accent-gold/30 bg-gradient-to-br from-primary-soft to-surface">
+                          <div className="flex items-center gap-1.5 mb-1">
+                            <MapPin className="w-3 h-3 text-accent-gold" />
+                            <p className="text-[10px] font-medium text-secondary">Presença</p>
                           </div>
-                          <p className="text-3xl font-bold text-primary group-hover:text-accent-gold transition-colors">{cidadesAtivas}</p>
-                          <p className="text-xs text-secondary mt-1">de {totalCidades} municípios</p>
+                          <p className="text-xl font-bold text-primary">{cidadesAtivas}</p>
+                          <p className="text-[10px] text-secondary">de {totalCidades}</p>
                         </div>
-                        <div className="relative p-5 rounded-2xl border border-card bg-surface hover:shadow-lg hover:-translate-y-0.5 hover:border-accent-gold/30 transition-all duration-300 cursor-pointer group overflow-hidden before:absolute before:left-0 before:top-0 before:bottom-0 before:w-0.5 before:bg-blue-500 before:opacity-0 group-hover:opacity-100 before:rounded-l-2xl">
-                          <div className="flex items-center gap-2 mb-2">
-                            <Activity className="w-4 h-4 text-blue-600" />
-                            <p className="text-xs font-medium text-secondary">Cidades Visitadas</p>
+                        <div className="p-3 rounded-xl border border-card bg-surface">
+                          <div className="flex items-center gap-1.5 mb-1">
+                            <Activity className="w-3 h-3 text-blue-600" />
+                            <p className="text-[10px] font-medium text-secondary">Visitadas</p>
                           </div>
-                          <p className="text-3xl font-bold text-blue-600 group-hover:scale-105 transition-transform">{cidadesVisitadas}</p>
-                          <p className="text-xs text-secondary mt-1">de {cidadesAtivas} com presença</p>
+                          <p className="text-xl font-bold text-blue-600">{cidadesVisitadas}</p>
+                          <p className="text-[10px] text-secondary">cidades</p>
                         </div>
-                        <div className="relative p-5 rounded-2xl border border-card bg-surface hover:shadow-lg hover:-translate-y-0.5 hover:border-emerald-500/30 transition-all duration-300 cursor-pointer group overflow-hidden before:absolute before:left-0 before:top-0 before:bottom-0 before:w-0.5 before:bg-emerald-500 before:opacity-0 group-hover:opacity-100 before:rounded-l-2xl">
-                          <div className="flex items-center gap-2 mb-2">
-                            <TrendingUp className="w-4 h-4 text-emerald-600" />
-                            <p className="text-xs font-medium text-secondary">Cobertura</p>
+                        <div className="p-3 rounded-xl border border-card bg-surface">
+                          <div className="flex items-center gap-1.5 mb-1">
+                            <TrendingUp className="w-3 h-3 text-emerald-600" />
+                            <p className="text-[10px] font-medium text-secondary">Cobertura</p>
                           </div>
-                          <p className="text-3xl font-bold text-emerald-600 group-hover:scale-105 transition-transform">{percentualCobertura}%</p>
-                          <p className="text-xs text-secondary mt-1">das cidades com presença</p>
+                          <p className="text-xl font-bold text-emerald-600">{percentualCobertura}%</p>
+                          <p className="text-[10px] text-secondary">das ativas</p>
                         </div>
                       </div>
                     )
                   })()}
 
-                  {/* Mapa de Presença Interativo - Oculto quando modal está aberto */}
-                  {showMapaPresenca && !analiseTerritoriosTelaCheia && !mapaTelaCheia && (() => {
-                    const presencaKpi = kpisComMedia.find(k => k.id === 'presenca')
-                    let cidadesAtivas = 0
-                    let totalCidades = 224
-                    
-                    if (presencaKpi && typeof presencaKpi.value === 'string' && presencaKpi.value.includes('/')) {
-                      const [cidades, total] = presencaKpi.value.split('/').map(v => parseInt(v.trim()) || 0)
-                      cidadesAtivas = cidades
-                      totalCidades = total || 224
-                    }
-
-                    const cidadesComPresencaList = (() => {
-                      // Se há cidades com presença ativa, usar essas
-                      // Caso contrário, mostrar lista vazia (sem presença detectada)
-                      const cidades = new Set<string>()
-                      
-                      // Cidades de territórios quentes
-                      territoriosQuentes.forEach(t => cidades.add(t.cidade))
-                      // Cidades de territórios mornos
-                      territoriosMornos.forEach(t => cidades.add(t.cidade))
-                      // Cidades de territórios ativos
-                      if (territorioStats?.cidadesVisitadas) {
-                        // Quando temos dados de cidadesVisitadas, significa que temos presença nessas cidades
-                      }
-                      
-                      return Array.from(cidades)
-                    })()
-
-                    return cidadesAtivas > 0 ? (
-                      <div className="mb-6">
-                        <MapaPresenca
-                          cidadesComPresenca={cidadesComPresencaList.length > 0 ? cidadesComPresencaList : Array.from({length: cidadesAtivas}, (_, i) => `Cidade ${i+1}`)}
-                          totalCidades={totalCidades}
-                          onFullscreen={() => setMapaTelaCheia(true)}
-                        />
-                      </div>
-                    ) : null
-                  })()}
-
-                  {/* Tabs de Territórios */}
-                  <div className="space-y-4">
-                    {/* Territórios Quentes */}
+                  {/* Resumo de Territórios - Inline */}
+                  <div className="flex items-center gap-3 text-xs">
                     {territoriosQuentes.length > 0 && (
-                      <div>
-                        <div className="flex items-center gap-2 mb-2">
-                          <Flame className="w-4 h-4 text-emerald-500" />
-                          <span className="text-xs font-semibold text-emerald-600">Territórios Quentes</span>
-                          <span className="text-[10px] text-secondary">({territoriosQuentes.length})</span>
-                        </div>
-                        <div className="space-y-2">
-                          {territoriosQuentes.slice(0, 3).map((territorio) => (
-                            <div
-                              key={territorio.cidade}
-                              className="p-2.5 rounded-lg border border-emerald-200 bg-emerald-50/50 hover:bg-emerald-50 transition-colors flex items-center justify-between"
-                            >
-                              <div className="flex items-center gap-2">
-                                <div className="w-6 h-6 rounded-full bg-emerald-500 text-white flex items-center justify-center text-xs font-bold">
-                                  {territorio.visitas}
-                                </div>
-                                <div>
-                                  <p className="text-sm font-medium text-primary">{territorio.cidade}</p>
-                                  <p className="text-[10px] text-secondary">{territorio.motivo}</p>
-                                </div>
-                              </div>
-                              {territorio.expectativaVotos && territorio.expectativaVotos > 0 && (
-                                <span className="text-xs font-semibold text-emerald-600">
-                                  {territorio.expectativaVotos.toLocaleString('pt-BR')} votos
-                                </span>
-                              )}
-                            </div>
-                          ))}
-                        </div>
+                      <div className="flex items-center gap-1.5 px-2 py-1 bg-emerald-50 rounded-full">
+                        <Flame className="w-3 h-3 text-emerald-500" />
+                        <span className="text-emerald-700 font-medium">{territoriosQuentes.length} quentes</span>
                       </div>
                     )}
-
-                    {/* Territórios Mornos */}
                     {territoriosMornos.length > 0 && (
-                      <div>
-                        <div className="flex items-center gap-2 mb-2">
-                          <ThermometerSun className="w-4 h-4 text-amber-500" />
-                          <span className="text-xs font-semibold text-amber-600">Territórios Mornos</span>
-                          <span className="text-[10px] text-secondary">({territoriosMornos.length})</span>
-                        </div>
-                        <div className="space-y-2">
-                          {territoriosMornos.slice(0, 3).map((territorio) => (
-                            <div
-                              key={territorio.cidade}
-                              className="p-2.5 rounded-lg border border-amber-200 bg-amber-50/50 hover:bg-amber-50 transition-colors flex items-center justify-between"
-                            >
-                              <div className="flex items-center gap-2">
-                                <div className="w-6 h-6 rounded-full bg-amber-400 text-white flex items-center justify-center text-xs font-bold">
-                                  {territorio.visitas || 0}
-                                </div>
-                                <div>
-                                  <p className="text-sm font-medium text-primary">{territorio.cidade}</p>
-                                  <p className="text-[10px] text-secondary">{territorio.motivo}</p>
-                                </div>
-                              </div>
-                              {territorio.expectativaVotos && territorio.expectativaVotos > 0 && (
-                                <span className="text-xs font-semibold text-amber-600">
-                                  {territorio.expectativaVotos.toLocaleString('pt-BR')} votos
-                                </span>
-                              )}
-                            </div>
-                          ))}
-                        </div>
+                      <div className="flex items-center gap-1.5 px-2 py-1 bg-amber-50 rounded-full">
+                        <ThermometerSun className="w-3 h-3 text-amber-500" />
+                        <span className="text-amber-700 font-medium">{territoriosMornos.length} mornos</span>
                       </div>
                     )}
-
-                    {/* Territórios Frios */}
-                    {territoriosFrios.length > 0 ? (
-                      <div>
-                        <div className="flex items-center gap-2 mb-2">
-                          <ThermometerSnowflake className="w-4 h-4 text-red-500" />
-                          <span className="text-xs font-semibold text-red-600">Territórios Frios (Alerta)</span>
-                          <span className="text-[10px] text-secondary">({territoriosFrios.length})</span>
-                        </div>
-                        <div className="space-y-2">
-                          {territoriosFrios.slice(0, 4).map((territorio) => (
-                            <div
-                              key={territorio.cidade}
-                              className="p-2.5 rounded-lg border border-red-200 bg-red-50/50 hover:bg-red-50 transition-colors flex items-center justify-between"
-                            >
-                              <div className="flex items-center gap-2">
-                                <div className="w-6 h-6 rounded-full bg-red-500 text-white flex items-center justify-center text-xs font-bold">
-                                  {territorio.visitas || 0}
-                                </div>
-                                <div>
-                                  <p className="text-sm font-medium text-primary">{territorio.cidade}</p>
-                                  <p className="text-[10px] text-secondary">{territorio.motivo}</p>
-                                </div>
-                              </div>
-                              {territorio.expectativaVotos && territorio.expectativaVotos > 0 && (
-                                <span className="text-xs font-semibold text-red-600">
-                                  {territorio.expectativaVotos.toLocaleString('pt-BR')} votos
-                                </span>
-                              )}
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="text-center py-3">
-                        <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-emerald-50 text-emerald-600 rounded-full text-xs font-medium">
-                          <Flame className="w-3.5 h-3.5" />
-                          Excelente! Nenhum território em estado crítico
-                        </div>
+                    {territoriosFrios.length > 0 && (
+                      <div className="flex items-center gap-1.5 px-2 py-1 bg-red-50 rounded-full">
+                        <ThermometerSnowflake className="w-3 h-3 text-red-500" />
+                        <span className="text-red-700 font-medium">{territoriosFrios.length} frios</span>
                       </div>
                     )}
                   </div>
@@ -1107,127 +1099,98 @@ export default function Home() {
           </div>
 
           {/* Coluna Direita - Ações e Alertas */}
-          <div className="space-y-6">
-            {/* Alertas Críticos */}
-            <div>
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-lg font-semibold text-primary flex items-center gap-2">
-                  <span className="w-2 h-2 rounded-full bg-status-error" />
-                  Alertas Críticos
+          <div className="space-y-4">
+            {/* Alertas Críticos - Compacto */}
+            <div className="bg-surface rounded-2xl border border-card p-4 relative overflow-hidden">
+              {/* Linha vertical de destaque */}
+              <div className="absolute left-0 top-0 bottom-0 w-1 bg-status-warning opacity-30" />
+              
+              <div className="flex items-center justify-between mb-3">
+                <h2 className="text-base font-semibold text-primary flex items-center gap-2">
+                  <AlertTriangle className="w-4 h-4 text-status-warning" />
+                  Alertas
                 </h2>
                 <button
                   onClick={() => setAlertasTelaCheia(true)}
-                  className="p-2 rounded-lg hover:bg-background transition-colors text-secondary hover:text-primary"
-                  title="Visualizar em tela cheia"
+                  className="p-1.5 rounded-lg hover:bg-background transition-colors text-secondary hover:text-primary"
+                  title="Ver todos"
                 >
-                  <Maximize2 className="w-5 h-5" />
+                  <Maximize2 className="w-4 h-4" />
                 </button>
               </div>
-              <div className="space-y-3">
+              <div className="space-y-2 max-h-[200px] overflow-y-auto">
                 {loadingAlerts ? (
                   <>
-                    {[1, 2, 3].map((i) => (
-                      <div key={i} className="bg-surface rounded-xl border border-card p-4 animate-pulse">
-                        <div className="h-4 bg-background rounded w-3/4 mb-2" />
-                        <div className="h-3 bg-background rounded w-1/2 mb-2" />
-                        <div className="h-3 bg-background rounded w-1/4" />
+                    {[1, 2].map((i) => (
+                      <div key={i} className="bg-background rounded-lg p-3 animate-pulse">
+                        <div className="h-3 bg-surface rounded w-3/4 mb-1.5" />
+                        <div className="h-2 bg-surface rounded w-1/2" />
                       </div>
                     ))}
                   </>
                 ) : criticalAlerts.length > 0 ? (
-                  criticalAlerts.map((alert) => (
+                  criticalAlerts.slice(0, 3).map((alert) => (
                     <AlertCard key={alert.id} alert={alert} />
                   ))
                 ) : (
-                  <div className="text-center py-4">
-                    <p className="text-sm text-secondary">Nenhum alerta crítico no momento</p>
+                  <div className="text-center py-3">
+                    <p className="text-xs text-secondary">Nenhum alerta no momento</p>
                   </div>
                 )}
               </div>
             </div>
 
-            {/* Bandeiras de Campanha - Usos e Performance */}
-            <div className="bg-surface rounded-2xl border border-card p-6 relative overflow-hidden">
+            {/* Bandeiras de Campanha - Compacto */}
+            <div className="bg-surface rounded-2xl border border-card p-4 relative overflow-hidden">
               {/* Linha vertical de destaque */}
               <div className="absolute left-0 top-0 bottom-0 w-1 bg-accent-gold opacity-20" />
               
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-3">
-                  <h2 className="text-lg font-semibold text-primary flex items-center gap-2">
-                    <Flag className="w-5 h-5 text-accent-gold" />
-                    Bandeiras de Campanha
-                  </h2>
-                  <span className="text-xs text-secondary bg-surface px-2 py-1 rounded border border-card">
-                    Fonte própria
-                  </span>
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  <Flag className="w-4 h-4 text-accent-gold" />
+                  <h2 className="text-base font-semibold text-primary">Bandeiras</h2>
+                  <span className="text-[10px] text-secondary bg-background px-1.5 py-0.5 rounded">Fonte própria</span>
                 </div>
                 <button
                   onClick={() => setBandeirasTelaCheia(true)}
-                  className="p-2 rounded-lg hover:bg-background transition-colors text-secondary hover:text-primary"
-                  title="Visualizar em tela cheia"
+                  className="p-1.5 rounded-lg hover:bg-background transition-colors text-secondary hover:text-primary"
+                  title="Ver detalhes"
                 >
-                  <Maximize2 className="w-5 h-5" />
+                  <Maximize2 className="w-4 h-4" />
                 </button>
               </div>
               {loadingBandeiras ? (
-                <div className="space-y-3">
-                  <div className="grid grid-cols-2 gap-3">
-                    {[1, 2].map((i) => (
-                      <div key={i} className="h-20 bg-background rounded-xl animate-pulse" />
-                    ))}
-                  </div>
+                <div className="space-y-1.5">
+                  {[1, 2, 3].map((i) => (
+                    <div key={i} className="h-8 bg-background rounded animate-pulse" />
+                  ))}
                 </div>
               ) : bandeirasStats ? (
-                <div className="space-y-4">
-                  {/* KPIs principais */}
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="relative p-5 rounded-2xl border-2 border-blue-500/30 bg-gradient-to-br from-blue-50 to-surface hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300 cursor-pointer group overflow-hidden before:absolute before:left-0 before:top-0 before:bottom-0 before:w-1 before:bg-blue-500 before:rounded-l-2xl">
-                      <div className="flex items-center gap-2 mb-2">
-                        <TrendingUp className="w-4 h-4 text-blue-600" />
-                        <p className="text-xs font-medium text-secondary">Total de Usos</p>
-                      </div>
-                      <p className="text-3xl font-bold text-blue-600 group-hover:scale-105 transition-transform">{bandeirasStats.totalUsos}</p>
-                      <p className="text-xs text-secondary mt-1">notícias/postagens</p>
-                    </div>
-                    <div className="relative p-5 rounded-2xl border-2 border-emerald-500/30 bg-gradient-to-br from-emerald-50 to-surface hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300 cursor-pointer group overflow-hidden before:absolute before:left-0 before:top-0 before:bottom-0 before:w-1 before:bg-emerald-500 before:rounded-l-2xl">
-                      <div className="flex items-center gap-2 mb-2">
-                        <MessageSquare className="w-4 h-4 text-emerald-600" />
-                        <p className="text-xs font-medium text-secondary">Performance Média</p>
-                      </div>
-                      <p className="text-3xl font-bold text-emerald-600 group-hover:scale-105 transition-transform">{bandeirasStats.totalPerformance}%</p>
-                      <p className="text-xs text-secondary mt-1">engajamento médio</p>
-                    </div>
-                  </div>
-
+                <div>
                   {/* Top 3 Bandeiras */}
-                  {bandeirasStats.topBandeiras.length > 0 && (
-                    <div>
-                      <p className="text-xs font-medium text-secondary mb-2">Top 3 Bandeiras por Uso</p>
-                      <div className="space-y-2">
-                        {bandeirasStats.topBandeiras.map((bandeira, index) => (
-                          <div
-                            key={bandeira.theme}
-                            className="flex items-center justify-between p-2 bg-background rounded-lg"
-                          >
-                            <div className="flex items-center gap-2">
-                              <div className="w-6 h-6 rounded-full bg-accent-gold-soft text-accent-gold flex items-center justify-center text-xs font-semibold">
-                                {index + 1}
-                              </div>
-                              <span className="text-sm text-primary">{bandeira.theme}</span>
+                  {bandeirasStats.topBandeiras.length > 0 ? (
+                    <div className="space-y-1.5">
+                      {bandeirasStats.topBandeiras.slice(0, 3).map((bandeira, index) => (
+                        <div
+                          key={bandeira.theme}
+                          className="flex items-center justify-between p-2 bg-background rounded-lg"
+                        >
+                          <div className="flex items-center gap-2">
+                            <div className="w-5 h-5 rounded-full bg-accent-gold-soft text-accent-gold flex items-center justify-center text-[10px] font-semibold">
+                              {index + 1}
                             </div>
-                            <div className="flex items-center gap-3 text-xs">
-                              <span className="text-secondary">{bandeira.usage_count} usos</span>
-                              <span className="text-secondary">{bandeira.performance_score}%</span>
-                            </div>
+                            <span className="text-xs text-primary truncate max-w-[120px]">{bandeira.theme}</span>
                           </div>
-                        ))}
-                      </div>
+                          <div className="flex items-center gap-2 text-[10px]">
+                            <span className="text-secondary">{bandeira.usage_count} usos</span>
+                            <span className="text-emerald-600 font-medium">{bandeira.performance_score}%</span>
+                          </div>
+                        </div>
+                      ))}
                     </div>
-                  )}
-
-                  {bandeirasStats.totalBandeiras === 0 && (
-                    <p className="text-sm text-secondary text-center py-2">
-                      Nenhuma bandeira ativa cadastrada
+                  ) : (
+                    <p className="text-xs text-secondary text-center py-2">
+                      Nenhuma bandeira ativa
                     </p>
                   )}
                 </div>
@@ -1238,31 +1201,6 @@ export default function Home() {
                   </p>
                 </div>
               )}
-            </div>
-
-            {/* Pendências Jurídicas */}
-            <div>
-              <h2 className="text-lg font-semibold text-primary mb-4 flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-status-warning" />
-                Pendências Jurídicas
-              </h2>
-              <div className="space-y-3">
-                {mockAlerts.filter((a) => a.type === 'warning').map((alert) => (
-                  <AlertCard key={alert.id} alert={alert} />
-                ))}
-              </div>
-            </div>
-
-            {/* Ações Recomendadas */}
-            <div className="bg-beige rounded-2xl border border-beige-dark p-6">
-              <h2 className="text-lg font-semibold text-primary mb-4">
-                Ações Recomendadas Automáticas
-              </h2>
-              <div className="space-y-3">
-                {mockActions.map((action) => (
-                  <ActionCard key={action.id} action={action} />
-                ))}
-              </div>
             </div>
 
           </div>
@@ -1347,28 +1285,11 @@ export default function Home() {
                   
                   {/* Mapa de Presença Interativo */}
                   {showMapaPresenca && (() => {
-                    const presencaKpi = kpisComMedia.find(k => k.id === 'presenca')
-                    let cidadesAtivas = 0
-                    let totalCidades = 224
-                    
-                    if (presencaKpi && typeof presencaKpi.value === 'string' && presencaKpi.value.includes('/')) {
-                      const [cidades, total] = presencaKpi.value.split('/').map(v => parseInt(v.trim()) || 0)
-                      cidadesAtivas = cidades
-                      totalCidades = total || 224
-                    }
-
-                    const cidadesComPresencaList = (() => {
-                      const cidades = new Set<string>()
-                      territoriosQuentes.forEach(t => cidades.add(t.cidade))
-                      territoriosMornos.forEach(t => cidades.add(t.cidade))
-                      return Array.from(cidades)
-                    })()
-
-                    return cidadesAtivas > 0 ? (
+                    return cidadesComLiderancas.length > 0 ? (
                       <div className="mb-8">
                         <MapaPresenca
-                          cidadesComPresenca={cidadesComPresencaList.length > 0 ? cidadesComPresencaList : Array.from({length: cidadesAtivas}, (_, i) => `Cidade ${i+1}`)}
-                          totalCidades={totalCidades}
+                          cidadesComPresenca={cidadesComLiderancas}
+                          totalCidades={224}
                           fullscreen={true}
                         />
                       </div>
@@ -1485,23 +1406,6 @@ export default function Home() {
 
       {/* Modal de Mapa em Tela Cheia */}
       {mapaTelaCheia && (() => {
-        const presencaKpi = kpisComMedia.find(k => k.id === 'presenca')
-        let cidadesAtivas = 0
-        let totalCidades = 224
-        
-        if (presencaKpi && typeof presencaKpi.value === 'string' && presencaKpi.value.includes('/')) {
-          const [cidades, total] = presencaKpi.value.split('/').map(v => parseInt(v.trim()) || 0)
-          cidadesAtivas = cidades
-          totalCidades = total || 224
-        }
-
-        const cidadesComPresencaList = (() => {
-          const cidades = new Set<string>()
-          territoriosQuentes.forEach(t => cidades.add(t.cidade))
-          territoriosMornos.forEach(t => cidades.add(t.cidade))
-          return Array.from(cidades)
-        })()
-
         return (
           <div className="fixed inset-0 z-50 bg-background flex flex-col">
             <div className="bg-surface border-b border-card p-4 flex items-center justify-between">
@@ -1518,30 +1422,35 @@ export default function Home() {
               </button>
             </div>
             <div className="flex-1 overflow-hidden">
-              {cidadesAtivas > 0 ? (
+              {cidadesComLiderancas.length > 0 ? (
                 <div className="w-full h-full">
                   <div className="w-full h-full bg-surface overflow-hidden">
                     <MapWrapperLeaflet 
-                      cidadesComPresenca={cidadesComPresencaList.length > 0 ? cidadesComPresencaList : Array.from({length: cidadesAtivas}, (_, i) => `Cidade ${i+1}`)}
+                      cidadesComPresenca={cidadesComLiderancas}
                       municipiosPiaui={municipiosPiaui}
+                      eleitoresPorCidade={eleitoresPorCidade}
                     />
                   </div>
                 </div>
               ) : (
                 <div className="h-full flex items-center justify-center">
-                  <p className="text-secondary">Nenhuma cidade com presença ativa</p>
+                  <p className="text-secondary">Nenhuma cidade com liderança cadastrada</p>
                 </div>
               )}
             </div>
             {/* Legenda fixa no rodapé */}
-            <div className="bg-surface border-t border-card p-3 flex items-center justify-center gap-6 text-xs text-secondary">
+            <div className="bg-surface border-t border-card p-3 flex flex-wrap items-center justify-center gap-4 text-xs text-secondary">
               <div className="flex items-center gap-2">
                 <div className="w-3 h-3 rounded-full bg-accent-gold border border-accent-gold"></div>
-                <span>Presença Ativa</span>
+                <span>Com liderança</span>
               </div>
               <div className="flex items-center gap-2">
-                <div className="w-3 h-3 rounded-full bg-[#E5DED4] border border-[#D4D0C8]"></div>
-                <span>Sem Ação</span>
+                <div className="w-3 h-3 rounded-full bg-red-600 border border-red-800 opacity-70"></div>
+                <span>Sem liderança (+ eleitores)</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-2 h-2 rounded-full bg-red-400 border border-red-500 opacity-50"></div>
+                <span>Sem liderança</span>
               </div>
             </div>
           </div>
