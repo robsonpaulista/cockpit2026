@@ -59,7 +59,7 @@ export function CollectNewsModal({ onClose, onSuccess }: CollectNewsModalProps) 
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div className="bg-surface rounded-2xl border border-card p-6 w-full max-w-md">
         <div className="flex items-center justify-between mb-6">
-          <h2 className="text-xl font-semibold text-primary">
+          <h2 className="text-xl font-semibold text-text-primary">
             Coletar do Google Alerts
           </h2>
           <button
@@ -72,7 +72,7 @@ export function CollectNewsModal({ onClose, onSuccess }: CollectNewsModalProps) 
 
         <div className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-primary mb-2">
+            <label className="block text-sm font-medium text-text-primary mb-2">
               URL do Feed RSS do Google Alerts
             </label>
             <input

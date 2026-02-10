@@ -280,7 +280,7 @@ export function FeedManagerModal({ onClose, onCollect }: FeedManagerModalProps) 
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div className="bg-surface rounded-2xl border border-card p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between mb-6">
-          <h2 className="text-xl font-semibold text-primary">
+          <h2 className="text-xl font-semibold text-text-primary">
             Gerenciar Feeds RSS
           </h2>
           <button
@@ -341,7 +341,7 @@ export function FeedManagerModal({ onClose, onCollect }: FeedManagerModalProps) 
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-1">
-                      <h3 className="text-sm font-semibold text-primary">{feed.name}</h3>
+                      <h3 className="text-sm font-semibold text-text-primary">{feed.name}</h3>
                       <span
                         className={`px-2 py-0.5 text-xs rounded-lg ${
                           feed.type === 'adversary_feed'
@@ -408,12 +408,12 @@ export function FeedManagerModal({ onClose, onCollect }: FeedManagerModalProps) 
         {/* Formulário de Adicionar/Editar */}
         {showAddForm && (
           <div className="border-t border-card pt-6 mt-6">
-            <h3 className="text-sm font-semibold text-primary mb-4">
+            <h3 className="text-sm font-semibold text-text-primary mb-4">
               {editingFeed ? 'Editar Feed' : 'Adicionar Novo Feed'}
             </h3>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-primary mb-2">
+                <label className="block text-sm font-medium text-text-primary mb-2">
                   Tipo de Feed
                 </label>
                 <select
@@ -427,7 +427,7 @@ export function FeedManagerModal({ onClose, onCollect }: FeedManagerModalProps) 
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-medium text-primary mb-2">
+                <label className="block text-sm font-medium text-text-primary mb-2">
                   Nome do Feed
                 </label>
                 <input
@@ -440,7 +440,7 @@ export function FeedManagerModal({ onClose, onCollect }: FeedManagerModalProps) 
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-primary mb-2">
+                <label className="block text-sm font-medium text-text-primary mb-2">
                   URL do Feed RSS
                 </label>
                 <input
@@ -461,7 +461,7 @@ export function FeedManagerModal({ onClose, onCollect }: FeedManagerModalProps) 
                     onChange={(e) => setFormData({ ...formData, auto_classify: e.target.checked })}
                     className="w-4 h-4"
                   />
-                  <label htmlFor="auto_classify" className="text-sm text-primary">
+                  <label htmlFor="auto_classify" className="text-sm text-text-primary">
                     Classificar automaticamente (sentimento, risco, tema)
                   </label>
                 </div>

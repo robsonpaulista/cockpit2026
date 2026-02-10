@@ -211,7 +211,7 @@ export default function NarrativasPage() {
               >
                 <div className="flex items-start justify-between mb-4">
                   <div>
-                    <h3 className="text-lg font-semibold text-primary">{narrativa.theme}</h3>
+                    <h3 className="text-lg font-semibold text-text-primary">{narrativa.theme}</h3>
                     <p className="text-sm text-secondary mt-1">Público: {narrativa.target_audience}</p>
                   </div>
                   <div className="flex items-center gap-2">
@@ -244,13 +244,13 @@ export default function NarrativasPage() {
                 </div>
 
                 <div className="mb-4">
-                  <p className="text-sm font-medium text-primary mb-2">Mensagem-chave</p>
+                  <p className="text-sm font-medium text-text-primary mb-2">Mensagem-chave</p>
                   <p className="text-sm text-secondary">{narrativa.key_message}</p>
                 </div>
 
                 {narrativa.arguments && narrativa.arguments.length > 0 && (
                   <div className="mb-4">
-                    <p className="text-sm font-medium text-primary mb-2">Argumentos</p>
+                    <p className="text-sm font-medium text-text-primary mb-2">Argumentos</p>
                     <ul className="space-y-1">
                       {narrativa.arguments.map((arg, idx) => (
                         <li key={idx} className="text-sm text-secondary flex items-start gap-2">
@@ -264,7 +264,7 @@ export default function NarrativasPage() {
 
                 {narrativa.tested_phrases && narrativa.tested_phrases.length > 0 && (
                   <div className="mb-4">
-                    <p className="text-sm font-medium text-primary mb-2">Frases testadas</p>
+                    <p className="text-sm font-medium text-text-primary mb-2">Frases testadas</p>
                     <ul className="space-y-1">
                       {narrativa.tested_phrases.slice(0, 2).map((phrase, idx) => (
                         <li key={idx} className="text-sm text-secondary italic">
@@ -285,11 +285,11 @@ export default function NarrativasPage() {
                   <div className="flex items-center gap-4">
                     <div className="flex items-center gap-2">
                       <TrendingUp className="w-4 h-4 text-secondary" />
-                      <span className="text-sm font-medium text-primary">{narrativa.usage_count || 0} usos</span>
+                      <span className="text-sm font-medium text-text-primary">{narrativa.usage_count || 0} usos</span>
                     </div>
                     <div className="flex items-center gap-2">
                       <MessageSquare className="w-4 h-4 text-secondary" />
-                      <span className="text-sm font-medium text-primary">{narrativa.performance_score || 0}% performance</span>
+                      <span className="text-sm font-medium text-text-primary">{narrativa.performance_score || 0}% performance</span>
                     </div>
                   </div>
                   

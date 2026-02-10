@@ -492,7 +492,7 @@ export default function AgendaPage() {
         {/* Botão de Configuração */}
         <div className="mb-6 flex items-center justify-between">
           <div>
-            <h2 className="text-xl font-semibold text-primary mb-2">Eventos do Google Calendar</h2>
+            <h2 className="text-xl font-semibold text-text-primary mb-2">Eventos do Google Calendar</h2>
             <p className="text-sm text-secondary">
               {!configLoaded
                 ? 'Carregando...'
@@ -506,7 +506,7 @@ export default function AgendaPage() {
               <button
                 onClick={() => fetchEvents(true)}
                 disabled={isRefreshing || loading}
-                className="flex items-center gap-2 px-4 py-2 bg-surface border border-card text-primary rounded-lg hover:bg-background transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex items-center gap-2 px-4 py-2 bg-surface border border-card text-text-primary rounded-lg hover:bg-background transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 title="Atualizar eventos manualmente"
               >
                 <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
@@ -550,7 +550,7 @@ export default function AgendaPage() {
         ) : !config ? (
           <div className="bg-surface rounded-2xl border border-card p-8 text-center">
             <Calendar className="w-16 h-16 text-secondary mx-auto mb-4" />
-            <h3 className="text-lg font-semibold text-primary mb-2">
+            <h3 className="text-lg font-semibold text-text-primary mb-2">
               Nenhuma configuração encontrada
             </h3>
             <p className="text-sm text-secondary mb-4">
@@ -577,7 +577,7 @@ export default function AgendaPage() {
                   <CalendarDays className="w-5 h-5 text-accent-gold" />
                   <span className="text-sm font-medium text-secondary">Total de Eventos</span>
                 </div>
-                <p className="text-2xl font-bold text-primary">{events.length}</p>
+                <p className="text-2xl font-bold text-text-primary">{events.length}</p>
               </div>
               <div className="bg-surface rounded-xl border border-card p-4">
                 <div className="flex items-center gap-2 mb-2">
@@ -597,7 +597,7 @@ export default function AgendaPage() {
 
             {/* Filtro de Data */}
             <div className="mb-6 bg-surface rounded-xl border border-card p-4">
-              <label className="block text-sm font-medium text-primary mb-2">
+              <label className="block text-sm font-medium text-text-primary mb-2">
                 Filtrar por Data
               </label>
               <div className="flex items-center gap-3">
@@ -615,12 +615,12 @@ export default function AgendaPage() {
                     }
                   }}
                   min="2026-01-01"
-                  className="px-4 py-2 border border-card rounded-lg bg-background text-primary focus:outline-none focus:ring-2 focus:ring-accent-gold-soft"
+                  className="px-4 py-2 border border-card rounded-lg bg-background text-text-primary focus:outline-none focus:ring-2 focus:ring-accent-gold-soft"
                 />
                 {selectedDate && (
                   <button
                     onClick={() => setSelectedDate(null)}
-                    className="px-4 py-2 text-sm text-secondary hover:text-primary transition-colors"
+                    className="px-4 py-2 text-sm text-secondary hover:text-text-primary transition-colors"
                   >
                     Limpar filtro
                   </button>
@@ -638,13 +638,13 @@ export default function AgendaPage() {
               <div className="absolute left-0 top-0 bottom-0 w-1 bg-accent-gold opacity-20" />
               
               <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-semibold text-primary flex items-center gap-2">
+                <h3 className="text-lg font-semibold text-text-primary flex items-center gap-2">
                   <Calendar className="w-5 h-5 text-accent-gold" />
                   {selectedDate ? `Eventos de ${formatDateOnly(selectedDate)}` : 'Todos os Eventos'}
                 </h3>
                 <button
                   onClick={() => setShowFullscreen(true)}
-                  className="p-2 rounded-lg hover:bg-background transition-colors text-secondary hover:text-primary"
+                  className="p-2 rounded-lg hover:bg-background transition-colors text-secondary hover:text-text-primary"
                   title="Visualizar em tela cheia"
                 >
                   <Maximize2 className="w-5 h-5" />
@@ -674,13 +674,13 @@ export default function AgendaPage() {
                       >
                         <div className="flex items-start justify-between gap-4">
                           <div className="flex-1">
-                            <h4 className="text-base font-semibold text-primary mb-1 flex items-center gap-2 flex-wrap">
+                            <h4 className="text-base font-semibold text-text-primary mb-1 flex items-center gap-2 flex-wrap">
                               {highlightOriginInText(event.summary || 'Sem título')}
                             </h4>
                             <div className="flex flex-wrap items-center gap-3 text-xs text-secondary">
                               <div className="flex items-center gap-1">
                                 <Clock className="w-3.5 h-3.5" />
-                                <span className="text-base font-bold text-primary">
+                                <span className="text-base font-bold text-text-primary">
                                   {event.start.dateTime 
                                     ? formatTime(event.start.dateTime)
                                     : event.start.date
@@ -760,7 +760,7 @@ export default function AgendaPage() {
                           </div>
                           <div className="text-right flex flex-col items-end justify-between">
                             <div>
-                              <p className="text-sm font-medium text-primary">
+                              <p className="text-sm font-medium text-text-primary">
                                 {event.start.dateTime 
                                   ? formatDate(event.start.dateTime)
                                   : event.start.date
@@ -773,7 +773,7 @@ export default function AgendaPage() {
                             </div>
                             {/* Descrição no canto inferior direito */}
                             {event.description && (
-                              <p className="text-sm font-bold text-primary mt-2 text-right max-w-xs">
+                              <p className="text-sm font-bold text-text-primary mt-2 text-right max-w-xs">
                                 {event.description.replace(/^\([^)]+\)\s*/, '').trim()}
                               </p>
                             )}
@@ -810,7 +810,7 @@ export default function AgendaPage() {
           />
           
           <div className="bg-surface border-b border-card p-4 flex items-center justify-between">
-            <h2 className="text-xl font-semibold text-primary flex items-center gap-2">
+            <h2 className="text-xl font-semibold text-text-primary flex items-center gap-2">
               <Calendar className="w-6 h-6 text-accent-gold" />
               {selectedDate ? `Eventos de ${formatDateOnly(selectedDate)}` : 'Todos os Eventos'}
             </h2>
@@ -847,13 +847,13 @@ export default function AgendaPage() {
                       >
                         <div className="flex items-start justify-between gap-4">
                           <div className="flex-1">
-                            <h4 className="text-lg font-semibold text-primary mb-2 flex items-center gap-2 flex-wrap">
+                            <h4 className="text-lg font-semibold text-text-primary mb-2 flex items-center gap-2 flex-wrap">
                               {highlightOriginInText(event.summary || 'Sem título')}
                             </h4>
                             <div className="flex flex-wrap items-center gap-4 text-sm text-secondary">
                               <div className="flex items-center gap-2">
                                 <Clock className="w-4 h-4" />
-                                <span className="text-lg font-bold text-primary">
+                                <span className="text-lg font-bold text-text-primary">
                                   {event.start.dateTime 
                                     ? formatTime(event.start.dateTime)
                                     : event.start.date
@@ -934,7 +934,7 @@ export default function AgendaPage() {
                           <div className="text-right">
                             {/* Descrição no canto inferior direito */}
                             {event.description && (
-                              <p className="text-sm font-bold text-primary text-right max-w-xs">
+                              <p className="text-sm font-bold text-text-primary text-right max-w-xs">
                                 {event.description.replace(/^\([^)]+\)\s*/, '').trim()}
                               </p>
                             )}

@@ -1861,7 +1861,7 @@ export function AIAgent({
               <div className="space-y-3">
                 {chatMessages.length === 0 && (
                   <div className="p-3 rounded-xl bg-accent-gold-soft border border-accent-gold">
-                    <p className="text-sm text-primary font-medium">
+                    <p className="text-sm text-text-primary font-medium">
                       Olá! Pergunte-me qualquer coisa sobre a campanha.
                     </p>
                     <div className="mt-3 space-y-1">
@@ -1878,7 +1878,7 @@ export function AIAgent({
                 {chatMessages.map((msg) => (
                   <div key={msg.id} className={`${msg.role === 'user' ? 'flex justify-end' : ''}`}>
                     <div className={`p-3 rounded-xl max-w-[95%] ${
-                      msg.role === 'user' ? 'bg-accent-gold text-white' : 'bg-app border border-card text-primary'
+                      msg.role === 'user' ? 'bg-accent-gold text-white' : 'bg-app border border-card text-text-primary'
                     }`}>
                       <p className="text-sm whitespace-pre-line">{msg.content}</p>
                       
@@ -1902,7 +1902,7 @@ export function AIAgent({
                 {isProcessing && (
                   <div className="flex items-center gap-2 p-3 rounded-xl bg-accent-gold-soft">
                     <Loader2 className="w-4 h-4 text-accent-gold animate-spin" />
-                    <span className="text-xs text-primary font-medium">Buscando dados...</span>
+                    <span className="text-xs text-text-primary font-medium">Buscando dados...</span>
                   </div>
                 )}
               </div>

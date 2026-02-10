@@ -1,6 +1,7 @@
 /* 
  * Premium Theme Refinements — Cockpit 2026
  * Estilos adicionais para garantir consistência premium
+ * Usa rgb(var(--xxx)) para compatibilidade com temas dinâmicos
  */
 
 /* Scrollbar customizado */
@@ -10,43 +11,43 @@
 }
 
 ::-webkit-scrollbar-track {
-  background: var(--bg-app);
+  background: rgb(var(--bg-app));
 }
 
 ::-webkit-scrollbar-thumb {
-  background: var(--accent-gold-soft);
+  background: rgb(var(--accent-gold-soft));
   border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--accent-gold);
+  background: rgb(var(--accent-gold));
 }
 
 /* Firefox */
 * {
-  scrollbar-color: var(--accent-gold-soft) var(--bg-app);
+  scrollbar-color: rgb(var(--accent-gold-soft)) rgb(var(--bg-app));
   scrollbar-width: thin;
 }
 
 /* Selection */
 ::selection {
-  background-color: var(--accent-gold);
+  background-color: rgb(var(--accent-gold));
   color: white;
 }
 
 ::-moz-selection {
-  background-color: var(--accent-gold);
+  background-color: rgb(var(--accent-gold));
   color: white;
 }
 
 /* Links */
 a {
-  color: var(--accent-gold);
+  color: rgb(var(--accent-gold));
   transition: color 200ms ease-out;
 }
 
 a:hover {
-  color: var(--accent-gold-soft);
+  color: rgb(var(--accent-gold-soft));
   text-decoration: underline;
 }
 
@@ -54,13 +55,13 @@ a:hover {
 input:focus-visible,
 textarea:focus-visible,
 select:focus-visible {
-  outline: 2px solid var(--accent-gold);
+  outline: 2px solid rgb(var(--accent-gold));
   outline-offset: 2px;
 }
 
 /* Placeholder text */
 ::placeholder {
-  color: var(--text-muted);
+  color: rgb(var(--text-muted));
   opacity: 0.7;
 }
 
@@ -133,8 +134,8 @@ button:disabled {
   bottom: 120%;
   left: 50%;
   transform: translateX(-50%);
-  background-color: var(--text-primary);
-  color: var(--bg-surface);
+  background-color: rgb(var(--text-primary));
+  color: rgb(var(--bg-surface));
   padding: 6px 12px;
   border-radius: 8px;
   font-size: 12px;
@@ -158,8 +159,8 @@ button:disabled {
 .spinner {
   width: 24px;
   height: 24px;
-  border: 3px solid var(--accent-gold-soft);
-  border-top-color: var(--accent-gold);
+  border: 3px solid rgb(var(--accent-gold-soft));
+  border-top-color: rgb(var(--accent-gold));
   border-radius: 50%;
   animation: spin 1s linear infinite;
 }
@@ -187,9 +188,9 @@ button:disabled {
 .skeleton {
   background: linear-gradient(
     90deg,
-    var(--bg-surface) 0%,
-    var(--accent-gold-soft) 50%,
-    var(--bg-surface) 100%
+    rgb(var(--bg-surface)) 0%,
+    rgb(var(--accent-gold-soft)) 50%,
+    rgb(var(--bg-surface)) 100%
   );
   background-size: 1000px 100%;
   animation: shimmer 2s infinite;
@@ -248,21 +249,9 @@ button:disabled {
   }
 }
 
-/* Dark mode (if ever needed) - commented for now */
-/*
-@media (prefers-color-scheme: dark) {
-  :root {
-    --bg-app: #1a1a1a;
-    --bg-surface: #2a2a2a;
-    --text-primary: #f5f5f5;
-    --text-secondary: #d0d0d0;
-  }
-}
-*/
-
 /* Focus visible para acessibilidade */
 :focus-visible {
-  outline: 2px solid var(--accent-gold);
+  outline: 2px solid rgb(var(--accent-gold));
   outline-offset: 2px;
 }
 
@@ -273,8 +262,8 @@ button:disabled {
 
 /* Código inline */
 code {
-  background-color: var(--accent-gold-soft);
-  color: var(--accent-gold);
+  background-color: rgb(var(--accent-gold-soft));
+  color: rgb(var(--accent-gold));
   padding: 2px 6px;
   border-radius: 4px;
   font-family: 'Monaco', 'Menlo', 'Consolas', monospace;
@@ -282,8 +271,8 @@ code {
 }
 
 pre {
-  background-color: var(--bg-app);
-  border: 1px solid var(--border-card);
+  background-color: rgb(var(--bg-app));
+  border: 1px solid rgb(var(--border-card));
   padding: 12px;
   border-radius: 8px;
   overflow-x: auto;
@@ -298,26 +287,26 @@ table {
 }
 
 thead {
-  background-color: var(--accent-gold-soft);
-  border-bottom: 2px solid var(--accent-gold);
+  background-color: rgb(var(--accent-gold-soft));
+  border-bottom: 2px solid rgb(var(--accent-gold));
 }
 
 th,
 td {
   padding: 12px;
   text-align: left;
-  border-bottom: 1px solid var(--border-card);
+  border-bottom: 1px solid rgb(var(--border-card));
 }
 
 tbody tr:hover {
-  background-color: var(--bg-surface);
+  background-color: rgb(var(--bg-surface));
 }
 
 /* Blockquote */
 blockquote {
-  border-left: 4px solid var(--accent-gold);
+  border-left: 4px solid rgb(var(--accent-gold));
   padding-left: 16px;
-  color: var(--text-secondary);
+  color: rgb(var(--text-secondary));
   font-style: italic;
   margin: 12px 0;
 }
@@ -326,7 +315,7 @@ blockquote {
 hr {
   border: none;
   height: 1px;
-  background: var(--border-card);
+  background: rgb(var(--border-card));
   margin: 20px 0;
 }
 
@@ -337,28 +326,28 @@ hr {
   border-radius: 20px;
   font-size: 12px;
   font-weight: 600;
-  background-color: var(--accent-gold-soft);
-  color: var(--accent-gold);
-  border: 1px solid var(--accent-gold);
+  background-color: rgb(var(--accent-gold-soft));
+  color: rgb(var(--accent-gold));
+  border: 1px solid rgb(var(--accent-gold));
 }
 
 /* Success, Warning, Danger variants */
 .badge.success {
-  background-color: rgba(46, 125, 50, 0.1);
-  color: var(--success);
-  border-color: var(--success);
+  background-color: rgb(var(--success) / 0.1);
+  color: rgb(var(--success));
+  border-color: rgb(var(--success));
 }
 
 .badge.warning {
-  background-color: rgba(199, 120, 0, 0.1);
-  color: var(--warning);
-  border-color: var(--warning);
+  background-color: rgb(var(--warning) / 0.1);
+  color: rgb(var(--warning));
+  border-color: rgb(var(--warning));
 }
 
 .badge.danger {
-  background-color: rgba(159, 42, 42, 0.1);
-  color: var(--danger);
-  border-color: var(--danger);
+  background-color: rgb(var(--danger) / 0.1);
+  color: rgb(var(--danger));
+  border-color: rgb(var(--danger));
 }
 
 /* Breadcrumb */
@@ -367,19 +356,20 @@ hr {
   align-items: center;
   gap: 8px;
   font-size: 14px;
-  color: var(--text-secondary);
+  color: rgb(var(--text-secondary));
   margin-bottom: 16px;
 }
 
 .breadcrumb a {
-  color: var(--accent-gold);
+  color: rgb(var(--accent-gold));
 }
 
 .breadcrumb .separator {
-  color: var(--border-card);
+  color: rgb(var(--border-card));
 }
 
 .breadcrumb .active {
-  color: var(--text-primary);
+  color: rgb(var(--text-primary));
   font-weight: 600;
 }
+

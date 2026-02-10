@@ -164,7 +164,7 @@ export function ObraFormModal({ obra, defaultTipo, onClose, onSuccess }: ObraFor
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 overflow-y-auto">
       <div className="bg-surface rounded-2xl border border-card w-full max-w-2xl my-8">
         <div className="flex items-center justify-between p-6 border-b border-card">
-          <h2 className="text-xl font-semibold text-primary">
+          <h2 className="text-xl font-semibold text-text-primary">
             {isEdit ? 'Editar obra' : 'Nova obra'}
           </h2>
           <button
@@ -187,7 +187,7 @@ export function ObraFormModal({ obra, defaultTipo, onClose, onSuccess }: ObraFor
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-primary mb-1">Município</label>
+              <label className="block text-sm font-medium text-text-primary mb-1">Município</label>
               <select
                 value={form.municipio ?? ''}
                 onChange={(e) => update('municipio', e.target.value)}
@@ -208,7 +208,7 @@ export function ObraFormModal({ obra, defaultTipo, onClose, onSuccess }: ObraFor
               </select>
             </div>
             <div className="sm:col-span-2">
-              <label className="block text-sm font-medium text-primary mb-1">Obra *</label>
+              <label className="block text-sm font-medium text-text-primary mb-1">Obra *</label>
               <input
                 type="text"
                 value={form.obra}
@@ -219,7 +219,7 @@ export function ObraFormModal({ obra, defaultTipo, onClose, onSuccess }: ObraFor
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-primary mb-1">Tipo</label>
+              <label className="block text-sm font-medium text-text-primary mb-1">Tipo</label>
               <select
                 value={form.tipo ?? ''}
                 onChange={(e) => update('tipo', e.target.value)}
@@ -234,7 +234,7 @@ export function ObraFormModal({ obra, defaultTipo, onClose, onSuccess }: ObraFor
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-primary mb-1">Órgão</label>
+              <label className="block text-sm font-medium text-text-primary mb-1">Órgão</label>
               <input
                 type="text"
                 value={form.orgao}
@@ -244,7 +244,7 @@ export function ObraFormModal({ obra, defaultTipo, onClose, onSuccess }: ObraFor
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-primary mb-1">SEI</label>
+              <label className="block text-sm font-medium text-text-primary mb-1">SEI</label>
               <input
                 type="text"
                 value={form.sei}
@@ -254,7 +254,7 @@ export function ObraFormModal({ obra, defaultTipo, onClose, onSuccess }: ObraFor
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-primary mb-1">SEI Medição</label>
+              <label className="block text-sm font-medium text-text-primary mb-1">SEI Medição</label>
               <input
                 type="text"
                 value={form.sei_medicao}
@@ -263,7 +263,7 @@ export function ObraFormModal({ obra, defaultTipo, onClose, onSuccess }: ObraFor
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-primary mb-1">Status</label>
+              <label className="block text-sm font-medium text-text-primary mb-1">Status</label>
               <input
                 type="text"
                 value={form.status}
@@ -273,7 +273,7 @@ export function ObraFormModal({ obra, defaultTipo, onClose, onSuccess }: ObraFor
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-primary mb-1">Pub. OS</label>
+              <label className="block text-sm font-medium text-text-primary mb-1">Pub. OS</label>
               <input
                 type="date"
                 value={form.publicacao_os}
@@ -282,7 +282,7 @@ export function ObraFormModal({ obra, defaultTipo, onClose, onSuccess }: ObraFor
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-primary mb-1">Solicitação Medição</label>
+              <label className="block text-sm font-medium text-text-primary mb-1">Solicitação Medição</label>
               <input
                 type="date"
                 value={form.solicitacao_medicao}
@@ -291,7 +291,7 @@ export function ObraFormModal({ obra, defaultTipo, onClose, onSuccess }: ObraFor
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-primary mb-1">Data Medição</label>
+              <label className="block text-sm font-medium text-text-primary mb-1">Data Medição</label>
               <input
                 type="date"
                 value={form.data_medicao}
@@ -300,7 +300,7 @@ export function ObraFormModal({ obra, defaultTipo, onClose, onSuccess }: ObraFor
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-primary mb-1">Status Medição</label>
+              <label className="block text-sm font-medium text-text-primary mb-1">Status Medição</label>
               <input
                 type="text"
                 value={form.status_medicao}
@@ -309,7 +309,7 @@ export function ObraFormModal({ obra, defaultTipo, onClose, onSuccess }: ObraFor
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-primary mb-1">Valor Total (R$)</label>
+              <label className="block text-sm font-medium text-text-primary mb-1">Valor Total (R$)</label>
               <input
                 type="number"
                 step="0.01"

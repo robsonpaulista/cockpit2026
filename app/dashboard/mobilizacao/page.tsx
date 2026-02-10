@@ -43,7 +43,7 @@ export default function MobilizacaoPage() {
 
         <div className="bg-surface rounded-2xl border border-card p-6">
           <div className="flex items-center justify-between mb-6">
-            <h2 className="text-lg font-semibold text-primary">Cadastro de Voluntários</h2>
+            <h2 className="text-lg font-semibold text-text-primary">Cadastro de Voluntários</h2>
             <button className="px-4 py-2 text-sm font-medium bg-accent-gold text-white rounded-lg hover:bg-accent-gold transition-colors">
               Novo Voluntário
             </button>

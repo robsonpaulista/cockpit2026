@@ -104,7 +104,7 @@ export function InstagramConfigModal({
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div className="bg-surface rounded-2xl border border-card p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between mb-6">
-          <h2 className="text-xl font-semibold text-primary">
+          <h2 className="text-xl font-semibold text-text-primary">
             Configurar Instagram
           </h2>
           <button
@@ -120,7 +120,7 @@ export function InstagramConfigModal({
             <div className="flex items-start gap-3">
               <Info className="w-5 h-5 text-accent-gold flex-shrink-0 mt-0.5" />
               <div className="flex-1">
-                <p className="text-sm font-medium text-primary mb-1">
+                <p className="text-sm font-medium text-text-primary mb-1">
                   Como obter as credenciais:
                 </p>
                 <ol className="text-xs text-secondary space-y-1 list-decimal list-inside">
@@ -142,7 +142,7 @@ export function InstagramConfigModal({
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-primary mb-2">
+            <label className="block text-sm font-medium text-text-primary mb-2">
               Access Token *
             </label>
             <div className="relative">
@@ -157,7 +157,7 @@ export function InstagramConfigModal({
               <button
                 type="button"
                 onClick={() => setShowToken(!showToken)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-secondary hover:text-primary"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-secondary hover:text-text-primary"
               >
                 {showToken ? 'Ocultar' : 'Mostrar'}
               </button>
@@ -165,7 +165,7 @@ export function InstagramConfigModal({
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-primary mb-2">
+            <label className="block text-sm font-medium text-text-primary mb-2">
               Business Account ID (ID da Página do Facebook) *
             </label>
             <input

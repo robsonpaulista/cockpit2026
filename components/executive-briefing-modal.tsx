@@ -389,7 +389,7 @@ export function ExecutiveBriefingModal({
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-card">
           <div>
-            <h2 className="text-xl font-semibold text-primary">Briefing Executivo</h2>
+            <h2 className="text-xl font-semibold text-text-primary">Briefing Executivo</h2>
             <p className="text-sm text-secondary mt-1">{cidade}</p>
           </div>
           <div className="flex items-center gap-2">
@@ -428,7 +428,7 @@ export function ExecutiveBriefingModal({
               <section>
                 <div className="flex items-center gap-1.5 mb-2">
                   <Users className="w-3.5 h-3.5 text-accent-gold" />
-                  <h3 className="text-sm font-semibold text-primary">Lideranças e Expectativa de Votos</h3>
+                  <h3 className="text-sm font-semibold text-text-primary">Lideranças e Expectativa de Votos</h3>
                   {expectativaVotosCol && (
                     <span className="ml-auto text-xs font-bold text-accent-gold">
                       Total: {Math.round(totalExpectativa).toLocaleString('pt-BR')} votos
@@ -442,12 +442,12 @@ export function ExecutiveBriefingModal({
                     <table className="w-full text-xs border-collapse">
                       <thead>
                         <tr className="bg-background border-b border-card">
-                          <th className="text-left p-1.5 font-semibold text-primary">Nome</th>
+                          <th className="text-left p-1.5 font-semibold text-text-primary">Nome</th>
                           {liderancasOrdenadas.some(l => l.funcao) && (
-                            <th className="text-left p-1.5 font-semibold text-primary">Função</th>
+                            <th className="text-left p-1.5 font-semibold text-text-primary">Função</th>
                           )}
                           {expectativaVotosCol && (
-                            <th className="text-right p-1.5 font-semibold text-primary">Expectativa de Votos</th>
+                            <th className="text-right p-1.5 font-semibold text-text-primary">Expectativa de Votos</th>
                           )}
                         </tr>
                       </thead>
@@ -458,7 +458,7 @@ export function ExecutiveBriefingModal({
                           
                           return (
                             <tr key={idx} className="border-b border-card hover:bg-background/50 transition-colors">
-                              <td className="p-1.5 text-primary">{nome}</td>
+                              <td className="p-1.5 text-text-primary">{nome}</td>
                               {liderancasOrdenadas.some(l => l.funcao) && (
                                 <td className="p-1.5 text-secondary">{lider.funcao || '-'}</td>
                               )}
@@ -480,7 +480,7 @@ export function ExecutiveBriefingModal({
               <section>
                 <div className="flex items-center gap-1.5 mb-2">
                   <FileText className="w-3.5 h-3.5 text-accent-gold" />
-                  <h3 className="text-sm font-semibold text-primary">Demandas por Status</h3>
+                  <h3 className="text-sm font-semibold text-text-primary">Demandas por Status</h3>
                 </div>
                 {demandsOrdenadas.length === 0 ? (
                   <p className="text-xs text-secondary">Nenhuma demanda encontrada</p>
@@ -489,13 +489,13 @@ export function ExecutiveBriefingModal({
                     <table className="w-full text-xs border-collapse">
                       <thead>
                         <tr className="bg-background border-b border-card">
-                          <th className="text-left p-1.5 font-semibold text-primary">Título</th>
-                          <th className="text-left p-1.5 font-semibold text-primary">Status</th>
+                          <th className="text-left p-1.5 font-semibold text-text-primary">Título</th>
+                          <th className="text-left p-1.5 font-semibold text-text-primary">Status</th>
                           {demandsOrdenadas.some(d => d.lideranca) && (
-                            <th className="text-left p-1.5 font-semibold text-primary">Liderança</th>
+                            <th className="text-left p-1.5 font-semibold text-text-primary">Liderança</th>
                           )}
                           {demandsOrdenadas.some(d => d.data_demanda) && (
-                            <th className="text-left p-1.5 font-semibold text-primary">Data</th>
+                            <th className="text-left p-1.5 font-semibold text-text-primary">Data</th>
                           )}
                         </tr>
                       </thead>
@@ -508,7 +508,7 @@ export function ExecutiveBriefingModal({
                           
                           return (
                             <tr key={idx} className="border-b border-card hover:bg-background/50 transition-colors">
-                              <td className="p-1.5 text-primary">
+                              <td className="p-1.5 text-text-primary">
                                 <div className="flex items-center gap-1">
                                   {isFinalizada ? (
                                     <CheckCircle className="w-3 h-3 text-status-success flex-shrink-0" />
@@ -554,7 +554,7 @@ export function ExecutiveBriefingModal({
                 <section>
                   <div className="flex items-center gap-1.5 mb-3">
                     <TrendingUp className="w-3.5 h-3.5 text-accent-gold" />
-                    <h3 className="text-sm font-semibold text-primary">Pesquisas de Intenção de Voto</h3>
+                    <h3 className="text-sm font-semibold text-text-primary">Pesquisas de Intenção de Voto</h3>
                   </div>
                   <div className="h-96 bg-white rounded-lg border border-card p-4">
                     <ResponsiveContainer width="100%" height="100%">

@@ -161,7 +161,7 @@ export default function CampoPage() {
           <div className="lg:col-span-2">
             <div className="bg-surface rounded-2xl border border-card p-6">
               <div className="flex items-center justify-between mb-6">
-                <h2 className="text-lg font-semibold text-primary">Agenda</h2>
+                <h2 className="text-lg font-semibold text-text-primary">Agenda</h2>
                 <button
                   onClick={() => {
                     setEditingAgenda(null)
@@ -198,7 +198,7 @@ export default function CampoPage() {
                               <Calendar className="w-4 h-4 text-accent-gold" />
                             </div>
                             <div className="flex-1 min-w-0">
-                              <h3 className="text-sm font-semibold text-primary truncate">
+                              <h3 className="text-sm font-semibold text-text-primary truncate">
                                 {agenda.cities?.name || 'Cidade não informada'}
                               </h3>
                               <p className="text-xs text-secondary">
@@ -271,7 +271,7 @@ export default function CampoPage() {
             <div className="bg-surface rounded-2xl border border-card p-6">
               <div className="mb-6">
                 <div className="flex items-center justify-between mb-4">
-                  <h2 className="text-lg font-semibold text-primary">Demandas</h2>
+                  <h2 className="text-lg font-semibold text-text-primary">Demandas</h2>
                   <button
                     onClick={() => {
                       setEditingDemand(null)
@@ -485,7 +485,7 @@ function DemandCard({
     <div className={`p-3 rounded-lg border ${statusColors[demanda.status as keyof typeof statusColors]} group`}>
       <div className="flex items-start justify-between mb-1">
         <p 
-          className="text-sm font-medium text-primary flex-1 cursor-pointer hover:text-accent-gold transition-colors"
+          className="text-sm font-medium text-text-primary flex-1 cursor-pointer hover:text-accent-gold transition-colors"
           onClick={() => onEdit?.(demanda)}
           title="Clique para editar"
         >

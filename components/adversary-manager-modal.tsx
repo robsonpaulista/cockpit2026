@@ -184,7 +184,7 @@ export function AdversaryManagerModal({ onClose, onUpdate }: AdversaryManagerMod
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div className="bg-surface rounded-2xl border border-card p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between mb-6">
-          <h2 className="text-xl font-semibold text-primary">
+          <h2 className="text-xl font-semibold text-text-primary">
             Gerenciar Adversários
           </h2>
           <button
@@ -222,7 +222,7 @@ export function AdversaryManagerModal({ onClose, onUpdate }: AdversaryManagerMod
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-1">
-                      <h3 className="text-sm font-semibold text-primary">
+                      <h3 className="text-sm font-semibold text-text-primary">
                         {adversary.name}
                       </h3>
                       {adversary.type && (
@@ -290,12 +290,12 @@ export function AdversaryManagerModal({ onClose, onUpdate }: AdversaryManagerMod
         {/* Formulário de Adicionar/Editar */}
         {showAddForm && (
           <div className="border-t border-card pt-6 mt-6">
-            <h3 className="text-sm font-semibold text-primary mb-4">
+            <h3 className="text-sm font-semibold text-text-primary mb-4">
               {editingAdversary ? 'Editar Adversário' : 'Adicionar Novo Adversário'}
             </h3>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-primary mb-2">
+                <label className="block text-sm font-medium text-text-primary mb-2">
                   Nome do Adversário *
                 </label>
                 <input
@@ -309,7 +309,7 @@ export function AdversaryManagerModal({ onClose, onUpdate }: AdversaryManagerMod
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-primary mb-2">
+                <label className="block text-sm font-medium text-text-primary mb-2">
                   Tipo
                 </label>
                 <select
@@ -328,7 +328,7 @@ export function AdversaryManagerModal({ onClose, onUpdate }: AdversaryManagerMod
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-primary mb-2">
+                <label className="block text-sm font-medium text-text-primary mb-2">
                   Temas que Aborda
                 </label>
                 <div className="flex flex-wrap gap-2">
@@ -340,7 +340,7 @@ export function AdversaryManagerModal({ onClose, onUpdate }: AdversaryManagerMod
                       className={`px-3 py-1.5 text-xs rounded-lg border transition-colors ${
                         formData.themes.includes(theme)
                           ? 'bg-accent-gold text-white border-accent-gold'
-                          : 'bg-surface border-card text-primary hover:border-accent-gold/50'
+                          : 'bg-surface border-card text-text-primary hover:border-accent-gold/50'
                       }`}
                     >
                       {theme}
@@ -355,7 +355,7 @@ export function AdversaryManagerModal({ onClose, onUpdate }: AdversaryManagerMod
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-primary mb-2">
+                <label className="block text-sm font-medium text-text-primary mb-2">
                   Share of Voice (Presença) - 0 a 100
                 </label>
                 <input
@@ -374,7 +374,7 @@ export function AdversaryManagerModal({ onClose, onUpdate }: AdversaryManagerMod
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-primary mb-2">
+                <label className="block text-sm font-medium text-text-primary mb-2">
                   URL do Feed RSS do Google Alerts
                 </label>
                 <input

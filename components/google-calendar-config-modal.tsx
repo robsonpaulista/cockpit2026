@@ -126,7 +126,7 @@ export function GoogleCalendarConfigModal({
               <Calendar className="w-5 h-5 text-accent-gold" />
             </div>
             <div>
-              <h2 className="text-lg font-semibold text-primary">Configurar Google Calendar</h2>
+              <h2 className="text-lg font-semibold text-text-primary">Configurar Google Calendar</h2>
               <p className="text-xs text-secondary mt-0.5">Conecte sua conta do Google Calendar</p>
             </div>
           </div>
@@ -146,7 +146,7 @@ export function GoogleCalendarConfigModal({
               <Info className="w-5 h-5 text-accent-gold flex-shrink-0 mt-0.5" />
               <div className="flex-1 space-y-2 text-sm text-secondary">
                 <p>
-                  <strong className="text-primary">Para conectar ao Google Calendar, você precisa:</strong>
+                  <strong className="text-text-primary">Para conectar ao Google Calendar, você precisa:</strong>
                 </p>
                 <ul className="list-disc list-inside space-y-1 ml-2">
                   <li>Uma Service Account do Google Cloud Platform</li>
@@ -172,7 +172,7 @@ export function GoogleCalendarConfigModal({
 
           {/* ID do Calendário */}
           <div>
-            <label className="block text-sm font-medium text-primary mb-2">
+            <label className="block text-sm font-medium text-text-primary mb-2">
               ID do Calendário <span className="text-status-error">*</span>
             </label>
             <input
@@ -180,7 +180,7 @@ export function GoogleCalendarConfigModal({
               value={formData.calendarId}
               onChange={(e) => setFormData({ ...formData, calendarId: e.target.value })}
               placeholder="primary ou email@exemplo.com"
-              className="w-full px-4 py-2.5 border border-card rounded-lg bg-surface text-primary focus:outline-none focus:ring-2 focus:ring-accent-gold-soft"
+              className="w-full px-4 py-2.5 border border-card rounded-lg bg-surface text-text-primary focus:outline-none focus:ring-2 focus:ring-accent-gold-soft"
               required
             />
             <p className="mt-1.5 text-xs text-secondary">
@@ -190,7 +190,7 @@ export function GoogleCalendarConfigModal({
 
           {/* Email do Service Account */}
           <div>
-            <label className="block text-sm font-medium text-primary mb-2">
+            <label className="block text-sm font-medium text-text-primary mb-2">
               Email do Service Account <span className="text-status-error">*</span>
             </label>
             <input
@@ -198,7 +198,7 @@ export function GoogleCalendarConfigModal({
               value={formData.serviceAccountEmail}
               onChange={(e) => setFormData({ ...formData, serviceAccountEmail: e.target.value })}
               placeholder="service-account@projeto.iam.gserviceaccount.com"
-              className="w-full px-4 py-2.5 border border-card rounded-lg bg-surface text-primary focus:outline-none focus:ring-2 focus:ring-accent-gold-soft"
+              className="w-full px-4 py-2.5 border border-card rounded-lg bg-surface text-text-primary focus:outline-none focus:ring-2 focus:ring-accent-gold-soft"
               required
             />
             <p className="mt-1.5 text-xs text-secondary">
@@ -208,7 +208,7 @@ export function GoogleCalendarConfigModal({
 
           {/* Credenciais JSON */}
           <div>
-            <label className="block text-sm font-medium text-primary mb-2">
+            <label className="block text-sm font-medium text-text-primary mb-2">
               Credenciais JSON (Service Account) <span className="text-status-error">*</span>
             </label>
             <div className="relative">
@@ -217,13 +217,13 @@ export function GoogleCalendarConfigModal({
                 onChange={(e) => setFormData({ ...formData, credentials: e.target.value })}
                 placeholder='{"type": "service_account", "private_key": "...", "client_email": "..."}'
                 rows={8}
-                className="w-full px-4 py-2.5 border border-card rounded-lg bg-surface text-primary font-mono text-xs focus:outline-none focus:ring-2 focus:ring-accent-gold-soft"
+                className="w-full px-4 py-2.5 border border-card rounded-lg bg-surface text-text-primary font-mono text-xs focus:outline-none focus:ring-2 focus:ring-accent-gold-soft"
                 required
               />
               <button
                 type="button"
                 onClick={() => setShowCredentials(!showCredentials)}
-                className="absolute top-2 right-2 text-xs text-secondary hover:text-primary"
+                className="absolute top-2 right-2 text-xs text-secondary hover:text-text-primary"
               >
                 {showCredentials ? 'Ocultar' : 'Mostrar'}
               </button>
@@ -235,7 +235,7 @@ export function GoogleCalendarConfigModal({
 
           {/* Email do Usuário Real (Domain-Wide Delegation) */}
           <div>
-            <label className="block text-sm font-medium text-primary mb-2">
+            <label className="block text-sm font-medium text-text-primary mb-2">
               Email do Usuário Real (Workspace) <span className="text-status-warning">*</span>
             </label>
             <input
@@ -243,12 +243,12 @@ export function GoogleCalendarConfigModal({
               value={formData.subjectUser}
               onChange={(e) => setFormData({ ...formData, subjectUser: e.target.value })}
               placeholder="agenda@jadyeldajupi.com.br"
-              className="w-full px-4 py-2.5 border border-card rounded-lg bg-surface text-primary focus:outline-none focus:ring-2 focus:ring-accent-gold-soft"
+              className="w-full px-4 py-2.5 border border-card rounded-lg bg-surface text-text-primary focus:outline-none focus:ring-2 focus:ring-accent-gold-soft"
               required
             />
             <p className="mt-1.5 text-xs text-secondary">
               Email do usuário real do Google Workspace que possui o calendário. 
-              <strong className="text-primary"> Obrigatório para Domain-Wide Delegation.</strong>
+              <strong className="text-text-primary"> Obrigatório para Domain-Wide Delegation.</strong>
             </p>
           </div>
 
@@ -258,7 +258,7 @@ export function GoogleCalendarConfigModal({
               type="button"
               onClick={handleTest}
               disabled={testing || !formData.calendarId || !formData.serviceAccountEmail || !formData.credentials || !formData.subjectUser}
-              className="w-full px-4 py-2.5 border border-card rounded-lg bg-background text-primary hover:bg-accent-gold-soft transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full px-4 py-2.5 border border-card rounded-lg bg-background text-text-primary hover:bg-accent-gold-soft transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {testing ? 'Testando...' : 'Testar Conexão'}
             </button>
@@ -280,7 +280,7 @@ export function GoogleCalendarConfigModal({
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 px-4 py-2.5 border border-card rounded-lg text-primary hover:bg-background transition-colors"
+              className="flex-1 px-4 py-2.5 border border-card rounded-lg text-text-primary hover:bg-background transition-colors"
             >
               Cancelar
             </button>

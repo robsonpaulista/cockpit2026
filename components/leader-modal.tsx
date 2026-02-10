@@ -59,7 +59,7 @@ export function LeaderModal({ leader, territories, onClose, onSave, initialTerri
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
       <div className="bg-surface rounded-2xl border border-card w-full max-w-2xl max-h-[90vh] overflow-y-auto m-4">
         <div className="sticky top-0 bg-surface border-b border-card p-6 flex items-center justify-between">
-          <h2 className="text-xl font-semibold text-primary">
+          <h2 className="text-xl font-semibold text-text-primary">
             {leader ? 'Editar Líder' : 'Novo Líder'}
           </h2>
           <button
@@ -73,7 +73,7 @@ export function LeaderModal({ leader, territories, onClose, onSave, initialTerri
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
           {/* Território */}
           <div>
-            <label className="block text-sm font-medium text-primary mb-2">
+            <label className="block text-sm font-medium text-text-primary mb-2">
               Território *
             </label>
             <select
@@ -93,7 +93,7 @@ export function LeaderModal({ leader, territories, onClose, onSave, initialTerri
 
           {/* Nome */}
           <div>
-            <label className="block text-sm font-medium text-primary mb-2">
+            <label className="block text-sm font-medium text-text-primary mb-2">
               Nome *
             </label>
             <input
@@ -108,7 +108,7 @@ export function LeaderModal({ leader, territories, onClose, onSave, initialTerri
           {/* Telefone e Email */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-primary mb-2">
+              <label className="block text-sm font-medium text-text-primary mb-2">
                 Telefone
               </label>
               <input
@@ -119,7 +119,7 @@ export function LeaderModal({ leader, territories, onClose, onSave, initialTerri
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-primary mb-2">
+              <label className="block text-sm font-medium text-text-primary mb-2">
                 Email
               </label>
               <input
@@ -134,7 +134,7 @@ export function LeaderModal({ leader, territories, onClose, onSave, initialTerri
           {/* Cargo e Status */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-primary mb-2">
+              <label className="block text-sm font-medium text-text-primary mb-2">
                 Cargo/Função
               </label>
               <input
@@ -146,7 +146,7 @@ export function LeaderModal({ leader, territories, onClose, onSave, initialTerri
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-primary mb-2">
+              <label className="block text-sm font-medium text-text-primary mb-2">
                 Status
               </label>
               <select
@@ -162,7 +162,7 @@ export function LeaderModal({ leader, territories, onClose, onSave, initialTerri
 
           {/* Observações */}
           <div>
-            <label className="block text-sm font-medium text-primary mb-2">
+            <label className="block text-sm font-medium text-text-primary mb-2">
               Observações
             </label>
             <textarea
@@ -178,7 +178,7 @@ export function LeaderModal({ leader, territories, onClose, onSave, initialTerri
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 text-sm font-medium text-primary bg-background rounded-lg hover:bg-background/80 transition-colors"
+              className="px-4 py-2 text-sm font-medium text-text-primary bg-background rounded-lg hover:bg-background/80 transition-colors"
             >
               Cancelar
             </button>

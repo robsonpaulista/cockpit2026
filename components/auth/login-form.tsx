@@ -53,7 +53,7 @@ export function LoginForm() {
       <div className="w-full max-w-md">
         <div className="bg-surface rounded-2xl border border-card p-8 shadow-card">
           <div className="mb-6">
-            <h1 className="text-2xl font-semibold text-primary mb-2">
+            <h1 className="text-2xl font-semibold text-text-primary mb-2">
               Cockpit 2026
             </h1>
             <p className="text-sm text-secondary">
@@ -63,7 +63,7 @@ export function LoginForm() {
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label htmlFor="email" className="block text-sm font-medium text-primary mb-2">
+              <label htmlFor="email" className="block text-sm font-medium text-text-primary mb-2">
                 Email
               </label>
               <input
@@ -78,7 +78,7 @@ export function LoginForm() {
             </div>
 
             <div>
-              <label htmlFor="password" className="block text-sm font-medium text-primary mb-2">
+              <label htmlFor="password" className="block text-sm font-medium text-text-primary mb-2">
                 Senha
               </label>
               <input

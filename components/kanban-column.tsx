@@ -21,7 +21,7 @@ export function KanbanColumn({ title, status, tasks, onTaskClick, onTaskMove, co
       <div className="mb-4">
         <div className="flex items-center gap-2 mb-1">
           <div className="w-3 h-3 rounded-full" style={{ backgroundColor: color }} />
-          <h3 className="text-sm font-semibold text-primary">{title}</h3>
+          <h3 className="text-sm font-semibold text-text-primary">{title}</h3>
           <span className="text-xs text-secondary bg-background px-2 py-0.5 rounded-full">
             {filteredTasks.length}
           </span>

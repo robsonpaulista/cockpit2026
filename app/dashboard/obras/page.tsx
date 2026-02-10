@@ -519,7 +519,7 @@ export default function ObrasPage() {
                   placeholder="Buscar por nome, localização, cidade..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2 border border-card rounded-lg bg-background text-primary focus:outline-none focus:ring-2 focus:ring-accent-gold-soft"
+                  className="w-full pl-10 pr-4 py-2 border border-card rounded-lg bg-background text-text-primary focus:outline-none focus:ring-2 focus:ring-accent-gold-soft"
                 />
               </div>
             </div>
@@ -529,7 +529,7 @@ export default function ObrasPage() {
               <select
                 value={filterMunicipio}
                 onChange={(e) => setFilterMunicipio(e.target.value)}
-                className="w-full px-4 py-2 border border-card rounded-lg bg-background text-primary focus:outline-none focus:ring-2 focus:ring-accent-gold-soft"
+                className="w-full px-4 py-2 border border-card rounded-lg bg-background text-text-primary focus:outline-none focus:ring-2 focus:ring-accent-gold-soft"
               >
                 <option value="">Todos os municípios</option>
                 {municipios.map((municipio) => (
@@ -545,7 +545,7 @@ export default function ObrasPage() {
               <select
                 value={filterStatus}
                 onChange={(e) => setFilterStatus(e.target.value)}
-                className="w-full px-4 py-2 border border-card rounded-lg bg-background text-primary focus:outline-none focus:ring-2 focus:ring-accent-gold-soft"
+                className="w-full px-4 py-2 border border-card rounded-lg bg-background text-text-primary focus:outline-none focus:ring-2 focus:ring-accent-gold-soft"
               >
                 <option value="">Todos os status</option>
                 {statusList.map((status) => (
@@ -561,7 +561,7 @@ export default function ObrasPage() {
               <select
                 value={filterStatusMedicao}
                 onChange={(e) => setFilterStatusMedicao(e.target.value)}
-                className="w-full px-4 py-2 border border-card rounded-lg bg-background text-primary focus:outline-none focus:ring-2 focus:ring-accent-gold-soft"
+                className="w-full px-4 py-2 border border-card rounded-lg bg-background text-text-primary focus:outline-none focus:ring-2 focus:ring-accent-gold-soft"
               >
                 <option value="">Todos os status de medição</option>
                 {statusMedicaoList.map((status) => (
@@ -578,7 +578,7 @@ export default function ObrasPage() {
             <select
               value={filterOrgao}
               onChange={(e) => setFilterOrgao(e.target.value)}
-              className="w-full px-4 py-2 border border-card rounded-lg bg-background text-primary focus:outline-none focus:ring-2 focus:ring-accent-gold-soft"
+              className="w-full px-4 py-2 border border-card rounded-lg bg-background text-text-primary focus:outline-none focus:ring-2 focus:ring-accent-gold-soft"
             >
               <option value="">Todos os órgãos</option>
               {orgaos.map((orgao) => (
@@ -775,7 +775,7 @@ export default function ObrasPage() {
                           <button
                             type="button"
                             onClick={() => toggleSort(col)}
-                            className="flex items-center gap-1 hover:text-primary transition-colors w-full text-left"
+                            className="flex items-center gap-1 hover:text-text-primary transition-colors w-full text-left"
                             title={`Ordenar ${COLUMN_LABELS[col]} (${sortColumn === col && !sortAsc ? 'A→Z' : 'Z→A'})`}
                           >
                             {COLUMN_LABELS[col]}
@@ -794,12 +794,12 @@ export default function ObrasPage() {
                     <tr key={obra.id} className="group hover:bg-background/50 transition-colors">
                       {visibleColumns.municipio && (
                         <td className={`px-6 py-4 whitespace-nowrap min-w-[120px] ${visibleColsList[0] === 'municipio' ? 'sticky left-0 z-10 bg-surface group-hover:bg-background/50 border-r border-card' : ''}`}>
-                          <div className="text-sm font-semibold text-primary">{obra.municipio || '-'}</div>
+                          <div className="text-sm font-semibold text-text-primary">{obra.municipio || '-'}</div>
                         </td>
                       )}
                       {visibleColumns.obra && (
                         <td className={`px-6 py-4 whitespace-nowrap min-w-[320px] ${visibleColsList[0] === 'obra' ? 'sticky left-0 z-10 bg-surface group-hover:bg-background/50 border-r border-card' : ''}`}>
-                          <span className="text-sm font-semibold text-primary">{obra.obra}</span>
+                          <span className="text-sm font-semibold text-text-primary">{obra.obra}</span>
                         </td>
                       )}
                       {visibleColumns.orgao && (
@@ -858,7 +858,7 @@ export default function ObrasPage() {
                       )}
                       {visibleColumns.valor_total && (
                       <td className={`px-6 py-4 whitespace-nowrap ${visibleColsList[0] === 'valor_total' ? 'sticky left-0 z-10 bg-surface group-hover:bg-background/50 border-r border-card' : ''}`}>
-                        <div className="text-sm font-semibold text-primary">
+                        <div className="text-sm font-semibold text-text-primary">
                           {formatCurrency(obra.valor_total)}
                         </div>
                       </td>

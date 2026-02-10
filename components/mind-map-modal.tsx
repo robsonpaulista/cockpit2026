@@ -350,7 +350,7 @@ export function MindMapModal({
             },
             style: {
               background: '#F1F5F9',
-              color: '#64748B',
+              color: 'rgb(var(--text-muted))',
               border: '1.5px dashed #94A3B8',
               borderRadius: '8px',
               padding: '6px 10px',

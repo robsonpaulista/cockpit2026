@@ -132,7 +132,7 @@ export function AgendaModal({ agenda, onClose, onSuccess, onDelete }: AgendaModa
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div className="bg-surface rounded-2xl border border-card p-6 w-full max-w-md max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between mb-6">
-          <h2 className="text-xl font-semibold text-primary">
+          <h2 className="text-xl font-semibold text-text-primary">
             {isEditing ? 'Editar Agenda' : 'Nova Agenda'}
           </h2>
           <button
@@ -145,7 +145,7 @@ export function AgendaModal({ agenda, onClose, onSuccess, onDelete }: AgendaModa
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-primary mb-2">
+            <label className="block text-sm font-medium text-text-primary mb-2">
               Data *
             </label>
             <input
@@ -158,7 +158,7 @@ export function AgendaModal({ agenda, onClose, onSuccess, onDelete }: AgendaModa
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-primary mb-2">
+            <label className="block text-sm font-medium text-text-primary mb-2">
               Município (Piauí) *
             </label>
             {loadingCities ? (
@@ -210,7 +210,7 @@ export function AgendaModal({ agenda, onClose, onSuccess, onDelete }: AgendaModa
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-primary mb-2">
+            <label className="block text-sm font-medium text-text-primary mb-2">
               Tipo *
             </label>
             <select
@@ -229,7 +229,7 @@ export function AgendaModal({ agenda, onClose, onSuccess, onDelete }: AgendaModa
           {/* Status - só aparece ao editar */}
           {isEditing && (
             <div>
-              <label className="block text-sm font-medium text-primary mb-2">
+              <label className="block text-sm font-medium text-text-primary mb-2">
                 Status
               </label>
               <select
@@ -245,7 +245,7 @@ export function AgendaModal({ agenda, onClose, onSuccess, onDelete }: AgendaModa
           )}
 
           <div>
-            <label className="block text-sm font-medium text-primary mb-2">
+            <label className="block text-sm font-medium text-text-primary mb-2">
               Descrição
             </label>
             <textarea

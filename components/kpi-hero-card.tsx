@@ -61,50 +61,45 @@ export function KPIHeroCard({ kpi, subtitle, infoLines, href = '#' }: KPIHeroCar
     }
   }, [kpi.value])
 
-  const getInfoLineColor = (type?: 'positive' | 'negative' | 'neutral') => {
-    switch (type) {
-      case 'positive': return 'text-emerald-600'
-      case 'negative': return 'text-red-500'
-      default: return 'text-text-secondary'
-    }
+  const getInfoLineColor = (_type?: 'positive' | 'negative' | 'neutral') => {
+    return 'text-white/80'
   }
 
   const getInfoLineIcon = (line: InfoLine) => {
-    if (line.icon === 'trophy') return <Trophy className="w-3 h-3 flex-shrink-0" />
-    if (line.icon === 'trending' && line.type === 'positive') return <TrendingUp className="w-3 h-3 flex-shrink-0" />
-    if (line.icon === 'trending' && line.type === 'negative') return <TrendingDown className="w-3 h-3 flex-shrink-0" />
+    if (line.icon === 'trophy') return <Trophy className="w-4 h-4 flex-shrink-0" />
+    if (line.icon === 'trending' && line.type === 'positive') return <TrendingUp className="w-4 h-4 flex-shrink-0" />
+    if (line.icon === 'trending' && line.type === 'negative') return <TrendingDown className="w-4 h-4 flex-shrink-0" />
     return null
   }
 
   const content = (
     <div
       className={cn(
-        'relative p-4 rounded-[14px] border border-border-card bg-bg-surface shadow-card',
+        'relative p-5 rounded-[14px] bg-accent-gold border border-accent-gold shadow-card',
         'hover:shadow-card-hover hover:-translate-y-0.5',
         'transition-all duration-200 ease-out',
-        'cursor-pointer group overflow-hidden',
-        'border-t-4 border-t-accent-gold'
+        'cursor-pointer group overflow-hidden'
       )}
     >
-      {/* Layout horizontal compacto */}
-      <div className="flex items-center gap-3">
-        <div className="p-2 rounded-lg bg-accent-gold-soft flex-shrink-0">
-          <TrendingUp className="w-5 h-5 text-accent-gold" />
+      {/* Layout horizontal */}
+      <div className="flex items-center gap-4">
+        <div className="p-3 rounded-xl bg-white/20 flex-shrink-0">
+          <TrendingUp className="w-8 h-8 text-white" />
         </div>
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-semibold text-text-primary group-hover:text-accent-gold transition-colors">
+          <p className="text-base font-semibold text-white group-hover:text-white/90 transition-colors">
             {kpi.label}
           </p>
           {subtitle && !infoLines && (
-            <p className="text-xs text-text-secondary">{subtitle}</p>
+            <p className="text-sm text-white/70">{subtitle}</p>
           )}
           {infoLines && infoLines.length > 0 && (
-            <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 mt-0.5">
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-1">
               {infoLines.map((line, idx) => (
                 <span
                   key={idx}
                   className={cn(
-                    'text-[11px] font-medium flex items-center gap-1',
+                    'text-xs font-medium flex items-center gap-1.5',
                     getInfoLineColor(line.type)
                   )}
                 >
@@ -118,16 +113,16 @@ export function KPIHeroCard({ kpi, subtitle, infoLines, href = '#' }: KPIHeroCar
         <div className="text-right flex-shrink-0">
           <div className="flex items-center gap-2 justify-end">
             <p className={cn(
-              'text-3xl font-black text-text-primary group-hover:text-accent-gold transition-all duration-300',
+              'text-4xl font-black text-white transition-all duration-300',
               isAnimating && 'scale-105'
             )}>
               {displayValue}
             </p>
-            <span className="px-1.5 py-0.5 text-[9px] font-medium bg-accent-gold-soft text-accent-gold rounded border border-accent-gold/20">
+            <span className="px-2 py-0.5 text-[10px] font-medium bg-white/20 text-white rounded border border-white/30">
               Hoje
             </span>
           </div>
-          <span className="text-[10px] text-text-secondary">Fonte própria</span>
+          <span className="text-xs text-white/60">Fonte própria</span>
         </div>
       </div>
     </div>

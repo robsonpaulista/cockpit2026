@@ -3,27 +3,57 @@
 @tailwind utilities;
 
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=Outfit:wght@400;500;600;700;800&display=swap');
 @import './theme.css';
 
-/* Design Tokens - Tema Premium Bege */
-:root {
-  --bg-app: #F7F4EF;
-  --bg-surface: #FBF9F6;
-  --bg-sidebar: #EFE9E1;
+/* ============================================
+   Design Tokens - Formato RGB (R G B)
+   para compatibilidade com opacidade Tailwind
+   ============================================ */
+
+/* Tema 1: Premium Bege (padrão) */
+:root,
+[data-theme="premium"] {
+  --bg-app: 247 244 239;
+  --bg-surface: 251 249 246;
+  --bg-sidebar: 239 233 225;
   
-  --text-primary: #1C1C1C;
-  --text-secondary: #6B6B6B;
-  --text-muted: #9A9A9A;
+  --text-primary: 28 28 28;
+  --text-secondary: 107 107 107;
+  --text-muted: 154 154 154;
   
-  --accent-gold: #C6A15B;
-  --accent-gold-soft: #E8D9B8;
+  --accent-gold: 198 161 91;
+  --accent-gold-soft: 232 217 184;
+  --accent-gold-dark: 166 131 71;
   
-  --success: #2E7D32;
-  --warning: #C77800;
-  --danger: #9F2A2A;
-  --info: #6B7280;
+  --success: 46 125 50;
+  --warning: 199 120 0;
+  --danger: 159 42 42;
+  --info: 107 114 128;
   
-  --border-card: #E5DED4;
+  --border-card: 229 222 212;
+}
+
+/* Tema 2: Agentes (inspirado no BI Dc Paes) */
+[data-theme="agentes"] {
+  --bg-app: 248 250 252;
+  --bg-surface: 255 255 255;
+  --bg-sidebar: 236 238 242;
+  
+  --text-primary: 26 26 31;
+  --text-secondary: 104 120 142;
+  --text-muted: 145 146 159;
+  
+  --accent-gold: 222 90 18;
+  --accent-gold-soft: 253 236 214;
+  --accent-gold-dark: 184 67 17;
+  
+  --success: 22 163 74;
+  --warning: 241 145 65;
+  --danger: 185 28 28;
+  --info: 83 97 117;
+  
+  --border-card: 213 217 226;
 }
 
 @layer base {
@@ -32,32 +62,32 @@
   }
   
   html {
-    background-color: var(--bg-app);
+    background-color: rgb(var(--bg-app));
   }
   
   body {
     @apply bg-bg-app font-sans antialiased;
-    color: var(--text-primary);
+    color: rgb(var(--text-primary));
   }
 
   h1 {
     @apply text-4xl font-bold;
-    color: var(--text-primary);
+    color: rgb(var(--text-primary));
   }
 
   h2 {
     @apply text-2xl font-semibold;
-    color: var(--text-primary);
+    color: rgb(var(--text-primary));
   }
 
   h3 {
     @apply text-lg font-semibold;
-    color: var(--text-primary);
+    color: rgb(var(--text-primary));
   }
   
   h4 {
     @apply text-base font-semibold;
-    color: var(--text-primary);
+    color: rgb(var(--text-primary));
   }
 }
 
@@ -71,7 +101,7 @@
     @apply shadow-card-hover -translate-y-0.5;
   }
   
-  /* Card Hero com Borda Ouro */
+  /* Card Hero com Borda Accent */
   .card-hero {
     @apply card-premium border-t-4 border-t-accent-gold;
   }
@@ -79,17 +109,17 @@
   /* Texto Números (Protagonistas) */
   .number-hero {
     @apply text-4xl font-black;
-    color: var(--text-primary);
+    color: rgb(var(--text-primary));
   }
   
   .number-large {
     @apply text-3xl font-bold;
-    color: var(--text-primary);
+    color: rgb(var(--text-primary));
   }
   
   .number-medium {
     @apply text-2xl font-bold;
-    color: var(--text-primary);
+    color: rgb(var(--text-primary));
   }
   
   /* Indicadores & Badges */
@@ -108,7 +138,7 @@
   /* Sidebar Active */
   .sidebar-item-active {
     @apply bg-accent-gold-soft;
-    color: var(--text-primary);
+    color: rgb(var(--text-primary));
   }
   
   .sidebar-icon {
@@ -119,7 +149,7 @@
     @apply text-accent-gold font-semibold;
   }
   
-  /* Ícone Ouro Padrão */
+  /* Ícone Accent Padrão */
   .icon-gold {
     @apply text-accent-gold;
   }
@@ -132,12 +162,12 @@
   /* Texto Premium */
   .text-premium {
     @apply font-medium;
-    color: var(--text-secondary);
+    color: rgb(var(--text-secondary));
   }
   
   .text-muted-premium {
     @apply font-normal;
-    color: var(--text-muted);
+    color: rgb(var(--text-muted));
   }
   
   .transition-premium {
@@ -162,7 +192,3 @@
     opacity: 1;
   }
 }
-
-
-
-

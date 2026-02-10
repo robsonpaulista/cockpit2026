@@ -836,7 +836,7 @@ export default function Home() {
                 </p>
                 <button
                   onClick={() => setInsightTelaCheia(true)}
-                  className="p-1 rounded hover:bg-background/50 transition-colors text-secondary hover:text-primary"
+                  className="p-1 rounded hover:bg-background/50 transition-colors text-secondary hover:text-text-primary"
                   title="Visualizar em tela cheia"
                 >
                   <Maximize2 className="w-4 h-4" />
@@ -856,7 +856,7 @@ export default function Home() {
               
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-2">
-                  <h2 className="text-base font-semibold text-primary">Histórico de Pesquisas</h2>
+                  <h2 className="text-base font-semibold text-text-primary">Histórico de Pesquisas</h2>
                   {candidatoPadrao && (
                     <span className="text-xs text-secondary bg-accent-gold-soft px-2 py-0.5 rounded-full border border-accent-gold/20">
                       {candidatoPadrao}
@@ -871,7 +871,7 @@ export default function Home() {
                       </span>
                       <button
                         onClick={() => setGraficoPollsTelaCheia(true)}
-                        className="p-1.5 rounded-lg hover:bg-background transition-colors text-secondary hover:text-primary"
+                        className="p-1.5 rounded-lg hover:bg-background transition-colors text-secondary hover:text-text-primary"
                         title="Visualizar em tela cheia"
                       >
                         <Maximize2 className="w-4 h-4" />
@@ -893,22 +893,22 @@ export default function Home() {
                     <AreaChart data={pollsData}>
                       <defs>
                         <linearGradient id="colorIntencao" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%" stopColor="#C6A15B" stopOpacity={0.4} />
-                          <stop offset="95%" stopColor="#C6A15B" stopOpacity={0.05} />
+                          <stop offset="5%" stopColor="rgb(var(--accent-gold))" stopOpacity={0.4} />
+                          <stop offset="95%" stopColor="rgb(var(--accent-gold))" stopOpacity={0.05} />
                         </linearGradient>
                       </defs>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" strokeWidth={1} opacity={0.5} />
-                      <XAxis dataKey="date" stroke="#64748B" fontSize={12} />
+                      <CartesianGrid strokeDasharray="3 3" stroke="rgb(var(--border-card))" strokeWidth={1} opacity={0.5} />
+                      <XAxis dataKey="date" stroke="rgb(var(--text-muted))" fontSize={12} />
                       <YAxis 
-                        stroke="#64748B" 
+                        stroke="rgb(var(--text-muted))" 
                         fontSize={12}
                         domain={[0, 100]}
                         label={{ value: 'Intenção (%)', angle: -90, position: 'insideLeft' }}
                       />
                       <Tooltip
                         contentStyle={{
-                          backgroundColor: '#FFFFFF',
-                          border: '1px solid #E5E7EB',
+                          backgroundColor: 'rgb(var(--bg-surface))',
+                          border: '1px solid rgb(var(--border-card))',
                           borderRadius: '8px',
                           padding: '12px',
                         }}
@@ -971,8 +971,8 @@ export default function Home() {
                             
                             return (
                               <div className="bg-white border border-gray-200 rounded-lg shadow-lg p-3 min-w-[280px]">
-                                <p className="font-semibold text-primary mb-2">{label}</p>
-                                <p className="text-sm text-primary mb-1">
+                                <p className="font-semibold text-text-primary mb-2">{label}</p>
+                                <p className="text-sm text-text-primary mb-1">
                                   <span className="font-medium">Intenção de Voto:</span>{' '}
                                   <span className="text-accent-gold">{intencaoPercent}%</span>
                                 </p>
@@ -983,7 +983,7 @@ export default function Home() {
                                 )}
                                 {cidade && (
                                   <div className="mt-3 pt-3 border-t border-gray-200">
-                                    <p className="text-sm font-medium text-primary mb-2">Análise Comparativa - {cidade}</p>
+                                    <p className="text-sm font-medium text-text-primary mb-2">Análise Comparativa - {cidade}</p>
                                     {feedbackText ? (
                                       <>
                                         <p className="text-xs text-secondary mb-1">
@@ -1021,14 +1021,14 @@ export default function Home() {
                       <Area
                         type="monotone"
                         dataKey="intencao"
-                        stroke="#C6A15B"
+                        stroke="rgb(var(--accent-gold))"
                         strokeWidth={3}
                         fillOpacity={1}
                         fill="url(#colorIntencao)"
                         name="Intenção de Voto"
                         dot={(props: any) => {
                           const { cx, cy, payload } = props
-                          if (!payload) return <circle cx={cx} cy={cy} r={4} fill="#C6A15B" />
+                          if (!payload) return <circle cx={cx} cy={cy} r={4} fill="rgb(var(--accent-gold))" />
                           
                           const instituto = payload.instituto || ''
                           const cidade = payload.cidade || ''
@@ -1045,11 +1045,11 @@ export default function Home() {
                           
                           return (
                             <g>
-                              <circle cx={cx} cy={cy} r={4} fill="#C6A15B" />
+                              <circle cx={cx} cy={cy} r={4} fill="rgb(var(--accent-gold))" />
                               <text
                                 x={cx}
                                 y={cy - 20}
-                                fill="#C6A15B"
+                                fill="rgb(var(--accent-gold))"
                                 fontSize="12"
                                 fontWeight="600"
                                 textAnchor="middle"
@@ -1060,7 +1060,7 @@ export default function Home() {
                                 <text
                                   x={cx}
                                   y={cy - 8}
-                                  fill="#64748B"
+                                  fill="rgb(var(--text-muted))"
                                   fontSize="9"
                                   fontWeight="400"
                                   textAnchor="middle"
@@ -1092,13 +1092,13 @@ export default function Home() {
             <div className="absolute left-0 top-0 bottom-0 w-1 bg-status-warning opacity-30" />
             
             <div className="flex items-center justify-between mb-3">
-              <h2 className="text-base font-semibold text-primary flex items-center gap-2">
+              <h2 className="text-base font-semibold text-text-primary flex items-center gap-2">
                 <AlertTriangle className="w-4 h-4 text-status-warning" />
                 Alertas
               </h2>
               <button
                 onClick={() => setAlertasTelaCheia(true)}
-                className="p-1.5 rounded-lg hover:bg-background transition-colors text-secondary hover:text-primary"
+                className="p-1.5 rounded-lg hover:bg-background transition-colors text-secondary hover:text-text-primary"
                 title="Ver todos"
               >
                 <Maximize2 className="w-4 h-4" />
@@ -1131,22 +1131,22 @@ export default function Home() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mt-4">
           <div className="lg:col-span-2">
             {/* Análise de Territórios - Compacto */}
-            <div className="bg-surface rounded-2xl border border-card p-3 relative overflow-hidden h-full">
+            <div className="bg-surface rounded-2xl border border-card p-4 relative overflow-hidden h-full">
               {/* Linha vertical de destaque */}
               <div className="absolute left-0 top-0 bottom-0 w-1 bg-accent-gold opacity-20" />
               
-              <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-2">
-                  <Activity className="w-3.5 h-3.5 text-accent-gold" />
-                  <h2 className="text-sm font-semibold text-primary">Análise de Territórios</h2>
-                  <span className="text-[9px] text-secondary bg-background px-1.5 py-0.5 rounded">Fonte própria</span>
+                  <Activity className="w-4 h-4 text-accent-gold" />
+                  <h2 className="text-base font-semibold text-text-primary">Análise de Territórios</h2>
+                  <span className="text-[10px] text-secondary bg-background px-1.5 py-0.5 rounded">Fonte própria</span>
                 </div>
                 <button
                   onClick={() => setAnaliseTerritoriosTelaCheia(true)}
-                  className="p-1 rounded-lg hover:bg-background transition-colors text-secondary hover:text-primary"
+                  className="p-1.5 rounded-lg hover:bg-background transition-colors text-secondary hover:text-text-primary"
                   title="Ver detalhes"
                 >
-                  <Maximize2 className="w-3.5 h-3.5" />
+                  <Maximize2 className="w-4 h-4" />
                 </button>
               </div>
 
@@ -1198,60 +1198,60 @@ export default function Home() {
                     
                     return (
                       <>
-                        <div className="grid grid-cols-3 gap-1.5 mb-1.5">
-                          <div className="p-2 rounded-lg border border-accent-gold/30 bg-gradient-to-br from-primary-soft to-surface">
-                            <div className="flex items-center gap-1 mb-0.5">
-                              <MapPin className="w-2.5 h-2.5 text-accent-gold" />
-                              <p className="text-[9px] font-medium text-secondary">Presença</p>
+                        <div className="grid grid-cols-3 gap-2 mb-2">
+                          <div className="p-3 rounded-lg border border-accent-gold/30 bg-gradient-to-br from-primary-soft to-surface">
+                            <div className="flex items-center gap-1.5 mb-1">
+                              <MapPin className="w-3.5 h-3.5 text-accent-gold" />
+                              <p className="text-xs font-medium text-secondary">Presença</p>
                             </div>
-                            <p className="text-lg font-bold text-primary leading-tight">{cidadesAtivas}</p>
-                            <p className="text-[9px] text-secondary">de {totalCidades}</p>
+                            <p className="text-xl font-bold text-text-primary leading-tight">{cidadesAtivas}</p>
+                            <p className="text-xs text-secondary">de {totalCidades}</p>
                           </div>
-                          <div className="p-2 rounded-lg border border-card bg-surface">
-                            <div className="flex items-center gap-1 mb-0.5">
-                              <Activity className="w-2.5 h-2.5 text-accent-gold" />
-                              <p className="text-[9px] font-medium text-secondary">Visitadas</p>
+                          <div className="p-3 rounded-lg border border-card bg-surface">
+                            <div className="flex items-center gap-1.5 mb-1">
+                              <Activity className="w-3.5 h-3.5 text-accent-gold" />
+                              <p className="text-xs font-medium text-secondary">Visitadas</p>
                             </div>
-                            <p className="text-lg font-bold text-primary leading-tight">{cidadesVisitadas}</p>
-                            <p className="text-[9px] text-secondary">cidades</p>
+                            <p className="text-xl font-bold text-text-primary leading-tight">{cidadesVisitadas}</p>
+                            <p className="text-xs text-secondary">cidades</p>
                           </div>
-                          <div className="p-2 rounded-lg border border-card bg-surface">
-                            <div className="flex items-center gap-1 mb-0.5">
-                              <TrendingUp className="w-2.5 h-2.5 text-accent-gold" />
-                              <p className="text-[9px] font-medium text-secondary">Cobertura</p>
+                          <div className="p-3 rounded-lg border border-card bg-surface">
+                            <div className="flex items-center gap-1.5 mb-1">
+                              <TrendingUp className="w-3.5 h-3.5 text-accent-gold" />
+                              <p className="text-xs font-medium text-secondary">Cobertura</p>
                             </div>
-                            <p className="text-lg font-bold text-primary leading-tight">{percentualCobertura}%</p>
-                            <p className="text-[9px] text-secondary">das ativas</p>
+                            <p className="text-xl font-bold text-text-primary leading-tight">{percentualCobertura}%</p>
+                            <p className="text-xs text-secondary">das ativas</p>
                           </div>
                         </div>
 
                         {/* Eleitorado */}
                         {eleitoradoTotal > 0 && (
-                          <div className="p-2 rounded-lg border border-card bg-surface mb-1.5">
-                            <div className="flex items-center gap-1.5 mb-1">
-                              <Users className="w-2.5 h-2.5 text-accent-gold" />
-                              <p className="text-[9px] font-medium text-secondary">Eleitorado</p>
-                              <span className="ml-auto text-[9px] font-semibold text-accent-gold">{percentualEleitoradoCoberto}% coberto</span>
+                          <div className="p-3 rounded-lg border border-card bg-surface mb-2">
+                            <div className="flex items-center gap-1.5 mb-1.5">
+                              <Users className="w-3.5 h-3.5 text-accent-gold" />
+                              <p className="text-xs font-medium text-secondary">Eleitorado</p>
+                              <span className="ml-auto text-xs font-semibold text-accent-gold">{percentualEleitoradoCoberto}% coberto</span>
                             </div>
-                            <div className="w-full h-1.5 bg-background rounded-full overflow-hidden mb-1">
+                            <div className="w-full h-2 bg-background rounded-full overflow-hidden mb-1.5">
                               <div 
                                 className="h-full bg-accent-gold rounded-full transition-all duration-500"
                                 style={{ width: `${percentualEleitoradoCoberto}%` }}
                               />
                             </div>
-                            <p className="text-[9px] text-secondary mb-1.5">Potencial de expansão: <span className="font-semibold text-accent-gold">{Math.round(eleitoradoSemPresenca / 1000).toLocaleString('pt-BR')} mil eleitores</span></p>
-                            <div className="grid grid-cols-3 gap-1 text-center">
+                            <p className="text-xs text-secondary mb-2">Potencial de expansão: <span className="font-semibold text-accent-gold">{Math.round(eleitoradoSemPresenca / 1000).toLocaleString('pt-BR')} mil eleitores</span></p>
+                            <div className="grid grid-cols-3 gap-2 text-center">
                               <div>
-                                <p className="text-xs font-bold text-primary">{eleitoradoTotal.toLocaleString('pt-BR')}</p>
-                                <p className="text-[8px] text-secondary">Total PI</p>
+                                <p className="text-sm font-bold text-text-primary">{eleitoradoTotal.toLocaleString('pt-BR')}</p>
+                                <p className="text-[10px] text-secondary">Total PI</p>
                               </div>
                               <div>
-                                <p className="text-xs font-bold text-accent-gold">{eleitoradoComPresenca.toLocaleString('pt-BR')}</p>
-                                <p className="text-[8px] text-secondary">Com presença</p>
+                                <p className="text-sm font-bold text-accent-gold">{eleitoradoComPresenca.toLocaleString('pt-BR')}</p>
+                                <p className="text-[10px] text-secondary">Com presença</p>
                               </div>
                               <div>
-                                <p className="text-xs font-bold text-secondary">{eleitoradoSemPresenca.toLocaleString('pt-BR')}</p>
-                                <p className="text-[8px] text-secondary">Sem presença</p>
+                                <p className="text-sm font-bold text-secondary">{eleitoradoSemPresenca.toLocaleString('pt-BR')}</p>
+                                <p className="text-[10px] text-secondary">Sem presença</p>
                               </div>
                             </div>
                           </div>
@@ -1261,22 +1261,22 @@ export default function Home() {
                   })()}
 
                   {/* Resumo de Territórios - Inline */}
-                  <div className="flex items-center gap-2 text-[10px]">
+                  <div className="flex items-center gap-2 text-xs">
                     {territoriosQuentes.length > 0 && (
-                      <div className="flex items-center gap-1 px-1.5 py-0.5 bg-emerald-50 rounded-full">
-                        <Flame className="w-2.5 h-2.5 text-emerald-500" />
+                      <div className="flex items-center gap-1.5 px-2 py-1 bg-emerald-50 rounded-full">
+                        <Flame className="w-3 h-3 text-emerald-500" />
                         <span className="text-emerald-700 font-medium">{territoriosQuentes.length} quentes</span>
                       </div>
                     )}
                     {territoriosMornos.length > 0 && (
-                      <div className="flex items-center gap-1 px-1.5 py-0.5 bg-amber-50 rounded-full">
-                        <ThermometerSun className="w-2.5 h-2.5 text-amber-500" />
+                      <div className="flex items-center gap-1.5 px-2 py-1 bg-amber-50 rounded-full">
+                        <ThermometerSun className="w-3 h-3 text-amber-500" />
                         <span className="text-amber-700 font-medium">{territoriosMornos.length} mornos</span>
                       </div>
                     )}
                     {territoriosFrios.length > 0 && (
-                      <div className="flex items-center gap-1 px-1.5 py-0.5 bg-red-50 rounded-full">
-                        <ThermometerSnowflake className="w-2.5 h-2.5 text-red-500" />
+                      <div className="flex items-center gap-1.5 px-2 py-1 bg-red-50 rounded-full">
+                        <ThermometerSnowflake className="w-3 h-3 text-red-500" />
                         <span className="text-red-700 font-medium">{territoriosFrios.length} frios</span>
                       </div>
                     )}
@@ -1295,12 +1295,12 @@ export default function Home() {
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-2">
                   <Flag className="w-4 h-4 text-accent-gold" />
-                  <h2 className="text-base font-semibold text-primary">Bandeiras</h2>
+                  <h2 className="text-base font-semibold text-text-primary">Bandeiras</h2>
                   <span className="text-[10px] text-secondary bg-background px-1.5 py-0.5 rounded">últimos 30 dias</span>
                 </div>
                 <button
                   onClick={() => setBandeirasTelaCheia(true)}
-                  className="p-1.5 rounded-lg hover:bg-background transition-colors text-secondary hover:text-primary"
+                  className="p-1.5 rounded-lg hover:bg-background transition-colors text-secondary hover:text-text-primary"
                   title="Ver detalhes"
                 >
                   <Maximize2 className="w-4 h-4" />
@@ -1332,7 +1332,7 @@ export default function Home() {
                                 <div className="w-6 h-6 rounded-full bg-accent-gold-soft text-accent-gold flex items-center justify-center text-xs font-semibold">
                                   {index + 1}
                                 </div>
-                                <span className="text-sm text-primary truncate max-w-[130px]">{bandeira.theme}</span>
+                                <span className="text-sm text-text-primary truncate max-w-[130px]">{bandeira.theme}</span>
                               </div>
                               <div className="flex items-center gap-2 text-xs">
                                 <span className="text-secondary">{bandeira.usage_count} menções</span>
@@ -1396,7 +1396,7 @@ export default function Home() {
       {analiseTerritoriosTelaCheia && (
         <div className="fixed inset-0 z-50 bg-background flex flex-col">
           <div className="bg-surface border-b border-card p-4 flex items-center justify-between">
-            <h2 className="text-xl font-semibold text-primary flex items-center gap-2">
+            <h2 className="text-xl font-semibold text-text-primary flex items-center gap-2">
               <Activity className="w-6 h-6 text-accent-gold" />
               Análise de Territórios
             </h2>
@@ -1445,7 +1445,7 @@ export default function Home() {
                             <MapPin className="w-5 h-5 text-accent-gold" />
                             <p className="text-sm font-medium text-secondary">Cidades com Presença</p>
                           </div>
-                          <p className="text-4xl font-bold text-primary">{cidadesAtivas}</p>
+                          <p className="text-4xl font-bold text-text-primary">{cidadesAtivas}</p>
                           <p className="text-sm text-secondary mt-1">de {totalCidades} municípios</p>
                         </div>
                         <div className="relative p-6 rounded-2xl border border-card bg-surface">
@@ -1501,7 +1501,7 @@ export default function Home() {
                                   {territorio.visitas}
                                 </div>
                                 <div>
-                                  <p className="text-base font-medium text-primary">{territorio.cidade}</p>
+                                  <p className="text-base font-medium text-text-primary">{territorio.cidade}</p>
                                   <p className="text-xs text-secondary">{territorio.motivo}</p>
                                 </div>
                               </div>
@@ -1534,7 +1534,7 @@ export default function Home() {
                                   {territorio.visitas || 0}
                                 </div>
                                 <div>
-                                  <p className="text-base font-medium text-primary">{territorio.cidade}</p>
+                                  <p className="text-base font-medium text-text-primary">{territorio.cidade}</p>
                                   <p className="text-xs text-secondary">{territorio.motivo}</p>
                                 </div>
                               </div>
@@ -1567,7 +1567,7 @@ export default function Home() {
                                   {territorio.visitas || 0}
                                 </div>
                                 <div>
-                                  <p className="text-base font-medium text-primary">{territorio.cidade}</p>
+                                  <p className="text-base font-medium text-text-primary">{territorio.cidade}</p>
                                   <p className="text-xs text-secondary">{territorio.motivo}</p>
                                 </div>
                               </div>
@@ -1594,7 +1594,7 @@ export default function Home() {
         return (
           <div className="fixed inset-0 z-50 bg-background flex flex-col">
             <div className="bg-surface border-b border-card p-4 flex items-center justify-between">
-              <h2 className="text-xl font-semibold text-primary flex items-center gap-2">
+              <h2 className="text-xl font-semibold text-text-primary flex items-center gap-2">
                 <MapPin className="w-6 h-6 text-accent-gold" />
                 Mapa de Presença Territorial
               </h2>
@@ -1646,7 +1646,7 @@ export default function Home() {
       {bandeirasTelaCheia && (
         <div className="fixed inset-0 z-50 bg-background flex flex-col">
           <div className="bg-surface border-b border-card p-4 flex items-center justify-between">
-            <h2 className="text-xl font-semibold text-primary flex items-center gap-2">
+            <h2 className="text-xl font-semibold text-text-primary flex items-center gap-2">
               <Flag className="w-6 h-6 text-accent-gold" />
               Bandeiras de Campanha
             </h2>
@@ -1727,7 +1727,7 @@ export default function Home() {
                                   <div className="w-8 h-8 rounded-full bg-accent-gold-soft text-accent-gold flex items-center justify-center text-sm font-semibold">
                                     {index + 1}
                                   </div>
-                                  <span className="text-base font-medium text-primary">{bandeira.theme}</span>
+                                  <span className="text-base font-medium text-text-primary">{bandeira.theme}</span>
                                 </div>
                                 <div className="flex items-center gap-4 text-sm">
                                   <span className="text-secondary">{bandeira.usage_count} menções</span>
@@ -1747,7 +1747,7 @@ export default function Home() {
                                       <Eye className="w-3.5 h-3.5 text-secondary" />
                                       <span className="text-[10px] text-secondary uppercase">Visualizações</span>
                                     </div>
-                                    <p className="text-sm font-semibold text-primary">{bandeira.totalViews.toLocaleString('pt-BR')}</p>
+                                    <p className="text-sm font-semibold text-text-primary">{bandeira.totalViews.toLocaleString('pt-BR')}</p>
                                     <p className="text-[10px] text-secondary">média {bandeira.avgViews.toLocaleString('pt-BR')}/post</p>
                                   </div>
                                   <div className="text-center">
@@ -1799,7 +1799,7 @@ export default function Home() {
       {alertasTelaCheia && (
         <div className="fixed inset-0 z-50 bg-background flex flex-col">
           <div className="bg-surface border-b border-card p-4 flex items-center justify-between">
-            <h2 className="text-xl font-semibold text-primary flex items-center gap-2">
+            <h2 className="text-xl font-semibold text-text-primary flex items-center gap-2">
               <span className="w-3 h-3 rounded-full bg-status-error" />
               Alertas Críticos
             </h2>
@@ -1843,7 +1843,7 @@ export default function Home() {
       {insightTelaCheia && (
         <div className="fixed inset-0 z-50 bg-background flex flex-col">
           <div className="bg-surface border-b border-card p-4 flex items-center justify-between">
-            <h2 className="text-xl font-semibold text-primary flex items-center gap-2">
+            <h2 className="text-xl font-semibold text-text-primary flex items-center gap-2">
               <Lightbulb className="w-6 h-6 text-accent-gold" />
               Leitura Rápida
             </h2>
@@ -1902,7 +1902,7 @@ export default function Home() {
           {/* Header */}
           <div className="bg-surface border-b border-card p-4 flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <h2 className="text-xl font-semibold text-primary">Histórico de Pesquisas de Intenção de Votos</h2>
+              <h2 className="text-xl font-semibold text-text-primary">Histórico de Pesquisas de Intenção de Votos</h2>
               {candidatoPadrao && (
                 <span className="text-sm text-secondary">{candidatoPadrao}</span>
               )}
@@ -1935,29 +1935,29 @@ export default function Home() {
                   <AreaChart data={pollsData} margin={{ top: 20, right: 30, left: 20, bottom: 60 }}>
                     <defs>
                       <linearGradient id="colorIntencaoFullscreen" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#C6A15B" stopOpacity={0.3} />
-                        <stop offset="95%" stopColor="#C6A15B" stopOpacity={0} />
+                        <stop offset="5%" stopColor="rgb(var(--accent-gold))" stopOpacity={0.3} />
+                        <stop offset="95%" stopColor="rgb(var(--accent-gold))" stopOpacity={0} />
                       </linearGradient>
                     </defs>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
+                    <CartesianGrid strokeDasharray="3 3" stroke="rgb(var(--border-card))" />
                     <XAxis 
                       dataKey="date" 
-                      stroke="#64748B" 
+                      stroke="rgb(var(--text-muted))" 
                       fontSize={14}
                       angle={-45}
                       textAnchor="end"
                       height={80}
                     />
                     <YAxis 
-                      stroke="#64748B" 
+                      stroke="rgb(var(--text-muted))" 
                       fontSize={14}
                       domain={[0, 100]}
                       label={{ value: 'Intenção (%)', angle: -90, position: 'insideLeft', style: { fontSize: 14 } }}
                     />
                     <Tooltip
                       contentStyle={{
-                        backgroundColor: '#FFFFFF',
-                        border: '1px solid #E5E7EB',
+                        backgroundColor: 'rgb(var(--bg-surface))',
+                        border: '1px solid rgb(var(--border-card))',
                         borderRadius: '8px',
                         padding: '12px',
                       }}
@@ -2020,8 +2020,8 @@ export default function Home() {
                           
                           return (
                             <div className="bg-white border border-gray-200 rounded-lg shadow-lg p-3 min-w-[280px]">
-                              <p className="font-semibold text-primary mb-2">{label}</p>
-                              <p className="text-sm text-primary mb-1">
+                              <p className="font-semibold text-text-primary mb-2">{label}</p>
+                              <p className="text-sm text-text-primary mb-1">
                                 <span className="font-medium">Intenção de Voto:</span>{' '}
                                 <span className="text-accent-gold">{intencaoPercent}%</span>
                               </p>
@@ -2032,7 +2032,7 @@ export default function Home() {
                               )}
                               {cidade && (
                                 <div className="mt-3 pt-3 border-t border-gray-200">
-                                  <p className="text-sm font-medium text-primary mb-2">Análise Comparativa - {cidade}</p>
+                                  <p className="text-sm font-medium text-text-primary mb-2">Análise Comparativa - {cidade}</p>
                                   {feedbackText ? (
                                     <>
                                       <p className="text-xs text-secondary mb-1">
@@ -2070,14 +2070,14 @@ export default function Home() {
                     <Area
                       type="monotone"
                       dataKey="intencao"
-                      stroke="#C6A15B"
+                      stroke="rgb(var(--accent-gold))"
                       strokeWidth={3}
                       fillOpacity={1}
                       fill="url(#colorIntencaoFullscreen)"
                       name="Intenção de Voto"
                       dot={(props: any) => {
                         const { cx, cy, payload } = props
-                        if (!payload) return <circle cx={cx} cy={cy} r={5} fill="#C6A15B" />
+                        if (!payload) return <circle cx={cx} cy={cy} r={5} fill="rgb(var(--accent-gold))" />
                         
                         const instituto = payload.instituto || ''
                         const cidade = payload.cidade || ''
@@ -2094,11 +2094,11 @@ export default function Home() {
                         
                         return (
                           <g>
-                            <circle cx={cx} cy={cy} r={5} fill="#C6A15B" />
+                            <circle cx={cx} cy={cy} r={5} fill="rgb(var(--accent-gold))" />
                             <text
                               x={cx}
                               y={cy - 25}
-                              fill="#C6A15B"
+                              fill="rgb(var(--accent-gold))"
                               fontSize="14"
                               fontWeight="600"
                               textAnchor="middle"
@@ -2109,7 +2109,7 @@ export default function Home() {
                               <text
                                 x={cx}
                                 y={cy - 10}
-                                fill="#64748B"
+                                fill="rgb(var(--text-muted))"
                                 fontSize="11"
                                 fontWeight="400"
                                 textAnchor="middle"

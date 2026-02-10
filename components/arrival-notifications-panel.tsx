@@ -77,7 +77,7 @@ export function ArrivalNotificationsPanel({
         <div className="flex-shrink-0 bg-surface border-b border-card p-4">
           <div className="flex items-center gap-2 mb-2">
             <UserCheck className="w-5 h-5 text-accent-gold" />
-            <h3 className="text-lg font-semibold text-primary">Avisos de Chegada</h3>
+            <h3 className="text-lg font-semibold text-text-primary">Avisos de Chegada</h3>
           </div>
           <p className="text-xs text-secondary">
             {activeArrivals.length} {activeArrivals.length === 1 ? 'pessoa aguardando' : 'pessoas aguardando'}
@@ -97,7 +97,7 @@ export function ArrivalNotificationsPanel({
             >
               {/* Resumo do evento */}
               <div className="mb-2">
-                <p className="text-sm font-semibold text-primary">
+                <p className="text-sm font-semibold text-text-primary">
                   {truncateText(event.summary || 'Sem título', 20)}
                 </p>
               </div>
@@ -105,14 +105,14 @@ export function ArrivalNotificationsPanel({
               {/* Horário da agenda */}
               <div className="flex items-center gap-2 mb-1.5 text-xs text-secondary">
                 <Calendar className="w-3.5 h-3.5" />
-                <span>Agenda: <span className="font-medium text-primary">{formatTime(eventTime)}</span></span>
+                <span>Agenda: <span className="font-medium text-text-primary">{formatTime(eventTime)}</span></span>
               </div>
 
               {/* Horário de chegada */}
               {arrivalTime && (
                 <div className="flex items-center gap-2 mb-1.5 text-xs text-secondary">
                   <UserCheck className="w-3.5 h-3.5 text-accent-gold" />
-                  <span>Chegou: <span className="font-medium text-primary">{formatTime(arrivalTime)}</span></span>
+                  <span>Chegou: <span className="font-medium text-text-primary">{formatTime(arrivalTime)}</span></span>
                 </div>
               )}
 

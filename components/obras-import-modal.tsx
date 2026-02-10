@@ -209,7 +209,7 @@ export function ObrasImportModal({ onClose, onSuccess }: ObrasImportModalProps) 
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div className="bg-surface rounded-2xl border border-card p-6 w-full max-w-lg">
         <div className="flex items-center justify-between mb-6">
-          <h2 className="text-xl font-semibold text-primary flex items-center gap-2">
+          <h2 className="text-xl font-semibold text-text-primary flex items-center gap-2">
             <FileSpreadsheet className="w-5 h-5 text-accent-gold" />
             Importar Obras do Excel
           </h2>
@@ -224,7 +224,7 @@ export function ObrasImportModal({ onClose, onSuccess }: ObrasImportModalProps) 
         {success ? (
           <div className="text-center py-8">
             <CheckCircle2 className="w-16 h-16 text-green-600 mx-auto mb-4" />
-            <h3 className="text-lg font-semibold text-primary mb-2">Importação concluída!</h3>
+            <h3 className="text-lg font-semibold text-text-primary mb-2">Importação concluída!</h3>
             <p className="text-sm text-secondary mb-6">
               {importedCount} obra(s) importada(s) com sucesso.
             </p>
@@ -241,7 +241,7 @@ export function ObrasImportModal({ onClose, onSuccess }: ObrasImportModalProps) 
         ) : (
           <>
             <div className="mb-6">
-              <label className="block text-sm font-medium text-primary mb-2">
+              <label className="block text-sm font-medium text-text-primary mb-2">
                 Selecione o arquivo Excel (.xlsx)
               </label>
               <div className="border-2 border-dashed border-card rounded-lg p-6 text-center hover:border-accent-gold transition-colors">

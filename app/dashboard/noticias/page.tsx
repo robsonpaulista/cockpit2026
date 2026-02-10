@@ -237,7 +237,7 @@ export default function NoticiasPage() {
           <div className="lg:col-span-2">
             <div className="bg-surface rounded-2xl border border-card p-6">
               <div className="flex items-center justify-between mb-6">
-                <h2 className="text-lg font-semibold text-primary flex items-center gap-2">
+                <h2 className="text-lg font-semibold text-text-primary flex items-center gap-2">
                   <Newspaper className="w-5 h-5 text-accent-gold" />
                   Inbox de Notícias
                 </h2>
@@ -299,7 +299,7 @@ export default function NoticiasPage() {
                               }}
                               className="w-4 h-4 rounded border-card text-accent-gold focus:ring-accent-gold"
                             />
-                            <span className="text-sm text-primary">{feed.name}</span>
+                            <span className="text-sm text-text-primary">{feed.name}</span>
                             {feed.type === 'adversary_feed' && (
                               <span className="px-1.5 py-0.5 text-xs rounded bg-status-error/10 text-status-error">
                                 Adversário
@@ -338,7 +338,7 @@ export default function NoticiasPage() {
                     >
                       <div className="flex items-start justify-between mb-2">
                         <div className="flex-1">
-                          <h3 className="text-sm font-semibold text-primary mb-1">
+                          <h3 className="text-sm font-semibold text-text-primary mb-1">
                             {item.url ? (
                               <a
                                 href={item.url}
@@ -437,7 +437,7 @@ export default function NoticiasPage() {
           <div>
             {/* Temas em Alta */}
             <div className="bg-surface rounded-2xl border border-card p-6 mb-6">
-              <h2 className="text-lg font-semibold text-primary mb-4 flex items-center gap-2">
+              <h2 className="text-lg font-semibold text-text-primary mb-4 flex items-center gap-2">
                 <TrendingUp className="w-5 h-5 text-accent-gold" />
                 Temas em Alta
               </h2>
@@ -453,7 +453,7 @@ export default function NoticiasPage() {
                       className="flex items-center justify-between p-3 rounded-xl bg-background"
                     >
                       <div>
-                        <p className="text-sm font-medium text-primary">{item.tema}</p>
+                        <p className="text-sm font-medium text-text-primary">{item.tema}</p>
                         <p className="text-xs text-secondary">{item.mencoes} menções</p>
                       </div>
                       <span className="text-sm font-semibold text-status-success">

@@ -204,7 +204,7 @@ export function CityDemandsModal({ isOpen, onClose, cidade }: CityDemandsModalPr
         {/* Header Compacto */}
         <div className="flex items-center justify-between px-4 py-3 border-b border-card">
           <div className="flex items-center gap-2">
-            <h2 className="text-lg font-semibold text-primary">
+            <h2 className="text-lg font-semibold text-text-primary">
               {cidade}
             </h2>
             <span className="text-xs text-secondary">
@@ -235,7 +235,7 @@ export function CityDemandsModal({ isOpen, onClose, cidade }: CityDemandsModalPr
                     onChange={(e) => setFiltroStatus(e.target.value)}
                     className="w-3.5 h-3.5 text-accent-gold"
                   />
-                  <span className="text-xs text-primary">Todos</span>
+                  <span className="text-xs text-text-primary">Todos</span>
                 </label>
                 {statusUnicos.map((status) => (
                   <label key={status} className="flex items-center gap-1.5 cursor-pointer">
@@ -247,7 +247,7 @@ export function CityDemandsModal({ isOpen, onClose, cidade }: CityDemandsModalPr
                       onChange={(e) => setFiltroStatus(e.target.value)}
                       className="w-3.5 h-3.5 text-accent-gold"
                     />
-                    <span className="text-xs text-primary">{status}</span>
+                    <span className="text-xs text-text-primary">{status}</span>
                   </label>
                 ))}
               </div>
@@ -266,7 +266,7 @@ export function CityDemandsModal({ isOpen, onClose, cidade }: CityDemandsModalPr
                       onChange={(e) => setFiltroLideranca(e.target.value)}
                       className="w-3.5 h-3.5 text-accent-gold"
                     />
-                    <span className="text-xs text-primary">Todos</span>
+                    <span className="text-xs text-text-primary">Todos</span>
                   </label>
                   {liderancasUnicas.map((lideranca) => (
                     <label key={lideranca} className="flex items-center gap-1.5 cursor-pointer">
@@ -278,7 +278,7 @@ export function CityDemandsModal({ isOpen, onClose, cidade }: CityDemandsModalPr
                         onChange={(e) => setFiltroLideranca(e.target.value)}
                         className="w-3.5 h-3.5 text-accent-gold"
                       />
-                      <span className="text-xs text-primary">{lideranca}</span>
+                      <span className="text-xs text-text-primary">{lideranca}</span>
                     </label>
                   ))}
                 </div>
@@ -314,7 +314,7 @@ export function CityDemandsModal({ isOpen, onClose, cidade }: CityDemandsModalPr
                   <div className="flex items-start justify-between gap-2 mb-2">
                     <div className="flex items-start gap-2 flex-1 min-w-0">
                       {getStatusIcon(demand.status)}
-                      <h3 className="text-sm font-semibold text-primary leading-tight">
+                      <h3 className="text-sm font-semibold text-text-primary leading-tight">
                         {demand.title}
                       </h3>
                     </div>

@@ -38,7 +38,7 @@ export function TaskCard({ task, onClick, onMove }: TaskCardProps) {
     >
       {/* Título e prioridade */}
       <div className="flex items-start justify-between mb-2">
-        <h4 className="text-sm font-semibold text-primary flex-1 line-clamp-2">
+        <h4 className="text-sm font-semibold text-text-primary flex-1 line-clamp-2">
           {task.title}
         </h4>
         <span className={`text-xs px-2 py-0.5 rounded-full ml-2 ${priorityColors[task.priority]}`}>

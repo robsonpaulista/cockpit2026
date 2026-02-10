@@ -15,7 +15,22 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="pt-BR">
+    <html lang="pt-BR" suppressHydrationWarning>
+      <head>
+        {/* Script inline para aplicar tema antes do React hidratar (evita flash) */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              try {
+                var t = localStorage.getItem('cockpit-theme');
+                if (t === 'premium' || t === 'agentes') {
+                  document.documentElement.setAttribute('data-theme', t);
+                }
+              } catch(e) {}
+            `,
+          }}
+        />
+      </head>
       <body className={inter.className}>
         {children}
       </body>

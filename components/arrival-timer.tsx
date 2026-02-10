@@ -52,7 +52,7 @@ export function ArrivalTimer({ arrivalTime, className = '' }: ArrivalTimerProps)
     <div className={`flex items-center gap-2 text-sm ${className}`}>
       <Clock className="w-4 h-4 text-accent-gold" />
       <span className="text-secondary">
-        Chegou há <span className="font-semibold text-primary">{elapsedTime}</span>
+        Chegou há <span className="font-semibold text-text-primary">{elapsedTime}</span>
       </span>
     </div>
   )

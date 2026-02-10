@@ -9,47 +9,48 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        // Fundos Premium Bege
-        'bg-app': '#F7F4EF',
-        'bg-surface': '#FBF9F6',
-        'bg-sidebar': '#EFE9E1',
+        // Fundos (dinâmicos via CSS variables)
+        'bg-app': 'rgb(var(--bg-app) / <alpha-value>)',
+        'bg-surface': 'rgb(var(--bg-surface) / <alpha-value>)',
+        'bg-sidebar': 'rgb(var(--bg-sidebar) / <alpha-value>)',
         
         // Texto (definido como objeto para usar text-text-primary)
         text: {
-          primary: '#1C1C1C',
-          secondary: '#6B6B6B',
-          muted: '#9A9A9A',
-          strong: '#1C1C1C', // Compatibilidade
+          primary: 'rgb(var(--text-primary) / <alpha-value>)',
+          secondary: 'rgb(var(--text-secondary) / <alpha-value>)',
+          muted: 'rgb(var(--text-muted) / <alpha-value>)',
+          strong: 'rgb(var(--text-primary) / <alpha-value>)',
         },
         
-        // Acentos Premium
-        'accent-gold': '#C6A15B',
-        'accent-gold-soft': '#E8D9B8',
+        // Acentos (dinâmicos - dourado no Premium, laranja no Agentes)
+        'accent-gold': 'rgb(var(--accent-gold) / <alpha-value>)',
+        'accent-gold-soft': 'rgb(var(--accent-gold-soft) / <alpha-value>)',
+        'accent-gold-dark': 'rgb(var(--accent-gold-dark) / <alpha-value>)',
         
-        // Estados (definido como objeto para usar text-status-success)
+        // Estados (dinâmicos via CSS variables)
         status: {
-          success: '#2E7D32',
-          warning: '#C77800',
-          danger: '#9F2A2A',
-          error: '#9F2A2A',
-          info: '#6B7280',
+          success: 'rgb(var(--success) / <alpha-value>)',
+          warning: 'rgb(var(--warning) / <alpha-value>)',
+          danger: 'rgb(var(--danger) / <alpha-value>)',
+          error: 'rgb(var(--danger) / <alpha-value>)',
+          info: 'rgb(var(--info) / <alpha-value>)',
         },
         
         // Bordas
-        'border-card': '#E5DED4',
+        'border-card': 'rgb(var(--border-card) / <alpha-value>)',
         
         // Legado (para compatibilidade)
         primary: {
-          DEFAULT: '#C6A15B',
-          dark: '#A68347',
-          soft: '#E8D9B8',
+          DEFAULT: 'rgb(var(--accent-gold) / <alpha-value>)',
+          dark: 'rgb(var(--accent-gold-dark) / <alpha-value>)',
+          soft: 'rgb(var(--accent-gold-soft) / <alpha-value>)',
         },
-        background: '#F7F4EF',
-        surface: '#FBF9F6',
-        border: '#E5DED4',
+        background: 'rgb(var(--bg-app) / <alpha-value>)',
+        surface: 'rgb(var(--bg-surface) / <alpha-value>)',
+        border: 'rgb(var(--border-card) / <alpha-value>)',
         beige: {
-          DEFAULT: '#F7F4EF',
-          dark: '#EFE9E1',
+          DEFAULT: 'rgb(var(--bg-app) / <alpha-value>)',
+          dark: 'rgb(var(--bg-sidebar) / <alpha-value>)',
         },
       },
       fontFamily: {
@@ -70,7 +71,3 @@ const config: Config = {
   plugins: [],
 }
 export default config
-
-
-
-

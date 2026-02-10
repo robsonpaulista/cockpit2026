@@ -7,6 +7,7 @@ import { DashboardPermissionGuard } from '@/components/dashboard-permission-guar
 import { NavigationLoadingBar } from '@/components/navigation-loading-bar'
 import { SidebarProvider, useSidebar } from '@/contexts/sidebar-context'
 import { NavigationLoadingProvider } from '@/contexts/navigation-loading-context'
+import { ThemeProvider } from '@/contexts/theme-context'
 import { cn } from '@/lib/utils'
 
 function DashboardContent({ children }: { children: React.ReactNode }) {
@@ -36,11 +37,13 @@ export default function DashboardLayout({
 }) {
   return (
     <ProtectedRoute>
-      <NavigationLoadingProvider>
-        <SidebarProvider>
-          <DashboardContent>{children}</DashboardContent>
-        </SidebarProvider>
-      </NavigationLoadingProvider>
+      <ThemeProvider>
+        <NavigationLoadingProvider>
+          <SidebarProvider>
+            <DashboardContent>{children}</DashboardContent>
+          </SidebarProvider>
+        </NavigationLoadingProvider>
+      </ThemeProvider>
     </ProtectedRoute>
   )
 }

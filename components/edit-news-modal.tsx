@@ -110,7 +110,7 @@ export function EditNewsModal({ news, onClose, onUpdate }: EditNewsModalProps) {
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div className="bg-surface rounded-2xl border border-card p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between mb-6">
-          <h2 className="text-xl font-semibold text-primary">
+          <h2 className="text-xl font-semibold text-text-primary">
             Editar Classificação da Notícia
           </h2>
           <button
@@ -123,7 +123,7 @@ export function EditNewsModal({ news, onClose, onUpdate }: EditNewsModalProps) {
 
         {/* Preview da Notícia */}
         <div className="mb-6 p-4 rounded-xl border border-card bg-background">
-          <h3 className="text-sm font-semibold text-primary mb-2">{news.title}</h3>
+          <h3 className="text-sm font-semibold text-text-primary mb-2">{news.title}</h3>
           <div className="flex items-center gap-2 text-xs text-secondary">
             <span>{news.source}</span>
             <span>•</span>
@@ -138,7 +138,7 @@ export function EditNewsModal({ news, onClose, onUpdate }: EditNewsModalProps) {
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* Sentimento */}
           <div>
-            <label className="block text-sm font-medium text-primary mb-2">
+            <label className="block text-sm font-medium text-text-primary mb-2">
               Sentimento
             </label>
             <div className="grid grid-cols-3 gap-2">
@@ -154,7 +154,7 @@ export function EditNewsModal({ news, onClose, onUpdate }: EditNewsModalProps) {
                         : option.value === 'negative'
                         ? 'bg-status-error/10 text-status-error border-status-error/30'
                         : 'bg-accent-gold-soft text-accent-gold border-accent-gold/30'
-                      : 'bg-background border-card text-primary hover:bg-background/80'
+                      : 'bg-background border-card text-text-primary hover:bg-background/80'
                   }`}
                 >
                   {option.label}
@@ -165,7 +165,7 @@ export function EditNewsModal({ news, onClose, onUpdate }: EditNewsModalProps) {
 
           {/* Nível de Risco */}
           <div>
-            <label className="block text-sm font-medium text-primary mb-2">
+            <label className="block text-sm font-medium text-text-primary mb-2">
               Nível de Risco
             </label>
             <div className="grid grid-cols-3 gap-2">
@@ -181,7 +181,7 @@ export function EditNewsModal({ news, onClose, onUpdate }: EditNewsModalProps) {
                         : option.value === 'medium'
                         ? 'bg-status-warning/10 text-status-warning'
                         : 'bg-status-success/10 text-status-success'
-                      : 'bg-background border border-card text-primary hover:bg-background/80'
+                      : 'bg-background border border-card text-text-primary hover:bg-background/80'
                   }`}
                 >
                   {option.label}
@@ -192,7 +192,7 @@ export function EditNewsModal({ news, onClose, onUpdate }: EditNewsModalProps) {
 
           {/* Tema */}
           <div>
-            <label className="block text-sm font-medium text-primary mb-2">
+            <label className="block text-sm font-medium text-text-primary mb-2">
               Tema
             </label>
             <select
@@ -220,7 +220,7 @@ export function EditNewsModal({ news, onClose, onUpdate }: EditNewsModalProps) {
 
           {/* Notas */}
           <div>
-            <label className="block text-sm font-medium text-primary mb-2">
+            <label className="block text-sm font-medium text-text-primary mb-2">
               Notas (Opcional)
             </label>
             <textarea

@@ -54,7 +54,7 @@ export function MapaPresenca({ cidadesComPresenca, totalCidades, onFullscreen, f
         {onFullscreen && (
           <button
             onClick={onFullscreen}
-            className="p-2 rounded-lg hover:bg-background transition-colors text-secondary hover:text-primary"
+            className="p-2 rounded-lg hover:bg-background transition-colors text-secondary hover:text-text-primary"
             title="Visualizar mapa em tela cheia"
           >
             <Maximize2 className="w-4 h-4" />

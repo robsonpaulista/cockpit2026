@@ -180,7 +180,7 @@ export function NarrativeModal({ narrative, onClose, onUpdate }: NarrativeModalP
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div className="bg-surface rounded-2xl border border-card shadow-card max-w-3xl w-full max-h-[90vh] overflow-y-auto">
         <div className="sticky top-0 bg-surface border-b border-card p-6 flex items-center justify-between">
-          <h2 className="text-xl font-semibold text-primary">
+          <h2 className="text-xl font-semibold text-text-primary">
             {narrative ? 'Editar Narrativa' : 'Nova Narrativa'}
           </h2>
           <button
@@ -194,7 +194,7 @@ export function NarrativeModal({ narrative, onClose, onUpdate }: NarrativeModalP
         <form onSubmit={handleSubmit} className="p-6 space-y-6">
           {/* Tema */}
           <div>
-            <label className="block text-sm font-medium text-primary mb-2">
+            <label className="block text-sm font-medium text-text-primary mb-2">
               Tema *
             </label>
             <select
@@ -224,7 +224,7 @@ export function NarrativeModal({ narrative, onClose, onUpdate }: NarrativeModalP
 
           {/* Público-alvo */}
           <div>
-            <label className="block text-sm font-medium text-primary mb-2">
+            <label className="block text-sm font-medium text-text-primary mb-2">
               Público-alvo *
             </label>
             <input
@@ -239,7 +239,7 @@ export function NarrativeModal({ narrative, onClose, onUpdate }: NarrativeModalP
 
           {/* Mensagem-chave */}
           <div>
-            <label className="block text-sm font-medium text-primary mb-2">
+            <label className="block text-sm font-medium text-text-primary mb-2">
               Mensagem-chave *
             </label>
             <textarea
@@ -254,7 +254,7 @@ export function NarrativeModal({ narrative, onClose, onUpdate }: NarrativeModalP
 
           {/* Argumentos */}
           <div>
-            <label className="block text-sm font-medium text-primary mb-2">
+            <label className="block text-sm font-medium text-text-primary mb-2">
               Argumentos
             </label>
             <div className="space-y-2">
@@ -299,7 +299,7 @@ export function NarrativeModal({ narrative, onClose, onUpdate }: NarrativeModalP
 
           {/* Frases testadas */}
           <div>
-            <label className="block text-sm font-medium text-primary mb-2">
+            <label className="block text-sm font-medium text-text-primary mb-2">
               Frases testadas
             </label>
             <div className="space-y-2">
@@ -344,7 +344,7 @@ export function NarrativeModal({ narrative, onClose, onUpdate }: NarrativeModalP
 
           {/* Status */}
           <div>
-            <label className="block text-sm font-medium text-primary mb-2">
+            <label className="block text-sm font-medium text-text-primary mb-2">
               Status
             </label>
             <select
@@ -365,7 +365,7 @@ export function NarrativeModal({ narrative, onClose, onUpdate }: NarrativeModalP
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 text-sm font-medium text-secondary hover:text-primary transition-colors"
+              className="px-4 py-2 text-sm font-medium text-secondary hover:text-text-primary transition-colors"
             >
               Cancelar
             </button>

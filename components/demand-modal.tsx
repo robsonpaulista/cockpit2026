@@ -137,7 +137,7 @@ export function DemandModal({ demand, onClose, onSuccess }: DemandModalProps) {
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div className="bg-surface rounded-2xl border border-card p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between mb-6">
-          <h2 className="text-xl font-semibold text-primary">
+          <h2 className="text-xl font-semibold text-text-primary">
             {demand?.id ? 'Editar Demanda' : 'Nova Demanda'}
           </h2>
           <button
@@ -150,7 +150,7 @@ export function DemandModal({ demand, onClose, onSuccess }: DemandModalProps) {
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-primary mb-2">
+            <label className="block text-sm font-medium text-text-primary mb-2">
               Título da Demanda *
             </label>
             <input
@@ -164,7 +164,7 @@ export function DemandModal({ demand, onClose, onSuccess }: DemandModalProps) {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-primary mb-2">
+            <label className="block text-sm font-medium text-text-primary mb-2">
               Descrição
             </label>
             <textarea
@@ -178,7 +178,7 @@ export function DemandModal({ demand, onClose, onSuccess }: DemandModalProps) {
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-primary mb-2">
+              <label className="block text-sm font-medium text-text-primary mb-2">
                 Tema
               </label>
               <select
@@ -199,7 +199,7 @@ export function DemandModal({ demand, onClose, onSuccess }: DemandModalProps) {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-primary mb-2">
+              <label className="block text-sm font-medium text-text-primary mb-2">
                 Prioridade *
               </label>
               <select
@@ -217,7 +217,7 @@ export function DemandModal({ demand, onClose, onSuccess }: DemandModalProps) {
 
           {!demand?.id && (
             <div>
-              <label className="block text-sm font-medium text-primary mb-2">
+              <label className="block text-sm font-medium text-text-primary mb-2">
                 Associar a uma Agenda (Opcional)
               </label>
               {loadingAgendas ? (
@@ -245,7 +245,7 @@ export function DemandModal({ demand, onClose, onSuccess }: DemandModalProps) {
           )}
 
           <div>
-            <label className="block text-sm font-medium text-primary mb-2">
+            <label className="block text-sm font-medium text-text-primary mb-2">
               Prazo SLA (Opcional)
             </label>
             <input

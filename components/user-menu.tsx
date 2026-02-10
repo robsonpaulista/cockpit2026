@@ -127,7 +127,7 @@ export function UserMenu() {
           )}
         </div>
         <div className="hidden md:block text-left">
-          <p className="text-sm font-medium text-primary">
+          <p className="text-sm font-medium text-text-primary">
             {user.profile?.name || user.email}
           </p>
           {user.profile?.role && (
@@ -147,7 +147,7 @@ export function UserMenu() {
       {open && (
         <div className="absolute right-0 mt-2 w-56 bg-surface border border-card rounded-xl shadow-card z-50 overflow-hidden">
           <div className="p-4 border-b border-card">
-            <p className="text-sm font-semibold text-primary">
+            <p className="text-sm font-semibold text-text-primary">
               {user.profile?.name || 'Usuário'}
             </p>
             <p className="text-xs text-secondary mt-1">{user.email}</p>
@@ -164,7 +164,7 @@ export function UserMenu() {
                 setOpen(false)
                 // TODO: Navegar para página de perfil quando criarmos
               }}
-              className="w-full flex items-center gap-3 px-3 py-2 text-sm text-primary hover:bg-background rounded-lg transition-colors"
+              className="w-full flex items-center gap-3 px-3 py-2 text-sm text-text-primary hover:bg-background rounded-lg transition-colors"
             >
               <User className="w-4 h-4 text-secondary" />
               <span>Meu Perfil</span>
@@ -175,7 +175,7 @@ export function UserMenu() {
                 setOpen(false)
                 // TODO: Navegar para configurações quando criarmos
               }}
-              className="w-full flex items-center gap-3 px-3 py-2 text-sm text-primary hover:bg-background rounded-lg transition-colors"
+              className="w-full flex items-center gap-3 px-3 py-2 text-sm text-text-primary hover:bg-background rounded-lg transition-colors"
             >
               <Settings className="w-4 h-4 text-secondary" />
               <span>Configurações</span>

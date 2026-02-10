@@ -181,13 +181,13 @@ export default function OperacaoPage() {
           <div className="flex items-center gap-2">
             <button
               onClick={expandAllTerritories}
-              className="px-3 py-1.5 text-sm font-medium text-secondary hover:text-primary rounded-lg hover:bg-background transition-colors"
+              className="px-3 py-1.5 text-sm font-medium text-secondary hover:text-text-primary rounded-lg hover:bg-background transition-colors"
             >
               Expandir Todos
             </button>
             <button
               onClick={collapseAllTerritories}
-              className="px-3 py-1.5 text-sm font-medium text-secondary hover:text-primary rounded-lg hover:bg-background transition-colors"
+              className="px-3 py-1.5 text-sm font-medium text-secondary hover:text-text-primary rounded-lg hover:bg-background transition-colors"
             >
               Recolher Todos
             </button>
@@ -221,12 +221,12 @@ export default function OperacaoPage() {
                     )}
                   </div>
                   <p className={`text-xs font-medium text-center ${
-                    backlogCount > 0 ? 'text-primary font-semibold' : 'text-secondary'
+                    backlogCount > 0 ? 'text-text-primary font-semibold' : 'text-secondary'
                   }`}>
                     Backlog
                   </p>
                   <p className={`text-xs mt-1 ${
-                    backlogCount > 0 ? 'text-primary font-semibold' : 'text-secondary'
+                    backlogCount > 0 ? 'text-text-primary font-semibold' : 'text-secondary'
                   }`}>
                     {backlogCount}
                   </p>
@@ -260,12 +260,12 @@ export default function OperacaoPage() {
                     )}
                   </div>
                   <p className={`text-xs font-medium text-center ${
-                    inProgressCount > 0 ? 'text-primary font-semibold' : 'text-secondary'
+                    inProgressCount > 0 ? 'text-text-primary font-semibold' : 'text-secondary'
                   }`}>
                     Em Andamento
                   </p>
                   <p className={`text-xs mt-1 ${
-                    inProgressCount > 0 ? 'text-primary font-semibold' : 'text-secondary'
+                    inProgressCount > 0 ? 'text-text-primary font-semibold' : 'text-secondary'
                   }`}>
                     {inProgressCount}
                   </p>
@@ -299,12 +299,12 @@ export default function OperacaoPage() {
                     )}
                   </div>
                   <p className={`text-xs font-medium text-center ${
-                    completedCount > 0 ? 'text-primary font-semibold' : 'text-secondary'
+                    completedCount > 0 ? 'text-text-primary font-semibold' : 'text-secondary'
                   }`}>
                     Concluídas
                   </p>
                   <p className={`text-xs mt-1 ${
-                    completedCount > 0 ? 'text-primary font-semibold' : 'text-secondary'
+                    completedCount > 0 ? 'text-text-primary font-semibold' : 'text-secondary'
                   }`}>
                     {completedCount}
                   </p>
@@ -338,12 +338,12 @@ export default function OperacaoPage() {
                     )}
                   </div>
                   <p className={`text-xs font-medium text-center ${
-                    overdueCount > 0 ? 'text-primary font-semibold' : 'text-secondary'
+                    overdueCount > 0 ? 'text-text-primary font-semibold' : 'text-secondary'
                   }`}>
                     Atrasadas
                   </p>
                   <p className={`text-xs mt-1 ${
-                    overdueCount > 0 ? 'text-primary font-semibold' : 'text-secondary'
+                    overdueCount > 0 ? 'text-text-primary font-semibold' : 'text-secondary'
                   }`}>
                     {overdueCount}
                   </p>
@@ -379,7 +379,7 @@ export default function OperacaoPage() {
                         <ChevronRight className="w-5 h-5 text-secondary" />
                       )}
                       <div>
-                        <h3 className="text-lg font-semibold text-primary">{territory.name}</h3>
+                        <h3 className="text-lg font-semibold text-text-primary">{territory.name}</h3>
                         <p className="text-xs text-secondary">
                           {territoryLeaders.length} {territoryLeaders.length === 1 ? 'líder' : 'líderes'} • {territoryTasks.length} {territoryTasks.length === 1 ? 'tarefa' : 'tarefas'}
                         </p>
@@ -424,7 +424,7 @@ export default function OperacaoPage() {
                       {/* Lista de Líderes */}
                       {territoryLeaders.length > 0 ? (
                         <div>
-                          <h4 className="text-sm font-semibold text-primary mb-3">Líderes</h4>
+                          <h4 className="text-sm font-semibold text-text-primary mb-3">Líderes</h4>
                           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                             {territoryLeaders.map((leader) => (
                               <div
@@ -433,7 +433,7 @@ export default function OperacaoPage() {
                               >
                                 <div className="flex items-start justify-between mb-2">
                                   <div className="flex-1">
-                                    <h4 className="font-semibold text-primary">{leader.name}</h4>
+                                    <h4 className="font-semibold text-text-primary">{leader.name}</h4>
                                     {leader.role && (
                                       <p className="text-sm text-secondary">{leader.role}</p>
                                     )}
@@ -488,7 +488,7 @@ export default function OperacaoPage() {
                       {/* Kanban */}
                       <div>
                         <div className="flex items-center justify-between mb-4">
-                          <h4 className="text-sm font-semibold text-primary">Tarefas</h4>
+                          <h4 className="text-sm font-semibold text-text-primary">Tarefas</h4>
                           <button
                             onClick={() => {
                               setSelectedTerritoryForTask(territory.id)

@@ -121,7 +121,7 @@ export function GoogleSheetsConfigModal({
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div className="bg-surface rounded-2xl border border-card p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between mb-6">
-          <h2 className="text-xl font-semibold text-primary">
+          <h2 className="text-xl font-semibold text-text-primary">
             Configurar Google Sheets
           </h2>
           <button
@@ -134,7 +134,7 @@ export function GoogleSheetsConfigModal({
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-primary mb-2">
+            <label className="block text-sm font-medium text-text-primary mb-2">
               URL ou ID da Planilha
             </label>
             <input
@@ -157,7 +157,7 @@ export function GoogleSheetsConfigModal({
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-primary mb-2">
+            <label className="block text-sm font-medium text-text-primary mb-2">
               Nome da Aba (Sheet)
             </label>
             <input
@@ -174,7 +174,7 @@ export function GoogleSheetsConfigModal({
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-primary mb-2">
+            <label className="block text-sm font-medium text-text-primary mb-2">
               Intervalo (Opcional)
             </label>
             <input
@@ -194,7 +194,7 @@ export function GoogleSheetsConfigModal({
             <div className="flex items-start gap-3">
               <Info className="w-5 h-5 text-accent-gold flex-shrink-0 mt-0.5" />
               <div className="flex-1">
-                <p className="text-sm font-medium text-primary mb-2">
+                <p className="text-sm font-medium text-text-primary mb-2">
                   Autenticação com Service Account
                 </p>
                 <p className="text-xs text-secondary mb-3">
@@ -213,7 +213,7 @@ export function GoogleSheetsConfigModal({
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-primary mb-2">
+            <label className="block text-sm font-medium text-text-primary mb-2">
               Email do Service Account *
             </label>
             <input
@@ -230,7 +230,7 @@ export function GoogleSheetsConfigModal({
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-primary mb-2">
+            <label className="block text-sm font-medium text-text-primary mb-2">
               Credenciais JSON do Service Account *
             </label>
             <div className="space-y-2">

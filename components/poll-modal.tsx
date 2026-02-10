@@ -210,7 +210,7 @@ export function PollModal({ poll, onClose, onUpdate }: PollModalProps) {
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div className="bg-surface rounded-2xl border border-card p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between mb-6">
-          <h2 className="text-xl font-semibold text-primary">
+          <h2 className="text-xl font-semibold text-text-primary">
             {poll?.id ? 'Editar Pesquisa' : 'Nova Pesquisa'}
           </h2>
           <button
@@ -224,7 +224,7 @@ export function PollModal({ poll, onClose, onUpdate }: PollModalProps) {
         <form onSubmit={handleSubmit} className="space-y-4">
           {/* Data */}
           <div>
-            <label className="block text-sm font-medium text-primary mb-2">
+            <label className="block text-sm font-medium text-text-primary mb-2">
               Data *
             </label>
             <input
@@ -238,7 +238,7 @@ export function PollModal({ poll, onClose, onUpdate }: PollModalProps) {
 
           {/* Instituto */}
           <div>
-            <label className="block text-sm font-medium text-primary mb-2">
+            <label className="block text-sm font-medium text-text-primary mb-2">
               Instituto *
             </label>
             <input
@@ -253,7 +253,7 @@ export function PollModal({ poll, onClose, onUpdate }: PollModalProps) {
 
           {/* Nome do Candidato */}
           <div>
-            <label className="block text-sm font-medium text-primary mb-2">
+            <label className="block text-sm font-medium text-text-primary mb-2">
               Nome do Candidato *
             </label>
             <input
@@ -279,7 +279,7 @@ export function PollModal({ poll, onClose, onUpdate }: PollModalProps) {
 
           {/* Cidade */}
           <div>
-            <label className="block text-sm font-medium text-primary mb-2">
+            <label className="block text-sm font-medium text-text-primary mb-2">
               Município (Piauí)
             </label>
             {loadingCities ? (
@@ -332,7 +332,7 @@ export function PollModal({ poll, onClose, onUpdate }: PollModalProps) {
           {/* Tipo e Cargo */}
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-primary mb-2">
+              <label className="block text-sm font-medium text-text-primary mb-2">
                 Tipo *
               </label>
               <select
@@ -350,7 +350,7 @@ export function PollModal({ poll, onClose, onUpdate }: PollModalProps) {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-primary mb-2">
+              <label className="block text-sm font-medium text-text-primary mb-2">
                 Cargo *
               </label>
               <select
@@ -371,7 +371,7 @@ export function PollModal({ poll, onClose, onUpdate }: PollModalProps) {
           {/* Intenção e Rejeição */}
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-primary mb-2">
+              <label className="block text-sm font-medium text-text-primary mb-2">
                 Intenção (%) *
               </label>
               <input
@@ -387,7 +387,7 @@ export function PollModal({ poll, onClose, onUpdate }: PollModalProps) {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-primary mb-2">
+              <label className="block text-sm font-medium text-text-primary mb-2">
                 Rejeição (%) *
               </label>
               <input

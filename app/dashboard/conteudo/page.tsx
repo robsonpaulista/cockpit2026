@@ -681,7 +681,7 @@ export default function ConteudoPage() {
         {/* Visão Geral com sub-tabs */}
         <div className="space-y-6">
           <div className="mb-4">
-            <h2 className="text-xl font-semibold text-primary mb-2">Visão Geral</h2>
+            <h2 className="text-xl font-semibold text-text-primary mb-2">Visão Geral</h2>
             <p className="text-sm text-secondary">Análise de desempenho e audiência das redes sociais</p>
                       </div>
           
@@ -692,7 +692,7 @@ export default function ConteudoPage() {
               className={`px-4 py-2 text-sm font-medium transition-colors ${
                 activeSubTab === 'posts'
                   ? 'text-accent-gold border-b-2 border-accent-gold'
-                  : 'text-secondary hover:text-primary'
+                  : 'text-secondary hover:text-text-primary'
               }`}
             >
               <Calendar className="inline-block w-4 h-4 mr-2" />
@@ -703,7 +703,7 @@ export default function ConteudoPage() {
               className={`px-4 py-2 text-sm font-medium transition-colors ${
                 activeSubTab === 'audience'
                   ? 'text-accent-gold border-b-2 border-accent-gold'
-                  : 'text-secondary hover:text-primary'
+                  : 'text-secondary hover:text-text-primary'
               }`}
             >
               <Users className="inline-block w-4 h-4 mr-2" />
@@ -714,7 +714,7 @@ export default function ConteudoPage() {
               className={`px-4 py-2 text-sm font-medium transition-colors ${
                 activeSubTab === 'locations'
                   ? 'text-accent-gold border-b-2 border-accent-gold'
-                  : 'text-secondary hover:text-primary'
+                  : 'text-secondary hover:text-text-primary'
               }`}
             >
               <MapPin className="inline-block w-4 h-4 mr-2" />
@@ -748,7 +748,7 @@ export default function ConteudoPage() {
                   {/* Campeões por Indicador */}
                   <div className="bg-surface rounded-2xl border border-card p-6">
                     <div className="mb-6">
-                      <h2 className="text-xl font-semibold text-primary mb-2 flex items-center gap-2">
+                      <h2 className="text-xl font-semibold text-text-primary mb-2 flex items-center gap-2">
                         <BarChart4 className="w-5 h-5 text-accent-gold" />
                         Campeões por Indicador
                       </h2>
@@ -1013,7 +1013,7 @@ export default function ConteudoPage() {
                   {/* Comparativo de Aceitação por Tipo de Conteúdo */}
             <div className="bg-surface rounded-2xl border border-card p-6">
                     <div className="mb-6">
-                      <h2 className="text-xl font-semibold text-primary mb-2 flex items-center gap-2">
+                      <h2 className="text-xl font-semibold text-text-primary mb-2 flex items-center gap-2">
                         <BarChart4 className="w-5 h-5 text-accent-gold" />
                         Comparativo de Aceitação por Tipo de Conteúdo
                       </h2>
@@ -1026,7 +1026,7 @@ export default function ConteudoPage() {
                       {/* Imagens */}
                       <div className="border-2 border-card rounded-xl p-4 bg-surface">
                         <div className="mb-4">
-                          <h3 className="text-lg font-semibold text-primary flex items-center gap-2 mb-1">
+                          <h3 className="text-lg font-semibold text-text-primary flex items-center gap-2 mb-1">
                             <Camera className="h-5 w-5 text-blue-500" />
                             Imagens
                           </h3>
@@ -1092,7 +1092,7 @@ export default function ConteudoPage() {
                       {/* Vídeos */}
                       <div className="border-2 border-card rounded-xl p-4 bg-surface">
                         <div className="mb-4">
-                          <h3 className="text-lg font-semibold text-primary flex items-center gap-2 mb-1">
+                          <h3 className="text-lg font-semibold text-text-primary flex items-center gap-2 mb-1">
                             <Camera className="h-5 w-5 text-red-500" />
                             Vídeos
                           </h3>
@@ -1158,7 +1158,7 @@ export default function ConteudoPage() {
                       {/* Carrosséis */}
                       <div className="border-2 border-card rounded-xl p-4 bg-surface">
                         <div className="mb-4">
-                          <h3 className="text-lg font-semibold text-primary flex items-center gap-2 mb-1">
+                          <h3 className="text-lg font-semibold text-text-primary flex items-center gap-2 mb-1">
                             <Camera className="h-5 w-5 text-blue-700" />
                             Carrosséis
                           </h3>
@@ -1236,7 +1236,7 @@ export default function ConteudoPage() {
                     return (
                       <div className="bg-surface rounded-2xl border border-card p-6 mt-6 space-y-6">
                         <div className="mb-6">
-                          <h2 className="text-xl font-semibold text-primary mb-2 flex items-center gap-2">
+                          <h2 className="text-xl font-semibold text-text-primary mb-2 flex items-center gap-2">
                             <BarChart4 className="w-5 h-5 text-accent-gold" />
                             Comparativo de Indicadores por Tema
                           </h2>
@@ -1249,7 +1249,7 @@ export default function ConteudoPage() {
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                           <div className="bg-gradient-to-br from-primary/10 to-primary/5 border-2 border-accent-gold/30 rounded-xl p-5">
                             <div className="flex items-center justify-between mb-3">
-                              <span className="text-sm font-medium text-primary">🏆 Tema Mais Engajado</span>
+                              <span className="text-sm font-medium text-text-primary">🏆 Tema Mais Engajado</span>
                               <TrendingUp className="h-5 w-5 text-accent-gold" />
                             </div>
                             <p className="text-2xl font-bold text-accent-gold mb-1">{bestTheme[0]}</p>
@@ -1260,7 +1260,7 @@ export default function ConteudoPage() {
 
                           <div className="bg-gradient-to-br from-green-500/10 to-green-500/5 border-2 border-green-500/30 rounded-xl p-5">
                             <div className="flex items-center justify-between mb-3">
-                              <span className="text-sm font-medium text-primary">📊 Total Classificado</span>
+                              <span className="text-sm font-medium text-text-primary">📊 Total Classificado</span>
                               <FileText className="h-5 w-5 text-green-500" />
                             </div>
                             <p className="text-2xl font-bold text-green-500 mb-1">{totalPosts}</p>
@@ -1271,7 +1271,7 @@ export default function ConteudoPage() {
 
                           <div className="bg-gradient-to-br from-blue-500/10 to-blue-500/5 border-2 border-blue-500/30 rounded-xl p-5">
                             <div className="flex items-center justify-between mb-3">
-                              <span className="text-sm font-medium text-primary">📈 Engajamento Médio</span>
+                              <span className="text-sm font-medium text-text-primary">📈 Engajamento Médio</span>
                               <BarChart4 className="h-5 w-5 text-blue-500" />
                             </div>
                             <p className="text-2xl font-bold text-blue-500 mb-1">{Math.round(avgEngagement).toLocaleString('pt-BR')}</p>
@@ -1283,7 +1283,7 @@ export default function ConteudoPage() {
 
                         {/* Gráfico de Barras: Engajamento por Tema */}
                         <div className="bg-surface rounded-xl border border-card p-6">
-                          <h3 className="text-lg font-semibold text-primary mb-4">
+                          <h3 className="text-lg font-semibold text-text-primary mb-4">
                             Engajamento Médio por Tema
                           </h3>
               <div className="space-y-4">
@@ -1296,7 +1296,7 @@ export default function ConteudoPage() {
                                   <div className="flex items-center justify-between">
                                     <div className="flex items-center gap-2 flex-1 min-w-0">
                                       {isBest && <TrendingUp className="h-4 w-4 text-green-500 flex-shrink-0" />}
-                                      <span className={`font-medium text-sm ${isBest ? 'text-green-600' : 'text-primary'} truncate`}>
+                                      <span className={`font-medium text-sm ${isBest ? 'text-green-600' : 'text-text-primary'} truncate`}>
                                         {theme}
                                       </span>
                                       <span className="text-xs text-secondary ml-2">
@@ -1317,7 +1317,7 @@ export default function ConteudoPage() {
                                       style={{ width: `${percentage}%` }}
                                     />
                                     <div className="absolute inset-0 flex items-center justify-center">
-                                      <span className="text-xs font-semibold text-primary">
+                                      <span className="text-xs font-semibold text-text-primary">
                                         {percentage.toFixed(0)}% do melhor tema
                                       </span>
                                     </div>
@@ -1331,7 +1331,7 @@ export default function ConteudoPage() {
                         {/* Tabela Comparativa Detalhada */}
                         <div className="bg-surface rounded-xl border border-card overflow-hidden">
                           <div className="p-4 border-b border-card bg-surface-secondary">
-                            <h3 className="text-lg font-semibold text-primary">
+                            <h3 className="text-lg font-semibold text-text-primary">
                               Tabela Comparativa Detalhada
                             </h3>
                             <p className="text-sm text-secondary mt-1">
@@ -1342,14 +1342,14 @@ export default function ConteudoPage() {
                             <table className="w-full text-sm">
                               <thead>
                                 <tr className="border-b border-card bg-surface-secondary">
-                                  <th className="text-left p-4 font-semibold text-primary">Tema</th>
-                                  <th className="text-right p-4 font-semibold text-primary">Postagens</th>
-                                  <th className="text-right p-4 font-semibold text-primary">Curtidas (média)</th>
-                                  <th className="text-right p-4 font-semibold text-primary">Comentários (média)</th>
-                                  <th className="text-right p-4 font-semibold text-primary">Visualizações (média)</th>
-                                  <th className="text-right p-4 font-semibold text-primary">Compartilhamentos (média)</th>
-                                  <th className="text-right p-4 font-semibold text-primary">Salvamentos (média)</th>
-                                  <th className="text-right p-4 font-semibold text-primary">Engajamento (média)</th>
+                                  <th className="text-left p-4 font-semibold text-text-primary">Tema</th>
+                                  <th className="text-right p-4 font-semibold text-text-primary">Postagens</th>
+                                  <th className="text-right p-4 font-semibold text-text-primary">Curtidas (média)</th>
+                                  <th className="text-right p-4 font-semibold text-text-primary">Comentários (média)</th>
+                                  <th className="text-right p-4 font-semibold text-text-primary">Visualizações (média)</th>
+                                  <th className="text-right p-4 font-semibold text-text-primary">Compartilhamentos (média)</th>
+                                  <th className="text-right p-4 font-semibold text-text-primary">Salvamentos (média)</th>
+                                  <th className="text-right p-4 font-semibold text-text-primary">Engajamento (média)</th>
                                 </tr>
                               </thead>
                               <tbody>
@@ -1365,19 +1365,19 @@ export default function ConteudoPage() {
                                       <td className="p-4 font-medium">
                                         <div className="flex items-center gap-2">
                                           {isBest && <TrendingUp className="h-4 w-4 text-green-500" />}
-                                          <span className={isBest ? 'text-green-600 font-semibold' : 'text-primary'}>
+                                          <span className={isBest ? 'text-green-600 font-semibold' : 'text-text-primary'}>
                                             {theme}
                                           </span>
                                         </div>
                                       </td>
-                                      <td className="text-right p-4 text-primary">{stats.posts}</td>
-                                      <td className="text-right p-4 text-primary">
+                                      <td className="text-right p-4 text-text-primary">{stats.posts}</td>
+                                      <td className="text-right p-4 text-text-primary">
                                         <div className="flex items-center justify-end gap-2">
                                           <Heart className="h-3 w-3 text-red-500" />
                                           {stats.avgLikes.toLocaleString('pt-BR')}
                                         </div>
                                       </td>
-                                      <td className="text-right p-4 text-primary">
+                                      <td className="text-right p-4 text-text-primary">
                                         <div className="flex items-center justify-end gap-2">
                                           <MessageCircle className="h-3 w-3 text-blue-500" />
                                           {stats.avgComments.toLocaleString('pt-BR')}
@@ -1420,7 +1420,7 @@ export default function ConteudoPage() {
 
                         {/* Comparativo Visual: Curtidas vs Comentários */}
                         <div className="bg-surface rounded-xl border border-card p-6">
-                          <h3 className="text-lg font-semibold text-primary mb-4">
+                          <h3 className="text-lg font-semibold text-text-primary mb-4">
                             Comparativo Visual: Curtidas vs Comentários
                           </h3>
                           <p className="text-sm text-secondary mb-6">
@@ -1436,7 +1436,7 @@ export default function ConteudoPage() {
                               return (
                                 <div key={theme} className="space-y-3">
                                   <div className="flex items-center justify-between">
-                                    <span className="font-medium text-primary">{theme}</span>
+                                    <span className="font-medium text-text-primary">{theme}</span>
                                     <div className="flex items-center gap-4 text-xs text-secondary">
                                       <span className="flex items-center gap-1">
                                         <Heart className="h-3 w-3 text-red-500" />
@@ -1455,7 +1455,7 @@ export default function ConteudoPage() {
                                           <Heart className="h-3 w-3 text-red-500" />
                                           Curtidas
                                         </span>
-                                        <span className="text-xs font-semibold text-primary">
+                                        <span className="text-xs font-semibold text-text-primary">
                                           {stats.avgLikes.toLocaleString('pt-BR')}
                                         </span>
                         </div>
@@ -1472,7 +1472,7 @@ export default function ConteudoPage() {
                                           <MessageCircle className="h-3 w-3 text-blue-500" />
                                           Comentários
                         </span>
-                                        <span className="text-xs font-semibold text-primary">
+                                        <span className="text-xs font-semibold text-text-primary">
                                           {stats.avgComments.toLocaleString('pt-BR')}
                                         </span>
                                       </div>
@@ -1531,7 +1531,7 @@ export default function ConteudoPage() {
               <div className="bg-surface rounded-2xl border border-card p-6">
                 <div className="flex items-start justify-between mb-6">
                   <div>
-                    <h3 className="text-lg font-semibold text-primary mb-1 flex items-center gap-2">
+                    <h3 className="text-lg font-semibold text-text-primary mb-1 flex items-center gap-2">
                       <TrendingUp className="w-5 h-5 text-accent-gold" />
                       Evolução de Seguidores & Métricas
                     </h3>
@@ -1561,7 +1561,7 @@ export default function ConteudoPage() {
                       <Users className="w-4 h-4 text-accent-gold" />
                       <span className="text-xs font-medium text-accent-gold uppercase tracking-wide">Seguidores</span>
                     </div>
-                    <p className="text-2xl font-bold text-primary">
+                    <p className="text-2xl font-bold text-text-primary">
                       {metrics?.followers?.total?.toLocaleString('pt-BR') || '0'}
                     </p>
                     {metricsHistory?.summary && metricsHistory.summary.growth !== 0 && (
@@ -1582,7 +1582,7 @@ export default function ConteudoPage() {
                       <Eye className="w-4 h-4 text-indigo-500" />
                       <span className="text-xs font-medium text-indigo-500 uppercase tracking-wide">Visitas ao Perfil</span>
                     </div>
-                    <p className="text-2xl font-bold text-primary">
+                    <p className="text-2xl font-bold text-text-primary">
                       {(metrics?.insights?.profileViews || 0).toLocaleString('pt-BR')}
                     </p>
                     {metricsHistory?.summary && metricsHistory.summary.totalProfileViews > 0 && (
@@ -1598,7 +1598,7 @@ export default function ConteudoPage() {
                       <Activity className="w-4 h-4 text-cyan-500" />
                       <span className="text-xs font-medium text-cyan-500 uppercase tracking-wide">Alcance</span>
                     </div>
-                    <p className="text-2xl font-bold text-primary">
+                    <p className="text-2xl font-bold text-text-primary">
                       {(metrics?.insights?.reach || 0).toLocaleString('pt-BR')}
                     </p>
                     <p className="text-xs mt-1 text-secondary">Contas únicas alcançadas</p>
@@ -1610,7 +1610,7 @@ export default function ConteudoPage() {
                       <ExternalLink className="w-4 h-4 text-amber-500" />
                       <span className="text-xs font-medium text-amber-500 uppercase tracking-wide">Cliques no Link</span>
                     </div>
-                    <p className="text-2xl font-bold text-primary">
+                    <p className="text-2xl font-bold text-text-primary">
                       {(metrics?.insights?.websiteClicks || 0).toLocaleString('pt-BR')}
                     </p>
                     <p className="text-xs mt-1 text-secondary">Cliques no link da bio</p>
@@ -1620,7 +1620,7 @@ export default function ConteudoPage() {
                 {/* Histórico de Evolução */}
                 {metricsHistory?.history && metricsHistory.history.length > 0 && (
                   <div className="border-t border-card pt-6">
-                    <h4 className="text-sm font-semibold text-primary mb-4">Histórico de Seguidores</h4>
+                    <h4 className="text-sm font-semibold text-text-primary mb-4">Histórico de Seguidores</h4>
                     <div className="overflow-x-auto">
                       <div className="flex gap-2 min-w-max pb-2">
                         {metricsHistory.history.slice(-14).map((snapshot, index, arr) => {
@@ -1635,7 +1635,7 @@ export default function ConteudoPage() {
                               <span className="text-xs text-secondary mb-1">
                                 {new Date(snapshot.snapshot_date).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}
                               </span>
-                              <span className="text-sm font-semibold text-primary">
+                              <span className="text-sm font-semibold text-text-primary">
                                 {snapshot.followers_count.toLocaleString('pt-BR')}
                               </span>
                               {diff !== 0 && (
@@ -1683,7 +1683,7 @@ export default function ConteudoPage() {
               <div className="bg-surface rounded-2xl border border-card p-6">
                 <div className="flex items-start justify-between mb-4">
                       <div>
-                    <h3 className="text-lg font-semibold text-primary mb-1">
+                    <h3 className="text-lg font-semibold text-text-primary mb-1">
                       Publicações por Tipo de Conteúdo
                     </h3>
                     <p className="text-sm text-secondary">
@@ -1701,7 +1701,7 @@ export default function ConteudoPage() {
                   <div className="flex items-center gap-4 flex-wrap">
                     <div className="flex items-center gap-2">
                       <Filter className="h-5 w-5 text-secondary" />
-                      <span className="text-sm font-medium text-primary">Filtros:</span>
+                      <span className="text-sm font-medium text-text-primary">Filtros:</span>
                   </div>
                     <div className="flex items-center gap-2">
                       <span className="text-sm text-secondary">Tema:</span>
@@ -1881,7 +1881,7 @@ export default function ConteudoPage() {
                                       className="absolute top-full left-0 mt-1 z-50 bg-surface border border-card rounded-lg shadow-lg p-3 min-w-[200px]"
                                     >
                                       <div className="flex flex-col gap-2">
-                                        <label className="text-xs font-medium text-primary">
+                                        <label className="text-xs font-medium text-text-primary">
                                           Novo Tema
                                         </label>
                                         <input
@@ -2081,7 +2081,7 @@ export default function ConteudoPage() {
                   <div className="bg-surface rounded-2xl border border-card p-6">
                     <div className="flex items-start justify-between mb-6">
                       <div>
-                        <h3 className="text-lg font-semibold text-primary mb-1 flex items-center gap-2">
+                        <h3 className="text-lg font-semibold text-text-primary mb-1 flex items-center gap-2">
                           <MapPin className="w-5 h-5 text-accent-gold" />
                           Distribuição de Seguidores por Cidade
                         </h3>
@@ -2098,14 +2098,14 @@ export default function ConteudoPage() {
                           <div className="flex items-center gap-4">
                             <div>
                               <p className="text-sm text-secondary mb-1">Total de Cidades</p>
-                              <p className="text-2xl font-bold text-primary">
+                              <p className="text-2xl font-bold text-text-primary">
                                 {Object.keys(metrics.demographics.topLocations).length}
                               </p>
                             </div>
                             <div className="h-12 w-px bg-border" />
                             <div>
                               <p className="text-sm text-secondary mb-1">Total de Seguidores Mapeados</p>
-                              <p className="text-2xl font-bold text-primary">
+                              <p className="text-2xl font-bold text-text-primary">
                                 {Object.values(metrics.demographics.topLocations).reduce((sum, count) => sum + count, 0).toLocaleString('pt-BR')}
                               </p>
                             </div>
@@ -2142,7 +2142,7 @@ export default function ConteudoPage() {
                                         {index + 1}
                                       </div>
                                       <div className="flex-1 min-w-0">
-                                        <p className="font-semibold text-primary truncate">{city}</p>
+                                        <p className="font-semibold text-text-primary truncate">{city}</p>
                                         <p className="text-xs text-secondary">
                                           {percentage}% do total de seguidores
                                         </p>
@@ -2150,7 +2150,7 @@ export default function ConteudoPage() {
                                     </div>
                                     <div className="flex items-center gap-4 ml-4">
                                       <div className="text-right">
-                                        <p className="text-lg font-bold text-primary">
+                                        <p className="text-lg font-bold text-text-primary">
                                           {count.toLocaleString('pt-BR')}
                                         </p>
                                         <p className="text-xs text-secondary">seguidores</p>
@@ -2181,7 +2181,7 @@ export default function ConteudoPage() {
                             ⚠️ A métrica <code className="px-2 py-1 bg-background rounded text-xs">audience_city</code> foi <strong>depreciada pelo Instagram</strong> no Graph API v18 (janeiro de 2024) e não está mais disponível.
                           </p>
                           <div className="p-4 bg-background rounded-lg border border-card text-left space-y-2">
-                            <p className="font-semibold text-primary">Informação:</p>
+                            <p className="font-semibold text-text-primary">Informação:</p>
                             <p>
                               O Instagram removeu o acesso programático a dados demográficos detalhados (incluindo localização por cidade) para proteger a privacidade dos usuários.
                             </p>

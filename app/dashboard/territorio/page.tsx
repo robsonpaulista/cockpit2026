@@ -519,7 +519,7 @@ export default function TerritorioPage() {
             {/* Distribuição por Cargo - Compacto */}
             {totaisPorCargo.length > 0 && (
               <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-secondary">
-                <span className="font-medium text-primary">Por cargo:</span>
+                <span className="font-medium text-text-primary">Por cargo:</span>
                 {totaisPorCargo.slice(0, 6).map((item, index) => (
                   <span key={item.cargo} className="inline-flex items-center">
                     <span className="font-semibold text-accent-gold">{item.total}</span>
@@ -538,7 +538,7 @@ export default function TerritorioPage() {
         {/* Filtros */}
         {(config || serverConfigured) && liderancas.length > 0 && (
           <div className="mb-6 bg-surface rounded-2xl border border-card p-4">
-            <h3 className="text-sm font-semibold text-primary mb-4">Filtros</h3>
+            <h3 className="text-sm font-semibold text-text-primary mb-4">Filtros</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
               {/* Filtro por Cidade */}
               <div>
@@ -630,7 +630,7 @@ export default function TerritorioPage() {
         <div className="bg-surface rounded-2xl border border-card p-6">
           <div className="flex items-center justify-between mb-6">
             <div>
-              <h2 className="text-lg font-semibold text-primary">
+              <h2 className="text-lg font-semibold text-text-primary">
                 {(config || serverConfigured) ? 'Lideranças Atuais' : 'Lideranças'}
               </h2>
               {(config || serverConfigured) && (liderancaAtualCol || expectativaVotosCol) && (
@@ -686,7 +686,7 @@ export default function TerritorioPage() {
               })()}
               {(config || serverConfigured) && (
                 <div className="text-right">
-                  <span className="text-sm font-semibold text-primary block">
+                  <span className="text-sm font-semibold text-text-primary block">
                     {liderancasFiltradas.length}
                   </span>
                   <span className="text-xs text-secondary">
@@ -822,7 +822,7 @@ export default function TerritorioPage() {
                             <Users className="w-4 h-4 text-accent-gold" />
                           </div>
                           <div className="flex-1 text-left">
-                            <p className="text-sm font-semibold text-primary">{cidade}</p>
+                            <p className="text-sm font-semibold text-text-primary">{cidade}</p>
                             <p className="text-xs text-secondary">
                               {liderancasCidade.length} liderança{liderancasCidade.length !== 1 ? 's' : ''}
                             </p>
@@ -899,7 +899,7 @@ export default function TerritorioPage() {
                                     </div>
                                     <div className="flex-1 min-w-0">
                                       <div className="flex items-center gap-2">
-                                        <p className="text-sm font-semibold text-primary truncate">
+                                        <p className="text-sm font-semibold text-text-primary truncate">
                                           {lider[nomeCol] || 'Sem nome'}
                                         </p>
                                         {isDestaque && (
@@ -922,7 +922,7 @@ export default function TerritorioPage() {
                                     {scoreCol && lider[scoreCol] && (
                     <div className="text-right">
                                         <p className="text-xs text-secondary mb-0.5">Score</p>
-                                        <p className="text-sm font-semibold text-primary">
+                                        <p className="text-sm font-semibold text-text-primary">
                                           {lider[scoreCol]}
                                         </p>
                     </div>
@@ -970,7 +970,7 @@ export default function TerritorioPage() {
                                       {outrasColunas.map((header) => (
                                         <div key={header} className="text-xs">
                                           <span className="text-secondary">{header}:</span>{' '}
-                                          <span className="text-primary">{lider[header] || '-'}</span>
+                                          <span className="text-text-primary">{lider[header] || '-'}</span>
               </div>
             ))}
           </div>

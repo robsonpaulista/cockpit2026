@@ -136,7 +136,7 @@ export default function FasesPage() {
                       ) : (
                         <Circle className="w-5 h-5 text-secondary" />
                       )}
-                      <h3 className="text-xl font-semibold text-primary">{phase.name}</h3>
+                      <h3 className="text-xl font-semibold text-text-primary">{phase.name}</h3>
                     </div>
                     <div className="flex items-center gap-4 text-sm text-secondary">
                       <span>{formatDate(new Date(phase.start_date))}</span>
@@ -180,7 +180,7 @@ export default function FasesPage() {
                 <div className="space-y-4">
                   {/* Indicadores Prioritários */}
                   <div>
-                    <h4 className="text-sm font-semibold text-primary mb-2 flex items-center gap-2">
+                    <h4 className="text-sm font-semibold text-text-primary mb-2 flex items-center gap-2">
                       <CheckCircle2 className="w-4 h-4 text-accent-gold" />
                       Indicadores Prioritários
                     </h4>
@@ -202,7 +202,7 @@ export default function FasesPage() {
 
                   {/* Restrições */}
                   <div>
-                    <h4 className="text-sm font-semibold text-primary mb-2 flex items-center gap-2">
+                    <h4 className="text-sm font-semibold text-text-primary mb-2 flex items-center gap-2">
                       <AlertCircle className="w-4 h-4 text-status-warning" />
                       Restrições
                     </h4>
@@ -222,7 +222,7 @@ export default function FasesPage() {
 
                   {/* Automações */}
                   <div>
-                    <h4 className="text-sm font-semibold text-primary mb-2 flex items-center gap-2">
+                    <h4 className="text-sm font-semibold text-text-primary mb-2 flex items-center gap-2">
                       <Clock className="w-4 h-4 text-status-success" />
                       Automações Ativas
                     </h4>
@@ -249,7 +249,7 @@ export default function FasesPage() {
 
         {/* Info Box */}
         <div className="mt-8 bg-beige rounded-2xl border border-beige-dark p-6">
-          <h3 className="text-lg font-semibold text-primary mb-2">
+          <h3 className="text-lg font-semibold text-text-primary mb-2">
             Como funciona o sistema de fases?
           </h3>
           <p className="text-sm text-secondary">
@@ -342,7 +342,7 @@ function PhaseModal({ phase, onClose, onSuccess }: PhaseModalProps) {
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div className="bg-surface rounded-2xl border border-card p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between mb-6">
-          <h2 className="text-xl font-semibold text-primary">
+          <h2 className="text-xl font-semibold text-text-primary">
             {phase ? 'Editar Fase' : 'Nova Fase'}
           </h2>
           <button
@@ -355,7 +355,7 @@ function PhaseModal({ phase, onClose, onSuccess }: PhaseModalProps) {
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-primary mb-2">
+            <label className="block text-sm font-medium text-text-primary mb-2">
               Nome da Fase *
             </label>
             <input
@@ -370,7 +370,7 @@ function PhaseModal({ phase, onClose, onSuccess }: PhaseModalProps) {
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-primary mb-2">
+              <label className="block text-sm font-medium text-text-primary mb-2">
                 Data de Início *
               </label>
               <input
@@ -382,7 +382,7 @@ function PhaseModal({ phase, onClose, onSuccess }: PhaseModalProps) {
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-primary mb-2">
+              <label className="block text-sm font-medium text-text-primary mb-2">
                 Data de Fim *
               </label>
               <input
@@ -403,12 +403,12 @@ function PhaseModal({ phase, onClose, onSuccess }: PhaseModalProps) {
                 onChange={(e) => setFormData({ ...formData, active: e.target.checked })}
                 className="w-4 h-4"
               />
-              <span className="text-sm font-medium text-primary">Marcar como ativa</span>
+              <span className="text-sm font-medium text-text-primary">Marcar como ativa</span>
             </label>
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-primary mb-2">
+            <label className="block text-sm font-medium text-text-primary mb-2">
               Indicadores (separados por vírgula)
             </label>
             <input
@@ -421,7 +421,7 @@ function PhaseModal({ phase, onClose, onSuccess }: PhaseModalProps) {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-primary mb-2">
+            <label className="block text-sm font-medium text-text-primary mb-2">
               Restrições (separadas por vírgula)
             </label>
             <input
@@ -434,7 +434,7 @@ function PhaseModal({ phase, onClose, onSuccess }: PhaseModalProps) {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-primary mb-2">
+            <label className="block text-sm font-medium text-text-primary mb-2">
               Automações (separadas por vírgula)
             </label>
             <input

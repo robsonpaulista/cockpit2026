@@ -411,20 +411,20 @@ export default function PesquisaPage() {
   const domainMin = 0
   const domainMax = 100
 
-  // Cores com padrão da aplicação - Accent Gold como principal + complementares
+  // Cores dinâmicas via CSS variables + complementares fixas
   const cores = [
-    '#C6A15B', // Accent Gold (principal)
-    '#E8D9B8', // Accent Gold Soft (complementar)
-    '#1C1C1C', // Text Primary (contraste)
-    '#6B6B6B', // Text Secondary (suave)
-    '#2E7D32', // Success (para crescimento)
-    '#9F2A2A', // Danger (para redução)
-    '#C77800', // Warning (atenção)
-    '#6B7280', // Info (informativo)
-    '#16A085', // Verde complementar
-    '#8E44AD', // Roxo complementar
-    '#C0392B', // Vermelho complementar
-    '#D68910', // Laranja complementar
+    'rgb(var(--accent-gold))',       // Accent (principal)
+    'rgb(var(--accent-gold-soft))',   // Accent Soft (complementar)
+    'rgb(var(--text-text-primary))',       // Text Primary (contraste)
+    'rgb(var(--text-secondary))',     // Text Secondary (suave)
+    'rgb(var(--success))',            // Success (para crescimento)
+    'rgb(var(--danger))',             // Danger (para redução)
+    'rgb(var(--warning))',            // Warning (atenção)
+    'rgb(var(--info))',               // Info (informativo)
+    '#16A085',                        // Verde complementar
+    '#8E44AD',                        // Roxo complementar
+    '#C0392B',                        // Vermelho complementar
+    '#D68910',                        // Laranja complementar
   ]
 
   const kpis = calcularKPIs()
@@ -436,7 +436,7 @@ export default function PesquisaPage() {
         {/* Seletor de Candidato Padrão e Botão Nova Pesquisa */}
         <div className="bg-surface rounded-2xl border border-card p-4 mb-6">
           <div className="flex items-center gap-4 flex-wrap">
-            <label className="text-sm font-semibold text-primary whitespace-nowrap">
+            <label className="text-sm font-semibold text-text-primary whitespace-nowrap">
               Candidato Padrão para KPIs:
             </label>
             <select
@@ -481,7 +481,7 @@ export default function PesquisaPage() {
 
         {/* Filtros */}
         <div className="bg-surface rounded-2xl border border-card p-4 mb-6">
-          <h3 className="text-sm font-semibold text-primary mb-4">Filtros</h3>
+          <h3 className="text-sm font-semibold text-text-primary mb-4">Filtros</h3>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {/* Filtro por Tipo */}
             <div>
@@ -496,7 +496,7 @@ export default function PesquisaPage() {
                     onChange={(e) => setTipoGrafico(e.target.value as 'todas')}
                     className="w-4 h-4 text-accent-gold focus:ring-accent-gold"
                   />
-                  <span className="text-sm text-primary">Todas</span>
+                  <span className="text-sm text-text-primary">Todas</span>
                 </label>
                 <label className="flex items-center gap-2 cursor-pointer">
                   <input
@@ -507,7 +507,7 @@ export default function PesquisaPage() {
                     onChange={(e) => setTipoGrafico(e.target.value as 'estimulada')}
                     className="w-4 h-4 text-accent-gold focus:ring-accent-gold"
                   />
-                  <span className="text-sm text-primary">Estimulada</span>
+                  <span className="text-sm text-text-primary">Estimulada</span>
                 </label>
                 <label className="flex items-center gap-2 cursor-pointer">
                   <input
@@ -518,7 +518,7 @@ export default function PesquisaPage() {
                     onChange={(e) => setTipoGrafico(e.target.value as 'espontanea')}
                     className="w-4 h-4 text-accent-gold focus:ring-accent-gold"
                   />
-                  <span className="text-sm text-primary">Espontânea</span>
+                  <span className="text-sm text-text-primary">Espontânea</span>
                 </label>
               </div>
             </div>
@@ -562,7 +562,7 @@ export default function PesquisaPage() {
         {/* Gráfico de Tendência - Ocupa linha inteira */}
         <div className="bg-surface rounded-2xl border border-card p-6 mb-6">
             <div className="flex items-center justify-between mb-6">
-              <h2 className="text-lg font-semibold text-primary">Tendência</h2>
+              <h2 className="text-lg font-semibold text-text-primary">Tendência</h2>
               <button
                 onClick={() => setGraficoTelaCheia(true)}
                 className="p-2 rounded-lg hover:bg-background transition-colors"
@@ -594,7 +594,7 @@ export default function PesquisaPage() {
                     {/* Grid horizontal suave estilo Power BI */}
                     <CartesianGrid 
                       strokeDasharray="3 3" 
-                      stroke="#E8E8E8" 
+                      stroke="rgb(var(--border-card))" 
                       strokeWidth={1}
                       horizontal={true}
                       vertical={false}
@@ -603,30 +603,30 @@ export default function PesquisaPage() {
                     {/* Eixo X: Datas */}
                     <XAxis 
                       dataKey="data" 
-                      stroke="#666666" 
+                      stroke="rgb(var(--text-muted))" 
                       fontSize={11}
                       fontWeight={400}
-                      tick={{ fill: '#666666' }}
+                      tick={{ fill: 'rgb(var(--text-muted))' }}
                       angle={-45}
                       textAnchor="end"
                       height={80}
-                      tickLine={{ stroke: '#CCCCCC', strokeWidth: 1 }}
+                      tickLine={{ stroke: 'rgb(var(--border-card))', strokeWidth: 1 }}
                     />
                     
                     {/* Eixo Y: Percentual 0-100% */}
                     <YAxis 
                       domain={[0, 100]}
-                      stroke="#666666"
+                      stroke="rgb(var(--text-muted))"
                       fontSize={11}
                       fontWeight={400}
-                      tick={{ fill: '#666666' }}
-                      tickLine={{ stroke: '#CCCCCC', strokeWidth: 1 }}
+                      tick={{ fill: 'rgb(var(--text-muted))' }}
+                      tickLine={{ stroke: 'rgb(var(--border-card))', strokeWidth: 1 }}
                       ticks={[0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100]}
                       label={{ 
                         value: 'Intenção de Voto (%)', 
                         angle: -90, 
                         position: 'insideLeft',
-                        style: { textAnchor: 'middle', fill: '#666666', fontSize: 12, fontWeight: 500 }
+                        style: { textAnchor: 'middle', fill: 'rgb(var(--text-muted))', fontSize: 12, fontWeight: 500 }
                       }}
                     />
                     
@@ -764,14 +764,14 @@ export default function PesquisaPage() {
 
         {/* Relato de Rua - Movido para baixo */}
         <div className="bg-surface rounded-2xl border border-card p-6 mb-6">
-          <h2 className="text-lg font-semibold text-primary mb-6">Relato de Rua</h2>
+          <h2 className="text-lg font-semibold text-text-primary mb-6">Relato de Rua</h2>
           <div className="space-y-4">
             <div className="p-4 rounded-xl bg-background">
-              <p className="text-sm font-medium text-primary mb-2">Humor do eleitor</p>
+              <p className="text-sm font-medium text-text-primary mb-2">Humor do eleitor</p>
               <p className="text-sm text-secondary">Positivo em 68% das interações</p>
             </div>
             <div className="p-4 rounded-xl bg-background">
-              <p className="text-sm font-medium text-primary mb-2">Frases recorrentes</p>
+              <p className="text-sm font-medium text-text-primary mb-2">Frases recorrentes</p>
               <p className="text-sm text-secondary">"Precisa melhorar saúde"</p>
             </div>
           </div>
@@ -779,7 +779,7 @@ export default function PesquisaPage() {
 
         {/* Lista de Pesquisas */}
         <div className="bg-surface rounded-2xl border border-card p-6">
-          <h2 className="text-lg font-semibold text-primary mb-6">Pesquisas Cadastradas</h2>
+          <h2 className="text-lg font-semibold text-text-primary mb-6">Pesquisas Cadastradas</h2>
           {loading ? (
             <div className="text-center py-8">
               <p className="text-secondary">Carregando...</p>
@@ -802,21 +802,21 @@ export default function PesquisaPage() {
               <table className="w-full">
                 <thead>
                   <tr className="border-b border-card">
-                    <th className="text-left py-3 px-4 text-sm font-semibold text-primary">Data</th>
-                    <th className="text-left py-3 px-4 text-sm font-semibold text-primary">Instituto</th>
-                    <th className="text-left py-3 px-4 text-sm font-semibold text-primary">Candidato</th>
-                    <th className="text-left py-3 px-4 text-sm font-semibold text-primary">Cidade</th>
-                    <th className="text-left py-3 px-4 text-sm font-semibold text-primary">Tipo</th>
-                    <th className="text-left py-3 px-4 text-sm font-semibold text-primary">Cargo</th>
-                    <th className="text-right py-3 px-4 text-sm font-semibold text-primary">Intenção</th>
-                    <th className="text-right py-3 px-4 text-sm font-semibold text-primary">Rejeição</th>
-                    <th className="text-center py-3 px-4 text-sm font-semibold text-primary">Ações</th>
+                    <th className="text-left py-3 px-4 text-sm font-semibold text-text-primary">Data</th>
+                    <th className="text-left py-3 px-4 text-sm font-semibold text-text-primary">Instituto</th>
+                    <th className="text-left py-3 px-4 text-sm font-semibold text-text-primary">Candidato</th>
+                    <th className="text-left py-3 px-4 text-sm font-semibold text-text-primary">Cidade</th>
+                    <th className="text-left py-3 px-4 text-sm font-semibold text-text-primary">Tipo</th>
+                    <th className="text-left py-3 px-4 text-sm font-semibold text-text-primary">Cargo</th>
+                    <th className="text-right py-3 px-4 text-sm font-semibold text-text-primary">Intenção</th>
+                    <th className="text-right py-3 px-4 text-sm font-semibold text-text-primary">Rejeição</th>
+                    <th className="text-center py-3 px-4 text-sm font-semibold text-text-primary">Ações</th>
                   </tr>
                 </thead>
                 <tbody>
                   {polls.map((poll) => (
                     <tr key={poll.id} className="border-b border-card hover:bg-background/50 transition-colors">
-                      <td className="py-3 px-4 text-sm text-primary">
+                      <td className="py-3 px-4 text-sm text-text-primary">
                         {(() => {
                           // Tratar data como local para evitar problemas de timezone
                           const dateStr = poll.data
@@ -830,8 +830,8 @@ export default function PesquisaPage() {
                           }
                         })()}
                       </td>
-                      <td className="py-3 px-4 text-sm text-primary">{poll.instituto}</td>
-                      <td className="py-3 px-4 text-sm font-semibold text-primary">
+                      <td className="py-3 px-4 text-sm text-text-primary">{poll.instituto}</td>
+                      <td className="py-3 px-4 text-sm font-semibold text-text-primary">
                         {poll.candidato_nome}
                       </td>
                       <td className="py-3 px-4 text-sm text-secondary">
@@ -892,7 +892,7 @@ export default function PesquisaPage() {
         <div className="fixed inset-0 z-50 bg-background flex flex-col">
           {/* Header */}
           <div className="bg-surface border-b border-card p-4 flex items-center justify-between">
-            <h2 className="text-xl font-semibold text-primary">Tendência - Visualização em Tela Cheia</h2>
+            <h2 className="text-xl font-semibold text-text-primary">Tendência - Visualização em Tela Cheia</h2>
             <button
               onClick={() => setGraficoTelaCheia(false)}
               className="p-2 rounded-lg hover:bg-background transition-colors"
@@ -926,35 +926,35 @@ export default function PesquisaPage() {
                   >
                     <CartesianGrid 
                       strokeDasharray="3 3" 
-                      stroke="#E8E8E8" 
+                      stroke="rgb(var(--border-card))" 
                       strokeWidth={1}
                       horizontal={true}
                       vertical={false}
                     />
                     <XAxis 
                       dataKey="data" 
-                      stroke="#666666" 
+                      stroke="rgb(var(--text-muted))" 
                       fontSize={11}
                       fontWeight={400}
-                      tick={{ fill: '#666666' }}
+                      tick={{ fill: 'rgb(var(--text-muted))' }}
                       angle={-45}
                       textAnchor="end"
                       height={80}
-                      tickLine={{ stroke: '#CCCCCC', strokeWidth: 1 }}
+                      tickLine={{ stroke: 'rgb(var(--border-card))', strokeWidth: 1 }}
                     />
                     <YAxis 
                       domain={[0, 100]}
-                      stroke="#666666"
+                      stroke="rgb(var(--text-muted))"
                       fontSize={11}
                       fontWeight={400}
-                      tick={{ fill: '#666666' }}
-                      tickLine={{ stroke: '#CCCCCC', strokeWidth: 1 }}
+                      tick={{ fill: 'rgb(var(--text-muted))' }}
+                      tickLine={{ stroke: 'rgb(var(--border-card))', strokeWidth: 1 }}
                       ticks={[0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100]}
                       label={{ 
                         value: 'Intenção de Voto (%)', 
                         angle: -90, 
                         position: 'insideLeft',
-                        style: { textAnchor: 'middle', fill: '#666666', fontSize: 12, fontWeight: 500 }
+                        style: { textAnchor: 'middle', fill: 'rgb(var(--text-muted))', fontSize: 12, fontWeight: 500 }
                       }}
                     />
                     <Tooltip

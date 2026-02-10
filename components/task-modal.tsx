@@ -76,7 +76,7 @@ export function TaskModal({ task, territories, leaders, onClose, onSave, initial
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
       <div className="bg-surface rounded-2xl border border-card w-full max-w-2xl max-h-[90vh] overflow-y-auto m-4">
         <div className="sticky top-0 bg-surface border-b border-card p-6 flex items-center justify-between">
-          <h2 className="text-xl font-semibold text-primary">
+          <h2 className="text-xl font-semibold text-text-primary">
             {task ? 'Editar Tarefa' : 'Nova Tarefa'}
           </h2>
           <button
@@ -90,7 +90,7 @@ export function TaskModal({ task, territories, leaders, onClose, onSave, initial
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
           {/* Território */}
           <div>
-            <label className="block text-sm font-medium text-primary mb-2">
+            <label className="block text-sm font-medium text-text-primary mb-2">
               Território *
             </label>
             <select
@@ -117,7 +117,7 @@ export function TaskModal({ task, territories, leaders, onClose, onSave, initial
 
           {/* Título */}
           <div>
-            <label className="block text-sm font-medium text-primary mb-2">
+            <label className="block text-sm font-medium text-text-primary mb-2">
               Título *
             </label>
             <input
@@ -131,7 +131,7 @@ export function TaskModal({ task, territories, leaders, onClose, onSave, initial
 
           {/* Descrição */}
           <div>
-            <label className="block text-sm font-medium text-primary mb-2">
+            <label className="block text-sm font-medium text-text-primary mb-2">
               Descrição
             </label>
             <textarea
@@ -145,7 +145,7 @@ export function TaskModal({ task, territories, leaders, onClose, onSave, initial
           {/* Status, Prioridade e Data */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
-              <label className="block text-sm font-medium text-primary mb-2">
+              <label className="block text-sm font-medium text-text-primary mb-2">
                 Status
               </label>
               <select
@@ -161,7 +161,7 @@ export function TaskModal({ task, territories, leaders, onClose, onSave, initial
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-primary mb-2">
+              <label className="block text-sm font-medium text-text-primary mb-2">
                 Prioridade
               </label>
               <select
@@ -176,7 +176,7 @@ export function TaskModal({ task, territories, leaders, onClose, onSave, initial
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-primary mb-2">
+              <label className="block text-sm font-medium text-text-primary mb-2">
                 Data de Vencimento
               </label>
               <input
@@ -191,7 +191,7 @@ export function TaskModal({ task, territories, leaders, onClose, onSave, initial
           {/* Líder Responsável e Líder Atribuído */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-primary mb-2">
+              <label className="block text-sm font-medium text-text-primary mb-2">
                 Líder Responsável
               </label>
               <select
@@ -209,7 +209,7 @@ export function TaskModal({ task, territories, leaders, onClose, onSave, initial
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-primary mb-2">
+              <label className="block text-sm font-medium text-text-primary mb-2">
                 Atribuído a
               </label>
               <select
@@ -233,7 +233,7 @@ export function TaskModal({ task, territories, leaders, onClose, onSave, initial
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 text-sm font-medium text-primary bg-background rounded-lg hover:bg-background/80 transition-colors"
+              className="px-4 py-2 text-sm font-medium text-text-primary bg-background rounded-lg hover:bg-background/80 transition-colors"
             >
               Cancelar
             </button>

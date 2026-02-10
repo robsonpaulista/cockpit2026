@@ -129,8 +129,8 @@ export function MapWrapperLeaflet({ cidadesComPresenca, municipiosPiaui, eleitor
     comPresenca.forEach((municipio) => {
       const circleMarker = L.circleMarker([municipio.lat, municipio.lng], {
         radius: 6,
-        fillColor: '#C6A15B',
-        color: '#A67C41',
+        fillColor: 'rgb(var(--accent-gold))',
+        color: 'rgb(var(--accent-gold-dark))',
         weight: 2,
         opacity: 1,
         fillOpacity: 0.8,
@@ -138,8 +138,8 @@ export function MapWrapperLeaflet({ cidadesComPresenca, municipiosPiaui, eleitor
 
       circleMarker.bindPopup(`
         <div style="font-size: 12px;">
-          <p style="font-weight: bold; margin: 0; color: #A67C41;">${municipio.nome}</p>
-          <p style="font-size: 11px; margin: 4px 0 0 0; color: #16a34a;">✓ Com liderança</p>
+          <p style="font-weight: bold; margin: 0; color: rgb(var(--accent-gold-dark));">${municipio.nome}</p>
+          <p style="font-size: 11px; margin: 4px 0 0 0; color: rgb(var(--success));">✓ Com liderança</p>
         </div>
       `)
 
