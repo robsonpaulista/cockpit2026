@@ -81,6 +81,7 @@ export default function Home() {
   const [segundaVagaInfo, setSegundaVagaInfo] = useState<{
     vagasAtuais: number
     distancia: number
+    distanciaCompetidor: number
     tipo: 'margem' | 'faltam'
     competidorProximo: string | null
     qpRepublicanos: number
@@ -282,9 +283,10 @@ export default function Home() {
     }
   }, [candidatoPadrao])
 
-  // Buscar Análise de Territórios (com cancelamento ao sair da página)
+  // Buscar Análise de Territórios (com AbortController para cancelar ao navegar)
   useEffect(() => {
-    let cancelado = false
+    const abortController = new AbortController()
+    const signal = abortController.signal
     
     const fetchTerritorios = async () => {
       setLoadingTerritorios(true)
@@ -293,13 +295,13 @@ export default function Home() {
         
         // 1. Primeiro verificar configuração do servidor
         try {
-          const serverConfigRes = await fetch('/api/territorio/config')
-          if (cancelado) return
+          const serverConfigRes = await fetch('/api/territorio/config', { signal })
           const serverConfig = await serverConfigRes.json()
           if (serverConfig.configured) {
             config = {} // Servidor usa variáveis de ambiente
           }
         } catch (e) {
+          if (signal.aborted) return
           // Continuar para localStorage
         }
         
@@ -311,19 +313,19 @@ export default function Home() {
           }
         }
         
-        if (config && !cancelado) {
+        if (config && !signal.aborted) {
           const response = await fetch('/api/dashboard/territorios-frios', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ 
               territorioConfig: config.spreadsheetId ? config : {} 
             }),
+            signal,
           })
-          if (cancelado) return
           
           if (response.ok) {
             const data = await response.json()
-            if (cancelado) return
+            if (signal.aborted) return
             
             // Territórios frios
             setTerritoriosFrios(
@@ -372,32 +374,33 @@ export default function Home() {
           }
         }
       } catch (error) {
+        if (signal.aborted) return
         // Erro silencioso
       } finally {
-        if (!cancelado) setLoadingTerritorios(false)
+        if (!signal.aborted) setLoadingTerritorios(false)
       }
     }
 
     fetchTerritorios()
-    return () => { cancelado = true }
+    return () => { abortController.abort() }
   }, [])
 
   // Buscar estatísticas das bandeiras com métricas de desempenho do Instagram
   // DEFERIDO: executa 3s após o mount para não bloquear navegação/carregamento inicial
   useEffect(() => {
-    let cancelado = false
+    const abortController = new AbortController()
+    const signal = abortController.signal
     
     const fetchBandeirasStats = async () => {
       setLoadingBandeiras(true)
       try {
         // 1. Buscar narrativas ativas e stats básicos
-        const narrativasResponse = await fetch('/api/narrativas?status=ativa')
-        if (cancelado) return
+        const narrativasResponse = await fetch('/api/narrativas?status=ativa', { signal })
         const narrativas = narrativasResponse.ok ? await narrativasResponse.json() : []
 
         const statsPromises = narrativas.map(async (narrativa: Record<string, string>) => {
           try {
-            const statsResponse = await fetch(`/api/narrativas/stats?theme=${encodeURIComponent(narrativa.theme)}`)
+            const statsResponse = await fetch(`/api/narrativas/stats?theme=${encodeURIComponent(narrativa.theme)}`, { signal })
             if (statsResponse.ok) {
               const stats = await statsResponse.json()
               return {
@@ -411,7 +414,7 @@ export default function Home() {
           return { theme: narrativa.theme, usage_count: 0, performance_score: 0, boosted_count: 0 }
         })
         const allNarrativaStats = await Promise.all(statsPromises)
-        if (cancelado) return
+        if (signal.aborted) return
 
         // 2. Buscar dados do Instagram (mesma lógica da página Conteúdo)
         let instagramPosts: Array<{ id: string; postedAt: string; caption: string; metrics: { likes: number; comments: number; engagement: number; views?: number; shares?: number; saves?: number } }> = []
@@ -419,7 +422,7 @@ export default function Home() {
 
         try {
           const igConfig = await loadInstagramConfigAsync()
-          if (igConfig.token && igConfig.businessAccountId && !cancelado) {
+          if (igConfig.token && igConfig.businessAccountId && !signal.aborted) {
             const igData = await fetchInstagramData(igConfig.token, igConfig.businessAccountId, '30d', false)
             if (igData && igData.posts) {
               instagramPosts = igData.posts
@@ -427,14 +430,15 @@ export default function Home() {
             }
           }
         } catch (err) {
+          if (signal.aborted) return
           console.error('Erro ao carregar dados Instagram para bandeiras:', err)
         }
-        if (cancelado) return
+        if (signal.aborted) return
 
         // 3. Buscar classificações dos posts (mesma API da página Conteúdo)
         let postClassifications: Record<string, { theme?: string; isBoosted?: boolean }> = {}
         try {
-          const classResponse = await fetch('/api/instagram/classifications')
+          const classResponse = await fetch('/api/instagram/classifications', { signal })
           if (classResponse.ok) {
             const classData = await classResponse.json()
             if (classData.success && classData.classifications) {
@@ -442,7 +446,7 @@ export default function Home() {
             }
           }
         } catch { /* silêncio */ }
-        if (cancelado) return
+        if (signal.aborted) return
 
         // 4. Função para gerar identifier (mesma da página Conteúdo)
         const getPostIdentifier = (post: { id: string; postedAt?: string; caption?: string }) => {
@@ -507,7 +511,7 @@ export default function Home() {
           ? Math.round(combinedStats.reduce((sum, s) => sum + s.performance_score, 0) / combinedStats.length)
           : 0
 
-        if (!cancelado) {
+        if (!signal.aborted) {
           setBandeirasStats({
             totalUsos,
             totalPerformance,
@@ -517,19 +521,20 @@ export default function Home() {
           })
         }
       } catch (error) {
+        if (signal.aborted) return
         console.error('Erro ao buscar estatísticas das bandeiras:', error)
       } finally {
-        if (!cancelado) setLoadingBandeiras(false)
+        if (!signal.aborted) setLoadingBandeiras(false)
       }
     }
 
     // Deferir 3s para não competir com carregamento inicial e navegação
     const timer = setTimeout(() => {
-      if (!cancelado) fetchBandeirasStats()
+      if (!signal.aborted) fetchBandeirasStats()
     }, 3000)
 
     return () => {
-      cancelado = true
+      abortController.abort()
       clearTimeout(timer)
     }
   }, [])
@@ -591,7 +596,7 @@ export default function Home() {
     const fetchProjecaoChapaComRanking = async (votosExpectativa?: number): Promise<{
       eleitos: number
       ranking: { posicao: number; totalCandidatos: number } | null
-      segundaVaga: { vagasAtuais: number; distancia: number; tipo: 'margem' | 'faltam'; competidorProximo: string | null; qpRepublicanos: number; qpCompetidor: number; rodada: number } | null
+      segundaVaga: { vagasAtuais: number; distancia: number; distanciaCompetidor?: number; tipo: 'margem' | 'faltam'; competidorProximo: string | null; qpRepublicanos: number; qpCompetidor: number; rodada: number } | null
     }> => {
       try {
         const params = votosExpectativa && votosExpectativa > 0
@@ -635,7 +640,10 @@ export default function Home() {
           setRankingExpectativa(ranking)
         }
         if (segundaVaga) {
-          setSegundaVagaInfo(segundaVaga)
+          setSegundaVagaInfo({
+            ...segundaVaga,
+            distanciaCompetidor: segundaVaga.distanciaCompetidor ?? 0,
+          })
         }
 
         const cidadesUnicas = territorioKPIs?.cidadesUnicas ?? null
@@ -671,7 +679,7 @@ export default function Home() {
             },
             {
               id: 'projecao',
-              label: 'Projeção Chapa Federal',
+              label: 'Projeção Federal',
               value: `${projecaoEleitos} ${projecaoEleitos === 1 ? 'vaga' : 'vagas'}`,
               variation: 0,
               status: projecaoEleitos >= 2 ? 'success' : projecaoEleitos >= 1 ? 'warning' : 'error',
@@ -816,12 +824,24 @@ export default function Home() {
                   cardInfoLines = lines
                 }
                 
-                // Subtítulo para Projeção Chapa Federal (distância 2ª vaga via D'Hondt)
+                // Info para Projeção Chapa Federal (margem REP + ameaça do competidor)
                 if (kpi.id === 'projecao' && segundaVagaInfo && segundaVagaInfo.distancia > 0) {
                   const competidor = segundaVagaInfo.competidorProximo || '?'
                   if (segundaVagaInfo.tipo === 'margem') {
-                    cardSubtitle = `+${segundaVagaInfo.distancia.toLocaleString('pt-BR')} votos vs ${competidor}`
-                    cardSubtitleType = segundaVagaInfo.distancia > 20000 ? 'positive' : segundaVagaInfo.distancia > 5000 ? 'neutral' : 'negative'
+                    const margemType = segundaVagaInfo.distancia > 20000 ? 'positive' as const : segundaVagaInfo.distancia > 5000 ? 'neutral' as const : 'negative' as const
+                    const lines: Array<{ text: string; type?: 'positive' | 'negative' | 'neutral' }> = [
+                      {
+                        text: `Margem: ${segundaVagaInfo.distancia.toLocaleString('pt-BR')} votos`,
+                        type: margemType,
+                      },
+                    ]
+                    if (segundaVagaInfo.distanciaCompetidor > 0) {
+                      lines.push({
+                        text: `${competidor} precisa +${segundaVagaInfo.distanciaCompetidor.toLocaleString('pt-BR')} votos`,
+                        type: 'negative',
+                      })
+                    }
+                    cardInfoLines = lines
                   } else {
                     cardSubtitle = `-${segundaVagaInfo.distancia.toLocaleString('pt-BR')} votos p/ 2ª vaga (${competidor})`
                     cardSubtitleType = 'negative'

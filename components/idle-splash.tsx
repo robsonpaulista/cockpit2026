@@ -54,17 +54,42 @@ export function IdleSplash() {
     }, 600)
   }, [ativo, dispensando, limparTimersAnimacao])
 
-  // Iniciar animação quando ativo
+  // Ciclo de animação contínuo (loop enquanto ativo)
   useEffect(() => {
     if (!ativo || dispensando) return
 
-    const t1 = setTimeout(() => setFase('c'), 200)
-    const t2 = setTimeout(() => setFase('nome'), 1600)
-    const t3 = setTimeout(() => setFase('slogan'), 3400)
+    // Duração de cada ciclo completo: ~8s
+    const CICLO = {
+      mostrarC: 200,
+      mostrarNome: 1600,
+      mostrarSlogan: 3400,
+      pausaNoSlogan: 6000,  // slogan fica visível por ~2.6s
+      fadeOut: 6800,         // fade out antes de reiniciar
+      reinicio: 8000,        // reinicia o ciclo
+    }
 
-    timersAnimacao.current = [t1, t2, t3]
+    let cancelado = false
+
+    const iniciarCiclo = () => {
+      if (cancelado) return
+
+      setFase('inicio')
+
+      const t1 = setTimeout(() => { if (!cancelado) setFase('c') }, CICLO.mostrarC)
+      const t2 = setTimeout(() => { if (!cancelado) setFase('nome') }, CICLO.mostrarNome)
+      const t3 = setTimeout(() => { if (!cancelado) setFase('slogan') }, CICLO.mostrarSlogan)
+      // Fade out: volta para 'inicio' (os elementos fazem fade out via CSS transition)
+      const t4 = setTimeout(() => { if (!cancelado) setFase('inicio') }, CICLO.fadeOut)
+      // Reinicia o ciclo
+      const t5 = setTimeout(() => { if (!cancelado) iniciarCiclo() }, CICLO.reinicio)
+
+      timersAnimacao.current = [t1, t2, t3, t4, t5]
+    }
+
+    iniciarCiclo()
 
     return () => {
+      cancelado = true
       limparTimersAnimacao()
     }
   }, [ativo, dispensando, limparTimersAnimacao])

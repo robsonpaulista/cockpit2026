@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/hooks/use-auth'
+import { preWarmUserIdCache } from '@/lib/chapasService'
 
 interface ProtectedRouteProps {
   children: React.ReactNode
@@ -49,6 +50,11 @@ export function ProtectedRoute({ children, requiredRole }: ProtectedRouteProps) 
         setHasAuthRedirect(false)
       }, 5000)
       return () => clearTimeout(timeout)
+    }
+
+    // Pré-aquecer cache do userId para evitar roundtrip de auth em chamadas Supabase
+    if (user?.id) {
+      preWarmUserIdCache(user.id)
     }
 
     // Verificar permissões de role se necessário

@@ -96,6 +96,7 @@ function calcularDistanciaSegundaVaga(
 ): { 
   vagasAtuais: number
   distancia: number
+  distanciaCompetidor: number  // quantos votos o competidor precisa GANHAR para roubar
   tipo: 'margem' | 'faltam'
   competidorProximo: string | null
   qpRepublicanos: number
@@ -104,7 +105,7 @@ function calcularDistanciaSegundaVaga(
 } {
   const repAtual = partidosComVotos.find(p => p.nome === 'REPUBLICANOS')
   if (!repAtual) {
-    return { vagasAtuais: 0, distancia: 0, tipo: 'faltam', competidorProximo: null, qpRepublicanos: 0, qpCompetidor: 0, rodada: 0 }
+    return { vagasAtuais: 0, distancia: 0, distanciaCompetidor: 0, tipo: 'faltam', competidorProximo: null, qpRepublicanos: 0, qpCompetidor: 0, rodada: 0 }
   }
 
   const { partidosComVagas, historicoRodadas } = calcularDistribuicaoDHondtComHistorico(partidosComVotos, quociente, numVagas)
@@ -126,9 +127,20 @@ function calcularDistanciaSegundaVaga(
     const limiteVotos = Math.ceil(ultimaRodada.qpRunnerUp * ultimaRodada.divisorGanhador)
     const margem = repAtual.votosTotal - limiteVotos
 
+    // Calcular quanto o competidor precisa GANHAR para ultrapassar
+    // competidor precisa: votosComp / divisorComp > qpRepublicanos
+    // votosComp > qpRepublicanos × divisorComp
+    const competidorAtual = partidosComVotos.find(p => p.nome === ultimaRodada.runnerUp)
+    let distanciaCompetidor = 0
+    if (competidorAtual) {
+      const votosCompNecessarios = Math.ceil(ultimaRodada.qpGanhador * ultimaRodada.divisorRunnerUp) + 1
+      distanciaCompetidor = votosCompNecessarios - competidorAtual.votosTotal
+    }
+
     return {
       vagasAtuais,
       distancia: margem,
+      distanciaCompetidor: Math.max(0, distanciaCompetidor),
       tipo: 'margem',
       competidorProximo: ultimaRodada.runnerUp,
       qpRepublicanos: ultimaRodada.qpGanhador,
@@ -207,6 +219,7 @@ function calcularDistanciaSegundaVaga(
       return {
         vagasAtuais,
         distancia: menorFalta,
+        distanciaCompetidor: 0,
         tipo: 'faltam',
         competidorProximo: rodadaCritica.ganhador,
         qpRepublicanos: rodadaCritica.qpRunnerUp,
@@ -215,10 +228,10 @@ function calcularDistanciaSegundaVaga(
       }
     }
 
-    return { vagasAtuais, distancia: 0, tipo: 'faltam', competidorProximo: null, qpRepublicanos: 0, qpCompetidor: 0, rodada: 0 }
+    return { vagasAtuais, distancia: 0, distanciaCompetidor: 0, tipo: 'faltam', competidorProximo: null, qpRepublicanos: 0, qpCompetidor: 0, rodada: 0 }
   }
 
-  return { vagasAtuais, distancia: 0, tipo: 'margem', competidorProximo: null, qpRepublicanos: 0, qpCompetidor: 0, rodada: 0 }
+  return { vagasAtuais, distancia: 0, distanciaCompetidor: 0, tipo: 'margem', competidorProximo: null, qpRepublicanos: 0, qpCompetidor: 0, rodada: 0 }
 }
 
 export async function GET(request: NextRequest) {

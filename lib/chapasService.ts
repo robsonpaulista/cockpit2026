@@ -11,14 +11,40 @@ function getSupabaseClient() {
   return _supabaseClient
 }
 
-// Wrapper com timeout para evitar hang infinito em queries
-function withTimeout<T>(promise: PromiseLike<T>, timeoutMs: number = 15000, label: string = 'operação'): Promise<T> {
-  return Promise.race([
-    Promise.resolve(promise),
-    new Promise<never>((_, reject) =>
-      setTimeout(() => reject(new Error(`Timeout: ${label} excedeu ${timeoutMs / 1000}s`)), timeoutMs)
-    )
-  ])
+// Retry com backoff exponencial (inspirado no projeto referência Firebase)
+const MAX_RETRIES = 3
+const RETRY_DELAY = 500 // ms
+
+async function executeWithRetry<T>(
+  operation: () => Promise<T>,
+  label: string = 'operação'
+): Promise<T> {
+  let lastError: Error = new Error('Falha desconhecida')
+  
+  for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+    try {
+      return await operation()
+    } catch (error: unknown) {
+      lastError = error as Error
+      if (attempt < MAX_RETRIES) {
+        const delay = RETRY_DELAY * Math.pow(2, attempt - 1)
+        console.warn(`[chapasService] ${label} - tentativa ${attempt} falhou, retry em ${delay}ms`)
+        await new Promise(resolve => setTimeout(resolve, delay))
+      }
+    }
+  }
+  
+  throw lastError
+}
+
+// Pré-aquecer cache do userId (chamado pela página antes de qualquer operação)
+export function preWarmUserIdCache(userId: string) {
+  if (!userId) return
+  _cachedUserId = userId
+  // Persistir em localStorage (sobrevive a HMR do Next.js dev)
+  if (typeof window !== 'undefined') {
+    try { localStorage.setItem('chapas_uid', userId) } catch { /* ignore */ }
+  }
 }
 
 // Tipos para o sistema de cenários
@@ -104,49 +130,41 @@ export const dadosIniciais: Array<{partido: string; nome: string; votos: number}
   { partido: 'REPUBLICANOS', nome: 'CAUSA ANIMAL', votos: 10000 },
 ]
 
-// Cache para evitar múltiplas chamadas de autenticação
+// Cache do userId (ZERO chamadas de rede - definido pelo componente + persistido em localStorage)
 let _cachedUserId: string | null = null
-let _cachedUserIdTimestamp: number = 0
-const USER_ID_CACHE_TTL = 60000 // 60 segundos
 
-// Função auxiliar para obter userId (com cache)
-async function getUserId(): Promise<string> {
-  // Retornar cache se válido (evita roundtrip de auth em cada chamada)
-  const now = Date.now()
-  if (_cachedUserId && (now - _cachedUserIdTimestamp) < USER_ID_CACHE_TTL) {
+// Timeout genérico para qualquer promise (evita hang infinito)
+function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error(`Timeout: ${label} excedeu ${ms / 1000}s`)), ms)
+    )
+  ])
+}
+
+// Função para obter userId (síncrono, sem rede, com fallback em localStorage)
+function getUserId(): string {
+  // 1. Cache em memória (instantâneo)
+  if (_cachedUserId) {
     return _cachedUserId
   }
-
-  try {
-    const supabase = getSupabaseClient()
-    const { data: { user }, error } = await supabase.auth.getUser()
-    
-    if (error) {
-      _cachedUserId = null
-      throw new Error(`Erro de autenticação: ${error.message}`)
+  
+  // 2. Fallback: localStorage (sobrevive a HMR do Next.js dev)
+  if (typeof window !== 'undefined') {
+    const stored = localStorage.getItem('chapas_uid')
+    if (stored) {
+      _cachedUserId = stored
+      return stored
     }
-    
-    if (!user) {
-      _cachedUserId = null
-      throw new Error('Usuário não autenticado. Faça login para continuar.')
-    }
-    
-    // Armazenar em cache
-    _cachedUserId = user.id
-    _cachedUserIdTimestamp = now
-    return user.id
-  } catch (error: unknown) {
-    const err = error as Error
-    if (err?.message) {
-      throw err
-    }
-    throw new Error('Erro ao obter usuário autenticado')
   }
+  
+  throw new Error('Usuário não identificado. Recarregue a página.')
 }
 
 // Função para salvar quociente eleitoral
 export async function salvarQuocienteEleitoral(quociente: number): Promise<void> {
-  const userId = await getUserId()
+  const userId = getUserId()
   const supabase = getSupabaseClient()
   
   const { error } = await supabase
@@ -165,7 +183,7 @@ export async function salvarQuocienteEleitoral(quociente: number): Promise<void>
 
 // Função para carregar quociente eleitoral
 export async function carregarQuocienteEleitoral(): Promise<number> {
-  const userId = await getUserId()
+  const userId = getUserId()
   const supabase = getSupabaseClient()
   
   const { data, error } = await supabase
@@ -182,7 +200,7 @@ export async function carregarQuocienteEleitoral(): Promise<number> {
 
 // Função para criar o cenário base
 export async function criarCenarioBase(partidos: PartidoCenario[], quociente: number): Promise<string> {
-  const userId = await getUserId()
+  const userId = getUserId()
   const supabase = getSupabaseClient()
   
   // Salvar o cenário (usando snake_case para o banco)
@@ -241,7 +259,7 @@ export async function criarCenarioBase(partidos: PartidoCenario[], quociente: nu
 
 // Função para listar todos os cenários
 export async function listarCenarios(): Promise<Cenario[]> {
-  const userId = await getUserId()
+  const userId = getUserId()
   const supabase = getSupabaseClient()
   
   const { data, error } = await supabase
@@ -275,25 +293,30 @@ export async function listarCenarios(): Promise<Cenario[]> {
 // Função para carregar um cenário completo
 export async function carregarCenario(cenarioId: string): Promise<CenarioCompleto | null> {
   try {
-    const userId = await getUserId()
+    console.time(`[chapasService] carregarCenario(${cenarioId})`)
+    const userId = getUserId()
     const supabase = getSupabaseClient()
     
-    // Carregar cenário E partidos em PARALELO (performance)
-    const [cenarioResult, partidosResult] = await Promise.all([
-      supabase
-        .from('chapas_cenarios')
-        .select('id, nome, descricao, tipo, criado_em, atualizado_em, ativo, quociente_eleitoral, votos_igreja')
-        .eq('user_id', userId)
-        .eq('id', cenarioId)
-        .single(),
-      supabase
-        .from('chapas_partidos')
-        .select('partido_nome, cor, cor_texto, votos_legenda, candidato_nome, candidato_votos, candidato_genero')
-        .eq('user_id', userId)
-        .eq('cenario_id', cenarioId)
-        .order('partido_nome', { ascending: true })
-        .order('candidato_votos', { ascending: false })
-    ])
+    // Carregar cenário E partidos em PARALELO (com timeout de 10s)
+    const [cenarioResult, partidosResult] = await withTimeout(
+      Promise.all([
+        supabase
+          .from('chapas_cenarios')
+          .select('id, nome, descricao, tipo, criado_em, atualizado_em, ativo, quociente_eleitoral, votos_igreja')
+          .eq('user_id', userId)
+          .eq('id', cenarioId)
+          .single(),
+        supabase
+          .from('chapas_partidos')
+          .select('partido_nome, cor, cor_texto, votos_legenda, candidato_nome, candidato_votos, candidato_genero')
+          .eq('user_id', userId)
+          .eq('cenario_id', cenarioId)
+          .order('partido_nome', { ascending: true })
+          .order('candidato_votos', { ascending: false })
+      ]),
+      10000,
+      `carregar cenário ${cenarioId}`
+    )
 
     const { data: cenarioData, error: cenarioError } = cenarioResult
     const { data: partidosData, error: partidosError } = partidosResult
@@ -353,11 +376,13 @@ export async function carregarCenario(cenarioId: string): Promise<CenarioComplet
 
     const partidos = Object.values(partidosMap)
 
+    console.timeEnd(`[chapasService] carregarCenario(${cenarioId})`)
     return {
       ...cenario,
       partidos
     }
   } catch (error: unknown) {
+    console.timeEnd(`[chapasService] carregarCenario(${cenarioId})`)
     const err = error as Error
     if (err?.message?.includes('não autenticado') || err?.message?.includes('not authenticated')) {
       throw new Error('Usuário não autenticado. Faça login para continuar.')
@@ -375,7 +400,7 @@ export async function criarNovoCenario(
   descricao: string,
   cenarioOrigemId: string
 ): Promise<string> {
-  const userId = await getUserId()
+  const userId = getUserId()
   const supabase = getSupabaseClient()
   
   const cenarioOrigem = await carregarCenario(cenarioOrigemId)
@@ -427,13 +452,15 @@ export async function criarNovoCenario(
   return novoCenarioId
 }
 
-// Função para atualizar um cenário (otimizada - queries paralelas, com timeout)
+// Função para atualizar um cenário (otimizada - queries paralelas, retry com backoff)
 export async function atualizarCenario(
   cenarioId: string,
   partidos: PartidoCenario[],
   quociente: number
 ): Promise<void> {
-  const userId = await getUserId()
+  console.time('[chapasService] atualizarCenario total')
+  
+  const userId = getUserId()
   const supabase = getSupabaseClient()
   const agora = new Date().toISOString()
   
@@ -452,48 +479,53 @@ export async function atualizarCenario(
     }))
   )
 
-  // Atualizar cenário + deletar partidos antigos em PARALELO (com timeout de 15s)
-  const [cenarioResult, deleteResult] = await withTimeout(
-    Promise.all([
-      supabase
-        .from('chapas_cenarios')
-        .update({
-          atualizado_em: agora,
-          quociente_eleitoral: quociente
-        })
-        .eq('user_id', userId)
-        .eq('id', cenarioId),
-      supabase
-        .from('chapas_partidos')
-        .delete()
-        .eq('user_id', userId)
-        .eq('cenario_id', cenarioId)
-    ]),
-    15000,
-    'atualizar cenário + limpar partidos'
-  )
+  console.log(`[chapasService] Salvando: ${partidosData.length} registros de partidos`)
 
-  if (cenarioResult.error) throw cenarioResult.error
-  if (deleteResult.error) throw deleteResult.error
-
-  // Inserir novos partidos (com timeout de 15s)
-  if (partidosData.length > 0) {
-    const insertResult = await withTimeout(
-      supabase
-        .from('chapas_partidos')
-        .insert(partidosData)
-        .then(res => res),
-      15000,
-      'inserir partidos'
+  // Step 1: Atualizar cenário + deletar partidos antigos em PARALELO (com timeout + retry)
+  await executeWithRetry(async () => {
+    const [cenarioResult, deleteResult] = await withTimeout(
+      Promise.all([
+        supabase
+          .from('chapas_cenarios')
+          .update({
+            atualizado_em: agora,
+            quociente_eleitoral: quociente
+          })
+          .eq('user_id', userId)
+          .eq('id', cenarioId),
+        supabase
+          .from('chapas_partidos')
+          .delete()
+          .eq('user_id', userId)
+          .eq('cenario_id', cenarioId)
+      ]),
+      10000,
+      'update + delete paralelo'
     )
 
-    if (insertResult.error) throw insertResult.error
+    if (cenarioResult.error) throw cenarioResult.error
+    if (deleteResult.error) throw deleteResult.error
+  }, 'atualizar cenário + limpar partidos')
+
+  // Step 2: Inserir novos partidos (com timeout + retry)
+  if (partidosData.length > 0) {
+    await executeWithRetry(async () => {
+      const insertResult = await withTimeout(
+        Promise.resolve(supabase.from('chapas_partidos').insert(partidosData)),
+        10000,
+        'insert partidos'
+      )
+
+      if (insertResult.error) throw insertResult.error
+    }, 'inserir partidos')
   }
+  
+  console.timeEnd('[chapasService] atualizarCenario total')
 }
 
 // Função para excluir um cenário
 export async function excluirCenario(cenarioId: string): Promise<void> {
-  const userId = await getUserId()
+  const userId = getUserId()
   const supabase = getSupabaseClient()
   
   // Não permitir excluir o cenário base
@@ -522,7 +554,7 @@ export async function excluirCenario(cenarioId: string): Promise<void> {
 
 // Função para ativar/desativar um cenário (batch update, sem loops)
 export async function ativarCenario(cenarioId: string, ativo: boolean): Promise<void> {
-  const userId = await getUserId()
+  const userId = getUserId()
   const supabase = getSupabaseClient()
   const agora = new Date().toISOString()
   
@@ -556,21 +588,37 @@ export async function ativarCenario(cenarioId: string, ativo: boolean): Promise<
   }
 }
 
-// Função combinada: lista cenários + carrega o ativo (1 roundtrip de auth, queries paralelas)
+// Função combinada: lista cenários + carrega o ativo (queries 100% paralelas, sem rede para auth)
 export async function listarCenariosComAtivo(): Promise<{ cenarios: Cenario[], cenarioAtivo: CenarioCompleto | null }> {
-  const userId = await getUserId()
+  console.time('[chapasService] listarCenariosComAtivo total')
+  
+  const userId = getUserId()
+  console.log('[chapasService] userId resolvido, buscando dados...')
   const supabase = getSupabaseClient()
   
-  // Buscar todos os cenários de uma vez
-  const { data, error } = await supabase
-    .from('chapas_cenarios')
-    .select('id, nome, descricao, tipo, criado_em, atualizado_em, ativo, quociente_eleitoral, votos_igreja')
-    .eq('user_id', userId)
-    .order('criado_em', { ascending: false })
+  // Buscar cenários E TODOS os partidos do usuário em PARALELO (com timeout de 12s)
+  const [cenariosResult, partidosResult] = await withTimeout(
+    Promise.all([
+      supabase
+        .from('chapas_cenarios')
+        .select('id, nome, descricao, tipo, criado_em, atualizado_em, ativo, quociente_eleitoral, votos_igreja')
+        .eq('user_id', userId)
+        .order('criado_em', { ascending: false }),
+      supabase
+        .from('chapas_partidos')
+        .select('cenario_id, partido_nome, cor, cor_texto, votos_legenda, candidato_nome, candidato_votos, candidato_genero')
+        .eq('user_id', userId)
+        .order('partido_nome', { ascending: true })
+        .order('candidato_votos', { ascending: false })
+    ]),
+    12000,
+    'carregar cenários e partidos'
+  )
 
-  if (error) throw error
+  if (cenariosResult.error) throw cenariosResult.error
+  if (partidosResult.error) throw partidosResult.error
 
-  const cenarios = (data || []).map(item => ({
+  const cenarios = (cenariosResult.data || []).map(item => ({
     id: item.id,
     nome: item.nome,
     descricao: item.descricao,
@@ -586,29 +634,23 @@ export async function listarCenariosComAtivo(): Promise<{ cenarios: Cenario[], c
     return 0
   })
 
-  // Encontrar o ativo (ou base como fallback)
+  // Encontrar o cenário ativo (ou base como fallback)
   const ativo = cenarios.find(c => c.ativo)
   const cenarioIdParaCarregar = ativo?.id || 'base'
-
-  // Carregar partidos do cenário ativo (já temos o cenário, só precisamos dos partidos)
-  const { data: partidosData, error: partidosError } = await supabase
-    .from('chapas_partidos')
-    .select('partido_nome, cor, cor_texto, votos_legenda, candidato_nome, candidato_votos, candidato_genero')
-    .eq('user_id', userId)
-    .eq('cenario_id', cenarioIdParaCarregar)
-    .order('partido_nome', { ascending: true })
-    .order('candidato_votos', { ascending: false })
-
-  if (partidosError) throw partidosError
-
   const cenarioBase = cenarios.find(c => c.id === cenarioIdParaCarregar)
+
   if (!cenarioBase) {
     return { cenarios, cenarioAtivo: null }
   }
 
+  // Filtrar partidos do cenário ativo (já temos todos os dados, só filtrar client-side)
+  const partidosDoAtivo = (partidosResult.data || []).filter(
+    item => item.cenario_id === cenarioIdParaCarregar
+  )
+
   // Agrupar partidos
   const partidosMap: { [partido: string]: PartidoCenario } = {}
-  partidosData?.forEach(item => {
+  partidosDoAtivo.forEach(item => {
     if (!partidosMap[item.partido_nome]) {
       partidosMap[item.partido_nome] = {
         nome: item.partido_nome,
@@ -630,12 +672,15 @@ export async function listarCenariosComAtivo(): Promise<{ cenarios: Cenario[], c
     partidos: Object.values(partidosMap)
   }
 
+  console.timeEnd('[chapasService] listarCenariosComAtivo total')
+  console.log(`[chapasService] Resultado: ${cenarios.length} cenários, ativo: ${cenarioAtivo ? cenarioAtivo.id : 'nenhum'}`)
+  
   return { cenarios, cenarioAtivo }
 }
 
 // Função para obter o cenário ativo (otimizada - queries paralelas)
 export async function obterCenarioAtivo(): Promise<CenarioCompleto | null> {
-  const userId = await getUserId()
+  const userId = getUserId()
   const supabase = getSupabaseClient()
   
   // Buscar cenário ativo (apenas o ID, limit 1 para performance)

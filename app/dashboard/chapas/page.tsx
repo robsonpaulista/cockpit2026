@@ -11,9 +11,11 @@ import {
   carregarCenario,
   criarCenarioBase,
   listarCenariosComAtivo,
+  preWarmUserIdCache,
   dadosIniciais
 } from '@/lib/chapasService'
 import CenariosTabs from '@/components/cenarios-tabs'
+import { useAuth } from '@/hooks/use-auth'
 
 // Configuração de cores dos partidos - Tema Premium Bege/Ouro
 const coresPartidos = {
@@ -48,6 +50,8 @@ const criarPartidosIniciais = (): PartidoLocal[] => {
 const initialQuociente = 190000
 
 export default function ChapasPage() {
+  const { user } = useAuth()
+  const userIdRef = useRef<string | null>(null)
   const [loading, setLoading] = useState(false)
   const contentRef = useRef<HTMLDivElement>(null)
   const [modoImpressao, setModoImpressao] = useState(false)
@@ -187,52 +191,86 @@ export default function ChapasPage() {
     }
   }
 
-  // Carregar dados do Supabase ao abrir a página (otimizado - 1 função combinada)
-  useEffect(() => {
-    if (dadosCarregados) return
+  // Estado para erro de carregamento (permite retry)
+  const [erroCarregamento, setErroCarregamento] = useState<string | null>(null)
+  const carregandoRef = useRef(false)
+
+  // Função de carregamento com retry automático
+  const carregarDadosIniciais = async (tentativa: number = 1) => {
+    if (carregandoRef.current) return
+    carregandoRef.current = true
+    setErroCarregamento(null)
     
-    async function carregarDadosIniciais() {
-      try {
-        setDadosCarregados(true)
-        
-        // Uma única chamada que busca cenários + cenário ativo com partidos
-        const { cenarios: listaCenarios, cenarioAtivo: cenarioAtivoData } = await listarCenariosComAtivo()
-        
-        // Compartilhar cenários com CenariosTabs (evita fetch duplicado)
-        setCenariosLista(listaCenarios)
-        setCenariosCarregados(true)
-        
-        if (cenarioAtivoData) {
-          setCenarioAtivo(cenarioAtivoData)
-          const partidosOrdenados = ordenarPartidos(cenarioAtivoData.partidos)
-          setPartidos(partidosOrdenados)
-          setQuociente(cenarioAtivoData.quocienteEleitoral)
-          setQuocienteCarregado(true)
-          
-          const votosLegendaTemp: { [partido: string]: number } = {}
-          cenarioAtivoData.partidos.forEach(partido => {
-            if (partido.votosLegenda) {
-              votosLegendaTemp[partido.nome] = partido.votosLegenda
-            }
-          })
-          setVotosLegenda(votosLegendaTemp)
-          
-          return
-        }
-        
-        // Se não há cenário ativo, carregar o cenário base
-        await carregarDadosSupabase()
-      } catch (error: unknown) {
-        const err = error as Error
-        const errorMessage = err?.message || 'Erro desconhecido'
-        console.error('Erro ao carregar dados iniciais:', error)
-        alert(`Erro ao carregar dados iniciais: ${errorMessage}. Verifique se as tabelas foram criadas no banco de dados.`)
-        setDadosCarregados(false)
-      }
+    // Garantir cache do userId em TODA tentativa (ref sobrevive a closures)
+    if (userIdRef.current) {
+      preWarmUserIdCache(userIdRef.current)
     }
     
+    try {
+      console.log(`[Chapas] Carregando dados... (tentativa ${tentativa})`)
+      
+      // Uma única chamada que busca cenários + cenário ativo com partidos
+      const { cenarios: listaCenarios, cenarioAtivo: cenarioAtivoData } = await listarCenariosComAtivo()
+      
+      console.log(`[Chapas] Dados carregados: ${listaCenarios.length} cenários`)
+      
+      // Compartilhar cenários com CenariosTabs (evita fetch duplicado)
+      setCenariosLista(listaCenarios)
+      setCenariosCarregados(true)
+      setDadosCarregados(true)
+      
+      if (cenarioAtivoData) {
+        setCenarioAtivo(cenarioAtivoData)
+        const partidosOrdenados = ordenarPartidos(cenarioAtivoData.partidos)
+        setPartidos(partidosOrdenados)
+        setQuociente(cenarioAtivoData.quocienteEleitoral)
+        setQuocienteCarregado(true)
+        
+        const votosLegendaTemp: { [partido: string]: number } = {}
+        cenarioAtivoData.partidos.forEach(partido => {
+          if (partido.votosLegenda) {
+            votosLegendaTemp[partido.nome] = partido.votosLegenda
+          }
+        })
+        setVotosLegenda(votosLegendaTemp)
+      } else {
+        // Se não há cenário ativo, carregar o cenário base
+        await carregarDadosSupabase()
+      }
+    } catch (error: unknown) {
+      const err = error as Error
+      const errorMessage = err?.message || 'Erro desconhecido'
+      console.error(`[Chapas] Erro na tentativa ${tentativa}:`, errorMessage)
+      
+      // Retry automático (até 2 tentativas)
+      if (tentativa < 2) {
+        console.log(`[Chapas] Retry automático em 1s...`)
+        carregandoRef.current = false
+        await new Promise(resolve => setTimeout(resolve, 1000))
+        return carregarDadosIniciais(tentativa + 1)
+      }
+      
+      // Após 2 tentativas, mostrar erro com opção de retry manual
+      setErroCarregamento(errorMessage)
+    } finally {
+      carregandoRef.current = false
+    }
+  }
+
+  // Manter ref do userId sempre atualizado (sobrevive a closures e retries)
+  useEffect(() => {
+    if (user?.id) {
+      userIdRef.current = user.id
+      preWarmUserIdCache(user.id)
+    }
+  }, [user?.id])
+
+  // Carregar dados do Supabase ao abrir a página (só quando user estiver disponível)
+  useEffect(() => {
+    if (dadosCarregados) return
+    if (!user?.id) return
     carregarDadosIniciais()
-  }, [dadosCarregados])
+  }, [dadosCarregados, user?.id])
 
   // Função para ordenar partidos na ordem fixa
   const ordenarPartidos = <T extends { nome: string }>(partidosParaOrdenar: T[]): T[] => {
@@ -277,6 +315,9 @@ export default function ChapasPage() {
     if (saveEmAndamentoRef.current) return
     saveEmAndamentoRef.current = true
     setSalvandoMudancas(true)
+    
+    // Garantir cache do userId antes de salvar
+    if (userIdRef.current) preWarmUserIdCache(userIdRef.current)
     
     try {
       const partidosConvertidos = converterPartidosParaCenario()
@@ -870,12 +911,35 @@ export default function ChapasPage() {
           </div>
         )}
 
-        {/* Indicador de carregamento */}
+        {/* Indicador de carregamento / erro com retry */}
         {!dadosCarregados && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-white rounded-lg p-6 flex flex-col items-center gap-4">
-              <RefreshCw className="h-8 w-8 animate-spin text-accent-gold" />
-              <span className="text-gray-700">Carregando dados...</span>
+            <div className="bg-white rounded-lg p-6 flex flex-col items-center gap-4 max-w-sm">
+              {erroCarregamento ? (
+                <>
+                  <div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center">
+                    <span className="text-red-500 text-xl font-bold">!</span>
+                  </div>
+                  <span className="text-gray-700 text-center text-sm">
+                    Não foi possível carregar os dados.<br/>
+                    <span className="text-gray-400 text-xs">{erroCarregamento}</span>
+                  </span>
+                  <button
+                    onClick={() => {
+                      setErroCarregamento(null)
+                      carregarDadosIniciais()
+                    }}
+                    className="px-4 py-2 bg-accent-gold text-white rounded-lg hover:opacity-90 transition-opacity text-sm font-medium"
+                  >
+                    Tentar novamente
+                  </button>
+                </>
+              ) : (
+                <>
+                  <RefreshCw className="h-8 w-8 animate-spin text-accent-gold" />
+                  <span className="text-gray-700">Carregando dados...</span>
+                </>
+              )}
             </div>
           </div>
         )}
@@ -924,6 +988,7 @@ export default function ChapasPage() {
               quocienteAtual={quociente}
               cenariosIniciais={cenariosCarregados ? cenariosLista : undefined}
               cenarioAtivoId={cenarioAtivo?.id}
+              carregandoExterno={!cenariosCarregados}
               onCenarioChange={(cenario) => {
                 setCenarioAtivo(cenario)
                 const partidosOrdenados = ordenarPartidos(cenario.partidos)

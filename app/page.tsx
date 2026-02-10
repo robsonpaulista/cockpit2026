@@ -16,9 +16,10 @@ export default function HomePage() {
       router.replace('/login')
     }, 5000)
 
-    // Verificar se usuário está autenticado
-    supabase.auth.getUser()
-      .then(({ data: { user }, error }) => {
+    // Verificar se usuário está autenticado (getSession = local, sem rede)
+    supabase.auth.getSession()
+      .then(({ data: { session }, error }) => {
+        const user = session?.user || null
         clearTimeout(timeout)
         setLoading(false)
         if (error) {

@@ -39,6 +39,8 @@ interface CenariosTabsProps {
   // Props para receber dados do pai (evita carregamento duplicado)
   cenariosIniciais?: Cenario[]
   cenarioAtivoId?: string
+  // Flag: pai está carregando dados - NÃO fazer fetch próprio
+  carregandoExterno?: boolean
 }
 
 export default function CenariosTabs({ 
@@ -53,7 +55,8 @@ export default function CenariosTabs({
   onImprimirPDF,
   salvandoMudancas = false,
   cenariosIniciais,
-  cenarioAtivoId
+  cenarioAtivoId,
+  carregandoExterno = false
 }: CenariosTabsProps) {
   const [cenarios, setCenarios] = useState<Cenario[]>(cenariosIniciais || [])
   const [cenarioAtivo, setCenarioAtivo] = useState<Cenario | null>(null)
@@ -91,12 +94,13 @@ export default function CenariosTabs({
       setCenarioAtivo(ativo || null)
       setActiveTab(cenarioAtivoId || ativo?.id || '')
       setInicializado(true)
-    } else if (!cenariosIniciais && !inicializado) {
-      // Fallback: carregar do banco apenas se o pai não forneceu dados
+      setLoading(false)
+    } else if (!cenariosIniciais && !carregandoExterno && !inicializado) {
+      // Fallback: carregar do banco apenas se o pai NÃO está carregando e não forneceu dados
       setInicializado(true)
       carregarCenarios()
     }
-  }, [cenariosIniciais, cenarioAtivoId, inicializado])
+  }, [cenariosIniciais, cenarioAtivoId, inicializado, carregandoExterno])
 
   // Criar novo cenário
   const handleCriarCenario = async () => {
@@ -234,7 +238,7 @@ export default function CenariosTabs({
     })
   }
 
-  if (loading && cenarios.length === 0) {
+  if ((loading || carregandoExterno) && cenarios.length === 0) {
     return (
       <div className="space-y-4">
         <div className="flex items-center justify-between mb-2">

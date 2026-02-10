@@ -12,8 +12,8 @@ export default function LoginPage() {
   useEffect(() => {
     // Verificar se já está autenticado ao carregar a página
     const checkAuth = async () => {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (user) {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (session?.user) {
         router.replace('/dashboard')
       }
     }
