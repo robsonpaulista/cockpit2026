@@ -23,10 +23,10 @@ export default function RootLayout({
             __html: `
               try {
                 var t = localStorage.getItem('cockpit-theme');
-                if (t === 'premium' || t === 'agentes') {
-                  document.documentElement.setAttribute('data-theme', t);
-                }
-              } catch(e) {}
+                document.documentElement.setAttribute('data-theme', t === 'premium' ? 'premium' : 'agentes');
+              } catch(e) {
+                document.documentElement.setAttribute('data-theme', 'agentes');
+              }
             `,
           }}
         />

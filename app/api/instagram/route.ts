@@ -138,11 +138,12 @@ export async function POST(request: Request) {
       )
     }
 
+    // Cache buster para forçar dados frescos quando refresh manual
+    const cacheBuster = forceRefresh ? `&_cb=${Date.now()}` : ''
+
     // 1. Obter dados da página e conta Instagram Business
     const pageResponse = await fetch(
-      `https://graph.facebook.com/v18.0/${businessAccountId}?fields=instagram_business_account{id,username,profile_picture_url,followers_count,media_count}&access_token=${token}${
-        forceRefresh ? '&_cache_buster=' + Date.now() : ''
-      }`
+      `https://graph.facebook.com/v18.0/${businessAccountId}?fields=instagram_business_account{id,username,profile_picture_url,followers_count,media_count}&access_token=${token}${cacheBuster}`
     )
 
     if (!pageResponse.ok) {
@@ -165,9 +166,9 @@ export async function POST(request: Request) {
     const instagramBusinessId = pageData.instagram_business_account.id
     const instagramData = pageData.instagram_business_account
 
-    // 2. Buscar publicações recentes
+    // 2. Buscar publicações recentes (com cache buster para dados frescos)
     const mediaResponse = await fetch(
-      `https://graph.facebook.com/v18.0/${instagramBusinessId}/media?fields=id,media_type,media_url,thumbnail_url,permalink,caption,timestamp,like_count,comments_count&limit=20&access_token=${token}`
+      `https://graph.facebook.com/v18.0/${instagramBusinessId}/media?fields=id,media_type,media_url,thumbnail_url,permalink,caption,timestamp,like_count,comments_count&limit=20&access_token=${token}${cacheBuster}`
     )
 
     if (!mediaResponse.ok) {
@@ -182,7 +183,7 @@ export async function POST(request: Request) {
 
     // 3. Buscar insights básicos (métricas diárias)
     const basicInsightsResponse = await fetch(
-      `https://graph.facebook.com/v18.0/${instagramBusinessId}/insights?metric=reach,accounts_engaged,total_interactions&period=day&access_token=${token}`
+      `https://graph.facebook.com/v18.0/${instagramBusinessId}/insights?metric=reach,accounts_engaged,total_interactions&period=day&access_token=${token}${cacheBuster}`
     )
 
     let insightsData: any = { data: [] }
@@ -194,7 +195,7 @@ export async function POST(request: Request) {
     let profileInsightsData: any = { data: [] }
     try {
       const profileInsightsResponse = await fetch(
-        `https://graph.facebook.com/v18.0/${instagramBusinessId}/insights?metric=profile_views,website_clicks,impressions&period=day&access_token=${token}`
+        `https://graph.facebook.com/v18.0/${instagramBusinessId}/insights?metric=profile_views,website_clicks,impressions&period=day&access_token=${token}${cacheBuster}`
       )
       if (profileInsightsResponse.ok) {
         profileInsightsData = await profileInsightsResponse.json()
@@ -230,7 +231,7 @@ export async function POST(request: Request) {
           for (const metric of metricsToTry) {
             try {
               const insightsResponse = await fetch(
-                `https://graph.facebook.com/v18.0/${post.id}/insights?metric=${metric}&access_token=${token}`
+                `https://graph.facebook.com/v18.0/${post.id}/insights?metric=${metric}&access_token=${token}${cacheBuster}`
               )
               
               if (insightsResponse.ok) {
@@ -257,7 +258,7 @@ export async function POST(request: Request) {
           // Buscar salvamentos
           try {
             const savesResponse = await fetch(
-              `https://graph.facebook.com/v18.0/${post.id}/insights?metric=saved&access_token=${token}`
+              `https://graph.facebook.com/v18.0/${post.id}/insights?metric=saved&access_token=${token}${cacheBuster}`
             )
             if (savesResponse.ok) {
               const savesData = await savesResponse.json()
@@ -281,7 +282,7 @@ export async function POST(request: Request) {
           // Buscar compartilhamentos
           try {
             const sharesResponse = await fetch(
-              `https://graph.facebook.com/v18.0/${post.id}/insights?metric=shares&access_token=${token}`
+              `https://graph.facebook.com/v18.0/${post.id}/insights?metric=shares&access_token=${token}${cacheBuster}`
             )
             if (sharesResponse.ok) {
               const sharesData = await sharesResponse.json()
@@ -341,151 +342,75 @@ export async function POST(request: Request) {
       return insight?.values?.[0]?.value || 0
     }
 
-    // 6. Buscar dados demográficos
+    // 6. Buscar dados demográficos via follower_demographics (API v18+)
+    // Métricas antigas (audience_city, audience_country, audience_gender_age) foram deprecadas
     let demographics: InstagramMetrics['demographics'] = undefined
     try {
-      // Buscar dados de gênero e idade
-      const genderAgeResponse = await fetch(
-        `https://graph.facebook.com/v18.0/${instagramBusinessId}/insights?metric=audience_gender_age&period=lifetime&access_token=${token}`
+      // follower_demographics retorna gênero, idade, cidade e país em uma única chamada
+      const demoResponse = await fetch(
+        `https://graph.facebook.com/v18.0/${instagramBusinessId}/insights?metric=follower_demographics&period=lifetime&metric_type=total_value&breakdown=age,gender,city,country&access_token=${token}`
       )
 
-      if (genderAgeResponse.ok) {
-        const genderAgeData = await genderAgeResponse.json()
-        
-        if (genderAgeData.data && Array.isArray(genderAgeData.data) && genderAgeData.data.length > 0) {
-          const genderAgeMetric = genderAgeData.data[0]
-          let values: any = null
+      if (demoResponse.ok) {
+        const demoData = await demoResponse.json()
 
-          if (genderAgeMetric.values && Array.isArray(genderAgeMetric.values) && genderAgeMetric.values.length > 0) {
-            values = genderAgeMetric.values[0]?.value || genderAgeMetric.values[0]
-          } else if (genderAgeMetric.value) {
-            values = genderAgeMetric.value
-          } else if (genderAgeMetric.values && typeof genderAgeMetric.values === 'object') {
-            values = genderAgeMetric.values
-          }
+        if (demoData.data && Array.isArray(demoData.data)) {
+          let maleCount = 0
+          let femaleCount = 0
+          const ageGroups: Record<string, number> = {}
+          const topLocations: Record<string, number> = {}
 
-          if (values && typeof values === 'object' && values !== null) {
-            let maleCount = 0
-            let femaleCount = 0
-            const ageGroups: Record<string, number> = {}
+          demoData.data.forEach((metric: { name: string; total_value?: { breakdowns?: Array<{ dimension_keys: string[]; results: Array<{ dimension_values: string[]; value: number }> }> } }) => {
+            const breakdowns = metric.total_value?.breakdowns
+            if (!breakdowns || !Array.isArray(breakdowns)) return
 
-            Object.keys(values).forEach((key) => {
-              const value = Number(values[key]) || 0
-              if (value > 0) {
-                if (key.startsWith('M.') || key.match(/^M\.\d+/)) {
-                  maleCount += value
-                  const ageRange = key.replace(/^M\./, '').replace(/\.\d+$/, '')
-                  ageGroups[ageRange] = (ageGroups[ageRange] || 0) + value
-                } else if (key.startsWith('F.') || key.match(/^F\.\d+/)) {
-                  femaleCount += value
-                  const ageRange = key.replace(/^F\./, '').replace(/\.\d+$/, '')
-                  ageGroups[ageRange] = (ageGroups[ageRange] || 0) + value
+            breakdowns.forEach((breakdown) => {
+              const dimensionKeys = breakdown.dimension_keys || []
+              const results = breakdown.results || []
+
+              results.forEach((result) => {
+                const dimValues = result.dimension_values || []
+                const value = Number(result.value) || 0
+                if (value <= 0) return
+
+                // Gênero + Idade (dimension_keys: ['age', 'gender'])
+                if (dimensionKeys.includes('age') && dimensionKeys.includes('gender')) {
+                  const ageIdx = dimensionKeys.indexOf('age')
+                  const genderIdx = dimensionKeys.indexOf('gender')
+                  const age = dimValues[ageIdx]
+                  const gender = dimValues[genderIdx]
+
+                  if (gender === 'M' || gender === 'male') maleCount += value
+                  if (gender === 'F' || gender === 'female') femaleCount += value
+                  if (age) ageGroups[age] = (ageGroups[age] || 0) + value
                 }
-              }
-            })
 
-            if (maleCount > 0 || femaleCount > 0 || Object.keys(ageGroups).length > 0) {
-              demographics = {
-                gender: maleCount > 0 || femaleCount > 0 ? { male: maleCount, female: femaleCount } : undefined,
-                age: Object.keys(ageGroups).length > 0 ? ageGroups : undefined,
-              }
-            }
-          }
-        }
-      }
+                // Cidade (dimension_keys: ['city'])
+                if (dimensionKeys.includes('city') && dimensionKeys.length === 1) {
+                  const city = dimValues[0]
+                  if (city) topLocations[city] = value
+                }
 
-      // Buscar dados de localização por cidade (mais detalhado)
-      const cityResponse = await fetch(
-        `https://graph.facebook.com/v18.0/${instagramBusinessId}/insights?metric=audience_city&period=lifetime&access_token=${token}`
-      )
-
-      let topLocations: Record<string, number> = {}
-
-      if (cityResponse.ok) {
-        const cityData = await cityResponse.json()
-        
-        // Log para debug
-        console.log('[Instagram API] Resposta audience_city:', JSON.stringify(cityData, null, 2))
-        
-        if (cityData.data && Array.isArray(cityData.data) && cityData.data.length > 0) {
-          const cityMetric = cityData.data[0]
-          let cityValues: any = null
-
-          if (cityMetric.values && Array.isArray(cityMetric.values) && cityMetric.values.length > 0) {
-            cityValues = cityMetric.values[0]?.value || cityMetric.values[0]
-          } else if (cityMetric.value) {
-            cityValues = cityMetric.value
-          } else if (cityMetric.values && typeof cityMetric.values === 'object') {
-            cityValues = cityMetric.values
-          }
-
-          console.log('[Instagram API] cityValues processado:', cityValues)
-
-          if (cityValues && typeof cityValues === 'object' && cityValues !== null) {
-            Object.keys(cityValues).forEach((city) => {
-              const value = Number(cityValues[city]) || 0
-              if (value > 0) {
-                topLocations[city] = value
-              }
-            })
-            console.log('[Instagram API] topLocations (cidades):', Object.keys(topLocations).length, 'cidades encontradas')
-          }
-        } else {
-          console.log('[Instagram API] Nenhum dado encontrado em audience_city.data')
-        }
-      } else {
-        const errorData = await cityResponse.json().catch(() => ({}))
-        console.log('[Instagram API] Erro ao buscar audience_city:', cityResponse.status, errorData)
-      }
-
-      // Se não houver dados de cidade, buscar dados de país como fallback
-      if (Object.keys(topLocations).length === 0) {
-        console.log('[Instagram API] Nenhuma cidade encontrada, buscando países como fallback')
-        const countryResponse = await fetch(
-          `https://graph.facebook.com/v18.0/${instagramBusinessId}/insights?metric=audience_country&period=lifetime&access_token=${token}`
-        )
-
-        if (countryResponse.ok) {
-          const countryData = await countryResponse.json()
-          console.log('[Instagram API] Resposta audience_country:', JSON.stringify(countryData, null, 2))
-          
-          if (countryData.data && Array.isArray(countryData.data) && countryData.data.length > 0) {
-            const countryMetric = countryData.data[0]
-            let countryValues: any = null
-
-            if (countryMetric.values && Array.isArray(countryMetric.values) && countryMetric.values.length > 0) {
-              countryValues = countryMetric.values[0]?.value || countryMetric.values[0]
-            } else if (countryMetric.value) {
-              countryValues = countryMetric.value
-            } else if (countryMetric.values && typeof countryMetric.values === 'object') {
-              countryValues = countryMetric.values
-            }
-
-            if (countryValues && typeof countryValues === 'object' && countryValues !== null) {
-              Object.keys(countryValues).forEach((country) => {
-                const value = Number(countryValues[country]) || 0
-                if (value > 0) {
-                  topLocations[country] = value
+                // País (dimension_keys: ['country'])
+                if (dimensionKeys.includes('country') && dimensionKeys.length === 1 && Object.keys(topLocations).length === 0) {
+                  const country = dimValues[0]
+                  if (country) topLocations[country] = value
                 }
               })
-              console.log('[Instagram API] topLocations (países):', Object.keys(topLocations).length, 'países encontrados')
+            })
+          })
+
+          if (maleCount > 0 || femaleCount > 0 || Object.keys(ageGroups).length > 0 || Object.keys(topLocations).length > 0) {
+            demographics = {
+              gender: maleCount > 0 || femaleCount > 0 ? { male: maleCount, female: femaleCount } : undefined,
+              age: Object.keys(ageGroups).length > 0 ? ageGroups : undefined,
+              topLocations: Object.keys(topLocations).length > 0 ? topLocations : undefined,
             }
           }
-        } else {
-          const errorData = await countryResponse.json().catch(() => ({}))
-          console.log('[Instagram API] Erro ao buscar audience_country:', countryResponse.status, errorData)
         }
-      }
-
-      // Adicionar dados de localização aos demográficos se disponíveis
-      if (Object.keys(topLocations).length > 0) {
-        demographics = {
-          ...demographics,
-          topLocations,
-        }
-        console.log('[Instagram API] Demographics com topLocations adicionado:', Object.keys(topLocations).length, 'localizações')
       } else {
-        console.log('[Instagram API] Nenhuma localização encontrada para adicionar aos demographics')
+        // Se follower_demographics falhar, pular demográficos silenciosamente
+        console.log('[Instagram API] follower_demographics não disponível, pulando demográficos')
       }
     } catch (error) {
       console.error('Erro ao buscar dados demográficos:', error)
@@ -541,14 +466,6 @@ export async function POST(request: Request) {
       },
       demographics,
     }
-
-    // Log final para debug
-    console.log('[Instagram API] Dados finais demographics:', demographics ? {
-      hasGender: !!demographics.gender,
-      hasAge: !!demographics.age,
-      hasTopLocations: !!demographics.topLocations,
-      topLocationsCount: demographics.topLocations ? Object.keys(demographics.topLocations).length : 0
-    } : 'null')
 
     return NextResponse.json(instagramMetrics)
   } catch (error: any) {

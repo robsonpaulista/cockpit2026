@@ -12,6 +12,7 @@ interface Municipio {
 
 interface MapWrapperProps {
   cidadesComPresenca: string[]
+  cidadesVisitadas?: string[]
   municipiosPiaui: Municipio[]
   eleitoresPorCidade?: Record<string, number>
 }
@@ -35,7 +36,7 @@ function normalizeName(name: string): string {
     .trim()
 }
 
-export function MapWrapperLeaflet({ cidadesComPresenca, municipiosPiaui, eleitoresPorCidade }: MapWrapperProps) {
+export function MapWrapperLeaflet({ cidadesComPresenca, cidadesVisitadas = [], municipiosPiaui, eleitoresPorCidade }: MapWrapperProps) {
   const mapRef = useRef<HTMLDivElement>(null)
   const mapInstanceRef = useRef<L.Map | null>(null)
 
@@ -52,8 +53,9 @@ export function MapWrapperLeaflet({ cidadesComPresenca, municipiosPiaui, eleitor
       maxZoom: 19,
     }).addTo(map)
 
-    // Normalizar cidades com presença
-    const cidadesNormalizadas = cidadesComPresenca.map(c => normalizeName(c))
+    // Normalizar nomes para comparação
+    const cidadesPresencaNorm = new Set(cidadesComPresenca.map(c => normalizeName(c)))
+    const cidadesVisitadasNorm = new Set(cidadesVisitadas.map(c => normalizeName(c)))
 
     // Buscar eleitorado de uma cidade (com normalização)
     const getEleitorado = (nomeCidade: string): number => {
@@ -72,13 +74,19 @@ export function MapWrapperLeaflet({ cidadesComPresenca, municipiosPiaui, eleitor
       return 0
     }
 
-    // Adicionar marcadores - primeiro sem presença (para ficarem atrás), depois com presença (por cima)
+    // Classificar municípios em 3 categorias
     const semPresenca: Array<{ municipio: Municipio; eleitorado: number }> = []
     const comPresenca: Municipio[] = []
+    const visitadas: Municipio[] = []
 
     municipiosPiaui.forEach((municipio) => {
-      const temPresenca = cidadesNormalizadas.includes(normalizeName(municipio.nome))
-      if (temPresenca) {
+      const nomeNorm = normalizeName(municipio.nome)
+      const temPresenca = cidadesPresencaNorm.has(nomeNorm)
+      const foiVisitada = cidadesVisitadasNorm.has(nomeNorm)
+
+      if (foiVisitada) {
+        visitadas.push(municipio)
+      } else if (temPresenca) {
         comPresenca.push(municipio)
       } else {
         const eleitorado = getEleitorado(municipio.nome)
@@ -89,23 +97,21 @@ export function MapWrapperLeaflet({ cidadesComPresenca, municipiosPiaui, eleitor
     // Ordenar sem presença por eleitorado (menores primeiro, maiores por cima)
     semPresenca.sort((a, b) => a.eleitorado - b.eleitorado)
 
-    // Desenhar cidades SEM presença (oportunidades)
+    // 1) Desenhar cidades SEM presença (VERMELHO)
     semPresenca.forEach(({ municipio, eleitorado }) => {
       const radius = eleitorado > 0 ? getRadiusByEleitorado(eleitorado) : 3
-      // Cor mais intensa para cidades com mais eleitores
       const isGrande = eleitorado >= 20000
       const isMedio = eleitorado >= 10000
 
       const circleMarker = L.circleMarker([municipio.lat, municipio.lng], {
         radius,
-        fillColor: isGrande ? '#DC2626' : isMedio ? '#EA580C' : '#F87171',
-        color: isGrande ? '#991B1B' : isMedio ? '#C2410C' : '#EF4444',
+        fillColor: isGrande ? '#DC2626' : isMedio ? '#EF4444' : '#F87171',
+        color: isGrande ? '#991B1B' : isMedio ? '#DC2626' : '#EF4444',
         weight: isGrande ? 2 : 1,
         opacity: isGrande ? 0.9 : isMedio ? 0.7 : 0.5,
         fillOpacity: isGrande ? 0.7 : isMedio ? 0.55 : 0.4,
       })
 
-      // Popup com dados de eleitores
       const eleitoradoFormatado = eleitorado > 0
         ? eleitorado.toLocaleString('pt-BR')
         : 'N/D'
@@ -125,12 +131,12 @@ export function MapWrapperLeaflet({ cidadesComPresenca, municipiosPiaui, eleitor
       circleMarker.addTo(map)
     })
 
-    // Desenhar cidades COM presença (por cima)
+    // 2) Desenhar cidades COM presença mas NÃO visitadas (AZUL - círculo)
     comPresenca.forEach((municipio) => {
       const circleMarker = L.circleMarker([municipio.lat, municipio.lng], {
         radius: 6,
-        fillColor: 'rgb(var(--accent-gold))',
-        color: 'rgb(var(--accent-gold-dark))',
+        fillColor: '#2563EB',
+        color: '#1D4ED8',
         weight: 2,
         opacity: 1,
         fillOpacity: 0.8,
@@ -138,12 +144,49 @@ export function MapWrapperLeaflet({ cidadesComPresenca, municipiosPiaui, eleitor
 
       circleMarker.bindPopup(`
         <div style="font-size: 12px;">
-          <p style="font-weight: bold; margin: 0; color: rgb(var(--accent-gold-dark));">${municipio.nome}</p>
-          <p style="font-size: 11px; margin: 4px 0 0 0; color: rgb(var(--success));">✓ Com liderança</p>
+          <p style="font-weight: bold; margin: 0; color: #1D4ED8;">${municipio.nome}</p>
+          <p style="font-size: 11px; margin: 4px 0 0 0; color: #2563EB;">● Com liderança</p>
         </div>
       `)
 
       circleMarker.addTo(map)
+    })
+
+    // 3) Desenhar cidades VISITADAS (AZUL - com ícone de check)
+    const visitadaIcon = L.divIcon({
+      className: '',
+      html: `<div style="
+        width: 22px; height: 22px;
+        background: #2563EB;
+        border: 2px solid #1D4ED8;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 2px 6px rgba(37,99,235,0.5);
+      ">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="20 6 9 17 4 12"></polyline>
+        </svg>
+      </div>`,
+      iconSize: [22, 22],
+      iconAnchor: [11, 11],
+      popupAnchor: [0, -12],
+    })
+
+    visitadas.forEach((municipio) => {
+      const marker = L.marker([municipio.lat, municipio.lng], {
+        icon: visitadaIcon,
+      })
+
+      marker.bindPopup(`
+        <div style="font-size: 12px;">
+          <p style="font-weight: bold; margin: 0; color: #1D4ED8;">${municipio.nome}</p>
+          <p style="font-size: 11px; margin: 4px 0 0 0; color: #2563EB;">✓ Visitada</p>
+        </div>
+      `)
+
+      marker.addTo(map)
     })
 
     // Cleanup
@@ -153,7 +196,7 @@ export function MapWrapperLeaflet({ cidadesComPresenca, municipiosPiaui, eleitor
         mapInstanceRef.current = null
       }
     }
-  }, [cidadesComPresenca, municipiosPiaui, eleitoresPorCidade])
+  }, [cidadesComPresenca, cidadesVisitadas, municipiosPiaui, eleitoresPorCidade])
 
   return <div ref={mapRef} style={{ width: '100%', height: '100%' }} />
 }

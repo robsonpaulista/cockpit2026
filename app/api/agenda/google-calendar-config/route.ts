@@ -1,10 +1,12 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 
 export const dynamic = 'force-dynamic'
 
 export async function GET() {
   try {
+    // Verificar autenticação com o client do usuário
     const supabase = createClient()
     const {
       data: { user },
@@ -14,8 +16,10 @@ export async function GET() {
       return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
     }
 
-    // Buscar configuração do banco de dados
-    const { data, error } = await supabase
+    // Usar admin client para buscar config global (bypassa RLS)
+    // A config é global (única linha), não depende do usuário
+    const adminSupabase = createAdminClient()
+    const { data, error } = await adminSupabase
       .from('google_calendar_config')
       .select('calendar_id, service_account_email, credentials, subject_user')
       .order('updated_at', { ascending: false })
@@ -54,6 +58,7 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
+    // Verificar autenticação com o client do usuário
     const supabase = createClient()
     const {
       data: { user },
@@ -73,8 +78,11 @@ export async function POST(request: Request) {
       )
     }
 
+    // Usar admin client para operações no banco (bypassa RLS)
+    const adminSupabase = createAdminClient()
+
     // Verificar se já existe configuração
-    const { data: existing } = await supabase
+    const { data: existing } = await adminSupabase
       .from('google_calendar_config')
       .select('id')
       .limit(1)
@@ -82,7 +90,7 @@ export async function POST(request: Request) {
 
     if (existing) {
       // Atualizar configuração existente
-      const { data, error } = await supabase
+      const { data, error } = await adminSupabase
         .from('google_calendar_config')
         .update({
           calendar_id: calendarId,
@@ -115,7 +123,7 @@ export async function POST(request: Request) {
       })
     } else {
       // Criar nova configuração
-      const { data, error } = await supabase
+      const { data, error } = await adminSupabase
         .from('google_calendar_config')
         .insert({
           calendar_id: calendarId,

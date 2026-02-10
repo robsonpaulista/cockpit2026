@@ -11,30 +11,8 @@
    para compatibilidade com opacidade Tailwind
    ============================================ */
 
-/* Tema 1: Premium Bege (padrão) */
+/* Tema padrão: Agentes (inspirado no BI Dc Paes) */
 :root,
-[data-theme="premium"] {
-  --bg-app: 247 244 239;
-  --bg-surface: 251 249 246;
-  --bg-sidebar: 239 233 225;
-  
-  --text-primary: 28 28 28;
-  --text-secondary: 107 107 107;
-  --text-muted: 154 154 154;
-  
-  --accent-gold: 198 161 91;
-  --accent-gold-soft: 232 217 184;
-  --accent-gold-dark: 166 131 71;
-  
-  --success: 46 125 50;
-  --warning: 199 120 0;
-  --danger: 159 42 42;
-  --info: 107 114 128;
-  
-  --border-card: 229 222 212;
-}
-
-/* Tema 2: Agentes (inspirado no BI Dc Paes) */
 [data-theme="agentes"] {
   --bg-app: 248 250 252;
   --bg-surface: 255 255 255;
@@ -54,6 +32,28 @@
   --info: 83 97 117;
   
   --border-card: 213 217 226;
+}
+
+/* Tema 2: Premium Bege */
+[data-theme="premium"] {
+  --bg-app: 247 244 239;
+  --bg-surface: 251 249 246;
+  --bg-sidebar: 239 233 225;
+  
+  --text-primary: 28 28 28;
+  --text-secondary: 107 107 107;
+  --text-muted: 154 154 154;
+  
+  --accent-gold: 198 161 91;
+  --accent-gold-soft: 232 217 184;
+  --accent-gold-dark: 166 131 71;
+  
+  --success: 46 125 50;
+  --warning: 199 120 0;
+  --danger: 159 42 42;
+  --info: 107 114 128;
+  
+  --border-card: 229 222 212;
 }
 
 @layer base {

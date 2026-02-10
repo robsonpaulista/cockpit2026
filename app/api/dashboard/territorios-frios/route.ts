@@ -503,12 +503,17 @@ export async function POST(request: Request) {
       .filter(([, count]) => count > 0)
       .map(([cidadeKey]) => nomeOriginalCidade[cidadeKey] || formatCityName(cidadeKey))
 
+    // Lista de cidades visitadas (com check-in) - nomes formatados
+    const cidadesVisitadasLista = Object.keys(visitasPorCidade)
+      .map((cidadeKey) => nomeOriginalCidade[cidadeKey] || formatCityName(cidadeKey))
+
     return NextResponse.json({
       territoriosFrios,
       territoriosQuentes,
       territoriosMornos,
       cidadesNaoVisitadasLista,
       cidadesComLiderancas,
+      cidadesVisitadasLista,
       estatisticas: {
         totalCidades,
         cidadesVisitadas,

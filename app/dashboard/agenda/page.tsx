@@ -39,7 +39,7 @@ interface CalendarEvent {
 }
 
 export default function AgendaPage() {
-  const { user } = useAuth()
+  const { user, loading: authLoading } = useAuth()
   const [config, setConfig] = useState<CalendarConfig | null>(null)
   const [configLoaded, setConfigLoaded] = useState(false)
   const [events, setEvents] = useState<CalendarEvent[]>([])
@@ -98,7 +98,20 @@ export default function AgendaPage() {
 
   useEffect(() => {
     const loadConfig = async () => {
+      // Aguardar autenticação terminar antes de decidir o estado da config
+      if (authLoading) return
+
       if (!user?.id) {
+        // Usuário não autenticado - tentar localStorage como fallback
+        const savedConfig = localStorage.getItem('google_calendar_config')
+        if (savedConfig) {
+          try {
+            const parsed = JSON.parse(savedConfig)
+            setConfig(parsed)
+          } catch (e) {
+            console.error('Erro ao carregar configuração do localStorage:', e)
+          }
+        }
         setConfigLoaded(true)
         setLoading(false)
         return
@@ -118,22 +131,27 @@ export default function AgendaPage() {
           }
         }
 
+        // API falhou ou não encontrou config - tentar localStorage
         const savedConfig = localStorage.getItem('google_calendar_config')
         if (savedConfig) {
           try {
             const parsed = JSON.parse(savedConfig)
             setConfig(parsed)
-            await fetch('/api/agenda/google-calendar-config', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify(parsed),
-            })
+            // Tentar sincronizar de volta ao banco se o usuário está autenticado
+            if (user?.id) {
+              fetch('/api/agenda/google-calendar-config', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(parsed),
+              }).catch(() => {})
+            }
           } catch (e) {
             console.error('Erro ao carregar configuração do localStorage:', e)
           }
         }
       } catch (error) {
         console.error('Erro ao carregar configuração:', error)
+        // Fallback para localStorage em caso de erro de rede
         const savedConfig = localStorage.getItem('google_calendar_config')
         if (savedConfig) {
           try {
@@ -150,7 +168,7 @@ export default function AgendaPage() {
     }
 
     loadConfig()
-  }, [user?.id])
+  }, [user?.id, authLoading])
 
   const fetchEvents = useCallback(async (isManual = false) => {
     if (!config) return

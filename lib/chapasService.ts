@@ -2,6 +2,25 @@
 
 import { createClient } from '@/lib/supabase/client'
 
+// Singleton Supabase client (evita criar novo client em cada chamada)
+let _supabaseClient: ReturnType<typeof createClient> | null = null
+function getSupabaseClient() {
+  if (!_supabaseClient) {
+    _supabaseClient = createClient()
+  }
+  return _supabaseClient
+}
+
+// Wrapper com timeout para evitar hang infinito em queries
+function withTimeout<T>(promise: PromiseLike<T>, timeoutMs: number = 15000, label: string = 'operação'): Promise<T> {
+  return Promise.race([
+    Promise.resolve(promise),
+    new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error(`Timeout: ${label} excedeu ${timeoutMs / 1000}s`)), timeoutMs)
+    )
+  ])
+}
+
 // Tipos para o sistema de cenários
 export interface Cenario {
   id: string
@@ -85,24 +104,41 @@ export const dadosIniciais: Array<{partido: string; nome: string; votos: number}
   { partido: 'REPUBLICANOS', nome: 'CAUSA ANIMAL', votos: 10000 },
 ]
 
-// Função auxiliar para obter userId
+// Cache para evitar múltiplas chamadas de autenticação
+let _cachedUserId: string | null = null
+let _cachedUserIdTimestamp: number = 0
+const USER_ID_CACHE_TTL = 60000 // 60 segundos
+
+// Função auxiliar para obter userId (com cache)
 async function getUserId(): Promise<string> {
+  // Retornar cache se válido (evita roundtrip de auth em cada chamada)
+  const now = Date.now()
+  if (_cachedUserId && (now - _cachedUserIdTimestamp) < USER_ID_CACHE_TTL) {
+    return _cachedUserId
+  }
+
   try {
-    const supabase = createClient()
+    const supabase = getSupabaseClient()
     const { data: { user }, error } = await supabase.auth.getUser()
     
     if (error) {
+      _cachedUserId = null
       throw new Error(`Erro de autenticação: ${error.message}`)
     }
     
     if (!user) {
+      _cachedUserId = null
       throw new Error('Usuário não autenticado. Faça login para continuar.')
     }
     
+    // Armazenar em cache
+    _cachedUserId = user.id
+    _cachedUserIdTimestamp = now
     return user.id
-  } catch (error: any) {
-    if (error?.message) {
-      throw error
+  } catch (error: unknown) {
+    const err = error as Error
+    if (err?.message) {
+      throw err
     }
     throw new Error('Erro ao obter usuário autenticado')
   }
@@ -111,7 +147,7 @@ async function getUserId(): Promise<string> {
 // Função para salvar quociente eleitoral
 export async function salvarQuocienteEleitoral(quociente: number): Promise<void> {
   const userId = await getUserId()
-  const supabase = createClient()
+  const supabase = getSupabaseClient()
   
   const { error } = await supabase
     .from('chapas_configuracoes')
@@ -130,7 +166,7 @@ export async function salvarQuocienteEleitoral(quociente: number): Promise<void>
 // Função para carregar quociente eleitoral
 export async function carregarQuocienteEleitoral(): Promise<number> {
   const userId = await getUserId()
-  const supabase = createClient()
+  const supabase = getSupabaseClient()
   
   const { data, error } = await supabase
     .from('chapas_configuracoes')
@@ -147,7 +183,7 @@ export async function carregarQuocienteEleitoral(): Promise<number> {
 // Função para criar o cenário base
 export async function criarCenarioBase(partidos: PartidoCenario[], quociente: number): Promise<string> {
   const userId = await getUserId()
-  const supabase = createClient()
+  const supabase = getSupabaseClient()
   
   // Salvar o cenário (usando snake_case para o banco)
   const { error: cenarioError } = await supabase
@@ -206,7 +242,7 @@ export async function criarCenarioBase(partidos: PartidoCenario[], quociente: nu
 // Função para listar todos os cenários
 export async function listarCenarios(): Promise<Cenario[]> {
   const userId = await getUserId()
-  const supabase = createClient()
+  const supabase = getSupabaseClient()
   
   const { data, error } = await supabase
     .from('chapas_cenarios')
@@ -240,22 +276,33 @@ export async function listarCenarios(): Promise<Cenario[]> {
 export async function carregarCenario(cenarioId: string): Promise<CenarioCompleto | null> {
   try {
     const userId = await getUserId()
-    const supabase = createClient()
+    const supabase = getSupabaseClient()
     
-    // Carregar dados do cenário
-    const { data: cenarioData, error: cenarioError } = await supabase
-      .from('chapas_cenarios')
-      .select('id, nome, descricao, tipo, criado_em, atualizado_em, ativo, quociente_eleitoral, votos_igreja')
-      .eq('user_id', userId)
-      .eq('id', cenarioId)
-      .single()
+    // Carregar cenário E partidos em PARALELO (performance)
+    const [cenarioResult, partidosResult] = await Promise.all([
+      supabase
+        .from('chapas_cenarios')
+        .select('id, nome, descricao, tipo, criado_em, atualizado_em, ativo, quociente_eleitoral, votos_igreja')
+        .eq('user_id', userId)
+        .eq('id', cenarioId)
+        .single(),
+      supabase
+        .from('chapas_partidos')
+        .select('partido_nome, cor, cor_texto, votos_legenda, candidato_nome, candidato_votos, candidato_genero')
+        .eq('user_id', userId)
+        .eq('cenario_id', cenarioId)
+        .order('partido_nome', { ascending: true })
+        .order('candidato_votos', { ascending: false })
+    ])
+
+    const { data: cenarioData, error: cenarioError } = cenarioResult
+    const { data: partidosData, error: partidosError } = partidosResult
 
     // Se o erro é "not found" (PGRST116), retornar null (cenário não existe)
     if (cenarioError) {
       if (cenarioError.code === 'PGRST116') {
         return null
       }
-      // Se for outro erro, verificar se é problema de tabela não existente
       if (cenarioError.message?.includes('relation') || cenarioError.message?.includes('does not exist')) {
         throw new Error('Tabelas do banco de dados não foram criadas. Execute o script SQL: database/create-chapas-tables.sql')
       }
@@ -264,33 +311,23 @@ export async function carregarCenario(cenarioId: string): Promise<CenarioComplet
 
     if (!cenarioData) return null
 
-  const cenario: Cenario = {
-    id: cenarioData.id,
-    nome: cenarioData.nome,
-    descricao: cenarioData.descricao,
-    tipo: cenarioData.tipo,
-    criadoEm: cenarioData.criado_em,
-    atualizadoEm: cenarioData.atualizado_em,
-    ativo: cenarioData.ativo,
-    quocienteEleitoral: cenarioData.quociente_eleitoral,
-    votosIgreja: cenarioData.votos_igreja
-  }
-
-    // Carregar partidos do cenário
-    const { data: partidosData, error: partidosError } = await supabase
-      .from('chapas_partidos')
-      .select('partido_nome, cor, cor_texto, votos_legenda, candidato_nome, candidato_votos, candidato_genero')
-      .eq('user_id', userId)
-      .eq('cenario_id', cenarioId)
-      .order('partido_nome', { ascending: true })
-      .order('candidato_votos', { ascending: false })
-
     if (partidosError) {
-      // Se for erro de tabela não existente
       if (partidosError.message?.includes('relation') || partidosError.message?.includes('does not exist')) {
         throw new Error('Tabelas do banco de dados não foram criadas. Execute o script SQL: database/create-chapas-tables.sql')
       }
       throw partidosError
+    }
+
+    const cenario: Cenario = {
+      id: cenarioData.id,
+      nome: cenarioData.nome,
+      descricao: cenarioData.descricao,
+      tipo: cenarioData.tipo,
+      criadoEm: cenarioData.criado_em,
+      atualizadoEm: cenarioData.atualizado_em,
+      ativo: cenarioData.ativo,
+      quocienteEleitoral: cenarioData.quociente_eleitoral,
+      votosIgreja: cenarioData.votos_igreja
     }
 
     // Agrupar por partido
@@ -320,13 +357,12 @@ export async function carregarCenario(cenarioId: string): Promise<CenarioComplet
       ...cenario,
       partidos
     }
-  } catch (error: any) {
-    // Se for erro de autenticação
-    if (error?.message?.includes('não autenticado') || error?.message?.includes('not authenticated')) {
+  } catch (error: unknown) {
+    const err = error as Error
+    if (err?.message?.includes('não autenticado') || err?.message?.includes('not authenticated')) {
       throw new Error('Usuário não autenticado. Faça login para continuar.')
     }
-    // Se for erro de tabela não existente
-    if (error?.message?.includes('relation') || error?.message?.includes('does not exist')) {
+    if (err?.message?.includes('relation') || err?.message?.includes('does not exist')) {
       throw new Error('Tabelas do banco de dados não foram criadas. Execute o script SQL: database/create-chapas-tables.sql')
     }
     throw error
@@ -340,7 +376,7 @@ export async function criarNovoCenario(
   cenarioOrigemId: string
 ): Promise<string> {
   const userId = await getUserId()
-  const supabase = createClient()
+  const supabase = getSupabaseClient()
   
   const cenarioOrigem = await carregarCenario(cenarioOrigemId)
   if (!cenarioOrigem) throw new Error('Cenário origem não encontrado')
@@ -391,48 +427,17 @@ export async function criarNovoCenario(
   return novoCenarioId
 }
 
-// Função para atualizar um cenário
+// Função para atualizar um cenário (otimizada - queries paralelas, com timeout)
 export async function atualizarCenario(
   cenarioId: string,
   partidos: PartidoCenario[],
   quociente: number
 ): Promise<void> {
   const userId = await getUserId()
-  const supabase = createClient()
+  const supabase = getSupabaseClient()
+  const agora = new Date().toISOString()
   
-  // Atualizar dados do cenário e ativar automaticamente
-  const { error: cenarioError } = await supabase
-    .from('chapas_cenarios')
-    .update({
-      atualizado_em: new Date().toISOString(),
-      quociente_eleitoral: quociente,
-      ativo: true
-    })
-    .eq('user_id', userId)
-    .eq('id', cenarioId)
-
-  if (cenarioError) throw cenarioError
-
-  // Desativar outros cenários
-  const { error: desativarError } = await supabase
-    .from('chapas_cenarios')
-    .update({ ativo: false, atualizado_em: new Date().toISOString() })
-    .eq('user_id', userId)
-    .neq('id', cenarioId)
-    .eq('ativo', true)
-
-  if (desativarError) throw desativarError
-
-  // Limpar partidos existentes
-  const { error: deleteError } = await supabase
-    .from('chapas_partidos')
-    .delete()
-    .eq('user_id', userId)
-    .eq('cenario_id', cenarioId)
-
-  if (deleteError) throw deleteError
-
-  // Adicionar novos partidos
+  // Preparar dados dos partidos antecipadamente
   const partidosData = partidos.flatMap(partido =>
     partido.candidatos.map(candidato => ({
       user_id: userId,
@@ -447,19 +452,49 @@ export async function atualizarCenario(
     }))
   )
 
-  if (partidosData.length > 0) {
-    const { error: insertError } = await supabase
-      .from('chapas_partidos')
-      .insert(partidosData)
+  // Atualizar cenário + deletar partidos antigos em PARALELO (com timeout de 15s)
+  const [cenarioResult, deleteResult] = await withTimeout(
+    Promise.all([
+      supabase
+        .from('chapas_cenarios')
+        .update({
+          atualizado_em: agora,
+          quociente_eleitoral: quociente
+        })
+        .eq('user_id', userId)
+        .eq('id', cenarioId),
+      supabase
+        .from('chapas_partidos')
+        .delete()
+        .eq('user_id', userId)
+        .eq('cenario_id', cenarioId)
+    ]),
+    15000,
+    'atualizar cenário + limpar partidos'
+  )
 
-    if (insertError) throw insertError
+  if (cenarioResult.error) throw cenarioResult.error
+  if (deleteResult.error) throw deleteResult.error
+
+  // Inserir novos partidos (com timeout de 15s)
+  if (partidosData.length > 0) {
+    const insertResult = await withTimeout(
+      supabase
+        .from('chapas_partidos')
+        .insert(partidosData)
+        .then(res => res),
+      15000,
+      'inserir partidos'
+    )
+
+    if (insertResult.error) throw insertResult.error
   }
 }
 
 // Função para excluir um cenário
 export async function excluirCenario(cenarioId: string): Promise<void> {
   const userId = await getUserId()
-  const supabase = createClient()
+  const supabase = getSupabaseClient()
   
   // Não permitir excluir o cenário base
   if (cenarioId === 'base') {
@@ -485,75 +520,138 @@ export async function excluirCenario(cenarioId: string): Promise<void> {
   if (cenarioError) throw cenarioError
 }
 
-// Função para ativar/desativar um cenário
+// Função para ativar/desativar um cenário (batch update, sem loops)
 export async function ativarCenario(cenarioId: string, ativo: boolean): Promise<void> {
   const userId = await getUserId()
-  const supabase = createClient()
+  const supabase = getSupabaseClient()
+  const agora = new Date().toISOString()
   
   if (ativo) {
-    // Se está ativando, primeiro desativar todos os outros cenários
-    const { error: desativarError } = await supabase
+    // Desativar todos E ativar o selecionado em paralelo
+    const [desativarResult, ativarResult] = await Promise.all([
+      supabase
+        .from('chapas_cenarios')
+        .update({ ativo: false, atualizado_em: agora })
+        .eq('user_id', userId)
+        .eq('ativo', true)
+        .neq('id', cenarioId),
+      supabase
+        .from('chapas_cenarios')
+        .update({ ativo: true, atualizado_em: agora })
+        .eq('user_id', userId)
+        .eq('id', cenarioId)
+    ])
+
+    if (desativarResult.error) throw desativarResult.error
+    if (ativarResult.error) throw ativarResult.error
+  } else {
+    // Apenas desativar o cenário específico
+    const { error } = await supabase
       .from('chapas_cenarios')
-      .update({ ativo: false, atualizado_em: new Date().toISOString() })
+      .update({ ativo: false, atualizado_em: agora })
       .eq('user_id', userId)
-      .eq('ativo', true)
+      .eq('id', cenarioId)
 
-    if (desativarError) throw desativarError
+    if (error) throw error
   }
-
-  // Ativar/desativar o cenário específico
-  const { error } = await supabase
-    .from('chapas_cenarios')
-    .update({
-      ativo,
-      atualizado_em: new Date().toISOString()
-    })
-    .eq('user_id', userId)
-    .eq('id', cenarioId)
-
-  if (error) throw error
 }
 
-// Função para obter o cenário ativo
-export async function obterCenarioAtivo(): Promise<CenarioCompleto | null> {
+// Função combinada: lista cenários + carrega o ativo (1 roundtrip de auth, queries paralelas)
+export async function listarCenariosComAtivo(): Promise<{ cenarios: Cenario[], cenarioAtivo: CenarioCompleto | null }> {
   const userId = await getUserId()
-  const supabase = createClient()
+  const supabase = getSupabaseClient()
   
-  // Buscar cenário ativo
-  const { data: ativoData, error: ativoError } = await supabase
+  // Buscar todos os cenários de uma vez
+  const { data, error } = await supabase
     .from('chapas_cenarios')
     .select('id, nome, descricao, tipo, criado_em, atualizado_em, ativo, quociente_eleitoral, votos_igreja')
     .eq('user_id', userId)
+    .order('criado_em', { ascending: false })
+
+  if (error) throw error
+
+  const cenarios = (data || []).map(item => ({
+    id: item.id,
+    nome: item.nome,
+    descricao: item.descricao,
+    tipo: item.tipo,
+    criadoEm: item.criado_em,
+    atualizadoEm: item.atualizado_em,
+    ativo: item.ativo,
+    quocienteEleitoral: item.quociente_eleitoral,
+    votosIgreja: item.votos_igreja
+  } as Cenario)).sort((a, b) => {
+    if (a.id === 'base') return -1
+    if (b.id === 'base') return 1
+    return 0
+  })
+
+  // Encontrar o ativo (ou base como fallback)
+  const ativo = cenarios.find(c => c.ativo)
+  const cenarioIdParaCarregar = ativo?.id || 'base'
+
+  // Carregar partidos do cenário ativo (já temos o cenário, só precisamos dos partidos)
+  const { data: partidosData, error: partidosError } = await supabase
+    .from('chapas_partidos')
+    .select('partido_nome, cor, cor_texto, votos_legenda, candidato_nome, candidato_votos, candidato_genero')
+    .eq('user_id', userId)
+    .eq('cenario_id', cenarioIdParaCarregar)
+    .order('partido_nome', { ascending: true })
+    .order('candidato_votos', { ascending: false })
+
+  if (partidosError) throw partidosError
+
+  const cenarioBase = cenarios.find(c => c.id === cenarioIdParaCarregar)
+  if (!cenarioBase) {
+    return { cenarios, cenarioAtivo: null }
+  }
+
+  // Agrupar partidos
+  const partidosMap: { [partido: string]: PartidoCenario } = {}
+  partidosData?.forEach(item => {
+    if (!partidosMap[item.partido_nome]) {
+      partidosMap[item.partido_nome] = {
+        nome: item.partido_nome,
+        cor: item.cor,
+        corTexto: item.cor_texto,
+        candidatos: [],
+        votosLegenda: item.votos_legenda || 0
+      }
+    }
+    partidosMap[item.partido_nome].candidatos.push({
+      nome: item.candidato_nome,
+      votos: item.candidato_votos,
+      genero: item.candidato_genero || undefined
+    })
+  })
+
+  const cenarioAtivo: CenarioCompleto = {
+    ...cenarioBase,
+    partidos: Object.values(partidosMap)
+  }
+
+  return { cenarios, cenarioAtivo }
+}
+
+// Função para obter o cenário ativo (otimizada - queries paralelas)
+export async function obterCenarioAtivo(): Promise<CenarioCompleto | null> {
+  const userId = await getUserId()
+  const supabase = getSupabaseClient()
+  
+  // Buscar cenário ativo (apenas o ID, limit 1 para performance)
+  const { data: ativoData, error: ativoError } = await supabase
+    .from('chapas_cenarios')
+    .select('id')
+    .eq('user_id', userId)
     .eq('ativo', true)
     .limit(1)
-    .single()
 
   // Se não há cenário ativo, retornar o base
-  if (ativoError || !ativoData) {
+  if (ativoError || !ativoData || ativoData.length === 0) {
     return await carregarCenario('base')
   }
 
-  // Se há múltiplos cenários ativos, corrigir (manter apenas o primeiro)
-  if (ativoData) {
-    const { data: todosAtivos } = await supabase
-      .from('chapas_cenarios')
-      .select('id')
-      .eq('user_id', userId)
-      .eq('ativo', true)
-
-    if (todosAtivos && todosAtivos.length > 1) {
-      // Desativar todos exceto o primeiro
-      const idsParaDesativar = todosAtivos.slice(1).map(c => c.id)
-      await supabase
-        .from('chapas_cenarios')
-        .update({ ativo: false, atualizado_em: new Date().toISOString() })
-        .eq('user_id', userId)
-        .in('id', idsParaDesativar)
-    }
-
-    return await carregarCenario(ativoData.id)
-  }
-
-  return null
+  // Carregar cenário ativo diretamente (já usa queries paralelas internamente)
+  return await carregarCenario(ativoData[0].id)
 }
 

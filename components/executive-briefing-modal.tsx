@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState, useCallback, useRef } from 'react'
-import { X, Users, FileText, TrendingUp, CheckCircle, Clock, AlertCircle, Loader2, Download } from 'lucide-react'
+import { X, Users, FileText, TrendingUp, CheckCircle, Clock, AlertCircle, Loader2, Download, Copy, Check } from 'lucide-react'
 import { getEleitoradoByCity } from '@/lib/eleitores'
 import jsPDF from 'jspdf'
 import { LineChart, Line, ResponsiveContainer, XAxis, YAxis, CartesianGrid, Tooltip, LabelList } from 'recharts'
@@ -59,6 +59,7 @@ export function ExecutiveBriefingModal({
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [exporting, setExporting] = useState(false)
+  const [copied, setCopied] = useState(false)
   const contentRef = useRef<HTMLDivElement>(null)
 
   // Função para normalizar números
@@ -207,6 +208,167 @@ export function ExecutiveBriefingModal({
   const eleitorado = getEleitoradoByCity(cidade)
   const ultimaPesquisa = polls.length > 0 ? polls.sort((a, b) => new Date(b.data).getTime() - new Date(a.data).getTime())[0] : null
   const votosProporcionais = eleitorado && ultimaPesquisa ? Math.round((ultimaPesquisa.intencao / 100) * eleitorado) : null
+
+  // Função para gerar texto formatado para WhatsApp e copiar
+  const handleCopyWhatsApp = async () => {
+    const hoje = new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' })
+    const lines: string[] = []
+
+    lines.push(`📋 *BRIEFING EXECUTIVO*`)
+    lines.push(`📍 *${cidade.toUpperCase()}*`)
+    lines.push(`📅 ${hoje}`)
+    lines.push(``)
+
+    // Eleitorado
+    if (eleitorado) {
+      lines.push(`🗳️ *Eleitorado:* ${eleitorado.toLocaleString('pt-BR')} eleitores`)
+      lines.push(``)
+    }
+
+    // Lideranças
+    lines.push(`━━━━━━━━━━━━━━━━━━`)
+    lines.push(`👥 *LIDERANÇAS*`)
+    if (expectativaVotosCol) {
+      lines.push(`📊 Total esperado: *${Math.round(totalExpectativa).toLocaleString('pt-BR')} votos*`)
+    }
+    lines.push(``)
+
+    if (liderancasOrdenadas.length === 0) {
+      lines.push(`_Nenhuma liderança cadastrada_`)
+    } else {
+      liderancasOrdenadas.forEach((lider, idx) => {
+        const nome = nomeCol ? (lider[nomeCol] || 'Sem nome') : 'Sem nome'
+        const funcao = lider.funcao ? ` — ${lider.funcao}` : ''
+        const expectativa = expectativaVotosCol ? normalizeNumber(lider[expectativaVotosCol]) : 0
+
+        let line = `${idx + 1}. *${nome}*${funcao}`
+        if (expectativa > 0) {
+          line += `\n    🎯 ${Math.round(expectativa).toLocaleString('pt-BR')} votos`
+        }
+        lines.push(line)
+      })
+    }
+    lines.push(``)
+
+    // Demandas
+    lines.push(`━━━━━━━━━━━━━━━━━━`)
+    lines.push(`📝 *DEMANDAS* (${demandsOrdenadas.length})`)
+    lines.push(``)
+
+    if (demandsOrdenadas.length === 0) {
+      lines.push(`_Nenhuma demanda registrada_`)
+    } else {
+      const finalizadas = demandsOrdenadas.filter(d => {
+        const s = (d.status || '').toLowerCase()
+        return s.includes('resolvido') || s.includes('concluído') || s.includes('concluido') || s.includes('finalizado') || s.includes('finalizada')
+      })
+      const emAndamento = demandsOrdenadas.filter(d => {
+        const s = (d.status || '').toLowerCase()
+        return s.includes('andamento') || s.includes('progresso')
+      })
+      const pendentes = demandsOrdenadas.filter(d => {
+        const s = (d.status || '').toLowerCase()
+        return !s.includes('resolvido') && !s.includes('concluído') && !s.includes('concluido') && !s.includes('finalizado') && !s.includes('finalizada') && !s.includes('andamento') && !s.includes('progresso')
+      })
+
+      if (finalizadas.length > 0) {
+        lines.push(`✅ *Concluídas (${finalizadas.length}):*`)
+        finalizadas.forEach(d => {
+          const lider = d.lideranca ? ` — ${d.lideranca}` : ''
+          lines.push(`  • ${d.title}${lider}`)
+        })
+        lines.push(``)
+      }
+
+      if (emAndamento.length > 0) {
+        lines.push(`⏳ *Em andamento (${emAndamento.length}):*`)
+        emAndamento.forEach(d => {
+          const lider = d.lideranca ? ` — ${d.lideranca}` : ''
+          lines.push(`  • ${d.title}${lider}`)
+        })
+        lines.push(``)
+      }
+
+      if (pendentes.length > 0) {
+        lines.push(`⚪ *Pendentes (${pendentes.length}):*`)
+        pendentes.forEach(d => {
+          const lider = d.lideranca ? ` — ${d.lideranca}` : ''
+          lines.push(`  • ${d.title}${lider}`)
+        })
+        lines.push(``)
+      }
+    }
+
+    // Pesquisas
+    if (polls.length > 0) {
+      lines.push(`━━━━━━━━━━━━━━━━━━`)
+      lines.push(`📊 *PESQUISAS DE INTENÇÃO DE VOTO*`)
+      lines.push(``)
+
+      // Agrupar por data/instituto
+      const pollsPorData = new Map<string, Poll[]>()
+      polls.forEach(poll => {
+        const dateStr = poll.data
+        let formattedDate: string
+        if (dateStr.includes('T')) {
+          formattedDate = new Date(dateStr).toLocaleDateString('pt-BR')
+        } else {
+          const [year, month, day] = dateStr.split('-').map(Number)
+          formattedDate = new Date(year, month - 1, day).toLocaleDateString('pt-BR')
+        }
+        const key = `${formattedDate} — ${poll.instituto}`
+        if (!pollsPorData.has(key)) pollsPorData.set(key, [])
+        pollsPorData.get(key)!.push(poll)
+      })
+
+      // Ordenar por data (mais recente primeiro)
+      const pollsEntries = Array.from(pollsPorData.entries()).sort((a, b) => {
+        const dateA = a[1][0]?.data || ''
+        const dateB = b[1][0]?.data || ''
+        return dateB.localeCompare(dateA)
+      })
+
+      pollsEntries.forEach(([key, pollsGrupo]) => {
+        lines.push(`🗓️ *${key}*`)
+        // Ordenar candidatos por intenção (maior primeiro)
+        const sorted = [...pollsGrupo].sort((a, b) => b.intencao - a.intencao)
+        sorted.forEach((poll, idx) => {
+          const medal = idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : '  •'
+          lines.push(`${medal} ${poll.candidato_nome}: *${poll.intencao.toFixed(1)}%*`)
+        })
+        lines.push(``)
+      })
+
+      // Votos proporcionais baseado na última pesquisa
+      if (votosProporcionais && ultimaPesquisa) {
+        lines.push(`📈 Projeção de votos (última pesquisa): *${votosProporcionais.toLocaleString('pt-BR')}*`)
+        lines.push(``)
+      }
+    }
+
+    lines.push(`━━━━━━━━━━━━━━━━━━`)
+    lines.push(`_Gerado pelo Cockpit 2026_`)
+
+    const text = lines.join('\n')
+
+    try {
+      await navigator.clipboard.writeText(text)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 3000)
+    } catch {
+      // Fallback para browsers que não suportam clipboard API
+      const textarea = document.createElement('textarea')
+      textarea.value = text
+      textarea.style.position = 'fixed'
+      textarea.style.opacity = '0'
+      document.body.appendChild(textarea)
+      textarea.select()
+      document.execCommand('copy')
+      document.body.removeChild(textarea)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 3000)
+    }
+  }
 
   // Função para exportar PDF
   const handleExportPDF = async () => {
@@ -394,13 +556,26 @@ export function ExecutiveBriefingModal({
           </div>
           <div className="flex items-center gap-2">
             <button
+              onClick={handleCopyWhatsApp}
+              disabled={loading}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
+                copied
+                  ? 'bg-green-600 text-white'
+                  : 'bg-green-600 text-white hover:bg-green-700'
+              }`}
+              title="Copiar briefing formatado para WhatsApp"
+            >
+              {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+              {copied ? 'Copiado!' : 'WhatsApp'}
+            </button>
+            <button
               onClick={handleExportPDF}
               disabled={exporting || loading}
               className="flex items-center gap-2 px-4 py-2 bg-accent-gold text-white rounded-lg hover:bg-accent-gold/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               title="Exportar para PDF"
             >
               <Download className="w-4 h-4" />
-              {exporting ? 'Exportando...' : 'Exportar PDF'}
+              {exporting ? 'Exportando...' : 'PDF'}
             </button>
             <button
               onClick={onClose}

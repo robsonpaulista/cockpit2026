@@ -4,7 +4,11 @@ import { useEffect, useState, useMemo } from 'react'
 import { KPICard } from '@/components/kpi-card'
 import { KPIHeroCard } from '@/components/kpi-hero-card'
 import { AlertCard } from '@/components/alert-card'
-import { AIAgent } from '@/components/ai-agent'
+// Lazy-load do AIAgent - só carrega quando montado (não bloqueia navegação)
+const AIAgent = dynamic(
+  () => import('@/components/ai-agent').then(mod => ({ default: mod.AIAgent })),
+  { ssr: false, loading: () => null }
+)
 import { MapaPresenca } from '@/components/mapa-presenca'
 import dynamic from 'next/dynamic'
 import municipiosPiaui from '@/lib/municipios-piaui.json'
@@ -39,6 +43,7 @@ export default function Home() {
   const [territoriosQuentes, setTerritoriosQuentes] = useState<Array<{ cidade: string; motivo: string; expectativaVotos?: number; visitas?: number }>>([])
   const [territoriosMornos, setTerritoriosMornos] = useState<Array<{ cidade: string; motivo: string; expectativaVotos?: number; visitas?: number }>>([])
   const [cidadesComLiderancas, setCidadesComLiderancas] = useState<string[]>([])
+  const [cidadesVisitadasLista, setCidadesVisitadasLista] = useState<string[]>([])
   const [territorioStats, setTerritorioStats] = useState<{
     totalCidades: number
     cidadesVisitadas: number
@@ -83,6 +88,7 @@ export default function Home() {
     rodada: number
   } | null>(null)
   const [rankingPesquisas, setRankingPesquisas] = useState<{ posicao: number; totalCandidatos: number; projecaoVotos: number | null; cidadesComPesquisa: number } | null>(null)
+  const [agenteMontado, setAgenteMontado] = useState(false)
   const [graficoPollsTelaCheia, setGraficoPollsTelaCheia] = useState(false)
   const [analiseTerritoriosTelaCheia, setAnaliseTerritoriosTelaCheia] = useState(false)
   const [showMapaPresenca, setShowMapaPresenca] = useState(true)
@@ -91,6 +97,12 @@ export default function Home() {
   const [alertasTelaCheia, setAlertasTelaCheia] = useState(false)
   const [insightTelaCheia, setInsightTelaCheia] = useState(false)
   const [expectativasPorCidade, setExpectativasPorCidade] = useState<Record<string, number>>({})
+
+  // Montar o agente de IA com delay (não bloqueia carregamento/navegação inicial)
+  useEffect(() => {
+    const timer = setTimeout(() => setAgenteMontado(true), 5000)
+    return () => clearTimeout(timer)
+  }, [])
 
   // Votos da eleição anterior (2022) para cálculo comparativo
   const VOTOS_ELEICAO_ANTERIOR = 83175
@@ -270,8 +282,10 @@ export default function Home() {
     }
   }, [candidatoPadrao])
 
-  // Buscar Análise de Territórios
+  // Buscar Análise de Territórios (com cancelamento ao sair da página)
   useEffect(() => {
+    let cancelado = false
+    
     const fetchTerritorios = async () => {
       setLoadingTerritorios(true)
       try {
@@ -280,6 +294,7 @@ export default function Home() {
         // 1. Primeiro verificar configuração do servidor
         try {
           const serverConfigRes = await fetch('/api/territorio/config')
+          if (cancelado) return
           const serverConfig = await serverConfigRes.json()
           if (serverConfig.configured) {
             config = {} // Servidor usa variáveis de ambiente
@@ -296,7 +311,7 @@ export default function Home() {
           }
         }
         
-        if (config) {
+        if (config && !cancelado) {
           const response = await fetch('/api/dashboard/territorios-frios', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -304,13 +319,15 @@ export default function Home() {
               territorioConfig: config.spreadsheetId ? config : {} 
             }),
           })
+          if (cancelado) return
           
           if (response.ok) {
             const data = await response.json()
+            if (cancelado) return
             
             // Territórios frios
             setTerritoriosFrios(
-              data.territoriosFrios?.map((t: any) => ({
+              data.territoriosFrios?.map((t: Record<string, unknown>) => ({
                 cidade: t.cidade,
                 motivo: t.motivo,
                 expectativaVotos: t.expectativaVotos,
@@ -320,7 +337,7 @@ export default function Home() {
             
             // Territórios quentes
             setTerritoriosQuentes(
-              data.territoriosQuentes?.map((t: any) => ({
+              data.territoriosQuentes?.map((t: Record<string, unknown>) => ({
                 cidade: t.cidade,
                 motivo: t.motivo,
                 expectativaVotos: t.expectativaVotos,
@@ -330,7 +347,7 @@ export default function Home() {
             
             // Territórios mornos
             setTerritoriosMornos(
-              data.territoriosMornos?.map((t: any) => ({
+              data.territoriosMornos?.map((t: Record<string, unknown>) => ({
                 cidade: t.cidade,
                 motivo: t.motivo,
                 expectativaVotos: t.expectativaVotos,
@@ -342,6 +359,11 @@ export default function Home() {
             if (data.cidadesComLiderancas) {
               setCidadesComLiderancas(data.cidadesComLiderancas)
             }
+
+            // Cidades visitadas (para o mapa)
+            if (data.cidadesVisitadasLista) {
+              setCidadesVisitadasLista(data.cidadesVisitadasLista)
+            }
             
             // Estatísticas
             if (data.estatisticas) {
@@ -352,20 +374,25 @@ export default function Home() {
       } catch (error) {
         // Erro silencioso
       } finally {
-        setLoadingTerritorios(false)
+        if (!cancelado) setLoadingTerritorios(false)
       }
     }
 
     fetchTerritorios()
+    return () => { cancelado = true }
   }, [])
 
   // Buscar estatísticas das bandeiras com métricas de desempenho do Instagram
+  // DEFERIDO: executa 3s após o mount para não bloquear navegação/carregamento inicial
   useEffect(() => {
+    let cancelado = false
+    
     const fetchBandeirasStats = async () => {
       setLoadingBandeiras(true)
       try {
         // 1. Buscar narrativas ativas e stats básicos
         const narrativasResponse = await fetch('/api/narrativas?status=ativa')
+        if (cancelado) return
         const narrativas = narrativasResponse.ok ? await narrativasResponse.json() : []
 
         const statsPromises = narrativas.map(async (narrativa: Record<string, string>) => {
@@ -384,6 +411,7 @@ export default function Home() {
           return { theme: narrativa.theme, usage_count: 0, performance_score: 0, boosted_count: 0 }
         })
         const allNarrativaStats = await Promise.all(statsPromises)
+        if (cancelado) return
 
         // 2. Buscar dados do Instagram (mesma lógica da página Conteúdo)
         let instagramPosts: Array<{ id: string; postedAt: string; caption: string; metrics: { likes: number; comments: number; engagement: number; views?: number; shares?: number; saves?: number } }> = []
@@ -391,7 +419,7 @@ export default function Home() {
 
         try {
           const igConfig = await loadInstagramConfigAsync()
-          if (igConfig.token && igConfig.businessAccountId) {
+          if (igConfig.token && igConfig.businessAccountId && !cancelado) {
             const igData = await fetchInstagramData(igConfig.token, igConfig.businessAccountId, '30d', false)
             if (igData && igData.posts) {
               instagramPosts = igData.posts
@@ -401,6 +429,7 @@ export default function Home() {
         } catch (err) {
           console.error('Erro ao carregar dados Instagram para bandeiras:', err)
         }
+        if (cancelado) return
 
         // 3. Buscar classificações dos posts (mesma API da página Conteúdo)
         let postClassifications: Record<string, { theme?: string; isBoosted?: boolean }> = {}
@@ -413,6 +442,7 @@ export default function Home() {
             }
           }
         } catch { /* silêncio */ }
+        if (cancelado) return
 
         // 4. Função para gerar identifier (mesma da página Conteúdo)
         const getPostIdentifier = (post: { id: string; postedAt?: string; caption?: string }) => {
@@ -477,21 +507,31 @@ export default function Home() {
           ? Math.round(combinedStats.reduce((sum, s) => sum + s.performance_score, 0) / combinedStats.length)
           : 0
 
-        setBandeirasStats({
-          totalUsos,
-          totalPerformance,
-          totalBandeiras: combinedStats.length,
-          topBandeiras: combinedStats.slice(0, 5),
-          hasInstagramData,
-        })
+        if (!cancelado) {
+          setBandeirasStats({
+            totalUsos,
+            totalPerformance,
+            totalBandeiras: combinedStats.length,
+            topBandeiras: combinedStats.slice(0, 5),
+            hasInstagramData,
+          })
+        }
       } catch (error) {
         console.error('Erro ao buscar estatísticas das bandeiras:', error)
       } finally {
-        setLoadingBandeiras(false)
+        if (!cancelado) setLoadingBandeiras(false)
       }
     }
 
-    fetchBandeirasStats()
+    // Deferir 3s para não competir com carregamento inicial e navegação
+    const timer = setTimeout(() => {
+      if (!cancelado) fetchBandeirasStats()
+    }, 3000)
+
+    return () => {
+      cancelado = true
+      clearTimeout(timer)
+    }
   }, [])
 
   useEffect(() => {
@@ -1471,11 +1511,21 @@ export default function Home() {
                   {/* Mapa de Presença Interativo */}
                   {showMapaPresenca && (() => {
                     return cidadesComLiderancas.length > 0 ? (
-                      <div className="mb-8">
+                      <div id="mapa-territorio-container" className="mb-8 relative">
                         <MapaPresenca
                           cidadesComPresenca={cidadesComLiderancas}
+                          cidadesVisitadas={cidadesVisitadasLista}
                           totalCidades={224}
                           fullscreen={true}
+                          onFullscreen={() => {
+                            const container = document.getElementById('mapa-territorio-container')
+                            if (!container) return
+                            if (document.fullscreenElement) {
+                              document.exitFullscreen()
+                            } else {
+                              container.requestFullscreen().catch(() => {})
+                            }
+                          }}
                         />
                       </div>
                     ) : null
@@ -1591,20 +1641,45 @@ export default function Home() {
 
       {/* Modal de Mapa em Tela Cheia */}
       {mapaTelaCheia && (() => {
+        const handleFullscreenToggle = () => {
+          const container = document.getElementById('mapa-fullscreen-container')
+          if (!container) return
+
+          if (document.fullscreenElement) {
+            document.exitFullscreen()
+          } else {
+            container.requestFullscreen().catch(() => {})
+          }
+        }
+
         return (
-          <div className="fixed inset-0 z-50 bg-background flex flex-col">
+          <div id="mapa-fullscreen-container" className="fixed inset-0 z-50 bg-background flex flex-col">
             <div className="bg-surface border-b border-card p-4 flex items-center justify-between">
               <h2 className="text-xl font-semibold text-text-primary flex items-center gap-2">
                 <MapPin className="w-6 h-6 text-accent-gold" />
                 Mapa de Presença Territorial
               </h2>
-              <button
-                onClick={() => setMapaTelaCheia(false)}
-                className="p-2 rounded-lg hover:bg-background transition-colors"
-                title="Fechar mapa"
-              >
-                <X className="w-6 h-6 text-secondary" />
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={handleFullscreenToggle}
+                  className="p-2 rounded-lg hover:bg-background transition-colors text-secondary hover:text-text-primary"
+                  title="Tela cheia do navegador"
+                >
+                  <Maximize2 className="w-5 h-5" />
+                </button>
+                <button
+                  onClick={() => {
+                    if (document.fullscreenElement) {
+                      document.exitFullscreen()
+                    }
+                    setMapaTelaCheia(false)
+                  }}
+                  className="p-2 rounded-lg hover:bg-background transition-colors"
+                  title="Fechar mapa"
+                >
+                  <X className="w-6 h-6 text-secondary" />
+                </button>
+              </div>
             </div>
             <div className="flex-1 overflow-hidden">
               {cidadesComLiderancas.length > 0 ? (
@@ -1612,6 +1687,7 @@ export default function Home() {
                   <div className="w-full h-full bg-surface overflow-hidden">
                     <MapWrapperLeaflet 
                       cidadesComPresenca={cidadesComLiderancas}
+                      cidadesVisitadas={cidadesVisitadasLista}
                       municipiosPiaui={municipiosPiaui}
                       eleitoresPorCidade={eleitoresPorCidade}
                     />
@@ -1624,9 +1700,17 @@ export default function Home() {
               )}
             </div>
             {/* Legenda fixa no rodapé */}
-            <div className="bg-surface border-t border-card p-3 flex flex-wrap items-center justify-center gap-4 text-xs text-secondary">
+            <div className="bg-surface border-t border-card p-3 flex flex-wrap items-center justify-center gap-5 text-xs text-secondary">
               <div className="flex items-center gap-2">
-                <div className="w-3 h-3 rounded-full bg-accent-gold border border-accent-gold"></div>
+                <div className="w-4 h-4 rounded-full bg-blue-600 border-2 border-blue-700 flex items-center justify-center">
+                  <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="20 6 9 17 4 12"></polyline>
+                  </svg>
+                </div>
+                <span>Visitada</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 rounded-full bg-blue-600 border border-blue-700"></div>
                 <span>Com liderança</span>
               </div>
               <div className="flex items-center gap-2">
@@ -2129,25 +2213,27 @@ export default function Home() {
         </div>
       )}
 
-      {/* Agente de IA */}
-      <AIAgent
-        loadingKPIs={loading}
-        loadingPolls={loadingPolls}
-        loadingTerritorios={loadingTerritorios}
-        loadingAlerts={loadingAlerts}
-        loadingBandeiras={loadingBandeiras}
-        kpisCount={kpis.length}
-        expectativa2026={kpis.find(k => k.id === 'ife')?.value}
-        presencaTerritorial={kpis.find(k => k.id === 'presenca')?.value?.toString()}
-        pollsCount={pollsData.length}
-        candidatoPadrao={candidatoPadrao}
-        territoriosFriosCount={territoriosFrios.length}
-        alertsCriticosCount={criticalAlerts.length}
-        bandeirasCount={bandeirasStats?.totalBandeiras || 0}
-        bandeirasPerformance={bandeirasStats?.totalPerformance || 0}
-        criticalAlerts={criticalAlerts.map(a => ({ id: a.id, title: a.title, actionUrl: a.actionUrl }))}
-        territoriosFrios={territoriosFrios}
-      />
+      {/* Agente de IA - montado com delay para não bloquear navegação */}
+      {agenteMontado && (
+        <AIAgent
+          loadingKPIs={loading}
+          loadingPolls={loadingPolls}
+          loadingTerritorios={loadingTerritorios}
+          loadingAlerts={loadingAlerts}
+          loadingBandeiras={loadingBandeiras}
+          kpisCount={kpis.length}
+          expectativa2026={kpis.find(k => k.id === 'ife')?.value}
+          presencaTerritorial={kpis.find(k => k.id === 'presenca')?.value?.toString()}
+          pollsCount={pollsData.length}
+          candidatoPadrao={candidatoPadrao}
+          territoriosFriosCount={territoriosFrios.length}
+          alertsCriticosCount={criticalAlerts.length}
+          bandeirasCount={bandeirasStats?.totalBandeiras || 0}
+          bandeirasPerformance={bandeirasStats?.totalPerformance || 0}
+          criticalAlerts={criticalAlerts.map(a => ({ id: a.id, title: a.title, actionUrl: a.actionUrl }))}
+          territoriosFrios={territoriosFrios}
+        />
+      )}
     </div>
   )
 }

@@ -36,6 +36,9 @@ interface CenariosTabsProps {
   onLimparCenario?: (cenarioId: string) => void
   onImprimirPDF?: (cenarioId: string) => void
   salvandoMudancas?: boolean
+  // Props para receber dados do pai (evita carregamento duplicado)
+  cenariosIniciais?: Cenario[]
+  cenarioAtivoId?: string
 }
 
 export default function CenariosTabs({ 
@@ -48,40 +51,29 @@ export default function CenariosTabs({
   onSalvarMudancas,
   onLimparCenario,
   onImprimirPDF,
-  salvandoMudancas = false
+  salvandoMudancas = false,
+  cenariosIniciais,
+  cenarioAtivoId
 }: CenariosTabsProps) {
-  const [cenarios, setCenarios] = useState<Cenario[]>([])
+  const [cenarios, setCenarios] = useState<Cenario[]>(cenariosIniciais || [])
   const [cenarioAtivo, setCenarioAtivo] = useState<Cenario | null>(null)
   const [loading, setLoading] = useState(false)
   const [dialogAberto, setDialogAberto] = useState(false)
   
   const [novoCenario, setNovoCenario] = useState({ nome: '', descricao: '', cenarioOrigem: '' })
   
-  const [activeTab, setActiveTab] = useState<string>('')
+  const [activeTab, setActiveTab] = useState<string>(cenarioAtivoId || '')
+  const [inicializado, setInicializado] = useState(false)
 
-  // Carregar cenários
+  // Carregar cenários (apenas lista, sem corrigir ativos em loop)
   const carregarCenarios = async () => {
     setLoading(true)
     try {
       const cenariosList = await listarCenarios()
-      
-      // Garantir que apenas um cenário esteja ativo
-      const cenariosAtivos = cenariosList.filter(c => c.ativo)
-      if (cenariosAtivos.length > 1) {
-        // Manter apenas o primeiro como ativo e desativar os outros
-        for (let i = 1; i < cenariosAtivos.length; i++) {
-          await ativarCenario(cenariosAtivos[i].id, false)
-        }
-        // Recarregar após correção
-        const cenariosCorrigidos = await listarCenarios()
-        setCenarios(cenariosCorrigidos)
-        const ativo = cenariosCorrigidos.find(c => c.ativo)
-        setCenarioAtivo(ativo || null)
-        setActiveTab(ativo?.id || '')
-      } else {
-        setCenarios(cenariosList)
-        const ativo = cenariosList.find(c => c.ativo)
-        setCenarioAtivo(ativo || null)
+      setCenarios(cenariosList)
+      const ativo = cenariosList.find(c => c.ativo)
+      setCenarioAtivo(ativo || null)
+      if (!activeTab || !cenariosList.find(c => c.id === activeTab)) {
         setActiveTab(ativo?.id || '')
       }
     } catch (error) {
@@ -91,13 +83,20 @@ export default function CenariosTabs({
     }
   }
 
+  // Se recebeu cenários do pai, usar diretamente (sem fetch adicional)
   useEffect(() => {
-    const timeoutId = setTimeout(() => {
+    if (cenariosIniciais && cenariosIniciais.length > 0 && !inicializado) {
+      setCenarios(cenariosIniciais)
+      const ativo = cenariosIniciais.find(c => c.ativo)
+      setCenarioAtivo(ativo || null)
+      setActiveTab(cenarioAtivoId || ativo?.id || '')
+      setInicializado(true)
+    } else if (!cenariosIniciais && !inicializado) {
+      // Fallback: carregar do banco apenas se o pai não forneceu dados
+      setInicializado(true)
       carregarCenarios()
-    }, 100)
-    
-    return () => clearTimeout(timeoutId)
-  }, [])
+    }
+  }, [cenariosIniciais, cenarioAtivoId, inicializado])
 
   // Criar novo cenário
   const handleCriarCenario = async () => {
@@ -132,25 +131,23 @@ export default function CenariosTabs({
     }
   }
 
-  // Ativar cenário
+  // Ativar cenário (otimizado - batch update, sem loops)
   const handleAtivarCenario = async (cenarioId: string) => {
     setLoading(true)
     try {
-      // Desativar todos os cenários primeiro
-      for (const cenario of cenarios) {
-        if (cenario.ativo) {
-          await ativarCenario(cenario.id, false)
-        }
-      }
-
-      // Ativar o cenário selecionado
+      // ativarCenario agora faz batch: desativa todos + ativa o selecionado em paralelo
       await ativarCenario(cenarioId, true)
 
-      // Recarregar cenários para garantir consistência
-      await carregarCenarios()
+      // Carregar cenário ativado e lista em paralelo
+      const [cenarioCompleto, cenariosList] = await Promise.all([
+        carregarCenario(cenarioId),
+        listarCenarios()
+      ])
 
-      // Carregar automaticamente o cenário ativado
-      const cenarioCompleto = await carregarCenario(cenarioId)
+      setCenarios(cenariosList)
+      const ativo = cenariosList.find(c => c.ativo)
+      setCenarioAtivo(ativo || null)
+
       if (cenarioCompleto) {
         onCenarioChange(cenarioCompleto)
       }

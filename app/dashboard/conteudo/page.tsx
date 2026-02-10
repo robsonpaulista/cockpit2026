@@ -2174,29 +2174,11 @@ export default function ConteudoPage() {
                       <div className="text-center py-12">
                         <MapPin className="w-12 h-12 text-secondary mx-auto mb-4 opacity-50" />
                         <p className="text-secondary mb-2 font-semibold">
-                          Dados de localização não disponíveis via API
+                          Dados de localização não disponíveis
                         </p>
-                        <div className="space-y-3 text-sm text-secondary max-w-lg mx-auto">
-                          <p className="text-status-warning">
-                            ⚠️ A métrica <code className="px-2 py-1 bg-background rounded text-xs">audience_city</code> foi <strong>depreciada pelo Instagram</strong> no Graph API v18 (janeiro de 2024) e não está mais disponível.
-                          </p>
-                          <div className="p-4 bg-background rounded-lg border border-card text-left space-y-2">
-                            <p className="font-semibold text-text-primary">Informação:</p>
-                            <p>
-                              O Instagram removeu o acesso programático a dados demográficos detalhados (incluindo localização por cidade) para proteger a privacidade dos usuários.
-                            </p>
-                            <p className="pt-2 border-t border-card">
-                              <strong>Alternativas disponíveis:</strong>
-                            </p>
-                            <ul className="list-disc list-inside space-y-1 ml-2">
-                              <li>Acessar os insights nativos do Instagram no app (menu Insights)</li>
-                              <li>Utilizar ferramentas de analytics de terceiros que agregam dados públicos</li>
-                            </ul>
-                          </div>
-                          <p className="text-xs text-secondary italic">
-                            Esta limitação é uma política do Instagram/Meta e não pode ser contornada via API.
-                          </p>
-                        </div>
+                        <p className="text-sm text-secondary max-w-lg mx-auto">
+                          Dados demográficos de localização podem não estar disponíveis para todas as contas. Verifique os insights diretamente no app do Instagram.
+                        </p>
                       </div>
                     )}
                   </div>

@@ -21,5 +21,19 @@ export default function LoginPage() {
     checkAuth()
   }, [router, supabase])
 
-  return <LoginForm />
+  return (
+    <>
+      <style jsx global>{`
+        /* Fundo laranja na página de login (evita flash branco) */
+        html, body {
+          background: #de5a12 !important;
+        }
+        /* Placeholders brancos nos inputs de login */
+        input::placeholder {
+          color: rgba(255, 255, 255, 0.45) !important;
+        }
+      `}</style>
+      <LoginForm />
+    </>
+  )
 }

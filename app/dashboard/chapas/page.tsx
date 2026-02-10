@@ -3,12 +3,14 @@
 import React, { useEffect, useState, useRef } from 'react'
 import { Trash2, Plus, RefreshCw, Check, Printer, Info, Eye, EyeOff, X, Maximize2, Minimize2 } from 'lucide-react'
 import {
+  Cenario,
   CenarioCompleto,
   PartidoCenario,
   obterCenarioAtivo,
   atualizarCenario,
   carregarCenario,
   criarCenarioBase,
+  listarCenariosComAtivo,
   dadosIniciais
 } from '@/lib/chapasService'
 import CenariosTabs from '@/components/cenarios-tabs'
@@ -84,6 +86,13 @@ export default function ChapasPage() {
   const [partidosOcultos, setPartidosOcultos] = useState<{ [partidoNome: string]: boolean }>({})
   const [isFullscreen, setIsFullscreen] = useState(false)
   const fullscreenRef = useRef<HTMLDivElement>(null)
+  
+  // Estado para cenários (compartilhado com CenariosTabs para evitar fetch duplicado)
+  const [cenariosLista, setCenariosLista] = useState<Cenario[]>([])
+  const [cenariosCarregados, setCenariosCarregados] = useState(false)
+  
+  // Controle simples de save
+  const saveEmAndamentoRef = useRef(false)
 
   const mostrarNotificacaoAutoSave = (mensagem: string) => {
     setNotificacaoAutoSave(mensagem)
@@ -178,7 +187,7 @@ export default function ChapasPage() {
     }
   }
 
-  // Carregar dados do Supabase ao abrir a página
+  // Carregar dados do Supabase ao abrir a página (otimizado - 1 função combinada)
   useEffect(() => {
     if (dadosCarregados) return
     
@@ -186,34 +195,36 @@ export default function ChapasPage() {
       try {
         setDadosCarregados(true)
         
-        // Primeiro tentar carregar cenário ativo (se existir)
-        try {
-          const cenarioAtivo = await obterCenarioAtivo()
-          if (cenarioAtivo) {
-            setCenarioAtivo(cenarioAtivo)
-            const partidosOrdenados = ordenarPartidos(cenarioAtivo.partidos)
-            setPartidos(partidosOrdenados)
-            setQuociente(cenarioAtivo.quocienteEleitoral)
-            setQuocienteCarregado(true)
-            
-            const votosLegendaTemp: { [partido: string]: number } = {}
-            cenarioAtivo.partidos.forEach(partido => {
-              if (partido.votosLegenda) {
-                votosLegendaTemp[partido.nome] = partido.votosLegenda
-              }
-            })
-            setVotosLegenda(votosLegendaTemp)
-            
-            return
-          }
-        } catch (cenarioError) {
-          // Nenhum cenário ativo encontrado, carregando cenário base
+        // Uma única chamada que busca cenários + cenário ativo com partidos
+        const { cenarios: listaCenarios, cenarioAtivo: cenarioAtivoData } = await listarCenariosComAtivo()
+        
+        // Compartilhar cenários com CenariosTabs (evita fetch duplicado)
+        setCenariosLista(listaCenarios)
+        setCenariosCarregados(true)
+        
+        if (cenarioAtivoData) {
+          setCenarioAtivo(cenarioAtivoData)
+          const partidosOrdenados = ordenarPartidos(cenarioAtivoData.partidos)
+          setPartidos(partidosOrdenados)
+          setQuociente(cenarioAtivoData.quocienteEleitoral)
+          setQuocienteCarregado(true)
+          
+          const votosLegendaTemp: { [partido: string]: number } = {}
+          cenarioAtivoData.partidos.forEach(partido => {
+            if (partido.votosLegenda) {
+              votosLegendaTemp[partido.nome] = partido.votosLegenda
+            }
+          })
+          setVotosLegenda(votosLegendaTemp)
+          
+          return
         }
         
         // Se não há cenário ativo, carregar o cenário base
         await carregarDadosSupabase()
-      } catch (error: any) {
-        const errorMessage = error?.message || 'Erro desconhecido'
+      } catch (error: unknown) {
+        const err = error as Error
+        const errorMessage = err?.message || 'Erro desconhecido'
         console.error('Erro ao carregar dados iniciais:', error)
         alert(`Erro ao carregar dados iniciais: ${errorMessage}. Verifique se as tabelas foram criadas no banco de dados.`)
         setDadosCarregados(false)
@@ -255,27 +266,34 @@ export default function ChapasPage() {
     }))
   }
 
-  // Função para salvar mudanças no cenário ativo
+  // Função para salvar mudanças no cenário ativo (simples e direta)
   const salvarMudancasCenario = async () => {
-    if (cenarioAtivo) {
-      setSalvandoMudancas(true)
-      try {
-        const partidosConvertidos = converterPartidosParaCenario()
-        await atualizarCenario(cenarioAtivo.id, partidosConvertidos, quociente)
-        
-        const cenarioVerificado = await carregarCenario(cenarioAtivo.id)
-        if (cenarioVerificado) {
-          setCenarioAtivo(cenarioVerificado)
-        }
-        
-        setTimeout(() => setSalvandoMudancas(false), 2000)
-        mostrarNotificacaoAutoSave(`Mudanças salvas no cenário "${cenarioAtivo.nome}" com QE: ${quociente.toLocaleString('pt-BR')}`)
-      } catch (error) {
-        setSalvandoMudancas(false)
+    if (!cenarioAtivo) {
+      alert('Nenhum cenário ativo encontrado. Tente selecionar um cenário primeiro.')
+      return
+    }
+    
+    // Evitar duplo-clique
+    if (saveEmAndamentoRef.current) return
+    saveEmAndamentoRef.current = true
+    setSalvandoMudancas(true)
+    
+    try {
+      const partidosConvertidos = converterPartidosParaCenario()
+      await atualizarCenario(cenarioAtivo.id, partidosConvertidos, quociente)
+      
+      setCenarioAtivo(prev => prev ? { ...prev, atualizadoEm: new Date().toISOString(), quocienteEleitoral: quociente } : null)
+      mostrarNotificacaoAutoSave(`Mudanças salvas no cenário "${cenarioAtivo.nome}"`)
+    } catch (error: unknown) {
+      const err = error as Error
+      if (err?.message?.includes('Timeout')) {
+        alert('O salvamento demorou muito. Verifique sua conexão e tente novamente.')
+      } else {
         alert('Erro ao salvar mudanças. Tente novamente.')
       }
-    } else {
-      alert('Nenhum cenário ativo encontrado. Tente selecionar um cenário primeiro.')
+    } finally {
+      saveEmAndamentoRef.current = false
+      setSalvandoMudancas(false)
     }
   }
 
@@ -305,8 +323,8 @@ export default function ChapasPage() {
     }
   }
 
-  // Função para salvar nome
-  const saveNameChange = async (partidoIdx: number, oldNome: string) => {
+  // Função para salvar nome (só atualiza estado local + agenda auto-save)
+  const saveNameChange = (partidoIdx: number, oldNome: string) => {
     if (!editingName || editingName.partidoIdx !== partidoIdx || editingName.candidatoNome !== oldNome) {
       setEditingName(null)
       setHoveredRow(null)
@@ -316,63 +334,32 @@ export default function ChapasPage() {
     const newNome = editingName.tempValue.trim()
     
     if (newNome && newNome !== oldNome) {
-      try {
-        setPartidos(prev => prev.map((p, i) => {
-          if (i !== partidoIdx) return p
-          return {
-            ...p,
-            candidatos: p.candidatos.map(c => 
-              c.nome === oldNome ? { ...c, nome: newNome } : c
-            )
-          }
-        }))
-
-        if (!cenarioAtivo) {
-          throw new Error('Cenário base não encontrado')
+      setPartidos(prev => prev.map((p, i) => {
+        if (i !== partidoIdx) return p
+        return {
+          ...p,
+          candidatos: p.candidatos.map(c => 
+            c.nome === oldNome ? { ...c, nome: newNome } : c
+          )
         }
-        
-        const partidosConvertidos = converterPartidosParaCenario()
-        await atualizarCenario(cenarioAtivo.id, partidosConvertidos, cenarioAtivo.quocienteEleitoral)
-      } catch (error) {
-        setPartidos(prev => prev.map((p, i) => {
-          if (i !== partidoIdx) return p
-          return {
-            ...p,
-            candidatos: p.candidatos.map(c => 
-              c.nome === newNome ? { ...c, nome: oldNome } : c
-            )
-          }
-        }))
-        alert('Erro ao salvar alteração. Tente novamente.')
-      }
+      }))
     }
     
     setEditingName(null)
     setHoveredRow(null)
   }
 
-  // Função para salvar votos
-  const saveVotosChange = async (partidoIdx: number, candidatoNome: string, votos: number) => {
-    try {
-      setPartidos(prev => prev.map((p, i) => {
-        if (i !== partidoIdx) return p
-        return {
-          ...p,
-          candidatos: p.candidatos.map(c => 
-            c.nome === candidatoNome ? { ...c, votos } : c
-          )
-        }
-      }))
-      
-      if (!cenarioAtivo) {
-        throw new Error('Cenário base não encontrado')
+  // Função para salvar votos (só atualiza estado local - salva via botão "Salvar Mudanças")
+  const saveVotosChange = (partidoIdx: number, candidatoNome: string, votos: number) => {
+    setPartidos(prev => prev.map((p, i) => {
+      if (i !== partidoIdx) return p
+      return {
+        ...p,
+        candidatos: p.candidatos.map(c => 
+          c.nome === candidatoNome ? { ...c, votos } : c
+        )
       }
-      
-      const partidosConvertidos = converterPartidosParaCenario()
-      await atualizarCenario(cenarioAtivo.id, partidosConvertidos, cenarioAtivo.quocienteEleitoral)
-    } catch (error) {
-      // Erro silencioso
-    }
+    }))
   }
 
   // Soma dos votos e cálculo da projeção
@@ -583,7 +570,6 @@ export default function ChapasPage() {
 
       const partidosConvertidos = converterPartidosParaCenario().filter(p => p.nome !== partidoNome)
       await atualizarCenario(cenarioAtivo.id, partidosConvertidos, cenarioAtivo.quocienteEleitoral)
-      
       mostrarNotificacaoAutoSave(`Partido ${partidoNome} excluído com sucesso`)
     } catch (error) {
       await carregarDadosSupabase()
@@ -936,6 +922,8 @@ export default function ChapasPage() {
             <CenariosTabs
               partidosAtuais={converterPartidosParaCenario()}
               quocienteAtual={quociente}
+              cenariosIniciais={cenariosCarregados ? cenariosLista : undefined}
+              cenarioAtivoId={cenarioAtivo?.id}
               onCenarioChange={(cenario) => {
                 setCenarioAtivo(cenario)
                 const partidosOrdenados = ordenarPartidos(cenario.partidos)
@@ -1015,12 +1003,8 @@ export default function ChapasPage() {
                         setQuociente(num)
                       }
                     }}
-                    onBlur={async () => {
-                      if (cenarioAtivo) {
-                        const partidosConvertidos = converterPartidosParaCenario()
-                        await atualizarCenario(cenarioAtivo.id, partidosConvertidos, quociente)
-                        mostrarNotificacaoAutoSave('Quociente eleitoral atualizado')
-                      }
+                    onBlur={() => {
+                      // Quociente salvo via botão "Salvar Mudanças"
                     }}
                     className="text-sm font-bold text-gray-700 bg-transparent border-b border-gray-200 focus:border-accent-gold outline-none w-32 text-center px-1"
                   />
@@ -1352,32 +1336,31 @@ export default function ChapasPage() {
                             type="text"
                             inputMode="numeric"
                             pattern="[0-9.]*"
-                            value={votosLegendaTemp[partido.nome] !== undefined 
+                            value={votosLegendaTemp[partido.nome] 
                               ? votosLegendaTemp[partido.nome] 
                               : (votosLegenda[partido.nome] || 0).toLocaleString('pt-BR')}
                             onChange={e => {
                               const raw = e.target.value.replace(/\./g, '')
                               const num = Number(raw)
                               if (!isNaN(num) && num >= 0) {
-                                setVotosLegendaTemp({ ...votosLegendaTemp, [partido.nome]: raw })
+                                setVotosLegendaTemp(prev => ({ ...prev, [partido.nome]: raw || '0' }))
                               } else if (raw === '') {
-                                setVotosLegendaTemp({ ...votosLegendaTemp, [partido.nome]: '0' })
+                                setVotosLegendaTemp(prev => ({ ...prev, [partido.nome]: '0' }))
                               }
                             }}
-                            onBlur={async () => {
+                            onBlur={() => {
                               const raw = votosLegendaTemp[partido.nome]
-                              if (raw !== undefined) {
+                              if (raw) {
                                 const num = Number(raw.replace(/\./g, ''))
                                 if (!isNaN(num) && num >= 0) {
-                                  const novoVotosLegenda = { ...votosLegenda, [partido.nome]: num }
-                                  setVotosLegenda(novoVotosLegenda)
-                                  setVotosLegendaTemp({ ...votosLegendaTemp, [partido.nome]: '' })
-                                  
-                                  if (cenarioAtivo) {
-                                    const partidosConvertidos = converterPartidosParaCenario()
-                                    await atualizarCenario(cenarioAtivo.id, partidosConvertidos, quociente)
-                                    mostrarNotificacaoAutoSave('Votos de legenda atualizados')
-                                  }
+                                  setVotosLegenda(prev => ({ ...prev, [partido.nome]: num }))
+                                  // Limpar temp removendo a chave
+                                  setVotosLegendaTemp(prev => {
+                                    const novo = { ...prev }
+                                    delete novo[partido.nome]
+                                    return novo
+                                  })
+                                  // Votos legenda salvos via botão "Salvar Mudanças"
                                 }
                               }
                             }}
