@@ -197,6 +197,91 @@ button:disabled {
   border-radius: 14px;
 }
 
+/* ============================================
+   Micro-animações Premium — Centro de Comando
+   Elegante + funcional, nunca chamativo
+   ============================================ */
+
+/* Barras de progresso crescem ao entrar na tela */
+@keyframes growWidth {
+  from { width: 0%; }
+}
+
+.animate-grow {
+  animation: growWidth 0.8s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+/* Sections surgem com fade + slide sutil ao entrar na tela */
+@keyframes revealUp {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-reveal {
+  animation: revealUp 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* Stagger: cada card aparece com delay progressivo */
+.animate-reveal-1 { animation-delay: 0ms; }
+.animate-reveal-2 { animation-delay: 60ms; }
+.animate-reveal-3 { animation-delay: 120ms; }
+.animate-reveal-4 { animation-delay: 180ms; }
+.animate-reveal-5 { animation-delay: 240ms; }
+.animate-reveal-6 { animation-delay: 300ms; }
+
+/* Pulse sutil para ícones de alerta (lento, sério) */
+@keyframes subtlePulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
+
+.animate-subtle-pulse {
+  animation: subtlePulse 3s ease-in-out infinite;
+}
+
+/* Breathing para ícone de trending (muito sutil) */
+@keyframes breathe {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+}
+
+.animate-breathe {
+  animation: breathe 4s ease-in-out infinite;
+}
+
+/* Micro vibração para alertas críticos */
+@keyframes microShake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-1px); }
+  75% { transform: translateX(1px); }
+}
+
+.animate-micro-shake {
+  animation: microShake 4s ease-in-out infinite;
+}
+
+/* Transição de página: fade suave */
+@keyframes pageFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.page-transition {
+  animation: pageFadeIn 0.35s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
 /* Glass morphism effect (suave) */
 .glass {
   background: rgba(255, 255, 255, 0.7);

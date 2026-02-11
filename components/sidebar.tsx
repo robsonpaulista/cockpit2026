@@ -215,13 +215,15 @@ export function Sidebar() {
                     
                     {/* Tooltip quando sidebar está recolhida - usando fixed para sair do overflow */}
                     {collapsed && !mobileOpen && tooltipPos && (
-                      <div className="fixed left-24 px-3 py-2 bg-text-text-primary text-bg-app text-xs font-semibold rounded-lg whitespace-nowrap z-[200] shadow-lg backdrop-blur-sm" style={{
+                      <div className="fixed left-24 px-3 py-2 text-xs font-semibold rounded-lg whitespace-nowrap z-[200] shadow-lg" style={{
                         top: `${tooltipPos.top}px`,
                         transform: 'translateY(-50%)',
-                        animation: 'fadeIn 0.2s ease-out'
+                        animation: 'fadeIn 0.2s ease-out',
+                        backgroundColor: 'rgb(var(--text-primary))',
+                        color: 'rgb(var(--bg-surface))',
                       }}>
                         {item.label}
-                        <div className="absolute right-full top-1/2 -translate-y-1/2 border-4 border-transparent border-r-text-text-primary" />
+                        <div className="absolute right-full top-1/2 -translate-y-1/2 border-4 border-transparent" style={{ borderRightColor: 'rgb(var(--text-primary))' }} />
                       </div>
                     )}
                   </li>

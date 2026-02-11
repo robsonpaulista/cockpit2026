@@ -5,6 +5,7 @@ import { ProtectedRoute } from '@/components/protected-route'
 import { DashboardHeader } from '@/components/dashboard-header'
 import { DashboardPermissionGuard } from '@/components/dashboard-permission-guard'
 import { NavigationLoadingBar } from '@/components/navigation-loading-bar'
+import { PageTransition } from '@/components/page-transition'
 import { SidebarProvider, useSidebar } from '@/contexts/sidebar-context'
 import { NavigationLoadingProvider } from '@/contexts/navigation-loading-context'
 import { ThemeProvider } from '@/contexts/theme-context'
@@ -25,7 +26,9 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
       )}>
         <DashboardHeader />
         <main className="flex-1 overflow-y-auto">
-          <DashboardPermissionGuard>{children}</DashboardPermissionGuard>
+          <DashboardPermissionGuard>
+            <PageTransition>{children}</PageTransition>
+          </DashboardPermissionGuard>
         </main>
       </div>
     </div>

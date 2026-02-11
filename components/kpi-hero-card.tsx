@@ -29,30 +29,25 @@ export function KPIHeroCard({ kpi, subtitle, infoLines, href = '#' }: KPIHeroCar
       ? parseFloat(kpi.value.replace(/[^\d,]/g, '').replace(',', '.')) || 0
       : kpi.value || 0
 
-    if (typeof numericValue === 'number' && numericValue > 0) {
-      const duration = 500
-      const steps = 30
-      const increment = numericValue / steps
-      let current = 0
-      let step = 0
+    if (typeof numericValue === 'number' && numericValue > 0 && !kpi.value.toString().includes('/')) {
+      const duration = 900 // mais lento = mais impactante
+      const fps = 60
+      const totalFrames = Math.round(duration / (1000 / fps))
+      let frame = 0
 
       const timer = setInterval(() => {
-        step++
-        current = Math.min(increment * step, numericValue)
-        
-        if (typeof kpi.value === 'string' && kpi.value.includes('/')) {
-          // Se for formato "X/Y", manter formato
-          setDisplayValue(kpi.value)
-        } else {
-          setDisplayValue(Math.floor(current).toLocaleString('pt-BR'))
-        }
+        frame++
+        // Easing: desacelera no final (easeOutExpo)
+        const progress = 1 - Math.pow(1 - frame / totalFrames, 3)
+        const current = Math.floor(numericValue * progress)
+        setDisplayValue(current.toLocaleString('pt-BR'))
 
-        if (step >= steps) {
+        if (frame >= totalFrames) {
           clearInterval(timer)
           setDisplayValue(kpi.value)
           setIsAnimating(false)
         }
-      }, duration / steps)
+      }, 1000 / fps)
       
       return () => clearInterval(timer)
     } else {
@@ -75,15 +70,16 @@ export function KPIHeroCard({ kpi, subtitle, infoLines, href = '#' }: KPIHeroCar
   const content = (
     <div
       className={cn(
-        'relative p-5 rounded-[14px] bg-accent-gold border border-accent-gold shadow-card',
-        'hover:shadow-card-hover hover:-translate-y-0.5',
-        'transition-all duration-200 ease-out',
+        'relative p-5 rounded-[14px] bg-accent-gold border border-accent-gold',
+        'shadow-[0_2px_8px_rgba(0,0,0,0.1)]',
+        'hover:shadow-[0_12px_32px_rgba(0,0,0,0.12)] hover:-translate-y-[3px]',
+        'transition-all duration-300 ease-out',
         'cursor-pointer group overflow-hidden'
       )}
     >
       {/* Layout horizontal */}
       <div className="flex items-center gap-4">
-        <div className="p-3 rounded-xl bg-white/20 flex-shrink-0">
+        <div className="p-3 rounded-xl bg-white/20 flex-shrink-0 animate-breathe">
           <TrendingUp className="w-8 h-8 text-white" />
         </div>
         <div className="flex-1 min-w-0">

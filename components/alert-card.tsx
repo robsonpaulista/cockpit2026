@@ -113,7 +113,9 @@ export function AlertCard({ alert }: AlertCardProps) {
       <div className="flex items-start gap-2">
         <div className={cn(
           'p-1.5 rounded-md flex-shrink-0',
-          config.iconBg
+          config.iconBg,
+          classification === 'risco' && 'animate-micro-shake',
+          classification === 'atencao' && 'animate-subtle-pulse',
         )}>
           <Icon className={cn('w-3 h-3', config.iconColor)} />
         </div>

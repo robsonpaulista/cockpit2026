@@ -4,6 +4,8 @@ import { useEffect, useState, useMemo } from 'react'
 import { KPICard } from '@/components/kpi-card'
 import { KPIHeroCard } from '@/components/kpi-hero-card'
 import { AlertCard } from '@/components/alert-card'
+import { AnimatedSection } from '@/components/animated-section'
+import { AnimatedBar } from '@/components/animated-bar'
 // Lazy-load do AIAgent - só carrega quando montado (não bloqueia navegação)
 const AIAgent = dynamic(
   () => import('@/components/ai-agent').then(mod => ({ default: mod.AIAgent })),
@@ -661,7 +663,7 @@ export default function Home() {
           },
             {
               id: 'presenca',
-              label: 'Base Ativa no Território',
+              label: 'Cobertura Territorial',
               value: cidadesUnicas !== null && cidadesUnicas !== undefined 
                 ? `${cidadesUnicas}/224` 
                 : data.presenca.value,
@@ -787,8 +789,8 @@ export default function Home() {
             </div>
           ) : (
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 items-stretch">
-              {kpisComMedia.filter(kpi => kpi.id !== 'ife').map((kpi) => {
-                // Subtítulo para Base Ativa no Território (% de cobertura)
+              {kpisComMedia.filter(kpi => kpi.id !== 'ife').map((kpi, index) => {
+                // Subtítulo para Cobertura Territorial (% de cobertura)
                 let cardSubtitle: string | undefined
                 let cardSubtitleType: 'positive' | 'negative' | 'neutral' | undefined
                 let cardInfoLines: Array<{ text: string; type?: 'positive' | 'negative' | 'neutral' }> | undefined
@@ -849,14 +851,15 @@ export default function Home() {
                 }
                 
                 return (
-                  <KPICard 
-                    key={kpi.id} 
-                    kpi={kpi} 
-                    href={`/${kpi.id}`}
-                    subtitle={cardSubtitle}
-                    subtitleType={cardSubtitleType}
-                    infoLines={cardInfoLines}
-                  />
+                  <AnimatedSection key={kpi.id} delay={index * 60}>
+                    <KPICard 
+                      kpi={kpi} 
+                      href={`/${kpi.id}`}
+                      subtitle={cardSubtitle}
+                      subtitleType={cardSubtitleType}
+                      infoLines={cardInfoLines}
+                    />
+                  </AnimatedSection>
                 )
               })}
             </div>
@@ -906,8 +909,273 @@ export default function Home() {
           </section>
         )}
 
-        {/* Grid 1: Gráfico + Alertas */}
+        {/* Grid 1: Análise de Territórios + Bandeiras */}
+        <AnimatedSection>
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+          <div className="lg:col-span-2">
+            {/* Análise de Territórios - Compacto */}
+            <div className="bg-surface rounded-2xl border border-card p-4 relative overflow-hidden h-full">
+              {/* Linha vertical de destaque */}
+              <div className="absolute left-0 top-0 bottom-0 w-1 bg-accent-gold opacity-20" />
+              
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  <Activity className="w-4 h-4 text-accent-gold" />
+                  <h2 className="text-base font-semibold text-text-primary">Análise de Territórios</h2>
+                  <span className="text-[10px] text-secondary bg-background px-1.5 py-0.5 rounded">Fonte própria</span>
+                </div>
+                <button
+                  onClick={() => setAnaliseTerritoriosTelaCheia(true)}
+                  className="p-1.5 rounded-lg hover:bg-background transition-colors text-secondary hover:text-text-primary"
+                  title="Ver detalhes"
+                >
+                  <Maximize2 className="w-4 h-4" />
+                </button>
+              </div>
+
+              {loadingTerritorios ? (
+                <div className="grid grid-cols-3 gap-1.5">
+                  {[1, 2, 3].map((i) => (
+                    <div key={i} className="h-12 bg-background rounded-lg animate-pulse" />
+                  ))}
+                </div>
+              ) : (
+                <>
+                  {/* Estatísticas Compactas */}
+                  {(() => {
+                    const presencaKpi = kpisComMedia.find(k => k.id === 'presenca')
+                    let cidadesAtivas = 0
+                    let totalCidades = 224
+                    
+                    if (presencaKpi && typeof presencaKpi.value === 'string' && presencaKpi.value.includes('/')) {
+                      const [cidades, total] = presencaKpi.value.split('/').map(v => parseInt(v.trim()) || 0)
+                      cidadesAtivas = cidades
+                      totalCidades = total || 224
+                    }
+                    
+                    const cidadesVisitadas = territorioStats?.cidadesVisitadas || 0
+                    const percentualCobertura = cidadesAtivas > 0 
+                      ? Math.round((cidadesVisitadas / cidadesAtivas) * 100) 
+                      : 0
+
+                    // Calcular eleitorado: total do estado, com presença e sem presença
+                    const normalizeName = (name: string) => name.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim()
+                    const cidadesComLiderancasNorm = new Set(cidadesComLiderancas.map(normalizeName))
+                    
+                    let eleitoradoTotal = 0
+                    let eleitoradoComPresenca = 0
+                    let eleitoradoSemPresenca = 0
+                    
+                    Object.entries(eleitoresPorCidade).forEach(([cidade, eleitorado]) => {
+                      eleitoradoTotal += eleitorado
+                      if (cidadesComLiderancasNorm.has(normalizeName(cidade))) {
+                        eleitoradoComPresenca += eleitorado
+                      } else {
+                        eleitoradoSemPresenca += eleitorado
+                      }
+                    })
+
+                    const percentualEleitoradoCoberto = eleitoradoTotal > 0
+                      ? Math.round((eleitoradoComPresenca / eleitoradoTotal) * 100)
+                      : 0
+                    
+                    return (
+                      <>
+                        <div className="grid grid-cols-3 gap-2 mb-2">
+                          <div className="p-3 rounded-lg border border-accent-gold/30 bg-gradient-to-br from-primary-soft to-surface">
+                            <div className="flex items-center gap-1.5 mb-1">
+                              <MapPin className="w-3.5 h-3.5 text-accent-gold" />
+                              <p className="text-xs font-medium text-secondary">Presença</p>
+                            </div>
+                            <p className="text-xl font-bold text-text-primary leading-tight">{cidadesAtivas}</p>
+                            <p className="text-xs text-secondary">de {totalCidades}</p>
+                          </div>
+                          <div className="p-3 rounded-lg border border-card bg-surface">
+                            <div className="flex items-center gap-1.5 mb-1">
+                              <Activity className="w-3.5 h-3.5 text-accent-gold" />
+                              <p className="text-xs font-medium text-secondary">Visitadas</p>
+                            </div>
+                            <p className="text-xl font-bold text-text-primary leading-tight">{cidadesVisitadas}</p>
+                            <p className="text-xs text-secondary">cidades</p>
+                          </div>
+                          <div className="p-3 rounded-lg border border-card bg-surface">
+                            <div className="flex items-center gap-1.5 mb-1">
+                              <TrendingUp className="w-3.5 h-3.5 text-accent-gold" />
+                              <p className="text-xs font-medium text-secondary">Cobertura</p>
+                            </div>
+                            <p className="text-xl font-bold text-text-primary leading-tight">{percentualCobertura}%</p>
+                            <p className="text-xs text-secondary">das ativas</p>
+                          </div>
+                        </div>
+
+                        {/* Eleitorado */}
+                        {eleitoradoTotal > 0 && (
+                          <div className="p-3 rounded-lg border border-card bg-surface mb-2">
+                            <div className="flex items-center gap-1.5 mb-1.5">
+                              <Users className="w-3.5 h-3.5 text-accent-gold" />
+                              <p className="text-xs font-medium text-secondary">Eleitorado</p>
+                              <span className="ml-auto text-xs font-semibold text-accent-gold">{percentualEleitoradoCoberto}% coberto</span>
+                            </div>
+                            <AnimatedBar 
+                              percentage={percentualEleitoradoCoberto} 
+                              className="mb-1.5"
+                            />
+                            <p className="text-xs text-secondary mb-2">Potencial de expansão: <span className="font-semibold text-accent-gold">{Math.round(eleitoradoSemPresenca / 1000).toLocaleString('pt-BR')} mil eleitores</span></p>
+                            <div className="grid grid-cols-3 gap-2 text-center">
+                              <div>
+                                <p className="text-sm font-bold text-text-primary">{eleitoradoTotal.toLocaleString('pt-BR')}</p>
+                                <p className="text-[10px] text-secondary">Total PI</p>
+                              </div>
+                              <div>
+                                <p className="text-sm font-bold text-accent-gold">{eleitoradoComPresenca.toLocaleString('pt-BR')}</p>
+                                <p className="text-[10px] text-secondary">Com presença</p>
+                              </div>
+                              <div>
+                                <p className="text-sm font-bold text-secondary">{eleitoradoSemPresenca.toLocaleString('pt-BR')}</p>
+                                <p className="text-[10px] text-secondary">Sem presença</p>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                      </>
+                    )
+                  })()}
+
+                  {/* Resumo de Territórios - Inline */}
+                  <div className="flex items-center gap-2 text-xs">
+                    {territoriosQuentes.length > 0 && (
+                      <div className="flex items-center gap-1.5 px-2 py-1 bg-emerald-50 rounded-full">
+                        <Flame className="w-3 h-3 text-emerald-500" />
+                        <span className="text-emerald-700 font-medium">{territoriosQuentes.length} quentes</span>
+                      </div>
+                    )}
+                    {territoriosMornos.length > 0 && (
+                      <div className="flex items-center gap-1.5 px-2 py-1 bg-amber-50 rounded-full">
+                        <ThermometerSun className="w-3 h-3 text-amber-500" />
+                        <span className="text-amber-700 font-medium">{territoriosMornos.length} mornos</span>
+                      </div>
+                    )}
+                    {territoriosFrios.length > 0 && (
+                      <div className="flex items-center gap-1.5 px-2 py-1 bg-red-50 rounded-full">
+                        <ThermometerSnowflake className="w-3 h-3 text-red-500" />
+                        <span className="text-red-700 font-medium">{territoriosFrios.length} frios</span>
+                      </div>
+                    )}
+                  </div>
+                </>
+              )}
+            </div>
+
+          </div>
+
+          {/* Bandeiras de Campanha - Compacto (mesma altura que Análise de Territórios) */}
+          <div className="bg-surface rounded-2xl border border-card p-4 relative overflow-hidden flex flex-col">
+              {/* Linha vertical de destaque */}
+              <div className="absolute left-0 top-0 bottom-0 w-1 bg-accent-gold opacity-20" />
+              
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  <Flag className="w-4 h-4 text-accent-gold" />
+                  <h2 className="text-base font-semibold text-text-primary">Bandeiras</h2>
+                  <span className="text-[10px] text-secondary bg-background px-1.5 py-0.5 rounded">últimos 30 dias</span>
+                </div>
+                <button
+                  onClick={() => setBandeirasTelaCheia(true)}
+                  className="p-1.5 rounded-lg hover:bg-background transition-colors text-secondary hover:text-text-primary"
+                  title="Ver detalhes"
+                >
+                  <Maximize2 className="w-4 h-4" />
+                </button>
+              </div>
+              {loadingBandeiras ? (
+                <div className="space-y-1.5 flex-1 flex flex-col justify-center">
+                  {[1, 2, 3].map((i) => (
+                    <div key={i} className="h-12 bg-background rounded animate-pulse" />
+                  ))}
+                </div>
+              ) : bandeirasStats ? (
+                <div className="flex-1 flex flex-col min-h-0 overflow-y-auto">
+                  {/* Top 3 Bandeiras com métricas de desempenho */}
+                  {bandeirasStats.topBandeiras.length > 0 ? (
+                    <div className="flex flex-col justify-evenly flex-1 gap-2">
+                      {bandeirasStats.topBandeiras.slice(0, 3).map((bandeira, index) => {
+                        const maxUsage = bandeirasStats.topBandeiras[0]?.usage_count || 1
+                        const percentRelativo = Math.round((bandeira.usage_count / maxUsage) * 100)
+                        const hasMetrics = bandeira.posts > 0
+                        return (
+                          <div
+                            key={bandeira.theme}
+                            className="p-3 bg-background rounded-lg"
+                          >
+                            {/* Linha superior: nome + menções + % */}
+                            <div className="flex items-center justify-between mb-1.5">
+                              <div className="flex items-center gap-2">
+                                <div className="w-6 h-6 rounded-full bg-accent-gold-soft text-accent-gold flex items-center justify-center text-xs font-semibold">
+                                  {index + 1}
+                                </div>
+                                <span className="text-sm text-text-primary truncate max-w-[130px]">{bandeira.theme}</span>
+                              </div>
+                              <div className="flex items-center gap-2 text-xs">
+                                <span className="text-secondary">{bandeira.usage_count} menções</span>
+                                <span 
+                                  className="text-accent-gold font-medium cursor-help"
+                                  title={`${percentRelativo}% de frequência relativa à bandeira mais citada (${maxUsage} menções)`}
+                                >
+                                  {percentRelativo}%
+                                </span>
+                              </div>
+                            </div>
+                            {/* Linha inferior: métricas de desempenho */}
+                            {hasMetrics ? (
+                              <div className="flex items-center gap-3 pl-8 text-[10px]">
+                                <span className="flex items-center gap-0.5 text-secondary" title="Visualizações totais">
+                                  <Eye className="w-3 h-3" />
+                                  {bandeira.totalViews > 999
+                                    ? `${(bandeira.totalViews / 1000).toFixed(1)}k`
+                                    : bandeira.totalViews.toLocaleString('pt-BR')}
+                                </span>
+                                <span className="flex items-center gap-0.5 text-rose-500" title="Curtidas totais">
+                                  <Heart className="w-3 h-3" />
+                                  {bandeira.totalLikes > 999
+                                    ? `${(bandeira.totalLikes / 1000).toFixed(1)}k`
+                                    : bandeira.totalLikes.toLocaleString('pt-BR')}
+                                </span>
+                                <span className="flex items-center gap-0.5 text-blue-500" title="Engajamento total (curtidas + comentários)">
+                                  <MessageSquare className="w-3 h-3" />
+                                  {bandeira.totalEngagement > 999
+                                    ? `${(bandeira.totalEngagement / 1000).toFixed(1)}k`
+                                    : bandeira.totalEngagement.toLocaleString('pt-BR')}
+                                </span>
+                                <span className="text-secondary ml-auto">{bandeira.posts} post{bandeira.posts !== 1 ? 's' : ''}</span>
+                              </div>
+                            ) : (
+                              <p className="text-[10px] text-secondary pl-8 opacity-60">Sem dados do Instagram</p>
+                            )}
+                          </div>
+                        )
+                      })}
+                    </div>
+                  ) : (
+                    <p className="text-xs text-secondary text-center py-2 flex-1 flex items-center justify-center">
+                      Nenhuma bandeira ativa
+                    </p>
+                  )}
+                </div>
+              ) : (
+                <div className="bg-surface rounded-xl border border-card p-4 flex-1 flex items-center justify-center">
+                  <p className="text-sm text-secondary text-center">
+                    Erro ao carregar estatísticas das bandeiras
+                  </p>
+                </div>
+              )}
+            </div>
+
+        </div>
+        </AnimatedSection>
+
+        {/* Grid 2: Gráfico de Pesquisas + Alertas */}
+        <AnimatedSection delay={100}>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mt-4">
           <div className="lg:col-span-2">
             {/* Gráfico de Histórico de Pesquisas - Compacto */}
             <div className="bg-surface rounded-2xl border border-card p-4 relative overflow-hidden">
@@ -1153,7 +1421,7 @@ export default function Home() {
             
             <div className="flex items-center justify-between mb-3">
               <h2 className="text-base font-semibold text-text-primary flex items-center gap-2">
-                <AlertTriangle className="w-4 h-4 text-status-warning" />
+                <AlertTriangle className="w-4 h-4 text-status-warning animate-subtle-pulse" />
                 Alertas
               </h2>
               <button
@@ -1186,270 +1454,7 @@ export default function Home() {
             </div>
           </div>
         </div>
-
-        {/* Grid 2: Análise de Territórios + Bandeiras */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mt-4">
-          <div className="lg:col-span-2">
-            {/* Análise de Territórios - Compacto */}
-            <div className="bg-surface rounded-2xl border border-card p-4 relative overflow-hidden h-full">
-              {/* Linha vertical de destaque */}
-              <div className="absolute left-0 top-0 bottom-0 w-1 bg-accent-gold opacity-20" />
-              
-              <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center gap-2">
-                  <Activity className="w-4 h-4 text-accent-gold" />
-                  <h2 className="text-base font-semibold text-text-primary">Análise de Territórios</h2>
-                  <span className="text-[10px] text-secondary bg-background px-1.5 py-0.5 rounded">Fonte própria</span>
-                </div>
-                <button
-                  onClick={() => setAnaliseTerritoriosTelaCheia(true)}
-                  className="p-1.5 rounded-lg hover:bg-background transition-colors text-secondary hover:text-text-primary"
-                  title="Ver detalhes"
-                >
-                  <Maximize2 className="w-4 h-4" />
-                </button>
-              </div>
-
-              {loadingTerritorios ? (
-                <div className="grid grid-cols-3 gap-1.5">
-                  {[1, 2, 3].map((i) => (
-                    <div key={i} className="h-12 bg-background rounded-lg animate-pulse" />
-                  ))}
-                </div>
-              ) : (
-                <>
-                  {/* Estatísticas Compactas */}
-                  {(() => {
-                    const presencaKpi = kpisComMedia.find(k => k.id === 'presenca')
-                    let cidadesAtivas = 0
-                    let totalCidades = 224
-                    
-                    if (presencaKpi && typeof presencaKpi.value === 'string' && presencaKpi.value.includes('/')) {
-                      const [cidades, total] = presencaKpi.value.split('/').map(v => parseInt(v.trim()) || 0)
-                      cidadesAtivas = cidades
-                      totalCidades = total || 224
-                    }
-                    
-                    const cidadesVisitadas = territorioStats?.cidadesVisitadas || 0
-                    const percentualCobertura = cidadesAtivas > 0 
-                      ? Math.round((cidadesVisitadas / cidadesAtivas) * 100) 
-                      : 0
-
-                    // Calcular eleitorado: total do estado, com presença e sem presença
-                    const normalizeName = (name: string) => name.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim()
-                    const cidadesComLiderancasNorm = new Set(cidadesComLiderancas.map(normalizeName))
-                    
-                    let eleitoradoTotal = 0
-                    let eleitoradoComPresenca = 0
-                    let eleitoradoSemPresenca = 0
-                    
-                    Object.entries(eleitoresPorCidade).forEach(([cidade, eleitorado]) => {
-                      eleitoradoTotal += eleitorado
-                      if (cidadesComLiderancasNorm.has(normalizeName(cidade))) {
-                        eleitoradoComPresenca += eleitorado
-                      } else {
-                        eleitoradoSemPresenca += eleitorado
-                      }
-                    })
-
-                    const percentualEleitoradoCoberto = eleitoradoTotal > 0
-                      ? Math.round((eleitoradoComPresenca / eleitoradoTotal) * 100)
-                      : 0
-                    
-                    return (
-                      <>
-                        <div className="grid grid-cols-3 gap-2 mb-2">
-                          <div className="p-3 rounded-lg border border-accent-gold/30 bg-gradient-to-br from-primary-soft to-surface">
-                            <div className="flex items-center gap-1.5 mb-1">
-                              <MapPin className="w-3.5 h-3.5 text-accent-gold" />
-                              <p className="text-xs font-medium text-secondary">Presença</p>
-                            </div>
-                            <p className="text-xl font-bold text-text-primary leading-tight">{cidadesAtivas}</p>
-                            <p className="text-xs text-secondary">de {totalCidades}</p>
-                          </div>
-                          <div className="p-3 rounded-lg border border-card bg-surface">
-                            <div className="flex items-center gap-1.5 mb-1">
-                              <Activity className="w-3.5 h-3.5 text-accent-gold" />
-                              <p className="text-xs font-medium text-secondary">Visitadas</p>
-                            </div>
-                            <p className="text-xl font-bold text-text-primary leading-tight">{cidadesVisitadas}</p>
-                            <p className="text-xs text-secondary">cidades</p>
-                          </div>
-                          <div className="p-3 rounded-lg border border-card bg-surface">
-                            <div className="flex items-center gap-1.5 mb-1">
-                              <TrendingUp className="w-3.5 h-3.5 text-accent-gold" />
-                              <p className="text-xs font-medium text-secondary">Cobertura</p>
-                            </div>
-                            <p className="text-xl font-bold text-text-primary leading-tight">{percentualCobertura}%</p>
-                            <p className="text-xs text-secondary">das ativas</p>
-                          </div>
-                        </div>
-
-                        {/* Eleitorado */}
-                        {eleitoradoTotal > 0 && (
-                          <div className="p-3 rounded-lg border border-card bg-surface mb-2">
-                            <div className="flex items-center gap-1.5 mb-1.5">
-                              <Users className="w-3.5 h-3.5 text-accent-gold" />
-                              <p className="text-xs font-medium text-secondary">Eleitorado</p>
-                              <span className="ml-auto text-xs font-semibold text-accent-gold">{percentualEleitoradoCoberto}% coberto</span>
-                            </div>
-                            <div className="w-full h-2 bg-background rounded-full overflow-hidden mb-1.5">
-                              <div 
-                                className="h-full bg-accent-gold rounded-full transition-all duration-500"
-                                style={{ width: `${percentualEleitoradoCoberto}%` }}
-                              />
-                            </div>
-                            <p className="text-xs text-secondary mb-2">Potencial de expansão: <span className="font-semibold text-accent-gold">{Math.round(eleitoradoSemPresenca / 1000).toLocaleString('pt-BR')} mil eleitores</span></p>
-                            <div className="grid grid-cols-3 gap-2 text-center">
-                              <div>
-                                <p className="text-sm font-bold text-text-primary">{eleitoradoTotal.toLocaleString('pt-BR')}</p>
-                                <p className="text-[10px] text-secondary">Total PI</p>
-                              </div>
-                              <div>
-                                <p className="text-sm font-bold text-accent-gold">{eleitoradoComPresenca.toLocaleString('pt-BR')}</p>
-                                <p className="text-[10px] text-secondary">Com presença</p>
-                              </div>
-                              <div>
-                                <p className="text-sm font-bold text-secondary">{eleitoradoSemPresenca.toLocaleString('pt-BR')}</p>
-                                <p className="text-[10px] text-secondary">Sem presença</p>
-                              </div>
-                            </div>
-                          </div>
-                        )}
-                      </>
-                    )
-                  })()}
-
-                  {/* Resumo de Territórios - Inline */}
-                  <div className="flex items-center gap-2 text-xs">
-                    {territoriosQuentes.length > 0 && (
-                      <div className="flex items-center gap-1.5 px-2 py-1 bg-emerald-50 rounded-full">
-                        <Flame className="w-3 h-3 text-emerald-500" />
-                        <span className="text-emerald-700 font-medium">{territoriosQuentes.length} quentes</span>
-                      </div>
-                    )}
-                    {territoriosMornos.length > 0 && (
-                      <div className="flex items-center gap-1.5 px-2 py-1 bg-amber-50 rounded-full">
-                        <ThermometerSun className="w-3 h-3 text-amber-500" />
-                        <span className="text-amber-700 font-medium">{territoriosMornos.length} mornos</span>
-                      </div>
-                    )}
-                    {territoriosFrios.length > 0 && (
-                      <div className="flex items-center gap-1.5 px-2 py-1 bg-red-50 rounded-full">
-                        <ThermometerSnowflake className="w-3 h-3 text-red-500" />
-                        <span className="text-red-700 font-medium">{territoriosFrios.length} frios</span>
-                      </div>
-                    )}
-                  </div>
-                </>
-              )}
-            </div>
-
-          </div>
-
-          {/* Bandeiras de Campanha - Compacto (mesma altura que Análise de Territórios) */}
-          <div className="bg-surface rounded-2xl border border-card p-4 relative overflow-hidden flex flex-col">
-              {/* Linha vertical de destaque */}
-              <div className="absolute left-0 top-0 bottom-0 w-1 bg-accent-gold opacity-20" />
-              
-              <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center gap-2">
-                  <Flag className="w-4 h-4 text-accent-gold" />
-                  <h2 className="text-base font-semibold text-text-primary">Bandeiras</h2>
-                  <span className="text-[10px] text-secondary bg-background px-1.5 py-0.5 rounded">últimos 30 dias</span>
-                </div>
-                <button
-                  onClick={() => setBandeirasTelaCheia(true)}
-                  className="p-1.5 rounded-lg hover:bg-background transition-colors text-secondary hover:text-text-primary"
-                  title="Ver detalhes"
-                >
-                  <Maximize2 className="w-4 h-4" />
-                </button>
-              </div>
-              {loadingBandeiras ? (
-                <div className="space-y-1.5 flex-1 flex flex-col justify-center">
-                  {[1, 2, 3].map((i) => (
-                    <div key={i} className="h-12 bg-background rounded animate-pulse" />
-                  ))}
-                </div>
-              ) : bandeirasStats ? (
-                <div className="flex-1 flex flex-col min-h-0 overflow-y-auto">
-                  {/* Top 3 Bandeiras com métricas de desempenho */}
-                  {bandeirasStats.topBandeiras.length > 0 ? (
-                    <div className="flex flex-col justify-evenly flex-1 gap-2">
-                      {bandeirasStats.topBandeiras.slice(0, 3).map((bandeira, index) => {
-                        const maxUsage = bandeirasStats.topBandeiras[0]?.usage_count || 1
-                        const percentRelativo = Math.round((bandeira.usage_count / maxUsage) * 100)
-                        const hasMetrics = bandeira.posts > 0
-                        return (
-                          <div
-                            key={bandeira.theme}
-                            className="p-3 bg-background rounded-lg"
-                          >
-                            {/* Linha superior: nome + menções + % */}
-                            <div className="flex items-center justify-between mb-1.5">
-                              <div className="flex items-center gap-2">
-                                <div className="w-6 h-6 rounded-full bg-accent-gold-soft text-accent-gold flex items-center justify-center text-xs font-semibold">
-                                  {index + 1}
-                                </div>
-                                <span className="text-sm text-text-primary truncate max-w-[130px]">{bandeira.theme}</span>
-                              </div>
-                              <div className="flex items-center gap-2 text-xs">
-                                <span className="text-secondary">{bandeira.usage_count} menções</span>
-                                <span 
-                                  className="text-accent-gold font-medium cursor-help"
-                                  title={`${percentRelativo}% de frequência relativa à bandeira mais citada (${maxUsage} menções)`}
-                                >
-                                  {percentRelativo}%
-                                </span>
-                              </div>
-                            </div>
-                            {/* Linha inferior: métricas de desempenho */}
-                            {hasMetrics ? (
-                              <div className="flex items-center gap-3 pl-8 text-[10px]">
-                                <span className="flex items-center gap-0.5 text-secondary" title="Visualizações totais">
-                                  <Eye className="w-3 h-3" />
-                                  {bandeira.totalViews > 999
-                                    ? `${(bandeira.totalViews / 1000).toFixed(1)}k`
-                                    : bandeira.totalViews.toLocaleString('pt-BR')}
-                                </span>
-                                <span className="flex items-center gap-0.5 text-rose-500" title="Curtidas totais">
-                                  <Heart className="w-3 h-3" />
-                                  {bandeira.totalLikes > 999
-                                    ? `${(bandeira.totalLikes / 1000).toFixed(1)}k`
-                                    : bandeira.totalLikes.toLocaleString('pt-BR')}
-                                </span>
-                                <span className="flex items-center gap-0.5 text-blue-500" title="Engajamento total (curtidas + comentários)">
-                                  <MessageSquare className="w-3 h-3" />
-                                  {bandeira.totalEngagement > 999
-                                    ? `${(bandeira.totalEngagement / 1000).toFixed(1)}k`
-                                    : bandeira.totalEngagement.toLocaleString('pt-BR')}
-                                </span>
-                                <span className="text-secondary ml-auto">{bandeira.posts} post{bandeira.posts !== 1 ? 's' : ''}</span>
-                              </div>
-                            ) : (
-                              <p className="text-[10px] text-secondary pl-8 opacity-60">Sem dados do Instagram</p>
-                            )}
-                          </div>
-                        )
-                      })}
-                    </div>
-                  ) : (
-                    <p className="text-xs text-secondary text-center py-2 flex-1 flex items-center justify-center">
-                      Nenhuma bandeira ativa
-                    </p>
-                  )}
-                </div>
-              ) : (
-                <div className="bg-surface rounded-xl border border-card p-4 flex-1 flex items-center justify-center">
-                  <p className="text-sm text-secondary text-center">
-                    Erro ao carregar estatísticas das bandeiras
-                  </p>
-                </div>
-              )}
-            </div>
-
-        </div>
+        </AnimatedSection>
       </div>
 
       {/* Modal de Análise de Territórios em Tela Cheia */}
