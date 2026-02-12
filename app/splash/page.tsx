@@ -291,7 +291,7 @@ export default function SplashPage() {
 
         {/* Slogan */}
         <span className={`splash-slogan ${fase === 'slogan' || fase === 'saida' ? 'visivel' : ''}`}>
-          Comando Central de Eleições
+          Comando Central de Eleições Dep Fed Jadyel Alencar
         </span>
 
         {/* Barra de progresso sutil */}

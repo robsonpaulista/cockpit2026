@@ -100,7 +100,7 @@ export function LoginForm() {
               textTransform: 'uppercase',
             }}
           >
-            Comando Central de Eleições
+            Comando Central de Eleições Dep Fed Jadyel Alencar
           </p>
         </div>
 
