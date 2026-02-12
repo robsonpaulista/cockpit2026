@@ -285,6 +285,9 @@ export function ExecutiveBriefingModal({
         emAndamento.forEach(d => {
           const lider = d.lideranca ? ` — ${d.lideranca}` : ''
           lines.push(`  • ${d.title}${lider}`)
+          if (d.description) {
+            lines.push(`    _${d.description}_`)
+          }
         })
         lines.push(``)
       }
