@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useMemo } from 'react'
+import { useEffect, useState, useMemo, useRef } from 'react'
 import { KPICard } from '@/components/kpi-card'
 import { KPIHeroCard } from '@/components/kpi-hero-card'
 import { AlertCard } from '@/components/alert-card'
@@ -99,6 +99,10 @@ export default function Home() {
   const [bandeirasTelaCheia, setBandeirasTelaCheia] = useState(false)
   const [alertasTelaCheia, setAlertasTelaCheia] = useState(false)
   const [insightTelaCheia, setInsightTelaCheia] = useState(false)
+
+  // Monitor de Imprensa — auto-scroll
+  const monitorScrollRef = useRef<HTMLDivElement>(null)
+  const [monitorPaused, setMonitorPaused] = useState<boolean>(false)
   const [expectativasPorCidade, setExpectativasPorCidade] = useState<Record<string, number>>({})
 
   // Montar o agente de IA com delay (não bloqueia carregamento/navegação inicial)
@@ -232,6 +236,44 @@ export default function Home() {
 
     return { headline, tone, pos, neg, neu, highRisk, total }
   }, [monitorNews])
+
+  // Auto-scroll suave do Monitor de Imprensa
+  useEffect(() => {
+    // Não rolar se pausado, carregando, ou poucas notícias
+    if (monitorPaused || loadingAlerts || monitorNews.length <= 3) return
+
+    const container = monitorScrollRef.current
+    if (!container) return
+
+    let scrollIndex = 0
+
+    const tick = () => {
+      if (!container) return
+      const items = container.querySelectorAll<HTMLElement>(':scope > a')
+      if (items.length === 0) return
+
+      const { scrollHeight, clientHeight } = container
+      const maxScroll = scrollHeight - clientHeight
+      if (maxScroll <= 0) return
+
+      scrollIndex++
+      if (scrollIndex >= items.length) {
+        // Chegou ao fim — volta ao topo suavemente
+        scrollIndex = 0
+        container.scrollTo({ top: 0, behavior: 'smooth' })
+      } else {
+        // Scroll até o próximo item
+        const nextItem = items[scrollIndex]
+        if (nextItem) {
+          container.scrollTo({ top: nextItem.offsetTop, behavior: 'smooth' })
+        }
+      }
+    }
+
+    const interval = setInterval(tick, 5000) // 5s entre cada scroll
+
+    return () => clearInterval(interval)
+  }, [monitorPaused, loadingAlerts, monitorNews.length])
 
   // Calcular média das pesquisas diretamente a partir dos dados do gráfico
   const mediaPesquisas = pollsData.length > 0
@@ -1515,6 +1557,12 @@ export default function Home() {
               <h2 className="text-base font-semibold text-text-primary flex items-center gap-2">
                 <Activity className="w-4 h-4 text-secondary" />
                 Monitor de Imprensa
+                {monitorNews.length > 3 && !loadingAlerts && (
+                  <span className="flex items-center gap-1 text-[9px] text-secondary font-normal">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 radar-pulse" />
+                    ao vivo
+                  </span>
+                )}
               </h2>
               <button
                 onClick={() => setAlertasTelaCheia(true)}
@@ -1540,7 +1588,12 @@ export default function Home() {
               </div>
             )}
 
-            <div className="space-y-1.5 max-h-[200px] overflow-y-auto flex-1">
+            <div 
+              ref={monitorScrollRef}
+              onMouseEnter={() => setMonitorPaused(true)}
+              onMouseLeave={() => setMonitorPaused(false)}
+              className="space-y-1.5 max-h-[200px] overflow-y-auto flex-1 scroll-smooth monitor-scroll"
+            >
               {loadingAlerts ? (
                 <>
                   {[1, 2, 3].map((i) => (
@@ -1551,7 +1604,7 @@ export default function Home() {
                   ))}
                 </>
               ) : monitorNews.length > 0 ? (
-                monitorNews.slice(0, 4).map((item) => {
+                monitorNews.map((item) => {
                   const isHighRisk = item.risk_level === 'high'
                   const sentimentDot = item.sentiment === 'positive' ? 'bg-emerald-500' 
                     : item.sentiment === 'negative' ? 'bg-red-500' 
