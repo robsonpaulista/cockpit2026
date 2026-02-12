@@ -317,17 +317,19 @@ export default function NarrativasPage() {
     const topInsight = insightsMap.get(top.id)
 
     // Encontrar tendências
-    let growing: Narrative | null = null
-    let weakest: Narrative | null = null
-
-    narrativas.forEach(n => {
+    const growingNarrative = narrativas.find(n => {
+      if (n.id === top.id) return false
       const insight = insightsMap.get(n.id)
-      if (!insight) return
-      if (insight.trend === 'up' && n.id !== top.id && !growing) growing = n
-      if (insight.dominanceLevel === 'low' && n.status === 'ativa' && !weakest) weakest = n
-    })
+      return insight && insight.trend === 'up'
+    }) ?? null
+
+    const weakestNarrative = narrativas.find(n => {
+      const insight = insightsMap.get(n.id)
+      return insight && insight.dominanceLevel === 'low' && n.status === 'ativa'
+    }) ?? null
 
     // Se não encontrou growing, pegar o segundo com melhor score
+    let growing: Narrative | null = growingNarrative
     if (!growing && narrativas.length > 1) {
       const second = narrativas.find(n => n.id !== top.id && n.status === 'ativa')
       if (second) {
@@ -335,6 +337,7 @@ export default function NarrativasPage() {
         if (secondInsight && secondInsight.trend !== 'down') growing = second
       }
     }
+    const weakest: Narrative | null = weakestNarrative
 
     // Gerar frase-resumo principal
     let mainSentence = ''
