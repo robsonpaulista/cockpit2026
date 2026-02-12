@@ -1540,6 +1540,9 @@ export default function Home() {
                           cidadesVisitadas={cidadesVisitadasLista}
                           totalCidades={224}
                           fullscreen={true}
+                          territoriosQuentes={territoriosQuentes}
+                          territoriosMornos={territoriosMornos}
+                          territoriosFrios={territoriosFrios}
                           onFullscreen={() => {
                             const container = document.getElementById('mapa-territorio-container')
                             if (!container) return
