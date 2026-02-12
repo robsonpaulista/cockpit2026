@@ -22,7 +22,7 @@ const MapWrapperLeaflet = dynamic(
   { ssr: false }
 )
 import { KPI, Alert, NewsItem } from '@/types'
-import { TrendingUp, MapPin, Flag, MessageSquare, ThermometerSun, ThermometerSnowflake, Flame, Activity, Maximize2, X, Lightbulb, AlertTriangle, Users, Heart, Eye, Crown, ArrowUpRight, ArrowDownRight, ArrowRight, Zap, Target, FileText } from 'lucide-react'
+import { TrendingUp, MapPin, Flag, MessageSquare, ThermometerSun, ThermometerSnowflake, Flame, Activity, Maximize2, X, Lightbulb, AlertTriangle, Users, Heart, Eye, Crown, ArrowUpRight, ArrowDownRight, ArrowRight, Zap, Target, FileText, Bot } from 'lucide-react'
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 import { loadInstagramConfigAsync, fetchInstagramData } from '@/lib/instagramApi'
 import { getEleitoradoByCity, getAllEleitores } from '@/lib/eleitores'
@@ -91,7 +91,7 @@ export default function Home() {
     rodada: number
   } | null>(null)
   const [rankingPesquisas, setRankingPesquisas] = useState<{ posicao: number; totalCandidatos: number; projecaoVotos: number | null; cidadesComPesquisa: number } | null>(null)
-  const [agenteMontado, setAgenteMontado] = useState(false)
+  const [agenteMontado, setAgenteMontado] = useState<boolean>(false)
   const [graficoPollsTelaCheia, setGraficoPollsTelaCheia] = useState(false)
   const [analiseTerritoriosTelaCheia, setAnaliseTerritoriosTelaCheia] = useState(false)
   const [showMapaPresenca, setShowMapaPresenca] = useState(true)
@@ -105,11 +105,7 @@ export default function Home() {
   const [monitorPaused, setMonitorPaused] = useState<boolean>(false)
   const [expectativasPorCidade, setExpectativasPorCidade] = useState<Record<string, number>>({})
 
-  // Montar o agente de IA com delay (não bloqueia carregamento/navegação inicial)
-  useEffect(() => {
-    const timer = setTimeout(() => setAgenteMontado(true), 5000)
-    return () => clearTimeout(timer)
-  }, [])
+  // Agente de IA: só monta quando o usuário clicar (evita recarregar dados ao navegar entre páginas)
 
   // Votos da eleição anterior (2022) para cálculo comparativo
   const VOTOS_ELEICAO_ANTERIOR = 83175
@@ -1712,30 +1708,48 @@ export default function Home() {
                       : 0
                     
                     return (
-                      <div className="grid grid-cols-3 gap-4 mb-6">
-                        <div className="relative p-6 rounded-2xl border-2 border-accent-gold/30 bg-gradient-to-br from-primary-soft to-surface">
-                          <div className="flex items-center gap-2 mb-2">
-                            <MapPin className="w-5 h-5 text-accent-gold" />
+                      <div className="grid grid-cols-3 gap-3 mb-6">
+                        <div className="relative p-4 rounded-[14px] border border-card bg-surface shadow-[0_1px_3px_rgba(0,0,0,0.06)] h-full min-h-[100px] flex flex-col justify-between">
+                          <div className="flex items-center gap-2">
+                            <div className="p-1.5 rounded-lg bg-accent-gold-soft flex-shrink-0">
+                              <MapPin className="w-4 h-4 text-accent-gold" />
+                            </div>
                             <p className="text-sm font-medium text-secondary">Cidades com Presença</p>
                           </div>
-                          <p className="text-4xl font-bold text-text-primary">{cidadesAtivas}</p>
-                          <p className="text-sm text-secondary mt-1">de {totalCidades} municípios</p>
+                          <div className="mt-auto pt-2">
+                            <p className="text-2xl font-bold text-text-primary">{cidadesAtivas}</p>
+                            <div className="min-h-[2rem] flex items-start mt-1">
+                              <p className="text-xs font-medium text-secondary">de {totalCidades} municípios</p>
+                            </div>
+                          </div>
                         </div>
-                        <div className="relative p-6 rounded-2xl border border-card bg-surface">
-                          <div className="flex items-center gap-2 mb-2">
-                            <Activity className="w-5 h-5 text-blue-600" />
+                        <div className="relative p-4 rounded-[14px] border border-card bg-surface shadow-[0_1px_3px_rgba(0,0,0,0.06)] h-full min-h-[100px] flex flex-col justify-between">
+                          <div className="flex items-center gap-2">
+                            <div className="p-1.5 rounded-lg bg-blue-100 flex-shrink-0">
+                              <Activity className="w-4 h-4 text-blue-600" />
+                            </div>
                             <p className="text-sm font-medium text-secondary">Cidades Visitadas</p>
                           </div>
-                          <p className="text-4xl font-bold text-blue-600">{cidadesVisitadas}</p>
-                          <p className="text-sm text-secondary mt-1">de {cidadesAtivas} com presença</p>
+                          <div className="mt-auto pt-2">
+                            <p className="text-2xl font-bold text-blue-600">{cidadesVisitadas}</p>
+                            <div className="min-h-[2rem] flex items-start mt-1">
+                              <p className="text-xs font-medium text-secondary">de {cidadesAtivas} com presença</p>
+                            </div>
+                          </div>
                         </div>
-                        <div className="relative p-6 rounded-2xl border border-card bg-surface">
-                          <div className="flex items-center gap-2 mb-2">
-                            <TrendingUp className="w-5 h-5 text-emerald-600" />
+                        <div className="relative p-4 rounded-[14px] border border-card bg-surface shadow-[0_1px_3px_rgba(0,0,0,0.06)] h-full min-h-[100px] flex flex-col justify-between">
+                          <div className="flex items-center gap-2">
+                            <div className="p-1.5 rounded-lg bg-emerald-100 flex-shrink-0">
+                              <TrendingUp className="w-4 h-4 text-emerald-600" />
+                            </div>
                             <p className="text-sm font-medium text-secondary">Cobertura</p>
                           </div>
-                          <p className="text-4xl font-bold text-emerald-600">{percentualCobertura}%</p>
-                          <p className="text-sm text-secondary mt-1">das cidades com presença</p>
+                          <div className="mt-auto pt-2">
+                            <p className="text-2xl font-bold text-emerald-600">{percentualCobertura}%</p>
+                            <div className="min-h-[2rem] flex items-start mt-1">
+                              <p className="text-xs font-medium text-secondary">das cidades com presença</p>
+                            </div>
+                          </div>
                         </div>
                       </div>
                     )
@@ -2696,8 +2710,16 @@ export default function Home() {
         </div>
       )}
 
-      {/* Agente de IA - montado com delay para não bloquear navegação */}
-      {agenteMontado && (
+      {/* Agente de IA — botão flutuante sempre visível, monta dados só no clique */}
+      {!agenteMontado ? (
+        <button
+          onClick={() => setAgenteMontado(true)}
+          className="fixed bottom-6 right-6 z-40 w-14 h-14 rounded-full bg-gradient-to-br from-accent-gold to-accent-gold shadow-lg shadow-accent-gold/30 flex items-center justify-center hover:scale-110 transition-transform"
+          title="Abrir Agente de IA"
+        >
+          <Bot className="w-7 h-7 text-white" />
+        </button>
+      ) : (
         <AIAgent
           loadingKPIs={loading}
           loadingPolls={loadingPolls}

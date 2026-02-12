@@ -209,12 +209,27 @@ export default function TerritorioPage() {
   const cidadeCol = headers.find((h) =>
     /cidade|city|município|municipio/i.test(h)
   ) || headers[1] || 'Coluna 2'
-  const cargoCol = headers.find((h) => {
-    const normalized = h.toLowerCase().trim()
-    // Procurar por colunas de cargo (priorizar Cargo 2024, mas aceitar outras variações)
-    return /cargo.*2024|cargo.*atual|cargo/i.test(normalized) && 
-           !/expectativa|votos|telefone|email|whatsapp|contato|endereco|endereço/i.test(normalized)
-  })
+  const cargoCol = (() => {
+    // Priorizar "Cargo 2024" explicitamente
+    const cargo2024 = headers.find(h => /cargo.*2024/i.test(h))
+    if (cargo2024) return cargo2024
+    // Fallback: Cargo Atual ou qualquer coluna de cargo (exceto 2020)
+    return headers.find((h) => {
+      const normalized = h.toLowerCase().trim()
+      return /cargo.*atual|cargo/i.test(normalized) && 
+             !/cargo.*2020/i.test(normalized) &&
+             !/expectativa|votos|telefone|email|whatsapp|contato|endereco|endereço/i.test(normalized)
+    })
+  })()
+
+  // Lista de cargos únicos para dropdown
+  const cargosUnicos = cargoCol
+    ? Array.from(new Set(
+        liderancas
+          .map(l => String(l[cargoCol] || '').trim())
+          .filter(c => c.length > 0)
+      )).sort((a, b) => a.localeCompare(b, 'pt-BR'))
+    : []
 
   // Filtrar lideranças: incluir "Liderança Atual?" = SIM OU que tenham "Expectativa de Votos 2026"
   const liderancasFiltradas = (() => {
@@ -262,8 +277,8 @@ export default function TerritorioPage() {
 
     if (filtroCargo && cargoCol) {
       filtradas = filtradas.filter((l) => {
-        const cargo = String(l[cargoCol] || '').toLowerCase()
-        return cargo.includes(filtroCargo.toLowerCase())
+        const cargo = String(l[cargoCol] || '').trim()
+        return cargo === filtroCargo
       })
     }
 
@@ -436,10 +451,10 @@ export default function TerritorioPage() {
 
     const totaisPorCargo: Record<string, number> = {}
     
-    // Contar cada liderança por cargo (sem distinct, sem agrupamento por nome)
+    // Contar cada liderança por cargo (ignorar vazios)
     liderancasFiltradas.forEach((lider) => {
-      const cargo = String(lider[cargoCol] || 'Sem cargo').trim()
-      // Incrementar contador para este cargo (cada liderança conta)
+      const cargo = String(lider[cargoCol] || '').trim()
+      if (!cargo) return // Ignorar lideranças sem cargo preenchido
       totaisPorCargo[cargo] = (totaisPorCargo[cargo] || 0) + 1
     })
 
@@ -569,18 +584,21 @@ export default function TerritorioPage() {
               </div>
 
               {/* Filtro por Cargo */}
-              {cargoCol && (
+              {cargoCol && cargosUnicos.length > 0 && (
                 <div>
                   <label className="block text-xs font-medium text-secondary mb-2">
                     Cargo
                   </label>
-                  <input
-                    type="text"
+                  <select
                     value={filtroCargo}
                     onChange={(e) => setFiltroCargo(e.target.value)}
-                    placeholder="Filtrar por cargo..."
                     className="w-full px-3 py-2 text-sm border border-card rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-gold-soft bg-surface"
-                  />
+                  >
+                    <option value="">Todos os cargos</option>
+                    {cargosUnicos.map((cargo) => (
+                      <option key={cargo} value={cargo}>{cargo}</option>
+                    ))}
+                  </select>
                 </div>
               )}
 
@@ -888,92 +906,72 @@ export default function TerritorioPage() {
                             return (
                               <div
                                 key={idx}
-                                className={`p-4 border-b border-card last:border-b-0 hover:bg-background/50 transition-colors ${
+                                className={`px-4 py-2.5 border-b border-card last:border-b-0 hover:bg-background/50 transition-colors ${
                                   isDestaque ? 'bg-status-warning/5 border-l-4 border-l-status-warning' : ''
                                 }`}
                               >
-                                <div className="flex items-center justify-between">
-                                  <div className="flex items-center gap-3 flex-1">
-                                    <div className="p-2 rounded-lg bg-accent-gold-soft/50">
-                                      <Users className="w-3 h-3 text-accent-gold" />
-                                    </div>
-                                    <div className="flex-1 min-w-0">
-                                      <div className="flex items-center gap-2">
-                                        <p className="text-sm font-semibold text-text-primary truncate">
-                                          {lider[nomeCol] || 'Sem nome'}
-                                        </p>
-                                        {isDestaque && (
-                                          <span className="px-2 py-0.5 text-xs font-medium bg-status-warning/20 text-status-warning rounded-lg">
-                                            Sem Liderança Atual
+                                {/* Identificar colunas inline (cargo, dep. estadual) — ordem: cargo primeiro */}
+                                {(() => {
+                                  const cargoInline = headers.find(h => /cargo.*2024/i.test(h) && h !== nomeCol && h !== cidadeCol && h !== expectativaVotosCol)
+                                  const depEstadual = headers.find(h => /dep.*estadual|deputad.*estadual/i.test(h) && h !== nomeCol && h !== cidadeCol)
+                                  const orderedCols = [cargoInline, depEstadual].filter(Boolean) as string[]
+                                  const inlineInfo = orderedCols
+                                    .map(h => lider[h] ? `${h}: ${lider[h]}` : null)
+                                    .filter(Boolean)
+                                    .join('  ·  ')
+
+                                  return (
+                                    <div className="flex items-center justify-between">
+                                      <div className="flex items-center gap-3 flex-1 min-w-0">
+                                        <div className="p-1.5 rounded-lg bg-accent-gold-soft/50">
+                                          <Users className="w-3 h-3 text-accent-gold" />
+                                        </div>
+                                        <div className="flex items-center gap-2 flex-1 min-w-0">
+                                          <p className="text-sm font-semibold text-text-primary truncate">
+                                            {lider[nomeCol] || 'Sem nome'}
+                                          </p>
+                                          {inlineInfo && (
+                                            <span className="text-[11px] text-secondary truncate hidden sm:inline">
+                                              {inlineInfo}
+                                            </span>
+                                          )}
+                                          {isDestaque && (
+                                            <span className="px-1.5 py-0.5 text-[10px] font-medium bg-status-warning/20 text-status-warning rounded-lg flex-shrink-0">
+                                              Sem Lid. Atual
+                                            </span>
+                                          )}
+                                        </div>
+                                      </div>
+                                      <div className="flex items-center gap-3 flex-shrink-0">
+                                        {expectativaVotosCol && lider[expectativaVotosCol] && (
+                                          <div className="text-right">
+                                            <p className="text-[10px] text-secondary leading-tight">Previsão 2026</p>
+                                            <p className="text-sm font-semibold text-accent-gold">
+                                              {numValue.toLocaleString('pt-BR')}
+                                            </p>
+                                          </div>
+                                        )}
+                                        {scoreCol && lider[scoreCol] && (
+                                          <div className="text-right">
+                                            <p className="text-[10px] text-secondary leading-tight">Score</p>
+                                            <p className="text-sm font-semibold text-text-primary">
+                                              {lider[scoreCol]}
+                                            </p>
+                                          </div>
+                                        )}
+                                        {statusCol && lider[statusCol] && (
+                                          <span
+                                            className={`px-2 py-0.5 text-[10px] rounded-lg ${
+                                              /ativo|active|sim/i.test(String(lider[statusCol]))
+                                                ? 'bg-status-success/10 text-status-success'
+                                                : 'bg-text-muted/10 text-secondary'
+                                            }`}
+                                          >
+                                            {lider[statusCol]}
                                           </span>
                                         )}
                                       </div>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-4">
-                                    {expectativaVotosCol && lider[expectativaVotosCol] && (
-                                      <div className="text-right">
-                                        <p className="text-xs text-secondary mb-0.5">Expectativa de Votos 2026</p>
-                                        <p className="text-sm font-semibold text-accent-gold">
-                                          {numValue.toLocaleString('pt-BR')}
-                                        </p>
-                                      </div>
-                                    )}
-                                    {scoreCol && lider[scoreCol] && (
-                    <div className="text-right">
-                                        <p className="text-xs text-secondary mb-0.5">Score</p>
-                                        <p className="text-sm font-semibold text-text-primary">
-                                          {lider[scoreCol]}
-                                        </p>
-                    </div>
-                                    )}
-                                    {statusCol && lider[statusCol] && (
-                                      <span
-                                        className={`px-2 py-1 text-xs rounded-lg ${
-                                          /ativo|active|sim/i.test(String(lider[statusCol]))
-                                            ? 'bg-status-success/10 text-status-success'
-                                            : 'bg-text-muted/10 text-secondary'
-                                        }`}
-                                      >
-                                        {lider[statusCol]}
-                                      </span>
-                                    )}
-                  </div>
-                </div>
-                                {/* Mostrar outras colunas importantes */}
-                                {headers.length > 3 && (() => {
-                                  // Filtrar e priorizar colunas
-                                  const outrasColunas = headers
-                                    .filter((h) => 
-                                      h !== nomeCol && 
-                                      h !== cidadeCol && 
-                                      h !== scoreCol && 
-                                      h !== statusCol &&
-                                      h !== expectativaVotosCol &&
-                                      h !== liderancaAtualCol &&
-                                      !/cargo.*2020/i.test(h) // Excluir Cargo 2020
-                                    )
-                                    // Priorizar Cargo 2024
-                                    .sort((a, b) => {
-                                      const aIsCargo2024 = /cargo.*2024/i.test(a)
-                                      const bIsCargo2024 = /cargo.*2024/i.test(b)
-                                      if (aIsCargo2024 && !bIsCargo2024) return -1
-                                      if (!aIsCargo2024 && bIsCargo2024) return 1
-                                      return 0
-                                    })
-                                    .slice(0, 3)
-
-                                  if (outrasColunas.length === 0) return null
-
-                                  return (
-                                    <div className="mt-3 pt-3 border-t border-card flex flex-wrap gap-2">
-                                      {outrasColunas.map((header) => (
-                                        <div key={header} className="text-xs">
-                                          <span className="text-secondary">{header}:</span>{' '}
-                                          <span className="text-text-primary">{lider[header] || '-'}</span>
-              </div>
-            ))}
-          </div>
+                                    </div>
                                   )
                                 })()}
                               </div>

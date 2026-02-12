@@ -39,6 +39,25 @@ const FILTROS = [
   { id: 'oportunidades', label: 'Oportunidades', icon: Target, description: 'Alto potencial sem liderança' },
 ]
 
+const REGIOES = [
+  { id: 'todas', label: 'Todas as Regiões' },
+  { id: 'Norte', label: 'Norte' },
+  { id: 'Centro-Norte', label: 'Centro-Norte' },
+  { id: 'Centro-Sul', label: 'Centro-Sul' },
+  { id: 'Sul', label: 'Sul' },
+]
+
+function getRegionByLat(lat: number): string {
+  if (lat > -4.8) return 'Norte'
+  if (lat > -6.5) return 'Centro-Norte'
+  if (lat > -8.5) return 'Centro-Sul'
+  return 'Sul'
+}
+
+function normalizeName(name: string): string {
+  return name.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim()
+}
+
 export function MapaPresenca({
   cidadesComPresenca,
   cidadesVisitadas = [],
@@ -52,6 +71,7 @@ export function MapaPresenca({
   const [clientReady, setClientReady] = useState<boolean>(false)
   const [isNativeFullscreen, setIsNativeFullscreen] = useState<boolean>(false)
   const [filtroAtivo, setFiltroAtivo] = useState<string>('todas')
+  const [filtroRegiao, setFiltroRegiao] = useState<string>('todas')
   const [mapStats, setMapStats] = useState<MapStats | null>(null)
 
   useEffect(() => {
@@ -82,6 +102,33 @@ export function MapaPresenca({
     })
     return mapa
   }, [])
+
+  // Filtrar dados por região
+  const dadosRegiao = useMemo(() => {
+    if (filtroRegiao === 'todas') {
+      return {
+        municipios: municipiosPiaui,
+        presenca: cidadesComPresenca,
+        visitadas: cidadesVisitadas,
+        quentes: territoriosQuentes,
+        mornos: territoriosMornos,
+        frios: territoriosFrios,
+      }
+    }
+
+    const munisFiltrados = municipiosPiaui.filter(m => getRegionByLat(m.lat) === filtroRegiao)
+    const nomesSet = new Set(munisFiltrados.map(m => normalizeName(m.nome)))
+    const match = (nome: string) => nomesSet.has(normalizeName(nome))
+
+    return {
+      municipios: munisFiltrados,
+      presenca: cidadesComPresenca.filter(c => match(c)),
+      visitadas: cidadesVisitadas.filter(c => match(c)),
+      quentes: territoriosQuentes.filter(t => match(t.cidade)),
+      mornos: territoriosMornos.filter(t => match(t.cidade)),
+      frios: territoriosFrios.filter(t => match(t.cidade)),
+    }
+  }, [filtroRegiao, cidadesComPresenca, cidadesVisitadas, territoriosQuentes, territoriosMornos, territoriosFrios])
 
   const handleStatsCalculated = useCallback((stats: MapStats) => {
     setMapStats(stats)
@@ -138,7 +185,7 @@ export function MapaPresenca({
         </div>
       </div>
 
-      {/* Filtros Rápidos */}
+      {/* Filtros Rápidos + Região */}
       <div className="flex flex-wrap items-center gap-1.5">
         <Filter className="w-3.5 h-3.5 text-secondary mr-0.5" />
         {FILTROS.map(filtro => {
@@ -167,6 +214,25 @@ export function MapaPresenca({
             </button>
           )
         })}
+
+        {/* Separador */}
+        <div className="w-px h-5 bg-card mx-1" />
+
+        {/* Dropdown de Região */}
+        <select
+          value={filtroRegiao}
+          onChange={(e) => setFiltroRegiao(e.target.value)}
+          className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all duration-200 appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-accent-gold-soft pr-6 ${
+            filtroRegiao !== 'todas'
+              ? 'bg-accent-gold text-white shadow-sm'
+              : 'bg-background text-secondary hover:bg-card hover:text-text-primary border border-card'
+          }`}
+          style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='${filtroRegiao !== 'todas' ? 'white' : '%236b7280'}' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 8px center' }}
+        >
+          {REGIOES.map(r => (
+            <option key={r.id} value={r.id}>{r.label}</option>
+          ))}
+        </select>
       </div>
 
       {/* Mapa com Overlay de Contadores */}
@@ -179,13 +245,13 @@ export function MapaPresenca({
       }`}>
         {/* Map Component */}
         <MapWrapperLeaflet
-          cidadesComPresenca={cidadesComPresenca}
-          cidadesVisitadas={cidadesVisitadas}
-          municipiosPiaui={municipiosPiaui}
+          cidadesComPresenca={dadosRegiao.presenca}
+          cidadesVisitadas={dadosRegiao.visitadas}
+          municipiosPiaui={dadosRegiao.municipios}
           eleitoresPorCidade={eleitoresPorCidade}
-          territoriosQuentes={territoriosQuentes}
-          territoriosMornos={territoriosMornos}
-          territoriosFrios={territoriosFrios}
+          territoriosQuentes={dadosRegiao.quentes}
+          territoriosMornos={dadosRegiao.mornos}
+          territoriosFrios={dadosRegiao.frios}
           filtroAtivo={filtroAtivo}
           onStatsCalculated={handleStatsCalculated}
         />
