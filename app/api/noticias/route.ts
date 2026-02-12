@@ -34,6 +34,7 @@ export async function GET(request: Request) {
     const risk_level = searchParams.get('risk_level')
     const theme = searchParams.get('theme')
     const processed = searchParams.get('processed')
+    const dashboard_highlight = searchParams.get('dashboard_highlight')
     const feedIds = searchParams.get('feed_ids') // IDs dos feeds selecionados (formato: 'type-id,type-id')
     const limit = parseInt(searchParams.get('limit') || '50')
     const offset = parseInt(searchParams.get('offset') || '0')
@@ -112,13 +113,24 @@ export async function GET(request: Request) {
       query = query.eq('processed', processed === 'true')
     }
 
+    // dashboard_highlight: coluna pode não existir ainda — aplicar filtro com fallback
+    const useDashboardFilter = dashboard_highlight !== null
+
+    if (useDashboardFilter) {
+      query = query.eq('dashboard_highlight', dashboard_highlight === 'true')
+    }
+
     const { data, error } = await query
 
     if (error) {
+      // Se o erro é por coluna inexistente (dashboard_highlight), retornar vazio para filtro de highlight
+      if (useDashboardFilter && error.message?.includes('dashboard_highlight')) {
+        return NextResponse.json([])
+      }
       return NextResponse.json({ error: error.message }, { status: 500 })
     }
 
-    return NextResponse.json(data)
+    return NextResponse.json(data || [])
   } catch (error) {
     return NextResponse.json(
       { error: 'Erro interno do servidor' },

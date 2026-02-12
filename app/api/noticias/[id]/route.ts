@@ -17,6 +17,7 @@ const updateNewsSchema = z.object({
   processed: z.boolean().optional(),
   reviewed: z.boolean().optional(), // Classificação manual
   notes: z.string().optional(), // Notas da classificação manual
+  dashboard_highlight: z.boolean().optional(), // Destacar no Monitor de Imprensa do dashboard
   crisis_id: z.string().uuid().optional().nullable(),
 })
 

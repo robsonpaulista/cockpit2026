@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { KPICard } from '@/components/kpi-card'
 import { AlertCard } from '@/components/alert-card'
-import { Newspaper, AlertTriangle, TrendingUp, RefreshCw, Plus, Filter, Edit2, Trash2 } from 'lucide-react'
+import { Newspaper, AlertTriangle, TrendingUp, RefreshCw, Plus, Filter, Edit2, Trash2, Radio } from 'lucide-react'
 import { FeedManagerModal } from '@/components/feed-manager-modal'
 import { EditNewsModal } from '@/components/edit-news-modal'
 import { KPI, NewsItem } from '@/types'
@@ -33,6 +33,7 @@ export default function NoticiasPage() {
   const [filterRisk, setFilterRisk] = useState<string>('all')
   const [selectedFeeds, setSelectedFeeds] = useState<string[]>([]) // Array de IDs de feeds selecionados
   const [deletingNewsId, setDeletingNewsId] = useState<string | null>(null)
+  const [togglingHighlight, setTogglingHighlight] = useState<string | null>(null)
 
   useEffect(() => {
     fetchData()
@@ -127,6 +128,24 @@ export default function NoticiasPage() {
   useEffect(() => {
     fetchNews()
   }, [filterSentiment, filterRisk, selectedFeeds])
+
+  const handleToggleDashboard = async (item: NewsItem) => {
+    setTogglingHighlight(item.id)
+    try {
+      const response = await fetch(`/api/noticias/${item.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ dashboard_highlight: !item.dashboard_highlight }),
+      })
+      if (response.ok) {
+        setNews(prev => prev.map(n => n.id === item.id ? { ...n, dashboard_highlight: !n.dashboard_highlight } : n))
+      }
+    } catch (error) {
+      console.error('Erro ao destacar notícia:', error)
+    } finally {
+      setTogglingHighlight(null)
+    }
+  }
 
   const handleDeleteNews = async (newsId: string) => {
     if (!confirm('Tem certeza que deseja excluir esta notícia?')) {
@@ -362,18 +381,32 @@ export default function NoticiasPage() {
                             </span>
                           </div>
                         </div>
-                        <button
-                          onClick={() => handleDeleteNews(item.id)}
-                          disabled={deletingNewsId === item.id}
-                          className="ml-2 p-1.5 rounded-lg hover:bg-status-error/10 text-secondary hover:text-status-error transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                          title="Excluir notícia"
-                        >
-                          {deletingNewsId === item.id ? (
-                            <RefreshCw className="w-4 h-4 animate-spin" />
-                          ) : (
-                            <Trash2 className="w-4 h-4" />
-                          )}
-                        </button>
+                        <div className="flex items-center gap-1 ml-2">
+                          <button
+                            onClick={() => handleToggleDashboard(item)}
+                            disabled={togglingHighlight === item.id}
+                            className={`p-1.5 rounded-lg transition-colors disabled:opacity-50 ${
+                              item.dashboard_highlight
+                                ? 'bg-accent-gold/15 text-accent-gold'
+                                : 'text-secondary hover:bg-accent-gold/10 hover:text-accent-gold'
+                            }`}
+                            title={item.dashboard_highlight ? 'Remover do Monitor (Dashboard)' : 'Destacar no Monitor (Dashboard)'}
+                          >
+                            <Radio className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => handleDeleteNews(item.id)}
+                            disabled={deletingNewsId === item.id}
+                            className="p-1.5 rounded-lg hover:bg-status-error/10 text-secondary hover:text-status-error transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                            title="Excluir notícia"
+                          >
+                            {deletingNewsId === item.id ? (
+                              <RefreshCw className="w-4 h-4 animate-spin" />
+                            ) : (
+                              <Trash2 className="w-4 h-4" />
+                            )}
+                          </button>
+                        </div>
                       </div>
 
                       <div className="flex items-center gap-2 flex-wrap">

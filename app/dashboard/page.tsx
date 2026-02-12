@@ -22,7 +22,7 @@ const MapWrapperLeaflet = dynamic(
   { ssr: false }
 )
 import { KPI, Alert, NewsItem } from '@/types'
-import { TrendingUp, MapPin, Flag, MessageSquare, ThermometerSun, ThermometerSnowflake, Flame, Activity, Maximize2, X, Lightbulb, AlertTriangle, Users, Heart, Eye } from 'lucide-react'
+import { TrendingUp, MapPin, Flag, MessageSquare, ThermometerSun, ThermometerSnowflake, Flame, Activity, Maximize2, X, Lightbulb, AlertTriangle, Users, Heart, Eye, Crown, ArrowUpRight, ArrowDownRight, ArrowRight, Zap, Target, FileText } from 'lucide-react'
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 import { loadInstagramConfigAsync, fetchInstagramData } from '@/lib/instagramApi'
 import { getEleitoradoByCity, getAllEleitores } from '@/lib/eleitores'
@@ -55,8 +55,8 @@ export default function Home() {
     percentualCobertura: number
   } | null>(null)
   const [loadingTerritorios, setLoadingTerritorios] = useState(true)
-  const [criticalAlerts, setCriticalAlerts] = useState<Alert[]>([])
-  const [loadingAlerts, setLoadingAlerts] = useState(true)
+  const [monitorNews, setMonitorNews] = useState<NewsItem[]>([])
+  const [loadingAlerts, setLoadingAlerts] = useState<boolean>(true)
   const [bandeirasStats, setBandeirasStats] = useState<{
     totalUsos: number
     totalPerformance: number
@@ -120,43 +120,136 @@ export default function Home() {
     return mapa
   }, [])
 
+  // ─── Insights inteligentes das bandeiras (Radar de Posicionamento) ───
+  const bandeirasInsights = useMemo(() => {
+    if (!bandeirasStats || bandeirasStats.topBandeiras.length === 0) return null
+
+    const bandeiras = bandeirasStats.topBandeiras
+    const totalUsage = bandeiras.reduce((sum, b) => sum + b.usage_count, 0)
+    const totalEngagement = bandeiras.reduce((sum, b) => sum + b.totalEngagement, 0)
+
+    const formatCompact = (num: number): string => {
+      if (num >= 1_000_000) return `${(num / 1_000_000).toFixed(1)}M`
+      if (num >= 1_000) return `${(num / 1_000).toFixed(1)}k`
+      return num.toString()
+    }
+
+    const enriched = bandeiras.map((b, index) => {
+      const dominancePercent = totalUsage > 0 ? (b.usage_count / totalUsage) * 100 : 0
+      const engagementShare = totalEngagement > 0 ? (b.totalEngagement / totalEngagement) * 100 : 0
+
+      const dominanceLevel: 'dominant' | 'relevant' | 'low' =
+        dominancePercent >= 35 ? 'dominant' : dominancePercent >= 15 ? 'relevant' : 'low'
+
+      const avgEng = b.avgEngagement || 0
+      const engagementLevel: 'high' | 'medium' | 'low' =
+        avgEng >= 80 || b.totalEngagement >= 500 ? 'high'
+          : avgEng >= 20 || b.totalEngagement >= 100 ? 'medium'
+          : 'low'
+
+      const trend: 'up' | 'down' | 'stable' =
+        b.performance_score >= 60 && b.usage_count >= 5 ? 'up'
+          : b.usage_count <= 2 || b.performance_score <= 15 ? 'down'
+          : 'stable'
+
+      let headline = ''
+      if (index === 0 && engagementLevel === 'high') headline = `${b.theme} lidera com forte engajamento nas redes`
+      else if (index === 0) headline = `${b.theme} domina a narrativa do mandato`
+      else if (dominanceLevel === 'dominant') headline = `${b.theme} concentra ${dominancePercent.toFixed(0)}% das menções`
+      else if (engagementLevel === 'high') headline = `${b.theme} gera alto impacto quando aparece`
+      else if (dominanceLevel === 'relevant') headline = `${b.theme} mantém presença relevante`
+      else if (dominanceLevel === 'low') headline = `${b.theme} com baixa presença recente`
+      else headline = `${b.theme} precisa de reforço estratégico`
+
+      let frequencyLabel = ''
+      if (b.usage_count >= 15 && b.posts >= 5) frequencyLabel = 'Alta frequência com bom desempenho'
+      else if (b.usage_count >= 10) frequencyLabel = 'Boa frequência de aparição'
+      else if (b.usage_count >= 5) frequencyLabel = 'Frequência moderada'
+      else if (b.usage_count >= 1) frequencyLabel = 'Aparição pontual'
+      else frequencyLabel = 'Sem aparições recentes'
+
+      return {
+        ...b,
+        rank: index + 1,
+        dominancePercent,
+        engagementShare,
+        dominanceLevel,
+        engagementLevel,
+        trend,
+        headline,
+        frequencyLabel,
+        formattedViews: formatCompact(b.totalViews),
+        formattedLikes: formatCompact(b.totalLikes),
+        formattedEngagement: formatCompact(b.totalEngagement),
+      }
+    })
+
+    const top = enriched[0]
+    const growing = enriched.find((b, i) => i > 0 && b.trend === 'up') || null
+    const weakest = [...enriched].reverse().find(b => b.dominanceLevel === 'low') || null
+
+    let mainSentence = ''
+    if (top) {
+      if (top.engagementShare >= 50) {
+        mainSentence = `${top.theme} domina a narrativa do mandato nos últimos 30 dias, concentrando ${top.engagementShare.toFixed(0)}% do engajamento total.`
+      } else if (top.engagementShare >= 30) {
+        mainSentence = `${top.theme} lidera o posicionamento com ${top.engagementShare.toFixed(0)}% do engajamento.`
+      } else if (top.dominancePercent >= 30) {
+        mainSentence = `${top.theme} concentra ${top.dominancePercent.toFixed(0)}% das menções, liderando o radar.`
+      } else {
+        mainSentence = `As narrativas estão distribuídas. ${top.theme} lidera com ${top.dominancePercent.toFixed(0)}% das menções.`
+      }
+    }
+
+    return { enriched, top, growing, weakest, mainSentence, totalUsage, totalEngagement, formatCompact }
+  }, [bandeirasStats])
+
+  // ─── Interpretação do Monitor de Imprensa ───
+  const monitorInsight = useMemo(() => {
+    if (monitorNews.length === 0) return null
+    const pos = monitorNews.filter(n => n.sentiment === 'positive').length
+    const neg = monitorNews.filter(n => n.sentiment === 'negative').length
+    const neu = monitorNews.filter(n => n.sentiment === 'neutral').length
+    const highRisk = monitorNews.filter(n => n.risk_level === 'high').length
+    const total = monitorNews.length
+
+    let headline = ''
+    let tone: 'positive' | 'negative' | 'neutral' | 'warning' = 'neutral'
+
+    if (highRisk > 0) {
+      headline = `${highRisk} notícia${highRisk > 1 ? 's' : ''} sensíve${highRisk > 1 ? 'is' : 'l'} identificada${highRisk > 1 ? 's' : ''}`
+      tone = 'warning'
+    } else if (neg > pos && neg > neu) {
+      headline = 'Aumento de menções críticas na cobertura'
+      tone = 'negative'
+    } else if (pos > neg && pos > neu) {
+      headline = 'Cobertura majoritariamente positiva'
+      tone = 'positive'
+    } else if (total > 0) {
+      headline = 'Cobertura estável no momento'
+      tone = 'neutral'
+    }
+
+    return { headline, tone, pos, neg, neu, highRisk, total }
+  }, [monitorNews])
+
   // Calcular média das pesquisas diretamente a partir dos dados do gráfico
   const mediaPesquisas = pollsData.length > 0
     ? Math.round((pollsData.reduce((sum, poll) => sum + (poll.intencao || 0), 0) / pollsData.length) * 10) / 10
     : null
 
-  const fetchCriticalAlerts = async () => {
+  const fetchMonitorNews = async () => {
     setLoadingAlerts(true)
     try {
-      const response = await fetch('/api/noticias?sentiment=negative&risk_level=high&limit=5')
+      const response = await fetch('/api/noticias?dashboard_highlight=true&limit=10')
       if (response.ok) {
-        const news: NewsItem[] = await response.json()
-        // Converter notícias para o formato de Alert
-        const alerts: Alert[] = news.map((item) => {
-          const dateStr = item.published_at || item.collected_at
-          const timestamp = dateStr 
-            ? new Date(typeof dateStr === 'string' ? dateStr : dateStr.toString())
-            : new Date()
-          
-          return {
-            id: item.id,
-            type: 'critical' as const,
-            title: item.title.length > 60 ? `${item.title.substring(0, 60)}...` : item.title,
-            description: item.theme 
-              ? `Notícia sobre ${item.theme} em portal local`
-              : `Notícia crítica em portal local`,
-            timestamp,
-            actionUrl: item.url || `/dashboard/noticias`,
-          }
-        })
-        setCriticalAlerts(alerts)
+        const data: NewsItem[] = await response.json()
+        setMonitorNews(data)
       } else {
-        // Se não houver notícias críticas, deixar vazio
-        setCriticalAlerts([])
+        setMonitorNews([])
       }
-    } catch (error) {
-      // Em caso de erro, deixar vazio ao invés de usar mock
-      setCriticalAlerts([])
+    } catch {
+      setMonitorNews([])
     } finally {
       setLoadingAlerts(false)
     }
@@ -169,8 +262,8 @@ export default function Home() {
       setCandidatoPadrao(candidatoSalvo)
     }
     
-    // Buscar alertas críticos (notícias negativas com risco alto)
-    fetchCriticalAlerts()
+    // Buscar notícias destacadas para o Monitor de Imprensa
+    fetchMonitorNews()
   }, [])
 
   // Buscar histórico quando candidato padrão mudar
@@ -1310,16 +1403,16 @@ export default function Home() {
         {/* Grid 2: Bandeiras + Alertas */}
         <AnimatedSection delay={100}>
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mt-4">
-          {/* Bandeiras de Campanha - Compacto */}
+          {/* Radar de Posicionamento - Card compacto */}
           <div className="bg-surface rounded-2xl border border-card p-4 relative overflow-hidden flex flex-col">
               {/* Linha vertical de destaque */}
               <div className="absolute left-0 top-0 bottom-0 w-1 bg-accent-gold opacity-20" />
               
-              <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center gap-2">
-                  <Flag className="w-4 h-4 text-accent-gold" />
+                  <Target className="w-4 h-4 text-accent-gold" />
                   <h2 className="text-base font-semibold text-text-primary">Bandeiras</h2>
-                  <span className="text-[10px] text-secondary bg-background px-1.5 py-0.5 rounded">últimos 30 dias</span>
+                  <span className="text-[10px] text-secondary bg-background px-1.5 py-0.5 rounded">30 dias</span>
                 </div>
                 <button
                   onClick={() => setBandeirasTelaCheia(true)}
@@ -1329,80 +1422,81 @@ export default function Home() {
                   <Maximize2 className="w-4 h-4" />
                 </button>
               </div>
+
+              {/* Frase-resumo dinâmica — 1 linha */}
+              {bandeirasInsights && (
+                <p className="text-[10px] text-secondary italic mb-2 truncate leading-tight">
+                  {bandeirasInsights.mainSentence}
+                </p>
+              )}
+
               {loadingBandeiras ? (
                 <div className="space-y-1.5 flex-1 flex flex-col justify-center">
                   {[1, 2, 3].map((i) => (
                     <div key={i} className="h-12 bg-background rounded animate-pulse" />
                   ))}
                 </div>
-              ) : bandeirasStats ? (
+              ) : bandeirasInsights && bandeirasInsights.enriched.length > 0 ? (
                 <div className="flex-1 flex flex-col min-h-0 overflow-y-auto">
-                  {/* Top 3 Bandeiras com métricas de desempenho */}
-                  {bandeirasStats.topBandeiras.length > 0 ? (
-                    <div className="flex flex-col justify-evenly flex-1 gap-2">
-                      {bandeirasStats.topBandeiras.slice(0, 3).map((bandeira, index) => {
-                        const maxUsage = bandeirasStats.topBandeiras[0]?.usage_count || 1
-                        const percentRelativo = Math.round((bandeira.usage_count / maxUsage) * 100)
-                        const hasMetrics = bandeira.posts > 0
-                        return (
-                          <div
-                            key={bandeira.theme}
-                            className="p-3 bg-background rounded-lg"
-                          >
-                            {/* Linha superior: nome + menções + % */}
-                            <div className="flex items-center justify-between mb-1.5">
-                              <div className="flex items-center gap-2">
-                                <div className="w-6 h-6 rounded-full bg-accent-gold-soft text-accent-gold flex items-center justify-center text-xs font-semibold">
-                                  {index + 1}
-                                </div>
-                                <span className="text-sm text-text-primary truncate max-w-[130px]">{bandeira.theme}</span>
+                  <div className="flex flex-col justify-evenly flex-1 gap-1.5">
+                    {bandeirasInsights.enriched.slice(0, 3).map((bandeira) => {
+                      const isFirst = bandeira.rank === 1
+                      const trendColor = bandeira.trend === 'up' ? 'text-emerald-500' : bandeira.trend === 'down' ? 'text-red-500' : 'text-gray-400'
+                      const trendSymbol = bandeira.trend === 'up' ? '↑' : bandeira.trend === 'down' ? '↓' : '→'
+                      const domColor = bandeira.dominanceLevel === 'dominant' ? 'bg-emerald-500' : bandeira.dominanceLevel === 'relevant' ? 'bg-amber-500' : 'bg-red-400'
+                      const domLabel = bandeira.dominanceLevel === 'dominant' ? 'Dominante' : bandeira.dominanceLevel === 'relevant' ? 'Relevante' : 'Baixa'
+                      const domTextColor = bandeira.dominanceLevel === 'dominant' ? 'text-emerald-600' : bandeira.dominanceLevel === 'relevant' ? 'text-amber-600' : 'text-red-500'
+                      const engLabel = bandeira.engagementLevel === 'high' ? 'Alto engaj.' : bandeira.engagementLevel === 'medium' ? 'Engaj. médio' : 'Baixo engaj.'
+                      const engColor = bandeira.engagementLevel === 'high' ? 'text-emerald-600' : bandeira.engagementLevel === 'medium' ? 'text-amber-600' : 'text-gray-500'
+
+                      return (
+                        <div
+                          key={bandeira.theme}
+                          className={`p-2.5 rounded-lg ${isFirst ? 'bg-accent-gold/5 border border-accent-gold/15' : 'bg-background'}`}
+                        >
+                          {/* Linha 1: rank + nome + trend + dominância badge */}
+                          <div className="flex items-center justify-between mb-1">
+                            <div className="flex items-center gap-1.5 min-w-0">
+                              <div className={`w-5 h-5 rounded flex items-center justify-center text-[9px] font-bold flex-shrink-0 ${isFirst ? 'bg-accent-gold text-white' : 'bg-background border border-card text-secondary'}`}>
+                                {isFirst ? <Crown className="w-2.5 h-2.5" /> : bandeira.rank}
                               </div>
-                              <div className="flex items-center gap-2 text-xs">
-                                <span className="text-secondary">{bandeira.usage_count} menções</span>
-                                <span 
-                                  className="text-accent-gold font-medium cursor-help"
-                                  title={`${percentRelativo}% de frequência relativa à bandeira mais citada (${maxUsage} menções)`}
-                                >
-                                  {percentRelativo}%
-                                </span>
-                              </div>
+                              <span className="text-sm text-text-primary font-medium truncate">{bandeira.theme}</span>
+                              <span className={`text-[10px] font-bold flex-shrink-0 ${trendColor}`}>{trendSymbol}</span>
                             </div>
-                            {/* Linha inferior: métricas de desempenho */}
-                            {hasMetrics ? (
-                              <div className="flex items-center gap-3 pl-8 text-[10px]">
-                                <span className="flex items-center gap-0.5 text-secondary" title="Visualizações totais">
-                                  <Eye className="w-3 h-3" />
-                                  {bandeira.totalViews > 999
-                                    ? `${(bandeira.totalViews / 1000).toFixed(1)}k`
-                                    : bandeira.totalViews.toLocaleString('pt-BR')}
+                            <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 text-[9px] font-semibold rounded-full flex-shrink-0 ${bandeira.dominanceLevel === 'dominant' ? 'bg-emerald-500/10' : bandeira.dominanceLevel === 'relevant' ? 'bg-amber-500/10' : 'bg-red-500/10'} ${domTextColor}`}>
+                              <span className={`w-1 h-1 rounded-full ${domColor}`} />
+                              {domLabel}
+                            </span>
+                          </div>
+                          {/* Linha 2: barra de dominância + métricas inline */}
+                          <div className="flex items-center gap-2 pl-6">
+                            <div className="w-16 h-1 bg-background rounded-full overflow-hidden flex-shrink-0">
+                              <div className={`h-full rounded-full animate-grow ${domColor}`} style={{ width: `${Math.max(bandeira.dominancePercent, 3)}%` }} />
+                            </div>
+                            <span className="text-[10px] text-secondary">{bandeira.usage_count} menções</span>
+                            <span className="text-gray-300 text-[10px]">·</span>
+                            <span className={`text-[10px] font-medium ${engColor}`}>{engLabel}</span>
+                            {bandeira.posts > 0 && (
+                              <>
+                                <span className="text-gray-300 text-[10px]">·</span>
+                                <span className="flex items-center gap-0.5 text-[10px] text-secondary">
+                                  <Eye className="w-2.5 h-2.5" />{bandeira.formattedViews}
                                 </span>
-                                <span className="flex items-center gap-0.5 text-rose-500" title="Curtidas totais">
-                                  <Heart className="w-3 h-3" />
-                                  {bandeira.totalLikes > 999
-                                    ? `${(bandeira.totalLikes / 1000).toFixed(1)}k`
-                                    : bandeira.totalLikes.toLocaleString('pt-BR')}
+                                <span className="flex items-center gap-0.5 text-[10px] text-rose-500">
+                                  <Heart className="w-2.5 h-2.5" />{bandeira.formattedLikes}
                                 </span>
-                                <span className="flex items-center gap-0.5 text-blue-500" title="Engajamento total (curtidas + comentários)">
-                                  <MessageSquare className="w-3 h-3" />
-                                  {bandeira.totalEngagement > 999
-                                    ? `${(bandeira.totalEngagement / 1000).toFixed(1)}k`
-                                    : bandeira.totalEngagement.toLocaleString('pt-BR')}
-                                </span>
-                                <span className="text-secondary ml-auto">{bandeira.posts} post{bandeira.posts !== 1 ? 's' : ''}</span>
-                              </div>
-                            ) : (
-                              <p className="text-[10px] text-secondary pl-8 opacity-60">Sem dados do Instagram</p>
+                              </>
                             )}
                           </div>
-                        )
-                      })}
-                    </div>
-                  ) : (
-                    <p className="text-xs text-secondary text-center py-2 flex-1 flex items-center justify-center">
-                      Nenhuma bandeira ativa
-                    </p>
-                  )}
+                        </div>
+                      )
+                    })}
+                  </div>
                 </div>
+              ) : bandeirasStats ? (
+                <p className="text-xs text-secondary text-center py-2 flex-1 flex items-center justify-center">
+                  Nenhuma bandeira ativa
+                </p>
               ) : (
                 <div className="bg-surface rounded-xl border border-card p-4 flex-1 flex items-center justify-center">
                   <p className="text-sm text-secondary text-center">
@@ -1412,15 +1506,15 @@ export default function Home() {
               )}
             </div>
 
-          {/* Alertas Críticos - Compacto */}
-          <div className="bg-surface rounded-2xl border border-card p-4 relative overflow-hidden">
-            {/* Linha vertical de destaque */}
-            <div className="absolute left-0 top-0 bottom-0 w-1 bg-status-warning opacity-30" />
+          {/* Monitor de Imprensa - Compacto */}
+          <div className="bg-surface rounded-2xl border border-card p-4 relative overflow-hidden flex flex-col">
+            {/* Linha vertical de destaque - cinza institucional */}
+            <div className="absolute left-0 top-0 bottom-0 w-1 bg-secondary opacity-15" />
             
-            <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center justify-between mb-2">
               <h2 className="text-base font-semibold text-text-primary flex items-center gap-2">
-                <AlertTriangle className="w-4 h-4 text-status-warning animate-subtle-pulse" />
-                Alertas
+                <Activity className="w-4 h-4 text-secondary" />
+                Monitor de Imprensa
               </h2>
               <button
                 onClick={() => setAlertasTelaCheia(true)}
@@ -1430,23 +1524,86 @@ export default function Home() {
                 <Maximize2 className="w-4 h-4" />
               </button>
             </div>
-            <div className="space-y-2 max-h-[200px] overflow-y-auto">
+
+            {/* Headline interpretativa — tom de vigilância */}
+            {monitorInsight && (
+              <div className="flex items-center gap-1.5 mb-2">
+                <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${
+                  monitorInsight.tone === 'positive' ? 'bg-emerald-500' 
+                  : monitorInsight.tone === 'negative' ? 'bg-red-500' 
+                  : monitorInsight.tone === 'warning' ? 'bg-amber-500' 
+                  : 'bg-gray-400'
+                }`} />
+                <p className="text-[10px] text-secondary leading-tight truncate">
+                  {monitorInsight.headline}
+                </p>
+              </div>
+            )}
+
+            <div className="space-y-1.5 max-h-[200px] overflow-y-auto flex-1">
               {loadingAlerts ? (
                 <>
-                  {[1, 2].map((i) => (
-                    <div key={i} className="bg-background rounded-lg p-3 animate-pulse">
-                      <div className="h-3 bg-surface rounded w-3/4 mb-1.5" />
+                  {[1, 2, 3].map((i) => (
+                    <div key={i} className="bg-background rounded-lg p-2.5 animate-pulse">
+                      <div className="h-3 bg-surface rounded w-3/4 mb-1" />
                       <div className="h-2 bg-surface rounded w-1/2" />
                     </div>
                   ))}
                 </>
-              ) : criticalAlerts.length > 0 ? (
-                criticalAlerts.slice(0, 3).map((alert) => (
-                  <AlertCard key={alert.id} alert={alert} />
-                ))
+              ) : monitorNews.length > 0 ? (
+                monitorNews.slice(0, 4).map((item) => {
+                  const isHighRisk = item.risk_level === 'high'
+                  const sentimentDot = item.sentiment === 'positive' ? 'bg-emerald-500' 
+                    : item.sentiment === 'negative' ? 'bg-red-500' 
+                    : 'bg-gray-400'
+                  const dateStr = item.published_at || item.collected_at
+                  const dateFormatted = dateStr 
+                    ? new Intl.DateTimeFormat('pt-BR', { day: '2-digit', month: 'short' }).format(
+                        new Date(typeof dateStr === 'string' ? dateStr : new Date())
+                      )
+                    : ''
+
+                  return (
+                    <a
+                      key={item.id}
+                      href={item.url || '/dashboard/noticias'}
+                      target={item.url ? '_blank' : '_self'}
+                      rel="noopener noreferrer"
+                      className={`block p-2.5 rounded-lg transition-all duration-200 ease-out hover:shadow-sm hover:-translate-y-[1px] fade-in ${
+                        isHighRisk 
+                          ? 'bg-red-500/[0.03] border border-red-500/10 hover:border-red-500/20' 
+                          : 'bg-background hover:bg-background/80'
+                      }`}
+                    >
+                      <div className="flex items-start gap-2">
+                        <span className={`w-1.5 h-1.5 rounded-full mt-1.5 flex-shrink-0 ${sentimentDot}`} />
+                        <div className="min-w-0 flex-1">
+                          <p className="text-[11px] font-medium text-text-primary leading-tight line-clamp-2">
+                            {item.title}
+                          </p>
+                          <div className="flex items-center gap-1.5 mt-1 text-[10px] text-secondary">
+                            <span className="truncate max-w-[80px]">{item.source}</span>
+                            {dateFormatted && (
+                              <>
+                                <span className="text-gray-300">·</span>
+                                <span>{dateFormatted}</span>
+                              </>
+                            )}
+                            {isHighRisk && (
+                              <>
+                                <span className="text-gray-300">·</span>
+                                <span className="text-red-500 font-medium">Risco Alto</span>
+                              </>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </a>
+                  )
+                })
               ) : (
-                <div className="text-center py-3">
-                  <p className="text-xs text-secondary">Nenhum alerta no momento</p>
+                <div className="text-center py-3 flex-1 flex items-center justify-center">
+                  <p className="text-xs text-secondary">Nenhuma notícia destacada</p>
                 </div>
               )}
             </div>
@@ -1752,13 +1909,13 @@ export default function Home() {
         )
       })()}
 
-      {/* Modal de Bandeiras em Tela Cheia */}
+      {/* Modal de Radar de Posicionamento em Tela Cheia */}
       {bandeirasTelaCheia && (
         <div className="fixed inset-0 z-50 bg-background flex flex-col">
           <div className="bg-surface border-b border-card p-4 flex items-center justify-between">
             <h2 className="text-xl font-semibold text-text-primary flex items-center gap-2">
-              <Flag className="w-6 h-6 text-accent-gold" />
-              Bandeiras de Campanha
+              <Target className="w-6 h-6 text-accent-gold" />
+              Radar de Posicionamento
             </h2>
             <button
               onClick={() => setBandeirasTelaCheia(false)}
@@ -1772,29 +1929,96 @@ export default function Home() {
             <div className="max-w-7xl mx-auto">
               {loadingBandeiras ? (
                 <div className="space-y-3">
+                  <div className="h-40 bg-background rounded-2xl animate-pulse mb-4" />
                   <div className="grid grid-cols-2 gap-4">
                     {[1, 2].map((i) => (
-                      <div key={i} className="h-32 bg-background rounded-xl animate-pulse" />
+                      <div key={i} className="h-48 bg-background rounded-xl animate-pulse" />
                     ))}
                   </div>
                 </div>
-              ) : bandeirasStats ? (
+              ) : bandeirasInsights ? (
                 <div className="space-y-6">
-                  {/* Cards de resumo */}
+
+                  {/* ═══ HERO DO RADAR ═══ */}
+                  <div className="bg-surface rounded-2xl border border-card overflow-hidden animate-reveal">
+                    <div className="h-1 bg-gradient-to-r from-accent-gold via-amber-400 to-accent-gold" />
+                    <div className="p-6 lg:p-8">
+                      {/* Headline principal */}
+                      <div className="mb-6">
+                        <p className="text-xs text-secondary uppercase tracking-wider font-medium mb-1.5">
+                          Principal narrativa do mês
+                        </p>
+                        <p className="text-2xl font-bold text-text-primary flex items-center gap-2.5">
+                          <Crown className="w-6 h-6 text-accent-gold animate-breathe flex-shrink-0" />
+                          {bandeirasInsights.top.theme}
+                        </p>
+                        <p className="text-sm text-secondary mt-2.5 leading-relaxed max-w-2xl">
+                          {bandeirasInsights.mainSentence}
+                        </p>
+                      </div>
+
+                      {/* Quick indicators */}
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                        <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-emerald-500/5 border border-emerald-500/10">
+                          <div className="w-2 h-2 rounded-full bg-emerald-500 animate-subtle-pulse flex-shrink-0" />
+                          <div className="min-w-0">
+                            <p className="text-[11px] font-semibold text-emerald-600 uppercase tracking-wider">Marca do mandato</p>
+                            <p className="text-sm font-semibold text-text-primary truncate">{bandeirasInsights.top.theme}</p>
+                          </div>
+                        </div>
+                        {bandeirasInsights.growing ? (
+                          <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-blue-500/5 border border-blue-500/10">
+                            <ArrowUpRight className="w-4 h-4 text-blue-500 flex-shrink-0" />
+                            <div className="min-w-0">
+                              <p className="text-[11px] font-semibold text-blue-600 uppercase tracking-wider">Em crescimento</p>
+                              <p className="text-sm font-semibold text-text-primary truncate">{bandeirasInsights.growing.theme}</p>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-gray-500/5 border border-gray-500/10">
+                            <ArrowRight className="w-4 h-4 text-gray-400 flex-shrink-0" />
+                            <div className="min-w-0">
+                              <p className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider">Em crescimento</p>
+                              <p className="text-sm text-secondary truncate">Nenhuma pauta destacada</p>
+                            </div>
+                          </div>
+                        )}
+                        {bandeirasInsights.weakest ? (
+                          <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-red-500/5 border border-red-500/10">
+                            <AlertTriangle className="w-4 h-4 text-red-500 flex-shrink-0" />
+                            <div className="min-w-0">
+                              <p className="text-[11px] font-semibold text-red-500 uppercase tracking-wider">Precisa reforçar</p>
+                              <p className="text-sm font-semibold text-text-primary truncate">{bandeirasInsights.weakest.theme}</p>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-gray-500/5 border border-gray-500/10">
+                            <AlertTriangle className="w-4 h-4 text-gray-400 flex-shrink-0" />
+                            <div className="min-w-0">
+                              <p className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider">Precisa reforçar</p>
+                              <p className="text-sm text-secondary truncate">Todas as pautas ativas</p>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* ═══ KPI CARDS ═══ */}
                   <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                     <div className="relative p-5 rounded-2xl border-2 border-accent-gold/30 bg-gradient-to-br from-amber-50 to-surface">
                       <div className="flex items-center gap-2 mb-2">
                         <Flag className="w-5 h-5 text-accent-gold" />
                         <p className="text-sm font-medium text-secondary">Bandeiras Ativas</p>
                       </div>
-                      <p className="text-3xl font-bold text-accent-gold">{bandeirasStats.totalBandeiras}</p>
+                      <p className="text-3xl font-bold text-accent-gold">{bandeirasStats?.totalBandeiras || 0}</p>
                     </div>
                     <div className="relative p-5 rounded-2xl border-2 border-blue-500/30 bg-gradient-to-br from-blue-50 to-surface">
                       <div className="flex items-center gap-2 mb-2">
                         <TrendingUp className="w-5 h-5 text-blue-600" />
                         <p className="text-sm font-medium text-secondary">Total de Menções</p>
                       </div>
-                      <p className="text-3xl font-bold text-blue-600">{bandeirasStats.totalUsos}</p>
+                      <p className="text-3xl font-bold text-blue-600">{bandeirasInsights.totalUsage}</p>
                       <p className="text-xs text-secondary mt-1">últimos 30 dias</p>
                     </div>
                     <div className="relative p-5 rounded-2xl border-2 border-rose-500/30 bg-gradient-to-br from-rose-50 to-surface">
@@ -1803,7 +2027,7 @@ export default function Home() {
                         <p className="text-sm font-medium text-secondary">Curtidas Totais</p>
                       </div>
                       <p className="text-3xl font-bold text-rose-500">
-                        {bandeirasStats.topBandeiras.reduce((s, b) => s + b.totalLikes, 0).toLocaleString('pt-BR')}
+                        {bandeirasInsights.enriched.reduce((s, b) => s + b.totalLikes, 0).toLocaleString('pt-BR')}
                       </p>
                     </div>
                     <div className="relative p-5 rounded-2xl border-2 border-emerald-500/30 bg-gradient-to-br from-emerald-50 to-surface">
@@ -1812,84 +2036,153 @@ export default function Home() {
                         <p className="text-sm font-medium text-secondary">Visualizações</p>
                       </div>
                       <p className="text-3xl font-bold text-emerald-600">
-                        {bandeirasStats.topBandeiras.reduce((s, b) => s + b.totalViews, 0).toLocaleString('pt-BR')}
+                        {bandeirasInsights.enriched.reduce((s, b) => s + b.totalViews, 0).toLocaleString('pt-BR')}
                       </p>
                     </div>
                   </div>
-                  
-                  {/* Lista detalhada de bandeiras */}
-                  {bandeirasStats.topBandeiras.length > 0 && (
+
+                  {/* ═══ CARDS DETALHADOS POR BANDEIRA ═══ */}
+                  {bandeirasInsights.enriched.length > 0 && (
                     <div>
                       <p className="text-base font-medium text-secondary mb-3">Desempenho por Bandeira</p>
-                      <div className="space-y-3">
-                        {bandeirasStats.topBandeiras.map((bandeira, index) => {
-                          const maxUsage = bandeirasStats.topBandeiras[0]?.usage_count || 1
-                          const percentRelativo = Math.round((bandeira.usage_count / maxUsage) * 100)
+                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                        {bandeirasInsights.enriched.map((bandeira) => {
+                          const isFirst = bandeira.rank === 1
                           const hasMetrics = bandeira.posts > 0
+                          const trendColor = bandeira.trend === 'up' ? 'text-emerald-500' : bandeira.trend === 'down' ? 'text-red-500' : 'text-gray-400'
+                          const trendSymbol = bandeira.trend === 'up' ? '↑' : bandeira.trend === 'down' ? '↓' : '→'
+                          const trendLabel = bandeira.trend === 'up' ? 'crescendo' : bandeira.trend === 'down' ? 'caindo' : 'estável'
+                          const domColor = bandeira.dominanceLevel === 'dominant' ? 'bg-emerald-500' : bandeira.dominanceLevel === 'relevant' ? 'bg-amber-500' : 'bg-red-400'
+                          const domBg = bandeira.dominanceLevel === 'dominant' ? 'bg-emerald-500/10' : bandeira.dominanceLevel === 'relevant' ? 'bg-amber-500/10' : 'bg-red-500/10'
+                          const domTextColor = bandeira.dominanceLevel === 'dominant' ? 'text-emerald-600' : bandeira.dominanceLevel === 'relevant' ? 'text-amber-600' : 'text-red-500'
+                          const domBorder = bandeira.dominanceLevel === 'dominant' ? 'border-emerald-500/30' : bandeira.dominanceLevel === 'relevant' ? 'border-amber-500/30' : 'border-red-500/30'
+                          const domLabel = bandeira.dominanceLevel === 'dominant' ? 'Dominante' : bandeira.dominanceLevel === 'relevant' ? 'Relevante' : 'Baixa presença'
+                          const engLabel = bandeira.engagementLevel === 'high' ? 'Alto engajamento' : bandeira.engagementLevel === 'medium' ? 'Engajamento médio' : 'Baixo engajamento'
+                          const engColor = bandeira.engagementLevel === 'high' ? 'text-emerald-600' : bandeira.engagementLevel === 'medium' ? 'text-amber-600' : 'text-gray-500'
+                          const engBg = bandeira.engagementLevel === 'high' ? 'bg-emerald-500/10' : bandeira.engagementLevel === 'medium' ? 'bg-amber-500/10' : 'bg-gray-500/10'
+
                           return (
                             <div
                               key={bandeira.theme}
-                              className="p-4 bg-surface rounded-xl border border-card"
+                              className={`bg-surface rounded-2xl border overflow-hidden ${isFirst ? 'border-accent-gold/30' : 'border-card'} animate-reveal animate-reveal-${Math.min(bandeira.rank, 6)}`}
                             >
-                              {/* Header da bandeira */}
-                              <div className="flex items-center justify-between mb-2">
-                                <div className="flex items-center gap-3">
-                                  <div className="w-8 h-8 rounded-full bg-accent-gold-soft text-accent-gold flex items-center justify-center text-sm font-semibold">
-                                    {index + 1}
+                              {/* Accent bar */}
+                              <div className={`h-1 ${isFirst ? 'bg-gradient-to-r from-accent-gold via-amber-400 to-accent-gold' : bandeira.dominanceLevel === 'dominant' ? 'bg-gradient-to-r from-emerald-400 to-emerald-500' : bandeira.dominanceLevel === 'relevant' ? 'bg-gradient-to-r from-amber-400 to-amber-500' : 'bg-gradient-to-r from-red-300 to-red-400'}`} />
+
+                              <div className="p-5">
+                                {/* Header: Rank + Nome + Trend */}
+                                <div className="flex items-center justify-between mb-1.5">
+                                  <div className="flex items-center gap-3 min-w-0">
+                                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-sm font-bold flex-shrink-0 ${isFirst ? 'bg-accent-gold text-white' : 'bg-background text-secondary border border-card'}`}>
+                                      {isFirst ? <Crown className="w-4 h-4" /> : `#${bandeira.rank}`}
+                                    </div>
+                                    <div className="min-w-0">
+                                      <div className="flex items-center gap-2">
+                                        <span className="text-base font-bold text-text-primary truncate">{bandeira.theme}</span>
+                                        <span className={`text-xs font-medium flex-shrink-0 ${trendColor}`}>
+                                          {trendSymbol} {trendLabel}
+                                        </span>
+                                      </div>
+                                      <p className="text-[11px] text-secondary italic truncate mt-0.5">
+                                        &ldquo;{bandeira.headline}&rdquo;
+                                      </p>
+                                    </div>
                                   </div>
-                                  <span className="text-base font-medium text-text-primary">{bandeira.theme}</span>
                                 </div>
-                                <div className="flex items-center gap-4 text-sm">
-                                  <span className="text-secondary">{bandeira.usage_count} menções</span>
-                                  <span 
-                                    className="text-accent-gold font-medium cursor-help"
-                                    title={`${percentRelativo}% de frequência relativa à bandeira mais citada (${maxUsage} menções)`}
-                                  >
-                                    {percentRelativo}%
+
+                                {/* Badges */}
+                                <div className="flex items-center gap-2 mt-3 mb-3 flex-wrap">
+                                  <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-semibold rounded-full border ${domBg} ${domTextColor} ${domBorder}`}>
+                                    <span className={`w-1.5 h-1.5 rounded-full ${domColor}`} />
+                                    {domLabel}
+                                  </span>
+                                  <span className={`inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-medium rounded-full ${engBg} ${engColor}`}>
+                                    <Zap className="w-3 h-3" />
+                                    {engLabel}
                                   </span>
                                 </div>
-                              </div>
-                              {/* Métricas de desempenho */}
-                              {hasMetrics ? (
-                                <div className="grid grid-cols-4 gap-3 mt-3 pt-3 border-t border-card">
-                                  <div className="text-center">
-                                    <div className="flex items-center justify-center gap-1 mb-1">
-                                      <Eye className="w-3.5 h-3.5 text-secondary" />
-                                      <span className="text-[10px] text-secondary uppercase">Visualizações</span>
-                                    </div>
-                                    <p className="text-sm font-semibold text-text-primary">{bandeira.totalViews.toLocaleString('pt-BR')}</p>
-                                    <p className="text-[10px] text-secondary">média {bandeira.avgViews.toLocaleString('pt-BR')}/post</p>
+
+                                {/* Barra de dominância */}
+                                <div className="mb-4">
+                                  <div className="flex items-center justify-between text-[11px] mb-1.5">
+                                    <span className="text-secondary">Participação nas menções</span>
+                                    <span className="font-semibold text-text-primary">{bandeira.dominancePercent.toFixed(1)}%</span>
                                   </div>
-                                  <div className="text-center">
-                                    <div className="flex items-center justify-center gap-1 mb-1">
-                                      <Heart className="w-3.5 h-3.5 text-rose-500" />
-                                      <span className="text-[10px] text-secondary uppercase">Curtidas</span>
-                                    </div>
-                                    <p className="text-sm font-semibold text-rose-500">{bandeira.totalLikes.toLocaleString('pt-BR')}</p>
-                                    <p className="text-[10px] text-secondary">média {bandeira.avgLikes.toLocaleString('pt-BR')}/post</p>
-                                  </div>
-                                  <div className="text-center">
-                                    <div className="flex items-center justify-center gap-1 mb-1">
-                                      <MessageSquare className="w-3.5 h-3.5 text-blue-500" />
-                                      <span className="text-[10px] text-secondary uppercase">Engajamento</span>
-                                    </div>
-                                    <p className="text-sm font-semibold text-blue-500">{bandeira.totalEngagement.toLocaleString('pt-BR')}</p>
-                                    <p className="text-[10px] text-secondary">média {bandeira.avgEngagement.toLocaleString('pt-BR')}/post</p>
-                                  </div>
-                                  <div className="text-center">
-                                    <div className="flex items-center justify-center gap-1 mb-1">
-                                      <Activity className="w-3.5 h-3.5 text-accent-gold" />
-                                      <span className="text-[10px] text-secondary uppercase">Posts</span>
-                                    </div>
-                                    <p className="text-sm font-semibold text-accent-gold">{bandeira.posts}</p>
-                                    <p className="text-[10px] text-secondary">{bandeira.boostedCount > 0 ? `${bandeira.boostedCount} impuls.` : 'orgânico'}</p>
+                                  <div className="h-2 bg-background rounded-full overflow-hidden">
+                                    <div
+                                      className={`h-full rounded-full animate-grow ${domColor}`}
+                                      style={{ width: `${Math.max(bandeira.dominancePercent, 2)}%` }}
+                                    />
                                   </div>
                                 </div>
-                              ) : (
-                                <p className="text-xs text-secondary mt-2 pt-2 border-t border-card opacity-60">
-                                  Sem dados de desempenho do Instagram para esta bandeira
-                                </p>
-                              )}
+
+                                {/* Métricas primárias */}
+                                <div className="flex items-center gap-3 flex-wrap text-sm mb-3">
+                                  <div className="flex items-center gap-1.5">
+                                    <Activity className="w-3.5 h-3.5 text-secondary" />
+                                    <span className="font-semibold text-text-primary">{bandeira.usage_count}</span>
+                                    <span className="text-xs text-secondary">menções</span>
+                                    <span className={`text-xs font-bold ${trendColor}`}>{trendSymbol}</span>
+                                  </div>
+                                  <span className="text-gray-300">·</span>
+                                  <div className="flex items-center gap-1.5">
+                                    <FileText className="w-3.5 h-3.5 text-secondary" />
+                                    <span className="font-semibold text-text-primary">{bandeira.posts}</span>
+                                    <span className="text-xs text-secondary">posts</span>
+                                  </div>
+                                  {bandeira.boostedCount > 0 && (
+                                    <>
+                                      <span className="text-gray-300">·</span>
+                                      <span className="text-xs text-purple-600 font-medium">{bandeira.boostedCount} impulsionados</span>
+                                    </>
+                                  )}
+                                </div>
+
+                                {/* Métricas de engajamento detalhadas */}
+                                {hasMetrics ? (
+                                  <div className="grid grid-cols-4 gap-3 pt-3 border-t border-card">
+                                    <div className="text-center">
+                                      <div className="flex items-center justify-center gap-1 mb-1">
+                                        <Eye className="w-3.5 h-3.5 text-secondary" />
+                                        <span className="text-[10px] text-secondary uppercase">Views</span>
+                                      </div>
+                                      <p className="text-sm font-semibold text-text-primary">{bandeira.formattedViews}</p>
+                                      <p className="text-[10px] text-secondary">média {bandeira.avgViews.toLocaleString('pt-BR')}/post</p>
+                                    </div>
+                                    <div className="text-center">
+                                      <div className="flex items-center justify-center gap-1 mb-1">
+                                        <Heart className="w-3.5 h-3.5 text-rose-500" />
+                                        <span className="text-[10px] text-secondary uppercase">Curtidas</span>
+                                      </div>
+                                      <p className="text-sm font-semibold text-rose-500">{bandeira.formattedLikes}</p>
+                                      <p className="text-[10px] text-secondary">média {bandeira.avgLikes.toLocaleString('pt-BR')}/post</p>
+                                    </div>
+                                    <div className="text-center">
+                                      <div className="flex items-center justify-center gap-1 mb-1">
+                                        <MessageSquare className="w-3.5 h-3.5 text-blue-500" />
+                                        <span className="text-[10px] text-secondary uppercase">Engajamento</span>
+                                      </div>
+                                      <p className="text-sm font-semibold text-blue-500">{bandeira.formattedEngagement}</p>
+                                      <p className="text-[10px] text-secondary">média {bandeira.avgEngagement.toLocaleString('pt-BR')}/post</p>
+                                    </div>
+                                    <div className="text-center">
+                                      <div className="flex items-center justify-center gap-1 mb-1">
+                                        <Flame className="w-3.5 h-3.5 text-accent-gold" />
+                                        <span className="text-[10px] text-secondary uppercase">Frequência</span>
+                                      </div>
+                                      <p className="text-[11px] font-medium text-secondary italic">{bandeira.frequencyLabel}</p>
+                                    </div>
+                                  </div>
+                                ) : (
+                                  <div className="pt-3 border-t border-card">
+                                    <div className="flex items-center gap-2">
+                                      <Flame className="w-3.5 h-3.5 text-accent-gold" />
+                                      <span className="text-xs font-medium text-secondary italic">{bandeira.frequencyLabel}</span>
+                                    </div>
+                                    <p className="text-xs text-secondary mt-1 opacity-60">Sem dados de desempenho do Instagram</p>
+                                  </div>
+                                )}
+                              </div>
                             </div>
                           )
                         })}
@@ -1898,20 +2191,20 @@ export default function Home() {
                   )}
                 </div>
               ) : (
-                <p className="text-secondary text-center">Erro ao carregar estatísticas das bandeiras</p>
+                <p className="text-secondary text-center">Erro ao carregar dados do radar</p>
               )}
             </div>
           </div>
         </div>
       )}
 
-      {/* Modal de Alertas em Tela Cheia */}
+      {/* Modal do Monitor de Imprensa em Tela Cheia */}
       {alertasTelaCheia && (
         <div className="fixed inset-0 z-50 bg-background flex flex-col">
           <div className="bg-surface border-b border-card p-4 flex items-center justify-between">
             <h2 className="text-xl font-semibold text-text-primary flex items-center gap-2">
-              <span className="w-3 h-3 rounded-full bg-status-error" />
-              Alertas Críticos
+              <Activity className="w-5 h-5 text-secondary" />
+              Monitor de Imprensa
             </h2>
             <button
               onClick={() => setAlertasTelaCheia(false)}
@@ -1922,7 +2215,48 @@ export default function Home() {
             </button>
           </div>
           <div className="flex-1 p-6 overflow-auto">
-            <div className="max-w-5xl mx-auto">
+            <div className="max-w-4xl mx-auto">
+              {/* Headline interpretativa */}
+              {monitorInsight && monitorInsight.total > 0 && (
+                <div className="mb-6 p-4 rounded-xl bg-surface border border-card animate-reveal">
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className={`w-2.5 h-2.5 rounded-full ${
+                      monitorInsight.tone === 'positive' ? 'bg-emerald-500' 
+                      : monitorInsight.tone === 'negative' ? 'bg-red-500' 
+                      : monitorInsight.tone === 'warning' ? 'bg-amber-500' 
+                      : 'bg-gray-400'
+                    }`} />
+                    <p className="text-sm font-medium text-text-primary">{monitorInsight.headline}</p>
+                  </div>
+                  <div className="flex items-center gap-3 text-xs text-secondary">
+                    {monitorInsight.pos > 0 && (
+                      <span className="flex items-center gap-1">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                        {monitorInsight.pos} positiva{monitorInsight.pos !== 1 ? 's' : ''}
+                      </span>
+                    )}
+                    {monitorInsight.neg > 0 && (
+                      <span className="flex items-center gap-1">
+                        <span className="w-1.5 h-1.5 rounded-full bg-red-500" />
+                        {monitorInsight.neg} negativa{monitorInsight.neg !== 1 ? 's' : ''}
+                      </span>
+                    )}
+                    {monitorInsight.neu > 0 && (
+                      <span className="flex items-center gap-1">
+                        <span className="w-1.5 h-1.5 rounded-full bg-gray-400" />
+                        {monitorInsight.neu} neutra{monitorInsight.neu !== 1 ? 's' : ''}
+                      </span>
+                    )}
+                    {monitorInsight.highRisk > 0 && (
+                      <span className="flex items-center gap-1 text-amber-600 font-medium">
+                        <AlertTriangle className="w-3 h-3" />
+                        {monitorInsight.highRisk} risco alto
+                      </span>
+                    )}
+                  </div>
+                </div>
+              )}
+
               {loadingAlerts ? (
                 <div className="space-y-3">
                   {[1, 2, 3, 4, 5].map((i) => (
@@ -1933,15 +2267,85 @@ export default function Home() {
                     </div>
                   ))}
                 </div>
-              ) : criticalAlerts.length > 0 ? (
+              ) : monitorNews.length > 0 ? (
                 <div className="space-y-3">
-                  {criticalAlerts.map((alert) => (
-                    <AlertCard key={alert.id} alert={alert} />
-                  ))}
+                  {monitorNews.map((item) => {
+                    const isHighRisk = item.risk_level === 'high'
+                    const sentimentDot = item.sentiment === 'positive' ? 'bg-emerald-500'
+                      : item.sentiment === 'negative' ? 'bg-red-500'
+                      : 'bg-gray-400'
+                    const sentimentLabel = item.sentiment === 'positive' ? 'Positivo'
+                      : item.sentiment === 'negative' ? 'Negativo'
+                      : 'Neutro'
+                    const sentimentBadge = item.sentiment === 'positive' ? 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20'
+                      : item.sentiment === 'negative' ? 'bg-red-500/10 text-red-600 border-red-500/20'
+                      : 'bg-gray-500/10 text-gray-500 border-gray-500/20'
+                    const riskLabel = item.risk_level === 'high' ? 'Alto'
+                      : item.risk_level === 'medium' ? 'Médio'
+                      : 'Baixo'
+                    const riskBadge = item.risk_level === 'high' ? 'bg-red-500/10 text-red-600'
+                      : item.risk_level === 'medium' ? 'bg-amber-500/10 text-amber-600'
+                      : 'bg-emerald-500/10 text-emerald-600'
+                    const dateStr = item.published_at || item.collected_at
+                    const dateFormatted = dateStr
+                      ? new Intl.DateTimeFormat('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' }).format(
+                          new Date(typeof dateStr === 'string' ? dateStr : new Date())
+                        )
+                      : ''
+
+                    return (
+                      <a
+                        key={item.id}
+                        href={item.url || '/dashboard/noticias'}
+                        target={item.url ? '_blank' : '_self'}
+                        rel="noopener noreferrer"
+                        className={`block p-4 rounded-xl border transition-all duration-200 ease-out hover:shadow-[0_4px_12px_rgba(0,0,0,0.06)] hover:-translate-y-[1px] fade-in ${
+                          isHighRisk
+                            ? 'bg-red-500/[0.02] border-red-500/15 hover:border-red-500/25'
+                            : 'bg-surface border-card hover:border-card'
+                        }`}
+                      >
+                        <div className="flex items-start gap-3">
+                          <span className={`w-2 h-2 rounded-full mt-1.5 flex-shrink-0 ${sentimentDot}`} />
+                          <div className="min-w-0 flex-1">
+                            <p className="text-sm font-medium text-text-primary leading-snug mb-1.5">
+                              {item.title}
+                            </p>
+                            <div className="flex items-center gap-2 text-xs text-secondary mb-2.5">
+                              <span>{item.source}</span>
+                              {dateFormatted && (
+                                <>
+                                  <span className="text-gray-300">·</span>
+                                  <span>{dateFormatted}</span>
+                                </>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className={`px-2 py-0.5 text-[10px] font-medium rounded-full border ${sentimentBadge}`}>
+                                {sentimentLabel}
+                              </span>
+                              {item.risk_level && (
+                                <span className={`px-2 py-0.5 text-[10px] font-medium rounded-full ${riskBadge}`}>
+                                  Risco {riskLabel}
+                                </span>
+                              )}
+                              {item.theme && (
+                                <span className="px-2 py-0.5 text-[10px] font-medium rounded-full bg-accent-gold/10 text-accent-gold">
+                                  {item.theme}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      </a>
+                    )
+                  })}
                 </div>
               ) : (
-                <div className="text-center py-8">
-                  <p className="text-secondary">Nenhum alerta crítico no momento</p>
+                <div className="text-center py-12">
+                  <Activity className="w-10 h-10 text-secondary mx-auto mb-3 opacity-40" />
+                  <p className="text-secondary text-sm">Nenhuma notícia destacada para o monitor.</p>
+                  <p className="text-xs text-secondary mt-1">Use o ícone de radar na página Notícias & Crises para destacar.</p>
                 </div>
               )}
             </div>
@@ -2253,10 +2657,10 @@ export default function Home() {
           pollsCount={pollsData.length}
           candidatoPadrao={candidatoPadrao}
           territoriosFriosCount={territoriosFrios.length}
-          alertsCriticosCount={criticalAlerts.length}
+          alertsCriticosCount={monitorNews.filter(n => n.risk_level === 'high' || n.sentiment === 'negative').length}
           bandeirasCount={bandeirasStats?.totalBandeiras || 0}
           bandeirasPerformance={bandeirasStats?.totalPerformance || 0}
-          criticalAlerts={criticalAlerts.map(a => ({ id: a.id, title: a.title, actionUrl: a.actionUrl }))}
+          criticalAlerts={monitorNews.filter(n => n.risk_level === 'high' || n.sentiment === 'negative').map(n => ({ id: n.id, title: n.title, actionUrl: n.url || '/dashboard/noticias' }))}
           territoriosFrios={territoriosFrios}
         />
       )}

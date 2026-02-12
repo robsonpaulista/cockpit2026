@@ -49,6 +49,7 @@ export interface NewsItem {
   processed?: boolean
   reviewed?: boolean // Indica se foi revisado/classificado manualmente
   notes?: string // Notas da classificação manual
+  dashboard_highlight?: boolean // Marcado para exibir no Monitor de Imprensa do dashboard
   publisher?: string // Domínio/publicador da notícia
   crisis_id?: string
   adversary_id?: string // ID do adversário cujo feed RSS coletou esta notícia (null para notícias gerais)
