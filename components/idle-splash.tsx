@@ -16,6 +16,7 @@ export function IdleSplash() {
 
   const timerInatividade = useRef<ReturnType<typeof setTimeout> | null>(null)
   const timersAnimacao = useRef<ReturnType<typeof setTimeout>[]>([])
+  const protecaoManual = useRef<boolean>(false) // Ignora eventos por 1s após ativação manual
 
   // Limpar timers de animação
   const limparTimersAnimacao = useCallback(() => {
@@ -96,9 +97,13 @@ export function IdleSplash() {
 
   // Listeners de atividade do usuário
   useEffect(() => {
-    const eventos = ['mousemove', 'mousedown', 'keydown', 'scroll', 'touchstart', 'pointerdown']
+    // Eventos que DISPENSAM a splash (ação intencional: click, tecla, toque)
+    const eventosDispensar = ['mousedown', 'keydown', 'touchstart', 'pointerdown']
+    // Eventos que apenas RESETAM o timer de inatividade (movimento passivo)
+    const eventosResetar = ['mousemove', 'scroll']
 
-    const handleAtividade = () => {
+    const handleDispensar = () => {
+      if (protecaoManual.current) return
       if (ativo) {
         dispensar()
       } else {
@@ -106,23 +111,41 @@ export function IdleSplash() {
       }
     }
 
-    eventos.forEach(evento => {
-      window.addEventListener(evento, handleAtividade, { passive: true })
-    })
+    const handleResetar = () => {
+      if (!ativo) {
+        resetarTimer()
+      }
+      // Se ativo, mousemove/scroll NÃO dispensam — só click/tecla dispensam
+    }
+
+    // Ativação manual via evento customizado (sidebar, atalho, etc.)
+    const handleActivateSplash = () => {
+      if (!ativo && !dispensando) {
+        protecaoManual.current = true
+        setTimeout(() => { protecaoManual.current = false }, 1000)
+        setAtivo(true)
+        setFase('inicio')
+        setDispensando(false)
+      }
+    }
+
+    eventosDispensar.forEach(e => window.addEventListener(e, handleDispensar, { passive: true }))
+    eventosResetar.forEach(e => window.addEventListener(e, handleResetar, { passive: true }))
+    window.addEventListener('activateSplash', handleActivateSplash)
 
     // Iniciar timer pela primeira vez
     resetarTimer()
 
     return () => {
-      eventos.forEach(evento => {
-        window.removeEventListener(evento, handleAtividade)
-      })
+      eventosDispensar.forEach(e => window.removeEventListener(e, handleDispensar))
+      eventosResetar.forEach(e => window.removeEventListener(e, handleResetar))
+      window.removeEventListener('activateSplash', handleActivateSplash)
       if (timerInatividade.current) {
         clearTimeout(timerInatividade.current)
       }
       limparTimersAnimacao()
     }
-  }, [ativo, dispensar, resetarTimer, limparTimersAnimacao])
+  }, [ativo, dispensando, dispensar, resetarTimer, limparTimersAnimacao])
 
   if (!ativo) return null
 

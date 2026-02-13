@@ -22,6 +22,7 @@ import {
   Building2,
   Shield,
   Search,
+  Monitor,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { MenuItem } from '@/types'
@@ -232,8 +233,27 @@ export function Sidebar() {
             </ul>
           </nav>
 
-          {/* Theme Toggle */}
-          <div className="px-2 py-3 border-t border-border-card">
+          {/* Ações rápidas: Splash + Tema */}
+          <div className="px-2 py-3 border-t border-border-card space-y-1">
+            <button
+              onClick={() => {
+                window.dispatchEvent(new Event('activateSplash'))
+                setMobileOpen(false)
+              }}
+              className={cn(
+                'flex items-center gap-3 px-3 py-2.5 rounded-[10px] w-full',
+                'transition-all duration-200 ease-out group',
+                'hover:bg-accent-gold-soft'
+              )}
+              title="Ativar tela de descanso"
+            >
+              <Monitor className="w-5 h-5 flex-shrink-0 text-text-secondary group-hover:text-accent-gold transition-colors" />
+              {(!collapsed || mobileOpen) && (
+                <span className="text-sm text-text-secondary group-hover:text-text-primary transition-colors">
+                  Tela de descanso
+                </span>
+              )}
+            </button>
             <ThemeToggle collapsed={collapsed} mobileOpen={mobileOpen} />
           </div>
         </div>
