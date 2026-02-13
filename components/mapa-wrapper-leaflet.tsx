@@ -446,7 +446,7 @@ export function MapWrapperLeaflet({
       totalCidades: municipiosPiaui.length,
       cidadesComPresenca: countPresenca,
       cidadesVisitadas: countVisitadas,
-      cidadesSemPresenca: municipiosPiaui.length - countPresenca,
+      cidadesSemPresenca: municipiosPiaui.length - countPresenca - countOportunidades,
       oportunidades: countOportunidades,
       eleitoradoTotal,
       eleitoradoCoberto,
