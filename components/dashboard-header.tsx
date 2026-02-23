@@ -5,8 +5,7 @@ import { UserMenu } from './user-menu'
 
 const pathToTitle: Record<string, string> = {
   '/dashboard': 'Visão Geral',
-  '/dashboard/fases': 'Fases da Campanha',
-  '/dashboard/narrativas': 'Bandeiras de Campanha',
+  '/dashboard/narrativas': 'Estratégia',
   '/dashboard/campo': 'Campo & Agenda',
   '/dashboard/agenda': 'Agenda',
   '/dashboard/territorio': 'Território & Base',

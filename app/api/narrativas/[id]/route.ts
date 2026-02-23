@@ -12,6 +12,7 @@ const narrativeUpdateSchema = z.object({
   usage_count: z.number().int().min(0).optional(),
   performance_score: z.number().int().min(0).max(100).optional(),
   status: z.enum(['ativa', 'rascunho', 'arquivada']).optional(),
+  phase_id: z.string().uuid().nullable().optional(),
 })
 
 export async function GET(
@@ -84,6 +85,7 @@ export async function PUT(
     // if (validatedData.usage_count !== undefined) updateData.usage_count = validatedData.usage_count
     // if (validatedData.performance_score !== undefined) updateData.performance_score = validatedData.performance_score
     if (validatedData.status !== undefined) updateData.status = validatedData.status
+    if (validatedData.phase_id !== undefined) updateData.phase_id = validatedData.phase_id
 
     const { data, error } = await supabase
       .from('narratives')

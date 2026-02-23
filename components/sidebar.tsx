@@ -24,6 +24,7 @@ import {
   Search,
   Monitor,
   ScrollText,
+  Target,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { MenuItem } from '@/types'
@@ -34,8 +35,7 @@ import { ThemeToggle } from '@/components/theme-toggle'
 
 const menuItems: MenuItem[] = [
   { id: 'home', label: 'Visão Geral', icon: 'LayoutDashboard', href: '/dashboard' },
-  { id: 'fases', label: 'Fases da Campanha', icon: 'Calendar', href: '/dashboard/fases' },
-  { id: 'narrativas', label: 'Bandeiras de Campanha', icon: 'FileText', href: '/dashboard/narrativas' },
+  { id: 'narrativas', label: 'Estratégia', icon: 'Target', href: '/dashboard/narrativas' },
   { id: 'campo', label: 'Campo & Agenda', icon: 'MapPin', href: '/dashboard/campo' },
   { id: 'agenda', label: 'Agenda', icon: 'Calendar', href: '/dashboard/agenda' },
   { id: 'territorio', label: 'Território & Base', icon: 'MapPin', href: '/dashboard/territorio' },
@@ -70,6 +70,7 @@ const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
   Shield,
   Search,
   ScrollText,
+  Target,
 }
 
 function pageKeyForItem(id: string): string {

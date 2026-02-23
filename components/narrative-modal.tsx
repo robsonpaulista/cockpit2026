@@ -1,7 +1,15 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { X, Save, Plus, Trash2 } from 'lucide-react'
+import { X, Save, Plus, Trash2, Calendar } from 'lucide-react'
+
+interface CampaignPhase {
+  id: string
+  name: string
+  start_date: string
+  end_date: string
+  active: boolean
+}
 
 interface Narrative {
   id?: string
@@ -9,15 +17,17 @@ interface Narrative {
   target_audience: string
   key_message: string
   arguments: string[]
-  proofs: any[]
+  proofs: unknown[]
   tested_phrases: string[]
   usage_count: number
   performance_score: number
   status: 'ativa' | 'rascunho' | 'arquivada'
+  phase_id?: string | null
 }
 
 interface NarrativeModalProps {
   narrative: Narrative | null
+  phases?: CampaignPhase[]
   onClose: () => void
   onUpdate: () => void
 }
@@ -42,7 +52,7 @@ const themeOptions = [
   'Outro',
 ]
 
-export function NarrativeModal({ narrative, onClose, onUpdate }: NarrativeModalProps) {
+export function NarrativeModal({ narrative, phases = [], onClose, onUpdate }: NarrativeModalProps) {
   const [formData, setFormData] = useState<Narrative>({
     theme: '',
     target_audience: '',
@@ -53,6 +63,7 @@ export function NarrativeModal({ narrative, onClose, onUpdate }: NarrativeModalP
     usage_count: 0,
     performance_score: 0,
     status: 'ativa',
+    phase_id: null,
   })
   const [newArgument, setNewArgument] = useState('')
   const [newPhrase, setNewPhrase] = useState('')
@@ -61,7 +72,6 @@ export function NarrativeModal({ narrative, onClose, onUpdate }: NarrativeModalP
 
   useEffect(() => {
     if (narrative) {
-      // Verificar se o tema está na lista de opções padrão
       const isCustomTheme = !themeOptions.includes(narrative.theme)
       setFormData({
         ...narrative,
@@ -69,8 +79,8 @@ export function NarrativeModal({ narrative, onClose, onUpdate }: NarrativeModalP
         arguments: narrative.arguments || [],
         proofs: narrative.proofs || [],
         tested_phrases: narrative.tested_phrases || [],
+        phase_id: narrative.phase_id || null,
       })
-      // Se for tema personalizado, preencher o campo customTheme
       if (isCustomTheme) {
         setCustomTheme(narrative.theme)
       } else {
@@ -87,6 +97,7 @@ export function NarrativeModal({ narrative, onClose, onUpdate }: NarrativeModalP
         usage_count: 0,
         performance_score: 0,
         status: 'ativa',
+        phase_id: null,
       })
       setCustomTheme('')
     }
@@ -97,9 +108,8 @@ export function NarrativeModal({ narrative, onClose, onUpdate }: NarrativeModalP
     setSubmitting(true)
 
     try {
-      // Se o tema for "Outro", usar o tema personalizado digitado
-      const themeToSave = formData.theme === 'Outro' && customTheme.trim() 
-        ? customTheme.trim() 
+      const themeToSave = formData.theme === 'Outro' && customTheme.trim()
+        ? customTheme.trim()
         : formData.theme
 
       if (!themeToSave || themeToSave === 'Outro') {
@@ -116,13 +126,12 @@ export function NarrativeModal({ narrative, onClose, onUpdate }: NarrativeModalP
       const dataToSend = {
         ...formData,
         theme: themeToSave,
+        phase_id: formData.phase_id || null,
       }
 
       const response = await fetch(url, {
         method,
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(dataToSend),
       })
 
@@ -133,8 +142,9 @@ export function NarrativeModal({ narrative, onClose, onUpdate }: NarrativeModalP
 
       onUpdate()
       onClose()
-    } catch (error: any) {
-      alert(error.message || 'Erro ao salvar narrativa')
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Erro ao salvar narrativa'
+      alert(message)
     } finally {
       setSubmitting(false)
     }
@@ -142,39 +152,25 @@ export function NarrativeModal({ narrative, onClose, onUpdate }: NarrativeModalP
 
   const addArgument = () => {
     if (newArgument.trim()) {
-      setFormData({
-        ...formData,
-        arguments: [...formData.arguments, newArgument.trim()],
-      })
+      setFormData({ ...formData, arguments: [...formData.arguments, newArgument.trim()] })
       setNewArgument('')
     }
   }
 
   const removeArgument = (index: number) => {
-    setFormData({
-      ...formData,
-      arguments: formData.arguments.filter((_, i) => i !== index),
-    })
+    setFormData({ ...formData, arguments: formData.arguments.filter((_, i) => i !== index) })
   }
 
   const addPhrase = () => {
     if (newPhrase.trim()) {
-      setFormData({
-        ...formData,
-        tested_phrases: [...formData.tested_phrases, newPhrase.trim()],
-      })
+      setFormData({ ...formData, tested_phrases: [...formData.tested_phrases, newPhrase.trim()] })
       setNewPhrase('')
     }
   }
 
   const removePhrase = (index: number) => {
-    setFormData({
-      ...formData,
-      tested_phrases: formData.tested_phrases.filter((_, i) => i !== index),
-    })
+    setFormData({ ...formData, tested_phrases: formData.tested_phrases.filter((_, i) => i !== index) })
   }
-
-  const selectedTheme = formData.theme === 'Outro' ? customTheme : formData.theme
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
@@ -183,10 +179,7 @@ export function NarrativeModal({ narrative, onClose, onUpdate }: NarrativeModalP
           <h2 className="text-xl font-semibold text-text-primary">
             {narrative ? 'Editar Narrativa' : 'Nova Narrativa'}
           </h2>
-          <button
-            onClick={onClose}
-            className="p-2 hover:bg-accent-gold-soft rounded-lg transition-colors"
-          >
+          <button onClick={onClose} className="p-2 hover:bg-accent-gold-soft rounded-lg transition-colors">
             <X className="w-5 h-5 text-secondary" />
           </button>
         </div>
@@ -194,9 +187,7 @@ export function NarrativeModal({ narrative, onClose, onUpdate }: NarrativeModalP
         <form onSubmit={handleSubmit} className="p-6 space-y-6">
           {/* Tema */}
           <div>
-            <label className="block text-sm font-medium text-text-primary mb-2">
-              Tema *
-            </label>
+            <label className="block text-sm font-medium text-text-primary mb-2">Tema *</label>
             <select
               value={formData.theme}
               onChange={(e) => setFormData({ ...formData, theme: e.target.value })}
@@ -205,9 +196,7 @@ export function NarrativeModal({ narrative, onClose, onUpdate }: NarrativeModalP
             >
               <option value="">Selecione um tema</option>
               {themeOptions.map((theme) => (
-                <option key={theme} value={theme}>
-                  {theme}
-                </option>
+                <option key={theme} value={theme}>{theme}</option>
               ))}
             </select>
             {formData.theme === 'Outro' && (
@@ -222,11 +211,32 @@ export function NarrativeModal({ narrative, onClose, onUpdate }: NarrativeModalP
             )}
           </div>
 
+          {/* Fase da Campanha */}
+          {phases.length > 0 && (
+            <div>
+              <label className="text-sm font-medium text-text-primary mb-2 flex items-center gap-2">
+                <Calendar className="w-4 h-4 text-accent-gold" />
+                Fase da Campanha
+              </label>
+              <select
+                value={formData.phase_id || ''}
+                onChange={(e) => setFormData({ ...formData, phase_id: e.target.value || null })}
+                className="w-full px-4 py-2 bg-background border border-card rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-gold"
+              >
+                <option value="">Nenhuma fase (independente)</option>
+                {phases.map((phase) => (
+                  <option key={phase.id} value={phase.id}>
+                    {phase.name} {phase.active ? '● Ativa' : ''}
+                  </option>
+                ))}
+              </select>
+              <p className="text-xs text-secondary mt-1">Vincule esta narrativa a uma fase específica da campanha</p>
+            </div>
+          )}
+
           {/* Público-alvo */}
           <div>
-            <label className="block text-sm font-medium text-text-primary mb-2">
-              Público-alvo *
-            </label>
+            <label className="block text-sm font-medium text-text-primary mb-2">Público-alvo *</label>
             <input
               type="text"
               value={formData.target_audience}
@@ -239,9 +249,7 @@ export function NarrativeModal({ narrative, onClose, onUpdate }: NarrativeModalP
 
           {/* Mensagem-chave */}
           <div>
-            <label className="block text-sm font-medium text-text-primary mb-2">
-              Mensagem-chave *
-            </label>
+            <label className="block text-sm font-medium text-text-primary mb-2">Mensagem-chave *</label>
             <textarea
               value={formData.key_message}
               onChange={(e) => setFormData({ ...formData, key_message: e.target.value })}
@@ -254,20 +262,12 @@ export function NarrativeModal({ narrative, onClose, onUpdate }: NarrativeModalP
 
           {/* Argumentos */}
           <div>
-            <label className="block text-sm font-medium text-text-primary mb-2">
-              Argumentos
-            </label>
+            <label className="block text-sm font-medium text-text-primary mb-2">Argumentos</label>
             <div className="space-y-2">
               {formData.arguments.map((arg, index) => (
                 <div key={index} className="flex items-center gap-2">
-                  <span className="flex-1 px-3 py-2 bg-background border border-card rounded-lg text-sm">
-                    {arg}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => removeArgument(index)}
-                    className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors"
-                  >
+                  <span className="flex-1 px-3 py-2 bg-background border border-card rounded-lg text-sm">{arg}</span>
+                  <button type="button" onClick={() => removeArgument(index)} className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors">
                     <Trash2 className="w-4 h-4" />
                   </button>
                 </div>
@@ -277,20 +277,11 @@ export function NarrativeModal({ narrative, onClose, onUpdate }: NarrativeModalP
                   type="text"
                   value={newArgument}
                   onChange={(e) => setNewArgument(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
-                      e.preventDefault()
-                      addArgument()
-                    }
-                  }}
+                  onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addArgument() } }}
                   placeholder="Adicionar argumento"
                   className="flex-1 px-3 py-2 bg-background border border-card rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-gold text-sm"
                 />
-                <button
-                  type="button"
-                  onClick={addArgument}
-                  className="px-4 py-2 bg-accent-gold text-white rounded-lg hover:bg-accent-gold transition-colors flex items-center gap-2"
-                >
+                <button type="button" onClick={addArgument} className="px-4 py-2 bg-accent-gold text-white rounded-lg hover:bg-accent-gold transition-colors flex items-center gap-2">
                   <Plus className="w-4 h-4" />
                 </button>
               </div>
@@ -299,20 +290,12 @@ export function NarrativeModal({ narrative, onClose, onUpdate }: NarrativeModalP
 
           {/* Frases testadas */}
           <div>
-            <label className="block text-sm font-medium text-text-primary mb-2">
-              Frases testadas
-            </label>
+            <label className="block text-sm font-medium text-text-primary mb-2">Frases testadas</label>
             <div className="space-y-2">
               {formData.tested_phrases.map((phrase, index) => (
                 <div key={index} className="flex items-center gap-2">
-                  <span className="flex-1 px-3 py-2 bg-background border border-card rounded-lg text-sm">
-                    {phrase}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => removePhrase(index)}
-                    className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors"
-                  >
+                  <span className="flex-1 px-3 py-2 bg-background border border-card rounded-lg text-sm">{phrase}</span>
+                  <button type="button" onClick={() => removePhrase(index)} className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors">
                     <Trash2 className="w-4 h-4" />
                   </button>
                 </div>
@@ -322,20 +305,11 @@ export function NarrativeModal({ narrative, onClose, onUpdate }: NarrativeModalP
                   type="text"
                   value={newPhrase}
                   onChange={(e) => setNewPhrase(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
-                      e.preventDefault()
-                      addPhrase()
-                    }
-                  }}
+                  onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addPhrase() } }}
                   placeholder="Adicionar frase testada"
                   className="flex-1 px-3 py-2 bg-background border border-card rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-gold text-sm"
                 />
-                <button
-                  type="button"
-                  onClick={addPhrase}
-                  className="px-4 py-2 bg-accent-gold text-white rounded-lg hover:bg-accent-gold transition-colors flex items-center gap-2"
-                >
+                <button type="button" onClick={addPhrase} className="px-4 py-2 bg-accent-gold text-white rounded-lg hover:bg-accent-gold transition-colors flex items-center gap-2">
                   <Plus className="w-4 h-4" />
                 </button>
               </div>
@@ -344,29 +318,21 @@ export function NarrativeModal({ narrative, onClose, onUpdate }: NarrativeModalP
 
           {/* Status */}
           <div>
-            <label className="block text-sm font-medium text-text-primary mb-2">
-              Status
-            </label>
+            <label className="block text-sm font-medium text-text-primary mb-2">Status</label>
             <select
               value={formData.status}
-              onChange={(e) => setFormData({ ...formData, status: e.target.value as any })}
+              onChange={(e) => setFormData({ ...formData, status: e.target.value as 'ativa' | 'rascunho' | 'arquivada' })}
               className="w-full px-4 py-2 bg-background border border-card rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-gold"
             >
               {statusOptions.map((status) => (
-                <option key={status.value} value={status.value}>
-                  {status.label}
-                </option>
+                <option key={status.value} value={status.value}>{status.label}</option>
               ))}
             </select>
           </div>
 
           {/* Botões */}
           <div className="flex items-center justify-end gap-3 pt-4 border-t border-card">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-4 py-2 text-sm font-medium text-secondary hover:text-text-primary transition-colors"
-            >
+            <button type="button" onClick={onClose} className="px-4 py-2 text-sm font-medium text-secondary hover:text-text-primary transition-colors">
               Cancelar
             </button>
             <button
@@ -383,4 +349,3 @@ export function NarrativeModal({ narrative, onClose, onUpdate }: NarrativeModalP
     </div>
   )
 }
-

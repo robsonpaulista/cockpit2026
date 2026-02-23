@@ -17,6 +17,7 @@ const narrativeSchema = z.object({
   usage_count: z.number().int().min(0).default(0),
   performance_score: z.number().int().min(0).max(100).default(0),
   status: z.enum(['ativa', 'rascunho', 'arquivada']).default('ativa'),
+  phase_id: z.string().uuid().nullable().optional(),
 })
 
 export async function GET(request: Request) {
@@ -111,6 +112,7 @@ export async function POST(request: Request) {
         usage_count: validatedData.usage_count || 0,
         performance_score: validatedData.performance_score || 0,
         status: validatedData.status || 'ativa',
+        ...(validatedData.phase_id !== undefined && { phase_id: validatedData.phase_id }),
       })
       .select()
       .single()

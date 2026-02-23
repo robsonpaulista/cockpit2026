@@ -151,17 +151,6 @@ export function IdleSplash() {
 
   return (
     <>
-      <style>{`
-        @keyframes idle-carro-passando {
-          0% { transform: translateY(-50%) translateX(calc(-100% - 60px)); }
-          100% { transform: translateY(-50%) translateX(calc(100vw + 60px)); }
-        }
-        @keyframes idle-speed-line-pass {
-          0% { transform: scaleX(0); opacity: 0; }
-          15% { opacity: 0.5; }
-          100% { transform: scaleX(1); opacity: 0; }
-        }
-      `}</style>
       <div
         onClick={dispensar}
         onKeyDown={dispensar}
@@ -307,67 +296,6 @@ export function IdleSplash() {
         Clique ou pressione qualquer tecla para voltar
       </span>
 
-      {/* Sombra de carro de corrida passando */}
-      {(fase === 'nome' || fase === 'slogan') && (
-        <>
-          <div
-            style={{
-              position: 'absolute',
-              top: '50%',
-              left: 0,
-              width: '380px',
-              height: '105px',
-              pointerEvents: 'none',
-              zIndex: 2,
-              filter: 'blur(3px)',
-              animation: 'idle-carro-passando 1.5s cubic-bezier(0.12, 0.72, 0.28, 1) forwards',
-            }}
-          >
-            <svg viewBox="0 0 400 80" xmlns="http://www.w3.org/2000/svg" style={{ width: '100%', height: '100%' }}>
-              <path fill="rgba(0,0,0,0.14)" d="M5,52 L30,52 L38,44 L55,34 L80,24 L120,16 L160,12 L185,12 L198,16 L204,24 L210,14 L230,10 L260,10 L285,14 L310,24 L330,38 L340,48 L345,52 L395,52 L395,58 L350,58 C346,44 334,38 322,38 C310,38 298,44 294,58 L106,58 C102,44 90,38 78,38 C66,38 54,44 50,58 L5,58 Z"/>
-              <path fill="rgba(0,0,0,0.14)" d="M330,38 L335,16 L340,6 L360,4 L362,8 L345,10 L340,18 L338,38 Z"/>
-              <circle fill="rgba(0,0,0,0.14)" cx="78" cy="52" r="12"/>
-              <circle fill="rgba(0,0,0,0.14)" cx="322" cy="52" r="12"/>
-            </svg>
-          </div>
-
-          {/* Linhas de velocidade */}
-          <div
-            style={{
-              position: 'absolute',
-              top: '36%',
-              left: 0,
-              right: 0,
-              height: '28%',
-              pointerEvents: 'none',
-              zIndex: 1,
-              overflow: 'hidden',
-            }}
-          >
-            {[
-              { top: '8%', delay: '0.1s', h: '1.5px' },
-              { top: '28%', delay: '0.25s', h: '1px' },
-              { top: '50%', delay: '0.05s', h: '1.5px' },
-              { top: '72%', delay: '0.3s', h: '1px' },
-              { top: '92%', delay: '0.15s', h: '1.5px' },
-            ].map((line, i) => (
-              <div
-                key={i}
-                style={{
-                  position: 'absolute',
-                  left: 0,
-                  right: 0,
-                  top: line.top,
-                  height: line.h,
-                  background: 'linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.25) 20%, rgba(255,255,255,0.45) 50%, rgba(255,255,255,0.25) 80%, transparent 100%)',
-                  transformOrigin: 'left center',
-                  animation: `idle-speed-line-pass 1.2s cubic-bezier(0.22, 0.68, 0.35, 1) ${line.delay} forwards`,
-                }}
-              />
-            ))}
-          </div>
-        </>
-      )}
     </div>
     </>
   )

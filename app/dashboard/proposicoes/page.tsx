@@ -263,7 +263,7 @@ export default function ProposicoesPage() {
   }, [allProposicoes])
 
   const filteredItems = useMemo(() => {
-    let items = allProposicoes
+    let items = [...allProposicoes]
     if (filtroTipo) items = items.filter((p) => p.siglaTipo === filtroTipo)
     if (filtroAno) items = items.filter((p) => p.ano === Number(filtroAno))
     if (filtroKeyword) {
@@ -277,6 +277,7 @@ export default function ProposicoesPage() {
         return s && s.codSituacao === code
       })
     }
+    items.sort((a, b) => new Date(b.dataApresentacao).getTime() - new Date(a.dataApresentacao).getTime())
     return items
   }, [allProposicoes, filtroTipo, filtroAno, filtroKeyword, filtroStatus, statusMap])
 
