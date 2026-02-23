@@ -260,6 +260,78 @@ export default function SplashPage() {
           animation: splash-barra-progress 4.5s cubic-bezier(0.4, 0, 0.2, 1) forwards;
         }
 
+        /* ===== Sombra de carro de corrida passando ===== */
+        @keyframes splash-carro-passando {
+          0% {
+            transform: translateY(-50%) translateX(calc(-100% - 60px));
+          }
+          100% {
+            transform: translateY(-50%) translateX(calc(100vw + 60px));
+          }
+        }
+
+        @keyframes splash-speed-line-pass {
+          0% {
+            transform: scaleX(0);
+            opacity: 0;
+          }
+          15% {
+            opacity: 0.5;
+          }
+          100% {
+            transform: scaleX(1);
+            opacity: 0;
+          }
+        }
+
+        .splash-carro-wrapper {
+          position: absolute;
+          top: 50%;
+          left: 0;
+          width: 380px;
+          height: 105px;
+          pointer-events: none;
+          z-index: 2;
+          filter: blur(3px);
+          transform: translateY(-50%) translateX(calc(-100% - 60px));
+          animation: splash-carro-passando 1.5s cubic-bezier(0.12, 0.72, 0.28, 1) forwards;
+          animation-delay: 2.0s;
+        }
+
+        .splash-carro-wrapper svg {
+          width: 100%;
+          height: 100%;
+        }
+
+        .splash-speed-lines-container {
+          position: absolute;
+          top: 36%;
+          left: 0;
+          right: 0;
+          height: 28%;
+          pointer-events: none;
+          z-index: 1;
+          overflow: hidden;
+        }
+
+        .splash-speed-line {
+          position: absolute;
+          left: 0;
+          right: 0;
+          height: 1.5px;
+          background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.25) 20%, rgba(255,255,255,0.45) 50%, rgba(255,255,255,0.25) 80%, transparent 100%);
+          transform-origin: left center;
+          transform: scaleX(0);
+          opacity: 0;
+          animation: splash-speed-line-pass 1.2s cubic-bezier(0.22, 0.68, 0.35, 1) forwards;
+        }
+
+        .splash-speed-line:nth-child(1) { top: 8%; animation-delay: 2.1s; }
+        .splash-speed-line:nth-child(2) { top: 28%; animation-delay: 2.25s; height: 1px; }
+        .splash-speed-line:nth-child(3) { top: 50%; animation-delay: 2.05s; }
+        .splash-speed-line:nth-child(4) { top: 72%; animation-delay: 2.3s; height: 1px; }
+        .splash-speed-line:nth-child(5) { top: 92%; animation-delay: 2.15s; }
+
         @media (max-width: 640px) {
           .splash-c,
           .splash-ockpit {
@@ -275,10 +347,33 @@ export default function SplashPage() {
             padding: 0 20px;
             text-align: center;
           }
+          .splash-carro-wrapper {
+            width: 240px;
+            height: 68px;
+          }
         }
       `}</style>
 
       <div className={`splash-container ${fase === 'saida' ? 'saida' : ''}`}>
+        {/* Sombra de carro de corrida passando */}
+        <div className="splash-carro-wrapper">
+          <svg viewBox="0 0 400 80" xmlns="http://www.w3.org/2000/svg">
+            <path fill="rgba(0,0,0,0.14)" d="M5,52 L30,52 L38,44 L55,34 L80,24 L120,16 L160,12 L185,12 L198,16 L204,24 L210,14 L230,10 L260,10 L285,14 L310,24 L330,38 L340,48 L345,52 L395,52 L395,58 L350,58 C346,44 334,38 322,38 C310,38 298,44 294,58 L106,58 C102,44 90,38 78,38 C66,38 54,44 50,58 L5,58 Z"/>
+            <path fill="rgba(0,0,0,0.14)" d="M330,38 L335,16 L340,6 L360,4 L362,8 L345,10 L340,18 L338,38 Z"/>
+            <circle fill="rgba(0,0,0,0.14)" cx="78" cy="52" r="12"/>
+            <circle fill="rgba(0,0,0,0.14)" cx="322" cy="52" r="12"/>
+          </svg>
+        </div>
+
+        {/* Linhas de velocidade */}
+        <div className="splash-speed-lines-container">
+          <div className="splash-speed-line" />
+          <div className="splash-speed-line" />
+          <div className="splash-speed-line" />
+          <div className="splash-speed-line" />
+          <div className="splash-speed-line" />
+        </div>
+
         {/* Logo animado */}
         <div className="splash-logo-area">
           <span className={`splash-c ${fase !== 'inicio' ? 'visivel' : ''}`}>C</span>

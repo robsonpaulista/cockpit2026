@@ -23,6 +23,7 @@ import {
   Shield,
   Search,
   Monitor,
+  ScrollText,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { MenuItem } from '@/types'
@@ -47,6 +48,7 @@ const menuItems: MenuItem[] = [
   { id: 'operacao', label: 'Operação & Equipe', icon: 'Settings', href: '/dashboard/operacao' },
   { id: 'juridico', label: 'Jurídico', icon: 'Scale', href: '/dashboard/juridico' },
   { id: 'obras', label: 'Obras', icon: 'Building2', href: '/dashboard/obras' },
+  { id: 'proposicoes', label: 'Proposições', icon: 'ScrollText', href: '/dashboard/proposicoes' },
   { id: 'sei-pesquisa', label: 'Pesquisa SEI (teste)', icon: 'Search', href: '/dashboard/sei-pesquisa' },
   { id: 'usuarios', label: 'Gestão de Usuários', icon: 'Shield', href: '/dashboard/usuarios' },
 ]
@@ -67,6 +69,7 @@ const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
   Building2,
   Shield,
   Search,
+  ScrollText,
 }
 
 function pageKeyForItem(id: string): string {
