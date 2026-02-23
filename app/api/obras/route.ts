@@ -84,6 +84,9 @@ export async function POST(request: Request) {
       data_medicao,
       status_medicao,
       valor_total,
+      valor_pago,
+      data_pagamento,
+      nro_doc,
     } = body
 
     if (!obra) {
@@ -108,6 +111,9 @@ export async function POST(request: Request) {
         data_medicao: data_medicao || null,
         status_medicao: status_medicao || null,
         valor_total: valor_total || null,
+        valor_pago: valor_pago || null,
+        data_pagamento: data_pagamento || null,
+        nro_doc: nro_doc || null,
       })
       .select()
       .single()

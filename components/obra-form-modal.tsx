@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useMemo } from 'react'
-import { X, Loader2, AlertCircle } from 'lucide-react'
+import { X, Loader2, AlertCircle, BadgeDollarSign } from 'lucide-react'
 import municipiosPiaui from '@/lib/municipios-piaui.json'
 
 export const OBRAS_TIPOS = ['pavimentação', 'obras diversas'] as const
@@ -21,6 +21,9 @@ export interface ObraFormData {
   data_medicao?: string
   status_medicao?: string
   valor_total?: number | null
+  valor_pago?: number | null
+  data_pagamento?: string
+  nro_doc?: string
 }
 
 interface ObraFormModalProps {
@@ -54,6 +57,9 @@ export function ObraFormModal({ obra, defaultTipo, onClose, onSuccess }: ObraFor
     data_medicao: '',
     status_medicao: '',
     valor_total: null,
+    valor_pago: null,
+    data_pagamento: '',
+    nro_doc: '',
   })
 
   const municipios = useMemo(
@@ -84,6 +90,9 @@ export function ObraFormModal({ obra, defaultTipo, onClose, onSuccess }: ObraFor
         data_medicao: toYyyyMmDd(obra.data_medicao) || '',
         status_medicao: obra.status_medicao ?? '',
         valor_total: obra.valor_total ?? null,
+        valor_pago: obra.valor_pago ?? null,
+        data_pagamento: toYyyyMmDd(obra.data_pagamento) || '',
+        nro_doc: obra.nro_doc ?? '',
       })
     } else {
       setForm({
@@ -99,6 +108,9 @@ export function ObraFormModal({ obra, defaultTipo, onClose, onSuccess }: ObraFor
         data_medicao: '',
         status_medicao: '',
         valor_total: null,
+        valor_pago: null,
+        data_pagamento: '',
+        nro_doc: '',
       })
     }
   }, [obra, defaultTipo, municipios])
@@ -111,6 +123,12 @@ export function ObraFormModal({ obra, defaultTipo, onClose, onSuccess }: ObraFor
   const setValorTotal = (v: string) => {
     const n = v === '' ? null : Number(v)
     setForm((prev) => ({ ...prev, valor_total: Number.isNaN(n) ? prev.valor_total : n }))
+    setError(null)
+  }
+
+  const setValorPago = (v: string) => {
+    const n = v === '' ? null : Number(v)
+    setForm((prev) => ({ ...prev, valor_pago: Number.isNaN(n) ? prev.valor_pago : n }))
     setError(null)
   }
 
@@ -136,6 +154,9 @@ export function ObraFormModal({ obra, defaultTipo, onClose, onSuccess }: ObraFor
         data_medicao: (form.data_medicao ?? '').trim() || null,
         status_medicao: (form.status_medicao ?? '').trim() || null,
         valor_total: form.valor_total != null ? Number(form.valor_total) : null,
+        valor_pago: form.valor_pago != null ? Number(form.valor_pago) : null,
+        data_pagamento: (form.data_pagamento ?? '').trim() || null,
+        nro_doc: (form.nro_doc ?? '').trim() || null,
       }
 
       const url = isEdit ? `/api/obras/${form.id}` : '/api/obras'
@@ -319,6 +340,50 @@ export function ObraFormModal({ obra, defaultTipo, onClose, onSuccess }: ObraFor
                 className="w-full px-3 py-2 border border-card rounded-lg bg-background focus:outline-none focus:ring-2 focus:ring-accent-gold-soft"
                 placeholder="0,00"
               />
+            </div>
+          </div>
+
+          {/* Seção de Pagamento */}
+          <div className={`mt-2 p-4 rounded-xl border ${form.valor_pago ? 'bg-emerald-50 border-emerald-200' : 'bg-background border-card'}`}>
+            <h3 className="text-sm font-semibold text-text-primary mb-3 flex items-center gap-2">
+              <BadgeDollarSign className={`w-4 h-4 ${form.valor_pago ? 'text-emerald-600' : 'text-secondary'}`} />
+              Dados do Pagamento
+              {form.valor_pago != null && form.valor_pago > 0 && (
+                <span className="text-xs font-medium text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full">Pago</span>
+              )}
+            </h3>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-text-primary mb-1">Valor Pago (R$)</label>
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={form.valor_pago ?? ''}
+                  onChange={(e) => setValorPago(e.target.value)}
+                  className="w-full px-3 py-2 border border-card rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-emerald-300"
+                  placeholder="0,00"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-text-primary mb-1">Data do Pagamento</label>
+                <input
+                  type="date"
+                  value={form.data_pagamento}
+                  onChange={(e) => update('data_pagamento', e.target.value)}
+                  className="w-full px-3 py-2 border border-card rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-emerald-300"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-text-primary mb-1">Nro. Documento</label>
+                <input
+                  type="text"
+                  value={form.nro_doc}
+                  onChange={(e) => update('nro_doc', e.target.value)}
+                  className="w-full px-3 py-2 border border-card rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-emerald-300"
+                  placeholder="Ex.: 2025OB123456"
+                />
+              </div>
             </div>
           </div>
 

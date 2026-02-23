@@ -45,6 +45,9 @@ export async function PATCH(
       data_medicao,
       status_medicao,
       valor_total,
+      valor_pago,
+      data_pagamento,
+      nro_doc,
     } = body
 
     const updates: Record<string, unknown> = {}
@@ -69,6 +72,9 @@ export async function PATCH(
     if (data_medicao !== undefined) updates.data_medicao = data_medicao || null
     if (status_medicao !== undefined) updates.status_medicao = status_medicao ?? null
     if (valor_total !== undefined) updates.valor_total = valor_total ?? null
+    if (valor_pago !== undefined) updates.valor_pago = valor_pago ?? null
+    if (data_pagamento !== undefined) updates.data_pagamento = data_pagamento || null
+    if (nro_doc !== undefined) updates.nro_doc = nro_doc ?? null
 
     if (Object.keys(updates).length === 0) {
       return NextResponse.json({ error: 'Nenhum campo para atualizar' }, { status: 400 })

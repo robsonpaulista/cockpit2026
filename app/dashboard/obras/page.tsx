@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState, useMemo, useRef } from 'react'
-import { Building2, MapPin, DollarSign, Filter, Search, Plus, Edit, Trash2, Loader2, Upload, RefreshCw, Maximize2, Minimize2, FileSearch, ArrowUpDown, ArrowUp, ArrowDown, AlertTriangle, CheckCircle, Columns3, FileDown } from 'lucide-react'
+import { Building2, MapPin, DollarSign, Filter, Search, Plus, Edit, Trash2, Loader2, Upload, RefreshCw, Maximize2, Minimize2, FileSearch, ArrowUpDown, ArrowUp, ArrowDown, AlertTriangle, CheckCircle, Columns3, FileDown, BadgeDollarSign } from 'lucide-react'
 import * as XLSX from 'xlsx'
 import { formatDate } from '@/lib/utils'
 import { ObrasImportModal } from '@/components/obras-import-modal'
@@ -32,6 +32,9 @@ interface Obra {
   data_medicao?: string
   status_medicao?: string
   valor_total?: number
+  valor_pago?: number
+  data_pagamento?: string
+  nro_doc?: string
   created_at?: string
   updated_at?: string
 }
@@ -44,6 +47,7 @@ export default function ObrasPage() {
   const [filterStatus, setFilterStatus] = useState('')
   const [filterStatusMedicao, setFilterStatusMedicao] = useState('')
   const [filterOrgao, setFilterOrgao] = useState('')
+  const [filterPagamento, setFilterPagamento] = useState<'' | 'pago' | 'nao_pago'>('')
   const [activeTab, setActiveTab] = useState<ObraTipoAba>('pavimentação')
   const [showImportModal, setShowImportModal] = useState(false)
   const [showFormModal, setShowFormModal] = useState(false)
@@ -402,15 +406,19 @@ export default function ObrasPage() {
     }
   }
 
-  // Filtrar obras por aba (tipo) e depois por termo de busca
   const filteredObras = useMemo(() => {
-    const porTipo = obras.filter((obra) => {
+    let items = obras.filter((obra) => {
       const t = (obra.tipo ?? '').trim() || 'obras diversas'
       return t === activeTab
     })
-    if (!searchTerm) return porTipo
+    if (filterPagamento === 'pago') {
+      items = items.filter((o) => o.valor_pago && o.valor_pago > 0)
+    } else if (filterPagamento === 'nao_pago') {
+      items = items.filter((o) => !o.valor_pago || o.valor_pago <= 0)
+    }
+    if (!searchTerm) return items
     const term = searchTerm.toLowerCase()
-    return porTipo.filter((obra) => {
+    return items.filter((obra) => {
       return (
         obra.obra?.toLowerCase().includes(term) ||
         obra.municipio?.toLowerCase().includes(term) ||
@@ -419,7 +427,7 @@ export default function ObrasPage() {
         obra.sei_medicao?.toLowerCase().includes(term)
       )
     })
-  }, [obras, searchTerm, activeTab])
+  }, [obras, searchTerm, activeTab, filterPagamento])
 
   const toggleSort = (col: SortColumn) => {
     if (sortColumn === col) {
@@ -573,20 +581,41 @@ export default function ObrasPage() {
             </div>
           </div>
 
-          {/* Filtro Órgão */}
-          <div className="mt-4">
-            <select
-              value={filterOrgao}
-              onChange={(e) => setFilterOrgao(e.target.value)}
-              className="w-full px-4 py-2 border border-card rounded-lg bg-background text-text-primary focus:outline-none focus:ring-2 focus:ring-accent-gold-soft"
-            >
-              <option value="">Todos os órgãos</option>
-              {orgaos.map((orgao) => (
-                <option key={orgao} value={orgao}>
-                  {orgao}
-                </option>
-              ))}
-            </select>
+          <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Filtro Órgão */}
+            <div>
+              <select
+                value={filterOrgao}
+                onChange={(e) => setFilterOrgao(e.target.value)}
+                className="w-full px-4 py-2 border border-card rounded-lg bg-background text-text-primary focus:outline-none focus:ring-2 focus:ring-accent-gold-soft"
+              >
+                <option value="">Todos os órgãos</option>
+                {orgaos.map((orgao) => (
+                  <option key={orgao} value={orgao}>
+                    {orgao}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Filtro Pagamento */}
+            <div>
+              <select
+                value={filterPagamento}
+                onChange={(e) => setFilterPagamento(e.target.value as '' | 'pago' | 'nao_pago')}
+                className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-gold-soft ${
+                  filterPagamento === 'pago'
+                    ? 'border-emerald-300 bg-emerald-50 text-emerald-800'
+                    : filterPagamento === 'nao_pago'
+                    ? 'border-amber-300 bg-amber-50 text-amber-800'
+                    : 'border-card bg-background text-text-primary'
+                }`}
+              >
+                <option value="">Todos (pagos e não pagos)</option>
+                <option value="pago">Somente pagos</option>
+                <option value="nao_pago">Somente não pagos</option>
+              </select>
+            </div>
           </div>
         </div>
 
@@ -596,35 +625,45 @@ export default function ObrasPage() {
           const totalPavimentacao = obras.filter((o) => tipoNorm(o.tipo) === 'pavimentação').reduce((s, o) => s + (o.valor_total || 0), 0)
           const totalObrasDiversas = obras.filter((o) => tipoNorm(o.tipo) === 'obras diversas').reduce((s, o) => s + (o.valor_total || 0), 0)
           const totalGeral = obras.reduce((s, o) => s + (o.valor_total || 0), 0)
+          const totalPago = obras.reduce((s, o) => s + (o.valor_pago || 0), 0)
+          const obrasPagas = obras.filter((o) => o.valor_pago && o.valor_pago > 0).length
           return (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-              <div className="bg-bg-surface rounded-xl border border-border-card shadow-card p-4">
-                <div className="flex items-center gap-2 mb-2">
-                  <Building2 className="w-5 h-5 text-accent-gold" />
-                  <span className="text-sm font-medium text-text-secondary">Total de Obras</span>
+            <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-3 mb-6">
+              <div className="bg-bg-surface rounded-xl border border-border-card shadow-card p-3 min-w-0">
+                <div className="flex items-center gap-1.5 mb-1">
+                  <Building2 className="w-4 h-4 text-accent-gold shrink-0" />
+                  <span className="text-xs font-medium text-text-secondary truncate">Total de Obras</span>
                 </div>
-                <p className="text-2xl font-bold text-text-primary">{obras.length}</p>
+                <p className="text-xl font-bold text-text-primary">{obras.length}</p>
               </div>
-              <div className="bg-bg-surface rounded-xl border border-border-card shadow-card p-4">
-                <div className="flex items-center gap-2 mb-2">
-                  <DollarSign className="w-5 h-5 text-accent-gold" />
-                  <span className="text-sm font-medium text-text-secondary">Total Pavimentação</span>
+              <div className="bg-bg-surface rounded-xl border border-border-card shadow-card p-3 min-w-0">
+                <div className="flex items-center gap-1.5 mb-1">
+                  <DollarSign className="w-4 h-4 text-accent-gold shrink-0" />
+                  <span className="text-xs font-medium text-text-secondary truncate">Total Pavimentação</span>
                 </div>
-                <p className="text-2xl font-bold text-text-primary">{formatCurrency(totalPavimentacao)}</p>
+                <p className="text-lg xl:text-xl font-bold text-text-primary truncate" title={formatCurrency(totalPavimentacao)}>{formatCurrency(totalPavimentacao)}</p>
               </div>
-              <div className="bg-bg-surface rounded-xl border border-border-card shadow-card p-4">
-                <div className="flex items-center gap-2 mb-2">
-                  <DollarSign className="w-5 h-5 text-accent-gold" />
-                  <span className="text-sm font-medium text-text-secondary">Total Obras Diversas</span>
+              <div className="bg-bg-surface rounded-xl border border-border-card shadow-card p-3 min-w-0">
+                <div className="flex items-center gap-1.5 mb-1">
+                  <DollarSign className="w-4 h-4 text-accent-gold shrink-0" />
+                  <span className="text-xs font-medium text-text-secondary truncate">Total Obras Diversas</span>
                 </div>
-                <p className="text-2xl font-bold text-text-primary">{formatCurrency(totalObrasDiversas)}</p>
+                <p className="text-lg xl:text-xl font-bold text-text-primary truncate" title={formatCurrency(totalObrasDiversas)}>{formatCurrency(totalObrasDiversas)}</p>
               </div>
-              <div className="bg-bg-surface rounded-xl border border-border-card shadow-card p-4">
-                <div className="flex items-center gap-2 mb-2">
-                  <DollarSign className="w-5 h-5 text-accent-gold" />
-                  <span className="text-sm font-medium text-text-secondary">Total Geral</span>
+              <div className="bg-bg-surface rounded-xl border border-border-card shadow-card p-3 min-w-0">
+                <div className="flex items-center gap-1.5 mb-1">
+                  <DollarSign className="w-4 h-4 text-accent-gold shrink-0" />
+                  <span className="text-xs font-medium text-text-secondary truncate">Total Geral</span>
                 </div>
-                <p className="text-2xl font-bold text-text-primary">{formatCurrency(totalGeral)}</p>
+                <p className="text-lg xl:text-xl font-bold text-text-primary truncate" title={formatCurrency(totalGeral)}>{formatCurrency(totalGeral)}</p>
+              </div>
+              <div className="bg-bg-surface rounded-xl border border-emerald-200 shadow-card p-3 min-w-0 col-span-2 md:col-span-1">
+                <div className="flex items-center gap-1.5 mb-1">
+                  <BadgeDollarSign className="w-4 h-4 text-emerald-600 shrink-0" />
+                  <span className="text-xs font-medium text-text-secondary truncate">Total Pago</span>
+                </div>
+                <p className="text-lg xl:text-xl font-bold text-emerald-700 truncate" title={formatCurrency(totalPago)}>{formatCurrency(totalPago)}</p>
+                <p className="text-xs text-text-secondary mt-0.5">{obrasPagas} obra{obrasPagas !== 1 ? 's' : ''} paga{obrasPagas !== 1 ? 's' : ''}</p>
               </div>
             </div>
           )
@@ -632,18 +671,28 @@ export default function ObrasPage() {
 
         {/* Tabela de Obras */}
         <div className="bg-bg-surface rounded-2xl border border-border-card shadow-card overflow-hidden">
-          <div className="p-6 border-b border-border-card flex items-center justify-between">
-            <h3 className="text-lg font-semibold text-text-primary flex items-center gap-2">
-              <Building2 className="w-5 h-5 text-accent-gold" />
-              Lista de Obras ({filteredObras.length})
-            </h3>
+          <div className="p-4 lg:p-6 border-b border-border-card space-y-3">
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-semibold text-text-primary flex items-center gap-2">
+                <Building2 className="w-5 h-5 text-accent-gold" />
+                Lista de Obras ({filteredObras.length})
+              </h3>
+              <button
+                onClick={() => setFullscreen((f) => !f)}
+                className="flex items-center gap-2 px-3 py-1.5 border border-border-card rounded-lg hover:bg-bg-app transition-colors text-sm"
+                title={fullscreen ? 'Sair da tela cheia' : 'Tela cheia'}
+              >
+                {fullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
+                <span className="hidden sm:inline">{fullscreen ? 'Sair' : 'Tela cheia'}</span>
+              </button>
+            </div>
             <div className="flex items-center gap-2 flex-wrap">
               <button
                 onClick={() => {
                   setFormObra(null)
                   setShowFormModal(true)
                 }}
-                className="flex items-center gap-2 px-4 py-2 bg-accent-gold text-white rounded-lg hover:bg-accent-gold/90 transition-colors"
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-accent-gold text-white rounded-lg hover:bg-accent-gold/90 transition-colors text-sm"
               >
                 <Plus className="w-4 h-4" />
                 Nova obra
@@ -651,7 +700,7 @@ export default function ObrasPage() {
               <button
                 onClick={() => fetchObras()}
                 disabled={loading}
-                className="flex items-center gap-2 px-4 py-2 border border-border-card rounded-lg hover:bg-bg-app transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex items-center gap-1.5 px-3 py-1.5 border border-border-card rounded-lg hover:bg-bg-app transition-colors text-sm disabled:opacity-50 disabled:cursor-not-allowed"
                 title="Atualizar lista"
               >
                 <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
@@ -659,33 +708,25 @@ export default function ObrasPage() {
               </button>
               <button
                 onClick={() => setShowImportModal(true)}
-                className="flex items-center gap-2 px-4 py-2 border border-border-card rounded-lg hover:bg-bg-app transition-colors"
+                className="flex items-center gap-1.5 px-3 py-1.5 border border-border-card rounded-lg hover:bg-bg-app transition-colors text-sm"
               >
                 <Upload className="w-4 h-4" />
-                Importar do Excel
+                Importar
               </button>
               <button
                 onClick={handleAtualizarAndamentosSei}
                 disabled={seiStatusUpdating || obras.filter((o) => o.sei_url?.trim()).length === 0}
-                className="flex items-center gap-2 px-4 py-2 border border-border-card rounded-lg hover:bg-bg-app transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex items-center gap-1.5 px-3 py-1.5 border border-border-card rounded-lg hover:bg-bg-app transition-colors text-sm disabled:opacity-50 disabled:cursor-not-allowed"
                 title="Buscar último andamento (andamento/Aberto) em cada link SEI"
               >
                 <FileSearch className={`w-4 h-4 ${seiStatusUpdating ? 'animate-pulse' : ''}`} />
-                {seiStatusUpdating ? `Andamentos SEI (${seiStatusProgress.current}/${seiStatusProgress.total})` : 'Atualizar andamentos SEI'}
-              </button>
-              <button
-                onClick={() => setFullscreen((f) => !f)}
-                className="flex items-center gap-2 px-4 py-2 border border-border-card rounded-lg hover:bg-bg-app transition-colors"
-                title={fullscreen ? 'Sair da tela cheia' : 'Tela cheia'}
-              >
-                {fullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
-                {fullscreen ? 'Sair da tela cheia' : 'Tela cheia'}
+                {seiStatusUpdating ? `SEI (${seiStatusProgress.current}/${seiStatusProgress.total})` : 'Andamentos SEI'}
               </button>
               <div className="relative" ref={columnPickerRef}>
                 <button
                   type="button"
                   onClick={() => setShowColumnPicker((v) => !v)}
-                  className="flex items-center gap-2 px-4 py-2 border border-border-card rounded-lg hover:bg-bg-app transition-colors"
+                  className="flex items-center gap-1.5 px-3 py-1.5 border border-border-card rounded-lg hover:bg-bg-app transition-colors text-sm"
                   title="Mostrar ou ocultar colunas"
                 >
                   <Columns3 className="w-4 h-4" />
@@ -712,11 +753,11 @@ export default function ObrasPage() {
                 type="button"
                 onClick={handleExportExcel}
                 disabled={sortedObras.length === 0}
-                className="flex items-center gap-2 px-4 py-2 border border-border-card rounded-lg hover:bg-bg-app transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex items-center gap-1.5 px-3 py-1.5 border border-border-card rounded-lg hover:bg-bg-app transition-colors text-sm disabled:opacity-50 disabled:cursor-not-allowed"
                 title="Exportar lista visível para Excel"
               >
                 <FileDown className="w-4 h-4" />
-                Exportar Excel
+                Exportar
               </button>
             </div>
           </div>
@@ -751,7 +792,7 @@ export default function ObrasPage() {
             <div className="text-center py-12">
               <Building2 className="w-16 h-16 text-secondary mx-auto mb-4 opacity-50" />
               <p className="text-sm text-secondary">
-                {searchTerm || filterMunicipio || filterStatus || filterStatusMedicao || filterOrgao
+                {searchTerm || filterMunicipio || filterStatus || filterStatusMedicao || filterOrgao || filterPagamento
                   ? 'Nenhuma obra encontrada com os filtros aplicados'
                   : `Nenhuma obra do tipo "${activeTab === 'pavimentação' ? 'Pavimentação' : 'Obras diversas'}" cadastrada.`}
               </p>
@@ -790,8 +831,10 @@ export default function ObrasPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-card bg-surface">
-                  {sortedObras.map((obra) => (
-                    <tr key={obra.id} className="group hover:bg-background/50 transition-colors">
+                  {sortedObras.map((obra) => {
+                    const isPago = Boolean(obra.valor_pago && obra.valor_pago > 0)
+                    return (
+                    <tr key={obra.id} className={`group hover:bg-background/50 transition-colors ${isPago ? 'bg-emerald-50/40 border-l-4 border-l-emerald-500' : ''}`}>
                       {visibleColumns.municipio && (
                         <td className={`px-6 py-4 whitespace-nowrap min-w-[120px] ${visibleColsList[0] === 'municipio' ? 'sticky left-0 z-10 bg-surface group-hover:bg-background/50 border-r border-card' : ''}`}>
                           <div className="text-sm font-semibold text-text-primary">{obra.municipio || '-'}</div>
@@ -1088,6 +1131,11 @@ export default function ObrasPage() {
                       )}
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="flex items-center gap-1">
+                          {isPago && (
+                            <span className="mr-1" title={`Pago: ${formatCurrency(obra.valor_pago)}${obra.data_pagamento ? ' em ' + formatDateFull(obra.data_pagamento) : ''}${obra.nro_doc ? ' — Doc: ' + obra.nro_doc : ''}`}>
+                              <BadgeDollarSign className="w-4 h-4 text-emerald-600" />
+                            </span>
+                          )}
                           {obra.sei_url?.trim() && (
                             <button
                               type="button"
@@ -1122,7 +1170,8 @@ export default function ObrasPage() {
                         </div>
                       </td>
                     </tr>
-                  ))}
+                    )
+                  })}
                 </tbody>
               </table>
             </div>
