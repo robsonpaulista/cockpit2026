@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState, useRef, useCallback } from 'react'
+import { createClient } from '@/lib/supabase/client'
 
 const TEMPO_INATIVIDADE = 10 * 60 * 1000 // 10 minutos
 
@@ -13,10 +14,15 @@ export function IdleSplash() {
   const [ativo, setAtivo] = useState<boolean>(false)
   const [fase, setFase] = useState<'inicio' | 'c' | 'nome' | 'slogan'>('inicio')
   const [dispensando, setDispensando] = useState<boolean>(false)
+  const [requerSenha, setRequerSenha] = useState<boolean>(false)
+  const [senha, setSenha] = useState<string>('')
+  const [erroSenha, setErroSenha] = useState<string | null>(null)
+  const [verificandoSenha, setVerificandoSenha] = useState<boolean>(false)
 
   const timerInatividade = useRef<ReturnType<typeof setTimeout> | null>(null)
   const timersAnimacao = useRef<ReturnType<typeof setTimeout>[]>([])
   const protecaoManual = useRef<boolean>(false) // Ignora eventos por 1s após ativação manual
+  const supabaseRef = useRef(createClient())
 
   // Limpar timers de animação
   const limparTimersAnimacao = useCallback(() => {
@@ -37,6 +43,9 @@ export function IdleSplash() {
       setAtivo(true)
       setFase('inicio')
       setDispensando(false)
+      setRequerSenha(false)
+      setSenha('')
+      setErroSenha(null)
     }, TEMPO_INATIVIDADE)
   }, [ativo, dispensando])
 
@@ -52,8 +61,57 @@ export function IdleSplash() {
       setAtivo(false)
       setFase('inicio')
       setDispensando(false)
+      setRequerSenha(false)
+      setSenha('')
+      setErroSenha(null)
     }, 600)
   }, [ativo, dispensando, limparTimersAnimacao])
+
+  const solicitarDesbloqueio = useCallback(() => {
+    if (!ativo || dispensando) return
+    setRequerSenha(true)
+    setErroSenha(null)
+  }, [ativo, dispensando])
+
+  const validarSenha = useCallback(async () => {
+    if (verificandoSenha) return
+    const senhaLimpa = senha.trim()
+    if (!senhaLimpa) {
+      setErroSenha('Digite sua senha para desbloquear.')
+      return
+    }
+
+    setVerificandoSenha(true)
+    setErroSenha(null)
+
+    try {
+      const supabase = supabaseRef.current
+      const { data: userData, error: userError } = await supabase.auth.getUser()
+      if (userError || !userData.user?.email) {
+        setErroSenha('Sessão indisponível. Faça login novamente.')
+        return
+      }
+
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email: userData.user.email,
+        password: senhaLimpa,
+      })
+
+      if (signInError) {
+        setErroSenha('Senha inválida. Tente novamente.')
+        return
+      }
+
+      setSenha('')
+      setRequerSenha(false)
+      setErroSenha(null)
+      dispensar()
+    } catch {
+      setErroSenha('Não foi possível validar a senha.')
+    } finally {
+      setVerificandoSenha(false)
+    }
+  }, [senha, verificandoSenha, dispensar])
 
   // Ciclo de animação contínuo (loop enquanto ativo)
   useEffect(() => {
@@ -105,7 +163,7 @@ export function IdleSplash() {
     const handleDispensar = () => {
       if (protecaoManual.current) return
       if (ativo) {
-        dispensar()
+        solicitarDesbloqueio()
       } else {
         resetarTimer()
       }
@@ -126,6 +184,9 @@ export function IdleSplash() {
         setAtivo(true)
         setFase('inicio')
         setDispensando(false)
+        setRequerSenha(false)
+        setSenha('')
+        setErroSenha(null)
       }
     }
 
@@ -145,15 +206,15 @@ export function IdleSplash() {
       }
       limparTimersAnimacao()
     }
-  }, [ativo, dispensando, dispensar, resetarTimer, limparTimersAnimacao])
+  }, [ativo, dispensando, solicitarDesbloqueio, resetarTimer, limparTimersAnimacao])
 
   if (!ativo) return null
 
   return (
     <>
       <div
-        onClick={dispensar}
-        onKeyDown={dispensar}
+        onClick={solicitarDesbloqueio}
+        onKeyDown={solicitarDesbloqueio}
         style={{
         position: 'fixed',
         inset: 0,
@@ -293,8 +354,148 @@ export function IdleSplash() {
           transition: 'opacity 1.2s ease 0.5s',
         }}
       >
-        Clique ou pressione qualquer tecla para voltar
+        Clique ou pressione qualquer tecla para desbloquear
       </span>
+
+      {requerSenha && (
+        <div
+          style={{
+            position: 'absolute',
+            inset: 0,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            background: 'rgba(0, 0, 0, 0.35)',
+            zIndex: 20,
+            cursor: 'default',
+            padding: '16px',
+          }}
+          onClick={(e) => e.stopPropagation()}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              e.preventDefault()
+              void validarSenha()
+            }
+          }}
+        >
+          <div
+            style={{
+              width: '100%',
+              maxWidth: '420px',
+              background: 'rgba(255,255,255,0.13)',
+              border: '1px solid rgba(255,255,255,0.25)',
+              borderRadius: '14px',
+              backdropFilter: 'blur(14px)',
+              WebkitBackdropFilter: 'blur(14px)',
+              padding: '18px',
+              boxShadow: '0 12px 32px rgba(0,0,0,0.22)',
+            }}
+          >
+            <p
+              style={{
+                margin: 0,
+                marginBottom: '6px',
+                fontFamily: "'Outfit', 'Inter', sans-serif",
+                fontSize: '1rem',
+                fontWeight: 700,
+                color: 'white',
+              }}
+            >
+              Confirmação de segurança
+            </p>
+            <p
+              style={{
+                margin: 0,
+                marginBottom: '12px',
+                fontFamily: "'DM Sans', 'Inter', sans-serif",
+                fontSize: '0.85rem',
+                color: 'rgba(255,255,255,0.82)',
+              }}
+            >
+              Digite sua senha para desbloquear a tela.
+            </p>
+
+            <input
+              type="password"
+              value={senha}
+              onChange={(e) => {
+                setSenha(e.target.value)
+                setErroSenha(null)
+              }}
+              autoFocus
+              placeholder="Sua senha"
+              style={{
+                width: '100%',
+                padding: '10px 12px',
+                borderRadius: '10px',
+                border: '1px solid rgba(255,255,255,0.3)',
+                background: 'rgba(255,255,255,0.18)',
+                color: 'white',
+                outline: 'none',
+                fontSize: '0.9rem',
+              }}
+            />
+
+            {erroSenha && (
+              <p
+                style={{
+                  marginTop: '8px',
+                  marginBottom: 0,
+                  fontSize: '0.8rem',
+                  color: '#ffe4e4',
+                }}
+              >
+                {erroSenha}
+              </p>
+            )}
+
+            <div
+              style={{
+                marginTop: '14px',
+                display: 'flex',
+                justifyContent: 'flex-end',
+                gap: '8px',
+              }}
+            >
+              <button
+                type="button"
+                onClick={() => {
+                  setRequerSenha(false)
+                  setSenha('')
+                  setErroSenha(null)
+                }}
+                style={{
+                  padding: '8px 12px',
+                  borderRadius: '10px',
+                  border: '1px solid rgba(255,255,255,0.3)',
+                  background: 'rgba(255,255,255,0.1)',
+                  color: 'white',
+                  cursor: 'pointer',
+                }}
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={() => void validarSenha()}
+                disabled={verificandoSenha}
+                style={{
+                  padding: '8px 12px',
+                  borderRadius: '10px',
+                  border: 'none',
+                  background: 'white',
+                  color: '#b84311',
+                  cursor: verificandoSenha ? 'not-allowed' : 'pointer',
+                  opacity: verificandoSenha ? 0.7 : 1,
+                  fontWeight: 600,
+                }}
+              >
+                {verificandoSenha ? 'Validando...' : 'Desbloquear'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
     </div>
     </>

@@ -904,6 +904,7 @@ export default function Home() {
                   kpi={heroKpi} 
                   infoLines={infoLines.length > 0 ? infoLines : undefined}
                   href="/ife"
+                  hideValueByDefault
                 />
               )
             })()
@@ -980,12 +981,19 @@ export default function Home() {
                     cardSubtitleType = 'negative'
                   }
                 }
+
+                const kpiHrefMap: Partial<Record<KPI['id'], string>> = {
+                  presenca: '/dashboard/territorio',
+                  base: '/dashboard/territorio',
+                  projecao: '/dashboard/chapas',
+                  sentimento: '/dashboard/pesquisa',
+                }
                 
                 return (
                   <AnimatedSection key={kpi.id} delay={index * 60}>
                     <KPICard 
                       kpi={kpi} 
-                      href={`/${kpi.id}`}
+                      href={kpiHrefMap[kpi.id] || `/${kpi.id}`}
                       subtitle={cardSubtitle}
                       subtitleType={cardSubtitleType}
                       infoLines={cardInfoLines}

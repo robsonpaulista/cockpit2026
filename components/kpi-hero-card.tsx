@@ -2,9 +2,9 @@
 
 import { cn } from '@/lib/utils'
 import { KPI } from '@/types'
-import Link from 'next/link'
-import { TrendingUp, TrendingDown, Trophy } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { TrendingUp, TrendingDown, Trophy, Eye, EyeOff } from 'lucide-react'
+import { useEffect, useState, type MouseEvent } from 'react'
+import { useRouter } from 'next/navigation'
 
 interface InfoLine {
   text: string
@@ -17,11 +17,18 @@ interface KPIHeroCardProps {
   subtitle?: string
   infoLines?: InfoLine[]
   href?: string
+  hideValueByDefault?: boolean
 }
 
-export function KPIHeroCard({ kpi, subtitle, infoLines, href = '#' }: KPIHeroCardProps) {
+export function KPIHeroCard({ kpi, subtitle, infoLines, href = '#', hideValueByDefault = false }: KPIHeroCardProps) {
+  const router = useRouter()
   const [displayValue, setDisplayValue] = useState<string | number>('0')
   const [isAnimating, setIsAnimating] = useState(false)
+  const [isValueVisible, setIsValueVisible] = useState(!hideValueByDefault)
+
+  useEffect(() => {
+    setIsValueVisible(!hideValueByDefault)
+  }, [hideValueByDefault, kpi.id])
 
   useEffect(() => {
     setIsAnimating(true)
@@ -67,6 +74,12 @@ export function KPIHeroCard({ kpi, subtitle, infoLines, href = '#' }: KPIHeroCar
     return null
   }
 
+  const handleToggleVisibility = (event: MouseEvent<HTMLButtonElement>) => {
+    event.stopPropagation()
+    event.preventDefault()
+    setIsValueVisible((prev) => !prev)
+  }
+
   const content = (
     <div
       className={cn(
@@ -74,7 +87,7 @@ export function KPIHeroCard({ kpi, subtitle, infoLines, href = '#' }: KPIHeroCar
         'shadow-[0_2px_8px_rgba(0,0,0,0.1)]',
         'hover:shadow-[0_12px_32px_rgba(0,0,0,0.12)] hover:-translate-y-[3px]',
         'transition-all duration-300 ease-out',
-        'cursor-pointer group overflow-hidden'
+        href ? 'cursor-pointer group overflow-hidden' : 'group overflow-hidden'
       )}
     >
       {/* Layout horizontal */}
@@ -110,10 +123,22 @@ export function KPIHeroCard({ kpi, subtitle, infoLines, href = '#' }: KPIHeroCar
           <div className="flex items-center gap-2 justify-end">
             <p className={cn(
               'text-4xl font-black text-white transition-all duration-300',
+              !isValueVisible && 'select-none tracking-wider',
               isAnimating && 'scale-105'
             )}>
-              {displayValue}
+              {isValueVisible ? displayValue : '••••••'}
             </p>
+            {hideValueByDefault && (
+              <button
+                type="button"
+                onClick={handleToggleVisibility}
+                className="p-1 rounded-md bg-white/20 hover:bg-white/30 text-white transition-colors"
+                title={isValueVisible ? 'Ocultar valor' : 'Mostrar valor'}
+                aria-label={isValueVisible ? 'Ocultar valor' : 'Mostrar valor'}
+              >
+                {isValueVisible ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              </button>
+            )}
             <span className="px-2 py-0.5 text-[10px] font-medium bg-white/20 text-white rounded border border-white/30">
               Hoje
             </span>
@@ -125,7 +150,21 @@ export function KPIHeroCard({ kpi, subtitle, infoLines, href = '#' }: KPIHeroCar
   )
 
   if (href) {
-    return <Link href={href}>{content}</Link>
+    return (
+      <div
+        role="link"
+        tabIndex={0}
+        onClick={() => router.push(href)}
+        onKeyDown={(event) => {
+          if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault()
+            router.push(href)
+          }
+        }}
+      >
+        {content}
+      </div>
+    )
   }
 
   return content

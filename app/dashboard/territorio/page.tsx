@@ -1,12 +1,13 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { KPICard } from '@/components/kpi-card'
 import { GoogleSheetsConfigModal } from '@/components/google-sheets-config-modal'
-import { Users, Settings, RefreshCw, AlertCircle, ChevronDown, ChevronRight, Network, FileText, Briefcase } from 'lucide-react'
+import { Users, Settings, RefreshCw, AlertCircle, ChevronDown, ChevronRight, Network, FileText, Briefcase, Check } from 'lucide-react'
 import { MindMapModal } from '@/components/mind-map-modal'
 import { CityDemandsModal } from '@/components/city-demands-modal'
 import { ExecutiveBriefingModal } from '@/components/executive-briefing-modal'
+import { MapaVotoCruzado } from '@/components/mapa-voto-cruzado'
 import { KPI } from '@/types'
 
 interface Lideranca {
@@ -32,7 +33,10 @@ export default function TerritorioPage() {
   const [filtroCidade, setFiltroCidade] = useState<string>('')
   const [filtroNome, setFiltroNome] = useState<string>('')
   const [filtroCargo, setFiltroCargo] = useState<string>('')
+  const [filtroDepEstadual, setFiltroDepEstadual] = useState<string[]>([])
   const [filtroFaixaVotos, setFiltroFaixaVotos] = useState<string>('')
+  const [showDepDropdown, setShowDepDropdown] = useState(false)
+  const [showMapaVotoCruzado, setShowMapaVotoCruzado] = useState(true)
   const [showMindMap, setShowMindMap] = useState(false)
   const [candidatoPadrao, setCandidatoPadrao] = useState<string>('')
   const [serverConfigured, setServerConfigured] = useState(false)
@@ -41,6 +45,7 @@ export default function TerritorioPage() {
   const [showExecutiveBriefing, setShowExecutiveBriefing] = useState(false)
   const [selectedCityForBriefing, setSelectedCityForBriefing] = useState<string>('')
   const [selectedCityLiderancas, setSelectedCityLiderancas] = useState<Lideranca[]>([])
+  const depDropdownRef = useRef<HTMLDivElement | null>(null)
 
   useEffect(() => {
     const initConfig = async () => {
@@ -88,6 +93,29 @@ export default function TerritorioPage() {
 
     initConfig()
   }, [])
+
+  useEffect(() => {
+    if (!showDepDropdown) return
+
+    const handleClickOutside = (event: MouseEvent) => {
+      if (depDropdownRef.current && !depDropdownRef.current.contains(event.target as Node)) {
+        setShowDepDropdown(false)
+      }
+    }
+
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setShowDepDropdown(false)
+      }
+    }
+
+    window.addEventListener('mousedown', handleClickOutside)
+    window.addEventListener('keydown', handleEscape)
+    return () => {
+      window.removeEventListener('mousedown', handleClickOutside)
+      window.removeEventListener('keydown', handleEscape)
+    }
+  }, [showDepDropdown])
 
   // Buscar dados usando configuração do servidor
   const fetchDataFromServer = async () => {
@@ -221,6 +249,34 @@ export default function TerritorioPage() {
              !/expectativa|votos|telefone|email|whatsapp|contato|endereco|endereço/i.test(normalized)
     })
   })()
+  const depEstadualCol = headers.find((h) =>
+    /dep.*estadual|deputad.*estadual/i.test(h)
+  )
+
+  const extrairDepEstadual = (lider: Lideranca): string => {
+    const direto = depEstadualCol ? String(lider[depEstadualCol] || '').trim() : ''
+    if (direto) return direto
+
+    const cargoTexto = cargoCol ? String(lider[cargoCol] || '') : ''
+    if (!cargoTexto) return ''
+
+    const match = cargoTexto.match(/dep\.?\s*estadual\s*:?\s*([^·|]+?)(?:\s{2,}|·|$)/i)
+    return match?.[1]?.trim() || ''
+  }
+
+  const deputadosEstaduaisUnicos = Array.from(
+    new Set(
+      liderancas
+        .map((l) => extrairDepEstadual(l))
+        .filter((n) => n.length > 0)
+    )
+  ).sort((a, b) => a.localeCompare(b, 'pt-BR'))
+
+  const toggleDepEstadual = (dep: string) => {
+    setFiltroDepEstadual((prev) =>
+      prev.includes(dep) ? prev.filter((item) => item !== dep) : [...prev, dep]
+    )
+  }
 
   // Lista de cargos únicos para dropdown
   const cargosUnicos = cargoCol
@@ -282,6 +338,13 @@ export default function TerritorioPage() {
       })
     }
 
+    if (filtroDepEstadual.length > 0) {
+      filtradas = filtradas.filter((l) => {
+        const dep = extrairDepEstadual(l)
+        return filtroDepEstadual.includes(dep)
+      })
+    }
+
     // Aplicar filtro por faixa de votos esperados (considerando o total de cada cidade)
     if (filtroFaixaVotos && expectativaVotosCol) {
       // Agrupar por cidade e calcular total de votos por cidade
@@ -323,6 +386,53 @@ export default function TerritorioPage() {
 
     return filtradas
   })()
+
+  const mapaVotoCruzado = useMemo(() => {
+    const porCidade: Record<string, {
+      votos: number
+      liderancas: number
+      porDeputado: Record<string, { votos: number; liderancas: number }>
+    }> = {}
+
+    liderancasFiltradas.forEach((lider) => {
+      const cidade = String(lider[cidadeCol] || '').trim() || 'Sem cidade'
+      const dep = extrairDepEstadual(lider) || 'Não informado'
+      const votos = expectativaVotosCol ? normalizeNumber(lider[expectativaVotosCol]) : 0
+
+      if (!porCidade[cidade]) {
+        porCidade[cidade] = { votos: 0, liderancas: 0, porDeputado: {} }
+      }
+
+      porCidade[cidade].votos += votos
+      porCidade[cidade].liderancas += 1
+
+      if (!porCidade[cidade].porDeputado[dep]) {
+        porCidade[cidade].porDeputado[dep] = { votos: 0, liderancas: 0 }
+      }
+      porCidade[cidade].porDeputado[dep].votos += votos
+      porCidade[cidade].porDeputado[dep].liderancas += 1
+    })
+
+    return Object.entries(porCidade)
+      .map(([cidade, info]) => {
+        const rankingDeputados = Object.entries(info.porDeputado)
+          .map(([nome, dados]) => ({
+            nome,
+            votos: Math.round(dados.votos),
+            liderancas: dados.liderancas,
+          }))
+          .sort((a, b) => (b.votos - a.votos) || (b.liderancas - a.liderancas))
+
+        return {
+          cidade,
+          votos: Math.round(info.votos),
+          liderancas: info.liderancas,
+          deputadoDominante: rankingDeputados[0]?.nome || 'Não informado',
+          rankingDeputados: rankingDeputados.slice(0, 5),
+        }
+      })
+      .sort((a, b) => b.votos - a.votos)
+  }, [liderancasFiltradas, cidadeCol, expectativaVotosCol, depEstadualCol, cargoCol])
 
   // Calcular KPIs baseados nos dados filtrados
   const calcularKPIs = (): KPI[] => {
@@ -554,7 +664,7 @@ export default function TerritorioPage() {
         {(config || serverConfigured) && liderancas.length > 0 && (
           <div className="mb-6 bg-surface rounded-2xl border border-card p-4">
             <h3 className="text-sm font-semibold text-text-primary mb-4">Filtros</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
               {/* Filtro por Cidade */}
               <div>
                 <label className="block text-xs font-medium text-secondary mb-2">
@@ -602,6 +712,79 @@ export default function TerritorioPage() {
                 </div>
               )}
 
+              {/* Filtro por Deputado Estadual (voto cruzado) */}
+              {deputadosEstaduaisUnicos.length > 0 && (
+                <div>
+                  <label className="block text-xs font-medium text-secondary mb-2">
+                    Dep. Estadual (Voto Cruzado)
+                  </label>
+                  <div className="relative" ref={depDropdownRef}>
+                    <button
+                      type="button"
+                      onClick={() => setShowDepDropdown((v) => !v)}
+                      className="w-full px-3 py-2 text-sm border border-card rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-gold-soft bg-surface text-left flex items-center justify-between"
+                    >
+                      <span className="truncate">
+                        {filtroDepEstadual.length > 0
+                          ? filtroDepEstadual.length === deputadosEstaduaisUnicos.length
+                            ? 'Todos selecionados'
+                            : `${filtroDepEstadual.length} selecionado(s)`
+                          : 'Todos os deputados'}
+                      </span>
+                      <ChevronDown className={`w-4 h-4 text-secondary transition-transform ${showDepDropdown ? 'rotate-180' : ''}`} />
+                    </button>
+
+                    {showDepDropdown && (
+                      <div className="absolute z-30 mt-1 w-full bg-surface border border-card rounded-lg shadow-lg overflow-hidden">
+                        <div className="max-h-56 overflow-auto p-1">
+                          {deputadosEstaduaisUnicos.map((dep) => {
+                            const checked = filtroDepEstadual.includes(dep)
+                            return (
+                              <button
+                                key={dep}
+                                type="button"
+                                onClick={() => toggleDepEstadual(dep)}
+                                className="w-full flex items-center gap-2 px-2 py-1.5 text-sm rounded hover:bg-background text-left"
+                              >
+                                <span className={`w-4 h-4 rounded border flex items-center justify-center ${checked ? 'bg-accent-gold border-accent-gold' : 'border-card bg-white'}`}>
+                                  {checked && <Check className="w-3 h-3 text-white" />}
+                                </span>
+                                <span className="truncate">{dep}</span>
+                              </button>
+                            )
+                          })}
+                        </div>
+                        <div className="border-t border-card p-2 flex justify-between items-center">
+                          <span className="text-[11px] text-secondary">{filtroDepEstadual.length} selecionado(s)</span>
+                          <div className="flex items-center gap-3">
+                            <button
+                              type="button"
+                              onClick={() => setFiltroDepEstadual(deputadosEstaduaisUnicos)}
+                              className="text-[11px] text-accent-gold hover:underline disabled:opacity-50"
+                              disabled={filtroDepEstadual.length === deputadosEstaduaisUnicos.length}
+                            >
+                              Selecionar todos
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setFiltroDepEstadual([])}
+                              className="text-[11px] text-accent-gold hover:underline"
+                            >
+                              Limpar
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                  <p className="mt-1 text-[11px] text-secondary">
+                    {filtroDepEstadual.length > 0
+                      ? `${filtroDepEstadual.length} deputado(s) selecionado(s)`
+                      : 'Selecione um ou mais deputados'}
+                  </p>
+                </div>
+              )}
+
               {/* Filtro por Faixa de Votos Esperados */}
               {expectativaVotosCol && (
                 <div>
@@ -623,7 +806,7 @@ export default function TerritorioPage() {
                 </div>
               )}
             </div>
-            {(filtroCidade || filtroNome || filtroCargo || filtroFaixaVotos) && (
+            {(filtroCidade || filtroNome || filtroCargo || filtroDepEstadual.length > 0 || filtroFaixaVotos) && (
               <div className="mt-4 flex items-center justify-between">
                 <span className="text-xs text-secondary">
                   {liderancasFiltradas.length} resultado{liderancasFiltradas.length !== 1 ? 's' : ''} encontrado{liderancasFiltradas.length !== 1 ? 's' : ''}
@@ -633,11 +816,54 @@ export default function TerritorioPage() {
                     setFiltroCidade('')
                     setFiltroNome('')
                     setFiltroCargo('')
+                    setFiltroDepEstadual([])
                     setFiltroFaixaVotos('')
                   }}
                   className="text-xs text-accent-gold hover:underline"
                 >
                   Limpar filtros
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+
+        {filtroDepEstadual.length > 0 && mapaVotoCruzado.length > 0 && (
+          <div className="mb-6 bg-surface rounded-2xl border border-card p-4">
+            <div className="mb-3 flex justify-end">
+              <button
+                type="button"
+                onClick={() => setShowMapaVotoCruzado((v) => !v)}
+                className="px-3 py-1.5 text-xs font-medium border border-card rounded-lg hover:bg-background transition-colors"
+              >
+                {showMapaVotoCruzado ? 'Ocultar mapa' : 'Mostrar mapa'}
+              </button>
+            </div>
+            {showMapaVotoCruzado && (
+              <div id="mapa-voto-cruzado-container">
+                <MapaVotoCruzado
+                  deputados={filtroDepEstadual}
+                  cidades={mapaVotoCruzado}
+                  onFullscreen={() => {
+                    const container = document.getElementById('mapa-voto-cruzado-container')
+                    if (!container) return
+                    if (document.fullscreenElement) {
+                      document.exitFullscreen()
+                    } else {
+                      container.requestFullscreen().catch(() => {})
+                    }
+                  }}
+                />
+              </div>
+            )}
+            {!showMapaVotoCruzado && (
+              <div className="flex justify-end">
+                <button
+                  type="button"
+                  onClick={() => setShowMapaVotoCruzado(true)}
+                  className="px-3 py-1.5 text-xs font-medium border border-card rounded-lg hover:bg-background transition-colors"
+                >
+                  Mostrar mapa de voto cruzado
                 </button>
               </div>
             )}
@@ -714,6 +940,28 @@ export default function TerritorioPage() {
               )}
             </div>
           </div>
+
+          {filtroDepEstadual.length > 0 && (
+            <div className="mb-4 p-3 rounded-xl border border-accent-gold-soft bg-accent-gold-soft/10">
+              {(() => {
+                const cidades = new Set(liderancasFiltradas.map((l) => String(l[cidadeCol] || 'Sem cidade')))
+                const totalVotos = expectativaVotosCol
+                  ? liderancasFiltradas.reduce((sum, l) => sum + normalizeNumber(l[expectativaVotosCol]), 0)
+                  : 0
+
+                return (
+                  <p className="text-sm text-text-primary">
+                    <span className="font-semibold">
+                      Voto cruzado com {filtroDepEstadual.length} deputado(s):
+                    </span>{' '}
+                    {cidades.size} cidade{cidades.size !== 1 ? 's' : ''},{' '}
+                    {liderancasFiltradas.length} liderança{liderancasFiltradas.length !== 1 ? 's' : ''}{' '}
+                    {expectativaVotosCol ? `e ${Math.round(totalVotos).toLocaleString('pt-BR')} votos esperados em conjunto.` : '.'}
+                  </p>
+                )
+              })()}
+            </div>
+          )}
 
           {loading ? (
             <div className="space-y-3">
