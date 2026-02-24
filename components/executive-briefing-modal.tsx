@@ -19,6 +19,7 @@ interface Demand {
   priority?: string
   lideranca?: string
   data_demanda?: string
+  sheets_data?: Record<string, unknown>
 }
 
 interface Poll {
@@ -62,6 +63,42 @@ export function ExecutiveBriefingModal({
   const [copied, setCopied] = useState(false)
   const contentRef = useRef<HTMLDivElement>(null)
 
+  const getSheetsField = useCallback((demand: Demand, patterns: RegExp[]): string | null => {
+    const raw = demand.sheets_data
+    if (!raw || typeof raw !== 'object') return null
+
+    const entries = Object.entries(raw)
+    const match = entries.find(([key]) => patterns.some((pattern) => pattern.test(key)))
+    if (!match) return null
+
+    const value = match[1]
+    if (value === null || value === undefined) return null
+    const text = String(value).trim()
+    return text || null
+  }, [])
+
+  const getDemandValor = useCallback((demand: Demand): string | null => {
+    const rawValue = getSheetsField(demand, [
+      /^valor$/i,
+      /valor\s*\(?.*r\$.*\)?/i,
+      /custo|or[çc]amento/i,
+    ])
+    if (!rawValue) return null
+    const semMoeda = rawValue.replace(/r\$\s*/gi, '').trim()
+    return semMoeda || null
+  }, [getSheetsField])
+
+  const getDemandPrevisao = useCallback((demand: Demand): string | null => {
+    const fromSheet = getSheetsField(demand, [
+      /^previs[aã]o$/i,
+      /data.*previs[aã]o/i,
+      /previs[aã]o.*data/i,
+      /prazo/i,
+    ])
+    if (fromSheet) return fromSheet
+    return demand.data_demanda ? new Date(demand.data_demanda).toLocaleDateString('pt-BR') : null
+  }, [getSheetsField])
+
   // Função para normalizar números
   const normalizeNumber = (value: any): number => {
     if (typeof value === 'number') return value
@@ -94,6 +131,20 @@ export function ExecutiveBriefingModal({
     
     const numValue = parseFloat(cleaned)
     return isNaN(numValue) ? 0 : numValue
+  }
+
+  const formatValorSemMoeda = (value: number): string => {
+    if (!Number.isFinite(value) || value <= 0) return '-'
+    return value.toLocaleString('pt-BR', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    })
+  }
+
+  const getDemandValorNumero = (demand: Demand): number => {
+    const valor = getDemandValor(demand)
+    if (!valor) return 0
+    return normalizeNumber(valor)
   }
 
   // Buscar demandas da cidade
@@ -198,6 +249,7 @@ export function ExecutiveBriefingModal({
     
     return 0
   })
+  const totalValorDemandas = demandsOrdenadas.reduce((sum, demand) => sum + getDemandValorNumero(demand), 0)
 
   // Calcular totais
   const totalExpectativa = liderancas.reduce((sum, lider) => {
@@ -663,6 +715,7 @@ export function ExecutiveBriefingModal({
                 {demandsOrdenadas.length === 0 ? (
                   <p className="text-xs text-secondary">Nenhuma demanda encontrada</p>
                 ) : (
+                  <>
                   <div className="overflow-x-auto">
                     <table className="w-full text-xs border-collapse">
                       <thead>
@@ -672,8 +725,11 @@ export function ExecutiveBriefingModal({
                           {demandsOrdenadas.some(d => d.lideranca) && (
                             <th className="text-left p-1.5 font-semibold text-text-primary">Liderança</th>
                           )}
-                          {demandsOrdenadas.some(d => d.data_demanda) && (
-                            <th className="text-left p-1.5 font-semibold text-text-primary">Data</th>
+                          {demandsOrdenadas.some((d) => getDemandValor(d)) && (
+                            <th className="text-right p-1.5 font-semibold text-text-primary">Valor</th>
+                          )}
+                          {demandsOrdenadas.some((d) => getDemandPrevisao(d)) && (
+                            <th className="text-left p-1.5 font-semibold text-text-primary">Previsão</th>
                           )}
                         </tr>
                       </thead>
@@ -713,9 +769,14 @@ export function ExecutiveBriefingModal({
                               {demandsOrdenadas.some(d => d.lideranca) && (
                                 <td className="p-1.5 text-secondary">{demand.lideranca || '-'}</td>
                               )}
-                              {demandsOrdenadas.some(d => d.data_demanda) && (
+                              {demandsOrdenadas.some((d) => getDemandValor(d)) && (
+                                <td className="p-1.5 text-right font-medium text-text-primary">
+                                  {formatValorSemMoeda(getDemandValorNumero(demand))}
+                                </td>
+                              )}
+                              {demandsOrdenadas.some((d) => getDemandPrevisao(d)) && (
                                 <td className="p-1.5 text-secondary">
-                                  {demand.data_demanda ? new Date(demand.data_demanda).toLocaleDateString('pt-BR') : '-'}
+                                  {getDemandPrevisao(demand) || '-'}
                                 </td>
                               )}
                             </tr>
@@ -724,6 +785,14 @@ export function ExecutiveBriefingModal({
                       </tbody>
                     </table>
                   </div>
+                  {demandsOrdenadas.some((d) => getDemandValor(d)) && (
+                    <div className="mt-2 flex justify-end">
+                      <span className="text-xs font-bold text-accent-gold">
+                        Total Valor: {formatValorSemMoeda(totalValorDemandas)}
+                      </span>
+                    </div>
+                  )}
+                  </>
                 )}
               </section>
 
