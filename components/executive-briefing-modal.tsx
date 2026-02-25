@@ -310,6 +310,17 @@ export function ExecutiveBriefingModal({
     if (demandsOrdenadas.length === 0) {
       lines.push(`_Nenhuma demanda registrada_`)
     } else {
+      const appendDemandExtras = (d: Demand) => {
+        const valorNumero = getDemandValorNumero(d)
+        const previsao = getDemandPrevisao(d)
+        if (valorNumero > 0) {
+          lines.push(`    💰 Valor: ${formatValorSemMoeda(valorNumero)}`)
+        }
+        if (previsao) {
+          lines.push(`    📅 Previsão: ${previsao}`)
+        }
+      }
+
       const finalizadas = demandsOrdenadas.filter(d => {
         const s = (d.status || '').toLowerCase()
         return s.includes('resolvido') || s.includes('concluído') || s.includes('concluido') || s.includes('finalizado') || s.includes('finalizada')
@@ -328,6 +339,7 @@ export function ExecutiveBriefingModal({
         finalizadas.forEach(d => {
           const lider = d.lideranca ? ` — ${d.lideranca}` : ''
           lines.push(`  • ${d.title}${lider}`)
+          appendDemandExtras(d)
         })
         lines.push(``)
       }
@@ -337,6 +349,7 @@ export function ExecutiveBriefingModal({
         emAndamento.forEach(d => {
           const lider = d.lideranca ? ` — ${d.lideranca}` : ''
           lines.push(`  • ${d.title}${lider}`)
+          appendDemandExtras(d)
           if (d.description) {
             lines.push(`    _${d.description}_`)
           }
@@ -349,6 +362,7 @@ export function ExecutiveBriefingModal({
         pendentes.forEach(d => {
           const lider = d.lideranca ? ` — ${d.lideranca}` : ''
           lines.push(`  • ${d.title}${lider}`)
+          appendDemandExtras(d)
         })
         lines.push(``)
       }
