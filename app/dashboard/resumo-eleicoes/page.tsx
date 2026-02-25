@@ -2,6 +2,7 @@
 
 import { useMemo, useState, useEffect } from 'react'
 import { RefreshCw, AlertCircle, Crown } from 'lucide-react'
+import { getEleitoradoByCity } from '@/lib/eleitores'
 
 interface ResultadoEleicao {
   uf: string
@@ -33,6 +34,15 @@ interface PartidoResumo {
   eleitos: number
 }
 
+interface ResumoCidade {
+  eleitores: number | null
+  votos2026: number
+  votacaoFinal2022: number
+  liderancas: number
+}
+
+type ResumosCidadeMap = Record<string, { expectativaVotos: number; votacaoFinal2022: number; liderancas: number }>
+
 type TableKey =
   | 'deputado_estadual'
   | 'deputado_federal'
@@ -58,6 +68,14 @@ function parseVotos(value: string): number {
 
 function includesNormalized(source: string, term: string): boolean {
   return source.toLowerCase().includes(term.toLowerCase())
+}
+
+function normalizeCityName(city: string): string {
+  return city
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .trim()
 }
 
 function Pagination({
@@ -106,6 +124,8 @@ export default function ResumoEleicoesPage() {
   const [buscaIniciada, setBuscaIniciada] = useState(false)
   const [presidenteCamaraNome, setPresidenteCamaraNome] = useState<string | null>(null)
   const [filtroPartidoAtivo, setFiltroPartidoAtivo] = useState<string | null>(null)
+  const [resumoCidade, setResumoCidade] = useState<ResumoCidade | null>(null)
+  const [resumosCidadeMap, setResumosCidadeMap] = useState<ResumosCidadeMap>({})
   const [currentPage, setCurrentPage] = useState<Record<string, number>>({
     deputado_estadual: 1,
     deputado_federal: 1,
@@ -157,6 +177,75 @@ export default function ResumoEleicoesPage() {
       prefeito_2024: 1,
       vereador_2024: 1,
     }))
+  }
+
+  const getResumoFromMap = (
+    cidadeAlvo: string
+  ): { expectativaVotos: number; votacaoFinal2022: number; liderancas: number } | null => {
+    const normalized = normalizeCityName(cidadeAlvo)
+    if (!normalized) return null
+
+    if (resumosCidadeMap[normalized]) return resumosCidadeMap[normalized]
+
+    let fallback: { expectativaVotos: number; votacaoFinal2022: number; liderancas: number } | null = null
+    Object.entries(resumosCidadeMap).forEach(([key, value]) => {
+      if (key.includes(normalized) || normalized.includes(key)) {
+        fallback = {
+          expectativaVotos: (fallback?.expectativaVotos || 0) + value.expectativaVotos,
+          votacaoFinal2022: (fallback?.votacaoFinal2022 || 0) + value.votacaoFinal2022,
+          liderancas: (fallback?.liderancas || 0) + value.liderancas,
+        }
+      }
+    })
+    return fallback
+  }
+
+  const carregarResumoCidade = async (cidadeAlvo: string): Promise<void> => {
+    const eleitores = getEleitoradoByCity(cidadeAlvo)
+    const fromMap = getResumoFromMap(cidadeAlvo)
+    if (fromMap) {
+      setResumoCidade({
+        eleitores,
+        votos2026: fromMap.expectativaVotos,
+        votacaoFinal2022: fromMap.votacaoFinal2022,
+        liderancas: fromMap.liderancas,
+      })
+      return
+    }
+
+    try {
+      const res = await fetch('/api/territorio/expectativa-por-cidade', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ cidade: cidadeAlvo }),
+      })
+      const json = await res.json()
+      if (!res.ok) throw new Error(json.error || 'Erro ao buscar resumo da cidade')
+      const cityKey = normalizeCityName(cidadeAlvo)
+      if (cityKey) {
+        setResumosCidadeMap((prev) => ({
+          ...prev,
+          [cityKey]: {
+            expectativaVotos: Number(json.expectativaVotos || 0),
+            votacaoFinal2022: Number(json.votacaoFinal2022 || 0),
+            liderancas: Number(json.liderancas || 0),
+          },
+        }))
+      }
+      setResumoCidade({
+        eleitores,
+        votos2026: Number(json.expectativaVotos || 0),
+        votacaoFinal2022: Number(json.votacaoFinal2022 || 0),
+        liderancas: Number(json.liderancas || 0),
+      })
+    } catch {
+      setResumoCidade({
+        eleitores,
+        votos2026: 0,
+        votacaoFinal2022: 0,
+        liderancas: 0,
+      })
+    }
   }
 
   const carregarPresidenteCamara = async (cidadeAlvo: string) => {
@@ -224,6 +313,30 @@ export default function ResumoEleicoesPage() {
     }
   }, [])
 
+  useEffect(() => {
+    if (cidades.length === 0) return
+    let active = true
+
+    const preloadResumos = async () => {
+      try {
+        const res = await fetch('/api/territorio/expectativa-por-cidade')
+        const json = await res.json()
+        if (!res.ok || !active) return
+        const summaries = (json.summaries || {}) as ResumosCidadeMap
+        if (Object.keys(summaries).length > 0) {
+          setResumosCidadeMap(summaries)
+        }
+      } catch {
+        // fallback silencioso: o POST por cidade continua funcionando
+      }
+    }
+
+    preloadResumos()
+    return () => {
+      active = false
+    }
+  }, [cidades.length])
+
   const buscarDados = async () => {
     if (!cidade) return
     setBuscaIniciada(true)
@@ -233,6 +346,7 @@ export default function ResumoEleicoesPage() {
     setSelectedVotes(EMPTY_SELECTIONS)
     setPresidenteCamaraNome(null)
     setFiltroPartidoAtivo(null)
+    setResumoCidade(null)
     setCurrentPage({
       deputado_estadual: 1,
       deputado_federal: 1,
@@ -247,6 +361,7 @@ export default function ResumoEleicoesPage() {
       if (!res.ok) throw new Error(json.error || 'Erro ao buscar resultados')
       setDados(Array.isArray(json.resultados) ? json.resultados : [])
       await carregarPresidenteCamara(cidade)
+      void carregarResumoCidade(cidade)
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Erro ao buscar resultados')
     } finally {
@@ -311,6 +426,11 @@ export default function ResumoEleicoesPage() {
     return list.slice(start, start + ITEMS_PER_PAGE)
   }
 
+  const diferenca2026Vs2022 = resumoCidade ? resumoCidade.votos2026 - resumoCidade.votacaoFinal2022 : 0
+  const diferencaFormatada = `${diferenca2026Vs2022 > 0 ? '+' : ''}${diferenca2026Vs2022.toLocaleString('pt-BR')}`
+  const statusComparativo =
+    diferenca2026Vs2022 > 0 ? 'Melhor que 2022' : diferenca2026Vs2022 < 0 ? 'Pior que 2022' : 'Igual a 2022'
+
   return (
     <div className="min-h-screen bg-background">
       <div className="px-4 py-6 lg:px-6">
@@ -360,6 +480,45 @@ export default function ResumoEleicoesPage() {
 
         {dados.length > 0 && (
           <>
+          {resumoCidade && (
+            <div className="mb-3 grid grid-cols-2 md:grid-cols-4 gap-3">
+              <div className="rounded-lg border border-card bg-surface p-2 text-center">
+                <p className="text-[11px] text-text-secondary">Eleitores</p>
+                <p className="text-sm font-semibold text-text-primary">
+                  {resumoCidade.eleitores !== null ? resumoCidade.eleitores.toLocaleString('pt-BR') : '-'}
+                </p>
+              </div>
+              <div className="rounded-lg border border-card bg-surface p-2 text-center">
+                <p className="text-[11px] text-text-secondary">Votos 2026</p>
+                <p className="text-sm font-semibold text-text-primary">
+                  {resumoCidade.votos2026.toLocaleString('pt-BR')}
+                </p>
+                <p
+                  className={`text-[11px] mt-0.5 ${
+                    diferenca2026Vs2022 > 0
+                      ? 'text-status-success'
+                      : diferenca2026Vs2022 < 0
+                        ? 'text-status-danger'
+                        : 'text-text-secondary'
+                  }`}
+                >
+                  {statusComparativo} ({diferencaFormatada})
+                </p>
+              </div>
+              <div className="rounded-lg border border-card bg-surface p-2 text-center">
+                <p className="text-[11px] text-text-secondary">Votação Final 2022</p>
+                <p className="text-sm font-semibold text-text-primary">
+                  {resumoCidade.votacaoFinal2022.toLocaleString('pt-BR')}
+                </p>
+              </div>
+              <div className="rounded-lg border border-card bg-surface p-2 text-center">
+                <p className="text-[11px] text-text-secondary">Quantidade de Lideranças</p>
+                <p className="text-sm font-semibold text-text-primary">
+                  {resumoCidade.liderancas.toLocaleString('pt-BR')}
+                </p>
+              </div>
+            </div>
+          )}
           {filtroPartidoAtivo && (
             <div className="mb-3 flex items-center justify-between rounded-lg border border-card bg-surface p-2 text-xs">
               <span className="text-text-secondary">

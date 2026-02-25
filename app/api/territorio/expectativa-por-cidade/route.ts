@@ -2,6 +2,22 @@ import { NextResponse } from 'next/server'
 
 export const dynamic = 'force-dynamic'
 
+type ResumoCidade = {
+  expectativaVotos: number
+  votacaoFinal2022: number
+  liderancas: number
+}
+
+type CitySummaryCache = {
+  key: string
+  expiresAt: number
+  summaries: Map<string, ResumoCidade>
+}
+
+const CACHE_TTL_MS = 10 * 60 * 1000
+const CACHE_SCHEMA_VERSION = 'v2-votacao2022-all-rows'
+let citySummaryCache: CitySummaryCache | null = null
+
 // Função auxiliar para formatar a chave privada
 function formatPrivateKey(key: string): string {
   let formattedKey = key.replace(/\\\\n/g, '\n')
@@ -107,6 +123,147 @@ function normalizeCityName(city: string): string {
     .trim()
 }
 
+function isLiderancaAtual(value: unknown): boolean {
+  const normalized = String(value || '').trim().toUpperCase()
+  return normalized === 'SIM' || normalized === 'YES' || normalized === 'TRUE' || normalized === '1'
+}
+
+function shouldIncludeRecord(
+  liderancaAtualCol: string | undefined,
+  expectativaVotosCol: string | undefined,
+  rowData: Record<string, unknown>
+): boolean {
+  if (!liderancaAtualCol && !expectativaVotosCol) return true
+  if (liderancaAtualCol && isLiderancaAtual(rowData[liderancaAtualCol])) return true
+  if (expectativaVotosCol && normalizeNumber(rowData[expectativaVotosCol]) > 0) return true
+  return false
+}
+
+function resolveCitySummary(city: string, summaries: Map<string, ResumoCidade>): ResumoCidade {
+  const normalizedCity = normalizeCityName(city)
+  const exactMatch = summaries.get(normalizedCity)
+  if (exactMatch) {
+    return {
+      expectativaVotos: Number(exactMatch.expectativaVotos || 0),
+      votacaoFinal2022: Number(exactMatch.votacaoFinal2022 || 0),
+      liderancas: Number(exactMatch.liderancas || 0),
+    }
+  }
+
+  let fallback: ResumoCidade = { expectativaVotos: 0, votacaoFinal2022: 0, liderancas: 0 }
+  for (const [cityKey, summary] of summaries.entries()) {
+    if (cityKey.includes(normalizedCity) || normalizedCity.includes(cityKey)) {
+      fallback = {
+        expectativaVotos: fallback.expectativaVotos + Number(summary.expectativaVotos || 0),
+        votacaoFinal2022: fallback.votacaoFinal2022 + Number(summary.votacaoFinal2022 || 0),
+        liderancas: fallback.liderancas + Number(summary.liderancas || 0),
+      }
+    }
+  }
+  return fallback
+}
+
+async function buildCitySummaries(
+  spreadsheetId: string,
+  sheetName: string,
+  range: string | undefined,
+  credentialsObj: {
+    type: string
+    private_key: string
+    client_email: string
+    token_uri: string
+  }
+): Promise<Map<string, ResumoCidade>> {
+  const cacheKey = `${CACHE_SCHEMA_VERSION}:${spreadsheetId}:${sheetName}:${range || ''}`
+  const now = Date.now()
+
+  if (citySummaryCache && citySummaryCache.key === cacheKey && citySummaryCache.expiresAt > now) {
+    return citySummaryCache.summaries
+  }
+
+  const { google } = await import('googleapis')
+
+  const auth = new google.auth.GoogleAuth({
+    credentials: credentialsObj,
+    scopes: ['https://www.googleapis.com/auth/spreadsheets.readonly'],
+  })
+
+  const sheets = google.sheets({ version: 'v4', auth })
+  const rangeToRead = range ? (sheetName.includes(' ') ? `'${sheetName}'!${range}` : `${sheetName}!${range}`) : sheetName
+  const response = await sheets.spreadsheets.values.get({
+    spreadsheetId,
+    range: rangeToRead,
+  })
+
+  const rows = response.data.values || []
+  if (rows.length === 0) {
+    const empty = new Map<string, ResumoCidade>()
+    citySummaryCache = {
+      key: cacheKey,
+      expiresAt: now + CACHE_TTL_MS,
+      summaries: empty,
+    }
+    return empty
+  }
+
+  const headers = rows[0].map((h: unknown) => String(h || '').trim())
+  const cidadeCol = headers.find((h) => /cidade|city|município|municipio/i.test(h)) || headers[1] || 'Coluna 2'
+  const expectativaVotosCol = headers.find((h) => {
+    const normalized = h.toLowerCase().trim()
+    if (/jadyel|nome|pessoa|candidato/i.test(normalized)) {
+      return false
+    }
+    return /^expectativa\s+de\s+votos\s+2026$/i.test(h) ||
+      /expectativa\s+de\s+votos\s+2026/i.test(h) ||
+      (/expectativa.*votos.*2026/i.test(h) && !/jadyel|nome|pessoa|candidato/i.test(h))
+  })
+  const votacaoFinal2022Col = headers.find((h) => {
+    const normalized = h.toLowerCase().trim()
+    return /votacao\s*final\s*2022|votação\s*final\s*2022|final\s*2022/i.test(normalized)
+  })
+  const liderancaAtualCol = headers.find((h) => /liderança atual|lideranca atual|atual\?/i.test(h))
+
+  const cidadeIndex = headers.indexOf(cidadeCol)
+  const expectativaIndex = expectativaVotosCol ? headers.indexOf(expectativaVotosCol) : -1
+  const votacaoFinal2022Index = votacaoFinal2022Col ? headers.indexOf(votacaoFinal2022Col) : -1
+  const summaries = new Map<string, ResumoCidade>()
+
+  rows.slice(1).forEach((row: unknown[]) => {
+    if (cidadeIndex < 0) return
+    const cidadeValue = String(row[cidadeIndex] || '').trim()
+    const cidadeValueNormalizada = normalizeCityName(cidadeValue)
+    if (!cidadeValueNormalizada) return
+
+    // Votação Final 2022 precisa refletir o histórico completo da cidade,
+    // sem depender do filtro de liderança/expectativa.
+    const current = summaries.get(cidadeValueNormalizada) || { expectativaVotos: 0, votacaoFinal2022: 0, liderancas: 0 }
+    const votacaoFinal2022Valor = votacaoFinal2022Index >= 0 ? normalizeNumber(row[votacaoFinal2022Index]) : 0
+    current.votacaoFinal2022 += votacaoFinal2022Valor
+
+    const rowData: Record<string, unknown> = {}
+    headers.forEach((header, index) => {
+      rowData[header] = row[index] || null
+    })
+    if (!shouldIncludeRecord(liderancaAtualCol, expectativaVotosCol, rowData)) {
+      summaries.set(cidadeValueNormalizada, current)
+      return
+    }
+
+    const expectativaValor = expectativaIndex >= 0 ? normalizeNumber(row[expectativaIndex]) : 0
+    current.expectativaVotos += expectativaValor
+    current.liderancas += 1
+    summaries.set(cidadeValueNormalizada, current)
+  })
+
+  citySummaryCache = {
+    key: cacheKey,
+    expiresAt: now + CACHE_TTL_MS,
+    summaries,
+  }
+
+  return summaries
+}
+
 export async function POST(request: Request) {
   try {
     const body = await request.json()
@@ -139,90 +296,24 @@ export async function POST(request: Request) {
       )
     }
 
-    // Importar googleapis dinamicamente
-    const { google } = await import('googleapis')
+    const summariesByCity = await buildCitySummaries(spreadsheetId, sheetName, range, credentialsObj)
 
-    // Autenticar usando Service Account
-    const auth = new google.auth.GoogleAuth({
-      credentials: credentialsObj,
-      scopes: ['https://www.googleapis.com/auth/spreadsheets.readonly'],
-    })
-
-    const sheets = google.sheets({ version: 'v4', auth })
-
-    // Construir range - aspas simples só são necessárias quando há range de células
-    const rangeToRead = range 
-      ? (sheetName.includes(' ') ? `'${sheetName}'!${range}` : `${sheetName}!${range}`)
-      : sheetName
-
-    // Buscar dados
-    const response = await sheets.spreadsheets.values.get({
-      spreadsheetId,
-      range: rangeToRead,
-    })
-
-    const rows = response.data.values || []
-
-    if (rows.length === 0) {
+    if (summariesByCity.size === 0) {
       return NextResponse.json({
         expectativaVotos: 0,
+        votacaoFinal2022: 0,
+        liderancas: 0,
         message: 'Planilha vazia',
       })
     }
 
-    // Primeira linha são os cabeçalhos
-    const headers = rows[0].map((h: any) => String(h || '').trim())
-
-    // Encontrar colunas
-    const cidadeCol = headers.find((h) =>
-      /cidade|city|município|municipio/i.test(h)
-    ) || headers[1] || 'Coluna 2'
-
-    const expectativaVotosCol = headers.find((h) => {
-      const normalized = h.toLowerCase().trim()
-      if (/jadyel|nome|pessoa|candidato/i.test(normalized)) {
-        return false
-      }
-      return /^expectativa\s+de\s+votos\s+2026$/i.test(h) || 
-             /expectativa\s+de\s+votos\s+2026/i.test(h) ||
-             (/expectativa.*votos.*2026/i.test(h) && !/jadyel|nome|pessoa|candidato/i.test(h))
-    })
-
-    if (!cidadeCol || !expectativaVotosCol) {
-      return NextResponse.json({
-        expectativaVotos: 0,
-        message: 'Colunas necessárias não encontradas',
-      })
-    }
-
-    // Normalizar nome da cidade buscada
-    const cidadeNormalizada = normalizeCityName(cidade)
-
-    // Buscar expectativa de votos para a cidade
-    let expectativaVotos = 0
-    const records = rows.slice(1)
-    
-    records.forEach((row: any[]) => {
-      const cidadeIndex = headers.indexOf(cidadeCol)
-      const expectativaIndex = headers.indexOf(expectativaVotosCol)
-      
-      if (cidadeIndex >= 0 && expectativaIndex >= 0) {
-        const cidadeValue = String(row[cidadeIndex] || '').trim()
-        const cidadeValueNormalizada = normalizeCityName(cidadeValue)
-        
-        // Comparar cidades normalizadas
-        if (cidadeValueNormalizada === cidadeNormalizada || 
-            cidadeValueNormalizada.includes(cidadeNormalizada) || 
-            cidadeNormalizada.includes(cidadeValueNormalizada)) {
-          const value = row[expectativaIndex]
-          expectativaVotos += normalizeNumber(value)
-        }
-      }
-    })
+    const citySummary = resolveCitySummary(cidade, summariesByCity)
 
     return NextResponse.json({
       cidade,
-      expectativaVotos: Math.round(expectativaVotos),
+      expectativaVotos: Math.round(citySummary.expectativaVotos),
+      votacaoFinal2022: Math.round(citySummary.votacaoFinal2022),
+      liderancas: citySummary.liderancas,
     })
   } catch (error: any) {
     console.error('Erro ao buscar expectativa de votos por cidade:', error)
@@ -245,5 +336,31 @@ export async function POST(request: Request) {
       { error: error.message || 'Erro ao processar dados da planilha' },
       { status: 500 }
     )
+  }
+}
+
+export async function GET() {
+  try {
+    const body: Record<string, unknown> = {}
+    const { spreadsheetId, sheetName, range } = getSheetConfig(body)
+    const credentialsObj = getCredentials(undefined, 'territorio')
+
+    if (!spreadsheetId || !sheetName || !credentialsObj) {
+      return NextResponse.json(
+        { error: 'Configuração de planilha/credenciais não disponível para gerar resumo por cidade.' },
+        { status: 400 }
+      )
+    }
+
+    const summariesByCity = await buildCitySummaries(spreadsheetId, sheetName, range, credentialsObj)
+    const summariesObject = Object.fromEntries(summariesByCity.entries())
+
+    return NextResponse.json({
+      totalCidades: summariesByCity.size,
+      summaries: summariesObject,
+    })
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Erro ao processar resumo por cidade'
+    return NextResponse.json({ error: message }, { status: 500 })
   }
 }
