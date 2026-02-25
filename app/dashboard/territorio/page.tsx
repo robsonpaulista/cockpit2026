@@ -1111,6 +1111,15 @@ export default function TerritorioPage() {
                             onClick={(e) => {
                               e.stopPropagation()
                               setSelectedCityForDemands(cidade)
+                              if (typeof window !== 'undefined') {
+                                const liderancasFiltradasParaModal = liderancasCidade
+                                  .map((lider: Lideranca) => String(lider[nomeCol] || '').trim())
+                                  .filter((nome: string) => nome.length > 0)
+                                sessionStorage.setItem(
+                                  'territorio_demands_liderancas',
+                                  JSON.stringify(liderancasFiltradasParaModal)
+                                )
+                              }
                               setShowCityDemands(true)
                             }}
                             className="p-2 rounded-lg hover:bg-background transition-colors text-secondary hover:text-accent-gold"
@@ -1263,6 +1272,9 @@ export default function TerritorioPage() {
         onClose={() => {
           setShowCityDemands(false)
           setSelectedCityForDemands('')
+          if (typeof window !== 'undefined') {
+            sessionStorage.removeItem('territorio_demands_liderancas')
+          }
         }}
         cidade={selectedCityForDemands}
       />

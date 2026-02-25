@@ -33,7 +33,7 @@ export function CityDemandsModal({ isOpen, onClose, cidade }: CityDemandsModalPr
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [filtroStatus, setFiltroStatus] = useState<string>('todos')
-  const [filtroLideranca, setFiltroLideranca] = useState<string>('todos')
+  const [liderancasPermitidas, setLiderancasPermitidas] = useState<string[]>([])
 
   const fetchDemands = useCallback(async () => {
     if (!cidade) return
@@ -60,10 +60,24 @@ export function CityDemandsModal({ isOpen, onClose, cidade }: CityDemandsModalPr
 
   useEffect(() => {
     if (isOpen && cidade) {
+      if (typeof window !== 'undefined') {
+        const raw = sessionStorage.getItem('territorio_demands_liderancas')
+        if (raw) {
+          try {
+            const parsed = JSON.parse(raw)
+            setLiderancasPermitidas(Array.isArray(parsed) ? parsed.map((n) => String(n || '')) : [])
+          } catch {
+            setLiderancasPermitidas([])
+          }
+        } else {
+          setLiderancasPermitidas([])
+        }
+      }
       fetchDemands()
     } else {
       setDemands([])
       setError(null)
+      setLiderancasPermitidas([])
     }
   }, [isOpen, cidade, fetchDemands])
 
@@ -160,6 +174,15 @@ export function CityDemandsModal({ isOpen, onClose, cidade }: CityDemandsModalPr
     }
   }
 
+  const normalizeName = (value?: string | null) =>
+    String(value || '')
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .trim()
+
+  const liderancasPermitidasNormalizadas = new Set(liderancasPermitidas.map((nome) => normalizeName(nome)))
+
   // Filtrar e ordenar demandas
   const demandsFiltradasEOrdenadas = demands
     .filter((demand) => {
@@ -167,9 +190,13 @@ export function CityDemandsModal({ isOpen, onClose, cidade }: CityDemandsModalPr
       if (filtroStatus !== 'todos' && demand.status !== filtroStatus) {
         return false
       }
-      // Filtro por liderança
-      if (filtroLideranca !== 'todos' && demand.lideranca !== filtroLideranca) {
-        return false
+
+      // Herdar recorte de lideranças da página Território
+      if (liderancasPermitidas.length > 0) {
+        const nomeLiderancaDemanda = normalizeName(demand.lideranca)
+        if (!nomeLiderancaDemanda || !liderancasPermitidasNormalizadas.has(nomeLiderancaDemanda)) {
+          return false
+        }
       }
       return true
     })
@@ -195,8 +222,6 @@ export function CityDemandsModal({ isOpen, onClose, cidade }: CityDemandsModalPr
 
   // Obter status únicos para filtro
   const statusUnicos = Array.from(new Set(demands.map(d => d.status).filter(Boolean))) as string[]
-  // Obter lideranças únicas para filtro
-  const liderancasUnicas = Array.from(new Set(demands.map(d => d.lideranca).filter(Boolean))) as string[]
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
@@ -252,37 +277,10 @@ export function CityDemandsModal({ isOpen, onClose, cidade }: CityDemandsModalPr
                 ))}
               </div>
             </div>
-            {/* Filtro por Liderança */}
-            {liderancasUnicas.length > 0 && (
-              <div>
-                <label className="text-xs font-medium text-secondary mb-2 block">Filtrar por Liderança:</label>
-                <div className="flex flex-wrap gap-2">
-                  <label className="flex items-center gap-1.5 cursor-pointer">
-                    <input
-                      type="radio"
-                      name="filtro-lideranca"
-                      value="todos"
-                      checked={filtroLideranca === 'todos'}
-                      onChange={(e) => setFiltroLideranca(e.target.value)}
-                      className="w-3.5 h-3.5 text-accent-gold"
-                    />
-                    <span className="text-xs text-text-primary">Todos</span>
-                  </label>
-                  {liderancasUnicas.map((lideranca) => (
-                    <label key={lideranca} className="flex items-center gap-1.5 cursor-pointer">
-                      <input
-                        type="radio"
-                        name="filtro-lideranca"
-                        value={lideranca}
-                        checked={filtroLideranca === lideranca}
-                        onChange={(e) => setFiltroLideranca(e.target.value)}
-                        className="w-3.5 h-3.5 text-accent-gold"
-                      />
-                      <span className="text-xs text-text-primary">{lideranca}</span>
-                    </label>
-                  ))}
-                </div>
-              </div>
+            {liderancasPermitidas.length > 0 && (
+              <p className="text-xs text-secondary">
+                Modal respeitando filtros da página: {liderancasPermitidas.length} liderança{liderancasPermitidas.length !== 1 ? 's' : ''}.
+              </p>
             )}
           </div>
         )}
