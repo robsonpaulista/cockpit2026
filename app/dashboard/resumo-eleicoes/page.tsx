@@ -250,7 +250,7 @@ export default function ResumoEleicoesPage() {
     <div className="min-h-screen bg-background">
       <div className="px-4 py-6 lg:px-6">
         <div className="bg-surface rounded-2xl border border-card p-4 mb-6">
-          <div className="flex flex-col md:flex-row md:items-center gap-3">
+          <div className="flex flex-col md:flex-row md:items-end gap-3">
             <div className="flex-1">
               <label className="text-xs font-medium text-text-secondary block mb-1">Cidade</label>
               <select
