@@ -1,7 +1,7 @@
 'use client'
 
 import { useMemo, useState, useEffect } from 'react'
-import { RefreshCw, AlertCircle } from 'lucide-react'
+import { RefreshCw, AlertCircle, Crown } from 'lucide-react'
 
 interface ResultadoEleicao {
   uf: string
@@ -101,8 +101,10 @@ export default function ResumoEleicoesPage() {
   const [dados, setDados] = useState<ResultadoEleicao[]>([])
   const [loadingCidades, setLoadingCidades] = useState(true)
   const [loadingDados, setLoadingDados] = useState(false)
+  const [savingPresidente, setSavingPresidente] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [buscaIniciada, setBuscaIniciada] = useState(false)
+  const [presidenteCamaraNome, setPresidenteCamaraNome] = useState<string | null>(null)
   const [currentPage, setCurrentPage] = useState<Record<string, number>>({
     deputado_estadual: 1,
     deputado_federal: 1,
@@ -142,6 +144,46 @@ export default function ResumoEleicoesPage() {
   const getSelectedTotal = (table: TableKey): number =>
     Object.values(selectedVotes[table]).reduce((sum, value) => sum + value, 0)
 
+  const carregarPresidenteCamara = async (cidadeAlvo: string) => {
+    try {
+      const res = await fetch(`/api/resumo-eleicoes/presidente-camara?cidade=${encodeURIComponent(cidadeAlvo)}`)
+      const json = await res.json()
+      if (res.ok) {
+        setPresidenteCamaraNome(json.presidente || null)
+      } else {
+        setPresidenteCamaraNome(null)
+      }
+    } catch {
+      setPresidenteCamaraNome(null)
+    }
+  }
+
+  const definirPresidenteCamara = async (vereadorNome: string) => {
+    if (!cidade || savingPresidente) return
+
+    const anterior = presidenteCamaraNome
+    const nomeNormalizado = vereadorNome.trim()
+    setPresidenteCamaraNome(nomeNormalizado)
+    setSavingPresidente(true)
+    try {
+      const res = await fetch('/api/resumo-eleicoes/presidente-camara', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          cidade,
+          vereadorNome: nomeNormalizado,
+        }),
+      })
+      const json = await res.json()
+      if (!res.ok) throw new Error(json.error || 'Erro ao salvar presidente da câmara')
+      setPresidenteCamaraNome(json.presidente || nomeNormalizado)
+    } catch {
+      setPresidenteCamaraNome(anterior)
+    } finally {
+      setSavingPresidente(false)
+    }
+  }
+
   useEffect(() => {
     let mounted = true
 
@@ -174,6 +216,7 @@ export default function ResumoEleicoesPage() {
     setError(null)
     setDados([])
     setSelectedVotes(EMPTY_SELECTIONS)
+    setPresidenteCamaraNome(null)
     setCurrentPage({
       deputado_estadual: 1,
       deputado_federal: 1,
@@ -187,6 +230,7 @@ export default function ResumoEleicoesPage() {
       const json = await res.json()
       if (!res.ok) throw new Error(json.error || 'Erro ao buscar resultados')
       setDados(Array.isArray(json.resultados) ? json.resultados : [])
+      await carregarPresidenteCamara(cidade)
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Erro ao buscar resultados')
     } finally {
@@ -513,12 +557,20 @@ export default function ResumoEleicoesPage() {
                     const rowId = `vereador_2024:${item.nomeUrnaCandidato}:${item.numeroUrna}`
                     const votes = parseVotos(item.quantidadeVotosNominais)
                     const isSelected = selectedVotes.vereador_2024[rowId] !== undefined
+                    const isPresidente =
+                      item.nomeUrnaCandidato?.trim().toUpperCase() === presidenteCamaraNome?.trim().toUpperCase()
                     return (
                       <tr
                         key={`${item.nomeUrnaCandidato}-${item.numeroUrna}`}
-                        className={isSelected ? 'border-b border-card bg-accent-gold-soft/30' : 'border-b border-card'}
+                        onDoubleClick={() => definirPresidenteCamara(item.nomeUrnaCandidato)}
+                        title="Dê duplo clique para definir como Presidente da Câmara"
+                        className={
+                          isSelected && !isPresidente
+                            ? 'border-b border-card bg-accent-gold-soft/30'
+                            : 'border-b border-card'
+                        }
                       >
-                        <td className="py-1 px-1 text-center">
+                        <td className={`py-1 px-1 text-center ${isPresidente ? 'bg-accent-gold text-white select-none' : ''}`}>
                           <input
                             type="checkbox"
                             checked={isSelected}
@@ -526,13 +578,22 @@ export default function ResumoEleicoesPage() {
                             className="h-3.5 w-3.5 accent-[rgb(var(--accent-gold))]"
                           />
                         </td>
-                        <td className="py-1 px-1">{item.nomeUrnaCandidato}</td>
-                        <td className="py-1 px-1 text-right">{votes.toLocaleString('pt-BR')}</td>
-                        <td className="py-1 px-1 text-center">
+                        <td className={`py-1 px-1 ${isPresidente ? 'bg-accent-gold text-white select-none' : ''}`}>
+                          <span className="inline-flex items-center gap-1">
+                            <span>{item.nomeUrnaCandidato}</span>
+                            {isPresidente && <Crown className="h-3 w-3 shrink-0 text-white" />}
+                          </span>
+                        </td>
+                        <td className={`py-1 px-1 text-right ${isPresidente ? 'bg-accent-gold text-white select-none' : ''}`}>
+                          {votes.toLocaleString('pt-BR')}
+                        </td>
+                        <td className={`py-1 px-1 text-center ${isPresidente ? 'bg-accent-gold text-white select-none' : ''}`}>
                           <span
                             className={`inline-flex px-1.5 py-0.5 rounded-full ${
-                              includesNormalized(item.situacao, 'eleito')
-                                ? 'bg-accent-gold text-white'
+                              isPresidente
+                                ? 'bg-white text-accent-gold'
+                                : includesNormalized(item.situacao, 'eleito')
+                                  ? 'bg-accent-gold text-white'
                                 : 'bg-background text-text-secondary'
                             }`}
                           >
