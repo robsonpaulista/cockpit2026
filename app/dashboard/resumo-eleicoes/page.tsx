@@ -105,6 +105,7 @@ export default function ResumoEleicoesPage() {
   const [error, setError] = useState<string | null>(null)
   const [buscaIniciada, setBuscaIniciada] = useState(false)
   const [presidenteCamaraNome, setPresidenteCamaraNome] = useState<string | null>(null)
+  const [filtroPartidoAtivo, setFiltroPartidoAtivo] = useState<string | null>(null)
   const [currentPage, setCurrentPage] = useState<Record<string, number>>({
     deputado_estadual: 1,
     deputado_federal: 1,
@@ -143,6 +144,20 @@ export default function ResumoEleicoesPage() {
 
   const getSelectedTotal = (table: TableKey): number =>
     Object.values(selectedVotes[table]).reduce((sum, value) => sum + value, 0)
+
+  const partidosIguais = (a?: string | null, b?: string | null): boolean =>
+    (a || '').trim().toUpperCase() === (b || '').trim().toUpperCase()
+
+  const toggleFiltroPartido = (partido: string) => {
+    setFiltroPartidoAtivo((prev) => (partidosIguais(prev, partido) ? null : partido))
+    setCurrentPage((prev) => ({
+      ...prev,
+      deputado_estadual: 1,
+      deputado_federal: 1,
+      prefeito_2024: 1,
+      vereador_2024: 1,
+    }))
+  }
 
   const carregarPresidenteCamara = async (cidadeAlvo: string) => {
     try {
@@ -217,6 +232,7 @@ export default function ResumoEleicoesPage() {
     setDados([])
     setSelectedVotes(EMPTY_SELECTIONS)
     setPresidenteCamaraNome(null)
+    setFiltroPartidoAtivo(null)
     setCurrentPage({
       deputado_estadual: 1,
       deputado_federal: 1,
@@ -238,36 +254,41 @@ export default function ResumoEleicoesPage() {
     }
   }
 
+  const dadosFiltradosPorPartido = useMemo(() => {
+    if (!filtroPartidoAtivo) return dados
+    return dados.filter((item) => partidosIguais(item.partido, filtroPartidoAtivo))
+  }, [dados, filtroPartidoAtivo])
+
   const deputadoEstadual2022 = useMemo(
     () =>
-      dados
+      dadosFiltradosPorPartido
         .filter((item) => includesNormalized(item.cargo, 'estadual') && item.anoEleicao === '2022')
         .sort((a, b) => parseVotos(b.quantidadeVotosNominais) - parseVotos(a.quantidadeVotosNominais)),
-    [dados]
+    [dadosFiltradosPorPartido]
   )
 
   const deputadoFederal2022 = useMemo(
     () =>
-      dados
+      dadosFiltradosPorPartido
         .filter((item) => includesNormalized(item.cargo, 'federal') && item.anoEleicao === '2022')
         .sort((a, b) => parseVotos(b.quantidadeVotosNominais) - parseVotos(a.quantidadeVotosNominais)),
-    [dados]
+    [dadosFiltradosPorPartido]
   )
 
   const prefeito2024 = useMemo(
     () =>
-      dados
+      dadosFiltradosPorPartido
         .filter((item) => includesNormalized(item.cargo, 'prefeito') && item.anoEleicao === '2024')
         .sort((a, b) => parseVotos(b.quantidadeVotosNominais) - parseVotos(a.quantidadeVotosNominais)),
-    [dados]
+    [dadosFiltradosPorPartido]
   )
 
   const vereador2024 = useMemo(
     () =>
-      dados
+      dadosFiltradosPorPartido
         .filter((item) => includesNormalized(item.cargo, 'vereador') && item.anoEleicao === '2024')
         .sort((a, b) => parseVotos(b.quantidadeVotosNominais) - parseVotos(a.quantidadeVotosNominais)),
-    [dados]
+    [dadosFiltradosPorPartido]
   )
 
   const partido2024 = useMemo<PartidoResumo[]>(() => {
@@ -338,6 +359,20 @@ export default function ResumoEleicoesPage() {
         )}
 
         {dados.length > 0 && (
+          <>
+          {filtroPartidoAtivo && (
+            <div className="mb-3 flex items-center justify-between rounded-lg border border-card bg-surface p-2 text-xs">
+              <span className="text-text-secondary">
+                Filtro por partido ativo: <strong className="text-text-primary">{filtroPartidoAtivo}</strong>
+              </span>
+              <button
+                onClick={() => setFiltroPartidoAtivo(null)}
+                className="px-2 py-1 rounded border border-card hover:bg-background text-text-secondary"
+              >
+                Limpar filtro
+              </button>
+            </div>
+          )}
           <div className="grid grid-cols-1 md:flex md:flex-nowrap gap-4 overflow-x-auto pb-2">
             <div className="bg-surface rounded-xl border border-card p-2 md:flex-1 min-w-[240px]">
               <h3 className="text-xs font-semibold text-center mb-2">Deputado Estadual 2022</h3>
@@ -653,12 +688,19 @@ export default function ResumoEleicoesPage() {
                   {paginated(partido2024, currentPage.partido_2024).map((item) => {
                     const rowId = `partido_2024:${item.partido}`
                     const isSelected = selectedVotes.partido_2024[rowId] !== undefined
+                    const isPartidoAtivo = partidosIguais(item.partido, filtroPartidoAtivo)
                     return (
                       <tr
                         key={item.partido}
-                        className={isSelected ? 'border-b border-card bg-accent-gold-soft/30' : 'border-b border-card'}
+                        onDoubleClick={() => toggleFiltroPartido(item.partido)}
+                        title="Dê duplo clique para filtrar as demais tabelas por este partido"
+                        className={
+                          isSelected && !isPartidoAtivo
+                              ? 'border-b border-card bg-accent-gold-soft/30'
+                              : 'border-b border-card'
+                        }
                       >
-                        <td className="py-1 px-1 text-center">
+                        <td className={`py-1 px-1 text-center ${isPartidoAtivo ? 'bg-accent-gold text-white select-none' : ''}`}>
                           <input
                             type="checkbox"
                             checked={isSelected}
@@ -666,9 +708,13 @@ export default function ResumoEleicoesPage() {
                             className="h-3.5 w-3.5 accent-[rgb(var(--accent-gold))]"
                           />
                         </td>
-                        <td className="py-1 px-1">{item.partido}</td>
-                        <td className="py-1 px-1 text-right">{item.votos.toLocaleString('pt-BR')}</td>
-                        <td className="py-1 px-1 text-right">{item.eleitos}</td>
+                        <td className={`py-1 px-1 ${isPartidoAtivo ? 'bg-accent-gold text-white select-none' : ''}`}>{item.partido}</td>
+                        <td className={`py-1 px-1 text-right ${isPartidoAtivo ? 'bg-accent-gold text-white select-none' : ''}`}>
+                          {item.votos.toLocaleString('pt-BR')}
+                        </td>
+                        <td className={`py-1 px-1 text-right ${isPartidoAtivo ? 'bg-accent-gold text-white select-none' : ''}`}>
+                          {item.eleitos}
+                        </td>
                       </tr>
                     )
                   })}
@@ -705,6 +751,7 @@ export default function ResumoEleicoesPage() {
               />
             </div>
           </div>
+          </>
         )}
       </div>
     </div>
