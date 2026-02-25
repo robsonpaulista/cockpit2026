@@ -10,6 +10,7 @@ const pathToTitle: Record<string, string> = {
   '/dashboard/agenda': 'Agenda',
   '/dashboard/territorio': 'Território & Base',
   '/dashboard/chapas': 'Chapas',
+  '/dashboard/resumo-eleicoes': 'Resumo Eleições',
   '/dashboard/conteudo': 'Conteúdo & Redes',
   '/dashboard/noticias': 'Notícias & Crises',
   '/dashboard/mobilizacao': 'Mobilização',

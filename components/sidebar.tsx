@@ -40,6 +40,7 @@ const menuItems: MenuItem[] = [
   { id: 'agenda', label: 'Agenda', icon: 'Calendar', href: '/dashboard/agenda' },
   { id: 'territorio', label: 'Território & Base', icon: 'MapPin', href: '/dashboard/territorio' },
   { id: 'chapas', label: 'Chapas', icon: 'Vote', href: '/dashboard/chapas' },
+  { id: 'resumo-eleicoes', label: 'Resumo Eleições', icon: 'BarChart3', href: '/dashboard/resumo-eleicoes' },
   { id: 'conteudo', label: 'Conteúdo & Redes', icon: 'MessageSquare', href: '/dashboard/conteudo' },
   { id: 'noticias', label: 'Notícias & Crises', icon: 'Newspaper', href: '/dashboard/noticias' },
   { id: 'mobilizacao', label: 'Mobilização', icon: 'Users', href: '/dashboard/mobilizacao' },
