@@ -8,10 +8,17 @@ type ResumoCidade = {
   liderancas: number
 }
 
+type LiderancaResumo = {
+  nome: string
+  cargo: string
+  projecaoVotos: number
+}
+
 type CitySummaryCache = {
   key: string
   expiresAt: number
   summaries: Map<string, ResumoCidade>
+  leadersByCity: Map<string, LiderancaResumo[]>
 }
 
 const CACHE_TTL_MS = 10 * 60 * 1000
@@ -173,12 +180,15 @@ async function buildCitySummaries(
     client_email: string
     token_uri: string
   }
-): Promise<Map<string, ResumoCidade>> {
+): Promise<{ summaries: Map<string, ResumoCidade>; leadersByCity: Map<string, LiderancaResumo[]> }> {
   const cacheKey = `${CACHE_SCHEMA_VERSION}:${spreadsheetId}:${sheetName}:${range || ''}`
   const now = Date.now()
 
   if (citySummaryCache && citySummaryCache.key === cacheKey && citySummaryCache.expiresAt > now) {
-    return citySummaryCache.summaries
+    return {
+      summaries: citySummaryCache.summaries,
+      leadersByCity: citySummaryCache.leadersByCity,
+    }
   }
 
   const { google } = await import('googleapis')
@@ -198,12 +208,14 @@ async function buildCitySummaries(
   const rows = response.data.values || []
   if (rows.length === 0) {
     const empty = new Map<string, ResumoCidade>()
+    const emptyLeaders = new Map<string, LiderancaResumo[]>()
     citySummaryCache = {
       key: cacheKey,
       expiresAt: now + CACHE_TTL_MS,
       summaries: empty,
+      leadersByCity: emptyLeaders,
     }
-    return empty
+    return { summaries: empty, leadersByCity: emptyLeaders }
   }
 
   const headers = rows[0].map((h: unknown) => String(h || '').trim())
@@ -222,11 +234,25 @@ async function buildCitySummaries(
     return /votacao\s*final\s*2022|votação\s*final\s*2022|final\s*2022/i.test(normalized)
   })
   const liderancaAtualCol = headers.find((h) => /liderança atual|lideranca atual|atual\?/i.test(h))
+  const nomeCol = headers.find((h) => /nome|name|lider|pessoa/i.test(h)) || headers[0] || 'Coluna 1'
+  const cargoCol = (() => {
+    const cargo2024 = headers.find((h) => /cargo.*2024/i.test(h))
+    if (cargo2024) return cargo2024
+    return headers.find((h) => {
+      const normalized = h.toLowerCase().trim()
+      return /cargo.*atual|cargo/i.test(normalized) &&
+        !/cargo.*2020/i.test(normalized) &&
+        !/expectativa|votos|telefone|email|whatsapp|contato|endereco|endereço/i.test(normalized)
+    })
+  })()
 
   const cidadeIndex = headers.indexOf(cidadeCol)
   const expectativaIndex = expectativaVotosCol ? headers.indexOf(expectativaVotosCol) : -1
   const votacaoFinal2022Index = votacaoFinal2022Col ? headers.indexOf(votacaoFinal2022Col) : -1
+  const nomeIndex = headers.indexOf(nomeCol)
+  const cargoIndex = cargoCol ? headers.indexOf(cargoCol) : -1
   const summaries = new Map<string, ResumoCidade>()
+  const leadersAccumulator = new Map<string, Map<string, LiderancaResumo>>()
 
   rows.slice(1).forEach((row: unknown[]) => {
     if (cidadeIndex < 0) return
@@ -253,15 +279,56 @@ async function buildCitySummaries(
     current.expectativaVotos += expectativaValor
     current.liderancas += 1
     summaries.set(cidadeValueNormalizada, current)
+
+    const nome = nomeIndex >= 0 ? String(row[nomeIndex] || '').trim() : ''
+    if (!nome) return
+    const cargo = cargoIndex >= 0 ? String(row[cargoIndex] || '').trim() : '-'
+    const key = `${nome.toUpperCase()}|${cargo.toUpperCase()}`
+    const cityLeaders = leadersAccumulator.get(cidadeValueNormalizada) || new Map<string, LiderancaResumo>()
+    const leaderCurrent = cityLeaders.get(key) || { nome, cargo, projecaoVotos: 0 }
+    leaderCurrent.projecaoVotos += expectativaValor
+    cityLeaders.set(key, leaderCurrent)
+    leadersAccumulator.set(cidadeValueNormalizada, cityLeaders)
+  })
+
+  const leadersByCity = new Map<string, LiderancaResumo[]>()
+  leadersAccumulator.forEach((cityMap, cityKey) => {
+    leadersByCity.set(
+      cityKey,
+      Array.from(cityMap.values())
+        .sort((a, b) => b.projecaoVotos - a.projecaoVotos || a.nome.localeCompare(b.nome, 'pt-BR'))
+    )
   })
 
   citySummaryCache = {
     key: cacheKey,
     expiresAt: now + CACHE_TTL_MS,
     summaries,
+    leadersByCity,
   }
 
-  return summaries
+  return { summaries, leadersByCity }
+}
+
+function resolveCityLeaders(city: string, leadersByCity: Map<string, LiderancaResumo[]>): LiderancaResumo[] {
+  const normalizedCity = normalizeCityName(city)
+  const exact = leadersByCity.get(normalizedCity)
+  if (exact) return exact
+
+  const merged = new Map<string, LiderancaResumo>()
+  for (const [cityKey, leaders] of leadersByCity.entries()) {
+    if (!(cityKey.includes(normalizedCity) || normalizedCity.includes(cityKey))) continue
+    for (const leader of leaders) {
+      const key = `${leader.nome.toUpperCase()}|${leader.cargo.toUpperCase()}`
+      const current = merged.get(key) || { nome: leader.nome, cargo: leader.cargo, projecaoVotos: 0 }
+      current.projecaoVotos += Number(leader.projecaoVotos || 0)
+      merged.set(key, current)
+    }
+  }
+
+  return Array.from(merged.values()).sort(
+    (a, b) => b.projecaoVotos - a.projecaoVotos || a.nome.localeCompare(b.nome, 'pt-BR')
+  )
 }
 
 export async function POST(request: Request) {
@@ -296,7 +363,12 @@ export async function POST(request: Request) {
       )
     }
 
-    const summariesByCity = await buildCitySummaries(spreadsheetId, sheetName, range, credentialsObj)
+    const { summaries: summariesByCity, leadersByCity } = await buildCitySummaries(
+      spreadsheetId,
+      sheetName,
+      range,
+      credentialsObj
+    )
 
     if (summariesByCity.size === 0) {
       return NextResponse.json({
@@ -308,12 +380,18 @@ export async function POST(request: Request) {
     }
 
     const citySummary = resolveCitySummary(cidade, summariesByCity)
+    const cityLeaders = resolveCityLeaders(cidade, leadersByCity)
 
     return NextResponse.json({
       cidade,
       expectativaVotos: Math.round(citySummary.expectativaVotos),
       votacaoFinal2022: Math.round(citySummary.votacaoFinal2022),
       liderancas: citySummary.liderancas,
+      liderancasDetalhe: cityLeaders.map((leader) => ({
+        nome: leader.nome,
+        cargo: leader.cargo || '-',
+        projecaoVotos: Math.round(leader.projecaoVotos),
+      })),
     })
   } catch (error: any) {
     console.error('Erro ao buscar expectativa de votos por cidade:', error)
@@ -352,7 +430,7 @@ export async function GET() {
       )
     }
 
-    const summariesByCity = await buildCitySummaries(spreadsheetId, sheetName, range, credentialsObj)
+    const { summaries: summariesByCity } = await buildCitySummaries(spreadsheetId, sheetName, range, credentialsObj)
     const summariesObject = Object.fromEntries(summariesByCity.entries())
 
     return NextResponse.json({
