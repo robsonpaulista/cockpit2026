@@ -106,12 +106,12 @@ function extrairAliases(nome: string): string[] {
   return Array.from(new Set(partes))
 }
 
-function termosFortes(nome: string): string[] {
+function tokensSignificativos(nome: string): string[] {
   const stopwords = new Set(['de', 'da', 'do', 'dos', 'das', 'e'])
   return normalizeText(nome)
     .split(' ')
     .map((token) => token.trim())
-    .filter((token) => token.length >= 5 && !stopwords.has(token) && !/^\d+$/.test(token))
+    .filter((token) => token.length >= 3 && !stopwords.has(token) && !/^\d+$/.test(token))
 }
 
 function normalizeCityName(city: string): string {
@@ -520,23 +520,59 @@ export default function ResumoEleicoesPage() {
     return list.slice(start, start + ITEMS_PER_PAGE)
   }
 
-  const nomesCorrespondem = (nomeA: string, nomeB: string): boolean => {
-    const a = normalizeText(nomeA)
-    const b = normalizeText(nomeB)
-    if (!a || !b) return false
+  const scoreCorrespondencia = (nomeCandidato: string, alvo: string): number => {
+    const candidato = normalizeText(nomeCandidato)
+    if (!candidato) return 0
 
-    // 1) Match exato/parcial tradicional
-    if (a === b || a.includes(b) || b.includes(a)) return true
+    const aliases = extrairAliases(alvo)
+    let melhorScore = 0
 
-    // 2) Match por aliases (ex: "Valdir / Valdiomar")
-    const aliasesB = extrairAliases(nomeB)
-    if (aliasesB.some((alias) => a === alias || a.includes(alias) || alias.includes(a))) return true
+    for (const alias of aliases) {
+      const aliasNorm = normalizeText(alias)
+      if (!aliasNorm) continue
 
-    // 3) Match por termos fortes do alias/nome (ex: "Adevandro" em "Adevandro Fontenele")
-    const termos = Array.from(new Set([...termosFortes(nomeB), ...aliasesB.flatMap((alias) => termosFortes(alias))]))
-    if (termos.some((termo) => a.includes(termo))) return true
+      if (candidato === aliasNorm) {
+        melhorScore = Math.max(melhorScore, 100)
+        continue
+      }
 
-    return false
+      const tokensAlias = tokensSignificativos(aliasNorm)
+      const primeiroToken = tokensAlias[0]
+
+      if (tokensAlias.length >= 2 && tokensAlias.every((token) => candidato.includes(token))) {
+        melhorScore = Math.max(melhorScore, 90)
+        continue
+      }
+
+      if (primeiroToken && candidato.includes(primeiroToken)) {
+        melhorScore = Math.max(melhorScore, 75)
+        continue
+      }
+    }
+
+    return melhorScore
+  }
+
+  const selecionarMelhorCandidato = (
+    itens: ResultadoEleicao[],
+    alvos: string[]
+  ): ResultadoEleicao | null => {
+    let melhor: ResultadoEleicao | null = null
+    let melhorScore = 0
+
+    for (const item of itens) {
+      let scoreItem = 0
+      for (const alvo of alvos) {
+        scoreItem = Math.max(scoreItem, scoreCorrespondencia(item.nomeUrnaCandidato, alvo))
+      }
+      if (scoreItem > melhorScore) {
+        melhorScore = scoreItem
+        melhor = item
+      }
+    }
+
+    // corte mínimo para evitar match fraco/genérico por sobrenome
+    return melhorScore >= 75 ? melhor : null
   }
 
   const tabelasPorCargo = (cargo: string): Array<'deputado_estadual' | 'prefeito_2024' | 'vereador_2024'> => {
@@ -614,42 +650,39 @@ export default function ResumoEleicoesPage() {
       }
 
       if (tabelasAlvo.includes('deputado_estadual')) {
-        deputadoEstadual2022.forEach((item) => {
-          const bate = alvos.deputado_estadual.some((alvo) => nomesCorrespondem(item.nomeUrnaCandidato, alvo))
-          if (!bate) return
-          const rowId = `deputado_estadual:${item.nomeUrnaCandidato}:${item.numeroUrna}`
+        const melhor = selecionarMelhorCandidato(deputadoEstadual2022, alvos.deputado_estadual)
+        if (melhor) {
+          const rowId = `deputado_estadual:${melhor.nomeUrnaCandidato}:${melhor.numeroUrna}`
           if (next.deputado_estadual[rowId] === undefined) {
-            next.deputado_estadual[rowId] = parseVotos(item.quantidadeVotosNominais)
+            next.deputado_estadual[rowId] = parseVotos(melhor.quantidadeVotosNominais)
             novosMarcados += 1
             porTabela.deputado_estadual += 1
           }
-        })
+        }
       }
 
       if (tabelasAlvo.includes('prefeito_2024')) {
-        prefeito2024.forEach((item) => {
-          const bate = alvos.prefeito_2024.some((alvo) => nomesCorrespondem(item.nomeUrnaCandidato, alvo))
-          if (!bate) return
-          const rowId = `prefeito_2024:${item.nomeUrnaCandidato}:${item.numeroUrna}`
+        const melhor = selecionarMelhorCandidato(prefeito2024, alvos.prefeito_2024)
+        if (melhor) {
+          const rowId = `prefeito_2024:${melhor.nomeUrnaCandidato}:${melhor.numeroUrna}`
           if (next.prefeito_2024[rowId] === undefined) {
-            next.prefeito_2024[rowId] = parseVotos(item.quantidadeVotosNominais)
+            next.prefeito_2024[rowId] = parseVotos(melhor.quantidadeVotosNominais)
             novosMarcados += 1
             porTabela.prefeito_2024 += 1
           }
-        })
+        }
       }
 
       if (tabelasAlvo.includes('vereador_2024')) {
-        vereador2024.forEach((item) => {
-          const bate = alvos.vereador_2024.some((alvo) => nomesCorrespondem(item.nomeUrnaCandidato, alvo))
-          if (!bate) return
-          const rowId = `vereador_2024:${item.nomeUrnaCandidato}:${item.numeroUrna}`
+        const melhor = selecionarMelhorCandidato(vereador2024, alvos.vereador_2024)
+        if (melhor) {
+          const rowId = `vereador_2024:${melhor.nomeUrnaCandidato}:${melhor.numeroUrna}`
           if (next.vereador_2024[rowId] === undefined) {
-            next.vereador_2024[rowId] = parseVotos(item.quantidadeVotosNominais)
+            next.vereador_2024[rowId] = parseVotos(melhor.quantidadeVotosNominais)
             novosMarcados += 1
             porTabela.vereador_2024 += 1
           }
-        })
+        }
       }
 
       return { novosMarcados, porTabela }
@@ -708,39 +741,36 @@ export default function ResumoEleicoesPage() {
       let marcacoesDaLideranca = 0
 
       if (tabelasAlvo.includes('deputado_estadual')) {
-        deputadoEstadual2022.forEach((item) => {
-          const bate = alvos.deputado_estadual.some((alvo) => nomesCorrespondem(item.nomeUrnaCandidato, alvo))
-          if (!bate) return
-          const rowId = `deputado_estadual:${item.nomeUrnaCandidato}:${item.numeroUrna}`
+        const melhor = selecionarMelhorCandidato(deputadoEstadual2022, alvos.deputado_estadual)
+        if (melhor) {
+          const rowId = `deputado_estadual:${melhor.nomeUrnaCandidato}:${melhor.numeroUrna}`
           if (next.deputado_estadual[rowId] === undefined) {
-            next.deputado_estadual[rowId] = parseVotos(item.quantidadeVotosNominais)
+            next.deputado_estadual[rowId] = parseVotos(melhor.quantidadeVotosNominais)
             marcacoesDaLideranca += 1
           }
-        })
+        }
       }
 
       if (tabelasAlvo.includes('prefeito_2024')) {
-        prefeito2024.forEach((item) => {
-          const bate = alvos.prefeito_2024.some((alvo) => nomesCorrespondem(item.nomeUrnaCandidato, alvo))
-          if (!bate) return
-          const rowId = `prefeito_2024:${item.nomeUrnaCandidato}:${item.numeroUrna}`
+        const melhor = selecionarMelhorCandidato(prefeito2024, alvos.prefeito_2024)
+        if (melhor) {
+          const rowId = `prefeito_2024:${melhor.nomeUrnaCandidato}:${melhor.numeroUrna}`
           if (next.prefeito_2024[rowId] === undefined) {
-            next.prefeito_2024[rowId] = parseVotos(item.quantidadeVotosNominais)
+            next.prefeito_2024[rowId] = parseVotos(melhor.quantidadeVotosNominais)
             marcacoesDaLideranca += 1
           }
-        })
+        }
       }
 
       if (tabelasAlvo.includes('vereador_2024')) {
-        vereador2024.forEach((item) => {
-          const bate = alvos.vereador_2024.some((alvo) => nomesCorrespondem(item.nomeUrnaCandidato, alvo))
-          if (!bate) return
-          const rowId = `vereador_2024:${item.nomeUrnaCandidato}:${item.numeroUrna}`
+        const melhor = selecionarMelhorCandidato(vereador2024, alvos.vereador_2024)
+        if (melhor) {
+          const rowId = `vereador_2024:${melhor.nomeUrnaCandidato}:${melhor.numeroUrna}`
           if (next.vereador_2024[rowId] === undefined) {
-            next.vereador_2024[rowId] = parseVotos(item.quantidadeVotosNominais)
+            next.vereador_2024[rowId] = parseVotos(melhor.quantidadeVotosNominais)
             marcacoesDaLideranca += 1
           }
-        })
+        }
       }
 
       if (marcacoesDaLideranca > 0) {
