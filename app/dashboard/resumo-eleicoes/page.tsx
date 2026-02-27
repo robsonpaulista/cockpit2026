@@ -1,7 +1,9 @@
 'use client'
 
 import { useMemo, useState, useEffect } from 'react'
-import { RefreshCw, AlertCircle, Crown, X } from 'lucide-react'
+import Link from 'next/link'
+import { useSearchParams } from 'next/navigation'
+import { RefreshCw, AlertCircle, Crown, X, Users, Vote, BarChart3, UserCheck, ArrowUpRight } from 'lucide-react'
 import { getEleitoradoByCity } from '@/lib/eleitores'
 
 interface ResultadoEleicao {
@@ -53,6 +55,7 @@ interface LiderancaDetalheResponse {
 }
 
 type ResumosCidadeMap = Record<string, { expectativaVotos: number; votacaoFinal2022: number; liderancas: number }>
+type PesquisaCitiesMap = Record<string, string>
 
 type TableKey =
   | 'deputado_estadual'
@@ -158,6 +161,7 @@ function Pagination({
 }
 
 export default function ResumoEleicoesPage() {
+  const searchParams = useSearchParams()
   const [cidade, setCidade] = useState('')
   const [cidades, setCidades] = useState<string[]>([])
   const [dados, setDados] = useState<ResultadoEleicao[]>([])
@@ -173,6 +177,8 @@ export default function ResumoEleicoesPage() {
   const [showLiderancasModal, setShowLiderancasModal] = useState(false)
   const [feedbackMarcacao, setFeedbackMarcacao] = useState<string | null>(null)
   const [mostrarFeedbackMarcacao, setMostrarFeedbackMarcacao] = useState(false)
+  const [pesquisasCidadeCount, setPesquisasCidadeCount] = useState<number | null>(null)
+  const [pesquisaCitiesMap, setPesquisaCitiesMap] = useState<PesquisaCitiesMap>({})
   const [currentPage, setCurrentPage] = useState<Record<string, number>>({
     deputado_estadual: 1,
     deputado_federal: 1,
@@ -353,6 +359,29 @@ export default function ResumoEleicoesPage() {
     }
   }
 
+  const carregarContagemPesquisasCidade = async (cidadeAlvo: string): Promise<void> => {
+    const cityKey = normalizeCityName(cidadeAlvo)
+    if (!cityKey) {
+      setPesquisasCidadeCount(0)
+      return
+    }
+
+    const cidadeId = pesquisaCitiesMap[cityKey]
+    if (!cidadeId) {
+      setPesquisasCidadeCount(0)
+      return
+    }
+
+    try {
+      const res = await fetch(`/api/pesquisa?count_only=true&cidade_id=${encodeURIComponent(cidadeId)}`)
+      const json = await res.json()
+      if (!res.ok) throw new Error(json.error || 'Erro ao contar pesquisas')
+      setPesquisasCidadeCount(Number(json.count || 0))
+    } catch {
+      setPesquisasCidadeCount(0)
+    }
+  }
+
   const definirPresidenteCamara = async (vereadorNome: string) => {
     if (!cidade || savingPresidente) return
 
@@ -405,6 +434,32 @@ export default function ResumoEleicoesPage() {
   }, [])
 
   useEffect(() => {
+    let active = true
+
+    const preloadPesquisaCities = async () => {
+      try {
+        const res = await fetch('/api/campo/cities')
+        const json = await res.json()
+        if (!res.ok || !Array.isArray(json) || !active) return
+
+        const nextMap: PesquisaCitiesMap = {}
+        json.forEach((city: { id?: string; name?: string }) => {
+          if (!city?.id || !city?.name) return
+          nextMap[normalizeCityName(city.name)] = city.id
+        })
+        setPesquisaCitiesMap(nextMap)
+      } catch {
+        // fallback silencioso
+      }
+    }
+
+    preloadPesquisaCities()
+    return () => {
+      active = false
+    }
+  }, [])
+
+  useEffect(() => {
     if (cidades.length === 0) return
     let active = true
 
@@ -428,6 +483,24 @@ export default function ResumoEleicoesPage() {
     }
   }, [cidades.length])
 
+  useEffect(() => {
+    if (cidades.length === 0) return
+    const cidadeParam = searchParams.get('cidade')
+    if (!cidadeParam) return
+
+    const cidadeNormalizada = normalizeCityName(cidadeParam)
+    const encontrada = cidades.find((item) => normalizeCityName(item) === cidadeNormalizada)
+    if (encontrada) {
+      setCidade(encontrada)
+    }
+  }, [cidades, searchParams])
+
+  useEffect(() => {
+    if (!buscaIniciada || !cidade || dados.length === 0) return
+    if (Object.keys(pesquisaCitiesMap).length === 0) return
+    void carregarContagemPesquisasCidade(cidade)
+  }, [buscaIniciada, cidade, dados.length, pesquisaCitiesMap])
+
   const buscarDados = async () => {
     if (!cidade) return
     setBuscaIniciada(true)
@@ -441,6 +514,7 @@ export default function ResumoEleicoesPage() {
     setShowLiderancasModal(false)
     setFeedbackMarcacao(null)
     setMostrarFeedbackMarcacao(false)
+    setPesquisasCidadeCount(null)
     setCurrentPage({
       deputado_estadual: 1,
       deputado_federal: 1,
@@ -456,6 +530,7 @@ export default function ResumoEleicoesPage() {
       setDados(Array.isArray(json.resultados) ? json.resultados : [])
       await carregarPresidenteCamara(cidade)
       void carregarResumoCidade(cidade)
+      void carregarContagemPesquisasCidade(cidade)
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Erro ao buscar resultados')
     } finally {
@@ -799,6 +874,11 @@ export default function ResumoEleicoesPage() {
     resumoCidade && resumoCidade.eleitores && resumoCidade.eleitores > 0
       ? (resumoCidade.votos2026 / resumoCidade.eleitores) * 100
       : null
+  const summaryCardBaseClass =
+    'rounded-[14px] border border-border-card bg-bg-surface p-3 relative overflow-hidden shadow-[0_1px_3px_rgba(0,0,0,0.06)] hover:shadow-[0_8px_24px_rgba(0,0,0,0.08)] hover:-translate-y-[2px] transition-all duration-300 ease-out h-full'
+  const summaryIconWrapClass =
+    'p-1.5 rounded-lg bg-accent-gold-soft group-hover:scale-110 transition-all duration-300'
+  const summaryMetaClass = 'text-[11px] mt-1 text-text-secondary'
 
   return (
     <div className="min-h-screen bg-background">
@@ -850,23 +930,39 @@ export default function ResumoEleicoesPage() {
         {dados.length > 0 && (
           <>
           {resumoCidade && (
-            <div className="mb-3 grid grid-cols-2 md:grid-cols-4 gap-3">
-              <div className="rounded-lg border border-card bg-surface p-2 text-center">
-                <p className="text-[11px] text-text-secondary">Eleitores</p>
-                <p className="text-sm font-semibold text-text-primary">
-                  {resumoCidade.eleitores !== null ? resumoCidade.eleitores.toLocaleString('pt-BR') : '-'}
+            <div className="mb-3 grid grid-cols-2 md:grid-cols-5 gap-3">
+              <div className={`${summaryCardBaseClass} group`}>
+                <div className="flex items-center gap-2 mb-2">
+                  <div className={summaryIconWrapClass}>
+                    <Users className="w-4 h-4 text-accent-gold animate-breathe" />
+                  </div>
+                  <p className="text-sm font-medium text-text-secondary group-hover:text-text-primary transition-colors">
+                    Eleitores
+                  </p>
+                </div>
+                <p className="text-2xl font-bold text-text-primary group-hover:text-accent-gold transition-colors">
+                  {resumoCidade.eleitores !== null
+                    ? resumoCidade.eleitores.toLocaleString('pt-BR')
+                    : '-'}
                 </p>
-                <p className="text-[11px] mt-0.5 text-text-secondary">
+                <p className={summaryMetaClass}>
                   Alcance: {percentualAlcance !== null ? `${percentualAlcance.toFixed(1).replace('.', ',')}%` : '-'}
                 </p>
               </div>
-              <div className="rounded-lg border border-card bg-surface p-2 text-center">
-                <p className="text-[11px] text-text-secondary">Votos 2026</p>
-                <p className="text-sm font-semibold text-text-primary">
+              <div className={`${summaryCardBaseClass} group`}>
+                <div className="flex items-center gap-2 mb-2">
+                  <div className={summaryIconWrapClass}>
+                    <Vote className="w-4 h-4 text-accent-gold animate-breathe" />
+                  </div>
+                  <p className="text-sm font-medium text-text-secondary group-hover:text-text-primary transition-colors">
+                    Votos 2026
+                  </p>
+                </div>
+                <p className="text-2xl font-bold text-text-primary group-hover:text-accent-gold transition-colors">
                   {resumoCidade.votos2026.toLocaleString('pt-BR')}
                 </p>
                 <p
-                  className={`text-[11px] mt-0.5 ${
+                  className={`${summaryMetaClass} ${
                     diferenca2026Vs2022 > 0
                       ? 'text-status-success'
                       : diferenca2026Vs2022 < 0
@@ -877,31 +973,66 @@ export default function ResumoEleicoesPage() {
                   {statusComparativo} ({diferencaFormatada})
                 </p>
               </div>
-              <div className="rounded-lg border border-card bg-surface p-2 text-center">
-                <p className="text-[11px] text-text-secondary">Votação Final 2022</p>
-                <p className="text-sm font-semibold text-text-primary">
+              <div className={`${summaryCardBaseClass} group`}>
+                <div className="flex items-center gap-2 mb-2">
+                  <div className={summaryIconWrapClass}>
+                    <BarChart3 className="w-4 h-4 text-accent-gold animate-breathe" />
+                  </div>
+                  <p className="text-sm font-medium text-text-secondary group-hover:text-text-primary transition-colors">
+                    Votação Final 2022
+                  </p>
+                </div>
+                <p className="text-2xl font-bold text-text-primary group-hover:text-accent-gold transition-colors">
                   {resumoCidade.votacaoFinal2022.toLocaleString('pt-BR')}
                 </p>
               </div>
-              <div className="rounded-lg border border-card bg-surface p-2 text-center select-none">
-                <p className="text-[11px] text-text-secondary">Quantidade de Lideranças</p>
-                <p className="text-sm font-semibold text-text-primary">
+              <div className={`${summaryCardBaseClass} group select-none`}>
+                <div className="flex items-center gap-2 mb-2">
+                  <div className={summaryIconWrapClass}>
+                    <UserCheck className="w-4 h-4 text-accent-gold animate-breathe" />
+                  </div>
+                  <p className="text-sm font-medium text-text-secondary group-hover:text-text-primary transition-colors">
+                    Lideranças
+                  </p>
+                </div>
+                <p className="text-2xl font-bold text-text-primary group-hover:text-accent-gold transition-colors">
                   {resumoCidade.liderancas.toLocaleString('pt-BR')}
                 </p>
                 <button
                   type="button"
                   onClick={marcarLiderancasDoCard}
-                  className="text-[11px] mt-0.5 text-accent-gold hover:underline"
+                  className="mt-1 inline-flex items-center gap-1 text-xs text-accent-gold hover:underline"
                 >
+                  <ArrowUpRight className="h-3 w-3" />
                   Marcar automaticamente
                 </button>
                 <button
                   type="button"
                   onClick={() => setShowLiderancasModal(true)}
-                  className="text-[11px] mt-0.5 text-accent-gold hover:underline"
+                  className="mt-1 block text-xs text-accent-gold hover:underline"
                 >
                   Clique para ver detalhes
                 </button>
+              </div>
+              <div className={`${summaryCardBaseClass} group`}>
+                <div className="flex items-center gap-2 mb-2">
+                  <div className={summaryIconWrapClass}>
+                    <BarChart3 className="w-4 h-4 text-accent-gold animate-breathe" />
+                  </div>
+                  <p className="text-sm font-medium text-text-secondary group-hover:text-text-primary transition-colors">
+                    Pesquisas
+                  </p>
+                </div>
+                <p className="text-2xl font-bold text-text-primary group-hover:text-accent-gold transition-colors">
+                  {(pesquisasCidadeCount ?? 0).toLocaleString('pt-BR')}
+                </p>
+                <Link
+                  href={`/dashboard/pesquisa?cidade=${encodeURIComponent(cidade)}#filtros`}
+                  className="mt-1 inline-flex items-center gap-1 text-xs text-accent-gold hover:underline"
+                >
+                  <ArrowUpRight className="h-3 w-3" />
+                  Clique para ver detalhes
+                </Link>
               </div>
             </div>
           )}

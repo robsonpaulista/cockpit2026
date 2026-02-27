@@ -31,8 +31,44 @@ export async function GET(request: Request) {
     const cargo = searchParams.get('cargo')
     const tipo = searchParams.get('tipo')
     const limit = parseInt(searchParams.get('limit') || '50')
+    const cidadeId = searchParams.get('cidade_id')
+    const countOnly = searchParams.get('count_only') === 'true'
+    if (countOnly) {
+      let countQuery = supabase
+        .from('polls')
+        .select('data, instituto')
+        .eq('user_id', user.id)
 
-    let query = supabase
+      if (cargo) {
+        countQuery = countQuery.eq('cargo', cargo)
+      }
+
+      if (tipo) {
+        countQuery = countQuery.eq('tipo', tipo)
+      }
+
+      if (cidadeId) {
+        countQuery = countQuery.eq('cidade_id', cidadeId)
+      }
+
+      const { data, error } = await countQuery
+      if (error) {
+        return NextResponse.json({ error: error.message }, { status: 500 })
+      }
+
+      // Uma pesquisa é definida por (data + instituto), mesmo que tenha vários registros por candidato.
+      const pesquisasUnicas = new Set<string>()
+      ;(data || []).forEach((poll: { data?: string; instituto?: string }) => {
+        const dataBase = String(poll.data || '')
+        const dataNormalizada = dataBase.includes('T') ? dataBase.split('T')[0] : dataBase
+        const instituto = String(poll.instituto || '').trim().toUpperCase()
+        pesquisasUnicas.add(`${dataNormalizada}__${instituto}`)
+      })
+
+      return NextResponse.json({ count: pesquisasUnicas.size })
+    }
+
+    let dataQuery = supabase
       .from('polls')
       .select(`
         *,
@@ -46,15 +82,18 @@ export async function GET(request: Request) {
       .limit(limit)
 
     if (cargo) {
-      query = query.eq('cargo', cargo)
+      dataQuery = dataQuery.eq('cargo', cargo)
     }
 
     if (tipo) {
-      query = query.eq('tipo', tipo)
+      dataQuery = dataQuery.eq('tipo', tipo)
     }
 
-    const { data, error } = await query
+    if (cidadeId) {
+      dataQuery = dataQuery.eq('cidade_id', cidadeId)
+    }
 
+    const { data, error } = await dataQuery
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 })
     }

@@ -1,9 +1,11 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { useSearchParams } from 'next/navigation'
+import Link from 'next/link'
 import { KPICard } from '@/components/kpi-card'
 import { PollModal } from '@/components/poll-modal'
-import { Plus, Edit2, Trash2, Maximize2, X } from 'lucide-react'
+import { Plus, Edit2, Trash2, Maximize2, X, ArrowLeft } from 'lucide-react'
 import { KPI } from '@/types'
 import { LineChart, Line, ResponsiveContainer, XAxis, YAxis, CartesianGrid, Tooltip, LabelList, Customized } from 'recharts'
 import { formatDate } from '@/lib/utils'
@@ -138,6 +140,7 @@ function RightSideLabels(props: any) {
 }
 
 export default function PesquisaPage() {
+  const searchParams = useSearchParams()
   const [polls, setPolls] = useState<Poll[]>([])
   const [loading, setLoading] = useState(true)
   const [showModal, setShowModal] = useState(false)
@@ -149,6 +152,20 @@ export default function PesquisaPage() {
   const [candidatoPadrao, setCandidatoPadrao] = useState<string>('')
   const [graficoTelaCheia, setGraficoTelaCheia] = useState(false)
 
+  const normalizeCityName = (value: string): string =>
+    value
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .trim()
+      .toUpperCase()
+
+  const cidadeSelecionadaNome =
+    cities.find((city) => city.id === filtroCidade)?.name || searchParams.get('cidade') || ''
+
+  const hrefResumoEleicoes = cidadeSelecionadaNome
+    ? `/dashboard/resumo-eleicoes?cidade=${encodeURIComponent(cidadeSelecionadaNome)}`
+    : '/dashboard/resumo-eleicoes'
+
   useEffect(() => {
     fetchPolls()
     fetchCities()
@@ -159,6 +176,28 @@ export default function PesquisaPage() {
       setCandidatoPadrao(candidatoSalvo)
     }
   }, [])
+
+  useEffect(() => {
+    if (cities.length === 0) return
+
+    const cidadeIdParam = searchParams.get('cidade_id')
+    if (cidadeIdParam) {
+      const cityExists = cities.some((city) => city.id === cidadeIdParam)
+      if (cityExists) {
+        setFiltroCidade(cidadeIdParam)
+        return
+      }
+    }
+
+    const cidadeParam = searchParams.get('cidade')
+    if (!cidadeParam) return
+
+    const cidadeNormalizada = normalizeCityName(cidadeParam)
+    const matched = cities.find((city) => normalizeCityName(city.name) === cidadeNormalizada)
+    if (matched) {
+      setFiltroCidade(matched.id)
+    }
+  }, [cities, searchParams])
   
   // Atualizar candidatos disponíveis quando polls mudarem
   useEffect(() => {
@@ -436,6 +475,13 @@ export default function PesquisaPage() {
         {/* Seletor de Candidato Padrão e Botão Nova Pesquisa */}
         <div className="bg-surface rounded-2xl border border-card p-4 mb-6">
           <div className="flex items-center gap-4 flex-wrap">
+            <Link
+              href={hrefResumoEleicoes}
+              className="px-3 py-2 text-xs font-medium border border-card rounded-lg hover:bg-background transition-colors inline-flex items-center gap-2"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              Voltar para Resumo Eleições
+            </Link>
             <label className="text-sm font-semibold text-text-primary whitespace-nowrap">
               Candidato Padrão para KPIs:
             </label>
@@ -480,7 +526,7 @@ export default function PesquisaPage() {
         </section>
 
         {/* Filtros */}
-        <div className="bg-surface rounded-2xl border border-card p-4 mb-6">
+        <div id="filtros" className="bg-surface rounded-2xl border border-card p-4 mb-6">
           <h3 className="text-sm font-semibold text-text-primary mb-4">Filtros</h3>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {/* Filtro por Tipo */}
