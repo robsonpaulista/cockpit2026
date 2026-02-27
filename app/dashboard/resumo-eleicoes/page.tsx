@@ -56,6 +56,18 @@ interface LiderancaDetalheResponse {
 
 type ResumosCidadeMap = Record<string, { expectativaVotos: number; votacaoFinal2022: number; liderancas: number }>
 type PesquisaCitiesMap = Record<string, string>
+type ResumoEleicoesSnapshot = {
+  cidade: string
+  cidades: string[]
+  dados: ResultadoEleicao[]
+  buscaIniciada: boolean
+  presidenteCamaraNome: string | null
+  filtroPartidoAtivo: string | null
+  resumoCidade: ResumoCidade | null
+  resumosCidadeMap: ResumosCidadeMap
+  pesquisasCidadeCount: number | null
+  pesquisaCitiesMap: PesquisaCitiesMap
+}
 
 type TableKey =
   | 'deputado_estadual'
@@ -66,6 +78,7 @@ type TableKey =
 
 const ITEMS_PER_PAGE = 10
 const CANDIDATO_FEDERAL_FIXO = 'JADYEL DA JUPI'
+const RESUMO_STATE_SESSION_KEY = 'resumo_eleicoes_state_v1'
 
 const EMPTY_SELECTIONS: Record<TableKey, Record<string, number>> = {
   deputado_estadual: {},
@@ -179,6 +192,7 @@ export default function ResumoEleicoesPage() {
   const [mostrarFeedbackMarcacao, setMostrarFeedbackMarcacao] = useState(false)
   const [pesquisasCidadeCount, setPesquisasCidadeCount] = useState<number | null>(null)
   const [pesquisaCitiesMap, setPesquisaCitiesMap] = useState<PesquisaCitiesMap>({})
+  const [restaurouEstadoRetorno, setRestaurouEstadoRetorno] = useState(false)
   const [currentPage, setCurrentPage] = useState<Record<string, number>>({
     deputado_estadual: 1,
     deputado_federal: 1,
@@ -382,6 +396,23 @@ export default function ResumoEleicoesPage() {
     }
   }
 
+  const salvarEstadoResumoEmSession = () => {
+    if (typeof window === 'undefined') return
+    const snapshot: ResumoEleicoesSnapshot = {
+      cidade,
+      cidades,
+      dados,
+      buscaIniciada,
+      presidenteCamaraNome,
+      filtroPartidoAtivo,
+      resumoCidade,
+      resumosCidadeMap,
+      pesquisasCidadeCount,
+      pesquisaCitiesMap,
+    }
+    sessionStorage.setItem(RESUMO_STATE_SESSION_KEY, JSON.stringify(snapshot))
+  }
+
   const definirPresidenteCamara = async (vereadorNome: string) => {
     if (!cidade || savingPresidente) return
 
@@ -409,6 +440,34 @@ export default function ResumoEleicoesPage() {
   }
 
   useEffect(() => {
+    const retornoDaPesquisa = searchParams.get('returnFromPesquisa') === '1'
+    if (!retornoDaPesquisa || typeof window === 'undefined') return
+
+    try {
+      const raw = sessionStorage.getItem(RESUMO_STATE_SESSION_KEY)
+      if (!raw) return
+      const parsed = JSON.parse(raw) as ResumoEleicoesSnapshot
+      if (!parsed) return
+
+      setCidade(parsed.cidade || '')
+      setCidades(Array.isArray(parsed.cidades) ? parsed.cidades : [])
+      setDados(Array.isArray(parsed.dados) ? parsed.dados : [])
+      setBuscaIniciada(Boolean(parsed.buscaIniciada))
+      setPresidenteCamaraNome(parsed.presidenteCamaraNome || null)
+      setFiltroPartidoAtivo(parsed.filtroPartidoAtivo || null)
+      setResumoCidade(parsed.resumoCidade || null)
+      setResumosCidadeMap(parsed.resumosCidadeMap || {})
+      setPesquisasCidadeCount(parsed.pesquisasCidadeCount ?? null)
+      setPesquisaCitiesMap(parsed.pesquisaCitiesMap || {})
+      setLoadingCidades(false)
+      setRestaurouEstadoRetorno(true)
+    } catch {
+      // Se falhar a restauração, segue fluxo padrão.
+    }
+  }, [searchParams])
+
+  useEffect(() => {
+    if (restaurouEstadoRetorno && cidades.length > 0) return
     let mounted = true
 
     const loadCities = async () => {
@@ -431,7 +490,7 @@ export default function ResumoEleicoesPage() {
     return () => {
       mounted = false
     }
-  }, [])
+  }, [restaurouEstadoRetorno, cidades.length])
 
   useEffect(() => {
     let active = true
@@ -1028,6 +1087,7 @@ export default function ResumoEleicoesPage() {
                 </p>
                 <Link
                   href={`/dashboard/pesquisa?cidade=${encodeURIComponent(cidade)}#filtros`}
+                  onClick={salvarEstadoResumoEmSession}
                   className="mt-1 inline-flex items-center gap-1 text-xs text-accent-gold hover:underline"
                 >
                   <ArrowUpRight className="h-3 w-3" />

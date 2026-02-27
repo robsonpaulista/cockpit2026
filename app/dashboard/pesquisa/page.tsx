@@ -163,8 +163,8 @@ export default function PesquisaPage() {
     cities.find((city) => city.id === filtroCidade)?.name || searchParams.get('cidade') || ''
 
   const hrefResumoEleicoes = cidadeSelecionadaNome
-    ? `/dashboard/resumo-eleicoes?cidade=${encodeURIComponent(cidadeSelecionadaNome)}`
-    : '/dashboard/resumo-eleicoes'
+    ? `/dashboard/resumo-eleicoes?cidade=${encodeURIComponent(cidadeSelecionadaNome)}&returnFromPesquisa=1`
+    : '/dashboard/resumo-eleicoes?returnFromPesquisa=1'
 
   useEffect(() => {
     fetchPolls()
