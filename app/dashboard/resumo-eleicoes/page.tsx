@@ -46,6 +46,8 @@ interface ResumoCidade {
     nome: string
     cargo: string
     projecaoVotos: number
+    projecaoAferida: number
+    projecaoPromessa: number
   }>
 }
 
@@ -53,6 +55,8 @@ interface LiderancaDetalheResponse {
   nome?: string
   cargo?: string
   projecaoVotos?: number
+  projecaoAferida?: number
+  projecaoPromessa?: number
 }
 
 type ResumosCidadeMap = Record<string, { expectativaVotos: number; promessaVotos: number; votacaoFinal2022: number; liderancas: number }>
@@ -357,6 +361,8 @@ export default function ResumoEleicoesPage() {
               nome: String(item.nome || ''),
               cargo: String(item.cargo || '-'),
               projecaoVotos: Number(item.projecaoVotos || 0),
+              projecaoAferida: Number(item.projecaoAferida || item.projecaoVotos || 0),
+              projecaoPromessa: Number(item.projecaoPromessa || 0),
             }))
           : [],
       })
@@ -956,6 +962,14 @@ export default function ResumoEleicoesPage() {
   const summaryIconWrapClass =
     'p-1.5 rounded-lg bg-accent-gold-soft group-hover:scale-110 transition-all duration-300'
   const summaryMetaClass = 'text-[11px] mt-1 text-text-secondary'
+  const labelValorModalLiderancas = cenarioVotos === 'promessa_lideranca' ? 'Promessa 2026' : 'Aferido 2026'
+  const liderancasDetalheOrdenadas = resumoCidade
+    ? [...resumoCidade.liderancasDetalhe].sort((a, b) => {
+        const valorA = cenarioVotos === 'promessa_lideranca' ? a.projecaoPromessa : a.projecaoAferida
+        const valorB = cenarioVotos === 'promessa_lideranca' ? b.projecaoPromessa : b.projecaoAferida
+        return valorB - valorA || a.nome.localeCompare(b.nome, 'pt-BR')
+      })
+    : []
 
   return (
     <div className="min-h-screen bg-background">
@@ -1556,16 +1570,18 @@ export default function ResumoEleicoesPage() {
                     <tr>
                       <th className="text-left py-2 px-2 bg-background">Nome</th>
                       <th className="text-left py-2 px-2 bg-background">Cargo</th>
-                      <th className="text-right py-2 px-2 bg-background">Projeção de votos</th>
+                      <th className="text-right py-2 px-2 bg-background">{labelValorModalLiderancas}</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {resumoCidade.liderancasDetalhe.map((lideranca) => (
+                    {liderancasDetalheOrdenadas.map((lideranca) => (
                       <tr key={`${lideranca.nome}-${lideranca.cargo}`} className="border-b border-card">
                         <td className="py-1.5 px-2">{lideranca.nome || '-'}</td>
                         <td className="py-1.5 px-2">{lideranca.cargo || '-'}</td>
                         <td className="py-1.5 px-2 text-right">
-                          {lideranca.projecaoVotos.toLocaleString('pt-BR')}
+                          {(cenarioVotos === 'promessa_lideranca'
+                            ? lideranca.projecaoPromessa
+                            : lideranca.projecaoAferida).toLocaleString('pt-BR')}
                         </td>
                       </tr>
                     ))}

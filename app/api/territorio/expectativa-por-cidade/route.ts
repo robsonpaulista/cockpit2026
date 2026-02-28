@@ -13,6 +13,8 @@ type LiderancaResumo = {
   nome: string
   cargo: string
   projecaoVotos: number
+  projecaoAferida: number
+  projecaoPromessa: number
 }
 
 type CitySummaryCache = {
@@ -293,8 +295,17 @@ async function buildCitySummaries(
     const cargo = cargoIndex >= 0 ? String(row[cargoIndex] || '').trim() : '-'
     const key = `${nome.toUpperCase()}|${cargo.toUpperCase()}`
     const cityLeaders = leadersAccumulator.get(cidadeValueNormalizada) || new Map<string, LiderancaResumo>()
-    const leaderCurrent = cityLeaders.get(key) || { nome, cargo, projecaoVotos: 0 }
-    leaderCurrent.projecaoVotos += expectativaValor || promessaValor
+    const leaderCurrent = cityLeaders.get(key) || {
+      nome,
+      cargo,
+      projecaoVotos: 0,
+      projecaoAferida: 0,
+      projecaoPromessa: 0,
+    }
+    leaderCurrent.projecaoAferida += expectativaValor
+    leaderCurrent.projecaoPromessa += promessaValor
+    // Campo legado mantido por compatibilidade: default para a visão aferida.
+    leaderCurrent.projecaoVotos = leaderCurrent.projecaoAferida
     cityLeaders.set(key, leaderCurrent)
     leadersAccumulator.set(cidadeValueNormalizada, cityLeaders)
   })
@@ -304,7 +315,7 @@ async function buildCitySummaries(
     leadersByCity.set(
       cityKey,
       Array.from(cityMap.values())
-        .sort((a, b) => b.projecaoVotos - a.projecaoVotos || a.nome.localeCompare(b.nome, 'pt-BR'))
+        .sort((a, b) => b.projecaoAferida - a.projecaoAferida || a.nome.localeCompare(b.nome, 'pt-BR'))
     )
   })
 
@@ -328,14 +339,22 @@ function resolveCityLeaders(city: string, leadersByCity: Map<string, LiderancaRe
     if (!(cityKey.includes(normalizedCity) || normalizedCity.includes(cityKey))) continue
     for (const leader of leaders) {
       const key = `${leader.nome.toUpperCase()}|${leader.cargo.toUpperCase()}`
-      const current = merged.get(key) || { nome: leader.nome, cargo: leader.cargo, projecaoVotos: 0 }
-      current.projecaoVotos += Number(leader.projecaoVotos || 0)
+      const current = merged.get(key) || {
+        nome: leader.nome,
+        cargo: leader.cargo,
+        projecaoVotos: 0,
+        projecaoAferida: 0,
+        projecaoPromessa: 0,
+      }
+      current.projecaoAferida += Number(leader.projecaoAferida || 0)
+      current.projecaoPromessa += Number(leader.projecaoPromessa || 0)
+      current.projecaoVotos = current.projecaoAferida
       merged.set(key, current)
     }
   }
 
   return Array.from(merged.values()).sort(
-    (a, b) => b.projecaoVotos - a.projecaoVotos || a.nome.localeCompare(b.nome, 'pt-BR')
+    (a, b) => b.projecaoAferida - a.projecaoAferida || a.nome.localeCompare(b.nome, 'pt-BR')
   )
 }
 
@@ -401,6 +420,8 @@ export async function POST(request: Request) {
         nome: leader.nome,
         cargo: leader.cargo || '-',
         projecaoVotos: Math.round(leader.projecaoVotos),
+        projecaoAferida: Math.round(leader.projecaoAferida || 0),
+        projecaoPromessa: Math.round(leader.projecaoPromessa || 0),
       })),
     })
   } catch (error: any) {
