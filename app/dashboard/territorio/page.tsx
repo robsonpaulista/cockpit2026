@@ -45,6 +45,7 @@ export default function TerritorioPage() {
   const [showExecutiveBriefing, setShowExecutiveBriefing] = useState(false)
   const [selectedCityForBriefing, setSelectedCityForBriefing] = useState<string>('')
   const [selectedCityLiderancas, setSelectedCityLiderancas] = useState<Lideranca[]>([])
+  const [cenarioVotos, setCenarioVotos] = useState<'aferido_jadyel' | 'promessa_lideranca'>('aferido_jadyel')
   const depDropdownRef = useRef<HTMLDivElement | null>(null)
 
   useEffect(() => {
@@ -186,15 +187,33 @@ export default function TerritorioPage() {
   const liderancaAtualCol = headers.find((h) =>
     /liderança atual|lideranca atual|atual\?/i.test(h)
   )
-  const expectativaVotosCol = headers.find((h) => {
+  const expectativaJadyelCol = headers.find((h) => {
     const normalized = h.toLowerCase().trim()
-    if (/jadyel|nome|pessoa|candidato/i.test(normalized)) {
-      return false
-    }
-    return /^expectativa\s+de\s+votos\s+2026$/i.test(h) || 
+    return /expectativa.*jadyel.*2026/i.test(normalized) ||
+           /expectativa.*2026.*jadyel/i.test(normalized) ||
+           /^expectativa\s+de\s+votos\s+2026$/i.test(h) ||
            /expectativa\s+de\s+votos\s+2026/i.test(h) ||
-           (/expectativa.*votos.*2026/i.test(h) && !/jadyel|nome|pessoa|candidato/i.test(h))
+           (/expectativa.*votos.*2026/i.test(normalized) && !/promessa/i.test(normalized))
   })
+  const promessaLiderancaCol = headers.find((h) => /promessa.*lideran[cç]a.*2026/i.test(h))
+  const votosReferenciaCol =
+    cenarioVotos === 'promessa_lideranca'
+      ? (promessaLiderancaCol || expectativaJadyelCol)
+      : (expectativaJadyelCol || promessaLiderancaCol)
+  const labelCenarioVotos = cenarioVotos === 'promessa_lideranca' ? 'Promessa da Liderança 2026' : 'Expectativa Jadyel 2026'
+  const labelVotosResumo = cenarioVotos === 'promessa_lideranca' ? 'votos prometidos' : 'votos aferidos'
+  const labelTotalCidade = cenarioVotos === 'promessa_lideranca' ? 'Total Prometido' : 'Total Aferido'
+  const labelValorLideranca = cenarioVotos === 'promessa_lideranca' ? 'Promessa 2026' : 'Aferido 2026'
+
+  useEffect(() => {
+    if (cenarioVotos === 'promessa_lideranca' && !promessaLiderancaCol && expectativaJadyelCol) {
+      setCenarioVotos('aferido_jadyel')
+      return
+    }
+    if (cenarioVotos === 'aferido_jadyel' && !expectativaJadyelCol && promessaLiderancaCol) {
+      setCenarioVotos('promessa_lideranca')
+    }
+  }, [cenarioVotos, promessaLiderancaCol, expectativaJadyelCol])
 
   // Função para normalizar números
   const normalizeNumber = (value: any): number => {
@@ -287,11 +306,11 @@ export default function TerritorioPage() {
       )).sort((a, b) => a.localeCompare(b, 'pt-BR'))
     : []
 
-  // Filtrar lideranças: incluir "Liderança Atual?" = SIM OU que tenham "Expectativa de Votos 2026"
+  // Filtrar lideranças: incluir "Liderança Atual?" = SIM OU que tenham valor no cenário de votos selecionado
   const liderancasFiltradas = (() => {
     if (liderancas.length === 0) return []
 
-    if (!liderancaAtualCol && !expectativaVotosCol) {
+    if (!liderancaAtualCol && !votosReferenciaCol) {
       // Se não encontrar nenhuma das colunas, retorna todos
       return liderancas
     }
@@ -305,9 +324,9 @@ export default function TerritorioPage() {
         }
       }
 
-      // Se tem "Expectativa de Votos 2026" com valor, incluir também
-      if (expectativaVotosCol) {
-        const expectativaValue = normalizeNumber(l[expectativaVotosCol])
+      // Se tem valor no cenário de votos selecionado, incluir também
+      if (votosReferenciaCol) {
+        const expectativaValue = normalizeNumber(l[votosReferenciaCol])
         if (expectativaValue > 0) {
           return true
         }
@@ -346,14 +365,14 @@ export default function TerritorioPage() {
     }
 
     // Aplicar filtro por faixa de votos esperados (considerando o total de cada cidade)
-    if (filtroFaixaVotos && expectativaVotosCol) {
+    if (filtroFaixaVotos && votosReferenciaCol) {
       // Agrupar por cidade e calcular total de votos por cidade
       const votosPorCidade = filtradas.reduce((acc, l) => {
         const cidade = l[cidadeCol] || 'Sem cidade'
         if (!acc[cidade]) {
           acc[cidade] = 0
         }
-        acc[cidade] += normalizeNumber(l[expectativaVotosCol])
+        acc[cidade] += normalizeNumber(l[votosReferenciaCol])
         return acc
       }, {} as Record<string, number>)
 
@@ -397,7 +416,7 @@ export default function TerritorioPage() {
     liderancasFiltradas.forEach((lider) => {
       const cidade = String(lider[cidadeCol] || '').trim() || 'Sem cidade'
       const dep = extrairDepEstadual(lider) || 'Não informado'
-      const votos = expectativaVotosCol ? normalizeNumber(lider[expectativaVotosCol]) : 0
+      const votos = votosReferenciaCol ? normalizeNumber(lider[votosReferenciaCol]) : 0
 
       if (!porCidade[cidade]) {
         porCidade[cidade] = { votos: 0, liderancas: 0, porDeputado: {} }
@@ -432,7 +451,7 @@ export default function TerritorioPage() {
         }
       })
       .sort((a, b) => b.votos - a.votos)
-  }, [liderancasFiltradas, cidadeCol, expectativaVotosCol, depEstadualCol, cargoCol])
+  }, [liderancasFiltradas, cidadeCol, votosReferenciaCol, depEstadualCol, cargoCol])
 
   // Calcular KPIs baseados nos dados filtrados
   const calcularKPIs = (): KPI[] => {
@@ -510,11 +529,11 @@ export default function TerritorioPage() {
       return isNaN(numValue) ? 0 : numValue
     }
 
-    // Calcular total de expectativa de votos (usar expectativaVotosCol já definido no escopo superior)
+    // Calcular total de votos no cenário selecionado
     let totalExpectativaVotos = 0
-    if (expectativaVotosCol) {
+    if (votosReferenciaCol) {
       totalExpectativaVotos = dadosParaKPIs.reduce((sum, l) => {
-        const value = l[expectativaVotosCol]
+        const value = l[votosReferenciaCol]
         return sum + normalizeNumber(value)
       }, 0)
     }
@@ -532,11 +551,11 @@ export default function TerritorioPage() {
         value: liderancas.length,
     status: 'success',
   },
-      ...(expectativaVotosCol && totalExpectativaVotos > 0
+      ...(votosReferenciaCol && totalExpectativaVotos > 0
         ? [
             {
               id: 'expectativa-votos',
-              label: 'Expectativa 2026',
+              label: cenarioVotos === 'promessa_lideranca' ? 'Promessa 2026' : 'Aferido 2026',
               value: Math.round(totalExpectativaVotos).toLocaleString('pt-BR'),
               status: 'success' as const,
             },
@@ -664,7 +683,7 @@ export default function TerritorioPage() {
         {(config || serverConfigured) && liderancas.length > 0 && (
           <div className="mb-6 bg-surface rounded-2xl border border-card p-4">
             <h3 className="text-sm font-semibold text-text-primary mb-4">Filtros</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4">
               {/* Filtro por Cidade */}
               <div>
                 <label className="block text-xs font-medium text-secondary mb-2">
@@ -785,11 +804,32 @@ export default function TerritorioPage() {
                 </div>
               )}
 
-              {/* Filtro por Faixa de Votos Esperados */}
-              {expectativaVotosCol && (
+              {/* Cenário de votos */}
+              {(expectativaJadyelCol || promessaLiderancaCol) && (
                 <div>
                   <label className="block text-xs font-medium text-secondary mb-2">
-                    Faixa de Votos Esperados
+                    Visão de Votos
+                  </label>
+                  <select
+                    value={cenarioVotos}
+                    onChange={(e) => setCenarioVotos(e.target.value as 'aferido_jadyel' | 'promessa_lideranca')}
+                    className="w-full px-3 py-2 text-sm border border-card rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-gold-soft bg-surface"
+                  >
+                    {expectativaJadyelCol && (
+                      <option value="aferido_jadyel">Aferido (Expectativa Jadyel 2026)</option>
+                    )}
+                    {promessaLiderancaCol && (
+                      <option value="promessa_lideranca">Prometido (Promessa da Liderança 2026)</option>
+                    )}
+                  </select>
+                </div>
+              )}
+
+              {/* Filtro por Faixa de Votos Esperados */}
+              {votosReferenciaCol && (
+                <div>
+                  <label className="block text-xs font-medium text-secondary mb-2">
+                    Faixa de Votos ({cenarioVotos === 'promessa_lideranca' ? 'prometidos' : 'aferidos'})
                   </label>
                   <select
                     value={filtroFaixaVotos}
@@ -877,9 +917,9 @@ export default function TerritorioPage() {
               <h2 className="text-lg font-semibold text-text-primary">
                 {(config || serverConfigured) ? 'Lideranças Atuais' : 'Lideranças'}
               </h2>
-              {(config || serverConfigured) && (liderancaAtualCol || expectativaVotosCol) && (
+              {(config || serverConfigured) && (liderancaAtualCol || votosReferenciaCol) && (
                 <p className="text-xs text-secondary mt-1">
-                  Mostrando lideranças com "Liderança Atual?" = SIM ou com "Expectativa de Votos 2026"
+                  Mostrando lideranças com "Liderança Atual?" = SIM ou com {labelCenarioVotos}
                 </p>
               )}
             </div>
@@ -945,8 +985,8 @@ export default function TerritorioPage() {
             <div className="mb-4 p-3 rounded-xl border border-accent-gold-soft bg-accent-gold-soft/10">
               {(() => {
                 const cidades = new Set(liderancasFiltradas.map((l) => String(l[cidadeCol] || 'Sem cidade')))
-                const totalVotos = expectativaVotosCol
-                  ? liderancasFiltradas.reduce((sum, l) => sum + normalizeNumber(l[expectativaVotosCol]), 0)
+                const totalVotos = votosReferenciaCol
+                  ? liderancasFiltradas.reduce((sum, l) => sum + normalizeNumber(l[votosReferenciaCol]), 0)
                   : 0
 
                 return (
@@ -956,7 +996,7 @@ export default function TerritorioPage() {
                     </span>{' '}
                     {cidades.size} cidade{cidades.size !== 1 ? 's' : ''},{' '}
                     {liderancasFiltradas.length} liderança{liderancasFiltradas.length !== 1 ? 's' : ''}{' '}
-                    {expectativaVotosCol ? `e ${Math.round(totalVotos).toLocaleString('pt-BR')} votos esperados em conjunto.` : '.'}
+                    {votosReferenciaCol ? `e ${Math.round(totalVotos).toLocaleString('pt-BR')} ${labelVotosResumo} em conjunto.` : '.'}
                   </p>
                 )
               })()}
@@ -1043,10 +1083,10 @@ export default function TerritorioPage() {
             // Ordenar cidades por total de expectativa de votos (decrescente)
             const cidadesOrdenadas = Object.keys(liderancasPorCidade).sort((a, b) => {
               const totalA = liderancasPorCidade[a].reduce((sum: number, l: Lideranca) => {
-                return sum + (expectativaVotosCol ? normalizeNumber(l[expectativaVotosCol]) : 0)
+                return sum + (votosReferenciaCol ? normalizeNumber(l[votosReferenciaCol]) : 0)
               }, 0)
               const totalB = liderancasPorCidade[b].reduce((sum: number, l: Lideranca) => {
-                return sum + (expectativaVotosCol ? normalizeNumber(l[expectativaVotosCol]) : 0)
+                return sum + (votosReferenciaCol ? normalizeNumber(l[votosReferenciaCol]) : 0)
               }, 0)
               return totalB - totalA
             })
@@ -1056,7 +1096,7 @@ export default function TerritorioPage() {
                 {cidadesOrdenadas.map((cidade) => {
                   const liderancasCidade = liderancasPorCidade[cidade]
                   const totalExpectativaCidade = liderancasCidade.reduce((sum: number, l: Lideranca) => {
-                    return sum + (expectativaVotosCol ? normalizeNumber(l[expectativaVotosCol]) : 0)
+                    return sum + (votosReferenciaCol ? normalizeNumber(l[votosReferenciaCol]) : 0)
                   }, 0)
                   const isExpanded = expandedCities.has(cidade)
 
@@ -1127,9 +1167,9 @@ export default function TerritorioPage() {
                           >
                             <FileText className="w-4 h-4" />
                           </button>
-                          {expectativaVotosCol && totalExpectativaCidade > 0 && (
+                          {votosReferenciaCol && totalExpectativaCidade > 0 && (
                             <div className="text-right ml-2">
-                              <p className="text-xs text-secondary mb-0.5">Total Esperado</p>
+                              <p className="text-xs text-secondary mb-0.5">{labelTotalCidade}</p>
                               <p className="text-sm font-semibold text-accent-gold">
                                 {Math.round(totalExpectativaCidade).toLocaleString('pt-BR')}
                               </p>
@@ -1142,16 +1182,16 @@ export default function TerritorioPage() {
                       {isExpanded && (() => {
                         // Ordenar lideranças por expectativa de votos (decrescente)
                         const liderancasOrdenadas = [...liderancasCidade].sort((a, b) => {
-                          const expectativaA = expectativaVotosCol ? normalizeNumber(a[expectativaVotosCol]) : 0
-                          const expectativaB = expectativaVotosCol ? normalizeNumber(b[expectativaVotosCol]) : 0
+                          const expectativaA = votosReferenciaCol ? normalizeNumber(a[votosReferenciaCol]) : 0
+                          const expectativaB = votosReferenciaCol ? normalizeNumber(b[votosReferenciaCol]) : 0
                           return expectativaB - expectativaA
                         })
 
                         return (
                           <div className="border-t border-card bg-surface">
                             {liderancasOrdenadas.map((lider: Lideranca, idx: number) => {
-                            const numValue = expectativaVotosCol && lider[expectativaVotosCol]
-                              ? normalizeNumber(lider[expectativaVotosCol])
+                            const numValue = votosReferenciaCol && lider[votosReferenciaCol]
+                              ? normalizeNumber(lider[votosReferenciaCol])
                               : 0
 
                             // Verificar se é liderança atual (SIM) ou apenas tem expectativa de votos
@@ -1169,7 +1209,7 @@ export default function TerritorioPage() {
                               >
                                 {/* Identificar colunas inline (cargo, dep. estadual) — ordem: cargo primeiro */}
                                 {(() => {
-                                  const cargoInline = headers.find(h => /cargo.*2024/i.test(h) && h !== nomeCol && h !== cidadeCol && h !== expectativaVotosCol)
+                                  const cargoInline = headers.find(h => /cargo.*2024/i.test(h) && h !== nomeCol && h !== cidadeCol && h !== votosReferenciaCol)
                                   const depEstadual = headers.find(h => /dep.*estadual|deputad.*estadual/i.test(h) && h !== nomeCol && h !== cidadeCol)
                                   const orderedCols = [cargoInline, depEstadual].filter(Boolean) as string[]
                                   const inlineInfo = orderedCols
@@ -1200,9 +1240,9 @@ export default function TerritorioPage() {
                                         </div>
                                       </div>
                                       <div className="flex items-center gap-3 flex-shrink-0">
-                                        {expectativaVotosCol && lider[expectativaVotosCol] && (
+                                        {votosReferenciaCol && lider[votosReferenciaCol] && (
                                           <div className="text-right">
-                                            <p className="text-[10px] text-secondary leading-tight">Previsão 2026</p>
+                                            <p className="text-[10px] text-secondary leading-tight">{labelValorLideranca}</p>
                                             <p className="text-sm font-semibold text-accent-gold">
                                               {numValue.toLocaleString('pt-BR')}
                                             </p>
@@ -1263,7 +1303,7 @@ export default function TerritorioPage() {
         candidatoPadrao={candidatoPadrao || 'Candidato'}
         cidadeCol={cidadeCol || 'cidade'}
         nomeCol={nomeCol || 'nome'}
-        expectativaVotosCol={expectativaVotosCol || null}
+        expectativaVotosCol={votosReferenciaCol || null}
       />
 
       {/* Modal de Demandas por Cidade */}
@@ -1290,7 +1330,7 @@ export default function TerritorioPage() {
           }}
           cidade={selectedCityForBriefing}
           liderancas={selectedCityLiderancas}
-          expectativaVotosCol={expectativaVotosCol}
+          expectativaVotosCol={votosReferenciaCol}
           nomeCol={nomeCol}
         />
       )}

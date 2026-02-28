@@ -36,6 +36,7 @@ const trendData = [
 ]
 
 export default function Home() {
+  type CenarioVotos = 'aferido_jadyel' | 'promessa_lideranca'
   const [kpis, setKpis] = useState<KPI[]>(mockKPIs)
   const [loading, setLoading] = useState(true)
   const [pollsData, setPollsData] = useState<Array<{ date: string; intencao: number; instituto?: string; cidade?: string }>>([])
@@ -104,6 +105,7 @@ export default function Home() {
   const monitorScrollRef = useRef<HTMLDivElement>(null)
   const [monitorPaused, setMonitorPaused] = useState<boolean>(false)
   const [expectativasPorCidade, setExpectativasPorCidade] = useState<Record<string, number>>({})
+  const [cenarioVotosDashboard, setCenarioVotosDashboard] = useState<CenarioVotos>('aferido_jadyel')
 
   // Agente de IA: só monta quando o usuário clicar (evita recarregar dados ao navegar entre páginas)
 
@@ -302,7 +304,16 @@ export default function Home() {
     
     // Buscar notícias destacadas para o Monitor de Imprensa
     fetchMonitorNews()
+
+    const cenarioSalvo = localStorage.getItem('dashboard_cenario_votos_2026')
+    if (cenarioSalvo === 'promessa_lideranca' || cenarioSalvo === 'aferido_jadyel') {
+      setCenarioVotosDashboard(cenarioSalvo)
+    }
   }, [])
+
+  useEffect(() => {
+    localStorage.setItem('dashboard_cenario_votos_2026', cenarioVotosDashboard)
+  }, [cenarioVotosDashboard])
 
   // Buscar histórico quando candidato padrão mudar
   useEffect(() => {
@@ -686,7 +697,7 @@ export default function Home() {
             const response = await fetch('/api/territorio/kpis', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({}), // Servidor usa variáveis de ambiente
+              body: JSON.stringify({ cenarioVotos: cenarioVotosDashboard }), // Servidor usa variáveis de ambiente
             })
             
             if (response.ok) {
@@ -711,6 +722,7 @@ export default function Home() {
                 range: config.range,
                 serviceAccountEmail: config.serviceAccountEmail,
                 credentials: config.credentials,
+                cenarioVotos: cenarioVotosDashboard,
               }),
             })
             
@@ -785,7 +797,7 @@ export default function Home() {
         setKpis([
           {
             id: 'ife',
-            label: 'Expectativa de Votos',
+            label: cenarioVotosDashboard === 'promessa_lideranca' ? 'Promessa de Votos' : 'Expectativa de Votos',
             value: expectativa2026 !== null && expectativa2026 !== undefined 
               ? (typeof expectativa2026 === 'number' ? expectativa2026.toLocaleString('pt-BR') : String(expectativa2026))
               : (typeof data.ife.value === 'number' ? data.ife.value.toLocaleString('pt-BR') : data.ife.value),
@@ -838,7 +850,7 @@ export default function Home() {
       .catch(() => {
         setLoading(false)
       })
-  }, [])
+  }, [cenarioVotosDashboard])
 
   // KPIs com média de pesquisas atualizada em tempo real
   const kpisComMedia = kpis.map((kpi): KPI => {
@@ -905,6 +917,8 @@ export default function Home() {
                   infoLines={infoLines.length > 0 ? infoLines : undefined}
                   href="/ife"
                   hideValueByDefault
+                  cenarioVotos={cenarioVotosDashboard}
+                  onChangeCenarioVotos={setCenarioVotosDashboard}
                 />
               )
             })()

@@ -39,6 +39,7 @@ interface PartidoResumo {
 interface ResumoCidade {
   eleitores: number | null
   votos2026: number
+  promessa2026: number
   votacaoFinal2022: number
   liderancas: number
   liderancasDetalhe: Array<{
@@ -54,8 +55,9 @@ interface LiderancaDetalheResponse {
   projecaoVotos?: number
 }
 
-type ResumosCidadeMap = Record<string, { expectativaVotos: number; votacaoFinal2022: number; liderancas: number }>
+type ResumosCidadeMap = Record<string, { expectativaVotos: number; promessaVotos: number; votacaoFinal2022: number; liderancas: number }>
 type PesquisaCitiesMap = Record<string, string>
+type CenarioVotos = 'aferido_jadyel' | 'promessa_lideranca'
 type ResumoEleicoesSnapshot = {
   cidade: string
   cidades: string[]
@@ -67,6 +69,7 @@ type ResumoEleicoesSnapshot = {
   resumosCidadeMap: ResumosCidadeMap
   pesquisasCidadeCount: number | null
   pesquisaCitiesMap: PesquisaCitiesMap
+  cenarioVotos: CenarioVotos
 }
 
 type TableKey =
@@ -192,6 +195,7 @@ export default function ResumoEleicoesPage() {
   const [mostrarFeedbackMarcacao, setMostrarFeedbackMarcacao] = useState(false)
   const [pesquisasCidadeCount, setPesquisasCidadeCount] = useState<number | null>(null)
   const [pesquisaCitiesMap, setPesquisaCitiesMap] = useState<PesquisaCitiesMap>({})
+  const [cenarioVotos, setCenarioVotos] = useState<CenarioVotos>('aferido_jadyel')
   const [restaurouEstadoRetorno, setRestaurouEstadoRetorno] = useState(false)
   const [currentPage, setCurrentPage] = useState<Record<string, number>>({
     deputado_estadual: 1,
@@ -251,8 +255,12 @@ export default function ResumoEleicoesPage() {
       0
     )
 
+    const votosMeta = resumoCidade
+      ? (cenarioVotos === 'promessa_lideranca' ? resumoCidade.promessa2026 : resumoCidade.votos2026)
+      : 0
+    const labelMeta = cenarioVotos === 'promessa_lideranca' ? 'Promessa 2026' : 'Aferido 2026'
     const percentualSobre2026 =
-      resumoCidade && resumoCidade.votos2026 > 0 ? (votosPenetracao / resumoCidade.votos2026) * 100 : null
+      votosMeta > 0 ? (votosPenetracao / votosMeta) * 100 : null
     const percentualSobreEleitores =
       resumoCidade && resumoCidade.eleitores && resumoCidade.eleitores > 0
         ? (votosPenetracao / resumoCidade.eleitores) * 100
@@ -262,7 +270,7 @@ export default function ResumoEleicoesPage() {
 
     return [
       `Penetração (sem prefeito): ${votosPenetracao.toLocaleString('pt-BR')} votos`,
-      `${formatarPercentual(percentualSobre2026)} de Votos 2026`,
+      `${formatarPercentual(percentualSobre2026)} de ${labelMeta}`,
       `${formatarPercentual(percentualSobreEleitores)} de Eleitores`,
       `Prefeito: ${votosPrefeitoSelecionados.toLocaleString('pt-BR')} (${formatarPercentual(percentualPrefeito)} do total Prefeito 2024)`,
     ].join(' | ')
@@ -284,17 +292,18 @@ export default function ResumoEleicoesPage() {
 
   const getResumoFromMap = (
     cidadeAlvo: string
-  ): { expectativaVotos: number; votacaoFinal2022: number; liderancas: number } | null => {
+  ): { expectativaVotos: number; promessaVotos: number; votacaoFinal2022: number; liderancas: number } | null => {
     const normalized = normalizeCityName(cidadeAlvo)
     if (!normalized) return null
 
     if (resumosCidadeMap[normalized]) return resumosCidadeMap[normalized]
 
-    let fallback: { expectativaVotos: number; votacaoFinal2022: number; liderancas: number } | null = null
+    let fallback: { expectativaVotos: number; promessaVotos: number; votacaoFinal2022: number; liderancas: number } | null = null
     Object.entries(resumosCidadeMap).forEach(([key, value]) => {
       if (key.includes(normalized) || normalized.includes(key)) {
         fallback = {
           expectativaVotos: (fallback?.expectativaVotos || 0) + value.expectativaVotos,
+          promessaVotos: (fallback?.promessaVotos || 0) + (value.promessaVotos || 0),
           votacaoFinal2022: (fallback?.votacaoFinal2022 || 0) + value.votacaoFinal2022,
           liderancas: (fallback?.liderancas || 0) + value.liderancas,
         }
@@ -310,6 +319,7 @@ export default function ResumoEleicoesPage() {
       setResumoCidade({
         eleitores,
         votos2026: fromMap.expectativaVotos,
+        promessa2026: fromMap.promessaVotos || 0,
         votacaoFinal2022: fromMap.votacaoFinal2022,
         liderancas: fromMap.liderancas,
         liderancasDetalhe: [],
@@ -330,6 +340,7 @@ export default function ResumoEleicoesPage() {
           ...prev,
           [cityKey]: {
             expectativaVotos: Number(json.expectativaVotos || 0),
+            promessaVotos: Number(json.promessaVotos || 0),
             votacaoFinal2022: Number(json.votacaoFinal2022 || 0),
             liderancas: Number(json.liderancas || 0),
           },
@@ -338,6 +349,7 @@ export default function ResumoEleicoesPage() {
       setResumoCidade({
         eleitores,
         votos2026: Number(json.expectativaVotos || 0),
+        promessa2026: Number(json.promessaVotos || 0),
         votacaoFinal2022: Number(json.votacaoFinal2022 || 0),
         liderancas: Number(json.liderancas || 0),
         liderancasDetalhe: Array.isArray(json.liderancasDetalhe)
@@ -352,6 +364,7 @@ export default function ResumoEleicoesPage() {
       setResumoCidade({
         eleitores,
         votos2026: 0,
+        promessa2026: 0,
         votacaoFinal2022: 0,
         liderancas: 0,
         liderancasDetalhe: [],
@@ -409,6 +422,7 @@ export default function ResumoEleicoesPage() {
       resumosCidadeMap,
       pesquisasCidadeCount,
       pesquisaCitiesMap,
+      cenarioVotos,
     }
     sessionStorage.setItem(RESUMO_STATE_SESSION_KEY, JSON.stringify(snapshot))
   }
@@ -459,6 +473,7 @@ export default function ResumoEleicoesPage() {
       setResumosCidadeMap(parsed.resumosCidadeMap || {})
       setPesquisasCidadeCount(parsed.pesquisasCidadeCount ?? null)
       setPesquisaCitiesMap(parsed.pesquisaCitiesMap || {})
+      setCenarioVotos(parsed.cenarioVotos || 'aferido_jadyel')
       setLoadingCidades(false)
       setRestaurouEstadoRetorno(true)
     } catch {
@@ -925,13 +940,16 @@ export default function ResumoEleicoesPage() {
     }
   }
 
-  const diferenca2026Vs2022 = resumoCidade ? resumoCidade.votos2026 - resumoCidade.votacaoFinal2022 : 0
-  const diferencaFormatada = `${diferenca2026Vs2022 > 0 ? '+' : ''}${diferenca2026Vs2022.toLocaleString('pt-BR')}`
+  const votosCenarioAtivo =
+    resumoCidade ? (cenarioVotos === 'promessa_lideranca' ? resumoCidade.promessa2026 : resumoCidade.votos2026) : 0
+  const labelCenarioAtivo = cenarioVotos === 'promessa_lideranca' ? 'Promessa 2026' : 'Aferido 2026'
+  const diferencaCenarioVs2022 = resumoCidade ? votosCenarioAtivo - resumoCidade.votacaoFinal2022 : 0
+  const diferencaFormatada = `${diferencaCenarioVs2022 > 0 ? '+' : ''}${diferencaCenarioVs2022.toLocaleString('pt-BR')}`
   const statusComparativo =
-    diferenca2026Vs2022 > 0 ? 'Melhor que 2022' : diferenca2026Vs2022 < 0 ? 'Pior que 2022' : 'Igual a 2022'
+    diferencaCenarioVs2022 > 0 ? 'Melhor que 2022' : diferencaCenarioVs2022 < 0 ? 'Pior que 2022' : 'Igual a 2022'
   const percentualAlcance =
     resumoCidade && resumoCidade.eleitores && resumoCidade.eleitores > 0
-      ? (resumoCidade.votos2026 / resumoCidade.eleitores) * 100
+      ? (votosCenarioAtivo / resumoCidade.eleitores) * 100
       : null
   const summaryCardBaseClass =
     'rounded-[14px] border border-border-card bg-bg-surface p-3 relative overflow-hidden shadow-[0_1px_3px_rgba(0,0,0,0.06)] hover:shadow-[0_8px_24px_rgba(0,0,0,0.08)] hover:-translate-y-[2px] transition-all duration-300 ease-out h-full'
@@ -960,6 +978,17 @@ export default function ResumoEleicoesPage() {
                     {item}
                   </option>
                 ))}
+              </select>
+            </div>
+            <div className="w-full md:w-[300px]">
+              <label className="text-xs font-medium text-text-secondary block mb-1">Visão de Votos 2026</label>
+              <select
+                value={cenarioVotos}
+                onChange={(e) => setCenarioVotos(e.target.value as CenarioVotos)}
+                className="w-full h-10 px-3 rounded-lg border border-card bg-background text-sm"
+              >
+                <option value="aferido_jadyel">Aferido (Expectativa Jadyel 2026)</option>
+                <option value="promessa_lideranca">Prometido (Promessa da Liderança 2026)</option>
               </select>
             </div>
             <button
@@ -1014,17 +1043,17 @@ export default function ResumoEleicoesPage() {
                     <Vote className="w-4 h-4 text-accent-gold animate-breathe" />
                   </div>
                   <p className="text-sm font-medium text-text-secondary group-hover:text-text-primary transition-colors">
-                    Votos 2026
+                    {labelCenarioAtivo}
                   </p>
                 </div>
                 <p className="text-2xl font-bold text-text-primary group-hover:text-accent-gold transition-colors">
-                  {resumoCidade.votos2026.toLocaleString('pt-BR')}
+                  {votosCenarioAtivo.toLocaleString('pt-BR')}
                 </p>
                 <p
                   className={`${summaryMetaClass} ${
-                    diferenca2026Vs2022 > 0
+                    diferencaCenarioVs2022 > 0
                       ? 'text-status-success'
-                      : diferenca2026Vs2022 < 0
+                      : diferencaCenarioVs2022 < 0
                         ? 'text-status-danger'
                         : 'text-text-secondary'
                   }`}

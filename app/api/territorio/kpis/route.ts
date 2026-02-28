@@ -115,6 +115,7 @@ export async function POST(request: Request) {
   try {
     const body = await request.json()
     const { spreadsheetId: bodySpreadsheetId, sheetName: bodySheetName, range, serviceAccountEmail, credentials } = body
+    const cenarioVotos = body?.cenarioVotos === 'promessa_lideranca' ? 'promessa_lideranca' : 'aferido_jadyel'
     
     // Obter configuração (prioriza body, depois variáveis de ambiente)
     const { spreadsheetId, sheetName } = getSheetConfig(body)
@@ -177,15 +178,19 @@ export async function POST(request: Request) {
     const liderancaAtualCol = headers.find((h) =>
       /liderança atual|lideranca atual|atual\?/i.test(h)
     )
-    const expectativaVotosCol = headers.find((h) => {
+    const expectativaJadyelCol = headers.find((h) => {
       const normalized = h.toLowerCase().trim()
-      if (/jadyel|nome|pessoa|candidato/i.test(normalized)) {
-        return false
-      }
-      return /^expectativa\s+de\s+votos\s+2026$/i.test(h) || 
+      return /expectativa.*jadyel.*2026/i.test(normalized) ||
+             /expectativa.*2026.*jadyel/i.test(normalized) ||
+             /^expectativa\s+de\s+votos\s+2026$/i.test(h) || 
              /expectativa\s+de\s+votos\s+2026/i.test(h) ||
-             (/expectativa.*votos.*2026/i.test(h) && !/jadyel|nome|pessoa|candidato/i.test(h))
+             (/expectativa.*votos.*2026/i.test(h) && !/promessa/i.test(h))
     })
+    const promessaLiderancaCol = headers.find((h) => /promessa.*lideran[cç]a.*2026/i.test(h))
+    const votosCenarioCol =
+      cenarioVotos === 'promessa_lideranca'
+        ? (promessaLiderancaCol || expectativaJadyelCol)
+        : (expectativaJadyelCol || promessaLiderancaCol)
     const cidadeCol = headers.find((h) =>
       /cidade|city|município|municipio/i.test(h)
     ) || headers[1] || 'Coluna 2'
@@ -199,11 +204,11 @@ export async function POST(request: Request) {
       return record
     })
 
-    // Filtrar lideranças: incluir "Liderança Atual?" = SIM OU que tenham "Expectativa de Votos 2026"
+    // Filtrar lideranças: incluir "Liderança Atual?" = SIM OU que tenham valor no cenário ativo
     // (mesma lógica da página território)
     let liderancasFiltradas = liderancas
 
-    if (liderancaAtualCol || expectativaVotosCol) {
+    if (liderancaAtualCol || votosCenarioCol) {
       liderancasFiltradas = liderancas.filter((l) => {
         // Se tem "Liderança Atual?" = SIM, incluir
         if (liderancaAtualCol) {
@@ -213,9 +218,9 @@ export async function POST(request: Request) {
           }
         }
 
-        // Se tem "Expectativa de Votos 2026" com valor, incluir também
-        if (expectativaVotosCol) {
-          const expectativaValue = normalizeNumber(l[expectativaVotosCol])
+        // Se tem valor no cenário ativo, incluir também
+        if (votosCenarioCol) {
+          const expectativaValue = normalizeNumber(l[votosCenarioCol])
           if (expectativaValue > 0) {
             return true
           }
@@ -228,14 +233,14 @@ export async function POST(request: Request) {
     // Se não há filtros aplicados e não há dados filtrados, usar todos os dados
     const dadosParaKPIs = liderancasFiltradas.length > 0 ? liderancasFiltradas : liderancas
 
-    // Calcular total de expectativa de votos
-    let totalExpectativaVotos = 0
-    if (expectativaVotosCol) {
-      totalExpectativaVotos = dadosParaKPIs.reduce((sum, l) => {
-        const value = l[expectativaVotosCol]
-        return sum + normalizeNumber(value)
-      }, 0)
-    }
+    const totalExpectativaJadyel = expectativaJadyelCol
+      ? dadosParaKPIs.reduce((sum, l) => sum + normalizeNumber(l[expectativaJadyelCol]), 0)
+      : 0
+    const totalPromessaLideranca = promessaLiderancaCol
+      ? dadosParaKPIs.reduce((sum, l) => sum + normalizeNumber(l[promessaLiderancaCol]), 0)
+      : 0
+    const totalCenarioAtivo =
+      cenarioVotos === 'promessa_lideranca' ? totalPromessaLideranca : totalExpectativaJadyel
 
     // Calcular cidades únicas usando a mesma lógica da página território
     const cidadesUnicas = cidadeCol
@@ -245,7 +250,10 @@ export async function POST(request: Request) {
     return NextResponse.json({
       liderancas: liderancasFiltradas.length,
       total: liderancas.length,
-      expectativa2026: Math.round(totalExpectativaVotos),
+      expectativa2026: Math.round(totalCenarioAtivo),
+      expectativaJadyel2026: Math.round(totalExpectativaJadyel),
+      promessaLideranca2026: Math.round(totalPromessaLideranca),
+      cenarioVotosAplicado: cenarioVotos,
       cidadesUnicas: cidadesUnicas,
     })
   } catch (error: any) {

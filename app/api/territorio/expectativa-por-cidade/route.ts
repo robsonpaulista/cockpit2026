@@ -4,6 +4,7 @@ export const dynamic = 'force-dynamic'
 
 type ResumoCidade = {
   expectativaVotos: number
+  promessaVotos: number
   votacaoFinal2022: number
   liderancas: number
 }
@@ -22,7 +23,7 @@ type CitySummaryCache = {
 }
 
 const CACHE_TTL_MS = 10 * 60 * 1000
-const CACHE_SCHEMA_VERSION = 'v2-votacao2022-all-rows'
+const CACHE_SCHEMA_VERSION = 'v3-expectativa-promessa-2026'
 let citySummaryCache: CitySummaryCache | null = null
 
 // Função auxiliar para formatar a chave privada
@@ -138,11 +139,13 @@ function isLiderancaAtual(value: unknown): boolean {
 function shouldIncludeRecord(
   liderancaAtualCol: string | undefined,
   expectativaVotosCol: string | undefined,
+  promessaVotosCol: string | undefined,
   rowData: Record<string, unknown>
 ): boolean {
-  if (!liderancaAtualCol && !expectativaVotosCol) return true
+  if (!liderancaAtualCol && !expectativaVotosCol && !promessaVotosCol) return true
   if (liderancaAtualCol && isLiderancaAtual(rowData[liderancaAtualCol])) return true
   if (expectativaVotosCol && normalizeNumber(rowData[expectativaVotosCol]) > 0) return true
+  if (promessaVotosCol && normalizeNumber(rowData[promessaVotosCol]) > 0) return true
   return false
 }
 
@@ -152,16 +155,18 @@ function resolveCitySummary(city: string, summaries: Map<string, ResumoCidade>):
   if (exactMatch) {
     return {
       expectativaVotos: Number(exactMatch.expectativaVotos || 0),
+      promessaVotos: Number(exactMatch.promessaVotos || 0),
       votacaoFinal2022: Number(exactMatch.votacaoFinal2022 || 0),
       liderancas: Number(exactMatch.liderancas || 0),
     }
   }
 
-  let fallback: ResumoCidade = { expectativaVotos: 0, votacaoFinal2022: 0, liderancas: 0 }
+  let fallback: ResumoCidade = { expectativaVotos: 0, promessaVotos: 0, votacaoFinal2022: 0, liderancas: 0 }
   for (const [cityKey, summary] of summaries.entries()) {
     if (cityKey.includes(normalizedCity) || normalizedCity.includes(cityKey)) {
       fallback = {
         expectativaVotos: fallback.expectativaVotos + Number(summary.expectativaVotos || 0),
+        promessaVotos: fallback.promessaVotos + Number(summary.promessaVotos || 0),
         votacaoFinal2022: fallback.votacaoFinal2022 + Number(summary.votacaoFinal2022 || 0),
         liderancas: fallback.liderancas + Number(summary.liderancas || 0),
       }
@@ -222,13 +227,13 @@ async function buildCitySummaries(
   const cidadeCol = headers.find((h) => /cidade|city|município|municipio/i.test(h)) || headers[1] || 'Coluna 2'
   const expectativaVotosCol = headers.find((h) => {
     const normalized = h.toLowerCase().trim()
-    if (/jadyel|nome|pessoa|candidato/i.test(normalized)) {
-      return false
-    }
-    return /^expectativa\s+de\s+votos\s+2026$/i.test(h) ||
+    return /expectativa.*jadyel.*2026/i.test(normalized) ||
+      /expectativa.*2026.*jadyel/i.test(normalized) ||
+      /^expectativa\s+de\s+votos\s+2026$/i.test(h) ||
       /expectativa\s+de\s+votos\s+2026/i.test(h) ||
-      (/expectativa.*votos.*2026/i.test(h) && !/jadyel|nome|pessoa|candidato/i.test(h))
+      (/expectativa.*votos.*2026/i.test(h) && !/promessa/i.test(h))
   })
+  const promessaVotosCol = headers.find((h) => /promessa.*lideran[cç]a.*2026/i.test(h))
   const votacaoFinal2022Col = headers.find((h) => {
     const normalized = h.toLowerCase().trim()
     return /votacao\s*final\s*2022|votação\s*final\s*2022|final\s*2022/i.test(normalized)
@@ -248,6 +253,7 @@ async function buildCitySummaries(
 
   const cidadeIndex = headers.indexOf(cidadeCol)
   const expectativaIndex = expectativaVotosCol ? headers.indexOf(expectativaVotosCol) : -1
+  const promessaIndex = promessaVotosCol ? headers.indexOf(promessaVotosCol) : -1
   const votacaoFinal2022Index = votacaoFinal2022Col ? headers.indexOf(votacaoFinal2022Col) : -1
   const nomeIndex = headers.indexOf(nomeCol)
   const cargoIndex = cargoCol ? headers.indexOf(cargoCol) : -1
@@ -262,7 +268,7 @@ async function buildCitySummaries(
 
     // Votação Final 2022 precisa refletir o histórico completo da cidade,
     // sem depender do filtro de liderança/expectativa.
-    const current = summaries.get(cidadeValueNormalizada) || { expectativaVotos: 0, votacaoFinal2022: 0, liderancas: 0 }
+    const current = summaries.get(cidadeValueNormalizada) || { expectativaVotos: 0, promessaVotos: 0, votacaoFinal2022: 0, liderancas: 0 }
     const votacaoFinal2022Valor = votacaoFinal2022Index >= 0 ? normalizeNumber(row[votacaoFinal2022Index]) : 0
     current.votacaoFinal2022 += votacaoFinal2022Valor
 
@@ -270,13 +276,15 @@ async function buildCitySummaries(
     headers.forEach((header, index) => {
       rowData[header] = row[index] || null
     })
-    if (!shouldIncludeRecord(liderancaAtualCol, expectativaVotosCol, rowData)) {
+    if (!shouldIncludeRecord(liderancaAtualCol, expectativaVotosCol, promessaVotosCol, rowData)) {
       summaries.set(cidadeValueNormalizada, current)
       return
     }
 
     const expectativaValor = expectativaIndex >= 0 ? normalizeNumber(row[expectativaIndex]) : 0
+    const promessaValor = promessaIndex >= 0 ? normalizeNumber(row[promessaIndex]) : 0
     current.expectativaVotos += expectativaValor
+    current.promessaVotos += promessaValor
     current.liderancas += 1
     summaries.set(cidadeValueNormalizada, current)
 
@@ -286,7 +294,7 @@ async function buildCitySummaries(
     const key = `${nome.toUpperCase()}|${cargo.toUpperCase()}`
     const cityLeaders = leadersAccumulator.get(cidadeValueNormalizada) || new Map<string, LiderancaResumo>()
     const leaderCurrent = cityLeaders.get(key) || { nome, cargo, projecaoVotos: 0 }
-    leaderCurrent.projecaoVotos += expectativaValor
+    leaderCurrent.projecaoVotos += expectativaValor || promessaValor
     cityLeaders.set(key, leaderCurrent)
     leadersAccumulator.set(cidadeValueNormalizada, cityLeaders)
   })
@@ -373,6 +381,7 @@ export async function POST(request: Request) {
     if (summariesByCity.size === 0) {
       return NextResponse.json({
         expectativaVotos: 0,
+        promessaVotos: 0,
         votacaoFinal2022: 0,
         liderancas: 0,
         message: 'Planilha vazia',
@@ -385,6 +394,7 @@ export async function POST(request: Request) {
     return NextResponse.json({
       cidade,
       expectativaVotos: Math.round(citySummary.expectativaVotos),
+      promessaVotos: Math.round(citySummary.promessaVotos),
       votacaoFinal2022: Math.round(citySummary.votacaoFinal2022),
       liderancas: citySummary.liderancas,
       liderancasDetalhe: cityLeaders.map((leader) => ({

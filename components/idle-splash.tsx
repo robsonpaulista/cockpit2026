@@ -4,6 +4,7 @@ import { useEffect, useState, useRef, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 
 const TEMPO_INATIVIDADE = 10 * 60 * 1000 // 10 minutos
+const IDLE_SPLASH_LOCK_KEY = 'idle_splash_locked_v1'
 
 /**
  * Screensaver por inatividade.
@@ -23,6 +24,16 @@ export function IdleSplash() {
   const timersAnimacao = useRef<ReturnType<typeof setTimeout>[]>([])
   const protecaoManual = useRef<boolean>(false) // Ignora eventos por 1s após ativação manual
   const supabaseRef = useRef(createClient())
+
+  const registrarBloqueioPersistente = useCallback(() => {
+    if (typeof window === 'undefined') return
+    sessionStorage.setItem(IDLE_SPLASH_LOCK_KEY, '1')
+  }, [])
+
+  const limparBloqueioPersistente = useCallback(() => {
+    if (typeof window === 'undefined') return
+    sessionStorage.removeItem(IDLE_SPLASH_LOCK_KEY)
+  }, [])
 
   // Limpar timers de animação
   const limparTimersAnimacao = useCallback(() => {
@@ -46,8 +57,9 @@ export function IdleSplash() {
       setRequerSenha(false)
       setSenha('')
       setErroSenha(null)
+      registrarBloqueioPersistente()
     }, TEMPO_INATIVIDADE)
-  }, [ativo, dispensando])
+  }, [ativo, dispensando, registrarBloqueioPersistente])
 
   // Dispensar o screensaver
   const dispensar = useCallback(() => {
@@ -105,13 +117,28 @@ export function IdleSplash() {
       setSenha('')
       setRequerSenha(false)
       setErroSenha(null)
+      limparBloqueioPersistente()
       dispensar()
     } catch {
       setErroSenha('Não foi possível validar a senha.')
     } finally {
       setVerificandoSenha(false)
     }
-  }, [senha, verificandoSenha, dispensar])
+  }, [senha, verificandoSenha, dispensar, limparBloqueioPersistente])
+
+  // Se a página for recarregada enquanto a splash estava bloqueando, restaura o bloqueio imediatamente.
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const bloqueado = sessionStorage.getItem(IDLE_SPLASH_LOCK_KEY) === '1'
+    if (!bloqueado) return
+
+    setAtivo(true)
+    setFase('inicio')
+    setDispensando(false)
+    setRequerSenha(true)
+    setSenha('')
+    setErroSenha(null)
+  }, [])
 
   // Ciclo de animação contínuo (loop enquanto ativo)
   useEffect(() => {
@@ -187,6 +214,7 @@ export function IdleSplash() {
         setRequerSenha(false)
         setSenha('')
         setErroSenha(null)
+        registrarBloqueioPersistente()
       }
     }
 
@@ -206,7 +234,7 @@ export function IdleSplash() {
       }
       limparTimersAnimacao()
     }
-  }, [ativo, dispensando, solicitarDesbloqueio, resetarTimer, limparTimersAnimacao])
+  }, [ativo, dispensando, solicitarDesbloqueio, resetarTimer, limparTimersAnimacao, registrarBloqueioPersistente])
 
   if (!ativo) return null
 

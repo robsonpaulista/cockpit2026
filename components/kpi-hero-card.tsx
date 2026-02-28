@@ -18,9 +18,19 @@ interface KPIHeroCardProps {
   infoLines?: InfoLine[]
   href?: string
   hideValueByDefault?: boolean
+  cenarioVotos?: 'aferido_jadyel' | 'promessa_lideranca'
+  onChangeCenarioVotos?: (cenario: 'aferido_jadyel' | 'promessa_lideranca') => void
 }
 
-export function KPIHeroCard({ kpi, subtitle, infoLines, href = '#', hideValueByDefault = false }: KPIHeroCardProps) {
+export function KPIHeroCard({
+  kpi,
+  subtitle,
+  infoLines,
+  href = '#',
+  hideValueByDefault = false,
+  cenarioVotos,
+  onChangeCenarioVotos,
+}: KPIHeroCardProps) {
   const router = useRouter()
   const [displayValue, setDisplayValue] = useState<string | number>('0')
   const [isAnimating, setIsAnimating] = useState(false)
@@ -78,6 +88,15 @@ export function KPIHeroCard({ kpi, subtitle, infoLines, href = '#', hideValueByD
     event.stopPropagation()
     event.preventDefault()
     setIsValueVisible((prev) => !prev)
+  }
+
+  const handleChangeCenario = (
+    event: MouseEvent<HTMLButtonElement>,
+    cenario: 'aferido_jadyel' | 'promessa_lideranca'
+  ) => {
+    event.stopPropagation()
+    event.preventDefault()
+    onChangeCenarioVotos?.(cenario)
   }
 
   const content = (
@@ -138,6 +157,38 @@ export function KPIHeroCard({ kpi, subtitle, infoLines, href = '#', hideValueByD
               >
                 {isValueVisible ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
               </button>
+            )}
+            {cenarioVotos && onChangeCenarioVotos && (
+              <div className="inline-flex items-center rounded-md border border-white/30 bg-white/15 overflow-hidden ml-1">
+                <button
+                  type="button"
+                  onClick={(event) => handleChangeCenario(event, 'aferido_jadyel')}
+                  className={cn(
+                    'px-1.5 py-0.5 text-[10px] font-semibold transition-colors',
+                    cenarioVotos === 'aferido_jadyel'
+                      ? 'bg-white text-accent-gold'
+                      : 'text-white/85 hover:bg-white/20'
+                  )}
+                  title="Visão Jadyel"
+                  aria-label="Visão Jadyel"
+                >
+                  J
+                </button>
+                <button
+                  type="button"
+                  onClick={(event) => handleChangeCenario(event, 'promessa_lideranca')}
+                  className={cn(
+                    'px-1.5 py-0.5 text-[10px] font-semibold transition-colors',
+                    cenarioVotos === 'promessa_lideranca'
+                      ? 'bg-white text-accent-gold'
+                      : 'text-white/85 hover:bg-white/20'
+                  )}
+                  title="Visão Lideranças"
+                  aria-label="Visão Lideranças"
+                >
+                  L
+                </button>
+              </div>
             )}
             <span className="px-2 py-0.5 text-[10px] font-medium bg-white/20 text-white rounded border border-white/30">
               Hoje
