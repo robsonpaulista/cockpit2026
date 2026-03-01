@@ -34,7 +34,7 @@ export default function NoticiasPage() {
   const [selectedFeeds, setSelectedFeeds] = useState<string[]>([]) // Array de IDs de feeds selecionados
   const [deletingNewsId, setDeletingNewsId] = useState<string | null>(null)
   const [togglingHighlight, setTogglingHighlight] = useState<string | null>(null)
-  const [featuredMonitorNewsId, setFeaturedMonitorNewsId] = useState<string | null>(null)
+  const [featuredMonitorNewsIds, setFeaturedMonitorNewsIds] = useState<string[]>([])
   const [autoCollecting, setAutoCollecting] = useState(false)
   const [autoCollectStatus, setAutoCollectStatus] = useState<string | null>(null)
 
@@ -44,7 +44,19 @@ export default function NoticiasPage() {
 
     const savedFeatured = localStorage.getItem('monitor_news_featured_id')
     if (savedFeatured) {
-      setFeaturedMonitorNewsId(savedFeatured)
+      try {
+        if (savedFeatured.startsWith('[')) {
+          const parsed = JSON.parse(savedFeatured)
+          if (Array.isArray(parsed)) {
+            setFeaturedMonitorNewsIds(parsed.filter((id): id is string => typeof id === 'string').slice(0, 3))
+          }
+        } else {
+          // Compatibilidade com formato antigo (1 único id)
+          setFeaturedMonitorNewsIds([savedFeatured])
+        }
+      } catch {
+        setFeaturedMonitorNewsIds([])
+      }
     }
   }, [])
 
@@ -231,10 +243,18 @@ export default function NoticiasPage() {
   }
 
   const handleToggleFeaturedMonitor = async (item: NewsItem) => {
-    const nextFeatured = featuredMonitorNewsId === item.id ? null : item.id
+    const alreadyFeatured = featuredMonitorNewsIds.includes(item.id)
+    let nextFeatured = alreadyFeatured
+      ? featuredMonitorNewsIds.filter((id) => id !== item.id)
+      : [...featuredMonitorNewsIds, item.id]
+
+    if (!alreadyFeatured && featuredMonitorNewsIds.length >= 3) {
+      alert('Você pode selecionar no máximo 3 notícias em destaque para o monitor.')
+      return
+    }
 
     // Garante que notícia destacada principal também esteja marcada para o monitor.
-    if (nextFeatured && !item.dashboard_highlight) {
+    if (!alreadyFeatured && !item.dashboard_highlight) {
       try {
         const response = await fetch(`/api/noticias/${item.id}`, {
           method: 'PUT',
@@ -249,12 +269,14 @@ export default function NoticiasPage() {
       }
     }
 
-    if (nextFeatured) {
-      localStorage.setItem('monitor_news_featured_id', nextFeatured)
+    nextFeatured = nextFeatured.slice(0, 3)
+
+    if (nextFeatured.length > 0) {
+      localStorage.setItem('monitor_news_featured_id', JSON.stringify(nextFeatured))
     } else {
       localStorage.removeItem('monitor_news_featured_id')
     }
-    setFeaturedMonitorNewsId(nextFeatured)
+    setFeaturedMonitorNewsIds(nextFeatured)
   }
 
   const noticiasKPIs: KPI[] = metrics
@@ -467,7 +489,7 @@ export default function NoticiasPage() {
                               item.title
                             )}
                           </h3>
-                          {featuredMonitorNewsId === item.id && (
+                          {featuredMonitorNewsIds.includes(item.id) && (
                             <span className="inline-flex items-center gap-1 px-2 py-0.5 text-[10px] rounded border border-amber-300/70 text-amber-700 bg-amber-100/60 mb-1">
                               <Crown className="w-3 h-3" />
                               Destaque do Monitor
@@ -499,14 +521,14 @@ export default function NoticiasPage() {
                           <button
                             onClick={() => handleToggleFeaturedMonitor(item)}
                             className={`p-1.5 rounded-lg transition-colors ${
-                              featuredMonitorNewsId === item.id
+                              featuredMonitorNewsIds.includes(item.id)
                                 ? 'bg-amber-100 text-amber-700'
                                 : 'text-secondary hover:bg-amber-100/60 hover:text-amber-700'
                             }`}
                             title={
-                              featuredMonitorNewsId === item.id
-                                ? 'Remover notícia em destaque principal'
-                                : 'Definir como notícia em destaque principal'
+                              featuredMonitorNewsIds.includes(item.id)
+                                ? 'Remover notícia dos destaques do monitor'
+                                : 'Definir como destaque do monitor (máx. 3)'
                             }
                           >
                             <Crown className="w-4 h-4" />

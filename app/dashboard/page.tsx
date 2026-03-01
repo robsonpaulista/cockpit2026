@@ -58,7 +58,7 @@ export default function Home() {
   const [loadingTerritorios, setLoadingTerritorios] = useState(true)
   const [monitorNews, setMonitorNews] = useState<NewsItem[]>([])
   const [loadingAlerts, setLoadingAlerts] = useState<boolean>(true)
-  const [monitorFeaturedNewsId, setMonitorFeaturedNewsId] = useState<string | null>(null)
+  const [monitorFeaturedNewsIds, setMonitorFeaturedNewsIds] = useState<string[]>([])
   const [monitorActiveNewsId, setMonitorActiveNewsId] = useState<string | null>(null)
   const [bandeirasStats, setBandeirasStats] = useState<{
     totalUsos: number
@@ -240,20 +240,24 @@ export default function Home() {
   const monitorNewsOrdenadas = useMemo(() => {
     if (monitorNews.length === 0) return []
 
-    if (!monitorFeaturedNewsId) return monitorNews
+    const featuredIds = monitorFeaturedNewsIds.slice(0, 3)
+    if (featuredIds.length === 0) return monitorNews
 
-    const destaque = monitorNews.find((item) => item.id === monitorFeaturedNewsId)
-    if (!destaque) return monitorNews
+    const featuredItems = featuredIds
+      .map((id) => monitorNews.find((item) => item.id === id))
+      .filter((item): item is NewsItem => Boolean(item))
 
-    return [destaque, ...monitorNews.filter((item) => item.id !== monitorFeaturedNewsId)]
-  }, [monitorNews, monitorFeaturedNewsId])
+    if (featuredItems.length === 0) return monitorNews
 
-  const monitorFeaturedItem = monitorNewsOrdenadas.length > 0 ? monitorNewsOrdenadas[0] : null
+    return [...featuredItems, ...monitorNews.filter((item) => !featuredIds.includes(item.id))]
+  }, [monitorNews, monitorFeaturedNewsIds])
+
+  const monitorFeaturedItems = monitorNewsOrdenadas.filter((item) => monitorFeaturedNewsIds.includes(item.id)).slice(0, 3)
   const monitorHeaderContext =
-    monitorFeaturedItem && monitorFeaturedItem.risk_level === 'high'
-      ? '1 destaque sensível'
-      : monitorFeaturedItem
-        ? '1 destaque relevante'
+    monitorFeaturedItems.length > 0
+      ? `${monitorFeaturedItems.length} destaque${monitorFeaturedItems.length > 1 ? 's' : ''} ${
+          monitorFeaturedItems.some((item) => item.risk_level === 'high') ? 'sensível' : 'relevante'
+        }${monitorFeaturedItems.length > 1 ? 's' : ''}`
         : 'cobertura estável'
 
   const getContextoMonitor = (item: NewsItem): string => {
@@ -348,7 +352,19 @@ export default function Home() {
 
     const destaqueSalvo = localStorage.getItem('monitor_news_featured_id')
     if (destaqueSalvo) {
-      setMonitorFeaturedNewsId(destaqueSalvo)
+      try {
+        if (destaqueSalvo.startsWith('[')) {
+          const parsed = JSON.parse(destaqueSalvo)
+          if (Array.isArray(parsed)) {
+            setMonitorFeaturedNewsIds(parsed.filter((id): id is string => typeof id === 'string').slice(0, 3))
+          }
+        } else {
+          // Compatibilidade com formato antigo (1 único id)
+          setMonitorFeaturedNewsIds([destaqueSalvo])
+        }
+      } catch {
+        setMonitorFeaturedNewsIds([])
+      }
     }
 
     const cenarioSalvo = localStorage.getItem('dashboard_cenario_votos_2026')
@@ -1668,12 +1684,12 @@ export default function Home() {
                   ))}
                 </>
               ) : monitorNewsOrdenadas.length > 0 ? (
-                monitorNewsOrdenadas.map((item, index) => {
+                monitorNewsOrdenadas.map((item) => {
                   const isHighRisk = item.risk_level === 'high'
                   const sentimentDot = item.sentiment === 'positive' ? 'bg-emerald-500' 
                     : item.sentiment === 'negative' ? 'bg-red-500' 
                     : 'bg-gray-400'
-                  const isFeatured = index === 0
+                  const isFeatured = monitorFeaturedNewsIds.includes(item.id)
                   const isActive = monitorActiveNewsId === item.id
                   const dateStr = item.published_at || item.collected_at
                   const dateFormatted = dateStr 
@@ -2426,12 +2442,12 @@ export default function Home() {
                 </div>
               ) : monitorNewsOrdenadas.length > 0 ? (
                 <div className="space-y-3">
-                  {monitorNewsOrdenadas.map((item, index) => {
+                  {monitorNewsOrdenadas.map((item) => {
                     const isHighRisk = item.risk_level === 'high'
                     const sentimentDot = item.sentiment === 'positive' ? 'bg-emerald-500'
                       : item.sentiment === 'negative' ? 'bg-red-500'
                       : 'bg-gray-400'
-                    const isFeatured = index === 0
+                    const isFeatured = monitorFeaturedNewsIds.includes(item.id)
                     const isActive = monitorActiveNewsId === item.id
                     const sentimentLabel = item.sentiment === 'positive' ? 'Positivo'
                       : item.sentiment === 'negative' ? 'Negativo'
