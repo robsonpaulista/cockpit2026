@@ -58,6 +58,8 @@ export default function Home() {
   const [loadingTerritorios, setLoadingTerritorios] = useState(true)
   const [monitorNews, setMonitorNews] = useState<NewsItem[]>([])
   const [loadingAlerts, setLoadingAlerts] = useState<boolean>(true)
+  const [monitorFeaturedNewsId, setMonitorFeaturedNewsId] = useState<string | null>(null)
+  const [monitorActiveNewsId, setMonitorActiveNewsId] = useState<string | null>(null)
   const [bandeirasStats, setBandeirasStats] = useState<{
     totalUsos: number
     totalPerformance: number
@@ -235,10 +237,44 @@ export default function Home() {
     return { headline, tone, pos, neg, neu, highRisk, total }
   }, [monitorNews])
 
+  const monitorNewsOrdenadas = useMemo(() => {
+    if (monitorNews.length === 0) return []
+
+    if (!monitorFeaturedNewsId) return monitorNews
+
+    const destaque = monitorNews.find((item) => item.id === monitorFeaturedNewsId)
+    if (!destaque) return monitorNews
+
+    return [destaque, ...monitorNews.filter((item) => item.id !== monitorFeaturedNewsId)]
+  }, [monitorNews, monitorFeaturedNewsId])
+
+  const monitorFeaturedItem = monitorNewsOrdenadas.length > 0 ? monitorNewsOrdenadas[0] : null
+  const monitorHeaderContext =
+    monitorFeaturedItem && monitorFeaturedItem.risk_level === 'high'
+      ? '1 destaque sensível'
+      : monitorFeaturedItem
+        ? '1 destaque relevante'
+        : 'cobertura estável'
+
+  const getContextoMonitor = (item: NewsItem): string => {
+    const tema = (item.theme || '').toLowerCase()
+    if (item.risk_level === 'high') return 'Sensível'
+    if (/institucional|governo|gestao|administra/.test(tema)) return 'Institucional'
+    if (/articula|alian[çc]a|acordo|bastidor|apoio/.test(tema)) return 'Articulação'
+    return 'Movimento político'
+  }
+
+  const getLinhaSemanticaClass = (item: NewsItem): string => {
+    if (item.risk_level === 'high') return 'bg-red-700'
+    if (item.sentiment === 'positive') return 'bg-emerald-500'
+    if (item.sentiment === 'neutral') return 'bg-gray-400'
+    return 'bg-amber-500'
+  }
+
   // Auto-scroll suave do Monitor de Imprensa
   useEffect(() => {
     // Não rolar se pausado, carregando, ou poucas notícias
-    if (monitorPaused || loadingAlerts || monitorNews.length <= 3) return
+    if (monitorPaused || loadingAlerts || monitorNewsOrdenadas.length <= 3) return
 
     const container = monitorScrollRef.current
     if (!container) return
@@ -259,19 +295,24 @@ export default function Home() {
         // Chegou ao fim — volta ao topo suavemente
         scrollIndex = 0
         container.scrollTo({ top: 0, behavior: 'smooth' })
+        const resetId = items[scrollIndex]?.dataset.newsId || null
+        setMonitorActiveNewsId(resetId)
       } else {
         // Scroll até o próximo item
         const nextItem = items[scrollIndex]
         if (nextItem) {
           container.scrollTo({ top: nextItem.offsetTop, behavior: 'smooth' })
+          setMonitorActiveNewsId(nextItem.dataset.newsId || null)
         }
       }
     }
 
+    setMonitorActiveNewsId(monitorNewsOrdenadas[0]?.id || null)
+
     const interval = setInterval(tick, 5000) // 5s entre cada scroll
 
     return () => clearInterval(interval)
-  }, [monitorPaused, loadingAlerts, monitorNews.length])
+  }, [monitorPaused, loadingAlerts, monitorNewsOrdenadas])
 
   // Calcular média das pesquisas diretamente a partir dos dados do gráfico
   const mediaPesquisas = pollsData.length > 0
@@ -304,6 +345,11 @@ export default function Home() {
     
     // Buscar notícias destacadas para o Monitor de Imprensa
     fetchMonitorNews()
+
+    const destaqueSalvo = localStorage.getItem('monitor_news_featured_id')
+    if (destaqueSalvo) {
+      setMonitorFeaturedNewsId(destaqueSalvo)
+    }
 
     const cenarioSalvo = localStorage.getItem('dashboard_cenario_votos_2026')
     if (cenarioSalvo === 'promessa_lideranca' || cenarioSalvo === 'aferido_jadyel') {
@@ -1578,7 +1624,7 @@ export default function Home() {
                 {monitorNews.length > 3 && !loadingAlerts && (
                   <span className="flex items-center gap-1 text-[9px] text-secondary font-normal">
                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 radar-pulse" />
-                    ao vivo
+                    ao vivo • {monitorHeaderContext}
                   </span>
                 )}
               </h2>
@@ -1621,12 +1667,14 @@ export default function Home() {
                     </div>
                   ))}
                 </>
-              ) : monitorNews.length > 0 ? (
-                monitorNews.map((item) => {
+              ) : monitorNewsOrdenadas.length > 0 ? (
+                monitorNewsOrdenadas.map((item, index) => {
                   const isHighRisk = item.risk_level === 'high'
                   const sentimentDot = item.sentiment === 'positive' ? 'bg-emerald-500' 
                     : item.sentiment === 'negative' ? 'bg-red-500' 
                     : 'bg-gray-400'
+                  const isFeatured = index === 0
+                  const isActive = monitorActiveNewsId === item.id
                   const dateStr = item.published_at || item.collected_at
                   const dateFormatted = dateStr 
                     ? new Intl.DateTimeFormat('pt-BR', { day: '2-digit', month: 'short' }).format(
@@ -1637,19 +1685,33 @@ export default function Home() {
                   return (
                     <a
                       key={item.id}
+                      data-news-id={item.id}
                       href={item.url || '/dashboard/noticias'}
                       target={item.url ? '_blank' : '_self'}
                       rel="noopener noreferrer"
-                      className={`block p-2.5 rounded-lg transition-all duration-200 ease-out hover:shadow-sm hover:-translate-y-[1px] fade-in ${
-                        isHighRisk 
-                          ? 'bg-red-500/[0.03] border border-red-500/10 hover:border-red-500/20' 
-                          : 'bg-background hover:bg-background/80'
+                      className={`relative block p-2.5 rounded-lg transition-all duration-200 ease-out hover:shadow-sm hover:-translate-y-[1px] fade-in ${
+                        isFeatured
+                          ? 'bg-[#FFF7ED] border border-amber-200/70'
+                          : isHighRisk
+                            ? 'bg-red-500/[0.03] border border-red-500/10 hover:border-red-500/20'
+                            : 'bg-background hover:bg-background/80'
                       }`}
                     >
+                      <span className={`absolute left-0 top-0 bottom-0 w-[3px] rounded-l-lg ${getLinhaSemanticaClass(item)}`} />
                       <div className="flex items-start gap-2">
                         <span className={`w-1.5 h-1.5 rounded-full mt-1.5 flex-shrink-0 ${sentimentDot}`} />
                         <div className="min-w-0 flex-1">
-                          <p className="text-[11px] font-medium text-text-primary leading-tight line-clamp-2">
+                          <div className="flex items-center gap-1.5 mb-0.5">
+                            <span className="text-[9px] uppercase tracking-wide text-secondary/90">{getContextoMonitor(item)}</span>
+                            {isFeatured && (
+                              <span className="px-1.5 py-0.5 text-[9px] rounded border border-amber-300/70 text-amber-700 bg-amber-100/60">
+                                Destaque
+                              </span>
+                            )}
+                          </div>
+                          <p className={`text-[11px] leading-tight line-clamp-2 transition-all duration-200 ${
+                            isFeatured ? 'font-semibold' : 'font-medium'
+                          } ${isActive ? 'shadow-[0_0_12px_rgba(251,191,36,0.25)]' : ''} text-text-primary`}>
                             {item.title}
                           </p>
                           <div className="flex items-center gap-1.5 mt-1 text-[10px] text-secondary">
@@ -2294,6 +2356,12 @@ export default function Home() {
             <h2 className="text-xl font-semibold text-text-primary flex items-center gap-2">
               <Activity className="w-5 h-5 text-secondary" />
               Monitor de Imprensa
+              {monitorNewsOrdenadas.length > 0 && (
+                <span className="flex items-center gap-1 text-xs text-secondary font-normal">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 radar-pulse" />
+                  ao vivo • {monitorHeaderContext}
+                </span>
+              )}
             </h2>
             <button
               onClick={() => setAlertasTelaCheia(false)}
@@ -2356,13 +2424,15 @@ export default function Home() {
                     </div>
                   ))}
                 </div>
-              ) : monitorNews.length > 0 ? (
+              ) : monitorNewsOrdenadas.length > 0 ? (
                 <div className="space-y-3">
-                  {monitorNews.map((item) => {
+                  {monitorNewsOrdenadas.map((item, index) => {
                     const isHighRisk = item.risk_level === 'high'
                     const sentimentDot = item.sentiment === 'positive' ? 'bg-emerald-500'
                       : item.sentiment === 'negative' ? 'bg-red-500'
                       : 'bg-gray-400'
+                    const isFeatured = index === 0
+                    const isActive = monitorActiveNewsId === item.id
                     const sentimentLabel = item.sentiment === 'positive' ? 'Positivo'
                       : item.sentiment === 'negative' ? 'Negativo'
                       : 'Neutro'
@@ -2385,19 +2455,33 @@ export default function Home() {
                     return (
                       <a
                         key={item.id}
+                        data-news-id={item.id}
                         href={item.url || '/dashboard/noticias'}
                         target={item.url ? '_blank' : '_self'}
                         rel="noopener noreferrer"
-                        className={`block p-4 rounded-xl border transition-all duration-200 ease-out hover:shadow-[0_4px_12px_rgba(0,0,0,0.06)] hover:-translate-y-[1px] fade-in ${
-                          isHighRisk
-                            ? 'bg-red-500/[0.02] border-red-500/15 hover:border-red-500/25'
-                            : 'bg-surface border-card hover:border-card'
+                        className={`relative block p-4 rounded-xl border transition-all duration-200 ease-out hover:shadow-[0_4px_12px_rgba(0,0,0,0.06)] hover:-translate-y-[1px] fade-in ${
+                          isFeatured
+                            ? 'bg-[#FFF7ED] border-amber-200'
+                            : isHighRisk
+                              ? 'bg-red-500/[0.02] border-red-500/15 hover:border-red-500/25'
+                              : 'bg-surface border-card hover:border-card'
                         }`}
                       >
+                        <span className={`absolute left-0 top-0 bottom-0 w-[3px] rounded-l-xl ${getLinhaSemanticaClass(item)}`} />
                         <div className="flex items-start gap-3">
                           <span className={`w-2 h-2 rounded-full mt-1.5 flex-shrink-0 ${sentimentDot}`} />
                           <div className="min-w-0 flex-1">
-                            <p className="text-sm font-medium text-text-primary leading-snug mb-1.5">
+                            <div className="flex items-center gap-2 mb-1">
+                              <span className="text-[10px] uppercase tracking-wide text-secondary">{getContextoMonitor(item)}</span>
+                              {isFeatured && (
+                                <span className="px-1.5 py-0.5 text-[10px] rounded border border-amber-300/70 text-amber-700 bg-amber-100/60">
+                                  Destaque
+                                </span>
+                              )}
+                            </div>
+                            <p className={`text-sm leading-snug mb-1.5 transition-all duration-200 ${
+                              isFeatured ? 'font-semibold' : 'font-medium'
+                            } ${isActive ? 'shadow-[0_0_16px_rgba(251,191,36,0.22)]' : ''} text-text-primary`}>
                               {item.title}
                             </p>
                             <div className="flex items-center gap-2 text-xs text-secondary mb-2.5">

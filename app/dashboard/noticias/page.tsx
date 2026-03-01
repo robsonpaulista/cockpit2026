@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { KPICard } from '@/components/kpi-card'
 import { AlertCard } from '@/components/alert-card'
-import { Newspaper, AlertTriangle, TrendingUp, RefreshCw, Plus, Filter, Edit2, Trash2, Radio } from 'lucide-react'
+import { Newspaper, AlertTriangle, TrendingUp, RefreshCw, Plus, Filter, Edit2, Trash2, Radio, Crown } from 'lucide-react'
 import { FeedManagerModal } from '@/components/feed-manager-modal'
 import { EditNewsModal } from '@/components/edit-news-modal'
 import { KPI, NewsItem } from '@/types'
@@ -34,12 +34,18 @@ export default function NoticiasPage() {
   const [selectedFeeds, setSelectedFeeds] = useState<string[]>([]) // Array de IDs de feeds selecionados
   const [deletingNewsId, setDeletingNewsId] = useState<string | null>(null)
   const [togglingHighlight, setTogglingHighlight] = useState<string | null>(null)
+  const [featuredMonitorNewsId, setFeaturedMonitorNewsId] = useState<string | null>(null)
   const [autoCollecting, setAutoCollecting] = useState(false)
   const [autoCollectStatus, setAutoCollectStatus] = useState<string | null>(null)
 
   useEffect(() => {
     void fetchData()
     void autoCollectOnPageOpen()
+
+    const savedFeatured = localStorage.getItem('monitor_news_featured_id')
+    if (savedFeatured) {
+      setFeaturedMonitorNewsId(savedFeatured)
+    }
   }, [])
 
   const fetchData = async () => {
@@ -222,6 +228,33 @@ export default function NoticiasPage() {
     } finally {
       setDeletingNewsId(null)
     }
+  }
+
+  const handleToggleFeaturedMonitor = async (item: NewsItem) => {
+    const nextFeatured = featuredMonitorNewsId === item.id ? null : item.id
+
+    // Garante que notícia destacada principal também esteja marcada para o monitor.
+    if (nextFeatured && !item.dashboard_highlight) {
+      try {
+        const response = await fetch(`/api/noticias/${item.id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ dashboard_highlight: true }),
+        })
+        if (response.ok) {
+          setNews(prev => prev.map(n => n.id === item.id ? { ...n, dashboard_highlight: true } : n))
+        }
+      } catch {
+        // fallback silencioso
+      }
+    }
+
+    if (nextFeatured) {
+      localStorage.setItem('monitor_news_featured_id', nextFeatured)
+    } else {
+      localStorage.removeItem('monitor_news_featured_id')
+    }
+    setFeaturedMonitorNewsId(nextFeatured)
   }
 
   const noticiasKPIs: KPI[] = metrics
@@ -434,6 +467,12 @@ export default function NoticiasPage() {
                               item.title
                             )}
                           </h3>
+                          {featuredMonitorNewsId === item.id && (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 text-[10px] rounded border border-amber-300/70 text-amber-700 bg-amber-100/60 mb-1">
+                              <Crown className="w-3 h-3" />
+                              Destaque do Monitor
+                            </span>
+                          )}
                           <div className="flex items-center gap-2 text-xs text-secondary mb-3">
                             <span>{item.source}</span>
                             <span>•</span>
@@ -456,6 +495,21 @@ export default function NoticiasPage() {
                             title={item.dashboard_highlight ? 'Remover do Monitor (Dashboard)' : 'Destacar no Monitor (Dashboard)'}
                           >
                             <Radio className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => handleToggleFeaturedMonitor(item)}
+                            className={`p-1.5 rounded-lg transition-colors ${
+                              featuredMonitorNewsId === item.id
+                                ? 'bg-amber-100 text-amber-700'
+                                : 'text-secondary hover:bg-amber-100/60 hover:text-amber-700'
+                            }`}
+                            title={
+                              featuredMonitorNewsId === item.id
+                                ? 'Remover notícia em destaque principal'
+                                : 'Definir como notícia em destaque principal'
+                            }
+                          >
+                            <Crown className="w-4 h-4" />
                           </button>
                           <button
                             onClick={() => handleDeleteNews(item.id)}
