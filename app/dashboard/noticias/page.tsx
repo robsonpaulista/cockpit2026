@@ -34,9 +34,12 @@ export default function NoticiasPage() {
   const [selectedFeeds, setSelectedFeeds] = useState<string[]>([]) // Array de IDs de feeds selecionados
   const [deletingNewsId, setDeletingNewsId] = useState<string | null>(null)
   const [togglingHighlight, setTogglingHighlight] = useState<string | null>(null)
+  const [autoCollecting, setAutoCollecting] = useState(false)
+  const [autoCollectStatus, setAutoCollectStatus] = useState<string | null>(null)
 
   useEffect(() => {
-    fetchData()
+    void fetchData()
+    void autoCollectOnPageOpen()
   }, [])
 
   const fetchData = async () => {
@@ -123,6 +126,51 @@ export default function NoticiasPage() {
 
   const handleManageFeeds = () => {
     setShowFeedManager(true)
+  }
+
+  const autoCollectOnPageOpen = async () => {
+    setAutoCollecting(true)
+    setAutoCollectStatus('Atualizando notícias automaticamente...')
+
+    try {
+      let totalCollected = 0
+      let totalHighRisk = 0
+
+      const userFeedsResponse = await fetch('/api/noticias/collect/my-feeds', {
+        method: 'POST',
+      })
+      if (userFeedsResponse.ok) {
+        const result = await userFeedsResponse.json()
+        totalCollected += result.collected || 0
+        totalHighRisk += result.high_risk || 0
+      }
+
+      const adversaryFeedsResponse = await fetch('/api/noticias/adversarios/collect', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({}),
+      })
+      if (adversaryFeedsResponse.ok) {
+        const result = await adversaryFeedsResponse.json()
+        totalCollected += result.collected || 0
+        totalHighRisk += result.high_risk || 0
+      }
+
+      setAutoCollectStatus(
+        totalCollected > 0
+          ? `Atualização concluída: ${totalCollected} notícia(s) coletada(s)${totalHighRisk > 0 ? `, ${totalHighRisk} de alto risco.` : '.'}`
+          : 'Atualização concluída: nenhuma notícia nova encontrada.'
+      )
+
+      await fetchData()
+    } catch {
+      setAutoCollectStatus('Não foi possível concluir a atualização automática de notícias.')
+    } finally {
+      setAutoCollecting(false)
+      setTimeout(() => {
+        setAutoCollectStatus(null)
+      }, 6000)
+    }
   }
 
   useEffect(() => {
@@ -270,6 +318,21 @@ export default function NoticiasPage() {
                   </button>
                 </div>
               </div>
+
+              {(autoCollecting || autoCollectStatus) && (
+                <div
+                  className={`mb-4 rounded-xl border px-3 py-2 text-sm flex items-center gap-2 ${
+                    autoCollecting
+                      ? 'border-accent-gold/30 bg-accent-gold-soft/20 text-text-primary'
+                      : autoCollectStatus?.startsWith('Não foi possível')
+                        ? 'border-status-error/30 bg-status-error/10 text-status-error'
+                        : 'border-status-success/30 bg-status-success/10 text-status-success'
+                  }`}
+                >
+                  <RefreshCw className={`w-4 h-4 ${autoCollecting ? 'animate-spin' : ''}`} />
+                  <span>{autoCollectStatus}</span>
+                </div>
+              )}
 
               {/* Filtros */}
               <div className="space-y-3 mb-4">
