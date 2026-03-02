@@ -115,7 +115,10 @@ export async function POST(request: Request) {
   try {
     const body = await request.json()
     const { spreadsheetId: bodySpreadsheetId, sheetName: bodySheetName, range, serviceAccountEmail, credentials } = body
-    const cenarioVotos = body?.cenarioVotos === 'promessa_lideranca' ? 'promessa_lideranca' : 'aferido_jadyel'
+    const cenarioVotos =
+      body?.cenarioVotos === 'promessa_lideranca' || body?.cenarioVotos === 'legado_anterior'
+        ? body.cenarioVotos
+        : 'aferido_jadyel'
     
     // Obter configuração (prioriza body, depois variáveis de ambiente)
     const { spreadsheetId, sheetName } = getSheetConfig(body)
@@ -182,15 +185,30 @@ export async function POST(request: Request) {
       const normalized = h.toLowerCase().trim()
       return /expectativa.*jadyel.*2026/i.test(normalized) ||
              /expectativa.*2026.*jadyel/i.test(normalized) ||
-             /^expectativa\s+de\s+votos\s+2026$/i.test(h) || 
-             /expectativa\s+de\s+votos\s+2026/i.test(h) ||
-             (/expectativa.*votos.*2026/i.test(h) && !/promessa/i.test(h))
+             /aferid[oa].*2026/i.test(normalized)
     })
     const promessaLiderancaCol = headers.find((h) => /promessa.*lideran[cç]a.*2026/i.test(h))
-    const votosCenarioCol =
-      cenarioVotos === 'promessa_lideranca'
-        ? (promessaLiderancaCol || expectativaJadyelCol)
-        : (expectativaJadyelCol || promessaLiderancaCol)
+    const expectativaLegacyCol = headers.find((h) => {
+      const normalized = h.toLowerCase().trim()
+      return /^expectativa\s+de\s+votos\s+2026$/i.test(h) ||
+        (/expectativa.*votos.*2026/i.test(h) && !/jadyel/i.test(normalized) && !/promessa/i.test(normalized) && !/aferid[oa]/i.test(normalized))
+    })
+    let votosCenarioCol: string | undefined
+    let cenarioVotosAplicado = cenarioVotos
+
+    if (cenarioVotos === 'promessa_lideranca') {
+      votosCenarioCol = promessaLiderancaCol || expectativaJadyelCol || expectativaLegacyCol
+      if (!promessaLiderancaCol && expectativaJadyelCol) cenarioVotosAplicado = 'aferido_jadyel'
+      if (!promessaLiderancaCol && !expectativaJadyelCol && expectativaLegacyCol) cenarioVotosAplicado = 'legado_anterior'
+    } else if (cenarioVotos === 'legado_anterior') {
+      votosCenarioCol = expectativaLegacyCol || expectativaJadyelCol || promessaLiderancaCol
+      if (!expectativaLegacyCol && expectativaJadyelCol) cenarioVotosAplicado = 'aferido_jadyel'
+      if (!expectativaLegacyCol && !expectativaJadyelCol && promessaLiderancaCol) cenarioVotosAplicado = 'promessa_lideranca'
+    } else {
+      votosCenarioCol = expectativaJadyelCol || expectativaLegacyCol || promessaLiderancaCol
+      if (!expectativaJadyelCol && expectativaLegacyCol) cenarioVotosAplicado = 'legado_anterior'
+      if (!expectativaJadyelCol && !expectativaLegacyCol && promessaLiderancaCol) cenarioVotosAplicado = 'promessa_lideranca'
+    }
     const cidadeCol = headers.find((h) =>
       /cidade|city|município|municipio/i.test(h)
     ) || headers[1] || 'Coluna 2'
@@ -239,8 +257,15 @@ export async function POST(request: Request) {
     const totalPromessaLideranca = promessaLiderancaCol
       ? dadosParaKPIs.reduce((sum, l) => sum + normalizeNumber(l[promessaLiderancaCol]), 0)
       : 0
+    const totalExpectativaLegacy = expectativaLegacyCol
+      ? dadosParaKPIs.reduce((sum, l) => sum + normalizeNumber(l[expectativaLegacyCol]), 0)
+      : 0
     const totalCenarioAtivo =
-      cenarioVotos === 'promessa_lideranca' ? totalPromessaLideranca : totalExpectativaJadyel
+      cenarioVotosAplicado === 'promessa_lideranca'
+        ? totalPromessaLideranca
+        : cenarioVotosAplicado === 'legado_anterior'
+          ? totalExpectativaLegacy
+          : totalExpectativaJadyel
 
     // Calcular cidades únicas usando a mesma lógica da página território
     const cidadesUnicas = cidadeCol
@@ -253,7 +278,8 @@ export async function POST(request: Request) {
       expectativa2026: Math.round(totalCenarioAtivo),
       expectativaJadyel2026: Math.round(totalExpectativaJadyel),
       promessaLideranca2026: Math.round(totalPromessaLideranca),
-      cenarioVotosAplicado: cenarioVotos,
+      expectativaLegado2026: Math.round(totalExpectativaLegacy),
+      cenarioVotosAplicado,
       cidadesUnicas: cidadesUnicas,
     })
   } catch (error: any) {

@@ -40,6 +40,7 @@ interface ResumoCidade {
   eleitores: number | null
   votos2026: number
   promessa2026: number
+  legado2026: number
   votacaoFinal2022: number
   liderancas: number
   liderancasDetalhe: Array<{
@@ -48,6 +49,7 @@ interface ResumoCidade {
     projecaoVotos: number
     projecaoAferida: number
     projecaoPromessa: number
+    projecaoLegado: number
   }>
 }
 
@@ -57,11 +59,13 @@ interface LiderancaDetalheResponse {
   projecaoVotos?: number
   projecaoAferida?: number
   projecaoPromessa?: number
+  projecaoLegado?: number
 }
 
-type ResumosCidadeMap = Record<string, { expectativaVotos: number; promessaVotos: number; votacaoFinal2022: number; liderancas: number }>
+type ResumosCidadeMap = Record<string, { expectativaVotos: number; promessaVotos: number; expectativaLegadoVotos: number; votacaoFinal2022: number; liderancas: number }>
 type PesquisaCitiesMap = Record<string, string>
-type CenarioVotos = 'aferido_jadyel' | 'promessa_lideranca'
+type CenarioVotos = 'aferido_jadyel' | 'promessa_lideranca' | 'legado_anterior'
+type SimulacaoMapeamento = Record<string, string>
 type ResumoEleicoesSnapshot = {
   cidade: string
   cidades: string[]
@@ -74,6 +78,7 @@ type ResumoEleicoesSnapshot = {
   pesquisasCidadeCount: number | null
   pesquisaCitiesMap: PesquisaCitiesMap
   cenarioVotos: CenarioVotos
+  simulacaoMapeamento: SimulacaoMapeamento
 }
 
 type TableKey =
@@ -98,6 +103,29 @@ const EMPTY_SELECTIONS: Record<TableKey, Record<string, number>> = {
 function parseVotos(value: string): number {
   const parsed = Number.parseInt(value || '0', 10)
   return Number.isNaN(parsed) ? 0 : parsed
+}
+
+function vereadorSimulacaoKey(item: ResultadoEleicao): string {
+  return `${item.nomeUrnaCandidato}::${item.numeroUrna}`
+}
+
+function limparNomeSimulacaoFederal(value: string): string {
+  const nome = String(value || '')
+    .replace(/\s+/g, ' ')
+    .trim()
+  // Compatibilidade com formato legado "NOME::NUMERO"
+  return nome.includes('::') ? nome.split('::')[0].trim() : nome
+}
+
+function sanitizarMapeamentoSimulacao(value: unknown): SimulacaoMapeamento {
+  if (!value || typeof value !== 'object') return {}
+  const entries = Object.entries(value as Record<string, unknown>)
+  const out: SimulacaoMapeamento = {}
+  entries.forEach(([vereadorKey, federalRaw]) => {
+    const nome = limparNomeSimulacaoFederal(String(federalRaw || ''))
+    if (nome) out[vereadorKey] = nome
+  })
+  return out
 }
 
 function includesNormalized(source: string, term: string): boolean {
@@ -200,6 +228,10 @@ export default function ResumoEleicoesPage() {
   const [pesquisasCidadeCount, setPesquisasCidadeCount] = useState<number | null>(null)
   const [pesquisaCitiesMap, setPesquisaCitiesMap] = useState<PesquisaCitiesMap>({})
   const [cenarioVotos, setCenarioVotos] = useState<CenarioVotos>('aferido_jadyel')
+  const [showSimulacaoModal, setShowSimulacaoModal] = useState(false)
+  const [simulacaoMapeamento, setSimulacaoMapeamento] = useState<SimulacaoMapeamento>({})
+  const [loadingSimulacao, setLoadingSimulacao] = useState(false)
+  const [savingSimulacao, setSavingSimulacao] = useState(false)
   const [restaurouEstadoRetorno, setRestaurouEstadoRetorno] = useState(false)
   const [currentPage, setCurrentPage] = useState<Record<string, number>>({
     deputado_estadual: 1,
@@ -260,9 +292,18 @@ export default function ResumoEleicoesPage() {
     )
 
     const votosMeta = resumoCidade
-      ? (cenarioVotos === 'promessa_lideranca' ? resumoCidade.promessa2026 : resumoCidade.votos2026)
+      ? (cenarioVotos === 'promessa_lideranca'
+        ? resumoCidade.promessa2026
+        : cenarioVotos === 'legado_anterior'
+          ? resumoCidade.legado2026
+          : resumoCidade.votos2026)
       : 0
-    const labelMeta = cenarioVotos === 'promessa_lideranca' ? 'Promessa 2026' : 'Aferido 2026'
+    const labelMeta =
+      cenarioVotos === 'promessa_lideranca'
+        ? 'Promessa 2026'
+        : cenarioVotos === 'legado_anterior'
+          ? 'Anterior 2026'
+          : 'Aferido 2026'
     const percentualSobre2026 =
       votosMeta > 0 ? (votosPenetracao / votosMeta) * 100 : null
     const percentualSobreEleitores =
@@ -296,18 +337,19 @@ export default function ResumoEleicoesPage() {
 
   const getResumoFromMap = (
     cidadeAlvo: string
-  ): { expectativaVotos: number; promessaVotos: number; votacaoFinal2022: number; liderancas: number } | null => {
+  ): { expectativaVotos: number; promessaVotos: number; expectativaLegadoVotos: number; votacaoFinal2022: number; liderancas: number } | null => {
     const normalized = normalizeCityName(cidadeAlvo)
     if (!normalized) return null
 
     if (resumosCidadeMap[normalized]) return resumosCidadeMap[normalized]
 
-    let fallback: { expectativaVotos: number; promessaVotos: number; votacaoFinal2022: number; liderancas: number } | null = null
+    let fallback: { expectativaVotos: number; promessaVotos: number; expectativaLegadoVotos: number; votacaoFinal2022: number; liderancas: number } | null = null
     Object.entries(resumosCidadeMap).forEach(([key, value]) => {
       if (key.includes(normalized) || normalized.includes(key)) {
         fallback = {
           expectativaVotos: (fallback?.expectativaVotos || 0) + value.expectativaVotos,
           promessaVotos: (fallback?.promessaVotos || 0) + (value.promessaVotos || 0),
+          expectativaLegadoVotos: (fallback?.expectativaLegadoVotos || 0) + (value.expectativaLegadoVotos || 0),
           votacaoFinal2022: (fallback?.votacaoFinal2022 || 0) + value.votacaoFinal2022,
           liderancas: (fallback?.liderancas || 0) + value.liderancas,
         }
@@ -324,6 +366,7 @@ export default function ResumoEleicoesPage() {
         eleitores,
         votos2026: fromMap.expectativaVotos,
         promessa2026: fromMap.promessaVotos || 0,
+        legado2026: fromMap.expectativaLegadoVotos || 0,
         votacaoFinal2022: fromMap.votacaoFinal2022,
         liderancas: fromMap.liderancas,
         liderancasDetalhe: [],
@@ -345,6 +388,7 @@ export default function ResumoEleicoesPage() {
           [cityKey]: {
             expectativaVotos: Number(json.expectativaVotos || 0),
             promessaVotos: Number(json.promessaVotos || 0),
+            expectativaLegadoVotos: Number(json.expectativaLegadoVotos || 0),
             votacaoFinal2022: Number(json.votacaoFinal2022 || 0),
             liderancas: Number(json.liderancas || 0),
           },
@@ -354,6 +398,7 @@ export default function ResumoEleicoesPage() {
         eleitores,
         votos2026: Number(json.expectativaVotos || 0),
         promessa2026: Number(json.promessaVotos || 0),
+        legado2026: Number(json.expectativaLegadoVotos || 0),
         votacaoFinal2022: Number(json.votacaoFinal2022 || 0),
         liderancas: Number(json.liderancas || 0),
         liderancasDetalhe: Array.isArray(json.liderancasDetalhe)
@@ -363,6 +408,7 @@ export default function ResumoEleicoesPage() {
               projecaoVotos: Number(item.projecaoVotos || 0),
               projecaoAferida: Number(item.projecaoAferida || item.projecaoVotos || 0),
               projecaoPromessa: Number(item.projecaoPromessa || 0),
+              projecaoLegado: Number(item.projecaoLegado || 0),
             }))
           : [],
       })
@@ -371,6 +417,7 @@ export default function ResumoEleicoesPage() {
         eleitores,
         votos2026: 0,
         promessa2026: 0,
+        legado2026: 0,
         votacaoFinal2022: 0,
         liderancas: 0,
         liderancasDetalhe: [],
@@ -415,6 +462,50 @@ export default function ResumoEleicoesPage() {
     }
   }
 
+  const carregarSimulacaoCidade = async (cidadeAlvo: string): Promise<void> => {
+    if (!cidadeAlvo) {
+      setSimulacaoMapeamento({})
+      return
+    }
+
+    setLoadingSimulacao(true)
+    try {
+      const res = await fetch(`/api/resumo-eleicoes/simulacao-vereadores?cidade=${encodeURIComponent(cidadeAlvo)}`)
+      const json = await res.json()
+      if (!res.ok) throw new Error(json.error || 'Erro ao carregar simulação')
+      setSimulacaoMapeamento(sanitizarMapeamentoSimulacao(json.mapeamento))
+    } catch {
+      setSimulacaoMapeamento({})
+    } finally {
+      setLoadingSimulacao(false)
+    }
+  }
+
+  const salvarSimulacaoCidade = async (): Promise<void> => {
+    if (!cidade) return
+    setSavingSimulacao(true)
+    try {
+      const res = await fetch('/api/resumo-eleicoes/simulacao-vereadores', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          cidade,
+          mapeamento: sanitizarMapeamentoSimulacao(simulacaoMapeamento),
+        }),
+      })
+      const json = await res.json()
+      if (!res.ok) throw new Error(json.error || 'Erro ao salvar simulação')
+      setSimulacaoMapeamento(sanitizarMapeamentoSimulacao(json.mapeamento))
+      setFeedbackMarcacao('Simulação de vereadores salva com sucesso.')
+      setMostrarFeedbackMarcacao(true)
+    } catch {
+      setFeedbackMarcacao('Não foi possível salvar a simulação agora.')
+      setMostrarFeedbackMarcacao(true)
+    } finally {
+      setSavingSimulacao(false)
+    }
+  }
+
   const salvarEstadoResumoEmSession = () => {
     if (typeof window === 'undefined') return
     const snapshot: ResumoEleicoesSnapshot = {
@@ -429,6 +520,7 @@ export default function ResumoEleicoesPage() {
       pesquisasCidadeCount,
       pesquisaCitiesMap,
       cenarioVotos,
+      simulacaoMapeamento,
     }
     sessionStorage.setItem(RESUMO_STATE_SESSION_KEY, JSON.stringify(snapshot))
   }
@@ -475,11 +567,29 @@ export default function ResumoEleicoesPage() {
       setBuscaIniciada(Boolean(parsed.buscaIniciada))
       setPresidenteCamaraNome(parsed.presidenteCamaraNome || null)
       setFiltroPartidoAtivo(parsed.filtroPartidoAtivo || null)
-      setResumoCidade(parsed.resumoCidade || null)
+      setResumoCidade(
+        parsed.resumoCidade
+          ? {
+              ...parsed.resumoCidade,
+              legado2026: Number(parsed.resumoCidade.legado2026 || 0),
+              liderancasDetalhe: Array.isArray(parsed.resumoCidade.liderancasDetalhe)
+                ? parsed.resumoCidade.liderancasDetalhe.map((item) => ({
+                    ...item,
+                    projecaoLegado: Number(item.projecaoLegado || 0),
+                  }))
+                : [],
+            }
+          : null
+      )
       setResumosCidadeMap(parsed.resumosCidadeMap || {})
       setPesquisasCidadeCount(parsed.pesquisasCidadeCount ?? null)
       setPesquisaCitiesMap(parsed.pesquisaCitiesMap || {})
-      setCenarioVotos(parsed.cenarioVotos || 'aferido_jadyel')
+      setCenarioVotos(
+        parsed.cenarioVotos === 'promessa_lideranca' || parsed.cenarioVotos === 'legado_anterior'
+          ? parsed.cenarioVotos
+          : 'aferido_jadyel'
+      )
+      setSimulacaoMapeamento(sanitizarMapeamentoSimulacao(parsed.simulacaoMapeamento))
       setLoadingCidades(false)
       setRestaurouEstadoRetorno(true)
     } catch {
@@ -611,6 +721,7 @@ export default function ResumoEleicoesPage() {
       await carregarPresidenteCamara(cidade)
       void carregarResumoCidade(cidade)
       void carregarContagemPesquisasCidade(cidade)
+      void carregarSimulacaoCidade(cidade)
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Erro ao buscar resultados')
     } finally {
@@ -655,6 +766,15 @@ export default function ResumoEleicoesPage() {
     [dadosFiltradosPorPartido]
   )
 
+  // Base completa da cidade para simulação (não depende do filtro de partido)
+  const vereador2024Completo = useMemo(
+    () =>
+      dados
+        .filter((item) => includesNormalized(item.cargo, 'vereador') && item.anoEleicao === '2024')
+        .sort((a, b) => parseVotos(b.quantidadeVotosNominais) - parseVotos(a.quantidadeVotosNominais)),
+    [dados]
+  )
+
   const partido2024 = useMemo<PartidoResumo[]>(() => {
     const grouped = new Map<string, PartidoResumo>()
 
@@ -669,6 +789,32 @@ export default function ResumoEleicoesPage() {
 
     return Array.from(grouped.values()).sort((a, b) => b.votos - a.votos)
   }, [dados])
+
+  const rankingSimulacaoFederal = useMemo(() => {
+    const mapaFederal = new Map<string, { nome: string; votosEstimados: number; vereadores: number }>()
+
+    vereador2024Completo.forEach((vereador) => {
+      const vereadorKey = vereadorSimulacaoKey(vereador)
+      const federalNome = limparNomeSimulacaoFederal(simulacaoMapeamento[vereadorKey] || '')
+      if (!federalNome) return
+      const federalKey = normalizeText(federalNome)
+      if (!federalKey) return
+
+      const votosVereador = parseVotos(vereador.quantidadeVotosNominais)
+      const atual = mapaFederal.get(federalKey) || {
+        nome: federalNome,
+        votosEstimados: 0,
+        vereadores: 0,
+      }
+      atual.votosEstimados += votosVereador
+      atual.vereadores += 1
+      mapaFederal.set(federalKey, atual)
+    })
+
+    return Array.from(mapaFederal.values()).sort(
+      (a, b) => b.votosEstimados - a.votosEstimados || a.nome.localeCompare(b.nome, 'pt-BR')
+    )
+  }, [simulacaoMapeamento, vereador2024Completo])
 
   const paginated = <T,>(list: T[], page: number): T[] => {
     const start = (page - 1) * ITEMS_PER_PAGE
@@ -946,9 +1092,43 @@ export default function ResumoEleicoesPage() {
     }
   }
 
+  const atualizarMapeamentoVereador = (vereadorKey: string, federalNome: string) => {
+    setSimulacaoMapeamento((prev) => {
+      const nomeLimpo = limparNomeSimulacaoFederal(federalNome)
+      if (!nomeLimpo) {
+        const { [vereadorKey]: _, ...rest } = prev
+        return rest
+      }
+      return {
+        ...prev,
+        [vereadorKey]: nomeLimpo,
+      }
+    })
+  }
+
+  const limparSimulacao = () => {
+    setSimulacaoMapeamento({})
+  }
+
+  const vereadoresMapeadosCount = vereador2024Completo.reduce((acc, vereador) => {
+    const vereadorKey = vereadorSimulacaoKey(vereador)
+    return limparNomeSimulacaoFederal(simulacaoMapeamento[vereadorKey] || '') ? acc + 1 : acc
+  }, 0)
+
   const votosCenarioAtivo =
-    resumoCidade ? (cenarioVotos === 'promessa_lideranca' ? resumoCidade.promessa2026 : resumoCidade.votos2026) : 0
-  const labelCenarioAtivo = cenarioVotos === 'promessa_lideranca' ? 'Promessa 2026' : 'Aferido 2026'
+    resumoCidade
+      ? (cenarioVotos === 'promessa_lideranca'
+        ? resumoCidade.promessa2026
+        : cenarioVotos === 'legado_anterior'
+          ? resumoCidade.legado2026
+          : resumoCidade.votos2026)
+      : 0
+  const labelCenarioAtivo =
+    cenarioVotos === 'promessa_lideranca'
+      ? 'Promessa 2026'
+      : cenarioVotos === 'legado_anterior'
+        ? 'Anterior 2026'
+        : 'Aferido 2026'
   const diferencaCenarioVs2022 = resumoCidade ? votosCenarioAtivo - resumoCidade.votacaoFinal2022 : 0
   const diferencaFormatada = `${diferencaCenarioVs2022 > 0 ? '+' : ''}${diferencaCenarioVs2022.toLocaleString('pt-BR')}`
   const statusComparativo =
@@ -962,11 +1142,24 @@ export default function ResumoEleicoesPage() {
   const summaryIconWrapClass =
     'p-1.5 rounded-lg bg-accent-gold-soft group-hover:scale-110 transition-all duration-300'
   const summaryMetaClass = 'text-[11px] mt-1 text-text-secondary'
-  const labelValorModalLiderancas = cenarioVotos === 'promessa_lideranca' ? 'Promessa 2026' : 'Aferido 2026'
+  const labelValorModalLiderancas =
+    cenarioVotos === 'promessa_lideranca'
+      ? 'Promessa 2026'
+      : cenarioVotos === 'legado_anterior'
+        ? 'Anterior 2026'
+        : 'Aferido 2026'
   const liderancasDetalheOrdenadas = resumoCidade
     ? [...resumoCidade.liderancasDetalhe].sort((a, b) => {
-        const valorA = cenarioVotos === 'promessa_lideranca' ? a.projecaoPromessa : a.projecaoAferida
-        const valorB = cenarioVotos === 'promessa_lideranca' ? b.projecaoPromessa : b.projecaoAferida
+        const valorA = cenarioVotos === 'promessa_lideranca'
+          ? a.projecaoPromessa
+          : cenarioVotos === 'legado_anterior'
+            ? a.projecaoLegado
+            : a.projecaoAferida
+        const valorB = cenarioVotos === 'promessa_lideranca'
+          ? b.projecaoPromessa
+          : cenarioVotos === 'legado_anterior'
+            ? b.projecaoLegado
+            : b.projecaoAferida
         return valorB - valorA || a.nome.localeCompare(b.nome, 'pt-BR')
       })
     : []
@@ -1003,6 +1196,7 @@ export default function ResumoEleicoesPage() {
               >
                 <option value="aferido_jadyel">Aferido (Expectativa Jadyel 2026)</option>
                 <option value="promessa_lideranca">Prometido (Promessa da Liderança 2026)</option>
+                <option value="legado_anterior">Anterior (Expectativa de Votos 2026)</option>
               </select>
             </div>
             <button
@@ -1157,6 +1351,19 @@ export default function ResumoEleicoesPage() {
               </button>
             </div>
           )}
+          <div className="mb-3 flex items-center justify-between rounded-lg border border-card bg-surface p-2 text-xs">
+            <span className="text-text-secondary">
+              Simulação de vereadores: <strong className="text-text-primary">{vereadoresMapeadosCount}</strong> de{' '}
+              <strong className="text-text-primary">{vereador2024Completo.length}</strong> mapeados
+            </span>
+            <button
+              type="button"
+              onClick={() => setShowSimulacaoModal(true)}
+              className="px-2 py-1 rounded border border-card hover:bg-background text-text-secondary"
+            >
+              Abrir simulador
+            </button>
+          </div>
           <div className="grid grid-cols-1 md:flex md:flex-nowrap gap-4 overflow-x-auto pb-2">
             <div className="bg-surface rounded-xl border border-card p-2 md:flex-1 min-w-[240px]">
               <h3 className="text-xs font-semibold text-center mb-2">Deputado Estadual 2022</h3>
@@ -1539,6 +1746,135 @@ export default function ResumoEleicoesPage() {
         )}
       </div>
 
+      {showSimulacaoModal && (
+        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
+          <div className="w-full max-w-5xl max-h-[88vh] bg-surface rounded-xl border border-card overflow-hidden flex flex-col">
+            <div className="flex items-center justify-between px-4 py-3 border-b border-card">
+              <div>
+                <h3 className="text-sm font-semibold text-text-primary">
+                  Simulação de Votos por Vereador
+                </h3>
+                <p className="text-xs text-text-secondary">
+                  Base: Vereador 2024 | Cidade: {cidade}
+                </p>
+              </div>
+              <button
+                onClick={() => setShowSimulacaoModal(false)}
+                className="p-1.5 rounded hover:bg-background transition-colors"
+              >
+                <X className="h-4 w-4 text-text-secondary" />
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 p-3 overflow-auto">
+              <div className="rounded-lg border border-card">
+                <div className="px-3 py-2 border-b border-card bg-background text-xs font-medium text-text-secondary">
+                  Mapeamento Vereador ➜ Federal ({vereadoresMapeadosCount}/{vereador2024Completo.length})
+                </div>
+                <div className="max-h-[52vh] overflow-auto">
+                  <table className="w-full text-xs">
+                    <thead>
+                      <tr>
+                        <th className="text-left py-2 px-2 bg-background">Vereador 2024</th>
+                        <th className="text-right py-2 px-2 bg-background">Votos</th>
+                        <th className="text-left py-2 px-2 bg-background">Federal (nome digitado)</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {vereador2024Completo.map((vereador) => {
+                        const vereadorKey = vereadorSimulacaoKey(vereador)
+                        const valorSelecionado = limparNomeSimulacaoFederal(simulacaoMapeamento[vereadorKey] || '')
+                        const votosVereador = parseVotos(vereador.quantidadeVotosNominais)
+                        return (
+                          <tr key={vereadorKey} className="border-b border-card">
+                            <td className="py-1.5 px-2">{vereador.nomeUrnaCandidato}</td>
+                            <td className="py-1.5 px-2 text-right">{votosVereador.toLocaleString('pt-BR')}</td>
+                            <td className="py-1.5 px-2">
+                              <input
+                                value={valorSelecionado}
+                                onChange={(event) => atualizarMapeamentoVereador(vereadorKey, event.target.value)}
+                                placeholder="Ex.: JADYEL ALENCAR"
+                                className="w-full h-8 px-2 rounded border border-card bg-background text-xs"
+                              />
+                            </td>
+                          </tr>
+                        )
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              <div className="rounded-lg border border-card">
+                <div className="px-3 py-2 border-b border-card bg-background text-xs font-medium text-text-secondary">
+                  Ranking Geral (soma dos votos dos vereadores mapeados)
+                </div>
+                <div className="max-h-[52vh] overflow-auto p-2">
+                  {rankingSimulacaoFederal.length === 0 ? (
+                    <p className="text-xs text-text-secondary py-4 text-center">
+                      Nenhum vereador mapeado ainda.
+                    </p>
+                  ) : (
+                    <table className="w-full text-xs">
+                      <thead>
+                        <tr>
+                          <th className="text-left py-2 px-2 bg-background">Federal</th>
+                          <th className="text-right py-2 px-2 bg-background">Vereadores</th>
+                          <th className="text-right py-2 px-2 bg-background">Votos estimados</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {rankingSimulacaoFederal.map((item) => (
+                          <tr key={item.nome} className="border-b border-card">
+                            <td className="py-1.5 px-2">
+                              {item.nome}
+                            </td>
+                            <td className="py-1.5 px-2 text-right">{item.vereadores}</td>
+                            <td className="py-1.5 px-2 text-right font-semibold">{item.votosEstimados.toLocaleString('pt-BR')}</td>
+                          </tr>
+                        ))}
+                        <tr className="bg-background font-semibold">
+                          <td className="py-1.5 px-2">TOTAL</td>
+                          <td className="py-1.5 px-2 text-right">
+                            {rankingSimulacaoFederal.reduce((acc, item) => acc + item.vereadores, 0)}
+                          </td>
+                          <td className="py-1.5 px-2 text-right">
+                            {rankingSimulacaoFederal.reduce((acc, item) => acc + item.votosEstimados, 0).toLocaleString('pt-BR')}
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            <div className="px-3 py-2 border-t border-card bg-background flex items-center justify-between gap-2">
+              <div className="text-xs text-text-secondary">
+                {loadingSimulacao ? 'Carregando simulação salva...' : 'Persistência ativa por cidade no Supabase.'}
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={limparSimulacao}
+                  className="px-3 py-1.5 text-xs rounded border border-card hover:bg-surface"
+                >
+                  Limpar mapeamento
+                </button>
+                <button
+                  type="button"
+                  onClick={salvarSimulacaoCidade}
+                  disabled={savingSimulacao || !cidade}
+                  className="px-3 py-1.5 text-xs rounded bg-accent-gold text-white hover:bg-accent-gold/90 disabled:opacity-50"
+                >
+                  {savingSimulacao ? 'Salvando...' : 'Salvar simulação'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {showLiderancasModal && resumoCidade && (
         <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
           <div className="w-full max-w-3xl max-h-[85vh] bg-surface rounded-xl border border-card overflow-hidden flex flex-col">
@@ -1581,7 +1917,9 @@ export default function ResumoEleicoesPage() {
                         <td className="py-1.5 px-2 text-right">
                           {(cenarioVotos === 'promessa_lideranca'
                             ? lideranca.projecaoPromessa
-                            : lideranca.projecaoAferida).toLocaleString('pt-BR')}
+                            : cenarioVotos === 'legado_anterior'
+                              ? lideranca.projecaoLegado
+                              : lideranca.projecaoAferida).toLocaleString('pt-BR')}
                         </td>
                       </tr>
                     ))}

@@ -45,7 +45,7 @@ export default function TerritorioPage() {
   const [showExecutiveBriefing, setShowExecutiveBriefing] = useState(false)
   const [selectedCityForBriefing, setSelectedCityForBriefing] = useState<string>('')
   const [selectedCityLiderancas, setSelectedCityLiderancas] = useState<Lideranca[]>([])
-  const [cenarioVotos, setCenarioVotos] = useState<'aferido_jadyel' | 'promessa_lideranca'>('aferido_jadyel')
+  const [cenarioVotos, setCenarioVotos] = useState<'aferido_jadyel' | 'promessa_lideranca' | 'legado_anterior'>('aferido_jadyel')
   const depDropdownRef = useRef<HTMLDivElement | null>(null)
 
   useEffect(() => {
@@ -191,29 +191,75 @@ export default function TerritorioPage() {
     const normalized = h.toLowerCase().trim()
     return /expectativa.*jadyel.*2026/i.test(normalized) ||
            /expectativa.*2026.*jadyel/i.test(normalized) ||
-           /^expectativa\s+de\s+votos\s+2026$/i.test(h) ||
-           /expectativa\s+de\s+votos\s+2026/i.test(h) ||
-           (/expectativa.*votos.*2026/i.test(normalized) && !/promessa/i.test(normalized))
+           /aferid[oa].*2026/i.test(normalized)
   })
   const promessaLiderancaCol = headers.find((h) => /promessa.*lideran[cç]a.*2026/i.test(h))
-  const votosReferenciaCol =
+  const expectativaLegadoCol = headers.find((h) => {
+    const normalized = h.toLowerCase().trim()
+    return /^expectativa\s+de\s+votos\s+2026$/i.test(h) ||
+      (/expectativa.*votos.*2026/i.test(h) && !/jadyel/i.test(normalized) && !/promessa/i.test(normalized) && !/aferid[oa]/i.test(normalized))
+  })
+
+  const votosReferenciaCol = (() => {
+    if (cenarioVotos === 'promessa_lideranca') {
+      return promessaLiderancaCol || expectativaJadyelCol || expectativaLegadoCol
+    }
+    if (cenarioVotos === 'legado_anterior') {
+      return expectativaLegadoCol || expectativaJadyelCol || promessaLiderancaCol
+    }
+    return expectativaJadyelCol || expectativaLegadoCol || promessaLiderancaCol
+  })()
+
+  const labelCenarioVotos =
     cenarioVotos === 'promessa_lideranca'
-      ? (promessaLiderancaCol || expectativaJadyelCol)
-      : (expectativaJadyelCol || promessaLiderancaCol)
-  const labelCenarioVotos = cenarioVotos === 'promessa_lideranca' ? 'Promessa da Liderança 2026' : 'Expectativa Jadyel 2026'
-  const labelVotosResumo = cenarioVotos === 'promessa_lideranca' ? 'votos prometidos' : 'votos aferidos'
-  const labelTotalCidade = cenarioVotos === 'promessa_lideranca' ? 'Total Prometido' : 'Total Aferido'
-  const labelValorLideranca = cenarioVotos === 'promessa_lideranca' ? 'Promessa 2026' : 'Aferido 2026'
+      ? 'Promessa da Liderança 2026'
+      : cenarioVotos === 'legado_anterior'
+        ? 'Expectativa de Votos 2026 (Anterior)'
+        : 'Expectativa Jadyel 2026'
+  const labelVotosResumo =
+    cenarioVotos === 'promessa_lideranca'
+      ? 'votos prometidos'
+      : cenarioVotos === 'legado_anterior'
+        ? 'votos previstos (anterior)'
+        : 'votos aferidos'
+  const labelTotalCidade =
+    cenarioVotos === 'promessa_lideranca'
+      ? 'Total Prometido'
+      : cenarioVotos === 'legado_anterior'
+        ? 'Total Anterior'
+        : 'Total Aferido'
+  const labelValorLideranca =
+    cenarioVotos === 'promessa_lideranca'
+      ? 'Promessa 2026'
+      : cenarioVotos === 'legado_anterior'
+        ? 'Anterior 2026'
+        : 'Aferido 2026'
 
   useEffect(() => {
-    if (cenarioVotos === 'promessa_lideranca' && !promessaLiderancaCol && expectativaJadyelCol) {
-      setCenarioVotos('aferido_jadyel')
+    if (cenarioVotos === 'promessa_lideranca' && !promessaLiderancaCol) {
+      if (expectativaJadyelCol) {
+        setCenarioVotos('aferido_jadyel')
+      } else if (expectativaLegadoCol) {
+        setCenarioVotos('legado_anterior')
+      }
       return
     }
-    if (cenarioVotos === 'aferido_jadyel' && !expectativaJadyelCol && promessaLiderancaCol) {
-      setCenarioVotos('promessa_lideranca')
+    if (cenarioVotos === 'aferido_jadyel' && !expectativaJadyelCol) {
+      if (expectativaLegadoCol) {
+        setCenarioVotos('legado_anterior')
+      } else if (promessaLiderancaCol) {
+        setCenarioVotos('promessa_lideranca')
+      }
+      return
     }
-  }, [cenarioVotos, promessaLiderancaCol, expectativaJadyelCol])
+    if (cenarioVotos === 'legado_anterior' && !expectativaLegadoCol) {
+      if (expectativaJadyelCol) {
+        setCenarioVotos('aferido_jadyel')
+      } else if (promessaLiderancaCol) {
+        setCenarioVotos('promessa_lideranca')
+      }
+    }
+  }, [cenarioVotos, promessaLiderancaCol, expectativaJadyelCol, expectativaLegadoCol])
 
   // Função para normalizar números
   const normalizeNumber = (value: any): number => {
@@ -555,7 +601,12 @@ export default function TerritorioPage() {
         ? [
             {
               id: 'expectativa-votos',
-              label: cenarioVotos === 'promessa_lideranca' ? 'Promessa 2026' : 'Aferido 2026',
+              label:
+                cenarioVotos === 'promessa_lideranca'
+                  ? 'Promessa 2026'
+                  : cenarioVotos === 'legado_anterior'
+                    ? 'Anterior 2026'
+                    : 'Aferido 2026',
               value: Math.round(totalExpectativaVotos).toLocaleString('pt-BR'),
               status: 'success' as const,
             },
@@ -805,14 +856,14 @@ export default function TerritorioPage() {
               )}
 
               {/* Cenário de votos */}
-              {(expectativaJadyelCol || promessaLiderancaCol) && (
+              {(expectativaJadyelCol || promessaLiderancaCol || expectativaLegadoCol) && (
                 <div>
                   <label className="block text-xs font-medium text-secondary mb-2">
                     Visão de Votos
                   </label>
                   <select
                     value={cenarioVotos}
-                    onChange={(e) => setCenarioVotos(e.target.value as 'aferido_jadyel' | 'promessa_lideranca')}
+                    onChange={(e) => setCenarioVotos(e.target.value as 'aferido_jadyel' | 'promessa_lideranca' | 'legado_anterior')}
                     className="w-full px-3 py-2 text-sm border border-card rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-gold-soft bg-surface"
                   >
                     {expectativaJadyelCol && (
@@ -820,6 +871,9 @@ export default function TerritorioPage() {
                     )}
                     {promessaLiderancaCol && (
                       <option value="promessa_lideranca">Prometido (Promessa da Liderança 2026)</option>
+                    )}
+                    {expectativaLegadoCol && (
+                      <option value="legado_anterior">Anterior (Expectativa de Votos 2026)</option>
                     )}
                   </select>
                 </div>
@@ -829,7 +883,7 @@ export default function TerritorioPage() {
               {votosReferenciaCol && (
                 <div>
                   <label className="block text-xs font-medium text-secondary mb-2">
-                    Faixa de Votos ({cenarioVotos === 'promessa_lideranca' ? 'prometidos' : 'aferidos'})
+                    Faixa de Votos ({cenarioVotos === 'promessa_lideranca' ? 'prometidos' : cenarioVotos === 'legado_anterior' ? 'anteriores' : 'aferidos'})
                   </label>
                   <select
                     value={filtroFaixaVotos}

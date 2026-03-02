@@ -36,7 +36,7 @@ const trendData = [
 ]
 
 export default function Home() {
-  type CenarioVotos = 'aferido_jadyel' | 'promessa_lideranca'
+  type CenarioVotos = 'aferido_jadyel' | 'promessa_lideranca' | 'legado_anterior'
   const [kpis, setKpis] = useState<KPI[]>(mockKPIs)
   const [loading, setLoading] = useState(true)
   const [pollsData, setPollsData] = useState<Array<{ date: string; intencao: number; instituto?: string; cidade?: string }>>([])
@@ -268,11 +268,11 @@ export default function Home() {
     return 'Movimento político'
   }
 
-  const getLinhaSemanticaClass = (item: NewsItem): string => {
-    if (item.risk_level === 'high') return 'bg-red-700'
-    if (item.sentiment === 'positive') return 'bg-emerald-500'
-    if (item.sentiment === 'neutral') return 'bg-gray-400'
-    return 'bg-amber-500'
+  const getLinhaSemanticaClass = (item: NewsItem): string | null => {
+    if (item.risk_level === 'high') return 'bg-accent-gold'
+    if (item.sentiment === 'positive') return 'bg-accent-gold'
+    if (item.sentiment === 'neutral') return null
+    return 'bg-accent-gold'
   }
 
   // Auto-scroll suave do Monitor de Imprensa
@@ -368,7 +368,11 @@ export default function Home() {
     }
 
     const cenarioSalvo = localStorage.getItem('dashboard_cenario_votos_2026')
-    if (cenarioSalvo === 'promessa_lideranca' || cenarioSalvo === 'aferido_jadyel') {
+    if (
+      cenarioSalvo === 'promessa_lideranca' ||
+      cenarioSalvo === 'aferido_jadyel' ||
+      cenarioSalvo === 'legado_anterior'
+    ) {
       setCenarioVotosDashboard(cenarioSalvo)
     }
   }, [])
@@ -859,7 +863,12 @@ export default function Home() {
         setKpis([
           {
             id: 'ife',
-            label: cenarioVotosDashboard === 'promessa_lideranca' ? 'Promessa de Votos' : 'Expectativa de Votos',
+            label:
+              cenarioVotosDashboard === 'promessa_lideranca'
+                ? 'Promessa de Votos'
+                : cenarioVotosDashboard === 'legado_anterior'
+                  ? 'Expectativa de Votos (Anterior)'
+                  : 'Expectativa de Votos',
             value: expectativa2026 !== null && expectativa2026 !== undefined 
               ? (typeof expectativa2026 === 'number' ? expectativa2026.toLocaleString('pt-BR') : String(expectativa2026))
               : (typeof data.ife.value === 'number' ? data.ife.value.toLocaleString('pt-BR') : data.ife.value),
@@ -1629,13 +1638,13 @@ export default function Home() {
             </div>
 
           {/* Monitor de Imprensa - Compacto */}
-          <div className="bg-surface rounded-2xl border border-card p-4 relative overflow-hidden flex flex-col">
-            {/* Linha vertical de destaque - cinza institucional */}
-            <div className="absolute left-0 top-0 bottom-0 w-1 bg-secondary opacity-15" />
+          <div className="bg-surface rounded-2xl border border-accent-gold/20 p-4 relative overflow-hidden flex flex-col">
+            {/* Linha vertical de destaque no padrão do tema */}
+            <div className="absolute left-0 top-0 bottom-0 w-1 bg-accent-gold opacity-20" />
             
             <div className="flex items-center justify-between mb-2">
               <h2 className="text-base font-semibold text-text-primary flex items-center gap-2">
-                <Activity className="w-4 h-4 text-secondary" />
+                <Activity className="w-4 h-4 text-accent-gold" />
                 Monitor de Imprensa
                 {monitorNews.length > 3 && !loadingAlerts && (
                   <span className="flex items-center gap-1 text-[9px] text-secondary font-normal">
@@ -1677,9 +1686,9 @@ export default function Home() {
               {loadingAlerts ? (
                 <>
                   {[1, 2, 3].map((i) => (
-                    <div key={i} className="bg-background rounded-lg p-2.5 animate-pulse">
-                      <div className="h-3 bg-surface rounded w-3/4 mb-1" />
-                      <div className="h-2 bg-surface rounded w-1/2" />
+                    <div key={i} className="bg-surface rounded-lg border border-card/60 p-2.5 animate-pulse">
+                      <div className="h-3 bg-card/60 rounded w-3/4 mb-1" />
+                      <div className="h-2 bg-card/60 rounded w-1/2" />
                     </div>
                   ))}
                 </>
@@ -1698,6 +1707,8 @@ export default function Home() {
                       )
                     : ''
 
+                  const linhaSemanticaClass = getLinhaSemanticaClass(item)
+
                   return (
                     <a
                       key={item.id}
@@ -1707,20 +1718,22 @@ export default function Home() {
                       rel="noopener noreferrer"
                       className={`relative block p-2.5 rounded-lg transition-all duration-200 ease-out hover:shadow-sm hover:-translate-y-[1px] fade-in ${
                         isFeatured
-                          ? 'bg-[#FFF7ED] border border-amber-200/70'
+                          ? 'bg-[#FFF7ED] border border-[#F6D6A3]'
                           : isHighRisk
                             ? 'bg-red-500/[0.03] border border-red-500/10 hover:border-red-500/20'
-                            : 'bg-background hover:bg-background/80'
+                            : 'bg-surface hover:bg-surface'
                       }`}
                     >
-                      <span className={`absolute left-0 top-0 bottom-0 w-[3px] rounded-l-lg ${getLinhaSemanticaClass(item)}`} />
+                      {linhaSemanticaClass && (
+                        <span className={`absolute left-0 top-0 bottom-0 w-[3px] rounded-l-lg ${linhaSemanticaClass}`} />
+                      )}
                       <div className="flex items-start gap-2">
                         <span className={`w-1.5 h-1.5 rounded-full mt-1.5 flex-shrink-0 ${sentimentDot}`} />
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center gap-1.5 mb-0.5">
                             <span className="text-[9px] uppercase tracking-wide text-secondary/90">{getContextoMonitor(item)}</span>
                             {isFeatured && (
-                              <span className="px-1.5 py-0.5 text-[9px] rounded border border-amber-300/70 text-amber-700 bg-amber-100/60">
+                              <span className="px-1.5 py-0.5 text-[9px] rounded border border-accent-gold/20 text-accent-gold bg-accent-gold-soft">
                                 Destaque
                               </span>
                             )}
@@ -2370,7 +2383,7 @@ export default function Home() {
         <div className="fixed inset-0 z-50 bg-background flex flex-col">
           <div className="bg-surface border-b border-card p-4 flex items-center justify-between">
             <h2 className="text-xl font-semibold text-text-primary flex items-center gap-2">
-              <Activity className="w-5 h-5 text-secondary" />
+              <Activity className="w-5 h-5 text-accent-gold" />
               Monitor de Imprensa
               {monitorNewsOrdenadas.length > 0 && (
                 <span className="flex items-center gap-1 text-xs text-secondary font-normal">
@@ -2468,6 +2481,8 @@ export default function Home() {
                         )
                       : ''
 
+                    const linhaSemanticaClass = getLinhaSemanticaClass(item)
+
                     return (
                       <a
                         key={item.id}
@@ -2477,20 +2492,22 @@ export default function Home() {
                         rel="noopener noreferrer"
                         className={`relative block p-4 rounded-xl border transition-all duration-200 ease-out hover:shadow-[0_4px_12px_rgba(0,0,0,0.06)] hover:-translate-y-[1px] fade-in ${
                           isFeatured
-                            ? 'bg-[#FFF7ED] border-amber-200'
+                            ? 'bg-[#FFF7ED] border-[#F6D6A3]'
                             : isHighRisk
                               ? 'bg-red-500/[0.02] border-red-500/15 hover:border-red-500/25'
-                              : 'bg-surface border-card hover:border-card'
+                            : 'bg-surface'
                         }`}
                       >
-                        <span className={`absolute left-0 top-0 bottom-0 w-[3px] rounded-l-xl ${getLinhaSemanticaClass(item)}`} />
+                        {linhaSemanticaClass && (
+                          <span className={`absolute left-0 top-0 bottom-0 w-[3px] rounded-l-xl ${linhaSemanticaClass}`} />
+                        )}
                         <div className="flex items-start gap-3">
                           <span className={`w-2 h-2 rounded-full mt-1.5 flex-shrink-0 ${sentimentDot}`} />
                           <div className="min-w-0 flex-1">
                             <div className="flex items-center gap-2 mb-1">
                               <span className="text-[10px] uppercase tracking-wide text-secondary">{getContextoMonitor(item)}</span>
                               {isFeatured && (
-                                <span className="px-1.5 py-0.5 text-[10px] rounded border border-amber-300/70 text-amber-700 bg-amber-100/60">
+                                <span className="px-1.5 py-0.5 text-[10px] rounded border border-accent-gold/20 text-accent-gold bg-accent-gold-soft">
                                   Destaque
                                 </span>
                               )}

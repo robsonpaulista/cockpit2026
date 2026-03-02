@@ -18,8 +18,8 @@ interface KPIHeroCardProps {
   infoLines?: InfoLine[]
   href?: string
   hideValueByDefault?: boolean
-  cenarioVotos?: 'aferido_jadyel' | 'promessa_lideranca'
-  onChangeCenarioVotos?: (cenario: 'aferido_jadyel' | 'promessa_lideranca') => void
+  cenarioVotos?: 'aferido_jadyel' | 'promessa_lideranca' | 'legado_anterior'
+  onChangeCenarioVotos?: (cenario: 'aferido_jadyel' | 'promessa_lideranca' | 'legado_anterior') => void
 }
 
 export function KPIHeroCard({
@@ -92,7 +92,7 @@ export function KPIHeroCard({
 
   const handleChangeCenario = (
     event: MouseEvent<HTMLButtonElement>,
-    cenario: 'aferido_jadyel' | 'promessa_lideranca'
+    cenario: 'aferido_jadyel' | 'promessa_lideranca' | 'legado_anterior'
   ) => {
     event.stopPropagation()
     event.preventDefault()
@@ -187,6 +187,20 @@ export function KPIHeroCard({
                   aria-label="Visão Lideranças"
                 >
                   L
+                </button>
+                <button
+                  type="button"
+                  onClick={(event) => handleChangeCenario(event, 'legado_anterior')}
+                  className={cn(
+                    'px-1.5 py-0.5 text-[10px] font-semibold transition-colors',
+                    cenarioVotos === 'legado_anterior'
+                      ? 'bg-white text-accent-gold'
+                      : 'text-white/85 hover:bg-white/20'
+                  )}
+                  title="Visão Anterior"
+                  aria-label="Visão Anterior"
+                >
+                  A
                 </button>
               </div>
             )}

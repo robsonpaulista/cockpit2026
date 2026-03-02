@@ -5,6 +5,7 @@ export const dynamic = 'force-dynamic'
 type ResumoCidade = {
   expectativaVotos: number
   promessaVotos: number
+  expectativaLegadoVotos: number
   votacaoFinal2022: number
   liderancas: number
 }
@@ -15,6 +16,7 @@ type LiderancaResumo = {
   projecaoVotos: number
   projecaoAferida: number
   projecaoPromessa: number
+  projecaoLegado: number
 }
 
 type CitySummaryCache = {
@@ -25,7 +27,7 @@ type CitySummaryCache = {
 }
 
 const CACHE_TTL_MS = 10 * 60 * 1000
-const CACHE_SCHEMA_VERSION = 'v3-expectativa-promessa-2026'
+const CACHE_SCHEMA_VERSION = 'v4-expectativa-promessa-legado-2026'
 let citySummaryCache: CitySummaryCache | null = null
 
 // Função auxiliar para formatar a chave privada
@@ -142,12 +144,14 @@ function shouldIncludeRecord(
   liderancaAtualCol: string | undefined,
   expectativaVotosCol: string | undefined,
   promessaVotosCol: string | undefined,
+  expectativaLegadoCol: string | undefined,
   rowData: Record<string, unknown>
 ): boolean {
-  if (!liderancaAtualCol && !expectativaVotosCol && !promessaVotosCol) return true
+  if (!liderancaAtualCol && !expectativaVotosCol && !promessaVotosCol && !expectativaLegadoCol) return true
   if (liderancaAtualCol && isLiderancaAtual(rowData[liderancaAtualCol])) return true
   if (expectativaVotosCol && normalizeNumber(rowData[expectativaVotosCol]) > 0) return true
   if (promessaVotosCol && normalizeNumber(rowData[promessaVotosCol]) > 0) return true
+  if (expectativaLegadoCol && normalizeNumber(rowData[expectativaLegadoCol]) > 0) return true
   return false
 }
 
@@ -158,17 +162,19 @@ function resolveCitySummary(city: string, summaries: Map<string, ResumoCidade>):
     return {
       expectativaVotos: Number(exactMatch.expectativaVotos || 0),
       promessaVotos: Number(exactMatch.promessaVotos || 0),
+      expectativaLegadoVotos: Number(exactMatch.expectativaLegadoVotos || 0),
       votacaoFinal2022: Number(exactMatch.votacaoFinal2022 || 0),
       liderancas: Number(exactMatch.liderancas || 0),
     }
   }
 
-  let fallback: ResumoCidade = { expectativaVotos: 0, promessaVotos: 0, votacaoFinal2022: 0, liderancas: 0 }
+  let fallback: ResumoCidade = { expectativaVotos: 0, promessaVotos: 0, expectativaLegadoVotos: 0, votacaoFinal2022: 0, liderancas: 0 }
   for (const [cityKey, summary] of summaries.entries()) {
     if (cityKey.includes(normalizedCity) || normalizedCity.includes(cityKey)) {
       fallback = {
         expectativaVotos: fallback.expectativaVotos + Number(summary.expectativaVotos || 0),
         promessaVotos: fallback.promessaVotos + Number(summary.promessaVotos || 0),
+        expectativaLegadoVotos: fallback.expectativaLegadoVotos + Number(summary.expectativaLegadoVotos || 0),
         votacaoFinal2022: fallback.votacaoFinal2022 + Number(summary.votacaoFinal2022 || 0),
         liderancas: fallback.liderancas + Number(summary.liderancas || 0),
       }
@@ -231,11 +237,14 @@ async function buildCitySummaries(
     const normalized = h.toLowerCase().trim()
     return /expectativa.*jadyel.*2026/i.test(normalized) ||
       /expectativa.*2026.*jadyel/i.test(normalized) ||
-      /^expectativa\s+de\s+votos\s+2026$/i.test(h) ||
-      /expectativa\s+de\s+votos\s+2026/i.test(h) ||
-      (/expectativa.*votos.*2026/i.test(h) && !/promessa/i.test(h))
+      /aferid[oa].*2026/i.test(normalized)
   })
   const promessaVotosCol = headers.find((h) => /promessa.*lideran[cç]a.*2026/i.test(h))
+  const expectativaLegadoCol = headers.find((h) => {
+    const normalized = h.toLowerCase().trim()
+    return /^expectativa\s+de\s+votos\s+2026$/i.test(h) ||
+      (/expectativa.*votos.*2026/i.test(h) && !/jadyel/i.test(normalized) && !/promessa/i.test(normalized) && !/aferid[oa]/i.test(normalized))
+  })
   const votacaoFinal2022Col = headers.find((h) => {
     const normalized = h.toLowerCase().trim()
     return /votacao\s*final\s*2022|votação\s*final\s*2022|final\s*2022/i.test(normalized)
@@ -256,6 +265,7 @@ async function buildCitySummaries(
   const cidadeIndex = headers.indexOf(cidadeCol)
   const expectativaIndex = expectativaVotosCol ? headers.indexOf(expectativaVotosCol) : -1
   const promessaIndex = promessaVotosCol ? headers.indexOf(promessaVotosCol) : -1
+  const expectativaLegadoIndex = expectativaLegadoCol ? headers.indexOf(expectativaLegadoCol) : -1
   const votacaoFinal2022Index = votacaoFinal2022Col ? headers.indexOf(votacaoFinal2022Col) : -1
   const nomeIndex = headers.indexOf(nomeCol)
   const cargoIndex = cargoCol ? headers.indexOf(cargoCol) : -1
@@ -270,7 +280,7 @@ async function buildCitySummaries(
 
     // Votação Final 2022 precisa refletir o histórico completo da cidade,
     // sem depender do filtro de liderança/expectativa.
-    const current = summaries.get(cidadeValueNormalizada) || { expectativaVotos: 0, promessaVotos: 0, votacaoFinal2022: 0, liderancas: 0 }
+    const current = summaries.get(cidadeValueNormalizada) || { expectativaVotos: 0, promessaVotos: 0, expectativaLegadoVotos: 0, votacaoFinal2022: 0, liderancas: 0 }
     const votacaoFinal2022Valor = votacaoFinal2022Index >= 0 ? normalizeNumber(row[votacaoFinal2022Index]) : 0
     current.votacaoFinal2022 += votacaoFinal2022Valor
 
@@ -278,15 +288,17 @@ async function buildCitySummaries(
     headers.forEach((header, index) => {
       rowData[header] = row[index] || null
     })
-    if (!shouldIncludeRecord(liderancaAtualCol, expectativaVotosCol, promessaVotosCol, rowData)) {
+    if (!shouldIncludeRecord(liderancaAtualCol, expectativaVotosCol, promessaVotosCol, expectativaLegadoCol, rowData)) {
       summaries.set(cidadeValueNormalizada, current)
       return
     }
 
     const expectativaValor = expectativaIndex >= 0 ? normalizeNumber(row[expectativaIndex]) : 0
     const promessaValor = promessaIndex >= 0 ? normalizeNumber(row[promessaIndex]) : 0
+    const expectativaLegadoValor = expectativaLegadoIndex >= 0 ? normalizeNumber(row[expectativaLegadoIndex]) : 0
     current.expectativaVotos += expectativaValor
     current.promessaVotos += promessaValor
+    current.expectativaLegadoVotos += expectativaLegadoValor
     current.liderancas += 1
     summaries.set(cidadeValueNormalizada, current)
 
@@ -301,9 +313,11 @@ async function buildCitySummaries(
       projecaoVotos: 0,
       projecaoAferida: 0,
       projecaoPromessa: 0,
+      projecaoLegado: 0,
     }
     leaderCurrent.projecaoAferida += expectativaValor
     leaderCurrent.projecaoPromessa += promessaValor
+    leaderCurrent.projecaoLegado += expectativaLegadoValor
     // Campo legado mantido por compatibilidade: default para a visão aferida.
     leaderCurrent.projecaoVotos = leaderCurrent.projecaoAferida
     cityLeaders.set(key, leaderCurrent)
@@ -345,9 +359,11 @@ function resolveCityLeaders(city: string, leadersByCity: Map<string, LiderancaRe
         projecaoVotos: 0,
         projecaoAferida: 0,
         projecaoPromessa: 0,
+        projecaoLegado: 0,
       }
       current.projecaoAferida += Number(leader.projecaoAferida || 0)
       current.projecaoPromessa += Number(leader.projecaoPromessa || 0)
+      current.projecaoLegado += Number(leader.projecaoLegado || 0)
       current.projecaoVotos = current.projecaoAferida
       merged.set(key, current)
     }
@@ -401,6 +417,7 @@ export async function POST(request: Request) {
       return NextResponse.json({
         expectativaVotos: 0,
         promessaVotos: 0,
+        expectativaLegadoVotos: 0,
         votacaoFinal2022: 0,
         liderancas: 0,
         message: 'Planilha vazia',
@@ -414,6 +431,7 @@ export async function POST(request: Request) {
       cidade,
       expectativaVotos: Math.round(citySummary.expectativaVotos),
       promessaVotos: Math.round(citySummary.promessaVotos),
+      expectativaLegadoVotos: Math.round(citySummary.expectativaLegadoVotos || 0),
       votacaoFinal2022: Math.round(citySummary.votacaoFinal2022),
       liderancas: citySummary.liderancas,
       liderancasDetalhe: cityLeaders.map((leader) => ({
@@ -422,6 +440,7 @@ export async function POST(request: Request) {
         projecaoVotos: Math.round(leader.projecaoVotos),
         projecaoAferida: Math.round(leader.projecaoAferida || 0),
         projecaoPromessa: Math.round(leader.projecaoPromessa || 0),
+        projecaoLegado: Math.round(leader.projecaoLegado || 0),
       })),
     })
   } catch (error: any) {
