@@ -1200,6 +1200,18 @@ export default function ResumoEleicoesPage() {
         : percentualPesquisaVsCenario > 0
           ? 'Acima do esperado'
           : 'Abaixo do esperado'
+  const statusPesquisaCurto =
+    percentualPesquisaVsCenario === null
+      ? 'Sem base'
+      : percentualPesquisaVsCenario > 0
+        ? `Acima (+${percentualPesquisaVsCenario.toFixed(1).replace('.', ',')}%)`
+        : percentualPesquisaVsCenario < 0
+          ? `Abaixo (${percentualPesquisaVsCenario.toFixed(1).replace('.', ',')}%)`
+          : 'No alvo (0,0%)'
+  const resumoPesquisaCard =
+    votosProporcionaisPesquisaRecente !== null
+      ? `Prop.: ${votosProporcionaisPesquisaRecente.toLocaleString('pt-BR')} | Expectativa: ${votosCenarioAtivo.toLocaleString('pt-BR')} | ${statusPesquisaCurto}`
+      : `Sem proporcional para ${labelCenarioAtivo}`
   const summaryCardBaseClass =
     'rounded-[14px] border border-border-card bg-bg-surface p-3 relative overflow-hidden shadow-[0_1px_3px_rgba(0,0,0,0.06)] hover:shadow-[0_8px_24px_rgba(0,0,0,0.08)] hover:-translate-y-[2px] transition-all duration-300 ease-out h-full'
   const summaryIconWrapClass =
@@ -1382,20 +1394,25 @@ export default function ResumoEleicoesPage() {
                     Pesquisas
                   </p>
                 </div>
-                <p className="text-2xl font-bold text-text-primary group-hover:text-accent-gold transition-colors">
-                  {pesquisaRecenteCidade ? `${pesquisaRecenteCidade.intencao.toFixed(1).replace('.', ',')}%` : '-'}
-                </p>
-                <p className={summaryMetaClass}>
-                  {pesquisaRecenteCidade
-                    ? `${pesquisaRecenteCidade.data} • ${pesquisaRecenteCidade.instituto}`
-                    : candidatoPadraoPesquisa
+                <div className="flex items-end justify-between gap-2">
+                  <p className="text-2xl font-bold text-text-primary group-hover:text-accent-gold transition-colors">
+                    {pesquisaRecenteCidade ? `${pesquisaRecenteCidade.intencao.toFixed(1).replace('.', ',')}%` : '-'}
+                  </p>
+                  {pesquisaRecenteCidade && (
+                    <p className="text-[11px] text-text-secondary leading-tight text-right">
+                      {pesquisaRecenteCidade.data} • {pesquisaRecenteCidade.instituto}
+                    </p>
+                  )}
+                </div>
+                {!pesquisaRecenteCidade && (
+                  <p className={summaryMetaClass}>
+                    {candidatoPadraoPesquisa
                       ? 'Sem pesquisa recente para o candidato padrão'
                       : 'Defina o candidato padrão em Pesquisa & Relato'}
-                </p>
-                <p className="text-[10px] mt-0.5 text-text-secondary truncate">
-                  {votosProporcionaisPesquisaRecente !== null
-                    ? `Proporcional: ${votosProporcionaisPesquisaRecente.toLocaleString('pt-BR')} | ${labelCenarioAtivo}: ${votosCenarioAtivo.toLocaleString('pt-BR')} | ${statusPesquisaRecente}`
-                    : `Proporcional indisponível para o cenário ${labelCenarioAtivo}`}
+                  </p>
+                )}
+                <p className="text-[10px] mt-1 text-text-secondary leading-tight">
+                  {resumoPesquisaCard}
                 </p>
                 <Link
                   href={`/dashboard/pesquisa?cidade=${encodeURIComponent(cidade)}#filtros`}
