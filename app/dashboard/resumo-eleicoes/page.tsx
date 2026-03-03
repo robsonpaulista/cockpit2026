@@ -62,6 +62,12 @@ interface LiderancaDetalheResponse {
   projecaoLegado?: number
 }
 
+interface PesquisaRecenteCidade {
+  intencao: number
+  data: string
+  instituto: string
+}
+
 type ResumosCidadeMap = Record<string, { expectativaVotos: number; promessaVotos: number; expectativaLegadoVotos: number; votacaoFinal2022: number; liderancas: number }>
 type PesquisaCitiesMap = Record<string, string>
 type CenarioVotos = 'aferido_jadyel' | 'promessa_lideranca' | 'legado_anterior'
@@ -75,8 +81,9 @@ type ResumoEleicoesSnapshot = {
   filtroPartidoAtivo: string | null
   resumoCidade: ResumoCidade | null
   resumosCidadeMap: ResumosCidadeMap
-  pesquisasCidadeCount: number | null
+  pesquisaRecenteCidade: PesquisaRecenteCidade | null
   pesquisaCitiesMap: PesquisaCitiesMap
+  candidatoPadraoPesquisa: string
   cenarioVotos: CenarioVotos
   simulacaoMapeamento: SimulacaoMapeamento
 }
@@ -225,8 +232,9 @@ export default function ResumoEleicoesPage() {
   const [showLiderancasModal, setShowLiderancasModal] = useState(false)
   const [feedbackMarcacao, setFeedbackMarcacao] = useState<string | null>(null)
   const [mostrarFeedbackMarcacao, setMostrarFeedbackMarcacao] = useState(false)
-  const [pesquisasCidadeCount, setPesquisasCidadeCount] = useState<number | null>(null)
+  const [pesquisaRecenteCidade, setPesquisaRecenteCidade] = useState<PesquisaRecenteCidade | null>(null)
   const [pesquisaCitiesMap, setPesquisaCitiesMap] = useState<PesquisaCitiesMap>({})
+  const [candidatoPadraoPesquisa, setCandidatoPadraoPesquisa] = useState<string>('')
   const [cenarioVotos, setCenarioVotos] = useState<CenarioVotos>('aferido_jadyel')
   const [showSimulacaoModal, setShowSimulacaoModal] = useState(false)
   const [simulacaoMapeamento, setSimulacaoMapeamento] = useState<SimulacaoMapeamento>({})
@@ -439,26 +447,55 @@ export default function ResumoEleicoesPage() {
     }
   }
 
-  const carregarContagemPesquisasCidade = async (cidadeAlvo: string): Promise<void> => {
+  const formatarDataPesquisa = (dataRaw: string): string => {
+    const base = String(dataRaw || '')
+    const normalizada = base.includes('T') ? base.split('T')[0] : base
+    const partes = normalizada.split('-')
+    if (partes.length === 3) return `${partes[2]}/${partes[1]}`
+    return normalizada || '-'
+  }
+
+  const carregarPesquisaRecenteCidade = async (cidadeAlvo: string): Promise<void> => {
     const cityKey = normalizeCityName(cidadeAlvo)
     if (!cityKey) {
-      setPesquisasCidadeCount(0)
+      setPesquisaRecenteCidade(null)
+      return
+    }
+
+    if (!candidatoPadraoPesquisa) {
+      setPesquisaRecenteCidade(null)
       return
     }
 
     const cidadeId = pesquisaCitiesMap[cityKey]
     if (!cidadeId) {
-      setPesquisasCidadeCount(0)
+      setPesquisaRecenteCidade(null)
       return
     }
 
     try {
-      const res = await fetch(`/api/pesquisa?count_only=true&cidade_id=${encodeURIComponent(cidadeId)}`)
+      const res = await fetch(`/api/pesquisa?cidade_id=${encodeURIComponent(cidadeId)}&limit=300`)
       const json = await res.json()
-      if (!res.ok) throw new Error(json.error || 'Erro ao contar pesquisas')
-      setPesquisasCidadeCount(Number(json.count || 0))
+      if (!res.ok || !Array.isArray(json)) throw new Error('Erro ao buscar pesquisas da cidade')
+
+      const candidatoNormalizado = normalizeText(candidatoPadraoPesquisa)
+      const pollMaisRecente = json.find((poll: Record<string, unknown>) => {
+        const candidato = normalizeText(String(poll.candidato_nome || ''))
+        return candidato === candidatoNormalizado
+      }) as Record<string, unknown> | undefined
+
+      if (!pollMaisRecente) {
+        setPesquisaRecenteCidade(null)
+        return
+      }
+
+      setPesquisaRecenteCidade({
+        intencao: Number(pollMaisRecente.intencao || 0),
+        data: formatarDataPesquisa(String(pollMaisRecente.data || '')),
+        instituto: String(pollMaisRecente.instituto || 'Não informado'),
+      })
     } catch {
-      setPesquisasCidadeCount(0)
+      setPesquisaRecenteCidade(null)
     }
   }
 
@@ -517,8 +554,9 @@ export default function ResumoEleicoesPage() {
       filtroPartidoAtivo,
       resumoCidade,
       resumosCidadeMap,
-      pesquisasCidadeCount,
+      pesquisaRecenteCidade,
       pesquisaCitiesMap,
+      candidatoPadraoPesquisa,
       cenarioVotos,
       simulacaoMapeamento,
     }
@@ -582,8 +620,9 @@ export default function ResumoEleicoesPage() {
           : null
       )
       setResumosCidadeMap(parsed.resumosCidadeMap || {})
-      setPesquisasCidadeCount(parsed.pesquisasCidadeCount ?? null)
+      setPesquisaRecenteCidade(parsed.pesquisaRecenteCidade || null)
       setPesquisaCitiesMap(parsed.pesquisaCitiesMap || {})
+      setCandidatoPadraoPesquisa(parsed.candidatoPadraoPesquisa || '')
       setCenarioVotos(
         parsed.cenarioVotos === 'promessa_lideranca' || parsed.cenarioVotos === 'legado_anterior'
           ? parsed.cenarioVotos
@@ -622,6 +661,12 @@ export default function ResumoEleicoesPage() {
       mounted = false
     }
   }, [restaurouEstadoRetorno, cidades.length])
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const candidatoSalvo = localStorage.getItem('candidatoPadraoPesquisa') || ''
+    setCandidatoPadraoPesquisa(candidatoSalvo)
+  }, [])
 
   useEffect(() => {
     let active = true
@@ -688,8 +733,8 @@ export default function ResumoEleicoesPage() {
   useEffect(() => {
     if (!buscaIniciada || !cidade || dados.length === 0) return
     if (Object.keys(pesquisaCitiesMap).length === 0) return
-    void carregarContagemPesquisasCidade(cidade)
-  }, [buscaIniciada, cidade, dados.length, pesquisaCitiesMap])
+    void carregarPesquisaRecenteCidade(cidade)
+  }, [buscaIniciada, cidade, dados.length, pesquisaCitiesMap, candidatoPadraoPesquisa])
 
   const buscarDados = async () => {
     if (!cidade) return
@@ -704,7 +749,7 @@ export default function ResumoEleicoesPage() {
     setShowLiderancasModal(false)
     setFeedbackMarcacao(null)
     setMostrarFeedbackMarcacao(false)
-    setPesquisasCidadeCount(null)
+    setPesquisaRecenteCidade(null)
     setCurrentPage({
       deputado_estadual: 1,
       deputado_federal: 1,
@@ -720,7 +765,7 @@ export default function ResumoEleicoesPage() {
       setDados(Array.isArray(json.resultados) ? json.resultados : [])
       await carregarPresidenteCamara(cidade)
       void carregarResumoCidade(cidade)
-      void carregarContagemPesquisasCidade(cidade)
+      void carregarPesquisaRecenteCidade(cidade)
       void carregarSimulacaoCidade(cidade)
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Erro ao buscar resultados')
@@ -1137,6 +1182,24 @@ export default function ResumoEleicoesPage() {
     resumoCidade && resumoCidade.eleitores && resumoCidade.eleitores > 0
       ? (votosCenarioAtivo / resumoCidade.eleitores) * 100
       : null
+  const votosProporcionaisPesquisaRecente =
+    pesquisaRecenteCidade && resumoCidade?.eleitores && resumoCidade.eleitores > 0
+      ? Math.round((pesquisaRecenteCidade.intencao / 100) * resumoCidade.eleitores)
+      : null
+  const diferencaPesquisaVsCenario =
+    votosProporcionaisPesquisaRecente !== null ? votosProporcionaisPesquisaRecente - votosCenarioAtivo : null
+  const percentualPesquisaVsCenario =
+    diferencaPesquisaVsCenario !== null && votosCenarioAtivo > 0
+      ? (diferencaPesquisaVsCenario / votosCenarioAtivo) * 100
+      : null
+  const statusPesquisaRecente =
+    percentualPesquisaVsCenario === null
+      ? 'Sem base'
+      : Math.abs(percentualPesquisaVsCenario) <= 10
+        ? 'Dentro do padrão'
+        : percentualPesquisaVsCenario > 0
+          ? 'Acima do esperado'
+          : 'Abaixo do esperado'
   const summaryCardBaseClass =
     'rounded-[14px] border border-border-card bg-bg-surface p-3 relative overflow-hidden shadow-[0_1px_3px_rgba(0,0,0,0.06)] hover:shadow-[0_8px_24px_rgba(0,0,0,0.08)] hover:-translate-y-[2px] transition-all duration-300 ease-out h-full'
   const summaryIconWrapClass =
@@ -1320,7 +1383,19 @@ export default function ResumoEleicoesPage() {
                   </p>
                 </div>
                 <p className="text-2xl font-bold text-text-primary group-hover:text-accent-gold transition-colors">
-                  {(pesquisasCidadeCount ?? 0).toLocaleString('pt-BR')}
+                  {pesquisaRecenteCidade ? `${pesquisaRecenteCidade.intencao.toFixed(1).replace('.', ',')}%` : '-'}
+                </p>
+                <p className={summaryMetaClass}>
+                  {pesquisaRecenteCidade
+                    ? `${pesquisaRecenteCidade.data} • ${pesquisaRecenteCidade.instituto}`
+                    : candidatoPadraoPesquisa
+                      ? 'Sem pesquisa recente para o candidato padrão'
+                      : 'Defina o candidato padrão em Pesquisa & Relato'}
+                </p>
+                <p className="text-[10px] mt-0.5 text-text-secondary truncate">
+                  {votosProporcionaisPesquisaRecente !== null
+                    ? `Proporcional: ${votosProporcionaisPesquisaRecente.toLocaleString('pt-BR')} | ${labelCenarioAtivo}: ${votosCenarioAtivo.toLocaleString('pt-BR')} | ${statusPesquisaRecente}`
+                    : `Proporcional indisponível para o cenário ${labelCenarioAtivo}`}
                 </p>
                 <Link
                   href={`/dashboard/pesquisa?cidade=${encodeURIComponent(cidade)}#filtros`}
