@@ -37,6 +37,11 @@ const trendData = [
 
 export default function Home() {
   type CenarioVotos = 'aferido_jadyel' | 'promessa_lideranca' | 'legado_anterior'
+  type ExpectativasCidade = {
+    aferido: number
+    promessa: number
+    anterior: number
+  }
   const [kpis, setKpis] = useState<KPI[]>(mockKPIs)
   const [loading, setLoading] = useState(true)
   const [pollsData, setPollsData] = useState<Array<{ date: string; intencao: number; instituto?: string; cidade?: string }>>([])
@@ -106,7 +111,7 @@ export default function Home() {
   // Monitor de Imprensa — auto-scroll
   const monitorScrollRef = useRef<HTMLDivElement>(null)
   const [monitorPaused, setMonitorPaused] = useState<boolean>(false)
-  const [expectativasPorCidade, setExpectativasPorCidade] = useState<Record<string, number>>({})
+  const [expectativasPorCidade, setExpectativasPorCidade] = useState<Record<string, ExpectativasCidade>>({})
   const [cenarioVotosDashboard, setCenarioVotosDashboard] = useState<CenarioVotos>('aferido_jadyel')
 
   // Agente de IA: só monta quando o usuário clicar (evita recarregar dados ao navegar entre páginas)
@@ -381,6 +386,20 @@ export default function Home() {
     localStorage.setItem('dashboard_cenario_votos_2026', cenarioVotosDashboard)
   }, [cenarioVotosDashboard])
 
+  const getLabelExpectativaCenario = (): string => {
+    if (cenarioVotosDashboard === 'promessa_lideranca') return 'Promessa (Território & Base)'
+    if (cenarioVotosDashboard === 'legado_anterior') return 'Anterior (Território & Base)'
+    return 'Aferido (Território & Base)'
+  }
+
+  const getExpectativaCidadeAtiva = (cidade: string): number => {
+    const valores = expectativasPorCidade[cidade]
+    if (!valores) return 0
+    if (cenarioVotosDashboard === 'promessa_lideranca') return valores.promessa || 0
+    if (cenarioVotosDashboard === 'legado_anterior') return valores.anterior || 0
+    return valores.aferido || 0
+  }
+
   // Buscar histórico quando candidato padrão mudar
   useEffect(() => {
     const fetchHistoricoIntencao = async (candidato: string) => {
@@ -423,7 +442,7 @@ export default function Home() {
           }
           
           if (config && cidadesUnicas.size > 0) {
-            const expectativas: Record<string, number> = {}
+            const expectativas: Record<string, ExpectativasCidade> = {}
             
             await Promise.all(
               Array.from(cidadesUnicas).map(async (cidade) => {
@@ -447,7 +466,11 @@ export default function Home() {
                   
                   if (expectativaResponse.ok) {
                     const expectativaData = await expectativaResponse.json()
-                    expectativas[cidade] = expectativaData.expectativaVotos || 0
+                    expectativas[cidade] = {
+                      aferido: Number(expectativaData.expectativaVotos || 0),
+                      promessa: Number(expectativaData.promessaVotos || 0),
+                      anterior: Number(expectativaData.expectativaLegadoVotos || 0),
+                    }
                   }
                 } catch (error) {
                   // Erro silencioso
@@ -1361,12 +1384,13 @@ export default function Home() {
                             const data = payload[0].payload as { date: string; intencao: number; instituto?: string; cidade?: string }
                             const intencaoPercent = data.intencao || 0
                             const cidade = data.cidade && data.cidade !== 'Estado' && data.cidade !== 'Cidade não encontrada' ? data.cidade : null
+                            const labelExpectativa = getLabelExpectativaCenario()
                             
                             // Calcular feedback comparativo
                             let feedbackText = null
                             if (cidade) {
                               const eleitorado = getEleitoradoByCity(cidade)
-                              const expectativaVotos = expectativasPorCidade[cidade] || 0
+                              const expectativaVotos = getExpectativaCidadeAtiva(cidade)
                               
                               if (eleitorado && eleitorado > 0) {
                                 const votosProporcionais = Math.round((intencaoPercent / 100) * eleitorado)
@@ -1439,7 +1463,7 @@ export default function Home() {
                                         {feedbackText.expectativaVotos !== null && (
                                           <>
                                             <p className="text-xs text-secondary mb-1">
-                                              <span className="font-medium">Expectativa (Território & Base):</span> {feedbackText.expectativaVotos.toLocaleString('pt-BR')} votos
+                                              <span className="font-medium">{labelExpectativa}:</span> {feedbackText.expectativaVotos.toLocaleString('pt-BR')} votos
                                             </p>
                                             <p className={`text-xs font-medium mt-2 pt-2 border-t border-gray-100 ${
                                               feedbackText.status === 'success' ? 'text-green-600' :
@@ -2686,12 +2710,13 @@ export default function Home() {
                           const data = payload[0].payload as { date: string; intencao: number; instituto?: string; cidade?: string }
                           const intencaoPercent = data.intencao || 0
                           const cidade = data.cidade && data.cidade !== 'Estado' && data.cidade !== 'Cidade não encontrada' ? data.cidade : null
+                          const labelExpectativa = getLabelExpectativaCenario()
                           
                           // Calcular feedback comparativo
                           let feedbackText = null
                           if (cidade) {
                             const eleitorado = getEleitoradoByCity(cidade)
-                            const expectativaVotos = expectativasPorCidade[cidade] || 0
+                            const expectativaVotos = getExpectativaCidadeAtiva(cidade)
                             
                             if (eleitorado && eleitorado > 0) {
                               const votosProporcionais = Math.round((intencaoPercent / 100) * eleitorado)
@@ -2764,7 +2789,7 @@ export default function Home() {
                                       {feedbackText.expectativaVotos !== null && (
                                         <>
                                           <p className="text-xs text-secondary mb-1">
-                                            <span className="font-medium">Expectativa (Território & Base):</span> {feedbackText.expectativaVotos.toLocaleString('pt-BR')} votos
+                                            <span className="font-medium">{labelExpectativa}:</span> {feedbackText.expectativaVotos.toLocaleString('pt-BR')} votos
                                           </p>
                                           <p className={`text-xs font-medium mt-2 pt-2 border-t border-gray-100 ${
                                             feedbackText.status === 'success' ? 'text-green-600' :
