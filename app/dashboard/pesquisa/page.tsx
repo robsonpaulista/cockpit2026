@@ -517,6 +517,15 @@ export default function PesquisaPage() {
     }
   })()
 
+  const linhasTabelaResumo = [...pesquisasResumoCandidato]
+    .sort((a, b) => toDateMs(b.data) - toDateMs(a.data))
+    .map((poll) => ({
+      cidade: poll.cities?.name || 'Estado',
+      instituto: poll.instituto || '-',
+      intencao: poll.intencao || 0,
+      data: formatDate(poll.data),
+    }))
+
   return (
     <div className="min-h-screen bg-background">
 
@@ -915,6 +924,34 @@ export default function PesquisaPage() {
               <p className="text-xs text-secondary">
                 Cobertura: {resumoDesempenho.institutos} instituto(s), {resumoDesempenho.cidades} cidade(s) e {resumoDesempenho.totalRegistros} registro(s) do candidato {candidatoPadrao}.
               </p>
+
+              <div className="rounded-xl border border-card overflow-hidden">
+                <div className="px-3 py-2 bg-background border-b border-card">
+                  <p className="text-xs font-medium text-text-secondary">Detalhamento das pesquisas do candidato</p>
+                </div>
+                <div className="max-h-56 overflow-auto">
+                  <table className="w-full text-xs">
+                    <thead>
+                      <tr>
+                        <th className="text-left py-2 px-3 bg-background">Cidade</th>
+                        <th className="text-left py-2 px-3 bg-background">Instituto</th>
+                        <th className="text-right py-2 px-3 bg-background">%</th>
+                        <th className="text-right py-2 px-3 bg-background">Data</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {linhasTabelaResumo.map((linha, index) => (
+                        <tr key={`${linha.data}-${linha.instituto}-${index}`} className="border-b border-card last:border-b-0">
+                          <td className="py-1.5 px-3 text-text-primary">{linha.cidade}</td>
+                          <td className="py-1.5 px-3 text-text-primary">{linha.instituto}</td>
+                          <td className="py-1.5 px-3 text-right font-semibold text-accent-gold">{linha.intencao.toFixed(1)}%</td>
+                          <td className="py-1.5 px-3 text-right text-text-secondary">{linha.data}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
             </div>
           )}
         </div>
