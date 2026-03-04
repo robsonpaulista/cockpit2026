@@ -245,17 +245,14 @@ export default function Home() {
   const monitorNewsOrdenadas = useMemo(() => {
     if (monitorNews.length === 0) return []
 
-    const featuredIds = monitorFeaturedNewsIds.slice(0, 3)
-    if (featuredIds.length === 0) return monitorNews
-
-    const featuredItems = featuredIds
-      .map((id) => monitorNews.find((item) => item.id === id))
-      .filter((item): item is NewsItem => Boolean(item))
-
-    if (featuredItems.length === 0) return monitorNews
-
-    return [...featuredItems, ...monitorNews.filter((item) => !featuredIds.includes(item.id))]
-  }, [monitorNews, monitorFeaturedNewsIds])
+    // Ordem cronológica sempre prevalece no monitor:
+    // mais recente -> mais antiga, independente de destaque.
+    return [...monitorNews].sort((a, b) => {
+      const dateA = new Date(a.published_at || a.collected_at || 0).getTime()
+      const dateB = new Date(b.published_at || b.collected_at || 0).getTime()
+      return dateB - dateA
+    })
+  }, [monitorNews])
 
   const monitorFeaturedItems = monitorNewsOrdenadas.filter((item) => monitorFeaturedNewsIds.includes(item.id)).slice(0, 3)
   const monitorHeaderContext =

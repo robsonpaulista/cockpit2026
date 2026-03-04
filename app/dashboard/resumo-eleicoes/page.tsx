@@ -322,7 +322,7 @@ export default function ResumoEleicoesPage() {
       totalPrefeitoCidade > 0 ? (votosPrefeitoSelecionados / totalPrefeitoCidade) * 100 : null
 
     return [
-      `Penetração (sem prefeito): ${votosPenetracao.toLocaleString('pt-BR')} votos`,
+      `Alcance (sem prefeito): ${votosPenetracao.toLocaleString('pt-BR')} votos`,
       `${formatarPercentual(percentualSobre2026)} de ${labelMeta}`,
       `${formatarPercentual(percentualSobreEleitores)} de Eleitores`,
       `Prefeito: ${votosPrefeitoSelecionados.toLocaleString('pt-BR')} (${formatarPercentual(percentualPrefeito)} do total Prefeito 2024)`,
@@ -1394,12 +1394,12 @@ export default function ResumoEleicoesPage() {
                     Pesquisas
                   </p>
                 </div>
-                <div className="flex items-end justify-between gap-2">
+                <div className="flex items-baseline gap-2">
                   <p className="text-2xl font-bold text-text-primary group-hover:text-accent-gold transition-colors">
                     {pesquisaRecenteCidade ? `${pesquisaRecenteCidade.intencao.toFixed(1).replace('.', ',')}%` : '-'}
                   </p>
                   {pesquisaRecenteCidade && (
-                    <p className="text-[11px] text-text-secondary leading-tight text-right">
+                    <p className="text-[11px] text-text-secondary leading-tight">
                       {pesquisaRecenteCidade.data} • {pesquisaRecenteCidade.instituto}
                     </p>
                   )}

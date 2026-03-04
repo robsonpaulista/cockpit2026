@@ -468,6 +468,54 @@ export default function PesquisaPage() {
   ]
 
   const kpis = calcularKPIs()
+  const pesquisasResumoCandidato = (() => {
+    if (!candidatoPadrao) return []
+    return polls.filter((poll) => poll.candidato_nome === candidatoPadrao)
+  })()
+
+  const toDateMs = (dateStr: string): number => {
+    if (!dateStr) return 0
+    if (dateStr.includes('T')) return new Date(dateStr).getTime()
+    const [year, month, day] = dateStr.split('-').map(Number)
+    if (!year || !month || !day) return 0
+    return new Date(year, month - 1, day).getTime()
+  }
+
+  const resumoDesempenho = (() => {
+    if (pesquisasResumoCandidato.length === 0) return null
+
+    const ordenadas = [...pesquisasResumoCandidato].sort((a, b) => toDateMs(a.data) - toDateMs(b.data))
+    const primeira = ordenadas[0]
+    const ultima = ordenadas[ordenadas.length - 1]
+    const mediaIntencao =
+      ordenadas.reduce((sum, item) => sum + (item.intencao || 0), 0) / Math.max(ordenadas.length, 1)
+    const mediaRejeicao =
+      ordenadas.reduce((sum, item) => sum + (item.rejeicao || 0), 0) / Math.max(ordenadas.length, 1)
+    const melhor = [...ordenadas].sort((a, b) => (b.intencao || 0) - (a.intencao || 0))[0]
+    const pior = [...ordenadas].sort((a, b) => (a.intencao || 0) - (b.intencao || 0))[0]
+    const institutosUnicos = new Set(ordenadas.map((item) => item.instituto).filter(Boolean))
+    const cidadesUnicas = new Set(ordenadas.map((item) => item.cities?.name).filter(Boolean))
+    const pesquisasUnicas = new Set(
+      ordenadas.map((item) => {
+        const dataNormalizada = item.data.includes('T') ? item.data.split('T')[0] : item.data
+        return `${dataNormalizada}_${item.instituto}`
+      })
+    )
+
+    return {
+      totalRegistros: ordenadas.length,
+      totalPesquisasUnicas: pesquisasUnicas.size,
+      mediaIntencao,
+      mediaRejeicao,
+      evolucaoIntencao: (ultima.intencao || 0) - (primeira.intencao || 0),
+      melhor,
+      pior,
+      institutos: institutosUnicos.size,
+      cidades: cidadesUnicas.size,
+      primeiraData: primeira.data,
+      ultimaData: ultima.data,
+    }
+  })()
 
   return (
     <div className="min-h-screen bg-background">
@@ -809,19 +857,66 @@ export default function PesquisaPage() {
             )}
           </div>
 
-        {/* Relato de Rua - Movido para baixo */}
+        {/* Quadro Resumo de Desempenho do Candidato */}
         <div className="bg-surface rounded-2xl border border-card p-6 mb-6">
-          <h2 className="text-lg font-semibold text-text-primary mb-6">Relato de Rua</h2>
-          <div className="space-y-4">
-            <div className="p-4 rounded-xl bg-background">
-              <p className="text-sm font-medium text-text-primary mb-2">Humor do eleitor</p>
-              <p className="text-sm text-secondary">Positivo em 68% das interações</p>
+          <h2 className="text-lg font-semibold text-text-primary mb-6">Resumo de Desempenho</h2>
+          {!candidatoPadrao ? (
+            <p className="text-sm text-secondary">
+              Selecione um candidato padrão para visualizar o resumo consolidado.
+            </p>
+          ) : !resumoDesempenho ? (
+            <p className="text-sm text-secondary">
+              Não há pesquisas registradas para <strong>{candidatoPadrao}</strong>.
+            </p>
+          ) : (
+            <div className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+                <div className="p-3 rounded-xl bg-background border border-card">
+                  <p className="text-xs text-secondary">Pesquisas únicas</p>
+                  <p className="text-xl font-bold text-text-primary">{resumoDesempenho.totalPesquisasUnicas}</p>
+                </div>
+                <div className="p-3 rounded-xl bg-background border border-card">
+                  <p className="text-xs text-secondary">Média de intenção</p>
+                  <p className="text-xl font-bold text-accent-gold">{resumoDesempenho.mediaIntencao.toFixed(1)}%</p>
+                </div>
+                <div className="p-3 rounded-xl bg-background border border-card">
+                  <p className="text-xs text-secondary">Média de rejeição</p>
+                  <p className="text-xl font-bold text-status-error">{resumoDesempenho.mediaRejeicao.toFixed(1)}%</p>
+                </div>
+                <div className="p-3 rounded-xl bg-background border border-card">
+                  <p className="text-xs text-secondary">Evolução (1ª → última)</p>
+                  <p className={`text-xl font-bold ${resumoDesempenho.evolucaoIntencao >= 0 ? 'text-status-success' : 'text-status-error'}`}>
+                    {resumoDesempenho.evolucaoIntencao >= 0 ? '+' : ''}{resumoDesempenho.evolucaoIntencao.toFixed(1)} p.p.
+                  </p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div className="p-3 rounded-xl bg-background border border-card">
+                  <p className="text-xs text-secondary mb-1">Melhor desempenho</p>
+                  <p className="text-sm font-semibold text-text-primary">
+                    {resumoDesempenho.melhor.intencao.toFixed(1)}% • {formatDate(resumoDesempenho.melhor.data)}
+                  </p>
+                  <p className="text-xs text-secondary">
+                    {resumoDesempenho.melhor.instituto} {resumoDesempenho.melhor.cities?.name ? `• ${resumoDesempenho.melhor.cities.name}` : ''}
+                  </p>
+                </div>
+                <div className="p-3 rounded-xl bg-background border border-card">
+                  <p className="text-xs text-secondary mb-1">Menor desempenho</p>
+                  <p className="text-sm font-semibold text-text-primary">
+                    {resumoDesempenho.pior.intencao.toFixed(1)}% • {formatDate(resumoDesempenho.pior.data)}
+                  </p>
+                  <p className="text-xs text-secondary">
+                    {resumoDesempenho.pior.instituto} {resumoDesempenho.pior.cities?.name ? `• ${resumoDesempenho.pior.cities.name}` : ''}
+                  </p>
+                </div>
+              </div>
+
+              <p className="text-xs text-secondary">
+                Cobertura: {resumoDesempenho.institutos} instituto(s), {resumoDesempenho.cidades} cidade(s) e {resumoDesempenho.totalRegistros} registro(s) do candidato {candidatoPadrao}.
+              </p>
             </div>
-            <div className="p-4 rounded-xl bg-background">
-              <p className="text-sm font-medium text-text-primary mb-2">Frases recorrentes</p>
-              <p className="text-sm text-secondary">"Precisa melhorar saúde"</p>
-            </div>
-          </div>
+          )}
         </div>
 
         {/* Lista de Pesquisas */}
