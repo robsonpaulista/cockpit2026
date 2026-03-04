@@ -228,8 +228,9 @@ export default function PesquisaPage() {
     }
   }
 
-  const fetchPolls = async () => {
-    setLoading(true)
+  const fetchPolls = async (options?: { silent?: boolean }) => {
+    const silent = Boolean(options?.silent)
+    if (!silent) setLoading(true)
     try {
       const response = await fetch('/api/pesquisa')
       if (response.ok) {
@@ -239,7 +240,7 @@ export default function PesquisaPage() {
     } catch (error) {
       console.error('Erro ao buscar pesquisas:', error)
     } finally {
-      setLoading(false)
+      if (!silent) setLoading(false)
     }
   }
 

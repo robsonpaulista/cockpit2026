@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { X, Save } from 'lucide-react'
 
 interface City {
@@ -24,7 +24,7 @@ interface Poll {
 interface PollModalProps {
   poll: Poll | null
   onClose: () => void
-  onUpdate: () => void
+  onUpdate: (options?: { silent?: boolean }) => void | Promise<void>
 }
 
 const cargoOptions = [
@@ -56,6 +56,7 @@ export function PollModal({ poll, onClose, onUpdate }: PollModalProps) {
   const [loadingCities, setLoadingCities] = useState(true)
   const [submitting, setSubmitting] = useState(false)
   const [candidatosExistentes, setCandidatosExistentes] = useState<string[]>([])
+  const candidatoInputRef = useRef<HTMLInputElement | null>(null)
 
   useEffect(() => {
     fetchCities()
@@ -177,7 +178,7 @@ export function PollModal({ poll, onClose, onUpdate }: PollModalProps) {
       })
 
       if (response.ok) {
-        onUpdate()
+        await Promise.resolve(onUpdate({ silent: !poll?.id }))
         
         // Atualizar lista de candidatos existentes após salvar
         await fetchCandidatosExistentes()
@@ -186,14 +187,16 @@ export function PollModal({ poll, onClose, onUpdate }: PollModalProps) {
         if (poll?.id) {
           onClose()
         } else {
-          // Se for nova pesquisa, manter os dados e limpar apenas candidato e valores
-          setFormData({
-            ...formData,
+          // Se for nova pesquisa, manter o modal aberto e limpar apenas os campos variáveis.
+          setFormData((prev) => ({
+            ...prev,
             candidato_nome: '',
             intencao: 0,
             rejeicao: 0,
-          })
-          // Não fechar o modal, permitir cadastrar outro candidato
+          }))
+          setTimeout(() => {
+            candidatoInputRef.current?.focus()
+          }, 0)
         }
       } else {
         const error = await response.json()
@@ -259,6 +262,7 @@ export function PollModal({ poll, onClose, onUpdate }: PollModalProps) {
             <input
               type="text"
               list="candidatos-list"
+              ref={candidatoInputRef}
               value={formData.candidato_nome}
               onChange={(e) => setFormData({ ...formData, candidato_nome: e.target.value })}
               placeholder="Digite ou selecione um candidato existente"
