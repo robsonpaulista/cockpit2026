@@ -40,6 +40,8 @@ const tipoLabels: Record<string, string> = {
   espontanea: 'Espontânea',
 }
 
+const POLLS_FETCH_LIMIT = 5000
+
 // Função para distribuir rótulos evitando sobreposição
 function distributeY(labels: { name: string; color: string; y: number }[], minGap = 14) {
   // Evita sobreposição (simples e eficiente)
@@ -232,7 +234,7 @@ export default function PesquisaPage() {
     const silent = Boolean(options?.silent)
     if (!silent) setLoading(true)
     try {
-      const response = await fetch('/api/pesquisa')
+      const response = await fetch(`/api/pesquisa?limit=${POLLS_FETCH_LIMIT}`)
       if (response.ok) {
         const data = await response.json()
         setPolls(data)

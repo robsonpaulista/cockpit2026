@@ -40,6 +40,8 @@ const tipoOptions = [
   { value: 'espontanea', label: 'Espontânea' },
 ]
 
+const POLLS_FETCH_LIMIT = 5000
+
 export function PollModal({ poll, onClose, onUpdate }: PollModalProps) {
   const [formData, setFormData] = useState<Poll>({
     data: '',
@@ -137,7 +139,7 @@ export function PollModal({ poll, onClose, onUpdate }: PollModalProps) {
 
   const fetchCandidatosExistentes = async () => {
     try {
-      const response = await fetch('/api/pesquisa')
+      const response = await fetch(`/api/pesquisa?limit=${POLLS_FETCH_LIMIT}`)
       if (response.ok) {
         const data = await response.json()
         // Extrair nomes únicos de candidatos, ordenados alfabeticamente
