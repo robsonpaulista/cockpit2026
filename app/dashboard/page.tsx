@@ -101,6 +101,7 @@ export default function Home() {
   const [rankingPesquisas, setRankingPesquisas] = useState<{ posicao: number; totalCandidatos: number; projecaoVotos: number | null; cidadesComPesquisa: number } | null>(null)
   const [agenteMontado, setAgenteMontado] = useState<boolean>(false)
   const [graficoPollsTelaCheia, setGraficoPollsTelaCheia] = useState(false)
+  const [filtroCidadePollsTelaCheia, setFiltroCidadePollsTelaCheia] = useState<string>('')
   const [analiseTerritoriosTelaCheia, setAnaliseTerritoriosTelaCheia] = useState(false)
   const [showMapaPresenca, setShowMapaPresenca] = useState(true)
   const [mapaTelaCheia, setMapaTelaCheia] = useState(false)
@@ -324,6 +325,21 @@ export default function Home() {
   const mediaPesquisas = pollsData.length > 0
     ? Math.round((pollsData.reduce((sum, poll) => sum + (poll.intencao || 0), 0) / pollsData.length) * 10) / 10
     : null
+
+  const cidadesDisponiveisPollsTelaCheia = useMemo(() => {
+    const cities = new Set<string>()
+    pollsData.forEach((poll) => {
+      const cidade = String(poll.cidade || '').trim()
+      if (!cidade || cidade === 'Estado' || cidade === 'Cidade não encontrada') return
+      cities.add(cidade)
+    })
+    return Array.from(cities).sort((a, b) => a.localeCompare(b, 'pt-BR'))
+  }, [pollsData])
+
+  const pollsDataTelaCheiaFiltrada = useMemo(() => {
+    if (!filtroCidadePollsTelaCheia) return pollsData
+    return pollsData.filter((poll) => (poll.cidade || '').trim() === filtroCidadePollsTelaCheia)
+  }, [pollsData, filtroCidadePollsTelaCheia])
 
   const fetchMonitorNews = async () => {
     setLoadingAlerts(true)
@@ -2659,6 +2675,21 @@ export default function Home() {
 
           {/* Gráfico em tela cheia */}
           <div className="flex-1 p-6 overflow-auto">
+            <div className="mb-4 max-w-sm">
+              <label className="block text-xs font-medium text-secondary mb-1">Filtrar por cidade</label>
+              <select
+                value={filtroCidadePollsTelaCheia}
+                onChange={(e) => setFiltroCidadePollsTelaCheia(e.target.value)}
+                className="w-full px-3 py-2 text-sm border border-card rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-gold-soft bg-surface"
+              >
+                <option value="">Todas as cidades</option>
+                {cidadesDisponiveisPollsTelaCheia.map((cidade) => (
+                  <option key={cidade} value={cidade}>
+                    {cidade}
+                  </option>
+                ))}
+              </select>
+            </div>
             {loadingPolls ? (
               <div className="h-full flex items-center justify-center">
                 <div className="w-full h-full space-y-4">
@@ -2666,14 +2697,18 @@ export default function Home() {
                   <div className="h-48 bg-surface rounded-lg animate-pulse" />
                 </div>
               </div>
-            ) : pollsData.length === 0 ? (
+            ) : pollsDataTelaCheiaFiltrada.length === 0 ? (
               <div className="h-full flex items-center justify-center">
-                <p className="text-secondary">Nenhuma pesquisa encontrada</p>
+                <p className="text-secondary">
+                  {filtroCidadePollsTelaCheia
+                    ? `Nenhuma pesquisa encontrada para ${filtroCidadePollsTelaCheia}`
+                    : 'Nenhuma pesquisa encontrada'}
+                </p>
               </div>
             ) : (
               <div className="h-full min-h-[600px]">
                 <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={pollsData} margin={{ top: 20, right: 30, left: 20, bottom: 60 }}>
+                  <AreaChart data={pollsDataTelaCheiaFiltrada} margin={{ top: 20, right: 30, left: 20, bottom: 60 }}>
                     <defs>
                       <linearGradient id="colorIntencaoFullscreen" x1="0" y1="0" x2="0" y2="1">
                         <stop offset="5%" stopColor="rgb(var(--accent-gold))" stopOpacity={0.3} />
