@@ -29,9 +29,8 @@ export async function GET(request: Request) {
       })
     }
 
-    // Buscar TODAS as pesquisas estimuladas para dep_federal de TODOS os candidatos
-    // Incluir cidade para cálculo de projeção de votos
-    const { data: polls, error } = await supabase
+    // Ranking: pesquisas estimuladas para dep_federal (comparabilidade entre candidatos)
+    const { data: pollsRanking, error } = await supabase
       .from('polls')
       .select(`
         candidato_nome, intencao, data, cidade_id,
@@ -45,7 +44,7 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: error.message }, { status: 500 })
     }
 
-    if (!polls || polls.length === 0) {
+    if (!pollsRanking || pollsRanking.length === 0) {
       return NextResponse.json({
         posicao: 0,
         totalCandidatos: 0,
@@ -58,7 +57,7 @@ export async function GET(request: Request) {
     // Agrupar por candidato e calcular média de intenção de cada um
     const mediasPorCandidato: Map<string, { soma: number; count: number }> = new Map()
 
-    polls.forEach((poll: Record<string, unknown>) => {
+    pollsRanking.forEach((poll: Record<string, unknown>) => {
       const nome = poll.candidato_nome as string
       const intencao = (poll.intencao as number) || 0
 
@@ -93,9 +92,22 @@ export async function GET(request: Request) {
     let projecaoVotos: number | null = null
     let cidadesComPesquisa = 0
 
-    const pollsDoCandidato = polls.filter(
-      (p: Record<string, unknown>) => (p.candidato_nome as string).toUpperCase() === candidato.toUpperCase()
-    )
+    // Projeção por cidades: usar TODAS as pesquisas do candidato (não só dep_federal estimulada),
+    // para refletir a mesma cobertura de cidades exibida no histórico de pesquisas.
+    const { data: pollsProjecao, error: errorProjecao } = await supabase
+      .from('polls')
+      .select(`
+        candidato_nome, intencao, data, cidade_id,
+        cities ( name )
+      `)
+      .eq('user_id', user.id)
+      .eq('candidato_nome', candidato)
+
+    if (errorProjecao) {
+      return NextResponse.json({ error: errorProjecao.message }, { status: 500 })
+    }
+
+    const pollsDoCandidato = (pollsProjecao || []) as Record<string, unknown>[]
 
     if (pollsDoCandidato.length > 0) {
       // Agrupar por cidade: guardar a pesquisa mais recente de cada cidade
