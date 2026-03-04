@@ -901,8 +901,8 @@ export default function ChapasPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="container mx-auto p-4">
+    <div className="min-h-screen bg-gray-50 w-full">
+      <div className="w-full px-4 sm:px-6 lg:px-8 py-4">
         {/* Notificação de auto-save */}
         {notificacaoAutoSave && (
           <div className="fixed top-4 right-4 z-50 bg-green-500 text-white px-4 py-2 rounded-lg shadow-lg flex items-center gap-2">
@@ -945,7 +945,7 @@ export default function ChapasPage() {
         )}
         
         <div ref={fullscreenRef} className={`${isFullscreen ? 'bg-white p-4 max-h-screen overflow-y-auto' : 'bg-transparent'} transition-all duration-300`}>
-          <div ref={contentRef} className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full space-y-4 py-4">
+          <div ref={contentRef} className="w-full space-y-4 py-2">
             {/* Controles (título na navbar) */}
             <div className="flex items-center justify-between mb-4">
               <div />
