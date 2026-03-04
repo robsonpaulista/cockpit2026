@@ -22,7 +22,7 @@ const coresPartidos = {
   'PT': { cor: 'bg-accent-gold', corTexto: 'text-white' },
   'PSD/MDB': { cor: 'bg-accent-gold-soft', corTexto: 'text-text-primary' },
   'PP': { cor: 'bg-text-secondary', corTexto: 'text-white' },
-  'REPUBLICANOS': { cor: 'bg-text-text-primary', corTexto: 'text-white' },
+  'REPUBLICANOS': { cor: 'bg-blue-600', corTexto: 'text-white' },
   'PODEMOS': { cor: 'bg-accent-gold', corTexto: 'text-white' }
 }
 
