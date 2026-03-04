@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState, useRef } from 'react'
 import { Trash2, Plus, RefreshCw, Check, Printer, Info, Eye, EyeOff, X, Maximize2, Minimize2 } from 'lucide-react'
+import jsPDF from 'jspdf'
 import {
   Cenario,
   CenarioCompleto,
@@ -55,6 +56,7 @@ export default function ChapasPage() {
   const [loading, setLoading] = useState(false)
   const contentRef = useRef<HTMLDivElement>(null)
   const [modoImpressao, setModoImpressao] = useState(false)
+  const [exportandoPdf, setExportandoPdf] = useState(false)
 
   const [partidos, setPartidos] = useState<PartidoLocal[]>(criarPartidosIniciais())
   const [quociente, setQuociente] = useState(initialQuociente)
@@ -900,6 +902,149 @@ export default function ChapasPage() {
     }
   }
 
+  const handleGerarPdf = async () => {
+    if (!contentRef.current || exportandoPdf) return
+
+    setExportandoPdf(true)
+    setModoImpressao(true)
+
+    const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
+
+    try {
+      await wait(250)
+      const { default: html2canvas } = await import('html2canvas')
+
+      const target = contentRef.current
+      if (!target) {
+        throw new Error('Conteúdo da página não encontrado.')
+      }
+
+      const originalOverflow = target.style.overflow
+      const originalHeight = target.style.height
+      const originalMaxHeight = target.style.maxHeight
+
+      target.style.overflow = 'visible'
+      target.style.height = 'auto'
+      target.style.maxHeight = 'none'
+
+      await wait(120)
+
+      const canvas = await html2canvas(target, {
+        scale: 2,
+        useCORS: true,
+        logging: false,
+        backgroundColor: '#ffffff',
+        width: target.scrollWidth,
+        height: target.scrollHeight,
+        windowWidth: target.scrollWidth,
+        windowHeight: target.scrollHeight,
+        scrollX: 0,
+        scrollY: 0,
+        onclone: (clonedDoc) => {
+          const clonedTarget = clonedDoc.getElementById('chapas-pdf-content')
+          if (!clonedTarget) return
+          const htmlTarget = clonedTarget as HTMLElement
+          htmlTarget.style.overflow = 'visible'
+          htmlTarget.style.height = 'auto'
+          htmlTarget.style.maxHeight = 'none'
+
+          const overflowNodes = clonedTarget.querySelectorAll('div, section, article')
+          overflowNodes.forEach((node) => {
+            const el = node as HTMLElement
+            const computedOverflow = `${el.style.overflow} ${el.style.overflowY} ${el.style.overflowX}`.toLowerCase()
+            if (computedOverflow.includes('auto') || computedOverflow.includes('hidden') || computedOverflow.includes('scroll')) {
+              el.style.overflow = 'visible'
+              el.style.overflowY = 'visible'
+              el.style.overflowX = 'visible'
+              el.style.maxHeight = 'none'
+              el.style.height = 'auto'
+            }
+          })
+        },
+      })
+
+      target.style.overflow = originalOverflow
+      target.style.height = originalHeight
+      target.style.maxHeight = originalMaxHeight
+
+      if (!canvas.width || !canvas.height) {
+        throw new Error('Não foi possível montar o conteúdo para exportação.')
+      }
+
+      const pdf = new jsPDF('l', 'mm', 'a4')
+      const pageWidth = pdf.internal.pageSize.getWidth()
+      const pageHeight = pdf.internal.pageSize.getHeight()
+      const margin = 8
+      const headerHeight = 14
+      const footerHeight = 8
+      const usableWidth = pageWidth - margin * 2
+      const usableHeightFirstPage = pageHeight - margin - headerHeight - footerHeight
+      const usableHeightNextPages = pageHeight - margin * 2 - footerHeight
+
+      const imgWidth = canvas.width
+      const imgHeight = canvas.height
+      const scaleRatio = usableWidth / imgWidth
+      const scaledTotalHeight = imgHeight * scaleRatio
+
+      pdf.setFont('helvetica', 'bold')
+      pdf.setFontSize(12)
+      pdf.text('Simulador de Chapas - Relatorio Completo', margin, margin + 4)
+      pdf.setFont('helvetica', 'normal')
+      pdf.setFontSize(8)
+      pdf.text(
+        `Gerado em: ${new Date().toLocaleDateString('pt-BR')} ${new Date().toLocaleTimeString('pt-BR')}`,
+        margin,
+        margin + 9
+      )
+
+      let currentY = 0
+      let page = 1
+      let drawY = margin + headerHeight
+
+      while (currentY < scaledTotalHeight) {
+        if (page > 1) {
+          pdf.addPage()
+          drawY = margin
+        }
+
+        const availableHeight = page === 1 ? usableHeightFirstPage : usableHeightNextPages
+        const heightChunk = Math.min(scaledTotalHeight - currentY, availableHeight)
+
+        const sourceY = Math.floor((currentY / scaledTotalHeight) * imgHeight)
+        const sourceHeight = Math.ceil((heightChunk / scaledTotalHeight) * imgHeight)
+        const realSourceHeight = Math.min(sourceHeight, imgHeight - sourceY)
+        if (realSourceHeight <= 0) break
+
+        const pageCanvas = document.createElement('canvas')
+        pageCanvas.width = imgWidth
+        pageCanvas.height = realSourceHeight
+        const pageCtx = pageCanvas.getContext('2d')
+        if (!pageCtx) throw new Error('Erro ao preparar página do PDF.')
+
+        pageCtx.drawImage(canvas, 0, sourceY, imgWidth, realSourceHeight, 0, 0, imgWidth, realSourceHeight)
+        const pageImg = pageCanvas.toDataURL('image/png', 0.95)
+        const realScaledHeight = (realSourceHeight / imgHeight) * scaledTotalHeight
+        pdf.addImage(pageImg, 'PNG', margin, drawY, usableWidth, realScaledHeight)
+
+        pdf.setFontSize(8)
+        pdf.setTextColor(90)
+        pdf.text(`Pagina ${page}`, pageWidth - margin, pageHeight - 3, { align: 'right' })
+        pdf.setTextColor(0)
+
+        currentY += heightChunk
+        page += 1
+      }
+
+      pdf.save(`Chapas-Completo-${new Date().toISOString().slice(0, 10)}.pdf`)
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Erro ao gerar PDF.'
+      alert(`Falha ao gerar PDF: ${message}`)
+    } finally {
+      setModoImpressao(false)
+      setExportandoPdf(false)
+    }
+  }
+
   return (
     <div className="min-h-screen bg-gray-50 w-full">
       <div className="w-full px-4 sm:px-6 lg:px-8 py-4">
@@ -945,11 +1090,29 @@ export default function ChapasPage() {
         )}
         
         <div ref={fullscreenRef} className={`${isFullscreen ? 'bg-white p-4 max-h-screen overflow-y-auto' : 'bg-transparent'} transition-all duration-300`}>
-          <div ref={contentRef} className="w-full space-y-4 py-2">
+          <div id="chapas-pdf-content" ref={contentRef} className="w-full space-y-4 py-2">
             {/* Controles (título na navbar) */}
             <div className="flex items-center justify-between mb-4">
               <div />
               <div className="flex items-center gap-2">
+                <button
+                  onClick={handleGerarPdf}
+                  disabled={exportandoPdf || !dadosCarregados}
+                  title="Gerar PDF completo"
+                  className="px-4 py-2 border border-border-card bg-white rounded-lg hover:bg-bg-app disabled:opacity-50 flex items-center gap-2"
+                >
+                  {exportandoPdf ? (
+                    <>
+                      <RefreshCw className="h-4 w-4 animate-spin" />
+                      Gerando PDF...
+                    </>
+                  ) : (
+                    <>
+                      <Printer className="h-4 w-4" />
+                      Gerar PDF
+                    </>
+                  )}
+                </button>
                 <button
                   onClick={toggleFullscreen}
                   title={isFullscreen ? 'Sair de tela cheia' : 'Tela cheia'}

@@ -3,8 +3,9 @@
 import { useMemo, useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
-import { RefreshCw, AlertCircle, Crown, X, Users, Vote, BarChart3, UserCheck, ArrowUpRight } from 'lucide-react'
+import { RefreshCw, AlertCircle, Crown, X, Users, Vote, BarChart3, UserCheck, ArrowUpRight, FileText, Loader2 } from 'lucide-react'
 import { getEleitoradoByCity } from '@/lib/eleitores'
+import { CityDemandsModal } from '@/components/city-demands-modal'
 
 interface ResultadoEleicao {
   uf: string
@@ -230,6 +231,11 @@ export default function ResumoEleicoesPage() {
   const [resumoCidade, setResumoCidade] = useState<ResumoCidade | null>(null)
   const [resumosCidadeMap, setResumosCidadeMap] = useState<ResumosCidadeMap>({})
   const [showLiderancasModal, setShowLiderancasModal] = useState(false)
+  const [showDemandsLeaderSelector, setShowDemandsLeaderSelector] = useState(false)
+  const [showCityDemands, setShowCityDemands] = useState(false)
+  const [loadingDemandasLiderancas, setLoadingDemandasLiderancas] = useState(false)
+  const [selectedDemandasLiderancas, setSelectedDemandasLiderancas] = useState<string[]>([])
+  const [liderancasDemandasInicializadas, setLiderancasDemandasInicializadas] = useState(false)
   const [feedbackMarcacao, setFeedbackMarcacao] = useState<string | null>(null)
   const [mostrarFeedbackMarcacao, setMostrarFeedbackMarcacao] = useState(false)
   const [pesquisaRecenteCidade, setPesquisaRecenteCidade] = useState<PesquisaRecenteCidade | null>(null)
@@ -284,6 +290,13 @@ export default function ResumoEleicoesPage() {
     (Object.keys(selection) as TableKey[]).reduce((sum, table) => {
       return sum + Object.values(selection[table]).reduce((tableSum, value) => tableSum + value, 0)
     }, 0)
+
+  const liderancasDisponiveisDemandas = useMemo(() => {
+    const nomes = (resumoCidade?.liderancasDetalhe || [])
+      .map((item) => String(item.nome || '').trim())
+      .filter((nome) => nome.length > 0)
+    return Array.from(new Set(nomes)).sort((a, b) => a.localeCompare(b, 'pt-BR'))
+  }, [resumoCidade])
 
   const formatarPercentual = (valor: number | null): string => {
     if (valor === null || !Number.isFinite(valor)) return '-'
@@ -518,6 +531,50 @@ export default function ResumoEleicoesPage() {
     }
   }
 
+  const prepararFiltroDemandas = async (): Promise<void> => {
+    if (!cidade) return
+    setShowDemandsLeaderSelector(true)
+    setLoadingDemandasLiderancas(true)
+    setLiderancasDemandasInicializadas(false)
+    try {
+      if (!resumoCidade || resumoCidade.liderancasDetalhe.length === 0) {
+        await carregarResumoCidade(cidade)
+      }
+    } finally {
+      setLoadingDemandasLiderancas(false)
+    }
+  }
+
+  const toggleLiderancaDemanda = (nome: string) => {
+    setSelectedDemandasLiderancas((prev) =>
+      prev.includes(nome) ? prev.filter((item) => item !== nome) : [...prev, nome]
+    )
+  }
+
+  const selecionarTodasLiderancasDemanda = () => {
+    setSelectedDemandasLiderancas(liderancasDisponiveisDemandas)
+  }
+
+  const limparLiderancasDemanda = () => {
+    setSelectedDemandasLiderancas([])
+  }
+
+  const abrirModalDemandasFiltrado = () => {
+    if (selectedDemandasLiderancas.length === 0) return
+    if (typeof window !== 'undefined') {
+      sessionStorage.setItem('territorio_demands_liderancas', JSON.stringify(selectedDemandasLiderancas))
+    }
+    setShowDemandsLeaderSelector(false)
+    setShowCityDemands(true)
+  }
+
+  const fecharSeletorDemandas = () => {
+    setShowDemandsLeaderSelector(false)
+    setLoadingDemandasLiderancas(false)
+    setSelectedDemandasLiderancas([])
+    setLiderancasDemandasInicializadas(false)
+  }
+
   const salvarSimulacaoCidade = async (): Promise<void> => {
     if (!cidade) return
     setSavingSimulacao(true)
@@ -635,6 +692,17 @@ export default function ResumoEleicoesPage() {
       // Se falhar a restauração, segue fluxo padrão.
     }
   }, [searchParams])
+
+  useEffect(() => {
+    if (!showDemandsLeaderSelector || loadingDemandasLiderancas || liderancasDemandasInicializadas) return
+    setSelectedDemandasLiderancas(liderancasDisponiveisDemandas)
+    setLiderancasDemandasInicializadas(true)
+  }, [
+    showDemandsLeaderSelector,
+    loadingDemandasLiderancas,
+    liderancasDemandasInicializadas,
+    liderancasDisponiveisDemandas,
+  ])
 
   useEffect(() => {
     if (restaurouEstadoRetorno && cidades.length > 0) return
@@ -1281,6 +1349,14 @@ export default function ResumoEleicoesPage() {
             >
               <RefreshCw className={`h-4 w-4 ${loadingDados ? 'animate-spin' : ''}`} />
               Buscar
+            </button>
+            <button
+              onClick={prepararFiltroDemandas}
+              disabled={!cidade || loadingDados || !buscaIniciada}
+              className="h-10 px-4 rounded-lg text-sm font-medium border border-card bg-background text-text-primary hover:bg-surface disabled:opacity-50 flex items-center gap-2"
+            >
+              <FileText className="h-4 w-4" />
+              Demandas
             </button>
           </div>
         </div>
@@ -2022,6 +2098,117 @@ export default function ResumoEleicoesPage() {
           </div>
         </div>
       )}
+
+      {showDemandsLeaderSelector && (
+        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
+          <div className="w-full max-w-2xl max-h-[85vh] bg-surface rounded-xl border border-card overflow-hidden flex flex-col">
+            <div className="flex items-center justify-between px-4 py-3 border-b border-card">
+              <div>
+                <h3 className="text-sm font-semibold text-text-primary">
+                  Filtrar demandas por liderança
+                </h3>
+                <p className="text-xs text-text-secondary">
+                  Cidade: {cidade}
+                </p>
+              </div>
+              <button
+                onClick={fecharSeletorDemandas}
+                className="p-1.5 rounded hover:bg-background transition-colors"
+              >
+                <X className="h-4 w-4 text-text-secondary" />
+              </button>
+            </div>
+
+            <div className="p-3 border-b border-card flex items-center justify-between gap-2">
+              <div className="text-xs text-text-secondary">
+                {loadingDemandasLiderancas
+                  ? 'Pré-carregando lideranças...'
+                  : `${selectedDemandasLiderancas.length} selecionada(s) de ${liderancasDisponiveisDemandas.length}`}
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={selecionarTodasLiderancasDemanda}
+                  disabled={loadingDemandasLiderancas || liderancasDisponiveisDemandas.length === 0}
+                  className="px-2 py-1 text-xs rounded border border-card hover:bg-background disabled:opacity-50"
+                >
+                  Selecionar todas
+                </button>
+                <button
+                  type="button"
+                  onClick={limparLiderancasDemanda}
+                  disabled={loadingDemandasLiderancas || selectedDemandasLiderancas.length === 0}
+                  className="px-2 py-1 text-xs rounded border border-card hover:bg-background disabled:opacity-50"
+                >
+                  Limpar
+                </button>
+              </div>
+            </div>
+
+            <div className="flex-1 overflow-auto p-3">
+              {loadingDemandasLiderancas ? (
+                <div className="flex items-center justify-center py-8 text-sm text-text-secondary">
+                  <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                  Carregando lideranças...
+                </div>
+              ) : liderancasDisponiveisDemandas.length === 0 ? (
+                <p className="text-sm text-text-secondary py-6 text-center">
+                  Nenhuma liderança disponível para esta cidade.
+                </p>
+              ) : (
+                <div className="space-y-2">
+                  {liderancasDisponiveisDemandas.map((nome) => {
+                    const checked = selectedDemandasLiderancas.includes(nome)
+                    return (
+                      <label
+                        key={nome}
+                        className="flex items-center gap-2 p-2 rounded border border-card hover:bg-background cursor-pointer"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          onChange={() => toggleLiderancaDemanda(nome)}
+                          className="h-3.5 w-3.5 accent-[rgb(var(--accent-gold))]"
+                        />
+                        <span className="text-sm text-text-primary">{nome}</span>
+                      </label>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
+
+            <div className="px-3 py-2 border-t border-card bg-background flex items-center justify-end gap-2">
+              <button
+                type="button"
+                onClick={fecharSeletorDemandas}
+                className="px-3 py-1.5 text-xs rounded border border-card hover:bg-surface"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={abrirModalDemandasFiltrado}
+                disabled={loadingDemandasLiderancas || selectedDemandasLiderancas.length === 0}
+                className="px-3 py-1.5 text-xs rounded bg-accent-gold text-white hover:bg-accent-gold/90 disabled:opacity-50"
+              >
+                Ver demandas selecionadas
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <CityDemandsModal
+        isOpen={showCityDemands}
+        onClose={() => {
+          setShowCityDemands(false)
+          if (typeof window !== 'undefined') {
+            sessionStorage.removeItem('territorio_demands_liderancas')
+          }
+        }}
+        cidade={cidade}
+      />
     </div>
   )
 }
