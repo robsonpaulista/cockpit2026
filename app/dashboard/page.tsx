@@ -1979,6 +1979,7 @@ export default function Home() {
                           cidadesVisitadas={cidadesVisitadasLista}
                           totalCidades={224}
                           fullscreen={true}
+                          showStatsOverlay={false}
                           territoriosQuentes={territoriosQuentes}
                           territoriosMornos={territoriosMornos}
                           territoriosFrios={territoriosFrios}

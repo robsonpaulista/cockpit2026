@@ -26,6 +26,7 @@ interface MapaPresencaProps {
   totalCidades: number
   onFullscreen?: () => void
   fullscreen?: boolean
+  showStatsOverlay?: boolean
   territoriosQuentes?: TerritorioInfo[]
   territoriosMornos?: TerritorioInfo[]
   territoriosFrios?: TerritorioInfo[]
@@ -64,6 +65,7 @@ export function MapaPresenca({
   totalCidades,
   onFullscreen,
   fullscreen = false,
+  showStatsOverlay = true,
   territoriosQuentes = [],
   territoriosMornos = [],
   territoriosFrios = [],
@@ -257,7 +259,7 @@ export function MapaPresenca({
         />
 
         {/* Live Counter Overlay */}
-        {mapStats && (
+        {showStatsOverlay && mapStats && (
           <div className="absolute top-3 right-3 z-[1000] bg-white/90 backdrop-blur-md rounded-xl shadow-lg border border-gray-200/50 p-3 space-y-1.5 min-w-[170px] pointer-events-none">
             <div className="flex items-center gap-2">
               <div className="w-2.5 h-2.5 rounded-full bg-blue-500 shrink-0" />
