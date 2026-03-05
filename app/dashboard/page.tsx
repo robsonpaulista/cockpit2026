@@ -35,6 +35,8 @@ const trendData = [
   { date: '29/10', ife: 72, sentimento: 68 },
 ]
 
+const SCENARIO_VOTOS_STORAGE_KEY = 'dashboard_cenario_votos_2026'
+
 export default function Home() {
   type CenarioVotos = 'aferido_jadyel' | 'promessa_lideranca' | 'legado_anterior'
   type RankingPesquisaItem = {
@@ -103,7 +105,7 @@ export default function Home() {
     qpCompetidor: number
     rodada: number
   } | null>(null)
-  const [rankingPesquisas, setRankingPesquisas] = useState<{ posicao: number; totalCandidatos: number; projecaoVotos: number | null; cidadesComPesquisa: number } | null>(null)
+  const [rankingPesquisas, setRankingPesquisas] = useState<{ posicao: number; totalCandidatos: number; mediaCandidato: number | null; projecaoVotos: number | null; cidadesComPesquisa: number } | null>(null)
   const [rankingPesquisasTop10, setRankingPesquisasTop10] = useState<RankingPesquisaItem[]>([])
   const [showRankingPesquisasModal, setShowRankingPesquisasModal] = useState(false)
   const [agenteMontado, setAgenteMontado] = useState<boolean>(false)
@@ -328,10 +330,13 @@ export default function Home() {
     return () => clearInterval(interval)
   }, [monitorPaused, loadingAlerts, monitorNewsOrdenadas])
 
-  // Calcular média das pesquisas diretamente a partir dos dados do gráfico
-  const mediaPesquisas = pollsData.length > 0
+  // Média histórica do gráfico (pode incluir base diferente da estimulada dep_federal)
+  const mediaPesquisasHistorico = pollsData.length > 0
     ? Math.round((pollsData.reduce((sum, poll) => sum + (poll.intencao || 0), 0) / pollsData.length) * 10) / 10
     : null
+
+  // Média principal do card: mesma base do modal/ranking (estimulada + dep_federal)
+  const mediaPesquisasCard = rankingPesquisas?.mediaCandidato ?? mediaPesquisasHistorico
 
   const cidadesDisponiveisPollsTelaCheia = useMemo(() => {
     const cities = new Set<string>()
@@ -392,7 +397,7 @@ export default function Home() {
       }
     }
 
-    const cenarioSalvo = localStorage.getItem('dashboard_cenario_votos_2026')
+    const cenarioSalvo = localStorage.getItem(SCENARIO_VOTOS_STORAGE_KEY)
     if (
       cenarioSalvo === 'promessa_lideranca' ||
       cenarioSalvo === 'aferido_jadyel' ||
@@ -403,8 +408,24 @@ export default function Home() {
   }, [])
 
   useEffect(() => {
-    localStorage.setItem('dashboard_cenario_votos_2026', cenarioVotosDashboard)
+    localStorage.setItem(SCENARIO_VOTOS_STORAGE_KEY, cenarioVotosDashboard)
   }, [cenarioVotosDashboard])
+
+  useEffect(() => {
+    const handleStorage = (event: StorageEvent) => {
+      if (event.key !== SCENARIO_VOTOS_STORAGE_KEY) return
+      if (
+        event.newValue === 'aferido_jadyel' ||
+        event.newValue === 'promessa_lideranca' ||
+        event.newValue === 'legado_anterior'
+      ) {
+        setCenarioVotosDashboard(event.newValue)
+      }
+    }
+
+    window.addEventListener('storage', handleStorage)
+    return () => window.removeEventListener('storage', handleStorage)
+  }, [])
 
   const getLabelExpectativaCenario = (): string => {
     if (cenarioVotosDashboard === 'promessa_lideranca') return 'Promessa (Território & Base)'
@@ -535,6 +556,7 @@ export default function Home() {
             setRankingPesquisas({
               posicao: data.posicao,
               totalCandidatos: data.totalCandidatos,
+              mediaCandidato: data.mediaCandidato ?? null,
               projecaoVotos: data.projecaoVotos ?? null,
               cidadesComPesquisa: data.cidadesComPesquisa ?? 0,
             })
@@ -988,10 +1010,10 @@ export default function Home() {
   const kpisComMedia = kpis.map((kpi): KPI => {
     if (kpi.id === 'sentimento') {
       let status: 'success' | 'warning' | 'error' | 'neutral' = 'neutral'
-      if (mediaPesquisas !== null) {
-        if (mediaPesquisas >= 50) {
+      if (mediaPesquisasCard !== null) {
+        if (mediaPesquisasCard >= 50) {
           status = 'success'
-        } else if (mediaPesquisas >= 30) {
+        } else if (mediaPesquisasCard >= 30) {
           status = 'warning'
         } else {
           status = 'error'
@@ -999,7 +1021,7 @@ export default function Home() {
       }
       return {
         ...kpi,
-        value: mediaPesquisas !== null ? `${mediaPesquisas}%` : '-',
+        value: mediaPesquisasCard !== null ? `${mediaPesquisasCard}%` : '-',
         status,
       }
     }

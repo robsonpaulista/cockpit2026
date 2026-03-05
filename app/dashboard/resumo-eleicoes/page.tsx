@@ -99,6 +99,7 @@ type TableKey =
 const ITEMS_PER_PAGE = 10
 const CANDIDATO_FEDERAL_FIXO = 'JADYEL DA JUPI'
 const RESUMO_STATE_SESSION_KEY = 'resumo_eleicoes_state_v1'
+const SCENARIO_VOTOS_STORAGE_KEY = 'dashboard_cenario_votos_2026'
 
 const EMPTY_SELECTIONS: Record<TableKey, Record<string, number>> = {
   deputado_estadual: {},
@@ -734,6 +735,39 @@ export default function ResumoEleicoesPage() {
     if (typeof window === 'undefined') return
     const candidatoSalvo = localStorage.getItem('candidatoPadraoPesquisa') || ''
     setCandidatoPadraoPesquisa(candidatoSalvo)
+  }, [])
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const cenarioSalvo = localStorage.getItem(SCENARIO_VOTOS_STORAGE_KEY)
+    if (
+      cenarioSalvo === 'aferido_jadyel' ||
+      cenarioSalvo === 'promessa_lideranca' ||
+      cenarioSalvo === 'legado_anterior'
+    ) {
+      setCenarioVotos(cenarioSalvo)
+    }
+  }, [])
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    localStorage.setItem(SCENARIO_VOTOS_STORAGE_KEY, cenarioVotos)
+  }, [cenarioVotos])
+
+  useEffect(() => {
+    const handleStorage = (event: StorageEvent) => {
+      if (event.key !== SCENARIO_VOTOS_STORAGE_KEY) return
+      if (
+        event.newValue === 'aferido_jadyel' ||
+        event.newValue === 'promessa_lideranca' ||
+        event.newValue === 'legado_anterior'
+      ) {
+        setCenarioVotos(event.newValue)
+      }
+    }
+
+    window.addEventListener('storage', handleStorage)
+    return () => window.removeEventListener('storage', handleStorage)
   }, [])
 
   useEffect(() => {
