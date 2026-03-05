@@ -22,7 +22,7 @@ const MapWrapperLeaflet = dynamic(
   { ssr: false }
 )
 import { KPI, Alert, NewsItem } from '@/types'
-import { TrendingUp, MapPin, Flag, MessageSquare, ThermometerSun, ThermometerSnowflake, Flame, Activity, Maximize2, X, Lightbulb, AlertTriangle, Users, Heart, Eye, Crown, ArrowUpRight, ArrowDownRight, ArrowRight, Zap, Target, FileText, Bot } from 'lucide-react'
+import { TrendingUp, MapPin, Flag, MessageSquare, ThermometerSun, ThermometerSnowflake, Flame, Activity, Maximize2, X, Lightbulb, AlertTriangle, Users, Heart, Eye, Crown, ArrowUpRight, ArrowDownRight, ArrowRight, Zap, Target, FileText, Bot, ListOrdered } from 'lucide-react'
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 import { loadInstagramConfigAsync, fetchInstagramData } from '@/lib/instagramApi'
 import { getEleitoradoByCity, getAllEleitores } from '@/lib/eleitores'
@@ -37,6 +37,11 @@ const trendData = [
 
 export default function Home() {
   type CenarioVotos = 'aferido_jadyel' | 'promessa_lideranca' | 'legado_anterior'
+  type RankingPesquisaItem = {
+    posicao: number
+    nome: string
+    media: number
+  }
   type ExpectativasCidade = {
     aferido: number
     promessa: number
@@ -99,6 +104,8 @@ export default function Home() {
     rodada: number
   } | null>(null)
   const [rankingPesquisas, setRankingPesquisas] = useState<{ posicao: number; totalCandidatos: number; projecaoVotos: number | null; cidadesComPesquisa: number } | null>(null)
+  const [rankingPesquisasTop10, setRankingPesquisasTop10] = useState<RankingPesquisaItem[]>([])
+  const [showRankingPesquisasModal, setShowRankingPesquisasModal] = useState(false)
   const [agenteMontado, setAgenteMontado] = useState<boolean>(false)
   const [graficoPollsTelaCheia, setGraficoPollsTelaCheia] = useState(false)
   const [filtroCidadePollsTelaCheia, setFiltroCidadePollsTelaCheia] = useState<string>('')
@@ -510,6 +517,20 @@ export default function Home() {
       fetch(`/api/pesquisa/ranking-estimulada?candidato=${encodeURIComponent(candidatoPadrao)}`)
         .then(res => res.ok ? res.json() : null)
         .then(data => {
+          if (data && Array.isArray(data.top10)) {
+            setRankingPesquisasTop10(
+              data.top10
+                .map((item: Record<string, unknown>) => ({
+                  posicao: Number(item.posicao || 0),
+                  nome: String(item.nome || ''),
+                  media: Number(item.media || 0),
+                }))
+                .filter((item: RankingPesquisaItem) => item.posicao > 0 && item.nome.length > 0)
+            )
+          } else {
+            setRankingPesquisasTop10([])
+          }
+
           if (data && data.posicao > 0) {
             setRankingPesquisas({
               posicao: data.posicao,
@@ -521,10 +542,14 @@ export default function Home() {
             setRankingPesquisas(null)
           }
         })
-        .catch(() => setRankingPesquisas(null))
+        .catch(() => {
+          setRankingPesquisas(null)
+          setRankingPesquisasTop10([])
+        })
     } else {
       setPollsData([])
       setRankingPesquisas(null)
+      setRankingPesquisasTop10([])
       setLoadingPolls(false)
     }
   }, [candidatoPadrao])
@@ -1110,15 +1135,33 @@ export default function Home() {
                   sentimento: '/dashboard/pesquisa',
                 }
                 
+                const isMediaPesquisas = kpi.id === 'sentimento'
                 return (
                   <AnimatedSection key={kpi.id} delay={index * 60}>
-                    <KPICard 
-                      kpi={kpi} 
-                      href={kpiHrefMap[kpi.id] || `/${kpi.id}`}
-                      subtitle={cardSubtitle}
-                      subtitleType={cardSubtitleType}
-                      infoLines={cardInfoLines}
-                    />
+                    <div className="relative h-full">
+                      <KPICard 
+                        kpi={kpi} 
+                        href={kpiHrefMap[kpi.id] || `/${kpi.id}`}
+                        subtitle={cardSubtitle}
+                        subtitleType={cardSubtitleType}
+                        infoLines={cardInfoLines}
+                      />
+                      {isMediaPesquisas && rankingPesquisasTop10.length > 0 && (
+                        <button
+                          type="button"
+                          onClick={(event) => {
+                            event.preventDefault()
+                            event.stopPropagation()
+                            setShowRankingPesquisasModal(true)
+                          }}
+                          className="absolute right-2 bottom-2 z-20 h-7 px-2 rounded-md border border-card bg-surface/95 hover:bg-background text-[11px] text-text-secondary hover:text-text-primary flex items-center gap-1"
+                          title="Ver ranking completo das pesquisas"
+                        >
+                          <ListOrdered className="w-3 h-3" />
+                          Top 10
+                        </button>
+                      )}
+                    </div>
                   </AnimatedSection>
                 )
               })}
@@ -2902,6 +2945,76 @@ export default function Home() {
                 </ResponsiveContainer>
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {showRankingPesquisasModal && (
+        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
+          <div className="w-full max-w-2xl max-h-[85vh] bg-surface rounded-xl border border-card overflow-hidden flex flex-col">
+            <div className="flex items-center justify-between px-4 py-3 border-b border-card">
+              <div>
+                <h3 className="text-sm font-semibold text-text-primary">
+                  Ranking Geral - Média Pesquisas
+                </h3>
+                <p className="text-xs text-text-secondary">
+                  Top 10 candidatos nas pesquisas estimuladas (dep. federal)
+                </p>
+              </div>
+              <button
+                onClick={() => setShowRankingPesquisasModal(false)}
+                className="p-1.5 rounded hover:bg-background transition-colors"
+                title="Fechar"
+              >
+                <X className="h-4 w-4 text-text-secondary" />
+              </button>
+            </div>
+
+            <div className="overflow-auto p-3">
+              {rankingPesquisasTop10.length === 0 ? (
+                <p className="text-sm text-text-secondary py-6 text-center">
+                  Ranking não disponível no momento.
+                </p>
+              ) : (
+                <table className="w-full text-xs">
+                  <thead>
+                    <tr>
+                      <th className="text-left py-2 px-2 bg-background">Posição</th>
+                      <th className="text-left py-2 px-2 bg-background">Candidato</th>
+                      <th className="text-right py-2 px-2 bg-background">Média (%)</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {rankingPesquisasTop10.map((item) => {
+                      const isPadrao =
+                        candidatoPadrao &&
+                        item.nome.trim().toUpperCase() === candidatoPadrao.trim().toUpperCase()
+                      return (
+                        <tr
+                          key={`${item.posicao}-${item.nome}`}
+                          className={isPadrao ? 'bg-accent-gold text-white border-b border-card' : 'border-b border-card'}
+                        >
+                          <td className="py-1.5 px-2 font-semibold">{item.posicao}º</td>
+                          <td className="py-1.5 px-2">
+                            <span className="inline-flex items-center gap-2">
+                              <span>{item.nome}</span>
+                              {isPadrao && (
+                                <span className="px-1.5 py-0.5 rounded bg-white text-accent-gold text-[10px] font-semibold">
+                                  Padrão
+                                </span>
+                              )}
+                            </span>
+                          </td>
+                          <td className="py-1.5 px-2 text-right font-semibold">
+                            {item.media.toFixed(1).replace('.', ',')}%
+                          </td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              )}
+            </div>
           </div>
         </div>
       )}

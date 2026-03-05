@@ -160,6 +160,11 @@ export async function GET(request: Request) {
         nome: c.nome,
         media: c.media,
       })),
+      top10: ranking.slice(0, 10).map((c, idx) => ({
+        posicao: idx + 1,
+        nome: c.nome,
+        media: c.media,
+      })),
     })
   } catch (error: unknown) {
     const errorMessage = error instanceof Error ? error.message : 'Erro interno do servidor'
