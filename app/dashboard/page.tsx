@@ -43,6 +43,8 @@ export default function Home() {
     posicao: number
     nome: string
     media: number
+    mediaAjustada: number
+    totalPesquisas: number
   }
   type ExpectativasCidade = {
     aferido: number
@@ -105,7 +107,7 @@ export default function Home() {
     qpCompetidor: number
     rodada: number
   } | null>(null)
-  const [rankingPesquisas, setRankingPesquisas] = useState<{ posicao: number; totalCandidatos: number; mediaCandidato: number | null; projecaoVotos: number | null; cidadesComPesquisa: number } | null>(null)
+  const [rankingPesquisas, setRankingPesquisas] = useState<{ posicao: number; totalCandidatos: number; mediaCandidato: number | null; mediaCandidatoAjustada: number | null; pesquisasCandidato: number; maiorAmostra: number; projecaoVotos: number | null; cidadesComPesquisa: number } | null>(null)
   const [rankingPesquisasTop10, setRankingPesquisasTop10] = useState<RankingPesquisaItem[]>([])
   const [showRankingPesquisasModal, setShowRankingPesquisasModal] = useState(false)
   const [agenteMontado, setAgenteMontado] = useState<boolean>(false)
@@ -545,6 +547,8 @@ export default function Home() {
                   posicao: Number(item.posicao || 0),
                   nome: String(item.nome || ''),
                   media: Number(item.media || 0),
+                  mediaAjustada: Number(item.mediaAjustada || 0),
+                  totalPesquisas: Number(item.totalPesquisas || 0),
                 }))
                 .filter((item: RankingPesquisaItem) => item.posicao > 0 && item.nome.length > 0)
             )
@@ -557,6 +561,9 @@ export default function Home() {
               posicao: data.posicao,
               totalCandidatos: data.totalCandidatos,
               mediaCandidato: data.mediaCandidato ?? null,
+              mediaCandidatoAjustada: data.mediaCandidatoAjustada ?? null,
+              pesquisasCandidato: Number(data.pesquisasCandidato || 0),
+              maiorAmostra: Number(data.maiorAmostra || 0),
               projecaoVotos: data.projecaoVotos ?? null,
               cidadesComPesquisa: data.cidadesComPesquisa ?? 0,
             })
@@ -2981,7 +2988,7 @@ export default function Home() {
                   Ranking Geral - Média Pesquisas
                 </h3>
                 <p className="text-xs text-text-secondary">
-                  Top 10 candidatos nas pesquisas estimuladas (dep. federal)
+                  Top 10 por média ajustada pela quantidade de pesquisas (dep. federal)
                 </p>
               </div>
               <button
@@ -3004,7 +3011,9 @@ export default function Home() {
                     <tr>
                       <th className="text-left py-2 px-2 bg-background">Posição</th>
                       <th className="text-left py-2 px-2 bg-background">Candidato</th>
+                      <th className="text-right py-2 px-2 bg-background">Pesq.</th>
                       <th className="text-right py-2 px-2 bg-background">Média (%)</th>
+                      <th className="text-right py-2 px-2 bg-background">Média Ajust. (%)</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -3028,8 +3037,12 @@ export default function Home() {
                               )}
                             </span>
                           </td>
+                          <td className="py-1.5 px-2 text-right font-semibold">{item.totalPesquisas}</td>
                           <td className="py-1.5 px-2 text-right font-semibold">
                             {item.media.toFixed(1).replace('.', ',')}%
+                          </td>
+                          <td className="py-1.5 px-2 text-right font-semibold">
+                            {item.mediaAjustada.toFixed(1).replace('.', ',')}%
                           </td>
                         </tr>
                       )

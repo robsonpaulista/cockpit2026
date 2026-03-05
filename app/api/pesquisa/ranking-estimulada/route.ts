@@ -70,14 +70,27 @@ export async function GET(request: Request) {
       }
     })
 
-    // Calcular média final e ordenar por média (decrescente)
-    const ranking = Array.from(mediasPorCandidato.entries())
+    // Calcular média final por candidato
+    const candidatosComMedia = Array.from(mediasPorCandidato.entries())
       .map(([nome, { soma, count }]) => ({
         nome,
         media: Math.round((soma / count) * 10) / 10,
         totalPesquisas: count,
       }))
-      .sort((a, b) => b.media - a.media)
+
+    // Ajustar por amostra: quem aparece em menos pesquisas tem menor peso comparativo
+    const maiorAmostra = candidatosComMedia.reduce((max, c) => Math.max(max, c.totalPesquisas), 0) || 1
+    const ranking = candidatosComMedia
+      .map((c) => {
+        const fatorAmostra = c.totalPesquisas / maiorAmostra
+        const mediaAjustada = Math.round(c.media * fatorAmostra * 10) / 10
+        return {
+          ...c,
+          fatorAmostra,
+          mediaAjustada,
+        }
+      })
+      .sort((a, b) => b.mediaAjustada - a.mediaAjustada || b.media - a.media)
 
     // Encontrar a posição do candidato especificado
     const posicaoCandidato = ranking.findIndex(
@@ -150,20 +163,28 @@ export async function GET(request: Request) {
       posicao: posicaoCandidato >= 0 ? posicaoCandidato + 1 : 0,
       totalCandidatos: ranking.length,
       mediaCandidato: dadosCandidato?.media ?? null,
+      mediaCandidatoAjustada: (dadosCandidato as { mediaAjustada?: number } | null)?.mediaAjustada ?? null,
+      pesquisasCandidato: dadosCandidato?.totalPesquisas ?? 0,
+      maiorAmostra,
       totalPesquisasCandidato: dadosCandidato?.totalPesquisas ?? 0,
       candidato,
       projecaoVotos,
       cidadesComPesquisa,
+      criterioRanking: 'media_ponderada_por_amostra',
       // Top 5 para contexto
       top5: ranking.slice(0, 5).map((c, idx) => ({
         posicao: idx + 1,
         nome: c.nome,
         media: c.media,
+        mediaAjustada: c.mediaAjustada,
+        totalPesquisas: c.totalPesquisas,
       })),
       top10: ranking.slice(0, 10).map((c, idx) => ({
         posicao: idx + 1,
         nome: c.nome,
         media: c.media,
+        mediaAjustada: c.mediaAjustada,
+        totalPesquisas: c.totalPesquisas,
       })),
     })
   } catch (error: unknown) {
