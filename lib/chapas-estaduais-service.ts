@@ -15,10 +15,18 @@ const BASE_CENARIO_ID = `${CENARIO_PREFIX}base`
 const USER_ID_CACHE_KEY = 'chapas_estaduais_uid'
 
 let _cachedUserId: string | null = null
+let _cachedSharedOwnerUserId: string | null = null
 
 function normalizeCenarioId(cenarioId: string): string {
   if (cenarioId === 'base') return BASE_CENARIO_ID
   return cenarioId.startsWith(CENARIO_PREFIX) ? cenarioId : `${CENARIO_PREFIX}${cenarioId}`
+}
+
+function assertEstadualScenarioId(cenarioId: string) {
+  if (cenarioId === 'base') return
+  if (!cenarioId.startsWith(CENARIO_PREFIX) && cenarioId !== BASE_CENARIO_ID) {
+    throw new Error('Cenário federal não pode ser carregado no módulo estadual.')
+  }
 }
 
 function getUserId(): string {
@@ -35,6 +43,56 @@ function getUserId(): string {
   throw new Error('Usuário não identificado. Recarregue a página.')
 }
 
+// Resolve o "owner" compartilhado da base estadual de chapas.
+async function getSharedOwnerUserId(): Promise<string> {
+  if (_cachedSharedOwnerUserId) return _cachedSharedOwnerUserId
+
+  const currentUserId = getUserId()
+  const supabase = getSupabaseClient()
+
+  const { data: ativo } = await supabase
+    .from('chapas_cenarios')
+    .select('user_id')
+    .like('id', `${CENARIO_PREFIX}%`)
+    .eq('ativo', true)
+    .order('atualizado_em', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+
+  if (ativo?.user_id) {
+    _cachedSharedOwnerUserId = ativo.user_id
+    return ativo.user_id
+  }
+
+  const { data: base } = await supabase
+    .from('chapas_cenarios')
+    .select('user_id')
+    .eq('id', BASE_CENARIO_ID)
+    .limit(1)
+    .maybeSingle()
+
+  if (base?.user_id) {
+    _cachedSharedOwnerUserId = base.user_id
+    return base.user_id
+  }
+
+  const { data: first } = await supabase
+    .from('chapas_cenarios')
+    .select('user_id')
+    .like('id', `${CENARIO_PREFIX}%`)
+    .order('criado_em', { ascending: true })
+    .limit(1)
+    .maybeSingle()
+
+  if (first?.user_id) {
+    _cachedSharedOwnerUserId = first.user_id
+    return first.user_id
+  }
+
+  _cachedSharedOwnerUserId = currentUserId
+  return currentUserId
+}
+
 function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
   return Promise.race([
     promise,
@@ -47,6 +105,7 @@ function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise
 export function preWarmUserIdCache(userId: string) {
   if (!userId) return
   _cachedUserId = userId
+  _cachedSharedOwnerUserId = null
   if (typeof window !== 'undefined') {
     try {
       localStorage.setItem(USER_ID_CACHE_KEY, userId)
@@ -217,7 +276,7 @@ export const dadosIniciais: Array<{ partido: string; nome: string; votos: number
 ]
 
 export async function criarCenarioBase(partidos: PartidoCenario[], quociente: number): Promise<string> {
-  const userId = getUserId()
+  const userId = await getSharedOwnerUserId()
   const supabase = getSupabaseClient()
 
   const { error: cenarioError } = await supabase
@@ -269,7 +328,7 @@ export async function criarCenarioBase(partidos: PartidoCenario[], quociente: nu
 }
 
 export async function listarCenarios(): Promise<Cenario[]> {
-  const userId = getUserId()
+  const userId = await getSharedOwnerUserId()
   const supabase = getSupabaseClient()
 
   const { data, error } = await supabase
@@ -301,8 +360,9 @@ export async function listarCenarios(): Promise<Cenario[]> {
 }
 
 export async function carregarCenario(cenarioId: string): Promise<CenarioCompleto | null> {
+  assertEstadualScenarioId(cenarioId)
   const id = normalizeCenarioId(cenarioId)
-  const userId = getUserId()
+  const userId = await getSharedOwnerUserId()
   const supabase = getSupabaseClient()
 
   const [cenarioResult, partidosResult] = await withTimeout(
@@ -368,7 +428,8 @@ export async function carregarCenario(cenarioId: string): Promise<CenarioComplet
 }
 
 export async function criarNovoCenario(nome: string, descricao: string, cenarioOrigemId: string): Promise<string> {
-  const userId = getUserId()
+  assertEstadualScenarioId(cenarioOrigemId)
+  const userId = await getSharedOwnerUserId()
   const supabase = getSupabaseClient()
   const origem = await carregarCenario(cenarioOrigemId)
   if (!origem) throw new Error('Cenário origem não encontrado')
@@ -411,8 +472,9 @@ export async function criarNovoCenario(nome: string, descricao: string, cenarioO
 }
 
 export async function atualizarCenario(cenarioId: string, partidos: PartidoCenario[], quociente: number): Promise<void> {
+  assertEstadualScenarioId(cenarioId)
   const id = normalizeCenarioId(cenarioId)
-  const userId = getUserId()
+  const userId = await getSharedOwnerUserId()
   const supabase = getSupabaseClient()
 
   const { error: updateError } = await supabase
@@ -453,10 +515,11 @@ export async function atualizarCenario(cenarioId: string, partidos: PartidoCenar
 }
 
 export async function excluirCenario(cenarioId: string): Promise<void> {
+  assertEstadualScenarioId(cenarioId)
   const id = normalizeCenarioId(cenarioId)
   if (id === BASE_CENARIO_ID) throw new Error('Não é possível excluir o cenário base')
 
-  const userId = getUserId()
+  const userId = await getSharedOwnerUserId()
   const supabase = getSupabaseClient()
 
   const { error: deletePartidosError } = await supabase
@@ -475,8 +538,9 @@ export async function excluirCenario(cenarioId: string): Promise<void> {
 }
 
 export async function ativarCenario(cenarioId: string, ativo: boolean): Promise<void> {
+  assertEstadualScenarioId(cenarioId)
   const id = normalizeCenarioId(cenarioId)
-  const userId = getUserId()
+  const userId = await getSharedOwnerUserId()
   const supabase = getSupabaseClient()
   const agora = new Date().toISOString()
 
@@ -509,7 +573,7 @@ export async function ativarCenario(cenarioId: string, ativo: boolean): Promise<
 }
 
 export async function listarCenariosComAtivo(): Promise<{ cenarios: Cenario[]; cenarioAtivo: CenarioCompleto | null }> {
-  const userId = getUserId()
+  const userId = await getSharedOwnerUserId()
   const supabase = getSupabaseClient()
 
   const [cenariosResult, partidosResult] = await withTimeout(
@@ -586,7 +650,7 @@ export async function listarCenariosComAtivo(): Promise<{ cenarios: Cenario[]; c
 }
 
 export async function obterCenarioAtivo(): Promise<CenarioCompleto | null> {
-  const userId = getUserId()
+  const userId = await getSharedOwnerUserId()
   const supabase = getSupabaseClient()
 
   const { data: ativoData } = await supabase

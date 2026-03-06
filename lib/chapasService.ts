@@ -16,6 +16,12 @@ const MAX_RETRIES = 3
 const RETRY_DELAY = 500 // ms
 const ESTADUAIS_PREFIX = 'estadual_'
 
+function assertFederalScenarioId(cenarioId: string) {
+  if (cenarioId.startsWith(ESTADUAIS_PREFIX)) {
+    throw new Error('Cenário estadual não pode ser carregado no módulo federal.')
+  }
+}
+
 async function executeWithRetry<T>(
   operation: () => Promise<T>,
   label: string = 'operação'
@@ -42,6 +48,7 @@ async function executeWithRetry<T>(
 export function preWarmUserIdCache(userId: string) {
   if (!userId) return
   _cachedUserId = userId
+  _cachedSharedOwnerUserId = null
   // Persistir em localStorage (sobrevive a HMR do Next.js dev)
   if (typeof window !== 'undefined') {
     try { localStorage.setItem('chapas_uid', userId) } catch { /* ignore */ }
@@ -133,6 +140,7 @@ export const dadosIniciais: Array<{partido: string; nome: string; votos: number}
 
 // Cache do userId (ZERO chamadas de rede - definido pelo componente + persistido em localStorage)
 let _cachedUserId: string | null = null
+let _cachedSharedOwnerUserId: string | null = null
 
 // Timeout genérico para qualquer promise (evita hang infinito)
 function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
@@ -163,9 +171,61 @@ function getUserId(): string {
   throw new Error('Usuário não identificado. Recarregue a página.')
 }
 
+// Resolve o "owner" compartilhado da base federal de chapas.
+// Regra: cenário ativo federal -> cenário base federal -> primeiro cenário federal -> usuário atual.
+async function getSharedOwnerUserId(): Promise<string> {
+  if (_cachedSharedOwnerUserId) return _cachedSharedOwnerUserId
+
+  const currentUserId = getUserId()
+  const supabase = getSupabaseClient()
+
+  const { data: ativo } = await supabase
+    .from('chapas_cenarios')
+    .select('user_id')
+    .not('id', 'like', `${ESTADUAIS_PREFIX}%`)
+    .eq('ativo', true)
+    .order('atualizado_em', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+
+  if (ativo?.user_id) {
+    _cachedSharedOwnerUserId = ativo.user_id
+    return ativo.user_id
+  }
+
+  const { data: base } = await supabase
+    .from('chapas_cenarios')
+    .select('user_id')
+    .eq('id', 'base')
+    .not('id', 'like', `${ESTADUAIS_PREFIX}%`)
+    .limit(1)
+    .maybeSingle()
+
+  if (base?.user_id) {
+    _cachedSharedOwnerUserId = base.user_id
+    return base.user_id
+  }
+
+  const { data: first } = await supabase
+    .from('chapas_cenarios')
+    .select('user_id')
+    .not('id', 'like', `${ESTADUAIS_PREFIX}%`)
+    .order('criado_em', { ascending: true })
+    .limit(1)
+    .maybeSingle()
+
+  if (first?.user_id) {
+    _cachedSharedOwnerUserId = first.user_id
+    return first.user_id
+  }
+
+  _cachedSharedOwnerUserId = currentUserId
+  return currentUserId
+}
+
 // Função para salvar quociente eleitoral
 export async function salvarQuocienteEleitoral(quociente: number): Promise<void> {
-  const userId = getUserId()
+  const userId = await getSharedOwnerUserId()
   const supabase = getSupabaseClient()
   
   const { error } = await supabase
@@ -184,7 +244,7 @@ export async function salvarQuocienteEleitoral(quociente: number): Promise<void>
 
 // Função para carregar quociente eleitoral
 export async function carregarQuocienteEleitoral(): Promise<number> {
-  const userId = getUserId()
+  const userId = await getSharedOwnerUserId()
   const supabase = getSupabaseClient()
   
   const { data, error } = await supabase
@@ -201,7 +261,7 @@ export async function carregarQuocienteEleitoral(): Promise<number> {
 
 // Função para criar o cenário base
 export async function criarCenarioBase(partidos: PartidoCenario[], quociente: number): Promise<string> {
-  const userId = getUserId()
+  const userId = await getSharedOwnerUserId()
   const supabase = getSupabaseClient()
   
   // Salvar o cenário (usando snake_case para o banco)
@@ -260,7 +320,7 @@ export async function criarCenarioBase(partidos: PartidoCenario[], quociente: nu
 
 // Função para listar todos os cenários
 export async function listarCenarios(): Promise<Cenario[]> {
-  const userId = getUserId()
+  const userId = await getSharedOwnerUserId()
   const supabase = getSupabaseClient()
   
   const { data, error } = await supabase
@@ -295,8 +355,9 @@ export async function listarCenarios(): Promise<Cenario[]> {
 // Função para carregar um cenário completo
 export async function carregarCenario(cenarioId: string): Promise<CenarioCompleto | null> {
   try {
+    assertFederalScenarioId(cenarioId)
     console.time(`[chapasService] carregarCenario(${cenarioId})`)
-    const userId = getUserId()
+    const userId = await getSharedOwnerUserId()
     const supabase = getSupabaseClient()
     
     // Carregar cenário E partidos em PARALELO (com timeout de 10s)
@@ -402,7 +463,8 @@ export async function criarNovoCenario(
   descricao: string,
   cenarioOrigemId: string
 ): Promise<string> {
-  const userId = getUserId()
+  assertFederalScenarioId(cenarioOrigemId)
+  const userId = await getSharedOwnerUserId()
   const supabase = getSupabaseClient()
   
   const cenarioOrigem = await carregarCenario(cenarioOrigemId)
@@ -460,9 +522,10 @@ export async function atualizarCenario(
   partidos: PartidoCenario[],
   quociente: number
 ): Promise<void> {
+  assertFederalScenarioId(cenarioId)
   console.time('[chapasService] atualizarCenario total')
   
-  const userId = getUserId()
+  const userId = await getSharedOwnerUserId()
   const supabase = getSupabaseClient()
   const agora = new Date().toISOString()
   
@@ -527,7 +590,8 @@ export async function atualizarCenario(
 
 // Função para excluir um cenário
 export async function excluirCenario(cenarioId: string): Promise<void> {
-  const userId = getUserId()
+  assertFederalScenarioId(cenarioId)
+  const userId = await getSharedOwnerUserId()
   const supabase = getSupabaseClient()
   
   // Não permitir excluir o cenário base
@@ -556,7 +620,8 @@ export async function excluirCenario(cenarioId: string): Promise<void> {
 
 // Função para ativar/desativar um cenário (batch update, sem loops)
 export async function ativarCenario(cenarioId: string, ativo: boolean): Promise<void> {
-  const userId = getUserId()
+  assertFederalScenarioId(cenarioId)
+  const userId = await getSharedOwnerUserId()
   const supabase = getSupabaseClient()
   const agora = new Date().toISOString()
   
@@ -595,7 +660,7 @@ export async function ativarCenario(cenarioId: string, ativo: boolean): Promise<
 export async function listarCenariosComAtivo(): Promise<{ cenarios: Cenario[], cenarioAtivo: CenarioCompleto | null }> {
   console.time('[chapasService] listarCenariosComAtivo total')
   
-  const userId = getUserId()
+  const userId = await getSharedOwnerUserId()
   console.log('[chapasService] userId resolvido, buscando dados...')
   const supabase = getSupabaseClient()
   
@@ -685,7 +750,7 @@ export async function listarCenariosComAtivo(): Promise<{ cenarios: Cenario[], c
 
 // Função para obter o cenário ativo (otimizada - queries paralelas)
 export async function obterCenarioAtivo(): Promise<CenarioCompleto | null> {
-  const userId = getUserId()
+  const userId = await getSharedOwnerUserId()
   const supabase = getSupabaseClient()
   
   // Buscar cenário ativo (apenas o ID, limit 1 para performance)

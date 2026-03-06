@@ -277,8 +277,7 @@ export async function GET(request: NextRequest) {
     // Buscar cenário ativo
     let cenarioAtivoQuery = supabase
       .from('chapas_cenarios')
-      .select('id, nome, quociente_eleitoral')
-      .eq('user_id', user.id)
+      .select('id, nome, quociente_eleitoral, user_id')
       .eq('ativo', true)
       .limit(1)
 
@@ -292,20 +291,21 @@ export async function GET(request: NextRequest) {
 
     // Se não há cenário ativo, buscar o base
     let cenarioId = escopo === 'estadual' ? `${ESTADUAL_PREFIX}base` : 'base'
+    let ownerUserId: string | null = null
     let quociente = escopo === 'estadual' ? 67000 : 190000
     const numVagas = escopo === 'estadual' ? 30 : 10
     let cenarioNome = 'Cenário Base'
 
     if (!cenarioError && cenarioAtivo) {
       cenarioId = cenarioAtivo.id
+      ownerUserId = cenarioAtivo.user_id
       quociente = cenarioAtivo.quociente_eleitoral || 190000
       cenarioNome = cenarioAtivo.nome
     } else {
       // Tentar buscar o cenário base
       let cenarioBaseQuery = supabase
         .from('chapas_cenarios')
-        .select('id, nome, quociente_eleitoral')
-        .eq('user_id', user.id)
+        .select('id, nome, quociente_eleitoral, user_id')
         .eq('id', cenarioId)
 
       if (escopo === 'estadual') {
@@ -317,16 +317,24 @@ export async function GET(request: NextRequest) {
       const { data: cenarioBase } = await cenarioBaseQuery.single()
 
       if (cenarioBase) {
+        ownerUserId = cenarioBase.user_id
         quociente = cenarioBase.quociente_eleitoral || 190000
         cenarioNome = cenarioBase.nome
       }
+    }
+
+    if (!ownerUserId) {
+      return NextResponse.json(
+        { message: 'Cenário base não configurado. Acesse a página Chapas para configurar.' },
+        { status: 200 }
+      )
     }
 
     // Buscar partidos do cenário
     const { data: partidosData, error: partidosError } = await supabase
       .from('chapas_partidos')
       .select('partido_nome, votos_legenda, candidato_nome, candidato_votos')
-      .eq('user_id', user.id)
+      .eq('user_id', ownerUserId)
       .eq('cenario_id', cenarioId)
 
     if (partidosError) {
