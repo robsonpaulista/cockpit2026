@@ -1170,19 +1170,29 @@ export default function Home() {
                   cardInfoLines = lines
                 }
                 
-                // Info para projeção (federal e estadual) com o mesmo raciocínio/texto
-                const segundaVagaInfoAtual =
-                  kpi.id === 'projecao'
-                    ? segundaVagaInfo
-                    : kpi.id === 'projecao_estadual'
-                      ? segundaVagaInfoEstadual
-                      : null
+                // Projeção Federal: formato original com uma única linha
+                if (kpi.id === 'projecao' && segundaVagaInfo) {
+                  const competidor = segundaVagaInfo.competidorProximo || '?'
+                  if (segundaVagaInfo.tipo === 'margem') {
+                    cardSubtitle = `Margem: ${Math.max(0, segundaVagaInfo.distancia).toLocaleString('pt-BR')} votos`
+                    cardSubtitleType =
+                      segundaVagaInfo.distancia > 20000
+                        ? 'positive'
+                        : segundaVagaInfo.distancia > 5000
+                          ? 'neutral'
+                          : 'negative'
+                  } else if (segundaVagaInfo.distancia > 0) {
+                    cardSubtitle = `-${segundaVagaInfo.distancia.toLocaleString('pt-BR')} votos p/ 2ª vaga (${competidor})`
+                    cardSubtitleType = 'negative'
+                  }
+                }
 
-                if (segundaVagaInfoAtual) {
-                  const competidor = segundaVagaInfoAtual.competidorProximo || '?'
-                  const vagaAlvo = segundaVagaInfoAtual.alvoVaga || (segundaVagaInfoAtual.vagasAtuais + 1)
-                  if (segundaVagaInfoAtual.tipo === 'margem') {
-                    const margem = segundaVagaInfoAtual.distancia
+                // Projeção Estadual: lógica dinâmica com vaga-alvo e fallback de margem
+                if (kpi.id === 'projecao_estadual' && segundaVagaInfoEstadual) {
+                  const competidor = segundaVagaInfoEstadual.competidorProximo || '?'
+                  const vagaAlvo = segundaVagaInfoEstadual.alvoVaga || (segundaVagaInfoEstadual.vagasAtuais + 1)
+                  if (segundaVagaInfoEstadual.tipo === 'margem') {
+                    const margem = segundaVagaInfoEstadual.distancia
                     const margemType =
                       margem > 20000
                         ? 'positive' as const
@@ -1198,26 +1208,21 @@ export default function Home() {
                       })
                     } else {
                       lines.push({
-                        text: `Margem crítica para manter ${segundaVagaInfoAtual.vagasAtuais} vaga(s)`,
+                        text: `Margem crítica para manter ${segundaVagaInfoEstadual.vagasAtuais} vaga(s)`,
                         type: 'negative',
                       })
                     }
 
-                    if (segundaVagaInfoAtual.distanciaCompetidor > 0) {
+                    if (segundaVagaInfoEstadual.distanciaCompetidor > 0) {
                       lines.push({
-                        text: `${competidor} precisa +${segundaVagaInfoAtual.distanciaCompetidor.toLocaleString('pt-BR')} votos`,
+                        text: `${competidor} precisa +${segundaVagaInfoEstadual.distanciaCompetidor.toLocaleString('pt-BR')} votos`,
                         type: 'negative',
-                      })
-                    } else {
-                      lines.push({
-                        text: 'Sem ameaça imediata na 2ª vaga',
-                        type: 'neutral',
                       })
                     }
                     cardInfoLines = lines
                   } else {
-                    if (segundaVagaInfoAtual.distancia > 0) {
-                      cardSubtitle = `-${segundaVagaInfoAtual.distancia.toLocaleString('pt-BR')} votos p/ ${vagaAlvo}ª vaga (${competidor})`
+                    if (segundaVagaInfoEstadual.distancia > 0) {
+                      cardSubtitle = `-${segundaVagaInfoEstadual.distancia.toLocaleString('pt-BR')} votos p/ ${vagaAlvo}ª vaga (${competidor})`
                       cardSubtitleType = 'negative'
                     } else {
                       cardSubtitle = `${vagaAlvo}ª vaga em disputa (${competidor})`

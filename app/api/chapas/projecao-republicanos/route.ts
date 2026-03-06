@@ -93,7 +93,8 @@ function calcularDistribuicaoDHondt(
 function calcularDistanciaSegundaVaga(
   partidosComVotos: Array<{ nome: string; votosTotal: number; atingiuMinimo: boolean }>,
   quociente: number,
-  numVagas: number
+  numVagas: number,
+  usarMargemDiretaParaUmaVaga: boolean = false
 ): { 
   vagasAtuais: number
   alvoVaga: number
@@ -151,7 +152,7 @@ function calcularDistanciaSegundaVaga(
       qpCompetidor: ultimaRodada.qpRunnerUp,
       rodada: ultimaRodada.rodada,
     }
-  } else if (vagasAtuais >= 1 && rodadasRepGanhou.length === 0) {
+  } else if (usarMargemDiretaParaUmaVaga && vagasAtuais >= 1 && rodadasRepGanhou.length === 0) {
     // Caso sem vaga por sobra (somente vagas diretas):
     // margem para manter o patamar atual de vagas diretas.
     const limiteVotosDiretos = quociente * vagasAtuais
@@ -380,7 +381,12 @@ export async function GET(request: NextRequest) {
     const republicanos = distribuicao.find(p => p.nome === 'REPUBLICANOS')
 
     // Calcular distância para 2ª vaga do REPUBLICANOS
-    const analiseSegundaVaga = calcularDistanciaSegundaVaga(partidosComVotos, quociente, numVagas)
+    const analiseSegundaVaga = calcularDistanciaSegundaVaga(
+      partidosComVotos,
+      quociente,
+      numVagas,
+      escopo === 'estadual'
+    )
 
     // Calcular ranking individual se votosExpectativa foi informado
     // Exclui o próprio Jadyel (REPUBLICANOS) da comparação, pois queremos saber
