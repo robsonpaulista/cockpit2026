@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 
 export const dynamic = 'force-dynamic'
 import { NextResponse } from 'next/server'
@@ -27,6 +28,14 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
     }
 
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('is_admin')
+      .eq('id', user.id)
+      .single()
+    const isAdmin = Boolean(profile?.is_admin)
+    const queryClient = isAdmin ? createAdminClient() : supabase
+
     const { searchParams } = new URL(request.url)
     const cargo = searchParams.get('cargo')
     const tipo = searchParams.get('tipo')
@@ -34,10 +43,13 @@ export async function GET(request: Request) {
     const cidadeId = searchParams.get('cidade_id')
     const countOnly = searchParams.get('count_only') === 'true'
     if (countOnly) {
-      let countQuery = supabase
+      let countQuery = queryClient
         .from('polls')
         .select('data, instituto')
-        .eq('user_id', user.id)
+
+      if (!isAdmin) {
+        countQuery = countQuery.eq('user_id', user.id)
+      }
 
       if (cargo) {
         countQuery = countQuery.eq('cargo', cargo)
@@ -68,7 +80,7 @@ export async function GET(request: Request) {
       return NextResponse.json({ count: pesquisasUnicas.size })
     }
 
-    let dataQuery = supabase
+    let dataQuery = queryClient
       .from('polls')
       .select(`
         *,
@@ -77,9 +89,12 @@ export async function GET(request: Request) {
           name
         )
       `)
-      .eq('user_id', user.id) // user.id é o mesmo que auth.uid()
       .order('data', { ascending: false })
       .limit(limit)
+
+    if (!isAdmin) {
+      dataQuery = dataQuery.eq('user_id', user.id) // user.id é o mesmo que auth.uid()
+    }
 
     if (cargo) {
       dataQuery = dataQuery.eq('cargo', cargo)

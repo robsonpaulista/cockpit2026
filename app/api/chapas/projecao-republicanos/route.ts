@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { NextRequest, NextResponse } from 'next/server'
 
 export const dynamic = 'force-dynamic'
+const ESTADUAL_PREFIX = 'estadual_'
 
 interface PartidoCenario {
   nome: string
@@ -95,6 +96,7 @@ function calcularDistanciaSegundaVaga(
   numVagas: number
 ): { 
   vagasAtuais: number
+  alvoVaga: number
   distancia: number
   distanciaCompetidor: number  // quantos votos o competidor precisa GANHAR para roubar
   tipo: 'margem' | 'faltam'
@@ -105,17 +107,18 @@ function calcularDistanciaSegundaVaga(
 } {
   const repAtual = partidosComVotos.find(p => p.nome === 'REPUBLICANOS')
   if (!repAtual) {
-    return { vagasAtuais: 0, distancia: 0, distanciaCompetidor: 0, tipo: 'faltam', competidorProximo: null, qpRepublicanos: 0, qpCompetidor: 0, rodada: 0 }
+    return { vagasAtuais: 0, alvoVaga: 1, distancia: 0, distanciaCompetidor: 0, tipo: 'faltam', competidorProximo: null, qpRepublicanos: 0, qpCompetidor: 0, rodada: 0 }
   }
 
   const { partidosComVagas, historicoRodadas } = calcularDistribuicaoDHondtComHistorico(partidosComVotos, quociente, numVagas)
   const repFinal = partidosComVagas.find(p => p.nome === 'REPUBLICANOS')
   const vagasAtuais = repFinal?.vagasObtidas || 0
+  const alvoVaga = vagasAtuais + 1
 
   // Encontrar rodadas onde REPUBLICANOS ganhou vagas por sobra
   const rodadasRepGanhou = historicoRodadas.filter(r => r.ganhador === 'REPUBLICANOS')
 
-  if (vagasAtuais >= 2 && rodadasRepGanhou.length > 0) {
+  if (vagasAtuais >= 1 && rodadasRepGanhou.length > 0) {
     // REPUBLICANOS tem 2+ vagas: calcular margem baseada na ÚLTIMA rodada onde ganhou
     // Essa é a rodada mais "apertada" (divisor maior = QP menor)
     const ultimaRodada = rodadasRepGanhou[rodadasRepGanhou.length - 1]
@@ -139,6 +142,7 @@ function calcularDistanciaSegundaVaga(
 
     return {
       vagasAtuais,
+      alvoVaga,
       distancia: margem,
       distanciaCompetidor: Math.max(0, distanciaCompetidor),
       tipo: 'margem',
@@ -146,6 +150,23 @@ function calcularDistanciaSegundaVaga(
       qpRepublicanos: ultimaRodada.qpGanhador,
       qpCompetidor: ultimaRodada.qpRunnerUp,
       rodada: ultimaRodada.rodada,
+    }
+  } else if (vagasAtuais >= 1 && rodadasRepGanhou.length === 0) {
+    // Caso sem vaga por sobra (somente vagas diretas):
+    // margem para manter o patamar atual de vagas diretas.
+    const limiteVotosDiretos = quociente * vagasAtuais
+    const margemDireta = repAtual.votosTotal - limiteVotosDiretos
+
+    return {
+      vagasAtuais,
+      alvoVaga,
+      distancia: margemDireta,
+      distanciaCompetidor: 0,
+      tipo: 'margem',
+      competidorProximo: null,
+      qpRepublicanos: 0,
+      qpCompetidor: 0,
+      rodada: 0,
     }
   } else if (vagasAtuais < 2) {
     // REPUBLICANOS não tem 2ª vaga: encontrar a rodada onde ele PERDEU 
@@ -218,6 +239,7 @@ function calcularDistanciaSegundaVaga(
     if (rodadaCritica && menorFalta < Infinity) {
       return {
         vagasAtuais,
+        alvoVaga,
         distancia: menorFalta,
         distanciaCompetidor: 0,
         tipo: 'faltam',
@@ -228,16 +250,17 @@ function calcularDistanciaSegundaVaga(
       }
     }
 
-    return { vagasAtuais, distancia: 0, distanciaCompetidor: 0, tipo: 'faltam', competidorProximo: null, qpRepublicanos: 0, qpCompetidor: 0, rodada: 0 }
+    return { vagasAtuais, alvoVaga, distancia: 0, distanciaCompetidor: 0, tipo: 'faltam', competidorProximo: null, qpRepublicanos: 0, qpCompetidor: 0, rodada: 0 }
   }
 
-  return { vagasAtuais, distancia: 0, distanciaCompetidor: 0, tipo: 'margem', competidorProximo: null, qpRepublicanos: 0, qpCompetidor: 0, rodada: 0 }
+  return { vagasAtuais, alvoVaga, distancia: 0, distanciaCompetidor: 0, tipo: 'margem', competidorProximo: null, qpRepublicanos: 0, qpCompetidor: 0, rodada: 0 }
 }
 
 export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams
     const votosExpectativa = parseInt(searchParams.get('votosExpectativa') || '0', 10)
+    const escopo = searchParams.get('escopo') === 'estadual' ? 'estadual' : 'federal'
 
     const supabase = createClient()
 
@@ -251,17 +274,25 @@ export async function GET(request: NextRequest) {
     }
 
     // Buscar cenário ativo
-    const { data: cenarioAtivo, error: cenarioError } = await supabase
+    let cenarioAtivoQuery = supabase
       .from('chapas_cenarios')
       .select('id, nome, quociente_eleitoral')
       .eq('user_id', user.id)
       .eq('ativo', true)
       .limit(1)
-      .single()
+
+    if (escopo === 'estadual') {
+      cenarioAtivoQuery = cenarioAtivoQuery.like('id', `${ESTADUAL_PREFIX}%`)
+    } else {
+      cenarioAtivoQuery = cenarioAtivoQuery.not('id', 'like', `${ESTADUAL_PREFIX}%`)
+    }
+
+    const { data: cenarioAtivo, error: cenarioError } = await cenarioAtivoQuery.single()
 
     // Se não há cenário ativo, buscar o base
-    let cenarioId = 'base'
-    let quociente = 190000
+    let cenarioId = escopo === 'estadual' ? `${ESTADUAL_PREFIX}base` : 'base'
+    let quociente = escopo === 'estadual' ? 67000 : 190000
+    const numVagas = escopo === 'estadual' ? 30 : 10
     let cenarioNome = 'Cenário Base'
 
     if (!cenarioError && cenarioAtivo) {
@@ -270,12 +301,19 @@ export async function GET(request: NextRequest) {
       cenarioNome = cenarioAtivo.nome
     } else {
       // Tentar buscar o cenário base
-      const { data: cenarioBase } = await supabase
+      let cenarioBaseQuery = supabase
         .from('chapas_cenarios')
         .select('id, nome, quociente_eleitoral')
         .eq('user_id', user.id)
-        .eq('id', 'base')
-        .single()
+        .eq('id', cenarioId)
+
+      if (escopo === 'estadual') {
+        cenarioBaseQuery = cenarioBaseQuery.like('id', `${ESTADUAL_PREFIX}%`)
+      } else {
+        cenarioBaseQuery = cenarioBaseQuery.not('id', 'like', `${ESTADUAL_PREFIX}%`)
+      }
+
+      const { data: cenarioBase } = await cenarioBaseQuery.single()
 
       if (cenarioBase) {
         quociente = cenarioBase.quociente_eleitoral || 190000
@@ -335,8 +373,7 @@ export async function GET(request: NextRequest) {
       }
     })
 
-    // Calcular distribuição D'Hondt (assumindo 10 vagas, pode ser parametrizado depois)
-    const numVagas = 10
+    // Calcular distribuição D'Hondt
     const distribuicao = calcularDistribuicaoDHondt(partidosComVotos, quociente, numVagas)
 
     // Encontrar o partido REPUBLICANOS
@@ -378,8 +415,10 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({
         partido: 'REPUBLICANOS',
         eleitos: 0,
+        escopo,
         cenario: cenarioNome,
         quociente,
+        numVagas,
         ranking: rankingInfo,
         segundaVaga: analiseSegundaVaga,
         message: 'Partido REPUBLICANOS não encontrado no cenário.'
@@ -389,8 +428,10 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       partido: 'REPUBLICANOS',
       eleitos: republicanos.vagasObtidas,
+      escopo,
       cenario: cenarioNome,
       quociente,
+      numVagas,
       ranking: rankingInfo,
       segundaVaga: analiseSegundaVaga,
     })

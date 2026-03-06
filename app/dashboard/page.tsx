@@ -99,6 +99,18 @@ export default function Home() {
   const [rankingExpectativa, setRankingExpectativa] = useState<{ posicao: number; totalCandidatos: number } | null>(null)
   const [segundaVagaInfo, setSegundaVagaInfo] = useState<{
     vagasAtuais: number
+    alvoVaga: number
+    distancia: number
+    distanciaCompetidor: number
+    tipo: 'margem' | 'faltam'
+    competidorProximo: string | null
+    qpRepublicanos: number
+    qpCompetidor: number
+    rodada: number
+  } | null>(null)
+  const [segundaVagaInfoEstadual, setSegundaVagaInfoEstadual] = useState<{
+    vagasAtuais: number
+    alvoVaga: number
     distancia: number
     distanciaCompetidor: number
     tipo: 'margem' | 'faltam'
@@ -894,15 +906,23 @@ export default function Home() {
     }
 
     // Buscar projeção de chapas (eleitos do Republicanos) + ranking + análise 2ª vaga
-    const fetchProjecaoChapaComRanking = async (votosExpectativa?: number): Promise<{
+    const fetchProjecaoChapaComRanking = async (
+      votosExpectativa?: number,
+      escopo: 'federal' | 'estadual' = 'federal'
+    ): Promise<{
       eleitos: number
       ranking: { posicao: number; totalCandidatos: number } | null
-      segundaVaga: { vagasAtuais: number; distancia: number; distanciaCompetidor?: number; tipo: 'margem' | 'faltam'; competidorProximo: string | null; qpRepublicanos: number; qpCompetidor: number; rodada: number } | null
+      segundaVaga: { vagasAtuais: number; alvoVaga: number; distancia: number; distanciaCompetidor?: number; tipo: 'margem' | 'faltam'; competidorProximo: string | null; qpRepublicanos: number; qpCompetidor: number; rodada: number } | null
     }> => {
       try {
-        const params = votosExpectativa && votosExpectativa > 0
-          ? `?votosExpectativa=${Math.round(votosExpectativa)}`
-          : ''
+        const urlParams = new URLSearchParams()
+        if (votosExpectativa && votosExpectativa > 0) {
+          urlParams.set('votosExpectativa', String(Math.round(votosExpectativa)))
+        }
+        if (escopo === 'estadual') {
+          urlParams.set('escopo', 'estadual')
+        }
+        const params = urlParams.toString() ? `?${urlParams.toString()}` : ''
         const response = await fetch(`/api/chapas/projecao-republicanos${params}`)
         if (response.ok) {
           const data = await response.json()
@@ -934,8 +954,11 @@ export default function Home() {
           votosParaRanking = parseFloat(valorStr) || 0
         }
 
-        // Buscar projeção + ranking + análise 2ª vaga na mesma chamada
-        const { eleitos: projecaoEleitos, ranking, segundaVaga } = await fetchProjecaoChapaComRanking(votosParaRanking)
+        // Buscar projeção federal + ranking + análise 2ª vaga
+        const { eleitos: projecaoEleitos, ranking, segundaVaga } = await fetchProjecaoChapaComRanking(
+          votosParaRanking,
+          'federal'
+        )
         setProjecaoChapa(projecaoEleitos)
         if (ranking && ranking.posicao > 0) {
           setRankingExpectativa(ranking)
@@ -945,6 +968,20 @@ export default function Home() {
             ...segundaVaga,
             distanciaCompetidor: segundaVaga.distanciaCompetidor ?? 0,
           })
+        }
+
+        // Buscar projeção estadual para o card dedicado
+        const { eleitos: eleitosEstadual, segundaVaga: segundaVagaEstadual } = await fetchProjecaoChapaComRanking(
+          undefined,
+          'estadual'
+        )
+        if (segundaVagaEstadual) {
+          setSegundaVagaInfoEstadual({
+            ...segundaVagaEstadual,
+            distanciaCompetidor: segundaVagaEstadual.distanciaCompetidor ?? 0,
+          })
+        } else {
+          setSegundaVagaInfoEstadual(null)
         }
 
         const cidadesUnicas = territorioKPIs?.cidadesUnicas ?? null
@@ -998,11 +1035,11 @@ export default function Home() {
               status: 'neutral',
             },
             {
-              id: 'risco',
-              label: 'Risco de Crise',
-              value: `${data.risco.value} ${Number(data.risco.value) === 1 ? 'alerta' : 'alertas'}`,
-              variation: data.risco.variation,
-              status: data.risco.status,
+              id: 'projecao_estadual',
+              label: 'Projeção Estadual',
+              value: `${eleitosEstadual} ${eleitosEstadual === 1 ? 'vaga' : 'vagas'}`,
+              variation: 0,
+              status: eleitosEstadual >= 2 ? 'success' : eleitosEstadual >= 1 ? 'warning' : 'error',
             },
           ])
         }
@@ -1133,27 +1170,59 @@ export default function Home() {
                   cardInfoLines = lines
                 }
                 
-                // Info para Projeção Chapa Federal (margem REP + ameaça do competidor)
-                if (kpi.id === 'projecao' && segundaVagaInfo && segundaVagaInfo.distancia > 0) {
-                  const competidor = segundaVagaInfo.competidorProximo || '?'
-                  if (segundaVagaInfo.tipo === 'margem') {
-                    const margemType = segundaVagaInfo.distancia > 20000 ? 'positive' as const : segundaVagaInfo.distancia > 5000 ? 'neutral' as const : 'negative' as const
-                    const lines: Array<{ text: string; type?: 'positive' | 'negative' | 'neutral' }> = [
-                      {
-                        text: `Margem: ${segundaVagaInfo.distancia.toLocaleString('pt-BR')} votos`,
-                        type: margemType,
-                      },
-                    ]
-                    if (segundaVagaInfo.distanciaCompetidor > 0) {
+                // Info para projeção (federal e estadual) com o mesmo raciocínio/texto
+                const segundaVagaInfoAtual =
+                  kpi.id === 'projecao'
+                    ? segundaVagaInfo
+                    : kpi.id === 'projecao_estadual'
+                      ? segundaVagaInfoEstadual
+                      : null
+
+                if (segundaVagaInfoAtual) {
+                  const competidor = segundaVagaInfoAtual.competidorProximo || '?'
+                  const vagaAlvo = segundaVagaInfoAtual.alvoVaga || (segundaVagaInfoAtual.vagasAtuais + 1)
+                  if (segundaVagaInfoAtual.tipo === 'margem') {
+                    const margem = segundaVagaInfoAtual.distancia
+                    const margemType =
+                      margem > 20000
+                        ? 'positive' as const
+                        : margem > 5000
+                          ? 'neutral' as const
+                          : 'negative' as const
+                    const lines: Array<{ text: string; type?: 'positive' | 'negative' | 'neutral' }> = []
+
+                    if (margem > 0) {
                       lines.push({
-                        text: `${competidor} precisa +${segundaVagaInfo.distanciaCompetidor.toLocaleString('pt-BR')} votos`,
+                        text: `Margem: ${margem.toLocaleString('pt-BR')} votos`,
+                        type: margemType,
+                      })
+                    } else {
+                      lines.push({
+                        text: `Margem crítica para manter ${segundaVagaInfoAtual.vagasAtuais} vaga(s)`,
                         type: 'negative',
+                      })
+                    }
+
+                    if (segundaVagaInfoAtual.distanciaCompetidor > 0) {
+                      lines.push({
+                        text: `${competidor} precisa +${segundaVagaInfoAtual.distanciaCompetidor.toLocaleString('pt-BR')} votos`,
+                        type: 'negative',
+                      })
+                    } else {
+                      lines.push({
+                        text: 'Sem ameaça imediata na 2ª vaga',
+                        type: 'neutral',
                       })
                     }
                     cardInfoLines = lines
                   } else {
-                    cardSubtitle = `-${segundaVagaInfo.distancia.toLocaleString('pt-BR')} votos p/ 2ª vaga (${competidor})`
-                    cardSubtitleType = 'negative'
+                    if (segundaVagaInfoAtual.distancia > 0) {
+                      cardSubtitle = `-${segundaVagaInfoAtual.distancia.toLocaleString('pt-BR')} votos p/ ${vagaAlvo}ª vaga (${competidor})`
+                      cardSubtitleType = 'negative'
+                    } else {
+                      cardSubtitle = `${vagaAlvo}ª vaga em disputa (${competidor})`
+                      cardSubtitleType = 'neutral'
+                    }
                   }
                 }
 
@@ -1161,6 +1230,7 @@ export default function Home() {
                   presenca: '/dashboard/territorio',
                   base: '/dashboard/territorio',
                   projecao: '/dashboard/chapas',
+                  projecao_estadual: '/dashboard/chapas-estaduais',
                   sentimento: '/dashboard/pesquisa',
                 }
                 
@@ -1208,7 +1278,7 @@ export default function Home() {
                   {(() => {
                     const presencaKpi = kpisComMedia.find(k => k.id === 'presenca')
                     const baseKpi = kpisComMedia.find(k => k.id === 'base')
-                    const riscoKpi = kpisComMedia.find(k => k.id === 'risco')
+                    const projecaoEstadualKpi = kpisComMedia.find(k => k.id === 'projecao_estadual')
                     
                     const insights: string[] = []
                     
@@ -1216,8 +1286,8 @@ export default function Home() {
                       insights.push(`Presença territorial cresceu ${presencaKpi.variation}% no último mês`)
                     }
                     
-                    if (riscoKpi && riscoKpi.status === 'error') {
-                      insights.push(`há risco de saturação em territórios-chave`)
+                    if (projecaoEstadualKpi && projecaoEstadualKpi.status === 'error') {
+                      insights.push(`projeção estadual requer reforço para ampliar vagas`)
                     }
                     
                     if (baseKpi && baseKpi.value) {
@@ -2697,7 +2767,7 @@ export default function Home() {
                       {(() => {
                         const presencaKpi = kpisComMedia.find(k => k.id === 'presenca')
                         const baseKpi = kpisComMedia.find(k => k.id === 'base')
-                        const riscoKpi = kpisComMedia.find(k => k.id === 'risco')
+                        const projecaoEstadualKpi = kpisComMedia.find(k => k.id === 'projecao_estadual')
                         
                         const insights: string[] = []
                         
@@ -2705,8 +2775,8 @@ export default function Home() {
                           insights.push(`Presença territorial cresceu ${presencaKpi.variation}% no último mês`)
                         }
                         
-                        if (riscoKpi && riscoKpi.status === 'error') {
-                          insights.push(`há risco de saturação em territórios-chave`)
+                        if (projecaoEstadualKpi && projecaoEstadualKpi.status === 'error') {
+                          insights.push(`projeção estadual requer reforço para ampliar vagas`)
                         }
                         
                         if (baseKpi && baseKpi.value) {

@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { NextResponse } from 'next/server'
 import { getEleitoradoByCity } from '@/lib/eleitores'
 
@@ -16,6 +17,14 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
     }
 
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('is_admin')
+      .eq('id', user.id)
+      .single()
+    const isAdmin = Boolean(profile?.is_admin)
+    const queryClient = isAdmin ? createAdminClient() : supabase
+
     const { searchParams } = new URL(request.url)
     const candidato = searchParams.get('candidato')
 
@@ -30,15 +39,19 @@ export async function GET(request: Request) {
     }
 
     // Ranking: pesquisas estimuladas para dep_federal (comparabilidade entre candidatos)
-    const { data: pollsRanking, error } = await supabase
+    let rankingQuery = queryClient
       .from('polls')
       .select(`
         candidato_nome, intencao, data, cidade_id,
         cities ( name )
       `)
-      .eq('user_id', user.id)
       .eq('tipo', 'estimulada')
       .eq('cargo', 'dep_federal')
+
+    if (!isAdmin) {
+      rankingQuery = rankingQuery.eq('user_id', user.id)
+    }
+    const { data: pollsRanking, error } = await rankingQuery
 
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 })
@@ -107,14 +120,18 @@ export async function GET(request: Request) {
 
     // Projeção por cidades: usar TODAS as pesquisas do candidato (não só dep_federal estimulada),
     // para refletir a mesma cobertura de cidades exibida no histórico de pesquisas.
-    const { data: pollsProjecao, error: errorProjecao } = await supabase
+    let projecaoQuery = queryClient
       .from('polls')
       .select(`
         candidato_nome, intencao, data, cidade_id,
         cities ( name )
       `)
-      .eq('user_id', user.id)
       .eq('candidato_nome', candidato)
+
+    if (!isAdmin) {
+      projecaoQuery = projecaoQuery.eq('user_id', user.id)
+    }
+    const { data: pollsProjecao, error: errorProjecao } = await projecaoQuery
 
     if (errorProjecao) {
       return NextResponse.json({ error: errorProjecao.message }, { status: 500 })

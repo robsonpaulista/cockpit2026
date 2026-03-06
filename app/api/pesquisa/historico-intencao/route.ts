@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 
 export const dynamic = 'force-dynamic'
 import { NextResponse } from 'next/server'
@@ -15,6 +16,14 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
     }
 
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('is_admin')
+      .eq('id', user.id)
+      .single()
+    const isAdmin = Boolean(profile?.is_admin)
+    const queryClient = isAdmin ? createAdminClient() : supabase
+
     // Buscar candidato padrão do localStorage (será passado via query param)
     const { searchParams } = new URL(request.url)
     const candidatoPadrao = searchParams.get('candidato')
@@ -27,7 +36,7 @@ export async function GET(request: Request) {
     }
 
     // Buscar todas as pesquisas do candidato padrão com join na tabela cities
-    const { data: polls, error } = await supabase
+    let historicoQuery = queryClient
       .from('polls')
       .select(`
         *,
@@ -35,9 +44,13 @@ export async function GET(request: Request) {
           name
         )
       `)
-      .eq('user_id', user.id)
       .eq('candidato_nome', candidatoPadrao)
       .order('data', { ascending: true })
+
+    if (!isAdmin) {
+      historicoQuery = historicoQuery.eq('user_id', user.id)
+    }
+    const { data: polls, error } = await historicoQuery
 
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 })
