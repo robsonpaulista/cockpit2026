@@ -100,6 +100,7 @@ const ITEMS_PER_PAGE = 10
 const CANDIDATO_FEDERAL_FIXO = 'JADYEL DA JUPI'
 const RESUMO_STATE_SESSION_KEY = 'resumo_eleicoes_state_v1'
 const SCENARIO_VOTOS_STORAGE_KEY = 'dashboard_cenario_votos_2026'
+const RESUMO_CIDADES_CACHE_KEY = 'resumo_eleicoes_cidades_cache_v1'
 
 const EMPTY_SELECTIONS: Record<TableKey, Record<string, number>> = {
   deputado_estadual: {},
@@ -709,14 +710,43 @@ export default function ResumoEleicoesPage() {
     if (restaurouEstadoRetorno && cidades.length > 0) return
     let mounted = true
 
+    const hydrateCitiesFromCache = (): boolean => {
+      if (typeof window === 'undefined') return false
+      try {
+        const raw = localStorage.getItem(RESUMO_CIDADES_CACHE_KEY)
+        if (!raw) return false
+        const parsed = JSON.parse(raw)
+        if (!Array.isArray(parsed)) return false
+        const cidadesCache = parsed
+          .map((item) => String(item || '').trim())
+          .filter((item) => item.length > 0)
+        if (cidadesCache.length === 0) return false
+        setCidades(cidadesCache)
+        setLoadingCidades(false)
+        return true
+      } catch {
+        return false
+      }
+    }
+
     const loadCities = async () => {
+      const loadedFromCache = hydrateCitiesFromCache()
+      if (loadedFromCache) return
       setLoadingCidades(true)
       try {
         const res = await fetch('/api/resumo-eleicoes')
         const json = await res.json()
         if (!res.ok) throw new Error(json.error || 'Erro ao carregar municípios')
         if (!mounted) return
-        setCidades(Array.isArray(json.cidades) ? json.cidades : [])
+        const cidadesApi = Array.isArray(json.cidades)
+          ? json.cidades
+              .map((item: unknown) => String(item || '').trim())
+              .filter((item: string) => item.length > 0)
+          : []
+        setCidades(cidadesApi)
+        if (typeof window !== 'undefined' && cidadesApi.length > 0) {
+          localStorage.setItem(RESUMO_CIDADES_CACHE_KEY, JSON.stringify(cidadesApi))
+        }
       } catch (e) {
         if (!mounted) return
         setError(e instanceof Error ? e.message : 'Erro ao carregar municípios')
