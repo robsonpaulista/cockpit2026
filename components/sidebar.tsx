@@ -25,6 +25,7 @@ import {
   Monitor,
   ScrollText,
   Target,
+  ChevronDown,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { MenuItem } from '@/types'
@@ -33,13 +34,26 @@ import { useNavigationLoading } from '@/contexts/navigation-loading-context'
 import { usePermissions } from '@/hooks/use-permissions'
 import { ThemeToggle } from '@/components/theme-toggle'
 
-const menuItems: MenuItem[] = [
+interface SidebarMenuItem extends MenuItem {
+  children?: MenuItem[]
+}
+
+const menuItems: SidebarMenuItem[] = [
   { id: 'home', label: 'Visão Geral', icon: 'LayoutDashboard', href: '/dashboard' },
   { id: 'narrativas', label: 'Estratégia', icon: 'Target', href: '/dashboard/narrativas' },
   { id: 'campo', label: 'Campo & Agenda', icon: 'MapPin', href: '/dashboard/campo' },
   { id: 'agenda', label: 'Agenda', icon: 'Calendar', href: '/dashboard/agenda' },
   { id: 'territorio', label: 'Território & Base', icon: 'MapPin', href: '/dashboard/territorio' },
-  { id: 'chapas', label: 'Chapas', icon: 'Vote', href: '/dashboard/chapas' },
+  {
+    id: 'chapas-menu',
+    label: 'Chapas',
+    icon: 'Vote',
+    href: '/dashboard/chapas',
+    children: [
+      { id: 'chapas', label: 'Federal', icon: 'Vote', href: '/dashboard/chapas' },
+      { id: 'chapas-estaduais', label: 'Estadual', icon: 'Vote', href: '/dashboard/chapas-estaduais' },
+    ],
+  },
   { id: 'resumo-eleicoes', label: 'Resumo Eleições', icon: 'BarChart3', href: '/dashboard/resumo-eleicoes' },
   { id: 'conteudo', label: 'Conteúdo & Redes', icon: 'MessageSquare', href: '/dashboard/conteudo' },
   { id: 'noticias', label: 'Notícias & Crises', icon: 'Newspaper', href: '/dashboard/noticias' },
@@ -75,6 +89,8 @@ const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
 }
 
 function pageKeyForItem(id: string): string {
+  if (id === 'chapas-menu') return 'chapas'
+  if (id === 'chapas-estaduais') return 'chapas'
   return id === 'home' ? 'dashboard' : id
 }
 
@@ -84,13 +100,24 @@ export function Sidebar() {
   const pathname = usePathname()
   const { canAccess, isAdmin, loading: permLoading } = usePermissions()
 
+  const [chapasMenuOpen, setChapasMenuOpen] = useState(() =>
+    pathname === '/dashboard/chapas' || pathname === '/dashboard/chapas-estaduais'
+  )
+
   const visibleItems = permLoading
     ? menuItems
-    : menuItems.filter((item) => {
-        if (item.id === 'home') return true
-        if (item.id === 'usuarios') return isAdmin
-        return canAccess(pageKeyForItem(item.id))
-      })
+    : menuItems
+        .map((item) => {
+          if (!item.children) return item
+          const children = item.children.filter((child) => canAccess(pageKeyForItem(child.id)))
+          return { ...item, children }
+        })
+        .filter((item) => {
+          if (item.id === 'home') return true
+          if (item.id === 'usuarios') return isAdmin
+          if (item.children) return item.children.length > 0
+          return canAccess(pageKeyForItem(item.id))
+        })
 
   const toggleCollapse = () => {
     setCollapsed(!collapsed)
@@ -159,9 +186,12 @@ export function Sidebar() {
           {/* Menu Items */}
           <nav className="flex-1 overflow-y-auto overflow-x-visible py-4 px-2 scrollbar-hide">
             <ul className="space-y-1">
-              {visibleItems.map((item: MenuItem) => {
+              {visibleItems.map((item: SidebarMenuItem) => {
                 const Icon = iconMap[item.icon] || LayoutDashboard
-                const isActive = pathname === item.href
+                const isChapasGroup = item.id === 'chapas-menu'
+                const isActive = isChapasGroup
+                  ? pathname === '/dashboard/chapas' || pathname === '/dashboard/chapas-estaduais'
+                  : pathname === item.href
                 const itemRef = useRef<HTMLLIElement>(null)
                 const [tooltipPos, setTooltipPos] = useState<{ top: number } | null>(null)
 
@@ -178,46 +208,116 @@ export function Sidebar() {
 
                 return (
                   <li key={item.id} className="relative group" ref={itemRef} onMouseEnter={handleMouseEnter} onMouseLeave={handleMouseLeave}>
-                    <Link
-                      href={item.href}
-                      onClick={() => {
-                        if (item.href !== pathname) setNavigating(true)
-                        setMobileOpen(false)
-                      }}
-                      className={cn(
-                        'relative flex items-center gap-3 px-3 py-2.5 rounded-[10px]',
-                        'transition-all duration-200 ease-out',
-                        'hover:bg-accent-gold-soft hover:text-text-primary',
-                        isActive && 'bg-accent-gold-soft text-text-primary shadow-sm'
-                      )}
-                    >
-                      {/* Indicador de ativo */}
-                      {isActive && (
-                        <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-accent-gold rounded-r-full" />
-                      )}
-                      
-                      <div className={cn(
-                        'w-5 h-5 flex-shrink-0 transition-all duration-200',
-                        'group-hover:scale-110',
-                        isActive ? 'text-accent-gold font-bold' : 'text-secondary group-hover:text-accent-gold'
-                      )}>
-                        <Icon className="w-full h-full" />
-                      </div>
-                      {(!collapsed || mobileOpen) && (
-                        <span className={cn(
-                          'text-sm transition-all duration-200',
-                          'group-hover:translate-x-0.5',
-                          isActive ? 'text-text-primary font-semibold' : 'text-text-secondary group-hover:text-text-primary'
+                    {isChapasGroup ? (
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => setChapasMenuOpen((prev) => !prev)}
+                          className={cn(
+                            'relative w-full flex items-center gap-3 px-3 py-2.5 rounded-[10px]',
+                            'transition-all duration-200 ease-out',
+                            'hover:bg-accent-gold-soft hover:text-text-primary',
+                            isActive && 'bg-accent-gold-soft text-text-primary shadow-sm'
+                          )}
+                        >
+                          {isActive && (
+                            <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-accent-gold rounded-r-full" />
+                          )}
+                          <div className={cn(
+                            'w-5 h-5 flex-shrink-0 transition-all duration-200',
+                            'group-hover:scale-110',
+                            isActive ? 'text-accent-gold font-bold' : 'text-secondary group-hover:text-accent-gold'
+                          )}>
+                            <Icon className="w-full h-full" />
+                          </div>
+                          {(!collapsed || mobileOpen) && (
+                            <>
+                              <span className={cn(
+                                'text-sm transition-all duration-200',
+                                'group-hover:translate-x-0.5',
+                                isActive ? 'text-text-primary font-semibold' : 'text-text-secondary group-hover:text-text-primary'
+                              )}>
+                                {item.label}
+                              </span>
+                              <ChevronDown
+                                className={cn(
+                                  'ml-auto w-4 h-4 text-text-secondary transition-transform',
+                                  chapasMenuOpen && 'rotate-180'
+                                )}
+                              />
+                            </>
+                          )}
+                        </button>
+
+                        {(!collapsed || mobileOpen) && chapasMenuOpen && item.children && (
+                          <ul className="mt-1 ml-8 space-y-1">
+                            {item.children.map((child) => {
+                              const childActive = pathname === child.href
+                              return (
+                                <li key={child.id}>
+                                  <Link
+                                    href={child.href}
+                                    onClick={() => {
+                                      if (child.href !== pathname) setNavigating(true)
+                                      setMobileOpen(false)
+                                    }}
+                                    className={cn(
+                                      'flex items-center gap-2 px-3 py-2 rounded-[8px] text-sm transition-all',
+                                      childActive
+                                        ? 'bg-accent-gold-soft text-text-primary font-semibold'
+                                        : 'text-text-secondary hover:bg-accent-gold-soft hover:text-text-primary'
+                                    )}
+                                  >
+                                    {child.label}
+                                  </Link>
+                                </li>
+                              )
+                            })}
+                          </ul>
+                        )}
+                      </>
+                    ) : (
+                      <Link
+                        href={item.href}
+                        onClick={() => {
+                          if (item.href !== pathname) setNavigating(true)
+                          setMobileOpen(false)
+                        }}
+                        className={cn(
+                          'relative flex items-center gap-3 px-3 py-2.5 rounded-[10px]',
+                          'transition-all duration-200 ease-out',
+                          'hover:bg-accent-gold-soft hover:text-text-primary',
+                          isActive && 'bg-accent-gold-soft text-text-primary shadow-sm'
+                        )}
+                      >
+                        {/* Indicador de ativo */}
+                        {isActive && (
+                          <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-accent-gold rounded-r-full" />
+                        )}
+
+                        <div className={cn(
+                          'w-5 h-5 flex-shrink-0 transition-all duration-200',
+                          'group-hover:scale-110',
+                          isActive ? 'text-accent-gold font-bold' : 'text-secondary group-hover:text-accent-gold'
                         )}>
-                          {item.label}
-                        </span>
-                      )}
-                      {item.badge && (!collapsed || mobileOpen) && (
-                        <span className="ml-auto px-2 py-0.5 text-xs font-medium bg-status-danger text-white rounded-full transition-transform duration-200 group-hover:scale-110">
-                          {item.badge}
-                        </span>
-                      )}
-                    </Link>
+                          <Icon className="w-full h-full" />
+                        </div>
+                        {(!collapsed || mobileOpen) && (
+                          <span className={cn(
+                            'text-sm transition-all duration-200',
+                            'group-hover:translate-x-0.5',
+                            isActive ? 'text-text-primary font-semibold' : 'text-text-secondary group-hover:text-text-primary'
+                          )}>
+                            {item.label}
+                          </span>
+                        )}
+                        {item.badge && (!collapsed || mobileOpen) && (
+                          <span className="ml-auto px-2 py-0.5 text-xs font-medium bg-status-danger text-white rounded-full transition-transform duration-200 group-hover:scale-110">
+                            {item.badge}
+                          </span>
+                        )}
+                      </Link>
+                    )}
                     
                     {/* Tooltip quando sidebar está recolhida - usando fixed para sair do overflow */}
                     {collapsed && !mobileOpen && tooltipPos && (

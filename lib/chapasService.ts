@@ -14,6 +14,7 @@ function getSupabaseClient() {
 // Retry com backoff exponencial (inspirado no projeto referência Firebase)
 const MAX_RETRIES = 3
 const RETRY_DELAY = 500 // ms
+const ESTADUAIS_PREFIX = 'estadual_'
 
 async function executeWithRetry<T>(
   operation: () => Promise<T>,
@@ -266,6 +267,7 @@ export async function listarCenarios(): Promise<Cenario[]> {
     .from('chapas_cenarios')
     .select('id, nome, descricao, tipo, criado_em, atualizado_em, ativo, quociente_eleitoral, votos_igreja')
     .eq('user_id', userId)
+    .not('id', 'like', `${ESTADUAIS_PREFIX}%`)
     .order('criado_em', { ascending: false })
 
   if (error) throw error
@@ -565,6 +567,7 @@ export async function ativarCenario(cenarioId: string, ativo: boolean): Promise<
         .from('chapas_cenarios')
         .update({ ativo: false, atualizado_em: agora })
         .eq('user_id', userId)
+        .not('id', 'like', `${ESTADUAIS_PREFIX}%`)
         .eq('ativo', true)
         .neq('id', cenarioId),
       supabase
@@ -603,11 +606,13 @@ export async function listarCenariosComAtivo(): Promise<{ cenarios: Cenario[], c
         .from('chapas_cenarios')
         .select('id, nome, descricao, tipo, criado_em, atualizado_em, ativo, quociente_eleitoral, votos_igreja')
         .eq('user_id', userId)
+        .not('id', 'like', `${ESTADUAIS_PREFIX}%`)
         .order('criado_em', { ascending: false }),
       supabase
         .from('chapas_partidos')
         .select('cenario_id, partido_nome, cor, cor_texto, votos_legenda, candidato_nome, candidato_votos, candidato_genero')
         .eq('user_id', userId)
+        .not('cenario_id', 'like', `${ESTADUAIS_PREFIX}%`)
         .order('partido_nome', { ascending: true })
         .order('candidato_votos', { ascending: false })
     ]),
@@ -688,6 +693,7 @@ export async function obterCenarioAtivo(): Promise<CenarioCompleto | null> {
     .from('chapas_cenarios')
     .select('id')
     .eq('user_id', userId)
+    .not('id', 'like', `${ESTADUAIS_PREFIX}%`)
     .eq('ativo', true)
     .limit(1)
 

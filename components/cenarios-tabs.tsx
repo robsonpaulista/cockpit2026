@@ -17,13 +17,17 @@ import {
   Cenario, 
   CenarioCompleto, 
   PartidoCenario,
-  listarCenarios, 
-  carregarCenario, 
-  criarNovoCenario, 
-  excluirCenario, 
-  ativarCenario,
-  criarCenarioBase
 } from '@/lib/chapasService'
+import * as chapasService from '@/lib/chapasService'
+
+interface CenariosService {
+  listarCenarios: () => Promise<Cenario[]>
+  carregarCenario: (cenarioId: string) => Promise<CenarioCompleto | null>
+  criarNovoCenario: (nome: string, descricao: string, cenarioOrigemId: string) => Promise<string>
+  excluirCenario: (cenarioId: string) => Promise<void>
+  ativarCenario: (cenarioId: string, ativo: boolean) => Promise<void>
+  criarCenarioBase: (partidos: PartidoCenario[], quociente: number) => Promise<string>
+}
 
 interface CenariosTabsProps {
   partidosAtuais: PartidoCenario[]
@@ -41,6 +45,7 @@ interface CenariosTabsProps {
   cenarioAtivoId?: string
   // Flag: pai está carregando dados - NÃO fazer fetch próprio
   carregandoExterno?: boolean
+  service?: CenariosService
 }
 
 export default function CenariosTabs({ 
@@ -56,7 +61,8 @@ export default function CenariosTabs({
   salvandoMudancas = false,
   cenariosIniciais,
   cenarioAtivoId,
-  carregandoExterno = false
+  carregandoExterno = false,
+  service = chapasService
 }: CenariosTabsProps) {
   const [cenarios, setCenarios] = useState<Cenario[]>(cenariosIniciais || [])
   const [cenarioAtivo, setCenarioAtivo] = useState<Cenario | null>(null)
@@ -72,7 +78,7 @@ export default function CenariosTabs({
   const carregarCenarios = async () => {
     setLoading(true)
     try {
-      const cenariosList = await listarCenarios()
+      const cenariosList = await service.listarCenarios()
       setCenarios(cenariosList)
       const ativo = cenariosList.find(c => c.ativo)
       setCenarioAtivo(ativo || null)
@@ -112,14 +118,14 @@ export default function CenariosTabs({
     setLoading(true)
     try {
       const cenarioOrigemId = novoCenario.cenarioOrigem || (cenarioAtivo?.id || 'base')
-      const novoCenarioId = await criarNovoCenario(
+      const novoCenarioId = await service.criarNovoCenario(
         novoCenario.nome,
         novoCenario.descricao,
         cenarioOrigemId
       )
 
       // Carregar o novo cenário
-      const cenarioCompleto = await carregarCenario(novoCenarioId)
+      const cenarioCompleto = await service.carregarCenario(novoCenarioId)
       if (cenarioCompleto) {
         onCenarioChange(cenarioCompleto)
       }
@@ -140,12 +146,12 @@ export default function CenariosTabs({
     setLoading(true)
     try {
       // ativarCenario agora faz batch: desativa todos + ativa o selecionado em paralelo
-      await ativarCenario(cenarioId, true)
+      await service.ativarCenario(cenarioId, true)
 
       // Carregar cenário ativado e lista em paralelo
       const [cenarioCompleto, cenariosList] = await Promise.all([
-        carregarCenario(cenarioId),
-        listarCenarios()
+        service.carregarCenario(cenarioId),
+        service.listarCenarios()
       ])
 
       setCenarios(cenariosList)
@@ -169,15 +175,15 @@ export default function CenariosTabs({
       const cenarioSendoExcluido = cenarios.find(c => c.id === cenarioId)
       const eraCenarioAtivo = cenarioSendoExcluido?.ativo
       
-      await excluirCenario(cenarioId)
+      await service.excluirCenario(cenarioId)
       await carregarCenarios()
       
       // Se o cenário excluído era o ativo, ativar o cenário base
       if (eraCenarioAtivo) {
-        await ativarCenario('base', true)
+        await service.ativarCenario('base', true)
         
         // Carregar o cenário base como ativo
-        const cenarioBase = await carregarCenario('base')
+        const cenarioBase = await service.carregarCenario('base')
         if (cenarioBase) {
           onCenarioChange(cenarioBase)
         }
@@ -201,7 +207,7 @@ export default function CenariosTabs({
     setLoading(true)
     try {
       const novoNome = `${cenario.nome} (Cópia)`
-      const novoCenarioId = await criarNovoCenario(
+      const novoCenarioId = await service.criarNovoCenario(
         novoNome,
         cenario.descricao || '',
         cenario.id

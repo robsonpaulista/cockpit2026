@@ -1,30 +1,29 @@
 'use client'
 
 import React, { useEffect, useState, useRef } from 'react'
-import { Trash2, Plus, RefreshCw, Check, Printer, Info, Eye, EyeOff, X, Maximize2, Minimize2 } from 'lucide-react'
+import Link from 'next/link'
+import { usePathname } from 'next/navigation'
+import { Trash2, Plus, RefreshCw, Check, Printer, Info, Eye, EyeOff, X, Maximize2, Minimize2, ArrowRightLeft } from 'lucide-react'
 import jsPDF from 'jspdf'
-import {
-  Cenario,
-  CenarioCompleto,
-  PartidoCenario,
-  obterCenarioAtivo,
-  atualizarCenario,
-  carregarCenario,
-  criarCenarioBase,
-  listarCenariosComAtivo,
-  preWarmUserIdCache,
-  dadosIniciais
-} from '@/lib/chapasService'
+import { Cenario, CenarioCompleto, PartidoCenario } from '@/lib/chapasService'
+import * as chapasFederalService from '@/lib/chapasService'
+import * as chapasEstaduaisService from '@/lib/chapas-estaduais-service'
 import CenariosTabs from '@/components/cenarios-tabs'
 import { useAuth } from '@/hooks/use-auth'
 
-// Configuração de cores dos partidos - Tema Premium Bege/Ouro
-const coresPartidos = {
+const coresPartidosFederais = {
   'PT': { cor: 'bg-accent-gold', corTexto: 'text-white' },
   'PSD/MDB': { cor: 'bg-accent-gold-soft', corTexto: 'text-text-primary' },
   'PP': { cor: 'bg-text-secondary', corTexto: 'text-white' },
   'REPUBLICANOS': { cor: 'bg-blue-600', corTexto: 'text-white' },
   'PODEMOS': { cor: 'bg-accent-gold', corTexto: 'text-white' }
+}
+
+const coresPartidosEstaduais = {
+  'PT': { cor: 'bg-accent-gold', corTexto: 'text-white' },
+  'MDB': { cor: 'bg-accent-gold-soft', corTexto: 'text-text-primary' },
+  'PP': { cor: 'bg-text-secondary', corTexto: 'text-white' },
+  'REPUBLICANOS': { cor: 'bg-blue-600', corTexto: 'text-white' },
 }
 
 // Interface para partido local
@@ -40,25 +39,71 @@ interface PartidoLocal {
 }
 
 // Função para criar estrutura inicial de partidos
-const criarPartidosIniciais = (): PartidoLocal[] => {
-  return Object.keys(coresPartidos).map(nome => ({
+const criarPartidosIniciais = (coresPartidosAtivos: Record<string, { cor: string; corTexto: string }>): PartidoLocal[] => {
+  return Object.keys(coresPartidosAtivos).map(nome => ({
     nome,
-    ...coresPartidos[nome as keyof typeof coresPartidos],
+    ...coresPartidosAtivos[nome as keyof typeof coresPartidosAtivos],
     candidatos: []
   }))
 }
 
-const initialQuociente = 190000
+const NOMES_FEMININOS_COMUNS = [
+  'ANA',
+  'ANYARA',
+  'ALINE',
+  'JANAINA',
+  'ELIZANGELA',
+  'EUZUILA',
+  'TERESA',
+  'SIMONE',
+  'GRACINHA',
+  'DRAGA ALANA',
+  'RAIMUNDINHA',
+  'PASTORA',
+  'MELKA',
+  'KARLA',
+  'DIANA',
+  'FIDELIS',
+  'GABRIELA',
+  'SAMANTA',
+  'MARINA',
+  'RAISSA',
+]
+
+const normalizarNomeGenero = (nome: string) =>
+  nome
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toUpperCase()
+
+const inferirGeneroCandidatoInicial = (nome: string, generoInformado?: string): 'homem' | 'mulher' | undefined => {
+  if (generoInformado === 'mulher') return 'mulher'
+  if (generoInformado === 'homem') return 'homem'
+
+  const nomeNormalizado = normalizarNomeGenero(nome)
+  if (nomeNormalizado.includes('MULHER')) return 'mulher'
+  if (NOMES_FEMININOS_COMUNS.some((token) => nomeNormalizado.includes(token))) return 'mulher'
+  return undefined
+}
 
 export default function ChapasPage() {
   const { user } = useAuth()
+  const pathname = usePathname()
+  const isChapasEstaduais = pathname === '/dashboard/chapas-estaduais'
+  const service = isChapasEstaduais ? chapasEstaduaisService : chapasFederalService
+  const coresPartidosAtivos = isChapasEstaduais ? coresPartidosEstaduais : coresPartidosFederais
+  const ordemPartidosPadrao = isChapasEstaduais
+    ? ['PT', 'MDB', 'PP', 'REPUBLICANOS']
+    : ['PT', 'PSD/MDB', 'PP', 'REPUBLICANOS', 'PODEMOS']
+  const initialQuociente = isChapasEstaduais ? 67000 : 190000
+  const initialNumVagas = isChapasEstaduais ? 30 : 10
   const userIdRef = useRef<string | null>(null)
   const [loading, setLoading] = useState(false)
   const contentRef = useRef<HTMLDivElement>(null)
   const [modoImpressao, setModoImpressao] = useState(false)
   const [exportandoPdf, setExportandoPdf] = useState(false)
 
-  const [partidos, setPartidos] = useState<PartidoLocal[]>(criarPartidosIniciais())
+  const [partidos, setPartidos] = useState<PartidoLocal[]>(criarPartidosIniciais(coresPartidosAtivos))
   const [quociente, setQuociente] = useState(initialQuociente)
   const [quocienteCarregado, setQuocienteCarregado] = useState(false)
   const [cenarioAtivo, setCenarioAtivo] = useState<CenarioCompleto | null>(null)
@@ -84,7 +129,7 @@ export default function ChapasPage() {
   const [notificacaoAutoSave, setNotificacaoAutoSave] = useState<string | null>(null)
   const [carregandoCenario, setCarregandoCenario] = useState(false)
   const [dadosCarregados, setDadosCarregados] = useState(false)
-  const [numVagas, setNumVagas] = useState(10)
+  const [numVagas, setNumVagas] = useState(initialNumVagas)
   const [openAnaliseRepublicanos, setOpenAnaliseRepublicanos] = useState(false)
   const [mostrarDetalhesSobras, setMostrarDetalhesSobras] = useState(false)
   
@@ -145,7 +190,7 @@ export default function ChapasPage() {
   const carregarDadosSupabase = async () => {
     try {
       // Tentar carregar do cenário base
-      const cenarioBase = await carregarCenario('base')
+      const cenarioBase = await service.carregarCenario('base')
       if (cenarioBase) {
         setCenarioAtivo(cenarioBase)
         const partidosOrdenados = ordenarPartidos(cenarioBase.partidos)
@@ -161,18 +206,22 @@ export default function ChapasPage() {
           }
         })
         setVotosLegenda(votosLegendaTemp)
+        // Sincroniza a barra de cenários (evita "Nenhum cenário encontrado" após criar base)
+        const listaAtualizada = await service.listarCenarios()
+        setCenariosLista(listaAtualizada)
+        setCenariosCarregados(true)
         mostrarNotificacaoAutoSave('Dados carregados com sucesso')
       } else {
         // Se não existe cenário base, criar um com dados iniciais
-        const partidosIniciais = criarPartidosIniciais()
+        const partidosIniciais = criarPartidosIniciais(coresPartidosAtivos)
         // Popular com dados iniciais
-        dadosIniciais.forEach(item => {
+        service.dadosIniciais.forEach((item: { partido: string; nome: string; votos: number; genero?: string }) => {
           const partido = partidosIniciais.find(p => p.nome === item.partido)
           if (partido) {
             partido.candidatos.push({
               nome: item.nome,
               votos: item.votos,
-              genero: item.nome.includes('MULHER') || item.nome === 'MARINA SANTOS' || item.nome === 'RAISSA PROTETORA' || item.nome === 'ANA FIDELIS' || item.nome === 'GABRIELA' || item.nome === 'SAMANTA CAVALCA' ? 'mulher' : undefined
+              genero: inferirGeneroCandidatoInicial(item.nome, item.genero)
             })
           }
         })
@@ -183,7 +232,7 @@ export default function ChapasPage() {
           candidatos: p.candidatos,
           votosLegenda: 0
         }))
-        await criarCenarioBase(partidosConvertidos, initialQuociente)
+        await service.criarCenarioBase(partidosConvertidos, initialQuociente)
         await carregarDadosSupabase()
       }
     } catch (error: any) {
@@ -205,14 +254,14 @@ export default function ChapasPage() {
     
     // Garantir cache do userId em TODA tentativa (ref sobrevive a closures)
     if (userIdRef.current) {
-      preWarmUserIdCache(userIdRef.current)
+      service.preWarmUserIdCache(userIdRef.current)
     }
     
     try {
       console.log(`[Chapas] Carregando dados... (tentativa ${tentativa})`)
       
       // Uma única chamada que busca cenários + cenário ativo com partidos
-      const { cenarios: listaCenarios, cenarioAtivo: cenarioAtivoData } = await listarCenariosComAtivo()
+      const { cenarios: listaCenarios, cenarioAtivo: cenarioAtivoData } = await service.listarCenariosComAtivo()
       
       console.log(`[Chapas] Dados carregados: ${listaCenarios.length} cenários`)
       
@@ -263,7 +312,7 @@ export default function ChapasPage() {
   useEffect(() => {
     if (user?.id) {
       userIdRef.current = user.id
-      preWarmUserIdCache(user.id)
+      service.preWarmUserIdCache(user.id)
     }
   }, [user?.id])
 
@@ -276,13 +325,12 @@ export default function ChapasPage() {
 
   // Função para ordenar partidos na ordem fixa
   const ordenarPartidos = <T extends { nome: string }>(partidosParaOrdenar: T[]): T[] => {
-    const ordemPartidos = ['PT', 'PSD/MDB', 'PP', 'REPUBLICANOS', 'PODEMOS']
-    const partidosOrdenados = ordemPartidos
+    const partidosOrdenados = ordemPartidosPadrao
       .map(nomePartido => partidosParaOrdenar.find(p => p.nome === nomePartido))
       .filter(Boolean) as T[]
     
     const partidosRestantes = partidosParaOrdenar.filter(
-      p => !ordemPartidos.includes(p.nome)
+      p => !ordemPartidosPadrao.includes(p.nome)
     )
     
     return [...partidosOrdenados, ...partidosRestantes]
@@ -319,11 +367,11 @@ export default function ChapasPage() {
     setSalvandoMudancas(true)
     
     // Garantir cache do userId antes de salvar
-    if (userIdRef.current) preWarmUserIdCache(userIdRef.current)
+    if (userIdRef.current) service.preWarmUserIdCache(userIdRef.current)
     
     try {
       const partidosConvertidos = converterPartidosParaCenario()
-      await atualizarCenario(cenarioAtivo.id, partidosConvertidos, quociente)
+      await service.atualizarCenario(cenarioAtivo.id, partidosConvertidos, quociente)
       
       setCenarioAtivo(prev => prev ? { ...prev, atualizadoEm: new Date().toISOString(), quocienteEleitoral: quociente } : null)
       mostrarNotificacaoAutoSave(`Mudanças salvas no cenário "${cenarioAtivo.nome}"`)
@@ -588,7 +636,7 @@ export default function ChapasPage() {
       }))
 
       const partidosConvertidos = converterPartidosParaCenario()
-      await atualizarCenario(cenarioAtivo.id, partidosConvertidos, cenarioAtivo.quocienteEleitoral)
+      await service.atualizarCenario(cenarioAtivo.id, partidosConvertidos, cenarioAtivo.quocienteEleitoral)
       mostrarNotificacaoAutoSave('Candidato excluído com sucesso')
     } catch (error) {
       await carregarDadosSupabase()
@@ -612,7 +660,7 @@ export default function ChapasPage() {
       })
 
       const partidosConvertidos = converterPartidosParaCenario().filter(p => p.nome !== partidoNome)
-      await atualizarCenario(cenarioAtivo.id, partidosConvertidos, cenarioAtivo.quocienteEleitoral)
+      await service.atualizarCenario(cenarioAtivo.id, partidosConvertidos, cenarioAtivo.quocienteEleitoral)
       mostrarNotificacaoAutoSave(`Partido ${partidoNome} excluído com sucesso`)
     } catch (error) {
       await carregarDadosSupabase()
@@ -663,7 +711,7 @@ export default function ChapasPage() {
       
       setPartidos(partidosAtualizados)
       
-      await atualizarCenario(cenarioAtivo.id, partidosConvertidos, cenarioAtivo.quocienteEleitoral)
+      await service.atualizarCenario(cenarioAtivo.id, partidosConvertidos, cenarioAtivo.quocienteEleitoral)
       
       setNovoPartido({ nome: '', cor: 'bg-gray-500', corTexto: 'text-white' })
       setDialogNovoPartidoAberto(false)
@@ -734,7 +782,7 @@ export default function ChapasPage() {
       }))
 
       const partidosConvertidos = converterPartidosParaCenario()
-      await atualizarCenario(cenarioAtivo.id, partidosConvertidos, cenarioAtivo.quocienteEleitoral)
+      await service.atualizarCenario(cenarioAtivo.id, partidosConvertidos, cenarioAtivo.quocienteEleitoral)
 
       setNovoCandidato({ nome: '', votos: 0, genero: 'homem' })
       setDialogAberto(null)
@@ -951,8 +999,18 @@ export default function ChapasPage() {
           const overflowNodes = clonedTarget.querySelectorAll('div, section, article')
           overflowNodes.forEach((node) => {
             const el = node as HTMLElement
-            const computedOverflow = `${el.style.overflow} ${el.style.overflowY} ${el.style.overflowX}`.toLowerCase()
-            if (computedOverflow.includes('auto') || computedOverflow.includes('hidden') || computedOverflow.includes('scroll')) {
+            const view = clonedDoc.defaultView
+            const computed = view ? view.getComputedStyle(el) : null
+            const overflowCurrent = `${el.style.overflow} ${el.style.overflowY} ${el.style.overflowX}`.toLowerCase()
+            const overflowComputed = `${computed?.overflow || ''} ${computed?.overflowY || ''} ${computed?.overflowX || ''}`.toLowerCase()
+            if (
+              overflowCurrent.includes('auto') ||
+              overflowCurrent.includes('hidden') ||
+              overflowCurrent.includes('scroll') ||
+              overflowComputed.includes('auto') ||
+              overflowComputed.includes('hidden') ||
+              overflowComputed.includes('scroll')
+            ) {
               el.style.overflow = 'visible'
               el.style.overflowY = 'visible'
               el.style.overflowX = 'visible'
@@ -960,6 +1018,38 @@ export default function ChapasPage() {
               el.style.height = 'auto'
             }
           })
+
+          // Ajustes específicos para PDF de chapas estaduais
+          if (isChapasEstaduais) {
+            const grid = clonedTarget.querySelector('[data-chapas-partidos-grid]') as HTMLElement | null
+            if (grid) {
+              grid.style.display = 'grid'
+              grid.style.gridTemplateColumns = 'repeat(4, minmax(0, 1fr))'
+              grid.style.gap = '16px'
+              grid.style.alignItems = 'start'
+              grid.style.width = '100%'
+            }
+
+            const cards = clonedTarget.querySelectorAll('[data-chapas-partido-card]')
+            cards.forEach((node) => {
+              const el = node as HTMLElement
+              el.style.height = 'auto'
+              el.style.minHeight = '0'
+              el.style.alignSelf = 'start'
+              el.style.width = '100%'
+              el.style.maxWidth = 'none'
+            })
+
+            const bodies = clonedTarget.querySelectorAll('[data-chapas-partido-body]')
+            bodies.forEach((node) => {
+              const el = node as HTMLElement
+              el.style.overflow = 'visible'
+              el.style.overflowY = 'visible'
+              el.style.maxHeight = 'none'
+              el.style.height = 'auto'
+              el.style.flex = '0 0 auto'
+            })
+          }
         },
       })
 
@@ -1047,7 +1137,7 @@ export default function ChapasPage() {
 
   return (
     <div className="min-h-screen bg-gray-50 w-full">
-      <div className="w-full px-4 sm:px-6 lg:px-8 py-4">
+      <div className={`w-full py-4 ${isChapasEstaduais && modoImpressao ? 'px-1' : 'px-4 sm:px-6 lg:px-8'}`}>
         {/* Notificação de auto-save */}
         {notificacaoAutoSave && (
           <div className="fixed top-4 right-4 z-50 bg-green-500 text-white px-4 py-2 rounded-lg shadow-lg flex items-center gap-2">
@@ -1113,6 +1203,14 @@ export default function ChapasPage() {
                     </>
                   )}
                 </button>
+                <Link
+                  href={isChapasEstaduais ? '/dashboard/chapas' : '/dashboard/chapas-estaduais'}
+                  title={isChapasEstaduais ? 'Ir para Chapas Federais' : 'Ir para Chapas Estaduais'}
+                  className="px-4 py-2 border border-border-card bg-white rounded-lg hover:bg-bg-app flex items-center gap-2"
+                >
+                  <ArrowRightLeft className="h-4 w-4" />
+                  {isChapasEstaduais ? 'Federais' : 'Estaduais'}
+                </Link>
                 <button
                   onClick={toggleFullscreen}
                   title={isFullscreen ? 'Sair de tela cheia' : 'Tela cheia'}
@@ -1147,6 +1245,7 @@ export default function ChapasPage() {
           {/* Gerenciador de Cenários com Abas */}
           <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-4">
             <CenariosTabs
+              service={service}
               partidosAtuais={converterPartidosParaCenario()}
               quocienteAtual={quociente}
               cenariosIniciais={cenariosCarregados ? cenariosLista : undefined}
@@ -1175,7 +1274,7 @@ export default function ChapasPage() {
                 if (carregandoCenario) return
                 setCarregandoCenario(true)
                 try {
-                  const novoCenario = await carregarCenario(cenarioId)
+                  const novoCenario = await service.carregarCenario(cenarioId)
                   if (novoCenario) {
                     setCenarioAtivo(novoCenario)
                     const partidosOrdenados = ordenarPartidos(novoCenario.partidos)
@@ -1271,7 +1370,10 @@ export default function ChapasPage() {
           </div>
 
           {/* Grid de partidos */}
-          <div className="w-full grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+          <div
+            data-chapas-partidos-grid
+            className={`w-full grid gap-4 ${isChapasEstaduais && modoImpressao ? 'grid-cols-4' : 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4'}`}
+          >
             {ordenarPartidos(partidos)
               .filter(partido => !partidosOcultos[partido.nome])
               .map((partido, pIdx) => {
@@ -1282,11 +1384,15 @@ export default function ChapasPage() {
                 const votosProjetados = getVotosProjetados(partido.candidatos, partido.nome)
                 
                 return (
-                  <div key={partido.nome} className={`flex flex-col items-center bg-white rounded-lg shadow-sm border border-card p-4 h-full ${
+                  <div
+                    key={partido.nome}
+                    data-chapas-partido-card
+                    className={`w-full flex flex-col items-center bg-white rounded-lg shadow-sm border border-card p-4 ${isChapasEstaduais && modoImpressao ? 'h-auto' : 'h-full'} ${
                     atingiuMinimo 
                       ? 'border-border-card' 
                       : 'border-status-error/50 bg-status-error/5'
-                  }`}>
+                    }`}
+                  >
                     <div className={`w-full py-2 px-3 font-bold text-sm mb-3 rounded text-center ${
                       atingiuMinimo 
                         ? 'bg-bg-surface text-text-primary' 
@@ -1339,7 +1445,10 @@ export default function ChapasPage() {
                       </div>
                     )}
                     
-                    <div className="w-full flex flex-col flex-1 overflow-y-auto">
+                    <div
+                      data-chapas-partido-body
+                      className={`w-full flex flex-col ${isChapasEstaduais && modoImpressao ? 'overflow-visible' : 'flex-1 overflow-y-auto'}`}
+                    >
                       <div className="space-y-0.5">
                         <table className="w-full text-xs">
                           <tbody>
@@ -1560,45 +1669,51 @@ export default function ChapasPage() {
                       <div className="mt-3 pt-2 border-t border-gray-200">
                         <div className="flex items-center justify-between gap-2">
                           <span className="text-xs font-semibold text-gray-700">VOTOS LEGENDA:</span>
-                          <input
-                            type="text"
-                            inputMode="numeric"
-                            pattern="[0-9.]*"
-                            value={votosLegendaTemp[partido.nome] 
-                              ? votosLegendaTemp[partido.nome] 
-                              : (votosLegenda[partido.nome] || 0).toLocaleString('pt-BR')}
-                            onChange={e => {
-                              const raw = e.target.value.replace(/\./g, '')
-                              const num = Number(raw)
-                              if (!isNaN(num) && num >= 0) {
-                                setVotosLegendaTemp(prev => ({ ...prev, [partido.nome]: raw || '0' }))
-                              } else if (raw === '') {
-                                setVotosLegendaTemp(prev => ({ ...prev, [partido.nome]: '0' }))
-                              }
-                            }}
-                            onBlur={() => {
-                              const raw = votosLegendaTemp[partido.nome]
-                              if (raw) {
-                                const num = Number(raw.replace(/\./g, ''))
+                          {isChapasEstaduais && modoImpressao ? (
+                            <span className="text-xs font-semibold text-gray-700">
+                              {(votosLegenda[partido.nome] || 0).toLocaleString('pt-BR')}
+                            </span>
+                          ) : (
+                            <input
+                              type="text"
+                              inputMode="numeric"
+                              pattern="[0-9.]*"
+                              value={votosLegendaTemp[partido.nome] 
+                                ? votosLegendaTemp[partido.nome] 
+                                : (votosLegenda[partido.nome] || 0).toLocaleString('pt-BR')}
+                              onChange={e => {
+                                const raw = e.target.value.replace(/\./g, '')
+                                const num = Number(raw)
                                 if (!isNaN(num) && num >= 0) {
-                                  setVotosLegenda(prev => ({ ...prev, [partido.nome]: num }))
-                                  // Limpar temp removendo a chave
-                                  setVotosLegendaTemp(prev => {
-                                    const novo = { ...prev }
-                                    delete novo[partido.nome]
-                                    return novo
-                                  })
-                                  // Votos legenda salvos via botão "Salvar Mudanças"
+                                  setVotosLegendaTemp(prev => ({ ...prev, [partido.nome]: raw || '0' }))
+                                } else if (raw === '') {
+                                  setVotosLegendaTemp(prev => ({ ...prev, [partido.nome]: '0' }))
                                 }
-                              }
-                            }}
-                            onKeyDown={e => {
-                              if (e.key === 'Enter') {
-                                e.currentTarget.blur()
-                              }
-                            }}
-                            className="text-xs font-medium text-gray-700 bg-transparent border-b border-gray-200 focus:border-blue-400 outline-none w-24 text-right px-1"
-                          />
+                              }}
+                              onBlur={() => {
+                                const raw = votosLegendaTemp[partido.nome]
+                                if (raw) {
+                                  const num = Number(raw.replace(/\./g, ''))
+                                  if (!isNaN(num) && num >= 0) {
+                                    setVotosLegenda(prev => ({ ...prev, [partido.nome]: num }))
+                                    // Limpar temp removendo a chave
+                                    setVotosLegendaTemp(prev => {
+                                      const novo = { ...prev }
+                                      delete novo[partido.nome]
+                                      return novo
+                                    })
+                                    // Votos legenda salvos via botão "Salvar Mudanças"
+                                  }
+                                }
+                              }}
+                              onKeyDown={e => {
+                                if (e.key === 'Enter') {
+                                  e.currentTarget.blur()
+                                }
+                              }}
+                              className="text-xs font-medium text-gray-700 bg-transparent border-b border-gray-200 focus:border-blue-400 outline-none w-24 text-right px-1"
+                            />
+                          )}
                         </div>
                       </div>
 
@@ -1840,7 +1955,7 @@ export default function ChapasPage() {
 
                             return partidosOrdenados.map(({ nome: partido, candidatos }) => (
                               <div key={partido} className="border rounded-lg p-3">
-                                <div className={`font-semibold text-sm mb-2 text-center ${coresPartidos[partido as keyof typeof coresPartidos]?.cor || 'bg-gray-200'} ${coresPartidos[partido as keyof typeof coresPartidos]?.corTexto || 'text-gray-800'}`}>{partido}</div>
+                                <div className={`font-semibold text-sm mb-2 text-center ${coresPartidosAtivos[partido as keyof typeof coresPartidosAtivos]?.cor || 'bg-gray-200'} ${coresPartidosAtivos[partido as keyof typeof coresPartidosAtivos]?.corTexto || 'text-gray-800'}`}>{partido}</div>
                                 <div className="space-y-2">
                                   {candidatos.map((candidato, index) => (
                                     <div key={index} className="flex items-center justify-between p-2 bg-gray-50 rounded text-xs">
