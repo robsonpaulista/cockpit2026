@@ -3,7 +3,7 @@
 import React, { useEffect, useState, useRef } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Trash2, Plus, RefreshCw, Check, Printer, Info, Eye, EyeOff, X, Maximize2, Minimize2, ArrowRightLeft } from 'lucide-react'
+import { Trash2, Plus, RefreshCw, Check, Printer, Info, Eye, EyeOff, X, Maximize2, Minimize2, ArrowRightLeft, PenSquare } from 'lucide-react'
 import jsPDF from 'jspdf'
 import { Cenario, CenarioCompleto, PartidoCenario } from '@/lib/chapasService'
 import * as chapasFederalService from '@/lib/chapasService'
@@ -122,6 +122,9 @@ export default function ChapasPage() {
   const [dialogNovoPartidoAberto, setDialogNovoPartidoAberto] = useState(false)
   const [novoPartido, setNovoPartido] = useState({ nome: '', cor: 'bg-gray-500', corTexto: 'text-white' })
   const [salvandoPartido, setSalvandoPartido] = useState(false)
+  const [dialogEditarPartidoAberto, setDialogEditarPartidoAberto] = useState<string | null>(null)
+  const [nomePartidoEdicao, setNomePartidoEdicao] = useState('')
+  const [salvandoEdicaoPartido, setSalvandoEdicaoPartido] = useState(false)
 
   // Adicionar estado para edição temporária dos votos de legenda
   const [votosLegendaTemp, setVotosLegendaTemp] = useState<{ [partido: string]: string }>({})
@@ -723,6 +726,68 @@ export default function ChapasPage() {
     } finally {
       setSalvandoPartido(false)
     }
+  }
+
+  const handleAbrirEditarPartido = (nomeAtual: string) => {
+    setDialogEditarPartidoAberto(nomeAtual)
+    setNomePartidoEdicao(nomeAtual)
+  }
+
+  const handleSalvarEdicaoPartido = () => {
+    if (!dialogEditarPartidoAberto) return
+
+    const nomeAtual = dialogEditarPartidoAberto
+    const novoNome = nomePartidoEdicao.trim()
+
+    if (!novoNome) {
+      alert('Digite um nome válido para o partido.')
+      return
+    }
+
+    if (novoNome === nomeAtual) {
+      setDialogEditarPartidoAberto(null)
+      setNomePartidoEdicao('')
+      return
+    }
+
+    const duplicado = partidos.some(
+      (p) => p.nome.toUpperCase() === novoNome.toUpperCase() && p.nome !== nomeAtual
+    )
+    if (duplicado) {
+      alert('Já existe um partido com esse nome.')
+      return
+    }
+
+    const partidosAtualizados = partidos.map((partido) =>
+      partido.nome === nomeAtual ? { ...partido, nome: novoNome } : partido
+    )
+
+    const votosLegendaAtualizados = { ...votosLegenda }
+    if (Object.prototype.hasOwnProperty.call(votosLegendaAtualizados, nomeAtual)) {
+      votosLegendaAtualizados[novoNome] = votosLegendaAtualizados[nomeAtual]
+      delete votosLegendaAtualizados[nomeAtual]
+    }
+
+    const votosLegendaTempAtualizados = { ...votosLegendaTemp }
+    if (Object.prototype.hasOwnProperty.call(votosLegendaTempAtualizados, nomeAtual)) {
+      votosLegendaTempAtualizados[novoNome] = votosLegendaTempAtualizados[nomeAtual]
+      delete votosLegendaTempAtualizados[nomeAtual]
+    }
+
+    const partidosOcultosAtualizados = { ...partidosOcultos }
+    if (Object.prototype.hasOwnProperty.call(partidosOcultosAtualizados, nomeAtual)) {
+      partidosOcultosAtualizados[novoNome] = partidosOcultosAtualizados[nomeAtual]
+      delete partidosOcultosAtualizados[nomeAtual]
+    }
+
+    setPartidos(partidosAtualizados)
+    setVotosLegenda(votosLegendaAtualizados)
+    setVotosLegendaTemp(votosLegendaTempAtualizados)
+    setPartidosOcultos(partidosOcultosAtualizados)
+
+    setDialogEditarPartidoAberto(null)
+    setNomePartidoEdicao('')
+    mostrarNotificacaoAutoSave(`Nome alterado para ${novoNome}. Clique em "Salvar Mudanças" para persistir.`)
   }
 
   // Função para adicionar novo candidato
@@ -1412,6 +1477,14 @@ export default function ChapasPage() {
                             title="Remover partido"
                           >
                             <Trash2 className="h-3.5 w-3.5" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleAbrirEditarPartido(partido.nome)}
+                            className="text-text-secondary hover:text-text-primary transition-colors p-1"
+                            title="Editar nome do partido"
+                          >
+                            <PenSquare className="h-3.5 w-3.5" />
                           </button>
                           <button
                             type="button"
@@ -2154,6 +2227,58 @@ export default function ChapasPage() {
                     className="px-4 py-2 bg-accent-gold text-white rounded-lg hover:bg-accent-gold/90 disabled:opacity-50"
                   >
                     {salvandoPartido ? 'Salvando...' : 'Adicionar Partido'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Modal para editar nome do partido */}
+        {dialogEditarPartidoAberto && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg p-6 max-w-md w-full">
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="text-lg font-semibold">Editar Partido</h2>
+                <button
+                  onClick={() => {
+                    setDialogEditarPartidoAberto(null)
+                    setNomePartidoEdicao('')
+                  }}
+                  className="text-gray-500 hover:text-gray-700"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+              <div className="space-y-4">
+                <div>
+                  <label className="text-sm font-medium mb-2 block">Novo nome do partido</label>
+                  <input
+                    type="text"
+                    placeholder="Nome do partido"
+                    value={nomePartidoEdicao}
+                    onChange={(e) => setNomePartidoEdicao(e.target.value)}
+                    disabled={salvandoEdicaoPartido}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-gold"
+                  />
+                </div>
+                <div className="flex gap-2 justify-end">
+                  <button
+                    onClick={() => {
+                      setDialogEditarPartidoAberto(null)
+                      setNomePartidoEdicao('')
+                    }}
+                    disabled={salvandoEdicaoPartido}
+                    className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    onClick={handleSalvarEdicaoPartido}
+                    disabled={salvandoEdicaoPartido || !nomePartidoEdicao.trim()}
+                    className="px-4 py-2 bg-accent-gold text-white rounded-lg hover:bg-accent-gold/90 disabled:opacity-50"
+                  >
+                    {salvandoEdicaoPartido ? 'Salvando...' : 'Salvar Nome'}
                   </button>
                 </div>
               </div>
