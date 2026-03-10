@@ -23,6 +23,12 @@ const themes = [
     description: 'Tons laranja e cinza moderno',
     colors: ['#de5a12', '#f8fafc', '#fdecd6'],
   },
+  {
+    id: 'republicanos' as const,
+    label: 'Republicanos',
+    description: 'Azul, verde e amarelo da marca',
+    colors: ['#0F5EA8', '#13A35B', '#F2C230'],
+  },
 ]
 
 export function ThemeToggle({ collapsed = false, mobileOpen = false }: ThemeToggleProps) {

@@ -23,7 +23,8 @@ export default function RootLayout({
             __html: `
               try {
                 var t = localStorage.getItem('cockpit-theme');
-                document.documentElement.setAttribute('data-theme', t === 'premium' ? 'premium' : 'agentes');
+                var valid = t === 'premium' || t === 'agentes' || t === 'republicanos';
+                document.documentElement.setAttribute('data-theme', valid ? t : 'agentes');
               } catch(e) {
                 document.documentElement.setAttribute('data-theme', 'agentes');
               }

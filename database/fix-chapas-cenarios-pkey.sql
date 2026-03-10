@@ -19,9 +19,11 @@ BEGIN
   END IF;
 END $$;
 
--- Se existir unique redundante após ajuste, remove.
-ALTER TABLE chapas_cenarios
-  DROP CONSTRAINT IF EXISTS chapas_cenarios_user_id_id_key;
+-- IMPORTANTE:
+-- Não remover chapas_cenarios_user_id_id_key aqui.
+-- Em alguns ambientes a FK (chapas_partidos_user_id_cenario_id_fkey)
+-- pode depender desse índice/constraint.
+-- Mantemos a constraint para evitar quebra de dependências.
 
 -- Índice auxiliar continua útil para consultas por user + ativo.
 CREATE INDEX IF NOT EXISTS idx_chapas_cenarios_user_id_ativo

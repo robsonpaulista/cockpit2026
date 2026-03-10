@@ -56,6 +56,28 @@
   --border-card: 229 222 212;
 }
 
+/* Tema 3: Republicanos */
+[data-theme="republicanos"] {
+  --bg-app: 244 247 251;
+  --bg-surface: 255 255 255;
+  --bg-sidebar: 234 241 249;
+
+  --text-primary: 21 40 70;
+  --text-secondary: 86 106 136;
+  --text-muted: 120 136 160;
+
+  --accent-gold: 15 94 168; /* azul principal */
+  --accent-gold-soft: 225 236 248; /* azul claro */
+  --accent-gold-dark: 10 70 126;
+
+  --success: 19 163 91; /* verde da marca */
+  --warning: 242 194 48; /* amarelo da marca */
+  --danger: 185 28 28;
+  --info: 64 96 138;
+
+  --border-card: 201 216 234;
+}
+
 @layer base {
   * {
     @apply border-border-card;
