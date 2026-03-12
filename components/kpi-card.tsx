@@ -85,6 +85,21 @@ export function KPICard({ kpi, href = '#', subtitle, subtitleType = 'neutral', i
     }
   }, [kpi.value])
 
+  const getLineColorClass = (type?: 'positive' | 'negative' | 'neutral') => {
+    if (type === 'negative') return 'text-red-700'
+    return 'text-[#B46800]'
+  }
+
+  const getLineDotClass = (type?: 'positive' | 'negative' | 'neutral') => {
+    if (type === 'negative') return 'bg-red-500'
+    return 'bg-[rgb(var(--strategic-yellow))]'
+  }
+
+  const getLineBackgroundClass = (type?: 'positive' | 'negative' | 'neutral') => {
+    if (type === 'negative') return 'bg-red-50'
+    return 'bg-[rgba(242,201,76,0.18)]'
+  }
+
   const content = (
     <div
       className={cn(
@@ -118,16 +133,37 @@ export function KPICard({ kpi, href = '#', subtitle, subtitleType = 'neutral', i
         <div className="min-h-[2rem] flex items-start mt-1">
           {infoLines && infoLines.length > 0 ? (
             <div className="flex flex-col gap-0.5">
-              {infoLines.map((line, idx) => (
-                <p key={idx} className="text-xs font-medium leading-tight text-text-secondary">
-                  {line.text}
-                </p>
-              ))}
+              {infoLines.map((line, idx) =>
+                idx === 0 ? (
+                  <div
+                    key={idx}
+                    className={cn(
+                      'inline-flex w-fit items-center gap-1.5 rounded-full px-2 py-0.5',
+                      getLineBackgroundClass(line.type)
+                    )}
+                  >
+                    <span className={cn('inline-block h-1.5 w-1.5 rounded-full', getLineDotClass(line.type))} />
+                    <p className={cn('text-xs font-medium leading-tight', getLineColorClass(line.type))}>
+                      {line.text}
+                    </p>
+                  </div>
+                ) : (
+                  <p key={idx} className="text-xs font-medium leading-tight text-text-secondary px-1">
+                    {line.text}
+                  </p>
+                )
+              )}
             </div>
           ) : subtitle ? (
-            <p className="text-xs font-medium leading-tight text-text-secondary">
+            <span
+              className={cn(
+                'inline-flex w-fit items-center rounded-full px-2 py-0.5 text-xs font-medium leading-tight',
+                getLineBackgroundClass(subtitleType),
+                getLineColorClass(subtitleType)
+              )}
+            >
               {subtitle}
-            </p>
+            </span>
           ) : null}
         </div>
       </div>

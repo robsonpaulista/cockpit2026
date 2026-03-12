@@ -74,7 +74,9 @@ export function KPIHeroCard({
   }, [kpi.value])
 
   const getInfoLineColor = (_type?: 'positive' | 'negative' | 'neutral') => {
-    return 'text-white/80'
+    if (_type === 'positive') return 'text-emerald-100'
+    if (_type === 'negative') return 'text-red-100'
+    return 'text-[rgb(var(--strategic-yellow))]'
   }
 
   const getInfoLineIcon = (line: InfoLine) => {
@@ -140,6 +142,11 @@ export function KPIHeroCard({
         </div>
         <div className="text-right flex-shrink-0">
           <div className="flex items-center gap-2 justify-end">
+            <span
+              className="inline-block h-2 w-2 rounded-full bg-[rgb(var(--strategic-yellow))]"
+              style={{ boxShadow: '0 0 0 3px rgba(242, 201, 76, 0.22)' }}
+              title="Indicador estratégico"
+            />
             <p className={cn(
               'text-4xl font-black text-white transition-all duration-300',
               !isValueVisible && 'select-none tracking-wider',

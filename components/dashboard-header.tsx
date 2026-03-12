@@ -34,6 +34,10 @@ export function DashboardHeader() {
 
   return (
     <header className="sticky top-0 z-30 bg-bg-surface border-b border-border-card">
+      <div
+        className="h-[2px] w-full"
+        style={{ background: 'linear-gradient(90deg, #27AE60 0%, rgb(var(--strategic-yellow)) 50%, #1F5FA6 100%)' }}
+      />
       <div className="h-16 flex items-center justify-between px-4 lg:px-6">
         <h1 className="text-xl font-semibold text-text-primary">
           Cockpit 2026<span className="text-text-secondary font-normal"> &gt; </span>{pageTitle}

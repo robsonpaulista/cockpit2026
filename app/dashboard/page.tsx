@@ -142,6 +142,8 @@ export default function Home() {
 
   // Votos da eleição anterior (2022) para cálculo comparativo
   const VOTOS_ELEICAO_ANTERIOR = 83175
+  const DASHBOARD_BLUE = '#1F5FA6'
+  const DASHBOARD_YELLOW = 'rgb(var(--strategic-yellow))'
 
   // Mapa de eleitores por cidade (para uso no mapa)
   const eleitoresPorCidade = useMemo(() => {
@@ -366,6 +368,16 @@ export default function Home() {
     if (!filtroCidadePollsTelaCheia) return pollsData
     return pollsData.filter((poll) => (poll.cidade || '').trim() === filtroCidadePollsTelaCheia)
   }, [pollsData, filtroCidadePollsTelaCheia])
+
+  const picoIntencaoGrafico = useMemo(() => {
+    if (pollsData.length === 0) return 0
+    return Math.max(...pollsData.map((poll) => Number(poll.intencao) || 0))
+  }, [pollsData])
+
+  const picoIntencaoGraficoTelaCheia = useMemo(() => {
+    if (pollsDataTelaCheiaFiltrada.length === 0) return 0
+    return Math.max(...pollsDataTelaCheiaFiltrada.map((poll) => Number(poll.intencao) || 0))
+  }, [pollsDataTelaCheiaFiltrada])
 
   const fetchMonitorNews = async () => {
     setLoadingAlerts(true)
@@ -1096,7 +1108,7 @@ export default function Home() {
                 const sinal = percentualCrescimento >= 0 ? '+' : ''
                 infoLines.push({
                   text: `${sinal}${percentualCrescimento.toFixed(1).replace('.', ',')}% vs eleição anterior (${VOTOS_ELEICAO_ANTERIOR.toLocaleString('pt-BR')} votos)`,
-                  type: percentualCrescimento >= 0 ? 'positive' : 'negative',
+                  type: percentualCrescimento >= 0 ? 'neutral' : 'negative',
                   icon: 'trending',
                 })
               }
@@ -1276,9 +1288,17 @@ export default function Home() {
         {/* Bloco de Leitura Rápida / Insight - Compacto */}
         {!loading && (
           <section className="mb-4">
-            <div className="bg-gradient-to-r from-primary-soft to-surface rounded-xl border border-accent-gold/20 px-4 py-3">
+            <div
+              className="bg-gradient-to-r from-primary-soft to-surface rounded-xl border border-l-4 px-4 py-3"
+              style={{ borderColor: 'rgba(242, 201, 76, 0.4)', borderLeftColor: 'rgb(var(--strategic-yellow))' }}
+            >
               <div className="flex items-center gap-3">
-                <Lightbulb className="w-4 h-4 text-accent-gold flex-shrink-0" />
+                <span
+                  className="inline-flex items-center justify-center rounded-full p-1.5 flex-shrink-0"
+                  style={{ backgroundColor: 'rgba(242, 201, 76, 0.18)' }}
+                >
+                  <Lightbulb className="w-4 h-4 text-[rgb(var(--strategic-yellow))]" />
+                </span>
                 <p className="text-sm text-secondary flex-1">
                   {(() => {
                     const presencaKpi = kpisComMedia.find(k => k.id === 'presenca')
@@ -1520,8 +1540,8 @@ export default function Home() {
                     <AreaChart data={pollsData}>
                       <defs>
                         <linearGradient id="colorIntencao" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%" stopColor="rgb(var(--accent-gold))" stopOpacity={0.4} />
-                          <stop offset="95%" stopColor="rgb(var(--accent-gold))" stopOpacity={0.05} />
+                          <stop offset="5%" stopColor={DASHBOARD_BLUE} stopOpacity={0.35} />
+                          <stop offset="95%" stopColor={DASHBOARD_BLUE} stopOpacity={0.05} />
                         </linearGradient>
                       </defs>
                       <CartesianGrid strokeDasharray="3 3" stroke="rgb(var(--border-card))" strokeWidth={1} opacity={0.5} />
@@ -1649,18 +1669,20 @@ export default function Home() {
                       <Area
                         type="monotone"
                         dataKey="intencao"
-                        stroke="rgb(var(--accent-gold))"
+                        stroke={DASHBOARD_BLUE}
                         strokeWidth={3}
                         fillOpacity={1}
                         fill="url(#colorIntencao)"
                         name="Intenção de Voto"
                         dot={(props: any) => {
                           const { cx, cy, payload } = props
-                          if (!payload) return <circle cx={cx} cy={cy} r={4} fill="rgb(var(--accent-gold))" />
+                          if (!payload) return <circle cx={cx} cy={cy} r={4} fill={DASHBOARD_BLUE} />
                           
                           const instituto = payload.instituto || ''
                           const cidade = payload.cidade || ''
                           const value = payload.intencao || 0
+                          const isPeak = value === picoIntencaoGrafico && value > 0
+                          const dotColor = isPeak ? DASHBOARD_YELLOW : DASHBOARD_BLUE
                           
                           const infoParts = []
                           if (instituto && instituto !== 'Não informado') {
@@ -1673,17 +1695,42 @@ export default function Home() {
                           
                           return (
                             <g>
-                              <circle cx={cx} cy={cy} r={4} fill="rgb(var(--accent-gold))" />
-                              <text
-                                x={cx}
-                                y={cy - 20}
-                                fill="rgb(var(--accent-gold))"
-                                fontSize="12"
-                                fontWeight="600"
-                                textAnchor="middle"
-                              >
-                                {`${value}%`}
-                              </text>
+                              <circle cx={cx} cy={cy} r={isPeak ? 5 : 4} fill={dotColor} />
+                              {isPeak ? (
+                                <>
+                                  <rect
+                                    x={cx - 22}
+                                    y={cy - 31}
+                                    width={44}
+                                    height={18}
+                                    rx={9}
+                                    fill="rgba(242, 201, 76, 0.22)"
+                                    stroke="rgba(242, 201, 76, 0.55)"
+                                    strokeWidth={1}
+                                  />
+                                  <text
+                                    x={cx}
+                                    y={cy - 19}
+                                    fill="#B46800"
+                                    fontSize="12"
+                                    fontWeight="700"
+                                    textAnchor="middle"
+                                  >
+                                    {`${value}%`}
+                                  </text>
+                                </>
+                              ) : (
+                                <text
+                                  x={cx}
+                                  y={cy - 20}
+                                  fill={dotColor}
+                                  fontSize="12"
+                                  fontWeight="600"
+                                  textAnchor="middle"
+                                >
+                                  {`${value}%`}
+                                </text>
+                              )}
                               {infoText && (
                                 <text
                                   x={cx}
@@ -2859,8 +2906,8 @@ export default function Home() {
                   <AreaChart data={pollsDataTelaCheiaFiltrada} margin={{ top: 20, right: 30, left: 20, bottom: 60 }}>
                     <defs>
                       <linearGradient id="colorIntencaoFullscreen" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="rgb(var(--accent-gold))" stopOpacity={0.3} />
-                        <stop offset="95%" stopColor="rgb(var(--accent-gold))" stopOpacity={0} />
+                        <stop offset="5%" stopColor={DASHBOARD_BLUE} stopOpacity={0.3} />
+                        <stop offset="95%" stopColor={DASHBOARD_BLUE} stopOpacity={0} />
                       </linearGradient>
                     </defs>
                     <CartesianGrid strokeDasharray="3 3" stroke="rgb(var(--border-card))" />
@@ -2995,18 +3042,20 @@ export default function Home() {
                     <Area
                       type="monotone"
                       dataKey="intencao"
-                      stroke="rgb(var(--accent-gold))"
+                      stroke={DASHBOARD_BLUE}
                       strokeWidth={3}
                       fillOpacity={1}
                       fill="url(#colorIntencaoFullscreen)"
                       name="Intenção de Voto"
                       dot={(props: any) => {
                         const { cx, cy, payload } = props
-                        if (!payload) return <circle cx={cx} cy={cy} r={5} fill="rgb(var(--accent-gold))" />
+                        if (!payload) return <circle cx={cx} cy={cy} r={5} fill={DASHBOARD_BLUE} />
                         
                         const instituto = payload.instituto || ''
                         const cidade = payload.cidade || ''
                         const value = payload.intencao || 0
+                        const isPeak = value === picoIntencaoGraficoTelaCheia && value > 0
+                        const dotColor = isPeak ? DASHBOARD_YELLOW : DASHBOARD_BLUE
                         
                         const infoParts = []
                         if (instituto && instituto !== 'Não informado') {
@@ -3019,17 +3068,42 @@ export default function Home() {
                         
                         return (
                           <g>
-                            <circle cx={cx} cy={cy} r={5} fill="rgb(var(--accent-gold))" />
-                            <text
-                              x={cx}
-                              y={cy - 25}
-                              fill="rgb(var(--accent-gold))"
-                              fontSize="14"
-                              fontWeight="600"
-                              textAnchor="middle"
-                            >
-                              {`${value}%`}
-                            </text>
+                            <circle cx={cx} cy={cy} r={isPeak ? 6 : 5} fill={dotColor} />
+                            {isPeak ? (
+                              <>
+                                <rect
+                                  x={cx - 26}
+                                  y={cy - 39}
+                                  width={52}
+                                  height={22}
+                                  rx={11}
+                                  fill="rgba(242, 201, 76, 0.22)"
+                                  stroke="rgba(242, 201, 76, 0.55)"
+                                  strokeWidth={1}
+                                />
+                                <text
+                                  x={cx}
+                                  y={cy - 24}
+                                  fill="#B46800"
+                                  fontSize="14"
+                                  fontWeight="700"
+                                  textAnchor="middle"
+                                >
+                                  {`${value}%`}
+                                </text>
+                              </>
+                            ) : (
+                              <text
+                                x={cx}
+                                y={cy - 25}
+                                fill={dotColor}
+                                fontSize="14"
+                                fontWeight="600"
+                                textAnchor="middle"
+                              >
+                                {`${value}%`}
+                              </text>
+                            )}
                             {infoText && (
                               <text
                                 x={cx}

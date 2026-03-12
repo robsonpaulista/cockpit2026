@@ -25,6 +25,7 @@
   --accent-gold: 222 90 18;
   --accent-gold-soft: 253 236 214;
   --accent-gold-dark: 184 67 17;
+  --strategic-yellow: 242 201 76;
   
   --success: 22 163 74;
   --warning: 241 145 65;
@@ -47,6 +48,7 @@
   --accent-gold: 198 161 91;
   --accent-gold-soft: 232 217 184;
   --accent-gold-dark: 166 131 71;
+  --strategic-yellow: 242 201 76;
   
   --success: 46 125 50;
   --warning: 199 120 0;
@@ -69,6 +71,7 @@
   --accent-gold: 15 94 168; /* azul principal */
   --accent-gold-soft: 225 236 248; /* azul claro */
   --accent-gold-dark: 10 70 126;
+  --strategic-yellow: 242 201 76;
 
   --success: 19 163 91; /* verde da marca */
   --warning: 242 194 48; /* amarelo da marca */
