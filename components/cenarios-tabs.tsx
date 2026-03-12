@@ -338,7 +338,7 @@ export default function CenariosTabs({
               key={cenario.id}
               onClick={() => handleTabChange(cenario.id)}
               className={`flex items-center justify-between gap-1 px-2 py-2 text-xs relative group ${
-                activeTab === cenario.id || cenario.ativo
+                activeTab === cenario.id
                   ? 'rounded-t-md border border-b-0 border-accent-gold bg-accent-gold-soft text-accent-gold font-semibold shadow-sm'
                   : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-t-md'
               }`}
@@ -353,7 +353,7 @@ export default function CenariosTabs({
                     B
                   </span>
                 )}
-                {cenario.ativo && !loading && (
+                {activeTab === cenario.id && !loading && (
                   <span className="px-1 py-0 text-xs bg-gray-200 text-gray-800 rounded flex-shrink-0">
                     A
                   </span>
@@ -362,7 +362,7 @@ export default function CenariosTabs({
               
               {/* Botões de ação */}
               <div className={`flex items-center gap-1 transition-opacity ${
-                cenario.ativo || activeTab === cenario.id 
+                activeTab === cenario.id 
                   ? 'opacity-100' 
                   : 'opacity-0 group-hover:opacity-100'
               }`}>

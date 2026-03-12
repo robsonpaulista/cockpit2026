@@ -1440,13 +1440,25 @@ export default function ChapasPage() {
                   </span>
                 </div>
               </div>
-              <button
-                onClick={() => setDialogNovoPartidoAberto(true)}
-                className="px-4 py-2 bg-accent-gold text-white rounded-lg hover:bg-accent-gold/90 flex items-center gap-2 whitespace-nowrap"
-              >
-                <Plus className="h-4 w-4" />
-                Adicionar Partido
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={mostrarTodosPartidos}
+                  disabled={partidosOcultosLista.length === 0}
+                  className="px-3 py-2 border border-amber-300 text-amber-900 rounded-lg hover:bg-amber-50 flex items-center gap-2 whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed"
+                  title={partidosOcultosLista.length > 0 ? 'Reexibir todos os partidos ocultos' : 'Não há partidos ocultos'}
+                >
+                  <Eye className="h-4 w-4" />
+                  Mostrar todos {partidosOcultosLista.length > 0 ? `(${partidosOcultosLista.length})` : ''}
+                </button>
+                <button
+                  onClick={() => setDialogNovoPartidoAberto(true)}
+                  className="px-4 py-2 bg-accent-gold text-white rounded-lg hover:bg-accent-gold/90 flex items-center gap-2 whitespace-nowrap"
+                >
+                  <Plus className="h-4 w-4" />
+                  Adicionar Partido
+                </button>
+              </div>
             </div>
           </div>
 
