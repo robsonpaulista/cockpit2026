@@ -73,6 +73,7 @@ export default function CenariosTabs({
   
   const [activeTab, setActiveTab] = useState<string>(cenarioAtivoId || '')
   const [inicializado, setInicializado] = useState(false)
+  const cenarioSelecionado = cenarios.find(c => c.id === activeTab) || cenarioAtivo
 
   // Carregar cenários (apenas lista, sem corrigir ativos em loop)
   const carregarCenarios = async () => {
@@ -307,13 +308,13 @@ export default function CenariosTabs({
               <span className="text-xs text-gray-500">Atualizando...</span>
             </div>
           )}
-          {cenarioAtivo && !loading && (
+          {cenarioSelecionado && !loading && (
             <span className={`px-2 py-1 rounded text-xs ${
-              cenarioAtivo.tipo === 'base' 
+              cenarioSelecionado.tipo === 'base' 
                 ? 'bg-accent-gold text-white' 
                 : 'bg-bg-surface text-text-primary border border-border-card'
             }`}>
-              {cenarioAtivo.tipo === 'base' ? 'BASE' : 'SIMULAÇÃO'}
+              {cenarioSelecionado.tipo === 'base' ? 'BASE' : 'SIMULAÇÃO'}: {cenarioSelecionado.nome}
             </span>
           )}
         </div>
@@ -338,8 +339,8 @@ export default function CenariosTabs({
               onClick={() => handleTabChange(cenario.id)}
               className={`flex items-center justify-between gap-1 px-2 py-2 text-xs relative group ${
                 activeTab === cenario.id || cenario.ativo
-                  ? 'border-b-2 border-accent-gold text-accent-gold font-medium'
-                  : 'text-gray-600 hover:text-gray-900'
+                  ? 'rounded-t-md border border-b-0 border-accent-gold bg-accent-gold-soft text-accent-gold font-semibold shadow-sm'
+                  : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-t-md'
               }`}
             >
               <div className="flex items-center gap-1 min-w-0 flex-1">

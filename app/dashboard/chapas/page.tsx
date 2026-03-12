@@ -155,10 +155,18 @@ export default function ChapasPage() {
 
   // Função para alternar visibilidade de partido
   const togglePartidoVisibilidade = (partidoNome: string) => {
-    setPartidosOcultos(prev => ({
-      ...prev,
-      [partidoNome]: !prev[partidoNome]
-    }))
+    setPartidosOcultos(prev => {
+      if (prev[partidoNome]) {
+        const proximo = { ...prev }
+        delete proximo[partidoNome]
+        return proximo
+      }
+
+      return {
+        ...prev,
+        [partidoNome]: true
+      }
+    })
   }
 
   // Função para toggle fullscreen
@@ -337,6 +345,14 @@ export default function ChapasPage() {
     )
     
     return [...partidosOrdenados, ...partidosRestantes]
+  }
+
+  const partidosOcultosLista = ordenarPartidos(partidos)
+    .filter(partido => partidosOcultos[partido.nome])
+    .map(partido => partido.nome)
+
+  const mostrarTodosPartidos = () => {
+    setPartidosOcultos({})
   }
 
   // Função para converter partidos para o formato do cenário
@@ -1433,6 +1449,35 @@ export default function ChapasPage() {
               </button>
             </div>
           </div>
+
+          {partidosOcultosLista.length > 0 && (
+            <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 p-3">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-xs font-semibold text-amber-900">
+                  Partidos ocultos ({partidosOcultosLista.length}):
+                </span>
+                {partidosOcultosLista.map((partidoNome) => (
+                  <button
+                    key={partidoNome}
+                    type="button"
+                    onClick={() => togglePartidoVisibilidade(partidoNome)}
+                    className="inline-flex items-center gap-1 rounded-full border border-amber-300 bg-white px-2 py-1 text-xs text-amber-900 hover:bg-amber-100"
+                    title={`Mostrar ${partidoNome}`}
+                  >
+                    <Eye className="h-3 w-3" />
+                    {partidoNome}
+                  </button>
+                ))}
+                <button
+                  type="button"
+                  onClick={mostrarTodosPartidos}
+                  className="inline-flex items-center gap-1 rounded-full border border-amber-400 bg-amber-100 px-2 py-1 text-xs font-semibold text-amber-900 hover:bg-amber-200"
+                >
+                  Mostrar todos
+                </button>
+              </div>
+            </div>
+          )}
 
           {/* Grid de partidos */}
           <div
