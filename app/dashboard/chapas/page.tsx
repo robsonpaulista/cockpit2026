@@ -1494,7 +1494,13 @@ export default function ChapasPage() {
           {/* Grid de partidos */}
           <div
             data-chapas-partidos-grid
-            className={`w-full grid gap-4 ${isChapasEstaduais && modoImpressao ? 'grid-cols-4' : 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4'}`}
+            className={`w-full grid gap-4 ${
+              isChapasEstaduais && modoImpressao
+                ? 'grid-cols-4'
+                : isChapasEstaduais
+                  ? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4'
+                  : 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5'
+            }`}
           >
             {ordenarPartidos(partidos)
               .filter(partido => !partidosOcultos[partido.nome])
