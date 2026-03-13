@@ -1,6 +1,6 @@
 [
   {
-    "nome": "A Velino Lopes",
+    "nome": "Avelino Lopes",
     "lat": -10.134487,
     "lng": -43.956305
   },
@@ -93,6 +93,11 @@
     "nome": "Barras",
     "lat": -4.244675,
     "lng": -42.292161
+  },
+  {
+    "nome": "Barra D'Alcântara",
+    "lat": -6.520926,
+    "lng": -42.107109
   },
   {
     "nome": "Barreiras Do Piauí",
@@ -350,7 +355,7 @@
     "lng": -42.837602
   },
   {
-    "nome": "Demerv Al Lobão",
+    "nome": "Demerval Lobão",
     "lat": -5.358752,
     "lng": -42.677583
   },
@@ -690,7 +695,7 @@
     "lng": -42.618408
   },
   {
-    "nome": "Nov A Santa Rita",
+    "nome": "Nova Santa Rita",
     "lat": -8.097073,
     "lng": -42.047127
   },
@@ -708,6 +713,11 @@
     "nome": "Oeiras",
     "lat": -7.019153,
     "lng": -42.128298
+  },
+  {
+    "nome": "Olho D'Água Do Piauí",
+    "lat": -5.848546,
+    "lng": -42.57378
   },
   {
     "nome": "Padre Marcos",
@@ -770,6 +780,11 @@
     "lng": -43.228438
   },
   {
+    "nome": "Pau D'Arco Do Piauí",
+    "lat": -5.252227,
+    "lng": -42.388402
+  },
+  {
     "nome": "Pedro Ii",
     "lat": -4.425845,
     "lng": -41.448184
@@ -820,7 +835,7 @@
     "lng": -42.204644
   },
   {
-    "nome": "Queimada Nov A",
+    "nome": "Queimada Nova",
     "lat": -8.570637,
     "lng": -41.410614
   },
@@ -930,7 +945,7 @@
     "lng": -42.709537
   },
   {
-    "nome": "São João Da Canabra V A",
+    "nome": "São João Da Canabrava",
     "lat": -6.812029,
     "lng": -41.341483
   },
@@ -945,7 +960,7 @@
     "lng": -41.892309
   },
   {
-    "nome": "São João Da V Arjota",
+    "nome": "São João Da Varjota",
     "lat": -6.940817,
     "lng": -41.888912
   },
@@ -1075,7 +1090,7 @@
     "lng": -44.557683
   },
   {
-    "nome": "V Alença Do Piauí",
+    "nome": "Valença Do Piauí",
     "lat": -6.403013,
     "lng": -41.737498
   },
@@ -1095,7 +1110,7 @@
     "lng": -41.467336
   },
   {
-    "nome": "Vila Nov A Do Piauí",
+    "nome": "Vila Nova Do Piauí",
     "lat": -7.132718,
     "lng": -40.934514
   },

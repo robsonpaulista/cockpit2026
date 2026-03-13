@@ -61,6 +61,7 @@ export default function Home() {
   const [territoriosMornos, setTerritoriosMornos] = useState<Array<{ cidade: string; motivo: string; expectativaVotos?: number; visitas?: number }>>([])
   const [cidadesComLiderancas, setCidadesComLiderancas] = useState<string[]>([])
   const [cidadesVisitadasLista, setCidadesVisitadasLista] = useState<string[]>([])
+  const [expectativaPorCidadeListaMapa, setExpectativaPorCidadeListaMapa] = useState<Array<{ cidade: string; expectativaVotos: number }>>([])
   const [territorioStats, setTerritorioStats] = useState<{
     totalCidades: number
     cidadesVisitadas: number
@@ -689,6 +690,17 @@ export default function Home() {
             // Cidades visitadas (para o mapa)
             if (data.cidadesVisitadasLista) {
               setCidadesVisitadasLista(data.cidadesVisitadasLista)
+            }
+
+            if (Array.isArray(data.expectativaPorCidadeLista)) {
+              setExpectativaPorCidadeListaMapa(
+                data.expectativaPorCidadeLista
+                  .map((item: Record<string, unknown>) => ({
+                    cidade: String(item.cidade || ''),
+                    expectativaVotos: Number(item.expectativaVotos) || 0,
+                  }))
+                  .filter((item: { cidade: string; expectativaVotos: number }) => item.cidade && item.expectativaVotos > 0)
+              )
             }
             
             // Estatísticas
@@ -2106,6 +2118,7 @@ export default function Home() {
                         <MapaPresenca
                           cidadesComPresenca={cidadesComLiderancas}
                           cidadesVisitadas={cidadesVisitadasLista}
+                          expectativaPorCidadeLista={expectativaPorCidadeListaMapa}
                           totalCidades={224}
                           fullscreen={true}
                           showStatsOverlay={false}

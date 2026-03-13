@@ -23,6 +23,7 @@ interface TerritorioInfo {
 interface MapaPresencaProps {
   cidadesComPresenca: string[]
   cidadesVisitadas?: string[]
+  expectativaPorCidadeLista?: Array<{ cidade: string; expectativaVotos: number }>
   totalCidades: number
   onFullscreen?: () => void
   fullscreen?: boolean
@@ -62,6 +63,7 @@ function normalizeName(name: string): string {
 export function MapaPresenca({
   cidadesComPresenca,
   cidadesVisitadas = [],
+  expectativaPorCidadeLista = [],
   totalCidades,
   onFullscreen,
   fullscreen = false,
@@ -135,6 +137,47 @@ export function MapaPresenca({
   const handleStatsCalculated = useCallback((stats: MapStats) => {
     setMapStats(stats)
   }, [])
+
+  const resumoGlobalRegiao = useMemo(() => {
+    const municipiosSet = new Set(dadosRegiao.municipios.map((m) => normalizeName(m.nome)))
+    const cidadesComLiderancaSet = new Set(dadosRegiao.presenca.map((c) => normalizeName(c)))
+    const cidadesVisitadasSet = new Set(dadosRegiao.visitadas.map((c) => normalizeName(c)))
+
+    const eleitoresNormalizado = new Map<string, number>()
+    Object.entries(eleitoresPorCidade).forEach(([cidade, eleitorado]) => {
+      eleitoresNormalizado.set(normalizeName(cidade), eleitorado)
+    })
+
+    let totalEleitores = 0
+    dadosRegiao.municipios.forEach((municipio) => {
+      totalEleitores += eleitoresNormalizado.get(normalizeName(municipio.nome)) || 0
+    })
+
+    const expectativaPorCidade = new Map<string, number>()
+    expectativaPorCidadeLista.forEach((territorio) => {
+      const cidadeKey = normalizeName(territorio.cidade)
+      if (!municipiosSet.has(cidadeKey)) return
+      const expectativa = Number(territorio.expectativaVotos) || 0
+      if (expectativa <= 0) return
+      const atual = expectativaPorCidade.get(cidadeKey) || 0
+      expectativaPorCidade.set(cidadeKey, Math.max(atual, expectativa))
+    })
+
+    const totalMunicipios = dadosRegiao.municipios.length
+    const comLiderancas = cidadesComLiderancaSet.size
+    const semLiderancas = Math.max(totalMunicipios - comLiderancas, 0)
+    const totalVotosPrevistos = Array.from(expectativaPorCidade.values()).reduce((sum, value) => sum + value, 0)
+    const totalVisitadas = cidadesVisitadasSet.size
+
+    return {
+      totalMunicipios,
+      comLiderancas,
+      semLiderancas,
+      totalEleitores,
+      totalVotosPrevistos,
+      totalVisitadas,
+    }
+  }, [dadosRegiao, eleitoresPorCidade, expectativaPorCidadeLista])
 
   if (!clientReady) {
     return (
@@ -257,6 +300,37 @@ export function MapaPresenca({
           filtroAtivo={filtroAtivo}
           onStatsCalculated={handleStatsCalculated}
         />
+
+        {(fullscreen || isNativeFullscreen) && (
+          <div className="absolute top-3 left-3 z-[1000] bg-white/95 backdrop-blur-md rounded-xl shadow-lg border border-gray-200/70 p-3 min-w-[260px] pointer-events-none">
+            <p className="text-[11px] font-semibold text-text-primary mb-2">
+              Resumo Global da Região
+            </p>
+            <div className="grid grid-cols-2 gap-x-4 gap-y-1.5">
+              <p className="text-[11px] text-gray-500">Municípios</p>
+              <p className="text-[11px] font-semibold text-text-primary text-right">{resumoGlobalRegiao.totalMunicipios}</p>
+
+              <p className="text-[11px] text-gray-500">Com lideranças</p>
+              <p className="text-[11px] font-semibold text-emerald-700 text-right">{resumoGlobalRegiao.comLiderancas}</p>
+
+              <p className="text-[11px] text-gray-500">Sem lideranças</p>
+              <p className="text-[11px] font-semibold text-red-700 text-right">{resumoGlobalRegiao.semLiderancas}</p>
+
+              <p className="text-[11px] text-gray-500">Eleitores</p>
+              <p className="text-[11px] font-semibold text-text-primary text-right">
+                {resumoGlobalRegiao.totalEleitores.toLocaleString('pt-BR')}
+              </p>
+
+              <p className="text-[11px] text-gray-500">Previsão de votos</p>
+              <p className="text-[11px] font-semibold text-[#B46800] text-right">
+                {resumoGlobalRegiao.totalVotosPrevistos.toLocaleString('pt-BR')}
+              </p>
+
+              <p className="text-[11px] text-gray-500">Visitadas</p>
+              <p className="text-[11px] font-semibold text-blue-700 text-right">{resumoGlobalRegiao.totalVisitadas}</p>
+            </div>
+          </div>
+        )}
 
         {/* Live Counter Overlay */}
         {showStatsOverlay && mapStats && (

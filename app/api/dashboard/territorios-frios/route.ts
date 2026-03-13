@@ -507,6 +507,13 @@ export async function POST(request: Request) {
     const cidadesVisitadasLista = Object.keys(visitasPorCidade)
       .map((cidadeKey) => nomeOriginalCidade[cidadeKey] || formatCityName(cidadeKey))
 
+    // Mapa completo de previsão por cidade (sem cortes), usado no resumo global do mapa
+    const expectativaPorCidadeLista = Object.entries(expectativaPorCidade)
+      .map(([cidadeKey, expectativa]) => ({
+        cidade: nomeOriginalCidade[cidadeKey] || formatCityName(cidadeKey),
+        expectativaVotos: Math.round(expectativa),
+      }))
+
     return NextResponse.json({
       territoriosFrios,
       territoriosQuentes,
@@ -514,6 +521,7 @@ export async function POST(request: Request) {
       cidadesNaoVisitadasLista,
       cidadesComLiderancas,
       cidadesVisitadasLista,
+      expectativaPorCidadeLista,
       estatisticas: {
         totalCidades,
         cidadesVisitadas,
