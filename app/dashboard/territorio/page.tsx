@@ -7,6 +7,7 @@ import { Users, Settings, RefreshCw, AlertCircle, ChevronDown, ChevronRight, Net
 import { MindMapModal } from '@/components/mind-map-modal'
 import { CityDemandsModal } from '@/components/city-demands-modal'
 import { ExecutiveBriefingModal } from '@/components/executive-briefing-modal'
+import { VoteInvestmentBalanceModal } from '@/components/vote-investment-balance-modal'
 import { MapaVotoCruzado } from '@/components/mapa-voto-cruzado'
 import { KPI } from '@/types'
 
@@ -46,6 +47,7 @@ export default function TerritorioPage() {
   const [showCityDemands, setShowCityDemands] = useState(false)
   const [selectedCityForDemands, setSelectedCityForDemands] = useState<string>('')
   const [showExecutiveBriefing, setShowExecutiveBriefing] = useState(false)
+  const [showVoteInvestmentBalance, setShowVoteInvestmentBalance] = useState(false)
   const [selectedCityForBriefing, setSelectedCityForBriefing] = useState<string>('')
   const [selectedCityLiderancas, setSelectedCityLiderancas] = useState<Lideranca[]>([])
   const [cenarioVotos, setCenarioVotos] = useState<CenarioVotos>('aferido_jadyel')
@@ -678,6 +680,28 @@ export default function TerritorioPage() {
 
   const totaisPorCargo = calcularTotaisPorCargo()
 
+  const cidadesParaAnaliseInvestimento = useMemo(() => {
+    const agrupado = liderancasFiltradas.reduce((acc, lider) => {
+      const cidade = String(lider[cidadeCol] || 'Sem cidade').trim() || 'Sem cidade'
+      if (!acc[cidade]) {
+        acc[cidade] = { previsaoVotos: 0, liderancas: 0 }
+      }
+      acc[cidade].liderancas += 1
+      if (votosReferenciaCol) {
+        acc[cidade].previsaoVotos += normalizeNumber(lider[votosReferenciaCol])
+      }
+      return acc
+    }, {} as Record<string, { previsaoVotos: number; liderancas: number }>)
+
+    return Object.entries(agrupado)
+      .map(([cidade, info]) => ({
+        cidade,
+        previsaoVotos: Math.round(info.previsaoVotos),
+        liderancas: info.liderancas,
+      }))
+      .sort((a, b) => b.previsaoVotos - a.previsaoVotos)
+  }, [liderancasFiltradas, cidadeCol, votosReferenciaCol])
+
   // Identificar colunas para exibição (nomeCol, cidadeCol e cargoCol já foram definidos no escopo superior)
   const scoreCol = headers.find((h) =>
     /score|pontuação|pontuacao|nota/i.test(h)
@@ -1019,6 +1043,16 @@ export default function TerritorioPage() {
                 >
                   <Network className="w-4 h-4" />
                   Mapa Mental
+                </button>
+              )}
+              {(config || serverConfigured) && liderancasFiltradas.length > 0 && votosReferenciaCol && (
+                <button
+                  onClick={() => setShowVoteInvestmentBalance(true)}
+                  className="px-3 py-2 text-sm font-medium border border-card rounded-lg hover:bg-background transition-colors flex items-center gap-2"
+                  title="Analisar equilíbrio entre investimento e previsão de votos"
+                >
+                  <Briefcase className="w-4 h-4 text-accent-gold" />
+                  Demandas x Previsão
                 </button>
               )}
               {(config || serverConfigured) && liderancasFiltradas.length > 0 && (() => {
@@ -1420,6 +1454,13 @@ export default function TerritorioPage() {
           nomeCol={nomeCol}
         />
       )}
+
+      <VoteInvestmentBalanceModal
+        isOpen={showVoteInvestmentBalance}
+        onClose={() => setShowVoteInvestmentBalance(false)}
+        cidades={cidadesParaAnaliseInvestimento}
+        cenarioLabel={labelCenarioVotos}
+      />
     </div>
   )
 }

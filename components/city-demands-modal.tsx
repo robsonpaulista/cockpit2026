@@ -18,7 +18,7 @@ interface Demand {
   from_sheets?: boolean
   sheets_data?: {
     cidade?: string
-    [key: string]: any
+    [key: string]: unknown
   }
 }
 
@@ -155,6 +155,79 @@ export function CityDemandsModal({ isOpen, onClose, cidade }: CityDemandsModalPr
     }
   }
 
+  const getSheetsField = (demand: Demand, patterns: RegExp[]): string | null => {
+    const raw = demand.sheets_data
+    if (!raw || typeof raw !== 'object') return null
+
+    const entries = Object.entries(raw)
+    const match = entries.find(([key]) => patterns.some((pattern) => pattern.test(key)))
+    if (!match) return null
+
+    const value = match[1]
+    if (value === null || value === undefined) return null
+    const text = String(value).trim()
+    return text || null
+  }
+
+  const normalizeNumber = (value: unknown): number => {
+    if (typeof value === 'number') return value
+
+    const str = String(value || '').trim()
+    if (!str) return 0
+
+    let cleaned = str.replace(/[^\d.,]/g, '')
+
+    if (cleaned.includes(',') && cleaned.includes('.')) {
+      if (cleaned.lastIndexOf(',') > cleaned.lastIndexOf('.')) {
+        cleaned = cleaned.replace(/\./g, '').replace(',', '.')
+      } else {
+        cleaned = cleaned.replace(/,/g, '')
+      }
+    } else if (cleaned.includes(',')) {
+      const parts = cleaned.split(',')
+      if (parts.length === 2) {
+        if (parts[1].length === 3) {
+          cleaned = cleaned.replace(/,/g, '')
+        } else if (parts[1].length <= 2) {
+          cleaned = cleaned.replace(',', '.')
+        } else {
+          cleaned = cleaned.replace(/,/g, '')
+        }
+      } else {
+        cleaned = cleaned.replace(/,/g, '')
+      }
+    }
+
+    const numValue = parseFloat(cleaned)
+    return isNaN(numValue) ? 0 : numValue
+  }
+
+  const formatValorSemMoeda = (value: number): string => {
+    if (!Number.isFinite(value) || value <= 0) return '-'
+    return value.toLocaleString('pt-BR', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    })
+  }
+
+  const getDemandValorNumero = (demand: Demand): number => {
+    const valorFromSheets = getSheetsField(demand, [
+      /^valor$/i,
+      /valor\s*\(?.*r\$.*\)?/i,
+      /custo|or[çc]amento/i,
+    ])
+    if (valorFromSheets) return normalizeNumber(valorFromSheets)
+
+    const demandRecord = demand as unknown as Record<string, unknown>
+    const directValue =
+      demandRecord.valor ??
+      demandRecord.value ??
+      demandRecord.custo ??
+      demandRecord.orcamento
+
+    return normalizeNumber(directValue)
+  }
+
   const formatDate = (dateString?: string) => {
     if (!dateString) return '-'
     try {
@@ -219,6 +292,11 @@ export function CityDemandsModal({ isOpen, onClose, cidade }: CityDemandsModalPr
       }
       return 0
     })
+
+  const totalValorDemandas = demandsFiltradasEOrdenadas.reduce(
+    (sum, demand) => sum + getDemandValorNumero(demand),
+    0
+  )
 
   // Obter status únicos para filtro
   const statusUnicos = Array.from(new Set(demands.map(d => d.status).filter(Boolean))) as string[]
@@ -343,6 +421,11 @@ export function CityDemandsModal({ isOpen, onClose, cidade }: CityDemandsModalPr
                         {demand.theme}
                       </span>
                     )}
+                    {getDemandValorNumero(demand) > 0 && (
+                      <span className="px-1.5 py-0.5 rounded border bg-accent-gold-soft text-accent-gold border-accent-gold/30 font-semibold">
+                        Valor: {formatValorSemMoeda(getDemandValorNumero(demand))}
+                      </span>
+                    )}
                   </div>
 
                   {/* Descrição apenas se houver e for relevante */}
@@ -356,6 +439,14 @@ export function CityDemandsModal({ isOpen, onClose, cidade }: CityDemandsModalPr
             </div>
           )}
         </div>
+
+        {!loading && !error && demandsFiltradasEOrdenadas.length > 0 && (
+          <div className="px-4 py-3 border-t border-card bg-background/40 flex items-center justify-end">
+            <span className="text-sm font-semibold text-text-primary">
+              Total Valor: <span className="text-accent-gold">{formatValorSemMoeda(totalValorDemandas)}</span>
+            </span>
+          </div>
+        )}
       </div>
     </div>
   )
