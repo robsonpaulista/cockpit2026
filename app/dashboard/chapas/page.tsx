@@ -3,7 +3,7 @@
 import React, { useEffect, useState, useRef } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Trash2, Plus, RefreshCw, Check, Printer, Info, Eye, EyeOff, X, Maximize2, Minimize2, ArrowRightLeft, PenSquare } from 'lucide-react'
+import { Trash2, Plus, RefreshCw, Check, Printer, Info, Eye, EyeOff, X, Maximize2, Minimize2, ArrowRightLeft, PenSquare, ChevronLeft, ChevronRight } from 'lucide-react'
 import jsPDF from 'jspdf'
 import { Cenario, CenarioCompleto, PartidoCenario } from '@/lib/chapasService'
 import * as chapasFederalService from '@/lib/chapasService'
@@ -376,15 +376,24 @@ export default function ChapasPage() {
     })
   }
 
-  const handleAlterarPosicaoPartido = (partidoNome: string, novaPosicaoRaw: string) => {
-    const parsed = Number(novaPosicaoRaw)
-    if (!Number.isFinite(parsed)) return
+  const handleMoverPartido = (partidoNome: string, direcao: 'esquerda' | 'direita') => {
+    const nomesOrdenados = ordenarPartidos(partidos).map((partido) => partido.nome)
+    const indiceAtual = nomesOrdenados.findIndex((nome) => nome === partidoNome)
+    if (indiceAtual < 0) return
 
-    const novaPosicao = Math.max(1, Math.min(partidos.length, Math.round(parsed)))
-    setOrdemPartidosManual((prev) => ({
-      ...prev,
-      [partidoNome]: novaPosicao,
-    }))
+    const delta = direcao === 'esquerda' ? -1 : 1
+    const indiceDestino = indiceAtual + delta
+    if (indiceDestino < 0 || indiceDestino >= nomesOrdenados.length) return
+
+    const [movido] = nomesOrdenados.splice(indiceAtual, 1)
+    nomesOrdenados.splice(indiceDestino, 0, movido)
+
+    const novaOrdem: { [partidoNome: string]: number } = {}
+    nomesOrdenados.forEach((nome, idx) => {
+      novaOrdem[nome] = idx + 1
+    })
+
+    setOrdemPartidosManual(novaOrdem)
   }
 
   const partidosOcultosLista = ordenarPartidos(partidos)
@@ -1563,6 +1572,7 @@ export default function ChapasPage() {
               .filter(partido => !partidosOcultos[partido.nome])
               .map((partido, pIdx) => {
                 const partidoIdx = partidos.findIndex(p => p.nome === partido.nome)
+                const posicaoAtualNaOrdem = ordenarPartidos(partidos).findIndex((p) => p.nome === partido.nome)
                 
                 const atingiuMinimo = partidoAtingiuMinimo(partido.nome)
                 const quocienteMinimo = getQuocienteMinimo()
@@ -1583,24 +1593,29 @@ export default function ChapasPage() {
                         ? 'bg-bg-surface text-text-primary' 
                         : 'bg-status-error/10 text-status-error'
                     }`}>
-                      <div className="flex items-center justify-center relative">
-                        <div className="absolute left-0 top-1/2 -translate-y-1/2 flex items-center gap-1">
-                          <span className="text-[10px] text-text-secondary">Pos.</span>
-                          <select
-                            value={ordemPartidosManual[partido.nome] || (pIdx + 1)}
-                            onChange={(e) => handleAlterarPosicaoPartido(partido.nome, e.target.value)}
-                            className="h-6 w-14 rounded border border-card bg-white text-[11px] text-text-primary px-1 focus:outline-none focus:ring-1 focus:ring-accent-gold-soft"
-                            title="Posição do partido na página"
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-1">
+                          <button
+                            type="button"
+                            onClick={() => handleMoverPartido(partido.nome, 'esquerda')}
+                            className="text-text-secondary hover:text-text-primary transition-colors p-1 disabled:opacity-40 disabled:cursor-not-allowed"
+                            title="Mover partido para a esquerda"
+                            disabled={posicaoAtualNaOrdem <= 0}
                           >
-                            {Array.from({ length: partidos.length }, (_, idx) => idx + 1).map((pos) => (
-                              <option key={pos} value={pos}>
-                                {pos}
-                              </option>
-                            ))}
-                          </select>
+                            <ChevronLeft className="h-3.5 w-3.5" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleMoverPartido(partido.nome, 'direita')}
+                            className="text-text-secondary hover:text-text-primary transition-colors p-1 disabled:opacity-40 disabled:cursor-not-allowed"
+                            title="Mover partido para a direita"
+                            disabled={posicaoAtualNaOrdem >= partidos.length - 1}
+                          >
+                            <ChevronRight className="h-3.5 w-3.5" />
+                          </button>
                         </div>
-                        <span className="px-2">{partido.nome}</span>
-                        <div className="absolute right-0 top-1/2 -translate-y-1/2 flex items-center gap-1">
+                        <span className="px-2 truncate">{partido.nome}</span>
+                        <div className="flex items-center gap-1">
                           <button
                             type="button"
                             onClick={() => {
