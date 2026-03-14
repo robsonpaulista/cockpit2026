@@ -138,6 +138,7 @@ export default function ChapasPage() {
   
   // Estado para gerenciar partidos ocultos
   const [partidosOcultos, setPartidosOcultos] = useState<{ [partidoNome: string]: boolean }>({})
+  const [ordemPartidosManual, setOrdemPartidosManual] = useState<{ [partidoNome: string]: number }>({})
   const [isFullscreen, setIsFullscreen] = useState(false)
   const fullscreenRef = useRef<HTMLDivElement>(null)
   
@@ -151,6 +152,14 @@ export default function ChapasPage() {
   const mostrarNotificacaoAutoSave = (mensagem: string) => {
     setNotificacaoAutoSave(mensagem)
     setTimeout(() => setNotificacaoAutoSave(null), 3000)
+  }
+
+  const construirMapaOrdem = <T extends { nome: string }>(listaPartidos: T[]) => {
+    const mapa: { [partidoNome: string]: number } = {}
+    listaPartidos.forEach((partido, idx) => {
+      mapa[partido.nome] = idx + 1
+    })
+    return mapa
   }
 
   // Função para alternar visibilidade de partido
@@ -206,6 +215,7 @@ export default function ChapasPage() {
         setCenarioAtivo(cenarioBase)
         const partidosOrdenados = ordenarPartidos(cenarioBase.partidos)
         setPartidos(partidosOrdenados)
+        setOrdemPartidosManual(construirMapaOrdem(cenarioBase.partidos))
         if (!quocienteCarregado) {
           setQuociente(cenarioBase.quocienteEleitoral)
           setQuocienteCarregado(true)
@@ -285,6 +295,7 @@ export default function ChapasPage() {
         setCenarioAtivo(cenarioAtivoData)
         const partidosOrdenados = ordenarPartidos(cenarioAtivoData.partidos)
         setPartidos(partidosOrdenados)
+        setOrdemPartidosManual(construirMapaOrdem(cenarioAtivoData.partidos))
         setQuociente(cenarioAtivoData.quocienteEleitoral)
         setQuocienteCarregado(true)
         
@@ -336,15 +347,44 @@ export default function ChapasPage() {
 
   // Função para ordenar partidos na ordem fixa
   const ordenarPartidos = <T extends { nome: string }>(partidosParaOrdenar: T[]): T[] => {
-    const partidosOrdenados = ordemPartidosPadrao
-      .map(nomePartido => partidosParaOrdenar.find(p => p.nome === nomePartido))
-      .filter(Boolean) as T[]
-    
-    const partidosRestantes = partidosParaOrdenar.filter(
-      p => !ordemPartidosPadrao.includes(p.nome)
-    )
-    
-    return [...partidosOrdenados, ...partidosRestantes]
+    const indexMap = new Map<string, number>()
+    partidosParaOrdenar.forEach((partido, index) => {
+      indexMap.set(partido.nome, index)
+    })
+
+    const resolverOrdem = (nome: string) => {
+      const manual = ordemPartidosManual[nome]
+      if (typeof manual === 'number' && Number.isFinite(manual) && manual > 0) {
+        return manual
+      }
+
+      const idxPadrao = ordemPartidosPadrao.indexOf(nome)
+      if (idxPadrao >= 0) return idxPadrao + 1
+
+      const idxAtual = indexMap.get(nome) ?? 0
+      return ordemPartidosPadrao.length + idxAtual + 1
+    }
+
+    return [...partidosParaOrdenar].sort((a, b) => {
+      const ordemA = resolverOrdem(a.nome)
+      const ordemB = resolverOrdem(b.nome)
+      if (ordemA !== ordemB) return ordemA - ordemB
+
+      const idxA = indexMap.get(a.nome) ?? 0
+      const idxB = indexMap.get(b.nome) ?? 0
+      return idxA - idxB
+    })
+  }
+
+  const handleAlterarPosicaoPartido = (partidoNome: string, novaPosicaoRaw: string) => {
+    const parsed = Number(novaPosicaoRaw)
+    if (!Number.isFinite(parsed)) return
+
+    const novaPosicao = Math.max(1, Math.min(partidos.length, Math.round(parsed)))
+    setOrdemPartidosManual((prev) => ({
+      ...prev,
+      [partidoNome]: novaPosicao,
+    }))
   }
 
   const partidosOcultosLista = ordenarPartidos(partidos)
@@ -671,6 +711,11 @@ export default function ChapasPage() {
       }
       
       setPartidos(prev => prev.filter(p => p.nome !== partidoNome))
+      setOrdemPartidosManual(prev => {
+        const proximo = { ...prev }
+        delete proximo[partidoNome]
+        return proximo
+      })
       
       setVotosLegenda(prev => {
         const novo = { ...prev }
@@ -729,6 +774,7 @@ export default function ChapasPage() {
       }))
       
       setPartidos(partidosAtualizados)
+      setOrdemPartidosManual(construirMapaOrdem(ordenarPartidos(partidosAtualizados)))
       
       await service.atualizarCenario(cenarioAtivo.id, partidosConvertidos, cenarioAtivo.quocienteEleitoral)
       
@@ -797,6 +843,15 @@ export default function ChapasPage() {
     }
 
     setPartidos(partidosAtualizados)
+    setOrdemPartidosManual(prev => {
+      const proximo = { ...prev }
+      const ordemAtual = proximo[nomeAtual]
+      delete proximo[nomeAtual]
+      if (typeof ordemAtual === 'number' && Number.isFinite(ordemAtual)) {
+        proximo[novoNome] = ordemAtual
+      }
+      return proximo
+    })
     setVotosLegenda(votosLegendaAtualizados)
     setVotosLegendaTemp(votosLegendaTempAtualizados)
     setPartidosOcultos(partidosOcultosAtualizados)
@@ -1336,6 +1391,7 @@ export default function ChapasPage() {
                 setCenarioAtivo(cenario)
                 const partidosOrdenados = ordenarPartidos(cenario.partidos)
                 setPartidos(partidosOrdenados)
+                setOrdemPartidosManual(construirMapaOrdem(cenario.partidos))
                 setQuociente(cenario.quocienteEleitoral)
                 const votosLegendaTemp: { [partido: string]: number } = {}
                 cenario.partidos.forEach(partido => {
@@ -1360,6 +1416,7 @@ export default function ChapasPage() {
                     setCenarioAtivo(novoCenario)
                     const partidosOrdenados = ordenarPartidos(novoCenario.partidos)
                     setPartidos(partidosOrdenados)
+                    setOrdemPartidosManual(construirMapaOrdem(novoCenario.partidos))
                     setQuociente(novoCenario.quocienteEleitoral)
                     const votosLegendaTemp: { [partido: string]: number } = {}
                     novoCenario.partidos.forEach(partido => {
@@ -1527,6 +1584,21 @@ export default function ChapasPage() {
                         : 'bg-status-error/10 text-status-error'
                     }`}>
                       <div className="flex items-center justify-center relative">
+                        <div className="absolute left-0 top-1/2 -translate-y-1/2 flex items-center gap-1">
+                          <span className="text-[10px] text-text-secondary">Pos.</span>
+                          <select
+                            value={ordemPartidosManual[partido.nome] || (pIdx + 1)}
+                            onChange={(e) => handleAlterarPosicaoPartido(partido.nome, e.target.value)}
+                            className="h-6 w-14 rounded border border-card bg-white text-[11px] text-text-primary px-1 focus:outline-none focus:ring-1 focus:ring-accent-gold-soft"
+                            title="Posição do partido na página"
+                          >
+                            {Array.from({ length: partidos.length }, (_, idx) => idx + 1).map((pos) => (
+                              <option key={pos} value={pos}>
+                                {pos}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
                         <span className="px-2">{partido.nome}</span>
                         <div className="absolute right-0 top-1/2 -translate-y-1/2 flex items-center gap-1">
                           <button
