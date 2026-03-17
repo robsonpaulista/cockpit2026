@@ -2,7 +2,9 @@
 
 import { useEffect, useState, useMemo, useCallback } from 'react'
 import dynamic from 'next/dynamic'
-import { Maximize2, Minimize2, MapPin, Users, Eye, Target, Navigation, Filter, TrendingUp, Crosshair } from 'lucide-react'
+import { Maximize2, Minimize2, MapPin, Users, Eye, Target, Navigation, Filter, TrendingUp, Crosshair, FileSpreadsheet, FileText } from 'lucide-react'
+import * as XLSX from 'xlsx'
+import jsPDF from 'jspdf'
 import municipiosPiaui from '@/lib/municipios-piaui.json'
 import { getAllEleitores } from '@/lib/eleitores'
 import type { MapStats } from './mapa-wrapper-leaflet'
@@ -48,6 +50,7 @@ const REGIOES = [
   { id: 'Centro-Sul', label: 'Centro-Sul' },
   { id: 'Sul', label: 'Sul' },
 ]
+const OPPORTUNITY_THRESHOLD = 15000
 
 function getRegionByLat(lat: number): string {
   if (lat > -4.8) return 'Norte'
@@ -179,6 +182,116 @@ export function MapaPresenca({
     }
   }, [dadosRegiao, eleitoresPorCidade, expectativaPorCidadeLista])
 
+  const cidadesSemLiderancaExport = useMemo(() => {
+    const cidadesComLiderancaSet = new Set(dadosRegiao.presenca.map((c) => normalizeName(c)))
+
+    const eleitoresNormalizado = new Map<string, number>()
+    Object.entries(eleitoresPorCidade).forEach(([cidade, eleitorado]) => {
+      eleitoresNormalizado.set(normalizeName(cidade), eleitorado)
+    })
+
+    const linhas = dadosRegiao.municipios
+      .filter((municipio) => !cidadesComLiderancaSet.has(normalizeName(municipio.nome)))
+      .map((municipio) => {
+        const eleitores = eleitoresNormalizado.get(normalizeName(municipio.nome)) || 0
+        const ehOportunidade = eleitores >= OPPORTUNITY_THRESHOLD
+
+        return {
+          cidade: municipio.nome,
+          eleitores,
+          tipo: ehOportunidade ? 'Oportunidade' : 'Sem liderança',
+        }
+      })
+      .filter((item) => {
+        if (filtroAtivo === 'oportunidades') return item.tipo === 'Oportunidade'
+        if (filtroAtivo === 'sem-lideranca') return true
+        return false
+      })
+      .sort((a, b) => {
+        if (b.eleitores !== a.eleitores) return b.eleitores - a.eleitores
+        return a.cidade.localeCompare(b.cidade, 'pt-BR')
+      })
+
+    return linhas
+  }, [dadosRegiao, eleitoresPorCidade, filtroAtivo])
+
+  const nomeArquivoBase = useMemo(() => {
+    const data = new Date().toISOString().slice(0, 10)
+    const regiao = filtroRegiao === 'todas' ? 'todas-regioes' : filtroRegiao.toLowerCase().replace(/\s+/g, '-')
+    return `territorios-sem-lideranca-${regiao}-${data}`
+  }, [filtroRegiao])
+
+  const handleExportarSemLiderancaXls = useCallback(() => {
+    if (cidadesSemLiderancaExport.length === 0) return
+
+    const rows = cidadesSemLiderancaExport.map((item) => ({
+      Cidade: item.cidade,
+      Eleitores: item.eleitores,
+      Tipo: item.tipo,
+    }))
+
+    const ws = XLSX.utils.json_to_sheet(rows)
+    const wb = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(wb, ws, 'Sem Liderança')
+    XLSX.writeFile(wb, `${nomeArquivoBase}.xls`, { bookType: 'biff8' })
+  }, [cidadesSemLiderancaExport, nomeArquivoBase])
+
+  const handleExportarSemLiderancaPdf = useCallback(() => {
+    if (cidadesSemLiderancaExport.length === 0) return
+
+    const doc = new jsPDF('p', 'mm', 'a4')
+    const pageWidth = doc.internal.pageSize.getWidth()
+    const pageHeight = doc.internal.pageSize.getHeight()
+    const margemX = 12
+    const colunaCidadeX = margemX
+    const colunaEleitoresX = pageWidth - margemX
+
+    doc.setFontSize(13)
+    doc.text('Análise de Territórios — Cidades sem liderança', margemX, 14)
+
+    doc.setFontSize(10)
+    doc.text(
+      `Região: ${filtroRegiao === 'todas' ? 'Todas as regiões' : filtroRegiao} | Registros: ${cidadesSemLiderancaExport.length}`,
+      margemX,
+      21
+    )
+
+    let y = 28
+    doc.setFontSize(10)
+    doc.setFont('helvetica', 'bold')
+    doc.text('Cidade', colunaCidadeX, y)
+    doc.text('Eleitores', colunaEleitoresX, y, { align: 'right' })
+    y += 2
+    doc.setLineWidth(0.2)
+    doc.line(margemX, y, pageWidth - margemX, y)
+    y += 5
+
+    doc.setFont('helvetica', 'normal')
+    cidadesSemLiderancaExport.forEach((item, idx) => {
+      const cidadeTexto = `${idx + 1}. ${item.cidade}`
+      const cidadeLinhas = doc.splitTextToSize(cidadeTexto, 145) as string[]
+      const alturaLinha = Math.max(cidadeLinhas.length * 5, 5)
+
+      if (y + alturaLinha > pageHeight - 12) {
+        doc.addPage()
+        y = 16
+        doc.setFont('helvetica', 'bold')
+        doc.text('Cidade', colunaCidadeX, y)
+        doc.text('Eleitores', colunaEleitoresX, y, { align: 'right' })
+        y += 2
+        doc.line(margemX, y, pageWidth - margemX, y)
+        y += 5
+        doc.setFont('helvetica', 'normal')
+      }
+
+      doc.text(cidadeLinhas, colunaCidadeX, y)
+      doc.text(item.eleitores.toLocaleString('pt-BR'), colunaEleitoresX, y, { align: 'right' })
+      y += alturaLinha + 1
+    })
+
+    doc.save(`${nomeArquivoBase}.pdf`)
+  }, [cidadesSemLiderancaExport, filtroRegiao, nomeArquivoBase])
+
   if (!clientReady) {
     return (
       <div className="w-full h-96 bg-surface rounded-2xl border border-card flex items-center justify-center">
@@ -209,6 +322,24 @@ export function MapaPresenca({
           )}
         </div>
         <div className="flex items-center gap-1">
+          <button
+            onClick={handleExportarSemLiderancaXls}
+            disabled={cidadesSemLiderancaExport.length === 0}
+            className="px-2.5 py-1.5 rounded-lg border border-card bg-background text-secondary hover:text-text-primary hover:bg-card transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5 text-xs"
+            title="Exportar cidades sem liderança em XLS"
+          >
+            <FileSpreadsheet className="w-3.5 h-3.5" />
+            XLS
+          </button>
+          <button
+            onClick={handleExportarSemLiderancaPdf}
+            disabled={cidadesSemLiderancaExport.length === 0}
+            className="px-2.5 py-1.5 rounded-lg border border-card bg-background text-secondary hover:text-text-primary hover:bg-card transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5 text-xs"
+            title="Exportar cidades sem liderança em PDF"
+          >
+            <FileText className="w-3.5 h-3.5" />
+            PDF
+          </button>
           {onFullscreen && !isNativeFullscreen && (
             <button
               onClick={onFullscreen}
