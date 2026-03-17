@@ -90,8 +90,10 @@ export async function POST(request: Request) {
 
     const calendar = google.calendar({ version: 'v3', auth: client as any })
 
-    // Buscar eventos a partir de 01/01/2026
-    const startDate = new Date('2026-01-01T00:00:00-03:00')
+    // Buscar janela dinâmica: últimos 7 dias + todos os futuros (limitado a 500)
+    const startDate = new Date()
+    startDate.setHours(0, 0, 0, 0)
+    startDate.setDate(startDate.getDate() - 7)
     const response = await calendar.events.list({
       calendarId: calendarId,
       timeMin: startDate.toISOString(),
