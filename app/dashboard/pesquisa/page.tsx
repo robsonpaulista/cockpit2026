@@ -5,7 +5,8 @@ import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { KPICard } from '@/components/kpi-card'
 import { PollModal } from '@/components/poll-modal'
-import { Plus, Edit2, Trash2, Maximize2, X, ArrowLeft } from 'lucide-react'
+import { PollReportModal } from '@/components/poll-report-modal'
+import { Plus, Edit2, Trash2, Maximize2, X, ArrowLeft, FileText } from 'lucide-react'
 import { KPI } from '@/types'
 import { LineChart, Line, ResponsiveContainer, XAxis, YAxis, CartesianGrid, Tooltip, LabelList, Customized } from 'recharts'
 import { formatDate } from '@/lib/utils'
@@ -153,6 +154,8 @@ export default function PesquisaPage() {
   const [cities, setCities] = useState<Array<{ id: string; name: string }>>([])
   const [candidatoPadrao, setCandidatoPadrao] = useState<string>('')
   const [graficoTelaCheia, setGraficoTelaCheia] = useState(false)
+  const [pollParaRelatorio, setPollParaRelatorio] = useState<Poll | null>(null)
+  const [openedReportFromQuery, setOpenedReportFromQuery] = useState<string | null>(null)
 
   const normalizeCityName = (value: string): string =>
     value
@@ -200,6 +203,19 @@ export default function PesquisaPage() {
       setFiltroCidade(matched.id)
     }
   }, [cities, searchParams])
+
+  useEffect(() => {
+    const pollIdParam = searchParams.get('open_report_poll_id')
+    if (!pollIdParam) return
+    if (openedReportFromQuery === pollIdParam) return
+    if (polls.length === 0) return
+
+    const targetPoll = polls.find((poll) => poll.id === pollIdParam) || null
+    if (targetPoll) {
+      setPollParaRelatorio(targetPoll)
+      setOpenedReportFromQuery(pollIdParam)
+    }
+  }, [polls, searchParams, openedReportFromQuery])
   
   // Atualizar candidatos disponíveis quando polls mudarem
   useEffect(() => {
@@ -1029,6 +1045,13 @@ export default function PesquisaPage() {
                       <td className="py-3 px-4">
                         <div className="flex items-center justify-center gap-2">
                           <button
+                            onClick={() => setPollParaRelatorio(poll)}
+                            className="p-2 rounded-lg hover:bg-background transition-colors"
+                            title="Anexar PDF e gerar análise"
+                          >
+                            <FileText className="w-4 h-4 text-blue-600" />
+                          </button>
+                          <button
                             onClick={() => {
                               setEditingPoll(poll)
                               setShowModal(true)
@@ -1065,6 +1088,19 @@ export default function PesquisaPage() {
             setEditingPoll(null)
           }}
           onUpdate={fetchPolls}
+        />
+      )}
+
+      {pollParaRelatorio && (
+        <PollReportModal
+          poll={{
+            id: pollParaRelatorio.id,
+            instituto: pollParaRelatorio.instituto,
+            candidato_nome: pollParaRelatorio.candidato_nome,
+            data: pollParaRelatorio.data,
+            cidade: pollParaRelatorio.cities?.name || undefined,
+          }}
+          onClose={() => setPollParaRelatorio(null)}
         />
       )}
 

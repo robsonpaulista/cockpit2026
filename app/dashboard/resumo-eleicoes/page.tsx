@@ -1,11 +1,11 @@
 'use client'
 
 import { useMemo, useState, useEffect } from 'react'
-import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import { RefreshCw, AlertCircle, Crown, X, Users, Vote, BarChart3, UserCheck, ArrowUpRight, FileText, Loader2 } from 'lucide-react'
 import { getEleitoradoByCity } from '@/lib/eleitores'
 import { CityDemandsModal } from '@/components/city-demands-modal'
+import { PollReportsHistoryModal } from '@/components/poll-reports-history-modal'
 
 interface ResultadoEleicao {
   uf: string
@@ -245,6 +245,7 @@ export default function ResumoEleicoesPage() {
   const [candidatoPadraoPesquisa, setCandidatoPadraoPesquisa] = useState<string>('')
   const [cenarioVotos, setCenarioVotos] = useState<CenarioVotos>('aferido_jadyel')
   const [showSimulacaoModal, setShowSimulacaoModal] = useState(false)
+  const [showPesquisaHistoricoModal, setShowPesquisaHistoricoModal] = useState(false)
   const [simulacaoMapeamento, setSimulacaoMapeamento] = useState<SimulacaoMapeamento>({})
   const [loadingSimulacao, setLoadingSimulacao] = useState(false)
   const [savingSimulacao, setSavingSimulacao] = useState(false)
@@ -600,26 +601,6 @@ export default function ResumoEleicoesPage() {
     } finally {
       setSavingSimulacao(false)
     }
-  }
-
-  const salvarEstadoResumoEmSession = () => {
-    if (typeof window === 'undefined') return
-    const snapshot: ResumoEleicoesSnapshot = {
-      cidade,
-      cidades,
-      dados,
-      buscaIniciada,
-      presidenteCamaraNome,
-      filtroPartidoAtivo,
-      resumoCidade,
-      resumosCidadeMap,
-      pesquisaRecenteCidade,
-      pesquisaCitiesMap,
-      candidatoPadraoPesquisa,
-      cenarioVotos,
-      simulacaoMapeamento,
-    }
-    sessionStorage.setItem(RESUMO_STATE_SESSION_KEY, JSON.stringify(snapshot))
   }
 
   const definirPresidenteCamara = async (vereadorNome: string) => {
@@ -1344,6 +1325,7 @@ export default function ResumoEleicoesPage() {
     votosProporcionaisPesquisaRecente !== null
       ? `Prop.: ${votosProporcionaisPesquisaRecente.toLocaleString('pt-BR')} | Expectativa: ${votosCenarioAtivo.toLocaleString('pt-BR')} | ${statusPesquisaCurto}`
       : `Sem proporcional para ${labelCenarioAtivo}`
+  const cidadePesquisaIdAtual = cidade ? pesquisaCitiesMap[normalizeCityName(cidade)] || null : null
   const summaryCardBaseClass =
     'rounded-[14px] border border-border-card bg-bg-surface p-3 relative overflow-hidden shadow-[0_1px_3px_rgba(0,0,0,0.06)] hover:shadow-[0_8px_24px_rgba(0,0,0,0.08)] hover:-translate-y-[2px] transition-all duration-300 ease-out h-full'
   const summaryIconWrapClass =
@@ -1554,14 +1536,14 @@ export default function ResumoEleicoesPage() {
                 <p className="text-[10px] mt-1 text-text-secondary leading-tight">
                   {resumoPesquisaCard}
                 </p>
-                <Link
-                  href={`/dashboard/pesquisa?cidade=${encodeURIComponent(cidade)}#filtros`}
-                  onClick={salvarEstadoResumoEmSession}
+                <button
+                  type="button"
+                  onClick={() => setShowPesquisaHistoricoModal(true)}
                   className="mt-1 inline-flex items-center gap-1 text-xs text-accent-gold hover:underline"
                 >
                   <ArrowUpRight className="h-3 w-3" />
                   Clique para ver detalhes
-                </Link>
+                </button>
               </div>
             </div>
           )}
@@ -2272,6 +2254,13 @@ export default function ResumoEleicoesPage() {
           }
         }}
         cidade={cidade}
+      />
+
+      <PollReportsHistoryModal
+        isOpen={showPesquisaHistoricoModal}
+        onClose={() => setShowPesquisaHistoricoModal(false)}
+        cidadeNome={cidade}
+        cidadeId={cidadePesquisaIdAtual}
       />
     </div>
   )
