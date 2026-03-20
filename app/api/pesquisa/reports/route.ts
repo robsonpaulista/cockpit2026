@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import pdfParseLib from 'pdf-parse/lib/pdf-parse.js'
 
 export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
@@ -700,14 +701,9 @@ async function parsePdfText(fileBuffer: Buffer): Promise<PdfExtractionResult> {
   let parsedText = ''
   let parseError: string | null = null
   try {
+    const pdfParse = pdfParseLib as unknown as (dataBuffer: Buffer) => Promise<{ text?: string }>
     const parsed = await withTimeout(
-      (async () => {
-        // Usa pdf-parse v1 em CJS via require real do Node.
-        // Evita problemas de bundling ESM no runtime do Next.
-        const nodeRequire = eval('require') as (id: string) => unknown
-        const pdfParse = nodeRequire('pdf-parse') as (dataBuffer: Buffer) => Promise<{ text?: string }>
-        return await pdfParse(fileBuffer)
-      })(),
+      pdfParse(fileBuffer),
       PDF_PARSE_TIMEOUT_MS
     )
     parsedText = typeof parsed.text === 'string' ? normalizeText(parsed.text) : ''
