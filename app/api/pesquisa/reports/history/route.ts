@@ -15,7 +15,7 @@ type PollRow = {
   intencao: number
   rejeicao: number
   cidade_id: string | null
-  cities: { name: string | null } | null
+  cities: { name: string | null } | Array<{ name: string | null }> | null
 }
 
 type ReportRow = {
@@ -27,6 +27,12 @@ type ReportRow = {
   summary: string | null
   analysis_status: 'processing' | 'completed' | 'failed' | null
   updated_at: string | null
+}
+
+function extractCityName(cities: PollRow['cities']): string | null {
+  if (!cities) return null
+  if (Array.isArray(cities)) return cities[0]?.name || null
+  return cities.name || null
 }
 
 export async function GET(request: Request) {
@@ -118,7 +124,7 @@ export async function GET(request: Request) {
           intencao: Number(poll.intencao || 0),
           rejeicao: Number(poll.rejeicao || 0),
           cidade_id: poll.cidade_id,
-          cidade_nome: poll.cities?.name || null,
+          cidade_nome: extractCityName(poll.cities),
         },
         report: report
           ? {
