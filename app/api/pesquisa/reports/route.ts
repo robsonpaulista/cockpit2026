@@ -195,6 +195,12 @@ type PollOption = {
   percent: number
 }
 
+type QuestionBlock = {
+  code: string
+  title: string
+  block: string
+}
+
 function parsePercentValue(raw: string): number {
   const normalized = raw.replace(/\./g, '').replace(',', '.')
   const value = Number(normalized)
@@ -210,6 +216,40 @@ function extractQuestionBlock(text: string, questionCode: string): string | null
   const regex = new RegExp(`${escapedCode}[\\s\\S]*?(?=\\nP\\d+\\.|\\nPágina\\s+\\d+\\s+de\\s+\\d+|$)`, 'i')
   const match = text.match(regex)
   return match ? match[0] : null
+}
+
+function extractAllQuestionBlocks(text: string): QuestionBlock[] {
+  const blocks: QuestionBlock[] = []
+  const regex = /(?:^|\n)(P\d+\.)\s*([^\n]+)[\s\S]*?(?=\nP\d+\.|\nP[aá]gina\s+\d+\s+de\s+\d+|\n--\s*\d+\s+of\s+\d+\s*--|$)/gi
+  let match = regex.exec(text)
+  while (match) {
+    const code = sanitizeLine(match[1] || '')
+    const title = sanitizeLine(match[2] || '')
+    const block = sanitizeLine((match[0] || '').replace(/^\n/, ''))
+    if (code && title && block) {
+      blocks.push({ code, title, block })
+    }
+    match = regex.exec(text)
+  }
+  return blocks
+}
+
+function includesAllKeywords(source: string, keywords: string[]): boolean {
+  const normalizedSource = normalizeForSearch(source)
+  return keywords.every((keyword) => normalizedSource.includes(normalizeForSearch(keyword)))
+}
+
+function findQuestionOptionsByKeywords(blocks: QuestionBlock[], keywords: string[], limit = 12): PollOption[] {
+  const target = blocks.find((item) => includesAllKeywords(`${item.code} ${item.title}`, keywords))
+  if (!target) return []
+  return extractOptionsFromQuestionBlock(target.block, limit)
+}
+
+function pickFirstNonEmptyOptions(...groups: PollOption[][]): PollOption[] {
+  for (const group of groups) {
+    if (group.length > 0) return group
+  }
+  return []
 }
 
 function extractOptionsFromQuestionBlock(block: string | null, limit = 12): PollOption[] {
@@ -285,47 +325,105 @@ function buildAnalysisFromText(text: string, poll: PollResumoBase): ReportAnalys
   if (!cleanText) return buildFallbackSummary(poll)
 
   const textBase = cleanText.slice(0, 220000)
+  const questionBlocks = extractAllQuestionBlocks(textBase)
 
-  const p2Sexo = extractOptionsFromQuestionBlock(extractQuestionBlock(textBase, 'P2.'), 8)
-  const p3Escolaridade = extractOptionsFromQuestionBlock(extractQuestionBlock(textBase, 'P3.'), 10)
-  const p4Renda = extractOptionsFromQuestionBlock(extractQuestionBlock(textBase, 'P4.'), 10)
-  const p5Idade = extractOptionsFromQuestionBlock(extractQuestionBlock(textBase, 'P5.'), 10)
-  const p6Religiao = extractOptionsFromQuestionBlock(extractQuestionBlock(textBase, 'P6.'), 10)
+  const p2Sexo = pickFirstNonEmptyOptions(
+    findQuestionOptionsByKeywords(questionBlocks, ['sexo'], 8),
+    extractOptionsFromQuestionBlock(extractQuestionBlock(textBase, 'P2.'), 8)
+  )
+  const p3Escolaridade = pickFirstNonEmptyOptions(
+    findQuestionOptionsByKeywords(questionBlocks, ['grau', 'instru'], 10),
+    extractOptionsFromQuestionBlock(extractQuestionBlock(textBase, 'P3.'), 10)
+  )
+  const p4Renda = pickFirstNonEmptyOptions(
+    findQuestionOptionsByKeywords(questionBlocks, ['renda'], 10),
+    extractOptionsFromQuestionBlock(extractQuestionBlock(textBase, 'P4.'), 10)
+  )
+  const p5Idade = pickFirstNonEmptyOptions(
+    findQuestionOptionsByKeywords(questionBlocks, ['idade'], 10),
+    extractOptionsFromQuestionBlock(extractQuestionBlock(textBase, 'P5.'), 10)
+  )
+  const p6Religiao = pickFirstNonEmptyOptions(
+    findQuestionOptionsByKeywords(questionBlocks, ['relig'], 10),
+    extractOptionsFromQuestionBlock(extractQuestionBlock(textBase, 'P6.'), 10)
+  )
 
-  const p8Prioridades = extractOptionsFromQuestionBlock(extractQuestionBlock(textBase, 'P8.'), 15)
-  const p9Interesse = extractOptionsFromQuestionBlock(extractQuestionBlock(textBase, 'P9.'), 8)
-  const p10AprovPrefeito = extractOptionsFromQuestionBlock(extractQuestionBlock(textBase, 'P10.'), 8)
-  const p11AvalPrefeito = extractOptionsFromQuestionBlock(extractQuestionBlock(textBase, 'P11.'), 10)
+  const pInteresseEleicoes = pickFirstNonEmptyOptions(
+    findQuestionOptionsByKeywords(questionBlocks, ['interesse', 'elei'], 8),
+    extractOptionsFromQuestionBlock(extractQuestionBlock(textBase, 'P9.'), 8)
+  )
+  const pPrioridadesCidade = pickFirstNonEmptyOptions(
+    findQuestionOptionsByKeywords(questionBlocks, ['precisa mais de'], 12),
+    findQuestionOptionsByKeywords(questionBlocks, ['prioridade'], 12),
+    findQuestionOptionsByKeywords(questionBlocks, ['principais problemas'], 12),
+    extractOptionsFromQuestionBlock(extractQuestionBlock(textBase, 'P8.'), 15)
+  )
 
-  const p12Presidente = extractOptionsFromQuestionBlock(extractQuestionBlock(textBase, 'P12.'), 12)
-  const p14AprovGov = extractOptionsFromQuestionBlock(extractQuestionBlock(textBase, 'P14.'), 8)
-  const p15AvalGov = extractOptionsFromQuestionBlock(extractQuestionBlock(textBase, 'P15.'), 10)
-  const p16GovVoto = extractOptionsFromQuestionBlock(extractQuestionBlock(textBase, 'P16.'), 12)
-  const p18Senado = extractOptionsFromQuestionBlock(extractQuestionBlock(textBase, 'P18.'), 12)
-  const p20DepFed = extractOptionsFromQuestionBlock(extractQuestionBlock(textBase, 'P20.'), 12)
-  const p22DepEst = extractOptionsFromQuestionBlock(extractQuestionBlock(textBase, 'P22.'), 12)
+  const pAprovPrefeito = pickFirstNonEmptyOptions(
+    findQuestionOptionsByKeywords(questionBlocks, ['aprova', 'desaprova', 'prefeito'], 8),
+    extractOptionsFromQuestionBlock(extractQuestionBlock(textBase, 'P10.'), 8)
+  )
+  const pAvalPrefeito = pickFirstNonEmptyOptions(
+    findQuestionOptionsByKeywords(questionBlocks, ['avalia', 'administração', 'prefeito'], 10),
+    extractOptionsFromQuestionBlock(extractQuestionBlock(textBase, 'P11.'), 10)
+  )
 
-  const p24Lideres = extractOptionsFromQuestionBlock(extractQuestionBlock(textBase, 'P24.'), 12)
-  const p25Vereadores = extractOptionsFromQuestionBlock(extractQuestionBlock(textBase, 'P25.'), 14)
+  const pPresidente = pickFirstNonEmptyOptions(
+    findQuestionOptionsByKeywords(questionBlocks, ['presidente'], 12),
+    extractOptionsFromQuestionBlock(extractQuestionBlock(textBase, 'P12.'), 12)
+  )
+  const pAprovGovernador = pickFirstNonEmptyOptions(
+    findQuestionOptionsByKeywords(questionBlocks, ['aprova', 'desaprova', 'governador'], 8),
+    extractOptionsFromQuestionBlock(extractQuestionBlock(textBase, 'P14.'), 8)
+  )
+  const pAvalGovernador = pickFirstNonEmptyOptions(
+    findQuestionOptionsByKeywords(questionBlocks, ['avalia', 'administração', 'governador'], 10),
+    extractOptionsFromQuestionBlock(extractQuestionBlock(textBase, 'P15.'), 10)
+  )
+  const pVotoGovernador = pickFirstNonEmptyOptions(
+    findQuestionOptionsByKeywords(questionBlocks, ['votaria', 'governador'], 12),
+    extractOptionsFromQuestionBlock(extractQuestionBlock(textBase, 'P16.'), 12)
+  )
+  const pVotoSenado = pickFirstNonEmptyOptions(
+    findQuestionOptionsByKeywords(questionBlocks, ['votaria', 'senador'], 12),
+    extractOptionsFromQuestionBlock(extractQuestionBlock(textBase, 'P18.'), 12)
+  )
+  const pVotoDepFederal = pickFirstNonEmptyOptions(
+    findQuestionOptionsByKeywords(questionBlocks, ['votaria', 'deputado federal'], 12),
+    extractOptionsFromQuestionBlock(extractQuestionBlock(textBase, 'P20.'), 12)
+  )
+  const pVotoDepEstadual = pickFirstNonEmptyOptions(
+    findQuestionOptionsByKeywords(questionBlocks, ['votaria', 'deputado estadual'], 12),
+    extractOptionsFromQuestionBlock(extractQuestionBlock(textBase, 'P22.'), 12)
+  )
+
+  const pLiderancas = pickFirstNonEmptyOptions(
+    findQuestionOptionsByKeywords(questionBlocks, ['maior liderança'], 12),
+    extractOptionsFromQuestionBlock(extractQuestionBlock(textBase, 'P24.'), 12)
+  )
+  const pVereadoresAtuantes = pickFirstNonEmptyOptions(
+    findQuestionOptionsByKeywords(questionBlocks, ['vereadores', 'mais atuante'], 14),
+    extractOptionsFromQuestionBlock(extractQuestionBlock(textBase, 'P25.'), 14)
+  )
 
   const totalEntrevistas = extractSingleValue(textBase, /(?:n[uú]mero de entrevistas|entrevistas coletadas)\s*[:\t ]+([0-9]{2,5})/i)
   const margemErro = extractSingleValue(textBase, /margem de erro[^.\n]*?([0-9]{1,2},[0-9]{1,2}\s*%)/i)
   const confianca = extractSingleValue(textBase, /intervalo de confian[çc]a[^.\n]*?([0-9]{1,3}\s*%)/i)
   const periodoCampo = extractSingleValue(textBase, /2\.4\.\s*per[ií]odo campo\s*([^\n]+)/i)
 
-  const topPrioridades = extractTopOptions(p8Prioridades, 4)
-  const topPresidencia = extractTopOptions(p12Presidente, 3)
-  const topGovernador = extractTopOptions(p16GovVoto, 3)
-  const topSenado = extractTopOptions(p18Senado, 3)
-  const topDepFed = extractTopOptions(p20DepFed, 3)
-  const topDepEst = extractTopOptions(p22DepEst, 3)
-  const topLiderancas = extractTopOptions(p24Lideres, 3)
-  const topVereadores = extractTopOptions(p25Vereadores, 3)
+  const topPrioridades = extractTopOptions(pPrioridadesCidade, 4)
+  const topPresidencia = extractTopOptions(pPresidente, 3)
+  const topGovernador = extractTopOptions(pVotoGovernador, 3)
+  const topSenado = extractTopOptions(pVotoSenado, 3)
+  const topDepFed = extractTopOptions(pVotoDepFederal, 3)
+  const topDepEst = extractTopOptions(pVotoDepEstadual, 3)
+  const topLiderancas = extractTopOptions(pLiderancas, 3)
+  const topVereadores = extractTopOptions(pVereadoresAtuantes, 3)
 
-  const aprovaPref = p10AprovPrefeito.find((o) => normalizeForSearch(o.label).includes('aprova'))
-  const desaprovaPref = p10AprovPrefeito.find((o) => normalizeForSearch(o.label).includes('desaprova'))
-  const muitoInteresse = p9Interesse.find((o) => normalizeForSearch(o.label).includes('muito interesse'))
-  const nenhumInteresse = p9Interesse.find((o) => normalizeForSearch(o.label).includes('nenhum interesse'))
+  const aprovaPref = pAprovPrefeito.find((o) => normalizeForSearch(o.label).includes('aprova'))
+  const desaprovaPref = pAprovPrefeito.find((o) => normalizeForSearch(o.label).includes('desaprova'))
+  const muitoInteresse = pInteresseEleicoes.find((o) => normalizeForSearch(o.label).includes('muito interesse'))
+  const nenhumInteresse = pInteresseEleicoes.find((o) => normalizeForSearch(o.label).includes('nenhum interesse'))
 
   const lines = splitLines(cleanText)
   const percentageMentions = extractPercentages(cleanText)
@@ -469,7 +567,7 @@ function buildAnalysisFromText(text: string, poll: PollResumoBase): ReportAnalys
     `Executar plano de 14 dias com eixo temático em ${topPrioridades[0]?.label || 'prioridades urbanas'}, com agenda diária em bairros de maior densidade eleitoral.`,
     `Ativar rede de influência com lideranças locais (${stringifyOptions(topLiderancas, 2) || 'principais lideranças'}) e coordenação com vereadores mais lembrados.`,
     `Criar trilha de comunicação para converter eleitores de médio interesse (${formatPercent(
-      p9Interesse.find((o) => normalizeForSearch(o.label).includes('medio interesse'))?.percent || 0
+      pInteresseEleicoes.find((o) => normalizeForSearch(o.label).includes('medio interesse'))?.percent || 0
     )}) em apoio ativo.`,
     `Blindar narrativa contra desgaste da gestão: respostas objetivas para os vetores de crítica e pacote de propostas para ${topPrioridades
       .slice(0, 2)
@@ -517,10 +615,10 @@ function buildAnalysisFromText(text: string, poll: PollResumoBase): ReportAnalys
     .join('\n')
 
   const managementEvaluation = [
-    p10AprovPrefeito.length > 0 ? `Prefeito - aprovação/desaprovação: ${stringifyOptions(p10AprovPrefeito, 3)}.` : '',
-    p11AvalPrefeito.length > 0 ? `Prefeito - avaliação detalhada: ${stringifyOptions(p11AvalPrefeito, 5)}.` : '',
-    p14AprovGov.length > 0 ? `Governador - aprovação/desaprovação: ${stringifyOptions(p14AprovGov, 3)}.` : '',
-    p15AvalGov.length > 0 ? `Governador - avaliação detalhada: ${stringifyOptions(p15AvalGov, 5)}.` : '',
+    pAprovPrefeito.length > 0 ? `Prefeito - aprovação/desaprovação: ${stringifyOptions(pAprovPrefeito, 3)}.` : '',
+    pAvalPrefeito.length > 0 ? `Prefeito - avaliação detalhada: ${stringifyOptions(pAvalPrefeito, 5)}.` : '',
+    pAprovGovernador.length > 0 ? `Governador - aprovação/desaprovação: ${stringifyOptions(pAprovGovernador, 3)}.` : '',
+    pAvalGovernador.length > 0 ? `Governador - avaliação detalhada: ${stringifyOptions(pAvalGovernador, 5)}.` : '',
   ]
     .filter(Boolean)
     .join('\n')
