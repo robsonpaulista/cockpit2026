@@ -116,9 +116,11 @@ export async function POST(request: Request) {
     const body = await request.json()
     const { spreadsheetId: bodySpreadsheetId, sheetName: bodySheetName, range, serviceAccountEmail, credentials } = body
     const cenarioVotos =
-      body?.cenarioVotos === 'promessa_lideranca' || body?.cenarioVotos === 'legado_anterior'
+      body?.cenarioVotos === 'promessa_lideranca' ||
+      body?.cenarioVotos === 'legado_anterior' ||
+      body?.cenarioVotos === 'aferido_jadyel'
         ? body.cenarioVotos
-        : 'aferido_jadyel'
+        : 'legado_anterior'
     
     // Obter configuração (prioriza body, depois variáveis de ambiente)
     const { spreadsheetId, sheetName } = getSheetConfig(body)

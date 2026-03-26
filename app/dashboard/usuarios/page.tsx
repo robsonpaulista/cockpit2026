@@ -39,6 +39,7 @@ const ROLES = [
   { value: 'articulacao', label: 'Articulação' },
   { value: 'juridico', label: 'Jurídico' },
   { value: 'bi', label: 'BI' },
+  { value: 'pesquisadores', label: 'Pesquisadores (campo)' },
 ]
 
 export default function UsuariosPage() {

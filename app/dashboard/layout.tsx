@@ -12,6 +12,7 @@ import { ThemeProvider } from '@/contexts/theme-context'
 import { SplashOverlay } from '@/components/splash-overlay'
 import { IdleSplash } from '@/components/idle-splash'
 import { cn } from '@/lib/utils'
+import { DashboardPesquisadorRedirect } from '@/components/dashboard-pesquisador-redirect'
 
 function DashboardContent({ children }: { children: React.ReactNode }) {
   const { collapsed } = useSidebar()
@@ -45,6 +46,7 @@ export default function DashboardLayout({
       <SplashOverlay />
       <IdleSplash />
       <ProtectedRoute>
+        <DashboardPesquisadorRedirect />
         <ThemeProvider>
           <NavigationLoadingProvider>
             <SidebarProvider>

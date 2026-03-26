@@ -30,20 +30,32 @@ export function LoginForm() {
       }
 
       if (data.user && data.session) {
-        // Login bem-sucedido - salvar flag no localStorage para o ProtectedRoute saber
+        const me = await fetch('/api/auth/me')
+        if (!me.ok) {
+          localStorage.setItem('auth_redirect', 'dashboard')
+          await new Promise((resolve) => setTimeout(resolve, 300))
+          window.location.href = '/splash'
+          return
+        }
+        const body = (await me.json()) as {
+          user?: { profile?: { role?: string } }
+        }
+        const role = body.user?.profile?.role
+        if (role === 'pesquisadores') {
+          localStorage.setItem('auth_redirect', 'pesquisador')
+          await new Promise((resolve) => setTimeout(resolve, 300))
+          window.location.href = '/pesquisador'
+          return
+        }
         localStorage.setItem('auth_redirect', 'dashboard')
-        
-        // Aguardar um pouco para garantir que a sessão foi estabelecida
-        await new Promise(resolve => setTimeout(resolve, 300))
-        
-        // Redirecionar para splash screen após login
+        await new Promise((resolve) => setTimeout(resolve, 300))
         window.location.href = '/splash'
       } else {
         setError('Erro ao fazer login. Tente novamente.')
         setLoading(false)
       }
-    } catch (err: any) {
-      setError(err.message || 'Erro ao fazer login. Tente novamente.')
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Erro ao fazer login. Tente novamente.')
       setLoading(false)
     }
   }
@@ -245,6 +257,14 @@ export function LoginForm() {
               {loading ? 'Entrando...' : 'Entrar'}
             </button>
           </form>
+          <p className="mt-4 text-center">
+            <a
+              href="/pesquisador/login"
+              className="text-xs font-medium text-white/80 underline decoration-white/40 underline-offset-2 hover:text-white"
+            >
+              Acesso pesquisadores de campo
+            </a>
+          </p>
         </div>
       </div>
     </div>

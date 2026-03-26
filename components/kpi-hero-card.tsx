@@ -104,74 +104,79 @@ export function KPIHeroCard({
   const content = (
     <div
       className={cn(
-        'relative p-5 rounded-[14px] bg-accent-gold border border-accent-gold',
+        'relative rounded-[14px] border border-accent-gold bg-accent-gold p-4 sm:p-5',
         'shadow-[0_2px_8px_rgba(0,0,0,0.1)]',
         'hover:shadow-[0_12px_32px_rgba(0,0,0,0.12)] hover:-translate-y-[3px]',
         'transition-all duration-300 ease-out',
         href ? 'cursor-pointer group overflow-hidden' : 'group overflow-hidden'
       )}
     >
-      {/* Layout horizontal */}
-      <div className="flex items-center gap-4">
-        <div className="p-3 rounded-xl bg-white/20 flex-shrink-0 animate-breathe">
-          <TrendingUp className="w-8 h-8 text-white" />
+      {/* Mobile: coluna; desktop: linha — evita sobreposição do valor com os textos */}
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:gap-5">
+        <div className="flex min-w-0 gap-3 sm:gap-4 lg:flex-1 lg:items-center">
+          <div className="animate-breathe flex-shrink-0 rounded-xl bg-white/20 p-3">
+            <TrendingUp className="h-7 w-7 text-white sm:h-8 sm:w-8" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="text-base font-semibold leading-snug text-white transition-colors group-hover:text-white/90">
+              {kpi.label}
+            </p>
+            {subtitle && !infoLines && (
+              <p className="mt-1 text-sm text-white/70">{subtitle}</p>
+            )}
+            {infoLines && infoLines.length > 0 && (
+              <div className="mt-2 flex flex-col gap-2">
+                {infoLines.map((line, idx) => (
+                  <span
+                    key={idx}
+                    className={cn(
+                      'flex items-start gap-2 text-xs font-medium leading-relaxed sm:items-center',
+                      getInfoLineColor(line.type)
+                    )}
+                  >
+                    <span className="mt-0.5 flex-shrink-0 sm:mt-0">{getInfoLineIcon(line)}</span>
+                    <span className="min-w-0 break-words">{line.text}</span>
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
-        <div className="flex-1 min-w-0">
-          <p className="text-base font-semibold text-white group-hover:text-white/90 transition-colors">
-            {kpi.label}
-          </p>
-          {subtitle && !infoLines && (
-            <p className="text-sm text-white/70">{subtitle}</p>
-          )}
-          {infoLines && infoLines.length > 0 && (
-            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-1">
-              {infoLines.map((line, idx) => (
-                <span
-                  key={idx}
-                  className={cn(
-                    'text-xs font-medium flex items-center gap-1.5',
-                    getInfoLineColor(line.type)
-                  )}
-                >
-                  {getInfoLineIcon(line)}
-                  {line.text}
-                </span>
-              ))}
-            </div>
-          )}
-        </div>
-        <div className="text-right flex-shrink-0">
-          <div className="flex items-center gap-2 justify-end">
+
+        <div className="flex shrink-0 flex-col gap-2 border-t border-white/15 pt-3 lg:border-l lg:border-t-0 lg:pl-5 lg:pt-0">
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-2 lg:justify-end">
             <span
-              className="inline-block h-2 w-2 rounded-full bg-[rgb(var(--strategic-yellow))]"
+              className="inline-block h-2 w-2 flex-shrink-0 rounded-full bg-[rgb(var(--strategic-yellow))]"
               style={{ boxShadow: '0 0 0 3px rgba(242, 201, 76, 0.22)' }}
               title="Indicador estratégico"
             />
-            <p className={cn(
-              'text-4xl font-black text-white transition-all duration-300',
-              !isValueVisible && 'select-none tracking-wider',
-              isAnimating && 'scale-105'
-            )}>
+            <p
+              className={cn(
+                'min-w-0 text-3xl font-black tabular-nums text-white transition-all duration-300 sm:text-4xl',
+                !isValueVisible && 'select-none tracking-wider',
+                isAnimating && 'scale-105'
+              )}
+            >
               {isValueVisible ? displayValue : '••••••'}
             </p>
             {hideValueByDefault && (
               <button
                 type="button"
                 onClick={handleToggleVisibility}
-                className="p-1 rounded-md bg-white/20 hover:bg-white/30 text-white transition-colors"
+                className="rounded-md bg-white/20 p-1.5 text-white transition-colors hover:bg-white/30"
                 title={isValueVisible ? 'Ocultar valor' : 'Mostrar valor'}
                 aria-label={isValueVisible ? 'Ocultar valor' : 'Mostrar valor'}
               >
-                {isValueVisible ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                {isValueVisible ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
               </button>
             )}
             {cenarioVotos && onChangeCenarioVotos && (
-              <div className="inline-flex items-center rounded-md border border-white/30 bg-white/15 overflow-hidden ml-1">
+              <div className="inline-flex flex-shrink-0 overflow-hidden rounded-md border border-white/30 bg-white/15">
                 <button
                   type="button"
                   onClick={(event) => handleChangeCenario(event, 'aferido_jadyel')}
                   className={cn(
-                    'px-1.5 py-0.5 text-[10px] font-semibold transition-colors',
+                    'px-2 py-1 text-[10px] font-semibold transition-colors',
                     cenarioVotos === 'aferido_jadyel'
                       ? 'bg-white text-accent-gold'
                       : 'text-white/85 hover:bg-white/20'
@@ -185,7 +190,7 @@ export function KPIHeroCard({
                   type="button"
                   onClick={(event) => handleChangeCenario(event, 'promessa_lideranca')}
                   className={cn(
-                    'px-1.5 py-0.5 text-[10px] font-semibold transition-colors',
+                    'px-2 py-1 text-[10px] font-semibold transition-colors',
                     cenarioVotos === 'promessa_lideranca'
                       ? 'bg-white text-accent-gold'
                       : 'text-white/85 hover:bg-white/20'
@@ -199,7 +204,7 @@ export function KPIHeroCard({
                   type="button"
                   onClick={(event) => handleChangeCenario(event, 'legado_anterior')}
                   className={cn(
-                    'px-1.5 py-0.5 text-[10px] font-semibold transition-colors',
+                    'px-2 py-1 text-[10px] font-semibold transition-colors',
                     cenarioVotos === 'legado_anterior'
                       ? 'bg-white text-accent-gold'
                       : 'text-white/85 hover:bg-white/20'
@@ -211,11 +216,11 @@ export function KPIHeroCard({
                 </button>
               </div>
             )}
-            <span className="px-2 py-0.5 text-[10px] font-medium bg-white/20 text-white rounded border border-white/30">
+            <span className="rounded border border-white/30 bg-white/20 px-2 py-0.5 text-[10px] font-medium text-white">
               Hoje
             </span>
           </div>
-          <span className="text-xs text-white/60">Fonte própria</span>
+          <span className="text-[11px] text-white/60 lg:text-right">Fonte própria</span>
         </div>
       </div>
     </div>

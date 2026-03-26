@@ -35,8 +35,6 @@ const trendData = [
   { date: '29/10', ife: 72, sentimento: 68 },
 ]
 
-const SCENARIO_VOTOS_STORAGE_KEY = 'dashboard_cenario_votos_2026'
-
 export default function Home() {
   type CenarioVotos = 'aferido_jadyel' | 'promessa_lideranca' | 'legado_anterior'
   type RankingPesquisaItem = {
@@ -137,7 +135,7 @@ export default function Home() {
   const monitorScrollRef = useRef<HTMLDivElement>(null)
   const [monitorPaused, setMonitorPaused] = useState<boolean>(false)
   const [expectativasPorCidade, setExpectativasPorCidade] = useState<Record<string, ExpectativasCidade>>({})
-  const [cenarioVotosDashboard, setCenarioVotosDashboard] = useState<CenarioVotos>('aferido_jadyel')
+  const [cenarioVotosDashboard, setCenarioVotosDashboard] = useState<CenarioVotos>('legado_anterior')
 
   // Agente de IA: só monta quando o usuário clicar (evita recarregar dados ao navegar entre páginas)
 
@@ -423,35 +421,6 @@ export default function Home() {
         setMonitorFeaturedNewsIds([])
       }
     }
-
-    const cenarioSalvo = localStorage.getItem(SCENARIO_VOTOS_STORAGE_KEY)
-    if (
-      cenarioSalvo === 'promessa_lideranca' ||
-      cenarioSalvo === 'aferido_jadyel' ||
-      cenarioSalvo === 'legado_anterior'
-    ) {
-      setCenarioVotosDashboard(cenarioSalvo)
-    }
-  }, [])
-
-  useEffect(() => {
-    localStorage.setItem(SCENARIO_VOTOS_STORAGE_KEY, cenarioVotosDashboard)
-  }, [cenarioVotosDashboard])
-
-  useEffect(() => {
-    const handleStorage = (event: StorageEvent) => {
-      if (event.key !== SCENARIO_VOTOS_STORAGE_KEY) return
-      if (
-        event.newValue === 'aferido_jadyel' ||
-        event.newValue === 'promessa_lideranca' ||
-        event.newValue === 'legado_anterior'
-      ) {
-        setCenarioVotosDashboard(event.newValue)
-      }
-    }
-
-    window.addEventListener('storage', handleStorage)
-    return () => window.removeEventListener('storage', handleStorage)
   }, [])
 
   const getLabelExpectativaCenario = (): string => {

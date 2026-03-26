@@ -51,7 +51,9 @@ INSERT INTO pages (key, label, path) VALUES
   ('operacao', 'Operação & Equipe', '/dashboard/operacao'),
   ('juridico', 'Jurídico', '/dashboard/juridico'),
   ('obras', 'Obras', '/dashboard/obras'),
-  ('usuarios', 'Gestão de Usuários', '/dashboard/usuarios')
+  ('usuarios', 'Gestão de Usuários', '/dashboard/usuarios'),
+  ('pesquisador_campo', 'Pesquisa de Campo', '/pesquisador'),
+  ('gestao_pesquisas', 'Gestão de Pesquisas (Campo)', '/dashboard/gestao-pesquisas')
 ON CONFLICT (key) DO NOTHING;
 
 -- 5. RLS para pages (todos autenticados podem ler)

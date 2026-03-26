@@ -7,12 +7,13 @@ import { usePermissions } from '@/hooks/use-permissions'
 const PAGE_KEYS = new Set([
   'dashboard', 'fases', 'narrativas', 'campo', 'agenda', 'territorio',
   'chapas', 'conteudo', 'noticias', 'mobilizacao', 'whatsapp', 'pesquisa',
-  'operacao', 'juridico', 'obras', 'usuarios',
+  'operacao', 'juridico', 'obras', 'usuarios', 'gestao_pesquisas',
 ])
 
 function getPageKey(pathname: string): string | null {
   if (!pathname?.startsWith('/dashboard')) return null
   if (pathname === '/dashboard' || pathname === '/dashboard/') return 'dashboard'
+  if (pathname.startsWith('/dashboard/gestao-pesquisas')) return 'gestao_pesquisas'
   const segments = pathname.replace(/^\/dashboard\/?/, '').split('/')
   const first = segments[0]
   return first && PAGE_KEYS.has(first) ? first : null

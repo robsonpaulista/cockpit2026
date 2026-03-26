@@ -24,7 +24,6 @@ interface SheetsConfig {
 }
 
 type CenarioVotos = 'aferido_jadyel' | 'promessa_lideranca' | 'legado_anterior'
-const SCENARIO_VOTOS_STORAGE_KEY = 'dashboard_cenario_votos_2026'
 
 export default function TerritorioPage() {
   const [liderancas, setLiderancas] = useState<Lideranca[]>([])
@@ -50,20 +49,11 @@ export default function TerritorioPage() {
   const [showVoteInvestmentBalance, setShowVoteInvestmentBalance] = useState(false)
   const [selectedCityForBriefing, setSelectedCityForBriefing] = useState<string>('')
   const [selectedCityLiderancas, setSelectedCityLiderancas] = useState<Lideranca[]>([])
-  const [cenarioVotos, setCenarioVotos] = useState<CenarioVotos>('aferido_jadyel')
+  const [cenarioVotos, setCenarioVotos] = useState<CenarioVotos>('legado_anterior')
   const depDropdownRef = useRef<HTMLDivElement | null>(null)
 
   useEffect(() => {
     const initConfig = async () => {
-      const cenarioSalvo = localStorage.getItem(SCENARIO_VOTOS_STORAGE_KEY)
-      if (
-        cenarioSalvo === 'aferido_jadyel' ||
-        cenarioSalvo === 'promessa_lideranca' ||
-        cenarioSalvo === 'legado_anterior'
-      ) {
-        setCenarioVotos(cenarioSalvo)
-      }
-
       // 1. Verificar se há configuração no servidor (variáveis de ambiente)
       try {
         const serverConfigRes = await fetch('/api/territorio/config')
@@ -107,26 +97,6 @@ export default function TerritorioPage() {
     }
 
     initConfig()
-  }, [])
-
-  useEffect(() => {
-    localStorage.setItem(SCENARIO_VOTOS_STORAGE_KEY, cenarioVotos)
-  }, [cenarioVotos])
-
-  useEffect(() => {
-    const handleStorage = (event: StorageEvent) => {
-      if (event.key !== SCENARIO_VOTOS_STORAGE_KEY) return
-      if (
-        event.newValue === 'aferido_jadyel' ||
-        event.newValue === 'promessa_lideranca' ||
-        event.newValue === 'legado_anterior'
-      ) {
-        setCenarioVotos(event.newValue)
-      }
-    }
-
-    window.addEventListener('storage', handleStorage)
-    return () => window.removeEventListener('storage', handleStorage)
   }, [])
 
   useEffect(() => {

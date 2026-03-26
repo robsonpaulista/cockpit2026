@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import {
   LayoutDashboard,
   Calendar,
@@ -26,6 +26,7 @@ import {
   ScrollText,
   Target,
   ChevronDown,
+  ClipboardList,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { MenuItem } from '@/types'
@@ -65,6 +66,26 @@ const menuItems: SidebarMenuItem[] = [
   { id: 'obras', label: 'Obras', icon: 'Building2', href: '/dashboard/obras' },
   { id: 'proposicoes', label: 'Proposições', icon: 'ScrollText', href: '/dashboard/proposicoes' },
   { id: 'sei-pesquisa', label: 'Pesquisa SEI (teste)', icon: 'Search', href: '/dashboard/sei-pesquisa' },
+  {
+    id: 'gestao-pesquisas-menu',
+    label: 'Gestão de Pesquisas',
+    icon: 'ClipboardList',
+    href: '/dashboard/gestao-pesquisas',
+    children: [
+      {
+        id: 'gestao-pesquisas-inicio',
+        label: 'Visão geral',
+        icon: 'ClipboardList',
+        href: '/dashboard/gestao-pesquisas',
+      },
+      {
+        id: 'gestao-pesquisas-config',
+        label: 'Configurações',
+        icon: 'Settings',
+        href: '/dashboard/gestao-pesquisas/configuracoes',
+      },
+    ],
+  },
   { id: 'usuarios', label: 'Gestão de Usuários', icon: 'Shield', href: '/dashboard/usuarios' },
 ]
 
@@ -86,11 +107,19 @@ const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
   Search,
   ScrollText,
   Target,
+  ClipboardList,
 }
 
 function pageKeyForItem(id: string): string {
   if (id === 'chapas-menu') return 'chapas'
   if (id === 'chapas-estaduais') return 'chapas'
+  if (
+    id === 'gestao-pesquisas-menu' ||
+    id === 'gestao-pesquisas-inicio' ||
+    id === 'gestao-pesquisas-config'
+  ) {
+    return 'gestao_pesquisas'
+  }
   return id === 'home' ? 'dashboard' : id
 }
 
@@ -100,9 +129,15 @@ export function Sidebar() {
   const pathname = usePathname()
   const { canAccess, isAdmin, loading: permLoading } = usePermissions()
 
-  const [chapasMenuOpen, setChapasMenuOpen] = useState(() =>
-    pathname === '/dashboard/chapas' || pathname === '/dashboard/chapas-estaduais'
-  )
+  const [openSubmenuId, setOpenSubmenuId] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (pathname.startsWith('/dashboard/gestao-pesquisas')) {
+      setOpenSubmenuId('gestao-pesquisas-menu')
+    } else if (pathname.startsWith('/dashboard/chapas')) {
+      setOpenSubmenuId('chapas-menu')
+    }
+  }, [pathname])
 
   const visibleItems = permLoading
     ? menuItems
@@ -132,7 +167,7 @@ export function Sidebar() {
       {/* Mobile Menu Button */}
       <button
         onClick={toggleMobile}
-        className="fixed top-4 left-4 z-50 lg:hidden p-2 rounded-lg bg-bg-surface border border-border-card shadow-card hover:shadow-card-hover transition-premium"
+        className="fixed top-4 left-4 z-[110] lg:hidden p-2 rounded-lg bg-bg-surface border border-border-card shadow-card hover:shadow-card-hover transition-premium"
         aria-label="Toggle menu"
       >
         {mobileOpen ? (
@@ -145,14 +180,17 @@ export function Sidebar() {
       {/* Sidebar */}
       <aside
         className={cn(
-          'fixed top-0 left-0 h-full bg-sidebar border-r border-card transition-all duration-300 ease-out z-40 overflow-visible',
+          'fixed top-0 left-0 h-full w-64 border-r border-card transition-all duration-300 ease-out overflow-visible',
+          /* Mobile: painel opaco e acima do conteúdo (evita texto do dashboard “vazando” no menu) */
+          'max-lg:z-[100] max-lg:shadow-2xl lg:z-40',
+          'bg-[rgb(var(--bg-sidebar))]',
           'lg:translate-x-0',
           mobileOpen ? 'translate-x-0' : '-translate-x-full',
-          collapsed ? 'lg:w-20' : 'lg:w-64',
-          'w-64'
+          collapsed ? 'lg:w-20' : 'lg:w-64'
         )}
+        style={{ isolation: 'isolate' }}
       >
-        <div className="flex flex-col h-full">
+        <div className="flex h-full min-h-0 flex-col bg-[rgb(var(--bg-sidebar))]">
           {/* Logo */}
           <div className="h-16 flex items-center justify-between px-4 border-b border-card">
             {(!collapsed || mobileOpen) && (
@@ -188,9 +226,10 @@ export function Sidebar() {
             <ul className="space-y-1">
               {visibleItems.map((item: SidebarMenuItem) => {
                 const Icon = iconMap[item.icon] || LayoutDashboard
-                const isChapasGroup = item.id === 'chapas-menu'
-                const isActive = isChapasGroup
-                  ? pathname === '/dashboard/chapas' || pathname === '/dashboard/chapas-estaduais'
+                const hasSubmenu = Boolean(item.children?.length)
+                const submenuOpen = openSubmenuId === item.id
+                const isActive = hasSubmenu
+                  ? Boolean(item.children?.some((c) => pathname === c.href))
                   : pathname === item.href
                 const itemRef = useRef<HTMLLIElement>(null)
                 const [tooltipPos, setTooltipPos] = useState<{ top: number } | null>(null)
@@ -208,11 +247,13 @@ export function Sidebar() {
 
                 return (
                   <li key={item.id} className="relative group" ref={itemRef} onMouseEnter={handleMouseEnter} onMouseLeave={handleMouseLeave}>
-                    {isChapasGroup ? (
+                    {hasSubmenu ? (
                       <>
                         <button
                           type="button"
-                          onClick={() => setChapasMenuOpen((prev) => !prev)}
+                          onClick={() =>
+                            setOpenSubmenuId((prev) => (prev === item.id ? null : item.id))
+                          }
                           className={cn(
                             'relative w-full flex items-center gap-3 px-3 py-2.5 rounded-[10px]',
                             'transition-all duration-200 ease-out',
@@ -242,14 +283,14 @@ export function Sidebar() {
                               <ChevronDown
                                 className={cn(
                                   'ml-auto w-4 h-4 text-text-secondary transition-transform',
-                                  chapasMenuOpen && 'rotate-180'
+                                  submenuOpen && 'rotate-180'
                                 )}
                               />
                             </>
                           )}
                         </button>
 
-                        {(!collapsed || mobileOpen) && chapasMenuOpen && item.children && (
+                        {(!collapsed || mobileOpen) && submenuOpen && item.children && (
                           <ul className="mt-1 ml-8 space-y-1">
                             {item.children.map((child) => {
                               const childActive = pathname === child.href
@@ -367,7 +408,8 @@ export function Sidebar() {
       {/* Overlay for mobile */}
       {mobileOpen && (
         <div
-          className="fixed inset-0 bg-black/20 z-30 lg:hidden"
+          className="fixed inset-0 z-[90] bg-black/50 lg:hidden"
+          aria-hidden
           onClick={() => setMobileOpen(false)}
         />
       )}

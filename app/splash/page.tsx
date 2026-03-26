@@ -16,6 +16,11 @@ export default function SplashPage() {
       return
     }
 
+    if (authRedirect === 'pesquisador') {
+      router.replace('/pesquisador')
+      return
+    }
+
     // Marcar como montado e iniciar animação do "C"
     setMontado(true)
     const timerC = setTimeout(() => setFase('c'), 100)

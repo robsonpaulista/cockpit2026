@@ -15,7 +15,7 @@ CREATE TABLE IF NOT EXISTS profiles (
   id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
   email TEXT UNIQUE NOT NULL,
   name TEXT NOT NULL,
-  role TEXT NOT NULL CHECK (role IN ('candidato', 'coordenacao', 'comunicacao', 'articulacao', 'juridico', 'bi')),
+  role TEXT NOT NULL CHECK (role IN ('candidato', 'coordenacao', 'comunicacao', 'articulacao', 'juridico', 'bi', 'pesquisadores')),
   avatar_url TEXT,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()

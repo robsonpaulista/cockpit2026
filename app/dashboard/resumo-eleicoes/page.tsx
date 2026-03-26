@@ -99,7 +99,6 @@ type TableKey =
 const ITEMS_PER_PAGE = 10
 const CANDIDATO_FEDERAL_FIXO = 'JADYEL DA JUPI'
 const RESUMO_STATE_SESSION_KEY = 'resumo_eleicoes_state_v1'
-const SCENARIO_VOTOS_STORAGE_KEY = 'dashboard_cenario_votos_2026'
 const RESUMO_CIDADES_CACHE_KEY = 'resumo_eleicoes_cidades_cache_v1'
 
 const EMPTY_SELECTIONS: Record<TableKey, Record<string, number>> = {
@@ -243,7 +242,7 @@ export default function ResumoEleicoesPage() {
   const [pesquisaRecenteCidade, setPesquisaRecenteCidade] = useState<PesquisaRecenteCidade | null>(null)
   const [pesquisaCitiesMap, setPesquisaCitiesMap] = useState<PesquisaCitiesMap>({})
   const [candidatoPadraoPesquisa, setCandidatoPadraoPesquisa] = useState<string>('')
-  const [cenarioVotos, setCenarioVotos] = useState<CenarioVotos>('aferido_jadyel')
+  const [cenarioVotos, setCenarioVotos] = useState<CenarioVotos>('legado_anterior')
   const [showSimulacaoModal, setShowSimulacaoModal] = useState(false)
   const [showPesquisaHistoricoModal, setShowPesquisaHistoricoModal] = useState(false)
   const [simulacaoMapeamento, setSimulacaoMapeamento] = useState<SimulacaoMapeamento>({})
@@ -663,11 +662,7 @@ export default function ResumoEleicoesPage() {
       setPesquisaRecenteCidade(parsed.pesquisaRecenteCidade || null)
       setPesquisaCitiesMap(parsed.pesquisaCitiesMap || {})
       setCandidatoPadraoPesquisa(parsed.candidatoPadraoPesquisa || '')
-      setCenarioVotos(
-        parsed.cenarioVotos === 'promessa_lideranca' || parsed.cenarioVotos === 'legado_anterior'
-          ? parsed.cenarioVotos
-          : 'aferido_jadyel'
-      )
+      setCenarioVotos('legado_anterior')
       setSimulacaoMapeamento(sanitizarMapeamentoSimulacao(parsed.simulacaoMapeamento))
       setLoadingCidades(false)
       setRestaurouEstadoRetorno(true)
@@ -746,39 +741,6 @@ export default function ResumoEleicoesPage() {
     if (typeof window === 'undefined') return
     const candidatoSalvo = localStorage.getItem('candidatoPadraoPesquisa') || ''
     setCandidatoPadraoPesquisa(candidatoSalvo)
-  }, [])
-
-  useEffect(() => {
-    if (typeof window === 'undefined') return
-    const cenarioSalvo = localStorage.getItem(SCENARIO_VOTOS_STORAGE_KEY)
-    if (
-      cenarioSalvo === 'aferido_jadyel' ||
-      cenarioSalvo === 'promessa_lideranca' ||
-      cenarioSalvo === 'legado_anterior'
-    ) {
-      setCenarioVotos(cenarioSalvo)
-    }
-  }, [])
-
-  useEffect(() => {
-    if (typeof window === 'undefined') return
-    localStorage.setItem(SCENARIO_VOTOS_STORAGE_KEY, cenarioVotos)
-  }, [cenarioVotos])
-
-  useEffect(() => {
-    const handleStorage = (event: StorageEvent) => {
-      if (event.key !== SCENARIO_VOTOS_STORAGE_KEY) return
-      if (
-        event.newValue === 'aferido_jadyel' ||
-        event.newValue === 'promessa_lideranca' ||
-        event.newValue === 'legado_anterior'
-      ) {
-        setCenarioVotos(event.newValue)
-      }
-    }
-
-    window.addEventListener('storage', handleStorage)
-    return () => window.removeEventListener('storage', handleStorage)
   }, [])
 
   useEffect(() => {
