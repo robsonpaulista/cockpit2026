@@ -66,6 +66,7 @@ let cacheUpdatedAt = 0
 let cachedCityIndex: Map<string, ResultadoEleicao[]> | null = null
 let cachedCityNames: string[] = []
 let cachedCityDisplayByKey: Map<string, string> = new Map()
+let cachedAllResultados: ResultadoEleicao[] = []
 
 function normalizeCity(value: string): string {
   return value
@@ -196,9 +197,11 @@ async function buildCityIndex(forceRefresh = false): Promise<void> {
 
   const cityIndex = new Map<string, ResultadoEleicao[]>()
   const cityDisplayByKey = new Map<string, string>()
+  const allResultados: ResultadoEleicao[] = []
 
   for (const row of dataRows) {
     const resultado = toResultado(row)
+    allResultados.push(resultado)
     const key = normalizeCity(resultado.municipio)
     if (!key) continue
 
@@ -213,18 +216,44 @@ async function buildCityIndex(forceRefresh = false): Promise<void> {
   cachedCityIndex = cityIndex
   cachedCityDisplayByKey = cityDisplayByKey
   cachedCityNames = Array.from(cityDisplayByKey.values()).sort((a, b) => a.localeCompare(b, 'pt-BR'))
+  cachedAllResultados = allResultados
   cacheUpdatedAt = Date.now()
 }
 
 export async function GET(request: NextRequest) {
   try {
     const cidade = request.nextUrl.searchParams.get('cidade')
+    const totals = request.nextUrl.searchParams.get('totals')
     const refresh = request.nextUrl.searchParams.get('refresh') === 'true'
 
     await buildCityIndex(refresh)
 
     if (!cachedCityIndex) {
       return NextResponse.json({ error: 'Falha ao carregar dados da planilha.' }, { status: 500 })
+    }
+
+    if (totals === 'federal2022') {
+      const grouped = new Map<string, { nome: string; votos: number }>()
+      for (const item of cachedAllResultados) {
+        if (item.anoEleicao !== '2022') continue
+        if (!/federal/i.test(item.cargo || '')) continue
+        const nome = String(item.nomeUrnaCandidato || '').trim()
+        if (!nome) continue
+        const atual = grouped.get(nome) || { nome, votos: 0 }
+        const votos = Number.parseInt(item.quantidadeVotosNominais || '0', 10)
+        atual.votos += Number.isNaN(votos) ? 0 : votos
+        grouped.set(nome, atual)
+      }
+
+      const rows = Array.from(grouped.values()).sort(
+        (a, b) => b.votos - a.votos || a.nome.localeCompare(b.nome, 'pt-BR')
+      )
+      return NextResponse.json({
+        ano: 2022,
+        cargo: 'deputado_federal',
+        totalCandidatos: rows.length,
+        rows,
+      })
     }
 
     if (!cidade) {

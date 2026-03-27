@@ -7,7 +7,9 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "obras:import": "node scripts/xlsx-to-json-obras.mjs"
+    "obras:import": "node scripts/xlsx-to-json-obras.mjs",
+    "federal2018:json": "node scripts/xlsx-to-json-federal2018.mjs",
+    "federal2018:import": "node scripts/import-federal2018-to-supabase.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.1.0",

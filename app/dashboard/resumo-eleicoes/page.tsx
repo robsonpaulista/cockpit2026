@@ -6,6 +6,7 @@ import { RefreshCw, AlertCircle, Crown, X, Users, Vote, BarChart3, UserCheck, Ar
 import { getEleitoradoByCity } from '@/lib/eleitores'
 import { CityDemandsModal } from '@/components/city-demands-modal'
 import { PollReportsHistoryModal } from '@/components/poll-reports-history-modal'
+import { ResumoEleicoesHistoricoModal } from '@/components/resumo-eleicoes-historico-modal'
 
 interface ResultadoEleicao {
   uf: string
@@ -245,6 +246,7 @@ export default function ResumoEleicoesPage() {
   const [cenarioVotos, setCenarioVotos] = useState<CenarioVotos>('legado_anterior')
   const [showSimulacaoModal, setShowSimulacaoModal] = useState(false)
   const [showPesquisaHistoricoModal, setShowPesquisaHistoricoModal] = useState(false)
+  const [showHistoricoModal, setShowHistoricoModal] = useState(false)
   const [simulacaoMapeamento, setSimulacaoMapeamento] = useState<SimulacaoMapeamento>({})
   const [loadingSimulacao, setLoadingSimulacao] = useState(false)
   const [savingSimulacao, setSavingSimulacao] = useState(false)
@@ -1366,6 +1368,14 @@ export default function ResumoEleicoesPage() {
               <FileText className="h-4 w-4" />
               Demandas
             </button>
+            <button
+              type="button"
+              onClick={() => setShowHistoricoModal(true)}
+              className="h-10 px-4 rounded-lg text-sm font-medium border border-card bg-background text-text-primary hover:bg-surface flex items-center gap-2"
+            >
+              <BarChart3 className="h-4 w-4" />
+              Histórico
+            </button>
           </div>
         </div>
 
@@ -1532,13 +1542,22 @@ export default function ResumoEleicoesPage() {
               Simulação de vereadores: <strong className="text-text-primary">{vereadoresMapeadosCount}</strong> de{' '}
               <strong className="text-text-primary">{vereador2024Completo.length}</strong> mapeados
             </span>
-            <button
-              type="button"
-              onClick={() => setShowSimulacaoModal(true)}
-              className="px-2 py-1 rounded border border-card hover:bg-background text-text-secondary"
-            >
-              Abrir simulador
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setShowHistoricoModal(true)}
+                className="px-2 py-1 rounded border border-card hover:bg-background text-text-secondary"
+              >
+                Histórico
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowSimulacaoModal(true)}
+                className="px-2 py-1 rounded border border-card hover:bg-background text-text-secondary"
+              >
+                Abrir simulador
+              </button>
+            </div>
           </div>
           <div className="grid grid-cols-1 md:flex md:flex-nowrap gap-4 overflow-x-auto pb-2">
             <div className="bg-surface rounded-xl border border-card p-2 md:flex-1 min-w-[240px]">
@@ -2223,6 +2242,11 @@ export default function ResumoEleicoesPage() {
         onClose={() => setShowPesquisaHistoricoModal(false)}
         cidadeNome={cidade}
         cidadeId={cidadePesquisaIdAtual}
+      />
+
+      <ResumoEleicoesHistoricoModal
+        isOpen={showHistoricoModal}
+        onClose={() => setShowHistoricoModal(false)}
       />
     </div>
   )

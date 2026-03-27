@@ -108,9 +108,9 @@ export default function ChapasPage() {
   const [quocienteCarregado, setQuocienteCarregado] = useState(false)
   const [cenarioAtivo, setCenarioAtivo] = useState<CenarioCompleto | null>(null)
 
-  const [editVoto, setEditVoto] = useState<{ partidoIdx: number; candidatoNome: string } | null>(null)
-  const [hoveredRow, setHoveredRow] = useState<{ partidoIdx: number; candidatoNome: string } | null>(null)
-  const [editingName, setEditingName] = useState<{ partidoIdx: number; candidatoNome: string; tempValue: string } | null>(null)
+  const [editVoto, setEditVoto] = useState<{ partidoIdx: number; candidatoIdx: number } | null>(null)
+  const [hoveredRow, setHoveredRow] = useState<{ partidoIdx: number; candidatoIdx: number } | null>(null)
+  const [editingName, setEditingName] = useState<{ partidoIdx: number; candidatoIdx: number; tempValue: string } | null>(null)
   const [votosLegenda, setVotosLegenda] = useState<{ [partido: string]: number }>({})
 
   // Estados para adicionar novo candidato
@@ -457,11 +457,11 @@ export default function ChapasPage() {
   }
 
   // Função para atualizar apenas o estado local
-  const updateLocalState = (partidoIdx: number, candidatoNome: string, field: 'nome' | 'votos', value: string) => {
+  const updateLocalState = (partidoIdx: number, candidatoIdx: number, field: 'nome' | 'votos', value: string) => {
     setPartidos(prev => prev.map((p, i) => {
       if (i !== partidoIdx) return p
-      const candidatos = p.candidatos.map((c) => {
-        if (c.nome !== candidatoNome) return c
+      const candidatos = p.candidatos.map((c, idx) => {
+        if (idx !== candidatoIdx) return c
         if (field === 'nome') {
           return { ...c, nome: value }
         }
@@ -474,22 +474,23 @@ export default function ChapasPage() {
   }
 
   // Função para iniciar edição de nome
-  const startEditingName = (partidoIdx: number, candidatoNome: string) => {
-    const candidato = partidos[partidoIdx].candidatos.find(c => c.nome === candidatoNome)
+  const startEditingName = (partidoIdx: number, candidatoIdx: number) => {
+    const candidato = partidos[partidoIdx]?.candidatos[candidatoIdx]
     if (candidato) {
-      setEditingName({ partidoIdx, candidatoNome, tempValue: candidato.nome })
-      setHoveredRow({ partidoIdx, candidatoNome })
+      setEditingName({ partidoIdx, candidatoIdx, tempValue: candidato.nome })
+      setHoveredRow({ partidoIdx, candidatoIdx })
     }
   }
 
   // Função para salvar nome (só atualiza estado local + agenda auto-save)
-  const saveNameChange = (partidoIdx: number, oldNome: string) => {
-    if (!editingName || editingName.partidoIdx !== partidoIdx || editingName.candidatoNome !== oldNome) {
+  const saveNameChange = (partidoIdx: number, candidatoIdx: number) => {
+    if (!editingName || editingName.partidoIdx !== partidoIdx || editingName.candidatoIdx !== candidatoIdx) {
       setEditingName(null)
       setHoveredRow(null)
       return
     }
 
+    const oldNome = partidos[partidoIdx]?.candidatos[candidatoIdx]?.nome ?? ''
     const newNome = editingName.tempValue.trim()
     
     if (newNome && newNome !== oldNome) {
@@ -497,9 +498,7 @@ export default function ChapasPage() {
         if (i !== partidoIdx) return p
         return {
           ...p,
-          candidatos: p.candidatos.map(c => 
-            c.nome === oldNome ? { ...c, nome: newNome } : c
-          )
+          candidatos: p.candidatos.map((c, idx) => idx === candidatoIdx ? { ...c, nome: newNome } : c)
         }
       }))
     }
@@ -509,14 +508,12 @@ export default function ChapasPage() {
   }
 
   // Função para salvar votos (só atualiza estado local - salva via botão "Salvar Mudanças")
-  const saveVotosChange = (partidoIdx: number, candidatoNome: string, votos: number) => {
+  const saveVotosChange = (partidoIdx: number, candidatoIdx: number, votos: number) => {
     setPartidos(prev => prev.map((p, i) => {
       if (i !== partidoIdx) return p
       return {
         ...p,
-        candidatos: p.candidatos.map(c => 
-          c.nome === candidatoNome ? { ...c, votos } : c
-        )
+        candidatos: p.candidatos.map((c, idx) => idx === candidatoIdx ? { ...c, votos } : c)
       }
     }))
   }
@@ -689,7 +686,7 @@ export default function ChapasPage() {
   }
 
   // Função para excluir candidato
-  const handleExcluirCandidato = async (partidoIdx: number, candidatoNome: string) => {
+  const handleExcluirCandidato = async (partidoIdx: number, candidatoIdx: number) => {
     try {
       if (!cenarioAtivo) {
         throw new Error('Cenário base não encontrado')
@@ -699,7 +696,7 @@ export default function ChapasPage() {
         if (i !== partidoIdx) return p
         return {
           ...p,
-          candidatos: p.candidatos.filter(c => c.nome !== candidatoNome)
+          candidatos: p.candidatos.filter((_, idx) => idx !== candidatoIdx)
         }
       }))
 
@@ -1570,7 +1567,7 @@ export default function ChapasPage() {
           >
             {ordenarPartidos(partidos)
               .filter(partido => !partidosOcultos[partido.nome])
-              .map((partido, pIdx) => {
+              .map((partido) => {
                 const partidoIdx = partidos.findIndex(p => p.nome === partido.nome)
                 const posicaoAtualNaOrdem = ordenarPartidos(partidos).findIndex((p) => p.nome === partido.nome)
                 
@@ -1676,14 +1673,18 @@ export default function ChapasPage() {
                         <table className="w-full text-xs">
                           <tbody>
                             {(() => {
-                              const { homens } = separarCandidatosPorGenero(partido.candidatos)
-                              return homens.map((c, idx) => (
+                              const homens = partido.candidatos
+                                .map((candidato, originalIdx) => ({ candidato, originalIdx }))
+                                .filter(({ candidato }) => candidato.nome !== 'VOTOS LEGENDA' && candidato.genero !== 'mulher')
+                                .sort((a, b) => b.candidato.votos - a.candidato.votos)
+                              return homens.map(({ candidato: c, originalIdx: candidatoIdx }, idx) => {
+                                return (
                                 <tr 
                                   key={`homem-${c.nome}-${idx}`}
                                   className="group relative hover:bg-bg-app transition-colors"
-                                  onMouseEnter={() => setHoveredRow({ partidoIdx: pIdx, candidatoNome: c.nome })}
+                                  onMouseEnter={() => setHoveredRow({ partidoIdx: partidoIdx, candidatoIdx })}
                                   onMouseLeave={() => {
-                                    if (!(editingName?.partidoIdx === pIdx && editingName?.candidatoNome === c.nome)) {
+                                    if (!(editingName?.partidoIdx === partidoIdx && editingName?.candidatoIdx === candidatoIdx)) {
                                       setHoveredRow(null)
                                     }
                                   }}
@@ -1696,16 +1697,16 @@ export default function ChapasPage() {
                                       ) : (
                                         <input
                                           type="text"
-                                          value={editingName?.partidoIdx === pIdx && editingName?.candidatoNome === c.nome 
+                                          value={editingName?.partidoIdx === partidoIdx && editingName?.candidatoIdx === candidatoIdx 
                                             ? editingName.tempValue 
                                             : c.nome}
-                                          onFocus={() => startEditingName(pIdx, c.nome)}
+                                          onFocus={() => startEditingName(partidoIdx, candidatoIdx)}
                                           onChange={e => {
-                                            if (editingName?.partidoIdx === pIdx && editingName?.candidatoNome === c.nome) {
+                                            if (editingName?.partidoIdx === partidoIdx && editingName?.candidatoIdx === candidatoIdx) {
                                               setEditingName({ ...editingName, tempValue: e.target.value })
                                             }
                                           }}
-                                          onBlur={() => saveNameChange(pIdx, c.nome)}
+                                          onBlur={() => saveNameChange(partidoIdx, candidatoIdx)}
                                           onKeyDown={e => {
                                             if (e.key === 'Enter') {
                                               e.currentTarget.blur()
@@ -1725,7 +1726,7 @@ export default function ChapasPage() {
                                         {Number(c.votos).toLocaleString('pt-BR')}
                                       </span>
                                     ) : (
-                                      editVoto && editVoto.partidoIdx === pIdx && editVoto.candidatoNome === c.nome ? (
+                                      editVoto && editVoto.partidoIdx === partidoIdx && editVoto.candidatoIdx === candidatoIdx ? (
                                         <input
                                           type="number"
                                           min={0}
@@ -1733,15 +1734,15 @@ export default function ChapasPage() {
                                           autoFocus
                                           onChange={e => {
                                             const value = e.target.value
-                                            updateLocalState(pIdx, c.nome, 'votos', value)
+                                            updateLocalState(partidoIdx, candidatoIdx, 'votos', value)
                                           }}
                                           onBlur={() => {
-                                            saveVotosChange(pIdx, c.nome, c.votos)
+                                            saveVotosChange(partidoIdx, candidatoIdx, c.votos)
                                             setEditVoto(null)
                                           }}
                                           onKeyDown={e => {
                                             if (e.key === 'Enter') {
-                                              saveVotosChange(pIdx, c.nome, c.votos)
+                                              saveVotosChange(partidoIdx, candidatoIdx, c.votos)
                                               setEditVoto(null)
                                             }
                                           }}
@@ -1751,7 +1752,7 @@ export default function ChapasPage() {
                                       ) : (
                                         <span
                                           className="cursor-pointer select-text"
-                                          onClick={() => setEditVoto({ partidoIdx: pIdx, candidatoNome: c.nome })}
+                                          onClick={() => setEditVoto({ partidoIdx: partidoIdx, candidatoIdx })}
                                         >
                                           {Number(c.votos).toLocaleString('pt-BR')}
                                         </span>
@@ -1759,12 +1760,12 @@ export default function ChapasPage() {
                                     )}
                                   </td>
                                   <td className="pl-2 text-right whitespace-nowrap font-normal align-top w-8">
-                                    {(hoveredRow?.partidoIdx === pIdx && hoveredRow?.candidatoNome === c.nome) || 
-                                     (editingName?.partidoIdx === pIdx && editingName?.candidatoNome === c.nome) ? (
+                                    {(hoveredRow?.partidoIdx === partidoIdx && hoveredRow?.candidatoIdx === candidatoIdx) || 
+                                     (editingName?.partidoIdx === partidoIdx && editingName?.candidatoIdx === candidatoIdx) ? (
                                       <button
                                         onClick={() => {
                                           if (confirm(`Tem certeza que deseja excluir o candidato ${c.nome}?`)) {
-                                            handleExcluirCandidato(pIdx, c.nome)
+                                            handleExcluirCandidato(partidoIdx, candidatoIdx)
                                           }
                                         }}
                                         className="text-red-500 hover:text-red-700 hover:bg-red-50 p-1 rounded"
@@ -1774,7 +1775,7 @@ export default function ChapasPage() {
                                     ) : null}
                                   </td>
                                 </tr>
-                              ))
+                              )})
                             })()}
                           </tbody>
                         </table>
@@ -1784,14 +1785,18 @@ export default function ChapasPage() {
                         <table className="w-full text-xs">
                           <tbody>
                             {(() => {
-                              const { mulheres } = separarCandidatosPorGenero(partido.candidatos)
-                              return mulheres.map((c, idx) => (
+                              const mulheres = partido.candidatos
+                                .map((candidato, originalIdx) => ({ candidato, originalIdx }))
+                                .filter(({ candidato }) => candidato.nome !== 'VOTOS LEGENDA' && candidato.genero === 'mulher')
+                                .sort((a, b) => b.candidato.votos - a.candidato.votos)
+                              return mulheres.map(({ candidato: c, originalIdx: candidatoIdx }, idx) => {
+                                return (
                                 <tr 
                                   key={`mulher-${c.nome}-${idx}`}
                                   className="group relative hover:bg-bg-app transition-colors"
-                                  onMouseEnter={() => setHoveredRow({ partidoIdx: pIdx, candidatoNome: c.nome })}
+                                  onMouseEnter={() => setHoveredRow({ partidoIdx: partidoIdx, candidatoIdx })}
                                   onMouseLeave={() => {
-                                    if (!(editingName?.partidoIdx === pIdx && editingName?.candidatoNome === c.nome)) {
+                                    if (!(editingName?.partidoIdx === partidoIdx && editingName?.candidatoIdx === candidatoIdx)) {
                                       setHoveredRow(null)
                                     }
                                   }}
@@ -1804,16 +1809,16 @@ export default function ChapasPage() {
                                       ) : (
                                         <input
                                           type="text"
-                                          value={editingName?.partidoIdx === pIdx && editingName?.candidatoNome === c.nome 
+                                          value={editingName?.partidoIdx === partidoIdx && editingName?.candidatoIdx === candidatoIdx 
                                             ? editingName.tempValue 
                                             : c.nome}
-                                          onFocus={() => startEditingName(pIdx, c.nome)}
+                                          onFocus={() => startEditingName(partidoIdx, candidatoIdx)}
                                           onChange={e => {
-                                            if (editingName?.partidoIdx === pIdx && editingName?.candidatoNome === c.nome) {
+                                            if (editingName?.partidoIdx === partidoIdx && editingName?.candidatoIdx === candidatoIdx) {
                                               setEditingName({ ...editingName, tempValue: e.target.value })
                                             }
                                           }}
-                                          onBlur={() => saveNameChange(pIdx, c.nome)}
+                                          onBlur={() => saveNameChange(partidoIdx, candidatoIdx)}
                                           onKeyDown={e => {
                                             if (e.key === 'Enter') {
                                               e.currentTarget.blur()
@@ -1833,7 +1838,7 @@ export default function ChapasPage() {
                                         {Number(c.votos).toLocaleString('pt-BR')}
                                       </span>
                                     ) : (
-                                      editVoto && editVoto.partidoIdx === pIdx && editVoto.candidatoNome === c.nome ? (
+                                      editVoto && editVoto.partidoIdx === partidoIdx && editVoto.candidatoIdx === candidatoIdx ? (
                                         <input
                                           type="number"
                                           min={0}
@@ -1841,15 +1846,15 @@ export default function ChapasPage() {
                                           autoFocus
                                           onChange={e => {
                                             const value = e.target.value
-                                            updateLocalState(pIdx, c.nome, 'votos', value)
+                                            updateLocalState(partidoIdx, candidatoIdx, 'votos', value)
                                           }}
                                           onBlur={() => {
-                                            saveVotosChange(pIdx, c.nome, c.votos)
+                                            saveVotosChange(partidoIdx, candidatoIdx, c.votos)
                                             setEditVoto(null)
                                           }}
                                           onKeyDown={e => {
                                             if (e.key === 'Enter') {
-                                              saveVotosChange(pIdx, c.nome, c.votos)
+                                              saveVotosChange(partidoIdx, candidatoIdx, c.votos)
                                               setEditVoto(null)
                                             }
                                           }}
@@ -1859,7 +1864,7 @@ export default function ChapasPage() {
                                       ) : (
                                         <span
                                           className="cursor-pointer select-text text-accent-gold font-semibold"
-                                          onClick={() => setEditVoto({ partidoIdx: pIdx, candidatoNome: c.nome })}
+                                          onClick={() => setEditVoto({ partidoIdx: partidoIdx, candidatoIdx })}
                                         >
                                           {Number(c.votos).toLocaleString('pt-BR')}
                                         </span>
@@ -1867,12 +1872,12 @@ export default function ChapasPage() {
                                     )}
                                   </td>
                                   <td className="pl-1 text-right font-normal align-top w-6">
-                                    {(hoveredRow?.partidoIdx === pIdx && hoveredRow?.candidatoNome === c.nome) || 
-                                     (editingName?.partidoIdx === pIdx && editingName?.candidatoNome === c.nome) ? (
+                                    {(hoveredRow?.partidoIdx === partidoIdx && hoveredRow?.candidatoIdx === candidatoIdx) || 
+                                     (editingName?.partidoIdx === partidoIdx && editingName?.candidatoIdx === candidatoIdx) ? (
                                       <button
                                         onClick={() => {
                                           if (confirm(`Tem certeza que deseja excluir o candidato ${c.nome}?`)) {
-                                            handleExcluirCandidato(pIdx, c.nome)
+                                            handleExcluirCandidato(partidoIdx, candidatoIdx)
                                           }
                                         }}
                                         className="text-status-error hover:text-status-error/80 hover:bg-status-error/10 p-0.5 rounded"
@@ -1882,7 +1887,7 @@ export default function ChapasPage() {
                                     ) : null}
                                   </td>
                                 </tr>
-                              ))
+                              )})
                             })()}
                           </tbody>
                         </table>
@@ -1941,7 +1946,7 @@ export default function ChapasPage() {
                       </div>
 
                       <button
-                        onClick={() => setDialogAberto(pIdx)}
+                        onClick={() => setDialogAberto(partidoIdx)}
                         className="mt-2 px-3 py-1 text-xs bg-accent-gold-soft text-accent-gold rounded hover:bg-accent-gold-soft/80 flex items-center gap-1 justify-center"
                       >
                         <Plus className="h-3 w-3" />
