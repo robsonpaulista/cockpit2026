@@ -233,13 +233,13 @@ export async function GET(request: NextRequest) {
     }
 
     if (totals === 'federal2022') {
-      const grouped = new Map<string, { nome: string; votos: number }>()
+      const grouped = new Map<string, { nome: string; votos: number; partido: string | null }>()
       for (const item of cachedAllResultados) {
         if (item.anoEleicao !== '2022') continue
         if (!/federal/i.test(item.cargo || '')) continue
         const nome = String(item.nomeUrnaCandidato || '').trim()
         if (!nome) continue
-        const atual = grouped.get(nome) || { nome, votos: 0 }
+        const atual = grouped.get(nome) || { nome, votos: 0, partido: item.partido || null }
         const votos = Number.parseInt(item.quantidadeVotosNominais || '0', 10)
         atual.votos += Number.isNaN(votos) ? 0 : votos
         grouped.set(nome, atual)

@@ -3,12 +3,18 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Loader2, X } from 'lucide-react'
 
+type ResultadoItem = { nome: string; votos: number; partido: string | null }
+type ResumoMeta = { totalVotos: number; totalCandidatos: number; partidos: string[] }
+
 type ApiPayload = {
   scope: 'total_geral'
   cenarioPrincipal: { id: string; nome: string }
-  resultados2018: { nome: string; votos: number }[]
-  resultados2022: { nome: string; votos: number }[]
-  previsao2026: { nome: string; votos: number }[]
+  resultados2018: ResultadoItem[]
+  resultados2022: ResultadoItem[]
+  previsao2026: ResultadoItem[]
+  resumo2018: ResumoMeta
+  resumo2022: ResumoMeta
+  resumo2026: ResumoMeta
 }
 
 interface ResumoEleicoesHistoricoModalProps {
@@ -16,9 +22,10 @@ interface ResumoEleicoesHistoricoModalProps {
   onClose: () => void
 }
 
-function toTopRows(rows: Array<{ nome: string; votos: number }>, limit = 30) {
-  return rows.slice(0, limit)
-}
+const STATIC_CACHE_KEY = 'historico_federal_static_v1'
+
+type StaticPayload = Pick<ApiPayload, 'scope' | 'resultados2018' | 'resultados2022' | 'resumo2018' | 'resumo2022'>
+type PrevisaoPayload = Pick<ApiPayload, 'scope' | 'cenarioPrincipal' | 'previsao2026' | 'resumo2026'>
 
 export function ResumoEleicoesHistoricoModal({
   isOpen,
@@ -26,7 +33,8 @@ export function ResumoEleicoesHistoricoModal({
 }: ResumoEleicoesHistoricoModalProps) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [apiData, setApiData] = useState<ApiPayload | null>(null)
+  const [staticData, setStaticData] = useState<StaticPayload | null>(null)
+  const [previsaoData, setPrevisaoData] = useState<PrevisaoPayload | null>(null)
 
   useEffect(() => {
     if (!isOpen) return
@@ -35,11 +43,37 @@ export function ResumoEleicoesHistoricoModal({
       setLoading(true)
       setError(null)
       try {
-        const res = await fetch('/api/resumo-eleicoes/historico-federal')
-        const json = (await res.json()) as ApiPayload & { error?: string }
-        if (!res.ok) throw new Error(json.error || 'Erro ao carregar histórico')
+        let staticPayload: StaticPayload | null = null
+        if (typeof window !== 'undefined') {
+          const cached = window.localStorage.getItem(STATIC_CACHE_KEY)
+          if (cached) {
+            try {
+              staticPayload = JSON.parse(cached) as StaticPayload
+            } catch {
+              window.localStorage.removeItem(STATIC_CACHE_KEY)
+            }
+          }
+        }
+
+        if (!staticPayload) {
+          const staticRes = await fetch('/api/resumo-eleicoes/historico-federal?section=static')
+          const staticJson = (await staticRes.json()) as StaticPayload & { error?: string }
+          if (!staticRes.ok) throw new Error(staticJson.error || 'Erro ao carregar base histórica')
+          staticPayload = staticJson
+          if (typeof window !== 'undefined') {
+            window.localStorage.setItem(STATIC_CACHE_KEY, JSON.stringify(staticPayload))
+          }
+        }
+
+        const previsaoRes = await fetch('/api/resumo-eleicoes/historico-federal?section=previsao', {
+          cache: 'no-store',
+        })
+        const previsaoJson = (await previsaoRes.json()) as PrevisaoPayload & { error?: string }
+        if (!previsaoRes.ok) throw new Error(previsaoJson.error || 'Erro ao carregar previsão 2026')
+
         if (!active) return
-        setApiData(json)
+        setStaticData(staticPayload)
+        setPrevisaoData(previsaoJson)
       } catch (e) {
         if (!active) return
         setError(e instanceof Error ? e.message : 'Erro ao carregar histórico')
@@ -53,9 +87,9 @@ export function ResumoEleicoesHistoricoModal({
     }
   }, [isOpen])
 
-  const resultados2018 = useMemo(() => toTopRows(apiData?.resultados2018 ?? []), [apiData])
-  const resultados2022 = useMemo(() => toTopRows(apiData?.resultados2022 ?? []), [apiData])
-  const previsao2026 = useMemo(() => toTopRows(apiData?.previsao2026 ?? []), [apiData])
+  const resultados2018 = useMemo(() => staticData?.resultados2018 ?? [], [staticData])
+  const resultados2022 = useMemo(() => staticData?.resultados2022 ?? [], [staticData])
+  const previsao2026 = useMemo(() => previsaoData?.previsao2026 ?? [], [previsaoData])
 
   if (!isOpen) return null
 
@@ -84,7 +118,7 @@ export function ResumoEleicoesHistoricoModal({
             <div className="rounded-lg border border-status-error/30 bg-status-error/10 p-3 text-sm text-status-error">
               {error}
             </div>
-          ) : !apiData ? (
+          ) : !staticData || !previsaoData ? (
             <div className="rounded-lg border border-dashed border-card p-4 text-sm text-secondary">
               Sem dados para exibir.
             </div>
@@ -94,18 +128,50 @@ export function ResumoEleicoesHistoricoModal({
                 <strong className="text-text-primary">Escopo:</strong> Total geral (sem filtro de cidade)
                 <span className="mx-2">|</span>
                 <strong className="text-text-primary">Cenário principal:</strong>{' '}
-                {apiData.cenarioPrincipal.nome}
+                {previsaoData.cenarioPrincipal.nome}
               </div>
 
               <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
                 {[
-                  { title: 'Resultado 2018', data: resultados2018, accent: 'text-text-primary' },
-                  { title: 'Resultado 2022', data: resultados2022, accent: 'text-text-primary' },
-                  { title: 'Previsão 2026', data: previsao2026, accent: 'text-accent-gold' },
+                  {
+                    title: 'Resultado 2018',
+                    data: resultados2018,
+                    accent: 'text-text-primary',
+                    meta: staticData.resumo2018,
+                  },
+                  {
+                    title: 'Resultado 2022',
+                    data: resultados2022,
+                    accent: 'text-text-primary',
+                    meta: staticData.resumo2022,
+                  },
+                  {
+                    title: 'Previsão 2026',
+                    data: previsao2026,
+                    accent: 'text-accent-gold',
+                    meta: previsaoData.resumo2026,
+                  },
                 ].map((section) => (
                   <div key={section.title} className="overflow-hidden rounded-xl border border-card">
                     <div className="border-b border-card bg-background px-3 py-2 text-xs font-semibold uppercase tracking-wide text-secondary">
                       {section.title}
+                    </div>
+                    <div className="border-b border-card bg-surface px-3 py-2 text-[11px] text-text-secondary">
+                      <span className="font-semibold text-text-primary">
+                        {section.meta.totalCandidatos.toLocaleString('pt-BR')}
+                      </span>{' '}
+                      candidatos
+                      <span className="mx-2">|</span>
+                      Total de votos:{' '}
+                      <span className="font-semibold text-text-primary">
+                        {section.meta.totalVotos.toLocaleString('pt-BR')}
+                      </span>
+                      <div className="mt-1 truncate">
+                        Partidos:{' '}
+                        <span className="font-medium text-text-primary">
+                          {section.meta.partidos.length > 0 ? section.meta.partidos.join(', ') : 'N/D'}
+                        </span>
+                      </div>
                     </div>
                     <div className="max-h-[55vh] overflow-auto">
                       <table className="w-full text-sm">
