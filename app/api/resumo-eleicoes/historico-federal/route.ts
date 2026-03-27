@@ -98,9 +98,8 @@ export async function GET(request: NextRequest) {
     // 2018 (total geral) da tabela local importada.
     // Importante: lê em páginas para evitar limite padrão de linhas do PostgREST.
     let resultados2018: VoteRow[] = []
-    const canUseCache =
-      cachedFederal2018 && Date.now() - cachedFederal2018At < FEDERAL_2018_CACHE_TTL_MS
-    if (canUseCache) {
+    const isCacheFresh = Date.now() - cachedFederal2018At < FEDERAL_2018_CACHE_TTL_MS
+    if (cachedFederal2018 && isCacheFresh) {
       resultados2018 = cachedFederal2018
     } else {
       const votos2018 = new Map<string, VoteRow>()
