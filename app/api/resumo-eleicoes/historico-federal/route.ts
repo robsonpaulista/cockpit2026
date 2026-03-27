@@ -4,6 +4,9 @@ import { createClient } from '@/lib/supabase/server'
 export const dynamic = 'force-dynamic'
 
 type VoteRow = { nome: string; votos: number }
+const FEDERAL_2018_CACHE_TTL_MS = 10 * 60 * 1000
+let cachedFederal2018: VoteRow[] | null = null
+let cachedFederal2018At = 0
 
 function normalizeText(value: string): string {
   return String(value || '')
@@ -92,25 +95,54 @@ export async function GET(request: NextRequest) {
       (a, b) => b.votos - a.votos || a.nome.localeCompare(b.nome, 'pt-BR')
     )
 
-    // 2018 (total geral) da tabela local importada
-    const { data: votos2018Rows, error: votos2018Err } = await supabase
-      .from('federal_2018')
-      .select('nm_votavel, qt_votos')
-      .eq('cd_cargo', 6) // Deputado Federal
+    // 2018 (total geral) da tabela local importada.
+    // Importante: lê em páginas para evitar limite padrão de linhas do PostgREST.
+    let resultados2018: VoteRow[] = []
+    const canUseCache =
+      cachedFederal2018 && Date.now() - cachedFederal2018At < FEDERAL_2018_CACHE_TTL_MS
+    if (canUseCache) {
+      resultados2018 = cachedFederal2018
+    } else {
+      const votos2018 = new Map<string, VoteRow>()
+      // Mantemos 1000 por página para respeitar limites comuns do PostgREST/Supabase.
+      const batchSize = 1000
+      let from = 0
 
-    if (votos2018Err) {
-      return NextResponse.json({ error: votos2018Err.message }, { status: 500 })
-    }
+      while (true) {
+        const to = from + batchSize - 1
+        const { data, error } = await supabase
+          .from('federal_2018')
+          .select('id, nm_votavel, qt_votos')
+          .eq('cd_cargo', 6) // Deputado Federal
+          .order('id', { ascending: true })
+          .range(from, to)
 
-    const votos2018 = new Map<string, VoteRow>()
-    for (const row of votos2018Rows ?? []) {
-      const nome = String(row.nm_votavel || '').trim()
-      if (!nome) continue
-      const key = normalizeText(String(row.nm_votavel || ''))
-      if (!key) continue
-      const atual = votos2018.get(key) ?? { nome, votos: 0 }
-      atual.votos += Number(row.qt_votos || 0)
-      votos2018.set(key, atual)
+        if (error) {
+          return NextResponse.json({ error: error.message }, { status: 500 })
+        }
+
+        const rows = data ?? []
+        if (rows.length === 0) break
+
+        for (const row of rows) {
+          const nome = String(row.nm_votavel || '').trim()
+          if (!nome) continue
+          const key = normalizeText(row.nm_votavel)
+          if (!key) continue
+          const atual = votos2018.get(key) ?? { nome, votos: 0 }
+          atual.votos += Number(row.qt_votos || 0)
+          votos2018.set(key, atual)
+        }
+
+        // Avança pelo volume realmente recebido para nunca pular registros.
+        from += rows.length
+      }
+
+      resultados2018 = Array.from(votos2018.values()).sort(
+        (a, b) => b.votos - a.votos || a.nome.localeCompare(b.nome, 'pt-BR')
+      )
+      cachedFederal2018 = resultados2018
+      cachedFederal2018At = Date.now()
     }
 
     // 2022 (total geral) a partir da mesma fonte usada no resumo-eleicoes
@@ -130,9 +162,6 @@ export async function GET(request: NextRequest) {
       votos2022.set(key, atual)
     }
 
-    const resultados2018 = Array.from(votos2018.values()).sort(
-      (a, b) => b.votos - a.votos || a.nome.localeCompare(b.nome, 'pt-BR')
-    )
     const resultados2022 = Array.from(votos2022.values()).sort(
       (a, b) => b.votos - a.votos || a.nome.localeCompare(b.nome, 'pt-BR')
     )
