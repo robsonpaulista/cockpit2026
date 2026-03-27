@@ -15,7 +15,7 @@ const ThemeContext = createContext<ThemeContextType | undefined>(undefined)
 const STORAGE_KEY = 'cockpit-theme'
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
-  const [theme, setThemeState] = useState<ThemeName>('agentes')
+  const [theme, setThemeState] = useState<ThemeName>('republicanos')
 
   // Sincroniza com localStorage na montagem
   useEffect(() => {
@@ -24,8 +24,8 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
       setThemeState(saved)
       document.documentElement.setAttribute('data-theme', saved)
     } else {
-      // Se não há tema salvo, aplicar o padrão (agentes)
-      document.documentElement.setAttribute('data-theme', 'agentes')
+      // Se não há tema salvo, aplicar o padrão (republicanos)
+      document.documentElement.setAttribute('data-theme', 'republicanos')
     }
   }, [])
 
@@ -36,7 +36,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const toggleTheme = useCallback(() => {
-    const order: ThemeName[] = ['agentes', 'premium', 'republicanos']
+    const order: ThemeName[] = ['republicanos', 'premium', 'agentes']
     const idx = order.indexOf(theme)
     const next = order[(idx + 1) % order.length]
     setTheme(next)

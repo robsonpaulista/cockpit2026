@@ -24,9 +24,9 @@ export default function RootLayout({
               try {
                 var t = localStorage.getItem('cockpit-theme');
                 var valid = t === 'premium' || t === 'agentes' || t === 'republicanos';
-                document.documentElement.setAttribute('data-theme', valid ? t : 'agentes');
+                document.documentElement.setAttribute('data-theme', valid ? t : 'republicanos');
               } catch(e) {
-                document.documentElement.setAttribute('data-theme', 'agentes');
+                document.documentElement.setAttribute('data-theme', 'republicanos');
               }
             `,
           }}
