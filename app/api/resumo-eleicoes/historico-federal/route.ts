@@ -1,10 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { aplicarNomeUrnaDf2018 } from '@/lib/historico-federal-2018-nomes'
 
 export const dynamic = 'force-dynamic'
 
 type VoteRow = { nome: string; votos: number }
-type VoteRowWithParty = VoteRow & { partido: string | null }
+type VoteRowWithParty = VoteRow & {
+  partido: string | null
+  /** Preenchido no 2018 quando o nome da base é o civil e há nome de urna no mapa PI. */
+  nomeRegistroCivil?: string | null
+}
 type StaticHistoricoPayload = {
   scope: 'total_geral'
   resultados2018: VoteRowWithParty[]
@@ -209,9 +214,9 @@ export async function GET(request: NextRequest) {
         from += rows.length
       }
 
-      resultados2018 = Array.from(votos2018.values()).sort(
-        (a, b) => b.votos - a.votos || a.nome.localeCompare(b.nome, 'pt-BR')
-      )
+      resultados2018 = Array.from(votos2018.values())
+        .sort((a, b) => b.votos - a.votos || a.nome.localeCompare(b.nome, 'pt-BR'))
+        .map((row) => aplicarNomeUrnaDf2018(row))
       cachedFederal2018 = resultados2018
       cachedFederal2018At = Date.now()
     }

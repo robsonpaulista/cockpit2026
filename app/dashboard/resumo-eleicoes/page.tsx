@@ -2,11 +2,11 @@
 
 import { useMemo, useState, useEffect } from 'react'
 import { useSearchParams } from 'next/navigation'
+import Link from 'next/link'
 import { RefreshCw, AlertCircle, Crown, X, Users, Vote, BarChart3, UserCheck, ArrowUpRight, FileText, Loader2 } from 'lucide-react'
 import { getEleitoradoByCity } from '@/lib/eleitores'
 import { CityDemandsModal } from '@/components/city-demands-modal'
 import { PollReportsHistoryModal } from '@/components/poll-reports-history-modal'
-import { ResumoEleicoesHistoricoModal } from '@/components/resumo-eleicoes-historico-modal'
 
 interface ResultadoEleicao {
   uf: string
@@ -246,7 +246,6 @@ export default function ResumoEleicoesPage() {
   const [cenarioVotos, setCenarioVotos] = useState<CenarioVotos>('legado_anterior')
   const [showSimulacaoModal, setShowSimulacaoModal] = useState(false)
   const [showPesquisaHistoricoModal, setShowPesquisaHistoricoModal] = useState(false)
-  const [showHistoricoModal, setShowHistoricoModal] = useState(false)
   const [simulacaoMapeamento, setSimulacaoMapeamento] = useState<SimulacaoMapeamento>({})
   const [loadingSimulacao, setLoadingSimulacao] = useState(false)
   const [savingSimulacao, setSavingSimulacao] = useState(false)
@@ -1368,14 +1367,13 @@ export default function ResumoEleicoesPage() {
               <FileText className="h-4 w-4" />
               Demandas
             </button>
-            <button
-              type="button"
-              onClick={() => setShowHistoricoModal(true)}
+            <Link
+              href="/dashboard/resumo-eleicoes/historico"
               className="h-10 px-4 rounded-lg text-sm font-medium border border-card bg-background text-text-primary hover:bg-surface flex items-center gap-2"
             >
               <BarChart3 className="h-4 w-4" />
               Histórico
-            </button>
+            </Link>
           </div>
         </div>
 
@@ -1543,13 +1541,12 @@ export default function ResumoEleicoesPage() {
               <strong className="text-text-primary">{vereador2024Completo.length}</strong> mapeados
             </span>
             <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() => setShowHistoricoModal(true)}
+              <Link
+                href="/dashboard/resumo-eleicoes/historico"
                 className="px-2 py-1 rounded border border-card hover:bg-background text-text-secondary"
               >
                 Histórico
-              </button>
+              </Link>
               <button
                 type="button"
                 onClick={() => setShowSimulacaoModal(true)}
@@ -2244,10 +2241,6 @@ export default function ResumoEleicoesPage() {
         cidadeId={cidadePesquisaIdAtual}
       />
 
-      <ResumoEleicoesHistoricoModal
-        isOpen={showHistoricoModal}
-        onClose={() => setShowHistoricoModal(false)}
-      />
     </div>
   )
 }

@@ -27,6 +27,7 @@ import {
   Target,
   ChevronDown,
   ClipboardList,
+  History,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { MenuItem } from '@/types'
@@ -55,7 +56,26 @@ const menuItems: SidebarMenuItem[] = [
       { id: 'chapas-estaduais', label: 'Estadual', icon: 'Vote', href: '/dashboard/chapas-estaduais' },
     ],
   },
-  { id: 'resumo-eleicoes', label: 'Resumo Eleições', icon: 'BarChart3', href: '/dashboard/resumo-eleicoes' },
+  {
+    id: 'resumo-eleicoes-menu',
+    label: 'Resumo Eleições',
+    icon: 'BarChart3',
+    href: '/dashboard/resumo-eleicoes',
+    children: [
+      {
+        id: 'resumo-eleicoes-principal',
+        label: 'Resumo por cidade',
+        icon: 'BarChart3',
+        href: '/dashboard/resumo-eleicoes',
+      },
+      {
+        id: 'resumo-eleicoes-historico',
+        label: 'Histórico federal',
+        icon: 'History',
+        href: '/dashboard/resumo-eleicoes/historico',
+      },
+    ],
+  },
   { id: 'conteudo', label: 'Conteúdo & Redes', icon: 'MessageSquare', href: '/dashboard/conteudo' },
   { id: 'noticias', label: 'Notícias & Crises', icon: 'Newspaper', href: '/dashboard/noticias' },
   { id: 'mobilizacao', label: 'Mobilização', icon: 'Users', href: '/dashboard/mobilizacao' },
@@ -108,6 +128,7 @@ const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
   ScrollText,
   Target,
   ClipboardList,
+  History,
 }
 
 function pageKeyForItem(id: string): string {
@@ -120,7 +141,21 @@ function pageKeyForItem(id: string): string {
   ) {
     return 'gestao_pesquisas'
   }
+  if (
+    id === 'resumo-eleicoes-menu' ||
+    id === 'resumo-eleicoes-principal' ||
+    id === 'resumo-eleicoes-historico'
+  ) {
+    return 'resumo-eleicoes'
+  }
   return id === 'home' ? 'dashboard' : id
+}
+
+/** Ativa item filho; evita que `/resumo-eleicoes/historico` marque o link só `/resumo-eleicoes`. */
+function isChildLinkActive(pathname: string, href: string): boolean {
+  if (pathname === href) return true
+  if (href === '/dashboard/resumo-eleicoes') return false
+  return pathname.startsWith(`${href}/`)
 }
 
 export function Sidebar() {
@@ -136,6 +171,8 @@ export function Sidebar() {
       setOpenSubmenuId('gestao-pesquisas-menu')
     } else if (pathname.startsWith('/dashboard/chapas')) {
       setOpenSubmenuId('chapas-menu')
+    } else if (pathname.startsWith('/dashboard/resumo-eleicoes')) {
+      setOpenSubmenuId('resumo-eleicoes-menu')
     }
   }, [pathname])
 
@@ -229,7 +266,7 @@ export function Sidebar() {
                 const hasSubmenu = Boolean(item.children?.length)
                 const submenuOpen = openSubmenuId === item.id
                 const isActive = hasSubmenu
-                  ? Boolean(item.children?.some((c) => pathname === c.href))
+                  ? Boolean(item.children?.some((c) => isChildLinkActive(pathname, c.href)))
                   : pathname === item.href
                 const itemRef = useRef<HTMLLIElement>(null)
                 const [tooltipPos, setTooltipPos] = useState<{ top: number } | null>(null)
@@ -293,7 +330,7 @@ export function Sidebar() {
                         {(!collapsed || mobileOpen) && submenuOpen && item.children && (
                           <ul className="mt-1 ml-8 space-y-1">
                             {item.children.map((child) => {
-                              const childActive = pathname === child.href
+                              const childActive = isChildLinkActive(pathname, child.href)
                               return (
                                 <li key={child.id}>
                                   <Link

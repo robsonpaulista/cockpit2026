@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { google } from 'googleapis'
+import { candidatoEleicaoIndicaPerfilMilitar } from '@/lib/perfil-militar-nome'
 
 export const dynamic = 'force-dynamic'
 
@@ -73,6 +74,17 @@ function normalizeCity(value: string): string {
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
     .toUpperCase()
+    .trim()
+}
+
+/** Alinhado ao histórico federal: comparar nome de urna / civil na planilha. */
+function normalizeCandidatoMatch(value: string): string {
+  return String(value || '')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^\w\s]/g, ' ')
+    .replace(/\s+/g, ' ')
     .trim()
 }
 
@@ -253,6 +265,89 @@ export async function GET(request: NextRequest) {
         cargo: 'deputado_federal',
         totalCandidatos: rows.length,
         rows,
+      })
+    }
+
+    if (totals === 'federal2022PorMunicipio') {
+      const candidato = (request.nextUrl.searchParams.get('candidato') || '').trim()
+      const nomeCivil = (request.nextUrl.searchParams.get('nomeCivil') || '').trim()
+      if (!candidato && !nomeCivil) {
+        return NextResponse.json(
+          { error: 'Informe candidato (nome de urna) ou nomeCivil.' },
+          { status: 400 }
+        )
+      }
+      const keys = new Set<string>()
+      if (candidato) keys.add(normalizeCandidatoMatch(candidato))
+      if (nomeCivil) keys.add(normalizeCandidatoMatch(nomeCivil))
+      const byMun = new Map<string, number>()
+      for (const item of cachedAllResultados) {
+        if (item.anoEleicao !== '2022') continue
+        if (String(item.uf || '').toUpperCase() !== 'PI') continue
+        if (!/federal/i.test(item.cargo || '')) continue
+        const urn = normalizeCandidatoMatch(item.nomeUrnaCandidato || '')
+        const civ = normalizeCandidatoMatch(item.nomeCandidato || '')
+        let match = false
+        for (const k of keys) {
+          if (!k) continue
+          if (urn === k || civ === k) {
+            match = true
+            break
+          }
+        }
+        if (!match) continue
+        const mun = String(item.municipio || '').trim()
+        if (!mun) continue
+        const v = Number.parseInt(item.quantidadeVotosNominais || '0', 10)
+        byMun.set(mun, (byMun.get(mun) || 0) + (Number.isNaN(v) ? 0 : v))
+      }
+      const pontos = Array.from(byMun.entries())
+        .map(([municipio, votos]) => ({ municipio, votos }))
+        .sort((a, b) => b.votos - a.votos || a.municipio.localeCompare(b.municipio, 'pt-BR'))
+      const totalVotos = pontos.reduce((s, p) => s + p.votos, 0)
+      return NextResponse.json({
+        ano: 2022,
+        escopo: 'PI',
+        pontos,
+        totalVotos,
+        municipiosComVotos: pontos.filter((p) => p.votos > 0).length,
+      })
+    }
+
+    /** Soma de votos nominais (todos os candidatos) por município — Deputado Federal 2022, PI. */
+    if (totals === 'federal2022VotosTotaisPorMunicipio') {
+      const apenasPerfilMilitar = request.nextUrl.searchParams.get('perfilMilitar') === 'true'
+      const byMun = new Map<string, number>()
+      for (const item of cachedAllResultados) {
+        if (item.anoEleicao !== '2022') continue
+        if (String(item.uf || '').toUpperCase() !== 'PI') continue
+        if (!/federal/i.test(item.cargo || '')) continue
+        if (
+          apenasPerfilMilitar &&
+          !candidatoEleicaoIndicaPerfilMilitar(
+            String(item.nomeUrnaCandidato || ''),
+            String(item.nomeCandidato || '')
+          )
+        ) {
+          continue
+        }
+        const mun = String(item.municipio || '').trim()
+        if (!mun) continue
+        const v = Number.parseInt(item.quantidadeVotosNominais || '0', 10)
+        byMun.set(mun, (byMun.get(mun) || 0) + (Number.isNaN(v) ? 0 : v))
+      }
+      const pontos = Array.from(byMun.entries())
+        .map(([municipio, votos]) => ({ municipio, votos }))
+        .sort((a, b) => b.votos - a.votos || a.municipio.localeCompare(b.municipio, 'pt-BR'))
+      const totalVotos = pontos.reduce((s, p) => s + p.votos, 0)
+      return NextResponse.json({
+        ano: 2022,
+        escopo: apenasPerfilMilitar
+          ? 'PI_todos_candidatos_federal_perfil_militar'
+          : 'PI_todos_candidatos_federal',
+        pontos,
+        totalVotos,
+        municipiosComVotos: pontos.filter((p) => p.votos > 0).length,
       })
     }
 
