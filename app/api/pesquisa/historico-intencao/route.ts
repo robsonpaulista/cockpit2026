@@ -1,8 +1,97 @@
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import municipiosPiaui from '@/lib/municipios-piaui.json'
+import {
+  buildCidadeToRegiaoMap,
+  getRegiaoParaCidade,
+  REGIOES_PI_ORDER,
+  historicoIntencaoPorRegiaoVazio,
+  pesquisasPorRegiaoVazio,
+  type HistoricoIntencaoPorRegiaoMap,
+  type HistoricoIntencaoPontoGrafico,
+  type MediaIntencaoPorRegiao,
+  type PesquisaLinhaPorRegiao,
+  type PesquisasPorRegiaoMap,
+  type RegiaoPiaui,
+} from '@/lib/piaui-regiao'
 
 export const dynamic = 'force-dynamic'
 import { NextResponse } from 'next/server'
+
+const cidadeParaRegiao = buildCidadeToRegiaoMap(
+  municipiosPiaui as ReadonlyArray<{ nome: string; lat: number }>
+)
+
+type BucketPorData = {
+  intencao: number
+  count: number
+  institutos: string[]
+  cidades: string[]
+  dataOriginal: string
+}
+
+function normalizaDataHistoricoPoll(pollData: string): { dataNormalizada: string; dataOriginal: string } {
+  const dataStr = pollData.includes('T') ? pollData.split('T')[0] : pollData
+  let dataNormalizada: string
+  let dataOriginal: string
+
+  if (/^\d{4}-\d{2}-\d{2}$/.test(dataStr)) {
+    dataNormalizada = dataStr
+    dataOriginal = dataStr
+  } else {
+    const partes = dataStr.split(/[-/]/)
+    if (partes.length === 3) {
+      if (partes[0].length === 4) {
+        dataNormalizada = `${partes[0]}-${partes[1]}-${partes[2]}`
+        dataOriginal = dataNormalizada
+      } else {
+        dataNormalizada = `${partes[2]}-${partes[1]}-${partes[0]}`
+        dataOriginal = dataNormalizada
+      }
+    } else {
+      dataNormalizada = dataStr
+      dataOriginal = dataStr
+    }
+  }
+  return { dataNormalizada, dataOriginal }
+}
+
+function dataExibicaoCompleta(dataOriginal: string): string {
+  const [y, m, d] = dataOriginal.split('-')
+  if (y && m && d && y.length === 4) return `${d}/${m}/${y}`
+  return dataOriginal
+}
+
+/**
+ * Intenção numérica para agregados (null = sem valor utilizável — não entra na média da região).
+ * Aceita vírgula decimal ("21,4") e strings vindas do Postgres.
+ */
+function parseIntencaoPoll(raw: unknown): number | null {
+  if (raw === null || raw === undefined) return null
+  if (typeof raw === 'number' && Number.isFinite(raw)) return raw
+  let s = String(raw).trim().replace(/\s/g, '')
+  if (s === '') return null
+  if (s.includes(',') && !s.includes('.')) s = s.replace(',', '.')
+  const n = Number.parseFloat(s)
+  return Number.isFinite(n) ? n : null
+}
+
+function mapBucketsParaSerieGrafico(map: Map<string, BucketPorData>): HistoricoIntencaoPontoGrafico[] {
+  return Array.from(map.entries())
+    .map(([, { intencao, count, institutos, cidades, dataOriginal }]) => {
+      const [, mes, dia] = dataOriginal.split('-')
+      const dataExibicao = `${dia}/${mes}`
+      return {
+        date: dataExibicao,
+        dateOriginal: dataOriginal,
+        intencao: Math.round((intencao / count) * 10) / 10,
+        instituto: institutos.join(', '),
+        cidade: cidades.join(', '),
+      }
+    })
+    .sort((a, b) => a.dateOriginal.localeCompare(b.dateOriginal))
+}
+
 
 export async function GET(request: Request) {
   try {
@@ -31,6 +120,9 @@ export async function GET(request: Request) {
     if (!candidatoPadrao) {
       return NextResponse.json({
         data: [],
+        mediasPorRegiao: [] as MediaIntencaoPorRegiao[],
+        historicoPorRegiao: historicoIntencaoPorRegiaoVazio(),
+        pesquisasPorRegiao: pesquisasPorRegiaoVazio(),
         message: 'Candidato padrão não especificado',
       })
     }
@@ -59,59 +151,95 @@ export async function GET(request: Request) {
     if (!polls || polls.length === 0) {
       return NextResponse.json({
         data: [],
+        mediasPorRegiao: [] as MediaIntencaoPorRegiao[],
+        historicoPorRegiao: historicoIntencaoPorRegiaoVazio(),
+        pesquisasPorRegiao: pesquisasPorRegiaoVazio(),
         message: 'Nenhuma pesquisa encontrada',
       })
     }
 
-    // Agrupar por data e manter informações de instituto e cidade
-    // Usar a data completa (YYYY-MM-DD) como chave para garantir ordenação correta
-    const dadosPorData = new Map<string, { 
-      intencao: number
-      count: number
-      institutos: string[]
-      cidades: string[]
-      dataOriginal: string // Manter data original para ordenação
-    }>()
+    const pollRows = polls as any[]
 
-    polls.forEach((poll: any) => {
-      // Extrair data sem conversão de timezone para evitar diferença de 1 dia
-      let dataStr = poll.data.includes('T') ? poll.data.split('T')[0] : poll.data
-      
-      // Normalizar para formato YYYY-MM-DD para ordenação correta
-      let dataNormalizada: string
-      let dataFormatada: string
-      
-      if (/^\d{4}-\d{2}-\d{2}$/.test(dataStr)) {
-        // Já está no formato YYYY-MM-DD
-        dataNormalizada = dataStr
-        const [ano, mes, dia] = dataStr.split('-')
-        dataFormatada = `${dia}/${mes}/${ano}` // Incluir ano na formatação
-      } else {
-        // Tentar parsear outros formatos
-        const partes = dataStr.split(/[-/]/)
-        if (partes.length === 3) {
-          if (partes[0].length === 4) {
-            // YYYY-MM-DD ou YYYY/MM/DD
-            dataNormalizada = `${partes[0]}-${partes[1]}-${partes[2]}`
-            dataFormatada = `${partes[2]}/${partes[1]}/${partes[0]}`
-          } else {
-            // DD/MM/YYYY ou DD-MM-YYYY
-            dataNormalizada = `${partes[2]}-${partes[1]}-${partes[0]}`
-            dataFormatada = `${partes[0]}/${partes[1]}/${partes[2]}`
-          }
-        } else {
-          // Formato desconhecido, usar como está
-          dataNormalizada = dataStr
-          dataFormatada = dataStr
-        }
+    /** Nome vindo do embed PostgREST (objeto ou array) */
+    function nomeCidadeNoEmbed(poll: any): string {
+      const c = poll.cities
+      if (!c) return ''
+      if (Array.isArray(c)) return (c[0]?.name as string) || ''
+      return (c.name as string) || ''
+    }
+
+    /** IDs de município presentes nas linhas (embed pode falhar por RLS / relação) */
+    const cidadeIds = [...new Set(pollRows.map((p) => p.cidade_id).filter(Boolean))] as string[]
+    const cidadeIdToName = new Map<string, string>()
+    if (cidadeIds.length > 0) {
+      const { data: cityRows } = await queryClient.from('cities').select('id, name').in('id', cidadeIds)
+      for (const row of cityRows || []) {
+        if (row.id && row.name) cidadeIdToName.set(String(row.id), String(row.name))
       }
+    }
 
-      const cidadeNome = poll.cities?.name || (poll.cidade_id ? 'Cidade não encontrada' : 'Estado')
+    function resolveNomeMunicipioPoll(poll: any): string {
+      const embedded = nomeCidadeNoEmbed(poll)
+      if (embedded) return embedded
+      if (poll.cidade_id) {
+        return cidadeIdToName.get(String(poll.cidade_id)) || 'Cidade não encontrada'
+      }
+      return 'Estado'
+    }
+
+    /** Média de intenção por região (PI), mesma lógica do mapa */
+    const acumRegiao = new Map<string, { sum: number; count: number }>()
+    pollRows.forEach((poll) => {
+      const cidadeNome = resolveNomeMunicipioPoll(poll)
+      if (
+        !cidadeNome ||
+        cidadeNome === 'Estado' ||
+        cidadeNome === 'Cidade não encontrada'
+      ) {
+        return
+      }
+      const regiao = getRegiaoParaCidade(cidadeNome, cidadeParaRegiao)
+      if (!regiao) return
+      const int = parseIntencaoPoll(poll.intencao)
+      if (int === null) return
+      const cur = acumRegiao.get(regiao) ?? { sum: 0, count: 0 }
+      cur.sum += int
+      cur.count += 1
+      acumRegiao.set(regiao, cur)
+    })
+
+    const mediasPorRegiao: MediaIntencaoPorRegiao[] = REGIOES_PI_ORDER.map((regiao) => {
+      const b = acumRegiao.get(regiao)
+      if (!b || b.count === 0) return null
+      return {
+        regiao,
+        media: Math.round((b.sum / b.count) * 10) / 10,
+        n: b.count,
+      }
+    }).filter((x): x is MediaIntencaoPorRegiao => x !== null)
+
+    // Agrupar por data (todas as pesquisas) e por data+região (mini gráficos)
+    const dadosPorData = new Map<string, BucketPorData>()
+    const dadosPorDataPorRegiao = new Map<RegiaoPiaui, Map<string, BucketPorData>>()
+    for (const r of REGIOES_PI_ORDER) {
+      dadosPorDataPorRegiao.set(r, new Map())
+    }
+
+    const linhasPorRegiao = new Map<RegiaoPiaui, PesquisaLinhaPorRegiao[]>()
+    for (const r of REGIOES_PI_ORDER) {
+      linhasPorRegiao.set(r, [])
+    }
+
+    pollRows.forEach((poll: any) => {
+      const { dataNormalizada, dataOriginal } = normalizaDataHistoricoPoll(String(poll.data ?? ''))
+      const cidadeNome = resolveNomeMunicipioPoll(poll)
       const instituto = poll.instituto || 'Não informado'
+      const intParsed = parseIntencaoPoll(poll.intencao)
+      const intencaoNum = intParsed ?? 0
 
       if (dadosPorData.has(dataNormalizada)) {
         const existente = dadosPorData.get(dataNormalizada)!
-        existente.intencao += poll.intencao
+        existente.intencao += intencaoNum
         existente.count += 1
         if (!existente.institutos.includes(instituto)) {
           existente.institutos.push(instituto)
@@ -121,14 +249,66 @@ export async function GET(request: Request) {
         }
       } else {
         dadosPorData.set(dataNormalizada, {
-          intencao: poll.intencao,
+          intencao: intencaoNum,
           count: 1,
           institutos: [instituto],
           cidades: [cidadeNome],
-          dataOriginal: dataNormalizada,
+          dataOriginal,
         })
       }
+
+      if (
+        cidadeNome &&
+        cidadeNome !== 'Estado' &&
+        cidadeNome !== 'Cidade não encontrada'
+      ) {
+        const regiao = getRegiaoParaCidade(cidadeNome, cidadeParaRegiao)
+        if (regiao) {
+          const mapR = dadosPorDataPorRegiao.get(regiao)!
+          if (mapR.has(dataNormalizada)) {
+            const ex = mapR.get(dataNormalizada)!
+            ex.intencao += intencaoNum
+            ex.count += 1
+            if (!ex.institutos.includes(instituto)) ex.institutos.push(instituto)
+            if (!ex.cidades.includes(cidadeNome)) ex.cidades.push(cidadeNome)
+          } else {
+            mapR.set(dataNormalizada, {
+              intencao: intencaoNum,
+              count: 1,
+              institutos: [instituto],
+              cidades: [cidadeNome],
+              dataOriginal,
+            })
+          }
+
+          linhasPorRegiao.get(regiao)!.push({
+            dateOriginal: dataOriginal,
+            dataExibicao: dataExibicaoCompleta(dataOriginal),
+            cidade: cidadeNome,
+            instituto,
+            intencao: intParsed === null ? 0 : Math.round(intParsed * 10) / 10,
+          })
+        }
+      }
     })
+
+    const historicoPorRegiao: HistoricoIntencaoPorRegiaoMap = {
+      Norte: mapBucketsParaSerieGrafico(dadosPorDataPorRegiao.get('Norte')!),
+      'Centro-Norte': mapBucketsParaSerieGrafico(dadosPorDataPorRegiao.get('Centro-Norte')!),
+      'Centro-Sul': mapBucketsParaSerieGrafico(dadosPorDataPorRegiao.get('Centro-Sul')!),
+      Sul: mapBucketsParaSerieGrafico(dadosPorDataPorRegiao.get('Sul')!),
+    }
+
+    const pesquisasPorRegiao: PesquisasPorRegiaoMap = {
+      Norte: (linhasPorRegiao.get('Norte') ?? []).sort((a, b) => a.dateOriginal.localeCompare(b.dateOriginal)),
+      'Centro-Norte': (linhasPorRegiao.get('Centro-Norte') ?? []).sort((a, b) =>
+        a.dateOriginal.localeCompare(b.dateOriginal)
+      ),
+      'Centro-Sul': (linhasPorRegiao.get('Centro-Sul') ?? []).sort((a, b) =>
+        a.dateOriginal.localeCompare(b.dateOriginal)
+      ),
+      Sul: (linhasPorRegiao.get('Sul') ?? []).sort((a, b) => a.dateOriginal.localeCompare(b.dateOriginal)),
+    }
 
     // Converter para array e calcular média
     const dadosFormatados = Array.from(dadosPorData.entries())
@@ -153,6 +333,9 @@ export async function GET(request: Request) {
     return NextResponse.json({
       data: dadosFormatados,
       candidato: candidatoPadrao,
+      mediasPorRegiao,
+      historicoPorRegiao,
+      pesquisasPorRegiao,
     })
   } catch (error: any) {
     return NextResponse.json(

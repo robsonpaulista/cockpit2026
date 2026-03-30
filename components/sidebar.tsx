@@ -10,15 +10,19 @@ import {
   MessageSquare,
   Newspaper,
   MapPin,
+  MapPinned,
   Users,
+  UsersRound,
   MessageCircle,
   BarChart3,
+  BarChart2,
   Settings,
   Scale,
   Menu,
   X,
   ChevronLeft,
   Vote,
+  BadgeCheck,
   Building2,
   Shield,
   Search,
@@ -28,6 +32,7 @@ import {
   ChevronDown,
   ClipboardList,
   History,
+  type LucideIcon,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { MenuItem } from '@/types'
@@ -35,6 +40,36 @@ import { useSidebar } from '@/contexts/sidebar-context'
 import { useNavigationLoading } from '@/contexts/navigation-loading-context'
 import { usePermissions } from '@/hooks/use-permissions'
 import { ThemeToggle } from '@/components/theme-toggle'
+import { useTheme } from '@/contexts/theme-context'
+
+/** Rótulos mais curtos no tema Cockpit Vivo (navegação minimalista). */
+const COCKPIT_MENU_LABEL: Record<string, string> = {
+  home: 'Visão',
+  narrativas: 'Estratégia',
+  campo: 'Campo',
+  agenda: 'Agenda',
+  territorio: 'Território',
+  'chapas-menu': 'Chapas',
+  'resumo-eleicoes-menu': 'Eleições',
+  conteudo: 'Conteúdo',
+  noticias: 'Radar',
+  mobilizacao: 'Mobilização',
+  whatsapp: 'WhatsApp',
+  pesquisa: 'Pesquisa',
+  operacao: 'Operação',
+  juridico: 'Jurídico',
+  obras: 'Obras',
+  proposicoes: 'Proposições',
+  'sei-pesquisa': 'SEI',
+  'gestao-pesquisas-menu': 'Gestão pesq.',
+  usuarios: 'Usuários',
+  chapas: 'Federal',
+  'chapas-estaduais': 'Estadual',
+  'resumo-eleicoes-principal': 'Por cidade',
+  'resumo-eleicoes-historico': 'Hist. federal',
+  'gestao-pesquisas-inicio': 'Início',
+  'gestao-pesquisas-config': 'Config',
+}
 
 interface SidebarMenuItem extends MenuItem {
   children?: MenuItem[]
@@ -109,7 +144,7 @@ const menuItems: SidebarMenuItem[] = [
   { id: 'usuarios', label: 'Gestão de Usuários', icon: 'Shield', href: '/dashboard/usuarios' },
 ]
 
-const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
+const iconMap: Record<string, LucideIcon> = {
   LayoutDashboard,
   Calendar,
   FileText,
@@ -129,6 +164,37 @@ const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
   Target,
   ClipboardList,
   History,
+}
+
+/** Ícones mais leves / mesma linguagem dos KPIs Cockpit (stroke fino + cor accent). */
+const cockpitIconMap: Record<string, LucideIcon> = {
+  ...iconMap,
+  MapPin: MapPinned,
+  Users: UsersRound,
+  BarChart3: BarChart2,
+  Vote: BadgeCheck,
+}
+
+const MENU_PIPE = (
+  <span className="shrink-0 select-none px-2 text-border-card/80" aria-hidden>
+    |
+  </span>
+)
+
+/**
+ * Item do menu = rota atual (Cockpit): mesmo preenchimento do KPI EXPECTATIVA DE VOTOS
+ * (KPIHeroCard: gradient to-br #062e52 → #0b4a7a → #1368a8, borda e sombra).
+ */
+const COCKPIT_PAGE_ACTIVE_ITEM =
+  'border border-white/20 bg-[linear-gradient(135deg,#062e52_0%,#0b4a7a_52%,#1368a8_100%)] !text-white shadow-[0_12px_40px_rgba(6,46,82,0.35)] hover:shadow-[0_12px_40px_rgba(6,46,82,0.42)]'
+
+/** Submenu em pill (filho ativo): mesma linguagem visual, escala um pouco menor. */
+const COCKPIT_PAGE_ACTIVE_CHILD_PILL =
+  'border border-white/20 bg-[linear-gradient(135deg,#062e52_0%,#0b4a7a_52%,#1368a8_100%)] !text-white shadow-[0_8px_24px_rgba(6,46,82,0.28)] hover:shadow-[0_10px_28px_rgba(6,46,82,0.38)]'
+
+function resolveMenuIcon(iconName: string, cockpit: boolean): LucideIcon {
+  const map = cockpit ? cockpitIconMap : iconMap
+  return map[iconName] ?? iconMap[iconName] ?? LayoutDashboard
 }
 
 function pageKeyForItem(id: string): string {
@@ -163,6 +229,12 @@ export function Sidebar() {
   const { setNavigating } = useNavigationLoading()
   const pathname = usePathname()
   const { canAccess, isAdmin, loading: permLoading } = usePermissions()
+  const { theme } = useTheme()
+
+  const isCockpit = theme === 'cockpit'
+
+  const menuLabel = (id: string, fallback: string) =>
+    isCockpit ? (COCKPIT_MENU_LABEL[id] ?? fallback) : fallback
 
   const [openSubmenuId, setOpenSubmenuId] = useState<string | null>(null)
 
@@ -204,13 +276,24 @@ export function Sidebar() {
       {/* Mobile Menu Button */}
       <button
         onClick={toggleMobile}
-        className="fixed top-4 left-4 z-[110] lg:hidden p-2 rounded-lg bg-bg-surface border border-border-card shadow-card hover:shadow-card-hover transition-premium"
+        className={cn(
+          'fixed top-4 left-4 z-[110] lg:hidden p-2 rounded-full transition-premium',
+          isCockpit
+            ? 'cockpit-glass border border-white/80 shadow-[0_4px_20px_rgba(15,70,120,0.08)]'
+            : 'rounded-lg bg-bg-surface border border-border-card shadow-card hover:shadow-card-hover'
+        )}
         aria-label="Toggle menu"
       >
         {mobileOpen ? (
-          <X className="w-5 h-5 text-accent-gold" />
+          <X
+            className={cn('text-accent-gold', isCockpit ? 'h-4 w-4' : 'h-5 w-5')}
+            strokeWidth={isCockpit ? 1.35 : 2}
+          />
         ) : (
-          <Menu className="w-5 h-5 text-accent-gold" />
+          <Menu
+            className={cn('text-accent-gold', isCockpit ? 'h-4 w-4' : 'h-5 w-5')}
+            strokeWidth={isCockpit ? 1.35 : 2}
+          />
         )}
       </button>
 
@@ -221,19 +304,37 @@ export function Sidebar() {
           /* Mobile: painel opaco e acima do conteúdo (evita texto do dashboard “vazando” no menu) */
           'max-lg:z-[100] max-lg:shadow-2xl lg:z-40',
           'bg-[rgb(var(--bg-sidebar))]',
+          isCockpit && 'sidebar-cockpit-shell',
           'lg:translate-x-0',
           mobileOpen ? 'translate-x-0' : '-translate-x-full',
           collapsed ? 'lg:w-20' : 'lg:w-64'
         )}
         style={{ isolation: 'isolate' }}
       >
-        <div className="flex h-full min-h-0 flex-col bg-[rgb(var(--bg-sidebar))]">
+        <div
+          className={cn(
+            'flex h-full min-h-0 flex-col bg-[rgb(var(--bg-sidebar))]',
+            isCockpit && 'bg-transparent'
+          )}
+        >
           {/* Logo */}
-          <div className="h-16 flex items-center justify-between px-4 border-b border-card">
+          <div
+            className={cn(
+              'h-16 flex items-center justify-between px-4 border-b',
+              isCockpit ? 'border-white/60' : 'border-card'
+            )}
+          >
             {(!collapsed || mobileOpen) && (
               <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-lg bg-accent-gold flex items-center justify-center">
-                  <span className="text-white text-sm font-bold">C</span>
+                <div
+                  className={cn(
+                    'flex h-8 w-8 items-center justify-center rounded-lg text-sm font-bold text-white shadow-sm',
+                    isCockpit
+                      ? 'bg-gradient-to-br from-[#062e52] via-[#0b4a7a] to-[#1368a8]'
+                      : 'bg-accent-gold'
+                  )}
+                >
+                  <span>C</span>
                 </div>
                 <span className="text-sm font-semibold text-text-primary">Cockpit 2026</span>
               </div>
@@ -244,7 +345,10 @@ export function Sidebar() {
                 className="hidden lg:flex items-center justify-center w-8 h-8 rounded-lg hover:bg-accent-gold-soft transition-premium"
                 aria-label="Toggle sidebar"
               >
-                <ChevronLeft className="w-4 h-4 text-accent-gold" />
+                <ChevronLeft
+                  className="w-4 h-4 text-accent-gold"
+                  strokeWidth={isCockpit ? 1.35 : 2}
+                />
               </button>
             )}
             {collapsed && !mobileOpen && (
@@ -253,7 +357,10 @@ export function Sidebar() {
                 className="hidden lg:flex items-center justify-center w-8 h-8 rounded-lg hover:bg-accent-gold-soft transition-premium"
                 aria-label="Toggle sidebar"
               >
-                <ChevronLeft className="w-4 h-4 text-accent-gold rotate-180" />
+                <ChevronLeft
+                  className="w-4 h-4 text-accent-gold rotate-180"
+                  strokeWidth={isCockpit ? 1.35 : 2}
+                />
               </button>
             )}
           </div>
@@ -262,7 +369,7 @@ export function Sidebar() {
           <nav className="flex-1 overflow-y-auto overflow-x-visible py-4 px-2 scrollbar-hide">
             <ul className="space-y-1">
               {visibleItems.map((item: SidebarMenuItem) => {
-                const Icon = iconMap[item.icon] || LayoutDashboard
+                const Icon = resolveMenuIcon(item.icon, isCockpit)
                 const hasSubmenu = Boolean(item.children?.length)
                 const submenuOpen = openSubmenuId === item.id
                 const isActive = hasSubmenu
@@ -294,64 +401,131 @@ export function Sidebar() {
                           className={cn(
                             'relative w-full flex items-center gap-3 px-3 py-2.5 rounded-[10px]',
                             'transition-all duration-200 ease-out',
-                            'hover:bg-accent-gold-soft hover:text-text-primary',
-                            isActive && 'bg-accent-gold-soft text-text-primary shadow-sm'
+                            !(isCockpit && isActive) && 'hover:bg-accent-gold-soft hover:text-text-primary',
+                            isActive && !isCockpit && 'bg-accent-gold-soft text-text-primary shadow-sm',
+                            isCockpit && isActive && COCKPIT_PAGE_ACTIVE_ITEM
                           )}
                         >
-                          {isActive && (
-                            <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-accent-gold rounded-r-full" />
+                          {isActive && !isCockpit && (
+                            <div
+                              className="absolute left-0 top-1/2 h-6 w-1 -translate-y-1/2 rounded-r-full bg-accent-gold"
+                              aria-hidden
+                            />
                           )}
-                          <div className={cn(
-                            'w-5 h-5 flex-shrink-0 transition-all duration-200',
-                            'group-hover:scale-110',
-                            isActive ? 'text-accent-gold font-bold' : 'text-secondary group-hover:text-accent-gold'
-                          )}>
-                            <Icon className="w-full h-full" />
+                          <div
+                            className={cn(
+                              'flex-shrink-0 transition-all duration-200',
+                              !isCockpit && 'w-5 h-5 group-hover:scale-110',
+                              isCockpit && 'flex items-center justify-center',
+                              isActive
+                                ? cn(
+                                    'text-accent-gold',
+                                    isCockpit && '!text-white'
+                                  )
+                                : 'text-text-secondary group-hover:text-accent-gold'
+                            )}
+                          >
+                            <Icon
+                              className={cn(
+                                isCockpit ? 'h-4 w-4' : 'h-full w-full',
+                                isCockpit && isActive && '!text-white'
+                              )}
+                              strokeWidth={isCockpit ? 1.35 : 2}
+                            />
                           </div>
                           {(!collapsed || mobileOpen) && (
                             <>
                               <span className={cn(
                                 'text-sm transition-all duration-200',
                                 'group-hover:translate-x-0.5',
-                                isActive ? 'text-text-primary font-semibold' : 'text-text-secondary group-hover:text-text-primary'
+                                isActive
+                                  ? cn(
+                                      'font-semibold text-text-primary',
+                                      isCockpit && '!text-white'
+                                    )
+                                  : 'text-text-secondary group-hover:text-text-primary'
                               )}>
-                                {item.label}
+                                {menuLabel(item.id, item.label)}
                               </span>
                               <ChevronDown
                                 className={cn(
-                                  'ml-auto w-4 h-4 text-text-secondary transition-transform',
-                                  submenuOpen && 'rotate-180'
+                                  'ml-auto h-4 w-4 text-text-secondary transition-transform',
+                                  submenuOpen && 'rotate-180',
+                                  isCockpit && isActive && '!text-white/90'
                                 )}
+                                strokeWidth={isCockpit ? 1.35 : 2}
                               />
                             </>
                           )}
                         </button>
 
                         {(!collapsed || mobileOpen) && submenuOpen && item.children && (
-                          <ul className="mt-1 ml-8 space-y-1">
-                            {item.children.map((child) => {
-                              const childActive = isChildLinkActive(pathname, child.href)
-                              return (
-                                <li key={child.id}>
-                                  <Link
-                                    href={child.href}
-                                    onClick={() => {
-                                      if (child.href !== pathname) setNavigating(true)
-                                      setMobileOpen(false)
-                                    }}
-                                    className={cn(
-                                      'flex items-center gap-2 px-3 py-2 rounded-[8px] text-sm transition-all',
-                                      childActive
-                                        ? 'bg-accent-gold-soft text-text-primary font-semibold'
-                                        : 'text-text-secondary hover:bg-accent-gold-soft hover:text-text-primary'
-                                    )}
-                                  >
-                                    {child.label}
-                                  </Link>
-                                </li>
-                              )
-                            })}
-                          </ul>
+                          isCockpit ? (
+                            <div
+                              className={cn(
+                                'cockpit-glass mt-2 flex flex-wrap items-center px-3 py-2',
+                                'rounded-full text-[11px] text-text-secondary',
+                                'shadow-[0_4px_20px_rgba(15,70,120,0.08)] border-white/80'
+                              )}
+                            >
+                              {item.children.map((child, idx) => {
+                                const childActive = isChildLinkActive(pathname, child.href)
+                                return (
+                                  <span key={child.id} className="inline-flex items-center">
+                                    {idx > 0 ? MENU_PIPE : null}
+                                    <Link
+                                      href={child.href}
+                                      onClick={() => {
+                                        if (child.href !== pathname) setNavigating(true)
+                                        setMobileOpen(false)
+                                      }}
+                                      className={cn(
+                                        'whitespace-nowrap rounded-md transition-all duration-200',
+                                        childActive
+                                          ? cn(
+                                              'px-0.5 py-0.5 font-semibold',
+                                              isCockpit
+                                                ? cn(
+                                                    'rounded-lg px-2 py-1 transition-all',
+                                                    COCKPIT_PAGE_ACTIVE_CHILD_PILL
+                                                  )
+                                                : 'text-[rgb(15,45,74)]'
+                                            )
+                                          : 'px-0.5 py-0.5 text-text-secondary transition-colors hover:text-text-primary'
+                                      )}
+                                    >
+                                      {menuLabel(child.id, child.label)}
+                                    </Link>
+                                  </span>
+                                )
+                              })}
+                            </div>
+                          ) : (
+                            <ul className="mt-1 ml-8 space-y-1">
+                              {item.children.map((child) => {
+                                const childActive = isChildLinkActive(pathname, child.href)
+                                return (
+                                  <li key={child.id}>
+                                    <Link
+                                      href={child.href}
+                                      onClick={() => {
+                                        if (child.href !== pathname) setNavigating(true)
+                                        setMobileOpen(false)
+                                      }}
+                                      className={cn(
+                                        'flex items-center gap-2 px-3 py-2 rounded-[8px] text-sm transition-all',
+                                        childActive
+                                          ? 'bg-accent-gold-soft text-text-primary font-semibold'
+                                          : 'text-text-secondary hover:bg-accent-gold-soft hover:text-text-primary'
+                                      )}
+                                    >
+                                      {menuLabel(child.id, child.label)}
+                                    </Link>
+                                  </li>
+                                )
+                              })}
+                            </ul>
+                          )
                         )}
                       </>
                     ) : (
@@ -364,29 +538,51 @@ export function Sidebar() {
                         className={cn(
                           'relative flex items-center gap-3 px-3 py-2.5 rounded-[10px]',
                           'transition-all duration-200 ease-out',
-                          'hover:bg-accent-gold-soft hover:text-text-primary',
-                          isActive && 'bg-accent-gold-soft text-text-primary shadow-sm'
+                          !(isCockpit && isActive) && 'hover:bg-accent-gold-soft hover:text-text-primary',
+                          isActive && !isCockpit && 'bg-accent-gold-soft text-text-primary shadow-sm',
+                          isCockpit && isActive && COCKPIT_PAGE_ACTIVE_ITEM
                         )}
                       >
-                        {/* Indicador de ativo */}
-                        {isActive && (
-                          <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-accent-gold rounded-r-full" />
+                        {isActive && !isCockpit && (
+                          <div
+                            className="absolute left-0 top-1/2 h-6 w-1 -translate-y-1/2 rounded-r-full bg-accent-gold"
+                            aria-hidden
+                          />
                         )}
 
-                        <div className={cn(
-                          'w-5 h-5 flex-shrink-0 transition-all duration-200',
-                          'group-hover:scale-110',
-                          isActive ? 'text-accent-gold font-bold' : 'text-secondary group-hover:text-accent-gold'
-                        )}>
-                          <Icon className="w-full h-full" />
+                        <div
+                          className={cn(
+                            'flex-shrink-0 transition-all duration-200',
+                            !isCockpit && 'w-5 h-5 group-hover:scale-110',
+                            isCockpit && 'flex items-center justify-center',
+                            isActive
+                              ? cn(
+                                  'text-accent-gold',
+                                  isCockpit && '!text-white'
+                                )
+                              : 'text-text-secondary group-hover:text-accent-gold'
+                          )}
+                        >
+                          <Icon
+                            className={cn(
+                              isCockpit ? 'h-4 w-4' : 'h-full w-full',
+                              isCockpit && isActive && '!text-white'
+                            )}
+                            strokeWidth={isCockpit ? 1.35 : 2}
+                          />
                         </div>
                         {(!collapsed || mobileOpen) && (
                           <span className={cn(
                             'text-sm transition-all duration-200',
                             'group-hover:translate-x-0.5',
-                            isActive ? 'text-text-primary font-semibold' : 'text-text-secondary group-hover:text-text-primary'
+                            isActive
+                              ? cn(
+                                  'font-semibold text-text-primary',
+                                  isCockpit && '!text-white'
+                                )
+                              : 'text-text-secondary group-hover:text-text-primary'
                           )}>
-                            {item.label}
+                            {menuLabel(item.id, item.label)}
                           </span>
                         )}
                         {item.badge && (!collapsed || mobileOpen) && (
@@ -406,7 +602,7 @@ export function Sidebar() {
                         backgroundColor: 'rgb(var(--text-primary))',
                         color: 'rgb(var(--bg-surface))',
                       }}>
-                        {item.label}
+                        {menuLabel(item.id, item.label)}
                         <div className="absolute right-full top-1/2 -translate-y-1/2 border-4 border-transparent" style={{ borderRightColor: 'rgb(var(--text-primary))' }} />
                       </div>
                     )}
@@ -417,7 +613,12 @@ export function Sidebar() {
           </nav>
 
           {/* Ações rápidas: Splash + Tema */}
-          <div className="px-2 py-3 border-t border-border-card space-y-1">
+          <div
+            className={cn(
+              'px-2 py-3 border-t space-y-1',
+              isCockpit ? 'border-white/50' : 'border-border-card'
+            )}
+          >
             <button
               onClick={() => {
                 window.dispatchEvent(new Event('activateSplash'))
@@ -430,7 +631,13 @@ export function Sidebar() {
               )}
               title="Ativar tela de descanso"
             >
-              <Monitor className="w-5 h-5 flex-shrink-0 text-text-secondary group-hover:text-accent-gold transition-colors" />
+              <Monitor
+                className={cn(
+                  'flex-shrink-0 text-text-secondary group-hover:text-accent-gold transition-colors',
+                  isCockpit ? 'h-4 w-4' : 'h-5 w-5'
+                )}
+                strokeWidth={isCockpit ? 1.35 : 2}
+              />
               {(!collapsed || mobileOpen) && (
                 <span className="text-sm text-text-secondary group-hover:text-text-primary transition-colors">
                   Tela de descanso

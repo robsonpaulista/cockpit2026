@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useMemo } from 'react'
 import { X, AlertCircle, CheckCircle, Clock, Loader2 } from 'lucide-react'
 
 interface Demand {
@@ -28,6 +28,65 @@ interface CityDemandsModalProps {
   cidade: string
 }
 
+function normalizeName(value?: string | null): string {
+  return String(value || '')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/^(dr\.?|dra\.?|ver\.?|vereador[a]?|prefeit[oa]|prof\.?|sr\.?|sra\.?)\s+/i, '')
+    .trim()
+}
+
+/** Liderança/solicitante: campo principal ou colunas comuns na planilha de demandas. */
+function getDemandLiderancaParaFiltro(demand: Demand): string {
+  const direct = demand.lideranca
+  if (direct && String(direct).trim()) return String(direct).trim()
+  const raw = demand.sheets_data
+  if (!raw || typeof raw !== 'object') return ''
+  const keys = Object.keys(raw).filter((k) =>
+    /lideran[cç]a|solicitante|nome\s*do\s*solicitante|pedido\s*por|respons[aá]vel/i.test(k.trim())
+  )
+  for (const k of keys) {
+    const v = raw[k]
+    if (v !== null && v !== undefined && String(v).trim() !== '') return String(v).trim()
+  }
+  return ''
+}
+
+function nomesLiderancaCombinam(nomeLista: string, nomeDemanda: string | undefined | null): boolean {
+  const a = normalizeName(nomeLista)
+  const b = normalizeName(nomeDemanda)
+  if (!a || !b) return false
+  if (a === b) return true
+  if (b.startsWith(`${a} `) || b === a) return true
+  if (a.startsWith(`${b} `) || a === b) return true
+  const shorter = a.length <= b.length ? a : b
+  const longer = a.length > b.length ? a : b
+  if (shorter.length >= 4 && longer.includes(shorter)) return true
+  const ta = a.split(/\s+/).filter((t) => t.length >= 3)
+  const tb = b.split(/\s+/).filter((t) => t.length >= 3)
+  const emComum = ta.filter((t) => tb.some((u) => u === t || u.startsWith(t) || t.startsWith(u)))
+  if (emComum.length >= 2) return true
+  if (emComum.length === 1 && emComum[0].length >= 5) return true
+  return false
+}
+
+function ordenarDemandas<T extends { status?: string; data_demanda?: string; created_at?: string }>(lista: T[]): T[] {
+  return [...lista].sort((a, b) => {
+    const statusA = a.status || ''
+    const statusB = b.status || ''
+    if (statusA !== statusB) return statusA.localeCompare(statusB)
+    const dataA = a.data_demanda || a.created_at || ''
+    const dataB = b.data_demanda || b.created_at || ''
+    if (dataA && dataB) {
+      const dateA = new Date(dataA).getTime()
+      const dateB = new Date(dataB).getTime()
+      if (!isNaN(dateA) && !isNaN(dateB)) return dateB - dateA
+    }
+    return 0
+  })
+}
+
 export function CityDemandsModal({ isOpen, onClose, cidade }: CityDemandsModalProps) {
   const [demands, setDemands] = useState<Demand[]>([])
   const [loading, setLoading] = useState(false)
@@ -43,13 +102,25 @@ export function CityDemandsModal({ isOpen, onClose, cidade }: CityDemandsModalPr
 
     try {
       const response = await fetch(`/api/campo/demands?cidade=${encodeURIComponent(cidade)}`)
-      
+      const data: unknown = await response.json().catch(() => null)
+
       if (!response.ok) {
-        throw new Error('Erro ao buscar demandas')
+        const apiMsg =
+          data &&
+          typeof data === 'object' &&
+          data !== null &&
+          'error' in data &&
+          typeof (data as { error: unknown }).error === 'string'
+            ? (data as { error: string }).error
+            : null
+        throw new Error(apiMsg || `Erro ao buscar demandas (${response.status})`)
       }
 
-      const data = await response.json()
-      setDemands(data || [])
+      if (!Array.isArray(data)) {
+        throw new Error('Resposta inválida do servidor ao carregar demandas.')
+      }
+
+      setDemands(data)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erro ao carregar demandas')
       setDemands([])
@@ -80,6 +151,35 @@ export function CityDemandsModal({ isOpen, onClose, cidade }: CityDemandsModalPr
       setLiderancasPermitidas([])
     }
   }, [isOpen, cidade, fetchDemands])
+
+  const { demandsFiltradasEOrdenadas, ignorouFiltroLideranca } = useMemo(() => {
+    const porStatus = demands.filter(
+      (d) => filtroStatus === 'todos' || d.status === filtroStatus
+    )
+    if (liderancasPermitidas.length === 0) {
+      return {
+        demandsFiltradasEOrdenadas: ordenarDemandas(porStatus),
+        ignorouFiltroLideranca: false,
+      }
+    }
+    const comLideranca = porStatus.filter((demand) => {
+      const raw = getDemandLiderancaParaFiltro(demand)
+      if (!raw) return true
+      return liderancasPermitidas.some((permitido) =>
+        nomesLiderancaCombinam(permitido, raw)
+      )
+    })
+    if (comLideranca.length === 0 && porStatus.length > 0) {
+      return {
+        demandsFiltradasEOrdenadas: ordenarDemandas(porStatus),
+        ignorouFiltroLideranca: true,
+      }
+    }
+    return {
+      demandsFiltradasEOrdenadas: ordenarDemandas(comLideranca),
+      ignorouFiltroLideranca: false,
+    }
+  }, [demands, filtroStatus, liderancasPermitidas])
 
   if (!isOpen) return null
 
@@ -247,52 +347,6 @@ export function CityDemandsModal({ isOpen, onClose, cidade }: CityDemandsModalPr
     }
   }
 
-  const normalizeName = (value?: string | null) =>
-    String(value || '')
-      .toLowerCase()
-      .normalize('NFD')
-      .replace(/[\u0300-\u036f]/g, '')
-      .trim()
-
-  const liderancasPermitidasNormalizadas = new Set(liderancasPermitidas.map((nome) => normalizeName(nome)))
-
-  // Filtrar e ordenar demandas
-  const demandsFiltradasEOrdenadas = demands
-    .filter((demand) => {
-      // Filtro por status
-      if (filtroStatus !== 'todos' && demand.status !== filtroStatus) {
-        return false
-      }
-
-      // Herdar recorte de lideranças da página Território
-      if (liderancasPermitidas.length > 0) {
-        const nomeLiderancaDemanda = normalizeName(demand.lideranca)
-        if (!nomeLiderancaDemanda || !liderancasPermitidasNormalizadas.has(nomeLiderancaDemanda)) {
-          return false
-        }
-      }
-      return true
-    })
-    .sort((a, b) => {
-      // Ordenar por STATUS primeiro
-      const statusA = a.status || ''
-      const statusB = b.status || ''
-      if (statusA !== statusB) {
-        return statusA.localeCompare(statusB)
-      }
-      // Depois por DATA DEMANDA
-      const dataA = a.data_demanda || a.created_at || ''
-      const dataB = b.data_demanda || b.created_at || ''
-      if (dataA && dataB) {
-        const dateA = new Date(dataA).getTime()
-        const dateB = new Date(dataB).getTime()
-        if (!isNaN(dateA) && !isNaN(dateB)) {
-          return dateB - dateA // Mais recentes primeiro
-        }
-      }
-      return 0
-    })
-
   const totalValorDemandas = demandsFiltradasEOrdenadas.reduce(
     (sum, demand) => sum + getDemandValorNumero(demand),
     0
@@ -357,7 +411,18 @@ export function CityDemandsModal({ isOpen, onClose, cidade }: CityDemandsModalPr
             </div>
             {liderancasPermitidas.length > 0 && (
               <p className="text-xs text-secondary">
-                Modal respeitando filtros da página: {liderancasPermitidas.length} liderança{liderancasPermitidas.length !== 1 ? 's' : ''}.
+                {ignorouFiltroLideranca ? (
+                  <>
+                    Nenhuma demanda bateu com os nomes das {liderancasPermitidas.length} lideranças do resumo;
+                    exibindo <span className="font-medium text-text-primary">todas as demandas desta cidade</span> na
+                    planilha.
+                  </>
+                ) : (
+                  <>
+                    Modal respeitando filtros da página: {liderancasPermitidas.length} liderança
+                    {liderancasPermitidas.length !== 1 ? 's' : ''}.
+                  </>
+                )}
               </p>
             )}
           </div>
@@ -381,7 +446,9 @@ export function CityDemandsModal({ isOpen, onClose, cidade }: CityDemandsModalPr
             </div>
           ) : (
             <div className="space-y-2">
-              {demandsFiltradasEOrdenadas.map((demand, index) => (
+              {demandsFiltradasEOrdenadas.map((demand, index) => {
+                const liderancaExibicao = getDemandLiderancaParaFiltro(demand)
+                return (
                 <div
                   key={demand.id || `demand-${index}`}
                   className="border border-card rounded-lg p-3 hover:bg-background/50 transition-colors"
@@ -406,9 +473,9 @@ export function CityDemandsModal({ isOpen, onClose, cidade }: CityDemandsModalPr
                         <span className="font-medium">Data:</span> {formatDate(demand.data_demanda)}
                       </span>
                     )}
-                    {demand.lideranca && (
+                    {liderancaExibicao && (
                       <span className="text-secondary">
-                        <span className="font-medium">Por:</span> {demand.lideranca}
+                        <span className="font-medium">Por:</span> {liderancaExibicao}
                       </span>
                     )}
                     {demand.priority && (
@@ -435,7 +502,8 @@ export function CityDemandsModal({ isOpen, onClose, cidade }: CityDemandsModalPr
                     </p>
                   )}
                 </div>
-              ))}
+                )
+              })}
             </div>
           )}
         </div>

@@ -12,6 +12,10 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
     const fetchAll = searchParams.get('fetchAll') === 'true'
+    const idDeputadoParam = searchParams.get('idDeputado')
+    const idDeputadoAutor = idDeputadoParam ? Number(idDeputadoParam) : DEPUTADO_ID
+    const deputadoId =
+      Number.isFinite(idDeputadoAutor) && idDeputadoAutor > 0 ? idDeputadoAutor : DEPUTADO_ID
 
     if (fetchAll) {
       const allDados: unknown[] = []
@@ -20,7 +24,7 @@ export async function GET(request: NextRequest) {
 
       while (hasMore) {
         const params = new URLSearchParams({
-          idDeputadoAutor: String(DEPUTADO_ID),
+          idDeputadoAutor: String(deputadoId),
           ordem: 'DESC',
           ordenarPor: 'ano',
           pagina: String(page),
@@ -40,7 +44,7 @@ export async function GET(request: NextRequest) {
         page++
       }
 
-      return NextResponse.json({ dados: allDados, total: allDados.length })
+      return NextResponse.json({ dados: allDados, total: allDados.length, idDeputado: deputadoId })
     }
 
     const pagina = searchParams.get('pagina') || '1'
@@ -50,7 +54,7 @@ export async function GET(request: NextRequest) {
     const keyword = searchParams.get('keyword') || ''
 
     const params = new URLSearchParams({
-      idDeputadoAutor: String(DEPUTADO_ID),
+      idDeputadoAutor: String(deputadoId),
       ordem: 'DESC',
       ordenarPor: 'ano',
       pagina,

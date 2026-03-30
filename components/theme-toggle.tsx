@@ -29,6 +29,12 @@ const themes = [
     description: 'Azul, verde e amarelo da marca',
     colors: ['#0F5EA8', '#13A35B', '#F2C230'],
   },
+  {
+    id: 'cockpit' as const,
+    label: 'Cockpit Vivo',
+    description: 'Gradiente azul, vidro e sensação de comando',
+    colors: ['#0E74BC', '#06B6D4', '#E8F4FC'],
+  },
 ]
 
 export function ThemeToggle({ collapsed = false, mobileOpen = false }: ThemeToggleProps) {

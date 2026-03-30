@@ -29,16 +29,16 @@ import {
   Activity,
   MapPin
 } from 'lucide-react'
-import { 
-  fetchInstagramData, 
+import {
+  fetchInstagramData,
   loadInstagramConfig,
   loadInstagramConfigAsync,
-  saveInstagramConfig, 
+  saveInstagramConfig,
   clearInstagramConfig,
   saveInstagramSnapshot,
   fetchInstagramHistory,
   InstagramMetrics,
-  InstagramHistoryResponse
+  InstagramHistoryResponse,
 } from '@/lib/instagramApi'
 
 const producao = [
@@ -352,30 +352,42 @@ export default function ConteudoPage() {
     carousel: 'Carrossel',
   }
 
-  // Carregar configuração ao montar
+  // Carregar configuração ao montar: localStorage síncrono primeiro (evita objeto vazio no modal que sobrescrevia o cache)
   useEffect(() => {
+    const sync = loadInstagramConfig()
+    if (sync.token && sync.businessAccountId) {
+      setConfig(sync)
+      setIsConfigured(true)
+      setShowConfig(false)
+      setError(null)
+      fetchData(sync).catch((err) => {
+        console.error('Erro ao carregar dados do Instagram:', err)
+      })
+      return
+    }
+
+    let cancelled = false
     const loadConfig = async () => {
-      // Primeiro tenta localStorage, depois busca do servidor (variáveis de ambiente)
       const savedConfig = await loadInstagramConfigAsync()
-      
+      if (cancelled) return
       if (savedConfig.token && savedConfig.businessAccountId) {
         setConfig(savedConfig)
         setIsConfigured(true)
         setShowConfig(false)
-        
-        // Tentar carregar dados silenciosamente
+        setError(null)
         fetchData(savedConfig).catch((err) => {
           console.error('Erro ao carregar dados do Instagram:', err)
         })
       } else {
-        // Sem credenciais disponíveis
-        setConfig({ token: '', businessAccountId: '' })
+        setConfig(null)
         setIsConfigured(false)
-        setError('Token e Business Account ID são obrigatórios')
+        setError(null)
       }
     }
-    
-    loadConfig()
+    void loadConfig()
+    return () => {
+      cancelled = true
+    }
   }, [])
 
   // Função para buscar histórico de métricas
@@ -459,7 +471,7 @@ export default function ConteudoPage() {
 
   // Função para atualizar dados
   const handleRefresh = () => {
-    if (config) {
+    if (config?.token && config?.businessAccountId) {
       fetchData(config, true)
     }
   }
@@ -2194,18 +2206,18 @@ export default function ConteudoPage() {
         <InstagramConfigModal
           onClose={() => {
             setShowConfig(false)
-            // Não limpar credenciais ao fechar - manter as que estão salvas
-            // Se não houver config salva, tentar carregar novamente
-            if (!config) {
+            if (!config?.token || !config?.businessAccountId) {
               const savedConfig = loadInstagramConfig()
-              if (savedConfig) {
+              if (savedConfig.token && savedConfig.businessAccountId) {
                 setConfig(savedConfig)
                 setIsConfigured(true)
               }
             }
           }}
           onSave={handleSaveConfig}
-          currentConfig={config || undefined}
+          currentConfig={
+            config && config.token && config.businessAccountId ? config : undefined
+          }
         />
       )}
     </div>

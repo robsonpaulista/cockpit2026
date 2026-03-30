@@ -30,23 +30,28 @@ export function InstagramConfigModal({
     return null
   }
 
-  const savedConfig = currentConfig || loadSavedConfig()
-  
+  const effectiveConfig =
+    currentConfig?.token?.trim() && currentConfig?.businessAccountId?.trim()
+      ? currentConfig
+      : loadSavedConfig()
+
   const [formData, setFormData] = useState({
-    token: savedConfig?.token || '',
-    businessAccountId: savedConfig?.businessAccountId || '',
+    token: effectiveConfig?.token || '',
+    businessAccountId: effectiveConfig?.businessAccountId || '',
   })
   const [showToken, setShowToken] = useState(false)
   const [validating, setValidating] = useState(false)
   const [validationResult, setValidationResult] = useState<{ success: boolean; message: string } | null>(null)
 
-  // Atualizar formData quando currentConfig mudar ou quando modal for aberto
   useEffect(() => {
-    const updatedConfig = currentConfig || loadSavedConfig()
-    if (updatedConfig) {
+    const updated =
+      currentConfig?.token?.trim() && currentConfig?.businessAccountId?.trim()
+        ? currentConfig
+        : loadSavedConfig()
+    if (updated?.token || updated?.businessAccountId) {
       setFormData({
-        token: updatedConfig.token || '',
-        businessAccountId: updatedConfig.businessAccountId || '',
+        token: updated.token || '',
+        businessAccountId: updated.businessAccountId || '',
       })
     }
   }, [currentConfig])

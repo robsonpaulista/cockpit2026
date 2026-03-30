@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useMemo } from 'react'
+import { useEffect, useState, useMemo, useRef } from 'react'
 import {
   FileText,
   Search,
@@ -18,6 +18,7 @@ import {
   Clock,
   CheckCircle2,
   Circle,
+  Table2,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -30,6 +31,8 @@ interface Proposicao {
   ano: number
   ementa: string
   dataApresentacao: string
+  /** Preenchido no cliente ao agregar proposições por deputado */
+  deputadoAutorId?: number
 }
 
 interface Autor {
@@ -68,6 +71,125 @@ interface StatusCache {
 
 const ITEMS_PER_PAGE = 15
 const STATUS_CONCURRENCY = 15
+
+/** Início aproximado da 57ª Legislatura (comparativo planilha: 2023 até hoje). */
+const LEGISLATURA_57_INICIO = new Date('2023-02-01T00:00:00-03:00')
+
+export type ColunaResumoId =
+  | 'projetosLei'
+  | 'aprovadosCamara'
+  | 'convertidosLei'
+  | 'emendas'
+  | 'parecerRelator'
+  | 'indicacoesRic'
+  | 'reqAudiencia'
+
+type DeputadoQuadro = {
+  id: number
+  nome: string
+  /** Destaque visual (ex.: linha verde na planilha) */
+  destaque?: boolean
+}
+
+/** Adicione outros deputados (id da Câmara) para multiplicar as linhas do quadro. */
+const DEPUTADOS_QUADRO_RESUMO: DeputadoQuadro[] = [
+  { id: 220697, nome: 'Jadyel Alencar', destaque: true },
+]
+
+const COLUNAS_QUADRO_RESUMO: { id: ColunaResumoId; label: string; precisaStatus: boolean }[] = [
+  { id: 'projetosLei', label: 'Projetos de Lei', precisaStatus: false },
+  { id: 'aprovadosCamara', label: 'Aprovados na Câmara', precisaStatus: true },
+  { id: 'convertidosLei', label: 'Convertidos em Lei', precisaStatus: true },
+  { id: 'emendas', label: 'Emendas', precisaStatus: false },
+  { id: 'parecerRelator', label: 'Parecer do Relator', precisaStatus: true },
+  { id: 'indicacoesRic', label: 'Indicações / Req. de Informação', precisaStatus: false },
+  { id: 'reqAudiencia', label: 'Req. de Audiência Pública', precisaStatus: false },
+]
+
+function naLegislaturaAtual(p: Proposicao): boolean {
+  if (!p.dataApresentacao) return false
+  const d = new Date(p.dataApresentacao)
+  return !Number.isNaN(d.getTime()) && d >= LEGISLATURA_57_INICIO
+}
+
+/** Remove ids repetidos (a API pode devolver a mesma proposição mais de uma vez). */
+function dedupeProposicoesPorId(lista: Proposicao[]): Proposicao[] {
+  const visto = new Set<number>()
+  const out: Proposicao[] = []
+  for (const p of lista) {
+    if (visto.has(p.id)) continue
+    visto.add(p.id)
+    out.push(p)
+  }
+  return out
+}
+
+const TIPOS_MATERIA_LEGISLATIVA = new Set(['PL', 'PLP', 'PEC', 'PDL', 'PRC', 'MPV'])
+
+/** Critérios alinhados ao quadro resumo legislativo; cada coluna filtra a lista ao clicar. */
+function proposicaoNaColunaResumo(
+  col: ColunaResumoId,
+  p: Proposicao,
+  st: StatusCache | undefined
+): boolean {
+  if (!naLegislaturaAtual(p)) return false
+  const situ = (st?.descricaoSituacao || '').toLowerCase()
+  const tram = (st?.descricaoTramitacao || '').toLowerCase()
+  const texto = `${situ} ${tram}`
+  const cod = st?.codSituacao
+
+  switch (col) {
+    case 'projetosLei':
+      return ['PL', 'PLP', 'PEC'].includes(p.siglaTipo)
+    case 'aprovadosCamara': {
+      if (!st) return false
+      // Já virou norma: conta em "Convertidos em Lei", não duplicar aqui
+      if (cod === 1140) return false
+      if (cod === 926 || cod === 1150) return true
+      if (cod === 1285) {
+        if (texto.includes('não aprovad') || texto.includes('nao aprovad')) return false
+        if (texto.includes('aprovad')) return true
+        return false
+      }
+      if (texto.includes('não aprovad') || texto.includes('nao aprovad')) return false
+      if (texto.includes('arquivad') || texto.includes('rejeitad') || texto.includes('vetad')) return false
+      if (!texto.includes('aprovad')) return false
+      // "aprovad" genérico só para matérias legislativas (evita REQ/INC com votação acessória inflando o número)
+      if (TIPOS_MATERIA_LEGISLATIVA.has(p.siglaTipo)) return true
+      return false
+    }
+    case 'convertidosLei': {
+      if (!st) return false
+      if (cod === 1140) return true
+      return texto.includes('transformad') && texto.includes('norma')
+    }
+    case 'emendas':
+      return p.siglaTipo === 'EMC'
+    case 'parecerRelator': {
+      if (!st) return false
+      return (
+        (texto.includes('parecer') && (texto.includes('relat') || texto.includes('relator'))) ||
+        tram.includes('parecer do relat')
+      )
+    }
+    case 'indicacoesRic':
+      return p.siglaTipo === 'INC' || p.siglaTipo === 'RIC'
+    case 'reqAudiencia': {
+      if (p.siglaTipo !== 'REQ') return false
+      const e = p.ementa.toLowerCase()
+      return (
+        e.includes('audiência pública') ||
+        e.includes('audiencia publica') ||
+        e.includes('realização de audiência') ||
+        e.includes('realizacao de audiencia') ||
+        e.includes('instalação de audiência') ||
+        e.includes('instalacao de audiencia')
+      )
+    }
+    default:
+      return false
+  }
+}
 
 const TIPOS_PROPOSICAO = [
   { value: '', label: 'Todos os tipos' },
@@ -161,8 +283,10 @@ function getTimelineIcon(descricao: string): typeof CheckCircle2 {
   return Circle
 }
 
+type BundleDeputado = DeputadoQuadro & { proposicoes: Proposicao[] }
+
 export default function ProposicoesPage() {
-  const [allProposicoes, setAllProposicoes] = useState<Proposicao[]>([])
+  const [deputadosBundles, setDeputadosBundles] = useState<BundleDeputado[]>([])
   const [initialLoading, setInitialLoading] = useState<boolean>(true)
   const [pagina, setPagina] = useState<number>(1)
 
@@ -170,8 +294,24 @@ export default function ProposicoesPage() {
   const [filtroAno, setFiltroAno] = useState<string>('')
   const [filtroKeyword, setFiltroKeyword] = useState<string>('')
   const [filtroStatus, setFiltroStatus] = useState<string>('')
+  const [filtroDeputadoQuadro, setFiltroDeputadoQuadro] = useState<number | null>(null)
+  const [filtroColunaQuadro, setFiltroColunaQuadro] = useState<ColunaResumoId | null>(null)
   const [searchInput, setSearchInput] = useState<string>('')
   const [showFilters, setShowFilters] = useState<boolean>(false)
+  const listaProposicoesRef = useRef<HTMLDivElement>(null)
+
+  const allProposicoes = useMemo(() => {
+    const seen = new Set<number>()
+    const out: Proposicao[] = []
+    for (const b of deputadosBundles) {
+      for (const p of b.proposicoes) {
+        if (seen.has(p.id)) continue
+        seen.add(p.id)
+        out.push(p)
+      }
+    }
+    return out
+  }, [deputadosBundles])
 
   const [autoresModalOpen, setAutoresModalOpen] = useState<boolean>(false)
   const [autoresLoading, setAutoresLoading] = useState<boolean>(false)
@@ -191,11 +331,19 @@ export default function ProposicoesPage() {
     let cancelled = false
     const loadAll = async () => {
       try {
-        const res = await fetch('/api/proposicoes?fetchAll=true')
-        if (res.ok && !cancelled) {
-          const data = await res.json()
-          setAllProposicoes(data.dados || [])
-        }
+        const bundles = await Promise.all(
+          DEPUTADOS_QUADRO_RESUMO.map(async (dep) => {
+            const res = await fetch(`/api/proposicoes?fetchAll=true&idDeputado=${dep.id}`)
+            if (!res.ok) return { ...dep, proposicoes: [] as Proposicao[] }
+            const data = await res.json()
+            const lista = dedupeProposicoesPorId((data.dados || []) as Proposicao[])
+            return {
+              ...dep,
+              proposicoes: lista.map((p) => ({ ...p, deputadoAutorId: dep.id })),
+            }
+          })
+        )
+        if (!cancelled) setDeputadosBundles(bundles)
       } catch (err) {
         console.error('Erro ao buscar proposições:', err)
       } finally {
@@ -203,7 +351,9 @@ export default function ProposicoesPage() {
       }
     }
     loadAll()
-    return () => { cancelled = true }
+    return () => {
+      cancelled = true
+    }
   }, [])
 
   useEffect(() => {
@@ -264,6 +414,14 @@ export default function ProposicoesPage() {
 
   const filteredItems = useMemo(() => {
     let items = [...allProposicoes]
+    if (filtroDeputadoQuadro != null) {
+      items = items.filter((p) => p.deputadoAutorId === filtroDeputadoQuadro)
+    }
+    if (filtroColunaQuadro != null) {
+      items = items.filter((p) =>
+        proposicaoNaColunaResumo(filtroColunaQuadro, p, statusMap[p.id])
+      )
+    }
     if (filtroTipo) items = items.filter((p) => p.siglaTipo === filtroTipo)
     if (filtroAno) items = items.filter((p) => p.ano === Number(filtroAno))
     if (filtroKeyword) {
@@ -279,7 +437,62 @@ export default function ProposicoesPage() {
     }
     items.sort((a, b) => new Date(b.dataApresentacao).getTime() - new Date(a.dataApresentacao).getTime())
     return items
-  }, [allProposicoes, filtroTipo, filtroAno, filtroKeyword, filtroStatus, statusMap])
+  }, [
+    allProposicoes,
+    filtroDeputadoQuadro,
+    filtroColunaQuadro,
+    filtroTipo,
+    filtroAno,
+    filtroKeyword,
+    filtroStatus,
+    statusMap,
+  ])
+
+  const contagemQuadro = useMemo(() => {
+    const out: Record<number, Record<ColunaResumoId, number>> = {}
+    for (const dep of deputadosBundles) {
+      const row = {} as Record<ColunaResumoId, number>
+      for (const col of COLUNAS_QUADRO_RESUMO) {
+        if (col.precisaStatus && !statusesFullyLoaded) {
+          row[col.id] = -1
+        } else {
+          row[col.id] = dep.proposicoes.filter((p) =>
+            proposicaoNaColunaResumo(col.id, p, statusMap[p.id])
+          ).length
+        }
+      }
+      out[dep.id] = row
+    }
+    return out
+  }, [deputadosBundles, statusMap, statusesFullyLoaded])
+
+  const labelColunaQuadro = (id: ColunaResumoId) =>
+    COLUNAS_QUADRO_RESUMO.find((c) => c.id === id)?.label ?? id
+
+  const nomeDeputadoQuadro = (id: number) =>
+    DEPUTADOS_QUADRO_RESUMO.find((d) => d.id === id)?.nome ?? `Deputado ${id}`
+
+  const handleCelulaQuadro = (deputadoId: number, col: ColunaResumoId) => {
+    // Garante que o total da célula = itens da lista (sem filtros antigos escondidos)
+    setFiltroTipo('')
+    setFiltroAno('')
+    setFiltroKeyword('')
+    setFiltroStatus('')
+    setSearchInput('')
+    setFiltroDeputadoQuadro(deputadoId)
+    setFiltroColunaQuadro(col)
+    setPagina(1)
+    setShowFilters(true)
+    window.setTimeout(() => {
+      listaProposicoesRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }, 100)
+  }
+
+  const limparFiltroQuadro = () => {
+    setFiltroDeputadoQuadro(null)
+    setFiltroColunaQuadro(null)
+    setPagina(1)
+  }
 
   const totalPages = Math.ceil(filteredItems.length / ITEMS_PER_PAGE)
 
@@ -296,6 +509,8 @@ export default function ProposicoesPage() {
     setFiltroAno('')
     setFiltroKeyword('')
     setFiltroStatus('')
+    setFiltroDeputadoQuadro(null)
+    setFiltroColunaQuadro(null)
     setSearchInput('')
     setPagina(1)
   }
@@ -321,8 +536,15 @@ export default function ProposicoesPage() {
     finally { setTramitacoesLoading(false) }
   }
 
-  const hasActiveFilters = filtroTipo || filtroAno || filtroKeyword || filtroStatus
-  const activeFilterCount = [filtroTipo, filtroAno, filtroKeyword, filtroStatus].filter(Boolean).length
+  const hasActiveFilters =
+    Boolean(filtroTipo || filtroAno || filtroKeyword || filtroStatus || filtroColunaQuadro != null)
+  const activeFilterCount = [
+    filtroTipo,
+    filtroAno,
+    filtroKeyword,
+    filtroStatus,
+    filtroColunaQuadro != null ? 'quadro' : '',
+  ].filter(Boolean).length
   const statusFilterActive = !!filtroStatus
   const progressPercent = statusProgress.total > 0 ? Math.round((statusProgress.loaded / statusProgress.total) * 100) : 0
 
@@ -361,7 +583,8 @@ export default function ProposicoesPage() {
             <div>
               <h2 className="text-2xl font-bold text-text-primary">Proposições Legislativas</h2>
               <p className="text-sm text-text-secondary">
-                {allProposicoes.length} proposições de autoria do Dep. Jadyel Alencar — Câmara dos Deputados
+                {allProposicoes.length} proposições —{' '}
+                {DEPUTADOS_QUADRO_RESUMO.map((d) => d.nome).join(', ')} — Câmara dos Deputados
               </p>
             </div>
           </div>
@@ -406,6 +629,83 @@ export default function ProposicoesPage() {
                 className="h-full bg-accent-gold rounded-full transition-all duration-300"
                 style={{ width: `${progressPercent}%` }}
               />
+            </div>
+          </div>
+        )}
+
+        {/* Quadro resumo (padrão visual do dashboard) */}
+        {deputadosBundles.length > 0 && (
+          <div className="mb-6 rounded-2xl border border-card bg-surface overflow-hidden shadow-sm">
+            <div className="flex items-center gap-2 px-4 py-3 border-b border-card bg-background/80">
+              <Table2 className="w-4 h-4 text-accent-gold" />
+              <h3 className="text-sm font-semibold text-text-primary">Quadro resumo legislativo</h3>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[880px] border-collapse text-sm text-text-primary">
+                <thead>
+                  <tr className="bg-accent-gold-soft/25 text-text-primary">
+                    <th className="border border-card px-3 py-2.5 text-left font-semibold">Deputado</th>
+                    {COLUNAS_QUADRO_RESUMO.map((col) => (
+                      <th
+                        key={col.id}
+                        className="border border-card px-2 py-2.5 text-center font-semibold text-[11px] leading-tight max-w-[120px]"
+                      >
+                        {col.label}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {deputadosBundles.map((dep) => (
+                    <tr
+                      key={dep.id}
+                      className={cn(
+                        'border-b border-card last:border-b-0 transition-colors',
+                        dep.destaque ? 'bg-accent-gold-soft/15' : 'bg-surface hover:bg-background/80'
+                      )}
+                    >
+                      <td className="border border-card px-3 py-2.5 font-medium text-left text-text-primary">
+                        {dep.nome}
+                      </td>
+                      {COLUNAS_QUADRO_RESUMO.map((col) => {
+                        const n = contagemQuadro[dep.id]?.[col.id] ?? 0
+                        const loading = n < 0
+                        return (
+                          <td
+                            key={col.id}
+                            className="border border-card px-2 py-2 text-center align-middle bg-background/40"
+                          >
+                            <button
+                              type="button"
+                              onClick={() => handleCelulaQuadro(dep.id, col.id)}
+                              disabled={loading}
+                              title={`Ver lista: ${col.label}`}
+                              className={cn(
+                                'min-w-[2.25rem] tabular-nums rounded-lg px-2 py-1 text-sm font-semibold transition-colors',
+                                loading
+                                  ? 'text-text-secondary cursor-wait'
+                                  : 'text-accent-gold hover:bg-accent-gold-soft/50 focus:outline-none focus:ring-2 focus:ring-accent-gold-soft'
+                              )}
+                            >
+                              {loading ? '…' : n}
+                            </button>
+                          </td>
+                        )
+                      })}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <div className="px-4 py-3 bg-background/50 border-t border-card text-xs text-text-secondary leading-relaxed space-y-1">
+              <p>
+                <span className="font-medium text-text-primary">57ª Legislatura:</span> apenas proposições
+                apresentadas a partir de fevereiro de 2023. Clique em um número para filtrar a lista abaixo
+                (outros filtros são limpos para bater com o total da célula).
+              </p>
+              <p className="text-text-secondary/80">
+                Colunas por status usam a última tramitação da API. Mostram “…” até o carregamento terminar.
+              </p>
             </div>
           </div>
         )}
@@ -488,6 +788,21 @@ export default function ProposicoesPage() {
 
               {hasActiveFilters && (
                 <div className="flex items-center gap-2 flex-wrap">
+                  {filtroColunaQuadro != null && (
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 rounded-lg max-w-full">
+                      <Table2 className="w-3 h-3 flex-shrink-0" />
+                      <span className="truncate">
+                        {nomeDeputadoQuadro(filtroDeputadoQuadro ?? 0)} — {labelColunaQuadro(filtroColunaQuadro)}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => limparFiltroQuadro()}
+                        className="ml-0.5 hover:text-status-danger transition-colors flex-shrink-0"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    </span>
+                  )}
                   {filtroTipo && (
                     <span className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium bg-accent-gold-soft text-accent-gold rounded-lg">
                       <FileText className="w-3 h-3" />
@@ -533,7 +848,7 @@ export default function ProposicoesPage() {
             <p className="text-xs text-text-secondary">
               <span className="font-semibold text-text-primary">{filteredItems.length}</span> proposição(ões) encontrada(s)
               {' '}de {allProposicoes.length} no total
-              {statusFilterActive && !statusesFullyLoaded && (
+              {(statusFilterActive || filtroColunaQuadro != null) && !statusesFullyLoaded && (
                 <span className="text-accent-gold"> — status ainda carregando, resultado pode mudar</span>
               )}
             </p>
@@ -541,6 +856,7 @@ export default function ProposicoesPage() {
         )}
 
         {/* Lista */}
+        <div ref={listaProposicoesRef} className="scroll-mt-28">
         {paginatedItems.length === 0 ? (
           <div className="bg-surface rounded-2xl border border-card p-12 text-center">
             <FileText className="w-12 h-12 text-text-secondary/30 mx-auto mb-4" />
@@ -617,7 +933,6 @@ export default function ProposicoesPage() {
           </div>
         )}
 
-        {/* Paginação */}
         {filteredItems.length > 0 && (
           <div className="mt-6 flex items-center justify-between">
             <span className="text-sm text-text-secondary">
@@ -651,6 +966,7 @@ export default function ProposicoesPage() {
             </div>
           </div>
         )}
+        </div>
 
         {/* Info box */}
         <div className="mt-8 bg-accent-gold-soft/30 rounded-2xl border border-accent-gold/20 p-6">

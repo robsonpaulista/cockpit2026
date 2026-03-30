@@ -22,10 +22,23 @@ const MapWrapperLeaflet = dynamic(
   { ssr: false }
 )
 import { KPI, Alert, NewsItem } from '@/types'
-import { TrendingUp, MapPin, Flag, MessageSquare, ThermometerSun, ThermometerSnowflake, Flame, Activity, Maximize2, X, Lightbulb, AlertTriangle, Users, Heart, Eye, Crown, ArrowUpRight, ArrowDownRight, ArrowRight, Zap, Target, FileText, Bot, ListOrdered } from 'lucide-react'
+import { useTheme } from '@/contexts/theme-context'
+import { cn } from '@/lib/utils'
+import { DashboardCockpitVivoLayout, COCKPIT_POSTS_INSIGHT_ROWS } from '@/components/dashboard-cockpit-vivo-layout'
+import { TrendingUp, MapPin, Flag, MessageSquare, ThermometerSun, ThermometerSnowflake, Flame, Activity, Maximize2, X, Lightbulb, AlertTriangle, Users, Heart, Eye, Crown, ArrowUpRight, ArrowDownRight, ArrowRight, Zap, Target, FileText, Bot, ListOrdered, BarChart3, ExternalLink } from 'lucide-react'
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 import { loadInstagramConfigAsync, fetchInstagramData } from '@/lib/instagramApi'
+import { buildInstagramPostChampions } from '@/lib/instagram-post-champions'
+import Link from 'next/link'
 import { getEleitoradoByCity, getAllEleitores } from '@/lib/eleitores'
+import {
+  historicoIntencaoPorRegiaoVazio,
+  pesquisasPorRegiaoVazio,
+  REGIOES_PI_ORDER,
+  type HistoricoIntencaoPorRegiaoMap,
+  type MediaIntencaoPorRegiao,
+  type PesquisasPorRegiaoMap,
+} from '@/lib/piaui-regiao'
 
 const trendData = [
   { date: '01/10', ife: 65, sentimento: 60 },
@@ -34,6 +47,47 @@ const trendData = [
   { date: '22/10', ife: 71, sentimento: 66 },
   { date: '29/10', ife: 72, sentimento: 68 },
 ]
+
+function sanitizarHistoricoPorRegiaoApi(raw: unknown): HistoricoIntencaoPorRegiaoMap {
+  const out = historicoIntencaoPorRegiaoVazio()
+  if (!raw || typeof raw !== 'object') return out
+  const obj = raw as Record<string, unknown>
+  for (const regiao of REGIOES_PI_ORDER) {
+    const arr = obj[regiao]
+    out[regiao] = Array.isArray(arr) ? (arr as HistoricoIntencaoPorRegiaoMap[typeof regiao]) : []
+  }
+  return out
+}
+
+/** Extrai `pesquisasPorRegiao` do JSON da API (camelCase ou snake_case). */
+function sanitizarPesquisasPorRegiaoFromPayload(data: unknown): PesquisasPorRegiaoMap {
+  const out = pesquisasPorRegiaoVazio()
+  if (!data || typeof data !== 'object' || Array.isArray(data)) return out
+  const root = data as Record<string, unknown>
+  const raw =
+    root.pesquisasPorRegiao ?? root.pesquisas_por_regiao ?? root['pesquisasPorRegiao']
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return out
+  const obj = raw as Record<string, unknown>
+  for (const regiao of REGIOES_PI_ORDER) {
+    const arr = obj[regiao]
+    if (!Array.isArray(arr)) continue
+    out[regiao] = arr
+      .filter((item): item is Record<string, unknown> => item !== null && typeof item === 'object')
+      .map((item) => ({
+        dateOriginal: String(item.dateOriginal ?? item.date_original ?? ''),
+        dataExibicao: String(
+          item.dataExibicao ?? item.data_exibicao ?? item.dateOriginal ?? item.date_original ?? ''
+        ),
+        cidade: String(item.cidade ?? ''),
+        instituto: String(item.instituto ?? ''),
+        intencao:
+          typeof item.intencao === 'number' && !Number.isNaN(item.intencao)
+            ? item.intencao
+            : Number(item.intencao) || 0,
+      }))
+  }
+  return out
+}
 
 export default function Home() {
   type CenarioVotos = 'aferido_jadyel' | 'promessa_lideranca' | 'legado_anterior'
@@ -52,6 +106,13 @@ export default function Home() {
   const [kpis, setKpis] = useState<KPI[]>(mockKPIs)
   const [loading, setLoading] = useState(true)
   const [pollsData, setPollsData] = useState<Array<{ date: string; intencao: number; instituto?: string; cidade?: string }>>([])
+  const [pollsMediasRegiao, setPollsMediasRegiao] = useState<MediaIntencaoPorRegiao[]>([])
+  const [pollsHistoricoPorRegiao, setPollsHistoricoPorRegiao] = useState<HistoricoIntencaoPorRegiaoMap>(() =>
+    historicoIntencaoPorRegiaoVazio()
+  )
+  const [pollsPesquisasPorRegiao, setPollsPesquisasPorRegiao] = useState<PesquisasPorRegiaoMap>(() =>
+    pesquisasPorRegiaoVazio()
+  )
   const [loadingPolls, setLoadingPolls] = useState(true)
   const [candidatoPadrao, setCandidatoPadrao] = useState<string>('')
   const [territoriosFrios, setTerritoriosFrios] = useState<Array<{ cidade: string; motivo: string; expectativaVotos?: number; visitas?: number }>>([])
@@ -92,6 +153,24 @@ export default function Home() {
       boostedCount: number
     }>
     hasInstagramData: boolean
+    /** Posts brutos (30d) para o card Posts & Insights no tema cockpit */
+    instagramPosts?: Array<{
+      id: string
+      type: string
+      url: string
+      thumbnail: string
+      caption: string
+      postedAt: string
+      metrics: {
+        likes: number
+        comments: number
+        engagement: number
+        views?: number
+        shares?: number
+        saves?: number
+      }
+    }>
+    instagramUsername?: string
   } | null>(null)
   const [loadingBandeiras, setLoadingBandeiras] = useState(true)
   const [projecaoChapa, setProjecaoChapa] = useState<number>(0)
@@ -238,6 +317,15 @@ export default function Home() {
     return { enriched, top, growing, weakest, mainSentence, totalUsage, totalEngagement, formatCompact }
   }, [bandeirasStats])
 
+  /** Destaques por métrica (mesma ideia da aba Posts & Insights em Conteúdo) — tema cockpit */
+  const postsInsightsCockpit = useMemo(() => {
+    const posts = bandeirasStats?.instagramPosts
+    if (!posts?.length) return null
+    const champions = buildInstagramPostChampions(posts)
+    if (!champions) return null
+    return { ...champions, username: bandeirasStats?.instagramUsername }
+  }, [bandeirasStats?.instagramPosts, bandeirasStats?.instagramUsername])
+
   // ─── Interpretação do Monitor de Imprensa ───
   const monitorInsight = useMemo(() => {
     if (monitorNews.length === 0) return null
@@ -314,7 +402,7 @@ export default function Home() {
 
     const tick = () => {
       if (!container) return
-      const items = container.querySelectorAll<HTMLElement>(':scope > a')
+      const items = container.querySelectorAll<HTMLElement>(':scope > a[data-news-id]')
       if (items.length === 0) return
 
       const { scrollHeight, clientHeight } = container
@@ -442,11 +530,19 @@ export default function Home() {
     const fetchHistoricoIntencao = async (candidato: string) => {
       setLoadingPolls(true)
       try {
-        const response = await fetch(`/api/pesquisa/historico-intencao?candidato=${encodeURIComponent(candidato)}`)
+        const response = await fetch(
+          `/api/pesquisa/historico-intencao?candidato=${encodeURIComponent(candidato)}`,
+          { cache: 'no-store' }
+        )
         if (response.ok) {
           const data = await response.json()
           const polls = data.data || []
           setPollsData(polls)
+          setPollsMediasRegiao(
+            Array.isArray(data.mediasPorRegiao) ? data.mediasPorRegiao : []
+          )
+          setPollsHistoricoPorRegiao(sanitizarHistoricoPorRegiaoApi(data.historicoPorRegiao))
+          setPollsPesquisasPorRegiao(sanitizarPesquisasPorRegiaoFromPayload(data))
           
           // Buscar expectativas de votos por cidade para as pesquisas que têm cidade
           const cidadesUnicas = new Set<string>()
@@ -519,9 +615,15 @@ export default function Home() {
           }
         } else {
           setPollsData([])
+          setPollsMediasRegiao([])
+          setPollsHistoricoPorRegiao(historicoIntencaoPorRegiaoVazio())
+          setPollsPesquisasPorRegiao(pesquisasPorRegiaoVazio())
         }
       } catch (error) {
         setPollsData([])
+        setPollsMediasRegiao([])
+        setPollsHistoricoPorRegiao(historicoIntencaoPorRegiaoVazio())
+        setPollsPesquisasPorRegiao(pesquisasPorRegiaoVazio())
       } finally {
         setLoadingPolls(false)
       }
@@ -571,6 +673,9 @@ export default function Home() {
         })
     } else {
       setPollsData([])
+      setPollsMediasRegiao([])
+      setPollsHistoricoPorRegiao(historicoIntencaoPorRegiaoVazio())
+      setPollsPesquisasPorRegiao(pesquisasPorRegiaoVazio())
       setRankingPesquisas(null)
       setRankingPesquisasTop10([])
       setLoadingPolls(false)
@@ -722,8 +827,17 @@ export default function Home() {
         if (signal.aborted) return
 
         // 2. Buscar dados do Instagram (mesma lógica da página Conteúdo)
-        let instagramPosts: Array<{ id: string; postedAt: string; caption: string; metrics: { likes: number; comments: number; engagement: number; views?: number; shares?: number; saves?: number } }> = []
+        let instagramPosts: Array<{
+          id: string
+          type: string
+          url: string
+          thumbnail: string
+          caption: string
+          postedAt: string
+          metrics: { likes: number; comments: number; engagement: number; views?: number; shares?: number; saves?: number }
+        }> = []
         let hasInstagramData = false
+        let instagramUsername: string | undefined
 
         try {
           const igConfig = await loadInstagramConfigAsync()
@@ -732,6 +846,7 @@ export default function Home() {
             if (igData && igData.posts) {
               instagramPosts = igData.posts
               hasInstagramData = true
+              instagramUsername = igData.username
             }
           }
         } catch (err) {
@@ -823,6 +938,8 @@ export default function Home() {
             totalBandeiras: combinedStats.length,
             topBandeiras: combinedStats.slice(0, 5),
             hasInstagramData,
+            instagramPosts: instagramPosts.length > 0 ? instagramPosts : undefined,
+            instagramUsername: hasInstagramData ? instagramUsername : undefined,
           })
         }
       } catch (error) {
@@ -936,50 +1053,39 @@ export default function Home() {
       fetch('/api/dashboard/kpis').then((res) => res.json()),
       fetchTerritorioKPIs(),
     ]).then(async ([data, territorioKPIs]) => {
+      // Chapas: sempre buscar projeções (antes só rodava dentro de `if (data.ife)`, deixando mock "0 vagas")
+      const expectativa2026 = territorioKPIs?.expectativa2026 ?? null
+      let votosParaRanking = expectativa2026 ?? 0
+      if (!votosParaRanking && data?.ife?.value) {
+        const valorStr = String(data.ife.value).replace(/\./g, '').replace(/,/g, '.')
+        votosParaRanking = parseFloat(valorStr) || 0
+      }
+
+      const { eleitos: projecaoEleitos, ranking, segundaVaga } = await fetchProjecaoChapaComRanking(
+        votosParaRanking,
+        'federal'
+      )
+      setProjecaoChapa(projecaoEleitos)
+      if (ranking && ranking.posicao > 0) {
+        setRankingExpectativa(ranking)
+      } else {
+        setRankingExpectativa(null)
+      }
+      if (segundaVaga) {
+        setSegundaVagaInfo({
+          ...segundaVaga,
+          distanciaCompetidor: segundaVaga.distanciaCompetidor ?? 0,
+        })
+      } else {
+        setSegundaVagaInfo(null)
+      }
+
+      setSegundaVagaInfoEstadual(null)
+
       if (data.ife) {
-        // Se temos KPIs do território, usar os valores calculados (mesmos da página Território & Base)
-        const expectativa2026 = territorioKPIs?.expectativa2026 ?? null
-
-        // Calcular votos para ranking
-        let votosParaRanking = expectativa2026 ?? 0
-        if (!votosParaRanking && data.ife.value) {
-          const valorStr = String(data.ife.value).replace(/\./g, '').replace(/,/g, '.')
-          votosParaRanking = parseFloat(valorStr) || 0
-        }
-
-        // Buscar projeção federal + ranking + análise 2ª vaga
-        const { eleitos: projecaoEleitos, ranking, segundaVaga } = await fetchProjecaoChapaComRanking(
-          votosParaRanking,
-          'federal'
-        )
-        setProjecaoChapa(projecaoEleitos)
-        if (ranking && ranking.posicao > 0) {
-          setRankingExpectativa(ranking)
-        }
-        if (segundaVaga) {
-          setSegundaVagaInfo({
-            ...segundaVaga,
-            distanciaCompetidor: segundaVaga.distanciaCompetidor ?? 0,
-          })
-        }
-
-        // Buscar projeção estadual para o card dedicado
-        const { eleitos: eleitosEstadual, segundaVaga: segundaVagaEstadual } = await fetchProjecaoChapaComRanking(
-          undefined,
-          'estadual'
-        )
-        if (segundaVagaEstadual) {
-          setSegundaVagaInfoEstadual({
-            ...segundaVagaEstadual,
-            distanciaCompetidor: segundaVagaEstadual.distanciaCompetidor ?? 0,
-          })
-        } else {
-          setSegundaVagaInfoEstadual(null)
-        }
-
         const cidadesUnicas = territorioKPIs?.cidadesUnicas ?? null
         const liderancas = territorioKPIs?.liderancas ?? null
-        
+
         setKpis([
           {
             id: 'ife',
@@ -1028,16 +1134,55 @@ export default function Home() {
               status: 'neutral',
             },
             {
-              id: 'projecao_estadual',
-              label: 'Projeção Estadual',
-              value: `${eleitosEstadual} ${eleitosEstadual === 1 ? 'vaga' : 'vagas'}`,
+              id: 'posicao_chapa',
+              label: 'Posição Prevista',
+              value: ranking && ranking.posicao > 0 ? `${ranking.posicao}º lugar` : '-',
               variation: 0,
-              status: eleitosEstadual >= 2 ? 'success' : eleitosEstadual >= 1 ? 'warning' : 'error',
+              status:
+                ranking && ranking.posicao > 0
+                  ? ranking.posicao <= 3
+                    ? 'success'
+                    : ranking.posicao <= 6
+                      ? 'warning'
+                      : 'neutral'
+                  : 'neutral',
             },
           ])
-        }
-        setLoading(false)
-      })
+      } else {
+        setKpis((prev) =>
+          prev.map((k) => {
+            if (k.id === 'projecao') {
+              return {
+                ...k,
+                label: 'Projeção Federal',
+                value: `${projecaoEleitos} ${projecaoEleitos === 1 ? 'vaga' : 'vagas'}`,
+                variation: 0,
+                status: projecaoEleitos >= 2 ? 'success' : projecaoEleitos >= 1 ? 'warning' : 'error',
+              }
+            }
+            if (k.id === 'projecao_estadual' || k.id === 'posicao_chapa') {
+              return {
+                ...k,
+                id: 'posicao_chapa',
+                label: 'Posição Prevista',
+                value: ranking && ranking.posicao > 0 ? `${ranking.posicao}º lugar` : '-',
+                variation: 0,
+                status:
+                  ranking && ranking.posicao > 0
+                    ? ranking.posicao <= 3
+                      ? 'success'
+                      : ranking.posicao <= 6
+                        ? 'warning'
+                        : 'neutral'
+                    : 'neutral',
+              }
+            }
+            return k
+          })
+        )
+      }
+      setLoading(false)
+    })
       .catch(() => {
         setLoading(false)
       })
@@ -1065,8 +1210,57 @@ export default function Home() {
     return kpi
   })
 
+  const { theme } = useTheme()
+
   return (
-    <div className="min-h-screen bg-background">
+    <div className={cn('min-h-screen', theme === 'cockpit' ? 'bg-white' : 'bg-background')}>
+      {theme === 'cockpit' ? (
+        <DashboardCockpitVivoLayout
+          loading={loading}
+          kpisComMedia={kpisComMedia}
+          VOTOS_ELEICAO_ANTERIOR={VOTOS_ELEICAO_ANTERIOR}
+          rankingExpectativa={rankingExpectativa}
+          rankingPesquisas={rankingPesquisas}
+          rankingPesquisasTop10={rankingPesquisasTop10}
+          setShowRankingPesquisasModal={setShowRankingPesquisasModal}
+          cenarioVotosDashboard={cenarioVotosDashboard}
+          setCenarioVotosDashboard={setCenarioVotosDashboard}
+          segundaVagaInfo={segundaVagaInfo}
+          segundaVagaInfoEstadual={segundaVagaInfoEstadual}
+          loadingTerritorios={loadingTerritorios}
+          territorioStats={territorioStats}
+          cidadesComLiderancas={cidadesComLiderancas}
+          eleitoresPorCidade={eleitoresPorCidade}
+          territoriosQuentes={territoriosQuentes}
+          territoriosMornos={territoriosMornos}
+          territoriosFrios={territoriosFrios}
+          loadingPolls={loadingPolls}
+          pollsData={pollsData}
+          pollsMediasRegiao={pollsMediasRegiao}
+          pollsHistoricoPorRegiao={pollsHistoricoPorRegiao}
+          pollsPesquisasPorRegiao={pollsPesquisasPorRegiao}
+          candidatoPadrao={candidatoPadrao}
+          picoIntencaoGrafico={picoIntencaoGrafico}
+          loadingPostsInsights={loadingBandeiras}
+          postsInsights={postsInsightsCockpit}
+          loadingAlerts={loadingAlerts}
+          monitorNewsOrdenadas={monitorNewsOrdenadas}
+          monitorInsight={monitorInsight}
+          monitorHeaderContext={monitorHeaderContext}
+          monitorFeaturedNewsIds={monitorFeaturedNewsIds}
+          setInsightTelaCheia={setInsightTelaCheia}
+          setAnaliseTerritoriosTelaCheia={setAnaliseTerritoriosTelaCheia}
+          setGraficoPollsTelaCheia={setGraficoPollsTelaCheia}
+          setBandeirasTelaCheia={setBandeirasTelaCheia}
+          setAlertasTelaCheia={setAlertasTelaCheia}
+          getContextoMonitor={getContextoMonitor}
+          getLinhaSemanticaClass={getLinhaSemanticaClass}
+          monitorScrollRef={monitorScrollRef}
+          onMonitorScrollMouseEnter={() => setMonitorPaused(true)}
+          onMonitorScrollMouseLeave={() => setMonitorPaused(false)}
+          monitorActiveNewsId={monitorActiveNewsId}
+        />
+      ) : (
       <div className="px-4 py-6 lg:px-6">
         {/* KPI Hero - Expectativa 2026 */}
         <section className="mb-4">
@@ -1082,31 +1276,20 @@ export default function Home() {
                 ? parseFloat(heroKpi.value.replace(/[^\d]/g, '')) || 0
                 : typeof heroKpi.value === 'number' ? heroKpi.value : 0
               
-              const infoLines: Array<{ text: string; type?: 'positive' | 'negative' | 'neutral'; icon?: 'trending' | 'trophy' }> = []
-              
+              let inlineVariacao: string | undefined
+              let inlineVariacaoTone: 'neutral' | 'negative' = 'neutral'
               if (valorAtual > 0 && VOTOS_ELEICAO_ANTERIOR > 0) {
                 const percentualCrescimento = ((valorAtual - VOTOS_ELEICAO_ANTERIOR) / VOTOS_ELEICAO_ANTERIOR) * 100
                 const sinal = percentualCrescimento >= 0 ? '+' : ''
-                infoLines.push({
-                  text: `${sinal}${percentualCrescimento.toFixed(1).replace('.', ',')}% vs eleição anterior (${VOTOS_ELEICAO_ANTERIOR.toLocaleString('pt-BR')} votos)`,
-                  type: percentualCrescimento >= 0 ? 'neutral' : 'negative',
-                  icon: 'trending',
-                })
+                inlineVariacao = `${sinal}${percentualCrescimento.toFixed(1).replace('.', ',')}% vs eleição anterior (${VOTOS_ELEICAO_ANTERIOR.toLocaleString('pt-BR')} votos)`
+                inlineVariacaoTone = percentualCrescimento >= 0 ? 'neutral' : 'negative'
               }
-              
-              if (rankingExpectativa && rankingExpectativa.posicao > 0) {
-                infoLines.push({
-                  text: `${rankingExpectativa.posicao}º lugar projetado (chapa)`,
-                  type: 'neutral',
-                  icon: 'trophy',
-                })
-              }
-              
+
               return (
-                <KPIHeroCard 
-                  kpi={heroKpi} 
-                  infoLines={infoLines.length > 0 ? infoLines : undefined}
-                  href="/ife"
+                <KPIHeroCard
+                  kpi={heroKpi}
+                  inlineVariacaoEleicao={inlineVariacao}
+                  inlineVariacaoEleicaoTone={inlineVariacaoTone}
                   hideValueByDefault
                   cenarioVotos={cenarioVotosDashboard}
                   onChangeCenarioVotos={setCenarioVotosDashboard}
@@ -1138,6 +1321,41 @@ export default function Home() {
                     const percentual = Math.round((cidades / total) * 100)
                     cardSubtitle = `${percentual}% de cobertura`
                     cardSubtitleType = percentual >= 50 ? 'positive' : percentual >= 30 ? 'neutral' : 'negative'
+                  }
+                }
+
+                // Lideranças mapeadas: média lideranças ÷ cidades com cobertura territorial
+                if (kpi.id === 'base') {
+                  const presencaKpi = kpisComMedia.find((row) => row.id === 'presenca')
+                  let cidadesCobertas = 0
+                  if (
+                    presencaKpi &&
+                    typeof presencaKpi.value === 'string' &&
+                    presencaKpi.value.includes('/')
+                  ) {
+                    const [c] = presencaKpi.value.split('/').map((v) => parseInt(v.trim(), 10) || 0)
+                    cidadesCobertas = c
+                  }
+                  let liderancas = 0
+                  if (typeof kpi.value === 'number') liderancas = kpi.value
+                  else {
+                    const s = String(kpi.value).replace(/\./g, '').replace(/,/g, '.')
+                    liderancas = Math.round(parseFloat(s) || 0)
+                  }
+                  if (cidadesCobertas > 0) {
+                    const media = liderancas / cidadesCobertas
+                    const mediaType: 'positive' | 'negative' | 'neutral' =
+                      media >= 2 ? 'positive' : media >= 1 ? 'neutral' : 'negative'
+                    cardInfoLines = [
+                      {
+                        text: `≈ ${media.toFixed(1).replace('.', ',')} lideranças/cidade`,
+                        type: mediaType,
+                      },
+                      {
+                        text: `${liderancas.toLocaleString('pt-BR')} ÷ ${cidadesCobertas} cidades (cobertura)`,
+                        type: 'neutral',
+                      },
+                    ]
                   }
                 }
                 
@@ -1223,12 +1441,20 @@ export default function Home() {
                     }
                   }
                 }
+                if (kpi.id === 'posicao_chapa' && rankingExpectativa?.totalCandidatos) {
+                  const nomeCandidato = candidatoPadrao?.trim()
+                  cardSubtitle = nomeCandidato
+                    ? `${nomeCandidato} — ${rankingExpectativa.totalCandidatos} candidatos eleição`
+                    : `${rankingExpectativa.totalCandidatos} candidatos eleição`
+                  cardSubtitleType = 'neutral'
+                }
 
                 const kpiHrefMap: Partial<Record<KPI['id'], string>> = {
                   presenca: '/dashboard/territorio',
                   base: '/dashboard/territorio',
                   projecao: '/dashboard/chapas',
                   projecao_estadual: '/dashboard/chapas-estaduais',
+                  posicao_chapa: '/dashboard/chapas',
                   sentimento: '/dashboard/pesquisa',
                 }
                 
@@ -1985,6 +2211,7 @@ export default function Home() {
         </div>
         </AnimatedSection>
       </div>
+      )}
 
       {/* Modal de Análise de Territórios em Tela Cheia */}
       {analiseTerritoriosTelaCheia && (
@@ -2303,8 +2530,104 @@ export default function Home() {
         )
       })()}
 
-      {/* Modal de Radar de Posicionamento em Tela Cheia */}
+      {/* Modal tela cheia: Posts & Insights (cockpit) ou Radar de Posicionamento (demais temas) */}
       {bandeirasTelaCheia && (
+        theme === 'cockpit' ? (
+          <div className="fixed inset-0 z-50 flex flex-col bg-background">
+            <div className="flex items-center justify-between border-b border-card bg-surface p-4">
+              <div className="flex min-w-0 items-center gap-3">
+                <BarChart3 className="h-6 w-6 shrink-0 text-accent-gold" />
+                <div>
+                  <h2 className="text-xl font-semibold text-text-primary">Posts &amp; Insights</h2>
+                  {postsInsightsCockpit?.username ? (
+                    <p className="text-sm text-secondary">@{postsInsightsCockpit.username} · últimos 30 dias</p>
+                  ) : (
+                    <p className="text-sm text-secondary">Últimos 30 dias</p>
+                  )}
+                </div>
+              </div>
+              <div className="flex shrink-0 items-center gap-2">
+                <Link
+                  href="/dashboard/conteudo"
+                  className="rounded-lg border border-card px-3 py-2 text-sm font-medium text-accent-gold hover:bg-background"
+                >
+                  Abrir Conteúdo
+                </Link>
+                <button
+                  type="button"
+                  onClick={() => setBandeirasTelaCheia(false)}
+                  className="rounded-lg p-2 transition-colors hover:bg-background"
+                  title="Fechar"
+                >
+                  <X className="h-6 w-6 text-secondary" />
+                </button>
+              </div>
+            </div>
+            <div className="flex-1 overflow-auto p-6">
+              <div className="mx-auto max-w-7xl">
+                {loadingBandeiras ? (
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                    {[1, 2, 3, 4, 5, 6].map((i) => (
+                      <div key={i} className="h-40 animate-pulse rounded-2xl bg-surface" />
+                    ))}
+                  </div>
+                ) : postsInsightsCockpit ? (
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                    {COCKPIT_POSTS_INSIGHT_ROWS.map(({ key, label, Icon, metric }) => {
+                      const post = postsInsightsCockpit[key]
+                      const value = metric(post)
+                      return (
+                        <div
+                          key={key}
+                          className="overflow-hidden rounded-2xl border border-card bg-surface shadow-card"
+                        >
+                          <div className="border-b border-card bg-gradient-to-r from-accent-gold/15 to-transparent px-4 py-2">
+                            <span className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-accent-gold">
+                              <Icon className="h-4 w-4" />
+                              {label}
+                            </span>
+                          </div>
+                          <div className="flex gap-3 p-4">
+                            <div className="relative h-24 w-24 shrink-0 overflow-hidden rounded-xl border border-card bg-background">
+                              {post.thumbnail ? (
+                                <img src={post.thumbnail} alt="" className="h-full w-full object-cover" />
+                              ) : null}
+                              <span className="absolute bottom-1 right-1 rounded bg-[rgb(15,45,74)]/80 px-1.5 py-0.5 text-xs font-bold tabular-nums text-white">
+                                {value}
+                              </span>
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <p className="line-clamp-4 text-sm text-text-primary">{post.caption || 'Sem legenda'}</p>
+                              <a
+                                href={post.url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="mt-2 inline-flex items-center gap-1 text-sm font-medium text-accent-gold hover:underline"
+                              >
+                                <ExternalLink className="h-4 w-4" />
+                                Ver no Instagram
+                              </a>
+                            </div>
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                ) : (
+                  <div className="rounded-2xl border border-card bg-surface p-8 text-center">
+                    <p className="text-secondary">
+                      Conecte o Instagram na página{' '}
+                      <Link href="/dashboard/conteudo" className="font-semibold text-accent-gold hover:underline">
+                        Conteúdo
+                      </Link>{' '}
+                      para carregar postagens e métricas.
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        ) : (
         <div className="fixed inset-0 z-50 bg-background flex flex-col">
           <div className="bg-surface border-b border-card p-4 flex items-center justify-between">
             <h2 className="text-xl font-semibold text-text-primary flex items-center gap-2">
@@ -2590,6 +2913,7 @@ export default function Home() {
             </div>
           </div>
         </div>
+        )
       )}
 
       {/* Modal do Monitor de Imprensa em Tela Cheia */}

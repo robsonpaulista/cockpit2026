@@ -40,6 +40,14 @@ teste-*.js
 *.tsbuildinfo
 next-env.d.ts
 
+# Federal 2018 — dados em Supabase; planilha/JSON gerados localmente pelos scripts
+/federal2018.xlsx
+/data/federal2018.json
+
+# PDFs de apoio (não versionar — podem ser grandes)
+/PesqAferir*.pdf
+/Pesq Aferir*.pdf
+
 
 
 

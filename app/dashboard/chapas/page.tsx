@@ -9,6 +9,10 @@ import { Cenario, CenarioCompleto, PartidoCenario } from '@/lib/chapasService'
 import * as chapasFederalService from '@/lib/chapasService'
 import * as chapasEstaduaisService from '@/lib/chapas-estaduais-service'
 import CenariosTabs from '@/components/cenarios-tabs'
+import {
+  encontrarPartidoRepublicanos,
+  nomePartidoEhRepublicanos,
+} from '@/lib/chapas-republicanos-match'
 import { useAuth } from '@/hooks/use-auth'
 
 const coresPartidosFederais = {
@@ -16,6 +20,7 @@ const coresPartidosFederais = {
   'PSD/MDB': { cor: 'bg-accent-gold-soft', corTexto: 'text-text-primary' },
   'PP': { cor: 'bg-text-secondary', corTexto: 'text-white' },
   'REPUBLICANOS': { cor: 'bg-blue-600', corTexto: 'text-white' },
+  REPUB: { cor: 'bg-blue-600', corTexto: 'text-white' },
   'PODEMOS': { cor: 'bg-accent-gold', corTexto: 'text-white' }
 }
 
@@ -24,6 +29,7 @@ const coresPartidosEstaduais = {
   'MDB': { cor: 'bg-accent-gold-soft', corTexto: 'text-text-primary' },
   'PP': { cor: 'bg-text-secondary', corTexto: 'text-white' },
   'REPUBLICANOS': { cor: 'bg-blue-600', corTexto: 'text-white' },
+  REPUB: { cor: 'bg-blue-600', corTexto: 'text-white' },
 }
 
 // Interface para partido local
@@ -1018,17 +1024,19 @@ export default function ChapasPage() {
     }
   }
 
-  // Análise simples do REPUBLICANOS
+  // Análise simples do Republicanos (REPUBLICANOS, REPUB, coligações)
   const analisarRepublicanos = () => {
-    const partidoNome = 'REPUBLICANOS'
-    const partido = partidos.find(p => p.nome === partidoNome)
+    const partido = encontrarPartidoRepublicanos(partidos)
+    const partidoNome = partido?.nome ?? 'REPUBLICANOS'
     const votos = partido ? getVotosProjetados(partido.candidatos, partido.nome) : 0
     const minimo80 = getQuocienteMinimo()
     const atingiuMinimo = votos >= minimo80
     const vagasDiretas = calcularVagasDiretas(votos)
 
     const simulacao = simularDistribuicaoCompleta()
-    const infoPartidoSim = simulacao.partidosComVagas.find(p => p.partido === partidoNome)
+    const infoPartidoSim = simulacao.partidosComVagas.find((p) =>
+      nomePartidoEhRepublicanos(p.partido)
+    )
     const vagasTotaisPrevistas = infoPartidoSim?.vagasObtidas || 0
     const vagasSobra = vagasTotaisPrevistas - vagasDiretas
 
@@ -1050,7 +1058,7 @@ export default function ChapasPage() {
       deltaMinimo: number
       elegivel: boolean
     }> = []
-    const adversarios = partidos.filter(p => p.nome !== partidoNome)
+    const adversarios = partidos.filter((p) => !nomePartidoEhRepublicanos(p.nome))
 
     adversarios.forEach(adversario => {
       const votosAdv = getVotosProjetados(adversario.candidatos, adversario.nome)
@@ -1086,9 +1094,10 @@ export default function ChapasPage() {
     return {
       cenarios,
       riscos,
-      conclusao: vagasTotaisPrevistas > 0 
-        ? `REPUBLICANOS elege ${vagasTotaisPrevistas} candidato(s) (${vagasDiretas} diretas + ${vagasSobra} sobras)`
-        : `REPUBLICANOS não elege ninguém`
+      conclusao:
+        vagasTotaisPrevistas > 0
+          ? `${partidoNome} elege ${vagasTotaisPrevistas} candidato(s) (${vagasDiretas} diretas + ${vagasSobra} sobras)`
+          : `${partidoNome} não elege ninguém`,
     }
   }
 
@@ -1645,7 +1654,7 @@ export default function ChapasPage() {
                               <Eye className="h-3.5 w-3.5" />
                             )}
                           </button>
-                          {partido.nome === 'REPUBLICANOS' && (
+                          {nomePartidoEhRepublicanos(partido.nome) && (
                             <button
                               type="button"
                               onClick={() => setOpenAnaliseRepublicanos(true)}

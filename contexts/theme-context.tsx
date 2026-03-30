@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react'
 
-type ThemeName = 'premium' | 'agentes' | 'republicanos'
+type ThemeName = 'premium' | 'agentes' | 'republicanos' | 'cockpit'
 
 interface ThemeContextType {
   theme: ThemeName
@@ -20,7 +20,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   // Sincroniza com localStorage na montagem
   useEffect(() => {
     const saved = localStorage.getItem(STORAGE_KEY) as ThemeName | null
-    if (saved === 'premium' || saved === 'agentes' || saved === 'republicanos') {
+    if (saved === 'premium' || saved === 'agentes' || saved === 'republicanos' || saved === 'cockpit') {
       setThemeState(saved)
       document.documentElement.setAttribute('data-theme', saved)
     } else {
@@ -36,7 +36,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const toggleTheme = useCallback(() => {
-    const order: ThemeName[] = ['republicanos', 'premium', 'agentes']
+    const order: ThemeName[] = ['republicanos', 'premium', 'agentes', 'cockpit']
     const idx = order.indexOf(theme)
     const next = order[(idx + 1) % order.length]
     setTheme(next)

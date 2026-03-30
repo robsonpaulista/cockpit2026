@@ -246,7 +246,7 @@ export async function GET(request: Request) {
     const status = searchParams.get('status')
     const cidade = searchParams.get('cidade')
 
-    let query = supabase
+    let queryComJoins = supabase
       .from('demands')
       .select(`
         *,
@@ -264,13 +264,30 @@ export async function GET(request: Request) {
       .order('created_at', { ascending: false })
 
     if (status) {
-      query = query.eq('status', status)
+      queryComJoins = queryComJoins.eq('status', status)
     }
 
-    const { data: demandsFromDb, error } = await query
+    let { data: demandsFromDb, error: demandsDbError } = await queryComJoins
 
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 })
+    if (demandsDbError) {
+      console.warn(
+        '[demands GET] Select com visits/agendas falhou; tentando demands sem join:',
+        demandsDbError.message
+      )
+      let querySimples = supabase
+        .from('demands')
+        .select('*')
+        .order('created_at', { ascending: false })
+      if (status) {
+        querySimples = querySimples.eq('status', status)
+      }
+      const retry = await querySimples
+      demandsFromDb = retry.data
+      demandsDbError = retry.error
+    }
+
+    if (demandsDbError) {
+      return NextResponse.json({ error: demandsDbError.message }, { status: 500 })
     }
 
     // Buscar demandas do Google Sheets
@@ -284,6 +301,14 @@ export async function GET(request: Request) {
         .normalize('NFD')
         .replace(/[\u0300-\u036f]/g, '')
         .trim()
+    }
+
+    /** Células da planilha podem vir como string, número ou tipos estranhos — evita quebrar o filtro. */
+    const celulaComoTextoCidade = (val: unknown): string | null => {
+      if (val === null || val === undefined) return null
+      if (typeof val === 'boolean') return null
+      const s = String(val).trim()
+      return s === '' ? null : s
     }
 
     // Filtrar demandas do banco por cidade se necessário
@@ -360,55 +385,84 @@ export async function GET(request: Request) {
       }
       
       filteredSheetsDemands = filteredSheetsDemands.filter((d: any) => {
-        // Tentar múltiplas formas de acessar a cidade
-        // Primeiro verificar sheets_data (que contém todos os dados da planilha)
-        let demandCity: string | null = null
-        
-        if (d.sheets_data) {
-          // Procurar em todas as chaves que possam conter cidade (case-insensitive)
-          const possibleCityKeys = Object.keys(d.sheets_data).filter(key => 
-            /cidade|city|município|municipio|MUNICIPIO|MUNICÍPIO|local|localidade/i.test(key)
-          )
-          
-          if (possibleCityKeys.length > 0) {
-            demandCity = d.sheets_data[possibleCityKeys[0]]
+        try {
+          let demandCity: string | null = null
+
+          if (d.sheets_data && typeof d.sheets_data === 'object') {
+            const possibleCityKeys = Object.keys(d.sheets_data).filter((key) =>
+              /cidade|city|município|municipio|MUNICIPIO|MUNICÍPIO|local|localidade/i.test(key)
+            )
+
+            if (possibleCityKeys.length > 0) {
+              for (const key of possibleCityKeys) {
+                const texto = celulaComoTextoCidade(d.sheets_data[key])
+                if (texto) {
+                  demandCity = texto
+                  break
+                }
+              }
+              if (!demandCity) {
+                const fallbackVal = d.sheets_data[possibleCityKeys[0]]
+                demandCity = celulaComoTextoCidade(fallbackVal)
+              }
+            }
+
+            if (!demandCity) {
+              const candidatos = [
+                d.sheets_data.cidade,
+                d.sheets_data.Cidade,
+                d.sheets_data.CIDADE,
+                d.sheets_data.municipio,
+                d.sheets_data.Municipio,
+                d.sheets_data.MUNICIPIO,
+                d.sheets_data.município,
+                d.sheets_data.Município,
+                d.sheets_data.MUNICÍPIO,
+              ]
+              for (const c of candidatos) {
+                const t = celulaComoTextoCidade(c)
+                if (t) {
+                  demandCity = t
+                  break
+                }
+              }
+            }
           }
-          
-          // Se não encontrou, tentar acessar diretamente com diferentes variações
+
           if (!demandCity) {
-            demandCity = d.sheets_data.cidade || d.sheets_data.Cidade || d.sheets_data.CIDADE || 
-                         d.sheets_data.municipio || d.sheets_data.Municipio || d.sheets_data.MUNICIPIO ||
-                         d.sheets_data.município || d.sheets_data.Município || d.sheets_data.MUNICÍPIO || null
+            demandCity =
+              celulaComoTextoCidade(d.cidade) ||
+              celulaComoTextoCidade(d.Cidade) ||
+              celulaComoTextoCidade(d.CIDADE)
           }
-        }
-        
-        // Fallback: tentar acessar diretamente no objeto
-        if (!demandCity) {
-          demandCity = d.cidade || d.Cidade || d.CIDADE || null
-        }
-        
-        if (!demandCity || String(demandCity).trim() === '') {
-          // Log apenas para as primeiras 3 demandas para não poluir o log
-          if (filteredSheetsDemands.indexOf(d) < 3) {
-            console.log(`[DEBUG] Demanda sem cidade: "${d.title}"`, {
-              sheets_data_keys: d.sheets_data ? Object.keys(d.sheets_data) : [],
-              demand_keys: Object.keys(d).filter(k => !k.startsWith('_'))
-            })
+
+          if (!demandCity) {
+            if (filteredSheetsDemands.indexOf(d) < 3) {
+              console.log(`[DEBUG] Demanda sem cidade: "${d.title}"`, {
+                sheets_data_keys: d.sheets_data ? Object.keys(d.sheets_data) : [],
+                demand_keys: Object.keys(d).filter((k) => !k.startsWith('_')),
+              })
+            }
+            return false
           }
+
+          const demandCityNormalized = normalizeCityName(demandCity)
+          const matches =
+            demandCityNormalized === cidadeNormalizada ||
+            demandCityNormalized.includes(cidadeNormalizada) ||
+            cidadeNormalizada.includes(demandCityNormalized)
+
+          if (matches && filteredSheetsDemands.indexOf(d) < 5) {
+            console.log(
+              `[DEBUG] Match encontrado: "${demandCity}" (normalizada: "${demandCityNormalized}") === "${cidade}" (normalizada: "${cidadeNormalizada}")`
+            )
+          }
+
+          return matches
+        } catch (rowErr) {
+          console.warn('[demands] Erro ao filtrar linha do Sheets por cidade:', rowErr)
           return false
         }
-        
-        const demandCityStr = String(demandCity).trim()
-        const demandCityNormalized = normalizeCityName(demandCityStr)
-        const matches = demandCityNormalized === cidadeNormalizada ||
-                        demandCityNormalized.includes(cidadeNormalizada) ||
-                        cidadeNormalizada.includes(demandCityNormalized)
-        
-        if (matches && filteredSheetsDemands.indexOf(d) < 5) {
-          console.log(`[DEBUG] Match encontrado: "${demandCityStr}" (normalizada: "${demandCityNormalized}") === "${cidade}" (normalizada: "${cidadeNormalizada}")`)
-        }
-        
-        return matches
       })
       
       console.log(`[DEBUG] Total de demandas do Sheets após filtro: ${filteredSheetsDemands.length}`)

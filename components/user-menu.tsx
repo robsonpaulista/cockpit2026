@@ -5,9 +5,11 @@ import { useRouter } from 'next/navigation'
 import { useAuth } from '@/hooks/use-auth'
 import { LogOut, User, Settings, ChevronDown } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { useTheme } from '@/contexts/theme-context'
 
 export function UserMenu() {
   const { user, loading, signOut } = useAuth()
+  const { theme } = useTheme()
   const router = useRouter()
   const [open, setOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
@@ -115,12 +117,21 @@ export function UserMenu() {
         onClick={() => setOpen(!open)}
         className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-accent-gold-soft transition-colors"
       >
-        <div className="w-8 h-8 rounded-full bg-accent-gold text-white flex items-center justify-center text-sm font-semibold">
+        <div
+          className={cn(
+            'flex h-8 w-8 items-center justify-center overflow-hidden rounded-full text-sm font-semibold text-white',
+            user.profile?.avatar_url
+              ? 'bg-accent-gold'
+              : theme === 'cockpit'
+                ? 'bg-gradient-to-br from-[#062e52] via-[#0b4a7a] to-[#1368a8] shadow-sm'
+                : 'bg-accent-gold'
+          )}
+        >
           {user.profile?.avatar_url ? (
             <img
               src={user.profile.avatar_url}
               alt={user.profile.name}
-              className="w-full h-full rounded-full object-cover"
+              className="h-full w-full rounded-full object-cover"
             />
           ) : (
             userInitials

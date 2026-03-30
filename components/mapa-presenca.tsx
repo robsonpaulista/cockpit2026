@@ -6,6 +6,7 @@ import { Maximize2, Minimize2, MapPin, Users, Eye, Target, Navigation, Filter, T
 import * as XLSX from 'xlsx'
 import jsPDF from 'jspdf'
 import municipiosPiaui from '@/lib/municipios-piaui.json'
+import { getRegiaoByLat } from '@/lib/piaui-regiao'
 import { getAllEleitores } from '@/lib/eleitores'
 import type { MapStats } from './mapa-wrapper-leaflet'
 
@@ -51,13 +52,6 @@ const REGIOES = [
   { id: 'Sul', label: 'Sul' },
 ]
 const OPPORTUNITY_THRESHOLD = 15000
-
-function getRegionByLat(lat: number): string {
-  if (lat > -4.8) return 'Norte'
-  if (lat > -6.5) return 'Centro-Norte'
-  if (lat > -8.5) return 'Centro-Sul'
-  return 'Sul'
-}
 
 function normalizeName(name: string): string {
   return name.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim()
@@ -123,7 +117,7 @@ export function MapaPresenca({
       }
     }
 
-    const munisFiltrados = municipiosPiaui.filter(m => getRegionByLat(m.lat) === filtroRegiao)
+    const munisFiltrados = municipiosPiaui.filter((m) => getRegiaoByLat(m.lat) === filtroRegiao)
     const nomesSet = new Set(munisFiltrados.map(m => normalizeName(m.nome)))
     const match = (nome: string) => nomesSet.has(normalizeName(nome))
 

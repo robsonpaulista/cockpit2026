@@ -9,6 +9,7 @@ import { PageTransition } from '@/components/page-transition'
 import { SidebarProvider, useSidebar } from '@/contexts/sidebar-context'
 import { NavigationLoadingProvider } from '@/contexts/navigation-loading-context'
 import { ThemeProvider } from '@/contexts/theme-context'
+import { CockpitStatusProvider } from '@/contexts/cockpit-status-context'
 import { SplashOverlay } from '@/components/splash-overlay'
 import { IdleSplash } from '@/components/idle-splash'
 import { cn } from '@/lib/utils'
@@ -18,21 +19,25 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
   const { collapsed } = useSidebar()
 
   return (
-    <div className="flex h-screen overflow-hidden">
-      <NavigationLoadingBar />
-      <Sidebar />
-      <div className={cn(
-        'flex-1 flex flex-col overflow-hidden transition-all duration-300 ease-out',
-        collapsed ? 'lg:ml-20' : 'lg:ml-64'
-      )}>
-        <DashboardHeader />
-        <main className="flex-1 overflow-y-auto">
-          <DashboardPermissionGuard>
-            <PageTransition>{children}</PageTransition>
-          </DashboardPermissionGuard>
-        </main>
+    <CockpitStatusProvider>
+      <div className="flex h-screen overflow-hidden">
+        <NavigationLoadingBar />
+        <Sidebar />
+        <div
+          className={cn(
+            'flex-1 flex flex-col overflow-hidden transition-all duration-300 ease-out',
+            collapsed ? 'lg:ml-20' : 'lg:ml-64'
+          )}
+        >
+          <DashboardHeader />
+          <main className="flex-1 overflow-y-auto">
+            <DashboardPermissionGuard>
+              <PageTransition>{children}</PageTransition>
+            </DashboardPermissionGuard>
+          </main>
+        </div>
       </div>
-    </div>
+    </CockpitStatusProvider>
   )
 }
 

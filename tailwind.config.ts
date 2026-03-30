@@ -38,6 +38,8 @@ const config: Config = {
         
         // Bordas
         'border-card': 'rgb(var(--border-card) / <alpha-value>)',
+
+        'cockpit-cyan': 'rgb(var(--cockpit-cyan) / <alpha-value>)',
         
         // Legado (para compatibilidade)
         primary: {

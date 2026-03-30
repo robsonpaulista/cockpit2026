@@ -81,6 +81,133 @@
   --border-card: 201 216 234;
 }
 
+/* Tema 4: Cockpit Vivo — gradiente azul frio, vidro, ciano “sistema ativo” */
+[data-theme="cockpit"] {
+  --bg-app: 255 255 255;
+  --bg-surface: 255 255 255;
+  --bg-sidebar: 248 252 255;
+
+  --text-primary: 15 45 74;
+  --text-secondary: 71 100 130;
+  --text-muted: 120 150 175;
+
+  --accent-gold: 14 116 188;
+  --accent-gold-soft: 214 236 252;
+  --accent-gold-dark: 8 76 140;
+  --strategic-yellow: 234 179 8;
+
+  --success: 16 163 74;
+  --warning: 234 179 8;
+  --danger: 220 38 38;
+  --info: 8 145 178;
+
+  --border-card: 186 212 232;
+  --cockpit-cyan: 6 182 212;
+}
+
+[data-theme="cockpit"] html {
+  background: rgb(var(--bg-app));
+}
+
+[data-theme="cockpit"] body {
+  background: transparent;
+}
+
+/** Faixa superior do dashboard Cockpit (hero + contexto) — não usar em página inteira */
+.cockpit-app-bg {
+  background: linear-gradient(165deg, #e8f4fc 0%, #d6eaf9 45%, #c5dff5 100%) !important;
+}
+
+.cockpit-glass {
+  background: rgba(255, 255, 255, 0.45);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid rgba(255, 255, 255, 0.7);
+  box-shadow:
+    0 8px 32px rgba(15, 70, 120, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.85);
+}
+
+.cockpit-glass-strong {
+  background: rgba(255, 255, 255, 0.58);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+}
+
+.cockpit-pulse-dot {
+  animation: cockpit-pulse-cyan 1.85s ease-in-out infinite;
+}
+
+@keyframes cockpit-pulse-cyan {
+  0%,
+  100% {
+    opacity: 1;
+    box-shadow: 0 0 0 0 rgba(6, 182, 212, 0.45);
+  }
+  50% {
+    opacity: 0.88;
+    box-shadow: 0 0 0 8px rgba(6, 182, 212, 0);
+  }
+}
+
+/** Pulso do indicador “Sistema ativo” — mesma família cromática do gradiente azul Cockpit */
+.cockpit-pulse-dot-brand {
+  animation: cockpit-pulse-brand-blue 1.85s ease-in-out infinite;
+}
+
+@keyframes cockpit-pulse-brand-blue {
+  0%,
+  100% {
+    opacity: 1;
+    box-shadow: 0 0 0 0 rgba(14, 116, 188, 0.45);
+  }
+  50% {
+    opacity: 0.9;
+    box-shadow: 0 0 0 8px rgba(14, 116, 188, 0);
+  }
+}
+
+[data-theme="cockpit"] .sidebar-cockpit-shell {
+  background: rgba(255, 255, 255, 0.52) !important;
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  border-color: rgba(255, 255, 255, 0.75) !important;
+}
+
+.animate-cockpit-fade-in {
+  animation: cockpit-fade-in 0.55s ease-out both;
+}
+
+@keyframes cockpit-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Reflexo único na barra de cobertura eleitoral (Cockpit) */
+@keyframes cockpit-progress-sheen {
+  0% {
+    transform: translateX(-20%);
+    opacity: 0;
+  }
+  12% {
+    opacity: 0.85;
+  }
+  100% {
+    transform: translateX(280%);
+    opacity: 0;
+  }
+}
+
+.cockpit-progress-sheen {
+  animation: cockpit-progress-sheen 1.35s cubic-bezier(0.22, 1, 0.36, 1) 0.45s forwards;
+}
+
 @layer base {
   * {
     @apply border-border-card;
