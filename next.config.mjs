@@ -7,6 +7,14 @@ const nextConfig = {
   async headers() {
     return [
       {
+        source: '/manifest.webmanifest',
+        headers: [{ key: 'Content-Type', value: 'application/manifest+json; charset=utf-8' }],
+      },
+      {
+        source: '/sw.js',
+        headers: [{ key: 'Content-Type', value: 'application/javascript; charset=utf-8' }],
+      },
+      {
         source: '/:path*',
         headers: [
           {

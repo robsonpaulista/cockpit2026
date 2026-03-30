@@ -645,19 +645,19 @@ export function DashboardCockpitVivoLayout(props: DashboardCockpitVivoLayoutProp
         )}
       </section>
 
-      {/* KPIs — uma linha (scroll horizontal em telas estreitas) */}
-      <section>
+      {/* KPIs — grade 2 colunas no mobile (evita corte por overflow); 5 colunas no lg */}
+      <section className="min-w-0">
         {props.loading ? (
-          <div className="flex gap-3 overflow-x-auto pb-1 lg:grid lg:grid-cols-5 lg:overflow-visible">
+          <div className="grid grid-cols-2 gap-3 lg:grid lg:grid-cols-5">
             {[1, 2, 3, 4, 5].map((i) => (
               <div
                 key={i}
-                className="h-32 min-w-[158px] shrink-0 rounded-xl border border-white/35 bg-white/10 backdrop-blur-md animate-pulse lg:min-w-0"
+                className="h-32 min-h-0 w-full min-w-0 rounded-xl border border-white/35 bg-white/10 backdrop-blur-md animate-pulse"
               />
             ))}
           </div>
         ) : (
-          <div className="flex gap-3 overflow-x-auto pb-1 snap-x snap-mandatory scrollbar-hide lg:grid lg:grid-cols-5 lg:gap-3 lg:overflow-visible lg:snap-none">
+          <div className="grid grid-cols-2 gap-3 lg:grid lg:grid-cols-5 lg:gap-3">
             {[presenca, base, sentimento, projecao, posicaoChapa].map((kpi, index) => {
               if (!kpi) return null
               const d = secondaryKpiDetails.get(kpi.id)
@@ -665,12 +665,12 @@ export function DashboardCockpitVivoLayout(props: DashboardCockpitVivoLayoutProp
                 <div
                   key={kpi.id}
                   className={cn(
-                    'flex h-full min-h-0 min-w-[158px] shrink-0 snap-start flex-col p-0 lg:min-w-0',
+                    'flex h-full min-h-0 w-full min-w-0 flex-col p-0',
                     'transition-transform hover:scale-[1.01] animate-cockpit-fade-in'
                   )}
                   style={{ animationDelay: `${index * 50}ms` }}
                 >
-                  <div className="min-h-0 flex-1">
+                  <div className="flex min-h-0 h-full min-w-0 flex-1 flex-col">
                     <KPICard
                       kpi={kpi}
                       href={kpiHrefMap[kpi.id] ?? '#'}

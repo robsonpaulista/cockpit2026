@@ -197,6 +197,7 @@ export function KPICard({
         isCockpit ? 'min-h-0 p-3' : 'min-h-[100px] justify-between p-4',
         isCockpit
           ? cn(
+              'min-w-0',
               'rounded-xl border border-white/40 bg-white/10 backdrop-blur-lg supports-[backdrop-filter]:bg-white/[0.07]',
               /* Mesma projeção do KPIHeroCard cockpit — borda inferior legível em TV/projetor */
               'shadow-[0_12px_40px_rgba(6,46,82,0.35),0_4px_24px_rgba(15,45,74,0.08),inset_0_1px_0_rgba(255,255,255,0.38)]',
@@ -272,7 +273,11 @@ export function KPICard({
   )
 
   if (href) {
-    return <Link href={href} className="h-full">{content}</Link>
+    return (
+      <Link href={href} className="flex h-full min-h-0 w-full min-w-0 flex-col">
+        {content}
+      </Link>
+    )
   }
 
   return content
