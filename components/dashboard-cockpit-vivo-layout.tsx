@@ -707,7 +707,7 @@ export function DashboardCockpitVivoLayout(props: DashboardCockpitVivoLayoutProp
         <section
           className={cn(
             COCKPIT_SECTION_GLASS_CLASS,
-            'flex items-start gap-2.5 px-4 py-2.5'
+            'flex items-start gap-2 px-4 py-2'
           )}
         >
           <span
@@ -942,15 +942,15 @@ export function DashboardCockpitVivoLayout(props: DashboardCockpitVivoLayoutProp
                         )}
                       </div>
                       {mostrarAlertas ? (
-                        <div className="shrink-0 rounded-md border border-white/30 bg-white/[0.14] px-1.5 py-1 shadow-[inset_0_1px_0_rgba(255,255,255,0.35)]">
-                          <ul className="space-y-0.5 text-[9px] leading-tight text-text-primary">
+                        <div className="max-h-[3.25rem] shrink-0 overflow-auto rounded-md border border-white/30 bg-white/[0.14] px-1.5 py-0.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.35)]">
+                          <ul className="space-y-0.5 text-[12px] leading-tight text-text-primary">
                             {miniAlerts.regiaoAbaixo && (
                               <li className="flex items-start gap-1 text-amber-950/90">
                                 <AlertTriangle
                                   className="mt-px h-2.5 w-2.5 shrink-0 text-amber-700"
                                   aria-hidden
                                 />
-                                <span>
+                                <span className="line-clamp-1">
                                   Na região <strong className="font-semibold">{regiao}</strong> a média
                                   está bem abaixo da média estadual ponderada — priorizar diagnóstico.
                                 </span>
@@ -975,7 +975,7 @@ export function DashboardCockpitVivoLayout(props: DashboardCockpitVivoLayoutProp
                                     aria-hidden
                                   />
                                 )}
-                                <span>
+                                <span className="line-clamp-1">
                                   <strong className="font-semibold">{t.cidadeLabel}</strong>{' '}
                                   {t.direcao === 'subiu' ? 'teve aumento' : 'teve queda'} de intenção (
                                   {t.de.toLocaleString('pt-BR', {
@@ -996,7 +996,7 @@ export function DashboardCockpitVivoLayout(props: DashboardCockpitVivoLayoutProp
                       ) : null}
                       <div className="min-h-0 flex-1 w-full min-w-0">
                         {series.length === 0 ? (
-                          <div className="flex h-full min-h-[2.5rem] items-center justify-center rounded-lg border border-white/30 bg-white/10 text-[9px] text-text-muted">
+                          <div className="flex h-full min-h-[2.5rem] items-center justify-center rounded-lg border border-white/30 bg-white/10 text-xs text-text-muted">
                             Sem dados
                           </div>
                         ) : (
