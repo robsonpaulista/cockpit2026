@@ -28,6 +28,10 @@ import { KPICard } from '@/components/kpi-card'
 import { GlassGradientProgressBar } from '@/components/animated-bar'
 import type { KPI, NewsItem } from '@/types'
 import { cn } from '@/lib/utils'
+import {
+  formatarTextoDisputaSobraSemDistancia,
+  formatarTextoFaltamVotosDisputaSobra,
+} from '@/lib/chapas-segunda-vaga-republicanos'
 import { useCockpitStatus } from '@/contexts/cockpit-status-context'
 import {
   cidadeTrendAlertsParaRegiao,
@@ -419,7 +423,7 @@ export function DashboardCockpitVivoLayout(props: DashboardCockpitVivoLayoutProp
         })
       } else if (sv.distancia > 0) {
         m.set('projecao', {
-          subtitle: `-${sv.distancia.toLocaleString('pt-BR')} votos p/ 2ª vaga (${competidor})`,
+          subtitle: formatarTextoFaltamVotosDisputaSobra(sv.distancia, sv.rodada, competidor),
           subtitleType: 'negative',
         })
       }
@@ -428,7 +432,6 @@ export function DashboardCockpitVivoLayout(props: DashboardCockpitVivoLayoutProp
     if (props.segundaVagaInfoEstadual) {
       const se = props.segundaVagaInfoEstadual
       const competidor = se.competidorProximo || '?'
-      const vagaAlvo = se.alvoVaga || se.vagasAtuais + 1
       if (se.tipo === 'margem') {
         const margem = se.distancia
         const margemType: 'positive' | 'negative' | 'neutral' =
@@ -455,12 +458,12 @@ export function DashboardCockpitVivoLayout(props: DashboardCockpitVivoLayoutProp
       } else {
         if (se.distancia > 0) {
           m.set('projecao_estadual', {
-            subtitle: `-${se.distancia.toLocaleString('pt-BR')} votos p/ ${vagaAlvo}ª vaga (${competidor})`,
+            subtitle: formatarTextoFaltamVotosDisputaSobra(se.distancia, se.rodada, competidor),
             subtitleType: 'negative',
           })
         } else {
           m.set('projecao_estadual', {
-            subtitle: `${vagaAlvo}ª vaga em disputa (${competidor})`,
+            subtitle: formatarTextoDisputaSobraSemDistancia(se.rodada, competidor),
             subtitleType: 'neutral',
           })
         }

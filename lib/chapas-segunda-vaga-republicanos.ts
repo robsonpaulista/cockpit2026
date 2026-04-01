@@ -30,6 +30,9 @@ export interface RodadaDHondt {
 export interface ProximaVagaExtra {
   distancia: number
   competidorProximo: string | null
+  /** Rodada de sobra no D'Hondt (1 = primeira vaga remanescente após todas as diretas). */
+  rodadaSobra: number
+  /** Número absoluto da próxima vaga do partido alvo (legado; textos preferem rodadaSobra). */
   alvoVaga: number
 }
 
@@ -43,6 +46,7 @@ export interface SegundaVagaPartidoResult {
   /** Mantido para compatibilidade com API / dashboard (QP do partido alvo na rodada relevante). */
   qpRepublicanos: number
   qpCompetidor: number
+  /** Rodada D'Hondt: em “margem”, última sobra ganha; em “faltam”, rodada em que o partido perde o QP. */
   rodada: number
   /** Quando já há margem de manutenção, opcionalmente quanto falta para mais uma vaga. */
   proximaVagaExtra?: ProximaVagaExtra | null
@@ -403,6 +407,7 @@ function simularFaltaProximaVaga(
     return {
       distancia: menorFalta,
       competidorProximo: rodadaCritica.ganhador,
+      rodadaSobra: rodadaCritica.rodada,
       alvoVaga: vagasAtuaisProjecao + 1,
     }
   }
@@ -497,7 +502,7 @@ export function calcularDistanciaProximaVagaPartido(
         competidorProximo: extra.competidorProximo,
         qpRepublicanos: 0,
         qpCompetidor: 0,
-        rodada: 0,
+        rodada: extra.rodadaSobra,
         proximaVagaExtra: null,
       }
     }
@@ -553,8 +558,19 @@ export type SegundaVagaFeedbackLabelResult = {
   notaImpacto?: string
 }
 
-function textoFaltamVotos(distancia: number, vagaAlvo: number, competidor: string) {
-  return `-${distancia.toLocaleString('pt-BR')} votos p/ ${vagaAlvo}ª vaga (${competidor})`
+/** Faltam votos para o alvo superar o QP na rodada de sobra indicada (não é “Nª vaga” do competidor). */
+export function formatarTextoFaltamVotosDisputaSobra(
+  distancia: number,
+  rodadaSobra: number,
+  competidor: string
+): string {
+  const ordem = rodadaSobra > 0 ? `${rodadaSobra}ª` : 'próxima'
+  return `−${distancia.toLocaleString('pt-BR')} votos p/ disputar a ${ordem} sobra (${competidor} maior QP nesta rodada)`
+}
+
+export function formatarTextoDisputaSobraSemDistancia(rodadaSobra: number, competidor: string): string {
+  const ordem = rodadaSobra > 0 ? `${rodadaSobra}ª` : 'próxima'
+  return `Disputa da ${ordem} sobra (${competidor} maior QP nesta rodada)`
 }
 
 function linhaMargemSobraPrefixo(margemTexto: string, competidorLabel: string, s: SegundaVagaPartidoResult) {
@@ -577,13 +593,12 @@ export function buildSegundaVagaFeedbackLabel(
 
   const notaImpacto = opts.simulacao ? montarNotasImpacto(s, opts.simulacao) : undefined
   const competidor = s.competidorProximo || '?'
-  const vagaAlvo = s.alvoVaga || s.vagasAtuais + 1
   const comSim = !!opts.simulacao
 
   const montarSegundaLinhaProxima = (extra: ProximaVagaExtra): string | undefined => {
     if (extra.distancia <= 0) return undefined
     const c = extra.competidorProximo || '?'
-    return textoFaltamVotos(extra.distancia, extra.alvoVaga, c)
+    return formatarTextoFaltamVotosDisputaSobra(extra.distancia, extra.rodadaSobra, c)
   }
 
   if (opts.escopo === 'estadual') {
@@ -609,7 +624,7 @@ export function buildSegundaVagaFeedbackLabel(
     }
     if (s.distancia > 0) {
       return {
-        text: textoFaltamVotos(s.distancia, vagaAlvo, competidor),
+        text: formatarTextoFaltamVotosDisputaSobra(s.distancia, s.rodada, competidor),
         tone: 'negative',
         notaImpacto,
       }
@@ -618,7 +633,7 @@ export function buildSegundaVagaFeedbackLabel(
       return null
     }
     return {
-      text: `${vagaAlvo}ª vaga em disputa (${competidor})`,
+      text: formatarTextoDisputaSobraSemDistancia(s.rodada, competidor),
       tone: 'neutral',
       notaImpacto,
     }
@@ -647,7 +662,7 @@ export function buildSegundaVagaFeedbackLabel(
   }
   if (s.distancia > 0) {
     return {
-      text: textoFaltamVotos(s.distancia, vagaAlvo, competidor),
+      text: formatarTextoFaltamVotosDisputaSobra(s.distancia, s.rodada, competidor),
       tone: 'negative',
       notaImpacto,
     }

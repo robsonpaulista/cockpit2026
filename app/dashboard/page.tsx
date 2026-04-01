@@ -39,6 +39,10 @@ import {
   type MediaIntencaoPorRegiao,
   type PesquisasPorRegiaoMap,
 } from '@/lib/piaui-regiao'
+import {
+  formatarTextoDisputaSobraSemDistancia,
+  formatarTextoFaltamVotosDisputaSobra,
+} from '@/lib/chapas-segunda-vaga-republicanos'
 
 const trendData = [
   { date: '01/10', ife: 65, sentimento: 60 },
@@ -1393,7 +1397,11 @@ export default function Home() {
                           ? 'neutral'
                           : 'negative'
                   } else if (segundaVagaInfo.distancia > 0) {
-                    cardSubtitle = `-${segundaVagaInfo.distancia.toLocaleString('pt-BR')} votos p/ 2ª vaga (${competidor})`
+                    cardSubtitle = formatarTextoFaltamVotosDisputaSobra(
+                      segundaVagaInfo.distancia,
+                      segundaVagaInfo.rodada,
+                      competidor
+                    )
                     cardSubtitleType = 'negative'
                   }
                 }
@@ -1401,7 +1409,6 @@ export default function Home() {
                 // Projeção Estadual: lógica dinâmica com vaga-alvo e fallback de margem
                 if (kpi.id === 'projecao_estadual' && segundaVagaInfoEstadual) {
                   const competidor = segundaVagaInfoEstadual.competidorProximo || '?'
-                  const vagaAlvo = segundaVagaInfoEstadual.alvoVaga || (segundaVagaInfoEstadual.vagasAtuais + 1)
                   if (segundaVagaInfoEstadual.tipo === 'margem') {
                     const margem = segundaVagaInfoEstadual.distancia
                     const margemType =
@@ -1433,10 +1440,17 @@ export default function Home() {
                     cardInfoLines = lines
                   } else {
                     if (segundaVagaInfoEstadual.distancia > 0) {
-                      cardSubtitle = `-${segundaVagaInfoEstadual.distancia.toLocaleString('pt-BR')} votos p/ ${vagaAlvo}ª vaga (${competidor})`
+                      cardSubtitle = formatarTextoFaltamVotosDisputaSobra(
+                        segundaVagaInfoEstadual.distancia,
+                        segundaVagaInfoEstadual.rodada,
+                        competidor
+                      )
                       cardSubtitleType = 'negative'
                     } else {
-                      cardSubtitle = `${vagaAlvo}ª vaga em disputa (${competidor})`
+                      cardSubtitle = formatarTextoDisputaSobraSemDistancia(
+                        segundaVagaInfoEstadual.rodada,
+                        competidor
+                      )
                       cardSubtitleType = 'neutral'
                     }
                   }
