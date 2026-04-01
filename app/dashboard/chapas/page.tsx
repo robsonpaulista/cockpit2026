@@ -561,13 +561,18 @@ export default function ChapasPage() {
       atingiuMinimo: partidoAtingiuMinimo(partido.nome),
     }))
     const escopo = isChapasEstaduais ? 'estadual' : 'federal'
-    const mapa: Record<
-      string,
-      NonNullable<ReturnType<typeof buildSegundaVagaFeedbackLabel>>
-    > = {}
+    const mapa: Record<string, NonNullable<ReturnType<typeof buildSegundaVagaFeedbackLabel>>> = {}
     for (const p of partidos) {
       const raw = calcularDistanciaProximaVagaPartido(rows, quociente, numVagas, (nome) => nome === p.nome)
-      const label = buildSegundaVagaFeedbackLabel(raw, { escopo })
+      const label = buildSegundaVagaFeedbackLabel(raw, {
+        escopo,
+        simulacao: {
+          partidosRows: rows,
+          quociente,
+          numVagas,
+          nomePartidoAlvo: p.nome,
+        },
+      })
       if (label) mapa[p.nome] = label
     }
     return mapa
@@ -1993,19 +1998,24 @@ export default function ChapasPage() {
                       <div className="text-base font-extrabold mb-1 text-center">{getVotosProjetados(partido.candidatos, partido.nome).toLocaleString('pt-BR')}</div>
                       <div className="font-bold text-xs mb-0.5 text-center">PROJEÇÃO ELEITOS</div>
                       <div className="text-base font-extrabold mb-1 text-center">{getProjecaoEleitos(getVotosProjetados(partido.candidatos, partido.nome))}</div>
-                      {feedbackVagasChip ? (
-                        <div className="mb-1 flex w-full justify-center px-0.5">
+                      {/* min-h fixa: com mt-auto no bloco, alturas diferentes do chip deslocavam "VOTOS PROJETADOS" entre cards */}
+                      <div className="mb-1 flex min-h-[10rem] w-full items-start justify-center px-0.5">
+                        {feedbackVagasChip ? (
                           <span
                             className={cn(
-                              'inline-flex max-w-full flex-col items-center justify-center gap-0.5 rounded-lg border px-2 py-1 text-center text-[11px] font-medium leading-tight tracking-tight shadow-[inset_0_1px_0_rgba(255,255,255,0.6)]',
+                              'inline-flex max-w-full flex-col items-center justify-center gap-1 rounded-lg border px-2 py-1 text-center text-[11px] font-medium leading-tight tracking-tight shadow-[inset_0_1px_0_rgba(255,255,255,0.6)]',
                               feedbackVagasChip.tone === 'positive' && 'border-emerald-200/70 bg-emerald-50/80',
                               feedbackVagasChip.tone === 'negative' && 'border-red-200/70 bg-red-50/80',
                               feedbackVagasChip.tone === 'neutral' && 'border-slate-200/80 bg-white/90'
                             )}
                             title={
-                              feedbackVagasChip.segundaLinha
-                                ? `${feedbackVagasChip.text} · ${feedbackVagasChip.segundaLinha}`
-                                : feedbackVagasChip.text
+                              [
+                                feedbackVagasChip.text,
+                                feedbackVagasChip.segundaLinha,
+                                feedbackVagasChip.notaImpacto,
+                              ]
+                                .filter(Boolean)
+                                .join('\n')
                             }
                           >
                             <span
@@ -2022,9 +2032,14 @@ export default function ChapasPage() {
                                 {feedbackVagasChip.segundaLinha}
                               </span>
                             ) : null}
+                            {feedbackVagasChip.notaImpacto ? (
+                              <span className="w-full max-w-full text-left text-[9px] font-normal leading-snug text-gray-600 whitespace-pre-line">
+                                {feedbackVagasChip.notaImpacto}
+                              </span>
+                            ) : null}
                           </span>
-                        </div>
-                      ) : null}
+                        ) : null}
+                      </div>
                       <div className="text-[10px] text-gray-500 mb-1 text-center">{getVotosProjetados(partido.candidatos, partido.nome).toLocaleString('pt-BR')} / {quociente.toLocaleString('pt-BR')} = {getProjecaoEleitos(getVotosProjetados(partido.candidatos, partido.nome))}</div>
                     </div>
                   </div>

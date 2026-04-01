@@ -116,6 +116,220 @@ export function calcularDistribuicaoDHondt(
   return calcularDistribuicaoDHondtComHistorico(partidos, quociente, numVagas).partidosComVagas
 }
 
+function mapaVagasPorPartido(
+  rows: PartidoVotosMinimo[],
+  quociente: number,
+  numVagas: number
+): Record<string, number> {
+  const dist = calcularDistribuicaoDHondt(rows, quociente, numVagas)
+  const m: Record<string, number> = {}
+  for (const p of dist) {
+    m[p.nome] = p.vagasObtidas
+  }
+  return m
+}
+
+function mapasVagasIguais(a: Record<string, number>, b: Record<string, number>): boolean {
+  const keys = new Set([...Object.keys(a), ...Object.keys(b)])
+  for (const k of keys) {
+    if ((a[k] ?? 0) !== (b[k] ?? 0)) return false
+  }
+  return true
+}
+
+/**
+ * Ordem na fila da **próxima** sobra no estado atual — igual ao painel “Cálculo de Sobras”:
+ * QP = votos ÷ (vagas diretas + 1), sem incluir sobras já distribuídas no divisor.
+ * (Não usar vagas finais do D'Hondt: isso descrevia um passo futuro e gerava “3º” quando o card mostra 1º.)
+ */
+function posicaoNaFilaProximaSobra(
+  rows: PartidoVotosMinimo[],
+  quociente: number,
+  nomePartido: string
+): number | null {
+  const qpList: { nome: string; qp: number }[] = []
+  for (const r of rows) {
+    if (!r.atingiuMinimo) continue
+    const vagasDiretas = Math.floor(r.votosTotal / quociente)
+    const qp = r.votosTotal / (vagasDiretas + 1)
+    qpList.push({ nome: r.nome, qp })
+  }
+  qpList.sort((a, b) => b.qp - a.qp)
+  const idx = qpList.findIndex((x) => x.nome === nomePartido)
+  if (idx < 0) return null
+  return idx + 1
+}
+
+/** Aplica delta nos votos e recalcula atingiuMinimo (80% do QE), alinhado à página Chapas. */
+export function partidosComDeltaVotosRecalculaMinimo(
+  rows: PartidoVotosMinimo[],
+  nomePartido: string,
+  deltaVotos: number,
+  quociente: number
+): PartidoVotosMinimo[] {
+  const minVotos = quociente * 0.8
+  return rows.map((r) => {
+    if (r.nome !== nomePartido) return { ...r }
+    const vt = Math.max(0, Math.round(r.votosTotal + deltaVotos))
+    return { ...r, votosTotal: vt, atingiuMinimo: vt >= minVotos }
+  })
+}
+
+type ImpactoCompetidorExtra = 'sem_mudar_vagas' | 'pode_mudar_vagas'
+
+function impactoVotosExtrasNoCompetidor(
+  rows: PartidoVotosMinimo[],
+  quociente: number,
+  numVagas: number,
+  nomeCompetidor: string | null,
+  delta: number
+): ImpactoCompetidorExtra | null {
+  if (!nomeCompetidor || delta <= 0) return null
+  if (!rows.some((r) => r.nome === nomeCompetidor)) return null
+  const base = mapaVagasPorPartido(rows, quociente, numVagas)
+  const alt = mapaVagasPorPartido(
+    partidosComDeltaVotosRecalculaMinimo(rows, nomeCompetidor, delta, quociente),
+    quociente,
+    numVagas
+  )
+  return mapasVagasIguais(base, alt) ? 'sem_mudar_vagas' : 'pode_mudar_vagas'
+}
+
+function impactoAlvoSomaVotos(
+  rows: PartidoVotosMinimo[],
+  quociente: number,
+  numVagas: number,
+  nomeAlvo: string,
+  delta: number
+): 'ganha_vaga' | 'nao_ganha' | null {
+  if (delta <= 0) return null
+  if (!rows.some((r) => r.nome === nomeAlvo)) return null
+  const base = mapaVagasPorPartido(rows, quociente, numVagas)
+  const alt = mapaVagasPorPartido(
+    partidosComDeltaVotosRecalculaMinimo(rows, nomeAlvo, delta, quociente),
+    quociente,
+    numVagas
+  )
+  return (alt[nomeAlvo] ?? 0) > (base[nomeAlvo] ?? 0) ? 'ganha_vaga' : 'nao_ganha'
+}
+
+function impactoAlvoPerdeAlemDaMargem(
+  rows: PartidoVotosMinimo[],
+  quociente: number,
+  numVagas: number,
+  nomeAlvo: string,
+  margem: number
+): 'perde_vaga' | 'mantem' | null {
+  if (margem <= 0) return null
+  const base = mapaVagasPorPartido(rows, quociente, numVagas)
+  const queda = Math.floor(margem) + 1
+  const alt = mapaVagasPorPartido(
+    partidosComDeltaVotosRecalculaMinimo(rows, nomeAlvo, -queda, quociente),
+    quociente,
+    numVagas
+  )
+  if ((base[nomeAlvo] ?? 0) > (alt[nomeAlvo] ?? 0)) return 'perde_vaga'
+  return 'mantem'
+}
+
+export type BuildSegundaVagaFeedbackContext = {
+  partidosRows: PartidoVotosMinimo[]
+  quociente: number
+  numVagas: number
+  nomePartidoAlvo: string
+}
+
+/**
+ * Textos mínimos: separar “ordem na fila da sobra” (ranking de QP) de “mudança no número de vagas”.
+ * Retorno com quebras de linha para o card renderizar em blocos.
+ */
+function montarNotasImpacto(
+  s: SegundaVagaPartidoResult,
+  ctx: BuildSegundaVagaFeedbackContext
+): string | undefined {
+  const { partidosRows, quociente, numVagas, nomePartidoAlvo } = ctx
+  const pos = posicaoNaFilaProximaSobra(partidosRows, quociente, nomePartidoAlvo)
+  const posTxt = pos !== null ? `${pos}º` : '?'
+  const linhas: string[] = []
+
+  if (s.tipo === 'margem') {
+    const margemBruta = s.distancia
+    if (margemBruta > 0) {
+      linhas.push(
+        `Próxima sobra agora: ${nomePartidoAlvo} ${posTxt} (÷ vagas diretas + 1 — mesmo critério dos cards de QP).`
+      )
+    } else {
+      linhas.push(
+        `Próxima sobra agora: ${nomePartidoAlvo} ${posTxt}. Margem crítica na última sobra ganha.`
+      )
+    }
+
+    if (s.distanciaCompetidor > 0 && s.competidorProximo) {
+      const impC = impactoVotosExtrasNoCompetidor(
+        partidosRows,
+        quociente,
+        numVagas,
+        s.competidorProximo,
+        s.distanciaCompetidor
+      )
+      const x = s.distanciaCompetidor.toLocaleString('pt-BR')
+      const c = s.competidorProximo
+      if (impC === 'sem_mudar_vagas') {
+        linhas.push(
+          `${c} +${x}: não muda vagas no total — só quem passa na frente nesta fila (próxima sobra).`
+        )
+      } else if (impC === 'pode_mudar_vagas') {
+        linhas.push(`${c} +${x}: pode mudar vagas no total.`)
+      } else {
+        linhas.push(`${c} +${x} (efeito indeterminado).`)
+      }
+    }
+
+    if (margemBruta > 0) {
+      const impP = impactoAlvoPerdeAlemDaMargem(
+        partidosRows,
+        quociente,
+        numVagas,
+        nomePartidoAlvo,
+        margemBruta
+      )
+      if (impP === 'perde_vaga') {
+        linhas.push(
+          `Perder ~${(Math.floor(margemBruta) + 1).toLocaleString('pt-BR')} votos além da margem: pode perder vaga.`
+        )
+      }
+    }
+  }
+
+  if (s.proximaVagaExtra && s.proximaVagaExtra.distancia > 0) {
+    const ig = impactoAlvoSomaVotos(
+      partidosRows,
+      quociente,
+      numVagas,
+      nomePartidoAlvo,
+      s.proximaVagaExtra.distancia
+    )
+    const m = s.proximaVagaExtra.distancia.toLocaleString('pt-BR')
+    if (ig === 'ganha_vaga') {
+      linhas.push(`−${m} (linha vermelha): no cenário fechado, +1 vaga — não é a fila “agora”.`)
+    } else if (ig === 'nao_ganha') {
+      linhas.push(`−${m} (linha vermelha): no total, pode não virar vaga nova.`)
+    }
+  }
+
+  if (s.tipo === 'faltam' && s.distancia > 0 && !s.proximaVagaExtra) {
+    const ig = impactoAlvoSomaVotos(partidosRows, quociente, numVagas, nomePartidoAlvo, s.distancia)
+    if (ig === 'ganha_vaga') {
+      linhas.push(`−${s.distancia.toLocaleString('pt-BR')}: cenário fechado +1 vaga.`)
+    } else if (ig === 'nao_ganha') {
+      linhas.push(`−${s.distancia.toLocaleString('pt-BR')}: no total, sem vaga nova.`)
+    }
+  }
+
+  if (linhas.length === 0) return undefined
+  return linhas.join('\n')
+}
+
 /**
  * Simula sobras a partir das vagas diretas e retorna a menor quantidade de votos
  * que o partido alvo precisaria a mais para vencer uma rodada em que outro partido ganhou.
@@ -331,22 +545,40 @@ export function calcularDistanciaSegundaVagaRepublicanos(
 
 export type SegundaVagaFeedbackTone = 'positive' | 'negative' | 'neutral'
 
+export type SegundaVagaFeedbackLabelResult = {
+  text: string
+  tone: SegundaVagaFeedbackTone
+  segundaLinha?: string
+  /** Uma linha por frase (separadas por quebra de linha no card) */
+  notaImpacto?: string
+}
+
 function textoFaltamVotos(distancia: number, vagaAlvo: number, competidor: string) {
   return `-${distancia.toLocaleString('pt-BR')} votos p/ ${vagaAlvo}ª vaga (${competidor})`
 }
 
+function linhaMargemSobraPrefixo(margemTexto: string, competidorLabel: string, s: SegundaVagaPartidoResult) {
+  let linha = `Margem na última sobra: ${margemTexto}`
+  if (s.distanciaCompetidor > 0 && s.competidorProximo) {
+    linha += ` · ${competidorLabel} +${s.distanciaCompetidor.toLocaleString('pt-BR')}`
+  }
+  return linha
+}
+
 /**
  * Texto e tom alinhados ao KPI Projeção Federal / Estadual.
- * Margem = só disputa de sobras; linha extra = votos para próxima vaga também via sobras.
+ * Com `simulacao` (Chapas): linha 1 só o valor da margem; detalhes curtos em `notaImpacto`.
  */
 export function buildSegundaVagaFeedbackLabel(
   s: SegundaVagaPartidoResult | null,
-  opts: { escopo: 'federal' | 'estadual' }
-): { text: string; tone: SegundaVagaFeedbackTone; segundaLinha?: string } | null {
+  opts: { escopo: 'federal' | 'estadual'; simulacao?: BuildSegundaVagaFeedbackContext }
+): SegundaVagaFeedbackLabelResult | null {
   if (!s) return null
 
+  const notaImpacto = opts.simulacao ? montarNotasImpacto(s, opts.simulacao) : undefined
   const competidor = s.competidorProximo || '?'
   const vagaAlvo = s.alvoVaga || s.vagasAtuais + 1
+  const comSim = !!opts.simulacao
 
   const montarSegundaLinhaProxima = (extra: ProximaVagaExtra): string | undefined => {
     if (extra.distancia <= 0) return undefined
@@ -361,23 +593,25 @@ export function buildSegundaVagaFeedbackLabel(
         margem > 20000 ? 'positive' : margem > 5000 ? 'neutral' : 'negative'
       let primeiraLinha: string
       if (margem > 0) {
-        primeiraLinha = `Margem: ${margem.toLocaleString('pt-BR')} votos`
-        if (s.distanciaCompetidor > 0) {
-          primeiraLinha += ` · ${competidor} +${s.distanciaCompetidor.toLocaleString('pt-BR')}`
-        }
+        primeiraLinha = comSim
+          ? `Margem: ${margem.toLocaleString('pt-BR')} votos`
+          : linhaMargemSobraPrefixo(`${margem.toLocaleString('pt-BR')} votos`, competidor, s)
       } else {
-        primeiraLinha = `Margem crítica (${s.vagasAtuais} vaga${s.vagasAtuais !== 1 ? 's' : ''})`
-        if (s.distanciaCompetidor > 0) {
+        primeiraLinha = comSim
+          ? `Margem: crítica na sobra (${s.vagasAtuais} vaga${s.vagasAtuais !== 1 ? 's' : ''})`
+          : `Margem crítica na última sobra (${s.vagasAtuais} vaga${s.vagasAtuais !== 1 ? 's' : ''})`
+        if (!comSim && s.distanciaCompetidor > 0 && s.competidorProximo) {
           primeiraLinha += ` · ${competidor} +${s.distanciaCompetidor.toLocaleString('pt-BR')}`
         }
       }
       const segundaLinha = s.proximaVagaExtra ? montarSegundaLinhaProxima(s.proximaVagaExtra) : undefined
-      return { text: primeiraLinha, tone, segundaLinha }
+      return { text: primeiraLinha, tone, segundaLinha, notaImpacto }
     }
     if (s.distancia > 0) {
       return {
         text: textoFaltamVotos(s.distancia, vagaAlvo, competidor),
         tone: 'negative',
+        notaImpacto,
       }
     }
     if (!s.competidorProximo) {
@@ -386,21 +620,36 @@ export function buildSegundaVagaFeedbackLabel(
     return {
       text: `${vagaAlvo}ª vaga em disputa (${competidor})`,
       tone: 'neutral',
+      notaImpacto,
     }
   }
 
   if (s.tipo === 'margem') {
-    const d = Math.max(0, s.distancia)
+    const margem = s.distancia
     const tone: SegundaVagaFeedbackTone =
-      s.distancia > 20000 ? 'positive' : s.distancia > 5000 ? 'neutral' : 'negative'
-    const primeiraLinha = `Margem: ${d.toLocaleString('pt-BR')} votos`
+      margem > 20000 ? 'positive' : margem > 5000 ? 'neutral' : 'negative'
+    let primeiraLinha: string
+    if (margem > 0) {
+      const d = margem
+      primeiraLinha = comSim
+        ? `Margem: ${d.toLocaleString('pt-BR')} votos`
+        : linhaMargemSobraPrefixo(`${d.toLocaleString('pt-BR')} votos`, competidor, s)
+    } else {
+      primeiraLinha = comSim
+        ? `Margem: crítica na sobra (${s.vagasAtuais} vaga${s.vagasAtuais !== 1 ? 's' : ''})`
+        : `Margem crítica na última sobra (${s.vagasAtuais} vaga${s.vagasAtuais !== 1 ? 's' : ''})`
+      if (!comSim && s.distanciaCompetidor > 0 && s.competidorProximo) {
+        primeiraLinha += ` · ${competidor} +${s.distanciaCompetidor.toLocaleString('pt-BR')}`
+      }
+    }
     const segundaLinha = s.proximaVagaExtra ? montarSegundaLinhaProxima(s.proximaVagaExtra) : undefined
-    return { text: primeiraLinha, tone, segundaLinha }
+    return { text: primeiraLinha, tone, segundaLinha, notaImpacto }
   }
   if (s.distancia > 0) {
     return {
       text: textoFaltamVotos(s.distancia, vagaAlvo, competidor),
       tone: 'negative',
+      notaImpacto,
     }
   }
   return null
