@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useEffect, useState, useRef } from 'react'
+import React, { useEffect, useState, useRef, useMemo } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { Trash2, Plus, RefreshCw, Check, Printer, Info, Eye, EyeOff, X, Maximize2, Minimize2, ArrowRightLeft, PenSquare, ChevronLeft, ChevronRight } from 'lucide-react'
@@ -13,6 +13,11 @@ import {
   encontrarPartidoRepublicanos,
   nomePartidoEhRepublicanos,
 } from '@/lib/chapas-republicanos-match'
+import {
+  buildSegundaVagaFeedbackLabel,
+  calcularDistanciaProximaVagaPartido,
+} from '@/lib/chapas-segunda-vaga-republicanos'
+import { cn } from '@/lib/utils'
 import { useAuth } from '@/hooks/use-auth'
 
 const coresPartidosFederais = {
@@ -548,6 +553,25 @@ export default function ChapasPage() {
   }
 
   const getProjecaoEleitos = (votosTotal: number) => (votosTotal / quociente).toFixed(2)
+
+  const feedbackSegundaVagaPorPartido = useMemo(() => {
+    const rows = partidos.map((partido) => ({
+      nome: partido.nome,
+      votosTotal: getVotosProjetados(partido.candidatos, partido.nome),
+      atingiuMinimo: partidoAtingiuMinimo(partido.nome),
+    }))
+    const escopo = isChapasEstaduais ? 'estadual' : 'federal'
+    const mapa: Record<
+      string,
+      NonNullable<ReturnType<typeof buildSegundaVagaFeedbackLabel>>
+    > = {}
+    for (const p of partidos) {
+      const raw = calcularDistanciaProximaVagaPartido(rows, quociente, numVagas, (nome) => nome === p.nome)
+      const label = buildSegundaVagaFeedbackLabel(raw, { escopo })
+      if (label) mapa[p.nome] = label
+    }
+    return mapa
+  }, [partidos, votosLegenda, quociente, numVagas, isChapasEstaduais])
 
   // Calcular vagas diretas
   const calcularVagasDiretas = (votosTotal: number) => {
@@ -1583,7 +1607,8 @@ export default function ChapasPage() {
                 const atingiuMinimo = partidoAtingiuMinimo(partido.nome)
                 const quocienteMinimo = getQuocienteMinimo()
                 const votosProjetados = getVotosProjetados(partido.candidatos, partido.nome)
-                
+                const feedbackVagasChip = feedbackSegundaVagaPorPartido[partido.nome]
+
                 return (
                   <div
                     key={partido.nome}
@@ -1968,6 +1993,38 @@ export default function ChapasPage() {
                       <div className="text-base font-extrabold mb-1 text-center">{getVotosProjetados(partido.candidatos, partido.nome).toLocaleString('pt-BR')}</div>
                       <div className="font-bold text-xs mb-0.5 text-center">PROJEÇÃO ELEITOS</div>
                       <div className="text-base font-extrabold mb-1 text-center">{getProjecaoEleitos(getVotosProjetados(partido.candidatos, partido.nome))}</div>
+                      {feedbackVagasChip ? (
+                        <div className="mb-1 flex w-full justify-center px-0.5">
+                          <span
+                            className={cn(
+                              'inline-flex max-w-full flex-col items-center justify-center gap-0.5 rounded-lg border px-2 py-1 text-center text-[11px] font-medium leading-tight tracking-tight shadow-[inset_0_1px_0_rgba(255,255,255,0.6)]',
+                              feedbackVagasChip.tone === 'positive' && 'border-emerald-200/70 bg-emerald-50/80',
+                              feedbackVagasChip.tone === 'negative' && 'border-red-200/70 bg-red-50/80',
+                              feedbackVagasChip.tone === 'neutral' && 'border-slate-200/80 bg-white/90'
+                            )}
+                            title={
+                              feedbackVagasChip.segundaLinha
+                                ? `${feedbackVagasChip.text} · ${feedbackVagasChip.segundaLinha}`
+                                : feedbackVagasChip.text
+                            }
+                          >
+                            <span
+                              className={cn(
+                                feedbackVagasChip.tone === 'positive' && 'text-emerald-900',
+                                feedbackVagasChip.tone === 'negative' && 'text-red-900',
+                                feedbackVagasChip.tone === 'neutral' && 'text-text-secondary'
+                              )}
+                            >
+                              {feedbackVagasChip.text}
+                            </span>
+                            {feedbackVagasChip.segundaLinha ? (
+                              <span className="text-[10px] font-semibold leading-tight text-red-900">
+                                {feedbackVagasChip.segundaLinha}
+                              </span>
+                            ) : null}
+                          </span>
+                        </div>
+                      ) : null}
                       <div className="text-[10px] text-gray-500 mb-1 text-center">{getVotosProjetados(partido.candidatos, partido.nome).toLocaleString('pt-BR')} / {quociente.toLocaleString('pt-BR')} = {getProjecaoEleitos(getVotosProjetados(partido.candidatos, partido.nome))}</div>
                     </div>
                   </div>
