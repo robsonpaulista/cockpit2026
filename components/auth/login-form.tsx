@@ -1,16 +1,53 @@
 'use client'
 
-import { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 
+/** Credenciais em texto no dispositivo — útil em tablets; não usar em computadores compartilhados. */
+const SAVED_LOGIN_STORAGE_KEY = 'cockpit_saved_login_v1'
+
+function readSavedLogin(): { email: string; password: string } | null {
+  if (typeof window === 'undefined') return null
+  try {
+    const raw = localStorage.getItem(SAVED_LOGIN_STORAGE_KEY)
+    if (!raw) return null
+    const data = JSON.parse(raw) as { email?: unknown; password?: unknown }
+    if (typeof data.email === 'string' && typeof data.password === 'string') {
+      return { email: data.email, password: data.password }
+    }
+  } catch {
+    /* ignore */
+  }
+  return null
+}
+
+function persistSavedLogin(email: string, password: string) {
+  localStorage.setItem(
+    SAVED_LOGIN_STORAGE_KEY,
+    JSON.stringify({ email, password })
+  )
+}
+
+function clearSavedLogin() {
+  localStorage.removeItem(SAVED_LOGIN_STORAGE_KEY)
+}
+
 export function LoginForm() {
-  const router = useRouter()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [salvarSenha, setSalvarSenha] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const supabase = createClient()
+
+  useEffect(() => {
+    const saved = readSavedLogin()
+    if (saved) {
+      setEmail(saved.email)
+      setPassword(saved.password)
+      setSalvarSenha(true)
+    }
+  }, [])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -30,6 +67,12 @@ export function LoginForm() {
       }
 
       if (data.user && data.session) {
+        if (salvarSenha) {
+          persistSavedLogin(email.trim(), password)
+        } else {
+          clearSavedLogin()
+        }
+
         const me = await fetch('/api/auth/me')
         if (!me.ok) {
           localStorage.setItem('auth_redirect', 'dashboard')
@@ -145,6 +188,7 @@ export function LoginForm() {
               <input
                 id="email"
                 type="email"
+                autoComplete="username"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
@@ -187,6 +231,7 @@ export function LoginForm() {
               <input
                 id="password"
                 type="password"
+                autoComplete="current-password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
@@ -212,6 +257,31 @@ export function LoginForm() {
                 }}
               />
             </div>
+
+            <label
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '10px',
+                cursor: 'pointer',
+                userSelect: 'none',
+                fontSize: '0.85rem',
+                color: 'rgba(255,255,255,0.88)',
+              }}
+            >
+              <input
+                type="checkbox"
+                checked={salvarSenha}
+                onChange={(e) => setSalvarSenha(e.target.checked)}
+                style={{
+                  width: '18px',
+                  height: '18px',
+                  accentColor: '#b84311',
+                  cursor: 'pointer',
+                }}
+              />
+              <span>Salvar e-mail e senha neste dispositivo (útil em tablets)</span>
+            </label>
 
             {error && (
               <div

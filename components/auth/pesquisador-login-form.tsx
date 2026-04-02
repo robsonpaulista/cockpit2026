@@ -1,16 +1,49 @@
 'use client'
 
-import { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 
+const SAVED_LOGIN_STORAGE_KEY = 'cockpit_pesquisador_saved_login_v1'
+
+function readSavedLogin(): { email: string; password: string } | null {
+  if (typeof window === 'undefined') return null
+  try {
+    const raw = localStorage.getItem(SAVED_LOGIN_STORAGE_KEY)
+    if (!raw) return null
+    const data = JSON.parse(raw) as { email?: unknown; password?: unknown }
+    if (typeof data.email === 'string' && typeof data.password === 'string') {
+      return { email: data.email, password: data.password }
+    }
+  } catch {
+    /* ignore */
+  }
+  return null
+}
+
+function persistSavedLogin(email: string, password: string) {
+  localStorage.setItem(SAVED_LOGIN_STORAGE_KEY, JSON.stringify({ email, password }))
+}
+
+function clearSavedLogin() {
+  localStorage.removeItem(SAVED_LOGIN_STORAGE_KEY)
+}
+
 export function PesquisadorLoginForm() {
-  const router = useRouter()
   const [email, setEmail] = useState<string>('')
   const [password, setPassword] = useState<string>('')
+  const [salvarSenha, setSalvarSenha] = useState<boolean>(false)
   const [loading, setLoading] = useState<boolean>(false)
   const [error, setError] = useState<string | null>(null)
   const supabase = createClient()
+
+  useEffect(() => {
+    const saved = readSavedLogin()
+    if (saved) {
+      setEmail(saved.email)
+      setPassword(saved.password)
+      setSalvarSenha(true)
+    }
+  }, [])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -40,6 +73,11 @@ export function PesquisadorLoginForm() {
           setError('Este acesso é exclusivo para pesquisadores. Use o login do Cockpit se for equipe.')
           setLoading(false)
           return
+        }
+        if (salvarSenha) {
+          persistSavedLogin(email.trim(), password)
+        } else {
+          clearSavedLogin()
         }
         localStorage.setItem('auth_redirect', 'pesquisador')
         await new Promise((r) => setTimeout(r, 200))
@@ -92,6 +130,15 @@ export function PesquisadorLoginForm() {
               className="mt-1 w-full rounded-xl border border-zinc-300 bg-white px-4 py-3 text-base text-zinc-900 focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500/30 dark:border-zinc-600 dark:bg-zinc-950 dark:text-zinc-100"
             />
           </div>
+          <label className="flex cursor-pointer items-center gap-2 text-sm text-zinc-600 dark:text-zinc-400">
+            <input
+              type="checkbox"
+              checked={salvarSenha}
+              onChange={(e) => setSalvarSenha(e.target.checked)}
+              className="h-4 w-4 rounded border-zinc-300 text-orange-600 focus:ring-orange-500"
+            />
+            <span>Salvar e-mail e senha neste dispositivo (útil em tablets)</span>
+          </label>
           {error && (
             <p className="text-sm font-medium text-red-600 dark:text-red-400" role="alert">
               {error}
