@@ -4,8 +4,8 @@ import React, { useEffect, useState, useRef, useMemo } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { Trash2, Plus, RefreshCw, Check, Printer, Info, Eye, EyeOff, X, Maximize2, Minimize2, ArrowRightLeft, PenSquare, ChevronLeft, ChevronRight } from 'lucide-react'
-import jsPDF from 'jspdf'
 import { Cenario, CenarioCompleto, PartidoCenario } from '@/lib/chapasService'
+import { gerarRelatorioChapasPdf } from '@/lib/chapas-pdf-report'
 import * as chapasFederalService from '@/lib/chapasService'
 import * as chapasEstaduaisService from '@/lib/chapas-estaduais-service'
 import CenariosTabs from '@/components/cenarios-tabs'
@@ -110,7 +110,6 @@ export default function ChapasPage() {
   const initialNumVagas = isChapasEstaduais ? 30 : 10
   const userIdRef = useRef<string | null>(null)
   const [loading, setLoading] = useState(false)
-  const contentRef = useRef<HTMLDivElement>(null)
   const [modoImpressao, setModoImpressao] = useState(false)
   const [exportandoPdf, setExportandoPdf] = useState(false)
 
@@ -1130,194 +1129,98 @@ export default function ChapasPage() {
     }
   }
 
-  const handleGerarPdf = async () => {
-    if (!contentRef.current || exportandoPdf) return
+  const handleGerarPdf = () => {
+    if (!dadosCarregados || exportandoPdf) return
 
     setExportandoPdf(true)
-    setModoImpressao(true)
-
-    const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
-
     try {
-      await wait(250)
-      const { default: html2canvas } = await import('html2canvas')
+      const partidosVis = ordenarPartidos(partidos).filter((p) => !partidosOcultos[p.nome])
+      const sim = simularDistribuicaoCompleta()
+      const eleitos = calcularCandidatosEleitos()
+      const { ordenadosPorSobras } = calcularSobras()
+      const qMin = getQuocienteMinimo()
 
-      const target = contentRef.current
-      if (!target) {
-        throw new Error('Conteúdo da página não encontrado.')
-      }
+      const totalVotos = partidosVis.reduce(
+        (s, p) => s + getVotosProjetados(p.candidatos, p.nome),
+        0
+      )
+      const numElegiveis = partidosVis.filter((p) => partidoAtingiuMinimo(p.nome)).length
 
-      const originalOverflow = target.style.overflow
-      const originalHeight = target.style.height
-      const originalMaxHeight = target.style.maxHeight
-
-      target.style.overflow = 'visible'
-      target.style.height = 'auto'
-      target.style.maxHeight = 'none'
-
-      await wait(120)
-
-      const canvas = await html2canvas(target, {
-        scale: 2,
-        useCORS: true,
-        logging: false,
-        backgroundColor: '#ffffff',
-        width: target.scrollWidth,
-        height: target.scrollHeight,
-        windowWidth: target.scrollWidth,
-        windowHeight: target.scrollHeight,
-        scrollX: 0,
-        scrollY: 0,
-        onclone: (clonedDoc) => {
-          const clonedTarget = clonedDoc.getElementById('chapas-pdf-content')
-          if (!clonedTarget) return
-          const htmlTarget = clonedTarget as HTMLElement
-          htmlTarget.style.overflow = 'visible'
-          htmlTarget.style.height = 'auto'
-          htmlTarget.style.maxHeight = 'none'
-
-          const overflowNodes = clonedTarget.querySelectorAll('div, section, article')
-          overflowNodes.forEach((node) => {
-            const el = node as HTMLElement
-            const view = clonedDoc.defaultView
-            const computed = view ? view.getComputedStyle(el) : null
-            const overflowCurrent = `${el.style.overflow} ${el.style.overflowY} ${el.style.overflowX}`.toLowerCase()
-            const overflowComputed = `${computed?.overflow || ''} ${computed?.overflowY || ''} ${computed?.overflowX || ''}`.toLowerCase()
-            if (
-              overflowCurrent.includes('auto') ||
-              overflowCurrent.includes('hidden') ||
-              overflowCurrent.includes('scroll') ||
-              overflowComputed.includes('auto') ||
-              overflowComputed.includes('hidden') ||
-              overflowComputed.includes('scroll')
-            ) {
-              el.style.overflow = 'visible'
-              el.style.overflowY = 'visible'
-              el.style.overflowX = 'visible'
-              el.style.maxHeight = 'none'
-              el.style.height = 'auto'
-            }
-          })
-
-          // Ajustes específicos para PDF de chapas estaduais
-          if (isChapasEstaduais) {
-            const grid = clonedTarget.querySelector('[data-chapas-partidos-grid]') as HTMLElement | null
-            if (grid) {
-              grid.style.display = 'grid'
-              grid.style.gridTemplateColumns = 'repeat(4, minmax(0, 1fr))'
-              grid.style.gap = '16px'
-              grid.style.alignItems = 'start'
-              grid.style.width = '100%'
-            }
-
-            const cards = clonedTarget.querySelectorAll('[data-chapas-partido-card]')
-            cards.forEach((node) => {
-              const el = node as HTMLElement
-              el.style.height = 'auto'
-              el.style.minHeight = '0'
-              el.style.alignSelf = 'start'
-              el.style.width = '100%'
-              el.style.maxWidth = 'none'
-            })
-
-            const bodies = clonedTarget.querySelectorAll('[data-chapas-partido-body]')
-            bodies.forEach((node) => {
-              const el = node as HTMLElement
-              el.style.overflow = 'visible'
-              el.style.overflowY = 'visible'
-              el.style.maxHeight = 'none'
-              el.style.height = 'auto'
-              el.style.flex = '0 0 auto'
-            })
-          }
-        },
+      const partidosDetalhe = partidosVis.map((p) => {
+        const { homens, mulheres } = separarCandidatosPorGenero(p.candidatos)
+        const chip = feedbackSegundaVagaPorPartido[p.nome]
+        const notas = chip?.notaImpacto
+          ? chip.notaImpacto.split('\n').map((l) => l.trim()).filter(Boolean)
+          : []
+        const vp = getVotosProjetados(p.candidatos, p.nome)
+        return {
+          nome: p.nome,
+          elegivel: partidoAtingiuMinimo(p.nome),
+          votosProjetados: vp,
+          projecaoEleitos: getProjecaoEleitos(vp),
+          votosLegenda: votosLegenda[p.nome] || 0,
+          homens: homens.map((c, i) => ({ ordem: i + 1, nome: c.nome, votos: c.votos })),
+          mulheres: mulheres.map((c, i) => ({ ordem: i + 1, nome: c.nome, votos: c.votos })),
+          disputaLinha1: chip?.text ?? 'Sem indicador de disputa de sobra para este partido.',
+          disputaLinha2: chip?.segundaLinha,
+          disputaNotasLinhas: notas,
+        }
       })
 
-      target.style.overflow = originalOverflow
-      target.style.height = originalHeight
-      target.style.maxHeight = originalMaxHeight
+      const tabelaSobras = ordenadosPorSobras.map((r) => ({
+        partido: r.partido,
+        votosTotal: r.votosTotal,
+        vagasDiretas: r.vagasDiretas,
+        projecaoEleitos: r.projecaoEleitos,
+        qp: (r.quocientePartidario ?? 0).toLocaleString('pt-BR', {
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2,
+        }),
+      }))
 
-      if (!canvas.width || !canvas.height) {
-        throw new Error('Não foi possível montar o conteúdo para exportação.')
-      }
+      const eleitosLinhas = eleitos.map((e) => ({
+        partido: e.partido,
+        posicao: e.posicao,
+        nome: e.nome,
+        votos: e.votos,
+        tipoEleicao: e.tipoEleicao,
+      }))
 
-      const pdf = new jsPDF('l', 'mm', 'a4')
-      const pageWidth = pdf.internal.pageSize.getWidth()
-      const pageHeight = pdf.internal.pageSize.getHeight()
-      const margin = 8
-      const headerHeight = 14
-      const footerHeight = 8
-      const usableWidth = pageWidth - margin * 2
-      const usableHeightFirstPage = pageHeight - margin - headerHeight - footerHeight
-      const usableHeightNextPages = pageHeight - margin * 2 - footerHeight
-
-      const imgWidth = canvas.width
-      const imgHeight = canvas.height
-      const scaleRatio = usableWidth / imgWidth
-      const scaledTotalHeight = imgHeight * scaleRatio
-
-      pdf.setFont('helvetica', 'bold')
-      pdf.setFontSize(12)
-      pdf.text('Simulador de Chapas - Relatorio Completo', margin, margin + 4)
-      pdf.setFont('helvetica', 'normal')
-      pdf.setFontSize(8)
-      pdf.text(
-        `Gerado em: ${new Date().toLocaleDateString('pt-BR')} ${new Date().toLocaleTimeString('pt-BR')}`,
-        margin,
-        margin + 9
+      gerarRelatorioChapasPdf(
+        {
+          tipo: isChapasEstaduais ? 'estaduais' : 'federais',
+          cenarioNome: cenarioAtivo?.nome ?? 'Sem nome',
+          quociente,
+          quocienteMinimo: qMin,
+          numVagas,
+          totalVotos,
+          numElegiveis,
+          numPartidosVisiveis: partidosVis.length,
+          partidosDetalhe,
+          tabelaSobras,
+          eleitos: eleitosLinhas,
+          distribuicao: {
+            vagasDiretas: sim.vagasDistribuidas,
+            vagasSobras: sim.vagasRestantes,
+            vagasPorPartido: sim.partidosComVagas.map((x) => ({
+              partido: x.partido,
+              vagas: x.vagasObtidas,
+            })),
+          },
+        },
+        `Chapas-Relatorio-${new Date().toISOString().slice(0, 10)}`
       )
-
-      let currentY = 0
-      let page = 1
-      let drawY = margin + headerHeight
-
-      while (currentY < scaledTotalHeight) {
-        if (page > 1) {
-          pdf.addPage()
-          drawY = margin
-        }
-
-        const availableHeight = page === 1 ? usableHeightFirstPage : usableHeightNextPages
-        const heightChunk = Math.min(scaledTotalHeight - currentY, availableHeight)
-
-        const sourceY = Math.floor((currentY / scaledTotalHeight) * imgHeight)
-        const sourceHeight = Math.ceil((heightChunk / scaledTotalHeight) * imgHeight)
-        const realSourceHeight = Math.min(sourceHeight, imgHeight - sourceY)
-        if (realSourceHeight <= 0) break
-
-        const pageCanvas = document.createElement('canvas')
-        pageCanvas.width = imgWidth
-        pageCanvas.height = realSourceHeight
-        const pageCtx = pageCanvas.getContext('2d')
-        if (!pageCtx) throw new Error('Erro ao preparar página do PDF.')
-
-        pageCtx.drawImage(canvas, 0, sourceY, imgWidth, realSourceHeight, 0, 0, imgWidth, realSourceHeight)
-        const pageImg = pageCanvas.toDataURL('image/png', 0.95)
-        const realScaledHeight = (realSourceHeight / imgHeight) * scaledTotalHeight
-        pdf.addImage(pageImg, 'PNG', margin, drawY, usableWidth, realScaledHeight)
-
-        pdf.setFontSize(8)
-        pdf.setTextColor(90)
-        pdf.text(`Pagina ${page}`, pageWidth - margin, pageHeight - 3, { align: 'right' })
-        pdf.setTextColor(0)
-
-        currentY += heightChunk
-        page += 1
-      }
-
-      pdf.save(`Chapas-Completo-${new Date().toISOString().slice(0, 10)}.pdf`)
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Erro ao gerar PDF.'
       alert(`Falha ao gerar PDF: ${message}`)
     } finally {
-      setModoImpressao(false)
       setExportandoPdf(false)
     }
   }
 
   return (
     <div className="min-h-screen bg-gray-50 w-full">
-      <div className={`w-full py-4 ${isChapasEstaduais && modoImpressao ? 'px-1' : 'px-4 sm:px-6 lg:px-8'}`}>
+      <div className={`w-full py-4 ${modoImpressao ? 'px-3 sm:px-5' : 'px-4 sm:px-6 lg:px-8'}`}>
         {/* Notificação de auto-save */}
         {notificacaoAutoSave && (
           <div className="fixed top-4 right-4 z-50 bg-green-500 text-white px-4 py-2 rounded-lg shadow-lg flex items-center gap-2">
@@ -1360,15 +1263,15 @@ export default function ChapasPage() {
         )}
         
         <div ref={fullscreenRef} className={`${isFullscreen ? 'bg-white p-4 max-h-screen overflow-y-auto' : 'bg-transparent'} transition-all duration-300`}>
-          <div id="chapas-pdf-content" ref={contentRef} className="w-full space-y-4 py-2">
-            {/* Controles (título na navbar) */}
-            <div className="flex items-center justify-between mb-4">
+          <div id="chapas-pdf-content" className="w-full space-y-4 py-2">
+            {/* Controles */}
+            <div data-chapas-pdf-toolbar className="flex items-center justify-between mb-4">
               <div />
               <div className="flex items-center gap-2">
                 <button
                   onClick={handleGerarPdf}
                   disabled={exportandoPdf || !dadosCarregados}
-                  title="Gerar PDF completo"
+                  title="Baixar relatorio em PDF (texto nativo, um partido por pagina)"
                   className="px-4 py-2 border border-border-card bg-white rounded-lg hover:bg-bg-app disabled:opacity-50 flex items-center gap-2"
                 >
                   {exportandoPdf ? (
@@ -1422,8 +1325,12 @@ export default function ChapasPage() {
             </div>
           </div>
 
-          {/* Gerenciador de Cenários com Abas */}
-          <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-4">
+          {/* Gerenciador de Cenários — no PDF vira só o nome do cenário */}
+          <div
+            data-chapas-cenarios-wrap
+            data-cenario-ativo={cenarioAtivo?.nome ?? '—'}
+            className="bg-white rounded-lg shadow-sm border border-gray-100 p-4"
+          >
             <CenariosTabs
               service={service}
               partidosAtuais={converterPartidosParaCenario()}
@@ -1596,8 +1503,8 @@ export default function ChapasPage() {
           <div
             data-chapas-partidos-grid
             className={`w-full grid gap-4 ${
-              isChapasEstaduais && modoImpressao
-                ? 'grid-cols-4'
+              modoImpressao
+                ? 'grid-cols-1'
                 : isChapasEstaduais
                   ? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5'
                   : 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5'
@@ -1618,12 +1525,24 @@ export default function ChapasPage() {
                   <div
                     key={partido.nome}
                     data-chapas-partido-card
-                    className={`w-full flex flex-col items-center bg-white rounded-lg shadow-sm border border-card p-4 ${isChapasEstaduais && modoImpressao ? 'h-auto' : 'h-full'} ${
+                    className={`w-full flex flex-col bg-white rounded-lg shadow-sm border border-card p-4 ${modoImpressao ? 'h-auto items-stretch' : 'h-full items-center'} ${
                     atingiuMinimo 
                       ? 'border-border-card' 
                       : 'border-status-error/50 bg-status-error/5'
                     }`}
                   >
+                    {modoImpressao ? (
+                      <div
+                        data-chapas-partido-titulo-pdf
+                        className={`w-full py-2.5 px-3 font-bold text-base mb-3 rounded text-center break-words whitespace-normal ${
+                          atingiuMinimo
+                            ? 'bg-bg-surface text-text-primary'
+                            : 'bg-status-error/10 text-status-error'
+                        }`}
+                      >
+                        {partido.nome}
+                      </div>
+                    ) : (
                     <div className={`w-full py-2 px-3 font-bold text-sm mb-3 rounded text-center ${
                       atingiuMinimo 
                         ? 'bg-bg-surface text-text-primary' 
@@ -1696,6 +1615,7 @@ export default function ChapasPage() {
                         </div>
                       </div>
                     </div>
+                    )}
                     
                     {!atingiuMinimo && (
                       <div className="w-full mb-2 p-2 bg-status-error/10 border border-status-error/30 rounded text-xs text-status-error text-center">
@@ -1706,7 +1626,7 @@ export default function ChapasPage() {
                     
                     <div
                       data-chapas-partido-body
-                      className={`w-full flex flex-col ${isChapasEstaduais && modoImpressao ? 'overflow-visible' : 'flex-1 overflow-y-auto'}`}
+                      className={`w-full flex flex-col ${modoImpressao ? 'overflow-visible' : 'flex-1 overflow-y-auto'}`}
                     >
                       <div className="space-y-0.5">
                         <table className="w-full text-xs">
@@ -1936,7 +1856,7 @@ export default function ChapasPage() {
                       <div className="mt-3 pt-2 border-t border-gray-200">
                         <div className="flex items-center justify-between gap-2">
                           <span className="text-xs font-semibold text-gray-700">VOTOS LEGENDA:</span>
-                          {isChapasEstaduais && modoImpressao ? (
+                          {modoImpressao ? (
                             <span className="text-xs font-semibold text-gray-700">
                               {(votosLegenda[partido.nome] || 0).toLocaleString('pt-BR')}
                             </span>
@@ -1984,62 +1904,104 @@ export default function ChapasPage() {
                         </div>
                       </div>
 
-                      <button
-                        onClick={() => setDialogAberto(partidoIdx)}
-                        className="mt-2 px-3 py-1 text-xs bg-accent-gold-soft text-accent-gold rounded hover:bg-accent-gold-soft/80 flex items-center gap-1 justify-center"
-                      >
-                        <Plus className="h-3 w-3" />
-                        Adicionar Candidato
-                      </button>
+                      {!modoImpressao ? (
+                        <button
+                          onClick={() => setDialogAberto(partidoIdx)}
+                          className="mt-2 px-3 py-1 text-xs bg-accent-gold-soft text-accent-gold rounded hover:bg-accent-gold-soft/80 flex items-center gap-1 justify-center self-center"
+                        >
+                          <Plus className="h-3 w-3" />
+                          Adicionar Candidato
+                        </button>
+                      ) : null}
                     </div>
 
-                    <div className="w-full mt-auto pt-2">
+                    <div
+                      data-chapas-partido-rodape
+                      className={cn('w-full pt-2', modoImpressao ? 'mt-0 border-t border-gray-200' : 'mt-auto')}
+                    >
                       <div className="font-bold text-xs mb-0.5 text-center">VOTOS PROJETADOS</div>
                       <div className="text-base font-extrabold mb-1 text-center">{getVotosProjetados(partido.candidatos, partido.nome).toLocaleString('pt-BR')}</div>
                       <div className="font-bold text-xs mb-0.5 text-center">PROJEÇÃO ELEITOS</div>
                       <div className="text-base font-extrabold mb-1 text-center">{getProjecaoEleitos(getVotosProjetados(partido.candidatos, partido.nome))}</div>
-                      {/* min-h fixa: com mt-auto no bloco, alturas diferentes do chip deslocavam "VOTOS PROJETADOS" entre cards */}
-                      <div className="mb-1 flex min-h-[10rem] w-full items-start justify-center px-0.5">
-                        {feedbackVagasChip ? (
-                          <span
-                            className={cn(
-                              'inline-flex max-w-full flex-col items-center justify-center gap-1 rounded-lg border px-2 py-1 text-center text-[11px] font-medium leading-tight tracking-tight shadow-[inset_0_1px_0_rgba(255,255,255,0.6)]',
-                              feedbackVagasChip.tone === 'positive' && 'border-emerald-200/70 bg-emerald-50/80',
-                              feedbackVagasChip.tone === 'negative' && 'border-red-200/70 bg-red-50/80',
-                              feedbackVagasChip.tone === 'neutral' && 'border-slate-200/80 bg-white/90'
-                            )}
-                            title={
-                              [
-                                feedbackVagasChip.text,
-                                feedbackVagasChip.segundaLinha,
-                                feedbackVagasChip.notaImpacto,
-                              ]
-                                .filter(Boolean)
-                                .join('\n')
-                            }
+
+                      {modoImpressao ? (
+                        feedbackVagasChip ? (
+                          <div
+                            data-chapas-feedback-print
+                            className="mb-2 w-full max-w-none box-border rounded-md border border-slate-300 bg-slate-50 px-3 py-2.5 text-left overflow-visible"
                           >
-                            <span
+                            <p
                               className={cn(
+                                'm-0 text-sm font-semibold leading-snug break-words',
                                 feedbackVagasChip.tone === 'positive' && 'text-emerald-900',
                                 feedbackVagasChip.tone === 'negative' && 'text-red-900',
-                                feedbackVagasChip.tone === 'neutral' && 'text-text-secondary'
+                                feedbackVagasChip.tone === 'neutral' && 'text-gray-800'
                               )}
                             >
                               {feedbackVagasChip.text}
-                            </span>
+                            </p>
                             {feedbackVagasChip.segundaLinha ? (
-                              <span className="text-[10px] font-semibold leading-tight text-red-900">
+                              <p className="m-0 mt-2 text-xs font-semibold leading-relaxed text-red-900 break-words">
                                 {feedbackVagasChip.segundaLinha}
-                              </span>
+                              </p>
                             ) : null}
                             {feedbackVagasChip.notaImpacto ? (
-                              <span className="w-full max-w-full text-left text-[9px] font-normal leading-snug text-gray-600 whitespace-pre-line">
-                                {feedbackVagasChip.notaImpacto}
-                              </span>
+                              <div className="mt-2 border-t border-slate-200 pt-2 space-y-1.5 overflow-visible">
+                                {feedbackVagasChip.notaImpacto.split('\n').map((linha, idxLinha) => (
+                                  <p
+                                    key={idxLinha}
+                                    className="m-0 text-[11px] leading-relaxed text-gray-800 break-words"
+                                  >
+                                    {linha}
+                                  </p>
+                                ))}
+                              </div>
                             ) : null}
-                          </span>
-                        ) : null}
-                      </div>
+                          </div>
+                        ) : null
+                      ) : (
+                        <div className="mb-1 flex min-h-[10rem] w-full items-start justify-center px-0.5">
+                          {feedbackVagasChip ? (
+                            <span
+                              className={cn(
+                                'inline-flex max-w-full flex-col items-center justify-center gap-1 rounded-lg border px-2 py-1 text-center text-[11px] font-medium leading-tight tracking-tight shadow-[inset_0_1px_0_rgba(255,255,255,0.6)]',
+                                feedbackVagasChip.tone === 'positive' && 'border-emerald-200/70 bg-emerald-50/80',
+                                feedbackVagasChip.tone === 'negative' && 'border-red-200/70 bg-red-50/80',
+                                feedbackVagasChip.tone === 'neutral' && 'border-slate-200/80 bg-white/90'
+                              )}
+                              title={
+                                [
+                                  feedbackVagasChip.text,
+                                  feedbackVagasChip.segundaLinha,
+                                  feedbackVagasChip.notaImpacto,
+                                ]
+                                  .filter(Boolean)
+                                  .join('\n')
+                              }
+                            >
+                              <span
+                                className={cn(
+                                  feedbackVagasChip.tone === 'positive' && 'text-emerald-900',
+                                  feedbackVagasChip.tone === 'negative' && 'text-red-900',
+                                  feedbackVagasChip.tone === 'neutral' && 'text-text-secondary'
+                                )}
+                              >
+                                {feedbackVagasChip.text}
+                              </span>
+                              {feedbackVagasChip.segundaLinha ? (
+                                <span className="text-[10px] font-semibold leading-tight text-red-900">
+                                  {feedbackVagasChip.segundaLinha}
+                                </span>
+                              ) : null}
+                              {feedbackVagasChip.notaImpacto ? (
+                                <span className="w-full max-w-full text-left text-[9px] font-normal leading-snug text-gray-600 whitespace-pre-line">
+                                  {feedbackVagasChip.notaImpacto}
+                                </span>
+                              ) : null}
+                            </span>
+                          ) : null}
+                        </div>
+                      )}
                       <div className="text-[10px] text-gray-500 mb-1 text-center">{getVotosProjetados(partido.candidatos, partido.nome).toLocaleString('pt-BR')} / {quociente.toLocaleString('pt-BR')} = {getProjecaoEleitos(getVotosProjetados(partido.candidatos, partido.nome))}</div>
                     </div>
                   </div>
@@ -2056,7 +2018,7 @@ export default function ChapasPage() {
               <strong>Fórmula:</strong> Quociente Partidário = Votos ÷ (Vagas Obtidas + 1)
             </div>
             
-            <div className="grid grid-cols-5 gap-4">
+            <div data-chapas-sobras-grid className="grid grid-cols-5 gap-4">
               {(() => {
                 const { ordenadosPorSobras } = calcularSobras()
                 
