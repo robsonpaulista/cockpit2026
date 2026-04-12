@@ -1,6 +1,7 @@
 'use client'
 
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { KPICard } from '@/components/kpi-card'
 import { GoogleSheetsConfigModal } from '@/components/google-sheets-config-modal'
 import { Users, Settings, RefreshCw, AlertCircle, ChevronDown, ChevronRight, Network, FileText, Briefcase, Check } from 'lucide-react'
@@ -51,6 +52,9 @@ export default function TerritorioPage() {
   const [selectedCityLiderancas, setSelectedCityLiderancas] = useState<Lideranca[]>([])
   const [cenarioVotos, setCenarioVotos] = useState<CenarioVotos>('legado_anterior')
   const depDropdownRef = useRef<HTMLDivElement | null>(null)
+  const depDropdownButtonRef = useRef<HTMLButtonElement | null>(null)
+  const depDropdownMenuRef = useRef<HTMLDivElement | null>(null)
+  const [depMenuPos, setDepMenuPos] = useState<{ top: number; left: number; width: number } | null>(null)
 
   useEffect(() => {
     const initConfig = async () => {
@@ -99,13 +103,40 @@ export default function TerritorioPage() {
     initConfig()
   }, [])
 
+  const updateDepMenuPosition = useCallback(() => {
+    const el = depDropdownButtonRef.current
+    if (!el) return
+    const r = el.getBoundingClientRect()
+    const vw = window.innerWidth
+    const panelMin = 224
+    const width = Math.max(r.width, panelMin)
+    let left = r.left
+    if (left + width > vw - 8) left = Math.max(8, vw - width - 8)
+    setDepMenuPos({ top: r.bottom + 4, left, width })
+  }, [])
+
+  useLayoutEffect(() => {
+    if (!showDepDropdown) {
+      setDepMenuPos(null)
+      return
+    }
+    updateDepMenuPosition()
+    window.addEventListener('scroll', updateDepMenuPosition, true)
+    window.addEventListener('resize', updateDepMenuPosition)
+    return () => {
+      window.removeEventListener('scroll', updateDepMenuPosition, true)
+      window.removeEventListener('resize', updateDepMenuPosition)
+    }
+  }, [showDepDropdown, updateDepMenuPosition])
+
   useEffect(() => {
     if (!showDepDropdown) return
 
     const handleClickOutside = (event: MouseEvent) => {
-      if (depDropdownRef.current && !depDropdownRef.current.contains(event.target as Node)) {
-        setShowDepDropdown(false)
-      }
+      const t = event.target as Node
+      if (depDropdownRef.current?.contains(t)) return
+      if (depDropdownMenuRef.current?.contains(t)) return
+      setShowDepDropdown(false)
     }
 
     const handleEscape = (event: KeyboardEvent) => {
@@ -756,182 +787,165 @@ export default function TerritorioPage() {
           </section>
         )}
 
-        {/* Filtros */}
+        {/* Filtros — uma linha (scroll horizontal em telas estreitas), padrão /dashboard/pesquisa */}
         {(config || serverConfigured) && liderancas.length > 0 && (
-          <div className="mb-6 bg-surface rounded-2xl border border-card p-4">
-            <h3 className="text-sm font-semibold text-text-primary mb-4">Filtros</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4">
-              {/* Filtro por Cidade */}
-              <div>
-                <label className="block text-xs font-medium text-secondary mb-2">
+          <div className="mb-6 rounded-xl border border-card bg-background/50 px-3 py-2">
+            <div className="flex flex-nowrap items-center gap-x-2 sm:gap-3 overflow-x-auto pb-0.5 [scrollbar-width:thin]">
+              <span className="text-xs font-semibold text-text-primary shrink-0">Filtros</span>
+              <span className="hidden sm:block h-4 w-px shrink-0 bg-border-card opacity-60" aria-hidden />
+
+              <label className="flex min-w-0 shrink-0 items-center gap-1.5">
+                <span className="text-[10px] font-medium uppercase tracking-wide text-secondary whitespace-nowrap">
                   Cidade
-                </label>
+                </span>
                 <input
                   type="text"
                   value={filtroCidade}
                   onChange={(e) => setFiltroCidade(e.target.value)}
-                  placeholder="Filtrar por cidade..."
-                  className="w-full px-3 py-2 text-sm border border-card rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-gold-soft bg-surface"
+                  placeholder="Cidade…"
+                  className="w-[6.5rem] min-w-[6rem] max-w-[9rem] rounded-lg border border-card bg-surface px-2 py-1.5 text-xs placeholder:text-secondary/70 focus:outline-none focus:ring-2 focus:ring-accent-gold-soft sm:w-[7.5rem]"
                 />
-              </div>
+              </label>
 
-              {/* Filtro por Nome */}
-              <div>
-                <label className="block text-xs font-medium text-secondary mb-2">
-                  Liderança (Nome)
-                </label>
+              <span className="hidden sm:block h-4 w-px shrink-0 bg-border-card opacity-60" aria-hidden />
+
+              <label className="flex min-w-0 shrink-0 items-center gap-1.5">
+                <span className="text-[10px] font-medium uppercase tracking-wide text-secondary whitespace-nowrap">
+                  Liderança
+                </span>
                 <input
                   type="text"
                   value={filtroNome}
                   onChange={(e) => setFiltroNome(e.target.value)}
-                  placeholder="Filtrar por nome..."
-                  className="w-full px-3 py-2 text-sm border border-card rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-gold-soft bg-surface"
+                  placeholder="Nome…"
+                  className="w-[6.5rem] min-w-[6rem] max-w-[9rem] rounded-lg border border-card bg-surface px-2 py-1.5 text-xs placeholder:text-secondary/70 focus:outline-none focus:ring-2 focus:ring-accent-gold-soft sm:w-[7.5rem]"
                 />
-              </div>
+              </label>
 
-              {/* Filtro por Cargo */}
-              {cargoCol && cargosUnicos.length > 0 && (
-                <div>
-                  <label className="block text-xs font-medium text-secondary mb-2">
-                    Cargo
-                  </label>
-                  <select
-                    value={filtroCargo}
-                    onChange={(e) => setFiltroCargo(e.target.value)}
-                    className="w-full px-3 py-2 text-sm border border-card rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-gold-soft bg-surface"
-                  >
-                    <option value="">Todos os cargos</option>
-                    {cargosUnicos.map((cargo) => (
-                      <option key={cargo} value={cargo}>{cargo}</option>
-                    ))}
-                  </select>
-                </div>
-              )}
-
-              {/* Filtro por Deputado Estadual (voto cruzado) */}
-              {deputadosEstaduaisUnicos.length > 0 && (
-                <div>
-                  <label className="block text-xs font-medium text-secondary mb-2">
-                    Dep. Estadual (Voto Cruzado)
-                  </label>
-                  <div className="relative" ref={depDropdownRef}>
-                    <button
-                      type="button"
-                      onClick={() => setShowDepDropdown((v) => !v)}
-                      className="w-full px-3 py-2 text-sm border border-card rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-gold-soft bg-surface text-left flex items-center justify-between"
+              {cargoCol && cargosUnicos.length > 0 ? (
+                <>
+                  <span className="hidden sm:block h-4 w-px shrink-0 bg-border-card opacity-60" aria-hidden />
+                  <label className="flex shrink-0 items-center gap-1.5">
+                    <span className="text-[10px] font-medium uppercase tracking-wide text-secondary whitespace-nowrap">
+                      Cargo
+                    </span>
+                    <select
+                      value={filtroCargo}
+                      onChange={(e) => setFiltroCargo(e.target.value)}
+                      className="min-w-[6.5rem] max-w-[10rem] rounded-lg border border-card bg-surface px-2 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-accent-gold-soft"
                     >
-                      <span className="truncate">
-                        {filtroDepEstadual.length > 0
-                          ? filtroDepEstadual.length === deputadosEstaduaisUnicos.length
-                            ? 'Todos selecionados'
-                            : `${filtroDepEstadual.length} selecionado(s)`
-                          : 'Todos os deputados'}
+                      <option value="">Todos</option>
+                      {cargosUnicos.map((cargo) => (
+                        <option key={cargo} value={cargo}>
+                          {cargo}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                </>
+              ) : null}
+
+              {deputadosEstaduaisUnicos.length > 0 ? (
+                <>
+                  <span className="hidden sm:block h-4 w-px shrink-0 bg-border-card opacity-60" aria-hidden />
+                  <div className="relative shrink-0" ref={depDropdownRef}>
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-[10px] font-medium uppercase tracking-wide text-secondary whitespace-nowrap">
+                        Dep. estadual
                       </span>
-                      <ChevronDown className={`w-4 h-4 text-secondary transition-transform ${showDepDropdown ? 'rotate-180' : ''}`} />
-                    </button>
-
-                    {showDepDropdown && (
-                      <div className="absolute z-30 mt-1 w-full bg-surface border border-card rounded-lg shadow-lg overflow-hidden">
-                        <div className="max-h-56 overflow-auto p-1">
-                          {deputadosEstaduaisUnicos.map((dep) => {
-                            const checked = filtroDepEstadual.includes(dep)
-                            return (
-                              <button
-                                key={dep}
-                                type="button"
-                                onClick={() => toggleDepEstadual(dep)}
-                                className="w-full flex items-center gap-2 px-2 py-1.5 text-sm rounded hover:bg-background text-left"
-                              >
-                                <span className={`w-4 h-4 rounded border flex items-center justify-center ${checked ? 'bg-accent-gold border-accent-gold' : 'border-card bg-white'}`}>
-                                  {checked && <Check className="w-3 h-3 text-white" />}
-                                </span>
-                                <span className="truncate">{dep}</span>
-                              </button>
-                            )
-                          })}
-                        </div>
-                        <div className="border-t border-card p-2 flex justify-between items-center">
-                          <span className="text-[11px] text-secondary">{filtroDepEstadual.length} selecionado(s)</span>
-                          <div className="flex items-center gap-3">
-                            <button
-                              type="button"
-                              onClick={() => setFiltroDepEstadual(deputadosEstaduaisUnicos)}
-                              className="text-[11px] text-accent-gold hover:underline disabled:opacity-50"
-                              disabled={filtroDepEstadual.length === deputadosEstaduaisUnicos.length}
-                            >
-                              Selecionar todos
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => setFiltroDepEstadual([])}
-                              className="text-[11px] text-accent-gold hover:underline"
-                            >
-                              Limpar
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    )}
+                      <button
+                        ref={depDropdownButtonRef}
+                        type="button"
+                        onClick={() => setShowDepDropdown((v) => !v)}
+                        title="Voto cruzado: selecione um ou mais deputados"
+                        className="flex min-w-[7.5rem] max-w-[11rem] items-center justify-between gap-1 rounded-lg border border-card bg-surface px-2 py-1.5 text-left text-xs focus:outline-none focus:ring-2 focus:ring-accent-gold-soft"
+                      >
+                        <span className="truncate">
+                          {filtroDepEstadual.length > 0
+                            ? filtroDepEstadual.length === deputadosEstaduaisUnicos.length
+                              ? 'Todos'
+                              : `${filtroDepEstadual.length} dep.`
+                            : 'Todos'}
+                        </span>
+                        <ChevronDown
+                          className={`h-3.5 w-3.5 shrink-0 text-secondary transition-transform ${showDepDropdown ? 'rotate-180' : ''}`}
+                        />
+                      </button>
+                    </div>
                   </div>
-                  <p className="mt-1 text-[11px] text-secondary">
-                    {filtroDepEstadual.length > 0
-                      ? `${filtroDepEstadual.length} deputado(s) selecionado(s)`
-                      : 'Selecione um ou mais deputados'}
-                  </p>
-                </div>
-              )}
+                </>
+              ) : null}
 
-              {/* Cenário de votos */}
-              {(expectativaJadyelCol || promessaLiderancaCol || expectativaLegadoCol) && (
-                <div>
-                  <label className="block text-xs font-medium text-secondary mb-2">
-                    Visão de Votos
+              {expectativaJadyelCol || promessaLiderancaCol || expectativaLegadoCol ? (
+                <>
+                  <span className="hidden sm:block h-4 w-px shrink-0 bg-border-card opacity-60" aria-hidden />
+                  <label className="flex shrink-0 items-center gap-1.5">
+                    <span className="text-[10px] font-medium uppercase tracking-wide text-secondary whitespace-nowrap">
+                      Visão votos
+                    </span>
+                    <select
+                      value={cenarioVotos}
+                      onChange={(e) => setCenarioVotos(e.target.value as CenarioVotos)}
+                      className="min-w-[9rem] max-w-[14rem] rounded-lg border border-card bg-surface px-2 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-accent-gold-soft"
+                    >
+                      {expectativaJadyelCol ? (
+                        <option value="aferido_jadyel">Aferido (Expectativa Jadyel 2026)</option>
+                      ) : null}
+                      {promessaLiderancaCol ? (
+                        <option value="promessa_lideranca">Prometido (Promessa da Liderança 2026)</option>
+                      ) : null}
+                      {expectativaLegadoCol ? (
+                        <option value="legado_anterior">Anterior (Expectativa de Votos 2026)</option>
+                      ) : null}
+                    </select>
                   </label>
-                  <select
-                    value={cenarioVotos}
-                    onChange={(e) => setCenarioVotos(e.target.value as CenarioVotos)}
-                    className="w-full px-3 py-2 text-sm border border-card rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-gold-soft bg-surface"
-                  >
-                    {expectativaJadyelCol && (
-                      <option value="aferido_jadyel">Aferido (Expectativa Jadyel 2026)</option>
-                    )}
-                    {promessaLiderancaCol && (
-                      <option value="promessa_lideranca">Prometido (Promessa da Liderança 2026)</option>
-                    )}
-                    {expectativaLegadoCol && (
-                      <option value="legado_anterior">Anterior (Expectativa de Votos 2026)</option>
-                    )}
-                  </select>
-                </div>
-              )}
+                </>
+              ) : null}
 
-              {/* Filtro por Faixa de Votos Esperados */}
-              {votosReferenciaCol && (
-                <div>
-                  <label className="block text-xs font-medium text-secondary mb-2">
-                    Faixa de Votos ({cenarioVotos === 'promessa_lideranca' ? 'prometidos' : cenarioVotos === 'legado_anterior' ? 'anteriores' : 'aferidos'})
+              {votosReferenciaCol ? (
+                <>
+                  <span className="hidden sm:block h-4 w-px shrink-0 bg-border-card opacity-60" aria-hidden />
+                  <label className="flex shrink-0 items-center gap-1.5">
+                    <span
+                      className="max-w-[5.5rem] text-[10px] font-medium uppercase leading-tight tracking-wide text-secondary sm:max-w-none sm:whitespace-nowrap"
+                      title={
+                        cenarioVotos === 'promessa_lideranca'
+                          ? 'Faixa de votos prometidos'
+                          : cenarioVotos === 'legado_anterior'
+                            ? 'Faixa de votos anteriores'
+                            : 'Faixa de votos aferidos'
+                      }
+                    >
+                      Faixa votos
+                    </span>
+                    <select
+                      value={filtroFaixaVotos}
+                      onChange={(e) => setFiltroFaixaVotos(e.target.value)}
+                      className="min-w-[5.5rem] max-w-[8rem] rounded-lg border border-card bg-surface px-2 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-accent-gold-soft"
+                    >
+                      <option value="">Todas</option>
+                      <option value="ate-100">Até 100</option>
+                      <option value="ate-300">Até 300</option>
+                      <option value="ate-500">Até 500</option>
+                      <option value="acima-500">Acima de 500</option>
+                      <option value="acima-1000">Acima de 1000</option>
+                    </select>
                   </label>
-                  <select
-                    value={filtroFaixaVotos}
-                    onChange={(e) => setFiltroFaixaVotos(e.target.value)}
-                    className="w-full px-3 py-2 text-sm border border-card rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-gold-soft bg-surface"
-                  >
-                    <option value="">Todas as faixas</option>
-                    <option value="ate-100">Até 100</option>
-                    <option value="ate-300">Até 300</option>
-                    <option value="ate-500">Até 500</option>
-                    <option value="acima-500">Acima de 500</option>
-                    <option value="acima-1000">Acima de 1000</option>
-                  </select>
-                </div>
-              )}
+                </>
+              ) : null}
             </div>
-            {(filtroCidade || filtroNome || filtroCargo || filtroDepEstadual.length > 0 || filtroFaixaVotos) && (
-              <div className="mt-4 flex items-center justify-between">
-                <span className="text-xs text-secondary">
-                  {liderancasFiltradas.length} resultado{liderancasFiltradas.length !== 1 ? 's' : ''} encontrado{liderancasFiltradas.length !== 1 ? 's' : ''}
+
+            {(filtroCidade ||
+              filtroNome ||
+              filtroCargo ||
+              filtroDepEstadual.length > 0 ||
+              filtroFaixaVotos) && (
+              <div className="mt-2 flex flex-wrap items-center justify-between gap-2 border-t border-card/70 pt-2">
+                <span className="text-[11px] text-secondary">
+                  {liderancasFiltradas.length} resultado{liderancasFiltradas.length !== 1 ? 's' : ''}
                 </span>
                 <button
+                  type="button"
                   onClick={() => {
                     setFiltroCidade('')
                     setFiltroNome('')
@@ -939,7 +953,7 @@ export default function TerritorioPage() {
                     setFiltroDepEstadual([])
                     setFiltroFaixaVotos('')
                   }}
-                  className="text-xs text-accent-gold hover:underline"
+                  className="text-[11px] font-medium text-accent-gold hover:underline"
                 >
                   Limpar filtros
                 </button>
@@ -947,6 +961,62 @@ export default function TerritorioPage() {
             )}
           </div>
         )}
+
+        {showDepDropdown && depMenuPos && typeof document !== 'undefined'
+          ? createPortal(
+              <div
+                ref={depDropdownMenuRef}
+                className="fixed z-[10000] max-w-[min(calc(100vw-1rem),20rem)] rounded-lg border border-card bg-surface shadow-xl"
+                style={{
+                  top: depMenuPos.top,
+                  left: depMenuPos.left,
+                  minWidth: depMenuPos.width,
+                }}
+              >
+                <div className="max-h-56 overflow-auto p-1">
+                  {deputadosEstaduaisUnicos.map((dep) => {
+                    const checked = filtroDepEstadual.includes(dep)
+                    return (
+                      <button
+                        key={dep}
+                        type="button"
+                        onClick={() => toggleDepEstadual(dep)}
+                        className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-xs hover:bg-background"
+                      >
+                        <span
+                          className={`flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded border ${checked ? 'border-accent-gold bg-accent-gold' : 'border-card bg-white'}`}
+                        >
+                          {checked ? <Check className="h-2.5 w-2.5 text-white" /> : null}
+                        </span>
+                        <span className="truncate">{dep}</span>
+                      </button>
+                    )
+                  })}
+                </div>
+                <div className="flex items-center justify-between border-t border-card p-2">
+                  <span className="text-[10px] text-secondary">{filtroDepEstadual.length} sel.</span>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setFiltroDepEstadual(deputadosEstaduaisUnicos)}
+                      className="text-[10px] text-accent-gold hover:underline disabled:opacity-50"
+                      disabled={filtroDepEstadual.length === deputadosEstaduaisUnicos.length}
+                    >
+                      Todos
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setFiltroDepEstadual([])}
+                      className="text-[10px] text-accent-gold hover:underline"
+                    >
+                      Limpar
+                    </button>
+                  </div>
+                </div>
+              </div>,
+              document.body
+            )
+          : null}
 
         {filtroDepEstadual.length > 0 && mapaVotoCruzado.length > 0 && (
           <div className="mb-6 bg-surface rounded-2xl border border-card p-4">

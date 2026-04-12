@@ -1,15 +1,53 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { createPortal } from 'react-dom'
 import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
-import { KPICard } from '@/components/kpi-card'
 import { PollModal } from '@/components/poll-modal'
 import { PollReportModal } from '@/components/poll-report-modal'
-import { Plus, Edit2, Trash2, Maximize2, X, ArrowLeft, FileText } from 'lucide-react'
-import { KPI } from '@/types'
-import { LineChart, Line, ResponsiveContainer, XAxis, YAxis, CartesianGrid, Tooltip, LabelList, Customized } from 'recharts'
+import { TendenciaIntencaoExecutiveSection } from '@/components/pesquisa/TendenciaIntencaoExecutiveSection'
+import {
+  Plus,
+  Edit2,
+  Trash2,
+  Maximize2,
+  X,
+  ArrowLeft,
+  FileText,
+  BarChart3,
+  Sparkles,
+  LayoutGrid,
+  ClipboardList,
+} from 'lucide-react'
+import {
+  LineChart,
+  Line,
+  LabelList,
+  ResponsiveContainer,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+} from 'recharts'
 import { formatDate } from '@/lib/utils'
+import municipiosPiaui from '@/lib/municipios-piaui.json'
+import {
+  buildCidadeToRegiaoMap,
+  getRegiaoParaCidade,
+  REGIOES_PI_ORDER,
+  type RegiaoPiaui,
+} from '@/lib/piaui-regiao'
+import {
+  DEFAULT_ESPONTANEA_NAO_SABE_EXPANSION_RATE,
+  normalizarLinhaEspontanea,
+} from '@/lib/espontanea-normalize'
+import {
+  gerarFeedbackDesempenhoCandidato,
+  gerarResumoLegendaSerieGrafico,
+  metaTiposFromRowSet,
+} from '@/lib/pesquisa-desempenho-feedback'
+import { buildExecutiveTendenciaModel } from '@/lib/pesquisa-tendencia-executive'
 
 interface Poll {
   id: string
@@ -36,6 +74,8 @@ const cargoLabels: Record<string, string> = {
   presidente: 'Presidente',
 }
 
+type TipoGraficoPesquisa = 'todas' | 'estimulada' | 'espontanea'
+
 const tipoLabels: Record<string, string> = {
   estimulada: 'Estimulada',
   espontanea: 'Espontânea',
@@ -43,102 +83,486 @@ const tipoLabels: Record<string, string> = {
 
 const POLLS_FETCH_LIMIT = 5000
 
-// Função para distribuir rótulos evitando sobreposição
-function distributeY(labels: { name: string; color: string; y: number }[], minGap = 14) {
-  // Evita sobreposição (simples e eficiente)
-  const sorted = [...labels].sort((a, b) => a.y - b.y)
+type AbaPesquisaDashboard = 'grafico' | 'tendencia_cards' | 'cadastradas'
 
-  for (let i = 1; i < sorted.length; i++) {
-    if (sorted[i].y - sorted[i - 1].y < minGap) {
-      sorted[i].y = sorted[i - 1].y + minGap
-    }
-  }
+/** Metadado interno no objeto da série (removido antes do gráfico): tipos de pesquisa naquela data. */
+const META_TIPOS_NA_DATA = '__tiposNaData' as const
 
-  return sorted
+function rowSemMetaTipos(row: Record<string, unknown>): Record<string, string | number | undefined> {
+  const { [META_TIPOS_NA_DATA]: _tipos, ...rest } = row
+  return rest as Record<string, string | number | undefined>
 }
 
-// Componente Customized para renderizar rótulos no lado direito usando coordenadas reais
-function RightSideLabels(props: any) {
-  const { formattedGraphicalItems, offset } = props
-  const { left, top, width, height } = offset
+/** Linha só espontânea → pode normalizar NS sem misturar com estimulada. */
+function linhaSoEspontaneaParaGrafico(tipos: unknown): boolean {
+  return tipos instanceof Set && tipos.size === 1 && tipos.has('espontanea')
+}
 
-  // Pega todas as linhas (Line) e seus pontos
-  const lines = (formattedGraphicalItems || [])
-    .flatMap((item: any) => {
-      // Verifica se é uma Line
-      if (item?.item?.type?.name === "Line" || item?.item?.type?.displayName === "Line") {
-        return [item]
-      }
-      return []
-    })
-    .filter(Boolean)
+/** Mesmo JSON e faixas latitudinais do gráfico Histórico de pesquisas em /dashboard (cockpit). */
+const CIDADE_PARA_REGIAO_PESQUISA = buildCidadeToRegiaoMap(
+  municipiosPiaui as ReadonlyArray<{ nome: string; lat: number }>
+)
 
-  // Mapeia candidatos para nomes legíveis
-  const rawLabels = lines
-    .map((lineWrap: any) => {
-      const lineProps = lineWrap?.props || lineWrap?.item?.props
-      const dataKey = lineProps?.dataKey as string
-      const stroke = lineProps?.stroke as string
+/** Cores saturadas e escuras — boas para linhas e legenda em fundo branco (evita cinzas claros do tema). */
+const TENDENCIA_SERIES_COLORS = [
+  '#B45309',
+  '#1D4ED8',
+  '#B91C1C',
+  '#047857',
+  '#6D28D9',
+  '#0E7490',
+  '#A16207',
+  '#BE185D',
+  '#1E3A8A',
+  '#92400E',
+  '#15803D',
+  '#7C2D12',
+  '#4338CA',
+  '#C2410C',
+]
 
-      // Tenta pegar os pontos de diferentes formas
-      const points = lineWrap?.item?.props?.points || 
-                     lineWrap?.props?.points || 
-                     lineWrap?.points ||
-                     []
+type TendenciaTooltipRow = Record<string, string | number | undefined>
 
-      if (!points?.length) return null
+type TendenciaTooltipPayloadItem = {
+  dataKey?: string | number
+  value?: unknown
+  color?: string
+  stroke?: string
+  payload?: TendenciaTooltipRow
+}
 
-      const last = points[points.length - 1]
-      if (!last || last.y === undefined) return null
+function formatTooltipPercent(value: unknown): string {
+  if (typeof value === 'number' && Number.isFinite(value)) return `${value.toFixed(1)}%`
+  if (typeof value === 'string' && value.trim() !== '') return `${value}%`
+  return '—'
+}
 
-      // Extrai nome do candidato da chave (ex: "intencao_Jadyel_Alencar" -> "Jadyel Alencar")
-      const nomeCandidato = dataKey
-        .replace('intencao_', '')
-        .replace(/_/g, ' ')
+/** Índice da última data em que a série tem valor numérico (para rótulo no fim da linha). */
+function lastDatumIndexForSeries(
+  data: ReadonlyArray<Record<string, string | number | undefined>>,
+  valueKey: string
+): number {
+  for (let i = data.length - 1; i >= 0; i--) {
+    const v = data[i][valueKey]
+    if (typeof v === 'number' && Number.isFinite(v)) return i
+  }
+  return -1
+}
 
-      return {
-        name: nomeCandidato,
-        color: stroke || "#111",
-        y: last.y,
-      }
-    })
-    .filter(Boolean) as { name: string; color: string; y: number }[]
+/** Índice da primeira data com valor numérico na série. */
+function firstDatumIndexForSeries(
+  data: ReadonlyArray<Record<string, string | number | undefined>>,
+  valueKey: string
+): number {
+  for (let i = 0; i < data.length; i++) {
+    const v = data[i][valueKey]
+    if (typeof v === 'number' && Number.isFinite(v)) return i
+  }
+  return -1
+}
 
-  const labels = distributeY(rawLabels, 14)
-  const xText = left + width + 10 // Lado direito do plot
+/** Último % da série (mesma ordem da legenda). */
+function ultimaIntencaoSerie(
+  data: ReadonlyArray<Record<string, string | number | undefined>>,
+  valueKey: string
+): string | null {
+  const i = lastDatumIndexForSeries(data, valueKey)
+  if (i < 0) return null
+  const v = data[i][valueKey]
+  return typeof v === 'number' && Number.isFinite(v) ? v.toFixed(1) : null
+}
+
+/** Primeiro % da série (primeira data com dado). */
+function primeiraIntencaoSerie(
+  data: ReadonlyArray<Record<string, string | number | undefined>>,
+  valueKey: string
+): string | null {
+  const i = firstDatumIndexForSeries(data, valueKey)
+  if (i < 0) return null
+  const v = data[i][valueKey]
+  return typeof v === 'number' && Number.isFinite(v) ? v.toFixed(1) : null
+}
+
+function fmtPctPtBR(raw: string): string {
+  return raw.replace('.', ',')
+}
+
+function parseValorGraficoPonto(raw: unknown): number | null {
+  if (typeof raw === 'number' && Number.isFinite(raw)) return raw
+  if (typeof raw === 'string') {
+    const t = raw.trim()
+    if (!t) return null
+    const normalized =
+      t.includes(',') && t.includes('.')
+        ? t.replace(/\./g, '').replace(',', '.')
+        : t.includes(',')
+          ? t.replace(',', '.')
+          : t
+    const n = Number(normalized)
+    return Number.isFinite(n) ? n : null
+  }
+  return null
+}
+
+/** Instituto abreviado para rótulo no ponto (estilo painel). */
+function rotuloInstitutoNoPonto(nome: string): string {
+  const t = nome.trim()
+  if (t.length <= 14) return t.toUpperCase()
+  return `${t.slice(0, 12).trim()}…`
+}
+
+function TendenciaTooltip({
+  active,
+  payload,
+  label,
+  executive = false,
+}: {
+  active?: boolean
+  payload?: TendenciaTooltipPayloadItem[]
+  label?: ReactNode
+  executive?: boolean
+}) {
+  if (!active || !payload?.length) return null
+
+  const row = payload[0]?.payload
+  if (!row) return null
+
+  const intencaoItems = payload.filter((item) => String(item.dataKey ?? '').startsWith('intencao_'))
+  const institutosUnicos = new Set<string>()
+  intencaoItems.forEach((item) => {
+    const dataKey = item.dataKey != null ? String(item.dataKey) : ''
+    const slug = dataKey.replace(/^intencao_/, '')
+    const raw = row[`instituto_${slug}`]
+    if (raw !== undefined && raw !== null && String(raw).trim() !== '') {
+      institutosUnicos.add(String(raw).trim())
+    }
+  })
+  const listaInst = [...institutosUnicos].sort((a, b) => a.localeCompare(b, 'pt-BR'))
+  const institutoNoHeader =
+    listaInst.length === 0
+      ? null
+      : listaInst.length === 1
+        ? `Instituto: ${listaInst[0]}`
+        : `Institutos: ${listaInst.join(', ')}`
+
+  const box = executive
+    ? 'max-w-sm rounded-lg border border-slate-600 bg-slate-900 px-3 py-2.5 text-xs shadow-xl'
+    : 'max-w-sm rounded-lg border border-gray-200 bg-white px-3 py-2.5 text-xs shadow-lg'
+  const title = executive
+    ? 'mb-2 border-b border-slate-600 pb-1.5 text-sm font-semibold leading-snug text-white'
+    : 'mb-2 border-b border-gray-100 pb-1.5 text-sm font-semibold leading-snug text-gray-900'
+  const sub = executive ? 'font-medium text-slate-300' : 'font-medium text-gray-700'
+  const nameC = executive ? 'font-semibold leading-tight text-slate-100' : 'font-semibold leading-tight text-gray-900'
+  const pctC = executive ? 'font-semibold tabular-nums text-white' : 'font-semibold tabular-nums text-gray-900'
 
   return (
-    <g>
-      {labels.map((l, index) => {
-        // Corta se sair da área visível
-        const y = Math.max(top + 8, Math.min(top + height - 8, l.y))
-        return (
-          <g key={`label_${index}_${l.name}`}>
-            {/* Círculo colorido */}
-            <circle
-              cx={xText - 8}
-              cy={y}
-              r={4}
-              fill={l.color}
-              stroke="white"
-              strokeWidth={1}
+    <div className={box}>
+      <p className={title}>
+        <span>{label}</span>
+        {institutoNoHeader ? (
+          <span className={sub}>
+            {' '}
+            — {institutoNoHeader}
+          </span>
+        ) : null}
+      </p>
+      <ul className="max-h-64 space-y-2 overflow-y-auto pr-0.5">
+        {intencaoItems.map((item, i) => {
+          const dataKey = item.dataKey != null ? String(item.dataKey) : ''
+          const slug = dataKey.replace(/^intencao_/, '')
+          const nome = slug.replace(/_/g, ' ')
+          const pct = formatTooltipPercent(item.value)
+          const mark = item.color || item.stroke || '#111827'
+          return (
+            <li key={`${dataKey}-${i}`} className="flex items-center gap-2">
+              <span
+                className="h-2.5 w-2.5 shrink-0 rounded-full ring-1 ring-white/30"
+                style={{ backgroundColor: mark }}
+              />
+              <div className="flex min-w-0 flex-1 flex-wrap items-baseline gap-x-2">
+                <span className={nameC}>{nome}</span>
+                <span className={pctC}>{pct}</span>
+              </div>
+            </li>
+          )
+        })}
+      </ul>
+    </div>
+  )
+}
+
+type LabelListPropsRecharts = {
+  x?: number
+  y?: number
+  value?: unknown
+  index?: number
+  payload?: TendenciaTooltipRow
+}
+
+/** Gráfico (fundo claro padrão) + legenda à direita: linhas suaves, rótulos nos pontos e no fim da série. */
+function TendenciaLineChart({
+  pesquisaData,
+  candidatos,
+  cores,
+  chartClassName,
+  resumoLegendaPorCandidato,
+}: {
+  pesquisaData: Record<string, string | number | undefined>[]
+  candidatos: string[]
+  cores: string[]
+  chartClassName: string
+  resumoLegendaPorCandidato: Record<string, string>
+}) {
+  const maiorNome =
+    candidatos.length > 0 ? Math.max(...candidatos.map((c) => Math.min(c.length, 28))) : 12
+  const marginRight = Math.min(280, Math.max(160, 32 + maiorNome * 5.5))
+
+  return (
+    <div
+      className={`flex min-h-0 w-full flex-col gap-3 overflow-hidden md:flex-row md:items-stretch md:gap-3 ${chartClassName}`.trim()}
+    >
+      <div className="min-h-[200px] min-w-0 flex-1 h-full md:min-h-[220px] overflow-hidden rounded-lg border border-card bg-white">
+        <ResponsiveContainer width="100%" height="100%">
+          <LineChart
+            data={pesquisaData}
+            margin={{ top: 28, right: marginRight, left: 6, bottom: 44 }}
+          >
+            <CartesianGrid
+              strokeDasharray="3 3"
+              stroke="rgb(var(--border-card))"
+              vertical={false}
             />
-            {/* Nome do candidato */}
-            <text
-              x={xText}
-              y={y}
-              fill={l.color}
-              fontSize={12}
-              fontWeight={600}
-              dominantBaseline="middle"
-              style={{ textShadow: '0 0 2px rgba(255,255,255,0.9)' }}
-            >
-              {l.name}
-            </text>
-          </g>
-        )
-      })}
-    </g>
+            <XAxis
+              dataKey="data"
+              angle={-32}
+              textAnchor="end"
+              height={58}
+              fontSize={11}
+              stroke="rgb(var(--text-muted))"
+              tick={{ fill: 'rgb(var(--text-muted))' }}
+            />
+            <YAxis
+              domain={[0, 100]}
+              width={40}
+              fontSize={11}
+              stroke="rgb(var(--text-muted))"
+              tick={{ fill: 'rgb(var(--text-muted))' }}
+              tickFormatter={(v) => `${v}`}
+            />
+            <Tooltip
+              content={(props) => (
+                <TendenciaTooltip
+                  active={props.active}
+                  label={props.label}
+                  payload={props.payload as TendenciaTooltipPayloadItem[] | undefined}
+                />
+              )}
+            />
+            {candidatos.map((candidato, index) => {
+              const key = `intencao_${candidato.replace(/\s+/g, '_')}`
+              const slug = candidato.replace(/\s+/g, '_')
+              const cor = cores[index % cores.length]
+              const lastIdx = lastDatumIndexForSeries(pesquisaData, key)
+              const nomeCurto = candidato.length > 24 ? `${candidato.slice(0, 22)}…` : candidato
+              return (
+                <Line
+                  key={key}
+                  type="basis"
+                  dataKey={key}
+                  name={candidato}
+                  stroke={cor}
+                  strokeWidth={2.5}
+                  isAnimationActive={false}
+                  connectNulls={false}
+                  dot={{ r: 4, fill: '#ffffff', stroke: cor, strokeWidth: 2 }}
+                  activeDot={{ r: 6, fill: '#ffffff', stroke: cor, strokeWidth: 2 }}
+                >
+                  <LabelList
+                    dataKey={key}
+                    content={(rawProps: unknown) => {
+                      const props = rawProps as LabelListPropsRecharts
+                      const x = props.x
+                      const y = props.y
+                      const idx = props.index
+                      const payload = props.payload
+                      if (typeof x !== 'number' || typeof y !== 'number' || typeof idx !== 'number') {
+                        return null
+                      }
+                      const val = parseValorGraficoPonto(props.value ?? payload?.[key])
+                      if (val === null) return null
+                      const instKey = `instituto_${slug}` as const
+                      const instRaw = payload?.[instKey]
+                      const inst =
+                        typeof instRaw === 'string' && instRaw.trim() !== ''
+                          ? rotuloInstitutoNoPonto(instRaw)
+                          : ''
+
+                      if (lastIdx >= 0 && idx === lastIdx) {
+                        const texto = `${nomeCurto} ${val.toFixed(1).replace('.', ',')}%`
+                        return (
+                          <text
+                            x={x}
+                            y={y}
+                            dx={12}
+                            dy={0}
+                            fill="#111827"
+                            fontSize={11}
+                            fontWeight={700}
+                            dominantBaseline="middle"
+                            stroke="#ffffff"
+                            strokeWidth={4}
+                            paintOrder="stroke fill"
+                          >
+                            {texto}
+                          </text>
+                        )
+                      }
+
+                      return (
+                        <g>
+                          <text
+                            x={x}
+                            y={y}
+                            dy={-16}
+                            textAnchor="middle"
+                            fill="#111827"
+                            fontSize={10}
+                            fontWeight={700}
+                            stroke="#ffffff"
+                            strokeWidth={3}
+                            paintOrder="stroke fill"
+                          >
+                            {val.toFixed(1).replace('.', ',')}%
+                          </text>
+                          {inst ? (
+                            <text
+                              x={x}
+                              y={y}
+                              dy={-4}
+                              textAnchor="middle"
+                              fill="#4b5563"
+                              fontSize={8}
+                              fontWeight={600}
+                              style={{ textTransform: 'uppercase' }}
+                            >
+                              {inst}
+                            </text>
+                          ) : null}
+                        </g>
+                      )
+                    }}
+                  />
+                </Line>
+              )
+            })}
+          </LineChart>
+        </ResponsiveContainer>
+      </div>
+      <aside
+        className="max-h-[340px] w-full shrink-0 overflow-y-auto rounded-lg border border-card bg-background/95 px-2 py-2.5 text-left md:max-h-none md:w-[min(100%,308px)] md:border-l md:px-3"
+        aria-label="Legenda: candidatos, primeira e última leitura da série, texto automático"
+      >
+        <p className="text-[10px] font-semibold uppercase tracking-wide text-secondary mb-2 px-0.5">
+          Candidatos · 1ª → última % · leitura
+        </p>
+        <ul className="flex flex-col gap-3 list-none m-0 p-0">
+          {candidatos.map((candidato, index) => {
+            const key = `intencao_${candidato.replace(/\s+/g, '_')}`
+            const pctPrimeira = primeiraIntencaoSerie(pesquisaData, key)
+            const pctUltima = ultimaIntencaoSerie(pesquisaData, key)
+            const i0 = firstDatumIndexForSeries(pesquisaData, key)
+            const i1 = lastDatumIndexForSeries(pesquisaData, key)
+            const cor = cores[index % cores.length]
+            const resumo = resumoLegendaPorCandidato[candidato] ?? ''
+            const blocoPct =
+              pctPrimeira != null && pctUltima != null ? (
+                i0 >= 0 && i1 >= 0 && i0 === i1 ? (
+                  <span className="font-bold tabular-nums text-accent-gold">
+                    {fmtPctPtBR(pctUltima)}%
+                    <span className="font-normal text-secondary"> (uma data)</span>
+                  </span>
+                ) : (
+                  <span className="font-bold tabular-nums text-accent-gold">
+                    {fmtPctPtBR(pctPrimeira)}% → {fmtPctPtBR(pctUltima)}%
+                  </span>
+                )
+              ) : pctUltima != null ? (
+                <span className="font-bold tabular-nums text-accent-gold">{fmtPctPtBR(pctUltima)}%</span>
+              ) : null
+            return (
+              <li key={key} className="text-[11px] leading-snug">
+                <div className="flex items-start gap-2">
+                  <span
+                    className="mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full ring-1 ring-white"
+                    style={{ backgroundColor: cor }}
+                  />
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-baseline gap-x-1.5 gap-y-0">
+                      <span className="font-semibold text-text-primary">{candidato}</span>
+                      {blocoPct}
+                    </div>
+                    {resumo ? (
+                      <p className="mt-1 text-[10px] leading-relaxed text-secondary">{resumo}</p>
+                    ) : null}
+                  </div>
+                </div>
+              </li>
+            )
+          })}
+        </ul>
+        <p className="mt-3 text-[9px] leading-snug text-secondary px-0.5 border-t border-card/80 pt-2">
+          Com «Todas», se a série cruza estimulada e espontânea, o texto alerta efeito de indecisão — não só «queda» ou
+          «alta» de voto. Posição na última onda quando houver comparativo.
+        </p>
+      </aside>
+    </div>
+  )
+}
+
+function BlocoFeedbackAutomatico({
+  titulo,
+  subtitulo,
+  bullets,
+  avisos,
+  mostrarCabecalhoInterno = true,
+}: {
+  titulo: string
+  subtitulo?: string
+  bullets: string[]
+  avisos: string[]
+  mostrarCabecalhoInterno?: boolean
+}) {
+  if (bullets.length === 0 && avisos.length === 0) return null
+  return (
+    <div className="rounded-xl border border-accent-gold-soft/50 bg-background/90 p-4">
+      {mostrarCabecalhoInterno ? (
+        <div className="flex items-start gap-2 mb-3">
+          <Sparkles className="w-4 h-4 text-accent-gold shrink-0 mt-0.5" aria-hidden />
+          <div className="min-w-0">
+            <h3 className="text-sm font-semibold text-text-primary">{titulo}</h3>
+            {subtitulo ? <p className="text-xs text-secondary mt-0.5 leading-snug">{subtitulo}</p> : null}
+          </div>
+        </div>
+      ) : null}
+      {bullets.length > 0 ? (
+        <ul className="list-disc pl-5 space-y-1.5 text-sm text-text-primary leading-relaxed">
+          {bullets.map((b, i) => (
+            <li key={i}>{b}</li>
+          ))}
+        </ul>
+      ) : null}
+      {avisos.length > 0 ? (
+        <ul className="mt-3 space-y-1.5 text-xs text-amber-900 dark:text-amber-100/90 border-l-2 border-amber-500 pl-3">
+          {avisos.map((a, i) => (
+            <li key={i}>{a}</li>
+          ))}
+        </ul>
+      ) : null}
+      <p className="mt-3 text-[10px] text-secondary leading-snug">
+        Leitura automática por regras (sem IA), usando só os números cadastrados e o filtro atual. Não substitui análise de
+        método amostral ou margem de erro.
+      </p>
+    </div>
   )
 }
 
@@ -148,14 +572,18 @@ export default function PesquisaPage() {
   const [loading, setLoading] = useState(true)
   const [showModal, setShowModal] = useState(false)
   const [editingPoll, setEditingPoll] = useState<Poll | null>(null)
-  const [tipoGrafico, setTipoGrafico] = useState<'estimulada' | 'espontanea' | 'todas'>('todas')
+  const [tipoGrafico, setTipoGrafico] = useState<TipoGraficoPesquisa>('todas')
   const [filtroCargo, setFiltroCargo] = useState<string>('')
   const [filtroCidade, setFiltroCidade] = useState<string>('')
+  const [filtroRegiao, setFiltroRegiao] = useState<'' | RegiaoPiaui>('')
   const [cities, setCities] = useState<Array<{ id: string; name: string }>>([])
   const [candidatoPadrao, setCandidatoPadrao] = useState<string>('')
   const [graficoTelaCheia, setGraficoTelaCheia] = useState(false)
   const [pollParaRelatorio, setPollParaRelatorio] = useState<Poll | null>(null)
   const [openedReportFromQuery, setOpenedReportFromQuery] = useState<string | null>(null)
+  const [abaPesquisa, setAbaPesquisa] = useState<AbaPesquisaDashboard>('grafico')
+  const tendenciaGraficoRef = useRef<HTMLDivElement>(null)
+  const scrollParaGraficoAposTrocaAbaRef = useRef(false)
 
   const normalizeCityName = (value: string): string =>
     value
@@ -216,6 +644,27 @@ export default function PesquisaPage() {
       setOpenedReportFromQuery(pollIdParam)
     }
   }, [polls, searchParams, openedReportFromQuery])
+
+  useEffect(() => {
+    if (!graficoTelaCheia) return
+    const prevOverflow = document.body.style.overflow
+    const scrollY = window.scrollY
+    document.body.style.overflow = 'hidden'
+    window.scrollTo(0, 0)
+    return () => {
+      document.body.style.overflow = prevOverflow
+      window.scrollTo(0, scrollY)
+    }
+  }, [graficoTelaCheia])
+
+  useEffect(() => {
+    if (abaPesquisa !== 'grafico' || !scrollParaGraficoAposTrocaAbaRef.current) return
+    scrollParaGraficoAposTrocaAbaRef.current = false
+    const t = window.setTimeout(() => {
+      tendenciaGraficoRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }, 0)
+    return () => clearTimeout(t)
+  }, [abaPesquisa])
   
   // Atualizar candidatos disponíveis quando polls mudarem
   useEffect(() => {
@@ -281,130 +730,25 @@ export default function PesquisaPage() {
     }
   }
 
-  // Calcular KPIs
-  const calcularKPIs = (): KPI[] => {
-    if (polls.length === 0) {
-      return [
-        { id: 'intencao', label: 'Intenção de Voto', value: '0%', status: 'neutral' },
-        { id: 'rejeicao', label: 'Rejeição', value: '0%', status: 'neutral' },
-        { id: 'total', label: 'Total de Pesquisas', value: 0, status: 'neutral' },
-      ]
-    }
-
-    // Contar pesquisas únicas: agrupar por data + instituto
-    const pesquisasUnicas = new Set<string>()
-    polls.forEach(poll => {
-      // Normalizar data para comparação (remover hora se houver)
-      const dataNormalizada = poll.data.includes('T') 
-        ? poll.data.split('T')[0] 
-        : poll.data
-      const chavePesquisa = `${dataNormalizada}_${poll.instituto}`
-      pesquisasUnicas.add(chavePesquisa)
-    })
-
-    // Se não há candidato padrão selecionado, retornar apenas total de pesquisas
-    if (!candidatoPadrao) {
-      return [
-        { id: 'intencao', label: 'Intenção de Voto', value: '-', status: 'neutral' },
-        { id: 'rejeicao', label: 'Rejeição', value: '-', status: 'neutral' },
-        { id: 'total', label: 'Total de Pesquisas', value: pesquisasUnicas.size, status: 'success' },
-      ]
-    }
-
-    // Buscar todas as pesquisas do candidato padrão ordenadas por data (mais recente primeiro)
-    const pesquisasCandidatoPadrao = polls
-      .filter(p => p.candidato_nome === candidatoPadrao)
-      .sort((a, b) => {
-        const dateA = new Date(a.data.includes('T') ? a.data : a.data.split('-').reverse().join('-'))
-        const dateB = new Date(b.data.includes('T') ? b.data : b.data.split('-').reverse().join('-'))
-        return dateB.getTime() - dateA.getTime()
-      })
-
-    if (pesquisasCandidatoPadrao.length === 0) {
-      return [
-        { id: 'intencao', label: 'Intenção de Voto', value: '-', status: 'neutral' },
-        { id: 'rejeicao', label: 'Rejeição', value: '-', status: 'neutral' },
-        { id: 'total', label: 'Total de Pesquisas', value: pesquisasUnicas.size, status: 'success' },
-      ]
-    }
-
-    const ultimaPesquisa = pesquisasCandidatoPadrao[0]
-    const penultimaPesquisa = pesquisasCandidatoPadrao[1]
-
-    const intencaoVariation = penultimaPesquisa
-      ? ultimaPesquisa.intencao - penultimaPesquisa.intencao
-      : 0
-
-    const rejeicaoVariation = penultimaPesquisa
-      ? ultimaPesquisa.rejeicao - penultimaPesquisa.rejeicao
-      : 0
-
-    return [
-      {
-        id: 'intencao',
-        label: `Intenção de Voto - ${candidatoPadrao}`,
-        value: `${ultimaPesquisa.intencao.toFixed(1)}%`,
-        variation: intencaoVariation,
-        status: intencaoVariation >= 0 ? 'success' : 'error',
-      },
-      {
-        id: 'rejeicao',
-        label: `Rejeição - ${candidatoPadrao}`,
-        value: `${ultimaPesquisa.rejeicao.toFixed(1)}%`,
-        variation: rejeicaoVariation,
-        status: rejeicaoVariation <= 0 ? 'success' : 'error',
-      },
-      {
-        id: 'total',
-        label: 'Total de Pesquisas',
-        value: pesquisasUnicas.size,
-        status: 'success',
-      },
-    ]
-  }
-
-  // Preparar dados para o gráfico (filtrar por tipo, cargo e cidade)
+  // Preparar dados para o gráfico (filtrar por tipo, cargo, cidade e região — região = cockpit / Histórico de pesquisas)
   // Agrupar por candidato para criar uma linha por candidato
   const pollsFiltrados = polls
     .filter((poll) => {
-      // Filtro por tipo
       if (tipoGrafico !== 'todas' && poll.tipo !== tipoGrafico) return false
-      
-      // Filtro por cargo
       if (filtroCargo && poll.cargo !== filtroCargo) return false
-      
-      // Filtro por cidade
       if (filtroCidade && poll.cidade_id !== filtroCidade) return false
-      
+      if (filtroRegiao) {
+        const nomeCidade = poll.cities?.name?.trim()
+        if (!nomeCidade) return false
+        const regiaoPoll = getRegiaoParaCidade(nomeCidade, CIDADE_PARA_REGIAO_PESQUISA)
+        if (regiaoPoll !== filtroRegiao) return false
+      }
       return true
     })
     .slice()
     .reverse()
 
-  // Obter lista única de candidatos e ordenar por intenção de votos (decrescente)
-  const candidatosUnicos = Array.from(new Set(pollsFiltrados.map(p => p.candidato_nome).filter(Boolean)))
-  
-  // Calcular última intenção de cada candidato para ordenação
-  const candidatosComUltimaIntencao = candidatosUnicos.map(candidato => {
-    // Encontrar última pesquisa deste candidato
-    const ultimaPesquisa = pollsFiltrados
-      .filter(p => p.candidato_nome === candidato)
-      .sort((a, b) => {
-        const dateA = new Date(a.data.includes('T') ? a.data : a.data.split('-').reverse().join('-'))
-        const dateB = new Date(b.data.includes('T') ? b.data : b.data.split('-').reverse().join('-'))
-        return dateB.getTime() - dateA.getTime()
-      })[0]
-    
-    return {
-      nome: candidato,
-      ultimaIntencao: ultimaPesquisa?.intencao || 0
-    }
-  })
-  
-  // Ordenar por intenção decrescente
-  const candidatos = candidatosComUltimaIntencao
-    .sort((a, b) => b.ultimaIntencao - a.ultimaIntencao)
-    .map(c => c.nome)
+  const candidatosUnicos = Array.from(new Set(pollsFiltrados.map((p) => p.candidato_nome).filter(Boolean)))
 
   // Criar estrutura de dados: agrupar por data única, cada data tem valores de todos os candidatos
   // Primeiro, criar um mapa de datas únicas
@@ -434,10 +778,12 @@ export default function PesquisaPage() {
       datasUnicas.set(formattedDate, {
         data: formattedDate,
         dataOriginal: formattedDate,
+        [META_TIPOS_NA_DATA]: new Set<Poll['tipo']>(),
       })
     }
-    
-    const dataObj = datasUnicas.get(formattedDate)
+
+    const dataObj = datasUnicas.get(formattedDate)!
+    ;(dataObj[META_TIPOS_NA_DATA] as Set<Poll['tipo']>).add(poll.tipo)
     const key = `intencao_${poll.candidato_nome.replace(/\s+/g, '_')}`
     const keyRejeicao = `rejeicao_${poll.candidato_nome.replace(/\s+/g, '_')}`
     
@@ -448,47 +794,77 @@ export default function PesquisaPage() {
   })
   
   // Converter mapa para array e ordenar por data
-  const pesquisaData = Array.from(datasUnicas.values()).sort((a, b) => {
+  const pesquisaDataBruta = Array.from(datasUnicas.values()).sort((a, b) => {
     const dateA = new Date(a.dataOriginal.split('/').reverse().join('-'))
     const dateB = new Date(b.dataOriginal.split('/').reverse().join('-'))
     return dateA.getTime() - dateB.getTime()
   })
 
-  // Calcular domínio dinâmico baseado nos valores reais dos dados
-  const todosValores: number[] = []
-  candidatos.forEach((candidato) => {
-    const key = `intencao_${candidato.replace(/\s+/g, '_')}`
-    pesquisaData.forEach(d => {
-      if (d[key] !== undefined && d[key] !== null) {
-        todosValores.push(d[key] as number)
-      }
-    })
+  /**
+   * Gráfico: ajuste de NS na espontânea; com «Todas», o mesmo ajuste nas datas em que só há espontânea
+   * (evita misturar % de estimulada e espontânea na mesma barra). Tabela/resumo seguem brutos.
+   */
+  const pesquisaData = pesquisaDataBruta.map((row) => {
+    const tipos = (row as Record<string, unknown>)[META_TIPOS_NA_DATA]
+    const plain = rowSemMetaTipos(row as Record<string, unknown>)
+    const aplicarNorm =
+      tipoGrafico === 'espontanea' ||
+      (tipoGrafico === 'todas' && linhaSoEspontaneaParaGrafico(tipos))
+    return aplicarNorm
+      ? normalizarLinhaEspontanea(plain, DEFAULT_ESPONTANEA_NAO_SABE_EXPANSION_RATE)
+      : plain
   })
-  
-  // Domínio fixo de 0 a 100% para visualização clara estilo Power BI
-  const domainMin = 0
-  const domainMax = 100
 
-  // Cores dinâmicas via CSS variables + complementares fixas
-  const cores = [
-    'rgb(var(--accent-gold))',       // Accent (principal)
-    'rgb(var(--accent-gold-soft))',   // Accent Soft (complementar)
-    'rgb(var(--text-text-primary))',       // Text Primary (contraste)
-    'rgb(var(--text-secondary))',     // Text Secondary (suave)
-    'rgb(var(--success))',            // Success (para crescimento)
-    'rgb(var(--danger))',             // Danger (para redução)
-    'rgb(var(--warning))',            // Warning (atenção)
-    'rgb(var(--info))',               // Info (informativo)
-    '#16A085',                        // Verde complementar
-    '#8E44AD',                        // Roxo complementar
-    '#C0392B',                        // Vermelho complementar
-    '#D68910',                        // Laranja complementar
-  ]
+  /** Ordenação das linhas: pela última data exibida no gráfico (após normalização, se houver). */
+  const candidatos =
+    pesquisaData.length === 0
+      ? [...candidatosUnicos].sort((a, b) => a.localeCompare(b, 'pt-BR'))
+      : (() => {
+          const last = pesquisaData[pesquisaData.length - 1] as Record<string, string | number | undefined>
+          const scored = candidatosUnicos.map((nome) => {
+            const k = `intencao_${nome.replace(/\s+/g, '_')}`
+            const v = last[k]
+            const intencao = typeof v === 'number' && Number.isFinite(v) ? v : -1
+            return { nome, intencao }
+          })
+          return scored.sort((a, b) => b.intencao - a.intencao).map((x) => x.nome)
+        })()
 
-  const kpis = calcularKPIs()
+  const subtituloModalTelaCheia =
+    pesquisaData.length === 0
+      ? 'Mesmos filtros da página'
+      : (() => {
+          const row = pesquisaData[pesquisaData.length - 1]
+          const dataLabel = row.data != null ? String(row.data) : ''
+          const inst = new Set<string>()
+          Object.keys(row).forEach((k) => {
+            if (!k.startsWith('instituto_')) return
+            const v = row[k]
+            if (v != null && String(v).trim() !== '') inst.add(String(v).trim())
+          })
+          const arr = [...inst].sort((a, b) => a.localeCompare(b, 'pt-BR'))
+          const pctNs = Math.round(DEFAULT_ESPONTANEA_NAO_SABE_EXPANSION_RATE * 100)
+          const sufixoAjuste =
+            tipoGrafico === 'espontanea'
+              ? ` · Espontânea no gráfico: ${pctNs}% do «Não sabe» redistribuído (branco/nulo inalterado)`
+              : tipoGrafico === 'todas'
+                ? ` · «Todas»: nas datas só espontânea, gráfico com mesmo ajuste de NS (${pctNs}% redistribuído); datas só estimulada ou com os dois tipos ficam brutas`
+                : ''
+          if (arr.length === 0) {
+            return dataLabel
+              ? `${dataLabel} · mesmos filtros da página${sufixoAjuste}`
+              : `Mesmos filtros da página${sufixoAjuste}`
+          }
+          return (
+            (arr.length === 1
+              ? `${dataLabel} — Instituto: ${arr[0]}`
+              : `${dataLabel} — Institutos: ${arr.join(', ')}`) + sufixoAjuste
+          )
+        })()
+
   const pesquisasResumoCandidato = (() => {
     if (!candidatoPadrao) return []
-    return polls.filter((poll) => poll.candidato_nome === candidatoPadrao)
+    return pollsFiltrados.filter((poll) => poll.candidato_nome === candidatoPadrao)
   })()
 
   const toDateMs = (dateStr: string): number => {
@@ -544,6 +920,86 @@ export default function PesquisaPage() {
       data: formatDate(poll.data),
     }))
 
+  const pollsParaFeedback = pollsFiltrados.map((p) => ({
+    data: p.data,
+    instituto: p.instituto,
+    candidato_nome: p.candidato_nome,
+    tipo: p.tipo,
+    cidade_id: p.cidade_id ?? null,
+    intencao: p.intencao ?? 0,
+    rejeicao: p.rejeicao ?? 0,
+    cities: p.cities,
+  }))
+
+  const metaPorLinhaGrafico = pesquisaDataBruta.map((row) =>
+    metaTiposFromRowSet((row as Record<string, unknown>)[META_TIPOS_NA_DATA])
+  )
+
+  const resumoLegendaPorCandidato: Record<string, string> = {}
+  for (const nome of candidatos) {
+    resumoLegendaPorCandidato[nome] = gerarResumoLegendaSerieGrafico(
+      nome,
+      pesquisaData,
+      pollsParaFeedback,
+      metaPorLinhaGrafico
+    )
+  }
+
+  const feedbackDesempenhoCandidato =
+    candidatoPadrao && pesquisasResumoCandidato.length > 0
+      ? gerarFeedbackDesempenhoCandidato(
+          candidatoPadrao,
+          pollsParaFeedback.filter((x) => x.candidato_nome === candidatoPadrao),
+          pollsParaFeedback
+        )
+      : null
+
+  const pollsPainelExecutivo = useMemo(() => {
+    return polls
+      .filter((poll) => {
+        if (filtroCargo && poll.cargo !== filtroCargo) return false
+        if (filtroCidade && poll.cidade_id !== filtroCidade) return false
+        if (filtroRegiao) {
+          const nomeCidade = poll.cities?.name?.trim()
+          if (!nomeCidade) return false
+          const regiaoPoll = getRegiaoParaCidade(nomeCidade, CIDADE_PARA_REGIAO_PESQUISA)
+          if (regiaoPoll !== filtroRegiao) return false
+        }
+        return true
+      })
+      .slice()
+      .reverse()
+  }, [polls, filtroCargo, filtroCidade, filtroRegiao])
+
+  const modeloExecutivoTendencia = useMemo(
+    () =>
+      buildExecutiveTendenciaModel(
+        pollsPainelExecutivo.map((p) => ({
+          data: p.data,
+          tipo: p.tipo,
+          candidato_nome: p.candidato_nome,
+          intencao: p.intencao,
+          instituto: p.instituto ?? '',
+        }))
+      ),
+    [pollsPainelExecutivo]
+  )
+
+  const subtituloPainelExecutivoTendencia = [
+    cidadeSelecionadaNome.trim() || (filtroRegiao ? `Região ${filtroRegiao}` : 'Estado / todas as cidades'),
+    filtroCargo ? cargoLabels[filtroCargo] : 'Todos os cargos',
+  ].join(' • ')
+
+  const labelTipoGraficoContexto =
+    tipoGrafico === 'todas' ? 'Gráfico: todas' : `Gráfico: ${tipoLabels[tipoGrafico]}`
+
+  const handleVerDetalhesPainelExecutivo = (nome: string) => {
+    setCandidatoPadrao(nome)
+    localStorage.setItem('candidatoPadraoPesquisa', nome)
+    scrollParaGraficoAposTrocaAbaRef.current = true
+    setAbaPesquisa('grafico')
+  }
+
   return (
     <div className="min-h-screen bg-background">
 
@@ -559,7 +1015,7 @@ export default function PesquisaPage() {
               Voltar para Resumo Eleições
             </Link>
             <label className="text-sm font-semibold text-text-primary whitespace-nowrap">
-              Candidato Padrão para KPIs:
+              Candidato para resumo:
             </label>
             <select
               value={candidatoPadrao}
@@ -592,66 +1048,69 @@ export default function PesquisaPage() {
           </div>
         </div>
 
-        {/* KPIs */}
-        <section className="mb-8">
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            {kpis.map((kpi) => (
-              <KPICard key={kpi.id} kpi={kpi} />
-            ))}
-          </div>
-        </section>
+        {/* Filtros — uma linha (scroll horizontal em telas estreitas) */}
+        <div id="filtros" className="bg-surface rounded-xl border border-card px-3 py-2 mb-4">
+          <div className="flex flex-nowrap items-center gap-x-2 sm:gap-3 overflow-x-auto pb-0.5 [scrollbar-width:thin]">
+            <span className="text-xs font-semibold text-text-primary shrink-0">Filtros</span>
+            <span className="hidden sm:block h-4 w-px shrink-0 bg-border-card opacity-60" aria-hidden />
 
-        {/* Filtros */}
-        <div id="filtros" className="bg-surface rounded-2xl border border-card p-4 mb-6">
-          <h3 className="text-sm font-semibold text-text-primary mb-4">Filtros</h3>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {/* Filtro por Tipo */}
-            <div>
-              <label className="block text-xs font-medium text-secondary mb-2">Tipo</label>
-              <div className="flex items-center gap-4">
-                <label className="flex items-center gap-2 cursor-pointer">
+            <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+              <span className="text-[10px] font-medium uppercase tracking-wide text-secondary whitespace-nowrap">
+                Tipo
+              </span>
+              <div className="flex items-center gap-x-2 sm:gap-x-3">
+                <label
+                  className="flex items-center gap-1 cursor-pointer whitespace-nowrap"
+                  title={`No gráfico: nas datas em que só há pesquisa espontânea, ${Math.round(DEFAULT_ESPONTANEA_NAO_SABE_EXPANSION_RATE * 100)}% do «Não sabe» é redistribuído entre candidatos. Datas só estimulada ou com os dois tipos permanecem sem esse ajuste.`}
+                >
                   <input
                     type="radio"
                     name="tipoGrafico"
                     value="todas"
                     checked={tipoGrafico === 'todas'}
-                    onChange={(e) => setTipoGrafico(e.target.value as 'todas')}
-                    className="w-4 h-4 text-accent-gold focus:ring-accent-gold"
+                    onChange={(e) => setTipoGrafico(e.target.value as TipoGraficoPesquisa)}
+                    className="h-3.5 w-3.5 shrink-0 text-accent-gold focus:ring-accent-gold"
                   />
-                  <span className="text-sm text-text-primary">Todas</span>
+                  <span className="text-xs text-text-primary">Todas</span>
                 </label>
-                <label className="flex items-center gap-2 cursor-pointer">
+                <label className="flex items-center gap-1 cursor-pointer whitespace-nowrap">
                   <input
                     type="radio"
                     name="tipoGrafico"
                     value="estimulada"
                     checked={tipoGrafico === 'estimulada'}
-                    onChange={(e) => setTipoGrafico(e.target.value as 'estimulada')}
-                    className="w-4 h-4 text-accent-gold focus:ring-accent-gold"
+                    onChange={(e) => setTipoGrafico(e.target.value as TipoGraficoPesquisa)}
+                    className="h-3.5 w-3.5 shrink-0 text-accent-gold focus:ring-accent-gold"
                   />
-                  <span className="text-sm text-text-primary">Estimulada</span>
+                  <span className="text-xs text-text-primary">Estimulada</span>
                 </label>
-                <label className="flex items-center gap-2 cursor-pointer">
+                <label
+                  className="flex items-center gap-1 cursor-pointer whitespace-nowrap"
+                  title={`No gráfico: ${Math.round(DEFAULT_ESPONTANEA_NAO_SABE_EXPANSION_RATE * 100)}% do «Não sabe» redistribuído; branco/nulo inalterado. Com «Todas», o mesmo nas datas só espontânea. Tabela com valores brutos.`}
+                >
                   <input
                     type="radio"
                     name="tipoGrafico"
                     value="espontanea"
                     checked={tipoGrafico === 'espontanea'}
-                    onChange={(e) => setTipoGrafico(e.target.value as 'espontanea')}
-                    className="w-4 h-4 text-accent-gold focus:ring-accent-gold"
+                    onChange={(e) => setTipoGrafico(e.target.value as TipoGraficoPesquisa)}
+                    className="h-3.5 w-3.5 shrink-0 text-accent-gold focus:ring-accent-gold"
                   />
-                  <span className="text-sm text-text-primary">Espontânea</span>
+                  <span className="text-xs text-text-primary">Espontânea</span>
                 </label>
               </div>
             </div>
 
-            {/* Filtro por Cargo */}
-            <div>
-              <label className="block text-xs font-medium text-secondary mb-2">Cargo</label>
+            <span className="hidden sm:block h-4 w-px shrink-0 bg-border-card opacity-60" aria-hidden />
+
+            <label className="flex items-center gap-1.5 shrink-0">
+              <span className="text-[10px] font-medium uppercase tracking-wide text-secondary whitespace-nowrap">
+                Cargo
+              </span>
               <select
                 value={filtroCargo}
                 onChange={(e) => setFiltroCargo(e.target.value)}
-                className="w-full px-3 py-2 text-sm border border-card rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-gold-soft bg-surface"
+                className="min-w-[6.5rem] max-w-[9rem] rounded-lg border border-card bg-surface px-2 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-accent-gold-soft"
               >
                 <option value="">Todos</option>
                 <option value="dep_estadual">Dep. Estadual</option>
@@ -660,15 +1119,16 @@ export default function PesquisaPage() {
                 <option value="senador">Senador</option>
                 <option value="presidente">Presidente</option>
               </select>
-            </div>
+            </label>
 
-            {/* Filtro por Cidade */}
-            <div>
-              <label className="block text-xs font-medium text-secondary mb-2">Cidade</label>
+            <label className="flex items-center gap-1.5 shrink-0">
+              <span className="text-[10px] font-medium uppercase tracking-wide text-secondary whitespace-nowrap">
+                Cidade
+              </span>
               <select
                 value={filtroCidade}
                 onChange={(e) => setFiltroCidade(e.target.value)}
-                className="w-full px-3 py-2 text-sm border border-card rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-gold-soft bg-surface"
+                className="min-w-[6.5rem] max-w-[10rem] rounded-lg border border-card bg-surface px-2 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-accent-gold-soft"
               >
                 <option value="">Todas</option>
                 {cities.map((city) => (
@@ -677,219 +1137,185 @@ export default function PesquisaPage() {
                   </option>
                 ))}
               </select>
-            </div>
+            </label>
+
+            <label className="flex items-center gap-1.5 shrink-0">
+              <span className="text-[10px] font-medium uppercase tracking-wide text-secondary whitespace-nowrap">
+                Região
+              </span>
+              <select
+                value={filtroRegiao}
+                onChange={(e) => setFiltroRegiao(e.target.value as '' | RegiaoPiaui)}
+                title="Mesma lógica do cockpit: município mapeado por latitude (Norte, Centro-Norte, Centro-Sul, Sul)."
+                className="min-w-[5.5rem] max-w-[8rem] rounded-lg border border-card bg-surface px-2 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-accent-gold-soft"
+              >
+                <option value="">Todas</option>
+                {REGIOES_PI_ORDER.map((r) => (
+                  <option key={r} value={r}>
+                    {r}
+                  </option>
+                ))}
+              </select>
+            </label>
           </div>
         </div>
 
-        {/* Gráfico de Tendência - Ocupa linha inteira */}
-        <div className="bg-surface rounded-2xl border border-card p-6 mb-6">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-lg font-semibold text-text-primary">Tendência</h2>
-              <button
-                onClick={() => setGraficoTelaCheia(true)}
-                className="p-2 rounded-lg hover:bg-background transition-colors"
-                title="Visualizar em tela cheia"
+        <div className="bg-surface rounded-2xl border border-card mb-6 overflow-hidden">
+          <div
+            role="tablist"
+            aria-label="Visualizações da pesquisa"
+            className="flex flex-wrap gap-1 border-b border-card px-2 pt-2 sm:px-3"
+          >
+            <button
+              type="button"
+              role="tab"
+              id="pesquisa-tab-grafico"
+              aria-selected={abaPesquisa === 'grafico'}
+              aria-controls="pesquisa-panel-grafico"
+              tabIndex={abaPesquisa === 'grafico' ? 0 : -1}
+              onClick={() => setAbaPesquisa('grafico')}
+              className={`inline-flex items-center gap-2 rounded-t-lg px-3 py-2.5 text-sm font-medium transition-colors ${
+                abaPesquisa === 'grafico'
+                  ? 'bg-background text-text-primary shadow-[inset_0_-2px_0_0_rgb(var(--accent-gold))]'
+                  : 'text-secondary hover:bg-background/60 hover:text-text-primary'
+              }`}
+            >
+              <BarChart3 className="h-4 w-4 shrink-0" aria-hidden />
+              Tendência temporal
+            </button>
+            <button
+              type="button"
+              role="tab"
+              id="pesquisa-tab-tendencia-cards"
+              aria-selected={abaPesquisa === 'tendencia_cards'}
+              aria-controls="pesquisa-panel-tendencia-cards"
+              tabIndex={abaPesquisa === 'tendencia_cards' ? 0 : -1}
+              onClick={() => setAbaPesquisa('tendencia_cards')}
+              className={`inline-flex items-center gap-2 rounded-t-lg px-3 py-2.5 text-sm font-medium transition-colors ${
+                abaPesquisa === 'tendencia_cards'
+                  ? 'bg-background text-text-primary shadow-[inset_0_-2px_0_0_rgb(var(--accent-gold))]'
+                  : 'text-secondary hover:bg-background/60 hover:text-text-primary'
+              }`}
+            >
+              <LayoutGrid className="h-4 w-4 shrink-0" aria-hidden />
+              Intenção de voto (cards)
+            </button>
+            <button
+              type="button"
+              role="tab"
+              id="pesquisa-tab-cadastradas"
+              aria-selected={abaPesquisa === 'cadastradas'}
+              aria-controls="pesquisa-panel-cadastradas"
+              tabIndex={abaPesquisa === 'cadastradas' ? 0 : -1}
+              onClick={() => setAbaPesquisa('cadastradas')}
+              className={`inline-flex items-center gap-2 rounded-t-lg px-3 py-2.5 text-sm font-medium transition-colors ${
+                abaPesquisa === 'cadastradas'
+                  ? 'bg-background text-text-primary shadow-[inset_0_-2px_0_0_rgb(var(--accent-gold))]'
+                  : 'text-secondary hover:bg-background/60 hover:text-text-primary'
+              }`}
+            >
+              <ClipboardList className="h-4 w-4 shrink-0" aria-hidden />
+              Pesquisas cadastradas
+            </button>
+          </div>
+
+          <div className="p-3 sm:p-4">
+            {abaPesquisa === 'grafico' ? (
+              <div
+                ref={tendenciaGraficoRef}
+                id="pesquisa-panel-grafico"
+                role="tabpanel"
+                aria-labelledby="pesquisa-tab-grafico"
+                className="rounded-xl border border-card bg-surface p-4"
               >
-                <Maximize2 className="w-5 h-5 text-secondary" />
-              </button>
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-center gap-2 min-w-0">
+              <BarChart3 className="w-5 h-5 text-accent-gold shrink-0" />
+              <div className="min-w-0">
+                <h2 className="text-base font-semibold text-text-primary">
+                  Tendência temporal de intenção (todos os candidatos)
+                </h2>
+                <p className="text-[11px] text-secondary mt-0.5">
+                  Uma linha por candidato; legenda à direita.{' '}
+                  <span className="whitespace-nowrap">Tela cheia para mais espaço.</span>
+                </p>
+                {tipoGrafico === 'espontanea' || tipoGrafico === 'todas' ? (
+                  <details className="mt-1 text-[11px] text-secondary">
+                    <summary className="cursor-pointer text-secondary hover:text-text-primary select-none">
+                      Ajuste de espontânea no gráfico
+                    </summary>
+                    <p className="mt-1.5 border-l-2 border-border-card/50 pl-2 leading-snug">
+                      {tipoGrafico === 'espontanea' ? (
+                        <>
+                          {Math.round(DEFAULT_ESPONTANEA_NAO_SABE_EXPANSION_RATE * 100)}% do «Não sabe» redistribuído entre
+                          candidatos (branco/nulo inalterado). Na aba «Pesquisas cadastradas», os valores permanecem brutos.
+                        </>
+                      ) : (
+                        <>
+                          Nas datas em que <strong>só</strong> há espontânea, o mesmo ajuste; nas demais, valores brutos no
+                          gráfico. Na aba «Pesquisas cadastradas», sempre brutos.
+                        </>
+                      )}
+                    </p>
+                  </details>
+                ) : null}
+              </div>
             </div>
+            <button
+              type="button"
+              onClick={() => setGraficoTelaCheia(true)}
+              className="shrink-0 inline-flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-lg border border-card bg-background hover:bg-background/80 transition-colors"
+              title="Visualizar em tela cheia"
+            >
+              <Maximize2 className="w-4 h-4 text-secondary" />
+              Tela cheia
+            </button>
+          </div>
+          <div className="rounded-xl border border-card p-4 mt-4">
             {loading ? (
-              <div className="h-64 flex items-center justify-center">
+              <div className="h-[280px] flex items-center justify-center">
                 <p className="text-secondary">Carregando...</p>
               </div>
             ) : pesquisaData.length === 0 ? (
-              <div className="h-64 flex items-center justify-center">
-                <p className="text-secondary">
-                  {tipoGrafico === 'todas' 
+              <div className="h-[280px] flex items-center justify-center">
+                <p className="text-secondary text-center px-4">
+                  {polls.length === 0
                     ? 'Nenhuma pesquisa cadastrada'
-                    : `Nenhuma pesquisa ${tipoLabels[tipoGrafico]} cadastrada`
-                  }
+                    : 'Nenhum registro com os filtros atuais (incluindo região).'}
                 </p>
               </div>
             ) : (
-              <div className="h-[600px] relative bg-white">
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart 
-                    data={pesquisaData} 
-                    margin={{ top: 30, right: 180, left: 50, bottom: 80 }}
-                  >
-                    {/* Grid horizontal suave estilo Power BI */}
-                    <CartesianGrid 
-                      strokeDasharray="3 3" 
-                      stroke="rgb(var(--border-card))" 
-                      strokeWidth={1}
-                      horizontal={true}
-                      vertical={false}
-                    />
-                    
-                    {/* Eixo X: Datas */}
-                    <XAxis 
-                      dataKey="data" 
-                      stroke="rgb(var(--text-muted))" 
-                      fontSize={11}
-                      fontWeight={400}
-                      tick={{ fill: 'rgb(var(--text-muted))' }}
-                      angle={-45}
-                      textAnchor="end"
-                      height={80}
-                      tickLine={{ stroke: 'rgb(var(--border-card))', strokeWidth: 1 }}
-                    />
-                    
-                    {/* Eixo Y: Percentual 0-100% */}
-                    <YAxis 
-                      domain={[0, 100]}
-                      stroke="rgb(var(--text-muted))"
-                      fontSize={11}
-                      fontWeight={400}
-                      tick={{ fill: 'rgb(var(--text-muted))' }}
-                      tickLine={{ stroke: 'rgb(var(--border-card))', strokeWidth: 1 }}
-                      ticks={[0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100]}
-                      label={{ 
-                        value: 'Intenção de Voto (%)', 
-                        angle: -90, 
-                        position: 'insideLeft',
-                        style: { textAnchor: 'middle', fill: 'rgb(var(--text-muted))', fontSize: 12, fontWeight: 500 }
-                      }}
-                    />
-                    
-                    {/* Tooltip estilo Power BI */}
-                    <Tooltip
-                      content={({ active, payload }) => {
-                        if (active && payload && payload.length) {
-                          // Quando há múltiplos payloads (múltiplas linhas no mesmo ponto), mostra todos
-                          // Quando há um único payload, mostra apenas esse
-                          const items = payload.map((item: any) => {
-                            if (!item || !item.payload) return null
-                            
-                            const data = item.payload
-                            const dataKey = item.dataKey?.toString() || ''
-                            const candidatoNome = dataKey.replace('intencao_', '').replace(/_/g, ' ') || ''
-                            const institutoKey = `instituto_${dataKey.replace('intencao_', '') || ''}`
-                            const instituto = data[institutoKey] || ''
-                            const valor = item.value
-                            
-                            return {
-                              candidatoNome,
-                              instituto,
-                              valor,
-                              data: data.data,
-                              color: item.color || item.stroke || '#666'
-                            }
-                          }).filter(Boolean)
-                          
-                          if (items.length === 0) return null
-                          
-                          // Se há apenas um item, mostra formato detalhado
-                          if (items.length === 1) {
-                            const item = items[0]
-                            if (!item) return null
-                            return (
-                              <div className="bg-white border border-gray-200 rounded-md p-3 shadow-lg">
-                                <p className="text-sm font-semibold text-gray-900 mb-2">{item.candidatoNome}</p>
-                                <div className="space-y-1 text-xs">
-                                  <p className="text-gray-600">
-                                    <span className="font-medium">Data:</span> {item.data}
-                                  </p>
-                                  {item.instituto && (
-                                    <p className="text-gray-600">
-                                      <span className="font-medium">Instituto:</span> {item.instituto}
-                                    </p>
-                                  )}
-                                  {item.valor !== undefined && item.valor !== null && (
-                                    <p className="text-gray-900 font-bold text-sm mt-2">
-                                      Intenção: {item.valor.toFixed(1)}%
-                                    </p>
-                                  )}
-                                </div>
-                              </div>
-                            )
-                          }
-                          
-                          // Se há múltiplos itens (vários candidatos na mesma data), mostra lista
-                          const firstItem = items[0]
-                          if (!firstItem) return null
-                          return (
-                            <div className="bg-white border border-gray-200 rounded-md p-3 shadow-lg">
-                              <div className="mb-2">
-                                <p className="text-sm font-semibold text-gray-900">{firstItem.data}</p>
-                                {firstItem.instituto && (
-                                  <p className="text-xs text-gray-600 mt-1">
-                                    <span className="font-medium">Instituto:</span> {firstItem.instituto}
-                                  </p>
-                                )}
-                              </div>
-                              <div className="space-y-2">
-                                {items.map((item: any, idx: number) => (
-                                  <div key={idx} className="flex items-center justify-between gap-3">
-                                    <div className="flex items-center gap-2">
-                                      <div 
-                                        className="w-3 h-3 rounded-full" 
-                                        style={{ backgroundColor: item.color }}
-                                      />
-                                      <span className="text-xs font-medium text-gray-700">{item.candidatoNome}</span>
-                                    </div>
-                                    {item.valor !== undefined && item.valor !== null && (
-                                      <span className="text-xs font-bold text-gray-900">
-                                        {item.valor.toFixed(1)}%
-                                      </span>
-                                    )}
-                                  </div>
-                                ))}
-                              </div>
-                            </div>
-                          )
-                        }
-                        return null
-                      }}
-                    />
-                    
-                    {/* Linhas por candidato */}
-                    {candidatos.map((candidato, index) => {
-                      const key = `intencao_${candidato.replace(/\s+/g, '_')}`
-                      const cor = cores[index % cores.length]
-                      
-                      return (
-                        <Line
-                          key={`line_${candidato}`}
-                          type="monotone"
-                          dataKey={key}
-                          stroke={cor}
-                          strokeWidth={2.5}
-                          dot={{ r: 5, fill: cor, strokeWidth: 2, stroke: '#fff' }}
-                          activeDot={{ r: 7, stroke: cor, strokeWidth: 2 }}
-                          animationDuration={800}
-                          animationEasing="ease-out"
-                        >
-                          {/* Porcentagem acima de cada ponto */}
-                          <LabelList
-                            dataKey={key}
-                            position="top"
-                            offset={8}
-                            formatter={(value: number) => value !== undefined && value !== null ? `${value.toFixed(1)}%` : ''}
-                            style={{ 
-                              fill: cor, 
-                              fontSize: '11px', 
-                              fontWeight: 600,
-                              textShadow: '0 0 2px rgba(255,255,255,0.9)'
-                            }}
-                          />
-                        </Line>
-                      )
-                    })}
-                    {/* Componente Customized para rótulos no lado direito usando coordenadas reais */}
-                    <Customized component={RightSideLabels} />
-                  </LineChart>
-                </ResponsiveContainer>
-              </div>
+              <TendenciaLineChart
+                pesquisaData={pesquisaData}
+                candidatos={candidatos}
+                cores={TENDENCIA_SERIES_COLORS}
+                chartClassName="h-[280px] bg-white rounded-lg"
+                resumoLegendaPorCandidato={resumoLegendaPorCandidato}
+              />
             )}
           </div>
+              </div>
+            ) : abaPesquisa === 'tendencia_cards' ? (
+              <div
+                id="pesquisa-panel-tendencia-cards"
+                role="tabpanel"
+                aria-labelledby="pesquisa-tab-tendencia-cards"
+                className="space-y-6"
+              >
+                <TendenciaIntencaoExecutiveSection
+                  model={modeloExecutivoTendencia}
+                  loading={loading}
+                  subtitulo={subtituloPainelExecutivoTendencia}
+                  ajusteNsPct={Math.round(DEFAULT_ESPONTANEA_NAO_SABE_EXPANSION_RATE * 100)}
+                  tipoGraficoLabel={labelTipoGraficoContexto}
+                  onVerDetalhesCandidato={handleVerDetalhesPainelExecutivo}
+                />
 
-        {/* Quadro Resumo de Desempenho do Candidato */}
-        <div className="bg-surface rounded-2xl border border-card p-6 mb-6">
-          <h2 className="text-lg font-semibold text-text-primary mb-6">Resumo de Desempenho</h2>
+                <div className="rounded-xl border border-card bg-surface p-4 sm:p-6">
+                  <h2 className="text-lg font-semibold text-text-primary mb-6">Resumo de Desempenho</h2>
           {!candidatoPadrao ? (
             <p className="text-sm text-secondary">
-              Selecione um candidato padrão para visualizar o resumo consolidado.
+              Selecione um candidato acima para visualizar o resumo consolidado (respeita os filtros).
             </p>
           ) : !resumoDesempenho ? (
             <p className="text-sm text-secondary">
@@ -943,6 +1369,16 @@ export default function PesquisaPage() {
                 Cobertura: {resumoDesempenho.institutos} instituto(s), {resumoDesempenho.cidades} cidade(s) e {resumoDesempenho.totalRegistros} registro(s) do candidato {candidatoPadrao}.
               </p>
 
+              {feedbackDesempenhoCandidato &&
+              (feedbackDesempenhoCandidato.bullets.length > 0 || feedbackDesempenhoCandidato.avisos.length > 0) ? (
+                <BlocoFeedbackAutomatico
+                  titulo={`Feedback automático — ${candidatoPadrao}`}
+                  subtitulo="Série temporal e posição relativa nas mesmas ondas (data, instituto, cidade e tipo de pesquisa)."
+                  bullets={feedbackDesempenhoCandidato.bullets}
+                  avisos={feedbackDesempenhoCandidato.avisos}
+                />
+              ) : null}
+
               <div className="rounded-xl border border-card overflow-hidden">
                 <div className="px-3 py-2 bg-background border-b border-card">
                   <p className="text-xs font-medium text-text-secondary">Detalhamento das pesquisas do candidato</p>
@@ -972,10 +1408,15 @@ export default function PesquisaPage() {
               </div>
             </div>
           )}
-        </div>
-
-        {/* Lista de Pesquisas */}
-        <div className="bg-surface rounded-2xl border border-card p-6">
+                </div>
+              </div>
+            ) : (
+              <div
+                id="pesquisa-panel-cadastradas"
+                role="tabpanel"
+                aria-labelledby="pesquisa-tab-cadastradas"
+                className="rounded-xl border border-card bg-surface p-4 sm:p-6"
+              >
           <h2 className="text-lg font-semibold text-text-primary mb-6">Pesquisas Cadastradas</h2>
           {loading ? (
             <div className="text-center py-8">
@@ -985,6 +1426,7 @@ export default function PesquisaPage() {
             <div className="text-center py-12">
               <p className="text-secondary mb-4">Nenhuma pesquisa cadastrada ainda</p>
               <button
+                type="button"
                 onClick={() => {
                   setEditingPoll(null)
                   setShowModal(true)
@@ -993,6 +1435,11 @@ export default function PesquisaPage() {
               >
                 Adicionar Primeira Pesquisa
               </button>
+            </div>
+          ) : pollsFiltrados.length === 0 ? (
+            <div className="text-center py-12">
+              <p className="text-secondary mb-2">Nenhuma pesquisa corresponde aos filtros atuais.</p>
+              <p className="text-xs text-secondary">Ajuste tipo, cargo, cidade ou região, ou limpe os filtros.</p>
             </div>
           ) : (
             <div className="overflow-x-auto">
@@ -1011,7 +1458,7 @@ export default function PesquisaPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {polls.map((poll) => (
+                  {pollsFiltrados.map((poll) => (
                     <tr key={poll.id} className="border-b border-card hover:bg-background/50 transition-colors">
                       <td className="py-3 px-4 text-sm text-text-primary">
                         {(() => {
@@ -1076,6 +1523,9 @@ export default function PesquisaPage() {
               </table>
             </div>
           )}
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
@@ -1104,194 +1554,66 @@ export default function PesquisaPage() {
         />
       )}
 
-      {/* Modal de Gráfico em Tela Cheia */}
-      {graficoTelaCheia && (
-        <div className="fixed inset-0 z-50 bg-background flex flex-col">
-          {/* Header */}
-          <div className="bg-surface border-b border-card p-4 flex items-center justify-between">
-            <h2 className="text-xl font-semibold text-text-primary">Tendência - Visualização em Tela Cheia</h2>
-            <button
-              onClick={() => setGraficoTelaCheia(false)}
-              className="p-2 rounded-lg hover:bg-background transition-colors"
-              title="Fechar tela cheia"
-            >
-              <X className="w-6 h-6 text-secondary" />
-            </button>
-          </div>
-
-          {/* Gráfico em tela cheia */}
-          <div className="flex-1 p-6 overflow-auto">
-            {loading ? (
-              <div className="h-full flex items-center justify-center">
-                <p className="text-secondary">Carregando...</p>
-              </div>
-            ) : pesquisaData.length === 0 ? (
-              <div className="h-full flex items-center justify-center">
-                <p className="text-secondary">
-                  {tipoGrafico === 'todas' 
-                    ? 'Nenhuma pesquisa cadastrada'
-                    : `Nenhuma pesquisa ${tipoLabels[tipoGrafico]} cadastrada`
-                  }
-                </p>
-              </div>
-            ) : (
-              <div className="h-full min-h-[800px] relative bg-white">
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart 
-                    data={pesquisaData} 
-                    margin={{ top: 30, right: 180, left: 50, bottom: 80 }}
+      {/* Tela cheia no document.body: evita PageTransition (transform), que quebra fixed e cria vão branco gigante */}
+      {graficoTelaCheia &&
+        createPortal(
+          <div
+            className="fixed inset-0 z-[200] flex h-[100dvh] max-h-[100dvh] w-full flex-col bg-background"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="pesquisa-tendencia-tela-cheia-titulo"
+          >
+            <div className="flex shrink-0 items-center justify-between gap-3 border-b border-card bg-surface px-3 py-3 sm:px-4">
+              <div className="flex min-w-0 items-start gap-2">
+                <BarChart3 className="mt-0.5 h-5 w-5 shrink-0 text-accent-gold" />
+                <div>
+                  <h2
+                    id="pesquisa-tendencia-tela-cheia-titulo"
+                    className="text-base font-semibold text-text-primary"
                   >
-                    <CartesianGrid 
-                      strokeDasharray="3 3" 
-                      stroke="rgb(var(--border-card))" 
-                      strokeWidth={1}
-                      horizontal={true}
-                      vertical={false}
-                    />
-                    <XAxis 
-                      dataKey="data" 
-                      stroke="rgb(var(--text-muted))" 
-                      fontSize={11}
-                      fontWeight={400}
-                      tick={{ fill: 'rgb(var(--text-muted))' }}
-                      angle={-45}
-                      textAnchor="end"
-                      height={80}
-                      tickLine={{ stroke: 'rgb(var(--border-card))', strokeWidth: 1 }}
-                    />
-                    <YAxis 
-                      domain={[0, 100]}
-                      stroke="rgb(var(--text-muted))"
-                      fontSize={11}
-                      fontWeight={400}
-                      tick={{ fill: 'rgb(var(--text-muted))' }}
-                      tickLine={{ stroke: 'rgb(var(--border-card))', strokeWidth: 1 }}
-                      ticks={[0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100]}
-                      label={{ 
-                        value: 'Intenção de Voto (%)', 
-                        angle: -90, 
-                        position: 'insideLeft',
-                        style: { textAnchor: 'middle', fill: 'rgb(var(--text-muted))', fontSize: 12, fontWeight: 500 }
-                      }}
-                    />
-                    <Tooltip
-                      content={({ active, payload }) => {
-                        if (active && payload && payload.length) {
-                          const items = payload.map((item: any) => {
-                            if (!item || !item.payload) return null
-                            const data = item.payload
-                            const dataKey = item.dataKey?.toString() || ''
-                            const candidatoNome = dataKey.replace('intencao_', '').replace(/_/g, ' ') || ''
-                            const institutoKey = `instituto_${dataKey.replace('intencao_', '') || ''}`
-                            const instituto = data[institutoKey] || ''
-                            const valor = item.value
-                            return {
-                              candidatoNome,
-                              instituto,
-                              valor,
-                              data: data.data,
-                              color: item.color || item.stroke || '#666'
-                            }
-                          }).filter(Boolean)
-                          if (items.length === 0) return null
-                          if (items.length === 1) {
-                            const item = items[0]
-                            if (!item) return null
-                            return (
-                              <div className="bg-white border border-gray-200 rounded-md p-3 shadow-lg">
-                                <p className="text-sm font-semibold text-gray-900 mb-2">{item.candidatoNome}</p>
-                                <div className="space-y-1 text-xs">
-                                  <p className="text-gray-600">
-                                    <span className="font-medium">Data:</span> {item.data}
-                                  </p>
-                                  {item.instituto && (
-                                    <p className="text-gray-600">
-                                      <span className="font-medium">Instituto:</span> {item.instituto}
-                                    </p>
-                                  )}
-                                  {item.valor !== undefined && item.valor !== null && (
-                                    <p className="text-gray-900 font-bold text-sm mt-2">
-                                      Intenção: {item.valor.toFixed(1)}%
-                                    </p>
-                                  )}
-                                </div>
-                              </div>
-                            )
-                          }
-                          const firstItem2 = items[0]
-                          if (!firstItem2) return null
-                          return (
-                            <div className="bg-white border border-gray-200 rounded-md p-3 shadow-lg">
-                              <div className="mb-2">
-                                <p className="text-sm font-semibold text-gray-900">{firstItem2.data}</p>
-                                {firstItem2.instituto && (
-                                  <p className="text-xs text-gray-600 mt-1">
-                                    <span className="font-medium">Instituto:</span> {firstItem2.instituto}
-                                  </p>
-                                )}
-                              </div>
-                              <div className="space-y-2">
-                                {items.map((item: any, idx: number) => (
-                                  <div key={idx} className="flex items-center justify-between gap-3">
-                                    <div className="flex items-center gap-2">
-                                      <div 
-                                        className="w-3 h-3 rounded-full" 
-                                        style={{ backgroundColor: item.color }}
-                                      />
-                                      <span className="text-xs font-medium text-gray-700">{item.candidatoNome}</span>
-                                    </div>
-                                    {item.valor !== undefined && item.valor !== null && (
-                                      <span className="text-xs font-bold text-gray-900">
-                                        {item.valor.toFixed(1)}%
-                                      </span>
-                                    )}
-                                  </div>
-                                ))}
-                              </div>
-                            </div>
-                          )
-                        }
-                        return null
-                      }}
-                    />
-                    {candidatos.map((candidato, index) => {
-                      const key = `intencao_${candidato.replace(/\s+/g, '_')}`
-                      const cor = cores[index % cores.length]
-                      return (
-                        <Line
-                          key={`line_${candidato}`}
-                          type="monotone"
-                          dataKey={key}
-                          stroke={cor}
-                          strokeWidth={2.5}
-                          dot={{ r: 5, fill: cor, strokeWidth: 2, stroke: '#fff' }}
-                          activeDot={{ r: 7, stroke: cor, strokeWidth: 2 }}
-                          animationDuration={800}
-                          animationEasing="ease-out"
-                        >
-                          <LabelList
-                            dataKey={key}
-                            position="top"
-                            offset={8}
-                            formatter={(value: number) => value !== undefined && value !== null ? `${value.toFixed(1)}%` : ''}
-                            style={{ 
-                              fill: cor, 
-                              fontSize: '11px', 
-                              fontWeight: 600,
-                              textShadow: '0 0 2px rgba(255,255,255,0.9)'
-                            }}
-                          />
-                        </Line>
-                      )
-                    })}
-                    <Customized component={RightSideLabels} />
-                  </LineChart>
-                </ResponsiveContainer>
+                    Tendência temporal de intenção — tela cheia
+                  </h2>
+                  <p className="mt-0.5 text-xs text-secondary">{subtituloModalTelaCheia}</p>
+                </div>
               </div>
-            )}
-          </div>
-        </div>
-      )}
+              <button
+                type="button"
+                onClick={() => setGraficoTelaCheia(false)}
+                className="shrink-0 rounded-lg p-2 transition-colors hover:bg-background"
+                title="Fechar tela cheia"
+              >
+                <X className="h-6 w-6 text-secondary" />
+              </button>
+            </div>
+
+            <div className="flex min-h-0 flex-1 flex-col p-2 sm:p-3">
+              {loading ? (
+                <div className="flex h-full items-center justify-center">
+                  <p className="text-secondary">Carregando...</p>
+                </div>
+              ) : pesquisaData.length === 0 ? (
+                <div className="flex h-full items-center justify-center px-4 text-center">
+                  <p className="text-secondary">
+                    {polls.length === 0
+                      ? 'Nenhuma pesquisa cadastrada'
+                      : 'Nenhum registro com os filtros atuais (incluindo região).'}
+                  </p>
+                </div>
+              ) : (
+                <div className="flex h-full min-h-0 flex-1 flex-col overflow-visible rounded-xl border border-card bg-white p-2 sm:p-3">
+                  <TendenciaLineChart
+                    pesquisaData={pesquisaData}
+                    candidatos={candidatos}
+                    cores={TENDENCIA_SERIES_COLORS}
+                    chartClassName="min-h-0 w-full flex-1 basis-0"
+                    resumoLegendaPorCandidato={resumoLegendaPorCandidato}
+                  />
+                </div>
+              )}
+            </div>
+          </div>,
+          document.body
+        )}
     </div>
   )
 }

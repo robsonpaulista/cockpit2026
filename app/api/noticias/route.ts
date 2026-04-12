@@ -36,6 +36,8 @@ export async function GET(request: Request) {
     const processed = searchParams.get('processed')
     const dashboard_highlight = searchParams.get('dashboard_highlight')
     const feedIds = searchParams.get('feed_ids') // IDs dos feeds selecionados (formato: 'type-id,type-id')
+    const idsParam = searchParams.get('ids') // UUIDs separados por vírgula (ex.: destaques do monitor)
+    const q = searchParams.get('q')?.trim() ?? ''
     const limit = parseInt(searchParams.get('limit') || '50')
     const offset = parseInt(searchParams.get('offset') || '0')
 
@@ -97,6 +99,16 @@ export async function GET(request: Request) {
     }
     // Se nenhum feed selecionado, mostra todas
 
+    if (idsParam) {
+      const idList = idsParam
+        .split(',')
+        .map((x) => x.trim())
+        .filter(Boolean)
+      if (idList.length > 0) {
+        query = query.in('id', idList)
+      }
+    }
+
     if (sentiment) {
       query = query.eq('sentiment', sentiment)
     }
@@ -118,6 +130,16 @@ export async function GET(request: Request) {
 
     if (useDashboardFilter) {
       query = query.eq('dashboard_highlight', dashboard_highlight === 'true')
+    }
+
+    // Busca por palavra-chave (título, fonte ou tema)
+    if (q.length > 0) {
+      const search = q.replace(/[%_,]/g, ' ').trim().slice(0, 120)
+      if (search.length > 0) {
+        query = query.or(
+          `title.ilike.%${search}%,source.ilike.%${search}%,theme.ilike.%${search}%`
+        )
+      }
     }
 
     const { data, error } = await query

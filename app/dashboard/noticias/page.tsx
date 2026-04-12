@@ -1,12 +1,10 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { KPICard } from '@/components/kpi-card'
-import { AlertCard } from '@/components/alert-card'
-import { Newspaper, AlertTriangle, TrendingUp, RefreshCw, Plus, Filter, Edit2, Trash2, Radio, Crown } from 'lucide-react'
+import { Newspaper, RefreshCw, Plus, Edit2, Trash2, Radio, Crown, Search } from 'lucide-react'
 import { FeedManagerModal } from '@/components/feed-manager-modal'
 import { EditNewsModal } from '@/components/edit-news-modal'
-import { KPI, NewsItem } from '@/types'
+import { NewsItem } from '@/types'
 import { formatDate } from '@/lib/utils'
 
 const sentimentColors = {
@@ -21,16 +19,21 @@ const riskColors = {
   low: 'bg-status-success/10 text-status-success',
 }
 
+type FiltroDestaquePainel = 'all' | 'yes' | 'no'
+type FiltroDestaqueMonitor = 'all' | 'yes'
+
 export default function NoticiasPage() {
   const [news, setNews] = useState<NewsItem[]>([])
   const [allFeeds, setAllFeeds] = useState<any[]>([])
-  const [temasAlta, setTemasAlta] = useState<any[]>([])
-  const [metrics, setMetrics] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [showFeedManager, setShowFeedManager] = useState(false)
   const [editingNews, setEditingNews] = useState<NewsItem | null>(null)
   const [filterSentiment, setFilterSentiment] = useState<string>('all')
   const [filterRisk, setFilterRisk] = useState<string>('all')
+  const [filterDestaquePainel, setFilterDestaquePainel] = useState<FiltroDestaquePainel>('all')
+  const [filterDestaqueMonitor, setFilterDestaqueMonitor] = useState<FiltroDestaqueMonitor>('all')
+  const [searchInput, setSearchInput] = useState<string>('')
+  const [searchDebounced, setSearchDebounced] = useState<string>('')
   const [selectedFeeds, setSelectedFeeds] = useState<string[]>([]) // Array de IDs de feeds selecionados
   const [deletingNewsId, setDeletingNewsId] = useState<string | null>(null)
   const [togglingHighlight, setTogglingHighlight] = useState<string | null>(null)
@@ -60,15 +63,22 @@ export default function NoticiasPage() {
     }
   }, [])
 
+  useEffect(() => {
+    const t = window.setTimeout(() => {
+      setSearchDebounced(searchInput.trim())
+    }, 320)
+    return () => clearTimeout(t)
+  }, [searchInput])
+
+  const monitorIdsKey =
+    filterDestaqueMonitor === 'yes'
+      ? [...featuredMonitorNewsIds].sort().join('|')
+      : ''
+
   const fetchData = async () => {
     setLoading(true)
     try {
-      await Promise.all([
-        fetchNews(),
-        fetchAllFeeds(),
-        fetchTemasAlta(),
-        fetchMetrics(),
-      ])
+      await Promise.all([fetchNews(), fetchAllFeeds()])
     } finally {
       setLoading(false)
     }
@@ -76,20 +86,28 @@ export default function NoticiasPage() {
 
   const fetchNews = async () => {
     try {
+      if (filterDestaqueMonitor === 'yes' && featuredMonitorNewsIds.length === 0) {
+        setNews([])
+        return
+      }
+
       const params = new URLSearchParams()
       if (filterSentiment !== 'all') params.append('sentiment', filterSentiment)
       if (filterRisk !== 'all') params.append('risk_level', filterRisk)
-      
-      // Aplicar filtro apenas quando há feeds selecionados E não são todos
-      // Se todos estão selecionados ou nenhum está selecionado, mostrar todas
+
+      if (filterDestaquePainel === 'yes') params.append('dashboard_highlight', 'true')
+      if (filterDestaquePainel === 'no') params.append('dashboard_highlight', 'false')
+
+      if (searchDebounced.length > 0) params.append('q', searchDebounced)
+
+      if (filterDestaqueMonitor === 'yes' && featuredMonitorNewsIds.length > 0) {
+        params.append('ids', featuredMonitorNewsIds.join(','))
+      }
+
       if (selectedFeeds.length > 0 && selectedFeeds.length < allFeeds.length) {
         params.append('feed_ids', selectedFeeds.join(','))
       }
-      // Casos:
-      // - selectedFeeds.length === 0: não filtra (mostra todas)
-      // - selectedFeeds.length === allFeeds.length: não filtra (mostra todas)
-      // - 0 < selectedFeeds.length < allFeeds.length: filtra pelos selecionados
-      
+
       params.append('limit', '50')
 
       const response = await fetch(`/api/noticias?${params}`)
@@ -112,30 +130,6 @@ export default function NoticiasPage() {
         if (selectedFeeds.length === 0 && data.length > 0) {
           setSelectedFeeds(data.map((f: any) => `${f.type}-${f.id}`))
         }
-      }
-    } catch (error) {
-      // Erro silencioso
-    }
-  }
-
-  const fetchTemasAlta = async () => {
-    try {
-      const response = await fetch('/api/noticias/temas-alta?days=7&limit=5')
-      if (response.ok) {
-        const data = await response.json()
-        setTemasAlta(data)
-      }
-    } catch (error) {
-      // Erro silencioso
-    }
-  }
-
-  const fetchMetrics = async () => {
-    try {
-      const response = await fetch('/api/noticias/metrics?days=24')
-      if (response.ok) {
-        const data = await response.json()
-        setMetrics(data)
       }
     } catch (error) {
       // Erro silencioso
@@ -192,8 +186,17 @@ export default function NoticiasPage() {
   }
 
   useEffect(() => {
-    fetchNews()
-  }, [filterSentiment, filterRisk, selectedFeeds])
+    void fetchNews()
+  }, [
+    filterSentiment,
+    filterRisk,
+    selectedFeeds,
+    filterDestaquePainel,
+    filterDestaqueMonitor,
+    searchDebounced,
+    monitorIdsKey,
+    allFeeds.length,
+  ])
 
   const handleToggleDashboard = async (item: NewsItem) => {
     setTogglingHighlight(item.id)
@@ -227,9 +230,6 @@ export default function NoticiasPage() {
       if (response.ok) {
         // Remover da lista local
         setNews(news.filter(item => item.id !== newsId))
-        // Atualizar métricas e temas
-        fetchTemasAlta()
-        fetchMetrics()
       } else {
         const error = await response.json()
         alert(`Erro ao excluir notícia: ${error.error || 'Erro desconhecido'}`)
@@ -279,85 +279,19 @@ export default function NoticiasPage() {
     setFeaturedMonitorNewsIds(nextFeatured)
   }
 
-  const noticiasKPIs: KPI[] = metrics
-    ? [
-        {
-          id: 'mencoes',
-          label: 'Menções 24h',
-          value: metrics.mentions_24h?.toString() || '0',
-          variation: 0,
-          status: 'success',
-        },
-        {
-          id: 'risco',
-          label: 'Risco Alto Aberto',
-          value: metrics.high_risk_crises_open || 0,
-          variation: 0,
-          status: metrics.high_risk_crises_open > 0 ? 'warning' : 'success',
-        },
-        {
-          id: 'resposta',
-          label: 'Tempo de Resposta',
-          value: `${metrics.avg_response_time_hours || 0}h`,
-          variation: 0,
-          status: 'success',
-        },
-        {
-          id: 'share',
-          label: 'Share of Voice',
-          value: `${metrics.share_of_voice || 0}%`,
-          variation: 0,
-          status: 'success',
-        },
-      ]
-    : [
-        {
-          id: 'mencoes',
-          label: 'Menções 24h',
-          value: '0',
-          variation: 0,
-          status: 'neutral',
-        },
-        {
-          id: 'risco',
-          label: 'Risco Alto Aberto',
-          value: 0,
-          variation: 0,
-          status: 'neutral',
-        },
-        {
-          id: 'resposta',
-          label: 'Tempo de Resposta',
-          value: '0h',
-          variation: 0,
-          status: 'neutral',
-        },
-        {
-          id: 'share',
-          label: 'Share of Voice',
-          value: '0%',
-          variation: 0,
-          status: 'neutral',
-        },
-      ]
+  const temFiltrosNoticiasAtivos =
+    filterSentiment !== 'all' ||
+    filterRisk !== 'all' ||
+    filterDestaquePainel !== 'all' ||
+    filterDestaqueMonitor !== 'all' ||
+    searchDebounced.length > 0 ||
+    (allFeeds.length > 0 && selectedFeeds.length > 0 && selectedFeeds.length < allFeeds.length)
 
   return (
     <div className="min-h-screen bg-background">
 
       <div className="px-4 py-6 lg:px-6">
-        {/* KPIs */}
-        <section className="mb-8">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            {noticiasKPIs.map((kpi) => (
-              <KPICard key={kpi.id} kpi={kpi} />
-            ))}
-          </div>
-        </section>
-
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Inbox de Notícias */}
-          <div className="lg:col-span-2">
-            <div className="bg-surface rounded-2xl border border-card p-6">
+        <div className="bg-surface rounded-2xl border border-card p-6">
               <div className="flex items-center justify-between mb-6">
                 <h2 className="text-lg font-semibold text-text-primary flex items-center gap-2">
                   <Newspaper className="w-5 h-5 text-accent-gold" />
@@ -389,65 +323,144 @@ export default function NoticiasPage() {
                 </div>
               )}
 
-              {/* Filtros */}
-              <div className="space-y-3 mb-4">
-                <div className="flex items-center gap-2">
-                  <Filter className="w-4 h-4 text-secondary" />
-                  <select
-                    value={filterSentiment}
-                    onChange={(e) => setFilterSentiment(e.target.value)}
-                    className="text-sm border border-card rounded-lg px-3 py-1.5 bg-surface"
-                  >
-                    <option value="all">Todos os sentimentos</option>
-                    <option value="positive">Positivo</option>
-                    <option value="negative">Negativo</option>
-                    <option value="neutral">Neutro</option>
-                  </select>
-                  <select
-                    value={filterRisk}
-                    onChange={(e) => setFilterRisk(e.target.value)}
-                    className="text-sm border border-card rounded-lg px-3 py-1.5 bg-surface"
-                  >
-                    <option value="all">Todos os riscos</option>
-                    <option value="high">Alto</option>
-                    <option value="medium">Médio</option>
-                    <option value="low">Baixo</option>
-                  </select>
+              {/* Filtros — uma linha (scroll horizontal em telas estreitas), padrão /dashboard/pesquisa */}
+              <div className="rounded-xl border border-card bg-background/50 px-3 py-2 mb-4">
+                <div className="flex flex-nowrap items-center gap-x-2 sm:gap-3 overflow-x-auto pb-0.5 [scrollbar-width:thin]">
+                  <span className="text-xs font-semibold text-text-primary shrink-0">Filtros</span>
+                  <span className="hidden sm:block h-4 w-px shrink-0 bg-border-card opacity-60" aria-hidden />
+
+                  <label className="flex items-center gap-1.5 shrink-0">
+                    <span className="text-[10px] font-medium uppercase tracking-wide text-secondary whitespace-nowrap">
+                      Sentimento
+                    </span>
+                    <select
+                      value={filterSentiment}
+                      onChange={(e) => setFilterSentiment(e.target.value)}
+                      className="min-w-[5.5rem] max-w-[9rem] rounded-lg border border-card bg-surface px-2 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-accent-gold-soft"
+                    >
+                      <option value="all">Todos</option>
+                      <option value="positive">Positivo</option>
+                      <option value="negative">Negativo</option>
+                      <option value="neutral">Neutro</option>
+                    </select>
+                  </label>
+
+                  <span className="hidden sm:block h-4 w-px shrink-0 bg-border-card opacity-60" aria-hidden />
+
+                  <label className="flex items-center gap-1.5 shrink-0">
+                    <span className="text-[10px] font-medium uppercase tracking-wide text-secondary whitespace-nowrap">
+                      Risco
+                    </span>
+                    <select
+                      value={filterRisk}
+                      onChange={(e) => setFilterRisk(e.target.value)}
+                      className="min-w-[4.5rem] max-w-[7rem] rounded-lg border border-card bg-surface px-2 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-accent-gold-soft"
+                    >
+                      <option value="all">Todos</option>
+                      <option value="high">Alto</option>
+                      <option value="medium">Médio</option>
+                      <option value="low">Baixo</option>
+                    </select>
+                  </label>
+
+                  <span className="hidden sm:block h-4 w-px shrink-0 bg-border-card opacity-60" aria-hidden />
+
+                  <label className="flex items-center gap-1.5 shrink-0">
+                    <span className="text-[10px] font-medium uppercase tracking-wide text-secondary whitespace-nowrap">
+                      Destaque painel
+                    </span>
+                    <select
+                      value={filterDestaquePainel}
+                      onChange={(e) => setFilterDestaquePainel(e.target.value as FiltroDestaquePainel)}
+                      title="Notícias marcadas para o Monitor (ícone de rádio) no dashboard"
+                      className="min-w-[6rem] max-w-[10rem] rounded-lg border border-card bg-surface px-2 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-accent-gold-soft"
+                    >
+                      <option value="all">Todos</option>
+                      <option value="yes">Sim</option>
+                      <option value="no">Não</option>
+                    </select>
+                  </label>
+
+                  <span className="hidden sm:block h-4 w-px shrink-0 bg-border-card opacity-60" aria-hidden />
+
+                  <label className="flex items-center gap-1.5 shrink-0">
+                    <span className="text-[10px] font-medium uppercase tracking-wide text-secondary whitespace-nowrap">
+                      Destaque monitor
+                    </span>
+                    <select
+                      value={filterDestaqueMonitor}
+                      onChange={(e) => setFilterDestaqueMonitor(e.target.value as FiltroDestaqueMonitor)}
+                      title="Até 3 notícias com coroa — escolhidas nesta página e salvas no navegador"
+                      className="min-w-[5.5rem] max-w-[9rem] rounded-lg border border-card bg-surface px-2 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-accent-gold-soft"
+                    >
+                      <option value="all">Todos</option>
+                      <option value="yes">Sim</option>
+                    </select>
+                  </label>
+
+                  <span className="hidden sm:block h-4 w-px shrink-0 bg-border-card opacity-60" aria-hidden />
+
+                  <label className="flex min-w-[10rem] max-w-[min(100%,18rem)] flex-1 items-center gap-1.5 shrink-0">
+                    <span className="text-[10px] font-medium uppercase tracking-wide text-secondary whitespace-nowrap">
+                      Palavra-chave
+                    </span>
+                    <span className="relative min-w-0 flex-1">
+                      <Search
+                        className="pointer-events-none absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-secondary"
+                        aria-hidden
+                      />
+                      <input
+                        type="search"
+                        value={searchInput}
+                        onChange={(e) => setSearchInput(e.target.value)}
+                        placeholder="Título, fonte ou tema…"
+                        className="w-full min-w-[7rem] rounded-lg border border-card bg-surface py-1.5 pl-7 pr-2 text-xs placeholder:text-secondary/70 focus:outline-none focus:ring-2 focus:ring-accent-gold-soft"
+                        autoComplete="off"
+                      />
+                    </span>
+                  </label>
+
+                  {allFeeds.length > 0 ? (
+                    <>
+                      <span className="hidden md:block h-4 w-px shrink-0 bg-border-card opacity-60" aria-hidden />
+                      <div className="flex items-center gap-2 shrink-0">
+                        <span className="text-[10px] font-medium uppercase tracking-wide text-secondary whitespace-nowrap">
+                          Feeds
+                        </span>
+                        <div className="flex flex-nowrap items-center gap-x-3 gap-y-1">
+                          {allFeeds.map((feed) => {
+                            const feedId = `${feed.type}-${feed.id}`
+                            return (
+                              <label
+                                key={feedId}
+                                className="flex cursor-pointer items-center gap-1.5 whitespace-nowrap"
+                              >
+                                <input
+                                  type="checkbox"
+                                  checked={selectedFeeds.includes(feedId)}
+                                  onChange={(e) => {
+                                    if (e.target.checked) {
+                                      setSelectedFeeds([...selectedFeeds, feedId])
+                                    } else {
+                                      setSelectedFeeds(selectedFeeds.filter((id) => id !== feedId))
+                                    }
+                                  }}
+                                  className="h-3.5 w-3.5 shrink-0 rounded border-card text-accent-gold focus:ring-accent-gold"
+                                />
+                                <span className="text-xs text-text-primary">{feed.name}</span>
+                                {feed.type === 'adversary_feed' ? (
+                                  <span className="rounded bg-status-error/10 px-1 py-0.5 text-[9px] font-semibold uppercase text-status-error">
+                                    Adv.
+                                  </span>
+                                ) : null}
+                              </label>
+                            )
+                          })}
+                        </div>
+                      </div>
+                    </>
+                  ) : null}
                 </div>
-                
-                {/* Filtros de Origem por Feed */}
-                {allFeeds.length > 0 && (
-                  <div className="flex items-start gap-4 flex-wrap">
-                    <span className="text-xs font-medium text-secondary pt-1">Feeds:</span>
-                    <div className="flex flex-wrap gap-3">
-                      {allFeeds.map((feed) => {
-                        const feedId = `${feed.type}-${feed.id}`
-                        return (
-                          <label key={feedId} className="flex items-center gap-2 cursor-pointer">
-                            <input
-                              type="checkbox"
-                              checked={selectedFeeds.includes(feedId)}
-                              onChange={(e) => {
-                                if (e.target.checked) {
-                                  setSelectedFeeds([...selectedFeeds, feedId])
-                                } else {
-                                  setSelectedFeeds(selectedFeeds.filter(id => id !== feedId))
-                                }
-                              }}
-                              className="w-4 h-4 rounded border-card text-accent-gold focus:ring-accent-gold"
-                            />
-                            <span className="text-sm text-text-primary">{feed.name}</span>
-                            {feed.type === 'adversary_feed' && (
-                              <span className="px-1.5 py-0.5 text-xs rounded bg-status-error/10 text-status-error">
-                                Adversário
-                              </span>
-                            )}
-                          </label>
-                        )
-                      })}
-                    </div>
-                  </div>
-                )}
               </div>
 
               {loading ? (
@@ -458,13 +471,32 @@ export default function NoticiasPage() {
                 </div>
               ) : news.length === 0 ? (
                 <div className="text-center py-8">
-                  <p className="text-secondary mb-4">Nenhuma notícia coletada ainda.</p>
-                  <button
-                    onClick={handleManageFeeds}
-                    className="px-4 py-2 text-sm font-medium bg-accent-gold text-white rounded-lg hover:bg-accent-gold transition-colors"
-                  >
-                    Configurar Feeds RSS
-                  </button>
+                  {filterDestaqueMonitor === 'yes' && featuredMonitorNewsIds.length === 0 ? (
+                    <>
+                      <p className="mb-2 font-medium text-text-primary">Nenhuma notícia em destaque no monitor</p>
+                      <p className="mx-auto max-w-md text-sm text-secondary">
+                        Use o ícone da coroa em até três notícias para defini-las como destaque do monitor neste navegador.
+                      </p>
+                    </>
+                  ) : temFiltrosNoticiasAtivos ? (
+                    <>
+                      <p className="mb-2 font-medium text-text-primary">Nenhuma notícia corresponde aos filtros</p>
+                      <p className="mx-auto max-w-md text-sm text-secondary">
+                        Afrouxe sentimento, risco, destaques, palavra-chave ou feeds — ou aguarde novas coletas.
+                      </p>
+                    </>
+                  ) : (
+                    <>
+                      <p className="mb-4 text-secondary">Nenhuma notícia coletada ainda.</p>
+                      <button
+                        type="button"
+                        onClick={handleManageFeeds}
+                        className="px-4 py-2 text-sm font-medium bg-accent-gold text-white rounded-lg hover:bg-accent-gold transition-colors"
+                      >
+                        Configurar Feeds RSS
+                      </button>
+                    </>
+                  )}
                 </div>
               ) : (
                 <div className="space-y-4">
@@ -601,42 +633,6 @@ export default function NoticiasPage() {
                   ))}
                 </div>
               )}
-            </div>
-
-          </div>
-
-          {/* Sidebar */}
-          <div>
-            {/* Temas em Alta */}
-            <div className="bg-surface rounded-2xl border border-card p-6 mb-6">
-              <h2 className="text-lg font-semibold text-text-primary mb-4 flex items-center gap-2">
-                <TrendingUp className="w-5 h-5 text-accent-gold" />
-                Temas em Alta
-              </h2>
-              {temasAlta.length === 0 ? (
-                <div className="text-center py-4">
-                  <p className="text-xs text-secondary">Nenhum tema ainda</p>
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  {temasAlta.map((item, idx) => (
-                    <div
-                      key={idx}
-                      className="flex items-center justify-between p-3 rounded-xl bg-background"
-                    >
-                      <div>
-                        <p className="text-sm font-medium text-text-primary">{item.tema}</p>
-                        <p className="text-xs text-secondary">{item.mencoes} menções</p>
-                      </div>
-                      <span className="text-sm font-semibold text-status-success">
-                        {item.tendencia}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
         </div>
       </div>
 
@@ -661,8 +657,6 @@ export default function NoticiasPage() {
           onClose={() => setEditingNews(null)}
           onUpdate={() => {
             fetchNews()
-            fetchTemasAlta() // Atualizar temas em alta após edição
-            fetchMetrics() // Atualizar métricas também
             setEditingNews(null)
           }}
         />
