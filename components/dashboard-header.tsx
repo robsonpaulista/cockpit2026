@@ -14,6 +14,7 @@ const pathToTitle: Record<string, string> = {
   '/dashboard/campo': 'Campo & Agenda',
   '/dashboard/agenda': 'Agenda',
   '/dashboard/territorio': 'Território & Base',
+  '/dashboard/territorio/mapa-tds': 'Mapa — Territórios de desenvolvimento',
   '/dashboard/chapas': 'Chapas',
   '/dashboard/chapas-estaduais': 'Chapas Estaduais',
   '/dashboard/resumo-eleicoes': 'Resumo Eleições',

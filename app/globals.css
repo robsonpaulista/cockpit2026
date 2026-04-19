@@ -103,6 +103,10 @@
 
   --border-card: 186 212 232;
   --cockpit-cyan: 6 182 212;
+  /* Faixa clara do hero Cockpit */
+  --cockpit-surface-blue-grad: linear-gradient(165deg, #e8f4fc 0%, #d6eaf9 45%, #c5dff5 100%);
+  /* Igual ao item ativo da sidebar Cockpit (sidebar.tsx COCKPIT_ITEM_ACTIVE) */
+  --cockpit-nav-active-grad: linear-gradient(135deg, #062e52 0%, #0b4a7a 52%, #1368a8 100%);
 }
 
 [data-theme="cockpit"] html {
@@ -115,7 +119,7 @@
 
 /** Faixa superior do dashboard Cockpit (hero + contexto) — não usar em página inteira */
 .cockpit-app-bg {
-  background: linear-gradient(165deg, #e8f4fc 0%, #d6eaf9 45%, #c5dff5 100%) !important;
+  background: var(--cockpit-surface-blue-grad) !important;
 }
 
 .cockpit-glass {
@@ -172,6 +176,163 @@
   backdrop-filter: blur(18px);
   -webkit-backdrop-filter: blur(18px);
   border-color: rgba(255, 255, 255, 0.75) !important;
+}
+
+/*
+ * Barra “Sistema ativo” (mapa TD) — só este bloco define fundo/cores.
+ * Isolada de utilitários Tailwind no filho para não misturar bg/text.
+ */
+.td-mapa-statusbar {
+  position: relative;
+  z-index: 2;
+  pointer-events: none;
+  isolation: isolate;
+  box-sizing: border-box;
+  width: 100%;
+  margin: 0;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.625rem;
+  line-height: 1.4;
+  color: rgb(var(--text-primary));
+  background-color: rgb(var(--bg-sidebar));
+  background-image: none;
+  border: 0;
+  border-bottom: 1px solid rgb(var(--border-card));
+  border-radius: 0;
+  box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+@media (min-width: 640px) {
+  .td-mapa-statusbar {
+    padding: 0.5rem 1rem;
+    font-size: 0.6875rem;
+  }
+}
+
+html[data-theme='cockpit'] .td-mapa-statusbar {
+  color: rgba(255, 255, 255, 0.96);
+  background-color: #062e52;
+  background-image: var(--cockpit-nav-active-grad);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.22);
+  box-shadow: 0 8px 24px rgba(6, 46, 82, 0.22);
+}
+
+html[data-theme='cockpit'] .td-mapa-statusbar__lead {
+  color: rgba(255, 255, 255, 0.98);
+}
+
+html[data-theme='cockpit'] .td-mapa-statusbar__meta {
+  color: rgba(255, 255, 255, 0.78);
+}
+
+html[data-theme='cockpit'] .td-mapa-statusbar__meta strong {
+  color: #ffffff;
+}
+
+html[data-theme='cockpit'] .td-mapa-statusbar__delta {
+  color: rgba(255, 255, 255, 0.8);
+}
+
+html[data-theme='cockpit'] .td-mapa-statusbar__delta--up {
+  color: #86efac;
+}
+
+html[data-theme='cockpit'] .td-mapa-statusbar__delta--down {
+  color: #fca5a5;
+}
+
+html[data-theme='cockpit'] .td-mapa-statusbar__warn {
+  color: #fde68a;
+}
+
+html[data-theme='cockpit'] .td-mapa-statusbar__dot {
+  background: rgb(var(--cockpit-cyan));
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.35);
+}
+
+.td-mapa-statusbar__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 1rem;
+  margin: 0;
+  padding: 0;
+  border: none;
+  background: transparent;
+  box-shadow: none;
+}
+
+.td-mapa-statusbar__lead {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  color: rgb(var(--text-primary));
+}
+
+.td-mapa-statusbar__dot {
+  position: relative;
+  width: 8px;
+  height: 8px;
+  flex-shrink: 0;
+  border-radius: 9999px;
+  background: rgb(var(--success));
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.85);
+}
+
+html[data-theme='cockpit'] .td-mapa-statusbar__dot {
+  background: rgb(var(--accent-gold));
+}
+
+.td-mapa-statusbar__dot::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: inherit;
+  opacity: 0.5;
+  animation: td-mapa-statusbar-dot-pulse 1.85s cubic-bezier(0, 0, 0.2, 1) infinite;
+}
+
+@keyframes td-mapa-statusbar-dot-pulse {
+  75%,
+  100% {
+    transform: scale(2.25);
+    opacity: 0;
+  }
+}
+
+.td-mapa-statusbar__meta {
+  font-weight: 500;
+  color: rgb(var(--text-secondary));
+}
+
+.td-mapa-statusbar__meta strong {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: rgb(var(--text-primary));
+}
+
+.td-mapa-statusbar__delta {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: rgb(var(--text-secondary));
+}
+
+.td-mapa-statusbar__delta--up {
+  color: rgb(var(--success));
+}
+
+.td-mapa-statusbar__delta--down {
+  color: rgb(var(--danger));
+}
+
+.td-mapa-statusbar__warn {
+  font-weight: 600;
+  color: rgb(var(--warning));
 }
 
 .animate-cockpit-fade-in {
@@ -343,4 +504,449 @@
   to {
     opacity: 1;
   }
+}
+
+/* Resumo por TD no mapa — tabela nativa para colunas alinhadas em todas as linhas. */
+.td-resumo-map-table-wrap {
+  overflow-x: visible;
+}
+
+/* Usa especificidade maior que o tema global (`table {}` em app/theme.css). */
+table.td-resumo-table {
+  width: 100%;
+  margin: 0;
+  border-collapse: collapse;
+  table-layout: auto;
+  font-size: 0.625rem;
+  line-height: 1.35;
+}
+
+@media (min-width: 640px) {
+  table.td-resumo-table {
+    font-size: 0.6875rem;
+  }
+}
+
+table.td-resumo-table th,
+table.td-resumo-table td {
+  padding: 0.2rem 0.3rem;
+  border-bottom: none;
+  text-align: inherit;
+  background-color: transparent;
+  vertical-align: middle;
+  white-space: nowrap;
+}
+
+/*
+ * Território: sem width:100% — senão, com painel largo (sidebar recolhida), só essa coluna “come” o espaço.
+ * Limite em rem + % para o restante ir para colunas numéricas / classe.
+ */
+table.td-resumo-table th.td-resumo-table__cell--territorio,
+table.td-resumo-table td.td-resumo-table__cell--territorio {
+  width: auto;
+  min-width: 4.25rem;
+  max-width: min(11.25rem, 48%);
+  white-space: normal;
+  padding-left: 0.15rem;
+  word-break: break-word;
+}
+
+/* Painel mais largo (sidebar recolhida no dashboard): fonte maior e coluna TD com teto um pouco maior. */
+aside[data-resumo-td-amplo='true'] table.td-resumo-table {
+  font-size: 0.8125rem;
+  line-height: 1.4;
+}
+
+aside[data-resumo-td-amplo='true'] table.td-resumo-table th,
+aside[data-resumo-td-amplo='true'] table.td-resumo-table td {
+  padding: 0.28rem 0.38rem;
+}
+
+aside[data-resumo-td-amplo='true'] table.td-resumo-table thead tr.td-resumo-table__row--header th {
+  font-size: 0.6875rem;
+  letter-spacing: 0.04em;
+}
+
+aside[data-resumo-td-amplo='true'] table.td-resumo-table th.td-resumo-table__cell--territorio,
+aside[data-resumo-td-amplo='true'] table.td-resumo-table td.td-resumo-table__cell--territorio {
+  max-width: min(13rem, 32%);
+}
+
+@media (min-width: 1024px) {
+  aside[data-resumo-td-amplo='true'] table.td-resumo-table {
+    font-size: 0.875rem;
+    line-height: 1.45;
+  }
+
+  aside[data-resumo-td-amplo='true'] table.td-resumo-table thead tr.td-resumo-table__row--header th {
+    font-size: 0.75rem;
+  }
+}
+
+table.td-resumo-table th.td-resumo-table__cell--territorio > div,
+table.td-resumo-table td.td-resumo-table__cell--territorio > div {
+  min-width: 0;
+}
+
+table.td-resumo-table th.td-resumo-table__cell--rank,
+table.td-resumo-table td.td-resumo-table__cell--rank {
+  width: 1.35rem;
+  max-width: 2rem;
+  padding-left: 0.1rem;
+  padding-right: 0.12rem;
+  font-variant-numeric: tabular-nums;
+}
+
+table.td-resumo-table th.td-resumo-table__cell:last-child,
+table.td-resumo-table td.td-resumo-table__cell:last-child {
+  padding-right: 0.45rem;
+}
+
+table.td-resumo-table thead tr.td-resumo-table__row--header th {
+  padding-top: 0;
+  padding-bottom: 0.35rem;
+  font-size: 0.5625rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: rgb(var(--text-muted));
+}
+
+@media (min-width: 640px) {
+  table.td-resumo-table thead tr.td-resumo-table__row--header th {
+    font-size: 0.625rem;
+  }
+}
+
+table.td-resumo-table:not(.td-resumo-table--premium) tbody tr.td-resumo-table__row--data:hover {
+  background-color: rgba(var(--accent-gold-rgb, 212 175 55) / 0.06);
+}
+
+table.td-resumo-table:not(.td-resumo-table--premium) tbody tr.td-resumo-table__row--hover-map {
+  background-color: rgba(59, 130, 246, 0.07);
+}
+
+table.td-resumo-table:not(.td-resumo-table--premium) tbody tr.td-resumo-table__row--selected {
+  background: linear-gradient(
+    90deg,
+    rgba(var(--accent-gold-rgb, 212 175 55) / 0.12),
+    rgba(var(--accent-gold-rgb, 212 175 55) / 0.04)
+  );
+  box-shadow: inset 0 0 0 1px rgba(var(--accent-gold-rgb, 212 175 55) / 0.22);
+}
+
+.td-resumo-table__peso-eleitoral-bar {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  z-index: 0;
+  height: 3px;
+  max-width: 100%;
+  border-radius: 2px;
+  opacity: 0.38;
+  transition: width 0.35s ease, opacity 0.25s ease, box-shadow 0.25s ease, filter 0.25s ease;
+}
+
+table.td-resumo-table:not(.td-resumo-table--premium) tbody tr.td-resumo-table__row--hover-map .td-resumo-table__peso-eleitoral-bar,
+table.td-resumo-table:not(.td-resumo-table--premium) tbody tr.td-resumo-table__row--selected .td-resumo-table__peso-eleitoral-bar {
+  opacity: 0.55;
+}
+
+table.td-resumo-table--premium {
+  border-collapse: separate;
+  border-spacing: 0 5px;
+}
+
+table.td-resumo-table--premium tbody tr:nth-child(odd) td {
+  background-color: rgba(252, 252, 254, 0.98);
+}
+
+table.td-resumo-table--premium tbody tr:nth-child(even) td {
+  background-color: rgba(241, 245, 251, 0.96);
+}
+
+table.td-resumo-table--premium tbody tr td {
+  border: none;
+  box-shadow: none;
+}
+
+table.td-resumo-table--premium tbody tr.td-resumo-table__row--data {
+  transition: transform 0.2s ease, filter 0.2s ease;
+}
+
+table.td-resumo-table--premium tbody tr.td-resumo-table__row--data:hover {
+  transform: translateY(-2px);
+  filter: drop-shadow(0 12px 22px rgba(15, 23, 42, 0.14));
+}
+
+table.td-resumo-table--premium tbody tr.td-resumo-table__row--hover-map td {
+  background-color: rgba(219, 234, 254, 0.55) !important;
+}
+
+table.td-resumo-table--premium tbody tr.td-resumo-table__row--spotlight-peso td {
+  background: linear-gradient(
+    90deg,
+    rgba(251, 191, 36, 0.14),
+    rgba(252, 252, 254, 0.35)
+  ) !important;
+}
+
+table.td-resumo-table--premium tbody tr.td-resumo-table__row--spotlight-crescimento td {
+  background: linear-gradient(
+    90deg,
+    rgba(22, 163, 74, 0.1),
+    rgba(252, 252, 254, 0.2)
+  ) !important;
+}
+
+table.td-resumo-table--premium tbody tr.td-resumo-table__row--spotlight-risco td {
+  background: linear-gradient(
+    90deg,
+    rgba(220, 38, 38, 0.09),
+    rgba(252, 252, 254, 0.2)
+  ) !important;
+}
+
+table.td-resumo-table--premium tbody tr.td-resumo-table__row--selected td {
+  background: linear-gradient(
+    90deg,
+    rgba(var(--accent-gold-rgb, 212 175 55) / 0.22),
+    rgba(var(--accent-gold-rgb, 212 175 55) / 0.08)
+  ) !important;
+  box-shadow: none;
+}
+
+table.td-resumo-table--premium .td-resumo-table__peso-eleitoral-bar {
+  height: 7px;
+  border-radius: 3px 999px 0 0;
+  opacity: 0.58;
+  background: linear-gradient(
+    90deg,
+    var(--td-peso-a, #64748b) 0%,
+    color-mix(in srgb, var(--td-peso-a, #64748b) 70%, white 30%) 78%,
+    color-mix(in srgb, var(--td-peso-a, #64748b) 52%, white 48%) 100%
+  );
+  box-shadow: 0 0 16px color-mix(in srgb, var(--td-peso-a, #64748b) 42%, transparent);
+}
+
+table.td-resumo-table--premium tbody tr.td-resumo-table__row--data:hover .td-resumo-table__peso-eleitoral-bar,
+table.td-resumo-table--premium tbody tr.td-resumo-table__row--hover-map .td-resumo-table__peso-eleitoral-bar,
+table.td-resumo-table--premium tbody tr.td-resumo-table__row--selected .td-resumo-table__peso-eleitoral-bar {
+  opacity: 0.92;
+  box-shadow:
+    0 0 20px color-mix(in srgb, var(--td-peso-a, #64748b) 55%, transparent),
+    0 0 10px color-mix(in srgb, var(--td-peso-a, #64748b) 35%, transparent);
+}
+
+table.td-resumo-table--premium .td-resumo-table__cell--fed26 {
+  font-size: 0.6875rem;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+@media (min-width: 640px) {
+  table.td-resumo-table--premium .td-resumo-table__cell--fed26 {
+    font-size: 0.75rem;
+  }
+}
+
+table.td-resumo-table--premium .td-resumo-table__cell--fed22 {
+  font-size: 0.5625rem;
+  font-weight: 500;
+  color: #64748b;
+  opacity: 0.88;
+}
+
+@media (min-width: 640px) {
+  table.td-resumo-table--premium .td-resumo-table__cell--fed22 {
+    font-size: 0.625rem;
+  }
+}
+
+table.td-resumo-table--premium .td-resumo-table__cell--delta {
+  font-size: 0.625rem;
+  font-weight: 700;
+}
+
+@media (min-width: 640px) {
+  table.td-resumo-table--premium .td-resumo-table__cell--delta {
+    font-size: 0.6875rem;
+  }
+}
+
+table.td-resumo-table--premium .td-resumo-table__delta-inner {
+  display: inline-flex;
+  align-items: baseline;
+  justify-content: flex-end;
+  gap: 0.15rem;
+}
+
+table.td-resumo-table--premium .td-resumo-table__delta-arrow {
+  font-size: 0.85em;
+  font-weight: 800;
+  line-height: 1;
+  opacity: 0.95;
+}
+
+table.td-resumo-table--premium .td-resumo-table__rank--top3 {
+  font-weight: 800;
+  color: #0f2744;
+}
+
+table.td-resumo-table--premium .td-resumo-table__rank--first {
+  color: #b45309;
+  text-shadow: 0 0 12px rgba(251, 191, 36, 0.35);
+}
+
+@keyframes td-badge-cc-icon-pulse {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 0.95;
+  }
+  50% {
+    transform: scale(1.08);
+    opacity: 1;
+  }
+}
+
+.td-badge-td--cc-icon-pulse {
+  animation: td-badge-cc-icon-pulse 2.2s ease-in-out infinite;
+}
+
+/* Rótulos permanentes dos municípios (mapa TD em foco) */
+.leaflet-tooltip.td-municipio-rotulo {
+  margin: 0 !important;
+  padding: 2px 6px !important;
+  border: 1px solid rgba(28, 28, 28, 0.12) !important;
+  border-radius: 4px !important;
+  background: rgba(255, 255, 255, 0.94) !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12) !important;
+  color: #1c1c1c !important;
+  font-size: 10px !important;
+  font-weight: 600 !important;
+  line-height: 1.2 !important;
+  pointer-events: none !important;
+}
+
+.leaflet-tooltip.td-municipio-rotulo::before {
+  display: none !important;
+}
+
+/* Marcadores flutuantes — peso do eleitorado por TD (mapa Territórios) */
+.leaflet-div-icon.td-eleitores-peso-marker {
+  background: transparent !important;
+  border: none !important;
+}
+
+.leaflet-div-icon.td-eleitores-peso-marker .td-peso-eleitores-marker-inner {
+  pointer-events: none;
+}
+
+/* Polígonos do mapa TD — pulso leve por prioridade */
+@keyframes td-mun-pulse-glow {
+  0%,
+  100% {
+    filter: brightness(1);
+  }
+  50% {
+    filter: brightness(1.09);
+  }
+}
+
+@keyframes td-mun-pulse-subtle {
+  0%,
+  100% {
+    filter: brightness(1);
+  }
+  50% {
+    filter: brightness(1.045);
+  }
+}
+
+path.td-mun-poly--pulse-estrategico {
+  animation: td-mun-pulse-glow 4.1s ease-in-out infinite;
+}
+
+path.td-mun-poly--pulse-atencao {
+  animation: td-mun-pulse-glow 5.3s ease-in-out infinite;
+}
+
+path.td-mun-poly--pulse-baixo {
+  animation: td-mun-pulse-subtle 6.4s ease-in-out infinite;
+}
+
+/* Halo suave no quadro do mapa (radar) */
+.td-mapa-vp-halo::before {
+  content: '';
+  position: absolute;
+  inset: -12%;
+  z-index: 0;
+  pointer-events: none;
+  background: radial-gradient(
+    ellipse 52% 46% at 50% 44%,
+    rgba(59, 130, 246, 0.085),
+    rgba(251, 191, 36, 0.04) 42%,
+    transparent 70%
+  );
+}
+
+.leaflet-td-pi-host {
+  position: relative;
+  z-index: 1;
+}
+
+/* Marcadores “nó de comando” */
+@keyframes td-marker-nascimento {
+  from {
+    opacity: 0;
+    transform: scale(calc(var(--td-marker-s, 1) * 0.94));
+  }
+  to {
+    opacity: 1;
+    transform: scale(var(--td-marker-s, 1));
+  }
+}
+
+@keyframes td-marker-respira {
+  0%,
+  100% {
+    filter: drop-shadow(0 4px 16px rgba(0, 0, 0, 0.28));
+  }
+  50% {
+    filter: drop-shadow(0 6px 22px rgba(0, 0, 0, 0.32)) drop-shadow(0 0 14px rgba(255, 255, 255, 0.1));
+  }
+}
+
+.leaflet-div-icon.td-eleitores-peso-marker .td-peso-eleitores-marker-inner--vivo {
+  transform-origin: center bottom;
+  animation: td-marker-nascimento 0.55s ease-out both;
+}
+
+.leaflet-div-icon.td-eleitores-peso-marker .td-peso-eleitores-card {
+  animation: td-marker-respira 5.2s ease-in-out 0.55s infinite;
+  box-shadow:
+    0 4px 22px rgba(0, 0, 0, 0.3),
+    0 0 0 1px rgba(255, 255, 255, 0.14) inset,
+    0 0 18px rgba(255, 255, 255, 0.06);
+}
+
+/* Página mapa TD — ambiente (gradiente + grão) */
+.td-mapa-pagina-ambiente {
+  position: relative;
+  background: linear-gradient(165deg, #0a1628 0%, #0c0c0e 48%, #111113 100%);
+}
+
+.td-mapa-pagina-ambiente::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0.035;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+.td-mapa-pagina-ambiente > * {
+  position: relative;
+  z-index: 1;
 }

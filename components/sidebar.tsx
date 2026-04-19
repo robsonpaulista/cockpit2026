@@ -49,6 +49,7 @@ const COCKPIT_MENU_LABEL: Record<string, string> = {
   campo: 'Campo',
   agenda: 'Agenda',
   territorio: 'Território',
+  'territorio-mapa-tds': 'Mapa TDs',
   'chapas-menu': 'Chapas',
   'resumo-eleicoes-menu': 'Eleições',
   conteudo: 'Conteúdo',
@@ -81,6 +82,12 @@ const menuItems: SidebarMenuItem[] = [
   { id: 'campo', label: 'Campo & Agenda', icon: 'MapPin', href: '/dashboard/campo' },
   { id: 'agenda', label: 'Agenda', icon: 'Calendar', href: '/dashboard/agenda' },
   { id: 'territorio', label: 'Território & Base', icon: 'MapPin', href: '/dashboard/territorio' },
+  {
+    id: 'territorio-mapa-tds',
+    label: 'Mapa dos TDs',
+    icon: 'MapPinned',
+    href: '/dashboard/territorio/mapa-tds',
+  },
   {
     id: 'chapas-menu',
     label: 'Chapas',
@@ -164,6 +171,7 @@ const iconMap: Record<string, LucideIcon> = {
   Target,
   ClipboardList,
   History,
+  MapPinned,
 }
 
 /** Ícones mais leves / mesma linguagem dos KPIs Cockpit (stroke fino + cor accent). */
@@ -200,6 +208,7 @@ function resolveMenuIcon(iconName: string, cockpit: boolean): LucideIcon {
 function pageKeyForItem(id: string): string {
   if (id === 'chapas-menu') return 'chapas'
   if (id === 'chapas-estaduais') return 'chapas'
+  if (id === 'territorio-mapa-tds') return 'territorio'
   if (
     id === 'gestao-pesquisas-menu' ||
     id === 'gestao-pesquisas-inicio' ||
@@ -374,7 +383,9 @@ export function Sidebar() {
                 const submenuOpen = openSubmenuId === item.id
                 const isActive = hasSubmenu
                   ? Boolean(item.children?.some((c) => isChildLinkActive(pathname, c.href)))
-                  : pathname === item.href
+                  : item.id === 'territorio-mapa-tds'
+                    ? pathname.startsWith('/dashboard/territorio/mapa-tds')
+                    : pathname === item.href
                 const itemRef = useRef<HTMLLIElement>(null)
                 const [tooltipPos, setTooltipPos] = useState<{ top: number } | null>(null)
 
