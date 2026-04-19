@@ -6,6 +6,7 @@ import {
   getRegiaoParaCidade,
   REGIOES_PI_ORDER,
   historicoIntencaoPorRegiaoVazio,
+  normalizeMunicipioNome,
   pesquisasPorRegiaoVazio,
   type HistoricoIntencaoPorRegiaoMap,
   type HistoricoIntencaoPontoGrafico,
@@ -14,6 +15,15 @@ import {
   type PesquisasPorRegiaoMap,
   type RegiaoPiaui,
 } from '@/lib/piaui-regiao'
+import { getTerritorioDesenvolvimentoPI, type TerritorioDesenvolvimentoPI } from '@/lib/piaui-territorio-desenvolvimento'
+import {
+  historicoIntencaoPorTdVazio,
+  pesquisasPorTdVazio,
+  TERRITORIOS_DESENVOLVIMENTO_PI_ORDER,
+  type HistoricoIntencaoPorTdMap,
+  type MediaIntencaoPorTd,
+  type PesquisasPorTdMap,
+} from '@/lib/pesquisa-historico-por-td'
 
 export const dynamic = 'force-dynamic'
 import { NextResponse } from 'next/server'
@@ -123,6 +133,12 @@ export async function GET(request: Request) {
         mediasPorRegiao: [] as MediaIntencaoPorRegiao[],
         historicoPorRegiao: historicoIntencaoPorRegiaoVazio(),
         pesquisasPorRegiao: pesquisasPorRegiaoVazio(),
+        mediasPorTd: [] as MediaIntencaoPorTd[],
+        historicoPorTd: historicoIntencaoPorTdVazio(),
+        pesquisasPorTd: pesquisasPorTdVazio(),
+        historicoMunicipioFiltro: [] as HistoricoIntencaoPontoGrafico[],
+        mediaMunicipioFiltro: null as number | null,
+        registrosMunicipioFiltro: 0,
         message: 'Candidato padrão não especificado',
       })
     }
@@ -154,6 +170,12 @@ export async function GET(request: Request) {
         mediasPorRegiao: [] as MediaIntencaoPorRegiao[],
         historicoPorRegiao: historicoIntencaoPorRegiaoVazio(),
         pesquisasPorRegiao: pesquisasPorRegiaoVazio(),
+        mediasPorTd: [] as MediaIntencaoPorTd[],
+        historicoPorTd: historicoIntencaoPorTdVazio(),
+        pesquisasPorTd: pesquisasPorTdVazio(),
+        historicoMunicipioFiltro: [] as HistoricoIntencaoPontoGrafico[],
+        mediaMunicipioFiltro: null as number | null,
+        registrosMunicipioFiltro: 0,
         message: 'Nenhuma pesquisa encontrada',
       })
     }
@@ -218,6 +240,31 @@ export async function GET(request: Request) {
       }
     }).filter((x): x is MediaIntencaoPorRegiao => x !== null)
 
+    /** Média de intenção por Território de Desenvolvimento (malha TD / mapa). */
+    const acumTd = new Map<TerritorioDesenvolvimentoPI, { sum: number; count: number }>()
+    pollRows.forEach((poll) => {
+      const cidadeNome = resolveNomeMunicipioPoll(poll)
+      if (!cidadeNome || cidadeNome === 'Estado' || cidadeNome === 'Cidade não encontrada') return
+      const td = getTerritorioDesenvolvimentoPI(cidadeNome)
+      if (!td) return
+      const int = parseIntencaoPoll(poll.intencao)
+      if (int === null) return
+      const cur = acumTd.get(td) ?? { sum: 0, count: 0 }
+      cur.sum += int
+      cur.count += 1
+      acumTd.set(td, cur)
+    })
+
+    const mediasPorTd: MediaIntencaoPorTd[] = TERRITORIOS_DESENVOLVIMENTO_PI_ORDER.map((territorio) => {
+      const b = acumTd.get(territorio)
+      if (!b || b.count === 0) return null
+      return {
+        territorio,
+        media: Math.round((b.sum / b.count) * 10) / 10,
+        n: b.count,
+      }
+    }).filter((x): x is MediaIntencaoPorTd => x !== null)
+
     // Agrupar por data (todas as pesquisas) e por data+região (mini gráficos)
     const dadosPorData = new Map<string, BucketPorData>()
     const dadosPorDataPorRegiao = new Map<RegiaoPiaui, Map<string, BucketPorData>>()
@@ -225,9 +272,19 @@ export async function GET(request: Request) {
       dadosPorDataPorRegiao.set(r, new Map())
     }
 
+    const dadosPorDataPorTd = new Map<TerritorioDesenvolvimentoPI, Map<string, BucketPorData>>()
+    for (const t of TERRITORIOS_DESENVOLVIMENTO_PI_ORDER) {
+      dadosPorDataPorTd.set(t, new Map())
+    }
+
     const linhasPorRegiao = new Map<RegiaoPiaui, PesquisaLinhaPorRegiao[]>()
     for (const r of REGIOES_PI_ORDER) {
       linhasPorRegiao.set(r, [])
+    }
+
+    const linhasPorTd = new Map<TerritorioDesenvolvimentoPI, PesquisaLinhaPorRegiao[]>()
+    for (const t of TERRITORIOS_DESENVOLVIMENTO_PI_ORDER) {
+      linhasPorTd.set(t, [])
     }
 
     pollRows.forEach((poll: any) => {
@@ -289,6 +346,34 @@ export async function GET(request: Request) {
             intencao: intParsed === null ? 0 : Math.round(intParsed * 10) / 10,
           })
         }
+
+        const td = getTerritorioDesenvolvimentoPI(cidadeNome)
+        if (td) {
+          const mapT = dadosPorDataPorTd.get(td)!
+          if (mapT.has(dataNormalizada)) {
+            const ex = mapT.get(dataNormalizada)!
+            ex.intencao += intencaoNum
+            ex.count += 1
+            if (!ex.institutos.includes(instituto)) ex.institutos.push(instituto)
+            if (!ex.cidades.includes(cidadeNome)) ex.cidades.push(cidadeNome)
+          } else {
+            mapT.set(dataNormalizada, {
+              intencao: intencaoNum,
+              count: 1,
+              institutos: [instituto],
+              cidades: [cidadeNome],
+              dataOriginal,
+            })
+          }
+
+          linhasPorTd.get(td)!.push({
+            dateOriginal: dataOriginal,
+            dataExibicao: dataExibicaoCompleta(dataOriginal),
+            cidade: cidadeNome,
+            instituto,
+            intencao: intParsed === null ? 0 : Math.round(intParsed * 10) / 10,
+          })
+        }
       }
     })
 
@@ -308,6 +393,56 @@ export async function GET(request: Request) {
         a.dateOriginal.localeCompare(b.dateOriginal)
       ),
       Sul: (linhasPorRegiao.get('Sul') ?? []).sort((a, b) => a.dateOriginal.localeCompare(b.dateOriginal)),
+    }
+
+    const historicoPorTd: HistoricoIntencaoPorTdMap = historicoIntencaoPorTdVazio()
+    const pesquisasPorTd: PesquisasPorTdMap = pesquisasPorTdVazio()
+    for (const t of TERRITORIOS_DESENVOLVIMENTO_PI_ORDER) {
+      historicoPorTd[t] = mapBucketsParaSerieGrafico(dadosPorDataPorTd.get(t)!)
+      pesquisasPorTd[t] = (linhasPorTd.get(t) ?? []).sort((a, b) => a.dateOriginal.localeCompare(b.dateOriginal))
+    }
+
+    const municipioQuery = searchParams.get('municipio')?.trim() ?? ''
+    const alvoMunNorm = municipioQuery ? normalizeMunicipioNome(municipioQuery) : ''
+
+    let historicoMunicipioFiltro: HistoricoIntencaoPontoGrafico[] = []
+    let mediaMunicipioFiltro: number | null = null
+    let registrosMunicipioFiltro = 0
+
+    if (alvoMunNorm) {
+      const dadosPorDataMun = new Map<string, BucketPorData>()
+      let sumM = 0
+      let countM = 0
+      pollRows.forEach((poll: any) => {
+        const cidadeNome = resolveNomeMunicipioPoll(poll)
+        if (!cidadeNome || cidadeNome === 'Estado' || cidadeNome === 'Cidade não encontrada') return
+        if (normalizeMunicipioNome(cidadeNome) !== alvoMunNorm) return
+        const intParsed = parseIntencaoPoll(poll.intencao)
+        if (intParsed === null) return
+        sumM += intParsed
+        countM += 1
+        const { dataNormalizada, dataOriginal } = normalizaDataHistoricoPoll(String(poll.data ?? ''))
+        const instituto = poll.instituto || 'Não informado'
+        const intencaoNum = intParsed
+        if (dadosPorDataMun.has(dataNormalizada)) {
+          const ex = dadosPorDataMun.get(dataNormalizada)!
+          ex.intencao += intencaoNum
+          ex.count += 1
+          if (!ex.institutos.includes(instituto)) ex.institutos.push(instituto)
+          if (!ex.cidades.includes(cidadeNome)) ex.cidades.push(cidadeNome)
+        } else {
+          dadosPorDataMun.set(dataNormalizada, {
+            intencao: intencaoNum,
+            count: 1,
+            institutos: [instituto],
+            cidades: [cidadeNome],
+            dataOriginal,
+          })
+        }
+      })
+      historicoMunicipioFiltro = mapBucketsParaSerieGrafico(dadosPorDataMun)
+      mediaMunicipioFiltro = countM > 0 ? Math.round((sumM / countM) * 10) / 10 : null
+      registrosMunicipioFiltro = countM
     }
 
     // Converter para array e calcular média
@@ -336,6 +471,13 @@ export async function GET(request: Request) {
       mediasPorRegiao,
       historicoPorRegiao,
       pesquisasPorRegiao,
+      mediasPorTd,
+      historicoPorTd,
+      pesquisasPorTd,
+      historicoMunicipioFiltro,
+      mediaMunicipioFiltro,
+      registrosMunicipioFiltro,
+      municipioFiltro: municipioQuery || null,
     })
   } catch (error: any) {
     return NextResponse.json(
