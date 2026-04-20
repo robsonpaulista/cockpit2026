@@ -4,8 +4,10 @@ import { candidatoEleicaoIndicaPerfilMilitar } from '@/lib/perfil-militar-nome'
 import {
   TERRITORIOS_DESENVOLVIMENTO_PI,
   getTerritorioDesenvolvimentoPI,
+  getMunicipiosPorTerritorioDesenvolvimentoPI,
   type TerritorioDesenvolvimentoPI,
 } from '@/lib/piaui-territorio-desenvolvimento'
+import { normalizeMunicipioNome } from '@/lib/piaui-regiao'
 
 export const dynamic = 'force-dynamic'
 
@@ -274,30 +276,14 @@ export async function GET(request: NextRequest) {
     }
 
     /**
-     * Média por TD dos candidatos mais votados para Dep. Federal 2022 (PI).
-     * `top` (opcional): quantidade de candidatos do topo (padrão 5; min 1; max 20).
+     * Média por TD: top N deputados federais 2022 com mais votos **dentro do território** (soma nos municípios do TD),
+     * independente do ranking estadual no PI. `top`: padrão 5; min 1; max 20.
      */
     if (totals === 'federal2022TopMediaPorTd') {
       const topParam = Number.parseInt(request.nextUrl.searchParams.get('top') || '5', 10)
       const top = Number.isFinite(topParam) ? Math.max(1, Math.min(20, topParam)) : 5
 
-      const totaisPorCandidato = new Map<string, number>()
-      for (const item of cachedAllResultados) {
-        if (item.anoEleicao !== '2022') continue
-        if (String(item.uf || '').toUpperCase() !== 'PI') continue
-        if (!/federal/i.test(item.cargo || '')) continue
-        const nome = String(item.nomeUrnaCandidato || '').trim()
-        if (!nome) continue
-        const votos = Number.parseInt(item.quantidadeVotosNominais || '0', 10)
-        totaisPorCandidato.set(nome, (totaisPorCandidato.get(nome) || 0) + (Number.isNaN(votos) ? 0 : votos))
-      }
-
-      const topCandidatos = Array.from(totaisPorCandidato.entries())
-        .map(([nome, votos]) => ({ nome, votos }))
-        .sort((a, b) => b.votos - a.votos || a.nome.localeCompare(b.nome, 'pt-BR'))
-        .slice(0, top)
-      const topSet = new Set(topCandidatos.map((c) => c.nome))
-
+      const votosPiPorCandidato = new Map<string, number>()
       const porTdPorCandidato = new Map<TerritorioDesenvolvimentoPI, Map<string, number>>()
       for (const td of TERRITORIOS_DESENVOLVIMENTO_PI) {
         porTdPorCandidato.set(td, new Map())
@@ -308,30 +294,48 @@ export async function GET(request: NextRequest) {
         if (String(item.uf || '').toUpperCase() !== 'PI') continue
         if (!/federal/i.test(item.cargo || '')) continue
         const nome = String(item.nomeUrnaCandidato || '').trim()
-        if (!topSet.has(nome)) continue
+        if (!nome) continue
+        const votos = Number.parseInt(item.quantidadeVotosNominais || '0', 10)
+        const v = Number.isNaN(votos) ? 0 : votos
+        votosPiPorCandidato.set(nome, (votosPiPorCandidato.get(nome) || 0) + v)
         const td = getTerritorioDesenvolvimentoPI(String(item.municipio || ''))
         if (!td) continue
-        const votos = Number.parseInt(item.quantidadeVotosNominais || '0', 10)
         const porCandidato = porTdPorCandidato.get(td)
         if (!porCandidato) continue
-        porCandidato.set(nome, (porCandidato.get(nome) || 0) + (Number.isNaN(votos) ? 0 : votos))
+        porCandidato.set(nome, (porCandidato.get(nome) || 0) + v)
+      }
+
+      type TopCandTd = { nome: string; votosNoTd: number; votosPi: number }
+      const topCandidatosPorTd = new Map<TerritorioDesenvolvimentoPI, TopCandTd[]>()
+      for (const td of TERRITORIOS_DESENVOLVIMENTO_PI) {
+        const porCandidato = porTdPorCandidato.get(td) ?? new Map<string, number>()
+        const ranked = Array.from(porCandidato.entries())
+          .map(([nome, votosNoTd]) => ({
+            nome,
+            votosNoTd,
+            votosPi: votosPiPorCandidato.get(nome) || 0,
+          }))
+          .sort((a, b) => b.votosNoTd - a.votosNoTd || a.nome.localeCompare(b.nome, 'pt-BR'))
+          .slice(0, top)
+        topCandidatosPorTd.set(td, ranked)
       }
 
       const linhas = TERRITORIOS_DESENVOLVIMENTO_PI.map((territorio) => {
+        const topList = topCandidatosPorTd.get(territorio) ?? []
         const porCandidato = porTdPorCandidato.get(territorio) ?? new Map<string, number>()
         let somaTop = 0
         let candidatosComVotos = 0
-        const detalheCandidatos = topCandidatos.map((c) => {
+        const detalheCandidatos = topList.map((c) => {
           const votosNoTd = porCandidato.get(c.nome) || 0
           somaTop += votosNoTd
           if (votosNoTd > 0) candidatosComVotos += 1
-          return { nome: c.nome, votosPi: c.votos, votosNoTd }
+          return { nome: c.nome, votosPi: c.votosPi, votosNoTd }
         })
         return {
           territorio,
-          mediaVotos: topCandidatos.length > 0 ? somaTop / topCandidatos.length : 0,
+          mediaVotos: topList.length > 0 ? somaTop / topList.length : 0,
           somaTop,
-          candidatosConsiderados: topCandidatos.length,
+          candidatosConsiderados: topList.length,
           candidatosComVotos,
           detalheCandidatos,
         }
@@ -339,10 +343,96 @@ export async function GET(request: NextRequest) {
 
       return NextResponse.json({
         ano: 2022,
-        escopo: 'PI_top_federal_por_td',
-        top: topCandidatos.length,
-        candidatos: topCandidatos,
+        escopo: 'PI_top_federal_por_td_ranking_no_td',
+        top,
+        candidatos: [] as { nome: string; votos: number }[],
         linhas,
+      })
+    }
+
+    /**
+     * Média por município: mesmos top N **por TD** que em `federal2022TopMediaPorTd` (votos no município desses candidatos).
+     */
+    if (totals === 'federal2022TopMediaPorMunicipio') {
+      const topParam = Number.parseInt(request.nextUrl.searchParams.get('top') || '5', 10)
+      const top = Number.isFinite(topParam) ? Math.max(1, Math.min(20, topParam)) : 5
+
+      const votosPiPorCandidato = new Map<string, number>()
+      const porTdPorCandidato = new Map<TerritorioDesenvolvimentoPI, Map<string, number>>()
+      for (const td of TERRITORIOS_DESENVOLVIMENTO_PI) {
+        porTdPorCandidato.set(td, new Map())
+      }
+
+      for (const item of cachedAllResultados) {
+        if (item.anoEleicao !== '2022') continue
+        if (String(item.uf || '').toUpperCase() !== 'PI') continue
+        if (!/federal/i.test(item.cargo || '')) continue
+        const nome = String(item.nomeUrnaCandidato || '').trim()
+        if (!nome) continue
+        const votos = Number.parseInt(item.quantidadeVotosNominais || '0', 10)
+        const v = Number.isNaN(votos) ? 0 : votos
+        votosPiPorCandidato.set(nome, (votosPiPorCandidato.get(nome) || 0) + v)
+        const td = getTerritorioDesenvolvimentoPI(String(item.municipio || ''))
+        if (!td) continue
+        const porCandidato = porTdPorCandidato.get(td)
+        if (!porCandidato) continue
+        porCandidato.set(nome, (porCandidato.get(nome) || 0) + v)
+      }
+
+      type TopCandTd = { nome: string; votosNoTd: number; votosPi: number }
+      const topCandidatosPorTd = new Map<TerritorioDesenvolvimentoPI, TopCandTd[]>()
+      for (const td of TERRITORIOS_DESENVOLVIMENTO_PI) {
+        const porCandidato = porTdPorCandidato.get(td) ?? new Map<string, number>()
+        const ranked = Array.from(porCandidato.entries())
+          .map(([nome, votosNoTd]) => ({
+            nome,
+            votosNoTd,
+            votosPi: votosPiPorCandidato.get(nome) || 0,
+          }))
+          .sort((a, b) => b.votosNoTd - a.votosNoTd || a.nome.localeCompare(b.nome, 'pt-BR'))
+          .slice(0, top)
+        topCandidatosPorTd.set(td, ranked)
+      }
+
+      const porMunNormPorCandidato = new Map<string, Map<string, number>>()
+      for (const item of cachedAllResultados) {
+        if (item.anoEleicao !== '2022') continue
+        if (String(item.uf || '').toUpperCase() !== 'PI') continue
+        if (!/federal/i.test(item.cargo || '')) continue
+        const nome = String(item.nomeUrnaCandidato || '').trim()
+        if (!nome) continue
+        const munRaw = String(item.municipio || '').trim()
+        if (!munRaw) continue
+        const munNorm = normalizeMunicipioNome(munRaw)
+        let porCandidato = porMunNormPorCandidato.get(munNorm)
+        if (!porCandidato) {
+          porCandidato = new Map()
+          porMunNormPorCandidato.set(munNorm, porCandidato)
+        }
+        const votos = Number.parseInt(item.quantidadeVotosNominais || '0', 10)
+        porCandidato.set(nome, (porCandidato.get(nome) || 0) + (Number.isNaN(votos) ? 0 : votos))
+      }
+
+      const linhasMunicipio: { municipio: string; mediaVotos: number }[] = []
+      for (const td of TERRITORIOS_DESENVOLVIMENTO_PI) {
+        const topList = topCandidatosPorTd.get(td) ?? []
+        for (const mun of getMunicipiosPorTerritorioDesenvolvimentoPI(td)) {
+          const inner = porMunNormPorCandidato.get(normalizeMunicipioNome(mun)) ?? new Map<string, number>()
+          let somaTop = 0
+          for (const c of topList) {
+            somaTop += inner.get(c.nome) || 0
+          }
+          const mediaVotos = topList.length > 0 ? somaTop / topList.length : 0
+          linhasMunicipio.push({ municipio: mun, mediaVotos })
+        }
+      }
+
+      return NextResponse.json({
+        ano: 2022,
+        escopo: 'PI_top_federal_por_municipio_top_do_td',
+        top,
+        candidatos: [] as { nome: string; votos: number }[],
+        linhas: linhasMunicipio,
       })
     }
 

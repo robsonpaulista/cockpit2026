@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { KPICard } from '@/components/kpi-card'
-import { MapPin, Calendar, CheckCircle2, Clock, Plus, Filter, Pencil } from 'lucide-react'
+import { MapPin, Calendar, CheckCircle2, Plus, Filter, Pencil } from 'lucide-react'
 import { AgendaModal } from '@/components/agenda-modal'
 import { DemandModal } from '@/components/demand-modal'
 import { KPI } from '@/types'

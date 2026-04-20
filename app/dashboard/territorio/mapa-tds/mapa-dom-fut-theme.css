@@ -43,7 +43,7 @@
 /* Título da página (page.tsx) */
 .theme-futuristic .td-fut-page-head__title {
   margin: 0;
-  font-size: 1.75rem;
+  font-size: 1.3125rem;
   font-weight: 700;
   line-height: 1.15;
   letter-spacing: -0.02em;
@@ -52,15 +52,8 @@
 
 @media (min-width: 640px) {
   .theme-futuristic .td-fut-page-head__title {
-    font-size: 2.125rem;
+    font-size: 1.625rem;
   }
-}
-
-.theme-futuristic .td-fut-page-head__subtitle {
-  margin: 0.35rem 0 0;
-  font-size: 1rem;
-  font-weight: 500;
-  color: var(--td-fut-text-sec);
 }
 
 .theme-futuristic .td-resumo-table__peso-eleitoral-bar--fut {
@@ -347,6 +340,24 @@
   padding-bottom: 0.65rem !important;
 }
 
+.theme-futuristic table.td-resumo-table tfoot tr.td-resumo-table__row--totals td {
+  border-top: 1px solid var(--td-fut-border) !important;
+  background: rgba(12, 18, 26, 0.92) !important;
+  color: var(--td-fut-text) !important;
+  font-weight: 600 !important;
+  font-size: 0.8125rem !important;
+}
+
+.theme-futuristic table.td-resumo-table--premium tfoot tr.td-resumo-table__row--totals td:first-child {
+  border-radius: 8px 0 0 8px;
+  border-left: 1px solid var(--td-fut-border);
+}
+
+.theme-futuristic table.td-resumo-table--premium tfoot tr.td-resumo-table__row--totals td:last-child {
+  border-radius: 0 8px 8px 0;
+  border-right: 1px solid var(--td-fut-border);
+}
+
 .theme-futuristic table.td-resumo-table--premium tbody td,
 .theme-futuristic table.td-resumo-table--futuristic tbody td {
   font-weight: 500;
@@ -416,12 +427,40 @@
   color: #e6edf3 !important;
 }
 
+/* Linha TD selecionada: fundo escuro (--fut-row-selected); texto claro. */
 .theme-futuristic table.td-resumo-table--premium tbody tr.td-resumo-table__row--selected td {
-  color: var(--td-fut-text) !important;
+  color: var(--td-fut-text, #e6edf3) !important;
 }
 
 .theme-futuristic table.td-resumo-table--premium tbody tr.td-resumo-table__row--selected .text-text-secondary {
-  color: var(--td-fut-text-sec) !important;
+  color: var(--td-fut-text-sec, #aab4c0) !important;
+}
+
+.theme-futuristic
+  table.td-resumo-table--premium
+  tbody
+  tr.td-resumo-table__row--selected
+  td.td-resumo-table__cell--territorio
+  .text-text-primary {
+  color: var(--td-fut-text, #e6edf3) !important;
+}
+
+.theme-futuristic table.td-resumo-table--premium tbody tr.td-resumo-table__row--selected .text-status-success {
+  color: var(--td-fut-green) !important;
+}
+
+.theme-futuristic table.td-resumo-table--premium tbody tr.td-resumo-table__row--selected .text-status-danger {
+  color: var(--td-fut-red) !important;
+}
+
+.theme-futuristic
+  table.td-resumo-table--premium
+  tbody
+  tr.td-resumo-table__row--selected
+  .td-resumo-table__expand-btn {
+  background: rgba(255, 255, 255, 0.1) !important;
+  border-color: rgba(255, 255, 255, 0.22) !important;
+  color: var(--td-fut-text, #e6edf3) !important;
 }
 
 .theme-futuristic table.td-resumo-table--premium tbody tr.td-resumo-table__row--selected td:first-child {
@@ -447,9 +486,18 @@
   font-size: 1.05rem;
 }
 
-.theme-futuristic table.td-resumo-table--premium .td-resumo-table__cell--lid {
+.theme-futuristic table.td-resumo-table--premium .td-resumo-table__cell--lid,
+.theme-futuristic table.td-resumo-table th.td-resumo-table__cell--lid {
   color: var(--td-fut-text) !important;
   font-weight: 600;
+  text-align: center !important;
+}
+
+.theme-futuristic table.td-resumo-table--premium .td-resumo-table__cell--vis,
+.theme-futuristic table.td-resumo-table th.td-resumo-table__cell--vis {
+  color: var(--td-fut-text-sec) !important;
+  font-weight: 500;
+  text-align: center !important;
 }
 
 .theme-futuristic table.td-resumo-table--premium .td-resumo-table__cell--fed22 {
@@ -571,6 +619,11 @@
   font-size: 0.75rem;
 }
 
+.theme-futuristic .td-fut-drill .td-fut-grid-foot--totais-municipios {
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
 /* ── badges de classificação ─────────────────────────────────────────────── */
 
 /* Classes explícitas usadas pelo CONFIG_FUTURISTIC do ClassificacaoTdBadge */
@@ -581,57 +634,118 @@
 }
 
 .td-badge-fut--estrategico {
-  border-color: rgba(255, 106, 0, 0.5) !important;
-  background-color: rgba(255, 106, 0, 0.1) !important;
-  color: #ffb27a !important;
+  border-color: rgba(255, 106, 0, 0.35) !important;
+  background: linear-gradient(
+    165deg,
+    rgba(255, 106, 0, 0.38) 0%,
+    rgba(255, 106, 0, 0.22) 48%,
+    rgba(180, 70, 0, 0.18) 100%
+  ) !important;
+  color: #ffe8d4 !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12);
 }
 
 .td-badge-fut--atencao {
-  border-color: rgba(245, 158, 11, 0.45) !important;
-  background-color: rgba(245, 158, 11, 0.1) !important;
-  color: #f4c26b !important;
+  border-color: rgba(245, 158, 11, 0.35) !important;
+  background: linear-gradient(
+    165deg,
+    rgba(245, 158, 11, 0.34) 0%,
+    rgba(217, 119, 6, 0.22) 50%,
+    rgba(146, 64, 14, 0.2) 100%
+  ) !important;
+  color: #fff7e6 !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1);
 }
 
 .td-badge-fut--baixo {
-  border-color: rgba(255, 255, 255, 0.1) !important;
-  background-color: rgba(255, 255, 255, 0.04) !important;
-  color: #aab4c0 !important;
+  border-color: rgba(148, 163, 184, 0.35) !important;
+  background: linear-gradient(
+    165deg,
+    rgba(100, 116, 139, 0.32) 0%,
+    rgba(71, 85, 105, 0.26) 55%,
+    rgba(51, 65, 85, 0.35) 100%
+  ) !important;
+  color: #e8edf5 !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
 }
 
 /* =============================================================================
-   SPARKLINES
+   COLUNA %Δ — barra + percentual (uma linha)
    ============================================================================= */
 
-.theme-futuristic .td-fut-sparkline {
-  display: block;
-  width: 100%;
-  max-width: 3.25rem;
-  height: 1.05rem;
+.theme-futuristic .td-fut-tend-pct-bar__track {
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.06);
 }
 
-.theme-futuristic .td-fut-sparkline__path {
-  fill: none;
-  stroke-width: 2;
-  stroke-linecap: round;
-  stroke-dasharray: 48;
-  stroke-dashoffset: 48;
-  animation: td-fut-spark-draw 0.65s ease-out 0.15s forwards;
+.theme-futuristic .td-fut-tend-pct-bar__fill--up {
+  background-color: rgb(52 211 153 / 0.95);
 }
 
-@keyframes td-fut-spark-draw {
-  to { stroke-dashoffset: 0; }
+.theme-futuristic .td-fut-tend-pct-bar__fill--down {
+  background-color: rgb(248 113 113 / 0.95);
 }
 
-.theme-futuristic .td-fut-sparkline--up .td-fut-sparkline__path {
-  stroke: var(--td-fut-green);
+.theme-futuristic .td-fut-tend-pct-bar__fill--flat {
+  background-color: rgb(255 255 255 / 0.35);
 }
 
-.theme-futuristic .td-fut-sparkline--down .td-fut-sparkline__path {
-  stroke: var(--td-fut-red);
+.theme-futuristic .td-fut-tend-pct-bar__fill--na {
+  background-color: rgb(255 255 255 / 0.22);
 }
 
-.theme-futuristic .td-fut-sparkline--flat .td-fut-sparkline__path {
-  stroke: var(--td-fut-text-weak);
+@keyframes td-fut-pct-bar-reveal {
+  from {
+    transform: scaleX(0);
+    opacity: 0.55;
+  }
+  to {
+    transform: scaleX(1);
+    opacity: 1;
+  }
+}
+
+@keyframes td-fut-pct-bar-label-in {
+  from {
+    opacity: 0.35;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.theme-futuristic .td-fut-tend-pct-bar__fill {
+  transform-origin: left center;
+  animation: td-fut-pct-bar-reveal 0.48s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.theme-futuristic .td-fut-tend-pct-bar__pct {
+  animation: td-fut-pct-bar-label-in 0.38s ease-out 0.06s both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .theme-futuristic .td-fut-tend-pct-bar__fill {
+    animation: none;
+    transform: none;
+    opacity: 1;
+  }
+
+  .theme-futuristic .td-fut-tend-pct-bar__pct {
+    animation: none;
+    opacity: 1;
+  }
+}
+
+.theme-futuristic table.td-resumo-table--premium tbody tr.td-resumo-table__row--hover-map .td-fut-tend-pct-bar__fill--up {
+  background-color: rgb(21 128 61) !important;
+}
+
+.theme-futuristic table.td-resumo-table--premium tbody tr.td-resumo-table__row--hover-map .td-fut-tend-pct-bar__fill--down {
+  background-color: rgb(185 28 28) !important;
+}
+
+.theme-futuristic table.td-resumo-table--premium tbody tr.td-resumo-table__row--hover-map .td-fut-tend-pct-bar__fill--flat,
+.theme-futuristic table.td-resumo-table--premium tbody tr.td-resumo-table__row--hover-map .td-fut-tend-pct-bar__fill--na {
+  background-color: rgba(11, 15, 20, 0.38) !important;
 }
 
 /* =============================================================================
@@ -689,8 +803,9 @@
 
 .theme-futuristic table.td-resumo-table th.td-resumo-table__cell--tend,
 .theme-futuristic table.td-resumo-table td.td-resumo-table__cell--tend {
-  width: 3.35rem;
-  max-width: 3.75rem;
+  width: auto;
+  min-width: 5.5rem;
+  max-width: 7.25rem;
   padding-left: 0.12rem;
   padding-right: 0.12rem;
 }
