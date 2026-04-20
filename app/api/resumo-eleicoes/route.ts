@@ -351,6 +351,63 @@ export async function GET(request: NextRequest) {
     }
 
     /**
+     * Top N partidos (soma de votos nominais de todos os federais da legenda) por TD — Deputado Federal 2022, PI.
+     */
+    if (totals === 'federal2022TopPartidoPorTd') {
+      const topParam = Number.parseInt(request.nextUrl.searchParams.get('top') || '5', 10)
+      const top = Number.isFinite(topParam) ? Math.max(1, Math.min(20, topParam)) : 5
+
+      const votosPiPorPartido = new Map<string, number>()
+      const porTdPorPartido = new Map<TerritorioDesenvolvimentoPI, Map<string, number>>()
+      for (const td of TERRITORIOS_DESENVOLVIMENTO_PI) {
+        porTdPorPartido.set(td, new Map())
+      }
+
+      for (const item of cachedAllResultados) {
+        if (item.anoEleicao !== '2022') continue
+        if (String(item.uf || '').toUpperCase() !== 'PI') continue
+        if (!/federal/i.test(item.cargo || '')) continue
+        const partidoRaw = String(item.partido || '').trim()
+        const partido = partidoRaw.length > 0 ? partidoRaw : '—'
+        const votos = Number.parseInt(item.quantidadeVotosNominais || '0', 10)
+        const v = Number.isNaN(votos) ? 0 : votos
+        votosPiPorPartido.set(partido, (votosPiPorPartido.get(partido) || 0) + v)
+        const td = getTerritorioDesenvolvimentoPI(String(item.municipio || ''))
+        if (!td) continue
+        const porPartido = porTdPorPartido.get(td)
+        if (!porPartido) continue
+        porPartido.set(partido, (porPartido.get(partido) || 0) + v)
+      }
+
+      type TopPartTd = { partido: string; votosNoTd: number; votosPi: number }
+      const topPartidosPorTd = new Map<TerritorioDesenvolvimentoPI, TopPartTd[]>()
+      for (const td of TERRITORIOS_DESENVOLVIMENTO_PI) {
+        const porPartido = porTdPorPartido.get(td) ?? new Map<string, number>()
+        const ranked = Array.from(porPartido.entries())
+          .map(([partido, votosNoTd]) => ({
+            partido,
+            votosNoTd,
+            votosPi: votosPiPorPartido.get(partido) || 0,
+          }))
+          .sort((a, b) => b.votosNoTd - a.votosNoTd || a.partido.localeCompare(b.partido, 'pt-BR'))
+          .slice(0, top)
+        topPartidosPorTd.set(td, ranked)
+      }
+
+      const linhas = TERRITORIOS_DESENVOLVIMENTO_PI.map((territorio) => ({
+        territorio,
+        detalhePartidos: topPartidosPorTd.get(territorio) ?? [],
+      }))
+
+      return NextResponse.json({
+        ano: 2022,
+        escopo: 'PI_top_partido_federal_por_td',
+        top,
+        linhas,
+      })
+    }
+
+    /**
      * Média por município: mesmos top N **por TD** que em `federal2022TopMediaPorTd` (votos no município desses candidatos).
      */
     if (totals === 'federal2022TopMediaPorMunicipio') {

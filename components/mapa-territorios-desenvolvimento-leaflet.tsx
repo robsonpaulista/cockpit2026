@@ -116,9 +116,10 @@ function hexToRgba(hex: string, alpha: number): string {
   return `rgba(${r},${g},${b},${alpha})`
 }
 
-/** Fundo da linha TD selecionada no tema futurista: escuro com viés da cor do território (texto claro legível). */
-function cssFuturistTdLinhaSelecionada(fill: string, stroke: string): string {
-  return `linear-gradient(90deg, rgba(10,13,18,0.98) 0%, rgba(16,20,28,0.95) 45%, ${hexToRgba(stroke, 0.5)} 72%, ${hexToRgba(fill, 0.28)} 100%)`
+/** Fundo sólido da linha TD selecionada no tema futurista — mesma cor `fill` do território (marcador / quadrado na tabela). */
+function cssFuturistTdLinhaSelecionadaSolid(fill: string): string {
+  const h = String(fill || '').trim()
+  return h.startsWith('#') && h.length >= 4 ? h : hexToRgba('#ff6a00', 1)
 }
 
 function styleForMunicipioFeature(
@@ -921,6 +922,8 @@ type EstrategiaTopFed22LinhaTd = {
   detalheCandidatos: EstrategiaTopFed22DetalheCandidato[]
 }
 
+type Fed22TopPartidoDetalheTd = { partido: string; votosPi: number; votosNoTd: number }
+
 function montarTooltipMedTop22Celula(
   territorio: string,
   detalhe: readonly EstrategiaTopFed22DetalheCandidato[],
@@ -1001,11 +1004,10 @@ const fmtPctVariacaoDeltaTd = new Intl.NumberFormat('pt-BR', {
 })
 const fmtIntTooltipTd = new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 0 })
 
-/** % da diferença (Δ ÷ Fed.22) + barra de progresso em uma linha — cockpit futurista. */
-function TdPctDeltaBarUmaLinha({ v22, delta }: { v22: number; delta: number }) {
+/** % da diferença (Δ ÷ Fed.22) — apenas texto, sem barra. */
+function TdPctDeltaCelula({ v22, delta }: { v22: number; delta: number }) {
   const podePct = v22 > 0
   const pctNum = podePct ? (delta / v22) * 100 : delta === 0 && v22 === 0 ? 0 : null
-  const barFill = podePct ? Math.min(100, Math.abs((delta / v22) * 100)) : 0
   const label = pctNum === null ? '—' : `${fmtPctVariacaoDeltaTd.format(pctNum)}%`
   const title = podePct
     ? `Δ ${formatarIntComSinal(delta)} votos (${fmtPctVariacaoDeltaTd.format((delta / v22) * 100)}% em relação aos ${fmtIntTooltipTd.format(v22)} votos Fed.22 no TD)`
@@ -1014,30 +1016,17 @@ function TdPctDeltaBarUmaLinha({ v22, delta }: { v22: number; delta: number }) {
       : 'Fed.22 = 0 e diferença nula neste TD.'
 
   return (
-    <div className="td-fut-tend-pct-bar flex min-w-0 max-w-full items-center justify-end gap-1" title={title}>
-      <div className="td-fut-tend-pct-bar__track h-[0.28rem] w-[2.65rem] shrink-0 overflow-hidden rounded-full bg-white/[0.1]" aria-hidden>
-        <div
-          className={cn(
-            'td-fut-tend-pct-bar__fill h-full origin-left rounded-full',
-            pctNum === null && 'td-fut-tend-pct-bar__fill--na',
-            pctNum !== null && delta > 0 && 'td-fut-tend-pct-bar__fill--up',
-            pctNum !== null && delta < 0 && 'td-fut-tend-pct-bar__fill--down',
-            pctNum !== null && delta === 0 && 'td-fut-tend-pct-bar__fill--flat'
-          )}
-          style={{ width: `${barFill}%` }}
-        />
-      </div>
-      <span
-        className={cn(
-          'td-fut-tend-pct-bar__pct min-w-0 shrink-0 text-[9px] tabular-nums leading-none sm:text-[10px]',
-          pctNum !== null && delta > 0 && 'text-status-success',
-          pctNum !== null && delta < 0 && 'text-status-danger',
-          (pctNum === null || delta === 0) && 'text-text-secondary'
-        )}
-      >
-        {label}
-      </span>
-    </div>
+    <span
+      className={cn(
+        'inline-block text-center tabular-nums text-[9px] font-medium leading-none sm:text-[10px]',
+        pctNum !== null && delta > 0 && 'text-status-success',
+        pctNum !== null && delta < 0 && 'text-status-danger',
+        (pctNum === null || delta === 0) && 'text-text-secondary'
+      )}
+      title={title}
+    >
+      {label}
+    </span>
   )
 }
 
@@ -1182,6 +1171,10 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({ visualPreset = 'default'
   const [estrategiaTopFed22TopN, setEstrategiaTopFed22TopN] = useState<number>(0)
   /** Média Top5 Fed.22 por município (mesmos candidatos do top por TD que na tabela de TDs). */
   const [mediaTop22PorMunicipioNorm, setMediaTop22PorMunicipioNorm] = useState<Map<string, number>>(() => new Map())
+  /** Top N partidos (soma votos federais 2022) por TD — painel de feedback. */
+  const [topPartidosFed22PorTd, setTopPartidosFed22PorTd] = useState<
+    Map<TerritorioDesenvolvimentoPI, Fed22TopPartidoDetalheTd[]>
+  >(() => new Map())
 
   useEffect(() => {
     let cancelled = false
@@ -1217,9 +1210,10 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({ visualPreset = 'default'
     let cancelled = false
     const run = async () => {
       try {
-        const [resTd, resMun] = await Promise.all([
+        const [resTd, resMun, resPart] = await Promise.all([
           fetch('/api/resumo-eleicoes?totals=federal2022TopMediaPorTd&top=5'),
           fetch('/api/resumo-eleicoes?totals=federal2022TopMediaPorMunicipio&top=5'),
+          fetch('/api/resumo-eleicoes?totals=federal2022TopPartidoPorTd&top=5'),
         ])
         if (cancelled) return
 
@@ -1236,6 +1230,7 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({ visualPreset = 'default'
             setEstrategiaTopFed22PorTd(new Map())
             setEstrategiaTopFed22TopN(0)
             setMediaTop22PorMunicipioNorm(new Map())
+            setTopPartidosFed22PorTd(new Map())
           }
           return
         }
@@ -1274,11 +1269,35 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({ visualPreset = 'default'
         } else if (!cancelled) {
           setMediaTop22PorMunicipioNorm(new Map())
         }
+
+        if (resPart.ok) {
+          const jsonPart = (await resPart.json().catch(() => ({}))) as {
+            linhas?: {
+              territorio?: string
+              detalhePartidos?: { partido?: string; votosPi?: number; votosNoTd?: number }[]
+            }[]
+          }
+          const mapPart = new Map<TerritorioDesenvolvimentoPI, Fed22TopPartidoDetalheTd[]>()
+          for (const item of jsonPart.linhas ?? []) {
+            const territorio = (item.territorio ?? '') as TerritorioDesenvolvimentoPI
+            if (!territorio) continue
+            const detalhePartidos: Fed22TopPartidoDetalheTd[] = (item.detalhePartidos ?? []).map((d) => ({
+              partido: String(d.partido ?? '').trim() || '—',
+              votosPi: Number(d.votosPi ?? 0),
+              votosNoTd: Number(d.votosNoTd ?? 0),
+            }))
+            mapPart.set(territorio, detalhePartidos)
+          }
+          if (!cancelled) setTopPartidosFed22PorTd(mapPart)
+        } else if (!cancelled) {
+          setTopPartidosFed22PorTd(new Map())
+        }
       } catch {
         if (!cancelled) {
           setEstrategiaTopFed22PorTd(new Map())
           setEstrategiaTopFed22TopN(0)
           setMediaTop22PorMunicipioNorm(new Map())
+          setTopPartidosFed22PorTd(new Map())
         }
       }
     }
@@ -1835,6 +1854,18 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({ visualPreset = 'default'
   }, [municipiosLinhasOrdenadas, municipioFocadoLiderancas])
 
   const territorioFeedbackAtivo = highlightedTd ?? hoverTdTabela
+
+  /** Top 5 partidos Fed. 2022 no TD ativo — terceiro card do bloco de feedback. */
+  const linhasFeedbackTopPartidosFed22Td = useMemo((): string[] | null => {
+    if (!territorioFeedbackAtivo) return null
+    const lista = topPartidosFed22PorTd.get(territorioFeedbackAtivo)
+    if (!lista || lista.length === 0) return null
+    return lista.map(
+      (p, idx) =>
+        `${idx + 1}) ${p.partido}: ${fmtInt.format(p.votosNoTd)} votos no TD · ${fmtInt.format(p.votosPi)} no PI`
+    )
+  }, [territorioFeedbackAtivo, topPartidosFed22PorTd])
+
   const [insightPesquisaTd, setInsightPesquisaTd] = useState<string[] | null>(null)
 
   useEffect(() => {
@@ -2921,22 +2952,30 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({ visualPreset = 'default'
                     {mostrarColunaDeltaFed22 ? (
                       <th
                         className={cn(
-                          'td-resumo-table__cell text-right font-medium',
+                          'td-resumo-table__cell text-center font-medium',
                           colunaInicioDesempenho === 'delta' && 'td-resumo-table__grupo-desempenho-start'
                         )}
                         title="Diferença de votos: visão atual da planilha menos Fed. 2022 no TD"
                       >
-                        <button type="button" onClick={() => alternarOrdenacaoTd('delta')} className="inline-flex items-center gap-1">
+                        <button
+                          type="button"
+                          onClick={() => alternarOrdenacaoTd('delta')}
+                          className="inline-flex w-full items-center justify-center gap-1"
+                        >
                           Dif. <span aria-hidden>{indicadorOrdenacaoTd('delta')}</span>
                         </button>
                       </th>
                     ) : null}
                     {mostrarColunaTendenciaFuturista ? (
                       <th
-                        className="td-resumo-table__cell td-resumo-table__cell--tend text-right font-medium"
+                        className="td-resumo-table__cell td-resumo-table__cell--tend text-center font-medium"
                         title="Variação percentual da diferença (planilha − Fed.22) em relação aos votos Fed.22 do TD (Δ ÷ Fed.22)"
                       >
-                        <button type="button" onClick={() => alternarOrdenacaoTd('tend')} className="inline-flex items-center gap-1">
+                        <button
+                          type="button"
+                          onClick={() => alternarOrdenacaoTd('tend')}
+                          className="inline-flex w-full items-center justify-center gap-1"
+                        >
                           %Δ <span aria-hidden>{indicadorOrdenacaoTd('tend')}</span>
                         </button>
                       </th>
@@ -3049,14 +3088,11 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({ visualPreset = 'default'
                           visualPreset === 'futuristic'
                             ? ({
                                 '--fut-row-bg': selecionado
-                                  ? cssFuturistTdLinhaSelecionada(territorioCor.fill, territorioCor.stroke)
+                                  ? cssFuturistTdLinhaSelecionadaSolid(territorioCor.fill)
                                   : hoverTdTabela === r.territorio
                                     ? 'rgba(255,106,0,0.12)'
                                     : 'rgba(18,24,33,0.72)',
-                                '--fut-row-selected': cssFuturistTdLinhaSelecionada(
-                                  territorioCor.fill,
-                                  territorioCor.stroke
-                                ),
+                                '--fut-row-selected': cssFuturistTdLinhaSelecionadaSolid(territorioCor.fill),
                                 '--fut-row-selected-edge': territorioCor.stroke,
                               } as React.CSSProperties)
                             : undefined
@@ -3165,7 +3201,7 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({ visualPreset = 'default'
                         {mostrarColunaDeltaFed22 ? (
                           <td
                             className={cn(
-                              'td-resumo-table__cell td-resumo-table__cell--delta text-right tabular-nums',
+                              'td-resumo-table__cell td-resumo-table__cell--delta text-center tabular-nums',
                               colunaInicioDesempenho === 'delta' && 'td-resumo-table__grupo-desempenho-start',
                               deltaTd > 0 && 'text-status-success',
                               deltaTd < 0 && 'text-status-danger',
@@ -3181,9 +3217,9 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({ visualPreset = 'default'
                           </td>
                         ) : null}
                         {mostrarColunaTendenciaFuturista && cenarioVotosExibicao ? (
-                          <td className="td-resumo-table__cell td-resumo-table__cell--tend text-right align-middle">
-                            <div className="flex justify-end py-0.5">
-                              <TdPctDeltaBarUmaLinha key={`${v22Td}-${deltaTd}`} v22={v22Td} delta={deltaTd} />
+                          <td className="td-resumo-table__cell td-resumo-table__cell--tend text-center align-middle tabular-nums">
+                            <div className="flex justify-center py-0.5">
+                              <TdPctDeltaCelula key={`${v22Td}-${deltaTd}`} v22={v22Td} delta={deltaTd} />
                             </div>
                           </td>
                         ) : null}
@@ -3282,7 +3318,7 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({ visualPreset = 'default'
                     {mostrarColunaDeltaFed22 ? (
                       <td
                         className={cn(
-                          'td-resumo-table__cell td-resumo-table__cell--delta text-right tabular-nums font-semibold',
+                          'td-resumo-table__cell td-resumo-table__cell--delta text-center tabular-nums font-semibold',
                           colunaInicioDesempenho === 'delta' && 'td-resumo-table__grupo-desempenho-start',
                           totaisRodapePainelTd.delta > 0 && 'text-status-success',
                           totaisRodapePainelTd.delta < 0 && 'text-status-danger',
@@ -3300,11 +3336,11 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({ visualPreset = 'default'
                     ) : null}
                     {mostrarColunaTendenciaFuturista ? (
                       <td
-                        className="td-resumo-table__cell td-resumo-table__cell--tend text-right align-middle"
+                        className="td-resumo-table__cell td-resumo-table__cell--tend text-center align-middle font-semibold tabular-nums"
                         title="Variação percentual agregada (total Δ ÷ total Fed.22 nos TDs)"
                       >
-                        <div className="flex justify-end py-0.5">
-                          <TdPctDeltaBarUmaLinha
+                        <div className="flex justify-center py-0.5">
+                          <TdPctDeltaCelula
                             key={`${totaisRodapePainelTd.somaFed22}-${totaisRodapePainelTd.delta}`}
                             v22={totaisRodapePainelTd.somaFed22}
                             delta={totaisRodapePainelTd.delta}
@@ -3876,14 +3912,19 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({ visualPreset = 'default'
                 Boolean(territorioFeedbackAtivo) &&
                 Boolean(insightPesquisaTd) &&
                 (insightPesquisaTd?.length ?? 0) > 0
-              if (!temFeedbackEstrategico && !temPesquisas) return null
+              const temTopPartidosFed22 =
+                Boolean(territorioFeedbackAtivo) &&
+                Boolean(linhasFeedbackTopPartidosFed22Td) &&
+                (linhasFeedbackTopPartidosFed22Td?.length ?? 0) > 0
+              if (!temFeedbackEstrategico && !temPesquisas && !temTopPartidosFed22) return null
+              const qtdCards = [temFeedbackEstrategico, temPesquisas, temTopPartidosFed22].filter(Boolean).length
               const cardClass =
-                'min-w-0 flex-1 rounded-xl border border-[rgba(255,255,255,0.07)] bg-[rgba(16,22,31,0.92)] p-3'
+                'min-w-0 flex-1 basis-[min(100%,17.5rem)] rounded-xl border border-[rgba(255,255,255,0.07)] bg-[rgba(16,22,31,0.92)] p-3'
               return (
                 <div
                   className={cn(
                     'mt-3 flex gap-3',
-                    temFeedbackEstrategico && temPesquisas ? 'flex-row items-stretch' : 'flex-col'
+                    qtdCards >= 2 ? 'flex-row flex-wrap items-stretch' : 'flex-col'
                   )}
                 >
                   {temFeedbackEstrategico && feedbackEstrategicoTd ? (
@@ -3915,6 +3956,26 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({ visualPreset = 'default'
                             className="text-[11px] leading-snug text-text-primary"
                           >
                             {nota}
+                          </p>
+                        ))}
+                      </div>
+                    </div>
+                  ) : null}
+                  {temTopPartidosFed22 && territorioFeedbackAtivo && linhasFeedbackTopPartidosFed22Td ? (
+                    <div className={cardClass}>
+                      <p className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-text-secondary">
+                        Fed. 2022 · Top 5 partidos · {territorioFeedbackAtivo}
+                      </p>
+                      <p className="mb-2 text-[10px] leading-snug text-text-muted">
+                        Soma dos votos nominais de todos os deputados federais da legenda nos municípios do TD.
+                      </p>
+                      <div className="space-y-1.5">
+                        {linhasFeedbackTopPartidosFed22Td.map((linha, idx) => (
+                          <p
+                            key={`${territorioFeedbackAtivo}-partido-${idx}`}
+                            className="text-[11px] leading-snug text-text-primary"
+                          >
+                            {linha}
                           </p>
                         ))}
                       </div>

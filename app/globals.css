@@ -815,7 +815,7 @@ table.td-resumo-table--premium .td-resumo-table__cell--delta {
 table.td-resumo-table--premium .td-resumo-table__delta-inner {
   display: inline-flex;
   align-items: baseline;
-  justify-content: flex-end;
+  justify-content: center;
   gap: 0.15rem;
 }
 
