@@ -200,6 +200,13 @@ const COCKPIT_PAGE_ACTIVE_ITEM =
 const COCKPIT_PAGE_ACTIVE_CHILD_PILL =
   'border border-white/20 bg-[linear-gradient(135deg,#062e52_0%,#0b4a7a_52%,#1368a8_100%)] !text-white shadow-[0_8px_24px_rgba(6,46,82,0.28)] hover:shadow-[0_10px_28px_rgba(6,46,82,0.38)]'
 
+/** Item ativo na rota mapa-tds (shell futurista) — neutro grafite, sem borda azul. */
+const MAPA_TDS_FUT_ACTIVE_ITEM =
+  'border-0 bg-[rgba(255,255,255,0.08)] !text-[#E6EDF3] shadow-none'
+
+const MAPA_TDS_FUT_ACTIVE_CHILD_PILL =
+  'border-0 bg-[rgba(255,255,255,0.06)] !text-[#E6EDF3] shadow-none'
+
 function resolveMenuIcon(iconName: string, cockpit: boolean): LucideIcon {
   const map = cockpit ? cockpitIconMap : iconMap
   return map[iconName] ?? iconMap[iconName] ?? LayoutDashboard
@@ -241,6 +248,10 @@ export function Sidebar() {
   const { theme } = useTheme()
 
   const isCockpit = theme === 'cockpit'
+
+  const mapaTdsFuturisticShell = pathname.startsWith('/dashboard/territorio/mapa-tds')
+  const cockpitActiveItemClass = mapaTdsFuturisticShell ? MAPA_TDS_FUT_ACTIVE_ITEM : COCKPIT_PAGE_ACTIVE_ITEM
+  const cockpitActiveChildClass = mapaTdsFuturisticShell ? MAPA_TDS_FUT_ACTIVE_CHILD_PILL : COCKPIT_PAGE_ACTIVE_CHILD_PILL
 
   const menuLabel = (id: string, fallback: string) =>
     isCockpit ? (COCKPIT_MENU_LABEL[id] ?? fallback) : fallback
@@ -285,6 +296,7 @@ export function Sidebar() {
       {/* Mobile Menu Button */}
       <button
         onClick={toggleMobile}
+        data-map-tds-futuristic-navbtn={mapaTdsFuturisticShell ? 'true' : undefined}
         className={cn(
           'fixed top-4 left-4 z-[110] lg:hidden p-2 rounded-full transition-premium',
           isCockpit
@@ -308,12 +320,13 @@ export function Sidebar() {
 
       {/* Sidebar */}
       <aside
+        data-map-tds-futuristic-sidebar={mapaTdsFuturisticShell ? 'true' : undefined}
         className={cn(
-          'fixed top-0 left-0 h-full w-64 border-r border-card transition-all duration-300 ease-out overflow-visible',
-          /* Mobile: painel opaco e acima do conteúdo (evita texto do dashboard “vazando” no menu) */
+          'fixed top-0 left-0 h-full w-64 transition-all duration-300 ease-out overflow-visible',
+          mapaTdsFuturisticShell
+            ? 'border-r-0 bg-[#0D1219]'
+            : cn('border-r border-card bg-[rgb(var(--bg-sidebar))]', isCockpit && 'sidebar-cockpit-shell'),
           'max-lg:z-[100] max-lg:shadow-2xl lg:z-40',
-          'bg-[rgb(var(--bg-sidebar))]',
-          isCockpit && 'sidebar-cockpit-shell',
           'lg:translate-x-0',
           mobileOpen ? 'translate-x-0' : '-translate-x-full',
           collapsed ? 'lg:w-20' : 'lg:w-64'
@@ -322,15 +335,16 @@ export function Sidebar() {
       >
         <div
           className={cn(
-            'flex h-full min-h-0 flex-col bg-[rgb(var(--bg-sidebar))]',
-            isCockpit && 'bg-transparent'
+            'flex h-full min-h-0 flex-col',
+            mapaTdsFuturisticShell ? 'bg-[#0D1219]' : 'bg-[rgb(var(--bg-sidebar))]',
+            !mapaTdsFuturisticShell && isCockpit && 'bg-transparent'
           )}
         >
           {/* Logo */}
           <div
             className={cn(
               'h-16 flex items-center justify-between px-4 border-b',
-              isCockpit ? 'border-white/60' : 'border-card'
+              mapaTdsFuturisticShell ? 'border-[rgba(255,255,255,0.06)]' : isCockpit ? 'border-white/60' : 'border-card'
             )}
           >
             {(!collapsed || mobileOpen) && (
@@ -338,9 +352,11 @@ export function Sidebar() {
                 <div
                   className={cn(
                     'flex h-8 w-8 items-center justify-center rounded-lg text-sm font-bold text-white shadow-sm',
-                    isCockpit
-                      ? 'bg-gradient-to-br from-[#062e52] via-[#0b4a7a] to-[#1368a8]'
-                      : 'bg-accent-gold'
+                    mapaTdsFuturisticShell
+                      ? 'bg-[#FF6A00]'
+                      : isCockpit
+                        ? 'bg-gradient-to-br from-[#062e52] via-[#0b4a7a] to-[#1368a8]'
+                        : 'bg-accent-gold'
                   )}
                 >
                   <span>C</span>
@@ -375,7 +391,12 @@ export function Sidebar() {
           </div>
 
           {/* Menu Items */}
-          <nav className="flex-1 overflow-y-auto overflow-x-visible py-4 px-2 scrollbar-hide">
+          <nav
+            className={cn(
+              'flex-1 overflow-y-auto overflow-x-visible py-4 px-2 scrollbar-hide',
+              mapaTdsFuturisticShell && 'mapa-tds-futuristic-sidebar-nav'
+            )}
+          >
             <ul className="space-y-1">
               {visibleItems.map((item: SidebarMenuItem) => {
                 const Icon = resolveMenuIcon(item.icon, isCockpit)
@@ -414,7 +435,7 @@ export function Sidebar() {
                             'transition-all duration-200 ease-out',
                             !(isCockpit && isActive) && 'hover:bg-accent-gold-soft hover:text-text-primary',
                             isActive && !isCockpit && 'bg-accent-gold-soft text-text-primary shadow-sm',
-                            isCockpit && isActive && COCKPIT_PAGE_ACTIVE_ITEM
+                            isCockpit && isActive && cockpitActiveItemClass
                           )}
                         >
                           {isActive && !isCockpit && (
@@ -476,7 +497,8 @@ export function Sidebar() {
                               className={cn(
                                 'cockpit-glass mt-2 flex flex-wrap items-center px-3 py-2',
                                 'rounded-full text-[11px] text-text-secondary',
-                                'shadow-[0_4px_20px_rgba(15,70,120,0.08)] border-white/80'
+                                'shadow-[0_4px_20px_rgba(15,70,120,0.08)] border-white/80',
+                                mapaTdsFuturisticShell && 'mapa-tds-futuristic-submenu-pill'
                               )}
                             >
                               {item.children.map((child, idx) => {
@@ -498,7 +520,7 @@ export function Sidebar() {
                                               isCockpit
                                                 ? cn(
                                                     'rounded-lg px-2 py-1 transition-all',
-                                                    COCKPIT_PAGE_ACTIVE_CHILD_PILL
+                                                    cockpitActiveChildClass
                                                   )
                                                 : 'text-[rgb(15,45,74)]'
                                             )
@@ -551,7 +573,7 @@ export function Sidebar() {
                           'transition-all duration-200 ease-out',
                           !(isCockpit && isActive) && 'hover:bg-accent-gold-soft hover:text-text-primary',
                           isActive && !isCockpit && 'bg-accent-gold-soft text-text-primary shadow-sm',
-                          isCockpit && isActive && COCKPIT_PAGE_ACTIVE_ITEM
+                          isCockpit && isActive && cockpitActiveItemClass
                         )}
                       >
                         {isActive && !isCockpit && (
@@ -606,15 +628,32 @@ export function Sidebar() {
                     
                     {/* Tooltip quando sidebar está recolhida - usando fixed para sair do overflow */}
                     {collapsed && !mobileOpen && tooltipPos && (
-                      <div className="fixed left-24 px-3 py-2 text-xs font-semibold rounded-lg whitespace-nowrap z-[200] shadow-lg" style={{
-                        top: `${tooltipPos.top}px`,
-                        transform: 'translateY(-50%)',
-                        animation: 'fadeIn 0.2s ease-out',
-                        backgroundColor: 'rgb(var(--text-primary))',
-                        color: 'rgb(var(--bg-surface))',
-                      }}>
+                      <div
+                        className={cn(
+                          'fixed left-24 px-3 py-2 text-xs font-semibold rounded-lg whitespace-nowrap z-[200] shadow-lg',
+                          mapaTdsFuturisticShell && 'mapa-tds-futuristic-nav-tooltip'
+                        )}
+                        style={{
+                          top: `${tooltipPos.top}px`,
+                          transform: 'translateY(-50%)',
+                          animation: 'fadeIn 0.2s ease-out',
+                          ...(mapaTdsFuturisticShell
+                            ? {}
+                            : {
+                                backgroundColor: 'rgb(var(--text-primary))',
+                                color: 'rgb(var(--bg-surface))',
+                              }),
+                        }}
+                      >
                         {menuLabel(item.id, item.label)}
-                        <div className="absolute right-full top-1/2 -translate-y-1/2 border-4 border-transparent" style={{ borderRightColor: 'rgb(var(--text-primary))' }} />
+                        <div
+                          className="absolute right-full top-1/2 -translate-y-1/2 border-4 border-transparent"
+                          style={
+                            mapaTdsFuturisticShell
+                              ? undefined
+                              : { borderRightColor: 'rgb(var(--text-primary))' }
+                          }
+                        />
                       </div>
                     )}
                   </li>
@@ -626,8 +665,10 @@ export function Sidebar() {
           {/* Ações rápidas: Splash + Tema */}
           <div
             className={cn(
-              'px-2 py-3 border-t space-y-1',
-              isCockpit ? 'border-white/50' : 'border-border-card'
+              'px-2 py-3 space-y-1',
+              mapaTdsFuturisticShell
+                ? 'border-t border-[rgba(255,255,255,0.06)]'
+                : cn('border-t', isCockpit ? 'border-white/50' : 'border-border-card')
             )}
           >
             <button
@@ -663,6 +704,7 @@ export function Sidebar() {
       {/* Overlay for mobile */}
       {mobileOpen && (
         <div
+          data-map-tds-futuristic-overlay={mapaTdsFuturisticShell ? 'true' : undefined}
           className="fixed inset-0 z-[90] bg-black/50 lg:hidden"
           aria-hidden
           onClick={() => setMobileOpen(false)}

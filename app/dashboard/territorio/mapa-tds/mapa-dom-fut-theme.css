@@ -1,0 +1,877 @@
+/**
+ * Tema visual "futuristic" — Mapa de Dominância Eleitoral (/dashboard/territorio/mapa-tds).
+ * Paleta: Base Neutra + Laranja Estratégico. v3 — arquivo renomeado para forçar recompile
+ * - `.theme-futuristic`: conteúdo da página (mapa + painel).
+ * - `[data-map-tds-futuristic-*]`: shell do dashboard (layout, sidebar, header).
+ */
+
+/* =============================================================================
+   TOKENS
+   ============================================================================= */
+
+.theme-futuristic {
+  --td-fut-bg-deep:         #0B0F14;
+  --td-fut-bg-mid:          #10161F;
+  --td-fut-bg-card:         #121821;
+  --td-fut-glass:           rgba(16, 22, 31, 0.92);
+  --td-fut-border:          rgba(255, 255, 255, 0.06);
+  --td-fut-border-strong:   rgba(255, 255, 255, 0.10);
+  --td-fut-divider:         rgba(255, 255, 255, 0.04);
+  --td-fut-text:            #E6EDF3;
+  --td-fut-text-sec:        #AAB4C0;
+  --td-fut-text-weak:       #7F8A96;
+  --td-fut-muted:           #AAB4C0;
+  --td-fut-hover:           rgba(255, 255, 255, 0.03);
+  --td-fut-row-selected:    rgba(255, 106, 0, 0.10);
+  --td-fut-accent:          #FF6A00;
+  --td-fut-accent-h:        #FF8A2A;
+  --td-fut-green:           #22C55E;
+  --td-fut-red:             #EF4444;
+  --td-fut-amber:           #F59E0B;
+  --td-fut-blue:            #3B82F6;
+}
+
+/* =============================================================================
+   PLACEHOLDER / LOADING
+   ============================================================================= */
+
+.theme-futuristic .mapa-tds-placeholder {
+  background: var(--td-fut-bg-mid) !important;
+  box-shadow: inset 0 0 0 1px var(--td-fut-border);
+}
+
+/* Título da página (page.tsx) */
+.theme-futuristic .td-fut-page-head__title {
+  margin: 0;
+  font-size: 1.75rem;
+  font-weight: 700;
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+  color: var(--td-fut-text);
+}
+
+@media (min-width: 640px) {
+  .theme-futuristic .td-fut-page-head__title {
+    font-size: 2.125rem;
+  }
+}
+
+.theme-futuristic .td-fut-page-head__subtitle {
+  margin: 0.35rem 0 0;
+  font-size: 1rem;
+  font-weight: 500;
+  color: var(--td-fut-text-sec);
+}
+
+.theme-futuristic .td-resumo-table__peso-eleitoral-bar--fut {
+  opacity: 0.42 !important;
+}
+
+.theme-futuristic .td-peso-eleitores-marker--focado .td-peso-eleitores-card {
+  border-color: var(--td-focus-stroke, #ff6a00) !important;
+  box-shadow:
+    0 0 0 1px var(--td-focus-ring, rgba(255, 106, 0, 0.2)),
+    0 6px 20px rgba(0, 0, 0, 0.45) !important;
+  transform: scale(1.04);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+}
+
+/* =============================================================================
+   BARRA DE SISTEMA
+   ============================================================================= */
+
+.theme-futuristic .td-mapa-statusbar {
+  margin: 10px 12px 0 12px;
+  padding: 10px 16px;
+  color: var(--td-fut-text-sec);
+  background: var(--td-fut-bg-mid);
+  border: 1px solid var(--td-fut-border);
+  border-radius: 14px;
+}
+
+.theme-futuristic .td-mapa-statusbar__row {
+  gap: 0 12px;
+}
+
+.theme-futuristic .td-mapa-statusbar__row > span:not(:first-child) {
+  border-left: 1px solid var(--td-fut-border);
+  padding-left: 12px;
+}
+
+.theme-futuristic .td-mapa-statusbar__lead {
+  color: var(--td-fut-text);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  font-size: 0.625rem;
+  font-weight: 600;
+}
+
+.theme-futuristic .td-mapa-statusbar__dot {
+  background: var(--td-fut-green);
+  box-shadow: 0 0 0 2px rgba(34, 197, 94, 0.2);
+}
+
+.theme-futuristic .td-mapa-statusbar__meta,
+.theme-futuristic .td-mapa-statusbar__meta strong {
+  color: var(--td-fut-text-sec);
+}
+
+.theme-futuristic .td-mapa-statusbar__meta strong {
+  color: var(--td-fut-text);
+  font-weight: 600;
+}
+
+.theme-futuristic .td-mapa-statusbar__delta {
+  color: var(--td-fut-text-sec);
+}
+
+.theme-futuristic .td-mapa-statusbar__delta--up {
+  color: var(--td-fut-green);
+}
+
+.theme-futuristic .td-mapa-statusbar__delta--down {
+  color: var(--td-fut-red);
+}
+
+.theme-futuristic .td-mapa-statusbar__warn {
+  color: var(--td-fut-amber);
+}
+
+.theme-futuristic .td-mapa-statusbar__fut-meta {
+  font-weight: 500;
+  color: var(--td-fut-text-weak);
+}
+
+.theme-futuristic .td-mapa-statusbar__fut-meta strong {
+  color: var(--td-fut-text-sec);
+  font-weight: 600;
+}
+
+/* =============================================================================
+   ÁREA DO MAPA
+   ============================================================================= */
+
+.theme-futuristic .td-mapa-vp-halo {
+  background: var(--td-fut-bg-mid) !important;
+  border: 1px solid var(--td-fut-border);
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.22), 0 12px 28px rgba(0, 0, 0, 0.28);
+  transition: box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+.theme-futuristic .leaflet-td-pi-host {
+  background: var(--td-fut-bg-mid) !important;
+}
+
+/* halo ambiente removido */
+.theme-futuristic .td-mapa-vp-halo::before {
+  background: none;
+}
+
+.theme-futuristic .leaflet-bar {
+  border-radius: 10px;
+  overflow: hidden;
+  border: 1px solid var(--td-fut-border) !important;
+}
+
+.theme-futuristic .leaflet-bar a {
+  background: var(--td-fut-bg-card);
+  color: var(--td-fut-text);
+  border-color: var(--td-fut-border);
+}
+
+.theme-futuristic .leaflet-bar a:hover {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: var(--td-fut-border-strong);
+}
+
+.theme-futuristic .leaflet-control-attribution {
+  background: rgba(11, 15, 20, 0.85) !important;
+  color: var(--td-fut-muted) !important;
+}
+
+.theme-futuristic .leaflet-control-attribution a {
+  color: rgba(127, 138, 150, 0.85) !important;
+}
+
+/* =============================================================================
+   POLÍGONOS DO MAPA
+   ============================================================================= */
+
+.theme-futuristic path.td-mun-poly {
+  transition:
+    fill 0.2s ease-out,
+    stroke 0.2s ease-out,
+    fill-opacity 0.2s ease-out,
+    filter 0.2s ease-out;
+}
+
+/* hover na tabela → laranja no polígono */
+.theme-futuristic path.td-mun-poly--fut-hover {
+  filter: brightness(1.18) saturate(1.08);
+}
+
+/* maior peso eleitoral — sem glow, só leve brilho */
+.theme-futuristic path.td-mun-poly--fut-max {
+  filter: brightness(1.06);
+}
+
+/* risco delta — levemente mais escuro */
+.theme-futuristic path.td-mun-poly--fut-risk {
+  filter: brightness(0.9);
+}
+
+/* TD selecionado — sutil glow laranja (estado interativo) */
+.theme-futuristic path.td-mun-poly--fut-selected-td {
+  filter: drop-shadow(0 0 6px rgba(255, 106, 0, 0.45));
+}
+
+/* cidade destacada */
+.theme-futuristic path.td-mun-poly--fut-cidade {
+  filter: drop-shadow(0 0 5px rgba(251, 191, 36, 0.3));
+}
+
+/* dim: outros TDs quando um está selecionado */
+.theme-futuristic path.td-mun-poly--fut-dim {
+  filter: brightness(0.55) saturate(0.4);
+}
+
+/* =============================================================================
+   MARCADORES DE PESO (cards flutuantes)
+   ============================================================================= */
+
+.theme-futuristic .leaflet-div-icon.td-eleitores-peso-marker .td-peso-eleitores-card {
+  opacity: 0.84;
+  transition: opacity 0.18s ease, background 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255,255,255,0.04) inset !important;
+}
+
+.theme-futuristic .leaflet-div-icon.td-eleitores-peso-marker:hover .td-peso-eleitores-card {
+  opacity: 1;
+}
+
+/* hover via tabela → laranja estratégico */
+.theme-futuristic .td-eleitores-peso-marker.td-peso-eleitores-marker--td-hover .td-peso-eleitores-card {
+  background: var(--td-hover-bg, rgba(255, 106, 0, 0.14)) !important;
+  border-color: var(--td-hover-stroke, #FF6A00) !important;
+  opacity: 1 !important;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 106, 0, 0.15) inset !important;
+}
+
+/* =============================================================================
+   CARDS DE ESTATÍSTICAS (rodapé do painel)
+   ============================================================================= */
+
+.theme-futuristic .td-stat-card {
+  transition: background 0.18s ease, border-color 0.18s ease;
+}
+
+.theme-futuristic .td-stat-card:hover {
+  background: rgba(18, 24, 33, 0.95) !important;
+  border-color: var(--td-fut-border-strong) !important;
+}
+
+/* =============================================================================
+   PAINEL LATERAL (aside)
+   ============================================================================= */
+
+.theme-futuristic aside[aria-label='Mapa de dominância eleitoral por território de desenvolvimento'] {
+  color: var(--td-fut-text);
+  border-radius: 18px;
+  padding: 1.15rem 1.1rem !important;
+  background: var(--td-fut-bg-mid);
+  border: 1px solid var(--td-fut-border);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.22);
+}
+
+.theme-futuristic aside[aria-label='Mapa de dominância eleitoral por território de desenvolvimento'] h2 {
+  color: var(--td-fut-text) !important;
+  font-weight: 600;
+  font-size: 1.125rem;
+  letter-spacing: 0.02em;
+  text-transform: none;
+}
+
+.theme-futuristic aside[aria-label='Mapa de dominância eleitoral por território de desenvolvimento'] p,
+.theme-futuristic aside[aria-label='Mapa de dominância eleitoral por território de desenvolvimento'] label span {
+  color: var(--td-fut-text-weak) !important;
+  line-height: 1.55;
+}
+
+.theme-futuristic aside[aria-label='Mapa de dominância eleitoral por território de desenvolvimento'] select {
+  background: var(--td-fut-bg-deep) !important;
+  border-color: var(--td-fut-border) !important;
+  color: var(--td-fut-text) !important;
+  border-radius: 12px;
+  min-height: 2.25rem;
+}
+
+.theme-futuristic aside[aria-label='Mapa de dominância eleitoral por território de desenvolvimento'] button {
+  border-color: var(--td-fut-border) !important;
+  background: var(--td-fut-bg-card) !important;
+  color: var(--td-fut-text) !important;
+}
+
+.theme-futuristic aside[aria-label='Mapa de dominância eleitoral por território de desenvolvimento'] .text-text-muted,
+.theme-futuristic aside[aria-label='Mapa de dominância eleitoral por território de desenvolvimento'] .text-text-secondary {
+  color: var(--td-fut-text-sec) !important;
+}
+
+/* =============================================================================
+   TABELA PREMIUM
+   ============================================================================= */
+
+.theme-futuristic table.td-resumo-table--premium {
+  border-collapse: separate;
+  border-spacing: 0 6px;
+}
+
+/* Cabeçalho — sem preenchimento (theme.css aplica fundo em todo thead) */
+.theme-futuristic table.td-resumo-table thead {
+  background: transparent !important;
+  background-color: transparent !important;
+  border-bottom: none !important;
+}
+
+.theme-futuristic table.td-resumo-table thead tr.td-resumo-table__row--header th {
+  color: var(--td-fut-text-sec) !important;
+  font-weight: 600;
+  font-size: 0.75rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  background: rgba(255, 255, 255, 0.03) !important;
+  background-color: rgba(255, 255, 255, 0.03) !important;
+  border-bottom: 1px solid var(--td-fut-border);
+  padding-top: 0.65rem !important;
+  padding-bottom: 0.65rem !important;
+}
+
+.theme-futuristic table.td-resumo-table--premium tbody td,
+.theme-futuristic table.td-resumo-table--futuristic tbody td {
+  font-weight: 500;
+  font-size: 0.875rem;
+  color: var(--td-fut-text) !important;
+}
+
+.theme-futuristic table.td-resumo-table--premium .font-medium {
+  font-weight: 500 !important;
+}
+
+.theme-futuristic table.td-resumo-table--premium tbody tr:nth-child(odd) td,
+.theme-futuristic table.td-resumo-table--premium tbody tr:nth-child(even) td,
+.theme-futuristic table.td-resumo-table--futuristic tbody tr td {
+  background: var(--fut-row-bg, rgba(18, 24, 33, 0.72)) !important;
+  border-top: 1px solid rgba(255, 255, 255, 0.04);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.theme-futuristic table.td-resumo-table--premium tbody tr td:first-child {
+  border-radius: 8px 0 0 8px;
+  border-left: 1px solid var(--td-fut-border);
+}
+
+.theme-futuristic table.td-resumo-table--premium tbody tr td:last-child {
+  border-radius: 0 8px 8px 0;
+  border-right: 1px solid var(--td-fut-border);
+}
+
+.theme-futuristic table.td-resumo-table--premium tbody tr.td-resumo-table__row--data {
+  transition: transform 0.18s ease, filter 0.18s ease;
+}
+
+/* hover direto */
+.theme-futuristic table.td-resumo-table--premium tbody tr.td-resumo-table__row--data:hover td {
+  background: rgba(255, 106, 0, 0.08) !important;
+}
+
+.theme-futuristic table.td-resumo-table--premium tbody tr.td-resumo-table__row--hover-map td {
+  background: rgba(255, 106, 0, 0.1) !important;
+}
+
+.theme-futuristic table.td-resumo-table--premium tbody tr.td-resumo-table__row--selected td {
+  background: var(--fut-row-selected, var(--td-fut-row-selected)) !important;
+}
+
+.theme-futuristic table.td-resumo-table--premium tbody tr.td-resumo-table__row--hover-map td {
+  color: #0b0f14 !important;
+}
+
+.theme-futuristic table.td-resumo-table--premium tbody tr.td-resumo-table__row--hover-map .text-text-secondary {
+  color: rgba(11, 15, 20, 0.78) !important;
+}
+
+.theme-futuristic table.td-resumo-table--premium tbody tr.td-resumo-table__row--hover-map td.td-resumo-table__cell--territorio,
+.theme-futuristic table.td-resumo-table--premium tbody tr.td-resumo-table__row--hover-map td.td-resumo-table__cell--territorio .text-text-primary {
+  color: #0b0f14 !important;
+}
+
+.theme-futuristic
+  table.td-resumo-table--premium
+  tbody
+  tr.td-resumo-table__row--hover-map
+  .td-resumo-table__expand-btn {
+  background: #0b0f14 !important;
+  border-color: rgba(11, 15, 20, 0.75) !important;
+  color: #e6edf3 !important;
+}
+
+.theme-futuristic table.td-resumo-table--premium tbody tr.td-resumo-table__row--selected td {
+  color: var(--td-fut-text) !important;
+}
+
+.theme-futuristic table.td-resumo-table--premium tbody tr.td-resumo-table__row--selected .text-text-secondary {
+  color: var(--td-fut-text-sec) !important;
+}
+
+.theme-futuristic table.td-resumo-table--premium tbody tr.td-resumo-table__row--selected td:first-child {
+  box-shadow: inset 3px 0 0 0 var(--fut-row-selected-edge, var(--td-fut-accent));
+}
+
+/* spotlights sutis */
+.theme-futuristic table.td-resumo-table--premium tbody tr.td-resumo-table__row--spotlight-peso td {
+  background: rgba(255, 106, 0, 0.04) !important;
+}
+
+.theme-futuristic table.td-resumo-table--premium tbody tr.td-resumo-table__row--spotlight-crescimento td {
+  background: rgba(34, 197, 94, 0.05) !important;
+}
+
+.theme-futuristic table.td-resumo-table--premium tbody tr.td-resumo-table__row--spotlight-risco td {
+  background: rgba(239, 68, 68, 0.05) !important;
+}
+
+.theme-futuristic table.td-resumo-table--premium .td-resumo-table__cell--fed26 {
+  color: var(--td-fut-text) !important;
+  font-weight: 700;
+  font-size: 1.05rem;
+}
+
+.theme-futuristic table.td-resumo-table--premium .td-resumo-table__cell--lid {
+  color: var(--td-fut-text) !important;
+  font-weight: 600;
+}
+
+.theme-futuristic table.td-resumo-table--premium .td-resumo-table__cell--fed22 {
+  color: var(--td-fut-text-sec) !important;
+  font-weight: 500;
+  text-align: center !important;
+}
+
+.theme-futuristic table.td-resumo-table th.td-resumo-table__cell--estrategia,
+.theme-futuristic table.td-resumo-table td.td-resumo-table__cell--estrategia {
+  text-align: center !important;
+}
+
+.theme-futuristic table.td-resumo-table--premium .td-resumo-table__rank--top3 {
+  color: var(--td-fut-accent-h) !important;
+  font-weight: 600;
+}
+
+.theme-futuristic table.td-resumo-table--premium .td-resumo-table__rank--first {
+  color: var(--td-fut-accent) !important;
+  font-weight: 700;
+}
+
+.theme-futuristic table.td-resumo-table--premium .text-status-success {
+  color: var(--td-fut-green) !important;
+  font-weight: 600;
+}
+
+.theme-futuristic table.td-resumo-table--premium .text-status-danger {
+  color: var(--td-fut-red) !important;
+  font-weight: 600;
+}
+
+.theme-futuristic table.td-resumo-table--premium .text-text-secondary {
+  color: var(--td-fut-text-sec) !important;
+}
+
+.theme-futuristic table.td-resumo-table--premium .text-text-primary,
+.theme-futuristic table.td-resumo-table--premium .font-medium.text-text-primary {
+  color: var(--td-fut-text) !important;
+}
+
+/* =============================================================================
+   DRILLDOWN (Municípios + Lideranças) — mesma linguagem do nível TD
+   ============================================================================= */
+
+.theme-futuristic .td-fut-drill {
+  color: var(--td-fut-text);
+}
+
+.theme-futuristic .td-fut-drill .td-fut-subsection-title {
+  color: var(--td-fut-text-sec) !important;
+  font-size: 0.75rem;
+  letter-spacing: 0.04em;
+}
+
+.theme-futuristic .td-fut-drill .td-fut-grid-header {
+  color: var(--td-fut-text-sec) !important;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  background: rgba(255, 255, 255, 0.03);
+  border-bottom-color: var(--td-fut-border) !important;
+  border-radius: 8px;
+  padding: 0.5rem 0.5rem 0.55rem;
+}
+
+.theme-futuristic .td-fut-drill .td-fut-grid-row {
+  color: var(--td-fut-text-sec) !important;
+  font-size: 0.875rem;
+  font-weight: 500;
+  background: rgba(18, 24, 33, 0.72);
+  border-top: 1px solid rgba(255, 255, 255, 0.04);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  border-radius: 8px;
+  padding: 0.38rem 0.5rem 0.44rem;
+  transition: background-color 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease;
+}
+
+.theme-futuristic .td-fut-drill .td-fut-grid-row--interactive:hover {
+  background: var(--td-fut-hover);
+}
+
+.theme-futuristic .td-fut-drill .td-fut-grid-row--interactive:focus-visible {
+  box-shadow: 0 0 0 2px rgba(255, 106, 0, 0.2);
+}
+
+.theme-futuristic .td-fut-drill .td-fut-grid-row--selected {
+  background: var(--td-fut-row-selected) !important;
+  border-color: rgba(255, 106, 0, 0.35) !important;
+  box-shadow: inset 3px 0 0 var(--td-fut-accent);
+}
+
+.theme-futuristic .td-fut-drill .td-fut-grid-primary {
+  color: var(--td-fut-text) !important;
+  font-weight: 600;
+}
+
+.theme-futuristic .td-fut-drill .text-text-secondary {
+  color: var(--td-fut-text-sec) !important;
+}
+
+.theme-futuristic .td-fut-drill .text-text-muted {
+  color: var(--td-fut-text-weak) !important;
+}
+
+.theme-futuristic .td-fut-drill .text-status-success {
+  color: var(--td-fut-green) !important;
+  font-weight: 600;
+}
+
+.theme-futuristic .td-fut-drill .text-status-danger {
+  color: var(--td-fut-red) !important;
+  font-weight: 600;
+}
+
+.theme-futuristic .td-fut-drill .td-fut-grid-foot {
+  color: var(--td-fut-text-weak) !important;
+  font-size: 0.75rem;
+}
+
+/* ── badges de classificação ─────────────────────────────────────────────── */
+
+/* Classes explícitas usadas pelo CONFIG_FUTURISTIC do ClassificacaoTdBadge */
+.td-badge-fut {
+  border-style: solid;
+  border-width: 1px;
+  border-radius: 9999px;
+}
+
+.td-badge-fut--estrategico {
+  border-color: rgba(255, 106, 0, 0.5) !important;
+  background-color: rgba(255, 106, 0, 0.1) !important;
+  color: #ffb27a !important;
+}
+
+.td-badge-fut--atencao {
+  border-color: rgba(245, 158, 11, 0.45) !important;
+  background-color: rgba(245, 158, 11, 0.1) !important;
+  color: #f4c26b !important;
+}
+
+.td-badge-fut--baixo {
+  border-color: rgba(255, 255, 255, 0.1) !important;
+  background-color: rgba(255, 255, 255, 0.04) !important;
+  color: #aab4c0 !important;
+}
+
+/* =============================================================================
+   SPARKLINES
+   ============================================================================= */
+
+.theme-futuristic .td-fut-sparkline {
+  display: block;
+  width: 100%;
+  max-width: 3.25rem;
+  height: 1.05rem;
+}
+
+.theme-futuristic .td-fut-sparkline__path {
+  fill: none;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-dasharray: 48;
+  stroke-dashoffset: 48;
+  animation: td-fut-spark-draw 0.65s ease-out 0.15s forwards;
+}
+
+@keyframes td-fut-spark-draw {
+  to { stroke-dashoffset: 0; }
+}
+
+.theme-futuristic .td-fut-sparkline--up .td-fut-sparkline__path {
+  stroke: var(--td-fut-green);
+}
+
+.theme-futuristic .td-fut-sparkline--down .td-fut-sparkline__path {
+  stroke: var(--td-fut-red);
+}
+
+.theme-futuristic .td-fut-sparkline--flat .td-fut-sparkline__path {
+  stroke: var(--td-fut-text-weak);
+}
+
+/* =============================================================================
+   SWATCHES / INDICADORES
+   ============================================================================= */
+
+.theme-futuristic .td-fut-td-swatch {
+  /* herda backgroundColor inline do JS (cor do TD) */
+  box-shadow: none;
+}
+
+/* =============================================================================
+   OVERLAYS
+   ============================================================================= */
+
+.theme-futuristic .td-mapa-fut-loading {
+  background: rgba(11, 15, 20, 0.9) !important;
+  backdrop-filter: blur(8px);
+}
+
+.theme-futuristic .td-mapa-fut-loading .text-text-secondary {
+  color: var(--td-fut-muted) !important;
+}
+
+.theme-futuristic .td-mapa-fut-loading .bg-accent-gold\/35 {
+  background-color: rgba(255, 106, 0, 0.28) !important;
+}
+
+.theme-futuristic .td-mapa-fut-error {
+  background: rgba(11, 15, 20, 0.96) !important;
+}
+
+.theme-futuristic .td-mapa-fut-viewport-bg {
+  background: transparent !important;
+}
+
+/* =============================================================================
+   TOOLTIP DE MUNICÍPIO
+   ============================================================================= */
+
+.theme-futuristic .leaflet-tooltip.td-municipio-tooltip {
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  background: var(--td-fut-bg-card) !important;
+  color: var(--td-fut-text) !important;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.45) !important;
+}
+
+.theme-futuristic .leaflet-tooltip.td-municipio-tooltip::before {
+  border-top-color: var(--td-fut-bg-card) !important;
+}
+
+/* =============================================================================
+   COLUNA TENDÊNCIA
+   ============================================================================= */
+
+.theme-futuristic table.td-resumo-table th.td-resumo-table__cell--tend,
+.theme-futuristic table.td-resumo-table td.td-resumo-table__cell--tend {
+  width: 3.35rem;
+  max-width: 3.75rem;
+  padding-left: 0.12rem;
+  padding-right: 0.12rem;
+}
+
+/* =============================================================================
+   RECHARTS (gráficos no painel)
+   ============================================================================= */
+
+.theme-futuristic aside[aria-label='Mapa de dominância eleitoral por território de desenvolvimento'] .recharts-cartesian-grid line {
+  stroke: rgba(255, 255, 255, 0.05);
+}
+
+.theme-futuristic aside[aria-label='Mapa de dominância eleitoral por território de desenvolvimento'] .recharts-text {
+  fill: var(--td-fut-text-sec) !important;
+}
+
+/* =============================================================================
+   SHELL — layout + sidebar + header (data-* aplicados no layout.tsx)
+   ============================================================================= */
+
+[data-map-tds-futuristic-shell='true'] {
+  background: var(--td-fut-bg-deep, #0B0F14);
+}
+
+[data-map-tds-futuristic-main='true'] { background: transparent; }
+[data-map-tds-futuristic-main='true'] > main { background: transparent !important; }
+[data-map-tds-futuristic-main='true'] .page-transition { min-height: 100%; background: transparent; }
+
+/* ── Header ───────────────────────────────────────────────────────────────── */
+
+[data-map-tds-futuristic-header='true'] {
+  border-bottom-color: rgba(255, 255, 255, 0.06) !important;
+  background: #0F151D !important;
+}
+
+.mapa-tds-futuristic-header-page-label {
+  color: #E6EDF3 !important;
+  font-weight: 600;
+}
+
+.mapa-tds-futuristic-header-muted {
+  color: #aab4c0 !important;
+}
+
+.mapa-tds-futuristic-header-glass {
+  background: #121821 !important;
+  border-color: rgba(255, 255, 255, 0.07) !important;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3) !important;
+}
+
+.mapa-tds-futuristic-header-emphasis {
+  color: #E6EDF3 !important;
+  font-weight: 600;
+}
+
+[data-map-tds-futuristic-header='true'] .text-border-card\/70,
+[data-map-tds-futuristic-header='true'] .text-border-card\/80 {
+  color: rgba(255, 255, 255, 0.18) !important;
+}
+
+[data-map-tds-futuristic-header='true'] .text-text-secondary {
+  color: #aab4c0 !important;
+}
+
+[data-map-tds-futuristic-header='true'] h1,
+[data-map-tds-futuristic-header='true'] .text-text-primary {
+  color: #E6EDF3 !important;
+}
+
+[data-map-tds-futuristic-header='true'] .relative > button.rounded-lg {
+  color: #C9D4DC;
+}
+
+[data-map-tds-futuristic-header='true'] .relative > button.rounded-lg:hover {
+  background-color: rgba(255, 255, 255, 0.06) !important;
+}
+
+[data-map-tds-futuristic-header='true'] div.absolute.right-0.mt-2.w-56 {
+  background: #10161f !important;
+  border-color: rgba(255, 255, 255, 0.07) !important;
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.5);
+}
+
+[data-map-tds-futuristic-header='true'] div.absolute.right-0.mt-2.w-56 .border-b.border-card {
+  border-color: rgba(255, 255, 255, 0.05) !important;
+}
+
+[data-map-tds-futuristic-header='true'] .text-text-secondary.font-normal {
+  color: #aab4c0 !important;
+}
+
+/* ── Sidebar ──────────────────────────────────────────────────────────────── */
+
+[data-map-tds-futuristic-sidebar='true'] {
+  background: #0a0e13 !important;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  border-right: 1px solid rgba(255, 255, 255, 0.06) !important;
+  box-shadow: none;
+}
+
+[data-map-tds-futuristic-sidebar='true'] > div > div:first-child {
+  border-bottom-width: 0 !important;
+  border-bottom-color: transparent !important;
+}
+
+[data-map-tds-futuristic-sidebar='true'] > div > div:last-child {
+  border-top-width: 0 !important;
+  border-top-color: transparent !important;
+}
+
+[data-map-tds-futuristic-sidebar='true'].sidebar-cockpit-shell {
+  background: #0a0e13 !important;
+}
+
+[data-map-tds-futuristic-sidebar='true'] .flex.h-full.min-h-0.flex-col {
+  background: transparent !important;
+}
+
+[data-map-tds-futuristic-sidebar='true'] .text-text-primary  { color: #E6EDF3 !important; }
+[data-map-tds-futuristic-sidebar='true'] .text-text-secondary { color: #aab4c0 !important; }
+
+/* accent: item ativo usa laranja */
+[data-map-tds-futuristic-sidebar='true'] .text-accent-gold {
+  color: #FF8A2A !important;
+}
+
+[data-map-tds-futuristic-sidebar='true'] .hover\:bg-accent-gold-soft:hover,
+[data-map-tds-futuristic-sidebar='true'] nav a:hover,
+[data-map-tds-futuristic-sidebar='true'] nav button:hover {
+  background-color: rgba(255, 255, 255, 0.04) !important;
+}
+
+[data-map-tds-futuristic-sidebar='true'] .bg-accent-gold-soft {
+  background-color: rgba(255, 106, 0, 0.14) !important;
+  box-shadow: inset 0 0 0 1px rgba(255, 106, 0, 0.12) !important;
+}
+
+.mapa-tds-futuristic-sidebar-nav a,
+.mapa-tds-futuristic-sidebar-nav button {
+  transition: background-color 0.18s ease, color 0.18s ease;
+}
+
+.mapa-tds-futuristic-submenu-pill {
+  background: #10161f !important;
+  border-width: 0 !important;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35) !important;
+}
+
+[data-map-tds-futuristic-sidebar='true'] .border-border-card\/80 {
+  color: rgba(255, 255, 255, 0.14) !important;
+}
+
+/* ── Botão menu mobile ────────────────────────────────────────────────────── */
+
+[data-map-tds-futuristic-navbtn='true'] {
+  background: #0F151D !important;
+  border-width: 0 !important;
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.4);
+}
+
+[data-map-tds-futuristic-navbtn='true'] .text-accent-gold {
+  color: #FF8A2A !important;
+}
+
+/* ── Overlay mobile ───────────────────────────────────────────────────────── */
+
+[data-map-tds-futuristic-overlay='true'] {
+  background: rgba(5, 8, 12, 0.7) !important;
+  backdrop-filter: blur(4px);
+}
+
+/* ── Tooltip sidebar recolhida ────────────────────────────────────────────── */
+
+.mapa-tds-futuristic-nav-tooltip {
+  background: #10161f !important;
+  color: #e6edf3 !important;
+  border: none;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.5);
+}
+
+.mapa-tds-futuristic-nav-tooltip > .absolute.right-full {
+  border-right-color: #10161f !important;
+}

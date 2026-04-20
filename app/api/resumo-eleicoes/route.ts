@@ -1,6 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { google } from 'googleapis'
 import { candidatoEleicaoIndicaPerfilMilitar } from '@/lib/perfil-militar-nome'
+import {
+  TERRITORIOS_DESENVOLVIMENTO_PI,
+  getTerritorioDesenvolvimentoPI,
+  type TerritorioDesenvolvimentoPI,
+} from '@/lib/piaui-territorio-desenvolvimento'
 
 export const dynamic = 'force-dynamic'
 
@@ -265,6 +270,79 @@ export async function GET(request: NextRequest) {
         cargo: 'deputado_federal',
         totalCandidatos: rows.length,
         rows,
+      })
+    }
+
+    /**
+     * Média por TD dos candidatos mais votados para Dep. Federal 2022 (PI).
+     * `top` (opcional): quantidade de candidatos do topo (padrão 5; min 1; max 20).
+     */
+    if (totals === 'federal2022TopMediaPorTd') {
+      const topParam = Number.parseInt(request.nextUrl.searchParams.get('top') || '5', 10)
+      const top = Number.isFinite(topParam) ? Math.max(1, Math.min(20, topParam)) : 5
+
+      const totaisPorCandidato = new Map<string, number>()
+      for (const item of cachedAllResultados) {
+        if (item.anoEleicao !== '2022') continue
+        if (String(item.uf || '').toUpperCase() !== 'PI') continue
+        if (!/federal/i.test(item.cargo || '')) continue
+        const nome = String(item.nomeUrnaCandidato || '').trim()
+        if (!nome) continue
+        const votos = Number.parseInt(item.quantidadeVotosNominais || '0', 10)
+        totaisPorCandidato.set(nome, (totaisPorCandidato.get(nome) || 0) + (Number.isNaN(votos) ? 0 : votos))
+      }
+
+      const topCandidatos = Array.from(totaisPorCandidato.entries())
+        .map(([nome, votos]) => ({ nome, votos }))
+        .sort((a, b) => b.votos - a.votos || a.nome.localeCompare(b.nome, 'pt-BR'))
+        .slice(0, top)
+      const topSet = new Set(topCandidatos.map((c) => c.nome))
+
+      const porTdPorCandidato = new Map<TerritorioDesenvolvimentoPI, Map<string, number>>()
+      for (const td of TERRITORIOS_DESENVOLVIMENTO_PI) {
+        porTdPorCandidato.set(td, new Map())
+      }
+
+      for (const item of cachedAllResultados) {
+        if (item.anoEleicao !== '2022') continue
+        if (String(item.uf || '').toUpperCase() !== 'PI') continue
+        if (!/federal/i.test(item.cargo || '')) continue
+        const nome = String(item.nomeUrnaCandidato || '').trim()
+        if (!topSet.has(nome)) continue
+        const td = getTerritorioDesenvolvimentoPI(String(item.municipio || ''))
+        if (!td) continue
+        const votos = Number.parseInt(item.quantidadeVotosNominais || '0', 10)
+        const porCandidato = porTdPorCandidato.get(td)
+        if (!porCandidato) continue
+        porCandidato.set(nome, (porCandidato.get(nome) || 0) + (Number.isNaN(votos) ? 0 : votos))
+      }
+
+      const linhas = TERRITORIOS_DESENVOLVIMENTO_PI.map((territorio) => {
+        const porCandidato = porTdPorCandidato.get(territorio) ?? new Map<string, number>()
+        let somaTop = 0
+        let candidatosComVotos = 0
+        const detalheCandidatos = topCandidatos.map((c) => {
+          const votosNoTd = porCandidato.get(c.nome) || 0
+          somaTop += votosNoTd
+          if (votosNoTd > 0) candidatosComVotos += 1
+          return { nome: c.nome, votosPi: c.votos, votosNoTd }
+        })
+        return {
+          territorio,
+          mediaVotos: topCandidatos.length > 0 ? somaTop / topCandidatos.length : 0,
+          somaTop,
+          candidatosConsiderados: topCandidatos.length,
+          candidatosComVotos,
+          detalheCandidatos,
+        }
+      })
+
+      return NextResponse.json({
+        ano: 2022,
+        escopo: 'PI_top_federal_por_td',
+        top: topCandidatos.length,
+        candidatos: topCandidatos,
+        linhas,
       })
     }
 

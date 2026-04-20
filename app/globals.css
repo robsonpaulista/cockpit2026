@@ -754,11 +754,13 @@ table.td-resumo-table--premium .td-resumo-table__cell--fed22 {
   font-weight: 500;
   color: #64748b;
   opacity: 0.88;
+  text-align: center !important;
 }
 
 @media (min-width: 640px) {
   table.td-resumo-table--premium .td-resumo-table__cell--fed22 {
     font-size: 0.625rem;
+    text-align: center !important;
   }
 }
 
@@ -933,7 +935,7 @@ path.td-mun-poly--pulse-baixo {
 /* Página mapa TD — ambiente (gradiente + grão) */
 .td-mapa-pagina-ambiente {
   position: relative;
-  background: linear-gradient(165deg, #0a1628 0%, #0c0c0e 48%, #111113 100%);
+  background: #0B0F14;
 }
 
 .td-mapa-pagina-ambiente::before {
@@ -950,3 +952,440 @@ path.td-mun-poly--pulse-baixo {
   position: relative;
   z-index: 1;
 }
+
+/* =============================================================================
+   TEMA FUTURÍSTICO — BASE NEUTRA + LARANJA ESTRATÉGICO
+   Overrides garantidos via globals.css (hot-reload confiável)
+   ============================================================================= */
+
+/* ── Paleta de tokens ───────────────────────────────────────────────────── */
+.theme-futuristic {
+  --td-fut-bg-deep:       #0b0f14;
+  --td-fut-bg-mid:        #10161f;
+  --td-fut-bg-card:       #121821;
+  --td-fut-border:        rgba(255, 255, 255, 0.06);
+  --td-fut-text:          #e6edf3;
+  --td-fut-text-sec:      #aab4c0;
+  --td-fut-text-weak:     #7f8a96;
+  --td-fut-muted:         #aab4c0;
+  --td-fut-hover:         rgba(255, 255, 255, 0.03);
+  --td-fut-row-selected:  rgba(255, 106, 0, 0.1);
+  --td-fut-accent:        #ff6a00;
+  --td-fut-accent-h:      #ff8a2a;
+  --td-fut-green:         #22c55e;
+  --td-fut-red:           #ef4444;
+}
+
+/* ── Fundo da página e shell ────────────────────────────────────────────── */
+.theme-futuristic.td-mapa-pagina-ambiente {
+  background: #0B0F14 !important;
+}
+
+[data-map-tds-futuristic-shell='true'] {
+  background: #0B0F14 !important;
+  background-color: #0B0F14 !important;
+}
+
+[data-map-tds-futuristic-header='true'] {
+  background: #0F151D !important;
+  background-color: #0F151D !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  border-bottom-color: rgba(255,255,255,0.06) !important;
+}
+
+[data-map-tds-futuristic-header='true'] * {
+  --tw-text-opacity: 1;
+}
+
+[data-map-tds-futuristic-header='true'] .cockpit-glass,
+[data-map-tds-futuristic-header='true'] .cockpit-pulse-dot-brand {
+  background: rgba(255,255,255,0.05) !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  border-color: rgba(255,255,255,0.07) !important;
+}
+
+[data-map-tds-futuristic-header='true'] .cockpit-pulse-dot-brand {
+  background: #FF6A00 !important;
+  animation: none !important;
+  border-radius: 50% !important;
+  box-shadow: 0 0 0 2px rgba(255,106,0,0.2) !important;
+}
+
+[data-map-tds-futuristic-header='true'] .text-text-secondary { color: #aab4c0 !important; }
+[data-map-tds-futuristic-header='true'] .text-text-primary   { color: #E6EDF3 !important; }
+[data-map-tds-futuristic-header='true'] .text-\[rgb\(15\,45\,74\)\] { color: #E6EDF3 !important; }
+
+/* ── Sidebar ────────────────────────────────────────────────────────────── */
+[data-map-tds-futuristic-sidebar='true'],
+[data-map-tds-futuristic-sidebar='true'] > div {
+  background: #0a0e13 !important;
+  background-color: #0a0e13 !important;
+  border-right: 1px solid rgba(255, 255, 255, 0.06) !important;
+}
+
+[data-map-tds-futuristic-sidebar='true'] .border-b,
+[data-map-tds-futuristic-sidebar='true'] .border-card {
+  border-color: rgba(255,255,255,0.06) !important;
+}
+
+[data-map-tds-futuristic-sidebar='true'] .text-accent-gold,
+[data-map-tds-futuristic-sidebar='true'] .text-accent-gold * {
+  color: #FF8A2A !important;
+}
+
+[data-map-tds-futuristic-sidebar='true'] .bg-accent-gold-soft {
+  background-color: rgba(255, 106, 0, 0.14) !important;
+  box-shadow: inset 0 0 0 1px rgba(255, 106, 0, 0.12) !important;
+}
+
+[data-map-tds-futuristic-sidebar='true'] .hover\:bg-accent-gold-soft:hover {
+  background-color: rgba(255, 255, 255, 0.04) !important;
+  box-shadow: none !important;
+}
+
+[data-map-tds-futuristic-sidebar='true'] .hover\:text-text-primary:hover {
+  color: #E6EDF3 !important;
+}
+
+[data-map-tds-futuristic-sidebar='true'] .text-text-primary  { color: #E6EDF3 !important; }
+[data-map-tds-futuristic-sidebar='true'] .text-text-secondary { color: #aab4c0 !important; }
+[data-map-tds-futuristic-sidebar='true'] .text-text-muted     { color: rgba(127, 138, 150, 0.72) !important; }
+
+/* logo icon → laranja */
+[data-map-tds-futuristic-sidebar='true'] .bg-accent-gold:not(.bg-accent-gold-soft) {
+  background-color: #FF6A00 !important;
+}
+
+/* barra de item ativo (div.bg-accent-gold absolute) */
+[data-map-tds-futuristic-sidebar='true'] .absolute.bg-accent-gold {
+  background-color: #FF6A00 !important;
+}
+
+/* ── Painel lateral ─────────────────────────────────────────────────────── */
+.theme-futuristic aside[aria-label='Mapa de dominância eleitoral por território de desenvolvimento'] {
+  color: #e6edf3 !important;
+  background: #10161f !important;
+  border-color: rgba(255, 255, 255, 0.06) !important;
+}
+
+.theme-futuristic aside[aria-label='Mapa de dominância eleitoral por território de desenvolvimento'] .text-text-muted,
+.theme-futuristic aside[aria-label='Mapa de dominância eleitoral por território de desenvolvimento'] .text-text-secondary {
+  color: #aab4c0 !important;
+}
+
+/* ── Tabela premium ─────────────────────────────────────────────────────── */
+.theme-futuristic table.td-resumo-table--premium {
+  border-collapse: separate !important;
+  border-spacing: 0 6px !important;
+}
+
+.theme-futuristic table.td-resumo-table--premium tbody tr:nth-child(odd) td,
+.theme-futuristic table.td-resumo-table--premium tbody tr:nth-child(even) td {
+  background-color: var(--fut-row-bg, rgba(18, 24, 33, 0.72)) !important;
+  border-top: 1px solid rgba(255, 255, 255, 0.04) !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04) !important;
+}
+
+.theme-futuristic table.td-resumo-table--premium tbody tr td:first-child {
+  border-radius: 8px 0 0 8px !important;
+  border-left: 1px solid rgba(255,255,255,0.06) !important;
+}
+
+.theme-futuristic table.td-resumo-table--premium tbody tr td:last-child {
+  border-radius: 0 8px 8px 0 !important;
+  border-right: 1px solid rgba(255,255,255,0.06) !important;
+}
+
+.theme-futuristic table.td-resumo-table--premium tbody tr.td-resumo-table__row--data:hover td {
+  background-color: rgba(255, 106, 0, 0.08) !important;
+}
+
+.theme-futuristic table.td-resumo-table--premium tbody tr.td-resumo-table__row--hover-map td {
+  background-color: rgba(255, 106, 0, 0.1) !important;
+}
+
+.theme-futuristic table.td-resumo-table--premium tbody tr.td-resumo-table__row--selected td {
+  background: var(--fut-row-selected, rgba(255, 106, 0, 0.1)) !important;
+  box-shadow: none !important;
+}
+
+.theme-futuristic table.td-resumo-table--premium tbody tr.td-resumo-table__row--hover-map td {
+  color: #0b0f14 !important;
+}
+
+.theme-futuristic table.td-resumo-table--premium tbody tr.td-resumo-table__row--hover-map .text-text-secondary {
+  color: rgba(11, 15, 20, 0.78) !important;
+}
+
+.theme-futuristic table.td-resumo-table--premium tbody tr.td-resumo-table__row--hover-map td.td-resumo-table__cell--territorio,
+.theme-futuristic table.td-resumo-table--premium tbody tr.td-resumo-table__row--hover-map td.td-resumo-table__cell--territorio .text-text-primary {
+  color: #0b0f14 !important;
+}
+
+.theme-futuristic
+  table.td-resumo-table--premium
+  tbody
+  tr.td-resumo-table__row--hover-map
+  .td-resumo-table__expand-btn {
+  background: #0b0f14 !important;
+  border-color: rgba(11, 15, 20, 0.75) !important;
+  color: #e6edf3 !important;
+}
+
+.theme-futuristic table.td-resumo-table--premium tbody tr.td-resumo-table__row--selected td {
+  color: #e6edf3 !important;
+}
+
+.theme-futuristic table.td-resumo-table--premium tbody tr.td-resumo-table__row--selected .text-text-secondary {
+  color: #aab4c0 !important;
+}
+
+.theme-futuristic table.td-resumo-table--premium tbody tr.td-resumo-table__row--selected td:first-child {
+  box-shadow: inset 3px 0 0 0 var(--fut-row-selected-edge, #ff6a00) !important;
+}
+
+/* cabeçalho — sem preenchimento global do theme.css em thead */
+.theme-futuristic table.td-resumo-table thead {
+  background: transparent !important;
+  background-color: transparent !important;
+  border-bottom: none !important;
+}
+
+.theme-futuristic table.td-resumo-table--premium thead tr.td-resumo-table__row--header th {
+  color: #aab4c0 !important;
+  font-weight: 600 !important;
+  font-size: 0.75rem !important;
+  text-transform: uppercase !important;
+  background: rgba(255, 255, 255, 0.03) !important;
+  background-color: rgba(255, 255, 255, 0.03) !important;
+  border-bottom-color: rgba(255, 255, 255, 0.06) !important;
+}
+
+.theme-futuristic table.td-resumo-table--premium tbody td,
+.theme-futuristic table.td-resumo-table--futuristic tbody td {
+  color: #e6edf3 !important;
+}
+
+.theme-futuristic table.td-resumo-table--premium .td-resumo-table__cell--fed26 {
+  color: #e6edf3 !important;
+  font-weight: 700 !important;
+  font-size: 1.05rem !important;
+}
+
+.theme-futuristic table.td-resumo-table--premium .td-resumo-table__cell--lid {
+  color: #e6edf3 !important;
+  font-weight: 600 !important;
+}
+
+.theme-futuristic table.td-resumo-table--premium .td-resumo-table__cell--fed22 {
+  color: #aab4c0 !important;
+  text-align: center !important;
+}
+
+.theme-futuristic table.td-resumo-table--premium .td-resumo-table__rank--top3 {
+  color: #ff8a2a !important;
+  font-weight: 600 !important;
+}
+
+.theme-futuristic table.td-resumo-table--premium .td-resumo-table__rank--first {
+  color: #ff6a00 !important;
+  font-weight: 700 !important;
+  text-shadow: none !important;
+}
+
+.theme-futuristic table.td-resumo-table--premium .text-status-success {
+  color: #22c55e !important;
+  font-weight: 600 !important;
+}
+
+.theme-futuristic table.td-resumo-table--premium .text-status-danger {
+  color: #ef4444 !important;
+  font-weight: 600 !important;
+}
+
+.theme-futuristic table.td-resumo-table--premium .text-text-secondary {
+  color: #aab4c0 !important;
+}
+
+.theme-futuristic table.td-resumo-table--premium .text-text-primary {
+  color: #e6edf3 !important;
+}
+
+/* Drilldown (municípios + lideranças) com padrão do nível TD */
+.theme-futuristic .td-fut-drill {
+  color: #e6edf3;
+}
+
+.theme-futuristic .td-fut-drill .td-fut-subsection-title {
+  color: #aab4c0 !important;
+  font-size: 0.75rem;
+  letter-spacing: 0.04em;
+}
+
+.theme-futuristic .td-fut-drill .td-fut-grid-header {
+  color: #aab4c0 !important;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  background: rgba(255, 255, 255, 0.03);
+  border-bottom-color: rgba(255, 255, 255, 0.06) !important;
+  border-radius: 8px;
+  padding: 0.5rem 0.5rem 0.55rem;
+}
+
+.theme-futuristic .td-fut-drill .td-fut-grid-row {
+  color: #aab4c0 !important;
+  font-size: 0.875rem;
+  font-weight: 500;
+  background: rgba(18, 24, 33, 0.72);
+  border-top: 1px solid rgba(255, 255, 255, 0.04);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  border-radius: 8px;
+  padding: 0.38rem 0.5rem 0.44rem;
+  transition: background-color 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease;
+}
+
+.theme-futuristic .td-fut-drill .td-fut-grid-row--interactive:hover {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.theme-futuristic .td-fut-drill .td-fut-grid-row--interactive:focus-visible {
+  box-shadow: 0 0 0 2px rgba(255, 106, 0, 0.2);
+}
+
+.theme-futuristic .td-fut-drill .td-fut-grid-row--selected {
+  background: rgba(255, 106, 0, 0.1) !important;
+  border-color: rgba(255, 106, 0, 0.35) !important;
+  box-shadow: inset 3px 0 0 #ff6a00;
+}
+
+.theme-futuristic .td-fut-drill .td-fut-grid-primary {
+  color: #e6edf3 !important;
+  font-weight: 600;
+}
+
+.theme-futuristic .td-fut-drill .text-text-secondary {
+  color: #aab4c0 !important;
+}
+
+.theme-futuristic .td-fut-drill .text-text-muted {
+  color: #7f8a96 !important;
+}
+
+.theme-futuristic .td-fut-drill .text-status-success {
+  color: #22c55e !important;
+  font-weight: 600;
+}
+
+.theme-futuristic .td-fut-drill .text-status-danger {
+  color: #ef4444 !important;
+  font-weight: 600;
+}
+
+.theme-futuristic .td-fut-drill .td-fut-grid-foot {
+  color: #7f8a96 !important;
+  font-size: 0.75rem;
+}
+
+/* barra de peso — sem glow */
+.theme-futuristic table.td-resumo-table--premium .td-resumo-table__peso-eleitoral-bar {
+  opacity: 0.3 !important;
+  box-shadow: none !important;
+}
+
+/* ── Badges ─────────────────────────────────────────────────────────────── */
+.td-badge-fut {
+  border-style: solid;
+  border-width: 1px;
+  border-radius: 9999px;
+}
+
+.td-badge-fut--estrategico {
+  border-color: rgba(255, 106, 0, 0.5) !important;
+  background-color: rgba(255, 106, 0, 0.1) !important;
+  color: #ffb27a !important;
+}
+
+.td-badge-fut--atencao {
+  border-color: rgba(245, 158, 11, 0.45) !important;
+  background-color: rgba(245, 158, 11, 0.1) !important;
+  color: #f4c26b !important;
+}
+
+.td-badge-fut--baixo {
+  border-color: rgba(255, 255, 255, 0.1) !important;
+  background-color: rgba(255, 255, 255, 0.04) !important;
+  color: #aab4c0 !important;
+}
+
+table.td-resumo-table th.td-resumo-table__cell--estrategia,
+table.td-resumo-table td.td-resumo-table__cell--estrategia {
+  text-align: center !important;
+}
+
+/* ── Status bar ─────────────────────────────────────────────────────────── */
+.theme-futuristic .td-mapa-statusbar {
+  margin: 10px 12px 0 12px !important;
+  padding: 10px 16px !important;
+  color: #aab4c0 !important;
+  background-color: #10161f !important;
+  background-image: none !important;
+  border: 1px solid rgba(255, 255, 255, 0.06) !important;
+  border-radius: 14px !important;
+  box-shadow: none !important;
+}
+
+.theme-futuristic .td-mapa-statusbar__lead {
+  color: #e6edf3 !important;
+}
+
+.theme-futuristic .td-mapa-statusbar__meta,
+.theme-futuristic .td-mapa-statusbar__meta strong {
+  color: #aab4c0 !important;
+}
+
+.theme-futuristic .td-mapa-statusbar__meta strong {
+  color: #e6edf3 !important;
+}
+
+.theme-futuristic .td-mapa-statusbar__delta {
+  color: #aab4c0 !important;
+}
+
+.theme-futuristic .td-mapa-statusbar__delta--up {
+  color: #22c55e !important;
+}
+
+.theme-futuristic .td-mapa-statusbar__delta--down {
+  color: #ef4444 !important;
+}
+
+.theme-futuristic .td-mapa-statusbar__warn {
+  color: #f59e0b !important;
+}
+.theme-futuristic .td-mapa-statusbar__dot {
+  background: #22C55E !important;
+  box-shadow: 0 0 0 2px rgba(34,197,94,0.25) !important;
+}
+
+/* ── Marcadores do mapa ─────────────────────────────────────────────────── */
+.theme-futuristic .leaflet-div-icon.td-eleitores-peso-marker .td-peso-eleitores-card {
+  animation: none !important;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.5) !important;
+}
+
+/* ── Tooltip de município ───────────────────────────────────────────────── */
+.theme-futuristic .leaflet-tooltip.td-municipio-tooltip {
+  background: #121821 !important;
+  border-color: rgba(255,255,255,0.08) !important;
+  color: #E6EDF3 !important;
+}
+
+/* ── Header classes nomeadas ────────────────────────────────────────────── */
+.mapa-tds-futuristic-header-page-label { color: #E6EDF3 !important; font-weight: 600 !important; }
+.mapa-tds-futuristic-header-muted      { color: #aab4c0 !important; }
+.mapa-tds-futuristic-header-glass      { background: #121821 !important; border-color: rgba(255,255,255,0.07) !important; }
+.mapa-tds-futuristic-header-emphasis   { color: #E6EDF3 !important; font-weight: 600 !important; }

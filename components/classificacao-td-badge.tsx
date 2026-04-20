@@ -29,6 +29,34 @@ const CONFIG: Record<
   },
 }
 
+/** Tema futurista do mapa de dominância — Base Neutra + Laranja Estratégico. */
+const CONFIG_FUTURISTIC: Record<
+  ClassificacaoTerritorioTd,
+  { label: string; Icon: typeof Flame; className: string; title: string; iconClass: string }
+> = {
+  estrategico: {
+    label: 'Estratégico',
+    Icon: Flame,
+    className: 'td-badge-fut td-badge-fut--estrategico',
+    title: CONFIG.estrategico.title,
+    iconClass: '',
+  },
+  atencao: {
+    label: 'Atenção',
+    Icon: AlertCircle,
+    className: 'td-badge-fut td-badge-fut--atencao',
+    title: CONFIG.atencao.title,
+    iconClass: '',
+  },
+  'baixo-impacto': {
+    label: 'Baixo impacto',
+    Icon: Snowflake,
+    className: 'td-badge-fut td-badge-fut--baixo',
+    title: CONFIG['baixo-impacto'].title,
+    iconClass: '',
+  },
+}
+
 /** Painel do mapa TD — hierarquia visual mais forte (“status de sistema”). */
 const CONFIG_COMMAND: Record<
   ClassificacaoTerritorioTd,
@@ -64,17 +92,35 @@ export function ClassificacaoTdBadge({
   tipo,
   compact = false,
   visualTone = 'default',
+  labelOverride,
+  titleOverride,
 }: {
   tipo: ClassificacaoTerritorioTd | undefined
   /** Só ícone (ex.: célula estreita). */
   compact?: boolean
-  /** `command` = painel mapa TD (gradiente, glow, hierarquia mais forte). */
-  visualTone?: 'default' | 'command'
+  /** `command` = painel mapa TD (gradiente, glow, hierarquia mais forte). `futuristic` = mapa dominância (cockpit). */
+  visualTone?: 'default' | 'command' | 'futuristic'
+  /** Texto alternativo para o rótulo do badge, mantendo estilo e semântica de cor. */
+  labelOverride?: string
+  /** Tooltip customizado para explicar o status no contexto da célula. */
+  titleOverride?: string
 }) {
   if (!tipo) return null
-  const cfg = visualTone === 'command' ? CONFIG_COMMAND[tipo] : CONFIG[tipo]
+  const cfg =
+    visualTone === 'futuristic'
+      ? CONFIG_FUTURISTIC[tipo]
+      : visualTone === 'command'
+        ? CONFIG_COMMAND[tipo]
+        : CONFIG[tipo]
+  const label = labelOverride?.trim() ? labelOverride : cfg.label
+  const title = titleOverride?.trim() ? titleOverride : `${cfg.title} (${label})`
   const { Icon } = cfg
-  const iconClass = visualTone === 'command' ? CONFIG_COMMAND[tipo].iconClass : ''
+  const iconClass =
+    visualTone === 'futuristic'
+      ? CONFIG_FUTURISTIC[tipo].iconClass
+      : visualTone === 'command'
+        ? CONFIG_COMMAND[tipo].iconClass
+        : ''
   return (
     <span
       className={cn(
@@ -82,7 +128,7 @@ export function ClassificacaoTdBadge({
         compact ? 'gap-0 px-1 py-px' : 'gap-0.5 px-1.5 py-0.5',
         cfg.className
       )}
-      title={`${cfg.title} (${cfg.label})`}
+      title={title}
     >
       <Icon
         className={cn(
@@ -94,7 +140,7 @@ export function ClassificacaoTdBadge({
         strokeWidth={2}
         aria-hidden
       />
-      {!compact ? <span className="truncate">{cfg.label}</span> : null}
+      {!compact ? <span className="truncate">{label}</span> : null}
     </span>
   )
 }
