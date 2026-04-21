@@ -119,6 +119,11 @@ export const RATE_LIMITS = {
     maxRequests: 20,
     windowMs: 60 * 1000, // 1 minuto
   },
+  // Sincronização de comentários (muitas chamadas à Graph API por execução)
+  INSTAGRAM_COMMENTS_SYNC: {
+    maxRequests: 10,
+    windowMs: 60 * 60 * 1000, // 1 hora
+  },
   // APIs gerais: 100 requisições por minuto
   GENERAL: {
     maxRequests: 100,

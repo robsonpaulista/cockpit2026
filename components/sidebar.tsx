@@ -32,6 +32,7 @@ import {
   ChevronDown,
   ClipboardList,
   History,
+  Trophy,
   type LucideIcon,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -53,6 +54,7 @@ const COCKPIT_MENU_LABEL: Record<string, string> = {
   'chapas-menu': 'Chapas',
   'resumo-eleicoes-menu': 'Eleições',
   conteudo: 'Conteúdo',
+  'instagram-lideres': 'IG Líderes',
   noticias: 'Radar',
   mobilizacao: 'Mobilização',
   whatsapp: 'WhatsApp',
@@ -119,6 +121,12 @@ const menuItems: SidebarMenuItem[] = [
     ],
   },
   { id: 'conteudo', label: 'Conteúdo & Redes', icon: 'MessageSquare', href: '/dashboard/conteudo' },
+  {
+    id: 'instagram-lideres',
+    label: 'Instagram Líderes',
+    icon: 'Trophy',
+    href: '/dashboard/conteudo/instagram-lideres',
+  },
   { id: 'noticias', label: 'Notícias & Crises', icon: 'Newspaper', href: '/dashboard/noticias' },
   { id: 'mobilizacao', label: 'Mobilização', icon: 'Users', href: '/dashboard/mobilizacao' },
   { id: 'whatsapp', label: 'WhatsApp', icon: 'MessageCircle', href: '/dashboard/whatsapp' },
@@ -172,6 +180,7 @@ const iconMap: Record<string, LucideIcon> = {
   ClipboardList,
   History,
   MapPinned,
+  Trophy,
 }
 
 /** Ícones mais leves / mesma linguagem dos KPIs Cockpit (stroke fino + cor accent). */
@@ -215,6 +224,7 @@ function resolveMenuIcon(iconName: string, cockpit: boolean): LucideIcon {
 function pageKeyForItem(id: string): string {
   if (id === 'chapas-menu') return 'chapas'
   if (id === 'chapas-estaduais') return 'chapas'
+  if (id === 'instagram-lideres') return 'conteudo'
   if (id === 'territorio-mapa-tds') return 'territorio'
   if (
     id === 'gestao-pesquisas-menu' ||

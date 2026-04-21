@@ -295,8 +295,146 @@ export async function fetchInstagramHistory(days: number = 30): Promise<Instagra
   }
 }
 
+/** Ranking de quem mais comenta (dados persistidos no Supabase). */
+export type InstagramCommentLeader = {
+  rank: number
+  commenter_username: string | null
+  commenter_ig_id: string | null
+  comment_count: number
+  last_commented_at: string
+}
 
+export type InstagramCommentLeadersResponse = {
+  leaders: InstagramCommentLeader[]
+  stats: { uniqueCommenters: number; totalComments: number }
+}
 
+export async function fetchInstagramCommentLeaders(
+  limit = 50
+): Promise<InstagramCommentLeadersResponse | null> {
+  try {
+    const response = await fetch(`/api/instagram/comments/leaders?limit=${limit}`)
+    if (!response.ok) return null
+    return (await response.json()) as InstagramCommentLeadersResponse
+  } catch {
+    return null
+  }
+}
+
+export type InstagramStoredComment = {
+  id: string
+  instagram_media_id: string
+  media_permalink: string | null
+  media_caption: string | null
+  media_thumbnail_url: string | null
+  media_posted_at: string | null
+  instagram_comment_id: string
+  parent_instagram_comment_id: string | null
+  commenter_ig_id: string | null
+  commenter_username: string | null
+  comment_text: string
+  comment_like_count: number
+  hidden: boolean
+  commented_at: string
+  synced_at: string
+  instagram_owner_username: string | null
+}
+
+export type InstagramPostWithComments = {
+  instagram_media_id: string
+  media_permalink: string | null
+  media_caption: string | null
+  media_thumbnail_url: string | null
+  media_posted_at: string | null
+  comments_count: number
+  comments: InstagramStoredComment[]
+}
+
+export type InstagramCommentsGroupedResponse = {
+  posts: InstagramPostWithComments[]
+  meta: { totalRows: number; postCount: number; truncated: boolean; maxRows: number }
+}
+
+/**
+ * Comentários agrupados por publicação (para análise postagem → comentários).
+ */
+export async function fetchInstagramCommentsGrouped(
+  maxRows?: number
+): Promise<InstagramCommentsGroupedResponse | null> {
+  try {
+    const sp = new URLSearchParams()
+    if (maxRows != null) sp.set('maxRows', String(maxRows))
+    const response = await fetch(`/api/instagram/comments/grouped?${sp.toString()}`)
+    if (!response.ok) return null
+    return (await response.json()) as InstagramCommentsGroupedResponse
+  } catch {
+    return null
+  }
+}
+
+export async function fetchInstagramCommentsRecent(options?: {
+  limit?: number
+  offset?: number
+  mediaId?: string | null
+}): Promise<{ comments: InstagramStoredComment[] } | null> {
+  try {
+    const sp = new URLSearchParams()
+    if (options?.limit != null) sp.set('limit', String(options.limit))
+    if (options?.offset != null) sp.set('offset', String(options.offset))
+    if (options?.mediaId) sp.set('mediaId', options.mediaId)
+    const response = await fetch(`/api/instagram/comments/recent?${sp.toString()}`)
+    if (!response.ok) return null
+    return (await response.json()) as { comments: InstagramStoredComment[] }
+  } catch {
+    return null
+  }
+}
+
+export type InstagramCommentsSyncResult = {
+  success: boolean
+  instagramBusinessId?: string
+  ownerUsername?: string
+  mediaProcessed?: number
+  commentsUpserted?: number
+  errors?: string[]
+  error?: string
+  resetAt?: number
+}
+
+/**
+ * Sincroniza comentários das publicações recentes para o banco (servidor + Supabase).
+ */
+export async function syncInstagramComments(
+  token: string,
+  businessAccountId: string,
+  maxMedia?: number
+): Promise<InstagramCommentsSyncResult> {
+  try {
+    const response = await fetch('/api/instagram/comments/sync', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        token,
+        businessAccountId,
+        maxMedia: maxMedia ?? undefined,
+      }),
+    })
+    const data = (await response.json()) as InstagramCommentsSyncResult
+    if (!response.ok) {
+      return {
+        success: false,
+        error: data.error || 'Falha na sincronização',
+        resetAt: data.resetAt,
+      }
+    }
+    return data
+  } catch (e: unknown) {
+    return {
+      success: false,
+      error: e instanceof Error ? e.message : 'Erro de rede',
+    }
+  }
+}
 
 
 
