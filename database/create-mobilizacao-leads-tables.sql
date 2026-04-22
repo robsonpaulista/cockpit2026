@@ -15,12 +15,14 @@ CREATE TABLE IF NOT EXISTS public.leaders (
   nome TEXT NOT NULL,
   telefone TEXT,
   cidade TEXT,
+  municipio TEXT,
   coordinator_id UUID REFERENCES public.coordinators(id) ON DELETE SET NULL,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
 CREATE INDEX IF NOT EXISTS idx_leaders_coordinator_id ON public.leaders(coordinator_id);
 CREATE INDEX IF NOT EXISTS idx_leaders_cidade ON public.leaders(cidade);
+CREATE INDEX IF NOT EXISTS idx_leaders_municipio ON public.leaders(municipio);
 
 CREATE TABLE IF NOT EXISTS public.leads_militancia (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),

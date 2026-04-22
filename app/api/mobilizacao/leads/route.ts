@@ -5,6 +5,7 @@ import {
   extractCoordinatorFromLeaderJoin,
   fetchLeaderWithCoordinatorForPublicContext,
   insertMilitanciaLead,
+  normalizeInstagramHandle,
 } from '@/lib/mobilizacao-lead-capture'
 
 export const dynamic = 'force-dynamic'
@@ -12,7 +13,7 @@ export const dynamic = 'force-dynamic'
 const createLeadBodySchema = z.object({
   nome: z.string().trim().min(2, 'Nome é obrigatório'),
   whatsapp: z.string().trim().min(8, 'WhatsApp é obrigatório'),
-  instagram: z.string().trim().optional().nullable(),
+  instagram: z.string().trim().min(1, 'Instagram é obrigatório'),
   leader_id: z.string().uuid('leader_id inválido'),
   origem: z.string().trim().min(1).max(64).optional(),
 })
@@ -27,6 +28,7 @@ type LeaderContextRow = {
   id: string
   nome: string
   cidade: string | null
+  municipio: string | null
   coordinator_id: string | null
   coordinators: CoordinatorRow | CoordinatorRow[] | null
 }
@@ -57,11 +59,13 @@ export async function GET(request: Request) {
 
     const row = data as LeaderContextRow
     const coordinator = extractCoordinatorFromLeaderJoin(row.coordinators)
+    const cidadeExibicao = row.municipio ?? row.cidade
     return NextResponse.json({
       leader: {
         id: row.id,
         nome: row.nome,
-        cidade: row.cidade,
+        cidade: cidadeExibicao,
+        municipio: row.municipio,
       },
       coordinator: coordinator
         ? {
@@ -84,6 +88,14 @@ export async function POST(request: Request) {
     if (!parsed.success) {
       return NextResponse.json(
         { error: 'Dados inválidos', details: parsed.error.flatten() },
+        { status: 400 }
+      )
+    }
+
+    const instagramNormalizado = normalizeInstagramHandle(parsed.data.instagram)
+    if (!instagramNormalizado) {
+      return NextResponse.json(
+        { error: 'Informe um Instagram válido (nome de usuário ou @).' },
         { status: 400 }
       )
     }

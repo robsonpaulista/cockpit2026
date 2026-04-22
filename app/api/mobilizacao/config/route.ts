@@ -3,20 +3,30 @@ import { z } from 'zod'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { insertMilitanciaLead } from '@/lib/mobilizacao-lead-capture'
+import {
+  TERRITORIOS_DESENVOLVIMENTO_PI,
+  resolverNomeMunicipioPIOficial,
+} from '@/lib/piaui-territorio-desenvolvimento'
 
 export const dynamic = 'force-dynamic'
+
+const TERRITORIOS_TD_PI = TERRITORIOS_DESENVOLVIMENTO_PI as readonly string[]
 
 const createCoordinatorSchema = z.object({
   tipo: z.literal('coordinator'),
   nome: z.string().trim().min(2, 'Nome é obrigatório'),
-  regiao: z.string().trim().max(120).optional().nullable(),
+  regiao: z
+    .string()
+    .trim()
+    .min(1, 'Selecione um Território de Desenvolvimento')
+    .refine((s) => TERRITORIOS_TD_PI.includes(s), 'TD inválido'),
 })
 
 const createLeaderSchema = z.object({
   tipo: z.literal('leader'),
   nome: z.string().trim().min(2, 'Nome é obrigatório'),
   telefone: z.string().trim().max(32).optional().nullable(),
-  cidade: z.string().trim().max(120).optional().nullable(),
+  municipio: z.string().trim().min(2, 'Município é obrigatório'),
   coordinator_id: z.string().uuid('coordinator_id inválido'),
 })
 
@@ -99,7 +109,7 @@ export async function GET() {
     admin.from('coordinators').select('id, nome, regiao, created_at').order('nome', { ascending: true }),
     admin
       .from('leaders')
-      .select('id, nome, telefone, cidade, coordinator_id, created_at, coordinators(id, nome)')
+      .select('id, nome, telefone, cidade, municipio, coordinator_id, created_at, coordinators(id, nome)')
       .order('nome', { ascending: true }),
     admin
       .from('leads_militancia')
@@ -150,7 +160,7 @@ export async function POST(request: Request) {
       .from('coordinators')
       .insert({
         nome: parsed.data.nome,
-        regiao: parsed.data.regiao?.trim() || null,
+        regiao: parsed.data.regiao.trim(),
       })
       .select('id, nome, regiao, created_at')
       .single()
@@ -182,15 +192,27 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: true, liderado: result.lead }, { status: 201 })
   }
 
+  const municipioCanonico = resolverNomeMunicipioPIOficial(parsed.data.municipio)
+  if (!municipioCanonico) {
+    return NextResponse.json(
+      {
+        error:
+          'Município inválido. Escolha um dos municípios do Piauí da base oficial (Mapa TDs / 224 municípios).',
+      },
+      { status: 400 }
+    )
+  }
+
   const { data, error } = await admin
     .from('leaders')
     .insert({
       nome: parsed.data.nome,
       telefone: parsed.data.telefone?.trim() || null,
-      cidade: parsed.data.cidade?.trim() || null,
+      municipio: municipioCanonico,
+      cidade: municipioCanonico,
       coordinator_id: parsed.data.coordinator_id,
     })
-    .select('id, nome, telefone, cidade, coordinator_id, created_at')
+    .select('id, nome, telefone, cidade, municipio, coordinator_id, created_at')
     .single()
 
   if (error) {

@@ -9,11 +9,6 @@ type LeaderContext = {
     nome: string
     cidade: string | null
   }
-  coordinator: {
-    id: string
-    nome: string
-    regiao: string | null
-  } | null
 }
 
 function formatWhatsappDigits(raw: string): string {
@@ -43,6 +38,7 @@ export default function MobilizacaoDetalhePage() {
   const [nome, setNome] = useState('')
   const [whatsapp, setWhatsapp] = useState('')
   const [instagram, setInstagram] = useState('')
+  const [lgpdAceite, setLgpdAceite] = useState<boolean>(false)
 
   const [enviando, setEnviando] = useState(false)
   const [mensagemSucesso, setMensagemSucesso] = useState<string | null>(null)
@@ -80,7 +76,6 @@ export default function MobilizacaoDetalhePage() {
         }
         setContexto({
           leader: payload.leader,
-          coordinator: payload.coordinator ?? null,
         })
       } catch {
         if (!cancelado) {
@@ -119,6 +114,17 @@ export default function MobilizacaoDetalhePage() {
       return
     }
 
+    const instagramLimpo = instagram.trim().replace(/^@+/, '').replace(/\s+/g, '')
+    if (!instagramLimpo) {
+      setMensagemErro('Informe seu Instagram (nome de usuário).')
+      return
+    }
+
+    if (!lgpdAceite) {
+      setMensagemErro('É necessário aceitar o tratamento dos dados pessoais conforme a LGPD.')
+      return
+    }
+
     setEnviando(true)
     try {
       const res = await fetch('/api/mobilizacao/leads', {
@@ -127,7 +133,7 @@ export default function MobilizacaoDetalhePage() {
         body: JSON.stringify({
           nome: nomeLimpo,
           whatsapp: whatsappLimpo,
-          instagram: instagram.trim() || null,
+          instagram: instagram.trim(),
           leader_id: contexto.leader.id,
           origem: 'qr',
         }),
@@ -144,6 +150,7 @@ export default function MobilizacaoDetalhePage() {
       setNome('')
       setWhatsapp('')
       setInstagram('')
+      setLgpdAceite(false)
       setMensagemSucesso('Cadastro enviado com sucesso. Obrigado por somar com a nossa mobilização!')
     } catch {
       setMensagemErro('Erro de conexão. Tente novamente em instantes.')
@@ -163,12 +170,6 @@ export default function MobilizacaoDetalhePage() {
           {contexto ? (
             <p className="mt-3 text-xs text-text-muted">
               Liderança: <span className="font-medium text-text-secondary">{contexto.leader.nome}</span>
-              {contexto.coordinator ? (
-                <>
-                  {' '}
-                  · Coordenação: <span className="font-medium text-text-secondary">{contexto.coordinator.nome}</span>
-                </>
-              ) : null}
             </p>
           ) : null}
         </header>
@@ -215,17 +216,35 @@ export default function MobilizacaoDetalhePage() {
 
             <div>
               <label htmlFor="instagram" className="mb-1 block text-sm font-medium text-text-secondary">
-                Seu Instagram (opcional)
+                Instagram
               </label>
               <input
                 id="instagram"
                 type="text"
                 value={instagram}
                 onChange={(e) => setInstagram(e.target.value)}
+                required
                 autoComplete="off"
                 className="w-full rounded-lg border border-card bg-background px-3 py-2 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-accent-gold-soft"
-                placeholder="usuario"
+                placeholder="@usuario ou usuario"
               />
+            </div>
+
+            <div className="rounded-lg border border-card/80 bg-background/50 p-3">
+              <label className="flex cursor-pointer items-start gap-3 text-sm text-text-secondary">
+                <input
+                  type="checkbox"
+                  className="mt-1 h-4 w-4 shrink-0 rounded border-card text-accent-gold focus:ring-accent-gold-soft"
+                  checked={lgpdAceite}
+                  onChange={(e) => setLgpdAceite(e.target.checked)}
+                  required
+                />
+                <span>
+                  Declaro que li e autorizo o tratamento dos meus dados pessoais para fins de cadastro e contato pela
+                  mobilização, nos termos da Lei Geral de Proteção de Dados (Lei nº 13.709/2018 — LGPD), inclusive
+                  comunicações por WhatsApp e redes sociais quando indicadas neste formulário.
+                </span>
+              </label>
             </div>
 
             {mensagemErro ? (

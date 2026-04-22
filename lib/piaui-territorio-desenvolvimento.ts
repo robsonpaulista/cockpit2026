@@ -86,3 +86,48 @@ export function getTerritorioDesenvolvimentoPI(cidade: string): TerritorioDesenv
 
   return null
 }
+
+function buildTodosMunicipiosCanonOrdenados(): string[] {
+  const porChave = new Map<string, string>()
+  for (const t of dados.territorios) {
+    for (const m of t.municipios) {
+      const nome = String(m ?? '').trim()
+      if (!nome) continue
+      const key = normalizeMunicipioNome(nome)
+      if (!porChave.has(key)) porChave.set(key, nome)
+    }
+  }
+  return Array.from(porChave.values()).sort((a, b) =>
+    a.localeCompare(b, 'pt-BR', { sensitivity: 'base' })
+  )
+}
+
+let cacheMunicipiosOrdenados: readonly string[] | null = null
+
+/** Todos os municípios do Piauí na base dos TDs (Mapa TDs), nomes canônicos, ordenados A–Z. */
+export function getTodosMunicipiosPIOficiaisOrdenados(): readonly string[] {
+  if (!cacheMunicipiosOrdenados) {
+    cacheMunicipiosOrdenados = Object.freeze(buildTodosMunicipiosCanonOrdenados())
+  }
+  return cacheMunicipiosOrdenados
+}
+
+let cacheNormMunicipioParaCanonico: ReadonlyMap<string, string> | null = null
+
+function getMapaMunicipioNormalizadoParaCanonico(): ReadonlyMap<string, string> {
+  if (!cacheNormMunicipioParaCanonico) {
+    const m = new Map<string, string>()
+    for (const canon of getTodosMunicipiosPIOficiaisOrdenados()) {
+      m.set(normalizeMunicipioNome(canon), canon)
+    }
+    cacheNormMunicipioParaCanonico = m
+  }
+  return cacheNormMunicipioParaCanonico
+}
+
+/** Retorna o nome canônico do município na base oficial dos TDs, ou `null` se não existir. */
+export function resolverNomeMunicipioPIOficial(input: string): string | null {
+  const t = String(input ?? '').trim()
+  if (!t) return null
+  return getMapaMunicipioNormalizadoParaCanonico().get(normalizeMunicipioNome(t)) ?? null
+}

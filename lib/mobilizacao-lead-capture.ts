@@ -8,6 +8,7 @@ export type LeaderContextPublicRow = {
   id: string
   nome: string
   cidade: string | null
+  municipio: string | null
   coordinator_id: string | null
   coordinators: CoordinatorJoinRow | CoordinatorJoinRow[] | null
 }
@@ -26,7 +27,7 @@ export async function fetchLeaderWithCoordinatorForPublicContext(
 ) {
   return admin
     .from('leaders')
-    .select('id, nome, cidade, coordinator_id, coordinators(id, nome, regiao)')
+    .select('id, nome, cidade, municipio, coordinator_id, coordinators(id, nome, regiao)')
     .eq('id', leaderId)
     .maybeSingle()
 }
@@ -46,6 +47,7 @@ export function normalizeInstagramHandle(raw?: string | null): string | null {
 type LeaderRowForLead = {
   id: string
   cidade: string | null
+  municipio: string | null
   coordinator_id: string | null
 }
 
@@ -55,7 +57,7 @@ export async function fetchLeaderRowForMilitanciaLead(
 ): Promise<{ ok: true; leader: LeaderRowForLead } | { ok: false; message: string }> {
   const { data, error } = await admin
     .from('leaders')
-    .select('id, cidade, coordinator_id')
+    .select('id, cidade, municipio, coordinator_id')
     .eq('id', leaderId)
     .maybeSingle()
 
@@ -70,6 +72,7 @@ export async function fetchLeaderRowForMilitanciaLead(
     leader: {
       id: data.id as string,
       cidade: (data.cidade as string | null) ?? null,
+      municipio: (data.municipio as string | null) ?? null,
       coordinator_id: (data.coordinator_id as string | null) ?? null,
     },
   }
@@ -127,7 +130,7 @@ export async function insertMilitanciaLead(
   const cidade =
     input.cidadeOverride !== undefined && input.cidadeOverride !== null && String(input.cidadeOverride).trim() !== ''
       ? String(input.cidadeOverride).trim()
-      : leaderRes.leader.cidade
+      : leaderRes.leader.municipio ?? leaderRes.leader.cidade
 
   const { data: inserted, error: insertError } = await admin
     .from('leads_militancia')

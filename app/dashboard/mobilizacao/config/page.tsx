@@ -1,6 +1,11 @@
 'use client'
 
 import { FormEvent, useEffect, useMemo, useState } from 'react'
+import {
+  TERRITORIOS_DESENVOLVIMENTO_PI,
+  getTodosMunicipiosPIOficiaisOrdenados,
+  resolverNomeMunicipioPIOficial,
+} from '@/lib/piaui-territorio-desenvolvimento'
 
 type Coordinator = {
   id: string
@@ -14,6 +19,7 @@ type Leader = {
   nome: string
   telefone: string | null
   cidade: string | null
+  municipio: string | null
   coordinator_id: string | null
   created_at: string
   coordinators?: { id: string; nome: string } | { id: string; nome: string }[] | null
@@ -32,18 +38,16 @@ type Liderado = {
   leaders?: { id: string; nome: string } | { id: string; nome: string }[] | null
 }
 
-function coordinatorNameFromLeader(leader: Leader): string {
-  const c = leader.coordinators
-  if (!c) return 'Sem coordenação'
-  if (Array.isArray(c)) return c[0]?.nome ?? 'Sem coordenação'
-  return c.nome
-}
-
 function leaderNomeFromLiderado(row: Liderado): string {
   const l = row.leaders
   if (!l) return '—'
   if (Array.isArray(l)) return l[0]?.nome ?? '—'
   return l.nome
+}
+
+type ArvoreCoordBlock = {
+  coordinator: Coordinator
+  leaders: { leader: Leader; liderados: Liderado[] }[]
 }
 
 function formatWhatsappDigits(raw: string): string {
@@ -68,7 +72,7 @@ export default function MobilizacaoConfigPage() {
 
   const [leaderNome, setLeaderNome] = useState('')
   const [leaderTelefone, setLeaderTelefone] = useState('')
-  const [leaderCidade, setLeaderCidade] = useState('')
+  const [leaderMunicipio, setLeaderMunicipio] = useState('')
   const [leaderCoordinatorId, setLeaderCoordinatorId] = useState('')
   const [criandoLeader, setCriandoLeader] = useState(false)
 
@@ -81,10 +85,17 @@ export default function MobilizacaoConfigPage() {
 
   const [mensagem, setMensagem] = useState<string | null>(null)
 
+  /** Origin público do formulário de captação (ex.: domínio curto). Sem trailing slash. */
   const baseCaptacaoUrl = useMemo(() => {
+    const fromEnv = process.env.NEXT_PUBLIC_MOBILIZACAO_CAPTACAO_ORIGIN?.trim()
+    if (fromEnv) {
+      return `${fromEnv.replace(/\/$/, '')}/mobilizacao/detalhe`
+    }
     if (typeof window === 'undefined') return ''
     return `${window.location.origin}/mobilizacao/detalhe`
   }, [])
+
+  const municipiosPILista = useMemo(() => [...getTodosMunicipiosPIOficiaisOrdenados()], [])
 
   const carregarDados = async () => {
     setCarregando(true)
@@ -129,6 +140,10 @@ export default function MobilizacaoConfigPage() {
       setErro('Informe o nome do coordenador.')
       return
     }
+    if (!coordRegiao.trim()) {
+      setErro('Selecione o Território de Desenvolvimento (Região).')
+      return
+    }
     setErro(null)
     setCriandoCoord(true)
     try {
@@ -138,7 +153,7 @@ export default function MobilizacaoConfigPage() {
         body: JSON.stringify({
           tipo: 'coordinator',
           nome: coordNome.trim(),
-          regiao: coordRegiao.trim() || null,
+          regiao: coordRegiao.trim(),
         }),
       })
       const payload = (await res.json().catch(() => ({}))) as { error?: string }
@@ -168,6 +183,10 @@ export default function MobilizacaoConfigPage() {
       setErro('Selecione um coordenador para a liderança.')
       return
     }
+    if (!resolverNomeMunicipioPIOficial(leaderMunicipio)) {
+      setErro('Selecione um município válido do Piauí na lista (224 municípios / Mapa TDs).')
+      return
+    }
     setErro(null)
     setCriandoLeader(true)
     try {
@@ -178,7 +197,7 @@ export default function MobilizacaoConfigPage() {
           tipo: 'leader',
           nome: leaderNome.trim(),
           telefone: leaderTelefone.trim() || null,
-          cidade: leaderCidade.trim() || null,
+          municipio: leaderMunicipio.trim(),
           coordinator_id: leaderCoordinatorId,
         }),
       })
@@ -189,7 +208,7 @@ export default function MobilizacaoConfigPage() {
       }
       setLeaderNome('')
       setLeaderTelefone('')
-      setLeaderCidade('')
+      setLeaderMunicipio('')
       setMensagem('Liderança criada com sucesso.')
       await carregarDados()
     } catch {
@@ -261,6 +280,55 @@ export default function MobilizacaoConfigPage() {
     }
   }
 
+  const arvorePorCoordenador = useMemo(() => {
+    const leadersByCoord = new Map<string, Leader[]>()
+    for (const c of coordinators) {
+      leadersByCoord.set(c.id, [])
+    }
+    const orphanLeaders: Leader[] = []
+    for (const L of leaders) {
+      const cid = L.coordinator_id
+      if (cid && leadersByCoord.has(cid)) {
+        leadersByCoord.get(cid)!.push(L)
+      } else {
+        orphanLeaders.push(L)
+      }
+    }
+    const lidByLeader = new Map<string, Liderado[]>()
+    for (const L of leaders) {
+      lidByLeader.set(L.id, [])
+    }
+    for (const r of liderados) {
+      if (!lidByLeader.has(r.leader_id)) {
+        lidByLeader.set(r.leader_id, [])
+      }
+      lidByLeader.get(r.leader_id)!.push(r)
+    }
+    const sortNome = (a: { nome: string }, b: { nome: string }) =>
+      a.nome.localeCompare(b.nome, 'pt-BR', { sensitivity: 'base' })
+    const sortLideradoData = (a: Liderado, b: Liderado) =>
+      new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+
+    const blocos: ArvoreCoordBlock[] = [...coordinators]
+      .sort(sortNome)
+      .map((coordinator) => ({
+        coordinator,
+        leaders: (leadersByCoord.get(coordinator.id) ?? [])
+          .sort(sortNome)
+          .map((leader) => ({
+            leader,
+            liderados: [...(lidByLeader.get(leader.id) ?? [])].sort(sortLideradoData),
+          })),
+      }))
+
+    return { blocos, orphanLeaders, lidByLeader }
+  }, [coordinators, leaders, liderados])
+
+  const lideradosSemLiderNoCarregamento = useMemo(() => {
+    const ids = new Set(leaders.map((l) => l.id))
+    return liderados.filter((r) => !ids.has(r.leader_id))
+  }, [liderados, leaders])
+
   return (
     <div className="space-y-5 p-4 sm:p-6">
       <header className="space-y-1">
@@ -291,12 +359,18 @@ export default function MobilizacaoConfigPage() {
               placeholder="Nome do coordenador"
               className="w-full rounded-lg border border-card bg-background px-3 py-2 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-accent-gold-soft"
             />
-            <input
+            <select
               value={coordRegiao}
               onChange={(e) => setCoordRegiao(e.target.value)}
-              placeholder="Região (opcional)"
               className="w-full rounded-lg border border-card bg-background px-3 py-2 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-accent-gold-soft"
-            />
+            >
+              <option value="">Território de Desenvolvimento (Região)</option>
+              {TERRITORIOS_DESENVOLVIMENTO_PI.map((td) => (
+                <option key={td} value={td}>
+                  {td}
+                </option>
+              ))}
+            </select>
             <button
               type="submit"
               disabled={criandoCoord}
@@ -322,12 +396,25 @@ export default function MobilizacaoConfigPage() {
               placeholder="Telefone (opcional)"
               className="w-full rounded-lg border border-card bg-background px-3 py-2 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-accent-gold-soft"
             />
-            <input
-              value={leaderCidade}
-              onChange={(e) => setLeaderCidade(e.target.value)}
-              placeholder="Cidade (opcional)"
-              className="w-full rounded-lg border border-card bg-background px-3 py-2 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-accent-gold-soft"
-            />
+            <div className="space-y-1">
+              <input
+                list="municipios-pi-leader-form"
+                value={leaderMunicipio}
+                onChange={(e) => setLeaderMunicipio(e.target.value)}
+                placeholder="Município (Piauí — busque na lista)"
+                autoComplete="off"
+                className="w-full rounded-lg border border-card bg-background px-3 py-2 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-accent-gold-soft"
+              />
+              <datalist id="municipios-pi-leader-form">
+                {municipiosPILista.map((m) => (
+                  <option key={m} value={m} />
+                ))}
+              </datalist>
+              <p className="text-xs text-text-muted">
+                {municipiosPILista.length} municípios oficiais (base Mapa TDs). O valor precisa coincidir com um item da
+                lista.
+              </p>
+            </div>
             <select
               value={leaderCoordinatorId}
               onChange={(e) => setLeaderCoordinatorId(e.target.value)}
@@ -408,90 +495,165 @@ export default function MobilizacaoConfigPage() {
       </section>
 
       <section className="rounded-xl border border-card bg-surface p-4">
-        <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-text-muted">
-          Coordenadores ({coordinators.length})
+        <h2 className="mb-1 text-sm font-semibold uppercase tracking-wide text-text-muted">
+          Estrutura: coordenador → lideranças → liderados
         </h2>
+        <p className="mb-4 text-xs text-text-muted">
+          Liderados listados são os recentes carregados nesta tela (até 80), agrupados pela liderança.
+        </p>
         {carregando ? (
-          <p className="text-sm text-text-secondary">Carregando coordenadores...</p>
-        ) : coordinators.length === 0 ? (
-          <p className="text-sm text-text-secondary">Nenhum coordenador cadastrado.</p>
+          <p className="text-sm text-text-secondary">Carregando estrutura...</p>
+        ) : coordinators.length === 0 && leaders.length === 0 ? (
+          <p className="text-sm text-text-secondary">Nenhum coordenador nem liderança cadastrados.</p>
         ) : (
-          <div className="space-y-2">
-            {coordinators.map((coordinator) => (
-              <div key={coordinator.id} className="rounded-lg border border-card/70 px-3 py-2 text-sm">
-                <p className="font-medium text-text-primary">{coordinator.nome}</p>
-                <p className="text-text-secondary">{coordinator.regiao || 'Região não informada'}</p>
-              </div>
-            ))}
-          </div>
-        )}
-      </section>
-
-      <section className="rounded-xl border border-card bg-surface p-4">
-        <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-text-muted">
-          Liderados recentes ({liderados.length})
-        </h2>
-        {carregando ? (
-          <p className="text-sm text-text-secondary">Carregando liderados...</p>
-        ) : liderados.length === 0 ? (
-          <p className="text-sm text-text-secondary">Nenhum liderado cadastrado ainda.</p>
-        ) : (
-          <div className="space-y-2">
-            {liderados.map((row) => (
-              <div key={row.id} className="rounded-lg border border-card/70 px-3 py-2 text-sm">
-                <p className="font-medium text-text-primary">{row.nome}</p>
-                <p className="text-text-secondary">
-                  {row.whatsapp}
-                  {row.instagram ? ` · @${row.instagram}` : ''}
-                  {' · '}
-                  Liderança: {leaderNomeFromLiderado(row)}
-                  {row.cidade ? ` · ${row.cidade}` : ''}
-                </p>
-                <p className="text-xs text-text-muted">
-                  Origem: {row.origem} · {new Date(row.created_at).toLocaleString('pt-BR')}
-                </p>
-              </div>
-            ))}
-          </div>
-        )}
-      </section>
-
-      <section className="rounded-xl border border-card bg-surface p-4">
-        <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-text-muted">
-          Lideranças e links ({leaders.length})
-        </h2>
-        {carregando ? (
-          <p className="text-sm text-text-secondary">Carregando lideranças...</p>
-        ) : leaders.length === 0 ? (
-          <p className="text-sm text-text-secondary">Nenhuma liderança cadastrada.</p>
-        ) : (
-          <div className="space-y-2">
-            {leaders.map((leader) => {
-              const link = baseCaptacaoUrl ? `${baseCaptacaoUrl}?leader_id=${leader.id}` : ''
-              return (
-                <div key={leader.id} className="rounded-lg border border-card/70 px-3 py-3">
-                  <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-                    <div className="min-w-0">
-                      <p className="font-medium text-text-primary">{leader.nome}</p>
-                      <p className="text-sm text-text-secondary">
-                        Coordenação: {coordinatorNameFromLeader(leader)}
-                        {leader.cidade ? ` · ${leader.cidade}` : ''}
-                      </p>
-                      {link ? (
-                        <p className="mt-1 break-all text-xs text-text-muted">{link}</p>
-                      ) : null}
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => void copyLink(leader.id)}
-                      className="shrink-0 rounded-md border border-card px-3 py-1.5 text-xs font-medium text-text-primary hover:bg-card/40"
-                    >
-                      Copiar link
-                    </button>
-                  </div>
+          <div className="space-y-4">
+            {arvorePorCoordenador.blocos.map(({ coordinator, leaders: leadersNo }) => (
+              <div
+                key={coordinator.id}
+                className="overflow-hidden rounded-lg border border-card bg-background/40"
+              >
+                <div className="border-b border-card/80 bg-card/30 px-3 py-2">
+                  <p className="font-semibold text-text-primary">{coordinator.nome}</p>
+                  <p className="text-xs text-text-secondary">
+                    TD / região: {coordinator.regiao ?? '—'}
+                  </p>
                 </div>
-              )
-            })}
+                <div className="space-y-0 divide-y divide-card/60">
+                  {leadersNo.length === 0 ? (
+                    <p className="px-3 py-2 text-sm text-text-muted">Nenhuma liderança nesta coordenação.</p>
+                  ) : (
+                    leadersNo.map(({ leader, liderados: lideradosDo }) => {
+                      const link = baseCaptacaoUrl ? `${baseCaptacaoUrl}?leader_id=${leader.id}` : ''
+                      return (
+                        <div key={leader.id} className="px-0">
+                          <div className="flex flex-col gap-2 border-l-2 border-accent-gold/50 bg-surface/50 px-3 py-2 sm:flex-row sm:items-start sm:justify-between">
+                            <div className="min-w-0 pl-1">
+                              <p className="text-sm font-medium text-text-primary">Liderança: {leader.nome}</p>
+                              <p className="text-xs text-text-secondary">
+                                {leader.municipio || leader.cidade
+                                  ? `${leader.municipio ?? leader.cidade}`
+                                  : 'Município não informado'}
+                                {leader.telefone ? ` · ${leader.telefone}` : ''}
+                              </p>
+                              {link ? (
+                                <p className="mt-1 break-all text-[11px] text-text-muted">{link}</p>
+                              ) : null}
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => void copyLink(leader.id)}
+                              className="shrink-0 self-start rounded-md border border-card px-2.5 py-1 text-xs font-medium text-text-primary hover:bg-card/40"
+                            >
+                              Copiar link
+                            </button>
+                          </div>
+                          {lideradosDo.length === 0 ? (
+                            <p className="border-l-2 border-transparent py-1.5 pl-6 pr-3 text-xs text-text-muted">
+                              Nenhum liderado recente nesta lista.
+                            </p>
+                          ) : (
+                            <ul className="border-l-2 border-card/40 py-1 pl-5 pr-2">
+                              {lideradosDo.map((row) => (
+                                <li
+                                  key={row.id}
+                                  className="list-none border-b border-card/30 py-1.5 pl-2 text-xs last:border-b-0"
+                                >
+                                  <span className="font-medium text-text-primary">{row.nome}</span>
+                                  <span className="text-text-secondary">
+                                    {' '}
+                                    · {row.whatsapp}
+                                    {row.instagram ? ` · @${row.instagram}` : ''}
+                                    {row.cidade ? ` · ${row.cidade}` : ''}
+                                  </span>
+                                  <span className="block text-text-muted">
+                                    {row.origem} · {new Date(row.created_at).toLocaleString('pt-BR')}
+                                  </span>
+                                </li>
+                              ))}
+                            </ul>
+                          )}
+                        </div>
+                      )
+                    })
+                  )}
+                </div>
+              </div>
+            ))}
+
+            {arvorePorCoordenador.orphanLeaders.length > 0 ? (
+              <div className="overflow-hidden rounded-lg border border-dashed border-status-danger/40 bg-background/40">
+                <div className="border-b border-card/80 bg-status-danger/10 px-3 py-2">
+                  <p className="text-sm font-semibold text-text-primary">Lideranças sem coordenador vinculado</p>
+                  <p className="text-xs text-text-secondary">Associe um coordenador ou corrija o cadastro.</p>
+                </div>
+                <div className="space-y-0 divide-y divide-card/60">
+                  {arvorePorCoordenador.orphanLeaders
+                    .slice()
+                    .sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR', { sensitivity: 'base' }))
+                    .map((leader) => {
+                      const lid =
+                        arvorePorCoordenador.lidByLeader.get(leader.id) ?? []
+                      const link = baseCaptacaoUrl ? `${baseCaptacaoUrl}?leader_id=${leader.id}` : ''
+                      return (
+                        <div key={leader.id} className="px-0">
+                          <div className="flex flex-col gap-2 border-l-2 border-status-danger/40 px-3 py-2 sm:flex-row sm:items-start sm:justify-between">
+                            <div className="min-w-0 pl-1">
+                              <p className="text-sm font-medium text-text-primary">{leader.nome}</p>
+                              <p className="text-xs text-text-secondary">
+                                {leader.municipio || leader.cidade
+                                  ? `${leader.municipio ?? leader.cidade}`
+                                  : 'Município não informado'}
+                              </p>
+                              {link ? (
+                                <p className="mt-1 break-all text-[11px] text-text-muted">{link}</p>
+                              ) : null}
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => void copyLink(leader.id)}
+                              className="shrink-0 self-start rounded-md border border-card px-2.5 py-1 text-xs font-medium text-text-primary hover:bg-card/40"
+                            >
+                              Copiar link
+                            </button>
+                          </div>
+                          {lid.length > 0 ? (
+                            <ul className="border-l-2 border-card/40 py-1 pl-5 pr-2">
+                              {lid.map((row) => (
+                                <li
+                                  key={row.id}
+                                  className="list-none border-b border-card/30 py-1.5 pl-2 text-xs last:border-b-0"
+                                >
+                                  <span className="font-medium text-text-primary">{row.nome}</span>
+                                  <span className="text-text-secondary">
+                                    {' '}
+                                    · {row.whatsapp}
+                                    {row.instagram ? ` · @${row.instagram}` : ''}
+                                  </span>
+                                </li>
+                              ))}
+                            </ul>
+                          ) : null}
+                        </div>
+                      )
+                    })}
+                </div>
+              </div>
+            ) : null}
+
+            {lideradosSemLiderNoCarregamento.length > 0 ? (
+              <div className="rounded-lg border border-card/70 bg-background/30 px-3 py-2">
+                <p className="text-xs font-medium text-text-secondary">
+                  Liderados cuja liderança não está na lista atual ({lideradosSemLiderNoCarregamento.length})
+                </p>
+                <ul className="mt-2 space-y-1 text-xs text-text-muted">
+                  {lideradosSemLiderNoCarregamento.map((row) => (
+                    <li key={row.id}>
+                      {row.nome} · {row.whatsapp} · liderança: {leaderNomeFromLiderado(row)}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ) : null}
           </div>
         )}
       </section>
