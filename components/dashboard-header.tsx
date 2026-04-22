@@ -21,6 +21,7 @@ const pathToTitle: Record<string, string> = {
   '/dashboard/conteudo': 'Conteúdo & Redes',
   '/dashboard/noticias': 'Notícias & Crises',
   '/dashboard/mobilizacao': 'Mobilização',
+  '/dashboard/mobilizacao/config': 'Mobilização · Config',
   '/dashboard/whatsapp': 'WhatsApp',
   '/dashboard/pesquisa': 'Pesquisa & Relato',
   '/dashboard/operacao': 'Operação & Equipe',

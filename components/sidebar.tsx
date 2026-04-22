@@ -56,7 +56,9 @@ const COCKPIT_MENU_LABEL: Record<string, string> = {
   conteudo: 'Conteúdo',
   'instagram-lideres': 'IG Líderes',
   noticias: 'Radar',
-  mobilizacao: 'Mobilização',
+  'mobilizacao-menu': 'Mobilização',
+  'mobilizacao-captacao': 'Captação',
+  'mobilizacao-config': 'Config',
   whatsapp: 'WhatsApp',
   pesquisa: 'Pesquisa',
   operacao: 'Operação',
@@ -128,7 +130,16 @@ const menuItems: SidebarMenuItem[] = [
     href: '/dashboard/conteudo/instagram-lideres',
   },
   { id: 'noticias', label: 'Notícias & Crises', icon: 'Newspaper', href: '/dashboard/noticias' },
-  { id: 'mobilizacao', label: 'Mobilização', icon: 'Users', href: '/dashboard/mobilizacao' },
+  {
+    id: 'mobilizacao-menu',
+    label: 'Mobilização',
+    icon: 'Users',
+    href: '/dashboard/mobilizacao/config',
+    children: [
+      { id: 'mobilizacao-captacao', label: 'Captação', icon: 'Users', href: '/mobilizacao/detalhe' },
+      { id: 'mobilizacao-config', label: 'Config', icon: 'Settings', href: '/dashboard/mobilizacao/config' },
+    ],
+  },
   { id: 'whatsapp', label: 'WhatsApp', icon: 'MessageCircle', href: '/dashboard/whatsapp' },
   { id: 'pesquisa', label: 'Pesquisa & Relato', icon: 'BarChart3', href: '/dashboard/pesquisa' },
   { id: 'operacao', label: 'Operação & Equipe', icon: 'Settings', href: '/dashboard/operacao' },
@@ -226,6 +237,9 @@ function pageKeyForItem(id: string): string {
   if (id === 'chapas-estaduais') return 'chapas'
   if (id === 'instagram-lideres') return 'conteudo'
   if (id === 'territorio-mapa-tds') return 'territorio'
+  if (id === 'mobilizacao-menu' || id === 'mobilizacao-captacao' || id === 'mobilizacao-config') {
+    return 'mobilizacao'
+  }
   if (
     id === 'gestao-pesquisas-menu' ||
     id === 'gestao-pesquisas-inicio' ||
@@ -275,6 +289,8 @@ export function Sidebar() {
       setOpenSubmenuId('chapas-menu')
     } else if (pathname.startsWith('/dashboard/resumo-eleicoes')) {
       setOpenSubmenuId('resumo-eleicoes-menu')
+    } else if (pathname.startsWith('/dashboard/mobilizacao')) {
+      setOpenSubmenuId('mobilizacao-menu')
     }
   }, [pathname])
 

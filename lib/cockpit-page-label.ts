@@ -19,6 +19,7 @@ export function getCockpitPageLabel(pathname: string): string {
     '/dashboard/conteudo': 'Conteúdo',
     '/dashboard/noticias': 'Radar',
     '/dashboard/mobilizacao': 'Mobilização',
+    '/dashboard/mobilizacao/config': 'Mob. config',
     '/dashboard/whatsapp': 'WhatsApp',
     '/dashboard/pesquisa': 'Pesquisa',
     '/dashboard/operacao': 'Operação',
