@@ -50,6 +50,9 @@ type ArvoreCoordBlock = {
   leaders: { leader: Leader; liderados: Liderado[] }[]
 }
 
+/** React ainda não tipa `defaultOpen` em `<details>` em algumas versões de @types/react. */
+const detailsAbertoPorPadrao = { defaultOpen: true } as { defaultOpen?: boolean }
+
 function formatWhatsappDigits(raw: string): string {
   const digits = raw.replace(/\D/g, '').slice(0, 13)
   if (digits.length <= 2) return digits
@@ -508,151 +511,250 @@ export default function MobilizacaoConfigPage() {
         ) : (
           <div className="space-y-4">
             {arvorePorCoordenador.blocos.map(({ coordinator, leaders: leadersNo }) => (
-              <div
+              <details
                 key={coordinator.id}
-                className="overflow-hidden rounded-lg border border-card bg-background/40"
+                className="group overflow-hidden rounded-lg border border-card bg-background/40 open:shadow-sm"
+                {...detailsAbertoPorPadrao}
               >
-                <div className="border-b border-card/80 bg-card/30 px-3 py-2">
-                  <p className="font-semibold text-text-primary">{coordinator.nome}</p>
-                  <p className="text-xs text-text-secondary">
-                    TD / região: {coordinator.regiao ?? '—'}
-                  </p>
-                </div>
-                <div className="space-y-0 divide-y divide-card/60">
+                <summary className="flex cursor-pointer list-none items-start gap-2 bg-card/30 px-3 py-2 marker:hidden [&::-webkit-details-marker]:hidden">
+                  <span
+                    aria-hidden
+                    className="mt-0.5 inline-block shrink-0 select-none text-[10px] text-text-muted transition-transform duration-200 group-open:rotate-90"
+                  >
+                    ▸
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <p className="font-semibold text-text-primary">{coordinator.nome}</p>
+                    <p className="text-xs text-text-secondary">
+                      TD / região: {coordinator.regiao ?? '—'} · {leadersNo.length} liderança
+                      {leadersNo.length !== 1 ? 's' : ''}
+                    </p>
+                  </div>
+                </summary>
+                <div className="space-y-0 border-t border-card/60 divide-y divide-card/60">
                   {leadersNo.length === 0 ? (
                     <p className="px-3 py-2 text-sm text-text-muted">Nenhuma liderança nesta coordenação.</p>
                   ) : (
                     leadersNo.map(({ leader, liderados: lideradosDo }) => {
                       const link = baseCaptacaoUrl ? `${baseCaptacaoUrl}?leader_id=${leader.id}` : ''
                       return (
-                        <div key={leader.id} className="px-0">
-                          <div className="flex flex-col gap-2 border-l-2 border-accent-gold/50 bg-surface/50 px-3 py-2 sm:flex-row sm:items-start sm:justify-between">
-                            <div className="min-w-0 pl-1">
-                              <p className="text-sm font-medium text-text-primary">Liderança: {leader.nome}</p>
+                        <details
+                          key={leader.id}
+                          className="group border-l-2 border-accent-gold/50 open:bg-surface/50"
+                          {...detailsAbertoPorPadrao}
+                        >
+                          <summary className="flex cursor-pointer list-none items-start gap-2 px-3 py-2 marker:hidden [&::-webkit-details-marker]:hidden">
+                            <span
+                              aria-hidden
+                              className="mt-0.5 inline-block shrink-0 select-none text-[10px] text-text-muted transition-transform duration-200 group-open:rotate-90"
+                            >
+                              ▸
+                            </span>
+                            <div className="min-w-0 flex-1">
+                              <p className="text-sm font-medium text-text-primary">{leader.nome}</p>
                               <p className="text-xs text-text-secondary">
                                 {leader.municipio || leader.cidade
                                   ? `${leader.municipio ?? leader.cidade}`
                                   : 'Município não informado'}
                                 {leader.telefone ? ` · ${leader.telefone}` : ''}
                               </p>
-                              {link ? (
-                                <p className="mt-1 break-all text-[11px] text-text-muted">{link}</p>
-                              ) : null}
                             </div>
+                          </summary>
+                          <div className="space-y-2 border-t border-card/40 px-3 pb-3 pl-9 pt-2">
+                            {link ? (
+                              <p className="break-all text-[11px] text-text-muted">{link}</p>
+                            ) : null}
                             <button
                               type="button"
-                              onClick={() => void copyLink(leader.id)}
-                              className="shrink-0 self-start rounded-md border border-card px-2.5 py-1 text-xs font-medium text-text-primary hover:bg-card/40"
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                void copyLink(leader.id)
+                              }}
+                              className="rounded-md border border-card px-2.5 py-1 text-xs font-medium text-text-primary hover:bg-card/40"
                             >
                               Copiar link
                             </button>
-                          </div>
-                          {lideradosDo.length === 0 ? (
-                            <p className="border-l-2 border-transparent py-1.5 pl-6 pr-3 text-xs text-text-muted">
-                              Nenhum liderado recente nesta lista.
-                            </p>
-                          ) : (
-                            <ul className="border-l-2 border-card/40 py-1 pl-5 pr-2">
-                              {lideradosDo.map((row) => (
-                                <li
-                                  key={row.id}
-                                  className="list-none border-b border-card/30 py-1.5 pl-2 text-xs last:border-b-0"
+                            <details
+                              className="group rounded-md border border-card/70 bg-background/30 open:bg-background/50"
+                              {...detailsAbertoPorPadrao}
+                            >
+                              <summary className="flex cursor-pointer list-none items-center gap-2 px-2 py-1.5 text-xs marker:hidden [&::-webkit-details-marker]:hidden">
+                                <span
+                                  aria-hidden
+                                  className="inline-block shrink-0 select-none text-[10px] text-text-muted transition-transform duration-200 group-open:rotate-90"
                                 >
-                                  <span className="font-medium text-text-primary">{row.nome}</span>
-                                  <span className="text-text-secondary">
-                                    {' '}
-                                    · {row.whatsapp}
-                                    {row.instagram ? ` · @${row.instagram}` : ''}
-                                    {row.cidade ? ` · ${row.cidade}` : ''}
-                                  </span>
-                                  <span className="block text-text-muted">
-                                    {row.origem} · {new Date(row.created_at).toLocaleString('pt-BR')}
-                                  </span>
-                                </li>
-                              ))}
-                            </ul>
-                          )}
-                        </div>
+                                  ▸
+                                </span>
+                                <span className="font-medium text-text-secondary">
+                                  Liderados recentes ({lideradosDo.length})
+                                </span>
+                              </summary>
+                              <div className="border-t border-card/50 px-2 pb-2 pt-1">
+                                {lideradosDo.length === 0 ? (
+                                  <p className="text-xs text-text-muted">Nenhum nesta lista.</p>
+                                ) : (
+                                  <ul className="space-y-1">
+                                    {lideradosDo.map((row) => (
+                                      <li
+                                        key={row.id}
+                                        className="list-none border-b border-card/20 py-1.5 text-xs last:border-b-0"
+                                      >
+                                        <span className="font-medium text-text-primary">{row.nome}</span>
+                                        <span className="text-text-secondary">
+                                          {' '}
+                                          · {row.whatsapp}
+                                          {row.instagram ? ` · @${row.instagram}` : ''}
+                                          {row.cidade ? ` · ${row.cidade}` : ''}
+                                        </span>
+                                        <span className="block text-text-muted">
+                                          {row.origem} · {new Date(row.created_at).toLocaleString('pt-BR')}
+                                        </span>
+                                      </li>
+                                    ))}
+                                  </ul>
+                                )}
+                              </div>
+                            </details>
+                          </div>
+                        </details>
                       )
                     })
                   )}
                 </div>
-              </div>
+              </details>
             ))}
 
             {arvorePorCoordenador.orphanLeaders.length > 0 ? (
-              <div className="overflow-hidden rounded-lg border border-dashed border-status-danger/40 bg-background/40">
-                <div className="border-b border-card/80 bg-status-danger/10 px-3 py-2">
-                  <p className="text-sm font-semibold text-text-primary">Lideranças sem coordenador vinculado</p>
-                  <p className="text-xs text-text-secondary">Associe um coordenador ou corrija o cadastro.</p>
-                </div>
-                <div className="space-y-0 divide-y divide-card/60">
+              <details
+                className="group overflow-hidden rounded-lg border border-dashed border-status-danger/40 bg-background/40 open:shadow-sm"
+                {...detailsAbertoPorPadrao}
+              >
+                <summary className="flex cursor-pointer list-none items-start gap-2 bg-status-danger/10 px-3 py-2 marker:hidden [&::-webkit-details-marker]:hidden">
+                  <span
+                    aria-hidden
+                    className="mt-0.5 inline-block shrink-0 select-none text-[10px] text-text-muted transition-transform duration-200 group-open:rotate-90"
+                  >
+                    ▸
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-semibold text-text-primary">Lideranças sem coordenador vinculado</p>
+                    <p className="text-xs text-text-secondary">
+                      Associe um coordenador ou corrija o cadastro · {arvorePorCoordenador.orphanLeaders.length}{' '}
+                      liderança
+                      {arvorePorCoordenador.orphanLeaders.length !== 1 ? 's' : ''}
+                    </p>
+                  </div>
+                </summary>
+                <div className="space-y-0 border-t border-card/60 divide-y divide-card/60">
                   {arvorePorCoordenador.orphanLeaders
                     .slice()
                     .sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR', { sensitivity: 'base' }))
                     .map((leader) => {
-                      const lid =
-                        arvorePorCoordenador.lidByLeader.get(leader.id) ?? []
+                      const lid = arvorePorCoordenador.lidByLeader.get(leader.id) ?? []
                       const link = baseCaptacaoUrl ? `${baseCaptacaoUrl}?leader_id=${leader.id}` : ''
                       return (
-                        <div key={leader.id} className="px-0">
-                          <div className="flex flex-col gap-2 border-l-2 border-status-danger/40 px-3 py-2 sm:flex-row sm:items-start sm:justify-between">
-                            <div className="min-w-0 pl-1">
+                        <details
+                          key={leader.id}
+                          className="group border-l-2 border-status-danger/40 open:bg-surface/50"
+                          {...detailsAbertoPorPadrao}
+                        >
+                          <summary className="flex cursor-pointer list-none items-start gap-2 px-3 py-2 marker:hidden [&::-webkit-details-marker]:hidden">
+                            <span
+                              aria-hidden
+                              className="mt-0.5 inline-block shrink-0 select-none text-[10px] text-text-muted transition-transform duration-200 group-open:rotate-90"
+                            >
+                              ▸
+                            </span>
+                            <div className="min-w-0 flex-1">
                               <p className="text-sm font-medium text-text-primary">{leader.nome}</p>
                               <p className="text-xs text-text-secondary">
                                 {leader.municipio || leader.cidade
                                   ? `${leader.municipio ?? leader.cidade}`
                                   : 'Município não informado'}
                               </p>
-                              {link ? (
-                                <p className="mt-1 break-all text-[11px] text-text-muted">{link}</p>
-                              ) : null}
                             </div>
+                          </summary>
+                          <div className="space-y-2 border-t border-card/40 px-3 pb-3 pl-9 pt-2">
+                            {link ? (
+                              <p className="break-all text-[11px] text-text-muted">{link}</p>
+                            ) : null}
                             <button
                               type="button"
-                              onClick={() => void copyLink(leader.id)}
-                              className="shrink-0 self-start rounded-md border border-card px-2.5 py-1 text-xs font-medium text-text-primary hover:bg-card/40"
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                void copyLink(leader.id)
+                              }}
+                              className="rounded-md border border-card px-2.5 py-1 text-xs font-medium text-text-primary hover:bg-card/40"
                             >
                               Copiar link
                             </button>
-                          </div>
-                          {lid.length > 0 ? (
-                            <ul className="border-l-2 border-card/40 py-1 pl-5 pr-2">
-                              {lid.map((row) => (
-                                <li
-                                  key={row.id}
-                                  className="list-none border-b border-card/30 py-1.5 pl-2 text-xs last:border-b-0"
-                                >
-                                  <span className="font-medium text-text-primary">{row.nome}</span>
-                                  <span className="text-text-secondary">
-                                    {' '}
-                                    · {row.whatsapp}
-                                    {row.instagram ? ` · @${row.instagram}` : ''}
+                            {lid.length > 0 ? (
+                              <details
+                                className="group rounded-md border border-card/70 bg-background/30 open:bg-background/50"
+                                {...detailsAbertoPorPadrao}
+                              >
+                                <summary className="flex cursor-pointer list-none items-center gap-2 px-2 py-1.5 text-xs marker:hidden [&::-webkit-details-marker]:hidden">
+                                  <span
+                                    aria-hidden
+                                    className="inline-block shrink-0 select-none text-[10px] text-text-muted transition-transform duration-200 group-open:rotate-90"
+                                  >
+                                    ▸
                                   </span>
-                                </li>
-                              ))}
-                            </ul>
-                          ) : null}
-                        </div>
+                                  <span className="font-medium text-text-secondary">
+                                    Liderados recentes ({lid.length})
+                                  </span>
+                                </summary>
+                                <div className="border-t border-card/50 px-2 pb-2 pt-1">
+                                  <ul className="space-y-1">
+                                    {lid.map((row) => (
+                                      <li
+                                        key={row.id}
+                                        className="list-none border-b border-card/20 py-1.5 text-xs last:border-b-0"
+                                      >
+                                        <span className="font-medium text-text-primary">{row.nome}</span>
+                                        <span className="text-text-secondary">
+                                          {' '}
+                                          · {row.whatsapp}
+                                          {row.instagram ? ` · @${row.instagram}` : ''}
+                                        </span>
+                                      </li>
+                                    ))}
+                                  </ul>
+                                </div>
+                              </details>
+                            ) : null}
+                          </div>
+                        </details>
                       )
                     })}
                 </div>
-              </div>
+              </details>
             ) : null}
 
             {lideradosSemLiderNoCarregamento.length > 0 ? (
-              <div className="rounded-lg border border-card/70 bg-background/30 px-3 py-2">
-                <p className="text-xs font-medium text-text-secondary">
-                  Liderados cuja liderança não está na lista atual ({lideradosSemLiderNoCarregamento.length})
-                </p>
-                <ul className="mt-2 space-y-1 text-xs text-text-muted">
+              <details
+                className="group rounded-lg border border-card/70 bg-background/30 open:bg-background/40"
+                {...detailsAbertoPorPadrao}
+              >
+                <summary className="flex cursor-pointer list-none items-start gap-2 px-3 py-2 marker:hidden [&::-webkit-details-marker]:hidden">
+                  <span
+                    aria-hidden
+                    className="mt-0.5 inline-block shrink-0 select-none text-[10px] text-text-muted transition-transform duration-200 group-open:rotate-90"
+                  >
+                    ▸
+                  </span>
+                  <span className="text-xs font-medium text-text-secondary">
+                    Liderados cuja liderança não está na lista atual ({lideradosSemLiderNoCarregamento.length})
+                  </span>
+                </summary>
+                <ul className="space-y-1 border-t border-card/50 px-3 py-2 text-xs text-text-muted">
                   {lideradosSemLiderNoCarregamento.map((row) => (
-                    <li key={row.id}>
+                    <li key={row.id} className="list-none">
                       {row.nome} · {row.whatsapp} · liderança: {leaderNomeFromLiderado(row)}
                     </li>
                   ))}
                 </ul>
-              </div>
+              </details>
             ) : null}
           </div>
         )}
