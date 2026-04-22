@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 
+export const dynamic = 'force-dynamic'
+
 const CAMARA_API_BASE = 'https://dadosabertos.camara.leg.br/api/v2'
 const DEPUTADO_ID = 220697
 
