@@ -15,6 +15,8 @@ export type ColunasLiderancaTerritorio = {
   promessaLiderancaCol?: string
   expectativaLegadoCol?: string
   cidadeCol?: string
+  /** Coluna de @ do Instagram na planilha (vínculo com comentários no mapa digital). */
+  instagramCol?: string
 }
 
 /** Mesma lógica de normalização da página `/dashboard/territorio`. */
@@ -74,6 +76,14 @@ export function resolverColunasLiderancaTerritorio(headers: string[]): ColunasLi
   })
   const cidadeCol =
     headers.find((h) => /cidade|city|município|municipio/i.test(h)) || headers[1] || undefined
+  const instagramCol = headers.find((h) => {
+    const t = h.toLowerCase().trim()
+    return (
+      /^instagram$/i.test(h.trim()) ||
+      /^insta$/i.test(h.trim()) ||
+      /instagram|insta\s*[@:]|arroba.*insta/i.test(t)
+    )
+  })
   const nomeCol = headers.find((h) => /nome|name|lider|pessoa/i.test(h)) || headers[0] || undefined
   const cargoCol = (() => {
     const cargo2024 = headers.find((h) => /cargo.*2024/i.test(h))
@@ -96,6 +106,7 @@ export function resolverColunasLiderancaTerritorio(headers: string[]): ColunasLi
     promessaLiderancaCol,
     expectativaLegadoCol,
     cidadeCol,
+    instagramCol,
   }
 }
 

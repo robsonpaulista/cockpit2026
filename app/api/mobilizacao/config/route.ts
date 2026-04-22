@@ -1,8 +1,12 @@
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
-import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { insertMilitanciaLead } from '@/lib/mobilizacao-lead-capture'
+import { requireMobilizacaoAccess } from '@/lib/mobilizacao-require-access'
+import {
+  insertMilitanciaLead,
+  normalizeInstagramHandle,
+  normalizeWhatsappDigits,
+} from '@/lib/mobilizacao-lead-capture'
 import {
   TERRITORIOS_DESENVOLVIMENTO_PI,
   resolverNomeMunicipioPIOficial,
@@ -45,56 +49,42 @@ const createBodySchema = z.discriminatedUnion('tipo', [
   createLideradoSchema,
 ])
 
-type AuthContext =
-  | { ok: true; supabase: ReturnType<typeof createClient>; userId: string; isAdmin: boolean }
-  | { ok: false; response: NextResponse }
+const patchCoordinatorSchema = z.object({
+  recurso: z.literal('coordinator'),
+  id: z.string().uuid(),
+  nome: z.string().trim().min(2, 'Nome é obrigatório'),
+  regiao: z
+    .string()
+    .trim()
+    .min(1, 'Selecione um Território de Desenvolvimento')
+    .refine((s) => TERRITORIOS_TD_PI.includes(s), 'TD inválido'),
+})
 
-async function requireMobilizacaoAccess(): Promise<AuthContext> {
-  const supabase = createClient()
-  const {
-    data: { user },
-    error: authError,
-  } = await supabase.auth.getUser()
+const patchLeaderSchema = z.object({
+  recurso: z.literal('leader'),
+  id: z.string().uuid(),
+  nome: z.string().trim().min(2, 'Nome é obrigatório'),
+  telefone: z.string().trim().max(32).optional().nullable(),
+  municipio: z.string().trim().min(2, 'Município é obrigatório'),
+  coordinator_id: z.string().uuid('coordinator_id inválido'),
+})
 
-  if (authError || !user) {
-    return {
-      ok: false,
-      response: NextResponse.json({ error: 'Não autenticado' }, { status: 401 }),
-    }
-  }
+const patchLideradoSchema = z.object({
+  recurso: z.literal('liderado'),
+  id: z.string().uuid(),
+  nome: z.string().trim().min(2, 'Nome é obrigatório'),
+  whatsapp: z.string().trim().min(8, 'WhatsApp é obrigatório'),
+  instagram: z.string().trim().optional().nullable(),
+  cidade: z.string().trim().max(120).optional().nullable(),
+  leader_id: z.string().uuid('leader_id inválido'),
+  status: z.enum(['ativo', 'inativo']).optional(),
+})
 
-  const { data: profile, error: profileError } = await supabase
-    .from('profiles')
-    .select('is_admin')
-    .eq('id', user.id)
-    .maybeSingle()
-
-  if (profileError || !profile) {
-    return {
-      ok: false,
-      response: NextResponse.json({ error: 'Perfil não encontrado' }, { status: 403 }),
-    }
-  }
-
-  const isAdmin = Boolean(profile.is_admin)
-  if (!isAdmin) {
-    const { data: permission, error: permissionError } = await supabase
-      .from('profile_permissions')
-      .select('page_key')
-      .eq('profile_id', user.id)
-      .eq('page_key', 'mobilizacao')
-      .maybeSingle()
-
-    if (permissionError || !permission) {
-      return {
-        ok: false,
-        response: NextResponse.json({ error: 'Sem permissão para Mobilização' }, { status: 403 }),
-      }
-    }
-  }
-
-  return { ok: true, supabase, userId: user.id, isAdmin }
-}
+const patchBodySchema = z.discriminatedUnion('recurso', [
+  patchCoordinatorSchema,
+  patchLeaderSchema,
+  patchLideradoSchema,
+])
 
 export async function GET() {
   const ctx = await requireMobilizacaoAccess()
@@ -117,7 +107,7 @@ export async function GET() {
         'id, nome, whatsapp, instagram, cidade, origem, status, created_at, leader_id, leaders(id, nome)'
       )
       .order('created_at', { ascending: false })
-      .limit(80),
+      .limit(500),
   ])
 
   if (coordinatorsError || leadersError || lideradosError) {
@@ -221,4 +211,228 @@ export async function POST(request: Request) {
   }
 
   return NextResponse.json({ ok: true, leader: data }, { status: 201 })
+}
+
+export async function PATCH(request: Request) {
+  const ctx = await requireMobilizacaoAccess()
+  if (!ctx.ok) return ctx.response
+
+  const admin = createAdminClient()
+  let json: unknown
+  try {
+    json = await request.json()
+  } catch {
+    return NextResponse.json({ error: 'JSON inválido' }, { status: 400 })
+  }
+
+  const parsed = patchBodySchema.safeParse(json)
+  if (!parsed.success) {
+    return NextResponse.json(
+      { error: 'Dados inválidos', details: parsed.error.flatten() },
+      { status: 400 }
+    )
+  }
+
+  if (parsed.data.recurso === 'coordinator') {
+    const { data, error } = await admin
+      .from('coordinators')
+      .update({
+        nome: parsed.data.nome.trim(),
+        regiao: parsed.data.regiao.trim(),
+      })
+      .eq('id', parsed.data.id)
+      .select('id, nome, regiao, created_at')
+      .maybeSingle()
+
+    if (error) {
+      console.error('[mobilizacao/config PATCH coordinator]', error)
+      return NextResponse.json({ error: 'Erro ao atualizar coordenador' }, { status: 500 })
+    }
+    if (!data) {
+      return NextResponse.json({ error: 'Coordenador não encontrado' }, { status: 404 })
+    }
+    return NextResponse.json({ ok: true, coordinator: data })
+  }
+
+  if (parsed.data.recurso === 'leader') {
+    const municipioCanonico = resolverNomeMunicipioPIOficial(parsed.data.municipio)
+    if (!municipioCanonico) {
+      return NextResponse.json(
+        {
+          error:
+            'Município inválido. Escolha um dos municípios do Piauí da base oficial (Mapa TDs / 224 municípios).',
+        },
+        { status: 400 }
+      )
+    }
+
+    const { data, error } = await admin
+      .from('leaders')
+      .update({
+        nome: parsed.data.nome.trim(),
+        telefone: parsed.data.telefone?.trim() || null,
+        municipio: municipioCanonico,
+        cidade: municipioCanonico,
+        coordinator_id: parsed.data.coordinator_id,
+      })
+      .eq('id', parsed.data.id)
+      .select('id, nome, telefone, cidade, municipio, coordinator_id, created_at, coordinators(id, nome)')
+      .maybeSingle()
+
+    if (error) {
+      console.error('[mobilizacao/config PATCH leader]', error)
+      return NextResponse.json({ error: 'Erro ao atualizar liderança' }, { status: 500 })
+    }
+    if (!data) {
+      return NextResponse.json({ error: 'Liderança não encontrada' }, { status: 404 })
+    }
+    return NextResponse.json({ ok: true, leader: data })
+  }
+
+  const wa = normalizeWhatsappDigits(parsed.data.whatsapp)
+  if (wa.length < 10 || wa.length > 13) {
+    return NextResponse.json({ error: 'WhatsApp inválido' }, { status: 400 })
+  }
+  const ig = normalizeInstagramHandle(parsed.data.instagram)
+
+  const { data: dupW } = await admin
+    .from('leads_militancia')
+    .select('id')
+    .eq('whatsapp', wa)
+    .neq('id', parsed.data.id)
+    .maybeSingle()
+  if (dupW) {
+    return NextResponse.json({ error: 'Já existe outro cadastro com este WhatsApp.' }, { status: 409 })
+  }
+
+  if (ig) {
+    const { data: dupI } = await admin
+      .from('leads_militancia')
+      .select('id')
+      .eq('instagram', ig)
+      .neq('id', parsed.data.id)
+      .maybeSingle()
+    if (dupI) {
+      return NextResponse.json({ error: 'Já existe outro cadastro com este perfil do Instagram.' }, { status: 409 })
+    }
+  }
+
+  const { data: leaderData, error: leaderErr } = await admin
+    .from('leaders')
+    .select('coordinator_id')
+    .eq('id', parsed.data.leader_id)
+    .maybeSingle()
+
+  if (leaderErr || !leaderData) {
+    return NextResponse.json({ error: 'Liderança não encontrada' }, { status: 400 })
+  }
+
+  const updateRow: Record<string, string | null> = {
+    nome: parsed.data.nome.trim(),
+    whatsapp: wa,
+    instagram: ig,
+    cidade: parsed.data.cidade?.trim() || null,
+    leader_id: parsed.data.leader_id,
+    coordinator_id: (leaderData.coordinator_id as string | null) ?? null,
+  }
+  if (parsed.data.status) {
+    updateRow.status = parsed.data.status
+  }
+
+  const { data: lid, error: lidErr } = await admin
+    .from('leads_militancia')
+    .update(updateRow)
+    .eq('id', parsed.data.id)
+    .select(
+      'id, nome, whatsapp, instagram, cidade, origem, status, created_at, leader_id, leaders(id, nome)'
+    )
+    .maybeSingle()
+
+  if (lidErr) {
+    if (lidErr.code === '23505') {
+      const hint = `${lidErr.details ?? ''} ${lidErr.message ?? ''}`.toLowerCase()
+      if (hint.includes('instagram')) {
+        return NextResponse.json(
+          { error: 'Já existe outro cadastro com este perfil do Instagram.' },
+          { status: 409 }
+        )
+      }
+      return NextResponse.json({ error: 'Já existe outro cadastro com este WhatsApp.' }, { status: 409 })
+    }
+    console.error('[mobilizacao/config PATCH liderado]', lidErr)
+    return NextResponse.json({ error: 'Erro ao atualizar liderado' }, { status: 500 })
+  }
+  if (!lid) {
+    return NextResponse.json({ error: 'Liderado não encontrado' }, { status: 404 })
+  }
+
+  return NextResponse.json({ ok: true, liderado: lid })
+}
+
+export async function DELETE(request: Request) {
+  const ctx = await requireMobilizacaoAccess()
+  if (!ctx.ok) return ctx.response
+
+  const { searchParams } = new URL(request.url)
+  const recurso = searchParams.get('recurso')
+  const id = searchParams.get('id')
+
+  if (!recurso || !id) {
+    return NextResponse.json({ error: 'Parâmetros recurso e id são obrigatórios' }, { status: 400 })
+  }
+
+  const idParsed = z.string().uuid().safeParse(id)
+  if (!idParsed.success) {
+    return NextResponse.json({ error: 'id inválido' }, { status: 400 })
+  }
+
+  const admin = createAdminClient()
+
+  if (recurso === 'coordinator') {
+    const { error } = await admin.from('coordinators').delete().eq('id', idParsed.data)
+    if (error) {
+      console.error('[mobilizacao/config DELETE coordinator]', error)
+      return NextResponse.json({ error: 'Erro ao excluir coordenador' }, { status: 500 })
+    }
+    return NextResponse.json({ ok: true })
+  }
+
+  if (recurso === 'leader') {
+    const { count, error: countError } = await admin
+      .from('leads_militancia')
+      .select('id', { count: 'exact', head: true })
+      .eq('leader_id', idParsed.data)
+
+    if (countError) {
+      console.error('[mobilizacao/config DELETE leader count]', countError)
+      return NextResponse.json({ error: 'Erro ao verificar liderados' }, { status: 500 })
+    }
+    if ((count ?? 0) > 0) {
+      return NextResponse.json(
+        {
+          error:
+            'Não é possível excluir esta liderança enquanto existirem liderados vinculados. Exclua ou reatribua os liderados primeiro.',
+        },
+        { status: 409 }
+      )
+    }
+
+    const { error } = await admin.from('leaders').delete().eq('id', idParsed.data)
+    if (error) {
+      console.error('[mobilizacao/config DELETE leader]', error)
+      return NextResponse.json({ error: 'Erro ao excluir liderança' }, { status: 500 })
+    }
+    return NextResponse.json({ ok: true })
+  }
+
+  if (recurso === 'liderado') {
+    const { error } = await admin.from('leads_militancia').delete().eq('id', idParsed.data)
+    if (error) {
+      console.error('[mobilizacao/config DELETE liderado]', error)
+      return NextResponse.json({ error: 'Erro ao excluir liderado' }, { status: 500 })
+    }
+    return NextResponse.json({ ok: true })
+  }
+
+  return NextResponse.json({ error: 'recurso inválido' }, { status: 400 })
 }

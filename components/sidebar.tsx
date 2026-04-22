@@ -54,7 +54,6 @@ const COCKPIT_MENU_LABEL: Record<string, string> = {
   'chapas-menu': 'Chapas',
   'resumo-eleicoes-menu': 'Eleições',
   conteudo: 'Conteúdo',
-  'instagram-lideres': 'IG Líderes',
   noticias: 'Radar',
   'mobilizacao-menu': 'Mobilização',
   'mobilizacao-captacao': 'Captação',
@@ -123,12 +122,6 @@ const menuItems: SidebarMenuItem[] = [
     ],
   },
   { id: 'conteudo', label: 'Conteúdo & Redes', icon: 'MessageSquare', href: '/dashboard/conteudo' },
-  {
-    id: 'instagram-lideres',
-    label: 'Instagram Líderes',
-    icon: 'Trophy',
-    href: '/dashboard/conteudo/instagram-lideres',
-  },
   { id: 'noticias', label: 'Notícias & Crises', icon: 'Newspaper', href: '/dashboard/noticias' },
   {
     id: 'mobilizacao-menu',
@@ -235,7 +228,6 @@ function resolveMenuIcon(iconName: string, cockpit: boolean): LucideIcon {
 function pageKeyForItem(id: string): string {
   if (id === 'chapas-menu') return 'chapas'
   if (id === 'chapas-estaduais') return 'chapas'
-  if (id === 'instagram-lideres') return 'conteudo'
   if (id === 'territorio-mapa-tds') return 'territorio'
   if (id === 'mobilizacao-menu' || id === 'mobilizacao-captacao' || id === 'mobilizacao-config') {
     return 'mobilizacao'
@@ -305,6 +297,9 @@ export function Sidebar() {
         .filter((item) => {
           if (item.id === 'home') return true
           if (item.id === 'usuarios') return isAdmin
+          if (item.id === 'territorio-mapa-tds') {
+            return canAccess('territorio') || canAccess('conteudo')
+          }
           if (item.children) return item.children.length > 0
           return canAccess(pageKeyForItem(item.id))
         })

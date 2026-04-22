@@ -1,33 +1,18 @@
-'use client'
+import { Suspense } from 'react'
+import MapaTdsTabsClient from './mapa-tds-tabs-client'
 
-import dynamic from 'next/dynamic'
-
-const MapaTerritoriosDesenvolvimentoLeaflet = dynamic(
-  () =>
-    import('@/components/mapa-territorios-desenvolvimento-leaflet').then((mod) => ({
-      default: mod.MapaTerritoriosDesenvolvimentoLeaflet,
-    })),
-  { ssr: false, loading: () => <MapaPlaceholder /> }
-)
-
-function MapaPlaceholder() {
+function MapaTdsSuspenseFallback() {
   return (
-    <div
-      className="mapa-tds-placeholder h-full min-h-0 w-full animate-pulse bg-[#10161F] sm:rounded-xl"
-      aria-hidden
-    />
+    <div className="theme-futuristic td-mapa-pagina-ambiente flex h-[calc(100dvh-5.25rem)] min-h-[480px] w-full min-w-0 flex-col items-center justify-center max-lg:h-[calc(100dvh-6.25rem)] bg-[#10161F]">
+      <p className="text-sm text-[#AAB4C0]">Carregando mapa TDs…</p>
+    </div>
   )
 }
 
 export default function MapaTerritoriosDesenvolvimentoPage() {
   return (
-    <div className="theme-futuristic td-mapa-pagina-ambiente flex h-[calc(100dvh-5.25rem)] min-h-[480px] w-full min-w-0 flex-col max-lg:h-[calc(100dvh-6.25rem)]">
-      <header className="td-fut-page-head shrink-0 px-3 pb-2 pt-3 sm:px-5 sm:pb-2.5 sm:pt-3.5 md:px-6">
-        <h1 className="td-fut-page-head__title">Mapa de Dominância Eleitoral</h1>
-      </header>
-      <div className="relative flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto overflow-x-visible sm:rounded-xl">
-        <MapaTerritoriosDesenvolvimentoLeaflet visualPreset="futuristic" />
-      </div>
-    </div>
+    <Suspense fallback={<MapaTdsSuspenseFallback />}>
+      <MapaTdsTabsClient />
+    </Suspense>
   )
 }

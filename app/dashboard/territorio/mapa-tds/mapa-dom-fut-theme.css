@@ -9,6 +9,17 @@
    TOKENS
    ============================================================================= */
 
+/* Select de município na aba Mapa Digital IG: fundo alinhado ao painel; opções em texto claro */
+.theme-futuristic select[data-mapa-ig-municipio-select='true'] {
+  background-color: transparent;
+  color: var(--td-fut-text);
+}
+
+.theme-futuristic select[data-mapa-ig-municipio-select='true'] option {
+  background-color: var(--td-fut-bg-card);
+  color: var(--td-fut-text);
+}
+
 .theme-futuristic {
   --td-fut-bg-deep:         #0B0F14;
   --td-fut-bg-mid:          #10161F;
@@ -989,4 +1000,93 @@
 
 .mapa-tds-futuristic-nav-tooltip > .absolute.right-full {
   border-right-color: #10161f !important;
+}
+
+/* =============================================================================
+   Mapa Digital IG (aba embutida — alinha tokens ao tema futurista)
+   ============================================================================= */
+
+.theme-futuristic [data-td-fut-ig-panel='true'] .border-border-card {
+  border-color: var(--td-fut-border-strong) !important;
+}
+
+.theme-futuristic [data-td-fut-ig-panel='true'] .bg-bg-surface {
+  background: var(--td-fut-bg-card) !important;
+}
+
+.theme-futuristic [data-td-fut-ig-panel='true'] .shadow-card {
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.45) !important;
+}
+
+.theme-futuristic [data-td-fut-ig-panel='true'] .text-text-primary {
+  color: var(--td-fut-text) !important;
+}
+
+.theme-futuristic [data-td-fut-ig-panel='true'] .text-secondary {
+  color: var(--td-fut-text-sec) !important;
+}
+
+.theme-futuristic [data-td-fut-ig-panel='true'] .text-accent-gold {
+  color: var(--td-fut-accent) !important;
+}
+
+.theme-futuristic [data-td-fut-ig-panel='true'] .bg-accent-gold-soft\/10,
+.theme-futuristic [data-td-fut-ig-panel='true'] .bg-accent-gold-soft\/15,
+.theme-futuristic [data-td-fut-ig-panel='true'] .bg-accent-gold-soft\/20,
+.theme-futuristic [data-td-fut-ig-panel='true'] .bg-accent-gold-soft\/30 {
+  background-color: rgba(255, 106, 0, 0.12) !important;
+}
+
+.theme-futuristic [data-td-fut-ig-panel='true'] .hover\:bg-accent-gold-soft\/20:hover {
+  background-color: rgba(255, 106, 0, 0.14) !important;
+}
+
+.theme-futuristic [data-td-fut-ig-panel='true'] .hover\:bg-accent-gold-soft\/15:hover {
+  background-color: rgba(255, 106, 0, 0.1) !important;
+}
+
+.theme-futuristic [data-td-fut-ig-panel='true'] .hover\:bg-accent-gold-soft\/30:hover {
+  background-color: rgba(255, 106, 0, 0.16) !important;
+}
+
+.theme-futuristic [data-td-fut-ig-panel='true'] .border-accent-gold\/50,
+.theme-futuristic [data-td-fut-ig-panel='true'] .hover\:border-accent-gold\/50:hover {
+  border-color: rgba(255, 106, 0, 0.45) !important;
+}
+
+.theme-futuristic [data-td-fut-ig-panel='true'] .bg-accent-gold {
+  background-color: var(--td-fut-accent) !important;
+  color: #fff !important;
+}
+
+.theme-futuristic [data-td-fut-ig-panel='true'] .border-status-warning\/40 {
+  border-color: rgba(245, 158, 11, 0.45) !important;
+}
+
+.theme-futuristic [data-td-fut-ig-panel='true'] .bg-status-warning\/10 {
+  background: rgba(245, 158, 11, 0.12) !important;
+}
+
+.theme-futuristic [data-td-fut-ig-panel='true'] .border-status-success\/40 {
+  border-color: rgba(34, 197, 94, 0.45) !important;
+}
+
+.theme-futuristic [data-td-fut-ig-panel='true'] .bg-status-success\/10 {
+  background: rgba(34, 197, 94, 0.12) !important;
+}
+
+.theme-futuristic [data-td-fut-ig-panel='true'] .border-red-500\/40 {
+  border-color: rgba(239, 68, 68, 0.45) !important;
+}
+
+.theme-futuristic [data-td-fut-ig-panel='true'] .bg-red-500\/10 {
+  background: rgba(239, 68, 68, 0.12) !important;
+}
+
+.theme-futuristic [data-td-fut-ig-panel='true'] .text-red-200 {
+  color: #fecaca !important;
+}
+
+.theme-futuristic [data-td-fut-ig-panel='true'] .text-status-warning {
+  color: var(--td-fut-amber) !important;
 }

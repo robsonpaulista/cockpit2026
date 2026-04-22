@@ -132,6 +132,26 @@ export async function insertMilitanciaLead(
       ? String(input.cidadeOverride).trim()
       : leaderRes.leader.municipio ?? leaderRes.leader.cidade
 
+  if (instagram) {
+    const { data: existIg, error: igLookupError } = await admin
+      .from('leads_militancia')
+      .select('id')
+      .eq('instagram', instagram)
+      .maybeSingle()
+
+    if (igLookupError) {
+      console.error('[insertMilitanciaLead] lookup instagram', igLookupError)
+      return { ok: false, status: 500, message: 'Erro ao validar Instagram' }
+    }
+    if (existIg) {
+      return {
+        ok: false,
+        status: 409,
+        message: 'Já existe cadastro com este perfil do Instagram.',
+      }
+    }
+  }
+
   const { data: inserted, error: insertError } = await admin
     .from('leads_militancia')
     .insert({
@@ -149,6 +169,14 @@ export async function insertMilitanciaLead(
 
   if (insertError) {
     if (insertError.code === '23505') {
+      const hint = `${insertError.details ?? ''} ${insertError.message ?? ''}`.toLowerCase()
+      if (hint.includes('instagram')) {
+        return {
+          ok: false,
+          status: 409,
+          message: 'Já existe cadastro com este perfil do Instagram.',
+        }
+      }
       return { ok: false, status: 409, message: 'Já existe cadastro com este WhatsApp.' }
     }
     console.error('[insertMilitanciaLead]', insertError)

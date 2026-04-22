@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
+import { dedupeRowsByInstagramCommentId } from '@/lib/instagram-comments-dedupe'
 
 export const dynamic = 'force-dynamic'
 
@@ -17,13 +19,13 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
     }
 
+    const admin = createAdminClient()
     const { searchParams } = new URL(request.url)
     const maxRows = Math.min(Math.max(Number(searchParams.get('maxRows')) || 6000, 100), 15000)
 
-    const { data: rows, error } = await supabase
+    const { data: rows, error } = await admin
       .from('instagram_comments')
       .select(SELECT_FIELDS)
-      .eq('user_id', user.id)
       .order('media_posted_at', { ascending: false, nullsFirst: false })
       .order('commented_at', { ascending: false })
       .limit(maxRows)
@@ -32,7 +34,7 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: error.message }, { status: 500 })
     }
 
-    const list = rows ?? []
+    const list = dedupeRowsByInstagramCommentId(rows ?? [])
     const byMedia = new Map<
       string,
       {

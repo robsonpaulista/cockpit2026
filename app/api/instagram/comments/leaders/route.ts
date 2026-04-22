@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 
 export const dynamic = 'force-dynamic'
 
@@ -32,19 +33,20 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
     }
 
+    const admin = createAdminClient()
     const { searchParams } = new URL(request.url)
     const limitLeaders = Math.min(Math.max(Number(searchParams.get('limit')) || 50, 1), 200)
 
     const pageSize = 1000
     let from = 0
     const map = new Map<string, Agg>()
+    const comentariosContados = new Set<string>()
 
     for (;;) {
-      const { data, error } = await supabase
+      const { data, error } = await admin
         .from('instagram_comments')
-        .select('commenter_username, commenter_ig_id, commented_at')
-        .eq('user_id', user.id)
-        .order('commented_at', { ascending: false })
+        .select('instagram_comment_id, commenter_username, commenter_ig_id, commented_at')
+        .order('id', { ascending: true })
         .range(from, from + pageSize - 1)
 
       if (error) {
@@ -54,6 +56,10 @@ export async function GET(request: Request) {
       if (rows.length === 0) break
 
       for (const row of rows) {
+        const cid = row.instagram_comment_id as string
+        if (!cid || comentariosContados.has(cid)) continue
+        comentariosContados.add(cid)
+
         const key = commenterKey(row)
         const cur = map.get(key)
         const at = row.commented_at as string

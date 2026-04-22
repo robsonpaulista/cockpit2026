@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { usePathname } from 'next/navigation'
+import { usePathname, useSearchParams } from 'next/navigation'
 import { UserMenu } from './user-menu'
 import { useTheme } from '@/contexts/theme-context'
 import { useCockpitStatus } from '@/contexts/cockpit-status-context'
@@ -37,13 +37,21 @@ function getPageTitle(pathname: string): string {
 
 const MAPA_TDS_FUTURISTIC_ROUTE = '/dashboard/territorio/mapa-tds'
 
+function mapaTdsHeaderTitleFromSearch(aba: string | null): string {
+  return aba === 'mapa-digital-ig' ? 'Mapa Exército Digital' : 'Mapa de Dominância Eleitoral'
+}
+
 export function DashboardHeader() {
   const pathname = usePathname()
+  const searchParams = useSearchParams()
   const { theme } = useTheme()
   const { metrics } = useCockpitStatus()
-  const pageTitle = getPageTitle(pathname ?? '')
-  const cockpitPageLabel = getCockpitPageLabel(pathname ?? '/dashboard')
   const mapaTdsFuturisticShell = (pathname ?? '').startsWith(MAPA_TDS_FUTURISTIC_ROUTE)
+  const mapaTdsTituloContexto = mapaTdsFuturisticShell
+    ? mapaTdsHeaderTitleFromSearch(searchParams.get('aba'))
+    : null
+  const pageTitle = mapaTdsTituloContexto ?? getPageTitle(pathname ?? '')
+  const cockpitPageLabel = mapaTdsTituloContexto ?? getCockpitPageLabel(pathname ?? '/dashboard')
 
   const [now, setNow] = useState<Date>(() => new Date())
   useEffect(() => {

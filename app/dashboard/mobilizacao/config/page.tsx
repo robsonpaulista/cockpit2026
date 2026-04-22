@@ -88,6 +88,26 @@ export default function MobilizacaoConfigPage() {
 
   const [mensagem, setMensagem] = useState<string | null>(null)
 
+  const [atualizando, setAtualizando] = useState(false)
+  const [salvandoCrud, setSalvandoCrud] = useState(false)
+  const [editCoord, setEditCoord] = useState<{ id: string; nome: string; regiao: string } | null>(null)
+  const [editLeader, setEditLeader] = useState<{
+    id: string
+    nome: string
+    telefone: string
+    municipio: string
+    coordinator_id: string
+  } | null>(null)
+  const [editLiderado, setEditLiderado] = useState<{
+    id: string
+    nome: string
+    whatsapp: string
+    instagram: string
+    cidade: string
+    leader_id: string
+    status: 'ativo' | 'inativo'
+  } | null>(null)
+
   /** Origin público do formulário de captação (ex.: domínio curto). Sem trailing slash. */
   const baseCaptacaoUrl = useMemo(() => {
     const fromEnv = process.env.NEXT_PUBLIC_MOBILIZACAO_CAPTACAO_ORIGIN?.trim()
@@ -100,8 +120,10 @@ export default function MobilizacaoConfigPage() {
 
   const municipiosPILista = useMemo(() => [...getTodosMunicipiosPIOficiaisOrdenados()], [])
 
-  const carregarDados = async () => {
-    setCarregando(true)
+  const carregarDados = async (opts?: { modo?: 'full' | 'refresh' | 'quiet' }) => {
+    const modo = opts?.modo ?? 'full'
+    if (modo === 'full') setCarregando(true)
+    if (modo === 'refresh') setAtualizando(true)
     setErro(null)
     try {
       const res = await fetch('/api/mobilizacao/config')
@@ -124,15 +146,19 @@ export default function MobilizacaoConfigPage() {
       if (!lideradoLeaderId && (payload.leaders ?? []).length > 0) {
         setLideradoLeaderId(payload.leaders?.[0]?.id ?? '')
       }
+      if (modo === 'refresh') {
+        setMensagem('Dados atualizados.')
+      }
     } catch {
       setErro('Falha de conexão ao carregar os dados.')
     } finally {
-      setCarregando(false)
+      if (modo === 'full') setCarregando(false)
+      if (modo === 'refresh') setAtualizando(false)
     }
   }
 
   useEffect(() => {
-    void carregarDados()
+    void carregarDados({ modo: 'full' })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -167,7 +193,7 @@ export default function MobilizacaoConfigPage() {
       setCoordNome('')
       setCoordRegiao('')
       setMensagem('Coordenador criado com sucesso.')
-      await carregarDados()
+      await carregarDados({ modo: 'quiet' })
     } catch {
       setErro('Falha de conexão ao criar coordenador.')
     } finally {
@@ -213,7 +239,7 @@ export default function MobilizacaoConfigPage() {
       setLeaderTelefone('')
       setLeaderMunicipio('')
       setMensagem('Liderança criada com sucesso.')
-      await carregarDados()
+      await carregarDados({ modo: 'quiet' })
     } catch {
       setErro('Falha de conexão ao criar liderança.')
     } finally {
@@ -262,7 +288,7 @@ export default function MobilizacaoConfigPage() {
       setLideradoInstagram('')
       setLideradoCidade('')
       setMensagem('Liderado cadastrado com sucesso (origem: manual).')
-      await carregarDados()
+      await carregarDados({ modo: 'quiet' })
     } catch {
       setErro('Falha de conexão ao cadastrar liderado.')
     } finally {
@@ -280,6 +306,153 @@ export default function MobilizacaoConfigPage() {
     } catch {
       setErro('Não foi possível copiar automaticamente. Copie o link manualmente.')
       setMensagem(link)
+    }
+  }
+
+  const excluirRecurso = async (
+    recurso: 'coordinator' | 'leader' | 'liderado',
+    id: string,
+    labelConfirmacao: string
+  ) => {
+    if (!window.confirm(`Tem certeza que deseja excluir ${labelConfirmacao}?`)) return
+    setErro(null)
+    setSalvandoCrud(true)
+    try {
+      const res = await fetch(
+        `/api/mobilizacao/config?recurso=${recurso}&id=${encodeURIComponent(id)}`,
+        { method: 'DELETE' }
+      )
+      const payload = (await res.json().catch(() => ({}))) as { error?: string }
+      if (!res.ok) {
+        setErro(payload.error ?? 'Não foi possível excluir.')
+        return
+      }
+      setEditCoord(null)
+      setEditLeader(null)
+      setEditLiderado(null)
+      setMensagem('Registro excluído.')
+      await carregarDados({ modo: 'quiet' })
+    } catch {
+      setErro('Falha de conexão ao excluir.')
+    } finally {
+      setSalvandoCrud(false)
+    }
+  }
+
+  const salvarCoordenadorEdit = async () => {
+    if (!editCoord) return
+    if (!editCoord.regiao.trim()) {
+      setErro('Selecione o Território de Desenvolvimento.')
+      return
+    }
+    setErro(null)
+    setSalvandoCrud(true)
+    try {
+      const res = await fetch('/api/mobilizacao/config', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          recurso: 'coordinator',
+          id: editCoord.id,
+          nome: editCoord.nome.trim(),
+          regiao: editCoord.regiao.trim(),
+        }),
+      })
+      const payload = (await res.json().catch(() => ({}))) as { error?: string }
+      if (!res.ok) {
+        setErro(payload.error ?? 'Não foi possível salvar o coordenador.')
+        return
+      }
+      setEditCoord(null)
+      setMensagem('Coordenador atualizado.')
+      await carregarDados({ modo: 'quiet' })
+    } catch {
+      setErro('Falha de conexão ao salvar.')
+    } finally {
+      setSalvandoCrud(false)
+    }
+  }
+
+  const salvarLeaderEdit = async () => {
+    if (!editLeader) return
+    if (!editLeader.coordinator_id) {
+      setErro('Selecione o coordenador.')
+      return
+    }
+    if (!resolverNomeMunicipioPIOficial(editLeader.municipio)) {
+      setErro('Selecione um município válido do Piauí na lista.')
+      return
+    }
+    setErro(null)
+    setSalvandoCrud(true)
+    try {
+      const res = await fetch('/api/mobilizacao/config', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          recurso: 'leader',
+          id: editLeader.id,
+          nome: editLeader.nome.trim(),
+          telefone: editLeader.telefone.trim() || null,
+          municipio: editLeader.municipio.trim(),
+          coordinator_id: editLeader.coordinator_id,
+        }),
+      })
+      const payload = (await res.json().catch(() => ({}))) as { error?: string }
+      if (!res.ok) {
+        setErro(payload.error ?? 'Não foi possível salvar a liderança.')
+        return
+      }
+      setEditLeader(null)
+      setMensagem('Liderança atualizada.')
+      await carregarDados({ modo: 'quiet' })
+    } catch {
+      setErro('Falha de conexão ao salvar.')
+    } finally {
+      setSalvandoCrud(false)
+    }
+  }
+
+  const salvarLideradoEdit = async () => {
+    if (!editLiderado) return
+    const wa = editLiderado.whatsapp.replace(/\D/g, '')
+    if (wa.length < 10) {
+      setErro('Informe um WhatsApp válido com DDD.')
+      return
+    }
+    if (!editLiderado.leader_id) {
+      setErro('Selecione a liderança.')
+      return
+    }
+    setErro(null)
+    setSalvandoCrud(true)
+    try {
+      const res = await fetch('/api/mobilizacao/config', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          recurso: 'liderado',
+          id: editLiderado.id,
+          nome: editLiderado.nome.trim(),
+          whatsapp: wa,
+          instagram: editLiderado.instagram.trim() || null,
+          cidade: editLiderado.cidade.trim() || null,
+          leader_id: editLiderado.leader_id,
+          status: editLiderado.status,
+        }),
+      })
+      const payload = (await res.json().catch(() => ({}))) as { error?: string }
+      if (!res.ok) {
+        setErro(payload.error ?? 'Não foi possível salvar o liderado.')
+        return
+      }
+      setEditLiderado(null)
+      setMensagem('Liderado atualizado.')
+      await carregarDados({ modo: 'quiet' })
+    } catch {
+      setErro('Falha de conexão ao salvar.')
+    } finally {
+      setSalvandoCrud(false)
     }
   }
 
@@ -334,11 +507,21 @@ export default function MobilizacaoConfigPage() {
 
   return (
     <div className="space-y-5 p-4 sm:p-6">
-      <header className="space-y-1">
-        <h1 className="text-xl font-semibold text-text-primary">Mobilização · Config</h1>
-        <p className="text-sm text-text-secondary">
-          Cadastre coordenadores, lideranças, liderados (manual ou base) e gere links da página pública de captação.
-        </p>
+      <header className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div className="space-y-1">
+          <h1 className="text-xl font-semibold text-text-primary">Mobilização · Config</h1>
+          <p className="text-sm text-text-secondary">
+            Cadastre coordenadores, lideranças, liderados (manual ou base) e gere links da página pública de captação.
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={() => void carregarDados({ modo: 'refresh' })}
+          disabled={atualizando || carregando}
+          className="shrink-0 rounded-lg border border-card bg-surface px-3 py-2 text-sm font-medium text-text-primary hover:bg-card/50 disabled:opacity-60"
+        >
+          {atualizando ? 'Atualizando…' : 'Atualizar dados'}
+        </button>
       </header>
 
       {erro ? (
@@ -502,7 +685,8 @@ export default function MobilizacaoConfigPage() {
           Estrutura: coordenador → lideranças → liderados
         </h2>
         <p className="mb-4 text-xs text-text-muted">
-          Liderados listados são os recentes carregados nesta tela (até 80), agrupados pela liderança.
+          Liderados listados são os recentes carregados nesta tela (até 500), agrupados pela liderança. Use
+          &quot;Atualizar dados&quot; para recarregar.
         </p>
         {carregando ? (
           <p className="text-sm text-text-secondary">Carregando estrutura...</p>
@@ -531,6 +715,79 @@ export default function MobilizacaoConfigPage() {
                     </p>
                   </div>
                 </summary>
+                <div className="border-t border-card/60 bg-card/20">
+                  <div className="flex flex-wrap gap-2 px-3 py-2">
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.preventDefault()
+                        setEditCoord({
+                          id: coordinator.id,
+                          nome: coordinator.nome,
+                          regiao: coordinator.regiao ?? '',
+                        })
+                        setEditLeader(null)
+                        setEditLiderado(null)
+                      }}
+                      className="rounded-md border border-card px-2.5 py-1 text-xs font-medium text-text-primary hover:bg-card/50"
+                    >
+                      Editar
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        void excluirRecurso(
+                          'coordinator',
+                          coordinator.id,
+                          `o coordenador «${coordinator.nome}» (lideranças ficam sem coordenação)`
+                        )
+                      }
+                      disabled={salvandoCrud}
+                      className="rounded-md border border-status-danger/50 px-2.5 py-1 text-xs font-medium text-status-danger hover:bg-status-danger/10 disabled:opacity-50"
+                    >
+                      Excluir
+                    </button>
+                  </div>
+                  {editCoord?.id === coordinator.id ? (
+                    <div className="space-y-2 border-t border-card/50 px-3 py-3">
+                      <input
+                        value={editCoord.nome}
+                        onChange={(e) => setEditCoord((prev) => (prev ? { ...prev, nome: e.target.value } : prev))}
+                        className="w-full rounded-lg border border-card bg-background px-3 py-2 text-sm text-text-primary"
+                        placeholder="Nome"
+                      />
+                      <select
+                        value={editCoord.regiao}
+                        onChange={(e) => setEditCoord((prev) => (prev ? { ...prev, regiao: e.target.value } : prev))}
+                        className="w-full rounded-lg border border-card bg-background px-3 py-2 text-sm text-text-primary"
+                      >
+                        <option value="">TD / região</option>
+                        {TERRITORIOS_DESENVOLVIMENTO_PI.map((td) => (
+                          <option key={td} value={td}>
+                            {td}
+                          </option>
+                        ))}
+                      </select>
+                      <div className="flex flex-wrap gap-2">
+                        <button
+                          type="button"
+                          onClick={() => void salvarCoordenadorEdit()}
+                          disabled={salvandoCrud}
+                          className="rounded-md bg-accent-gold px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-60"
+                        >
+                          Salvar
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setEditCoord(null)}
+                          className="rounded-md border border-card px-3 py-1.5 text-xs font-medium text-text-primary"
+                        >
+                          Cancelar
+                        </button>
+                      </div>
+                    </div>
+                  ) : null}
+                </div>
                 <div className="space-y-0 border-t border-card/60 divide-y divide-card/60">
                   {leadersNo.length === 0 ? (
                     <p className="px-3 py-2 text-sm text-text-muted">Nenhuma liderança nesta coordenação.</p>
@@ -574,6 +831,106 @@ export default function MobilizacaoConfigPage() {
                             >
                               Copiar link
                             </button>
+                            <div className="flex flex-wrap gap-2">
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  setEditLeader({
+                                    id: leader.id,
+                                    nome: leader.nome,
+                                    telefone: leader.telefone ?? '',
+                                    municipio: leader.municipio ?? leader.cidade ?? '',
+                                    coordinator_id: leader.coordinator_id ?? '',
+                                  })
+                                  setEditCoord(null)
+                                  setEditLiderado(null)
+                                }}
+                                className="rounded-md border border-card px-2.5 py-1 text-xs font-medium text-text-primary hover:bg-card/40"
+                              >
+                                Editar
+                              </button>
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  void excluirRecurso(
+                                    'leader',
+                                    leader.id,
+                                    `a liderança «${leader.nome}» (só permitido se não houver liderados)`
+                                  )
+                                }}
+                                disabled={salvandoCrud}
+                                className="rounded-md border border-status-danger/50 px-2.5 py-1 text-xs font-medium text-status-danger hover:bg-status-danger/10 disabled:opacity-50"
+                              >
+                                Excluir
+                              </button>
+                            </div>
+                            {editLeader?.id === leader.id ? (
+                              <div
+                                className="space-y-2 rounded-lg border border-card bg-background/80 p-2"
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                <input
+                                  value={editLeader.nome}
+                                  onChange={(e) =>
+                                    setEditLeader((prev) => (prev ? { ...prev, nome: e.target.value } : prev))
+                                  }
+                                  className="w-full rounded border border-card bg-background px-2 py-1.5 text-xs"
+                                  placeholder="Nome"
+                                />
+                                <input
+                                  value={editLeader.telefone}
+                                  onChange={(e) =>
+                                    setEditLeader((prev) => (prev ? { ...prev, telefone: e.target.value } : prev))
+                                  }
+                                  className="w-full rounded border border-card bg-background px-2 py-1.5 text-xs"
+                                  placeholder="Telefone"
+                                />
+                                <input
+                                  list="municipios-pi-leader-form"
+                                  value={editLeader.municipio}
+                                  onChange={(e) =>
+                                    setEditLeader((prev) => (prev ? { ...prev, municipio: e.target.value } : prev))
+                                  }
+                                  className="w-full rounded border border-card bg-background px-2 py-1.5 text-xs"
+                                  placeholder="Município"
+                                />
+                                <select
+                                  value={editLeader.coordinator_id}
+                                  onChange={(e) =>
+                                    setEditLeader((prev) =>
+                                      prev ? { ...prev, coordinator_id: e.target.value } : prev
+                                    )
+                                  }
+                                  className="w-full rounded border border-card bg-background px-2 py-1.5 text-xs"
+                                >
+                                  <option value="">Coordenador</option>
+                                  {coordinators.map((c) => (
+                                    <option key={c.id} value={c.id}>
+                                      {c.nome}
+                                    </option>
+                                  ))}
+                                </select>
+                                <div className="flex flex-wrap gap-2">
+                                  <button
+                                    type="button"
+                                    onClick={() => void salvarLeaderEdit()}
+                                    disabled={salvandoCrud}
+                                    className="rounded bg-accent-gold px-2 py-1 text-xs font-semibold text-white disabled:opacity-60"
+                                  >
+                                    Salvar
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => setEditLeader(null)}
+                                    className="rounded border border-card px-2 py-1 text-xs"
+                                  >
+                                    Cancelar
+                                  </button>
+                                </div>
+                              </div>
+                            ) : null}
                             <details
                               className="group rounded-md border border-card/70 bg-background/30 open:bg-background/50"
                               {...detailsAbertoPorPadrao}
@@ -597,18 +954,152 @@ export default function MobilizacaoConfigPage() {
                                     {lideradosDo.map((row) => (
                                       <li
                                         key={row.id}
-                                        className="list-none border-b border-card/20 py-1.5 text-xs last:border-b-0"
+                                        className="list-none border-b border-card/20 py-2 text-xs last:border-b-0"
                                       >
-                                        <span className="font-medium text-text-primary">{row.nome}</span>
-                                        <span className="text-text-secondary">
-                                          {' '}
-                                          · {row.whatsapp}
-                                          {row.instagram ? ` · @${row.instagram}` : ''}
-                                          {row.cidade ? ` · ${row.cidade}` : ''}
-                                        </span>
-                                        <span className="block text-text-muted">
-                                          {row.origem} · {new Date(row.created_at).toLocaleString('pt-BR')}
-                                        </span>
+                                        {editLiderado?.id === row.id ? (
+                                          <div className="space-y-2 rounded border border-card bg-background/90 p-2">
+                                            <input
+                                              value={editLiderado.nome}
+                                              onChange={(e) =>
+                                                setEditLiderado((prev) =>
+                                                  prev ? { ...prev, nome: e.target.value } : prev
+                                                )
+                                              }
+                                              className="w-full rounded border border-card px-2 py-1"
+                                              placeholder="Nome"
+                                            />
+                                            <input
+                                              value={editLiderado.whatsapp}
+                                              onChange={(e) =>
+                                                setEditLiderado((prev) =>
+                                                  prev
+                                                    ? { ...prev, whatsapp: formatWhatsappDigits(e.target.value) }
+                                                    : prev
+                                                )
+                                              }
+                                              className="w-full rounded border border-card px-2 py-1"
+                                              placeholder="WhatsApp"
+                                            />
+                                            <input
+                                              value={editLiderado.instagram}
+                                              onChange={(e) =>
+                                                setEditLiderado((prev) =>
+                                                  prev ? { ...prev, instagram: e.target.value } : prev
+                                                )
+                                              }
+                                              className="w-full rounded border border-card px-2 py-1"
+                                              placeholder="Instagram"
+                                            />
+                                            <input
+                                              value={editLiderado.cidade}
+                                              onChange={(e) =>
+                                                setEditLiderado((prev) =>
+                                                  prev ? { ...prev, cidade: e.target.value } : prev
+                                                )
+                                              }
+                                              className="w-full rounded border border-card px-2 py-1"
+                                              placeholder="Cidade"
+                                            />
+                                            <select
+                                              value={editLiderado.leader_id}
+                                              onChange={(e) =>
+                                                setEditLiderado((prev) =>
+                                                  prev ? { ...prev, leader_id: e.target.value } : prev
+                                                )
+                                              }
+                                              className="w-full rounded border border-card px-2 py-1"
+                                            >
+                                              {leaders.map((L) => (
+                                                <option key={L.id} value={L.id}>
+                                                  {L.nome}
+                                                </option>
+                                              ))}
+                                            </select>
+                                            <select
+                                              value={editLiderado.status}
+                                              onChange={(e) =>
+                                                setEditLiderado((prev) =>
+                                                  prev
+                                                    ? {
+                                                        ...prev,
+                                                        status: e.target.value as 'ativo' | 'inativo',
+                                                      }
+                                                    : prev
+                                                )
+                                              }
+                                              className="w-full rounded border border-card px-2 py-1"
+                                            >
+                                              <option value="ativo">Ativo</option>
+                                              <option value="inativo">Inativo</option>
+                                            </select>
+                                            <div className="flex flex-wrap gap-2">
+                                              <button
+                                                type="button"
+                                                onClick={() => void salvarLideradoEdit()}
+                                                disabled={salvandoCrud}
+                                                className="rounded bg-accent-gold px-2 py-1 text-[11px] font-semibold text-white disabled:opacity-60"
+                                              >
+                                                Salvar
+                                              </button>
+                                              <button
+                                                type="button"
+                                                onClick={() => setEditLiderado(null)}
+                                                className="rounded border border-card px-2 py-1 text-[11px]"
+                                              >
+                                                Cancelar
+                                              </button>
+                                            </div>
+                                          </div>
+                                        ) : (
+                                          <>
+                                            <span className="font-medium text-text-primary">{row.nome}</span>
+                                            <span className="text-text-secondary">
+                                              {' '}
+                                              · {row.whatsapp}
+                                              {row.instagram ? ` · @${row.instagram}` : ''}
+                                              {row.cidade ? ` · ${row.cidade}` : ''}
+                                            </span>
+                                            <span className="block text-text-muted">
+                                              {row.origem} · {row.status} ·{' '}
+                                              {new Date(row.created_at).toLocaleString('pt-BR')}
+                                            </span>
+                                            <div className="mt-1 flex flex-wrap gap-2">
+                                              <button
+                                                type="button"
+                                                onClick={() => {
+                                                  setEditLiderado({
+                                                    id: row.id,
+                                                    nome: row.nome,
+                                                    whatsapp: formatWhatsappDigits(row.whatsapp),
+                                                    instagram: row.instagram ?? '',
+                                                    cidade: row.cidade ?? '',
+                                                    leader_id: row.leader_id,
+                                                    status: row.status === 'inativo' ? 'inativo' : 'ativo',
+                                                  })
+                                                  setEditCoord(null)
+                                                  setEditLeader(null)
+                                                }}
+                                                className="rounded border border-card px-2 py-0.5 text-[11px] font-medium text-text-primary hover:bg-card/40"
+                                              >
+                                                Editar
+                                              </button>
+                                              <button
+                                                type="button"
+                                                onClick={() =>
+                                                  void excluirRecurso(
+                                                    'liderado',
+                                                    row.id,
+                                                    `o liderado «${row.nome}»`
+                                                  )
+                                                }
+                                                disabled={salvandoCrud}
+                                                className="rounded border border-status-danger/40 px-2 py-0.5 text-[11px] font-medium text-status-danger hover:bg-status-danger/10 disabled:opacity-50"
+                                              >
+                                                Excluir
+                                              </button>
+                                            </div>
+                                          </>
+                                        )}
                                       </li>
                                     ))}
                                   </ul>
@@ -688,6 +1179,106 @@ export default function MobilizacaoConfigPage() {
                             >
                               Copiar link
                             </button>
+                            <div className="flex flex-wrap gap-2">
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  setEditLeader({
+                                    id: leader.id,
+                                    nome: leader.nome,
+                                    telefone: leader.telefone ?? '',
+                                    municipio: leader.municipio ?? leader.cidade ?? '',
+                                    coordinator_id: leader.coordinator_id ?? '',
+                                  })
+                                  setEditCoord(null)
+                                  setEditLiderado(null)
+                                }}
+                                className="rounded-md border border-card px-2.5 py-1 text-xs font-medium text-text-primary hover:bg-card/40"
+                              >
+                                Editar
+                              </button>
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  void excluirRecurso(
+                                    'leader',
+                                    leader.id,
+                                    `a liderança «${leader.nome}» (só permitido se não houver liderados)`
+                                  )
+                                }}
+                                disabled={salvandoCrud}
+                                className="rounded-md border border-status-danger/50 px-2.5 py-1 text-xs font-medium text-status-danger hover:bg-status-danger/10 disabled:opacity-50"
+                              >
+                                Excluir
+                              </button>
+                            </div>
+                            {editLeader?.id === leader.id ? (
+                              <div
+                                className="space-y-2 rounded-lg border border-card bg-background/80 p-2"
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                <input
+                                  value={editLeader.nome}
+                                  onChange={(e) =>
+                                    setEditLeader((prev) => (prev ? { ...prev, nome: e.target.value } : prev))
+                                  }
+                                  className="w-full rounded border border-card bg-background px-2 py-1.5 text-xs"
+                                  placeholder="Nome"
+                                />
+                                <input
+                                  value={editLeader.telefone}
+                                  onChange={(e) =>
+                                    setEditLeader((prev) => (prev ? { ...prev, telefone: e.target.value } : prev))
+                                  }
+                                  className="w-full rounded border border-card bg-background px-2 py-1.5 text-xs"
+                                  placeholder="Telefone"
+                                />
+                                <input
+                                  list="municipios-pi-leader-form"
+                                  value={editLeader.municipio}
+                                  onChange={(e) =>
+                                    setEditLeader((prev) => (prev ? { ...prev, municipio: e.target.value } : prev))
+                                  }
+                                  className="w-full rounded border border-card bg-background px-2 py-1.5 text-xs"
+                                  placeholder="Município"
+                                />
+                                <select
+                                  value={editLeader.coordinator_id}
+                                  onChange={(e) =>
+                                    setEditLeader((prev) =>
+                                      prev ? { ...prev, coordinator_id: e.target.value } : prev
+                                    )
+                                  }
+                                  className="w-full rounded border border-card bg-background px-2 py-1.5 text-xs"
+                                >
+                                  <option value="">Coordenador</option>
+                                  {coordinators.map((c) => (
+                                    <option key={c.id} value={c.id}>
+                                      {c.nome}
+                                    </option>
+                                  ))}
+                                </select>
+                                <div className="flex flex-wrap gap-2">
+                                  <button
+                                    type="button"
+                                    onClick={() => void salvarLeaderEdit()}
+                                    disabled={salvandoCrud}
+                                    className="rounded bg-accent-gold px-2 py-1 text-xs font-semibold text-white disabled:opacity-60"
+                                  >
+                                    Salvar
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => setEditLeader(null)}
+                                    className="rounded border border-card px-2 py-1 text-xs"
+                                  >
+                                    Cancelar
+                                  </button>
+                                </div>
+                              </div>
+                            ) : null}
                             {lid.length > 0 ? (
                               <details
                                 className="group rounded-md border border-card/70 bg-background/30 open:bg-background/50"
@@ -709,14 +1300,147 @@ export default function MobilizacaoConfigPage() {
                                     {lid.map((row) => (
                                       <li
                                         key={row.id}
-                                        className="list-none border-b border-card/20 py-1.5 text-xs last:border-b-0"
+                                        className="list-none border-b border-card/20 py-2 text-xs last:border-b-0"
                                       >
-                                        <span className="font-medium text-text-primary">{row.nome}</span>
-                                        <span className="text-text-secondary">
-                                          {' '}
-                                          · {row.whatsapp}
-                                          {row.instagram ? ` · @${row.instagram}` : ''}
-                                        </span>
+                                        {editLiderado?.id === row.id ? (
+                                          <div className="space-y-2 rounded border border-card bg-background/90 p-2">
+                                            <input
+                                              value={editLiderado.nome}
+                                              onChange={(e) =>
+                                                setEditLiderado((prev) =>
+                                                  prev ? { ...prev, nome: e.target.value } : prev
+                                                )
+                                              }
+                                              className="w-full rounded border border-card px-2 py-1"
+                                              placeholder="Nome"
+                                            />
+                                            <input
+                                              value={editLiderado.whatsapp}
+                                              onChange={(e) =>
+                                                setEditLiderado((prev) =>
+                                                  prev
+                                                    ? { ...prev, whatsapp: formatWhatsappDigits(e.target.value) }
+                                                    : prev
+                                                )
+                                              }
+                                              className="w-full rounded border border-card px-2 py-1"
+                                              placeholder="WhatsApp"
+                                            />
+                                            <input
+                                              value={editLiderado.instagram}
+                                              onChange={(e) =>
+                                                setEditLiderado((prev) =>
+                                                  prev ? { ...prev, instagram: e.target.value } : prev
+                                                )
+                                              }
+                                              className="w-full rounded border border-card px-2 py-1"
+                                              placeholder="Instagram"
+                                            />
+                                            <input
+                                              value={editLiderado.cidade}
+                                              onChange={(e) =>
+                                                setEditLiderado((prev) =>
+                                                  prev ? { ...prev, cidade: e.target.value } : prev
+                                                )
+                                              }
+                                              className="w-full rounded border border-card px-2 py-1"
+                                              placeholder="Cidade"
+                                            />
+                                            <select
+                                              value={editLiderado.leader_id}
+                                              onChange={(e) =>
+                                                setEditLiderado((prev) =>
+                                                  prev ? { ...prev, leader_id: e.target.value } : prev
+                                                )
+                                              }
+                                              className="w-full rounded border border-card px-2 py-1"
+                                            >
+                                              {leaders.map((L) => (
+                                                <option key={L.id} value={L.id}>
+                                                  {L.nome}
+                                                </option>
+                                              ))}
+                                            </select>
+                                            <select
+                                              value={editLiderado.status}
+                                              onChange={(e) =>
+                                                setEditLiderado((prev) =>
+                                                  prev
+                                                    ? {
+                                                        ...prev,
+                                                        status: e.target.value as 'ativo' | 'inativo',
+                                                      }
+                                                    : prev
+                                                )
+                                              }
+                                              className="w-full rounded border border-card px-2 py-1"
+                                            >
+                                              <option value="ativo">Ativo</option>
+                                              <option value="inativo">Inativo</option>
+                                            </select>
+                                            <div className="flex flex-wrap gap-2">
+                                              <button
+                                                type="button"
+                                                onClick={() => void salvarLideradoEdit()}
+                                                disabled={salvandoCrud}
+                                                className="rounded bg-accent-gold px-2 py-1 text-[11px] font-semibold text-white disabled:opacity-60"
+                                              >
+                                                Salvar
+                                              </button>
+                                              <button
+                                                type="button"
+                                                onClick={() => setEditLiderado(null)}
+                                                className="rounded border border-card px-2 py-1 text-[11px]"
+                                              >
+                                                Cancelar
+                                              </button>
+                                            </div>
+                                          </div>
+                                        ) : (
+                                          <>
+                                            <span className="font-medium text-text-primary">{row.nome}</span>
+                                            <span className="text-text-secondary">
+                                              {' '}
+                                              · {row.whatsapp}
+                                              {row.instagram ? ` · @${row.instagram}` : ''}
+                                            </span>
+                                            <div className="mt-1 flex flex-wrap gap-2">
+                                              <button
+                                                type="button"
+                                                onClick={() => {
+                                                  setEditLiderado({
+                                                    id: row.id,
+                                                    nome: row.nome,
+                                                    whatsapp: formatWhatsappDigits(row.whatsapp),
+                                                    instagram: row.instagram ?? '',
+                                                    cidade: row.cidade ?? '',
+                                                    leader_id: row.leader_id,
+                                                    status: row.status === 'inativo' ? 'inativo' : 'ativo',
+                                                  })
+                                                  setEditCoord(null)
+                                                  setEditLeader(null)
+                                                }}
+                                                className="rounded border border-card px-2 py-0.5 text-[11px] font-medium text-text-primary hover:bg-card/40"
+                                              >
+                                                Editar
+                                              </button>
+                                              <button
+                                                type="button"
+                                                onClick={() =>
+                                                  void excluirRecurso(
+                                                    'liderado',
+                                                    row.id,
+                                                    `o liderado «${row.nome}»`
+                                                  )
+                                                }
+                                                disabled={salvandoCrud}
+                                                className="rounded border border-status-danger/40 px-2 py-0.5 text-[11px] font-medium text-status-danger hover:bg-status-danger/10 disabled:opacity-50"
+                                              >
+                                                Excluir
+                                              </button>
+                                            </div>
+                                          </>
+                                        )}
                                       </li>
                                     ))}
                                   </ul>
@@ -747,10 +1471,123 @@ export default function MobilizacaoConfigPage() {
                     Liderados cuja liderança não está na lista atual ({lideradosSemLiderNoCarregamento.length})
                   </span>
                 </summary>
-                <ul className="space-y-1 border-t border-card/50 px-3 py-2 text-xs text-text-muted">
+                <ul className="space-y-2 border-t border-card/50 px-3 py-2 text-xs text-text-muted">
                   {lideradosSemLiderNoCarregamento.map((row) => (
-                    <li key={row.id} className="list-none">
-                      {row.nome} · {row.whatsapp} · liderança: {leaderNomeFromLiderado(row)}
+                    <li key={row.id} className="list-none rounded border border-card/50 bg-background/30 p-2">
+                      {editLiderado?.id === row.id ? (
+                        <div className="space-y-2 text-text-primary">
+                          <input
+                            value={editLiderado.nome}
+                            onChange={(e) =>
+                              setEditLiderado((prev) => (prev ? { ...prev, nome: e.target.value } : prev))
+                            }
+                            className="w-full rounded border border-card px-2 py-1"
+                          />
+                          <input
+                            value={editLiderado.whatsapp}
+                            onChange={(e) =>
+                              setEditLiderado((prev) =>
+                                prev ? { ...prev, whatsapp: formatWhatsappDigits(e.target.value) } : prev
+                              )
+                            }
+                            className="w-full rounded border border-card px-2 py-1"
+                          />
+                          <input
+                            value={editLiderado.instagram}
+                            onChange={(e) =>
+                              setEditLiderado((prev) => (prev ? { ...prev, instagram: e.target.value } : prev))
+                            }
+                            className="w-full rounded border border-card px-2 py-1"
+                            placeholder="Instagram"
+                          />
+                          <input
+                            value={editLiderado.cidade}
+                            onChange={(e) =>
+                              setEditLiderado((prev) => (prev ? { ...prev, cidade: e.target.value } : prev))
+                            }
+                            className="w-full rounded border border-card px-2 py-1"
+                          />
+                          <select
+                            value={editLiderado.leader_id}
+                            onChange={(e) =>
+                              setEditLiderado((prev) => (prev ? { ...prev, leader_id: e.target.value } : prev))
+                            }
+                            className="w-full rounded border border-card px-2 py-1"
+                          >
+                            {leaders.map((L) => (
+                              <option key={L.id} value={L.id}>
+                                {L.nome}
+                              </option>
+                            ))}
+                          </select>
+                          <select
+                            value={editLiderado.status}
+                            onChange={(e) =>
+                              setEditLiderado((prev) =>
+                                prev ? { ...prev, status: e.target.value as 'ativo' | 'inativo' } : prev
+                              )
+                            }
+                            className="w-full rounded border border-card px-2 py-1"
+                          >
+                            <option value="ativo">Ativo</option>
+                            <option value="inativo">Inativo</option>
+                          </select>
+                          <div className="flex gap-2">
+                            <button
+                              type="button"
+                              onClick={() => void salvarLideradoEdit()}
+                              disabled={salvandoCrud}
+                              className="rounded bg-accent-gold px-2 py-1 text-[11px] font-semibold text-white"
+                            >
+                              Salvar
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setEditLiderado(null)}
+                              className="rounded border border-card px-2 py-1 text-[11px]"
+                            >
+                              Cancelar
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <>
+                          <p>
+                            {row.nome} · {row.whatsapp} · liderança: {leaderNomeFromLiderado(row)}
+                          </p>
+                          <div className="mt-1 flex gap-2">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setEditLiderado({
+                                  id: row.id,
+                                  nome: row.nome,
+                                  whatsapp: formatWhatsappDigits(row.whatsapp),
+                                  instagram: row.instagram ?? '',
+                                  cidade: row.cidade ?? '',
+                                  leader_id: row.leader_id,
+                                  status: row.status === 'inativo' ? 'inativo' : 'ativo',
+                                })
+                                setEditCoord(null)
+                                setEditLeader(null)
+                              }}
+                              className="rounded border border-card px-2 py-0.5 text-[11px] text-text-primary"
+                            >
+                              Editar
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() =>
+                                void excluirRecurso('liderado', row.id, `o liderado «${row.nome}»`)
+                              }
+                              disabled={salvandoCrud}
+                              className="rounded border border-status-danger/40 px-2 py-0.5 text-[11px] text-status-danger"
+                            >
+                              Excluir
+                            </button>
+                          </div>
+                        </>
+                      )}
                     </li>
                   ))}
                 </ul>

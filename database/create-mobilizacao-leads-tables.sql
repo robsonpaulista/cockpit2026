@@ -44,6 +44,10 @@ CREATE INDEX IF NOT EXISTS idx_leads_militancia_coordinator_id ON public.leads_m
 CREATE INDEX IF NOT EXISTS idx_leads_militancia_cidade ON public.leads_militancia(cidade);
 CREATE INDEX IF NOT EXISTS idx_leads_militancia_created_at ON public.leads_militancia(created_at DESC);
 
+CREATE UNIQUE INDEX IF NOT EXISTS idx_leads_militancia_instagram_unique
+  ON public.leads_militancia (instagram)
+  WHERE instagram IS NOT NULL;
+
 ALTER TABLE public.coordinators ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.leaders ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.leads_militancia ENABLE ROW LEVEL SECURITY;

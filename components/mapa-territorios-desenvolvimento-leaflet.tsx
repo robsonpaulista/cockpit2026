@@ -1,6 +1,14 @@
 'use client'
 
-import { useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  type CSSProperties,
+} from 'react'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import { cn } from '@/lib/utils'
@@ -43,12 +51,30 @@ import {
 } from '@/lib/jadyel-federal-2022-pi-votos'
 import { normalizeMunicipioNome } from '@/lib/piaui-regiao'
 import {
+  classificarChavesPorScore,
   classificarTerritoriosPorScore,
   type ClassificacaoTerritorioTd,
 } from '@/lib/piaui-territorio-classificacao'
 import { ClassificacaoTdBadge } from '@/components/classificacao-td-badge'
 import { HistoricoPesquisasPorTdMapSection } from '@/components/historico-pesquisas-por-td-map-section'
 import { useSidebar } from '@/contexts/sidebar-context'
+import type { InstagramPorTdAgg } from '@/lib/mapa-digital-ig-por-td'
+import { fetchMobilizacaoPorTdMaps } from '@/lib/mobilizacao-liderados-por-td-client'
+import {
+  emptyInstagramComentariosPorTdPayload,
+  fetchInstagramComentariosAgregadoPorTdLiderados,
+  type InstagramComentariosAgregadoPorTdLideradosPayload,
+} from '@/lib/instagram-comentarios-por-td-liderados-client'
+import { INSTAGRAM_COMMENTS_SYNCED_EVENT } from '@/lib/instagram-comments-sync-events'
+import {
+  fetchInstagramIgPorMunicipioNoTd,
+  type IgAgregadoMunicipioNoTd,
+} from '@/lib/instagram-ig-por-municipio-no-td-client'
+import { loadInstagramConfigAsync } from '@/lib/instagramApi'
+import { MapaDigitalIgMunicipiosResumoTable } from '@/components/mapa-digital-ig-municipios-resumo-table'
+import { MapaDigitalIgMunicipioMobilizacaoDrill } from '@/components/mapa-digital-ig-municipio-mobilizacao-drill'
+import { MapaDigitalIgPublicacoesLideresCobertura } from '@/components/mapa-digital-ig-publicacoes-lideres-cobertura'
+import { Loader2 } from 'lucide-react'
 
 type LoadState = 'loading' | 'ready' | 'error'
 
@@ -103,6 +129,11 @@ type MapaTdController = {
   atualizarResumoMarcadores: (
     agregadoTdPlanilha: Map<TerritorioDesenvolvimentoPI, AgregadoPlanilhaPorTd>,
     usarExpectativaFed26: boolean
+  ) => void
+  /** Camada Instagram: % = comentários vinculados ao TD ÷ postagens processadas (mídias distintas na base). */
+  atualizarResumoMarcadoresPorIg?: (
+    porTd: Map<TerritorioDesenvolvimentoPI, InstagramPorTdAgg>,
+    postagensProcessadas: number
   ) => void
 }
 
@@ -495,6 +526,19 @@ function aplicarFocoMarcadoresPesoTd(
   }
 }
 
+/** Evita `invalidateSize` com mapa já `remove()` ou container fora do DOM (erro `_leaflet_pos`). */
+function safeLeafletInvalidateSize(map: L.Map | null | undefined): boolean {
+  if (!map) return false
+  try {
+    const el = map.getContainer()
+    if (!el?.isConnected) return false
+    map.invalidateSize({ animate: false })
+    return true
+  } catch {
+    return false
+  }
+}
+
 function atualizarHoverMarcadorTd(
   markerByTd: Map<TerritorioDesenvolvimentoPI, L.Marker>,
   hoverTd: TerritorioDesenvolvimentoPI | null,
@@ -531,6 +575,33 @@ const fmtPctEleitoresTd = new Intl.NumberFormat('pt-BR', {
   minimumFractionDigits: 1,
   maximumFractionDigits: 1,
 })
+
+function atualizarResumoMarcadoresPorComentariosIg(
+  markerByTd: Map<TerritorioDesenvolvimentoPI, L.Marker>,
+  porTd: Map<TerritorioDesenvolvimentoPI, InstagramPorTdAgg>,
+  postagensProcessadas: number
+) {
+  const fmtComentMeta = (n: number) =>
+    n >= 10_000 ? `${Math.round(n / 1000)} mil coment.` : `${new Intl.NumberFormat('pt-BR').format(n)} coment.`
+
+  for (const [td, marker] of markerByTd) {
+    const el = marker.getElement()
+    if (!el) continue
+    const valorEl = el.querySelector<HTMLElement>('.td-peso-eleitores-card__value')
+    const metaEl = el.querySelector<HTMLElement>('.td-peso-eleitores-card__meta')
+    if (!valorEl || !metaEl) continue
+    const n = porTd.get(td)?.comentarios ?? 0
+    if (!postagensProcessadas || postagensProcessadas < 1) {
+      valorEl.textContent = '—'
+      metaEl.textContent = `${fmtComentMeta(n)} · 0 posts na base`
+      continue
+    }
+    const pct = (n / postagensProcessadas) * 100
+    const pctStr = fmtPctEleitoresTd.format(pct).replace(/\u00a0/g, '')
+    valorEl.textContent = `${pctStr}%`
+    metaEl.textContent = `${fmtComentMeta(n)} · ${new Intl.NumberFormat('pt-BR').format(postagensProcessadas)} posts`
+  }
+}
 
 /** Texto curto para o marcador de peso (ex.: "421 mil eleit."). */
 function formatarEleitoresCompactoPt(n: number): string {
@@ -760,7 +831,7 @@ function fitBoundsWithSidebarShift(
   const paddingMapa = opts?.paddingMapa ?? 'painelResumoTd'
   const extraZoom = opts?.incrementarZoomAposEncaixe ?? 0
   const painelResumoMaxRem = opts?.painelResumoMaxRem
-  map.invalidateSize({ animate: false, pan: false })
+  if (!safeLeafletInvalidateSize(map)) return
   if (!geoBounds.isValid()) return
 
   const { paddingTopLeft, paddingBottomRight } =
@@ -997,6 +1068,17 @@ type TdSortKey =
   | 'prioridade'
 type TdSortDirection = 'asc' | 'desc'
 
+type IgTdSortKey =
+  | 'rank'
+  | 'territorio'
+  | 'municipios'
+  | 'lideres'
+  | 'liderados'
+  | 'comentarios'
+  | 'perfis'
+  | 'participacao'
+  | 'vis'
+
 const fmtPctVariacaoDeltaTd = new Intl.NumberFormat('pt-BR', {
   signDisplay: 'exceptZero',
   minimumFractionDigits: 1,
@@ -1033,9 +1115,14 @@ function TdPctDeltaCelula({ v22, delta }: { v22: number; delta: number }) {
 type MapaTerritoriosDesenvolvimentoLeafletProps = {
   /** `futuristic` = mapa monocromático + painel cockpit (rota mapa-tds). */
   visualPreset?: 'default' | 'futuristic'
+  /** `digitalIg` = mesma malha e tabela “Resumo por TD” com comentários cruzados ao @ de liderados (mobilização) por TD. */
+  painelContext?: 'eleitoral' | 'digitalIg'
 }
 
-export function MapaTerritoriosDesenvolvimentoLeaflet({ visualPreset = 'default' }: MapaTerritoriosDesenvolvimentoLeafletProps) {
+export function MapaTerritoriosDesenvolvimentoLeaflet({
+  visualPreset = 'default',
+  painelContext = 'eleitoral',
+}: MapaTerritoriosDesenvolvimentoLeafletProps) {
   const { collapsed: sidebarCollapsed } = useSidebar()
   const painelResumoMaxRemRef = useRef(PAINEL_RESUMO_TD_MAX_REM_EXPANDED)
 
@@ -1067,6 +1154,8 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({ visualPreset = 'default'
   })
 
   const [municipioFocadoLiderancas, setMunicipioFocadoLiderancas] = useState<string | null>(null)
+  /** Drill IG: líderes → liderados (mobilização) por município; não exige planilha. */
+  const [municipioMobilizacaoDrillIg, setMunicipioMobilizacaoDrillIg] = useState<string | null>(null)
   const [hoverTdTabela, setHoverTdTabela] = useState<TerritorioDesenvolvimentoPI | null>(null)
 
   const mapFilterActionsRef = useRef<{
@@ -1102,6 +1191,7 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({ visualPreset = 'default'
   }, [resumoPorTd])
 
   const aplicarFiltroMunicipioPainel = (municipioSelecionado: string) => {
+    setMunicipioMobilizacaoDrillIg(null)
     const municipio = municipioSelecionado.trim()
     if (!municipio) {
       setMunicipioFocadoLiderancas(null)
@@ -1123,6 +1213,25 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({ visualPreset = 'default'
   const [planilhaHeaders, setPlanilhaHeaders] = useState<string[]>([])
   const [planilhaRecords, setPlanilhaRecords] = useState<LiderancaPlanilha[]>([])
   const [planilhaErro, setPlanilhaErro] = useState<string>('')
+
+  const [igLoadState, setIgLoadState] = useState<'idle' | 'loading' | 'ready' | 'error'>('idle')
+  const [igError, setIgError] = useState<string>('')
+  const [igComentariosPorTdPayload, setIgComentariosPorTdPayload] =
+    useState<InstagramComentariosAgregadoPorTdLideradosPayload | null>(null)
+  const [igComentariosPorTdMobilizacaoNegado, setIgComentariosPorTdMobilizacaoNegado] = useState(false)
+  const [igTdSort, setIgTdSort] = useState<{ key: IgTdSortKey; direction: TdSortDirection }>({
+    key: 'comentarios',
+    direction: 'desc',
+  })
+  const [igConfig, setIgConfig] = useState<{ token: string; businessAccountId: string } | null>(null)
+  const [lideradosMobilizacaoPorTd, setLideradosMobilizacaoPorTd] = useState<
+    Map<TerritorioDesenvolvimentoPI, number>
+  >(() => new Map())
+  const [lideresMobilizacaoPorTd, setLideresMobilizacaoPorTd] = useState<
+    Map<TerritorioDesenvolvimentoPI, number>
+  >(() => new Map())
+  const [igPorMunicipioNoTd, setIgPorMunicipioNoTd] = useState<Map<string, IgAgregadoMunicipioNoTd>>(() => new Map())
+  const [igPorMunicipioNoTdLoad, setIgPorMunicipioNoTdLoad] = useState<'idle' | 'loading' | 'ready' | 'error'>('idle')
 
   useEffect(() => {
     let cancelled = false
@@ -1171,6 +1280,154 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({ visualPreset = 'default'
     }
   }, [])
 
+  const igComentariosPorTdVazio = useMemo(() => emptyInstagramComentariosPorTdPayload(), [])
+
+  useEffect(() => {
+    if (painelContext !== 'digitalIg') return
+    let cancelled = false
+    ;(async () => {
+      setIgLoadState('loading')
+      setIgError('')
+      setIgComentariosPorTdMobilizacaoNegado(false)
+      try {
+        const res = await fetchInstagramComentariosAgregadoPorTdLiderados()
+        if (cancelled) return
+        if (res.ok) {
+          setIgComentariosPorTdPayload(res.data)
+          setIgLoadState('ready')
+          return
+        }
+        if (res.status === 403) {
+          setIgComentariosPorTdPayload(null)
+          setIgComentariosPorTdMobilizacaoNegado(true)
+          setIgLoadState('ready')
+          return
+        }
+        setIgComentariosPorTdPayload(null)
+        setIgLoadState('error')
+        setIgError(res.message ?? 'Não foi possível carregar comentários por território.')
+      } catch {
+        if (!cancelled) {
+          setIgComentariosPorTdPayload(null)
+          setIgLoadState('error')
+          setIgError('Erro ao carregar dados do Instagram.')
+        }
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [painelContext])
+
+  const recarregarIgComentariosPorTdSilencioso = useCallback(() => {
+    void (async () => {
+      try {
+        const res = await fetchInstagramComentariosAgregadoPorTdLiderados()
+        if (res.ok) {
+          setIgComentariosPorTdPayload(res.data)
+          setIgComentariosPorTdMobilizacaoNegado(false)
+        } else if (res.status === 403) {
+          setIgComentariosPorTdPayload(null)
+          setIgComentariosPorTdMobilizacaoNegado(true)
+        }
+      } catch {
+        /* mantém último payload */
+      }
+    })()
+  }, [])
+
+  const recarregarIgPorMunicipioNoTdSilencioso = useCallback(async (td: TerritorioDesenvolvimentoPI) => {
+    try {
+      const res = await fetchInstagramIgPorMunicipioNoTd(td)
+      if (res.ok) setIgPorMunicipioNoTd(res.data)
+    } catch {
+      /* mantém último payload */
+    }
+  }, [])
+
+  useEffect(() => {
+    if (painelContext !== 'digitalIg' || highlightedTd === null) {
+      setIgPorMunicipioNoTd(new Map())
+      setIgPorMunicipioNoTdLoad('idle')
+      return
+    }
+    let cancelled = false
+    setIgPorMunicipioNoTdLoad('loading')
+    void (async () => {
+      const res = await fetchInstagramIgPorMunicipioNoTd(highlightedTd)
+      if (cancelled) return
+      if (res.ok) {
+        setIgPorMunicipioNoTd(res.data)
+        setIgPorMunicipioNoTdLoad('ready')
+      } else {
+        setIgPorMunicipioNoTd(new Map())
+        setIgPorMunicipioNoTdLoad(res.status === 403 ? 'ready' : 'error')
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [painelContext, highlightedTd])
+
+  useEffect(() => {
+    if (painelContext !== 'digitalIg') return
+    const onSynced = () => {
+      recarregarIgComentariosPorTdSilencioso()
+      const td = highlightedTdRef.current
+      if (td) void recarregarIgPorMunicipioNoTdSilencioso(td)
+    }
+    window.addEventListener(INSTAGRAM_COMMENTS_SYNCED_EVENT, onSynced)
+    return () => window.removeEventListener(INSTAGRAM_COMMENTS_SYNCED_EVENT, onSynced)
+  }, [painelContext, recarregarIgComentariosPorTdSilencioso, recarregarIgPorMunicipioNoTdSilencioso])
+
+  useEffect(() => {
+    if (painelContext !== 'digitalIg') return
+    let cancelled = false
+    ;(async () => {
+      const c = await loadInstagramConfigAsync()
+      if (!cancelled) {
+        if (c.token && c.businessAccountId) {
+          setIgConfig(c)
+        } else {
+          setIgConfig(null)
+        }
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [painelContext])
+
+  useEffect(() => {
+    if (painelContext !== 'digitalIg') return
+    let cancelled = false
+    ;(async () => {
+      const res = await fetchMobilizacaoPorTdMaps()
+      if (cancelled) return
+      if (res.ok) {
+        setLideradosMobilizacaoPorTd(res.lideradosPorTd)
+        setLideresMobilizacaoPorTd(res.lideresPorTd)
+      } else {
+        setLideradosMobilizacaoPorTd(new Map())
+        setLideresMobilizacaoPorTd(new Map())
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [painelContext])
+
+  /** Sem `key` no pai, o mesmo fiber pode alternar `painelContext` — zera dados IG/mobilização ao sair do modo. */
+  useEffect(() => {
+    if (painelContext === 'digitalIg') return
+    setLideradosMobilizacaoPorTd(new Map())
+    setLideresMobilizacaoPorTd(new Map())
+    setIgComentariosPorTdPayload(null)
+    setIgComentariosPorTdMobilizacaoNegado(false)
+    setIgLoadState('idle')
+    setIgError('')
+  }, [painelContext])
+
   const colunasPlanilha = useMemo(
     () => resolverColunasLiderancaTerritorio(planilhaHeaders),
     [planilhaHeaders]
@@ -1193,6 +1450,44 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({ visualPreset = 'default'
   }, [planilhaEstado, cidadeColPlanilha, liderancasFiltradasPlanilha, colunasPlanilha])
 
   const totaisPlanilhaTd = useMemo(() => somarAgregadosPlanilhaTd(agregadoTdPlanilha), [agregadoTdPlanilha])
+
+  const igAgregadoAtual = igComentariosPorTdPayload ?? igComentariosPorTdVazio
+  const igPorTd = igAgregadoAtual.porTd
+  const igComentariosSemVinculo = igComentariosPorTdMobilizacaoNegado
+    ? 0
+    : igAgregadoAtual.semVinculo.comentarios
+  const igPerfisSemVinculo = igComentariosPorTdMobilizacaoNegado
+    ? 0
+    : igAgregadoAtual.semVinculo.perfisUnicos
+
+  const totalIgComentariosVinculados = useMemo(() => {
+    let s = 0
+    for (const v of igPorTd.values()) {
+      s += v.comentarios
+    }
+    return s
+  }, [igPorTd])
+
+  const maxComentariosTdIg = useMemo(
+    () => Math.max(1, ...resumoPorTd.map((r) => igPorTd.get(r.territorio)?.comentarios ?? 0)),
+    [resumoPorTd, igPorTd]
+  )
+
+  const rankingPorTdIg = useMemo(() => {
+    const scores = resumoPorTd.map((r) => ({
+      territorio: r.territorio,
+      score: igPorTd.get(r.territorio)?.comentarios ?? 0,
+    }))
+    const sorted = [...scores].sort((a, b) => {
+      if (b.score !== a.score) return b.score - a.score
+      return a.territorio.localeCompare(b.territorio, 'pt-BR', { sensitivity: 'base' })
+    })
+    const m = new Map<TerritorioDesenvolvimentoPI, number>()
+    sorted.forEach((s, i) => {
+      m.set(s.territorio, i + 1)
+    })
+    return m
+  }, [resumoPorTd, igPorTd])
 
   type Fed22LoadState = 'idle' | 'loading' | 'ok' | 'error'
   const [fed22LoadState, setFed22LoadState] = useState<Fed22LoadState>('idle')
@@ -1548,6 +1843,20 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({ visualPreset = 'default'
     totaisResumo.eleitores,
   ])
 
+  const classificacaoEngajamentoIgPorTd = useMemo(() => {
+    return classificarTerritoriosPorScore(
+      resumoPorTd.map((r) => {
+        const c = igPorTd.get(r.territorio)?.comentarios ?? 0
+        return { territorio: r.territorio, score: c }
+      })
+    )
+  }, [resumoPorTd, igPorTd])
+
+  const classificacaoMapaAtual = useMemo(
+    () => (painelContext === 'digitalIg' ? classificacaoEngajamentoIgPorTd : classificacaoPorTd),
+    [painelContext, classificacaoEngajamentoIgPorTd, classificacaoPorTd]
+  )
+
   const classificacaoPrioridadePesoFed26PorTd = useMemo(() => {
     const scores = resumoPorTd.map((r) => {
       const ag = agregadoTdPlanilha.get(r.territorio) ?? AGREGADO_PLANILHA_VAZIO
@@ -1825,6 +2134,155 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({ visualPreset = 'default'
     votosFed22PorTd,
   ])
 
+  const spotlightIgPorTd = useMemo(() => {
+    if (painelContext !== 'digitalIg') {
+      return {
+        maiorPesoEleitoral: null as TerritorioDesenvolvimentoPI | null,
+        maiorDelta: null as TerritorioDesenvolvimentoPI | null,
+        piorDelta: null as TerritorioDesenvolvimentoPI | null,
+        deltasDistintos: false,
+      }
+    }
+    const linhas =
+      highlightedTd !== null ? resumoPorTd.filter((r) => r.territorio === highlightedTd) : resumoPorTd
+    if (linhas.length <= 1) {
+      return {
+        maiorPesoEleitoral: null as TerritorioDesenvolvimentoPI | null,
+        maiorDelta: null as TerritorioDesenvolvimentoPI | null,
+        piorDelta: null as TerritorioDesenvolvimentoPI | null,
+        deltasDistintos: false,
+      }
+    }
+    let maxC = -1
+    let tdMax: TerritorioDesenvolvimentoPI | null = null
+    for (const r of linhas) {
+      const c = igPorTd.get(r.territorio)?.comentarios ?? 0
+      if (c > maxC) {
+        maxC = c
+        tdMax = r.territorio
+      }
+    }
+    return {
+      maiorPesoEleitoral: maxC > 0 ? tdMax : null,
+      maiorDelta: null as TerritorioDesenvolvimentoPI | null,
+      piorDelta: null as TerritorioDesenvolvimentoPI | null,
+      deltasDistintos: false,
+    }
+  }, [painelContext, highlightedTd, resumoPorTd, igPorTd])
+
+  const spotlightPainel = useMemo(
+    () => (painelContext === 'digitalIg' ? spotlightIgPorTd : spotlightPorTd),
+    [painelContext, spotlightIgPorTd, spotlightPorTd]
+  )
+
+  const linhasIgResumoOrdenadas = useMemo(() => {
+    if (painelContext !== 'digitalIg') return []
+    const collator = new Intl.Collator('pt-BR', { sensitivity: 'base', numeric: true })
+    const rows = resumoLinhasVisiveis.map((r) => {
+      const ig = igPorTd.get(r.territorio) ?? { comentarios: 0, perfisUnicos: 0 }
+      const visitasTd = visitasPorTdCampo.get(r.territorio) ?? 0
+      const lideradosTd = lideradosMobilizacaoPorTd.get(r.territorio) ?? 0
+      const lideresTd = lideresMobilizacaoPorTd.get(r.territorio) ?? 0
+      const part = lideradosTd > 0 ? (ig.comentarios / lideradosTd) * 1000 : 0
+      const rankIg = rankingPorTdIg.get(r.territorio) ?? 0
+      return {
+        r,
+        comentarios: ig.comentarios,
+        perfisUnicos: ig.perfisUnicos,
+        visitasTd,
+        part,
+        rankIg,
+        lideradosTd,
+        lideresTd,
+      }
+    })
+    rows.sort((a, b) => {
+      let cmp = 0
+      switch (igTdSort.key) {
+        case 'rank':
+          cmp = a.rankIg - b.rankIg
+          break
+        case 'territorio':
+          cmp = collator.compare(a.r.territorio, b.r.territorio)
+          break
+        case 'municipios':
+          cmp = a.r.municipios - b.r.municipios
+          break
+        case 'lideres':
+          cmp = a.lideresTd - b.lideresTd
+          break
+        case 'liderados':
+          cmp = a.lideradosTd - b.lideradosTd
+          break
+        case 'comentarios':
+          cmp = a.comentarios - b.comentarios
+          break
+        case 'perfis':
+          cmp = a.perfisUnicos - b.perfisUnicos
+          break
+        case 'participacao':
+          cmp = a.part - b.part
+          break
+        case 'vis':
+          cmp = a.visitasTd - b.visitasTd
+          break
+        default:
+          cmp = 0
+      }
+      if (cmp === 0) cmp = collator.compare(a.r.territorio, b.r.territorio)
+      return igTdSort.direction === 'asc' ? cmp : -cmp
+    })
+    return rows
+  }, [
+    painelContext,
+    resumoLinhasVisiveis,
+    igPorTd,
+    visitasPorTdCampo,
+    rankingPorTdIg,
+    igTdSort,
+    lideradosMobilizacaoPorTd,
+    lideresMobilizacaoPorTd,
+  ])
+
+  const totaisRodapeIg = useMemo(() => {
+    if (painelContext !== 'digitalIg') {
+      return { mun: 0, lideres: 0, liderados: 0, com: 0, perf: 0, vis: 0 }
+    }
+    let mun = 0
+    let lideres = 0
+    let liderados = 0
+    let com = 0
+    let perf = 0
+    let vis = 0
+    for (const r of resumoPorTd) {
+      mun += r.municipios
+      lideres += lideresMobilizacaoPorTd.get(r.territorio) ?? 0
+      liderados += lideradosMobilizacaoPorTd.get(r.territorio) ?? 0
+      com += igPorTd.get(r.territorio)?.comentarios ?? 0
+      perf += igPorTd.get(r.territorio)?.perfisUnicos ?? 0
+      vis += visitasPorTdCampo.get(r.territorio) ?? 0
+    }
+    return { mun, lideres, liderados, com, perf, vis }
+  }, [
+    painelContext,
+    resumoPorTd,
+    igPorTd,
+    visitasPorTdCampo,
+    lideradosMobilizacaoPorTd,
+    lideresMobilizacaoPorTd,
+  ])
+
+  const alternarOrdenacaoIg = (key: IgTdSortKey) => {
+    setIgTdSort((prev) =>
+      prev.key === key ? { key, direction: prev.direction === 'asc' ? 'desc' : 'asc' } : { key, direction: 'asc' }
+    )
+  }
+
+  const indicadorOrdenacaoIg = (key: IgTdSortKey): string => {
+    if (igTdSort.key !== key) return '↕'
+    return igTdSort.direction === 'asc' ? '↑' : '↓'
+  }
+
   /** Primeira coluna do bloco “desempenho” (marca visual de grupo na tabela). */
   const colunaInicioDesempenho = useMemo((): 'fed22' | 'plan' | 'delta' | 'lid' | null => {
     if (temDadosFed22) return 'fed22'
@@ -1858,7 +2316,8 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({ visualPreset = 'default'
 
   const municipiosLinhasOrdenadas = useMemo(() => {
     const base = municipiosComEleitores
-    if (!painelPlanilhaAtivo || highlightedTd === null) {
+    /** No Mapa Digital IG a ordem da planilha (Lid.) confunde com a camada eleitoral — mantém ordem base do TD. */
+    if (painelContext === 'digitalIg' || !painelPlanilhaAtivo || highlightedTd === null) {
       return base
     }
     return [...base].sort((a, b) => {
@@ -1874,6 +2333,7 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({ visualPreset = 'default'
     })
   }, [
     municipiosComEleitores,
+    painelContext,
     painelPlanilhaAtivo,
     highlightedTd,
     metricasPorCidadeNoTdMap,
@@ -2137,6 +2597,132 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({ visualPreset = 'default'
     )
   }, [highlightedTd, municipiosLinhasPainel, visitasPorMunicipioNorm])
 
+  const rankingPorMunicipioIg = useMemo(() => {
+    if (painelContext !== 'digitalIg' || highlightedTd === null) return new Map<string, number>()
+    const scores = municipiosLinhasPainel.map((l) => {
+      const agg = igPorMunicipioNoTd.get(normalizeMunicipioNome(l.nome))
+      return { nome: l.nome, score: agg?.comentarios ?? 0 }
+    })
+    const sorted = [...scores].sort(
+      (a, b) => b.score - a.score || a.nome.localeCompare(b.nome, 'pt-BR', { sensitivity: 'base' })
+    )
+    const m = new Map<string, number>()
+    sorted.forEach((s, i) => {
+      m.set(s.nome, i + 1)
+    })
+    return m
+  }, [painelContext, highlightedTd, municipiosLinhasPainel, igPorMunicipioNoTd])
+
+  const classificacaoEngajamentoIgPorMunicipio = useMemo(() => {
+    if (painelContext !== 'digitalIg') return new Map<string, ClassificacaoTerritorioTd>()
+    return classificarChavesPorScore(
+      municipiosLinhasPainel.map((l) => {
+        const c = igPorMunicipioNoTd.get(normalizeMunicipioNome(l.nome))?.comentarios ?? 0
+        return { chave: l.nome, score: c }
+      })
+    )
+  }, [painelContext, municipiosLinhasPainel, igPorMunicipioNoTd])
+
+  const maxComentariosMunicipioIg = useMemo(() => {
+    if (painelContext !== 'digitalIg' || municipiosLinhasPainel.length === 0) return 1
+    return Math.max(
+      1,
+      ...municipiosLinhasPainel.map(
+        (l) => igPorMunicipioNoTd.get(normalizeMunicipioNome(l.nome))?.comentarios ?? 0
+      )
+    )
+  }, [painelContext, municipiosLinhasPainel, igPorMunicipioNoTd])
+
+  const totalIgComentariosMunicipiosLista = useMemo(() => {
+    if (painelContext !== 'digitalIg') return 0
+    let s = 0
+    for (const l of municipiosLinhasPainel) {
+      s += igPorMunicipioNoTd.get(normalizeMunicipioNome(l.nome))?.comentarios ?? 0
+    }
+    return s
+  }, [painelContext, municipiosLinhasPainel, igPorMunicipioNoTd])
+
+  const linhasIgMunicipiosOrdenadas = useMemo(() => {
+    if (painelContext !== 'digitalIg') return []
+    const collator = new Intl.Collator('pt-BR', { sensitivity: 'base', numeric: true })
+    const rows = municipiosLinhasPainel.map(({ nome, eleitores }) => {
+      const agg = igPorMunicipioNoTd.get(normalizeMunicipioNome(nome)) ?? {
+        lideres: 0,
+        liderados: 0,
+        comentarios: 0,
+        perfisUnicos: 0,
+      }
+      const part = agg.liderados > 0 ? (agg.comentarios / agg.liderados) * 1000 : 0
+      const rankIg = rankingPorMunicipioIg.get(nome) ?? 0
+      const visitasMun = visitasPorMunicipioNorm.get(normalizeMunicipioNome(nome)) ?? 0
+      return { nome, eleitores, ...agg, part, rankIg, visitasMun }
+    })
+    rows.sort((a, b) => {
+      let cmp = 0
+      switch (igTdSort.key) {
+        case 'rank':
+          cmp = a.rankIg - b.rankIg
+          break
+        case 'territorio':
+          cmp = collator.compare(a.nome, b.nome)
+          break
+        case 'municipios':
+          cmp = collator.compare(a.nome, b.nome)
+          break
+        case 'lideres':
+          cmp = a.lideres - b.lideres
+          break
+        case 'liderados':
+          cmp = a.liderados - b.liderados
+          break
+        case 'comentarios':
+          cmp = a.comentarios - b.comentarios
+          break
+        case 'perfis':
+          cmp = a.perfisUnicos - b.perfisUnicos
+          break
+        case 'participacao':
+          cmp = a.part - b.part
+          break
+        case 'vis':
+          cmp = a.visitasMun - b.visitasMun
+          break
+        default:
+          cmp = 0
+      }
+      if (cmp === 0) cmp = collator.compare(a.nome, b.nome)
+      return igTdSort.direction === 'asc' ? cmp : -cmp
+    })
+    return rows
+  }, [
+    painelContext,
+    municipiosLinhasPainel,
+    igPorMunicipioNoTd,
+    igTdSort,
+    rankingPorMunicipioIg,
+    visitasPorMunicipioNorm,
+  ])
+
+  const totaisRodapeIgMunicipiosLista = useMemo(() => {
+    if (painelContext !== 'digitalIg') {
+      return { mun: 0, lideres: 0, liderados: 0, com: 0, perf: 0, vis: 0 }
+    }
+    let lideres = 0
+    let liderados = 0
+    let com = 0
+    let perf = 0
+    let vis = 0
+    for (const l of municipiosLinhasPainel) {
+      const a = igPorMunicipioNoTd.get(normalizeMunicipioNome(l.nome))
+      lideres += a?.lideres ?? 0
+      liderados += a?.liderados ?? 0
+      com += a?.comentarios ?? 0
+      perf += a?.perfisUnicos ?? 0
+      vis += visitasPorMunicipioNorm.get(normalizeMunicipioNome(l.nome)) ?? 0
+    }
+    return { mun: municipiosLinhasPainel.length, lideres, liderados, com, perf, vis }
+  }, [painelContext, municipiosLinhasPainel, igPorMunicipioNoTd, visitasPorMunicipioNorm])
+
   /** Média aritmética dos valores Méd.Top5 22 na lista de municípios (top federais no TD). */
   const mediaMedTop22ListaMunicipiosTd = useMemo(() => {
     if (highlightedTd === null || !temDadosEstrategiaTopFed22 || municipiosLinhasPainel.length === 0) return null
@@ -2296,11 +2882,17 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({ visualPreset = 'default'
   }, [mapHostAlturaFixaPx, alturaAreaMapaPx])
 
   useEffect(() => {
+    setMunicipioMobilizacaoDrillIg(null)
+  }, [highlightedTd, painelContext])
+
+  useEffect(() => {
     if (highlightedTd === null) return
     const onKey = (e: KeyboardEvent) => {
       if (e.key !== 'Escape') return
       e.preventDefault()
-      if (municipioFocadoLiderancas) {
+      if (municipioMobilizacaoDrillIg) {
+        setMunicipioMobilizacaoDrillIg(null)
+      } else if (municipioFocadoLiderancas) {
         setMunicipioFocadoLiderancas(null)
       } else {
         setMunicipioFocadoLiderancas(null)
@@ -2309,7 +2901,7 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({ visualPreset = 'default'
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [highlightedTd, municipioFocadoLiderancas])
+  }, [highlightedTd, municipioFocadoLiderancas, municipioMobilizacaoDrillIg])
 
   useEffect(() => {
     const el = containerRef.current
@@ -2507,6 +3099,13 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({ visualPreset = 'default'
               usarExpectativaFed26
             )
           },
+          atualizarResumoMarcadoresPorIg: (porTd, postagensProcessadas) => {
+            atualizarResumoMarcadoresPorComentariosIg(
+              markerByTdPesoEleitores,
+              porTd,
+              postagensProcessadas
+            )
+          },
         }
 
         onMoveEndMarcadores = () => {
@@ -2524,7 +3123,7 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({ visualPreset = 'default'
             aspectBoxRef.current,
             piauiAspectRatioRef.current
           )
-          mapRef.current.invalidateSize({ animate: false })
+          if (!safeLeafletInvalidateSize(mapRef.current)) return
           if (!MAPA_AUTO_ZOOM_ENABLED) return
           const c = mapTdControllerRef.current
           const td = highlightedTdRef.current
@@ -2624,7 +3223,7 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({ visualPreset = 'default'
         mapRef.current = null
       }
     }
-  }, [visualPreset])
+  }, [visualPreset, painelContext])
 
   /**
    * Depende de `mapHostAlturaFixaPx`: ao focar um TD a lista aumenta o minHeight e a altura fixa do
@@ -2633,12 +3232,12 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({ visualPreset = 'default'
   useLayoutEffect(() => {
     if (loadState !== 'ready' || !mapTdControllerRef.current || !mapRef.current) return
     geoStyleContextRef.current = {
-      classificacao: classificacaoPorTd,
+      classificacao: classificacaoMapaAtual,
       hoverTdTabela,
       visualPreset,
-      maiorPesoTd: spotlightPorTd.maiorPesoEleitoral,
-      piorDeltaTd: spotlightPorTd.piorDelta,
-      deltasDistintos: spotlightPorTd.deltasDistintos,
+      maiorPesoTd: spotlightPainel.maiorPesoEleitoral,
+      piorDeltaTd: spotlightPainel.piorDelta,
+      deltasDistintos: spotlightPainel.deltasDistintos,
     }
     painelResumoMaxRemRef.current = sidebarCollapsed
       ? PAINEL_RESUMO_TD_MAX_REM_COLLAPSED
@@ -2650,16 +3249,16 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({ visualPreset = 'default'
       aspectBoxRef.current,
       piauiAspectRatioRef.current
     )
-    map.invalidateSize({ animate: false })
+    safeLeafletInvalidateSize(map)
     c.applyStyles(highlightedTd, municipioFocadoLiderancas)
     c.setRotulosMunicipiosTd(highlightedTd)
-    const runFit = () => {
+    const runFit = (mapAlvo: L.Map) => {
       if (!MAPA_AUTO_ZOOM_ENABLED) return
       if (highlightedTd && municipioFocadoLiderancas) {
         const bbMun = c.boundsForMunicipio(highlightedTd, municipioFocadoLiderancas)
         if (bbMun?.isValid()) {
           try {
-            fitBoundsWithSidebarShift(map, bbMun, {
+            fitBoundsWithSidebarShift(mapAlvo, bbMun, {
               padGeo: 0.22,
               animate: false,
               paddingMapa: 'centro',
@@ -2673,7 +3272,7 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({ visualPreset = 'default'
       if (highlightedTd) {
         const bb = c.boundsForTd(highlightedTd)
         if (bb?.isValid()) {
-          fitBoundsWithSidebarShift(map, bb, {
+          fitBoundsWithSidebarShift(mapAlvo, bb, {
             padGeo: 0.11,
             animate: false,
             paddingMapa: 'centro',
@@ -2688,16 +3287,19 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({ visualPreset = 'default'
       }
     }
     requestAnimationFrame(() => {
+      const mapAoExecutar = mapRef.current
+      const ctrl = mapTdControllerRef.current
+      if (!mapAoExecutar || !ctrl) return
       ajustarCaixaMapaAoViewportPiaui(
         viewportFitRef.current,
         aspectBoxRef.current,
         piauiAspectRatioRef.current
       )
-      map.invalidateSize({ animate: false })
-      runFit()
-      c.sincronizarMarcadoresPesoTdComFoco()
+      if (!safeLeafletInvalidateSize(mapAoExecutar)) return
+      runFit(mapAoExecutar)
+      ctrl.sincronizarMarcadoresPesoTdComFoco()
       requestAnimationFrame(() => {
-        c.sincronizarMarcadoresPesoTdComFoco()
+        mapTdControllerRef.current?.sincronizarMarcadoresPesoTdComFoco()
       })
     })
   }, [
@@ -2706,9 +3308,9 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({ visualPreset = 'default'
     mapHostAlturaFixaPx,
     loadState,
     sidebarCollapsed,
-    classificacaoPorTd,
+    classificacaoMapaAtual,
     visualPreset,
-    spotlightPorTd,
+    spotlightPainel,
   ])
 
   /**
@@ -2719,7 +3321,7 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({ visualPreset = 'default'
     if (loadState !== 'ready' || !mapTdControllerRef.current) return
     geoStyleContextRef.current = {
       ...geoStyleContextRef.current,
-      classificacao: classificacaoPorTd,
+      classificacao: classificacaoMapaAtual,
       hoverTdTabela,
     }
     mapTdControllerRef.current.applyStyles(highlightedTd, municipioFocadoLiderancas)
@@ -2729,11 +3331,26 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({ visualPreset = 'default'
 
   useEffect(() => {
     if (loadState !== 'ready' || !mapTdControllerRef.current) return
-    mapTdControllerRef.current.atualizarResumoMarcadores(
-      agregadoTdPlanilha,
-      planilhaEstado === 'ready' && painelPlanilhaAtivo
-    )
-  }, [loadState, agregadoTdPlanilha, planilhaEstado, painelPlanilhaAtivo])
+    if (painelContext === 'digitalIg') {
+      mapTdControllerRef.current.atualizarResumoMarcadoresPorIg?.(
+        igPorTd,
+        igAgregadoAtual.postagensProcessadas
+      )
+    } else {
+      mapTdControllerRef.current.atualizarResumoMarcadores(
+        agregadoTdPlanilha,
+        planilhaEstado === 'ready' && painelPlanilhaAtivo
+      )
+    }
+  }, [
+    loadState,
+    painelContext,
+    agregadoTdPlanilha,
+    planilhaEstado,
+    painelPlanilhaAtivo,
+    igPorTd,
+    igAgregadoAtual.postagensProcessadas,
+  ])
 
   const rotuloVisaoPainelFuturista = useMemo((): string => {
     if (!painelPlanilhaAtivo) return 'Eleitorado'
@@ -2863,7 +3480,11 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({ visualPreset = 'default'
                 ? 'flex-1 overflow-x-hidden overflow-y-auto'
                 : 'z-[1100] max-h-[min(85dvh,calc(100dvh-7rem))] overflow-x-hidden overflow-y-auto overscroll-contain'
             )}
-            aria-label="Mapa de dominância eleitoral por território de desenvolvimento"
+            aria-label={
+              painelContext === 'digitalIg'
+                ? 'Mapa digital Instagram por território de desenvolvimento'
+                : 'Mapa de dominância eleitoral por território de desenvolvimento'
+            }
           >
             <div className="space-y-1">
               <h2
@@ -2874,6 +3495,28 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({ visualPreset = 'default'
               >
                 Resumo por Território de Desenvolvimento
               </h2>
+              {painelContext === 'digitalIg' ? (
+                <div className="mt-2 flex flex-col gap-2">
+                  {igLoadState === 'loading' ? (
+                    <p className="text-[10px] text-text-muted sm:text-[11px]">Carregando comentários salvos…</p>
+                  ) : null}
+                  {igError ? (
+                    <p className="text-[10px] text-status-danger sm:text-[11px]">{igError}</p>
+                  ) : null}
+                  {igComentariosPorTdMobilizacaoNegado ? (
+                    <p className="text-[10px] text-text-muted sm:text-[11px]">
+                      Para cruzar comentários com liderados por TD, é necessária permissão de Mobilização (e Instagram
+                      cadastrado nos liderados em /dashboard/mobilizacao/config).
+                    </p>
+                  ) : null}
+                  {igComentariosSemVinculo > 0 ? (
+                    <p className="text-[10px] text-text-muted sm:text-[11px]">
+                      Fora do mapa: {fmtInt.format(igComentariosSemVinculo)} comentário(s) de{' '}
+                      {fmtInt.format(igPerfisSemVinculo)} perfil(is) sem match com liderados (Instagram na mobilização).
+                    </p>
+                  ) : null}
+                </div>
+              ) : null}
               {planilhaEstado === 'loading' ? (
                 <p className="text-[10px] text-text-muted sm:text-[11px]">Carregando planilha de lideranças…</p>
               ) : null}
@@ -2882,13 +3525,13 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({ visualPreset = 'default'
                   Planilha: não foi possível carregar ({planilhaErro.length > 80 ? `${planilhaErro.slice(0, 80)}…` : planilhaErro})
                 </p>
               ) : null}
-              {fed22LoadState === 'error' ? (
+              {painelContext !== 'digitalIg' && fed22LoadState === 'error' ? (
                 <p className="text-[10px] text-text-muted sm:text-[11px]">
                   Votos Dep. Federal 2022 (Jadyel): não foi possível carregar.
                 </p>
               ) : null}
               <div className="mt-2 flex flex-wrap items-end gap-2">
-                {mostrarSeletorCenario ? (
+                {painelContext !== 'digitalIg' && mostrarSeletorCenario ? (
                   <label className="flex min-w-[12.75rem] flex-1 flex-wrap items-center gap-2 text-[11px] sm:text-xs">
                     <span className="shrink-0 font-medium text-text-secondary">Simulação atual</span>
                     <select
@@ -2905,11 +3548,24 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({ visualPreset = 'default'
                   </label>
                 ) : null}
                 <label className="flex min-w-[12.75rem] flex-1 flex-wrap items-center gap-2 text-[11px] sm:text-xs">
-                  <span className="shrink-0 font-medium text-text-secondary">Município</span>
+                  <span
+                    className={cn(
+                      'shrink-0 font-medium',
+                      painelContext === 'digitalIg' ? 'text-[#AAB4C0]' : 'text-text-secondary'
+                    )}
+                  >
+                    Município
+                  </span>
                   <select
                     value={municipioFocadoLiderancas ?? ''}
                     onChange={(e) => aplicarFiltroMunicipioPainel(e.target.value)}
-                    className="min-w-0 flex-1 rounded-lg border border-card bg-surface px-2 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-accent-gold-soft"
+                    data-mapa-ig-municipio-select={painelContext === 'digitalIg' ? 'true' : undefined}
+                    className={cn(
+                      'min-w-0 flex-1 rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-accent-gold-soft',
+                      painelContext === 'digitalIg'
+                        ? 'border border-[rgba(255,255,255,0.12)] bg-transparent text-[#E6EDF3] [&>option]:bg-[#121821] [&>option]:text-[#E6EDF3]'
+                        : 'border border-card bg-surface'
+                    )}
                   >
                     <option value="">
                       Todos os municípios ({fmtInt.format(opcoesFiltroMunicipio.length)})
@@ -2924,23 +3580,326 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({ visualPreset = 'default'
               </div>
             </div>
             <div className="td-resumo-map-table-wrap mt-2 w-full min-w-0 max-w-full">
-              <table
-                aria-label="Painel de decisão — territórios de desenvolvimento"
-                className={cn(
-                  'td-resumo-table td-resumo-table--premium w-full',
-                  visualPreset === 'futuristic' && 'td-resumo-table--futuristic'
-                )}
-              >
-                <thead>
-                  <tr className="td-resumo-table__row td-resumo-table__row--header tracking-wide">
-                    <th
-                      className="td-resumo-table__cell td-resumo-table__cell--rank text-right font-medium"
-                      title="Posição no ranking pelo critério atual (entre os 12 TDs)"
-                    >
-                      <button type="button" onClick={() => alternarOrdenacaoTd('rank')} className="inline-flex items-center gap-1">
-                        # <span aria-hidden>{indicadorOrdenacaoTd('rank')}</span>
-                      </button>
-                    </th>
+              {painelContext === 'digitalIg' ? (
+                <>
+                <table
+                  aria-label="Resumo Instagram por território de desenvolvimento"
+                  className={cn(
+                    'td-resumo-table td-resumo-table--premium w-full',
+                    visualPreset === 'futuristic' && 'td-resumo-table--futuristic'
+                  )}
+                >
+                  <thead>
+                    <tr className="td-resumo-table__row td-resumo-table__row--header tracking-wide">
+                      <th className="td-resumo-table__cell td-resumo-table__cell--rank text-right font-medium">
+                        <button
+                          type="button"
+                          onClick={() => alternarOrdenacaoIg('rank')}
+                          className="inline-flex items-center gap-1"
+                        >
+                          # <span aria-hidden>{indicadorOrdenacaoIg('rank')}</span>
+                        </button>
+                      </th>
+                      <th className="td-resumo-table__cell td-resumo-table__cell--territorio text-left font-medium">
+                        <button
+                          type="button"
+                          onClick={() => alternarOrdenacaoIg('territorio')}
+                          className="inline-flex items-center gap-1"
+                        >
+                          Território <span aria-hidden>{indicadorOrdenacaoIg('territorio')}</span>
+                        </button>
+                      </th>
+                      <th className="td-resumo-table__cell text-right font-medium" title="Municípios no TD">
+                        <button
+                          type="button"
+                          onClick={() => alternarOrdenacaoIg('municipios')}
+                          className="inline-flex items-center gap-1"
+                        >
+                          Mun. <span aria-hidden>{indicadorOrdenacaoIg('municipios')}</span>
+                        </button>
+                      </th>
+                      <th
+                        className="td-resumo-table__cell text-right font-medium"
+                        title="Líderes (tabela leaders) por TD do coordenador — /dashboard/mobilizacao/config"
+                      >
+                        <button
+                          type="button"
+                          onClick={() => alternarOrdenacaoIg('lideres')}
+                          className="inline-flex items-center gap-1"
+                        >
+                          Líderes <span aria-hidden>{indicadorOrdenacaoIg('lideres')}</span>
+                        </button>
+                      </th>
+                      <th
+                        className="td-resumo-table__cell text-right font-medium"
+                        title="Liderados cadastrados na mobilização (por TD do coordenador) — mesma base de /dashboard/mobilizacao/config"
+                      >
+                        <button
+                          type="button"
+                          onClick={() => alternarOrdenacaoIg('liderados')}
+                          className="inline-flex items-center gap-1"
+                        >
+                          Liderados <span aria-hidden>{indicadorOrdenacaoIg('liderados')}</span>
+                        </button>
+                      </th>
+                      <th
+                        className="td-resumo-table__cell text-right font-medium"
+                        title="Comentários cujo @ do comentarista bate com o Instagram de um liderado ativo (mobilização → TD do coordenador)"
+                      >
+                        <button
+                          type="button"
+                          onClick={() => alternarOrdenacaoIg('comentarios')}
+                          className="inline-flex items-center gap-1"
+                        >
+                          Coment. <span aria-hidden>{indicadorOrdenacaoIg('comentarios')}</span>
+                        </button>
+                      </th>
+                      <th
+                        className="td-resumo-table__cell text-right font-medium"
+                        title="Perfis distintos (comentaristas) que batem com liderados na mobilização"
+                      >
+                        <button
+                          type="button"
+                          onClick={() => alternarOrdenacaoIg('perfis')}
+                          className="inline-flex items-center gap-1"
+                        >
+                          Perfis <span aria-hidden>{indicadorOrdenacaoIg('perfis')}</span>
+                        </button>
+                      </th>
+                      <th
+                        className="td-resumo-table__cell text-right font-medium"
+                        title="Comentários vinculados por mil liderados (mobilização) no TD"
+                      >
+                        <button
+                          type="button"
+                          onClick={() => alternarOrdenacaoIg('participacao')}
+                          className="inline-flex items-center gap-1"
+                        >
+                          /1k <span aria-hidden>{indicadorOrdenacaoIg('participacao')}</span>
+                        </button>
+                      </th>
+                      <th
+                        className="td-resumo-table__cell text-center font-medium"
+                        title="Visitas com check-in (Campo & Agenda) no TD"
+                      >
+                        <button
+                          type="button"
+                          onClick={() => alternarOrdenacaoIg('vis')}
+                          className="inline-flex w-full items-center justify-center gap-1"
+                        >
+                          Vis. <span aria-hidden>{indicadorOrdenacaoIg('vis')}</span>
+                        </button>
+                      </th>
+                      <th
+                        className="td-resumo-table__cell td-resumo-table__grupo-status-start text-center font-medium"
+                        title="Tercil entre TDs pelo volume de comentários vinculados a liderados (mobilização)"
+                      >
+                        Eng. IG
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {linhasIgResumoOrdenadas.map(
+                      ({ r, comentarios, perfisUnicos, visitasTd, part, rankIg, lideradosTd, lideresTd }) => {
+                        const territorioCor = CORES_TERRITORIO_DESENVOLVIMENTO_PI[r.territorio]
+                        const selecionado = highlightedTd === r.territorio
+                        const tipoEng = classificacaoEngajamentoIgPorTd.get(r.territorio) ?? 'baixo-impacto'
+                        const pctTot =
+                          totalIgComentariosVinculados > 0
+                            ? (comentarios / totalIgComentariosVinculados) * 100
+                            : 0
+                        const hintEng = `Comentários vinculados: ${fmtInt.format(comentarios)} (${new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 1 }).format(pctTot)}% do total estadual vinculado)`
+                        const barW =
+                          maxComentariosTdIg > 0
+                            ? Math.max(8, Math.round((comentarios / maxComentariosTdIg) * 100))
+                            : 8
+                        return (
+                          <tr
+                            key={r.territorio}
+                            className={cn(
+                              'td-resumo-table__row td-resumo-table__row--data td-resumo-table__row--premium select-none transition-[transform,box-shadow,background-color] duration-200 ease-out',
+                              selecionado && 'td-resumo-table__row--selected',
+                              hoverTdTabela === r.territorio && 'td-resumo-table__row--hover-map',
+                              spotlightPainel.maiorPesoEleitoral === r.territorio &&
+                                comentarios > 0 &&
+                                'td-resumo-table__row--spotlight-peso'
+                            )}
+                            style={
+                              visualPreset === 'futuristic'
+                                ? ({
+                                    '--fut-row-bg': selecionado
+                                      ? cssFuturistTdLinhaSelecionadaSolid(territorioCor.fill)
+                                      : hoverTdTabela === r.territorio
+                                        ? 'rgba(255,106,0,0.12)'
+                                        : 'rgba(18,24,33,0.72)',
+                                    '--fut-row-selected': cssFuturistTdLinhaSelecionadaSolid(territorioCor.fill),
+                                    '--fut-row-selected-edge': territorioCor.stroke,
+                                  } as CSSProperties)
+                                : undefined
+                            }
+                            aria-selected={selecionado}
+                            title="Passe o mouse para destacar no mapa"
+                            onMouseEnter={() => setHoverTdTabela(r.territorio)}
+                            onMouseLeave={() => setHoverTdTabela(null)}
+                          >
+                            <td
+                              className={cn(
+                                'td-resumo-table__cell td-resumo-table__cell--rank text-right tabular-nums text-text-secondary',
+                                rankIg <= 3 && 'td-resumo-table__rank--top3',
+                                rankIg === 1 && 'td-resumo-table__rank--first'
+                              )}
+                            >
+                              <div className="flex items-center justify-end gap-1">
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setMunicipioFocadoLiderancas(null)
+                                    setHighlightedTd((prev) => (prev === r.territorio ? null : r.territorio))
+                                  }}
+                                  className={cn(
+                                    'td-resumo-table__expand-btn inline-flex h-4 w-4 items-center justify-center rounded border border-border-card/35 text-[10px] leading-none text-text-secondary transition-colors hover:bg-white/5 hover:text-text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-gold-soft',
+                                    selecionado && 'border-accent-gold/45 text-text-primary'
+                                  )}
+                                  aria-label={selecionado ? `Recolher ${r.territorio}` : `Expandir ${r.territorio}`}
+                                  title={selecionado ? 'Recolher municípios' : 'Expandir municípios'}
+                                >
+                                  {selecionado ? '▾' : '▸'}
+                                </button>
+                                <span>{rankIg}</span>
+                              </div>
+                            </td>
+                            <td className="td-resumo-table__cell td-resumo-table__cell--territorio relative overflow-hidden">
+                              <>
+                                <div
+                                  className={cn(
+                                    'td-resumo-table__peso-eleitoral-bar pointer-events-none',
+                                    visualPreset === 'futuristic' && 'td-resumo-table__peso-eleitoral-bar--fut'
+                                  )}
+                                  style={
+                                    {
+                                      '--td-peso-a': territorioCor.fill,
+                                      width: `${barW}%`,
+                                    } as CSSProperties
+                                  }
+                                  aria-hidden
+                                />
+                                <div className="relative z-[1] flex min-w-0 items-center gap-1.5">
+                                  <span
+                                    className="h-2 w-2 shrink-0 rounded-sm sm:h-2.5 sm:w-2.5"
+                                    style={{ backgroundColor: territorioCor.fill }}
+                                    aria-hidden
+                                  />
+                                  <span
+                                    className={cn(
+                                      'min-w-0 break-words font-semibold text-text-primary',
+                                      visualPreset === 'futuristic' && 'tracking-tight'
+                                    )}
+                                    title={r.territorio}
+                                  >
+                                    {r.territorio}
+                                  </span>
+                                </div>
+                              </>
+                            </td>
+                            <td className="td-resumo-table__cell text-right tabular-nums text-text-secondary">
+                              {r.municipios}
+                            </td>
+                            <td className="td-resumo-table__cell text-right tabular-nums text-text-secondary">
+                              {fmtInt.format(lideresTd)}
+                            </td>
+                            <td className="td-resumo-table__cell text-right tabular-nums text-text-secondary">
+                              {fmtInt.format(lideradosTd)}
+                            </td>
+                            <td className="td-resumo-table__cell text-right tabular-nums text-text-primary">
+                              {fmtInt.format(comentarios)}
+                            </td>
+                            <td className="td-resumo-table__cell text-right tabular-nums text-text-secondary">
+                              {fmtInt.format(perfisUnicos)}
+                            </td>
+                            <td className="td-resumo-table__cell text-right tabular-nums text-text-secondary">
+                              {new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 2 }).format(part)}
+                            </td>
+                            <td className="td-resumo-table__cell td-resumo-table__cell--vis text-center tabular-nums text-text-secondary">
+                              {visitasTd}
+                            </td>
+                            <td className="td-resumo-table__cell td-resumo-table__cell--classe td-resumo-table__grupo-status-start">
+                              <div className="flex justify-center">
+                                <ClassificacaoTdBadge
+                                  tipo={tipoEng}
+                                  visualTone={visualPreset === 'futuristic' ? 'futuristic' : 'command'}
+                                  titleOverride={hintEng}
+                                />
+                              </div>
+                            </td>
+                          </tr>
+                        )
+                      }
+                    )}
+                  </tbody>
+                  <tfoot>
+                    <tr className="td-resumo-table__row td-resumo-table__row--totals select-none">
+                      <td
+                        className="td-resumo-table__cell td-resumo-table__cell--rank text-right tabular-nums text-text-muted"
+                        aria-hidden
+                      />
+                      <td className="td-resumo-table__cell td-resumo-table__cell--territorio text-left font-semibold text-text-primary">
+                        Total
+                      </td>
+                      <td className="td-resumo-table__cell text-right tabular-nums font-semibold text-text-primary">
+                        {totaisRodapeIg.mun}
+                      </td>
+                      <td className="td-resumo-table__cell text-right tabular-nums font-semibold text-text-primary">
+                        {fmtInt.format(totaisRodapeIg.lideres)}
+                      </td>
+                      <td className="td-resumo-table__cell text-right tabular-nums font-semibold text-text-primary">
+                        {fmtInt.format(totaisRodapeIg.liderados)}
+                      </td>
+                      <td className="td-resumo-table__cell text-right tabular-nums font-semibold text-text-primary">
+                        {fmtInt.format(totaisRodapeIg.com)}
+                      </td>
+                      <td className="td-resumo-table__cell text-right tabular-nums font-semibold text-text-primary">
+                        {fmtInt.format(totaisRodapeIg.perf)}
+                      </td>
+                      <td className="td-resumo-table__cell text-right tabular-nums text-text-muted">
+                        {totaisRodapeIg.liderados > 0
+                          ? new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 2 }).format(
+                              (totaisRodapeIg.com / totaisRodapeIg.liderados) * 1000
+                            )
+                          : '—'}
+                      </td>
+                      <td className="td-resumo-table__cell td-resumo-table__cell--vis text-center tabular-nums font-semibold text-text-primary">
+                        {totaisRodapeIg.vis}
+                      </td>
+                      <td className="td-resumo-table__cell td-resumo-table__cell--classe td-resumo-table__grupo-status-start text-center text-text-muted">
+                        —
+                      </td>
+                    </tr>
+                  </tfoot>
+                </table>
+                <MapaDigitalIgPublicacoesLideresCobertura
+                  territorioFoco={highlightedTd}
+                  sidebarCollapsed={sidebarCollapsed}
+                  visualPreset={visualPreset}
+                />
+                </>
+              ) : (
+                <table
+                  aria-label="Painel de decisão — territórios de desenvolvimento"
+                  className={cn(
+                    'td-resumo-table td-resumo-table--premium w-full',
+                    visualPreset === 'futuristic' && 'td-resumo-table--futuristic'
+                  )}
+                >
+                  <thead>
+                    <tr className="td-resumo-table__row td-resumo-table__row--header tracking-wide">
+                      <th
+                        className="td-resumo-table__cell td-resumo-table__cell--rank text-right font-medium"
+                        title="Posição no ranking pelo critério atual (entre os 12 TDs)"
+                      >
+                        <button type="button" onClick={() => alternarOrdenacaoTd('rank')} className="inline-flex items-center gap-1">
+                          # <span aria-hidden>{indicadorOrdenacaoTd('rank')}</span>
+                        </button>
+                      </th>
                     <th className="td-resumo-table__cell td-resumo-table__cell--territorio text-left font-medium">
                       <button type="button" onClick={() => alternarOrdenacaoTd('territorio')} className="inline-flex items-center gap-1">
                         Território <span aria-hidden>{indicadorOrdenacaoTd('territorio')}</span>
@@ -3127,13 +4086,13 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({ visualPreset = 'default'
                           'td-resumo-table__row td-resumo-table__row--data td-resumo-table__row--premium select-none transition-[transform,box-shadow,background-color] duration-200 ease-out',
                           selecionado && 'td-resumo-table__row--selected',
                           hoverTdTabela === r.territorio && 'td-resumo-table__row--hover-map',
-                          spotlightPorTd.maiorPesoEleitoral === r.territorio && 'td-resumo-table__row--spotlight-peso',
-                          spotlightPorTd.maiorDelta === r.territorio &&
+                          spotlightPainel.maiorPesoEleitoral === r.territorio && 'td-resumo-table__row--spotlight-peso',
+                          spotlightPainel.maiorDelta === r.territorio &&
                             mostrarColunaDeltaFed22 &&
                             'td-resumo-table__row--spotlight-crescimento',
-                          spotlightPorTd.piorDelta === r.territorio &&
+                          spotlightPainel.piorDelta === r.territorio &&
                             mostrarColunaDeltaFed22 &&
-                            spotlightPorTd.deltasDistintos &&
+                            spotlightPainel.deltasDistintos &&
                             'td-resumo-table__row--spotlight-risco'
                         )}
                         style={
@@ -3422,14 +4381,28 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({ visualPreset = 'default'
                   </tr>
                 </tfoot>
               </table>
+              )}
               {highlightedTd !== null && municipiosLinhasOrdenadas.length > 0 && (
                 <div className="td-fut-drill mt-3 pt-2">
-                  {painelPlanilhaAtivo && municipioFocadoLiderancas ? (
+                  {painelContext === 'digitalIg' && municipioMobilizacaoDrillIg && highlightedTd ? (
+                    <MapaDigitalIgMunicipioMobilizacaoDrill
+                      territorioPai={highlightedTd}
+                      municipioFoco={municipioMobilizacaoDrillIg}
+                      sidebarCollapsed={sidebarCollapsed}
+                      onVoltar={() => {
+                        setMunicipioMobilizacaoDrillIg(null)
+                        setMunicipioFocadoLiderancas(null)
+                      }}
+                    />
+                  ) : painelContext !== 'digitalIg' && painelPlanilhaAtivo && municipioFocadoLiderancas ? (
                     <>
                       <div className="mb-2 flex flex-col gap-1.5">
                         <button
                           type="button"
-                          onClick={() => setMunicipioFocadoLiderancas(null)}
+                          onClick={() => {
+                            setMunicipioMobilizacaoDrillIg(null)
+                            setMunicipioFocadoLiderancas(null)
+                          }}
                           className={cn(
                             'self-start rounded-lg border border-border-card/40 bg-surface px-2 py-1 font-medium text-text-primary hover:bg-card/80 focus:outline-none focus:ring-2 focus:ring-accent-gold-soft',
                             sidebarCollapsed ? 'text-xs sm:text-sm' : 'text-[10px] sm:text-[11px]'
@@ -3656,7 +4629,10 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({ visualPreset = 'default'
                         {municipioFocadoLiderancas && !painelPlanilhaAtivo ? (
                           <button
                             type="button"
-                            onClick={() => setMunicipioFocadoLiderancas(null)}
+                            onClick={() => {
+                              setMunicipioMobilizacaoDrillIg(null)
+                              setMunicipioFocadoLiderancas(null)
+                            }}
                             className={cn(
                               'shrink-0 rounded-md border border-border-card/50 bg-surface px-2 py-0.5 font-medium text-text-primary hover:bg-card/80 focus:outline-none focus:ring-2 focus:ring-accent-gold-soft',
                               sidebarCollapsed ? 'text-xs sm:text-sm' : 'text-[10px] sm:text-[11px]'
@@ -3666,6 +4642,36 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({ visualPreset = 'default'
                           </button>
                         ) : null}
                       </div>
+                      {painelContext === 'digitalIg' && highlightedTd ? (
+                        <MapaDigitalIgMunicipiosResumoTable
+                          visualPreset={visualPreset}
+                          sidebarCollapsed={sidebarCollapsed}
+                          territorioPai={highlightedTd}
+                          linhas={linhasIgMunicipiosOrdenadas}
+                          loadState={igPorMunicipioNoTdLoad}
+                          onAlternarSort={alternarOrdenacaoIg}
+                          indicadorSort={indicadorOrdenacaoIg}
+                          maxComentarios={maxComentariosMunicipioIg}
+                          totalComentariosLista={totalIgComentariosMunicipiosLista}
+                          classificacaoPorMunicipio={classificacaoEngajamentoIgPorMunicipio}
+                          totais={totaisRodapeIgMunicipiosLista}
+                          municipioFocado={municipioFocadoLiderancas}
+                          onAlternarFocoMunicipio={(nome) => {
+                            setMunicipioMobilizacaoDrillIg(null)
+                            setMunicipioFocadoLiderancas((prev) => {
+                              if (prev !== null && normalizeMunicipioNome(prev) === normalizeMunicipioNome(nome)) {
+                                return null
+                              }
+                              return nome
+                            })
+                          }}
+                          onDrillMobilizacaoMunicipio={(nome) => {
+                            setMunicipioFocadoLiderancas(nome)
+                            setMunicipioMobilizacaoDrillIg(nome)
+                          }}
+                        />
+                      ) : (
+                        <>
                       <div
                         className={cn(
                           'td-fut-grid-header mb-1.5 grid min-h-[1.25rem] items-baseline gap-x-2 border-b border-border-card/20 pb-1 font-semibold uppercase tracking-wide text-text-muted',
@@ -3946,19 +4952,21 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({ visualPreset = 'default'
                           {fmtInt.format(somaVisitasListaTd)}
                         </span>
                       </div>
+                        </>
+                      )}
                     </>
                   )}
                 </div>
               )}
             </div>
-            {highlightedTd !== null ? (
+            {painelContext !== 'digitalIg' && highlightedTd !== null ? (
               <HistoricoPesquisasPorTdMapSection
                 variant="painel"
                 territorioFoco={highlightedTd}
                 municipioFoco={municipioFocadoLiderancas}
               />
             ) : null}
-            {(() => {
+            {painelContext !== 'digitalIg' ? (() => {
               const temFeedbackEstrategico = Boolean(feedbackEstrategicoTd)
               const temPesquisas =
                 Boolean(territorioFeedbackAtivo) &&
@@ -4035,7 +5043,7 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({ visualPreset = 'default'
                   ) : null}
                 </div>
               )
-            })()}
+            })() : null}
           </aside>
           </div>
         )}
