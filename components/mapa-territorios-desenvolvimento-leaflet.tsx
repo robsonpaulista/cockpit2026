@@ -1084,6 +1084,39 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({ visualPreset = 'default'
 
   const resumoPorTd = useMemo(() => getResumoPorTerritorioDesenvolvimentoPI(), [])
   const totaisResumo = useMemo(() => getTotaisResumoTerritorioPI(resumoPorTd), [resumoPorTd])
+  const opcoesFiltroMunicipio = useMemo(() => {
+    const municipiosPorNomeNormalizado = new Map<string, string>()
+    for (const resumo of resumoPorTd) {
+      for (const municipio of getMunicipiosPorTerritorioDesenvolvimentoPI(resumo.territorio)) {
+        const nome = String(municipio ?? '').trim()
+        if (!nome) continue
+        const nomeNormalizado = normalizeMunicipioNome(nome)
+        if (!municipiosPorNomeNormalizado.has(nomeNormalizado)) {
+          municipiosPorNomeNormalizado.set(nomeNormalizado, nome)
+        }
+      }
+    }
+    return Array.from(municipiosPorNomeNormalizado.values()).sort((a, b) =>
+      a.localeCompare(b, 'pt-BR', { sensitivity: 'base' })
+    )
+  }, [resumoPorTd])
+
+  const aplicarFiltroMunicipioPainel = (municipioSelecionado: string) => {
+    const municipio = municipioSelecionado.trim()
+    if (!municipio) {
+      setMunicipioFocadoLiderancas(null)
+      setHighlightedTd(null)
+      return
+    }
+    const tdMunicipio = getTerritorioDesenvolvimentoPI(municipio)
+    if (!tdMunicipio) {
+      setMunicipioFocadoLiderancas(null)
+      setHighlightedTd(null)
+      return
+    }
+    setHighlightedTd(tdMunicipio)
+    setMunicipioFocadoLiderancas(municipio)
+  }
 
   type PlanilhaTerritorioEstado = 'idle' | 'loading' | 'skipped' | 'ready' | 'error'
   const [planilhaEstado, setPlanilhaEstado] = useState<PlanilhaTerritorioEstado>('idle')
@@ -2854,22 +2887,41 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({ visualPreset = 'default'
                   Votos Dep. Federal 2022 (Jadyel): não foi possível carregar.
                 </p>
               ) : null}
-              {mostrarSeletorCenario ? (
-                <label className="mt-2 flex flex-wrap items-center gap-2 text-[11px] sm:text-xs">
-                  <span className="shrink-0 font-medium text-text-secondary">Simulação atual</span>
+              <div className="mt-2 flex flex-wrap items-end gap-2">
+                {mostrarSeletorCenario ? (
+                  <label className="flex min-w-[12.75rem] flex-1 flex-wrap items-center gap-2 text-[11px] sm:text-xs">
+                    <span className="shrink-0 font-medium text-text-secondary">Simulação atual</span>
+                    <select
+                      value={cenarioVotosPainelMapaTd}
+                      onChange={(e) => setCenarioVotosPainelMapaTd(e.target.value as CenarioVotosPainelMapaTd)}
+                      className="min-w-0 flex-1 rounded-lg border border-card bg-surface px-2 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-accent-gold-soft"
+                    >
+                      {opcoesCenarioPainel.map((opt) => (
+                        <option key={opt.id} value={opt.id}>
+                          {opt.label}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                ) : null}
+                <label className="flex min-w-[12.75rem] flex-1 flex-wrap items-center gap-2 text-[11px] sm:text-xs">
+                  <span className="shrink-0 font-medium text-text-secondary">Município</span>
                   <select
-                    value={cenarioVotosPainelMapaTd}
-                    onChange={(e) => setCenarioVotosPainelMapaTd(e.target.value as CenarioVotosPainelMapaTd)}
+                    value={municipioFocadoLiderancas ?? ''}
+                    onChange={(e) => aplicarFiltroMunicipioPainel(e.target.value)}
                     className="min-w-0 flex-1 rounded-lg border border-card bg-surface px-2 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-accent-gold-soft"
                   >
-                    {opcoesCenarioPainel.map((opt) => (
-                      <option key={opt.id} value={opt.id}>
-                        {opt.label}
+                    <option value="">
+                      Todos os municípios ({fmtInt.format(opcoesFiltroMunicipio.length)})
+                    </option>
+                    {opcoesFiltroMunicipio.map((nomeMunicipio) => (
+                      <option key={nomeMunicipio} value={nomeMunicipio}>
+                        {nomeMunicipio}
                       </option>
                     ))}
                   </select>
                 </label>
-              ) : null}
+              </div>
             </div>
             <div className="td-resumo-map-table-wrap mt-2 w-full min-w-0 max-w-full">
               <table
