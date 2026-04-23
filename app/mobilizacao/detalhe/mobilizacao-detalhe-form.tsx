@@ -163,34 +163,38 @@ export function MobilizacaoDetalheForm() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4 py-6 sm:py-10">
       <div className="w-full max-w-xl rounded-2xl border border-card bg-surface p-5 shadow-sm sm:p-6">
-        <header className="mb-5 border-b border-card pb-4">
+        <header className="mb-5 border-b border-card pb-3">
           <div
-            className="mb-5 flex w-full min-w-0 flex-col items-center justify-center gap-5 sm:mb-6 sm:flex-row sm:items-end sm:justify-center sm:gap-8"
+            className="mb-1 flex w-full min-w-0 flex-col items-center gap-0 sm:mb-1.5 sm:flex-row sm:items-end sm:justify-center sm:gap-2"
             aria-label="Identidade visual"
           >
-            <div className="relative h-14 w-full max-w-[min(100%,280px)] shrink-0 sm:h-[4.5rem]">
+            <div className="flex w-full shrink-0 justify-center sm:w-auto">
               <Image
                 src="/logomarca.png"
                 alt="Logomarca"
-                fill
-                className="object-contain object-center"
-                sizes="(max-width: 640px) 100vw, 280px"
+                width={320}
+                height={120}
+                className="h-auto max-h-10 w-auto max-w-[min(92%,220px)] object-contain object-center sm:max-h-11 sm:max-w-[240px]"
+                sizes="(max-width: 640px) 92vw, 240px"
                 priority
               />
             </div>
-            <div className="relative h-[min(42svh,260px)] w-full max-w-[min(72vw,220px)] shrink-0 sm:h-56 sm:max-w-[240px]">
+            <div className="flex w-full shrink-0 justify-center sm:w-auto">
               <Image
                 src="/personagem.png"
                 alt=""
-                fill
-                className="object-contain object-bottom"
-                sizes="(max-width: 640px) 72vw, 240px"
+                width={280}
+                height={420}
+                className="h-auto max-h-[min(40vh,228px)] w-auto max-w-[min(88%,248px)] object-contain object-bottom sm:max-h-[240px] sm:max-w-[272px]"
+                sizes="(max-width: 640px) 88vw, 260px"
                 priority
                 aria-hidden
               />
             </div>
           </div>
-          <h1 className="text-center text-xl font-semibold text-text-primary">Cadastro de Mobilização</h1>
+          <h1 className="mt-0 text-center text-xl font-semibold text-text-primary sm:mt-0.5">
+            Cadastro de Mobilização
+          </h1>
           <p className="mt-1 text-center text-sm text-text-secondary">
             Preencha seus dados para entrar na base de mobilização.
           </p>
