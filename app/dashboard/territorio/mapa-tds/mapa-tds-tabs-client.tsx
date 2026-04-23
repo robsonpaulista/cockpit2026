@@ -14,7 +14,7 @@ const MapaTerritoriosDesenvolvimentoLeaflet = dynamic(
 
 const ABA_QUERY = 'aba'
 
-export type MapaTdsTabId = 'mapa-eleitoral' | 'mapa-digital-ig'
+export type MapaTdsTabId = 'mapa-eleitoral' | 'mapa-digital-ig' | 'pesquisas'
 
 function MapaPlaceholder() {
   return (
@@ -26,7 +26,9 @@ function MapaPlaceholder() {
 }
 
 function parseTab(raw: string | null): MapaTdsTabId {
-  return raw === 'mapa-digital-ig' ? 'mapa-digital-ig' : 'mapa-eleitoral'
+  if (raw === 'mapa-digital-ig') return 'mapa-digital-ig'
+  if (raw === 'pesquisas') return 'pesquisas'
+  return 'mapa-eleitoral'
 }
 
 export default function MapaTdsTabsClient() {
@@ -36,11 +38,18 @@ export default function MapaTdsTabsClient() {
 
   const tab = useMemo(() => parseTab(searchParams.get(ABA_QUERY)), [searchParams])
 
-  const tituloPagina = tab === 'mapa-digital-ig' ? 'Mapa Exército Digital' : 'Mapa de Dominância Eleitoral'
+  const tituloPagina =
+    tab === 'mapa-digital-ig'
+      ? 'Mapa Exército Digital'
+      : tab === 'pesquisas'
+        ? 'Mapa Pesquisas'
+        : 'Mapa de Dominância Eleitoral'
   const subtituloPagina =
     tab === 'mapa-digital-ig'
       ? 'Territórios de desenvolvimento — engajamento digital e mobilização (Instagram).'
-      : 'Territórios de desenvolvimento — peso eleitoral, planilha e projeções.'
+      : tab === 'pesquisas'
+        ? 'Territórios de desenvolvimento — mesma visão do mapa eleitoral, com coloração e marcadores pela média de intenção (dados da página Pesquisa).'
+        : 'Territórios de desenvolvimento — peso eleitoral, planilha e projeções.'
 
   const setTab = useCallback(
     (next: MapaTdsTabId) => {
@@ -91,6 +100,17 @@ export default function MapaTdsTabsClient() {
               >
                 Mapa Digital IG
               </button>
+              <button
+                type="button"
+                onClick={() => setTab('pesquisas')}
+                className={
+                  tab === 'pesquisas'
+                    ? 'rounded-lg bg-[rgba(255,255,255,0.1)] px-3 py-2 text-xs font-semibold text-[#E6EDF3] sm:text-sm'
+                    : 'rounded-lg px-3 py-2 text-xs font-medium text-[#AAB4C0] hover:bg-[rgba(255,255,255,0.05)] sm:text-sm'
+                }
+              >
+                Pesquisas
+              </button>
             </nav>
             {tab === 'mapa-digital-ig' ? <MapaDigitalIgSyncToolbar className="sm:justify-end" /> : null}
           </div>
@@ -103,12 +123,14 @@ export default function MapaTdsTabsClient() {
             visualPreset="futuristic"
             painelContext="eleitoral"
           />
-        ) : (
+        ) : tab === 'mapa-digital-ig' ? (
           <MapaTerritoriosDesenvolvimentoLeaflet
             key="mapa-digital-ig"
             visualPreset="futuristic"
             painelContext="digitalIg"
           />
+        ) : (
+          <MapaTerritoriosDesenvolvimentoLeaflet key="pesquisas" visualPreset="futuristic" painelContext="pesquisas" />
         )}
       </div>
     </div>

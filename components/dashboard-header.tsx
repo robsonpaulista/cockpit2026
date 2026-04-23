@@ -38,7 +38,9 @@ function getPageTitle(pathname: string): string {
 const MAPA_TDS_FUTURISTIC_ROUTE = '/dashboard/territorio/mapa-tds'
 
 function mapaTdsHeaderTitleFromSearch(aba: string | null): string {
-  return aba === 'mapa-digital-ig' ? 'Mapa Exército Digital' : 'Mapa de Dominância Eleitoral'
+  if (aba === 'mapa-digital-ig') return 'Mapa Exército Digital'
+  if (aba === 'pesquisas') return 'Mapa Pesquisas'
+  return 'Mapa de Dominância Eleitoral'
 }
 
 export function DashboardHeader() {

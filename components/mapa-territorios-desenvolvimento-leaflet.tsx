@@ -62,6 +62,7 @@ import {
 } from '@/lib/instagram-engajamento-ig-classificacao'
 import { ClassificacaoTdBadge } from '@/components/classificacao-td-badge'
 import { HistoricoPesquisasPorTdMapSection } from '@/components/historico-pesquisas-por-td-map-section'
+import type { MediaIntencaoPorTd } from '@/lib/pesquisa-historico-por-td'
 import { useSidebar } from '@/contexts/sidebar-context'
 import type { InstagramPorTdAgg } from '@/lib/mapa-digital-ig-por-td'
 import { fetchMobilizacaoPorTdMaps } from '@/lib/mobilizacao-liderados-por-td-client'
@@ -84,6 +85,67 @@ import { MapaDigitalIgLideresDesempenhoModal } from '@/components/mapa-digital-i
 import { Loader2 } from 'lucide-react'
 
 type LoadState = 'loading' | 'ready' | 'error'
+
+type PesquisaTipoIntencaoAggTd = { n: number; somaIntencao: number }
+
+type PesquisaTiposPorTdVal = {
+  espontanea: PesquisaTipoIntencaoAggTd
+  estimulada: PesquisaTipoIntencaoAggTd
+}
+
+const PESQUISA_TIPOS_TD_VAZIO: PesquisaTiposPorTdVal = {
+  espontanea: { n: 0, somaIntencao: 0 },
+  estimulada: { n: 0, somaIntencao: 0 },
+}
+
+function parseIntencaoPesquisaApi(raw: unknown): number | null {
+  if (raw === null || raw === undefined) return null
+  if (typeof raw === 'number' && Number.isFinite(raw)) return raw
+  const s = String(raw).trim().replace(/\s/g, '').replace(',', '.')
+  const v = Number(s)
+  return Number.isFinite(v) ? v : null
+}
+
+function mediaPesquisaTipoAgg(agg: PesquisaTipoIntencaoAggTd): number | null {
+  if (agg.n <= 0) return null
+  return Math.round((agg.somaIntencao / agg.n) * 10) / 10
+}
+
+/** Ex.: `5/17%` ou `5/17,4%` — economiza espaço na tabela Pesquisas. */
+function formatarCelulaPesquisaQtdMedia(agg: PesquisaTipoIntencaoAggTd): string {
+  if (agg.n <= 0) return '0/—'
+  const m = mediaPesquisaTipoAgg(agg)
+  if (m === null) return `${agg.n}/—`
+  const pctStr = Number.isInteger(m) ? String(m) : m.toFixed(1).replace('.', ',')
+  return `${agg.n}/${pctStr}%`
+}
+
+function tituloCelulaPesquisaQtdMedia(labelTipo: string, agg: PesquisaTipoIntencaoAggTd): string {
+  const m = mediaPesquisaTipoAgg(agg)
+  if (agg.n <= 0) return `${labelTipo}: nenhuma pesquisa neste TD`
+  if (m === null) return `${labelTipo}: ${agg.n} pesquisa(s); média de intenção indisponível`
+  const pctFmt = Number.isInteger(m) ? String(m) : m.toFixed(1).replace('.', ',')
+  return `${labelTipo}: ${agg.n} pesquisa(s); média de intenção ${pctFmt}%`
+}
+
+function compararAggPesquisaPorMediaDepoisN(
+  a: PesquisaTipoIntencaoAggTd,
+  b: PesquisaTipoIntencaoAggTd
+): number {
+  const mA = mediaPesquisaTipoAgg(a)
+  const mB = mediaPesquisaTipoAgg(b)
+  const keyA = mA ?? -Infinity
+  const keyB = mB ?? -Infinity
+  if (keyA !== keyB) return keyA - keyB
+  return a.n - b.n
+}
+
+function projecaoVotosPesquisaPorTd(agg: PesquisaTipoIntencaoAggTd, eleitores: number): number {
+  if (eleitores <= 0) return 0
+  const media = mediaPesquisaTipoAgg(agg)
+  if (media === null) return 0
+  return Math.round((media / 100) * eleitores)
+}
 
 /** Mesmo branco da aplicação — mascara fora do Piauí. */
 const FUNDO_MAPA_BRANCO = '#ffffff'
@@ -141,6 +203,10 @@ type MapaTdController = {
   atualizarResumoMarcadoresPorIg?: (
     porTd: Map<TerritorioDesenvolvimentoPI, InstagramPorTdAgg>,
     postagensProcessadas: number
+  ) => void
+  /** Camada Pesquisas: média de intenção (%) e volume de registros por TD. */
+  atualizarResumoMarcadoresPorPesquisa?: (
+    mediasPorTd: Map<TerritorioDesenvolvimentoPI, { media: number; n: number }>
   ) => void
 }
 
@@ -748,6 +814,32 @@ function atualizarResumoMarcadoresPesoEleitoresPorTd(
   }
 }
 
+function atualizarResumoMarcadoresIntencaoPesquisaPorTd(
+  markerByTd: Map<TerritorioDesenvolvimentoPI, L.Marker>,
+  mediasPorTd: Map<TerritorioDesenvolvimentoPI, { media: number; n: number }>
+) {
+  const fmtPct = new Intl.NumberFormat('pt-BR', {
+    minimumFractionDigits: 1,
+    maximumFractionDigits: 1,
+  })
+  for (const [td, marker] of markerByTd) {
+    const el = marker.getElement()
+    if (!el) continue
+    const valorEl = el.querySelector<HTMLElement>('.td-peso-eleitores-card__value')
+    const metaEl = el.querySelector<HTMLElement>('.td-peso-eleitores-card__meta')
+    if (!valorEl || !metaEl) continue
+    const row = mediasPorTd.get(td)
+    if (!row || row.n <= 0) {
+      valorEl.textContent = '—'
+      metaEl.textContent = 'Sem pesquisa no TD'
+      continue
+    }
+    const pctStr = fmtPct.format(row.media).replace(/\u00a0/g, '')
+    valorEl.textContent = `${pctStr}%`
+    metaEl.textContent = `${new Intl.NumberFormat('pt-BR').format(row.n)} registro(s) · média intenção`
+  }
+}
+
 function applyStylesToGeoLayer(
   geoLayer: L.GeoJSON,
   focusTd: TerritorioDesenvolvimentoPI | null,
@@ -993,6 +1085,34 @@ function formatarIntComSinal(n: number): string {
   return fmtInt.format(0)
 }
 
+/** Painel Pesquisas — coluna Status a partir de FED.26xPrev (Vot.Prev − FED.26) e limiar de 5% sobre FED.26. */
+type StatusExpectativaPesquisaTd = 'abaixo' | 'dentro' | 'acima'
+
+function statusExpectativaPorFed26XPrev(fed26XPrevTd: number, votosFed26Td: number): StatusExpectativaPesquisaTd {
+  if (fed26XPrevTd < 0) return 'abaixo'
+  if (votosFed26Td <= 0) return fed26XPrevTd > 0 ? 'acima' : 'dentro'
+  const pct = (fed26XPrevTd / votosFed26Td) * 100
+  if (pct <= 5) return 'dentro'
+  return 'acima'
+}
+
+function rotuloStatusExpectativaPesquisaTd(s: StatusExpectativaPesquisaTd): string {
+  if (s === 'abaixo') return 'Abaixo do Esperado'
+  if (s === 'dentro') return 'Dentro do Esperado'
+  return 'Acima do Esperado'
+}
+
+function pesoOrdenacaoStatusExpectativaPesquisaTd(s: StatusExpectativaPesquisaTd): number {
+  if (s === 'abaixo') return 0
+  if (s === 'dentro') return 1
+  return 2
+}
+
+function pctFed26XPrevSobreFed26(fed26XPrevTd: number, votosFed26Td: number): number | null {
+  if (votosFed26Td <= 0) return null
+  return (fed26XPrevTd / votosFed26Td) * 100
+}
+
 type EstrategiaTopFed22DetalheCandidato = { nome: string; votosPi: number; votosNoTd: number }
 
 type EstrategiaTopFed22LinhaTd = {
@@ -1122,7 +1242,8 @@ type MapaTerritoriosDesenvolvimentoLeafletProps = {
   /** `futuristic` = mapa monocromático + painel cockpit (rota mapa-tds). */
   visualPreset?: 'default' | 'futuristic'
   /** `digitalIg` = mesma malha e tabela “Resumo por TD” com comentários cruzados ao @ de liderados (mobilização) por TD. */
-  painelContext?: 'eleitoral' | 'digitalIg'
+  /** `pesquisas` = mesma estrutura do eleitoral; coloração/marcadores pela média de intenção (API Pesquisa). */
+  painelContext?: 'eleitoral' | 'digitalIg' | 'pesquisas'
 }
 
 export function MapaTerritoriosDesenvolvimentoLeaflet({
@@ -1239,6 +1360,22 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({
   const [igPorMunicipioNoTd, setIgPorMunicipioNoTd] = useState<Map<string, IgAgregadoMunicipioNoTd>>(() => new Map())
   const [igPorMunicipioNoTdLoad, setIgPorMunicipioNoTdLoad] = useState<'idle' | 'loading' | 'ready' | 'error'>('idle')
   const [igLideresDesempenhoModalTd, setIgLideresDesempenhoModalTd] = useState<TerritorioDesenvolvimentoPI | null>(null)
+
+  const [pesquisaMediasPorTd, setPesquisaMediasPorTd] = useState<
+    Map<TerritorioDesenvolvimentoPI, { media: number; n: number }>
+  >(() => new Map())
+  const [pesquisaTiposPorTd, setPesquisaTiposPorTd] = useState<Map<TerritorioDesenvolvimentoPI, PesquisaTiposPorTdVal>>(
+    () => new Map()
+  )
+  const [pesquisaMunicipiosComPesquisaPorTd, setPesquisaMunicipiosComPesquisaPorTd] = useState<
+    Map<TerritorioDesenvolvimentoPI, number>
+  >(() => new Map())
+  const [pesquisaTiposPorMunicipioNorm, setPesquisaTiposPorMunicipioNorm] = useState<
+    Map<string, PesquisaTiposPorTdVal>
+  >(() => new Map())
+  const [pesquisaMapaCandidato, setPesquisaMapaCandidato] = useState<string>('')
+  const [pesquisaMapaLoadState, setPesquisaMapaLoadState] = useState<'idle' | 'loading' | 'ready' | 'error'>('idle')
+  const [pesquisaMapaErro, setPesquisaMapaErro] = useState<string>('')
 
   useEffect(() => {
     let cancelled = false
@@ -1435,6 +1572,152 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({
     setIgError('')
     setIgLideresDesempenhoModalTd(null)
   }, [painelContext])
+
+  const lerCandidatoPadraoPesquisa = useCallback((): string => {
+    if (typeof window === 'undefined') return ''
+    return window.localStorage.getItem(STORAGE_CANDIDATO_PESQUISA)?.trim() ?? ''
+  }, [])
+
+  const carregarMediasPesquisaPorTd = useCallback(async () => {
+    const nome = lerCandidatoPadraoPesquisa()
+    setPesquisaMapaCandidato(nome)
+    setPesquisaMapaLoadState('loading')
+    setPesquisaMapaErro('')
+    try {
+      type PollTipoResumoRow = {
+        tipo?: string | null
+        data?: string | null
+        instituto?: string | null
+        cargo?: string | null
+        intencao?: string | number | null
+        cities?: { name?: string | null } | Array<{ name?: string | null }> | null
+      }
+
+      const [resTipos, resMedias] = await Promise.all([
+        fetch('/api/pesquisa?limit=5000'),
+        nome ? fetch(`/api/pesquisa/historico-intencao?${new URLSearchParams({ candidato: nome })}`) : Promise.resolve(null),
+      ])
+
+      const mapaTipos = new Map<TerritorioDesenvolvimentoPI, PesquisaTiposPorTdVal>()
+      const mapaMunicipiosNorm = new Map<string, PesquisaTiposPorTdVal>()
+      const municipiosComPesquisaPorTd = new Map<TerritorioDesenvolvimentoPI, Set<string>>()
+      if (resTipos.ok) {
+        const rows = (await resTipos.json()) as PollTipoResumoRow[]
+        const vistosEspontanea = new Set<string>()
+        const vistosEstimulada = new Set<string>()
+        for (const row of rows) {
+          const tipo = String(row.tipo ?? '').trim().toLowerCase()
+          if (tipo !== 'espontanea' && tipo !== 'estimulada') continue
+          const c = row.cities
+          const cidade = Array.isArray(c) ? String(c[0]?.name ?? '').trim() : String(c?.name ?? '').trim()
+          if (!cidade) continue
+          const td = getTerritorioDesenvolvimentoPI(cidade)
+          if (!td) continue
+          const dataBase = String(row.data ?? '').split('T')[0].trim()
+          const instituto = String(row.instituto ?? '').trim().toUpperCase()
+          const cargo = String(row.cargo ?? '').trim().toLowerCase()
+          const cidadeNorm = normalizeMunicipioNome(cidade)
+          const chave = `${tipo}|${dataBase}|${instituto}|${cargo}|${cidadeNorm}`
+          const vistos = tipo === 'espontanea' ? vistosEspontanea : vistosEstimulada
+          if (vistos.has(chave)) continue
+          vistos.add(chave)
+          const municipiosNoTd = municipiosComPesquisaPorTd.get(td) ?? new Set<string>()
+          municipiosNoTd.add(cidadeNorm)
+          municipiosComPesquisaPorTd.set(td, municipiosNoTd)
+
+          const intVal = parseIntencaoPesquisaApi(row.intencao)
+          const atual = mapaTipos.get(td) ?? {
+            espontanea: { n: 0, somaIntencao: 0 },
+            estimulada: { n: 0, somaIntencao: 0 },
+          }
+          if (tipo === 'espontanea') {
+            atual.espontanea.n += 1
+            if (intVal !== null) atual.espontanea.somaIntencao += intVal
+          } else {
+            atual.estimulada.n += 1
+            if (intVal !== null) atual.estimulada.somaIntencao += intVal
+          }
+          mapaTipos.set(td, atual)
+
+          const atualMun =
+            mapaMunicipiosNorm.get(cidadeNorm) ?? {
+              espontanea: { n: 0, somaIntencao: 0 },
+              estimulada: { n: 0, somaIntencao: 0 },
+            }
+          if (tipo === 'espontanea') {
+            atualMun.espontanea.n += 1
+            if (intVal !== null) atualMun.espontanea.somaIntencao += intVal
+          } else {
+            atualMun.estimulada.n += 1
+            if (intVal !== null) atualMun.estimulada.somaIntencao += intVal
+          }
+          mapaMunicipiosNorm.set(cidadeNorm, atualMun)
+        }
+      }
+      setPesquisaTiposPorTd(mapaTipos)
+      setPesquisaTiposPorMunicipioNorm(mapaMunicipiosNorm)
+      const mapaQtdMunicipiosPesquisa = new Map<TerritorioDesenvolvimentoPI, number>()
+      for (const [td, municipios] of municipiosComPesquisaPorTd.entries()) {
+        mapaQtdMunicipiosPesquisa.set(td, municipios.size)
+      }
+      setPesquisaMunicipiosComPesquisaPorTd(mapaQtdMunicipiosPesquisa)
+
+      if (!nome) {
+        setPesquisaMediasPorTd(new Map())
+        setPesquisaMapaLoadState('ready')
+        setPesquisaMapaErro('')
+        return
+      }
+
+      const body = (await resMedias?.json()) as {
+        error?: string
+        message?: string
+        mediasPorTd?: MediaIntencaoPorTd[]
+      }
+      if (!resMedias?.ok) {
+        setPesquisaMediasPorTd(new Map())
+        setPesquisaMapaLoadState('error')
+        setPesquisaMapaErro(body?.error ?? body?.message ?? 'Não foi possível carregar intenção por TD.')
+        return
+      }
+      const m = new Map<TerritorioDesenvolvimentoPI, { media: number; n: number }>()
+      for (const row of body.mediasPorTd ?? []) {
+        if (!row?.territorio) continue
+        m.set(row.territorio as TerritorioDesenvolvimentoPI, { media: row.media, n: row.n })
+      }
+      setPesquisaMediasPorTd(m)
+      setPesquisaMapaLoadState('ready')
+    } catch {
+      setPesquisaMediasPorTd(new Map())
+      setPesquisaTiposPorTd(new Map())
+      setPesquisaMunicipiosComPesquisaPorTd(new Map())
+      setPesquisaTiposPorMunicipioNorm(new Map())
+      setPesquisaMapaLoadState('error')
+      setPesquisaMapaErro('Erro de conexão ao carregar pesquisas.')
+    }
+  }, [lerCandidatoPadraoPesquisa])
+
+  useEffect(() => {
+    if (painelContext !== 'pesquisas') return
+    void carregarMediasPesquisaPorTd()
+  }, [painelContext, carregarMediasPesquisaPorTd])
+
+  useEffect(() => {
+    if (painelContext !== 'pesquisas') return
+    const onStorage = (e: StorageEvent) => {
+      if (e.key !== STORAGE_CANDIDATO_PESQUISA) return
+      void carregarMediasPesquisaPorTd()
+    }
+    const onFocus = () => {
+      void carregarMediasPesquisaPorTd()
+    }
+    window.addEventListener('storage', onStorage)
+    window.addEventListener('focus', onFocus)
+    return () => {
+      window.removeEventListener('storage', onStorage)
+      window.removeEventListener('focus', onFocus)
+    }
+  }, [painelContext, carregarMediasPesquisaPorTd])
 
   const colunasPlanilha = useMemo(
     () => resolverColunasLiderancaTerritorio(planilhaHeaders),
@@ -1705,7 +1988,10 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({
   const mostrarColunaDeltaFed22 = temDadosFed22 && painelPlanilhaAtivo && cenarioVotosExibicao !== null
 
   const mostrarColunaTendenciaFuturista =
-    visualPreset === 'futuristic' && mostrarColunaDeltaFed22 && cenarioVotosExibicao !== null
+    visualPreset === 'futuristic' &&
+    mostrarColunaDeltaFed22 &&
+    cenarioVotosExibicao !== null &&
+    painelContext !== 'pesquisas'
 
   /** Check-ins Campo & Agenda (PI) por TD e por município — `/api/campo/visitas-resumo-td`. */
   const [visitasPorTdCampo, setVisitasPorTdCampo] = useState<Map<TerritorioDesenvolvimentoPI, number>>(
@@ -1745,23 +2031,34 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({
 
   /** Totais estaduais (soma dos 12 TDs) — rodapé da tabela, independente de filtro/expansão na lista. */
   const totaisRodapePainelTd = useMemo(() => {
+    const emPainelPesquisas = painelContext === 'pesquisas'
     let somaFed22 = 0
     let somaEstrategiaExibida = 0
+    let somaProjecaoPesquisas = 0
     let visitasTd = 0
     for (const r of resumoPorTd) {
       somaFed22 += votosFed22PorTd.get(r.territorio) ?? 0
       const estrategiaTd = estrategiaTopFed22PorTd.get(r.territorio)?.mediaVotos ?? 0
       somaEstrategiaExibida += Math.round(estrategiaTd)
-      visitasTd += visitasPorTdCampo.get(r.territorio) ?? 0
+      if (emPainelPesquisas) {
+        const tiposPesquisaTd = pesquisaTiposPorTd.get(r.territorio) ?? PESQUISA_TIPOS_TD_VAZIO
+        somaProjecaoPesquisas += projecaoVotosPesquisaPorTd(tiposPesquisaTd.estimulada, r.eleitores)
+      }
+      visitasTd += emPainelPesquisas
+        ? pesquisaMunicipiosComPesquisaPorTd.get(r.territorio) ?? 0
+        : visitasPorTdCampo.get(r.territorio) ?? 0
     }
     const votosPlanCenario =
       painelPlanilhaAtivo && cenarioVotosExibicao
         ? Math.round(valorVotosAgregadoTd(totaisPlanilhaTd, cenarioVotosExibicao))
         : 0
     const delta =
-      temDadosFed22 && painelPlanilhaAtivo && cenarioVotosExibicao !== null
+      emPainelPesquisas
+        ? somaProjecaoPesquisas
+        : temDadosFed22 && painelPlanilhaAtivo && cenarioVotosExibicao !== null
         ? votosPlanCenario - somaFed22
         : 0
+    const fed26XPrev = emPainelPesquisas ? delta - votosPlanCenario : 0
     const liderancas = painelPlanilhaAtivo ? totaisPlanilhaTd.liderancas : 0
     return {
       municipios: totaisResumo.municipios,
@@ -1770,6 +2067,7 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({
       somaEstrategiaExibida,
       votosPlanCenario,
       delta,
+      fed26XPrev,
       liderancas,
       visitasTd,
     }
@@ -1782,6 +2080,9 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({
     cenarioVotosExibicao,
     totaisPlanilhaTd,
     temDadosFed22,
+    painelContext,
+    pesquisaTiposPorTd,
+    pesquisaMunicipiosComPesquisaPorTd,
     visitasPorTdCampo,
   ])
 
@@ -1790,37 +2091,6 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({
     if (loadState !== 'ready') return
     setPainelDadosAtualizadoEm(new Date())
   }, [loadState, planilhaEstado, fed22LoadState])
-
-  /**
-   * Mesmo `grid-template-columns` no cabeçalho e em cada linha.
-   * Ordem alinhada ao resumo por TD: Eleit. → Méd.Top5 22 → Fed.22 → Fed.26 → Δ → % EXP. → Lid. → Vis.
-   */
-  const gridTemplateListaMunicipiosPainelTd = useMemo(() => {
-    const cols: string[] = ['minmax(5.5rem, 1.35fr)', 'minmax(3.75rem, max-content)']
-    if (temDadosEstrategiaTopFed22) {
-      cols.push('minmax(3.15rem, max-content)')
-    }
-    if (temDadosFed22) {
-      cols.push('minmax(3.5rem, max-content)')
-    }
-    if (painelPlanilhaAtivo) {
-      cols.push('minmax(1.75rem, max-content)')
-      if (cenarioVotosExibicao) {
-        cols.push('minmax(3.75rem, max-content)')
-      }
-    }
-    if (mostrarColunaDeltaFed22) {
-      cols.push('minmax(3.25rem, max-content)')
-    }
-    cols.push('minmax(2.75rem, max-content)', 'minmax(1.65rem, max-content)')
-    return cols.join(' ')
-  }, [
-    painelPlanilhaAtivo,
-    cenarioVotosExibicao,
-    temDadosFed22,
-    mostrarColunaDeltaFed22,
-    temDadosEstrategiaTopFed22,
-  ])
 
   const resumoLinhasVisiveis = useMemo(
     () =>
@@ -1851,6 +2121,16 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({
     totaisResumo.eleitores,
   ])
 
+  /** Tercis entre os 12 TDs pela média de intenção (registros em `polls` agregados por TD). */
+  const classificacaoPorTdPesquisas = useMemo(() => {
+    const scores = resumoPorTd.map((r) => {
+      const row = pesquisaMediasPorTd.get(r.territorio)
+      const score = row && row.n > 0 ? row.media : 0
+      return { territorio: r.territorio, score }
+    })
+    return classificarTerritoriosPorScore(scores)
+  }, [resumoPorTd, pesquisaMediasPorTd])
+
   const classificacaoEngajamentoIgPorTd = useMemo(() => {
     const pp = igAgregadoAtual.postagensProcessadas
     const m = new Map<TerritorioDesenvolvimentoPI, ClassificacaoTerritorioTd>()
@@ -1862,10 +2142,16 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({
     return m
   }, [resumoPorTd, igPorTd, igAgregadoAtual.postagensProcessadas])
 
-  const classificacaoMapaAtual = useMemo(
-    () => (painelContext === 'digitalIg' ? classificacaoEngajamentoIgPorTd : classificacaoPorTd),
-    [painelContext, classificacaoEngajamentoIgPorTd, classificacaoPorTd]
-  )
+  const classificacaoMapaAtual = useMemo(() => {
+    if (painelContext === 'digitalIg') return classificacaoEngajamentoIgPorTd
+    if (painelContext === 'pesquisas') return classificacaoPorTdPesquisas
+    return classificacaoPorTd
+  }, [
+    painelContext,
+    classificacaoEngajamentoIgPorTd,
+    classificacaoPorTdPesquisas,
+    classificacaoPorTd,
+  ])
 
   const classificacaoPrioridadePesoFed26PorTd = useMemo(() => {
     const scores = resumoPorTd.map((r) => {
@@ -1943,6 +2229,54 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({
     () => Math.max(1, ...resumoPorTd.map((r) => r.eleitores)),
     [resumoPorTd]
   )
+  const emPainelPesquisas = painelContext === 'pesquisas'
+  const temDadosEstrategiaTabela = emPainelPesquisas || temDadosEstrategiaTopFed22
+  const temDadosFed22Tabela = emPainelPesquisas || temDadosFed22
+
+  /**
+   * Mesmo `grid-template-columns` no cabeçalho e em cada linha da lista de municípios (expandir TD).
+   * Pesquisas: alinhado ao resumo por TD (Espon., Estim., Vot.Prev, FED.26, FED.26xPrev., Mun.c/pesq, Status).
+   * Eleitoral: Eleit. → Méd.Top5 22 → Fed.22 → Lid. → FED.26 → Δ → % EXP. → Vis.
+   */
+  const gridTemplateListaMunicipiosPainelTd = useMemo(() => {
+    if (emPainelPesquisas) {
+      const cols: string[] = ['minmax(5.5rem, 1.35fr)', 'minmax(3.75rem, max-content)']
+      if (temDadosEstrategiaTabela) cols.push('minmax(3.4rem, max-content)')
+      if (temDadosFed22Tabela) cols.push('minmax(3.4rem, max-content)')
+      if (mostrarColunaDeltaFed22) cols.push('minmax(3.25rem, max-content)')
+      if (painelPlanilhaAtivo && cenarioVotosExibicao) cols.push('minmax(3.5rem, max-content)')
+      if (painelPlanilhaAtivo) cols.push('minmax(3.25rem, max-content)')
+      cols.push('minmax(2.5rem, max-content)', 'minmax(6.25rem, 1.15fr)')
+      return cols.join(' ')
+    }
+    const cols: string[] = ['minmax(5.5rem, 1.35fr)', 'minmax(3.75rem, max-content)']
+    if (temDadosEstrategiaTopFed22) {
+      cols.push('minmax(3.15rem, max-content)')
+    }
+    if (temDadosFed22) {
+      cols.push('minmax(3.5rem, max-content)')
+    }
+    if (painelPlanilhaAtivo) {
+      cols.push('minmax(1.75rem, max-content)')
+      if (cenarioVotosExibicao) {
+        cols.push('minmax(3.75rem, max-content)')
+      }
+    }
+    if (mostrarColunaDeltaFed22) {
+      cols.push('minmax(3.25rem, max-content)')
+    }
+    cols.push('minmax(2.75rem, max-content)', 'minmax(1.65rem, max-content)')
+    return cols.join(' ')
+  }, [
+    emPainelPesquisas,
+    temDadosEstrategiaTabela,
+    temDadosFed22Tabela,
+    painelPlanilhaAtivo,
+    cenarioVotosExibicao,
+    temDadosFed22,
+    mostrarColunaDeltaFed22,
+    temDadosEstrategiaTopFed22,
+  ])
 
   const territoriosEmAtencao = useMemo(() => {
     let n = 0
@@ -1987,24 +2321,33 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({
     }
     const base = resumoLinhasVisiveis.map((r) => {
       const ag = agregadoTdPlanilha.get(r.territorio) ?? AGREGADO_PLANILHA_VAZIO
-      const v22Td = votosFed22PorTd.get(r.territorio) ?? 0
+      const tiposPesquisaTd = pesquisaTiposPorTd.get(r.territorio) ?? PESQUISA_TIPOS_TD_VAZIO
+      const v22Td = emPainelPesquisas ? tiposPesquisaTd.estimulada.n : (votosFed22PorTd.get(r.territorio) ?? 0)
       const blocoEstrategiaTopFed22 = estrategiaTopFed22PorTd.get(r.territorio)
-      const estrategiaTd = blocoEstrategiaTopFed22?.mediaVotos ?? 0
+      const estrategiaTd = emPainelPesquisas ? tiposPesquisaTd.espontanea.n : (blocoEstrategiaTopFed22?.mediaVotos ?? 0)
       const vPlanTd = cenarioVotosExibicao ? Math.round(valorVotosAgregadoTd(ag, cenarioVotosExibicao)) : 0
-      const deltaTd = mostrarColunaDeltaFed22 ? vPlanTd - v22Td : 0
+      const projecaoPesquisaTd = emPainelPesquisas
+        ? projecaoVotosPesquisaPorTd(tiposPesquisaTd.estimulada, r.eleitores)
+        : 0
+      const deltaTd = emPainelPesquisas ? projecaoPesquisaTd : mostrarColunaDeltaFed22 ? vPlanTd - v22Td : 0
+      const fed26XPrevTd = emPainelPesquisas ? deltaTd - vPlanTd : 0
       const rankTd = rankingPorTd.get(r.territorio) ?? Number.POSITIVE_INFINITY
       const classificacaoTd = classificacaoPorTd.get(r.territorio)
       const classificacaoPrioridadePeso = classificacaoPrioridadePesoFed26PorTd.get(r.territorio)
       const classificacaoPrioridadeEficiencia = classificacaoPrioridadeEficienciaFed26PorTd.get(r.territorio)
       const detalhesPrioridade = detalhesPrioridadePorTd.get(r.territorio) ?? null
-      const visitasTd = visitasPorTdCampo.get(r.territorio) ?? 0
+      const visitasTd = emPainelPesquisas
+        ? pesquisaMunicipiosComPesquisaPorTd.get(r.territorio) ?? 0
+        : visitasPorTdCampo.get(r.territorio) ?? 0
       return {
         r,
         ag,
         v22Td,
         estrategiaTd,
+        tiposPesquisaTd,
         vPlanTd,
         deltaTd,
+        fed26XPrevTd,
         rankTd,
         classificacaoTd,
         classificacaoPrioridadePeso,
@@ -2031,32 +2374,50 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({
           cmp = a.r.eleitores - b.r.eleitores
           break
         case 'fed22':
-          cmp = a.v22Td - b.v22Td
+          cmp = emPainelPesquisas
+            ? compararAggPesquisaPorMediaDepoisN(a.tiposPesquisaTd.estimulada, b.tiposPesquisaTd.estimulada)
+            : a.v22Td - b.v22Td
           break
         case 'fed26':
           cmp = a.vPlanTd - b.vPlanTd
           break
         case 'estrategia':
-          cmp = a.estrategiaTd - b.estrategiaTd
+          cmp = emPainelPesquisas
+            ? compararAggPesquisaPorMediaDepoisN(a.tiposPesquisaTd.espontanea, b.tiposPesquisaTd.espontanea)
+            : a.estrategiaTd - b.estrategiaTd
           break
         case 'delta':
         case 'tend':
           cmp = a.deltaTd - b.deltaTd
           break
         case 'lid':
-          cmp = a.ag.liderancas - b.ag.liderancas
+          cmp = emPainelPesquisas ? a.fed26XPrevTd - b.fed26XPrevTd : a.ag.liderancas - b.ag.liderancas
           break
         case 'vis':
           cmp = a.visitasTd - b.visitasTd
           break
         case 'prioridade':
-          cmp =
-            prioridadePesoTipo(a.classificacaoPrioridadePeso) -
-            prioridadePesoTipo(b.classificacaoPrioridadePeso)
-          if (cmp === 0) {
+          if (emPainelPesquisas) {
+            const sa = statusExpectativaPorFed26XPrev(a.fed26XPrevTd, a.vPlanTd)
+            const sb = statusExpectativaPorFed26XPrev(b.fed26XPrevTd, b.vPlanTd)
+            cmp = pesoOrdenacaoStatusExpectativaPesquisaTd(sa) - pesoOrdenacaoStatusExpectativaPesquisaTd(sb)
+            if (cmp === 0) {
+              const pcta = pctFed26XPrevSobreFed26(a.fed26XPrevTd, a.vPlanTd)
+              const pctb = pctFed26XPrevSobreFed26(b.fed26XPrevTd, b.vPlanTd)
+              if (pcta === null && pctb === null) cmp = a.fed26XPrevTd - b.fed26XPrevTd
+              else if (pcta === null) cmp = 1
+              else if (pctb === null) cmp = -1
+              else cmp = pcta - pctb
+            }
+          } else {
             cmp =
-              prioridadePesoTipo(a.classificacaoPrioridadeEficiencia) -
-              prioridadePesoTipo(b.classificacaoPrioridadeEficiencia)
+              prioridadePesoTipo(a.classificacaoPrioridadePeso) -
+              prioridadePesoTipo(b.classificacaoPrioridadePeso)
+            if (cmp === 0) {
+              cmp =
+                prioridadePesoTipo(a.classificacaoPrioridadeEficiencia) -
+                prioridadePesoTipo(b.classificacaoPrioridadeEficiencia)
+            }
           }
           break
       }
@@ -2069,6 +2430,8 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({
   }, [
     resumoLinhasVisiveis,
     agregadoTdPlanilha,
+    pesquisaTiposPorTd,
+    emPainelPesquisas,
     votosFed22PorTd,
     estrategiaTopFed22PorTd,
     cenarioVotosExibicao,
@@ -2080,6 +2443,7 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({
     detalhesPrioridadePorTd,
     tdSort,
     visitasPorTdCampo,
+    pesquisaMunicipiosComPesquisaPorTd,
   ])
 
   const alternarOrdenacaoTd = (key: TdSortKey) => {
@@ -2092,6 +2456,20 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({
     if (tdSort.key !== key) return '↕'
     return tdSort.direction === 'asc' ? '↑' : '↓'
   }
+
+  const totaisPesquisaTiposRodape = useMemo(() => {
+    const espontanea: PesquisaTipoIntencaoAggTd = { n: 0, somaIntencao: 0 }
+    const estimulada: PesquisaTipoIntencaoAggTd = { n: 0, somaIntencao: 0 }
+    for (const r of resumoPorTd) {
+      const tipo = pesquisaTiposPorTd.get(r.territorio)
+      if (!tipo) continue
+      espontanea.n += tipo.espontanea.n
+      espontanea.somaIntencao += tipo.espontanea.somaIntencao
+      estimulada.n += tipo.estimulada.n
+      estimulada.somaIntencao += tipo.estimulada.somaIntencao
+    }
+    return { espontanea, estimulada }
+  }, [resumoPorTd, pesquisaTiposPorTd])
 
   /** Destaques dinâmicos quando a lista mostra os 12 TDs (maior eleitorado, maior Δ, pior Δ). */
   const spotlightPorTd = useMemo(() => {
@@ -2144,6 +2522,46 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({
     votosFed22PorTd,
   ])
 
+  /** Destaques no mapa: maior e menor média de intenção entre os TDs visíveis (dados de pesquisa). */
+  const spotlightPesquisasPorTd = useMemo(() => {
+    const vazio = {
+      maiorPesoEleitoral: null as TerritorioDesenvolvimentoPI | null,
+      maiorDelta: null as TerritorioDesenvolvimentoPI | null,
+      piorDelta: null as TerritorioDesenvolvimentoPI | null,
+      deltasDistintos: false,
+    }
+    if (painelContext !== 'pesquisas') return vazio
+    const linhas =
+      highlightedTd !== null ? resumoPorTd.filter((r) => r.territorio === highlightedTd) : resumoPorTd
+    if (linhas.length <= 1) return vazio
+    let maxM = -Infinity
+    let minM = Infinity
+    let tdMax: TerritorioDesenvolvimentoPI | null = null
+    let tdMin: TerritorioDesenvolvimentoPI | null = null
+    let temDado = false
+    for (const r of linhas) {
+      const row = pesquisaMediasPorTd.get(r.territorio)
+      if (!row || row.n <= 0) continue
+      temDado = true
+      if (row.media > maxM) {
+        maxM = row.media
+        tdMax = r.territorio
+      }
+      if (row.media < minM) {
+        minM = row.media
+        tdMin = r.territorio
+      }
+    }
+    if (!temDado || tdMax === null || tdMin === null) return vazio
+    const deltasDistintos = tdMax !== tdMin && maxM !== minM
+    return {
+      maiorPesoEleitoral: tdMax,
+      maiorDelta: null as TerritorioDesenvolvimentoPI | null,
+      piorDelta: tdMin,
+      deltasDistintos,
+    }
+  }, [painelContext, highlightedTd, resumoPorTd, pesquisaMediasPorTd])
+
   const spotlightIgPorTd = useMemo(() => {
     if (painelContext !== 'digitalIg') {
       return {
@@ -2180,10 +2598,11 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({
     }
   }, [painelContext, highlightedTd, resumoPorTd, igPorTd])
 
-  const spotlightPainel = useMemo(
-    () => (painelContext === 'digitalIg' ? spotlightIgPorTd : spotlightPorTd),
-    [painelContext, spotlightIgPorTd, spotlightPorTd]
-  )
+  const spotlightPainel = useMemo(() => {
+    if (painelContext === 'digitalIg') return spotlightIgPorTd
+    if (painelContext === 'pesquisas') return spotlightPesquisasPorTd
+    return spotlightPorTd
+  }, [painelContext, spotlightIgPorTd, spotlightPesquisasPorTd, spotlightPorTd])
 
   const linhasIgResumoOrdenadas = useMemo(() => {
     if (painelContext !== 'digitalIg') return []
@@ -2311,12 +2730,12 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({
 
   /** Primeira coluna do bloco “desempenho” (marca visual de grupo na tabela). */
   const colunaInicioDesempenho = useMemo((): 'fed22' | 'plan' | 'delta' | 'lid' | null => {
-    if (temDadosFed22) return 'fed22'
+    if (temDadosFed22Tabela) return 'fed22'
     if (painelPlanilhaAtivo && cenarioVotosExibicao) return 'plan'
     if (mostrarColunaDeltaFed22) return 'delta'
     if (painelPlanilhaAtivo) return 'lid'
     return null
-  }, [temDadosFed22, painelPlanilhaAtivo, cenarioVotosExibicao, mostrarColunaDeltaFed22])
+  }, [temDadosFed22Tabela, painelPlanilhaAtivo, cenarioVotosExibicao, mostrarColunaDeltaFed22])
 
   const municipiosComEleitores = useMemo(() => {
     if (highlightedTd === null) return []
@@ -2622,6 +3041,35 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({
       0
     )
   }, [highlightedTd, municipiosLinhasPainel, visitasPorMunicipioNorm])
+
+  const totaisPesquisaListaMunicipiosTd = useMemo(() => {
+    const vazio: PesquisaTipoIntencaoAggTd = { n: 0, somaIntencao: 0 }
+    if (painelContext !== 'pesquisas' || highlightedTd === null) {
+      return { espontanea: vazio, estimulada: vazio, munComPesquisa: 0 }
+    }
+    const espontanea: PesquisaTipoIntencaoAggTd = { n: 0, somaIntencao: 0 }
+    const estimulada: PesquisaTipoIntencaoAggTd = { n: 0, somaIntencao: 0 }
+    let munComPesquisa = 0
+    for (const { nome } of municipiosLinhasPainel) {
+      const k = normalizeMunicipioNome(nome)
+      const agg = pesquisaTiposPorMunicipioNorm.get(k) ?? PESQUISA_TIPOS_TD_VAZIO
+      espontanea.n += agg.espontanea.n
+      espontanea.somaIntencao += agg.espontanea.somaIntencao
+      estimulada.n += agg.estimulada.n
+      estimulada.somaIntencao += agg.estimulada.somaIntencao
+      if (agg.espontanea.n > 0 || agg.estimulada.n > 0) munComPesquisa += 1
+    }
+    return { espontanea, estimulada, munComPesquisa }
+  }, [painelContext, highlightedTd, municipiosLinhasPainel, pesquisaTiposPorMunicipioNorm])
+
+  const somaProjecaoPesquisaListaMunicipiosTd = useMemo(() => {
+    if (painelContext !== 'pesquisas' || highlightedTd === null) return 0
+    return municipiosLinhasPainel.reduce((acc, { nome, eleitores }) => {
+      const k = normalizeMunicipioNome(nome)
+      const agg = pesquisaTiposPorMunicipioNorm.get(k) ?? PESQUISA_TIPOS_TD_VAZIO
+      return acc + projecaoVotosPesquisaPorTd(agg.estimulada, eleitores ?? 0)
+    }, 0)
+  }, [painelContext, highlightedTd, municipiosLinhasPainel, pesquisaTiposPorMunicipioNorm])
 
   const rankingPorMunicipioIg = useMemo(() => {
     if (painelContext !== 'digitalIg' || highlightedTd === null) return new Map<string, number>()
@@ -3151,6 +3599,9 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({
               postagensProcessadas
             )
           },
+          atualizarResumoMarcadoresPorPesquisa: (mediasPorTd) => {
+            atualizarResumoMarcadoresIntencaoPesquisaPorTd(markerByTdPesoEleitores, mediasPorTd)
+          },
         }
 
         onMoveEndMarcadores = () => {
@@ -3381,6 +3832,8 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({
         igPorTd,
         igAgregadoAtual.postagensProcessadas
       )
+    } else if (painelContext === 'pesquisas') {
+      mapTdControllerRef.current.atualizarResumoMarcadoresPorPesquisa?.(pesquisaMediasPorTd)
     } else {
       mapTdControllerRef.current.atualizarResumoMarcadores(
         agregadoTdPlanilha,
@@ -3395,16 +3848,340 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({
     painelPlanilhaAtivo,
     igPorTd,
     igAgregadoAtual.postagensProcessadas,
+    pesquisaMediasPorTd,
   ])
 
   const rotuloVisaoPainelFuturista = useMemo((): string => {
+    if (painelContext === 'pesquisas') {
+      return pesquisaMapaCandidato ? `Intenção · ${pesquisaMapaCandidato}` : 'Intenção'
+    }
     if (!painelPlanilhaAtivo) return 'Eleitorado'
     if (cenarioVotosExibicao === 'aferido') return 'Afer.26'
     if (cenarioVotosExibicao === 'anterior') return 'FED.26'
     return 'Planilha'
-  }, [painelPlanilhaAtivo, cenarioVotosExibicao])
+  }, [painelContext, pesquisaMapaCandidato, painelPlanilhaAtivo, cenarioVotosExibicao])
 
   /** Em modo futurista + pronto: painel ao lado do mapa (não sobreposto). */
+
+  const drillGridMunicipiosPainelPesquisas = useMemo(
+    () => (
+      <div className="min-w-0 overflow-x-auto">
+        <div
+          className="grid w-max min-w-full gap-y-1"
+          style={{ gridTemplateColumns: gridTemplateListaMunicipiosPainelTd }}
+        >
+          <div
+            className={cn(
+              'td-fut-grid-header col-span-full mb-1.5 grid min-h-[1.25rem] items-baseline gap-x-2 border-b border-border-card/20 pb-1 font-semibold uppercase tracking-wide text-text-muted',
+              sidebarCollapsed ? 'text-[11px] sm:text-xs' : 'text-[9px] sm:text-[10px]'
+            )}
+            style={{ gridColumn: '1 / -1', display: 'grid', gridTemplateColumns: 'subgrid' }}
+          >
+          <span className="min-w-0 text-left" title="Município">
+            Município
+          </span>
+          <span
+            className="border-l border-border-card/35 pl-2 text-right tabular-nums sm:pl-3"
+            title="Eleitorado do município (base interna)"
+          >
+            Eleit.
+          </span>
+          {temDadosEstrategiaTabela ? (
+            <span
+              className="border-l border-border-card/35 pl-2 text-center tabular-nums sm:pl-2"
+              title="Pesquisas espontâneas no município (qtd / média %)"
+            >
+              Espon.
+            </span>
+          ) : null}
+          {temDadosFed22Tabela ? (
+            <span
+              className="border-l border-border-card/35 pl-2 text-right tabular-nums sm:pl-2"
+              title="Pesquisas estimuladas no município (qtd / média %)"
+            >
+              Estim.
+            </span>
+          ) : null}
+          {mostrarColunaDeltaFed22 ? (
+            <span
+              className="border-l border-border-card/35 pl-2 text-center tabular-nums sm:pl-2"
+              title="Projeção de votos: média (%) das estimuladas × eleitorado"
+            >
+              Vot.Prev
+            </span>
+          ) : null}
+          {painelPlanilhaAtivo && cenarioVotosExibicao ? (
+            <span
+              className="border-l border-border-card/35 pl-2 text-right tabular-nums sm:pl-2"
+              title={
+                cenarioVotosExibicao === 'anterior'
+                  ? 'Expectativa de votos FED.26 (planilha) no município'
+                  : 'Expectativa aferida (planilha) no município'
+              }
+            >
+              {cenarioVotosExibicao === 'anterior' ? 'FED.26' : 'Afer.'}
+            </span>
+          ) : null}
+          {painelPlanilhaAtivo ? (
+            <span
+              className="border-l border-border-card/35 pl-2 text-center tabular-nums sm:pl-2"
+              title="Vot.Prev (projeção) menos FED.26 (planilha)"
+            >
+              FED.26xPrev.
+            </span>
+          ) : null}
+          <span
+            className="border-l border-border-card/35 pl-2 text-center tabular-nums sm:pl-2"
+            title="1 se este município tem pesquisa registrada"
+          >
+            Mun.c/pesq
+          </span>
+          <span
+            className="border-l border-border-card/35 pl-2 text-left tabular-nums sm:pl-2"
+            title="Status pela diferença FED.26xPrev em relação a FED.26"
+          >
+            Status
+          </span>
+          </div>
+          {municipiosLinhasPainel.map(({ nome, eleitores }) => {
+            const muniMetrica = obterMetricasCidadeOficial(metricasPorCidadeNoTdMap, nome)
+            const munNorm = normalizeMunicipioNome(nome)
+            const aggPesq = pesquisaTiposPorMunicipioNorm.get(munNorm) ?? PESQUISA_TIPOS_TD_VAZIO
+            const votPrevMun = projecaoVotosPesquisaPorTd(aggPesq.estimulada, eleitores ?? 0)
+            const vPlanMunRounded =
+              cenarioVotosExibicao != null
+                ? Math.round(valorVotosCidade(muniMetrica, cenarioVotosExibicao))
+                : null
+            const diffFed26Prev = vPlanMunRounded !== null ? votPrevMun - vPlanMunRounded : null
+            const munComPesqRow = aggPesq.espontanea.n > 0 || aggPesq.estimulada.n > 0 ? 1 : 0
+            const podeDrillCidade = painelPlanilhaAtivo
+            const munFocoLista = municipioFocadoLiderancas
+            const cidadeDestacadaPainel =
+              munFocoLista != null && normalizeMunicipioNome(nome) === normalizeMunicipioNome(munFocoLista)
+            const statusMun =
+              diffFed26Prev !== null && vPlanMunRounded !== null
+                ? statusExpectativaPorFed26XPrev(diffFed26Prev, vPlanMunRounded)
+                : null
+            const pctSt =
+              diffFed26Prev !== null && vPlanMunRounded !== null
+                ? pctFed26XPrevSobreFed26(diffFed26Prev, vPlanMunRounded)
+                : null
+            const tituloStatusMun =
+              statusMun !== null && diffFed26Prev !== null && vPlanMunRounded !== null
+                ? (() => {
+                    const pctFmt =
+                      pctSt === null
+                        ? '—'
+                        : `${(Math.round(pctSt * 10) / 10).toFixed(1).replace('.', ',')}%`
+                    return `FED.26xPrev: ${formatarIntComSinal(diffFed26Prev)} voto(s) (${pctFmt} sobre FED.26). ${rotuloStatusExpectativaPesquisaTd(statusMun)}.`
+                  })()
+                : 'Defina FED.26 na planilha para classificar o status.'
+            return (
+              <div
+                key={nome}
+                className={cn(
+                  'td-fut-grid-row col-span-full grid min-h-[1.55rem] items-baseline gap-x-2 pb-0.5 leading-tight text-text-secondary',
+                  sidebarCollapsed ? 'text-xs sm:text-sm' : 'text-[10px] sm:text-[11px]',
+                  cidadeDestacadaPainel && 'td-fut-grid-row--selected',
+                  podeDrillCidade && 'td-fut-grid-row--interactive cursor-pointer outline-none'
+                )}
+                style={{ gridColumn: '1 / -1', display: 'grid', gridTemplateColumns: 'subgrid' }}
+                role={podeDrillCidade ? 'button' : undefined}
+                tabIndex={podeDrillCidade ? 0 : undefined}
+                title={
+                  podeDrillCidade
+                    ? 'Duplo clique ou Enter para ver lideranças e expectativa de votos deste município'
+                    : undefined
+                }
+                onDoubleClick={
+                  podeDrillCidade
+                    ? () => {
+                        setMunicipioFocadoLiderancas(nome)
+                      }
+                    : undefined
+                }
+                onKeyDown={
+                  podeDrillCidade
+                    ? (e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault()
+                          setMunicipioFocadoLiderancas(nome)
+                        }
+                      }
+                    : undefined
+                }
+              >
+                <span className="td-fut-grid-primary min-w-0 break-words font-medium text-text-primary" title={nome}>
+                  {nome}
+                </span>
+                <span
+                  className="border-l border-border-card/35 pl-2 text-right tabular-nums text-text-secondary sm:pl-3"
+                  title="Eleitorado (base interna)"
+                >
+                  {eleitores != null ? fmtInt.format(eleitores) : '—'}
+                </span>
+                {temDadosEstrategiaTabela ? (
+                  <span
+                    className="border-l border-border-card/35 pl-2 text-center tabular-nums text-text-secondary sm:pl-2"
+                    title={tituloCelulaPesquisaQtdMedia('Pesquisas espontâneas', aggPesq.espontanea)}
+                  >
+                    {formatarCelulaPesquisaQtdMedia(aggPesq.espontanea)}
+                  </span>
+                ) : null}
+                {temDadosFed22Tabela ? (
+                  <span
+                    className="border-l border-border-card/35 pl-2 text-right tabular-nums text-text-secondary sm:pl-2"
+                    title={tituloCelulaPesquisaQtdMedia('Pesquisas estimuladas', aggPesq.estimulada)}
+                  >
+                    {formatarCelulaPesquisaQtdMedia(aggPesq.estimulada)}
+                  </span>
+                ) : null}
+                {mostrarColunaDeltaFed22 ? (
+                  <span
+                    className="border-l border-border-card/35 pl-2 text-center tabular-nums text-text-secondary sm:pl-2"
+                    title={`Projeção estimada: ${fmtInt.format(votPrevMun)} voto(s)`}
+                  >
+                    {fmtInt.format(votPrevMun)}
+                  </span>
+                ) : null}
+                {painelPlanilhaAtivo && cenarioVotosExibicao ? (
+                  <span
+                    className="border-l border-border-card/35 pl-2 text-right tabular-nums text-text-secondary sm:pl-2"
+                    title={cenarioVotosExibicao === 'anterior' ? 'FED.26 (planilha)' : 'Aferido (planilha)'}
+                  >
+                    {fmtInt.format(Math.round(valorVotosCidade(muniMetrica, cenarioVotosExibicao)))}
+                  </span>
+                ) : null}
+                {painelPlanilhaAtivo ? (
+                  <span
+                    className={cn(
+                      'border-l border-border-card/35 pl-2 text-center tabular-nums sm:pl-2',
+                      diffFed26Prev !== null && diffFed26Prev > 0 && 'text-status-success',
+                      diffFed26Prev !== null && diffFed26Prev < 0 && 'text-status-danger'
+                    )}
+                    title={
+                      diffFed26Prev !== null
+                        ? `FED.26xPrev (Vot.Prev − FED.26): ${formatarIntComSinal(diffFed26Prev)} voto(s)`
+                        : undefined
+                    }
+                  >
+                    {diffFed26Prev !== null ? formatarIntComSinal(diffFed26Prev) : '—'}
+                  </span>
+                ) : null}
+                <span
+                  className="border-l border-border-card/35 pl-2 text-center tabular-nums text-text-secondary sm:pl-2"
+                  title="1 se há pesquisa registrada neste município"
+                >
+                  {fmtInt.format(munComPesqRow)}
+                </span>
+                <span className="border-l border-border-card/35 pl-2 text-right sm:pl-2">
+                  {statusMun !== null ? (
+                    <span
+                      className={cn(
+                        'inline-flex max-w-full items-center justify-end rounded-md border px-2 py-0.5 text-left text-[9px] font-semibold leading-tight sm:text-[10px]',
+                        statusMun === 'abaixo' &&
+                          'border-status-danger/45 bg-status-danger/14 text-status-danger',
+                        statusMun === 'dentro' &&
+                          'border-[rgba(255,255,255,0.18)] bg-[rgba(255,255,255,0.06)] text-[#E6EDF3]',
+                        statusMun === 'acima' &&
+                          'border-status-success/45 bg-status-success/14 text-status-success'
+                      )}
+                      title={tituloStatusMun}
+                    >
+                      {rotuloStatusExpectativaPesquisaTd(statusMun)}
+                    </span>
+                  ) : (
+                    <span className="tabular-nums text-text-muted">—</span>
+                  )}
+                </span>
+              </div>
+            )
+          })}
+          <div
+            className={cn(
+              'td-fut-grid-foot td-fut-grid-foot--totais-municipios col-span-full mt-2 grid min-h-[1.35rem] items-baseline gap-x-2 border-t border-border-card/25 pt-2 tabular-nums text-text-muted',
+              sidebarCollapsed ? 'text-xs sm:text-sm' : 'text-[10px] sm:text-[11px]'
+            )}
+            style={{ gridColumn: '1 / -1', display: 'grid', gridTemplateColumns: 'subgrid' }}
+            title="Totais na lista de municípios visível (mesmo território)"
+          >
+          <span className="min-w-0 truncate font-semibold uppercase tracking-wide text-text-muted">Total</span>
+          <span
+            className="border-l border-border-card/35 pl-2 text-right text-text-secondary sm:pl-3"
+            title="Soma do eleitorado dos municípios listados"
+          >
+            {fmtInt.format(somaEleitoresListaTd)}
+          </span>
+          {temDadosEstrategiaTabela ? (
+            <span
+              className="border-l border-border-card/35 pl-2 text-center text-text-secondary sm:pl-2"
+              title="Totais de pesquisas espontâneas na lista (qtd / média %)"
+            >
+              {formatarCelulaPesquisaQtdMedia(totaisPesquisaListaMunicipiosTd.espontanea)}
+            </span>
+          ) : null}
+          {temDadosFed22Tabela ? (
+            <span
+              className="border-l border-border-card/35 pl-2 text-right text-text-secondary sm:pl-2"
+              title="Totais de pesquisas estimuladas na lista (qtd / média %)"
+            >
+              {formatarCelulaPesquisaQtdMedia(totaisPesquisaListaMunicipiosTd.estimulada)}
+            </span>
+          ) : null}
+          {mostrarColunaDeltaFed22 ? (
+            <span
+              className="border-l border-border-card/35 pl-2 text-center text-text-secondary sm:pl-2"
+              title="Soma das projeções (Vot.Prev) na lista"
+            >
+              {fmtInt.format(somaProjecaoPesquisaListaMunicipiosTd)}
+            </span>
+          ) : null}
+          {painelPlanilhaAtivo && cenarioVotosExibicao ? (
+            <span
+              className="border-l border-border-card/35 pl-2 text-right text-text-secondary sm:pl-2"
+              title="Soma da expectativa (planilha) na lista"
+            >
+              {fmtInt.format(Math.round(somaVotosListaTd))}
+            </span>
+          ) : null}
+          {painelPlanilhaAtivo ? (
+            <span
+              className="border-l border-border-card/35 pl-2 text-center text-text-secondary sm:pl-2"
+              title="Soma de (Vot.Prev − FED.26) na lista"
+            >
+              {formatarIntComSinal(somaProjecaoPesquisaListaMunicipiosTd - Math.round(somaVotosListaTd))}
+            </span>
+          ) : null}
+          <span
+            className="border-l border-border-card/35 pl-2 text-center text-text-secondary sm:pl-2"
+            title="Quantidade de municípios com pesquisa na lista"
+          >
+            {fmtInt.format(totaisPesquisaListaMunicipiosTd.munComPesquisa)}
+          </span>
+          <span className="border-l border-border-card/35 pl-2 text-right text-text-muted sm:pl-2">—</span>
+          </div>
+        </div>
+      </div>
+    ),
+    [
+      gridTemplateListaMunicipiosPainelTd,
+      sidebarCollapsed,
+      municipiosLinhasPainel,
+      metricasPorCidadeNoTdMap,
+      cenarioVotosExibicao,
+      painelPlanilhaAtivo,
+      mostrarColunaDeltaFed22,
+      temDadosEstrategiaTabela,
+      temDadosFed22Tabela,
+      pesquisaTiposPorMunicipioNorm,
+      municipioFocadoLiderancas,
+      totaisPesquisaListaMunicipiosTd,
+      somaProjecaoPesquisaListaMunicipiosTd,
+      somaEleitoresListaTd,
+      somaVotosListaTd,
+    ]
+  )
+
   const futSplit = visualPreset === 'futuristic' && loadState === 'ready'
 
   return (
@@ -3528,7 +4305,9 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({
             aria-label={
               painelContext === 'digitalIg'
                 ? 'Mapa digital Instagram por território de desenvolvimento'
-                : 'Mapa de dominância eleitoral por território de desenvolvimento'
+                : painelContext === 'pesquisas'
+                  ? 'Mapa de pesquisas por território de desenvolvimento'
+                  : 'Mapa de dominância eleitoral por território de desenvolvimento'
             }
           >
             <div className="space-y-1">
@@ -3562,6 +4341,29 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({
                   ) : null}
                 </div>
               ) : null}
+              {painelContext === 'pesquisas' ? (
+                <div className="mt-2 flex flex-col gap-2">
+                  {pesquisaMapaLoadState === 'loading' ? (
+                    <p className="text-[10px] text-text-muted sm:text-[11px]">Carregando médias de intenção por TD…</p>
+                  ) : null}
+                  {pesquisaMapaLoadState === 'error' && pesquisaMapaErro ? (
+                    <p className="text-[10px] text-status-danger sm:text-[11px]">{pesquisaMapaErro}</p>
+                  ) : null}
+                  {pesquisaMapaLoadState === 'ready' && !pesquisaMapaCandidato ? (
+                    <p className="text-[10px] text-text-muted sm:text-[11px]">
+                      Defina o candidato padrão na página Pesquisa para colorir o mapa pela média de intenção por TD
+                      (mesmo armazenamento local usado no histórico da página).
+                    </p>
+                  ) : null}
+                  {pesquisaMapaLoadState === 'ready' && pesquisaMapaCandidato ? (
+                    <p className="text-[10px] text-text-muted sm:text-[11px]">
+                      Coloração e marcadores pela média de intenção de{' '}
+                      <span className="font-medium text-text-secondary">{pesquisaMapaCandidato}</span> (dados da página
+                      Pesquisa).
+                    </p>
+                  ) : null}
+                </div>
+              ) : null}
               {planilhaEstado === 'loading' ? (
                 <p className="text-[10px] text-text-muted sm:text-[11px]">Carregando planilha de lideranças…</p>
               ) : null}
@@ -3578,11 +4380,23 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({
               <div className="mt-2 flex flex-wrap items-end gap-2">
                 {painelContext !== 'digitalIg' && mostrarSeletorCenario ? (
                   <label className="flex min-w-[12.75rem] flex-1 flex-wrap items-center gap-2 text-[11px] sm:text-xs">
-                    <span className="shrink-0 font-medium text-text-secondary">Simulação atual</span>
+                    <span
+                      className={cn(
+                        'shrink-0 font-medium',
+                        visualPreset === 'futuristic' ? 'text-white' : 'text-text-secondary'
+                      )}
+                    >
+                      Simulação atual
+                    </span>
                     <select
                       value={cenarioVotosPainelMapaTd}
                       onChange={(e) => setCenarioVotosPainelMapaTd(e.target.value as CenarioVotosPainelMapaTd)}
-                      className="min-w-0 flex-1 rounded-lg border border-card bg-surface px-2 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-accent-gold-soft"
+                      className={cn(
+                        'min-w-0 flex-1 rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-accent-gold-soft',
+                        visualPreset === 'futuristic'
+                          ? 'border border-white/15 bg-transparent text-white [&>option]:bg-[#121821] [&>option]:text-white'
+                          : 'border border-card bg-surface'
+                      )}
                     >
                       {opcoesCenarioPainel.map((opt) => (
                         <option key={opt.id} value={opt.id}>
@@ -3596,7 +4410,7 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({
                   <span
                     className={cn(
                       'shrink-0 font-medium',
-                      painelContext === 'digitalIg' ? 'text-[#AAB4C0]' : 'text-text-secondary'
+                      visualPreset === 'futuristic' ? 'text-white' : 'text-text-secondary'
                     )}
                   >
                     Município
@@ -3607,8 +4421,8 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({
                     data-mapa-ig-municipio-select={painelContext === 'digitalIg' ? 'true' : undefined}
                     className={cn(
                       'min-w-0 flex-1 rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-accent-gold-soft',
-                      painelContext === 'digitalIg'
-                        ? 'border border-[rgba(255,255,255,0.12)] bg-transparent text-[#E6EDF3] [&>option]:bg-[#121821] [&>option]:text-[#E6EDF3]'
+                      visualPreset === 'futuristic'
+                        ? 'border border-white/15 bg-transparent text-white [&>option]:bg-[#121821] [&>option]:text-white'
                         : 'border border-card bg-surface'
                     )}
                   >
@@ -4003,34 +4817,43 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({
                         Eleit. <span aria-hidden>{indicadorOrdenacaoTd('eleitores')}</span>
                       </button>
                     </th>
-                    {temDadosEstrategiaTopFed22 ? (
+                    {temDadosEstrategiaTabela ? (
                       <th
                         className="td-resumo-table__cell td-resumo-table__cell--estrategia text-center font-medium"
-                        title={tooltipMedTop22Header}
+                        title={
+                          emPainelPesquisas
+                            ? 'Por TD: quantidade de pesquisas espontâneas / média de intenção (%)'
+                            : tooltipMedTop22Header
+                        }
                       >
                         <button
                           type="button"
                           onClick={() => alternarOrdenacaoTd('estrategia')}
                           className="inline-flex items-center gap-1"
                         >
-                          Méd.Top5 22 <span aria-hidden>{indicadorOrdenacaoTd('estrategia')}</span>
+                          {emPainelPesquisas ? 'Espon.' : 'Méd.Top5 22'}{' '}
+                          <span aria-hidden>{indicadorOrdenacaoTd('estrategia')}</span>
                         </button>
                       </th>
                     ) : null}
-                    {temDadosFed22 ? (
+                    {temDadosFed22Tabela ? (
                       <th
                         className={cn(
                           'td-resumo-table__cell text-right font-medium',
                           colunaInicioDesempenho === 'fed22' && 'td-resumo-table__grupo-desempenho-start'
                         )}
-                        title="Jadyel — votos nominais Dep. Federal 2022 (TSE), somados nos municípios do TD"
+                        title={
+                          emPainelPesquisas
+                            ? 'Por TD: quantidade de pesquisas estimuladas / média de intenção (%)'
+                            : 'Jadyel — votos nominais Dep. Federal 2022 (TSE), somados nos municípios do TD'
+                        }
                       >
                         <button type="button" onClick={() => alternarOrdenacaoTd('fed22')} className="inline-flex items-center gap-1">
-                          FED.22 <span aria-hidden>{indicadorOrdenacaoTd('fed22')}</span>
+                          {emPainelPesquisas ? 'Estim.' : 'FED.22'} <span aria-hidden>{indicadorOrdenacaoTd('fed22')}</span>
                         </button>
                       </th>
                     ) : null}
-                    {painelPlanilhaAtivo && cenarioVotosExibicao ? (
+                    {!emPainelPesquisas && painelPlanilhaAtivo && cenarioVotosExibicao ? (
                       <th
                         className={cn(
                           'td-resumo-table__cell text-right font-medium',
@@ -4054,14 +4877,19 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({
                           'td-resumo-table__cell text-center font-medium',
                           colunaInicioDesempenho === 'delta' && 'td-resumo-table__grupo-desempenho-start'
                         )}
-                        title="Diferença de votos: visão atual da planilha menos Fed. 2022 no TD"
+                        title={
+                          emPainelPesquisas
+                            ? 'Projeção de votos no TD: média (%) das pesquisas estimuladas × eleitorado'
+                            : 'Diferença de votos: visão atual da planilha menos Fed. 2022 no TD'
+                        }
                       >
                         <button
                           type="button"
                           onClick={() => alternarOrdenacaoTd('delta')}
                           className="inline-flex w-full items-center justify-center gap-1"
                         >
-                          Dif. <span aria-hidden>{indicadorOrdenacaoTd('delta')}</span>
+                          {emPainelPesquisas ? 'Vot.Prev' : 'Dif.'}{' '}
+                          <span aria-hidden>{indicadorOrdenacaoTd('delta')}</span>
                         </button>
                       </th>
                     ) : null}
@@ -4079,45 +4907,78 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({
                         </button>
                       </th>
                     ) : null}
+                    {emPainelPesquisas && painelPlanilhaAtivo && cenarioVotosExibicao ? (
+                      <th
+                        className={cn(
+                          'td-resumo-table__cell text-right font-medium',
+                          colunaInicioDesempenho === 'plan' && 'td-resumo-table__grupo-desempenho-start'
+                        )}
+                        title={
+                          cenarioVotosExibicao === 'anterior'
+                            ? 'Expectativa de votos FED.26 (planilha) no TD'
+                            : 'Expectativa aferida / Jadyel 2026 (planilha) no TD'
+                        }
+                      >
+                        <button type="button" onClick={() => alternarOrdenacaoTd('fed26')} className="inline-flex items-center gap-1">
+                          {cenarioVotosExibicao === 'anterior' ? 'FED.26' : 'Afer.'}{' '}
+                          <span aria-hidden>{indicadorOrdenacaoTd('fed26')}</span>
+                        </button>
+                      </th>
+                    ) : null}
                     {painelPlanilhaAtivo ? (
                       <th
                         className={cn(
                           'td-resumo-table__cell td-resumo-table__cell--lid text-center font-medium',
                           colunaInicioDesempenho === 'lid' && 'td-resumo-table__grupo-desempenho-start'
                         )}
-                        title="Quantidade de lideranças na planilha (após filtro de relevância)"
+                        title={
+                          emPainelPesquisas
+                            ? 'Diferença no TD: Vot.Prev (projeção) menos FED.26 (planilha)'
+                            : 'Quantidade de lideranças na planilha (após filtro de relevância)'
+                        }
                       >
                         <button
                           type="button"
                           onClick={() => alternarOrdenacaoTd('lid')}
                           className="inline-flex w-full items-center justify-center gap-1"
                         >
-                          Lid. <span aria-hidden>{indicadorOrdenacaoTd('lid')}</span>
+                          {emPainelPesquisas ? 'FED.26xPrev.' : 'Lid.'}{' '}
+                          <span aria-hidden>{indicadorOrdenacaoTd('lid')}</span>
                         </button>
                       </th>
                     ) : null}
                     <th
                       className="td-resumo-table__cell td-resumo-table__cell--vis text-center font-medium"
-                      title="Visitas com check-in (Campo & Agenda): agendas concluídas no PI, somadas por território de desenvolvimento"
+                      title={
+                        emPainelPesquisas
+                          ? 'Municípios com pesquisa por TD (contagem distinta de municípios com pesquisa registrada)'
+                          : 'Visitas com check-in (Campo & Agenda): agendas concluídas no PI, somadas por território de desenvolvimento'
+                      }
                     >
                       <button
                         type="button"
                         onClick={() => alternarOrdenacaoTd('vis')}
                         className="inline-flex w-full items-center justify-center gap-1"
                       >
-                        Vis. <span aria-hidden>{indicadorOrdenacaoTd('vis')}</span>
+                        {emPainelPesquisas ? 'Mun.c/pesq' : 'Vis.'}{' '}
+                        <span aria-hidden>{indicadorOrdenacaoTd('vis')}</span>
                       </button>
                     </th>
                     <th
                       className="td-resumo-table__cell td-resumo-table__grupo-status-start text-center font-medium"
-                      title="Prioridade em duas análises (tercis): peso na expectativa FED.26 e eficiência FED.26/eleitorado"
+                      title={
+                        emPainelPesquisas
+                          ? 'Status pela diferença Vot.Prev − FED.26: < 0 = Abaixo do Esperado; de 0 a 5% sobre FED.26 = Dentro do Esperado; > 5% = Acima do Esperado'
+                          : 'Prioridade em duas análises (tercis): peso na expectativa FED.26 e eficiência FED.26/eleitorado'
+                      }
                     >
                       <button
                         type="button"
                         onClick={() => alternarOrdenacaoTd('prioridade')}
                         className="inline-flex w-full items-center justify-center gap-1"
                       >
-                        Prioridade <span aria-hidden>{indicadorOrdenacaoTd('prioridade')}</span>
+                        {emPainelPesquisas ? 'Status' : 'Prioridade'}{' '}
+                        <span aria-hidden>{indicadorOrdenacaoTd('prioridade')}</span>
                       </button>
                     </th>
                   </tr>
@@ -4129,8 +4990,10 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({
                       ag,
                       v22Td,
                       estrategiaTd,
+                      tiposPesquisaTd,
                       vPlanTd,
                       deltaTd,
+                      fed26XPrevTd,
                       rankTd,
                       classificacaoPrioridadePeso,
                       classificacaoPrioridadeEficiencia,
@@ -4141,7 +5004,9 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({
                     const selecionado = highlightedTd === r.territorio
                     const blocoMedTop22 = estrategiaTopFed22PorTd.get(r.territorio)
                     const tituloMedTop22 =
-                      blocoMedTop22 != null
+                      emPainelPesquisas
+                        ? tituloCelulaPesquisaQtdMedia('Pesquisas espontâneas', tiposPesquisaTd.espontanea)
+                        : blocoMedTop22 != null
                         ? montarTooltipMedTop22Celula(
                             r.territorio,
                             blocoMedTop22.detalheCandidatos,
@@ -4167,6 +5032,23 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({
                     const hintEf = detalhesPrioridade
                       ? `Ef. ${labelEf}: expectativa FED.26 representa ${pctEf}% do eleitorado do TD, posição ${detalhesPrioridade.rankEficienciaFed26}/${resumoPorTd.length}.`
                       : 'Ef.: sem base suficiente para calcular a participação.'
+                    const statusExpectativaTd = emPainelPesquisas
+                      ? statusExpectativaPorFed26XPrev(fed26XPrevTd, vPlanTd)
+                      : null
+                    const pctStatusSobreFed26 =
+                      emPainelPesquisas && statusExpectativaTd !== null
+                        ? pctFed26XPrevSobreFed26(fed26XPrevTd, vPlanTd)
+                        : null
+                    const tituloStatusExpectativaTd =
+                      emPainelPesquisas && statusExpectativaTd !== null
+                        ? (() => {
+                            const pctFmt =
+                              pctStatusSobreFed26 === null
+                                ? '—'
+                                : `${(Math.round(pctStatusSobreFed26 * 10) / 10).toFixed(1).replace('.', ',')}%`
+                            return `FED.26xPrev: ${formatarIntComSinal(fed26XPrevTd)} voto(s) (${pctFmt} sobre FED.26). ${rotuloStatusExpectativaPesquisaTd(statusExpectativaTd)}.`
+                          })()
+                        : ''
                     return (
                       <tr
                         key={r.territorio}
@@ -4268,26 +5150,35 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({
                         <td className="td-resumo-table__cell text-right tabular-nums text-text-secondary">
                           {fmtInt.format(r.eleitores)}
                         </td>
-                        {temDadosEstrategiaTopFed22 ? (
+                        {temDadosEstrategiaTabela ? (
                           <td
                             className="td-resumo-table__cell td-resumo-table__cell--estrategia tabular-nums text-text-primary"
                             style={{ textAlign: 'center' }}
                             title={tituloMedTop22}
                           >
-                            {fmtInt.format(Math.round(estrategiaTd))}
+                            {emPainelPesquisas
+                              ? formatarCelulaPesquisaQtdMedia(tiposPesquisaTd.espontanea)
+                              : fmtInt.format(Math.round(estrategiaTd))}
                           </td>
                         ) : null}
-                        {temDadosFed22 ? (
+                        {temDadosFed22Tabela ? (
                           <td
                             className={cn(
                               'td-resumo-table__cell td-resumo-table__cell--fed22 text-right tabular-nums',
                               colunaInicioDesempenho === 'fed22' && 'td-resumo-table__grupo-desempenho-start'
                             )}
+                            title={
+                              emPainelPesquisas
+                                ? tituloCelulaPesquisaQtdMedia('Pesquisas estimuladas', tiposPesquisaTd.estimulada)
+                                : undefined
+                            }
                           >
-                            {fmtInt.format(v22Td)}
+                            {emPainelPesquisas
+                              ? formatarCelulaPesquisaQtdMedia(tiposPesquisaTd.estimulada)
+                              : fmtInt.format(v22Td)}
                           </td>
                         ) : null}
-                        {painelPlanilhaAtivo && cenarioVotosExibicao ? (
+                        {!emPainelPesquisas && painelPlanilhaAtivo && cenarioVotosExibicao ? (
                           <td
                             className={cn(
                               'td-resumo-table__cell td-resumo-table__cell--fed26 text-right tabular-nums',
@@ -4302,17 +5193,36 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({
                             className={cn(
                               'td-resumo-table__cell td-resumo-table__cell--delta text-center tabular-nums',
                               colunaInicioDesempenho === 'delta' && 'td-resumo-table__grupo-desempenho-start',
-                              deltaTd > 0 && 'text-status-success',
-                              deltaTd < 0 && 'text-status-danger',
-                              deltaTd === 0 && 'text-text-secondary'
+                              !emPainelPesquisas && deltaTd > 0 && 'text-status-success',
+                              !emPainelPesquisas && deltaTd < 0 && 'text-status-danger',
+                              (!emPainelPesquisas || deltaTd === 0) && 'text-text-secondary'
+                            )}
+                            title={
+                              emPainelPesquisas
+                                ? `Projeção estimada: ${fmtInt.format(deltaTd)} voto(s) (média estimulada x eleitorado do TD)`
+                                : undefined
+                            }
+                          >
+                            {emPainelPesquisas ? (
+                              fmtInt.format(deltaTd)
+                            ) : (
+                              <span className="td-resumo-table__delta-inner">
+                                <span className="td-resumo-table__delta-arrow" aria-hidden>
+                                  {deltaTd > 0 ? '↑' : deltaTd < 0 ? '↓' : '→'}
+                                </span>
+                                {formatarIntComSinal(deltaTd)}
+                              </span>
+                            )}
+                          </td>
+                        ) : null}
+                        {emPainelPesquisas && painelPlanilhaAtivo && cenarioVotosExibicao ? (
+                          <td
+                            className={cn(
+                              'td-resumo-table__cell td-resumo-table__cell--fed26 text-right tabular-nums',
+                              colunaInicioDesempenho === 'plan' && 'td-resumo-table__grupo-desempenho-start'
                             )}
                           >
-                            <span className="td-resumo-table__delta-inner">
-                              <span className="td-resumo-table__delta-arrow" aria-hidden>
-                                {deltaTd > 0 ? '↑' : deltaTd < 0 ? '↓' : '→'}
-                              </span>
-                              {formatarIntComSinal(deltaTd)}
-                            </span>
+                            {fmtInt.format(Math.round(valorVotosAgregadoTd(ag, cenarioVotosExibicao)))}
                           </td>
                         ) : null}
                         {mostrarColunaTendenciaFuturista && cenarioVotosExibicao ? (
@@ -4326,43 +5236,71 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({
                           <td
                             className={cn(
                               'td-resumo-table__cell td-resumo-table__cell--lid text-center tabular-nums text-text-primary',
-                              colunaInicioDesempenho === 'lid' && 'td-resumo-table__grupo-desempenho-start'
+                              colunaInicioDesempenho === 'lid' && 'td-resumo-table__grupo-desempenho-start',
+                              emPainelPesquisas && fed26XPrevTd > 0 && 'text-status-success',
+                              emPainelPesquisas && fed26XPrevTd < 0 && 'text-status-danger'
                             )}
+                            title={
+                              emPainelPesquisas
+                                ? `FED.26xPrev (Vot.Prev − FED.26): ${formatarIntComSinal(fed26XPrevTd)} voto(s)`
+                                : undefined
+                            }
                           >
-                            {fmtInt.format(ag.liderancas)}
+                            {emPainelPesquisas ? formatarIntComSinal(fed26XPrevTd) : fmtInt.format(ag.liderancas)}
                           </td>
                         ) : null}
                         <td
                           className="td-resumo-table__cell td-resumo-table__cell--vis text-center tabular-nums text-text-secondary"
-                          title="Check-ins em agendas concluídas (PI) neste TD"
+                          title={
+                            emPainelPesquisas
+                              ? 'Quantidade distinta de municípios deste TD com pesquisa registrada'
+                              : 'Check-ins em agendas concluídas (PI) neste TD'
+                          }
                         >
                           {visitasTd}
                         </td>
                         <td className="td-resumo-table__cell td-resumo-table__cell--classe td-resumo-table__grupo-status-start">
                           <div className="flex justify-end">
-                            <div className="inline-flex items-center gap-2 whitespace-nowrap">
-                              <div className="inline-flex items-center gap-1">
-                                <ClassificacaoTdBadge
-                                  tipo={classificacaoPrioridadePeso}
-                                  visualTone={visualPreset === 'futuristic' ? 'futuristic' : 'command'}
-                                  titleOverride={hintExp26}
-                                />
+                            {emPainelPesquisas && statusExpectativaTd !== null ? (
+                              <span
+                                className={cn(
+                                  'inline-flex max-w-full items-center justify-end rounded-md border px-2 py-0.5 text-left text-[9px] font-semibold leading-tight sm:text-[10px]',
+                                  statusExpectativaTd === 'abaixo' &&
+                                    'border-status-danger/45 bg-status-danger/14 text-status-danger',
+                                  statusExpectativaTd === 'dentro' &&
+                                    'border-[rgba(255,255,255,0.18)] bg-[rgba(255,255,255,0.06)] text-[#E6EDF3]',
+                                  statusExpectativaTd === 'acima' &&
+                                    'border-status-success/45 bg-status-success/14 text-status-success'
+                                )}
+                                title={tituloStatusExpectativaTd}
+                              >
+                                {rotuloStatusExpectativaPesquisaTd(statusExpectativaTd)}
+                              </span>
+                            ) : (
+                              <div className="inline-flex items-center gap-2 whitespace-nowrap">
+                                <div className="inline-flex items-center gap-1">
+                                  <ClassificacaoTdBadge
+                                    tipo={classificacaoPrioridadePeso}
+                                    visualTone={visualPreset === 'futuristic' ? 'futuristic' : 'command'}
+                                    titleOverride={hintExp26}
+                                  />
+                                </div>
+                                <div className="inline-flex items-center gap-1">
+                                  <ClassificacaoTdBadge
+                                    tipo={classificacaoPrioridadeEficiencia}
+                                    visualTone={visualPreset === 'futuristic' ? 'futuristic' : 'command'}
+                                    labelOverride={
+                                      classificacaoPrioridadeEficiencia === 'baixo-impacto'
+                                        ? 'Baixa Participação'
+                                        : classificacaoPrioridadeEficiencia === 'atencao'
+                                          ? 'Oportunidade'
+                                        : undefined
+                                    }
+                                    titleOverride={hintEf}
+                                  />
+                                </div>
                               </div>
-                              <div className="inline-flex items-center gap-1">
-                                <ClassificacaoTdBadge
-                                  tipo={classificacaoPrioridadeEficiencia}
-                                  visualTone={visualPreset === 'futuristic' ? 'futuristic' : 'command'}
-                                  labelOverride={
-                                    classificacaoPrioridadeEficiencia === 'baixo-impacto'
-                                      ? 'Baixa Participação'
-                                      : classificacaoPrioridadeEficiencia === 'atencao'
-                                        ? 'Oportunidade'
-                                      : undefined
-                                  }
-                                  titleOverride={hintEf}
-                                />
-                              </div>
-                            </div>
+                            )}
                           </div>
                         </td>
                       </tr>
@@ -4385,26 +5323,39 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({
                     <td className="td-resumo-table__cell text-right tabular-nums font-semibold text-text-primary">
                       {fmtInt.format(totaisRodapePainelTd.eleitores)}
                     </td>
-                    {temDadosEstrategiaTopFed22 ? (
+                    {temDadosEstrategiaTabela ? (
                       <td
                         className="td-resumo-table__cell td-resumo-table__cell--estrategia tabular-nums font-semibold text-text-primary"
                         style={{ textAlign: 'center' }}
-                        title="Soma dos valores exibidos (média do top por TD em cada linha, arredondada)"
+                        title={
+                          emPainelPesquisas
+                            ? 'Total nos 12 TDs: quantidade de pesquisas espontâneas / média ponderada de intenção (%)'
+                            : 'Soma dos valores exibidos (média do top por TD em cada linha, arredondada)'
+                        }
                       >
-                        {fmtInt.format(totaisRodapePainelTd.somaEstrategiaExibida)}
+                        {emPainelPesquisas
+                          ? formatarCelulaPesquisaQtdMedia(totaisPesquisaTiposRodape.espontanea)
+                          : fmtInt.format(totaisRodapePainelTd.somaEstrategiaExibida)}
                       </td>
                     ) : null}
-                    {temDadosFed22 ? (
+                    {temDadosFed22Tabela ? (
                       <td
                         className={cn(
                           'td-resumo-table__cell td-resumo-table__cell--fed22 text-right tabular-nums font-semibold',
                           colunaInicioDesempenho === 'fed22' && 'td-resumo-table__grupo-desempenho-start'
                         )}
+                        title={
+                          emPainelPesquisas
+                            ? 'Total nos 12 TDs: quantidade de pesquisas estimuladas / média ponderada de intenção (%)'
+                            : undefined
+                        }
                       >
-                        {fmtInt.format(totaisRodapePainelTd.somaFed22)}
+                        {emPainelPesquisas
+                          ? formatarCelulaPesquisaQtdMedia(totaisPesquisaTiposRodape.estimulada)
+                          : fmtInt.format(totaisRodapePainelTd.somaFed22)}
                       </td>
                     ) : null}
-                    {painelPlanilhaAtivo && cenarioVotosExibicao ? (
+                    {!emPainelPesquisas && painelPlanilhaAtivo && cenarioVotosExibicao ? (
                       <td
                         className={cn(
                           'td-resumo-table__cell td-resumo-table__cell--fed26 text-right tabular-nums font-semibold',
@@ -4419,18 +5370,36 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({
                         className={cn(
                           'td-resumo-table__cell td-resumo-table__cell--delta text-center tabular-nums font-semibold',
                           colunaInicioDesempenho === 'delta' && 'td-resumo-table__grupo-desempenho-start',
-                          totaisRodapePainelTd.delta > 0 && 'text-status-success',
-                          totaisRodapePainelTd.delta < 0 && 'text-status-danger',
-                          totaisRodapePainelTd.delta === 0 && 'text-text-secondary'
+                          !emPainelPesquisas && totaisRodapePainelTd.delta > 0 && 'text-status-success',
+                          !emPainelPesquisas && totaisRodapePainelTd.delta < 0 && 'text-status-danger',
+                          (!emPainelPesquisas || totaisRodapePainelTd.delta === 0) && 'text-text-secondary'
                         )}
-                        title="Diferença entre o total da planilha (coluna atual) e a soma Fed.22 nos TDs"
+                        title={
+                          emPainelPesquisas
+                            ? 'Projeção total nos 12 TDs: média estimulada (%) por TD × eleitorado, somado'
+                            : 'Diferença entre o total da planilha (coluna atual) e a soma Fed.22 nos TDs'
+                        }
                       >
-                        <span className="td-resumo-table__delta-inner">
-                          <span className="td-resumo-table__delta-arrow" aria-hidden>
-                            {totaisRodapePainelTd.delta > 0 ? '↑' : totaisRodapePainelTd.delta < 0 ? '↓' : '→'}
+                        {emPainelPesquisas ? (
+                          fmtInt.format(totaisRodapePainelTd.delta)
+                        ) : (
+                          <span className="td-resumo-table__delta-inner">
+                            <span className="td-resumo-table__delta-arrow" aria-hidden>
+                              {totaisRodapePainelTd.delta > 0 ? '↑' : totaisRodapePainelTd.delta < 0 ? '↓' : '→'}
+                            </span>
+                            {formatarIntComSinal(totaisRodapePainelTd.delta)}
                           </span>
-                          {formatarIntComSinal(totaisRodapePainelTd.delta)}
-                        </span>
+                        )}
+                      </td>
+                    ) : null}
+                    {emPainelPesquisas && painelPlanilhaAtivo && cenarioVotosExibicao ? (
+                      <td
+                        className={cn(
+                          'td-resumo-table__cell td-resumo-table__cell--fed26 text-right tabular-nums font-semibold',
+                          colunaInicioDesempenho === 'plan' && 'td-resumo-table__grupo-desempenho-start'
+                        )}
+                      >
+                        {fmtInt.format(totaisRodapePainelTd.votosPlanCenario)}
                       </td>
                     ) : null}
                     {mostrarColunaTendenciaFuturista ? (
@@ -4451,15 +5420,28 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({
                       <td
                         className={cn(
                           'td-resumo-table__cell td-resumo-table__cell--lid text-center tabular-nums font-semibold text-text-primary',
-                          colunaInicioDesempenho === 'lid' && 'td-resumo-table__grupo-desempenho-start'
+                          colunaInicioDesempenho === 'lid' && 'td-resumo-table__grupo-desempenho-start',
+                          emPainelPesquisas && totaisRodapePainelTd.fed26XPrev > 0 && 'text-status-success',
+                          emPainelPesquisas && totaisRodapePainelTd.fed26XPrev < 0 && 'text-status-danger'
                         )}
+                        title={
+                          emPainelPesquisas
+                            ? 'Diferença total nos 12 TDs: soma de Vot.Prev menos soma de FED.26 (planilha)'
+                            : undefined
+                        }
                       >
-                        {fmtInt.format(totaisRodapePainelTd.liderancas)}
+                        {emPainelPesquisas
+                          ? formatarIntComSinal(totaisRodapePainelTd.fed26XPrev)
+                          : fmtInt.format(totaisRodapePainelTd.liderancas)}
                       </td>
                     ) : null}
                     <td
                       className="td-resumo-table__cell td-resumo-table__cell--vis text-center tabular-nums font-semibold text-text-primary"
-                      title="Total de check-ins (PI) nos 12 TDs"
+                      title={
+                        emPainelPesquisas
+                          ? 'Total de municípios com pesquisa nos 12 TDs (contagem distinta dentro de cada TD)'
+                          : 'Total de check-ins (PI) nos 12 TDs'
+                      }
                     >
                       {totaisRodapePainelTd.visitasTd}
                     </td>
@@ -4759,14 +5741,20 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({
                             setMunicipioMobilizacaoDrillIg(nome)
                           }}
                         />
+                      ) : painelContext === 'pesquisas' ? (
+                        drillGridMunicipiosPainelPesquisas
                       ) : (
-                        <>
+                        <div className="min-w-0 overflow-x-auto">
+                          <div
+                            className="grid w-max min-w-full gap-y-1"
+                            style={{ gridTemplateColumns: gridTemplateListaMunicipiosPainelTd }}
+                          >
                       <div
                         className={cn(
-                          'td-fut-grid-header mb-1.5 grid min-h-[1.25rem] items-baseline gap-x-2 border-b border-border-card/20 pb-1 font-semibold uppercase tracking-wide text-text-muted',
+                          'td-fut-grid-header col-span-full mb-1.5 grid min-h-[1.25rem] items-baseline gap-x-2 border-b border-border-card/20 pb-1 font-semibold uppercase tracking-wide text-text-muted',
                           sidebarCollapsed ? 'text-[11px] sm:text-xs' : 'text-[9px] sm:text-[10px]'
                         )}
-                        style={{ gridTemplateColumns: gridTemplateListaMunicipiosPainelTd }}
+                        style={{ gridColumn: '1 / -1', display: 'grid', gridTemplateColumns: 'subgrid' }}
                       >
                         <span className="min-w-0 text-left" title="Município">
                           Município
@@ -4832,7 +5820,6 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({
                           Vis.
                         </span>
                       </div>
-                      <div className="flex min-w-0 flex-col gap-0.5 overflow-x-auto">
                         {municipiosLinhasPainel.map(({ nome, eleitores }) => {
                           const muniMetrica = obterMetricasCidadeOficial(metricasPorCidadeNoTdMap, nome)
                           const v22Mun =
@@ -4852,12 +5839,12 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({
                             <div
                               key={nome}
                               className={cn(
-                                'td-fut-grid-row grid min-h-[1.55rem] items-baseline gap-x-2 pb-0.5 leading-tight text-text-secondary',
+                                'td-fut-grid-row col-span-full grid min-h-[1.55rem] items-baseline gap-x-2 pb-0.5 leading-tight text-text-secondary',
                                 sidebarCollapsed ? 'text-xs sm:text-sm' : 'text-[10px] sm:text-[11px]',
                                 cidadeDestacadaPainel && 'td-fut-grid-row--selected',
                                 podeDrillCidade && 'td-fut-grid-row--interactive cursor-pointer outline-none'
                               )}
-                              style={{ gridTemplateColumns: gridTemplateListaMunicipiosPainelTd }}
+                              style={{ gridColumn: '1 / -1', display: 'grid', gridTemplateColumns: 'subgrid' }}
                               role={podeDrillCidade ? 'button' : undefined}
                               tabIndex={podeDrillCidade ? 0 : undefined}
                               title={
@@ -4959,13 +5946,12 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({
                             </div>
                           )
                         })}
-                      </div>
                       <div
                         className={cn(
-                          'td-fut-grid-foot td-fut-grid-foot--totais-municipios mt-2 grid min-h-[1.35rem] items-baseline gap-x-2 border-t border-border-card/25 pt-2 tabular-nums text-text-muted',
+                          'td-fut-grid-foot td-fut-grid-foot--totais-municipios col-span-full mt-2 grid min-h-[1.35rem] items-baseline gap-x-2 border-t border-border-card/25 pt-2 tabular-nums text-text-muted',
                           sidebarCollapsed ? 'text-xs sm:text-sm' : 'text-[10px] sm:text-[11px]'
                         )}
-                        style={{ gridTemplateColumns: gridTemplateListaMunicipiosPainelTd }}
+                        style={{ gridColumn: '1 / -1', display: 'grid', gridTemplateColumns: 'subgrid' }}
                         title="Totais na lista de municípios visível (mesmo território)"
                       >
                         <span className="min-w-0 truncate font-semibold uppercase tracking-wide text-text-muted">
@@ -5041,7 +6027,8 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({
                           {fmtInt.format(somaVisitasListaTd)}
                         </span>
                       </div>
-                        </>
+                          </div>
+                        </div>
                       )}
                     </>
                   )}
@@ -5075,7 +6062,7 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({
               if (!temFeedbackEstrategico && !temPesquisas && !temTopPartidosFed22) return null
               const qtdCards = [temFeedbackEstrategico, temPesquisas, temTopPartidosFed22].filter(Boolean).length
               const cardClass =
-                'min-w-0 flex-1 basis-[min(100%,17.5rem)] rounded-xl border border-[rgba(255,255,255,0.07)] bg-[rgba(16,22,31,0.92)] p-3'
+                'min-w-0 flex-1 basis-[min(100%,17.5rem)] rounded-xl border border-[rgba(255,255,255,0.07)] bg-[rgba(16,22,31,0.92)] p-3 text-white'
               return (
                 <div
                   className={cn(
@@ -5085,14 +6072,14 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({
                 >
                   {temFeedbackEstrategico && feedbackEstrategicoTd ? (
                     <div className={cardClass}>
-                      <p className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-text-secondary">
+                      <p className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-white">
                         Feedback estratégico · {feedbackEstrategicoTd.territorio}
                       </p>
                       <div className="space-y-1.5">
                         {feedbackEstrategicoTd.notas.map((nota, idx) => (
                           <p
                             key={`${feedbackEstrategicoTd.territorio}-${idx}`}
-                            className="text-[11px] leading-snug text-text-primary"
+                            className="text-[11px] leading-snug text-white"
                           >
                             {nota}
                           </p>
@@ -5102,14 +6089,14 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({
                   ) : null}
                   {temPesquisas && territorioFeedbackAtivo && insightPesquisaTd ? (
                     <div className={cardClass}>
-                      <p className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-text-secondary">
+                      <p className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-white">
                         Pesquisas · {territorioFeedbackAtivo}
                       </p>
                       <div className="space-y-1.5">
                         {insightPesquisaTd.map((nota, idx) => (
                           <p
                             key={`${territorioFeedbackAtivo}-pesquisa-${idx}`}
-                            className="text-[11px] leading-snug text-text-primary"
+                            className="text-[11px] leading-snug text-white"
                           >
                             {nota}
                           </p>
@@ -5119,17 +6106,17 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({
                   ) : null}
                   {temTopPartidosFed22 && territorioFeedbackAtivo && linhasFeedbackTopPartidosFed22Td ? (
                     <div className={cardClass}>
-                      <p className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-text-secondary">
+                      <p className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-white">
                         Fed. 2022 · Top 5 partidos · {territorioFeedbackAtivo}
                       </p>
-                      <p className="mb-2 text-[10px] leading-snug text-text-muted">
+                      <p className="mb-2 text-[10px] leading-snug text-white/80">
                         Soma dos votos nominais de todos os deputados federais da legenda nos municípios do TD.
                       </p>
                       <div className="space-y-1.5">
                         {linhasFeedbackTopPartidosFed22Td.map((linha, idx) => (
                           <p
                             key={`${territorioFeedbackAtivo}-partido-${idx}`}
-                            className="text-[11px] leading-snug text-text-primary"
+                            className="text-[11px] leading-snug text-white"
                           >
                             {linha}
                           </p>
