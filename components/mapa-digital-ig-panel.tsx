@@ -347,7 +347,7 @@ export function MapaDigitalIgPanel({ embedded = false }: { embedded?: boolean })
     setSyncing(true)
     setSyncMessage(null)
     setError(null)
-    const result = await syncInstagramComments(c.token, c.businessAccountId, 40)
+    const result = await syncInstagramComments(c.token, c.businessAccountId, 80)
     setSyncing(false)
     if (!result.success) {
       setError(result.error || 'Sincronização falhou')

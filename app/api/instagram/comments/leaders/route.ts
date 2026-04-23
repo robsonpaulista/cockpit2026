@@ -46,6 +46,7 @@ export async function GET(request: Request) {
       const { data, error } = await admin
         .from('instagram_comments')
         .select('instagram_comment_id, commenter_username, commenter_ig_id, commented_at')
+        .eq('user_id', user.id)
         .order('id', { ascending: true })
         .range(from, from + pageSize - 1)
 

@@ -26,6 +26,7 @@ export async function GET(request: Request) {
       .select(
         'id, instagram_media_id, media_permalink, media_caption, media_thumbnail_url, media_posted_at, instagram_comment_id, parent_instagram_comment_id, commenter_ig_id, commenter_username, comment_text, comment_like_count, hidden, commented_at, synced_at, instagram_owner_username'
       )
+      .eq('user_id', user.id)
       .order('commented_at', { ascending: false })
 
     if (mediaId) {

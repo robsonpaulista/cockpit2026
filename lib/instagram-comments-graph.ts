@@ -25,8 +25,8 @@ export type IgCommentWithReplies = {
   replies: IgCommentNode[]
 }
 
-const COMMENT_FIELDS =
-  'id,username,text,timestamp,like_count,hidden,replies.limit(40){id,username,text,timestamp,like_count,hidden}'
+const COMMENT_FIELDS = 'id,username,text,timestamp,like_count,hidden,replies.limit(1){id}'
+const REPLY_FIELDS = 'id,username,text,timestamp,like_count,hidden'
 
 function sleep(ms: number): Promise<void> {
   return new Promise((r) => setTimeout(r, ms))
@@ -87,13 +87,33 @@ export async function fetchCommentsForMedia(
     const data: CommentsPage = await graphJson<CommentsPage>(currentUrl)
     const page = data.data || []
     for (const c of page) {
+      const replies = await fetchAllRepliesForComment(c.id, accessToken)
       out.push({
         comment: c,
-        replies: c.replies?.data || [],
+        replies,
       })
     }
     url = data.paging?.next || null
     if (url) await sleep(120)
   }
+  return out
+}
+
+async function fetchAllRepliesForComment(commentId: string, accessToken: string): Promise<IgCommentNode[]> {
+  const out: IgCommentNode[] = []
+  let url: string | null =
+    `${GRAPH_BASE}/${commentId}/replies?fields=${REPLY_FIELDS}&limit=50&access_token=${encodeURIComponent(accessToken)}`
+
+  type RepliesPage = { data?: IgCommentNode[]; paging?: { next?: string } }
+
+  while (url) {
+    const currentUrl = url
+    const data: RepliesPage = await graphJson<RepliesPage>(currentUrl)
+    const page = data.data || []
+    out.push(...page)
+    url = data.paging?.next || null
+    if (url) await sleep(120)
+  }
+
   return out
 }

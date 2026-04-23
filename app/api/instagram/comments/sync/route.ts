@@ -8,7 +8,7 @@ import { logError, logger } from '@/lib/logger'
 export const dynamic = 'force-dynamic'
 export const maxDuration = 300
 
-const MAX_MEDIA_DEFAULT = 40
+const MAX_MEDIA_DEFAULT = 80
 const UPSERT_CHUNK = 80
 
 function parseCommentTimestamp(ts: string | undefined): string {

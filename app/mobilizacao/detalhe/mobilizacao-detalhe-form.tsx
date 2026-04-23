@@ -179,18 +179,6 @@ export function MobilizacaoDetalheForm() {
                 priority
               />
             </div>
-            <div className="flex w-full shrink-0 justify-center sm:w-auto">
-              <Image
-                src="/personagem.png"
-                alt=""
-                width={280}
-                height={420}
-                className="h-auto max-h-[min(40vh,228px)] w-auto max-w-[min(88%,248px)] object-contain object-bottom sm:max-h-[240px] sm:max-w-[272px]"
-                sizes="(max-width: 640px) 88vw, 260px"
-                priority
-                aria-hidden
-              />
-            </div>
           </div>
           <h1 className="mt-0 text-center text-xl font-semibold text-text-primary sm:mt-0.5">
             Cadastro de Mobilização

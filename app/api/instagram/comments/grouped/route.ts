@@ -26,6 +26,7 @@ export async function GET(request: Request) {
     const { data: rows, error } = await admin
       .from('instagram_comments')
       .select(SELECT_FIELDS)
+      .eq('user_id', user.id)
       .order('media_posted_at', { ascending: false, nullsFirst: false })
       .order('commented_at', { ascending: false })
       .limit(maxRows)
