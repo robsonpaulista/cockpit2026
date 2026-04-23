@@ -45,6 +45,24 @@ function leaderNomeFromLiderado(row: Liderado): string {
   return l.nome
 }
 
+function lideradoTemInstagramPreenchido(instagram: string | null | undefined): boolean {
+  const s = String(instagram ?? '')
+    .replace(/^@+/g, '')
+    .trim()
+  return s.length > 0
+}
+
+/** Conta só liderados com status ativo (mesma base do mapa / mobilização). */
+function contagemInstagramLideradosAtivos(lids: Liderado[]): {
+  ativos: number
+  comInstagram: number
+  semInstagram: number
+} {
+  const ativos = lids.filter((r) => String(r.status).toLowerCase() === 'ativo')
+  const comInstagram = ativos.filter((r) => lideradoTemInstagramPreenchido(r.instagram)).length
+  return { ativos: ativos.length, comInstagram, semInstagram: ativos.length - comInstagram }
+}
+
 type ArvoreCoordBlock = {
   coordinator: Coordinator
   leaders: { leader: Leader; liderados: Liderado[] }[]
@@ -500,6 +518,8 @@ export default function MobilizacaoConfigPage() {
     return { blocos, orphanLeaders, lidByLeader }
   }, [coordinators, leaders, liderados])
 
+  const resumoInstagramLideradosAtivos = useMemo(() => contagemInstagramLideradosAtivos(liderados), [liderados])
+
   const lideradosSemLiderNoCarregamento = useMemo(() => {
     const ids = new Set(leaders.map((l) => l.id))
     return liderados.filter((r) => !ids.has(r.leader_id))
@@ -684,6 +704,24 @@ export default function MobilizacaoConfigPage() {
         <h2 className="mb-1 text-sm font-semibold uppercase tracking-wide text-text-muted">
           Estrutura: coordenador → lideranças → liderados
         </h2>
+        <div className="mb-3 rounded-lg border border-accent-gold/40 bg-accent-gold/10 px-3 py-2.5">
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-text-muted">
+            Lideranças — liderados ativos e Instagram
+          </p>
+          {resumoInstagramLideradosAtivos.ativos === 0 ? (
+            <p className="mt-1 text-sm text-text-secondary">Nenhum liderado com status ativo no carregamento atual.</p>
+          ) : (
+            <div className="mt-1.5 flex flex-wrap items-baseline gap-x-4 gap-y-1 text-sm">
+              <span className="font-semibold text-status-success">
+                Com perfil @: {resumoInstagramLideradosAtivos.comInstagram}
+              </span>
+              <span className="font-semibold text-amber-800 dark:text-amber-300">
+                Sem perfil preenchido: {resumoInstagramLideradosAtivos.semInstagram}
+              </span>
+              <span className="text-text-secondary">Total ativos: {resumoInstagramLideradosAtivos.ativos}</span>
+            </div>
+          )}
+        </div>
         <p className="mb-4 text-xs text-text-muted">
           Liderados listados são os recentes carregados nesta tela (até 500), agrupados pela liderança. Use
           &quot;Atualizar dados&quot; para recarregar.
@@ -794,6 +832,7 @@ export default function MobilizacaoConfigPage() {
                   ) : (
                     leadersNo.map(({ leader, liderados: lideradosDo }) => {
                       const link = baseCaptacaoUrl ? `${baseCaptacaoUrl}?leader_id=${leader.id}` : ''
+                      const igLid = contagemInstagramLideradosAtivos(lideradosDo)
                       return (
                         <details
                           key={leader.id}
@@ -815,6 +854,17 @@ export default function MobilizacaoConfigPage() {
                                   : 'Município não informado'}
                                 {leader.telefone ? ` · ${leader.telefone}` : ''}
                               </p>
+                              {igLid.ativos > 0 ? (
+                                <p className="mt-1 text-[11px] font-semibold leading-snug">
+                                  <span className="text-status-success">Ativos com @: {igLid.comInstagram}</span>
+                                  <span className="font-normal text-text-muted"> · </span>
+                                  <span className="text-amber-800 dark:text-amber-300">Sem @: {igLid.semInstagram}</span>
+                                  <span className="font-normal text-text-muted"> · </span>
+                                  <span className="font-normal text-text-secondary">ativos: {igLid.ativos}</span>
+                                </p>
+                              ) : (
+                                <p className="mt-1 text-[11px] text-text-muted">Sem liderados ativos nesta lista.</p>
+                              )}
                             </div>
                           </summary>
                           <div className="space-y-2 border-t border-card/40 px-3 pb-3 pl-9 pt-2">
@@ -1142,6 +1192,7 @@ export default function MobilizacaoConfigPage() {
                     .sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR', { sensitivity: 'base' }))
                     .map((leader) => {
                       const lid = arvorePorCoordenador.lidByLeader.get(leader.id) ?? []
+                      const igLid = contagemInstagramLideradosAtivos(lid)
                       const link = baseCaptacaoUrl ? `${baseCaptacaoUrl}?leader_id=${leader.id}` : ''
                       return (
                         <details
@@ -1163,6 +1214,17 @@ export default function MobilizacaoConfigPage() {
                                   ? `${leader.municipio ?? leader.cidade}`
                                   : 'Município não informado'}
                               </p>
+                              {igLid.ativos > 0 ? (
+                                <p className="mt-1 text-[11px] font-semibold leading-snug">
+                                  <span className="text-status-success">Ativos com @: {igLid.comInstagram}</span>
+                                  <span className="font-normal text-text-muted"> · </span>
+                                  <span className="text-amber-800 dark:text-amber-300">Sem @: {igLid.semInstagram}</span>
+                                  <span className="font-normal text-text-muted"> · </span>
+                                  <span className="font-normal text-text-secondary">ativos: {igLid.ativos}</span>
+                                </p>
+                              ) : (
+                                <p className="mt-1 text-[11px] text-text-muted">Sem liderados ativos nesta lista.</p>
+                              )}
                             </div>
                           </summary>
                           <div className="space-y-2 border-t border-card/40 px-3 pb-3 pl-9 pt-2">

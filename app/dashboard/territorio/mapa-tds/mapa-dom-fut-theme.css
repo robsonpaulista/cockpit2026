@@ -1090,3 +1090,16 @@
 .theme-futuristic [data-td-fut-ig-panel='true'] .text-status-warning {
   color: var(--td-fut-amber) !important;
 }
+
+/* Modal ranking (pesquisas): evita thead dourado do theme.css e hover claro sem contraste */
+.theme-futuristic .mapa-pesquisa-ranking-modal-table thead {
+  background-color: #121a24 !important;
+}
+
+.theme-futuristic .mapa-pesquisa-ranking-modal-table tbody tr:hover {
+  background-color: #ffffff !important;
+}
+
+.theme-futuristic .mapa-pesquisa-ranking-modal-table tbody tr:hover td {
+  color: #0f172a !important;
+}

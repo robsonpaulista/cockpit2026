@@ -79,9 +79,15 @@ import {
 } from '@/lib/instagram-ig-por-municipio-no-td-client'
 import { loadInstagramConfigAsync } from '@/lib/instagramApi'
 import { MapaDigitalIgMunicipiosResumoTable } from '@/components/mapa-digital-ig-municipios-resumo-table'
+import { MapaDigitalIgRelatorioCheckExport } from '@/components/mapa-digital-ig-relatorio-check-export'
 import { MapaDigitalIgMunicipioMobilizacaoDrill } from '@/components/mapa-digital-ig-municipio-mobilizacao-drill'
 import { MapaDigitalIgPublicacoesLideresCobertura } from '@/components/mapa-digital-ig-publicacoes-lideres-cobertura'
 import { MapaDigitalIgLideresDesempenhoModal } from '@/components/mapa-digital-ig-lideres-desempenho-modal'
+import {
+  MapaPesquisaRankingCandidatosModal,
+  PESQUISA_MAPA_CARGO,
+  type MapaPesquisaRankingCandidatosTarget,
+} from '@/components/mapa-pesquisa-ranking-candidatos-modal'
 import { Loader2 } from 'lucide-react'
 
 type LoadState = 'loading' | 'ready' | 'error'
@@ -122,10 +128,11 @@ function formatarCelulaPesquisaQtdMedia(agg: PesquisaTipoIntencaoAggTd): string 
 
 function tituloCelulaPesquisaQtdMedia(labelTipo: string, agg: PesquisaTipoIntencaoAggTd): string {
   const m = mediaPesquisaTipoAgg(agg)
-  if (agg.n <= 0) return `${labelTipo}: nenhuma pesquisa neste TD`
-  if (m === null) return `${labelTipo}: ${agg.n} pesquisa(s); média de intenção indisponível`
+  const cargoRef = ' (Dep. Federal)'
+  if (agg.n <= 0) return `${labelTipo}: nenhuma pesquisa neste TD${cargoRef}`
+  if (m === null) return `${labelTipo}: ${agg.n} pesquisa(s); média de intenção indisponível${cargoRef}`
   const pctFmt = Number.isInteger(m) ? String(m) : m.toFixed(1).replace('.', ',')
-  return `${labelTipo}: ${agg.n} pesquisa(s); média de intenção ${pctFmt}%`
+  return `${labelTipo}: ${agg.n} pesquisa(s); média de intenção ${pctFmt}%${cargoRef}`
 }
 
 function compararAggPesquisaPorMediaDepoisN(
@@ -1361,6 +1368,9 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({
   const [igPorMunicipioNoTdLoad, setIgPorMunicipioNoTdLoad] = useState<'idle' | 'loading' | 'ready' | 'error'>('idle')
   const [igLideresDesempenhoModalTd, setIgLideresDesempenhoModalTd] = useState<TerritorioDesenvolvimentoPI | null>(null)
 
+  const [rankingCandidatosPesquisaModal, setRankingCandidatosPesquisaModal] =
+    useState<MapaPesquisaRankingCandidatosTarget | null>(null)
+
   const [pesquisaMediasPorTd, setPesquisaMediasPorTd] = useState<
     Map<TerritorioDesenvolvimentoPI, { media: number; n: number }>
   >(() => new Map())
@@ -1578,6 +1588,10 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({
     return window.localStorage.getItem(STORAGE_CANDIDATO_PESQUISA)?.trim() ?? ''
   }, [])
 
+  const abrirRankingCandidatosPesquisaModal = useCallback((target: MapaPesquisaRankingCandidatosTarget) => {
+    setRankingCandidatosPesquisaModal(target)
+  }, [])
+
   const carregarMediasPesquisaPorTd = useCallback(async () => {
     const nome = lerCandidatoPadraoPesquisa()
     setPesquisaMapaCandidato(nome)
@@ -1590,24 +1604,32 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({
         instituto?: string | null
         cargo?: string | null
         intencao?: string | number | null
+        candidato_nome?: string | null
         cities?: { name?: string | null } | Array<{ name?: string | null }> | null
       }
 
       const [resTipos, resMedias] = await Promise.all([
-        fetch('/api/pesquisa?limit=5000'),
+        fetch(`/api/pesquisa?${new URLSearchParams({ limit: '5000', cargo: PESQUISA_MAPA_CARGO }).toString()}`),
         nome ? fetch(`/api/pesquisa/historico-intencao?${new URLSearchParams({ candidato: nome })}`) : Promise.resolve(null),
       ])
 
       const mapaTipos = new Map<TerritorioDesenvolvimentoPI, PesquisaTiposPorTdVal>()
       const mapaMunicipiosNorm = new Map<string, PesquisaTiposPorTdVal>()
       const municipiosComPesquisaPorTd = new Map<TerritorioDesenvolvimentoPI, Set<string>>()
+      const nomeFiltroPesquisa = nome.trim()
       if (resTipos.ok) {
         const rows = (await resTipos.json()) as PollTipoResumoRow[]
         const vistosEspontanea = new Set<string>()
         const vistosEstimulada = new Set<string>()
         for (const row of rows) {
+          const cargoRow = String(row.cargo ?? '').trim().toLowerCase()
+          if (cargoRow !== PESQUISA_MAPA_CARGO) continue
           const tipo = String(row.tipo ?? '').trim().toLowerCase()
           if (tipo !== 'espontanea' && tipo !== 'estimulada') continue
+          if (nomeFiltroPesquisa) {
+            const cand = String(row.candidato_nome ?? '').trim()
+            if (!cand || cand.toUpperCase() !== nomeFiltroPesquisa.toUpperCase()) continue
+          }
           const c = row.cities
           const cidade = Array.isArray(c) ? String(c[0]?.name ?? '').trim() : String(c?.name ?? '').trim()
           if (!cidade) continue
@@ -4022,16 +4044,38 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({
                 </span>
                 {temDadosEstrategiaTabela ? (
                   <span
-                    className="border-l border-border-card/35 pl-2 text-center tabular-nums text-text-secondary sm:pl-2"
-                    title={tituloCelulaPesquisaQtdMedia('Pesquisas espontâneas', aggPesq.espontanea)}
+                    className="cursor-pointer select-none border-l border-border-card/35 pl-2 text-center tabular-nums text-text-secondary sm:pl-2"
+                    title={`${tituloCelulaPesquisaQtdMedia('Pesquisas espontâneas', aggPesq.espontanea)} — Duplo clique: ranking por candidato.`}
+                    onDoubleClick={(e) => {
+                      e.preventDefault()
+                      e.stopPropagation()
+                      if (highlightedTd === null) return
+                      abrirRankingCandidatosPesquisaModal({
+                        escopo: 'municipio',
+                        tipo: 'espontanea',
+                        territorio: highlightedTd,
+                        municipioNome: nome,
+                      })
+                    }}
                   >
                     {formatarCelulaPesquisaQtdMedia(aggPesq.espontanea)}
                   </span>
                 ) : null}
                 {temDadosFed22Tabela ? (
                   <span
-                    className="border-l border-border-card/35 pl-2 text-right tabular-nums text-text-secondary sm:pl-2"
-                    title={tituloCelulaPesquisaQtdMedia('Pesquisas estimuladas', aggPesq.estimulada)}
+                    className="cursor-pointer select-none border-l border-border-card/35 pl-2 text-right tabular-nums text-text-secondary sm:pl-2"
+                    title={`${tituloCelulaPesquisaQtdMedia('Pesquisas estimuladas', aggPesq.estimulada)} — Duplo clique: ranking por candidato.`}
+                    onDoubleClick={(e) => {
+                      e.preventDefault()
+                      e.stopPropagation()
+                      if (highlightedTd === null) return
+                      abrirRankingCandidatosPesquisaModal({
+                        escopo: 'municipio',
+                        tipo: 'estimulada',
+                        territorio: highlightedTd,
+                        municipioNome: nome,
+                      })
+                    }}
                   >
                     {formatarCelulaPesquisaQtdMedia(aggPesq.estimulada)}
                   </span>
@@ -4114,16 +4158,38 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({
           </span>
           {temDadosEstrategiaTabela ? (
             <span
-              className="border-l border-border-card/35 pl-2 text-center text-text-secondary sm:pl-2"
-              title="Totais de pesquisas espontâneas na lista (qtd / média %)"
+              className="cursor-pointer select-none border-l border-border-card/35 pl-2 text-center text-text-secondary sm:pl-2"
+              title="Totais de pesquisas espontâneas na lista (qtd / média %) — Duplo clique: ranking por candidato nos municípios listados."
+              onDoubleClick={(e) => {
+                e.preventDefault()
+                e.stopPropagation()
+                if (highlightedTd === null || municipiosLinhasPainel.length === 0) return
+                abrirRankingCandidatosPesquisaModal({
+                  escopo: 'lista_municipios_td',
+                  tipo: 'espontanea',
+                  territorio: highlightedTd,
+                  municipiosNorm: municipiosLinhasPainel.map(({ nome: n }) => normalizeMunicipioNome(n)),
+                })
+              }}
             >
               {formatarCelulaPesquisaQtdMedia(totaisPesquisaListaMunicipiosTd.espontanea)}
             </span>
           ) : null}
           {temDadosFed22Tabela ? (
             <span
-              className="border-l border-border-card/35 pl-2 text-right text-text-secondary sm:pl-2"
-              title="Totais de pesquisas estimuladas na lista (qtd / média %)"
+              className="cursor-pointer select-none border-l border-border-card/35 pl-2 text-right text-text-secondary sm:pl-2"
+              title="Totais de pesquisas estimuladas na lista (qtd / média %) — Duplo clique: ranking por candidato nos municípios listados."
+              onDoubleClick={(e) => {
+                e.preventDefault()
+                e.stopPropagation()
+                if (highlightedTd === null || municipiosLinhasPainel.length === 0) return
+                abrirRankingCandidatosPesquisaModal({
+                  escopo: 'lista_municipios_td',
+                  tipo: 'estimulada',
+                  territorio: highlightedTd,
+                  municipiosNorm: municipiosLinhasPainel.map(({ nome: n }) => normalizeMunicipioNome(n)),
+                })
+              }}
             >
               {formatarCelulaPesquisaQtdMedia(totaisPesquisaListaMunicipiosTd.estimulada)}
             </span>
@@ -4179,6 +4245,8 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({
       somaProjecaoPesquisaListaMunicipiosTd,
       somaEleitoresListaTd,
       somaVotosListaTd,
+      highlightedTd,
+      abrirRankingCandidatosPesquisaModal,
     ]
   )
 
@@ -5152,9 +5220,29 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({
                         </td>
                         {temDadosEstrategiaTabela ? (
                           <td
-                            className="td-resumo-table__cell td-resumo-table__cell--estrategia tabular-nums text-text-primary"
+                            className={cn(
+                              'td-resumo-table__cell td-resumo-table__cell--estrategia tabular-nums text-text-primary',
+                              emPainelPesquisas && 'cursor-pointer select-none'
+                            )}
                             style={{ textAlign: 'center' }}
-                            title={tituloMedTop22}
+                            title={
+                              emPainelPesquisas
+                                ? `${tituloCelulaPesquisaQtdMedia('Pesquisas espontâneas', tiposPesquisaTd.espontanea)} — Duplo clique: ranking por candidato.`
+                                : tituloMedTop22
+                            }
+                            onDoubleClick={
+                              emPainelPesquisas
+                                ? (e) => {
+                                    e.preventDefault()
+                                    e.stopPropagation()
+                                    abrirRankingCandidatosPesquisaModal({
+                                      escopo: 'territorio',
+                                      tipo: 'espontanea',
+                                      territorio: r.territorio,
+                                    })
+                                  }
+                                : undefined
+                            }
                           >
                             {emPainelPesquisas
                               ? formatarCelulaPesquisaQtdMedia(tiposPesquisaTd.espontanea)
@@ -5165,11 +5253,25 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({
                           <td
                             className={cn(
                               'td-resumo-table__cell td-resumo-table__cell--fed22 text-right tabular-nums',
-                              colunaInicioDesempenho === 'fed22' && 'td-resumo-table__grupo-desempenho-start'
+                              colunaInicioDesempenho === 'fed22' && 'td-resumo-table__grupo-desempenho-start',
+                              emPainelPesquisas && 'cursor-pointer select-none'
                             )}
                             title={
                               emPainelPesquisas
-                                ? tituloCelulaPesquisaQtdMedia('Pesquisas estimuladas', tiposPesquisaTd.estimulada)
+                                ? `${tituloCelulaPesquisaQtdMedia('Pesquisas estimuladas', tiposPesquisaTd.estimulada)} — Duplo clique: ranking por candidato.`
+                                : undefined
+                            }
+                            onDoubleClick={
+                              emPainelPesquisas
+                                ? (e) => {
+                                    e.preventDefault()
+                                    e.stopPropagation()
+                                    abrirRankingCandidatosPesquisaModal({
+                                      escopo: 'territorio',
+                                      tipo: 'estimulada',
+                                      territorio: r.territorio,
+                                    })
+                                  }
                                 : undefined
                             }
                           >
@@ -5325,12 +5427,24 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({
                     </td>
                     {temDadosEstrategiaTabela ? (
                       <td
-                        className="td-resumo-table__cell td-resumo-table__cell--estrategia tabular-nums font-semibold text-text-primary"
+                        className={cn(
+                          'td-resumo-table__cell td-resumo-table__cell--estrategia tabular-nums font-semibold text-text-primary',
+                          emPainelPesquisas && 'cursor-pointer'
+                        )}
                         style={{ textAlign: 'center' }}
                         title={
                           emPainelPesquisas
-                            ? 'Total nos 12 TDs: quantidade de pesquisas espontâneas / média ponderada de intenção (%)'
+                            ? 'Total nos 12 TDs: quantidade de pesquisas espontâneas / média ponderada de intenção (%) — Duplo clique: ranking por candidato (PI).'
                             : 'Soma dos valores exibidos (média do top por TD em cada linha, arredondada)'
+                        }
+                        onDoubleClick={
+                          emPainelPesquisas
+                            ? (e) => {
+                                e.preventDefault()
+                                e.stopPropagation()
+                                abrirRankingCandidatosPesquisaModal({ escopo: 'estado', tipo: 'espontanea' })
+                              }
+                            : undefined
                         }
                       >
                         {emPainelPesquisas
@@ -5342,11 +5456,21 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({
                       <td
                         className={cn(
                           'td-resumo-table__cell td-resumo-table__cell--fed22 text-right tabular-nums font-semibold',
-                          colunaInicioDesempenho === 'fed22' && 'td-resumo-table__grupo-desempenho-start'
+                          colunaInicioDesempenho === 'fed22' && 'td-resumo-table__grupo-desempenho-start',
+                          emPainelPesquisas && 'cursor-pointer'
                         )}
                         title={
                           emPainelPesquisas
-                            ? 'Total nos 12 TDs: quantidade de pesquisas estimuladas / média ponderada de intenção (%)'
+                            ? 'Total nos 12 TDs: quantidade de pesquisas estimuladas / média ponderada de intenção (%) — Duplo clique: ranking por candidato (PI).'
+                            : undefined
+                        }
+                        onDoubleClick={
+                          emPainelPesquisas
+                            ? (e) => {
+                                e.preventDefault()
+                                e.stopPropagation()
+                                abrirRankingCandidatosPesquisaModal({ escopo: 'estado', tipo: 'estimulada' })
+                              }
                             : undefined
                         }
                       >
@@ -5697,21 +5821,33 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({
                             </span>
                           ) : null}
                         </p>
-                        {municipioFocadoLiderancas && !painelPlanilhaAtivo ? (
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setMunicipioMobilizacaoDrillIg(null)
-                              setMunicipioFocadoLiderancas(null)
-                            }}
-                            className={cn(
-                              'shrink-0 rounded-md border border-border-card/50 bg-surface px-2 py-0.5 font-medium text-text-primary hover:bg-card/80 focus:outline-none focus:ring-2 focus:ring-accent-gold-soft',
-                              sidebarCollapsed ? 'text-xs sm:text-sm' : 'text-[10px] sm:text-[11px]'
-                            )}
-                          >
-                            Mostrar todos os municípios
-                          </button>
-                        ) : null}
+                        <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
+                          {painelContext === 'digitalIg' && highlightedTd ? (
+                            <MapaDigitalIgRelatorioCheckExport
+                              exportTd={{
+                                territorio: highlightedTd,
+                                disabled: igPorMunicipioNoTdLoad !== 'ready',
+                              }}
+                              exportPiTodas
+                              visualPreset={visualPreset}
+                            />
+                          ) : null}
+                          {municipioFocadoLiderancas && !painelPlanilhaAtivo ? (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setMunicipioMobilizacaoDrillIg(null)
+                                setMunicipioFocadoLiderancas(null)
+                              }}
+                              className={cn(
+                                'shrink-0 rounded-md border border-border-card/50 bg-surface px-2 py-0.5 font-medium text-text-primary hover:bg-card/80 focus:outline-none focus:ring-2 focus:ring-accent-gold-soft',
+                                sidebarCollapsed ? 'text-xs sm:text-sm' : 'text-[10px] sm:text-[11px]'
+                              )}
+                            >
+                              Mostrar todos os municípios
+                            </button>
+                          ) : null}
+                        </div>
                       </div>
                       {painelContext === 'digitalIg' && highlightedTd ? (
                         <MapaDigitalIgMunicipiosResumoTable
@@ -6131,6 +6267,12 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({
           </div>
         )}
       </div>
+      <MapaPesquisaRankingCandidatosModal
+        open={rankingCandidatosPesquisaModal !== null}
+        target={rankingCandidatosPesquisaModal}
+        onClose={() => setRankingCandidatosPesquisaModal(null)}
+        visualPreset={visualPreset}
+      />
       <MapaDigitalIgLideresDesempenhoModal
         open={igLideresDesempenhoModalTd !== null}
         territorio={igLideresDesempenhoModalTd}

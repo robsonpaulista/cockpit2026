@@ -4,6 +4,7 @@ import dynamic from 'next/dynamic'
 import { useCallback, useMemo } from 'react'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { MapaDigitalIgSyncToolbar } from '@/components/mapa-digital-ig-sync-toolbar'
+import { MapaDigitalIgRelatorioCheckExport } from '@/components/mapa-digital-ig-relatorio-check-export'
 const MapaTerritoriosDesenvolvimentoLeaflet = dynamic(
   () =>
     import('@/components/mapa-territorios-desenvolvimento-leaflet').then((mod) => ({
@@ -112,7 +113,12 @@ export default function MapaTdsTabsClient() {
                 Pesquisas
               </button>
             </nav>
-            {tab === 'mapa-digital-ig' ? <MapaDigitalIgSyncToolbar className="sm:justify-end" /> : null}
+            {tab === 'mapa-digital-ig' ? (
+              <div className="flex w-full min-w-0 flex-col items-stretch gap-2 sm:w-auto sm:flex-row sm:flex-wrap sm:items-center sm:justify-end">
+                <MapaDigitalIgRelatorioCheckExport exportPiTodas visualPreset="futuristic" />
+                <MapaDigitalIgSyncToolbar className="sm:justify-end" />
+              </div>
+            ) : null}
           </div>
         </div>
       </header>
