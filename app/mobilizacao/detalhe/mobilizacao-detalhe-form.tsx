@@ -161,39 +161,41 @@ export function MobilizacaoDetalheForm() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background px-4 py-8 md:py-10">
-      <div className="flex w-full max-w-5xl flex-col items-center gap-6 md:flex-row md:items-end md:justify-center md:gap-8">
-        <div className="w-full max-w-xl rounded-2xl border border-card bg-surface p-5 shadow-sm sm:p-6">
+    <div className="flex min-h-screen items-center justify-center bg-background px-4 py-6 sm:py-10">
+      <div className="w-full max-w-xl rounded-2xl border border-card bg-surface p-5 shadow-sm sm:p-6">
         <header className="mb-5 border-b border-card pb-4">
-          <div className="mb-4 flex flex-col items-center gap-3">
-            <Image
-              src="/logomarca.png"
-              alt="Logomarca"
-              width={320}
-              height={120}
-              className="h-auto max-h-16 w-full max-w-[280px] object-contain object-center sm:max-h-[4.5rem]"
-              sizes="(max-width: 640px) 85vw, 280px"
-              priority
-            />
-            <Image
-              src="/personagem.png"
-              alt=""
-              width={280}
-              height={420}
-              className="h-auto max-h-36 w-auto object-contain object-bottom md:hidden"
-              sizes="200px"
-              priority
-              aria-hidden
-            />
+          <div
+            className="mb-5 flex w-full min-w-0 flex-col items-center justify-center gap-5 sm:mb-6 sm:flex-row sm:items-end sm:justify-center sm:gap-8"
+            aria-label="Identidade visual"
+          >
+            <div className="relative h-14 w-full max-w-[min(100%,280px)] shrink-0 sm:h-[4.5rem]">
+              <Image
+                src="/logomarca.png"
+                alt="Logomarca"
+                fill
+                className="object-contain object-center"
+                sizes="(max-width: 640px) 100vw, 280px"
+                priority
+              />
+            </div>
+            <div className="relative h-[min(42svh,260px)] w-full max-w-[min(72vw,220px)] shrink-0 sm:h-56 sm:max-w-[240px]">
+              <Image
+                src="/personagem.png"
+                alt=""
+                fill
+                className="object-contain object-bottom"
+                sizes="(max-width: 640px) 72vw, 240px"
+                priority
+                aria-hidden
+              />
+            </div>
           </div>
-          <h1 className="text-center text-xl font-semibold text-text-primary md:text-left">
-            Cadastro de Mobilização
-          </h1>
-          <p className="mt-1 text-center text-sm text-text-secondary md:text-left">
+          <h1 className="text-center text-xl font-semibold text-text-primary">Cadastro de Mobilização</h1>
+          <p className="mt-1 text-center text-sm text-text-secondary">
             Preencha seus dados para entrar na base de mobilização.
           </p>
           {contexto ? (
-            <p className="mt-3 text-center text-xs text-text-muted md:text-left">
+            <p className="mt-3 text-center text-xs text-text-muted">
               Liderança: <span className="font-medium text-text-secondary">{contexto.leader.nome}</span>
             </p>
           ) : null}
@@ -293,19 +295,6 @@ export function MobilizacaoDetalheForm() {
             </button>
           </form>
         )}
-        </div>
-
-        <div className="pointer-events-none hidden shrink-0 select-none md:block">
-          <Image
-            src="/personagem.png"
-            alt=""
-            width={280}
-            height={420}
-            className="h-[clamp(14rem,42vh,24rem)] w-auto object-contain object-bottom"
-            sizes="(max-width: 1280px) 35vw, 280px"
-            aria-hidden
-          />
-        </div>
       </div>
     </div>
   )
