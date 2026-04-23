@@ -7,6 +7,15 @@ export type LideradoNoMunicipioDto = {
   instagram: string | null
   cidade: string | null
   status: string
+  /** Comentários IG cujo @ coincide com o Instagram deste liderado (dedupe por `instagram_comment_id`, escopo do usuário logado). */
+  comentarios: number
+  /** Perfis distintos entre comentaristas — no máximo 1 por liderado (próprio @). */
+  perfisUnicos: number
+  /**
+   * Tempo médio entre `media_posted_at` e `commented_at` nos comentários vinculados ao @ (ms).
+   * `null` se não houver comentário com as duas datas ou sem comentários.
+   */
+  tempoMedioPostComentarioMs: number | null
 }
 
 export type LiderNoMunicipioDto = {

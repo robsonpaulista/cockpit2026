@@ -1,6 +1,7 @@
 'use client'
 
 import { FormEvent, useEffect, useMemo, useState } from 'react'
+import Image from 'next/image'
 import { useSearchParams } from 'next/navigation'
 
 type LeaderContext = {
@@ -160,15 +161,39 @@ export function MobilizacaoDetalheForm() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background px-4 py-8">
-      <div className="w-full max-w-xl rounded-2xl border border-card bg-surface p-5 shadow-sm sm:p-6">
+    <div className="flex min-h-screen items-center justify-center bg-background px-4 py-8 md:py-10">
+      <div className="flex w-full max-w-5xl flex-col items-center gap-6 md:flex-row md:items-end md:justify-center md:gap-8">
+        <div className="w-full max-w-xl rounded-2xl border border-card bg-surface p-5 shadow-sm sm:p-6">
         <header className="mb-5 border-b border-card pb-4">
-          <h1 className="text-xl font-semibold text-text-primary">Cadastro de Mobilização</h1>
-          <p className="mt-1 text-sm text-text-secondary">
+          <div className="mb-4 flex flex-col items-center gap-3">
+            <Image
+              src="/logomarca.png"
+              alt="Logomarca"
+              width={320}
+              height={120}
+              className="h-auto max-h-16 w-full max-w-[280px] object-contain object-center sm:max-h-[4.5rem]"
+              sizes="(max-width: 640px) 85vw, 280px"
+              priority
+            />
+            <Image
+              src="/personagem.png"
+              alt=""
+              width={280}
+              height={420}
+              className="h-auto max-h-36 w-auto object-contain object-bottom md:hidden"
+              sizes="200px"
+              priority
+              aria-hidden
+            />
+          </div>
+          <h1 className="text-center text-xl font-semibold text-text-primary md:text-left">
+            Cadastro de Mobilização
+          </h1>
+          <p className="mt-1 text-center text-sm text-text-secondary md:text-left">
             Preencha seus dados para entrar na base de mobilização.
           </p>
           {contexto ? (
-            <p className="mt-3 text-xs text-text-muted">
+            <p className="mt-3 text-center text-xs text-text-muted md:text-left">
               Liderança: <span className="font-medium text-text-secondary">{contexto.leader.nome}</span>
             </p>
           ) : null}
@@ -268,6 +293,19 @@ export function MobilizacaoDetalheForm() {
             </button>
           </form>
         )}
+        </div>
+
+        <div className="pointer-events-none hidden shrink-0 select-none md:block">
+          <Image
+            src="/personagem.png"
+            alt=""
+            width={280}
+            height={420}
+            className="h-[clamp(14rem,42vh,24rem)] w-auto object-contain object-bottom"
+            sizes="(max-width: 1280px) 35vw, 280px"
+            aria-hidden
+          />
+        </div>
       </div>
     </div>
   )

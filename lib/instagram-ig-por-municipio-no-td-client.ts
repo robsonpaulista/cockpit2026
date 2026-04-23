@@ -6,6 +6,9 @@ export type IgAgregadoMunicipioNoTd = {
   liderados: number
   comentarios: number
   perfisUnicos: number
+  tempoMedioPostComentarioMs: number | null
+  tempoPostComentarioSomaMs: number
+  tempoPostComentarioN: number
 }
 
 type ApiBody = {
@@ -18,11 +21,23 @@ function parseBody(body: ApiBody): Map<string, IgAgregadoMunicipioNoTd> {
   const raw = body.porMunicipio ?? {}
   for (const [nomeOficial, v] of Object.entries(raw)) {
     const key = normalizeMunicipioNome(nomeOficial)
+    const somaT = Math.max(0, Math.floor(Number(v?.tempoPostComentarioSomaMs ?? 0)))
+    const nT = Math.max(0, Math.floor(Number(v?.tempoPostComentarioN ?? 0)))
+    const tempoMedioRaw = v?.tempoMedioPostComentarioMs
+    const tempoMedioPostComentarioMs =
+      typeof tempoMedioRaw === 'number' && Number.isFinite(tempoMedioRaw)
+        ? Math.round(tempoMedioRaw)
+        : nT > 0
+          ? Math.round(somaT / nT)
+          : null
     m.set(key, {
       lideres: Math.max(0, Math.floor(Number(v?.lideres ?? 0))),
       liderados: Math.max(0, Math.floor(Number(v?.liderados ?? 0))),
       comentarios: Math.max(0, Math.floor(Number(v?.comentarios ?? 0))),
       perfisUnicos: Math.max(0, Math.floor(Number(v?.perfisUnicos ?? 0))),
+      tempoMedioPostComentarioMs,
+      tempoPostComentarioSomaMs: somaT,
+      tempoPostComentarioN: nT,
     })
   }
   return m

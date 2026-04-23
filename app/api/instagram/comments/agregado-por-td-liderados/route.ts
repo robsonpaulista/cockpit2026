@@ -32,11 +32,14 @@ function extrairRegiaoTdLead(row: LeadRow): TerritorioDesenvolvimentoPI | null {
 export type InstagramComentariosPorTdAgg = {
   comentarios: number
   perfisUnicos: number
+  tempoPostComentarioSomaMs: number
+  tempoPostComentarioN: number
 }
 
 export type InstagramComentariosAgregadoPorTdLideradosResponse = {
   porTd: Record<string, InstagramComentariosPorTdAgg>
-  semVinculo: InstagramComentariosPorTdAgg
+  /** Comentários / perfis sem vínculo com liderado (sem métrica de tempo por TD). */
+  semVinculo: { comentarios: number; perfisUnicos: number }
   /** Mídias distintas com comentários sincronizados (postagens processadas na base). */
   postagensProcessadas: number
 }
@@ -44,7 +47,7 @@ export type InstagramComentariosAgregadoPorTdLideradosResponse = {
 function mapaTdZero(): Record<string, InstagramComentariosPorTdAgg> {
   const porTd: Record<string, InstagramComentariosPorTdAgg> = {}
   for (const td of TERRITORIOS_DESENVOLVIMENTO_PI) {
-    porTd[td] = { comentarios: 0, perfisUnicos: 0 }
+    porTd[td] = { comentarios: 0, perfisUnicos: 0, tempoPostComentarioSomaMs: 0, tempoPostComentarioN: 0 }
   }
   return porTd
 }
@@ -122,9 +125,12 @@ export async function GET() {
     fromLeads += pageSizeLeads
   }
 
-  const porTdAcc = new Map<TerritorioDesenvolvimentoPI, { comentarios: number; perfis: Set<string> }>()
+  const porTdAcc = new Map<
+    TerritorioDesenvolvimentoPI,
+    { comentarios: number; perfis: Set<string>; tempoPostComentarioSomaMs: number; tempoPostComentarioN: number }
+  >()
   for (const td of TERRITORIOS_DESENVOLVIMENTO_PI) {
-    porTdAcc.set(td, { comentarios: 0, perfis: new Set() })
+    porTdAcc.set(td, { comentarios: 0, perfis: new Set(), tempoPostComentarioSomaMs: 0, tempoPostComentarioN: 0 })
   }
 
   let semComentarios = 0
@@ -134,9 +140,9 @@ export async function GET() {
   const pageSizeComments = 1000
   let fromComments = 0
   for (;;) {
-    const { data, error } = await admin
+      const { data, error } = await admin
       .from('instagram_comments')
-      .select('instagram_comment_id, commenter_username')
+      .select('instagram_comment_id, commenter_username, media_posted_at, commented_at')
       .eq('user_id', userId)
       .order('id', { ascending: true })
       .range(fromComments, fromComments + pageSizeComments - 1)
@@ -168,6 +174,19 @@ export async function GET() {
       if (acc) {
         acc.comentarios += 1
         acc.perfis.add(u)
+        const mediaPosted = (row as { media_posted_at?: string | null }).media_posted_at
+        const commentedAt = (row as { commented_at?: string | null }).commented_at
+        if (mediaPosted && commentedAt) {
+          const t0 = new Date(mediaPosted).getTime()
+          const t1 = new Date(commentedAt).getTime()
+          if (Number.isFinite(t0) && Number.isFinite(t1)) {
+            const delta = t1 - t0
+            if (delta >= 0) {
+              acc.tempoPostComentarioSomaMs += delta
+              acc.tempoPostComentarioN += 1
+            }
+          }
+        }
       }
     }
 
@@ -177,7 +196,12 @@ export async function GET() {
 
   const porTd = mapaTdZero()
   for (const [td, acc] of porTdAcc) {
-    porTd[td] = { comentarios: acc.comentarios, perfisUnicos: acc.perfis.size }
+    porTd[td] = {
+      comentarios: acc.comentarios,
+      perfisUnicos: acc.perfis.size,
+      tempoPostComentarioSomaMs: acc.tempoPostComentarioSomaMs,
+      tempoPostComentarioN: acc.tempoPostComentarioN,
+    }
   }
 
   const body: InstagramComentariosAgregadoPorTdLideradosResponse = {

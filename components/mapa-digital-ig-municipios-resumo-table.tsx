@@ -6,8 +6,14 @@ import { cn } from '@/lib/utils'
 import { ClassificacaoTdBadge } from '@/components/classificacao-td-badge'
 import { CORES_TERRITORIO_DESENVOLVIMENTO_PI } from '@/lib/piaui-territorio-desenvolvimento-cores'
 import type { TerritorioDesenvolvimentoPI } from '@/lib/piaui-territorio-desenvolvimento'
-import type { ClassificacaoTerritorioTd } from '@/lib/piaui-territorio-classificacao'
+import {
+  classificacaoTerritorioTdPorPctEngajamentoIg,
+  pctComentariosPorPostagensProcessadas,
+  rotuloEngajamentoIgPorTipo,
+  tituloTooltipEngajamentoIgComentarios,
+} from '@/lib/instagram-engajamento-ig-classificacao'
 import { normalizeMunicipioNome } from '@/lib/piaui-regiao'
+import { formatTempoMedioPublicacaoComentario } from '@/lib/format-tempo-medio-publicacao-comentario'
 
 const fmtInt = new Intl.NumberFormat('pt-BR')
 
@@ -30,9 +36,8 @@ export type IgMunicipiosResumoLinha = {
   liderados: number
   comentarios: number
   perfisUnicos: number
-  part: number
+  tempoMedioPostComentarioMs: number | null
   rankIg: number
-  visitasMun: number
 }
 
 export type IgMunicipiosSortKey =
@@ -43,8 +48,7 @@ export type IgMunicipiosSortKey =
   | 'liderados'
   | 'comentarios'
   | 'perfis'
-  | 'participacao'
-  | 'vis'
+  | 'tempoMedio'
 
 type Props = {
   visualPreset: 'default' | 'futuristic'
@@ -56,8 +60,17 @@ type Props = {
   indicadorSort: (key: IgMunicipiosSortKey) => string
   maxComentarios: number
   totalComentariosLista: number
-  classificacaoPorMunicipio: Map<string, ClassificacaoTerritorioTd>
-  totais: { mun: number; lideres: number; liderados: number; com: number; perf: number; vis: number }
+  /** Postagens processadas na conta IG (mesma base dos marcadores e da coluna Eng. IG por TD). */
+  postagensProcessadasIg: number
+  totais: {
+    mun: number
+    lideres: number
+    liderados: number
+    com: number
+    perf: number
+    tempoPostComentarioSomaMs: number
+    tempoPostComentarioN: number
+  }
   municipioFocado: string | null
   onAlternarFocoMunicipio: (nome: string) => void
   /** Duplo clique na linha (ou no nome do município) abre o drill mobilização líderes → liderados. */
@@ -74,7 +87,7 @@ export function MapaDigitalIgMunicipiosResumoTable({
   indicadorSort,
   maxComentarios,
   totalComentariosLista,
-  classificacaoPorMunicipio,
+  postagensProcessadasIg,
   totais,
   municipioFocado,
   onAlternarFocoMunicipio,
@@ -173,31 +186,19 @@ export function MapaDigitalIgMunicipiosResumoTable({
             </th>
             <th
               className="td-resumo-table__cell text-right font-medium"
-              title="Comentários vinculados por mil liderados no município"
+              title="Tempo médio entre a publicação da mídia e o comentário (comentários vinculados a liderados deste município)"
             >
               <button
                 type="button"
-                onClick={() => onAlternarSort('participacao')}
+                onClick={() => onAlternarSort('tempoMedio')}
                 className="inline-flex items-center gap-1"
               >
-                /1k <span aria-hidden>{indicadorSort('participacao')}</span>
-              </button>
-            </th>
-            <th
-              className="td-resumo-table__cell text-center font-medium"
-              title="Visitas com check-in (Campo & Agenda) no município"
-            >
-              <button
-                type="button"
-                onClick={() => onAlternarSort('vis')}
-                className="inline-flex w-full items-center justify-center gap-1"
-              >
-                Vis. <span aria-hidden>{indicadorSort('vis')}</span>
+                T. méd. <span aria-hidden>{indicadorSort('tempoMedio')}</span>
               </button>
             </th>
             <th
               className="td-resumo-table__cell td-resumo-table__grupo-status-start text-center font-medium"
-              title="Tercil entre municípios do TD pelo volume de comentários vinculados"
+              title="Engajamento: comentários vinculados ÷ postagens processadas na conta. Baixo: abaixo de 50%; Médio: 50% a 80%; Alto: acima de 80%."
             >
               Eng. IG
             </th>
@@ -205,14 +206,22 @@ export function MapaDigitalIgMunicipiosResumoTable({
         </thead>
         <tbody>
           {linhas.map(
-            ({ nome, lideres, liderados, comentarios, perfisUnicos, part, rankIg, visitasMun }) => {
+            ({ nome, lideres, liderados, comentarios, perfisUnicos, tempoMedioPostComentarioMs, rankIg }) => {
               const selecionado =
                 municipioFocado !== null &&
                 normalizeMunicipioNome(nome) === normalizeMunicipioNome(municipioFocado)
-              const tipoEng = classificacaoPorMunicipio.get(nome) ?? 'baixo-impacto'
+              const pctEng = pctComentariosPorPostagensProcessadas(comentarios, postagensProcessadasIg)
+              const tipoEng = classificacaoTerritorioTdPorPctEngajamentoIg(pctEng)
               const pctTot =
                 totalComentariosLista > 0 ? (comentarios / totalComentariosLista) * 100 : 0
-              const hintEng = `Comentários vinculados: ${fmtInt.format(comentarios)} (${new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 1 }).format(pctTot)}% do total desta lista)`
+              const hintEng = tituloTooltipEngajamentoIgComentarios(
+                comentarios,
+                postagensProcessadasIg,
+                pctEng,
+                totalComentariosLista > 0
+                  ? `Nesta lista: ${new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 1 }).format(pctTot)}% dos comentários vinculados ao TD.`
+                  : undefined
+              )
               const barW =
                 maxComentarios > 0 ? Math.max(8, Math.round((comentarios / maxComentarios) * 100)) : 8
               return (
@@ -311,17 +320,22 @@ export function MapaDigitalIgMunicipiosResumoTable({
                   <td className="td-resumo-table__cell text-right tabular-nums text-text-secondary">
                     {fmtInt.format(perfisUnicos)}
                   </td>
-                  <td className="td-resumo-table__cell text-right tabular-nums text-text-secondary">
-                    {new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 2 }).format(part)}
-                  </td>
-                  <td className="td-resumo-table__cell td-resumo-table__cell--vis text-center tabular-nums text-text-secondary">
-                    {visitasMun}
+                  <td
+                    className="td-resumo-table__cell text-right tabular-nums text-text-secondary whitespace-nowrap"
+                    title={
+                      tempoMedioPostComentarioMs != null
+                        ? `${tempoMedioPostComentarioMs} ms (média publicação → comentário)`
+                        : undefined
+                    }
+                  >
+                    {formatTempoMedioPublicacaoComentario(tempoMedioPostComentarioMs)}
                   </td>
                   <td className="td-resumo-table__cell td-resumo-table__cell--classe td-resumo-table__grupo-status-start">
                     <div className="flex justify-center">
                       <ClassificacaoTdBadge
                         tipo={tipoEng}
                         visualTone={visualPreset === 'futuristic' ? 'futuristic' : 'command'}
+                        labelOverride={rotuloEngajamentoIgPorTipo(tipoEng)}
                         titleOverride={hintEng}
                       />
                     </div>
@@ -355,18 +369,32 @@ export function MapaDigitalIgMunicipiosResumoTable({
             <td className="td-resumo-table__cell text-right tabular-nums font-semibold text-text-primary">
               {fmtInt.format(totais.perf)}
             </td>
-            <td className="td-resumo-table__cell text-right tabular-nums text-text-muted">
-              {totais.liderados > 0
-                ? new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 2 }).format(
-                    (totais.com / totais.liderados) * 1000
-                  )
-                : '—'}
-            </td>
-            <td className="td-resumo-table__cell td-resumo-table__cell--vis text-center tabular-nums font-semibold text-text-primary">
-              {totais.vis}
+            <td className="td-resumo-table__cell text-right tabular-nums text-text-muted whitespace-nowrap">
+              {formatTempoMedioPublicacaoComentario(
+                totais.tempoPostComentarioN > 0
+                  ? Math.round(totais.tempoPostComentarioSomaMs / totais.tempoPostComentarioN)
+                  : null
+              )}
             </td>
             <td className="td-resumo-table__cell td-resumo-table__cell--classe td-resumo-table__grupo-status-start text-center text-text-muted">
-              —
+              <div className="flex justify-center">
+                {(() => {
+                  const pctRod = pctComentariosPorPostagensProcessadas(totais.com, postagensProcessadasIg)
+                  const tipoRod = classificacaoTerritorioTdPorPctEngajamentoIg(pctRod)
+                  return (
+                    <ClassificacaoTdBadge
+                      tipo={tipoRod}
+                      visualTone={visualPreset === 'futuristic' ? 'futuristic' : 'command'}
+                      labelOverride={rotuloEngajamentoIgPorTipo(tipoRod)}
+                      titleOverride={tituloTooltipEngajamentoIgComentarios(
+                        totais.com,
+                        postagensProcessadasIg,
+                        pctRod
+                      )}
+                    />
+                  )
+                })()}
+              </div>
             </td>
           </tr>
         </tfoot>
@@ -377,7 +405,7 @@ export function MapaDigitalIgMunicipiosResumoTable({
           sidebarCollapsed ? 'text-xs sm:text-sm' : 'text-[10px] sm:text-[11px]'
         )}
       >
-        Mesmas colunas do resumo por TD; dados de mobilização e comentários por município (cidade do cadastro).
+        Mesmas colunas do resumo por TD; dados de mobilização e comentários por município (cidade do cadastro). T. méd. = tempo médio da publicação ao comentário.
         {onDrillMobilizacaoMunicipio ? ' Duplo clique na linha abre líderes e liderados (mobilização).' : ''}
       </p>
     </div>

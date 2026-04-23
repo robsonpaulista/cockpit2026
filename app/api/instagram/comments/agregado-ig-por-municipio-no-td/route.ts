@@ -74,6 +74,12 @@ export type IgAgregadoMunicipioNoTd = {
   liderados: number
   comentarios: number
   perfisUnicos: number
+  /** Média aritmética (ms) dos intervalos publicação → comentário, quando ambas as datas existem. */
+  tempoMedioPostComentarioMs: number | null
+  /** Soma dos intervalos (ms) — para média global no rodapé. */
+  tempoPostComentarioSomaMs: number
+  /** Quantidade de comentários com `media_posted_at` e `commented_at` válidos na média deste município. */
+  tempoPostComentarioN: number
 }
 
 export type InstagramIgPorMunicipioNoTdResponse = {
@@ -84,6 +90,7 @@ export type InstagramIgPorMunicipioNoTdResponse = {
 export async function GET(request: Request) {
   const ctx = await requireMobilizacaoAccess()
   if (!ctx.ok) return ctx.response
+  const { userId } = ctx
 
   const { searchParams } = new URL(request.url)
   const tdRaw = (searchParams.get('td') ?? '').trim()
@@ -94,10 +101,24 @@ export async function GET(request: Request) {
 
   const oficialMunicipios = [...getMunicipiosPorTerritorioDesenvolvimentoPI(td)]
 
-  type Acc = { lideres: number; liderados: number; comentarios: number; perfis: Set<string> }
+  type Acc = {
+    lideres: number
+    liderados: number
+    comentarios: number
+    perfis: Set<string>
+    tempoPostComentarioSomaMs: number
+    tempoPostComentarioN: number
+  }
   const porMun = new Map<string, Acc>()
   for (const nome of oficialMunicipios) {
-    porMun.set(nome, { lideres: 0, liderados: 0, comentarios: 0, perfis: new Set() })
+    porMun.set(nome, {
+      lideres: 0,
+      liderados: 0,
+      comentarios: 0,
+      perfis: new Set(),
+      tempoPostComentarioSomaMs: 0,
+      tempoPostComentarioN: 0,
+    })
   }
 
   const admin = createAdminClient()
@@ -226,7 +247,8 @@ export async function GET(request: Request) {
   for (;;) {
     const { data, error } = await admin
       .from('instagram_comments')
-      .select('instagram_comment_id, commenter_username')
+      .select('instagram_comment_id, commenter_username, media_posted_at, commented_at')
+      .eq('user_id', userId)
       .order('id', { ascending: true })
       .range(from, from + pageSize - 1)
 
@@ -250,6 +272,20 @@ export async function GET(request: Request) {
       if (!acc) continue
       acc.comentarios += 1
       acc.perfis.add(u)
+
+      const mediaPosted = (row as { media_posted_at?: string | null }).media_posted_at
+      const commentedAt = (row as { commented_at?: string | null }).commented_at
+      if (mediaPosted && commentedAt) {
+        const t0 = new Date(mediaPosted).getTime()
+        const t1 = new Date(commentedAt).getTime()
+        if (Number.isFinite(t0) && Number.isFinite(t1)) {
+          const delta = t1 - t0
+          if (delta >= 0) {
+            acc.tempoPostComentarioSomaMs += delta
+            acc.tempoPostComentarioN += 1
+          }
+        }
+      }
     }
 
     if (rows.length < pageSize) break
@@ -259,11 +295,15 @@ export async function GET(request: Request) {
   const porMunicipio: Record<string, IgAgregadoMunicipioNoTd> = {}
   for (const nome of oficialMunicipios) {
     const a = porMun.get(nome)!
+    const nT = a.tempoPostComentarioN
     porMunicipio[nome] = {
       lideres: a.lideres,
       liderados: a.liderados,
       comentarios: a.comentarios,
       perfisUnicos: a.perfis.size,
+      tempoMedioPostComentarioMs: nT > 0 ? Math.round(a.tempoPostComentarioSomaMs / nT) : null,
+      tempoPostComentarioSomaMs: a.tempoPostComentarioSomaMs,
+      tempoPostComentarioN: nT,
     }
   }
 

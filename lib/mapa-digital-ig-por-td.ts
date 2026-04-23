@@ -8,6 +8,8 @@ import type { LiderancaPlanilha } from '@/lib/territorio-planilha-agregado-td'
 export type InstagramPorTdAgg = {
   comentarios: number
   perfisUnicos: number
+  tempoPostComentarioSomaMs: number
+  tempoPostComentarioN: number
 }
 
 /** Mapeia handle normalizado → TD a partir da cidade/município da planilha. */
@@ -55,7 +57,12 @@ export function aggregateCommentLeadersPorTd(
       if (L.comment_count > 0) perfisSemVinculo += 1
       continue
     }
-    const cur = porTd.get(td) ?? { comentarios: 0, perfisUnicos: 0 }
+    const cur = porTd.get(td) ?? {
+      comentarios: 0,
+      perfisUnicos: 0,
+      tempoPostComentarioSomaMs: 0,
+      tempoPostComentarioN: 0,
+    }
     cur.comentarios += L.comment_count
     cur.perfisUnicos += 1
     porTd.set(td, cur)

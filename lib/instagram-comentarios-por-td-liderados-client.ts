@@ -12,7 +12,15 @@ export type InstagramComentariosAgregadoPorTdLideradosPayload = {
 }
 
 type ApiBody = {
-  porTd?: Record<string, { comentarios?: number; perfisUnicos?: number }>
+  porTd?: Record<
+    string,
+    {
+      comentarios?: number
+      perfisUnicos?: number
+      tempoPostComentarioSomaMs?: number
+      tempoPostComentarioN?: number
+    }
+  >
   semVinculo?: { comentarios?: number; perfisUnicos?: number }
   postagensProcessadas?: number
 }
@@ -20,7 +28,7 @@ type ApiBody = {
 export function mapaInstagramComentariosPorTdVazio(): Map<TerritorioDesenvolvimentoPI, InstagramPorTdAgg> {
   const m = new Map<TerritorioDesenvolvimentoPI, InstagramPorTdAgg>()
   for (const td of TERRITORIOS_DESENVOLVIMENTO_PI) {
-    m.set(td, { comentarios: 0, perfisUnicos: 0 })
+    m.set(td, { comentarios: 0, perfisUnicos: 0, tempoPostComentarioSomaMs: 0, tempoPostComentarioN: 0 })
   }
   return m
 }
@@ -42,6 +50,8 @@ function parsePayload(json: ApiBody): InstagramComentariosAgregadoPorTdLiderados
       porTd.set(td, {
         comentarios: Number(v.comentarios ?? 0),
         perfisUnicos: Number(v.perfisUnicos ?? 0),
+        tempoPostComentarioSomaMs: Math.max(0, Math.floor(Number(v.tempoPostComentarioSomaMs ?? 0))),
+        tempoPostComentarioN: Math.max(0, Math.floor(Number(v.tempoPostComentarioN ?? 0))),
       })
     }
   }
