@@ -6,27 +6,22 @@ import {
   TERRITORIOS_DESENVOLVIMENTO_PI,
   type TerritorioDesenvolvimentoPI,
 } from '@/lib/piaui-territorio-desenvolvimento'
+import { tdTerritorialPorLeadRowLike } from '@/lib/mobilizacao-td-por-municipio-leader'
 
 export const dynamic = 'force-dynamic'
 
 const TD_SET = new Set<string>(TERRITORIOS_DESENVOLVIMENTO_PI)
 
-type CoordRow = { regiao: string | null }
 type LeaderJoin = {
   id: string
   nome: string
-  coordinators: CoordRow | CoordRow[] | null
+  cidade: string | null
+  municipio: string | null
 }
 type LeadRow = {
+  cidade: string | null
   instagram: string | null
   leaders: LeaderJoin | LeaderJoin[] | null
-}
-
-function regiaoTdDeCoord(C: CoordRow | CoordRow[] | null | undefined): TerritorioDesenvolvimentoPI | null {
-  const coord = Array.isArray(C) ? C[0] : C
-  const regiao = coord?.regiao?.trim() ?? ''
-  if (!regiao || !TD_SET.has(regiao)) return null
-  return regiao as TerritorioDesenvolvimentoPI
 }
 
 export type LiderInstagramCoberturaDto = {
@@ -62,11 +57,13 @@ export async function GET(request: Request) {
       .select(
         `
         instagram,
+        cidade,
         status,
         leaders!inner (
           id,
           nome,
-          coordinators!inner ( regiao )
+          cidade,
+          municipio
         )
       `
       )
@@ -87,7 +84,7 @@ export async function GET(request: Request) {
       const L = row.leaders
       const leader = Array.isArray(L) ? L[0] : L
       if (!leader?.id) continue
-      const td = regiaoTdDeCoord(leader.coordinators)
+      const td = tdTerritorialPorLeadRowLike(row)
       if (filtroTd !== null && td !== filtroTd) continue
 
       const h = normalizeInstagramHandle(row.instagram)

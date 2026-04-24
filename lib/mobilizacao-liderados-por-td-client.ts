@@ -16,7 +16,7 @@ function mapFromRecord(rec: Record<string, number> | undefined): Map<TerritorioD
   return map
 }
 
-/** Contagens da mobilização por TD: `leaders` e `leads_militancia` (região do coordenador), mesma base de /dashboard/mobilizacao/config */
+/** Contagens da mobilização por TD: `leaders` e `leads_militancia` pelo município/cidade da liderança (mapa oficial), mesma base de /dashboard/mobilizacao/config */
 export async function fetchMobilizacaoPorTdMaps(): Promise<FetchMobilizacaoPorTdMapsResult> {
   const res = await fetch('/api/mobilizacao/liderados-por-td')
   if (res.status === 401 || res.status === 403) {

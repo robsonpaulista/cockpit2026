@@ -17,7 +17,7 @@ import type { TerritorioDesenvolvimentoPI } from '@/lib/piaui-territorio-desenvo
 import { INSTAGRAM_COMMENTS_SYNCED_EVENT } from '@/lib/instagram-comments-sync-events'
 
 type Props = {
-  /** Filtro opcional: só líderes cujo TD do coordenador coincide. */
+  /** Filtro opcional: só líderes cujo TD (município da liderança) coincide. */
   territorioFoco: TerritorioDesenvolvimentoPI | null
   sidebarCollapsed: boolean
   visualPreset: 'default' | 'futuristic'

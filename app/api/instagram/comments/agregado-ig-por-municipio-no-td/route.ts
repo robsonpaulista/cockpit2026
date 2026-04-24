@@ -8,38 +8,20 @@ import {
   TERRITORIOS_DESENVOLVIMENTO_PI,
   type TerritorioDesenvolvimentoPI,
 } from '@/lib/piaui-territorio-desenvolvimento'
+import { tdTerritorialPorLeadRowLike, tdTerritorialPorLeaderRowLike } from '@/lib/mobilizacao-td-por-municipio-leader'
 
 export const dynamic = 'force-dynamic'
 
 const TD_SET = new Set<string>(TERRITORIOS_DESENVOLVIMENTO_PI)
 
-type CoordRow = { regiao: string | null }
-type LeaderJoin = { cidade: string | null; municipio: string | null; coordinators: CoordRow | CoordRow[] | null }
+type LeaderJoin = { cidade: string | null; municipio: string | null }
 type LeadRow = {
   cidade: string | null
   instagram: string | null
   status: string
   leaders: LeaderJoin | LeaderJoin[] | null
 }
-type LeaderRow = { cidade: string | null; municipio: string | null; coordinators: CoordRow | CoordRow[] | null }
-
-function regiaoTdDeCoordJoin(C: CoordRow | CoordRow[] | null | undefined): TerritorioDesenvolvimentoPI | null {
-  const coord = Array.isArray(C) ? C[0] : C
-  const regiao = coord?.regiao?.trim() ?? ''
-  if (!regiao || !TD_SET.has(regiao)) return null
-  return regiao as TerritorioDesenvolvimentoPI
-}
-
-function extrairRegiaoTdLead(row: LeadRow): TerritorioDesenvolvimentoPI | null {
-  const L = row.leaders
-  const leader = Array.isArray(L) ? L[0] : L
-  if (!leader) return null
-  return regiaoTdDeCoordJoin(leader.coordinators)
-}
-
-function extrairRegiaoTdLeader(row: LeaderRow): TerritorioDesenvolvimentoPI | null {
-  return regiaoTdDeCoordJoin(row.coordinators)
-}
+type LeaderRow = { cidade: string | null; municipio: string | null }
 
 function cidadeLeadPreferida(row: LeadRow): string {
   const L = row.leaders
@@ -134,8 +116,7 @@ export async function GET(request: Request) {
         status,
         leaders!inner (
           cidade,
-          municipio,
-          coordinators!inner ( regiao )
+          municipio
         )
       `
       )
@@ -151,7 +132,7 @@ export async function GET(request: Request) {
     if (rows.length === 0) break
 
     for (const row of rows) {
-      const tdRow = extrairRegiaoTdLead(row)
+      const tdRow = tdTerritorialPorLeadRowLike(row)
       if (tdRow !== td) continue
       const official = resolveOfficialMunicipio(cidadeLeadPreferida(row), oficialMunicipios)
       if (!official) continue
@@ -170,8 +151,7 @@ export async function GET(request: Request) {
       .select(
         `
         cidade,
-        municipio,
-        coordinators!inner ( regiao )
+        municipio
       `
       )
       .order('id', { ascending: true })
@@ -185,7 +165,7 @@ export async function GET(request: Request) {
     if (rows.length === 0) break
 
     for (const row of rows) {
-      const tdRow = extrairRegiaoTdLeader(row)
+      const tdRow = tdTerritorialPorLeaderRowLike(row)
       if (tdRow !== td) continue
       const official = resolveOfficialMunicipio(cidadeLeaderPreferida(row), oficialMunicipios)
       if (!official) continue
@@ -209,8 +189,7 @@ export async function GET(request: Request) {
         status,
         leaders!inner (
           cidade,
-          municipio,
-          coordinators!inner ( regiao )
+          municipio
         )
       `
       )
@@ -229,7 +208,7 @@ export async function GET(request: Request) {
     for (const row of rows) {
       const igNorm = normalizeInstagramHandle(row.instagram)
       if (!igNorm) continue
-      const tdRow = extrairRegiaoTdLead(row)
+      const tdRow = tdTerritorialPorLeadRowLike(row)
       if (!tdRow) continue
       const official = resolveOfficialMunicipio(cidadeLeadPreferida(row), oficialMunicipios)
       if (!official) continue

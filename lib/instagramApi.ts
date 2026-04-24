@@ -401,6 +401,43 @@ export type InstagramCommentsSyncResult = {
   resetAt?: number
 }
 
+function parseInstagramCommentsSyncResponse(
+  response: Response,
+  rawBody: string
+): InstagramCommentsSyncResult {
+  const trimmed = rawBody.trim()
+  if (!trimmed) {
+    return {
+      success: false,
+      error: `Resposta vazia do servidor (HTTP ${response.status}).`,
+    }
+  }
+
+  const looksLikeHtml =
+    trimmed.startsWith('<') ||
+    /^An error occurred/i.test(trimmed) ||
+    /^Application error/i.test(trimmed)
+
+  if (looksLikeHtml) {
+    return {
+      success: false,
+      error:
+        response.status >= 500
+          ? 'O servidor devolveu uma página de erro em vez de dados (possível timeout ou limite da plataforma). Tente de novo em instantes ou com menos publicações na sincronização.'
+          : `A sincronização falhou (HTTP ${response.status}) e o servidor não devolveu JSON.`,
+    }
+  }
+
+  try {
+    return JSON.parse(trimmed) as InstagramCommentsSyncResult
+  } catch {
+    return {
+      success: false,
+      error: `Resposta inválida do servidor (HTTP ${response.status}). Tente novamente.`,
+    }
+  }
+}
+
 /**
  * Sincroniza comentários das publicações recentes para o banco (servidor + Supabase).
  */
@@ -419,7 +456,8 @@ export async function syncInstagramComments(
         maxMedia: maxMedia ?? undefined,
       }),
     })
-    const data = (await response.json()) as InstagramCommentsSyncResult
+    const raw = await response.text()
+    const data = parseInstagramCommentsSyncResponse(response, raw)
     if (!response.ok) {
       return {
         success: false,

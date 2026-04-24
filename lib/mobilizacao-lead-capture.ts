@@ -44,6 +44,11 @@ export function normalizeInstagramHandle(raw?: string | null): string | null {
   return semEspacos.toLowerCase()
 }
 
+/** Indica se há @ de Instagram cadastrado (mesmo critério de `normalizeInstagramHandle` / mapa digital). */
+export function lideradoTemInstagramCadastrado(raw?: string | null): boolean {
+  return normalizeInstagramHandle(raw) != null
+}
+
 type LeaderRowForLead = {
   id: string
   cidade: string | null

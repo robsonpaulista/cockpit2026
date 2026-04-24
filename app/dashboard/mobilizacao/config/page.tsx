@@ -6,6 +6,7 @@ import {
   getTodosMunicipiosPIOficiaisOrdenados,
   resolverNomeMunicipioPIOficial,
 } from '@/lib/piaui-territorio-desenvolvimento'
+import { lideradoTemInstagramCadastrado } from '@/lib/mobilizacao-lead-capture'
 
 type Coordinator = {
   id: string
@@ -45,27 +46,25 @@ function leaderNomeFromLiderado(row: Liderado): string {
   return l.nome
 }
 
-function lideradoTemInstagramPreenchido(instagram: string | null | undefined): boolean {
-  const s = String(instagram ?? '')
-    .replace(/^@+/g, '')
-    .trim()
-  return s.length > 0
-}
-
-/** Conta só liderados com status ativo (mesma base do mapa / mobilização). */
+/** Conta só liderados com status ativo (lista local — ex.: amostra carregada na tela). */
 function contagemInstagramLideradosAtivos(lids: Liderado[]): {
   ativos: number
   comInstagram: number
   semInstagram: number
 } {
   const ativos = lids.filter((r) => String(r.status).toLowerCase() === 'ativo')
-  const comInstagram = ativos.filter((r) => lideradoTemInstagramPreenchido(r.instagram)).length
+  const comInstagram = ativos.filter((r) => lideradoTemInstagramCadastrado(r.instagram)).length
   return { ativos: ativos.length, comInstagram, semInstagram: ativos.length - comInstagram }
+}
+
+type ArvoreCidadeBlock = {
+  cidade: string
+  leaders: { leader: Leader; liderados: Liderado[] }[]
 }
 
 type ArvoreCoordBlock = {
   coordinator: Coordinator
-  leaders: { leader: Leader; liderados: Liderado[] }[]
+  cidades: ArvoreCidadeBlock[]
 }
 
 /** React ainda não tipa `defaultOpen` em `<details>` em algumas versões de @types/react. */
@@ -86,6 +85,11 @@ export default function MobilizacaoConfigPage() {
   const [coordinators, setCoordinators] = useState<Coordinator[]>([])
   const [leaders, setLeaders] = useState<Leader[]>([])
   const [liderados, setLiderados] = useState<Liderado[]>([])
+  const [lideradosResumo, setLideradosResumo] = useState<{
+    ativos: number
+    comPerfil: number
+    semPerfil: number
+  } | null>(null)
 
   const [coordNome, setCoordNome] = useState('')
   const [coordRegiao, setCoordRegiao] = useState('')
@@ -107,6 +111,7 @@ export default function MobilizacaoConfigPage() {
   const [mensagem, setMensagem] = useState<string | null>(null)
 
   const [atualizando, setAtualizando] = useState(false)
+  const [importandoTerritorio, setImportandoTerritorio] = useState(false)
   const [salvandoCrud, setSalvandoCrud] = useState(false)
   const [editCoord, setEditCoord] = useState<{ id: string; nome: string; regiao: string } | null>(null)
   const [editLeader, setEditLeader] = useState<{
@@ -150,6 +155,7 @@ export default function MobilizacaoConfigPage() {
         coordinators?: Coordinator[]
         leaders?: Leader[]
         liderados?: Liderado[]
+        lideradosResumo?: { ativos: number; comPerfil: number; semPerfil: number }
       }
       if (!res.ok) {
         setErro(payload.error ?? 'Não foi possível carregar a configuração de mobilização.')
@@ -158,6 +164,14 @@ export default function MobilizacaoConfigPage() {
       setCoordinators(payload.coordinators ?? [])
       setLeaders(payload.leaders ?? [])
       setLiderados(payload.liderados ?? [])
+      setLideradosResumo(
+        payload.lideradosResumo &&
+          typeof payload.lideradosResumo.ativos === 'number' &&
+          typeof payload.lideradosResumo.comPerfil === 'number' &&
+          typeof payload.lideradosResumo.semPerfil === 'number'
+          ? payload.lideradosResumo
+          : null
+      )
       if (!leaderCoordinatorId && (payload.coordinators ?? []).length > 0) {
         setLeaderCoordinatorId(payload.coordinators?.[0]?.id ?? '')
       }
@@ -172,6 +186,64 @@ export default function MobilizacaoConfigPage() {
     } finally {
       if (modo === 'full') setCarregando(false)
       if (modo === 'refresh') setAtualizando(false)
+    }
+  }
+
+  const handleImportarLiderancasDoTerritorio = async () => {
+    if (
+      !window.confirm(
+        'Importar da planilha Google do Território as lideranças por município (mesmo critério da lista em Território), para a tabela de lideranças desta página?\n\n' +
+          '• Não importa Parnaíba nem Campo Maior.\n' +
+          '• Não duplica nome + município já cadastrado.\n' +
+          '• Vincula ao coordenador cujo «Território (região)» é o TD do município; se não houver coordenador para aquele TD, a liderança entra sem coordenador (podes editar depois).\n\n' +
+          'Continuar?'
+      )
+    ) {
+      return
+    }
+    setImportandoTerritorio(true)
+    setErro(null)
+    setMensagem(null)
+    try {
+      const res = await fetch('/api/mobilizacao/config/import-leaders-from-territorio-sheet', {
+        method: 'POST',
+      })
+      const payload = (await res.json().catch(() => ({}))) as {
+        error?: string
+        message?: string
+        inserted?: number
+        skippedDuplicate?: number
+        skippedExcludedMunicipio?: number
+        insertedSemCoordenador?: number
+        details?: string
+      }
+      if (!res.ok) {
+        setErro(
+          payload.details
+            ? `${payload.error ?? 'Erro.'} (${payload.details})`
+            : (payload.error ?? 'Falha na importação.')
+        )
+        return
+      }
+      const bits = [
+        payload.message ?? 'Importação concluída.',
+        typeof payload.inserted === 'number' ? `Inseridas: ${payload.inserted}` : null,
+        typeof payload.skippedDuplicate === 'number' && payload.skippedDuplicate > 0
+          ? `Já existentes: ${payload.skippedDuplicate}`
+          : null,
+        typeof payload.skippedExcludedMunicipio === 'number' && payload.skippedExcludedMunicipio > 0
+          ? `Ignoradas (Parnaíba/Campo Maior): ${payload.skippedExcludedMunicipio}`
+          : null,
+        typeof payload.insertedSemCoordenador === 'number' && payload.insertedSemCoordenador > 0
+          ? `Sem coordenador (TD sem coord. na base): ${payload.insertedSemCoordenador}`
+          : null,
+      ].filter(Boolean)
+      setMensagem(bits.join(' · '))
+      await carregarDados({ modo: 'quiet' })
+    } catch {
+      setErro('Falha de conexão na importação.')
+    } finally {
+      setImportandoTerritorio(false)
     }
   }
 
@@ -503,22 +575,56 @@ export default function MobilizacaoConfigPage() {
     const sortLideradoData = (a: Liderado, b: Liderado) =>
       new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
 
+    const labelCidadeLeader = (leader: Leader): string => {
+      const m = leader.municipio?.trim() || leader.cidade?.trim()
+      return m && m.length > 0 ? m : '—'
+    }
+
+    const agruparPorCidade = (lista: Leader[]): ArvoreCidadeBlock[] => {
+      const comLiderados = lista
+        .sort(sortNome)
+        .map((leader) => ({
+          leader,
+          liderados: [...(lidByLeader.get(leader.id) ?? [])].sort(sortLideradoData),
+        }))
+      const porCidade = new Map<string, { leader: Leader; liderados: Liderado[] }[]>()
+      for (const item of comLiderados) {
+        const cidade = labelCidadeLeader(item.leader)
+        if (!porCidade.has(cidade)) porCidade.set(cidade, [])
+        porCidade.get(cidade)!.push(item)
+      }
+      return Array.from(porCidade.entries())
+        .sort(([a], [b]) => a.localeCompare(b, 'pt-BR', { sensitivity: 'base' }))
+        .map(([cidade, leadersDaCidade]) => ({
+          cidade,
+          leaders: leadersDaCidade.sort((x, y) => sortNome(x.leader, y.leader)),
+        }))
+    }
+
     const blocos: ArvoreCoordBlock[] = [...coordinators]
       .sort(sortNome)
       .map((coordinator) => ({
         coordinator,
-        leaders: (leadersByCoord.get(coordinator.id) ?? [])
-          .sort(sortNome)
-          .map((leader) => ({
-            leader,
-            liderados: [...(lidByLeader.get(leader.id) ?? [])].sort(sortLideradoData),
-          })),
+        cidades: agruparPorCidade(leadersByCoord.get(coordinator.id) ?? []),
       }))
 
-    return { blocos, orphanLeaders, lidByLeader }
+    const orphanCidades = agruparPorCidade(orphanLeaders)
+    const orphanTotalLiderancas = orphanCidades.reduce((acc, c) => acc + c.leaders.length, 0)
+    const orphanTotalCidades = orphanCidades.length
+
+    return { blocos, orphanCidades, lidByLeader, orphanTotalLiderancas, orphanTotalCidades }
   }, [coordinators, leaders, liderados])
 
-  const resumoInstagramLideradosAtivos = useMemo(() => contagemInstagramLideradosAtivos(liderados), [liderados])
+  const resumoInstagramLideradosAtivos = useMemo(() => {
+    if (lideradosResumo) {
+      return {
+        ativos: lideradosResumo.ativos,
+        comInstagram: lideradosResumo.comPerfil,
+        semInstagram: lideradosResumo.semPerfil,
+      }
+    }
+    return contagemInstagramLideradosAtivos(liderados)
+  }, [liderados, lideradosResumo])
 
   const lideradosSemLiderNoCarregamento = useMemo(() => {
     const ids = new Set(leaders.map((l) => l.id))
@@ -645,6 +751,28 @@ export default function MobilizacaoConfigPage() {
       </section>
 
       <section className="rounded-xl border border-card bg-surface p-4">
+        <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-text-muted">
+          Importar lideranças do Território (planilha)
+        </h2>
+        <p className="mb-3 text-xs text-text-muted">
+          Lê a mesma planilha Google usada em Território (expectativa / lideranças por município) e cria linhas na
+          tabela <span className="font-medium text-text-secondary">leaders</span> para cada nome encontrado, com
+          município oficial do PI e TD resolvido pela base do mapa.{' '}
+          <span className="font-medium text-text-secondary">Parnaíba</span> e{' '}
+          <span className="font-medium text-text-secondary">Campo Maior</span> são ignorados. Não duplica
+          combinação nome + município já existente.
+        </p>
+        <button
+          type="button"
+          onClick={() => void handleImportarLiderancasDoTerritorio()}
+          disabled={importandoTerritorio || carregando}
+          className="rounded-lg border border-accent-gold/50 bg-accent-gold/10 px-4 py-2 text-sm font-semibold text-text-primary hover:bg-accent-gold/20 disabled:opacity-60"
+        >
+          {importandoTerritorio ? 'Importando…' : 'Importar lideranças da planilha do Território'}
+        </button>
+      </section>
+
+      <section className="rounded-xl border border-card bg-surface p-4">
         <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-text-muted">
           Novo liderado (cadastro manual)
         </h2>
@@ -702,14 +830,14 @@ export default function MobilizacaoConfigPage() {
 
       <section className="rounded-xl border border-card bg-surface p-4">
         <h2 className="mb-1 text-sm font-semibold uppercase tracking-wide text-text-muted">
-          Estrutura: coordenador → lideranças → liderados
+          Estrutura: coordenador → cidade → lideranças → liderados
         </h2>
         <div className="mb-3 rounded-lg border border-accent-gold/40 bg-accent-gold/10 px-3 py-2.5">
           <p className="text-[11px] font-semibold uppercase tracking-wide text-text-muted">
             Lideranças — liderados ativos e Instagram
           </p>
           {resumoInstagramLideradosAtivos.ativos === 0 ? (
-            <p className="mt-1 text-sm text-text-secondary">Nenhum liderado com status ativo no carregamento atual.</p>
+            <p className="mt-1 text-sm text-text-secondary">Nenhum liderado com status ativo na base.</p>
           ) : (
             <div className="mt-1.5 flex flex-wrap items-baseline gap-x-4 gap-y-1 text-sm">
               <span className="font-semibold text-status-success">
@@ -723,8 +851,9 @@ export default function MobilizacaoConfigPage() {
           )}
         </div>
         <p className="mb-4 text-xs text-text-muted">
-          Liderados listados são os recentes carregados nesta tela (até 500), agrupados pela liderança. Use
-          &quot;Atualizar dados&quot; para recarregar.
+          Os totais com / sem @ referem-se a <span className="font-medium">todos</span> os liderados ativos na base. A
+          árvore abaixo usa a lista recente (até 500) por liderança, agrupando por coordenador → cidade (município da
+          liderança) → liderança. Use &quot;Atualizar dados&quot; para recarregar.
         </p>
         {carregando ? (
           <p className="text-sm text-text-secondary">Carregando estrutura...</p>
@@ -732,7 +861,10 @@ export default function MobilizacaoConfigPage() {
           <p className="text-sm text-text-secondary">Nenhum coordenador nem liderança cadastrados.</p>
         ) : (
           <div className="space-y-4">
-            {arvorePorCoordenador.blocos.map(({ coordinator, leaders: leadersNo }) => (
+            {arvorePorCoordenador.blocos.map(({ coordinator, cidades: cidadesNo }) => {
+              const nLiderancas = cidadesNo.reduce((acc, c) => acc + c.leaders.length, 0)
+              const nCidades = cidadesNo.length
+              return (
               <details
                 key={coordinator.id}
                 className="group overflow-hidden rounded-lg border border-card bg-background/40 open:shadow-sm"
@@ -748,8 +880,8 @@ export default function MobilizacaoConfigPage() {
                   <div className="min-w-0 flex-1">
                     <p className="font-semibold text-text-primary">{coordinator.nome}</p>
                     <p className="text-xs text-text-secondary">
-                      TD / região: {coordinator.regiao ?? '—'} · {leadersNo.length} liderança
-                      {leadersNo.length !== 1 ? 's' : ''}
+                      TD / região: {coordinator.regiao ?? '—'} · {nCidades} cidade{nCidades !== 1 ? 's' : ''} ·{' '}
+                      {nLiderancas} liderança{nLiderancas !== 1 ? 's' : ''}
                     </p>
                   </div>
                 </summary>
@@ -827,10 +959,20 @@ export default function MobilizacaoConfigPage() {
                   ) : null}
                 </div>
                 <div className="space-y-0 border-t border-card/60 divide-y divide-card/60">
-                  {leadersNo.length === 0 ? (
+                  {nLiderancas === 0 ? (
                     <p className="px-3 py-2 text-sm text-text-muted">Nenhuma liderança nesta coordenação.</p>
                   ) : (
-                    leadersNo.map(({ leader, liderados: lideradosDo }) => {
+                    cidadesNo.map(({ cidade, leaders: leadersDaCidade }) => (
+                      <div key={`${coordinator.id}|${cidade}`} className="border-b border-card/50 last:border-b-0">
+                        <div className="bg-card/35 px-3 py-2 pl-6">
+                          <p className="text-[10px] font-semibold uppercase tracking-wide text-text-muted">Cidade</p>
+                          <p className="text-sm font-medium text-text-primary">{cidade}</p>
+                          <p className="text-[11px] text-text-secondary">
+                            {leadersDaCidade.length} liderança{leadersDaCidade.length !== 1 ? 's' : ''}
+                          </p>
+                        </div>
+                        <div className="divide-y divide-card/40">
+                          {leadersDaCidade.map(({ leader, liderados: lideradosDo }) => {
                       const link = baseCaptacaoUrl ? `${baseCaptacaoUrl}?leader_id=${leader.id}` : ''
                       const igLid = contagemInstagramLideradosAtivos(lideradosDo)
                       return (
@@ -1159,13 +1301,17 @@ export default function MobilizacaoConfigPage() {
                           </div>
                         </details>
                       )
-                    })
+                    })}
+                        </div>
+                      </div>
+                    ))
                   )}
                 </div>
               </details>
-            ))}
+              )
+            })}
 
-            {arvorePorCoordenador.orphanLeaders.length > 0 ? (
+            {arvorePorCoordenador.orphanCidades.length > 0 ? (
               <details
                 className="group overflow-hidden rounded-lg border border-dashed border-status-danger/40 bg-background/40 open:shadow-sm"
                 {...detailsAbertoPorPadrao}
@@ -1180,18 +1326,25 @@ export default function MobilizacaoConfigPage() {
                   <div className="min-w-0 flex-1">
                     <p className="text-sm font-semibold text-text-primary">Lideranças sem coordenador vinculado</p>
                     <p className="text-xs text-text-secondary">
-                      Associe um coordenador ou corrija o cadastro · {arvorePorCoordenador.orphanLeaders.length}{' '}
+                      Associe um coordenador ou corrija o cadastro · {arvorePorCoordenador.orphanTotalCidades} cidade
+                      {arvorePorCoordenador.orphanTotalCidades !== 1 ? 's' : ''} · {arvorePorCoordenador.orphanTotalLiderancas}{' '}
                       liderança
-                      {arvorePorCoordenador.orphanLeaders.length !== 1 ? 's' : ''}
+                      {arvorePorCoordenador.orphanTotalLiderancas !== 1 ? 's' : ''}
                     </p>
                   </div>
                 </summary>
                 <div className="space-y-0 border-t border-card/60 divide-y divide-card/60">
-                  {arvorePorCoordenador.orphanLeaders
-                    .slice()
-                    .sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR', { sensitivity: 'base' }))
-                    .map((leader) => {
-                      const lid = arvorePorCoordenador.lidByLeader.get(leader.id) ?? []
+                  {arvorePorCoordenador.orphanCidades.map(({ cidade, leaders: leadersDaCidade }) => (
+                    <div key={`orphan|${cidade}`} className="border-b border-card/50 last:border-b-0">
+                      <div className="bg-status-danger/5 px-3 py-2 pl-6">
+                        <p className="text-[10px] font-semibold uppercase tracking-wide text-text-muted">Cidade</p>
+                        <p className="text-sm font-medium text-text-primary">{cidade}</p>
+                        <p className="text-[11px] text-text-secondary">
+                          {leadersDaCidade.length} liderança{leadersDaCidade.length !== 1 ? 's' : ''}
+                        </p>
+                      </div>
+                      <div className="divide-y divide-card/40">
+                        {leadersDaCidade.map(({ leader, liderados: lid }) => {
                       const igLid = contagemInstagramLideradosAtivos(lid)
                       const link = baseCaptacaoUrl ? `${baseCaptacaoUrl}?leader_id=${leader.id}` : ''
                       return (
@@ -1513,6 +1666,9 @@ export default function MobilizacaoConfigPage() {
                         </details>
                       )
                     })}
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </details>
             ) : null}

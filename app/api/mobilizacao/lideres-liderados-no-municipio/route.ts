@@ -13,30 +13,18 @@ import {
   TERRITORIOS_DESENVOLVIMENTO_PI,
   type TerritorioDesenvolvimentoPI,
 } from '@/lib/piaui-territorio-desenvolvimento'
+import { tdTerritorialPorLeaderRowLike } from '@/lib/mobilizacao-td-por-municipio-leader'
 
 export const dynamic = 'force-dynamic'
 
 const TD_SET = new Set<string>(TERRITORIOS_DESENVOLVIMENTO_PI)
 
-type CoordRow = { regiao: string | null }
 type LeaderRow = {
   id: string
   nome: string
   telefone: string | null
   cidade: string | null
   municipio: string | null
-  coordinators: CoordRow | CoordRow[] | null
-}
-
-function regiaoTdDeCoordJoin(C: CoordRow | CoordRow[] | null | undefined): TerritorioDesenvolvimentoPI | null {
-  const coord = Array.isArray(C) ? C[0] : C
-  const regiao = coord?.regiao?.trim() ?? ''
-  if (!regiao || !TD_SET.has(regiao)) return null
-  return regiao as TerritorioDesenvolvimentoPI
-}
-
-function extrairRegiaoTdLeader(row: LeaderRow): TerritorioDesenvolvimentoPI | null {
-  return regiaoTdDeCoordJoin(row.coordinators)
 }
 
 function cidadeLeaderPreferida(row: LeaderRow): string {
@@ -92,8 +80,7 @@ export async function GET(request: Request) {
         nome,
         telefone,
         cidade,
-        municipio,
-        coordinators!inner ( regiao )
+        municipio
       `
       )
       .order('nome', { ascending: true })
@@ -107,7 +94,7 @@ export async function GET(request: Request) {
     if (rows.length === 0) break
 
     for (const row of rows) {
-      const tdRow = extrairRegiaoTdLeader(row)
+      const tdRow = tdTerritorialPorLeaderRowLike(row)
       if (tdRow !== td) continue
       const official = resolveOfficialMunicipio(cidadeLeaderPreferida(row), oficialMunicipios)
       if (official !== munOficial) continue

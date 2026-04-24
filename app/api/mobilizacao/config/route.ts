@@ -4,6 +4,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { requireMobilizacaoAccess } from '@/lib/mobilizacao-require-access'
 import {
   insertMilitanciaLead,
+  lideradoTemInstagramCadastrado,
   normalizeInstagramHandle,
   normalizeWhatsappDigits,
 } from '@/lib/mobilizacao-lead-capture'
@@ -15,6 +16,40 @@ import {
 export const dynamic = 'force-dynamic'
 
 const TERRITORIOS_TD_PI = TERRITORIOS_DESENVOLVIMENTO_PI as readonly string[]
+
+const LIDERADOS_LIST_PAGE = 2000
+
+async function resumoLideradosAtivosInstagram(
+  admin: ReturnType<typeof createAdminClient>
+): Promise<{ ativos: number; comPerfil: number; semPerfil: number }> {
+  let ativos = 0
+  let comPerfil = 0
+  let from = 0
+  for (;;) {
+    const { data, error } = await admin
+      .from('leads_militancia')
+      .select('instagram')
+      .eq('status', 'ativo')
+      .order('id', { ascending: true })
+      .range(from, from + LIDERADOS_LIST_PAGE - 1)
+
+    if (error) {
+      console.error('[mobilizacao/config] resumo liderados IG', error)
+      throw error
+    }
+    const rows = data ?? []
+    if (rows.length === 0) break
+    for (const row of rows) {
+      ativos += 1
+      if (lideradoTemInstagramCadastrado((row as { instagram: string | null }).instagram)) {
+        comPerfil += 1
+      }
+    }
+    if (rows.length < LIDERADOS_LIST_PAGE) break
+    from += LIDERADOS_LIST_PAGE
+  }
+  return { ativos, comPerfil, semPerfil: ativos - comPerfil }
+}
 
 const createCoordinatorSchema = z.object({
   tipo: z.literal('coordinator'),
@@ -118,10 +153,18 @@ export async function GET() {
     return NextResponse.json({ error: 'Erro ao carregar configurações de mobilização' }, { status: 500 })
   }
 
+  let lideradosResumo: { ativos: number; comPerfil: number; semPerfil: number } | null = null
+  try {
+    lideradosResumo = await resumoLideradosAtivosInstagram(admin)
+  } catch {
+    lideradosResumo = null
+  }
+
   return NextResponse.json({
     coordinators: coordinators ?? [],
     leaders: leaders ?? [],
     liderados: liderados ?? [],
+    lideradosResumo: lideradosResumo ?? undefined,
   })
 }
 

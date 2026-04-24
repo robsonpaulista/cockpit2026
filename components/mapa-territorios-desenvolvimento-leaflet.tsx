@@ -4547,7 +4547,7 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({
                       </th>
                       <th
                         className="td-resumo-table__cell text-right font-medium"
-                        title="Líderes (tabela leaders) por TD do coordenador — /dashboard/mobilizacao/config"
+                        title="Líderes (tabela leaders) por TD — município/cidade da liderança — /dashboard/mobilizacao/config"
                       >
                         <button
                           type="button"
@@ -4559,7 +4559,7 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({
                       </th>
                       <th
                         className="td-resumo-table__cell text-right font-medium"
-                        title="Liderados cadastrados na mobilização (por TD do coordenador) — mesma base de /dashboard/mobilizacao/config"
+                        title="Liderados na mobilização por TD da liderança (município) — mesma base de /dashboard/mobilizacao/config"
                       >
                         <button
                           type="button"
@@ -4571,7 +4571,7 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({
                       </th>
                       <th
                         className="td-resumo-table__cell text-right font-medium"
-                        title="Comentários cujo @ do comentarista bate com o Instagram de um liderado ativo (mobilização → TD do coordenador)"
+                        title="Comentários cujo @ bate com liderado ativo (mobilização → TD pelo município da liderança)"
                       >
                         <button
                           type="button"
