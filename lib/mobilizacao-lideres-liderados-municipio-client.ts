@@ -9,6 +9,8 @@ export type LideradoNoMunicipioDto = {
   status: string
   /** Comentários IG cujo @ coincide com o Instagram deste liderado (dedupe por `instagram_comment_id`, escopo do usuário logado). */
   comentarios: number
+  /** Mídias distintas (`instagram_media_id`) com ≥1 comentário desse @ (engajamento por cobertura de posts, não volume de comentários). */
+  midiasComComentario: number
   /** Perfis distintos entre comentaristas — no máximo 1 por liderado (próprio @). */
   perfisUnicos: number
   /**

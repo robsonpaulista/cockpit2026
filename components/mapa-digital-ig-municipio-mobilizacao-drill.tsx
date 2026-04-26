@@ -9,7 +9,7 @@ import {
 } from '@/lib/mobilizacao-lideres-liderados-municipio-client'
 import {
   classificacaoTerritorioTdPorPctEngajamentoIg,
-  pctComentariosPorPostagensProcessadas,
+  pctMidiasComComentarioPorPostagensProcessadas,
   tituloTooltipEngajamentoIgComentarios,
 } from '@/lib/instagram-engajamento-ig-classificacao'
 import { ClassificacaoTdBadge } from '@/components/classificacao-td-badge'
@@ -173,15 +173,15 @@ export function MapaDigitalIgMunicipioMobilizacaoDrill({
                             </span>
                             <span
                               className="text-center font-medium text-white/55"
-                              title="Engajamento: comentários do liderado ÷ postagens processadas na conta. Baixo abaixo de 50%; Médio 50% a 80%; Alto acima de 80%."
+                              title="Engajamento: mídias com ≥1 comentário do @ ÷ postagens processadas na conta (teto 100%). Baixo abaixo de 50%; Médio 50% a 80%; Alto acima de 80%."
                             >
                               Eng.
                             </span>
                           </div>
                           {L.liderados.map((row) => {
                             const ig = igHandleDisplay(row.instagram)
-                            const pctEng = pctComentariosPorPostagensProcessadas(
-                              row.comentarios,
+                            const pctEng = pctMidiasComComentarioPorPostagensProcessadas(
+                              row.midiasComComentario ?? 0,
                               postagensProcessadas
                             )
                             const tipoEng = classificacaoTerritorioTdPorPctEngajamentoIg(pctEng)

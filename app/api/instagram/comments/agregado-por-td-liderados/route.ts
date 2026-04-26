@@ -19,6 +19,8 @@ type LeadRow = {
 
 export type InstagramComentariosPorTdAgg = {
   comentarios: number
+  /** Mídias distintas com ≥1 comentário de liderado vinculado a este TD. */
+  midiasComComentario: number
   perfisUnicos: number
   tempoPostComentarioSomaMs: number
   tempoPostComentarioN: number
@@ -30,12 +32,20 @@ export type InstagramComentariosAgregadoPorTdLideradosResponse = {
   semVinculo: { comentarios: number; perfisUnicos: number }
   /** Mídias distintas com comentários sincronizados (postagens processadas na base). */
   postagensProcessadas: number
+  /** Mídias distintas com ≥1 comentário vinculado a algum liderado (qualquer TD). */
+  midiasComComentarioVinculadas: number
 }
 
 function mapaTdZero(): Record<string, InstagramComentariosPorTdAgg> {
   const porTd: Record<string, InstagramComentariosPorTdAgg> = {}
   for (const td of TERRITORIOS_DESENVOLVIMENTO_PI) {
-    porTd[td] = { comentarios: 0, perfisUnicos: 0, tempoPostComentarioSomaMs: 0, tempoPostComentarioN: 0 }
+    porTd[td] = {
+      comentarios: 0,
+      midiasComComentario: 0,
+      perfisUnicos: 0,
+      tempoPostComentarioSomaMs: 0,
+      tempoPostComentarioN: 0,
+    }
   }
   return porTd
 }
@@ -117,11 +127,24 @@ export async function GET() {
 
   const porTdAcc = new Map<
     TerritorioDesenvolvimentoPI,
-    { comentarios: number; perfis: Set<string>; tempoPostComentarioSomaMs: number; tempoPostComentarioN: number }
+    {
+      comentarios: number
+      medias: Set<string>
+      perfis: Set<string>
+      tempoPostComentarioSomaMs: number
+      tempoPostComentarioN: number
+    }
   >()
   for (const td of TERRITORIOS_DESENVOLVIMENTO_PI) {
-    porTdAcc.set(td, { comentarios: 0, perfis: new Set(), tempoPostComentarioSomaMs: 0, tempoPostComentarioN: 0 })
+    porTdAcc.set(td, {
+      comentarios: 0,
+      medias: new Set(),
+      perfis: new Set(),
+      tempoPostComentarioSomaMs: 0,
+      tempoPostComentarioN: 0,
+    })
   }
+  const mediasGlobaisComVinculo = new Set<string>()
 
   let semComentarios = 0
   const semPerfis = new Set<string>()
@@ -132,7 +155,7 @@ export async function GET() {
   for (;;) {
       const { data, error } = await admin
       .from('instagram_comments')
-      .select('instagram_comment_id, commenter_username, media_posted_at, commented_at')
+      .select('instagram_comment_id, commenter_username, instagram_media_id, media_posted_at, commented_at')
       .eq('user_id', userId)
       .order('id', { ascending: true })
       .range(fromComments, fromComments + pageSizeComments - 1)
@@ -164,6 +187,11 @@ export async function GET() {
       if (acc) {
         acc.comentarios += 1
         acc.perfis.add(u)
+        const mid = String((row as { instagram_media_id?: string | null }).instagram_media_id ?? '').trim()
+        if (mid) {
+          acc.medias.add(mid)
+          mediasGlobaisComVinculo.add(mid)
+        }
         const mediaPosted = (row as { media_posted_at?: string | null }).media_posted_at
         const commentedAt = (row as { commented_at?: string | null }).commented_at
         if (mediaPosted && commentedAt) {
@@ -188,6 +216,7 @@ export async function GET() {
   for (const [td, acc] of porTdAcc) {
     porTd[td] = {
       comentarios: acc.comentarios,
+      midiasComComentario: acc.medias.size,
       perfisUnicos: acc.perfis.size,
       tempoPostComentarioSomaMs: acc.tempoPostComentarioSomaMs,
       tempoPostComentarioN: acc.tempoPostComentarioN,
@@ -198,6 +227,7 @@ export async function GET() {
     porTd,
     semVinculo: { comentarios: semComentarios, perfisUnicos: semPerfis.size },
     postagensProcessadas,
+    midiasComComentarioVinculadas: mediasGlobaisComVinculo.size,
   }
 
   return NextResponse.json(body)

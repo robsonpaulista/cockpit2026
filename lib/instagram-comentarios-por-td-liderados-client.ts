@@ -9,6 +9,8 @@ export type InstagramComentariosAgregadoPorTdLideradosPayload = {
   semVinculo: { comentarios: number; perfisUnicos: number }
   /** Contagem de `instagram_media_id` distintos nas linhas de comentários do usuário. */
   postagensProcessadas: number
+  /** Mídias com ≥1 comentário vinculado a algum liderado (união entre TDs). */
+  midiasComComentarioVinculadas: number
 }
 
 type ApiBody = {
@@ -16,6 +18,7 @@ type ApiBody = {
     string,
     {
       comentarios?: number
+      midiasComComentario?: number
       perfisUnicos?: number
       tempoPostComentarioSomaMs?: number
       tempoPostComentarioN?: number
@@ -23,12 +26,19 @@ type ApiBody = {
   >
   semVinculo?: { comentarios?: number; perfisUnicos?: number }
   postagensProcessadas?: number
+  midiasComComentarioVinculadas?: number
 }
 
 export function mapaInstagramComentariosPorTdVazio(): Map<TerritorioDesenvolvimentoPI, InstagramPorTdAgg> {
   const m = new Map<TerritorioDesenvolvimentoPI, InstagramPorTdAgg>()
   for (const td of TERRITORIOS_DESENVOLVIMENTO_PI) {
-    m.set(td, { comentarios: 0, perfisUnicos: 0, tempoPostComentarioSomaMs: 0, tempoPostComentarioN: 0 })
+    m.set(td, {
+      comentarios: 0,
+      midiasComComentario: 0,
+      perfisUnicos: 0,
+      tempoPostComentarioSomaMs: 0,
+      tempoPostComentarioN: 0,
+    })
   }
   return m
 }
@@ -38,6 +48,7 @@ export function emptyInstagramComentariosPorTdPayload(): InstagramComentariosAgr
     porTd: mapaInstagramComentariosPorTdVazio(),
     semVinculo: { comentarios: 0, perfisUnicos: 0 },
     postagensProcessadas: 0,
+    midiasComComentarioVinculadas: 0,
   }
 }
 
@@ -49,6 +60,7 @@ function parsePayload(json: ApiBody): InstagramComentariosAgregadoPorTdLiderados
     if (v) {
       porTd.set(td, {
         comentarios: Number(v.comentarios ?? 0),
+        midiasComComentario: Math.max(0, Math.floor(Number(v.midiasComComentario ?? 0))),
         perfisUnicos: Number(v.perfisUnicos ?? 0),
         tempoPostComentarioSomaMs: Math.max(0, Math.floor(Number(v.tempoPostComentarioSomaMs ?? 0))),
         tempoPostComentarioN: Math.max(0, Math.floor(Number(v.tempoPostComentarioN ?? 0))),
@@ -57,6 +69,7 @@ function parsePayload(json: ApiBody): InstagramComentariosAgregadoPorTdLiderados
   }
   const s = json.semVinculo
   const postagensProcessadas = Math.max(0, Math.floor(Number(json.postagensProcessadas ?? 0)))
+  const midiasComComentarioVinculadas = Math.max(0, Math.floor(Number(json.midiasComComentarioVinculadas ?? 0)))
   return {
     porTd,
     semVinculo: {
@@ -64,6 +77,7 @@ function parsePayload(json: ApiBody): InstagramComentariosAgregadoPorTdLiderados
       perfisUnicos: Number(s?.perfisUnicos ?? 0),
     },
     postagensProcessadas,
+    midiasComComentarioVinculadas,
   }
 }
 

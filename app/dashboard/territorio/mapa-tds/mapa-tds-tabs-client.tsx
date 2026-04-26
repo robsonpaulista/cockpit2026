@@ -76,7 +76,7 @@ export default function MapaTdsTabsClient() {
           </div>
           <div className="flex w-full min-w-0 flex-col items-stretch gap-2 sm:w-auto sm:items-end">
             <nav
-              className="flex shrink-0 gap-1 rounded-xl border border-[rgba(255,255,255,0.08)] bg-[rgba(0,0,0,0.22)] p-1"
+              className="flex min-w-0 shrink-0 flex-wrap gap-1 rounded-xl border border-[rgba(255,255,255,0.08)] bg-[rgba(0,0,0,0.22)] p-1"
               aria-label="Camadas do mapa TDs"
             >
               <button

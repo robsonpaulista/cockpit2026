@@ -5,6 +5,8 @@ export type IgAgregadoMunicipioNoTd = {
   lideres: number
   liderados: number
   comentarios: number
+  /** Mídias distintas com ≥1 comentário vinculado a liderados deste município. */
+  midiasComComentario: number
   perfisUnicos: number
   tempoMedioPostComentarioMs: number | null
   tempoPostComentarioSomaMs: number
@@ -14,6 +16,7 @@ export type IgAgregadoMunicipioNoTd = {
 type ApiBody = {
   territorio?: string
   porMunicipio?: Record<string, Partial<IgAgregadoMunicipioNoTd>>
+  midiasComComentarioNoTd?: number
 }
 
 function parseBody(body: ApiBody): Map<string, IgAgregadoMunicipioNoTd> {
@@ -34,6 +37,7 @@ function parseBody(body: ApiBody): Map<string, IgAgregadoMunicipioNoTd> {
       lideres: Math.max(0, Math.floor(Number(v?.lideres ?? 0))),
       liderados: Math.max(0, Math.floor(Number(v?.liderados ?? 0))),
       comentarios: Math.max(0, Math.floor(Number(v?.comentarios ?? 0))),
+      midiasComComentario: Math.max(0, Math.floor(Number(v?.midiasComComentario ?? 0))),
       perfisUnicos: Math.max(0, Math.floor(Number(v?.perfisUnicos ?? 0))),
       tempoMedioPostComentarioMs,
       tempoPostComentarioSomaMs: somaT,
@@ -44,7 +48,7 @@ function parseBody(body: ApiBody): Map<string, IgAgregadoMunicipioNoTd> {
 }
 
 export type FetchInstagramIgPorMunicipioNoTdResult =
-  | { ok: true; data: Map<string, IgAgregadoMunicipioNoTd> }
+  | { ok: true; data: Map<string, IgAgregadoMunicipioNoTd>; midiasComComentarioNoTd: number }
   | { ok: false; status: number }
 
 export async function fetchInstagramIgPorMunicipioNoTd(
@@ -62,7 +66,8 @@ export async function fetchInstagramIgPorMunicipioNoTd(
       return { ok: false, status: res.status }
     }
     const json = (await res.json()) as ApiBody
-    return { ok: true, data: parseBody(json) }
+    const midiasComComentarioNoTd = Math.max(0, Math.floor(Number(json.midiasComComentarioNoTd ?? 0)))
+    return { ok: true, data: parseBody(json), midiasComComentarioNoTd }
   } catch {
     return { ok: false, status: 0 }
   }

@@ -11,7 +11,7 @@ import {
 import { tdTerritorialPorLeadRowLike, tdTerritorialPorLeaderRowLike } from '@/lib/mobilizacao-td-por-municipio-leader'
 import {
   classificacaoTerritorioTdPorPctEngajamentoIg,
-  pctComentariosPorPostagensProcessadas,
+  pctMidiasComComentarioPorPostagensProcessadas,
   rotuloEngajamentoIgPorTipo,
 } from '@/lib/instagram-engajamento-ig-classificacao'
 import type {
@@ -96,6 +96,22 @@ function resolveOfficialMunicipio(raw: string, oficialList: readonly string[]): 
   return null
 }
 
+/** Mídias distintas (`instagram_media_id`) com ≥1 comentário de handles cujo vínculo TD+município satisfaz `pred`. */
+function midiasDistintasNoRecorte(
+  handleTo: Map<string, { td: TerritorioDesenvolvimentoPI; municipioOficial: string }>,
+  mediasPorHandle: Map<string, Set<string>>,
+  pred: (loc: { td: TerritorioDesenvolvimentoPI; municipioOficial: string }) => boolean
+): number {
+  const seen = new Set<string>()
+  for (const [h, loc] of handleTo) {
+    if (!pred(loc)) continue
+    const s = mediasPorHandle.get(h)
+    if (!s) continue
+    for (const m of s) seen.add(m)
+  }
+  return seen.size
+}
+
 async function passarComentariosIg(
   admin: ReturnType<typeof createAdminClient>,
   userId: string,
@@ -104,12 +120,15 @@ async function passarComentariosIg(
   postagensProcessadas: number
   comentariosPorHandle: Map<string, number>
   delayAccPorHandle: Map<string, { sumMs: number; n: number }>
+  mediasPorHandle: Map<string, Set<string>>
 }> {
   const comentariosPorHandle = new Map<string, number>()
   const delayAccPorHandle = new Map<string, { sumMs: number; n: number }>()
+  const mediasPorHandle = new Map<string, Set<string>>()
   for (const h of handleTo.keys()) {
     comentariosPorHandle.set(h, 0)
     delayAccPorHandle.set(h, { sumMs: 0, n: 0 })
+    mediasPorHandle.set(h, new Set())
   }
 
   const mediaIds = new Set<string>()
@@ -142,6 +161,9 @@ async function passarComentariosIg(
       if (!u || !handleTo.has(u)) continue
 
       comentariosPorHandle.set(u, (comentariosPorHandle.get(u) ?? 0) + 1)
+      if (mid) {
+        mediasPorHandle.get(u)?.add(mid)
+      }
 
       const mediaPosted = (row as { media_posted_at?: string | null }).media_posted_at
       const commentedAt = (row as { commented_at?: string | null }).commented_at
@@ -165,7 +187,7 @@ async function passarComentariosIg(
     from += pageSize
   }
 
-  return { postagensProcessadas: mediaIds.size, comentariosPorHandle, delayAccPorHandle }
+  return { postagensProcessadas: mediaIds.size, comentariosPorHandle, delayAccPorHandle, mediasPorHandle }
 }
 
 async function buildRelatorioTd(
@@ -296,7 +318,7 @@ async function buildRelatorioTd(
   const leaderIds = lideresNoTd.map((l) => l.id)
   const lidByLeader = await carregarLideradosPorLeaders(admin, leaderIds)
 
-  const { postagensProcessadas, comentariosPorHandle, delayAccPorHandle } = await passarComentariosIg(
+  const { postagensProcessadas, comentariosPorHandle, delayAccPorHandle, mediasPorHandle } = await passarComentariosIg(
     admin,
     userId,
     handleTo
@@ -336,7 +358,12 @@ async function buildRelatorioTd(
     const a = porMun.get(nome)!
     const nT = a.tempoPostComentarioN
     const tempoMedioPostComentarioMs = nT > 0 ? Math.round(a.tempoPostComentarioSomaMs / nT) : null
-    const pctEng = pctComentariosPorPostagensProcessadas(a.comentarios, postagensProcessadas)
+    const midiasMun = midiasDistintasNoRecorte(
+      handleTo,
+      mediasPorHandle,
+      (loc) => loc.td === td && loc.municipioOficial === nome
+    )
+    const pctEng = pctMidiasComComentarioPorPostagensProcessadas(midiasMun, postagensProcessadas)
     const tipoEng = classificacaoTerritorioTdPorPctEngajamentoIg(pctEng)
     return {
       territorioTd: td,
@@ -657,7 +684,7 @@ async function buildRelatorioPi(
   const leaderIds = lideresNoPi.map((l) => l.id)
   const lidByLeader = await carregarLideradosPorLeaders(admin, leaderIds)
 
-  const { postagensProcessadas, comentariosPorHandle, delayAccPorHandle } = await passarComentariosIg(
+  const { postagensProcessadas, comentariosPorHandle, delayAccPorHandle, mediasPorHandle } = await passarComentariosIg(
     admin,
     userId,
     handleTo
@@ -764,7 +791,12 @@ async function buildRelatorioPi(
     const tdRow = tdPart as TerritorioDesenvolvimentoPI
     const nT = a.tempoPostComentarioN
     const tempoMedioPostComentarioMs = nT > 0 ? Math.round(a.tempoPostComentarioSomaMs / nT) : null
-    const pctEng = pctComentariosPorPostagensProcessadas(a.comentarios, postagensProcessadas)
+    const midiasChave = midiasDistintasNoRecorte(
+      handleTo,
+      mediasPorHandle,
+      (loc) => `${loc.td}${SEP_TD_MUN}${loc.municipioOficial}` === chave
+    )
+    const pctEng = pctMidiasComComentarioPorPostagensProcessadas(midiasChave, postagensProcessadas)
     const tipoEng = classificacaoTerritorioTdPorPctEngajamentoIg(pctEng)
     resumoRows.push({
       territorioTd: tdRow,

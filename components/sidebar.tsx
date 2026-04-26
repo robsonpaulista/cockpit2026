@@ -33,6 +33,7 @@ import {
   ClipboardList,
   History,
   Trophy,
+  Image,
   type LucideIcon,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -53,7 +54,15 @@ const COCKPIT_MENU_LABEL: Record<string, string> = {
   'territorio-mapa-tds': 'Mapa TDs',
   'chapas-menu': 'Chapas',
   'resumo-eleicoes-menu': 'Eleições',
-  conteudo: 'Conteúdo',
+  conteudo: 'Presença',
+  'conteudo-menu': 'Presença',
+  'conteudo-hub': 'Visão',
+  'conteudo-obras': 'Obras',
+  'conteudo-agenda': 'Agenda',
+  'conteudo-cards': 'Cards',
+  'conteudo-referencias': 'Referências',
+  'conteudo-analise': 'Análise',
+  'conteudo-redes': 'Instagram',
   noticias: 'Radar',
   'mobilizacao-menu': 'Mobilização',
   'mobilizacao-captacao': 'Captação',
@@ -121,7 +130,21 @@ const menuItems: SidebarMenuItem[] = [
       },
     ],
   },
-  { id: 'conteudo', label: 'Conteúdo & Redes', icon: 'MessageSquare', href: '/dashboard/conteudo' },
+  {
+    id: 'conteudo-menu',
+    label: 'Presença & Conteúdo',
+    icon: 'MessageSquare',
+    href: '/dashboard/conteudo',
+    children: [
+      { id: 'conteudo-hub', label: 'Visão geral', icon: 'LayoutDashboard', href: '/dashboard/conteudo' },
+      { id: 'conteudo-obras', label: 'Obras (cards)', icon: 'Building2', href: '/dashboard/conteudo/obras' },
+      { id: 'conteudo-agenda', label: 'Agenda campo', icon: 'Calendar', href: '/dashboard/conteudo/agenda' },
+      { id: 'conteudo-cards', label: 'Cards', icon: 'FileText', href: '/dashboard/conteudo/cards' },
+      { id: 'conteudo-referencias', label: 'Banco referências', icon: 'Image', href: '/dashboard/conteudo/referencias' },
+      { id: 'conteudo-analise', label: 'Análise', icon: 'BarChart3', href: '/dashboard/conteudo/analise' },
+      { id: 'conteudo-redes', label: 'Redes & Instagram', icon: 'MessageSquare', href: '/dashboard/conteudo/redes' },
+    ],
+  },
   { id: 'noticias', label: 'Notícias & Crises', icon: 'Newspaper', href: '/dashboard/noticias' },
   {
     id: 'mobilizacao-menu',
@@ -185,6 +208,7 @@ const iconMap: Record<string, LucideIcon> = {
   History,
   MapPinned,
   Trophy,
+  Image,
 }
 
 /** Ícones mais leves / mesma linguagem dos KPIs Cockpit (stroke fino + cor accent). */
@@ -246,6 +270,18 @@ function pageKeyForItem(id: string): string {
   ) {
     return 'resumo-eleicoes'
   }
+  if (
+    id === 'conteudo-menu' ||
+    id === 'conteudo-hub' ||
+    id === 'conteudo-obras' ||
+    id === 'conteudo-agenda' ||
+    id === 'conteudo-cards' ||
+    id === 'conteudo-referencias' ||
+    id === 'conteudo-analise' ||
+    id === 'conteudo-redes'
+  ) {
+    return 'conteudo'
+  }
   return id === 'home' ? 'dashboard' : id
 }
 
@@ -253,6 +289,9 @@ function pageKeyForItem(id: string): string {
 function isChildLinkActive(pathname: string, href: string): boolean {
   if (pathname === href) return true
   if (href === '/dashboard/resumo-eleicoes') return false
+  if (href === '/dashboard/conteudo') {
+    return pathname === '/dashboard/conteudo' || pathname === '/dashboard/conteudo/'
+  }
   return pathname.startsWith(`${href}/`)
 }
 
@@ -283,6 +322,8 @@ export function Sidebar() {
       setOpenSubmenuId('resumo-eleicoes-menu')
     } else if (pathname.startsWith('/dashboard/mobilizacao')) {
       setOpenSubmenuId('mobilizacao-menu')
+    } else if (pathname.startsWith('/dashboard/conteudo')) {
+      setOpenSubmenuId('conteudo-menu')
     }
   }, [pathname])
 

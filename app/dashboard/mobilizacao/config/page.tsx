@@ -1,6 +1,6 @@
 'use client'
 
-import { FormEvent, useEffect, useMemo, useState } from 'react'
+import { FormEvent, useCallback, useEffect, useMemo, useState } from 'react'
 import {
   TERRITORIOS_DESENVOLVIMENTO_PI,
   getTodosMunicipiosPIOficiaisOrdenados,
@@ -112,6 +112,7 @@ export default function MobilizacaoConfigPage() {
 
   const [atualizando, setAtualizando] = useState(false)
   const [importandoTerritorio, setImportandoTerritorio] = useState(false)
+  const [exportandoEstrutura, setExportandoEstrutura] = useState(false)
   const [salvandoCrud, setSalvandoCrud] = useState(false)
   const [editCoord, setEditCoord] = useState<{ id: string; nome: string; regiao: string } | null>(null)
   const [editLeader, setEditLeader] = useState<{
@@ -399,6 +400,41 @@ export default function MobilizacaoConfigPage() {
     }
   }
 
+  const handleExportarEstruturaXlsx = useCallback(async () => {
+    setExportandoEstrutura(true)
+    setErro(null)
+    setMensagem(null)
+    try {
+      const res = await fetch('/api/mobilizacao/config/export-estrutura')
+      if (!res.ok) {
+        const payload = (await res.json().catch(() => ({}))) as { error?: string }
+        setErro(payload.error ?? 'Não foi possível gerar a planilha.')
+        return
+      }
+      const blob = await res.blob()
+      const dispo = res.headers.get('Content-Disposition')
+      const m = dispo?.match(/filename="([^"]+)"/)
+      const nomeArquivo =
+        m?.[1] ?? `mobilizacao-estrutura-captacao-${new Date().toISOString().slice(0, 10)}.xlsx`
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = nomeArquivo
+      a.rel = 'noopener'
+      document.body.appendChild(a)
+      a.click()
+      a.remove()
+      URL.revokeObjectURL(url)
+      setMensagem(
+        'Planilha Excel baixada: TD → coordenador → cidade → liderança → liderados, com link de captação por liderança (inclui linhas só com link quando ainda não há liderados).'
+      )
+    } catch {
+      setErro('Falha de conexão ao exportar a estrutura.')
+    } finally {
+      setExportandoEstrutura(false)
+    }
+  }, [])
+
   const excluirRecurso = async (
     recurso: 'coordinator' | 'leader' | 'liderado',
     id: string,
@@ -640,14 +676,25 @@ export default function MobilizacaoConfigPage() {
             Cadastre coordenadores, lideranças, liderados (manual ou base) e gere links da página pública de captação.
           </p>
         </div>
-        <button
-          type="button"
-          onClick={() => void carregarDados({ modo: 'refresh' })}
-          disabled={atualizando || carregando}
-          className="shrink-0 rounded-lg border border-card bg-surface px-3 py-2 text-sm font-medium text-text-primary hover:bg-card/50 disabled:opacity-60"
-        >
-          {atualizando ? 'Atualizando…' : 'Atualizar dados'}
-        </button>
+        <div className="flex shrink-0 flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={() => void handleExportarEstruturaXlsx()}
+            disabled={exportandoEstrutura || carregando}
+            title="Exporta todas as lideranças e liderados (sem limite da tela). Coluna de link para cada liderança encaminhar cadastros."
+            className="rounded-lg border border-card bg-surface px-3 py-2 text-sm font-medium text-text-primary hover:bg-card/50 disabled:opacity-60"
+          >
+            {exportandoEstrutura ? 'Gerando Excel…' : 'Exportar estrutura (Excel)'}
+          </button>
+          <button
+            type="button"
+            onClick={() => void carregarDados({ modo: 'refresh' })}
+            disabled={atualizando || carregando}
+            className="rounded-lg border border-card bg-surface px-3 py-2 text-sm font-medium text-text-primary hover:bg-card/50 disabled:opacity-60"
+          >
+            {atualizando ? 'Atualizando…' : 'Atualizar dados'}
+          </button>
+        </div>
       </header>
 
       {erro ? (

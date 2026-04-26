@@ -7,6 +7,8 @@ import type { LiderancaPlanilha } from '@/lib/territorio-planilha-agregado-td'
 
 export type InstagramPorTdAgg = {
   comentarios: number
+  /** Postagens (mídias) distintas com pelo menos um comentário vinculado a liderados deste TD. */
+  midiasComComentario: number
   perfisUnicos: number
   tempoPostComentarioSomaMs: number
   tempoPostComentarioN: number
@@ -59,6 +61,7 @@ export function aggregateCommentLeadersPorTd(
     }
     const cur = porTd.get(td) ?? {
       comentarios: 0,
+      midiasComComentario: 0,
       perfisUnicos: 0,
       tempoPostComentarioSomaMs: 0,
       tempoPostComentarioN: 0,

@@ -48,6 +48,12 @@ export async function PATCH(
       valor_pago,
       data_pagamento,
       nro_doc,
+      imagem_url,
+      latitude,
+      longitude,
+      territorio,
+      parceiro,
+      descricao_obra,
     } = body
 
     const updates: Record<string, unknown> = {}
@@ -75,6 +81,12 @@ export async function PATCH(
     if (valor_pago !== undefined) updates.valor_pago = valor_pago ?? null
     if (data_pagamento !== undefined) updates.data_pagamento = data_pagamento || null
     if (nro_doc !== undefined) updates.nro_doc = nro_doc ?? null
+    if (imagem_url !== undefined) updates.imagem_url = imagem_url ?? null
+    if (latitude !== undefined) updates.latitude = latitude ?? null
+    if (longitude !== undefined) updates.longitude = longitude ?? null
+    if (territorio !== undefined) updates.territorio = territorio ?? null
+    if (parceiro !== undefined) updates.parceiro = parceiro ?? null
+    if (descricao_obra !== undefined) updates.descricao_obra = descricao_obra ?? null
 
     if (Object.keys(updates).length === 0) {
       return NextResponse.json({ error: 'Nenhum campo para atualizar' }, { status: 400 })

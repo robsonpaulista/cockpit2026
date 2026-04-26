@@ -4,13 +4,16 @@ const fmt0 = new Intl.NumberFormat('pt-BR')
 const fmt1 = new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })
 
 /**
- * Indicador alinhado aos marcadores do mapa Digital IG: comentários vinculados ÷ postagens processadas × 100
- * (sem teto — pode ultrapassar 100%).
+ * % das postagens processadas na conta em que houve pelo menos um comentário vinculado ao recorte (liderados).
+ * Usa mídias distintas (`instagram_media_id`), não o total de comentários — teto 100%.
  */
-export function pctComentariosPorPostagensProcessadas(comentarios: number, postagensProcessadas: number): number {
+export function pctMidiasComComentarioPorPostagensProcessadas(
+  midiasDistintasComComentario: number,
+  postagensProcessadas: number
+): number {
   if (!Number.isFinite(postagensProcessadas) || postagensProcessadas <= 0) return 0
-  if (!Number.isFinite(comentarios) || comentarios < 0) return 0
-  return (comentarios / postagensProcessadas) * 100
+  if (!Number.isFinite(midiasDistintasComComentario) || midiasDistintasComComentario < 0) return 0
+  return Math.min(100, (midiasDistintasComComentario / postagensProcessadas) * 100)
 }
 
 /**
@@ -39,7 +42,7 @@ export function tituloTooltipEngajamentoIgComentarios(
   const base =
     postagensProcessadas <= 0
       ? 'Sem postagens processadas na conta; engajamento considerado baixo.'
-      : `${fmt0.format(comentarios)} comentários ÷ ${fmt0.format(postagensProcessadas)} postagens processadas = ${fmt1.format(pctEngajamento)}%.`
+      : `${fmt0.format(comentarios)} comentários vinculados; taxa na coluna = mídias com comentário ÷ ${fmt0.format(postagensProcessadas)} postagens processadas = ${fmt1.format(pctEngajamento)}%.`
   return [base, faixas, extra].filter((s) => s && s.trim()).join(' ')
 }
 

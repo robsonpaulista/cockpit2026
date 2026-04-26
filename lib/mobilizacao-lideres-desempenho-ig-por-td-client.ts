@@ -13,6 +13,8 @@ export type LiderDesempenhoIgLinha = {
 
 export type MobilizacaoLideresDesempenhoIgPorTdPayload = {
   td: TerritorioDesenvolvimentoPI
+  /** Preenchido quando os dados vêm do endpoint por município. */
+  municipio?: string | null
   postagensProcessadas: number
   lideres: LiderDesempenhoIgLinha[]
   totais: {
@@ -35,6 +37,27 @@ export async function fetchMobilizacaoLideresDesempenhoIgPorTd(
   try {
     const q = new URLSearchParams({ td })
     const res = await fetch(`/api/mobilizacao/lideres-desempenho-ig-por-td?${q}`, { cache: 'no-store' })
+    if (res.status === 401) return { ok: false, status: 401, message: 'Não autenticado' }
+    if (res.status === 403) return { ok: false, status: 403, message: 'Sem permissão para Mobilização' }
+    if (!res.ok) {
+      const j = (await res.json().catch(() => ({}))) as { error?: string }
+      return { ok: false, status: res.status, message: j.error ?? res.statusText }
+    }
+    const data = (await res.json()) as MobilizacaoLideresDesempenhoIgPorTdPayload
+    return { ok: true, data }
+  } catch (e: unknown) {
+    const message = e instanceof Error ? e.message : 'Falha na rede'
+    return { ok: false, status: 0, message }
+  }
+}
+
+export async function fetchMobilizacaoLideresDesempenhoIgPorMunicipio(
+  td: TerritorioDesenvolvimentoPI,
+  municipio: string
+): Promise<FetchMobilizacaoLideresDesempenhoIgPorTdResult> {
+  try {
+    const q = new URLSearchParams({ td, municipio })
+    const res = await fetch(`/api/mobilizacao/lideres-desempenho-ig-por-municipio?${q}`, { cache: 'no-store' })
     if (res.status === 401) return { ok: false, status: 401, message: 'Não autenticado' }
     if (res.status === 403) return { ok: false, status: 403, message: 'Sem permissão para Mobilização' }
     if (!res.ok) {

@@ -5,6 +5,7 @@ import { Loader2, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { TerritorioDesenvolvimentoPI } from '@/lib/piaui-territorio-desenvolvimento'
 import {
+  fetchMobilizacaoLideresDesempenhoIgPorMunicipio,
   fetchMobilizacaoLideresDesempenhoIgPorTd,
   type MobilizacaoLideresDesempenhoIgPorTdPayload,
 } from '@/lib/mobilizacao-lideres-desempenho-ig-por-td-client'
@@ -21,11 +22,19 @@ const fmtPct = new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 1, maximu
 type Props = {
   open: boolean
   territorio: TerritorioDesenvolvimentoPI | null
+  /** Município oficial no TD; null = visão agregada do TD inteiro. */
+  municipioOficial: string | null
   onClose: () => void
   visualPreset: 'default' | 'futuristic'
 }
 
-export function MapaDigitalIgLideresDesempenhoModal({ open, territorio, onClose, visualPreset }: Props) {
+export function MapaDigitalIgLideresDesempenhoModal({
+  open,
+  territorio,
+  municipioOficial,
+  onClose,
+  visualPreset,
+}: Props) {
   const [loadState, setLoadState] = useState<'idle' | 'loading' | 'ready' | 'error'>('idle')
   const [erro, setErro] = useState<string>('')
   const [payload, setPayload] = useState<MobilizacaoLideresDesempenhoIgPorTdPayload | null>(null)
@@ -36,7 +45,9 @@ export function MapaDigitalIgLideresDesempenhoModal({ open, territorio, onClose,
     if (!territorio) return
     setLoadState('loading')
     setErro('')
-    const res = await fetchMobilizacaoLideresDesempenhoIgPorTd(territorio)
+    const res = municipioOficial
+      ? await fetchMobilizacaoLideresDesempenhoIgPorMunicipio(territorio, municipioOficial)
+      : await fetchMobilizacaoLideresDesempenhoIgPorTd(territorio)
     if (!res.ok) {
       setPayload(null)
       setLoadState('error')
@@ -45,7 +56,7 @@ export function MapaDigitalIgLideresDesempenhoModal({ open, territorio, onClose,
     }
     setPayload(res.data)
     setLoadState('ready')
-  }, [territorio])
+  }, [territorio, municipioOficial])
 
   useEffect(() => {
     if (!open || !territorio) {
@@ -55,7 +66,7 @@ export function MapaDigitalIgLideresDesempenhoModal({ open, territorio, onClose,
       return
     }
     void carregar()
-  }, [open, territorio, carregar])
+  }, [open, territorio, municipioOficial, carregar])
 
   useEffect(() => {
     if (!open) return
@@ -67,6 +78,11 @@ export function MapaDigitalIgLideresDesempenhoModal({ open, territorio, onClose,
   }, [open, onClose])
 
   if (!open || !territorio) return null
+
+  const escopoLinha2 =
+    municipioOficial != null
+      ? `${territorio} · ${municipioOficial}`
+      : String(territorio)
 
   return (
     <div
@@ -111,9 +127,9 @@ export function MapaDigitalIgLideresDesempenhoModal({ open, territorio, onClose,
                 isFut ? 'text-white/88' : 'text-text-muted'
               )}
             >
-              <span className={cn('font-medium', isFut ? 'text-white' : 'text-text-primary')}>{territorio}</span>
+              <span className={cn('font-medium', isFut ? 'text-white' : 'text-text-primary')}>{escopoLinha2}</span>
               {isFut ? ' · ' : ' — '}
-              publicações (coluna) = mídias distintas com comentário de liderados (@) no TD; % = essas mídias ÷
+              publicações (coluna) = mídias distintas com comentário de liderados (@) neste recorte; % = essas mídias ÷
               publicações processadas na conta (total sincronizado).
             </p>
           </div>
@@ -142,68 +158,6 @@ export function MapaDigitalIgLideresDesempenhoModal({ open, territorio, onClose,
           ) : null}
           {loadState === 'ready' && payload ? (
             <>
-              <section
-                className={cn(
-                  'mb-3 rounded-lg border p-2.5 sm:p-3',
-                  isFut
-                    ? 'border-white/[0.08] bg-[#0B0F14]'
-                    : 'border-border-card/60 bg-card/25'
-                )}
-                aria-label="Indicadores gerais do território"
-              >
-                <h3
-                  className={cn(
-                    'mb-2 text-[9px] font-bold uppercase tracking-[0.1em] sm:text-[10px]',
-                    isFut ? 'text-white' : 'text-text-muted'
-                  )}
-                >
-                  Indicadores do território
-                </h3>
-                <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-3 sm:gap-2">
-                  <IndicadorCard
-                    label="Líderes (cadastro)"
-                    valor={fmtInt.format(payload.totais.lideres)}
-                    isFut={isFut}
-                  />
-                  <IndicadorCard
-                    label="Liderados com @ (ativos)"
-                    valor={fmtInt.format(payload.totais.lideradosComRede)}
-                    isFut={isFut}
-                  />
-                  <IndicadorCard
-                    label="Publicações processadas"
-                    valor={fmtInt.format(payload.postagensProcessadas)}
-                    isFut={isFut}
-                    hint="Mídias distintas na conta (sync)"
-                  />
-                  <IndicadorCard
-                    label="Mídias c/ engajamento (TD)"
-                    valor={fmtInt.format(payload.totais.publicacoesDistintas)}
-                    isFut={isFut}
-                    hint="Com comentário de liderados do TD"
-                  />
-                  <IndicadorCard
-                    label="Comentários (total)"
-                    valor={fmtInt.format(payload.totais.comentarios)}
-                    isFut={isFut}
-                  />
-                  <IndicadorCard
-                    label="Liderados que comentaram"
-                    valor={fmtInt.format(payload.totais.lideradosQueComentaramDistintos)}
-                    isFut={isFut}
-                    hint="Perfis únicos"
-                  />
-                  <IndicadorCard
-                    label="% geral"
-                    valor={`${fmtPct.format(payload.totais.pctGeral)}%`}
-                    isFut={isFut}
-                    destaque
-                    hint={`Mídias TD ÷ ${fmtInt.format(payload.postagensProcessadas)} processadas`}
-                    className="col-span-2 sm:col-span-3"
-                  />
-                </div>
-              </section>
-
               <div
                 className={cn(
                   'overflow-hidden rounded-lg border text-[10px] leading-tight sm:text-[11px]',
@@ -212,7 +166,6 @@ export function MapaDigitalIgLideresDesempenhoModal({ open, territorio, onClose,
                 role="table"
                 aria-label="Métricas por líder"
               >
-                {/* Sem <table>: theme.css aplica padding 12px em th/td e anula layout compacto */}
                 <div
                   role="row"
                   className={cn(
@@ -335,79 +288,13 @@ export function MapaDigitalIgLideresDesempenhoModal({ open, territorio, onClose,
               </div>
               {payload.lideres.length === 0 ? (
                 <p className={cn('mt-3 text-sm', isFut ? 'text-white/70' : 'text-text-muted')}>
-                  Nenhum líder cadastrado neste território.
+                  Nenhum líder cadastrado neste recorte.
                 </p>
               ) : null}
             </>
           ) : null}
         </div>
       </div>
-    </div>
-  )
-}
-
-function IndicadorCard({
-  label,
-  valor,
-  isFut,
-  destaque,
-  hint,
-  className,
-}: {
-  label: string
-  valor: string
-  isFut: boolean
-  destaque?: boolean
-  hint?: string
-  className?: string
-}) {
-  return (
-    <div
-      className={cn(
-        'flex min-h-0 flex-col justify-center rounded border px-2 py-1.5 sm:px-2.5 sm:py-2',
-        className,
-        isFut
-          ? destaque
-            ? 'border-emerald-500/35 bg-emerald-950/25'
-            : 'border-white/[0.07] bg-[#121821]'
-          : destaque
-            ? 'border-status-success/40 bg-status-success/10'
-            : 'border-border-card/50 bg-card/40'
-      )}
-    >
-      <p
-        className={cn(
-          'text-[9px] font-semibold uppercase leading-tight tracking-wide sm:text-[10px]',
-          isFut ? 'text-white' : 'text-text-muted'
-        )}
-      >
-        {label}
-      </p>
-      {hint ? (
-        <p
-          className={cn(
-            'mt-0.5 truncate text-[8px] font-normal normal-case leading-tight tracking-normal sm:text-[9px]',
-            isFut ? 'text-white/50' : 'text-text-muted'
-          )}
-          title={hint}
-        >
-          {hint}
-        </p>
-      ) : null}
-      <p
-        className={cn(
-          'mt-0.5 tabular-nums text-sm font-bold leading-none sm:text-base',
-          destaque
-            ? isFut
-              ? 'text-emerald-300'
-              : 'text-status-success'
-            : isFut
-              ? 'text-white'
-              : 'text-text-primary'
-        )}
-      >
-        {valor}
-      </p>
     </div>
   )
 }

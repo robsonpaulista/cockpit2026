@@ -18,7 +18,7 @@ const pathToTitle: Record<string, string> = {
   '/dashboard/chapas': 'Chapas',
   '/dashboard/chapas-estaduais': 'Chapas Estaduais',
   '/dashboard/resumo-eleicoes': 'Resumo Eleições',
-  '/dashboard/conteudo': 'Conteúdo & Redes',
+  '/dashboard/conteudo': 'Presença & Conteúdo',
   '/dashboard/noticias': 'Notícias & Crises',
   '/dashboard/mobilizacao': 'Mobilização',
   '/dashboard/mobilizacao/config': 'Mobilização · Config',
@@ -32,6 +32,17 @@ const pathToTitle: Record<string, string> = {
 }
 
 function getPageTitle(pathname: string): string {
+  if (pathname.startsWith('/dashboard/conteudo/')) {
+    const rest = pathname.slice('/dashboard/conteudo/'.length)
+    if (rest.startsWith('redes')) return 'Presença · Instagram'
+    if (rest.startsWith('obras')) return 'Presença · Obras (cards)'
+    if (rest.startsWith('agenda')) return 'Presença · Agenda campo'
+    if (rest.startsWith('cards')) return 'Presença · Cards'
+    if (rest.startsWith('referencias')) return 'Presença · Referências visuais'
+    if (rest.startsWith('analise')) return 'Presença · Análise'
+    if (rest.startsWith('instagram-lideres')) return 'Presença · Instagram líderes'
+    return 'Presença & Conteúdo'
+  }
   return pathToTitle[pathname] ?? (pathname.replace(/^\/dashboard\/?/, '').replace(/^\//, '') || 'Visão Geral')
 }
 

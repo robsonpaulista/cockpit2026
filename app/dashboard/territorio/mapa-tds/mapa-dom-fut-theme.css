@@ -71,13 +71,48 @@
   opacity: 0.42 !important;
 }
 
+/* Foco vindo do painel/tabela: só anel e leve escala (não “zoom” do card IG). */
 .theme-futuristic .td-peso-eleitores-marker--focado .td-peso-eleitores-card {
   border-color: var(--td-focus-stroke, #ff6a00) !important;
   box-shadow:
     0 0 0 1px var(--td-focus-ring, rgba(255, 106, 0, 0.2)),
-    0 6px 20px rgba(0, 0, 0, 0.45) !important;
+    0 4px 14px rgba(0, 0, 0, 0.35) !important;
   transform: scale(1.04);
+  transform-origin: center bottom;
   transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+}
+
+/* Hover no próprio card do mapa (camada IG): card largo e “zoom”. */
+.theme-futuristic .td-peso-eleitores-marker--ig-map-hover .td-peso-eleitores-card {
+  border-color: var(--td-focus-stroke, #ff6a00) !important;
+  box-shadow:
+    0 0 0 1px var(--td-focus-ring, rgba(255, 106, 0, 0.2)),
+    0 6px 20px rgba(0, 0, 0, 0.45) !important;
+  transform: scale(1.14);
+  transform-origin: center bottom;
+  min-width: min(92vw, 288px) !important;
+  max-width: min(96vw, 380px) !important;
+  padding: 12px 14px !important;
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease,
+    transform 0.2s ease,
+    min-width 0.2s ease,
+    max-width 0.2s ease;
+}
+
+.theme-futuristic .td-peso-eleitores-marker--ig-map-hover .td-peso-eleitores-card__nome--fut {
+  max-width: min(78vw, 240px) !important;
+  font-size: 9px !important;
+}
+
+.theme-futuristic .td-peso-eleitores-marker--ig-map-hover .td-peso-eleitores-card__value {
+  font-size: 19px !important;
+}
+
+.theme-futuristic .td-peso-eleitores-marker--ig-map-hover .td-peso-eleitores-card__meta {
+  font-size: 9px !important;
+  white-space: nowrap;
 }
 
 /* =============================================================================
@@ -407,6 +442,139 @@
   background: rgba(255, 106, 0, 0.08) !important;
 }
 
+/* IG por município: hover sempre legível (fundo claro + texto escuro). Escopo pela aria-label da tabela. */
+.theme-futuristic
+  table.td-resumo-table--premium.td-resumo-table--futuristic[aria-label='Resumo Instagram por município no território']
+  tbody
+  tr.td-resumo-table__row--data:hover
+  td {
+  background: rgba(255, 252, 248, 0.98) !important;
+  color: #0b0f14 !important;
+}
+
+.theme-futuristic
+  table.td-resumo-table--premium.td-resumo-table--futuristic[aria-label='Resumo Instagram por município no território']
+  tbody
+  tr.td-resumo-table__row--data:hover
+  .text-text-secondary {
+  color: rgba(11, 15, 20, 0.74) !important;
+}
+
+.theme-futuristic
+  table.td-resumo-table--premium.td-resumo-table--futuristic[aria-label='Resumo Instagram por município no território']
+  tbody
+  tr.td-resumo-table__row--data:hover
+  .text-text-primary,
+.theme-futuristic
+  table.td-resumo-table--premium.td-resumo-table--futuristic[aria-label='Resumo Instagram por município no território']
+  tbody
+  tr.td-resumo-table__row--data:hover
+  td.td-resumo-table__cell--territorio
+  .font-semibold {
+  color: #0b0f14 !important;
+}
+
+.theme-futuristic
+  table.td-resumo-table--premium.td-resumo-table--futuristic[aria-label='Resumo Instagram por município no território']
+  tbody
+  tr.td-resumo-table__row--data:hover
+  td
+  button {
+  color: #0b0f14 !important;
+}
+
+.theme-futuristic
+  table.td-resumo-table--premium.td-resumo-table--futuristic[aria-label='Resumo Instagram por município no território']
+  tbody
+  tr.td-resumo-table__row--data:hover
+  .td-resumo-table__rank--top3 {
+  color: #c2410c !important;
+}
+
+.theme-futuristic
+  table.td-resumo-table--premium.td-resumo-table--futuristic[aria-label='Resumo Instagram por município no território']
+  tbody
+  tr.td-resumo-table__row--data:hover
+  .td-resumo-table__rank--first {
+  color: #9a3412 !important;
+}
+
+.theme-futuristic
+  table.td-resumo-table--premium.td-resumo-table--futuristic[aria-label='Resumo Instagram por município no território']
+  tbody
+  tr.td-resumo-table__row--hover-map
+  td {
+  background: rgba(255, 252, 248, 0.98) !important;
+  color: #0b0f14 !important;
+}
+
+.theme-futuristic
+  table.td-resumo-table--premium.td-resumo-table--futuristic[aria-label='Resumo Instagram por município no território']
+  tbody
+  tr.td-resumo-table__row--selected.td-resumo-table__row--data:hover
+  td,
+.theme-futuristic
+  table.td-resumo-table--premium.td-resumo-table--futuristic[aria-label='Resumo Instagram por município no território']
+  tbody
+  tr.td-resumo-table__row--selected.td-resumo-table__row--hover-map
+  td {
+  background: rgba(255, 252, 248, 0.98) !important;
+  color: #0b0f14 !important;
+}
+
+.theme-futuristic
+  table.td-resumo-table--premium.td-resumo-table--futuristic[aria-label='Resumo Instagram por município no território']
+  tbody
+  tr.td-resumo-table__row--selected.td-resumo-table__row--data:hover
+  .text-text-secondary,
+.theme-futuristic
+  table.td-resumo-table--premium.td-resumo-table--futuristic[aria-label='Resumo Instagram por município no território']
+  tbody
+  tr.td-resumo-table__row--selected.td-resumo-table__row--hover-map
+  .text-text-secondary {
+  color: rgba(11, 15, 20, 0.74) !important;
+}
+
+.theme-futuristic
+  table.td-resumo-table--premium.td-resumo-table--futuristic[aria-label='Resumo Instagram por município no território']
+  tbody
+  tr.td-resumo-table__row--selected.td-resumo-table__row--data:hover
+  .text-text-primary,
+.theme-futuristic
+  table.td-resumo-table--premium.td-resumo-table--futuristic[aria-label='Resumo Instagram por município no território']
+  tbody
+  tr.td-resumo-table__row--selected.td-resumo-table__row--hover-map
+  .text-text-primary,
+.theme-futuristic
+  table.td-resumo-table--premium.td-resumo-table--futuristic[aria-label='Resumo Instagram por município no território']
+  tbody
+  tr.td-resumo-table__row--selected.td-resumo-table__row--data:hover
+  td.td-resumo-table__cell--territorio
+  .font-semibold,
+.theme-futuristic
+  table.td-resumo-table--premium.td-resumo-table--futuristic[aria-label='Resumo Instagram por município no território']
+  tbody
+  tr.td-resumo-table__row--selected.td-resumo-table__row--hover-map
+  td.td-resumo-table__cell--territorio
+  .font-semibold {
+  color: #0b0f14 !important;
+}
+
+.theme-futuristic
+  table.td-resumo-table--premium.td-resumo-table--futuristic[aria-label='Resumo Instagram por município no território']
+  tbody
+  tr.td-resumo-table__row--selected.td-resumo-table__row--data:hover
+  td
+  button,
+.theme-futuristic
+  table.td-resumo-table--premium.td-resumo-table--futuristic[aria-label='Resumo Instagram por município no território']
+  tbody
+  tr.td-resumo-table__row--selected.td-resumo-table__row--hover-map
+  td
+  button {
+  color: #0b0f14 !important;
+}
+
 .theme-futuristic table.td-resumo-table--premium tbody tr.td-resumo-table__row--hover-map td {
   background: rgba(255, 106, 0, 0.1) !important;
 }
@@ -472,6 +640,107 @@
   background: rgba(255, 255, 255, 0.1) !important;
   border-color: rgba(255, 255, 255, 0.22) !important;
   color: var(--td-fut-text, #e6edf3) !important;
+}
+
+/* Selecionada + hover (rato ou realce do mapa): fundo claro; texto escuro (evita claro sobre claro). */
+.theme-futuristic table.td-resumo-table--premium tbody tr.td-resumo-table__row--selected.td-resumo-table__row--data:hover td,
+.theme-futuristic table.td-resumo-table--premium tbody tr.td-resumo-table__row--selected.td-resumo-table__row--hover-map td {
+  background: rgba(255, 252, 248, 0.97) !important;
+  color: #0b0f14 !important;
+}
+
+.theme-futuristic
+  table.td-resumo-table--premium
+  tbody
+  tr.td-resumo-table__row--selected.td-resumo-table__row--data:hover
+  .text-text-secondary,
+.theme-futuristic
+  table.td-resumo-table--premium
+  tbody
+  tr.td-resumo-table__row--selected.td-resumo-table__row--hover-map
+  .text-text-secondary {
+  color: rgba(11, 15, 20, 0.74) !important;
+}
+
+.theme-futuristic
+  table.td-resumo-table--premium
+  tbody
+  tr.td-resumo-table__row--selected.td-resumo-table__row--data:hover
+  .text-text-primary,
+.theme-futuristic
+  table.td-resumo-table--premium
+  tbody
+  tr.td-resumo-table__row--selected.td-resumo-table__row--hover-map
+  .text-text-primary,
+.theme-futuristic
+  table.td-resumo-table--premium
+  tbody
+  tr.td-resumo-table__row--selected.td-resumo-table__row--data:hover
+  td.td-resumo-table__cell--territorio
+  .text-text-primary,
+.theme-futuristic
+  table.td-resumo-table--premium
+  tbody
+  tr.td-resumo-table__row--selected.td-resumo-table__row--hover-map
+  td.td-resumo-table__cell--territorio
+  .text-text-primary {
+  color: #0b0f14 !important;
+}
+
+.theme-futuristic
+  table.td-resumo-table--premium
+  tbody
+  tr.td-resumo-table__row--selected.td-resumo-table__row--data:hover
+  .text-status-success,
+.theme-futuristic
+  table.td-resumo-table--premium
+  tbody
+  tr.td-resumo-table__row--selected.td-resumo-table__row--hover-map
+  .text-status-success {
+  color: #15803d !important;
+}
+
+.theme-futuristic
+  table.td-resumo-table--premium
+  tbody
+  tr.td-resumo-table__row--selected.td-resumo-table__row--data:hover
+  .text-status-danger,
+.theme-futuristic
+  table.td-resumo-table--premium
+  tbody
+  tr.td-resumo-table__row--selected.td-resumo-table__row--hover-map
+  .text-status-danger {
+  color: #b91c1c !important;
+}
+
+.theme-futuristic
+  table.td-resumo-table--premium
+  tbody
+  tr.td-resumo-table__row--selected.td-resumo-table__row--data:hover
+  td
+  button,
+.theme-futuristic
+  table.td-resumo-table--premium
+  tbody
+  tr.td-resumo-table__row--selected.td-resumo-table__row--hover-map
+  td
+  button {
+  color: #0b0f14 !important;
+}
+
+.theme-futuristic
+  table.td-resumo-table--premium
+  tbody
+  tr.td-resumo-table__row--selected.td-resumo-table__row--data:hover
+  .td-resumo-table__expand-btn,
+.theme-futuristic
+  table.td-resumo-table--premium
+  tbody
+  tr.td-resumo-table__row--selected.td-resumo-table__row--hover-map
+  .td-resumo-table__expand-btn {
+  background: #0b0f14 !important;
+  border-color: rgba(11, 15, 20, 0.75) !important;
+  color: #e6edf3 !important;
 }
 
 .theme-futuristic table.td-resumo-table--premium tbody tr.td-resumo-table__row--selected td:first-child {

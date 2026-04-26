@@ -2,7 +2,8 @@
 const nextConfig = {
   reactStrictMode: true,
   experimental: {
-    serverComponentsExternalPackages: ['@supabase/supabase-js', '@supabase/ssr'],
+    /** Resvg usa addon nativo; não empacotar no webpack (API routes / Node). */
+    serverComponentsExternalPackages: ['@supabase/supabase-js', '@supabase/ssr', '@resvg/resvg-js'],
   },
   async headers() {
     return [

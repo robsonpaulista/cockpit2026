@@ -147,6 +147,7 @@ export async function GET(request: Request) {
             cidade: lid.cidade,
             status: lid.status,
             comentarios: 0,
+            midiasComComentario: 0,
             perfisUnicos: 0,
             tempoMedioPostComentarioMs: null,
           })
@@ -169,9 +170,11 @@ export async function GET(request: Request) {
 
   if (handleNormSet.size > 0) {
     const comentariosPorHandle = new Map<string, number>()
+    const mediasPorHandle = new Map<string, Set<string>>()
     const delayAccPorHandle = new Map<string, { sumMs: number; n: number }>()
     for (const h of handleNormSet) {
       comentariosPorHandle.set(h, 0)
+      mediasPorHandle.set(h, new Set())
       delayAccPorHandle.set(h, { sumMs: 0, n: 0 })
     }
     const comentariosContados = new Set<string>()
@@ -180,7 +183,7 @@ export async function GET(request: Request) {
     for (;;) {
       const { data, error } = await admin
         .from('instagram_comments')
-        .select('instagram_comment_id, commenter_username, media_posted_at, commented_at')
+        .select('instagram_comment_id, instagram_media_id, commenter_username, media_posted_at, commented_at')
         .eq('user_id', userId)
         .order('id', { ascending: true })
         .range(fromComments, fromComments + pageSizeComments - 1)
@@ -200,6 +203,8 @@ export async function GET(request: Request) {
         const u = normalizeInstagramHandle((row as { commenter_username: string | null }).commenter_username)
         if (!u || !handleNormSet.has(u)) continue
         comentariosPorHandle.set(u, (comentariosPorHandle.get(u) ?? 0) + 1)
+        const mid = String((row as { instagram_media_id?: string | null }).instagram_media_id ?? '').trim()
+        if (mid) mediasPorHandle.get(u)?.add(mid)
 
         const mediaPosted = (row as { media_posted_at?: string | null }).media_posted_at
         const commentedAt = (row as { commented_at?: string | null }).commented_at
@@ -227,7 +232,9 @@ export async function GET(request: Request) {
       for (const row of arr) {
         const h = normalizeInstagramHandle(row.instagram)
         const c = h ? (comentariosPorHandle.get(h) ?? 0) : 0
+        const md = h ? (mediasPorHandle.get(h)?.size ?? 0) : 0
         row.comentarios = c
+        row.midiasComComentario = md
         row.perfisUnicos = h && c > 0 ? 1 : 0
         const acc = h ? delayAccPorHandle.get(h) : undefined
         row.tempoMedioPostComentarioMs =

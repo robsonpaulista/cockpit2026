@@ -87,6 +87,12 @@ export async function POST(request: Request) {
       valor_pago,
       data_pagamento,
       nro_doc,
+      imagem_url,
+      latitude,
+      longitude,
+      territorio,
+      parceiro,
+      descricao_obra,
     } = body
 
     if (!obra) {
@@ -114,6 +120,12 @@ export async function POST(request: Request) {
         valor_pago: valor_pago || null,
         data_pagamento: data_pagamento || null,
         nro_doc: nro_doc || null,
+        imagem_url: imagem_url || null,
+        latitude: latitude ?? null,
+        longitude: longitude ?? null,
+        territorio: territorio || null,
+        parceiro: parceiro || null,
+        descricao_obra: descricao_obra || null,
       })
       .select()
       .single()

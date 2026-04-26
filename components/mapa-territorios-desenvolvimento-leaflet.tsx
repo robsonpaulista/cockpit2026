@@ -56,7 +56,7 @@ import {
 } from '@/lib/piaui-territorio-classificacao'
 import {
   classificacaoTerritorioTdPorPctEngajamentoIg,
-  pctComentariosPorPostagensProcessadas,
+  pctMidiasComComentarioPorPostagensProcessadas,
   rotuloEngajamentoIgPorTipo,
   tituloTooltipEngajamentoIgComentarios,
 } from '@/lib/instagram-engajamento-ig-classificacao'
@@ -199,6 +199,8 @@ type MapaTdController = {
   setRotulosMunicipiosTd: (td: TerritorioDesenvolvimentoPI | null) => void
   /** Reposiciona e aplica opacidade/z-index conforme TD em foco (lê `highlightedTdRef`). */
   sincronizarMarcadoresPesoTdComFoco: () => void
+  /** Só reaprova foco visual + z-index (sem resolver sobreposição) — p.ex. hover do card no mapa. */
+  reaplicarFocoMarcadoresPesoTdApenas: () => void
   /** Aplica/remove estilo de hover nos marcadores do mapa ao passar na linha da tabela. */
   aplicarHoverMarcadorTd: (hoverTd: TerritorioDesenvolvimentoPI | null) => void
   /** Atualiza métrica exibida nos cards de TD do mapa. */
@@ -206,10 +208,13 @@ type MapaTdController = {
     agregadoTdPlanilha: Map<TerritorioDesenvolvimentoPI, AgregadoPlanilhaPorTd>,
     usarExpectativaFed26: boolean
   ) => void
-  /** Camada Instagram: % = comentários vinculados ao TD ÷ postagens processadas (mídias distintas na base). */
+  /** Camada Instagram: % = mídias com ≥1 comentário vinculado ao TD ÷ postagens processadas (teto 100%). */
   atualizarResumoMarcadoresPorIg?: (
     porTd: Map<TerritorioDesenvolvimentoPI, InstagramPorTdAgg>,
-    postagensProcessadas: number
+    postagensProcessadas: number,
+    hoverTdMapa: TerritorioDesenvolvimentoPI | null,
+    lideresPorTd: Map<TerritorioDesenvolvimentoPI, number>,
+    lideradosPorTd: Map<TerritorioDesenvolvimentoPI, number>
   ) => void
   /** Camada Pesquisas: média de intenção (%) e volume de registros por TD. */
   atualizarResumoMarcadoresPorPesquisa?: (
@@ -575,11 +580,17 @@ function resolverSobreposicaoCartoesMarcadoresTd(
   }
 }
 
+/** Hover no card (IG) fica acima do TD selecionado, que fica acima dos demais. */
+const Z_MARKER_TD_BASE = 200
+const Z_MARKER_TD_FOCO = 50_000
+const Z_MARKER_TD_HOVER_MAPA_IG = 100_000
+
 function aplicarFocoMarcadoresPesoTd(
   markerByTd: Map<TerritorioDesenvolvimentoPI, L.Marker>,
   focusTd: TerritorioDesenvolvimentoPI | null,
   geoLayer: L.GeoJSON,
-  map: L.Map
+  map: L.Map,
+  hoverTdMapa: TerritorioDesenvolvimentoPI | null = null
 ) {
   for (const [td, marker] of markerByTd) {
     marcadorTdLatLngComOffsetPx(map, marker, geoLayer, td)
@@ -588,7 +599,12 @@ function aplicarFocoMarcadoresPesoTd(
     if (el) {
       const outrosOcultos = focusTd !== null && td !== focusTd
       el.style.opacity = outrosOcultos ? '0.12' : '1'
-      el.style.pointerEvents = 'none'
+      el.style.pointerEvents = 'auto'
+      if (hoverTdMapa && td === hoverTdMapa) {
+        el.classList.add('td-peso-eleitores-marker--ig-map-hover')
+      } else {
+        el.classList.remove('td-peso-eleitores-marker--ig-map-hover')
+      }
       if (focusTd !== null && td === focusTd) {
         const { fill, stroke } = getCorTerritorioDesenvolvimentoPI(td)
         el.style.setProperty('--td-focus-stroke', stroke)
@@ -600,7 +616,15 @@ function aplicarFocoMarcadoresPesoTd(
         el.classList.remove('td-peso-eleitores-marker--focado')
       }
     }
-    marker.setZIndexOffset(focusTd !== null && td === focusTd ? 3200 : focusTd !== null ? 0 : 200)
+    let zOff = Z_MARKER_TD_BASE
+    if (hoverTdMapa && td === hoverTdMapa) {
+      zOff = Z_MARKER_TD_HOVER_MAPA_IG
+    } else if (focusTd && td === focusTd) {
+      zOff = Z_MARKER_TD_FOCO
+    } else if (focusTd) {
+      zOff = 0
+    }
+    marker.setZIndexOffset(zOff)
     const m = marker as L.Marker & { update?: () => void }
     m.update?.()
   }
@@ -656,10 +680,99 @@ const fmtPctEleitoresTd = new Intl.NumberFormat('pt-BR', {
   maximumFractionDigits: 1,
 })
 
+function limparDetalheIgNosMarcadoresTd(markerByTd: Map<TerritorioDesenvolvimentoPI, L.Marker>) {
+  for (const marker of markerByTd.values()) {
+    const el = marker.getElement()
+    if (!el) continue
+    const detailEl = el.querySelector<HTMLElement>('.td-peso-eleitores-card__ig-detail')
+    const cardEl = el.querySelector<HTMLElement>('.td-peso-eleitores-card')
+    if (detailEl) {
+      detailEl.replaceChildren()
+      detailEl.style.display = 'none'
+    }
+    if (cardEl) {
+      cardEl.style.maxWidth = ''
+      cardEl.style.minWidth = ''
+    }
+  }
+}
+
+function preencherDetalheIgNoMarcadorTd(
+  detailHost: HTMLElement,
+  cardEl: HTMLElement,
+  opts: {
+    postagensProcessadas: number
+    comentarios: number
+    midiasComComentario: number
+    perfisUnicos: number
+    tempoPostComentarioN: number
+    tempoPostComentarioSomaMs: number
+    lideres: number
+    liderados: number
+    isFuturistic: boolean
+  }
+) {
+  const fmt = new Intl.NumberFormat('pt-BR')
+  const fmt1 = new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })
+  const lab = opts.isFuturistic ? '#7F8A96' : 'rgba(255,255,255,0.78)'
+  const val = opts.isFuturistic ? '#C9D4E0' : 'rgba(255,255,255,0.95)'
+  const fontRow = '9px'
+  const mkRow = (label: string, value: string) => {
+    const row = document.createElement('div')
+    row.style.cssText = `display:flex;justify-content:space-between;align-items:baseline;gap:12px;margin-top:5px;font-size:${fontRow};line-height:1.25;max-width:100%;flex-wrap:nowrap`
+    const l = document.createElement('span')
+    l.textContent = label
+    l.style.color = lab
+    l.style.flex = '1 1 0'
+    l.style.minWidth = '0'
+    l.style.paddingRight = '4px'
+    const v = document.createElement('span')
+    v.textContent = value
+    v.style.color = val
+    v.style.fontWeight = '700'
+    v.style.textAlign = 'right'
+    v.style.whiteSpace = 'nowrap'
+    v.style.fontVariantNumeric = 'tabular-nums'
+    v.style.flex = '0 0 auto'
+    row.append(l, v)
+    return row
+  }
+
+  detailHost.replaceChildren()
+  const tit = document.createElement('div')
+  tit.textContent = 'Instagram · detalhe'
+  tit.style.cssText = `margin-top:6px;padding-top:5px;border-top:1px solid ${opts.isFuturistic ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.22)'};font-size:8px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;color:${lab}`
+  detailHost.appendChild(tit)
+
+  detailHost.appendChild(mkRow('Postagens na conta', fmt.format(opts.postagensProcessadas)))
+  detailHost.appendChild(mkRow('Comentários vinculados', fmt.format(opts.comentarios)))
+  detailHost.appendChild(mkRow('Posts c/ comentário', fmt.format(opts.midiasComComentario)))
+  const semComentario = Math.max(0, opts.postagensProcessadas - opts.midiasComComentario)
+  detailHost.appendChild(mkRow('Posts sem comentário', fmt.format(semComentario)))
+  detailHost.appendChild(mkRow('Perfis (@) distintos', fmt.format(opts.perfisUnicos)))
+  detailHost.appendChild(mkRow('Líderes (mob.)', fmt.format(opts.lideres)))
+  detailHost.appendChild(mkRow('Liderados (mob.)', fmt.format(opts.liderados)))
+  if (opts.midiasComComentario > 0 && opts.comentarios > 0) {
+    const media = opts.comentarios / opts.midiasComComentario
+    detailHost.appendChild(mkRow('Média com./post c/ com.', fmt1.format(media)))
+  }
+  if (opts.tempoPostComentarioN > 0) {
+    const msMed = Math.round(opts.tempoPostComentarioSomaMs / opts.tempoPostComentarioN)
+    detailHost.appendChild(mkRow('Tempo médio pub.→com.', formatTempoMedioPublicacaoComentario(msMed)))
+  }
+
+  const wDet = opts.isFuturistic ? 'min(100vw, 320px)' : 'min(100vw, 300px)'
+  cardEl.style.maxWidth = wDet
+  cardEl.style.minWidth = opts.isFuturistic ? '260px' : '240px'
+}
+
 function atualizarResumoMarcadoresPorComentariosIg(
   markerByTd: Map<TerritorioDesenvolvimentoPI, L.Marker>,
   porTd: Map<TerritorioDesenvolvimentoPI, InstagramPorTdAgg>,
-  postagensProcessadas: number
+  postagensProcessadas: number,
+  hoverTdMapa: TerritorioDesenvolvimentoPI | null,
+  lideresPorTd: Map<TerritorioDesenvolvimentoPI, number>,
+  lideradosPorTd: Map<TerritorioDesenvolvimentoPI, number>
 ) {
   const fmtComentMeta = (n: number) =>
     n >= 10_000 ? `${Math.round(n / 1000)} mil coment.` : `${new Intl.NumberFormat('pt-BR').format(n)} coment.`
@@ -669,17 +782,55 @@ function atualizarResumoMarcadoresPorComentariosIg(
     if (!el) continue
     const valorEl = el.querySelector<HTMLElement>('.td-peso-eleitores-card__value')
     const metaEl = el.querySelector<HTMLElement>('.td-peso-eleitores-card__meta')
+    const detailEl = el.querySelector<HTMLElement>('.td-peso-eleitores-card__ig-detail')
+    const cardEl = el.querySelector<HTMLElement>('.td-peso-eleitores-card')
     if (!valorEl || !metaEl) continue
-    const n = porTd.get(td)?.comentarios ?? 0
+    const agg = porTd.get(td)
+    const nCom = agg?.comentarios ?? 0
+    const nMid = agg?.midiasComComentario ?? 0
+    const perfis = agg?.perfisUnicos ?? 0
+    const tempoN = agg?.tempoPostComentarioN ?? 0
+    const tempoSoma = agg?.tempoPostComentarioSomaMs ?? 0
     if (!postagensProcessadas || postagensProcessadas < 1) {
       valorEl.textContent = '—'
-      metaEl.textContent = `${fmtComentMeta(n)} · 0 posts na base`
+      metaEl.textContent = `${fmtComentMeta(nCom)} · 0 posts na base`
+      if (detailEl) {
+        detailEl.replaceChildren()
+        detailEl.style.display = 'none'
+      }
+      if (cardEl) {
+        cardEl.style.maxWidth = ''
+        cardEl.style.minWidth = ''
+      }
       continue
     }
-    const pct = (n / postagensProcessadas) * 100
+    const pct = pctMidiasComComentarioPorPostagensProcessadas(nMid, postagensProcessadas)
     const pctStr = fmtPctEleitoresTd.format(pct).replace(/\u00a0/g, '')
     valorEl.textContent = `${pctStr}%`
-    metaEl.textContent = `${fmtComentMeta(n)} · ${new Intl.NumberFormat('pt-BR').format(postagensProcessadas)} posts`
+    metaEl.textContent = `${fmtComentMeta(nCom)} · ${new Intl.NumberFormat('pt-BR').format(postagensProcessadas)} posts`
+
+    if (detailEl && cardEl) {
+      const isFuturistic = cardEl.getAttribute('data-card-tone') === 'futuristic'
+      if (hoverTdMapa !== null && td === hoverTdMapa) {
+        detailEl.style.display = 'block'
+        preencherDetalheIgNoMarcadorTd(detailEl, cardEl, {
+          postagensProcessadas,
+          comentarios: nCom,
+          midiasComComentario: nMid,
+          perfisUnicos: perfis,
+          tempoPostComentarioN: tempoN,
+          tempoPostComentarioSomaMs: tempoSoma,
+          lideres: lideresPorTd.get(td) ?? 0,
+          liderados: lideradosPorTd.get(td) ?? 0,
+          isFuturistic,
+        })
+      } else {
+        detailEl.replaceChildren()
+        detailEl.style.display = 'none'
+        cardEl.style.maxWidth = ''
+        cardEl.style.minWidth = ''
+      }
+    }
   }
 }
 
@@ -701,12 +852,13 @@ function formatarEleitoresCompactoPt(n: number): string {
 /**
  * Marcadores flutuantes por TD: % do eleitorado do PI e total aproximado.
  * Posição = média dos centros dos municípios (fallback: centro do bbox do TD).
- * `interactive: false` para cliques passarem aos municípios.
+ * `interactive: true` para permitir hover direto no card.
  */
 function montarMarcadoresPesoEleitoresPorTd(
   map: L.Map,
   geoLayer: L.GeoJSON,
-  visualPreset: 'default' | 'futuristic'
+  visualPreset: 'default' | 'futuristic',
+  onHoverTdCard?: (td: TerritorioDesenvolvimentoPI | null) => void
 ): Map<TerritorioDesenvolvimentoPI, L.Marker> {
   const grupo = L.layerGroup()
   const markerByTd = new Map<TerritorioDesenvolvimentoPI, L.Marker>()
@@ -736,21 +888,23 @@ function montarMarcadoresPesoEleitoresPorTd(
 
     const html = isFut
       ? `<div class="td-peso-eleitores-marker-inner td-peso-eleitores-marker-inner--vivo" style="--td-marker-s:${escala.toFixed(3)}">
-        <div class="td-peso-eleitores-card" style="${cardInlineStyle}">
+        <div class="td-peso-eleitores-card" data-card-tone="futuristic" style="${cardInlineStyle}">
           <div style="display:flex;align-items:center;gap:5px;margin-bottom:3px">
             <span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:${fill};flex-shrink:0"></span>
-            <div style="font-size:8px;font-weight:600;line-height:1.2;color:#E6EDF3;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;max-width:86px" title="${nomeCurto}">${nomeCurto}</div>
+            <div class="td-peso-eleitores-card__nome td-peso-eleitores-card__nome--fut" style="font-size:8px;font-weight:600;line-height:1.2;color:#E6EDF3;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;max-width:86px" title="${nomeCurto}">${nomeCurto}</div>
           </div>
           <div class="td-peso-eleitores-card__value" style="font-size:17px;font-weight:700;line-height:1;color:#E6EDF3;letter-spacing:-0.02em">${pctStr}%</div>
           <div class="td-peso-eleitores-card__meta" style="margin-top:3px;font-size:8px;font-weight:400;line-height:1.15;color:#7F8A96">${subEleit}</div>
+          <div class="td-peso-eleitores-card__ig-detail" style="display:none" aria-hidden="true"></div>
         </div>
       </div>`
       : `<div class="td-peso-eleitores-marker-inner td-peso-eleitores-marker-inner--vivo" style="--td-marker-s:${escala.toFixed(3)}">
-        <div class="td-peso-eleitores-card" style="${cardInlineStyle}">
-          <div style="font-size:9px;font-weight:700;line-height:1.2;color:#fff;text-shadow:0 1px 2px rgba(0,0,0,0.45);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden" title="${nomeCurto}">${nomeCurto}</div>
+        <div class="td-peso-eleitores-card" data-card-tone="default" style="${cardInlineStyle}">
+          <div class="td-peso-eleitores-card__nome td-peso-eleitores-card__nome--def" style="font-size:9px;font-weight:700;line-height:1.2;color:#fff;text-shadow:0 1px 2px rgba(0,0,0,0.45);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden" title="${nomeCurto}">${nomeCurto}</div>
           <div class="td-peso-eleitores-card__value" style="margin-top:3px;font-size:16px;font-weight:800;line-height:1;color:#fff;letter-spacing:-0.02em;text-shadow:0 1px 3px rgba(0,0,0,0.5)">${pctStr}%</div>
           <div class="td-peso-eleitores-card__meta" style="margin-top:1px;font-size:8px;font-weight:600;line-height:1.15;color:rgba(255,255,255,0.94);text-shadow:0 1px 2px rgba(0,0,0,0.35)">${subEleit}</div>
           <div style="margin-top:2px;font-size:7px;font-weight:500;line-height:1.1;color:rgba(255,255,255,0.78)">do eleitorado PI</div>
+          <div class="td-peso-eleitores-card__ig-detail" style="display:none" aria-hidden="true"></div>
         </div>
       </div>`
 
@@ -763,11 +917,13 @@ function montarMarcadoresPesoEleitoresPorTd(
 
     const marker = L.marker(center, {
       icon,
-      interactive: false,
+      interactive: true,
       keyboard: false,
       pane: paneName,
       riseOnHover: false,
     }).addTo(grupo)
+    marker.on('mouseover', () => onHoverTdCard?.(r.territorio))
+    marker.on('mouseout', () => onHoverTdCard?.(null))
     const mm = marker as L.Marker & MarcadorPesoTdExtras
     mm.__tdNaturalAnchor = L.latLng(center.lat, center.lng)
     mm.__tdLabelOffsetPx = L.point(0, 0)
@@ -784,6 +940,7 @@ function atualizarResumoMarcadoresPesoEleitoresPorTd(
   agregadoTdPlanilha: Map<TerritorioDesenvolvimentoPI, AgregadoPlanilhaPorTd>,
   usarExpectativaFed26: boolean
 ) {
+  limparDetalheIgNosMarcadoresTd(markerByTd)
   const resumos = getResumoPorTerritorioDesenvolvimentoPI()
   const eleitoresPorTd = new Map(resumos.map((r) => [r.territorio, r.eleitores] as const))
   const totalEleitores = Math.max(1, getTotaisResumoTerritorioPI(resumos).eleitores)
@@ -825,6 +982,7 @@ function atualizarResumoMarcadoresIntencaoPesquisaPorTd(
   markerByTd: Map<TerritorioDesenvolvimentoPI, L.Marker>,
   mediasPorTd: Map<TerritorioDesenvolvimentoPI, { media: number; n: number }>
 ) {
+  limparDetalheIgNosMarcadoresTd(markerByTd)
   const fmtPct = new Intl.NumberFormat('pt-BR', {
     minimumFractionDigits: 1,
     maximumFractionDigits: 1,
@@ -1005,7 +1163,9 @@ function dimensoesRetanguloContido(parentW: number, parentH: number, larguraSobr
 function ajustarCaixaMapaAoViewportPiaui(
   viewportEl: HTMLDivElement | null,
   aspectBoxEl: HTMLDivElement | null,
-  larguraSobreAltura: number
+  larguraSobreAltura: number,
+  /** Em `lg+` o mapa fica ao lado do painel (shrink pela altura); em coluna, encaixe pelo retângulo disponível. */
+  splitRowLayout = true
 ) {
   if (!viewportEl || !aspectBoxEl) return
 
@@ -1014,8 +1174,9 @@ function ajustarCaixaMapaAoViewportPiaui(
    * Neste modo derivamos a largura a partir da ALTURA (flex-stretch garante que
    * o elemento tem a altura do container) e depois definimos o width explicitamente,
    * para que a coluna do mapa tenha exactamente o tamanho do Piauí, sem vão.
+   * Só aplica quando `splitRowLayout` (viewport largo, mapa à direita/esquerda do painel).
    */
-  const shrinkToMap = viewportEl.classList.contains('td-fut-vp-shrink')
+  const shrinkToMap = splitRowLayout && viewportEl.classList.contains('td-fut-vp-shrink')
   if (shrinkToMap) viewportEl.style.width = '' // reset para ler a altura correcta
 
   let W = viewportEl.clientWidth
@@ -1276,8 +1437,32 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({
     deltasDistintos: false,
   })
   const highlightedTdRef = useRef<TerritorioDesenvolvimentoPI | null>(null)
+  /** Hover no card TD no mapa (camada IG) — usado no z-index do marcador. */
+  const hoverTdMapaIgRef = useRef<TerritorioDesenvolvimentoPI | null>(null)
   const municipioFocadoLiderancasRef = useRef<string | null>(null)
   const skipRefitFullOnInitialNullRef = useRef(true)
+  /** Em `lg+` o mapa e o painel ficam lado a lado; abaixo disso, empilhados (mobile). */
+  const mapSplitRowLayoutRef = useRef(false)
+
+  useLayoutEffect(() => {
+    if (typeof window === 'undefined') return
+    const mq = window.matchMedia('(min-width: 1024px)')
+    const sync = () => {
+      mapSplitRowLayoutRef.current = mq.matches
+      ajustarCaixaMapaAoViewportPiaui(
+        viewportFitRef.current,
+        aspectBoxRef.current,
+        piauiAspectRatioRef.current,
+        mapSplitRowLayoutRef.current
+      )
+      if (mapRef.current) {
+        safeLeafletInvalidateSize(mapRef.current)
+      }
+    }
+    sync()
+    mq.addEventListener('change', sync)
+    return () => mq.removeEventListener('change', sync)
+  }, [])
 
   const [loadState, setLoadState] = useState<LoadState>('loading')
   const [errorMessage, setErrorMessage] = useState<string>('')
@@ -1291,6 +1476,7 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({
   /** Drill IG: líderes → liderados (mobilização) por município; não exige planilha. */
   const [municipioMobilizacaoDrillIg, setMunicipioMobilizacaoDrillIg] = useState<string | null>(null)
   const [hoverTdTabela, setHoverTdTabela] = useState<TerritorioDesenvolvimentoPI | null>(null)
+  const [hoverTdMapaCard, setHoverTdMapaCard] = useState<TerritorioDesenvolvimentoPI | null>(null)
 
   const mapFilterActionsRef = useRef<{
     setHighlightedTd: (v: TerritorioDesenvolvimentoPI | null) => void
@@ -1304,6 +1490,7 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({
 
   highlightedTdRef.current = highlightedTd
   municipioFocadoLiderancasRef.current = municipioFocadoLiderancas
+  hoverTdMapaIgRef.current = painelContext === 'digitalIg' ? hoverTdMapaCard : null
 
   const resumoPorTd = useMemo(() => getResumoPorTerritorioDesenvolvimentoPI(), [])
   const totaisResumo = useMemo(() => getTotaisResumoTerritorioPI(resumoPorTd), [resumoPorTd])
@@ -1365,8 +1552,12 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({
     Map<TerritorioDesenvolvimentoPI, number>
   >(() => new Map())
   const [igPorMunicipioNoTd, setIgPorMunicipioNoTd] = useState<Map<string, IgAgregadoMunicipioNoTd>>(() => new Map())
+  const [igMidiasComComentarioNoTdHighlight, setIgMidiasComComentarioNoTdHighlight] = useState<number>(0)
   const [igPorMunicipioNoTdLoad, setIgPorMunicipioNoTdLoad] = useState<'idle' | 'loading' | 'ready' | 'error'>('idle')
-  const [igLideresDesempenhoModalTd, setIgLideresDesempenhoModalTd] = useState<TerritorioDesenvolvimentoPI | null>(null)
+  const [igLideresDesempenhoModal, setIgLideresDesempenhoModal] = useState<{
+    td: TerritorioDesenvolvimentoPI
+    municipio: string | null
+  } | null>(null)
 
   const [rankingCandidatosPesquisaModal, setRankingCandidatosPesquisaModal] =
     useState<MapaPesquisaRankingCandidatosTarget | null>(null)
@@ -1493,7 +1684,10 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({
   const recarregarIgPorMunicipioNoTdSilencioso = useCallback(async (td: TerritorioDesenvolvimentoPI) => {
     try {
       const res = await fetchInstagramIgPorMunicipioNoTd(td)
-      if (res.ok) setIgPorMunicipioNoTd(res.data)
+      if (res.ok) {
+        setIgPorMunicipioNoTd(res.data)
+        setIgMidiasComComentarioNoTdHighlight(res.midiasComComentarioNoTd)
+      }
     } catch {
       /* mantém último payload */
     }
@@ -1501,7 +1695,9 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({
 
   useEffect(() => {
     if (painelContext !== 'digitalIg' || highlightedTd === null) {
+      setHoverTdMapaCard(null)
       setIgPorMunicipioNoTd(new Map())
+      setIgMidiasComComentarioNoTdHighlight(0)
       setIgPorMunicipioNoTdLoad('idle')
       return
     }
@@ -1512,9 +1708,11 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({
       if (cancelled) return
       if (res.ok) {
         setIgPorMunicipioNoTd(res.data)
+        setIgMidiasComComentarioNoTdHighlight(res.midiasComComentarioNoTd)
         setIgPorMunicipioNoTdLoad('ready')
       } else {
         setIgPorMunicipioNoTd(new Map())
+        setIgMidiasComComentarioNoTdHighlight(0)
         setIgPorMunicipioNoTdLoad(res.status === 403 ? 'ready' : 'error')
       }
     })()
@@ -1580,7 +1778,7 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({
     setIgComentariosPorTdMobilizacaoNegado(false)
     setIgLoadState('idle')
     setIgError('')
-    setIgLideresDesempenhoModalTd(null)
+    setIgLideresDesempenhoModal(null)
   }, [painelContext])
 
   const lerCandidatoPadraoPesquisa = useCallback((): string => {
@@ -2157,8 +2355,8 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({
     const pp = igAgregadoAtual.postagensProcessadas
     const m = new Map<TerritorioDesenvolvimentoPI, ClassificacaoTerritorioTd>()
     for (const r of resumoPorTd) {
-      const c = igPorTd.get(r.territorio)?.comentarios ?? 0
-      const pct = pctComentariosPorPostagensProcessadas(c, pp)
+      const md = igPorTd.get(r.territorio)?.midiasComComentario ?? 0
+      const pct = pctMidiasComComentarioPorPostagensProcessadas(md, pp)
       m.set(r.territorio, classificacaoTerritorioTdPorPctEngajamentoIg(pct))
     }
     return m
@@ -2632,6 +2830,7 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({
     const rows = resumoLinhasVisiveis.map((r) => {
       const ig = igPorTd.get(r.territorio) ?? {
         comentarios: 0,
+        midiasComComentario: 0,
         perfisUnicos: 0,
         tempoPostComentarioSomaMs: 0,
         tempoPostComentarioN: 0,
@@ -2644,6 +2843,7 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({
       return {
         r,
         comentarios: ig.comentarios,
+        midiasComComentario: ig.midiasComComentario ?? 0,
         perfisUnicos: ig.perfisUnicos,
         tempoMedioPostComentarioMs,
         rankIg,
@@ -3136,6 +3336,7 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({
         lideres: 0,
         liderados: 0,
         comentarios: 0,
+        midiasComComentario: 0,
         perfisUnicos: 0,
         tempoMedioPostComentarioMs: null,
         tempoPostComentarioSomaMs: 0,
@@ -3147,6 +3348,7 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({
         lideres: agg.lideres,
         liderados: agg.liderados,
         comentarios: agg.comentarios,
+        midiasComComentario: agg.midiasComComentario,
         perfisUnicos: agg.perfisUnicos,
         tempoMedioPostComentarioMs: agg.tempoMedioPostComentarioMs,
         rankIg,
@@ -3392,7 +3594,8 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({
     ajustarCaixaMapaAoViewportPiaui(
       viewportFitRef.current,
       aspectBoxRef.current,
-      piauiAspectRatioRef.current
+      piauiAspectRatioRef.current,
+      mapSplitRowLayoutRef.current
     )
   }, [mapHostAlturaFixaPx, alturaAreaMapaPx])
 
@@ -3449,7 +3652,8 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({
         ajustarCaixaMapaAoViewportPiaui(
           viewportFitRef.current,
           aspectBoxRef.current,
-          piauiAspectRatioRef.current
+          piauiAspectRatioRef.current,
+          mapSplitRowLayoutRef.current
         )
 
         const mapEl = containerRef.current
@@ -3547,7 +3751,12 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({
           },
         }).addTo(map)
 
-        const markerByTdPesoEleitores = montarMarcadoresPesoEleitoresPorTd(map, geoLayer, visualPreset)
+        const markerByTdPesoEleitores = montarMarcadoresPesoEleitoresPorTd(
+          map,
+          geoLayer,
+          visualPreset,
+          (tdHover) => setHoverTdMapaCard(tdHover)
+        )
 
         const labelsPane = map.createPane('piMunicipLabels')
         labelsPane.style.zIndex = '480'
@@ -3602,7 +3811,22 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({
           setRotulosMunicipiosTd,
           sincronizarMarcadoresPesoTdComFoco: () => {
             resolverSobreposicaoCartoesMarcadoresTd(map, geoLayer, markerByTdPesoEleitores, visualPreset)
-            aplicarFocoMarcadoresPesoTd(markerByTdPesoEleitores, highlightedTdRef.current, geoLayer, map)
+            aplicarFocoMarcadoresPesoTd(
+              markerByTdPesoEleitores,
+              highlightedTdRef.current,
+              geoLayer,
+              map,
+              hoverTdMapaIgRef.current
+            )
+          },
+          reaplicarFocoMarcadoresPesoTdApenas: () => {
+            aplicarFocoMarcadoresPesoTd(
+              markerByTdPesoEleitores,
+              highlightedTdRef.current,
+              geoLayer,
+              map,
+              hoverTdMapaIgRef.current
+            )
           },
           aplicarHoverMarcadorTd: (hoverTd) => {
             atualizarHoverMarcadorTd(markerByTdPesoEleitores, hoverTd, visualPreset, highlightedTdRef.current)
@@ -3614,11 +3838,14 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({
               usarExpectativaFed26
             )
           },
-          atualizarResumoMarcadoresPorIg: (porTd, postagensProcessadas) => {
+          atualizarResumoMarcadoresPorIg: (porTd, postagensProcessadas, hoverTd, lideresPorTd, lideradosPorTd) => {
             atualizarResumoMarcadoresPorComentariosIg(
               markerByTdPesoEleitores,
               porTd,
-              postagensProcessadas
+              postagensProcessadas,
+              hoverTd,
+              lideresPorTd,
+              lideradosPorTd
             )
           },
           atualizarResumoMarcadoresPorPesquisa: (mediasPorTd) => {
@@ -3639,7 +3866,8 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({
           ajustarCaixaMapaAoViewportPiaui(
             viewportFitRef.current,
             aspectBoxRef.current,
-            piauiAspectRatioRef.current
+            piauiAspectRatioRef.current,
+            mapSplitRowLayoutRef.current
           )
           if (!safeLeafletInvalidateSize(mapRef.current)) return
           if (!MAPA_AUTO_ZOOM_ENABLED) return
@@ -3765,7 +3993,8 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({
     ajustarCaixaMapaAoViewportPiaui(
       viewportFitRef.current,
       aspectBoxRef.current,
-      piauiAspectRatioRef.current
+      piauiAspectRatioRef.current,
+      mapSplitRowLayoutRef.current
     )
     safeLeafletInvalidateSize(map)
     c.applyStyles(highlightedTd, municipioFocadoLiderancas)
@@ -3811,7 +4040,8 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({
       ajustarCaixaMapaAoViewportPiaui(
         viewportFitRef.current,
         aspectBoxRef.current,
-        piauiAspectRatioRef.current
+        piauiAspectRatioRef.current,
+        mapSplitRowLayoutRef.current
       )
       if (!safeLeafletInvalidateSize(mapAoExecutar)) return
       runFit(mapAoExecutar)
@@ -3852,7 +4082,10 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({
     if (painelContext === 'digitalIg') {
       mapTdControllerRef.current.atualizarResumoMarcadoresPorIg?.(
         igPorTd,
-        igAgregadoAtual.postagensProcessadas
+        igAgregadoAtual.postagensProcessadas,
+        hoverTdMapaCard,
+        lideresMobilizacaoPorTd,
+        lideradosMobilizacaoPorTd
       )
     } else if (painelContext === 'pesquisas') {
       mapTdControllerRef.current.atualizarResumoMarcadoresPorPesquisa?.(pesquisaMediasPorTd)
@@ -3870,8 +4103,18 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({
     painelPlanilhaAtivo,
     igPorTd,
     igAgregadoAtual.postagensProcessadas,
+    igAgregadoAtual.midiasComComentarioVinculadas,
+    hoverTdMapaCard,
+    lideresMobilizacaoPorTd,
+    lideradosMobilizacaoPorTd,
     pesquisaMediasPorTd,
   ])
+
+  useEffect(() => {
+    if (loadState !== 'ready' || !mapTdControllerRef.current) return
+    if (painelContext !== 'digitalIg') return
+    mapTdControllerRef.current.reaplicarFocoMarcadoresPesoTdApenas()
+  }, [loadState, painelContext, highlightedTd, hoverTdMapaCard])
 
   const rotuloVisaoPainelFuturista = useMemo((): string => {
     if (painelContext === 'pesquisas') {
@@ -4265,12 +4508,12 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({
           : undefined
       }
     >
-      {/* Wrapper: flex-col durante carregamento; flex-row (split) quando pronto no tema futurista */}
+      {/* Wrapper: flex-col durante carregamento; em futurista pronto: coluna no mobile, lado a lado a partir de lg */}
       <div
         className={cn(
           'min-h-0 w-full',
           futSplit
-            ? 'flex flex-1 flex-row items-stretch gap-4 overflow-x-hidden px-3 pb-3 sm:gap-5 sm:px-4 sm:pb-4 md:gap-6 md:px-5 md:pb-5'
+            ? 'flex flex-1 flex-col items-stretch gap-4 overflow-x-hidden px-3 pb-3 sm:gap-5 sm:px-4 sm:pb-4 md:gap-6 md:px-5 md:pb-5 lg:flex-row'
             : mapHostAlturaFixaPx !== null
               ? 'shrink-0'
               : 'flex min-h-0 flex-1 basis-0 flex-col'
@@ -4282,7 +4525,11 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({
           className={cn(
             'pointer-events-none flex items-start justify-start',
             futSplit
-              ? 'td-fut-vp-shrink min-h-0 flex-none self-stretch pl-1 sm:pl-2'
+              ? cn(
+                  'td-fut-vp-shrink w-full shrink-0 pl-1 sm:pl-2',
+                  'min-h-[min(38dvh,280px)] sm:min-h-[min(42dvh,340px)]',
+                  'lg:min-h-0 lg:flex-none lg:self-stretch'
+                )
               : cn(
                   'w-full pl-3 sm:pl-4 md:pl-6',
                   mapHostAlturaFixaPx !== null ? 'shrink-0' : 'min-h-0 flex-1 basis-0'
@@ -4291,7 +4538,7 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({
           )}
           style={
             futSplit
-              ? { minHeight: 0 }
+              ? undefined
               : mapHostAlturaFixaPx !== null && mapHostAlturaFixaPx > 0
                 ? { height: mapHostAlturaFixaPx, minHeight: 0 }
                 : { minHeight: 0 }
@@ -4350,7 +4597,8 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({
               'pointer-events-none min-w-0',
               futSplit
                 ? cn(
-                    'relative flex flex-1 flex-col overflow-x-hidden overflow-y-auto',
+                    'relative flex min-h-0 flex-1 flex-col overflow-x-hidden overflow-y-auto',
+                    'max-lg:border-t max-lg:border-white/[0.08] max-lg:pt-3',
                     'bg-[#10161F]'
                   )
                 : cn(
@@ -4607,7 +4855,7 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({
                       </th>
                       <th
                         className="td-resumo-table__cell td-resumo-table__grupo-status-start text-center font-medium"
-                        title="Engajamento: comentários vinculados ÷ postagens processadas na conta. Baixo: abaixo de 50%; Médio: 50% a 80%; Alto: acima de 80%."
+                        title="Engajamento: mídias com ≥1 comentário vinculado ÷ postagens processadas na conta (teto 100%). Baixo: abaixo de 50%; Médio: 50% a 80%; Alto: acima de 80%."
                       >
                         Eng. IG
                       </th>
@@ -4618,6 +4866,7 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({
                       ({
                         r,
                         comentarios,
+                        midiasComComentario,
                         perfisUnicos,
                         tempoMedioPostComentarioMs,
                         rankIg,
@@ -4627,8 +4876,8 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({
                         const territorioCor = CORES_TERRITORIO_DESENVOLVIMENTO_PI[r.territorio]
                         const selecionado = highlightedTd === r.territorio
                         const tipoEng = classificacaoEngajamentoIgPorTd.get(r.territorio) ?? 'baixo-impacto'
-                        const pctEngTd = pctComentariosPorPostagensProcessadas(
-                          comentarios,
+                        const pctEngTd = pctMidiasComComentarioPorPostagensProcessadas(
+                          midiasComComentario,
                           igAgregadoAtual.postagensProcessadas
                         )
                         const pctTot =
@@ -4745,7 +4994,7 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({
                                   title="Ver desempenho digital por líder"
                                   onClick={(e) => {
                                     e.stopPropagation()
-                                    setIgLideresDesempenhoModalTd(r.territorio)
+                                    setIgLideresDesempenhoModal({ td: r.territorio, municipio: null })
                                   }}
                                   className={cn(
                                     'tabular-nums underline decoration-dotted decoration-border-card/60 underline-offset-2 transition-colors hover:decoration-accent-gold/80',
@@ -4828,8 +5077,8 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({
                       <td className="td-resumo-table__cell td-resumo-table__cell--classe td-resumo-table__grupo-status-start text-center text-text-muted">
                         <div className="flex justify-center">
                           {(() => {
-                            const pctRod = pctComentariosPorPostagensProcessadas(
-                              totaisRodapeIg.com,
+                            const pctRod = pctMidiasComComentarioPorPostagensProcessadas(
+                              igAgregadoAtual.midiasComComentarioVinculadas,
                               igAgregadoAtual.postagensProcessadas
                             )
                             const tipoRod = classificacaoTerritorioTdPorPctEngajamentoIg(pctRod)
@@ -5617,7 +5866,7 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({
                       {resumoFed26VsFed22MunicipioDrill ? (
                         <div
                           className={cn(
-                            'mb-2 grid grid-cols-3 gap-2 rounded-lg border border-border-card/30 bg-card/40 px-2 py-1.5 tabular-nums text-text-secondary',
+                            'mb-2 grid grid-cols-1 gap-2 rounded-lg border border-border-card/30 bg-card/40 px-2 py-1.5 tabular-nums text-text-secondary sm:grid-cols-3',
                             sidebarCollapsed ? 'text-xs sm:text-sm' : 'text-[10px] sm:text-[11px]'
                           )}
                         >
@@ -5635,13 +5884,13 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({
                               {fmtInt.format(resumoFed26VsFed22MunicipioDrill.vPlan)}
                             </div>
                           </div>
-                          <div className="min-w-0 border-l border-border-card/30 pl-2 text-center">
+                          <div className="min-w-0 border-t border-border-card/30 pt-2 text-center sm:border-l sm:border-t-0 sm:pl-2 sm:pt-0">
                             <div className="mb-0.5 font-semibold uppercase tracking-wide text-text-muted">Fed.22</div>
                             <div title="Jadyel — votos nominais Dep. Federal 2022 (TSE), neste município">
                               {fmtInt.format(resumoFed26VsFed22MunicipioDrill.v22)}
                             </div>
                           </div>
-                          <div className="min-w-0 border-l border-border-card/30 pl-2 text-center">
+                          <div className="min-w-0 border-t border-border-card/30 pt-2 text-center sm:border-l sm:border-t-0 sm:pl-2 sm:pt-0">
                             <div className="mb-0.5 font-semibold uppercase tracking-wide text-text-muted">Δ</div>
                             <div
                               className={
@@ -5861,6 +6110,7 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({
                           maxComentarios={maxComentariosMunicipioIg}
                           totalComentariosLista={totalIgComentariosMunicipiosLista}
                           postagensProcessadasIg={igAgregadoAtual.postagensProcessadas}
+                          midiasComComentarioNoTdRodape={igMidiasComComentarioNoTdHighlight}
                           totais={totaisRodapeIgMunicipiosLista}
                           municipioFocado={municipioFocadoLiderancas}
                           onAlternarFocoMunicipio={(nome) => {
@@ -5876,6 +6126,16 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({
                             setMunicipioFocadoLiderancas(nome)
                             setMunicipioMobilizacaoDrillIg(nome)
                           }}
+                          onOpenLideresDesempenho={
+                            !igComentariosPorTdMobilizacaoNegado
+                              ? (nomeMunicipio) => {
+                                  setIgLideresDesempenhoModal({
+                                    td: highlightedTd,
+                                    municipio: nomeMunicipio,
+                                  })
+                                }
+                              : undefined
+                          }
                         />
                       ) : painelContext === 'pesquisas' ? (
                         drillGridMunicipiosPainelPesquisas
@@ -6203,7 +6463,7 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({
                 <div
                   className={cn(
                     'mt-3 flex gap-3',
-                    qtdCards >= 2 ? 'flex-row flex-wrap items-stretch' : 'flex-col'
+                    qtdCards >= 2 ? 'flex-col flex-wrap items-stretch sm:flex-row' : 'flex-col'
                   )}
                 >
                   {temFeedbackEstrategico && feedbackEstrategicoTd ? (
@@ -6274,9 +6534,10 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({
         visualPreset={visualPreset}
       />
       <MapaDigitalIgLideresDesempenhoModal
-        open={igLideresDesempenhoModalTd !== null}
-        territorio={igLideresDesempenhoModalTd}
-        onClose={() => setIgLideresDesempenhoModalTd(null)}
+        open={igLideresDesempenhoModal !== null}
+        territorio={igLideresDesempenhoModal?.td ?? null}
+        municipioOficial={igLideresDesempenhoModal?.municipio ?? null}
+        onClose={() => setIgLideresDesempenhoModal(null)}
         visualPreset={visualPreset}
       />
     </div>

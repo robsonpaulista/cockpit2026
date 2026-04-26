@@ -55,6 +55,8 @@ export type IgAgregadoMunicipioNoTd = {
   lideres: number
   liderados: number
   comentarios: number
+  /** Mídias distintas com ≥1 comentário vinculado a liderados deste município. */
+  midiasComComentario: number
   perfisUnicos: number
   /** Média aritmética (ms) dos intervalos publicação → comentário, quando ambas as datas existem. */
   tempoMedioPostComentarioMs: number | null
@@ -67,6 +69,8 @@ export type IgAgregadoMunicipioNoTd = {
 export type InstagramIgPorMunicipioNoTdResponse = {
   territorio: TerritorioDesenvolvimentoPI
   porMunicipio: Record<string, IgAgregadoMunicipioNoTd>
+  /** União de mídias com ≥1 comentário vinculado a liderados deste TD (evita somar `midiasComComentario` por município). */
+  midiasComComentarioNoTd: number
 }
 
 export async function GET(request: Request) {
@@ -87,6 +91,7 @@ export async function GET(request: Request) {
     lideres: number
     liderados: number
     comentarios: number
+    medias: Set<string>
     perfis: Set<string>
     tempoPostComentarioSomaMs: number
     tempoPostComentarioN: number
@@ -97,6 +102,7 @@ export async function GET(request: Request) {
       lideres: 0,
       liderados: 0,
       comentarios: 0,
+      medias: new Set(),
       perfis: new Set(),
       tempoPostComentarioSomaMs: 0,
       tempoPostComentarioN: 0,
@@ -226,7 +232,7 @@ export async function GET(request: Request) {
   for (;;) {
     const { data, error } = await admin
       .from('instagram_comments')
-      .select('instagram_comment_id, commenter_username, media_posted_at, commented_at')
+      .select('instagram_comment_id, commenter_username, instagram_media_id, media_posted_at, commented_at')
       .eq('user_id', userId)
       .order('id', { ascending: true })
       .range(from, from + pageSize - 1)
@@ -251,6 +257,8 @@ export async function GET(request: Request) {
       if (!acc) continue
       acc.comentarios += 1
       acc.perfis.add(u)
+      const mid = String((row as { instagram_media_id?: string | null }).instagram_media_id ?? '').trim()
+      if (mid) acc.medias.add(mid)
 
       const mediaPosted = (row as { media_posted_at?: string | null }).media_posted_at
       const commentedAt = (row as { commented_at?: string | null }).commented_at
@@ -272,13 +280,16 @@ export async function GET(request: Request) {
   }
 
   const porMunicipio: Record<string, IgAgregadoMunicipioNoTd> = {}
+  const midiasTd = new Set<string>()
   for (const nome of oficialMunicipios) {
     const a = porMun.get(nome)!
     const nT = a.tempoPostComentarioN
+    for (const m of a.medias) midiasTd.add(m)
     porMunicipio[nome] = {
       lideres: a.lideres,
       liderados: a.liderados,
       comentarios: a.comentarios,
+      midiasComComentario: a.medias.size,
       perfisUnicos: a.perfis.size,
       tempoMedioPostComentarioMs: nT > 0 ? Math.round(a.tempoPostComentarioSomaMs / nT) : null,
       tempoPostComentarioSomaMs: a.tempoPostComentarioSomaMs,
@@ -286,6 +297,10 @@ export async function GET(request: Request) {
     }
   }
 
-  const body: InstagramIgPorMunicipioNoTdResponse = { territorio: td, porMunicipio }
+  const body: InstagramIgPorMunicipioNoTdResponse = {
+    territorio: td,
+    porMunicipio,
+    midiasComComentarioNoTd: midiasTd.size,
+  }
   return NextResponse.json(body)
 }

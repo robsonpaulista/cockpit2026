@@ -8,7 +8,7 @@ import { CORES_TERRITORIO_DESENVOLVIMENTO_PI } from '@/lib/piaui-territorio-dese
 import type { TerritorioDesenvolvimentoPI } from '@/lib/piaui-territorio-desenvolvimento'
 import {
   classificacaoTerritorioTdPorPctEngajamentoIg,
-  pctComentariosPorPostagensProcessadas,
+  pctMidiasComComentarioPorPostagensProcessadas,
   rotuloEngajamentoIgPorTipo,
   tituloTooltipEngajamentoIgComentarios,
 } from '@/lib/instagram-engajamento-ig-classificacao'
@@ -35,6 +35,7 @@ export type IgMunicipiosResumoLinha = {
   lideres: number
   liderados: number
   comentarios: number
+  midiasComComentario: number
   perfisUnicos: number
   tempoMedioPostComentarioMs: number | null
   rankIg: number
@@ -62,6 +63,8 @@ type Props = {
   totalComentariosLista: number
   /** Postagens processadas na conta IG (mesma base dos marcadores e da coluna Eng. IG por TD). */
   postagensProcessadasIg: number
+  /** União de mídias com comentário vinculado ao TD (rodapé Eng. IG — não somar por município). */
+  midiasComComentarioNoTdRodape: number
   totais: {
     mun: number
     lideres: number
@@ -75,6 +78,8 @@ type Props = {
   onAlternarFocoMunicipio: (nome: string) => void
   /** Duplo clique na linha (ou no nome do município) abre o drill mobilização líderes → liderados. */
   onDrillMobilizacaoMunicipio?: (nome: string) => void
+  /** Clique na coluna Líderes abre o mesmo modal de desempenho por líder (nível município). */
+  onOpenLideresDesempenho?: (nomeMunicipio: string) => void
 }
 
 export function MapaDigitalIgMunicipiosResumoTable({
@@ -88,10 +93,12 @@ export function MapaDigitalIgMunicipiosResumoTable({
   maxComentarios,
   totalComentariosLista,
   postagensProcessadasIg,
+  midiasComComentarioNoTdRodape,
   totais,
   municipioFocado,
   onAlternarFocoMunicipio,
   onDrillMobilizacaoMunicipio,
+  onOpenLideresDesempenho,
 }: Props) {
   const territorioCor = CORES_TERRITORIO_DESENVOLVIMENTO_PI[territorioPai]
 
@@ -198,7 +205,7 @@ export function MapaDigitalIgMunicipiosResumoTable({
             </th>
             <th
               className="td-resumo-table__cell td-resumo-table__grupo-status-start text-center font-medium"
-              title="Engajamento: comentários vinculados ÷ postagens processadas na conta. Baixo: abaixo de 50%; Médio: 50% a 80%; Alto: acima de 80%."
+              title="Engajamento: mídias com ≥1 comentário vinculado ÷ postagens processadas na conta (teto 100%). Baixo: abaixo de 50%; Médio: 50% a 80%; Alto: acima de 80%."
             >
               Eng. IG
             </th>
@@ -206,11 +213,23 @@ export function MapaDigitalIgMunicipiosResumoTable({
         </thead>
         <tbody>
           {linhas.map(
-            ({ nome, lideres, liderados, comentarios, perfisUnicos, tempoMedioPostComentarioMs, rankIg }) => {
+            ({
+              nome,
+              lideres,
+              liderados,
+              comentarios,
+              midiasComComentario,
+              perfisUnicos,
+              tempoMedioPostComentarioMs,
+              rankIg,
+            }) => {
               const selecionado =
                 municipioFocado !== null &&
                 normalizeMunicipioNome(nome) === normalizeMunicipioNome(municipioFocado)
-              const pctEng = pctComentariosPorPostagensProcessadas(comentarios, postagensProcessadasIg)
+              const pctEng = pctMidiasComComentarioPorPostagensProcessadas(
+                midiasComComentario,
+                postagensProcessadasIg
+              )
               const tipoEng = classificacaoTerritorioTdPorPctEngajamentoIg(pctEng)
               const pctTot =
                 totalComentariosLista > 0 ? (comentarios / totalComentariosLista) * 100 : 0
@@ -309,7 +328,26 @@ export function MapaDigitalIgMunicipiosResumoTable({
                   </td>
                   <td className="td-resumo-table__cell text-right tabular-nums text-text-secondary">1</td>
                   <td className="td-resumo-table__cell text-right tabular-nums text-text-secondary">
-                    {fmtInt.format(lideres)}
+                    {onOpenLideresDesempenho ? (
+                      <button
+                        type="button"
+                        title="Ver desempenho digital por líder (município)"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          onOpenLideresDesempenho(nome)
+                        }}
+                        className={cn(
+                          'tabular-nums underline decoration-dotted decoration-border-card/60 underline-offset-2 transition-colors hover:decoration-accent-gold/80',
+                          visualPreset === 'futuristic'
+                            ? 'text-[#E6EDF3] hover:text-[#FF9A4A]'
+                            : 'text-text-secondary hover:text-text-primary'
+                        )}
+                      >
+                        {fmtInt.format(lideres)}
+                      </button>
+                    ) : (
+                      <span className="tabular-nums">{fmtInt.format(lideres)}</span>
+                    )}
                   </td>
                   <td className="td-resumo-table__cell text-right tabular-nums text-text-secondary">
                     {fmtInt.format(liderados)}
@@ -379,7 +417,10 @@ export function MapaDigitalIgMunicipiosResumoTable({
             <td className="td-resumo-table__cell td-resumo-table__cell--classe td-resumo-table__grupo-status-start text-center text-text-muted">
               <div className="flex justify-center">
                 {(() => {
-                  const pctRod = pctComentariosPorPostagensProcessadas(totais.com, postagensProcessadasIg)
+                  const pctRod = pctMidiasComComentarioPorPostagensProcessadas(
+                    midiasComComentarioNoTdRodape,
+                    postagensProcessadasIg
+                  )
                   const tipoRod = classificacaoTerritorioTdPorPctEngajamentoIg(pctRod)
                   return (
                     <ClassificacaoTdBadge
@@ -406,6 +447,7 @@ export function MapaDigitalIgMunicipiosResumoTable({
         )}
       >
         Mesmas colunas do resumo por TD; dados de mobilização e comentários por município (cidade do cadastro). T. méd. = tempo médio da publicação ao comentário.
+        {onOpenLideresDesempenho ? ' Clique em Líderes para o desempenho digital por líder (município).' : ''}
         {onDrillMobilizacaoMunicipio ? ' Duplo clique na linha abre líderes e liderados (mobilização).' : ''}
       </p>
     </div>
