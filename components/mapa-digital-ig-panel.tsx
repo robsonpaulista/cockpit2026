@@ -30,6 +30,8 @@ import {
   X,
 } from 'lucide-react'
 
+const LOOKBACK_OPTIONS = [7, 15, 30] as const
+
 function commentMatchesLeader(c: InstagramStoredComment, leader: InstagramCommentLeader): boolean {
   if (leader.commenter_ig_id && c.commenter_ig_id) {
     return leader.commenter_ig_id === c.commenter_ig_id
@@ -282,6 +284,7 @@ export function MapaDigitalIgPanel({ embedded = false }: { embedded?: boolean })
   const [syncMessage, setSyncMessage] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [rankingLeader, setRankingLeader] = useState<InstagramCommentLeader | null>(null)
+  const [lookbackDays, setLookbackDays] = useState<number>(15)
 
   const loadBoard = useCallback(async () => {
     setLoadingData(true)
@@ -347,7 +350,7 @@ export function MapaDigitalIgPanel({ embedded = false }: { embedded?: boolean })
     setSyncing(true)
     setSyncMessage(null)
     setError(null)
-    const result = await syncInstagramComments(c.token, c.businessAccountId, 80)
+    const result = await syncInstagramComments(c.token, c.businessAccountId, 80, lookbackDays)
     setSyncing(false)
     if (!result.success) {
       setError(result.error || 'Sincronização falhou')
@@ -359,6 +362,7 @@ export function MapaDigitalIgPanel({ embedded = false }: { embedded?: boolean })
     const parts = [
       `${result.commentsUpserted ?? 0} comentários gravados/atualizados`,
       `${result.mediaProcessed ?? 0} publicações processadas`,
+      `janela de ${result.lookbackDays ?? lookbackDays} dia(s)`,
     ]
     if (result.errors?.length) {
       parts.push(`${result.errors.length} aviso(s) em mídias específicas`)
@@ -427,6 +431,21 @@ export function MapaDigitalIgPanel({ embedded = false }: { embedded?: boolean })
             <Settings className="w-4 h-4" />
             Credenciais
           </button>
+          <label className="inline-flex items-center gap-2 rounded-lg border border-border-card bg-bg-surface px-3 py-2.5 text-sm font-medium text-text-primary">
+            Janela
+            <select
+              value={lookbackDays}
+              onChange={(e) => setLookbackDays(Number(e.target.value))}
+              disabled={syncing || loadingConfig}
+              className="rounded-md border border-border-card bg-bg-surface px-2 py-1 text-sm text-text-primary disabled:opacity-60"
+            >
+              {LOOKBACK_OPTIONS.map((days) => (
+                <option key={days} value={days}>
+                  {days} dias
+                </option>
+              ))}
+            </select>
+          </label>
           <button
             type="button"
             disabled={syncing || loadingConfig}

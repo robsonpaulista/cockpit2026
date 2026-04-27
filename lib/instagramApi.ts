@@ -396,6 +396,7 @@ export type InstagramCommentsSyncResult = {
   ownerUsername?: string
   mediaProcessed?: number
   commentsUpserted?: number
+  lookbackDays?: number
   errors?: string[]
   error?: string
   resetAt?: number
@@ -444,7 +445,8 @@ function parseInstagramCommentsSyncResponse(
 export async function syncInstagramComments(
   token: string,
   businessAccountId: string,
-  maxMedia?: number
+  maxMedia?: number,
+  lookbackDays?: number
 ): Promise<InstagramCommentsSyncResult> {
   try {
     const response = await fetch('/api/instagram/comments/sync', {
@@ -454,6 +456,7 @@ export async function syncInstagramComments(
         token,
         businessAccountId,
         maxMedia: maxMedia ?? undefined,
+        lookbackDays: lookbackDays ?? undefined,
       }),
     })
     const raw = await response.text()

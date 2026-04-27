@@ -10,6 +10,9 @@ export const maxDuration = 300
 
 const MAX_MEDIA_DEFAULT = 80
 const UPSERT_CHUNK = 80
+const SYNC_LOOKBACK_DAYS = 15
+const LOOKBACK_MIN_DAYS = 1
+const LOOKBACK_MAX_DAYS = 90
 
 function parseCommentTimestamp(ts: string | undefined): string {
   if (!ts) return new Date().toISOString()
@@ -24,6 +27,21 @@ function parseCommentTimestamp(ts: string | undefined): string {
 function truncate(s: string | undefined, max: number): string | null {
   if (!s) return null
   return s.length <= max ? s : s.slice(0, max)
+}
+
+function isMediaWithinLookbackDays(timestamp: string | undefined, lookbackDays: number): boolean {
+  if (!timestamp) return false
+  const mediaDate = new Date(timestamp)
+  if (Number.isNaN(mediaDate.getTime())) return false
+  const cutoff = new Date()
+  cutoff.setDate(cutoff.getDate() - lookbackDays)
+  return mediaDate >= cutoff
+}
+
+function parseLookbackDays(value: unknown): number {
+  const parsed = Number(value)
+  if (!Number.isFinite(parsed)) return SYNC_LOOKBACK_DAYS
+  return Math.min(Math.max(Math.trunc(parsed), LOOKBACK_MIN_DAYS), LOOKBACK_MAX_DAYS)
 }
 
 export async function POST(request: Request) {
@@ -51,6 +69,7 @@ export async function POST(request: Request) {
     const body = await request.json()
     const token = body.token as string | undefined
     const businessAccountId = body.businessAccountId as string | undefined
+    const lookbackDays = parseLookbackDays(body.lookbackDays)
     const rawMax = Number(body.maxMedia)
     const maxMedia = Math.min(
       Math.max(Number.isFinite(rawMax) && rawMax > 0 ? rawMax : MAX_MEDIA_DEFAULT, 1),
@@ -70,11 +89,14 @@ export async function POST(request: Request) {
     )
 
     const mediaList = await fetchAllMediaSummaries(instagramBusinessId, token, maxMedia)
+    const recentMediaList = mediaList.filter((media) =>
+      isMediaWithinLookbackDays(media.timestamp, lookbackDays)
+    )
 
     let commentsUpserted = 0
     const syncErrors: string[] = []
 
-    for (const media of mediaList) {
+    for (const media of recentMediaList) {
       try {
         const edges = await fetchCommentsForMedia(media.id, token)
         const seen = new Set<string>()
@@ -160,16 +182,18 @@ export async function POST(request: Request) {
 
     logger.info('Instagram comentários sincronizados', {
       userId: user.id,
-      mediaCount: mediaList.length,
+      mediaCount: recentMediaList.length,
       commentsUpserted,
+      lookbackDays,
     })
 
     return NextResponse.json({
       success: true,
       instagramBusinessId,
       ownerUsername,
-      mediaProcessed: mediaList.length,
+      mediaProcessed: recentMediaList.length,
       commentsUpserted,
+      lookbackDays,
       errors: syncErrors.length ? syncErrors : undefined,
     })
   } catch (error: unknown) {

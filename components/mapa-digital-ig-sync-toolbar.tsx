@@ -8,6 +8,7 @@ import { dispatchInstagramCommentsSynced } from '@/lib/instagram-comments-sync-e
 import { loadInstagramConfigAsync, saveInstagramConfig, syncInstagramComments } from '@/lib/instagramApi'
 
 type IgCfg = { token: string; businessAccountId: string }
+const LOOKBACK_OPTIONS = [7, 15, 30] as const
 
 export function MapaDigitalIgSyncToolbar({ className }: { className?: string }) {
   const [cfg, setCfg] = useState<IgCfg | null>(null)
@@ -16,6 +17,7 @@ export function MapaDigitalIgSyncToolbar({ className }: { className?: string }) 
   const [syncing, setSyncing] = useState(false)
   const [syncMessage, setSyncMessage] = useState<string | null>(null)
   const [syncError, setSyncError] = useState<string | null>(null)
+  const [lookbackDays, setLookbackDays] = useState<number>(15)
 
   useEffect(() => {
     let cancelled = false
@@ -40,7 +42,7 @@ export function MapaDigitalIgSyncToolbar({ className }: { className?: string }) 
     setSyncing(true)
     setSyncMessage(null)
     setSyncError(null)
-    const result = await syncInstagramComments(c.token, c.businessAccountId, 40)
+    const result = await syncInstagramComments(c.token, c.businessAccountId, 40, lookbackDays)
     setSyncing(false)
     if (!result.success) {
       setSyncError(result.error || 'Sincronização falhou')
@@ -52,10 +54,11 @@ export function MapaDigitalIgSyncToolbar({ className }: { className?: string }) 
     const parts = [
       `${result.commentsUpserted ?? 0} comentários gravados/atualizados`,
       `${result.mediaProcessed ?? 0} publicações processadas`,
+      `janela de ${result.lookbackDays ?? lookbackDays} dia(s)`,
     ]
     setSyncMessage(parts.join(' · '))
     dispatchInstagramCommentsSynced()
-  }, [cfg])
+  }, [cfg, lookbackDays])
 
   const configured = Boolean(cfg?.token && cfg?.businessAccountId)
 
@@ -70,6 +73,21 @@ export function MapaDigitalIgSyncToolbar({ className }: { className?: string }) 
           <Settings className="h-3.5 w-3.5 shrink-0" aria-hidden />
           Credenciais
         </button>
+        <label className="inline-flex items-center gap-1.5 rounded-lg border border-[rgba(255,255,255,0.12)] bg-[rgba(0,0,0,0.25)] px-2.5 py-1.5 text-[11px] font-medium text-[#E6EDF3] sm:text-xs">
+          Janela
+          <select
+            value={lookbackDays}
+            onChange={(e) => setLookbackDays(Number(e.target.value))}
+            disabled={syncing || loadingCfg}
+            className="rounded border border-[rgba(255,255,255,0.12)] bg-[rgba(0,0,0,0.35)] px-1.5 py-0.5 text-[11px] text-[#E6EDF3] disabled:opacity-60"
+          >
+            {LOOKBACK_OPTIONS.map((days) => (
+              <option key={days} value={days}>
+                {days} dias
+              </option>
+            ))}
+          </select>
+        </label>
         <button
           type="button"
           disabled={syncing || loadingCfg}
