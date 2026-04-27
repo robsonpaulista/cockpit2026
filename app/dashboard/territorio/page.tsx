@@ -11,6 +11,9 @@ import { ExecutiveBriefingModal } from '@/components/executive-briefing-modal'
 import { VoteInvestmentBalanceModal } from '@/components/vote-investment-balance-modal'
 import { MapaVotoCruzado } from '@/components/mapa-voto-cruzado'
 import { KPI } from '@/types'
+import { cn } from '@/lib/utils'
+import { sidebarPrimaryCTAButtonClass } from '@/lib/sidebar-menu-active-style'
+import { useTheme } from '@/contexts/theme-context'
 
 interface Lideranca {
   [key: string]: any
@@ -27,6 +30,8 @@ interface SheetsConfig {
 type CenarioVotos = 'aferido_jadyel' | 'promessa_lideranca' | 'legado_anterior'
 
 export default function TerritorioPage() {
+  const { theme } = useTheme()
+  const isCockpit = theme === 'cockpit'
   const [liderancas, setLiderancas] = useState<Lideranca[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -740,10 +745,14 @@ export default function TerritorioPage() {
             )}
           </div>
           <button
+            type="button"
             onClick={() => setShowConfig(true)}
-            className="px-4 py-2 text-sm font-medium bg-accent-gold text-white rounded-lg hover:bg-accent-gold transition-colors flex items-center gap-2"
+            className={sidebarPrimaryCTAButtonClass(isCockpit)}
           >
-            <Settings className="w-4 h-4" />
+            <Settings
+              className={cn('h-4 w-4 shrink-0', isCockpit ? 'text-white' : 'text-accent-gold')}
+              aria-hidden
+            />
             {(config || serverConfigured) ? 'Configurar Planilha' : 'Conectar Planilha'}
           </button>
         </div>
@@ -1077,11 +1086,15 @@ export default function TerritorioPage() {
               {/* Botão Mapa Mental */}
               {(config || serverConfigured) && liderancasFiltradas.length > 0 && (
                 <button
+                  type="button"
                   onClick={() => setShowMindMap(true)}
-                  className="px-3 py-2 text-sm font-medium bg-accent-gold text-white rounded-lg hover:bg-accent-gold transition-colors flex items-center gap-2"
+                  className={sidebarPrimaryCTAButtonClass(isCockpit, 'px-3 py-2')}
                   title="Ver Mapa de Lideranças"
                 >
-                  <Network className="w-4 h-4" />
+                  <Network
+                    className={cn('h-4 w-4 shrink-0', isCockpit ? 'text-white' : 'text-accent-gold')}
+                    aria-hidden
+                  />
                   Mapa Mental
                 </button>
               )}
@@ -1176,8 +1189,9 @@ export default function TerritorioPage() {
                 Configure uma planilha do Google Sheets para começar
               </p>
               <button
+                type="button"
                 onClick={() => setShowConfig(true)}
-                className="px-4 py-2 text-sm font-medium bg-accent-gold text-white rounded-lg hover:bg-accent-gold transition-colors"
+                className={sidebarPrimaryCTAButtonClass(isCockpit)}
               >
                 Conectar Planilha
               </button>

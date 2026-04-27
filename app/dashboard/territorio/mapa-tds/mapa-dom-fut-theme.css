@@ -21,25 +21,116 @@
 }
 
 .theme-futuristic {
-  --td-fut-bg-deep:         #0B0F14;
-  --td-fut-bg-mid:          #10161F;
-  --td-fut-bg-card:         #121821;
+  --td-fut-bg-deep:         rgb(var(--bg-app));
+  --td-fut-bg-mid:          rgb(var(--bg-sidebar));
+  --td-fut-bg-card:         rgb(var(--bg-surface));
   --td-fut-glass:           rgba(16, 22, 31, 0.92);
-  --td-fut-border:          rgba(255, 255, 255, 0.06);
-  --td-fut-border-strong:   rgba(255, 255, 255, 0.10);
-  --td-fut-divider:         rgba(255, 255, 255, 0.04);
-  --td-fut-text:            #E6EDF3;
-  --td-fut-text-sec:        #AAB4C0;
-  --td-fut-text-weak:       #7F8A96;
-  --td-fut-muted:           #AAB4C0;
-  --td-fut-hover:           rgba(255, 255, 255, 0.03);
-  --td-fut-row-selected:    rgba(255, 106, 0, 0.10);
-  --td-fut-accent:          #FF6A00;
-  --td-fut-accent-h:        #FF8A2A;
-  --td-fut-green:           #22C55E;
-  --td-fut-red:             #EF4444;
-  --td-fut-amber:           #F59E0B;
-  --td-fut-blue:            #3B82F6;
+  --td-fut-border:          rgb(var(--border-card) / 0.55);
+  --td-fut-border-strong:   rgb(var(--border-card) / 0.85);
+  --td-fut-divider:         rgb(var(--border-card) / 0.35);
+  --td-fut-text:            rgb(var(--text-primary));
+  --td-fut-text-sec:        rgb(var(--text-secondary));
+  --td-fut-text-weak:       rgb(var(--text-muted));
+  --td-fut-muted:           rgb(var(--text-secondary));
+  --td-fut-hover:           rgb(var(--accent-gold-soft) / 0.4);
+  --td-fut-row-selected:    rgb(var(--accent-gold-soft) / 0.55);
+  --td-fut-accent:          rgb(var(--accent-gold));
+  --td-fut-accent-h:        rgb(var(--accent-gold-dark));
+  --td-fut-green:           rgb(var(--success));
+  --td-fut-red:             rgb(var(--danger));
+  --td-fut-amber:           #f59e0b;
+  --td-fut-blue:            #3b82f6;
+}
+
+/* Tema claro alternativo: Republicanos + referência cromática Quaest */
+.theme-futuristic.theme-futuristic--republicanos-light {
+  --td-fut-bg-deep:         #F8FAFC;
+  --td-fut-bg-mid:          #FFFFFF;
+  --td-fut-bg-card:         #FFFFFF;
+  --td-fut-glass:           rgba(255, 255, 255, 0.94);
+  --td-fut-border:          #D9E2EC;
+  --td-fut-border-strong:   #BFD0E2;
+  --td-fut-divider:         #E2E8F0;
+  --td-fut-text:            #0B2A4A;
+  --td-fut-text-sec:        #52677A;
+  --td-fut-text-weak:       #7C8FA3;
+  --td-fut-muted:           #7C8FA3;
+  --td-fut-hover:           #F1F5F9;
+  --td-fut-row-selected:    #E8F1FF;
+  --td-fut-accent:          #0057B8;
+  --td-fut-accent-h:        #003A7A;
+  --td-fut-green:           #19A974;
+  --td-fut-red:             #E5484D;
+  --td-fut-amber:           #F7C948;
+  --td-fut-blue:            #0057B8;
+}
+
+.theme-futuristic.theme-futuristic--republicanos-light .td-mapa-vp-halo {
+  background: #FFFFFF !important;
+  box-shadow: 0 0 0 1px rgba(15, 23, 42, 0.12), 0 10px 24px rgba(15, 23, 42, 0.12);
+}
+
+.theme-futuristic.theme-futuristic--republicanos-light .leaflet-td-pi-host {
+  background: #FFFFFF !important;
+}
+
+.theme-futuristic.theme-futuristic--republicanos-light .td-mapa-fut-loading {
+  background: rgba(248, 250, 255, 0.92) !important;
+}
+
+.theme-futuristic.theme-futuristic--republicanos-light .td-mapa-fut-error {
+  background: rgba(248, 250, 255, 0.94) !important;
+}
+
+.theme-futuristic.theme-futuristic--republicanos-light table.td-resumo-table thead tr.td-resumo-table__row--header th {
+  background: #F1F5F9 !important;
+  border-bottom: 2px solid #D9E2EC !important;
+  color: #52677A !important;
+  font-weight: 700 !important;
+  text-transform: uppercase;
+}
+
+.theme-futuristic.theme-futuristic--republicanos-light table.td-resumo-table--premium tbody tr td,
+.theme-futuristic.theme-futuristic--republicanos-light table.td-resumo-table--futuristic tbody tr td {
+  background: transparent !important;
+  border-top: 1px solid #E2E8F0;
+  border-bottom: 1px solid #E2E8F0;
+  color: #0B2A4A !important;
+}
+
+.theme-futuristic.theme-futuristic--republicanos-light table.td-resumo-table--premium tbody tr.td-resumo-table__row--hover-map td {
+  background: #F8FBFF !important;
+}
+
+.theme-futuristic.theme-futuristic--republicanos-light table.td-resumo-table--premium tbody tr.td-resumo-table__row--selected td {
+  background: #E8F1FF !important;
+}
+
+.theme-futuristic.theme-futuristic--republicanos-light table.td-resumo-table--premium tbody tr.td-resumo-table__row--selected td:first-child {
+  border-left: 4px solid #0057B8 !important;
+}
+
+.theme-futuristic.theme-futuristic--republicanos-light table.td-resumo-table--premium .td-resumo-table__cell--lid,
+.theme-futuristic.theme-futuristic--republicanos-light table.td-resumo-table th.td-resumo-table__cell--lid {
+  color: #0B2A4A !important;
+  font-weight: 700 !important;
+}
+
+.theme-futuristic.theme-futuristic--republicanos-light table.td-resumo-table tfoot tr.td-resumo-table__row--totals td {
+  border-top: 2px solid #D9E2EC !important;
+  background: rgba(255, 255, 255, 0.98) !important;
+  color: #0B2A4A !important;
+}
+
+.theme-futuristic.theme-futuristic--republicanos-light .td-fut-drill .td-fut-grid-header {
+  background: #ffffff;
+  border-bottom-color: rgba(15, 23, 42, 0.14) !important;
+}
+
+.theme-futuristic.theme-futuristic--republicanos-light .td-fut-drill .td-fut-grid-row {
+  background: rgba(255, 255, 255, 0.94);
+  border-top: 1px solid rgba(15, 23, 42, 0.08);
+  border-bottom: 1px solid rgba(15, 23, 42, 0.08);
 }
 
 /* =============================================================================
@@ -73,9 +164,9 @@
 
 /* Foco vindo do painel/tabela: só anel e leve escala (não “zoom” do card IG). */
 .theme-futuristic .td-peso-eleitores-marker--focado .td-peso-eleitores-card {
-  border-color: var(--td-focus-stroke, #ff6a00) !important;
+  border-color: var(--td-focus-stroke, #0057B8) !important;
   box-shadow:
-    0 0 0 1px var(--td-focus-ring, rgba(255, 106, 0, 0.2)),
+    0 0 0 1px var(--td-focus-ring, rgba(0, 87, 184, 0.2)),
     0 4px 14px rgba(0, 0, 0, 0.35) !important;
   transform: scale(1.04);
   transform-origin: center bottom;
@@ -84,9 +175,9 @@
 
 /* Hover no próprio card do mapa (camada IG): card largo e “zoom”. */
 .theme-futuristic .td-peso-eleitores-marker--ig-map-hover .td-peso-eleitores-card {
-  border-color: var(--td-focus-stroke, #ff6a00) !important;
+  border-color: var(--td-focus-stroke, #0057B8) !important;
   box-shadow:
-    0 0 0 1px var(--td-focus-ring, rgba(255, 106, 0, 0.2)),
+    0 0 0 1px var(--td-focus-ring, rgba(0, 87, 184, 0.2)),
     0 6px 20px rgba(0, 0, 0, 0.45) !important;
   transform: scale(1.14);
   transform-origin: center bottom;
@@ -219,17 +310,28 @@
 }
 
 .theme-futuristic .leaflet-bar a:hover {
-  background: rgba(255, 255, 255, 0.06);
+  background: rgb(var(--accent-gold-soft) / 0.4);
   border-color: var(--td-fut-border-strong);
 }
 
 .theme-futuristic .leaflet-control-attribution {
-  background: rgba(11, 15, 20, 0.85) !important;
+  background: rgb(var(--bg-sidebar) / 0.92) !important;
   color: var(--td-fut-muted) !important;
 }
 
 .theme-futuristic .leaflet-control-attribution a {
   color: rgba(127, 138, 150, 0.85) !important;
+}
+
+.theme-futuristic.theme-futuristic--republicanos-light .leaflet-control-attribution {
+  background: rgba(255, 255, 255, 0.96) !important;
+  border: 1px solid #D9E2EC !important;
+  color: #52677A !important;
+  box-shadow: 0 4px 10px rgba(15, 42, 74, 0.08);
+}
+
+.theme-futuristic.theme-futuristic--republicanos-light .leaflet-control-attribution a {
+  color: #0057B8 !important;
 }
 
 /* =============================================================================
@@ -244,7 +346,7 @@
     filter 0.2s ease-out;
 }
 
-/* hover na tabela → laranja no polígono */
+/* hover na tabela → realce do polígono */
 .theme-futuristic path.td-mun-poly--fut-hover {
   filter: brightness(1.18) saturate(1.08);
 }
@@ -259,9 +361,9 @@
   filter: brightness(0.9);
 }
 
-/* TD selecionado — sutil glow laranja (estado interativo) */
+/* TD selecionado — sutil glow (estado interativo) */
 .theme-futuristic path.td-mun-poly--fut-selected-td {
-  filter: drop-shadow(0 0 6px rgba(255, 106, 0, 0.45));
+  filter: drop-shadow(0 0 6px rgba(0, 87, 184, 0.35));
 }
 
 /* cidade destacada */
@@ -269,9 +371,9 @@
   filter: drop-shadow(0 0 5px rgba(251, 191, 36, 0.3));
 }
 
-/* dim: outros TDs quando um está selecionado */
+/* dim: outros TDs quando um está selecionado (base já é --bg-surface; evita “preto”) */
 .theme-futuristic path.td-mun-poly--fut-dim {
-  filter: brightness(0.55) saturate(0.4);
+  filter: brightness(0.72) saturate(0.52);
 }
 
 /* =============================================================================
@@ -288,12 +390,46 @@
   opacity: 1;
 }
 
-/* hover via tabela → laranja estratégico */
+/* hover via tabela */
 .theme-futuristic .td-eleitores-peso-marker.td-peso-eleitores-marker--td-hover .td-peso-eleitores-card {
-  background: var(--td-hover-bg, rgba(255, 106, 0, 0.14)) !important;
-  border-color: var(--td-hover-stroke, #FF6A00) !important;
+  background: var(--td-hover-bg, rgba(0, 87, 184, 0.14)) !important;
+  border-color: var(--td-hover-stroke, #003399) !important;
   opacity: 1 !important;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 106, 0, 0.15) inset !important;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(0, 87, 184, 0.15) inset !important;
+}
+
+.theme-futuristic.theme-futuristic--republicanos-light .leaflet-div-icon.td-eleitores-peso-marker .td-peso-eleitores-card {
+  opacity: 0.96;
+  border: 1px solid #D9E2EC !important;
+  border-radius: 12px !important;
+  background: rgba(255, 255, 255, 0.95) !important;
+  box-shadow: 0 10px 24px rgba(15, 42, 74, 0.14) !important;
+}
+
+.theme-futuristic.theme-futuristic--republicanos-light .td-eleitores-peso-marker.td-peso-eleitores-marker--td-hover .td-peso-eleitores-card {
+  background: rgba(232, 241, 255, 0.96) !important;
+  border-color: #0057B8 !important;
+  box-shadow: 0 12px 28px rgba(15, 42, 74, 0.18) !important;
+}
+
+.theme-futuristic .td-mapa-engajamento-legend {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border-radius: 999px;
+  border: 1px solid #D9E2EC;
+  background: rgba(255, 255, 255, 0.94);
+  padding: 4px 10px;
+  font-size: 10px;
+  color: #52677A;
+  box-shadow: 0 8px 20px rgba(15, 42, 74, 0.12);
+}
+
+.theme-futuristic .td-mapa-engajamento-legend__bar {
+  width: 88px;
+  height: 6px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #6BAEF7 0%, #63C7C9 48%, #FFD966 100%);
 }
 
 /* =============================================================================
@@ -305,7 +441,7 @@
 }
 
 .theme-futuristic .td-stat-card:hover {
-  background: rgba(18, 24, 33, 0.95) !important;
+  background: rgb(var(--bg-surface) / 0.96) !important;
   border-color: var(--td-fut-border-strong) !important;
 }
 
@@ -379,8 +515,8 @@
   font-size: 0.75rem;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  background: rgba(255, 255, 255, 0.03) !important;
-  background-color: rgba(255, 255, 255, 0.03) !important;
+  background: rgb(var(--bg-sidebar) / 0.65) !important;
+  background-color: rgb(var(--bg-sidebar) / 0.65) !important;
   border-bottom: 1px solid var(--td-fut-border);
   padding-top: 0.65rem !important;
   padding-bottom: 0.65rem !important;
@@ -388,7 +524,7 @@
 
 .theme-futuristic table.td-resumo-table tfoot tr.td-resumo-table__row--totals td {
   border-top: 1px solid var(--td-fut-border) !important;
-  background: rgba(12, 18, 26, 0.92) !important;
+  background: rgb(var(--bg-sidebar)) !important;
   color: var(--td-fut-text) !important;
   font-weight: 600 !important;
   font-size: 0.8125rem !important;
@@ -418,9 +554,9 @@
 .theme-futuristic table.td-resumo-table--premium tbody tr:nth-child(odd) td,
 .theme-futuristic table.td-resumo-table--premium tbody tr:nth-child(even) td,
 .theme-futuristic table.td-resumo-table--futuristic tbody tr td {
-  background: var(--fut-row-bg, rgba(18, 24, 33, 0.72)) !important;
-  border-top: 1px solid rgba(255, 255, 255, 0.04);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  background: rgb(var(--bg-surface)) !important;
+  border-top: 1px solid rgb(var(--border-card) / 0.35);
+  border-bottom: 1px solid rgb(var(--border-card) / 0.35);
 }
 
 .theme-futuristic table.td-resumo-table--premium tbody tr td:first-child {
@@ -439,7 +575,7 @@
 
 /* hover direto */
 .theme-futuristic table.td-resumo-table--premium tbody tr.td-resumo-table__row--data:hover td {
-  background: rgba(255, 106, 0, 0.08) !important;
+  background: rgb(var(--accent-gold-soft) / 0.45) !important;
 }
 
 /* IG por município: hover sempre legível (fundo claro + texto escuro). Escopo pela aria-label da tabela. */
@@ -448,8 +584,8 @@
   tbody
   tr.td-resumo-table__row--data:hover
   td {
-  background: rgba(255, 252, 248, 0.98) !important;
-  color: #0b0f14 !important;
+  background: rgb(var(--accent-gold-soft) / 0.5) !important;
+  color: rgb(var(--text-primary)) !important;
 }
 
 .theme-futuristic
@@ -457,7 +593,7 @@
   tbody
   tr.td-resumo-table__row--data:hover
   .text-text-secondary {
-  color: rgba(11, 15, 20, 0.74) !important;
+  color: rgb(var(--text-secondary)) !important;
 }
 
 .theme-futuristic
@@ -471,7 +607,7 @@
   tr.td-resumo-table__row--data:hover
   td.td-resumo-table__cell--territorio
   .font-semibold {
-  color: #0b0f14 !important;
+  color: rgb(var(--text-primary)) !important;
 }
 
 .theme-futuristic
@@ -480,7 +616,7 @@
   tr.td-resumo-table__row--data:hover
   td
   button {
-  color: #0b0f14 !important;
+  color: rgb(var(--text-primary)) !important;
 }
 
 .theme-futuristic
@@ -504,8 +640,8 @@
   tbody
   tr.td-resumo-table__row--hover-map
   td {
-  background: rgba(255, 252, 248, 0.98) !important;
-  color: #0b0f14 !important;
+  background: rgb(var(--accent-gold-soft) / 0.5) !important;
+  color: rgb(var(--text-primary)) !important;
 }
 
 .theme-futuristic
@@ -518,8 +654,8 @@
   tbody
   tr.td-resumo-table__row--selected.td-resumo-table__row--hover-map
   td {
-  background: rgba(255, 252, 248, 0.98) !important;
-  color: #0b0f14 !important;
+  background: rgb(var(--accent-gold-soft) / 0.5) !important;
+  color: rgb(var(--text-primary)) !important;
 }
 
 .theme-futuristic
@@ -532,7 +668,7 @@
   tbody
   tr.td-resumo-table__row--selected.td-resumo-table__row--hover-map
   .text-text-secondary {
-  color: rgba(11, 15, 20, 0.74) !important;
+  color: rgb(var(--text-secondary)) !important;
 }
 
 .theme-futuristic
@@ -557,7 +693,7 @@
   tr.td-resumo-table__row--selected.td-resumo-table__row--hover-map
   td.td-resumo-table__cell--territorio
   .font-semibold {
-  color: #0b0f14 !important;
+  color: rgb(var(--text-primary)) !important;
 }
 
 .theme-futuristic
@@ -572,28 +708,28 @@
   tr.td-resumo-table__row--selected.td-resumo-table__row--hover-map
   td
   button {
-  color: #0b0f14 !important;
+  color: rgb(var(--text-primary)) !important;
 }
 
 .theme-futuristic table.td-resumo-table--premium tbody tr.td-resumo-table__row--hover-map td {
-  background: rgba(255, 106, 0, 0.1) !important;
+  background: rgb(var(--accent-gold-soft) / 0.5) !important;
 }
 
 .theme-futuristic table.td-resumo-table--premium tbody tr.td-resumo-table__row--selected td {
-  background: var(--fut-row-selected, var(--td-fut-row-selected)) !important;
+  background: var(--td-fut-row-selected) !important;
 }
 
 .theme-futuristic table.td-resumo-table--premium tbody tr.td-resumo-table__row--hover-map td {
-  color: #0b0f14 !important;
+  color: rgb(var(--text-primary)) !important;
 }
 
 .theme-futuristic table.td-resumo-table--premium tbody tr.td-resumo-table__row--hover-map .text-text-secondary {
-  color: rgba(11, 15, 20, 0.78) !important;
+  color: rgb(var(--text-secondary)) !important;
 }
 
 .theme-futuristic table.td-resumo-table--premium tbody tr.td-resumo-table__row--hover-map td.td-resumo-table__cell--territorio,
 .theme-futuristic table.td-resumo-table--premium tbody tr.td-resumo-table__row--hover-map td.td-resumo-table__cell--territorio .text-text-primary {
-  color: #0b0f14 !important;
+  color: rgb(var(--text-primary)) !important;
 }
 
 .theme-futuristic
@@ -601,18 +737,18 @@
   tbody
   tr.td-resumo-table__row--hover-map
   .td-resumo-table__expand-btn {
-  background: #0b0f14 !important;
-  border-color: rgba(11, 15, 20, 0.75) !important;
-  color: #e6edf3 !important;
+  background: rgb(var(--border-card)) !important;
+  border-color: rgb(var(--border-card) / 0.95) !important;
+  color: rgb(var(--text-primary)) !important;
 }
 
-/* Linha TD selecionada: fundo escuro (--fut-row-selected); texto claro. */
+/* Linha TD selecionada */
 .theme-futuristic table.td-resumo-table--premium tbody tr.td-resumo-table__row--selected td {
-  color: var(--td-fut-text, #e6edf3) !important;
+  color: var(--td-fut-text) !important;
 }
 
 .theme-futuristic table.td-resumo-table--premium tbody tr.td-resumo-table__row--selected .text-text-secondary {
-  color: var(--td-fut-text-sec, #aab4c0) !important;
+  color: var(--td-fut-text-sec) !important;
 }
 
 .theme-futuristic
@@ -621,7 +757,7 @@
   tr.td-resumo-table__row--selected
   td.td-resumo-table__cell--territorio
   .text-text-primary {
-  color: var(--td-fut-text, #e6edf3) !important;
+  color: var(--td-fut-text) !important;
 }
 
 .theme-futuristic table.td-resumo-table--premium tbody tr.td-resumo-table__row--selected .text-status-success {
@@ -637,16 +773,16 @@
   tbody
   tr.td-resumo-table__row--selected
   .td-resumo-table__expand-btn {
-  background: rgba(255, 255, 255, 0.1) !important;
-  border-color: rgba(255, 255, 255, 0.22) !important;
-  color: var(--td-fut-text, #e6edf3) !important;
+  background: rgb(var(--accent-gold-soft) / 0.35) !important;
+  border-color: rgb(var(--border-card) / 0.85) !important;
+  color: var(--td-fut-text) !important;
 }
 
-/* Selecionada + hover (rato ou realce do mapa): fundo claro; texto escuro (evita claro sobre claro). */
+/* Selecionada + hover (rato ou realce do mapa) */
 .theme-futuristic table.td-resumo-table--premium tbody tr.td-resumo-table__row--selected.td-resumo-table__row--data:hover td,
 .theme-futuristic table.td-resumo-table--premium tbody tr.td-resumo-table__row--selected.td-resumo-table__row--hover-map td {
-  background: rgba(255, 252, 248, 0.97) !important;
-  color: #0b0f14 !important;
+  background: rgb(var(--accent-gold-soft) / 0.52) !important;
+  color: rgb(var(--text-primary)) !important;
 }
 
 .theme-futuristic
@@ -659,7 +795,7 @@
   tbody
   tr.td-resumo-table__row--selected.td-resumo-table__row--hover-map
   .text-text-secondary {
-  color: rgba(11, 15, 20, 0.74) !important;
+  color: rgb(var(--text-secondary)) !important;
 }
 
 .theme-futuristic
@@ -684,7 +820,7 @@
   tr.td-resumo-table__row--selected.td-resumo-table__row--hover-map
   td.td-resumo-table__cell--territorio
   .text-text-primary {
-  color: #0b0f14 !important;
+  color: rgb(var(--text-primary)) !important;
 }
 
 .theme-futuristic
@@ -725,7 +861,7 @@
   tr.td-resumo-table__row--selected.td-resumo-table__row--hover-map
   td
   button {
-  color: #0b0f14 !important;
+  color: rgb(var(--text-primary)) !important;
 }
 
 .theme-futuristic
@@ -738,18 +874,18 @@
   tbody
   tr.td-resumo-table__row--selected.td-resumo-table__row--hover-map
   .td-resumo-table__expand-btn {
-  background: #0b0f14 !important;
-  border-color: rgba(11, 15, 20, 0.75) !important;
-  color: #e6edf3 !important;
+  background: rgb(var(--border-card)) !important;
+  border-color: rgb(var(--border-card) / 0.95) !important;
+  color: rgb(var(--text-primary)) !important;
 }
 
 .theme-futuristic table.td-resumo-table--premium tbody tr.td-resumo-table__row--selected td:first-child {
-  box-shadow: inset 3px 0 0 0 var(--fut-row-selected-edge, var(--td-fut-accent));
+  box-shadow: inset 3px 0 0 0 var(--td-fut-accent);
 }
 
 /* spotlights sutis */
 .theme-futuristic table.td-resumo-table--premium tbody tr.td-resumo-table__row--spotlight-peso td {
-  background: rgba(255, 106, 0, 0.04) !important;
+  background: rgb(var(--accent-gold-soft) / 0.28) !important;
 }
 
 .theme-futuristic table.td-resumo-table--premium tbody tr.td-resumo-table__row--spotlight-crescimento td {
@@ -839,7 +975,7 @@
   font-size: 0.75rem;
   font-weight: 600;
   text-transform: uppercase;
-  background: rgba(255, 255, 255, 0.03);
+  background: rgb(var(--bg-sidebar) / 0.65);
   border-bottom-color: var(--td-fut-border) !important;
   border-radius: 8px;
   padding: 0.5rem 0.5rem 0.55rem;
@@ -849,9 +985,9 @@
   color: var(--td-fut-text-sec) !important;
   font-size: 0.875rem;
   font-weight: 500;
-  background: rgba(18, 24, 33, 0.72);
-  border-top: 1px solid rgba(255, 255, 255, 0.04);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  background: rgb(var(--bg-surface));
+  border-top: 1px solid rgb(var(--border-card) / 0.35);
+  border-bottom: 1px solid rgb(var(--border-card) / 0.35);
   border-radius: 8px;
   padding: 0.38rem 0.5rem 0.44rem;
   transition: background-color 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease;
@@ -862,12 +998,12 @@
 }
 
 .theme-futuristic .td-fut-drill .td-fut-grid-row--interactive:focus-visible {
-  box-shadow: 0 0 0 2px rgba(255, 106, 0, 0.2);
+  box-shadow: 0 0 0 2px rgb(var(--accent-gold) / 0.35);
 }
 
 .theme-futuristic .td-fut-drill .td-fut-grid-row--selected {
   background: var(--td-fut-row-selected) !important;
-  border-color: rgba(255, 106, 0, 0.35) !important;
+  border-color: rgb(var(--accent-gold) / 0.45) !important;
   box-shadow: inset 3px 0 0 var(--td-fut-accent);
 }
 
@@ -1025,7 +1161,7 @@
 
 .theme-futuristic table.td-resumo-table--premium tbody tr.td-resumo-table__row--hover-map .td-fut-tend-pct-bar__fill--flat,
 .theme-futuristic table.td-resumo-table--premium tbody tr.td-resumo-table__row--hover-map .td-fut-tend-pct-bar__fill--na {
-  background-color: rgba(11, 15, 20, 0.38) !important;
+  background-color: rgb(var(--border-card) / 0.55) !important;
 }
 
 /* =============================================================================
@@ -1042,7 +1178,7 @@
    ============================================================================= */
 
 .theme-futuristic .td-mapa-fut-loading {
-  background: rgba(11, 15, 20, 0.9) !important;
+  background: rgb(var(--bg-sidebar) / 0.92) !important;
   backdrop-filter: blur(8px);
 }
 
@@ -1051,11 +1187,11 @@
 }
 
 .theme-futuristic .td-mapa-fut-loading .bg-accent-gold\/35 {
-  background-color: rgba(255, 106, 0, 0.28) !important;
+  background-color: rgb(var(--accent-gold) / 0.28) !important;
 }
 
 .theme-futuristic .td-mapa-fut-error {
-  background: rgba(11, 15, 20, 0.96) !important;
+  background: rgb(var(--bg-sidebar) / 0.96) !important;
 }
 
 .theme-futuristic .td-mapa-fut-viewport-bg {
@@ -1110,6 +1246,10 @@
   background: var(--td-fut-bg-deep, #0B0F14);
 }
 
+[data-map-tds-futuristic-shell='true'][data-map-tds-futuristic-theme='republicanos-light'] {
+  background: #F4F8FF;
+}
+
 [data-map-tds-futuristic-main='true'] { background: transparent; }
 [data-map-tds-futuristic-main='true'] > main { background: transparent !important; }
 [data-map-tds-futuristic-main='true'] .page-transition { min-height: 100%; background: transparent; }
@@ -1121,13 +1261,29 @@
   background: #0F151D !important;
 }
 
+[data-map-tds-futuristic-header='true'][data-map-tds-futuristic-theme='republicanos-light'] {
+  border-bottom-color: rgba(15, 23, 42, 0.14) !important;
+  background: #ffffff !important;
+}
+
 .mapa-tds-futuristic-header-page-label {
   color: #E6EDF3 !important;
   font-weight: 600;
 }
 
+[data-map-tds-futuristic-header='true'][data-map-tds-futuristic-theme='republicanos-light'] .mapa-tds-futuristic-header-page-label,
+[data-map-tds-futuristic-header='true'][data-map-tds-futuristic-theme='republicanos-light'] h1,
+[data-map-tds-futuristic-header='true'][data-map-tds-futuristic-theme='republicanos-light'] .text-text-primary {
+  color: #0F1F4D !important;
+}
+
 .mapa-tds-futuristic-header-muted {
   color: #aab4c0 !important;
+}
+
+[data-map-tds-futuristic-header='true'][data-map-tds-futuristic-theme='republicanos-light'] .mapa-tds-futuristic-header-muted,
+[data-map-tds-futuristic-header='true'][data-map-tds-futuristic-theme='republicanos-light'] .text-text-secondary {
+  color: #475569 !important;
 }
 
 .mapa-tds-futuristic-header-glass {
@@ -1164,7 +1320,7 @@
 }
 
 [data-map-tds-futuristic-header='true'] div.absolute.right-0.mt-2.w-56 {
-  background: #10161f !important;
+  background: rgb(var(--bg-sidebar)) !important;
   border-color: rgba(255, 255, 255, 0.07) !important;
   box-shadow: 0 12px 36px rgba(0, 0, 0, 0.5);
 }
@@ -1187,6 +1343,11 @@
   box-shadow: none;
 }
 
+[data-map-tds-futuristic-sidebar='true'][data-map-tds-futuristic-theme='republicanos-light'] {
+  background: #ffffff !important;
+  border-right: 1px solid rgba(15, 23, 42, 0.14) !important;
+}
+
 [data-map-tds-futuristic-sidebar='true'] > div > div:first-child {
   border-bottom-width: 0 !important;
   border-bottom-color: transparent !important;
@@ -1201,6 +1362,10 @@
   background: #0a0e13 !important;
 }
 
+[data-map-tds-futuristic-sidebar='true'][data-map-tds-futuristic-theme='republicanos-light'].sidebar-cockpit-shell {
+  background: #ffffff !important;
+}
+
 [data-map-tds-futuristic-sidebar='true'] .flex.h-full.min-h-0.flex-col {
   background: transparent !important;
 }
@@ -1208,9 +1373,21 @@
 [data-map-tds-futuristic-sidebar='true'] .text-text-primary  { color: #E6EDF3 !important; }
 [data-map-tds-futuristic-sidebar='true'] .text-text-secondary { color: #aab4c0 !important; }
 
-/* accent: item ativo usa laranja */
+[data-map-tds-futuristic-sidebar='true'][data-map-tds-futuristic-theme='republicanos-light'] .text-text-primary {
+  color: #0F1F4D !important;
+}
+
+[data-map-tds-futuristic-sidebar='true'][data-map-tds-futuristic-theme='republicanos-light'] .text-text-secondary {
+  color: #475569 !important;
+}
+
+/* accent: item ativo usa azul institucional */
 [data-map-tds-futuristic-sidebar='true'] .text-accent-gold {
-  color: #FF8A2A !important;
+  color: #0F4DB8 !important;
+}
+
+[data-map-tds-futuristic-sidebar='true'][data-map-tds-futuristic-theme='republicanos-light'] .text-accent-gold {
+  color: #003399 !important;
 }
 
 [data-map-tds-futuristic-sidebar='true'] .hover\:bg-accent-gold-soft:hover,
@@ -1219,9 +1396,30 @@
   background-color: rgba(255, 255, 255, 0.04) !important;
 }
 
+[data-map-tds-futuristic-sidebar='true'][data-map-tds-futuristic-theme='republicanos-light'] .hover\:bg-accent-gold-soft:hover,
+[data-map-tds-futuristic-sidebar='true'][data-map-tds-futuristic-theme='republicanos-light'] nav a:hover,
+[data-map-tds-futuristic-sidebar='true'][data-map-tds-futuristic-theme='republicanos-light'] nav button:hover {
+  background-color: rgba(0, 51, 153, 0.08) !important;
+}
+
 [data-map-tds-futuristic-sidebar='true'] .bg-accent-gold-soft {
-  background-color: rgba(255, 106, 0, 0.14) !important;
-  box-shadow: inset 0 0 0 1px rgba(255, 106, 0, 0.12) !important;
+  background-color: rgba(0, 51, 153, 0.14) !important;
+  box-shadow: inset 0 0 0 1px rgba(0, 51, 153, 0.12) !important;
+}
+
+[data-map-tds-futuristic-sidebar='true'][data-map-tds-futuristic-theme='republicanos-light'] .bg-accent-gold-soft {
+  background-color: rgba(0, 51, 153, 0.1) !important;
+  box-shadow: inset 0 0 0 1px rgba(0, 51, 153, 0.16) !important;
+}
+
+[data-map-tds-futuristic-sidebar='true'][data-map-tds-futuristic-theme='republicanos-light'] nav a svg,
+[data-map-tds-futuristic-sidebar='true'][data-map-tds-futuristic-theme='republicanos-light'] nav button svg {
+  color: #1D4F91 !important;
+}
+
+[data-map-tds-futuristic-sidebar='true'][data-map-tds-futuristic-theme='republicanos-light'] nav a:hover svg,
+[data-map-tds-futuristic-sidebar='true'][data-map-tds-futuristic-theme='republicanos-light'] nav button:hover svg {
+  color: #003399 !important;
 }
 
 .mapa-tds-futuristic-sidebar-nav a,
@@ -1230,9 +1428,15 @@
 }
 
 .mapa-tds-futuristic-submenu-pill {
-  background: #10161f !important;
+  background: rgb(var(--bg-sidebar)) !important;
   border-width: 0 !important;
   box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35) !important;
+}
+
+[data-map-tds-futuristic-sidebar='true'][data-map-tds-futuristic-theme='republicanos-light'] .mapa-tds-futuristic-submenu-pill {
+  background: #ffffff !important;
+  border: 1px solid rgba(15, 23, 42, 0.12) !important;
+  box-shadow: 0 6px 20px rgba(15, 23, 42, 0.12) !important;
 }
 
 [data-map-tds-futuristic-sidebar='true'] .border-border-card\/80 {
@@ -1247,8 +1451,17 @@
   box-shadow: 0 4px 18px rgba(0, 0, 0, 0.4);
 }
 
+[data-map-tds-futuristic-navbtn='true'][data-map-tds-futuristic-theme='republicanos-light'] {
+  background: #ffffff !important;
+  box-shadow: 0 4px 18px rgba(15, 23, 42, 0.16);
+}
+
 [data-map-tds-futuristic-navbtn='true'] .text-accent-gold {
-  color: #FF8A2A !important;
+  color: #0F4DB8 !important;
+}
+
+[data-map-tds-futuristic-navbtn='true'][data-map-tds-futuristic-theme='republicanos-light'] .text-accent-gold {
+  color: #003399 !important;
 }
 
 /* ── Overlay mobile ───────────────────────────────────────────────────────── */
@@ -1258,17 +1471,74 @@
   backdrop-filter: blur(4px);
 }
 
+[data-map-tds-futuristic-overlay='true'][data-map-tds-futuristic-theme='republicanos-light'] {
+  background: rgba(15, 23, 42, 0.32) !important;
+}
+
 /* ── Tooltip sidebar recolhida ────────────────────────────────────────────── */
 
 .mapa-tds-futuristic-nav-tooltip {
-  background: #10161f !important;
+  background: rgb(var(--bg-sidebar)) !important;
   color: #e6edf3 !important;
   border: none;
   box-shadow: 0 8px 28px rgba(0, 0, 0, 0.5);
 }
 
+[data-map-tds-futuristic-sidebar='true'][data-map-tds-futuristic-theme='republicanos-light'] .mapa-tds-futuristic-nav-tooltip {
+  background: #ffffff !important;
+  color: #0F1F4D !important;
+  border: 1px solid rgba(15, 23, 42, 0.14);
+  box-shadow: 0 8px 28px rgba(15, 23, 42, 0.2);
+}
+
 .mapa-tds-futuristic-nav-tooltip > .absolute.right-full {
-  border-right-color: #10161f !important;
+  border-right-color: rgb(var(--bg-sidebar)) !important;
+}
+
+[data-map-tds-futuristic-sidebar='true'][data-map-tds-futuristic-theme='republicanos-light']
+  .mapa-tds-futuristic-nav-tooltip
+  > .absolute.right-full {
+  border-right-color: #ffffff !important;
+}
+
+/* =============================================================================
+   REPUBLICANOS LIGHT — MODO BRANCO (todas as seções)
+   ============================================================================= */
+
+.theme-futuristic.theme-futuristic--republicanos-light .td-mapa-vp-halo,
+.theme-futuristic.theme-futuristic--republicanos-light .leaflet-td-pi-host,
+.theme-futuristic.theme-futuristic--republicanos-light .td-mapa-statusbar,
+.theme-futuristic.theme-futuristic--republicanos-light aside[aria-label='Mapa de dominância eleitoral por território de desenvolvimento'],
+.theme-futuristic.theme-futuristic--republicanos-light .td-stat-card,
+.theme-futuristic.theme-futuristic--republicanos-light .td-fut-grid-row,
+.theme-futuristic.theme-futuristic--republicanos-light .td-fut-grid-header,
+.theme-futuristic.theme-futuristic--republicanos-light .bg-bg-surface,
+.theme-futuristic.theme-futuristic--republicanos-light .bg-surface,
+.theme-futuristic.theme-futuristic--republicanos-light .bg-card\/40,
+.theme-futuristic.theme-futuristic--republicanos-light .bg-card\/50,
+.theme-futuristic.theme-futuristic--republicanos-light .bg-card\/80,
+.theme-futuristic.theme-futuristic--republicanos-light .bg-accent-gold-soft\/10,
+.theme-futuristic.theme-futuristic--republicanos-light .bg-accent-gold-soft\/15,
+.theme-futuristic.theme-futuristic--republicanos-light .bg-accent-gold-soft\/20,
+.theme-futuristic.theme-futuristic--republicanos-light .bg-accent-gold-soft\/30 {
+  background: #ffffff !important;
+  background-color: #ffffff !important;
+}
+
+.theme-futuristic.theme-futuristic--republicanos-light table.td-resumo-table thead tr.td-resumo-table__row--header th,
+.theme-futuristic.theme-futuristic--republicanos-light table.td-resumo-table--premium tbody tr td,
+.theme-futuristic.theme-futuristic--republicanos-light table.td-resumo-table--futuristic tbody tr td,
+.theme-futuristic.theme-futuristic--republicanos-light table.td-resumo-table tfoot tr.td-resumo-table__row--totals td {
+  background: #ffffff !important;
+  background-color: #ffffff !important;
+}
+
+.theme-futuristic.theme-futuristic--republicanos-light table.td-resumo-table--premium tbody tr.td-resumo-table__row--hover-map td {
+  background: #ffffff !important;
+}
+
+.theme-futuristic.theme-futuristic--republicanos-light table.td-resumo-table--premium tbody tr.td-resumo-table__row--selected td {
+  background: #ffffff !important;
 }
 
 /* =============================================================================
@@ -1303,24 +1573,24 @@
 .theme-futuristic [data-td-fut-ig-panel='true'] .bg-accent-gold-soft\/15,
 .theme-futuristic [data-td-fut-ig-panel='true'] .bg-accent-gold-soft\/20,
 .theme-futuristic [data-td-fut-ig-panel='true'] .bg-accent-gold-soft\/30 {
-  background-color: rgba(255, 106, 0, 0.12) !important;
+  background-color: rgba(0, 51, 153, 0.12) !important;
 }
 
 .theme-futuristic [data-td-fut-ig-panel='true'] .hover\:bg-accent-gold-soft\/20:hover {
-  background-color: rgba(255, 106, 0, 0.14) !important;
+  background-color: rgba(0, 51, 153, 0.14) !important;
 }
 
 .theme-futuristic [data-td-fut-ig-panel='true'] .hover\:bg-accent-gold-soft\/15:hover {
-  background-color: rgba(255, 106, 0, 0.1) !important;
+  background-color: rgba(0, 51, 153, 0.1) !important;
 }
 
 .theme-futuristic [data-td-fut-ig-panel='true'] .hover\:bg-accent-gold-soft\/30:hover {
-  background-color: rgba(255, 106, 0, 0.16) !important;
+  background-color: rgba(0, 51, 153, 0.16) !important;
 }
 
 .theme-futuristic [data-td-fut-ig-panel='true'] .border-accent-gold\/50,
 .theme-futuristic [data-td-fut-ig-panel='true'] .hover\:border-accent-gold\/50:hover {
-  border-color: rgba(255, 106, 0, 0.45) !important;
+  border-color: rgba(0, 51, 153, 0.45) !important;
 }
 
 .theme-futuristic [data-td-fut-ig-panel='true'] .bg-accent-gold {

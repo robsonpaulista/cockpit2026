@@ -19,22 +19,28 @@ import {
 } from '@/lib/chapas-segunda-vaga-republicanos'
 import { cn } from '@/lib/utils'
 import { useAuth } from '@/hooks/use-auth'
+import { useTheme } from '@/contexts/theme-context'
+import { sidebarPrimaryCTAButtonClass } from '@/lib/sidebar-menu-active-style'
+
+/** Mesmo gradiente do item ativo da sidebar / KPIs (Republicanos no mapa). */
+const COR_REPUBLICANOS_GRADIENTE =
+  'border border-white/15 bg-[linear-gradient(135deg,#062e52_0%,#0b4a7a_52%,#1368a8_100%)]'
 
 const coresPartidosFederais = {
   'PT': { cor: 'bg-accent-gold', corTexto: 'text-white' },
   'PSD/MDB': { cor: 'bg-accent-gold-soft', corTexto: 'text-text-primary' },
   'PP': { cor: 'bg-text-secondary', corTexto: 'text-white' },
-  'REPUBLICANOS': { cor: 'bg-blue-600', corTexto: 'text-white' },
-  REPUB: { cor: 'bg-blue-600', corTexto: 'text-white' },
-  'PODEMOS': { cor: 'bg-accent-gold', corTexto: 'text-white' }
+  'REPUBLICANOS': { cor: COR_REPUBLICANOS_GRADIENTE, corTexto: 'text-white' },
+  REPUB: { cor: COR_REPUBLICANOS_GRADIENTE, corTexto: 'text-white' },
+  'PODEMOS': { cor: 'bg-accent-gold', corTexto: 'text-white' },
 }
 
 const coresPartidosEstaduais = {
   'PT': { cor: 'bg-accent-gold', corTexto: 'text-white' },
   'MDB': { cor: 'bg-accent-gold-soft', corTexto: 'text-text-primary' },
   'PP': { cor: 'bg-text-secondary', corTexto: 'text-white' },
-  'REPUBLICANOS': { cor: 'bg-blue-600', corTexto: 'text-white' },
-  REPUB: { cor: 'bg-blue-600', corTexto: 'text-white' },
+  'REPUBLICANOS': { cor: COR_REPUBLICANOS_GRADIENTE, corTexto: 'text-white' },
+  REPUB: { cor: COR_REPUBLICANOS_GRADIENTE, corTexto: 'text-white' },
 }
 
 // Interface para partido local
@@ -99,6 +105,8 @@ const inferirGeneroCandidatoInicial = (nome: string, generoInformado?: string): 
 
 export default function ChapasPage() {
   const { user } = useAuth()
+  const { theme } = useTheme()
+  const isCockpit = theme === 'cockpit'
   const pathname = usePathname()
   const isChapasEstaduais = pathname === '/dashboard/chapas-estaduais'
   const service = isChapasEstaduais ? chapasEstaduaisService : chapasFederalService
@@ -130,7 +138,7 @@ export default function ChapasPage() {
   
   // Estados para adicionar novo partido
   const [dialogNovoPartidoAberto, setDialogNovoPartidoAberto] = useState(false)
-  const [novoPartido, setNovoPartido] = useState({ nome: '', cor: 'bg-gray-500', corTexto: 'text-white' })
+  const [novoPartido, setNovoPartido] = useState({ nome: '', cor: 'bg-border-card', corTexto: 'text-text-primary' })
   const [salvandoPartido, setSalvandoPartido] = useState(false)
   const [dialogEditarPartidoAberto, setDialogEditarPartidoAberto] = useState<string | null>(null)
   const [nomePartidoEdicao, setNomePartidoEdicao] = useState('')
@@ -818,7 +826,7 @@ export default function ChapasPage() {
       
       await service.atualizarCenario(cenarioAtivo.id, partidosConvertidos, cenarioAtivo.quocienteEleitoral)
       
-      setNovoPartido({ nome: '', cor: 'bg-gray-500', corTexto: 'text-white' })
+      setNovoPartido({ nome: '', cor: 'bg-border-card', corTexto: 'text-text-primary' })
       setDialogNovoPartidoAberto(false)
       
       mostrarNotificacaoAutoSave(`Partido ${novoPartido.nome} adicionado com sucesso`)
@@ -1219,11 +1227,11 @@ export default function ChapasPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 w-full">
+    <div className="min-h-screen bg-background w-full">
       <div className={`w-full py-4 ${modoImpressao ? 'px-3 sm:px-5' : 'px-4 sm:px-6 lg:px-8'}`}>
         {/* Notificação de auto-save */}
         {notificacaoAutoSave && (
-          <div className="fixed top-4 right-4 z-50 bg-green-500 text-white px-4 py-2 rounded-lg shadow-lg flex items-center gap-2">
+          <div className="fixed top-4 right-4 z-50 flex items-center gap-2 rounded-lg bg-status-success px-4 py-2 text-white shadow-lg">
             <Check className="h-4 w-4" />
             <span className="text-sm">{notificacaoAutoSave}</span>
           </div>
@@ -1232,22 +1240,23 @@ export default function ChapasPage() {
         {/* Indicador de carregamento / erro com retry */}
         {!dadosCarregados && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-white rounded-lg p-6 flex flex-col items-center gap-4 max-w-sm">
+            <div className="bg-surface rounded-lg p-6 flex flex-col items-center gap-4 max-w-sm">
               {erroCarregamento ? (
                 <>
-                  <div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center">
-                    <span className="text-red-500 text-xl font-bold">!</span>
+                  <div className="flex h-12 w-12 items-center justify-center rounded-full bg-status-error/15">
+                    <span className="text-xl font-bold text-status-error">!</span>
                   </div>
-                  <span className="text-gray-700 text-center text-sm">
+                  <span className="text-text-primary text-center text-sm">
                     Não foi possível carregar os dados.<br/>
-                    <span className="text-gray-400 text-xs">{erroCarregamento}</span>
+                    <span className="text-muted text-xs">{erroCarregamento}</span>
                   </span>
                   <button
+                    type="button"
                     onClick={() => {
                       setErroCarregamento(null)
                       carregarDadosIniciais()
                     }}
-                    className="px-4 py-2 bg-accent-gold text-white rounded-lg hover:opacity-90 transition-opacity text-sm font-medium"
+                    className={sidebarPrimaryCTAButtonClass(isCockpit, 'text-sm')}
                   >
                     Tentar novamente
                   </button>
@@ -1255,24 +1264,25 @@ export default function ChapasPage() {
               ) : (
                 <>
                   <RefreshCw className="h-8 w-8 animate-spin text-accent-gold" />
-                  <span className="text-gray-700">Carregando dados...</span>
+                  <span className="text-text-primary">Carregando dados...</span>
                 </>
               )}
             </div>
           </div>
         )}
         
-        <div ref={fullscreenRef} className={`${isFullscreen ? 'bg-white p-4 max-h-screen overflow-y-auto' : 'bg-transparent'} transition-all duration-300`}>
+        <div ref={fullscreenRef} className={`${isFullscreen ? 'bg-surface p-4 max-h-screen overflow-y-auto' : 'bg-transparent'} transition-all duration-300`}>
           <div id="chapas-pdf-content" className="w-full space-y-4 py-2">
             {/* Controles */}
             <div data-chapas-pdf-toolbar className="flex items-center justify-between mb-4">
               <div />
               <div className="flex items-center gap-2">
                 <button
+                  type="button"
                   onClick={handleGerarPdf}
                   disabled={exportandoPdf || !dadosCarregados}
                   title="Baixar relatorio em PDF (texto nativo, um partido por pagina)"
-                  className="px-4 py-2 border border-border-card bg-white rounded-lg hover:bg-bg-app disabled:opacity-50 flex items-center gap-2"
+                  className="flex items-center gap-2 rounded-lg border border-card bg-surface px-4 py-2 text-sm text-text-primary hover:bg-background disabled:opacity-50"
                 >
                   {exportandoPdf ? (
                     <>
@@ -1289,15 +1299,16 @@ export default function ChapasPage() {
                 <Link
                   href={isChapasEstaduais ? '/dashboard/chapas' : '/dashboard/chapas-estaduais'}
                   title={isChapasEstaduais ? 'Ir para Chapas Federais' : 'Ir para Chapas Estaduais'}
-                  className="px-4 py-2 border border-border-card bg-white rounded-lg hover:bg-bg-app flex items-center gap-2"
+                  className="flex items-center gap-2 rounded-lg border border-card bg-surface px-4 py-2 text-sm text-text-primary hover:bg-background"
                 >
                   <ArrowRightLeft className="h-4 w-4" />
                   {isChapasEstaduais ? 'Federais' : 'Estaduais'}
                 </Link>
                 <button
+                  type="button"
                   onClick={toggleFullscreen}
                   title={isFullscreen ? 'Sair de tela cheia' : 'Tela cheia'}
-                  className="p-2 rounded-lg hover:bg-bg-app text-text-secondary hover:text-accent-gold transition-colors"
+                  className="rounded-lg p-2 text-text-secondary transition-colors hover:bg-background hover:text-accent-gold"
                 >
                   {isFullscreen ? (
                     <Minimize2 className="h-5 w-5" />
@@ -1306,22 +1317,29 @@ export default function ChapasPage() {
                   )}
                 </button>
                 <button
+                  type="button"
                   onClick={salvarMudancasCenario}
                   disabled={salvandoMudancas}
-                  className="px-4 py-2 bg-accent-gold text-white rounded-lg hover:bg-accent-gold/90 disabled:opacity-50 flex items-center gap-2"
+                  className={sidebarPrimaryCTAButtonClass(isCockpit)}
                 >
                   {salvandoMudancas ? (
                     <>
-                    <RefreshCw className="h-4 w-4 animate-spin" />
-                    Salvando...
-                  </>
-                ) : (
-                  <>
-                    <Check className="h-4 w-4" />
-                    Salvar Mudanças
-                  </>
-                )}
-              </button>
+                      <RefreshCw
+                        className={cn('h-4 w-4 shrink-0 animate-spin', isCockpit ? 'text-white' : 'text-accent-gold')}
+                        aria-hidden
+                      />
+                      Salvando...
+                    </>
+                  ) : (
+                    <>
+                      <Check
+                        className={cn('h-4 w-4 shrink-0', isCockpit ? 'text-white' : 'text-accent-gold')}
+                        aria-hidden
+                      />
+                      Salvar Mudanças
+                    </>
+                  )}
+                </button>
             </div>
           </div>
 
@@ -1329,7 +1347,7 @@ export default function ChapasPage() {
           <div
             data-chapas-cenarios-wrap
             data-cenario-ativo={cenarioAtivo?.nome ?? '—'}
-            className="bg-white rounded-lg shadow-sm border border-gray-100 p-4"
+            className="bg-surface rounded-lg shadow-sm border border-card p-4"
           >
             <CenariosTabs
               service={service}
@@ -1390,23 +1408,23 @@ export default function ChapasPage() {
           </div>
 
           {/* Resumo do Quociente */}
-          <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-3">
+          <div className="bg-surface rounded-lg shadow-sm border border-card p-3">
             <div className="flex flex-wrap items-center gap-4 text-xs justify-between">
               <div className="flex flex-wrap items-center gap-4">
                 <div className="flex items-center gap-2">
-                  <span className="font-semibold text-gray-700">Vagas:</span>
+                  <span className="font-semibold text-text-primary">Vagas:</span>
                   <input
                     type="number"
                     value={numVagas}
                     onChange={(e) => setNumVagas(Math.max(1, parseInt(e.target.value) || 10))}
-                    className="text-sm font-bold text-gray-700 bg-transparent border-b border-gray-200 focus:border-accent-gold outline-none w-20 text-center px-1"
+                    className="text-sm font-bold text-text-primary bg-transparent border-b border-card focus:border-accent-gold outline-none w-20 text-center px-1"
                     min="1"
                     max="20"
                   />
                 </div>
 
                 <div className="flex items-center gap-2">
-                  <span className="font-semibold text-gray-700">QE 2026:</span>
+                  <span className="font-semibold text-text-primary">QE 2026:</span>
                   <input
                     type="text"
                     inputMode="numeric"
@@ -1422,25 +1440,25 @@ export default function ChapasPage() {
                     onBlur={() => {
                       // Quociente salvo via botão "Salvar Mudanças"
                     }}
-                    className="text-sm font-bold text-gray-700 bg-transparent border-b border-gray-200 focus:border-accent-gold outline-none w-32 text-center px-1"
+                    className="text-sm font-bold text-text-primary bg-transparent border-b border-card focus:border-accent-gold outline-none w-32 text-center px-1"
                   />
                 </div>
 
                 <div className="flex items-center gap-2">
-                  <span className="font-semibold text-gray-700">Mínimo:</span>
-                  <span className="text-sm font-bold text-gray-700">{getQuocienteMinimo().toLocaleString('pt-BR')}</span>
+                  <span className="font-semibold text-text-primary">Mínimo:</span>
+                  <span className="text-sm font-bold text-text-primary">{getQuocienteMinimo().toLocaleString('pt-BR')}</span>
                 </div>
 
                 <div className="flex items-center gap-2">
-                  <span className="font-semibold text-gray-700">Elegíveis:</span>
-                  <span className="text-sm font-bold text-gray-700">
+                  <span className="font-semibold text-text-primary">Elegíveis:</span>
+                  <span className="text-sm font-bold text-text-primary">
                     {partidos.filter(p => partidoAtingiuMinimo(p.nome) && !partidosOcultos[p.nome]).length}/{partidos.filter(p => !partidosOcultos[p.nome]).length}
                   </span>
                 </div>
 
                 <div className="flex items-center gap-2">
-                  <span className="font-semibold text-gray-700">Total de Votos:</span>
-                  <span className="text-sm font-bold text-gray-700">
+                  <span className="font-semibold text-text-primary">Total de Votos:</span>
+                  <span className="text-sm font-bold text-text-primary">
                     {partidos
                       .filter(p => !partidosOcultos[p.nome])
                       .reduce((total, partido) => total + getVotosProjetados(partido.candidatos, partido.nome), 0)
@@ -1453,17 +1471,18 @@ export default function ChapasPage() {
                   type="button"
                   onClick={mostrarTodosPartidos}
                   disabled={partidosOcultosLista.length === 0}
-                  className="px-3 py-2 border border-amber-300 text-amber-900 rounded-lg hover:bg-amber-50 flex items-center gap-2 whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="flex items-center gap-2 whitespace-nowrap rounded-lg border border-card bg-surface px-3 py-2 text-sm text-text-primary hover:bg-background disabled:cursor-not-allowed disabled:opacity-50"
                   title={partidosOcultosLista.length > 0 ? 'Reexibir todos os partidos ocultos' : 'Não há partidos ocultos'}
                 >
                   <Eye className="h-4 w-4" />
                   Mostrar todos {partidosOcultosLista.length > 0 ? `(${partidosOcultosLista.length})` : ''}
                 </button>
                 <button
+                  type="button"
                   onClick={() => setDialogNovoPartidoAberto(true)}
-                  className="px-4 py-2 bg-accent-gold text-white rounded-lg hover:bg-accent-gold/90 flex items-center gap-2 whitespace-nowrap"
+                  className={cn(sidebarPrimaryCTAButtonClass(isCockpit), 'whitespace-nowrap')}
                 >
-                  <Plus className="h-4 w-4" />
+                  <Plus className={cn('h-4 w-4 shrink-0', isCockpit ? 'text-white' : 'text-accent-gold')} aria-hidden />
                   Adicionar Partido
                 </button>
               </div>
@@ -1471,9 +1490,9 @@ export default function ChapasPage() {
           </div>
 
           {partidosOcultosLista.length > 0 && (
-            <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 p-3">
+            <div className="mb-4 rounded-lg border border-card bg-accent-gold-soft/20 p-3">
               <div className="flex flex-wrap items-center gap-2">
-                <span className="text-xs font-semibold text-amber-900">
+                <span className="text-xs font-semibold text-text-primary">
                   Partidos ocultos ({partidosOcultosLista.length}):
                 </span>
                 {partidosOcultosLista.map((partidoNome) => (
@@ -1481,7 +1500,7 @@ export default function ChapasPage() {
                     key={partidoNome}
                     type="button"
                     onClick={() => togglePartidoVisibilidade(partidoNome)}
-                    className="inline-flex items-center gap-1 rounded-full border border-amber-300 bg-white px-2 py-1 text-xs text-amber-900 hover:bg-amber-100"
+                    className="inline-flex items-center gap-1 rounded-full border border-card bg-surface px-2 py-1 text-xs text-text-primary hover:bg-background"
                     title={`Mostrar ${partidoNome}`}
                   >
                     <Eye className="h-3 w-3" />
@@ -1491,7 +1510,7 @@ export default function ChapasPage() {
                 <button
                   type="button"
                   onClick={mostrarTodosPartidos}
-                  className="inline-flex items-center gap-1 rounded-full border border-amber-400 bg-amber-100 px-2 py-1 text-xs font-semibold text-amber-900 hover:bg-amber-200"
+                  className="inline-flex items-center gap-1 rounded-full border border-accent-gold/40 bg-accent-gold-soft/30 px-2 py-1 text-xs font-semibold text-text-primary hover:bg-accent-gold-soft/50"
                 >
                   Mostrar todos
                 </button>
@@ -1525,7 +1544,7 @@ export default function ChapasPage() {
                   <div
                     key={partido.nome}
                     data-chapas-partido-card
-                    className={`w-full flex flex-col bg-white rounded-lg shadow-sm border border-card p-4 ${modoImpressao ? 'h-auto items-stretch' : 'h-full items-center'} ${
+                    className={`w-full flex flex-col bg-surface rounded-lg shadow-sm border border-card p-4 ${modoImpressao ? 'h-auto items-stretch' : 'h-full items-center'} ${
                     atingiuMinimo 
                       ? 'border-border-card' 
                       : 'border-status-error/50 bg-status-error/5'
@@ -1705,7 +1724,7 @@ export default function ChapasPage() {
                                               setEditVoto(null)
                                             }
                                           }}
-                                          className="bg-transparent border-b border-gray-200 focus:border-blue-400 outline-none w-full text-xs py-0.5 px-1 text-right"
+                                          className="bg-transparent border-b border-card focus:border-accent-gold outline-none w-full text-xs py-0.5 px-1 text-right"
                                           style={{ textAlign: 'right' }}
                                         />
                                       ) : (
@@ -1727,7 +1746,7 @@ export default function ChapasPage() {
                                             handleExcluirCandidato(partidoIdx, candidatoIdx)
                                           }
                                         }}
-                                        className="text-red-500 hover:text-red-700 hover:bg-red-50 p-1 rounded"
+                                        className="rounded p-1 text-status-error hover:bg-status-error/10 hover:text-status-danger"
                                       >
                                         <Trash2 className="h-4 w-4" />
                                       </button>
@@ -1853,11 +1872,11 @@ export default function ChapasPage() {
                       </div>
 
                       {/* Input de Votos de Legenda */}
-                      <div className="mt-3 pt-2 border-t border-gray-200">
+                      <div className="mt-3 pt-2 border-t border-card">
                         <div className="flex items-center justify-between gap-2">
-                          <span className="text-xs font-semibold text-gray-700">VOTOS LEGENDA:</span>
+                          <span className="text-xs font-semibold text-text-primary">VOTOS LEGENDA:</span>
                           {modoImpressao ? (
-                            <span className="text-xs font-semibold text-gray-700">
+                            <span className="text-xs font-semibold text-text-primary">
                               {(votosLegenda[partido.nome] || 0).toLocaleString('pt-BR')}
                             </span>
                           ) : (
@@ -1898,7 +1917,7 @@ export default function ChapasPage() {
                                   e.currentTarget.blur()
                                 }
                               }}
-                              className="text-xs font-medium text-gray-700 bg-transparent border-b border-gray-200 focus:border-blue-400 outline-none w-24 text-right px-1"
+                              className="text-xs font-medium text-text-primary bg-transparent border-b border-card focus:border-accent-gold outline-none w-24 text-right px-1"
                             />
                           )}
                         </div>
@@ -1917,7 +1936,7 @@ export default function ChapasPage() {
 
                     <div
                       data-chapas-partido-rodape
-                      className={cn('w-full pt-2', modoImpressao ? 'mt-0 border-t border-gray-200' : 'mt-auto')}
+                      className={cn('w-full pt-2', modoImpressao ? 'mt-0 border-t border-card' : 'mt-auto')}
                     >
                       <div className="font-bold text-xs mb-0.5 text-center">VOTOS PROJETADOS</div>
                       <div className="text-base font-extrabold mb-1 text-center">{getVotosProjetados(partido.candidatos, partido.nome).toLocaleString('pt-BR')}</div>
@@ -1928,29 +1947,29 @@ export default function ChapasPage() {
                         feedbackVagasChip ? (
                           <div
                             data-chapas-feedback-print
-                            className="mb-2 w-full max-w-none box-border rounded-md border border-slate-300 bg-slate-50 px-3 py-2.5 text-left overflow-visible"
+                            className="mb-2 w-full max-w-none box-border overflow-visible rounded-md border border-card bg-background px-3 py-2.5 text-left"
                           >
                             <p
                               className={cn(
                                 'm-0 text-sm font-semibold leading-snug break-words',
-                                feedbackVagasChip.tone === 'positive' && 'text-emerald-900',
-                                feedbackVagasChip.tone === 'negative' && 'text-red-900',
-                                feedbackVagasChip.tone === 'neutral' && 'text-gray-800'
+                                feedbackVagasChip.tone === 'positive' && 'text-status-success',
+                                feedbackVagasChip.tone === 'negative' && 'text-status-error',
+                                feedbackVagasChip.tone === 'neutral' && 'text-text-primary'
                               )}
                             >
                               {feedbackVagasChip.text}
                             </p>
                             {feedbackVagasChip.segundaLinha ? (
-                              <p className="m-0 mt-2 text-xs font-semibold leading-relaxed text-red-900 break-words">
+                              <p className="m-0 mt-2 break-words text-xs font-semibold leading-relaxed text-status-error">
                                 {feedbackVagasChip.segundaLinha}
                               </p>
                             ) : null}
                             {feedbackVagasChip.notaImpacto ? (
-                              <div className="mt-2 border-t border-slate-200 pt-2 space-y-1.5 overflow-visible">
+                              <div className="mt-2 space-y-1.5 overflow-visible border-t border-card pt-2">
                                 {feedbackVagasChip.notaImpacto.split('\n').map((linha, idxLinha) => (
                                   <p
                                     key={idxLinha}
-                                    className="m-0 text-[11px] leading-relaxed text-gray-800 break-words"
+                                    className="m-0 text-[11px] leading-relaxed text-text-primary break-words"
                                   >
                                     {linha}
                                   </p>
@@ -1964,10 +1983,12 @@ export default function ChapasPage() {
                           {feedbackVagasChip ? (
                             <span
                               className={cn(
-                                'inline-flex max-w-full flex-col items-center justify-center gap-1 rounded-lg border px-2 py-1 text-center text-[11px] font-medium leading-tight tracking-tight shadow-[inset_0_1px_0_rgba(255,255,255,0.6)]',
-                                feedbackVagasChip.tone === 'positive' && 'border-emerald-200/70 bg-emerald-50/80',
-                                feedbackVagasChip.tone === 'negative' && 'border-red-200/70 bg-red-50/80',
-                                feedbackVagasChip.tone === 'neutral' && 'border-slate-200/80 bg-white/90'
+                                'inline-flex max-w-full flex-col items-center justify-center gap-1 rounded-lg border px-2 py-1 text-center text-[11px] font-medium leading-tight tracking-tight',
+                                feedbackVagasChip.tone === 'positive' &&
+                                  'border-status-success/35 bg-status-success/10 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]',
+                                feedbackVagasChip.tone === 'negative' &&
+                                  'border-status-error/35 bg-status-error/10 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]',
+                                feedbackVagasChip.tone === 'neutral' && 'border-card bg-surface/95'
                               )}
                               title={
                                 [
@@ -1981,20 +2002,20 @@ export default function ChapasPage() {
                             >
                               <span
                                 className={cn(
-                                  feedbackVagasChip.tone === 'positive' && 'text-emerald-900',
-                                  feedbackVagasChip.tone === 'negative' && 'text-red-900',
+                                  feedbackVagasChip.tone === 'positive' && 'text-status-success',
+                                  feedbackVagasChip.tone === 'negative' && 'text-status-error',
                                   feedbackVagasChip.tone === 'neutral' && 'text-text-secondary'
                                 )}
                               >
                                 {feedbackVagasChip.text}
                               </span>
                               {feedbackVagasChip.segundaLinha ? (
-                                <span className="text-[10px] font-semibold leading-tight text-red-900">
+                                <span className="text-[10px] font-semibold leading-tight text-status-error">
                                   {feedbackVagasChip.segundaLinha}
                                 </span>
                               ) : null}
                               {feedbackVagasChip.notaImpacto ? (
-                                <span className="w-full max-w-full text-left text-[9px] font-normal leading-snug text-gray-600 whitespace-pre-line">
+                                <span className="w-full max-w-full text-left text-[9px] font-normal leading-snug text-secondary whitespace-pre-line">
                                   {feedbackVagasChip.notaImpacto}
                                 </span>
                               ) : null}
@@ -2002,7 +2023,7 @@ export default function ChapasPage() {
                           ) : null}
                         </div>
                       )}
-                      <div className="text-[10px] text-gray-500 mb-1 text-center">{getVotosProjetados(partido.candidatos, partido.nome).toLocaleString('pt-BR')} / {quociente.toLocaleString('pt-BR')} = {getProjecaoEleitos(getVotosProjetados(partido.candidatos, partido.nome))}</div>
+                      <div className="text-[10px] text-muted mb-1 text-center">{getVotosProjetados(partido.candidatos, partido.nome).toLocaleString('pt-BR')} / {quociente.toLocaleString('pt-BR')} = {getProjecaoEleitos(getVotosProjetados(partido.candidatos, partido.nome))}</div>
                     </div>
                   </div>
                 )
@@ -2010,11 +2031,11 @@ export default function ChapasPage() {
           </div>
 
           {/* Seção de detalhes das sobras - Método D'Hondt */}
-          <div className="mt-4 p-4 bg-gray-50 rounded-lg max-w-4xl">
-            <div className="text-base font-semibold mb-3 text-gray-900">
+          <div className="mt-4 p-4 bg-background rounded-lg max-w-4xl">
+            <div className="text-base font-semibold mb-3 text-text-primary">
               📊 Cálculo de Sobras - Método D'Hondt (Legislação Brasileira)
             </div>
-            <div className="text-sm text-gray-700 mb-3">
+            <div className="text-sm text-text-primary mb-3">
               <strong>Fórmula:</strong> Quociente Partidário = Votos ÷ (Vagas Obtidas + 1)
             </div>
             
@@ -2023,8 +2044,8 @@ export default function ChapasPage() {
                 const { ordenadosPorSobras } = calcularSobras()
                 
                 return ordenadosPorSobras.map((resultado, index) => (
-                  <div key={resultado.partido} className="bg-white p-3 rounded border border-gray-200">
-                    <div className="font-semibold text-sm mb-2 text-gray-900">
+                  <div key={resultado.partido} className="bg-surface p-3 rounded border border-card">
+                    <div className="font-semibold text-sm mb-2 text-text-primary">
                       {resultado.partido}
                     </div>
                     
@@ -2047,7 +2068,7 @@ export default function ChapasPage() {
                       <div className="border-t pt-1 mt-2">
                         <div className="flex justify-between">
                           <span>Quociente Partidário:</span>
-                          <span className="font-bold text-gray-700">
+                          <span className="font-bold text-text-primary">
                             {resultado.quocientePartidario.toLocaleString('pt-BR', { 
                               minimumFractionDigits: 2, 
                               maximumFractionDigits: 2 
@@ -2055,7 +2076,7 @@ export default function ChapasPage() {
                           </span>
                         </div>
                         
-                        <div className="text-xs text-gray-500 mt-1 whitespace-nowrap">
+                        <div className="text-xs text-muted mt-1 whitespace-nowrap">
                           {resultado.votosTotal.toLocaleString('pt-BR')} ÷ ({resultado.vagasDiretas} + 1) = {resultado.quocientePartidario.toLocaleString('pt-BR', { 
                             minimumFractionDigits: 2, 
                             maximumFractionDigits: 2 
@@ -2069,8 +2090,8 @@ export default function ChapasPage() {
             </div>
             
             {/* Seção de distribuição completa das vagas */}
-            <div className="mt-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
-              <div className="text-base font-semibold mb-3 text-gray-900">
+            <div className="mt-4 p-4 bg-background rounded-lg border border-card">
+              <div className="text-base font-semibold mb-3 text-text-primary">
                 🎯 Distribuição Completa das {numVagas} Vagas - Método D'Hondt
               </div>
               
@@ -2080,8 +2101,8 @@ export default function ChapasPage() {
                 return (
                   <div className="space-y-4">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="bg-white p-3 rounded border">
-                        <div className="text-sm font-semibold text-gray-900 mb-2">📊 Resumo das Vagas</div>
+                      <div className="rounded border border-card bg-surface p-3">
+                        <div className="mb-2 text-sm font-semibold text-text-primary">📊 Resumo das Vagas</div>
                         <div className="text-xs space-y-1">
                           <div className="flex justify-between">
                             <span>Vagas Diretas:</span>
@@ -2098,8 +2119,8 @@ export default function ChapasPage() {
                         </div>
                       </div>
                       
-                      <div className="bg-white p-3 rounded border">
-                        <div className="text-sm font-semibold text-gray-900 mb-2">🏆 Vagas por Partido</div>
+                      <div className="rounded border border-card bg-surface p-3">
+                        <div className="mb-2 text-sm font-semibold text-text-primary">🏆 Vagas por Partido</div>
                         <div className="text-xs space-y-1">
                           {simulacao.partidosComVagas.map(partido => (
                             <div key={partido.partido} className="flex justify-between">
@@ -2112,8 +2133,8 @@ export default function ChapasPage() {
                     </div>
 
                     {/* Histórico das sobras */}
-                    <div className="bg-white p-3 rounded border">
-                      <div className="text-sm font-semibold text-gray-900 mb-2">📋 Histórico das Sobras - Método D'Hondt</div>
+                    <div className="rounded border border-card bg-surface p-3">
+                      <div className="mb-2 text-sm font-semibold text-text-primary">📋 Histórico das Sobras - Método D'Hondt</div>
                       <div className="text-xs space-y-3">
                         {simulacao.historicoSobras.map((sobra, index) => {
                           const quocientesRodada = simulacao.partidosComVagas
@@ -2142,42 +2163,42 @@ export default function ChapasPage() {
                             .sort((a, b) => b.quocientePartidario - a.quocientePartidario)
 
                           return (
-                            <div key={index} className="border rounded-lg p-3 bg-gray-50">
-                              <div className="flex items-center gap-3 mb-2 p-2 bg-white rounded">
-                                <span className="font-bold text-gray-700">🎯 Rodada {sobra.rodada}</span>
-                                <span className="text-gray-600">→</span>
-                                <span className="font-medium bg-gray-100 px-2 py-1 rounded">{sobra.partido}</span>
-                                <span className="text-gray-600">ganha a</span>
-                                <span className="font-bold text-gray-700 bg-gray-100 px-2 py-1 rounded">Vaga #{sobra.vaga}</span>
+                            <div key={index} className="rounded-lg border border-card bg-background p-3">
+                              <div className="flex items-center gap-3 mb-2 p-2 bg-surface rounded">
+                                <span className="font-bold text-text-primary">🎯 Rodada {sobra.rodada}</span>
+                                <span className="text-secondary">→</span>
+                                <span className="font-medium bg-background/70 px-2 py-1 rounded">{sobra.partido}</span>
+                                <span className="text-secondary">ganha a</span>
+                                <span className="font-bold text-text-primary bg-background/70 px-2 py-1 rounded">Vaga #{sobra.vaga}</span>
                               </div>
 
-                              <div className="mb-2 p-2 bg-white rounded">
-                                <div className="font-semibold text-gray-800 mb-1">📊 Cálculo dos Quocientes Partidários:</div>
+                              <div className="mb-2 p-2 bg-surface rounded">
+                                <div className="font-semibold text-text-primary mb-1">📊 Cálculo dos Quocientes Partidários:</div>
                                 <div className="space-y-1">
                                   {quocientesRodada.map((q) => (
                                     <div key={q.partido} className={`flex justify-between items-center p-1 rounded ${
-                                      q.partido === sobra.partido ? 'bg-gray-100' : 'bg-gray-50'
+                                      q.partido === sobra.partido ? 'bg-background/70' : 'bg-background'
                                     }`}>
                                       <span className="font-medium">{q.partido}:</span>
-                                      <span className="text-xs text-gray-600">
+                                      <span className="text-xs text-secondary">
                                         {q.votos.toLocaleString('pt-BR')} ÷ ({q.vagasAntes} + 1) = 
                                       </span>
-                                      <span className="font-bold text-gray-700">
+                                      <span className="font-bold text-text-primary">
                                         {q.quocientePartidario.toLocaleString('pt-BR', { 
                                           minimumFractionDigits: 2, 
                                           maximumFractionDigits: 2 
                                         })}
                                       </span>
                                       {q.partido === sobra.partido && (
-                                        <span className="text-gray-600 font-bold ml-2">🏆 MAIOR</span>
+                                        <span className="text-secondary font-bold ml-2">🏆 MAIOR</span>
                                       )}
                                     </div>
                                   ))}
                                 </div>
                               </div>
 
-                              <div className="p-2 bg-gray-100 rounded">
-                                <div className="font-semibold text-gray-800">
+                              <div className="p-2 bg-background/70 rounded">
+                                <div className="font-semibold text-text-primary">
                                   ✅ Resultado: {sobra.partido} ganha a Vaga #{sobra.vaga} com quociente partidário de{' '}
                                   {sobra.quocientePartidario.toLocaleString('pt-BR', { 
                                     minimumFractionDigits: 2, 
@@ -2192,8 +2213,8 @@ export default function ChapasPage() {
                     </div>
 
                     {/* Seção dos candidatos eleitos */}
-                    <div className="bg-white p-4 rounded border">
-                      <div className="text-sm font-semibold text-gray-900 mb-3">🏆 Candidatos Eleitos</div>
+                    <div className="rounded border border-card bg-surface p-4">
+                      <div className="mb-3 text-sm font-semibold text-text-primary">🏆 Candidatos Eleitos</div>
                       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
                         {(() => {
                           try {
@@ -2201,7 +2222,7 @@ export default function ChapasPage() {
                             
                             if (!candidatosEleitos || candidatosEleitos.length === 0) {
                               return (
-                                <div className="col-span-full text-center text-gray-500 py-4">
+                                <div className="col-span-full text-center text-muted py-4">
                                   Nenhum candidato eleito encontrado
                                 </div>
                               )
@@ -2226,10 +2247,10 @@ export default function ChapasPage() {
 
                             return partidosOrdenados.map(({ nome: partido, candidatos }) => (
                               <div key={partido} className="border rounded-lg p-3">
-                                <div className={`font-semibold text-sm mb-2 text-center ${coresPartidosAtivos[partido as keyof typeof coresPartidosAtivos]?.cor || 'bg-gray-200'} ${coresPartidosAtivos[partido as keyof typeof coresPartidosAtivos]?.corTexto || 'text-gray-800'}`}>{partido}</div>
+                                <div className={`font-semibold text-sm mb-2 text-center ${coresPartidosAtivos[partido as keyof typeof coresPartidosAtivos]?.cor || 'bg-border-card'} ${coresPartidosAtivos[partido as keyof typeof coresPartidosAtivos]?.corTexto || 'text-text-primary'}`}>{partido}</div>
                                 <div className="space-y-2">
                                   {candidatos.map((candidato, index) => (
-                                    <div key={index} className="flex items-center justify-between p-2 bg-gray-50 rounded text-xs">
+                                    <div key={index} className="flex items-center justify-between p-2 bg-background rounded text-xs">
                                       <div className="flex items-center gap-2">
                                         <span className="font-bold text-accent-gold">#{candidato.posicao}</span>
                                         <span className="font-medium">{candidato.nome}</span>
@@ -2247,7 +2268,7 @@ export default function ChapasPage() {
                             ))
                           } catch (error) {
                             return (
-                              <div className="col-span-full text-center text-red-500 py-4">
+                              <div className="col-span-full py-4 text-center text-status-error">
                                 Erro ao carregar candidatos eleitos
                               </div>
                             )
@@ -2266,33 +2287,34 @@ export default function ChapasPage() {
         {/* Modal para adicionar novo candidato */}
         {dialogAberto !== null && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-white rounded-lg p-6 max-w-md w-full">
-              <div className="flex justify-between items-center mb-4">
-                <h2 className="text-lg font-semibold">Adicionar Candidato</h2>
+            <div className="bg-surface rounded-lg p-6 max-w-md w-full border border-card">
+              <div className="mb-4 flex items-center justify-between">
+                <h2 className="text-lg font-semibold text-text-primary">Adicionar Candidato</h2>
                 <button
+                  type="button"
                   onClick={() => {
                     setDialogAberto(null)
                     setNovoCandidato({ nome: '', votos: 0, genero: 'homem' })
                   }}
-                  className="text-gray-500 hover:text-gray-700"
+                  className="text-muted hover:text-text-primary"
                 >
                   <X className="h-5 w-5" />
                 </button>
               </div>
               <div className="space-y-4">
                 <div>
-                  <label className="text-sm font-medium mb-2 block">Nome do Candidato</label>
+                  <label className="mb-2 block text-sm font-medium text-text-primary">Nome do Candidato</label>
                   <input
                     type="text"
                     placeholder="Nome do candidato"
                     value={novoCandidato.nome}
                     onChange={(e) => setNovoCandidato(prev => ({ ...prev, nome: e.target.value }))}
                     disabled={salvandoCandidato}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-gold"
+                    className="w-full rounded-lg border border-card bg-surface px-3 py-2 text-text-primary focus:outline-none focus:ring-2 focus:ring-accent-gold-soft"
                   />
                 </div>
                 <div>
-                  <label className="text-sm font-medium mb-2 block">Votos</label>
+                  <label className="mb-2 block text-sm font-medium text-text-primary">Votos</label>
                   <input
                     type="number"
                     placeholder="0"
@@ -2300,13 +2322,13 @@ export default function ChapasPage() {
                     value={novoCandidato.votos}
                     onChange={(e) => setNovoCandidato(prev => ({ ...prev, votos: parseInt(e.target.value) || 0 }))}
                     disabled={salvandoCandidato}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-gold"
+                    className="w-full rounded-lg border border-card bg-surface px-3 py-2 text-text-primary focus:outline-none focus:ring-2 focus:ring-accent-gold-soft"
                   />
                 </div>
                 <div>
-                  <label className="text-sm font-medium mb-2 block">Gênero</label>
+                  <label className="mb-2 block text-sm font-medium text-text-primary">Gênero</label>
                   <div className="flex gap-4">
-                    <label className="flex items-center gap-2">
+                    <label className="flex items-center gap-2 text-sm text-text-primary">
                       <input
                         type="radio"
                         name="genero"
@@ -2316,9 +2338,9 @@ export default function ChapasPage() {
                         disabled={salvandoCandidato}
                         className="w-4 h-4 text-accent-gold"
                       />
-                      <span className="text-sm">Homem</span>
+                      <span>Homem</span>
                     </label>
-                    <label className="flex items-center gap-2">
+                    <label className="flex items-center gap-2 text-sm text-text-primary">
                       <input
                         type="radio"
                         name="genero"
@@ -2328,25 +2350,27 @@ export default function ChapasPage() {
                         disabled={salvandoCandidato}
                         className="w-4 h-4 text-accent-gold"
                       />
-                      <span className="text-sm">Mulher</span>
+                      <span>Mulher</span>
                     </label>
                   </div>
                 </div>
-                <div className="flex gap-2 justify-end">
+                <div className="flex justify-end gap-2">
                   <button
+                    type="button"
                     onClick={() => {
                       setDialogAberto(null)
                       setNovoCandidato({ nome: '', votos: 0, genero: 'homem' })
                     }}
                     disabled={salvandoCandidato}
-                    className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+                    className="rounded-lg border border-card bg-surface px-4 py-2 text-sm text-text-primary hover:bg-background disabled:opacity-50"
                   >
                     Cancelar
                   </button>
                   <button
+                    type="button"
                     onClick={() => handleAdicionarCandidato(dialogAberto)}
                     disabled={salvandoCandidato || !novoCandidato.nome.trim()}
-                    className="px-4 py-2 bg-accent-gold text-white rounded-lg hover:bg-accent-gold/90 disabled:opacity-50"
+                    className={sidebarPrimaryCTAButtonClass(isCockpit)}
                   >
                     {salvandoCandidato ? 'Salvando...' : 'Adicionar'}
                   </button>
@@ -2359,46 +2383,52 @@ export default function ChapasPage() {
         {/* Modal para adicionar novo partido */}
         {dialogNovoPartidoAberto && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-white rounded-lg p-6 max-w-md w-full">
-              <div className="flex justify-between items-center mb-4">
-                <h2 className="text-lg font-semibold">Adicionar Partido</h2>
+            <div className="w-full max-w-md rounded-lg border border-card bg-surface p-6">
+              <div className="mb-4 flex items-center justify-between">
+                <h2 className="text-lg font-semibold text-text-primary">Adicionar Partido</h2>
                 <button
+                  type="button"
                   onClick={() => {
                     setDialogNovoPartidoAberto(false)
-                    setNovoPartido({ nome: '', cor: 'bg-gray-500', corTexto: 'text-white' })
+                    setNovoPartido({ nome: '', cor: 'bg-border-card', corTexto: 'text-text-primary' })
                   }}
-                  className="text-gray-500 hover:text-gray-700"
+                  className="text-muted hover:text-text-primary"
                 >
                   <X className="h-5 w-5" />
                 </button>
               </div>
               <div className="space-y-4">
                 <div>
-                  <label className="text-sm font-medium mb-2 block">Nome do Partido</label>
+                  <label className="mb-2 block text-sm font-medium text-text-primary">Nome do Partido</label>
                   <input
                     type="text"
                     placeholder="Nome do partido"
                     value={novoPartido.nome}
                     onChange={(e) => setNovoPartido(prev => ({ ...prev, nome: e.target.value }))}
                     disabled={salvandoPartido}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-gold"
+                    className="w-full rounded-lg border border-card bg-surface px-3 py-2 text-text-primary focus:outline-none focus:ring-2 focus:ring-accent-gold-soft"
                   />
                 </div>
                 <div>
-                  <label className="text-sm font-medium mb-2 block">Cor</label>
+                  <label className="mb-2 block text-sm font-medium text-text-primary">Cor</label>
                   <select
                     value={novoPartido.cor}
                     onChange={(e) => {
                       const cor = e.target.value
-                      const corTexto = cor.includes('yellow') || cor.includes('gray-200') ? 'text-gray-900' : 'text-white'
+                      const corTextoClara =
+                        cor.includes('yellow-400') ||
+                        cor.includes('border-card') ||
+                        cor.includes('gray-200') ||
+                        cor.includes('accent-gold-soft')
+                      const corTexto = cor.includes('linear-gradient') || !corTextoClara ? 'text-white' : 'text-text-primary'
                       setNovoPartido(prev => ({ ...prev, cor, corTexto }))
                     }}
                     disabled={salvandoPartido}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-gold"
+                    className="w-full rounded-lg border border-card bg-surface px-3 py-2 text-text-primary focus:outline-none focus:ring-2 focus:ring-accent-gold-soft"
                   >
-                    <option value="bg-gray-500">Cinza</option>
+                    <option value="bg-border-card">Cinza</option>
                     <option value="bg-red-600">Vermelho</option>
-                    <option value="bg-blue-600">Azul</option>
+                    <option value={COR_REPUBLICANOS_GRADIENTE}>Azul (Republicanos)</option>
                     <option value="bg-green-600">Verde</option>
                     <option value="bg-yellow-400">Amarelo</option>
                     <option value="bg-purple-500">Roxo</option>
@@ -2408,21 +2438,23 @@ export default function ChapasPage() {
                     <option value="bg-teal-500">Verde-água</option>
                   </select>
                 </div>
-                <div className="flex gap-2 justify-end">
+                <div className="flex justify-end gap-2">
                   <button
+                    type="button"
                     onClick={() => {
                       setDialogNovoPartidoAberto(false)
-                      setNovoPartido({ nome: '', cor: 'bg-gray-500', corTexto: 'text-white' })
+                      setNovoPartido({ nome: '', cor: 'bg-border-card', corTexto: 'text-text-primary' })
                     }}
                     disabled={salvandoPartido}
-                    className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+                    className="rounded-lg border border-card bg-surface px-4 py-2 text-sm text-text-primary hover:bg-background disabled:opacity-50"
                   >
                     Cancelar
                   </button>
                   <button
+                    type="button"
                     onClick={handleAdicionarPartido}
                     disabled={salvandoPartido || !novoPartido.nome.trim()}
-                    className="px-4 py-2 bg-accent-gold text-white rounded-lg hover:bg-accent-gold/90 disabled:opacity-50"
+                    className={sidebarPrimaryCTAButtonClass(isCockpit)}
                   >
                     {salvandoPartido ? 'Salvando...' : 'Adicionar Partido'}
                   </button>
@@ -2435,46 +2467,49 @@ export default function ChapasPage() {
         {/* Modal para editar nome do partido */}
         {dialogEditarPartidoAberto && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-white rounded-lg p-6 max-w-md w-full">
-              <div className="flex justify-between items-center mb-4">
-                <h2 className="text-lg font-semibold">Editar Partido</h2>
+            <div className="w-full max-w-md rounded-lg border border-card bg-surface p-6">
+              <div className="mb-4 flex items-center justify-between">
+                <h2 className="text-lg font-semibold text-text-primary">Editar Partido</h2>
                 <button
+                  type="button"
                   onClick={() => {
                     setDialogEditarPartidoAberto(null)
                     setNomePartidoEdicao('')
                   }}
-                  className="text-gray-500 hover:text-gray-700"
+                  className="text-muted hover:text-text-primary"
                 >
                   <X className="h-5 w-5" />
                 </button>
               </div>
               <div className="space-y-4">
                 <div>
-                  <label className="text-sm font-medium mb-2 block">Novo nome do partido</label>
+                  <label className="mb-2 block text-sm font-medium text-text-primary">Novo nome do partido</label>
                   <input
                     type="text"
                     placeholder="Nome do partido"
                     value={nomePartidoEdicao}
                     onChange={(e) => setNomePartidoEdicao(e.target.value)}
                     disabled={salvandoEdicaoPartido}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-gold"
+                    className="w-full rounded-lg border border-card bg-surface px-3 py-2 text-text-primary focus:outline-none focus:ring-2 focus:ring-accent-gold-soft"
                   />
                 </div>
-                <div className="flex gap-2 justify-end">
+                <div className="flex justify-end gap-2">
                   <button
+                    type="button"
                     onClick={() => {
                       setDialogEditarPartidoAberto(null)
                       setNomePartidoEdicao('')
                     }}
                     disabled={salvandoEdicaoPartido}
-                    className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+                    className="rounded-lg border border-card bg-surface px-4 py-2 text-sm text-text-primary hover:bg-background disabled:opacity-50"
                   >
                     Cancelar
                   </button>
                   <button
+                    type="button"
                     onClick={handleSalvarEdicaoPartido}
                     disabled={salvandoEdicaoPartido || !nomePartidoEdicao.trim()}
-                    className="px-4 py-2 bg-accent-gold text-white rounded-lg hover:bg-accent-gold/90 disabled:opacity-50"
+                    className={sidebarPrimaryCTAButtonClass(isCockpit)}
                   >
                     {salvandoEdicaoPartido ? 'Salvando...' : 'Salvar Nome'}
                   </button>
@@ -2487,12 +2522,13 @@ export default function ChapasPage() {
         {/* Diálogo de Análise - REPUBLICANOS */}
         {openAnaliseRepublicanos && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-white rounded-lg p-6 max-w-md w-full max-h-[90vh] overflow-y-auto">
-              <div className="flex justify-between items-center mb-4">
-                <h2 className="text-lg font-semibold">REPUBLICANOS — Análise</h2>
+            <div className="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-lg border border-card bg-surface p-6">
+              <div className="mb-4 flex items-center justify-between">
+                <h2 className="text-lg font-semibold text-text-primary">REPUBLICANOS — Análise</h2>
                 <button
+                  type="button"
                   onClick={() => setOpenAnaliseRepublicanos(false)}
-                  className="text-gray-500 hover:text-gray-700"
+                  className="text-muted hover:text-text-primary"
                 >
                   <X className="h-5 w-5" />
                 </button>
@@ -2502,52 +2538,56 @@ export default function ChapasPage() {
                 return (
                   <div className="space-y-3 text-sm">
                     <div className="grid grid-cols-5 gap-2">
-                      <div className="p-2 bg-gray-50 rounded border text-center">
-                        <div className="text-[11px] text-gray-600">Votos</div>
+                      <div className="rounded border border-card bg-background p-2 text-center">
+                        <div className="text-[11px] text-secondary">Votos</div>
                         <div className="text-sm font-bold">{a.cenarios.atual.votos.toLocaleString('pt-BR')}</div>
                       </div>
-                      <div className="p-2 bg-gray-50 rounded border text-center">
-                        <div className="text-[11px] text-gray-600">QE</div>
+                      <div className="rounded border border-card bg-background p-2 text-center">
+                        <div className="text-[11px] text-secondary">QE</div>
                         <div className="text-sm font-bold">{quociente.toLocaleString('pt-BR')}</div>
                       </div>
-                      <div className="p-2 bg-gray-50 rounded border text-center">
-                        <div className="text-[11px] text-gray-600">80% QE</div>
+                      <div className="rounded border border-card bg-background p-2 text-center">
+                        <div className="text-[11px] text-secondary">80% QE</div>
                         <div className="text-sm font-bold">{getQuocienteMinimo().toLocaleString('pt-BR')}</div>
                       </div>
-                      <div className="p-2 bg-gray-50 rounded border text-center">
-                        <div className="text-[11px] text-gray-600">Vagas</div>
+                      <div className="rounded border border-card bg-background p-2 text-center">
+                        <div className="text-[11px] text-secondary">Vagas</div>
                         <div className="text-sm font-bold">{a.cenarios.atual.vagasTotais}</div>
                       </div>
                     </div>
 
                     <div className="flex items-center gap-2">
-                      <span className={`px-2 py-1 rounded text-xs ${a.cenarios.atual.elegivel ? 'bg-green-600 text-white' : 'bg-red-600 text-white'}`}>
+                      <span
+                        className={`rounded px-2 py-1 text-xs ${a.cenarios.atual.elegivel ? 'bg-status-success text-white' : 'bg-status-error text-white'}`}
+                      >
                         {a.cenarios.atual.elegivel ? '≥ 80% do QE' : '< 80% do QE'}
                       </span>
-                      <span className="px-2 py-1 rounded text-xs border border-gray-300">
+                      <span className="px-2 py-1 rounded text-xs border border-card">
                         {a.cenarios.atual.vagasDiretas} diretas + {a.cenarios.atual.vagasSobra} sobras
                       </span>
                     </div>
 
-                    <div className="p-2 bg-gray-50 rounded border text-xs">
-                      <div className="font-medium mb-2">Análise de Risco — Quanto cada adversário precisa crescer para nos tirar vagas:</div>
+                    <div className="rounded border border-card bg-background p-2 text-xs">
+                      <div className="mb-2 font-medium text-text-primary">
+                        Análise de Risco — Quanto cada adversário precisa crescer para nos tirar vagas:
+                      </div>
                       
                       {a.riscos.map((risco, index) => (
-                        <div key={risco.partido} className="mb-2 p-2 bg-white rounded border">
-                          <div className="font-medium text-gray-800">{risco.partido}</div>
+                        <div key={risco.partido} className="mb-2 rounded border border-card bg-surface p-2">
+                          <div className="font-medium text-text-primary">{risco.partido}</div>
                           <div className="grid grid-cols-2 gap-2 mt-1 text-[11px]">
                             <div>
-                              <span className="text-gray-600">Para vaga direta:</span>
+                              <span className="text-secondary">Para vaga direta:</span>
                               <span className="font-semibold ml-1">+{risco.deltaParaDireta.toLocaleString('pt-BR')} votos</span>
                             </div>
                             <div>
-                              <span className="text-gray-600">Para sobra:</span>
+                              <span className="text-secondary">Para sobra:</span>
                               <span className="font-semibold ml-1">
                                 {risco.deltaParaSobra === Infinity ? '—' : `+${risco.deltaParaSobra.toLocaleString('pt-BR')}`}
                               </span>
                             </div>
                           </div>
-                          <div className="mt-1 text-[10px] text-gray-600">
+                          <div className="mt-1 text-[10px] text-secondary">
                             Menor delta: <strong>+{risco.deltaMinimo.toLocaleString('pt-BR')} votos</strong>
                             {index === 0 && ' (MAIS PERIGOSO)'}
                           </div>
@@ -2555,14 +2595,15 @@ export default function ChapasPage() {
                       ))}
                     </div>
 
-                    <div className="text-xs text-gray-700 font-medium">{a.conclusao}</div>
+                    <div className="text-xs text-text-primary font-medium">{a.conclusao}</div>
                   </div>
                 )
               })()}
               <div className="mt-4 flex justify-end">
                 <button
+                  type="button"
                   onClick={() => setOpenAnaliseRepublicanos(false)}
-                  className="px-4 py-2 bg-accent-gold text-white rounded-lg hover:bg-accent-gold/90"
+                  className={sidebarPrimaryCTAButtonClass(isCockpit)}
                 >
                   Fechar
                 </button>

@@ -2,6 +2,9 @@
 
 import { useState } from 'react'
 import { X, Save, ExternalLink, Info, Calendar } from 'lucide-react'
+import { useTheme } from '@/contexts/theme-context'
+import { cn } from '@/lib/utils'
+import { sidebarPrimaryCTAButtonClass } from '@/lib/sidebar-menu-active-style'
 
 interface GoogleCalendarConfigModalProps {
   onClose: () => void
@@ -32,6 +35,8 @@ export function GoogleCalendarConfigModal({
   const [showCredentials, setShowCredentials] = useState(false)
   const [testing, setTesting] = useState(false)
   const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null)
+  const { theme } = useTheme()
+  const isCockpit = theme === 'cockpit'
 
   const handleTest = async () => {
     if (!formData.serviceAccountEmail || !formData.credentials) {
@@ -287,9 +292,9 @@ export function GoogleCalendarConfigModal({
             <button
               type="submit"
               disabled={!formData.calendarId || !formData.serviceAccountEmail || !formData.credentials || !formData.subjectUser}
-              className="flex-1 px-4 py-2.5 bg-accent-gold text-white rounded-lg hover:bg-accent-gold/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              className={sidebarPrimaryCTAButtonClass(isCockpit, 'flex-1 py-2.5')}
             >
-              <Save className="w-4 h-4" />
+              <Save className={cn('h-4 w-4 shrink-0', isCockpit ? 'text-white' : 'text-accent-gold')} aria-hidden />
               Salvar Configuração
             </button>
           </div>

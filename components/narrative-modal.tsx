@@ -2,6 +2,9 @@
 
 import { useEffect, useState } from 'react'
 import { X, Save, Plus, Trash2, Calendar } from 'lucide-react'
+import { useTheme } from '@/contexts/theme-context'
+import { cn } from '@/lib/utils'
+import { sidebarPrimaryCTAButtonClass } from '@/lib/sidebar-menu-active-style'
 
 interface CampaignPhase {
   id: string
@@ -53,6 +56,8 @@ const themeOptions = [
 ]
 
 export function NarrativeModal({ narrative, phases = [], onClose, onUpdate }: NarrativeModalProps) {
+  const { theme: dashboardTheme } = useTheme()
+  const isCockpit = dashboardTheme === 'cockpit'
   const [formData, setFormData] = useState<Narrative>({
     theme: '',
     target_audience: '',
@@ -281,8 +286,13 @@ export function NarrativeModal({ narrative, phases = [], onClose, onUpdate }: Na
                   placeholder="Adicionar argumento"
                   className="flex-1 px-3 py-2 bg-background border border-card rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-gold text-sm"
                 />
-                <button type="button" onClick={addArgument} className="px-4 py-2 bg-accent-gold text-white rounded-lg hover:bg-accent-gold transition-colors flex items-center gap-2">
-                  <Plus className="w-4 h-4" />
+                <button
+                  type="button"
+                  onClick={addArgument}
+                  className={sidebarPrimaryCTAButtonClass(isCockpit, 'px-4 py-2')}
+                  aria-label="Adicionar argumento"
+                >
+                  <Plus className={cn('h-4 w-4 shrink-0', isCockpit ? 'text-white' : 'text-accent-gold')} aria-hidden />
                 </button>
               </div>
             </div>
@@ -309,8 +319,13 @@ export function NarrativeModal({ narrative, phases = [], onClose, onUpdate }: Na
                   placeholder="Adicionar frase testada"
                   className="flex-1 px-3 py-2 bg-background border border-card rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-gold text-sm"
                 />
-                <button type="button" onClick={addPhrase} className="px-4 py-2 bg-accent-gold text-white rounded-lg hover:bg-accent-gold transition-colors flex items-center gap-2">
-                  <Plus className="w-4 h-4" />
+                <button
+                  type="button"
+                  onClick={addPhrase}
+                  className={sidebarPrimaryCTAButtonClass(isCockpit, 'px-4 py-2')}
+                  aria-label="Adicionar frase testada"
+                >
+                  <Plus className={cn('h-4 w-4 shrink-0', isCockpit ? 'text-white' : 'text-accent-gold')} aria-hidden />
                 </button>
               </div>
             </div>
@@ -338,9 +353,9 @@ export function NarrativeModal({ narrative, phases = [], onClose, onUpdate }: Na
             <button
               type="submit"
               disabled={submitting}
-              className="px-4 py-2 text-sm font-medium bg-accent-gold text-white rounded-lg hover:bg-accent-gold transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+              className={sidebarPrimaryCTAButtonClass(isCockpit, 'text-sm')}
             >
-              <Save className="w-4 h-4" />
+              <Save className={cn('h-4 w-4 shrink-0', isCockpit ? 'text-white' : 'text-accent-gold')} aria-hidden />
               {submitting ? 'Salvando...' : 'Salvar'}
             </button>
           </div>

@@ -4,6 +4,8 @@ import Link from 'next/link'
 import { useCallback, useEffect, useState } from 'react'
 import { ConteudoPresencaNav } from '@/components/conteudo-presenca-nav'
 import { cn } from '@/lib/utils'
+import { useTheme } from '@/contexts/theme-context'
+import { sidebarPrimaryCTAButtonClass } from '@/lib/sidebar-menu-active-style'
 import { CheckCircle2, ImageIcon, Loader2, Megaphone, ShieldCheck, Wand2 } from 'lucide-react'
 
 interface ConteudoRow {
@@ -37,6 +39,8 @@ function statusBadge(status: string) {
 }
 
 export default function ConteudoCardsPage() {
+  const { theme } = useTheme()
+  const isCockpit = theme === 'cockpit'
   const [items, setItems] = useState<ConteudoRow[]>([])
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState('')
@@ -328,9 +332,19 @@ export default function ConteudoCardsPage() {
                       type="button"
                       disabled={!!busy}
                       onClick={() => handleGenerate(row)}
-                      className="flex-1 min-w-[120px] inline-flex items-center justify-center gap-2 rounded-xl bg-blue-600 text-white py-3 text-sm font-medium disabled:opacity-50"
+                      className={sidebarPrimaryCTAButtonClass(isCockpit, 'flex-1 min-w-[120px] rounded-xl py-3')}
                     >
-                      {genBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Wand2 className="h-4 w-4" />}
+                      {genBusy ? (
+                        <Loader2
+                          className={cn('h-4 w-4 shrink-0 animate-spin', isCockpit ? 'text-white' : 'text-accent-gold')}
+                          aria-hidden
+                        />
+                      ) : (
+                        <Wand2
+                          className={cn('h-4 w-4 shrink-0', isCockpit ? 'text-white' : 'text-accent-gold')}
+                          aria-hidden
+                        />
+                      )}
                       Gerar
                     </button>
                     <button

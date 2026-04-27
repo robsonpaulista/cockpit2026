@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from 'react'
 import { X, Trash2 } from 'lucide-react'
+import { useTheme } from '@/contexts/theme-context'
+import { sidebarPrimaryCTAButtonClass } from '@/lib/sidebar-menu-active-style'
 
 interface City {
   id: string
@@ -26,6 +28,8 @@ interface AgendaModalProps {
 }
 
 export function AgendaModal({ agenda, onClose, onSuccess, onDelete }: AgendaModalProps) {
+  const { theme } = useTheme()
+  const isCockpit = theme === 'cockpit'
   const isEditing = !!agenda?.id
   const [formData, setFormData] = useState({
     date: agenda?.date || '',
@@ -313,7 +317,7 @@ export function AgendaModal({ agenda, onClose, onSuccess, onDelete }: AgendaModa
               <button
                 type="submit"
                 disabled={loading}
-                className="px-4 py-2 bg-accent-gold text-white rounded-lg hover:bg-accent-gold/90 transition-colors disabled:opacity-50"
+                className={sidebarPrimaryCTAButtonClass(isCockpit)}
               >
                 {loading ? 'Salvando...' : isEditing ? 'Atualizar' : 'Criar'}
               </button>

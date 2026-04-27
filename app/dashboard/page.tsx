@@ -25,6 +25,7 @@ import { KPI, Alert, NewsItem } from '@/types'
 import { useTheme } from '@/contexts/theme-context'
 import { cn } from '@/lib/utils'
 import { DashboardCockpitVivoLayout, COCKPIT_POSTS_INSIGHT_ROWS } from '@/components/dashboard-cockpit-vivo-layout'
+import { CockpitTerritorioMapEmbed } from '@/components/cockpit-territorio-map-embed'
 import { TrendingUp, MapPin, Flag, MessageSquare, ThermometerSun, ThermometerSnowflake, Flame, Activity, Maximize2, X, Lightbulb, AlertTriangle, Users, Heart, Eye, Crown, ArrowUpRight, ArrowDownRight, ArrowRight, Zap, Target, FileText, Bot, ListOrdered, BarChart3, ExternalLink } from 'lucide-react'
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 import { loadInstagramConfigAsync, fetchInstagramData } from '@/lib/instagramApi'
@@ -1217,7 +1218,7 @@ export default function Home() {
   const { theme } = useTheme()
 
   return (
-    <div className={cn('min-h-screen', theme === 'cockpit' ? 'bg-white' : 'bg-background')}>
+    <div className={cn('min-h-screen', theme === 'cockpit' ? 'bg-bg-app' : 'bg-background')}>
       {theme === 'cockpit' ? (
         <DashboardCockpitVivoLayout
           loading={loading}
@@ -1247,22 +1248,10 @@ export default function Home() {
           picoIntencaoGrafico={picoIntencaoGrafico}
           loadingPostsInsights={loadingBandeiras}
           postsInsights={postsInsightsCockpit}
-          loadingAlerts={loadingAlerts}
-          monitorNewsOrdenadas={monitorNewsOrdenadas}
-          monitorInsight={monitorInsight}
-          monitorHeaderContext={monitorHeaderContext}
-          monitorFeaturedNewsIds={monitorFeaturedNewsIds}
           setInsightTelaCheia={setInsightTelaCheia}
           setAnaliseTerritoriosTelaCheia={setAnaliseTerritoriosTelaCheia}
           setGraficoPollsTelaCheia={setGraficoPollsTelaCheia}
           setBandeirasTelaCheia={setBandeirasTelaCheia}
-          setAlertasTelaCheia={setAlertasTelaCheia}
-          getContextoMonitor={getContextoMonitor}
-          getLinhaSemanticaClass={getLinhaSemanticaClass}
-          monitorScrollRef={monitorScrollRef}
-          onMonitorScrollMouseEnter={() => setMonitorPaused(true)}
-          onMonitorScrollMouseLeave={() => setMonitorPaused(false)}
-          monitorActiveNewsId={monitorActiveNewsId}
         />
       ) : (
       <div className="px-4 py-6 lg:px-6">
@@ -1323,8 +1312,8 @@ export default function Home() {
                   const [cidades, total] = kpi.value.split('/').map(v => parseInt(v.trim()) || 0)
                   if (total > 0) {
                     const percentual = Math.round((cidades / total) * 100)
-                    cardSubtitle = `${percentual}% de cobertura`
-                    cardSubtitleType = percentual >= 50 ? 'positive' : percentual >= 30 ? 'neutral' : 'negative'
+                    cardSubtitle = `${percentual}% do estado`
+                    cardSubtitleType = 'neutral'
                   }
                 }
 
@@ -1350,14 +1339,15 @@ export default function Home() {
                     const media = liderancas / cidadesCobertas
                     const mediaType: 'positive' | 'negative' | 'neutral' =
                       media >= 2 ? 'positive' : media >= 1 ? 'neutral' : 'negative'
+                    const arred = Math.round(media)
+                    const textoMedia =
+                      Math.abs(media - arred) < 0.15
+                        ? `${arred} lideranças por cidade`
+                        : `${media.toFixed(1).replace('.', ',')} lideranças por cidade`
                     cardInfoLines = [
                       {
-                        text: `≈ ${media.toFixed(1).replace('.', ',')} lideranças/cidade`,
+                        text: `+ ${textoMedia}`,
                         type: mediaType,
-                      },
-                      {
-                        text: `${liderancas.toLocaleString('pt-BR')} ÷ ${cidadesCobertas} cidades (cobertura)`,
-                        type: 'neutral',
                       },
                     ]
                   }
@@ -1370,7 +1360,7 @@ export default function Home() {
                   // Linha 1: ranking entre candidatos
                   const rankType = rankingPesquisas.posicao <= 3 ? 'positive' as const : rankingPesquisas.posicao <= 5 ? 'neutral' as const : 'negative' as const
                   lines.push({
-                    text: `${rankingPesquisas.posicao}º de ${rankingPesquisas.totalCandidatos} candidatos`,
+                    text: `+ ${rankingPesquisas.posicao}º de ${rankingPesquisas.totalCandidatos} candidatos`,
                     type: rankType,
                   })
                   
@@ -2321,33 +2311,40 @@ export default function Home() {
                     )
                   })()}
                   
-                  {/* Mapa de Presença Interativo */}
-                  {showMapaPresenca && (() => {
-                    return cidadesComLiderancas.length > 0 ? (
-                      <div id="mapa-territorio-container" className="mb-8 relative">
-                        <MapaPresenca
-                          cidadesComPresenca={cidadesComLiderancas}
-                          cidadesVisitadas={cidadesVisitadasLista}
-                          expectativaPorCidadeLista={expectativaPorCidadeListaMapa}
-                          totalCidades={224}
-                          fullscreen={true}
-                          showStatsOverlay={false}
-                          territoriosQuentes={territoriosQuentes}
-                          territoriosMornos={territoriosMornos}
-                          territoriosFrios={territoriosFrios}
-                          onFullscreen={() => {
-                            const container = document.getElementById('mapa-territorio-container')
-                            if (!container) return
-                            if (document.fullscreenElement) {
-                              document.exitFullscreen()
-                            } else {
-                              container.requestFullscreen().catch(() => {})
-                            }
-                          }}
-                        />
-                      </div>
-                    ) : null
-                  })()}
+                  {/* Mapa: no Cockpit, mesmo Leaflet da página Mapa TDs; nos outros temas, mapa de presença */}
+                  {theme === 'cockpit' ? (
+                    <div className="mb-8 flex min-h-[min(72vh,720px)] flex-col">
+                      <CockpitTerritorioMapEmbed showHeader={false} minMapHeightClass="min-h-[min(72vh,720px)]" />
+                    </div>
+                  ) : (
+                    showMapaPresenca &&
+                    (() => {
+                      return cidadesComLiderancas.length > 0 ? (
+                        <div id="mapa-territorio-container" className="relative mb-8">
+                          <MapaPresenca
+                            cidadesComPresenca={cidadesComLiderancas}
+                            cidadesVisitadas={cidadesVisitadasLista}
+                            expectativaPorCidadeLista={expectativaPorCidadeListaMapa}
+                            totalCidades={224}
+                            fullscreen={true}
+                            showStatsOverlay={false}
+                            territoriosQuentes={territoriosQuentes}
+                            territoriosMornos={territoriosMornos}
+                            territoriosFrios={territoriosFrios}
+                            onFullscreen={() => {
+                              const container = document.getElementById('mapa-territorio-container')
+                              if (!container) return
+                              if (document.fullscreenElement) {
+                                document.exitFullscreen()
+                              } else {
+                                container.requestFullscreen().catch(() => {})
+                              }
+                            }}
+                          />
+                        </div>
+                      ) : null
+                    })()
+                  )}
                   
                   {/* Territórios Quentes, Mornos e Frios */}
                   <div className="space-y-6">

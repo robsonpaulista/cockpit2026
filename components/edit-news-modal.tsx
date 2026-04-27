@@ -3,6 +3,9 @@
 import { useEffect, useState } from 'react'
 import { X, Save } from 'lucide-react'
 import { NewsItem } from '@/types'
+import { useTheme } from '@/contexts/theme-context'
+import { cn } from '@/lib/utils'
+import { sidebarPrimaryCTAButtonClass } from '@/lib/sidebar-menu-active-style'
 
 interface EditNewsModalProps {
   news: NewsItem | null
@@ -43,6 +46,8 @@ const commonThemes = [
 ]
 
 export function EditNewsModal({ news, onClose, onUpdate }: EditNewsModalProps) {
+  const { theme } = useTheme()
+  const isCockpit = theme === 'cockpit'
   const [formData, setFormData] = useState({
     sentiment: '',
     risk_level: '',
@@ -237,9 +242,9 @@ export function EditNewsModal({ news, onClose, onUpdate }: EditNewsModalProps) {
             <button
               type="submit"
               disabled={submitting}
-              className="flex-1 px-4 py-2 bg-accent-gold text-white rounded-lg hover:bg-accent-gold transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+              className={sidebarPrimaryCTAButtonClass(isCockpit, 'flex-1')}
             >
-              <Save className="w-4 h-4" />
+              <Save className={cn('h-4 w-4 shrink-0', isCockpit ? 'text-white' : 'text-accent-gold')} aria-hidden />
               {submitting ? 'Salvando...' : 'Salvar Alterações'}
             </button>
             <button

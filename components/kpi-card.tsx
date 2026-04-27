@@ -21,6 +21,7 @@ import {
   type LucideIcon,
 } from 'lucide-react'
 import { useEffect, useState, type ReactNode } from 'react'
+import { useTheme } from '@/contexts/theme-context'
 
 interface KPIInfoLine {
   text: string
@@ -35,6 +36,8 @@ interface KPICardProps {
   infoLines?: KPIInfoLine[]
   /** Visual branco / ícones finos para tema Cockpit Vivo */
   variant?: 'default' | 'cockpit'
+  /** Barra horizontal 0–100 (ex.: cobertura territorial — referência Visão Geral). Só Cockpit. */
+  cockpitProgressPct?: number
   /** Rodapé dentro do card (ex.: link que não deve ficar fora do vidro). Só Cockpit. */
   cockpitFooter?: ReactNode
 }
@@ -58,7 +61,7 @@ const cockpitIconMap: Record<string, LucideIcon> = {
   ife: TrendingUp,
   presenca: MapPinned,
   base: UsersRound,
-  projecao: BadgeCheck,
+  projecao: Target,
   sentimento: BarChart2,
   projecao_estadual: Sparkles,
   risco: AlertTriangle,
@@ -74,6 +77,60 @@ function getKpiIcon(id: string, variant: 'default' | 'cockpit') {
   return map[id] || (variant === 'cockpit' ? BadgeCheck : Sparkles)
 }
 
+/** Uma linha de status como na referência Cockpit (texto verde/azul ou pill vermelha “Margem”). */
+function CockpitReferenceStatus({
+  kpi,
+  subtitle,
+  subtitleType = 'neutral',
+  infoLines,
+  cockpitDark,
+}: {
+  kpi: KPI
+  subtitle?: string
+  subtitleType?: 'positive' | 'negative' | 'neutral'
+  infoLines?: KPIInfoLine[]
+  cockpitDark: boolean
+}) {
+  const text = subtitle?.trim() || infoLines?.[0]?.text?.trim()
+  if (!text) return null
+
+  const tone = subtitle ? subtitleType : infoLines?.[0]?.type ?? 'neutral'
+  const isMargemPill =
+    kpi.id === 'projecao' && /^margem\s*:/i.test(text.trim())
+
+  if (isMargemPill) {
+    return (
+      <span className="inline-flex max-w-full justify-center rounded-full bg-[#ef4444] px-3 py-1 text-center text-[11px] font-semibold leading-tight text-white shadow-sm">
+        {text}
+      </span>
+    )
+  }
+
+  const isLiderancaSky =
+    kpi.id === 'base' || text.toLowerCase().includes('lideranças')
+  const isRankGreen = kpi.id === 'sentimento'
+
+  const textClass = (() => {
+    if (!cockpitDark) {
+      if (tone === 'negative') return 'text-rose-700'
+      if (tone === 'positive')
+        return isLiderancaSky ? 'text-sky-600' : isRankGreen ? 'text-emerald-600' : 'text-emerald-600'
+      return 'text-slate-600'
+    }
+    if (tone === 'negative') return 'text-rose-300'
+    if (tone === 'positive') {
+      if (isLiderancaSky) return 'text-[#38bdf8]'
+      if (isRankGreen) return 'text-emerald-400'
+      return 'text-emerald-400'
+    }
+    return 'text-slate-400'
+  })()
+
+  return (
+    <p className={cn('max-w-full px-1 text-center text-xs font-medium leading-snug', textClass)}>{text}</p>
+  )
+}
+
 export function KPICard({
   kpi,
   href = '#',
@@ -81,10 +138,13 @@ export function KPICard({
   subtitleType = 'neutral',
   infoLines,
   variant = 'default',
+  cockpitProgressPct,
   cockpitFooter,
 }: KPICardProps) {
+  const { appearance } = useTheme()
   const Icon = getKpiIcon(kpi.id, variant)
   const isCockpit = variant === 'cockpit'
+  const cockpitDark = isCockpit && appearance === 'dark'
   const [displayValue, setDisplayValue] = useState<string | number>('0')
   const [isAnimating, setIsAnimating] = useState(false)
 
@@ -121,13 +181,7 @@ export function KPICard({
     }
   }, [kpi.value])
 
-  /** Detalhes em microchips: visual mais limpo e consistente com o vidro do cockpit. */
   const getLineColorClass = (type?: 'positive' | 'negative' | 'neutral') => {
-    if (isCockpit) {
-      if (type === 'negative') return 'text-red-900/90'
-      if (type === 'positive') return 'text-emerald-900/90'
-      return 'text-[rgb(15,45,74)]/80'
-    }
     if (type === 'negative') return 'text-red-700'
     if (type === 'positive') return 'text-emerald-700'
     return 'text-text-secondary'
@@ -145,21 +199,15 @@ export function KPICard({
     return 'border border-slate-200/80 bg-white/90'
   }
 
-  const cockpitLineChipClass = (type?: 'positive' | 'negative' | 'neutral') => {
-    if (type === 'negative') return 'border border-red-300/45 bg-red-500/10'
-    if (type === 'positive') return 'border border-emerald-300/45 bg-emerald-500/10'
-    return 'border border-white/45 bg-white/45 supports-[backdrop-filter]:bg-white/35'
-  }
-
   const detalhesBlock =
     infoLines && infoLines.length > 0 ? (
-      <div className={cn('flex flex-col gap-1 w-full', isCockpit && 'items-center')}>
-        {infoLines.map((line, idx) =>
+      <div className="flex w-full flex-col items-center gap-1.5">
+        {infoLines.map((line, idx) => (
           <div
             key={idx}
             className={cn(
               'inline-flex w-fit max-w-full items-center gap-1.5 rounded-lg px-2 py-1 shadow-[inset_0_1px_0_rgba(255,255,255,0.6)]',
-              isCockpit ? cockpitLineChipClass(line.type) : getLineBackgroundClass(line.type)
+              getLineBackgroundClass(line.type)
             )}
           >
             <span className={cn('inline-block h-1.5 w-1.5 shrink-0 rounded-full', getLineDotClass(line.type))} />
@@ -173,15 +221,14 @@ export function KPICard({
               {line.text}
             </p>
           </div>
-        )}
+        ))}
       </div>
     ) : subtitle ? (
       <span
         className={cn(
           'inline-flex w-fit max-w-full items-center justify-center rounded-lg px-2 py-1 text-[11px] font-medium leading-tight tracking-tight shadow-[inset_0_1px_0_rgba(255,255,255,0.6)]',
-          isCockpit
-            ? cn(cockpitLineChipClass(subtitleType), getLineColorClass(subtitleType))
-            : cn(getLineBackgroundClass(subtitleType), getLineColorClass(subtitleType))
+          getLineBackgroundClass(subtitleType),
+          getLineColorClass(subtitleType)
         )}
       >
         {subtitle}
@@ -191,61 +238,83 @@ export function KPICard({
   const content = (
     <div
       className={cn(
-        'relative rounded-[14px] cursor-pointer group overflow-hidden',
+        'relative cursor-pointer overflow-hidden rounded-[14px]',
+        !isCockpit && 'group',
         'transition-all duration-300 ease-out',
         'h-full flex flex-col',
-        isCockpit ? 'min-h-0 p-3' : 'min-h-[100px] justify-between p-4',
+        isCockpit ? 'min-h-0 px-2.5 py-2' : 'min-h-[100px] justify-between p-4',
         isCockpit
           ? cn(
-              'min-w-0',
-              'rounded-xl border border-white/40 bg-white/10 backdrop-blur-lg supports-[backdrop-filter]:bg-white/[0.07]',
-              /* Mesma projeção do KPIHeroCard cockpit — borda inferior legível em TV/projetor */
-              'shadow-[0_12px_40px_rgba(6,46,82,0.35),0_4px_24px_rgba(15,45,74,0.08),inset_0_1px_0_rgba(255,255,255,0.38)]',
-              'hover:bg-white/16 hover:border-white/50 hover:shadow-[0_14px_44px_rgba(6,46,82,0.38),0_8px_28px_rgba(15,45,74,0.11),inset_0_1px_0_rgba(255,255,255,0.48)]',
-              'hover:-translate-y-0.5'
+              'min-w-0 rounded-xl border',
+              cockpitDark
+                ? 'border-gray-800/90 bg-[#111827] shadow-[0_4px_20px_rgba(0,0,0,0.45)]'
+                : 'border-slate-200/90 bg-white shadow-md shadow-slate-900/5'
             )
           : 'border border-border-card bg-bg-surface shadow-[0_1px_3px_rgba(0,0,0,0.06)] hover:shadow-[0_8px_24px_rgba(0,0,0,0.08)] hover:-translate-y-[3px]'
       )}
     >
       {isCockpit ? (
-        <>
-          <div className="flex shrink-0 flex-col items-center gap-1.5 text-center sm:flex-row sm:justify-center sm:gap-2">
-            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-white/45 bg-transparent transition-colors group-hover:border-white/55 group-hover:bg-white/[0.06]">
-              <Icon className="h-4 w-4 text-accent-gold" strokeWidth={1.35} />
-            </div>
-            <p className="line-clamp-2 text-xs font-medium leading-snug text-[rgb(15,45,74)]/75 transition-colors group-hover:text-[rgb(15,45,74)] sm:text-sm">
-              {kpi.label}
-            </p>
-          </div>
-          {/* Valor logo abaixo do título — sem flex-1 aqui (evita empurrar detalhes para o rodapé) */}
-          <div className="flex shrink-0 flex-col justify-center py-1">
-            <p
+        <div className="flex min-h-0 w-full flex-1 flex-col items-center gap-2 text-center">
+          <Icon
+            className={cn(
+              'h-5 w-5 shrink-0 stroke-[1.25]',
+              cockpitDark ? 'text-[#38bdf8]' : 'text-[#0e74bc]'
+            )}
+            aria-hidden
+          />
+          <p
+            className={cn(
+              'line-clamp-2 min-h-[2.25rem] max-w-full text-[13px] font-medium leading-snug',
+              cockpitDark ? 'text-gray-400' : 'text-slate-600'
+            )}
+          >
+            {kpi.label}
+          </p>
+          <p
+            className={cn(
+              'text-[1.6rem] font-bold tabular-nums leading-none tracking-tight sm:text-[1.7rem]',
+              cockpitDark ? 'text-white' : 'text-slate-900',
+              isAnimating && 'scale-[1.02] transition-transform'
+            )}
+          >
+            {displayValue}
+          </p>
+          {cockpitProgressPct !== undefined && cockpitProgressPct >= 0 ? (
+            <div
               className={cn(
-                'text-center text-xl font-bold tabular-nums text-text-primary transition-all duration-200 sm:text-2xl',
-                'group-hover:text-accent-gold',
-                isAnimating && 'scale-105'
+                'h-1.5 w-full max-w-[10rem] overflow-hidden rounded-full',
+                cockpitDark ? 'bg-white/10' : 'bg-slate-200/90'
               )}
+              aria-hidden
             >
-              {displayValue}
-            </p>
-          </div>
-          {/* Detalhes colados no valor, padrão Média Pesquisas; flex-1 abaixo só preenche altura do grid */}
-          <div className="flex shrink-0 flex-col items-center gap-1">
-            {detalhesBlock}
-            {cockpitFooter ? (
               <div
-                className="w-full shrink-0"
-                onClick={(e) => {
-                  e.preventDefault()
-                  e.stopPropagation()
-                }}
-              >
-                {cockpitFooter}
-              </div>
-            ) : null}
-          </div>
-          <div className="min-h-0 flex-1" aria-hidden />
-        </>
+                className={cn(
+                  'h-full rounded-full transition-[width] duration-500',
+                  cockpitDark ? 'bg-[#38bdf8]' : 'bg-[#0e74bc]'
+                )}
+                style={{ width: `${Math.min(100, Math.max(0, cockpitProgressPct))}%` }}
+              />
+            </div>
+          ) : null}
+          <CockpitReferenceStatus
+            kpi={kpi}
+            subtitle={subtitle}
+            subtitleType={subtitleType}
+            infoLines={infoLines}
+            cockpitDark={cockpitDark}
+          />
+          {cockpitFooter ? (
+            <div
+              className="mt-0.5 w-full shrink-0"
+              onClick={(e) => {
+                e.preventDefault()
+                e.stopPropagation()
+              }}
+            >
+              {cockpitFooter}
+            </div>
+          ) : null}
+        </div>
       ) : (
         <>
           <div className="flex items-center gap-2">

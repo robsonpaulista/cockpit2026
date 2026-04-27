@@ -2,6 +2,9 @@
 
 import { useState } from 'react'
 import { X, Save, ExternalLink, Info } from 'lucide-react'
+import { useTheme } from '@/contexts/theme-context'
+import { cn } from '@/lib/utils'
+import { sidebarPrimaryCTAButtonClass } from '@/lib/sidebar-menu-active-style'
 
 interface GoogleSheetsConfigModalProps {
   onClose: () => void
@@ -33,6 +36,8 @@ export function GoogleSheetsConfigModal({
     credentials: '',
   })
   const [showCredentials, setShowCredentials] = useState(false)
+  const { theme } = useTheme()
+  const isCockpit = theme === 'cockpit'
   const [testing, setTesting] = useState(false)
   const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null)
 
@@ -284,9 +289,9 @@ export function GoogleSheetsConfigModal({
             <button
               type="submit"
               disabled={!formData.spreadsheetId || !formData.sheetName || !formData.serviceAccountEmail || !formData.credentials}
-              className="flex-1 px-4 py-2 bg-accent-gold text-white rounded-lg hover:bg-accent-gold transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+              className={sidebarPrimaryCTAButtonClass(isCockpit, 'flex-1')}
             >
-              <Save className="w-4 h-4" />
+              <Save className={cn('h-4 w-4 shrink-0', isCockpit ? 'text-white' : 'text-accent-gold')} aria-hidden />
               Salvar Configuração
             </button>
             <button

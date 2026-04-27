@@ -3,6 +3,9 @@
 import { useState, useEffect } from 'react'
 import { X, Save } from 'lucide-react'
 import { Task, Territory, TerritoryLeader } from '@/types'
+import { useTheme } from '@/contexts/theme-context'
+import { cn } from '@/lib/utils'
+import { sidebarPrimaryCTAButtonClass } from '@/lib/sidebar-menu-active-style'
 
 interface TaskModalProps {
   task?: Task | null
@@ -15,6 +18,8 @@ interface TaskModalProps {
 }
 
 export function TaskModal({ task, territories, leaders, onClose, onSave, initialTerritoryId, initialStatus }: TaskModalProps) {
+  const { theme } = useTheme()
+  const isCockpit = theme === 'cockpit'
   const [formData, setFormData] = useState({
     territory_id: task?.territory_id || initialTerritoryId || '',
     leader_id: task?.leader_id || '',
@@ -240,9 +245,9 @@ export function TaskModal({ task, territories, leaders, onClose, onSave, initial
             <button
               type="submit"
               disabled={loading}
-              className="px-4 py-2 text-sm font-medium text-white bg-accent-gold rounded-lg hover:bg-accent-gold transition-colors flex items-center gap-2 disabled:opacity-50"
+              className={sidebarPrimaryCTAButtonClass(isCockpit, 'text-sm')}
             >
-              <Save className="w-4 h-4" />
+              <Save className={cn('h-4 w-4 shrink-0', isCockpit ? 'text-white' : 'text-accent-gold')} aria-hidden />
               {loading ? 'Salvando...' : 'Salvar'}
             </button>
           </div>

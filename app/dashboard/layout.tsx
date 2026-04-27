@@ -1,6 +1,5 @@
 'use client'
 
-import { usePathname } from 'next/navigation'
 import { Sidebar } from '@/components/sidebar'
 import { ProtectedRoute } from '@/components/protected-route'
 import { DashboardHeader } from '@/components/dashboard-header'
@@ -17,34 +16,22 @@ import { cn } from '@/lib/utils'
 import { DashboardPesquisadorRedirect } from '@/components/dashboard-pesquisador-redirect'
 import './territorio/mapa-tds/mapa-dom-fut-theme.css' // tema base neutra + laranja estratégico v3
 
-const MAPA_TDS_FUTURISTIC_ROUTE = '/dashboard/territorio/mapa-tds'
-
 function DashboardContent({ children }: { children: React.ReactNode }) {
   const { collapsed } = useSidebar()
-  const pathname = usePathname()
-  const mapaTdsFuturisticShell = pathname?.startsWith(MAPA_TDS_FUTURISTIC_ROUTE) ?? false
 
   return (
     <CockpitStatusProvider>
-      <div
-        className={cn(
-          'flex h-screen overflow-hidden',
-          mapaTdsFuturisticShell && 'bg-[#0B0F14]'
-        )}
-        data-map-tds-futuristic-shell={mapaTdsFuturisticShell ? 'true' : undefined}
-      >
+      <div className="flex h-screen overflow-hidden bg-bg-app">
         <NavigationLoadingBar />
         <Sidebar />
         <div
           className={cn(
-            'flex-1 flex flex-col overflow-hidden transition-all duration-300 ease-out',
+            'flex flex-1 flex-col overflow-hidden bg-bg-app transition-all duration-300 ease-out',
             collapsed ? 'lg:ml-20' : 'lg:ml-64',
-            mapaTdsFuturisticShell && 'bg-[#0B0F14]'
           )}
-          data-map-tds-futuristic-main={mapaTdsFuturisticShell ? 'true' : undefined}
         >
           <DashboardHeader />
-          <main className={cn('flex-1 overflow-y-auto', mapaTdsFuturisticShell && 'bg-[#0B0F14]')}>
+          <main className="flex-1 overflow-y-auto bg-bg-app">
             <DashboardPermissionGuard>
               <PageTransition>{children}</PageTransition>
             </DashboardPermissionGuard>

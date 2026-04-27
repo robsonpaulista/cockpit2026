@@ -7,6 +7,9 @@ import { RefreshCw, AlertCircle, Crown, X, Users, Vote, BarChart3, UserCheck, Ar
 import { getEleitoradoByCity } from '@/lib/eleitores'
 import { CityDemandsModal } from '@/components/city-demands-modal'
 import { PollReportsHistoryModal } from '@/components/poll-reports-history-modal'
+import { cn } from '@/lib/utils'
+import { useTheme } from '@/contexts/theme-context'
+import { sidebarPrimaryCTAButtonClass } from '@/lib/sidebar-menu-active-style'
 
 interface ResultadoEleicao {
   uf: string
@@ -142,6 +145,22 @@ function includesNormalized(source: string, term: string): boolean {
   return source.toLowerCase().includes(term.toLowerCase())
 }
 
+/** Mesmo gradiente do item ativo da sidebar (destaque forte em linhas de tabela). */
+const RESUMO_ROW_GRADIENTE_SIDEBAR =
+  'border-b border-white/10 bg-[linear-gradient(135deg,#062e52_0%,#0b4a7a_52%,#1368a8_100%)] text-white'
+
+function resumoTrZebra(rowIndex: number): string {
+  return rowIndex % 2 === 0 ? 'bg-background/45' : 'bg-surface/25'
+}
+
+function resumoTrSelecionado(): string {
+  return 'bg-accent-gold-soft/25 ring-1 ring-inset ring-accent-gold/20'
+}
+
+function resumoTrDestaqueForte(isCockpit: boolean): string {
+  return isCockpit ? RESUMO_ROW_GRADIENTE_SIDEBAR : 'border-b border-card bg-accent-gold-soft font-semibold text-accent-gold'
+}
+
 function normalizeText(value: string): string {
   return String(value || '')
     .toLowerCase()
@@ -196,11 +215,12 @@ function Pagination({
   if (totalPages <= 1) return null
 
   return (
-    <div className="flex justify-center items-center gap-2 mt-3">
+    <div className="mt-3 flex items-center justify-center gap-2">
       <button
+        type="button"
         onClick={() => onPageChange(Math.max(1, currentPage - 1))}
         disabled={currentPage === 1}
-        className="px-2 py-1 text-xs rounded bg-background border border-card disabled:opacity-50"
+        className="rounded border border-card bg-surface px-2 py-1 text-xs text-text-primary hover:bg-background disabled:opacity-50"
       >
         Anterior
       </button>
@@ -208,9 +228,10 @@ function Pagination({
         Pág {currentPage}/{totalPages}
       </span>
       <button
+        type="button"
         onClick={() => onPageChange(Math.min(totalPages, currentPage + 1))}
         disabled={currentPage === totalPages}
-        className="px-2 py-1 text-xs rounded bg-background border border-card disabled:opacity-50"
+        className="rounded border border-card bg-surface px-2 py-1 text-xs text-text-primary hover:bg-background disabled:opacity-50"
       >
         Próxima
       </button>
@@ -220,6 +241,8 @@ function Pagination({
 
 export default function ResumoEleicoesPage() {
   const searchParams = useSearchParams()
+  const { theme } = useTheme()
+  const isCockpit = theme === 'cockpit'
   const [cidade, setCidade] = useState('')
   const [cidades, setCidades] = useState<string[]>([])
   const [dados, setDados] = useState<ResultadoEleicao[]>([])
@@ -1290,7 +1313,7 @@ export default function ResumoEleicoesPage() {
       : `Sem proporcional para ${labelCenarioAtivo}`
   const cidadePesquisaIdAtual = cidade ? pesquisaCitiesMap[normalizeCityName(cidade)] || null : null
   const summaryCardBaseClass =
-    'rounded-[14px] border border-border-card bg-bg-surface p-3 relative overflow-hidden shadow-[0_1px_3px_rgba(0,0,0,0.06)] hover:shadow-[0_8px_24px_rgba(0,0,0,0.08)] hover:-translate-y-[2px] transition-all duration-300 ease-out h-full'
+    'rounded-[14px] border border-border-card bg-surface p-3 relative overflow-hidden shadow-[0_1px_3px_rgba(0,0,0,0.06)] hover:shadow-[0_8px_24px_rgba(0,0,0,0.08)] hover:-translate-y-[2px] transition-all duration-300 ease-out h-full'
   const summaryIconWrapClass =
     'p-1.5 rounded-lg bg-accent-gold-soft group-hover:scale-110 transition-all duration-300'
   const summaryMetaClass = 'text-[11px] mt-1 text-text-secondary'
@@ -1327,7 +1350,7 @@ export default function ResumoEleicoesPage() {
                 value={cidade}
                 onChange={(e) => setCidade(e.target.value)}
                 disabled={loadingCidades}
-                className="w-full h-10 px-3 rounded-lg border border-card bg-background text-sm"
+                className="h-10 w-full rounded-lg border border-card bg-background px-3 text-sm text-text-primary"
               >
                 <option value="">
                   {loadingCidades ? 'Carregando municípios...' : 'Selecione um município...'}
@@ -1344,7 +1367,7 @@ export default function ResumoEleicoesPage() {
               <select
                 value={cenarioVotos}
                 onChange={(e) => setCenarioVotos(e.target.value as CenarioVotos)}
-                className="w-full h-10 px-3 rounded-lg border border-card bg-background text-sm"
+                className="h-10 w-full rounded-lg border border-card bg-background px-3 text-sm text-text-primary"
               >
                 <option value="aferido_jadyel">Aferido (Expectativa Jadyel 2026)</option>
                 <option value="promessa_lideranca">Prometido (Promessa da Liderança 2026)</option>
@@ -1352,24 +1375,29 @@ export default function ResumoEleicoesPage() {
               </select>
             </div>
             <button
+              type="button"
               onClick={buscarDados}
               disabled={!cidade || loadingDados}
-              className="h-10 px-4 rounded-lg text-sm font-medium bg-accent-gold text-white hover:bg-accent-gold/90 disabled:opacity-50 flex items-center gap-2"
+              className={cn(sidebarPrimaryCTAButtonClass(isCockpit), 'h-10')}
             >
-              <RefreshCw className={`h-4 w-4 ${loadingDados ? 'animate-spin' : ''}`} />
+              <RefreshCw
+                className={cn('h-4 w-4 shrink-0', loadingDados && 'animate-spin', isCockpit ? 'text-white' : 'text-accent-gold')}
+                aria-hidden
+              />
               Buscar
             </button>
             <button
+              type="button"
               onClick={prepararFiltroDemandas}
               disabled={!cidade || loadingDados || !buscaIniciada}
-              className="h-10 px-4 rounded-lg text-sm font-medium border border-card bg-background text-text-primary hover:bg-surface disabled:opacity-50 flex items-center gap-2"
+              className="flex h-10 items-center gap-2 rounded-lg border border-card bg-surface px-4 text-sm font-medium text-text-primary hover:bg-background disabled:opacity-50"
             >
-              <FileText className="h-4 w-4" />
+              <FileText className="h-4 w-4 shrink-0" aria-hidden />
               Demandas
             </button>
             <Link
               href="/dashboard/resumo-eleicoes/historico"
-              className="h-10 px-4 rounded-lg text-sm font-medium border border-card bg-background text-text-primary hover:bg-surface flex items-center gap-2"
+              className="flex h-10 items-center gap-2 rounded-lg border border-card bg-surface px-4 text-sm font-medium text-text-primary hover:bg-background"
             >
               <BarChart3 className="h-4 w-4" />
               Histórico
@@ -1528,8 +1556,9 @@ export default function ResumoEleicoesPage() {
                 Filtro por partido ativo: <strong className="text-text-primary">{filtroPartidoAtivo}</strong>
               </span>
               <button
+                type="button"
                 onClick={() => setFiltroPartidoAtivo(null)}
-                className="px-2 py-1 rounded border border-card hover:bg-background text-text-secondary"
+                className="rounded border border-card bg-surface px-2 py-1 text-text-secondary hover:bg-background"
               >
                 Limpar filtro
               </button>
@@ -1543,14 +1572,14 @@ export default function ResumoEleicoesPage() {
             <div className="flex items-center gap-2">
               <Link
                 href="/dashboard/resumo-eleicoes/historico"
-                className="px-2 py-1 rounded border border-card hover:bg-background text-text-secondary"
+                className="rounded border border-card bg-surface px-2 py-1 text-text-secondary hover:bg-background"
               >
                 Histórico
               </Link>
               <button
                 type="button"
                 onClick={() => setShowSimulacaoModal(true)}
-                className="px-2 py-1 rounded border border-card hover:bg-background text-text-secondary"
+                className="rounded border border-card bg-surface px-2 py-1 text-text-secondary hover:bg-background"
               >
                 Abrir simulador
               </button>
@@ -1558,24 +1587,27 @@ export default function ResumoEleicoesPage() {
           </div>
           <div className="grid grid-cols-1 md:flex md:flex-nowrap gap-4 overflow-x-auto pb-2">
             <div className="bg-surface rounded-xl border border-card p-2 md:flex-1 min-w-[240px]">
-              <h3 className="text-xs font-semibold text-center mb-2">Deputado Estadual 2022</h3>
+              <h3 className="mb-2 text-center text-xs font-semibold text-text-primary">Deputado Estadual 2022</h3>
               <table className="w-full text-xs">
                 <thead>
                   <tr>
-                    <th className="text-center py-1 px-1 bg-background w-8">Sel.</th>
-                    <th className="text-left py-1 px-1 bg-background">Candidato</th>
-                    <th className="text-right py-1 px-1 bg-background">Votos</th>
+                    <th className="w-8 bg-background px-1 py-1 text-center text-text-secondary">Sel.</th>
+                    <th className="bg-background px-1 py-1 text-left text-text-secondary">Candidato</th>
+                    <th className="bg-background px-1 py-1 text-right text-text-secondary">Votos</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {paginated(deputadoEstadual2022, currentPage.deputado_estadual).map((item) => {
+                  {paginated(deputadoEstadual2022, currentPage.deputado_estadual).map((item, rowIndex) => {
                     const rowId = `deputado_estadual:${item.nomeUrnaCandidato}:${item.numeroUrna}`
                     const votes = parseVotos(item.quantidadeVotosNominais)
                     const isSelected = selectedVotes.deputado_estadual[rowId] !== undefined
                     return (
                       <tr
                         key={`${item.nomeUrnaCandidato}-${item.numeroUrna}`}
-                        className={isSelected ? 'border-b border-card bg-accent-gold-soft/30' : 'border-b border-card'}
+                        className={cn(
+                          'border-b border-card text-text-primary transition-colors hover:bg-background/60',
+                          isSelected ? resumoTrSelecionado() : resumoTrZebra(rowIndex),
+                        )}
                       >
                         <td className="py-1 px-1 text-center">
                           <input
@@ -1590,10 +1622,10 @@ export default function ResumoEleicoesPage() {
                       </tr>
                     )
                   })}
-                  <tr className="bg-background font-semibold">
-                    <td className="py-1 px-1"></td>
-                    <td className="py-1 px-1">TOTAL</td>
-                    <td className="py-1 px-1 text-right">
+                  <tr className="border-t border-card bg-background/90 font-semibold text-text-primary">
+                    <td className="px-1 py-1"></td>
+                    <td className="px-1 py-1">TOTAL</td>
+                    <td className="px-1 py-1 text-right">
                       {deputadoEstadual2022
                         .reduce((acc, item) => acc + parseVotos(item.quantidadeVotosNominais), 0)
                         .toLocaleString('pt-BR')}
@@ -1608,8 +1640,9 @@ export default function ResumoEleicoesPage() {
                 </span>
                 {getSelectedCount('deputado_estadual') > 0 && (
                   <button
+                    type="button"
                     onClick={() => clearTableSelection('deputado_estadual')}
-                    className="px-2 py-1 rounded border border-card hover:bg-background"
+                    className="rounded border border-card bg-surface px-2 py-1 text-text-primary hover:bg-background"
                   >
                     Limpar seleção
                   </button>
@@ -1623,17 +1656,17 @@ export default function ResumoEleicoesPage() {
             </div>
 
             <div className="bg-surface rounded-xl border border-card p-2 md:flex-1 min-w-[240px]">
-              <h3 className="text-xs font-semibold text-center mb-2">Deputado Federal 2022</h3>
+              <h3 className="mb-2 text-center text-xs font-semibold text-text-primary">Deputado Federal 2022</h3>
               <table className="w-full text-xs">
                 <thead>
                   <tr>
-                    <th className="text-center py-1 px-1 bg-background w-8">Sel.</th>
-                    <th className="text-left py-1 px-1 bg-background">Candidato</th>
-                    <th className="text-right py-1 px-1 bg-background">Votos</th>
+                    <th className="w-8 bg-background px-1 py-1 text-center text-text-secondary">Sel.</th>
+                    <th className="bg-background px-1 py-1 text-left text-text-secondary">Candidato</th>
+                    <th className="bg-background px-1 py-1 text-right text-text-secondary">Votos</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {paginated(deputadoFederal2022, currentPage.deputado_federal).map((item) => {
+                  {paginated(deputadoFederal2022, currentPage.deputado_federal).map((item, rowIndex) => {
                     const isJadyel = item.nomeUrnaCandidato?.trim().toUpperCase() === CANDIDATO_FEDERAL_FIXO
                     const rowId = `deputado_federal:${item.nomeUrnaCandidato}:${item.numeroUrna}`
                     const votes = parseVotos(item.quantidadeVotosNominais)
@@ -1641,13 +1674,13 @@ export default function ResumoEleicoesPage() {
                     return (
                       <tr
                         key={`${item.nomeUrnaCandidato}-${item.numeroUrna}`}
-                        className={
-                          isJadyel
-                            ? 'bg-accent-gold text-white border-b border-card'
-                            : isSelected
-                              ? 'border-b border-card bg-accent-gold-soft/30'
-                              : 'border-b border-card'
-                        }
+                        className={cn(
+                          'border-b border-card transition-colors hover:bg-background/60',
+                          isJadyel && resumoTrDestaqueForte(isCockpit),
+                          !isJadyel && isSelected && resumoTrSelecionado(),
+                          !isJadyel && !isSelected && resumoTrZebra(rowIndex),
+                          !isJadyel && 'text-text-primary',
+                        )}
                       >
                         <td className="py-1 px-1 text-center">
                           <input
@@ -1662,10 +1695,10 @@ export default function ResumoEleicoesPage() {
                       </tr>
                     )
                   })}
-                  <tr className="bg-background font-semibold">
-                    <td className="py-1 px-1"></td>
-                    <td className="py-1 px-1">TOTAL</td>
-                    <td className="py-1 px-1 text-right">
+                  <tr className="border-t border-card bg-background/90 font-semibold text-text-primary">
+                    <td className="px-1 py-1"></td>
+                    <td className="px-1 py-1">TOTAL</td>
+                    <td className="px-1 py-1 text-right">
                       {deputadoFederal2022
                         .reduce((acc, item) => acc + parseVotos(item.quantidadeVotosNominais), 0)
                         .toLocaleString('pt-BR')}
@@ -1680,8 +1713,9 @@ export default function ResumoEleicoesPage() {
                 </span>
                 {getSelectedCount('deputado_federal') > 0 && (
                   <button
+                    type="button"
                     onClick={() => clearTableSelection('deputado_federal')}
-                    className="px-2 py-1 rounded border border-card hover:bg-background"
+                    className="rounded border border-card bg-surface px-2 py-1 text-text-primary hover:bg-background"
                   >
                     Limpar seleção
                   </button>
@@ -1695,24 +1729,27 @@ export default function ResumoEleicoesPage() {
             </div>
 
             <div className="bg-surface rounded-xl border border-card p-2 md:flex-1 min-w-[240px]">
-              <h3 className="text-xs font-semibold text-center mb-2">Prefeito 2024</h3>
+              <h3 className="mb-2 text-center text-xs font-semibold text-text-primary">Prefeito 2024</h3>
               <table className="w-full text-xs">
                 <thead>
                   <tr>
-                    <th className="text-center py-1 px-1 bg-background w-8">Sel.</th>
-                    <th className="text-left py-1 px-1 bg-background">Candidato</th>
-                    <th className="text-right py-1 px-1 bg-background">Votos</th>
+                    <th className="w-8 bg-background px-1 py-1 text-center text-text-secondary">Sel.</th>
+                    <th className="bg-background px-1 py-1 text-left text-text-secondary">Candidato</th>
+                    <th className="bg-background px-1 py-1 text-right text-text-secondary">Votos</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {paginated(prefeito2024, currentPage.prefeito_2024).map((item) => {
+                  {paginated(prefeito2024, currentPage.prefeito_2024).map((item, rowIndex) => {
                     const rowId = `prefeito_2024:${item.nomeUrnaCandidato}:${item.numeroUrna}`
                     const votes = parseVotos(item.quantidadeVotosNominais)
                     const isSelected = selectedVotes.prefeito_2024[rowId] !== undefined
                     return (
                       <tr
                         key={`${item.nomeUrnaCandidato}-${item.numeroUrna}`}
-                        className={isSelected ? 'border-b border-card bg-accent-gold-soft/30' : 'border-b border-card'}
+                        className={cn(
+                          'border-b border-card text-text-primary transition-colors hover:bg-background/60',
+                          isSelected ? resumoTrSelecionado() : resumoTrZebra(rowIndex),
+                        )}
                       >
                         <td className="py-1 px-1 text-center">
                           <input
@@ -1727,10 +1764,10 @@ export default function ResumoEleicoesPage() {
                       </tr>
                     )
                   })}
-                  <tr className="bg-background font-semibold">
-                    <td className="py-1 px-1"></td>
-                    <td className="py-1 px-1">TOTAL</td>
-                    <td className="py-1 px-1 text-right">
+                  <tr className="border-t border-card bg-background/90 font-semibold text-text-primary">
+                    <td className="px-1 py-1"></td>
+                    <td className="px-1 py-1">TOTAL</td>
+                    <td className="px-1 py-1 text-right">
                       {prefeito2024
                         .reduce((acc, item) => acc + parseVotos(item.quantidadeVotosNominais), 0)
                         .toLocaleString('pt-BR')}
@@ -1745,8 +1782,9 @@ export default function ResumoEleicoesPage() {
                 </span>
                 {getSelectedCount('prefeito_2024') > 0 && (
                   <button
+                    type="button"
                     onClick={() => clearTableSelection('prefeito_2024')}
-                    className="px-2 py-1 rounded border border-card hover:bg-background"
+                    className="rounded border border-card bg-surface px-2 py-1 text-text-primary hover:bg-background"
                   >
                     Limpar seleção
                   </button>
@@ -1760,35 +1798,41 @@ export default function ResumoEleicoesPage() {
             </div>
 
             <div className="bg-surface rounded-xl border border-card p-2 md:flex-1 min-w-[280px]">
-              <h3 className="text-xs font-semibold text-center mb-2">Vereador 2024</h3>
+              <h3 className="mb-2 text-center text-xs font-semibold text-text-primary">Vereador 2024</h3>
               <table className="w-full text-xs">
                 <thead>
                   <tr>
-                    <th className="text-center py-1 px-1 bg-background w-8">Sel.</th>
-                    <th className="text-left py-1 px-1 bg-background">Candidato</th>
-                    <th className="text-right py-1 px-1 bg-background">Votos</th>
-                    <th className="text-center py-1 px-1 bg-background">Situação</th>
+                    <th className="w-8 bg-background px-1 py-1 text-center text-text-secondary">Sel.</th>
+                    <th className="bg-background px-1 py-1 text-left text-text-secondary">Candidato</th>
+                    <th className="bg-background px-1 py-1 text-right text-text-secondary">Votos</th>
+                    <th className="bg-background px-1 py-1 text-center text-text-secondary">Situação</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {paginated(vereador2024, currentPage.vereador_2024).map((item) => {
+                  {paginated(vereador2024, currentPage.vereador_2024).map((item, rowIndex) => {
                     const rowId = `vereador_2024:${item.nomeUrnaCandidato}:${item.numeroUrna}`
                     const votes = parseVotos(item.quantidadeVotosNominais)
                     const isSelected = selectedVotes.vereador_2024[rowId] !== undefined
                     const isPresidente =
                       item.nomeUrnaCandidato?.trim().toUpperCase() === presidenteCamaraNome?.trim().toUpperCase()
+                    const isEleito = includesNormalized(item.situacao, 'eleito')
                     return (
                       <tr
                         key={`${item.nomeUrnaCandidato}-${item.numeroUrna}`}
                         onDoubleClick={() => definirPresidenteCamara(item.nomeUrnaCandidato)}
                         title="Dê duplo clique para definir como Presidente da Câmara"
-                        className={
-                          isSelected && !isPresidente
-                            ? 'border-b border-card bg-accent-gold-soft/30'
-                            : 'border-b border-card'
-                        }
+                        className={cn(
+                          'border-b border-card transition-colors hover:bg-background/60',
+                          isPresidente && 'select-none',
+                          isPresidente && resumoTrDestaqueForte(isCockpit),
+                          !isPresidente &&
+                            isSelected &&
+                            resumoTrSelecionado(),
+                          !isPresidente && !isSelected && resumoTrZebra(rowIndex),
+                          !isPresidente && 'text-text-primary',
+                        )}
                       >
-                        <td className={`py-1 px-1 text-center ${isPresidente ? 'bg-accent-gold text-white select-none' : ''}`}>
+                        <td className="px-1 py-1 text-center">
                           <input
                             type="checkbox"
                             checked={isSelected}
@@ -1796,24 +1840,37 @@ export default function ResumoEleicoesPage() {
                             className="h-3.5 w-3.5 accent-[rgb(var(--accent-gold))]"
                           />
                         </td>
-                        <td className={`py-1 px-1 ${isPresidente ? 'bg-accent-gold text-white select-none' : ''}`}>
+                        <td className="px-1 py-1">
                           <span className="inline-flex items-center gap-1">
                             <span>{item.nomeUrnaCandidato}</span>
-                            {isPresidente && <Crown className="h-3 w-3 shrink-0 text-white" />}
+                            {isPresidente && (
+                              <Crown
+                                className={cn(
+                                  'h-3 w-3 shrink-0',
+                                  isCockpit ? 'text-white' : 'text-accent-gold',
+                                )}
+                              />
+                            )}
                           </span>
                         </td>
-                        <td className={`py-1 px-1 text-right ${isPresidente ? 'bg-accent-gold text-white select-none' : ''}`}>
-                          {votes.toLocaleString('pt-BR')}
-                        </td>
-                        <td className={`py-1 px-1 text-center ${isPresidente ? 'bg-accent-gold text-white select-none' : ''}`}>
+                        <td className="px-1 py-1 text-right">{votes.toLocaleString('pt-BR')}</td>
+                        <td className="px-1 py-1 text-center">
                           <span
-                            className={`inline-flex px-1.5 py-0.5 rounded-full ${
-                              isPresidente
-                                ? 'bg-white text-accent-gold'
-                                : includesNormalized(item.situacao, 'eleito')
-                                  ? 'bg-accent-gold text-white'
-                                : 'bg-background text-text-secondary'
-                            }`}
+                            className={cn(
+                              'inline-flex rounded-full px-1.5 py-0.5',
+                              isPresidente &&
+                                (isCockpit
+                                  ? 'border border-white/25 bg-white/90 text-[#062e52]'
+                                  : 'border border-card bg-surface text-accent-gold'),
+                              !isPresidente &&
+                                isEleito &&
+                                (isCockpit
+                                  ? 'border border-white/20 bg-white/15 text-white'
+                                  : 'bg-accent-gold-soft font-medium text-accent-gold'),
+                              !isPresidente &&
+                                !isEleito &&
+                                'bg-background text-text-secondary',
+                            )}
                           >
                             {item.situacao || '-'}
                           </span>
@@ -1821,10 +1878,10 @@ export default function ResumoEleicoesPage() {
                       </tr>
                     )
                   })}
-                  <tr className="bg-background font-semibold">
-                    <td className="py-1 px-1"></td>
-                    <td className="py-1 px-1">TOTAL</td>
-                    <td className="py-1 px-1 text-right">
+                  <tr className="border-t border-card bg-background/90 font-semibold text-text-primary">
+                    <td className="px-1 py-1"></td>
+                    <td className="px-1 py-1">TOTAL</td>
+                    <td className="px-1 py-1 text-right">
                       {vereador2024
                         .reduce((acc, item) => acc + parseVotos(item.quantidadeVotosNominais), 0)
                         .toLocaleString('pt-BR')}
@@ -1842,8 +1899,9 @@ export default function ResumoEleicoesPage() {
                 </span>
                 {getSelectedCount('vereador_2024') > 0 && (
                   <button
+                    type="button"
                     onClick={() => clearTableSelection('vereador_2024')}
-                    className="px-2 py-1 rounded border border-card hover:bg-background"
+                    className="rounded border border-card bg-surface px-2 py-1 text-text-primary hover:bg-background"
                   >
                     Limpar seleção
                   </button>
@@ -1857,18 +1915,18 @@ export default function ResumoEleicoesPage() {
             </div>
 
             <div className="bg-surface rounded-xl border border-card p-2 md:flex-1 min-w-[240px]">
-              <h3 className="text-xs font-semibold text-center mb-2">Votação por Partido 2024</h3>
+              <h3 className="mb-2 text-center text-xs font-semibold text-text-primary">Votação por Partido 2024</h3>
               <table className="w-full text-xs">
                 <thead>
                   <tr>
-                    <th className="text-center py-1 px-1 bg-background w-8">Sel.</th>
-                    <th className="text-left py-1 px-1 bg-background">Partido</th>
-                    <th className="text-right py-1 px-1 bg-background">Votos</th>
-                    <th className="text-right py-1 px-1 bg-background">Eleitos</th>
+                    <th className="w-8 bg-background px-1 py-1 text-center text-text-secondary">Sel.</th>
+                    <th className="bg-background px-1 py-1 text-left text-text-secondary">Partido</th>
+                    <th className="bg-background px-1 py-1 text-right text-text-secondary">Votos</th>
+                    <th className="bg-background px-1 py-1 text-right text-text-secondary">Eleitos</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {paginated(partido2024, currentPage.partido_2024).map((item) => {
+                  {paginated(partido2024, currentPage.partido_2024).map((item, rowIndex) => {
                     const rowId = `partido_2024:${item.partido}`
                     const isSelected = selectedVotes.partido_2024[rowId] !== undefined
                     const isPartidoAtivo = partidosIguais(item.partido, filtroPartidoAtivo)
@@ -1877,13 +1935,15 @@ export default function ResumoEleicoesPage() {
                         key={item.partido}
                         onDoubleClick={() => toggleFiltroPartido(item.partido)}
                         title="Dê duplo clique para filtrar as demais tabelas por este partido"
-                        className={
-                          isSelected && !isPartidoAtivo
-                              ? 'border-b border-card bg-accent-gold-soft/30'
-                              : 'border-b border-card'
-                        }
+                        className={cn(
+                          'border-b border-card transition-colors hover:bg-background/60',
+                          isPartidoAtivo && resumoTrDestaqueForte(isCockpit),
+                          !isPartidoAtivo && isSelected && resumoTrSelecionado(),
+                          !isPartidoAtivo && !isSelected && resumoTrZebra(rowIndex),
+                          !isPartidoAtivo && 'text-text-primary',
+                        )}
                       >
-                        <td className={`py-1 px-1 text-center ${isPartidoAtivo ? 'bg-accent-gold text-white select-none' : ''}`}>
+                        <td className="px-1 py-1 text-center">
                           <input
                             type="checkbox"
                             checked={isSelected}
@@ -1891,19 +1951,15 @@ export default function ResumoEleicoesPage() {
                             className="h-3.5 w-3.5 accent-[rgb(var(--accent-gold))]"
                           />
                         </td>
-                        <td className={`py-1 px-1 ${isPartidoAtivo ? 'bg-accent-gold text-white select-none' : ''}`}>{item.partido}</td>
-                        <td className={`py-1 px-1 text-right ${isPartidoAtivo ? 'bg-accent-gold text-white select-none' : ''}`}>
-                          {item.votos.toLocaleString('pt-BR')}
-                        </td>
-                        <td className={`py-1 px-1 text-right ${isPartidoAtivo ? 'bg-accent-gold text-white select-none' : ''}`}>
-                          {item.eleitos}
-                        </td>
+                        <td className="px-1 py-1">{item.partido}</td>
+                        <td className="px-1 py-1 text-right">{item.votos.toLocaleString('pt-BR')}</td>
+                        <td className="px-1 py-1 text-right">{item.eleitos}</td>
                       </tr>
                     )
                   })}
-                  <tr className="bg-background font-semibold">
-                    <td className="py-1 px-1"></td>
-                    <td className="py-1 px-1">TOTAL</td>
+                  <tr className="border-t border-card bg-background/90 font-semibold text-text-primary">
+                    <td className="px-1 py-1"></td>
+                    <td className="px-1 py-1">TOTAL</td>
                     <td className="py-1 px-1 text-right">
                       {partido2024.reduce((acc, item) => acc + item.votos, 0).toLocaleString('pt-BR')}
                     </td>
@@ -1920,8 +1976,9 @@ export default function ResumoEleicoesPage() {
                 </span>
                 {getSelectedCount('partido_2024') > 0 && (
                   <button
+                    type="button"
                     onClick={() => clearTableSelection('partido_2024')}
-                    className="px-2 py-1 rounded border border-card hover:bg-background"
+                    className="rounded border border-card bg-surface px-2 py-1 text-text-primary hover:bg-background"
                   >
                     Limpar seleção
                   </button>
@@ -1951,8 +2008,9 @@ export default function ResumoEleicoesPage() {
                 </p>
               </div>
               <button
+                type="button"
                 onClick={() => setShowSimulacaoModal(false)}
-                className="p-1.5 rounded hover:bg-background transition-colors"
+                className="rounded p-1.5 transition-colors hover:bg-background"
               >
                 <X className="h-4 w-4 text-text-secondary" />
               </button>
@@ -1967,26 +2025,32 @@ export default function ResumoEleicoesPage() {
                   <table className="w-full text-xs">
                     <thead>
                       <tr>
-                        <th className="text-left py-2 px-2 bg-background">Vereador 2024</th>
-                        <th className="text-right py-2 px-2 bg-background">Votos</th>
-                        <th className="text-left py-2 px-2 bg-background">Federal (nome digitado)</th>
+                        <th className="bg-background px-2 py-2 text-left text-text-secondary">Vereador 2024</th>
+                        <th className="bg-background px-2 py-2 text-right text-text-secondary">Votos</th>
+                        <th className="bg-background px-2 py-2 text-left text-text-secondary">Federal (nome digitado)</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {vereador2024Completo.map((vereador) => {
+                      {vereador2024Completo.map((vereador, rowIndex) => {
                         const vereadorKey = vereadorSimulacaoKey(vereador)
                         const valorSelecionado = limparNomeSimulacaoFederal(simulacaoMapeamento[vereadorKey] || '')
                         const votosVereador = parseVotos(vereador.quantidadeVotosNominais)
                         return (
-                          <tr key={vereadorKey} className="border-b border-card">
-                            <td className="py-1.5 px-2">{vereador.nomeUrnaCandidato}</td>
-                            <td className="py-1.5 px-2 text-right">{votosVereador.toLocaleString('pt-BR')}</td>
-                            <td className="py-1.5 px-2">
+                          <tr
+                            key={vereadorKey}
+                            className={cn(
+                              'border-b border-card text-text-primary transition-colors hover:bg-background/50',
+                              resumoTrZebra(rowIndex),
+                            )}
+                          >
+                            <td className="px-2 py-1.5">{vereador.nomeUrnaCandidato}</td>
+                            <td className="px-2 py-1.5 text-right">{votosVereador.toLocaleString('pt-BR')}</td>
+                            <td className="px-2 py-1.5">
                               <input
                                 value={valorSelecionado}
                                 onChange={(event) => atualizarMapeamentoVereador(vereadorKey, event.target.value)}
                                 placeholder="Ex.: JADYEL ALENCAR"
-                                className="w-full h-8 px-2 rounded border border-card bg-background text-xs"
+                                className="h-8 w-full rounded border border-card bg-surface px-2 text-xs text-text-primary"
                               />
                             </td>
                           </tr>
@@ -2010,22 +2074,26 @@ export default function ResumoEleicoesPage() {
                     <table className="w-full text-xs">
                       <thead>
                         <tr>
-                          <th className="text-left py-2 px-2 bg-background">Federal</th>
-                          <th className="text-right py-2 px-2 bg-background">Vereadores</th>
-                          <th className="text-right py-2 px-2 bg-background">Votos estimados</th>
+                          <th className="bg-background px-2 py-2 text-left text-text-secondary">Federal</th>
+                          <th className="bg-background px-2 py-2 text-right text-text-secondary">Vereadores</th>
+                          <th className="bg-background px-2 py-2 text-right text-text-secondary">Votos estimados</th>
                         </tr>
                       </thead>
                       <tbody>
-                        {rankingSimulacaoFederal.map((item) => (
-                          <tr key={item.nome} className="border-b border-card">
-                            <td className="py-1.5 px-2">
-                              {item.nome}
-                            </td>
-                            <td className="py-1.5 px-2 text-right">{item.vereadores}</td>
-                            <td className="py-1.5 px-2 text-right font-semibold">{item.votosEstimados.toLocaleString('pt-BR')}</td>
+                        {rankingSimulacaoFederal.map((item, rowIndex) => (
+                          <tr
+                            key={item.nome}
+                            className={cn(
+                              'border-b border-card text-text-primary transition-colors hover:bg-background/50',
+                              resumoTrZebra(rowIndex),
+                            )}
+                          >
+                            <td className="px-2 py-1.5">{item.nome}</td>
+                            <td className="px-2 py-1.5 text-right">{item.vereadores}</td>
+                            <td className="px-2 py-1.5 text-right font-semibold">{item.votosEstimados.toLocaleString('pt-BR')}</td>
                           </tr>
                         ))}
-                        <tr className="bg-background font-semibold">
+                        <tr className="border-t border-card bg-background/90 font-semibold text-text-primary">
                           <td className="py-1.5 px-2">TOTAL</td>
                           <td className="py-1.5 px-2 text-right">
                             {rankingSimulacaoFederal.reduce((acc, item) => acc + item.vereadores, 0)}
@@ -2049,7 +2117,7 @@ export default function ResumoEleicoesPage() {
                 <button
                   type="button"
                   onClick={limparSimulacao}
-                  className="px-3 py-1.5 text-xs rounded border border-card hover:bg-surface"
+                  className="rounded border border-card bg-surface px-3 py-1.5 text-xs text-text-primary hover:bg-background"
                 >
                   Limpar mapeamento
                 </button>
@@ -2057,7 +2125,7 @@ export default function ResumoEleicoesPage() {
                   type="button"
                   onClick={salvarSimulacaoCidade}
                   disabled={savingSimulacao || !cidade}
-                  className="px-3 py-1.5 text-xs rounded bg-accent-gold text-white hover:bg-accent-gold/90 disabled:opacity-50"
+                  className={cn(sidebarPrimaryCTAButtonClass(isCockpit, 'px-3 py-1.5 text-xs'))}
                 >
                   {savingSimulacao ? 'Salvando...' : 'Salvar simulação'}
                 </button>
@@ -2080,8 +2148,9 @@ export default function ResumoEleicoesPage() {
                 </p>
               </div>
               <button
+                type="button"
                 onClick={() => setShowLiderancasModal(false)}
-                className="p-1.5 rounded hover:bg-background transition-colors"
+                className="rounded p-1.5 transition-colors hover:bg-background"
               >
                 <X className="h-4 w-4 text-text-secondary" />
               </button>
@@ -2096,17 +2165,23 @@ export default function ResumoEleicoesPage() {
                 <table className="w-full text-xs">
                   <thead>
                     <tr>
-                      <th className="text-left py-2 px-2 bg-background">Nome</th>
-                      <th className="text-left py-2 px-2 bg-background">Cargo</th>
-                      <th className="text-right py-2 px-2 bg-background">{labelValorModalLiderancas}</th>
+                      <th className="bg-background px-2 py-2 text-left text-text-secondary">Nome</th>
+                      <th className="bg-background px-2 py-2 text-left text-text-secondary">Cargo</th>
+                      <th className="bg-background px-2 py-2 text-right text-text-secondary">{labelValorModalLiderancas}</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {liderancasDetalheOrdenadas.map((lideranca) => (
-                      <tr key={`${lideranca.nome}-${lideranca.cargo}`} className="border-b border-card">
-                        <td className="py-1.5 px-2">{lideranca.nome || '-'}</td>
-                        <td className="py-1.5 px-2">{lideranca.cargo || '-'}</td>
-                        <td className="py-1.5 px-2 text-right">
+                    {liderancasDetalheOrdenadas.map((lideranca, rowIndex) => (
+                      <tr
+                        key={`${lideranca.nome}-${lideranca.cargo}`}
+                        className={cn(
+                          'border-b border-card text-text-primary transition-colors hover:bg-background/50',
+                          resumoTrZebra(rowIndex),
+                        )}
+                      >
+                        <td className="px-2 py-1.5">{lideranca.nome || '-'}</td>
+                        <td className="px-2 py-1.5">{lideranca.cargo || '-'}</td>
+                        <td className="px-2 py-1.5 text-right">
                           {(cenarioVotos === 'promessa_lideranca'
                             ? lideranca.projecaoPromessa
                             : cenarioVotos === 'legado_anterior'
@@ -2136,8 +2211,9 @@ export default function ResumoEleicoesPage() {
                 </p>
               </div>
               <button
+                type="button"
                 onClick={fecharSeletorDemandas}
-                className="p-1.5 rounded hover:bg-background transition-colors"
+                className="rounded p-1.5 transition-colors hover:bg-background"
               >
                 <X className="h-4 w-4 text-text-secondary" />
               </button>
@@ -2154,7 +2230,7 @@ export default function ResumoEleicoesPage() {
                   type="button"
                   onClick={selecionarTodasLiderancasDemanda}
                   disabled={loadingDemandasLiderancas || liderancasDisponiveisDemandas.length === 0}
-                  className="px-2 py-1 text-xs rounded border border-card hover:bg-background disabled:opacity-50"
+                  className="rounded border border-card bg-surface px-2 py-1 text-xs text-text-primary hover:bg-background disabled:opacity-50"
                 >
                   Selecionar todas
                 </button>
@@ -2162,7 +2238,7 @@ export default function ResumoEleicoesPage() {
                   type="button"
                   onClick={limparLiderancasDemanda}
                   disabled={loadingDemandasLiderancas || selectedDemandasLiderancas.length === 0}
-                  className="px-2 py-1 text-xs rounded border border-card hover:bg-background disabled:opacity-50"
+                  className="rounded border border-card bg-surface px-2 py-1 text-xs text-text-primary hover:bg-background disabled:opacity-50"
                 >
                   Limpar
                 </button>
@@ -2206,7 +2282,7 @@ export default function ResumoEleicoesPage() {
               <button
                 type="button"
                 onClick={fecharSeletorDemandas}
-                className="px-3 py-1.5 text-xs rounded border border-card hover:bg-surface"
+                className="rounded border border-card bg-surface px-3 py-1.5 text-xs text-text-primary hover:bg-background"
               >
                 Cancelar
               </button>
@@ -2214,7 +2290,7 @@ export default function ResumoEleicoesPage() {
                 type="button"
                 onClick={abrirModalDemandasFiltrado}
                 disabled={loadingDemandasLiderancas || selectedDemandasLiderancas.length === 0}
-                className="px-3 py-1.5 text-xs rounded bg-accent-gold text-white hover:bg-accent-gold/90 disabled:opacity-50"
+                className={cn(sidebarPrimaryCTAButtonClass(isCockpit, 'px-3 py-1.5 text-xs'))}
               >
                 Ver demandas selecionadas
               </button>

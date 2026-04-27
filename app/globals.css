@@ -2,9 +2,20 @@
 @tailwind components;
 @tailwind utilities;
 
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
-@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=Outfit:wght@400;500;600;700;800&display=swap');
 @import './theme.css';
+
+/* Tipografia base — IBM Plex Sans via next/font (--font-sans no body) */
+html {
+  font-size: 16px;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+body {
+  line-height: 1.5;
+  letter-spacing: 0.01em;
+}
 
 /* ============================================
    Design Tokens - Formato RGB (R G B)
@@ -117,6 +128,124 @@
   background: transparent;
 }
 
+/* =============================================================================
+   Aparência escura global (claro/escuro) — poucas cores, mesmo vocabulário semântico
+   ============================================================================= */
+
+[data-appearance='dark'][data-theme='agentes'] {
+  --bg-app: 15 17 21;
+  --bg-surface: 24 27 32;
+  --bg-sidebar: 20 23 28;
+
+  --text-primary: 241 245 249;
+  --text-secondary: 163 174 190;
+  --text-muted: 120 131 148;
+
+  --accent-gold: 251 146 60;
+  --accent-gold-soft: 55 40 28;
+  --accent-gold-dark: 253 186 116;
+
+  --success: 52 211 153;
+  --warning: 251 191 36;
+  --danger: 248 113 113;
+  --info: 148 163 184;
+
+  --border-card: 51 58 68;
+}
+
+[data-appearance='dark'][data-theme='premium'] {
+  --bg-app: 22 20 18;
+  --bg-surface: 30 27 24;
+  --bg-sidebar: 26 23 20;
+
+  --text-primary: 250 248 245;
+  --text-secondary: 186 175 160;
+  --text-muted: 140 130 118;
+
+  --accent-gold: 214 184 120;
+  --accent-gold-soft: 48 42 34;
+  --accent-gold-dark: 232 206 150;
+
+  --success: 134 239 172;
+  --warning: 253 224 71;
+  --danger: 252 165 165;
+  --info: 180 170 156;
+
+  --border-card: 58 52 46;
+}
+
+[data-appearance='dark'][data-theme='republicanos'] {
+  --bg-app: 15 23 42;
+  --bg-surface: 23 33 54;
+  --bg-sidebar: 18 28 48;
+
+  --text-primary: 241 245 249;
+  --text-secondary: 148 163 184;
+  --text-muted: 100 116 139;
+
+  --accent-gold: 96 165 250;
+  --accent-gold-soft: 30 58 95;
+  --accent-gold-dark: 147 197 253;
+
+  --success: 52 211 153;
+  --warning: 250 204 21;
+  --danger: 248 113 113;
+  --info: 125 211 252;
+
+  --border-card: 51 65 85;
+}
+
+[data-appearance='dark'][data-theme='cockpit'] {
+  --bg-app: 11 18 28;
+  --bg-surface: 17 26 40;
+  --bg-sidebar: 14 22 36;
+
+  --text-primary: 241 245 249;
+  --text-secondary: 148 163 184;
+  --text-muted: 100 116 139;
+
+  --accent-gold: 56 189 248;
+  --accent-gold-soft: 30 58 95;
+  --accent-gold-dark: 125 211 252;
+
+  --success: 52 211 153;
+  --warning: 250 204 21;
+  --danger: 248 113 113;
+  --info: 34 211 238;
+
+  --border-card: 51 65 85;
+  --cockpit-cyan: 34 211 238;
+  --cockpit-surface-blue-grad: linear-gradient(165deg, #0f172a 0%, #111c2e 50%, #0c1424 100%);
+  --cockpit-nav-active-grad: linear-gradient(135deg, #0b2a4a 0%, #0e3a5c 52%, #155a8a 100%);
+}
+
+[data-appearance='dark'][data-theme='cockpit'] .cockpit-glass {
+  background: rgba(23, 33, 54, 0.72);
+  border: 1px solid rgba(148, 163, 184, 0.14);
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.35),
+    inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
+[data-appearance='dark'][data-theme='cockpit'] .cockpit-glass-strong {
+  background: rgba(30, 41, 59, 0.85);
+  border-color: rgba(148, 163, 184, 0.16);
+}
+
+[data-appearance='dark'][data-theme='cockpit'] .sidebar-cockpit-shell {
+  background: rgba(17, 26, 40, 0.88) !important;
+  border-color: rgba(71, 85, 105, 0.45) !important;
+}
+
+[data-appearance='dark'] ::selection {
+  background-color: rgb(var(--accent-gold));
+  color: rgb(var(--bg-app));
+}
+
+[data-appearance='dark'] html {
+  background-color: rgb(var(--bg-app));
+}
+
 /** Faixa superior do dashboard Cockpit (hero + contexto) — não usar em página inteira */
 .cockpit-app-bg {
   background: var(--cockpit-surface-blue-grad) !important;
@@ -175,7 +304,21 @@
   background: rgba(255, 255, 255, 0.52) !important;
   backdrop-filter: blur(18px);
   -webkit-backdrop-filter: blur(18px);
-  border-color: rgba(255, 255, 255, 0.75) !important;
+  border-color: rgb(var(--border-card) / 0.45) !important;
+}
+
+/* Vidro Cockpit só na sidebar: borda sem branco (evita “halo” claro na borda direita) */
+[data-theme="cockpit"] aside .cockpit-glass {
+  border-color: rgb(var(--border-card) / 0.5) !important;
+  box-shadow:
+    0 8px 32px rgba(15, 70, 120, 0.08),
+    inset 0 1px 0 rgb(var(--border-card) / 0.22);
+}
+
+/* Botão menu mobile (fora do aside): sem borda/inset branco do .cockpit-glass */
+[data-theme="cockpit"] [data-sidebar-mobile-toggle='true'].cockpit-glass {
+  border: none !important;
+  box-shadow: 0 4px 20px rgba(15, 70, 120, 0.08) !important;
 }
 
 /*
@@ -1001,10 +1144,10 @@ path.td-mun-poly--pulse-baixo {
     0 0 18px rgba(255, 255, 255, 0.06);
 }
 
-/* Página mapa TD — ambiente (gradiente + grão) */
+/* Página mapa TD — ambiente (alinhado ao fundo semântico da app) */
 .td-mapa-pagina-ambiente {
   position: relative;
-  background: #0B0F14;
+  background: rgb(var(--bg-app));
 }
 
 .td-mapa-pagina-ambiente::before {
@@ -1027,32 +1170,47 @@ path.td-mun-poly--pulse-baixo {
    Overrides garantidos via globals.css (hot-reload confiável)
    ============================================================================= */
 
-/* ── Paleta de tokens ───────────────────────────────────────────────────── */
+/* ── Paleta de tokens (mapa TD — alinhado à sidebar / superfícies do dashboard) ─ */
 .theme-futuristic {
-  --td-fut-bg-deep:       #0b0f14;
-  --td-fut-bg-mid:        #10161f;
-  --td-fut-bg-card:       #121821;
-  --td-fut-border:        rgba(255, 255, 255, 0.06);
-  --td-fut-text:          #e6edf3;
-  --td-fut-text-sec:      #aab4c0;
-  --td-fut-text-weak:     #7f8a96;
-  --td-fut-muted:         #aab4c0;
-  --td-fut-hover:         rgba(255, 255, 255, 0.03);
-  --td-fut-row-selected:  rgba(255, 106, 0, 0.1);
-  --td-fut-accent:        #ff6a00;
-  --td-fut-accent-h:      #ff8a2a;
-  --td-fut-green:         #22c55e;
-  --td-fut-red:           #ef4444;
+  --td-fut-bg-deep:       rgb(var(--bg-app));
+  /* Mesmo tom da sidebar (navegação) + halo / área Leaflet */
+  --td-fut-bg-mid:        rgb(var(--bg-sidebar));
+  --td-fut-bg-card:       rgb(var(--bg-surface));
+  --td-fut-border:        rgb(var(--border-card) / 0.55);
+  --td-fut-border-strong: rgb(var(--border-card) / 0.85);
+  --td-fut-text:          rgb(var(--text-primary));
+  --td-fut-text-sec:      rgb(var(--text-secondary));
+  --td-fut-text-weak:     rgb(var(--text-muted));
+  --td-fut-muted:         rgb(var(--text-secondary));
+  --td-fut-hover:         rgb(var(--accent-gold-soft) / 0.4);
+  --td-fut-row-selected:  rgb(var(--accent-gold-soft) / 0.55);
+  --td-fut-accent:        rgb(var(--accent-gold));
+  --td-fut-accent-h:      rgb(var(--accent-gold-dark));
+  --td-fut-green:         rgb(var(--success));
+  --td-fut-red:           rgb(var(--danger));
 }
 
-/* ── Fundo da página e shell ────────────────────────────────────────────── */
+/* ── Fundo da página mapa TD (classe legada; mesmo tom do dashboard) ─── */
 .theme-futuristic.td-mapa-pagina-ambiente {
-  background: #0B0F14 !important;
+  background: rgb(var(--bg-app)) !important;
+}
+
+.theme-futuristic.theme-futuristic--republicanos-light.td-mapa-pagina-ambiente {
+  background: rgb(var(--bg-app)) !important;
+}
+
+.theme-futuristic.theme-futuristic--republicanos-light.td-mapa-pagina-ambiente::before {
+  opacity: 0.018 !important;
 }
 
 [data-map-tds-futuristic-shell='true'] {
-  background: #0B0F14 !important;
-  background-color: #0B0F14 !important;
+  background: rgb(var(--bg-app)) !important;
+  background-color: rgb(var(--bg-app)) !important;
+}
+
+[data-map-tds-futuristic-shell='true'][data-map-tds-futuristic-theme='republicanos-light'] {
+  background: #FFFFFF !important;
+  background-color: #FFFFFF !important;
 }
 
 [data-map-tds-futuristic-header='true'] {
@@ -1061,6 +1219,12 @@ path.td-mun-poly--pulse-baixo {
   backdrop-filter: none !important;
   -webkit-backdrop-filter: none !important;
   border-bottom-color: rgba(255,255,255,0.06) !important;
+}
+
+[data-map-tds-futuristic-header='true'][data-map-tds-futuristic-theme='republicanos-light'] {
+  background: #FFFFFF !important;
+  background-color: #FFFFFF !important;
+  border-bottom-color: rgba(15, 23, 42, 0.14) !important;
 }
 
 [data-map-tds-futuristic-header='true'] * {
@@ -1133,16 +1297,16 @@ path.td-mun-poly--pulse-baixo {
   background-color: #FF6A00 !important;
 }
 
-/* ── Painel lateral ─────────────────────────────────────────────────────── */
+/* ── Painel lateral (mesma base cromática da sidebar) ─────────────────── */
 .theme-futuristic aside[aria-label='Mapa de dominância eleitoral por território de desenvolvimento'] {
-  color: #e6edf3 !important;
-  background: #10161f !important;
-  border-color: rgba(255, 255, 255, 0.06) !important;
+  color: rgb(var(--text-primary)) !important;
+  background: rgb(var(--bg-sidebar)) !important;
+  border-color: rgb(var(--border-card) / 0.85) !important;
 }
 
 .theme-futuristic aside[aria-label='Mapa de dominância eleitoral por território de desenvolvimento'] .text-text-muted,
 .theme-futuristic aside[aria-label='Mapa de dominância eleitoral por território de desenvolvimento'] .text-text-secondary {
-  color: #aab4c0 !important;
+  color: rgb(var(--text-secondary)) !important;
 }
 
 /* ── Tabela premium ─────────────────────────────────────────────────────── */
@@ -1153,23 +1317,23 @@ path.td-mun-poly--pulse-baixo {
 
 .theme-futuristic table.td-resumo-table--premium tbody tr:nth-child(odd) td,
 .theme-futuristic table.td-resumo-table--premium tbody tr:nth-child(even) td {
-  background-color: var(--fut-row-bg, rgba(18, 24, 33, 0.72)) !important;
-  border-top: 1px solid rgba(255, 255, 255, 0.04) !important;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.04) !important;
+  background-color: rgb(var(--bg-surface)) !important;
+  border-top: 1px solid rgb(var(--border-card) / 0.35) !important;
+  border-bottom: 1px solid rgb(var(--border-card) / 0.35) !important;
 }
 
 .theme-futuristic table.td-resumo-table--premium tbody tr td:first-child {
   border-radius: 8px 0 0 8px !important;
-  border-left: 1px solid rgba(255,255,255,0.06) !important;
+  border-left: 1px solid rgb(var(--border-card) / 0.55) !important;
 }
 
 .theme-futuristic table.td-resumo-table--premium tbody tr td:last-child {
   border-radius: 0 8px 8px 0 !important;
-  border-right: 1px solid rgba(255,255,255,0.06) !important;
+  border-right: 1px solid rgb(var(--border-card) / 0.55) !important;
 }
 
 .theme-futuristic table.td-resumo-table--premium tbody tr.td-resumo-table__row--data:hover td {
-  background-color: rgba(255, 106, 0, 0.08) !important;
+  background-color: rgb(var(--accent-gold-soft) / 0.45) !important;
 }
 
 /* IG por município (mesmo escopo que mapa-dom-fut-theme.css). */
@@ -1178,8 +1342,8 @@ path.td-mun-poly--pulse-baixo {
   tbody
   tr.td-resumo-table__row--data:hover
   td {
-  background: rgba(255, 252, 248, 0.98) !important;
-  color: #0b0f14 !important;
+  background: rgb(var(--accent-gold-soft) / 0.5) !important;
+  color: rgb(var(--text-primary)) !important;
 }
 
 .theme-futuristic
@@ -1187,7 +1351,7 @@ path.td-mun-poly--pulse-baixo {
   tbody
   tr.td-resumo-table__row--data:hover
   .text-text-secondary {
-  color: rgba(11, 15, 20, 0.74) !important;
+  color: rgb(var(--text-secondary)) !important;
 }
 
 .theme-futuristic
@@ -1201,7 +1365,7 @@ path.td-mun-poly--pulse-baixo {
   tr.td-resumo-table__row--data:hover
   td.td-resumo-table__cell--territorio
   .font-semibold {
-  color: #0b0f14 !important;
+  color: rgb(var(--text-primary)) !important;
 }
 
 .theme-futuristic
@@ -1210,7 +1374,7 @@ path.td-mun-poly--pulse-baixo {
   tr.td-resumo-table__row--data:hover
   td
   button {
-  color: #0b0f14 !important;
+  color: rgb(var(--text-primary)) !important;
 }
 
 .theme-futuristic
@@ -1234,8 +1398,8 @@ path.td-mun-poly--pulse-baixo {
   tbody
   tr.td-resumo-table__row--hover-map
   td {
-  background: rgba(255, 252, 248, 0.98) !important;
-  color: #0b0f14 !important;
+  background: rgb(var(--accent-gold-soft) / 0.5) !important;
+  color: rgb(var(--text-primary)) !important;
 }
 
 .theme-futuristic
@@ -1248,8 +1412,8 @@ path.td-mun-poly--pulse-baixo {
   tbody
   tr.td-resumo-table__row--selected.td-resumo-table__row--hover-map
   td {
-  background: rgba(255, 252, 248, 0.98) !important;
-  color: #0b0f14 !important;
+  background: rgb(var(--accent-gold-soft) / 0.5) !important;
+  color: rgb(var(--text-primary)) !important;
 }
 
 .theme-futuristic
@@ -1262,7 +1426,7 @@ path.td-mun-poly--pulse-baixo {
   tbody
   tr.td-resumo-table__row--selected.td-resumo-table__row--hover-map
   .text-text-secondary {
-  color: rgba(11, 15, 20, 0.74) !important;
+  color: rgb(var(--text-secondary)) !important;
 }
 
 .theme-futuristic
@@ -1287,7 +1451,7 @@ path.td-mun-poly--pulse-baixo {
   tr.td-resumo-table__row--selected.td-resumo-table__row--hover-map
   td.td-resumo-table__cell--territorio
   .font-semibold {
-  color: #0b0f14 !important;
+  color: rgb(var(--text-primary)) !important;
 }
 
 .theme-futuristic
@@ -1302,29 +1466,29 @@ path.td-mun-poly--pulse-baixo {
   tr.td-resumo-table__row--selected.td-resumo-table__row--hover-map
   td
   button {
-  color: #0b0f14 !important;
+  color: rgb(var(--text-primary)) !important;
 }
 
 .theme-futuristic table.td-resumo-table--premium tbody tr.td-resumo-table__row--hover-map td {
-  background-color: rgba(255, 106, 0, 0.1) !important;
+  background-color: rgb(var(--accent-gold-soft) / 0.5) !important;
 }
 
 .theme-futuristic table.td-resumo-table--premium tbody tr.td-resumo-table__row--selected td {
-  background: var(--fut-row-selected, rgba(255, 106, 0, 0.1)) !important;
+  background: var(--td-fut-row-selected) !important;
   box-shadow: none !important;
 }
 
 .theme-futuristic table.td-resumo-table--premium tbody tr.td-resumo-table__row--hover-map td {
-  color: #0b0f14 !important;
+  color: rgb(var(--text-primary)) !important;
 }
 
 .theme-futuristic table.td-resumo-table--premium tbody tr.td-resumo-table__row--hover-map .text-text-secondary {
-  color: rgba(11, 15, 20, 0.78) !important;
+  color: rgb(var(--text-secondary)) !important;
 }
 
 .theme-futuristic table.td-resumo-table--premium tbody tr.td-resumo-table__row--hover-map td.td-resumo-table__cell--territorio,
 .theme-futuristic table.td-resumo-table--premium tbody tr.td-resumo-table__row--hover-map td.td-resumo-table__cell--territorio .text-text-primary {
-  color: #0b0f14 !important;
+  color: rgb(var(--text-primary)) !important;
 }
 
 .theme-futuristic
@@ -1332,17 +1496,17 @@ path.td-mun-poly--pulse-baixo {
   tbody
   tr.td-resumo-table__row--hover-map
   .td-resumo-table__expand-btn {
-  background: #0b0f14 !important;
-  border-color: rgba(11, 15, 20, 0.75) !important;
-  color: #e6edf3 !important;
+  background: rgb(var(--border-card)) !important;
+  border-color: rgb(var(--border-card) / 0.95) !important;
+  color: rgb(var(--text-primary)) !important;
 }
 
 .theme-futuristic table.td-resumo-table--premium tbody tr.td-resumo-table__row--selected td {
-  color: var(--td-fut-text, #e6edf3) !important;
+  color: var(--td-fut-text) !important;
 }
 
 .theme-futuristic table.td-resumo-table--premium tbody tr.td-resumo-table__row--selected .text-text-secondary {
-  color: var(--td-fut-text-sec, #aab4c0) !important;
+  color: var(--td-fut-text-sec) !important;
 }
 
 .theme-futuristic
@@ -1351,7 +1515,7 @@ path.td-mun-poly--pulse-baixo {
   tr.td-resumo-table__row--selected
   td.td-resumo-table__cell--territorio
   .text-text-primary {
-  color: var(--td-fut-text, #e6edf3) !important;
+  color: var(--td-fut-text) !important;
 }
 
 .theme-futuristic table.td-resumo-table--premium tbody tr.td-resumo-table__row--selected .text-status-success {
@@ -1367,16 +1531,16 @@ path.td-mun-poly--pulse-baixo {
   tbody
   tr.td-resumo-table__row--selected
   .td-resumo-table__expand-btn {
-  background: rgba(255, 255, 255, 0.1) !important;
-  border-color: rgba(255, 255, 255, 0.22) !important;
-  color: var(--td-fut-text, #e6edf3) !important;
+  background: rgb(var(--accent-gold-soft) / 0.35) !important;
+  border-color: rgb(var(--border-card) / 0.85) !important;
+  color: var(--td-fut-text) !important;
 }
 
 /* Selecionada + hover: fundo claro; texto escuro (mesmo critério que mapa-dom-fut-theme.css). */
 .theme-futuristic table.td-resumo-table--premium tbody tr.td-resumo-table__row--selected.td-resumo-table__row--data:hover td,
 .theme-futuristic table.td-resumo-table--premium tbody tr.td-resumo-table__row--selected.td-resumo-table__row--hover-map td {
-  background: rgba(255, 252, 248, 0.97) !important;
-  color: #0b0f14 !important;
+  background: rgb(var(--accent-gold-soft) / 0.52) !important;
+  color: rgb(var(--text-primary)) !important;
 }
 
 .theme-futuristic
@@ -1389,7 +1553,7 @@ path.td-mun-poly--pulse-baixo {
   tbody
   tr.td-resumo-table__row--selected.td-resumo-table__row--hover-map
   .text-text-secondary {
-  color: rgba(11, 15, 20, 0.74) !important;
+  color: rgb(var(--text-secondary)) !important;
 }
 
 .theme-futuristic
@@ -1414,7 +1578,7 @@ path.td-mun-poly--pulse-baixo {
   tr.td-resumo-table__row--selected.td-resumo-table__row--hover-map
   td.td-resumo-table__cell--territorio
   .text-text-primary {
-  color: #0b0f14 !important;
+  color: rgb(var(--text-primary)) !important;
 }
 
 .theme-futuristic
@@ -1455,7 +1619,7 @@ path.td-mun-poly--pulse-baixo {
   tr.td-resumo-table__row--selected.td-resumo-table__row--hover-map
   td
   button {
-  color: #0b0f14 !important;
+  color: rgb(var(--text-primary)) !important;
 }
 
 .theme-futuristic
@@ -1468,13 +1632,13 @@ path.td-mun-poly--pulse-baixo {
   tbody
   tr.td-resumo-table__row--selected.td-resumo-table__row--hover-map
   .td-resumo-table__expand-btn {
-  background: #0b0f14 !important;
-  border-color: rgba(11, 15, 20, 0.75) !important;
-  color: #e6edf3 !important;
+  background: rgb(var(--border-card)) !important;
+  border-color: rgb(var(--border-card) / 0.95) !important;
+  color: rgb(var(--text-primary)) !important;
 }
 
 .theme-futuristic table.td-resumo-table--premium tbody tr.td-resumo-table__row--selected td:first-child {
-  box-shadow: inset 3px 0 0 0 var(--fut-row-selected-edge, #ff6a00) !important;
+  box-shadow: inset 3px 0 0 0 rgb(var(--accent-gold)) !important;
 }
 
 /* cabeçalho — sem preenchimento global do theme.css em thead */
@@ -1485,147 +1649,147 @@ path.td-mun-poly--pulse-baixo {
 }
 
 .theme-futuristic table.td-resumo-table--premium thead tr.td-resumo-table__row--header th {
-  color: #aab4c0 !important;
+  color: rgb(var(--text-secondary)) !important;
   font-weight: 600 !important;
   font-size: 0.75rem !important;
   text-transform: uppercase !important;
-  background: rgba(255, 255, 255, 0.03) !important;
-  background-color: rgba(255, 255, 255, 0.03) !important;
-  border-bottom-color: rgba(255, 255, 255, 0.06) !important;
+  background: rgb(var(--bg-sidebar) / 0.65) !important;
+  background-color: rgb(var(--bg-sidebar) / 0.65) !important;
+  border-bottom-color: rgb(var(--border-card) / 0.55) !important;
 }
 
 .theme-futuristic table.td-resumo-table--premium tbody td,
 .theme-futuristic table.td-resumo-table--futuristic tbody td {
-  color: #e6edf3 !important;
+  color: rgb(var(--text-primary)) !important;
 }
 
 .theme-futuristic table.td-resumo-table--premium .td-resumo-table__cell--fed26 {
-  color: #e6edf3 !important;
+  color: rgb(var(--text-primary)) !important;
   font-weight: 700 !important;
   font-size: 1.05rem !important;
 }
 
 .theme-futuristic table.td-resumo-table--premium .td-resumo-table__cell--lid,
 .theme-futuristic table.td-resumo-table th.td-resumo-table__cell--lid {
-  color: #e6edf3 !important;
+  color: rgb(var(--text-primary)) !important;
   font-weight: 600 !important;
   text-align: center !important;
 }
 
 .theme-futuristic table.td-resumo-table--premium .td-resumo-table__cell--vis,
 .theme-futuristic table.td-resumo-table th.td-resumo-table__cell--vis {
-  color: #aab4c0 !important;
+  color: rgb(var(--text-secondary)) !important;
   font-weight: 500 !important;
   text-align: center !important;
 }
 
 .theme-futuristic table.td-resumo-table--premium .td-resumo-table__cell--fed22 {
-  color: #aab4c0 !important;
+  color: rgb(var(--text-secondary)) !important;
   text-align: center !important;
 }
 
 .theme-futuristic table.td-resumo-table--premium .td-resumo-table__rank--top3 {
-  color: #ff8a2a !important;
+  color: rgb(var(--accent-gold-dark)) !important;
   font-weight: 600 !important;
 }
 
 .theme-futuristic table.td-resumo-table--premium .td-resumo-table__rank--first {
-  color: #ff6a00 !important;
+  color: rgb(var(--accent-gold)) !important;
   font-weight: 700 !important;
   text-shadow: none !important;
 }
 
 .theme-futuristic table.td-resumo-table--premium .text-status-success {
-  color: #22c55e !important;
+  color: rgb(var(--success)) !important;
   font-weight: 600 !important;
 }
 
 .theme-futuristic table.td-resumo-table--premium .text-status-danger {
-  color: #ef4444 !important;
+  color: rgb(var(--danger)) !important;
   font-weight: 600 !important;
 }
 
 .theme-futuristic table.td-resumo-table--premium .text-text-secondary {
-  color: #aab4c0 !important;
+  color: rgb(var(--text-secondary)) !important;
 }
 
 .theme-futuristic table.td-resumo-table--premium .text-text-primary {
-  color: #e6edf3 !important;
+  color: rgb(var(--text-primary)) !important;
 }
 
-/* Drilldown (municípios + lideranças) com padrão do nível TD */
+/* Drilldown (municípios + lideranças) — alinhado a sidebar / superfície */
 .theme-futuristic .td-fut-drill {
-  color: #e6edf3;
+  color: rgb(var(--text-primary));
 }
 
 .theme-futuristic .td-fut-drill .td-fut-subsection-title {
-  color: #aab4c0 !important;
+  color: rgb(var(--text-secondary)) !important;
   font-size: 0.75rem;
   letter-spacing: 0.04em;
 }
 
 .theme-futuristic .td-fut-drill .td-fut-grid-header {
-  color: #aab4c0 !important;
+  color: rgb(var(--text-secondary)) !important;
   font-size: 0.75rem;
   font-weight: 600;
   text-transform: uppercase;
-  background: rgba(255, 255, 255, 0.03);
-  border-bottom-color: rgba(255, 255, 255, 0.06) !important;
+  background: rgb(var(--bg-sidebar) / 0.65);
+  border-bottom-color: rgb(var(--border-card) / 0.55) !important;
   border-radius: 8px;
   padding: 0.5rem 0.5rem 0.55rem;
 }
 
 .theme-futuristic .td-fut-drill .td-fut-grid-row {
-  color: #aab4c0 !important;
+  color: rgb(var(--text-secondary)) !important;
   font-size: 0.875rem;
   font-weight: 500;
-  background: rgba(18, 24, 33, 0.72);
-  border-top: 1px solid rgba(255, 255, 255, 0.04);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  background: rgb(var(--bg-surface));
+  border-top: 1px solid rgb(var(--border-card) / 0.35);
+  border-bottom: 1px solid rgb(var(--border-card) / 0.35);
   border-radius: 8px;
   padding: 0.38rem 0.5rem 0.44rem;
   transition: background-color 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease;
 }
 
 .theme-futuristic .td-fut-drill .td-fut-grid-row--interactive:hover {
-  background: rgba(255, 255, 255, 0.03);
+  background: rgb(var(--accent-gold-soft) / 0.35);
 }
 
 .theme-futuristic .td-fut-drill .td-fut-grid-row--interactive:focus-visible {
-  box-shadow: 0 0 0 2px rgba(255, 106, 0, 0.2);
+  box-shadow: 0 0 0 2px rgb(var(--accent-gold) / 0.35);
 }
 
 .theme-futuristic .td-fut-drill .td-fut-grid-row--selected {
-  background: rgba(255, 106, 0, 0.1) !important;
-  border-color: rgba(255, 106, 0, 0.35) !important;
-  box-shadow: inset 3px 0 0 #ff6a00;
+  background: rgb(var(--accent-gold-soft) / 0.5) !important;
+  border-color: rgb(var(--accent-gold) / 0.45) !important;
+  box-shadow: inset 3px 0 0 rgb(var(--accent-gold));
 }
 
 .theme-futuristic .td-fut-drill .td-fut-grid-primary {
-  color: #e6edf3 !important;
+  color: rgb(var(--text-primary)) !important;
   font-weight: 600;
 }
 
 .theme-futuristic .td-fut-drill .text-text-secondary {
-  color: #aab4c0 !important;
+  color: rgb(var(--text-secondary)) !important;
 }
 
 .theme-futuristic .td-fut-drill .text-text-muted {
-  color: #7f8a96 !important;
+  color: rgb(var(--text-muted)) !important;
 }
 
 .theme-futuristic .td-fut-drill .text-status-success {
-  color: #22c55e !important;
+  color: rgb(var(--success)) !important;
   font-weight: 600;
 }
 
 .theme-futuristic .td-fut-drill .text-status-danger {
-  color: #ef4444 !important;
+  color: rgb(var(--danger)) !important;
   font-weight: 600;
 }
 
 .theme-futuristic .td-fut-drill .td-fut-grid-foot {
-  color: #7f8a96 !important;
+  color: rgb(var(--text-muted)) !important;
   font-size: 0.75rem;
 }
 

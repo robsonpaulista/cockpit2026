@@ -2,6 +2,9 @@
 
 import { useEffect, useState } from 'react'
 import { X, Plus, Trash2, Edit2, RefreshCw } from 'lucide-react'
+import { useTheme } from '@/contexts/theme-context'
+import { cn } from '@/lib/utils'
+import { sidebarPrimaryCTAButtonClass } from '@/lib/sidebar-menu-active-style'
 
 interface Adversary {
   id: string
@@ -37,6 +40,8 @@ const commonThemes = [
 ]
 
 export function AdversaryManagerModal({ onClose, onUpdate }: AdversaryManagerModalProps) {
+  const { theme: dashboardTheme } = useTheme()
+  const isCockpit = dashboardTheme === 'cockpit'
   const [adversaries, setAdversaries] = useState<Adversary[]>([])
   const [loading, setLoading] = useState(true)
   const [showAddForm, setShowAddForm] = useState(false)
@@ -206,8 +211,9 @@ export function AdversaryManagerModal({ onClose, onUpdate }: AdversaryManagerMod
           <div className="text-center py-8">
             <p className="text-secondary mb-4">Nenhum adversário cadastrado ainda.</p>
             <button
+              type="button"
               onClick={() => setShowAddForm(true)}
-              className="px-4 py-2 text-sm font-medium bg-accent-gold text-white rounded-lg hover:bg-accent-gold transition-colors"
+              className={sidebarPrimaryCTAButtonClass(isCockpit, 'text-sm')}
             >
               Adicionar Primeiro Adversário
             </button>
@@ -257,11 +263,19 @@ export function AdversaryManagerModal({ onClose, onUpdate }: AdversaryManagerMod
                   {adversary.google_alerts_rss_url && (
                     <div className="mt-3 pt-3 border-t border-card">
                       <button
+                        type="button"
                         onClick={() => handleCollectNews(adversary.id)}
                         disabled={collectingNews === adversary.id || collectingAll}
-                        className="flex items-center gap-2 px-3 py-1.5 text-xs font-medium bg-accent-gold text-white rounded-lg hover:bg-accent-gold transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        className={sidebarPrimaryCTAButtonClass(isCockpit, 'px-3 py-1.5 text-xs')}
                       >
-                        <RefreshCw className={`w-3 h-3 ${collectingNews === adversary.id ? 'animate-spin' : ''}`} />
+                        <RefreshCw
+                          className={cn(
+                            'h-3 w-3 shrink-0',
+                            isCockpit ? 'text-white' : 'text-accent-gold',
+                            collectingNews === adversary.id && 'animate-spin'
+                          )}
+                          aria-hidden
+                        />
                         {collectingNews === adversary.id ? 'Coletando...' : 'Coletar Notícias'}
                       </button>
                     </div>
@@ -332,18 +346,18 @@ export function AdversaryManagerModal({ onClose, onUpdate }: AdversaryManagerMod
                   Temas que Aborda
                 </label>
                 <div className="flex flex-wrap gap-2">
-                  {commonThemes.map((theme) => (
+                  {commonThemes.map((themeLabel) => (
                     <button
-                      key={theme}
+                      key={themeLabel}
                       type="button"
-                      onClick={() => toggleTheme(theme)}
-                      className={`px-3 py-1.5 text-xs rounded-lg border transition-colors ${
-                        formData.themes.includes(theme)
-                          ? 'bg-accent-gold text-white border-accent-gold'
-                          : 'bg-surface border-card text-text-primary hover:border-accent-gold/50'
-                      }`}
+                      onClick={() => toggleTheme(themeLabel)}
+                      className={
+                        formData.themes.includes(themeLabel)
+                          ? sidebarPrimaryCTAButtonClass(isCockpit, 'px-3 py-1.5 text-xs rounded-lg border-0')
+                          : 'rounded-lg border border-card bg-surface px-3 py-1.5 text-xs text-text-primary transition-colors hover:border-accent-gold/50'
+                      }
                     >
-                      {theme}
+                      {themeLabel}
                     </button>
                   ))}
                 </div>
@@ -395,7 +409,7 @@ export function AdversaryManagerModal({ onClose, onUpdate }: AdversaryManagerMod
                 <button
                   type="submit"
                   disabled={submitting}
-                  className="px-4 py-2 bg-accent-gold text-white rounded-lg hover:bg-accent-gold transition-colors disabled:opacity-50"
+                  className={sidebarPrimaryCTAButtonClass(isCockpit)}
                 >
                   {submitting
                     ? 'Salvando...'
@@ -424,19 +438,28 @@ export function AdversaryManagerModal({ onClose, onUpdate }: AdversaryManagerMod
           <div className="space-y-2">
             {adversaries.some(a => a.google_alerts_rss_url) && (
               <button
+                type="button"
                 onClick={() => handleCollectNews()}
                 disabled={collectingAll}
-                className="w-full px-4 py-2 text-sm font-medium bg-accent-gold text-white rounded-lg hover:bg-accent-gold transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                className={sidebarPrimaryCTAButtonClass(isCockpit, 'w-full text-sm')}
               >
-                <RefreshCw className={`w-4 h-4 ${collectingAll ? 'animate-spin' : ''}`} />
+                <RefreshCw
+                  className={cn(
+                    'h-4 w-4 shrink-0',
+                    isCockpit ? 'text-white' : 'text-accent-gold',
+                    collectingAll && 'animate-spin'
+                  )}
+                  aria-hidden
+                />
                 {collectingAll ? 'Coletando Notícias de Todos os Adversários...' : 'Coletar Notícias de Todos os Adversários'}
               </button>
             )}
             <button
+              type="button"
               onClick={() => setShowAddForm(true)}
-              className="w-full px-4 py-2 text-sm font-medium border border-card rounded-lg hover:bg-background transition-colors flex items-center justify-center gap-2"
+              className="flex w-full items-center justify-center gap-2 rounded-lg border border-card px-4 py-2 text-sm font-medium transition-colors hover:bg-background"
             >
-              <Plus className="w-4 h-4" />
+              <Plus className="h-4 w-4 shrink-0" aria-hidden />
               Adicionar Novo Adversário
             </button>
           </div>

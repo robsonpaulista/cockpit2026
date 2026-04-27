@@ -89,6 +89,9 @@ export function ThemeToggle({ collapsed = false, mobileOpen = false }: ThemeTogg
           )}
         >
           <p className="text-xs font-semibold text-text-primary mb-2 px-1">Escolha o tema</p>
+          <p className="text-[10px] text-text-muted mb-2 px-1 leading-snug">
+            Claro ou escuro para toda a aplicação: use lua e sol na barra superior.
+          </p>
 
           <div className="space-y-1">
             {themes.map((t) => {

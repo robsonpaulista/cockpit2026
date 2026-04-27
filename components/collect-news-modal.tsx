@@ -2,6 +2,9 @@
 
 import { useState } from 'react'
 import { X, RefreshCw } from 'lucide-react'
+import { useTheme } from '@/contexts/theme-context'
+import { cn } from '@/lib/utils'
+import { sidebarPrimaryCTAButtonClass } from '@/lib/sidebar-menu-active-style'
 
 interface CollectNewsModalProps {
   onClose: () => void
@@ -9,6 +12,8 @@ interface CollectNewsModalProps {
 }
 
 export function CollectNewsModal({ onClose, onSuccess }: CollectNewsModalProps) {
+  const { theme } = useTheme()
+  const isCockpit = theme === 'cockpit'
   const [rssUrl, setRssUrl] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -115,18 +120,25 @@ export function CollectNewsModal({ onClose, onSuccess }: CollectNewsModalProps) 
               Cancelar
             </button>
             <button
+              type="button"
               onClick={handleCollect}
               disabled={loading || !rssUrl.trim()}
-              className="px-4 py-2 bg-accent-gold text-white rounded-lg hover:bg-accent-gold transition-colors disabled:opacity-50 flex items-center gap-2"
+              className={sidebarPrimaryCTAButtonClass(isCockpit)}
             >
               {loading ? (
                 <>
-                  <RefreshCw className="w-4 h-4 animate-spin" />
+                  <RefreshCw
+                    className={cn('h-4 w-4 shrink-0 animate-spin', isCockpit ? 'text-white' : 'text-accent-gold')}
+                    aria-hidden
+                  />
                   Coletando...
                 </>
               ) : (
                 <>
-                  <RefreshCw className="w-4 h-4" />
+                  <RefreshCw
+                    className={cn('h-4 w-4 shrink-0', isCockpit ? 'text-white' : 'text-accent-gold')}
+                    aria-hidden
+                  />
                   Coletar Notícias
                 </>
               )}

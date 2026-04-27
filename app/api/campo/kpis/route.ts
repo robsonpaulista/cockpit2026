@@ -68,36 +68,6 @@ export async function GET() {
     // Para variação, comparar com período anterior (simplificado: usar 0 como base)
     const municipiosVariation = municipiosVisitados > 0 ? 3 : 0 // Placeholder - pode melhorar depois
 
-    // 3. Demandas Resolvidas
-    const { data: demands, error: demandsError } = await supabase
-      .from('demands')
-      .select('id, status')
-
-    if (demandsError) {
-      console.error('Erro ao buscar demandas:', demandsError)
-    }
-
-    const totalDemands = demands?.length || 0
-    const demandsResolvidas = demands?.filter(d => d.status === 'resolvido').length || 0
-    const demandsVariation = totalDemands > 0
-      ? Math.round(((demandsResolvidas / totalDemands) * 100) - 50) // Comparação com meta de 50%
-      : 0
-
-    // 4. Promessas x Entregas
-    const { data: promises, error: promisesError } = await supabase
-      .from('promises')
-      .select('id, status')
-
-    if (promisesError) {
-      console.error('Erro ao buscar promessas:', promisesError)
-    }
-
-    const totalPromises = promises?.length || 0
-    const promisesCumpridas = promises?.filter(p => p.status === 'cumprida').length || 0
-    const promisesVariation = totalPromises > 0
-      ? Math.round(((promisesCumpridas / totalPromises) * 100) - 50) // Comparação com meta de 50%
-      : 0
-
     const kpis = [
       {
         id: 'agendas',
@@ -112,20 +82,6 @@ export async function GET() {
         value: municipiosVisitados.toString(),
         variation: municipiosVariation,
         status: municipiosVariation >= 0 ? 'success' : 'warning',
-      },
-      {
-        id: 'demandas',
-        label: 'Demandas Resolvidas',
-        value: `${demandsResolvidas}/${totalDemands}`,
-        variation: demandsVariation,
-        status: demandsVariation >= 0 ? 'success' : 'warning',
-      },
-      {
-        id: 'promessas',
-        label: 'Promessas x Entregas',
-        value: `${promisesCumpridas}/${totalPromises}`,
-        variation: promisesVariation,
-        status: promisesVariation >= 0 ? 'success' : 'warning',
       },
     ]
 

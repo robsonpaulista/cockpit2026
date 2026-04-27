@@ -3,6 +3,9 @@
 import { useState } from 'react'
 import { X, Upload, FileSpreadsheet, Loader2, CheckCircle2, AlertCircle } from 'lucide-react'
 import * as XLSX from 'xlsx'
+import { useTheme } from '@/contexts/theme-context'
+import { cn } from '@/lib/utils'
+import { sidebarPrimaryCTAButtonClass } from '@/lib/sidebar-menu-active-style'
 
 interface ObrasImportModalProps {
   onClose: () => void
@@ -10,6 +13,8 @@ interface ObrasImportModalProps {
 }
 
 export function ObrasImportModal({ onClose, onSuccess }: ObrasImportModalProps) {
+  const { theme } = useTheme()
+  const isCockpit = theme === 'cockpit'
   const [file, setFile] = useState<File | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -233,7 +238,7 @@ export function ObrasImportModal({ onClose, onSuccess }: ObrasImportModalProps) 
                 onSuccess()
                 onClose()
               }}
-              className="px-6 py-2 bg-accent-gold text-white rounded-lg hover:bg-accent-gold/90 transition-colors"
+              className={sidebarPrimaryCTAButtonClass(isCockpit, 'px-6')}
             >
               Fechar
             </button>
@@ -286,16 +291,22 @@ export function ObrasImportModal({ onClose, onSuccess }: ObrasImportModalProps) 
               <button
                 onClick={handleImport}
                 disabled={!file || loading}
-                className="flex-1 px-4 py-2 bg-accent-gold text-white rounded-lg hover:bg-accent-gold/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                className={sidebarPrimaryCTAButtonClass(isCockpit, 'flex-1')}
               >
                 {loading ? (
                   <>
-                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <Loader2
+                      className={cn('h-4 w-4 shrink-0 animate-spin', isCockpit ? 'text-white' : 'text-accent-gold')}
+                      aria-hidden
+                    />
                     Importando...
                   </>
                 ) : (
                   <>
-                    <Upload className="w-4 h-4" />
+                    <Upload
+                      className={cn('h-4 w-4 shrink-0', isCockpit ? 'text-white' : 'text-accent-gold')}
+                      aria-hidden
+                    />
                     Importar
                   </>
                 )}

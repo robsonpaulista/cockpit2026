@@ -21,6 +21,9 @@ import {
   Users,
   Layers,
 } from 'lucide-react'
+import { useTheme } from '@/contexts/theme-context'
+import { cn } from '@/lib/utils'
+import { sidebarPrimaryCTAButtonClass } from '@/lib/sidebar-menu-active-style'
 
 type PollInfo = {
   id: string
@@ -150,6 +153,8 @@ export function PollReportModal({ poll, onClose }: PollReportModalProps) {
   const [error, setError] = useState<string | null>(null)
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [manualContext, setManualContext] = useState('')
+  const { theme } = useTheme()
+  const isCockpit = theme === 'cockpit'
 
   const hasReport = Boolean(report)
   const highlights = useMemo(() => report?.highlights || [], [report])
@@ -311,9 +316,19 @@ export function PollReportModal({ poll, onClose }: PollReportModalProps) {
                   type="button"
                   onClick={handleUpload}
                   disabled={!selectedFile || uploading}
-                  className="px-3 py-2 rounded-lg bg-accent-gold text-white hover:bg-accent-gold/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm inline-flex items-center gap-2"
+                  className={sidebarPrimaryCTAButtonClass(isCockpit, 'px-3 py-2 text-sm')}
                 >
-                  {uploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
+                  {uploading ? (
+                    <Loader2
+                      className={cn('h-4 w-4 shrink-0 animate-spin', isCockpit ? 'text-white' : 'text-accent-gold')}
+                      aria-hidden
+                    />
+                  ) : (
+                    <Upload
+                      className={cn('h-4 w-4 shrink-0', isCockpit ? 'text-white' : 'text-accent-gold')}
+                      aria-hidden
+                    />
+                  )}
                   {uploading ? 'Processando PDF...' : hasReport ? 'Substituir PDF' : 'Enviar e Analisar'}
                 </button>
                 <button

@@ -14,6 +14,7 @@ import {
 
 type Props = {
   visualPreset?: 'default' | 'futuristic'
+  visualTheme?: 'dark' | 'light'
   className?: string
   /** Export do TD em foco no mapa (resumo + detalhe só desse TD). */
   exportTd?: { territorio: TerritorioDesenvolvimentoPI; disabled: boolean }
@@ -23,11 +24,13 @@ type Props = {
 
 export function MapaDigitalIgRelatorioCheckExport({
   visualPreset = 'default',
+  visualTheme = 'dark',
   className,
   exportTd,
   exportPiTodas,
 }: Props) {
   const isFut = visualPreset === 'futuristic'
+  const isLight = visualTheme === 'light'
   const [busy, setBusy] = useState<'idle' | 'td-xlsx' | 'td-pdf' | 'pi-xlsx' | 'pi-pdf'>('idle')
 
   const carregarTd = useCallback(async (td: TerritorioDesenvolvimentoPI): Promise<RelatorioMapaDigitalIgTdPayload> => {
@@ -116,7 +119,9 @@ export function MapaDigitalIgRelatorioCheckExport({
     cn(
       'inline-flex items-center gap-1 rounded-md border px-1.5 py-0.5 text-[9px] font-semibold transition-colors sm:px-2 sm:py-1 sm:text-[10px]',
       isFut
-        ? 'border-white/40 bg-white/15 text-white hover:bg-white/25 disabled:cursor-not-allowed disabled:opacity-70'
+        ? isLight
+          ? 'h-9 rounded-[10px] border border-[#D9E2EC] bg-white px-3 text-[#0B2A4A] hover:border-[#0057B8] hover:bg-[#E8F1FF] hover:text-[#0057B8] disabled:cursor-not-allowed disabled:opacity-70'
+          : 'border-white/40 bg-white/15 text-white hover:bg-white/25 disabled:cursor-not-allowed disabled:opacity-70'
         : 'border-border-card bg-card text-text-primary hover:bg-background disabled:cursor-not-allowed disabled:opacity-70'
     )
 
@@ -126,7 +131,11 @@ export function MapaDigitalIgRelatorioCheckExport({
     <div
       className={cn(
         'flex min-h-[2rem] shrink-0 flex-wrap items-center gap-x-2 gap-y-1.5 rounded-lg border px-2 py-1.5',
-        isFut ? 'border-white/35 bg-[rgba(0,0,0,0.25)]' : 'border-border-card bg-muted/40',
+        isFut
+          ? isLight
+            ? 'border border-[#D9E2EC] bg-white'
+            : 'border-white/35 bg-[rgba(0,0,0,0.25)]'
+          : 'border-border-card bg-muted/40',
         className
       )}
     >
@@ -135,7 +144,7 @@ export function MapaDigitalIgRelatorioCheckExport({
           <span
             className={cn(
               'text-[9px] font-semibold uppercase tracking-wide sm:text-[10px]',
-              isFut ? 'text-white/90' : 'text-text-primary'
+              isFut ? (isLight ? 'text-[#334155]' : 'text-white/90') : 'text-text-primary'
             )}
           >
             TD
@@ -164,7 +173,7 @@ export function MapaDigitalIgRelatorioCheckExport({
       ) : null}
 
       {exportTd && exportPiTodas ? (
-        <span className={cn('hidden text-white/30 sm:inline', !isFut && 'text-border-card')} aria-hidden>
+        <span className={cn('hidden sm:inline', isFut ? (isLight ? 'text-slate-300' : 'text-white/30') : 'text-border-card')} aria-hidden>
           |
         </span>
       ) : null}
@@ -174,7 +183,7 @@ export function MapaDigitalIgRelatorioCheckExport({
           <span
             className={cn(
               'text-[9px] font-semibold uppercase tracking-wide sm:text-[10px]',
-              isFut ? 'text-white/90' : 'text-text-primary'
+              isFut ? (isLight ? 'text-[#334155]' : 'text-white/90') : 'text-text-primary'
             )}
             title="Todos os territórios de desenvolvimento do Piauí num único ficheiro"
           >

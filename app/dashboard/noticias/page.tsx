@@ -5,7 +5,9 @@ import { Newspaper, RefreshCw, Plus, Edit2, Trash2, Radio, Crown, Search } from 
 import { FeedManagerModal } from '@/components/feed-manager-modal'
 import { EditNewsModal } from '@/components/edit-news-modal'
 import { NewsItem } from '@/types'
-import { formatDate } from '@/lib/utils'
+import { cn, formatDate } from '@/lib/utils'
+import { useTheme } from '@/contexts/theme-context'
+import { sidebarPrimaryCTAButtonClass } from '@/lib/sidebar-menu-active-style'
 
 const sentimentColors = {
   positive: 'bg-status-success/10 text-status-success border-status-success/30',
@@ -23,6 +25,8 @@ type FiltroDestaquePainel = 'all' | 'yes' | 'no'
 type FiltroDestaqueMonitor = 'all' | 'yes'
 
 export default function NoticiasPage() {
+  const { theme } = useTheme()
+  const isCockpit = theme === 'cockpit'
   const [news, setNews] = useState<NewsItem[]>([])
   const [allFeeds, setAllFeeds] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
@@ -299,10 +303,11 @@ export default function NoticiasPage() {
                 </h2>
                 <div className="flex items-center gap-2">
                   <button
+                    type="button"
                     onClick={handleManageFeeds}
-                    className="px-4 py-2 text-sm font-medium bg-accent-gold text-white rounded-lg hover:bg-accent-gold transition-colors flex items-center gap-2"
+                    className={sidebarPrimaryCTAButtonClass(isCockpit)}
                   >
-                    <Plus className="w-4 h-4" />
+                    <Plus className={cn('h-4 w-4 shrink-0', isCockpit ? 'text-white' : 'text-accent-gold')} aria-hidden />
                     Gerenciar Feeds RSS
                   </button>
                 </div>
@@ -491,7 +496,7 @@ export default function NoticiasPage() {
                       <button
                         type="button"
                         onClick={handleManageFeeds}
-                        className="px-4 py-2 text-sm font-medium bg-accent-gold text-white rounded-lg hover:bg-accent-gold transition-colors"
+                        className={sidebarPrimaryCTAButtonClass(isCockpit)}
                       >
                         Configurar Feeds RSS
                       </button>

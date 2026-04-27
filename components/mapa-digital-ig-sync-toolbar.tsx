@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Loader2, RefreshCw, Settings } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { COCKPIT_PAGE_ACTIVE_MENU_ITEM } from '@/lib/sidebar-menu-active-style'
 import { InstagramConfigModal } from '@/components/instagram-config-modal'
 import { dispatchInstagramCommentsSynced } from '@/lib/instagram-comments-sync-events'
 import { loadInstagramConfigAsync, saveInstagramConfig, syncInstagramComments } from '@/lib/instagramApi'
@@ -10,7 +11,14 @@ import { loadInstagramConfigAsync, saveInstagramConfig, syncInstagramComments } 
 type IgCfg = { token: string; businessAccountId: string }
 const LOOKBACK_OPTIONS = [7, 15, 30] as const
 
-export function MapaDigitalIgSyncToolbar({ className }: { className?: string }) {
+export function MapaDigitalIgSyncToolbar({
+  className,
+  visualTheme = 'dark',
+}: {
+  className?: string
+  visualTheme?: 'dark' | 'light'
+}) {
+  const isLight = visualTheme === 'light'
   const [cfg, setCfg] = useState<IgCfg | null>(null)
   const [loadingCfg, setLoadingCfg] = useState(true)
   const [showConfig, setShowConfig] = useState(false)
@@ -74,18 +82,35 @@ export function MapaDigitalIgSyncToolbar({ className }: { className?: string }) 
         <button
           type="button"
           onClick={() => setShowConfig(true)}
-          className="inline-flex items-center gap-1.5 rounded-lg border border-[rgba(255,255,255,0.12)] bg-[rgba(0,0,0,0.25)] px-2.5 py-1.5 text-[11px] font-medium text-[#E6EDF3] hover:bg-[rgba(255,255,255,0.06)] sm:text-xs"
+          className={cn(
+            'inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-[11px] font-medium sm:text-xs',
+            isLight
+              ? 'h-9 rounded-[10px] border border-[#D9E2EC] bg-white px-3 text-[#0B2A4A] hover:border-[#0057B8] hover:bg-[#E8F1FF] hover:text-[#0057B8]'
+              : 'border-[rgba(255,255,255,0.12)] bg-[rgba(0,0,0,0.25)] text-[#E6EDF3] hover:bg-[rgba(255,255,255,0.06)]'
+          )}
         >
           <Settings className="h-3.5 w-3.5 shrink-0" aria-hidden />
           Credenciais
         </button>
-        <label className="inline-flex items-center gap-1.5 rounded-lg border border-[rgba(255,255,255,0.12)] bg-[rgba(0,0,0,0.25)] px-2.5 py-1.5 text-[11px] font-medium text-[#E6EDF3] sm:text-xs">
+        <label
+          className={cn(
+            'inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-[11px] font-medium sm:text-xs',
+            isLight
+              ? 'h-9 rounded-[10px] border border-[#D9E2EC] bg-white px-3 text-[#0B2A4A]'
+              : 'border-[rgba(255,255,255,0.12)] bg-[rgba(0,0,0,0.25)] text-[#E6EDF3]'
+          )}
+        >
           Janela
           <select
             value={lookbackDays}
             onChange={(e) => setLookbackDays(Number(e.target.value))}
             disabled={syncing || loadingCfg}
-            className="rounded border border-[rgba(255,255,255,0.12)] bg-[rgba(0,0,0,0.35)] px-1.5 py-0.5 text-[11px] text-[#E6EDF3] disabled:opacity-60"
+            className={cn(
+              'rounded border px-1.5 py-0.5 text-[11px] disabled:opacity-60',
+              isLight
+                ? 'rounded-md border border-[#BFD0E2] bg-white text-[#0B2A4A]'
+                : 'border-[rgba(255,255,255,0.12)] bg-[rgba(0,0,0,0.35)] text-[#E6EDF3]'
+            )}
           >
             {LOOKBACK_OPTIONS.map((days) => (
               <option key={days} value={days}>
@@ -98,12 +123,20 @@ export function MapaDigitalIgSyncToolbar({ className }: { className?: string }) 
           type="button"
           disabled={syncing || loadingCfg}
           onClick={() => void handleSync()}
-          className="inline-flex items-center gap-1.5 rounded-lg border border-[rgba(218,165,32,0.45)] bg-[rgba(218,165,32,0.15)] px-2.5 py-1.5 text-[11px] font-semibold text-[#E6EDF3] hover:bg-[rgba(218,165,32,0.22)] disabled:opacity-50 sm:text-xs"
+          className={cn(
+            'inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-[11px] font-semibold disabled:opacity-50 sm:text-xs',
+            isLight
+              ? cn('h-9 rounded-[10px] px-3 transition-all duration-200', COCKPIT_PAGE_ACTIVE_MENU_ITEM)
+              : 'border-[rgba(218,165,32,0.45)] bg-[rgba(218,165,32,0.15)] text-[#E6EDF3] hover:bg-[rgba(218,165,32,0.22)]'
+          )}
         >
           {syncing ? (
-            <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin" aria-hidden />
+            <Loader2
+              className={cn('h-3.5 w-3.5 shrink-0 animate-spin', isLight && 'text-white')}
+              aria-hidden
+            />
           ) : (
-            <RefreshCw className="h-3.5 w-3.5 shrink-0" aria-hidden />
+            <RefreshCw className={cn('h-3.5 w-3.5 shrink-0', isLight && 'text-white')} aria-hidden />
           )}
           Sincronizar comentários
         </button>

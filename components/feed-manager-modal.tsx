@@ -2,6 +2,9 @@
 
 import { useEffect, useState } from 'react'
 import { X, Plus, Trash2, RefreshCw, Edit2 } from 'lucide-react'
+import { useTheme } from '@/contexts/theme-context'
+import { cn } from '@/lib/utils'
+import { sidebarPrimaryCTAButtonClass } from '@/lib/sidebar-menu-active-style'
 
 interface Feed {
   id: string
@@ -19,6 +22,8 @@ interface FeedManagerModalProps {
 }
 
 export function FeedManagerModal({ onClose, onCollect }: FeedManagerModalProps) {
+  const { theme } = useTheme()
+  const isCockpit = theme === 'cockpit'
   const [feeds, setFeeds] = useState<Feed[]>([])
   const [loading, setLoading] = useState(true)
   const [showAddForm, setShowAddForm] = useState(false)
@@ -295,18 +300,25 @@ export function FeedManagerModal({ onClose, onCollect }: FeedManagerModalProps) 
         {feeds.length > 0 && (
           <div className="mb-6">
             <button
+              type="button"
               onClick={handleCollect}
               disabled={collecting}
-              className="w-full px-4 py-2 text-sm font-medium bg-accent-gold text-white rounded-lg hover:bg-accent-gold transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+              className={sidebarPrimaryCTAButtonClass(isCockpit, 'w-full text-sm')}
             >
               {collecting ? (
                 <>
-                  <RefreshCw className="w-4 h-4 animate-spin" />
+                  <RefreshCw
+                    className={cn('h-4 w-4 shrink-0 animate-spin', isCockpit ? 'text-white' : 'text-accent-gold')}
+                    aria-hidden
+                  />
                   Coletando de todos os feeds...
                 </>
               ) : (
                 <>
-                  <RefreshCw className="w-4 h-4" />
+                  <RefreshCw
+                    className={cn('h-4 w-4 shrink-0', isCockpit ? 'text-white' : 'text-accent-gold')}
+                    aria-hidden
+                  />
                   Coletar de Todos os Feeds ({feeds.filter(f => f.active).length} ativos)
                 </>
               )}
@@ -325,8 +337,9 @@ export function FeedManagerModal({ onClose, onCollect }: FeedManagerModalProps) 
           <div className="text-center py-8">
             <p className="text-secondary mb-4">Nenhum feed configurado ainda.</p>
             <button
+              type="button"
               onClick={() => setShowAddForm(true)}
-              className="px-4 py-2 text-sm font-medium bg-accent-gold text-white rounded-lg hover:bg-accent-gold transition-colors"
+              className={sidebarPrimaryCTAButtonClass(isCockpit, 'text-sm')}
             >
               Adicionar Primeiro Feed
             </button>
@@ -470,7 +483,7 @@ export function FeedManagerModal({ onClose, onCollect }: FeedManagerModalProps) 
                 <button
                   type="submit"
                   disabled={submitting}
-                  className="px-4 py-2 bg-accent-gold text-white rounded-lg hover:bg-accent-gold transition-colors disabled:opacity-50"
+                  className={sidebarPrimaryCTAButtonClass(isCockpit)}
                 >
                   {submitting
                     ? editingFeed

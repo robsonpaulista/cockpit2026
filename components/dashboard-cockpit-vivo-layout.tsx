@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useState, type ComponentType, type Ref } from 'react'
+import { useEffect, useMemo, useState, type ComponentType } from 'react'
 import Link from 'next/link'
 import {
   Activity,
@@ -26,7 +26,7 @@ import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YA
 import { KPIHeroCard } from '@/components/kpi-hero-card'
 import { KPICard } from '@/components/kpi-card'
 import { GlassGradientProgressBar } from '@/components/animated-bar'
-import type { KPI, NewsItem } from '@/types'
+import type { KPI } from '@/types'
 import { cn } from '@/lib/utils'
 import {
   formatarTextoDisputaSobraSemDistancia,
@@ -45,6 +45,8 @@ import {
   type RegiaoPiaui,
 } from '@/lib/piaui-regiao'
 import type { InstagramPostChampions, InstagramPostMetricsRow } from '@/lib/instagram-post-champions'
+import { useTheme } from '@/contexts/theme-context'
+import { CockpitTerritorioMapEmbed } from '@/components/cockpit-territorio-map-embed'
 
 const DASHBOARD_BLUE = '#0E74BC'
 const DASHBOARD_GOLD = 'rgb(var(--strategic-yellow))'
@@ -76,6 +78,19 @@ const COCKPIT_POLLS_REGIAO_HEADER_GLASS = cn(
   'shadow-[inset_0_1px_0_rgba(255,255,255,0.62),0_2px_12px_rgba(15,45,74,0.08)]'
 )
 
+/** Superfícies Cockpit quando aparência escura — alinhado a tokens semânticos (sem “vidro” branco). */
+const COCKPIT_SECTION_GLASS_CLASS_DARK =
+  'rounded-2xl border border-border-card/70 bg-bg-surface/92 p-4 backdrop-blur-[10px] shadow-[0_10px_32px_rgba(0,0,0,0.35),inset_0_1px_0_rgba(255,255,255,0.06)]'
+
+const COCKPIT_TERRITORIO_KPI_GLASS_DARK =
+  'rounded-xl border border-border-card/60 bg-bg-surface/75 p-2.5 backdrop-blur-md shadow-[0_2px_12px_rgba(0,0,0,0.22)]'
+
+const COCKPIT_POLLS_REGIAO_HEADER_GLASS_DARK = cn(
+  'flex shrink-0 items-center justify-between gap-1.5',
+  'rounded-lg border border-border-card/60 bg-bg-surface/85 px-2.5 py-1.5 backdrop-blur-md',
+  'shadow-[inset_0_1px_0_rgba(255,255,255,0.06),0_2px_12px_rgba(0,0,0,0.15)]'
+)
+
 const COCKPIT_TERR_BADGE_BASE =
   'inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[10px] font-semibold backdrop-blur-md shadow-[inset_0_1px_0_rgba(255,255,255,0.4),0_2px_12px_rgba(15,45,74,0.06)]'
 
@@ -90,6 +105,19 @@ const COCKPIT_TERR_BADGE_MORNO = cn(
 const COCKPIT_TERR_BADGE_FRIO = cn(
   COCKPIT_TERR_BADGE_BASE,
   'border-red-400/45 bg-red-500/15 text-red-800 supports-[backdrop-filter]:bg-red-500/10 shadow-[inset_0_1px_0_rgba(255,255,255,0.45),0_2px_12px_rgba(239,68,68,0.12)]'
+)
+
+const COCKPIT_TERR_BADGE_QUENTE_DARK = cn(
+  COCKPIT_TERR_BADGE_BASE,
+  'border-emerald-400/35 bg-emerald-500/12 text-emerald-200 supports-[backdrop-filter]:bg-emerald-500/8 shadow-[inset_0_1px_0_rgba(255,255,255,0.08),0_2px_12px_rgba(16,185,129,0.12)]'
+)
+const COCKPIT_TERR_BADGE_MORNO_DARK = cn(
+  COCKPIT_TERR_BADGE_BASE,
+  'border-amber-400/35 bg-amber-500/12 text-amber-200 supports-[backdrop-filter]:bg-amber-500/8 shadow-[inset_0_1px_0_rgba(255,255,255,0.08),0_2px_12px_rgba(245,158,11,0.12)]'
+)
+const COCKPIT_TERR_BADGE_FRIO_DARK = cn(
+  COCKPIT_TERR_BADGE_BASE,
+  'border-red-400/35 bg-red-500/12 text-red-200 supports-[backdrop-filter]:bg-red-500/8 shadow-[inset_0_1px_0_rgba(255,255,255,0.08),0_2px_12px_rgba(239,68,68,0.1)]'
 )
 
 export type SegundaVagaInfoCockpit = {
@@ -165,29 +193,80 @@ export interface DashboardCockpitVivoLayoutProps {
   picoIntencaoGrafico: number
   loadingPostsInsights: boolean
   postsInsights: PostsInsightsCockpitPayload
-  loadingAlerts: boolean
-  monitorNewsOrdenadas: NewsItem[]
-  monitorInsight: {
-    headline: string
-    tone: 'positive' | 'negative' | 'warning' | 'neutral'
-  } | null
-  monitorHeaderContext: string
-  monitorFeaturedNewsIds: string[]
   setInsightTelaCheia: (v: boolean) => void
   setAnaliseTerritoriosTelaCheia: (v: boolean) => void
   setGraficoPollsTelaCheia: (v: boolean) => void
   setBandeirasTelaCheia: (v: boolean) => void
-  setAlertasTelaCheia: (v: boolean) => void
-  getContextoMonitor: (item: NewsItem) => string
-  getLinhaSemanticaClass: (item: NewsItem) => string | null
-  /** Mesmo ref/effect do Monitor compacto: auto-scroll + pausa no hover. */
-  monitorScrollRef: Ref<HTMLDivElement>
-  onMonitorScrollMouseEnter: () => void
-  onMonitorScrollMouseLeave: () => void
-  monitorActiveNewsId: string | null
 }
 
 export function DashboardCockpitVivoLayout(props: DashboardCockpitVivoLayoutProps) {
+  const { appearance } = useTheme()
+  const cockpitDark = appearance === 'dark'
+  const sectionGlass = cockpitDark ? COCKPIT_SECTION_GLASS_CLASS_DARK : COCKPIT_SECTION_GLASS_CLASS
+  const terrKpiGlass = cockpitDark ? COCKPIT_TERRITORIO_KPI_GLASS_DARK : COCKPIT_TERRITORIO_KPI_GLASS
+  const pollsHeadGlass = cockpitDark ? COCKPIT_POLLS_REGIAO_HEADER_GLASS_DARK : COCKPIT_POLLS_REGIAO_HEADER_GLASS
+  const hoverGhost = cockpitDark ? 'hover:bg-bg-surface/55' : 'hover:bg-white/40'
+  const hoverGhostSoft = cockpitDark ? 'hover:bg-bg-surface/50' : 'hover:bg-white/35'
+  const terrBadgeQuente = cockpitDark ? COCKPIT_TERR_BADGE_QUENTE_DARK : COCKPIT_TERR_BADGE_QUENTE
+  const terrBadgeMorno = cockpitDark ? COCKPIT_TERR_BADGE_MORNO_DARK : COCKPIT_TERR_BADGE_MORNO
+  const terrBadgeFrio = cockpitDark ? COCKPIT_TERR_BADGE_FRIO_DARK : COCKPIT_TERR_BADGE_FRIO
+
+  const cockpitSurface = useMemo(() => {
+    const d = cockpitDark
+    return {
+      innerWell: d
+        ? 'mb-2 space-y-2 rounded-xl border border-border-card/60 bg-bg-surface/70 p-3'
+        : 'mb-2 space-y-2 rounded-xl border border-white/45 bg-white/30 p-3',
+      focusGrowth: d
+        ? 'mt-1 rounded-lg border border-border-card/55 bg-bg-surface/55 px-2.5 py-2'
+        : 'mt-1 rounded-lg border border-white/35 bg-white/20 px-2.5 py-2',
+      pulseKpi: d
+        ? 'h-24 min-h-0 w-full min-w-0 rounded-xl border border-gray-800/80 bg-[#111827]/80 backdrop-blur-sm animate-pulse'
+        : 'h-24 min-h-0 w-full min-w-0 rounded-xl border border-white/35 bg-white/10 backdrop-blur-md animate-pulse',
+      heroSkeleton: d
+        ? 'h-52 min-h-[13rem] rounded-xl border border-gray-800/80 bg-[#111827]/80 animate-pulse'
+        : 'h-52 min-h-[13rem] rounded-2xl border border-slate-200/80 bg-slate-200/70 animate-pulse',
+      terrLoading: d ? 'h-40 animate-pulse rounded-xl bg-bg-surface/40' : 'h-40 animate-pulse bg-white/20 rounded-xl',
+      pollsLoading: d
+        ? 'min-h-0 flex-1 rounded-xl bg-bg-surface/40 animate-pulse'
+        : 'min-h-0 flex-1 rounded-xl bg-white/20 animate-pulse',
+      pillRegiao: d
+        ? 'inline-flex items-center gap-1.5 rounded-full border border-border-card/55 bg-bg-surface/55 px-2.5 py-0.5 tabular-nums backdrop-blur-sm shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]'
+        : 'inline-flex items-center gap-1.5 rounded-full border border-white/45 bg-white/12 px-2.5 py-0.5 tabular-nums backdrop-blur-sm shadow-[inset_0_1px_0_rgba(255,255,255,0.4)]',
+      btnMedia: d
+        ? 'shrink-0 cursor-pointer select-none rounded-md border border-border-card/60 bg-bg-surface/75 px-2 py-0.5 tabular-nums text-xs font-bold leading-none text-accent-gold backdrop-blur-sm outline-none transition hover:bg-bg-surface focus-visible:ring-2 focus-visible:ring-accent-gold/50'
+        : 'shrink-0 cursor-pointer select-none rounded-md border border-white/40 bg-white/25 px-2 py-0.5 tabular-nums text-xs font-bold leading-none text-accent-gold backdrop-blur-sm supports-[backdrop-filter]:bg-white/18 shadow-[inset_0_1px_0_rgba(255,255,255,0.5)] outline-none transition hover:bg-white/35 focus-visible:ring-2 focus-visible:ring-accent-gold/50',
+      spanDash: d
+        ? 'shrink-0 rounded-md border border-border-card/50 bg-bg-surface/45 px-2 py-0.5 text-xs font-semibold tabular-nums text-text-muted backdrop-blur-sm'
+        : 'shrink-0 rounded-md border border-white/30 bg-white/10 px-2 py-0.5 text-xs font-semibold tabular-nums text-text-muted backdrop-blur-sm',
+      alertBox: d
+        ? 'max-h-[3.25rem] shrink-0 overflow-auto rounded-md border border-border-card/50 bg-bg-surface/45 px-1.5 py-0.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]'
+        : 'max-h-[3.25rem] shrink-0 overflow-auto rounded-md border border-white/30 bg-white/[0.14] px-1.5 py-0.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.35)]',
+      emptyChart: d
+        ? 'flex h-full min-h-[2.5rem] items-center justify-center rounded-lg border border-border-card/50 bg-bg-surface/40 text-xs text-text-muted'
+        : 'flex h-full min-h-[2.5rem] items-center justify-center rounded-lg border border-white/30 bg-white/10 text-xs text-text-muted',
+      postSkeleton: d ? 'h-24 animate-pulse rounded-xl bg-bg-surface/45' : 'h-24 animate-pulse rounded-xl bg-white/25',
+      postCard: d
+        ? 'flex min-h-0 gap-2 rounded-xl border border-border-card/65 bg-bg-surface/78 p-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] backdrop-blur-[10px] transition-transform hover:scale-[1.01]'
+        : 'flex min-h-0 gap-2 rounded-xl border border-white/50 bg-white/[0.35] p-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.55)] backdrop-blur-[10px] transition-transform hover:scale-[1.01]',
+      postThumb: d
+        ? 'relative h-14 w-14 shrink-0 overflow-hidden rounded-lg border border-border-card/55 bg-bg-surface/45'
+        : 'relative h-14 w-14 shrink-0 overflow-hidden rounded-lg border border-white/45 bg-white/20',
+      emptyPosts: d
+        ? 'rounded-xl border border-border-card/55 bg-bg-surface/55 px-3 py-4 text-center text-[11px] leading-relaxed text-secondary shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]'
+        : 'rounded-xl border border-white/40 bg-white/15 px-3 py-4 text-center text-[11px] leading-relaxed text-secondary shadow-[inset_0_1px_0_rgba(255,255,255,0.4)]',
+      modalShell: d
+        ? 'relative z-10 flex max-h-[min(420px,72vh)] w-full max-w-md flex-col overflow-hidden rounded-2xl border border-border-card/70 bg-bg-surface shadow-[0_20px_50px_rgba(0,0,0,0.45)] backdrop-blur-xl'
+        : 'relative z-10 flex max-h-[min(420px,72vh)] w-full max-w-md flex-col overflow-hidden rounded-2xl border border-white/55 bg-white/85 shadow-[0_20px_50px_rgba(15,45,74,0.18),inset_0_1px_0_rgba(255,255,255,0.9)] backdrop-blur-xl supports-[backdrop-filter]:bg-white/78',
+      tableHead: d
+        ? 'sticky top-0 border-b border-[rgb(var(--border-card))]/50 bg-bg-surface/95 backdrop-blur-sm'
+        : 'sticky top-0 border-b border-[rgb(var(--border-card))]/50 bg-white/90 backdrop-blur-sm',
+      closeHover: d ? 'hover:bg-bg-surface/70 hover:text-text-primary' : 'hover:bg-black/5 hover:text-text-primary',
+      tooltipBg: d ? 'rgb(var(--bg-surface))' : 'rgba(255,255,255,0.95)',
+      regiaoTitleShadow: d ? false : 'drop-shadow-[0_1px_0_rgba(255,255,255,0.35)]',
+    }
+  }, [cockpitDark])
+
   const { setCockpitStatusMetrics } = useCockpitStatus()
   const [modalRegiaoPesquisas, setModalRegiaoPesquisas] = useState<RegiaoPiaui | null>(null)
 
@@ -290,22 +369,6 @@ export function DashboardCockpitVivoLayout(props: DashboardCockpitVivoLayoutProp
     return linhas.slice(0, 3).join('. ') + '.'
   }, [presencaKpi, baseKpi])
 
-  const destaqueRadar = useMemo(() => {
-    const featured = props.monitorNewsOrdenadas.find((n) => props.monitorFeaturedNewsIds.includes(n.id))
-    return featured ?? props.monitorNewsOrdenadas[0] ?? null
-  }, [props.monitorNewsOrdenadas, props.monitorFeaturedNewsIds])
-
-  const listaRadarSecundaria = useMemo(() => {
-    if (!destaqueRadar) return props.monitorNewsOrdenadas.slice(0, 5)
-    return props.monitorNewsOrdenadas.filter((n) => n.id !== destaqueRadar.id).slice(0, 4)
-  }, [props.monitorNewsOrdenadas, destaqueRadar])
-
-  /** Mesma lógica compacta do antigo “Momento atual”: lista bolinha + texto (sem cards). */
-  const itensCockpitRadar = useMemo(() => {
-    if (!destaqueRadar) return []
-    return [destaqueRadar, ...listaRadarSecundaria]
-  }, [destaqueRadar, listaRadarSecundaria])
-
   const heroKpi = props.kpisComMedia.find((k) => k.id === 'ife')
   const heroForCockpit = heroKpi ? { ...heroKpi, label: 'EXPECTATIVA DE VOTOS' } : null
 
@@ -329,19 +392,71 @@ export function DashboardCockpitVivoLayout(props: DashboardCockpitVivoLayoutProp
     return { text: undefined, tone: 'neutral' as const }
   }, [heroKpi, props.VOTOS_ELEICAO_ANTERIOR])
 
+  /** Linha verde “+56.410 em relação a 2022” (referência Visão Geral Cockpit). */
+  const heroLinhaVs2022 = useMemo(() => {
+    if (!heroKpi) return undefined as { text: string; type: 'positive' | 'negative' }[] | undefined
+    const valorAtual =
+      typeof heroKpi.value === 'string'
+        ? parseFloat(heroKpi.value.replace(/[^\d]/g, '')) || 0
+        : typeof heroKpi.value === 'number'
+          ? heroKpi.value
+          : 0
+    if (valorAtual <= 0 || props.VOTOS_ELEICAO_ANTERIOR <= 0) return undefined
+    const diff = valorAtual - props.VOTOS_ELEICAO_ANTERIOR
+    if (diff === 0) return undefined
+    const sinal = diff > 0 ? '+' : '−'
+    const abs = Math.abs(diff).toLocaleString('pt-BR')
+    return [
+      {
+        text: `${sinal}${abs} em relação a 2022`,
+        type: diff > 0 ? ('positive' as const) : ('negative' as const),
+      },
+    ]
+  }, [heroKpi, props.VOTOS_ELEICAO_ANTERIOR])
+
+  /** Série 2022 → valor atual (ease-out) para o gráfico de área do card expectativa. */
+  const expectativaCrescimentoSerie = useMemo((): number[] | undefined => {
+    if (!heroKpi) return undefined
+    const valorAtual =
+      typeof heroKpi.value === 'string'
+        ? parseFloat(heroKpi.value.replace(/[^\d]/g, '')) || 0
+        : typeof heroKpi.value === 'number'
+          ? heroKpi.value
+          : 0
+    const base = props.VOTOS_ELEICAO_ANTERIOR
+    if (valorAtual <= 0 || base <= 0) return undefined
+    const steps = 11
+    return Array.from({ length: steps }, (_, i) => {
+      const t = i / (steps - 1)
+      const eased = 1 - Math.pow(1 - t, 2.15)
+      return Math.round(base + (valorAtual - base) * eased)
+    })
+  }, [heroKpi, props.VOTOS_ELEICAO_ANTERIOR])
+
   const kpiSecondary = props.kpisComMedia.filter((k) => k.id !== 'ife')
   const presenca = kpiSecondary.find((k) => k.id === 'presenca')
   const base = kpiSecondary.find((k) => k.id === 'base')
-  const sentimento = kpiSecondary.find((k) => k.id === 'sentimento')
   const projecao = kpiSecondary.find((k) => k.id === 'projecao')
-  const posicaoChapa = kpiSecondary.find((k) => k.id === 'posicao_chapa')
+
+  const cockpitLabelUpper = (id: KPI['id']): string => {
+    const map: Partial<Record<KPI['id'], string>> = {
+      presenca: 'COBERTURA TERRITORIAL',
+      base: 'LIDERANÇAS MAPEADAS',
+      projecao: 'PROJEÇÃO FEDERAL',
+    }
+    return map[id] ?? ''
+  }
+
+  const formatPresencaValorCockpit = (v: string | number): string | number => {
+    if (typeof v !== 'string' || !v.includes('/')) return v
+    const [a, b] = v.split('/').map((s) => s.trim())
+    return `${a} / ${b}`
+  }
 
   const kpiHrefMap: Partial<Record<KPI['id'], string>> = {
     presenca: '/dashboard/territorio',
     base: '/dashboard/territorio',
     projecao: '/dashboard/chapas',
-    posicao_chapa: '/dashboard/chapas',
-    sentimento: '/dashboard/pesquisa',
   }
 
   /** Mesma lógica dos KPIs secundários do dashboard clássico (subtítulo + linhas). */
@@ -361,8 +476,8 @@ export function DashboardCockpitVivoLayout(props: DashboardCockpitVivoLayoutProp
       if (total > 0) {
         const percentual = Math.round((cidades / total) * 100)
         m.set('presenca', {
-          subtitle: `${percentual}% de cobertura`,
-          subtitleType: percentual >= 50 ? 'positive' : percentual >= 30 ? 'neutral' : 'negative',
+          subtitle: `${percentual}% do estado`,
+          subtitleType: 'neutral',
         })
       }
     }
@@ -379,37 +494,20 @@ export function DashboardCockpitVivoLayout(props: DashboardCockpitVivoLayoutProp
         const media = liderancas / cidadesCobertasPresenca
         const mediaType: 'positive' | 'negative' | 'neutral' =
           media >= 2 ? 'positive' : media >= 1 ? 'neutral' : 'negative'
+        const arred = Math.round(media)
+        const textoMedia =
+          Math.abs(media - arred) < 0.15
+            ? `${arred} lideranças por cidade`
+            : `${media.toFixed(1).replace('.', ',')} lideranças por cidade`
         m.set('base', {
           infoLines: [
             {
-              text: `≈ ${media.toFixed(1).replace('.', ',')} lideranças/cidade`,
+              text: `+ ${textoMedia}`,
               type: mediaType,
-            },
-            {
-              text: `${liderancas.toLocaleString('pt-BR')} ÷ ${cidadesCobertasPresenca} cidades (cobertura)`,
-              type: 'neutral',
             },
           ],
         })
       }
-    }
-
-    if (props.rankingPesquisas && props.rankingPesquisas.posicao > 0) {
-      const rp = props.rankingPesquisas
-      const lines: Detail['infoLines'] = []
-      const rankType: 'positive' | 'negative' | 'neutral' =
-        rp.posicao <= 3 ? 'positive' : rp.posicao <= 5 ? 'neutral' : 'negative'
-      lines.push({
-        text: `${rp.posicao}º de ${rp.totalCandidatos} candidatos`,
-        type: rankType,
-      })
-      if (rp.projecaoVotos && rp.projecaoVotos > 0) {
-        lines.push({
-          text: `≈ ${rp.projecaoVotos.toLocaleString('pt-BR')} votos (${rp.cidadesComPesquisa} cid.)`,
-          type: 'neutral',
-        })
-      }
-      m.set('sentimento', { infoLines: lines })
     }
 
     if (props.segundaVagaInfo) {
@@ -469,26 +567,8 @@ export function DashboardCockpitVivoLayout(props: DashboardCockpitVivoLayoutProp
         }
       }
     }
-    if (props.rankingExpectativa?.posicao && props.rankingExpectativa.posicao > 0) {
-      const nome = props.candidatoPadrao?.trim()
-      const n = props.rankingExpectativa.totalCandidatos
-      m.set('posicao_chapa', {
-        subtitle: nome
-          ? `${nome} — ${n} candidatos eleição`
-          : `${n} candidatos eleição`,
-        subtitleType: 'neutral',
-      })
-    }
-
     return m
-  }, [
-    props.kpisComMedia,
-    props.rankingPesquisas,
-    props.segundaVagaInfo,
-    props.segundaVagaInfoEstadual,
-    props.rankingExpectativa,
-    props.candidatoPadrao,
-  ])
+  }, [props.kpisComMedia, props.segundaVagaInfo, props.segundaVagaInfoEstadual])
 
   const territorioBlock = useMemo(() => {
     const pk = props.kpisComMedia.find((k) => k.id === 'presenca')
@@ -537,165 +617,125 @@ export function DashboardCockpitVivoLayout(props: DashboardCockpitVivoLayoutProp
   const tooltipCoberturaEleitoral = `Cobertura atual: ${territorioBlock.pctEleitorado}%\nCidades sem presença: ${Math.max(0, territorioBlock.totalCidades - territorioBlock.cidadesAtivas)}\nPotencial estimado: +${territorioBlock.eleitoradoSemPresenca.toLocaleString('pt-BR')} eleitores`
 
   return (
-    <div className="px-4 py-4 lg:px-6 lg:py-5 space-y-4 animate-cockpit-fade-in">
-      {/* Expectativa de votos + Radar de movimento no mesmo card (referência Cockpit) */}
-      <section className="min-w-0">
-        {props.loading || !heroForCockpit ? (
-          <div className="h-52 min-h-[13rem] rounded-2xl border border-slate-200/80 bg-slate-200/70 animate-pulse" />
-        ) : (
-          <KPIHeroCard
-            kpi={heroForCockpit}
-            inlineVariacaoEleicao={heroVariacaoInline.text}
-            inlineVariacaoEleicaoTone={heroVariacaoInline.tone}
-            hideValueByDefault
-            cenarioVotos={props.cenarioVotosDashboard}
-            onChangeCenarioVotos={props.setCenarioVotosDashboard}
-            variant="cockpit"
-            shellClassName="flex flex-col min-h-0 outline-none rounded-[14px] focus-visible:ring-2 focus-visible:ring-white/40"
-            cockpitRadarScrollRef={props.monitorScrollRef}
-            onCockpitRadarScrollMouseEnter={props.onMonitorScrollMouseEnter}
-            onCockpitRadarScrollMouseLeave={props.onMonitorScrollMouseLeave}
-            cockpitRadarFixedHeader={
-              <>
-                <div className="flex items-start justify-between gap-2">
-                  <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
-                    <p className="text-[10px] font-bold uppercase tracking-widest text-white/55">
-                      Radar de movimento
-                    </p>
-                    <span className="inline-flex items-center gap-1 text-[9px] font-normal tracking-normal text-white/50">
-                      <span
-                        className="h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-500 radar-pulse"
-                        aria-hidden
-                      />
-                      Ao vivo
-                    </span>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => props.setAlertasTelaCheia(true)}
-                    className="-mt-0.5 shrink-0 rounded-lg p-1 text-white/70 hover:bg-white/10 hover:text-white"
-                    title="Ver radar completo"
-                  >
-                    <Maximize2 className="h-3.5 w-3.5" />
-                  </button>
-                </div>
-              </>
-            }
-            cockpitMomentoAtual={
-              <>
-                {props.loadingAlerts ? (
-                  <>
-                    {[1, 2, 3].map((i) => (
-                      <div key={i} className="flex items-start gap-2">
-                        <span className="mt-1 h-2 w-2 shrink-0 rounded-full bg-white/20" />
-                        <span className="h-3 flex-1 animate-pulse rounded bg-white/15" />
-                      </div>
-                    ))}
-                  </>
-                ) : itensCockpitRadar.length > 0 ? (
-                  itensCockpitRadar.map((item, idx) => {
-                    const sem = props.getLinhaSemanticaClass(item)
-                    const dotClass =
-                      idx === 0
-                        ? 'bg-[rgb(var(--cockpit-cyan))]'
-                        : sem
-                          ? sem
-                          : 'bg-white/40'
-                    const isActive = props.monitorActiveNewsId === item.id
-                    return (
-                      <Link
-                        key={item.id}
-                        href={item.url || '/dashboard/noticias'}
-                        data-news-id={item.id}
-                        target={item.url ? '_blank' : undefined}
-                        rel={item.url ? 'noopener noreferrer' : undefined}
-                        className={cn(
-                          'flex items-start gap-2 text-left transition-colors duration-200',
-                          'text-white/90 hover:text-white',
-                          isActive && 'text-white'
-                        )}
-                      >
-                        <span
-                          className={cn('mt-1 h-2 w-2 shrink-0 rounded-full', dotClass)}
-                          aria-hidden
-                        />
-                        <div className="min-w-0 flex-1">
-                          <span
-                            className={cn(
-                              'line-clamp-2 text-xs font-medium leading-snug',
-                              isActive && 'text-white'
-                            )}
-                          >
-                            {item.title}
-                          </span>
-                          {(item.source || props.getContextoMonitor(item)) && (
-                            <p className="mt-0 text-[9px] leading-tight text-white/45">
-                              {props.getContextoMonitor(item)}
-                              {item.source && props.getContextoMonitor(item) ? ' · ' : ''}
-                              {item.source}
-                            </p>
-                          )}
-                        </div>
-                      </Link>
-                    )
-                  })
-                ) : (
-                  <p className="text-xs leading-snug text-white/55">Sem itens no radar</p>
-                )}
-              </>
-            }
-          />
-        )}
-      </section>
-
-      {/* KPIs — grade 2 colunas no mobile (evita corte por overflow); 5 colunas no lg */}
+    <div className="space-y-5 px-4 py-5 animate-cockpit-fade-in lg:px-6 lg:py-6">
+      {/* Faixa única: expectativa (2 col, destaque) + cobertura + lideranças + projeção — referência sem radar */}
       <section className="min-w-0">
         {props.loading ? (
-          <div className="grid grid-cols-2 gap-3 lg:grid lg:grid-cols-5">
-            {[1, 2, 3, 4, 5].map((i) => (
-              <div
-                key={i}
-                className="h-32 min-h-0 w-full min-w-0 rounded-xl border border-white/35 bg-white/10 backdrop-blur-md animate-pulse"
-              />
+          <div className="grid grid-cols-2 gap-2.5 lg:grid lg:grid-cols-5 lg:gap-3">
+            <div className={cn(cockpitSurface.pulseKpi, 'col-span-2 min-h-[8.5rem]')} />
+            {[1, 2, 3].map((i) => (
+              <div key={i} className={cockpitSurface.pulseKpi} />
             ))}
           </div>
         ) : (
-          <div className="grid grid-cols-2 gap-3 lg:grid lg:grid-cols-5 lg:gap-3">
-            {[presenca, base, sentimento, projecao, posicaoChapa].map((kpi, index) => {
+          <div
+            className={cn(
+              'grid grid-cols-2 gap-2.5 lg:grid lg:gap-3',
+              heroForCockpit ? 'lg:grid-cols-5' : 'lg:grid-cols-3'
+            )}
+          >
+            {heroForCockpit ? (
+              <div className="col-span-2 flex min-h-0 w-full min-w-0">
+                <KPIHeroCard
+                  kpi={heroForCockpit}
+                  infoLines={heroLinhaVs2022}
+                  inlineVariacaoEleicao={heroVariacaoInline.text}
+                  inlineVariacaoEleicaoTone={heroVariacaoInline.tone}
+                  cockpitExpectativaTrendValues={expectativaCrescimentoSerie}
+                  cenarioVotos={props.cenarioVotosDashboard}
+                  onChangeCenarioVotos={props.setCenarioVotosDashboard}
+                  variant="cockpit"
+                  cockpitInlineRow
+                  shellClassName="flex h-full min-h-0 w-full min-w-0 flex-col outline-none rounded-xl focus-visible:ring-2 focus-visible:ring-white/40"
+                />
+              </div>
+            ) : null}
+            {[presenca, base, projecao].map((kpi, index) => {
               if (!kpi) return null
               const d = secondaryKpiDetails.get(kpi.id)
+              const labelUpper = cockpitLabelUpper(kpi.id)
+              const kpiCockpit: KPI = {
+                ...kpi,
+                label: labelUpper || kpi.label,
+                value: kpi.id === 'presenca' ? formatPresencaValorCockpit(kpi.value) : kpi.value,
+              }
+              let pctBar: number | undefined
+              if (kpi.id === 'presenca' && typeof kpi.value === 'string' && kpi.value.includes('/')) {
+                const [c, t] = kpi.value.split('/').map((v) => parseInt(v.trim(), 10) || 0)
+                if (t > 0) pctBar = Math.round((c / t) * 100)
+              }
+              let cidadesCobertasBaseFooter = 0
+              if (presenca && typeof presenca.value === 'string' && presenca.value.includes('/')) {
+                cidadesCobertasBaseFooter = parseInt(presenca.value.split('/')[0]?.trim() || '0', 10) || 0
+              }
+              const varPresenca = typeof presenca?.variation === 'number' ? presenca.variation : 0
+              const footerPresenca =
+                kpi.id === 'presenca' && varPresenca > 0 ? (
+                  <p
+                    className={cn(
+                      'text-center text-[10px] font-medium',
+                      cockpitDark ? 'text-emerald-400' : 'text-emerald-600'
+                    )}
+                  >
+                    +{String(varPresenca).replace('.', ',')}% vs período anterior
+                  </p>
+                ) : kpi.id === 'presenca' && varPresenca < 0 ? (
+                  <p
+                    className={cn(
+                      'text-center text-[10px] font-medium',
+                      cockpitDark ? 'text-rose-300' : 'text-rose-600'
+                    )}
+                  >
+                    {String(varPresenca).replace('.', ',')}% vs período anterior
+                  </p>
+                ) : null
+              const footerBase =
+                kpi.id === 'base' && cidadesCobertasBaseFooter > 0 ? (
+                  <p
+                    className={cn(
+                      'flex items-center justify-center gap-1.5 text-center text-[10px] font-medium',
+                      cockpitDark ? 'text-slate-400' : 'text-slate-600'
+                    )}
+                  >
+                    <span
+                      className="inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-[rgb(var(--strategic-yellow))]"
+                      aria-hidden
+                    />
+                    {cidadesCobertasBaseFooter.toLocaleString('pt-BR')} cidades cobertas
+                  </p>
+                ) : null
+              const footerProjecao =
+                kpi.id === 'projecao' && props.rankingExpectativa && props.rankingExpectativa.posicao > 0 ? (
+                  <p
+                    className={cn(
+                      'text-center text-[10px] font-medium',
+                      cockpitDark ? 'text-slate-400' : 'text-slate-600'
+                    )}
+                  >
+                    {props.rankingExpectativa.posicao}º lugar previsto
+                  </p>
+                ) : null
+              const cockpitFooter = footerPresenca ?? footerBase ?? footerProjecao ?? undefined
+              const delay = (heroForCockpit ? index + 1 : index) * 50
               return (
                 <div
                   key={kpi.id}
                   className={cn(
                     'flex h-full min-h-0 w-full min-w-0 flex-col p-0',
-                    'transition-transform hover:scale-[1.01] animate-cockpit-fade-in'
+                    'animate-cockpit-fade-in'
                   )}
-                  style={{ animationDelay: `${index * 50}ms` }}
+                  style={{ animationDelay: `${delay}ms` }}
                 >
                   <div className="flex min-h-0 h-full min-w-0 flex-1 flex-col">
                     <KPICard
-                      kpi={kpi}
+                      kpi={kpiCockpit}
                       href={kpiHrefMap[kpi.id] ?? '#'}
                       variant="cockpit"
                       subtitle={d?.subtitle}
                       subtitleType={d?.subtitleType}
                       infoLines={d?.infoLines}
-                      cockpitFooter={
-                        kpi.id === 'sentimento' && props.rankingPesquisasTop10.length > 0 ? (
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.preventDefault()
-                              e.stopPropagation()
-                              props.setShowRankingPesquisasModal(true)
-                            }}
-                            className="w-full text-center text-[10px] font-medium text-[rgb(14,116,188)] hover:underline"
-                          >
-                            Ver top 10 pesquisas
-                          </button>
-                        ) : undefined
-                      }
+                      cockpitProgressPct={pctBar}
+                      cockpitFooter={cockpitFooter}
                     />
                   </div>
                 </div>
@@ -709,7 +749,7 @@ export function DashboardCockpitVivoLayout(props: DashboardCockpitVivoLayoutProp
       {!props.loading && (
         <section
           className={cn(
-            COCKPIT_SECTION_GLASS_CLASS,
+            sectionGlass,
             'flex items-start gap-2 px-4 py-2'
           )}
         >
@@ -720,7 +760,7 @@ export function DashboardCockpitVivoLayout(props: DashboardCockpitVivoLayoutProp
             <Lightbulb className="h-4 w-4 text-[rgb(var(--strategic-yellow))]" />
           </span>
           <div className="min-w-0 flex-1">
-            <p className="mb-0.5 text-xs font-bold uppercase tracking-wide text-text-primary">
+            <p className="mb-0.5 text-xs font-bold uppercase tracking-wide text-accent-gold">
               Pulso estratégico
             </p>
             <p className="text-sm text-text-secondary leading-relaxed">{pulsoTexto}</p>
@@ -728,7 +768,7 @@ export function DashboardCockpitVivoLayout(props: DashboardCockpitVivoLayoutProp
           <button
             type="button"
             onClick={() => props.setInsightTelaCheia(true)}
-            className="shrink-0 rounded-lg p-1 text-accent-gold/85 hover:bg-white/40 hover:text-accent-gold"
+            className={cn('shrink-0 rounded-lg p-1 text-accent-gold/85 hover:text-accent-gold', hoverGhost)}
             title="Expandir"
           >
             <Maximize2 className="h-4 w-4" />
@@ -736,9 +776,9 @@ export function DashboardCockpitVivoLayout(props: DashboardCockpitVivoLayoutProp
         </section>
       )}
 
-      {/* Duas colunas: território + pesquisas — mesma altura no desktop; histórico usa flex-1 nos gráficos */}
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 lg:items-stretch">
-        <div className={cn(COCKPIT_SECTION_GLASS_CLASS, 'flex h-full min-h-0 flex-col')}>
+      {/* Território (maior) + pesquisas — proporção próxima ao layout de referência */}
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-5 lg:items-stretch">
+        <div className={cn(sectionGlass, 'flex h-full min-h-0 flex-col lg:col-span-3')}>
           <div className="mb-3 flex shrink-0 items-center justify-between">
             <div className="flex items-center gap-2">
               <Activity className="w-4 h-4 text-accent-gold" />
@@ -747,31 +787,31 @@ export function DashboardCockpitVivoLayout(props: DashboardCockpitVivoLayoutProp
             <button
               type="button"
               onClick={() => props.setAnaliseTerritoriosTelaCheia(true)}
-              className="p-1.5 rounded-lg hover:bg-white/40 text-accent-gold/85 hover:text-accent-gold"
+              className={cn('p-1.5 rounded-lg text-accent-gold/85 hover:text-accent-gold', hoverGhost)}
             >
               <Maximize2 className="w-4 h-4" />
             </button>
           </div>
           {props.loadingTerritorios ? (
-            <div className="h-40 animate-pulse bg-white/20 rounded-xl" />
+            <div className={cockpitSurface.terrLoading} />
           ) : (
             <>
               <div className="mb-2 grid grid-cols-3 gap-2">
-                <div className={COCKPIT_TERRITORIO_KPI_GLASS}>
+                <div className={terrKpiGlass}>
                   <p className="flex items-center gap-1 text-[10px] text-text-muted">
                     <MapPin className="h-3 w-3 shrink-0 text-accent-gold" /> Presença
                   </p>
                   <p className="text-lg font-bold text-text-primary">{territorioBlock.cidadesAtivas}</p>
                   <p className="text-[10px] text-secondary">de {territorioBlock.totalCidades}</p>
                 </div>
-                <div className={COCKPIT_TERRITORIO_KPI_GLASS}>
+                <div className={terrKpiGlass}>
                   <p className="flex items-center gap-1 text-[10px] text-text-muted">
                     <Activity className="h-3 w-3 shrink-0 text-accent-gold" /> Visitadas
                   </p>
                   <p className="text-lg font-bold text-text-primary">{territorioBlock.cidadesVisitadas}</p>
                   <p className="text-[10px] text-secondary">cidades</p>
                 </div>
-                <div className={COCKPIT_TERRITORIO_KPI_GLASS}>
+                <div className={terrKpiGlass}>
                   <p className="flex items-center gap-1 text-[10px] text-text-muted">
                     <TrendingUp className="h-3 w-3 shrink-0 text-accent-gold" /> Cobertura
                   </p>
@@ -780,7 +820,7 @@ export function DashboardCockpitVivoLayout(props: DashboardCockpitVivoLayoutProp
                 </div>
               </div>
               {territorioBlock.eleitoradoTotal > 0 && (
-                <div className="mb-2 space-y-2 rounded-xl border border-white/45 bg-white/30 p-3">
+                <div className={cockpitSurface.innerWell}>
                   <div className="flex flex-wrap items-end justify-between gap-x-3 gap-y-1">
                     <p className="text-xs leading-snug text-text-secondary">
                       <span className="block text-[10px] font-medium uppercase tracking-wide text-text-muted">
@@ -823,17 +863,17 @@ export function DashboardCockpitVivoLayout(props: DashboardCockpitVivoLayoutProp
                     />
                     <div className="mt-1 flex flex-wrap gap-1.5">
                       {props.territoriosQuentes.length > 0 && (
-                        <span className={COCKPIT_TERR_BADGE_QUENTE}>
+                        <span className={terrBadgeQuente}>
                           <Flame className="h-3 w-3 shrink-0" /> {props.territoriosQuentes.length} quentes
                         </span>
                       )}
                       {props.territoriosMornos.length > 0 && (
-                        <span className={COCKPIT_TERR_BADGE_MORNO}>
+                        <span className={terrBadgeMorno}>
                           <ThermometerSun className="h-3 w-3 shrink-0" /> {props.territoriosMornos.length} mornos
                         </span>
                       )}
                       {props.territoriosFrios.length > 0 && (
-                        <span className={COCKPIT_TERR_BADGE_FRIO}>
+                        <span className={terrBadgeFrio}>
                           <ThermometerSnowflake className="h-3 w-3 shrink-0" /> {props.territoriosFrios.length} frios
                         </span>
                       )}
@@ -841,21 +881,29 @@ export function DashboardCockpitVivoLayout(props: DashboardCockpitVivoLayoutProp
                   </div>
                 </div>
               )}
-              <div className="mt-1 rounded-lg border border-white/35 bg-white/20 px-2.5 py-2">
+              <div className={cockpitSurface.focusGrowth}>
                 <p className="text-[10px] font-semibold uppercase tracking-wide text-text-muted">Foco de crescimento</p>
                 <p className="text-[11px] font-medium text-text-primary">
                   Prioridade: expandir presença nas cidades ainda não consolidadas.
                 </p>
               </div>
-              <p className="mt-1 flex items-center gap-1.5 text-[11px] font-medium text-amber-900/90">
-                <AlertTriangle className="h-3.5 w-3.5 shrink-0 text-amber-700" />
+              <p
+                className={cn(
+                  'mt-1 flex items-center gap-1.5 text-[11px] font-medium',
+                  cockpitDark ? 'text-amber-200/95' : 'text-amber-900/90'
+                )}
+              >
+                <AlertTriangle
+                  className={cn('h-3.5 w-3.5 shrink-0', cockpitDark ? 'text-amber-400' : 'text-amber-700')}
+                />
                 {riscoSemCoberturaPct}% do eleitorado ainda sem cobertura
               </p>
+              <CockpitTerritorioMapEmbed />
             </>
           )}
         </div>
 
-        <div className={cn(COCKPIT_SECTION_GLASS_CLASS, 'flex h-full min-h-0 flex-col')}>
+        <div className={cn(sectionGlass, 'flex h-full min-h-0 flex-col lg:col-span-2')}>
           <div className="mb-2 flex shrink-0 items-center justify-between">
             <h2 className="text-base font-semibold text-text-primary">Histórico de pesquisas</h2>
             <div className="flex items-center gap-2">
@@ -863,7 +911,7 @@ export function DashboardCockpitVivoLayout(props: DashboardCockpitVivoLayoutProp
                 <button
                   type="button"
                   onClick={() => props.setGraficoPollsTelaCheia(true)}
-                  className="p-1.5 rounded-lg hover:bg-white/40 text-accent-gold/85 hover:text-accent-gold"
+                  className={cn('p-1.5 rounded-lg text-accent-gold/85 hover:text-accent-gold', hoverGhost)}
                 >
                   <Maximize2 className="w-4 h-4" />
                 </button>
@@ -879,7 +927,7 @@ export function DashboardCockpitVivoLayout(props: DashboardCockpitVivoLayoutProp
                 <span
                   key={r.regiao}
                   title={`${r.n} pesquisa(s) com município nesta região`}
-                  className="inline-flex items-center gap-1.5 rounded-full border border-white/45 bg-white/12 px-2.5 py-0.5 tabular-nums backdrop-blur-sm shadow-[inset_0_1px_0_rgba(255,255,255,0.4)]"
+                  className={cockpitSurface.pillRegiao}
                 >
                   <span className="text-text-secondary">{r.regiao}</span>
                   <span className="font-semibold text-text-primary">{r.media}%</span>
@@ -896,7 +944,7 @@ export function DashboardCockpitVivoLayout(props: DashboardCockpitVivoLayoutProp
           ) : null}
           <div className="flex min-h-[12rem] flex-1 flex-col">
             {props.loadingPolls ? (
-              <div className="min-h-0 flex-1 rounded-xl bg-white/20 animate-pulse" />
+              <div className={cockpitSurface.pollsLoading} />
             ) : cockpitUsaMiniGraficosRegiao ? (
               <div className="grid h-full min-h-0 flex-1 grid-cols-2 grid-rows-2 gap-x-2 gap-y-1">
                 {REGIOES_PI_ORDER.map((regiao, idx) => {
@@ -921,8 +969,13 @@ export function DashboardCockpitVivoLayout(props: DashboardCockpitVivoLayoutProp
                           'border border-rose-400/55 bg-[linear-gradient(180deg,rgba(244,63,94,0.26)_0%,rgba(225,29,72,0.14)_48%,rgba(190,24,93,0.11)_100%)] shadow-[inset_0_1px_0_rgba(255,255,255,0.38),0_1px_10px_-3px_rgba(244,63,94,0.22)]'
                       )}
                     >
-                      <div className={COCKPIT_POLLS_REGIAO_HEADER_GLASS}>
-                        <span className="min-w-0 truncate text-xs font-semibold leading-tight tracking-tight text-text-primary drop-shadow-[0_1px_0_rgba(255,255,255,0.35)]">
+                      <div className={pollsHeadGlass}>
+                        <span
+                          className={cn(
+                            'min-w-0 truncate text-xs font-semibold leading-tight tracking-tight text-text-primary',
+                            cockpitSurface.regiaoTitleShadow
+                          )}
+                        >
                           {regiao}
                         </span>
                         {mediaRow != null ? (
@@ -933,22 +986,25 @@ export function DashboardCockpitVivoLayout(props: DashboardCockpitVivoLayoutProp
                               e.stopPropagation()
                               setModalRegiaoPesquisas(regiao)
                             }}
-                            className="shrink-0 cursor-pointer select-none rounded-md border border-white/40 bg-white/25 px-2 py-0.5 tabular-nums text-xs font-bold leading-none text-accent-gold backdrop-blur-sm supports-[backdrop-filter]:bg-white/18 shadow-[inset_0_1px_0_rgba(255,255,255,0.5)] outline-none transition hover:bg-white/35 focus-visible:ring-2 focus-visible:ring-accent-gold/50"
+                            className={cockpitSurface.btnMedia}
                             title={`Média ${mediaRow.media}% · ${mediaRow.n} pesquisa(s). Duplo clique para listar todas.`}
                           >
                             {mediaRow.media}%
                           </button>
                         ) : (
-                          <span className="shrink-0 rounded-md border border-white/30 bg-white/10 px-2 py-0.5 text-xs font-semibold tabular-nums text-text-muted backdrop-blur-sm">
-                            —
-                          </span>
+                          <span className={cockpitSurface.spanDash}>—</span>
                         )}
                       </div>
                       {mostrarAlertas ? (
-                        <div className="max-h-[3.25rem] shrink-0 overflow-auto rounded-md border border-white/30 bg-white/[0.14] px-1.5 py-0.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.35)]">
+                        <div className={cockpitSurface.alertBox}>
                           <ul className="space-y-0.5 text-[12px] leading-tight text-text-primary">
                             {miniAlerts.regiaoAbaixo && (
-                              <li className="flex items-start gap-1 text-amber-950/90">
+                              <li
+                                className={cn(
+                                  'flex items-start gap-1',
+                                  cockpitDark ? 'text-amber-200/95' : 'text-amber-950/90'
+                                )}
+                              >
                                 <AlertTriangle
                                   className="mt-px h-2.5 w-2.5 shrink-0 text-amber-700"
                                   aria-hidden
@@ -964,7 +1020,13 @@ export function DashboardCockpitVivoLayout(props: DashboardCockpitVivoLayoutProp
                                 key={`${t.cidadeLabel}-${i}`}
                                 className={cn(
                                   'flex items-start gap-1',
-                                  t.direcao === 'subiu' ? 'text-emerald-900/95' : 'text-rose-900/95'
+                                  t.direcao === 'subiu'
+                                    ? cockpitDark
+                                      ? 'text-emerald-200/95'
+                                      : 'text-emerald-900/95'
+                                    : cockpitDark
+                                      ? 'text-rose-200/95'
+                                      : 'text-rose-900/95'
                                 )}
                               >
                                 {t.direcao === 'subiu' ? (
@@ -999,9 +1061,7 @@ export function DashboardCockpitVivoLayout(props: DashboardCockpitVivoLayoutProp
                       ) : null}
                       <div className="min-h-0 flex-1 w-full min-w-0">
                         {series.length === 0 ? (
-                          <div className="flex h-full min-h-[2.5rem] items-center justify-center rounded-lg border border-white/30 bg-white/10 text-xs text-text-muted">
-                            Sem dados
-                          </div>
+                          <div className={cockpitSurface.emptyChart}>Sem dados</div>
                         ) : (
                           <ResponsiveContainer width="100%" height="100%">
                             <AreaChart data={series} margin={{ top: 0, right: 2, left: -18, bottom: 0 }}>
@@ -1022,7 +1082,7 @@ export function DashboardCockpitVivoLayout(props: DashboardCockpitVivoLayoutProp
                               <YAxis hide domain={[0, 100]} width={0} />
                               <Tooltip
                                 contentStyle={{
-                                  backgroundColor: 'rgba(255,255,255,0.95)',
+                                  backgroundColor: cockpitSurface.tooltipBg,
                                   border: '1px solid rgb(var(--border-card))',
                                   borderRadius: 6,
                                   fontSize: 11,
@@ -1121,7 +1181,7 @@ export function DashboardCockpitVivoLayout(props: DashboardCockpitVivoLayoutProp
                     <YAxis stroke="rgb(var(--text-muted))" fontSize={11} domain={[0, 100]} />
                     <Tooltip
                       contentStyle={{
-                        backgroundColor: 'rgba(255,255,255,0.95)',
+                        backgroundColor: cockpitSurface.tooltipBg,
                         border: '1px solid rgb(var(--border-card))',
                         borderRadius: 8,
                       }}
@@ -1129,7 +1189,7 @@ export function DashboardCockpitVivoLayout(props: DashboardCockpitVivoLayoutProp
                         if (!active || !payload?.length) return null
                         const row = payload[0].payload as { intencao: number; cidade?: string }
                         return (
-                          <div className="p-2 text-xs">
+                          <div className="p-2 text-xs text-text-primary">
                             <p className="font-semibold">{label}</p>
                             <p>Intenção: {row.intencao}%</p>
                           </div>
@@ -1176,7 +1236,7 @@ export function DashboardCockpitVivoLayout(props: DashboardCockpitVivoLayoutProp
 
       {/* Posts & Insights — alinhado à aba homônima em Conteúdo */}
       <div className="pb-4">
-        <div className={COCKPIT_SECTION_GLASS_CLASS}>
+        <div className={sectionGlass}>
           <div className="mb-2 flex items-center justify-between gap-2">
             <div className="min-w-0 flex items-center gap-2">
               <BarChart3 className="h-4 w-4 shrink-0 text-accent-gold" aria-hidden />
@@ -1186,14 +1246,17 @@ export function DashboardCockpitVivoLayout(props: DashboardCockpitVivoLayoutProp
             <div className="flex shrink-0 items-center gap-1">
               <Link
                 href="/dashboard/conteudo"
-                className="rounded-lg px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-accent-gold/90 hover:bg-white/35 hover:text-accent-gold"
+                className={cn(
+                  'rounded-lg px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-accent-gold/90 hover:text-accent-gold',
+                  hoverGhostSoft
+                )}
               >
                 Conteúdo
               </Link>
               <button
                 type="button"
                 onClick={() => props.setBandeirasTelaCheia(true)}
-                className="rounded-lg p-1.5 text-accent-gold/85 hover:bg-white/40 hover:text-accent-gold"
+                className={cn('rounded-lg p-1.5 text-accent-gold/85 hover:text-accent-gold', hoverGhost)}
                 title="Ver em tela cheia"
               >
                 <Maximize2 className="h-4 w-4" />
@@ -1208,7 +1271,7 @@ export function DashboardCockpitVivoLayout(props: DashboardCockpitVivoLayoutProp
           {props.loadingPostsInsights ? (
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
               {[1, 2, 3, 4, 5, 6].map((i) => (
-                <div key={i} className="h-24 animate-pulse rounded-xl bg-white/25" />
+                <div key={i} className={cockpitSurface.postSkeleton} />
               ))}
             </div>
           ) : props.postsInsights ? (
@@ -1220,11 +1283,8 @@ export function DashboardCockpitVivoLayout(props: DashboardCockpitVivoLayoutProp
                     const post = insights[key]
                     const value = metric(post)
                     return (
-                      <li
-                        key={key}
-                        className="flex min-h-0 gap-2 rounded-xl border border-white/50 bg-white/[0.35] p-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.55)] backdrop-blur-[10px] transition-transform hover:scale-[1.01]"
-                      >
-                        <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-lg border border-white/45 bg-white/20">
+                      <li key={key} className={cockpitSurface.postCard}>
+                        <div className={cockpitSurface.postThumb}>
                           {post.thumbnail ? (
                             <img src={post.thumbnail} alt="" className="h-full w-full object-cover" />
                           ) : (
@@ -1256,7 +1316,7 @@ export function DashboardCockpitVivoLayout(props: DashboardCockpitVivoLayoutProp
               )
             })()
           ) : (
-            <p className="rounded-xl border border-white/40 bg-white/15 px-3 py-4 text-center text-[11px] leading-relaxed text-secondary shadow-[inset_0_1px_0_rgba(255,255,255,0.4)]">
+            <p className={cockpitSurface.emptyPosts}>
               Conecte o Instagram em{' '}
               <Link href="/dashboard/conteudo" className="font-semibold text-accent-gold hover:underline">
                 Conteúdo
@@ -1280,10 +1340,7 @@ export function DashboardCockpitVivoLayout(props: DashboardCockpitVivoLayoutProp
             aria-label="Fechar"
             onClick={() => setModalRegiaoPesquisas(null)}
           />
-          <div
-            className="relative z-10 flex max-h-[min(420px,72vh)] w-full max-w-md flex-col overflow-hidden rounded-2xl border border-white/55 bg-white/85 shadow-[0_20px_50px_rgba(15,45,74,0.18),inset_0_1px_0_rgba(255,255,255,0.9)] backdrop-blur-xl supports-[backdrop-filter]:bg-white/78"
-            onClick={(e) => e.stopPropagation()}
-          >
+          <div className={cockpitSurface.modalShell} onClick={(e) => e.stopPropagation()}>
             <div className="flex shrink-0 items-start justify-between gap-2 border-b border-[rgb(var(--border-card))]/40 px-3 py-2.5">
               <div className="min-w-0">
                 <h3
@@ -1299,7 +1356,7 @@ export function DashboardCockpitVivoLayout(props: DashboardCockpitVivoLayoutProp
               <button
                 type="button"
                 onClick={() => setModalRegiaoPesquisas(null)}
-                className="shrink-0 rounded-lg p-1.5 text-text-secondary hover:bg-black/5 hover:text-text-primary"
+                className={cn('shrink-0 rounded-lg p-1.5 text-text-secondary', cockpitSurface.closeHover)}
                 aria-label="Fechar"
               >
                 <X className="h-4 w-4" />
@@ -1311,7 +1368,7 @@ export function DashboardCockpitVivoLayout(props: DashboardCockpitVivoLayoutProp
               ) : (
                 <table className="w-full border-collapse text-left text-[11px]">
                   <thead>
-                    <tr className="sticky top-0 border-b border-[rgb(var(--border-card))]/50 bg-white/90 backdrop-blur-sm">
+                    <tr className={cockpitSurface.tableHead}>
                       <th className="py-1.5 pr-2 font-semibold text-text-muted">Data</th>
                       <th className="py-1.5 pr-2 font-semibold text-text-muted">Cidade</th>
                       <th className="py-1.5 pr-2 font-semibold text-text-muted">Instituto</th>

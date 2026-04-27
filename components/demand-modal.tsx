@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from 'react'
 import { X } from 'lucide-react'
+import { useTheme } from '@/contexts/theme-context'
+import { sidebarPrimaryCTAButtonClass } from '@/lib/sidebar-menu-active-style'
 
 interface City {
   id: string
@@ -40,6 +42,8 @@ interface DemandModalProps {
 }
 
 export function DemandModal({ demand, onClose, onSuccess }: DemandModalProps) {
+  const { theme } = useTheme()
+  const isCockpit = theme === 'cockpit'
   const [formData, setFormData] = useState({
     title: demand?.title || '',
     description: demand?.description || '',
@@ -276,7 +280,7 @@ export function DemandModal({ demand, onClose, onSuccess }: DemandModalProps) {
             <button
               type="submit"
               disabled={loading}
-              className="px-4 py-2 bg-accent-gold text-white rounded-lg hover:bg-accent-gold transition-colors disabled:opacity-50"
+              className={sidebarPrimaryCTAButtonClass(isCockpit)}
             >
               {loading ? 'Salvando...' : demand?.id ? 'Atualizar' : 'Criar Demanda'}
             </button>

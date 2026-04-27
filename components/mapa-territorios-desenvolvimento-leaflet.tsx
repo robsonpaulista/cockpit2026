@@ -167,6 +167,7 @@ type GeoStyleContext = {
   classificacao: Map<TerritorioDesenvolvimentoPI, ClassificacaoTerritorioTd>
   hoverTdTabela: TerritorioDesenvolvimentoPI | null
   visualPreset: 'default' | 'futuristic'
+  visualTheme: 'dark' | 'light'
   maiorPesoTd: TerritorioDesenvolvimentoPI | null
   piorDeltaTd: TerritorioDesenvolvimentoPI | null
   deltasDistintos: boolean
@@ -176,9 +177,38 @@ const GEO_STYLE_CTX_VAZIO: GeoStyleContext = {
   classificacao: new Map(),
   hoverTdTabela: null,
   visualPreset: 'default',
+  visualTheme: 'dark',
   maiorPesoTd: null,
   piorDeltaTd: null,
   deltasDistintos: false,
+}
+
+const CORES_TERRITORIO_LIGHT_REPUBLICANOS: Partial<
+  Record<TerritorioDesenvolvimentoPI, { fill: string; stroke: string }>
+> = {
+  'Planície Litorânea': { fill: '#0057B8', stroke: '#003A7A' },
+  Cocais: { fill: '#F7C948', stroke: '#A86D00' },
+  Carnaubais: { fill: '#19A974', stroke: '#0F7A55' },
+  'Entre Rios': { fill: '#00A6B2', stroke: '#0A6C73' },
+  'Vale do Sambito': { fill: '#7A5AF8', stroke: '#5A3FC0' },
+  'Vale do Rio Guaribas': { fill: '#D9A404', stroke: '#9A7200' },
+  'Chapada do Vale do Rio Itaim': { fill: '#E5484D', stroke: '#B4232A' },
+  'Vale do Canindé': { fill: '#2F80ED', stroke: '#1D5FB8' },
+  'Serra da Capivara': { fill: '#1F9D8B', stroke: '#146D60' },
+  'Vale dos Rios Piauí e Itaueira': { fill: '#8E6CF8', stroke: '#664AC2' },
+  'Tabuleiros do Alto Parnaíba': { fill: '#7C8FA3', stroke: '#52677A' },
+  'Chapada das Mangabeiras': { fill: '#2DB784', stroke: '#1E835E' },
+}
+
+function getCorTerritorioMapa(
+  td: TerritorioDesenvolvimentoPI,
+  opts?: { isFuturisticLight?: boolean }
+): { fill: string; stroke: string } {
+  if (opts?.isFuturisticLight) {
+    const mapped = CORES_TERRITORIO_LIGHT_REPUBLICANOS[td]
+    if (mapped) return mapped
+  }
+  return getCorTerritorioDesenvolvimentoPI(td)
 }
 
 function classePulsoPorClassificacao(
@@ -257,59 +287,77 @@ function styleForMunicipioFeature(
     nomeMun.length > 0 &&
     normalizeMunicipioNome(nomeMun) === normalizeMunicipioNome(nomeFocoMun)
   const preset = ctx.visualPreset
+  const isFuturisticLight = preset === 'futuristic' && ctx.visualTheme === 'light'
 
   if (preset === 'futuristic' && !td) {
     return {
-      fillColor: '#10161F',
-      color: 'rgba(255,255,255,0.06)',
+      fillColor: isFuturisticLight ? '#FFFFFF' : 'rgb(var(--bg-sidebar))',
+      color: isFuturisticLight ? 'rgba(15,23,42,0.18)' : 'rgba(255,255,255,0.06)',
       weight: emFoco ? 0.2 : 0.28,
       opacity: 1,
-      fillOpacity: emFoco ? 0.35 : 0.72,
+      fillOpacity: emFoco ? (isFuturisticLight ? 0.5 : 0.35) : isFuturisticLight ? 0.92 : 0.72,
       className: `td-mun-poly td-mun-poly--fut td-mun-poly--fut-fora${emFoco ? ' td-mun-poly--fut-fora-foco' : ''}`,
     }
   }
 
   if (preset === 'futuristic' && td) {
-    const { fill, stroke } = getCorTerritorioDesenvolvimentoPI(td)
+    const { fill, stroke } = getCorTerritorioMapa(td, { isFuturisticLight })
     const hoverMapa = ctx.hoverTdTabela === td
+    const algumTdEmHoverTabela = ctx.hoverTdTabela !== null
     const brilhoMaiorPeso = ctx.maiorPesoTd === td && focusTd === null
     const riscoDelta = ctx.deltasDistintos && ctx.piorDeltaTd === td
     if (!emFoco) {
+      if (algumTdEmHoverTabela && !hoverMapa) {
+        return {
+          fillColor: isFuturisticLight ? 'rgba(255,255,255,0.96)' : 'rgb(var(--bg-surface))',
+          color: isFuturisticLight ? 'rgba(15,23,42,0.14)' : 'rgba(255,255,255,0.06)',
+          weight: isFuturisticLight ? 0.5 : 0.45,
+          opacity: 1,
+          fillOpacity: isFuturisticLight ? 1 : 0.9,
+          className: 'td-mun-poly td-mun-poly--fut td-mun-poly--fut-dim',
+        }
+      }
       let extra = ''
       if (hoverMapa) extra += ' td-mun-poly--fut-hover'
       if (brilhoMaiorPeso) extra += ' td-mun-poly--fut-max'
       if (riscoDelta) extra += ' td-mun-poly--fut-risk'
       return {
-        fillColor: hoverMapa ? hexToRgba(fill, 0.34) : '#26303B',
-        color: hoverMapa ? stroke : 'rgba(255,255,255,0.08)',
-        weight: hoverMapa ? 1.15 : 0.55,
+        fillColor: hoverMapa
+          ? isFuturisticLight
+            ? fill
+            : hexToRgba(fill, 0.34)
+          : isFuturisticLight
+            ? fill
+            : 'rgb(var(--bg-surface))',
+        color: hoverMapa ? stroke : isFuturisticLight ? hexToRgba(stroke, 0.78) : 'rgba(255,255,255,0.08)',
+        weight: hoverMapa ? 1.25 : isFuturisticLight ? 0.85 : 0.55,
         opacity: 1,
-        fillOpacity: hoverMapa ? 0.94 : 0.92,
+        fillOpacity: hoverMapa ? (isFuturisticLight ? 1 : 0.94) : isFuturisticLight ? 1 : 0.92,
         className: `td-mun-poly td-mun-poly--fut${extra}`,
       }
     }
     if (ehCidadeDestacada) {
       return {
-        fillColor: hexToRgba(fill, 0.48),
+        fillColor: isFuturisticLight ? fill : hexToRgba(fill, 0.48),
         color: stroke,
         weight: 2,
         opacity: 1,
-        fillOpacity: 0.9,
+        fillOpacity: isFuturisticLight ? 1 : 0.9,
         className: 'td-mun-poly td-mun-poly--fut td-mun-poly--fut-cidade',
       }
     }
     if (ehDestaque) {
       return {
-        fillColor: hexToRgba(fill, 0.4),
+        fillColor: isFuturisticLight ? fill : hexToRgba(fill, 0.4),
         color: stroke,
         weight: 1.6,
         opacity: 1,
-        fillOpacity: 0.95,
+        fillOpacity: isFuturisticLight ? 1 : 0.95,
         className: 'td-mun-poly td-mun-poly--fut td-mun-poly--fut-selected-td',
       }
     }
     return {
-      fillColor: '#1B222C',
+      fillColor: 'rgb(var(--bg-surface))',
       color: 'rgba(255,255,255,0.06)',
       weight: 0.35,
       opacity: 0.92,
@@ -590,7 +638,8 @@ function aplicarFocoMarcadoresPesoTd(
   focusTd: TerritorioDesenvolvimentoPI | null,
   geoLayer: L.GeoJSON,
   map: L.Map,
-  hoverTdMapa: TerritorioDesenvolvimentoPI | null = null
+  hoverTdMapa: TerritorioDesenvolvimentoPI | null = null,
+  isFuturisticLight = false
 ) {
   for (const [td, marker] of markerByTd) {
     marcadorTdLatLngComOffsetPx(map, marker, geoLayer, td)
@@ -606,7 +655,7 @@ function aplicarFocoMarcadoresPesoTd(
         el.classList.remove('td-peso-eleitores-marker--ig-map-hover')
       }
       if (focusTd !== null && td === focusTd) {
-        const { fill, stroke } = getCorTerritorioDesenvolvimentoPI(td)
+        const { fill, stroke } = getCorTerritorioMapa(td, { isFuturisticLight })
         el.style.setProperty('--td-focus-stroke', stroke)
         el.style.setProperty('--td-focus-ring', hexToRgba(fill, 0.24))
         el.classList.add('td-peso-eleitores-marker--focado')
@@ -647,7 +696,8 @@ function atualizarHoverMarcadorTd(
   markerByTd: Map<TerritorioDesenvolvimentoPI, L.Marker>,
   hoverTd: TerritorioDesenvolvimentoPI | null,
   visualPreset: 'default' | 'futuristic',
-  focusTd: TerritorioDesenvolvimentoPI | null
+  focusTd: TerritorioDesenvolvimentoPI | null,
+  isFuturisticLight = false
 ) {
   if (visualPreset !== 'futuristic') return
   for (const [td, marker] of markerByTd) {
@@ -657,7 +707,7 @@ function atualizarHoverMarcadorTd(
     const isHovered = !filterAtivo && hoverTd !== null && td === hoverTd
     const otherHovered = !filterAtivo && hoverTd !== null && !isHovered
     if (isHovered) {
-      const { fill, stroke } = getCorTerritorioDesenvolvimentoPI(td)
+      const { fill, stroke } = getCorTerritorioMapa(td, { isFuturisticLight })
       el.style.setProperty('--td-hover-bg', hexToRgba(fill, 0.2))
       el.style.setProperty('--td-hover-stroke', stroke)
       el.classList.add('td-peso-eleitores-marker--td-hover')
@@ -858,6 +908,7 @@ function montarMarcadoresPesoEleitoresPorTd(
   map: L.Map,
   geoLayer: L.GeoJSON,
   visualPreset: 'default' | 'futuristic',
+  visualTheme: 'dark' | 'light',
   onHoverTdCard?: (td: TerritorioDesenvolvimentoPI | null) => void
 ): Map<TerritorioDesenvolvimentoPI, L.Marker> {
   const grupo = L.layerGroup()
@@ -873,17 +924,19 @@ function montarMarcadoresPesoEleitoresPorTd(
   for (const r of resumos) {
     const center = posicaoMarcadorTdNoGeoLayer(geoLayer, r.territorio)
     if (!center) continue
+    const isFut = visualPreset === 'futuristic'
+    const isFutLight = isFut && visualTheme === 'light'
     const pct = totalEstadual > 0 ? (r.eleitores / totalEstadual) * 100 : 0
     const pctStr = fmtPctEleitoresTd.format(pct).replace(/\u00a0/g, '')
-    const { fill, stroke } = getCorTerritorioDesenvolvimentoPI(r.territorio)
+    const { fill, stroke } = getCorTerritorioMapa(r.territorio, { isFuturisticLight: isFutLight })
     const escala = 0.88 + 0.36 * (r.eleitores / maxEleitoresTd)
     const nomeCurto = escapeHtml(r.territorio)
     const subEleit = escapeHtml(formatarEleitoresCompactoPt(r.eleitores))
 
-    const isFut = visualPreset === 'futuristic'
-
     const cardInlineStyle = isFut
-      ? `max-width:124px;padding:10px 12px;border-radius:12px;border:1px solid rgba(255,255,255,0.08);background:rgba(18,24,33,0.94);text-align:left;box-shadow:0 4px 14px rgba(0,0,0,0.45)`
+      ? isFutLight
+        ? `max-width:124px;padding:10px 12px;border-radius:12px;border:1px solid rgba(15,23,42,0.18);background:rgba(255,255,255,0.96);text-align:left;box-shadow:0 4px 14px rgba(15,23,42,0.18)`
+        : `max-width:124px;padding:10px 12px;border-radius:12px;border:1px solid rgb(var(--border-card) / 0.45);background:rgb(var(--bg-surface) / 0.94);text-align:left;box-shadow:0 4px 14px rgba(0,0,0,0.28)`
       : `max-width:118px;padding:6px 8px 7px;border-radius:11px;border:2px solid ${stroke};background:linear-gradient(165deg,${fill}f2 0%,${fill} 100%);text-align:center`
 
     const html = isFut
@@ -891,10 +944,10 @@ function montarMarcadoresPesoEleitoresPorTd(
         <div class="td-peso-eleitores-card" data-card-tone="futuristic" style="${cardInlineStyle}">
           <div style="display:flex;align-items:center;gap:5px;margin-bottom:3px">
             <span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:${fill};flex-shrink:0"></span>
-            <div class="td-peso-eleitores-card__nome td-peso-eleitores-card__nome--fut" style="font-size:8px;font-weight:600;line-height:1.2;color:#E6EDF3;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;max-width:86px" title="${nomeCurto}">${nomeCurto}</div>
+            <div class="td-peso-eleitores-card__nome td-peso-eleitores-card__nome--fut" style="font-size:8px;font-weight:600;line-height:1.2;color:${isFutLight ? '#0F1F4D' : 'rgb(var(--text-primary))'};overflow:hidden;white-space:nowrap;text-overflow:ellipsis;max-width:86px" title="${nomeCurto}">${nomeCurto}</div>
           </div>
-          <div class="td-peso-eleitores-card__value" style="font-size:17px;font-weight:700;line-height:1;color:#E6EDF3;letter-spacing:-0.02em">${pctStr}%</div>
-          <div class="td-peso-eleitores-card__meta" style="margin-top:3px;font-size:8px;font-weight:400;line-height:1.15;color:#7F8A96">${subEleit}</div>
+          <div class="td-peso-eleitores-card__value" style="font-size:17px;font-weight:700;line-height:1;color:${isFutLight ? '#0F1F4D' : 'rgb(var(--text-primary))'};letter-spacing:-0.02em">${pctStr}%</div>
+          <div class="td-peso-eleitores-card__meta" style="margin-top:3px;font-size:8px;font-weight:400;line-height:1.15;color:${isFutLight ? '#475569' : 'rgb(var(--text-muted))'}">${subEleit}</div>
           <div class="td-peso-eleitores-card__ig-detail" style="display:none" aria-hidden="true"></div>
         </div>
       </div>`
@@ -1409,6 +1462,8 @@ function TdPctDeltaCelula({ v22, delta }: { v22: number; delta: number }) {
 type MapaTerritoriosDesenvolvimentoLeafletProps = {
   /** `futuristic` = mapa monocromático + painel cockpit (rota mapa-tds). */
   visualPreset?: 'default' | 'futuristic'
+  /** Variante de tema para o preset futurista. */
+  visualTheme?: 'dark' | 'light'
   /** `digitalIg` = mesma malha e tabela “Resumo por TD” com comentários cruzados ao @ de liderados (mobilização) por TD. */
   /** `pesquisas` = mesma estrutura do eleitoral; coloração/marcadores pela média de intenção (API Pesquisa). */
   painelContext?: 'eleitoral' | 'digitalIg' | 'pesquisas'
@@ -1416,8 +1471,10 @@ type MapaTerritoriosDesenvolvimentoLeafletProps = {
 
 export function MapaTerritoriosDesenvolvimentoLeaflet({
   visualPreset = 'default',
+  visualTheme = 'dark',
   painelContext = 'eleitoral',
 }: MapaTerritoriosDesenvolvimentoLeafletProps) {
+  const isFuturisticLight = visualPreset === 'futuristic' && visualTheme === 'light'
   const { collapsed: sidebarCollapsed } = useSidebar()
   const painelResumoMaxRemRef = useRef(PAINEL_RESUMO_TD_MAX_REM_EXPANDED)
 
@@ -1432,6 +1489,7 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({
     classificacao: new Map(),
     hoverTdTabela: null,
     visualPreset,
+    visualTheme,
     maiorPesoTd: null,
     piorDeltaTd: null,
     deltasDistintos: false,
@@ -3674,7 +3732,12 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({
           worldCopyJump: false,
         }).setView(L.latLng(-7.5, -42.5), 6.5)
         map.doubleClickZoom.disable()
-        const fundoMapaBase = visualPreset === 'futuristic' ? '#10161F' : FUNDO_MAPA_BRANCO
+        const fundoMapaBase =
+          visualPreset === 'futuristic'
+            ? isFuturisticLight
+              ? '#FFFFFF'
+              : 'rgb(var(--bg-sidebar))'
+            : FUNDO_MAPA_BRANCO
         mapEl.style.backgroundColor = fundoMapaBase
         mapRef.current = map
 
@@ -3687,14 +3750,16 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({
 
         const tileUrl =
           visualPreset === 'futuristic'
-            ? 'https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}{r}.png'
+            ? isFuturisticLight
+              ? 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png'
+              : 'https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}{r}.png'
             : 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png'
         L.tileLayer(tileUrl, {
           attribution: '&copy; OpenStreetMap &copy; CARTO · Malha IBGE',
           maxZoom: 19,
           maxNativeZoom: 19,
           subdomains: 'abcd',
-          opacity: visualPreset === 'futuristic' ? 0.52 : 0.32,
+          opacity: visualPreset === 'futuristic' ? (isFuturisticLight ? 0.4 : 0.52) : 0.32,
         }).addTo(map)
 
         if (geoUf) {
@@ -3712,7 +3777,7 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({
           }
         }
 
-        const geoCtxInicial: GeoStyleContext = { ...GEO_STYLE_CTX_VAZIO, visualPreset }
+        const geoCtxInicial: GeoStyleContext = { ...GEO_STYLE_CTX_VAZIO, visualPreset, visualTheme }
         const geoLayer = L.geoJSON(geoMunicipios, {
           pane: 'piMunicipios',
           style: (feature) =>
@@ -3731,10 +3796,10 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({
                 <div style="font-size:10px;color:#6b6b6b">${escapeHtml(String(td))}</div>
                 <div style="margin-top:6px;font-size:10px;color:#737373">Duplo clique no mapa: resumo + lideranças deste município</div>
               </div>`
-            layer.bindTooltip(visualPreset === 'futuristic' ? tipHtmlFuturista : tipHtmlClassico, {
+            layer.bindTooltip(visualPreset === 'futuristic' && !isFuturisticLight ? tipHtmlFuturista : tipHtmlClassico, {
               sticky: true,
               direction: 'top',
-              opacity: visualPreset === 'futuristic' ? 0.98 : 0.95,
+              opacity: visualPreset === 'futuristic' && !isFuturisticLight ? 0.98 : 0.95,
               className: 'td-municipio-tooltip',
             })
             const aplicarFiltroTdEMunicipioNoPainel = (e: L.LeafletMouseEvent) => {
@@ -3755,6 +3820,7 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({
           map,
           geoLayer,
           visualPreset,
+          visualTheme,
           (tdHover) => setHoverTdMapaCard(tdHover)
         )
 
@@ -3816,7 +3882,8 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({
               highlightedTdRef.current,
               geoLayer,
               map,
-              hoverTdMapaIgRef.current
+              hoverTdMapaIgRef.current,
+              visualPreset === 'futuristic' && visualTheme === 'light'
             )
           },
           reaplicarFocoMarcadoresPesoTdApenas: () => {
@@ -3825,11 +3892,18 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({
               highlightedTdRef.current,
               geoLayer,
               map,
-              hoverTdMapaIgRef.current
+              hoverTdMapaIgRef.current,
+              visualPreset === 'futuristic' && visualTheme === 'light'
             )
           },
           aplicarHoverMarcadorTd: (hoverTd) => {
-            atualizarHoverMarcadorTd(markerByTdPesoEleitores, hoverTd, visualPreset, highlightedTdRef.current)
+            atualizarHoverMarcadorTd(
+              markerByTdPesoEleitores,
+              hoverTd,
+              visualPreset,
+              highlightedTdRef.current,
+              visualPreset === 'futuristic' && visualTheme === 'light'
+            )
           },
           atualizarResumoMarcadores: (agregadoPorTd, usarExpectativaFed26) => {
             atualizarResumoMarcadoresPesoEleitoresPorTd(
@@ -3969,7 +4043,7 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({
         mapRef.current = null
       }
     }
-  }, [visualPreset, painelContext])
+  }, [visualPreset, visualTheme, painelContext])
 
   /**
    * Depende de `mapHostAlturaFixaPx`: ao focar um TD a lista aumenta o minHeight e a altura fixa do
@@ -3981,6 +4055,7 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({
       classificacao: classificacaoMapaAtual,
       hoverTdTabela,
       visualPreset,
+      visualTheme,
       maiorPesoTd: spotlightPainel.maiorPesoEleitoral,
       piorDeltaTd: spotlightPainel.piorDelta,
       deltasDistintos: spotlightPainel.deltasDistintos,
@@ -4058,6 +4133,7 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({
     sidebarCollapsed,
     classificacaoMapaAtual,
     visualPreset,
+    visualTheme,
     spotlightPainel,
   ])
 
@@ -4548,17 +4624,32 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({
             ref={aspectBoxRef}
             className={cn(
               'td-mapa-vp-halo pointer-events-auto relative isolate z-[1] max-h-full max-w-full overflow-hidden',
-              visualPreset === 'futuristic' ? 'bg-[#10161F] sm:rounded-[18px]' : 'bg-white sm:rounded-xl'
+              visualPreset === 'futuristic'
+                ? isFuturisticLight
+                  ? 'bg-white sm:rounded-[18px]'
+                  : 'bg-bg-sidebar sm:rounded-[18px]'
+                : 'bg-white sm:rounded-xl'
             )}
           >
             <div
               ref={containerRef}
               className={cn(
                 'leaflet-td-pi-host relative z-[1] isolate h-full min-h-0 w-full',
-                visualPreset === 'futuristic' ? '!bg-[#10161F]' : '!bg-white'
+                visualPreset === 'futuristic'
+                  ? isFuturisticLight
+                    ? '!bg-white'
+                    : '!bg-bg-sidebar'
+                  : '!bg-white'
               )}
               role="presentation"
             />
+            {visualPreset === 'futuristic' && visualTheme === 'light' ? (
+              <div className="td-mapa-engajamento-legend pointer-events-none absolute bottom-3 left-1/2 z-[30] -translate-x-1/2">
+                <span>Menor engajamento</span>
+                <span className="td-mapa-engajamento-legend__bar" aria-hidden />
+                <span>Maior engajamento</span>
+              </div>
+            ) : null}
           </div>
         </div>
         {/* Overlays (loading/error) — absolutos em relação ao rootRef */}
@@ -4566,7 +4657,11 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({
           <div
             className={cn(
               'pointer-events-none absolute inset-0 z-[50] flex items-center justify-center backdrop-blur-[2px]',
-              visualPreset === 'futuristic' ? 'td-mapa-fut-loading bg-[#10161F]/92' : 'bg-white/85'
+              visualPreset === 'futuristic'
+                ? isFuturisticLight
+                  ? 'td-mapa-fut-loading bg-white/92'
+                  : 'td-mapa-fut-loading bg-bg-sidebar/92'
+                : 'bg-white/85'
             )}
           >
             <div className="flex flex-col items-center gap-2 text-text-secondary">
@@ -4579,7 +4674,11 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({
           <div
             className={cn(
               'absolute inset-0 z-[50] flex items-center justify-center p-4',
-              visualPreset === 'futuristic' ? 'td-mapa-fut-error bg-[#10161F]/95' : 'bg-white/95'
+              visualPreset === 'futuristic'
+                ? isFuturisticLight
+                  ? 'td-mapa-fut-error bg-white/95'
+                  : 'td-mapa-fut-error bg-bg-sidebar/95'
+                : 'bg-white/95'
             )}
           >
             <p className="max-w-md text-center text-sm text-status-danger">
@@ -4599,7 +4698,7 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({
                 ? cn(
                     'relative flex min-h-0 flex-1 flex-col overflow-x-hidden overflow-y-auto',
                     'max-lg:border-t max-lg:border-white/[0.08] max-lg:pt-3',
-                    'bg-[#10161F]'
+                    isFuturisticLight ? 'bg-white max-lg:border-slate-300/60' : 'bg-bg-sidebar'
                   )
                 : cn(
                     'absolute top-12 right-5 z-[1100] max-sm:top-10 max-sm:right-3 sm:right-6 md:right-8 lg:right-10',
@@ -4699,7 +4798,11 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({
                     <span
                       className={cn(
                         'shrink-0 font-medium',
-                        visualPreset === 'futuristic' ? 'text-white' : 'text-text-secondary'
+                        visualPreset === 'futuristic'
+                          ? isFuturisticLight
+                            ? 'text-[#334155]'
+                            : 'text-white'
+                          : 'text-text-secondary'
                       )}
                     >
                       Simulação atual
@@ -4710,7 +4813,9 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({
                       className={cn(
                         'min-w-0 flex-1 rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-accent-gold-soft',
                         visualPreset === 'futuristic'
-                          ? 'border border-white/15 bg-transparent text-white [&>option]:bg-[#121821] [&>option]:text-white'
+                          ? isFuturisticLight
+                            ? 'border border-slate-300/80 bg-white text-[#0F1F4D] [&>option]:bg-white [&>option]:text-[#0F1F4D]'
+                            : 'border border-white/15 bg-transparent text-white [&>option]:bg-bg-surface [&>option]:text-white'
                           : 'border border-card bg-surface'
                       )}
                     >
@@ -4726,7 +4831,11 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({
                   <span
                     className={cn(
                       'shrink-0 font-medium',
-                      visualPreset === 'futuristic' ? 'text-white' : 'text-text-secondary'
+                      visualPreset === 'futuristic'
+                        ? isFuturisticLight
+                          ? 'text-[#334155]'
+                          : 'text-white'
+                        : 'text-text-secondary'
                     )}
                   >
                     Município
@@ -4738,7 +4847,9 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({
                     className={cn(
                       'min-w-0 flex-1 rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-accent-gold-soft',
                       visualPreset === 'futuristic'
-                        ? 'border border-white/15 bg-transparent text-white [&>option]:bg-[#121821] [&>option]:text-white'
+                        ? isFuturisticLight
+                          ? 'border border-slate-300/80 bg-white text-[#0F1F4D] [&>option]:bg-white [&>option]:text-[#0F1F4D]'
+                          : 'border border-white/15 bg-transparent text-white [&>option]:bg-bg-surface [&>option]:text-white'
                         : 'border border-card bg-surface'
                     )}
                   >
@@ -4911,11 +5022,19 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({
                               visualPreset === 'futuristic'
                                 ? ({
                                     '--fut-row-bg': selecionado
-                                      ? cssFuturistTdLinhaSelecionadaSolid(territorioCor.fill)
+                                      ? isFuturisticLight
+                                        ? 'white'
+                                        : cssFuturistTdLinhaSelecionadaSolid(territorioCor.fill)
                                       : hoverTdTabela === r.territorio
-                                        ? 'rgba(255,106,0,0.12)'
-                                        : 'rgba(18,24,33,0.72)',
-                                    '--fut-row-selected': cssFuturistTdLinhaSelecionadaSolid(territorioCor.fill),
+                                        ? isFuturisticLight
+                                          ? 'white'
+                                          : 'rgba(255,106,0,0.12)'
+                                        : isFuturisticLight
+                                          ? 'transparent'
+                                          : 'rgba(18,24,33,0.72)',
+                                    '--fut-row-selected': isFuturisticLight
+                                      ? 'white'
+                                      : cssFuturistTdLinhaSelecionadaSolid(territorioCor.fill),
                                     '--fut-row-selected-edge': territorioCor.stroke,
                                   } as CSSProperties)
                                 : undefined
@@ -4999,7 +5118,9 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({
                                   className={cn(
                                     'tabular-nums underline decoration-dotted decoration-border-card/60 underline-offset-2 transition-colors hover:decoration-accent-gold/80',
                                     visualPreset === 'futuristic'
-                                      ? 'text-[#E6EDF3] hover:text-[#FF9A4A]'
+                                      ? isFuturisticLight
+                                        ? 'text-text-secondary hover:text-text-primary'
+                                        : 'text-[#E6EDF3] hover:text-[#FF9A4A]'
                                       : 'text-text-secondary hover:text-text-primary'
                                   )}
                                 >
@@ -5386,11 +5507,19 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({
                           visualPreset === 'futuristic'
                             ? ({
                                 '--fut-row-bg': selecionado
-                                  ? cssFuturistTdLinhaSelecionadaSolid(territorioCor.fill)
+                                  ? isFuturisticLight
+                                    ? 'white'
+                                    : cssFuturistTdLinhaSelecionadaSolid(territorioCor.fill)
                                   : hoverTdTabela === r.territorio
-                                    ? 'rgba(255,106,0,0.12)'
-                                    : 'rgba(18,24,33,0.72)',
-                                '--fut-row-selected': cssFuturistTdLinhaSelecionadaSolid(territorioCor.fill),
+                                    ? isFuturisticLight
+                                      ? 'white'
+                                      : 'rgba(255,106,0,0.12)'
+                                    : isFuturisticLight
+                                      ? 'transparent'
+                                      : 'rgba(18,24,33,0.72)',
+                                '--fut-row-selected': isFuturisticLight
+                                  ? 'white'
+                                  : cssFuturistTdLinhaSelecionadaSolid(territorioCor.fill),
                                 '--fut-row-selected-edge': territorioCor.stroke,
                               } as React.CSSProperties)
                             : undefined
@@ -6435,6 +6564,7 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({
                   territorioFoco={highlightedTd}
                   sidebarCollapsed={sidebarCollapsed}
                   visualPreset={visualPreset}
+                  visualTheme={visualTheme}
                 />
               ) : null}
             </div>
@@ -6458,7 +6588,9 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({
               if (!temFeedbackEstrategico && !temPesquisas && !temTopPartidosFed22) return null
               const qtdCards = [temFeedbackEstrategico, temPesquisas, temTopPartidosFed22].filter(Boolean).length
               const cardClass =
-                'min-w-0 flex-1 basis-[min(100%,17.5rem)] rounded-xl border border-[rgba(255,255,255,0.07)] bg-[rgba(16,22,31,0.92)] p-3 text-white'
+                visualPreset === 'futuristic' && isFuturisticLight
+                  ? 'min-w-0 flex-1 basis-[min(100%,17.5rem)] rounded-xl border border-slate-300/80 bg-white p-3 text-[#0F1F4D]'
+                  : 'min-w-0 flex-1 basis-[min(100%,17.5rem)] rounded-xl border border-[rgba(255,255,255,0.07)] bg-[rgba(16,22,31,0.92)] p-3 text-white'
               return (
                 <div
                   className={cn(
@@ -6468,14 +6600,14 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({
                 >
                   {temFeedbackEstrategico && feedbackEstrategicoTd ? (
                     <div className={cardClass}>
-                      <p className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-white">
+                      <p className={cn('mb-2 text-[10px] font-semibold uppercase tracking-wide', isFuturisticLight ? 'text-[#0F1F4D]' : 'text-white')}>
                         Feedback estratégico · {feedbackEstrategicoTd.territorio}
                       </p>
                       <div className="space-y-1.5">
                         {feedbackEstrategicoTd.notas.map((nota, idx) => (
                           <p
                             key={`${feedbackEstrategicoTd.territorio}-${idx}`}
-                            className="text-[11px] leading-snug text-white"
+                            className={cn('text-[11px] leading-snug', isFuturisticLight ? 'text-[#0F1F4D]' : 'text-white')}
                           >
                             {nota}
                           </p>
@@ -6485,14 +6617,14 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({
                   ) : null}
                   {temPesquisas && territorioFeedbackAtivo && insightPesquisaTd ? (
                     <div className={cardClass}>
-                      <p className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-white">
+                      <p className={cn('mb-2 text-[10px] font-semibold uppercase tracking-wide', isFuturisticLight ? 'text-[#0F1F4D]' : 'text-white')}>
                         Pesquisas · {territorioFeedbackAtivo}
                       </p>
                       <div className="space-y-1.5">
                         {insightPesquisaTd.map((nota, idx) => (
                           <p
                             key={`${territorioFeedbackAtivo}-pesquisa-${idx}`}
-                            className="text-[11px] leading-snug text-white"
+                            className={cn('text-[11px] leading-snug', isFuturisticLight ? 'text-[#0F1F4D]' : 'text-white')}
                           >
                             {nota}
                           </p>
@@ -6502,17 +6634,17 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({
                   ) : null}
                   {temTopPartidosFed22 && territorioFeedbackAtivo && linhasFeedbackTopPartidosFed22Td ? (
                     <div className={cardClass}>
-                      <p className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-white">
+                      <p className={cn('mb-2 text-[10px] font-semibold uppercase tracking-wide', isFuturisticLight ? 'text-[#0F1F4D]' : 'text-white')}>
                         Fed. 2022 · Top 5 partidos · {territorioFeedbackAtivo}
                       </p>
-                      <p className="mb-2 text-[10px] leading-snug text-white/80">
+                      <p className={cn('mb-2 text-[10px] leading-snug', isFuturisticLight ? 'text-[#475569]' : 'text-white/80')}>
                         Soma dos votos nominais de todos os deputados federais da legenda nos municípios do TD.
                       </p>
                       <div className="space-y-1.5">
                         {linhasFeedbackTopPartidosFed22Td.map((linha, idx) => (
                           <p
                             key={`${territorioFeedbackAtivo}-partido-${idx}`}
-                            className="text-[11px] leading-snug text-white"
+                            className={cn('text-[11px] leading-snug', isFuturisticLight ? 'text-[#0F1F4D]' : 'text-white')}
                           >
                             {linha}
                           </p>

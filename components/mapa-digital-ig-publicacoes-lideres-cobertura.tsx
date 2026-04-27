@@ -21,6 +21,7 @@ type Props = {
   territorioFoco: TerritorioDesenvolvimentoPI | null
   sidebarCollapsed: boolean
   visualPreset: 'default' | 'futuristic'
+  visualTheme?: 'dark' | 'light'
 }
 
 function iniciaisNome(nome: string): string {
@@ -55,6 +56,7 @@ export function MapaDigitalIgPublicacoesLideresCobertura({
   territorioFoco,
   sidebarCollapsed,
   visualPreset,
+  visualTheme = 'dark',
 }: Props) {
   const [loadState, setLoadState] = useState<'idle' | 'loading' | 'ready' | 'error' | 'forbidden'>('idle')
   const [erro, setErro] = useState<string>('')
@@ -110,7 +112,7 @@ export function MapaDigitalIgPublicacoesLideresCobertura({
   }, [carregar])
 
   const textSm = sidebarCollapsed ? 'text-xs sm:text-sm' : 'text-[10px] sm:text-[11px]'
-  const isFut = visualPreset === 'futuristic'
+  const isFutDark = visualPreset === 'futuristic' && visualTheme === 'dark'
 
   const tituloContexto = useMemo(() => {
     if (territorioFoco) return `Líderes do TD ${territorioFoco} (via @ de liderados ativos)`
@@ -122,7 +124,7 @@ export function MapaDigitalIgPublicacoesLideresCobertura({
       <h2
         className={cn(
           'm-0 text-xs font-semibold uppercase tracking-wide sm:text-sm',
-          isFut ? 'text-text-secondary' : 'text-text-muted'
+          isFutDark ? 'text-text-secondary' : 'text-text-muted'
         )}
       >
         Publicações recentes
@@ -160,7 +162,13 @@ export function MapaDigitalIgPublicacoesLideresCobertura({
           ) : (
             <div className="max-h-[min(52vh,28rem)] space-y-0 overflow-y-auto overscroll-contain pt-2">
               {posts.map((post) => (
-                <PostCoberturaCard key={post.instagram_media_id} post={post} lideres={lideres} textSm={textSm} isFut={isFut} />
+                <PostCoberturaCard
+                  key={post.instagram_media_id}
+                  post={post}
+                  lideres={lideres}
+                  textSm={textSm}
+                  isFutDark={isFutDark}
+                />
               ))}
             </div>
           )}
@@ -179,12 +187,12 @@ function PostCoberturaCard({
   post,
   lideres,
   textSm,
-  isFut,
+  isFutDark,
 }: {
   post: InstagramPostWithComments
   lideres: LiderInstagramCoberturaDto[]
   textSm: string
-  isFut: boolean
+  isFutDark: boolean
 }) {
   const caption = post.media_caption?.trim() || 'Sem legenda'
   const posted = post.media_posted_at
@@ -201,7 +209,7 @@ function PostCoberturaCard({
     <details
       className={cn(
         'group border-b border-border-card/25 pb-2 pt-2 first:pt-0 last:border-b-0',
-        isFut && 'border-white/[0.08]'
+        isFutDark && 'border-white/[0.08]'
       )}
     >
       <summary className="flex cursor-pointer list-none items-stretch gap-2 py-1 marker:hidden [&::-webkit-details-marker]:hidden sm:gap-2.5">
@@ -209,7 +217,7 @@ function PostCoberturaCard({
           aria-hidden
           className={cn(
             'mt-0.5 inline-block shrink-0 text-text-muted transition-transform group-open:rotate-180',
-            isFut && 'text-white/50'
+            isFutDark && 'text-white/50'
           )}
         >
           <ChevronDown className="h-4 w-4" />
@@ -227,21 +235,21 @@ function PostCoberturaCard({
             className={cn(
               'line-clamp-2 font-medium leading-snug text-text-primary',
               textSm,
-              isFut && 'text-white'
+              isFutDark && 'text-white'
             )}
           >
             {caption}
           </p>
           <div className={cn('mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1', textSm)}>
             {posted ? (
-              <time className={cn('text-text-muted', isFut && 'text-white/60')} dateTime={post.media_posted_at ?? undefined}>
+              <time className={cn('text-text-muted', isFutDark && 'text-white/60')} dateTime={post.media_posted_at ?? undefined}>
                 {posted}
               </time>
             ) : null}
             <span
               className={cn(
                 'rounded-full border border-border-card/50 bg-card/40 px-2 py-0.5 tabular-nums text-text-secondary',
-                isFut && 'border-white/15 bg-white/10 text-white/85'
+                isFutDark && 'border-white/15 bg-white/10 text-white/85'
               )}
             >
               {post.comments_count} comentário{post.comments_count === 1 ? '' : 's'}
@@ -253,7 +261,7 @@ function PostCoberturaCard({
                 rel="noopener noreferrer"
                 className={cn(
                   'inline-flex items-center gap-1 text-accent-gold hover:underline',
-                  isFut && 'text-amber-200/95'
+                  isFutDark && 'text-amber-200/95'
                 )}
                 onClick={(e) => e.stopPropagation()}
               >
@@ -264,19 +272,19 @@ function PostCoberturaCard({
         </div>
       </summary>
 
-      <div className={cn('mt-1 border-t border-border-card/20 pt-2', isFut && 'border-white/[0.08]')}>
+      <div className={cn('mt-1 border-t border-border-card/20 pt-2', isFutDark && 'border-white/[0.08]')}>
         <div className="mb-2 flex flex-wrap items-baseline justify-between gap-2">
-          <span className={cn('text-[11px] font-medium uppercase tracking-wide text-text-muted sm:text-xs', isFut && 'text-white/55')}>
+          <span className={cn('text-[11px] font-medium uppercase tracking-wide text-text-muted sm:text-xs', isFutDark && 'text-white/55')}>
             Cobertura de líderes
           </span>
-          <span className={cn('text-sm font-semibold tabular-nums text-status-success sm:text-base', isFut && 'text-emerald-300')}>
+          <span className={cn('text-sm font-semibold tabular-nums text-status-success sm:text-base', isFutDark && 'text-emerald-300')}>
             {nOk} / {nMedido}
-            <span className={cn('ml-1 text-xs font-normal text-text-muted', isFut && 'text-white/50')}>com rede</span>
+            <span className={cn('ml-1 text-xs font-normal text-text-muted', isFutDark && 'text-white/50')}>com rede</span>
           </span>
         </div>
 
         {nMedido === 0 ? (
-          <p className={cn('text-text-muted', textSm, isFut && 'text-white/60')}>Sem @ de liderados para comparar.</p>
+          <p className={cn('text-text-muted', textSm, isFutDark && 'text-white/60')}>Sem @ de liderados para comparar.</p>
         ) : (
           <>
             <div className="mb-2 h-2 w-full overflow-hidden rounded-full bg-border-card/50">
@@ -297,7 +305,7 @@ function PostCoberturaCard({
               </span>
             </div>
             {semRedeCadastrada > 0 ? (
-              <p className={cn('mb-2 text-text-muted', textSm, isFut && 'text-white/55')}>
+              <p className={cn('mb-2 text-text-muted', textSm, isFutDark && 'text-white/55')}>
                 {semRedeCadastrada} líder{semRedeCadastrada === 1 ? '' : 'es'} sem @ de liderado neste recorte (fora da barra).
               </p>
             ) : null}
@@ -306,7 +314,7 @@ function PostCoberturaCard({
                 <p
                   className={cn(
                     'mb-1.5 text-[10px] font-semibold uppercase tracking-wide text-text-muted sm:text-[11px]',
-                    isFut && 'text-rose-200/90'
+                    isFutDark && 'text-rose-200/90'
                   )}
                 >
                   Líderes sem comentário nesta publicação
@@ -318,7 +326,7 @@ function PostCoberturaCard({
                       title={L.nome}
                       className={cn(
                         'flex h-8 w-8 list-none items-center justify-center rounded-full border border-status-danger/35 bg-status-danger/10 text-[10px] font-semibold text-status-danger',
-                        isFut && 'border-rose-400/40 bg-rose-950/50 text-rose-100'
+                        isFutDark && 'border-rose-400/40 bg-rose-950/50 text-rose-100'
                       )}
                     >
                       {iniciaisNome(L.nome)}
@@ -327,7 +335,7 @@ function PostCoberturaCard({
                 </ul>
               </div>
             ) : (
-              <p className={cn('text-text-muted', textSm, isFut && 'text-white/60')}>Todos os líderes com rede comentaram.</p>
+              <p className={cn('text-text-muted', textSm, isFutDark && 'text-white/60')}>Todos os líderes com rede comentaram.</p>
             )}
           </>
         )}

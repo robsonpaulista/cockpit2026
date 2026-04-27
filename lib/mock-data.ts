@@ -3,7 +3,7 @@ import { KPI, Alert, Action, NewsItem, CampaignPhase } from '@/types'
 export const mockKPIs: KPI[] = [
   {
     id: 'ife',
-    label: 'Índice de Força Eleitoral',
+    label: 'Expectativa de Votos',
     value: 72,
     variation: 3.2,
     status: 'success',
@@ -11,28 +11,28 @@ export const mockKPIs: KPI[] = [
   },
   {
     id: 'presenca',
-    label: 'Presença Territorial',
+    label: 'Cobertura Territorial',
     value: '45/120',
     variation: 5,
     status: 'success',
   },
   {
     id: 'base',
-    label: 'Capilaridade da Base',
+    label: 'Lideranças Mapeadas',
     value: 1280,
     variation: 12,
     status: 'success',
   },
   {
     id: 'projecao',
-    label: 'Projeção Chapa Federal',
+    label: 'Projeção Federal',
     value: '0 vagas',
     variation: 0,
     status: 'warning',
   },
   {
     id: 'sentimento',
-    label: 'Sentimento Público',
+    label: 'Média Pesquisas',
     value: '68%',
     variation: 4.5,
     status: 'success',

@@ -1,7 +1,10 @@
 'use client'
 
-import { useEffect, useState, useCallback, useRef } from 'react'
+import { useEffect, useState, useCallback, useRef, useMemo } from 'react'
 import { X, Users, FileText, TrendingUp, CheckCircle, Clock, AlertCircle, Loader2, Download, Copy, Check } from 'lucide-react'
+import { useTheme } from '@/contexts/theme-context'
+import { cn } from '@/lib/utils'
+import { sidebarPrimaryCTAButtonClass } from '@/lib/sidebar-menu-active-style'
 import { getEleitoradoByCity } from '@/lib/eleitores'
 import jsPDF from 'jspdf'
 import { LineChart, Line, ResponsiveContainer, XAxis, YAxis, CartesianGrid, Tooltip, LabelList } from 'recharts'
@@ -55,6 +58,28 @@ export function ExecutiveBriefingModal({
   expectativaVotosCol,
   nomeCol,
 }: ExecutiveBriefingModalProps) {
+  const { appearance, theme } = useTheme()
+  const isDark = appearance === 'dark'
+  const isCockpit = theme === 'cockpit'
+
+  const chartPalette = useMemo(
+    () =>
+      isDark
+        ? {
+            grid: 'rgba(148, 163, 184, 0.22)',
+            axis: '#64748b',
+            tick: '#94a3b8',
+            label: '#94a3b8',
+          }
+        : {
+            grid: '#E8E8E8',
+            axis: '#888888',
+            tick: '#666666',
+            label: '#666666',
+          },
+    [isDark]
+  )
+
   const [demands, setDemands] = useState<Demand[]>([])
   const [polls, setPolls] = useState<Poll[]>([])
   const [loading, setLoading] = useState(false)
@@ -625,30 +650,39 @@ export function ExecutiveBriefingModal({
           </div>
           <div className="flex items-center gap-2">
             <button
+              type="button"
               onClick={handleCopyWhatsApp}
               disabled={loading}
-              className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
-                copied
-                  ? 'bg-green-600 text-white'
-                  : 'bg-green-600 text-white hover:bg-green-700'
-              }`}
+              className={cn(
+                sidebarPrimaryCTAButtonClass(isCockpit),
+                copied && 'ring-2 ring-status-success/40 ring-offset-2 ring-offset-background'
+              )}
               title="Copiar briefing formatado para WhatsApp"
             >
-              {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+              {copied ? (
+                <Check className={cn('h-4 w-4 shrink-0', isCockpit ? 'text-white' : 'text-accent-gold')} aria-hidden />
+              ) : (
+                <Copy className={cn('h-4 w-4 shrink-0', isCockpit ? 'text-white' : 'text-accent-gold')} aria-hidden />
+              )}
               {copied ? 'Copiado!' : 'WhatsApp'}
             </button>
             <button
+              type="button"
               onClick={handleExportPDF}
               disabled={exporting || loading}
-              className="flex items-center gap-2 px-4 py-2 bg-accent-gold text-white rounded-lg hover:bg-accent-gold/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className={sidebarPrimaryCTAButtonClass(isCockpit)}
               title="Exportar para PDF"
             >
-              <Download className="w-4 h-4" />
+              <Download
+                className={cn('h-4 w-4 shrink-0', isCockpit ? 'text-white' : 'text-accent-gold')}
+                aria-hidden
+              />
               {exporting ? 'Exportando...' : 'PDF'}
             </button>
             <button
+              type="button"
               onClick={onClose}
-              className="p-1.5 rounded-lg hover:bg-background transition-colors"
+              className="rounded-lg p-1.5 transition-colors hover:bg-background"
             >
               <X className="w-5 h-5 text-secondary" />
             </button>
@@ -656,7 +690,10 @@ export function ExecutiveBriefingModal({
         </div>
 
         {/* Content */}
-        <div className="flex-1 overflow-y-auto p-4 space-y-3" ref={contentRef} style={{ backgroundColor: '#ffffff' }}>
+        <div
+          className="flex-1 space-y-3 overflow-y-auto bg-background p-4 text-text-primary"
+          ref={contentRef}
+        >
           {loading ? (
             <div className="flex items-center justify-center py-12">
               <Loader2 className="w-6 h-6 text-accent-gold animate-spin" />
@@ -682,26 +719,29 @@ export function ExecutiveBriefingModal({
                 {liderancasOrdenadas.length === 0 ? (
                   <p className="text-xs text-secondary">Nenhuma liderança encontrada</p>
                 ) : (
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-xs border-collapse">
+                  <div className="overflow-x-auto rounded-lg border border-card">
+                    <table className="w-full border-collapse text-xs">
                       <thead>
-                        <tr className="bg-background border-b border-card">
-                          <th className="text-left p-1.5 font-semibold text-text-primary">Nome</th>
+                        <tr className="border-b border-card bg-surface">
+                          <th className="p-1.5 text-left font-semibold text-text-primary">Nome</th>
                           {liderancasOrdenadas.some(l => l.funcao) && (
-                            <th className="text-left p-1.5 font-semibold text-text-primary">Função</th>
+                            <th className="p-1.5 text-left font-semibold text-text-primary">Função</th>
                           )}
                           {expectativaVotosCol && (
-                            <th className="text-right p-1.5 font-semibold text-text-primary">Expectativa de Votos</th>
+                            <th className="p-1.5 text-right font-semibold text-text-primary">Expectativa de Votos</th>
                           )}
                         </tr>
                       </thead>
-                      <tbody>
+                      <tbody className="bg-surface">
                         {liderancasOrdenadas.map((lider, idx) => {
                           const expectativa = expectativaVotosCol ? normalizeNumber(lider[expectativaVotosCol]) : 0
                           const nome = nomeCol ? (lider[nomeCol] || 'Sem nome') : 'Sem nome'
                           
                           return (
-                            <tr key={idx} className="border-b border-card hover:bg-background/50 transition-colors">
+                            <tr
+                              key={idx}
+                              className="border-b border-card transition-colors odd:bg-background/25 even:bg-surface hover:bg-accent-gold-soft/15"
+                            >
                               <td className="p-1.5 text-text-primary">{nome}</td>
                               {liderancasOrdenadas.some(l => l.funcao) && (
                                 <td className="p-1.5 text-secondary">{lider.funcao || '-'}</td>
@@ -730,24 +770,24 @@ export function ExecutiveBriefingModal({
                   <p className="text-xs text-secondary">Nenhuma demanda encontrada</p>
                 ) : (
                   <>
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-xs border-collapse">
+                  <div className="overflow-x-auto rounded-lg border border-card">
+                    <table className="w-full border-collapse text-xs">
                       <thead>
-                        <tr className="bg-background border-b border-card">
-                          <th className="text-left p-1.5 font-semibold text-text-primary">Título</th>
-                          <th className="text-left p-1.5 font-semibold text-text-primary">Status</th>
+                        <tr className="border-b border-card bg-surface">
+                          <th className="p-1.5 text-left font-semibold text-text-primary">Título</th>
+                          <th className="p-1.5 text-left font-semibold text-text-primary">Status</th>
                           {demandsOrdenadas.some(d => d.lideranca) && (
-                            <th className="text-left p-1.5 font-semibold text-text-primary">Liderança</th>
+                            <th className="p-1.5 text-left font-semibold text-text-primary">Liderança</th>
                           )}
                           {demandsOrdenadas.some((d) => getDemandValor(d)) && (
-                            <th className="text-right p-1.5 font-semibold text-text-primary">Valor</th>
+                            <th className="p-1.5 text-right font-semibold text-text-primary">Valor</th>
                           )}
                           {demandsOrdenadas.some((d) => getDemandPrevisao(d)) && (
-                            <th className="text-left p-1.5 font-semibold text-text-primary">Previsão</th>
+                            <th className="p-1.5 text-left font-semibold text-text-primary">Previsão</th>
                           )}
                         </tr>
                       </thead>
-                      <tbody>
+                      <tbody className="bg-surface">
                         {demandsOrdenadas.map((demand, idx) => {
                           const status = demand.status || 'Sem status'
                           const statusLower = status.toLowerCase().trim()
@@ -755,7 +795,10 @@ export function ExecutiveBriefingModal({
                           const isAndamento = statusLower.includes('andamento') || statusLower.includes('progresso') || statusLower.includes('em andamento')
                           
                           return (
-                            <tr key={idx} className="border-b border-card hover:bg-background/50 transition-colors">
+                            <tr
+                              key={idx}
+                              className="border-b border-card transition-colors odd:bg-background/25 even:bg-surface hover:bg-accent-gold-soft/15"
+                            >
                               <td className="p-1.5 text-text-primary">
                                 <div className="flex items-center gap-1">
                                   {isFinalizada ? (
@@ -817,7 +860,7 @@ export function ExecutiveBriefingModal({
                     <TrendingUp className="w-3.5 h-3.5 text-accent-gold" />
                     <h3 className="text-sm font-semibold text-text-primary">Pesquisas de Intenção de Voto</h3>
                   </div>
-                  <div className="h-96 bg-white rounded-lg border border-card p-4">
+                  <div className="h-96 rounded-lg border border-card bg-background p-4">
                     <ResponsiveContainer width="100%" height="100%">
                       <LineChart 
                         data={(() => {
@@ -863,27 +906,38 @@ export function ExecutiveBriefingModal({
                         })()} 
                         margin={{ top: 25, right: 100, left: 50, bottom: 50 }}
                       >
-                        <CartesianGrid strokeDasharray="3 3" stroke="#E8E8E8" strokeWidth={1} horizontal={true} vertical={false} />
-                        <XAxis 
-                          dataKey="data" 
-                          stroke="#888888" 
+                        <CartesianGrid
+                          strokeDasharray="3 3"
+                          stroke={chartPalette.grid}
+                          strokeWidth={1}
+                          horizontal={true}
+                          vertical={false}
+                        />
+                        <XAxis
+                          dataKey="data"
+                          stroke={chartPalette.axis}
                           fontSize={11}
                           angle={-45}
                           textAnchor="end"
                           height={60}
-                          tick={{ fill: '#666666', fontWeight: 500 }}
+                          tick={{ fill: chartPalette.tick, fontWeight: 500 }}
                         />
-                        <YAxis 
+                        <YAxis
                           domain={[0, 100]}
-                          stroke="#888888"
+                          stroke={chartPalette.axis}
                           fontSize={11}
-                          tick={{ fill: '#666666', fontWeight: 500 }}
+                          tick={{ fill: chartPalette.tick, fontWeight: 500 }}
                           ticks={[0, 20, 40, 60, 80, 100]}
-                          label={{ 
-                            value: 'Intenção (%)', 
-                            angle: -90, 
+                          label={{
+                            value: 'Intenção (%)',
+                            angle: -90,
                             position: 'insideLeft',
-                            style: { textAnchor: 'middle', fill: '#666666', fontSize: 12, fontWeight: 600 }
+                            style: {
+                              textAnchor: 'middle',
+                              fill: chartPalette.label,
+                              fontSize: 12,
+                              fontWeight: 600,
+                            },
                           }}
                         />
                         <Tooltip
@@ -910,20 +964,24 @@ export function ExecutiveBriefingModal({
                               const firstItem = items[0]
                               if (!firstItem) return null
                               return (
-                                <div className="bg-white border border-gray-200 rounded-md p-3 shadow-lg text-xs">
-                                  <p className="text-xs font-semibold text-gray-900 mb-1">{firstItem.data}</p>
+                                <div className="rounded-md border border-card bg-surface p-3 text-xs shadow-lg">
+                                  <p className="mb-1 text-xs font-semibold text-text-primary">{firstItem.data}</p>
                                   {firstItem.instituto && (
-                                    <p className="text-xs text-gray-600 mb-2 pb-2 border-b border-gray-200">{firstItem.instituto}</p>
+                                    <p className="mb-2 border-b border-card pb-2 text-xs text-secondary">
+                                      {firstItem.instituto}
+                                    </p>
                                   )}
                                   <div className="space-y-1.5">
                                     {items.map((item: any, idx: number) => (
                                       <div key={idx} className="flex items-center justify-between gap-3">
                                         <div className="flex items-center gap-2">
-                                          <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: item.color }} />
-                                          <span className="text-xs font-medium text-gray-700">{item.candidatoNome}</span>
+                                          <div className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: item.color }} />
+                                          <span className="text-xs font-medium text-text-primary">{item.candidatoNome}</span>
                                         </div>
                                         {item.valor !== undefined && (
-                                          <span className="text-xs font-bold text-gray-900">{item.valor.toFixed(1)}%</span>
+                                          <span className="text-xs font-bold text-text-primary">
+                                            {item.valor.toFixed(1)}%
+                                          </span>
                                         )}
                                       </div>
                                     ))}
@@ -962,7 +1020,12 @@ export function ExecutiveBriefingModal({
                                 dataKey={key}
                                 stroke={cor}
                                 strokeWidth={2.5}
-                                dot={{ r: 3.5, fill: cor, strokeWidth: 1.5, stroke: '#fff' }}
+                                dot={{
+                                  r: 3.5,
+                                  fill: cor,
+                                  strokeWidth: 1.5,
+                                  stroke: isDark ? 'rgb(15 23 42)' : '#fff',
+                                }}
                                 activeDot={{ r: 5.5, stroke: cor, strokeWidth: 2 }}
                                 animationDuration={500}
                               >
@@ -1002,10 +1065,7 @@ export function ExecutiveBriefingModal({
 
         {/* Footer */}
         <div className="p-4 border-t border-card bg-background">
-          <button
-            onClick={onClose}
-            className="w-full px-4 py-2 bg-accent-gold text-white rounded-lg hover:bg-accent-gold/90 transition-colors"
-          >
+          <button type="button" onClick={onClose} className={sidebarPrimaryCTAButtonClass(isCockpit, 'w-full')}>
             Fechar
           </button>
         </div>

@@ -3,6 +3,9 @@
 import { useState, useEffect, useMemo } from 'react'
 import { X, Loader2, AlertCircle, BadgeDollarSign } from 'lucide-react'
 import municipiosPiaui from '@/lib/municipios-piaui.json'
+import { useTheme } from '@/contexts/theme-context'
+import { cn } from '@/lib/utils'
+import { sidebarPrimaryCTAButtonClass } from '@/lib/sidebar-menu-active-style'
 
 export const OBRAS_TIPOS = ['pavimentação', 'obras diversas'] as const
 export type ObraTipo = (typeof OBRAS_TIPOS)[number]
@@ -41,6 +44,8 @@ function toYyyyMmDd(dateString?: string): string {
 }
 
 export function ObraFormModal({ obra, defaultTipo, onClose, onSuccess }: ObraFormModalProps) {
+  const { theme } = useTheme()
+  const isCockpit = theme === 'cockpit'
   const isEdit = Boolean(obra?.id)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -391,11 +396,14 @@ export function ObraFormModal({ obra, defaultTipo, onClose, onSuccess }: ObraFor
             <button
               type="submit"
               disabled={loading}
-              className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-accent-gold text-white rounded-lg hover:bg-accent-gold/90 disabled:opacity-50 disabled:cursor-not-allowed"
+              className={sidebarPrimaryCTAButtonClass(isCockpit, 'flex-1')}
             >
               {loading ? (
                 <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <Loader2
+                    className={cn('h-4 w-4 shrink-0 animate-spin', isCockpit ? 'text-white' : 'text-accent-gold')}
+                    aria-hidden
+                  />
                   Salvando...
                 </>
               ) : (

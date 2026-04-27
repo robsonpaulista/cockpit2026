@@ -7,6 +7,9 @@ import {
   resolverNomeMunicipioPIOficial,
 } from '@/lib/piaui-territorio-desenvolvimento'
 import { lideradoTemInstagramCadastrado } from '@/lib/mobilizacao-lead-capture'
+import { cn } from '@/lib/utils'
+import { useTheme } from '@/contexts/theme-context'
+import { sidebarPrimaryCTAButtonClass } from '@/lib/sidebar-menu-active-style'
 
 type Coordinator = {
   id: string
@@ -79,6 +82,8 @@ function formatWhatsappDigits(raw: string): string {
 }
 
 export default function MobilizacaoConfigPage() {
+  const { theme } = useTheme()
+  const isCockpit = theme === 'cockpit'
   const [carregando, setCarregando] = useState(true)
   const [erro, setErro] = useState<string | null>(null)
 
@@ -733,7 +738,7 @@ export default function MobilizacaoConfigPage() {
             <button
               type="submit"
               disabled={criandoCoord}
-              className="rounded-lg bg-accent-gold px-4 py-2 text-sm font-semibold text-white disabled:opacity-70"
+              className={cn(sidebarPrimaryCTAButtonClass(isCockpit), 'disabled:opacity-70')}
             >
               {criandoCoord ? 'Salvando...' : 'Cadastrar coordenador'}
             </button>
@@ -789,7 +794,7 @@ export default function MobilizacaoConfigPage() {
             <button
               type="submit"
               disabled={criandoLeader}
-              className="rounded-lg bg-accent-gold px-4 py-2 text-sm font-semibold text-white disabled:opacity-70"
+              className={cn(sidebarPrimaryCTAButtonClass(isCockpit), 'disabled:opacity-70')}
             >
               {criandoLeader ? 'Salvando...' : 'Cadastrar liderança'}
             </button>
@@ -813,7 +818,7 @@ export default function MobilizacaoConfigPage() {
           type="button"
           onClick={() => void handleImportarLiderancasDoTerritorio()}
           disabled={importandoTerritorio || carregando}
-          className="rounded-lg border border-accent-gold/50 bg-accent-gold/10 px-4 py-2 text-sm font-semibold text-text-primary hover:bg-accent-gold/20 disabled:opacity-60"
+          className={cn(sidebarPrimaryCTAButtonClass(isCockpit), 'disabled:opacity-60')}
         >
           {importandoTerritorio ? 'Importando…' : 'Importar lideranças da planilha do Território'}
         </button>
@@ -868,7 +873,7 @@ export default function MobilizacaoConfigPage() {
           <button
             type="submit"
             disabled={criandoLiderado}
-            className="rounded-lg bg-accent-gold px-4 py-2 text-sm font-semibold text-white disabled:opacity-70 sm:col-span-2"
+            className={cn(sidebarPrimaryCTAButtonClass(isCockpit), 'sm:col-span-2 disabled:opacity-70')}
           >
             {criandoLiderado ? 'Salvando...' : 'Cadastrar liderado'}
           </button>
@@ -990,7 +995,7 @@ export default function MobilizacaoConfigPage() {
                           type="button"
                           onClick={() => void salvarCoordenadorEdit()}
                           disabled={salvandoCrud}
-                          className="rounded-md bg-accent-gold px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-60"
+                          className={cn(sidebarPrimaryCTAButtonClass(isCockpit, 'rounded-md px-3 py-1.5 text-xs'))}
                         >
                           Salvar
                         </button>
@@ -1156,7 +1161,7 @@ export default function MobilizacaoConfigPage() {
                                     type="button"
                                     onClick={() => void salvarLeaderEdit()}
                                     disabled={salvandoCrud}
-                                    className="rounded bg-accent-gold px-2 py-1 text-xs font-semibold text-white disabled:opacity-60"
+                                    className={cn(sidebarPrimaryCTAButtonClass(isCockpit, 'rounded px-2 py-1 text-xs'))}
                                   >
                                     Salvar
                                   </button>
@@ -1276,7 +1281,9 @@ export default function MobilizacaoConfigPage() {
                                                 type="button"
                                                 onClick={() => void salvarLideradoEdit()}
                                                 disabled={salvandoCrud}
-                                                className="rounded bg-accent-gold px-2 py-1 text-[11px] font-semibold text-white disabled:opacity-60"
+                                                className={cn(
+                                                  sidebarPrimaryCTAButtonClass(isCockpit, 'rounded px-2 py-1 text-[11px]'),
+                                                )}
                                               >
                                                 Salvar
                                               </button>
@@ -1527,7 +1534,7 @@ export default function MobilizacaoConfigPage() {
                                     type="button"
                                     onClick={() => void salvarLeaderEdit()}
                                     disabled={salvandoCrud}
-                                    className="rounded bg-accent-gold px-2 py-1 text-xs font-semibold text-white disabled:opacity-60"
+                                    className={cn(sidebarPrimaryCTAButtonClass(isCockpit, 'rounded px-2 py-1 text-xs'))}
                                   >
                                     Salvar
                                   </button>
@@ -1645,7 +1652,9 @@ export default function MobilizacaoConfigPage() {
                                                 type="button"
                                                 onClick={() => void salvarLideradoEdit()}
                                                 disabled={salvandoCrud}
-                                                className="rounded bg-accent-gold px-2 py-1 text-[11px] font-semibold text-white disabled:opacity-60"
+                                                className={cn(
+                                                  sidebarPrimaryCTAButtonClass(isCockpit, 'rounded px-2 py-1 text-[11px]'),
+                                                )}
                                               >
                                                 Salvar
                                               </button>
@@ -1802,7 +1811,7 @@ export default function MobilizacaoConfigPage() {
                               type="button"
                               onClick={() => void salvarLideradoEdit()}
                               disabled={salvandoCrud}
-                              className="rounded bg-accent-gold px-2 py-1 text-[11px] font-semibold text-white"
+                              className={cn(sidebarPrimaryCTAButtonClass(isCockpit, 'rounded px-2 py-1 text-[11px]'))}
                             >
                               Salvar
                             </button>

@@ -1,9 +1,14 @@
 import type { Metadata, Viewport } from 'next'
-import { Inter } from 'next/font/google'
+import { IBM_Plex_Sans } from 'next/font/google'
 import './globals.css'
 import { RegisterPwa } from '@/components/register-pwa'
 
-const inter = Inter({ subsets: ['latin'] })
+const ibmPlexSans = IBM_Plex_Sans({
+  subsets: ['latin'],
+  weight: ['400', '500', '600', '700'],
+  variable: '--font-sans',
+  display: 'swap',
+})
 
 export const viewport: Viewport = {
   width: 'device-width',
@@ -52,14 +57,20 @@ export default function RootLayout({
                 var t = localStorage.getItem('cockpit-theme');
                 var valid = t === 'premium' || t === 'agentes' || t === 'republicanos' || t === 'cockpit';
                 document.documentElement.setAttribute('data-theme', valid ? t : 'republicanos');
+                var a = localStorage.getItem('cockpit-appearance');
+                var ap = a === 'dark' ? 'dark' : 'light';
+                document.documentElement.setAttribute('data-appearance', ap);
+                document.documentElement.style.colorScheme = ap;
               } catch(e) {
                 document.documentElement.setAttribute('data-theme', 'republicanos');
+                document.documentElement.setAttribute('data-appearance', 'light');
+                document.documentElement.style.colorScheme = 'light';
               }
             `,
           }}
         />
       </head>
-      <body className={inter.className}>
+      <body className={`${ibmPlexSans.className} ${ibmPlexSans.variable}`}>
         <RegisterPwa />
         {children}
       </body>

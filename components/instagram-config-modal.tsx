@@ -3,6 +3,9 @@
 import { useState, useEffect } from 'react'
 import { X, Save, ExternalLink, Info, Loader2 } from 'lucide-react'
 import { validateInstagramToken } from '@/lib/instagramApi'
+import { useTheme } from '@/contexts/theme-context'
+import { cn } from '@/lib/utils'
+import { sidebarPrimaryCTAButtonClass } from '@/lib/sidebar-menu-active-style'
 
 interface InstagramConfigModalProps {
   onClose: () => void
@@ -42,6 +45,8 @@ export function InstagramConfigModal({
   const [showToken, setShowToken] = useState(false)
   const [validating, setValidating] = useState(false)
   const [validationResult, setValidationResult] = useState<{ success: boolean; message: string } | null>(null)
+  const { theme } = useTheme()
+  const isCockpit = theme === 'cockpit'
 
   useEffect(() => {
     const updated =
@@ -233,9 +238,9 @@ export function InstagramConfigModal({
             <button
               type="submit"
               disabled={!validationResult?.success}
-              className="px-4 py-2 bg-accent-gold text-white rounded-lg hover:bg-accent-gold transition-colors disabled:opacity-50 flex items-center gap-2"
+              className={sidebarPrimaryCTAButtonClass(isCockpit)}
             >
-              <Save className="w-4 h-4" />
+              <Save className={cn('h-4 w-4 shrink-0', isCockpit ? 'text-white' : 'text-accent-gold')} aria-hidden />
               Salvar Configuração
             </button>
           </div>

@@ -1,6 +1,12 @@
 'use client'
 
 import React, { useState, useEffect } from 'react'
+import { cn } from '@/lib/utils'
+import { useTheme } from '@/contexts/theme-context'
+import {
+  COCKPIT_PAGE_ACTIVE_CHILD_PILL,
+  sidebarPrimaryCTAButtonClass,
+} from '@/lib/sidebar-menu-active-style'
 import { 
   Plus, 
   Copy, 
@@ -64,6 +70,8 @@ export default function CenariosTabs({
   carregandoExterno = false,
   service = chapasService
 }: CenariosTabsProps) {
+  const { theme } = useTheme()
+  const isCockpit = theme === 'cockpit'
   const [cenarios, setCenarios] = useState<Cenario[]>(cenariosIniciais || [])
   const [cenarioAtivo, setCenarioAtivo] = useState<Cenario | null>(null)
   const [loading, setLoading] = useState(false)
@@ -248,27 +256,27 @@ export default function CenariosTabs({
   if ((loading || carregandoExterno) && cenarios.length === 0) {
     return (
       <div className="space-y-4">
-        <div className="flex items-center justify-between mb-2">
+        <div className="mb-2 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <h3 className="text-sm font-medium text-gray-700">Cenários</h3>
+            <h3 className="text-sm font-medium text-text-primary">Cenários</h3>
             <div className="flex items-center gap-2">
               <RefreshCw className="h-4 w-4 animate-spin text-accent-gold" />
-              <span className="text-xs text-gray-500">Carregando...</span>
+              <span className="text-xs text-secondary">Carregando...</span>
             </div>
           </div>
         </div>
 
-        <div className="bg-white rounded-lg border border-gray-200 p-4">
-          <div className="flex items-center gap-2 mb-4">
-            <div className="h-4 w-20 bg-gray-200 rounded animate-pulse"></div>
-            <div className="h-4 w-16 bg-gray-200 rounded animate-pulse"></div>
-            <div className="h-4 w-24 bg-gray-200 rounded animate-pulse"></div>
+        <div className="rounded-lg border border-card bg-surface p-4">
+          <div className="mb-4 flex items-center gap-2">
+            <div className="h-4 w-20 animate-pulse rounded bg-border-card"></div>
+            <div className="h-4 w-16 animate-pulse rounded bg-border-card"></div>
+            <div className="h-4 w-24 animate-pulse rounded bg-border-card"></div>
           </div>
-          
+
           <div className="space-y-3">
-            <div className="h-8 bg-gray-100 rounded animate-pulse"></div>
-            <div className="h-8 bg-gray-100 rounded animate-pulse"></div>
-            <div className="h-8 bg-gray-100 rounded animate-pulse"></div>
+            <div className="h-8 animate-pulse rounded bg-background"></div>
+            <div className="h-8 animate-pulse rounded bg-background"></div>
+            <div className="h-8 animate-pulse rounded bg-background"></div>
           </div>
         </div>
       </div>
@@ -277,19 +285,18 @@ export default function CenariosTabs({
 
   if (cenarios.length === 0) {
     return (
-      <div className="bg-white rounded-lg border border-gray-200 p-8 text-center">
-        <Info className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-        <h3 className="text-lg font-medium text-gray-900 mb-2">
-          Nenhum cenário encontrado
-        </h3>
-        <p className="text-gray-600 mb-4">
+      <div className="rounded-lg border border-card bg-surface p-8 text-center">
+        <Info className="mx-auto mb-4 h-12 w-12 text-muted" />
+        <h3 className="mb-2 text-lg font-medium text-text-primary">Nenhum cenário encontrado</h3>
+        <p className="mb-4 text-secondary">
           Crie o primeiro cenário para começar a simular diferentes cenários eleitorais.
         </p>
-        <button 
+        <button
+          type="button"
           onClick={() => setDialogAberto(true)}
-          className="px-4 py-2 bg-accent-gold text-white rounded-lg hover:bg-accent-gold/90 flex items-center gap-2 mx-auto"
+          className={cn(sidebarPrimaryCTAButtonClass(isCockpit), 'mx-auto')}
         >
-          <Plus className="h-4 w-4" />
+          <Plus className={cn('h-4 w-4 shrink-0', isCockpit ? 'text-white' : 'text-accent-gold')} aria-hidden />
           Criar Primeiro Cenário
         </button>
       </div>
@@ -299,32 +306,38 @@ export default function CenariosTabs({
   return (
     <div className="space-y-4">
       {/* Header compacto */}
-      <div className="flex items-center justify-between mb-2">
+      <div className="mb-2 flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <h3 className="text-sm font-medium text-gray-700">Cenários</h3>
+          <h3 className="text-sm font-medium text-text-primary">Cenários</h3>
           {loading && (
             <div className="flex items-center gap-1">
               <RefreshCw className="h-3 w-3 animate-spin text-accent-gold" />
-              <span className="text-xs text-gray-500">Atualizando...</span>
+              <span className="text-xs text-secondary">Atualizando...</span>
             </div>
           )}
           {cenarioSelecionado && !loading && (
-            <span className={`px-2 py-1 rounded text-xs ${
-              cenarioSelecionado.tipo === 'base' 
-                ? 'bg-accent-gold text-white' 
-                : 'bg-bg-surface text-text-primary border border-border-card'
-            }`}>
+            <span
+              className={cn(
+                'rounded px-2 py-1 text-xs',
+                cenarioSelecionado.tipo === 'base'
+                  ? isCockpit
+                    ? COCKPIT_PAGE_ACTIVE_CHILD_PILL
+                    : 'bg-accent-gold-soft font-medium text-accent-gold'
+                  : 'border border-card bg-background text-text-primary',
+              )}
+            >
               {cenarioSelecionado.tipo === 'base' ? 'BASE' : 'SIMULAÇÃO'}: {cenarioSelecionado.nome}
             </span>
           )}
         </div>
-        
+
         <div className="flex items-center gap-1">
           <button
+            type="button"
             onClick={() => setDialogAberto(true)}
-            className="px-2 py-1 text-xs border border-gray-300 rounded hover:bg-gray-50 flex items-center gap-1"
+            className="flex items-center gap-1 rounded border border-card bg-surface px-2 py-1 text-xs text-text-primary hover:bg-background"
           >
-            <Plus className="h-3 w-3" />
+            <Plus className="h-3 w-3 shrink-0" aria-hidden />
             Novo
           </button>
         </div>
@@ -332,16 +345,20 @@ export default function CenariosTabs({
 
       {/* Sistema de Abas Compacto */}
       <div className="w-full">
-        <div className="flex flex-wrap gap-1 border-b border-gray-200">
+        <div className="flex flex-wrap gap-1 border-b border-card">
           {cenarios.map((cenario) => (
             <button
+              type="button"
               key={cenario.id}
               onClick={() => handleTabChange(cenario.id)}
-              className={`flex items-center justify-between gap-1 px-2 py-2 text-xs relative group ${
+              className={cn(
+                'group relative flex items-center justify-between gap-1 px-2 py-2 text-xs',
                 activeTab === cenario.id
-                  ? 'rounded-t-md border border-b-0 border-accent-gold bg-accent-gold-soft text-accent-gold font-semibold shadow-sm'
-                  : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-t-md'
-              }`}
+                  ? isCockpit
+                    ? cn(COCKPIT_PAGE_ACTIVE_CHILD_PILL, 'rounded-t-md border-b-0 font-semibold')
+                    : 'rounded-t-md border border-b-0 border-accent-gold bg-accent-gold-soft font-semibold text-accent-gold shadow-sm'
+                  : 'rounded-t-md text-secondary hover:bg-background hover:text-text-primary',
+              )}
             >
               <div className="flex items-center gap-1 min-w-0 flex-1">
                 <span className="truncate text-xs">{cenario.nome}</span>
@@ -349,12 +366,17 @@ export default function CenariosTabs({
                   <RefreshCw className="h-3 w-3 animate-spin text-accent-gold flex-shrink-0" />
                 )}
                 {cenario.tipo === 'base' && !loading && (
-                  <span className="px-1 py-0 text-xs bg-accent-gold text-white rounded flex-shrink-0">
+                  <span
+                    className={cn(
+                      'flex-shrink-0 rounded px-1 py-0 text-xs font-medium',
+                      isCockpit ? COCKPIT_PAGE_ACTIVE_CHILD_PILL : 'bg-accent-gold-soft text-accent-gold',
+                    )}
+                  >
                     B
                   </span>
                 )}
                 {activeTab === cenario.id && !loading && (
-                  <span className="px-1 py-0 text-xs bg-gray-200 text-gray-800 rounded flex-shrink-0">
+                  <span className="flex-shrink-0 rounded bg-border-card px-1 py-0 text-xs font-medium text-text-primary">
                     A
                   </span>
                 )}
@@ -368,6 +390,7 @@ export default function CenariosTabs({
               }`}>
                 {!cenario.ativo && (
                   <button
+                    type="button"
                     onClick={(e) => {
                       e.stopPropagation()
                       handleAtivarCenario(cenario.id)
@@ -382,6 +405,7 @@ export default function CenariosTabs({
                 
                 {onSalvarMudancas && (
                   <button
+                    type="button"
                     onClick={(e) => {
                       e.stopPropagation()
                       onSalvarMudancas(cenario.id)
@@ -400,6 +424,7 @@ export default function CenariosTabs({
                 
                 {cenario.tipo === 'base' && onLimparCenario && (
                   <button
+                    type="button"
                     onClick={(e) => {
                       e.stopPropagation()
                       onLimparCenario(cenario.id)
@@ -414,6 +439,7 @@ export default function CenariosTabs({
                 
                 {onImprimirPDF && (
                   <button
+                    type="button"
                     onClick={(e) => {
                       e.stopPropagation()
                       onImprimirPDF(cenario.id)
@@ -429,6 +455,7 @@ export default function CenariosTabs({
                 {cenario.tipo !== 'base' && (
                   <>
                     <button
+                      type="button"
                       onClick={(e) => {
                         e.stopPropagation()
                         handleDuplicarCenario(cenario)
@@ -441,6 +468,7 @@ export default function CenariosTabs({
                     </button>
                     
                     <button
+                      type="button"
                       onClick={(e) => {
                         e.stopPropagation()
                         if (confirm(`Tem certeza que deseja excluir o cenário "${cenario.nome}"?`)) {
@@ -448,7 +476,7 @@ export default function CenariosTabs({
                         }
                       }}
                       disabled={loading}
-                      className="h-5 w-5 p-0 text-xs hover:bg-red-100 text-red-600 rounded flex items-center justify-center"
+                      className="flex h-5 w-5 items-center justify-center rounded p-0 text-xs text-status-error hover:bg-status-error/15"
                       title="Excluir"
                     >
                       <Trash2 className="h-3 w-3" />
@@ -463,7 +491,7 @@ export default function CenariosTabs({
         {cenarios.map((cenario) => (
           <div key={cenario.id} className={activeTab === cenario.id ? 'mt-2' : 'hidden'}>
             {cenario.descricao && (
-              <div className="text-center text-xs text-gray-500 py-2">
+              <div className="py-2 text-center text-xs text-secondary">
                 {cenario.descricao}
               </div>
             )}
@@ -473,47 +501,48 @@ export default function CenariosTabs({
 
       {/* Modal para criar novo cenário */}
       {dialogAberto && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 max-w-md w-full">
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-lg font-semibold">Criar Novo Cenário</h2>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="w-full max-w-md rounded-lg border border-card bg-surface p-6">
+            <div className="mb-4 flex items-center justify-between">
+              <h2 className="text-lg font-semibold text-text-primary">Criar Novo Cenário</h2>
               <button
+                type="button"
                 onClick={() => {
                   setDialogAberto(false)
                   setNovoCenario({ nome: '', descricao: '', cenarioOrigem: '' })
                 }}
-                className="text-gray-500 hover:text-gray-700"
+                className="text-muted hover:text-text-primary"
               >
                 <X className="h-5 w-5" />
               </button>
             </div>
             <div className="space-y-4">
               <div>
-                <label className="text-sm font-medium mb-2 block">Nome do Cenário</label>
+                <label className="mb-2 block text-sm font-medium text-text-primary">Nome do Cenário</label>
                 <input
                   type="text"
                   placeholder="Ex: Cenário Otimista"
                   value={novoCenario.nome}
                   onChange={(e) => setNovoCenario(prev => ({ ...prev, nome: e.target.value }))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-gold"
+                  className="w-full rounded-lg border border-card bg-surface px-3 py-2 text-text-primary focus:outline-none focus:ring-2 focus:ring-accent-gold-soft"
                 />
               </div>
               <div>
-                <label className="text-sm font-medium mb-2 block">Descrição (opcional)</label>
+                <label className="mb-2 block text-sm font-medium text-text-primary">Descrição (opcional)</label>
                 <textarea
                   placeholder="Descreva o cenário..."
                   value={novoCenario.descricao}
                   onChange={(e) => setNovoCenario(prev => ({ ...prev, descricao: e.target.value }))}
                   rows={3}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-gold"
+                  className="w-full rounded-lg border border-card bg-surface px-3 py-2 text-text-primary focus:outline-none focus:ring-2 focus:ring-accent-gold-soft"
                 />
               </div>
               <div>
-                <label className="text-sm font-medium mb-2 block">Baseado em</label>
+                <label className="mb-2 block text-sm font-medium text-text-primary">Baseado em</label>
                 <select
                   value={novoCenario.cenarioOrigem}
                   onChange={(e) => setNovoCenario(prev => ({ ...prev, cenarioOrigem: e.target.value }))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-gold"
+                  className="w-full rounded-lg border border-card bg-surface px-3 py-2 text-text-primary focus:outline-none focus:ring-2 focus:ring-accent-gold-soft"
                 >
                   <option value="">Selecione um cenário base</option>
                   {cenarios.map((cenario) => (
@@ -523,21 +552,23 @@ export default function CenariosTabs({
                   ))}
                 </select>
               </div>
-              <div className="flex gap-2 justify-end">
+              <div className="flex justify-end gap-2">
                 <button
+                  type="button"
                   onClick={() => {
                     setDialogAberto(false)
                     setNovoCenario({ nome: '', descricao: '', cenarioOrigem: '' })
                   }}
                   disabled={loading}
-                  className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+                  className="rounded-lg border border-card bg-surface px-4 py-2 text-sm text-text-primary hover:bg-background disabled:opacity-50"
                 >
                   Cancelar
                 </button>
                 <button
+                  type="button"
                   onClick={handleCriarCenario}
                   disabled={loading || !novoCenario.nome.trim()}
-                  className="px-4 py-2 bg-accent-gold text-white rounded-lg hover:bg-accent-gold/90 disabled:opacity-50"
+                  className={sidebarPrimaryCTAButtonClass(isCockpit)}
                 >
                   {loading ? 'Criando...' : 'Criar Cenário'}
                 </button>
