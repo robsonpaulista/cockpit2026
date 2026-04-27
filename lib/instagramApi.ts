@@ -397,9 +397,17 @@ export type InstagramCommentsSyncResult = {
   mediaProcessed?: number
   commentsUpserted?: number
   lookbackDays?: number
+  timedOutEarly?: boolean
+  elapsedMs?: number
   errors?: string[]
   error?: string
   resetAt?: number
+}
+
+function compactErrorSnippet(rawBody: string): string {
+  const normalized = rawBody.replace(/\s+/g, ' ').trim()
+  if (!normalized) return ''
+  return normalized.slice(0, 180)
 }
 
 function parseInstagramCommentsSyncResponse(
@@ -420,12 +428,14 @@ function parseInstagramCommentsSyncResponse(
     /^Application error/i.test(trimmed)
 
   if (looksLikeHtml) {
+    const snippet = compactErrorSnippet(trimmed)
+    const details = snippet ? ` Detalhe: ${snippet}` : ''
     return {
       success: false,
       error:
         response.status >= 500
-          ? 'O servidor devolveu uma página de erro em vez de dados (possível timeout ou limite da plataforma). Tente de novo em instantes ou com menos publicações na sincronização.'
-          : `A sincronização falhou (HTTP ${response.status}) e o servidor não devolveu JSON.`,
+          ? `Sincronização falhou com HTTP ${response.status}: o servidor devolveu HTML em vez de JSON (possível timeout/limite da plataforma).${details}`
+          : `A sincronização falhou (HTTP ${response.status}) e o servidor não devolveu JSON.${details}`,
     }
   }
 

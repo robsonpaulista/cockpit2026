@@ -13,6 +13,7 @@ const UPSERT_CHUNK = 80
 const SYNC_LOOKBACK_DAYS = 15
 const LOOKBACK_MIN_DAYS = 1
 const LOOKBACK_MAX_DAYS = 90
+const SOFT_TIMEOUT_MS = 240_000
 
 function parseCommentTimestamp(ts: string | undefined): string {
   if (!ts) return new Date().toISOString()
@@ -46,6 +47,7 @@ function parseLookbackDays(value: unknown): number {
 
 export async function POST(request: Request) {
   try {
+    const startedAtMs = Date.now()
     const supabase = createClient()
     const {
       data: { user },
@@ -95,8 +97,26 @@ export async function POST(request: Request) {
 
     let commentsUpserted = 0
     const syncErrors: string[] = []
+    let mediaProcessed = 0
+    let timedOutEarly = false
 
     for (const media of recentMediaList) {
+      if (Date.now() - startedAtMs >= SOFT_TIMEOUT_MS) {
+        timedOutEarly = true
+        syncErrors.push(
+          `Sincronização parcial: limite interno de tempo (${Math.floor(SOFT_TIMEOUT_MS / 1000)}s) atingido.`
+        )
+        logger.warn('Sync comentários: encerrada por orçamento de tempo', {
+          userId: user.id,
+          lookbackDays,
+          maxMedia,
+          mediaProcessed,
+          mediaPlanned: recentMediaList.length,
+          commentsUpserted,
+          elapsedMs: Date.now() - startedAtMs,
+        })
+        break
+      }
       try {
         const edges = await fetchCommentsForMedia(media.id, token)
         const seen = new Set<string>()
@@ -173,6 +193,7 @@ export async function POST(request: Request) {
             commentsUpserted += chunk.length
           }
         }
+        mediaProcessed += 1
       } catch (e: unknown) {
         const msg = e instanceof Error ? e.message : 'Erro desconhecido'
         syncErrors.push(`${media.id}: ${msg}`)
@@ -182,18 +203,23 @@ export async function POST(request: Request) {
 
     logger.info('Instagram comentários sincronizados', {
       userId: user.id,
-      mediaCount: recentMediaList.length,
+      mediaCount: mediaProcessed,
+      mediaPlanned: recentMediaList.length,
       commentsUpserted,
       lookbackDays,
+      timedOutEarly,
+      elapsedMs: Date.now() - startedAtMs,
     })
 
     return NextResponse.json({
       success: true,
       instagramBusinessId,
       ownerUsername,
-      mediaProcessed: recentMediaList.length,
+      mediaProcessed,
       commentsUpserted,
       lookbackDays,
+      timedOutEarly,
+      elapsedMs: Date.now() - startedAtMs,
       errors: syncErrors.length ? syncErrors : undefined,
     })
   } catch (error: unknown) {

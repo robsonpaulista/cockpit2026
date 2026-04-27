@@ -56,6 +56,12 @@ export function MapaDigitalIgSyncToolbar({ className }: { className?: string }) 
       `${result.mediaProcessed ?? 0} publicações processadas`,
       `janela de ${result.lookbackDays ?? lookbackDays} dia(s)`,
     ]
+    if (result.elapsedMs != null) {
+      parts.push(`${Math.round(result.elapsedMs / 1000)}s`)
+    }
+    if (result.timedOutEarly) {
+      parts.push('sincronização parcial por limite de tempo')
+    }
     setSyncMessage(parts.join(' · '))
     dispatchInstagramCommentsSynced()
   }, [cfg, lookbackDays])

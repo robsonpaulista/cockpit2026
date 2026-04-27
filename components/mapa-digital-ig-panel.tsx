@@ -364,6 +364,12 @@ export function MapaDigitalIgPanel({ embedded = false }: { embedded?: boolean })
       `${result.mediaProcessed ?? 0} publicações processadas`,
       `janela de ${result.lookbackDays ?? lookbackDays} dia(s)`,
     ]
+    if (result.elapsedMs != null) {
+      parts.push(`${Math.round(result.elapsedMs / 1000)}s`)
+    }
+    if (result.timedOutEarly) {
+      parts.push('sincronização parcial por limite de tempo')
+    }
     if (result.errors?.length) {
       parts.push(`${result.errors.length} aviso(s) em mídias específicas`)
     }
