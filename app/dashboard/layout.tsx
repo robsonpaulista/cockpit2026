@@ -27,7 +27,7 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
         <div
           className={cn(
             'flex flex-1 flex-col overflow-hidden bg-bg-app transition-all duration-300 ease-out',
-            collapsed ? 'lg:ml-20' : 'lg:ml-64',
+            collapsed ? 'lg:ml-[5.5rem]' : 'lg:ml-72',
           )}
         >
           <DashboardHeader />

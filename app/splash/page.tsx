@@ -52,12 +52,12 @@ export default function SplashPage() {
     flexDirection: 'column',
     alignItems: 'center',
     justifyContent: 'center',
-    background: 'linear-gradient(145deg, #e85a10 0%, #de5a12 40%, #b84311 100%)',
+    background: 'linear-gradient(160deg, #1E2A33 0%, #172229 100%)',
     zIndex: 9999,
     overflow: 'hidden',
   }
 
-  // Antes de montar, tudo invisível (fundo laranja já aparece)
+  // Antes de montar, renderiza apenas o ambiente base
   if (!montado) {
     return (
       <div style={containerStyle}>
@@ -71,7 +71,7 @@ export default function SplashPage() {
       <style jsx global>{`
         /* Impedir qualquer background do body/html durante splash */
         html, body {
-          background: #de5a12 !important;
+          background: #1E2A33 !important;
         }
 
         @keyframes splash-c-in {
@@ -136,45 +136,134 @@ export default function SplashPage() {
           flex-direction: column;
           align-items: center;
           justify-content: center;
-          background: linear-gradient(145deg, #e85a10 0%, #de5a12 40%, #b84311 100%);
+          background: linear-gradient(160deg, #1E2A33 0%, #172229 100%);
           z-index: 9999;
           overflow: hidden;
+          isolation: isolate;
         }
 
         .splash-container::before {
           content: '';
           position: absolute;
-          top: -50%;
-          left: -50%;
-          width: 200%;
-          height: 200%;
-          background: radial-gradient(circle at 30% 40%, rgba(255,255,255,0.08) 0%, transparent 50%);
+          inset: 0;
+          background: radial-gradient(circle at 50% 30%, rgba(108, 123, 255, 0.08), transparent 60%);
           pointer-events: none;
+          z-index: 0;
         }
 
-        /* Na saída, o container mantém o fundo laranja — só o conteúdo some */
-        .splash-container.saida .splash-logo-area,
-        .splash-container.saida .splash-divider,
-        .splash-container.saida .splash-slogan,
-        .splash-container.saida .splash-barra-container {
+        .splash-wave {
+          position: absolute;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          width: 100%;
+          height: 140px;
+          pointer-events: none;
+          background: linear-gradient(
+            135deg,
+            rgba(108, 123, 255, 0.25),
+            rgba(94, 211, 255, 0.25),
+            rgba(63, 186, 194, 0.25)
+          );
+          border-top-left-radius: 60% 40%;
+          border-top-right-radius: 60% 40%;
+          filter: blur(20px);
+          z-index: 0;
+        }
+
+        .splash-wave-1 {
+          opacity: 0.5;
+          transform: translateY(10px);
+        }
+
+        .splash-wave-2 {
+          opacity: 0.3;
+          transform: translateY(20px);
+        }
+
+        .splash-wave-3 {
+          opacity: 0.2;
+          transform: translateY(30px);
+        }
+
+        .splash-container.saida .splash-card {
           animation: splash-saida-conteudo 0.8s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+        }
+
+        .splash-card {
+          position: relative;
+          z-index: 1;
+          width: min(86vw, 430px);
+          min-height: 520px;
+          border-radius: 22px;
+          padding: 40px 34px 28px;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: flex-start;
+          overflow: hidden;
+          background: linear-gradient(165deg, rgba(15, 26, 32, 0.86) 0%, rgba(30, 42, 51, 0.82) 45%, rgba(26, 36, 43, 0.88) 100%);
+          border: 1px solid rgba(255, 255, 255, 0.08);
+          box-shadow:
+            0 28px 60px rgba(0, 0, 0, 0.5),
+            inset 0 1px 0 rgba(255, 255, 255, 0.07);
+          backdrop-filter: blur(12px);
+          -webkit-backdrop-filter: blur(12px);
+        }
+
+        .splash-card::before {
+          content: '';
+          position: absolute;
+          inset: 0;
+          pointer-events: none;
+          background: radial-gradient(circle at 50% 8%, rgba(108, 123, 255, 0.15), transparent 48%);
+          z-index: 0;
+        }
+
+        .splash-emblem {
+          width: 112px;
+          height: 112px;
+          border-radius: 24px;
+          margin-bottom: 34px;
+          display: grid;
+          place-items: center;
+          background: linear-gradient(165deg, rgba(15, 26, 32, 0.95), rgba(27, 38, 46, 0.92));
+          border: 1px solid rgba(255, 255, 255, 0.09);
+          box-shadow:
+            0 12px 28px rgba(0, 0, 0, 0.45),
+            inset 0 1px 0 rgba(255, 255, 255, 0.05);
+          position: relative;
+          z-index: 1;
         }
 
         .splash-logo-area {
           display: flex;
           align-items: baseline;
           gap: 0;
-          margin-bottom: 28px;
+          margin-bottom: 24px;
+          position: relative;
+          z-index: 1;
         }
 
         .splash-c {
           font-family: 'Outfit', 'Inter', sans-serif;
-          font-size: 5.5rem;
+          font-size: 4.6rem;
           font-weight: 800;
-          color: white;
+          color: #eaf2f7;
+          background: linear-gradient(
+            135deg,
+            #6c7bff 0%,
+            #8e6cfd 25%,
+            #a66bff 50%,
+            #5ed3ff 75%,
+            #3fbac2 100%
+          );
+          -webkit-background-clip: text;
+          background-clip: text;
+          -webkit-text-fill-color: transparent;
           line-height: 1;
           opacity: 0;
-          text-shadow: 0 4px 20px rgba(0,0,0,0.15);
+          text-shadow: 0 6px 24px rgba(10, 18, 28, 0.28);
         }
 
         .splash-c.visivel {
@@ -183,12 +272,23 @@ export default function SplashPage() {
 
         .splash-ockpit {
           font-family: 'Outfit', 'Inter', sans-serif;
-          font-size: 5.5rem;
+          font-size: 4.6rem;
           font-weight: 800;
-          color: white;
+          color: #eaf2f7;
+          background: linear-gradient(
+            135deg,
+            #6c7bff 0%,
+            #8e6cfd 25%,
+            #a66bff 50%,
+            #5ed3ff 75%,
+            #3fbac2 100%
+          );
+          -webkit-background-clip: text;
+          background-clip: text;
+          -webkit-text-fill-color: transparent;
           line-height: 1;
           opacity: 0;
-          text-shadow: 0 4px 20px rgba(0,0,0,0.15);
+          text-shadow: 0 6px 24px rgba(10, 18, 28, 0.28);
         }
 
         .splash-ockpit.visivel {
@@ -199,9 +299,9 @@ export default function SplashPage() {
           font-family: 'Outfit', 'Inter', sans-serif;
           font-size: 2rem;
           font-weight: 300;
-          color: rgba(255, 255, 255, 0.6);
+          color: rgba(168, 186, 198, 0.8);
           line-height: 1;
-          margin-left: 12px;
+          margin-left: 10px;
           opacity: 0;
           align-self: flex-end;
           padding-bottom: 8px;
@@ -213,14 +313,16 @@ export default function SplashPage() {
         }
 
         .splash-divider {
-          width: 60px;
+          width: 72px;
           height: 2px;
-          background: rgba(255, 255, 255, 0.4);
+          background: rgba(168, 186, 198, 0.45);
           border-radius: 1px;
           margin-bottom: 20px;
           opacity: 0;
           transform: scaleX(0);
           transition: all 0.8s cubic-bezier(0.22, 1, 0.36, 1);
+          position: relative;
+          z-index: 1;
         }
 
         .splash-divider.visivel {
@@ -230,12 +332,16 @@ export default function SplashPage() {
 
         .splash-slogan {
           font-family: 'DM Sans', 'Inter', sans-serif;
-          font-size: 1.15rem;
+          font-size: 0.92rem;
           font-weight: 500;
-          color: rgba(255, 255, 255, 0.85);
-          letter-spacing: 0.15em;
+          color: rgba(168, 186, 198, 0.88);
+          letter-spacing: 0.11em;
           text-transform: uppercase;
           opacity: 0;
+          position: relative;
+          z-index: 1;
+          text-align: center;
+          max-width: 280px;
         }
 
         .splash-slogan.visivel {
@@ -243,15 +349,16 @@ export default function SplashPage() {
         }
 
         .splash-barra-container {
-          position: absolute;
-          bottom: 60px;
-          width: 200px;
-          height: 3px;
-          background: rgba(255, 255, 255, 0.15);
+          position: relative;
+          margin-top: 34px;
+          width: 220px;
+          height: 4px;
+          background: rgba(168, 186, 198, 0.22);
           border-radius: 2px;
           overflow: hidden;
           opacity: 0;
           transition: opacity 0.5s ease;
+          z-index: 1;
         }
 
         .splash-barra-container.visivel {
@@ -260,48 +367,65 @@ export default function SplashPage() {
 
         .splash-barra-fill {
           height: 100%;
-          background: rgba(255, 255, 255, 0.7);
+          background: linear-gradient(135deg, #6c7bff 0%, #8e6cfd 28%, #5ed3ff 72%, #3fbac2 100%);
           border-radius: 2px;
           animation: splash-barra-progress 4.5s cubic-bezier(0.4, 0, 0.2, 1) forwards;
         }
 
         @media (max-width: 640px) {
+          .splash-card {
+            width: min(90vw, 360px);
+            min-height: 470px;
+            padding: 32px 20px 24px;
+          }
+
+          .splash-emblem {
+            width: 92px;
+            height: 92px;
+            border-radius: 20px;
+            margin-bottom: 26px;
+          }
+
           .splash-c,
           .splash-ockpit {
-            font-size: 3.5rem;
+            font-size: 3.2rem;
           }
           .splash-ano {
-            font-size: 1.3rem;
+            font-size: 1.2rem;
             margin-left: 8px;
             padding-bottom: 4px;
           }
           .splash-slogan {
-            font-size: 0.85rem;
-            padding: 0 20px;
-            text-align: center;
+            font-size: 0.76rem;
+            padding: 0 8px;
           }
         }
       `}</style>
 
       <div className={`splash-container ${fase === 'saida' ? 'saida' : ''}`}>
-        {/* Logo animado */}
-        <div className="splash-logo-area">
-          <span className={`splash-c ${fase !== 'inicio' ? 'visivel' : ''}`}>C</span>
-          <span className={`splash-ockpit ${fase === 'nome' || fase === 'slogan' || fase === 'saida' ? 'visivel' : ''}`}>ockpit</span>
-          <span className={`splash-ano ${fase === 'nome' || fase === 'slogan' || fase === 'saida' ? 'visivel' : ''}`}>2026</span>
-        </div>
+        <div className="splash-card">
+          <div className="splash-emblem">
+            <span className={`splash-c ${fase !== 'inicio' ? 'visivel' : ''}`}>C</span>
+          </div>
 
-        {/* Divisor */}
-        <div className={`splash-divider ${fase === 'slogan' || fase === 'saida' ? 'visivel' : ''}`} />
+          <div className="splash-logo-area">
+            <span className={`splash-ockpit ${fase === 'nome' || fase === 'slogan' || fase === 'saida' ? 'visivel' : ''}`}>ockpit</span>
+            <span className={`splash-ano ${fase === 'nome' || fase === 'slogan' || fase === 'saida' ? 'visivel' : ''}`}>2026</span>
+          </div>
 
-        {/* Slogan */}
-        <span className={`splash-slogan ${fase === 'slogan' || fase === 'saida' ? 'visivel' : ''}`}>
-          Comando Central de Eleições Dep Fed Jadyel Alencar
-        </span>
+          <div className={`splash-divider ${fase === 'slogan' || fase === 'saida' ? 'visivel' : ''}`} />
 
-        {/* Barra de progresso sutil */}
-        <div className={`splash-barra-container ${fase === 'nome' || fase === 'slogan' || fase === 'saida' ? 'visivel' : ''}`}>
-          <div className="splash-barra-fill" />
+          <span className={`splash-slogan ${fase === 'slogan' || fase === 'saida' ? 'visivel' : ''}`}>
+            Comando Central de Eleicoes
+          </span>
+
+          <div className={`splash-barra-container ${fase === 'nome' || fase === 'slogan' || fase === 'saida' ? 'visivel' : ''}`}>
+            <div className="splash-barra-fill" />
+          </div>
+
+          <div className="splash-wave splash-wave-1" />
+          <div className="splash-wave splash-wave-2" />
+          <div className="splash-wave splash-wave-3" />
         </div>
       </div>
     </>

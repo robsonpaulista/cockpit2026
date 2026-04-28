@@ -369,6 +369,73 @@ Antes de fazer commit de novo componente:
 
 ---
 
+## 🧭 Padrão oficial salvo (Cockpit Dark)
+
+Este padrão deve ser reaplicado nas próximas telas sempre que solicitado.
+
+- **Sidebar (Cockpit)**
+  - navegação com contraste alto e labels mais legíveis
+  - estado ativo com gradiente **azul-turquesa** (item e subitem)
+  - tipografia da marca `Cockpit 2026` em destaque por fonte (sem badge sólido)
+- **Agrupamento de navegação**
+  - bloco **Território** inclui `Campo` e `Pesquisa`
+- **Fundo de páginas estratégicas**
+  - para igualar o tom perolado da sidebar no tema cockpit, usar `sidebar-cockpit-shell`
+  - fallback para outros temas: `bg-bg-sidebar`
+- **Splash**
+  - fundo dark premium com glow central e ondas suaves
+  - card central com estética vidro escuro e gradiente frio
+
+### Snippet recomendado para páginas no Cockpit
+
+```tsx
+<div className={cn('min-h-screen', isCockpit ? 'sidebar-cockpit-shell' : 'bg-bg-sidebar')}>
+  {/* conteúdo */}
+</div>
+```
+
+---
+
+## 📄 Padrão oficial — Página Campo
+
+Este padrão está aprovado e deve ser replicado nas próximas páginas estratégicas.
+
+- **Estrutura de leitura**
+  - ordem fixa: `Resumo` → `Nova agenda estratégica` → `Agenda inteligente`
+  - reduzir seções paralelas; priorizar compactação e foco visual
+- **Resumo de campo (compacto)**
+  - manter em um único bloco com duas áreas:
+    - `Presença & últimas agendas` (ranking + recentes no mesmo card)
+    - `Ritmo mensal` com barras e rótulos numéricos
+  - evitar expansão vertical desnecessária
+- **Nova agenda estratégica inline**
+  - modal removido; formulário embutido na página
+  - campos compactos (sem alterar escala tipográfica)
+- **Agenda inteligente**
+  - filtros essenciais: busca, cidade, status
+  - CTA para alternar entre visão reduzida e lista completa (`Ver todas` / `Mostrar menos`)
+  - ações por item: editar, check-in (quando planejada), excluir
+- **Material visual no tema cockpit**
+  - seção principal: gradiente azul-petróleo perolado
+  - painéis internos e cards com o mesmo “material” translúcido da sidebar
+  - evitar cinza neutro puro quando `theme === cockpit`
+- **Consistência de ícones e navegação**
+  - header `Resumo de campo` usa o mesmo ícone semântico da sidebar (`MapPinned`)
+
+### Tokens/classes de referência (Campo)
+
+```tsx
+const sectionShellClass = isCockpit
+  ? 'border-white/12 bg-[linear-gradient(165deg,rgba(22,34,44,0.82)_0%,rgba(18,30,38,0.86)_100%)] shadow-[0_10px_32px_rgba(3,12,20,0.28)]'
+  : 'border-border-card bg-bg-surface/85 shadow-card'
+
+const innerPanelClass = isCockpit
+  ? 'border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.04)_0%,rgba(255,255,255,0.02)_100%)]'
+  : 'border-border-card/70 bg-bg-app/60'
+```
+
+---
+
 ## 🚀 Resultado Esperado
 
 O sistema deve parecer:
@@ -391,5 +458,5 @@ Para dúvidas sobre o design system:
 
 ---
 
-**Última atualização:** 22 de janeiro de 2026  
-**Versão:** 1.0 Premium
+**Última atualização:** 28 de abril de 2026  
+**Versão:** 1.1 Premium

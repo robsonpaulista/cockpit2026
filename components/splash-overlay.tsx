@@ -56,7 +56,7 @@ export function SplashOverlay() {
         position: 'fixed',
         inset: 0,
         zIndex: 9998,
-        background: 'linear-gradient(145deg, #e85a10 0%, #de5a12 40%, #b84311 100%)',
+        background: 'linear-gradient(160deg, #1E2A33 0%, #172229 100%)',
         opacity: opacidade,
         transition: 'opacity 2.8s cubic-bezier(0.25, 0.1, 0.25, 1)',
         pointerEvents: 'none',
@@ -66,11 +66,8 @@ export function SplashOverlay() {
       <div
         style={{
           position: 'absolute',
-          top: '-50%',
-          left: '-50%',
-          width: '200%',
-          height: '200%',
-          background: 'radial-gradient(circle at 30% 40%, rgba(255,255,255,0.08) 0%, transparent 50%)',
+          inset: 0,
+          background: 'radial-gradient(circle at 50% 30%, rgba(108,123,255,0.08), transparent 60%)',
         }}
       />
     </div>

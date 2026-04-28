@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { usePathname, useSearchParams } from 'next/navigation'
+import { usePathname } from 'next/navigation'
 import { useEffect, useRef, useState } from 'react'
 import {
   LayoutDashboard,
@@ -32,7 +32,14 @@ import {
   ChevronDown,
   ClipboardList,
   History,
-  Trophy,
+  Radar,
+  Megaphone,
+  ShieldCheck,
+  UserCog,
+  Landmark,
+  Handshake,
+  FileBadge2,
+  LineChart,
   Image,
   type LucideIcon,
 } from 'lucide-react'
@@ -97,8 +104,8 @@ interface SidebarMenuItem extends MenuItem {
 const menuItems: SidebarMenuItem[] = [
   { id: 'home', label: 'Visão Geral', icon: 'LayoutDashboard', href: '/dashboard' },
   { id: 'narrativas', label: 'Estratégia', icon: 'Target', href: '/dashboard/narrativas' },
-  { id: 'campo', label: 'Campo & Agenda', icon: 'MapPin', href: '/dashboard/campo' },
   { id: 'agenda', label: 'Agenda', icon: 'Calendar', href: '/dashboard/agenda' },
+  { id: 'campo', label: 'Campo & Agenda', icon: 'MapPin', href: '/dashboard/campo' },
   { id: 'territorio', label: 'Território & Base', icon: 'MapPin', href: '/dashboard/territorio' },
   {
     id: 'territorio-mapa-tds',
@@ -106,6 +113,7 @@ const menuItems: SidebarMenuItem[] = [
     icon: 'MapPinned',
     href: '/dashboard/territorio/mapa-tds',
   },
+  { id: 'pesquisa', label: 'Pesquisa & Relato', icon: 'BarChart3', href: '/dashboard/pesquisa' },
   {
     id: 'chapas-menu',
     label: 'Chapas',
@@ -163,7 +171,6 @@ const menuItems: SidebarMenuItem[] = [
     ],
   },
   { id: 'whatsapp', label: 'WhatsApp', icon: 'MessageCircle', href: '/dashboard/whatsapp' },
-  { id: 'pesquisa', label: 'Pesquisa & Relato', icon: 'BarChart3', href: '/dashboard/pesquisa' },
   { id: 'operacao', label: 'Operação & Equipe', icon: 'Settings', href: '/dashboard/operacao' },
   { id: 'juridico', label: 'Jurídico', icon: 'Scale', href: '/dashboard/juridico' },
   { id: 'obras', label: 'Obras', icon: 'Building2', href: '/dashboard/obras' },
@@ -213,7 +220,6 @@ const iconMap: Record<string, LucideIcon> = {
   ClipboardList,
   History,
   MapPinned,
-  Trophy,
   Image,
 }
 
@@ -222,15 +228,26 @@ const cockpitIconMap: Record<string, LucideIcon> = {
   ...iconMap,
   MapPin: MapPinned,
   Users: UsersRound,
-  BarChart3: BarChart2,
+  BarChart3: LineChart,
+  MessageSquare: Megaphone,
+  Newspaper: Radar,
   Vote: BadgeCheck,
+  Scale: Landmark,
+  Settings: UserCog,
+  Shield: ShieldCheck,
+  ClipboardList: FileBadge2,
+  MessageCircle: Handshake,
 }
 
-const MENU_PIPE = (
-  <span className="shrink-0 select-none px-2 text-border-card/80" aria-hidden>
-    |
-  </span>
-)
+/** Início de seção para melhorar escaneabilidade da navegação. */
+const SIDEBAR_SECTION_START_LABEL: Record<string, string> = {
+  home: 'Painel',
+  campo: 'Território',
+  'conteudo-menu': 'Comunicação',
+  'mobilizacao-menu': 'Operação',
+  juridico: 'Institucional',
+  'gestao-pesquisas-menu': 'Administração',
+}
 
 /** Item ativo Cockpit / submenu pill: `@/lib/sidebar-menu-active-style`. */
 const COCKPIT_PAGE_ACTIVE_ITEM = COCKPIT_PAGE_ACTIVE_MENU_ITEM
@@ -290,7 +307,6 @@ export function Sidebar() {
   const { collapsed, setCollapsed, mobileOpen, setMobileOpen } = useSidebar()
   const { setNavigating } = useNavigationLoading()
   const pathname = usePathname()
-  const searchParams = useSearchParams()
   const { canAccess, isAdmin, loading: permLoading } = usePermissions()
   const { theme } = useTheme()
 
@@ -376,13 +392,13 @@ export function Sidebar() {
       {/* Sidebar */}
       <aside
         className={cn(
-          'fixed left-0 top-0 h-full w-64 overflow-visible transition-all duration-300 ease-out',
+          'fixed left-0 top-0 h-full w-72 overflow-visible transition-all duration-300 ease-out',
           'border-r border-card bg-[rgb(var(--bg-sidebar))]',
           isCockpit && 'sidebar-cockpit-shell',
           'max-lg:z-[100] max-lg:shadow-2xl lg:z-40',
           'lg:translate-x-0',
           mobileOpen ? 'translate-x-0' : '-translate-x-full',
-          collapsed ? 'lg:w-20' : 'lg:w-64'
+          collapsed ? 'lg:w-[5.5rem]' : 'lg:w-72'
         )}
         style={{ isolation: 'isolate' }}
       >
@@ -395,19 +411,14 @@ export function Sidebar() {
           {/* Logo */}
           <div className="flex h-16 items-center justify-between px-4">
             {(!collapsed || mobileOpen) && (
-              <div className="flex items-center gap-2">
-                <div
-                  className={cn(
-                    'flex h-8 w-8 items-center justify-center rounded-lg text-sm font-bold text-white shadow-sm',
-                    isCockpit
-                      ? 'bg-gradient-to-br from-[#062e52] via-[#0b4a7a] to-[#1368a8]'
-                      : 'bg-accent-gold',
-                  )}
-                >
-                  <span>C</span>
-                </div>
+              <div className="flex items-center gap-2.5">
                 <span
-                  className="text-sm font-semibold text-text-primary"
+                  className={cn(
+                    'text-[1.16rem] font-semibold tracking-[0.024em]',
+                    isCockpit
+                      ? 'bg-[linear-gradient(135deg,#6c7bff_0%,#8e6cfd_35%,#5ed3ff_75%,#3fbac2_100%)] bg-clip-text text-transparent [text-shadow:0_6px_18px_rgba(10,18,28,0.22)]'
+                      : 'text-text-primary'
+                  )}
                 >
                   Cockpit 2026
                 </span>
@@ -416,7 +427,10 @@ export function Sidebar() {
             {!collapsed && (
               <button
                 onClick={toggleCollapse}
-                className="hidden lg:flex items-center justify-center w-8 h-8 rounded-lg hover:bg-accent-gold-soft transition-premium"
+                className={cn(
+                  'hidden h-8 w-8 items-center justify-center rounded-lg transition-premium lg:flex',
+                  'hover:bg-accent-gold-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-gold/50 focus-visible:ring-offset-1 focus-visible:ring-offset-bg-sidebar'
+                )}
                 aria-label="Toggle sidebar"
               >
                 <ChevronLeft
@@ -428,7 +442,10 @@ export function Sidebar() {
             {collapsed && !mobileOpen && (
               <button
                 onClick={toggleCollapse}
-                className="hidden lg:flex items-center justify-center w-8 h-8 rounded-lg hover:bg-accent-gold-soft transition-premium"
+                className={cn(
+                  'hidden h-8 w-8 items-center justify-center rounded-lg transition-premium lg:flex',
+                  'hover:bg-accent-gold-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-gold/50 focus-visible:ring-offset-1 focus-visible:ring-offset-bg-sidebar'
+                )}
                 aria-label="Toggle sidebar"
               >
                 <ChevronLeft
@@ -440,11 +457,10 @@ export function Sidebar() {
           </div>
 
           {/* Menu Items */}
-          <nav
-            className="flex-1 overflow-x-visible overflow-y-auto px-2 py-4 scrollbar-hide"
-          >
-            <ul className="space-y-1">
+          <nav className="flex-1 overflow-x-visible overflow-y-auto px-2.5 py-4 scrollbar-hide">
+            <ul className="space-y-1.5">
               {visibleItems.map((item: SidebarMenuItem) => {
+                const sectionLabel = SIDEBAR_SECTION_START_LABEL[item.id]
                 const Icon = resolveMenuIcon(item.icon, isCockpit)
                 const hasSubmenu = Boolean(item.children?.length)
                 const submenuOpen = openSubmenuId === item.id
@@ -469,6 +485,28 @@ export function Sidebar() {
 
                 return (
                   <li key={item.id} className="relative group" ref={itemRef} onMouseEnter={handleMouseEnter} onMouseLeave={handleMouseLeave}>
+                    {sectionLabel && (!collapsed || mobileOpen) && (
+                      <div className={cn(
+                        'mb-1.5 mt-3 px-2',
+                        item.id === 'home' && 'mt-0'
+                      )}>
+                        <span className={cn(
+                          'text-[0.68rem] font-semibold uppercase tracking-[0.14em]',
+                          isCockpit ? 'text-text-muted/90' : 'text-text-muted'
+                        )}>
+                          {sectionLabel}
+                        </span>
+                      </div>
+                    )}
+                    {sectionLabel && collapsed && !mobileOpen && (
+                      <div className={cn(
+                        'my-2 flex justify-center',
+                        item.id === 'home' && 'mt-0'
+                      )}>
+                        <span className="h-[1px] w-8 rounded-full bg-border-card/60" aria-hidden />
+                      </div>
+                    )}
+
                     {hasSubmenu ? (
                       <>
                         <button
@@ -477,11 +515,15 @@ export function Sidebar() {
                             setOpenSubmenuId((prev) => (prev === item.id ? null : item.id))
                           }
                           className={cn(
-                            'relative w-full flex items-center gap-3 px-3 py-2.5 rounded-[10px]',
+                            'relative w-full flex items-center gap-3 px-3 py-3 rounded-[12px]',
                             'transition-all duration-200 ease-out',
-                            !(isCockpit && isActive) && 'hover:bg-accent-gold-soft hover:text-text-primary',
+                            'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-gold/50 focus-visible:ring-offset-1 focus-visible:ring-offset-bg-sidebar',
+                            !(isCockpit && isActive) && 'hover:bg-accent-gold-soft/70 hover:text-text-primary',
                             isActive && !isCockpit && 'bg-accent-gold-soft text-text-primary shadow-sm',
-                            isCockpit && isActive && cockpitActiveItemClass
+                            isCockpit &&
+                              !isActive &&
+                              'border border-white/[0.04] bg-[linear-gradient(180deg,rgba(255,255,255,0.02)_0%,rgba(255,255,255,0.01)_100%)]',
+                            isCockpit && isActive && cockpitActiveItemClass,
                           )}
                         >
                           {isActive && !isCockpit && (
@@ -494,11 +536,12 @@ export function Sidebar() {
                             className={cn(
                               'flex-shrink-0 transition-all duration-200',
                               !isCockpit && 'w-5 h-5 group-hover:scale-110',
-                              isCockpit && 'flex items-center justify-center',
+                              isCockpit &&
+                                'flex h-8 w-8 items-center justify-center rounded-xl border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.10)_0%,rgba(255,255,255,0.03)_100%)]',
                               isActive
                                 ? cn(
                                     'text-accent-gold',
-                                    isCockpit && '!text-white'
+                                    isCockpit && '!border-white/25 !bg-white/10 !text-white shadow-[0_6px_16px_rgba(0,0,0,0.25)]'
                                   )
                                 : 'text-text-secondary group-hover:text-accent-gold'
                             )}
@@ -514,20 +557,22 @@ export function Sidebar() {
                           {(!collapsed || mobileOpen) && (
                             <>
                               <span className={cn(
-                                'text-sm transition-all duration-200',
+                                'text-[0.95rem] font-medium leading-none tracking-[0.01em] transition-all duration-200',
                                 'group-hover:translate-x-0.5',
                                 isActive
                                   ? cn(
                                       'font-semibold text-text-primary',
                                       isCockpit && '!text-white'
                                     )
-                                  : 'text-text-secondary group-hover:text-text-primary'
+                                  : isCockpit
+                                    ? 'text-text-primary/90 group-hover:text-text-primary'
+                                    : 'text-text-secondary group-hover:text-text-primary'
                               )}>
                                 {menuLabel(item.id, item.label)}
                               </span>
                               <ChevronDown
                                 className={cn(
-                                  'ml-auto h-4 w-4 text-text-secondary transition-transform',
+                                'ml-auto h-4 w-4 text-text-secondary/85 transition-transform',
                                   submenuOpen && 'rotate-180',
                                   isCockpit && isActive && '!text-white/90'
                                 )}
@@ -541,16 +586,14 @@ export function Sidebar() {
                           isCockpit ? (
                             <div
                               className={cn(
-                                'cockpit-glass mt-2 flex flex-wrap items-center px-3 py-2',
-                                'rounded-full text-[11px] text-text-secondary',
-                                'shadow-[0_4px_20px_rgba(15,70,120,0.08)] !border-0',
+                                'mt-2 space-y-1.5 rounded-2xl border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.08)_0%,rgba(255,255,255,0.03)_100%)] p-2',
+                                'text-[0.82rem] text-text-primary/85 shadow-[0_8px_24px_rgba(0,0,0,0.22)]',
                               )}
                             >
-                              {item.children.map((child, idx) => {
+                              {item.children.map((child) => {
                                 const childActive = isChildLinkActive(pathname, child.href)
                                 return (
                                   <span key={child.id} className="inline-flex items-center">
-                                    {idx > 0 ? MENU_PIPE : null}
                                     <Link
                                       href={child.href}
                                       onClick={() => {
@@ -558,18 +601,19 @@ export function Sidebar() {
                                         setMobileOpen(false)
                                       }}
                                       className={cn(
-                                        'whitespace-nowrap rounded-md transition-all duration-200',
+                                        'w-full whitespace-nowrap rounded-lg px-2.5 py-2 leading-none transition-all duration-200',
+                                        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-gold/50 focus-visible:ring-offset-1 focus-visible:ring-offset-bg-sidebar',
                                         childActive
                                           ? cn(
-                                              'px-0.5 py-0.5 font-semibold',
+                                              'font-semibold',
                                               isCockpit
                                                 ? cn(
-                                                    'rounded-lg px-2 py-1 transition-all',
+                                                    'transition-all',
                                                     cockpitActiveChildClass
                                                   )
                                                 : 'text-[rgb(15,45,74)]'
                                             )
-                                          : 'px-0.5 py-0.5 text-text-secondary transition-colors hover:text-text-primary'
+                                          : 'text-text-primary/85 hover:bg-white/10 hover:text-text-primary'
                                       )}
                                     >
                                       {menuLabel(child.id, child.label)}
@@ -592,6 +636,7 @@ export function Sidebar() {
                                       }}
                                       className={cn(
                                         'flex items-center gap-2 px-3 py-2 rounded-[8px] text-sm transition-all',
+                                        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-gold/50 focus-visible:ring-offset-1 focus-visible:ring-offset-bg-sidebar',
                                         childActive
                                           ? 'bg-accent-gold-soft text-text-primary font-semibold'
                                           : 'text-text-secondary hover:bg-accent-gold-soft hover:text-text-primary'
@@ -614,10 +659,14 @@ export function Sidebar() {
                           setMobileOpen(false)
                         }}
                         className={cn(
-                          'relative flex items-center gap-3 px-3 py-2.5 rounded-[10px]',
+                          'relative flex items-center gap-3 px-3 py-3 rounded-[12px]',
                           'transition-all duration-200 ease-out',
-                          !(isCockpit && isActive) && 'hover:bg-accent-gold-soft hover:text-text-primary',
+                          'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-gold/50 focus-visible:ring-offset-1 focus-visible:ring-offset-bg-sidebar',
+                          !(isCockpit && isActive) && 'hover:bg-accent-gold-soft/70 hover:text-text-primary',
                           isActive && !isCockpit && 'bg-accent-gold-soft text-text-primary shadow-sm',
+                          isCockpit &&
+                            !isActive &&
+                            'border border-white/[0.04] bg-[linear-gradient(180deg,rgba(255,255,255,0.02)_0%,rgba(255,255,255,0.01)_100%)]',
                           isCockpit && isActive && cockpitActiveItemClass
                         )}
                       >
@@ -632,11 +681,12 @@ export function Sidebar() {
                           className={cn(
                             'flex-shrink-0 transition-all duration-200',
                             !isCockpit && 'w-5 h-5 group-hover:scale-110',
-                            isCockpit && 'flex items-center justify-center',
+                            isCockpit &&
+                              'flex h-8 w-8 items-center justify-center rounded-xl border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.10)_0%,rgba(255,255,255,0.03)_100%)]',
                             isActive
                               ? cn(
                                   'text-accent-gold',
-                                  isCockpit && '!text-white'
+                                  isCockpit && '!border-white/25 !bg-white/10 !text-white shadow-[0_6px_16px_rgba(0,0,0,0.25)]'
                                 )
                               : 'text-text-secondary group-hover:text-accent-gold'
                           )}
@@ -651,14 +701,16 @@ export function Sidebar() {
                         </div>
                         {(!collapsed || mobileOpen) && (
                           <span className={cn(
-                            'text-sm transition-all duration-200',
+                            'text-[0.95rem] font-medium leading-none tracking-[0.01em] transition-all duration-200',
                             'group-hover:translate-x-0.5',
                             isActive
                               ? cn(
                                   'font-semibold text-text-primary',
                                   isCockpit && '!text-white'
                                 )
-                              : 'text-text-secondary group-hover:text-text-primary'
+                              : isCockpit
+                                ? 'text-text-primary/90 group-hover:text-text-primary'
+                                : 'text-text-secondary group-hover:text-text-primary'
                           )}>
                             {menuLabel(item.id, item.label)}
                           </span>
@@ -674,19 +726,19 @@ export function Sidebar() {
                     {/* Tooltip quando sidebar está recolhida - usando fixed para sair do overflow */}
                     {collapsed && !mobileOpen && tooltipPos && (
                       <div
-                        className="fixed left-24 z-[200] whitespace-nowrap rounded-lg px-3 py-2 text-xs font-semibold shadow-lg"
+                        className="fixed left-24 z-[200] whitespace-nowrap rounded-xl border border-white/10 px-3 py-2 text-[0.78rem] font-semibold shadow-lg backdrop-blur"
                         style={{
                           top: `${tooltipPos.top}px`,
                           transform: 'translateY(-50%)',
                           animation: 'fadeIn 0.2s ease-out',
-                          backgroundColor: 'rgb(var(--text-primary))',
-                          color: 'rgb(var(--bg-surface))',
+                          backgroundColor: isCockpit ? 'rgba(19, 28, 35, 0.92)' : 'rgb(var(--text-primary))',
+                          color: isCockpit ? 'rgb(var(--text-primary))' : 'rgb(var(--bg-surface))',
                         }}
                       >
                         {menuLabel(item.id, item.label)}
                         <div
                           className="absolute right-full top-1/2 -translate-y-1/2 border-4 border-transparent"
-                          style={{ borderRightColor: 'rgb(var(--text-primary))' }}
+                          style={{ borderRightColor: isCockpit ? 'rgba(19, 28, 35, 0.92)' : 'rgb(var(--text-primary))' }}
                         />
                       </div>
                     )}
@@ -698,7 +750,7 @@ export function Sidebar() {
 
           {/* Ações rápidas: Splash + Tema */}
           <div
-            className="space-y-1 border-t border-border-card px-2 py-3"
+            className="space-y-1.5 border-t border-border-card/80 px-2.5 py-3"
           >
             <button
               onClick={() => {
@@ -706,9 +758,10 @@ export function Sidebar() {
                 setMobileOpen(false)
               }}
               className={cn(
-                'flex items-center gap-3 px-3 py-2.5 rounded-[10px] w-full',
+                'flex w-full items-center gap-3 rounded-[12px] px-3 py-3',
                 'transition-all duration-200 ease-out group',
-                'hover:bg-accent-gold-soft'
+                'hover:bg-accent-gold-soft/70',
+                'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-gold/50 focus-visible:ring-offset-1 focus-visible:ring-offset-bg-sidebar'
               )}
               title="Ativar tela de descanso"
             >
@@ -720,7 +773,7 @@ export function Sidebar() {
                 strokeWidth={isCockpit ? 1.35 : 2}
               />
               {(!collapsed || mobileOpen) && (
-                <span className="text-sm text-text-secondary group-hover:text-text-primary transition-colors">
+                <span className="text-[0.92rem] font-medium text-text-primary/90 group-hover:text-text-primary transition-colors">
                   Tela de descanso
                 </span>
               )}
