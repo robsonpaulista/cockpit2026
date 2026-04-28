@@ -16,6 +16,7 @@ interface Lideranca {
 
 interface Demand {
   id?: string
+  selection_key: string
   title: string
   description?: string
   status?: string
@@ -100,6 +101,8 @@ export function ExecutiveBriefingModal({
   const [exporting, setExporting] = useState(false)
   const [copied, setCopied] = useState(false)
   const [filtroLideranca, setFiltroLideranca] = useState<string>('')
+  const [selectedDemandKeys, setSelectedDemandKeys] = useState<string[]>([])
+  const [exportSelectionMode, setExportSelectionMode] = useState(false)
   const contentRef = useRef<HTMLDivElement>(null)
 
   const normalizeText = useCallback((value: unknown): string => {
@@ -195,6 +198,14 @@ export function ExecutiveBriefingModal({
     return normalizeNumber(valor)
   }
 
+  const buildDemandSelectionKey = useCallback((demand: Omit<Demand, 'selection_key'>, idx: number): string => {
+    if (demand.id) return `id:${demand.id}`
+    const title = String(demand.title || '').trim()
+    const lideranca = String(demand.lideranca || '').trim()
+    const dataDemanda = String(demand.data_demanda || '').trim()
+    return `row:${idx}:${title}:${lideranca}:${dataDemanda}`
+  }, [])
+
   // Buscar demandas da cidade
   const fetchDemands = useCallback(async () => {
     if (!cidade) return []
@@ -207,12 +218,19 @@ export function ExecutiveBriefingModal({
       }
 
       const data = await response.json()
-      return data || []
+      const normalizedDemands = (Array.isArray(data) ? data : []).map((rawDemand, idx) => {
+        const baseDemand = rawDemand as Omit<Demand, 'selection_key'>
+        return {
+          ...baseDemand,
+          selection_key: buildDemandSelectionKey(baseDemand, idx),
+        } as Demand
+      })
+      return normalizedDemands
     } catch (err) {
       console.error('Erro ao buscar demandas:', err)
       return []
     }
-  }, [cidade])
+  }, [cidade, buildDemandSelectionKey])
 
   // Buscar pesquisas da cidade
   const fetchPolls = useCallback(async () => {
@@ -255,6 +273,7 @@ export function ExecutiveBriefingModal({
       Promise.all([fetchDemands(), fetchPolls()])
         .then(([demandsData, pollsData]) => {
           setDemands(demandsData)
+          setSelectedDemandKeys(demandsData.map((d) => d.selection_key))
           setPolls(pollsData)
         })
         .catch((err) => {
@@ -265,6 +284,7 @@ export function ExecutiveBriefingModal({
         })
     } else {
       setDemands([])
+      setSelectedDemandKeys([])
       setPolls([])
       setError(null)
     }
@@ -339,7 +359,14 @@ export function ExecutiveBriefingModal({
     
     return 0
   })
-  const totalValorDemandas = demandsOrdenadas.reduce((sum, demand) => sum + getDemandValorNumero(demand), 0)
+  const demandsSelecionadasOrdenadas = demandsOrdenadas.filter((demand) =>
+    selectedDemandKeys.includes(demand.selection_key)
+  )
+  const demandsParaExibicao = exportSelectionMode ? demandsSelecionadasOrdenadas : demandsOrdenadas
+  const totalValorDemandasSelecionadas = demandsSelecionadasOrdenadas.reduce(
+    (sum, demand) => sum + getDemandValorNumero(demand),
+    0
+  )
 
   // Calcular totais
   const totalExpectativa = liderancasOrdenadasFiltradas.reduce((sum, lider) => {
@@ -394,11 +421,11 @@ export function ExecutiveBriefingModal({
 
     // Demandas
     lines.push(`━━━━━━━━━━━━━━━━━━`)
-    lines.push(`📝 *DEMANDAS* (${demandsOrdenadas.length})`)
+    lines.push(`📝 *DEMANDAS* (${demandsSelecionadasOrdenadas.length})`)
     lines.push(``)
 
-    if (demandsOrdenadas.length === 0) {
-      lines.push(`_Nenhuma demanda registrada_`)
+    if (demandsSelecionadasOrdenadas.length === 0) {
+      lines.push(`_Nenhuma demanda selecionada para exportação_`)
     } else {
       const appendDemandExtras = (d: Demand) => {
         const valorNumero = getDemandValorNumero(d)
@@ -411,15 +438,15 @@ export function ExecutiveBriefingModal({
         }
       }
 
-      const finalizadas = demandsOrdenadas.filter(d => {
+      const finalizadas = demandsSelecionadasOrdenadas.filter(d => {
         const s = (d.status || '').toLowerCase()
         return s.includes('resolvido') || s.includes('concluído') || s.includes('concluido') || s.includes('finalizado') || s.includes('finalizada')
       })
-      const emAndamento = demandsOrdenadas.filter(d => {
+      const emAndamento = demandsSelecionadasOrdenadas.filter(d => {
         const s = (d.status || '').toLowerCase()
         return s.includes('andamento') || s.includes('progresso')
       })
-      const pendentes = demandsOrdenadas.filter(d => {
+      const pendentes = demandsSelecionadasOrdenadas.filter(d => {
         const s = (d.status || '').toLowerCase()
         return !s.includes('resolvido') && !s.includes('concluído') && !s.includes('concluido') && !s.includes('finalizado') && !s.includes('finalizada') && !s.includes('andamento') && !s.includes('progresso')
       })
@@ -536,6 +563,8 @@ export function ExecutiveBriefingModal({
     setExporting(true)
     try {
       const { default: html2canvas } = await import('html2canvas')
+      setExportSelectionMode(true)
+      await new Promise(resolve => setTimeout(resolve, 120))
       
       // Aguardar um pouco para garantir que o conteúdo está renderizado
       await new Promise(resolve => setTimeout(resolve, 300))
@@ -700,6 +729,7 @@ export function ExecutiveBriefingModal({
       const errorMessage = err instanceof Error ? err.message : 'Erro desconhecido'
       alert(`Erro ao exportar PDF: ${errorMessage}. Tente novamente.`)
     } finally {
+      setExportSelectionMode(false)
       setExporting(false)
     }
   }
@@ -761,26 +791,45 @@ export function ExecutiveBriefingModal({
         >
           {liderancasDisponiveis.length > 0 && (
             <div className={cn('rounded-lg border p-3', panelClass)}>
-              <label className="flex items-center gap-2">
-                <span className="text-xs font-semibold uppercase tracking-wide text-text-secondary">
-                  Filtrar por liderança
+              <div className="flex flex-wrap items-center gap-2">
+                <label className="flex items-center gap-2">
+                  <span className="text-xs font-semibold uppercase tracking-wide text-text-secondary">
+                    Filtrar por liderança
+                  </span>
+                  <select
+                    value={filtroLideranca}
+                    onChange={(e) => setFiltroLideranca(e.target.value)}
+                    className={cn(
+                      'w-full max-w-xs rounded-md border px-2 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-accent-gold-soft',
+                      isCockpit ? 'border-white/10 bg-white/[0.03] text-text-primary' : 'border-card bg-surface text-text-primary'
+                    )}
+                  >
+                    <option value="">Todas</option>
+                    {liderancasDisponiveis.map((nome) => (
+                      <option key={nome} value={nome}>
+                        {nome}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <span className="text-xs text-text-secondary">
+                  Demandas selecionadas: {demandsSelecionadasOrdenadas.length}/{demandsOrdenadas.length}
                 </span>
-                <select
-                  value={filtroLideranca}
-                  onChange={(e) => setFiltroLideranca(e.target.value)}
-                  className={cn(
-                    'w-full max-w-xs rounded-md border px-2 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-accent-gold-soft',
-                    isCockpit ? 'border-white/10 bg-white/[0.03] text-text-primary' : 'border-card bg-surface text-text-primary'
-                  )}
+                <button
+                  type="button"
+                  onClick={() => setSelectedDemandKeys(demandsOrdenadas.map((d) => d.selection_key))}
+                  className="rounded-md border border-card px-2 py-1 text-[11px] font-medium text-text-primary transition-colors hover:bg-background"
                 >
-                  <option value="">Todas</option>
-                  {liderancasDisponiveis.map((nome) => (
-                    <option key={nome} value={nome}>
-                      {nome}
-                    </option>
-                  ))}
-                </select>
-              </label>
+                  Marcar todas
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSelectedDemandKeys([])}
+                  className="rounded-md border border-card px-2 py-1 text-[11px] font-medium text-text-primary transition-colors hover:bg-background"
+                >
+                  Limpar todas
+                </button>
+              </div>
             </div>
           )}
           {loading ? (
@@ -860,7 +909,7 @@ export function ExecutiveBriefingModal({
                   <FileText className="w-3.5 h-3.5 text-accent-gold" />
                   <h3 className={headingClass}>Demandas por Status</h3>
                 </div>
-                {demandsOrdenadas.length === 0 ? (
+                {demandsParaExibicao.length === 0 ? (
                   <p className={metaTextClass}>Nenhuma demanda encontrada</p>
                 ) : (
                   <>
@@ -868,25 +917,49 @@ export function ExecutiveBriefingModal({
                     <table className="w-full border-collapse text-xs">
                       <thead>
                         <tr className={cn('border-b', isCockpit ? 'border-white/10 bg-white/[0.04]' : 'border-card bg-surface')}>
+                          {!exportSelectionMode && (
+                            <th className="w-10 p-1.5 text-center font-semibold text-text-primary">
+                              <input
+                                type="checkbox"
+                                checked={
+                                  demandsOrdenadas.length > 0 &&
+                                  demandsOrdenadas.every((d) => selectedDemandKeys.includes(d.selection_key))
+                                }
+                                onChange={(e) => {
+                                  if (e.target.checked) {
+                                    const todasVisiveis = demandsOrdenadas.map((d) => d.selection_key)
+                                    setSelectedDemandKeys((prev) =>
+                                      Array.from(new Set([...prev, ...todasVisiveis]))
+                                    )
+                                  } else {
+                                    const visiveis = new Set(demandsOrdenadas.map((d) => d.selection_key))
+                                    setSelectedDemandKeys((prev) => prev.filter((key) => !visiveis.has(key)))
+                                  }
+                                }}
+                                aria-label="Selecionar todas as demandas visíveis"
+                              />
+                            </th>
+                          )}
                           <th className="p-1.5 text-left font-semibold text-text-primary">Título</th>
                           <th className="p-1.5 text-left font-semibold text-text-primary">Status</th>
-                          {demandsOrdenadas.some(d => d.lideranca) && (
+                          {demandsParaExibicao.some(d => d.lideranca) && (
                             <th className="p-1.5 text-left font-semibold text-text-primary">Liderança</th>
                           )}
-                          {demandsOrdenadas.some((d) => getDemandValor(d)) && (
+                          {demandsParaExibicao.some((d) => getDemandValor(d)) && (
                             <th className="p-1.5 text-right font-semibold text-text-primary">Valor</th>
                           )}
-                          {demandsOrdenadas.some((d) => getDemandPrevisao(d)) && (
+                          {demandsParaExibicao.some((d) => getDemandPrevisao(d)) && (
                             <th className="p-1.5 text-left font-semibold text-text-primary">Previsão</th>
                           )}
                         </tr>
                       </thead>
                       <tbody className={cn(isCockpit ? 'bg-white/[0.02]' : 'bg-surface')}>
-                        {demandsOrdenadas.map((demand, idx) => {
+                        {demandsParaExibicao.map((demand, idx) => {
                           const status = demand.status || 'Sem status'
                           const statusLower = status.toLowerCase().trim()
                           const isFinalizada = statusLower.includes('resolvido') || statusLower.includes('concluído') || statusLower.includes('concluido') || statusLower.includes('finalizado') || statusLower.includes('finalizada')
                           const isAndamento = statusLower.includes('andamento') || statusLower.includes('progresso') || statusLower.includes('em andamento')
+                          const isSelected = selectedDemandKeys.includes(demand.selection_key)
                           
                           return (
                             <tr
@@ -898,6 +971,22 @@ export function ExecutiveBriefingModal({
                                   : 'border-card odd:bg-background/25 even:bg-surface hover:bg-accent-gold-soft/15'
                               )}
                             >
+                              {!exportSelectionMode && (
+                                <td className="p-1.5 text-center">
+                                  <input
+                                    type="checkbox"
+                                    checked={isSelected}
+                                    onChange={() => {
+                                      setSelectedDemandKeys((prev) =>
+                                        prev.includes(demand.selection_key)
+                                          ? prev.filter((key) => key !== demand.selection_key)
+                                          : [...prev, demand.selection_key]
+                                      )
+                                    }}
+                                    aria-label={`Selecionar demanda ${demand.title}`}
+                                  />
+                                </td>
+                              )}
                               <td className="p-1.5 text-text-primary">
                                 <div className="flex items-center gap-1">
                                   {isFinalizada ? (
@@ -922,15 +1011,15 @@ export function ExecutiveBriefingModal({
                                   {status}
                                 </span>
                               </td>
-                              {demandsOrdenadas.some(d => d.lideranca) && (
+                              {demandsParaExibicao.some(d => d.lideranca) && (
                                 <td className="p-1.5 text-text-secondary">{demand.lideranca || '-'}</td>
                               )}
-                              {demandsOrdenadas.some((d) => getDemandValor(d)) && (
+                              {demandsParaExibicao.some((d) => getDemandValor(d)) && (
                                 <td className="p-1.5 text-right font-medium text-text-primary">
                                   {formatValorSemMoeda(getDemandValorNumero(demand))}
                                 </td>
                               )}
-                              {demandsOrdenadas.some((d) => getDemandPrevisao(d)) && (
+                              {demandsParaExibicao.some((d) => getDemandPrevisao(d)) && (
                                 <td className="p-1.5 text-text-secondary">
                                   {getDemandPrevisao(demand) || '-'}
                                 </td>
@@ -941,10 +1030,10 @@ export function ExecutiveBriefingModal({
                       </tbody>
                     </table>
                   </div>
-                  {demandsOrdenadas.some((d) => getDemandValor(d)) && (
+                  {demandsSelecionadasOrdenadas.some((d) => getDemandValor(d)) && (
                     <div className="mt-2 flex justify-end">
                       <span className="text-xs font-bold text-accent-gold">
-                        Total Valor: {formatValorSemMoeda(totalValorDemandas)}
+                        Total Valor (selecionadas): {formatValorSemMoeda(totalValorDemandasSelecionadas)}
                       </span>
                     </div>
                   )}
