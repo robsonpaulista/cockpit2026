@@ -594,6 +594,20 @@ export function ExecutiveBriefingModal({
         scrollX: 0,
         scrollY: 0,
         onclone: (clonedDoc) => {
+          const exportRoot = clonedDoc.querySelector('[data-briefing-export-root="true"]') as HTMLElement | null
+          if (exportRoot) {
+            // Forçar tokens claros para o PDF, independente do tema ativo no app
+            exportRoot.style.setProperty('--bg-app', '255 255 255')
+            exportRoot.style.setProperty('--bg-surface', '255 255 255')
+            exportRoot.style.setProperty('--bg-sidebar', '248 250 252')
+            exportRoot.style.setProperty('--text-primary', '17 24 39')
+            exportRoot.style.setProperty('--text-secondary', '75 85 99')
+            exportRoot.style.setProperty('--text-muted', '107 114 128')
+            exportRoot.style.setProperty('--border-card', '209 213 219')
+            exportRoot.style.backgroundColor = '#ffffff'
+            exportRoot.style.color = '#111827'
+          }
+
           // Garantir que todas as seções e tabelas estão visíveis no clone
           const clonedContent = clonedDoc.body
           if (clonedContent) {
@@ -788,6 +802,7 @@ export function ExecutiveBriefingModal({
         <div
           className={cn('flex-1 space-y-3 overflow-y-auto p-4', contentClass)}
           ref={contentRef}
+          data-briefing-export-root="true"
         >
           {liderancasDisponiveis.length > 0 && (
             <div className={cn('rounded-lg border p-3', panelClass)}>
