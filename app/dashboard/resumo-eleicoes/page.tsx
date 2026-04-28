@@ -147,14 +147,14 @@ function includesNormalized(source: string, term: string): boolean {
 
 /** Mesmo gradiente do item ativo da sidebar (destaque forte em linhas de tabela). */
 const RESUMO_ROW_GRADIENTE_SIDEBAR =
-  'border-b border-white/10 bg-[linear-gradient(135deg,#062e52_0%,#0b4a7a_52%,#1368a8_100%)] text-white'
+  'border-b border-white/10 bg-[linear-gradient(135deg,#0b4f6c_0%,#0ea5b7_52%,#2dd4bf_100%)] text-white'
 
 function resumoTrZebra(rowIndex: number): string {
   return rowIndex % 2 === 0 ? 'bg-background/45' : 'bg-surface/25'
 }
 
 function resumoTrSelecionado(): string {
-  return 'bg-accent-gold-soft/25 ring-1 ring-inset ring-accent-gold/20'
+  return 'bg-[#0ea5b7]/16 ring-1 ring-inset ring-[#2dd4bf]/35'
 }
 
 function resumoTrDestaqueForte(isCockpit: boolean): string {
@@ -243,6 +243,13 @@ export default function ResumoEleicoesPage() {
   const searchParams = useSearchParams()
   const { theme } = useTheme()
   const isCockpit = theme === 'cockpit'
+  const pageShellClass = isCockpit ? 'sidebar-cockpit-shell' : 'bg-background'
+  const sectionShellClass = isCockpit
+    ? 'rounded-2xl border p-5 backdrop-blur border-white/12 bg-[linear-gradient(165deg,rgba(22,34,44,0.82)_0%,rgba(18,30,38,0.86)_100%)] shadow-[0_10px_32px_rgba(3,12,20,0.28)]'
+    : 'rounded-2xl border border-card bg-surface p-4 shadow-card'
+  const innerPanelClass = isCockpit
+    ? 'rounded-xl border p-3 border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.04)_0%,rgba(255,255,255,0.02)_100%)]'
+    : 'rounded-xl border border-card bg-surface p-3'
   const [cidade, setCidade] = useState('')
   const [cidades, setCidades] = useState<string[]>([])
   const [dados, setDados] = useState<ResultadoEleicao[]>([])
@@ -1314,8 +1321,12 @@ export default function ResumoEleicoesPage() {
   const cidadePesquisaIdAtual = cidade ? pesquisaCitiesMap[normalizeCityName(cidade)] || null : null
   const summaryCardBaseClass =
     'rounded-[14px] border border-border-card bg-surface p-3 relative overflow-hidden shadow-[0_1px_3px_rgba(0,0,0,0.06)] hover:shadow-[0_8px_24px_rgba(0,0,0,0.08)] hover:-translate-y-[2px] transition-all duration-300 ease-out h-full'
+  const kpiAccentTextClass = isCockpit ? 'text-[#0ea5b7]' : 'text-accent-gold'
+  const kpiAccentHoverTextClass = isCockpit ? 'group-hover:text-[#2dd4bf]' : 'group-hover:text-accent-gold'
   const summaryIconWrapClass =
-    'p-1.5 rounded-lg bg-accent-gold-soft group-hover:scale-110 transition-all duration-300'
+    isCockpit
+      ? 'p-1.5 rounded-lg bg-[#0ea5b7]/18 group-hover:scale-110 transition-all duration-300'
+      : 'p-1.5 rounded-lg bg-accent-gold-soft group-hover:scale-110 transition-all duration-300'
   const summaryMetaClass = 'text-[11px] mt-1 text-text-secondary'
   const labelValorModalLiderancas =
     cenarioVotos === 'promessa_lideranca'
@@ -1340,9 +1351,9 @@ export default function ResumoEleicoesPage() {
     : []
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className={cn('min-h-screen', pageShellClass)}>
       <div className="px-4 py-6 lg:px-6">
-        <div className="bg-surface rounded-2xl border border-card p-4 mb-6">
+        <div className={cn(sectionShellClass, 'mb-6')}>
           <div className="flex flex-col md:flex-row md:items-end gap-3">
             <div className="flex-1">
               <label className="text-xs font-medium text-text-secondary block mb-1">Cidade</label>
@@ -1413,7 +1424,7 @@ export default function ResumoEleicoesPage() {
         )}
 
         {buscaIniciada && !loadingDados && dados.length === 0 && !error && (
-          <div className="bg-surface rounded-2xl border border-card p-6 text-sm text-text-secondary">
+          <div className={cn(sectionShellClass, 'text-sm text-text-secondary')}>
             Nenhum resultado encontrado para {cidade}.
           </div>
         )}
@@ -1425,13 +1436,13 @@ export default function ResumoEleicoesPage() {
               <div className={`${summaryCardBaseClass} group`}>
                 <div className="flex items-center gap-2 mb-2">
                   <div className={summaryIconWrapClass}>
-                    <Users className="w-4 h-4 text-accent-gold animate-breathe" />
+                    <Users className={cn('w-4 h-4 animate-breathe', kpiAccentTextClass)} />
                   </div>
                   <p className="text-sm font-medium text-text-secondary group-hover:text-text-primary transition-colors">
                     Eleitores
                   </p>
                 </div>
-                <p className="text-2xl font-bold text-text-primary group-hover:text-accent-gold transition-colors">
+                <p className={cn('text-2xl font-bold text-text-primary transition-colors', kpiAccentHoverTextClass)}>
                   {resumoCidade.eleitores !== null
                     ? resumoCidade.eleitores.toLocaleString('pt-BR')
                     : '-'}
@@ -1443,13 +1454,13 @@ export default function ResumoEleicoesPage() {
               <div className={`${summaryCardBaseClass} group`}>
                 <div className="flex items-center gap-2 mb-2">
                   <div className={summaryIconWrapClass}>
-                    <Vote className="w-4 h-4 text-accent-gold animate-breathe" />
+                    <Vote className={cn('w-4 h-4 animate-breathe', kpiAccentTextClass)} />
                   </div>
                   <p className="text-sm font-medium text-text-secondary group-hover:text-text-primary transition-colors">
                     {labelCenarioAtivo}
                   </p>
                 </div>
-                <p className="text-2xl font-bold text-text-primary group-hover:text-accent-gold transition-colors">
+                <p className={cn('text-2xl font-bold text-text-primary transition-colors', kpiAccentHoverTextClass)}>
                   {votosCenarioAtivo.toLocaleString('pt-BR')}
                 </p>
                 <p
@@ -1467,32 +1478,32 @@ export default function ResumoEleicoesPage() {
               <div className={`${summaryCardBaseClass} group`}>
                 <div className="flex items-center gap-2 mb-2">
                   <div className={summaryIconWrapClass}>
-                    <BarChart3 className="w-4 h-4 text-accent-gold animate-breathe" />
+                    <BarChart3 className={cn('w-4 h-4 animate-breathe', kpiAccentTextClass)} />
                   </div>
                   <p className="text-sm font-medium text-text-secondary group-hover:text-text-primary transition-colors">
                     Votação Final 2022
                   </p>
                 </div>
-                <p className="text-2xl font-bold text-text-primary group-hover:text-accent-gold transition-colors">
+                <p className={cn('text-2xl font-bold text-text-primary transition-colors', kpiAccentHoverTextClass)}>
                   {resumoCidade.votacaoFinal2022.toLocaleString('pt-BR')}
                 </p>
               </div>
               <div className={`${summaryCardBaseClass} group select-none`}>
                 <div className="flex items-center gap-2 mb-2">
                   <div className={summaryIconWrapClass}>
-                    <UserCheck className="w-4 h-4 text-accent-gold animate-breathe" />
+                    <UserCheck className={cn('w-4 h-4 animate-breathe', kpiAccentTextClass)} />
                   </div>
                   <p className="text-sm font-medium text-text-secondary group-hover:text-text-primary transition-colors">
                     Lideranças
                   </p>
                 </div>
-                <p className="text-2xl font-bold text-text-primary group-hover:text-accent-gold transition-colors">
+                <p className={cn('text-2xl font-bold text-text-primary transition-colors', kpiAccentHoverTextClass)}>
                   {resumoCidade.liderancas.toLocaleString('pt-BR')}
                 </p>
                 <button
                   type="button"
                   onClick={marcarLiderancasDoCard}
-                  className="mt-1 inline-flex items-center gap-1 text-xs text-accent-gold hover:underline"
+                  className={cn('mt-1 inline-flex items-center gap-1 text-xs hover:underline', kpiAccentTextClass)}
                 >
                   <ArrowUpRight className="h-3 w-3" />
                   Marcar automaticamente
@@ -1500,7 +1511,7 @@ export default function ResumoEleicoesPage() {
                 <button
                   type="button"
                   onClick={() => setShowLiderancasModal(true)}
-                  className="mt-1 block text-xs text-accent-gold hover:underline"
+                  className={cn('mt-1 block text-xs hover:underline', kpiAccentTextClass)}
                 >
                   Clique para ver detalhes
                 </button>
@@ -1508,14 +1519,14 @@ export default function ResumoEleicoesPage() {
               <div className={`${summaryCardBaseClass} group`}>
                 <div className="flex items-center gap-2 mb-2">
                   <div className={summaryIconWrapClass}>
-                    <BarChart3 className="w-4 h-4 text-accent-gold animate-breathe" />
+                    <BarChart3 className={cn('w-4 h-4 animate-breathe', kpiAccentTextClass)} />
                   </div>
                   <p className="text-sm font-medium text-text-secondary group-hover:text-text-primary transition-colors">
                     Pesquisas
                   </p>
                 </div>
                 <div className="flex items-baseline gap-2">
-                  <p className="text-2xl font-bold text-text-primary group-hover:text-accent-gold transition-colors">
+                  <p className={cn('text-2xl font-bold text-text-primary transition-colors', kpiAccentHoverTextClass)}>
                     {pesquisaRecenteCidade ? `${pesquisaRecenteCidade.intencao.toFixed(1).replace('.', ',')}%` : '-'}
                   </p>
                   {pesquisaRecenteCidade && (
@@ -1537,7 +1548,7 @@ export default function ResumoEleicoesPage() {
                 <button
                   type="button"
                   onClick={() => setShowPesquisaHistoricoModal(true)}
-                  className="mt-1 inline-flex items-center gap-1 text-xs text-accent-gold hover:underline"
+                  className={cn('mt-1 inline-flex items-center gap-1 text-xs hover:underline', kpiAccentTextClass)}
                 >
                   <ArrowUpRight className="h-3 w-3" />
                   Clique para ver detalhes
@@ -1586,7 +1597,7 @@ export default function ResumoEleicoesPage() {
             </div>
           </div>
           <div className="grid grid-cols-1 md:flex md:flex-nowrap gap-4 overflow-x-auto pb-2">
-            <div className="bg-surface rounded-xl border border-card p-2 md:flex-1 min-w-[240px]">
+            <div className={cn(innerPanelClass, 'md:flex-1 min-w-[240px]')}>
               <h3 className="mb-2 text-center text-xs font-semibold text-text-primary">Deputado Estadual 2022</h3>
               <table className="w-full text-xs">
                 <thead>
@@ -1655,7 +1666,7 @@ export default function ResumoEleicoesPage() {
               />
             </div>
 
-            <div className="bg-surface rounded-xl border border-card p-2 md:flex-1 min-w-[240px]">
+            <div className={cn(innerPanelClass, 'md:flex-1 min-w-[240px]')}>
               <h3 className="mb-2 text-center text-xs font-semibold text-text-primary">Deputado Federal 2022</h3>
               <table className="w-full text-xs">
                 <thead>
@@ -1728,7 +1739,7 @@ export default function ResumoEleicoesPage() {
               />
             </div>
 
-            <div className="bg-surface rounded-xl border border-card p-2 md:flex-1 min-w-[240px]">
+            <div className={cn(innerPanelClass, 'md:flex-1 min-w-[240px]')}>
               <h3 className="mb-2 text-center text-xs font-semibold text-text-primary">Prefeito 2024</h3>
               <table className="w-full text-xs">
                 <thead>
@@ -1797,7 +1808,7 @@ export default function ResumoEleicoesPage() {
               />
             </div>
 
-            <div className="bg-surface rounded-xl border border-card p-2 md:flex-1 min-w-[280px]">
+            <div className={cn(innerPanelClass, 'md:flex-1 min-w-[280px]')}>
               <h3 className="mb-2 text-center text-xs font-semibold text-text-primary">Vereador 2024</h3>
               <table className="w-full text-xs">
                 <thead>
@@ -1914,7 +1925,7 @@ export default function ResumoEleicoesPage() {
               />
             </div>
 
-            <div className="bg-surface rounded-xl border border-card p-2 md:flex-1 min-w-[240px]">
+            <div className={cn(innerPanelClass, 'md:flex-1 min-w-[240px]')}>
               <h3 className="mb-2 text-center text-xs font-semibold text-text-primary">Votação por Partido 2024</h3>
               <table className="w-full text-xs">
                 <thead>

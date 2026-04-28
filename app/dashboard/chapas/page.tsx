@@ -24,7 +24,7 @@ import { sidebarPrimaryCTAButtonClass } from '@/lib/sidebar-menu-active-style'
 
 /** Mesmo gradiente do item ativo da sidebar / KPIs (Republicanos no mapa). */
 const COR_REPUBLICANOS_GRADIENTE =
-  'border border-white/15 bg-[linear-gradient(135deg,#062e52_0%,#0b4a7a_52%,#1368a8_100%)]'
+  'border border-white/15 bg-[linear-gradient(135deg,#0b4f6c_0%,#0ea5b7_52%,#2dd4bf_100%)]'
 
 const coresPartidosFederais = {
   'PT': { cor: 'bg-accent-gold', corTexto: 'text-white' },
@@ -109,6 +109,28 @@ export default function ChapasPage() {
   const isCockpit = theme === 'cockpit'
   const pathname = usePathname()
   const isChapasEstaduais = pathname === '/dashboard/chapas-estaduais'
+  const isFederalCockpit = isCockpit && !isChapasEstaduais
+  const pageShellClass = isFederalCockpit ? 'sidebar-cockpit-shell' : 'bg-background'
+  const sectionShellClass = isCockpit
+    ? 'rounded-2xl border p-5 backdrop-blur border-white/12 bg-[linear-gradient(165deg,rgba(22,34,44,0.82)_0%,rgba(18,30,38,0.86)_100%)] shadow-[0_10px_32px_rgba(3,12,20,0.28)]'
+    : 'rounded-xl border border-card bg-surface shadow-card p-4'
+  const innerPanelClass = isCockpit
+    ? 'rounded-xl border p-3 border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.04)_0%,rgba(255,255,255,0.02)_100%)]'
+    : 'rounded-lg border border-card bg-background/50 p-3'
+  const fullscreenShellClass = isCockpit
+    ? 'sidebar-cockpit-shell rounded-2xl border border-white/12 p-5 sm:p-6 shadow-[0_16px_44px_rgba(3,12,20,0.32)]'
+    : 'bg-background rounded-xl border border-card p-4 sm:p-5'
+  const controlButtonClass = isCockpit
+    ? 'flex items-center gap-2 rounded-xl border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.04)_0%,rgba(255,255,255,0.02)_100%)] px-4 py-2 text-sm text-text-primary hover:bg-white/10 disabled:opacity-50'
+    : 'flex items-center gap-2 rounded-lg border border-card bg-surface px-4 py-2 text-sm text-text-primary hover:bg-background disabled:opacity-50'
+  const accentTextClass = isFederalCockpit ? 'text-[#0ea5b7]' : 'text-accent-gold'
+  const accentHoverTextClass = isFederalCockpit ? 'hover:text-[#2dd4bf]' : 'hover:text-accent-gold'
+  const accentSoftBgClass = isFederalCockpit ? 'bg-[#0ea5b7]/15' : 'bg-accent-gold-soft/20'
+  const accentSoftActionClass = isFederalCockpit
+    ? 'border-[#0ea5b7]/35 bg-[#0ea5b7]/18 hover:bg-[#0ea5b7]/28'
+    : 'border-accent-gold/40 bg-accent-gold-soft/30 hover:bg-accent-gold-soft/50'
+  const accentBorderFocusClass = isFederalCockpit ? 'focus:border-[#0ea5b7]' : 'focus:border-accent-gold'
+  const accentRingFocusClass = isFederalCockpit ? 'focus:ring-[#0ea5b7]/35' : 'focus:ring-accent-gold-soft'
   const service = isChapasEstaduais ? chapasEstaduaisService : chapasFederalService
   const coresPartidosAtivos = isChapasEstaduais ? coresPartidosEstaduais : coresPartidosFederais
   const ordemPartidosPadrao = isChapasEstaduais
@@ -1227,7 +1249,7 @@ export default function ChapasPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background w-full">
+    <div className={cn('min-h-screen w-full', pageShellClass)}>
       <div className={`w-full py-4 ${modoImpressao ? 'px-3 sm:px-5' : 'px-4 sm:px-6 lg:px-8'}`}>
         {/* Notificação de auto-save */}
         {notificacaoAutoSave && (
@@ -1263,7 +1285,7 @@ export default function ChapasPage() {
                 </>
               ) : (
                 <>
-                  <RefreshCw className="h-8 w-8 animate-spin text-accent-gold" />
+                  <RefreshCw className={cn('h-8 w-8 animate-spin', accentTextClass)} />
                   <span className="text-text-primary">Carregando dados...</span>
                 </>
               )}
@@ -1271,8 +1293,14 @@ export default function ChapasPage() {
           </div>
         )}
         
-        <div ref={fullscreenRef} className={`${isFullscreen ? 'bg-surface p-4 max-h-screen overflow-y-auto' : 'bg-transparent'} transition-all duration-300`}>
-          <div id="chapas-pdf-content" className="w-full space-y-4 py-2">
+        <div
+          ref={fullscreenRef}
+          className={cn(
+            isFullscreen ? cn('max-h-screen overflow-y-auto', fullscreenShellClass) : 'bg-transparent',
+            'transition-all duration-300'
+          )}
+        >
+          <div id="chapas-pdf-content" className={cn('w-full space-y-4', isFullscreen ? 'py-1' : 'py-2')}>
             {/* Controles */}
             <div data-chapas-pdf-toolbar className="flex items-center justify-between mb-4">
               <div />
@@ -1282,7 +1310,7 @@ export default function ChapasPage() {
                   onClick={handleGerarPdf}
                   disabled={exportandoPdf || !dadosCarregados}
                   title="Baixar relatorio em PDF (texto nativo, um partido por pagina)"
-                  className="flex items-center gap-2 rounded-lg border border-card bg-surface px-4 py-2 text-sm text-text-primary hover:bg-background disabled:opacity-50"
+                  className={controlButtonClass}
                 >
                   {exportandoPdf ? (
                     <>
@@ -1299,7 +1327,7 @@ export default function ChapasPage() {
                 <Link
                   href={isChapasEstaduais ? '/dashboard/chapas' : '/dashboard/chapas-estaduais'}
                   title={isChapasEstaduais ? 'Ir para Chapas Federais' : 'Ir para Chapas Estaduais'}
-                  className="flex items-center gap-2 rounded-lg border border-card bg-surface px-4 py-2 text-sm text-text-primary hover:bg-background"
+                  className={cn(controlButtonClass, 'disabled:opacity-100')}
                 >
                   <ArrowRightLeft className="h-4 w-4" />
                   {isChapasEstaduais ? 'Federais' : 'Estaduais'}
@@ -1308,7 +1336,7 @@ export default function ChapasPage() {
                   type="button"
                   onClick={toggleFullscreen}
                   title={isFullscreen ? 'Sair de tela cheia' : 'Tela cheia'}
-                  className="rounded-lg p-2 text-text-secondary transition-colors hover:bg-background hover:text-accent-gold"
+                  className={cn('rounded-lg p-2 text-text-secondary transition-colors hover:bg-background', accentHoverTextClass)}
                 >
                   {isFullscreen ? (
                     <Minimize2 className="h-5 w-5" />
@@ -1325,7 +1353,7 @@ export default function ChapasPage() {
                   {salvandoMudancas ? (
                     <>
                       <RefreshCw
-                        className={cn('h-4 w-4 shrink-0 animate-spin', isCockpit ? 'text-white' : 'text-accent-gold')}
+                        className={cn('h-4 w-4 shrink-0 animate-spin', isCockpit ? 'text-white' : accentTextClass)}
                         aria-hidden
                       />
                       Salvando...
@@ -1333,7 +1361,7 @@ export default function ChapasPage() {
                   ) : (
                     <>
                       <Check
-                        className={cn('h-4 w-4 shrink-0', isCockpit ? 'text-white' : 'text-accent-gold')}
+                        className={cn('h-4 w-4 shrink-0', isCockpit ? 'text-white' : accentTextClass)}
                         aria-hidden
                       />
                       Salvar Mudanças
@@ -1347,7 +1375,7 @@ export default function ChapasPage() {
           <div
             data-chapas-cenarios-wrap
             data-cenario-ativo={cenarioAtivo?.nome ?? '—'}
-            className="bg-surface rounded-lg shadow-sm border border-card p-4"
+            className={sectionShellClass}
           >
             <CenariosTabs
               service={service}
@@ -1408,7 +1436,7 @@ export default function ChapasPage() {
           </div>
 
           {/* Resumo do Quociente */}
-          <div className="bg-surface rounded-lg shadow-sm border border-card p-3">
+          <div className={innerPanelClass}>
             <div className="flex flex-wrap items-center gap-4 text-xs justify-between">
               <div className="flex flex-wrap items-center gap-4">
                 <div className="flex items-center gap-2">
@@ -1417,7 +1445,10 @@ export default function ChapasPage() {
                     type="number"
                     value={numVagas}
                     onChange={(e) => setNumVagas(Math.max(1, parseInt(e.target.value) || 10))}
-                    className="text-sm font-bold text-text-primary bg-transparent border-b border-card focus:border-accent-gold outline-none w-20 text-center px-1"
+                    className={cn(
+                      'text-sm font-bold text-text-primary bg-transparent border-b border-card outline-none w-20 text-center px-1',
+                      accentBorderFocusClass
+                    )}
                     min="1"
                     max="20"
                   />
@@ -1440,7 +1471,10 @@ export default function ChapasPage() {
                     onBlur={() => {
                       // Quociente salvo via botão "Salvar Mudanças"
                     }}
-                    className="text-sm font-bold text-text-primary bg-transparent border-b border-card focus:border-accent-gold outline-none w-32 text-center px-1"
+                    className={cn(
+                      'text-sm font-bold text-text-primary bg-transparent border-b border-card outline-none w-32 text-center px-1',
+                      accentBorderFocusClass
+                    )}
                   />
                 </div>
 
@@ -1482,7 +1516,7 @@ export default function ChapasPage() {
                   onClick={() => setDialogNovoPartidoAberto(true)}
                   className={cn(sidebarPrimaryCTAButtonClass(isCockpit), 'whitespace-nowrap')}
                 >
-                  <Plus className={cn('h-4 w-4 shrink-0', isCockpit ? 'text-white' : 'text-accent-gold')} aria-hidden />
+                  <Plus className={cn('h-4 w-4 shrink-0', isCockpit ? 'text-white' : accentTextClass)} aria-hidden />
                   Adicionar Partido
                 </button>
               </div>
@@ -1490,7 +1524,7 @@ export default function ChapasPage() {
           </div>
 
           {partidosOcultosLista.length > 0 && (
-            <div className="mb-4 rounded-lg border border-card bg-accent-gold-soft/20 p-3">
+            <div className={cn(innerPanelClass, 'mb-4', accentSoftBgClass)}>
               <div className="flex flex-wrap items-center gap-2">
                 <span className="text-xs font-semibold text-text-primary">
                   Partidos ocultos ({partidosOcultosLista.length}):
@@ -1510,7 +1544,10 @@ export default function ChapasPage() {
                 <button
                   type="button"
                   onClick={mostrarTodosPartidos}
-                  className="inline-flex items-center gap-1 rounded-full border border-accent-gold/40 bg-accent-gold-soft/30 px-2 py-1 text-xs font-semibold text-text-primary hover:bg-accent-gold-soft/50"
+                  className={cn(
+                    'inline-flex items-center gap-1 rounded-full border px-2 py-1 text-xs font-semibold text-text-primary',
+                    accentSoftActionClass
+                  )}
                 >
                   Mostrar todos
                 </button>
@@ -1544,11 +1581,12 @@ export default function ChapasPage() {
                   <div
                     key={partido.nome}
                     data-chapas-partido-card
-                    className={`w-full flex flex-col bg-surface rounded-lg shadow-sm border border-card p-4 ${modoImpressao ? 'h-auto items-stretch' : 'h-full items-center'} ${
-                    atingiuMinimo 
-                      ? 'border-border-card' 
-                      : 'border-status-error/50 bg-status-error/5'
-                    }`}
+                    className={cn(
+                      innerPanelClass,
+                      `w-full flex flex-col ${modoImpressao ? 'h-auto items-stretch' : 'h-full items-center'} ${
+                        atingiuMinimo ? 'border-border-card' : 'border-status-error/50 bg-status-error/5'
+                      }`
+                    )}
                   >
                     {modoImpressao ? (
                       <div
@@ -1626,7 +1664,7 @@ export default function ChapasPage() {
                             <button
                               type="button"
                               onClick={() => setOpenAnaliseRepublicanos(true)}
-                              className="text-text-primary hover:text-accent-gold transition-colors p-1"
+                              className={cn('text-text-primary transition-colors p-1', accentHoverTextClass)}
                             >
                               <Info className="h-3.5 w-3.5" />
                             </button>
@@ -1693,7 +1731,10 @@ export default function ChapasPage() {
                                               e.currentTarget.blur()
                                             }
                                           }}
-                                          className="bg-transparent border-b border-border-card focus:border-accent-gold outline-none w-32 text-xs py-0.5 px-1 text-text-primary"
+                                          className={cn(
+                                            'bg-transparent border-b border-border-card outline-none w-32 text-xs py-0.5 px-1 text-text-primary',
+                                            accentBorderFocusClass
+                                          )}
                                         />
                                       )}
                                     </div>
@@ -1724,7 +1765,10 @@ export default function ChapasPage() {
                                               setEditVoto(null)
                                             }
                                           }}
-                                          className="bg-transparent border-b border-card focus:border-accent-gold outline-none w-full text-xs py-0.5 px-1 text-right"
+                                          className={cn(
+                                            'bg-transparent border-b border-card outline-none w-full text-xs py-0.5 px-1 text-right',
+                                            accentBorderFocusClass
+                                          )}
                                           style={{ textAlign: 'right' }}
                                         />
                                       ) : (
@@ -1805,14 +1849,17 @@ export default function ChapasPage() {
                                               e.currentTarget.blur()
                                             }
                                           }}
-                                          className="bg-transparent border-b border-border-card focus:border-accent-gold outline-none w-32 text-xs py-0.5 px-1 text-text-primary"
+                                          className={cn(
+                                            'bg-transparent border-b border-border-card outline-none w-32 text-xs py-0.5 px-1 text-text-primary',
+                                            accentBorderFocusClass
+                                          )}
                                         />
                                       )}
                                     </div>
                                   </td>
                                   <td className="pl-1 text-right whitespace-nowrap font-normal align-top">
                                     {modoImpressao ? (
-                                      <span className="text-xs font-semibold text-accent-gold">
+                                      <span className={cn('text-xs font-semibold', accentTextClass)}>
                                         {Number(c.votos).toLocaleString('pt-BR')}
                                       </span>
                                     ) : (
@@ -1836,12 +1883,15 @@ export default function ChapasPage() {
                                               setEditVoto(null)
                                             }
                                           }}
-                                          className="bg-transparent border-b border-border-card focus:border-accent-gold outline-none text-xs py-0.5 px-1 text-right text-text-primary"
+                                          className={cn(
+                                            'bg-transparent border-b border-border-card outline-none text-xs py-0.5 px-1 text-right text-text-primary',
+                                            accentBorderFocusClass
+                                          )}
                                           style={{ textAlign: 'right' }}
                                         />
                                       ) : (
                                         <span
-                                          className="cursor-pointer select-text text-accent-gold font-semibold"
+                                          className={cn('cursor-pointer select-text font-semibold', accentTextClass)}
                                           onClick={() => setEditVoto({ partidoIdx: partidoIdx, candidatoIdx })}
                                         >
                                           {Number(c.votos).toLocaleString('pt-BR')}
@@ -1917,7 +1967,10 @@ export default function ChapasPage() {
                                   e.currentTarget.blur()
                                 }
                               }}
-                              className="text-xs font-medium text-text-primary bg-transparent border-b border-card focus:border-accent-gold outline-none w-24 text-right px-1"
+                              className={cn(
+                                'text-xs font-medium text-text-primary bg-transparent border-b border-card outline-none w-24 text-right px-1',
+                                accentBorderFocusClass
+                              )}
                             />
                           )}
                         </div>
@@ -1926,7 +1979,12 @@ export default function ChapasPage() {
                       {!modoImpressao ? (
                         <button
                           onClick={() => setDialogAberto(partidoIdx)}
-                          className="mt-2 px-3 py-1 text-xs bg-accent-gold-soft text-accent-gold rounded hover:bg-accent-gold-soft/80 flex items-center gap-1 justify-center self-center"
+                          className={cn(
+                            'mt-2 px-3 py-1 text-xs rounded flex items-center gap-1 justify-center self-center',
+                            isFederalCockpit
+                              ? 'bg-[#0ea5b7]/18 text-[#0ea5b7] hover:bg-[#0ea5b7]/28'
+                              : 'bg-accent-gold-soft text-accent-gold hover:bg-accent-gold-soft/80'
+                          )}
                         >
                           <Plus className="h-3 w-3" />
                           Adicionar Candidato
@@ -2031,7 +2089,7 @@ export default function ChapasPage() {
           </div>
 
           {/* Seção de detalhes das sobras - Método D'Hondt */}
-          <div className="mt-4 p-4 bg-background rounded-lg max-w-4xl">
+          <div className={cn(sectionShellClass, 'mt-4 max-w-4xl')}>
             <div className="text-base font-semibold mb-3 text-text-primary">
               📊 Cálculo de Sobras - Método D'Hondt (Legislação Brasileira)
             </div>
@@ -2044,7 +2102,7 @@ export default function ChapasPage() {
                 const { ordenadosPorSobras } = calcularSobras()
                 
                 return ordenadosPorSobras.map((resultado, index) => (
-                  <div key={resultado.partido} className="bg-surface p-3 rounded border border-card">
+                  <div key={resultado.partido} className={innerPanelClass}>
                     <div className="font-semibold text-sm mb-2 text-text-primary">
                       {resultado.partido}
                     </div>
@@ -2090,7 +2148,7 @@ export default function ChapasPage() {
             </div>
             
             {/* Seção de distribuição completa das vagas */}
-            <div className="mt-4 p-4 bg-background rounded-lg border border-card">
+            <div className={cn(sectionShellClass, 'mt-4')}>
               <div className="text-base font-semibold mb-3 text-text-primary">
                 🎯 Distribuição Completa das {numVagas} Vagas - Método D'Hondt
               </div>
@@ -2101,7 +2159,7 @@ export default function ChapasPage() {
                 return (
                   <div className="space-y-4">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="rounded border border-card bg-surface p-3">
+                      <div className={innerPanelClass}>
                         <div className="mb-2 text-sm font-semibold text-text-primary">📊 Resumo das Vagas</div>
                         <div className="text-xs space-y-1">
                           <div className="flex justify-between">
@@ -2119,7 +2177,7 @@ export default function ChapasPage() {
                         </div>
                       </div>
                       
-                      <div className="rounded border border-card bg-surface p-3">
+                      <div className={innerPanelClass}>
                         <div className="mb-2 text-sm font-semibold text-text-primary">🏆 Vagas por Partido</div>
                         <div className="text-xs space-y-1">
                           {simulacao.partidosComVagas.map(partido => (
@@ -2133,7 +2191,7 @@ export default function ChapasPage() {
                     </div>
 
                     {/* Histórico das sobras */}
-                    <div className="rounded border border-card bg-surface p-3">
+                    <div className={innerPanelClass}>
                       <div className="mb-2 text-sm font-semibold text-text-primary">📋 Histórico das Sobras - Método D'Hondt</div>
                       <div className="text-xs space-y-3">
                         {simulacao.historicoSobras.map((sobra, index) => {
@@ -2163,7 +2221,7 @@ export default function ChapasPage() {
                             .sort((a, b) => b.quocientePartidario - a.quocientePartidario)
 
                           return (
-                            <div key={index} className="rounded-lg border border-card bg-background p-3">
+                            <div key={index} className={innerPanelClass}>
                               <div className="flex items-center gap-3 mb-2 p-2 bg-surface rounded">
                                 <span className="font-bold text-text-primary">🎯 Rodada {sobra.rodada}</span>
                                 <span className="text-secondary">→</span>
@@ -2213,7 +2271,7 @@ export default function ChapasPage() {
                     </div>
 
                     {/* Seção dos candidatos eleitos */}
-                    <div className="rounded border border-card bg-surface p-4">
+                    <div className={innerPanelClass}>
                       <div className="mb-3 text-sm font-semibold text-text-primary">🏆 Candidatos Eleitos</div>
                       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
                         {(() => {
@@ -2246,13 +2304,13 @@ export default function ChapasPage() {
                             ).filter(item => item.candidatos.length > 0)
 
                             return partidosOrdenados.map(({ nome: partido, candidatos }) => (
-                              <div key={partido} className="border rounded-lg p-3">
+                              <div key={partido} className={innerPanelClass}>
                                 <div className={`font-semibold text-sm mb-2 text-center ${coresPartidosAtivos[partido as keyof typeof coresPartidosAtivos]?.cor || 'bg-border-card'} ${coresPartidosAtivos[partido as keyof typeof coresPartidosAtivos]?.corTexto || 'text-text-primary'}`}>{partido}</div>
                                 <div className="space-y-2">
                                   {candidatos.map((candidato, index) => (
                                     <div key={index} className="flex items-center justify-between p-2 bg-background rounded text-xs">
                                       <div className="flex items-center gap-2">
-                                        <span className="font-bold text-accent-gold">#{candidato.posicao}</span>
+                                        <span className={cn('font-bold', accentTextClass)}>#{candidato.posicao}</span>
                                         <span className="font-medium">{candidato.nome}</span>
                                       </div>
                                       <div className="text-right">
@@ -2310,7 +2368,10 @@ export default function ChapasPage() {
                     value={novoCandidato.nome}
                     onChange={(e) => setNovoCandidato(prev => ({ ...prev, nome: e.target.value }))}
                     disabled={salvandoCandidato}
-                    className="w-full rounded-lg border border-card bg-surface px-3 py-2 text-text-primary focus:outline-none focus:ring-2 focus:ring-accent-gold-soft"
+                    className={cn(
+                      'w-full rounded-lg border border-card bg-surface px-3 py-2 text-text-primary focus:outline-none focus:ring-2',
+                      accentRingFocusClass
+                    )}
                   />
                 </div>
                 <div>
@@ -2322,7 +2383,10 @@ export default function ChapasPage() {
                     value={novoCandidato.votos}
                     onChange={(e) => setNovoCandidato(prev => ({ ...prev, votos: parseInt(e.target.value) || 0 }))}
                     disabled={salvandoCandidato}
-                    className="w-full rounded-lg border border-card bg-surface px-3 py-2 text-text-primary focus:outline-none focus:ring-2 focus:ring-accent-gold-soft"
+                    className={cn(
+                      'w-full rounded-lg border border-card bg-surface px-3 py-2 text-text-primary focus:outline-none focus:ring-2',
+                      accentRingFocusClass
+                    )}
                   />
                 </div>
                 <div>
@@ -2336,7 +2400,7 @@ export default function ChapasPage() {
                         checked={novoCandidato.genero === 'homem'}
                         onChange={(e) => setNovoCandidato(prev => ({ ...prev, genero: e.target.value as 'homem' | 'mulher' }))}
                         disabled={salvandoCandidato}
-                        className="w-4 h-4 text-accent-gold"
+                        className={cn('w-4 h-4', accentTextClass)}
                       />
                       <span>Homem</span>
                     </label>
@@ -2348,7 +2412,7 @@ export default function ChapasPage() {
                         checked={novoCandidato.genero === 'mulher'}
                         onChange={(e) => setNovoCandidato(prev => ({ ...prev, genero: e.target.value as 'homem' | 'mulher' }))}
                         disabled={salvandoCandidato}
-                        className="w-4 h-4 text-accent-gold"
+                        className={cn('w-4 h-4', accentTextClass)}
                       />
                       <span>Mulher</span>
                     </label>
@@ -2406,7 +2470,10 @@ export default function ChapasPage() {
                     value={novoPartido.nome}
                     onChange={(e) => setNovoPartido(prev => ({ ...prev, nome: e.target.value }))}
                     disabled={salvandoPartido}
-                    className="w-full rounded-lg border border-card bg-surface px-3 py-2 text-text-primary focus:outline-none focus:ring-2 focus:ring-accent-gold-soft"
+                    className={cn(
+                      'w-full rounded-lg border border-card bg-surface px-3 py-2 text-text-primary focus:outline-none focus:ring-2',
+                      accentRingFocusClass
+                    )}
                   />
                 </div>
                 <div>
@@ -2424,7 +2491,10 @@ export default function ChapasPage() {
                       setNovoPartido(prev => ({ ...prev, cor, corTexto }))
                     }}
                     disabled={salvandoPartido}
-                    className="w-full rounded-lg border border-card bg-surface px-3 py-2 text-text-primary focus:outline-none focus:ring-2 focus:ring-accent-gold-soft"
+                    className={cn(
+                      'w-full rounded-lg border border-card bg-surface px-3 py-2 text-text-primary focus:outline-none focus:ring-2',
+                      accentRingFocusClass
+                    )}
                   >
                     <option value="bg-border-card">Cinza</option>
                     <option value="bg-red-600">Vermelho</option>
@@ -2490,7 +2560,10 @@ export default function ChapasPage() {
                     value={nomePartidoEdicao}
                     onChange={(e) => setNomePartidoEdicao(e.target.value)}
                     disabled={salvandoEdicaoPartido}
-                    className="w-full rounded-lg border border-card bg-surface px-3 py-2 text-text-primary focus:outline-none focus:ring-2 focus:ring-accent-gold-soft"
+                    className={cn(
+                      'w-full rounded-lg border border-card bg-surface px-3 py-2 text-text-primary focus:outline-none focus:ring-2',
+                      accentRingFocusClass
+                    )}
                   />
                 </div>
                 <div className="flex justify-end gap-2">

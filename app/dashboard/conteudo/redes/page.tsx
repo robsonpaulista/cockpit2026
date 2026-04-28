@@ -40,6 +40,7 @@ import {
   InstagramMetrics,
   InstagramHistoryResponse,
 } from '@/lib/instagramApi'
+import { useTheme } from '@/contexts/theme-context'
 
 const producao = [
   { etapa: 'Roteiro', quantidade: 3, cor: 'bg-accent-gold-soft border-accent-gold/30' },
@@ -140,6 +141,16 @@ const defaultThemes = [
 ]
 
 export default function ConteudoPage() {
+  const { theme } = useTheme()
+  const isCockpit = theme === 'cockpit'
+  const pageShellClass = isCockpit ? 'sidebar-cockpit-shell' : 'bg-background'
+  const sectionShellClass = isCockpit
+    ? 'rounded-2xl border p-5 backdrop-blur border-white/12 bg-[linear-gradient(165deg,rgba(22,34,44,0.82)_0%,rgba(18,30,38,0.86)_100%)] shadow-[0_10px_32px_rgba(3,12,20,0.28)]'
+    : 'bg-surface rounded-2xl border border-card p-6'
+  const innerPanelClass = isCockpit
+    ? 'rounded-xl border p-3 border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.04)_0%,rgba(255,255,255,0.02)_100%)]'
+    : 'rounded-xl border border-card bg-surface p-3'
+
   const [activeSubTab, setActiveSubTab] = useState<'posts' | 'audience' | 'locations'>('posts')
   const [overviewThemeFilter, setOverviewThemeFilter] = useState<string>('all')
   const [overviewBoostedFilter, setOverviewBoostedFilter] = useState<string>('all')
@@ -644,7 +655,7 @@ export default function ConteudoPage() {
   }, [postsToDisplay, overviewThemeFilter, overviewBoostedFilter, postClassifications])
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className={`min-h-screen ${pageShellClass}`}>
 
       <div className="px-4 py-6 lg:px-6">
         {/* Botões de Configuração e Atualização */}
@@ -758,7 +769,7 @@ export default function ConteudoPage() {
               ) : contentStats ? (
                 <>
                   {/* Campeões por Indicador */}
-                  <div className="bg-surface rounded-2xl border border-card p-6">
+                  <div className={sectionShellClass}>
                     <div className="mb-6">
                       <h2 className="text-xl font-semibold text-text-primary mb-2 flex items-center gap-2">
                         <BarChart4 className="w-5 h-5 text-accent-gold" />
@@ -1023,7 +1034,7 @@ export default function ConteudoPage() {
                   </div>
 
                   {/* Comparativo de Aceitação por Tipo de Conteúdo */}
-            <div className="bg-surface rounded-2xl border border-card p-6">
+            <div className={sectionShellClass}>
                     <div className="mb-6">
                       <h2 className="text-xl font-semibold text-text-primary mb-2 flex items-center gap-2">
                         <BarChart4 className="w-5 h-5 text-accent-gold" />
@@ -1036,7 +1047,7 @@ export default function ConteudoPage() {
 
                     <div className="grid md:grid-cols-3 gap-4">
                       {/* Imagens */}
-                      <div className="border-2 border-card rounded-xl p-4 bg-surface">
+                      <div className={innerPanelClass}>
                         <div className="mb-4">
                           <h3 className="text-lg font-semibold text-text-primary flex items-center gap-2 mb-1">
                             <Camera className="h-5 w-5 text-blue-500" />
@@ -1102,7 +1113,7 @@ export default function ConteudoPage() {
                     </div>
 
                       {/* Vídeos */}
-                      <div className="border-2 border-card rounded-xl p-4 bg-surface">
+                      <div className={innerPanelClass}>
                         <div className="mb-4">
                           <h3 className="text-lg font-semibold text-text-primary flex items-center gap-2 mb-1">
                             <Camera className="h-5 w-5 text-red-500" />
@@ -1168,7 +1179,7 @@ export default function ConteudoPage() {
                       </div>
 
                       {/* Carrosséis */}
-                      <div className="border-2 border-card rounded-xl p-4 bg-surface">
+                      <div className={innerPanelClass}>
                         <div className="mb-4">
                           <h3 className="text-lg font-semibold text-text-primary flex items-center gap-2 mb-1">
                             <Camera className="h-5 w-5 text-blue-700" />
@@ -1246,7 +1257,7 @@ export default function ConteudoPage() {
                     const maxEngagement = bestTheme[1].avgEngagement
                     
                     return (
-                      <div className="bg-surface rounded-2xl border border-card p-6 mt-6 space-y-6">
+                      <div className={`${sectionShellClass} mt-6 space-y-6`}>
                         <div className="mb-6">
                           <h2 className="text-xl font-semibold text-text-primary mb-2 flex items-center gap-2">
                             <BarChart4 className="w-5 h-5 text-accent-gold" />
@@ -1294,7 +1305,7 @@ export default function ConteudoPage() {
                         </div>
 
                         {/* Gráfico de Barras: Engajamento por Tema */}
-                        <div className="bg-surface rounded-xl border border-card p-6">
+                        <div className={sectionShellClass}>
                           <h3 className="text-lg font-semibold text-text-primary mb-4">
                             Engajamento Médio por Tema
                           </h3>
@@ -1341,7 +1352,7 @@ export default function ConteudoPage() {
                         </div>
 
                         {/* Tabela Comparativa Detalhada */}
-                        <div className="bg-surface rounded-xl border border-card overflow-hidden">
+                        <div className={`${innerPanelClass} overflow-hidden`}>
                           <div className="p-4 border-b border-card bg-surface-secondary">
                             <h3 className="text-lg font-semibold text-text-primary">
                               Tabela Comparativa Detalhada
@@ -1431,7 +1442,7 @@ export default function ConteudoPage() {
                         </div>
 
                         {/* Comparativo Visual: Curtidas vs Comentários */}
-                        <div className="bg-surface rounded-xl border border-card p-6">
+                        <div className={sectionShellClass}>
                           <h3 className="text-lg font-semibold text-text-primary mb-4">
                             Comparativo Visual: Curtidas vs Comentários
                           </h3>
@@ -1540,7 +1551,7 @@ export default function ConteudoPage() {
               ) : (
                 <>
               {/* Card de Evolução de Seguidores e Métricas */}
-              <div className="bg-surface rounded-2xl border border-card p-6">
+              <div className={sectionShellClass}>
                 <div className="flex items-start justify-between mb-6">
                   <div>
                     <h3 className="text-lg font-semibold text-text-primary mb-1 flex items-center gap-2">
@@ -1692,7 +1703,7 @@ export default function ConteudoPage() {
               </div>
 
               {/* Card de Publicações por Tipo de Conteúdo */}
-              <div className="bg-surface rounded-2xl border border-card p-6">
+              <div className={sectionShellClass}>
                 <div className="flex items-start justify-between mb-4">
                       <div>
                     <h3 className="text-lg font-semibold text-text-primary mb-1">
@@ -2090,7 +2101,7 @@ export default function ConteudoPage() {
               ) : (
                 <>
                   {/* Card de Seguidores por Cidade */}
-                  <div className="bg-surface rounded-2xl border border-card p-6">
+                  <div className={sectionShellClass}>
                     <div className="flex items-start justify-between mb-6">
                       <div>
                         <h3 className="text-lg font-semibold text-text-primary mb-1 flex items-center gap-2">

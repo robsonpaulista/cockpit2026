@@ -27,6 +27,13 @@ type FiltroDestaqueMonitor = 'all' | 'yes'
 export default function NoticiasPage() {
   const { theme } = useTheme()
   const isCockpit = theme === 'cockpit'
+  const pageShellClass = isCockpit ? 'sidebar-cockpit-shell' : 'bg-background'
+  const sectionShellClass = isCockpit
+    ? 'rounded-2xl border p-5 backdrop-blur border-white/12 bg-[linear-gradient(165deg,rgba(22,34,44,0.82)_0%,rgba(18,30,38,0.86)_100%)] shadow-[0_10px_32px_rgba(3,12,20,0.28)]'
+    : 'bg-surface rounded-2xl border border-card p-6'
+  const innerPanelClass = isCockpit
+    ? 'rounded-xl border p-3 border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.04)_0%,rgba(255,255,255,0.02)_100%)]'
+    : 'rounded-xl border border-card bg-background/50 p-3'
   const [news, setNews] = useState<NewsItem[]>([])
   const [allFeeds, setAllFeeds] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
@@ -292,10 +299,10 @@ export default function NoticiasPage() {
     (allFeeds.length > 0 && selectedFeeds.length > 0 && selectedFeeds.length < allFeeds.length)
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className={cn('min-h-screen', pageShellClass)}>
 
       <div className="px-4 py-6 lg:px-6">
-        <div className="bg-surface rounded-2xl border border-card p-6">
+        <div className={sectionShellClass}>
               <div className="flex items-center justify-between mb-6">
                 <h2 className="text-lg font-semibold text-text-primary flex items-center gap-2">
                   <Newspaper className="w-5 h-5 text-accent-gold" />
@@ -329,7 +336,7 @@ export default function NoticiasPage() {
               )}
 
               {/* Filtros — uma linha (scroll horizontal em telas estreitas), padrão /dashboard/pesquisa */}
-              <div className="rounded-xl border border-card bg-background/50 px-3 py-2 mb-4">
+              <div className={cn(innerPanelClass, 'mb-4')}>
                 <div className="flex flex-nowrap items-center gap-x-2 sm:gap-3 overflow-x-auto pb-0.5 [scrollbar-width:thin]">
                   <span className="text-xs font-semibold text-text-primary shrink-0">Filtros</span>
                   <span className="hidden sm:block h-4 w-px shrink-0 bg-border-card opacity-60" aria-hidden />
@@ -471,7 +478,7 @@ export default function NoticiasPage() {
               {loading ? (
                 <div className="space-y-4">
                   {[1, 2, 3].map((i) => (
-                    <div key={i} className="h-24 bg-background rounded-xl animate-pulse" />
+                    <div key={i} className={cn('h-24 rounded-xl animate-pulse', isCockpit ? 'bg-white/10' : 'bg-background')} />
                   ))}
                 </div>
               ) : news.length === 0 ? (
@@ -508,7 +515,12 @@ export default function NoticiasPage() {
                   {news.map((item) => (
                     <div
                       key={item.id}
-                      className="p-4 rounded-xl border border-card hover:border-accent-gold/20 hover:shadow-card transition-all duration-200 ease-out"
+                      className={cn(
+                        'p-4 rounded-xl border hover:border-accent-gold/20 hover:shadow-card transition-all duration-200 ease-out',
+                        isCockpit
+                          ? 'border-white/12 bg-[linear-gradient(180deg,rgba(255,255,255,0.04)_0%,rgba(255,255,255,0.02)_100%)]'
+                          : 'border-card bg-surface'
+                      )}
                     >
                       <div className="flex items-start justify-between mb-2">
                         <div className="flex-1">

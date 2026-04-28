@@ -30,7 +30,8 @@ import {
   CartesianGrid,
   Tooltip,
 } from 'recharts'
-import { formatDate } from '@/lib/utils'
+import { cn, formatDate } from '@/lib/utils'
+import { useTheme } from '@/contexts/theme-context'
 import municipiosPiaui from '@/lib/municipios-piaui.json'
 import {
   buildCidadeToRegiaoMap,
@@ -103,22 +104,22 @@ const CIDADE_PARA_REGIAO_PESQUISA = buildCidadeToRegiaoMap(
   municipiosPiaui as ReadonlyArray<{ nome: string; lat: number }>
 )
 
-/** Cores saturadas e escuras — boas para linhas e legenda em fundo branco (evita cinzas claros do tema). */
+/** Paleta de alto contraste para leitura rápida em fundo claro. */
 const TENDENCIA_SERIES_COLORS = [
-  '#B45309',
   '#1D4ED8',
-  '#B91C1C',
-  '#047857',
-  '#6D28D9',
-  '#0E7490',
-  '#A16207',
-  '#BE185D',
-  '#1E3A8A',
-  '#92400E',
-  '#15803D',
-  '#7C2D12',
+  '#DC2626',
+  '#059669',
+  '#7C3AED',
+  '#EA580C',
+  '#0891B2',
+  '#BE123C',
   '#4338CA',
-  '#C2410C',
+  '#0F766E',
+  '#9333EA',
+  '#B45309',
+  '#334155',
+  '#65A30D',
+  '#C026D3',
 ]
 
 type TendenciaTooltipRow = Record<string, string | number | undefined>
@@ -187,6 +188,13 @@ function fmtPctPtBR(raw: string): string {
   return raw.replace('.', ',')
 }
 
+function formatVariacaoPP(variacao: number): string {
+  const abs = Math.abs(variacao).toFixed(1).replace('.', ',')
+  if (variacao > 0) return `Alta +${abs} p.p.`
+  if (variacao < 0) return `Queda -${abs} p.p.`
+  return 'Estável 0,0 p.p.'
+}
+
 function parseValorGraficoPonto(raw: unknown): number | null {
   if (typeof raw === 'number' && Number.isFinite(raw)) return raw
   if (typeof raw === 'string') {
@@ -202,13 +210,6 @@ function parseValorGraficoPonto(raw: unknown): number | null {
     return Number.isFinite(n) ? n : null
   }
   return null
-}
-
-/** Instituto abreviado para rótulo no ponto (estilo painel). */
-function rotuloInstitutoNoPonto(nome: string): string {
-  const t = nome.trim()
-  if (t.length <= 14) return t.toUpperCase()
-  return `${t.slice(0, 12).trim()}…`
 }
 
 function TendenciaTooltip({
@@ -247,13 +248,13 @@ function TendenciaTooltip({
 
   const box = executive
     ? 'max-w-sm rounded-lg border border-slate-600 bg-slate-900 px-3 py-2.5 text-xs shadow-xl'
-    : 'max-w-sm rounded-lg border border-gray-200 bg-white px-3 py-2.5 text-xs shadow-lg'
+    : 'max-w-sm rounded-xl border border-slate-300 bg-white px-3.5 py-3 text-[12px] shadow-xl'
   const title = executive
     ? 'mb-2 border-b border-slate-600 pb-1.5 text-sm font-semibold leading-snug text-white'
-    : 'mb-2 border-b border-gray-100 pb-1.5 text-sm font-semibold leading-snug text-gray-900'
+    : 'mb-2 border-b border-slate-200 pb-1.5 text-sm font-bold leading-snug text-slate-900'
   const sub = executive ? 'font-medium text-slate-300' : 'font-medium text-gray-700'
-  const nameC = executive ? 'font-semibold leading-tight text-slate-100' : 'font-semibold leading-tight text-gray-900'
-  const pctC = executive ? 'font-semibold tabular-nums text-white' : 'font-semibold tabular-nums text-gray-900'
+  const nameC = executive ? 'font-semibold leading-tight text-slate-100' : 'font-semibold leading-tight text-slate-900'
+  const pctC = executive ? 'font-semibold tabular-nums text-white' : 'font-bold tabular-nums text-slate-900'
 
   return (
     <div className={box}>
@@ -315,21 +316,21 @@ function TendenciaLineChart({
 }) {
   const maiorNome =
     candidatos.length > 0 ? Math.max(...candidatos.map((c) => Math.min(c.length, 28))) : 12
-  const marginRight = Math.min(280, Math.max(160, 32 + maiorNome * 5.5))
+  const marginRight = Math.min(340, Math.max(210, 34 + maiorNome * 6.2))
 
   return (
     <div
       className={`flex min-h-0 w-full flex-col gap-3 overflow-hidden md:flex-row md:items-stretch md:gap-3 ${chartClassName}`.trim()}
     >
-      <div className="min-h-[200px] min-w-0 flex-1 h-full md:min-h-[220px] overflow-hidden rounded-lg border border-card bg-white">
+      <div className="min-h-[200px] min-w-0 flex-1 h-full md:min-h-[220px] overflow-hidden rounded-xl border border-slate-300 bg-slate-50">
         <ResponsiveContainer width="100%" height="100%">
           <LineChart
             data={pesquisaData}
-            margin={{ top: 28, right: marginRight, left: 6, bottom: 44 }}
+            margin={{ top: 24, right: marginRight, left: 8, bottom: 44 }}
           >
             <CartesianGrid
-              strokeDasharray="3 3"
-              stroke="rgb(var(--border-card))"
+              strokeDasharray="4 4"
+              stroke="#CBD5E1"
               vertical={false}
             />
             <XAxis
@@ -337,16 +338,18 @@ function TendenciaLineChart({
               angle={-32}
               textAnchor="end"
               height={58}
-              fontSize={11}
-              stroke="rgb(var(--text-muted))"
-              tick={{ fill: 'rgb(var(--text-muted))' }}
+              fontSize={12}
+              stroke="#334155"
+              tick={{ fill: '#334155', fontWeight: 600 }}
+              tickMargin={10}
+              minTickGap={18}
             />
             <YAxis
               domain={[0, 100]}
-              width={40}
-              fontSize={11}
-              stroke="rgb(var(--text-muted))"
-              tick={{ fill: 'rgb(var(--text-muted))' }}
+              width={46}
+              fontSize={12}
+              stroke="#334155"
+              tick={{ fill: '#334155', fontWeight: 600 }}
               tickFormatter={(v) => `${v}`}
             />
             <Tooltip
@@ -360,22 +363,21 @@ function TendenciaLineChart({
             />
             {candidatos.map((candidato, index) => {
               const key = `intencao_${candidato.replace(/\s+/g, '_')}`
-              const slug = candidato.replace(/\s+/g, '_')
               const cor = cores[index % cores.length]
               const lastIdx = lastDatumIndexForSeries(pesquisaData, key)
               const nomeCurto = candidato.length > 24 ? `${candidato.slice(0, 22)}…` : candidato
               return (
                 <Line
                   key={key}
-                  type="basis"
+                  type="monotone"
                   dataKey={key}
                   name={candidato}
                   stroke={cor}
-                  strokeWidth={2.5}
+                  strokeWidth={3}
                   isAnimationActive={false}
                   connectNulls={false}
-                  dot={{ r: 4, fill: '#ffffff', stroke: cor, strokeWidth: 2 }}
-                  activeDot={{ r: 6, fill: '#ffffff', stroke: cor, strokeWidth: 2 }}
+                  dot={{ r: 4.5, fill: '#ffffff', stroke: cor, strokeWidth: 2.5 }}
+                  activeDot={{ r: 7, fill: '#ffffff', stroke: cor, strokeWidth: 2.5 }}
                 >
                   <LabelList
                     dataKey={key}
@@ -390,12 +392,6 @@ function TendenciaLineChart({
                       }
                       const val = parseValorGraficoPonto(props.value ?? payload?.[key])
                       if (val === null) return null
-                      const instKey = `instituto_${slug}` as const
-                      const instRaw = payload?.[instKey]
-                      const inst =
-                        typeof instRaw === 'string' && instRaw.trim() !== ''
-                          ? rotuloInstitutoNoPonto(instRaw)
-                          : ''
 
                       if (lastIdx >= 0 && idx === lastIdx) {
                         const texto = `${nomeCurto} ${val.toFixed(1).replace('.', ',')}%`
@@ -418,38 +414,7 @@ function TendenciaLineChart({
                         )
                       }
 
-                      return (
-                        <g>
-                          <text
-                            x={x}
-                            y={y}
-                            dy={-16}
-                            textAnchor="middle"
-                            fill="#111827"
-                            fontSize={10}
-                            fontWeight={700}
-                            stroke="#ffffff"
-                            strokeWidth={3}
-                            paintOrder="stroke fill"
-                          >
-                            {val.toFixed(1).replace('.', ',')}%
-                          </text>
-                          {inst ? (
-                            <text
-                              x={x}
-                              y={y}
-                              dy={-4}
-                              textAnchor="middle"
-                              fill="#4b5563"
-                              fontSize={8}
-                              fontWeight={600}
-                              style={{ textTransform: 'uppercase' }}
-                            >
-                              {inst}
-                            </text>
-                          ) : null}
-                        </g>
-                      )
+                      return null
                     }}
                   />
                 </Line>
@@ -459,13 +424,13 @@ function TendenciaLineChart({
         </ResponsiveContainer>
       </div>
       <aside
-        className="max-h-[340px] w-full shrink-0 overflow-y-auto rounded-lg border border-card bg-background/95 px-2 py-2.5 text-left md:max-h-none md:w-[min(100%,308px)] md:border-l md:px-3"
+        className="max-h-[420px] w-full shrink-0 overflow-y-auto rounded-xl border border-slate-300 bg-slate-50/95 px-3 py-3 text-left md:max-h-none md:w-[min(100%,340px)] md:px-3.5"
         aria-label="Legenda: candidatos, primeira e última leitura da série, texto automático"
       >
-        <p className="text-[10px] font-semibold uppercase tracking-wide text-secondary mb-2 px-0.5">
+        <p className="mb-3 px-1 text-[11px] font-semibold uppercase tracking-wide text-slate-700">
           Candidatos · 1ª → última % · leitura
         </p>
-        <ul className="flex flex-col gap-3 list-none m-0 p-0">
+        <ul className="m-0 flex list-none flex-col gap-2.5 p-0">
           {candidatos.map((candidato, index) => {
             const key = `intencao_${candidato.replace(/\s+/g, '_')}`
             const pctPrimeira = primeiraIntencaoSerie(pesquisaData, key)
@@ -474,35 +439,47 @@ function TendenciaLineChart({
             const i1 = lastDatumIndexForSeries(pesquisaData, key)
             const cor = cores[index % cores.length]
             const resumo = resumoLegendaPorCandidato[candidato] ?? ''
+            const variacao =
+              pctPrimeira != null && pctUltima != null ? Number(pctUltima) - Number(pctPrimeira) : null
             const blocoPct =
               pctPrimeira != null && pctUltima != null ? (
                 i0 >= 0 && i1 >= 0 && i0 === i1 ? (
-                  <span className="font-bold tabular-nums text-accent-gold">
+                  <span className="font-bold tabular-nums text-slate-900">
                     {fmtPctPtBR(pctUltima)}%
-                    <span className="font-normal text-secondary"> (uma data)</span>
+                    <span className="font-normal text-slate-600"> (uma data)</span>
                   </span>
                 ) : (
-                  <span className="font-bold tabular-nums text-accent-gold">
+                  <span className="font-bold tabular-nums text-slate-900">
                     {fmtPctPtBR(pctPrimeira)}% → {fmtPctPtBR(pctUltima)}%
                   </span>
                 )
               ) : pctUltima != null ? (
-                <span className="font-bold tabular-nums text-accent-gold">{fmtPctPtBR(pctUltima)}%</span>
+                <span className="font-bold tabular-nums text-slate-900">{fmtPctPtBR(pctUltima)}%</span>
               ) : null
             return (
-              <li key={key} className="text-[11px] leading-snug">
+              <li key={key} className="rounded-lg border border-slate-200 bg-white/90 px-2.5 py-2 text-[12px] leading-snug shadow-[0_2px_8px_rgba(15,23,42,0.06)]">
                 <div className="flex items-start gap-2">
                   <span
-                    className="mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full ring-1 ring-white"
+                    className="mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full ring-2 ring-white"
                     style={{ backgroundColor: cor }}
                   />
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-baseline gap-x-1.5 gap-y-0">
-                      <span className="font-semibold text-text-primary">{candidato}</span>
+                      <span className="font-semibold text-slate-900">{candidato}</span>
                       {blocoPct}
                     </div>
+                    {variacao != null ? (
+                      <p
+                        className={cn(
+                          'mt-0.5 text-[11px] font-semibold',
+                          variacao > 0 ? 'text-emerald-700' : variacao < 0 ? 'text-rose-700' : 'text-slate-600'
+                        )}
+                      >
+                        {formatVariacaoPP(variacao)}
+                      </p>
+                    ) : null}
                     {resumo ? (
-                      <p className="mt-1 text-[10px] leading-relaxed text-secondary">{resumo}</p>
+                      <p className="mt-1 text-[11px] leading-relaxed text-slate-700">{resumo}</p>
                     ) : null}
                   </div>
                 </div>
@@ -510,7 +487,7 @@ function TendenciaLineChart({
             )
           })}
         </ul>
-        <p className="mt-3 text-[9px] leading-snug text-secondary px-0.5 border-t border-card/80 pt-2">
+        <p className="mt-3 border-t border-slate-300 px-1 pt-2 text-[10px] leading-snug text-slate-700">
           Com «Todas», se a série cruza estimulada e espontânea, o texto alerta efeito de indecisão — não só «queda» ou
           «alta» de voto. Posição na última onda quando houver comparativo.
         </p>
@@ -567,6 +544,17 @@ function BlocoFeedbackAutomatico({
 }
 
 export default function PesquisaPage() {
+  const { theme } = useTheme()
+  const isCockpit = theme === 'cockpit'
+  const sectionShellClass = isCockpit
+    ? 'border-white/12 bg-[linear-gradient(165deg,rgba(22,34,44,0.82)_0%,rgba(18,30,38,0.86)_100%)] shadow-[0_10px_32px_rgba(3,12,20,0.28)]'
+    : 'border-card bg-surface shadow-card'
+  const innerPanelClass = isCockpit
+    ? 'border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.04)_0%,rgba(255,255,255,0.02)_100%)]'
+    : 'border-card bg-background/50'
+  const inputShellClass = isCockpit
+    ? 'border-white/12 bg-white/[0.03]'
+    : 'border-card bg-surface'
   const searchParams = useSearchParams()
   const [polls, setPolls] = useState<Poll[]>([])
   const [loading, setLoading] = useState(true)
@@ -1001,15 +989,15 @@ export default function PesquisaPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className={cn('min-h-screen font-sans', isCockpit ? 'sidebar-cockpit-shell' : 'bg-bg-sidebar')}>
 
       <div className="px-4 py-6 lg:px-6">
         {/* Seletor de Candidato Padrão e Botão Nova Pesquisa */}
-        <div className="bg-surface rounded-2xl border border-card p-4 mb-6">
+        <div className={cn('mb-6 rounded-2xl border p-4', sectionShellClass)}>
           <div className="flex items-center gap-4 flex-wrap">
             <Link
               href={hrefResumoEleicoes}
-              className="px-3 py-2 text-xs font-medium border border-card rounded-lg hover:bg-background transition-colors inline-flex items-center gap-2"
+              className={cn('inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-xs font-medium transition-colors', isCockpit ? 'border-white/12 hover:bg-white/10' : 'border-card hover:bg-background')}
             >
               <ArrowLeft className="w-4 h-4" />
               Voltar para Resumo Eleições
@@ -1024,7 +1012,7 @@ export default function PesquisaPage() {
                 setCandidatoPadrao(novoCandidato)
                 localStorage.setItem('candidatoPadraoPesquisa', novoCandidato)
               }}
-              className="flex-1 max-w-xs px-3 py-2 text-sm border border-card rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-gold-soft bg-surface"
+              className={cn('flex-1 max-w-xs rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent-gold-soft', inputShellClass)}
             >
               <option value="">Selecione um candidato</option>
               {Array.from(new Set(polls.map(p => p.candidato_nome).filter(Boolean)))
@@ -1049,7 +1037,7 @@ export default function PesquisaPage() {
         </div>
 
         {/* Filtros — uma linha (scroll horizontal em telas estreitas) */}
-        <div id="filtros" className="bg-surface rounded-xl border border-card px-3 py-2 mb-4">
+        <div id="filtros" className={cn('mb-4 rounded-xl border px-3 py-2', innerPanelClass)}>
           <div className="flex flex-nowrap items-center gap-x-2 sm:gap-3 overflow-x-auto pb-0.5 [scrollbar-width:thin]">
             <span className="text-xs font-semibold text-text-primary shrink-0">Filtros</span>
             <span className="hidden sm:block h-4 w-px shrink-0 bg-border-card opacity-60" aria-hidden />
@@ -1110,7 +1098,7 @@ export default function PesquisaPage() {
               <select
                 value={filtroCargo}
                 onChange={(e) => setFiltroCargo(e.target.value)}
-                className="min-w-[6.5rem] max-w-[9rem] rounded-lg border border-card bg-surface px-2 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-accent-gold-soft"
+                className={cn('min-w-[6.5rem] max-w-[9rem] rounded-lg border px-2 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-accent-gold-soft', inputShellClass)}
               >
                 <option value="">Todos</option>
                 <option value="dep_estadual">Dep. Estadual</option>
@@ -1128,7 +1116,7 @@ export default function PesquisaPage() {
               <select
                 value={filtroCidade}
                 onChange={(e) => setFiltroCidade(e.target.value)}
-                className="min-w-[6.5rem] max-w-[10rem] rounded-lg border border-card bg-surface px-2 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-accent-gold-soft"
+                className={cn('min-w-[6.5rem] max-w-[10rem] rounded-lg border px-2 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-accent-gold-soft', inputShellClass)}
               >
                 <option value="">Todas</option>
                 {cities.map((city) => (
@@ -1147,7 +1135,7 @@ export default function PesquisaPage() {
                 value={filtroRegiao}
                 onChange={(e) => setFiltroRegiao(e.target.value as '' | RegiaoPiaui)}
                 title="Mesma lógica do cockpit: município mapeado por latitude (Norte, Centro-Norte, Centro-Sul, Sul)."
-                className="min-w-[5.5rem] max-w-[8rem] rounded-lg border border-card bg-surface px-2 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-accent-gold-soft"
+                className={cn('min-w-[5.5rem] max-w-[8rem] rounded-lg border px-2 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-accent-gold-soft', inputShellClass)}
               >
                 <option value="">Todas</option>
                 {REGIOES_PI_ORDER.map((r) => (
@@ -1160,7 +1148,7 @@ export default function PesquisaPage() {
           </div>
         </div>
 
-        <div className="bg-surface rounded-2xl border border-card mb-6 overflow-hidden">
+        <div className={cn('mb-6 overflow-hidden rounded-2xl border', sectionShellClass)}>
           <div
             role="tablist"
             aria-label="Visualizações da pesquisa"
@@ -1226,7 +1214,7 @@ export default function PesquisaPage() {
                 id="pesquisa-panel-grafico"
                 role="tabpanel"
                 aria-labelledby="pesquisa-tab-grafico"
-                className="rounded-xl border border-card bg-surface p-4"
+                className={cn('rounded-xl border p-4', innerPanelClass)}
               >
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-center gap-2 min-w-0">
@@ -1271,13 +1259,13 @@ export default function PesquisaPage() {
               Tela cheia
             </button>
           </div>
-          <div className="rounded-xl border border-card p-4 mt-4">
+          <div className={cn('mt-4 rounded-xl border p-4', innerPanelClass)}>
             {loading ? (
-              <div className="h-[280px] flex items-center justify-center">
+              <div className="h-[460px] flex items-center justify-center lg:h-[560px]">
                 <p className="text-secondary">Carregando...</p>
               </div>
             ) : pesquisaData.length === 0 ? (
-              <div className="h-[280px] flex items-center justify-center">
+              <div className="h-[460px] flex items-center justify-center lg:h-[560px]">
                 <p className="text-secondary text-center px-4">
                   {polls.length === 0
                     ? 'Nenhuma pesquisa cadastrada'
@@ -1289,7 +1277,7 @@ export default function PesquisaPage() {
                 pesquisaData={pesquisaData}
                 candidatos={candidatos}
                 cores={TENDENCIA_SERIES_COLORS}
-                chartClassName="h-[280px] bg-white rounded-lg"
+                chartClassName="h-[460px] lg:h-[560px] bg-white rounded-lg"
                 resumoLegendaPorCandidato={resumoLegendaPorCandidato}
               />
             )}
@@ -1311,7 +1299,7 @@ export default function PesquisaPage() {
                   onVerDetalhesCandidato={handleVerDetalhesPainelExecutivo}
                 />
 
-                <div className="rounded-xl border border-card bg-surface p-4 sm:p-6">
+                <div className={cn('rounded-xl border p-4 sm:p-6', innerPanelClass)}>
                   <h2 className="text-lg font-semibold text-text-primary mb-6">Resumo de Desempenho</h2>
           {!candidatoPadrao ? (
             <p className="text-sm text-secondary">
@@ -1415,7 +1403,7 @@ export default function PesquisaPage() {
                 id="pesquisa-panel-cadastradas"
                 role="tabpanel"
                 aria-labelledby="pesquisa-tab-cadastradas"
-                className="rounded-xl border border-card bg-surface p-4 sm:p-6"
+                className={cn('rounded-xl border p-4 sm:p-6', innerPanelClass)}
               >
           <h2 className="text-lg font-semibold text-text-primary mb-6">Pesquisas Cadastradas</h2>
           {loading ? (

@@ -5,10 +5,10 @@ import { cn } from '@/lib/utils'
  * Mantido alinhado a `components/sidebar.tsx`.
  */
 export const COCKPIT_PAGE_ACTIVE_MENU_ITEM =
-  'border border-white/20 bg-[linear-gradient(135deg,#0b4f6c_0%,#0ea5b7_52%,#2dd4bf_100%)] !text-white shadow-[0_12px_40px_rgba(14,165,183,0.32)] hover:shadow-[0_12px_40px_rgba(45,212,191,0.38)]'
+  'border border-white/20 bg-[linear-gradient(135deg,#243443_0%,#2f4353_52%,#3b5466_100%)] !text-white shadow-[0_12px_40px_rgba(10,22,34,0.34)] hover:shadow-[0_12px_40px_rgba(10,22,34,0.42)]'
 
 export const COCKPIT_PAGE_ACTIVE_CHILD_PILL =
-  'border border-white/20 bg-[linear-gradient(135deg,#0b4f6c_0%,#0ea5b7_52%,#2dd4bf_100%)] !text-white shadow-[0_8px_24px_rgba(14,165,183,0.26)] hover:shadow-[0_10px_28px_rgba(45,212,191,0.34)]'
+  'border border-white/20 bg-[linear-gradient(135deg,#243443_0%,#2f4353_52%,#3b5466_100%)] !text-white shadow-[0_8px_24px_rgba(10,22,34,0.28)] hover:shadow-[0_10px_28px_rgba(10,22,34,0.36)]'
 
 /** Item ativo no menu quando o tema não é Cockpit (gold soft + texto primário). */
 export const DEFAULT_THEME_ACTIVE_MENU_ITEM =
