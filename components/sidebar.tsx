@@ -37,7 +37,6 @@ import {
   ShieldCheck,
   UserCog,
   Landmark,
-  Handshake,
   FileBadge2,
   LineChart,
   Image,
@@ -236,7 +235,7 @@ const cockpitIconMap: Record<string, LucideIcon> = {
   Settings: UserCog,
   Shield: ShieldCheck,
   ClipboardList: FileBadge2,
-  MessageCircle: Handshake,
+  MessageCircle,
 }
 
 /** Início de seção para melhorar escaneabilidade da navegação. */
