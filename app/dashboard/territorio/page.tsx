@@ -32,6 +32,12 @@ type CenarioVotos = 'aferido_jadyel' | 'promessa_lideranca' | 'legado_anterior'
 export default function TerritorioPage() {
   const { theme } = useTheme()
   const isCockpit = theme === 'cockpit'
+  const sectionShellClass = isCockpit
+    ? 'border-white/12 bg-[linear-gradient(165deg,rgba(22,34,44,0.82)_0%,rgba(18,30,38,0.86)_100%)] shadow-[0_10px_32px_rgba(3,12,20,0.28)]'
+    : 'border-card bg-surface shadow-card'
+  const innerPanelClass = isCockpit
+    ? 'border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.04)_0%,rgba(255,255,255,0.02)_100%)]'
+    : 'border-card bg-background/50'
   const [liderancas, setLiderancas] = useState<Lideranca[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -721,7 +727,7 @@ export default function TerritorioPage() {
   // liderancaAtualCol e expectativaVotosCol já foram definidos no escopo superior
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className={cn('min-h-screen', isCockpit ? 'sidebar-cockpit-shell' : 'bg-bg-sidebar')}>
 
       <div className="px-4 py-6 lg:px-6">
         {/* Botão de Configuração */}
@@ -798,7 +804,7 @@ export default function TerritorioPage() {
 
         {/* Filtros — uma linha (scroll horizontal em telas estreitas), padrão /dashboard/pesquisa */}
         {(config || serverConfigured) && liderancas.length > 0 && (
-          <div className="mb-6 rounded-xl border border-card bg-background/50 px-3 py-2">
+          <div className={cn('mb-6 rounded-xl border px-3 py-2', innerPanelClass)}>
             <div className="flex flex-nowrap items-center gap-x-2 sm:gap-3 overflow-x-auto pb-0.5 [scrollbar-width:thin]">
               <span className="text-xs font-semibold text-text-primary shrink-0">Filtros</span>
               <span className="hidden sm:block h-4 w-px shrink-0 bg-border-card opacity-60" aria-hidden />
@@ -1028,7 +1034,7 @@ export default function TerritorioPage() {
           : null}
 
         {filtroDepEstadual.length > 0 && mapaVotoCruzado.length > 0 && (
-          <div className="mb-6 bg-surface rounded-2xl border border-card p-4">
+          <div className={cn('mb-6 rounded-2xl border p-4', sectionShellClass)}>
             <div className="mb-3 flex justify-end">
               <button
                 type="button"
@@ -1070,7 +1076,7 @@ export default function TerritorioPage() {
         )}
 
         {/* Lista de Lideranças */}
-        <div className="bg-surface rounded-2xl border border-card p-6">
+        <div className={cn('rounded-2xl border p-6', sectionShellClass)}>
           <div className="flex items-center justify-between mb-6">
             <div>
               <h2 className="text-lg font-semibold text-text-primary">
@@ -1277,7 +1283,7 @@ export default function TerritorioPage() {
                   return (
                     <div
                       key={cidade}
-                      className="rounded-xl border border-card overflow-hidden"
+                      className={cn('overflow-hidden rounded-xl border', innerPanelClass)}
                     >
                       {/* Cabeçalho da Cidade */}
                       <div className="w-full p-4 bg-background flex items-center justify-between">
@@ -1362,7 +1368,7 @@ export default function TerritorioPage() {
                         })
 
                         return (
-                          <div className="border-t border-card bg-surface">
+                          <div className={cn('border-t', isCockpit ? 'border-white/10 bg-white/[0.02]' : 'border-card bg-surface')}>
                             {liderancasOrdenadas.map((lider: Lideranca, idx: number) => {
                             const numValue = votosReferenciaCol && lider[votosReferenciaCol]
                               ? normalizeNumber(lider[votosReferenciaCol])
@@ -1416,7 +1422,6 @@ export default function TerritorioPage() {
                                       <div className="flex items-center gap-3 flex-shrink-0">
                                         {votosReferenciaCol && lider[votosReferenciaCol] && (
                                           <div className="text-right">
-                                            <p className="text-[10px] text-secondary leading-tight">{labelValorLideranca}</p>
                                             <p className="text-sm font-semibold text-accent-gold">
                                               {numValue.toLocaleString('pt-BR')}
                                             </p>

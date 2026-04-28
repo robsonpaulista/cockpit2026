@@ -1,7 +1,10 @@
 'use client'
 
 import { useEffect, useState, useCallback, useMemo } from 'react'
+import { createPortal } from 'react-dom'
 import { X, AlertCircle, CheckCircle, Clock, Loader2 } from 'lucide-react'
+import { useTheme } from '@/contexts/theme-context'
+import { cn } from '@/lib/utils'
 
 interface Demand {
   id?: string
@@ -88,6 +91,17 @@ function ordenarDemandas<T extends { status?: string; data_demanda?: string; cre
 }
 
 export function CityDemandsModal({ isOpen, onClose, cidade }: CityDemandsModalProps) {
+  const { theme } = useTheme()
+  const isCockpit = theme === 'cockpit'
+  const modalShellClass = isCockpit
+    ? 'border-white/12 bg-[linear-gradient(165deg,rgba(22,34,44,0.92)_0%,rgba(18,30,38,0.95)_100%)] shadow-[0_24px_64px_rgba(3,12,20,0.42)]'
+    : 'border-card bg-surface'
+  const panelClass = isCockpit
+    ? 'border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.04)_0%,rgba(255,255,255,0.02)_100%)]'
+    : 'border-card bg-surface'
+  const contentClass = isCockpit
+    ? 'bg-[linear-gradient(180deg,rgba(255,255,255,0.025)_0%,rgba(255,255,255,0.012)_100%)]'
+    : 'bg-background'
   const [demands, setDemands] = useState<Demand[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -181,7 +195,16 @@ export function CityDemandsModal({ isOpen, onClose, cidade }: CityDemandsModalPr
     }
   }, [demands, filtroStatus, liderancasPermitidas])
 
-  if (!isOpen) return null
+  useEffect(() => {
+    if (!isOpen) return
+    const original = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => {
+      document.body.style.overflow = original
+    }
+  }, [isOpen])
+
+  if (!isOpen || typeof document === 'undefined') return null
 
   const getStatusIcon = (status?: string) => {
     if (!status) return <AlertCircle className="w-4 h-4 text-secondary" />
@@ -355,33 +378,33 @@ export function CityDemandsModal({ isOpen, onClose, cidade }: CityDemandsModalPr
   // Obter status únicos para filtro
   const statusUnicos = Array.from(new Set(demands.map(d => d.status).filter(Boolean))) as string[]
 
-  return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-surface rounded-xl border border-card w-full max-w-3xl max-h-[85vh] overflow-hidden flex flex-col">
+  return createPortal(
+    <div className="fixed inset-0 z-[1200] flex items-center justify-center bg-black/55 p-4">
+      <div className={cn('flex max-h-[85vh] w-full max-w-3xl flex-col overflow-hidden rounded-xl border font-sans', modalShellClass)}>
         {/* Header Compacto */}
-        <div className="flex items-center justify-between px-4 py-3 border-b border-card">
+        <div className={cn('flex items-center justify-between border-b px-4 py-3', isCockpit ? 'border-white/10' : 'border-card')}>
           <div className="flex items-center gap-2">
             <h2 className="text-lg font-semibold text-text-primary">
               {cidade}
             </h2>
-            <span className="text-xs text-secondary">
+            <span className="text-xs text-text-secondary">
               {loading ? '...' : `${demandsFiltradasEOrdenadas.length} demanda${demandsFiltradasEOrdenadas.length !== 1 ? 's' : ''}`}
             </span>
           </div>
           <button
             onClick={onClose}
-            className="p-1.5 rounded-lg hover:bg-background transition-colors"
+            className={cn('rounded-lg p-1.5 transition-colors', isCockpit ? 'hover:bg-white/10' : 'hover:bg-background')}
           >
-            <X className="w-4 h-4 text-secondary" />
+            <X className="w-4 h-4 text-text-secondary" />
           </button>
         </div>
 
         {/* Filtros */}
         {!loading && !error && demands.length > 0 && (
-          <div className="px-4 py-3 border-b border-card space-y-3">
+          <div className={cn('space-y-3 border-b px-4 py-3', isCockpit ? 'border-white/10' : 'border-card')}>
             {/* Filtro por Status */}
             <div>
-              <label className="text-xs font-medium text-secondary mb-2 block">Filtrar por Status:</label>
+              <label className="mb-2 block text-xs font-medium text-text-secondary">Filtrar por Status:</label>
               <div className="flex flex-wrap gap-2">
                 <label className="flex items-center gap-1.5 cursor-pointer">
                   <input
@@ -410,7 +433,7 @@ export function CityDemandsModal({ isOpen, onClose, cidade }: CityDemandsModalPr
               </div>
             </div>
             {liderancasPermitidas.length > 0 && (
-              <p className="text-xs text-secondary">
+              <p className="text-xs text-text-secondary">
                 {ignorouFiltroLideranca ? (
                   <>
                     Nenhuma demanda bateu com os nomes das {liderancasPermitidas.length} lideranças do resumo;
@@ -429,11 +452,11 @@ export function CityDemandsModal({ isOpen, onClose, cidade }: CityDemandsModalPr
         )}
 
         {/* Content Compacto */}
-        <div className="flex-1 overflow-y-auto p-3">
+        <div className={cn('flex-1 overflow-y-auto p-3', contentClass)}>
           {loading ? (
             <div className="flex items-center justify-center py-8">
               <Loader2 className="w-5 h-5 text-accent-gold animate-spin" />
-              <span className="ml-2 text-sm text-secondary">Carregando...</span>
+              <span className="ml-2 text-sm text-text-secondary">Carregando...</span>
             </div>
           ) : error ? (
             <div className="p-3 bg-status-error/10 border border-status-error/30 rounded-lg">
@@ -441,8 +464,8 @@ export function CityDemandsModal({ isOpen, onClose, cidade }: CityDemandsModalPr
             </div>
           ) : demandsFiltradasEOrdenadas.length === 0 ? (
             <div className="text-center py-8">
-              <AlertCircle className="w-8 h-8 text-secondary mx-auto mb-2" />
-              <p className="text-sm text-secondary">Nenhuma demanda encontrada</p>
+              <AlertCircle className="mx-auto mb-2 h-8 w-8 text-text-secondary" />
+              <p className="text-sm text-text-secondary">Nenhuma demanda encontrada</p>
             </div>
           ) : (
             <div className="space-y-2">
@@ -451,13 +474,16 @@ export function CityDemandsModal({ isOpen, onClose, cidade }: CityDemandsModalPr
                 return (
                 <div
                   key={demand.id || `demand-${index}`}
-                  className="border border-card rounded-lg p-3 hover:bg-background/50 transition-colors"
+                  className={cn(
+                    'rounded-lg border p-3 transition-colors',
+                    isCockpit ? 'border-white/10 bg-white/[0.02] hover:bg-white/[0.05]' : 'border-card hover:bg-background/50'
+                  )}
                 >
                   {/* Linha principal: Título + Status */}
                   <div className="flex items-start justify-between gap-2 mb-2">
                     <div className="flex items-start gap-2 flex-1 min-w-0">
                       {getStatusIcon(demand.status)}
-                      <h3 className="text-sm font-semibold text-text-primary leading-tight">
+                      <h3 className="text-sm font-semibold leading-tight text-text-primary">
                         {demand.title}
                       </h3>
                     </div>
@@ -469,12 +495,12 @@ export function CityDemandsModal({ isOpen, onClose, cidade }: CityDemandsModalPr
                   {/* Informações secundárias em linha compacta */}
                   <div className="flex flex-wrap items-center gap-1.5 text-xs">
                     {demand.data_demanda && (
-                      <span className="text-secondary">
+                      <span className="text-text-secondary">
                         <span className="font-medium">Data:</span> {formatDate(demand.data_demanda)}
                       </span>
                     )}
                     {liderancaExibicao && (
-                      <span className="text-secondary">
+                      <span className="text-text-secondary">
                         <span className="font-medium">Por:</span> {liderancaExibicao}
                       </span>
                     )}
@@ -484,7 +510,7 @@ export function CityDemandsModal({ isOpen, onClose, cidade }: CityDemandsModalPr
                       </span>
                     )}
                     {demand.theme && (
-                      <span className="text-secondary">
+                      <span className="text-text-secondary">
                         {demand.theme}
                       </span>
                     )}
@@ -497,7 +523,7 @@ export function CityDemandsModal({ isOpen, onClose, cidade }: CityDemandsModalPr
 
                   {/* Descrição apenas se houver e for relevante */}
                   {demand.description && demand.description.trim() && (
-                    <p className="text-xs text-secondary mt-1.5 line-clamp-1">
+                    <p className="mt-1.5 line-clamp-1 text-xs text-text-secondary">
                       {demand.description}
                     </p>
                   )}
@@ -509,13 +535,14 @@ export function CityDemandsModal({ isOpen, onClose, cidade }: CityDemandsModalPr
         </div>
 
         {!loading && !error && demandsFiltradasEOrdenadas.length > 0 && (
-          <div className="px-4 py-3 border-t border-card bg-background/40 flex items-center justify-end">
+          <div className={cn('flex items-center justify-end border-t px-4 py-3', isCockpit ? 'border-white/10 bg-white/[0.02]' : 'border-card bg-background/40')}>
             <span className="text-sm font-semibold text-text-primary">
               Total Valor: <span className="text-accent-gold">{formatValorSemMoeda(totalValorDemandas)}</span>
             </span>
           </div>
         )}
       </div>
-    </div>
+    </div>,
+    document.body
   )
 }

@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState, useCallback, useRef, useMemo } from 'react'
+import { createPortal } from 'react-dom'
 import { X, Users, FileText, TrendingUp, CheckCircle, Clock, AlertCircle, Loader2, Download, Copy, Check } from 'lucide-react'
 import { useTheme } from '@/contexts/theme-context'
 import { cn } from '@/lib/utils'
@@ -61,6 +62,18 @@ export function ExecutiveBriefingModal({
   const { appearance, theme } = useTheme()
   const isDark = appearance === 'dark'
   const isCockpit = theme === 'cockpit'
+  const modalShellClass = isCockpit
+    ? 'border-white/12 bg-[linear-gradient(165deg,rgba(22,34,44,0.92)_0%,rgba(18,30,38,0.95)_100%)] shadow-[0_24px_64px_rgba(3,12,20,0.42)]'
+    : 'border-card bg-surface'
+  const panelClass = isCockpit
+    ? 'border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.04)_0%,rgba(255,255,255,0.02)_100%)]'
+    : 'border-card bg-surface'
+  const contentClass = isCockpit
+    ? 'bg-[linear-gradient(180deg,rgba(255,255,255,0.025)_0%,rgba(255,255,255,0.012)_100%)] text-text-primary'
+    : 'bg-background text-text-primary'
+  const headingClass = 'text-sm font-semibold text-text-primary'
+  const bodyTextClass = 'text-sm text-text-primary'
+  const metaTextClass = 'text-xs text-text-secondary'
 
   const chartPalette = useMemo(
     () =>
@@ -247,7 +260,16 @@ export function ExecutiveBriefingModal({
     }
   }, [isOpen, cidade, fetchDemands, fetchPolls])
 
-  if (!isOpen) return null
+  useEffect(() => {
+    if (!isOpen) return
+    const original = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => {
+      document.body.style.overflow = original
+    }
+  }, [isOpen])
+
+  if (!isOpen || typeof document === 'undefined') return null
 
   // Ordenar lideranças por expectativa de votos
   const liderancasOrdenadas = [...liderancas].sort((a, b) => {
@@ -639,14 +661,14 @@ export function ExecutiveBriefingModal({
     }
   }
 
-  return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-surface rounded-xl border border-card w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
+  return createPortal(
+    <div className="fixed inset-0 z-[1200] flex items-center justify-center bg-black/55 p-4">
+      <div className={cn('flex max-h-[90vh] w-full max-w-4xl flex-col overflow-hidden rounded-xl border font-sans', modalShellClass)}>
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-card">
+        <div className={cn('flex items-center justify-between border-b p-6', isCockpit ? 'border-white/10' : 'border-card')}>
           <div>
             <h2 className="text-xl font-semibold text-text-primary">Briefing Executivo</h2>
-            <p className="text-sm text-secondary mt-1">{cidade}</p>
+            <p className="mt-1 text-sm text-text-secondary">{cidade}</p>
           </div>
           <div className="flex items-center gap-2">
             <button
@@ -682,7 +704,7 @@ export function ExecutiveBriefingModal({
             <button
               type="button"
               onClick={onClose}
-              className="rounded-lg p-1.5 transition-colors hover:bg-background"
+              className={cn('rounded-lg p-1.5 transition-colors', isCockpit ? 'hover:bg-white/10' : 'hover:bg-background')}
             >
               <X className="w-5 h-5 text-secondary" />
             </button>
@@ -691,13 +713,13 @@ export function ExecutiveBriefingModal({
 
         {/* Content */}
         <div
-          className="flex-1 space-y-3 overflow-y-auto bg-background p-4 text-text-primary"
+          className={cn('flex-1 space-y-3 overflow-y-auto p-4', contentClass)}
           ref={contentRef}
         >
           {loading ? (
             <div className="flex items-center justify-center py-12">
               <Loader2 className="w-6 h-6 text-accent-gold animate-spin" />
-              <span className="ml-2 text-sm text-secondary">Carregando dados...</span>
+              <span className={cn('ml-2', bodyTextClass)}>Carregando dados...</span>
             </div>
           ) : error ? (
             <div className="p-4 rounded-xl border border-status-error/30 bg-status-error/10">
@@ -709,20 +731,20 @@ export function ExecutiveBriefingModal({
               <section>
                 <div className="flex items-center gap-1.5 mb-2">
                   <Users className="w-3.5 h-3.5 text-accent-gold" />
-                  <h3 className="text-sm font-semibold text-text-primary">Lideranças e Expectativa de Votos</h3>
+                  <h3 className={headingClass}>Lideranças e Expectativa de Votos</h3>
                   {expectativaVotosCol && (
-                    <span className="ml-auto text-xs font-bold text-accent-gold">
+                    <span className="ml-auto text-xs font-semibold text-accent-gold">
                       Total: {Math.round(totalExpectativa).toLocaleString('pt-BR')} votos
                     </span>
                   )}
                 </div>
                 {liderancasOrdenadas.length === 0 ? (
-                  <p className="text-xs text-secondary">Nenhuma liderança encontrada</p>
+                  <p className={metaTextClass}>Nenhuma liderança encontrada</p>
                 ) : (
-                  <div className="overflow-x-auto rounded-lg border border-card">
+                  <div className={cn('overflow-x-auto rounded-lg border', panelClass)}>
                     <table className="w-full border-collapse text-xs">
                       <thead>
-                        <tr className="border-b border-card bg-surface">
+                        <tr className={cn('border-b', isCockpit ? 'border-white/10 bg-white/[0.04]' : 'border-card bg-surface')}>
                           <th className="p-1.5 text-left font-semibold text-text-primary">Nome</th>
                           {liderancasOrdenadas.some(l => l.funcao) && (
                             <th className="p-1.5 text-left font-semibold text-text-primary">Função</th>
@@ -732,7 +754,7 @@ export function ExecutiveBriefingModal({
                           )}
                         </tr>
                       </thead>
-                      <tbody className="bg-surface">
+                      <tbody className={cn(isCockpit ? 'bg-white/[0.02]' : 'bg-surface')}>
                         {liderancasOrdenadas.map((lider, idx) => {
                           const expectativa = expectativaVotosCol ? normalizeNumber(lider[expectativaVotosCol]) : 0
                           const nome = nomeCol ? (lider[nomeCol] || 'Sem nome') : 'Sem nome'
@@ -740,11 +762,16 @@ export function ExecutiveBriefingModal({
                           return (
                             <tr
                               key={idx}
-                              className="border-b border-card transition-colors odd:bg-background/25 even:bg-surface hover:bg-accent-gold-soft/15"
+                              className={cn(
+                                'border-b transition-colors',
+                                isCockpit
+                                  ? 'border-white/10 odd:bg-white/[0.02] even:bg-white/[0.01] hover:bg-white/[0.05]'
+                                  : 'border-card odd:bg-background/25 even:bg-surface hover:bg-accent-gold-soft/15'
+                              )}
                             >
                               <td className="p-1.5 text-text-primary">{nome}</td>
                               {liderancasOrdenadas.some(l => l.funcao) && (
-                                <td className="p-1.5 text-secondary">{lider.funcao || '-'}</td>
+                                <td className="p-1.5 text-text-secondary">{lider.funcao || '-'}</td>
                               )}
                               {expectativaVotosCol && (
                                 <td className="p-1.5 text-right font-semibold text-accent-gold">
@@ -764,16 +791,16 @@ export function ExecutiveBriefingModal({
               <section>
                 <div className="flex items-center gap-1.5 mb-2">
                   <FileText className="w-3.5 h-3.5 text-accent-gold" />
-                  <h3 className="text-sm font-semibold text-text-primary">Demandas por Status</h3>
+                  <h3 className={headingClass}>Demandas por Status</h3>
                 </div>
                 {demandsOrdenadas.length === 0 ? (
-                  <p className="text-xs text-secondary">Nenhuma demanda encontrada</p>
+                  <p className={metaTextClass}>Nenhuma demanda encontrada</p>
                 ) : (
                   <>
-                  <div className="overflow-x-auto rounded-lg border border-card">
+                  <div className={cn('overflow-x-auto rounded-lg border', panelClass)}>
                     <table className="w-full border-collapse text-xs">
                       <thead>
-                        <tr className="border-b border-card bg-surface">
+                        <tr className={cn('border-b', isCockpit ? 'border-white/10 bg-white/[0.04]' : 'border-card bg-surface')}>
                           <th className="p-1.5 text-left font-semibold text-text-primary">Título</th>
                           <th className="p-1.5 text-left font-semibold text-text-primary">Status</th>
                           {demandsOrdenadas.some(d => d.lideranca) && (
@@ -787,7 +814,7 @@ export function ExecutiveBriefingModal({
                           )}
                         </tr>
                       </thead>
-                      <tbody className="bg-surface">
+                      <tbody className={cn(isCockpit ? 'bg-white/[0.02]' : 'bg-surface')}>
                         {demandsOrdenadas.map((demand, idx) => {
                           const status = demand.status || 'Sem status'
                           const statusLower = status.toLowerCase().trim()
@@ -797,7 +824,12 @@ export function ExecutiveBriefingModal({
                           return (
                             <tr
                               key={idx}
-                              className="border-b border-card transition-colors odd:bg-background/25 even:bg-surface hover:bg-accent-gold-soft/15"
+                              className={cn(
+                                'border-b transition-colors',
+                                isCockpit
+                                  ? 'border-white/10 odd:bg-white/[0.02] even:bg-white/[0.01] hover:bg-white/[0.05]'
+                                  : 'border-card odd:bg-background/25 even:bg-surface hover:bg-accent-gold-soft/15'
+                              )}
                             >
                               <td className="p-1.5 text-text-primary">
                                 <div className="flex items-center gap-1">
@@ -811,7 +843,7 @@ export function ExecutiveBriefingModal({
                                   <span>{demand.title}</span>
                                 </div>
                                 {demand.description && (
-                                  <p className="text-secondary mt-0.5 text-xs">{demand.description}</p>
+                                  <p className="mt-0.5 text-xs text-text-secondary">{demand.description}</p>
                                 )}
                               </td>
                               <td className="p-1.5">
@@ -824,7 +856,7 @@ export function ExecutiveBriefingModal({
                                 </span>
                               </td>
                               {demandsOrdenadas.some(d => d.lideranca) && (
-                                <td className="p-1.5 text-secondary">{demand.lideranca || '-'}</td>
+                                <td className="p-1.5 text-text-secondary">{demand.lideranca || '-'}</td>
                               )}
                               {demandsOrdenadas.some((d) => getDemandValor(d)) && (
                                 <td className="p-1.5 text-right font-medium text-text-primary">
@@ -832,7 +864,7 @@ export function ExecutiveBriefingModal({
                                 </td>
                               )}
                               {demandsOrdenadas.some((d) => getDemandPrevisao(d)) && (
-                                <td className="p-1.5 text-secondary">
+                                <td className="p-1.5 text-text-secondary">
                                   {getDemandPrevisao(demand) || '-'}
                                 </td>
                               )}
@@ -858,9 +890,9 @@ export function ExecutiveBriefingModal({
                 <section>
                   <div className="flex items-center gap-1.5 mb-3">
                     <TrendingUp className="w-3.5 h-3.5 text-accent-gold" />
-                    <h3 className="text-sm font-semibold text-text-primary">Pesquisas de Intenção de Voto</h3>
+                    <h3 className={headingClass}>Pesquisas de Intenção de Voto</h3>
                   </div>
-                  <div className="h-96 rounded-lg border border-card bg-background p-4">
+                  <div className={cn('h-96 rounded-lg border p-4', isCockpit ? 'border-white/10 bg-white/[0.03]' : 'border-card bg-background')}>
                     <ResponsiveContainer width="100%" height="100%">
                       <LineChart 
                         data={(() => {
@@ -964,7 +996,7 @@ export function ExecutiveBriefingModal({
                               const firstItem = items[0]
                               if (!firstItem) return null
                               return (
-                                <div className="rounded-md border border-card bg-surface p-3 text-xs shadow-lg">
+                                <div className={cn('rounded-md border p-3 text-xs shadow-lg', isCockpit ? 'border-white/10 bg-[#14222c]' : 'border-card bg-surface')}>
                                   <p className="mb-1 text-xs font-semibold text-text-primary">{firstItem.data}</p>
                                   {firstItem.instituto && (
                                     <p className="mb-2 border-b border-card pb-2 text-xs text-secondary">
@@ -1054,9 +1086,9 @@ export function ExecutiveBriefingModal({
                 <section>
                   <div className="flex items-center gap-1.5 mb-1.5">
                     <TrendingUp className="w-3.5 h-3.5 text-secondary" />
-                    <h3 className="text-sm font-semibold text-secondary">Pesquisas de Intenção de Voto</h3>
+                    <h3 className="text-sm font-semibold text-text-secondary">Pesquisas de Intenção de Voto</h3>
                   </div>
-                  <p className="text-xs text-secondary">Nenhuma pesquisa encontrada para esta cidade</p>
+                  <p className={metaTextClass}>Nenhuma pesquisa encontrada para esta cidade</p>
                 </section>
               )}
             </>
@@ -1064,12 +1096,13 @@ export function ExecutiveBriefingModal({
         </div>
 
         {/* Footer */}
-        <div className="p-4 border-t border-card bg-background">
+        <div className={cn('border-t p-4', isCockpit ? 'border-white/10 bg-white/[0.02]' : 'border-card bg-background')}>
           <button type="button" onClick={onClose} className={sidebarPrimaryCTAButtonClass(isCockpit, 'w-full')}>
             Fechar
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   )
 }
