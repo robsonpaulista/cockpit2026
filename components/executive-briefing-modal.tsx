@@ -99,7 +99,17 @@ export function ExecutiveBriefingModal({
   const [error, setError] = useState<string | null>(null)
   const [exporting, setExporting] = useState(false)
   const [copied, setCopied] = useState(false)
+  const [filtroLideranca, setFiltroLideranca] = useState<string>('')
   const contentRef = useRef<HTMLDivElement>(null)
+
+  const normalizeText = useCallback((value: unknown): string => {
+    if (value === null || value === undefined) return ''
+    return String(value)
+      .toLowerCase()
+      .trim()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+  }, [])
 
   const getSheetsField = useCallback((demand: Demand, patterns: RegExp[]): string | null => {
     const raw = demand.sheets_data
@@ -269,7 +279,29 @@ export function ExecutiveBriefingModal({
     }
   }, [isOpen])
 
+  useEffect(() => {
+    if (isOpen) {
+      setFiltroLideranca('')
+    }
+  }, [isOpen, cidade])
+
   if (!isOpen || typeof document === 'undefined') return null
+
+  const liderancasDisponiveis = useMemo(() => {
+    const nomesLiderancas = new Set<string>()
+
+    liderancas.forEach((lider) => {
+      const nome = nomeCol ? String(lider[nomeCol] || '').trim() : ''
+      if (nome) nomesLiderancas.add(nome)
+    })
+
+    demands.forEach((demand) => {
+      const nome = String(demand.lideranca || '').trim()
+      if (nome) nomesLiderancas.add(nome)
+    })
+
+    return Array.from(nomesLiderancas).sort((a, b) => a.localeCompare(b, 'pt-BR'))
+  }, [demands, liderancas, nomeCol])
 
   // Ordenar lideranças por expectativa de votos
   const liderancasOrdenadas = [...liderancas].sort((a, b) => {
@@ -278,8 +310,19 @@ export function ExecutiveBriefingModal({
     return expectativaB - expectativaA
   })
 
+  const liderancasOrdenadasFiltradas = !filtroLideranca
+    ? liderancasOrdenadas
+    : liderancasOrdenadas.filter((lider) => {
+        const nome = nomeCol ? String(lider[nomeCol] || '').trim() : ''
+        return normalizeText(nome) === normalizeText(filtroLideranca)
+      })
+
+  const demandsFiltradas = !filtroLideranca
+    ? demands
+    : demands.filter((demand) => normalizeText(demand.lideranca) === normalizeText(filtroLideranca))
+
   // Ordenar demandas: finalizadas primeiro, depois em andamento, depois demais
-  const demandsOrdenadas = [...demands].sort((a, b) => {
+  const demandsOrdenadas = [...demandsFiltradas].sort((a, b) => {
     const statusA = (a.status || '').toLowerCase().trim()
     const statusB = (b.status || '').toLowerCase().trim()
     
@@ -299,7 +342,7 @@ export function ExecutiveBriefingModal({
   const totalValorDemandas = demandsOrdenadas.reduce((sum, demand) => sum + getDemandValorNumero(demand), 0)
 
   // Calcular totais
-  const totalExpectativa = liderancas.reduce((sum, lider) => {
+  const totalExpectativa = liderancasOrdenadasFiltradas.reduce((sum, lider) => {
     return sum + (expectativaVotosCol ? normalizeNumber(lider[expectativaVotosCol]) : 0)
   }, 0)
 
@@ -332,10 +375,10 @@ export function ExecutiveBriefingModal({
     }
     lines.push(``)
 
-    if (liderancasOrdenadas.length === 0) {
+    if (liderancasOrdenadasFiltradas.length === 0) {
       lines.push(`_Nenhuma liderança cadastrada_`)
     } else {
-      liderancasOrdenadas.forEach((lider, idx) => {
+      liderancasOrdenadasFiltradas.forEach((lider, idx) => {
         const nome = nomeCol ? (lider[nomeCol] || 'Sem nome') : 'Sem nome'
         const funcao = lider.funcao ? ` — ${lider.funcao}` : ''
         const expectativa = expectativaVotosCol ? normalizeNumber(lider[expectativaVotosCol]) : 0
@@ -716,6 +759,30 @@ export function ExecutiveBriefingModal({
           className={cn('flex-1 space-y-3 overflow-y-auto p-4', contentClass)}
           ref={contentRef}
         >
+          {liderancasDisponiveis.length > 0 && (
+            <div className={cn('rounded-lg border p-3', panelClass)}>
+              <label className="flex items-center gap-2">
+                <span className="text-xs font-semibold uppercase tracking-wide text-text-secondary">
+                  Filtrar por liderança
+                </span>
+                <select
+                  value={filtroLideranca}
+                  onChange={(e) => setFiltroLideranca(e.target.value)}
+                  className={cn(
+                    'w-full max-w-xs rounded-md border px-2 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-accent-gold-soft',
+                    isCockpit ? 'border-white/10 bg-white/[0.03] text-text-primary' : 'border-card bg-surface text-text-primary'
+                  )}
+                >
+                  <option value="">Todas</option>
+                  {liderancasDisponiveis.map((nome) => (
+                    <option key={nome} value={nome}>
+                      {nome}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
+          )}
           {loading ? (
             <div className="flex items-center justify-center py-12">
               <Loader2 className="w-6 h-6 text-accent-gold animate-spin" />
@@ -738,7 +805,7 @@ export function ExecutiveBriefingModal({
                     </span>
                   )}
                 </div>
-                {liderancasOrdenadas.length === 0 ? (
+                {liderancasOrdenadasFiltradas.length === 0 ? (
                   <p className={metaTextClass}>Nenhuma liderança encontrada</p>
                 ) : (
                   <div className={cn('overflow-x-auto rounded-lg border', panelClass)}>
@@ -746,7 +813,7 @@ export function ExecutiveBriefingModal({
                       <thead>
                         <tr className={cn('border-b', isCockpit ? 'border-white/10 bg-white/[0.04]' : 'border-card bg-surface')}>
                           <th className="p-1.5 text-left font-semibold text-text-primary">Nome</th>
-                          {liderancasOrdenadas.some(l => l.funcao) && (
+                          {liderancasOrdenadasFiltradas.some(l => l.funcao) && (
                             <th className="p-1.5 text-left font-semibold text-text-primary">Função</th>
                           )}
                           {expectativaVotosCol && (
@@ -755,7 +822,7 @@ export function ExecutiveBriefingModal({
                         </tr>
                       </thead>
                       <tbody className={cn(isCockpit ? 'bg-white/[0.02]' : 'bg-surface')}>
-                        {liderancasOrdenadas.map((lider, idx) => {
+                        {liderancasOrdenadasFiltradas.map((lider, idx) => {
                           const expectativa = expectativaVotosCol ? normalizeNumber(lider[expectativaVotosCol]) : 0
                           const nome = nomeCol ? (lider[nomeCol] || 'Sem nome') : 'Sem nome'
                           
@@ -770,7 +837,7 @@ export function ExecutiveBriefingModal({
                               )}
                             >
                               <td className="p-1.5 text-text-primary">{nome}</td>
-                              {liderancasOrdenadas.some(l => l.funcao) && (
+                              {liderancasOrdenadasFiltradas.some(l => l.funcao) && (
                                 <td className="p-1.5 text-text-secondary">{lider.funcao || '-'}</td>
                               )}
                               {expectativaVotosCol && (
