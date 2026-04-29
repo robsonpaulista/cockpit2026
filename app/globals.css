@@ -1226,7 +1226,7 @@ path.td-mun-poly--pulse-baixo {
 
 /* ── Paleta de tokens (mapa TD — alinhado à sidebar / superfícies do dashboard) ─ */
 .theme-futuristic {
-  --td-fut-bg-deep:       rgb(var(--bg-app));
+  --td-fut-bg-deep:       rgb(var(--bg-sidebar));
   /* Mesmo tom da sidebar (navegação) + halo / área Leaflet */
   --td-fut-bg-mid:        rgb(var(--bg-sidebar));
   --td-fut-bg-card:       rgb(var(--bg-surface));
@@ -1246,11 +1246,11 @@ path.td-mun-poly--pulse-baixo {
 
 /* ── Fundo da página mapa TD (classe legada; mesmo tom do dashboard) ─── */
 .theme-futuristic.td-mapa-pagina-ambiente {
-  background: rgb(var(--bg-app)) !important;
+  background: rgb(var(--bg-sidebar)) !important;
 }
 
 .theme-futuristic.theme-futuristic--republicanos-light.td-mapa-pagina-ambiente {
-  background: rgb(var(--bg-app)) !important;
+  background: #FFFFFF !important;
 }
 
 .theme-futuristic.theme-futuristic--republicanos-light.td-mapa-pagina-ambiente::before {
@@ -1258,8 +1258,8 @@ path.td-mun-poly--pulse-baixo {
 }
 
 [data-map-tds-futuristic-shell='true'] {
-  background: rgb(var(--bg-app)) !important;
-  background-color: rgb(var(--bg-app)) !important;
+  background: rgb(var(--bg-sidebar)) !important;
+  background-color: rgb(var(--bg-sidebar)) !important;
 }
 
 [data-map-tds-futuristic-shell='true'][data-map-tds-futuristic-theme='republicanos-light'] {
@@ -1268,8 +1268,8 @@ path.td-mun-poly--pulse-baixo {
 }
 
 [data-map-tds-futuristic-header='true'] {
-  background: #0F151D !important;
-  background-color: #0F151D !important;
+  background: rgb(var(--bg-sidebar)) !important;
+  background-color: rgb(var(--bg-sidebar)) !important;
   backdrop-filter: none !important;
   -webkit-backdrop-filter: none !important;
   border-bottom-color: rgba(255,255,255,0.06) !important;
@@ -1308,8 +1308,8 @@ path.td-mun-poly--pulse-baixo {
 /* ── Sidebar ────────────────────────────────────────────────────────────── */
 [data-map-tds-futuristic-sidebar='true'],
 [data-map-tds-futuristic-sidebar='true'] > div {
-  background: #0a0e13 !important;
-  background-color: #0a0e13 !important;
+  background: rgb(var(--bg-sidebar)) !important;
+  background-color: rgb(var(--bg-sidebar)) !important;
   border-right: 1px solid rgba(255, 255, 255, 0.06) !important;
 }
 

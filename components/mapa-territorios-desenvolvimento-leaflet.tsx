@@ -78,6 +78,10 @@ import {
   type IgAgregadoMunicipioNoTd,
 } from '@/lib/instagram-ig-por-municipio-no-td-client'
 import { loadInstagramConfigAsync } from '@/lib/instagramApi'
+import {
+  fetchMobilizacaoLideresDesempenhoIgPorTd,
+  type LiderDesempenhoIgLinha,
+} from '@/lib/mobilizacao-lideres-desempenho-ig-por-td-client'
 import { MapaDigitalIgMunicipiosResumoTable } from '@/components/mapa-digital-ig-municipios-resumo-table'
 import { MapaDigitalIgRelatorioCheckExport } from '@/components/mapa-digital-ig-relatorio-check-export'
 import { MapaDigitalIgMunicipioMobilizacaoDrill } from '@/components/mapa-digital-ig-municipio-mobilizacao-drill'
@@ -1415,6 +1419,7 @@ type TdSortKey =
   | 'vis'
   | 'prioridade'
 type TdSortDirection = 'asc' | 'desc'
+type IgViewMode = 'analise' | 'operacao'
 
 type IgTdSortKey =
   | 'rank'
@@ -1425,6 +1430,32 @@ type IgTdSortKey =
   | 'comentarios'
   | 'perfis'
   | 'tempoMedio'
+
+/** Ordenação lexicográfica por todas as colunas visíveis (A→Z / Z→A). */
+type TabelaBulkSortPreset = 'none' | 'all_az' | 'all_za'
+
+const IG_TD_COMPOSITE_SORT_KEYS: IgTdSortKey[] = [
+  'rank',
+  'territorio',
+  'municipios',
+  'lideres',
+  'liderados',
+  'comentarios',
+  'perfis',
+  'tempoMedio',
+]
+
+/** Colunas da tabela “Território” no modo Operação (Mapa Digital IG). */
+type IgOperacaoSortKey = 'territorio' | 'ativacao' | 'lider' | 'postagens' | 'gap' | 'status'
+
+const IG_OPERACAO_COMPOSITE_SORT_KEYS: IgOperacaoSortKey[] = [
+  'territorio',
+  'ativacao',
+  'lider',
+  'postagens',
+  'gap',
+  'status',
+]
 
 const fmtPctVariacaoDeltaTd = new Intl.NumberFormat('pt-BR', {
   signDisplay: 'exceptZero',
@@ -1467,14 +1498,17 @@ type MapaTerritoriosDesenvolvimentoLeafletProps = {
   /** `digitalIg` = mesma malha e tabela “Resumo por TD” com comentários cruzados ao @ de liderados (mobilização) por TD. */
   /** `pesquisas` = mesma estrutura do eleitoral; coloração/marcadores pela média de intenção (API Pesquisa). */
   painelContext?: 'eleitoral' | 'digitalIg' | 'pesquisas'
+  igViewMode?: IgViewMode
 }
 
 export function MapaTerritoriosDesenvolvimentoLeaflet({
   visualPreset = 'default',
   visualTheme = 'dark',
   painelContext = 'eleitoral',
+  igViewMode = 'analise',
 }: MapaTerritoriosDesenvolvimentoLeafletProps) {
   const isFuturisticLight = visualPreset === 'futuristic' && visualTheme === 'light'
+  const isIgOperacao = painelContext === 'digitalIg' && igViewMode === 'operacao'
   const { collapsed: sidebarCollapsed } = useSidebar()
   const painelResumoMaxRemRef = useRef(PAINEL_RESUMO_TD_MAX_REM_EXPANDED)
 
@@ -1529,6 +1563,7 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({
     key: 'rank',
     direction: 'asc',
   })
+  const [tdBulkSort, setTdBulkSort] = useState<TabelaBulkSortPreset>('none')
 
   const [municipioFocadoLiderancas, setMunicipioFocadoLiderancas] = useState<string | null>(null)
   /** Drill IG: líderes → liderados (mobilização) por município; não exige planilha. */
@@ -1602,6 +1637,12 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({
     key: 'comentarios',
     direction: 'desc',
   })
+  const [igTdBulkSort, setIgTdBulkSort] = useState<TabelaBulkSortPreset>('none')
+  const [igOperacaoSort, setIgOperacaoSort] = useState<{ key: IgOperacaoSortKey; direction: TdSortDirection }>({
+    key: 'ativacao',
+    direction: 'asc',
+  })
+  const [igOperacaoBulkSort, setIgOperacaoBulkSort] = useState<TabelaBulkSortPreset>('none')
   const [igConfig, setIgConfig] = useState<{ token: string; businessAccountId: string } | null>(null)
   const [lideradosMobilizacaoPorTd, setLideradosMobilizacaoPorTd] = useState<
     Map<TerritorioDesenvolvimentoPI, number>
@@ -1616,6 +1657,10 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({
     td: TerritorioDesenvolvimentoPI
     municipio: string | null
   } | null>(null)
+  const [operacaoTopLideres, setOperacaoTopLideres] = useState<LiderDesempenhoIgLinha[]>([])
+  const [operacaoTopCidades, setOperacaoTopCidades] = useState<
+    Array<{ nome: string; ativacaoPct: number; comentarios: number }>
+  >([])
 
   const [rankingCandidatosPesquisaModal, setRankingCandidatosPesquisaModal] =
     useState<MapaPesquisaRankingCandidatosTarget | null>(null)
@@ -2585,6 +2630,35 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({
     return m
   }, [resumoPorTd, agregadoTdPlanilha, painelPlanilhaAtivo, cenarioVotosExibicao, totaisResumo.eleitores])
 
+  /** Ordem das colunas visíveis (esquerda → direita) para ordenação A→Z / Z→A composta. */
+  const tdCompositeSortKeys = useMemo((): TdSortKey[] => {
+    const k: TdSortKey[] = ['rank', 'territorio', 'municipios', 'eleitores']
+    if (temDadosEstrategiaTabela) k.push('estrategia')
+    if (temDadosFed22Tabela) k.push('fed22')
+    if (emPainelPesquisas) {
+      if (mostrarColunaDeltaFed22) k.push('delta')
+      if (painelPlanilhaAtivo && cenarioVotosExibicao) k.push('fed26')
+      if (painelPlanilhaAtivo) k.push('lid')
+    } else {
+      if (painelPlanilhaAtivo && cenarioVotosExibicao) k.push('fed26')
+      if (mostrarColunaDeltaFed22) {
+        k.push('delta')
+        if (mostrarColunaTendenciaFuturista) k.push('tend')
+      }
+      if (painelPlanilhaAtivo) k.push('lid')
+    }
+    k.push('vis', 'prioridade')
+    return k
+  }, [
+    emPainelPesquisas,
+    temDadosEstrategiaTabela,
+    temDadosFed22Tabela,
+    painelPlanilhaAtivo,
+    cenarioVotosExibicao,
+    mostrarColunaDeltaFed22,
+    mostrarColunaTendenciaFuturista,
+  ])
+
   const linhasResumoOrdenadas = useMemo(() => {
     const collator = new Intl.Collator('pt-BR', { sensitivity: 'base', numeric: true })
     const prioridadeLabel = (tipo: ClassificacaoTerritorioTd | undefined): string => {
@@ -2636,9 +2710,11 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({
       }
     })
 
-    base.sort((a, b) => {
+    type LinhaTdResumo = (typeof base)[number]
+
+    const compareTdKeyAsc = (a: LinhaTdResumo, b: LinhaTdResumo, key: TdSortKey): number => {
       let cmp = 0
-      switch (tdSort.key) {
+      switch (key) {
         case 'rank':
           cmp = a.rankTd - b.rankTd
           break
@@ -2699,6 +2775,19 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({
           }
           break
       }
+      return cmp
+    }
+
+    base.sort((a, b) => {
+      if (tdBulkSort !== 'none') {
+        const sign = tdBulkSort === 'all_az' ? 1 : -1
+        for (const key of tdCompositeSortKeys) {
+          const c = compareTdKeyAsc(a, b, key)
+          if (c !== 0) return sign * c
+        }
+        return sign * collator.compare(a.r.territorio, b.r.territorio)
+      }
+      let cmp = compareTdKeyAsc(a, b, tdSort.key)
       if (cmp === 0) {
         cmp = collator.compare(a.r.territorio, b.r.territorio)
       }
@@ -2720,17 +2809,21 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({
     classificacaoPrioridadeEficienciaFed26PorTd,
     detalhesPrioridadePorTd,
     tdSort,
+    tdBulkSort,
+    tdCompositeSortKeys,
     visitasPorTdCampo,
     pesquisaMunicipiosComPesquisaPorTd,
   ])
 
   const alternarOrdenacaoTd = (key: TdSortKey) => {
+    setTdBulkSort('none')
     setTdSort((prev) =>
       prev.key === key ? { key, direction: prev.direction === 'asc' ? 'desc' : 'asc' } : { key, direction: 'asc' }
     )
   }
 
   const indicadorOrdenacaoTd = (key: TdSortKey): string => {
+    if (tdBulkSort !== 'none') return '↕'
     if (tdSort.key !== key) return '↕'
     return tdSort.direction === 'asc' ? '↑' : '↓'
   }
@@ -2909,9 +3002,11 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({
         lideresTd,
       }
     })
-    rows.sort((a, b) => {
+    type LinhaIgResumo = (typeof rows)[number]
+
+    const compareIgTdKeyAsc = (a: LinhaIgResumo, b: LinhaIgResumo, key: IgTdSortKey): number => {
       let cmp = 0
-      switch (igTdSort.key) {
+      switch (key) {
         case 'rank':
           cmp = a.rankIg - b.rankIg
           break
@@ -2945,6 +3040,19 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({
         default:
           cmp = 0
       }
+      return cmp
+    }
+
+    rows.sort((a, b) => {
+      if (igTdBulkSort !== 'none') {
+        const sign = igTdBulkSort === 'all_az' ? 1 : -1
+        for (const key of IG_TD_COMPOSITE_SORT_KEYS) {
+          const c = compareIgTdKeyAsc(a, b, key)
+          if (c !== 0) return sign * c
+        }
+        return sign * collator.compare(a.r.territorio, b.r.territorio)
+      }
+      let cmp = compareIgTdKeyAsc(a, b, igTdSort.key)
       if (cmp === 0) cmp = collator.compare(a.r.territorio, b.r.territorio)
       return igTdSort.direction === 'asc' ? cmp : -cmp
     })
@@ -2955,6 +3063,7 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({
     igPorTd,
     rankingPorTdIg,
     igTdSort,
+    igTdBulkSort,
     lideradosMobilizacaoPorTd,
     lideresMobilizacaoPorTd,
   ])
@@ -2998,15 +3107,145 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({
   ])
 
   const alternarOrdenacaoIg = (key: IgTdSortKey) => {
+    setIgTdBulkSort('none')
     setIgTdSort((prev) =>
       prev.key === key ? { key, direction: prev.direction === 'asc' ? 'desc' : 'asc' } : { key, direction: 'asc' }
     )
   }
 
   const indicadorOrdenacaoIg = (key: IgTdSortKey): string => {
+    if (igTdBulkSort !== 'none') return '↕'
     if (igTdSort.key !== key) return '↕'
     return igTdSort.direction === 'asc' ? '↑' : '↓'
   }
+
+  const alternarOrdenacaoIgOperacao = (key: IgOperacaoSortKey) => {
+    setIgOperacaoBulkSort('none')
+    setIgOperacaoSort((prev) =>
+      prev.key === key ? { key, direction: prev.direction === 'asc' ? 'desc' : 'asc' } : { key, direction: 'asc' }
+    )
+  }
+
+  const indicadorOrdenacaoIgOperacao = (key: IgOperacaoSortKey): string => {
+    if (igOperacaoBulkSort !== 'none') return '↕'
+    if (igOperacaoSort.key !== key) return '↕'
+    return igOperacaoSort.direction === 'asc' ? '↑' : '↓'
+  }
+
+  useEffect(() => {
+    if (igViewMode !== 'operacao') setIgOperacaoBulkSort('none')
+    if (igViewMode !== 'analise') setIgTdBulkSort('none')
+  }, [igViewMode])
+
+  /** Estado A→Z / Z→A exibido na barra do painel (TD eleitoral/pesquisas, IG análise ou IG operação). */
+  const bulkColunasPainelResumoTd: TabelaBulkSortPreset =
+    painelContext !== 'digitalIg'
+      ? tdBulkSort
+      : igViewMode === 'operacao'
+        ? igOperacaoBulkSort
+        : igTdBulkSort
+
+  const ativacaoDigitalGeralPct = useMemo(() => {
+    if (painelContext !== 'digitalIg') return 0
+    return pctMidiasComComentarioPorPostagensProcessadas(
+      igAgregadoAtual.midiasComComentarioVinculadas,
+      igAgregadoAtual.postagensProcessadas
+    )
+  }, [painelContext, igAgregadoAtual.midiasComComentarioVinculadas, igAgregadoAtual.postagensProcessadas])
+
+  const linhasIgOperacionaisBase = useMemo(() => {
+    if (painelContext !== 'digitalIg') return []
+    return linhasIgResumoOrdenadas.map(({ r, midiasComComentario, lideresTd, perfisUnicos }) => {
+      const ativacaoPct = pctMidiasComComentarioPorPostagensProcessadas(
+        midiasComComentario,
+        igAgregadoAtual.postagensProcessadas
+      )
+      const gapPct = Math.max(0, 100 - ativacaoPct)
+      const engajamentoLiderPct =
+        lideresTd > 0 ? Math.min(100, (perfisUnicos / lideresTd) * 100) : 0
+      const status =
+        ativacaoPct < 30 ? 'Crítico' : ativacaoPct < 60 ? 'Atenção' : ativacaoPct < 80 ? 'Regular' : 'Saudável'
+      return {
+        territorio: r.territorio,
+        ativacaoPct,
+        gapPct,
+        lideresTd,
+        perfisUnicos,
+        engajamentoLiderPct,
+        status,
+      }
+    })
+  }, [painelContext, linhasIgResumoOrdenadas, igAgregadoAtual.postagensProcessadas])
+
+  const linhasIgOperacionais = useMemo(() => {
+    if (painelContext !== 'digitalIg') return []
+    const collator = new Intl.Collator('pt-BR', { sensitivity: 'base', numeric: true })
+    const statusPeso = (s: string): number => {
+      if (s === 'Crítico') return 0
+      if (s === 'Atenção') return 1
+      if (s === 'Regular') return 2
+      return 3
+    }
+    type RowIgOp = (typeof linhasIgOperacionaisBase)[number]
+    const compareIgOperacaoAsc = (a: RowIgOp, b: RowIgOp, key: IgOperacaoSortKey): number => {
+      switch (key) {
+        case 'territorio':
+          return collator.compare(a.territorio, b.territorio)
+        case 'ativacao':
+          return a.ativacaoPct - b.ativacaoPct
+        case 'lider':
+          return a.engajamentoLiderPct - b.engajamentoLiderPct
+        case 'postagens':
+          return 0
+        case 'gap':
+          return a.gapPct - b.gapPct
+        case 'status':
+          return statusPeso(a.status) - statusPeso(b.status)
+        default:
+          return 0
+      }
+    }
+    const rows = [...linhasIgOperacionaisBase]
+    rows.sort((a, b) => {
+      if (igOperacaoBulkSort !== 'none') {
+        const sign = igOperacaoBulkSort === 'all_az' ? 1 : -1
+        for (const key of IG_OPERACAO_COMPOSITE_SORT_KEYS) {
+          const c = compareIgOperacaoAsc(a, b, key)
+          if (c !== 0) return sign * c
+        }
+        return sign * collator.compare(a.territorio, b.territorio)
+      }
+      let cmp = compareIgOperacaoAsc(a, b, igOperacaoSort.key)
+      if (cmp === 0) cmp = collator.compare(a.territorio, b.territorio)
+      return igOperacaoSort.direction === 'asc' ? cmp : -cmp
+    })
+    return rows
+  }, [
+    painelContext,
+    linhasIgOperacionaisBase,
+    igOperacaoSort,
+    igOperacaoBulkSort,
+  ])
+  const linhasIgOperacaoCriticas = useMemo(
+    () => linhasIgOperacionaisBase.filter((row) => row.status === 'Crítico' || row.status === 'Atenção'),
+    [linhasIgOperacionaisBase]
+  )
+  const melhorTerritorioIgOperacao = useMemo(
+    () => [...linhasIgOperacionaisBase].sort((a, b) => b.ativacaoPct - a.ativacaoPct)[0] ?? null,
+    [linhasIgOperacionaisBase]
+  )
+  const piorTerritorioIgOperacao = useMemo(() => {
+    if (linhasIgOperacionaisBase.length === 0) return null
+    const collator = new Intl.Collator('pt-BR', { sensitivity: 'base', numeric: true })
+    let worst = linhasIgOperacionaisBase[0]!
+    for (const row of linhasIgOperacionaisBase) {
+      if (row.ativacaoPct < worst.ativacaoPct) worst = row
+      else if (row.ativacaoPct === worst.ativacaoPct && collator.compare(row.territorio, worst.territorio) < 0) {
+        worst = row
+      }
+    }
+    return worst
+  }, [linhasIgOperacionaisBase])
 
   /** Primeira coluna do bloco “desempenho” (marca visual de grupo na tabela). */
   const colunaInicioDesempenho = useMemo((): 'fed22' | 'plan' | 'delta' | 'lid' | null => {
@@ -3497,6 +3736,90 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({
       tempoPostComentarioN,
     }
   }, [painelContext, municipiosLinhasPainel, igPorMunicipioNoTd])
+
+  useEffect(() => {
+    if (!isIgOperacao) {
+      setOperacaoTopLideres([])
+      setOperacaoTopCidades([])
+      return
+    }
+    let cancelled = false
+    ;(async () => {
+      const tds = resumoPorTd.map((r) => r.territorio)
+      const [leadersRes, cidadesRes] = await Promise.all([
+        Promise.all(tds.map((td) => fetchMobilizacaoLideresDesempenhoIgPorTd(td))),
+        Promise.all(tds.map((td) => fetchInstagramIgPorMunicipioNoTd(td))),
+      ])
+      if (cancelled) return
+
+      const leadersById = new Map<string, LiderDesempenhoIgLinha>()
+      leadersRes.forEach((res) => {
+        if (!res.ok) return
+        res.data.lideres.forEach((lider) => {
+          const prev = leadersById.get(lider.id)
+          if (!prev) {
+            leadersById.set(lider.id, { ...lider })
+            return
+          }
+          prev.lideradosComRede += lider.lideradosComRede
+          prev.publicacoes += lider.publicacoes
+          prev.comentarios += lider.comentarios
+          prev.lideradosQueComentaram += lider.lideradosQueComentaram
+          prev.pctParticipacao =
+            igAgregadoAtual.postagensProcessadas > 0
+              ? (prev.publicacoes / igAgregadoAtual.postagensProcessadas) * 100
+              : 0
+        })
+      })
+      setOperacaoTopLideres(
+        [...leadersById.values()]
+          .sort((a, b) => b.pctParticipacao - a.pctParticipacao || b.comentarios - a.comentarios)
+          .slice(0, 8)
+      )
+
+      const cidadeAgg = new Map<string, { nome: string; comentarios: number; midiasComComentario: number }>()
+      cidadesRes.forEach((res, idx) => {
+        if (!res.ok) return
+        const td = tds[idx]
+        const oficiais = getMunicipiosPorTerritorioDesenvolvimentoPI(td)
+        const nomeOficialByKey = new Map(oficiais.map((nome) => [normalizeMunicipioNome(nome), nome] as const))
+        res.data.forEach((agg, keyNorm) => {
+          const nome = nomeOficialByKey.get(keyNorm) ?? keyNorm
+          const prev = cidadeAgg.get(nome)
+          if (!prev) {
+            cidadeAgg.set(nome, {
+              nome,
+              comentarios: agg.comentarios,
+              midiasComComentario: agg.midiasComComentario,
+            })
+            return
+          }
+          prev.comentarios += agg.comentarios
+          prev.midiasComComentario += agg.midiasComComentario
+        })
+      })
+      setOperacaoTopCidades(
+        [...cidadeAgg.values()]
+          .map((row) => ({
+            nome: row.nome,
+            comentarios: row.comentarios,
+            ativacaoPct: pctMidiasComComentarioPorPostagensProcessadas(
+              row.midiasComComentario,
+              igAgregadoAtual.postagensProcessadas
+            ),
+          }))
+          .sort((a, b) => b.ativacaoPct - a.ativacaoPct || b.comentarios - a.comentarios)
+          .slice(0, 8)
+      )
+      if (leadersById.size === 0 && cidadeAgg.size === 0) {
+        setOperacaoTopLideres([])
+        setOperacaoTopCidades([])
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [isIgOperacao, resumoPorTd, igAgregadoAtual.postagensProcessadas])
 
   /** Média aritmética dos valores Méd.Top5 22 na lista de municípios (top federais no TD). */
   const mediaMedTop22ListaMunicipiosTd = useMemo(() => {
@@ -4588,14 +4911,17 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({
       <div
         className={cn(
           'min-h-0 w-full',
-          futSplit
-            ? 'flex flex-1 flex-col items-stretch gap-4 overflow-x-hidden px-3 pb-3 sm:gap-5 sm:px-4 sm:pb-4 md:gap-6 md:px-5 md:pb-5 lg:flex-row'
-            : mapHostAlturaFixaPx !== null
-              ? 'shrink-0'
-              : 'flex min-h-0 flex-1 basis-0 flex-col'
+          isIgOperacao
+            ? 'flex flex-1 flex-col overflow-x-hidden px-3 pb-3 sm:px-4 sm:pb-4 md:px-5 md:pb-5'
+            : futSplit
+              ? 'flex flex-1 flex-col items-stretch gap-4 overflow-x-hidden px-3 pb-3 sm:gap-5 sm:px-4 sm:pb-4 md:gap-6 md:px-5 md:pb-5 lg:flex-row'
+              : mapHostAlturaFixaPx !== null
+                ? 'shrink-0'
+                : 'flex min-h-0 flex-1 basis-0 flex-col'
         )}
       >
         {/* Viewport do mapa — em split encolhe para a largura real do Piauí via ajustarCaixaMapaAoViewportPiaui */}
+        {!isIgOperacao ? (
         <div
           ref={viewportFitRef}
           className={cn(
@@ -4652,8 +4978,9 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({
             ) : null}
           </div>
         </div>
+        ) : null}
         {/* Overlays (loading/error) — absolutos em relação ao rootRef */}
-        {loadState === 'loading' && (
+        {!isIgOperacao && loadState === 'loading' && (
           <div
             className={cn(
               'pointer-events-none absolute inset-0 z-[50] flex items-center justify-center backdrop-blur-[2px]',
@@ -4670,7 +4997,7 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({
             </div>
           </div>
         )}
-        {loadState === 'error' && (
+        {!isIgOperacao && loadState === 'error' && (
           <div
             className={cn(
               'absolute inset-0 z-[50] flex items-center justify-center p-4',
@@ -4694,7 +5021,9 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({
           <div
             className={cn(
               'pointer-events-none min-w-0',
-              futSplit
+              isIgOperacao
+                ? 'relative flex min-h-0 flex-1 flex-col overflow-x-hidden overflow-y-auto'
+                : futSplit
                 ? cn(
                     'relative flex min-h-0 flex-1 flex-col overflow-x-hidden overflow-y-auto',
                     'max-lg:border-t max-lg:border-white/[0.08] max-lg:pt-3',
@@ -4713,7 +5042,7 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({
             className={cn(
               'pointer-events-auto relative w-full max-w-full min-w-0 p-0',
               'text-text-primary',
-              futSplit
+              isIgOperacao || futSplit
                 ? 'flex-1 overflow-x-hidden overflow-y-auto'
                 : 'z-[1100] max-h-[min(85dvh,calc(100dvh-7rem))] overflow-x-hidden overflow-y-auto overscroll-contain'
             )}
@@ -4725,17 +5054,19 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({
                   : 'Mapa de dominância eleitoral por território de desenvolvimento'
             }
           >
-            <div className="space-y-1">
-              <h2
-                className={cn(
-                  'm-0 text-xs font-semibold uppercase tracking-wide sm:text-sm',
-                  visualPreset === 'futuristic' ? 'text-text-secondary' : 'text-text-muted'
-                )}
-              >
-                Resumo por Território de Desenvolvimento
-              </h2>
+            <div className={cn('space-y-1', isIgOperacao && 'lg:grid lg:grid-cols-2 lg:gap-4 lg:space-y-0')}>
+              {!isIgOperacao ? (
+                <h2
+                  className={cn(
+                    'm-0 text-xs font-semibold uppercase tracking-wide sm:text-sm',
+                    visualPreset === 'futuristic' ? 'text-text-secondary' : 'text-text-muted'
+                  )}
+                >
+                  Resumo por Território de Desenvolvimento
+                </h2>
+              ) : null}
               {painelContext === 'digitalIg' ? (
-                <div className="mt-2 flex flex-col gap-2">
+                <div className={cn('mt-2 flex flex-col gap-2', isIgOperacao && 'lg:col-span-2')}>
                   {igLoadState === 'loading' ? (
                     <p className="text-[10px] text-text-muted sm:text-[11px]">Carregando comentários salvos…</p>
                   ) : null}
@@ -4863,11 +5194,88 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({
                     ))}
                   </select>
                 </label>
+                <div className="flex min-w-0 shrink-0 flex-wrap items-center gap-1.5 text-[11px] sm:text-xs">
+                  <span
+                    className={cn(
+                      'max-w-[8.5rem] shrink-0 font-medium leading-tight',
+                      visualPreset === 'futuristic'
+                        ? isFuturisticLight
+                          ? 'text-[#334155]'
+                          : 'text-white'
+                        : 'text-text-secondary'
+                    )}
+                    title="Ordenar todas as colunas em sequência (A→Z = menor primeiro; Z→A = maior primeiro nos números)"
+                  >
+                    Ordenar colunas
+                  </span>
+                  <div className="flex shrink-0 gap-1">
+                    <button
+                      type="button"
+                      aria-pressed={bulkColunasPainelResumoTd === 'all_az'}
+                      onClick={() => {
+                        if (painelContext !== 'digitalIg') {
+                          setTdBulkSort((p) => (p === 'all_az' ? 'none' : 'all_az'))
+                        } else if (igViewMode === 'operacao') {
+                          setIgOperacaoBulkSort((p) => (p === 'all_az' ? 'none' : 'all_az'))
+                        } else {
+                          setIgTdBulkSort((p) => (p === 'all_az' ? 'none' : 'all_az'))
+                        }
+                      }}
+                      className={cn(
+                        'rounded-md px-2 py-1 font-medium tabular-nums focus:outline-none focus:ring-2 focus:ring-accent-gold-soft',
+                        visualPreset === 'futuristic'
+                          ? isFuturisticLight
+                            ? bulkColunasPainelResumoTd === 'all_az'
+                              ? 'border border-amber-400/80 bg-amber-50 text-[#0F1F4D]'
+                              : 'border border-slate-300/80 bg-white text-[#334155]'
+                            : bulkColunasPainelResumoTd === 'all_az'
+                              ? 'border border-white/35 bg-white/15 text-white'
+                              : 'border border-white/15 bg-transparent text-white/90'
+                          : bulkColunasPainelResumoTd === 'all_az'
+                            ? 'border border-accent-gold-soft bg-accent-gold-soft/15 text-text-primary'
+                            : 'border border-card bg-surface text-text-secondary'
+                      )}
+                    >
+                      A→Z
+                    </button>
+                    <button
+                      type="button"
+                      aria-pressed={bulkColunasPainelResumoTd === 'all_za'}
+                      onClick={() => {
+                        if (painelContext !== 'digitalIg') {
+                          setTdBulkSort((p) => (p === 'all_za' ? 'none' : 'all_za'))
+                        } else if (igViewMode === 'operacao') {
+                          setIgOperacaoBulkSort((p) => (p === 'all_za' ? 'none' : 'all_za'))
+                        } else {
+                          setIgTdBulkSort((p) => (p === 'all_za' ? 'none' : 'all_za'))
+                        }
+                      }}
+                      className={cn(
+                        'rounded-md px-2 py-1 font-medium tabular-nums focus:outline-none focus:ring-2 focus:ring-accent-gold-soft',
+                        visualPreset === 'futuristic'
+                          ? isFuturisticLight
+                            ? bulkColunasPainelResumoTd === 'all_za'
+                              ? 'border border-amber-400/80 bg-amber-50 text-[#0F1F4D]'
+                              : 'border border-slate-300/80 bg-white text-[#334155]'
+                            : bulkColunasPainelResumoTd === 'all_za'
+                              ? 'border border-white/35 bg-white/15 text-white'
+                              : 'border border-white/15 bg-transparent text-white/90'
+                          : bulkColunasPainelResumoTd === 'all_za'
+                            ? 'border border-accent-gold-soft bg-accent-gold-soft/15 text-text-primary'
+                            : 'border border-card bg-surface text-text-secondary'
+                      )}
+                    >
+                      Z→A
+                    </button>
+                  </div>
+                </div>
               </div>
             </div>
+            <div className={cn('w-full min-w-0', isIgOperacao && 'lg:col-span-2')}>
             <div className="td-resumo-map-table-wrap mt-2 w-full min-w-0 max-w-full">
               {painelContext === 'digitalIg' ? (
                 <>
+                {igViewMode === 'analise' ? (
                 <table
                   aria-label="Resumo Instagram por território de desenvolvimento"
                   className={cn(
@@ -5221,6 +5629,334 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({
                     </tr>
                   </tfoot>
                 </table>
+                ) : (
+                  <div className="space-y-3">
+                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                      <div
+                        className={cn(
+                          'rounded-xl border p-3',
+                          visualPreset === 'futuristic'
+                            ? isFuturisticLight
+                              ? 'border-slate-300/80 bg-white'
+                              : 'border-white/[0.07] bg-bg-surface'
+                            : 'border-border-card bg-bg-surface'
+                        )}
+                      >
+                        <p className="text-[11px] font-semibold uppercase tracking-wide text-text-muted">Ativação digital</p>
+                        <p className="mt-1 text-2xl font-bold tabular-nums text-text-primary">
+                          {ativacaoDigitalGeralPct.toFixed(1)}%
+                        </p>
+                        <p className="mt-1 text-[11px] text-text-secondary">
+                          {igAgregadoAtual.midiasComComentarioVinculadas.toLocaleString('pt-BR')} posts com comentário em{' '}
+                          {igAgregadoAtual.postagensProcessadas.toLocaleString('pt-BR')} analisados
+                        </p>
+                      </div>
+                      <div
+                        className={cn(
+                          'rounded-xl border p-3',
+                          visualPreset === 'futuristic'
+                            ? isFuturisticLight
+                              ? 'border-slate-300/80 bg-white'
+                              : 'border-white/[0.07] bg-bg-surface'
+                            : 'border-border-card bg-bg-surface'
+                        )}
+                      >
+                        <p className="text-[11px] font-semibold uppercase tracking-wide text-text-muted">Territórios críticos</p>
+                        <p className="mt-1 text-2xl font-bold tabular-nums text-status-danger">
+                          {linhasIgOperacaoCriticas.length}
+                        </p>
+                        <p className="mt-1 text-[11px] text-text-secondary">Crítico ou atenção neste recorte</p>
+                      </div>
+                      <div
+                        className={cn(
+                          'rounded-xl border p-3',
+                          visualPreset === 'futuristic'
+                            ? isFuturisticLight
+                              ? 'border-slate-300/80 bg-white'
+                              : 'border-white/[0.07] bg-bg-surface'
+                            : 'border-border-card bg-bg-surface'
+                        )}
+                      >
+                        <p className="text-[11px] font-semibold uppercase tracking-wide text-text-muted">Melhor entrega</p>
+                        <p className="mt-1 text-sm font-semibold text-text-primary">
+                          {melhorTerritorioIgOperacao?.territorio ?? '—'}
+                        </p>
+                        <p className="mt-1 text-[11px] tabular-nums text-status-success">
+                          {melhorTerritorioIgOperacao ? `${melhorTerritorioIgOperacao.ativacaoPct.toFixed(1)}% de ativação` : 'Sem dados'}
+                        </p>
+                      </div>
+                      <div
+                        className={cn(
+                          'rounded-xl border p-3',
+                          visualPreset === 'futuristic'
+                            ? isFuturisticLight
+                              ? 'border-slate-300/80 bg-white'
+                              : 'border-white/[0.07] bg-bg-surface'
+                            : 'border-border-card bg-bg-surface'
+                        )}
+                      >
+                        <p className="text-[11px] font-semibold uppercase tracking-wide text-text-muted">Maior problema</p>
+                        <p className="mt-1 text-sm font-semibold text-text-primary">
+                          {piorTerritorioIgOperacao?.territorio ?? '—'}
+                        </p>
+                        <p className="mt-1 text-[11px] tabular-nums text-status-danger">
+                          {piorTerritorioIgOperacao ? `${piorTerritorioIgOperacao.ativacaoPct.toFixed(1)}% de ativação` : 'Sem dados'}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 gap-3 xl:grid-cols-2 xl:items-stretch">
+                      <div
+                        className={cn(
+                          'flex min-h-0 flex-col rounded-xl border p-3 xl:h-full',
+                          visualPreset === 'futuristic'
+                            ? isFuturisticLight
+                              ? 'border-slate-300/80 bg-white'
+                              : 'border-white/[0.07] bg-bg-surface'
+                            : 'border-border-card bg-bg-surface'
+                        )}
+                      >
+                        <p className="mb-2 shrink-0 text-xs font-semibold uppercase tracking-wide text-text-muted">
+                          Engajamento por cidade (top)
+                        </p>
+                        {operacaoTopCidades.length === 0 ? (
+                          <p className="text-xs text-text-secondary">
+                            Sem cidades com comentário vinculado no recorte atual. Esse bloco considera cidades dos liderados que comentaram.
+                          </p>
+                        ) : (
+                          <div className="flex min-h-[11rem] flex-1 flex-col xl:min-h-0">
+                            <div className="grid min-h-0 flex-1 grid-cols-4 gap-2 sm:grid-cols-6 xl:grid-cols-8">
+                              {(() => {
+                                const maxCityAtivacao = Math.max(1, ...operacaoTopCidades.map((c) => c.ativacaoPct))
+                                return operacaoTopCidades.map((row, idx) => (
+                                  <div
+                                    key={`city-oper-${row.nome}`}
+                                    className="flex min-h-0 flex-col items-center gap-1"
+                                  >
+                                    <span className="shrink-0 text-[10px] font-semibold text-text-secondary">
+                                      {row.ativacaoPct.toFixed(0)}%
+                                    </span>
+                                    <div className="flex min-h-0 w-full flex-1 flex-col justify-end">
+                                      <div
+                                        className="min-h-[4px] w-full rounded-t-md bg-[linear-gradient(180deg,rgba(45,212,191,0.92)_0%,rgba(14,165,183,0.92)_100%)] transition-[height] duration-700 ease-out"
+                                        style={{
+                                          height: `${Math.max((row.ativacaoPct / maxCityAtivacao) * 100, 8)}%`,
+                                          transitionDelay: `${idx * 45}ms`,
+                                        }}
+                                      />
+                                    </div>
+                                    <span
+                                      className="line-clamp-1 w-full shrink-0 text-center text-[10px] uppercase text-text-muted"
+                                      title={row.nome}
+                                    >
+                                      {row.nome}
+                                    </span>
+                                  </div>
+                                ))
+                              })()}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                      <div
+                        className={cn(
+                          'flex min-h-0 flex-col rounded-xl border p-3 xl:h-full',
+                          visualPreset === 'futuristic'
+                            ? isFuturisticLight
+                              ? 'border-slate-300/80 bg-white'
+                              : 'border-white/[0.07] bg-bg-surface'
+                            : 'border-border-card bg-bg-surface'
+                        )}
+                      >
+                        <p className="mb-2 shrink-0 text-xs font-semibold uppercase tracking-wide text-text-muted">
+                          Engajamento por líder (ranking geral)
+                        </p>
+                        {operacaoTopLideres.length === 0 ? (
+                          <p className="text-xs text-text-secondary">Sem líderes com desempenho disponível neste recorte.</p>
+                        ) : (
+                          <div className="space-y-2">
+                            {operacaoTopLideres.map((lider) => {
+                              const detalheEngajamentoLider = `${fmtInt.format(lider.comentarios)} ${
+                                lider.comentarios === 1 ? 'comentário' : 'comentários'
+                              } em ${fmtInt.format(lider.publicacoes)} ${
+                                lider.publicacoes === 1 ? 'publicação' : 'publicações'
+                              } (mídias distintas com engajamento dos liderados)`
+                              return (
+                              <div key={`leader-oper-${lider.id}`} className="space-y-1">
+                                <div className="flex items-center justify-between gap-2 text-xs">
+                                  <div className="flex min-w-0 flex-1 items-center gap-1.5">
+                                    <span className="min-w-0 truncate font-medium text-text-primary" title={lider.nome}>
+                                      {lider.nome}
+                                    </span>
+                                    <span
+                                      className="shrink-0 whitespace-nowrap text-[10px] tabular-nums text-text-muted"
+                                      title={detalheEngajamentoLider}
+                                    >
+                                      · {fmtInt.format(lider.comentarios)} coment. · {fmtInt.format(lider.publicacoes)} pub.
+                                    </span>
+                                  </div>
+                                  <span className="shrink-0 tabular-nums text-text-secondary">
+                                    {lider.pctParticipacao.toFixed(1)}%
+                                  </span>
+                                </div>
+                                <div className="h-1.5 overflow-hidden rounded-full bg-border-card/60">
+                                  <div
+                                    className="h-full rounded-full bg-[linear-gradient(135deg,#2dd4bf_0%,#0ea5b7_100%)]"
+                                    style={{ width: `${Math.max(6, Math.min(100, lider.pctParticipacao))}%` }}
+                                  />
+                                </div>
+                              </div>
+                              )
+                            })}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 gap-3 xl:grid-cols-2">
+                      <div
+                        className={cn(
+                          'min-w-0 rounded-xl border p-3',
+                          visualPreset === 'futuristic'
+                            ? isFuturisticLight
+                              ? 'border-slate-300/80 bg-white'
+                              : 'border-white/[0.07] bg-bg-surface'
+                            : 'border-border-card bg-bg-surface'
+                        )}
+                      >
+                        <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-text-muted">Território</p>
+                        <table
+                          aria-label="Tabela operacional de decisão por território"
+                          className={cn(
+                            'td-resumo-table td-resumo-table--premium w-full',
+                            visualPreset === 'futuristic' && 'td-resumo-table--futuristic'
+                          )}
+                        >
+                      <thead>
+                        <tr className="td-resumo-table__row td-resumo-table__row--header tracking-wide">
+                          <th className="td-resumo-table__cell td-resumo-table__cell--territorio text-left font-medium">
+                            <button
+                              type="button"
+                              onClick={() => alternarOrdenacaoIgOperacao('territorio')}
+                              className="inline-flex items-center gap-1"
+                            >
+                              Território <span aria-hidden>{indicadorOrdenacaoIgOperacao('territorio')}</span>
+                            </button>
+                          </th>
+                          <th className="td-resumo-table__cell text-right font-medium">
+                            <button
+                              type="button"
+                              onClick={() => alternarOrdenacaoIgOperacao('ativacao')}
+                              className="inline-flex items-center justify-end gap-1"
+                            >
+                              Ativação <span aria-hidden>{indicadorOrdenacaoIgOperacao('ativacao')}</span>
+                            </button>
+                          </th>
+                          <th className="td-resumo-table__cell text-right font-medium">
+                            <button
+                              type="button"
+                              onClick={() => alternarOrdenacaoIgOperacao('lider')}
+                              className="inline-flex items-center justify-end gap-1"
+                            >
+                              Líder <span aria-hidden>{indicadorOrdenacaoIgOperacao('lider')}</span>
+                            </button>
+                          </th>
+                          <th className="td-resumo-table__cell text-right font-medium">
+                            <button
+                              type="button"
+                              onClick={() => alternarOrdenacaoIgOperacao('postagens')}
+                              className="inline-flex items-center justify-end gap-1"
+                              title="Mesmo recorte global de postagens por linha — ordenação composta usa desempate neutro nesta coluna"
+                            >
+                              Postagens <span aria-hidden>{indicadorOrdenacaoIgOperacao('postagens')}</span>
+                            </button>
+                          </th>
+                          <th className="td-resumo-table__cell text-right font-medium">
+                            <button
+                              type="button"
+                              onClick={() => alternarOrdenacaoIgOperacao('gap')}
+                              className="inline-flex items-center justify-end gap-1"
+                            >
+                              Gap <span aria-hidden>{indicadorOrdenacaoIgOperacao('gap')}</span>
+                            </button>
+                          </th>
+                          <th className="td-resumo-table__cell td-resumo-table__grupo-status-start text-center font-medium">
+                            <button
+                              type="button"
+                              onClick={() => alternarOrdenacaoIgOperacao('status')}
+                              className="inline-flex w-full items-center justify-center gap-1"
+                            >
+                              Status <span aria-hidden>{indicadorOrdenacaoIgOperacao('status')}</span>
+                            </button>
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {linhasIgOperacionais.map((row) => {
+                          const statusClass =
+                            row.status === 'Crítico'
+                              ? 'text-status-danger'
+                              : row.status === 'Atenção'
+                                ? 'text-status-warning'
+                                : row.status === 'Regular'
+                                  ? 'text-text-secondary'
+                                  : 'text-status-success'
+                          return (
+                            <tr key={`oper-${row.territorio}`} className="td-resumo-table__row td-resumo-table__row--data td-resumo-table__row--premium">
+                              <td className="td-resumo-table__cell td-resumo-table__cell--territorio">
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setMunicipioFocadoLiderancas(null)
+                                    setHighlightedTd((prev) => (prev === row.territorio ? null : row.territorio))
+                                  }}
+                                  className="font-semibold text-text-primary hover:text-accent-gold"
+                                >
+                                  {row.territorio}
+                                </button>
+                              </td>
+                              <td className="td-resumo-table__cell text-right tabular-nums font-semibold text-text-primary">
+                                {row.ativacaoPct.toFixed(1)}%
+                              </td>
+                              <td className="td-resumo-table__cell text-right tabular-nums text-text-secondary">
+                                {row.engajamentoLiderPct.toFixed(1)}%
+                              </td>
+                              <td className="td-resumo-table__cell text-right tabular-nums text-text-secondary">
+                                {igAgregadoAtual.postagensProcessadas.toLocaleString('pt-BR')}
+                              </td>
+                              <td className="td-resumo-table__cell text-right tabular-nums text-text-secondary">
+                                -{row.gapPct.toFixed(1)} pp
+                              </td>
+                              <td className="td-resumo-table__cell td-resumo-table__cell--classe td-resumo-table__grupo-status-start">
+                                <div className={cn('text-center text-xs font-semibold', statusClass)}>{row.status}</div>
+                              </td>
+                            </tr>
+                          )
+                        })}
+                      </tbody>
+                        </table>
+                      </div>
+                      <div
+                        className={cn(
+                          'min-w-0 rounded-xl border p-3',
+                          visualPreset === 'futuristic'
+                            ? isFuturisticLight
+                              ? 'border-slate-300/80 bg-white'
+                              : 'border-white/[0.07] bg-bg-surface'
+                            : 'border-border-card bg-bg-surface'
+                        )}
+                      >
+                        <MapaDigitalIgPublicacoesLideresCobertura
+                          territorioFoco={highlightedTd}
+                          sidebarCollapsed={sidebarCollapsed}
+                          visualPreset={visualPreset}
+                          visualTheme={visualTheme}
+                          modoLeitura={igViewMode}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
                 </>
               ) : (
                 <table
@@ -6559,14 +7295,18 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({
                   )}
                 </div>
               )}
-              {painelContext === 'digitalIg' ? (
-                <MapaDigitalIgPublicacoesLideresCobertura
-                  territorioFoco={highlightedTd}
-                  sidebarCollapsed={sidebarCollapsed}
-                  visualPreset={visualPreset}
-                  visualTheme={visualTheme}
-                />
+              {painelContext === 'digitalIg' && !isIgOperacao ? (
+                <div className={cn('w-full', isIgOperacao ? 'mt-0' : 'mt-2')}>
+                  <MapaDigitalIgPublicacoesLideresCobertura
+                    territorioFoco={highlightedTd}
+                    sidebarCollapsed={sidebarCollapsed}
+                    visualPreset={visualPreset}
+                    visualTheme={visualTheme}
+                    modoLeitura={igViewMode}
+                  />
+                </div>
               ) : null}
+            </div>
             </div>
             {painelContext !== 'digitalIg' && highlightedTd !== null ? (
               <HistoricoPesquisasPorTdMapSection
@@ -6590,7 +7330,7 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({
               const cardClass =
                 visualPreset === 'futuristic' && isFuturisticLight
                   ? 'min-w-0 flex-1 basis-[min(100%,17.5rem)] rounded-xl border border-slate-300/80 bg-white p-3 text-[#0F1F4D]'
-                  : 'min-w-0 flex-1 basis-[min(100%,17.5rem)] rounded-xl border border-[rgba(255,255,255,0.07)] bg-[rgba(16,22,31,0.92)] p-3 text-white'
+                  : 'min-w-0 flex-1 basis-[min(100%,17.5rem)] rounded-xl border border-[rgba(255,255,255,0.07)] bg-bg-surface p-3 text-white'
               return (
                 <div
                   className={cn(

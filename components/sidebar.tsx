@@ -55,6 +55,7 @@ import {
   COCKPIT_PAGE_ACTIVE_CHILD_PILL,
   COCKPIT_PAGE_ACTIVE_MENU_ITEM,
 } from '@/lib/sidebar-menu-active-style'
+import { AppBrandTitle } from '@/components/app-brand-title'
 
 /** Rótulos mais curtos no tema Cockpit Vivo (navegação minimalista). */
 const COCKPIT_MENU_LABEL: Record<string, string> = {
@@ -411,16 +412,7 @@ export function Sidebar() {
           <div className="flex h-16 items-center justify-between px-4">
             {(!collapsed || mobileOpen) && (
               <div className="flex items-center gap-2.5">
-                <span
-                  className={cn(
-                    'text-[1.16rem] font-semibold tracking-[0.024em]',
-                    isCockpit
-                      ? 'bg-[linear-gradient(135deg,#6c7bff_0%,#8e6cfd_35%,#5ed3ff_75%,#3fbac2_100%)] bg-clip-text text-transparent [text-shadow:0_6px_18px_rgba(10,18,28,0.22)]'
-                      : 'text-text-primary'
-                  )}
-                >
-                  Cockpit 2026
-                </span>
+                <AppBrandTitle isCockpit={isCockpit} />
               </div>
             )}
             {!collapsed && (

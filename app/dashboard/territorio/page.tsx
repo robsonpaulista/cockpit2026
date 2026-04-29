@@ -32,6 +32,10 @@ type CenarioVotos = 'aferido_jadyel' | 'promessa_lideranca' | 'legado_anterior'
 export default function TerritorioPage() {
   const { theme } = useTheme()
   const isCockpit = theme === 'cockpit'
+  const accentTextClass = isCockpit ? 'text-[#2dd4bf]' : 'text-accent-gold'
+  const accentSoftBgAltClass = isCockpit ? 'bg-[rgba(45,212,191,0.12)]' : 'bg-accent-gold-soft/50'
+  const accentBorderClass = isCockpit ? 'border-[#2dd4bf]' : 'border-accent-gold'
+  const accentHoverTextClass = isCockpit ? 'hover:text-[#2dd4bf]' : 'hover:text-accent-gold'
   const sectionShellClass = isCockpit
     ? 'border-white/12 bg-[linear-gradient(165deg,rgba(22,34,44,0.82)_0%,rgba(18,30,38,0.86)_100%)] shadow-[0_10px_32px_rgba(3,12,20,0.28)]'
     : 'border-card bg-surface shadow-card'
@@ -779,7 +783,7 @@ export default function TerritorioPage() {
           <section className="mb-6">
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
               {kpis.map((kpi) => (
-                <KPICard key={kpi.id} kpi={kpi} />
+                <KPICard key={kpi.id} kpi={kpi} variant={isCockpit ? 'cockpit' : 'default'} />
               ))}
             </div>
             
@@ -789,7 +793,7 @@ export default function TerritorioPage() {
                 <span className="font-medium text-text-primary">Por cargo:</span>
                 {totaisPorCargo.slice(0, 6).map((item, index) => (
                   <span key={item.cargo} className="inline-flex items-center">
-                    <span className="font-semibold text-accent-gold">{item.total}</span>
+                    <span className={cn('font-semibold', accentTextClass)}>{item.total}</span>
                     <span className="ml-1">{item.cargo}</span>
                     {index < Math.min(totaisPorCargo.length - 1, 5) && <span className="ml-2">·</span>}
                   </span>
@@ -968,7 +972,7 @@ export default function TerritorioPage() {
                     setFiltroDepEstadual([])
                     setFiltroFaixaVotos('')
                   }}
-                  className="text-[11px] font-medium text-accent-gold hover:underline"
+                  className={cn('text-[11px] font-medium hover:underline', accentTextClass)}
                 >
                   Limpar filtros
                 </button>
@@ -999,7 +1003,7 @@ export default function TerritorioPage() {
                         className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-xs hover:bg-background"
                       >
                         <span
-                          className={`flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded border ${checked ? 'border-accent-gold bg-accent-gold' : 'border-card bg-white'}`}
+                          className={`flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded border ${checked ? `${accentBorderClass} ${isCockpit ? 'bg-[#2dd4bf]' : 'bg-accent-gold'}` : 'border-card bg-white'}`}
                         >
                           {checked ? <Check className="h-2.5 w-2.5 text-white" /> : null}
                         </span>
@@ -1014,7 +1018,7 @@ export default function TerritorioPage() {
                     <button
                       type="button"
                       onClick={() => setFiltroDepEstadual(deputadosEstaduaisUnicos)}
-                      className="text-[10px] text-accent-gold hover:underline disabled:opacity-50"
+                      className={cn('text-[10px] hover:underline disabled:opacity-50', accentTextClass)}
                       disabled={filtroDepEstadual.length === deputadosEstaduaisUnicos.length}
                     >
                       Todos
@@ -1022,7 +1026,7 @@ export default function TerritorioPage() {
                     <button
                       type="button"
                       onClick={() => setFiltroDepEstadual([])}
-                      className="text-[10px] text-accent-gold hover:underline"
+                      className={cn('text-[10px] hover:underline', accentTextClass)}
                     >
                       Limpar
                     </button>
@@ -1110,7 +1114,7 @@ export default function TerritorioPage() {
                   className="px-3 py-2 text-sm font-medium border border-card rounded-lg hover:bg-background transition-colors flex items-center gap-2"
                   title="Analisar equilíbrio entre investimento e previsão de votos"
                 >
-                  <Briefcase className="w-4 h-4 text-accent-gold" />
+                  <Briefcase className={cn('w-4 h-4', accentTextClass)} />
                   Demandas x Previsão
                 </button>
               )}
@@ -1305,7 +1309,7 @@ export default function TerritorioPage() {
                             <ChevronRight className="w-4 h-4 text-secondary" />
                           )}
                           <div className="p-2 rounded-lg bg-accent-gold-soft">
-                            <Users className="w-4 h-4 text-accent-gold" />
+                            <Users className={cn('w-4 h-4', accentTextClass)} />
                           </div>
                           <div className="flex-1 text-left">
                             <p className="text-sm font-semibold text-text-primary">{cidade}</p>
@@ -1322,7 +1326,7 @@ export default function TerritorioPage() {
                               setSelectedCityLiderancas(liderancasCidade)
                               setShowExecutiveBriefing(true)
                             }}
-                            className="p-2 rounded-lg hover:bg-background transition-colors text-secondary hover:text-accent-gold"
+                            className={cn('p-2 rounded-lg hover:bg-background transition-colors text-secondary', accentHoverTextClass)}
                             title="Briefing Executivo"
                           >
                             <Briefcase className="w-4 h-4" />
@@ -1342,7 +1346,7 @@ export default function TerritorioPage() {
                               }
                               setShowCityDemands(true)
                             }}
-                            className="p-2 rounded-lg hover:bg-background transition-colors text-secondary hover:text-accent-gold"
+                            className={cn('p-2 rounded-lg hover:bg-background transition-colors text-secondary', accentHoverTextClass)}
                             title="Ver demandas desta cidade"
                           >
                             <FileText className="w-4 h-4" />
@@ -1350,7 +1354,7 @@ export default function TerritorioPage() {
                           {votosReferenciaCol && totalExpectativaCidade > 0 && (
                             <div className="text-right ml-2">
                               <p className="text-xs text-secondary mb-0.5">{labelTotalCidade}</p>
-                              <p className="text-sm font-semibold text-accent-gold">
+                              <p className={cn('text-sm font-semibold', accentTextClass)}>
                                 {Math.round(totalExpectativaCidade).toLocaleString('pt-BR')}
                               </p>
                             </div>
@@ -1400,8 +1404,8 @@ export default function TerritorioPage() {
                                   return (
                                     <div className="flex items-center justify-between">
                                       <div className="flex items-center gap-3 flex-1 min-w-0">
-                                        <div className="p-1.5 rounded-lg bg-accent-gold-soft/50">
-                                          <Users className="w-3 h-3 text-accent-gold" />
+                                        <div className={cn('p-1.5 rounded-lg', accentSoftBgAltClass)}>
+                                          <Users className={cn('w-3 h-3', accentTextClass)} />
                                         </div>
                                         <div className="flex items-center gap-2 flex-1 min-w-0">
                                           <p className="text-sm font-semibold text-text-primary truncate">
@@ -1422,7 +1426,7 @@ export default function TerritorioPage() {
                                       <div className="flex items-center gap-3 flex-shrink-0">
                                         {votosReferenciaCol && lider[votosReferenciaCol] && (
                                           <div className="text-right">
-                                            <p className="text-sm font-semibold text-accent-gold">
+                                            <p className={cn('text-sm font-semibold', accentTextClass)}>
                                               {numValue.toLocaleString('pt-BR')}
                                             </p>
                                           </div>

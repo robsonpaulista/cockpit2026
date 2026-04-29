@@ -570,6 +570,7 @@ export default function PesquisaPage() {
   const [pollParaRelatorio, setPollParaRelatorio] = useState<Poll | null>(null)
   const [openedReportFromQuery, setOpenedReportFromQuery] = useState<string | null>(null)
   const [abaPesquisa, setAbaPesquisa] = useState<AbaPesquisaDashboard>('grafico')
+  const [filtroTextoCandidatoCadastradas, setFiltroTextoCandidatoCadastradas] = useState<string>('')
   const tendenciaGraficoRef = useRef<HTMLDivElement>(null)
   const scrollParaGraficoAposTrocaAbaRef = useRef(false)
 
@@ -735,6 +736,21 @@ export default function PesquisaPage() {
     })
     .slice()
     .reverse()
+
+  const normalizarTextoBuscaCandidato = (value: string): string =>
+    value
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase()
+      .trim()
+
+  const pollsCadastradasExibicao = useMemo(() => {
+    const q = normalizarTextoBuscaCandidato(filtroTextoCandidatoCadastradas)
+    if (!q) return pollsFiltrados
+    return pollsFiltrados.filter((p) =>
+      normalizarTextoBuscaCandidato(p.candidato_nome || '').includes(q)
+    )
+  }, [pollsFiltrados, filtroTextoCandidatoCadastradas])
 
   const candidatosUnicos = Array.from(new Set(pollsFiltrados.map((p) => p.candidato_nome).filter(Boolean)))
 
@@ -968,6 +984,8 @@ export default function PesquisaPage() {
           candidato_nome: p.candidato_nome,
           intencao: p.intencao,
           instituto: p.instituto ?? '',
+          cidadeId: p.cidade_id ?? null,
+          cidadeNome: p.cities?.name?.trim() || null,
         }))
       ),
     [pollsPainelExecutivo]
@@ -1436,7 +1454,24 @@ export default function PesquisaPage() {
                   <tr className="border-b border-card">
                     <th className="text-left py-3 px-4 text-sm font-semibold text-text-primary">Data</th>
                     <th className="text-left py-3 px-4 text-sm font-semibold text-text-primary">Instituto</th>
-                    <th className="text-left py-3 px-4 text-sm font-semibold text-text-primary">Candidato</th>
+                    <th className="align-top py-3 px-4 text-left text-sm font-semibold text-text-primary">
+                      <span className="block">Candidato</span>
+                      <label htmlFor="pesquisa-cadastradas-filtro-candidato" className="sr-only">
+                        Filtrar por nome do candidato
+                      </label>
+                      <input
+                        id="pesquisa-cadastradas-filtro-candidato"
+                        type="search"
+                        value={filtroTextoCandidatoCadastradas}
+                        onChange={(e) => setFiltroTextoCandidatoCadastradas(e.target.value)}
+                        placeholder="Buscar nome…"
+                        className={cn(
+                          'mt-2 w-full min-w-[8rem] max-w-[18rem] rounded-md border px-2 py-1.5 text-xs font-normal text-text-primary placeholder:text-secondary focus:outline-none focus:ring-2 focus:ring-accent-gold/40',
+                          inputShellClass
+                        )}
+                        autoComplete="off"
+                      />
+                    </th>
                     <th className="text-left py-3 px-4 text-sm font-semibold text-text-primary">Cidade</th>
                     <th className="text-left py-3 px-4 text-sm font-semibold text-text-primary">Tipo</th>
                     <th className="text-left py-3 px-4 text-sm font-semibold text-text-primary">Cargo</th>
@@ -1446,7 +1481,19 @@ export default function PesquisaPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {pollsFiltrados.map((poll) => (
+                  {pollsCadastradasExibicao.length === 0 ? (
+                    <tr>
+                      <td
+                        colSpan={9}
+                        className="py-10 px-4 text-center text-sm text-secondary"
+                      >
+                        {filtroTextoCandidatoCadastradas.trim()
+                          ? `Nenhuma pesquisa corresponde ao filtro de candidato «${filtroTextoCandidatoCadastradas.trim()}».`
+                          : 'Nenhuma pesquisa para exibir.'}
+                      </td>
+                    </tr>
+                  ) : null}
+                  {pollsCadastradasExibicao.map((poll) => (
                     <tr key={poll.id} className="border-b border-card hover:bg-background/50 transition-colors">
                       <td className="py-3 px-4 text-sm text-text-primary">
                         {(() => {

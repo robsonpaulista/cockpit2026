@@ -2,6 +2,7 @@
  * Painel executivo: espontânea ajustada vs estimulada por candidato e métricas de topo.
  */
 
+import { getEleitoradoByCity } from '@/lib/eleitores'
 import {
   DEFAULT_ESPONTANEA_NAO_SABE_EXPANSION_RATE,
   isBrancoNuloOuNenhumNome,
@@ -16,6 +17,248 @@ export type PollExecutiveInput = {
   candidato_nome: string
   intencao: number
   instituto: string
+  /** Quando existir, entra na chave da pesquisa (data + instituto + cidade). */
+  cidadeId?: string | null
+  /** Fallback da cidade para a chave quando não houver `cidadeId`. */
+  cidadeNome?: string | null
+}
+
+/** Chave estável da cidade no recorte (id, nome normalizado ou estadual). */
+export function cidadeChavePoll(p: PollExecutiveInput): string {
+  const id = p.cidadeId != null && String(p.cidadeId).trim() !== '' ? String(p.cidadeId).trim() : ''
+  if (id) return `id:${id}`
+  const nm = (p.cidadeNome ?? '').trim().toLowerCase()
+  if (nm) return `nm:${nm}`
+  return '__estado__'
+}
+
+/** Rótulo amigável da cidade para tabelas. */
+export function cidadeRotuloPoll(p: PollExecutiveInput): string {
+  const nome = (p.cidadeNome ?? '').trim()
+  if (nome) return nome
+  if (p.cidadeId != null && String(p.cidadeId).trim() !== '') return `Cidade (id ${String(p.cidadeId).trim()})`
+  return 'Estado (todas as cidades)'
+}
+
+/** Uma pesquisa = mesma data (dia), instituto e cidade (estadual quando sem cidade). */
+export function chavePesquisaDistinta(p: PollExecutiveInput): string {
+  const raw = p.data
+  const d = raw.includes('T') ? (raw.split('T')[0] ?? raw) : raw
+  const inst = (p.instituto ?? '').trim().toLowerCase()
+  return `${d}|${inst}|${cidadeChavePoll(p)}`
+}
+
+export type CandidatoMediaNaCidade = {
+  nome: string
+  /** Média aritmética da intenção (%) nas linhas do candidato na cidade. */
+  mediaPct: number
+}
+
+/** Quantidade de posições exibidas no ranking por cidade (vagas típicas na eleição). */
+export const CIDADE_INTENCAO_TOP_N = 10
+
+export type CidadeIntencaoTopoRow = {
+  cidadeChave: string
+  cidadeLabel: string
+  /** Pesquisas distintas (data + instituto + cidade) só nas linhas espontâneas. */
+  pesquisasDistintasEspontanea: number
+  /** Até `CIDADE_INTENCAO_TOP_N` candidatos com maior média na espontânea (excl. NS/branco). */
+  top10Espontanea: CandidatoMediaNaCidade[]
+  /** Pesquisas distintas só nas linhas estimuladas. */
+  pesquisasDistintasEstimulada: number
+  /** Até `CIDADE_INTENCAO_TOP_N` candidatos com maior média na estimulada (excl. NS/branco). */
+  top10Estimulada: CandidatoMediaNaCidade[]
+}
+
+function pesquisasDistintasELeaderboardTopN(
+  linhasTipo: PollExecutiveInput[]
+): { pesquisasDistintas: number; top10: CandidatoMediaNaCidade[] } {
+  const pesquisasDistintas = new Set(linhasTipo.map((q) => chavePesquisaDistinta(q))).size
+  const aggCand = new Map<string, { sum: number; count: number }>()
+  for (const q of linhasTipo) {
+    if (isNaoSabeOuNaoOpinaNome(q.candidato_nome) || isBrancoNuloOuNenhumNome(q.candidato_nome)) continue
+    const cur = aggCand.get(q.candidato_nome) ?? { sum: 0, count: 0 }
+    cur.sum += q.intencao
+    cur.count += 1
+    aggCand.set(q.candidato_nome, cur)
+  }
+  const top10 = [...aggCand.entries()]
+    .map(([nome, { sum, count }]) => ({
+      nome,
+      mediaPct: count > 0 ? Math.round((sum / count) * 10) / 10 : 0,
+    }))
+    .sort((a, b) =>
+      b.mediaPct !== a.mediaPct
+        ? b.mediaPct - a.mediaPct
+        : a.nome.localeCompare(b.nome, 'pt-BR', { sensitivity: 'base' })
+    )
+    .slice(0, CIDADE_INTENCAO_TOP_N)
+  return { pesquisasDistintas, top10 }
+}
+
+/** Por cidade: pesquisas distintas e top N por média, separados entre espontânea e estimulada. */
+export function buildCidadesIntencaoTopoMedia(polls: PollExecutiveInput[]): CidadeIntencaoTopoRow[] {
+  const byCity = new Map<string, { label: string; polls: PollExecutiveInput[] }>()
+  for (const p of polls) {
+    if (!Number.isFinite(p.intencao)) continue
+    const ck = cidadeChavePoll(p)
+    if (!byCity.has(ck)) {
+      byCity.set(ck, { label: cidadeRotuloPoll(p), polls: [] })
+    }
+    const bucket = byCity.get(ck)!
+    bucket.polls.push(p)
+    const nm = (p.cidadeNome ?? '').trim()
+    if (nm) bucket.label = nm
+  }
+
+  const linhas: CidadeIntencaoTopoRow[] = []
+  for (const [cidadeChave, { label, polls: cityPolls }] of byCity) {
+    const esp = cityPolls.filter((q) => q.tipo === 'espontanea')
+    const est = cityPolls.filter((q) => q.tipo === 'estimulada')
+    const espBlock = pesquisasDistintasELeaderboardTopN(esp)
+    const estBlock = pesquisasDistintasELeaderboardTopN(est)
+    linhas.push({
+      cidadeChave,
+      cidadeLabel: label,
+      pesquisasDistintasEspontanea: espBlock.pesquisasDistintas,
+      top10Espontanea: espBlock.top10,
+      pesquisasDistintasEstimulada: estBlock.pesquisasDistintas,
+      top10Estimulada: estBlock.top10,
+    })
+  }
+  linhas.sort((a, b) => {
+    const sa = a.pesquisasDistintasEspontanea + a.pesquisasDistintasEstimulada
+    const sb = b.pesquisasDistintasEspontanea + b.pesquisasDistintasEstimulada
+    if (sb !== sa) return sb - sa
+    return a.cidadeLabel.localeCompare(b.cidadeLabel, 'pt-BR', { sensitivity: 'base' })
+  })
+  return linhas
+}
+
+/** Média aritmética de intenção (%) por candidato na cidade, só no tipo indicado. */
+function mediasCandidatoNaCidadePorTipo(
+  cityPolls: PollExecutiveInput[],
+  tipo: 'estimulada' | 'espontanea'
+): Map<string, number> {
+  const linhasTipo = cityPolls.filter((q) => q.tipo === tipo)
+  const agg = new Map<string, { sum: number; count: number }>()
+  for (const q of linhasTipo) {
+    if (!Number.isFinite(q.intencao)) continue
+    if (isNaoSabeOuNaoOpinaNome(q.candidato_nome) || isBrancoNuloOuNenhumNome(q.candidato_nome)) continue
+    const cur = agg.get(q.candidato_nome) ?? { sum: 0, count: 0 }
+    cur.sum += q.intencao
+    cur.count += 1
+    agg.set(q.candidato_nome, cur)
+  }
+  const out = new Map<string, number>()
+  for (const [nome, { sum, count }] of agg) {
+    out.set(nome, count > 0 ? Math.round((sum / count) * 10) / 10 : 0)
+  }
+  return out
+}
+
+export type ProjecaoVotoCandidatoRow = {
+  rank: number
+  nome: string
+  /** Soma nos municípios: eleitorado × (média % / 100). */
+  votosProjetados: number
+  /** Participação relativa entre os candidatos listados (soma das projeções = 100%). */
+  pctSobreSomaProjetada: number
+}
+
+export type ProjecaoVotosEleitoradoRecorte = {
+  /** Como a intenção % foi escolhida em cada município (texto curto para o painel). */
+  baseIntencaoLabel: string
+  ranking: ProjecaoVotoCandidatoRow[]
+  /** Soma do eleitorado TRE nos municípios onde houve projeção (cadastro encontrado). */
+  eleitoradoSomadoRecorte: number
+  /** Soma das projeções de votos de todos os candidatos listados. */
+  somaVotosProjetados: number
+  municipiosPonderados: number
+  municipiosComPesquisaSemEleitoradoCadastrado: number
+  municipiosApenasEstadualExcluidos: number
+}
+
+/**
+ * Acumula votos projetados: em cada município com pesquisa, multiplica o eleitorado oficial (`lib/eleitores`)
+ * pela média de intenção (%) do candidato naquele município — estimulada se existir na cidade, senão espontânea bruta.
+ * Linhas só estaduais (sem cidade) não entram. Cidades sem cadastro de eleitorado são contadas mas não somam votos.
+ */
+export function buildProjecaoVotosEleitorado(polls: PollExecutiveInput[]): ProjecaoVotosEleitoradoRecorte {
+  const byCity = new Map<string, { label: string; polls: PollExecutiveInput[] }>()
+  for (const p of polls) {
+    if (!Number.isFinite(p.intencao)) continue
+    const ck = cidadeChavePoll(p)
+    if (!byCity.has(ck)) {
+      byCity.set(ck, { label: cidadeRotuloPoll(p), polls: [] })
+    }
+    const bucket = byCity.get(ck)!
+    bucket.polls.push(p)
+    const nm = (p.cidadeNome ?? '').trim()
+    if (nm) bucket.label = nm
+  }
+
+  const votosPorCandidato = new Map<string, number>()
+  let eleitoradoSomadoRecorte = 0
+  let municipiosPonderados = 0
+  let municipiosComPesquisaSemEleitoradoCadastrado = 0
+  let municipiosApenasEstadualExcluidos = 0
+
+  for (const [cidadeChave, { label, polls: cityPolls }] of byCity) {
+    if (cidadeChave === '__estado__') {
+      municipiosApenasEstadualExcluidos += 1
+      continue
+    }
+    const labelTrim = label.trim()
+    if (!labelTrim || labelTrim.startsWith('Cidade (id')) {
+      municipiosComPesquisaSemEleitoradoCadastrado += 1
+      continue
+    }
+
+    const temEstNaCidade = cityPolls.some((q) => q.tipo === 'estimulada')
+    const tipo: 'estimulada' | 'espontanea' = temEstNaCidade ? 'estimulada' : 'espontanea'
+    const medias = mediasCandidatoNaCidadePorTipo(cityPolls, tipo)
+    if (medias.size === 0) continue
+
+    const eleitores = getEleitoradoByCity(labelTrim)
+    if (eleitores == null || eleitores <= 0) {
+      municipiosComPesquisaSemEleitoradoCadastrado += 1
+      continue
+    }
+
+    eleitoradoSomadoRecorte += eleitores
+    municipiosPonderados += 1
+    for (const [nome, mediaPct] of medias) {
+      const add = eleitores * (mediaPct / 100)
+      votosPorCandidato.set(nome, (votosPorCandidato.get(nome) ?? 0) + add)
+    }
+  }
+
+  const preRanking = [...votosPorCandidato.entries()]
+    .map(([nome, v]) => ({ nome, votosProjetados: Math.round(v) }))
+    .filter((r) => r.votosProjetados > 0)
+    .sort((a, b) => b.votosProjetados - a.votosProjetados)
+
+  const somaVotosProjetados = preRanking.reduce((s, r) => s + r.votosProjetados, 0)
+
+  const ranking: ProjecaoVotoCandidatoRow[] = preRanking.map((row, i) => ({
+    rank: i + 1,
+    nome: row.nome,
+    votosProjetados: row.votosProjetados,
+    pctSobreSomaProjetada:
+      somaVotosProjetados > 0 ? Math.round((row.votosProjetados / somaVotosProjetados) * 1000) / 10 : 0,
+  }))
+
+  return {
+    baseIntencaoLabel:
+      'Por município: média da estimulada quando houver linhas estimuladas na cidade; caso contrário, média da espontânea bruta.',
+    ranking,
+    eleitoradoSomadoRecorte,
+    somaVotosProjetados,
+    municipiosPonderados,
+    municipiosComPesquisaSemEleitoradoCadastrado,
+    municipiosApenasEstadualExcluidos,
+  }
 }
 
 export type SeriePontoExecutive = {
@@ -43,6 +286,8 @@ export type CandidatoExecutiveCard = {
   variacaoEst: number | null
   institutoUltimaEst: string | null
   institutoUltimaEsp: string | null
+  /** Pesquisas distintas no recorte (data + instituto + cidade) em que o candidato tem registro. */
+  pesquisasDistintas: number
   badge: string
   badgeVariant: 'success' | 'warning' | 'neutral' | 'danger' | 'muted'
 }
@@ -64,6 +309,10 @@ export type ExecutiveTendenciaModel = {
   temEspontanea: boolean
   datasOrdenadas: string[]
   cards: CandidatoExecutiveCard[]
+  /** Visão geral por município: espontânea e estimulada separadas (Pesq. distintas + top 10 por média em cada tipo). */
+  cidadesIntencaoTop10: CidadeIntencaoTopoRow[]
+  /** Projeção acumulada (média × eleitorado por município) para confrontar com a base na eleição. */
+  projecaoVotosEleitorado: ProjecaoVotosEleitoradoRecorte
   resumo: ExecutiveTendenciaResumo
 }
 
@@ -313,12 +562,62 @@ export function buildExecutiveTendenciaModel(polls: PollExecutiveInput[]): Execu
 
   const nomesOrdenados = [...nomes].sort((a, b) => a.localeCompare(b, 'pt-BR'))
 
-  const pesquisasUnicas = new Set(
-    polls.map((p) => {
-      const d = p.data.includes('T') ? p.data.split('T')[0] : p.data
-      return `${d}|${p.instituto.trim().toLowerCase()}|${p.tipo}`
-    })
-  )
+  /**
+   * Por candidato: chave = pesquisa (data + instituto + cidade); dentro da chave, média da intenção
+   * nas linhas (ex.: estimulada + espontânea na mesma onda).
+   */
+  const porCandidatoPorPesquisa = new Map<string, Map<string, { sum: number; count: number }>>()
+  let somaIntencaoGlobalSemResiduos = 0
+  let registrosGlobalSemResiduos = 0
+  for (const p of polls) {
+    if (!Number.isFinite(p.intencao)) continue
+    const nome = p.candidato_nome
+    if (!porCandidatoPorPesquisa.has(nome)) porCandidatoPorPesquisa.set(nome, new Map())
+    const chave = chavePesquisaDistinta(p)
+    const inner = porCandidatoPorPesquisa.get(nome)!
+    const cur = inner.get(chave) ?? { sum: 0, count: 0 }
+    cur.sum += p.intencao
+    cur.count += 1
+    inner.set(chave, cur)
+    if (!isNaoSabeOuNaoOpinaNome(nome) && !isBrancoNuloOuNenhumNome(nome)) {
+      somaIntencaoGlobalSemResiduos += p.intencao
+      registrosGlobalSemResiduos += 1
+    }
+  }
+
+  type MetricasPesquisaCandidato = { pesquisasDistintas: number; sumMediasPorPesquisa: number }
+  const metricasPorCandidato = new Map<string, MetricasPesquisaCandidato>()
+  for (const [nome, porPesquisa] of porCandidatoPorPesquisa) {
+    let sumMedias = 0
+    for (const { sum, count } of porPesquisa.values()) {
+      sumMedias += count > 0 ? sum / count : 0
+    }
+    const n = porPesquisa.size
+    metricasPorCandidato.set(nome, { pesquisasDistintas: n, sumMediasPorPesquisa: sumMedias })
+  }
+
+  const mediaGlobalSemResiduos =
+    registrosGlobalSemResiduos > 0 ? somaIntencaoGlobalSemResiduos / registrosGlobalSemResiduos : 0
+  /** Peso do prior global na média ajustada por presença (maior = mais “puxa” quem tem poucas pesquisas). */
+  const PRIOR_PRESENCA_K = 3
+  const intencaoMediaAjustadaPresenca = (nome: string): number => {
+    const m = metricasPorCandidato.get(nome)
+    if (!m || m.pesquisasDistintas < 1) return mediaGlobalSemResiduos
+    return (
+      (m.sumMediasPorPesquisa + PRIOR_PRESENCA_K * mediaGlobalSemResiduos) /
+      (m.pesquisasDistintas + PRIOR_PRESENCA_K)
+    )
+  }
+
+  const contagensCampoAtivo = nomesOrdenados
+    .filter((n) => isCandidatoCampoAtivoEspontanea(n))
+    .map((n) => metricasPorCandidato.get(n)?.pesquisasDistintas ?? 0)
+  const maxPesquisasCampoAtivo = contagensCampoAtivo.length > 0 ? Math.max(...contagensCampoAtivo) : 0
+  /** Exige pelo menos 2 pesquisas distintas para disputar líder quando houver candidato de campo com isso. */
+  const minPesquisasParaLider =
+    maxPesquisasCampoAtivo >= 2 && contagensCampoAtivo.some((c) => c >= 2) ? 2 : 1
+
+  const pesquisasUnicas = new Set(polls.map((p) => chavePesquisaDistinta(p)))
 
   const periodoLabel =
     datasOrdenadas.length >= 2
@@ -359,6 +658,7 @@ export function buildExecutiveTendenciaModel(polls: PollExecutiveInput[]): Execu
         variacaoEst,
         institutoUltimaEst: ultimoInstitutoDaSerie(ptsE),
         institutoUltimaEsp: ultimoInstitutoDaSerie(ptsS),
+        pesquisasDistintas: metricasPorCandidato.get(nome)?.pesquisasDistintas ?? 0,
       }
     }
   )
@@ -370,6 +670,7 @@ export function buildExecutiveTendenciaModel(polls: PollExecutiveInput[]): Execu
   if (temEspontanea) {
     for (const c of cardsParcial) {
       if (!isCandidatoCampoAtivoEspontanea(c.nome)) continue
+      if (c.pesquisasDistintas < minPesquisasParaLider) continue
       const v = c.ultimaEsp
       if (v !== null && v > liderPct) {
         liderPct = v
@@ -382,6 +683,7 @@ export function buildExecutiveTendenciaModel(polls: PollExecutiveInput[]): Execu
     liderPct = 0
     for (const c of cardsParcial) {
       if (!isCandidatoCampoAtivoEspontanea(c.nome)) continue
+      if (c.pesquisasDistintas < minPesquisasParaLider) continue
       const v = c.ultimaEst
       if (v !== null && v > liderPct) {
         liderPct = v
@@ -454,38 +756,33 @@ export function buildExecutiveTendenciaModel(polls: PollExecutiveInput[]): Execu
     return { ...c, badge, badgeVariant }
   })
 
-  /** Média de intenção por candidato: todas as linhas de pesquisa no recorte (estimulada + espontânea). */
-  const mediaIntencaoPorCandidato = (() => {
-    const agg = new Map<string, { sum: number; count: number }>()
-    for (const p of polls) {
-      if (!Number.isFinite(p.intencao)) continue
-      const cur = agg.get(p.candidato_nome) ?? { sum: 0, count: 0 }
-      cur.sum += p.intencao
-      cur.count += 1
-      agg.set(p.candidato_nome, cur)
-    }
-    const out = new Map<string, number>()
-    for (const [nome, { sum, count }] of agg) {
-      out.set(nome, count > 0 ? sum / count : -1)
-    }
-    return out
-  })()
-
+  /**
+   * Ordenação: média por pesquisa “encolhida” para a média global quando há poucas pesquisas distintas,
+   * depois desempate por quantidade de pesquisas e nome.
+   */
   cards.sort((a, b) => {
     const aNs = isNaoSabeOuNaoOpinaNome(a.nome) || isBrancoNuloOuNenhumNome(a.nome)
     const bNs = isNaoSabeOuNaoOpinaNome(b.nome) || isBrancoNuloOuNenhumNome(b.nome)
     if (aNs !== bNs) return aNs ? 1 : -1
-    const ma = mediaIntencaoPorCandidato.get(a.nome) ?? -1
-    const mb = mediaIntencaoPorCandidato.get(b.nome) ?? -1
-    if (mb !== ma) return mb - ma
+    const ia = intencaoMediaAjustadaPresenca(a.nome)
+    const ib = intencaoMediaAjustadaPresenca(b.nome)
+    if (ib !== ia) return ib - ia
+    const ca = a.pesquisasDistintas
+    const cb = b.pesquisasDistintas
+    if (cb !== ca) return cb - ca
     return a.nome.localeCompare(b.nome, 'pt-BR')
   })
+
+  const cidadesIntencaoTop10 = buildCidadesIntencaoTopoMedia(polls)
+  const projecaoVotosEleitorado = buildProjecaoVotosEleitorado(polls)
 
   return {
     temEstimulada,
     temEspontanea,
     datasOrdenadas,
     cards,
+    cidadesIntencaoTop10,
+    projecaoVotosEleitorado,
     resumo: {
       totalPesquisasUnicas: pesquisasUnicas.size,
       periodoLabel,

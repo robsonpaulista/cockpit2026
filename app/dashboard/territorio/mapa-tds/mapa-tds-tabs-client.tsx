@@ -19,8 +19,10 @@ const MapaTerritoriosDesenvolvimentoLeaflet = dynamic(
 
 const ABA_QUERY = 'aba'
 const TEMA_QUERY = 'tema'
+const IG_VIEW_QUERY = 'ig_view'
 
 export type MapaTdsTabId = 'mapa-eleitoral' | 'mapa-digital-ig' | 'pesquisas'
+type IgViewMode = 'analise' | 'operacao'
 
 function MapaPlaceholder() {
   return (
@@ -37,6 +39,10 @@ function parseTab(raw: string | null): MapaTdsTabId {
   return 'mapa-eleitoral'
 }
 
+function parseIgViewMode(raw: string | null): IgViewMode {
+  return raw === 'operacao' ? 'operacao' : 'analise'
+}
+
 export default function MapaTdsTabsClient() {
   const router = useRouter()
   const pathname = usePathname()
@@ -45,12 +51,20 @@ export default function MapaTdsTabsClient() {
   const isCockpit = theme === 'cockpit'
 
   const tab = useMemo(() => parseTab(searchParams.get(ABA_QUERY)), [searchParams])
+  const igViewMode = useMemo(() => parseIgViewMode(searchParams.get(IG_VIEW_QUERY)), [searchParams])
   const isRepublicanosLight = useMemo(
     () => isMapaTdsShellRepublicanosLight(pathname, searchParams.get(TEMA_QUERY), appearance),
     [pathname, searchParams, appearance]
   )
   const mapaShellBrancoForcado =
     appearance === 'dark' && searchParams.get(TEMA_QUERY) === 'republicanos-claro'
+  /** Cockpit escuro: mesmo fundo da `.sidebar-cockpit-shell` para não “quebrar” na junção com a sidebar. */
+  const mapaShellBgClass =
+    mapaShellBrancoForcado || isRepublicanosLight
+      ? 'bg-white'
+      : isCockpit && appearance === 'dark'
+        ? 'bg-[rgba(17,26,40,0.88)]'
+        : 'bg-bg-sidebar'
 
   const tituloPagina =
     tab === 'mapa-digital-ig'
@@ -88,9 +102,24 @@ export default function MapaTdsTabsClient() {
     [router, pathname, searchParams]
   )
 
+  const setIgViewMode = useCallback(
+    (next: IgViewMode) => {
+      const p = new URLSearchParams(searchParams.toString())
+      p.set(IG_VIEW_QUERY, next)
+      const q = p.toString()
+      router.replace(q ? `${pathname}?${q}` : pathname, { scroll: false })
+    },
+    [router, pathname, searchParams]
+  )
+
   return (
-    <div className="flex h-[calc(100dvh-5.25rem)] min-h-[480px] w-full min-w-0 flex-col bg-bg-app text-text-primary max-lg:h-[calc(100dvh-6.25rem)]">
-      <header className="shrink-0 border-b border-border-card/80 bg-bg-app px-3 pb-2 pt-3 sm:px-5 sm:pb-2.5 sm:pt-3.5 md:px-6">
+    <div
+      className={cn(
+        'flex h-[calc(100dvh-5.25rem)] min-h-[480px] w-full min-w-0 flex-col text-text-primary max-lg:h-[calc(100dvh-6.25rem)]',
+        mapaShellBgClass
+      )}
+    >
+      <header className={cn('shrink-0 border-b border-border-card/80 px-3 pb-2 pt-3 sm:px-5 sm:pb-2.5 sm:pt-3.5 md:px-6', mapaShellBgClass)}>
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between sm:gap-4">
           <div className="min-w-0">
             <h1 className="text-lg font-semibold tracking-tight text-text-primary sm:text-xl">{tituloPagina}</h1>
@@ -125,6 +154,32 @@ export default function MapaTdsTabsClient() {
             </nav>
             {tab === 'mapa-digital-ig' ? (
               <div className="flex w-full min-w-0 flex-col items-stretch gap-2 sm:w-auto sm:flex-row sm:flex-wrap sm:items-center sm:justify-end">
+                <div className="inline-flex rounded-lg border border-border-card bg-bg-surface p-1">
+                  <button
+                    type="button"
+                    onClick={() => setIgViewMode('analise')}
+                    className={cn(
+                      'rounded-md px-2.5 py-1 text-[11px] font-medium transition-colors',
+                      igViewMode === 'analise'
+                        ? 'bg-accent-gold text-white'
+                        : 'text-text-secondary hover:bg-accent-gold-soft/35 hover:text-text-primary'
+                    )}
+                  >
+                    Análise
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setIgViewMode('operacao')}
+                    className={cn(
+                      'rounded-md px-2.5 py-1 text-[11px] font-medium transition-colors',
+                      igViewMode === 'operacao'
+                        ? 'bg-accent-gold text-white'
+                        : 'text-text-secondary hover:bg-accent-gold-soft/35 hover:text-text-primary'
+                    )}
+                  >
+                    Operação
+                  </button>
+                </div>
                 <MapaDigitalIgRelatorioCheckExport
                   exportPiTodas
                   visualPreset="futuristic"
@@ -142,7 +197,7 @@ export default function MapaTdsTabsClient() {
       <div
         className={cn(
           'theme-futuristic relative flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden overflow-y-auto overflow-x-visible rounded-xl border border-border-card',
-          mapaShellBrancoForcado ? 'bg-white' : 'bg-bg-app',
+          mapaShellBgClass,
           isRepublicanosLight && 'theme-futuristic--republicanos-light'
         )}
       >
@@ -159,6 +214,7 @@ export default function MapaTdsTabsClient() {
             visualPreset="futuristic"
             visualTheme={isRepublicanosLight ? 'light' : 'dark'}
             painelContext="digitalIg"
+            igViewMode={igViewMode}
           />
         ) : (
           <MapaTerritoriosDesenvolvimentoLeaflet

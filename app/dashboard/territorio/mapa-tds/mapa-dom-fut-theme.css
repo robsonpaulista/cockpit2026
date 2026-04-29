@@ -21,10 +21,11 @@
 }
 
 .theme-futuristic {
-  --td-fut-bg-deep:         rgb(var(--bg-app));
+  /* Mesmo tom da sidebar / página Campo (token --bg-sidebar), não cinza quase preto */
+  --td-fut-bg-deep:         rgb(var(--bg-sidebar));
   --td-fut-bg-mid:          rgb(var(--bg-sidebar));
   --td-fut-bg-card:         rgb(var(--bg-surface));
-  --td-fut-glass:           rgba(16, 22, 31, 0.92);
+  --td-fut-glass:           rgb(var(--bg-surface) / 0.92);
   --td-fut-border:          rgb(var(--border-card) / 0.55);
   --td-fut-border-strong:   rgb(var(--border-card) / 0.85);
   --td-fut-divider:         rgb(var(--border-card) / 0.35);
@@ -1250,15 +1251,15 @@
   background: #F4F8FF;
 }
 
-[data-map-tds-futuristic-main='true'] { background: transparent; }
-[data-map-tds-futuristic-main='true'] > main { background: transparent !important; }
-[data-map-tds-futuristic-main='true'] .page-transition { min-height: 100%; background: transparent; }
+[data-map-tds-futuristic-main='true'] { background: rgb(var(--bg-sidebar)); }
+[data-map-tds-futuristic-main='true'] > main { background: rgb(var(--bg-sidebar)) !important; }
+[data-map-tds-futuristic-main='true'] .page-transition { min-height: 100%; background: rgb(var(--bg-sidebar)); }
 
 /* ── Header ───────────────────────────────────────────────────────────────── */
 
 [data-map-tds-futuristic-header='true'] {
   border-bottom-color: rgba(255, 255, 255, 0.06) !important;
-  background: #0F151D !important;
+  background: rgb(var(--bg-sidebar)) !important;
 }
 
 [data-map-tds-futuristic-header='true'][data-map-tds-futuristic-theme='republicanos-light'] {
@@ -1336,7 +1337,7 @@
 /* ── Sidebar ──────────────────────────────────────────────────────────────── */
 
 [data-map-tds-futuristic-sidebar='true'] {
-  background: #0a0e13 !important;
+  background: rgb(var(--bg-sidebar)) !important;
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
   border-right: 1px solid rgba(255, 255, 255, 0.06) !important;
@@ -1359,7 +1360,7 @@
 }
 
 [data-map-tds-futuristic-sidebar='true'].sidebar-cockpit-shell {
-  background: #0a0e13 !important;
+  background: rgb(var(--bg-sidebar)) !important;
 }
 
 [data-map-tds-futuristic-sidebar='true'][data-map-tds-futuristic-theme='republicanos-light'].sidebar-cockpit-shell {
@@ -1446,7 +1447,7 @@
 /* ── Botão menu mobile ────────────────────────────────────────────────────── */
 
 [data-map-tds-futuristic-navbtn='true'] {
-  background: #0F151D !important;
+  background: rgb(var(--bg-sidebar)) !important;
   border-width: 0 !important;
   box-shadow: 0 4px 18px rgba(0, 0, 0, 0.4);
 }

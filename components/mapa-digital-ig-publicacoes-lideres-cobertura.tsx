@@ -22,6 +22,7 @@ type Props = {
   sidebarCollapsed: boolean
   visualPreset: 'default' | 'futuristic'
   visualTheme?: 'dark' | 'light'
+  modoLeitura?: 'analise' | 'operacao'
 }
 
 function iniciaisNome(nome: string): string {
@@ -57,6 +58,7 @@ export function MapaDigitalIgPublicacoesLideresCobertura({
   sidebarCollapsed,
   visualPreset,
   visualTheme = 'dark',
+  modoLeitura = 'analise',
 }: Props) {
   const [loadState, setLoadState] = useState<'idle' | 'loading' | 'ready' | 'error' | 'forbidden'>('idle')
   const [erro, setErro] = useState<string>('')
@@ -111,29 +113,35 @@ export function MapaDigitalIgPublicacoesLideresCobertura({
     return () => window.removeEventListener(INSTAGRAM_COMMENTS_SYNCED_EVENT, on)
   }, [carregar])
 
-  const textSm = sidebarCollapsed ? 'text-xs sm:text-sm' : 'text-[10px] sm:text-[11px]'
+  const textSm = modoLeitura === 'operacao' ? 'text-xs sm:text-sm' : sidebarCollapsed ? 'text-xs sm:text-sm' : 'text-[11px] sm:text-xs'
   const isFutDark = visualPreset === 'futuristic' && visualTheme === 'dark'
+  const isFutLight = visualPreset === 'futuristic' && visualTheme === 'light'
 
   const tituloContexto = useMemo(() => {
     if (territorioFoco) return `Líderes do TD ${territorioFoco} (via @ de liderados ativos)`
     return 'Todos os TDs (via @ de liderados ativos por líder)'
   }, [territorioFoco])
 
+  const postsOrdenados = useMemo(() => {
+    if (modoLeitura !== 'operacao') return posts
+    const calcAtivacao = (p: InstagramPostWithComments) => {
+      const commenters = commentersNormalizados(p.comments)
+      const { nMedido, nOk } = analisarCobertura(lideres, commenters)
+      return nMedido > 0 ? (nOk / nMedido) * 100 : 0
+    }
+    return [...posts].sort((a, b) => calcAtivacao(a) - calcAtivacao(b))
+  }, [modoLeitura, posts, lideres])
+
   return (
-    <section className="mt-4 min-w-0">
+    <section className={cn('min-w-0', modoLeitura === 'operacao' ? 'mt-0' : 'mt-4')}>
       <h2
         className={cn(
           'm-0 text-xs font-semibold uppercase tracking-wide sm:text-sm',
-          isFutDark ? 'text-text-secondary' : 'text-text-muted'
+          isFutDark ? 'text-text-secondary' : isFutLight ? 'text-[#334155]' : 'text-text-muted'
         )}
       >
         Publicações recentes
       </h2>
-      <p className="mt-1 text-[10px] text-text-muted sm:text-[11px]">
-        {tituloContexto}. Ordem: mais recente → mais antiga. Cobertura = algum @ do grupo do líder apareceu nos
-        comentários desta publicação.
-      </p>
-
       {loadState === 'loading' ? (
         <p className="mt-2 flex items-center gap-2 text-[10px] text-text-muted sm:text-[11px]">
           <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin" aria-hidden />
@@ -161,13 +169,15 @@ export function MapaDigitalIgPublicacoesLideresCobertura({
             </p>
           ) : (
             <div className="max-h-[min(52vh,28rem)] space-y-0 overflow-y-auto overscroll-contain pt-2">
-              {posts.map((post) => (
+              {postsOrdenados.map((post) => (
                 <PostCoberturaCard
                   key={post.instagram_media_id}
                   post={post}
                   lideres={lideres}
                   textSm={textSm}
                   isFutDark={isFutDark}
+                  isFutLight={isFutLight}
+                  modoLeitura={modoLeitura}
                 />
               ))}
             </div>
@@ -188,11 +198,15 @@ function PostCoberturaCard({
   lideres,
   textSm,
   isFutDark,
+  isFutLight,
+  modoLeitura,
 }: {
   post: InstagramPostWithComments
   lideres: LiderInstagramCoberturaDto[]
   textSm: string
   isFutDark: boolean
+  isFutLight: boolean
+  modoLeitura: 'analise' | 'operacao'
 }) {
   const caption = post.media_caption?.trim() || 'Sem legenda'
   const posted = post.media_posted_at
@@ -204,12 +218,22 @@ function PostCoberturaCard({
     () => analisarCobertura(lideres, commenters),
     [lideres, commenters]
   )
+  const statusOperacional = pct < 30 ? 'Crítico' : pct < 60 ? 'Atenção' : pct < 80 ? 'Regular' : 'Saudável'
+  const statusOperacionalClass =
+    statusOperacional === 'Crítico'
+      ? 'text-status-danger'
+      : statusOperacional === 'Atenção'
+        ? 'text-status-warning'
+        : statusOperacional === 'Regular'
+          ? 'text-text-secondary'
+          : 'text-status-success'
 
   return (
     <details
       className={cn(
         'group border-b border-border-card/25 pb-2 pt-2 first:pt-0 last:border-b-0',
-        isFutDark && 'border-white/[0.08]'
+        isFutDark && 'border-white/[0.08]',
+        isFutLight && 'border-slate-300/70'
       )}
     >
       <summary className="flex cursor-pointer list-none items-stretch gap-2 py-1 marker:hidden [&::-webkit-details-marker]:hidden sm:gap-2.5">
@@ -222,22 +246,22 @@ function PostCoberturaCard({
         >
           <ChevronDown className="h-4 w-4" />
         </span>
-        <div className="h-14 w-14 shrink-0 overflow-hidden rounded-md border border-border-card/40 bg-card/50 sm:h-16 sm:w-16">
+        <div
+          className={cn(
+            'h-14 w-14 shrink-0 overflow-hidden rounded-md border border-border-card/40 bg-card/50 sm:h-16 sm:w-16',
+            isFutDark && 'border-white/15 bg-white/10',
+            isFutLight && 'border-slate-300/80 bg-slate-50/80'
+          )}
+        >
           {post.media_thumbnail_url ? (
             // eslint-disable-next-line @next/next/no-img-element -- URL do Instagram
             <img src={post.media_thumbnail_url} alt="" className="h-full w-full object-cover" loading="lazy" />
           ) : (
-            <div className="flex h-full w-full items-center justify-center text-[10px] text-text-muted">—</div>
+            <div className={cn('flex h-full w-full items-center justify-center text-[10px] text-text-muted', isFutLight && 'text-[#64748b]')}>—</div>
           )}
         </div>
         <div className="min-w-0 flex-1">
-          <p
-            className={cn(
-              'line-clamp-2 font-medium leading-snug text-text-primary',
-              textSm,
-              isFutDark && 'text-white'
-            )}
-          >
+          <p className={cn('line-clamp-2 font-semibold leading-snug text-text-primary', textSm, isFutDark && 'text-white')}>
             {caption}
           </p>
           <div className={cn('mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1', textSm)}>
@@ -269,10 +293,32 @@ function PostCoberturaCard({
               </a>
             ) : null}
           </div>
+          {modoLeitura === 'operacao' ? (
+            <div
+              className={cn(
+                'mt-2 rounded-md border px-2.5 py-1.5',
+                isFutDark && 'border-white/15 bg-white/10',
+                isFutLight && 'border-slate-300/80 bg-slate-50/75',
+                !isFutDark && !isFutLight && 'border-border-card/50 bg-card/35'
+              )}
+            >
+              <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                <span className={cn('text-sm font-semibold tabular-nums text-text-primary sm:text-base', isFutDark && 'text-white')}>
+                  Ativação {new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 1 }).format(pct)}%
+                </span>
+                <span className={cn('text-xs font-semibold uppercase tracking-wide', statusOperacionalClass)}>
+                  {statusOperacional}
+                </span>
+              </div>
+              <p className={cn('mt-0.5 text-xs text-text-secondary', isFutDark && 'text-white/75', isFutLight && 'text-[#475569]')}>
+                ✓ {nOk} comentaram · ✕ {naoComentaram.length} não comentaram
+              </p>
+            </div>
+          ) : null}
         </div>
       </summary>
 
-      <div className={cn('mt-1 border-t border-border-card/20 pt-2', isFutDark && 'border-white/[0.08]')}>
+      <div className={cn('mt-1 border-t border-border-card/20 pt-2', isFutDark && 'border-white/[0.08]', isFutLight && 'border-slate-300/70')}>
         <div className="mb-2 flex flex-wrap items-baseline justify-between gap-2">
           <span className={cn('text-[11px] font-medium uppercase tracking-wide text-text-muted sm:text-xs', isFutDark && 'text-white/55')}>
             Cobertura de líderes

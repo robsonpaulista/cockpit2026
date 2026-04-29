@@ -87,6 +87,7 @@ export default function CampoPage() {
   const [filterCity, setFilterCity] = useState('all')
   const [filterStatus, setFilterStatus] = useState<'all' | 'planejada' | 'concluida' | 'cancelada'>('all')
   const [showAllAgendas, setShowAllAgendas] = useState(false)
+  const [selectedMonthKey, setSelectedMonthKey] = useState<string | null>(null)
 
   useEffect(() => {
     void Promise.all([fetchAgendas(), fetchCities()])
@@ -220,7 +221,10 @@ export default function CampoPage() {
     const cityName = agenda.cities?.name?.toLowerCase() ?? ''
     const description = agenda.description?.toLowerCase() ?? ''
     const matchQuery = query.trim() === '' || cityName.includes(query.toLowerCase()) || description.includes(query.toLowerCase())
-    return matchCity && matchStatus && matchQuery
+    const agendaDate = new Date(agenda.date)
+    const monthKey = `${agendaDate.getFullYear()}-${agendaDate.getMonth()}`
+    const matchMonth = selectedMonthKey === null || monthKey === selectedMonthKey
+    return matchCity && matchStatus && matchQuery && matchMonth
   })
   const agendasListadas = showAllAgendas ? agendasFiltradas : agendasFiltradas.slice(0, 8)
   const statusBadgeClass = (status: Agenda['status']) => {
@@ -229,9 +233,11 @@ export default function CampoPage() {
     return 'bg-accent-gold-soft text-accent-gold'
   }
   const completionRate = agendas.length > 0 ? Math.round((agendasConcluidas.length / agendas.length) * 100) : 0
-  const quickCityOptions = cities.slice(0, 20)
+  const quickCityOptions = cities
   const monthBuckets = Array.from({ length: 6 }).map((_, idx) => {
     const d = new Date()
+    // Normaliza no dia 1 para evitar salto de mês em datas como 30/31.
+    d.setDate(1)
     d.setMonth(d.getMonth() - (5 - idx))
     const key = `${d.getFullYear()}-${d.getMonth()}`
     const label = d.toLocaleDateString('pt-BR', { month: 'short' })
@@ -244,6 +250,7 @@ export default function CampoPage() {
     if (bucket) bucket.value += 1
   })
   const monthMax = Math.max(...monthBuckets.map((m) => m.value), 1)
+  const selectedMonthLabel = selectedMonthKey ? monthBuckets.find((month) => month.key === selectedMonthKey)?.label ?? null : null
 
   return (
     <div className={cn('min-h-screen', isCockpit ? 'sidebar-cockpit-shell' : 'bg-bg-sidebar')}>
@@ -304,7 +311,15 @@ export default function CampoPage() {
                 <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-text-muted">Ritmo mensal</p>
                 <div className="grid h-44 grid-cols-6 items-end gap-2">
                   {monthBuckets.map((month) => (
-                    <div key={month.key} className="flex h-full flex-col items-center justify-end gap-2">
+                    <button
+                      key={month.key}
+                      type="button"
+                      onClick={() => setSelectedMonthKey((prev) => (prev === month.key ? null : month.key))}
+                      className={cn(
+                        'flex h-full flex-col items-center justify-end gap-2 rounded-lg px-1 pb-1 transition-colors',
+                        selectedMonthKey === month.key ? (isCockpit ? 'bg-white/10' : 'bg-bg-app/70') : 'hover:bg-bg-app/40',
+                      )}
+                    >
                       <span className="text-[10px] font-semibold text-text-secondary">{month.value}</span>
                       <div className="flex h-28 w-full items-end">
                         <div
@@ -313,7 +328,7 @@ export default function CampoPage() {
                         />
                       </div>
                       <span className="text-[10px] uppercase text-text-muted">{month.label}</span>
-                    </div>
+                    </button>
                   ))}
                 </div>
               </div>
@@ -422,6 +437,20 @@ export default function CampoPage() {
                 </button>
               </div>
             </div>
+            {selectedMonthLabel ? (
+              <div className="mb-4 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border-card bg-bg-app/50 px-3 py-2 text-xs text-text-secondary">
+                <span>
+                  Filtrando agendas de <strong className="uppercase text-text-primary">{selectedMonthLabel}</strong>.
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setSelectedMonthKey(null)}
+                  className="rounded-md border border-border-card px-2 py-1 text-xs font-medium text-text-primary transition-colors hover:bg-bg-surface"
+                >
+                  Limpar período
+                </button>
+              </div>
+            ) : null}
             <div className="mb-5 grid grid-cols-1 gap-3 md:grid-cols-3">
               {pipelineDistribuicao.map((item) => {
                 const pct = totalPipeline > 0 ? (item.value / totalPipeline) * 100 : 0

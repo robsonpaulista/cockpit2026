@@ -9,6 +9,7 @@ import { useCockpitStatus } from '@/contexts/cockpit-status-context'
 import { getCockpitPageLabel } from '@/lib/cockpit-page-label'
 import { cn } from '@/lib/utils'
 import { useDashboardTopbarVisible } from '@/hooks/use-dashboard-topbar-visible'
+import { AppBrandTitle } from '@/components/app-brand-title'
 const pathToTitle: Record<string, string> = {
   '/dashboard': 'Visão Geral',
   '/dashboard/narrativas': 'Estratégia',
@@ -53,27 +54,6 @@ function mapaTdsHeaderTitleFromSearch(aba: string | null): string {
   if (aba === 'mapa-digital-ig') return 'Mapa Exército Digital'
   if (aba === 'pesquisas') return 'Mapa Pesquisas'
   return 'Mapa de Dominância Eleitoral'
-}
-
-/** Mesmo bloco visual do topo da sidebar (C + nome). */
-function DashboardAppBrand({ isCockpit }: { isCockpit: boolean }) {
-  return (
-    <div className="flex shrink-0 items-center gap-2">
-      <div
-        className={cn(
-          'flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-sm font-bold text-white shadow-sm',
-          isCockpit
-            ? 'bg-gradient-to-br from-[#062e52] via-[#0b4a7a] to-[#1368a8]'
-            : 'bg-accent-gold',
-        )}
-      >
-        <span>C</span>
-      </div>
-      <span className="max-w-[9rem] truncate text-sm font-semibold text-text-primary sm:max-w-none">
-        Cockpit 2026
-      </span>
-    </div>
-  )
 }
 
 export function DashboardHeader() {
@@ -130,17 +110,10 @@ export function DashboardHeader() {
 
   if (theme === 'cockpit') {
     return (
-      <header
-        className={cn(
-          'sticky top-0 z-30 border-b',
-          appearance === 'dark'
-            ? 'border-border-card bg-bg-surface'
-            : 'border-white/40 bg-white/35 backdrop-blur-md',
-        )}
-      >
-        <div className="flex min-h-[3rem] flex-col gap-2 px-4 py-2 sm:flex-row sm:items-center sm:justify-between lg:px-6">
+      <header className="sticky top-0 z-30 border-b border-card sidebar-cockpit-shell">
+        <div className="flex min-h-16 flex-col gap-2 px-4 py-2 sm:flex-row sm:items-center sm:justify-between lg:px-6">
           <div className="flex min-w-0 flex-1 items-center gap-2 sm:gap-3">
-            <DashboardAppBrand isCockpit />
+            <AppBrandTitle isCockpit className="shrink-0" />
             <span className="hidden shrink-0 text-border-card/70 sm:inline" aria-hidden>
               |
             </span>
@@ -225,14 +198,16 @@ export function DashboardHeader() {
   }
 
   return (
-    <header className="sticky top-0 z-30 border-b border-border-card bg-bg-surface">
+    <header className="sticky top-0 z-30 border-b border-card bg-[rgb(var(--bg-sidebar))]">
       <div className="flex h-16 items-center justify-between gap-3 px-4 lg:px-6">
         <div className="flex min-w-0 flex-1 items-center gap-3">
-          <DashboardAppBrand isCockpit={false} />
+          <AppBrandTitle isCockpit={false} className="shrink-0" />
           <span className="shrink-0 text-border-card/70" aria-hidden>
             |
           </span>
-          <h1 className="truncate text-xl font-semibold text-text-primary">{pageTitle}</h1>
+          <h1 className="truncate text-sm font-bold tracking-tight text-text-primary sm:text-base">
+            {pageTitle}
+          </h1>
         </div>
         <div className="flex items-center gap-2">
           <div
