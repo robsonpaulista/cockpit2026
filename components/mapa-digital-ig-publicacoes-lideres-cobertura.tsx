@@ -53,6 +53,14 @@ function analisarCobertura(lideres: LiderInstagramCoberturaDto[], commenters: Se
   return { comRede, comentaram, naoComentaram, semRedeCadastrada, nMedido, nOk, pct }
 }
 
+/** Para ordenação: mais recente primeiro; sem data vai ao fim. */
+function timestampMediaPostedAt(p: InstagramPostWithComments): number {
+  const raw = p.media_posted_at
+  if (!raw) return 0
+  const t = Date.parse(raw)
+  return Number.isNaN(t) ? 0 : t
+}
+
 export function MapaDigitalIgPublicacoesLideresCobertura({
   territorioFoco,
   sidebarCollapsed,
@@ -124,13 +132,13 @@ export function MapaDigitalIgPublicacoesLideresCobertura({
 
   const postsOrdenados = useMemo(() => {
     if (modoLeitura !== 'operacao') return posts
-    const calcAtivacao = (p: InstagramPostWithComments) => {
-      const commenters = commentersNormalizados(p.comments)
-      const { nMedido, nOk } = analisarCobertura(lideres, commenters)
-      return nMedido > 0 ? (nOk / nMedido) * 100 : 0
-    }
-    return [...posts].sort((a, b) => calcAtivacao(a) - calcAtivacao(b))
-  }, [modoLeitura, posts, lideres])
+    return [...posts].sort((a, b) => {
+      const tb = timestampMediaPostedAt(b)
+      const ta = timestampMediaPostedAt(a)
+      if (tb !== ta) return tb - ta
+      return b.instagram_media_id.localeCompare(a.instagram_media_id)
+    })
+  }, [modoLeitura, posts])
 
   return (
     <section className={cn('min-w-0', modoLeitura === 'operacao' ? 'mt-0' : 'mt-4')}>
