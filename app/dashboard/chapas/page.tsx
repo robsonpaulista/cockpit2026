@@ -110,16 +110,16 @@ export default function ChapasPage() {
   const pathname = usePathname()
   const isChapasEstaduais = pathname === '/dashboard/chapas-estaduais'
   const isFederalCockpit = isCockpit && !isChapasEstaduais
-  const pageShellClass = isFederalCockpit ? 'sidebar-cockpit-shell' : 'bg-background'
+  const pageShellClass = isFederalCockpit ? 'sidebar-cockpit-shell' : 'bg-surface'
   const sectionShellClass = isCockpit
     ? 'rounded-2xl border p-5 backdrop-blur border-white/12 bg-[linear-gradient(165deg,rgba(22,34,44,0.82)_0%,rgba(18,30,38,0.86)_100%)] shadow-[0_10px_32px_rgba(3,12,20,0.28)]'
     : 'rounded-xl border border-card bg-surface shadow-card p-4'
   const innerPanelClass = isCockpit
     ? 'rounded-xl border p-3 border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.04)_0%,rgba(255,255,255,0.02)_100%)]'
-    : 'rounded-lg border border-card bg-background/50 p-3'
+    : 'rounded-lg border border-card bg-surface p-3'
   const fullscreenShellClass = isCockpit
     ? 'sidebar-cockpit-shell rounded-2xl border border-white/12 p-5 sm:p-6 shadow-[0_16px_44px_rgba(3,12,20,0.32)]'
-    : 'bg-background rounded-xl border border-card p-4 sm:p-5'
+    : 'bg-surface rounded-xl border border-card p-4 sm:p-5'
   const controlButtonClass = isCockpit
     ? 'flex items-center gap-2 rounded-xl border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.04)_0%,rgba(255,255,255,0.02)_100%)] px-4 py-2 text-sm text-text-primary hover:bg-white/10 disabled:opacity-50'
     : 'flex items-center gap-2 rounded-lg border border-card bg-surface px-4 py-2 text-sm text-text-primary hover:bg-background disabled:opacity-50'

@@ -308,9 +308,10 @@ export function Sidebar() {
   const { setNavigating } = useNavigationLoading()
   const pathname = usePathname()
   const { canAccess, isAdmin, loading: permLoading } = usePermissions()
-  const { theme } = useTheme()
+  const { theme, appearance } = useTheme()
 
   const isCockpit = theme === 'cockpit'
+  const isRepublicanosPremium = theme === 'republicanos' && appearance === 'light'
   const showTopbar = useDashboardTopbarVisible()
 
   const cockpitActiveItemClass = COCKPIT_PAGE_ACTIVE_ITEM
@@ -395,6 +396,7 @@ export function Sidebar() {
           'fixed left-0 top-0 h-full w-72 overflow-visible transition-all duration-300 ease-out',
           'border-r border-card bg-[rgb(var(--bg-sidebar))]',
           isCockpit && 'sidebar-cockpit-shell',
+          isRepublicanosPremium && 'republicanos-premium-sidebar',
           'max-lg:z-[100] max-lg:shadow-2xl lg:z-40',
           'lg:translate-x-0',
           mobileOpen ? 'translate-x-0' : '-translate-x-full',

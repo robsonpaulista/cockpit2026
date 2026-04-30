@@ -64,17 +64,25 @@ const emptyForm: AgendaFormData = {
 }
 
 export default function CampoPage() {
-  const { theme } = useTheme()
-  const isCockpit = theme === 'cockpit'
-  const sectionShellClass = isCockpit
+  const { theme, appearance } = useTheme()
+  const isDarkAppearance = appearance === 'dark'
+  const isCockpitDark = theme === 'cockpit' && isDarkAppearance
+  const sectionShellClass = isDarkAppearance
     ? 'border-white/12 bg-[linear-gradient(165deg,rgba(22,34,44,0.82)_0%,rgba(18,30,38,0.86)_100%)] shadow-[0_10px_32px_rgba(3,12,20,0.28)]'
-    : 'border-border-card bg-bg-surface/85 shadow-card'
-  const innerPanelClass = isCockpit
+    : 'border-border-card bg-[linear-gradient(180deg,rgba(255,255,255,0.92)_0%,rgba(255,255,255,0.86)_100%)] shadow-[0_12px_28px_rgba(15,23,42,0.08)]'
+  const innerPanelClass = isDarkAppearance
     ? 'border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.04)_0%,rgba(255,255,255,0.02)_100%)]'
-    : 'border-border-card/70 bg-bg-app/60'
-  const innerItemClass = isCockpit
+    : 'border-border-card/70 bg-[linear-gradient(180deg,rgba(255,255,255,0.9)_0%,rgba(248,244,238,0.72)_100%)]'
+  const innerItemClass = isDarkAppearance
     ? 'border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.03)_0%,rgba(255,255,255,0.015)_100%)]'
-    : 'border-border-card/60 bg-bg-surface/70'
+    : 'border-border-card/60 bg-bg-surface/85'
+  const metricTrackClass = isDarkAppearance ? 'bg-white/10' : 'bg-border-card/60'
+  const premiumPrimaryBarClass = isDarkAppearance
+    ? 'bg-[linear-gradient(135deg,rgba(45,212,191,0.95)_0%,rgba(14,165,183,0.95)_100%)]'
+    : 'bg-[linear-gradient(135deg,rgb(var(--accent-gold))_0%,rgb(var(--accent-gold-dark))_100%)]'
+  const monthlyBarClass = isDarkAppearance
+    ? 'bg-[linear-gradient(180deg,rgba(45,212,191,0.9)_0%,rgba(14,165,183,0.9)_100%)]'
+    : 'bg-[linear-gradient(180deg,rgb(var(--accent-gold))_0%,rgb(var(--accent-gold-dark))_100%)]'
   const [agendas, setAgendas] = useState<Agenda[]>([])
   const [cities, setCities] = useState<City[]>([])
   const [loading, setLoading] = useState(true)
@@ -207,11 +215,28 @@ export default function CampoPage() {
   const cityPresence = Object.values(cityPresenceMap).sort((a, b) => b.count - a.count)
   const cityMaisPresenca = cityPresence[0] ?? null
   const cityMenosPresenca = cityPresence[cityPresence.length - 1] ?? null
-  const pipelineDistribuicao = [
-    { label: 'Planejadas', value: agendas.filter((a) => a.status === 'planejada').length },
-    { label: 'Concluídas', value: agendas.filter((a) => a.status === 'concluida').length },
-    { label: 'Canceladas', value: agendas.filter((a) => a.status === 'cancelada').length },
+  const pipelineDistribuicao: Array<{
+    label: string
+    value: number
+    tone: 'planejada' | 'concluida' | 'cancelada'
+  }> = [
+    { label: 'Planejadas', value: agendas.filter((a) => a.status === 'planejada').length, tone: 'planejada' },
+    { label: 'Concluídas', value: agendas.filter((a) => a.status === 'concluida').length, tone: 'concluida' },
+    { label: 'Canceladas', value: agendas.filter((a) => a.status === 'cancelada').length, tone: 'cancelada' },
   ]
+  const pipelineBarClass = (tone: 'planejada' | 'concluida' | 'cancelada') => {
+    if (tone === 'concluida') {
+      return isDarkAppearance
+        ? 'bg-[linear-gradient(135deg,rgba(52,211,153,0.95)_0%,rgba(16,185,129,0.95)_100%)]'
+        : 'bg-[linear-gradient(135deg,rgb(var(--success))_0%,rgba(21,128,61,1)_100%)]'
+    }
+    if (tone === 'cancelada') {
+      return isDarkAppearance
+        ? 'bg-[linear-gradient(135deg,rgba(251,191,36,0.95)_0%,rgba(245,158,11,0.95)_100%)]'
+        : 'bg-[linear-gradient(135deg,rgb(var(--warning))_0%,rgba(180,122,16,1)_100%)]'
+    }
+    return premiumPrimaryBarClass
+  }
   const totalPipeline = pipelineDistribuicao.reduce((sum, item) => sum + item.value, 0)
   const cityBars = cityPresence.slice(0, 5)
   const cityBarsMax = cityBars[0]?.count ?? 1
@@ -253,7 +278,7 @@ export default function CampoPage() {
   const selectedMonthLabel = selectedMonthKey ? monthBuckets.find((month) => month.key === selectedMonthKey)?.label ?? null : null
 
   return (
-    <div className={cn('min-h-screen', isCockpit ? 'sidebar-cockpit-shell' : 'bg-bg-sidebar')}>
+    <div className={cn('min-h-screen', isCockpitDark ? 'sidebar-cockpit-shell' : 'bg-bg-surface')}>
       <div className="px-4 py-6 lg:px-6">
         <section className="mb-6 animate-reveal">
           <div className={cn('rounded-2xl border p-5 backdrop-blur', sectionShellClass)}>
@@ -282,8 +307,8 @@ export default function CampoPage() {
                             <span className="truncate pr-2 font-medium">{city.name}</span>
                             <span className="font-medium">{city.count}</span>
                           </div>
-                          <div className={cn('h-1.5 overflow-hidden rounded-full', isCockpit ? 'bg-white/10' : 'bg-border-card/60')}>
-                            <div className="h-full rounded-full bg-[linear-gradient(135deg,#22d3ee_0%,#2dd4bf_100%)] transition-all duration-700 ease-out" style={{ width: `${(city.count / cityBarsMax) * 100}%` }} />
+                          <div className={cn('h-1.5 overflow-hidden rounded-full', metricTrackClass)}>
+                            <div className={cn('h-full rounded-full transition-all duration-700 ease-out', premiumPrimaryBarClass)} style={{ width: `${(city.count / cityBarsMax) * 100}%` }} />
                           </div>
                         </div>
                       ))
@@ -317,13 +342,13 @@ export default function CampoPage() {
                       onClick={() => setSelectedMonthKey((prev) => (prev === month.key ? null : month.key))}
                       className={cn(
                         'flex h-full flex-col items-center justify-end gap-2 rounded-lg px-1 pb-1 transition-colors',
-                        selectedMonthKey === month.key ? (isCockpit ? 'bg-white/10' : 'bg-bg-app/70') : 'hover:bg-bg-app/40',
+                        selectedMonthKey === month.key ? (isDarkAppearance ? 'bg-white/10' : 'bg-bg-app/70') : 'hover:bg-bg-app/40',
                       )}
                     >
                       <span className="text-[10px] font-semibold text-text-secondary">{month.value}</span>
                       <div className="flex h-28 w-full items-end">
                         <div
-                          className="w-full rounded-t-md bg-[linear-gradient(180deg,rgba(45,212,191,0.9)_0%,rgba(14,165,183,0.9)_100%)] transition-all duration-700 ease-out"
+                          className={cn('w-full rounded-t-md transition-all duration-700 ease-out', monthlyBarClass)}
                           style={{ height: `${Math.max((month.value / monthMax) * 100, month.value > 0 ? 14 : 5)}%` }}
                         />
                       </div>
@@ -382,7 +407,7 @@ export default function CampoPage() {
               </div>
               <div className="xl:col-span-2">
                 <label className="mb-2 block text-xs font-semibold uppercase tracking-wide text-text-muted">Ação</label>
-                <button type="submit" disabled={saving} className={cn(sidebarPrimaryCTAButtonClass(isCockpit), 'w-full justify-center')}>
+                <button type="submit" disabled={saving} className={cn(sidebarPrimaryCTAButtonClass(isCockpitDark), 'w-full justify-center')}>
                   {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
                   {editingAgendaId ? 'Atualizar' : 'Salvar'}
                 </button>
@@ -460,8 +485,8 @@ export default function CampoPage() {
                       <span>{item.label}</span>
                       <span>{item.value}</span>
                     </div>
-                    <div className={cn('h-2 overflow-hidden rounded-full', isCockpit ? 'bg-white/10' : 'bg-border-card/60')}>
-                      <div className="h-full rounded-full bg-[linear-gradient(135deg,#0ea5b7_0%,#2dd4bf_100%)] transition-all duration-700" style={{ width: `${pct}%` }} />
+                    <div className={cn('h-2 overflow-hidden rounded-full', metricTrackClass)}>
+                      <div className={cn('h-full rounded-full transition-all duration-700', pipelineBarClass(item.tone))} style={{ width: `${pct}%` }} />
                     </div>
                   </div>
                 )

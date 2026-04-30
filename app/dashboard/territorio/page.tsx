@@ -731,7 +731,7 @@ export default function TerritorioPage() {
   // liderancaAtualCol e expectativaVotosCol já foram definidos no escopo superior
 
   return (
-    <div className={cn('min-h-screen', isCockpit ? 'sidebar-cockpit-shell' : 'bg-bg-sidebar')}>
+    <div className={cn('min-h-screen', isCockpit ? 'sidebar-cockpit-shell' : 'bg-bg-surface')}>
 
       <div className="px-4 py-6 lg:px-6">
         {/* Botão de Configuração */}

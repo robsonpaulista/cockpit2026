@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useMemo, useCallback, useRef } from 'react'
 import { useRouter } from 'next/navigation'
-import { Bot, Sparkles, TrendingUp, AlertTriangle, MapPin, BarChart3, CheckCircle2, Send, ExternalLink, ArrowRight, Loader2, Users, Calendar, Vote, FileText, Flag, Target, Building2, Clock, CheckCheck, XCircle, Circle, ChevronRight, Zap, MessageSquare, HelpCircle, Instagram, Heart, Eye, Share2, Image, Video, Play } from 'lucide-react'
+import { Bot, Sparkles, TrendingUp, AlertTriangle, MapPin, BarChart3, CheckCircle2, Send, ExternalLink, ArrowRight, Loader2, Users, Calendar, Vote, FileText, Flag, Target, Building2, Clock, CheckCheck, XCircle, Circle, ChevronRight, Zap, Mic, HelpCircle, Instagram, Heart, Eye, Share2, Image, Video, Play } from 'lucide-react'
 
 interface DataInsight {
   id: string
@@ -23,6 +23,39 @@ interface ChatMessage {
   }
 }
 
+/** Contexto da página atual — o agente pode acionar a UI (ex.: Resumo Eleições). */
+export type AIAgentPageContext = {
+  kind: 'resumo-eleicoes'
+  cidades: string[]
+  cidadeAtual: string
+  buscaIniciada: boolean
+  loadingCidades: boolean
+  loadingDados: boolean
+  selecionarCidadeEBuscar: (nomeCidade: string) => void | Promise<void>
+  /** Fluxo Demandas (botão da página → modal de lideranças) */
+  seletorDemandasAberto: boolean
+  seletorDemandasCarregando: boolean
+  liderancasDemandasDisponiveis: string[]
+  abrirFluxoDemandas: () => void | Promise<void>
+  fecharSeletorDemandas: () => void
+  /** Todas + Ver demandas selecionadas (com pequeno atraso para o React aplicar seleção) */
+  confirmarDemandasTodasLiderancas: () => Promise<void>
+  /** Só estes nomes (exatos da lista) + Ver demandas selecionadas */
+  confirmarDemandasComLiderancasNomes: (nomes: string[]) => Promise<void>
+  /** Card KPI visível (busca com dados + resumo) — mesmos requisitos dos links "Clique para ver detalhes" */
+  painelResumoCardsVisivel: boolean
+  /** Modal do card Lideranças ("Clique para ver detalhes") */
+  abrirDetalhesLiderancasCard: () => void
+  /** Modal do card Pesquisas ("Clique para ver detalhes") */
+  abrirDetalhesPesquisasCard: () => void
+  modalLiderancasAberto: boolean
+  modalPesquisasAberto: boolean
+  modalDemandasCidadeAberto: boolean
+  fecharModalLiderancas: () => void
+  fecharModalPesquisas: () => void
+  fecharModalDemandasCidade: () => void
+}
+
 interface AIAgentProps {
   loadingKPIs: boolean
   loadingPolls: boolean
@@ -40,6 +73,99 @@ interface AIAgentProps {
   bandeirasPerformance?: number
   criticalAlerts?: Array<{ id: string; title: string; actionUrl?: string }>
   territoriosFrios?: Array<{ cidade: string; motivo: string; expectativaVotos?: number; visitas?: number }>
+  enableVoice?: boolean
+  /** Abre direto no chat (sem sequência de insights) — útil em páginas como Resumo Eleições */
+  immediateChatMode?: boolean
+  /** Quando definido, o agente pode executar ações específicas desta tela */
+  pageContext?: AIAgentPageContext
+}
+
+interface SpeechRecognitionResultLike {
+  readonly isFinal: boolean
+  readonly 0: { readonly transcript: string }
+}
+
+interface SpeechRecognitionEventLike extends Event {
+  readonly resultIndex: number
+  readonly results: ArrayLike<SpeechRecognitionResultLike>
+}
+
+interface SpeechRecognitionLike extends EventTarget {
+  lang: string
+  continuous: boolean
+  interimResults: boolean
+  onresult: ((event: SpeechRecognitionEventLike) => void) | null
+  onerror: ((event: Event) => void) | null
+  onend: (() => void) | null
+  start: () => void
+  stop: () => void
+}
+
+type SpeechRecognitionConstructorLike = new () => SpeechRecognitionLike
+
+async function diagnoseSpeechNotAllowed(): Promise<string> {
+  let micState: PermissionState | null = null
+  try {
+    if (typeof navigator !== 'undefined' && navigator.permissions?.query) {
+      const result = await navigator.permissions.query({ name: 'microphone' as PermissionName })
+      micState = result.state
+    }
+  } catch {
+    micState = null
+  }
+
+  if (micState === 'granted') {
+    return [
+      'O Chrome indica microfone PERMITIDO, mas o reconhecimento de voz retornou not-allowed.',
+      '',
+      'Causa comum em apps Next.js: cabeçalho HTTP Permissions-Policy com microphone=() — isso bloqueia microfone para todo o site, independente do macOS.',
+      'Correção: use microphone=(self) no next.config.mjs, reinicie o servidor (npm run dev) e recarregue a página.',
+      '',
+      'Se já estiver assim: teste janela anônima e feche Teams/Meet/Discord que possam estar segurando o microfone.',
+    ].join('\n')
+  }
+
+  return [
+    'O navegador negou o microfone para ESTE site (código not-allowed).',
+    '',
+    'Chrome / Edge: ícone à esquerda da URL → Permissões / Configurações do site → Microfone → Permitir.',
+    'Confira também: chrome://settings/content/microphone e remova bloqueio para este domínio.',
+    'No macOS: Ajustes do Sistema → Privacidade e Segurança → Microfone → Google Chrome.',
+    'Depois recarregue a página (F5) e clique no microfone de novo.',
+  ].join('\n')
+}
+
+function speechRecognitionErrorMessage(
+  error: string | undefined,
+  ctx?: { isSecureContext: boolean },
+): string | null {
+  switch (error) {
+    case 'not-allowed':
+      if (typeof window !== 'undefined' && ctx && !ctx.isSecureContext) {
+        return [
+          'O navegador trata este endereço como INSEGURO (por exemplo http://192.168.x.x ou outro IP na rede local).',
+          'Nesse modo o microfone costuma ser bloqueado mesmo que você “libere” algo nas configurações.',
+          'Solução: acesse o app por HTTPS, ou use http://localhost ou http://127.0.0.1 na máquina onde o servidor roda.',
+        ].join('\n')
+      }
+      return [
+        'O navegador negou o microfone para ESTE site (código not-allowed).',
+        '',
+        'Chrome / Edge: ícone à esquerda da URL → Permissões / Configurações do site → Microfone → Permitir.',
+        'Confira também: chrome://settings/content/microphone e remova bloqueio para este domínio.',
+        'Depois recarregue a página (F5) e clique no microfone de novo.',
+      ].join('\n')
+    case 'no-speech':
+      return 'Não detectei fala. Fale mais perto do microfone ou verifique o áudio.'
+    case 'audio-capture':
+      return 'Não foi possível acessar o microfone (dispositivo ocupado ou sem microfone).'
+    case 'network':
+      return 'Erro de rede no reconhecimento de voz. Verifique a conexão.'
+    case 'aborted':
+      return null
+    default:
+      return error ? `Erro de voz: ${error}` : 'Não foi possível usar o microfone.'
+  }
 }
 
 // Normalizar texto para busca
@@ -166,6 +292,68 @@ function extractCityName(query: string): string | null {
   return null
 }
 
+/** Cruza a fala/texto com os nomes exatos do dropdown de Resumo Eleições */
+function resolveCidadeResumoEleicoesDropdown(query: string, cidades: string[]): string | null {
+  const q = normalizeText(query)
+  if (!q || cidades.length === 0) return null
+
+  const pares = cidades.map((c) => ({ original: c, norm: normalizeText(c) }))
+
+  for (const { original, norm } of pares) {
+    if (norm && q === norm) return original
+  }
+
+  let melhor: string | null = null
+  let melhorLen = 0
+  for (const { original, norm } of pares) {
+    if (!norm) continue
+    if (q.includes(norm) && norm.length >= melhorLen) {
+      melhor = original
+      melhorLen = norm.length
+    }
+  }
+  if (melhor) return melhor
+
+  for (const { original, norm } of pares) {
+    if (norm.includes(q) && q.length >= 3) return original
+  }
+
+  return null
+}
+
+/** Cruza texto do usuário com nomes exatos da lista do modal de demandas */
+function resolverLiderancasMencionadas(query: string, liderancas: string[]): string[] {
+  const q = normalizeText(query)
+  if (!q || liderancas.length === 0) return []
+
+  const found: string[] = []
+  for (const nome of liderancas) {
+    const n = normalizeText(nome)
+    if (n.length < 2) continue
+    if (q.includes(n)) found.push(nome)
+  }
+  if (found.length > 0) return [...new Set(found)]
+
+  const stopTerms =
+    /\b(todas|todos|cancelar|fechar|voltar|desisto|listar|lideranças|liderancas|demandas|pedidos|abrir|ver|só|somente|apenas|quero|nao|não)\b/gi
+  const qSemStop = q.replace(stopTerms, ' ').replace(/\s+/g, ' ').trim()
+
+  const segmentos = qSemStop
+    .split(/\s+e\s+|\s*,\s*|\s+ou\s+|\s+e\s+a\s+|\/+/g)
+    .map((s) => s.trim())
+    .filter((s) => s.length >= 3)
+
+  for (const seg of segmentos) {
+    for (const nome of liderancas) {
+      const n = normalizeText(nome)
+      if (n.includes(seg) || seg.includes(n)) {
+        found.push(nome)
+      }
+    }
+  }
+  return [...new Set(found)]
+}
+
 export function AIAgent({
   loadingKPIs,
   loadingPolls,
@@ -183,6 +371,9 @@ export function AIAgent({
   bandeirasPerformance = 0,
   criticalAlerts = [],
   territoriosFrios = [],
+  enableVoice = false,
+  immediateChatMode = false,
+  pageContext,
 }: AIAgentProps) {
   const router = useRouter()
   const chatContainerRef = useRef<HTMLDivElement>(null)
@@ -194,10 +385,28 @@ export function AIAgent({
   const [completedMessages, setCompletedMessages] = useState<string[]>([])
   
   // Chat interativo
-  const [chatMode, setChatMode] = useState(false)
+  const [chatMode, setChatMode] = useState<boolean>(() => Boolean(immediateChatMode))
   const [userInput, setUserInput] = useState('')
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([])
   const [isProcessing, setIsProcessing] = useState(false)
+  const [isListening, setIsListening] = useState(false)
+  const [speechSupported, setSpeechSupported] = useState(false)
+  const [speechCapabilityResolved, setSpeechCapabilityResolved] = useState(false)
+  const [voiceError, setVoiceError] = useState<string | null>(null)
+  const recognitionRef = useRef<SpeechRecognitionLike | null>(null)
+  const pendingSpeechRef = useRef('')
+  const pageContextRef = useRef<AIAgentPageContext | undefined>(undefined)
+  pageContextRef.current = pageContext
+
+  const [resumoDemandasAssistPhase, setResumoDemandasAssistPhase] = useState<
+    'idle' | 'awaiting_lideranca_escopo'
+  >('idle')
+  const resumoEleicoesCidadeChave =
+    pageContext?.kind === 'resumo-eleicoes' ? pageContext.cidadeAtual : ''
+
+  useEffect(() => {
+    setResumoDemandasAssistPhase('idle')
+  }, [resumoEleicoesCidadeChave])
 
   // Scroll automático para última mensagem
   useEffect(() => {
@@ -1186,6 +1395,532 @@ export function AIAgent({
   // Processar pergunta do usuário
   const processUserQuery = useCallback(async (query: string): Promise<ChatMessage> => {
     const queryLower = normalizeText(query)
+    const pc = pageContextRef.current
+
+    if (pc?.kind === 'resumo-eleicoes') {
+      if (pc.loadingCidades) {
+        return {
+          id: Date.now().toString(),
+          role: 'assistant',
+          content: 'A lista de municípios ainda está carregando. Aguarde um instante e tente de novo.',
+        }
+      }
+
+      if (/\b(ajuda|comandos|exemplos)\b/.test(queryLower) || queryLower === '?') {
+        return {
+          id: Date.now().toString(),
+          role: 'assistant',
+          content: [
+            '**Resumo Eleições (esta página)**',
+            '',
+            'Posso **definir o município** no campo **Cidade** e **acionar Buscar** (o mesmo do botão da página).',
+            '',
+            'Exemplos:',
+            '› "Buscar Teresina"',
+            '› "Picos"',
+            '› "Mostrar dados de Parnaíba"',
+            '› "Atualizar" (com uma cidade já selecionada)',
+            '',
+            'Com **uma cidade já carregada** (após Buscar):',
+            '› **abrir demandas** / **ver demandas** — mesmo fluxo do botão **Demandas**; depois pergunto se quer **todas** as lideranças ou **nomes específicos**.',
+            '› **ver lideranças** / **abrir lideranças** — abre o modal do card **Lideranças** (link **Clique para ver detalhes**).',
+            '› **ver pesquisas** / **histórico de pesquisas** — abre o modal do card **Pesquisas** (mesmo texto de detalhes).',
+            '› **fechar** / **feche o modal** / **fechar lideranças** / **fechar pesquisas** — fecha os modais abertos (e o painel de demandas, se estiver aberto).',
+            '',
+            'Diga **listar cidades** para ver uma amostra dos nomes do dropdown.',
+          ].join('\n'),
+        }
+      }
+
+      if (
+        queryLower.includes('listar cidades') ||
+        queryLower.includes('cidades disponiveis') ||
+        queryLower.includes('cidades disponíveis') ||
+        queryLower.includes('quais cidades')
+      ) {
+        const total = pc.cidades.length
+        const amostra = pc.cidades.slice(0, 35).join(' | ')
+        return {
+          id: Date.now().toString(),
+          role: 'assistant',
+          content: `**Municípios no dropdown:** ${total}\n\n${amostra}${total > 35 ? '\n\n… (diga o nome ou parte dele na frase)' : ''}`,
+        }
+      }
+
+      const ehDemandaTerritorio = /\b(demandas?|pedidos?)\s+em\b/.test(queryLower)
+      const querDemandasPaginaResumo =
+        !ehDemandaTerritorio &&
+        /\b(demandas|pedidos)\b/.test(queryLower) &&
+        (/\b(abrir|ver|mostrar|consultar|exibir|filtro|filtrar)\b/.test(queryLower) ||
+          /\b(quero|preciso|desejo)\b/.test(queryLower) ||
+          /^demandas$/i.test(query.trim()) ||
+          /^pedidos$/i.test(query.trim()))
+
+      const querFecharModaisResumo =
+        /\b(fechar|feche|fecha)\b/.test(queryLower) ||
+        /\bsair\s+(do|da)\s+(modal|janela)\b/.test(queryLower) ||
+        /^feche$/i.test(query.trim()) ||
+        /^fechar$/i.test(query.trim())
+
+      if (querFecharModaisResumo) {
+        const algumAberto =
+          pc.modalLiderancasAberto ||
+          pc.modalPesquisasAberto ||
+          pc.modalDemandasCidadeAberto ||
+          pc.seletorDemandasAberto
+
+        const citouLiderancas = /\b(lideranças|liderancas)\b/.test(queryLower)
+        const citouPesquisas =
+          /\b(pesquisas?)\b/.test(queryLower) || /\bhistorico de pesquisas?\b/.test(queryLower)
+        const citouDemandas = /\b(demandas|pedidos)\b/.test(queryLower)
+
+        const fecharTudoOuGenerico =
+          /\b(tudo|todos os modais|todas as janelas|fechar modais|feche os modais)\b/.test(queryLower) ||
+          /\b(o\s+)?modal\b/.test(queryLower) ||
+          /\b(a\s+)?janela\b/.test(queryLower) ||
+          /\b(painel)\b/.test(queryLower) ||
+          /^fechar$/i.test(query.trim()) ||
+          /^feche$/i.test(query.trim()) ||
+          (!citouLiderancas && !citouPesquisas && !citouDemandas)
+
+        if (!algumAberto) {
+          return {
+            id: Date.now().toString(),
+            role: 'assistant',
+            content: 'Não há modal ou painel desta página aberto no momento.',
+          }
+        }
+
+        const fechados: string[] = []
+
+        const registrar = (label: string) => {
+          if (!fechados.includes(label)) fechados.push(label)
+        }
+
+        if (fecharTudoOuGenerico) {
+          if (pc.modalLiderancasAberto) {
+            pc.fecharModalLiderancas()
+            registrar('Lideranças')
+          }
+          if (pc.modalPesquisasAberto) {
+            pc.fecharModalPesquisas()
+            registrar('Pesquisas')
+          }
+          if (pc.modalDemandasCidadeAberto) {
+            pc.fecharModalDemandasCidade()
+            registrar('Demandas da cidade')
+          }
+          if (pc.seletorDemandasAberto) {
+            pc.fecharSeletorDemandas()
+            setResumoDemandasAssistPhase('idle')
+            registrar('Seleção de lideranças (demandas)')
+          }
+        } else if (citouLiderancas && pc.modalLiderancasAberto) {
+          pc.fecharModalLiderancas()
+          registrar('Lideranças')
+        } else if (citouPesquisas && pc.modalPesquisasAberto) {
+          pc.fecharModalPesquisas()
+          registrar('Pesquisas')
+        } else if (citouDemandas && (pc.seletorDemandasAberto || pc.modalDemandasCidadeAberto)) {
+          if (pc.seletorDemandasAberto) {
+            pc.fecharSeletorDemandas()
+            setResumoDemandasAssistPhase('idle')
+            registrar('Seleção de lideranças (demandas)')
+          }
+          if (pc.modalDemandasCidadeAberto) {
+            pc.fecharModalDemandasCidade()
+            registrar('Demandas da cidade')
+          }
+        } else {
+          return {
+            id: Date.now().toString(),
+            role: 'assistant',
+            content:
+              'Não identifiquei um modal aberto com esse nome. Diga **fechar** para fechar tudo o que estiver aberto, ou **ajuda**.',
+          }
+        }
+
+        return {
+          id: Date.now().toString(),
+          role: 'assistant',
+          content:
+            fechados.length > 0
+              ? `Fechei: **${fechados.join('**, **')}**.`
+              : 'Pronto.',
+        }
+      }
+
+      if (resumoDemandasAssistPhase === 'awaiting_lideranca_escopo') {
+        if (querDemandasPaginaResumo && !pc.seletorDemandasAberto) {
+          setResumoDemandasAssistPhase('idle')
+        } else {
+          if (querDemandasPaginaResumo && pc.seletorDemandasAberto) {
+            return {
+              id: Date.now().toString(),
+              role: 'assistant',
+              content:
+                'Já estamos no passo das lideranças. Diga **todas** ou cite os nomes. **listar lideranças** mostra a lista.',
+            }
+          }
+          if (/\b(cancelar|fechar|voltar|desisto)\b/.test(queryLower)) {
+            pc.fecharSeletorDemandas()
+            setResumoDemandasAssistPhase('idle')
+            return {
+              id: Date.now().toString(),
+              role: 'assistant',
+              content: 'Fluxo de demandas cancelado e o painel de lideranças foi fechado.',
+            }
+          }
+
+          if (
+            queryLower.includes('listar liderancas') ||
+            queryLower.includes('listar lideranças') ||
+            queryLower.includes('quais liderancas') ||
+            queryLower.includes('quais lideranças') ||
+            queryLower.includes('nomes das liderancas') ||
+            queryLower.includes('nomes das lideranças')
+          ) {
+            const lista = pc.liderancasDemandasDisponiveis
+            if (lista.length === 0) {
+              return {
+                id: Date.now().toString(),
+                role: 'assistant',
+                content:
+                  'A lista de lideranças ainda está vazia ou carregando. Aguarde um instante e diga **listar lideranças** de novo.',
+              }
+            }
+            return {
+              id: Date.now().toString(),
+              role: 'assistant',
+              content: `**Lideranças no modal** (${lista.length}):\n\n${lista
+                .slice(0, 45)
+                .map((n) => `› ${n}`)
+                .join('\n')}${lista.length > 45 ? '\n\n…' : ''}`,
+            }
+          }
+
+          const trimmed = queryLower.trim()
+          const querTodasLiderancas =
+            !/\bnao\b/.test(queryLower) &&
+            !/\bnão\b/.test(queryLower) &&
+            (trimmed === 'todas' ||
+              trimmed === 'todos' ||
+              /\b(selecionar todas|manter todas|todas as lideran)\b/.test(queryLower) ||
+              /\bquero\s+todas\b/.test(queryLower))
+
+          if (querTodasLiderancas) {
+            if (pc.liderancasDemandasDisponiveis.length === 0) {
+              setResumoDemandasAssistPhase('idle')
+              pc.fecharSeletorDemandas()
+              return {
+                id: Date.now().toString(),
+                role: 'assistant',
+                content: 'Não há lideranças listadas para esta cidade; não dá para abrir demandas com **todas**.',
+              }
+            }
+            try {
+              await pc.confirmarDemandasTodasLiderancas()
+              setResumoDemandasAssistPhase('idle')
+              return {
+                id: Date.now().toString(),
+                role: 'assistant',
+                content:
+                  'Mantive **todas** as lideranças e acionei **Ver demandas selecionadas** (o modal de demandas da cidade deve abrir).',
+              }
+            } catch {
+              setResumoDemandasAssistPhase('idle')
+              return {
+                id: Date.now().toString(),
+                role: 'assistant',
+                content: 'Não consegui confirmar as demandas. Use o botão **Ver demandas selecionadas** na página.',
+              }
+            }
+          }
+
+          const nomesDemanda = resolverLiderancasMencionadas(query, pc.liderancasDemandasDisponiveis).filter((n) =>
+            pc.liderancasDemandasDisponiveis.includes(n),
+          )
+          if (nomesDemanda.length > 0) {
+            try {
+              await pc.confirmarDemandasComLiderancasNomes(nomesDemanda)
+              setResumoDemandasAssistPhase('idle')
+              return {
+                id: Date.now().toString(),
+                role: 'assistant',
+                content: `Selecionei **${nomesDemanda.join(', ')}** e acionei **Ver demandas selecionadas**.`,
+              }
+            } catch {
+              setResumoDemandasAssistPhase('idle')
+              return {
+                id: Date.now().toString(),
+                role: 'assistant',
+                content:
+                  'Não consegui abrir as demandas filtradas. Confira os nomes no painel e clique em **Ver demandas selecionadas**.',
+              }
+            }
+          }
+
+          if (!pc.seletorDemandasAberto) {
+            setResumoDemandasAssistPhase('idle')
+            return {
+              id: Date.now().toString(),
+              role: 'assistant',
+              content:
+                'O painel de lideranças não está mais aberto. Digite **abrir demandas** para recomeçar, ou **cancelar**.',
+            }
+          }
+
+          return {
+            id: Date.now().toString(),
+            role: 'assistant',
+            content: [
+              'Não entendi a escolha de lideranças.',
+              '',
+              'Diga **todas** para manter todas selecionadas, ou cite nomes (ex.: **Fulano e Beltrano**).',
+              'Diga **listar lideranças** para ver os nomes disponíveis.',
+              '**cancelar** fecha o painel.',
+            ].join('\n'),
+          }
+        }
+      }
+
+      if (querDemandasPaginaResumo) {
+        if (!pc.buscaIniciada || !pc.cidadeAtual.trim()) {
+          return {
+            id: Date.now().toString(),
+            role: 'assistant',
+            content: 'Primeiro escolha um município e acione **Buscar** (campo Cidade + botão da página).',
+          }
+        }
+        if (pc.loadingDados) {
+          return {
+            id: Date.now().toString(),
+            role: 'assistant',
+            content: 'Aguarde terminar o carregamento da cidade antes de abrir demandas.',
+          }
+        }
+
+        try {
+          await Promise.resolve(pc.abrirFluxoDemandas())
+        } catch {
+          return {
+            id: Date.now().toString(),
+            role: 'assistant',
+            content: 'Não consegui abrir o fluxo de demandas. Use o botão **Demandas** na página.',
+          }
+        }
+
+        await new Promise((r) => setTimeout(r, 120))
+        const pcAtualizado = pageContextRef.current
+        if (pcAtualizado?.kind !== 'resumo-eleicoes') {
+          return {
+            id: Date.now().toString(),
+            role: 'assistant',
+            content: 'Contexto da página mudou; tente de novo.',
+          }
+        }
+
+        setResumoDemandasAssistPhase('awaiting_lideranca_escopo')
+
+        const lista = pcAtualizado.liderancasDemandasDisponiveis
+        const amostra = lista.slice(0, 12).map((n) => `› ${n}`).join('\n')
+        return {
+          id: Date.now().toString(),
+          role: 'assistant',
+          content: [
+            'Abri o mesmo fluxo do botão **Demandas**: seleção de lideranças.',
+            '',
+            'Quer **todas** as lideranças (como o padrão ao abrir o painel) ou **uma ou mais específicas**?',
+            '',
+            'Responda com **todas** ou com os nomes (ex.: **Fulano e Beltrano**).',
+            lista.length > 0
+              ? `\nAlguns nomes:\n${amostra}${lista.length > 12 ? '\n… Diga **listar lideranças** para a lista completa.' : ''}`
+              : '\nSe a lista ainda estiver vazia, aguarde um instante e diga **listar lideranças**.',
+          ].join('\n'),
+        }
+      }
+
+      const ehLiderancaTerritorio = /\b(lideranças?|liderancas?)\s+em\b/.test(queryLower)
+      const querLiderancasCardResumo =
+        !ehLiderancaTerritorio &&
+        /\b(lideranças|liderancas|liderança|lideranca)\b/.test(queryLower) &&
+        (/\b(abrir|ver|mostrar|consultar|exibir|detalhes|modal)\b/.test(queryLower) ||
+          /\b(quero|preciso|desejo)\b/.test(queryLower) ||
+          /^lideranças$/i.test(query.trim()) ||
+          /^liderancas$/i.test(query.trim()))
+
+      if (querLiderancasCardResumo) {
+        if (!pc.buscaIniciada || !pc.cidadeAtual.trim()) {
+          return {
+            id: Date.now().toString(),
+            role: 'assistant',
+            content: 'Primeiro escolha um município e acione **Buscar**.',
+          }
+        }
+        if (pc.loadingDados) {
+          return {
+            id: Date.now().toString(),
+            role: 'assistant',
+            content: 'Aguarde terminar o carregamento antes de abrir o modal de lideranças.',
+          }
+        }
+        if (!pc.painelResumoCardsVisivel) {
+          return {
+            id: Date.now().toString(),
+            role: 'assistant',
+            content:
+              'O card **Lideranças** só aparece após uma busca **com resultados**. Faça **Buscar** de novo ou outro município.',
+          }
+        }
+        try {
+          pc.abrirDetalhesLiderancasCard()
+        } catch {
+          return {
+            id: Date.now().toString(),
+            role: 'assistant',
+            content: 'Não consegui abrir o modal. Use **Clique para ver detalhes** no card **Lideranças**.',
+          }
+        }
+        return {
+          id: Date.now().toString(),
+          role: 'assistant',
+          content:
+            'Abri o modal de **Lideranças** da cidade (o mesmo do **Clique para ver detalhes** no card).',
+        }
+      }
+
+      const ehPesquisaTerritorio = /\bpesquisas?\s+em\b/.test(queryLower)
+      const mencionaHistoricoPesquisaCard = /\bhistorico de pesquisas?\b/.test(queryLower)
+      const querPesquisasCardResumo =
+        !ehPesquisaTerritorio &&
+        (mencionaHistoricoPesquisaCard ||
+          (/\b(pesquisas?)\b/.test(queryLower) &&
+            (/\b(abrir|ver|mostrar|consultar|exibir|detalhes|histórico|historico)\b/.test(queryLower) ||
+              /\b(quero|preciso|desejo)\b/.test(queryLower) ||
+              /^pesquisas$/i.test(query.trim()) ||
+              /^pesquisa$/i.test(query.trim()))))
+
+      if (querPesquisasCardResumo) {
+        if (!pc.buscaIniciada || !pc.cidadeAtual.trim()) {
+          return {
+            id: Date.now().toString(),
+            role: 'assistant',
+            content: 'Primeiro escolha um município e acione **Buscar**.',
+          }
+        }
+        if (pc.loadingDados) {
+          return {
+            id: Date.now().toString(),
+            role: 'assistant',
+            content: 'Aguarde terminar o carregamento antes de abrir o histórico de pesquisas.',
+          }
+        }
+        if (!pc.painelResumoCardsVisivel) {
+          return {
+            id: Date.now().toString(),
+            role: 'assistant',
+            content:
+              'O card **Pesquisas** só aparece após uma busca **com resultados**. Faça **Buscar** de novo ou outro município.',
+          }
+        }
+        try {
+          pc.abrirDetalhesPesquisasCard()
+        } catch {
+          return {
+            id: Date.now().toString(),
+            role: 'assistant',
+            content: 'Não consegui abrir o modal. Use **Clique para ver detalhes** no card **Pesquisas**.',
+          }
+        }
+        return {
+          id: Date.now().toString(),
+          role: 'assistant',
+          content:
+            'Abri o histórico de **Pesquisas** (o mesmo do **Clique para ver detalhes** no card).',
+        }
+      }
+
+      const indicaOutrosModulos =
+        /expectativa\s+em|lideranças?\s+em|liderancas?\s+em|demandas?\s+em|agendas?\s+em|instagram|chapa|federal|republicanos|territorio|território|pesquisas?\s+em/.test(
+          queryLower,
+        )
+
+      let nomeAlvo = resolveCidadeResumoEleicoesDropdown(query, pc.cidades)
+      if (!nomeAlvo) {
+        const extracted = extractCityName(query)
+        if (extracted) {
+          const exNorm = normalizeText(extracted)
+          nomeAlvo =
+            pc.cidades.find((c) => normalizeText(c) === exNorm) ||
+            pc.cidades.find(
+              (c) =>
+                normalizeText(c).includes(exNorm) ||
+                (exNorm.length >= 4 && exNorm.includes(normalizeText(c))),
+            ) ||
+            null
+        }
+      }
+
+      const pedeBuscaExplicito =
+        /buscar|pesquisar|carregar|atualizar|trazer|mostrar|exibir|dados|resultados|executar|rode|roda|faz|faça|faca/.test(queryLower)
+
+      const apenasComandoCurto =
+        /^(buscar|pesquisar|atualizar|carregar|ok|vai|executa|executar|confirma|confirmar)(\s+agora)?$/.test(
+          queryLower.trim(),
+        )
+
+      if (pc.loadingDados && (nomeAlvo || pedeBuscaExplicito || apenasComandoCurto)) {
+        return {
+          id: Date.now().toString(),
+          role: 'assistant',
+          content: 'Já existe uma busca em andamento na página. Aguarde terminar.',
+        }
+      }
+
+      if ((pedeBuscaExplicito || apenasComandoCurto) && !nomeAlvo && pc.cidadeAtual.trim()) {
+        try {
+          await Promise.resolve(pc.selecionarCidadeEBuscar(pc.cidadeAtual.trim()))
+          return {
+            id: Date.now().toString(),
+            role: 'assistant',
+            content: `**${pc.cidadeAtual.trim()}** — acionei **Buscar** de novo (mesma cidade selecionada).`,
+          }
+        } catch {
+          return {
+            id: Date.now().toString(),
+            role: 'assistant',
+            content: 'Não consegui acionar a busca. Use o botão **Buscar** na página.',
+          }
+        }
+      }
+
+      if (nomeAlvo && (!indicaOutrosModulos || pedeBuscaExplicito)) {
+        try {
+          await Promise.resolve(pc.selecionarCidadeEBuscar(nomeAlvo))
+          return {
+            id: Date.now().toString(),
+            role: 'assistant',
+            content: `**${nomeAlvo}** — defini no campo **Cidade** e acionei **Buscar**. Os painéis vão atualizar em instantes.`,
+          }
+        } catch {
+          return {
+            id: Date.now().toString(),
+            role: 'assistant',
+            content: 'Não consegui completar a busca. Tente pelo botão **Buscar** na página.',
+          }
+        }
+      }
+
+      if (pedeBuscaExplicito && !nomeAlvo) {
+        return {
+          id: Date.now().toString(),
+          role: 'assistant',
+          content:
+            'Diga qual município buscar, por exemplo: **"Buscar Teresina"** ou só **"Picos"**.\n\nSe não souber o nome exato, diga **listar cidades**.',
+        }
+      }
+    }
+
     const cidade = extractCityName(query)
     
     // ===== PROJEÇÃO DA CHAPA FEDERAL =====
@@ -1639,22 +2374,30 @@ export function AIAgent({
       role: 'assistant',
       content: `**O que posso fazer:**\n\n**Por cidade:**\n› expectativa em Teresina\n› lideranças em Picos\n› agendas em Paes Landim\n› demandas em Parnaíba\n› pedidos em Teresina\n\n**Território & Base:**\n› território e base\n› capilaridade\n› presença territorial\n› expectativa 2026\n› demandas\n\n**Redes Sociais:**\n› métricas do Instagram\n› quantos seguidores tenho?\n› posts mais curtidos\n› melhores posts\n› publicações por tipo\n› qual tema tem melhor performance?\n\n**Geral:**\n› projeção chapa federal\n› alertas críticos\n› territórios frios\n\nDigite sua pergunta!`,
     }
-  }, [criticalAlerts, territoriosFrios, territoriosFriosCount, bandeirasCount, bandeirasPerformance, expectativa2026, presencaTerritorial])
+  }, [
+    criticalAlerts,
+    territoriosFrios,
+    territoriosFriosCount,
+    bandeirasCount,
+    bandeirasPerformance,
+    expectativa2026,
+    presencaTerritorial,
+    resumoDemandasAssistPhase,
+  ])
 
-  // Enviar mensagem
-  const handleSendMessage = useCallback(async () => {
-    if (!userInput.trim() || isProcessing) return
-    
+  const submitMessage = useCallback(async (content: string) => {
+    const cleanedContent = content.trim()
+    if (!cleanedContent || isProcessing) return
+
     const userMessage: ChatMessage = {
       id: Date.now().toString(),
       role: 'user',
-      content: userInput.trim(),
+      content: cleanedContent,
     }
-    
+
     setChatMessages(prev => [...prev, userMessage])
-    setUserInput('')
     setIsProcessing(true)
-    
+
     try {
       const response = await processUserQuery(userMessage.content)
       setChatMessages(prev => [...prev, response])
@@ -1667,7 +2410,20 @@ export function AIAgent({
     } finally {
       setIsProcessing(false)
     }
-  }, [userInput, isProcessing, processUserQuery])
+  }, [isProcessing, processUserQuery])
+
+  const submitMessageRef = useRef<(content: string) => Promise<void>>(async () => {})
+  useEffect(() => {
+    submitMessageRef.current = submitMessage
+  }, [submitMessage])
+
+  // Enviar mensagem digitada
+  const handleSendMessage = useCallback(async () => {
+    const currentInput = userInput.trim()
+    if (!currentInput) return
+    setUserInput('')
+    await submitMessage(currentInput)
+  }, [userInput, submitMessage])
 
   // Executar ação
   const handleAction = useCallback((action: ChatMessage['action']) => {
@@ -1731,17 +2487,135 @@ export function AIAgent({
   }, [allLoaded, currentMessageIndex, insights.length, isTyping])
 
   useEffect(() => {
-    setChatMode(false)
     setChatMessages([])
     setCurrentMessageIndex(0)
     setCompletedMessages([])
   }, [])
 
+  useEffect(() => {
+    if (!enableVoice || typeof window === 'undefined') return
+
+    const SpeechRecognitionAPI =
+      (window as Window & { SpeechRecognition?: SpeechRecognitionConstructorLike }).SpeechRecognition ||
+      (window as Window & { webkitSpeechRecognition?: SpeechRecognitionConstructorLike }).webkitSpeechRecognition
+
+    if (!SpeechRecognitionAPI) {
+      setSpeechSupported(false)
+      setSpeechCapabilityResolved(true)
+      return
+    }
+
+    setSpeechSupported(true)
+    setSpeechCapabilityResolved(true)
+    const recognition = new SpeechRecognitionAPI()
+    recognition.lang = 'pt-BR'
+    recognition.continuous = false
+    recognition.interimResults = true
+
+    recognition.onresult = (event: SpeechRecognitionEventLike) => {
+      let transcript = ''
+      for (let i = 0; i < event.results.length; i += 1) {
+        const result = event.results[i]
+        transcript += result?.[0]?.transcript ?? ''
+      }
+      const cleaned = transcript.trim()
+      pendingSpeechRef.current = cleaned
+      setUserInput(cleaned)
+    }
+
+    recognition.onerror = (event: Event) => {
+      const code =
+        typeof event === 'object' &&
+        event !== null &&
+        'error' in event &&
+        typeof (event as { error?: string }).error === 'string'
+          ? (event as { error: string }).error
+          : undefined
+      if (code === 'not-allowed') {
+        void (async () => {
+          const detailedMessage = await diagnoseSpeechNotAllowed()
+          setVoiceError(detailedMessage)
+        })()
+        setIsListening(false)
+        return
+      }
+      const msg = speechRecognitionErrorMessage(code, {
+        isSecureContext: typeof window !== 'undefined' && window.isSecureContext,
+      })
+      if (msg) setVoiceError(msg)
+      setIsListening(false)
+    }
+
+    recognition.onend = () => {
+      setIsListening(false)
+      const text = pendingSpeechRef.current.trim()
+      pendingSpeechRef.current = ''
+      if (text) {
+        setUserInput('')
+        void submitMessageRef.current(text)
+      }
+    }
+
+    recognitionRef.current = recognition
+
+    return () => {
+      try {
+        recognition.stop()
+      } catch {
+        /* já parado */
+      }
+      recognitionRef.current = null
+      setIsListening(false)
+      pendingSpeechRef.current = ''
+    }
+  }, [enableVoice])
+
+  const handleToggleVoiceListening = useCallback(() => {
+    if (!recognitionRef.current) {
+      setVoiceError('Microfone indisponível — recarregue a página ou use Chrome/Edge.')
+      return
+    }
+
+    if (isListening) {
+      try {
+        recognitionRef.current.stop()
+      } catch {
+        setIsListening(false)
+      }
+      return
+    }
+
+    setVoiceError(null)
+    pendingSpeechRef.current = ''
+    setUserInput('')
+
+    if (typeof window !== 'undefined' && !window.isSecureContext) {
+      setVoiceError(
+        [
+          'Este endereço não é um contexto seguro (ex.: http:// + IP na rede).',
+          'O Chrome costuma bloquear microfone mesmo com permissões.',
+          'Use HTTPS ou http://localhost / http://127.0.0.1 na máquina do servidor.',
+        ].join('\n'),
+      )
+      return
+    }
+
+    // Não usar await/getUserMedia aqui: após um await o navegador perde o "gesto do usuário"
+    // e o pré-check pode falhar mesmo com permissão já concedida ao site.
+    try {
+      recognitionRef.current.start()
+      setIsListening(true)
+    } catch {
+      setIsListening(false)
+      setVoiceError('Aguarde um segundo e tente de novo (o microfone pode estar ocupado).')
+    }
+  }, [isListening])
+
   if (!showAgent) return null
 
   return (
     <div 
-      className={`fixed bottom-6 right-6 z-40 transition-all duration-500 ${
+      className={`fixed bottom-6 right-6 z-[100] transition-all duration-500 ${
         isMinimized ? 'w-14 h-14' : 'w-[420px]'
       }`}
     >
@@ -1781,7 +2655,17 @@ export function AIAgent({
               <div>
                 <h3 className="text-sm font-semibold text-white">Copilot IA</h3>
                 <p className="text-[10px] text-white/70">
-                  {chatMode ? 'Pergunte sobre cidades, chapas, lideranças...' : allLoaded ? 'Pronto!' : 'Analisando...'}
+                  {chatMode
+                    ? pageContext?.kind === 'resumo-eleicoes'
+                      ? 'Cidade + Buscar; depois abrir demandas (voz ou texto)'
+                      : enableVoice && speechCapabilityResolved && speechSupported
+                        ? 'Digite ou use o microfone — a transcrição aparece ao vivo'
+                        : enableVoice && speechCapabilityResolved && !speechSupported
+                          ? 'Este navegador não suporta voz; use o teclado'
+                          : 'Pergunte sobre cidades, chapas, lideranças...'
+                    : allLoaded
+                      ? 'Pronto!'
+                      : 'Analisando...'}
                 </p>
               </div>
             </div>
@@ -1861,17 +2745,38 @@ export function AIAgent({
               <div className="space-y-3">
                 {chatMessages.length === 0 && (
                   <div className="p-3 rounded-xl bg-accent-gold-soft border border-accent-gold">
-                    <p className="text-sm text-text-primary font-medium">
-                      Olá! Pergunte-me qualquer coisa sobre a campanha.
-                    </p>
-                    <div className="mt-3 space-y-1">
-                      <p className="text-xs text-accent-gold font-bold">Exemplos:</p>
-                      <p className="text-xs text-accent-gold">› expectativa em Teresina</p>
-                      <p className="text-xs text-accent-gold">› projeção chapa federal</p>
-                      <p className="text-xs text-accent-gold">› métricas do Instagram</p>
-                      <p className="text-xs text-accent-gold">› posts mais curtidos</p>
-                      <p className="text-xs text-accent-gold">› evolução de seguidores</p>
-                    </div>
+                    {pageContext?.kind === 'resumo-eleicoes' ? (
+                      <>
+                        <p className="text-sm text-text-primary font-medium">
+                          Olá! Posso preencher Cidade, acionar Buscar e, com dados carregados, abrir o fluxo de **Demandas** (escopo de lideranças).
+                        </p>
+                        <div className="mt-3 space-y-1">
+                          <p className="text-xs text-accent-gold font-bold">Exemplos:</p>
+                          <p className="text-xs text-accent-gold">› Buscar Teresina</p>
+                          <p className="text-xs text-accent-gold">› Picos</p>
+                          <p className="text-xs text-accent-gold">› abrir demandas (após buscar)</p>
+                          <p className="text-xs text-accent-gold">› ver lideranças / ver pesquisas</p>
+                          <p className="text-xs text-accent-gold">› fechar / fechar modais</p>
+                          <p className="text-xs text-accent-gold">› Atualizar (cidade já selecionada)</p>
+                          <p className="text-xs text-accent-gold">› listar cidades</p>
+                          <p className="text-xs text-accent-gold">› ajuda</p>
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <p className="text-sm text-text-primary font-medium">
+                          Olá! Pergunte-me qualquer coisa sobre a campanha.
+                        </p>
+                        <div className="mt-3 space-y-1">
+                          <p className="text-xs text-accent-gold font-bold">Exemplos:</p>
+                          <p className="text-xs text-accent-gold">› expectativa em Teresina</p>
+                          <p className="text-xs text-accent-gold">› projeção chapa federal</p>
+                          <p className="text-xs text-accent-gold">› métricas do Instagram</p>
+                          <p className="text-xs text-accent-gold">› posts mais curtidos</p>
+                          <p className="text-xs text-accent-gold">› evolução de seguidores</p>
+                        </div>
+                      </>
+                    )}
                   </div>
                 )}
                 
@@ -1917,10 +2822,36 @@ export function AIAgent({
                   value={userInput}
                   onChange={(e) => setUserInput(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}
-                  placeholder="Ex: expectativa em Teresina..."
-                  className="flex-1 px-3 py-2 text-sm border border-card rounded-xl focus:outline-none focus:ring-2 focus:ring-accent-gold focus:border-transparent"
+                  placeholder={
+                    isListening
+                      ? 'Ouvindo... Diga sua pergunta.'
+                      : pageContext?.kind === 'resumo-eleicoes'
+                        ? 'Ex: Buscar Teresina · listar cidades · ajuda'
+                        : 'Ex: expectativa em Teresina...'
+                  }
+                  aria-busy={isListening}
+                  className={`flex-1 px-3 py-2 text-sm border rounded-xl focus:outline-none focus:ring-2 focus:ring-accent-gold focus:border-transparent ${
+                    isListening
+                      ? 'border-accent-gold/50 bg-accent-gold-soft/35 ring-2 ring-accent-gold/25'
+                      : 'border-card'
+                  }`}
                   disabled={isProcessing}
                 />
+                {enableVoice && speechSupported && (
+                  <button
+                    type="button"
+                    onClick={handleToggleVoiceListening}
+                    disabled={isProcessing}
+                    title={isListening ? 'Parar gravação de voz' : 'Falar com o agente'}
+                    className={`p-2 rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
+                      isListening
+                        ? 'bg-status-danger text-white hover:bg-status-danger'
+                        : 'bg-background text-text-primary border border-card hover:bg-app'
+                    }`}
+                  >
+                    <Mic className={`w-4 h-4 ${isListening ? 'animate-pulse' : ''}`} />
+                  </button>
+                )}
                 <button
                   onClick={handleSendMessage}
                   disabled={!userInput.trim() || isProcessing}
@@ -1929,6 +2860,24 @@ export function AIAgent({
                   <Send className="w-4 h-4" />
                 </button>
               </div>
+              {isListening && (
+                <p className="mt-2 text-[11px] font-medium text-accent-gold animate-pulse">
+                  Ouvindo... — fale e aguarde o envio automático ao terminar a frase.
+                </p>
+              )}
+              {enableVoice && chatMode && speechCapabilityResolved && !speechSupported && (
+                <p className="mt-2 text-[11px] text-text-secondary">
+                  Reconhecimento de voz indisponível (use Chrome ou Edge em HTTPS / localhost).
+                </p>
+              )}
+              {voiceError && (
+                <p
+                  className="mt-2 text-[11px] font-medium text-status-danger whitespace-pre-line leading-snug"
+                  role="alert"
+                >
+                  {voiceError}
+                </p>
+              )}
             </div>
           )}
         </div>

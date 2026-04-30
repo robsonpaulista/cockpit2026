@@ -115,22 +115,31 @@ export function MapaDigitalIgRelatorioCheckExport({
   const offTd = !exportTd || exportTd.disabled || busy !== 'idle'
   const offPi = !exportPiTodas || busy !== 'idle'
 
-  const btn = (isPi: boolean) =>
+  const btn = () =>
     cn(
-      'inline-flex items-center gap-1 rounded-md border px-1.5 py-0.5 text-[9px] font-semibold transition-colors sm:px-2 sm:py-1 sm:text-[10px]',
+      'inline-flex h-9 items-center gap-1.5 rounded-[10px] border px-3 text-xs font-semibold transition-colors',
       isFut
         ? isLight
-          ? 'h-9 rounded-[10px] border border-[#D9E2EC] bg-white px-3 text-[#0B2A4A] hover:border-[#0057B8] hover:bg-[#E8F1FF] hover:text-[#0057B8] disabled:cursor-not-allowed disabled:opacity-70'
+          ? 'border border-[#D9E2EC] bg-white text-[#0B2A4A] hover:border-[#0057B8] hover:bg-[#E8F1FF] hover:text-[#0057B8] disabled:cursor-not-allowed disabled:opacity-70'
           : 'border-white/40 bg-white/15 text-white hover:bg-white/25 disabled:cursor-not-allowed disabled:opacity-70'
         : 'border-border-card bg-card text-text-primary hover:bg-background disabled:cursor-not-allowed disabled:opacity-70'
     )
+
+  const sectionLabelClass = cn(
+    'inline-flex h-9 items-center rounded-[10px] border px-3 text-xs font-semibold uppercase tracking-wide',
+    isFut
+      ? isLight
+        ? 'border-[#D9E2EC] bg-white text-[#334155]'
+        : 'border-white/25 bg-white/10 text-white/90'
+      : 'border-border-card bg-card text-text-secondary'
+  )
 
   if (!exportTd && !exportPiTodas) return null
 
   return (
     <div
       className={cn(
-        'flex min-h-[2rem] shrink-0 flex-wrap items-center gap-x-2 gap-y-1.5 rounded-lg border px-2 py-1.5',
+        'flex min-h-[2.5rem] shrink-0 flex-wrap items-center gap-x-2 gap-y-1.5 rounded-lg border px-2 py-1.5',
         isFut
           ? isLight
             ? 'border border-[#D9E2EC] bg-white'
@@ -141,12 +150,7 @@ export function MapaDigitalIgRelatorioCheckExport({
     >
       {exportTd ? (
         <div className="flex flex-wrap items-center gap-1.5">
-          <span
-            className={cn(
-              'text-[9px] font-semibold uppercase tracking-wide sm:text-[10px]',
-              isFut ? (isLight ? 'text-[#334155]' : 'text-white/90') : 'text-text-primary'
-            )}
-          >
+          <span className={sectionLabelClass}>
             TD
           </span>
           <button
@@ -154,7 +158,7 @@ export function MapaDigitalIgRelatorioCheckExport({
             disabled={offTd}
             onClick={() => void exportarTdXlsx()}
             title={exportTd.disabled ? 'Aguarde o resumo IG por município deste TD.' : 'Exportar este território (XLSX)'}
-            className={btn(false)}
+            className={btn()}
           >
             {busy === 'td-xlsx' ? <Loader2 className="h-3 w-3 animate-spin" aria-hidden /> : <FileSpreadsheet className="h-3 w-3" aria-hidden />}
             XLS
@@ -164,7 +168,7 @@ export function MapaDigitalIgRelatorioCheckExport({
             disabled={offTd}
             onClick={() => void exportarTdPdf()}
             title={exportTd.disabled ? 'Aguarde o resumo IG por município deste TD.' : 'Exportar este território (PDF)'}
-            className={btn(false)}
+            className={btn()}
           >
             {busy === 'td-pdf' ? <Loader2 className="h-3 w-3 animate-spin" aria-hidden /> : <FileText className="h-3 w-3" aria-hidden />}
             PDF
@@ -181,10 +185,7 @@ export function MapaDigitalIgRelatorioCheckExport({
       {exportPiTodas ? (
         <div className="flex flex-wrap items-center gap-1.5">
           <span
-            className={cn(
-              'text-[9px] font-semibold uppercase tracking-wide sm:text-[10px]',
-              isFut ? (isLight ? 'text-[#334155]' : 'text-white/90') : 'text-text-primary'
-            )}
+            className={sectionLabelClass}
             title="Todos os territórios de desenvolvimento do Piauí num único ficheiro"
           >
             PI todo
@@ -194,7 +195,7 @@ export function MapaDigitalIgRelatorioCheckExport({
             disabled={offPi}
             onClick={() => void exportarPiXlsx()}
             title="Exportar todos os TDs e municípios (XLSX) — pode demorar"
-            className={btn(true)}
+            className={btn()}
           >
             {busy === 'pi-xlsx' ? <Loader2 className="h-3 w-3 animate-spin" aria-hidden /> : <FileSpreadsheet className="h-3 w-3" aria-hidden />}
             XLS
@@ -204,7 +205,7 @@ export function MapaDigitalIgRelatorioCheckExport({
             disabled={offPi}
             onClick={() => void exportarPiPdf()}
             title="Exportar todos os TDs e municípios (PDF) — pode demorar"
-            className={btn(true)}
+            className={btn()}
           >
             {busy === 'pi-pdf' ? <Loader2 className="h-3 w-3 animate-spin" aria-hidden /> : <FileText className="h-3 w-3" aria-hidden />}
             PDF

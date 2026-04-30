@@ -103,6 +103,7 @@ export function DashboardHeader() {
   }
 
   const showTopbar = useDashboardTopbarVisible()
+  const isRepublicanosPremium = theme === 'republicanos' && appearance === 'light'
 
   if (!showTopbar) {
     return null
@@ -198,7 +199,12 @@ export function DashboardHeader() {
   }
 
   return (
-    <header className="sticky top-0 z-30 border-b border-card bg-[rgb(var(--bg-sidebar))]">
+    <header
+      className={cn(
+        'sticky top-0 z-30 border-b border-card bg-[rgb(var(--bg-sidebar))]',
+        isRepublicanosPremium && 'republicanos-premium-header'
+      )}
+    >
       <div className="flex h-16 items-center justify-between gap-3 px-4 lg:px-6">
         <div className="flex min-w-0 flex-1 items-center gap-3">
           <AppBrandTitle isCockpit={false} className="shrink-0" />

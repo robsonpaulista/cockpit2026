@@ -25,19 +25,18 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
   const { theme, appearance } = useTheme()
   const isMapaTdsShell = pathname.startsWith(MAPA_TDS_ROUTE_PREFIX)
   /**
-   * Cockpit escuro: a sidebar usa `.sidebar-cockpit-shell` → rgba(17,26,40,0.88) (globals.css).
-   * Se a coluna principal usar só `bg-bg-sidebar`, fica uma faixa visível na junção — igualamos ao mesmo tom.
-   * Demais temas no Mapa TDs: mesmo token da sidebar / Campo (`bg-bg-sidebar`).
+   * Conteúdo sempre em superfície branca (`bg-bg-surface`) para manter o miolo limpo,
+   * deixando o cinza restrito à sidebar. Exceção: Cockpit escuro mantém shell escuro.
    */
   const columnBgClass = (() => {
-    if (!isMapaTdsShell) return 'bg-bg-app'
+    if (!isMapaTdsShell) return 'bg-bg-surface'
     if (theme === 'cockpit' && appearance === 'dark') return 'bg-[rgba(17,26,40,0.88)]'
-    return 'bg-bg-sidebar'
+    return 'bg-bg-surface'
   })()
 
   return (
     <CockpitStatusProvider>
-      <div className={cn('flex h-screen overflow-hidden', isMapaTdsShell ? columnBgClass : 'bg-bg-app')}>
+      <div className={cn('flex h-screen overflow-hidden', isMapaTdsShell ? columnBgClass : 'bg-bg-surface')}>
         <NavigationLoadingBar />
         <Sidebar />
         <div

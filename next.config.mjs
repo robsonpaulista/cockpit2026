@@ -44,7 +44,8 @@ const nextConfig = {
           },
           {
             key: 'Permissions-Policy',
-            value: 'camera=(), microphone=(), geolocation=()',
+            // microphone=() bloqueia Web Speech / getUserMedia mesmo com permissão do SO e do site
+            value: 'camera=(), geolocation=(), microphone=(self)',
           },
         ],
       },

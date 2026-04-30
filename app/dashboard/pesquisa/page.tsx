@@ -472,7 +472,7 @@ function TendenciaLineChart({
                       <p
                         className={cn(
                           'mt-0.5 text-[11px] font-semibold',
-                          variacao > 0 ? 'text-emerald-700' : variacao < 0 ? 'text-rose-700' : 'text-slate-600'
+                          variacao !== 0 ? 'text-slate-900' : 'text-slate-600'
                         )}
                       >
                         {formatVariacaoPP(variacao)}
@@ -1007,7 +1007,7 @@ export default function PesquisaPage() {
   }
 
   return (
-    <div className={cn('min-h-screen font-sans', isCockpit ? 'sidebar-cockpit-shell' : 'bg-bg-sidebar')}>
+    <div className={cn('min-h-screen font-sans', isCockpit ? 'sidebar-cockpit-shell' : 'bg-bg-surface')}>
 
       <div className="px-4 py-6 lg:px-6">
         {/* Seletor de Candidato Padrão e Botão Nova Pesquisa */}

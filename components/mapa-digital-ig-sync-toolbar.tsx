@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Loader2, RefreshCw, Settings } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { COCKPIT_PAGE_ACTIVE_MENU_ITEM } from '@/lib/sidebar-menu-active-style'
 import { InstagramConfigModal } from '@/components/instagram-config-modal'
 import { dispatchInstagramCommentsSynced } from '@/lib/instagram-comments-sync-events'
 import { loadInstagramConfigAsync, saveInstagramConfig, syncInstagramComments } from '@/lib/instagramApi'
@@ -83,9 +82,9 @@ export function MapaDigitalIgSyncToolbar({
           type="button"
           onClick={() => setShowConfig(true)}
           className={cn(
-            'inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-[11px] font-medium sm:text-xs',
+            'inline-flex h-9 items-center gap-1.5 rounded-[10px] border px-3 text-xs font-medium',
             isLight
-              ? 'h-9 rounded-[10px] border border-[#D9E2EC] bg-white px-3 text-[#0B2A4A] hover:border-[#0057B8] hover:bg-[#E8F1FF] hover:text-[#0057B8]'
+              ? 'border border-[#D9E2EC] bg-white text-[#0B2A4A] hover:border-[#0057B8] hover:bg-[#E8F1FF] hover:text-[#0057B8]'
               : 'border-[rgba(255,255,255,0.12)] bg-[rgba(0,0,0,0.25)] text-[#E6EDF3] hover:bg-[rgba(255,255,255,0.06)]'
           )}
         >
@@ -94,9 +93,9 @@ export function MapaDigitalIgSyncToolbar({
         </button>
         <label
           className={cn(
-            'inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-[11px] font-medium sm:text-xs',
+            'inline-flex h-9 items-center gap-1.5 rounded-[10px] border px-3 text-xs font-medium',
             isLight
-              ? 'h-9 rounded-[10px] border border-[#D9E2EC] bg-white px-3 text-[#0B2A4A]'
+              ? 'border border-[#D9E2EC] bg-white text-[#0B2A4A]'
               : 'border-[rgba(255,255,255,0.12)] bg-[rgba(0,0,0,0.25)] text-[#E6EDF3]'
           )}
         >
@@ -106,7 +105,7 @@ export function MapaDigitalIgSyncToolbar({
             onChange={(e) => setLookbackDays(Number(e.target.value))}
             disabled={syncing || loadingCfg}
             className={cn(
-              'rounded border px-1.5 py-0.5 text-[11px] disabled:opacity-60',
+              'h-6 rounded border px-1.5 text-[11px] disabled:opacity-60',
               isLight
                 ? 'rounded-md border border-[#BFD0E2] bg-white text-[#0B2A4A]'
                 : 'border-[rgba(255,255,255,0.12)] bg-[rgba(0,0,0,0.35)] text-[#E6EDF3]'
@@ -124,32 +123,35 @@ export function MapaDigitalIgSyncToolbar({
           disabled={syncing || loadingCfg}
           onClick={() => void handleSync()}
           className={cn(
-            'inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-[11px] font-semibold disabled:opacity-50 sm:text-xs',
+            'inline-flex h-9 items-center gap-1.5 rounded-[10px] border px-3 text-xs font-semibold disabled:opacity-50',
             isLight
-              ? cn('h-9 rounded-[10px] px-3 transition-all duration-200', COCKPIT_PAGE_ACTIVE_MENU_ITEM)
+              ? 'border border-[#0F6EEB] bg-[#0F6EEB] text-white transition-all duration-200 hover:border-[#0B5FD0] hover:bg-[#0B5FD0]'
               : 'border-[rgba(218,165,32,0.45)] bg-[rgba(218,165,32,0.15)] text-[#E6EDF3] hover:bg-[rgba(218,165,32,0.22)]'
           )}
         >
           {syncing ? (
-            <Loader2
-              className={cn('h-3.5 w-3.5 shrink-0 animate-spin', isLight && 'text-white')}
-              aria-hidden
-            />
+            <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin text-white" aria-hidden />
           ) : (
-            <RefreshCw className={cn('h-3.5 w-3.5 shrink-0', isLight && 'text-white')} aria-hidden />
+            <RefreshCw className="h-3.5 w-3.5 shrink-0 text-white" aria-hidden />
           )}
           Sincronizar comentários
         </button>
       </div>
       {!loadingCfg && !configured ? (
-        <p className="mt-1 max-w-md text-[10px] leading-snug text-[#AAB4C0] sm:text-[11px]">
+        <p className={cn('mt-1 max-w-md text-[10px] leading-snug sm:text-[11px]', isLight ? 'text-text-secondary' : 'text-[#AAB4C0]')}>
           Configure token e ID da página (Credenciais) para gravar comentários no banco — visíveis para toda a equipe
           no mapa.
         </p>
       ) : null}
-      {syncError ? <p className="mt-1 text-[10px] text-red-300 sm:text-[11px]">{syncError}</p> : null}
+      {syncError ? (
+        <p className={cn('mt-1 text-[10px] sm:text-[11px]', isLight ? 'text-status-danger' : 'text-red-300')}>
+          {syncError}
+        </p>
+      ) : null}
       {syncMessage && !syncError ? (
-        <p className="mt-1 text-[10px] text-emerald-300/90 sm:text-[11px]">{syncMessage}</p>
+        <p className={cn('mt-1 text-[10px] sm:text-[11px]', isLight ? 'text-text-primary' : 'text-emerald-300/90')}>
+          {syncMessage}
+        </p>
       ) : null}
       {showConfig ? (
         <InstagramConfigModal

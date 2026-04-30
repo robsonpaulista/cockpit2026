@@ -5131,7 +5131,7 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({
                         'shrink-0 font-medium',
                         visualPreset === 'futuristic'
                           ? isFuturisticLight
-                            ? 'text-[#334155]'
+                            ? 'text-text-secondary'
                             : 'text-white'
                           : 'text-text-secondary'
                       )}
@@ -5145,7 +5145,7 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({
                         'min-w-0 flex-1 rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-accent-gold-soft',
                         visualPreset === 'futuristic'
                           ? isFuturisticLight
-                            ? 'border border-slate-300/80 bg-white text-[#0F1F4D] [&>option]:bg-white [&>option]:text-[#0F1F4D]'
+                            ? 'border border-border-card/80 bg-bg-surface text-text-primary [&>option]:bg-bg-surface [&>option]:text-text-primary'
                             : 'border border-white/15 bg-transparent text-white [&>option]:bg-bg-surface [&>option]:text-white'
                           : 'border border-card bg-surface'
                       )}
@@ -5164,7 +5164,7 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({
                       'shrink-0 font-medium',
                       visualPreset === 'futuristic'
                         ? isFuturisticLight
-                          ? 'text-[#334155]'
+                          ? 'text-text-secondary'
                           : 'text-white'
                         : 'text-text-secondary'
                     )}
@@ -5179,7 +5179,7 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({
                       'min-w-0 flex-1 rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-accent-gold-soft',
                       visualPreset === 'futuristic'
                         ? isFuturisticLight
-                          ? 'border border-slate-300/80 bg-white text-[#0F1F4D] [&>option]:bg-white [&>option]:text-[#0F1F4D]'
+                          ? 'border border-border-card/80 bg-bg-surface text-text-primary [&>option]:bg-bg-surface [&>option]:text-text-primary'
                           : 'border border-white/15 bg-transparent text-white [&>option]:bg-bg-surface [&>option]:text-white'
                         : 'border border-card bg-surface'
                     )}
@@ -5200,7 +5200,7 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({
                       'max-w-[8.5rem] shrink-0 font-medium leading-tight',
                       visualPreset === 'futuristic'
                         ? isFuturisticLight
-                          ? 'text-[#334155]'
+                          ? 'text-text-secondary'
                           : 'text-white'
                         : 'text-text-secondary'
                     )}
@@ -5226,8 +5226,8 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({
                         visualPreset === 'futuristic'
                           ? isFuturisticLight
                             ? bulkColunasPainelResumoTd === 'all_az'
-                              ? 'border border-amber-400/80 bg-amber-50 text-[#0F1F4D]'
-                              : 'border border-slate-300/80 bg-white text-[#334155]'
+                              ? 'border border-accent-gold/45 bg-accent-gold-soft/45 text-text-primary'
+                              : 'border border-border-card/80 bg-bg-surface text-text-secondary'
                             : bulkColunasPainelResumoTd === 'all_az'
                               ? 'border border-white/35 bg-white/15 text-white'
                               : 'border border-white/15 bg-transparent text-white/90'
@@ -5255,8 +5255,8 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({
                         visualPreset === 'futuristic'
                           ? isFuturisticLight
                             ? bulkColunasPainelResumoTd === 'all_za'
-                              ? 'border border-amber-400/80 bg-amber-50 text-[#0F1F4D]'
-                              : 'border border-slate-300/80 bg-white text-[#334155]'
+                              ? 'border border-accent-gold/45 bg-accent-gold-soft/45 text-text-primary'
+                              : 'border border-border-card/80 bg-bg-surface text-text-secondary'
                             : bulkColunasPainelResumoTd === 'all_za'
                               ? 'border border-white/35 bg-white/15 text-white'
                               : 'border border-white/15 bg-transparent text-white/90'
@@ -5637,7 +5637,7 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({
                           'rounded-xl border p-3',
                           visualPreset === 'futuristic'
                             ? isFuturisticLight
-                              ? 'border-slate-300/80 bg-white'
+                              ? 'border-border-card/80 bg-bg-surface'
                               : 'border-white/[0.07] bg-bg-surface'
                             : 'border-border-card bg-bg-surface'
                         )}
@@ -5656,7 +5656,7 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({
                           'rounded-xl border p-3',
                           visualPreset === 'futuristic'
                             ? isFuturisticLight
-                              ? 'border-slate-300/80 bg-white'
+                              ? 'border-border-card/80 bg-bg-surface'
                               : 'border-white/[0.07] bg-bg-surface'
                             : 'border-border-card bg-bg-surface'
                         )}
@@ -5672,7 +5672,7 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({
                           'rounded-xl border p-3',
                           visualPreset === 'futuristic'
                             ? isFuturisticLight
-                              ? 'border-slate-300/80 bg-white'
+                              ? 'border-border-card/80 bg-bg-surface'
                               : 'border-white/[0.07] bg-bg-surface'
                             : 'border-border-card bg-bg-surface'
                         )}
@@ -5690,7 +5690,7 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({
                           'rounded-xl border p-3',
                           visualPreset === 'futuristic'
                             ? isFuturisticLight
-                              ? 'border-slate-300/80 bg-white'
+                              ? 'border-border-card/80 bg-bg-surface'
                               : 'border-white/[0.07] bg-bg-surface'
                             : 'border-border-card bg-bg-surface'
                         )}
@@ -5711,7 +5711,7 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({
                           'flex min-h-0 flex-col rounded-xl border p-3 xl:h-full',
                           visualPreset === 'futuristic'
                             ? isFuturisticLight
-                              ? 'border-slate-300/80 bg-white'
+                              ? 'border-border-card/80 bg-bg-surface'
                               : 'border-white/[0.07] bg-bg-surface'
                             : 'border-border-card bg-bg-surface'
                         )}
@@ -5733,12 +5733,19 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({
                                     key={`city-oper-${row.nome}`}
                                     className="flex min-h-0 flex-col items-center gap-1"
                                   >
-                                    <span className="shrink-0 text-[10px] font-semibold text-text-secondary">
+                                    <span className="shrink-0 text-[11px] font-semibold text-text-primary">
                                       {row.ativacaoPct.toFixed(0)}%
                                     </span>
                                     <div className="flex min-h-0 w-full flex-1 flex-col justify-end">
                                       <div
-                                        className="min-h-[4px] w-full rounded-t-md bg-[linear-gradient(180deg,rgba(45,212,191,0.92)_0%,rgba(14,165,183,0.92)_100%)] transition-[height] duration-700 ease-out"
+                                        className={cn(
+                                          'min-h-[4px] w-full rounded-t-md transition-[height] duration-700 ease-out',
+                                          visualPreset === 'futuristic'
+                                            ? isFuturisticLight
+                                              ? 'bg-[linear-gradient(180deg,rgb(var(--accent-gold))_0%,rgb(var(--accent-gold-dark))_100%)]'
+                                              : 'bg-[linear-gradient(180deg,rgba(45,212,191,0.92)_0%,rgba(14,165,183,0.92)_100%)]'
+                                            : 'bg-[linear-gradient(180deg,rgb(var(--accent-gold))_0%,rgb(var(--accent-gold-dark))_100%)]'
+                                        )}
                                         style={{
                                           height: `${Math.max((row.ativacaoPct / maxCityAtivacao) * 100, 8)}%`,
                                           transitionDelay: `${idx * 45}ms`,
@@ -5746,7 +5753,7 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({
                                       />
                                     </div>
                                     <span
-                                      className="line-clamp-1 w-full shrink-0 text-center text-[10px] uppercase text-text-muted"
+                                      className="line-clamp-1 w-full shrink-0 text-center text-[11px] uppercase text-text-secondary"
                                       title={row.nome}
                                     >
                                       {row.nome}
@@ -5763,12 +5770,12 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({
                           'flex min-h-0 flex-col rounded-xl border p-3 xl:h-full',
                           visualPreset === 'futuristic'
                             ? isFuturisticLight
-                              ? 'border-slate-300/80 bg-white'
+                              ? 'border-border-card/80 bg-bg-surface'
                               : 'border-white/[0.07] bg-bg-surface'
                             : 'border-border-card bg-bg-surface'
                         )}
                       >
-                        <p className="mb-2 shrink-0 text-xs font-semibold uppercase tracking-wide text-text-muted">
+                        <p className="mb-2 shrink-0 text-[13px] font-semibold uppercase tracking-wide text-text-muted">
                           Engajamento por líder (ranking geral)
                         </p>
                         {operacaoTopLideres.length === 0 ? (
@@ -5782,26 +5789,33 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({
                                 lider.publicacoes === 1 ? 'publicação' : 'publicações'
                               } (mídias distintas com engajamento dos liderados)`
                               return (
-                              <div key={`leader-oper-${lider.id}`} className="space-y-1">
-                                <div className="flex items-center justify-between gap-2 text-xs">
+                              <div key={`leader-oper-${lider.id}`} className="space-y-1.5">
+                                <div className="flex items-center justify-between gap-2 text-sm">
                                   <div className="flex min-w-0 flex-1 items-center gap-1.5">
-                                    <span className="min-w-0 truncate font-medium text-text-primary" title={lider.nome}>
+                                    <span className="min-w-0 truncate text-[13px] font-semibold text-text-primary" title={lider.nome}>
                                       {lider.nome}
                                     </span>
                                     <span
-                                      className="shrink-0 whitespace-nowrap text-[10px] tabular-nums text-text-muted"
+                                      className="shrink-0 whitespace-nowrap text-[12px] tabular-nums text-text-secondary"
                                       title={detalheEngajamentoLider}
                                     >
                                       · {fmtInt.format(lider.comentarios)} coment. · {fmtInt.format(lider.publicacoes)} pub.
                                     </span>
                                   </div>
-                                  <span className="shrink-0 tabular-nums text-text-secondary">
+                                  <span className="shrink-0 tabular-nums text-[14px] font-semibold text-text-primary">
                                     {lider.pctParticipacao.toFixed(1)}%
                                   </span>
                                 </div>
                                 <div className="h-1.5 overflow-hidden rounded-full bg-border-card/60">
                                   <div
-                                    className="h-full rounded-full bg-[linear-gradient(135deg,#2dd4bf_0%,#0ea5b7_100%)]"
+                                    className={cn(
+                                      'h-full rounded-full',
+                                      visualPreset === 'futuristic'
+                                        ? isFuturisticLight
+                                          ? 'bg-[linear-gradient(135deg,rgb(var(--accent-gold))_0%,rgb(var(--accent-gold-dark))_100%)]'
+                                          : 'bg-[linear-gradient(135deg,#2dd4bf_0%,#0ea5b7_100%)]'
+                                        : 'bg-[linear-gradient(135deg,rgb(var(--accent-gold))_0%,rgb(var(--accent-gold-dark))_100%)]'
+                                    )}
                                     style={{ width: `${Math.max(6, Math.min(100, lider.pctParticipacao))}%` }}
                                   />
                                 </div>
@@ -5819,7 +5833,7 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({
                           'min-w-0 rounded-xl border p-3',
                           visualPreset === 'futuristic'
                             ? isFuturisticLight
-                              ? 'border-slate-300/80 bg-white'
+                              ? 'border-border-card/80 bg-bg-surface'
                               : 'border-white/[0.07] bg-bg-surface'
                             : 'border-border-card bg-bg-surface'
                         )}
@@ -5941,7 +5955,7 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({
                           'min-w-0 rounded-xl border p-3',
                           visualPreset === 'futuristic'
                             ? isFuturisticLight
-                              ? 'border-slate-300/80 bg-white'
+                              ? 'border-border-card/80 bg-bg-surface'
                               : 'border-white/[0.07] bg-bg-surface'
                             : 'border-border-card bg-bg-surface'
                         )}
@@ -7329,7 +7343,7 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({
               const qtdCards = [temFeedbackEstrategico, temPesquisas, temTopPartidosFed22].filter(Boolean).length
               const cardClass =
                 visualPreset === 'futuristic' && isFuturisticLight
-                  ? 'min-w-0 flex-1 basis-[min(100%,17.5rem)] rounded-xl border border-slate-300/80 bg-white p-3 text-[#0F1F4D]'
+                  ? 'min-w-0 flex-1 basis-[min(100%,17.5rem)] rounded-xl border border-border-card/80 bg-bg-surface p-3 text-text-primary'
                   : 'min-w-0 flex-1 basis-[min(100%,17.5rem)] rounded-xl border border-[rgba(255,255,255,0.07)] bg-bg-surface p-3 text-white'
               return (
                 <div
@@ -7340,14 +7354,14 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({
                 >
                   {temFeedbackEstrategico && feedbackEstrategicoTd ? (
                     <div className={cardClass}>
-                      <p className={cn('mb-2 text-[10px] font-semibold uppercase tracking-wide', isFuturisticLight ? 'text-[#0F1F4D]' : 'text-white')}>
+                      <p className={cn('mb-2 text-[10px] font-semibold uppercase tracking-wide', isFuturisticLight ? 'text-text-primary' : 'text-white')}>
                         Feedback estratégico · {feedbackEstrategicoTd.territorio}
                       </p>
                       <div className="space-y-1.5">
                         {feedbackEstrategicoTd.notas.map((nota, idx) => (
                           <p
                             key={`${feedbackEstrategicoTd.territorio}-${idx}`}
-                            className={cn('text-[11px] leading-snug', isFuturisticLight ? 'text-[#0F1F4D]' : 'text-white')}
+                            className={cn('text-[11px] leading-snug', isFuturisticLight ? 'text-text-primary' : 'text-white')}
                           >
                             {nota}
                           </p>
@@ -7357,14 +7371,14 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({
                   ) : null}
                   {temPesquisas && territorioFeedbackAtivo && insightPesquisaTd ? (
                     <div className={cardClass}>
-                      <p className={cn('mb-2 text-[10px] font-semibold uppercase tracking-wide', isFuturisticLight ? 'text-[#0F1F4D]' : 'text-white')}>
+                      <p className={cn('mb-2 text-[10px] font-semibold uppercase tracking-wide', isFuturisticLight ? 'text-text-primary' : 'text-white')}>
                         Pesquisas · {territorioFeedbackAtivo}
                       </p>
                       <div className="space-y-1.5">
                         {insightPesquisaTd.map((nota, idx) => (
                           <p
                             key={`${territorioFeedbackAtivo}-pesquisa-${idx}`}
-                            className={cn('text-[11px] leading-snug', isFuturisticLight ? 'text-[#0F1F4D]' : 'text-white')}
+                            className={cn('text-[11px] leading-snug', isFuturisticLight ? 'text-text-primary' : 'text-white')}
                           >
                             {nota}
                           </p>
@@ -7374,17 +7388,17 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({
                   ) : null}
                   {temTopPartidosFed22 && territorioFeedbackAtivo && linhasFeedbackTopPartidosFed22Td ? (
                     <div className={cardClass}>
-                      <p className={cn('mb-2 text-[10px] font-semibold uppercase tracking-wide', isFuturisticLight ? 'text-[#0F1F4D]' : 'text-white')}>
+                      <p className={cn('mb-2 text-[10px] font-semibold uppercase tracking-wide', isFuturisticLight ? 'text-text-primary' : 'text-white')}>
                         Fed. 2022 · Top 5 partidos · {territorioFeedbackAtivo}
                       </p>
-                      <p className={cn('mb-2 text-[10px] leading-snug', isFuturisticLight ? 'text-[#475569]' : 'text-white/80')}>
+                      <p className={cn('mb-2 text-[10px] leading-snug', isFuturisticLight ? 'text-text-secondary' : 'text-white/80')}>
                         Soma dos votos nominais de todos os deputados federais da legenda nos municípios do TD.
                       </p>
                       <div className="space-y-1.5">
                         {linhasFeedbackTopPartidosFed22Td.map((linha, idx) => (
                           <p
                             key={`${territorioFeedbackAtivo}-partido-${idx}`}
-                            className={cn('text-[11px] leading-snug', isFuturisticLight ? 'text-[#0F1F4D]' : 'text-white')}
+                            className={cn('text-[11px] leading-snug', isFuturisticLight ? 'text-text-primary' : 'text-white')}
                           >
                             {linha}
                           </p>

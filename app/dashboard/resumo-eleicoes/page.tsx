@@ -3,10 +3,11 @@
 import { useMemo, useState, useEffect } from 'react'
 import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
-import { RefreshCw, AlertCircle, Crown, X, Users, Vote, BarChart3, UserCheck, ArrowUpRight, FileText, Loader2 } from 'lucide-react'
+import { RefreshCw, AlertCircle, Crown, X, Users, Vote, BarChart3, UserCheck, ArrowUpRight, FileText, Loader2, Bot } from 'lucide-react'
 import { getEleitoradoByCity } from '@/lib/eleitores'
 import { CityDemandsModal } from '@/components/city-demands-modal'
 import { PollReportsHistoryModal } from '@/components/poll-reports-history-modal'
+import { AIAgent, type AIAgentPageContext } from '@/components/ai-agent'
 import { cn } from '@/lib/utils'
 import { useTheme } from '@/contexts/theme-context'
 import { sidebarPrimaryCTAButtonClass } from '@/lib/sidebar-menu-active-style'
@@ -288,6 +289,7 @@ export default function ResumoEleicoesPage() {
     partido_2024: 1,
   })
   const [selectedVotes, setSelectedVotes] = useState<Record<TableKey, Record<string, number>>>(EMPTY_SELECTIONS)
+  const [agenteMontado, setAgenteMontado] = useState(false)
 
   const setPage = (key: string, page: number) => {
     setCurrentPage((prev) => ({ ...prev, [key]: page }))
@@ -592,13 +594,51 @@ export default function ResumoEleicoesPage() {
     setSelectedDemandasLiderancas([])
   }
 
-  const abrirModalDemandasFiltrado = () => {
-    if (selectedDemandasLiderancas.length === 0) return
+  const abrirModalDemandasFiltrado = (nomesOpcional?: string[]) => {
+    const lista = nomesOpcional ?? selectedDemandasLiderancas
+    if (lista.length === 0) return
     if (typeof window !== 'undefined') {
-      sessionStorage.setItem('territorio_demands_liderancas', JSON.stringify(selectedDemandasLiderancas))
+      sessionStorage.setItem('territorio_demands_liderancas', JSON.stringify(lista))
     }
     setShowDemandsLeaderSelector(false)
     setShowCityDemands(true)
+  }
+
+  const confirmarDemandasTodasLiderancas = async (): Promise<void> => {
+    const lista = liderancasDisponiveisDemandas
+    if (lista.length === 0) return
+    abrirModalDemandasFiltrado(lista)
+  }
+
+  const confirmarDemandasComLiderancasNomes = async (nomes: string[]): Promise<void> => {
+    const validos = nomes.filter((n) => liderancasDisponiveisDemandas.includes(n))
+    if (validos.length === 0) return
+    abrirModalDemandasFiltrado(validos)
+  }
+
+  const painelResumoCardsVisivel =
+    buscaIniciada && !loadingDados && dados.length > 0 && resumoCidade !== null
+
+  const abrirDetalhesLiderancasDoCard = () => {
+    if (resumoCidade) {
+      setShowLiderancasModal(true)
+    }
+  }
+
+  const abrirDetalhesPesquisasDoCard = () => {
+    setShowPesquisaHistoricoModal(true)
+  }
+
+  const fecharModalLiderancas = () => {
+    setShowLiderancasModal(false)
+  }
+
+  const fecharModalPesquisas = () => {
+    setShowPesquisaHistoricoModal(false)
+  }
+
+  const fecharModalDemandasCidade = () => {
+    setShowCityDemands(false)
   }
 
   const fecharSeletorDemandas = () => {
@@ -842,8 +882,10 @@ export default function ResumoEleicoesPage() {
     void carregarPesquisaRecenteCidade(cidade)
   }, [buscaIniciada, cidade, dados.length, pesquisaCitiesMap, candidatoPadraoPesquisa])
 
-  const buscarDados = async () => {
-    if (!cidade) return
+  const buscarDadosParaCidade = async (nomeCidade: string) => {
+    const alvo = String(nomeCidade || '').trim()
+    if (!alvo) return
+    setCidade(alvo)
     setBuscaIniciada(true)
     setLoadingDados(true)
     setError(null)
@@ -865,19 +907,24 @@ export default function ResumoEleicoesPage() {
     })
 
     try {
-      const res = await fetch(`/api/resumo-eleicoes?cidade=${encodeURIComponent(cidade)}`)
+      const res = await fetch(`/api/resumo-eleicoes?cidade=${encodeURIComponent(alvo)}`)
       const json = await res.json()
       if (!res.ok) throw new Error(json.error || 'Erro ao buscar resultados')
       setDados(Array.isArray(json.resultados) ? json.resultados : [])
-      await carregarPresidenteCamara(cidade)
-      void carregarResumoCidade(cidade)
-      void carregarPesquisaRecenteCidade(cidade)
-      void carregarSimulacaoCidade(cidade)
+      await carregarPresidenteCamara(alvo)
+      void carregarResumoCidade(alvo)
+      void carregarPesquisaRecenteCidade(alvo)
+      void carregarSimulacaoCidade(alvo)
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Erro ao buscar resultados')
     } finally {
       setLoadingDados(false)
     }
+  }
+
+  const buscarDados = async () => {
+    if (!cidade) return
+    await buscarDadosParaCidade(cidade)
   }
 
   const dadosFiltradosPorPartido = useMemo(() => {
@@ -1319,6 +1366,60 @@ export default function ResumoEleicoesPage() {
       ? `Prop.: ${votosProporcionaisPesquisaRecente.toLocaleString('pt-BR')} | Expectativa: ${votosCenarioAtivo.toLocaleString('pt-BR')} | ${statusPesquisaCurto}`
       : `Sem proporcional para ${labelCenarioAtivo}`
   const cidadePesquisaIdAtual = cidade ? pesquisaCitiesMap[normalizeCityName(cidade)] || null : null
+
+  const contextoAgenteResumoEleicoes = useMemo<AIAgentPageContext>(
+    () => ({
+      kind: 'resumo-eleicoes',
+      cidades,
+      cidadeAtual: cidade,
+      buscaIniciada,
+      loadingCidades,
+      loadingDados,
+      selecionarCidadeEBuscar: buscarDadosParaCidade,
+      seletorDemandasAberto: showDemandsLeaderSelector,
+      seletorDemandasCarregando: loadingDemandasLiderancas,
+      liderancasDemandasDisponiveis: liderancasDisponiveisDemandas,
+      abrirFluxoDemandas: prepararFiltroDemandas,
+      fecharSeletorDemandas: fecharSeletorDemandas,
+      confirmarDemandasTodasLiderancas,
+      confirmarDemandasComLiderancasNomes,
+      painelResumoCardsVisivel,
+      abrirDetalhesLiderancasCard: abrirDetalhesLiderancasDoCard,
+      abrirDetalhesPesquisasCard: abrirDetalhesPesquisasDoCard,
+      modalLiderancasAberto: showLiderancasModal,
+      modalPesquisasAberto: showPesquisaHistoricoModal,
+      modalDemandasCidadeAberto: showCityDemands,
+      fecharModalLiderancas,
+      fecharModalPesquisas,
+      fecharModalDemandasCidade,
+    }),
+    [
+      cidades,
+      cidade,
+      buscaIniciada,
+      loadingCidades,
+      loadingDados,
+      dados.length,
+      resumoCidade,
+      buscarDadosParaCidade,
+      showDemandsLeaderSelector,
+      showLiderancasModal,
+      showPesquisaHistoricoModal,
+      showCityDemands,
+      loadingDemandasLiderancas,
+      liderancasDisponiveisDemandas,
+      prepararFiltroDemandas,
+      fecharSeletorDemandas,
+      confirmarDemandasTodasLiderancas,
+      confirmarDemandasComLiderancasNomes,
+      painelResumoCardsVisivel,
+      abrirDetalhesLiderancasDoCard,
+      abrirDetalhesPesquisasDoCard,
+      fecharModalLiderancas,
+      fecharModalPesquisas,
+      fecharModalDemandasCidade,
+    ],
+  )
   const summaryCardBaseClass =
     'rounded-[14px] border border-border-card bg-surface p-3 relative overflow-hidden shadow-[0_1px_3px_rgba(0,0,0,0.06)] hover:shadow-[0_8px_24px_rgba(0,0,0,0.08)] hover:-translate-y-[2px] transition-all duration-300 ease-out h-full'
   const kpiAccentTextClass = isCockpit ? 'text-[#0ea5b7]' : 'text-accent-gold'
@@ -1510,7 +1611,7 @@ export default function ResumoEleicoesPage() {
                 </button>
                 <button
                   type="button"
-                  onClick={() => setShowLiderancasModal(true)}
+                  onClick={abrirDetalhesLiderancasDoCard}
                   className={cn('mt-1 block text-xs hover:underline', kpiAccentTextClass)}
                 >
                   Clique para ver detalhes
@@ -1547,7 +1648,7 @@ export default function ResumoEleicoesPage() {
                 </p>
                 <button
                   type="button"
-                  onClick={() => setShowPesquisaHistoricoModal(true)}
+                  onClick={abrirDetalhesPesquisasDoCard}
                   className={cn('mt-1 inline-flex items-center gap-1 text-xs hover:underline', kpiAccentTextClass)}
                 >
                   <ArrowUpRight className="h-3 w-3" />
@@ -2299,7 +2400,7 @@ export default function ResumoEleicoesPage() {
               </button>
               <button
                 type="button"
-                onClick={abrirModalDemandasFiltrado}
+                onClick={() => abrirModalDemandasFiltrado()}
                 disabled={loadingDemandasLiderancas || selectedDemandasLiderancas.length === 0}
                 className={cn(sidebarPrimaryCTAButtonClass(isCockpit, 'px-3 py-1.5 text-xs'))}
               >
@@ -2327,6 +2428,38 @@ export default function ResumoEleicoesPage() {
         cidadeNome={cidade}
         cidadeId={cidadePesquisaIdAtual}
       />
+
+      {!agenteMontado ? (
+        <button
+          onClick={() => setAgenteMontado(true)}
+          className="fixed bottom-6 right-6 z-[100] w-14 h-14 rounded-full bg-gradient-to-br from-accent-gold to-accent-gold shadow-lg shadow-accent-gold/30 flex items-center justify-center hover:scale-110 transition-transform"
+          title="Abrir Agente de IA"
+        >
+          <Bot className="w-7 h-7 text-white" />
+        </button>
+      ) : (
+        <AIAgent
+          enableVoice
+          immediateChatMode
+          pageContext={contextoAgenteResumoEleicoes}
+          loadingKPIs={loadingDados || loadingCidades}
+          loadingPolls={false}
+          loadingTerritorios={loadingDados}
+          loadingAlerts={false}
+          loadingBandeiras={false}
+          kpisCount={resumoCidade ? 5 : 0}
+          expectativa2026={votosCenarioAtivo}
+          presencaTerritorial={percentualAlcance !== null ? `${percentualAlcance.toFixed(1).replace('.', ',')}%` : undefined}
+          pollsCount={pesquisaRecenteCidade ? 1 : 0}
+          candidatoPadrao={candidatoPadraoPesquisa || CANDIDATO_FEDERAL_FIXO}
+          territoriosFriosCount={0}
+          alertsCriticosCount={0}
+          bandeirasCount={0}
+          bandeirasPerformance={0}
+          criticalAlerts={[]}
+          territoriosFrios={[]}
+        />
+      )}
 
     </div>
   )

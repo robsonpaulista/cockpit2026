@@ -4,7 +4,6 @@ import dynamic from 'next/dynamic'
 import { useCallback, useMemo } from 'react'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { useTheme } from '@/contexts/theme-context'
-import { isMapaTdsShellRepublicanosLight } from '@/lib/mapa-tds-shell-light'
 import { sidebarPrimaryCTAButtonClass } from '@/lib/sidebar-menu-active-style'
 import { cn } from '@/lib/utils'
 import { MapaDigitalIgSyncToolbar } from '@/components/mapa-digital-ig-sync-toolbar'
@@ -49,22 +48,22 @@ export default function MapaTdsTabsClient() {
   const searchParams = useSearchParams()
   const { appearance, theme } = useTheme()
   const isCockpit = theme === 'cockpit'
+  const temaQuery = searchParams.get(TEMA_QUERY)
 
   const tab = useMemo(() => parseTab(searchParams.get(ABA_QUERY)), [searchParams])
   const igViewMode = useMemo(() => parseIgViewMode(searchParams.get(IG_VIEW_QUERY)), [searchParams])
-  const isRepublicanosLight = useMemo(
-    () => isMapaTdsShellRepublicanosLight(pathname, searchParams.get(TEMA_QUERY), appearance),
-    [pathname, searchParams, appearance]
-  )
-  const mapaShellBrancoForcado =
-    appearance === 'dark' && searchParams.get(TEMA_QUERY) === 'republicanos-claro'
+  const isMapaTdsRoute = pathname?.startsWith('/dashboard/territorio/mapa-tds') ?? false
+  const isRepublicanosLight =
+    isMapaTdsRoute && ((theme === 'republicanos' && appearance === 'light') || temaQuery === 'republicanos-claro')
+  const visualTheme: 'light' | 'dark' = appearance === 'light' || temaQuery === 'republicanos-claro' ? 'light' : 'dark'
+  const mapaShellBrancoForcado = appearance === 'dark' && temaQuery === 'republicanos-claro'
   /** Cockpit escuro: mesmo fundo da `.sidebar-cockpit-shell` para não “quebrar” na junção com a sidebar. */
   const mapaShellBgClass =
     mapaShellBrancoForcado || isRepublicanosLight
       ? 'bg-white'
       : isCockpit && appearance === 'dark'
         ? 'bg-[rgba(17,26,40,0.88)]'
-        : 'bg-bg-sidebar'
+        : 'bg-bg-surface'
 
   const tituloPagina =
     tab === 'mapa-digital-ig'
@@ -159,7 +158,7 @@ export default function MapaTdsTabsClient() {
                     type="button"
                     onClick={() => setIgViewMode('analise')}
                     className={cn(
-                      'rounded-md px-2.5 py-1 text-[11px] font-medium transition-colors',
+                      'inline-flex h-9 items-center rounded-md px-3 text-xs font-medium transition-colors',
                       igViewMode === 'analise'
                         ? 'bg-accent-gold text-white'
                         : 'text-text-secondary hover:bg-accent-gold-soft/35 hover:text-text-primary'
@@ -171,7 +170,7 @@ export default function MapaTdsTabsClient() {
                     type="button"
                     onClick={() => setIgViewMode('operacao')}
                     className={cn(
-                      'rounded-md px-2.5 py-1 text-[11px] font-medium transition-colors',
+                      'inline-flex h-9 items-center rounded-md px-3 text-xs font-medium transition-colors',
                       igViewMode === 'operacao'
                         ? 'bg-accent-gold text-white'
                         : 'text-text-secondary hover:bg-accent-gold-soft/35 hover:text-text-primary'
@@ -183,11 +182,11 @@ export default function MapaTdsTabsClient() {
                 <MapaDigitalIgRelatorioCheckExport
                   exportPiTodas
                   visualPreset="futuristic"
-                  visualTheme={isRepublicanosLight ? 'light' : 'dark'}
+                  visualTheme={visualTheme}
                 />
                 <MapaDigitalIgSyncToolbar
                   className="sm:justify-end"
-                  visualTheme={isRepublicanosLight ? 'light' : 'dark'}
+                  visualTheme={visualTheme}
                 />
               </div>
             ) : null}
@@ -205,14 +204,14 @@ export default function MapaTdsTabsClient() {
           <MapaTerritoriosDesenvolvimentoLeaflet
             key="mapa-eleitoral"
             visualPreset="futuristic"
-            visualTheme={isRepublicanosLight ? 'light' : 'dark'}
+            visualTheme={visualTheme}
             painelContext="eleitoral"
           />
         ) : tab === 'mapa-digital-ig' ? (
           <MapaTerritoriosDesenvolvimentoLeaflet
             key="mapa-digital-ig"
             visualPreset="futuristic"
-            visualTheme={isRepublicanosLight ? 'light' : 'dark'}
+            visualTheme={visualTheme}
             painelContext="digitalIg"
             igViewMode={igViewMode}
           />
@@ -220,7 +219,7 @@ export default function MapaTdsTabsClient() {
           <MapaTerritoriosDesenvolvimentoLeaflet
             key="pesquisas"
             visualPreset="futuristic"
-            visualTheme={isRepublicanosLight ? 'light' : 'dark'}
+            visualTheme={visualTheme}
             painelContext="pesquisas"
           />
         )}

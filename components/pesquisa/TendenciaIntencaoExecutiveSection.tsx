@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
+import { useTheme } from '@/contexts/theme-context'
 import {
   CIDADE_INTENCAO_TOP_N,
   type CandidatoMediaNaCidade,
@@ -125,18 +126,16 @@ function ScrollPorArrasto({
   )
 }
 
-/** Texto com o mesmo gradiente cyan → teal dos gráficos em /dashboard/campo (`linear-gradient(135deg,#22d3ee,#2dd4bf)`). */
-const nomeCandidatoCampoGradienteClass =
-  'bg-[linear-gradient(135deg,#22d3ee_0%,#2dd4bf_100%)] bg-clip-text text-sm font-semibold leading-none text-transparent transition-[filter] hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-400/35'
-
 function CelulaNomeMediaTopo({
   item,
   onVerDetalhesCandidato,
   tdClass,
+  nomeCandidatoClass,
 }: {
   item: CandidatoMediaNaCidade | undefined
   onVerDetalhesCandidato?: (nome: string) => void
   tdClass: string
+  nomeCandidatoClass: string
 }) {
   return (
     <td className={`${tdClass} text-center align-middle`}>
@@ -146,14 +145,14 @@ function CelulaNomeMediaTopo({
             <button
               type="button"
               onClick={() => onVerDetalhesCandidato(item.nome)}
-              className={`line-clamp-3 w-full max-w-[min(100%,9.5rem)] text-balance text-center leading-snug ${nomeCandidatoCampoGradienteClass}`}
+              className={`line-clamp-3 w-full max-w-[min(100%,9.5rem)] text-balance text-center leading-snug ${nomeCandidatoClass}`}
               title={item.nome}
             >
               {item.nome}
             </button>
           ) : (
             <span
-              className={`line-clamp-3 w-full max-w-[min(100%,9.5rem)] text-balance text-center leading-snug ${nomeCandidatoCampoGradienteClass}`}
+              className={`line-clamp-3 w-full max-w-[min(100%,9.5rem)] text-balance text-center leading-snug ${nomeCandidatoClass}`}
               title={item.nome}
             >
               {item.nome}
@@ -173,9 +172,11 @@ function CelulaNomeMediaTopo({
 function TendenciaResumoTabelaCidadesIntencao({
   linhas,
   onVerDetalhesCandidato,
+  nomeCandidatoClass,
 }: {
   linhas: CidadeIntencaoTopoRow[]
   onVerDetalhesCandidato?: (nome: string) => void
+  nomeCandidatoClass: string
 }) {
   const thCidade =
     'whitespace-nowrap border-b border-card bg-background px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wide text-secondary sm:text-xs'
@@ -276,6 +277,7 @@ function TendenciaResumoTabelaCidadesIntencao({
                               item={row.top10Espontanea[idx]}
                               onVerDetalhesCandidato={onVerDetalhesCandidato}
                               tdClass={tdInnerCandidato}
+                              nomeCandidatoClass={nomeCandidatoClass}
                             />
                           ))}
                         </tr>
@@ -295,6 +297,7 @@ function TendenciaResumoTabelaCidadesIntencao({
                               item={row.top10Estimulada[idx]}
                               onVerDetalhesCandidato={onVerDetalhesCandidato}
                               tdClass={tdInnerCandidato}
+                              nomeCandidatoClass={nomeCandidatoClass}
                             />
                           ))}
                         </tr>
@@ -314,9 +317,11 @@ function TendenciaResumoTabelaCidadesIntencao({
 function TendenciaProjecaoEleitoradoPanel({
   projecao,
   onVerDetalhesCandidato,
+  nomeCandidatoClass,
 }: {
   projecao: ProjecaoVotosEleitoradoRecorte
   onVerDetalhesCandidato?: (nome: string) => void
+  nomeCandidatoClass: string
 }) {
   const pctEleitoradoVsProjecao =
     projecao.eleitoradoSomadoRecorte > 0
@@ -392,12 +397,12 @@ function TendenciaProjecaoEleitoradoPanel({
                       <button
                         type="button"
                         onClick={() => onVerDetalhesCandidato(row.nome)}
-                        className={`text-left ${nomeCandidatoCampoGradienteClass}`}
+                        className={`text-left ${nomeCandidatoClass}`}
                       >
                         {row.nome}
                       </button>
                     ) : (
-                      <span className={nomeCandidatoCampoGradienteClass}>{row.nome}</span>
+                      <span className={nomeCandidatoClass}>{row.nome}</span>
                     )}
                   </td>
                   <td className="px-3 py-2 text-right tabular-nums font-semibold text-text-primary">
@@ -438,9 +443,14 @@ export function TendenciaIntencaoExecutiveSection({
   tipoGraficoLabel,
   onVerDetalhesCandidato,
 }: TendenciaIntencaoExecutiveSectionProps) {
+  const { appearance } = useTheme()
   const [modoIntencaoVisao, setModoIntencaoVisao] = useState<'geral' | 'projecao'>('geral')
   const { resumo, cidadesIntencaoTop10, projecaoVotosEleitorado, temEstimulada, temEspontanea } = model
   const temDadosPainel = temEstimulada || temEspontanea
+  const nomeCandidatoClass =
+    appearance === 'light'
+      ? 'text-sm font-semibold leading-none text-text-primary transition-colors hover:text-text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-gold/35'
+      : 'bg-[linear-gradient(135deg,#22d3ee_0%,#2dd4bf_100%)] bg-clip-text text-sm font-semibold leading-none text-transparent transition-[filter] hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-400/35'
 
   const tituloBadge =
     temEspontanea && temEstimulada
@@ -562,6 +572,7 @@ export function TendenciaIntencaoExecutiveSection({
                 <TendenciaResumoTabelaCidadesIntencao
                   linhas={cidadesIntencaoTop10}
                   onVerDetalhesCandidato={onVerDetalhesCandidato}
+                  nomeCandidatoClass={nomeCandidatoClass}
                 />
               )}
             </div>
@@ -569,6 +580,7 @@ export function TendenciaIntencaoExecutiveSection({
             <TendenciaProjecaoEleitoradoPanel
               projecao={projecaoVotosEleitorado}
               onVerDetalhesCandidato={onVerDetalhesCandidato}
+              nomeCandidatoClass={nomeCandidatoClass}
             />
           )}
         </>
