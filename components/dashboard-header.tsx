@@ -11,6 +11,7 @@ import { MAPA_TDS_ROUTE_PREFIX, MOBILIZACAO_MAPA_DIGITAL_IG_ROUTE } from '@/lib/
 import { cn } from '@/lib/utils'
 import { useDashboardTopbarVisible } from '@/hooks/use-dashboard-topbar-visible'
 import { AppBrandTitle } from '@/components/app-brand-title'
+import { useDashboardHomeChrome } from '@/contexts/dashboard-home-chrome-context'
 const pathToTitle: Record<string, string> = {
   '/dashboard': 'Visão Geral',
   '/dashboard/narrativas': 'Estratégia',
@@ -107,6 +108,7 @@ export function DashboardHeader() {
 
   const showTopbar = useDashboardTopbarVisible()
   const isRepublicanosPremium = theme === 'republicanos' && appearance === 'light'
+  const isGradientHome = useDashboardHomeChrome()
 
   if (!showTopbar) {
     return null
@@ -114,46 +116,106 @@ export function DashboardHeader() {
 
   if (theme === 'cockpit') {
     return (
-      <header className="sticky top-0 z-30 border-b border-card sidebar-cockpit-shell">
+      <header
+        className={cn(
+          'sticky top-0 z-30',
+          isGradientHome ? 'bg-transparent backdrop-blur-md' : 'sidebar-cockpit-shell',
+        )}
+      >
         <div className="flex min-h-16 flex-col gap-2 py-2 max-lg:pl-[4.5rem] max-lg:pr-3 sm:flex-row sm:items-center sm:justify-between lg:px-6">
           <div className="flex min-w-0 flex-1 items-center gap-2 sm:gap-3">
-            <AppBrandTitle isCockpit className="shrink-0 whitespace-nowrap" />
-            <span className="hidden shrink-0 text-border-card/70 sm:inline" aria-hidden>
+            <AppBrandTitle
+              isCockpit={!isGradientHome}
+              lightOnGradient={isGradientHome}
+              className="shrink-0 whitespace-nowrap"
+            />
+            <span
+              className={cn(
+                'hidden shrink-0 sm:inline',
+                isGradientHome ? 'text-white/35' : 'text-border-card/70',
+              )}
+              aria-hidden
+            >
               |
             </span>
             <span
-              className="min-w-0 flex-1 truncate text-sm font-bold tracking-tight text-text-primary"
+              className={cn(
+                'min-w-0 flex-1 truncate text-sm font-bold tracking-tight',
+                isGradientHome ? 'text-white' : 'text-text-primary',
+              )}
               title={pageTitle}
             >
               {cockpitPageLabel}
             </span>
-            <span className="hidden shrink-0 text-border-card/70 sm:inline" aria-hidden>
+            <span
+              className={cn(
+                'hidden shrink-0 sm:inline',
+                isGradientHome ? 'text-white/35' : 'text-border-card/70',
+              )}
+              aria-hidden
+            >
               |
             </span>
             <div
               className={cn(
-                'flex min-w-0 flex-1 flex-wrap items-center gap-x-2.5 gap-y-1 rounded-full border border-border-card/60 px-3 py-1.5 text-[10px] text-text-secondary shadow-[0_4px_20px_rgba(15,70,120,0.08)] sm:max-w-none sm:flex-initial sm:px-4 sm:py-2 sm:text-[11px] cockpit-glass',
+                'flex min-w-0 flex-1 flex-wrap items-center gap-x-2.5 gap-y-1 rounded-full border px-3 py-1.5 text-[10px] shadow-[0_4px_20px_rgba(15,70,120,0.08)] sm:max-w-none sm:flex-initial sm:px-4 sm:py-2 sm:text-[11px]',
+                isGradientHome
+                  ? 'border-white/25 bg-white/10 text-white/90 backdrop-blur-sm'
+                  : 'border-border-card/60 text-text-secondary cockpit-glass',
               )}
             >
-              <span className="inline-flex shrink-0 items-center gap-2 font-semibold text-[rgb(15,45,74)]">
+              <span
+                className={cn(
+                  'inline-flex shrink-0 items-center gap-2 font-semibold',
+                  isGradientHome ? 'text-white' : 'text-[rgb(15,45,74)]',
+                )}
+              >
                 <span
                   className="cockpit-pulse-dot-brand h-2 w-2 shrink-0 rotate-45 rounded-[2px] bg-gradient-to-br from-[#062e52] via-[#0b4a7a] to-[#1368a8] shadow-[0_0_0_2px_rgba(255,255,255,0.65)]"
                   aria-hidden
                 />
                 SISTEMA ATIVO
               </span>
-              <span className="hidden text-border-card/80 sm:inline" aria-hidden>
+              <span
+                className={cn('hidden sm:inline', isGradientHome ? 'text-white/40' : 'text-border-card/80')}
+                aria-hidden
+              >
                 |
               </span>
-              <span className="whitespace-nowrap text-text-secondary">{territorioLinha}</span>
-              <span className="hidden text-border-card/80 sm:inline" aria-hidden>
+              <span
+                className={cn(
+                  'whitespace-nowrap',
+                  isGradientHome ? 'text-white/85' : 'text-text-secondary',
+                )}
+              >
+                {territorioLinha}
+              </span>
+              <span
+                className={cn('hidden sm:inline', isGradientHome ? 'text-white/40' : 'text-border-card/80')}
+                aria-hidden
+              >
                 |
               </span>
-              <span className="whitespace-nowrap text-text-secondary">{lugarLinha}</span>
-              <span className="hidden text-border-card/80 sm:inline" aria-hidden>
+              <span
+                className={cn(
+                  'whitespace-nowrap',
+                  isGradientHome ? 'text-white/85' : 'text-text-secondary',
+                )}
+              >
+                {lugarLinha}
+              </span>
+              <span
+                className={cn('hidden sm:inline', isGradientHome ? 'text-white/40' : 'text-border-card/80')}
+                aria-hidden
+              >
                 |
               </span>
-              <span className="whitespace-nowrap text-text-secondary tabular-nums">
+              <span
+                className={cn(
+                  'whitespace-nowrap tabular-nums',
+                  isGradientHome ? 'text-white/85' : 'text-text-secondary',
+                )}
+              >
                 Atualizado {now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
               </span>
             </div>
@@ -163,7 +225,11 @@ export function DashboardHeader() {
               <div
                 className={cn(
                   'inline-flex items-center gap-1 rounded-lg border p-1',
-                  appearance === 'dark' ? 'border-border-card bg-bg-app' : 'border-border-card bg-bg-surface',
+                  isGradientHome
+                    ? 'border-white/25 bg-white/10 backdrop-blur-sm'
+                    : appearance === 'dark'
+                      ? 'border-border-card bg-bg-app'
+                      : 'border-border-card bg-bg-surface',
                 )}
                 aria-label="Alternar aparência clara ou escura"
               >
@@ -175,8 +241,12 @@ export function DashboardHeader() {
                   className={cn(
                     'inline-flex items-center justify-center rounded-md p-1.5 transition-colors duration-200 ease-out',
                     appearance === 'dark'
-                      ? 'bg-accent-gold-soft text-text-primary'
-                      : 'text-text-secondary hover:bg-accent-gold-soft/60',
+                      ? isGradientHome
+                        ? 'bg-white/20 text-white'
+                        : 'bg-accent-gold-soft text-text-primary'
+                      : isGradientHome
+                        ? 'text-white/80 hover:bg-white/15'
+                        : 'text-text-secondary hover:bg-accent-gold-soft/60',
                   )}
                 >
                   <Moon className="h-3.5 w-3.5" />
@@ -189,8 +259,12 @@ export function DashboardHeader() {
                   className={cn(
                     'inline-flex items-center justify-center rounded-md p-1.5 transition-colors duration-200 ease-out',
                     appearance === 'light'
-                      ? 'bg-accent-gold-soft text-text-primary'
-                      : 'text-text-secondary hover:bg-accent-gold-soft/60',
+                      ? isGradientHome
+                        ? 'bg-white/20 text-white'
+                        : 'bg-accent-gold-soft text-text-primary'
+                      : isGradientHome
+                        ? 'text-white/80 hover:bg-white/15'
+                        : 'text-text-secondary hover:bg-accent-gold-soft/60',
                   )}
                 >
                   <Sun className="h-3.5 w-3.5" />
@@ -207,18 +281,33 @@ export function DashboardHeader() {
   return (
     <header
       className={cn(
-        'sticky top-0 z-30 border-b border-card bg-[rgb(var(--bg-sidebar))]',
-        isRepublicanosPremium && 'republicanos-premium-header'
+        'sticky top-0 z-30',
+        isGradientHome
+          ? 'bg-transparent backdrop-blur-md'
+          : cn('bg-[rgb(var(--bg-sidebar))]', isRepublicanosPremium && 'republicanos-premium-header'),
       )}
     >
       <div className="flex h-16 items-center justify-between gap-2 max-lg:pl-[4.5rem] max-lg:pr-2 sm:gap-3 lg:gap-3 lg:px-6">
         <div className="flex min-w-0 flex-1 items-center gap-2 sm:gap-3">
-          <AppBrandTitle isCockpit={false} className="shrink-0 whitespace-nowrap" />
-          <span className="hidden shrink-0 text-border-card/70 sm:inline" aria-hidden>
+          <AppBrandTitle
+            isCockpit={false}
+            lightOnGradient={isGradientHome}
+            className="shrink-0 whitespace-nowrap"
+          />
+          <span
+            className={cn(
+              'hidden shrink-0 sm:inline',
+              isGradientHome ? 'text-white/35' : 'text-border-card/70',
+            )}
+            aria-hidden
+          >
             |
           </span>
           <h1
-            className="min-w-0 flex-1 truncate text-sm font-bold tracking-tight text-text-primary sm:text-base"
+            className={cn(
+              'min-w-0 flex-1 truncate text-sm font-bold tracking-tight sm:text-base',
+              isGradientHome ? 'text-white' : 'text-text-primary',
+            )}
             title={pageTitle}
           >
             {pageTitle}
@@ -226,7 +315,12 @@ export function DashboardHeader() {
         </div>
         <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
           <div
-            className="inline-flex items-center gap-1 rounded-lg border border-border-card bg-bg-app p-1"
+            className={cn(
+              'inline-flex items-center gap-1 rounded-lg border p-1',
+              isGradientHome
+                ? 'border-white/25 bg-white/10 backdrop-blur-sm'
+                : 'border-border-card bg-bg-app',
+            )}
             aria-label="Alternar aparência clara ou escura"
           >
             <button
@@ -237,8 +331,12 @@ export function DashboardHeader() {
               className={cn(
                 'inline-flex items-center justify-center rounded-md p-1.5 transition-colors duration-200 ease-out',
                 appearance === 'dark'
-                  ? 'bg-accent-gold-soft text-text-primary'
-                  : 'text-text-secondary hover:bg-accent-gold-soft/60',
+                  ? isGradientHome
+                    ? 'bg-white/20 text-white'
+                    : 'bg-accent-gold-soft text-text-primary'
+                  : isGradientHome
+                    ? 'text-white/80 hover:bg-white/15'
+                    : 'text-text-secondary hover:bg-accent-gold-soft/60',
               )}
             >
               <Moon className="h-3.5 w-3.5" />
@@ -251,8 +349,12 @@ export function DashboardHeader() {
               className={cn(
                 'inline-flex items-center justify-center rounded-md p-1.5 transition-colors duration-200 ease-out',
                 appearance === 'light'
-                  ? 'bg-accent-gold-soft text-text-primary'
-                  : 'text-text-secondary hover:bg-accent-gold-soft/60',
+                  ? isGradientHome
+                    ? 'bg-white/20 text-white'
+                    : 'bg-accent-gold-soft text-text-primary'
+                  : isGradientHome
+                    ? 'text-white/80 hover:bg-white/15'
+                    : 'text-text-secondary hover:bg-accent-gold-soft/60',
               )}
             >
               <Sun className="h-3.5 w-3.5" />

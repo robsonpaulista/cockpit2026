@@ -6,10 +6,12 @@ import { useAuth } from '@/hooks/use-auth'
 import { LogOut, User, Settings, ChevronDown } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useTheme } from '@/contexts/theme-context'
+import { useDashboardHomeChrome } from '@/contexts/dashboard-home-chrome-context'
 
 export function UserMenu() {
   const { user, loading, signOut } = useAuth()
   const { theme } = useTheme()
+  const isGradientHome = useDashboardHomeChrome()
   const router = useRouter()
   const [open, setOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
@@ -115,7 +117,10 @@ export function UserMenu() {
     <div className="relative" ref={menuRef}>
       <button
         onClick={() => setOpen(!open)}
-        className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-accent-gold-soft transition-colors"
+        className={cn(
+          'flex items-center gap-2 px-3 py-2 rounded-lg transition-colors',
+          isGradientHome ? 'hover:bg-white/10' : 'hover:bg-accent-gold-soft',
+        )}
       >
         <div
           className={cn(
@@ -138,19 +143,30 @@ export function UserMenu() {
           )}
         </div>
         <div className="hidden md:block text-left">
-          <p className="text-sm font-medium text-text-primary">
+          <p
+            className={cn(
+              'text-sm font-medium',
+              isGradientHome ? 'text-white' : 'text-text-primary',
+            )}
+          >
             {user.profile?.name || user.email}
           </p>
           {user.profile?.role && (
-            <p className="text-xs text-secondary">
+            <p
+              className={cn(
+                'text-xs',
+                isGradientHome ? 'text-white/70' : 'text-secondary',
+              )}
+            >
               {roleLabels[user.profile.role] || user.profile.role}
             </p>
           )}
         </div>
         <ChevronDown
           className={cn(
-            'w-4 h-4 text-secondary transition-transform',
-            open && 'rotate-180'
+            'w-4 h-4 transition-transform',
+            isGradientHome ? 'text-white/75' : 'text-secondary',
+            open && 'rotate-180',
           )}
         />
       </button>

@@ -18,17 +18,25 @@ import { DashboardPesquisadorRedirect } from '@/components/dashboard-pesquisador
 import './territorio/mapa-tds/mapa-dom-fut-theme.css' // tema base neutra + laranja estratégico v3
 
 import { pathnameUsesMapaFuturisticShell } from '@/lib/dashboard-mapa-futuristic-chrome'
+import { DashboardHomeChromeProvider } from '@/contexts/dashboard-home-chrome-context'
+import {
+  DASHBOARD_HOME_ACCENT_GRADIENT,
+  isDashboardHomePath,
+} from '@/lib/dashboard-home-chrome'
 
 function DashboardContent({ children }: { children: React.ReactNode }) {
   const { collapsed } = useSidebar()
   const pathname = usePathname() ?? ''
   const { theme, appearance } = useTheme()
   const isMapaTdsShell = pathnameUsesMapaFuturisticShell(pathname)
+  const isHomeAccentChrome = isDashboardHomePath(pathname) && !isMapaTdsShell
   /**
    * Conteúdo sempre em superfície branca (`bg-bg-surface`) para manter o miolo limpo,
    * deixando o cinza restrito à sidebar. Exceção: Cockpit escuro mantém shell escuro.
+   * Na home `/dashboard`, fundo único em gradiente de acento (sidebar + coluna).
    */
   const columnBgClass = (() => {
+    if (isHomeAccentChrome) return 'bg-transparent'
     if (!isMapaTdsShell) return 'bg-bg-surface'
     if (theme === 'cockpit' && appearance === 'dark') return 'bg-[rgba(17,26,40,0.88)]'
     return 'bg-bg-surface'
@@ -36,24 +44,32 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
 
   return (
     <CockpitStatusProvider>
-      <div className={cn('flex h-screen overflow-hidden', isMapaTdsShell ? columnBgClass : 'bg-bg-surface')}>
-        <NavigationLoadingBar />
-        <Sidebar />
+      <DashboardHomeChromeProvider value={isHomeAccentChrome}>
         <div
           className={cn(
-            'flex flex-1 flex-col overflow-hidden transition-all duration-300 ease-out',
-            columnBgClass,
-            collapsed ? 'lg:ml-[5.5rem]' : 'lg:ml-72',
+            'flex h-screen overflow-hidden',
+            isHomeAccentChrome ? 'bg-transparent' : isMapaTdsShell ? columnBgClass : 'bg-bg-surface',
           )}
+          style={isHomeAccentChrome ? { background: DASHBOARD_HOME_ACCENT_GRADIENT } : undefined}
         >
-          <DashboardHeader />
-          <main className={cn('flex min-h-0 flex-1 flex-col overflow-y-auto', columnBgClass)}>
-            <DashboardPermissionGuard>
-              <PageTransition>{children}</PageTransition>
-            </DashboardPermissionGuard>
-          </main>
+          <NavigationLoadingBar />
+          <Sidebar />
+          <div
+            className={cn(
+              'flex flex-1 flex-col overflow-hidden transition-all duration-300 ease-out',
+              columnBgClass,
+              collapsed ? 'lg:ml-[5.5rem]' : 'lg:ml-72',
+            )}
+          >
+            <DashboardHeader />
+            <main className={cn('flex min-h-0 flex-1 flex-col overflow-y-auto', columnBgClass)}>
+              <DashboardPermissionGuard>
+                <PageTransition>{children}</PageTransition>
+              </DashboardPermissionGuard>
+            </main>
+          </div>
         </div>
-      </div>
+      </DashboardHomeChromeProvider>
     </CockpitStatusProvider>
   )
 }

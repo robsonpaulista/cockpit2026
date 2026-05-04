@@ -497,7 +497,7 @@ export default function AgendaPage() {
   }, [events, attendanceStatuses])
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-bg-surface">
 
       {/* Quadro de Avisos na Lateral Direita */}
       <ArrivalNotificationsPanel
@@ -818,7 +818,7 @@ export default function AgendaPage() {
 
       {/* Modal de Tela Cheia */}
       {showFullscreen && (
-        <div className="fixed inset-0 z-50 bg-background flex flex-col">
+        <div className="fixed inset-0 z-50 flex flex-col bg-bg-surface">
           {/* Quadro de Avisos na Lateral Direita - dentro do modal */}
           <ArrivalNotificationsPanel
             events={events}

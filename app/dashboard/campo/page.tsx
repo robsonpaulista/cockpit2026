@@ -77,15 +77,16 @@ export default function CampoPage() {
   const isCockpitTheme = theme === 'cockpit'
   const isDarkAppearance = appearance === 'dark'
   const isCockpitDark = theme === 'cockpit' && isDarkAppearance
+  /** Mesmo padrão de cartões que Território & Base no tema claro (cinza neutro, sem fundo amarelado). */
   const sectionShellClass = isDarkAppearance
     ? 'border-white/12 bg-[linear-gradient(165deg,rgba(22,34,44,0.82)_0%,rgba(18,30,38,0.86)_100%)] shadow-[0_10px_32px_rgba(3,12,20,0.28)]'
-    : 'border-border-card bg-[linear-gradient(180deg,rgba(255,255,255,0.92)_0%,rgba(255,255,255,0.86)_100%)] shadow-[0_12px_28px_rgba(15,23,42,0.08)]'
+    : 'border-card bg-surface shadow-card'
   const innerPanelClass = isDarkAppearance
     ? 'border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.04)_0%,rgba(255,255,255,0.02)_100%)]'
-    : 'border-border-card/70 bg-[linear-gradient(180deg,rgba(255,255,255,0.9)_0%,rgba(248,244,238,0.72)_100%)]'
+    : 'border-card bg-background/50'
   const innerItemClass = isDarkAppearance
     ? 'border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.03)_0%,rgba(255,255,255,0.015)_100%)]'
-    : 'border-border-card/60 bg-bg-surface/85'
+    : 'border-card bg-background/40'
   const metricTrackClass = isDarkAppearance ? 'bg-white/10' : 'bg-border-card/60'
   const premiumPrimaryBarClass = isDarkAppearance
     ? 'bg-[linear-gradient(135deg,rgba(45,212,191,0.95)_0%,rgba(14,165,183,0.95)_100%)]'
@@ -369,7 +370,7 @@ export default function CampoPage() {
   const statusBadgeClass = (status: Agenda['status']) => {
     if (status === 'concluida') return 'bg-status-success/10 text-status-success'
     if (status === 'cancelada') return 'bg-status-danger/10 text-status-danger'
-    return 'bg-accent-gold-soft text-accent-gold'
+    return 'bg-bg-app text-text-secondary'
   }
   const completionRate = agendas.length > 0 ? Math.round((agendasConcluidas.length / agendas.length) * 100) : 0
   const quickCityOptions = cities
@@ -405,7 +406,7 @@ export default function CampoPage() {
                     onClick={() => setNovaAgendaExpandida((prev) => !prev)}
                     className={cn(
                       'inline-flex h-9 w-9 items-center justify-center rounded-lg border border-border-card text-text-primary transition-colors hover:bg-bg-app',
-                      novaAgendaExpandida && 'border-accent-gold/50 bg-accent-gold-soft/30',
+                      novaAgendaExpandida && 'border-border-card bg-bg-app',
                     )}
                     aria-expanded={novaAgendaExpandida}
                     title={novaAgendaExpandida ? 'Recolher formulário' : 'Expandir formulário'}

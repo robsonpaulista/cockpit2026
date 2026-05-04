@@ -244,7 +244,7 @@ export default function ResumoEleicoesPage() {
   const searchParams = useSearchParams()
   const { theme } = useTheme()
   const isCockpit = theme === 'cockpit'
-  const pageShellClass = isCockpit ? 'sidebar-cockpit-shell' : 'bg-background'
+  const pageShellClass = isCockpit ? 'sidebar-cockpit-shell' : 'bg-bg-surface'
   const sectionShellClass = isCockpit
     ? 'rounded-2xl border p-5 backdrop-blur border-white/12 bg-[linear-gradient(165deg,rgba(22,34,44,0.82)_0%,rgba(18,30,38,0.86)_100%)] shadow-[0_10px_32px_rgba(3,12,20,0.28)]'
     : 'rounded-2xl border border-card bg-surface p-4 shadow-card'

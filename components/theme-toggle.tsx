@@ -8,6 +8,8 @@ import { cn } from '@/lib/utils'
 interface ThemeToggleProps {
   collapsed?: boolean
   mobileOpen?: boolean
+  /** Gatilho em fundo vibrante (ex.: home com gradiente dourado na sidebar). */
+  triggerOnVibrantNav?: boolean
 }
 
 const themes = [
@@ -37,7 +39,11 @@ const themes = [
   },
 ]
 
-export function ThemeToggle({ collapsed = false, mobileOpen = false }: ThemeToggleProps) {
+export function ThemeToggle({
+  collapsed = false,
+  mobileOpen = false,
+  triggerOnVibrantNav = false,
+}: ThemeToggleProps) {
   const { theme, setTheme } = useTheme()
   const [open, setOpen] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
@@ -67,13 +73,27 @@ export function ThemeToggle({ collapsed = false, mobileOpen = false }: ThemeTogg
         className={cn(
           'flex items-center gap-3 px-3 py-2.5 rounded-[10px] w-full',
           'transition-all duration-200 ease-out group',
-          'hover:bg-accent-gold-soft'
+          triggerOnVibrantNav ? 'hover:bg-white/10' : 'hover:bg-accent-gold-soft'
         )}
         title="Trocar tema visual"
       >
-        <Palette className="w-5 h-5 flex-shrink-0 text-text-secondary group-hover:text-accent-gold transition-colors" />
+        <Palette
+          className={cn(
+            'w-5 h-5 flex-shrink-0 transition-colors',
+            triggerOnVibrantNav
+              ? 'text-white/75 group-hover:text-white'
+              : 'text-text-secondary group-hover:text-accent-gold'
+          )}
+        />
         {showLabel && (
-          <span className="text-sm text-text-secondary group-hover:text-text-primary transition-colors">
+          <span
+            className={cn(
+              'text-sm transition-colors',
+              triggerOnVibrantNav
+                ? 'text-white/85 group-hover:text-white'
+                : 'text-text-secondary group-hover:text-text-primary'
+            )}
+          >
             Tema
           </span>
         )}

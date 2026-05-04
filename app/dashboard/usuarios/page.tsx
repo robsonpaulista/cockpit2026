@@ -131,7 +131,7 @@ export default function UsuariosPage() {
 
   if (permLoading || !isAdmin) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-background">
+      <div className="flex min-h-screen items-center justify-center bg-bg-surface">
         <div className="flex flex-col items-center gap-2">
           <Loader2 className="h-8 w-8 animate-spin text-accent-gold" />
           <p className="text-sm text-text-secondary">Carregando...</p>
@@ -141,7 +141,7 @@ export default function UsuariosPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-bg-surface">
 
       <div className="px-4 py-6 lg:px-6">
         {error && (

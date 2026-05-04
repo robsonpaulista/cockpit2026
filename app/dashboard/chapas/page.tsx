@@ -2088,8 +2088,8 @@ export default function ChapasPage() {
               })}
           </div>
 
-          {/* Seção de detalhes das sobras - Método D'Hondt */}
-          <div className={cn(sectionShellClass, 'mt-4 max-w-4xl')}>
+          {/* Seção de detalhes das sobras - Método D'Hondt (largura alinhada ao grid de partidos acima) */}
+          <div className={cn(sectionShellClass, 'mt-4 w-full min-w-0')}>
             <div className="text-base font-semibold mb-3 text-text-primary">
               📊 Cálculo de Sobras - Método D'Hondt (Legislação Brasileira)
             </div>

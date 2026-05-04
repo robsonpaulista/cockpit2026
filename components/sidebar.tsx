@@ -57,6 +57,7 @@ import {
   COCKPIT_PAGE_ACTIVE_MENU_ITEM,
 } from '@/lib/sidebar-menu-active-style'
 import { AppBrandTitle } from '@/components/app-brand-title'
+import { useDashboardHomeChrome } from '@/contexts/dashboard-home-chrome-context'
 
 /** Rótulos mais curtos no tema Cockpit Vivo (navegação minimalista). */
 const COCKPIT_MENU_LABEL: Record<string, string> = {
@@ -325,6 +326,8 @@ export function Sidebar() {
   const { theme, appearance } = useTheme()
 
   const isCockpit = theme === 'cockpit'
+  const isGradientHome = useDashboardHomeChrome()
+  const filmNav = isCockpit || isGradientHome
   const isRepublicanosPremium = theme === 'republicanos' && appearance === 'light'
   const showTopbar = useDashboardTopbarVisible()
 
@@ -381,25 +384,31 @@ export function Sidebar() {
       {/* Mobile Menu Button */}
       <button
         type="button"
-        data-sidebar-mobile-toggle={isCockpit ? 'true' : undefined}
+        data-sidebar-mobile-toggle={filmNav ? 'true' : undefined}
         onClick={toggleMobile}
         className={cn(
           'fixed left-4 top-4 z-[110] rounded-full p-2 transition-premium lg:hidden',
-          isCockpit
-            ? 'cockpit-glass shadow-[0_4px_20px_rgba(15,70,120,0.08)]'
+          filmNav
+            ? 'cockpit-glass border border-white/15 shadow-[0_4px_20px_rgba(0,0,0,0.12)]'
             : 'rounded-lg border border-border-card bg-bg-surface shadow-card hover:shadow-card-hover'
         )}
         aria-label="Toggle menu"
       >
         {mobileOpen ? (
           <X
-            className={cn('text-accent-gold', isCockpit ? 'h-4 w-4' : 'h-5 w-5')}
-            strokeWidth={isCockpit ? 1.35 : 2}
+            className={cn(
+              isGradientHome ? 'text-white' : 'text-accent-gold',
+              filmNav ? 'h-4 w-4' : 'h-5 w-5'
+            )}
+            strokeWidth={filmNav ? 1.35 : 2}
           />
         ) : (
           <Menu
-            className={cn('text-accent-gold', isCockpit ? 'h-4 w-4' : 'h-5 w-5')}
-            strokeWidth={isCockpit ? 1.35 : 2}
+            className={cn(
+              isGradientHome ? 'text-white' : 'text-accent-gold',
+              filmNav ? 'h-4 w-4' : 'h-5 w-5'
+            )}
+            strokeWidth={filmNav ? 1.35 : 2}
           />
         )}
       </button>
@@ -408,9 +417,10 @@ export function Sidebar() {
       <aside
         className={cn(
           'fixed left-0 top-0 h-full w-72 overflow-visible transition-all duration-300 ease-out',
-          'border-r border-card bg-[rgb(var(--bg-sidebar))]',
-          isCockpit && 'sidebar-cockpit-shell',
-          isRepublicanosPremium && 'republicanos-premium-sidebar',
+          isGradientHome && 'border-r border-white/15 bg-transparent',
+          !isGradientHome && 'border-r border-card bg-[rgb(var(--bg-sidebar))]',
+          isCockpit && !isGradientHome && 'sidebar-cockpit-shell',
+          isRepublicanosPremium && !isGradientHome && 'republicanos-premium-sidebar',
           'max-lg:z-[100] max-lg:shadow-2xl lg:z-40',
           'lg:translate-x-0',
           mobileOpen ? 'translate-x-0' : '-translate-x-full',
@@ -420,15 +430,18 @@ export function Sidebar() {
       >
         <div
           className={cn(
-            'flex h-full min-h-0 flex-col bg-[rgb(var(--bg-sidebar))]',
-            isCockpit && 'bg-transparent',
+            'flex h-full min-h-0 flex-col',
+            filmNav ? 'bg-transparent' : 'bg-[rgb(var(--bg-sidebar))]',
           )}
         >
           {/* Logo */}
           <div className="flex h-16 items-center justify-between px-4">
             {(!collapsed || mobileOpen) && (
               <div className="flex items-center gap-2.5">
-                <AppBrandTitle isCockpit={isCockpit} />
+                <AppBrandTitle
+                  isCockpit={isCockpit}
+                  lightOnGradient={isGradientHome}
+                />
               </div>
             )}
             {!collapsed && (
@@ -436,13 +449,18 @@ export function Sidebar() {
                 onClick={toggleCollapse}
                 className={cn(
                   'hidden h-8 w-8 items-center justify-center rounded-lg transition-premium lg:flex',
-                  'hover:bg-accent-gold-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-gold/50 focus-visible:ring-offset-1 focus-visible:ring-offset-bg-sidebar'
+                  isGradientHome
+                    ? 'hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40 focus-visible:ring-offset-1 focus-visible:ring-offset-transparent'
+                    : 'hover:bg-accent-gold-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-gold/50 focus-visible:ring-offset-1 focus-visible:ring-offset-bg-sidebar'
                 )}
                 aria-label="Toggle sidebar"
               >
                 <ChevronLeft
-                  className="w-4 h-4 text-accent-gold"
-                  strokeWidth={isCockpit ? 1.35 : 2}
+                  className={cn(
+                    'w-4 h-4',
+                    isGradientHome ? 'text-white' : 'text-accent-gold'
+                  )}
+                  strokeWidth={filmNav ? 1.35 : 2}
                 />
               </button>
             )}
@@ -451,13 +469,18 @@ export function Sidebar() {
                 onClick={toggleCollapse}
                 className={cn(
                   'hidden h-8 w-8 items-center justify-center rounded-lg transition-premium lg:flex',
-                  'hover:bg-accent-gold-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-gold/50 focus-visible:ring-offset-1 focus-visible:ring-offset-bg-sidebar'
+                  isGradientHome
+                    ? 'hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40 focus-visible:ring-offset-1 focus-visible:ring-offset-transparent'
+                    : 'hover:bg-accent-gold-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-gold/50 focus-visible:ring-offset-1 focus-visible:ring-offset-bg-sidebar'
                 )}
                 aria-label="Toggle sidebar"
               >
                 <ChevronLeft
-                  className="w-4 h-4 text-accent-gold rotate-180"
-                  strokeWidth={isCockpit ? 1.35 : 2}
+                  className={cn(
+                    'w-4 h-4 rotate-180',
+                    isGradientHome ? 'text-white' : 'text-accent-gold'
+                  )}
+                  strokeWidth={filmNav ? 1.35 : 2}
                 />
               </button>
             )}
@@ -499,7 +522,9 @@ export function Sidebar() {
                       )}>
                         <span className={cn(
                           'text-[0.68rem] font-semibold uppercase tracking-[0.14em]',
-                          isCockpit ? 'text-text-muted/90' : 'text-text-muted'
+                          isGradientHome && 'text-white/45',
+                          !isGradientHome && isCockpit && 'text-text-muted/90',
+                          !isGradientHome && !isCockpit && 'text-text-muted'
                         )}>
                           {sectionLabel}
                         </span>
@@ -510,7 +535,13 @@ export function Sidebar() {
                         'my-2 flex justify-center',
                         item.id === 'home' && 'mt-0'
                       )}>
-                        <span className="h-[1px] w-8 rounded-full bg-border-card/60" aria-hidden />
+                        <span
+                          className={cn(
+                            'h-[1px] w-8 rounded-full',
+                            isGradientHome ? 'bg-white/25' : 'bg-border-card/60'
+                          )}
+                          aria-hidden
+                        />
                       </div>
                     )}
 
@@ -525,15 +556,18 @@ export function Sidebar() {
                             'relative w-full flex items-center gap-3 px-3 py-3 rounded-[12px]',
                             'transition-all duration-200 ease-out',
                             'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-gold/50 focus-visible:ring-offset-1 focus-visible:ring-offset-bg-sidebar',
-                            !(isCockpit && isActive) && 'hover:bg-accent-gold-soft/70 hover:text-text-primary',
-                            isActive && !isCockpit && 'bg-accent-gold-soft text-text-primary shadow-sm',
-                            isCockpit &&
+                            !(filmNav && isActive) &&
+                              (isGradientHome
+                                ? 'hover:bg-white/10 hover:text-white'
+                                : 'hover:bg-accent-gold-soft/70 hover:text-text-primary'),
+                            isActive && !filmNav && 'bg-accent-gold-soft text-text-primary shadow-sm',
+                            filmNav &&
                               !isActive &&
                               'border border-white/[0.04] bg-[linear-gradient(180deg,rgba(255,255,255,0.02)_0%,rgba(255,255,255,0.01)_100%)]',
-                            isCockpit && isActive && cockpitActiveItemClass,
+                            filmNav && isActive && cockpitActiveItemClass,
                           )}
                         >
-                          {isActive && !isCockpit && (
+                          {isActive && !filmNav && (
                             <div
                               className="absolute left-0 top-1/2 h-6 w-1 -translate-y-1/2 rounded-r-full bg-accent-gold"
                               aria-hidden
@@ -542,23 +576,25 @@ export function Sidebar() {
                           <div
                             className={cn(
                               'flex-shrink-0 transition-all duration-200',
-                              !isCockpit && 'w-5 h-5 group-hover:scale-110',
-                              isCockpit &&
+                              !filmNav && 'w-5 h-5 group-hover:scale-110',
+                              filmNav &&
                                 'flex h-8 w-8 items-center justify-center rounded-xl border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.10)_0%,rgba(255,255,255,0.03)_100%)]',
                               isActive
                                 ? cn(
                                     'text-accent-gold',
-                                    isCockpit && '!border-white/25 !bg-white/10 !text-white shadow-[0_6px_16px_rgba(0,0,0,0.25)]'
+                                    filmNav && '!border-white/25 !bg-white/10 !text-white shadow-[0_6px_16px_rgba(0,0,0,0.25)]'
                                   )
-                                : 'text-text-secondary group-hover:text-accent-gold'
+                                : isGradientHome
+                                  ? 'text-white/75 group-hover:text-white'
+                                  : 'text-text-secondary group-hover:text-accent-gold'
                             )}
                           >
                             <Icon
                               className={cn(
-                                isCockpit ? 'h-4 w-4' : 'h-full w-full',
-                                isCockpit && isActive && '!text-white'
+                                filmNav ? 'h-4 w-4' : 'h-full w-full',
+                                filmNav && isActive && '!text-white'
                               )}
-                              strokeWidth={isCockpit ? 1.35 : 2}
+                              strokeWidth={filmNav ? 1.35 : 2}
                             />
                           </div>
                           {(!collapsed || mobileOpen) && (
@@ -569,11 +605,13 @@ export function Sidebar() {
                                 isActive
                                   ? cn(
                                       'font-semibold text-text-primary',
-                                      isCockpit && '!text-white'
+                                      filmNav && '!text-white'
                                     )
-                                  : isCockpit
-                                    ? 'text-text-primary/90 group-hover:text-text-primary'
-                                    : 'text-text-secondary group-hover:text-text-primary'
+                                  : isGradientHome
+                                    ? 'text-white/80 group-hover:text-white'
+                                    : isCockpit
+                                      ? 'text-text-primary/90 group-hover:text-text-primary'
+                                      : 'text-text-secondary group-hover:text-text-primary'
                               )}>
                                 {menuLabel(item.id, item.label)}
                               </span>
@@ -581,20 +619,22 @@ export function Sidebar() {
                                 className={cn(
                                 'ml-auto h-4 w-4 text-text-secondary/85 transition-transform',
                                   submenuOpen && 'rotate-180',
-                                  isCockpit && isActive && '!text-white/90'
+                                  isGradientHome && 'text-white/70',
+                                  filmNav && isActive && '!text-white/90'
                                 )}
-                                strokeWidth={isCockpit ? 1.35 : 2}
+                                strokeWidth={filmNav ? 1.35 : 2}
                               />
                             </>
                           )}
                         </button>
 
                         {(!collapsed || mobileOpen) && submenuOpen && item.children && (
-                          isCockpit ? (
+                          filmNav ? (
                             <div
                               className={cn(
                                 'mt-2 space-y-1.5 rounded-2xl border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.08)_0%,rgba(255,255,255,0.03)_100%)] p-2',
-                                'text-[0.82rem] text-text-primary/85 shadow-[0_8px_24px_rgba(0,0,0,0.22)]',
+                                'text-[0.82rem] shadow-[0_8px_24px_rgba(0,0,0,0.22)]',
+                                isGradientHome ? 'text-white/90' : 'text-text-primary/85',
                               )}
                             >
                               {item.children.map((child) => {
@@ -613,14 +653,15 @@ export function Sidebar() {
                                         childActive
                                           ? cn(
                                               'font-semibold',
-                                              isCockpit
-                                                ? cn(
-                                                    'transition-all',
-                                                    cockpitActiveChildClass
-                                                  )
-                                                : 'text-[rgb(15,45,74)]'
+                                              'transition-all',
+                                              cockpitActiveChildClass
                                             )
-                                          : 'text-text-primary/85 hover:bg-white/10 hover:text-text-primary'
+                                          : cn(
+                                              'hover:bg-white/10',
+                                              isGradientHome
+                                                ? 'text-white/80 hover:text-white'
+                                                : 'text-text-primary/85 hover:text-text-primary'
+                                            )
                                       )}
                                     >
                                       {menuLabel(child.id, child.label)}
@@ -669,15 +710,18 @@ export function Sidebar() {
                           'relative flex items-center gap-3 px-3 py-3 rounded-[12px]',
                           'transition-all duration-200 ease-out',
                           'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-gold/50 focus-visible:ring-offset-1 focus-visible:ring-offset-bg-sidebar',
-                          !(isCockpit && isActive) && 'hover:bg-accent-gold-soft/70 hover:text-text-primary',
-                          isActive && !isCockpit && 'bg-accent-gold-soft text-text-primary shadow-sm',
-                          isCockpit &&
+                          !(filmNav && isActive) &&
+                            (isGradientHome
+                              ? 'hover:bg-white/10 hover:text-white'
+                              : 'hover:bg-accent-gold-soft/70 hover:text-text-primary'),
+                          isActive && !filmNav && 'bg-accent-gold-soft text-text-primary shadow-sm',
+                          filmNav &&
                             !isActive &&
                             'border border-white/[0.04] bg-[linear-gradient(180deg,rgba(255,255,255,0.02)_0%,rgba(255,255,255,0.01)_100%)]',
-                          isCockpit && isActive && cockpitActiveItemClass
+                          filmNav && isActive && cockpitActiveItemClass
                         )}
                       >
-                        {isActive && !isCockpit && (
+                        {isActive && !filmNav && (
                           <div
                             className="absolute left-0 top-1/2 h-6 w-1 -translate-y-1/2 rounded-r-full bg-accent-gold"
                             aria-hidden
@@ -687,23 +731,25 @@ export function Sidebar() {
                         <div
                           className={cn(
                             'flex-shrink-0 transition-all duration-200',
-                            !isCockpit && 'w-5 h-5 group-hover:scale-110',
-                            isCockpit &&
+                            !filmNav && 'w-5 h-5 group-hover:scale-110',
+                            filmNav &&
                               'flex h-8 w-8 items-center justify-center rounded-xl border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.10)_0%,rgba(255,255,255,0.03)_100%)]',
                             isActive
                               ? cn(
                                   'text-accent-gold',
-                                  isCockpit && '!border-white/25 !bg-white/10 !text-white shadow-[0_6px_16px_rgba(0,0,0,0.25)]'
+                                  filmNav && '!border-white/25 !bg-white/10 !text-white shadow-[0_6px_16px_rgba(0,0,0,0.25)]'
                                 )
-                              : 'text-text-secondary group-hover:text-accent-gold'
+                              : isGradientHome
+                                ? 'text-white/75 group-hover:text-white'
+                                : 'text-text-secondary group-hover:text-accent-gold'
                           )}
                         >
                           <Icon
                             className={cn(
-                              isCockpit ? 'h-4 w-4' : 'h-full w-full',
-                              isCockpit && isActive && '!text-white'
+                              filmNav ? 'h-4 w-4' : 'h-full w-full',
+                              filmNav && isActive && '!text-white'
                             )}
-                            strokeWidth={isCockpit ? 1.35 : 2}
+                            strokeWidth={filmNav ? 1.35 : 2}
                           />
                         </div>
                         {(!collapsed || mobileOpen) && (
@@ -713,11 +759,13 @@ export function Sidebar() {
                             isActive
                               ? cn(
                                   'font-semibold text-text-primary',
-                                  isCockpit && '!text-white'
+                                  filmNav && '!text-white'
                                 )
-                              : isCockpit
-                                ? 'text-text-primary/90 group-hover:text-text-primary'
-                                : 'text-text-secondary group-hover:text-text-primary'
+                              : isGradientHome
+                                ? 'text-white/80 group-hover:text-white'
+                                : isCockpit
+                                  ? 'text-text-primary/90 group-hover:text-text-primary'
+                                  : 'text-text-secondary group-hover:text-text-primary'
                           )}>
                             {menuLabel(item.id, item.label)}
                           </span>
@@ -738,14 +786,15 @@ export function Sidebar() {
                           top: `${tooltipPos.top}px`,
                           transform: 'translateY(-50%)',
                           animation: 'fadeIn 0.2s ease-out',
-                          backgroundColor: isCockpit ? 'rgba(19, 28, 35, 0.92)' : 'rgb(var(--text-primary))',
-                          color: isCockpit ? 'rgb(var(--text-primary))' : 'rgb(var(--bg-surface))',
+                          backgroundColor: filmNav ? 'rgba(19, 28, 35, 0.92)' : 'rgb(var(--text-primary))',
+                          /* fundo escuro + text-primary no claro = texto ilegível; texto sempre claro no chip escuro */
+                          color: filmNav ? 'rgba(255,255,255,0.95)' : 'rgb(var(--bg-surface))',
                         }}
                       >
                         {menuLabel(item.id, item.label)}
                         <div
                           className="absolute right-full top-1/2 -translate-y-1/2 border-4 border-transparent"
-                          style={{ borderRightColor: isCockpit ? 'rgba(19, 28, 35, 0.92)' : 'rgb(var(--text-primary))' }}
+                          style={{ borderRightColor: filmNav ? 'rgba(19, 28, 35, 0.92)' : 'rgb(var(--text-primary))' }}
                         />
                       </div>
                     )}
@@ -757,7 +806,10 @@ export function Sidebar() {
 
           {/* Ações rápidas: Splash + Tema */}
           <div
-            className="space-y-1.5 border-t border-border-card/80 px-2.5 py-3"
+            className={cn(
+              'space-y-1.5 border-t px-2.5 py-3',
+              isGradientHome ? 'border-white/15' : 'border-border-card/80'
+            )}
           >
             <button
               onClick={() => {
@@ -767,20 +819,30 @@ export function Sidebar() {
               className={cn(
                 'flex w-full items-center gap-3 rounded-[12px] px-3 py-3',
                 'transition-all duration-200 ease-out group',
-                'hover:bg-accent-gold-soft/70',
+                isGradientHome ? 'hover:bg-white/10' : 'hover:bg-accent-gold-soft/70',
                 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-gold/50 focus-visible:ring-offset-1 focus-visible:ring-offset-bg-sidebar'
               )}
               title="Ativar tela de descanso"
             >
               <Monitor
                 className={cn(
-                  'flex-shrink-0 text-text-secondary group-hover:text-accent-gold transition-colors',
-                  isCockpit ? 'h-4 w-4' : 'h-5 w-5'
+                  'flex-shrink-0 transition-colors',
+                  isGradientHome
+                    ? 'text-white/75 group-hover:text-white'
+                    : 'text-text-secondary group-hover:text-accent-gold',
+                  filmNav ? 'h-4 w-4' : 'h-5 w-5'
                 )}
-                strokeWidth={isCockpit ? 1.35 : 2}
+                strokeWidth={filmNav ? 1.35 : 2}
               />
               {(!collapsed || mobileOpen) && (
-                <span className="text-[0.92rem] font-medium text-text-primary/90 group-hover:text-text-primary transition-colors">
+                <span
+                  className={cn(
+                    'text-[0.92rem] font-medium transition-colors',
+                    isGradientHome
+                      ? 'text-white/90 group-hover:text-white'
+                      : 'text-text-primary/90 group-hover:text-text-primary'
+                  )}
+                >
                   Tela de descanso
                 </span>
               )}
@@ -790,7 +852,11 @@ export function Sidebar() {
                 <UserMenu />
               </div>
             ) : null}
-            <ThemeToggle collapsed={collapsed} mobileOpen={mobileOpen} />
+            <ThemeToggle
+              collapsed={collapsed}
+              mobileOpen={mobileOpen}
+              triggerOnVibrantNav={isGradientHome}
+            />
           </div>
         </div>
       </aside>

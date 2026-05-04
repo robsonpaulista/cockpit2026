@@ -2042,7 +2042,7 @@ table.td-resumo-table td.td-resumo-table__cell--estrategia {
 
 [data-theme='republicanos'][data-appearance='light'] .republicanos-premium-header {
   background: rgb(var(--bg-sidebar)) !important;
-  border-bottom-color: rgb(var(--border-card) / 0.92) !important;
+  border-bottom: none !important;
   box-shadow: 0 8px 24px rgba(15, 23, 42, 0.06);
 }
 

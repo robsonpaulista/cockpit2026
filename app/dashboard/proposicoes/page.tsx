@@ -553,7 +553,7 @@ export default function ProposicoesPage() {
 
   if (initialLoading) {
     return (
-      <div className="min-h-screen bg-background">
+      <div className="min-h-screen bg-bg-surface">
         <div className="px-4 py-6 lg:px-6">
           <div className="mb-6">
             <div className="h-8 w-64 bg-surface rounded-lg animate-pulse mb-2" />
@@ -572,7 +572,7 @@ export default function ProposicoesPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-bg-surface">
       <div className="px-4 py-6 lg:px-6">
         {/* Header */}
         <div className="mb-6">
