@@ -339,9 +339,8 @@ export async function GET(request: Request) {
                 const cityName = city?.name
                 if (!cityName) return false
                 const cityNameNormalized = normalizeCityName(cityName)
-                return cityNameNormalized === cidadeNormalizada ||
-                       cityNameNormalized.includes(cidadeNormalizada) ||
-                       cidadeNormalizada.includes(cityNameNormalized)
+                // Igualdade estrita (após normalizar): evita misturar municípios com substring comum (ex.: COCAL vs COCAL DOS ALVES).
+                return cityNameNormalized === cidadeNormalizada
               })
             })
           })
@@ -360,9 +359,7 @@ export async function GET(request: Request) {
               const cityName = city?.name
               if (!cityName) return false
               const cityNameNormalized = normalizeCityName(cityName)
-              return cityNameNormalized === cidadeNormalizada ||
-                     cityNameNormalized.includes(cidadeNormalizada) ||
-                     cidadeNormalizada.includes(cityNameNormalized)
+              return cityNameNormalized === cidadeNormalizada
             })
           })
         }
@@ -447,10 +444,7 @@ export async function GET(request: Request) {
           }
 
           const demandCityNormalized = normalizeCityName(demandCity)
-          const matches =
-            demandCityNormalized === cidadeNormalizada ||
-            demandCityNormalized.includes(cidadeNormalizada) ||
-            cidadeNormalizada.includes(demandCityNormalized)
+          const matches = demandCityNormalized === cidadeNormalizada
 
           if (matches && filteredSheetsDemands.indexOf(d) < 5) {
             console.log(

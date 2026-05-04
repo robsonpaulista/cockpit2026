@@ -5,10 +5,10 @@ import {
   Calendar,
   CheckCircle2,
   ChevronRight,
+  ChevronUp,
   Clock3,
   Filter,
   Loader2,
-  MapPin,
   MapPinned,
   Pencil,
   Plus,
@@ -17,6 +17,8 @@ import {
   Trash2,
   X,
 } from 'lucide-react'
+import { CockpitTerritorioMapEmbed } from '@/components/cockpit-territorio-map-embed'
+import { MapaPresenca } from '@/components/mapa-presenca'
 import { cn, formatDate } from '@/lib/utils'
 import { sidebarPrimaryCTAButtonClass } from '@/lib/sidebar-menu-active-style'
 import { useTheme } from '@/contexts/theme-context'
@@ -55,6 +57,13 @@ interface AgendaFormData {
   description: string
 }
 
+type TerritorioMapaItem = {
+  cidade: string
+  motivo: string
+  expectativaVotos?: number
+  visitas?: number
+}
+
 const emptyForm: AgendaFormData = {
   date: '',
   city_id: '',
@@ -65,6 +74,7 @@ const emptyForm: AgendaFormData = {
 
 export default function CampoPage() {
   const { theme, appearance } = useTheme()
+  const isCockpitTheme = theme === 'cockpit'
   const isDarkAppearance = appearance === 'dark'
   const isCockpitDark = theme === 'cockpit' && isDarkAppearance
   const sectionShellClass = isDarkAppearance
@@ -96,10 +106,113 @@ export default function CampoPage() {
   const [filterStatus, setFilterStatus] = useState<'all' | 'planejada' | 'concluida' | 'cancelada'>('all')
   const [showAllAgendas, setShowAllAgendas] = useState(false)
   const [selectedMonthKey, setSelectedMonthKey] = useState<string | null>(null)
+  const [novaAgendaExpandida, setNovaAgendaExpandida] = useState<boolean>(false)
+  const [territoriosFrios, setTerritoriosFrios] = useState<TerritorioMapaItem[]>([])
+  const [territoriosQuentes, setTerritoriosQuentes] = useState<TerritorioMapaItem[]>([])
+  const [territoriosMornos, setTerritoriosMornos] = useState<TerritorioMapaItem[]>([])
+  const [cidadesComLiderancas, setCidadesComLiderancas] = useState<string[]>([])
+  const [cidadesVisitadasLista, setCidadesVisitadasLista] = useState<string[]>([])
+  const [expectativaPorCidadeListaMapa, setExpectativaPorCidadeListaMapa] = useState<
+    Array<{ cidade: string; expectativaVotos: number }>
+  >([])
+  const [loadingTerritoriosMapa, setLoadingTerritoriosMapa] = useState<boolean>(true)
 
   useEffect(() => {
     void Promise.all([fetchAgendas(), fetchCities()])
   }, [])
+
+  useEffect(() => {
+    const abortController = new AbortController()
+    const signal = abortController.signal
+
+    const fetchTerritoriosMapa = async () => {
+      setLoadingTerritoriosMapa(true)
+      try {
+        let config: Record<string, unknown> | { spreadsheetId?: string } | null = null
+        try {
+          const serverConfigRes = await fetch('/api/territorio/config', { signal })
+          const serverConfig = (await serverConfigRes.json()) as { configured?: boolean }
+          if (serverConfig.configured) {
+            config = {}
+          }
+        } catch {
+          if (signal.aborted) return
+        }
+
+        if (!config && typeof window !== 'undefined') {
+          const savedConfig = localStorage.getItem('territorio_sheets_config')
+          if (savedConfig) {
+            try {
+              config = JSON.parse(savedConfig) as Record<string, unknown>
+            } catch {
+              config = null
+            }
+          }
+        }
+
+        if (config && !signal.aborted) {
+          const response = await fetch('/api/dashboard/territorios-frios', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              territorioConfig:
+                config && typeof config === 'object' && 'spreadsheetId' in config && config.spreadsheetId
+                  ? config
+                  : {},
+            }),
+            signal,
+          })
+
+          if (response.ok) {
+            const data = (await response.json()) as {
+              territoriosFrios?: Record<string, unknown>[]
+              territoriosQuentes?: Record<string, unknown>[]
+              territoriosMornos?: Record<string, unknown>[]
+              cidadesComLiderancas?: string[]
+              cidadesVisitadasLista?: string[]
+              expectativaPorCidadeLista?: Record<string, unknown>[]
+            }
+            if (signal.aborted) return
+
+            const mapTerr = (list: Record<string, unknown>[] | undefined): TerritorioMapaItem[] =>
+              (list ?? []).map((t) => ({
+                cidade: String(t.cidade ?? ''),
+                motivo: String(t.motivo ?? ''),
+                expectativaVotos: typeof t.expectativaVotos === 'number' ? t.expectativaVotos : undefined,
+                visitas: typeof t.visitas === 'number' ? t.visitas : undefined,
+              }))
+
+            setTerritoriosFrios(mapTerr(data.territoriosFrios))
+            setTerritoriosQuentes(mapTerr(data.territoriosQuentes))
+            setTerritoriosMornos(mapTerr(data.territoriosMornos))
+            if (data.cidadesComLiderancas) setCidadesComLiderancas(data.cidadesComLiderancas)
+            if (data.cidadesVisitadasLista) setCidadesVisitadasLista(data.cidadesVisitadasLista)
+            if (Array.isArray(data.expectativaPorCidadeLista)) {
+              setExpectativaPorCidadeListaMapa(
+                data.expectativaPorCidadeLista
+                  .map((item) => ({
+                    cidade: String(item.cidade ?? ''),
+                    expectativaVotos: Number(item.expectativaVotos) || 0,
+                  }))
+                  .filter((item) => item.cidade && item.expectativaVotos > 0)
+              )
+            }
+          }
+        }
+      } catch {
+        if (signal.aborted) return
+      } finally {
+        if (!signal.aborted) setLoadingTerritoriosMapa(false)
+      }
+    }
+
+    void fetchTerritoriosMapa()
+    return () => abortController.abort()
+  }, [])
+
+  useEffect(() => {
+    if (editingAgendaId) setNovaAgendaExpandida(true)
+  }, [editingAgendaId])
 
   const fetchCities = async () => {
     try {
@@ -129,6 +242,7 @@ export default function CampoPage() {
     setEditingAgendaId(null)
     setFormError(null)
     setFormData(emptyForm)
+    setNovaAgendaExpandida(false)
   }
 
   const startEditAgenda = (agenda: Agenda) => {
@@ -283,6 +397,88 @@ export default function CampoPage() {
         <section className="mb-6 animate-reveal">
           <div className={cn('rounded-2xl border p-5 backdrop-blur', sectionShellClass)}>
             <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+              <h2 className="text-lg font-semibold text-text-primary">{editingAgendaId ? 'Editar agenda na própria página' : 'Nova agenda estratégica'}</h2>
+              <div className="flex items-center gap-2">
+                {!editingAgendaId ? (
+                  <button
+                    type="button"
+                    onClick={() => setNovaAgendaExpandida((prev) => !prev)}
+                    className={cn(
+                      'inline-flex h-9 w-9 items-center justify-center rounded-lg border border-border-card text-text-primary transition-colors hover:bg-bg-app',
+                      novaAgendaExpandida && 'border-accent-gold/50 bg-accent-gold-soft/30',
+                    )}
+                    aria-expanded={novaAgendaExpandida}
+                    title={novaAgendaExpandida ? 'Recolher formulário' : 'Expandir formulário'}
+                  >
+                    {novaAgendaExpandida ? <ChevronUp className="h-4 w-4" aria-hidden /> : <Plus className="h-4 w-4" aria-hidden />}
+                  </button>
+                ) : null}
+                {editingAgendaId ? (
+                  <button type="button" onClick={resetForm} className="inline-flex items-center gap-2 rounded-lg border border-border-card px-3 py-2 text-sm text-text-secondary transition-colors hover:bg-bg-app">
+                    <X className="h-4 w-4" />
+                    Cancelar edição
+                  </button>
+                ) : null}
+              </div>
+            </div>
+            {(editingAgendaId !== null || novaAgendaExpandida) ? (
+              <>
+                <form onSubmit={handleSubmit} className="grid grid-cols-1 gap-3 xl:grid-cols-12">
+                  <div className="xl:col-span-3">
+                    <label className="mb-2 block text-xs font-semibold uppercase tracking-wide text-text-muted">Data</label>
+                    <input type="date" required value={formData.date} onChange={(e) => setFormData((prev) => ({ ...prev, date: e.target.value }))} className="w-full rounded-xl border border-border-card bg-bg-surface px-3 py-2 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-accent-gold/40" />
+                  </div>
+                  <div className="xl:col-span-3">
+                    <label className="mb-2 block text-xs font-semibold uppercase tracking-wide text-text-muted">Cidade</label>
+                    <select value={formData.city_id} onChange={(e) => setFormData((prev) => ({ ...prev, city_id: e.target.value }))} className="w-full rounded-xl border border-border-card bg-bg-surface px-3 py-2 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-accent-gold/40" required>
+                      <option value="">Selecione uma cidade</option>
+                      {quickCityOptions.map((city) => (
+                        <option key={city.id} value={city.id}>
+                          {city.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="xl:col-span-2">
+                    <label className="mb-2 block text-xs font-semibold uppercase tracking-wide text-text-muted">Tipo</label>
+                    <select value={formData.type} onChange={(e) => setFormData((prev) => ({ ...prev, type: e.target.value as AgendaFormData['type'] }))} className="w-full rounded-xl border border-border-card bg-bg-surface px-3 py-2 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-accent-gold/40">
+                      <option value="visita">Visita</option>
+                      <option value="evento">Evento</option>
+                      <option value="reuniao">Reunião</option>
+                      <option value="outro">Outro</option>
+                    </select>
+                  </div>
+                  <div className="xl:col-span-2">
+                    <label className="mb-2 block text-xs font-semibold uppercase tracking-wide text-text-muted">Status</label>
+                    <select value={formData.status} onChange={(e) => setFormData((prev) => ({ ...prev, status: e.target.value as AgendaFormData['status'] }))} className="w-full rounded-xl border border-border-card bg-bg-surface px-3 py-2 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-accent-gold/40">
+                      <option value="planejada">Planejada</option>
+                      <option value="concluida">Concluída</option>
+                      <option value="cancelada">Cancelada</option>
+                    </select>
+                  </div>
+                  <div className="xl:col-span-2">
+                    <label className="mb-2 block text-xs font-semibold uppercase tracking-wide text-text-muted">Ação</label>
+                    <button type="submit" disabled={saving} className={cn(sidebarPrimaryCTAButtonClass(isCockpitDark), 'w-full justify-center')}>
+                      {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                      {editingAgendaId ? 'Atualizar' : 'Salvar'}
+                    </button>
+                  </div>
+                  <div className="xl:col-span-12">
+                    <label className="mb-2 block text-xs font-semibold uppercase tracking-wide text-text-muted">Descrição</label>
+                    <textarea rows={2} value={formData.description} onChange={(e) => setFormData((prev) => ({ ...prev, description: e.target.value }))} placeholder="Detalhes da agenda, objetivos e observações." className="w-full rounded-xl border border-border-card bg-bg-surface px-3 py-2 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-accent-gold/40" />
+                  </div>
+                </form>
+                {formError ? (
+                  <div className="mt-4 rounded-lg border border-status-danger/30 bg-status-danger/10 p-3 text-sm text-status-danger">{formError}</div>
+                ) : null}
+              </>
+            ) : null}
+          </div>
+        </section>
+
+        <section className="mb-6 animate-reveal animate-reveal-2">
+          <div className={cn('rounded-2xl border p-5 backdrop-blur', sectionShellClass)}>
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
               <h2 className="flex items-center gap-2 text-base font-semibold text-text-primary">
                 <MapPinned className="h-4 w-4 text-accent-gold" />
                 Resumo de campo
@@ -361,69 +557,54 @@ export default function CampoPage() {
           </div>
         </section>
 
-        <section className="mb-6 animate-reveal animate-reveal-2">
+        <section className="mb-6 animate-reveal animate-reveal-3">
           <div className={cn('rounded-2xl border p-5 backdrop-blur', sectionShellClass)}>
-            <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
-              <h2 className="text-lg font-semibold text-text-primary">{editingAgendaId ? 'Editar agenda na própria página' : 'Nova agenda estratégica'}</h2>
-              {editingAgendaId ? (
-                <button type="button" onClick={resetForm} className="inline-flex items-center gap-2 rounded-lg border border-border-card px-3 py-2 text-sm text-text-secondary transition-colors hover:bg-bg-app">
-                  <X className="h-4 w-4" />
-                  Cancelar edição
-                </button>
-              ) : null}
-            </div>
-            <form onSubmit={handleSubmit} className="grid grid-cols-1 gap-3 xl:grid-cols-12">
-              <div className="xl:col-span-3">
-                <label className="mb-2 block text-xs font-semibold uppercase tracking-wide text-text-muted">Data</label>
-                <input type="date" required value={formData.date} onChange={(e) => setFormData((prev) => ({ ...prev, date: e.target.value }))} className="w-full rounded-xl border border-border-card bg-bg-surface px-3 py-2 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-accent-gold/40" />
+            {loadingTerritoriosMapa ? (
+              <div className="flex min-h-[min(40vh,360px)] items-center justify-center rounded-xl border border-border-card bg-bg-app/40">
+                <Loader2 className="h-8 w-8 animate-spin text-accent-gold" aria-label="Carregando mapa" />
               </div>
-              <div className="xl:col-span-3">
-                <label className="mb-2 block text-xs font-semibold uppercase tracking-wide text-text-muted">Cidade</label>
-                <select value={formData.city_id} onChange={(e) => setFormData((prev) => ({ ...prev, city_id: e.target.value }))} className="w-full rounded-xl border border-border-card bg-bg-surface px-3 py-2 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-accent-gold/40" required>
-                  <option value="">Selecione uma cidade</option>
-                  {quickCityOptions.map((city) => (
-                    <option key={city.id} value={city.id}>
-                      {city.name}
-                    </option>
-                  ))}
-                </select>
+            ) : isCockpitTheme ? (
+              <div className="flex min-h-[min(52vh,520px)] flex-col">
+                <CockpitTerritorioMapEmbed showHeader={false} minMapHeightClass="min-h-[min(52vh,520px)]" />
               </div>
-              <div className="xl:col-span-2">
-                <label className="mb-2 block text-xs font-semibold uppercase tracking-wide text-text-muted">Tipo</label>
-                <select value={formData.type} onChange={(e) => setFormData((prev) => ({ ...prev, type: e.target.value as AgendaFormData['type'] }))} className="w-full rounded-xl border border-border-card bg-bg-surface px-3 py-2 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-accent-gold/40">
-                  <option value="visita">Visita</option>
-                  <option value="evento">Evento</option>
-                  <option value="reuniao">Reunião</option>
-                  <option value="outro">Outro</option>
-                </select>
+            ) : cidadesComLiderancas.length > 0 ? (
+              <div
+                id="mapa-estrategia-campo-container"
+                className={cn(
+                  'relative min-h-0 min-w-0',
+                  '[&:fullscreen]:flex [&:fullscreen]:h-screen [&:fullscreen]:w-full [&:fullscreen]:flex-col [&:fullscreen]:min-h-0 [&:fullscreen]:bg-bg-surface',
+                )}
+              >
+                <MapaPresenca
+                  cidadesComPresenca={cidadesComLiderancas}
+                  cidadesVisitadas={cidadesVisitadasLista}
+                  expectativaPorCidadeLista={expectativaPorCidadeListaMapa}
+                  totalCidades={224}
+                  fullscreen={false}
+                  showStatsOverlay
+                  territoriosQuentes={territoriosQuentes}
+                  territoriosMornos={territoriosMornos}
+                  territoriosFrios={territoriosFrios}
+                  onFullscreen={() => {
+                    const container = document.getElementById('mapa-estrategia-campo-container')
+                    if (!container) return
+                    if (document.fullscreenElement) {
+                      void document.exitFullscreen()
+                    } else {
+                      void container.requestFullscreen()
+                    }
+                  }}
+                />
               </div>
-              <div className="xl:col-span-2">
-                <label className="mb-2 block text-xs font-semibold uppercase tracking-wide text-text-muted">Status</label>
-                <select value={formData.status} onChange={(e) => setFormData((prev) => ({ ...prev, status: e.target.value as AgendaFormData['status'] }))} className="w-full rounded-xl border border-border-card bg-bg-surface px-3 py-2 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-accent-gold/40">
-                  <option value="planejada">Planejada</option>
-                  <option value="concluida">Concluída</option>
-                  <option value="cancelada">Cancelada</option>
-                </select>
+            ) : (
+              <div className="rounded-xl border border-border-card bg-bg-app/50 px-4 py-8 text-center text-sm text-text-secondary">
+                Configure o território (Google Sheets ou servidor) para carregar o mapa de presença e lideranças.
               </div>
-              <div className="xl:col-span-2">
-                <label className="mb-2 block text-xs font-semibold uppercase tracking-wide text-text-muted">Ação</label>
-                <button type="submit" disabled={saving} className={cn(sidebarPrimaryCTAButtonClass(isCockpitDark), 'w-full justify-center')}>
-                  {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-                  {editingAgendaId ? 'Atualizar' : 'Salvar'}
-                </button>
-              </div>
-              <div className="xl:col-span-12">
-                <label className="mb-2 block text-xs font-semibold uppercase tracking-wide text-text-muted">Descrição</label>
-                <textarea rows={2} value={formData.description} onChange={(e) => setFormData((prev) => ({ ...prev, description: e.target.value }))} placeholder="Detalhes da agenda, objetivos e observações." className="w-full rounded-xl border border-border-card bg-bg-surface px-3 py-2 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-accent-gold/40" />
-              </div>
-            </form>
-            {formError ? (
-              <div className="mt-4 rounded-lg border border-status-danger/30 bg-status-danger/10 p-3 text-sm text-status-danger">{formError}</div>
-            ) : null}
+            )}
           </div>
         </section>
 
-        <section className="animate-reveal animate-reveal-3">
+        <section className="animate-reveal animate-reveal-4">
           <div className={cn('rounded-2xl border p-6 backdrop-blur', sectionShellClass)}>
             <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
               <h2 className="text-lg font-semibold text-text-primary">Agenda inteligente</h2>
@@ -506,8 +687,8 @@ export default function CampoPage() {
               <div className="space-y-3">
                 {agendasListadas.map((agenda) => (
                   <article key={agenda.id} className={cn('group rounded-xl border p-4 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-card', innerPanelClass)}>
-                    <div className="flex flex-wrap items-start justify-between gap-3">
-                      <div className="min-w-0 flex-1">
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-3">
+                      <div className="min-w-0 w-full flex-1">
                         <div className="mb-2 flex flex-wrap items-center gap-2">
                           <span className={cn('rounded-lg px-2 py-1 text-xs font-semibold', statusBadgeClass(agenda.status))}>{agenda.status}</span>
                           <span className="inline-flex items-center gap-1 text-xs text-text-secondary">
@@ -519,8 +700,10 @@ export default function CampoPage() {
                             {agenda.type}
                           </span>
                         </div>
-                        <h3 className="truncate text-sm font-semibold text-text-primary">{agenda.cities?.name ?? 'Cidade não informada'}</h3>
-                        {agenda.description ? <p className="mt-1 line-clamp-2 text-sm text-text-secondary">{agenda.description}</p> : null}
+                        <h3 className="break-words text-sm font-semibold text-text-primary sm:truncate">{agenda.cities?.name ?? 'Cidade não informada'}</h3>
+                        {agenda.description ? (
+                          <p className="mt-1 break-words text-sm leading-relaxed text-text-secondary">{agenda.description}</p>
+                        ) : null}
                         {agenda.status === 'concluida' && agenda.visits?.[0] ? (
                           <div className="mt-2 inline-flex items-center gap-2 rounded-md bg-status-success/10 px-2 py-1 text-xs text-status-success">
                             <CheckCircle2 className="h-3.5 w-3.5" />
@@ -528,7 +711,7 @@ export default function CampoPage() {
                           </div>
                         ) : null}
                       </div>
-                      <div className="flex items-center gap-2">
+                      <div className="flex w-full shrink-0 flex-wrap items-center justify-end gap-2 sm:w-auto sm:justify-start">
                         <button type="button" onClick={() => startEditAgenda(agenda)} className="inline-flex items-center gap-1 rounded-lg border border-border-card px-2.5 py-1.5 text-xs font-medium text-text-secondary transition-colors hover:bg-bg-app hover:text-text-primary">
                           <Pencil className="h-3.5 w-3.5" />
                           Editar

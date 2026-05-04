@@ -40,6 +40,8 @@ export interface MapStats {
   insightPrincipal: string
 }
 
+type MapAppearance = 'light' | 'dark'
+
 interface MapWrapperProps {
   cidadesComPresenca: string[]
   cidadesVisitadas?: string[]
@@ -50,6 +52,8 @@ interface MapWrapperProps {
   territoriosFrios?: TerritorioInfo[]
   filtroAtivo?: string
   onStatsCalculated?: (stats: MapStats) => void
+  /** Alinha tiles, popups e marcadores ao tema claro/escuro do app */
+  appearance?: MapAppearance
 }
 
 // ========== Constants ==========
@@ -89,24 +93,44 @@ function findEleitorado(nomeCidade: string, eleitoresPorCidade: Record<string, n
 }
 
 // ========== Tooltip HTML Generator ==========
-function createTooltipHTML(config: {
-  nome: string
-  tipo: 'visitada' | 'com-presenca' | 'sem-presenca' | 'oportunidade'
-  eleitorado: number
-  classificacao?: string | null
-  motivo?: string | null
-  expectativaVotos?: number
-  visitas?: number
-}): string {
+function createTooltipHTML(
+  appearance: MapAppearance,
+  config: {
+    nome: string
+    tipo: 'visitada' | 'com-presenca' | 'sem-presenca' | 'oportunidade'
+    eleitorado: number
+    classificacao?: string | null
+    motivo?: string | null
+    expectativaVotos?: number
+    visitas?: number
+  },
+): string {
   const { nome, tipo, eleitorado, classificacao, motivo, expectativaVotos, visitas } = config
+  const isDark = appearance === 'dark'
 
-  const statusMap: Record<string, { text: string; color: string; headerBg: string }> = {
-    'visitada': { text: '✓ Visitada', color: '#2563EB', headerBg: '#1D4ED8' },
-    'com-presenca': { text: '● Com liderança', color: '#2563EB', headerBg: '#2563EB' },
-    'sem-presenca': { text: '⚠ Sem liderança', color: '#DC2626', headerBg: '#DC2626' },
-    'oportunidade': { text: '🎯 Oportunidade', color: '#D97706', headerBg: '#B45309' },
-  }
+  const statusMap: Record<string, { text: string; color: string; headerBg: string }> = isDark
+    ? {
+        visitada: { text: '✓ Visitada', color: '#5eead4', headerBg: '#0f766e' },
+        'com-presenca': { text: '● Com liderança', color: '#99f6e4', headerBg: '#115e59' },
+        'sem-presenca': { text: '⚠ Sem liderança', color: '#fca5a5', headerBg: '#991b1b' },
+        oportunidade: { text: '🎯 Oportunidade', color: '#fcd34d', headerBg: '#92400e' },
+      }
+    : {
+        visitada: { text: '✓ Visitada', color: '#2563EB', headerBg: '#1D4ED8' },
+        'com-presenca': { text: '● Com liderança', color: '#2563EB', headerBg: '#2563EB' },
+        'sem-presenca': { text: '⚠ Sem liderança', color: '#DC2626', headerBg: '#DC2626' },
+        oportunidade: { text: '🎯 Oportunidade', color: '#D97706', headerBg: '#B45309' },
+      }
   const s = statusMap[tipo]
+
+  const rowBorder = isDark ? '#334155' : '#F3F4F6'
+  const muted = isDark ? '#94a3b8' : '#6B7280'
+  const strong = isDark ? '#f1f5f9' : '#1F2937'
+  const bodyBg = isDark ? '#0f172a' : 'white'
+  const motivoBoxBg = isDark ? 'rgba(30,41,59,0.95)' : '#F9FAFB'
+  const motivoBoxFg = isDark ? '#cbd5e1' : '#4B5563'
+  const oportBoxBg = isDark ? 'rgba(120,53,15,0.45)' : '#FEF3C7'
+  const oportBoxFg = isDark ? '#fde68a' : '#92400E'
 
   // Classification badge
   let classificacaoBadge = ''
@@ -124,36 +148,36 @@ function createTooltipHTML(config: {
 
   // Info rows
   let rows = ''
-  rows += `<div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid #F3F4F6;">
-    <span style="font-size:11px;color:#6B7280;">📍 Status</span>
+  rows += `<div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid ${rowBorder};">
+    <span style="font-size:11px;color:${muted};">📍 Status</span>
     <span style="font-size:12px;font-weight:600;color:${s.color};">${s.text}</span>
   </div>`
 
-  rows += `<div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid #F3F4F6;">
-    <span style="font-size:11px;color:#6B7280;">🗳️ Eleitores</span>
-    <span style="font-size:12px;font-weight:600;color:#1F2937;">${eleitorado > 0 ? eleitorado.toLocaleString('pt-BR') : 'N/D'}</span>
+  rows += `<div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid ${rowBorder};">
+    <span style="font-size:11px;color:${muted};">🗳️ Eleitores</span>
+    <span style="font-size:12px;font-weight:600;color:${strong};">${eleitorado > 0 ? eleitorado.toLocaleString('pt-BR') : 'N/D'}</span>
   </div>`
 
   if (visitas && visitas > 0) {
-    rows += `<div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid #F3F4F6;">
-      <span style="font-size:11px;color:#6B7280;">📋 Visitas</span>
-      <span style="font-size:12px;font-weight:600;color:#1F2937;">${visitas}</span>
+    rows += `<div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid ${rowBorder};">
+      <span style="font-size:11px;color:${muted};">📋 Visitas</span>
+      <span style="font-size:12px;font-weight:600;color:${strong};">${visitas}</span>
     </div>`
   }
 
   if (expectativaVotos && expectativaVotos > 0) {
-    rows += `<div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid #F3F4F6;">
-      <span style="font-size:11px;color:#6B7280;">🎯 Exp. Votos</span>
-      <span style="font-size:12px;font-weight:600;color:#1F2937;">${expectativaVotos.toLocaleString('pt-BR')}</span>
+    rows += `<div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid ${rowBorder};">
+      <span style="font-size:11px;color:${muted};">🎯 Exp. Votos</span>
+      <span style="font-size:12px;font-weight:600;color:${strong};">${expectativaVotos.toLocaleString('pt-BR')}</span>
     </div>`
   }
 
   let extras = ''
   if (motivo) {
-    extras += `<div style="margin-top:6px;padding:6px 8px;background:#F9FAFB;border-radius:6px;font-size:11px;color:#4B5563;line-height:1.4;">💡 ${motivo}</div>`
+    extras += `<div style="margin-top:6px;padding:6px 8px;background:${motivoBoxBg};border-radius:6px;font-size:11px;color:${motivoBoxFg};line-height:1.4;">💡 ${motivo}</div>`
   }
   if (tipo === 'oportunidade') {
-    extras += `<div style="margin-top:6px;padding:6px 8px;background:#FEF3C7;border-radius:6px;font-size:11px;color:#92400E;font-weight:600;text-align:center;">🚀 Alto potencial de crescimento</div>`
+    extras += `<div style="margin-top:6px;padding:6px 8px;background:${oportBoxBg};border-radius:6px;font-size:11px;color:${oportBoxFg};font-weight:600;text-align:center;">🚀 Alto potencial de crescimento</div>`
   }
 
   return `<div style="font-family:system-ui,-apple-system,sans-serif;min-width:220px;max-width:280px;">
@@ -161,7 +185,7 @@ function createTooltipHTML(config: {
       <strong style="color:white;font-size:14px;">${nome}</strong>
       ${classificacaoBadge}
     </div>
-    <div style="padding:10px 14px;background:white;">
+    <div style="padding:10px 14px;background:${bodyBg};">
       ${rows}
       ${extras}
     </div>
@@ -169,7 +193,44 @@ function createTooltipHTML(config: {
 }
 
 // ========== CSS Styles ==========
-const MAP_STYLES = `
+function getMapLeafletStyles(appearance: MapAppearance): string {
+  const darkChrome = `
+  .mapa-leaflet-host--dark .leaflet-container {
+    background: #0f1419 !important;
+  }
+  .mapa-leaflet-host--dark .leaflet-popup-content-wrapper {
+    background: #0f172a !important;
+    box-shadow: 0 12px 40px rgba(0,0,0,0.55) !important;
+    border: 1px solid rgba(148,163,184,0.25) !important;
+  }
+  .mapa-leaflet-host--dark .leaflet-popup-tip {
+    background: #0f172a !important;
+    box-shadow: 0 3px 14px rgba(0,0,0,0.45) !important;
+  }
+  .mapa-leaflet-host--dark .leaflet-control-zoom a {
+    background: #1e293b !important;
+    color: #e2e8f0 !important;
+    border-color: #334155 !important;
+  }
+  .mapa-leaflet-host--dark .leaflet-control-zoom a:hover {
+    background: #334155 !important;
+    color: #f8fafc !important;
+  }
+  .mapa-leaflet-host--dark .mapa-zone-label {
+    background: rgba(22, 34, 44, 0.92) !important;
+    border: 1px solid rgba(45, 212, 191, 0.22) !important;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.35) !important;
+  }
+  .mapa-leaflet-host--dark .mapa-zone-name {
+    color: #e2e8f0 !important;
+  }
+  .mapa-leaflet-host--dark .mapa-zone-forte { color: #34d399 !important; }
+  .mapa-leaflet-host--dark .mapa-zone-medio { color: #fbbf24 !important; }
+  .mapa-leaflet-host--dark .mapa-zone-fraco { color: #fb923c !important; }
+  .mapa-leaflet-host--dark .mapa-zone-critico { color: #f87171 !important; }
+`
+
+  const base = `
   .leaflet-popup-content-wrapper {
     border-radius: 12px !important;
     padding: 0 !important;
@@ -264,6 +325,8 @@ const MAP_STYLES = `
   .mapa-zone-fraco { color: #DC2626; }
   .mapa-zone-critico { color: #7C2D12; }
 `
+  return appearance === 'dark' ? base + darkChrome : base
+}
 
 // ========== Component ==========
 export function MapWrapperLeaflet({
@@ -276,6 +339,7 @@ export function MapWrapperLeaflet({
   territoriosFrios = [],
   filtroAtivo = 'todas',
   onStatsCalculated,
+  appearance = 'light',
 }: MapWrapperProps) {
   const mapRef = useRef<HTMLDivElement>(null)
   const mapInstanceRef = useRef<L.Map | null>(null)
@@ -297,6 +361,8 @@ export function MapWrapperLeaflet({
   useEffect(() => {
     if (!mapRef.current || mapInstanceRef.current) return
 
+    const isDark = appearance === 'dark'
+
     const map = L.map(mapRef.current, {
       zoomControl: true,
       attributionControl: false,
@@ -316,8 +382,10 @@ export function MapWrapperLeaflet({
     const labelsPane = map.getPane('labelsPane')
     if (labelsPane) { labelsPane.style.zIndex = '500'; labelsPane.style.pointerEvents = 'none' }
 
-    // Clean tile layer (CartoDB Positron)
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+    const tileUrl = isDark
+      ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
+      : 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png'
+    L.tileLayer(tileUrl, {
       attribution: '&copy; OSM &copy; CARTO',
       maxZoom: 19,
       subdomains: 'abcd',
@@ -469,11 +537,12 @@ export function MapWrapperLeaflet({
     const zonasLayer = L.layerGroup()
 
     // ========== 1) HEATMAP CIRCLES ==========
+    const heatColor = isDark ? '#2dd4bf' : '#3B82F6'
     cidades.filter(c => c.tipo === 'visitada' || c.tipo === 'com-presenca').forEach(c => {
-      const opacity = c.tipo === 'visitada' ? 0.1 : 0.06
+      const opacity = c.tipo === 'visitada' ? (isDark ? 0.14 : 0.1) : (isDark ? 0.09 : 0.06)
       L.circle([c.municipio.lat, c.municipio.lng], {
         radius: 25000,
-        fillColor: '#3B82F6',
+        fillColor: heatColor,
         fillOpacity: opacity,
         stroke: false,
         pane: 'heatmapPane',
@@ -493,19 +562,22 @@ export function MapWrapperLeaflet({
       const normalizedLat = (municipio.lat - minLat) / latRange // 0 (south) to 1 (north)
       const animDelay = Math.round((1 - normalizedLat) * 1500)
 
-      const tooltipHTML = createTooltipHTML({ nome: municipio.nome, tipo, eleitorado, classificacao, motivo, expectativaVotos, visitas })
+      const tooltipHTML = createTooltipHTML(appearance, { nome: municipio.nome, tipo, eleitorado, classificacao, motivo, expectativaVotos, visitas })
 
       if (tipo === 'visitada') {
         const size = 24
+        const vBg = isDark ? '#0d9488' : '#2563EB'
+        const vBorder = isDark ? '#0f766e' : '#1D4ED8'
+        const vShadow = isDark ? '0 2px 12px rgba(45,212,191,0.45)' : '0 2px 8px rgba(37,99,235,0.5)'
         const icon = L.divIcon({
           className: '',
           html: `<div style="width:${size}px;height:${size}px;position:relative;">
             <div class="mapa-marker-dot" style="
               width:${size}px;height:${size}px;
-              background:#2563EB;
-              border:2px solid #1D4ED8;
+              background:${vBg};
+              border:2px solid ${vBorder};
               display:flex;align-items:center;justify-content:center;
-              box-shadow:0 2px 8px rgba(37,99,235,0.5);
+              box-shadow:${vShadow};
               animation-delay:${animDelay}ms;
             ">
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
@@ -524,14 +596,17 @@ export function MapWrapperLeaflet({
       } else if (tipo === 'com-presenca') {
         const size = 14
         const container = size + 10
+        const cBg = isDark ? '#14b8a6' : '#3B82F6'
+        const cBorder = isDark ? '#0d9488' : '#2563EB'
+        const cShadow = isDark ? '0 1px 6px rgba(45,212,191,0.35)' : '0 1px 4px rgba(37,99,235,0.4)'
         const icon = L.divIcon({
           className: '',
           html: `<div style="width:${container}px;height:${container}px;position:relative;">
             <div class="mapa-marker-dot" style="
               width:${size}px;height:${size}px;
-              background:#3B82F6;
-              border:2px solid #2563EB;
-              box-shadow:0 1px 4px rgba(37,99,235,0.4);
+              background:${cBg};
+              border:2px solid ${cBorder};
+              box-shadow:${cShadow};
               animation-delay:${animDelay}ms;
             "></div>
           </div>`,
@@ -631,8 +706,37 @@ export function MapWrapperLeaflet({
     }
     Object.values(layersRef.current).forEach(layer => layer.addTo(map))
 
+    const containerEl = mapRef.current
+    const scheduleInvalidateSize = () => {
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          const m = mapInstanceRef.current
+          if (!m) return
+          try {
+            m.invalidateSize({ animate: false })
+          } catch {
+            // mapa já removido
+          }
+        })
+      })
+    }
+
+    let resizeObserver: ResizeObserver | null = null
+    if (typeof ResizeObserver !== 'undefined' && containerEl) {
+      resizeObserver = new ResizeObserver(() => scheduleInvalidateSize())
+      resizeObserver.observe(containerEl)
+    }
+    window.addEventListener('resize', scheduleInvalidateSize)
+    document.addEventListener('fullscreenchange', scheduleInvalidateSize)
+    scheduleInvalidateSize()
+    const invalidateDelays = [120, 400].map((ms) => window.setTimeout(scheduleInvalidateSize, ms))
+
     // Cleanup
     return () => {
+      invalidateDelays.forEach((id) => window.clearTimeout(id))
+      resizeObserver?.disconnect()
+      window.removeEventListener('resize', scheduleInvalidateSize)
+      document.removeEventListener('fullscreenchange', scheduleInvalidateSize)
       if (mapInstanceRef.current) {
         mapInstanceRef.current.remove()
         mapInstanceRef.current = null
@@ -640,7 +744,7 @@ export function MapWrapperLeaflet({
         statsCalculatedRef.current = false
       }
     }
-  }, [cidadesComPresenca, cidadesVisitadas, municipiosPiaui, eleitoresPorCidade, onStatsCalculated])
+  }, [cidadesComPresenca, cidadesVisitadas, municipiosPiaui, eleitoresPorCidade, onStatsCalculated, appearance])
 
   // ========== Handle filter changes ==========
   useEffect(() => {
@@ -678,10 +782,14 @@ export function MapWrapperLeaflet({
     }
   }, [filtroAtivo])
 
+  const hostClass = appearance === 'dark' ? 'mapa-leaflet-host--dark' : 'mapa-leaflet-host--light'
+
   return (
     <>
-      <style>{MAP_STYLES}</style>
-      <div ref={mapRef} style={{ width: '100%', height: '100%' }} />
+      <style>{getMapLeafletStyles(appearance)}</style>
+      <div className={hostClass} style={{ position: 'relative', width: '100%', height: '100%' }}>
+        <div ref={mapRef} style={{ width: '100%', height: '100%' }} />
+      </div>
     </>
   )
 }

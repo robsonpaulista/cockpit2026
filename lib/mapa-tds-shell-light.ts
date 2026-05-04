@@ -1,12 +1,12 @@
-const MAPA_TDS_ROUTE = '/dashboard/territorio/mapa-tds'
+import { pathnameUsesMapaFuturisticShell } from '@/lib/dashboard-mapa-futuristic-chrome'
 
-/** Mapa TDs em modo claro: aparência global clara OU link com `tema=republicanos-claro`. */
+/** Mapa TDs / Mapa Digital IG (Mobilização) em modo claro: aparência global clara OU `tema=republicanos-claro`. */
 export function isMapaTdsShellRepublicanosLight(
   pathname: string | null | undefined,
   temaQuery: string | null | undefined,
   appearance: 'light' | 'dark'
 ): boolean {
-  if (!pathname?.startsWith(MAPA_TDS_ROUTE)) return false
+  if (!pathnameUsesMapaFuturisticShell(pathname)) return false
   if (temaQuery === 'republicanos-claro') return true
   return appearance === 'light'
 }

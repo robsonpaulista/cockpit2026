@@ -11,7 +11,6 @@ const AIAgent = dynamic(
   () => import('@/components/ai-agent').then(mod => ({ default: mod.AIAgent })),
   { ssr: false, loading: () => null }
 )
-import { MapaPresenca } from '@/components/mapa-presenca'
 import dynamic from 'next/dynamic'
 import municipiosPiaui from '@/lib/municipios-piaui.json'
 import { mockKPIs, mockAlerts } from '@/lib/mock-data'
@@ -25,7 +24,6 @@ import { KPI, Alert, NewsItem } from '@/types'
 import { useTheme } from '@/contexts/theme-context'
 import { cn } from '@/lib/utils'
 import { DashboardCockpitVivoLayout, COCKPIT_POSTS_INSIGHT_ROWS } from '@/components/dashboard-cockpit-vivo-layout'
-import { CockpitTerritorioMapEmbed } from '@/components/cockpit-territorio-map-embed'
 import { TrendingUp, MapPin, Flag, MessageSquare, ThermometerSun, ThermometerSnowflake, Flame, Activity, Maximize2, X, Lightbulb, AlertTriangle, Users, Heart, Eye, Crown, ArrowUpRight, ArrowDownRight, ArrowRight, Zap, Target, FileText, Bot, ListOrdered, BarChart3, ExternalLink } from 'lucide-react'
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 import { loadInstagramConfigAsync, fetchInstagramData } from '@/lib/instagramApi'
@@ -209,7 +207,6 @@ export default function Home() {
   const [graficoPollsTelaCheia, setGraficoPollsTelaCheia] = useState(false)
   const [filtroCidadePollsTelaCheia, setFiltroCidadePollsTelaCheia] = useState<string>('')
   const [analiseTerritoriosTelaCheia, setAnaliseTerritoriosTelaCheia] = useState(false)
-  const [showMapaPresenca, setShowMapaPresenca] = useState(true)
   const [mapaTelaCheia, setMapaTelaCheia] = useState(false)
   const [bandeirasTelaCheia, setBandeirasTelaCheia] = useState(false)
   const [alertasTelaCheia, setAlertasTelaCheia] = useState(false)
@@ -1215,7 +1212,7 @@ export default function Home() {
     return kpi
   })
 
-  const { theme } = useTheme()
+  const { theme, appearance } = useTheme()
 
   return (
     <div className={cn('min-h-screen', theme === 'cockpit' ? 'bg-bg-app' : 'bg-background')}>
@@ -2310,42 +2307,7 @@ export default function Home() {
                       </div>
                     )
                   })()}
-                  
-                  {/* Mapa: no Cockpit, mesmo Leaflet da página Mapa TDs; nos outros temas, mapa de presença */}
-                  {theme === 'cockpit' ? (
-                    <div className="mb-8 flex min-h-[min(72vh,720px)] flex-col">
-                      <CockpitTerritorioMapEmbed showHeader={false} minMapHeightClass="min-h-[min(72vh,720px)]" />
-                    </div>
-                  ) : (
-                    showMapaPresenca &&
-                    (() => {
-                      return cidadesComLiderancas.length > 0 ? (
-                        <div id="mapa-territorio-container" className="relative mb-8">
-                          <MapaPresenca
-                            cidadesComPresenca={cidadesComLiderancas}
-                            cidadesVisitadas={cidadesVisitadasLista}
-                            expectativaPorCidadeLista={expectativaPorCidadeListaMapa}
-                            totalCidades={224}
-                            fullscreen={true}
-                            showStatsOverlay={false}
-                            territoriosQuentes={territoriosQuentes}
-                            territoriosMornos={territoriosMornos}
-                            territoriosFrios={territoriosFrios}
-                            onFullscreen={() => {
-                              const container = document.getElementById('mapa-territorio-container')
-                              if (!container) return
-                              if (document.fullscreenElement) {
-                                document.exitFullscreen()
-                              } else {
-                                container.requestFullscreen().catch(() => {})
-                              }
-                            }}
-                          />
-                        </div>
-                      ) : null
-                    })()
-                  )}
-                  
+
                   {/* Territórios Quentes, Mornos e Frios */}
                   <div className="space-y-6">
                     {territoriosQuentes.length > 0 && (
@@ -2500,7 +2462,8 @@ export default function Home() {
               {cidadesComLiderancas.length > 0 ? (
                 <div className="w-full h-full">
                   <div className="w-full h-full bg-surface overflow-hidden">
-                    <MapWrapperLeaflet 
+                    <MapWrapperLeaflet
+                      appearance={appearance}
                       cidadesComPresenca={cidadesComLiderancas}
                       cidadesVisitadas={cidadesVisitadasLista}
                       municipiosPiaui={municipiosPiaui}

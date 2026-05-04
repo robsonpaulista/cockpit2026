@@ -80,6 +80,7 @@ import {
 import { loadInstagramConfigAsync } from '@/lib/instagramApi'
 import {
   fetchMobilizacaoLideresDesempenhoIgPorTd,
+  mergeLideradosEngajamentoPorHandle,
   type LiderDesempenhoIgLinha,
 } from '@/lib/mobilizacao-lideres-desempenho-ig-por-td-client'
 import { MapaDigitalIgMunicipiosResumoTable } from '@/components/mapa-digital-ig-municipios-resumo-table'
@@ -87,6 +88,7 @@ import { MapaDigitalIgRelatorioCheckExport } from '@/components/mapa-digital-ig-
 import { MapaDigitalIgMunicipioMobilizacaoDrill } from '@/components/mapa-digital-ig-municipio-mobilizacao-drill'
 import { MapaDigitalIgPublicacoesLideresCobertura } from '@/components/mapa-digital-ig-publicacoes-lideres-cobertura'
 import { MapaDigitalIgLideresDesempenhoModal } from '@/components/mapa-digital-ig-lideres-desempenho-modal'
+import { MapaDigitalIgLiderLideradosModal } from '@/components/mapa-digital-ig-lider-liderados-modal'
 import {
   MapaPesquisaRankingCandidatosModal,
   PESQUISA_MAPA_CARGO,
@@ -1509,6 +1511,28 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({
 }: MapaTerritoriosDesenvolvimentoLeafletProps) {
   const isFuturisticLight = visualPreset === 'futuristic' && visualTheme === 'light'
   const isIgOperacao = painelContext === 'digitalIg' && igViewMode === 'operacao'
+  /** Superfície única dos blocos da visão “Operação” do Mapa Digital IG (alinhada ao fundo do painel lateral). */
+  const igOperacaoCardClass = useMemo(
+    () =>
+      cn(
+        'rounded-xl border p-3 shadow-none',
+        visualPreset === 'futuristic'
+          ? isFuturisticLight
+            ? 'border-border-card/70 bg-white/55'
+            : 'border-white/[0.09] bg-[rgba(255,255,255,0.04)]'
+          : 'border-border-card/65 bg-bg-surface'
+      ),
+    [visualPreset, isFuturisticLight]
+  )
+  /** Mesma cor base da navegação da sidebar (`text-text-primary` no tema). */
+  const igOperacaoTituloClass = useMemo(
+    () => 'shrink-0 text-[10px] font-semibold uppercase tracking-[0.14em] text-text-primary',
+    []
+  )
+  const igOperacaoHintClass = useMemo(() => 'text-xs text-text-primary/90', [])
+  /** Corpo do gráfico: em xl cresce com a linha (`flex-1`); em mobile mantém altura mínima. */
+  const igOperacaoChartFillClass =
+    'flex min-h-[11rem] flex-1 flex-col overflow-y-auto overscroll-y-contain pr-0.5 [scrollbar-width:thin] xl:min-h-0'
   const { collapsed: sidebarCollapsed } = useSidebar()
   const painelResumoMaxRemRef = useRef(PAINEL_RESUMO_TD_MAX_REM_EXPANDED)
 
@@ -1556,7 +1580,8 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({
     return () => mq.removeEventListener('change', sync)
   }, [])
 
-  const [loadState, setLoadState] = useState<LoadState>('loading')
+  /** Mapa Digital IG em “operação” não usa Leaflet; o painel não pode depender da malha para sair de `loading`. */
+  const [loadState, setLoadState] = useState<LoadState>(() => (isIgOperacao ? 'ready' : 'loading'))
   const [errorMessage, setErrorMessage] = useState<string>('')
   const [highlightedTd, setHighlightedTd] = useState<TerritorioDesenvolvimentoPI | null>(null)
   const [tdSort, setTdSort] = useState<{ key: TdSortKey; direction: TdSortDirection }>({
@@ -1658,6 +1683,7 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({
     municipio: string | null
   } | null>(null)
   const [operacaoTopLideres, setOperacaoTopLideres] = useState<LiderDesempenhoIgLinha[]>([])
+  const [igLiderLideradosModal, setIgLiderLideradosModal] = useState<LiderDesempenhoIgLinha | null>(null)
   const [operacaoTopCidades, setOperacaoTopCidades] = useState<
     Array<{ nome: string; ativacaoPct: number; comentarios: number }>
   >([])
@@ -3753,18 +3779,37 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({
       if (cancelled) return
 
       const leadersById = new Map<string, LiderDesempenhoIgLinha>()
+      const mergeHandles = (a: string[] | undefined, b: string[] | undefined): string[] => {
+        const s = new Set<string>()
+        for (const h of a ?? []) {
+          if (h) s.add(h)
+        }
+        for (const h of b ?? []) {
+          if (h) s.add(h)
+        }
+        return Array.from(s).sort((x, y) => x.localeCompare(y, 'pt-BR', { sensitivity: 'base' }))
+      }
       leadersRes.forEach((res) => {
         if (!res.ok) return
         res.data.lideres.forEach((lider) => {
           const prev = leadersById.get(lider.id)
           if (!prev) {
-            leadersById.set(lider.id, { ...lider })
+            leadersById.set(lider.id, {
+              ...lider,
+              lideradosInstagram: lider.lideradosInstagram ?? [],
+              lideradosEngajamento: lider.lideradosEngajamento ?? [],
+            })
             return
           }
           prev.lideradosComRede += lider.lideradosComRede
           prev.publicacoes += lider.publicacoes
           prev.comentarios += lider.comentarios
           prev.lideradosQueComentaram += lider.lideradosQueComentaram
+          prev.lideradosInstagram = mergeHandles(prev.lideradosInstagram, lider.lideradosInstagram)
+          prev.lideradosEngajamento = mergeLideradosEngajamentoPorHandle(
+            prev.lideradosEngajamento,
+            lider.lideradosEngajamento
+          )
           prev.pctParticipacao =
             igAgregadoAtual.postagensProcessadas > 0
               ? (prev.publicacoes / igAgregadoAtual.postagensProcessadas) * 100
@@ -4003,6 +4048,8 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({
   }, [highlightedTd, municipioFocadoLiderancas, municipioMobilizacaoDrillIg])
 
   useEffect(() => {
+    if (isIgOperacao) return
+
     const el = containerRef.current
     if (!el) return
 
@@ -4366,7 +4413,7 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({
         mapRef.current = null
       }
     }
-  }, [visualPreset, visualTheme, painelContext])
+  }, [visualPreset, visualTheme, painelContext, isIgOperacao])
 
   /**
    * Depende de `mapHostAlturaFixaPx`: ao focar um TD a lista aumenta o minHeight e a altura fixa do
@@ -4899,7 +4946,7 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({
       ref={rootRef}
       className={cn(
         'relative z-0 flex min-h-0 w-full flex-col bg-transparent',
-        alturaExtraPainelListaPx > 0 ? 'h-auto min-h-0' : 'h-full min-h-0'
+        alturaExtraPainelListaPx > 0 ? 'h-auto min-h-0' : 'min-h-0 flex-1'
       )}
       style={
         alturaExtraPainelListaPx > 0 && alturaAreaMapaPx > 0
@@ -4920,7 +4967,7 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({
                 : 'flex min-h-0 flex-1 basis-0 flex-col'
         )}
       >
-        {/* Viewport do mapa — em split encolhe para a largura real do Piauí via ajustarCaixaMapaAoViewportPiaui */}
+        {/* Viewport Leaflet — apenas eleitoral / pesquisas / IG “análise”; visão Operação do IG é só painel (dados). */}
         {!isIgOperacao ? (
         <div
           ref={viewportFitRef}
@@ -5022,7 +5069,10 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({
             className={cn(
               'pointer-events-none min-w-0',
               isIgOperacao
-                ? 'relative flex min-h-0 flex-1 flex-col overflow-x-hidden overflow-y-auto'
+                ? cn(
+                    'relative flex min-h-0 flex-1 flex-col overflow-x-hidden overflow-y-auto',
+                    isFuturisticLight ? 'bg-white' : 'bg-bg-sidebar',
+                  )
                 : futSplit
                 ? cn(
                     'relative flex min-h-0 flex-1 flex-col overflow-x-hidden overflow-y-auto',
@@ -5043,7 +5093,7 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({
               'pointer-events-auto relative w-full max-w-full min-w-0 p-0',
               'text-text-primary',
               isIgOperacao || futSplit
-                ? 'flex-1 overflow-x-hidden overflow-y-auto'
+                ? 'flex min-h-0 flex-1 flex-col overflow-x-hidden overflow-y-auto'
                 : 'z-[1100] max-h-[min(85dvh,calc(100dvh-7rem))] overflow-x-hidden overflow-y-auto overscroll-contain'
             )}
             aria-label={
@@ -5054,7 +5104,9 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({
                   : 'Mapa de dominância eleitoral por território de desenvolvimento'
             }
           >
-            <div className={cn('space-y-1', isIgOperacao && 'lg:grid lg:grid-cols-2 lg:gap-4 lg:space-y-0')}>
+            <div
+              className={isIgOperacao ? 'flex shrink-0 flex-col gap-3' : 'space-y-1'}
+            >
               {!isIgOperacao ? (
                 <h2
                   className={cn(
@@ -5066,7 +5118,7 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({
                 </h2>
               ) : null}
               {painelContext === 'digitalIg' ? (
-                <div className={cn('mt-2 flex flex-col gap-2', isIgOperacao && 'lg:col-span-2')}>
+                <div className="mt-2 flex flex-col gap-2">
                   {igLoadState === 'loading' ? (
                     <p className="text-[10px] text-text-muted sm:text-[11px]">Carregando comentários salvos…</p>
                   ) : null}
@@ -5165,7 +5217,9 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({
                       visualPreset === 'futuristic'
                         ? isFuturisticLight
                           ? 'text-text-secondary'
-                          : 'text-white'
+                          : isIgOperacao
+                            ? 'text-text-primary'
+                            : 'text-white'
                         : 'text-text-secondary'
                     )}
                   >
@@ -5180,7 +5234,9 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({
                       visualPreset === 'futuristic'
                         ? isFuturisticLight
                           ? 'border border-border-card/80 bg-bg-surface text-text-primary [&>option]:bg-bg-surface [&>option]:text-text-primary'
-                          : 'border border-white/15 bg-transparent text-white [&>option]:bg-bg-surface [&>option]:text-white'
+                          : isIgOperacao
+                            ? 'border border-white/15 bg-transparent text-text-primary [&>option]:bg-bg-surface [&>option]:text-text-primary'
+                            : 'border border-white/15 bg-transparent text-white [&>option]:bg-bg-surface [&>option]:text-white'
                         : 'border border-card bg-surface'
                     )}
                   >
@@ -5201,7 +5257,9 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({
                       visualPreset === 'futuristic'
                         ? isFuturisticLight
                           ? 'text-text-secondary'
-                          : 'text-white'
+                          : isIgOperacao
+                            ? 'text-text-primary'
+                            : 'text-white'
                         : 'text-text-secondary'
                     )}
                     title="Ordenar todas as colunas em sequência (A→Z = menor primeiro; Z→A = maior primeiro nos números)"
@@ -5230,7 +5288,9 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({
                               : 'border border-border-card/80 bg-bg-surface text-text-secondary'
                             : bulkColunasPainelResumoTd === 'all_az'
                               ? 'border border-white/35 bg-white/15 text-white'
-                              : 'border border-white/15 bg-transparent text-white/90'
+                              : isIgOperacao
+                                ? 'border border-white/15 bg-transparent text-text-primary/90'
+                                : 'border border-white/15 bg-transparent text-white/90'
                           : bulkColunasPainelResumoTd === 'all_az'
                             ? 'border border-accent-gold-soft bg-accent-gold-soft/15 text-text-primary'
                             : 'border border-card bg-surface text-text-secondary'
@@ -5259,7 +5319,9 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({
                               : 'border border-border-card/80 bg-bg-surface text-text-secondary'
                             : bulkColunasPainelResumoTd === 'all_za'
                               ? 'border border-white/35 bg-white/15 text-white'
-                              : 'border border-white/15 bg-transparent text-white/90'
+                              : isIgOperacao
+                                ? 'border border-white/15 bg-transparent text-text-primary/90'
+                                : 'border border-white/15 bg-transparent text-white/90'
                           : bulkColunasPainelResumoTd === 'all_za'
                             ? 'border border-accent-gold-soft bg-accent-gold-soft/15 text-text-primary'
                             : 'border border-card bg-surface text-text-secondary'
@@ -5271,8 +5333,18 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({
                 </div>
               </div>
             </div>
-            <div className={cn('w-full min-w-0', isIgOperacao && 'lg:col-span-2')}>
-            <div className="td-resumo-map-table-wrap mt-2 w-full min-w-0 max-w-full">
+            <div
+              className={cn(
+                'w-full min-w-0',
+                isIgOperacao && 'min-h-0 flex-1 flex flex-col'
+              )}
+            >
+            <div
+              className={cn(
+                'td-resumo-map-table-wrap mt-2 w-full min-w-0 max-w-full',
+                isIgOperacao && 'min-h-0 flex-1'
+              )}
+            >
               {painelContext === 'digitalIg' ? (
                 <>
                 {igViewMode === 'analise' ? (
@@ -5632,120 +5704,66 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({
                 ) : (
                   <div className="space-y-3">
                     <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
-                      <div
-                        className={cn(
-                          'rounded-xl border p-3',
-                          visualPreset === 'futuristic'
-                            ? isFuturisticLight
-                              ? 'border-border-card/80 bg-bg-surface'
-                              : 'border-white/[0.07] bg-bg-surface'
-                            : 'border-border-card bg-bg-surface'
-                        )}
-                      >
-                        <p className="text-[11px] font-semibold uppercase tracking-wide text-text-muted">Ativação digital</p>
+                      <div className={igOperacaoCardClass}>
+                        <p className={cn(igOperacaoTituloClass, 'mb-1')}>Ativação digital</p>
                         <p className="mt-1 text-2xl font-bold tabular-nums text-text-primary">
                           {ativacaoDigitalGeralPct.toFixed(1)}%
                         </p>
-                        <p className="mt-1 text-[11px] text-text-secondary">
+                        <p className={cn('mt-1', igOperacaoHintClass)}>
                           {igAgregadoAtual.midiasComComentarioVinculadas.toLocaleString('pt-BR')} posts com comentário em{' '}
                           {igAgregadoAtual.postagensProcessadas.toLocaleString('pt-BR')} analisados
                         </p>
                       </div>
-                      <div
-                        className={cn(
-                          'rounded-xl border p-3',
-                          visualPreset === 'futuristic'
-                            ? isFuturisticLight
-                              ? 'border-border-card/80 bg-bg-surface'
-                              : 'border-white/[0.07] bg-bg-surface'
-                            : 'border-border-card bg-bg-surface'
-                        )}
-                      >
-                        <p className="text-[11px] font-semibold uppercase tracking-wide text-text-muted">Territórios críticos</p>
-                        <p className="mt-1 text-2xl font-bold tabular-nums text-status-danger">
+                      <div className={igOperacaoCardClass}>
+                        <p className={cn(igOperacaoTituloClass, 'mb-1')}>Territórios críticos</p>
+                        <p className="mt-1 text-2xl font-bold tabular-nums text-text-primary">
                           {linhasIgOperacaoCriticas.length}
                         </p>
-                        <p className="mt-1 text-[11px] text-text-secondary">Crítico ou atenção neste recorte</p>
+                        <p className={cn('mt-1', igOperacaoHintClass)}>Crítico ou atenção neste recorte</p>
                       </div>
-                      <div
-                        className={cn(
-                          'rounded-xl border p-3',
-                          visualPreset === 'futuristic'
-                            ? isFuturisticLight
-                              ? 'border-border-card/80 bg-bg-surface'
-                              : 'border-white/[0.07] bg-bg-surface'
-                            : 'border-border-card bg-bg-surface'
-                        )}
-                      >
-                        <p className="text-[11px] font-semibold uppercase tracking-wide text-text-muted">Melhor entrega</p>
+                      <div className={igOperacaoCardClass}>
+                        <p className={cn(igOperacaoTituloClass, 'mb-1')}>Melhor entrega</p>
                         <p className="mt-1 text-sm font-semibold text-text-primary">
                           {melhorTerritorioIgOperacao?.territorio ?? '—'}
                         </p>
-                        <p className="mt-1 text-[11px] tabular-nums text-status-success">
+                        <p className="mt-1 text-[11px] tabular-nums text-text-primary">
                           {melhorTerritorioIgOperacao ? `${melhorTerritorioIgOperacao.ativacaoPct.toFixed(1)}% de ativação` : 'Sem dados'}
                         </p>
                       </div>
-                      <div
-                        className={cn(
-                          'rounded-xl border p-3',
-                          visualPreset === 'futuristic'
-                            ? isFuturisticLight
-                              ? 'border-border-card/80 bg-bg-surface'
-                              : 'border-white/[0.07] bg-bg-surface'
-                            : 'border-border-card bg-bg-surface'
-                        )}
-                      >
-                        <p className="text-[11px] font-semibold uppercase tracking-wide text-text-muted">Maior problema</p>
+                      <div className={igOperacaoCardClass}>
+                        <p className={cn(igOperacaoTituloClass, 'mb-1')}>Maior problema</p>
                         <p className="mt-1 text-sm font-semibold text-text-primary">
                           {piorTerritorioIgOperacao?.territorio ?? '—'}
                         </p>
-                        <p className="mt-1 text-[11px] tabular-nums text-status-danger">
+                        <p className="mt-1 text-[11px] tabular-nums text-text-primary">
                           {piorTerritorioIgOperacao ? `${piorTerritorioIgOperacao.ativacaoPct.toFixed(1)}% de ativação` : 'Sem dados'}
                         </p>
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-1 gap-3 xl:grid-cols-2 xl:items-stretch">
-                      <div
-                        className={cn(
-                          'flex min-h-0 flex-col rounded-xl border p-3 xl:h-full',
-                          visualPreset === 'futuristic'
-                            ? isFuturisticLight
-                              ? 'border-border-card/80 bg-bg-surface'
-                              : 'border-white/[0.07] bg-bg-surface'
-                            : 'border-border-card bg-bg-surface'
-                        )}
-                      >
-                        <p className="mb-2 shrink-0 text-xs font-semibold uppercase tracking-wide text-text-muted">
-                          Engajamento por cidade (top)
-                        </p>
+                    <div className="grid min-h-0 grid-cols-1 gap-3 xl:h-[min(42dvh,27.5rem)] xl:min-h-[15.5rem] xl:grid-cols-2 xl:items-stretch">
+                      <div className={cn('flex h-full min-h-0 flex-col', igOperacaoCardClass)}>
+                        <p className={cn(igOperacaoTituloClass, 'mb-2')}>Engajamento por cidade (top)</p>
                         {operacaoTopCidades.length === 0 ? (
-                          <p className="text-xs text-text-secondary">
+                          <p className={igOperacaoHintClass}>
                             Sem cidades com comentário vinculado no recorte atual. Esse bloco considera cidades dos liderados que comentaram.
                           </p>
                         ) : (
-                          <div className="flex min-h-[11rem] flex-1 flex-col xl:min-h-0">
-                            <div className="grid min-h-0 flex-1 grid-cols-4 gap-2 sm:grid-cols-6 xl:grid-cols-8">
+                          <div className={igOperacaoChartFillClass}>
+                            <div className="grid h-full min-h-0 flex-1 auto-rows-fr grid-cols-4 gap-2 sm:grid-cols-6 xl:grid-cols-8">
                               {(() => {
                                 const maxCityAtivacao = Math.max(1, ...operacaoTopCidades.map((c) => c.ativacaoPct))
                                 return operacaoTopCidades.map((row, idx) => (
                                   <div
                                     key={`city-oper-${row.nome}`}
-                                    className="flex min-h-0 flex-col items-center gap-1"
+                                    className="flex h-full min-h-0 flex-col items-center justify-between gap-1"
                                   >
-                                    <span className="shrink-0 text-[11px] font-semibold text-text-primary">
+                                    <span className="shrink-0 text-[11px] font-semibold tabular-nums text-text-primary">
                                       {row.ativacaoPct.toFixed(0)}%
                                     </span>
                                     <div className="flex min-h-0 w-full flex-1 flex-col justify-end">
                                       <div
-                                        className={cn(
-                                          'min-h-[4px] w-full rounded-t-md transition-[height] duration-700 ease-out',
-                                          visualPreset === 'futuristic'
-                                            ? isFuturisticLight
-                                              ? 'bg-[linear-gradient(180deg,rgb(var(--accent-gold))_0%,rgb(var(--accent-gold-dark))_100%)]'
-                                              : 'bg-[linear-gradient(180deg,rgba(45,212,191,0.92)_0%,rgba(14,165,183,0.92)_100%)]'
-                                            : 'bg-[linear-gradient(180deg,rgb(var(--accent-gold))_0%,rgb(var(--accent-gold-dark))_100%)]'
-                                        )}
+                                        className="min-h-[4px] w-full rounded-t-md bg-blue-600 transition-[height] duration-700 ease-out"
                                         style={{
                                           height: `${Math.max((row.ativacaoPct / maxCityAtivacao) * 100, 8)}%`,
                                           transitionDelay: `${idx * 45}ms`,
@@ -5753,7 +5771,7 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({
                                       />
                                     </div>
                                     <span
-                                      className="line-clamp-1 w-full shrink-0 text-center text-[11px] uppercase text-text-secondary"
+                                      className="line-clamp-1 w-full shrink-0 text-center text-[11px] uppercase text-text-primary/90"
                                       title={row.nome}
                                     >
                                       {row.nome}
@@ -5765,23 +5783,15 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({
                           </div>
                         )}
                       </div>
-                      <div
-                        className={cn(
-                          'flex min-h-0 flex-col rounded-xl border p-3 xl:h-full',
-                          visualPreset === 'futuristic'
-                            ? isFuturisticLight
-                              ? 'border-border-card/80 bg-bg-surface'
-                              : 'border-white/[0.07] bg-bg-surface'
-                            : 'border-border-card bg-bg-surface'
-                        )}
-                      >
-                        <p className="mb-2 shrink-0 text-[13px] font-semibold uppercase tracking-wide text-text-muted">
-                          Engajamento por líder (ranking geral)
+                      <div className={cn('flex h-full min-h-0 flex-col', igOperacaoCardClass)}>
+                        <p className={cn(igOperacaoTituloClass, 'mb-2')}>Engajamento por líder (ranking geral)</p>
+                        <p className={cn('mb-2 shrink-0', igOperacaoHintClass)}>
+                          Duplo clique na barra: métricas por liderado (@).
                         </p>
                         {operacaoTopLideres.length === 0 ? (
-                          <p className="text-xs text-text-secondary">Sem líderes com desempenho disponível neste recorte.</p>
+                          <p className={igOperacaoHintClass}>Sem líderes com desempenho disponível neste recorte.</p>
                         ) : (
-                          <div className="space-y-2">
+                          <div className={cn(igOperacaoChartFillClass, 'space-y-2')}>
                             {operacaoTopLideres.map((lider) => {
                               const detalheEngajamentoLider = `${fmtInt.format(lider.comentarios)} ${
                                 lider.comentarios === 1 ? 'comentário' : 'comentários'
@@ -5792,30 +5802,27 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({
                               <div key={`leader-oper-${lider.id}`} className="space-y-1.5">
                                 <div className="flex items-center justify-between gap-2 text-sm">
                                   <div className="flex min-w-0 flex-1 items-center gap-1.5">
-                                    <span className="min-w-0 truncate text-[13px] font-semibold text-text-primary" title={lider.nome}>
+                                    <span className="min-w-0 truncate font-semibold text-text-primary" title={lider.nome}>
                                       {lider.nome}
                                     </span>
                                     <span
-                                      className="shrink-0 whitespace-nowrap text-[12px] tabular-nums text-text-secondary"
+                                      className="shrink-0 whitespace-nowrap text-xs tabular-nums text-text-primary/90 sm:text-sm"
                                       title={detalheEngajamentoLider}
                                     >
                                       · {fmtInt.format(lider.comentarios)} coment. · {fmtInt.format(lider.publicacoes)} pub.
                                     </span>
                                   </div>
-                                  <span className="shrink-0 tabular-nums text-[14px] font-semibold text-text-primary">
+                                  <span className="shrink-0 text-[11px] font-semibold tabular-nums text-text-primary">
                                     {lider.pctParticipacao.toFixed(1)}%
                                   </span>
                                 </div>
-                                <div className="h-1.5 overflow-hidden rounded-full bg-border-card/60">
+                                <div
+                                  title="Duplo clique: métricas por liderado"
+                                  className="h-2 cursor-pointer overflow-hidden rounded-full bg-border-card/60"
+                                  onDoubleClick={() => setIgLiderLideradosModal(lider)}
+                                >
                                   <div
-                                    className={cn(
-                                      'h-full rounded-full',
-                                      visualPreset === 'futuristic'
-                                        ? isFuturisticLight
-                                          ? 'bg-[linear-gradient(135deg,rgb(var(--accent-gold))_0%,rgb(var(--accent-gold-dark))_100%)]'
-                                          : 'bg-[linear-gradient(135deg,#2dd4bf_0%,#0ea5b7_100%)]'
-                                        : 'bg-[linear-gradient(135deg,rgb(var(--accent-gold))_0%,rgb(var(--accent-gold-dark))_100%)]'
-                                    )}
+                                    className="pointer-events-none h-full rounded-full bg-blue-600"
                                     style={{ width: `${Math.max(6, Math.min(100, lider.pctParticipacao))}%` }}
                                   />
                                 </div>
@@ -5828,17 +5835,8 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({
                     </div>
 
                     <div className="grid grid-cols-1 gap-3 xl:grid-cols-2">
-                      <div
-                        className={cn(
-                          'min-w-0 rounded-xl border p-3',
-                          visualPreset === 'futuristic'
-                            ? isFuturisticLight
-                              ? 'border-border-card/80 bg-bg-surface'
-                              : 'border-white/[0.07] bg-bg-surface'
-                            : 'border-border-card bg-bg-surface'
-                        )}
-                      >
-                        <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-text-muted">Território</p>
+                      <div className={cn('min-w-0', igOperacaoCardClass)}>
+                        <p className={cn(igOperacaoTituloClass, 'mb-2')}>Território</p>
                         <table
                           aria-label="Tabela operacional de decisão por território"
                           className={cn(
@@ -5913,7 +5911,7 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({
                               : row.status === 'Atenção'
                                 ? 'text-status-warning'
                                 : row.status === 'Regular'
-                                  ? 'text-text-secondary'
+                                  ? 'text-text-primary/90'
                                   : 'text-status-success'
                           return (
                             <tr key={`oper-${row.territorio}`} className="td-resumo-table__row td-resumo-table__row--data td-resumo-table__row--premium">
@@ -5932,13 +5930,13 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({
                               <td className="td-resumo-table__cell text-right tabular-nums font-semibold text-text-primary">
                                 {row.ativacaoPct.toFixed(1)}%
                               </td>
-                              <td className="td-resumo-table__cell text-right tabular-nums text-text-secondary">
+                              <td className="td-resumo-table__cell text-right tabular-nums text-text-primary">
                                 {row.engajamentoLiderPct.toFixed(1)}%
                               </td>
-                              <td className="td-resumo-table__cell text-right tabular-nums text-text-secondary">
+                              <td className="td-resumo-table__cell text-right tabular-nums text-text-primary">
                                 {igAgregadoAtual.postagensProcessadas.toLocaleString('pt-BR')}
                               </td>
-                              <td className="td-resumo-table__cell text-right tabular-nums text-text-secondary">
+                              <td className="td-resumo-table__cell text-right tabular-nums text-text-primary">
                                 -{row.gapPct.toFixed(1)} pp
                               </td>
                               <td className="td-resumo-table__cell td-resumo-table__cell--classe td-resumo-table__grupo-status-start">
@@ -5950,22 +5948,14 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({
                       </tbody>
                         </table>
                       </div>
-                      <div
-                        className={cn(
-                          'min-w-0 rounded-xl border p-3',
-                          visualPreset === 'futuristic'
-                            ? isFuturisticLight
-                              ? 'border-border-card/80 bg-bg-surface'
-                              : 'border-white/[0.07] bg-bg-surface'
-                            : 'border-border-card bg-bg-surface'
-                        )}
-                      >
+                      <div className="min-w-0">
                         <MapaDigitalIgPublicacoesLideresCobertura
                           territorioFoco={highlightedTd}
                           sidebarCollapsed={sidebarCollapsed}
                           visualPreset={visualPreset}
                           visualTheme={visualTheme}
                           modoLeitura={igViewMode}
+                          operacaoPainelShellClassName={igOperacaoCardClass}
                         />
                       </div>
                     </div>
@@ -7413,6 +7403,11 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({
           </div>
         )}
       </div>
+      <MapaDigitalIgLiderLideradosModal
+        lider={igLiderLideradosModal}
+        onClose={() => setIgLiderLideradosModal(null)}
+        visualTheme={visualTheme}
+      />
       <MapaPesquisaRankingCandidatosModal
         open={rankingCandidatosPesquisaModal !== null}
         target={rankingCandidatosPesquisaModal}

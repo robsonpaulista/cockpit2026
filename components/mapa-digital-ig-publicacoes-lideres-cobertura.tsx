@@ -23,6 +23,8 @@ type Props = {
   visualPreset: 'default' | 'futuristic'
   visualTheme?: 'dark' | 'light'
   modoLeitura?: 'analise' | 'operacao'
+  /** Em “operação”, mesma borda/fundo dos demais cards do painel (evita card duplo). */
+  operacaoPainelShellClassName?: string
 }
 
 function iniciaisNome(nome: string): string {
@@ -67,6 +69,7 @@ export function MapaDigitalIgPublicacoesLideresCobertura({
   visualPreset,
   visualTheme = 'dark',
   modoLeitura = 'analise',
+  operacaoPainelShellClassName,
 }: Props) {
   const [loadState, setLoadState] = useState<'idle' | 'loading' | 'ready' | 'error' | 'forbidden'>('idle')
   const [erro, setErro] = useState<string>('')
@@ -141,13 +144,17 @@ export function MapaDigitalIgPublicacoesLideresCobertura({
   }, [modoLeitura, posts])
 
   return (
-    <section className={cn('min-w-0', modoLeitura === 'operacao' ? 'mt-0' : 'mt-4')}>
-      <h2
-        className={cn(
-          'm-0 text-xs font-semibold uppercase tracking-wide sm:text-sm',
-          isFutDark ? 'text-text-secondary' : isFutLight ? 'text-[#334155]' : 'text-text-muted'
-        )}
-      >
+    <section
+      className={cn(
+        'min-w-0',
+        modoLeitura === 'operacao' && operacaoPainelShellClassName
+          ? cn('mt-0', operacaoPainelShellClassName)
+          : modoLeitura === 'operacao'
+            ? 'mt-0'
+            : 'mt-4'
+      )}
+    >
+      <h2 className="m-0 mb-2 shrink-0 text-[10px] font-semibold uppercase tracking-[0.14em] text-text-primary">
         Publicações recentes
       </h2>
       {loadState === 'loading' ? (
@@ -227,14 +234,59 @@ function PostCoberturaCard({
     [lideres, commenters]
   )
   const statusOperacional = pct < 30 ? 'Crítico' : pct < 60 ? 'Atenção' : pct < 80 ? 'Regular' : 'Saudável'
-  const statusOperacionalClass =
-    statusOperacional === 'Crítico'
-      ? 'text-status-danger'
-      : statusOperacional === 'Atenção'
-        ? 'text-status-warning'
-        : statusOperacional === 'Regular'
-          ? 'text-text-secondary'
-          : 'text-status-success'
+  const operacaoAtivacaoBadgeShell = cn(
+    'inline-flex items-baseline gap-1.5 rounded-lg border px-2.5 py-1.5 tabular-nums',
+    isFutDark &&
+      'border-white/[0.11] bg-white/[0.035] shadow-[inset_0_1px_0_0_rgba(255,255,255,0.05)]',
+    isFutLight && 'border-slate-200/85 bg-white/95 shadow-[0_1px_2px_rgba(15,23,42,0.04)]',
+    !isFutDark && !isFutLight && 'border-border-card/55 bg-bg-surface/90'
+  )
+  const operacaoStatusBadgeClass = cn(
+    'inline-flex items-center rounded-lg border px-2.5 py-1.5 text-[10px] font-semibold uppercase tracking-[0.14em]',
+    statusOperacional === 'Crítico' &&
+      cn(
+        'border-status-danger/28 bg-status-danger/[0.07] text-status-danger',
+        isFutDark && 'text-rose-50/95'
+      ),
+    statusOperacional === 'Atenção' &&
+      cn(
+        'border-status-warning/28 bg-status-warning/[0.08] text-status-warning',
+        isFutDark && 'text-amber-50/95'
+      ),
+    statusOperacional === 'Regular' &&
+      cn(
+        'border-border-card/55 bg-card/45 text-text-secondary',
+        isFutDark && 'border-white/12 bg-white/[0.04] text-white/80'
+      ),
+    statusOperacional === 'Saudável' &&
+      cn(
+        'border-status-success/28 bg-status-success/[0.08] text-status-success',
+        isFutDark && 'text-emerald-50/95'
+      )
+  )
+  const operacaoContagemChipClass = (variant: 'ok' | 'falta') => {
+    const shell =
+      'inline-flex items-center rounded-md border px-2 py-0.5 text-[10px] font-medium tabular-nums'
+    if (isFutLight) {
+      return cn(
+        shell,
+        variant === 'ok' && 'border-emerald-300/50 bg-emerald-50/90 text-emerald-900',
+        variant === 'falta' && 'border-rose-300/50 bg-rose-50/90 text-rose-900'
+      )
+    }
+    if (isFutDark) {
+      return cn(
+        shell,
+        variant === 'ok' && 'border-emerald-400/22 bg-emerald-500/[0.07] text-emerald-100/92',
+        variant === 'falta' && 'border-rose-400/22 bg-rose-500/[0.07] text-rose-100/92'
+      )
+    }
+    return cn(
+      shell,
+      variant === 'ok' && 'border-status-success/25 bg-status-success/10 text-status-success',
+      variant === 'falta' && 'border-status-danger/25 bg-status-danger/10 text-status-danger'
+    )
+  }
 
   return (
     <details
@@ -304,23 +356,38 @@ function PostCoberturaCard({
           {modoLeitura === 'operacao' ? (
             <div
               className={cn(
-                'mt-2 rounded-md border px-2.5 py-1.5',
-                isFutDark && 'border-white/15 bg-white/10',
-                isFutLight && 'border-slate-300/80 bg-slate-50/75',
-                !isFutDark && !isFutLight && 'border-border-card/50 bg-card/35'
+                'mt-2 border-t border-border-card/25 pt-2',
+                isFutDark && 'border-white/[0.08]',
+                isFutLight && 'border-slate-300/60'
               )}
             >
-              <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                <span className={cn('text-sm font-semibold tabular-nums text-text-primary sm:text-base', isFutDark && 'text-white')}>
-                  Ativação {new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 1 }).format(pct)}%
+              <div className="flex flex-wrap items-center gap-2">
+                <span className={operacaoAtivacaoBadgeShell}>
+                  <span
+                    className={cn(
+                      'text-[9px] font-semibold uppercase tracking-[0.14em] text-text-primary/65',
+                      isFutDark && 'text-white/45',
+                      isFutLight && 'text-slate-500'
+                    )}
+                  >
+                    Ativação
+                  </span>
+                  <span
+                    className={cn(
+                      'text-[13px] font-semibold leading-none text-text-primary',
+                      isFutDark && 'text-white',
+                      isFutLight && 'text-slate-900'
+                    )}
+                  >
+                    {new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 1 }).format(pct)}%
+                  </span>
                 </span>
-                <span className={cn('text-xs font-semibold uppercase tracking-wide', statusOperacionalClass)}>
-                  {statusOperacional}
-                </span>
+                <span className={operacaoStatusBadgeClass}>{statusOperacional}</span>
               </div>
-              <p className={cn('mt-0.5 text-xs text-text-secondary', isFutDark && 'text-white/75', isFutLight && 'text-[#475569]')}>
-                ✓ {nOk} comentaram · ✕ {naoComentaram.length} não comentaram
-              </p>
+              <div className="mt-2 flex flex-wrap gap-1.5">
+                <span className={operacaoContagemChipClass('ok')}>✓ {nOk} comentaram</span>
+                <span className={operacaoContagemChipClass('falta')}>✕ {naoComentaram.length} não comentaram</span>
+              </div>
             </div>
           ) : null}
         </div>

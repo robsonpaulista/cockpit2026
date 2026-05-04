@@ -121,16 +121,16 @@ export function MapaDigitalIgRelatorioCheckExport({
       isFut
         ? isLight
           ? 'border border-[#D9E2EC] bg-white text-[#0B2A4A] hover:border-[#0057B8] hover:bg-[#E8F1FF] hover:text-[#0057B8] disabled:cursor-not-allowed disabled:opacity-70'
-          : 'border-white/40 bg-white/15 text-white hover:bg-white/25 disabled:cursor-not-allowed disabled:opacity-70'
+          : 'border-white/[0.12] bg-white/[0.06] text-white hover:bg-white/[0.1] disabled:cursor-not-allowed disabled:opacity-70'
         : 'border-border-card bg-card text-text-primary hover:bg-background disabled:cursor-not-allowed disabled:opacity-70'
     )
 
   const sectionLabelClass = cn(
     'inline-flex h-9 items-center rounded-[10px] border px-3 text-xs font-semibold uppercase tracking-wide',
-    isFut
+      isFut
       ? isLight
         ? 'border-[#D9E2EC] bg-white text-[#334155]'
-        : 'border-white/25 bg-white/10 text-white/90'
+        : 'border-white/[0.1] bg-white/[0.05] text-white/90'
       : 'border-border-card bg-card text-text-secondary'
   )
 
@@ -143,7 +143,7 @@ export function MapaDigitalIgRelatorioCheckExport({
         isFut
           ? isLight
             ? 'border border-[#D9E2EC] bg-white'
-            : 'border-white/35 bg-[rgba(0,0,0,0.25)]'
+            : 'border-white/[0.09] bg-[rgba(255,255,255,0.04)]'
           : 'border-border-card bg-muted/40',
         className
       )}

@@ -22,6 +22,10 @@ export function PageTransition({ children }: PageTransitionProps) {
     if (pathname === prevPathRef.current) {
       // Mesmo path, apenas atualiza children normalmente
       setDisplayChildren(children)
+      // Se a rota não mudou mas o efeito reexecutou (ex.: nova referência de `children`)
+      // enquanto o fade-out ainda estava aguardando o timer, o cleanup cancela o timeout e
+      // `isTransitioning` ficaria true para sempre — miolo em branco.
+      setIsTransitioning(false)
       return
     }
 
@@ -39,7 +43,7 @@ export function PageTransition({ children }: PageTransitionProps) {
 
   return (
     <div
-      className="page-transition"
+      className="page-transition flex min-h-0 flex-1 flex-col"
       style={{
         opacity: isTransitioning ? 0 : 1,
         transform: isTransitioning ? 'translateY(4px)' : 'translateY(0)',

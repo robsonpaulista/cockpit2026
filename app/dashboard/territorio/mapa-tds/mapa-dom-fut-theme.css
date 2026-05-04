@@ -99,6 +99,32 @@
   color: #0B2A4A !important;
 }
 
+.theme-futuristic.theme-futuristic--republicanos-light
+  table.td-resumo-table--premium.td-resumo-table--futuristic[aria-label='Tabela operacional de decisão por território'] {
+  border-collapse: collapse;
+  border-spacing: 0 !important;
+}
+
+.theme-futuristic.theme-futuristic--republicanos-light
+  table.td-resumo-table--premium.td-resumo-table--futuristic[aria-label='Tabela operacional de decisão por território']
+  thead
+  tr.td-resumo-table__row--header
+  th {
+  border-bottom: none !important;
+}
+
+.theme-futuristic.theme-futuristic--republicanos-light
+  table.td-resumo-table--premium.td-resumo-table--futuristic[aria-label='Tabela operacional de decisão por território']
+  tbody
+  tr
+  td {
+  border-top: none !important;
+  border-bottom: none !important;
+  border-left: none !important;
+  border-right: none !important;
+  border-radius: 0 !important;
+}
+
 .theme-futuristic.theme-futuristic--republicanos-light table.td-resumo-table--premium tbody tr.td-resumo-table__row--hover-map td {
   background: #F8FBFF !important;
 }
@@ -568,6 +594,33 @@
 .theme-futuristic table.td-resumo-table--premium tbody tr td:last-child {
   border-radius: 0 8px 8px 0;
   border-right: 1px solid var(--td-fut-border);
+}
+
+/* Mapa IG · Operação — seção “Território”: sem bordas de linha/caixa nas células */
+.theme-futuristic
+  table.td-resumo-table--premium.td-resumo-table--futuristic[aria-label='Tabela operacional de decisão por território'] {
+  border-collapse: collapse;
+  border-spacing: 0 !important;
+}
+
+.theme-futuristic
+  table.td-resumo-table--premium.td-resumo-table--futuristic[aria-label='Tabela operacional de decisão por território']
+  thead
+  tr.td-resumo-table__row--header
+  th {
+  border-bottom: none !important;
+}
+
+.theme-futuristic
+  table.td-resumo-table--premium.td-resumo-table--futuristic[aria-label='Tabela operacional de decisão por território']
+  tbody
+  tr
+  td {
+  border-top: none !important;
+  border-bottom: none !important;
+  border-left: none !important;
+  border-right: none !important;
+  border-radius: 0 !important;
 }
 
 .theme-futuristic table.td-resumo-table--premium tbody tr.td-resumo-table__row--data {

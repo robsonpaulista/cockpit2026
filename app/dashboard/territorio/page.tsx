@@ -1080,25 +1080,28 @@ export default function TerritorioPage() {
         )}
 
         {/* Lista de Lideranças */}
-        <div className={cn('rounded-2xl border p-6', sectionShellClass)}>
-          <div className="flex items-center justify-between mb-6">
-            <div>
+        <div className={cn('rounded-2xl border p-4 sm:p-6', sectionShellClass)}>
+          <div className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+            <div className="min-w-0 flex-1">
               <h2 className="text-lg font-semibold text-text-primary">
                 {(config || serverConfigured) ? 'Lideranças Atuais' : 'Lideranças'}
               </h2>
               {(config || serverConfigured) && (liderancaAtualCol || votosReferenciaCol) && (
-                <p className="text-xs text-secondary mt-1">
+                <p className="mt-1 text-xs text-secondary">
                   Mostrando lideranças com "Liderança Atual?" = SIM ou com {labelCenarioVotos}
                 </p>
               )}
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex w-full min-w-0 flex-wrap items-center gap-2 lg:w-auto lg:flex-nowrap lg:justify-end">
               {/* Botão Mapa Mental */}
               {(config || serverConfigured) && liderancasFiltradas.length > 0 && (
                 <button
                   type="button"
                   onClick={() => setShowMindMap(true)}
-                  className={sidebarPrimaryCTAButtonClass(isCockpit, 'px-3 py-2')}
+                  className={cn(
+                    sidebarPrimaryCTAButtonClass(isCockpit, 'px-3 py-2'),
+                    'inline-flex shrink-0 items-center gap-2',
+                  )}
                   title="Ver Mapa de Lideranças"
                 >
                   <Network
@@ -1111,10 +1114,10 @@ export default function TerritorioPage() {
               {(config || serverConfigured) && liderancasFiltradas.length > 0 && votosReferenciaCol && (
                 <button
                   onClick={() => setShowVoteInvestmentBalance(true)}
-                  className="px-3 py-2 text-sm font-medium border border-card rounded-lg hover:bg-background transition-colors flex items-center gap-2"
+                  className="inline-flex shrink-0 items-center gap-2 rounded-lg border border-card px-3 py-2 text-xs font-medium transition-colors hover:bg-background sm:text-sm"
                   title="Analisar equilíbrio entre investimento e previsão de votos"
                 >
-                  <Briefcase className={cn('w-4 h-4', accentTextClass)} />
+                  <Briefcase className={cn('h-4 w-4 shrink-0', accentTextClass)} />
                   Demandas x Previsão
                 </button>
               )}
@@ -1135,16 +1138,16 @@ export default function TerritorioPage() {
                         setExpandedCities(todasCidades)
                       }
                     }}
-                    className="px-3 py-1.5 text-xs font-medium border border-card rounded-lg hover:bg-background transition-colors flex items-center gap-2"
+                    className="inline-flex shrink-0 items-center gap-2 rounded-lg border border-card px-3 py-1.5 text-xs font-medium transition-colors hover:bg-background"
                   >
                     {todasExpandidas ? (
                       <>
-                        <ChevronDown className="w-3 h-3" />
+                        <ChevronDown className="h-3 w-3 shrink-0" />
                         Recolher Todas
                       </>
                     ) : (
                       <>
-                        <ChevronRight className="w-3 h-3" />
+                        <ChevronRight className="h-3 w-3 shrink-0" />
                         Expandir Todas
                       </>
                     )}
@@ -1152,8 +1155,8 @@ export default function TerritorioPage() {
                 )
               })()}
               {(config || serverConfigured) && (
-                <div className="text-right">
-                  <span className="text-sm font-semibold text-text-primary block">
+                <div className="flex basis-full shrink-0 flex-col items-end text-right lg:basis-auto">
+                  <span className="text-sm font-semibold text-text-primary">
                     {liderancasFiltradas.length}
                   </span>
                   <span className="text-xs text-secondary">

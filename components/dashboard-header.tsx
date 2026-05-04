@@ -7,6 +7,7 @@ import { UserMenu } from './user-menu'
 import { useTheme } from '@/contexts/theme-context'
 import { useCockpitStatus } from '@/contexts/cockpit-status-context'
 import { getCockpitPageLabel } from '@/lib/cockpit-page-label'
+import { MAPA_TDS_ROUTE_PREFIX, MOBILIZACAO_MAPA_DIGITAL_IG_ROUTE } from '@/lib/dashboard-mapa-futuristic-chrome'
 import { cn } from '@/lib/utils'
 import { useDashboardTopbarVisible } from '@/hooks/use-dashboard-topbar-visible'
 import { AppBrandTitle } from '@/components/app-brand-title'
@@ -24,6 +25,7 @@ const pathToTitle: Record<string, string> = {
   '/dashboard/noticias': 'Notícias & Crises',
   '/dashboard/mobilizacao': 'Mobilização',
   '/dashboard/mobilizacao/config': 'Mobilização · Config',
+  '/dashboard/mobilizacao/mapa-digital-ig': 'Mobilização · Mapa Exército Digital',
   '/dashboard/whatsapp': 'WhatsApp',
   '/dashboard/pesquisa': 'Pesquisa & Relato',
   '/dashboard/operacao': 'Operação & Equipe',
@@ -48,10 +50,7 @@ function getPageTitle(pathname: string): string {
   return pathToTitle[pathname] ?? (pathname.replace(/^\/dashboard\/?/, '').replace(/^\//, '') || 'Visão Geral')
 }
 
-const MAPA_TDS_FUTURISTIC_ROUTE = '/dashboard/territorio/mapa-tds'
-
 function mapaTdsHeaderTitleFromSearch(aba: string | null): string {
-  if (aba === 'mapa-digital-ig') return 'Mapa Exército Digital'
   if (aba === 'pesquisas') return 'Mapa Pesquisas'
   return 'Mapa de Dominância Eleitoral'
 }
@@ -62,12 +61,16 @@ export function DashboardHeader() {
   const searchParams = useSearchParams()
   const { theme, appearance, setAppearance } = useTheme()
   const { metrics } = useCockpitStatus()
-  const mapaTdsFuturisticShell = (pathname ?? '').startsWith(MAPA_TDS_FUTURISTIC_ROUTE)
-  const mapaTdsTituloContexto = mapaTdsFuturisticShell
-    ? mapaTdsHeaderTitleFromSearch(searchParams.get('aba'))
-    : null
-  const pageTitle = mapaTdsTituloContexto ?? getPageTitle(pathname ?? '')
-  const cockpitPageLabel = mapaTdsTituloContexto ?? getCockpitPageLabel(pathname ?? '/dashboard')
+  const p = pathname ?? ''
+  const mapaFuturisticShell =
+    p.startsWith(MAPA_TDS_ROUTE_PREFIX) || p.startsWith(MOBILIZACAO_MAPA_DIGITAL_IG_ROUTE)
+  const mapaFuturisticTituloContexto = p.startsWith(MOBILIZACAO_MAPA_DIGITAL_IG_ROUTE)
+    ? 'Mapa Exército Digital'
+    : p.startsWith(MAPA_TDS_ROUTE_PREFIX)
+      ? mapaTdsHeaderTitleFromSearch(searchParams.get('aba'))
+      : null
+  const pageTitle = mapaFuturisticTituloContexto ?? getPageTitle(pathname ?? '')
+  const cockpitPageLabel = mapaFuturisticTituloContexto ?? getCockpitPageLabel(pathname ?? '/dashboard')
 
   const [now, setNow] = useState<Date>(() => new Date())
   useEffect(() => {
@@ -79,14 +82,14 @@ export function DashboardHeader() {
   const lugarLinha = metrics?.lugarChapa ?? '—'
   /** Link compartilhado com `tema=republicanos-claro` alinha aparência global para claro. */
   useEffect(() => {
-    if (!mapaTdsFuturisticShell) return
+    if (!mapaFuturisticShell) return
     if (searchParams.get('tema') === 'republicanos-claro' && appearance === 'dark') {
       setAppearance('light')
     }
-  }, [mapaTdsFuturisticShell, searchParams, appearance, setAppearance])
+  }, [mapaFuturisticShell, searchParams, appearance, setAppearance])
 
   const syncMapaTemaQuery = (mode: 'light' | 'dark') => {
-    if (!mapaTdsFuturisticShell || !pathname) return
+    if (!mapaFuturisticShell || !pathname) return
     const p = new URLSearchParams(searchParams.toString())
     if (mode === 'light') {
       p.set('tema', 'republicanos-claro')
@@ -112,13 +115,16 @@ export function DashboardHeader() {
   if (theme === 'cockpit') {
     return (
       <header className="sticky top-0 z-30 border-b border-card sidebar-cockpit-shell">
-        <div className="flex min-h-16 flex-col gap-2 px-4 py-2 sm:flex-row sm:items-center sm:justify-between lg:px-6">
+        <div className="flex min-h-16 flex-col gap-2 py-2 max-lg:pl-[4.5rem] max-lg:pr-3 sm:flex-row sm:items-center sm:justify-between lg:px-6">
           <div className="flex min-w-0 flex-1 items-center gap-2 sm:gap-3">
-            <AppBrandTitle isCockpit className="shrink-0" />
+            <AppBrandTitle isCockpit className="shrink-0 whitespace-nowrap" />
             <span className="hidden shrink-0 text-border-card/70 sm:inline" aria-hidden>
               |
             </span>
-            <span className="shrink-0 text-sm font-bold tracking-tight text-text-primary" title={pageTitle}>
+            <span
+              className="min-w-0 flex-1 truncate text-sm font-bold tracking-tight text-text-primary"
+              title={pageTitle}
+            >
               {cockpitPageLabel}
             </span>
             <span className="hidden shrink-0 text-border-card/70 sm:inline" aria-hidden>
@@ -205,17 +211,20 @@ export function DashboardHeader() {
         isRepublicanosPremium && 'republicanos-premium-header'
       )}
     >
-      <div className="flex h-16 items-center justify-between gap-3 px-4 lg:px-6">
-        <div className="flex min-w-0 flex-1 items-center gap-3">
-          <AppBrandTitle isCockpit={false} className="shrink-0" />
-          <span className="shrink-0 text-border-card/70" aria-hidden>
+      <div className="flex h-16 items-center justify-between gap-2 max-lg:pl-[4.5rem] max-lg:pr-2 sm:gap-3 lg:gap-3 lg:px-6">
+        <div className="flex min-w-0 flex-1 items-center gap-2 sm:gap-3">
+          <AppBrandTitle isCockpit={false} className="shrink-0 whitespace-nowrap" />
+          <span className="hidden shrink-0 text-border-card/70 sm:inline" aria-hidden>
             |
           </span>
-          <h1 className="truncate text-sm font-bold tracking-tight text-text-primary sm:text-base">
+          <h1
+            className="min-w-0 flex-1 truncate text-sm font-bold tracking-tight text-text-primary sm:text-base"
+            title={pageTitle}
+          >
             {pageTitle}
           </h1>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
           <div
             className="inline-flex items-center gap-1 rounded-lg border border-border-card bg-bg-app p-1"
             aria-label="Alternar aparência clara ou escura"

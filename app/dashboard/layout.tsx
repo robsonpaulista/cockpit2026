@@ -17,13 +17,13 @@ import { cn } from '@/lib/utils'
 import { DashboardPesquisadorRedirect } from '@/components/dashboard-pesquisador-redirect'
 import './territorio/mapa-tds/mapa-dom-fut-theme.css' // tema base neutra + laranja estratégico v3
 
-const MAPA_TDS_ROUTE_PREFIX = '/dashboard/territorio/mapa-tds'
+import { pathnameUsesMapaFuturisticShell } from '@/lib/dashboard-mapa-futuristic-chrome'
 
 function DashboardContent({ children }: { children: React.ReactNode }) {
   const { collapsed } = useSidebar()
   const pathname = usePathname() ?? ''
   const { theme, appearance } = useTheme()
-  const isMapaTdsShell = pathname.startsWith(MAPA_TDS_ROUTE_PREFIX)
+  const isMapaTdsShell = pathnameUsesMapaFuturisticShell(pathname)
   /**
    * Conteúdo sempre em superfície branca (`bg-bg-surface`) para manter o miolo limpo,
    * deixando o cinza restrito à sidebar. Exceção: Cockpit escuro mantém shell escuro.
@@ -47,7 +47,7 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
           )}
         >
           <DashboardHeader />
-          <main className={cn('flex-1 overflow-y-auto', columnBgClass)}>
+          <main className={cn('flex min-h-0 flex-1 flex-col overflow-y-auto', columnBgClass)}>
             <DashboardPermissionGuard>
               <PageTransition>{children}</PageTransition>
             </DashboardPermissionGuard>

@@ -34,6 +34,7 @@ import {
   History,
   Radar,
   Megaphone,
+  AtSign,
   ShieldCheck,
   UserCog,
   Landmark,
@@ -79,6 +80,7 @@ const COCKPIT_MENU_LABEL: Record<string, string> = {
   noticias: 'Radar',
   'mobilizacao-menu': 'Mobilização',
   'mobilizacao-captacao': 'Captação',
+  'mobilizacao-mapa-digital-ig': 'Mapa IG',
   'mobilizacao-config': 'Config',
   whatsapp: 'WhatsApp',
   pesquisa: 'Pesquisa',
@@ -167,6 +169,12 @@ const menuItems: SidebarMenuItem[] = [
     href: '/dashboard/mobilizacao/config',
     children: [
       { id: 'mobilizacao-captacao', label: 'Captação', icon: 'Users', href: '/mobilizacao/detalhe' },
+      {
+        id: 'mobilizacao-mapa-digital-ig',
+        label: 'Mapa Exército Digital',
+        icon: 'AtSign',
+        href: '/dashboard/mobilizacao/mapa-digital-ig',
+      },
       { id: 'mobilizacao-config', label: 'Config', icon: 'Settings', href: '/dashboard/mobilizacao/config' },
     ],
   },
@@ -221,6 +229,7 @@ const iconMap: Record<string, LucideIcon> = {
   History,
   MapPinned,
   Image,
+  AtSign,
 }
 
 /** Ícones mais leves / mesma linguagem dos KPIs Cockpit (stroke fino + cor accent). */
@@ -261,7 +270,12 @@ function pageKeyForItem(id: string): string {
   if (id === 'chapas-menu') return 'chapas'
   if (id === 'chapas-estaduais') return 'chapas'
   if (id === 'territorio-mapa-tds') return 'territorio'
-  if (id === 'mobilizacao-menu' || id === 'mobilizacao-captacao' || id === 'mobilizacao-config') {
+  if (
+    id === 'mobilizacao-menu' ||
+    id === 'mobilizacao-captacao' ||
+    id === 'mobilizacao-config' ||
+    id === 'mobilizacao-mapa-digital-ig'
+  ) {
     return 'mobilizacao'
   }
   if (

@@ -8,6 +8,8 @@ import jsPDF from 'jspdf'
 import municipiosPiaui from '@/lib/municipios-piaui.json'
 import { getRegiaoByLat } from '@/lib/piaui-regiao'
 import { getAllEleitores } from '@/lib/eleitores'
+import { cn } from '@/lib/utils'
+import { useTheme } from '@/contexts/theme-context'
 import type { MapStats } from './mapa-wrapper-leaflet'
 
 // Dynamic import (client-only)
@@ -69,6 +71,8 @@ export function MapaPresenca({
   territoriosMornos = [],
   territoriosFrios = [],
 }: MapaPresencaProps) {
+  const { appearance } = useTheme()
+  const isDarkAppearance = appearance === 'dark'
   const [clientReady, setClientReady] = useState<boolean>(false)
   const [isNativeFullscreen, setIsNativeFullscreen] = useState<boolean>(false)
   const [filtroAtivo, setFiltroAtivo] = useState<string>('todas')
@@ -298,9 +302,13 @@ export function MapaPresenca({
   }
 
   return (
-    <div className={`w-full ${isNativeFullscreen ? 'h-screen bg-background flex flex-col' : 'space-y-3'}`}>
+    <div
+      className={`w-full min-h-0 ${isNativeFullscreen ? 'flex h-full max-h-full min-h-0 w-full flex-col overflow-hidden bg-background' : 'space-y-3'}`}
+    >
       {/* Header com Título Dinâmico */}
-      <div className={`flex items-center justify-between ${isNativeFullscreen ? 'bg-surface border-b border-card px-4 py-3' : ''}`}>
+      <div
+        className={`flex items-center justify-between ${isNativeFullscreen ? 'shrink-0 bg-surface border-b border-card px-4 py-3' : ''}`}
+      >
         <div className="flex flex-col gap-1">
           <div className="flex items-center gap-2">
             <h3 className={`font-semibold text-text-primary ${isNativeFullscreen ? 'text-lg' : 'text-sm'}`}>
@@ -356,7 +364,7 @@ export function MapaPresenca({
       </div>
 
       {/* Filtros Rápidos + Região */}
-      <div className="flex flex-wrap items-center gap-1.5">
+      <div className={`flex flex-wrap items-center gap-1.5 ${isNativeFullscreen ? 'shrink-0 border-b border-card bg-surface px-4 py-2' : ''}`}>
         <Filter className="w-3.5 h-3.5 text-secondary mr-0.5" />
         {FILTROS.map(filtro => {
           const Icon = filtro.icon
@@ -375,9 +383,12 @@ export function MapaPresenca({
               <Icon className="w-3 h-3" />
               {filtro.label}
               {filtro.id === 'oportunidades' && mapStats && mapStats.oportunidades > 0 && (
-                <span className={`ml-0.5 px-1.5 py-0.5 rounded-full text-[10px] font-bold ${
-                  isActive ? 'bg-white/25' : 'bg-amber-100 text-amber-700'
-                }`}>
+                <span
+                  className={cn(
+                    'ml-0.5 rounded-full px-1.5 py-0.5 text-[10px] font-bold',
+                    isActive ? 'bg-white/25' : isDarkAppearance ? 'bg-amber-500/20 text-amber-200' : 'bg-amber-100 text-amber-700',
+                  )}
+                >
                   {mapStats.oportunidades}
                 </span>
               )}
@@ -397,7 +408,11 @@ export function MapaPresenca({
               ? 'bg-accent-gold text-white shadow-sm'
               : 'bg-background text-secondary hover:bg-card hover:text-text-primary border border-card'
           }`}
-          style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='${filtroRegiao !== 'todas' ? 'white' : '%236b7280'}' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 8px center' }}
+          style={{
+            backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='${filtroRegiao !== 'todas' ? 'white' : isDarkAppearance ? '%2394a3b8' : '%236b7280'}' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E")`,
+            backgroundRepeat: 'no-repeat',
+            backgroundPosition: 'right 8px center',
+          }}
         >
           {REGIOES.map(r => (
             <option key={r.id} value={r.id}>{r.label}</option>
@@ -406,15 +421,18 @@ export function MapaPresenca({
       </div>
 
       {/* Mapa com Overlay de Contadores */}
-      <div className={`w-full bg-surface overflow-hidden relative ${
-        isNativeFullscreen
-          ? 'flex-1'
-          : fullscreen
-            ? 'h-[calc(100vh-300px)] rounded-2xl border border-card'
-            : 'h-96 rounded-2xl border border-card'
-      }`}>
+      <div
+        className={`relative w-full min-h-0 overflow-hidden bg-surface ${
+          isNativeFullscreen
+            ? 'min-h-0 flex-1'
+            : fullscreen
+              ? 'h-[calc(100vh-300px)] rounded-2xl border border-card'
+              : 'h-96 rounded-2xl border border-card'
+        }`}
+      >
         {/* Map Component */}
         <MapWrapperLeaflet
+          appearance={appearance}
           cidadesComPresenca={dadosRegiao.presenca}
           cidadesVisitadas={dadosRegiao.visitadas}
           municipiosPiaui={dadosRegiao.municipios}
@@ -427,66 +445,82 @@ export function MapaPresenca({
         />
 
         {(fullscreen || isNativeFullscreen) && (
-          <div className="absolute top-3 left-3 z-[1000] bg-white/95 backdrop-blur-md rounded-xl shadow-lg border border-gray-200/70 p-3 min-w-[260px] pointer-events-none">
-            <p className="text-[11px] font-semibold text-text-primary mb-2">
-              Resumo Global da Região
-            </p>
+          <div
+            className={cn(
+              'pointer-events-none absolute left-3 top-3 z-[1000] min-w-[260px] rounded-xl border p-3 shadow-lg backdrop-blur-md',
+              isDarkAppearance ? 'border-white/10 bg-[rgba(22,34,44,0.92)]' : 'border-gray-200/70 bg-white/95',
+            )}
+          >
+            <p className="mb-2 text-[11px] font-semibold text-text-primary">Resumo Global da Região</p>
             <div className="grid grid-cols-2 gap-x-4 gap-y-1.5">
-              <p className="text-[11px] text-gray-500">Municípios</p>
-              <p className="text-[11px] font-semibold text-text-primary text-right">{resumoGlobalRegiao.totalMunicipios}</p>
+              <p className="text-[11px] text-text-muted">Municípios</p>
+              <p className="text-right text-[11px] font-semibold text-text-primary">{resumoGlobalRegiao.totalMunicipios}</p>
 
-              <p className="text-[11px] text-gray-500">Com lideranças</p>
-              <p className="text-[11px] font-semibold text-emerald-700 text-right">{resumoGlobalRegiao.comLiderancas}</p>
+              <p className="text-[11px] text-text-muted">Com lideranças</p>
+              <p className={cn('text-right text-[11px] font-semibold', isDarkAppearance ? 'text-emerald-300' : 'text-emerald-700')}>
+                {resumoGlobalRegiao.comLiderancas}
+              </p>
 
-              <p className="text-[11px] text-gray-500">Sem lideranças</p>
-              <p className="text-[11px] font-semibold text-red-700 text-right">{resumoGlobalRegiao.semLiderancas}</p>
+              <p className="text-[11px] text-text-muted">Sem lideranças</p>
+              <p className={cn('text-right text-[11px] font-semibold', isDarkAppearance ? 'text-red-300' : 'text-red-700')}>
+                {resumoGlobalRegiao.semLiderancas}
+              </p>
 
-              <p className="text-[11px] text-gray-500">Eleitores</p>
-              <p className="text-[11px] font-semibold text-text-primary text-right">
+              <p className="text-[11px] text-text-muted">Eleitores</p>
+              <p className="text-right text-[11px] font-semibold text-text-primary">
                 {resumoGlobalRegiao.totalEleitores.toLocaleString('pt-BR')}
               </p>
 
-              <p className="text-[11px] text-gray-500">Previsão de votos</p>
-              <p className="text-[11px] font-semibold text-[#B46800] text-right">
+              <p className="text-[11px] text-text-muted">Previsão de votos</p>
+              <p className={cn('text-right text-[11px] font-semibold', isDarkAppearance ? 'text-amber-200' : 'text-[#B46800]')}>
                 {resumoGlobalRegiao.totalVotosPrevistos.toLocaleString('pt-BR')}
               </p>
 
-              <p className="text-[11px] text-gray-500">Visitadas</p>
-              <p className="text-[11px] font-semibold text-blue-700 text-right">{resumoGlobalRegiao.totalVisitadas}</p>
+              <p className="text-[11px] text-text-muted">Visitadas</p>
+              <p className={cn('text-right text-[11px] font-semibold', isDarkAppearance ? 'text-cyan-300' : 'text-blue-700')}>
+                {resumoGlobalRegiao.totalVisitadas}
+              </p>
             </div>
           </div>
         )}
 
         {/* Live Counter Overlay */}
         {showStatsOverlay && mapStats && (
-          <div className="absolute top-3 right-3 z-[1000] bg-white/90 backdrop-blur-md rounded-xl shadow-lg border border-gray-200/50 p-3 space-y-1.5 min-w-[170px] pointer-events-none">
+          <div
+            className={cn(
+              'pointer-events-none absolute right-3 top-3 z-[1000] min-w-[170px] space-y-1.5 rounded-xl border p-3 shadow-lg backdrop-blur-md',
+              isDarkAppearance ? 'border-white/10 bg-[rgba(22,34,44,0.92)]' : 'border-gray-200/50 bg-white/90',
+            )}
+          >
             <div className="flex items-center gap-2">
-              <div className="w-2.5 h-2.5 rounded-full bg-blue-500 shrink-0" />
-              <span className="text-[11px] text-gray-900 font-bold">{mapStats.cidadesComPresenca}</span>
-              <span className="text-[11px] text-gray-500">com presença</span>
+              <div className="h-2.5 w-2.5 shrink-0 rounded-full bg-blue-500" />
+              <span className="text-[11px] font-bold text-text-primary">{mapStats.cidadesComPresenca}</span>
+              <span className="text-[11px] text-text-muted">com presença</span>
             </div>
             <div className="flex items-center gap-2">
-              <div className="w-2.5 h-2.5 rounded-full bg-amber-500 shrink-0" />
-              <span className="text-[11px] text-gray-900 font-bold">{mapStats.oportunidades}</span>
-              <span className="text-[11px] text-gray-500">oportunidades</span>
+              <div className="h-2.5 w-2.5 shrink-0 rounded-full bg-amber-500" />
+              <span className="text-[11px] font-bold text-text-primary">{mapStats.oportunidades}</span>
+              <span className="text-[11px] text-text-muted">oportunidades</span>
             </div>
             <div className="flex items-center gap-2">
-              <div className="w-2.5 h-2.5 rounded-full bg-red-500 shrink-0 opacity-70" />
-              <span className="text-[11px] text-gray-900 font-bold">{mapStats.cidadesSemPresenca}</span>
-              <span className="text-[11px] text-gray-500">sem liderança</span>
+              <div className="h-2.5 w-2.5 shrink-0 rounded-full bg-red-500 opacity-70" />
+              <span className="text-[11px] font-bold text-text-primary">{mapStats.cidadesSemPresenca}</span>
+              <span className="text-[11px] text-text-muted">sem liderança</span>
             </div>
-            <div className="h-px bg-gray-200 my-1" />
+            <div className={cn('my-1 h-px', isDarkAppearance ? 'bg-white/10' : 'bg-gray-200')} />
             <div className="flex items-center gap-2">
-              <Users className="w-3.5 h-3.5 text-blue-600 shrink-0" />
-              <span className="text-[11px] font-bold text-blue-700">{mapStats.percentualCobertura}%</span>
-              <span className="text-[11px] text-gray-500">eleitorado</span>
+              <Users className={cn('h-3.5 w-3.5 shrink-0', isDarkAppearance ? 'text-cyan-300' : 'text-blue-600')} />
+              <span className={cn('text-[11px] font-bold', isDarkAppearance ? 'text-cyan-300' : 'text-blue-700')}>{mapStats.percentualCobertura}%</span>
+              <span className="text-[11px] text-text-muted">eleitorado</span>
             </div>
           </div>
         )}
       </div>
 
       {/* Legenda Aprimorada */}
-      <div className={`flex flex-wrap items-center justify-center gap-4 text-xs text-secondary ${isNativeFullscreen ? 'bg-surface border-t border-card px-4 py-3' : ''}`}>
+      <div
+        className={`flex flex-wrap items-center justify-center gap-4 text-xs text-secondary ${isNativeFullscreen ? 'shrink-0 bg-surface border-t border-card px-4 py-3' : ''}`}
+      >
         <div className="flex items-center gap-1.5">
           <div className="w-4 h-4 rounded-full bg-blue-600 border-2 border-blue-700 flex items-center justify-center">
             <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">

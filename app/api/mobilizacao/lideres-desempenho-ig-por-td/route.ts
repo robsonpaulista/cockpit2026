@@ -19,6 +19,7 @@ type LeaderJoin = {
   municipio: string | null
 }
 type LeadRow = {
+  nome: string | null
   cidade: string | null
   instagram: string | null
   leaders: LeaderJoin | LeaderJoin[] | null
@@ -30,6 +31,14 @@ type LeaderRow = {
   municipio: string | null
 }
 
+export type LideradoIgEngajamentoLinha = {
+  handle: string
+  nome?: string | null
+  comentarios: number
+  publicacoesComComentario: number
+  ultimaPublicacaoComentadaEm: string | null
+}
+
 export type LiderDesempenhoIgLinha = {
   id: string
   nome: string
@@ -39,6 +48,8 @@ export type LiderDesempenhoIgLinha = {
   lideradosQueComentaram: number
   /** Mídias distintas com comentário do grupo ÷ publicações processadas na conta × 100. */
   pctParticipacao: number
+  lideradosInstagram: string[]
+  lideradosEngajamento: LideradoIgEngajamentoLinha[]
 }
 
 export type MobilizacaoLideresDesempenhoIgPorTdResponse = {
@@ -134,6 +145,8 @@ export async function GET(request: Request) {
   type AccLider = {
     nome: string
     handles: Set<string>
+    /** Nome do liderado (`leads_militancia.nome`) por @ normalizado. */
+    nomePorHandle: Map<string, string>
     medias: Set<string>
     comentarios: number
     commenters: Set<string>
@@ -144,10 +157,39 @@ export async function GET(request: Request) {
     porLider.set(id, {
       nome,
       handles: new Set(),
+      nomePorHandle: new Map(),
       medias: new Set(),
       comentarios: 0,
       commenters: new Set(),
     })
+  }
+
+  type AccLideradoEng = {
+    comentarios: number
+    medias: Set<string>
+    /** ISO do comentário mais recente usado para escolher `ultimaPublicacaoComentadaEm`. */
+    ultimoCommentedAt: string | null
+    /** `media_posted_at` da linha do comentário mais recente (fallback: `commented_at`). */
+    ultimaPublicacaoComentadaEm: string | null
+  }
+  const engPorLider = new Map<string, Map<string, AccLideradoEng>>()
+  const getEng = (leaderId: string, handle: string): AccLideradoEng => {
+    let inner = engPorLider.get(leaderId)
+    if (!inner) {
+      inner = new Map()
+      engPorLider.set(leaderId, inner)
+    }
+    let row = inner.get(handle)
+    if (!row) {
+      row = {
+        comentarios: 0,
+        medias: new Set(),
+        ultimoCommentedAt: null,
+        ultimaPublicacaoComentadaEm: null,
+      }
+      inner.set(handle, row)
+    }
+    return row
   }
 
   const handleParaLider = new Map<string, string>()
@@ -157,6 +199,7 @@ export async function GET(request: Request) {
       .from('leads_militancia')
       .select(
         `
+        nome,
         instagram,
         cidade,
         status,
@@ -197,6 +240,7 @@ export async function GET(request: Request) {
         acc = {
           nome: String(leader.nome ?? '').trim() || '—',
           handles: new Set(),
+          nomePorHandle: new Map(),
           medias: new Set(),
           comentarios: 0,
           commenters: new Set(),
@@ -207,6 +251,8 @@ export async function GET(request: Request) {
       if (!handleParaLider.has(h)) {
         handleParaLider.set(h, leaderId)
       }
+      const nomeLid = String(row.nome ?? '').trim()
+      if (nomeLid && !acc.nomePorHandle.has(h)) acc.nomePorHandle.set(h, nomeLid)
     }
 
     if (rows.length < pageSize) break
@@ -218,7 +264,7 @@ export async function GET(request: Request) {
   for (;;) {
     const { data, error } = await admin
       .from('instagram_comments')
-      .select('instagram_comment_id, commenter_username, instagram_media_id')
+      .select('instagram_comment_id, commenter_username, instagram_media_id, commented_at, media_posted_at')
       .eq('user_id', userId)
       .order('id', { ascending: true })
       .range(fromComments, fromComments + pageSize - 1)
@@ -246,6 +292,19 @@ export async function GET(request: Request) {
       acc.commenters.add(u)
       const mid = String((row as { instagram_media_id?: string }).instagram_media_id ?? '').trim()
       if (mid) acc.medias.add(mid)
+
+      const commentedAt = String((row as { commented_at?: string | null }).commented_at ?? '').trim()
+      const mediaPostedAt = String((row as { media_posted_at?: string | null }).media_posted_at ?? '').trim()
+      const eng = getEng(leaderId, u)
+      eng.comentarios += 1
+      if (mid) eng.medias.add(mid)
+      if (commentedAt) {
+        if (!eng.ultimoCommentedAt || commentedAt > eng.ultimoCommentedAt) {
+          eng.ultimoCommentedAt = commentedAt
+          eng.ultimaPublicacaoComentadaEm =
+            mediaPostedAt || commentedAt || null
+        }
+      }
     }
 
     if (rows.length < pageSize) break
@@ -258,6 +317,19 @@ export async function GET(request: Request) {
     const nPub = acc.medias.size
     const pct =
       postagensProcessadas > 0 ? Math.min(100, (nPub / postagensProcessadas) * 100) : 0
+    const handlesSorted = Array.from(acc.handles).sort((a, b) => a.localeCompare(b, 'pt-BR', { sensitivity: 'base' }))
+    const innerEng = engPorLider.get(id)
+    const lideradosEngajamento: LideradoIgEngajamentoLinha[] = handlesSorted.map((handle) => {
+      const e = innerEng?.get(handle)
+      const nomeLid = acc.nomePorHandle.get(handle) ?? null
+      return {
+        handle,
+        nome: nomeLid,
+        comentarios: e?.comentarios ?? 0,
+        publicacoesComComentario: e ? e.medias.size : 0,
+        ultimaPublicacaoComentadaEm: e?.ultimaPublicacaoComentadaEm ?? null,
+      }
+    })
     return {
       id,
       nome: acc.nome,
@@ -266,6 +338,8 @@ export async function GET(request: Request) {
       comentarios: acc.comentarios,
       lideradosQueComentaram: nCom,
       pctParticipacao: Math.round(pct * 10) / 10,
+      lideradosInstagram: handlesSorted,
+      lideradosEngajamento,
     }
   })
 

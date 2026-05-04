@@ -85,7 +85,7 @@ export function MapaDigitalIgSyncToolbar({
             'inline-flex h-9 items-center gap-1.5 rounded-[10px] border px-3 text-xs font-medium',
             isLight
               ? 'border border-[#D9E2EC] bg-white text-[#0B2A4A] hover:border-[#0057B8] hover:bg-[#E8F1FF] hover:text-[#0057B8]'
-              : 'border-[rgba(255,255,255,0.12)] bg-[rgba(0,0,0,0.25)] text-[#E6EDF3] hover:bg-[rgba(255,255,255,0.06)]'
+              : 'border-white/[0.12] bg-white/[0.05] text-[#E6EDF3] hover:bg-white/[0.09]'
           )}
         >
           <Settings className="h-3.5 w-3.5 shrink-0" aria-hidden />
@@ -96,7 +96,7 @@ export function MapaDigitalIgSyncToolbar({
             'inline-flex h-9 items-center gap-1.5 rounded-[10px] border px-3 text-xs font-medium',
             isLight
               ? 'border border-[#D9E2EC] bg-white text-[#0B2A4A]'
-              : 'border-[rgba(255,255,255,0.12)] bg-[rgba(0,0,0,0.25)] text-[#E6EDF3]'
+              : 'border-white/[0.12] bg-white/[0.05] text-[#E6EDF3]'
           )}
         >
           Janela
@@ -108,7 +108,7 @@ export function MapaDigitalIgSyncToolbar({
               'h-6 rounded border px-1.5 text-[11px] disabled:opacity-60',
               isLight
                 ? 'rounded-md border border-[#BFD0E2] bg-white text-[#0B2A4A]'
-                : 'border-[rgba(255,255,255,0.12)] bg-[rgba(0,0,0,0.35)] text-[#E6EDF3]'
+                : 'border-white/[0.12] bg-white/[0.08] text-[#E6EDF3]'
             )}
           >
             {LOOKBACK_OPTIONS.map((days) => (
@@ -126,7 +126,7 @@ export function MapaDigitalIgSyncToolbar({
             'inline-flex h-9 items-center gap-1.5 rounded-[10px] border px-3 text-xs font-semibold disabled:opacity-50',
             isLight
               ? 'border border-[#0F6EEB] bg-[#0F6EEB] text-white transition-all duration-200 hover:border-[#0B5FD0] hover:bg-[#0B5FD0]'
-              : 'border-[rgba(218,165,32,0.45)] bg-[rgba(218,165,32,0.15)] text-[#E6EDF3] hover:bg-[rgba(218,165,32,0.22)]'
+              : 'border-[rgba(218,165,32,0.4)] bg-[rgba(218,165,32,0.14)] text-[#E6EDF3] hover:border-[rgba(218,165,32,0.55)] hover:bg-[rgba(218,165,32,0.22)]'
           )}
         >
           {syncing ? (

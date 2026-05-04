@@ -52,6 +52,16 @@ interface ExecutiveBriefingModalProps {
   nomeCol?: string
 }
 
+/** Comparação estrita de município (evita COCAL ⊂ COCAL DOS ALVES). */
+function normalizarNomeMunicipioBriefing(value: string): string {
+  return String(value || '')
+    .toLowerCase()
+    .trim()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/\s+/g, ' ')
+}
+
 export function ExecutiveBriefingModal({
   isOpen,
   onClose,
@@ -246,16 +256,11 @@ export function ExecutiveBriefingModal({
 
       const allPolls: Poll[] = await response.json()
       
-      // Filtrar por cidade - normalizar nome da cidade para comparação
-      const normalizedCidade = cidade.toLowerCase().trim().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
-      
+      const alvo = normalizarNomeMunicipioBriefing(cidade)
       const cidadePolls = allPolls.filter((poll) => {
         const pollCidade = poll.cities?.name || ''
-        const normalizedPollCidade = pollCidade.toLowerCase().trim().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
-        
-        return normalizedPollCidade === normalizedCidade || 
-               normalizedPollCidade.includes(normalizedCidade) || 
-               normalizedCidade.includes(normalizedPollCidade)
+        if (!pollCidade.trim()) return false
+        return normalizarNomeMunicipioBriefing(pollCidade) === alvo
       })
       
       return cidadePolls
