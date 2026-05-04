@@ -31,6 +31,7 @@ const pathToTitle: Record<string, string> = {
   '/dashboard/pesquisa': 'Pesquisa & Relato',
   '/dashboard/operacao': 'Operação & Equipe',
   '/dashboard/juridico': 'Jurídico',
+  '/dashboard/emendas': 'Emendas',
   '/dashboard/obras': 'Obras',
   '/dashboard/proposicoes': 'Proposições',
   '/dashboard/usuarios': 'Gestão de Usuários',

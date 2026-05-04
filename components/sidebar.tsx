@@ -41,6 +41,7 @@ import {
   FileBadge2,
   LineChart,
   Image,
+  FileSpreadsheet,
   type LucideIcon,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -98,6 +99,7 @@ const COCKPIT_MENU_LABEL: Record<string, string> = {
   'resumo-eleicoes-historico': 'Hist. federal',
   'gestao-pesquisas-inicio': 'Início',
   'gestao-pesquisas-config': 'Config',
+  emendas: 'Emendas',
 }
 
 interface SidebarMenuItem extends MenuItem {
@@ -182,6 +184,7 @@ const menuItems: SidebarMenuItem[] = [
   { id: 'whatsapp', label: 'WhatsApp', icon: 'MessageCircle', href: '/dashboard/whatsapp' },
   { id: 'operacao', label: 'Operação & Equipe', icon: 'Settings', href: '/dashboard/operacao' },
   { id: 'juridico', label: 'Jurídico', icon: 'Scale', href: '/dashboard/juridico' },
+  { id: 'emendas', label: 'Emendas', icon: 'FileSpreadsheet', href: '/dashboard/emendas' },
   { id: 'obras', label: 'Obras', icon: 'Building2', href: '/dashboard/obras' },
   { id: 'proposicoes', label: 'Proposições', icon: 'ScrollText', href: '/dashboard/proposicoes' },
   { id: 'sei-pesquisa', label: 'Pesquisa SEI (teste)', icon: 'Search', href: '/dashboard/sei-pesquisa' },
@@ -231,6 +234,7 @@ const iconMap: Record<string, LucideIcon> = {
   MapPinned,
   Image,
   AtSign,
+  FileSpreadsheet,
 }
 
 /** Ícones mais leves / mesma linguagem dos KPIs Cockpit (stroke fino + cor accent). */
@@ -490,7 +494,10 @@ export function Sidebar() {
           <nav className="flex-1 overflow-x-visible overflow-y-auto px-2.5 py-4 scrollbar-hide">
             <ul className="space-y-1.5">
               {visibleItems.map((item: SidebarMenuItem) => {
-                const sectionLabel = SIDEBAR_SECTION_START_LABEL[item.id]
+                const juridicoInMenu = visibleItems.some((i) => i.id === 'juridico')
+                const sectionLabel: string | undefined =
+                  SIDEBAR_SECTION_START_LABEL[item.id] ??
+                  (item.id === 'emendas' && !juridicoInMenu ? 'Institucional' : undefined)
                 const Icon = resolveMenuIcon(item.icon, isCockpit)
                 const hasSubmenu = Boolean(item.children?.length)
                 const submenuOpen = openSubmenuId === item.id

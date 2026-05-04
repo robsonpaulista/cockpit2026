@@ -14,6 +14,7 @@ function getPageKey(pathname: string): string | null {
   if (!pathname?.startsWith('/dashboard')) return null
   if (pathname === '/dashboard' || pathname === '/dashboard/') return 'dashboard'
   if (pathname.startsWith('/dashboard/gestao-pesquisas')) return 'gestao_pesquisas'
+  if (pathname.startsWith('/dashboard/emendas')) return 'juridico'
   const segments = pathname.replace(/^\/dashboard\/?/, '').split('/')
   const first = segments[0]
   return first && PAGE_KEYS.has(first) ? first : null

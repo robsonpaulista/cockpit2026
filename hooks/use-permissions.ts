@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 
 export interface UsePermissionsResult {
   permissions: string[] | null
@@ -42,11 +42,14 @@ export function usePermissions(): UsePermissionsResult {
     }
   }, [])
 
-  const canAccess = (pageKey: string): boolean => {
-    if (isAdmin) return true
-    if (permissions === null) return false
-    return permissions.includes(pageKey)
-  }
+  const canAccess = useCallback(
+    (pageKey: string): boolean => {
+      if (isAdmin) return true
+      if (permissions === null) return false
+      return permissions.includes(pageKey)
+    },
+    [isAdmin, permissions]
+  )
 
   return { permissions, isAdmin, loading, canAccess }
 }

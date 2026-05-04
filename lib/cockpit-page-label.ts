@@ -34,6 +34,7 @@ export function getCockpitPageLabel(pathname: string): string {
     '/dashboard/pesquisa': 'Pesquisa',
     '/dashboard/operacao': 'Operação',
     '/dashboard/juridico': 'Jurídico',
+    '/dashboard/emendas': 'Emendas',
     '/dashboard/obras': 'Obras',
     '/dashboard/proposicoes': 'Proposições',
     '/dashboard/sei-pesquisa': 'SEI',
