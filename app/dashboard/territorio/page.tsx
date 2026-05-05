@@ -31,7 +31,7 @@ type CenarioVotos = 'aferido_jadyel' | 'promessa_lideranca' | 'legado_anterior'
 
 export default function TerritorioPage() {
   const { theme } = useTheme()
-  const isCockpit = theme === 'cockpit'
+  const isCockpit = false
   const accentTextClass = isCockpit ? 'text-[#2dd4bf]' : 'text-accent-gold'
   const accentSoftBgAltClass = isCockpit ? 'bg-[rgba(45,212,191,0.12)]' : 'bg-accent-gold-soft/50'
   const accentBorderClass = isCockpit ? 'border-[#2dd4bf]' : 'border-accent-gold'
@@ -783,7 +783,7 @@ export default function TerritorioPage() {
           <section className="mb-6">
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
               {kpis.map((kpi) => (
-                <KPICard key={kpi.id} kpi={kpi} variant={isCockpit ? 'cockpit' : 'default'} />
+                <KPICard key={kpi.id} kpi={kpi} variant="default" />
               ))}
             </div>
             

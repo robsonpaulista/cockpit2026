@@ -9,7 +9,7 @@ import { NavigationLoadingBar } from '@/components/navigation-loading-bar'
 import { PageTransition } from '@/components/page-transition'
 import { SidebarProvider, useSidebar } from '@/contexts/sidebar-context'
 import { NavigationLoadingProvider } from '@/contexts/navigation-loading-context'
-import { ThemeProvider, useTheme } from '@/contexts/theme-context'
+import { ThemeProvider } from '@/contexts/theme-context'
 import { CockpitStatusProvider } from '@/contexts/cockpit-status-context'
 import { SplashOverlay } from '@/components/splash-overlay'
 import { IdleSplash } from '@/components/idle-splash'
@@ -27,20 +27,14 @@ import {
 function DashboardContent({ children }: { children: React.ReactNode }) {
   const { collapsed } = useSidebar()
   const pathname = usePathname() ?? ''
-  const { theme, appearance } = useTheme()
   const isMapaTdsShell = pathnameUsesMapaFuturisticShell(pathname)
   const isHomeAccentChrome = isDashboardHomePath(pathname) && !isMapaTdsShell
   /**
    * Conteúdo sempre em superfície branca (`bg-bg-surface`) para manter o miolo limpo,
-   * deixando o cinza restrito à sidebar. Exceção: Cockpit escuro mantém shell escuro.
+   * deixando o cinza restrito à sidebar.
    * Na home `/dashboard`, fundo único em gradiente de acento (sidebar + coluna).
    */
-  const columnBgClass = (() => {
-    if (isHomeAccentChrome) return 'bg-transparent'
-    if (!isMapaTdsShell) return 'bg-bg-surface'
-    if (theme === 'cockpit' && appearance === 'dark') return 'bg-[rgba(17,26,40,0.88)]'
-    return 'bg-bg-surface'
-  })()
+  const columnBgClass = isHomeAccentChrome ? 'bg-transparent' : 'bg-bg-surface'
 
   return (
     <CockpitStatusProvider>

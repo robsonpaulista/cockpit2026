@@ -19,7 +19,6 @@ import {
 } from '@/lib/chapas-segunda-vaga-republicanos'
 import { cn } from '@/lib/utils'
 import { useAuth } from '@/hooks/use-auth'
-import { useTheme } from '@/contexts/theme-context'
 import { sidebarPrimaryCTAButtonClass } from '@/lib/sidebar-menu-active-style'
 
 /** Mesmo gradiente do item ativo da sidebar / KPIs (Republicanos no mapa). */
@@ -105,8 +104,7 @@ const inferirGeneroCandidatoInicial = (nome: string, generoInformado?: string): 
 
 export default function ChapasPage() {
   const { user } = useAuth()
-  const { theme } = useTheme()
-  const isCockpit = theme === 'cockpit'
+  const isCockpit = false
   const pathname = usePathname()
   const isChapasEstaduais = pathname === '/dashboard/chapas-estaduais'
   const isFederalCockpit = isCockpit && !isChapasEstaduais

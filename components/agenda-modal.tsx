@@ -29,7 +29,7 @@ interface AgendaModalProps {
 
 export function AgendaModal({ agenda, onClose, onSuccess, onDelete }: AgendaModalProps) {
   const { theme } = useTheme()
-  const isCockpit = theme === 'cockpit'
+  const isCockpit = false
   const isEditing = !!agenda?.id
   const [formData, setFormData] = useState({
     date: agenda?.date || '',

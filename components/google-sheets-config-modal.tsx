@@ -37,7 +37,7 @@ export function GoogleSheetsConfigModal({
   })
   const [showCredentials, setShowCredentials] = useState(false)
   const { theme } = useTheme()
-  const isCockpit = theme === 'cockpit'
+  const isCockpit = false
   const [testing, setTesting] = useState(false)
   const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null)
 

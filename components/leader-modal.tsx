@@ -17,7 +17,7 @@ interface LeaderModalProps {
 
 export function LeaderModal({ leader, territories, onClose, onSave, initialTerritoryId }: LeaderModalProps) {
   const { theme } = useTheme()
-  const isCockpit = theme === 'cockpit'
+  const isCockpit = false
   const [formData, setFormData] = useState({
     territory_id: leader?.territory_id || initialTerritoryId || '',
     name: leader?.name || '',

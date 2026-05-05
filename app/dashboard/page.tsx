@@ -4,7 +4,6 @@ import { useState } from 'react'
 import dynamic from 'next/dynamic'
 import { Bot } from 'lucide-react'
 import { DashboardHomeWelcome } from '@/components/dashboard-home-welcome'
-import { useTheme } from '@/contexts/theme-context'
 import { useDashboardHomeChrome } from '@/contexts/dashboard-home-chrome-context'
 import { cn } from '@/lib/utils'
 
@@ -20,18 +19,13 @@ const AIAgent = dynamic(
  */
 export default function Home() {
   const [agenteMontado, setAgenteMontado] = useState(false)
-  const { theme, appearance } = useTheme()
   const isGradientHome = useDashboardHomeChrome()
 
   return (
     <div
       className={cn(
         'flex min-h-0 flex-1 flex-col',
-        isGradientHome
-          ? 'bg-transparent'
-          : theme === 'cockpit' && appearance === 'dark'
-            ? 'bg-bg-app'
-            : 'bg-bg-surface',
+        isGradientHome ? 'bg-transparent' : 'bg-bg-surface',
       )}
     >
       <DashboardHomeWelcome />

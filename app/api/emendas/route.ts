@@ -94,6 +94,43 @@ export async function POST(request: Request) {
     }
 
     const body = (await request.json()) as Record<string, unknown>
+
+    // Importação em lote: { rows: [{...}, {...}] }
+    const rowsCandidate = body.rows
+    if (Array.isArray(rowsCandidate)) {
+      if (rowsCandidate.length === 0) {
+        return NextResponse.json({ error: 'Nenhuma linha informada para importação' }, { status: 400 })
+      }
+
+      const rows = rowsCandidate
+        .map((item) => (item && typeof item === 'object' ? rowFromBody(item as Record<string, unknown>) : null))
+        .filter((item): item is ReturnType<typeof rowFromBody> => item !== null)
+
+      if (rows.length === 0) {
+        return NextResponse.json({ error: 'Formato inválido para importação em lote' }, { status: 400 })
+      }
+
+      const invalidIndex = rows.findIndex((r) => !r.emenda)
+      if (invalidIndex >= 0) {
+        return NextResponse.json(
+          { error: `Campo Emenda é obrigatório na linha ${invalidIndex + 1}` },
+          { status: 400 },
+        )
+      }
+
+      const { data, error } = await supabase.from('emendas').insert(rows).select()
+      if (error) {
+        console.error('emendas POST bulk:', error)
+        return NextResponse.json({ error: 'Erro ao importar emendas em lote' }, { status: 500 })
+      }
+
+      return NextResponse.json({
+        ok: true,
+        imported: data?.length ?? 0,
+        emendas: data ?? [],
+      })
+    }
+
     const row = rowFromBody(body)
     if (!row.emenda) {
       return NextResponse.json({ error: 'Campo Emenda é obrigatório' }, { status: 400 })

@@ -83,7 +83,7 @@ function formatWhatsappDigits(raw: string): string {
 
 export default function MobilizacaoConfigPage() {
   const { theme } = useTheme()
-  const isCockpit = theme === 'cockpit'
+  const isCockpit = false
   const [carregando, setCarregando] = useState(true)
   const [erro, setErro] = useState<string | null>(null)
 

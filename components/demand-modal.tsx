@@ -43,7 +43,7 @@ interface DemandModalProps {
 
 export function DemandModal({ demand, onClose, onSuccess }: DemandModalProps) {
   const { theme } = useTheme()
-  const isCockpit = theme === 'cockpit'
+  const isCockpit = false
   const [formData, setFormData] = useState({
     title: demand?.title || '',
     description: demand?.description || '',

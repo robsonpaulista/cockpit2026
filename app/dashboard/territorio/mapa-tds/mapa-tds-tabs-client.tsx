@@ -39,7 +39,7 @@ export default function MapaTdsTabsClient() {
   const pathname = usePathname()
   const searchParams = useSearchParams()
   const { appearance, theme } = useTheme()
-  const isCockpit = theme === 'cockpit'
+  const isCockpit = false
   const temaQuery = searchParams.get(TEMA_QUERY)
 
   /** Mapa Digital IG passou para Mobilização; preserva query string (ex.: `tema`). */

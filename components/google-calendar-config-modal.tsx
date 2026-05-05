@@ -36,7 +36,7 @@ export function GoogleCalendarConfigModal({
   const [testing, setTesting] = useState(false)
   const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null)
   const { theme } = useTheme()
-  const isCockpit = theme === 'cockpit'
+  const isCockpit = false
 
   const handleTest = async () => {
     if (!formData.serviceAccountEmail || !formData.credentials) {

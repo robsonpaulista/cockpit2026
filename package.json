@@ -12,6 +12,8 @@
     "federal2018:import": "node scripts/import-federal2018-to-supabase.mjs"
   },
   "dependencies": {
+    "@react-three/drei": "^9.122.0",
+    "@react-three/fiber": "^8.18.0",
     "@resvg/resvg-js": "^2.6.2",
     "@supabase/ssr": "^0.1.0",
     "@supabase/supabase-js": "^2.39.3",
@@ -37,6 +39,7 @@
     "rss-parser": "^3.13.0",
     "satori": "^0.10.14",
     "tailwind-merge": "^3.4.0",
+    "three": "^0.169.0",
     "xlsx": "^0.18.5",
     "zod": "^3.22.4"
   },

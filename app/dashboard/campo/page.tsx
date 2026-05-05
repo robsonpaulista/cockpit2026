@@ -17,8 +17,7 @@ import {
   Trash2,
   X,
 } from 'lucide-react'
-import { CockpitTerritorioMapEmbed } from '@/components/cockpit-territorio-map-embed'
-import { MapaPresenca } from '@/components/mapa-presenca'
+import { MapaPresenca, type PrioridadeCampoMapaRow } from '@/components/mapa-presenca'
 import { cn, formatDate } from '@/lib/utils'
 import { sidebarPrimaryCTAButtonClass } from '@/lib/sidebar-menu-active-style'
 import { useTheme } from '@/contexts/theme-context'
@@ -73,10 +72,8 @@ const emptyForm: AgendaFormData = {
 }
 
 export default function CampoPage() {
-  const { theme, appearance } = useTheme()
-  const isCockpitTheme = theme === 'cockpit'
+  const { appearance } = useTheme()
   const isDarkAppearance = appearance === 'dark'
-  const isCockpitDark = theme === 'cockpit' && isDarkAppearance
   /** Mesmo padrão de cartões que Território & Base no tema claro (cinza neutro, sem fundo amarelado). */
   const sectionShellClass = isDarkAppearance
     ? 'border-white/12 bg-[linear-gradient(165deg,rgba(22,34,44,0.82)_0%,rgba(18,30,38,0.86)_100%)] shadow-[0_10px_32px_rgba(3,12,20,0.28)]'
@@ -116,6 +113,7 @@ export default function CampoPage() {
   const [expectativaPorCidadeListaMapa, setExpectativaPorCidadeListaMapa] = useState<
     Array<{ cidade: string; expectativaVotos: number }>
   >([])
+  const [prioridadeCampoListaMapa, setPrioridadeCampoListaMapa] = useState<PrioridadeCampoMapaRow[]>([])
   const [loadingTerritoriosMapa, setLoadingTerritoriosMapa] = useState<boolean>(true)
 
   useEffect(() => {
@@ -172,6 +170,7 @@ export default function CampoPage() {
               cidadesComLiderancas?: string[]
               cidadesVisitadasLista?: string[]
               expectativaPorCidadeLista?: Record<string, unknown>[]
+              prioridadeCampoLista?: Record<string, unknown>[]
             }
             if (signal.aborted) return
 
@@ -196,6 +195,18 @@ export default function CampoPage() {
                     expectativaVotos: Number(item.expectativaVotos) || 0,
                   }))
                   .filter((item) => item.cidade && item.expectativaVotos > 0)
+              )
+            }
+            if (Array.isArray(data.prioridadeCampoLista)) {
+              setPrioridadeCampoListaMapa(
+                data.prioridadeCampoLista.map((item) => ({
+                  cidade: String(item.cidade ?? ''),
+                  expectativaVotos: Number(item.expectativaVotos) || 0,
+                  visitas: Number(item.visitas) || 0,
+                  agendas: Number(item.agendas) || 0,
+                  motivo: String(item.motivo ?? ''),
+                  ultimaVisita: item.ultimaVisita != null ? String(item.ultimaVisita) : null,
+                }))
               )
             }
           }
@@ -393,7 +404,7 @@ export default function CampoPage() {
   const selectedMonthLabel = selectedMonthKey ? monthBuckets.find((month) => month.key === selectedMonthKey)?.label ?? null : null
 
   return (
-    <div className={cn('min-h-screen', isCockpitDark ? 'sidebar-cockpit-shell' : 'bg-bg-surface')}>
+    <div className={cn('min-h-screen', 'bg-bg-surface')}>
       <div className="px-4 py-6 lg:px-6">
         <section className="mb-6 animate-reveal">
           <div className={cn('rounded-2xl border p-5 backdrop-blur', sectionShellClass)}>
@@ -459,7 +470,7 @@ export default function CampoPage() {
                   </div>
                   <div className="xl:col-span-2">
                     <label className="mb-2 block text-xs font-semibold uppercase tracking-wide text-text-muted">Ação</label>
-                    <button type="submit" disabled={saving} className={cn(sidebarPrimaryCTAButtonClass(isCockpitDark), 'w-full justify-center')}>
+                    <button type="submit" disabled={saving} className={cn(sidebarPrimaryCTAButtonClass(false), 'w-full justify-center')}>
                       {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
                       {editingAgendaId ? 'Atualizar' : 'Salvar'}
                     </button>
@@ -564,10 +575,6 @@ export default function CampoPage() {
               <div className="flex min-h-[min(40vh,360px)] items-center justify-center rounded-xl border border-border-card bg-bg-app/40">
                 <Loader2 className="h-8 w-8 animate-spin text-accent-gold" aria-label="Carregando mapa" />
               </div>
-            ) : isCockpitTheme ? (
-              <div className="flex min-h-[min(52vh,520px)] flex-col">
-                <CockpitTerritorioMapEmbed showHeader={false} minMapHeightClass="min-h-[min(52vh,520px)]" />
-              </div>
             ) : cidadesComLiderancas.length > 0 ? (
               <div
                 id="mapa-estrategia-campo-container"
@@ -580,6 +587,7 @@ export default function CampoPage() {
                   cidadesComPresenca={cidadesComLiderancas}
                   cidadesVisitadas={cidadesVisitadasLista}
                   expectativaPorCidadeLista={expectativaPorCidadeListaMapa}
+                  prioridadeCampoLista={prioridadeCampoListaMapa}
                   totalCidades={224}
                   fullscreen={false}
                   showStatsOverlay

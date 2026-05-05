@@ -154,7 +154,7 @@ export function PollReportModal({ poll, onClose }: PollReportModalProps) {
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [manualContext, setManualContext] = useState('')
   const { theme } = useTheme()
-  const isCockpit = theme === 'cockpit'
+  const isCockpit = false
 
   const hasReport = Boolean(report)
   const highlights = useMemo(() => report?.highlights || [], [report])

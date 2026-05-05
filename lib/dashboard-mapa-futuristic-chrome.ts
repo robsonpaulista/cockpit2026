@@ -35,7 +35,7 @@ export function getMapaFuturisticChrome(args: {
   const visualTheme: 'light' | 'dark' =
     appearance === 'light' || temaQuery === 'republicanos-claro' ? 'light' : 'dark'
   const mapaShellBrancoForcado = appearance === 'dark' && temaQuery === 'republicanos-claro'
-  const isCockpit = theme === 'cockpit'
+  const isCockpit = false
   const mapaShellBgClass =
     mapaShellBrancoForcado || isRepublicanosLight
       ? 'bg-white'

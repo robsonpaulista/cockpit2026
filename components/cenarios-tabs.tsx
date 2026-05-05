@@ -71,7 +71,7 @@ export default function CenariosTabs({
   service = chapasService
 }: CenariosTabsProps) {
   const { theme } = useTheme()
-  const isCockpit = theme === 'cockpit'
+  const isCockpit = false
   const [cenarios, setCenarios] = useState<Cenario[]>(cenariosIniciais || [])
   const [cenarioAtivo, setCenarioAtivo] = useState<Cenario | null>(null)
   const [loading, setLoading] = useState(false)

@@ -5,12 +5,10 @@ import { useRouter } from 'next/navigation'
 import { useAuth } from '@/hooks/use-auth'
 import { LogOut, User, Settings, ChevronDown } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { useTheme } from '@/contexts/theme-context'
 import { useDashboardHomeChrome } from '@/contexts/dashboard-home-chrome-context'
 
 export function UserMenu() {
   const { user, loading, signOut } = useAuth()
-  const { theme } = useTheme()
   const isGradientHome = useDashboardHomeChrome()
   const router = useRouter()
   const [open, setOpen] = useState(false)
@@ -125,11 +123,7 @@ export function UserMenu() {
         <div
           className={cn(
             'flex h-8 w-8 items-center justify-center overflow-hidden rounded-full text-sm font-semibold text-white',
-            user.profile?.avatar_url
-              ? 'bg-accent-gold'
-              : theme === 'cockpit'
-                ? 'bg-gradient-to-br from-[#062e52] via-[#0b4a7a] to-[#1368a8] shadow-sm'
-                : 'bg-accent-gold'
+            user.profile?.avatar_url ? 'bg-accent-gold' : 'bg-accent-gold'
           )}
         >
           {user.profile?.avatar_url ? (

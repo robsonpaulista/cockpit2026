@@ -14,7 +14,7 @@ interface ObrasImportModalProps {
 
 export function ObrasImportModal({ onClose, onSuccess }: ObrasImportModalProps) {
   const { theme } = useTheme()
-  const isCockpit = theme === 'cockpit'
+  const isCockpit = false
   const [file, setFile] = useState<File | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)

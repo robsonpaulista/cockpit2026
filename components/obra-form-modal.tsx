@@ -45,7 +45,7 @@ function toYyyyMmDd(dateString?: string): string {
 
 export function ObraFormModal({ obra, defaultTipo, onClose, onSuccess }: ObraFormModalProps) {
   const { theme } = useTheme()
-  const isCockpit = theme === 'cockpit'
+  const isCockpit = false
   const isEdit = Boolean(obra?.id)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)

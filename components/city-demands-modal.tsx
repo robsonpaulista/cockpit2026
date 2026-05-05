@@ -92,7 +92,7 @@ function ordenarDemandas<T extends { status?: string; data_demanda?: string; cre
 
 export function CityDemandsModal({ isOpen, onClose, cidade }: CityDemandsModalProps) {
   const { theme } = useTheme()
-  const isCockpit = theme === 'cockpit'
+  const isCockpit = false
   const modalShellClass = isCockpit
     ? 'border-white/12 bg-[linear-gradient(165deg,rgba(22,34,44,0.92)_0%,rgba(18,30,38,0.95)_100%)] shadow-[0_24px_64px_rgba(3,12,20,0.42)]'
     : 'border-card bg-surface'

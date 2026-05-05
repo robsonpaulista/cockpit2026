@@ -40,7 +40,7 @@ function statusBadge(status: string) {
 
 export default function ConteudoCardsPage() {
   const { theme } = useTheme()
-  const isCockpit = theme === 'cockpit'
+  const isCockpit = false
   const [items, setItems] = useState<ConteudoRow[]>([])
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState('')

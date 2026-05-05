@@ -46,7 +46,7 @@ export function InstagramConfigModal({
   const [validating, setValidating] = useState(false)
   const [validationResult, setValidationResult] = useState<{ success: boolean; message: string } | null>(null)
   const { theme } = useTheme()
-  const isCockpit = theme === 'cockpit'
+  const isCockpit = false
 
   useEffect(() => {
     const updated =

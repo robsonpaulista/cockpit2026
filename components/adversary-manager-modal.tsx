@@ -41,7 +41,7 @@ const commonThemes = [
 
 export function AdversaryManagerModal({ onClose, onUpdate }: AdversaryManagerModalProps) {
   const { theme: dashboardTheme } = useTheme()
-  const isCockpit = dashboardTheme === 'cockpit'
+  const isCockpit = false
   const [adversaries, setAdversaries] = useState<Adversary[]>([])
   const [loading, setLoading] = useState(true)
   const [showAddForm, setShowAddForm] = useState(false)

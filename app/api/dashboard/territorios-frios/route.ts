@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
+import municipiosPiaui from '@/lib/municipios-piaui.json'
 
 export const dynamic = 'force-dynamic'
 import { NextResponse } from 'next/server'
@@ -514,6 +515,60 @@ export async function POST(request: Request) {
         expectativaVotos: Math.round(expectativa),
       }))
 
+    // Painel tela cheia: cruza TODOS os municípios do PI (mesma base do mapa Território) com previsão da planilha + visitas/check-ins de campo
+    const nomeCanonPorChave = new Map<string, string>()
+    for (const m of municipiosPiaui as Array<{ nome: string }>) {
+      const k = normalizeCityName(m.nome)
+      if (k) nomeCanonPorChave.set(k, m.nome)
+    }
+
+    const todasChavesPrioridade = new Set<string>()
+    nomeCanonPorChave.forEach((_, k) => todasChavesPrioridade.add(k))
+    Object.keys(expectativaPorCidade).forEach((k) => todasChavesPrioridade.add(k))
+    Object.keys(visitasPorCidade).forEach((k) => todasChavesPrioridade.add(k))
+    Object.keys(agendasPorCidade).forEach((k) => todasChavesPrioridade.add(k))
+
+    const prioridadeCampoListaRaw = [...todasChavesPrioridade].map((cidadeKey) => {
+      const expectativa = Math.round(expectativaPorCidade[cidadeKey] || 0)
+      const visitas = visitasPorCidade[cidadeKey] || 0
+      const agendas = agendasPorCidade[cidadeKey] || 0
+      const ultimaVisita = ultimaVisitaPorCidade[cidadeKey] || null
+      const cidadeExibicao =
+        nomeOriginalCidade[cidadeKey] || nomeCanonPorChave.get(cidadeKey) || formatCityName(cidadeKey)
+
+      const score =
+        expectativa > 0
+          ? expectativa / (visitas + 1)
+          : agendas > 0
+            ? agendas / (visitas + 1)
+            : 0
+
+      return {
+        cidade: cidadeExibicao,
+        expectativaVotos: expectativa,
+        visitas,
+        agendas,
+        ultimaVisita,
+        score,
+      }
+    })
+
+    const prioridadeCampoLista = prioridadeCampoListaRaw
+      .filter((r) => r.expectativaVotos > 0 || r.visitas > 0 || r.agendas > 0)
+      .sort((a, b) => {
+        if (b.score !== a.score) return b.score - a.score
+        if (b.expectativaVotos !== a.expectativaVotos) return b.expectativaVotos - a.expectativaVotos
+        return a.visitas - b.visitas
+      })
+      .map(({ cidade, expectativaVotos, visitas, agendas, ultimaVisita }) => ({
+        cidade,
+        expectativaVotos,
+        visitas,
+        agendas,
+        motivo: '',
+        ultimaVisita,
+      }))
+
     return NextResponse.json({
       territoriosFrios,
       territoriosQuentes,
@@ -522,6 +577,7 @@ export async function POST(request: Request) {
       cidadesComLiderancas,
       cidadesVisitadasLista,
       expectativaPorCidadeLista,
+      prioridadeCampoLista,
       estatisticas: {
         totalCidades,
         cidadesVisitadas,

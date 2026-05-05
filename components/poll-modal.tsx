@@ -63,7 +63,7 @@ export function PollModal({ poll, onClose, onUpdate }: PollModalProps) {
   const [candidatosExistentes, setCandidatosExistentes] = useState<string[]>([])
   const candidatoInputRef = useRef<HTMLInputElement | null>(null)
   const { theme } = useTheme()
-  const isCockpit = theme === 'cockpit'
+  const isCockpit = false
 
   useEffect(() => {
     fetchCities()

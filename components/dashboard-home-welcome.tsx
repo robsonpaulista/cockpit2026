@@ -20,7 +20,7 @@ type Fase = 'inicio' | 'c' | 'nome' | 'slogan'
 /**
  * Conteúdo visual equivalente à splash por inatividade (IdleSplash):
  * gradiente com variáveis de acento do tema, logótipo animado e slogan.
- * Respeita tema (premium / agentes / republicanos / cockpit) e aparência claro/escuro via CSS vars.
+ * Respeita tema (agentes / republicanos) e aparência claro/escuro via CSS vars.
  */
 export function DashboardHomeWelcome() {
   const { appearance } = useTheme()

@@ -13,7 +13,7 @@ interface CollectNewsModalProps {
 
 export function CollectNewsModal({ onClose, onSuccess }: CollectNewsModalProps) {
   const { theme } = useTheme()
-  const isCockpit = theme === 'cockpit'
+  const isCockpit = false
   const [rssUrl, setRssUrl] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)

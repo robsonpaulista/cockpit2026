@@ -2041,7 +2041,8 @@ table.td-resumo-table td.td-resumo-table__cell--estrategia {
 }
 
 [data-theme='republicanos'][data-appearance='light'] .republicanos-premium-header {
-  background: rgb(var(--bg-sidebar)) !important;
+  /* Alinha à sidebar premium (mesmo token que .republicanos-premium-sidebar). */
+  background: rgb(var(--bg-app)) !important;
   border-bottom: none !important;
   box-shadow: 0 8px 24px rgba(15, 23, 42, 0.06);
 }

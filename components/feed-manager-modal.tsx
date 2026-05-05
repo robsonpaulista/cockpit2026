@@ -23,7 +23,7 @@ interface FeedManagerModalProps {
 
 export function FeedManagerModal({ onClose, onCollect }: FeedManagerModalProps) {
   const { theme } = useTheme()
-  const isCockpit = theme === 'cockpit'
+  const isCockpit = false
   const [feeds, setFeeds] = useState<Feed[]>([])
   const [loading, setLoading] = useState(true)
   const [showAddForm, setShowAddForm] = useState(false)

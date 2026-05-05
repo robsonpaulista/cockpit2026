@@ -55,7 +55,11 @@ export default function RootLayout({
             __html: `
               try {
                 var t = localStorage.getItem('cockpit-theme');
-                var valid = t === 'premium' || t === 'agentes' || t === 'republicanos' || t === 'cockpit';
+                if (t === 'cockpit' || t === 'premium') {
+                  t = 'republicanos';
+                  localStorage.setItem('cockpit-theme', 'republicanos');
+                }
+                var valid = t === 'agentes' || t === 'republicanos';
                 document.documentElement.setAttribute('data-theme', valid ? t : 'republicanos');
                 var a = localStorage.getItem('cockpit-appearance');
                 var ap = a === 'dark' ? 'dark' : 'light';

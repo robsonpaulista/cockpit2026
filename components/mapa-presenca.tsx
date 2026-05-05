@@ -2,7 +2,22 @@
 
 import { useEffect, useState, useMemo, useCallback } from 'react'
 import dynamic from 'next/dynamic'
-import { Maximize2, Minimize2, MapPin, Users, Eye, Target, Navigation, Filter, TrendingUp, Crosshair, FileSpreadsheet, FileText } from 'lucide-react'
+import {
+  Maximize2,
+  Minimize2,
+  MapPin,
+  Users,
+  Eye,
+  Target,
+  Navigation,
+  Filter,
+  TrendingUp,
+  Crosshair,
+  FileSpreadsheet,
+  FileText,
+  ListOrdered,
+  Search,
+} from 'lucide-react'
 import * as XLSX from 'xlsx'
 import jsPDF from 'jspdf'
 import municipiosPiaui from '@/lib/municipios-piaui.json'
@@ -25,10 +40,20 @@ interface TerritorioInfo {
   visitas?: number
 }
 
+export interface PrioridadeCampoMapaRow {
+  cidade: string
+  expectativaVotos: number
+  visitas: number
+  agendas: number
+  motivo: string
+  ultimaVisita: string | null
+}
+
 interface MapaPresencaProps {
   cidadesComPresenca: string[]
   cidadesVisitadas?: string[]
   expectativaPorCidadeLista?: Array<{ cidade: string; expectativaVotos: number }>
+  prioridadeCampoLista?: PrioridadeCampoMapaRow[]
   totalCidades: number
   onFullscreen?: () => void
   fullscreen?: boolean
@@ -59,6 +84,13 @@ function normalizeName(name: string): string {
   return name.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim()
 }
 
+function formatUltimaVisitaCampo(iso: string | null): string | null {
+  if (!iso) return null
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return null
+  return d.toLocaleDateString('pt-BR')
+}
+
 export function MapaPresenca({
   cidadesComPresenca,
   cidadesVisitadas = [],
@@ -70,6 +102,7 @@ export function MapaPresenca({
   territoriosQuentes = [],
   territoriosMornos = [],
   territoriosFrios = [],
+  prioridadeCampoLista = [],
 }: MapaPresencaProps) {
   const { appearance } = useTheme()
   const isDarkAppearance = appearance === 'dark'
@@ -78,6 +111,7 @@ export function MapaPresenca({
   const [filtroAtivo, setFiltroAtivo] = useState<string>('todas')
   const [filtroRegiao, setFiltroRegiao] = useState<string>('todas')
   const [mapStats, setMapStats] = useState<MapStats | null>(null)
+  const [prioridadeBuscaMunicipio, setPrioridadeBuscaMunicipio] = useState<string>('')
 
   useEffect(() => {
     setClientReady(true)
@@ -91,6 +125,10 @@ export function MapaPresenca({
     document.addEventListener('fullscreenchange', handleFullscreenChange)
     return () => document.removeEventListener('fullscreenchange', handleFullscreenChange)
   }, [])
+
+  useEffect(() => {
+    if (!isNativeFullscreen) setPrioridadeBuscaMunicipio('')
+  }, [isNativeFullscreen])
 
   const handleExitFullscreen = useCallback(() => {
     if (document.fullscreenElement) {
@@ -138,6 +176,24 @@ export function MapaPresenca({
   const handleStatsCalculated = useCallback((stats: MapStats) => {
     setMapStats(stats)
   }, [])
+
+  const prioridadeCampoFiltrada = useMemo(() => {
+    if (prioridadeCampoLista.length === 0) return []
+    if (filtroRegiao === 'todas') return prioridadeCampoLista
+    const munisFiltrados = municipiosPiaui.filter((m) => getRegiaoByLat(m.lat) === filtroRegiao)
+    const nomesSet = new Set(munisFiltrados.map((m) => normalizeName(m.nome)))
+    return prioridadeCampoLista.filter((row) => nomesSet.has(normalizeName(row.cidade)))
+  }, [prioridadeCampoLista, filtroRegiao])
+
+  const prioridadeCampoExibicao = useMemo(() => {
+    const comRank = prioridadeCampoFiltrada.map((row, i) => ({
+      row,
+      rankGlobal: i + 1,
+    }))
+    const q = normalizeName(prioridadeBuscaMunicipio.trim())
+    if (!q) return comRank
+    return comRank.filter(({ row }) => normalizeName(row.cidade).includes(q))
+  }, [prioridadeCampoFiltrada, prioridadeBuscaMunicipio])
 
   const resumoGlobalRegiao = useMemo(() => {
     const municipiosSet = new Set(dadosRegiao.municipios.map((m) => normalizeName(m.nome)))
@@ -301,6 +357,96 @@ export function MapaPresenca({
     )
   }
 
+  const mapaComOverlays = (
+    <>
+      {/* Map Component */}
+      <MapWrapperLeaflet
+        appearance={appearance}
+        cidadesComPresenca={dadosRegiao.presenca}
+        cidadesVisitadas={dadosRegiao.visitadas}
+        municipiosPiaui={dadosRegiao.municipios}
+        eleitoresPorCidade={eleitoresPorCidade}
+        territoriosQuentes={dadosRegiao.quentes}
+        territoriosMornos={dadosRegiao.mornos}
+        territoriosFrios={dadosRegiao.frios}
+        filtroAtivo={filtroAtivo}
+        onStatsCalculated={handleStatsCalculated}
+      />
+
+      {(fullscreen || isNativeFullscreen) && (
+        <div
+          className={cn(
+            'pointer-events-none absolute left-3 top-3 z-[1000] min-w-[260px] rounded-xl border p-3 shadow-lg backdrop-blur-md',
+            isDarkAppearance ? 'border-white/10 bg-[rgba(22,34,44,0.92)]' : 'border-gray-200/70 bg-white/95',
+          )}
+        >
+          <p className="mb-2 text-[11px] font-semibold text-text-primary">Resumo Global da Região</p>
+          <div className="grid grid-cols-2 gap-x-4 gap-y-1.5">
+            <p className="text-[11px] text-text-muted">Municípios</p>
+            <p className="text-right text-[11px] font-semibold text-text-primary">{resumoGlobalRegiao.totalMunicipios}</p>
+
+            <p className="text-[11px] text-text-muted">Com lideranças</p>
+            <p className={cn('text-right text-[11px] font-semibold', isDarkAppearance ? 'text-emerald-300' : 'text-emerald-700')}>
+              {resumoGlobalRegiao.comLiderancas}
+            </p>
+
+            <p className="text-[11px] text-text-muted">Sem lideranças</p>
+            <p className={cn('text-right text-[11px] font-semibold', isDarkAppearance ? 'text-red-300' : 'text-red-700')}>
+              {resumoGlobalRegiao.semLiderancas}
+            </p>
+
+            <p className="text-[11px] text-text-muted">Eleitores</p>
+            <p className="text-right text-[11px] font-semibold text-text-primary">
+              {resumoGlobalRegiao.totalEleitores.toLocaleString('pt-BR')}
+            </p>
+
+            <p className="text-[11px] text-text-muted">Previsão de votos</p>
+            <p className={cn('text-right text-[11px] font-semibold', isDarkAppearance ? 'text-amber-200' : 'text-[#B46800]')}>
+              {resumoGlobalRegiao.totalVotosPrevistos.toLocaleString('pt-BR')}
+            </p>
+
+            <p className="text-[11px] text-text-muted">Visitadas</p>
+            <p className={cn('text-right text-[11px] font-semibold', isDarkAppearance ? 'text-cyan-300' : 'text-blue-700')}>
+              {resumoGlobalRegiao.totalVisitadas}
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* Live Counter Overlay */}
+      {showStatsOverlay && mapStats && (
+        <div
+          className={cn(
+            'pointer-events-none absolute right-3 top-3 z-[1000] min-w-[170px] space-y-1.5 rounded-xl border p-3 shadow-lg backdrop-blur-md',
+            isDarkAppearance ? 'border-white/10 bg-[rgba(22,34,44,0.92)]' : 'border-gray-200/50 bg-white/90',
+          )}
+        >
+          <div className="flex items-center gap-2">
+            <div className="h-2.5 w-2.5 shrink-0 rounded-full bg-blue-500" />
+            <span className="text-[11px] font-bold text-text-primary">{mapStats.cidadesComPresenca}</span>
+            <span className="text-[11px] text-text-muted">com presença</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="h-2.5 w-2.5 shrink-0 rounded-full bg-amber-500" />
+            <span className="text-[11px] font-bold text-text-primary">{mapStats.oportunidades}</span>
+            <span className="text-[11px] text-text-muted">oportunidades</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="h-2.5 w-2.5 shrink-0 rounded-full bg-red-500 opacity-70" />
+            <span className="text-[11px] font-bold text-text-primary">{mapStats.cidadesSemPresenca}</span>
+            <span className="text-[11px] text-text-muted">sem liderança</span>
+          </div>
+          <div className={cn('my-1 h-px', isDarkAppearance ? 'bg-white/10' : 'bg-gray-200')} />
+          <div className="flex items-center gap-2">
+            <Users className={cn('h-3.5 w-3.5 shrink-0', isDarkAppearance ? 'text-cyan-300' : 'text-blue-600')} />
+            <span className={cn('text-[11px] font-bold', isDarkAppearance ? 'text-cyan-300' : 'text-blue-700')}>{mapStats.percentualCobertura}%</span>
+            <span className="text-[11px] text-text-muted">eleitorado</span>
+          </div>
+        </div>
+      )}
+    </>
+  )
+
   return (
     <div
       className={`w-full min-h-0 ${isNativeFullscreen ? 'flex h-full max-h-full min-h-0 w-full flex-col overflow-hidden bg-background' : 'space-y-3'}`}
@@ -420,102 +566,137 @@ export function MapaPresenca({
         </select>
       </div>
 
-      {/* Mapa com Overlay de Contadores */}
-      <div
-        className={`relative w-full min-h-0 overflow-hidden bg-surface ${
-          isNativeFullscreen
-            ? 'min-h-0 flex-1'
-            : fullscreen
-              ? 'h-[calc(100vh-300px)] rounded-2xl border border-card'
-              : 'h-96 rounded-2xl border border-card'
-        }`}
-      >
-        {/* Map Component */}
-        <MapWrapperLeaflet
-          appearance={appearance}
-          cidadesComPresenca={dadosRegiao.presenca}
-          cidadesVisitadas={dadosRegiao.visitadas}
-          municipiosPiaui={dadosRegiao.municipios}
-          eleitoresPorCidade={eleitoresPorCidade}
-          territoriosQuentes={dadosRegiao.quentes}
-          territoriosMornos={dadosRegiao.mornos}
-          territoriosFrios={dadosRegiao.frios}
-          filtroAtivo={filtroAtivo}
-          onStatsCalculated={handleStatsCalculated}
-        />
-
-        {(fullscreen || isNativeFullscreen) && (
+      {/* Mapa com Overlay de Contadores — em tela cheia, apenas acrescenta coluna ao lado */}
+      {isNativeFullscreen ? (
+        <div className="flex min-h-0 flex-1 flex-row overflow-hidden">
           <div
+            className={`relative w-full min-h-0 overflow-hidden bg-surface ${
+              isNativeFullscreen ? 'min-h-0 flex-1' : ''
+            }`}
+          >
+            {mapaComOverlays}
+          </div>
+          <aside
             className={cn(
-              'pointer-events-none absolute left-3 top-3 z-[1000] min-w-[260px] rounded-xl border p-3 shadow-lg backdrop-blur-md',
-              isDarkAppearance ? 'border-white/10 bg-[rgba(22,34,44,0.92)]' : 'border-gray-200/70 bg-white/95',
+              'flex w-[min(340px,32vw)] shrink-0 flex-col overflow-hidden border-l border-card bg-surface',
+              isDarkAppearance ? 'border-white/10' : undefined,
             )}
           >
-            <p className="mb-2 text-[11px] font-semibold text-text-primary">Resumo Global da Região</p>
-            <div className="grid grid-cols-2 gap-x-4 gap-y-1.5">
-              <p className="text-[11px] text-text-muted">Municípios</p>
-              <p className="text-right text-[11px] font-semibold text-text-primary">{resumoGlobalRegiao.totalMunicipios}</p>
-
-              <p className="text-[11px] text-text-muted">Com lideranças</p>
-              <p className={cn('text-right text-[11px] font-semibold', isDarkAppearance ? 'text-emerald-300' : 'text-emerald-700')}>
-                {resumoGlobalRegiao.comLiderancas}
+            <div className={cn('shrink-0 border-b px-3 py-2.5', isDarkAppearance ? 'border-white/10 bg-black/20' : 'border-card bg-background/40')}>
+              <div className="flex items-center gap-2">
+                <ListOrdered className={cn('h-4 w-4 shrink-0', isDarkAppearance ? 'text-amber-200' : 'text-amber-700')} aria-hidden />
+                <p className="text-sm font-semibold text-text-primary">Prioridade no campo</p>
+              </div>
+              <p className="mt-1 text-xs leading-snug text-text-muted">
+                Cruza os municípios do Piauí (como no Território) com a previsão de votos 2026 da planilha e os check-ins de campo/agenda. Ordem: mais votos com menos visitas primeiro.
+                Respeita o filtro de região acima.
               </p>
-
-              <p className="text-[11px] text-text-muted">Sem lideranças</p>
-              <p className={cn('text-right text-[11px] font-semibold', isDarkAppearance ? 'text-red-300' : 'text-red-700')}>
-                {resumoGlobalRegiao.semLiderancas}
-              </p>
-
-              <p className="text-[11px] text-text-muted">Eleitores</p>
-              <p className="text-right text-[11px] font-semibold text-text-primary">
-                {resumoGlobalRegiao.totalEleitores.toLocaleString('pt-BR')}
-              </p>
-
-              <p className="text-[11px] text-text-muted">Previsão de votos</p>
-              <p className={cn('text-right text-[11px] font-semibold', isDarkAppearance ? 'text-amber-200' : 'text-[#B46800]')}>
-                {resumoGlobalRegiao.totalVotosPrevistos.toLocaleString('pt-BR')}
-              </p>
-
-              <p className="text-[11px] text-text-muted">Visitadas</p>
-              <p className={cn('text-right text-[11px] font-semibold', isDarkAppearance ? 'text-cyan-300' : 'text-blue-700')}>
-                {resumoGlobalRegiao.totalVisitadas}
-              </p>
+              <label
+                className={cn(
+                  'mt-2 flex items-center gap-2 rounded-lg border px-2.5 py-2',
+                  isDarkAppearance ? 'border-white/10 bg-black/15' : 'border-card bg-background/50',
+                )}
+              >
+                <Search className="h-4 w-4 shrink-0 text-text-muted" aria-hidden />
+                <input
+                  type="search"
+                  value={prioridadeBuscaMunicipio}
+                  onChange={(e) => setPrioridadeBuscaMunicipio(e.target.value)}
+                  placeholder="Buscar município…"
+                  className={cn(
+                    'min-w-0 flex-1 bg-transparent text-sm text-text-primary placeholder:text-text-muted focus:outline-none',
+                  )}
+                  autoComplete="off"
+                  spellCheck={false}
+                />
+              </label>
             </div>
-          </div>
-        )}
-
-        {/* Live Counter Overlay */}
-        {showStatsOverlay && mapStats && (
-          <div
-            className={cn(
-              'pointer-events-none absolute right-3 top-3 z-[1000] min-w-[170px] space-y-1.5 rounded-xl border p-3 shadow-lg backdrop-blur-md',
-              isDarkAppearance ? 'border-white/10 bg-[rgba(22,34,44,0.92)]' : 'border-gray-200/50 bg-white/90',
-            )}
-          >
-            <div className="flex items-center gap-2">
-              <div className="h-2.5 w-2.5 shrink-0 rounded-full bg-blue-500" />
-              <span className="text-[11px] font-bold text-text-primary">{mapStats.cidadesComPresenca}</span>
-              <span className="text-[11px] text-text-muted">com presença</span>
+            <div className="min-h-0 flex-1 overflow-y-auto px-2 pb-3 pt-1">
+              {prioridadeCampoFiltrada.length === 0 ? (
+                <div className="px-1 py-3 text-sm leading-relaxed text-text-secondary">
+                  {prioridadeCampoLista.length === 0 ? (
+                    <>
+                      <p className="font-medium text-text-primary">Nenhum município no ranking por enquanto.</p>
+                      <p className="mt-1.5 text-xs text-text-muted">
+                        É preciso ao menos previsão na planilha do Território ou agendas/check-ins de campo com cidade para montar o cruzamento.
+                      </p>
+                    </>
+                  ) : (
+                    <>
+                      <p className="font-medium text-text-primary">Nenhum município desta região na lista.</p>
+                      <p className="mt-1.5 text-xs text-text-muted">
+                        Escolha outra região no filtro acima ou a opção Todas as regiões para ver a fila completa.
+                      </p>
+                    </>
+                  )}
+                </div>
+              ) : prioridadeCampoExibicao.length === 0 ? (
+                <div className="px-1 py-3 text-sm leading-relaxed text-text-secondary">
+                  <p className="font-medium text-text-primary">Nenhum município encontrado.</p>
+                  <p className="mt-1.5 text-xs text-text-muted">
+                    Ajuste o termo de busca ou limpe o campo para ver a lista completa da região.
+                  </p>
+                </div>
+              ) : (
+                <ol className="list-none space-y-2">
+                  {prioridadeCampoExibicao.map(({ row, rankGlobal }) => {
+                    const ultima = formatUltimaVisitaCampo(row.ultimaVisita)
+                    const votosLabel =
+                      row.expectativaVotos > 0
+                        ? `${row.expectativaVotos.toLocaleString('pt-BR')} votos previstos (2026)`
+                        : 'Sem previsão na planilha'
+                    const visitasLabel =
+                      row.visitas === 0
+                        ? 'nenhuma visita com check-in'
+                        : `${row.visitas} visita${row.visitas !== 1 ? 's' : ''} com check-in`
+                    return (
+                      <li
+                        key={`${rankGlobal}-${normalizeName(row.cidade)}`}
+                        className={cn(
+                          'flex gap-2 rounded-lg border px-2.5 py-2',
+                          isDarkAppearance ? 'border-white/10 bg-white/[0.03]' : 'border-card bg-background/60',
+                        )}
+                      >
+                        <span
+                          className={cn(
+                            'flex h-6 min-w-[1.5rem] shrink-0 items-center justify-center rounded text-xs font-bold tabular-nums',
+                            isDarkAppearance ? 'bg-white/10 text-text-secondary' : 'bg-border-card/80 text-text-muted',
+                          )}
+                          title="Posição na fila estratégica (global na região)"
+                        >
+                          {rankGlobal}
+                        </span>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-semibold leading-tight text-text-primary">{row.cidade}</p>
+                          <p className="mt-1 text-xs leading-snug text-text-secondary">
+                            {votosLabel}
+                            <span className="text-text-muted"> · </span>
+                            {visitasLabel}
+                            {ultima ? (
+                              <>
+                                <span className="text-text-muted"> · </span>
+                                última: {ultima}
+                              </>
+                            ) : null}
+                          </p>
+                        </div>
+                      </li>
+                    )
+                  })}
+                </ol>
+              )}
             </div>
-            <div className="flex items-center gap-2">
-              <div className="h-2.5 w-2.5 shrink-0 rounded-full bg-amber-500" />
-              <span className="text-[11px] font-bold text-text-primary">{mapStats.oportunidades}</span>
-              <span className="text-[11px] text-text-muted">oportunidades</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="h-2.5 w-2.5 shrink-0 rounded-full bg-red-500 opacity-70" />
-              <span className="text-[11px] font-bold text-text-primary">{mapStats.cidadesSemPresenca}</span>
-              <span className="text-[11px] text-text-muted">sem liderança</span>
-            </div>
-            <div className={cn('my-1 h-px', isDarkAppearance ? 'bg-white/10' : 'bg-gray-200')} />
-            <div className="flex items-center gap-2">
-              <Users className={cn('h-3.5 w-3.5 shrink-0', isDarkAppearance ? 'text-cyan-300' : 'text-blue-600')} />
-              <span className={cn('text-[11px] font-bold', isDarkAppearance ? 'text-cyan-300' : 'text-blue-700')}>{mapStats.percentualCobertura}%</span>
-              <span className="text-[11px] text-text-muted">eleitorado</span>
-            </div>
-          </div>
-        )}
-      </div>
+          </aside>
+        </div>
+      ) : (
+        <div
+          className={`relative w-full min-h-0 overflow-hidden bg-surface ${
+            fullscreen ? 'h-[calc(100vh-300px)] rounded-2xl border border-card' : 'h-96 rounded-2xl border border-card'
+          }`}
+        >
+          {mapaComOverlays}
+        </div>
+      )}
 
       {/* Legenda Aprimorada */}
       <div

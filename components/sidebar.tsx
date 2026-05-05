@@ -329,7 +329,7 @@ export function Sidebar() {
   const { canAccess, isAdmin, loading: permLoading } = usePermissions()
   const { theme, appearance } = useTheme()
 
-  const isCockpit = theme === 'cockpit'
+  const isCockpit = false
   const isGradientHome = useDashboardHomeChrome()
   const filmNav = isCockpit || isGradientHome
   const isRepublicanosPremium = theme === 'republicanos' && appearance === 'light'

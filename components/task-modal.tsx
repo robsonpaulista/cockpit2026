@@ -19,7 +19,7 @@ interface TaskModalProps {
 
 export function TaskModal({ task, territories, leaders, onClose, onSave, initialTerritoryId, initialStatus }: TaskModalProps) {
   const { theme } = useTheme()
-  const isCockpit = theme === 'cockpit'
+  const isCockpit = false
   const [formData, setFormData] = useState({
     territory_id: task?.territory_id || initialTerritoryId || '',
     leader_id: task?.leader_id || '',

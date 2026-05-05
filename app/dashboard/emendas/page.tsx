@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { useRouter } from 'next/navigation'
 import { usePermissions } from '@/hooks/use-permissions'
-import { useTheme } from '@/contexts/theme-context'
 import { cn, formatDateShort } from '@/lib/utils'
 import { sidebarPrimaryCTAButtonClass } from '@/lib/sidebar-menu-active-style'
 import {
@@ -167,7 +166,7 @@ function emendaListTdClass(col: EmendaListColumnKey): string {
     col === 'portaria_convenio' ||
     col === 'empenho'
   return cn(
-    'px-4 py-3 text-text-secondary',
+    'px-4 py-2.5 text-text-secondary',
     col === 'id' && 'max-w-[120px] truncate font-mono text-xs text-text-secondary',
     col === 'emenda' && 'max-w-[220px] truncate font-medium text-text-primary',
     col === 'municipio_beneficiario' && 'max-w-[200px] truncate',
@@ -285,12 +284,11 @@ function Field({
 
 export default function EmendasPage() {
   const router = useRouter()
-  const { theme } = useTheme()
-  const isCockpit = theme === 'cockpit'
-  const pageShellClass = isCockpit ? 'sidebar-cockpit-shell' : 'bg-background'
+  const isCockpit = false
+  const pageShellClass = 'bg-white'
   const sectionShellClass = isCockpit
     ? 'rounded-2xl border p-5 backdrop-blur border-white/12 bg-[linear-gradient(165deg,rgba(22,34,44,0.82)_0%,rgba(18,30,38,0.86)_100%)] shadow-[0_10px_32px_rgba(3,12,20,0.28)]'
-    : 'rounded-2xl border border-card bg-surface p-6 shadow-sm'
+    : 'rounded-2xl bg-surface p-6 shadow-sm'
   const innerPanelClass = isCockpit
     ? 'rounded-xl border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.04)_0%,rgba(255,255,255,0.02)_100%)] p-3'
     : 'rounded-xl border border-card bg-background/50 p-3'
@@ -409,6 +407,21 @@ export default function EmendasPage() {
       })),
     [filteredRows],
   )
+
+  const totaisFiltrados = useMemo(() => {
+    return filteredRows.reduce(
+      (acc, r) => {
+        const indicado = Number(r.valor_indicado)
+        const empenhado = Number(r.valor_empenhado)
+        const pago = Number(r.valor_pago)
+        if (Number.isFinite(indicado)) acc.valorIndicado += indicado
+        if (Number.isFinite(empenhado)) acc.valorEmpenhado += empenhado
+        if (Number.isFinite(pago)) acc.valorPago += pago
+        return acc
+      },
+      { valorIndicado: 0, valorEmpenhado: 0, valorPago: 0 },
+    )
+  }, [filteredRows])
 
   const toggleColumn = useCallback((col: EmendaListColumnKey) => {
     setVisibleColumns((prev) => {
@@ -577,12 +590,7 @@ export default function EmendasPage() {
 
   if (permLoading) {
     return (
-      <div
-        className={cn(
-          'flex min-h-[40vh] flex-1 items-center justify-center',
-          !isCockpit && 'bg-background',
-        )}
-      >
+      <div className={cn('flex min-h-[40vh] flex-1 items-center justify-center', pageShellClass)}>
         <Loader2 className="h-8 w-8 animate-spin text-accent-gold" aria-hidden />
       </div>
     )
@@ -601,7 +609,7 @@ export default function EmendasPage() {
     : 'overflow-hidden rounded-xl border border-card bg-background'
 
   return (
-    <div className={cn('flex min-h-0 flex-1 flex-col', pageShellClass)}>
+    <div className={cn('flex min-h-screen flex-1 flex-col', pageShellClass)}>
       <div className="flex flex-1 flex-col px-4 py-6 lg:px-6">
         <div className={sectionShellClass}>
           <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
@@ -764,13 +772,33 @@ export default function EmendasPage() {
           </div>
 
           <div className="mb-3 flex flex-wrap items-center justify-between gap-2 text-xs text-secondary">
-            <span>
-              {loading
-                ? 'Carregando…'
-                : filtrosAtivos
-                  ? `${filteredRows.length} de ${rows.length} emenda(s)`
-                  : `${rows.length} emenda(s)`}
-            </span>
+            <div className="flex flex-wrap items-center gap-3">
+              <span>
+                {loading
+                  ? 'Carregando…'
+                  : filtrosAtivos
+                    ? `${filteredRows.length} de ${rows.length} emenda(s)`
+                    : `${rows.length} emenda(s)`}
+              </span>
+              {!loading && (
+                <span className="hidden h-4 w-px shrink-0 bg-border-card opacity-60 sm:block" aria-hidden />
+              )}
+              {!loading && (
+                <span className="whitespace-nowrap">
+                  <strong>Indicado:</strong> {formatMoney(totaisFiltrados.valorIndicado)}
+                </span>
+              )}
+              {!loading && (
+                <span className="whitespace-nowrap">
+                  <strong>Empenhado:</strong> {formatMoney(totaisFiltrados.valorEmpenhado)}
+                </span>
+              )}
+              {!loading && (
+                <span className="whitespace-nowrap">
+                  <strong>Pago:</strong> {formatMoney(totaisFiltrados.valorPago)}
+                </span>
+              )}
+            </div>
             <div className="relative" ref={columnPickerRef}>
               <button
                 type="button"
@@ -863,13 +891,13 @@ export default function EmendasPage() {
                       {activeColumnList.map((col) => (
                         <th
                           key={col}
-                          className="px-4 py-3 font-semibold text-text-primary"
+                          className="px-4 py-2.5 font-semibold text-text-primary"
                           scope="col"
                         >
                           {EMENDAS_LIST_COLUMN_LABELS[col]}
                         </th>
                       ))}
-                      <th className="w-28 px-4 py-3 text-right font-semibold text-text-primary" scope="col">
+                      <th className="w-28 px-4 py-2.5 text-right font-semibold text-text-primary" scope="col">
                         Ações
                       </th>
                     </tr>
@@ -888,7 +916,7 @@ export default function EmendasPage() {
                           {renderEmendaListCell(r, col)}
                         </td>
                       ))}
-                      <td className="px-4 py-3 text-right">
+                      <td className="px-4 py-2.5 text-right">
                         <div className="inline-flex gap-1">
                           <button
                             type="button"

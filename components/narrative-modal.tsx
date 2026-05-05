@@ -57,7 +57,7 @@ const themeOptions = [
 
 export function NarrativeModal({ narrative, phases = [], onClose, onUpdate }: NarrativeModalProps) {
   const { theme: dashboardTheme } = useTheme()
-  const isCockpit = dashboardTheme === 'cockpit'
+  const isCockpit = false
   const [formData, setFormData] = useState<Narrative>({
     theme: '',
     target_audience: '',

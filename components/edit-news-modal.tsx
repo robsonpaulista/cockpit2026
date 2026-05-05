@@ -47,7 +47,7 @@ const commonThemes = [
 
 export function EditNewsModal({ news, onClose, onUpdate }: EditNewsModalProps) {
   const { theme } = useTheme()
-  const isCockpit = theme === 'cockpit'
+  const isCockpit = false
   const [formData, setFormData] = useState({
     sentiment: '',
     risk_level: '',
