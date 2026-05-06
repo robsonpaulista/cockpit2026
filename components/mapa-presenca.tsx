@@ -23,6 +23,7 @@ import jsPDF from 'jspdf'
 import municipiosPiaui from '@/lib/municipios-piaui.json'
 import { getRegiaoByLat } from '@/lib/piaui-regiao'
 import { getAllEleitores } from '@/lib/eleitores'
+import demografiaMunicipiosPiaui from '@/data/demografia-municipios-piaui.json'
 import { cn } from '@/lib/utils'
 import { useTheme } from '@/contexts/theme-context'
 import type { MapStats } from './mapa-wrapper-leaflet'
@@ -63,6 +64,54 @@ interface MapaPresencaProps {
   territoriosFrios?: TerritorioInfo[]
 }
 
+interface DemografiaMunicipioRow {
+  codigo_ibge: string
+  municipio: string
+  estado: string
+  mesorregiao: string | null
+  microrregiao: string | null
+  populacao_censo_2022: number | null
+  populacao_estimada_ultimo_ano: number | null
+  ano_estimativa: number | null
+  sexo: {
+    masculino: number | null
+    feminino: number | null
+    total: number | null
+  }
+  faixas_etarias: {
+    de_0_a_14: number | null
+    de_15_a_59: number | null
+    de_60_ou_mais: number | null
+    total: number | null
+  }
+  cor_raca: {
+    branca: number | null
+    preta: number | null
+    parda: number | null
+    amarela: number | null
+    indigena: number | null
+    total: number | null
+  }
+  alfabetizacao: {
+    taxa_15_mais: number | null
+    taxa_analfabetismo_15_mais: number | null
+  }
+  urbanizacao: {
+    urbana: number | null
+    rural: number | null
+    total: number | null
+    taxa_urbana: number | null
+    taxa_rural: number | null
+    nota_fonte?: string | null
+  }
+  renda_vulnerabilidade: {
+    renda_per_capita: number | null
+    percentual_vulneraveis_pobreza: number | null
+    fonte?: string | null
+    ano_referencia?: number | null
+  }
+}
+
 const FILTROS = [
   { id: 'todas', label: 'Todas', icon: Eye, description: 'Todas as cidades' },
   { id: 'com-lideranca', label: 'Com liderança', icon: MapPin, description: 'Cidades com liderança ativa' },
@@ -91,6 +140,16 @@ function formatUltimaVisitaCampo(iso: string | null): string | null {
   return d.toLocaleDateString('pt-BR')
 }
 
+function formatNumberPtBr(value: number | null | undefined): string {
+  if (!Number.isFinite(Number(value))) return '-'
+  return Number(value).toLocaleString('pt-BR')
+}
+
+function formatPercent(value: number | null | undefined): string {
+  if (!Number.isFinite(Number(value))) return '-'
+  return `${Number(value).toFixed(1)}%`
+}
+
 export function MapaPresenca({
   cidadesComPresenca,
   cidadesVisitadas = [],
@@ -112,6 +171,7 @@ export function MapaPresenca({
   const [filtroRegiao, setFiltroRegiao] = useState<string>('todas')
   const [mapStats, setMapStats] = useState<MapStats | null>(null)
   const [prioridadeBuscaMunicipio, setPrioridadeBuscaMunicipio] = useState<string>('')
+  const [cidadePrioridadeSelecionada, setCidadePrioridadeSelecionada] = useState<string>('')
 
   useEffect(() => {
     setClientReady(true)
@@ -127,7 +187,10 @@ export function MapaPresenca({
   }, [])
 
   useEffect(() => {
-    if (!isNativeFullscreen) setPrioridadeBuscaMunicipio('')
+    if (!isNativeFullscreen) {
+      setPrioridadeBuscaMunicipio('')
+      setCidadePrioridadeSelecionada('')
+    }
   }, [isNativeFullscreen])
 
   const handleExitFullscreen = useCallback(() => {
@@ -194,6 +257,60 @@ export function MapaPresenca({
     if (!q) return comRank
     return comRank.filter(({ row }) => normalizeName(row.cidade).includes(q))
   }, [prioridadeCampoFiltrada, prioridadeBuscaMunicipio])
+
+  useEffect(() => {
+    if (prioridadeCampoExibicao.length === 0) {
+      setCidadePrioridadeSelecionada('')
+      return
+    }
+    if (!cidadePrioridadeSelecionada) {
+      setCidadePrioridadeSelecionada(prioridadeCampoExibicao[0].row.cidade)
+      return
+    }
+    const selectedExists = prioridadeCampoExibicao.some(
+      ({ row }) => normalizeName(row.cidade) === normalizeName(cidadePrioridadeSelecionada),
+    )
+    if (!selectedExists) {
+      setCidadePrioridadeSelecionada(prioridadeCampoExibicao[0].row.cidade)
+    }
+  }, [prioridadeCampoExibicao, cidadePrioridadeSelecionada])
+
+  const demografiaPorCidade = useMemo(() => {
+    const source = demografiaMunicipiosPiaui as DemografiaMunicipioRow[]
+    const mapa = new Map<string, DemografiaMunicipioRow>()
+    source.forEach((item) => {
+      mapa.set(normalizeName(item.municipio), item)
+    })
+    return mapa
+  }, [])
+
+  const demografiaCidadeSelecionada = useMemo(() => {
+    if (!cidadePrioridadeSelecionada) return null
+    return demografiaPorCidade.get(normalizeName(cidadePrioridadeSelecionada)) || null
+  }, [cidadePrioridadeSelecionada, demografiaPorCidade])
+
+  const indicadoresDemograficos = useMemo(() => {
+    if (!demografiaCidadeSelecionada) return null
+    const popTotal = demografiaCidadeSelecionada.populacao_censo_2022
+    const faixa014 = demografiaCidadeSelecionada.faixas_etarias.de_0_a_14
+    const faixa1559 = demografiaCidadeSelecionada.faixas_etarias.de_15_a_59
+    const faixa60 = demografiaCidadeSelecionada.faixas_etarias.de_60_ou_mais
+    const masc = demografiaCidadeSelecionada.sexo.masculino
+    const fem = demografiaCidadeSelecionada.sexo.feminino
+
+    const pct = (v: number | null, t: number | null): number | null => {
+      if (!Number.isFinite(Number(v)) || !Number.isFinite(Number(t)) || Number(t) <= 0) return null
+      return (Number(v) / Number(t)) * 100
+    }
+
+    return {
+      pct014: pct(faixa014, popTotal),
+      pct1559: pct(faixa1559, popTotal),
+      pct60: pct(faixa60, popTotal),
+      pctMasc: pct(masc, popTotal),
+      pctFem: pct(fem, popTotal),
+    }
+  }, [demografiaCidadeSelecionada])
 
   const resumoGlobalRegiao = useMemo(() => {
     const municipiosSet = new Set(dadosRegiao.municipios.map((m) => normalizeName(m.nome)))
@@ -578,113 +695,224 @@ export function MapaPresenca({
           </div>
           <aside
             className={cn(
-              'flex w-[min(340px,32vw)] shrink-0 flex-col overflow-hidden border-l border-card bg-surface',
+              'flex w-[min(760px,62vw)] shrink-0 flex-col overflow-hidden border-l border-card bg-surface',
               isDarkAppearance ? 'border-white/10' : undefined,
             )}
           >
-            <div className={cn('shrink-0 border-b px-3 py-2.5', isDarkAppearance ? 'border-white/10 bg-black/20' : 'border-card bg-background/40')}>
-              <div className="flex items-center gap-2">
-                <ListOrdered className={cn('h-4 w-4 shrink-0', isDarkAppearance ? 'text-amber-200' : 'text-amber-700')} aria-hidden />
-                <p className="text-sm font-semibold text-text-primary">Prioridade no campo</p>
-              </div>
-              <p className="mt-1 text-xs leading-snug text-text-muted">
-                Cruza os municípios do Piauí (como no Território) com a previsão de votos 2026 da planilha e os check-ins de campo/agenda. Ordem: mais votos com menos visitas primeiro.
-                Respeita o filtro de região acima.
-              </p>
-              <label
-                className={cn(
-                  'mt-2 flex items-center gap-2 rounded-lg border px-2.5 py-2',
-                  isDarkAppearance ? 'border-white/10 bg-black/15' : 'border-card bg-background/50',
-                )}
-              >
-                <Search className="h-4 w-4 shrink-0 text-text-muted" aria-hidden />
-                <input
-                  type="search"
-                  value={prioridadeBuscaMunicipio}
-                  onChange={(e) => setPrioridadeBuscaMunicipio(e.target.value)}
-                  placeholder="Buscar município…"
-                  className={cn(
-                    'min-w-0 flex-1 bg-transparent text-sm text-text-primary placeholder:text-text-muted focus:outline-none',
-                  )}
-                  autoComplete="off"
-                  spellCheck={false}
-                />
-              </label>
-            </div>
-            <div className="min-h-0 flex-1 overflow-y-auto px-2 pb-3 pt-1">
-              {prioridadeCampoFiltrada.length === 0 ? (
-                <div className="px-1 py-3 text-sm leading-relaxed text-text-secondary">
-                  {prioridadeCampoLista.length === 0 ? (
-                    <>
-                      <p className="font-medium text-text-primary">Nenhum município no ranking por enquanto.</p>
+            <div className="grid min-h-0 flex-1 grid-cols-1 divide-y border-card lg:grid-cols-2 lg:divide-x lg:divide-y-0">
+              <div className="flex min-h-0 flex-col overflow-hidden">
+                <div className={cn('shrink-0 border-b px-3 py-2.5', isDarkAppearance ? 'border-white/10 bg-black/20' : 'border-card bg-background/40')}>
+                  <div className="flex items-center gap-2">
+                    <ListOrdered className={cn('h-4 w-4 shrink-0', isDarkAppearance ? 'text-amber-200' : 'text-amber-700')} aria-hidden />
+                    <p className="text-sm font-semibold text-text-primary">Prioridade no campo</p>
+                  </div>
+                  <p className="mt-1 text-xs leading-snug text-text-muted">
+                    Mais votos previstos com menos visitas primeiro. Clique em um município para ver o perfil demográfico ao lado.
+                  </p>
+                  <label
+                    className={cn(
+                      'mt-2 flex items-center gap-2 rounded-lg border px-2.5 py-2',
+                      isDarkAppearance ? 'border-white/10 bg-black/15' : 'border-card bg-background/50',
+                    )}
+                  >
+                    <Search className="h-4 w-4 shrink-0 text-text-muted" aria-hidden />
+                    <input
+                      type="search"
+                      value={prioridadeBuscaMunicipio}
+                      onChange={(e) => setPrioridadeBuscaMunicipio(e.target.value)}
+                      placeholder="Buscar município…"
+                      className={cn(
+                        'min-w-0 flex-1 bg-transparent text-sm text-text-primary placeholder:text-text-muted focus:outline-none',
+                      )}
+                      autoComplete="off"
+                      spellCheck={false}
+                    />
+                  </label>
+                </div>
+                <div className="min-h-0 flex-1 overflow-y-auto px-2 pb-3 pt-1">
+                  {prioridadeCampoFiltrada.length === 0 ? (
+                    <div className="px-1 py-3 text-sm leading-relaxed text-text-secondary">
+                      {prioridadeCampoLista.length === 0 ? (
+                        <>
+                          <p className="font-medium text-text-primary">Nenhum município no ranking por enquanto.</p>
+                          <p className="mt-1.5 text-xs text-text-muted">
+                            É preciso ao menos previsão na planilha do Território ou agendas/check-ins de campo com cidade para montar o cruzamento.
+                          </p>
+                        </>
+                      ) : (
+                        <>
+                          <p className="font-medium text-text-primary">Nenhum município desta região na lista.</p>
+                          <p className="mt-1.5 text-xs text-text-muted">
+                            Escolha outra região no filtro acima ou a opção Todas as regiões para ver a fila completa.
+                          </p>
+                        </>
+                      )}
+                    </div>
+                  ) : prioridadeCampoExibicao.length === 0 ? (
+                    <div className="px-1 py-3 text-sm leading-relaxed text-text-secondary">
+                      <p className="font-medium text-text-primary">Nenhum município encontrado.</p>
                       <p className="mt-1.5 text-xs text-text-muted">
-                        É preciso ao menos previsão na planilha do Território ou agendas/check-ins de campo com cidade para montar o cruzamento.
+                        Ajuste o termo de busca ou limpe o campo para ver a lista completa da região.
                       </p>
-                    </>
+                    </div>
                   ) : (
-                    <>
-                      <p className="font-medium text-text-primary">Nenhum município desta região na lista.</p>
-                      <p className="mt-1.5 text-xs text-text-muted">
-                        Escolha outra região no filtro acima ou a opção Todas as regiões para ver a fila completa.
-                      </p>
-                    </>
+                    <ol className="list-none space-y-2">
+                      {prioridadeCampoExibicao.map(({ row, rankGlobal }) => {
+                        const ultima = formatUltimaVisitaCampo(row.ultimaVisita)
+                        const votosLabel =
+                          row.expectativaVotos > 0
+                            ? `${row.expectativaVotos.toLocaleString('pt-BR')} votos previstos (2026)`
+                            : 'Sem previsão na planilha'
+                        const visitasLabel =
+                          row.visitas === 0
+                            ? 'nenhuma visita com check-in'
+                            : `${row.visitas} visita${row.visitas !== 1 ? 's' : ''} com check-in`
+                        const isSelected = normalizeName(cidadePrioridadeSelecionada) === normalizeName(row.cidade)
+                        return (
+                          <li key={`${rankGlobal}-${normalizeName(row.cidade)}`}>
+                            <button
+                              type="button"
+                              onClick={() => setCidadePrioridadeSelecionada(row.cidade)}
+                              className={cn(
+                                'flex w-full gap-2 rounded-lg border px-2.5 py-2 text-left transition-colors',
+                                isSelected
+                                  ? isDarkAppearance
+                                    ? 'border-amber-300/60 bg-amber-500/15'
+                                    : 'border-amber-300 bg-amber-50'
+                                  : isDarkAppearance
+                                    ? 'border-white/10 bg-white/[0.03] hover:bg-white/[0.06]'
+                                    : 'border-card bg-background/60 hover:bg-background/90',
+                              )}
+                            >
+                              <span
+                                className={cn(
+                                  'flex h-6 min-w-[1.5rem] shrink-0 items-center justify-center rounded text-xs font-bold tabular-nums',
+                                  isDarkAppearance ? 'bg-white/10 text-text-secondary' : 'bg-border-card/80 text-text-muted',
+                                )}
+                                title="Posição na fila estratégica (global na região)"
+                              >
+                                {rankGlobal}
+                              </span>
+                              <div className="min-w-0 flex-1">
+                                <p className="text-sm font-semibold leading-tight text-text-primary">{row.cidade}</p>
+                                <p className="mt-1 text-xs leading-snug text-text-secondary">
+                                  {votosLabel}
+                                  <span className="text-text-muted"> · </span>
+                                  {visitasLabel}
+                                  {ultima ? (
+                                    <>
+                                      <span className="text-text-muted"> · </span>
+                                      última: {ultima}
+                                    </>
+                                  ) : null}
+                                </p>
+                              </div>
+                            </button>
+                          </li>
+                        )
+                      })}
+                    </ol>
                   )}
                 </div>
-              ) : prioridadeCampoExibicao.length === 0 ? (
-                <div className="px-1 py-3 text-sm leading-relaxed text-text-secondary">
-                  <p className="font-medium text-text-primary">Nenhum município encontrado.</p>
-                  <p className="mt-1.5 text-xs text-text-muted">
-                    Ajuste o termo de busca ou limpe o campo para ver a lista completa da região.
+              </div>
+              <div className="flex min-h-0 flex-col overflow-hidden">
+                <div className={cn('shrink-0 border-b px-3 py-2.5', isDarkAppearance ? 'border-white/10 bg-black/20' : 'border-card bg-background/40')}>
+                  <div className="flex items-center gap-2">
+                    <Users className={cn('h-4 w-4 shrink-0', isDarkAppearance ? 'text-cyan-300' : 'text-blue-700')} aria-hidden />
+                    <p className="text-sm font-semibold text-text-primary">Perfil da população</p>
+                  </div>
+                  <p className="mt-1 text-xs leading-snug text-text-muted">
+                    Dados IBGE por município: Censo 2022, estimativa recente, sexo e faixas etárias.
                   </p>
                 </div>
-              ) : (
-                <ol className="list-none space-y-2">
-                  {prioridadeCampoExibicao.map(({ row, rankGlobal }) => {
-                    const ultima = formatUltimaVisitaCampo(row.ultimaVisita)
-                    const votosLabel =
-                      row.expectativaVotos > 0
-                        ? `${row.expectativaVotos.toLocaleString('pt-BR')} votos previstos (2026)`
-                        : 'Sem previsão na planilha'
-                    const visitasLabel =
-                      row.visitas === 0
-                        ? 'nenhuma visita com check-in'
-                        : `${row.visitas} visita${row.visitas !== 1 ? 's' : ''} com check-in`
-                    return (
-                      <li
-                        key={`${rankGlobal}-${normalizeName(row.cidade)}`}
-                        className={cn(
-                          'flex gap-2 rounded-lg border px-2.5 py-2',
-                          isDarkAppearance ? 'border-white/10 bg-white/[0.03]' : 'border-card bg-background/60',
-                        )}
-                      >
-                        <span
-                          className={cn(
-                            'flex h-6 min-w-[1.5rem] shrink-0 items-center justify-center rounded text-xs font-bold tabular-nums',
-                            isDarkAppearance ? 'bg-white/10 text-text-secondary' : 'bg-border-card/80 text-text-muted',
-                          )}
-                          title="Posição na fila estratégica (global na região)"
-                        >
-                          {rankGlobal}
-                        </span>
-                        <div className="min-w-0 flex-1">
-                          <p className="text-sm font-semibold leading-tight text-text-primary">{row.cidade}</p>
-                          <p className="mt-1 text-xs leading-snug text-text-secondary">
-                            {votosLabel}
-                            <span className="text-text-muted"> · </span>
-                            {visitasLabel}
-                            {ultima ? (
-                              <>
-                                <span className="text-text-muted"> · </span>
-                                última: {ultima}
-                              </>
-                            ) : null}
-                          </p>
+                <div className="min-h-0 flex-1 overflow-y-auto px-3 pb-3 pt-2">
+                  {!cidadePrioridadeSelecionada ? (
+                    <p className="text-sm text-text-secondary">Selecione um município na lista de prioridade.</p>
+                  ) : !demografiaCidadeSelecionada ? (
+                    <div className="space-y-1">
+                      <p className="text-sm font-medium text-text-primary">{cidadePrioridadeSelecionada}</p>
+                      <p className="text-xs text-text-secondary">Sem dados demográficos encontrados para este município.</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      <div>
+                        <p className="text-sm font-semibold text-text-primary">{demografiaCidadeSelecionada.municipio}</p>
+                        <p className="text-xs text-text-muted">
+                          {demografiaCidadeSelecionada.microrregiao || '-'} · {demografiaCidadeSelecionada.mesorregiao || '-'}
+                        </p>
+                      </div>
+                      <div className={cn('grid grid-cols-2 gap-2 rounded-lg border p-2.5', isDarkAppearance ? 'border-white/10 bg-white/[0.03]' : 'border-card bg-background/60')}>
+                        <div>
+                          <p className="text-[11px] text-text-muted">População (Censo 2022)</p>
+                          <p className="text-sm font-semibold text-text-primary">{formatNumberPtBr(demografiaCidadeSelecionada.populacao_censo_2022)}</p>
                         </div>
-                      </li>
-                    )
-                  })}
-                </ol>
-              )}
+                        <div>
+                          <p className="text-[11px] text-text-muted">Estimativa ({demografiaCidadeSelecionada.ano_estimativa || '-'})</p>
+                          <p className="text-sm font-semibold text-text-primary">{formatNumberPtBr(demografiaCidadeSelecionada.populacao_estimada_ultimo_ano)}</p>
+                        </div>
+                      </div>
+                      <div className={cn('rounded-lg border p-2.5', isDarkAppearance ? 'border-white/10 bg-white/[0.03]' : 'border-card bg-background/60')}>
+                        <p className="mb-1 text-xs font-semibold text-text-primary">Sexo</p>
+                        <p className="text-xs text-text-secondary">
+                          Homens: {formatNumberPtBr(demografiaCidadeSelecionada.sexo.masculino)} ({formatPercent(indicadoresDemograficos?.pctMasc)})
+                        </p>
+                        <p className="text-xs text-text-secondary">
+                          Mulheres: {formatNumberPtBr(demografiaCidadeSelecionada.sexo.feminino)} ({formatPercent(indicadoresDemograficos?.pctFem)})
+                        </p>
+                      </div>
+                      <div className={cn('rounded-lg border p-2.5', isDarkAppearance ? 'border-white/10 bg-white/[0.03]' : 'border-card bg-background/60')}>
+                        <p className="mb-1 text-xs font-semibold text-text-primary">Faixa etária</p>
+                        <p className="text-xs text-text-secondary">
+                          0-14: {formatNumberPtBr(demografiaCidadeSelecionada.faixas_etarias.de_0_a_14)} ({formatPercent(indicadoresDemograficos?.pct014)})
+                        </p>
+                        <p className="text-xs text-text-secondary">
+                          15-59: {formatNumberPtBr(demografiaCidadeSelecionada.faixas_etarias.de_15_a_59)} ({formatPercent(indicadoresDemograficos?.pct1559)})
+                        </p>
+                        <p className="text-xs text-text-secondary">
+                          60+: {formatNumberPtBr(demografiaCidadeSelecionada.faixas_etarias.de_60_ou_mais)} ({formatPercent(indicadoresDemograficos?.pct60)})
+                        </p>
+                      </div>
+                      <div className={cn('rounded-lg border p-2.5', isDarkAppearance ? 'border-white/10 bg-white/[0.03]' : 'border-card bg-background/60')}>
+                        <p className="mb-1 text-xs font-semibold text-text-primary">Cor/raça (IBGE)</p>
+                        <p className="text-xs text-text-secondary">Branca: {formatNumberPtBr(demografiaCidadeSelecionada.cor_raca?.branca)}</p>
+                        <p className="text-xs text-text-secondary">Parda: {formatNumberPtBr(demografiaCidadeSelecionada.cor_raca?.parda)}</p>
+                        <p className="text-xs text-text-secondary">Preta: {formatNumberPtBr(demografiaCidadeSelecionada.cor_raca?.preta)}</p>
+                        <p className="text-xs text-text-secondary">Amarela: {formatNumberPtBr(demografiaCidadeSelecionada.cor_raca?.amarela)}</p>
+                        <p className="text-xs text-text-secondary">Indígena: {formatNumberPtBr(demografiaCidadeSelecionada.cor_raca?.indigena)}</p>
+                      </div>
+                      <div className={cn('rounded-lg border p-2.5', isDarkAppearance ? 'border-white/10 bg-white/[0.03]' : 'border-card bg-background/60')}>
+                        <p className="mb-1 text-xs font-semibold text-text-primary">Escolaridade/alfabetização</p>
+                        <p className="text-xs text-text-secondary">
+                          Taxa de alfabetização (15+): {formatPercent(demografiaCidadeSelecionada.alfabetizacao?.taxa_15_mais)}
+                        </p>
+                        <p className="text-xs text-text-secondary">
+                          Taxa de analfabetismo (15+): {formatPercent(demografiaCidadeSelecionada.alfabetizacao?.taxa_analfabetismo_15_mais)}
+                        </p>
+                      </div>
+                      <div className={cn('rounded-lg border p-2.5', isDarkAppearance ? 'border-white/10 bg-white/[0.03]' : 'border-card bg-background/60')}>
+                        <p className="mb-1 text-xs font-semibold text-text-primary">Urbanização (urbano/rural)</p>
+                        <p className="text-xs text-text-secondary">
+                          Urbana: {formatNumberPtBr(demografiaCidadeSelecionada.urbanizacao?.urbana)} ({formatPercent(demografiaCidadeSelecionada.urbanizacao?.taxa_urbana)})
+                        </p>
+                        <p className="text-xs text-text-secondary">
+                          Rural: {formatNumberPtBr(demografiaCidadeSelecionada.urbanizacao?.rural)} ({formatPercent(demografiaCidadeSelecionada.urbanizacao?.taxa_rural)})
+                        </p>
+                        <p className="mt-1 text-[11px] text-text-muted">Fonte: SIDRA 9923 (Censo 2022).</p>
+                      </div>
+                      <div className={cn('rounded-lg border p-2.5', isDarkAppearance ? 'border-white/10 bg-white/[0.03]' : 'border-card bg-background/60')}>
+                        <p className="mb-1 text-xs font-semibold text-text-primary">Renda e vulnerabilidade</p>
+                        <p className="text-xs text-text-secondary">
+                          Renda per capita: {formatNumberPtBr(demografiaCidadeSelecionada.renda_vulnerabilidade?.renda_per_capita)}
+                        </p>
+                        <p className="text-xs text-text-secondary">
+                          % vulneráveis à pobreza: {formatPercent(demografiaCidadeSelecionada.renda_vulnerabilidade?.percentual_vulneraveis_pobreza)}
+                        </p>
+                        <p className="mt-1 text-[11px] text-text-muted">Fonte: Ipeadata/Atlas DH ({demografiaCidadeSelecionada.renda_vulnerabilidade?.ano_referencia || '-'})</p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
             </div>
           </aside>
         </div>

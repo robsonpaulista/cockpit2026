@@ -9,7 +9,8 @@
     "lint": "next lint",
     "obras:import": "node scripts/xlsx-to-json-obras.mjs",
     "federal2018:json": "node scripts/xlsx-to-json-federal2018.mjs",
-    "federal2018:import": "node scripts/import-federal2018-to-supabase.mjs"
+    "federal2018:import": "node scripts/import-federal2018-to-supabase.mjs",
+    "piaui:demografia:ibge": "node scripts/fetch-piaui-demografia-ibge.mjs"
   },
   "dependencies": {
     "@react-three/drei": "^9.122.0",
