@@ -166,9 +166,9 @@ function emendaListTdClass(col: EmendaListColumnKey): string {
     col === 'portaria_convenio' ||
     col === 'empenho'
   return cn(
-    'px-4 py-2.5 text-text-secondary',
-    col === 'id' && 'max-w-[120px] truncate font-mono text-xs text-text-secondary',
-    col === 'emenda' && 'max-w-[220px] truncate font-medium text-text-primary',
+    'px-4 py-2 text-black',
+    col === 'id' && 'max-w-[120px] truncate font-mono text-xs',
+    col === 'emenda' && 'max-w-[220px] truncate font-medium',
     col === 'municipio_beneficiario' && 'max-w-[200px] truncate',
     longoTexto && 'max-w-[min(18rem,40vw)] truncate',
     (col === 'exercicio' ||
@@ -606,7 +606,7 @@ export default function EmendasPage() {
 
   const tableShellClass = isCockpit
     ? 'overflow-hidden rounded-xl border border-white/10 bg-white/[0.03]'
-    : 'overflow-hidden rounded-xl border border-card bg-background'
+    : 'overflow-hidden rounded-xl border border-card bg-white'
 
   return (
     <div className={cn('flex min-h-screen flex-1 flex-col', pageShellClass)}>
@@ -885,19 +885,28 @@ export default function EmendasPage() {
                     <tr
                       className={cn(
                         'border-b',
-                        isCockpit ? 'border-white/10 bg-white/[0.06]' : 'border-card bg-surface/90',
+                        isCockpit ? 'border-white/10 bg-white/[0.06]' : 'border-card bg-white',
                       )}
                     >
                       {activeColumnList.map((col) => (
                         <th
                           key={col}
-                          className="px-4 py-2.5 font-semibold text-text-primary"
+                          className={cn(
+                            'px-4 py-2 font-semibold',
+                            isCockpit ? 'text-text-primary' : 'text-black',
+                          )}
                           scope="col"
                         >
                           {EMENDAS_LIST_COLUMN_LABELS[col]}
                         </th>
                       ))}
-                      <th className="w-28 px-4 py-2.5 text-right font-semibold text-text-primary" scope="col">
+                      <th
+                        className={cn(
+                          'w-28 px-4 py-2 text-right font-semibold',
+                          isCockpit ? 'text-text-primary' : 'text-black',
+                        )}
+                        scope="col"
+                      >
                         Ações
                       </th>
                     </tr>
@@ -916,7 +925,7 @@ export default function EmendasPage() {
                           {renderEmendaListCell(r, col)}
                         </td>
                       ))}
-                      <td className="px-4 py-2.5 text-right">
+                      <td className="px-4 py-2 text-right">
                         <div className="inline-flex gap-1">
                           <button
                             type="button"
