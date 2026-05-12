@@ -16,6 +16,7 @@ import {
   FileSpreadsheet,
   FileText,
   Columns2,
+  Copy,
 } from 'lucide-react'
 import {
   EMENDAS_LIST_COLUMN_KEYS,
@@ -298,6 +299,7 @@ export default function EmendasPage() {
   const [error, setError] = useState<string | null>(null)
   const [modalOpen, setModalOpen] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
+  const [isDuplicating, setIsDuplicating] = useState(false)
   const [form, setForm] = useState<FormState>(emptyForm)
   const [saving, setSaving] = useState(false)
   const [deletingId, setDeletingId] = useState<string | null>(null)
@@ -520,6 +522,7 @@ export default function EmendasPage() {
   const openCreate = () => {
     setError(null)
     setEditingId(null)
+    setIsDuplicating(false)
     setForm(emptyForm())
     setShowColumnPicker(false)
     setModalOpen(true)
@@ -528,6 +531,22 @@ export default function EmendasPage() {
   const openEdit = (e: Emenda) => {
     setError(null)
     setEditingId(e.id)
+    setIsDuplicating(false)
+    setForm(rowToForm(e))
+    setShowColumnPicker(false)
+    setModalOpen(true)
+  }
+
+  /**
+   * Abre o modal pré-preenchido com os dados da emenda informada, mas em
+   * modo de criação (sem `editingId`), de forma que ao salvar seja gerado
+   * um novo registro idêntico — sem nenhuma alteração no nome da emenda,
+   * para não atrapalhar o ganho de tempo da duplicação.
+   */
+  const openDuplicate = (e: Emenda) => {
+    setError(null)
+    setEditingId(null)
+    setIsDuplicating(true)
     setForm(rowToForm(e))
     setShowColumnPicker(false)
     setModalOpen(true)
@@ -536,6 +555,7 @@ export default function EmendasPage() {
   const closeModal = () => {
     setModalOpen(false)
     setEditingId(null)
+    setIsDuplicating(false)
     setForm(emptyForm())
     setShowColumnPicker(false)
   }
@@ -937,6 +957,15 @@ export default function EmendasPage() {
                           </button>
                           <button
                             type="button"
+                            onClick={() => openDuplicate(r)}
+                            className="rounded-lg p-2 text-text-secondary hover:bg-accent-gold-soft/70 hover:text-text-primary"
+                            title="Duplicar"
+                            aria-label="Duplicar emenda"
+                          >
+                            <Copy className="h-4 w-4" aria-hidden />
+                          </button>
+                          <button
+                            type="button"
                             onClick={() => void remove(r)}
                             disabled={deletingId === r.id}
                             className="rounded-lg p-2 text-status-danger hover:bg-status-danger/10 disabled:opacity-50"
@@ -970,7 +999,7 @@ export default function EmendasPage() {
           <div className="max-h-[92vh] w-full max-w-4xl overflow-y-auto rounded-2xl border border-border-card bg-bg-surface shadow-2xl">
             <div className="sticky top-0 z-[1] flex items-center justify-between border-b border-border-card bg-bg-surface px-5 py-4">
               <h2 id="emenda-modal-title" className="text-base font-semibold text-text-primary">
-                {editingId ? 'Editar Emenda' : 'Nova Emenda'}
+                {editingId ? 'Editar Emenda' : isDuplicating ? 'Duplicar Emenda' : 'Nova Emenda'}
               </h2>
               <button
                 type="button"

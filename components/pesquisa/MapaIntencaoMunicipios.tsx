@@ -33,13 +33,6 @@ function normalizeName(name: string): string {
   return name.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim()
 }
 
-function getRegionName(lat: number): string {
-  if (lat > -4.8) return 'Norte'
-  if (lat > -6.5) return 'Centro-Norte'
-  if (lat > -8.5) return 'Centro-Sul'
-  return 'Sul'
-}
-
 /**
  * Para o candidato em foco, descobre sua posição (1-based) e % médio em uma
  * lista top-N já ordenada decrescente. Retorna `null` quando não encontrado.
@@ -316,26 +309,6 @@ function getMapStyles(appearance: MapAppearance): string {
     color: #ffffff !important;
     box-shadow: 0 6px 18px rgba(37,99,235,0.32) !important;
   }
-  .mapa-intencao-zone-label {
-    background: rgba(255,255,255,0.92);
-    backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px);
-    border-radius: 10px;
-    padding: 6px 10px;
-    font-family: system-ui,-apple-system,sans-serif;
-    box-shadow: 0 2px 12px rgba(0,0,0,0.1);
-    border: 1px solid rgba(0,0,0,0.06);
-    text-align:center;
-    pointer-events:none;
-    white-space:nowrap;
-  }
-  .mapa-intencao-zone-name {
-    font-size: 11px;
-    font-weight: 700;
-    color: #374151;
-    letter-spacing: 0.5px;
-    text-transform: uppercase;
-  }
 `
   const dark = `
   .mapa-intencao-host--dark .leaflet-container {
@@ -365,13 +338,6 @@ function getMapStyles(appearance: MapAppearance): string {
     border-color: #1d4ed8 !important;
     color: #ffffff !important;
     box-shadow: 0 6px 18px rgba(59,130,246,0.4) !important;
-  }
-  .mapa-intencao-host--dark .mapa-intencao-zone-label {
-    background: rgba(22,34,44,0.92) !important;
-    border: 1px solid rgba(148,163,184,0.22) !important;
-  }
-  .mapa-intencao-host--dark .mapa-intencao-zone-name {
-    color: #e2e8f0 !important;
   }
 `
   return appearance === 'dark' ? base + dark : base
@@ -417,13 +383,6 @@ export function MapaIntencaoMunicipios({
     const markersPane = map.getPane('mapaIntencaoMarkers')
     if (markersPane) markersPane.style.zIndex = '400'
 
-    map.createPane('mapaIntencaoLabels')
-    const labelsPane = map.getPane('mapaIntencaoLabels')
-    if (labelsPane) {
-      labelsPane.style.zIndex = '500'
-      labelsPane.style.pointerEvents = 'none'
-    }
-
     const tileUrl = isDark
       ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
       : 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png'
@@ -434,10 +393,6 @@ export function MapaIntencaoMunicipios({
     }).addTo(map)
 
     const markersLayer = L.layerGroup().addTo(map)
-    const zonasLayer = L.layerGroup().addTo(map)
-
-    // Acumula centros regionais para rotular as 4 zonas no mapa.
-    const regionAcc: Record<string, { lat: number; lng: number; n: number }> = {}
 
     MUNICIPIOS.forEach((mun) => {
       const row = cidadesPorChave.get(normalizeName(mun.nome))
@@ -526,30 +481,6 @@ export function MapaIntencaoMunicipios({
         })
       }
       marker.addTo(markersLayer)
-
-      // Centroide regional aproximado para rotular as zonas.
-      const region = getRegionName(mun.lat)
-      if (!regionAcc[region]) {
-        regionAcc[region] = { lat: 0, lng: 0, n: 0 }
-      }
-      regionAcc[region].lat += mun.lat
-      regionAcc[region].lng += mun.lng
-      regionAcc[region].n += 1
-    })
-
-    Object.entries(regionAcc).forEach(([nome, acc]) => {
-      const centroLat = acc.lat / acc.n
-      const centroLng = acc.lng / acc.n
-      const icon = L.divIcon({
-        className: '',
-        html: `<div class="mapa-intencao-zone-label">
-          <div class="mapa-intencao-zone-name">${nome}</div>
-        </div>`,
-        iconSize: [110, 28],
-        iconAnchor: [55, 14],
-        pane: 'mapaIntencaoLabels',
-      })
-      L.marker([centroLat, centroLng], { icon, interactive: false }).addTo(zonasLayer)
     })
 
     const containerEl = mapRef.current
