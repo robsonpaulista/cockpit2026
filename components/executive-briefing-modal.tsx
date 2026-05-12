@@ -2,13 +2,14 @@
 
 import { useEffect, useState, useCallback, useRef, useMemo } from 'react'
 import { createPortal } from 'react-dom'
-import { X, Users, FileText, TrendingUp, CheckCircle, Clock, AlertCircle, Loader2, Download, Copy, Check } from 'lucide-react'
+import { X, Users, FileText, TrendingUp, CheckCircle, Clock, AlertCircle, Loader2, Download, Copy, Check, Send } from 'lucide-react'
 import { useTheme } from '@/contexts/theme-context'
 import { cn } from '@/lib/utils'
 import { sidebarPrimaryCTAButtonClass } from '@/lib/sidebar-menu-active-style'
 import { getEleitoradoByCity } from '@/lib/eleitores'
 import jsPDF from 'jspdf'
 import { LineChart, Line, ResponsiveContainer, XAxis, YAxis, CartesianGrid, Tooltip, LabelList } from 'recharts'
+import { WhatsAppSendModal } from '@/components/whatsapp-send-modal'
 
 interface Lideranca {
   [key: string]: any
@@ -113,6 +114,7 @@ export function ExecutiveBriefingModal({
   const [filtroLideranca, setFiltroLideranca] = useState<string>('')
   const [selectedDemandKeys, setSelectedDemandKeys] = useState<string[]>([])
   const [exportSelectionMode, setExportSelectionMode] = useState(false)
+  const [whatsappSendOpen, setWhatsappSendOpen] = useState(false)
   const contentRef = useRef<HTMLDivElement>(null)
 
   const normalizeText = useCallback((value: unknown): string => {
@@ -383,8 +385,12 @@ export function ExecutiveBriefingModal({
   const ultimaPesquisa = polls.length > 0 ? polls.sort((a, b) => new Date(b.data).getTime() - new Date(a.data).getTime())[0] : null
   const votosProporcionais = eleitorado && ultimaPesquisa ? Math.round((ultimaPesquisa.intencao / 100) * eleitorado) : null
 
-  // Função para gerar texto formatado para WhatsApp e copiar
-  const handleCopyWhatsApp = async () => {
+  /**
+   * Monta a versão textual do briefing usada tanto no botão "Copiar"
+   * quanto no envio direto via WhatsApp. Mantém uma única fonte da verdade
+   * para o conteúdo formatado.
+   */
+  const buildBriefingWhatsAppText = (): string => {
     const hoje = new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' })
     const lines: string[] = []
 
@@ -393,13 +399,11 @@ export function ExecutiveBriefingModal({
     lines.push(`📅 ${hoje}`)
     lines.push(``)
 
-    // Eleitorado
     if (eleitorado) {
       lines.push(`🗳️ *Eleitorado:* ${eleitorado.toLocaleString('pt-BR')} eleitores`)
       lines.push(``)
     }
 
-    // Lideranças
     lines.push(`━━━━━━━━━━━━━━━━━━`)
     lines.push(`👥 *LIDERANÇAS*`)
     if (expectativaVotosCol) {
@@ -424,7 +428,6 @@ export function ExecutiveBriefingModal({
     }
     lines.push(``)
 
-    // Demandas
     lines.push(`━━━━━━━━━━━━━━━━━━`)
     lines.push(`📝 *DEMANDAS* (${demandsSelecionadasOrdenadas.length})`)
     lines.push(``)
@@ -490,13 +493,11 @@ export function ExecutiveBriefingModal({
       }
     }
 
-    // Pesquisas
     if (polls.length > 0) {
       lines.push(`━━━━━━━━━━━━━━━━━━`)
       lines.push(`📊 *PESQUISAS DE INTENÇÃO DE VOTO*`)
       lines.push(``)
 
-      // Agrupar por data/instituto
       const pollsPorData = new Map<string, Poll[]>()
       polls.forEach(poll => {
         const dateStr = poll.data
@@ -512,7 +513,6 @@ export function ExecutiveBriefingModal({
         pollsPorData.get(key)!.push(poll)
       })
 
-      // Ordenar por data (mais recente primeiro)
       const pollsEntries = Array.from(pollsPorData.entries()).sort((a, b) => {
         const dateA = a[1][0]?.data || ''
         const dateB = b[1][0]?.data || ''
@@ -521,7 +521,6 @@ export function ExecutiveBriefingModal({
 
       pollsEntries.forEach(([key, pollsGrupo]) => {
         lines.push(`🗓️ *${key}*`)
-        // Ordenar candidatos por intenção (maior primeiro)
         const sorted = [...pollsGrupo].sort((a, b) => b.intencao - a.intencao)
         sorted.forEach((poll, idx) => {
           const medal = idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : '  •'
@@ -530,7 +529,6 @@ export function ExecutiveBriefingModal({
         lines.push(``)
       })
 
-      // Votos proporcionais baseado na última pesquisa
       if (votosProporcionais && ultimaPesquisa) {
         lines.push(`📈 Projeção de votos (última pesquisa): *${votosProporcionais.toLocaleString('pt-BR')}*`)
         lines.push(``)
@@ -540,14 +538,17 @@ export function ExecutiveBriefingModal({
     lines.push(`━━━━━━━━━━━━━━━━━━`)
     lines.push(`_Gerado pelo Cockpit 2026_`)
 
-    const text = lines.join('\n')
+    return lines.join('\n')
+  }
+
+  const handleCopyWhatsApp = async () => {
+    const text = buildBriefingWhatsAppText()
 
     try {
       await navigator.clipboard.writeText(text)
       setCopied(true)
       setTimeout(() => setCopied(false), 3000)
     } catch {
-      // Fallback para browsers que não suportam clipboard API
       const textarea = document.createElement('textarea')
       textarea.value = text
       textarea.style.position = 'fixed'
@@ -559,6 +560,10 @@ export function ExecutiveBriefingModal({
       setCopied(true)
       setTimeout(() => setCopied(false), 3000)
     }
+  }
+
+  const handleOpenWhatsAppSend = () => {
+    setWhatsappSendOpen(true)
   }
 
   // Função para exportar PDF
@@ -778,7 +783,20 @@ export function ExecutiveBriefingModal({
               ) : (
                 <Copy className={cn('h-4 w-4 shrink-0', isCockpit ? 'text-white' : 'text-accent-gold')} aria-hidden />
               )}
-              {copied ? 'Copiado!' : 'WhatsApp'}
+              {copied ? 'Copiado!' : 'Copiar'}
+            </button>
+            <button
+              type="button"
+              onClick={handleOpenWhatsAppSend}
+              disabled={loading}
+              className={sidebarPrimaryCTAButtonClass(isCockpit)}
+              title="Enviar briefing pelo WhatsApp para um destinatário"
+            >
+              <Send
+                className={cn('h-4 w-4 shrink-0', isCockpit ? 'text-white' : 'text-accent-gold')}
+                aria-hidden
+              />
+              Enviar
             </button>
             <button
               type="button"
@@ -1278,6 +1296,16 @@ export function ExecutiveBriefingModal({
           </button>
         </div>
       </div>
+
+      <WhatsAppSendModal
+        isOpen={whatsappSendOpen}
+        onClose={() => setWhatsappSendOpen(false)}
+        text={buildBriefingWhatsAppText()}
+        source="briefing-executivo"
+        cidade={cidade}
+        title={`Enviar briefing — ${cidade}`}
+        description="Informe o telefone do destinatário e confira a mensagem antes de enviar."
+      />
     </div>,
     document.body
   )

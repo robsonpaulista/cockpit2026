@@ -15,6 +15,9 @@ const optionalEnvVars = [
   'GOOGLE_SERVICE_ACCOUNT_EMAIL',
   'GOOGLE_SHEETS_SPREADSHEET_ID',
   'MEDIA_CLOUD_API_KEY',
+  'WHATSAPP_API_URL',
+  'WHATSAPP_API_KEY',
+  'WHATSAPP_INSTANCE_ID',
 ] as const
 
 export interface EnvValidationResult {
