@@ -1,6 +1,8 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import dynamic from 'next/dynamic'
+import { Maximize2, Minimize2 } from 'lucide-react'
 import { useTheme } from '@/contexts/theme-context'
 import {
   CIDADE_INTENCAO_TOP_N,
@@ -9,6 +11,15 @@ import {
   type ExecutiveTendenciaModel,
   type ProjecaoVotosEleitoradoRecorte,
 } from '@/lib/pesquisa-tendencia-executive'
+
+/**
+ * Mapa do Piauí com a posição e % médio (espontânea/estimulada) por município.
+ * Carregado sob demanda porque depende do Leaflet (window/document).
+ */
+const MapaIntencaoMunicipios = dynamic(
+  () => import('./MapaIntencaoMunicipios').then((mod) => mod.MapaIntencaoMunicipios),
+  { ssr: false },
+)
 
 const ORDINAIS_TOP10 = Array.from({ length: CIDADE_INTENCAO_TOP_N }, (_, i) => `${i + 1}º`)
 
@@ -433,7 +444,16 @@ export type TendenciaIntencaoExecutiveSectionProps = {
   ajusteNsPct: number
   tipoGraficoLabel: string
   onVerDetalhesCandidato?: (nome: string) => void
+  /**
+   * Candidato em foco para o mapa por município: marcadores ficam coloridos
+   * pela posição dele em cada município. 1º lugar usa azul para destacar
+   * "onde o nosso candidato lidera"; top 3 verde-claro, 4º-5º âmbar, 6º+
+   * vermelho. Quando omitido, o mapa colore por densidade de pesquisas.
+   */
+  candidatoFoco?: string | null
 }
+
+type ModoIntencaoVisao = 'geral' | 'projecao' | 'mapa'
 
 export function TendenciaIntencaoExecutiveSection({
   model,
@@ -442,10 +462,47 @@ export function TendenciaIntencaoExecutiveSection({
   ajusteNsPct,
   tipoGraficoLabel,
   onVerDetalhesCandidato,
+  candidatoFoco = null,
 }: TendenciaIntencaoExecutiveSectionProps) {
   const { appearance } = useTheme()
-  const [modoIntencaoVisao, setModoIntencaoVisao] = useState<'geral' | 'projecao'>('geral')
+  const [modoIntencaoVisao, setModoIntencaoVisao] = useState<ModoIntencaoVisao>('geral')
   const { resumo, cidadesIntencaoTop10, projecaoVotosEleitorado, temEstimulada, temEspontanea } = model
+
+  /**
+   * Container do mapa de intenção: usado pelo botão "Tela cheia". A Fullscreen
+   * API nativa preserva os event listeners do Leaflet (ResizeObserver +
+   * `invalidateSize`) já implementados em MapaIntencaoMunicipios.
+   */
+  const mapaContainerRef = useRef<HTMLDivElement>(null)
+  const [mapaEmTelaCheia, setMapaEmTelaCheia] = useState<boolean>(false)
+
+  useEffect(() => {
+    const onFullscreenChange = () => {
+      setMapaEmTelaCheia(
+        Boolean(document.fullscreenElement && document.fullscreenElement === mapaContainerRef.current),
+      )
+    }
+    document.addEventListener('fullscreenchange', onFullscreenChange)
+    return () => document.removeEventListener('fullscreenchange', onFullscreenChange)
+  }, [])
+
+  /**
+   * Alterna a tela cheia do container do mapa. Quando o navegador não suportar
+   * `requestFullscreen` (raro hoje), faz um fallback silencioso — sem quebrar.
+   */
+  const alternarMapaTelaCheia = useCallback(async () => {
+    const el = mapaContainerRef.current
+    if (!el) return
+    try {
+      if (document.fullscreenElement) {
+        await document.exitFullscreen()
+      } else if (typeof el.requestFullscreen === 'function') {
+        await el.requestFullscreen()
+      }
+    } catch {
+      // Permissão negada / não suportado: mantém o mapa no fluxo normal.
+    }
+  }, [])
   const temDadosPainel = temEstimulada || temEspontanea
   const nomeCandidatoClass =
     appearance === 'light'
@@ -528,7 +585,11 @@ export function TendenciaIntencaoExecutiveSection({
             <p className="text-xs text-secondary">
               {modoIntencaoVisao === 'geral'
                 ? 'Visão geral: por cidade — blocos Espontânea e Estimulada (Pesq. + top 10 por média em cada tipo).'
-                : 'Projeção acumulada: média de intenção por município × eleitorado (TRE), ranking e totalizadores para bater com a base na eleição.'}
+                : modoIntencaoVisao === 'projecao'
+                  ? 'Projeção acumulada: média de intenção por município × eleitorado (TRE), ranking e totalizadores para bater com a base na eleição.'
+                  : candidatoFoco
+                    ? `Mapa por município: rótulo fixo mostra o 1º colocado; cor e número refletem a posição de ${candidatoFoco} no ranking de cada cidade. Clique para ver top 3.`
+                    : 'Mapa por município: rótulo fixo mostra o 1º colocado; marcadores mostram a quantidade de pesquisas. Selecione um candidato para colorir por posição.'}
             </p>
             <div
               className="inline-flex shrink-0 rounded-lg border border-card bg-background/80 p-0.5"
@@ -559,6 +620,18 @@ export function TendenciaIntencaoExecutiveSection({
               >
                 Projeção (eleitorado)
               </button>
+              <button
+                type="button"
+                aria-pressed={modoIntencaoVisao === 'mapa'}
+                onClick={() => setModoIntencaoVisao('mapa')}
+                className={`rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
+                  modoIntencaoVisao === 'mapa'
+                    ? 'bg-background text-text-primary shadow-sm ring-1 ring-border-card'
+                    : 'text-secondary hover:bg-background/60 hover:text-text-primary'
+                }`}
+              >
+                Mapa por município
+              </button>
             </div>
           </div>
 
@@ -576,12 +649,112 @@ export function TendenciaIntencaoExecutiveSection({
                 />
               )}
             </div>
-          ) : (
+          ) : modoIntencaoVisao === 'projecao' ? (
             <TendenciaProjecaoEleitoradoPanel
               projecao={projecaoVotosEleitorado}
               onVerDetalhesCandidato={onVerDetalhesCandidato}
               nomeCandidatoClass={nomeCandidatoClass}
             />
+          ) : (
+            <div className="mt-3">
+              {cidadesIntencaoTop10.length === 0 ? (
+                <p className="text-sm text-secondary">
+                  Não há municípios com pesquisas registradas neste recorte para montar o mapa.
+                </p>
+              ) : (
+                <>
+                  <div className="flex flex-wrap items-center gap-3 rounded-lg border border-card bg-background/50 px-3 py-2 text-[11px] text-secondary">
+                    {candidatoFoco ? (
+                      <>
+                        <span className="font-semibold uppercase tracking-wide text-text-primary">
+                          Legenda — posição de {candidatoFoco}
+                        </span>
+                        <span className="inline-flex items-center gap-1.5">
+                          <span className="inline-block h-2.5 w-2.5 rounded-full" style={{ background: '#2563eb' }} />
+                          1º lugar (nosso candidato lidera)
+                        </span>
+                        <span className="inline-flex items-center gap-1.5">
+                          <span className="inline-block h-2.5 w-2.5 rounded-full" style={{ background: '#65a30d' }} />
+                          Top 3
+                        </span>
+                        <span className="inline-flex items-center gap-1.5">
+                          <span className="inline-block h-2.5 w-2.5 rounded-full" style={{ background: '#f59e0b' }} />
+                          4º a 5º
+                        </span>
+                        <span className="inline-flex items-center gap-1.5">
+                          <span className="inline-block h-2.5 w-2.5 rounded-full" style={{ background: '#dc2626' }} />
+                          6º ou pior
+                        </span>
+                        <span className="inline-flex items-center gap-1.5">
+                          <span className="inline-block h-2.5 w-2.5 rounded-full" style={{ background: 'rgba(148,163,184,0.55)' }} />
+                          Sem dados
+                        </span>
+                      </>
+                    ) : (
+                      <>
+                        <span className="font-semibold uppercase tracking-wide text-text-primary">
+                          Legenda — densidade de pesquisas
+                        </span>
+                        <span className="inline-flex items-center gap-1.5">
+                          <span className="inline-block h-2.5 w-2.5 rounded-full" style={{ background: '#3b82f6' }} />
+                          1–2 pesquisas
+                        </span>
+                        <span className="inline-flex items-center gap-1.5">
+                          <span className="inline-block h-2.5 w-2.5 rounded-full" style={{ background: '#2563eb' }} />
+                          3–4 pesquisas
+                        </span>
+                        <span className="inline-flex items-center gap-1.5">
+                          <span className="inline-block h-2.5 w-2.5 rounded-full" style={{ background: '#1d4ed8' }} />
+                          5 ou mais
+                        </span>
+                        <span className="inline-flex items-center gap-1.5">
+                          <span className="inline-block h-2.5 w-2.5 rounded-full" style={{ background: 'rgba(148,163,184,0.55)' }} />
+                          Sem pesquisa
+                        </span>
+                      </>
+                    )}
+                  </div>
+                  <div
+                    ref={mapaContainerRef}
+                    className={
+                      mapaEmTelaCheia
+                        ? 'relative h-screen w-screen overflow-hidden bg-background'
+                        : 'relative mt-3 h-[520px] w-full overflow-hidden rounded-xl border border-card bg-background'
+                    }
+                  >
+                    <MapaIntencaoMunicipios
+                      cidades={cidadesIntencaoTop10}
+                      candidatoFoco={candidatoFoco}
+                      appearance={appearance}
+                    />
+                    <button
+                      type="button"
+                      onClick={alternarMapaTelaCheia}
+                      className="absolute right-3 top-3 z-[500] inline-flex items-center gap-1.5 rounded-md border border-card bg-surface/95 px-2.5 py-1.5 text-xs font-medium text-text-primary shadow-sm transition-colors hover:bg-background focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-gold/40"
+                      aria-label={mapaEmTelaCheia ? 'Sair da tela cheia' : 'Abrir mapa em tela cheia'}
+                      title={mapaEmTelaCheia ? 'Sair da tela cheia (Esc)' : 'Abrir mapa em tela cheia'}
+                    >
+                      {mapaEmTelaCheia ? (
+                        <>
+                          <Minimize2 className="h-3.5 w-3.5" aria-hidden />
+                          <span>Sair</span>
+                        </>
+                      ) : (
+                        <>
+                          <Maximize2 className="h-3.5 w-3.5" aria-hidden />
+                          <span>Tela cheia</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+                  <p className="mt-2 text-[10px] leading-snug text-secondary">
+                    O rótulo permanente mostra o 1º colocado do município (estimulada quando houver; senão, espontânea).
+                    Ao clicar em uma cidade, o popup mantém o top 3 e os valores espontâneos/estimulados já calculados
+                    na guia <strong>Visão geral</strong> (média % por candidato, exclui «Não sabe» e branco/nulo).
+                  </p>
+                </>
+              )}
+            </div>
           )}
         </>
       )}

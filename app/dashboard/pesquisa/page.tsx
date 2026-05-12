@@ -1397,6 +1397,7 @@ export default function PesquisaPage() {
                   ajusteNsPct={Math.round(DEFAULT_ESPONTANEA_NAO_SABE_EXPANSION_RATE * 100)}
                   tipoGraficoLabel={labelTipoGraficoContexto}
                   onVerDetalhesCandidato={handleVerDetalhesPainelExecutivo}
+                  candidatoFoco={candidatoPadrao || null}
                 />
 
                 <div className={cn('rounded-xl border p-4 sm:p-6', innerPanelClass)}>

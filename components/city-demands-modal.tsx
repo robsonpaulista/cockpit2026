@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback, useMemo } from 'react'
 import { createPortal } from 'react-dom'
-import { X, AlertCircle, CheckCircle, Clock, Loader2 } from 'lucide-react'
+import { X, AlertCircle, Loader2 } from 'lucide-react'
 import { useTheme } from '@/contexts/theme-context'
 import { cn } from '@/lib/utils'
 
@@ -90,14 +90,58 @@ function ordenarDemandas<T extends { status?: string; data_demanda?: string; cre
   })
 }
 
+function getStatusBadgeClasses(status: string | undefined, isDark: boolean): string {
+  const sl = (status || '').toLowerCase().trim()
+  if (sl.includes('resolvido') || sl.includes('concluído') || sl.includes('concluido')) {
+    return isDark
+      ? 'border-emerald-500/45 bg-emerald-950/55 text-emerald-100'
+      : 'border-emerald-300 bg-emerald-100 text-emerald-950'
+  }
+  if (sl.includes('andamento') || sl.includes('progresso')) {
+    return isDark
+      ? 'border-amber-500/45 bg-amber-950/60 text-amber-50'
+      : 'border-amber-400 bg-amber-100 text-amber-950'
+  }
+  if (sl.includes('encaminhado') || sl.includes('encaminhada')) {
+    return isDark
+      ? 'border-sky-500/40 bg-sky-950/50 text-sky-100'
+      : 'border-sky-300 bg-sky-50 text-sky-950'
+  }
+  if (sl.includes('nova') || sl.includes('pendente')) {
+    return isDark ? 'border-zinc-500/40 bg-zinc-900/60 text-zinc-200' : 'border-zinc-300 bg-zinc-100 text-zinc-900'
+  }
+  return isDark ? 'border-zinc-600 bg-zinc-900/50 text-zinc-300' : 'border-zinc-300 bg-zinc-50 text-zinc-800'
+}
+
+function priorityToneClass(priority: string | undefined, isDark: boolean): string {
+  const s = (priority || '').toLowerCase()
+  if (s === 'high' || s.includes('alta')) {
+    return isDark ? 'text-rose-200' : 'text-rose-800'
+  }
+  if (s === 'medium' || s.includes('média') || s.includes('media')) {
+    return isDark ? 'text-amber-200' : 'text-amber-900'
+  }
+  if (s === 'low' || s.includes('baixa')) {
+    return isDark ? 'text-emerald-200' : 'text-emerald-800'
+  }
+  return isDark ? 'text-zinc-400' : 'text-zinc-600'
+}
+
+function formatPriorityLabel(priority?: string): string {
+  if (!priority) return ''
+  const s = priority.toLowerCase().trim()
+  if (s === 'high' || s.includes('alta')) return 'Alta'
+  if (s === 'medium' || s.includes('média') || s.includes('media')) return 'Média'
+  if (s === 'low' || s.includes('baixa')) return 'Baixa'
+  return priority
+}
+
 export function CityDemandsModal({ isOpen, onClose, cidade }: CityDemandsModalProps) {
-  const { theme } = useTheme()
+  const { appearance } = useTheme()
+  const isDarkAppearance = appearance === 'dark'
   const isCockpit = false
   const modalShellClass = isCockpit
     ? 'border-white/12 bg-[linear-gradient(165deg,rgba(22,34,44,0.92)_0%,rgba(18,30,38,0.95)_100%)] shadow-[0_24px_64px_rgba(3,12,20,0.42)]'
-    : 'border-card bg-surface'
-  const panelClass = isCockpit
-    ? 'border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.04)_0%,rgba(255,255,255,0.02)_100%)]'
     : 'border-card bg-surface'
   const contentClass = isCockpit
     ? 'bg-[linear-gradient(180deg,rgba(255,255,255,0.025)_0%,rgba(255,255,255,0.012)_100%)]'
@@ -206,76 +250,8 @@ export function CityDemandsModal({ isOpen, onClose, cidade }: CityDemandsModalPr
 
   if (!isOpen || typeof document === 'undefined') return null
 
-  const getStatusIcon = (status?: string) => {
-    if (!status) return <AlertCircle className="w-4 h-4 text-secondary" />
-    
-    const statusLower = status.toLowerCase().trim()
-    
-    if (statusLower.includes('resolvido') || statusLower.includes('concluído') || statusLower.includes('concluido')) {
-      return <CheckCircle className="w-4 h-4 text-status-success" />
-    }
-    if (statusLower.includes('andamento') || statusLower.includes('progresso') || statusLower.includes('em andamento')) {
-      return <Clock className="w-4 h-4 text-status-warning" />
-    }
-    if (statusLower.includes('encaminhado') || statusLower.includes('encaminhada')) {
-      return <Clock className="w-4 h-4 text-accent-gold" />
-    }
-    
-    return <AlertCircle className="w-4 h-4 text-secondary" />
-  }
-
   const getStatusLabel = (status?: string) => {
-    // Retornar o status diretamente da planilha, sem mapeamento
     return status || 'Sem status'
-  }
-
-  const getStatusColor = (status?: string) => {
-    if (!status) return 'bg-text-muted/10 text-secondary border-text-muted/30'
-    
-    const statusLower = status.toLowerCase().trim()
-    
-    // Verificar padrões comuns de status
-    if (statusLower.includes('resolvido') || statusLower.includes('concluído') || statusLower.includes('concluido')) {
-      return 'bg-status-success/10 text-status-success border-status-success/30'
-    }
-    if (statusLower.includes('andamento') || statusLower.includes('progresso') || statusLower.includes('em andamento')) {
-      return 'bg-status-warning/10 text-status-warning border-status-warning/30'
-    }
-    if (statusLower.includes('encaminhado') || statusLower.includes('encaminhada')) {
-      return 'bg-accent-gold-soft text-accent-gold border-accent-gold/30'
-    }
-    if (statusLower.includes('nova') || statusLower.includes('pendente')) {
-      return 'bg-text-muted/10 text-secondary border-text-muted/30'
-    }
-    
-    // Padrão padrão para outros status
-    return 'bg-text-muted/10 text-secondary border-text-muted/30'
-  }
-
-  const getPriorityColor = (priority?: string) => {
-    switch (priority) {
-      case 'high':
-        return 'bg-status-error/10 text-status-error border-status-error/30'
-      case 'medium':
-        return 'bg-status-warning/10 text-status-warning border-status-warning/30'
-      case 'low':
-        return 'bg-status-success/10 text-status-success border-status-success/30'
-      default:
-        return 'bg-text-muted/10 text-secondary border-text-muted/30'
-    }
-  }
-
-  const getPriorityLabel = (priority?: string) => {
-    switch (priority) {
-      case 'high':
-        return 'Alta'
-      case 'medium':
-        return 'Média'
-      case 'low':
-        return 'Baixa'
-      default:
-        return 'Não definida'
-    }
   }
 
   const getSheetsField = (demand: Demand, patterns: RegExp[]): string | null => {
@@ -401,39 +377,53 @@ export function CityDemandsModal({ isOpen, onClose, cidade }: CityDemandsModalPr
 
         {/* Filtros */}
         {!loading && !error && demands.length > 0 && (
-          <div className={cn('space-y-3 border-b px-4 py-3', isCockpit ? 'border-white/10' : 'border-card')}>
-            {/* Filtro por Status */}
+          <div className={cn('space-y-2 border-b px-4 py-3', isCockpit ? 'border-white/10' : 'border-card')}>
             <div>
-              <label className="mb-2 block text-xs font-medium text-text-secondary">Filtrar por Status:</label>
-              <div className="flex flex-wrap gap-2">
-                <label className="flex items-center gap-1.5 cursor-pointer">
-                  <input
-                    type="radio"
-                    name="filtro-status"
-                    value="todos"
-                    checked={filtroStatus === 'todos'}
-                    onChange={(e) => setFiltroStatus(e.target.value)}
-                    className="w-3.5 h-3.5 text-accent-gold"
-                  />
-                  <span className="text-xs text-text-primary">Todos</span>
-                </label>
+              <p className="mb-1.5 text-xs font-medium text-text-secondary">Filtrar por status</p>
+              <div
+                className={cn(
+                  'flex flex-wrap gap-1.5',
+                  isDarkAppearance ? 'rounded-lg bg-black/20 p-1' : 'rounded-lg bg-background/80 p-1',
+                )}
+                role="group"
+                aria-label="Filtro de status das demandas"
+              >
+                <button
+                  type="button"
+                  onClick={() => setFiltroStatus('todos')}
+                  className={cn(
+                    'rounded-md px-3 py-1.5 text-xs font-medium transition-colors',
+                    filtroStatus === 'todos'
+                      ? isDarkAppearance
+                        ? 'bg-white/15 text-text-primary shadow-sm'
+                        : 'bg-surface text-text-primary shadow-sm ring-1 ring-border-card'
+                      : 'text-text-secondary hover:text-text-primary',
+                  )}
+                >
+                  Todos
+                </button>
                 {statusUnicos.map((status) => (
-                  <label key={status} className="flex items-center gap-1.5 cursor-pointer">
-                    <input
-                      type="radio"
-                      name="filtro-status"
-                      value={status}
-                      checked={filtroStatus === status}
-                      onChange={(e) => setFiltroStatus(e.target.value)}
-                      className="w-3.5 h-3.5 text-accent-gold"
-                    />
-                    <span className="text-xs text-text-primary">{status}</span>
-                  </label>
+                  <button
+                    key={status}
+                    type="button"
+                    onClick={() => setFiltroStatus(status)}
+                    className={cn(
+                      'max-w-[200px] truncate rounded-md px-3 py-1.5 text-xs font-medium transition-colors',
+                      filtroStatus === status
+                        ? isDarkAppearance
+                          ? 'bg-white/15 text-text-primary shadow-sm'
+                          : 'bg-surface text-text-primary shadow-sm ring-1 ring-border-card'
+                        : 'text-text-secondary hover:text-text-primary',
+                    )}
+                    title={status}
+                  >
+                    {status}
+                  </button>
                 ))}
               </div>
             </div>
             {liderancasPermitidas.length > 0 && (
-              <p className="text-xs text-text-secondary">
+              <p className="text-xs leading-snug text-text-secondary">
                 {ignorouFiltroLideranca ? (
                   <>
                     Nenhuma demanda bateu com os nomes das {liderancasPermitidas.length} lideranças do resumo;
@@ -468,76 +458,126 @@ export function CityDemandsModal({ isOpen, onClose, cidade }: CityDemandsModalPr
               <p className="text-sm text-text-secondary">Nenhuma demanda encontrada</p>
             </div>
           ) : (
-            <div className="space-y-2">
+            <ul className="space-y-2.5" role="list">
               {demandsFiltradasEOrdenadas.map((demand, index) => {
                 const liderancaExibicao = getDemandLiderancaParaFiltro(demand)
+                const valorNum = getDemandValorNumero(demand)
+                const priorLabel = formatPriorityLabel(demand.priority)
+                const seiRef = getSheetsField(demand, [/sei/i, /n[ºo°]?\s*sei/i])
+                const refLinha = [seiRef, demand.theme, demand.description?.trim()]
+                  .filter((s): s is string => Boolean(s && String(s).trim()))
+                  .join(' · ')
+                const temMetaLinha =
+                  Boolean(demand.data_demanda) ||
+                  Boolean(liderancaExibicao) ||
+                  Boolean(priorLabel) ||
+                  valorNum > 0
+
                 return (
-                <div
-                  key={demand.id || `demand-${index}`}
-                  className={cn(
-                    'rounded-lg border p-3 transition-colors',
-                    isCockpit ? 'border-white/10 bg-white/[0.02] hover:bg-white/[0.05]' : 'border-card hover:bg-background/50'
-                  )}
-                >
-                  {/* Linha principal: Título + Status */}
-                  <div className="flex items-start justify-between gap-2 mb-2">
-                    <div className="flex items-start gap-2 flex-1 min-w-0">
-                      {getStatusIcon(demand.status)}
-                      <h3 className="text-sm font-semibold leading-tight text-text-primary">
-                        {demand.title}
+                  <li
+                    key={demand.id || `demand-${index}`}
+                    className={cn(
+                      'list-none rounded-xl border px-3 py-2.5 transition-colors',
+                      isCockpit
+                        ? 'border-white/10 bg-white/[0.03] hover:bg-white/[0.06]'
+                        : isDarkAppearance
+                          ? 'border-white/10 bg-bg-app/50 hover:bg-bg-app/80'
+                          : 'border-border-card bg-surface shadow-sm hover:bg-background/60',
+                    )}
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <h3 className="min-w-0 flex-1 text-sm font-semibold leading-snug text-text-primary sm:text-[15px]">
+                        <span className="line-clamp-2">{demand.title}</span>
                       </h3>
+                      <span
+                        className={cn(
+                          'shrink-0 rounded-md border px-2 py-1 text-[11px] font-semibold leading-none sm:text-xs',
+                          getStatusBadgeClasses(demand.status, isDarkAppearance),
+                        )}
+                      >
+                        {getStatusLabel(demand.status)}
+                      </span>
                     </div>
-                    <span className={`px-2 py-0.5 text-xs rounded border flex-shrink-0 ${getStatusColor(demand.status)}`}>
-                      {getStatusLabel(demand.status)}
-                    </span>
-                  </div>
-
-                  {/* Informações secundárias em linha compacta */}
-                  <div className="flex flex-wrap items-center gap-1.5 text-xs">
-                    {demand.data_demanda && (
-                      <span className="text-text-secondary">
-                        <span className="font-medium">Data:</span> {formatDate(demand.data_demanda)}
-                      </span>
-                    )}
-                    {liderancaExibicao && (
-                      <span className="text-text-secondary">
-                        <span className="font-medium">Por:</span> {liderancaExibicao}
-                      </span>
-                    )}
-                    {demand.priority && (
-                      <span className={`px-1.5 py-0.5 rounded border ${getPriorityColor(demand.priority)}`}>
-                        {getPriorityLabel(demand.priority)}
-                      </span>
-                    )}
-                    {demand.theme && (
-                      <span className="text-text-secondary">
-                        {demand.theme}
-                      </span>
-                    )}
-                    {getDemandValorNumero(demand) > 0 && (
-                      <span className="px-1.5 py-0.5 rounded border bg-accent-gold-soft text-accent-gold border-accent-gold/30 font-semibold">
-                        Valor: {formatValorSemMoeda(getDemandValorNumero(demand))}
-                      </span>
-                    )}
-                  </div>
-
-                  {/* Descrição apenas se houver e for relevante */}
-                  {demand.description && demand.description.trim() && (
-                    <p className="mt-1.5 line-clamp-1 text-xs text-text-secondary">
-                      {demand.description}
-                    </p>
-                  )}
-                </div>
+                    {temMetaLinha ? (
+                      <p className="mt-2 flex min-w-0 flex-wrap items-baseline gap-x-1.5 gap-y-0.5 text-xs leading-relaxed text-text-secondary">
+                        {demand.data_demanda ? (
+                          <span className="shrink-0">{formatDate(demand.data_demanda)}</span>
+                        ) : null}
+                        {demand.data_demanda && liderancaExibicao ? (
+                          <span className="text-text-muted" aria-hidden>
+                            {' '}
+                            ·{' '}
+                          </span>
+                        ) : null}
+                        {liderancaExibicao ? (
+                          <span className="min-w-0 max-w-[14rem] truncate font-medium text-text-primary">
+                            {liderancaExibicao}
+                          </span>
+                        ) : null}
+                        {(demand.data_demanda || liderancaExibicao) && priorLabel ? (
+                          <span className="text-text-muted" aria-hidden>
+                            {' '}
+                            ·{' '}
+                          </span>
+                        ) : null}
+                        {priorLabel ? (
+                          <span className="shrink-0">
+                            Prioridade{' '}
+                            <span
+                              className={cn(
+                                'font-semibold',
+                                priorityToneClass(demand.priority, isDarkAppearance),
+                              )}
+                            >
+                              {priorLabel}
+                            </span>
+                          </span>
+                        ) : null}
+                        {(demand.data_demanda || liderancaExibicao || priorLabel) && valorNum > 0 ? (
+                          <span className="text-text-muted" aria-hidden>
+                            {' '}
+                            ·{' '}
+                          </span>
+                        ) : null}
+                        {valorNum > 0 ? (
+                          <span
+                            className={cn(
+                              'shrink-0 font-semibold tabular-nums text-text-primary',
+                              isDarkAppearance ? 'text-zinc-100' : 'text-text-primary',
+                            )}
+                          >
+                            R$ {formatValorSemMoeda(valorNum)}
+                          </span>
+                        ) : null}
+                      </p>
+                    ) : null}
+                    {refLinha ? (
+                      <p className="mt-1 line-clamp-1 text-[11px] leading-snug text-text-muted">{refLinha}</p>
+                    ) : null}
+                  </li>
                 )
               })}
-            </div>
+            </ul>
           )}
         </div>
 
         {!loading && !error && demandsFiltradasEOrdenadas.length > 0 && (
-          <div className={cn('flex items-center justify-end border-t px-4 py-3', isCockpit ? 'border-white/10 bg-white/[0.02]' : 'border-card bg-background/40')}>
-            <span className="text-sm font-semibold text-text-primary">
-              Total Valor: <span className="text-accent-gold">{formatValorSemMoeda(totalValorDemandas)}</span>
+          <div
+            className={cn(
+              'flex items-center justify-end border-t px-4 py-3',
+              isCockpit ? 'border-white/10 bg-white/[0.02]' : isDarkAppearance ? 'border-white/10 bg-black/20' : 'border-card bg-background/50',
+            )}
+          >
+            <span className="text-sm text-text-secondary">
+              Total em R${' '}
+              <span
+                className={cn(
+                  'text-base font-bold tabular-nums tracking-tight text-text-primary',
+                  isDarkAppearance ? 'text-zinc-50' : undefined,
+                )}
+              >
+                {formatValorSemMoeda(totalValorDemandas)}
+              </span>
             </span>
           </div>
         )}
