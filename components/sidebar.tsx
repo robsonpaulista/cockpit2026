@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { useEffect, useRef, useState } from 'react'
+import { type Dispatch, type SetStateAction, useEffect, useRef, useState } from 'react'
 import {
   LayoutDashboard,
   Calendar,
@@ -322,6 +322,365 @@ function isChildLinkActive(pathname: string, href: string): boolean {
   return pathname.startsWith(`${href}/`)
 }
 
+interface SidebarNavItemProps {
+  item: SidebarMenuItem
+  sectionLabel: string | undefined
+  Icon: LucideIcon
+  hasSubmenu: boolean
+  submenuOpen: boolean
+  isActive: boolean
+  pathname: string
+  collapsed: boolean
+  mobileOpen: boolean
+  filmNav: boolean
+  isGradientHome: boolean
+  isCockpit: boolean
+  cockpitActiveItemClass: string
+  cockpitActiveChildClass: string
+  setOpenSubmenuId: Dispatch<SetStateAction<string | null>>
+  setNavigating: (loading: boolean) => void
+  setMobileOpen: (open: boolean) => void
+  menuLabel: (id: string, fallback: string) => string
+}
+
+/**
+ * Linha de menu da Sidebar.
+ *
+ * Extraído para um subcomponente próprio porque cada item precisa do seu
+ * próprio `useRef` (para medir o `<li>` e posicionar o tooltip) e do seu
+ * próprio `useState` (posição do tooltip). Chamar hooks dentro de `.map()`
+ * causaria a quantidade de hooks mudar entre renders (quando `visibleItems`
+ * muda de tamanho), gerando o erro
+ * "Rendered fewer hooks than expected".
+ */
+function SidebarNavItem({
+  item,
+  sectionLabel,
+  Icon,
+  hasSubmenu,
+  submenuOpen,
+  isActive,
+  pathname,
+  collapsed,
+  mobileOpen,
+  filmNav,
+  isGradientHome,
+  isCockpit,
+  cockpitActiveItemClass,
+  cockpitActiveChildClass,
+  setOpenSubmenuId,
+  setNavigating,
+  setMobileOpen,
+  menuLabel,
+}: SidebarNavItemProps) {
+  const itemRef = useRef<HTMLLIElement>(null)
+  const [tooltipPos, setTooltipPos] = useState<{ top: number } | null>(null)
+
+  const handleMouseEnter = () => {
+    if (itemRef.current && collapsed && !mobileOpen) {
+      const rect = itemRef.current.getBoundingClientRect()
+      setTooltipPos({ top: rect.top + rect.height / 2 })
+    }
+  }
+
+  const handleMouseLeave = () => {
+    setTooltipPos(null)
+  }
+
+  return (
+    <li
+      className="relative group"
+      ref={itemRef}
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
+    >
+      {sectionLabel && (!collapsed || mobileOpen) && (
+        <div className={cn(
+          'mb-1.5 mt-3 px-2',
+          item.id === 'home' && 'mt-0'
+        )}>
+          <span className={cn(
+            'text-[0.68rem] font-semibold uppercase tracking-[0.14em]',
+            isGradientHome && 'text-white/45',
+            !isGradientHome && isCockpit && 'text-text-muted/90',
+            !isGradientHome && !isCockpit && 'text-text-muted'
+          )}>
+            {sectionLabel}
+          </span>
+        </div>
+      )}
+      {sectionLabel && collapsed && !mobileOpen && (
+        <div className={cn(
+          'my-2 flex justify-center',
+          item.id === 'home' && 'mt-0'
+        )}>
+          <span
+            className={cn(
+              'h-[1px] w-8 rounded-full',
+              isGradientHome ? 'bg-white/25' : 'bg-border-card/60'
+            )}
+            aria-hidden
+          />
+        </div>
+      )}
+
+      {hasSubmenu ? (
+        <>
+          <button
+            type="button"
+            onClick={() =>
+              setOpenSubmenuId((prev) => (prev === item.id ? null : item.id))
+            }
+            className={cn(
+              'relative w-full flex items-center gap-3 px-3 py-3 rounded-[12px]',
+              'transition-all duration-200 ease-out',
+              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-gold/50 focus-visible:ring-offset-1 focus-visible:ring-offset-bg-sidebar',
+              !(filmNav && isActive) &&
+                (isGradientHome
+                  ? 'hover:bg-white/10 hover:text-white'
+                  : 'hover:bg-accent-gold-soft/70 hover:text-text-primary'),
+              isActive && !filmNav && 'bg-accent-gold-soft text-text-primary shadow-sm',
+              filmNav &&
+                !isActive &&
+                'border border-white/[0.04] bg-[linear-gradient(180deg,rgba(255,255,255,0.02)_0%,rgba(255,255,255,0.01)_100%)]',
+              filmNav && isActive && cockpitActiveItemClass,
+            )}
+          >
+            {isActive && !filmNav && (
+              <div
+                className="absolute left-0 top-1/2 h-6 w-1 -translate-y-1/2 rounded-r-full bg-accent-gold"
+                aria-hidden
+              />
+            )}
+            <div
+              className={cn(
+                'flex-shrink-0 transition-all duration-200',
+                !filmNav && 'w-5 h-5 group-hover:scale-110',
+                filmNav &&
+                  'flex h-8 w-8 items-center justify-center rounded-xl border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.10)_0%,rgba(255,255,255,0.03)_100%)]',
+                isActive
+                  ? cn(
+                      'text-accent-gold',
+                      filmNav && '!border-white/25 !bg-white/10 !text-white shadow-[0_6px_16px_rgba(0,0,0,0.25)]'
+                    )
+                  : isGradientHome
+                    ? 'text-white/75 group-hover:text-white'
+                    : 'text-text-secondary group-hover:text-accent-gold'
+              )}
+            >
+              <Icon
+                className={cn(
+                  filmNav ? 'h-4 w-4' : 'h-full w-full',
+                  filmNav && isActive && '!text-white'
+                )}
+                strokeWidth={filmNav ? 1.35 : 2}
+              />
+            </div>
+            {(!collapsed || mobileOpen) && (
+              <>
+                <span className={cn(
+                  'text-[0.95rem] font-medium leading-none tracking-[0.01em] transition-all duration-200',
+                  'group-hover:translate-x-0.5',
+                  isActive
+                    ? cn(
+                        'font-semibold text-text-primary',
+                        filmNav && '!text-white'
+                      )
+                    : isGradientHome
+                      ? 'text-white/80 group-hover:text-white'
+                      : isCockpit
+                        ? 'text-text-primary/90 group-hover:text-text-primary'
+                        : 'text-text-secondary group-hover:text-text-primary'
+                )}>
+                  {menuLabel(item.id, item.label)}
+                </span>
+                <ChevronDown
+                  className={cn(
+                  'ml-auto h-4 w-4 text-text-secondary/85 transition-transform',
+                    submenuOpen && 'rotate-180',
+                    isGradientHome && 'text-white/70',
+                    filmNav && isActive && '!text-white/90'
+                  )}
+                  strokeWidth={filmNav ? 1.35 : 2}
+                />
+              </>
+            )}
+          </button>
+
+          {(!collapsed || mobileOpen) && submenuOpen && item.children && (
+            filmNav ? (
+              <div
+                className={cn(
+                  'mt-2 space-y-1.5 rounded-2xl border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.08)_0%,rgba(255,255,255,0.03)_100%)] p-2',
+                  'text-[0.82rem] shadow-[0_8px_24px_rgba(0,0,0,0.22)]',
+                  isGradientHome ? 'text-white/90' : 'text-text-primary/85',
+                )}
+              >
+                {item.children.map((child) => {
+                  const childActive = isChildLinkActive(pathname, child.href)
+                  return (
+                    <span key={child.id} className="inline-flex items-center">
+                      <Link
+                        href={child.href}
+                        onClick={() => {
+                          if (child.href !== pathname) setNavigating(true)
+                          setMobileOpen(false)
+                        }}
+                        className={cn(
+                          'w-full whitespace-nowrap rounded-lg px-2.5 py-2 leading-none transition-all duration-200',
+                          'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-gold/50 focus-visible:ring-offset-1 focus-visible:ring-offset-bg-sidebar',
+                          childActive
+                            ? cn(
+                                'font-semibold',
+                                'transition-all',
+                                cockpitActiveChildClass
+                              )
+                            : cn(
+                                'hover:bg-white/10',
+                                isGradientHome
+                                  ? 'text-white/80 hover:text-white'
+                                  : 'text-text-primary/85 hover:text-text-primary'
+                              )
+                        )}
+                      >
+                        {menuLabel(child.id, child.label)}
+                      </Link>
+                    </span>
+                  )
+                })}
+              </div>
+            ) : (
+              <ul className="mt-1 ml-8 space-y-1">
+                {item.children.map((child) => {
+                  const childActive = isChildLinkActive(pathname, child.href)
+                  return (
+                    <li key={child.id}>
+                      <Link
+                        href={child.href}
+                        onClick={() => {
+                          if (child.href !== pathname) setNavigating(true)
+                          setMobileOpen(false)
+                        }}
+                        className={cn(
+                          'flex items-center gap-2 px-3 py-2 rounded-[8px] text-sm transition-all',
+                          'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-gold/50 focus-visible:ring-offset-1 focus-visible:ring-offset-bg-sidebar',
+                          childActive
+                            ? 'bg-accent-gold-soft text-text-primary font-semibold'
+                            : 'text-text-secondary hover:bg-accent-gold-soft hover:text-text-primary'
+                        )}
+                      >
+                        {menuLabel(child.id, child.label)}
+                      </Link>
+                    </li>
+                  )
+                })}
+              </ul>
+            )
+          )}
+        </>
+      ) : (
+        <Link
+          href={item.href}
+          onClick={() => {
+            if (item.href !== pathname) setNavigating(true)
+            setMobileOpen(false)
+          }}
+          className={cn(
+            'relative flex items-center gap-3 px-3 py-3 rounded-[12px]',
+            'transition-all duration-200 ease-out',
+            'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-gold/50 focus-visible:ring-offset-1 focus-visible:ring-offset-bg-sidebar',
+            !(filmNav && isActive) &&
+              (isGradientHome
+                ? 'hover:bg-white/10 hover:text-white'
+                : 'hover:bg-accent-gold-soft/70 hover:text-text-primary'),
+            isActive && !filmNav && 'bg-accent-gold-soft text-text-primary shadow-sm',
+            filmNav &&
+              !isActive &&
+              'border border-white/[0.04] bg-[linear-gradient(180deg,rgba(255,255,255,0.02)_0%,rgba(255,255,255,0.01)_100%)]',
+            filmNav && isActive && cockpitActiveItemClass
+          )}
+        >
+          {isActive && !filmNav && (
+            <div
+              className="absolute left-0 top-1/2 h-6 w-1 -translate-y-1/2 rounded-r-full bg-accent-gold"
+              aria-hidden
+            />
+          )}
+
+          <div
+            className={cn(
+              'flex-shrink-0 transition-all duration-200',
+              !filmNav && 'w-5 h-5 group-hover:scale-110',
+              filmNav &&
+                'flex h-8 w-8 items-center justify-center rounded-xl border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.10)_0%,rgba(255,255,255,0.03)_100%)]',
+              isActive
+                ? cn(
+                    'text-accent-gold',
+                    filmNav && '!border-white/25 !bg-white/10 !text-white shadow-[0_6px_16px_rgba(0,0,0,0.25)]'
+                  )
+                : isGradientHome
+                  ? 'text-white/75 group-hover:text-white'
+                  : 'text-text-secondary group-hover:text-accent-gold'
+            )}
+          >
+            <Icon
+              className={cn(
+                filmNav ? 'h-4 w-4' : 'h-full w-full',
+                filmNav && isActive && '!text-white'
+              )}
+              strokeWidth={filmNav ? 1.35 : 2}
+            />
+          </div>
+          {(!collapsed || mobileOpen) && (
+            <span className={cn(
+              'text-[0.95rem] font-medium leading-none tracking-[0.01em] transition-all duration-200',
+              'group-hover:translate-x-0.5',
+              isActive
+                ? cn(
+                    'font-semibold text-text-primary',
+                    filmNav && '!text-white'
+                  )
+                : isGradientHome
+                  ? 'text-white/80 group-hover:text-white'
+                  : isCockpit
+                    ? 'text-text-primary/90 group-hover:text-text-primary'
+                    : 'text-text-secondary group-hover:text-text-primary'
+            )}>
+              {menuLabel(item.id, item.label)}
+            </span>
+          )}
+          {item.badge && (!collapsed || mobileOpen) && (
+            <span className="ml-auto px-2 py-0.5 text-xs font-medium bg-status-danger text-white rounded-full transition-transform duration-200 group-hover:scale-110">
+              {item.badge}
+            </span>
+          )}
+        </Link>
+      )}
+
+      {/* Tooltip quando sidebar está recolhida - usando fixed para sair do overflow */}
+      {collapsed && !mobileOpen && tooltipPos && (
+        <div
+          className="fixed left-24 z-[200] whitespace-nowrap rounded-xl border border-white/10 px-3 py-2 text-[0.78rem] font-semibold shadow-lg backdrop-blur"
+          style={{
+            top: `${tooltipPos.top}px`,
+            transform: 'translateY(-50%)',
+            animation: 'fadeIn 0.2s ease-out',
+            backgroundColor: filmNav ? 'rgba(19, 28, 35, 0.92)' : 'rgb(var(--text-primary))',
+            /* fundo escuro + text-primary no claro = texto ilegível; texto sempre claro no chip escuro */
+            color: filmNav ? 'rgba(255,255,255,0.95)' : 'rgb(var(--bg-surface))',
+          }}
+        >
+          {menuLabel(item.id, item.label)}
+          <div
+            className="absolute right-full top-1/2 -translate-y-1/2 border-4 border-transparent"
+            style={{ borderRightColor: filmNav ? 'rgba(19, 28, 35, 0.92)' : 'rgb(var(--text-primary))' }}
+          />
+        </div>
+      )}
+    </li>
+  )
+}
+
 export function Sidebar() {
   const { collapsed, setCollapsed, mobileOpen, setMobileOpen } = useSidebar()
   const { setNavigating } = useNavigationLoading()
@@ -506,306 +865,29 @@ export function Sidebar() {
                   : item.id === 'territorio-mapa-tds'
                     ? pathname.startsWith('/dashboard/territorio/mapa-tds')
                     : pathname === item.href
-                const itemRef = useRef<HTMLLIElement>(null)
-                const [tooltipPos, setTooltipPos] = useState<{ top: number } | null>(null)
-
-                const handleMouseEnter = () => {
-                  if (itemRef.current && collapsed && !mobileOpen) {
-                    const rect = itemRef.current.getBoundingClientRect()
-                    setTooltipPos({ top: rect.top + rect.height / 2 })
-                  }
-                }
-
-                const handleMouseLeave = () => {
-                  setTooltipPos(null)
-                }
 
                 return (
-                  <li key={item.id} className="relative group" ref={itemRef} onMouseEnter={handleMouseEnter} onMouseLeave={handleMouseLeave}>
-                    {sectionLabel && (!collapsed || mobileOpen) && (
-                      <div className={cn(
-                        'mb-1.5 mt-3 px-2',
-                        item.id === 'home' && 'mt-0'
-                      )}>
-                        <span className={cn(
-                          'text-[0.68rem] font-semibold uppercase tracking-[0.14em]',
-                          isGradientHome && 'text-white/45',
-                          !isGradientHome && isCockpit && 'text-text-muted/90',
-                          !isGradientHome && !isCockpit && 'text-text-muted'
-                        )}>
-                          {sectionLabel}
-                        </span>
-                      </div>
-                    )}
-                    {sectionLabel && collapsed && !mobileOpen && (
-                      <div className={cn(
-                        'my-2 flex justify-center',
-                        item.id === 'home' && 'mt-0'
-                      )}>
-                        <span
-                          className={cn(
-                            'h-[1px] w-8 rounded-full',
-                            isGradientHome ? 'bg-white/25' : 'bg-border-card/60'
-                          )}
-                          aria-hidden
-                        />
-                      </div>
-                    )}
-
-                    {hasSubmenu ? (
-                      <>
-                        <button
-                          type="button"
-                          onClick={() =>
-                            setOpenSubmenuId((prev) => (prev === item.id ? null : item.id))
-                          }
-                          className={cn(
-                            'relative w-full flex items-center gap-3 px-3 py-3 rounded-[12px]',
-                            'transition-all duration-200 ease-out',
-                            'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-gold/50 focus-visible:ring-offset-1 focus-visible:ring-offset-bg-sidebar',
-                            !(filmNav && isActive) &&
-                              (isGradientHome
-                                ? 'hover:bg-white/10 hover:text-white'
-                                : 'hover:bg-accent-gold-soft/70 hover:text-text-primary'),
-                            isActive && !filmNav && 'bg-accent-gold-soft text-text-primary shadow-sm',
-                            filmNav &&
-                              !isActive &&
-                              'border border-white/[0.04] bg-[linear-gradient(180deg,rgba(255,255,255,0.02)_0%,rgba(255,255,255,0.01)_100%)]',
-                            filmNav && isActive && cockpitActiveItemClass,
-                          )}
-                        >
-                          {isActive && !filmNav && (
-                            <div
-                              className="absolute left-0 top-1/2 h-6 w-1 -translate-y-1/2 rounded-r-full bg-accent-gold"
-                              aria-hidden
-                            />
-                          )}
-                          <div
-                            className={cn(
-                              'flex-shrink-0 transition-all duration-200',
-                              !filmNav && 'w-5 h-5 group-hover:scale-110',
-                              filmNav &&
-                                'flex h-8 w-8 items-center justify-center rounded-xl border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.10)_0%,rgba(255,255,255,0.03)_100%)]',
-                              isActive
-                                ? cn(
-                                    'text-accent-gold',
-                                    filmNav && '!border-white/25 !bg-white/10 !text-white shadow-[0_6px_16px_rgba(0,0,0,0.25)]'
-                                  )
-                                : isGradientHome
-                                  ? 'text-white/75 group-hover:text-white'
-                                  : 'text-text-secondary group-hover:text-accent-gold'
-                            )}
-                          >
-                            <Icon
-                              className={cn(
-                                filmNav ? 'h-4 w-4' : 'h-full w-full',
-                                filmNav && isActive && '!text-white'
-                              )}
-                              strokeWidth={filmNav ? 1.35 : 2}
-                            />
-                          </div>
-                          {(!collapsed || mobileOpen) && (
-                            <>
-                              <span className={cn(
-                                'text-[0.95rem] font-medium leading-none tracking-[0.01em] transition-all duration-200',
-                                'group-hover:translate-x-0.5',
-                                isActive
-                                  ? cn(
-                                      'font-semibold text-text-primary',
-                                      filmNav && '!text-white'
-                                    )
-                                  : isGradientHome
-                                    ? 'text-white/80 group-hover:text-white'
-                                    : isCockpit
-                                      ? 'text-text-primary/90 group-hover:text-text-primary'
-                                      : 'text-text-secondary group-hover:text-text-primary'
-                              )}>
-                                {menuLabel(item.id, item.label)}
-                              </span>
-                              <ChevronDown
-                                className={cn(
-                                'ml-auto h-4 w-4 text-text-secondary/85 transition-transform',
-                                  submenuOpen && 'rotate-180',
-                                  isGradientHome && 'text-white/70',
-                                  filmNav && isActive && '!text-white/90'
-                                )}
-                                strokeWidth={filmNav ? 1.35 : 2}
-                              />
-                            </>
-                          )}
-                        </button>
-
-                        {(!collapsed || mobileOpen) && submenuOpen && item.children && (
-                          filmNav ? (
-                            <div
-                              className={cn(
-                                'mt-2 space-y-1.5 rounded-2xl border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.08)_0%,rgba(255,255,255,0.03)_100%)] p-2',
-                                'text-[0.82rem] shadow-[0_8px_24px_rgba(0,0,0,0.22)]',
-                                isGradientHome ? 'text-white/90' : 'text-text-primary/85',
-                              )}
-                            >
-                              {item.children.map((child) => {
-                                const childActive = isChildLinkActive(pathname, child.href)
-                                return (
-                                  <span key={child.id} className="inline-flex items-center">
-                                    <Link
-                                      href={child.href}
-                                      onClick={() => {
-                                        if (child.href !== pathname) setNavigating(true)
-                                        setMobileOpen(false)
-                                      }}
-                                      className={cn(
-                                        'w-full whitespace-nowrap rounded-lg px-2.5 py-2 leading-none transition-all duration-200',
-                                        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-gold/50 focus-visible:ring-offset-1 focus-visible:ring-offset-bg-sidebar',
-                                        childActive
-                                          ? cn(
-                                              'font-semibold',
-                                              'transition-all',
-                                              cockpitActiveChildClass
-                                            )
-                                          : cn(
-                                              'hover:bg-white/10',
-                                              isGradientHome
-                                                ? 'text-white/80 hover:text-white'
-                                                : 'text-text-primary/85 hover:text-text-primary'
-                                            )
-                                      )}
-                                    >
-                                      {menuLabel(child.id, child.label)}
-                                    </Link>
-                                  </span>
-                                )
-                              })}
-                            </div>
-                          ) : (
-                            <ul className="mt-1 ml-8 space-y-1">
-                              {item.children.map((child) => {
-                                const childActive = isChildLinkActive(pathname, child.href)
-                                return (
-                                  <li key={child.id}>
-                                    <Link
-                                      href={child.href}
-                                      onClick={() => {
-                                        if (child.href !== pathname) setNavigating(true)
-                                        setMobileOpen(false)
-                                      }}
-                                      className={cn(
-                                        'flex items-center gap-2 px-3 py-2 rounded-[8px] text-sm transition-all',
-                                        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-gold/50 focus-visible:ring-offset-1 focus-visible:ring-offset-bg-sidebar',
-                                        childActive
-                                          ? 'bg-accent-gold-soft text-text-primary font-semibold'
-                                          : 'text-text-secondary hover:bg-accent-gold-soft hover:text-text-primary'
-                                      )}
-                                    >
-                                      {menuLabel(child.id, child.label)}
-                                    </Link>
-                                  </li>
-                                )
-                              })}
-                            </ul>
-                          )
-                        )}
-                      </>
-                    ) : (
-                      <Link
-                        href={item.href}
-                        onClick={() => {
-                          if (item.href !== pathname) setNavigating(true)
-                          setMobileOpen(false)
-                        }}
-                        className={cn(
-                          'relative flex items-center gap-3 px-3 py-3 rounded-[12px]',
-                          'transition-all duration-200 ease-out',
-                          'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-gold/50 focus-visible:ring-offset-1 focus-visible:ring-offset-bg-sidebar',
-                          !(filmNav && isActive) &&
-                            (isGradientHome
-                              ? 'hover:bg-white/10 hover:text-white'
-                              : 'hover:bg-accent-gold-soft/70 hover:text-text-primary'),
-                          isActive && !filmNav && 'bg-accent-gold-soft text-text-primary shadow-sm',
-                          filmNav &&
-                            !isActive &&
-                            'border border-white/[0.04] bg-[linear-gradient(180deg,rgba(255,255,255,0.02)_0%,rgba(255,255,255,0.01)_100%)]',
-                          filmNav && isActive && cockpitActiveItemClass
-                        )}
-                      >
-                        {isActive && !filmNav && (
-                          <div
-                            className="absolute left-0 top-1/2 h-6 w-1 -translate-y-1/2 rounded-r-full bg-accent-gold"
-                            aria-hidden
-                          />
-                        )}
-
-                        <div
-                          className={cn(
-                            'flex-shrink-0 transition-all duration-200',
-                            !filmNav && 'w-5 h-5 group-hover:scale-110',
-                            filmNav &&
-                              'flex h-8 w-8 items-center justify-center rounded-xl border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.10)_0%,rgba(255,255,255,0.03)_100%)]',
-                            isActive
-                              ? cn(
-                                  'text-accent-gold',
-                                  filmNav && '!border-white/25 !bg-white/10 !text-white shadow-[0_6px_16px_rgba(0,0,0,0.25)]'
-                                )
-                              : isGradientHome
-                                ? 'text-white/75 group-hover:text-white'
-                                : 'text-text-secondary group-hover:text-accent-gold'
-                          )}
-                        >
-                          <Icon
-                            className={cn(
-                              filmNav ? 'h-4 w-4' : 'h-full w-full',
-                              filmNav && isActive && '!text-white'
-                            )}
-                            strokeWidth={filmNav ? 1.35 : 2}
-                          />
-                        </div>
-                        {(!collapsed || mobileOpen) && (
-                          <span className={cn(
-                            'text-[0.95rem] font-medium leading-none tracking-[0.01em] transition-all duration-200',
-                            'group-hover:translate-x-0.5',
-                            isActive
-                              ? cn(
-                                  'font-semibold text-text-primary',
-                                  filmNav && '!text-white'
-                                )
-                              : isGradientHome
-                                ? 'text-white/80 group-hover:text-white'
-                                : isCockpit
-                                  ? 'text-text-primary/90 group-hover:text-text-primary'
-                                  : 'text-text-secondary group-hover:text-text-primary'
-                          )}>
-                            {menuLabel(item.id, item.label)}
-                          </span>
-                        )}
-                        {item.badge && (!collapsed || mobileOpen) && (
-                          <span className="ml-auto px-2 py-0.5 text-xs font-medium bg-status-danger text-white rounded-full transition-transform duration-200 group-hover:scale-110">
-                            {item.badge}
-                          </span>
-                        )}
-                      </Link>
-                    )}
-                    
-                    {/* Tooltip quando sidebar está recolhida - usando fixed para sair do overflow */}
-                    {collapsed && !mobileOpen && tooltipPos && (
-                      <div
-                        className="fixed left-24 z-[200] whitespace-nowrap rounded-xl border border-white/10 px-3 py-2 text-[0.78rem] font-semibold shadow-lg backdrop-blur"
-                        style={{
-                          top: `${tooltipPos.top}px`,
-                          transform: 'translateY(-50%)',
-                          animation: 'fadeIn 0.2s ease-out',
-                          backgroundColor: filmNav ? 'rgba(19, 28, 35, 0.92)' : 'rgb(var(--text-primary))',
-                          /* fundo escuro + text-primary no claro = texto ilegível; texto sempre claro no chip escuro */
-                          color: filmNav ? 'rgba(255,255,255,0.95)' : 'rgb(var(--bg-surface))',
-                        }}
-                      >
-                        {menuLabel(item.id, item.label)}
-                        <div
-                          className="absolute right-full top-1/2 -translate-y-1/2 border-4 border-transparent"
-                          style={{ borderRightColor: filmNav ? 'rgba(19, 28, 35, 0.92)' : 'rgb(var(--text-primary))' }}
-                        />
-                      </div>
-                    )}
-                  </li>
+                  <SidebarNavItem
+                    key={item.id}
+                    item={item}
+                    sectionLabel={sectionLabel}
+                    Icon={Icon}
+                    hasSubmenu={hasSubmenu}
+                    submenuOpen={submenuOpen}
+                    isActive={isActive}
+                    pathname={pathname}
+                    collapsed={collapsed}
+                    mobileOpen={mobileOpen}
+                    filmNav={filmNav}
+                    isGradientHome={isGradientHome}
+                    isCockpit={isCockpit}
+                    cockpitActiveItemClass={cockpitActiveItemClass}
+                    cockpitActiveChildClass={cockpitActiveChildClass}
+                    setOpenSubmenuId={setOpenSubmenuId}
+                    setNavigating={setNavigating}
+                    setMobileOpen={setMobileOpen}
+                    menuLabel={menuLabel}
+                  />
                 )
               })}
             </ul>

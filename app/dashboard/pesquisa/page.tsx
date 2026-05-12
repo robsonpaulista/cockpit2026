@@ -14,6 +14,9 @@ import {
   Maximize2,
   X,
   ArrowLeft,
+  ArrowUp,
+  ArrowDown,
+  ArrowUpDown,
   FileText,
   BarChart3,
   Sparkles,
@@ -85,6 +88,23 @@ const tipoLabels: Record<string, string> = {
 const POLLS_FETCH_LIMIT = 5000
 
 type AbaPesquisaDashboard = 'grafico' | 'tendencia_cards' | 'cadastradas'
+
+type ChaveOrdenacaoPesquisasCadastradas =
+  | 'data'
+  | 'instituto'
+  | 'candidato'
+  | 'cidade'
+  | 'tipo'
+  | 'cargo'
+  | 'intencao'
+  | 'rejeicao'
+
+type DirecaoOrdenacao = 'asc' | 'desc'
+
+interface ConfiguracaoOrdenacaoPesquisasCadastradas {
+  chave: ChaveOrdenacaoPesquisasCadastradas
+  direcao: DirecaoOrdenacao
+}
 
 /** Metadado interno no objeto da série (removido antes do gráfico): tipos de pesquisa naquela data. */
 const META_TIPOS_NA_DATA = '__tiposNaData' as const
@@ -571,6 +591,8 @@ export default function PesquisaPage() {
   const [openedReportFromQuery, setOpenedReportFromQuery] = useState<string | null>(null)
   const [abaPesquisa, setAbaPesquisa] = useState<AbaPesquisaDashboard>('grafico')
   const [filtroTextoCandidatoCadastradas, setFiltroTextoCandidatoCadastradas] = useState<string>('')
+  const [ordenacaoCadastradas, setOrdenacaoCadastradas] =
+    useState<ConfiguracaoOrdenacaoPesquisasCadastradas | null>(null)
   const tendenciaGraficoRef = useRef<HTMLDivElement>(null)
   const scrollParaGraficoAposTrocaAbaRef = useRef(false)
 
@@ -744,13 +766,73 @@ export default function PesquisaPage() {
       .toLowerCase()
       .trim()
 
+  const obterValorOrdenacaoPoll = (
+    poll: Poll,
+    chave: ChaveOrdenacaoPesquisasCadastradas
+  ): string | number => {
+    switch (chave) {
+      case 'data': {
+        const dateStr = poll.data || ''
+        if (!dateStr) return 0
+        if (dateStr.includes('T')) {
+          const t = new Date(dateStr).getTime()
+          return Number.isFinite(t) ? t : 0
+        }
+        const [year, month, day] = dateStr.split('-').map(Number)
+        const t = new Date(year, (month || 1) - 1, day || 1).getTime()
+        return Number.isFinite(t) ? t : 0
+      }
+      case 'instituto':
+        return (poll.instituto || '').toLocaleLowerCase('pt-BR')
+      case 'candidato':
+        return (poll.candidato_nome || '').toLocaleLowerCase('pt-BR')
+      case 'cidade':
+        return (poll.cities?.name || '').toLocaleLowerCase('pt-BR')
+      case 'tipo':
+        return (tipoLabels[poll.tipo] || poll.tipo || '').toLocaleLowerCase('pt-BR')
+      case 'cargo':
+        return (cargoLabels[poll.cargo] || poll.cargo || '').toLocaleLowerCase('pt-BR')
+      case 'intencao':
+        return Number.isFinite(poll.intencao) ? poll.intencao : 0
+      case 'rejeicao':
+        return Number.isFinite(poll.rejeicao) ? poll.rejeicao : 0
+      default:
+        return ''
+    }
+  }
+
+  const alternarOrdenacaoCadastradas = (chave: ChaveOrdenacaoPesquisasCadastradas) => {
+    setOrdenacaoCadastradas((prev) => {
+      if (!prev || prev.chave !== chave) return { chave, direcao: 'asc' }
+      if (prev.direcao === 'asc') return { chave, direcao: 'desc' }
+      return null
+    })
+  }
+
   const pollsCadastradasExibicao = useMemo(() => {
     const q = normalizarTextoBuscaCandidato(filtroTextoCandidatoCadastradas)
-    if (!q) return pollsFiltrados
-    return pollsFiltrados.filter((p) =>
-      normalizarTextoBuscaCandidato(p.candidato_nome || '').includes(q)
-    )
-  }, [pollsFiltrados, filtroTextoCandidatoCadastradas])
+    const base = !q
+      ? pollsFiltrados
+      : pollsFiltrados.filter((p) =>
+          normalizarTextoBuscaCandidato(p.candidato_nome || '').includes(q)
+        )
+
+    if (!ordenacaoCadastradas) return base
+
+    const { chave, direcao } = ordenacaoCadastradas
+    const ordenadas = [...base].sort((a, b) => {
+      const va = obterValorOrdenacaoPoll(a, chave)
+      const vb = obterValorOrdenacaoPoll(b, chave)
+      let cmp: number
+      if (typeof va === 'number' && typeof vb === 'number') {
+        cmp = va - vb
+      } else {
+        cmp = String(va).localeCompare(String(vb), 'pt-BR', { sensitivity: 'base' })
+      }
+      return direcao === 'asc' ? cmp : -cmp
+    })
+    return ordenadas
+  }, [pollsFiltrados, filtroTextoCandidatoCadastradas, ordenacaoCadastradas])
 
   const candidatosUnicos = Array.from(new Set(pollsFiltrados.map((p) => p.candidato_nome).filter(Boolean)))
 
@@ -1452,10 +1534,74 @@ export default function PesquisaPage() {
               <table className="w-full">
                 <thead>
                   <tr className="border-b border-card">
-                    <th className="text-left py-3 px-4 text-sm font-semibold text-text-primary">Data</th>
-                    <th className="text-left py-3 px-4 text-sm font-semibold text-text-primary">Instituto</th>
+                    <th className="text-left py-3 px-4 text-sm font-semibold text-text-primary">
+                      <button
+                        type="button"
+                        onClick={() => alternarOrdenacaoCadastradas('data')}
+                        className="inline-flex items-center gap-1 select-none transition-colors hover:text-accent-gold focus:outline-none focus:ring-2 focus:ring-accent-gold/40 rounded"
+                        aria-label={
+                          ordenacaoCadastradas?.chave !== 'data'
+                            ? 'Ordenar por Data (A→Z)'
+                            : ordenacaoCadastradas.direcao === 'asc'
+                              ? 'Ordenar por Data (Z→A)'
+                              : 'Remover ordenação por Data'
+                        }
+                      >
+                        <span>Data</span>
+                        {ordenacaoCadastradas?.chave !== 'data' ? (
+                          <ArrowUpDown className="h-3.5 w-3.5 opacity-40" aria-hidden="true" />
+                        ) : ordenacaoCadastradas.direcao === 'asc' ? (
+                          <ArrowUp className="h-3.5 w-3.5 text-accent-gold" aria-hidden="true" />
+                        ) : (
+                          <ArrowDown className="h-3.5 w-3.5 text-accent-gold" aria-hidden="true" />
+                        )}
+                      </button>
+                    </th>
+                    <th className="text-left py-3 px-4 text-sm font-semibold text-text-primary">
+                      <button
+                        type="button"
+                        onClick={() => alternarOrdenacaoCadastradas('instituto')}
+                        className="inline-flex items-center gap-1 select-none transition-colors hover:text-accent-gold focus:outline-none focus:ring-2 focus:ring-accent-gold/40 rounded"
+                        aria-label={
+                          ordenacaoCadastradas?.chave !== 'instituto'
+                            ? 'Ordenar por Instituto (A→Z)'
+                            : ordenacaoCadastradas.direcao === 'asc'
+                              ? 'Ordenar por Instituto (Z→A)'
+                              : 'Remover ordenação por Instituto'
+                        }
+                      >
+                        <span>Instituto</span>
+                        {ordenacaoCadastradas?.chave !== 'instituto' ? (
+                          <ArrowUpDown className="h-3.5 w-3.5 opacity-40" aria-hidden="true" />
+                        ) : ordenacaoCadastradas.direcao === 'asc' ? (
+                          <ArrowUp className="h-3.5 w-3.5 text-accent-gold" aria-hidden="true" />
+                        ) : (
+                          <ArrowDown className="h-3.5 w-3.5 text-accent-gold" aria-hidden="true" />
+                        )}
+                      </button>
+                    </th>
                     <th className="align-top py-3 px-4 text-left text-sm font-semibold text-text-primary">
-                      <span className="block">Candidato</span>
+                      <button
+                        type="button"
+                        onClick={() => alternarOrdenacaoCadastradas('candidato')}
+                        className="inline-flex items-center gap-1 select-none transition-colors hover:text-accent-gold focus:outline-none focus:ring-2 focus:ring-accent-gold/40 rounded"
+                        aria-label={
+                          ordenacaoCadastradas?.chave !== 'candidato'
+                            ? 'Ordenar por Candidato (A→Z)'
+                            : ordenacaoCadastradas.direcao === 'asc'
+                              ? 'Ordenar por Candidato (Z→A)'
+                              : 'Remover ordenação por Candidato'
+                        }
+                      >
+                        <span>Candidato</span>
+                        {ordenacaoCadastradas?.chave !== 'candidato' ? (
+                          <ArrowUpDown className="h-3.5 w-3.5 opacity-40" aria-hidden="true" />
+                        ) : ordenacaoCadastradas.direcao === 'asc' ? (
+                          <ArrowUp className="h-3.5 w-3.5 text-accent-gold" aria-hidden="true" />
+                        ) : (
+                          <ArrowDown className="h-3.5 w-3.5 text-accent-gold" aria-hidden="true" />
+                        )}
+                      </button>
                       <label htmlFor="pesquisa-cadastradas-filtro-candidato" className="sr-only">
                         Filtrar por nome do candidato
                       </label>
@@ -1472,11 +1618,121 @@ export default function PesquisaPage() {
                         autoComplete="off"
                       />
                     </th>
-                    <th className="text-left py-3 px-4 text-sm font-semibold text-text-primary">Cidade</th>
-                    <th className="text-left py-3 px-4 text-sm font-semibold text-text-primary">Tipo</th>
-                    <th className="text-left py-3 px-4 text-sm font-semibold text-text-primary">Cargo</th>
-                    <th className="text-right py-3 px-4 text-sm font-semibold text-text-primary">Intenção</th>
-                    <th className="text-right py-3 px-4 text-sm font-semibold text-text-primary">Rejeição</th>
+                    <th className="text-left py-3 px-4 text-sm font-semibold text-text-primary">
+                      <button
+                        type="button"
+                        onClick={() => alternarOrdenacaoCadastradas('cidade')}
+                        className="inline-flex items-center gap-1 select-none transition-colors hover:text-accent-gold focus:outline-none focus:ring-2 focus:ring-accent-gold/40 rounded"
+                        aria-label={
+                          ordenacaoCadastradas?.chave !== 'cidade'
+                            ? 'Ordenar por Cidade (A→Z)'
+                            : ordenacaoCadastradas.direcao === 'asc'
+                              ? 'Ordenar por Cidade (Z→A)'
+                              : 'Remover ordenação por Cidade'
+                        }
+                      >
+                        <span>Cidade</span>
+                        {ordenacaoCadastradas?.chave !== 'cidade' ? (
+                          <ArrowUpDown className="h-3.5 w-3.5 opacity-40" aria-hidden="true" />
+                        ) : ordenacaoCadastradas.direcao === 'asc' ? (
+                          <ArrowUp className="h-3.5 w-3.5 text-accent-gold" aria-hidden="true" />
+                        ) : (
+                          <ArrowDown className="h-3.5 w-3.5 text-accent-gold" aria-hidden="true" />
+                        )}
+                      </button>
+                    </th>
+                    <th className="text-left py-3 px-4 text-sm font-semibold text-text-primary">
+                      <button
+                        type="button"
+                        onClick={() => alternarOrdenacaoCadastradas('tipo')}
+                        className="inline-flex items-center gap-1 select-none transition-colors hover:text-accent-gold focus:outline-none focus:ring-2 focus:ring-accent-gold/40 rounded"
+                        aria-label={
+                          ordenacaoCadastradas?.chave !== 'tipo'
+                            ? 'Ordenar por Tipo (A→Z)'
+                            : ordenacaoCadastradas.direcao === 'asc'
+                              ? 'Ordenar por Tipo (Z→A)'
+                              : 'Remover ordenação por Tipo'
+                        }
+                      >
+                        <span>Tipo</span>
+                        {ordenacaoCadastradas?.chave !== 'tipo' ? (
+                          <ArrowUpDown className="h-3.5 w-3.5 opacity-40" aria-hidden="true" />
+                        ) : ordenacaoCadastradas.direcao === 'asc' ? (
+                          <ArrowUp className="h-3.5 w-3.5 text-accent-gold" aria-hidden="true" />
+                        ) : (
+                          <ArrowDown className="h-3.5 w-3.5 text-accent-gold" aria-hidden="true" />
+                        )}
+                      </button>
+                    </th>
+                    <th className="text-left py-3 px-4 text-sm font-semibold text-text-primary">
+                      <button
+                        type="button"
+                        onClick={() => alternarOrdenacaoCadastradas('cargo')}
+                        className="inline-flex items-center gap-1 select-none transition-colors hover:text-accent-gold focus:outline-none focus:ring-2 focus:ring-accent-gold/40 rounded"
+                        aria-label={
+                          ordenacaoCadastradas?.chave !== 'cargo'
+                            ? 'Ordenar por Cargo (A→Z)'
+                            : ordenacaoCadastradas.direcao === 'asc'
+                              ? 'Ordenar por Cargo (Z→A)'
+                              : 'Remover ordenação por Cargo'
+                        }
+                      >
+                        <span>Cargo</span>
+                        {ordenacaoCadastradas?.chave !== 'cargo' ? (
+                          <ArrowUpDown className="h-3.5 w-3.5 opacity-40" aria-hidden="true" />
+                        ) : ordenacaoCadastradas.direcao === 'asc' ? (
+                          <ArrowUp className="h-3.5 w-3.5 text-accent-gold" aria-hidden="true" />
+                        ) : (
+                          <ArrowDown className="h-3.5 w-3.5 text-accent-gold" aria-hidden="true" />
+                        )}
+                      </button>
+                    </th>
+                    <th className="text-right py-3 px-4 text-sm font-semibold text-text-primary">
+                      <button
+                        type="button"
+                        onClick={() => alternarOrdenacaoCadastradas('intencao')}
+                        className="inline-flex items-center gap-1 select-none transition-colors hover:text-accent-gold focus:outline-none focus:ring-2 focus:ring-accent-gold/40 rounded ml-auto"
+                        aria-label={
+                          ordenacaoCadastradas?.chave !== 'intencao'
+                            ? 'Ordenar por Intenção (menor → maior)'
+                            : ordenacaoCadastradas.direcao === 'asc'
+                              ? 'Ordenar por Intenção (maior → menor)'
+                              : 'Remover ordenação por Intenção'
+                        }
+                      >
+                        <span>Intenção</span>
+                        {ordenacaoCadastradas?.chave !== 'intencao' ? (
+                          <ArrowUpDown className="h-3.5 w-3.5 opacity-40" aria-hidden="true" />
+                        ) : ordenacaoCadastradas.direcao === 'asc' ? (
+                          <ArrowUp className="h-3.5 w-3.5 text-accent-gold" aria-hidden="true" />
+                        ) : (
+                          <ArrowDown className="h-3.5 w-3.5 text-accent-gold" aria-hidden="true" />
+                        )}
+                      </button>
+                    </th>
+                    <th className="text-right py-3 px-4 text-sm font-semibold text-text-primary">
+                      <button
+                        type="button"
+                        onClick={() => alternarOrdenacaoCadastradas('rejeicao')}
+                        className="inline-flex items-center gap-1 select-none transition-colors hover:text-accent-gold focus:outline-none focus:ring-2 focus:ring-accent-gold/40 rounded ml-auto"
+                        aria-label={
+                          ordenacaoCadastradas?.chave !== 'rejeicao'
+                            ? 'Ordenar por Rejeição (menor → maior)'
+                            : ordenacaoCadastradas.direcao === 'asc'
+                              ? 'Ordenar por Rejeição (maior → menor)'
+                              : 'Remover ordenação por Rejeição'
+                        }
+                      >
+                        <span>Rejeição</span>
+                        {ordenacaoCadastradas?.chave !== 'rejeicao' ? (
+                          <ArrowUpDown className="h-3.5 w-3.5 opacity-40" aria-hidden="true" />
+                        ) : ordenacaoCadastradas.direcao === 'asc' ? (
+                          <ArrowUp className="h-3.5 w-3.5 text-accent-gold" aria-hidden="true" />
+                        ) : (
+                          <ArrowDown className="h-3.5 w-3.5 text-accent-gold" aria-hidden="true" />
+                        )}
+                      </button>
+                    </th>
                     <th className="text-center py-3 px-4 text-sm font-semibold text-text-primary">Ações</th>
                   </tr>
                 </thead>

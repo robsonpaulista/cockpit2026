@@ -110,7 +110,10 @@ export function LoginForm() {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        background: 'linear-gradient(145deg, #e85a10 0%, #de5a12 40%, #b84311 100%)',
+        // Gradient derivado das variáveis do tema ativo:
+        // tema "republicanos" → azul; tema "agentes" → laranja; ambos seguem aparência light/dark.
+        background:
+          'linear-gradient(145deg, rgb(var(--accent-gold)) 0%, rgb(var(--accent-gold)) 40%, rgb(var(--accent-gold-dark)) 100%)',
         padding: '1rem',
         position: 'relative',
         overflow: 'hidden',
@@ -276,7 +279,7 @@ export function LoginForm() {
                 style={{
                   width: '18px',
                   height: '18px',
-                  accentColor: '#b84311',
+                  accentColor: 'rgb(var(--accent-gold-dark))',
                   cursor: 'pointer',
                 }}
               />
@@ -303,7 +306,7 @@ export function LoginForm() {
                 width: '100%',
                 padding: '12px',
                 background: loading ? 'rgba(255,255,255,0.25)' : 'white',
-                color: loading ? 'rgba(255,255,255,0.8)' : '#b84311',
+                color: loading ? 'rgba(255,255,255,0.8)' : 'rgb(var(--accent-gold-dark))',
                 borderRadius: '10px',
                 fontWeight: 600,
                 fontSize: '0.95rem',

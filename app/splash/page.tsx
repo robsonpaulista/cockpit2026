@@ -52,7 +52,8 @@ export default function SplashPage() {
     flexDirection: 'column',
     alignItems: 'center',
     justifyContent: 'center',
-    background: 'linear-gradient(160deg, #1E2A33 0%, #172229 100%)',
+    background:
+      'linear-gradient(145deg, rgb(var(--accent-gold)) 0%, rgb(var(--accent-gold)) 40%, rgb(var(--accent-gold-dark)) 100%)',
     zIndex: 9999,
     overflow: 'hidden',
   }
@@ -71,7 +72,7 @@ export default function SplashPage() {
       <style jsx global>{`
         /* Impedir qualquer background do body/html durante splash */
         html, body {
-          background: #1E2A33 !important;
+          background: rgb(var(--accent-gold-dark)) !important;
         }
 
         @keyframes splash-c-in {
@@ -136,7 +137,7 @@ export default function SplashPage() {
           flex-direction: column;
           align-items: center;
           justify-content: center;
-          background: linear-gradient(160deg, #1E2A33 0%, #172229 100%);
+          background: linear-gradient(145deg, rgb(var(--accent-gold)) 0%, rgb(var(--accent-gold)) 40%, rgb(var(--accent-gold-dark)) 100%);
           z-index: 9999;
           overflow: hidden;
           isolation: isolate;
@@ -146,7 +147,7 @@ export default function SplashPage() {
           content: '';
           position: absolute;
           inset: 0;
-          background: radial-gradient(circle at 50% 30%, rgba(108, 123, 255, 0.08), transparent 60%);
+          background: radial-gradient(circle at 50% 30%, rgba(255, 255, 255, 0.16), transparent 60%);
           pointer-events: none;
           z-index: 0;
         }
@@ -161,9 +162,9 @@ export default function SplashPage() {
           pointer-events: none;
           background: linear-gradient(
             135deg,
-            rgba(108, 123, 255, 0.25),
-            rgba(94, 211, 255, 0.25),
-            rgba(63, 186, 194, 0.25)
+            rgba(var(--accent-gold), 0.22),
+            rgba(var(--accent-gold-dark), 0.24),
+            rgba(255, 255, 255, 0.18)
           );
           border-top-left-radius: 60% 40%;
           border-top-right-radius: 60% 40%;
@@ -202,8 +203,8 @@ export default function SplashPage() {
           align-items: center;
           justify-content: flex-start;
           overflow: hidden;
-          background: linear-gradient(165deg, rgba(15, 26, 32, 0.86) 0%, rgba(30, 42, 51, 0.82) 45%, rgba(26, 36, 43, 0.88) 100%);
-          border: 1px solid rgba(255, 255, 255, 0.08);
+          background: linear-gradient(165deg, rgba(255, 255, 255, 0.14) 0%, rgba(255, 255, 255, 0.1) 45%, rgba(255, 255, 255, 0.12) 100%);
+          border: 1px solid rgba(255, 255, 255, 0.2);
           box-shadow:
             0 28px 60px rgba(0, 0, 0, 0.5),
             inset 0 1px 0 rgba(255, 255, 255, 0.07);
@@ -216,7 +217,7 @@ export default function SplashPage() {
           position: absolute;
           inset: 0;
           pointer-events: none;
-          background: radial-gradient(circle at 50% 8%, rgba(108, 123, 255, 0.15), transparent 48%);
+          background: radial-gradient(circle at 50% 8%, rgba(255, 255, 255, 0.22), transparent 48%);
           z-index: 0;
         }
 
@@ -227,8 +228,8 @@ export default function SplashPage() {
           margin-bottom: 34px;
           display: grid;
           place-items: center;
-          background: linear-gradient(165deg, rgba(15, 26, 32, 0.95), rgba(27, 38, 46, 0.92));
-          border: 1px solid rgba(255, 255, 255, 0.09);
+          background: linear-gradient(165deg, rgba(255, 255, 255, 0.2), rgba(255, 255, 255, 0.12));
+          border: 1px solid rgba(255, 255, 255, 0.22);
           box-shadow:
             0 12px 28px rgba(0, 0, 0, 0.45),
             inset 0 1px 0 rgba(255, 255, 255, 0.05);
@@ -252,11 +253,9 @@ export default function SplashPage() {
           color: #eaf2f7;
           background: linear-gradient(
             135deg,
-            #6c7bff 0%,
-            #8e6cfd 25%,
-            #a66bff 50%,
-            #5ed3ff 75%,
-            #3fbac2 100%
+            #ffffff 0%,
+            rgba(255, 255, 255, 0.92) 45%,
+            rgba(255, 255, 255, 0.72) 100%
           );
           -webkit-background-clip: text;
           background-clip: text;
@@ -277,11 +276,9 @@ export default function SplashPage() {
           color: #eaf2f7;
           background: linear-gradient(
             135deg,
-            #6c7bff 0%,
-            #8e6cfd 25%,
-            #a66bff 50%,
-            #5ed3ff 75%,
-            #3fbac2 100%
+            #ffffff 0%,
+            rgba(255, 255, 255, 0.92) 45%,
+            rgba(255, 255, 255, 0.72) 100%
           );
           -webkit-background-clip: text;
           background-clip: text;
@@ -367,7 +364,7 @@ export default function SplashPage() {
 
         .splash-barra-fill {
           height: 100%;
-          background: linear-gradient(135deg, #6c7bff 0%, #8e6cfd 28%, #5ed3ff 72%, #3fbac2 100%);
+          background: linear-gradient(135deg, #ffffff 0%, rgba(255, 255, 255, 0.82) 55%, rgba(255, 255, 255, 0.58) 100%);
           border-radius: 2px;
           animation: splash-barra-progress 4.5s cubic-bezier(0.4, 0, 0.2, 1) forwards;
         }

@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 
 /**
- * Overlay laranja que aparece sobre o dashboard após o splash screen.
+ * Overlay temático que aparece sobre o dashboard após o splash screen.
  * Dissolve gradualmente revelando o conteúdo do dashboard por baixo,
  * criando uma transição fluida entre o splash e a página principal.
  * 
@@ -56,7 +56,8 @@ export function SplashOverlay() {
         position: 'fixed',
         inset: 0,
         zIndex: 9998,
-        background: 'linear-gradient(160deg, #1E2A33 0%, #172229 100%)',
+        background:
+          'linear-gradient(145deg, rgb(var(--accent-gold)) 0%, rgb(var(--accent-gold)) 40%, rgb(var(--accent-gold-dark)) 100%)',
         opacity: opacidade,
         transition: 'opacity 2.8s cubic-bezier(0.25, 0.1, 0.25, 1)',
         pointerEvents: 'none',
@@ -67,7 +68,8 @@ export function SplashOverlay() {
         style={{
           position: 'absolute',
           inset: 0,
-          background: 'radial-gradient(circle at 50% 30%, rgba(108,123,255,0.08), transparent 60%)',
+          background:
+            'radial-gradient(circle at 50% 30%, rgba(255,255,255,0.16), transparent 60%)',
         }}
       />
     </div>

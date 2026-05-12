@@ -8,13 +8,18 @@ const PAGE_KEYS = new Set([
   'dashboard', 'fases', 'narrativas', 'campo', 'agenda', 'territorio',
   'chapas', 'conteudo', 'noticias', 'mobilizacao', 'whatsapp', 'pesquisa',
   'operacao', 'juridico', 'obras', 'usuarios', 'gestao_pesquisas',
+  'emendas', 'proposicoes', 'sei-pesquisa',
 ])
 
 function getPageKey(pathname: string): string | null {
   if (!pathname?.startsWith('/dashboard')) return null
   if (pathname === '/dashboard' || pathname === '/dashboard/') return 'dashboard'
   if (pathname.startsWith('/dashboard/gestao-pesquisas')) return 'gestao_pesquisas'
-  if (pathname.startsWith('/dashboard/emendas')) return 'juridico'
+  // A página de Emendas usa a chave própria 'emendas' (mesma que a sidebar usa
+  // em `pageKeyForItem`). Anteriormente esta rota era tratada como 'juridico',
+  // o que fazia o guard redirecionar para /dashboard quando o usuário tinha
+  // apenas 'emendas' liberado nas permissões.
+  if (pathname.startsWith('/dashboard/emendas')) return 'emendas'
   const segments = pathname.replace(/^\/dashboard\/?/, '').split('/')
   const first = segments[0]
   return first && PAGE_KEYS.has(first) ? first : null

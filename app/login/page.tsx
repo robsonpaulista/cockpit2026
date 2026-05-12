@@ -24,9 +24,10 @@ export default function LoginPage() {
   return (
     <>
       <style jsx global>{`
-        /* Fundo laranja na página de login (evita flash branco) */
-        html, body {
-          background: #de5a12 !important;
+        /* Fundo segue o tema ativo (azul em "republicanos", laranja em "agentes") — evita flash branco. */
+        html,
+        body {
+          background: rgb(var(--accent-gold-dark)) !important;
         }
         /* Placeholders brancos nos inputs de login */
         input::placeholder {
