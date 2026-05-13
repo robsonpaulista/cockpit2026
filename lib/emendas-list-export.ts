@@ -201,6 +201,27 @@ export function pdfCell(r: EmendaListExportRow, k: EmendaListColumnKey): string 
   return String(v)
 }
 
+function totalByColumn(rows: EmendaListExportRow[], k: EmendaListColumnKey): number {
+  return rows.reduce((sum, row) => {
+    const value = row[k]
+    const numeric = typeof value === 'number' ? value : Number(value)
+    return Number.isFinite(numeric) ? sum + numeric : sum
+  }, 0)
+}
+
+function buildPdfTotalRow(
+  rows: EmendaListExportRow[],
+  cols: EmendaListColumnKey[],
+): string[] | null {
+  if (rows.length === 0 || !cols.some(isValorKey)) return null
+
+  return cols.map((k, index) => {
+    if (index === 0) return 'TOTAL'
+    if (!isValorKey(k)) return ''
+    return formatBrl(totalByColumn(rows, k))
+  })
+}
+
 function stampArquivo(): string {
   const d = new Date()
   const p = (n: number) => String(n).padStart(2, '0')
@@ -573,6 +594,7 @@ export async function exportEmendasListToPdf(
     rows.length > 0
       ? rows.map((r) => cols.map((k) => pdfCell(r, k)))
       : [cols.map((_, i) => (i === 0 ? 'Nenhum registro' : '—'))]
+  const totalRow = buildPdfTotalRow(rows, cols)
 
   const rawSum = cols.reduce((s, k) => s + COL_WIDTH_MM[k], 0)
   const scale = rawSum > innerW ? innerW / rawSum : 1
@@ -588,8 +610,14 @@ export async function exportEmendasListToPdf(
     startY: startTabela,
     head: [headers],
     body,
+    foot: totalRow ? [totalRow] : undefined,
     styles: { fontSize: 6.5, cellPadding: 1.2, overflow: 'linebreak' },
     headStyles: { fillColor: brand, textColor: 255 },
+    footStyles: {
+      fillColor: [238, 242, 247],
+      textColor: [17, 24, 39],
+      fontStyle: 'bold',
+    },
     columnStyles,
     margin: { left: margin, right: margin },
   })
