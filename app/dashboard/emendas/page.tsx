@@ -434,11 +434,16 @@ export default function EmendasPage() {
   }, [])
 
   const handleExportXlsx = useCallback(() => {
-    exportEmendasListToXlsx(rowsParaExportar, filtrosAtivos, activeColumnList)
+    void exportEmendasListToXlsx(rowsParaExportar, filtrosAtivos, activeColumnList)
   }, [rowsParaExportar, filtrosAtivos, activeColumnList])
 
   const handleExportPdf = useCallback(() => {
-    exportEmendasListToPdf(rowsParaExportar, filtrosAtivos, descricaoFiltrosExport, activeColumnList)
+    void exportEmendasListToPdf(
+      rowsParaExportar,
+      filtrosAtivos,
+      descricaoFiltrosExport,
+      activeColumnList,
+    )
   }, [rowsParaExportar, filtrosAtivos, descricaoFiltrosExport, activeColumnList])
 
   const load = useCallback(async () => {
