@@ -87,6 +87,12 @@ import { MapaDigitalIgMunicipiosResumoTable } from '@/components/mapa-digital-ig
 import { MapaDigitalIgRelatorioCheckExport } from '@/components/mapa-digital-ig-relatorio-check-export'
 import { MapaDigitalIgMunicipioMobilizacaoDrill } from '@/components/mapa-digital-ig-municipio-mobilizacao-drill'
 import { MapaDigitalIgPublicacoesLideresCobertura } from '@/components/mapa-digital-ig-publicacoes-lideres-cobertura'
+import { MapaDigitalIgEngajamentoTimeline } from '@/components/mapa-digital-ig-engajamento-timeline'
+import {
+  MapaDigitalIgOperacaoBarChart,
+  OperacaoBarChartLegend,
+  type OperacaoBarBucket,
+} from '@/components/mapa-digital-ig-operacao-bar-chart'
 import { MapaDigitalIgLideresDesempenhoModal } from '@/components/mapa-digital-ig-lideres-desempenho-modal'
 import { MapaDigitalIgLiderLideradosModal } from '@/components/mapa-digital-ig-lider-liderados-modal'
 import {
@@ -3866,6 +3872,26 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({
     }
   }, [isIgOperacao, resumoPorTd, igAgregadoAtual.postagensProcessadas])
 
+  const operacaoCidadesChartBuckets = useMemo((): OperacaoBarBucket[] => {
+    const fmtPct0 = new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 0 })
+    return operacaoTopCidades.map((row) => {
+      const pctResto = Math.max(0, 100 - row.ativacaoPct)
+      return {
+        key: row.nome,
+        label: row.nome,
+        sublabel: `${fmtInt.format(row.comentarios)} comentário${row.comentarios === 1 ? '' : 's'}`,
+        pctPrimary: row.ativacaoPct,
+        pctSecondary: pctResto,
+        footerSecondary: `Sem ativ. ${fmtPct0.format(pctResto)}%`,
+        footerTertiary: null,
+        tooltip: `${row.nome}: ${row.ativacaoPct.toFixed(1)}% de ativação digital · ${fmtInt.format(row.comentarios)} comentários`,
+      }
+    })
+  }, [operacaoTopCidades])
+
+  const isFutDarkIgOperacao = visualPreset === 'futuristic' && visualTheme === 'dark'
+  const isFutLightIgOperacao = visualPreset === 'futuristic' && visualTheme === 'light'
+
   /** Média aritmética dos valores Méd.Top5 22 na lista de municípios (top federais no TD). */
   const mediaMedTop22ListaMunicipiosTd = useMemo(() => {
     if (highlightedTd === null || !temDadosEstrategiaTopFed22 || municipiosLinhasPainel.length === 0) return null
@@ -5741,48 +5767,40 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({
                       </div>
                     </div>
 
-                    <div className="grid min-h-0 grid-cols-1 gap-3 xl:h-[min(42dvh,27.5rem)] xl:min-h-[15.5rem] xl:grid-cols-2 xl:items-stretch">
-                      <div className={cn('flex h-full min-h-0 flex-col', igOperacaoCardClass)}>
-                        <p className={cn(igOperacaoTituloClass, 'mb-2')}>Engajamento por cidade (top)</p>
+                    <div className="grid min-h-0 grid-cols-1 gap-3 xl:grid-cols-2 xl:items-stretch xl:h-[min(42dvh,28rem)] xl:min-h-[15.5rem]">
+                      <MapaDigitalIgEngajamentoTimeline
+                        territorioFoco={highlightedTd}
+                        visualPreset={visualPreset}
+                        visualTheme={visualTheme}
+                        shellClassName={cn('min-w-0 flex h-full min-h-0 flex-col', igOperacaoCardClass)}
+                      />
+                      <div className={cn('flex h-full min-h-0 flex-1 flex-col', igOperacaoCardClass)}>
+                        <p className={cn(igOperacaoTituloClass, 'mb-2 shrink-0')}>Engajamento por cidade (top)</p>
                         {operacaoTopCidades.length === 0 ? (
                           <p className={igOperacaoHintClass}>
                             Sem cidades com comentário vinculado no recorte atual. Esse bloco considera cidades dos liderados que comentaram.
                           </p>
                         ) : (
-                          <div className={igOperacaoChartFillClass}>
-                            <div className="grid h-full min-h-0 flex-1 auto-rows-fr grid-cols-4 gap-2 sm:grid-cols-6 xl:grid-cols-8">
-                              {(() => {
-                                const maxCityAtivacao = Math.max(1, ...operacaoTopCidades.map((c) => c.ativacaoPct))
-                                return operacaoTopCidades.map((row, idx) => (
-                                  <div
-                                    key={`city-oper-${row.nome}`}
-                                    className="flex h-full min-h-0 flex-col items-center justify-between gap-1"
-                                  >
-                                    <span className="shrink-0 text-[11px] font-semibold tabular-nums text-text-primary">
-                                      {row.ativacaoPct.toFixed(0)}%
-                                    </span>
-                                    <div className="flex min-h-0 w-full flex-1 flex-col justify-end">
-                                      <div
-                                        className="min-h-[4px] w-full rounded-t-md bg-blue-600 transition-[height] duration-700 ease-out"
-                                        style={{
-                                          height: `${Math.max((row.ativacaoPct / maxCityAtivacao) * 100, 8)}%`,
-                                          transitionDelay: `${idx * 45}ms`,
-                                        }}
-                                      />
-                                    </div>
-                                    <span
-                                      className="line-clamp-1 w-full shrink-0 text-center text-[11px] uppercase text-text-primary/90"
-                                      title={row.nome}
-                                    >
-                                      {row.nome}
-                                    </span>
-                                  </div>
-                                ))
-                              })()}
+                          <div className={cn(igOperacaoChartFillClass, 'flex min-h-0 flex-1 flex-col')}>
+                            <OperacaoBarChartLegend
+                              primaryLabel="Ativação digital (% postagens)"
+                              secondaryLabel="Sem ativação (cauda)"
+                              isFutDark={isFutDarkIgOperacao}
+                            />
+                            <div className="mt-auto flex min-h-0 w-full flex-1 flex-col justify-end">
+                              <MapaDigitalIgOperacaoBarChart
+                                buckets={operacaoCidadesChartBuckets}
+                                isFutDark={isFutDarkIgOperacao}
+                                isFutLight={isFutLightIgOperacao}
+                                ariaLabel="Gráfico de engajamento por cidade: ativação digital e comentários"
+                              />
                             </div>
                           </div>
                         )}
                       </div>
+                    </div>
+
+                    <div className="grid min-h-0 grid-cols-1 gap-3 xl:grid-cols-2 xl:items-stretch xl:h-[min(42dvh,27.5rem)] xl:min-h-[15.5rem]">
                       <div className={cn('flex h-full min-h-0 flex-col', igOperacaoCardClass)}>
                         <p className={cn(igOperacaoTituloClass, 'mb-2')}>Engajamento por líder (ranking geral)</p>
                         <p className={cn('mb-2 shrink-0', igOperacaoHintClass)}>
@@ -5832,130 +5850,14 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({
                           </div>
                         )}
                       </div>
-                    </div>
-
-                    <div className="grid grid-cols-1 gap-3 xl:grid-cols-2">
-                      <div className={cn('min-w-0', igOperacaoCardClass)}>
-                        <p className={cn(igOperacaoTituloClass, 'mb-2')}>Território</p>
-                        <table
-                          aria-label="Tabela operacional de decisão por território"
-                          className={cn(
-                            'td-resumo-table td-resumo-table--premium w-full',
-                            visualPreset === 'futuristic' && 'td-resumo-table--futuristic'
-                          )}
-                        >
-                      <thead>
-                        <tr className="td-resumo-table__row td-resumo-table__row--header tracking-wide">
-                          <th className="td-resumo-table__cell td-resumo-table__cell--territorio text-left font-medium">
-                            <button
-                              type="button"
-                              onClick={() => alternarOrdenacaoIgOperacao('territorio')}
-                              className="inline-flex items-center gap-1"
-                            >
-                              Território <span aria-hidden>{indicadorOrdenacaoIgOperacao('territorio')}</span>
-                            </button>
-                          </th>
-                          <th className="td-resumo-table__cell text-right font-medium">
-                            <button
-                              type="button"
-                              onClick={() => alternarOrdenacaoIgOperacao('ativacao')}
-                              className="inline-flex items-center justify-end gap-1"
-                            >
-                              Ativação <span aria-hidden>{indicadorOrdenacaoIgOperacao('ativacao')}</span>
-                            </button>
-                          </th>
-                          <th className="td-resumo-table__cell text-right font-medium">
-                            <button
-                              type="button"
-                              onClick={() => alternarOrdenacaoIgOperacao('lider')}
-                              className="inline-flex items-center justify-end gap-1"
-                            >
-                              Líder <span aria-hidden>{indicadorOrdenacaoIgOperacao('lider')}</span>
-                            </button>
-                          </th>
-                          <th className="td-resumo-table__cell text-right font-medium">
-                            <button
-                              type="button"
-                              onClick={() => alternarOrdenacaoIgOperacao('postagens')}
-                              className="inline-flex items-center justify-end gap-1"
-                              title="Mesmo recorte global de postagens por linha — ordenação composta usa desempate neutro nesta coluna"
-                            >
-                              Postagens <span aria-hidden>{indicadorOrdenacaoIgOperacao('postagens')}</span>
-                            </button>
-                          </th>
-                          <th className="td-resumo-table__cell text-right font-medium">
-                            <button
-                              type="button"
-                              onClick={() => alternarOrdenacaoIgOperacao('gap')}
-                              className="inline-flex items-center justify-end gap-1"
-                            >
-                              Gap <span aria-hidden>{indicadorOrdenacaoIgOperacao('gap')}</span>
-                            </button>
-                          </th>
-                          <th className="td-resumo-table__cell td-resumo-table__grupo-status-start text-center font-medium">
-                            <button
-                              type="button"
-                              onClick={() => alternarOrdenacaoIgOperacao('status')}
-                              className="inline-flex w-full items-center justify-center gap-1"
-                            >
-                              Status <span aria-hidden>{indicadorOrdenacaoIgOperacao('status')}</span>
-                            </button>
-                          </th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {linhasIgOperacionais.map((row) => {
-                          const statusClass =
-                            row.status === 'Crítico'
-                              ? 'text-status-danger'
-                              : row.status === 'Atenção'
-                                ? 'text-status-warning'
-                                : row.status === 'Regular'
-                                  ? 'text-text-primary/90'
-                                  : 'text-status-success'
-                          return (
-                            <tr key={`oper-${row.territorio}`} className="td-resumo-table__row td-resumo-table__row--data td-resumo-table__row--premium">
-                              <td className="td-resumo-table__cell td-resumo-table__cell--territorio">
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    setMunicipioFocadoLiderancas(null)
-                                    setHighlightedTd((prev) => (prev === row.territorio ? null : row.territorio))
-                                  }}
-                                  className="font-semibold text-text-primary hover:text-accent-gold"
-                                >
-                                  {row.territorio}
-                                </button>
-                              </td>
-                              <td className="td-resumo-table__cell text-right tabular-nums font-semibold text-text-primary">
-                                {row.ativacaoPct.toFixed(1)}%
-                              </td>
-                              <td className="td-resumo-table__cell text-right tabular-nums text-text-primary">
-                                {row.engajamentoLiderPct.toFixed(1)}%
-                              </td>
-                              <td className="td-resumo-table__cell text-right tabular-nums text-text-primary">
-                                {igAgregadoAtual.postagensProcessadas.toLocaleString('pt-BR')}
-                              </td>
-                              <td className="td-resumo-table__cell text-right tabular-nums text-text-primary">
-                                -{row.gapPct.toFixed(1)} pp
-                              </td>
-                              <td className="td-resumo-table__cell td-resumo-table__cell--classe td-resumo-table__grupo-status-start">
-                                <div className={cn('text-center text-xs font-semibold', statusClass)}>{row.status}</div>
-                              </td>
-                            </tr>
-                          )
-                        })}
-                      </tbody>
-                        </table>
-                      </div>
-                      <div className="min-w-0">
+                      <div className="min-w-0 flex h-full min-h-0 flex-col">
                         <MapaDigitalIgPublicacoesLideresCobertura
                           territorioFoco={highlightedTd}
                           sidebarCollapsed={sidebarCollapsed}
                           visualPreset={visualPreset}
                           visualTheme={visualTheme}
                           modoLeitura={igViewMode}
-                          operacaoPainelShellClassName={igOperacaoCardClass}
+                          operacaoPainelShellClassName={cn('flex h-full min-h-0 flex-col', igOperacaoCardClass)}
                         />
                       </div>
                     </div>

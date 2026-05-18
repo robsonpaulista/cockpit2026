@@ -183,7 +183,12 @@ export function MapaDigitalIgPublicacoesLideresCobertura({
               Sincronize comentários do Instagram para ver publicações aqui.
             </p>
           ) : (
-            <div className="max-h-[min(52vh,28rem)] space-y-0 overflow-y-auto overscroll-contain pt-2">
+            <div
+              className={cn(
+                'max-h-[min(52vh,28rem)] overflow-y-auto overscroll-contain',
+                modoLeitura === 'operacao' ? 'space-y-2 pt-1' : 'space-y-0 pt-2',
+              )}
+            >
               {postsOrdenados.map((post) => (
                 <PostCoberturaCard
                   key={post.instagram_media_id}
@@ -234,12 +239,9 @@ function PostCoberturaCard({
     [lideres, commenters]
   )
   const statusOperacional = pct < 30 ? 'Crítico' : pct < 60 ? 'Atenção' : pct < 80 ? 'Regular' : 'Saudável'
-  const operacaoAtivacaoBadgeShell = cn(
-    'inline-flex items-baseline gap-1.5 rounded-lg border px-2.5 py-1.5 tabular-nums',
-    isFutDark &&
-      'border-white/[0.11] bg-white/[0.035] shadow-[inset_0_1px_0_0_rgba(255,255,255,0.05)]',
-    isFutLight && 'border-slate-200/85 bg-white/95 shadow-[0_1px_2px_rgba(15,23,42,0.04)]',
-    !isFutDark && !isFutLight && 'border-border-card/55 bg-bg-surface/90'
+  const fmtPct = useMemo(
+    () => new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 1 }),
+    [],
   )
   const operacaoStatusBadgeClass = cn(
     'inline-flex items-center rounded-lg border px-2.5 py-1.5 text-[10px] font-semibold uppercase tracking-[0.14em]',
@@ -288,43 +290,67 @@ function PostCoberturaCard({
     )
   }
 
+  const isOperacao = modoLeitura === 'operacao'
+
   return (
     <details
       className={cn(
-        'group border-b border-border-card/25 pb-2 pt-2 first:pt-0 last:border-b-0',
-        isFutDark && 'border-white/[0.08]',
-        isFutLight && 'border-slate-300/70'
+        'group',
+        isOperacao
+          ? cn(
+              'overflow-hidden rounded-lg border',
+              isFutDark && 'border-white/10 bg-white/[0.03]',
+              isFutLight && 'border-slate-200/90 bg-white/80',
+              !isFutDark && !isFutLight && 'border-border-card/55 bg-bg-surface/40',
+            )
+          : cn(
+              'border-b border-border-card/25 pb-2 pt-2 first:pt-0 last:border-b-0',
+              isFutDark && 'border-white/[0.08]',
+              isFutLight && 'border-slate-300/70',
+            ),
       )}
     >
-      <summary className="flex cursor-pointer list-none items-stretch gap-2 py-1 marker:hidden [&::-webkit-details-marker]:hidden sm:gap-2.5">
+      <summary
+        className={cn(
+          'flex cursor-pointer list-none items-start gap-2.5 marker:hidden [&::-webkit-details-marker]:hidden',
+          isOperacao ? 'p-2.5 sm:p-3' : 'py-1',
+        )}
+      >
         <span
           aria-hidden
           className={cn(
-            'mt-0.5 inline-block shrink-0 text-text-muted transition-transform group-open:rotate-180',
-            isFutDark && 'text-white/50'
+            'mt-1 shrink-0 text-text-muted transition-transform group-open:rotate-180',
+            isFutDark && 'text-white/50',
           )}
         >
           <ChevronDown className="h-4 w-4" />
         </span>
         <div
           className={cn(
-            'h-14 w-14 shrink-0 overflow-hidden rounded-md border border-border-card/40 bg-card/50 sm:h-16 sm:w-16',
+            'h-12 w-12 shrink-0 overflow-hidden rounded-md border sm:h-14 sm:w-14',
             isFutDark && 'border-white/15 bg-white/10',
-            isFutLight && 'border-slate-300/80 bg-slate-50/80'
+            isFutLight && 'border-slate-300/80 bg-slate-50/80',
+            !isFutDark && !isFutLight && 'border-border-card/40 bg-card/50',
           )}
         >
           {post.media_thumbnail_url ? (
             // eslint-disable-next-line @next/next/no-img-element -- URL do Instagram
             <img src={post.media_thumbnail_url} alt="" className="h-full w-full object-cover" loading="lazy" />
           ) : (
-            <div className={cn('flex h-full w-full items-center justify-center text-[10px] text-text-muted', isFutLight && 'text-[#64748b]')}>—</div>
+            <div className={cn('flex h-full w-full items-center justify-center text-[10px] text-text-muted', isFutLight && 'text-slate-500')}>
+              —
+            </div>
           )}
         </div>
-        <div className="min-w-0 flex-1">
-          <p className={cn('line-clamp-2 font-semibold leading-snug text-text-primary', textSm, isFutDark && 'text-white')}>
-            {caption}
-          </p>
-          <div className={cn('mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1', textSm)}>
+        <div className="min-w-0 flex-1 space-y-2">
+          <div className="flex items-start justify-between gap-2">
+            <p className={cn('line-clamp-2 min-w-0 flex-1 font-semibold leading-snug text-text-primary', textSm, isFutDark && 'text-white')}>
+              {caption}
+            </p>
+            {isOperacao ? <span className={cn(operacaoStatusBadgeClass, 'shrink-0')}>{statusOperacional}</span> : null}
+          </div>
+
+          <div className={cn('flex flex-wrap items-center gap-x-2 gap-y-1', textSm)}>
             {posted ? (
               <time className={cn('text-text-muted', isFutDark && 'text-white/60')} dateTime={post.media_posted_at ?? undefined}>
                 {posted}
@@ -332,8 +358,10 @@ function PostCoberturaCard({
             ) : null}
             <span
               className={cn(
-                'rounded-full border border-border-card/50 bg-card/40 px-2 py-0.5 tabular-nums text-text-secondary',
-                isFutDark && 'border-white/15 bg-white/10 text-white/85'
+                'rounded-md border px-1.5 py-0.5 tabular-nums text-text-secondary',
+                isFutDark && 'border-white/12 bg-white/[0.06] text-white/80',
+                isFutLight && 'border-slate-200 bg-slate-50 text-slate-600',
+                !isFutDark && !isFutLight && 'border-border-card/50 bg-card/40',
               )}
             >
               {post.comments_count} comentário{post.comments_count === 1 ? '' : 's'}
@@ -343,101 +371,102 @@ function PostCoberturaCard({
                 href={post.media_permalink}
                 target="_blank"
                 rel="noopener noreferrer"
-                className={cn(
-                  'inline-flex items-center gap-1 text-accent-gold hover:underline',
-                  isFutDark && 'text-amber-200/95'
-                )}
+                className={cn('inline-flex items-center gap-0.5 text-accent-gold hover:underline', isFutDark && 'text-amber-200/95')}
                 onClick={(e) => e.stopPropagation()}
               >
-                Abrir no IG <ExternalLink className="h-3 w-3" aria-hidden />
+                IG <ExternalLink className="h-3 w-3" aria-hidden />
               </a>
             ) : null}
           </div>
-          {modoLeitura === 'operacao' ? (
+
+          {isOperacao ? (
             <div
               className={cn(
-                'mt-2 border-t border-border-card/25 pt-2',
-                isFutDark && 'border-white/[0.08]',
-                isFutLight && 'border-slate-300/60'
+                'flex flex-col gap-2 rounded-md border px-2.5 py-2 sm:flex-row sm:items-center sm:gap-3',
+                isFutDark && 'border-white/[0.08] bg-white/[0.04]',
+                isFutLight && 'border-slate-200/80 bg-slate-50/90',
+                !isFutDark && !isFutLight && 'border-border-card/45 bg-background/60',
               )}
             >
-              <div className="flex flex-wrap items-center gap-2">
-                <span className={operacaoAtivacaoBadgeShell}>
-                  <span
-                    className={cn(
-                      'text-[9px] font-semibold uppercase tracking-[0.14em] text-text-primary/65',
-                      isFutDark && 'text-white/45',
-                      isFutLight && 'text-slate-500'
-                    )}
-                  >
-                    Ativação
-                  </span>
-                  <span
-                    className={cn(
-                      'text-[13px] font-semibold leading-none text-text-primary',
-                      isFutDark && 'text-white',
-                      isFutLight && 'text-slate-900'
-                    )}
-                  >
-                    {new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 1 }).format(pct)}%
-                  </span>
+              <div className="flex shrink-0 items-baseline gap-1.5 sm:flex-col sm:items-start sm:gap-0">
+                <span className={cn('text-[9px] font-semibold uppercase tracking-wide text-text-muted', isFutDark && 'text-white/45')}>
+                  Ativação
                 </span>
-                <span className={operacaoStatusBadgeClass}>{statusOperacional}</span>
+                <span className={cn('text-base font-bold tabular-nums leading-none text-blue-700 dark:text-blue-200', isFutLight && 'text-blue-800')}>
+                  {fmtPct.format(pct)}%
+                </span>
               </div>
-              <div className="mt-2 flex flex-wrap gap-1.5">
-                <span className={operacaoContagemChipClass('ok')}>✓ {nOk} comentaram</span>
-                <span className={operacaoContagemChipClass('falta')}>✕ {naoComentaram.length} não comentaram</span>
+              <div className="min-w-0 flex-1">
+                <div className="h-1.5 w-full overflow-hidden rounded-full bg-border-card/45">
+                  <div
+                    className="h-full rounded-full bg-blue-600 transition-[width] duration-300"
+                    style={{ width: `${Math.min(100, Math.round(pct))}%` }}
+                  />
+                </div>
+                <p className={cn('mt-1 text-[10px] tabular-nums text-text-muted', isFutDark && 'text-white/50')}>
+                  {nOk} / {nMedido} líderes com rede comentaram
+                </p>
+              </div>
+              <div className="flex shrink-0 flex-wrap gap-1">
+                <span className={operacaoContagemChipClass('ok')}>✓ {nOk}</span>
+                <span className={operacaoContagemChipClass('falta')}>✕ {naoComentaram.length}</span>
               </div>
             </div>
           ) : null}
         </div>
       </summary>
 
-      <div className={cn('mt-1 border-t border-border-card/20 pt-2', isFutDark && 'border-white/[0.08]', isFutLight && 'border-slate-300/70')}>
-        <div className="mb-2 flex flex-wrap items-baseline justify-between gap-2">
-          <span className={cn('text-[11px] font-medium uppercase tracking-wide text-text-muted sm:text-xs', isFutDark && 'text-white/55')}>
-            Cobertura de líderes
-          </span>
-          <span className={cn('text-sm font-semibold tabular-nums text-status-success sm:text-base', isFutDark && 'text-emerald-300')}>
-            {nOk} / {nMedido}
-            <span className={cn('ml-1 text-xs font-normal text-text-muted', isFutDark && 'text-white/50')}>com rede</span>
-          </span>
-        </div>
+      <div
+        className={cn(
+          'border-t px-2.5 pb-2.5 pt-2 sm:px-3',
+          isFutDark && 'border-white/[0.08]',
+          isFutLight && 'border-slate-300/70',
+          !isOperacao && 'mt-1',
+        )}
+      >
+        {isOperacao ? (
+          <p className={cn('mb-2 text-[10px] font-medium uppercase tracking-wide text-text-muted', isFutDark && 'text-white/50')}>
+            Detalhe da cobertura
+          </p>
+        ) : (
+          <div className="mb-2 flex flex-wrap items-baseline justify-between gap-2">
+            <span className={cn('text-[11px] font-medium uppercase tracking-wide text-text-muted sm:text-xs', isFutDark && 'text-white/55')}>
+              Cobertura de líderes
+            </span>
+            <span className={cn('text-sm font-semibold tabular-nums text-status-success sm:text-base', isFutDark && 'text-emerald-300')}>
+              {nOk} / {nMedido}
+              <span className={cn('ml-1 text-xs font-normal text-text-muted', isFutDark && 'text-white/50')}>com rede</span>
+            </span>
+          </div>
+        )}
 
         {nMedido === 0 ? (
           <p className={cn('text-text-muted', textSm, isFutDark && 'text-white/60')}>Sem @ de liderados para comparar.</p>
         ) : (
           <>
-            <div className="mb-2 h-2 w-full overflow-hidden rounded-full bg-border-card/50">
-              <div
-                className="h-full rounded-full bg-accent-gold transition-[width] duration-300"
-                style={{ width: `${Math.min(100, Math.round(pct))}%` }}
-              />
-            </div>
-            <div className={cn('mb-3 flex flex-wrap gap-2', textSm)}>
-              <span className="rounded-md bg-status-success/15 px-2 py-1 text-status-success">
-                ✓ {nOk} comentaram
-              </span>
-              <span className="rounded-md bg-status-danger/12 px-2 py-1 text-status-danger">
-                ✕ {naoComentaram.length} não comentaram
-              </span>
-              <span className="rounded-md bg-accent-gold/15 px-2 py-1 text-text-secondary">
-                {new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 1 }).format(pct)}% cobertura
-              </span>
-            </div>
+            {!isOperacao ? (
+              <div className="mb-2 h-2 w-full overflow-hidden rounded-full bg-border-card/50">
+                <div
+                  className="h-full rounded-full bg-accent-gold transition-[width] duration-300"
+                  style={{ width: `${Math.min(100, Math.round(pct))}%` }}
+                />
+              </div>
+            ) : null}
+            {!isOperacao ? (
+              <div className={cn('mb-3 flex flex-wrap gap-2', textSm)}>
+                <span className="rounded-md bg-status-success/15 px-2 py-1 text-status-success">✓ {nOk} comentaram</span>
+                <span className="rounded-md bg-status-danger/12 px-2 py-1 text-status-danger">✕ {naoComentaram.length} não comentaram</span>
+                <span className="rounded-md bg-accent-gold/15 px-2 py-1 text-text-secondary">{fmtPct.format(pct)}% cobertura</span>
+              </div>
+            ) : null}
             {semRedeCadastrada > 0 ? (
               <p className={cn('mb-2 text-text-muted', textSm, isFutDark && 'text-white/55')}>
-                {semRedeCadastrada} líder{semRedeCadastrada === 1 ? '' : 'es'} sem @ de liderado neste recorte (fora da barra).
+                {semRedeCadastrada} líder{semRedeCadastrada === 1 ? '' : 'es'} sem @ de liderado neste recorte (fora da medição).
               </p>
             ) : null}
             {naoComentaram.length > 0 ? (
               <div>
-                <p
-                  className={cn(
-                    'mb-1.5 text-[10px] font-semibold uppercase tracking-wide text-text-muted sm:text-[11px]',
-                    isFutDark && 'text-rose-200/90'
-                  )}
-                >
+                <p className={cn('mb-1.5 text-[10px] font-semibold uppercase tracking-wide text-text-muted sm:text-[11px]', isFutDark && 'text-rose-200/90')}>
                   Líderes sem comentário nesta publicação
                 </p>
                 <ul className="flex flex-wrap gap-1.5">
@@ -447,7 +476,7 @@ function PostCoberturaCard({
                       title={L.nome}
                       className={cn(
                         'flex h-8 w-8 list-none items-center justify-center rounded-full border border-status-danger/35 bg-status-danger/10 text-[10px] font-semibold text-status-danger',
-                        isFutDark && 'border-rose-400/40 bg-rose-950/50 text-rose-100'
+                        isFutDark && 'border-rose-400/40 bg-rose-950/50 text-rose-100',
                       )}
                     >
                       {iniciaisNome(L.nome)}
@@ -464,3 +493,4 @@ function PostCoberturaCard({
     </details>
   )
 }
+
