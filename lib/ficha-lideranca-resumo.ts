@@ -18,7 +18,10 @@ import {
   type ResultadoEleicao,
 } from '@/lib/resumo-eleicoes-dados'
 import type { ClassificacaoSuas } from '@/lib/suas-porte'
-import type { CargoFotoCandidato } from '@/lib/candidatos-foto-divulgacand'
+import {
+  resolverCargoFotoCandidato,
+  type CargoFotoCandidato,
+} from '@/lib/candidatos-foto-divulgacand'
 
 export interface LinhaRecursoFns {
   descricao: string
@@ -76,8 +79,16 @@ export function formatarSaldoFicha(saldo: number | null): string {
   return formatarMoedaFicha(saldo)
 }
 
-export function rotuloCargoFicha(cargo: CargoFotoCandidato): string {
-  return cargo === 'prefeito' ? 'PREFEITO(A)' : 'VEREADOR(A)'
+export function rotuloCargoFicha(
+  cargo: CargoFotoCandidato,
+  candidato?: Pick<ResultadoEleicao, 'cargo' | 'anoEleicao'> | null,
+): string {
+  const cargoEfetivo = candidato
+    ? resolverCargoFotoCandidato(candidato, cargo)
+    : cargo
+  const ano = candidato?.anoEleicao?.trim() || '2024'
+  const base = cargoEfetivo === 'prefeito' ? 'PREFEITO(A)' : 'VEREADOR(A)'
+  return `${base} ${ano}`
 }
 
 export function situacaoEleicaoCandidato(item: ResultadoEleicao): string {

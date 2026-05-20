@@ -480,24 +480,27 @@ export default function FichaAtendimentoPage() {
           />
         ) : null}
 
-        <FichaLiderancaResumo
-          open={fichaLideranca != null && Boolean(municipioSel)}
-          onClose={() => {
-            setFichaLideranca(null)
-            setAutoPrintFicha(false)
-          }}
-          municipio={municipioSel}
-          candidato={fichaLideranca?.candidato ?? null}
-          cargo={fichaLideranca?.cargo ?? 'prefeito'}
-          limitesDb={limitesDb}
-          propostasFns={propostasFnsFiltradas}
-          emendasSuas={emendasSuas}
-          populacao={populacao}
-          classificacaoSuas={classificacaoSuas}
-          exercicioAtivo={exercicioAtivo}
-          autoPrint={autoPrintFicha}
-          onPrinted={() => setAutoPrintFicha(false)}
-        />
+        {fichaLideranca && municipioSel ? (
+          <FichaLiderancaResumo
+            key={`${fichaLideranca.cargo}-${fichaLideranca.candidato.numeroUrna}-${fichaLideranca.candidato.nomeUrnaCandidato}`}
+            open
+            onClose={() => {
+              setFichaLideranca(null)
+              setAutoPrintFicha(false)
+            }}
+            municipio={municipioSel}
+            candidato={fichaLideranca.candidato}
+            cargo={fichaLideranca.cargo}
+            limitesDb={limitesDb}
+            propostasFns={propostasFnsFiltradas}
+            emendasSuas={emendasSuas}
+            populacao={populacao}
+            classificacaoSuas={classificacaoSuas}
+            exercicioAtivo={exercicioAtivo}
+            autoPrint={autoPrintFicha}
+            onPrinted={() => setAutoPrintFicha(false)}
+          />
+        ) : null}
 
         {municipioSel ? <FichaAtendimentoEmendasMandato municipio={municipioSel} /> : null}
 

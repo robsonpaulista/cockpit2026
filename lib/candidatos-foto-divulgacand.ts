@@ -22,6 +22,17 @@ export function municipioChaveFoto(nomeMunicipio: string): string {
   return normalizeMunicipioNome(mapearNomeMunicipio(nomeMunicipio))
 }
 
+/** Prefere o cargo do registro eleitoral; usa o informado na tabela como fallback. */
+export function resolverCargoFotoCandidato(
+  candidato: Pick<ResultadoEleicao, 'cargo'>,
+  cargoInformado?: CargoFotoCandidato,
+): CargoFotoCandidato {
+  const raw = String(candidato.cargo ?? '')
+  if (/vereador/i.test(raw)) return 'vereador'
+  if (/prefeito/i.test(raw)) return 'prefeito'
+  return cargoInformado ?? 'prefeito'
+}
+
 export function candidatoFotoLookupKey(
   cargo: CargoFotoCandidato,
   item: Pick<ResultadoEleicao, 'numeroUrna' | 'nomeUrnaCandidato'>,

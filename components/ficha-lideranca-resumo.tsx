@@ -17,6 +17,7 @@ import type { LimitesMunicipioResponse } from '@/lib/limites-tetos-types'
 import type { ClassificacaoSuas } from '@/lib/suas-porte'
 import {
   candidatoFotoLookupKey,
+  resolverCargoFotoCandidato,
   type CargoFotoCandidato,
   type CandidatoFotoDivulgacand,
 } from '@/lib/candidatos-foto-divulgacand'
@@ -114,8 +115,11 @@ export function FichaLiderancaResumo({
       setFotoDb(null)
       return
     }
-    const key = candidatoFotoLookupKey(cargo, candidato)
-    fetch(`/api/candidatos-foto-divulgacand?municipio=${encodeURIComponent(municipio)}&cargo=${cargo}&ano=2024`)
+    const cargoFoto = resolverCargoFotoCandidato(candidato, cargo)
+    const key = candidatoFotoLookupKey(cargoFoto, candidato)
+    fetch(
+      `/api/candidatos-foto-divulgacand?municipio=${encodeURIComponent(municipio)}&cargo=${cargoFoto}&ano=2024`,
+    )
       .then((r) => r.json())
       .then((json) => {
         const fotos = Array.isArray(json.fotos) ? json.fotos : []
@@ -176,7 +180,10 @@ export function FichaLiderancaResumo({
 
   if (!open || !candidato) return null
 
-  const listaCargo = cargo === 'prefeito' ? dados?.prefeitos ?? [] : dados?.vereadores ?? []
+  const cargoEfetivo = resolverCargoFotoCandidato(candidato, cargo)
+  const tituloCargo = rotuloCargoFicha(cargoEfetivo, candidato)
+  const listaCargo =
+    cargoEfetivo === 'prefeito' ? dados?.prefeitos ?? [] : dados?.vereadores ?? []
   const votos = parseVotosEleicao(candidato.quantidadeVotosNominais)
   const pct = percentualVotosCandidato(candidato, listaCargo)
   const situacao = situacaoEleicaoCandidato(candidato)
@@ -191,7 +198,9 @@ export function FichaLiderancaResumo({
     <div className="fixed inset-0 z-[60] flex items-start justify-center bg-black/50 p-2 sm:p-4 overflow-y-auto print:p-0 print:bg-white print:static">
       <div className="relative my-2 flex w-full max-w-4xl flex-col rounded-xl border border-card bg-white shadow-2xl print:my-0 print:max-w-none print:border-0 print:shadow-none">
         <div className="flex items-center justify-between gap-2 border-b border-card px-4 py-3 print:hidden">
-          <h2 className="text-sm font-semibold text-text-primary">Ficha de liderança</h2>
+          <h2 className="text-sm font-semibold text-text-primary truncate">
+            Ficha de liderança — {tituloCargo}
+          </h2>
           <button
             type="button"
             onClick={onClose}
@@ -238,7 +247,7 @@ export function FichaLiderancaResumo({
               </div>
               <div className="p-3 space-y-3 min-w-0">
                 <p className="text-sm font-bold uppercase">
-                  {rotuloCargoFicha(cargo)}: {candidato.nomeUrnaCandidato}
+                  {tituloCargo}: {candidato.nomeUrnaCandidato}
                   {candidato.partido ? ` (${candidato.partido})` : ''}
                 </p>
                 {(foto?.url_divulgacand || fotoDb?.url_divulgacand) && (

@@ -159,7 +159,8 @@ function TabelaCandidatos({
                     comFicha && 'cursor-pointer text-accent-gold hover:underline font-medium',
                   )}
                   title={item.nomeUrnaCandidato}
-                  onClick={() => {
+                  onClick={(e) => {
+                    e.stopPropagation()
                     if (comFicha && cargoFoto && onVerFicha) {
                       onVerFicha(item, cargoFoto)
                     }
