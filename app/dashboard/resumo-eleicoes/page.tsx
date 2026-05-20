@@ -1847,6 +1847,7 @@ export default function ResumoEleicoesPage() {
                   <tr>
                     <th className="w-8 bg-background px-1 py-1 text-center text-text-secondary">Sel.</th>
                     <th className="bg-background px-1 py-1 text-left text-text-secondary">Candidato</th>
+                    <th className="bg-background px-1 py-1 text-left text-text-secondary">Partido</th>
                     <th className="bg-background px-1 py-1 text-right text-text-secondary">Votos</th>
                   </tr>
                 </thead>
@@ -1872,6 +1873,7 @@ export default function ResumoEleicoesPage() {
                           />
                         </td>
                         <td className="py-1 px-1">{item.nomeUrnaCandidato}</td>
+                        <td className="py-1 px-1 text-text-secondary">{item.partido || '—'}</td>
                         <td className="py-1 px-1 text-right">{votes.toLocaleString('pt-BR')}</td>
                       </tr>
                     )
@@ -1879,6 +1881,7 @@ export default function ResumoEleicoesPage() {
                   <tr className="border-t border-card bg-background/90 font-semibold text-text-primary">
                     <td className="px-1 py-1"></td>
                     <td className="px-1 py-1">TOTAL</td>
+                    <td className="px-1 py-1"></td>
                     <td className="px-1 py-1 text-right">
                       {prefeito2024
                         .reduce((acc, item) => acc + parseVotos(item.quantidadeVotosNominais), 0)

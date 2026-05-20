@@ -1,0 +1,965 @@
+[
+  {
+    "uf": "PI",
+    "ibge": "220020",
+    "municipio": "AGUA BRANCA",
+    "valor": 5108537.94,
+    "cnes": "2593491",
+    "nome_fantasia": "SECRETARIA MUNICIPAL DE SAUDE DE AGUA BRANCA",
+    "tipo": "MAC"
+  },
+  {
+    "uf": "PI",
+    "ibge": "220040",
+    "municipio": "ALTOS",
+    "valor": 2813137.284,
+    "cnes": "2367459",
+    "nome_fantasia": "SMS DE ALTOS",
+    "tipo": "MAC"
+  },
+  {
+    "uf": "PI",
+    "ibge": "220050",
+    "municipio": "AMARANTE",
+    "valor": 1522108.2239999997,
+    "cnes": "2324938",
+    "nome_fantasia": "SECRETARIA MUNICIPAL DE SAUDE DE AMARANTE",
+    "tipo": "MAC"
+  },
+  {
+    "uf": "PI",
+    "ibge": "220060",
+    "municipio": "ANGICAL DO PIAUI",
+    "valor": 928406.88,
+    "cnes": "9169830",
+    "nome_fantasia": "SECRETARIA MUNICIPAL DE SAUDE DE ANGICAL DO PIAUI",
+    "tipo": "MAC"
+  },
+  {
+    "uf": "PI",
+    "ibge": "220070",
+    "municipio": "ANISIO DE ABREU",
+    "valor": 245700.0,
+    "cnes": "7140304",
+    "nome_fantasia": "SMS DE ANISIO DE ABREU",
+    "tipo": "MAC"
+  },
+  {
+    "uf": "PI",
+    "ibge": "220100",
+    "municipio": "ARRAIAL",
+    "valor": 410323.68000000005,
+    "cnes": "7036396",
+    "nome_fantasia": "SECRETARIA MUNICIPAL DE SAUDE DE ARRAIAL",
+    "tipo": "MAC"
+  },
+  {
+    "uf": "PI",
+    "ibge": "220110",
+    "municipio": "AVELINO LOPES",
+    "valor": 763783.2,
+    "cnes": "6585280",
+    "nome_fantasia": "SMS DE AVELINO LOPES",
+    "tipo": "MAC"
+  },
+  {
+    "uf": "PI",
+    "ibge": "220120",
+    "municipio": "BARRAS",
+    "valor": 6396632.172,
+    "cnes": "2609371",
+    "nome_fantasia": "SECRETARIA MUNICIPAL DE SAUDE DE BARRAS",
+    "tipo": "MAC"
+  },
+  {
+    "uf": "PI",
+    "ibge": "220140",
+    "municipio": "BARRO DURO",
+    "valor": 328516.77599999995,
+    "cnes": "2365731",
+    "nome_fantasia": "SECRETARIA MUNICIPAL DE SAUDE DE BARRO DURO",
+    "tipo": "MAC"
+  },
+  {
+    "uf": "PI",
+    "ibge": "220150",
+    "municipio": "BATALHA",
+    "valor": 2169013.908,
+    "cnes": "6558526",
+    "nome_fantasia": "SMS DE BATALHA",
+    "tipo": "MAC"
+  },
+  {
+    "uf": "PI",
+    "ibge": "220160",
+    "municipio": "BENEDITINOS",
+    "valor": 245700.0,
+    "cnes": "6833810",
+    "nome_fantasia": "SECRETARIA MUNICIPAL DE SAUDE DE BENEDITINOS",
+    "tipo": "MAC"
+  },
+  {
+    "uf": "PI",
+    "ibge": "220170",
+    "municipio": "BERTOLÍNIA",
+    "valor": 656023.68,
+    "cnes": "6550193",
+    "nome_fantasia": "SECRETARIA DA SAUDE DE BERTOLINIA",
+    "tipo": "MAC"
+  },
+  {
+    "uf": "PI",
+    "ibge": "220180",
+    "municipio": "BOCAINA",
+    "valor": 410323.68000000005,
+    "cnes": "6554474",
+    "nome_fantasia": "SMS DE BOCAINA",
+    "tipo": "MAC"
+  },
+  {
+    "uf": "PI",
+    "ibge": "220190",
+    "municipio": "BOM JESUS",
+    "valor": 3207124.8,
+    "cnes": "6575579",
+    "nome_fantasia": "SMS DE BOM JESUS",
+    "tipo": "MAC"
+  },
+  {
+    "uf": "PI",
+    "ibge": "220191",
+    "municipio": "BOM PRINCIPIO DO PIAUI",
+    "valor": 245700.0,
+    "cnes": "7000200",
+    "nome_fantasia": "SECRETARIA DA SAUDE DE BOM PRINCIPIO DO PIAUI",
+    "tipo": "MAC"
+  },
+  {
+    "uf": "PI",
+    "ibge": "220200",
+    "municipio": "BURITI DOS LOPES",
+    "valor": 1314211.452,
+    "cnes": "2404834",
+    "nome_fantasia": "SECRETARIA DA SAUDE DE BURITI DOS LOPES",
+    "tipo": "MAC"
+  },
+  {
+    "uf": "PI",
+    "ibge": "220202",
+    "municipio": "BURITI DOS MONTES",
+    "valor": 176382.552,
+    "cnes": "6890423",
+    "nome_fantasia": "SMS BURITI DOS MONTES",
+    "tipo": "MAC"
+  },
+  {
+    "uf": "PI",
+    "ibge": "220207",
+    "municipio": "CAJAZEIRAS DO PIAUI",
+    "valor": 245700.0,
+    "cnes": "7041713",
+    "nome_fantasia": "SMS DE CAJAZEIRAS DO PIAUI",
+    "tipo": "MAC"
+  },
+  {
+    "uf": "PI",
+    "ibge": "220208",
+    "municipio": "CAJUEIRO DA PRAIA",
+    "valor": 245700.0,
+    "cnes": "5283647",
+    "nome_fantasia": "SECRETARIA DE SAUDE DE CAJUEIRO DA PRAIA",
+    "tipo": "MAC"
+  },
+  {
+    "uf": "PI",
+    "ibge": "220220",
+    "municipio": "CAMPO MAIOR",
+    "valor": 22873748.998,
+    "cnes": "7902034",
+    "nome_fantasia": "SECRETARIA MUNICIPAL DE SAUDE DE CAMPO MAIOR",
+    "tipo": "MAC"
+  },
+  {
+    "uf": "PI",
+    "ibge": "220230",
+    "municipio": "CANTO DO BURITI",
+    "valor": 2837953.2,
+    "cnes": "6579159",
+    "nome_fantasia": "SECRETARIA MUN DE SAUDE DE CANTO DO BURITI",
+    "tipo": "MAC"
+  },
+  {
+    "uf": "PI",
+    "ibge": "220240",
+    "municipio": "CAPITAO DE CAMPOS",
+    "valor": 518083.2,
+    "cnes": "2325101",
+    "nome_fantasia": "SECRETARIA MUNICIPAL DE SAUDE DE CAPITAO DE CAMPOS",
+    "tipo": "MAC"
+  },
+  {
+    "uf": "PI",
+    "ibge": "220250",
+    "municipio": "CARACOL",
+    "valor": 245700.0,
+    "cnes": "7155182",
+    "nome_fantasia": "SMS DE CARACOL",
+    "tipo": "MAC"
+  },
+  {
+    "uf": "PI",
+    "ibge": "220260",
+    "municipio": "CASTELO DO PIAUI",
+    "valor": 1816318.188,
+    "cnes": "6873650",
+    "nome_fantasia": "FUNDO MUNICIPAL DE SAUDE DE CASTELO DO PIAUI FMS",
+    "tipo": "MAC"
+  },
+  {
+    "uf": "PI",
+    "ibge": "220270",
+    "municipio": "COCAL",
+    "valor": 2422241.1840000004,
+    "cnes": "6778372",
+    "nome_fantasia": "SECRETARIA DE SAUDE",
+    "tipo": "MAC"
+  },
+  {
+    "uf": "PI",
+    "ibge": "220271",
+    "municipio": "COCAL DE TELHA",
+    "valor": 518083.2,
+    "cnes": "6548989",
+    "nome_fantasia": "SMS DE COCAL DE TELHA",
+    "tipo": "MAC"
+  },
+  {
+    "uf": "PI",
+    "ibge": "220275",
+    "municipio": "COLONIA DO GURGUEIA",
+    "valor": 245700.0,
+    "cnes": "2609398",
+    "nome_fantasia": "SMS COLONIA DO GURGUEIA",
+    "tipo": "MAC"
+  },
+  {
+    "uf": "PI",
+    "ibge": "220280",
+    "municipio": "CONCEICAO DO CANINDE",
+    "valor": 245700.0,
+    "cnes": "6562256",
+    "nome_fantasia": "SMS DE CONCEICAO DO CANINDE",
+    "tipo": "MAC"
+  },
+  {
+    "uf": "PI",
+    "ibge": "220285",
+    "municipio": "CORONEL JOSE DIAS",
+    "valor": 245700.0,
+    "cnes": "6587895",
+    "nome_fantasia": "SECRETARIA DE SAUDE DE CORONEL JOSE DIAS",
+    "tipo": "MAC"
+  },
+  {
+    "uf": "PI",
+    "ibge": "220290",
+    "municipio": "CORRENTE",
+    "valor": 3263213.16,
+    "cnes": "4008472",
+    "nome_fantasia": "SECRETARIA MUNICIPAL DE SAUDE DE CORRENTE",
+    "tipo": "MAC"
+  },
+  {
+    "uf": "PI",
+    "ibge": "220300",
+    "municipio": "CRISTALANDIA DO PIAUI",
+    "valor": 245700.0,
+    "cnes": "2778513",
+    "nome_fantasia": "SECRETARIA MUNICIPAL DE SAUDE",
+    "tipo": "MAC"
+  },
+  {
+    "uf": "PI",
+    "ibge": "220310",
+    "municipio": "CRISTINO CASTRO",
+    "valor": 1512511.2,
+    "cnes": "7036361",
+    "nome_fantasia": "SMS CRISTINO CASTRO VIGILANCIA SANITARIA",
+    "tipo": "MAC"
+  },
+  {
+    "uf": "PI",
+    "ibge": "220320",
+    "municipio": "CURIMATA",
+    "valor": 820647.3600000001,
+    "cnes": "6558461",
+    "nome_fantasia": "SMS CURIMATA",
+    "tipo": "MAC"
+  },
+  {
+    "uf": "PI",
+    "ibge": "220323",
+    "municipio": "CURRAIS",
+    "valor": 245700.0,
+    "cnes": "6915418",
+    "nome_fantasia": "SMS DE CURRAIS",
+    "tipo": "MAC"
+  },
+  {
+    "uf": "PI",
+    "ibge": "220330",
+    "municipio": "DEMERVAL LOBAO",
+    "valor": 491400.0,
+    "cnes": "7196695",
+    "nome_fantasia": "SMS DE DEMERVAL LOBAO",
+    "tipo": "MAC"
+  },
+  {
+    "uf": "PI",
+    "ibge": "220335",
+    "municipio": "DIRCEU ARCOVERDE",
+    "valor": 245700.0,
+    "cnes": "7157738",
+    "nome_fantasia": "SMS DE DIRCEU ARCOVERDE",
+    "tipo": "MAC"
+  },
+  {
+    "uf": "PI",
+    "ibge": "220345",
+    "municipio": "DOM INOCENCIO",
+    "valor": 410323.68000000005,
+    "cnes": "7205171",
+    "nome_fantasia": "SECRETARIA MUNICIPAL DE SAUDE DE DOM INOCENCIO",
+    "tipo": "MAC"
+  },
+  {
+    "uf": "PI",
+    "ibge": "220350",
+    "municipio": "ELESBAO VELOSO",
+    "valor": 763783.2,
+    "cnes": "6562000",
+    "nome_fantasia": "SECRETARIA MUNICIPAL DE SAUDE DE ELESBAO VELOSO",
+    "tipo": "MAC"
+  },
+  {
+    "uf": "PI",
+    "ibge": "220360",
+    "municipio": "ELISEU MARTINS",
+    "valor": 245700.0,
+    "cnes": "2651076",
+    "nome_fantasia": "SECRETARIA MUNICIPAL DE SAUDE DE ELISEU MARTINS",
+    "tipo": "MAC"
+  },
+  {
+    "uf": "PI",
+    "ibge": "220370",
+    "municipio": "ESPERANTINA",
+    "valor": 2233303.2,
+    "cnes": "2367769",
+    "nome_fantasia": "SECRETARIA MUNICIPAL DE SAUDE DE ESPERANTINA",
+    "tipo": "MAC"
+  },
+  {
+    "uf": "PI",
+    "ibge": "220380",
+    "municipio": "FLORES DO PIAUI",
+    "valor": 245700.0,
+    "cnes": "7365128",
+    "nome_fantasia": "SECRETARIA MUNICIPAL DE SAUDE DE FLORES DO PIAUI",
+    "tipo": "MAC"
+  },
+  {
+    "uf": "PI",
+    "ibge": "220390",
+    "municipio": "FLORIANO",
+    "valor": 41938521.300000004,
+    "cnes": "2777541",
+    "nome_fantasia": "SMS DE FLORIANO",
+    "tipo": "MAC"
+  },
+  {
+    "uf": "PI",
+    "ibge": "220410",
+    "municipio": "FRANCISCO AYRES",
+    "valor": 245700.0,
+    "cnes": "7921020",
+    "nome_fantasia": "SECRETARIA MUNICIPAL DE SAUDE DE FRANCISCO AYRES ADM",
+    "tipo": "MAC"
+  },
+  {
+    "uf": "PI",
+    "ibge": "220430",
+    "municipio": "FRONTEIRAS",
+    "valor": 518083.2,
+    "cnes": "7943938",
+    "nome_fantasia": "SECRETARIA MUNICPAL DE SAUDE DE FRONTEIRAS",
+    "tipo": "MAC"
+  },
+  {
+    "uf": "PI",
+    "ibge": "220440",
+    "municipio": "GILBUES",
+    "valor": 1009483.2,
+    "cnes": "6851517",
+    "nome_fantasia": "SECRETARIA MUNICIPAL DE SAUDE DE GILBUES",
+    "tipo": "MAC"
+  },
+  {
+    "uf": "PI",
+    "ibge": "220450",
+    "municipio": "GUADALUPE",
+    "valor": 1009483.2,
+    "cnes": "3072487",
+    "nome_fantasia": "SECRETARIA MUNIICPAL DE SAUDE SEDE",
+    "tipo": "MAC"
+  },
+  {
+    "uf": "PI",
+    "ibge": "220470",
+    "municipio": "INHUMA",
+    "valor": 928406.88,
+    "cnes": "4008952",
+    "nome_fantasia": "SEC MUN DE SAUDE DE INHUMA PIAUI",
+    "tipo": "MAC"
+  },
+  {
+    "uf": "PI",
+    "ibge": "220480",
+    "municipio": "IPIRANGA DO PIAUI",
+    "valor": 245700.0,
+    "cnes": "6554423",
+    "nome_fantasia": "SMS IPIRANGA",
+    "tipo": "MAC"
+  },
+  {
+    "uf": "PI",
+    "ibge": "220500",
+    "municipio": "ITAINOPOLIS",
+    "valor": 800038.512,
+    "cnes": "6550053",
+    "nome_fantasia": "SECRETARIA MUNICIPAL DE SAUDE DE ITAINOPOLIS",
+    "tipo": "MAC"
+  },
+  {
+    "uf": "PI",
+    "ibge": "220510",
+    "municipio": "ITAUEIRA",
+    "valor": 1870598.2200000002,
+    "cnes": "6574904",
+    "nome_fantasia": "SMS DE ITAUEIRA",
+    "tipo": "MAC"
+  },
+  {
+    "uf": "PI",
+    "ibge": "220520",
+    "municipio": "JAICOS",
+    "valor": 2637115.992,
+    "cnes": "2323176",
+    "nome_fantasia": "SECRETARIA MUNICIPAL DE SAUDE DE JAICOS",
+    "tipo": "MAC"
+  },
+  {
+    "uf": "PI",
+    "ibge": "220545",
+    "municipio": "JOCA MARQUES",
+    "valor": 245700.0,
+    "cnes": "6915760",
+    "nome_fantasia": "SECRETARIA MUNICIPAL DE SAUDE DE JOCA MARQUES",
+    "tipo": "MAC"
+  },
+  {
+    "uf": "PI",
+    "ibge": "220550",
+    "municipio": "JOSE DE FREITAS",
+    "valor": 1512583.2,
+    "cnes": "6554202",
+    "nome_fantasia": "SECRETARIA DE SAUDE DE JOSE DE FREITAS",
+    "tipo": "MAC"
+  },
+  {
+    "uf": "PI",
+    "ibge": "220552",
+    "municipio": "JULIO BORGES",
+    "valor": 245700.0,
+    "cnes": "3488659",
+    "nome_fantasia": "SECERETARIA MUNICIPAL DE SAUDE",
+    "tipo": "MAC"
+  },
+  {
+    "uf": "PI",
+    "ibge": "220556",
+    "municipio": "LAGOA DO BARRO DO PIAUI",
+    "valor": 410323.68000000005,
+    "cnes": "6562183",
+    "nome_fantasia": "SMS DE LAGOA DO BARRO DO PIAUI",
+    "tipo": "MAC"
+  },
+  {
+    "uf": "PI",
+    "ibge": "220570",
+    "municipio": "LUIS CORREIA",
+    "valor": 3053923.2,
+    "cnes": "2650916",
+    "nome_fantasia": "SECRETARIA DE SAUDE",
+    "tipo": "MAC"
+  },
+  {
+    "uf": "PI",
+    "ibge": "220580",
+    "municipio": "LUZILANDIA",
+    "valor": 763783.2,
+    "cnes": "2650835",
+    "nome_fantasia": "SECRETARIA DE SAUDE DE LUZILANDIA",
+    "tipo": "MAC"
+  },
+  {
+    "uf": "PI",
+    "ibge": "220585",
+    "municipio": "MADEIRO",
+    "valor": 245700.0,
+    "cnes": "6555829",
+    "nome_fantasia": "SECRETARIA MUNICIPAL DE SAUDE DE MADEIRO",
+    "tipo": "MAC"
+  },
+  {
+    "uf": "PI",
+    "ibge": "220590",
+    "municipio": "MANOEL EMIDIO",
+    "valor": 204750.0,
+    "cnes": "7140681",
+    "nome_fantasia": "MANOEL EMIDIO SECRETARIA MUNICIPAL DE SAUDE",
+    "tipo": "MAC"
+  },
+  {
+    "uf": "PI",
+    "ibge": "220620",
+    "municipio": "MIGUEL ALVES",
+    "valor": 763783.2,
+    "cnes": "7434197",
+    "nome_fantasia": "SECRETARIA MUNICIPAL DE SAUDE DE MIGUEL ALVES",
+    "tipo": "MAC"
+  },
+  {
+    "uf": "PI",
+    "ibge": "220640",
+    "municipio": "MONSENHOR GIL",
+    "valor": 245700.0,
+    "cnes": "2609231",
+    "nome_fantasia": "SECRETARIA MUNICIPAL DE SAUDE",
+    "tipo": "MAC"
+  },
+  {
+    "uf": "PI",
+    "ibge": "220650",
+    "municipio": "MONSENHOR HIPOLITO",
+    "valor": 245700.0,
+    "cnes": "6607187",
+    "nome_fantasia": "SECRETARIA MUNICIPAL DE SAUDE DE MONSENHOR HIPOLITO",
+    "tipo": "MAC"
+  },
+  {
+    "uf": "PI",
+    "ibge": "220660",
+    "municipio": "MONTE ALEGRE DO PIAUI",
+    "valor": 245700.0,
+    "cnes": "7195036",
+    "nome_fantasia": "SECRETARIA MUNICIPAL DE SAUDE",
+    "tipo": "MAC"
+  },
+  {
+    "uf": "PI",
+    "ibge": "220670",
+    "municipio": "NAZARE DO PIAUI",
+    "valor": 245700.0,
+    "cnes": "7922639",
+    "nome_fantasia": "SMS DE NAZARE DO PIAUI",
+    "tipo": "MAC"
+  },
+  {
+    "uf": "PI",
+    "ibge": "220672",
+    "municipio": "NAZARIA",
+    "valor": 245700.0,
+    "cnes": "7193718",
+    "nome_fantasia": "SECRETARIA MUNICIPAL DE SAUDE DE NAZARIA",
+    "tipo": "MAC"
+  },
+  {
+    "uf": "PI",
+    "ibge": "220680",
+    "municipio": "NOSSA SENHORA DOS REMEDIOS",
+    "valor": 208312.992,
+    "cnes": "7001576",
+    "nome_fantasia": "SECRETARIA MUNICIPAL DE SAUDE",
+    "tipo": "MAC"
+  },
+  {
+    "uf": "PI",
+    "ibge": "220700",
+    "municipio": "OEIRAS",
+    "valor": 6674134.59,
+    "cnes": "3045900",
+    "nome_fantasia": "SECRETARIA MUNICIPAL DE SAUDE",
+    "tipo": "MAC"
+  },
+  {
+    "uf": "PI",
+    "ibge": "220730",
+    "municipio": "PAES LANDIM",
+    "valor": 548100.0,
+    "cnes": "6561837",
+    "nome_fantasia": "SMS DE PAES LANDIM",
+    "tipo": "MAC"
+  },
+  {
+    "uf": "PI",
+    "ibge": "220740",
+    "municipio": "PALMEIRA DO PIAUI",
+    "valor": 245700.0,
+    "cnes": "6937209",
+    "nome_fantasia": "SECRETARIA MUNICIPAL DE SAUDE DE PALMEIRA DO PIAUI",
+    "tipo": "MAC"
+  },
+  {
+    "uf": "PI",
+    "ibge": "220750",
+    "municipio": "PALMEIRAIS",
+    "valor": 245700.0,
+    "cnes": "6952968",
+    "nome_fantasia": "SECRETARIA MUNICIPAL DE SAUDE DE PALMEIRAIS",
+    "tipo": "MAC"
+  },
+  {
+    "uf": "PI",
+    "ibge": "220760",
+    "municipio": "PARNAGUA",
+    "valor": 245700.0,
+    "cnes": "6914268",
+    "nome_fantasia": "SECRETARIA MUNICIPAL DE SAUDE DE PARNAGUA",
+    "tipo": "MAC"
+  },
+  {
+    "uf": "PI",
+    "ibge": "220770",
+    "municipio": "PARNAIBA",
+    "valor": 53114398.66000001,
+    "cnes": "2314800",
+    "nome_fantasia": "SMS PARNAIBA",
+    "tipo": "MAC"
+  },
+  {
+    "uf": "PI",
+    "ibge": "220780",
+    "municipio": "PAULISTANA",
+    "valor": 6286782.42,
+    "cnes": "9015892",
+    "nome_fantasia": "SECRETARIA MUNICIPAL DE SAUDE E MEIO AMBIENTE",
+    "tipo": "MAC"
+  },
+  {
+    "uf": "PI",
+    "ibge": "220790",
+    "municipio": "PEDRO II",
+    "valor": 2199776.916,
+    "cnes": "3024326",
+    "nome_fantasia": "SMS DE PEDRO II",
+    "tipo": "MAC"
+  },
+  {
+    "uf": "PI",
+    "ibge": "220000",
+    "municipio": "PIAUI",
+    "valor": 400076344.20400006,
+    "cnes": "6300049",
+    "nome_fantasia": "SECRETARIA ESTADUAL DA SAUDE DO PIAUI SEDE",
+    "tipo": "MAC"
+  },
+  {
+    "uf": "PI",
+    "ibge": "220800",
+    "municipio": "PICOS",
+    "valor": 38231442.7,
+    "cnes": "2694670",
+    "nome_fantasia": "SECRETARIA MUNICIPAL DE SAUDE DE PICOS",
+    "tipo": "MAC"
+  },
+  {
+    "uf": "PI",
+    "ibge": "220810",
+    "municipio": "PIMENTEIRAS",
+    "valor": 518083.2,
+    "cnes": "2777622",
+    "nome_fantasia": "SMS DE PIMENTEIRAS",
+    "tipo": "MAC"
+  },
+  {
+    "uf": "PI",
+    "ibge": "220820",
+    "municipio": "PIO IX",
+    "valor": 1512583.2,
+    "cnes": "7467532",
+    "nome_fantasia": "SECRETARIA MUNICIPAL DE SAUDE DE PIO IX",
+    "tipo": "MAC"
+  },
+  {
+    "uf": "PI",
+    "ibge": "220830",
+    "municipio": "PIRACURUCA",
+    "valor": 3659080.872,
+    "cnes": "3900029",
+    "nome_fantasia": "SECRETARIA MUNICIPAL DE SAUDE",
+    "tipo": "MAC"
+  },
+  {
+    "uf": "PI",
+    "ibge": "220840",
+    "municipio": "PIRIPIRI",
+    "valor": 11545303.437999997,
+    "cnes": "6447430",
+    "nome_fantasia": "SECRETARIA MUNICIPAL DE SAUDE",
+    "tipo": "MAC"
+  },
+  {
+    "uf": "PI",
+    "ibge": "220850",
+    "municipio": "PORTO",
+    "valor": 738590.4600000001,
+    "cnes": "2366991",
+    "nome_fantasia": "SECRETARIA MUNICIPAL DE SAUDE DE PORTO PI",
+    "tipo": "MAC"
+  },
+  {
+    "uf": "PI",
+    "ibge": "220865",
+    "municipio": "QUEIMADA NOVA",
+    "valor": 245700.0,
+    "cnes": "6616283",
+    "nome_fantasia": "SECRETARIA MUNICIPAL DE QUEIMADA NOVA",
+    "tipo": "MAC"
+  },
+  {
+    "uf": "PI",
+    "ibge": "220870",
+    "municipio": "REDENCAO DO GURGUEIA",
+    "valor": 245700.0,
+    "cnes": "6553184",
+    "nome_fantasia": "SECRETARIA MUNICIPAL DE SAUDE DE REDENCAO DO GURGUEIA",
+    "tipo": "MAC"
+  },
+  {
+    "uf": "PI",
+    "ibge": "220880",
+    "municipio": "REGENERACAO",
+    "valor": 763783.2,
+    "cnes": "4696026",
+    "nome_fantasia": "SECRETARIA DE SAUDE DE REGENERACAO",
+    "tipo": "MAC"
+  },
+  {
+    "uf": "PI",
+    "ibge": "220885",
+    "municipio": "RIACHO FRIO",
+    "valor": 245700.0,
+    "cnes": "7043171",
+    "nome_fantasia": "SECRETARIA MUNICIPAL DE SAUDE DE RIACHO FRIO",
+    "tipo": "MAC"
+  },
+  {
+    "uf": "PI",
+    "ibge": "220890",
+    "municipio": "RIBEIRO GONCALVES",
+    "valor": 491400.0,
+    "cnes": "6866425",
+    "nome_fantasia": "SMS DE RIBEIRO GONCALVES",
+    "tipo": "MAC"
+  },
+  {
+    "uf": "PI",
+    "ibge": "220900",
+    "municipio": "RIO GRANDE DO PIAUI",
+    "valor": 763783.2,
+    "cnes": "7923589",
+    "nome_fantasia": "SECRETARIA MUNICIPAL DE SAUDE RIO GRANDE DO PIAUI",
+    "tipo": "MAC"
+  },
+  {
+    "uf": "PI",
+    "ibge": "220910",
+    "municipio": "SANTA CRUZ DO PIAUI",
+    "valor": 245700.0,
+    "cnes": "7040768",
+    "nome_fantasia": "SECRETARIA MUNICIPAL DE SAUDE",
+    "tipo": "MAC"
+  },
+  {
+    "uf": "PI",
+    "ibge": "220920",
+    "municipio": "SANTA FILOMENA",
+    "valor": 245700.0,
+    "cnes": "9074945",
+    "nome_fantasia": "SECRETARIA MUNICIPAL DE SAUDE",
+    "tipo": "MAC"
+  },
+  {
+    "uf": "PI",
+    "ibge": "220930",
+    "municipio": "SANTA LUZ",
+    "valor": 245700.0,
+    "cnes": "7037813",
+    "nome_fantasia": "SECRETARIA MUNICIPAL DE SAUDE",
+    "tipo": "MAC"
+  },
+  {
+    "uf": "PI",
+    "ibge": "220940",
+    "municipio": "SANTO ANTONIO DE LISBOA",
+    "valor": 410323.68000000005,
+    "cnes": "7521014",
+    "nome_fantasia": "SECRETARIA MUNICIPAL DE SAUDE SANTO ANTONIO DE LISBOA",
+    "tipo": "MAC"
+  },
+  {
+    "uf": "PI",
+    "ibge": "220950",
+    "municipio": "SANTO INACIO DO PIAUI",
+    "valor": 245700.0,
+    "cnes": "6854745",
+    "nome_fantasia": "SECRETARIA MUNICIPAL DE SAUDE DE SANTO INACIO DO PIAUI",
+    "tipo": "MAC"
+  },
+  {
+    "uf": "PI",
+    "ibge": "220970",
+    "municipio": "SAO FRANCISCO DO PIAUI",
+    "valor": 491400.0,
+    "cnes": "6557252",
+    "nome_fantasia": "SMS DE SAO FRANCISCO DO PIAUI",
+    "tipo": "MAC"
+  },
+  {
+    "uf": "PI",
+    "ibge": "221000",
+    "municipio": "SAO JOAO DO PIAIÍ",
+    "valor": 4657372.788000001,
+    "cnes": "2786036",
+    "nome_fantasia": "SECRETARIA MUNICIPAL DE SAUDE",
+    "tipo": "MAC"
+  },
+  {
+    "uf": "PI",
+    "ibge": "221020",
+    "municipio": "SAO JOSE DO PIAUI",
+    "valor": 245700.0,
+    "cnes": "9302506",
+    "nome_fantasia": "SECRETARIA MUNICIPAL DE SAUDE DE SAO JOSE DO PIAUI",
+    "tipo": "MAC"
+  },
+  {
+    "uf": "PI",
+    "ibge": "221040",
+    "municipio": "SAO MIGUEL DO TAPUIO",
+    "valor": 518083.2,
+    "cnes": "3922979",
+    "nome_fantasia": "SECRETARIA MUNICIPAL DE SAUDE",
+    "tipo": "MAC"
+  },
+  {
+    "uf": "PI",
+    "ibge": "221050",
+    "municipio": "SAO PEDRO DO PIAUI",
+    "valor": 2076365.5559999999,
+    "cnes": "2593556",
+    "nome_fantasia": "SECRETARIA MUNICIPAL DE SAUDE DE SAO PEDRO DO PIAUI",
+    "tipo": "MAC"
+  },
+  {
+    "uf": "PI",
+    "ibge": "221060",
+    "municipio": "SAO RAIMUNDO NONATO",
+    "valor": 2774285.1,
+    "cnes": "7318227",
+    "nome_fantasia": "SECRETARIA MUN SAUDE SAO RAIMUNDO NONATO",
+    "tipo": "MAC"
+  },
+  {
+    "uf": "PI",
+    "ibge": "221070",
+    "municipio": "SIMOES",
+    "valor": 763783.2,
+    "cnes": "9301933",
+    "nome_fantasia": "SECRETARIA MUNICIPAL DE SAUDE SMS",
+    "tipo": "MAC"
+  },
+  {
+    "uf": "PI",
+    "ibge": "221080",
+    "municipio": "SIMPLICIO MENDES",
+    "valor": 4034223.1440000003,
+    "cnes": "5396476",
+    "nome_fantasia": "SECRETARIA MUNICIPAL DE SAUDE DE SIMPLICIO MENDES PI",
+    "tipo": "MAC"
+  },
+  {
+    "uf": "PI",
+    "ibge": "221090",
+    "municipio": "SOCORRO DO PIAUI",
+    "valor": 245700.0,
+    "cnes": "7961650",
+    "nome_fantasia": "SECRETARIA MUNICIPAL DE SAUDE",
+    "tipo": "MAC"
+  },
+  {
+    "uf": "PI",
+    "ibge": "221097",
+    "municipio": "TANQUE DO PIAUI",
+    "valor": 245700.0,
+    "cnes": "7610882",
+    "nome_fantasia": "SMS DE TANQUE DO PIAUI",
+    "tipo": "MAC"
+  },
+  {
+    "uf": "PI",
+    "ibge": "221100",
+    "municipio": "TERESINA",
+    "valor": 516464594.84,
+    "cnes": "9638202",
+    "nome_fantasia": "DIRETORIA DE ASSISTENCIA ESPECIALIZADA",
+    "tipo": "MAC"
+  },
+  {
+    "uf": "PI",
+    "ibge": "221110",
+    "municipio": "UNIAO",
+    "valor": 5462472.048,
+    "cnes": "3009076",
+    "nome_fantasia": "SECRETARIA MUNICIPAL DE SAUDE",
+    "tipo": "MAC"
+  },
+  {
+    "uf": "PI",
+    "ibge": "221120",
+    "municipio": "URUCUI",
+    "valor": 763783.2,
+    "cnes": "6852904",
+    "nome_fantasia": "SECRETARIA MUNICIPAL DE SAUDE DE URUCUI",
+    "tipo": "MAC"
+  },
+  {
+    "uf": "PI",
+    "ibge": "221130",
+    "municipio": "VALENCA DO PIAUI",
+    "valor": 2240704.8,
+    "cnes": "3528383",
+    "nome_fantasia": "SECRETARIA MUNICIPAL DE SAUDE",
+    "tipo": "MAC"
+  },
+  {
+    "uf": "PI",
+    "ibge": "221140",
+    "municipio": "VARZEA GRANDE",
+    "valor": 245700.0,
+    "cnes": "2651211",
+    "nome_fantasia": "SECRETARIA MUNICIPAL DE SAUDE DE VARZEA GRANDE",
+    "tipo": "MAC"
+  }
+]

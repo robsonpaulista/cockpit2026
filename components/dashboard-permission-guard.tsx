@@ -20,6 +20,7 @@ function getPageKey(pathname: string): string | null {
   // o que fazia o guard redirecionar para /dashboard quando o usuário tinha
   // apenas 'emendas' liberado nas permissões.
   if (pathname.startsWith('/dashboard/emendas')) return 'emendas'
+  if (pathname.startsWith('/dashboard/ficha-atendimento')) return 'territorio'
   const segments = pathname.replace(/^\/dashboard\/?/, '').split('/')
   const first = segments[0]
   return first && PAGE_KEYS.has(first) ? first : null

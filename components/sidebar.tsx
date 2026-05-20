@@ -68,6 +68,7 @@ const COCKPIT_MENU_LABEL: Record<string, string> = {
   agenda: 'Agenda',
   territorio: 'Território',
   'territorio-mapa-tds': 'Mapa TDs',
+  'ficha-atendimento': 'Ficha',
   'chapas-menu': 'Chapas',
   'resumo-eleicoes-menu': 'Eleições',
   conteudo: 'Presença',
@@ -117,6 +118,12 @@ const menuItems: SidebarMenuItem[] = [
     label: 'Mapa dos TDs',
     icon: 'MapPinned',
     href: '/dashboard/territorio/mapa-tds',
+  },
+  {
+    id: 'ficha-atendimento',
+    label: 'Ficha de Atendimento',
+    icon: 'ClipboardList',
+    href: '/dashboard/ficha-atendimento',
   },
   { id: 'pesquisa', label: 'Pesquisa & Relato', icon: 'BarChart3', href: '/dashboard/pesquisa' },
   {
@@ -274,7 +281,7 @@ function resolveMenuIcon(iconName: string, cockpit: boolean): LucideIcon {
 function pageKeyForItem(id: string): string {
   if (id === 'chapas-menu') return 'chapas'
   if (id === 'chapas-estaduais') return 'chapas'
-  if (id === 'territorio-mapa-tds') return 'territorio'
+  if (id === 'territorio-mapa-tds' || id === 'ficha-atendimento') return 'territorio'
   if (
     id === 'mobilizacao-menu' ||
     id === 'mobilizacao-captacao' ||
@@ -727,7 +734,7 @@ export function Sidebar() {
         .filter((item) => {
           if (item.id === 'home') return true
           if (item.id === 'usuarios') return isAdmin
-          if (item.id === 'territorio-mapa-tds') {
+          if (item.id === 'territorio-mapa-tds' || item.id === 'ficha-atendimento') {
             return canAccess('territorio') || canAccess('conteudo')
           }
           if (item.children) return item.children.length > 0
@@ -864,7 +871,9 @@ export function Sidebar() {
                   ? Boolean(item.children?.some((c) => isChildLinkActive(pathname, c.href)))
                   : item.id === 'territorio-mapa-tds'
                     ? pathname.startsWith('/dashboard/territorio/mapa-tds')
-                    : pathname === item.href
+                    : item.id === 'ficha-atendimento'
+                      ? pathname.startsWith('/dashboard/ficha-atendimento')
+                      : pathname === item.href
 
                 return (
                   <SidebarNavItem

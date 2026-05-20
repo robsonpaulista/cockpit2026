@@ -1,0 +1,1346 @@
+[
+  {
+    "nome": "Acauã",
+    "nome_normalizado": "acaua",
+    "codigo_ibge": "00053",
+    "populacao": 6515
+  },
+  {
+    "nome": "Agricolândia",
+    "nome_normalizado": "agricolandia",
+    "codigo_ibge": "00103",
+    "populacao": 5023
+  },
+  {
+    "nome": "Água Branca",
+    "nome_normalizado": "agua branca",
+    "codigo_ibge": "00202",
+    "populacao": 18033
+  },
+  {
+    "nome": "Alagoinha do Piauí",
+    "nome_normalizado": "alagoinha do piaui",
+    "codigo_ibge": "00251",
+    "populacao": 6901
+  },
+  {
+    "nome": "Alegrete do Piauí",
+    "nome_normalizado": "alegrete do piaui",
+    "codigo_ibge": "00277",
+    "populacao": 4713
+  },
+  {
+    "nome": "Alto Longá",
+    "nome_normalizado": "alto longa",
+    "codigo_ibge": "00301",
+    "populacao": 13734
+  },
+  {
+    "nome": "Altos",
+    "nome_normalizado": "altos",
+    "codigo_ibge": "00400",
+    "populacao": 49637
+  },
+  {
+    "nome": "Alvorada do Gurguéia",
+    "nome_normalizado": "alvorada do gurgueia",
+    "codigo_ibge": "00459",
+    "populacao": 5459
+  },
+  {
+    "nome": "Amarante",
+    "nome_normalizado": "amarante",
+    "codigo_ibge": "00509",
+    "populacao": 17577
+  },
+  {
+    "nome": "Angical do Piauí",
+    "nome_normalizado": "angical do piaui",
+    "codigo_ibge": "00608",
+    "populacao": 6982
+  },
+  {
+    "nome": "Anísio de Abreu",
+    "nome_normalizado": "anisio de abreu",
+    "codigo_ibge": "00707",
+    "populacao": 9631
+  },
+  {
+    "nome": "Antônio Almeida",
+    "nome_normalizado": "antonio almeida",
+    "codigo_ibge": "00806",
+    "populacao": 3228
+  },
+  {
+    "nome": "Aroazes",
+    "nome_normalizado": "aroazes",
+    "codigo_ibge": "00905",
+    "populacao": 5433
+  },
+  {
+    "nome": "Aroeiras do Itaim",
+    "nome_normalizado": "aroeiras do itaim",
+    "codigo_ibge": "00954",
+    "populacao": 2766
+  },
+  {
+    "nome": "Arraial",
+    "nome_normalizado": "arraial",
+    "codigo_ibge": "01002",
+    "populacao": 4593
+  },
+  {
+    "nome": "Assunção do Piauí",
+    "nome_normalizado": "assuncao do piaui",
+    "codigo_ibge": "01051",
+    "populacao": 7597
+  },
+  {
+    "nome": "Avelino Lopes",
+    "nome_normalizado": "avelino lopes",
+    "codigo_ibge": "01101",
+    "populacao": 11106
+  },
+  {
+    "nome": "Baixa Grande do Ribeiro",
+    "nome_normalizado": "baixa grande do ribeiro",
+    "codigo_ibge": "01150",
+    "populacao": 13838
+  },
+  {
+    "nome": "Barra D'Alcântara",
+    "nome_normalizado": "barra dalcantara",
+    "codigo_ibge": "01176",
+    "populacao": 4091
+  },
+  {
+    "nome": "Barras",
+    "nome_normalizado": "barras",
+    "codigo_ibge": "01200",
+    "populacao": 49533
+  },
+  {
+    "nome": "Barreiras do Piauí",
+    "nome_normalizado": "barreiras do piaui",
+    "codigo_ibge": "01309",
+    "populacao": 3334
+  },
+  {
+    "nome": "Barro Duro",
+    "nome_normalizado": "barro duro",
+    "codigo_ibge": "01408",
+    "populacao": 6744
+  },
+  {
+    "nome": "Batalha",
+    "nome_normalizado": "batalha",
+    "codigo_ibge": "01507",
+    "populacao": 27123
+  },
+  {
+    "nome": "Bela Vista do Piauí",
+    "nome_normalizado": "bela vista do piaui",
+    "codigo_ibge": "01556",
+    "populacao": 4208
+  },
+  {
+    "nome": "Belém do Piauí",
+    "nome_normalizado": "belem do piaui",
+    "codigo_ibge": "01572",
+    "populacao": 3508
+  },
+  {
+    "nome": "Beneditinos",
+    "nome_normalizado": "beneditinos",
+    "codigo_ibge": "01606",
+    "populacao": 10104
+  },
+  {
+    "nome": "Bertolínia",
+    "nome_normalizado": "bertolinia",
+    "codigo_ibge": "01705",
+    "populacao": 5701
+  },
+  {
+    "nome": "Betânia do Piauí",
+    "nome_normalizado": "betania do piaui",
+    "codigo_ibge": "01739",
+    "populacao": 6368
+  },
+  {
+    "nome": "Boa Hora",
+    "nome_normalizado": "boa hora",
+    "codigo_ibge": "01770",
+    "populacao": 7108
+  },
+  {
+    "nome": "Bocaina",
+    "nome_normalizado": "bocaina",
+    "codigo_ibge": "01804",
+    "populacao": 4131
+  },
+  {
+    "nome": "Bom Jesus",
+    "nome_normalizado": "bom jesus",
+    "codigo_ibge": "01903",
+    "populacao": 30321
+  },
+  {
+    "nome": "Bom Princípio do Piauí",
+    "nome_normalizado": "bom principio do piaui",
+    "codigo_ibge": "01919",
+    "populacao": 5786
+  },
+  {
+    "nome": "Bonfim do Piauí",
+    "nome_normalizado": "bonfim do piaui",
+    "codigo_ibge": "01929",
+    "populacao": 6089
+  },
+  {
+    "nome": "Boqueirão do Piauí",
+    "nome_normalizado": "boqueirao do piaui",
+    "codigo_ibge": "01945",
+    "populacao": 6728
+  },
+  {
+    "nome": "Brasileira",
+    "nome_normalizado": "brasileira",
+    "codigo_ibge": "01960",
+    "populacao": 8658
+  },
+  {
+    "nome": "Brejo do Piauí",
+    "nome_normalizado": "brejo do piaui",
+    "codigo_ibge": "01988",
+    "populacao": 3969
+  },
+  {
+    "nome": "Buriti dos Lopes",
+    "nome_normalizado": "buriti dos lopes",
+    "codigo_ibge": "02000",
+    "populacao": 20096
+  },
+  {
+    "nome": "Buriti dos Montes",
+    "nome_normalizado": "buriti dos montes",
+    "codigo_ibge": "02026",
+    "populacao": 7538
+  },
+  {
+    "nome": "Cabeceiras do Piauí",
+    "nome_normalizado": "cabeceiras do piaui",
+    "codigo_ibge": "02059",
+    "populacao": 10449
+  },
+  {
+    "nome": "Cajazeiras do Piauí",
+    "nome_normalizado": "cajazeiras do piaui",
+    "codigo_ibge": "02075",
+    "populacao": 3146
+  },
+  {
+    "nome": "Cajueiro da Praia",
+    "nome_normalizado": "cajueiro da praia",
+    "codigo_ibge": "02083",
+    "populacao": 8203
+  },
+  {
+    "nome": "Caldeirão Grande do Piauí",
+    "nome_normalizado": "caldeirao grande do piaui",
+    "codigo_ibge": "02091",
+    "populacao": 5605
+  },
+  {
+    "nome": "Campinas do Piauí",
+    "nome_normalizado": "campinas do piaui",
+    "codigo_ibge": "02109",
+    "populacao": 4988
+  },
+  {
+    "nome": "Campo Alegre do Fidalgo",
+    "nome_normalizado": "campo alegre do fidalgo",
+    "codigo_ibge": "02117",
+    "populacao": 4701
+  },
+  {
+    "nome": "Campo Grande do Piauí",
+    "nome_normalizado": "campo grande do piaui",
+    "codigo_ibge": "02133",
+    "populacao": 6188
+  },
+  {
+    "nome": "Campo Largo do Piauí",
+    "nome_normalizado": "campo largo do piaui",
+    "codigo_ibge": "02174",
+    "populacao": 7636
+  },
+  {
+    "nome": "Campo Maior",
+    "nome_normalizado": "campo maior",
+    "codigo_ibge": "02208",
+    "populacao": 47074
+  },
+  {
+    "nome": "Canavieira",
+    "nome_normalizado": "canavieira",
+    "codigo_ibge": "02251",
+    "populacao": 3429
+  },
+  {
+    "nome": "Canto do Buriti",
+    "nome_normalizado": "canto do buriti",
+    "codigo_ibge": "02307",
+    "populacao": 19669
+  },
+  {
+    "nome": "Capitão de Campos",
+    "nome_normalizado": "capitao de campos",
+    "codigo_ibge": "02406",
+    "populacao": 11347
+  },
+  {
+    "nome": "Capitão Gervásio Oliveira",
+    "nome_normalizado": "capitao gervasio oliveira",
+    "codigo_ibge": "02455",
+    "populacao": 4065
+  },
+  {
+    "nome": "Caracol",
+    "nome_normalizado": "caracol",
+    "codigo_ibge": "02505",
+    "populacao": 10538
+  },
+  {
+    "nome": "Caraúbas do Piauí",
+    "nome_normalizado": "caraubas do piaui",
+    "codigo_ibge": "02539",
+    "populacao": 5755
+  },
+  {
+    "nome": "Caridade do Piauí",
+    "nome_normalizado": "caridade do piaui",
+    "codigo_ibge": "02554",
+    "populacao": 5162
+  },
+  {
+    "nome": "Castelo do Piauí",
+    "nome_normalizado": "castelo do piaui",
+    "codigo_ibge": "02604",
+    "populacao": 19663
+  },
+  {
+    "nome": "Caxingó",
+    "nome_normalizado": "caxingo",
+    "codigo_ibge": "02653",
+    "populacao": 5657
+  },
+  {
+    "nome": "Cocal",
+    "nome_normalizado": "cocal",
+    "codigo_ibge": "02703",
+    "populacao": 29209
+  },
+  {
+    "nome": "Cocal de Telha",
+    "nome_normalizado": "cocal de telha",
+    "codigo_ibge": "02711",
+    "populacao": 5034
+  },
+  {
+    "nome": "Cocal dos Alves",
+    "nome_normalizado": "cocal dos alves",
+    "codigo_ibge": "02729",
+    "populacao": 6569
+  },
+  {
+    "nome": "Coivaras",
+    "nome_normalizado": "coivaras",
+    "codigo_ibge": "02737",
+    "populacao": 4233
+  },
+  {
+    "nome": "Colônia do Gurguéia",
+    "nome_normalizado": "colonia do gurgueia",
+    "codigo_ibge": "02752",
+    "populacao": 6287
+  },
+  {
+    "nome": "Colônia do Piauí",
+    "nome_normalizado": "colonia do piaui",
+    "codigo_ibge": "02778",
+    "populacao": 7088
+  },
+  {
+    "nome": "Conceição do Canindé",
+    "nome_normalizado": "conceicao do caninde",
+    "codigo_ibge": "02802",
+    "populacao": 5063
+  },
+  {
+    "nome": "Coronel José Dias",
+    "nome_normalizado": "coronel jose dias",
+    "codigo_ibge": "02851",
+    "populacao": 4305
+  },
+  {
+    "nome": "Corrente",
+    "nome_normalizado": "corrente",
+    "codigo_ibge": "02901",
+    "populacao": 28275
+  },
+  {
+    "nome": "Cristalândia do Piauí",
+    "nome_normalizado": "cristalandia do piaui",
+    "codigo_ibge": "03008",
+    "populacao": 7454
+  },
+  {
+    "nome": "Cristino Castro",
+    "nome_normalizado": "cristino castro",
+    "codigo_ibge": "03107",
+    "populacao": 10772
+  },
+  {
+    "nome": "Curimatá",
+    "nome_normalizado": "curimata",
+    "codigo_ibge": "03206",
+    "populacao": 11552
+  },
+  {
+    "nome": "Currais",
+    "nome_normalizado": "currais",
+    "codigo_ibge": "03230",
+    "populacao": 4968
+  },
+  {
+    "nome": "Curralinhos",
+    "nome_normalizado": "curralinhos",
+    "codigo_ibge": "03255",
+    "populacao": 4527
+  },
+  {
+    "nome": "Curral Novo do Piauí",
+    "nome_normalizado": "curral novo do piaui",
+    "codigo_ibge": "03271",
+    "populacao": 5185
+  },
+  {
+    "nome": "Demerval Lobão",
+    "nome_normalizado": "demerval lobao",
+    "codigo_ibge": "03305",
+    "populacao": 16998
+  },
+  {
+    "nome": "Dirceu Arcoverde",
+    "nome_normalizado": "dirceu arcoverde",
+    "codigo_ibge": "03354",
+    "populacao": 7238
+  },
+  {
+    "nome": "Dom Expedito Lopes",
+    "nome_normalizado": "dom expedito lopes",
+    "codigo_ibge": "03404",
+    "populacao": 6421
+  },
+  {
+    "nome": "Domingos Mourão",
+    "nome_normalizado": "domingos mourao",
+    "codigo_ibge": "03420",
+    "populacao": 4138
+  },
+  {
+    "nome": "Dom Inocêncio",
+    "nome_normalizado": "dom inocencio",
+    "codigo_ibge": "03453",
+    "populacao": 9335
+  },
+  {
+    "nome": "Elesbão Veloso",
+    "nome_normalizado": "elesbao veloso",
+    "codigo_ibge": "03503",
+    "populacao": 13786
+  },
+  {
+    "nome": "Eliseu Martins",
+    "nome_normalizado": "eliseu martins",
+    "codigo_ibge": "03602",
+    "populacao": 4435
+  },
+  {
+    "nome": "Esperantina",
+    "nome_normalizado": "esperantina",
+    "codigo_ibge": "03701",
+    "populacao": 42510
+  },
+  {
+    "nome": "Fartura do Piauí",
+    "nome_normalizado": "fartura do piaui",
+    "codigo_ibge": "03750",
+    "populacao": 5414
+  },
+  {
+    "nome": "Flores do Piauí",
+    "nome_normalizado": "flores do piaui",
+    "codigo_ibge": "03800",
+    "populacao": 4508
+  },
+  {
+    "nome": "Floresta do Piauí",
+    "nome_normalizado": "floresta do piaui",
+    "codigo_ibge": "03859",
+    "populacao": 2364
+  },
+  {
+    "nome": "Floriano",
+    "nome_normalizado": "floriano",
+    "codigo_ibge": "03909",
+    "populacao": 64150
+  },
+  {
+    "nome": "Francinópolis",
+    "nome_normalizado": "francinopolis",
+    "codigo_ibge": "04006",
+    "populacao": 4517
+  },
+  {
+    "nome": "Francisco Ayres",
+    "nome_normalizado": "francisco ayres",
+    "codigo_ibge": "04105",
+    "populacao": 4494
+  },
+  {
+    "nome": "Francisco Macedo",
+    "nome_normalizado": "francisco macedo",
+    "codigo_ibge": "04154",
+    "populacao": 2986
+  },
+  {
+    "nome": "Francisco Santos",
+    "nome_normalizado": "francisco santos",
+    "codigo_ibge": "04204",
+    "populacao": 8366
+  },
+  {
+    "nome": "Fronteiras",
+    "nome_normalizado": "fronteiras",
+    "codigo_ibge": "04303",
+    "populacao": 10382
+  },
+  {
+    "nome": "Geminiano",
+    "nome_normalizado": "geminiano",
+    "codigo_ibge": "04352",
+    "populacao": 5587
+  },
+  {
+    "nome": "Gilbués",
+    "nome_normalizado": "gilbues",
+    "codigo_ibge": "04402",
+    "populacao": 11166
+  },
+  {
+    "nome": "Guadalupe",
+    "nome_normalizado": "guadalupe",
+    "codigo_ibge": "04501",
+    "populacao": 10478
+  },
+  {
+    "nome": "Guaribas",
+    "nome_normalizado": "guaribas",
+    "codigo_ibge": "04550",
+    "populacao": 4350
+  },
+  {
+    "nome": "Hugo Napoleão",
+    "nome_normalizado": "hugo napoleao",
+    "codigo_ibge": "04600",
+    "populacao": 3562
+  },
+  {
+    "nome": "Ilha Grande",
+    "nome_normalizado": "ilha grande",
+    "codigo_ibge": "04659",
+    "populacao": 9501
+  },
+  {
+    "nome": "Inhuma",
+    "nome_normalizado": "inhuma",
+    "codigo_ibge": "04709",
+    "populacao": 15259
+  },
+  {
+    "nome": "Ipiranga do Piauí",
+    "nome_normalizado": "ipiranga do piaui",
+    "codigo_ibge": "04808",
+    "populacao": 9620
+  },
+  {
+    "nome": "Isaías Coelho",
+    "nome_normalizado": "isaias coelho",
+    "codigo_ibge": "04907",
+    "populacao": 7886
+  },
+  {
+    "nome": "Itainópolis",
+    "nome_normalizado": "itainopolis",
+    "codigo_ibge": "05003",
+    "populacao": 10980
+  },
+  {
+    "nome": "Itaueira",
+    "nome_normalizado": "itaueira",
+    "codigo_ibge": "05102",
+    "populacao": 10493
+  },
+  {
+    "nome": "Jacobina do Piauí",
+    "nome_normalizado": "jacobina do piaui",
+    "codigo_ibge": "05151",
+    "populacao": 5715
+  },
+  {
+    "nome": "Jaicós",
+    "nome_normalizado": "jaicos",
+    "codigo_ibge": "05201",
+    "populacao": 17811
+  },
+  {
+    "nome": "Jardim do Mulato",
+    "nome_normalizado": "jardim do mulato",
+    "codigo_ibge": "05250",
+    "populacao": 4251
+  },
+  {
+    "nome": "Jatobá do Piauí",
+    "nome_normalizado": "jatoba do piaui",
+    "codigo_ibge": "05276",
+    "populacao": 4568
+  },
+  {
+    "nome": "Jerumenha",
+    "nome_normalizado": "jerumenha",
+    "codigo_ibge": "05300",
+    "populacao": 4600
+  },
+  {
+    "nome": "João Costa",
+    "nome_normalizado": "joao costa",
+    "codigo_ibge": "05359",
+    "populacao": 3031
+  },
+  {
+    "nome": "Joaquim Pires",
+    "nome_normalizado": "joaquim pires",
+    "codigo_ibge": "05409",
+    "populacao": 14175
+  },
+  {
+    "nome": "Joca Marques",
+    "nome_normalizado": "joca marques",
+    "codigo_ibge": "05458",
+    "populacao": 5535
+  },
+  {
+    "nome": "José de Freitas",
+    "nome_normalizado": "jose de freitas",
+    "codigo_ibge": "05508",
+    "populacao": 44391
+  },
+  {
+    "nome": "Juazeiro do Piauí",
+    "nome_normalizado": "juazeiro do piaui",
+    "codigo_ibge": "05516",
+    "populacao": 5311
+  },
+  {
+    "nome": "Júlio Borges",
+    "nome_normalizado": "julio borges",
+    "codigo_ibge": "05524",
+    "populacao": 5499
+  },
+  {
+    "nome": "Jurema",
+    "nome_normalizado": "jurema",
+    "codigo_ibge": "05532",
+    "populacao": 4505
+  },
+  {
+    "nome": "Lagoinha do Piauí",
+    "nome_normalizado": "lagoinha do piaui",
+    "codigo_ibge": "05540",
+    "populacao": 3029
+  },
+  {
+    "nome": "Lagoa Alegre",
+    "nome_normalizado": "lagoa alegre",
+    "codigo_ibge": "05557",
+    "populacao": 8449
+  },
+  {
+    "nome": "Lagoa do Barro do Piauí",
+    "nome_normalizado": "lagoa do barro do piaui",
+    "codigo_ibge": "05565",
+    "populacao": 5146
+  },
+  {
+    "nome": "Lagoa de São Francisco",
+    "nome_normalizado": "lagoa de sao francisco",
+    "codigo_ibge": "05573",
+    "populacao": 6449
+  },
+  {
+    "nome": "Lagoa do Piauí",
+    "nome_normalizado": "lagoa do piaui",
+    "codigo_ibge": "05581",
+    "populacao": 5009
+  },
+  {
+    "nome": "Lagoa do Sítio",
+    "nome_normalizado": "lagoa do sitio",
+    "codigo_ibge": "05599",
+    "populacao": 4575
+  },
+  {
+    "nome": "Landri Sales",
+    "nome_normalizado": "landri sales",
+    "codigo_ibge": "05607",
+    "populacao": 5311
+  },
+  {
+    "nome": "Luís Correia",
+    "nome_normalizado": "luis correia",
+    "codigo_ibge": "05706",
+    "populacao": 31775
+  },
+  {
+    "nome": "Luzilândia",
+    "nome_normalizado": "luzilandia",
+    "codigo_ibge": "05805",
+    "populacao": 26204
+  },
+  {
+    "nome": "Madeiro",
+    "nome_normalizado": "madeiro",
+    "codigo_ibge": "05854",
+    "populacao": 8218
+  },
+  {
+    "nome": "Manoel Emídio",
+    "nome_normalizado": "manoel emidio",
+    "codigo_ibge": "05904",
+    "populacao": 5314
+  },
+  {
+    "nome": "Marcolândia",
+    "nome_normalizado": "marcolandia",
+    "codigo_ibge": "05953",
+    "populacao": 8783
+  },
+  {
+    "nome": "Marcos Parente",
+    "nome_normalizado": "marcos parente",
+    "codigo_ibge": "06001",
+    "populacao": 4848
+  },
+  {
+    "nome": "Massapê do Piauí",
+    "nome_normalizado": "massape do piaui",
+    "codigo_ibge": "06050",
+    "populacao": 5215
+  },
+  {
+    "nome": "Matias Olímpio",
+    "nome_normalizado": "matias olimpio",
+    "codigo_ibge": "06100",
+    "populacao": 10875
+  },
+  {
+    "nome": "Miguel Alves",
+    "nome_normalizado": "miguel alves",
+    "codigo_ibge": "06209",
+    "populacao": 33071
+  },
+  {
+    "nome": "Miguel Leão",
+    "nome_normalizado": "miguel leao",
+    "codigo_ibge": "06308",
+    "populacao": 1352
+  },
+  {
+    "nome": "Milton Brandão",
+    "nome_normalizado": "milton brandao",
+    "codigo_ibge": "06357",
+    "populacao": 6678
+  },
+  {
+    "nome": "Monsenhor Gil",
+    "nome_normalizado": "monsenhor gil",
+    "codigo_ibge": "06407",
+    "populacao": 10455
+  },
+  {
+    "nome": "Monsenhor Hipólito",
+    "nome_normalizado": "monsenhor hipolito",
+    "codigo_ibge": "06506",
+    "populacao": 7751
+  },
+  {
+    "nome": "Monte Alegre do Piauí",
+    "nome_normalizado": "monte alegre do piaui",
+    "codigo_ibge": "06605",
+    "populacao": 10910
+  },
+  {
+    "nome": "Morro Cabeça no Tempo",
+    "nome_normalizado": "morro cabeca no tempo",
+    "codigo_ibge": "06654",
+    "populacao": 4458
+  },
+  {
+    "nome": "Morro do Chapéu do Piauí",
+    "nome_normalizado": "morro do chapeu do piaui",
+    "codigo_ibge": "06670",
+    "populacao": 6547
+  },
+  {
+    "nome": "Murici dos Portelas",
+    "nome_normalizado": "murici dos portelas",
+    "codigo_ibge": "06696",
+    "populacao": 10139
+  },
+  {
+    "nome": "Nazaré do Piauí",
+    "nome_normalizado": "nazare do piaui",
+    "codigo_ibge": "06704",
+    "populacao": 6729
+  },
+  {
+    "nome": "Nazária",
+    "nome_normalizado": "nazaria",
+    "codigo_ibge": "06720",
+    "populacao": 10706
+  },
+  {
+    "nome": "Nossa Senhora de Nazaré",
+    "nome_normalizado": "nossa senhora de nazare",
+    "codigo_ibge": "06753",
+    "populacao": 5406
+  },
+  {
+    "nome": "Nossa Senhora dos Remédios",
+    "nome_normalizado": "nossa senhora dos remedios",
+    "codigo_ibge": "06803",
+    "populacao": 8732
+  },
+  {
+    "nome": "Novo Oriente do Piauí",
+    "nome_normalizado": "novo oriente do piaui",
+    "codigo_ibge": "06902",
+    "populacao": 6178
+  },
+  {
+    "nome": "Novo Santo Antônio",
+    "nome_normalizado": "novo santo antonio",
+    "codigo_ibge": "06951",
+    "populacao": 2886
+  },
+  {
+    "nome": "Oeiras",
+    "nome_normalizado": "oeiras",
+    "codigo_ibge": "07009",
+    "populacao": 39545
+  },
+  {
+    "nome": "Olho D'Água do Piauí",
+    "nome_normalizado": "olho dagua do piaui",
+    "codigo_ibge": "07108",
+    "populacao": 2725
+  },
+  {
+    "nome": "Padre Marcos",
+    "nome_normalizado": "padre marcos",
+    "codigo_ibge": "07207",
+    "populacao": 6481
+  },
+  {
+    "nome": "Paes Landim",
+    "nome_normalizado": "paes landim",
+    "codigo_ibge": "07306",
+    "populacao": 4174
+  },
+  {
+    "nome": "Pajeú do Piauí",
+    "nome_normalizado": "pajeu do piaui",
+    "codigo_ibge": "07355",
+    "populacao": 3041
+  },
+  {
+    "nome": "Palmeira do Piauí",
+    "nome_normalizado": "palmeira do piaui",
+    "codigo_ibge": "07405",
+    "populacao": 5048
+  },
+  {
+    "nome": "Palmeirais",
+    "nome_normalizado": "palmeirais",
+    "codigo_ibge": "07504",
+    "populacao": 13480
+  },
+  {
+    "nome": "Paquetá",
+    "nome_normalizado": "paqueta",
+    "codigo_ibge": "07553",
+    "populacao": 3878
+  },
+  {
+    "nome": "Parnaguá",
+    "nome_normalizado": "parnagua",
+    "codigo_ibge": "07603",
+    "populacao": 10289
+  },
+  {
+    "nome": "Parnaíba",
+    "nome_normalizado": "parnaiba",
+    "codigo_ibge": "07702",
+    "populacao": 169552
+  },
+  {
+    "nome": "Passagem Franca do Piauí",
+    "nome_normalizado": "passagem franca do piaui",
+    "codigo_ibge": "07751",
+    "populacao": 4220
+  },
+  {
+    "nome": "Patos do Piauí",
+    "nome_normalizado": "patos do piaui",
+    "codigo_ibge": "07777",
+    "populacao": 5461
+  },
+  {
+    "nome": "Pau D'Arco do Piauí",
+    "nome_normalizado": "pau darco do piaui",
+    "codigo_ibge": "07793",
+    "populacao": 3972
+  },
+  {
+    "nome": "Paulistana",
+    "nome_normalizado": "paulistana",
+    "codigo_ibge": "07801",
+    "populacao": 21601
+  },
+  {
+    "nome": "Pavussu",
+    "nome_normalizado": "pavussu",
+    "codigo_ibge": "07850",
+    "populacao": 3698
+  },
+  {
+    "nome": "Pedro II",
+    "nome_normalizado": "pedro ii",
+    "codigo_ibge": "07900",
+    "populacao": 39039
+  },
+  {
+    "nome": "Pedro Laurentino",
+    "nome_normalizado": "pedro laurentino",
+    "codigo_ibge": "07934",
+    "populacao": 2514
+  },
+  {
+    "nome": "Nova Santa Rita",
+    "nome_normalizado": "nova santa rita",
+    "codigo_ibge": "07959",
+    "populacao": 4147
+  },
+  {
+    "nome": "Picos",
+    "nome_normalizado": "picos",
+    "codigo_ibge": "08007",
+    "populacao": 86228
+  },
+  {
+    "nome": "Pimenteiras",
+    "nome_normalizado": "pimenteiras",
+    "codigo_ibge": "08106",
+    "populacao": 11528
+  },
+  {
+    "nome": "Pio IX",
+    "nome_normalizado": "pio ix",
+    "codigo_ibge": "08205",
+    "populacao": 17947
+  },
+  {
+    "nome": "Piracuruca",
+    "nome_normalizado": "piracuruca",
+    "codigo_ibge": "08304",
+    "populacao": 29849
+  },
+  {
+    "nome": "Piripiri",
+    "nome_normalizado": "piripiri",
+    "codigo_ibge": "08403",
+    "populacao": 67676
+  },
+  {
+    "nome": "Porto",
+    "nome_normalizado": "porto",
+    "codigo_ibge": "08502",
+    "populacao": 12312
+  },
+  {
+    "nome": "Porto Alegre do Piauí",
+    "nome_normalizado": "porto alegre do piaui",
+    "codigo_ibge": "08551",
+    "populacao": 2391
+  },
+  {
+    "nome": "Prata do Piauí",
+    "nome_normalizado": "prata do piaui",
+    "codigo_ibge": "08601",
+    "populacao": 3098
+  },
+  {
+    "nome": "Queimada Nova",
+    "nome_normalizado": "queimada nova",
+    "codigo_ibge": "08650",
+    "populacao": 8936
+  },
+  {
+    "nome": "Redenção do Gurguéia",
+    "nome_normalizado": "redencao do gurgueia",
+    "codigo_ibge": "08700",
+    "populacao": 8563
+  },
+  {
+    "nome": "Regeneração",
+    "nome_normalizado": "regeneracao",
+    "codigo_ibge": "08809",
+    "populacao": 17418
+  },
+  {
+    "nome": "Riacho Frio",
+    "nome_normalizado": "riacho frio",
+    "codigo_ibge": "08858",
+    "populacao": 4241
+  },
+  {
+    "nome": "Ribeira do Piauí",
+    "nome_normalizado": "ribeira do piaui",
+    "codigo_ibge": "08874",
+    "populacao": 4114
+  },
+  {
+    "nome": "Ribeiro Gonçalves",
+    "nome_normalizado": "ribeiro goncalves",
+    "codigo_ibge": "08908",
+    "populacao": 6215
+  },
+  {
+    "nome": "Rio Grande do Piauí",
+    "nome_normalizado": "rio grande do piaui",
+    "codigo_ibge": "09005",
+    "populacao": 5868
+  },
+  {
+    "nome": "Santa Cruz do Piauí",
+    "nome_normalizado": "santa cruz do piaui",
+    "codigo_ibge": "09104",
+    "populacao": 5928
+  },
+  {
+    "nome": "Santa Cruz dos Milagres",
+    "nome_normalizado": "santa cruz dos milagres",
+    "codigo_ibge": "09153",
+    "populacao": 3466
+  },
+  {
+    "nome": "Santa Filomena",
+    "nome_normalizado": "santa filomena",
+    "codigo_ibge": "09203",
+    "populacao": 6209
+  },
+  {
+    "nome": "Santa Luz",
+    "nome_normalizado": "santa luz",
+    "codigo_ibge": "09302",
+    "populacao": 5425
+  },
+  {
+    "nome": "Santana do Piauí",
+    "nome_normalizado": "santana do piaui",
+    "codigo_ibge": "09351",
+    "populacao": 4174
+  },
+  {
+    "nome": "Santa Rosa do Piauí",
+    "nome_normalizado": "santa rosa do piaui",
+    "codigo_ibge": "09377",
+    "populacao": 4690
+  },
+  {
+    "nome": "Santo Antônio de Lisboa",
+    "nome_normalizado": "santo antonio de lisboa",
+    "codigo_ibge": "09401",
+    "populacao": 5938
+  },
+  {
+    "nome": "Santo Antônio dos Milagres",
+    "nome_normalizado": "santo antonio dos milagres",
+    "codigo_ibge": "09450",
+    "populacao": 2189
+  },
+  {
+    "nome": "Santo Inácio do Piauí",
+    "nome_normalizado": "santo inacio do piaui",
+    "codigo_ibge": "09500",
+    "populacao": 3719
+  },
+  {
+    "nome": "São Braz do Piauí",
+    "nome_normalizado": "sao braz do piaui",
+    "codigo_ibge": "09559",
+    "populacao": 4451
+  },
+  {
+    "nome": "São Félix do Piauí",
+    "nome_normalizado": "sao felix do piaui",
+    "codigo_ibge": "09609",
+    "populacao": 2885
+  },
+  {
+    "nome": "São Francisco de Assis do Piauí",
+    "nome_normalizado": "sao francisco de assis do piaui",
+    "codigo_ibge": "09658",
+    "populacao": 5703
+  },
+  {
+    "nome": "São Francisco do Piauí",
+    "nome_normalizado": "sao francisco do piaui",
+    "codigo_ibge": "09708",
+    "populacao": 5404
+  },
+  {
+    "nome": "São Gonçalo do Gurguéia",
+    "nome_normalizado": "sao goncalo do gurgueia",
+    "codigo_ibge": "09757",
+    "populacao": 3019
+  },
+  {
+    "nome": "São Gonçalo do Piauí",
+    "nome_normalizado": "sao goncalo do piaui",
+    "codigo_ibge": "09807",
+    "populacao": 4944
+  },
+  {
+    "nome": "São João da Canabrava",
+    "nome_normalizado": "sao joao da canabrava",
+    "codigo_ibge": "09856",
+    "populacao": 4306
+  },
+  {
+    "nome": "São João da Fronteira",
+    "nome_normalizado": "sao joao da fronteira",
+    "codigo_ibge": "09872",
+    "populacao": 5615
+  },
+  {
+    "nome": "São João da Serra",
+    "nome_normalizado": "sao joao da serra",
+    "codigo_ibge": "09906",
+    "populacao": 6233
+  },
+  {
+    "nome": "São João da Varjota",
+    "nome_normalizado": "sao joao da varjota",
+    "codigo_ibge": "09955",
+    "populacao": 4443
+  },
+  {
+    "nome": "São João do Arraial",
+    "nome_normalizado": "sao joao do arraial",
+    "codigo_ibge": "09971",
+    "populacao": 8443
+  },
+  {
+    "nome": "São João do Piauí",
+    "nome_normalizado": "sao joao do piaui",
+    "codigo_ibge": "10003",
+    "populacao": 22036
+  },
+  {
+    "nome": "São José do Divino",
+    "nome_normalizado": "sao jose do divino",
+    "codigo_ibge": "10052",
+    "populacao": 4906
+  },
+  {
+    "nome": "São José do Peixe",
+    "nome_normalizado": "sao jose do peixe",
+    "codigo_ibge": "10102",
+    "populacao": 3320
+  },
+  {
+    "nome": "São José do Piauí",
+    "nome_normalizado": "sao jose do piaui",
+    "codigo_ibge": "10201",
+    "populacao": 6732
+  },
+  {
+    "nome": "São Julião",
+    "nome_normalizado": "sao juliao",
+    "codigo_ibge": "10300",
+    "populacao": 6135
+  },
+  {
+    "nome": "São Lourenço do Piauí",
+    "nome_normalizado": "sao lourenco do piaui",
+    "codigo_ibge": "10359",
+    "populacao": 4497
+  },
+  {
+    "nome": "São Luis do Piauí",
+    "nome_normalizado": "sao luis do piaui",
+    "codigo_ibge": "10375",
+    "populacao": 2329
+  },
+  {
+    "nome": "São Miguel da Baixa Grande",
+    "nome_normalizado": "sao miguel da baixa grande",
+    "codigo_ibge": "10383",
+    "populacao": 2304
+  },
+  {
+    "nome": "São Miguel do Fidalgo",
+    "nome_normalizado": "sao miguel do fidalgo",
+    "codigo_ibge": "10391",
+    "populacao": 2870
+  },
+  {
+    "nome": "São Miguel do Tapuio",
+    "nome_normalizado": "sao miguel do tapuio",
+    "codigo_ibge": "10409",
+    "populacao": 17902
+  },
+  {
+    "nome": "São Pedro do Piauí",
+    "nome_normalizado": "sao pedro do piaui",
+    "codigo_ibge": "10508",
+    "populacao": 14046
+  },
+  {
+    "nome": "São Raimundo Nonato",
+    "nome_normalizado": "sao raimundo nonato",
+    "codigo_ibge": "10607",
+    "populacao": 40784
+  },
+  {
+    "nome": "Sebastião Barros",
+    "nome_normalizado": "sebastiao barros",
+    "codigo_ibge": "10623",
+    "populacao": 3228
+  },
+  {
+    "nome": "Sebastião Leal",
+    "nome_normalizado": "sebastiao leal",
+    "codigo_ibge": "10631",
+    "populacao": 4572
+  },
+  {
+    "nome": "Sigefredo Pacheco",
+    "nome_normalizado": "sigefredo pacheco",
+    "codigo_ibge": "10656",
+    "populacao": 9631
+  },
+  {
+    "nome": "Simões",
+    "nome_normalizado": "simoes",
+    "codigo_ibge": "10706",
+    "populacao": 14650
+  },
+  {
+    "nome": "Simplício Mendes",
+    "nome_normalizado": "simplicio mendes",
+    "codigo_ibge": "10805",
+    "populacao": 14342
+  },
+  {
+    "nome": "Socorro do Piauí",
+    "nome_normalizado": "socorro do piaui",
+    "codigo_ibge": "10904",
+    "populacao": 4184
+  },
+  {
+    "nome": "Sussuapara",
+    "nome_normalizado": "sussuapara",
+    "codigo_ibge": "10938",
+    "populacao": 6345
+  },
+  {
+    "nome": "Tamboril do Piauí",
+    "nome_normalizado": "tamboril do piaui",
+    "codigo_ibge": "10953",
+    "populacao": 3029
+  },
+  {
+    "nome": "Tanque do Piauí",
+    "nome_normalizado": "tanque do piaui",
+    "codigo_ibge": "10979",
+    "populacao": 2330
+  },
+  {
+    "nome": "Teresina",
+    "nome_normalizado": "teresina",
+    "codigo_ibge": "11001",
+    "populacao": 902644
+  },
+  {
+    "nome": "União",
+    "nome_normalizado": "uniao",
+    "codigo_ibge": "11100",
+    "populacao": 47707
+  },
+  {
+    "nome": "Uruçuí",
+    "nome_normalizado": "urucui",
+    "codigo_ibge": "11209",
+    "populacao": 26501
+  },
+  {
+    "nome": "Valença do Piauí",
+    "nome_normalizado": "valenca do piaui",
+    "codigo_ibge": "11308",
+    "populacao": 22920
+  },
+  {
+    "nome": "Várzea Branca",
+    "nome_normalizado": "varzea branca",
+    "codigo_ibge": "11357",
+    "populacao": 5173
+  },
+  {
+    "nome": "Várzea Grande",
+    "nome_normalizado": "varzea grande",
+    "codigo_ibge": "11407",
+    "populacao": 4515
+  },
+  {
+    "nome": "Vera Mendes",
+    "nome_normalizado": "vera mendes",
+    "codigo_ibge": "11506",
+    "populacao": 3271
+  },
+  {
+    "nome": "Vila Nova do Piauí",
+    "nome_normalizado": "vila nova do piaui",
+    "codigo_ibge": "11605",
+    "populacao": 2979
+  },
+  {
+    "nome": "Wall Ferraz",
+    "nome_normalizado": "wall ferraz",
+    "codigo_ibge": "11704",
+    "populacao": 4117
+  }
+]
