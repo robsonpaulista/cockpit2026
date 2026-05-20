@@ -2,7 +2,14 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
-import { ExternalLink, Loader2, FileSpreadsheet } from 'lucide-react'
+import {
+  ArrowDown,
+  ArrowUp,
+  ArrowUpDown,
+  ExternalLink,
+  Loader2,
+  FileSpreadsheet,
+} from 'lucide-react'
 import { cn, formatDateShort } from '@/lib/utils'
 import {
   emendaEstaPaga,
@@ -18,6 +25,132 @@ function formatMoney(n: number | null | undefined): string {
 
 function trZebra(rowIndex: number): string {
   return rowIndex % 2 === 0 ? 'bg-background/45' : 'bg-surface/25'
+}
+
+type SortCol =
+  | 'exercicio'
+  | 'emenda'
+  | 'bloco'
+  | 'valor_indicado'
+  | 'valor_empenhado'
+  | 'valor_pago'
+  | 'data_pagamento'
+  | 'status'
+  | 'objeto'
+
+type SortDir = 'asc' | 'desc'
+
+const SORT_INICIAL: { col: SortCol; dir: SortDir } = { col: 'exercicio', dir: 'desc' }
+
+function cmpNullableNumber(
+  a: number | null | undefined,
+  b: number | null | undefined,
+): number {
+  const na = a != null && Number.isFinite(Number(a)) ? Number(a) : null
+  const nb = b != null && Number.isFinite(Number(b)) ? Number(b) : null
+  if (na === null && nb === null) return 0
+  if (na === null) return 1
+  if (nb === null) return -1
+  return na - nb
+}
+
+function cmpNullableString(a: string | null | undefined, b: string | null | undefined): number {
+  const sa = (a ?? '').trim()
+  const sb = (b ?? '').trim()
+  if (!sa && !sb) return 0
+  if (!sa) return 1
+  if (!sb) return -1
+  return sa.localeCompare(sb, 'pt-BR', { sensitivity: 'base' })
+}
+
+function cmpNullableDate(a: string | null | undefined, b: string | null | undefined): number {
+  const ta = a ? new Date(a).getTime() : NaN
+  const tb = b ? new Date(b).getTime() : NaN
+  const fa = Number.isFinite(ta) ? ta : null
+  const fb = Number.isFinite(tb) ? tb : null
+  if (fa === null && fb === null) return 0
+  if (fa === null) return 1
+  if (fb === null) return -1
+  return fa - fb
+}
+
+function compararEmendas(
+  a: EmendaRegistro,
+  b: EmendaRegistro,
+  col: SortCol,
+  dir: SortDir,
+): number {
+  let base = 0
+  switch (col) {
+    case 'exercicio':
+      base = cmpNullableNumber(a.exercicio, b.exercicio)
+      break
+    case 'emenda':
+      base = cmpNullableString(a.emenda, b.emenda)
+      break
+    case 'bloco':
+      base = cmpNullableString(a.bloco, b.bloco)
+      break
+    case 'valor_indicado':
+      base = cmpNullableNumber(a.valor_indicado, b.valor_indicado)
+      break
+    case 'valor_empenhado':
+      base = cmpNullableNumber(a.valor_empenhado, b.valor_empenhado)
+      break
+    case 'valor_pago':
+      base = cmpNullableNumber(a.valor_pago, b.valor_pago)
+      break
+    case 'data_pagamento':
+      base = cmpNullableDate(a.data_pagamento, b.data_pagamento)
+      break
+    case 'status':
+      base = Number(emendaEstaPaga(a)) - Number(emendaEstaPaga(b))
+      break
+    case 'objeto':
+      base = cmpNullableString(a.objeto, b.objeto)
+      break
+  }
+  if (base === 0 && col !== 'emenda') {
+    base = cmpNullableString(a.emenda, b.emenda)
+  }
+  return dir === 'asc' ? base : -base
+}
+
+function SortableTh({
+  label,
+  col,
+  sortCol,
+  sortDir,
+  onSort,
+  align = 'left',
+}: {
+  label: string
+  col: SortCol
+  sortCol: SortCol
+  sortDir: SortDir
+  onSort: (col: SortCol) => void
+  align?: 'left' | 'right'
+}) {
+  const ativo = sortCol === col
+  const Icon = ativo ? (sortDir === 'asc' ? ArrowUp : ArrowDown) : ArrowUpDown
+
+  return (
+    <th className={cn('px-3 py-2 font-medium', align === 'right' && 'text-right')}>
+      <button
+        type="button"
+        onClick={() => onSort(col)}
+        className={cn(
+          'inline-flex items-center gap-1 hover:text-text-primary transition-colors',
+          align === 'right' && 'ml-auto',
+          ativo ? 'text-text-primary' : 'text-text-secondary',
+        )}
+        title={ativo ? (sortDir === 'asc' ? 'Ordenar Z→A' : 'Ordenar A→Z') : 'Ordenar A→Z'}
+      >
+        <span>{label}</span>
+        <Icon className={cn('h-3.5 w-3.5 shrink-0', ativo && 'text-accent-gold')} aria-hidden />
+      </button>
+    </th>
+  )
 }
 
 function ResumoValor({
@@ -48,6 +181,17 @@ export function FichaAtendimentoEmendasMandato({ municipio }: { municipio: strin
   const [todas, setTodas] = useState<EmendaRegistro[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [sortCol, setSortCol] = useState<SortCol>(SORT_INICIAL.col)
+  const [sortDir, setSortDir] = useState<SortDir>(SORT_INICIAL.dir)
+
+  const handleSort = (col: SortCol) => {
+    if (sortCol === col) {
+      setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'))
+    } else {
+      setSortCol(col)
+      setSortDir('asc')
+    }
+  }
 
   const carregar = useCallback(async () => {
     setLoading(true)
@@ -79,14 +223,8 @@ export function FichaAtendimentoEmendasMandato({ municipio }: { municipio: strin
   const pagas = useMemo(() => filtradas.filter(emendaEstaPaga).length, [filtradas])
 
   const ordenadas = useMemo(
-    () =>
-      [...filtradas].sort((a, b) => {
-        const exA = a.exercicio ?? 0
-        const exB = b.exercicio ?? 0
-        if (exB !== exA) return exB - exA
-        return (a.emenda || '').localeCompare(b.emenda || '', 'pt-BR')
-      }),
-    [filtradas],
+    () => [...filtradas].sort((a, b) => compararEmendas(a, b, sortCol, sortDir)),
+    [filtradas, sortCol, sortDir],
   )
 
   return (
@@ -155,16 +293,73 @@ export function FichaAtendimentoEmendasMandato({ municipio }: { municipio: strin
             <div className="min-w-0 overflow-x-auto rounded-xl border border-card bg-white">
               <table className="w-full min-w-[880px] text-left text-sm">
                 <thead>
-                  <tr className="border-b border-card bg-background/80 text-xs text-text-secondary">
-                    <th className="px-3 py-2 font-medium">Exerc.</th>
-                    <th className="px-3 py-2 font-medium">Emenda</th>
-                    <th className="px-3 py-2 font-medium">Bloco</th>
-                    <th className="px-3 py-2 font-medium text-right">Indicado</th>
-                    <th className="px-3 py-2 font-medium text-right">Empenhado</th>
-                    <th className="px-3 py-2 font-medium text-right">Pago</th>
-                    <th className="px-3 py-2 font-medium">Pagamento</th>
-                    <th className="px-3 py-2 font-medium">Status</th>
-                    <th className="px-3 py-2 font-medium min-w-[12rem]">Objeto</th>
+                  <tr className="border-b border-card bg-background/80 text-xs">
+                    <SortableTh
+                      label="Exerc."
+                      col="exercicio"
+                      sortCol={sortCol}
+                      sortDir={sortDir}
+                      onSort={handleSort}
+                    />
+                    <SortableTh
+                      label="Emenda"
+                      col="emenda"
+                      sortCol={sortCol}
+                      sortDir={sortDir}
+                      onSort={handleSort}
+                    />
+                    <SortableTh
+                      label="Bloco"
+                      col="bloco"
+                      sortCol={sortCol}
+                      sortDir={sortDir}
+                      onSort={handleSort}
+                    />
+                    <SortableTh
+                      label="Indicado"
+                      col="valor_indicado"
+                      sortCol={sortCol}
+                      sortDir={sortDir}
+                      onSort={handleSort}
+                      align="right"
+                    />
+                    <SortableTh
+                      label="Empenhado"
+                      col="valor_empenhado"
+                      sortCol={sortCol}
+                      sortDir={sortDir}
+                      onSort={handleSort}
+                      align="right"
+                    />
+                    <SortableTh
+                      label="Pago"
+                      col="valor_pago"
+                      sortCol={sortCol}
+                      sortDir={sortDir}
+                      onSort={handleSort}
+                      align="right"
+                    />
+                    <SortableTh
+                      label="Pagamento"
+                      col="data_pagamento"
+                      sortCol={sortCol}
+                      sortDir={sortDir}
+                      onSort={handleSort}
+                    />
+                    <SortableTh
+                      label="Status"
+                      col="status"
+                      sortCol={sortCol}
+                      sortDir={sortDir}
+                      onSort={handleSort}
+                    />
+                    <SortableTh
+                      label="Objeto"
+                      col="objeto"
+                      sortCol={sortCol}
+                      sortDir={sortDir}
+                      onSort={handleSort}
+                    />
                   </tr>
                 </thead>
                 <tbody>
