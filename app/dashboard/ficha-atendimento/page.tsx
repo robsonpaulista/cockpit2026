@@ -105,7 +105,9 @@ export default function FichaAtendimentoPage() {
 
   useEffect(() => {
     if (permLoading) return
-    if (!isAdmin && !canAccess('territorio')) router.replace('/dashboard')
+    if (!isAdmin && !canAccess('ficha-atendimento') && !canAccess('territorio')) {
+      router.replace('/dashboard')
+    }
   }, [permLoading, isAdmin, canAccess, router])
 
   useEffect(() => {

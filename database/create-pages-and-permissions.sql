@@ -42,6 +42,7 @@ INSERT INTO pages (key, label, path) VALUES
   ('campo', 'Campo & Agenda', '/dashboard/campo'),
   ('agenda', 'Agenda', '/dashboard/agenda'),
   ('territorio', 'Território & Base', '/dashboard/territorio'),
+  ('ficha-atendimento', 'Ficha de Atendimento', '/dashboard/ficha-atendimento'),
   ('chapas', 'Chapas', '/dashboard/chapas'),
   ('conteudo', 'Conteúdo & Redes', '/dashboard/conteudo'),
   ('noticias', 'Notícias & Crises', '/dashboard/noticias'),

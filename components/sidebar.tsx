@@ -281,7 +281,8 @@ function resolveMenuIcon(iconName: string, cockpit: boolean): LucideIcon {
 function pageKeyForItem(id: string): string {
   if (id === 'chapas-menu') return 'chapas'
   if (id === 'chapas-estaduais') return 'chapas'
-  if (id === 'territorio-mapa-tds' || id === 'ficha-atendimento') return 'territorio'
+  if (id === 'territorio-mapa-tds') return 'territorio'
+  if (id === 'ficha-atendimento') return 'ficha-atendimento'
   if (
     id === 'mobilizacao-menu' ||
     id === 'mobilizacao-captacao' ||
@@ -734,8 +735,11 @@ export function Sidebar() {
         .filter((item) => {
           if (item.id === 'home') return true
           if (item.id === 'usuarios') return isAdmin
-          if (item.id === 'territorio-mapa-tds' || item.id === 'ficha-atendimento') {
+          if (item.id === 'territorio-mapa-tds') {
             return canAccess('territorio') || canAccess('conteudo')
+          }
+          if (item.id === 'ficha-atendimento') {
+            return canAccess('ficha-atendimento') || canAccess('territorio')
           }
           if (item.children) return item.children.length > 0
           return canAccess(pageKeyForItem(item.id))

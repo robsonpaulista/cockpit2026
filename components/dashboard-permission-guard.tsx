@@ -6,10 +6,20 @@ import { usePermissions } from '@/hooks/use-permissions'
 
 const PAGE_KEYS = new Set([
   'dashboard', 'fases', 'narrativas', 'campo', 'agenda', 'territorio',
-  'chapas', 'conteudo', 'noticias', 'mobilizacao', 'whatsapp', 'pesquisa',
-  'operacao', 'juridico', 'obras', 'usuarios', 'gestao_pesquisas',
+  'ficha-atendimento', 'chapas', 'conteudo', 'noticias', 'mobilizacao', 'whatsapp',
+  'pesquisa', 'operacao', 'juridico', 'obras', 'usuarios', 'gestao_pesquisas',
   'emendas', 'proposicoes', 'sei-pesquisa',
 ])
+
+function canAccessPageKey(
+  key: string,
+  canAccess: (pageKey: string) => boolean,
+): boolean {
+  if (key === 'ficha-atendimento') {
+    return canAccess('ficha-atendimento') || canAccess('territorio')
+  }
+  return canAccess(key)
+}
 
 function getPageKey(pathname: string): string | null {
   if (!pathname?.startsWith('/dashboard')) return null
@@ -20,7 +30,7 @@ function getPageKey(pathname: string): string | null {
   // o que fazia o guard redirecionar para /dashboard quando o usuário tinha
   // apenas 'emendas' liberado nas permissões.
   if (pathname.startsWith('/dashboard/emendas')) return 'emendas'
-  if (pathname.startsWith('/dashboard/ficha-atendimento')) return 'territorio'
+  if (pathname.startsWith('/dashboard/ficha-atendimento')) return 'ficha-atendimento'
   const segments = pathname.replace(/^\/dashboard\/?/, '').split('/')
   const first = segments[0]
   return first && PAGE_KEYS.has(first) ? first : null
@@ -40,7 +50,7 @@ export function DashboardPermissionGuard({ children }: { children: React.ReactNo
       if (!isAdmin) router.replace('/dashboard')
       return
     }
-    if (!isAdmin && !canAccess(key)) router.replace('/dashboard')
+    if (!isAdmin && !canAccessPageKey(key, canAccess)) router.replace('/dashboard')
   }, [pathname, loading, isAdmin, canAccess, router])
 
   return <>{children}</>

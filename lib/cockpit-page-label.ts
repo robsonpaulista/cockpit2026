@@ -22,6 +22,7 @@ export function getCockpitPageLabel(pathname: string): string {
     '/dashboard/campo': 'Campo',
     '/dashboard/agenda': 'Agenda',
     '/dashboard/territorio': 'Território',
+    '/dashboard/ficha-atendimento': 'Ficha',
     '/dashboard/chapas': 'Federal',
     '/dashboard/chapas-estaduais': 'Estadual',
     '/dashboard/resumo-eleicoes': 'Eleições',
