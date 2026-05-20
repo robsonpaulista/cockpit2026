@@ -8,6 +8,9 @@ import { sidebarPrimaryCTAButtonClass } from '@/lib/sidebar-menu-active-style'
 import { FichaAtendimentoTetosBloco } from '@/components/ficha-atendimento-teto-card'
 import { FichaAtendimentoEditarLimites } from '@/components/ficha-atendimento-editar-limites'
 import { FichaAtendimentoResultadosEleicao } from '@/components/ficha-atendimento-resultados-eleicao'
+import { FichaLiderancaResumo } from '@/components/ficha-lideranca-resumo'
+import type { CargoFotoCandidato } from '@/lib/candidatos-foto-divulgacand'
+import type { ResultadoEleicao } from '@/lib/resumo-eleicoes-dados'
 import { FichaAtendimentoEmendasMandato } from '@/components/ficha-atendimento-emendas-mandato'
 import { FichaAtendimentoPropostaDetalhe } from '@/components/ficha-atendimento-proposta-detalhe'
 import { URL_CONSULTA_FNS } from '@/lib/fns-proposta-normalize'
@@ -94,6 +97,11 @@ export default function FichaAtendimentoPage() {
   const [exercicioAtivo, setExercicioAtivo] = useState<number | null>(null)
   const [limitesModalOpen, setLimitesModalOpen] = useState(false)
   const [detalheProposta, setDetalheProposta] = useState<LinhaProposta | null>(null)
+  const [fichaLideranca, setFichaLideranca] = useState<{
+    candidato: ResultadoEleicao
+    cargo: CargoFotoCandidato
+  } | null>(null)
+  const [autoPrintFicha, setAutoPrintFicha] = useState(false)
 
   useEffect(() => {
     if (permLoading) return
@@ -458,7 +466,38 @@ export default function FichaAtendimentoPage() {
           }}
         />
 
-        {municipioSel ? <FichaAtendimentoResultadosEleicao municipio={municipioSel} /> : null}
+        {municipioSel ? (
+          <FichaAtendimentoResultadosEleicao
+            municipio={municipioSel}
+            onVerFicha={(candidato, cargo) => {
+              setAutoPrintFicha(false)
+              setFichaLideranca({ candidato, cargo })
+            }}
+            onImprimirFicha={(candidato, cargo) => {
+              setAutoPrintFicha(true)
+              setFichaLideranca({ candidato, cargo })
+            }}
+          />
+        ) : null}
+
+        <FichaLiderancaResumo
+          open={fichaLideranca != null && Boolean(municipioSel)}
+          onClose={() => {
+            setFichaLideranca(null)
+            setAutoPrintFicha(false)
+          }}
+          municipio={municipioSel}
+          candidato={fichaLideranca?.candidato ?? null}
+          cargo={fichaLideranca?.cargo ?? 'prefeito'}
+          limitesDb={limitesDb}
+          propostasFns={propostasFnsFiltradas}
+          emendasSuas={emendasSuas}
+          populacao={populacao}
+          classificacaoSuas={classificacaoSuas}
+          exercicioAtivo={exercicioAtivo}
+          autoPrint={autoPrintFicha}
+          onPrinted={() => setAutoPrintFicha(false)}
+        />
 
         {municipioSel ? <FichaAtendimentoEmendasMandato municipio={municipioSel} /> : null}
 

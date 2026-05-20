@@ -16,6 +16,13 @@ import {
   type PartidoResumoEleicao,
   type ResultadoEleicao,
 } from '@/lib/resumo-eleicoes-dados'
+import { FichaCandidatoFotoModal } from '@/components/ficha-candidato-foto-modal'
+import {
+  buildFotosMap,
+  candidatoFotoLookupKey,
+  type CandidatoFotoDivulgacand,
+  type CargoFotoCandidato,
+} from '@/lib/candidatos-foto-divulgacand'
 
 const ITEMS_PER_PAGE = 10
 
@@ -72,6 +79,9 @@ function TabelaCandidatos({
   onPageChange,
   destaqueNome,
   colunaExtra,
+  cargoFoto,
+  onDuploCliqueCandidato,
+  onVerFicha,
 }: {
   titulo: string
   itens: ResultadoEleicao[]
@@ -79,6 +89,9 @@ function TabelaCandidatos({
   onPageChange: (p: number) => void
   destaqueNome?: string
   colunaExtra?: 'situacao' | 'partido'
+  cargoFoto?: CargoFotoCandidato
+  onDuploCliqueCandidato?: (item: ResultadoEleicao, cargo: CargoFotoCandidato) => void
+  onVerFicha?: (item: ResultadoEleicao, cargo: CargoFotoCandidato) => void
 }) {
   const totalVotos = itens.reduce((acc, item) => acc + parseVotosEleicao(item.quantidadeVotosNominais), 0)
   const eleitosCount =
@@ -86,9 +99,19 @@ function TabelaCandidatos({
       ? itens.filter((item) => includesNormalizedCargo(item.situacao, 'eleito')).length
       : 0
 
+  const interacaoCandidato = Boolean(cargoFoto && (onDuploCliqueCandidato || onVerFicha))
+  const comFicha = Boolean(cargoFoto && onVerFicha)
+  const comFoto = Boolean(cargoFoto && onDuploCliqueCandidato)
+
   return (
     <div className="min-w-0 flex-1 rounded-xl border border-card bg-background/50 p-3 md:min-w-[220px] lg:min-w-[240px]">
-      <h3 className="mb-2 text-center text-xs font-semibold text-text-primary">{titulo}</h3>
+      <h3 className="mb-1 text-center text-xs font-semibold text-text-primary">{titulo}</h3>
+      {interacaoCandidato && (
+        <p className="mb-2 text-center text-[10px] text-text-secondary px-1 leading-snug">
+          {comFicha && <>Clique no nome para abrir a ficha resumo. </>}
+          {comFoto && <>Duplo clique na linha para foto DivulgaCand.</>}
+        </p>
+      )}
       <table className="w-full text-xs">
         <thead>
           <tr>
@@ -114,12 +137,34 @@ function TabelaCandidatos({
                 key={`${item.nomeUrnaCandidato}-${item.numeroUrna}`}
                 className={cn(
                   'border-b border-card text-text-primary',
+                  interacaoCandidato && 'hover:bg-background/70',
                   isDestaque
                     ? 'bg-accent-gold-soft font-semibold text-accent-gold'
                     : trZebra(rowIndex),
                 )}
+                title={
+                  comFoto
+                    ? 'Clique no nome: ficha · Duplo clique: foto'
+                    : item.nomeUrnaCandidato
+                }
+                onDoubleClick={() => {
+                  if (cargoFoto && onDuploCliqueCandidato) {
+                    onDuploCliqueCandidato(item, cargoFoto)
+                  }
+                }}
               >
-                <td className="max-w-[10rem] truncate px-1 py-1" title={item.nomeUrnaCandidato}>
+                <td
+                  className={cn(
+                    'max-w-[10rem] truncate px-1 py-1',
+                    comFicha && 'cursor-pointer text-accent-gold hover:underline font-medium',
+                  )}
+                  title={item.nomeUrnaCandidato}
+                  onClick={() => {
+                    if (comFicha && cargoFoto && onVerFicha) {
+                      onVerFicha(item, cargoFoto)
+                    }
+                  }}
+                >
                   {item.nomeUrnaCandidato}
                 </td>
                 {colunaExtra === 'partido' && (
@@ -213,37 +258,80 @@ const PAGES_INICIAIS = {
 
 type PageKey = keyof typeof PAGES_INICIAIS
 
-export function FichaAtendimentoResultadosEleicao({ municipio }: { municipio: string }) {
+export function FichaAtendimentoResultadosEleicao({
+  municipio,
+  onVerFicha,
+  onImprimirFicha,
+}: {
+  municipio: string
+  onVerFicha?: (item: ResultadoEleicao, cargo: CargoFotoCandidato) => void
+  onImprimirFicha?: (item: ResultadoEleicao, cargo: CargoFotoCandidato) => void
+}) {
   const [dados, setDados] = useState<ResultadoEleicao[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [cidadeApi, setCidadeApi] = useState<string | null>(null)
   const [currentPage, setCurrentPage] = useState(PAGES_INICIAIS)
+  const [fotos, setFotos] = useState<CandidatoFotoDivulgacand[]>([])
+  const [fotoModal, setFotoModal] = useState<{
+    candidato: ResultadoEleicao
+    cargo: CargoFotoCandidato
+  } | null>(null)
+
+  const fotosMap = useMemo(() => buildFotosMap(fotos), [fotos])
 
   const setPage = (key: PageKey, page: number) => {
     setCurrentPage((prev) => ({ ...prev, [key]: page }))
   }
+
+  const carregarFotos = useCallback(async (nomeCidade: string) => {
+    if (!nomeCidade.trim()) {
+      setFotos([])
+      return
+    }
+    try {
+      const res = await fetch(
+        `/api/candidatos-foto-divulgacand?municipio=${encodeURIComponent(nomeCidade)}&ano=2024`,
+      )
+      const json = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        setFotos([])
+        return
+      }
+      setFotos(Array.isArray(json.fotos) ? json.fotos : [])
+    } catch {
+      setFotos([])
+    }
+  }, [])
 
   const carregar = useCallback(async (nomeCidade: string) => {
     const alvo = nomeCidade.trim()
     if (!alvo) {
       setDados([])
       setCidadeApi(null)
+      setFotos([])
       return
     }
     setLoading(true)
     setError(null)
     setCurrentPage(PAGES_INICIAIS)
     try {
-      const res = await fetch(`/api/resumo-eleicoes?cidade=${encodeURIComponent(alvo)}`)
-      const json = await res.json()
-      if (!res.ok) throw new Error(json.error || 'Erro ao buscar resultados eleitorais')
+      const [resEleicoes, resFotos] = await Promise.all([
+        fetch(`/api/resumo-eleicoes?cidade=${encodeURIComponent(alvo)}`),
+        fetch(`/api/candidatos-foto-divulgacand?municipio=${encodeURIComponent(alvo)}&ano=2024`),
+      ])
+      const json = await resEleicoes.json()
+      if (!resEleicoes.ok) throw new Error(json.error || 'Erro ao buscar resultados eleitorais')
       setDados(Array.isArray(json.resultados) ? json.resultados : [])
       setCidadeApi(json.cidade ?? alvo)
+
+      const jsonFotos = await resFotos.json().catch(() => ({}))
+      setFotos(resFotos.ok && Array.isArray(jsonFotos.fotos) ? jsonFotos.fotos : [])
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : 'Erro ao carregar eleições')
       setDados([])
       setCidadeApi(null)
+      setFotos([])
     } finally {
       setLoading(false)
     }
@@ -260,6 +348,12 @@ export function FichaAtendimentoResultadosEleicao({ municipio }: { municipio: st
   const partidos = useMemo(() => agruparPartido2024(dados), [dados])
 
   const semDados = !loading && dados.length === 0 && !error
+
+  const fotoExistenteModal = useMemo(() => {
+    if (!fotoModal) return null
+    const key = candidatoFotoLookupKey(fotoModal.cargo, fotoModal.candidato)
+    return fotosMap[key] ?? null
+  }, [fotoModal, fotosMap])
 
   return (
     <section className="rounded-2xl border border-card bg-surface p-5 shadow-sm min-w-0">
@@ -319,6 +413,9 @@ export function FichaAtendimentoResultadosEleicao({ municipio }: { municipio: st
             page={currentPage.prefeito_2024}
             onPageChange={(p) => setPage('prefeito_2024', p)}
             colunaExtra="partido"
+            cargoFoto="prefeito"
+            onDuploCliqueCandidato={(item, cargo) => setFotoModal({ candidato: item, cargo })}
+            onVerFicha={onVerFicha}
           />
           <TabelaCandidatos
             titulo="Vereador 2024"
@@ -326,6 +423,9 @@ export function FichaAtendimentoResultadosEleicao({ municipio }: { municipio: st
             page={currentPage.vereador_2024}
             onPageChange={(p) => setPage('vereador_2024', p)}
             colunaExtra="situacao"
+            cargoFoto="vereador"
+            onDuploCliqueCandidato={(item, cargo) => setFotoModal({ candidato: item, cargo })}
+            onVerFicha={onVerFicha}
           />
           <TabelaPartidos
             itens={partidos}
@@ -334,6 +434,24 @@ export function FichaAtendimentoResultadosEleicao({ municipio }: { municipio: st
           />
         </div>
       )}
+
+      <FichaCandidatoFotoModal
+        open={fotoModal != null}
+        municipio={municipio}
+        cargo={fotoModal?.cargo ?? 'prefeito'}
+        candidato={fotoModal?.candidato ?? null}
+        fotoExistente={fotoExistenteModal}
+        onClose={() => setFotoModal(null)}
+        onSaved={() => void carregarFotos(municipio)}
+        onImprimirFicha={
+          fotoModal && onImprimirFicha
+            ? () => {
+                onImprimirFicha(fotoModal.candidato, fotoModal.cargo)
+                setFotoModal(null)
+              }
+            : undefined
+        }
+      />
     </section>
   )
 }
