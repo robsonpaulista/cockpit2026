@@ -5,7 +5,10 @@ import { useRouter } from 'next/navigation'
 import { usePermissions } from '@/hooks/use-permissions'
 import { cn, formatDateShort } from '@/lib/utils'
 import { sidebarPrimaryCTAButtonClass } from '@/lib/sidebar-menu-active-style'
-import { FichaAtendimentoTetosBloco } from '@/components/ficha-atendimento-teto-card'
+import {
+  FichaAtendimentoTetosBloco,
+  type ResumosMacPapModalidade,
+} from '@/components/ficha-atendimento-teto-card'
 import { FichaAtendimentoEditarLimites } from '@/components/ficha-atendimento-editar-limites'
 import { FichaAtendimentoResultadosEleicao } from '@/components/ficha-atendimento-resultados-eleicao'
 import { FichaLiderancaResumo } from '@/components/ficha-lideranca-resumo'
@@ -240,8 +243,6 @@ export default function FichaAtendimentoPage() {
     [propostasFns],
   )
 
-  const limiteMac = limitesDb?.mac?.valor ?? null
-  const limitePap = limitesDb?.pap?.valor ?? null
   const populacao = municipioSel ? getPopulacaoMunicipio(populacaoLista, municipioSel) : null
   const classificacaoSuas = useMemo(() => {
     if (limitesDb?.classificacao_suas) {
@@ -254,14 +255,22 @@ export default function FichaAtendimentoPage() {
     return classificaPorteSuasFromFaixas(populacao, limitesDb?.suas_faixas)
   }, [limitesDb, populacao])
 
-  const resumoMac = useMemo(
-    () => calcularResumoMac(propostasFnsFiltradas, limiteMac),
-    [propostasFnsFiltradas, limiteMac],
-  )
-  const resumoPap = useMemo(
-    () => calcularResumoPap(propostasFnsFiltradas, limitePap),
-    [propostasFnsFiltradas, limitePap],
-  )
+  const resumosMacPap = useMemo((): ResumosMacPapModalidade => {
+    const macInd = limitesDb?.mac?.individual?.valor ?? null
+    const macCol = limitesDb?.mac?.coletiva?.valor ?? null
+    const papInd = limitesDb?.pap?.individual?.valor ?? null
+    const papCol = limitesDb?.pap?.coletiva?.valor ?? null
+    return {
+      mac: {
+        individual: calcularResumoMac(propostasFnsFiltradas, macInd, 'individual'),
+        coletiva: calcularResumoMac(propostasFnsFiltradas, macCol, 'coletiva'),
+      },
+      pap: {
+        individual: calcularResumoPap(propostasFnsFiltradas, papInd, 'individual'),
+        coletiva: calcularResumoPap(propostasFnsFiltradas, papCol, 'coletiva'),
+      },
+    }
+  }, [propostasFnsFiltradas, limitesDb])
 
   const totalSuasPropostas = useMemo(
     () => emendasSuas.reduce((acc, e) => acc + (e.valor_proposta || 0), 0),
@@ -446,11 +455,14 @@ export default function FichaAtendimentoPage() {
 
         <FichaAtendimentoTetosBloco
           municipio={municipioSel || null}
-          resumoMac={municipioSel ? resumoMac : null}
-          resumoPap={municipioSel ? resumoPap : null}
+          resumos={municipioSel ? resumosMacPap : {
+            mac: { individual: null, coletiva: null },
+            pap: { individual: null, coletiva: null },
+          }}
           resumoSuas={municipioSel ? resumoSuas : null}
           populacao={populacao}
           classificacaoSuas={classificacaoSuas}
+          exercicioAtivo={exercicioAtivo}
         />
 
         <FichaAtendimentoEditarLimites
@@ -668,7 +680,7 @@ export default function FichaAtendimentoPage() {
         </section>
 
         <p className="text-[11px] text-text-secondary pb-4">
-          MAC/PAP: limites em planilhas 2025; propostas via API pública do FNS. SUAS: teto calculado
+          MAC/PAP: limites por exercício (planilhas/ banco); propostas via API pública do FNS. SUAS: teto calculado
           pela população (arquivo IBGE local); propostas SUAS são registradas neste sistema (tabela{' '}
           <code className="text-[10px]">emendas_suas</code>).
         </p>

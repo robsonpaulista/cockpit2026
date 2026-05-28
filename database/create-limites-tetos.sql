@@ -15,11 +15,12 @@ CREATE TABLE IF NOT EXISTS public.limites_pap (
   exercicio INTEGER NOT NULL,
   municipio_chave TEXT NOT NULL,
   municipio_nome TEXT NOT NULL,
+  modalidade TEXT NOT NULL DEFAULT 'individual' CHECK (modalidade IN ('individual', 'coletiva')),
   ibge TEXT,
   valor NUMERIC(14, 2) NOT NULL DEFAULT 0,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  UNIQUE (exercicio, municipio_chave)
+  UNIQUE (exercicio, municipio_chave, modalidade)
 );
 
 CREATE INDEX IF NOT EXISTS idx_limites_pap_exercicio ON public.limites_pap (exercicio);
@@ -30,11 +31,12 @@ CREATE TABLE IF NOT EXISTS public.limites_mac_municipio (
   exercicio INTEGER NOT NULL,
   municipio_chave TEXT NOT NULL,
   municipio_nome TEXT NOT NULL,
+  modalidade TEXT NOT NULL DEFAULT 'individual' CHECK (modalidade IN ('individual', 'coletiva')),
   ibge TEXT,
   valor NUMERIC(14, 2) NOT NULL DEFAULT 0,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  UNIQUE (exercicio, municipio_chave)
+  UNIQUE (exercicio, municipio_chave, modalidade)
 );
 
 CREATE INDEX IF NOT EXISTS idx_limites_mac_exercicio ON public.limites_mac_municipio (exercicio);

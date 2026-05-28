@@ -6,11 +6,20 @@ import {
   mapearNomeMunicipio,
   normalizeMunicipioNome,
 } from '@/lib/fns-municipio-normalize'
-import type { LimitesMunicipioResponse, SuasFaixaPorte } from '@/lib/limites-tetos-types'
+import type {
+  LimiteMunicipioValor,
+  LimitesMacPapPorModalidade,
+  LimitesMunicipioResponse,
+  SuasFaixaPorte,
+} from '@/lib/limites-tetos-types'
 import { SUAS_FAIXAS_PADRAO } from '@/lib/limites-tetos-types'
 import { classificaPorteSuasFromFaixas } from '@/lib/suas-porte'
 import { getValorLimitePap } from '@/lib/limites-pap'
 import { getValorLimiteMac } from '@/lib/limites-mac'
+import {
+  isModalidadeLimite,
+  type ModalidadeLimite,
+} from '@/lib/emenda-modalidade'
 
 export function municipioChave(nomeMunicipio: string): string {
   return normalizeMunicipioNome(mapearNomeMunicipio(nomeMunicipio))
@@ -44,8 +53,15 @@ export interface MunicipioListaItem {
   municipio_chave: string
 }
 
-function getMunicipiosFromLocalJson(): MunicipioListaItem[] {
-  const filePath = path.join(process.cwd(), 'data', 'limites-pap-2025.json')
+function limitesPapJsonPath(exercicio: number): string {
+  const preferred = path.join(process.cwd(), 'data', `limites-pap-${exercicio}.json`)
+  if (fs.existsSync(preferred)) return preferred
+  return path.join(process.cwd(), 'data', 'limites-pap-2025.json')
+}
+
+function getMunicipiosFromLocalJson(exercicio?: number): MunicipioListaItem[] {
+  const ex = exercicio ?? 2025
+  const filePath = limitesPapJsonPath(ex)
   const fileContent = fs.readFileSync(filePath, 'utf8')
   const limitesData = JSON.parse(fileContent) as { municipio: string; ibge: string | number }[]
   const map = new Map<string, MunicipioListaItem>()
@@ -70,9 +86,9 @@ export async function getMunicipiosLista(
   supabase: SupabaseClient,
   exercicio?: number,
 ): Promise<MunicipioListaItem[]> {
-  /** Lista canônica: todos os municípios do PI (JSON). O banco só complementa IBGE/nome. */
-  const local = getMunicipiosFromLocalJson()
   const ex = exercicio ?? (await getExercicioAtivo(supabase))
+  /** Lista canônica: todos os municípios do PI (JSON). O banco só complementa IBGE/nome. */
+  const local = getMunicipiosFromLocalJson(ex)
 
   const { data: papRows, error } = await supabase
     .from('limites_pap')
@@ -111,6 +127,51 @@ function parseValorDb(v: unknown): number | null {
   return Number.isFinite(n) ? n : null
 }
 
+function limiteVazio(): LimiteMunicipioValor {
+  return { valor: null, ibge: null, municipio_nome: null }
+}
+
+function buildLimitesPorModalidade(
+  rows: Array<{
+    modalidade?: string | null
+    valor: unknown
+    ibge?: unknown
+    municipio_nome?: unknown
+  }>,
+): LimitesMacPapPorModalidade {
+  const par: LimitesMacPapPorModalidade = {
+    individual: limiteVazio(),
+    coletiva: limiteVazio(),
+  }
+  for (const row of rows) {
+    const modRaw = String(row.modalidade ?? 'individual')
+    const mod: ModalidadeLimite = isModalidadeLimite(modRaw) ? modRaw : 'individual'
+    par[mod] = {
+      valor: parseValorDb(row.valor),
+      ibge: row.ibge != null ? String(row.ibge) : null,
+      municipio_nome: row.municipio_nome != null ? String(row.municipio_nome) : null,
+    }
+  }
+  return par
+}
+
+function aplicarFallbackJson(
+  par: LimitesMacPapPorModalidade,
+  nomeMunicipio: string,
+  exercicio: number,
+  tipo: 'pap' | 'mac',
+): LimitesMacPapPorModalidade {
+  const getValor = tipo === 'pap' ? getValorLimitePap : getValorLimiteMac
+  const out = { ...par }
+  for (const mod of ['individual', 'coletiva'] as const) {
+    if (out[mod].valor == null) {
+      const v = getValor(nomeMunicipio, exercicio, mod)
+      if (v != null) out[mod] = { ...out[mod], valor: v }
+    }
+  }
+  return out
+}
+
 export async function getSuasFaixas(
   supabase: SupabaseClient,
   exercicio: number,
@@ -142,41 +203,31 @@ export async function getLimitesMunicipio(
   const ex = exercicio ?? (await getExercicioAtivo(supabase))
   const chave = municipioChave(nomeMunicipio)
 
-  const [{ data: pap }, { data: mac }, suasFaixas] = await Promise.all([
+  const [{ data: papRows }, { data: macRows }, suasFaixas] = await Promise.all([
     supabase
       .from('limites_pap')
-      .select('valor, ibge, municipio_nome')
+      .select('modalidade, valor, ibge, municipio_nome')
       .eq('exercicio', ex)
-      .eq('municipio_chave', chave)
-      .maybeSingle(),
+      .eq('municipio_chave', chave),
     supabase
       .from('limites_mac_municipio')
-      .select('valor, ibge, municipio_nome')
+      .select('modalidade, valor, ibge, municipio_nome')
       .eq('exercicio', ex)
-      .eq('municipio_chave', chave)
-      .maybeSingle(),
+      .eq('municipio_chave', chave),
     getSuasFaixas(supabase, ex),
   ])
 
   const classificacao = classificaPorteSuasFromFaixas(populacao, suasFaixas)
 
-  let papValor = parseValorDb(pap?.valor)
-  let macValor = parseValorDb(mac?.valor)
-  if (papValor == null) papValor = getValorLimitePap(nomeMunicipio)
-  if (macValor == null) macValor = getValorLimiteMac(nomeMunicipio)
+  let pap = buildLimitesPorModalidade(papRows ?? [])
+  let mac = buildLimitesPorModalidade(macRows ?? [])
+  pap = aplicarFallbackJson(pap, nomeMunicipio, ex, 'pap')
+  mac = aplicarFallbackJson(mac, nomeMunicipio, ex, 'mac')
 
   return {
     exercicio: ex,
-    pap: {
-      valor: papValor,
-      ibge: pap?.ibge != null ? String(pap.ibge) : null,
-      municipio_nome: pap?.municipio_nome != null ? String(pap.municipio_nome) : null,
-    },
-    mac: {
-      valor: macValor,
-      ibge: mac?.ibge != null ? String(mac.ibge) : null,
-      municipio_nome: mac?.municipio_nome != null ? String(mac.municipio_nome) : null,
-    },
+    pap,
+    mac,
     suas_faixas: suasFaixas,
     classificacao_suas: {
       porte: classificacao.porte,
@@ -192,22 +243,25 @@ export async function upsertLimitePap(
     exercicio: number
     municipio: string
     valor: number
+    modalidade?: ModalidadeLimite
     ibge?: string
     municipio_nome?: string
   },
 ): Promise<void> {
   const chave = municipioChave(params.municipio)
   const nome = params.municipio_nome ?? formatarNomeMunicipioLista(params.municipio)
+  const modalidade = params.modalidade ?? 'individual'
   await supabase.from('limites_pap').upsert(
     {
       exercicio: params.exercicio,
       municipio_chave: chave,
       municipio_nome: nome,
+      modalidade,
       ibge: params.ibge ?? null,
       valor: params.valor,
       updated_at: new Date().toISOString(),
     },
-    { onConflict: 'exercicio,municipio_chave' },
+    { onConflict: 'exercicio,municipio_chave,modalidade' },
   )
 }
 
@@ -217,22 +271,25 @@ export async function upsertLimiteMac(
     exercicio: number
     municipio: string
     valor: number
+    modalidade?: ModalidadeLimite
     ibge?: string
     municipio_nome?: string
   },
 ): Promise<void> {
   const chave = municipioChave(params.municipio)
   const nome = params.municipio_nome ?? formatarNomeMunicipioLista(params.municipio)
+  const modalidade = params.modalidade ?? 'individual'
   await supabase.from('limites_mac_municipio').upsert(
     {
       exercicio: params.exercicio,
       municipio_chave: chave,
       municipio_nome: nome,
+      modalidade,
       ibge: params.ibge ?? null,
       valor: params.valor,
       updated_at: new Date().toISOString(),
     },
-    { onConflict: 'exercicio,municipio_chave' },
+    { onConflict: 'exercicio,municipio_chave,modalidade' },
   )
 }
 
@@ -258,79 +315,138 @@ export async function saveSuasFaixas(
   }
 }
 
+function limitesMacJsonPath(exercicio: number): string {
+  const preferred = path.join(process.cwd(), 'data', `limites-mac-${exercicio}.json`)
+  if (fs.existsSync(preferred)) return preferred
+  return path.join(process.cwd(), 'data', 'limites-mac-2025.json')
+}
+
+function carregarListaJson<T>(paths: string[]): T[] {
+  const out: T[] = []
+  for (const p of paths) {
+    if (fs.existsSync(p)) {
+      out.push(...(JSON.parse(fs.readFileSync(p, 'utf8')) as T[]))
+    }
+  }
+  return out
+}
+
+function pathsPapImport(exercicio: number): string[] {
+  return [
+    limitesPapJsonPath(exercicio),
+    path.join(process.cwd(), 'data', `limites-pap-${exercicio}-coletivas.json`),
+  ]
+}
+
+function pathsMacImport(exercicio: number): string[] {
+  return [
+    limitesMacJsonPath(exercicio),
+    path.join(process.cwd(), 'data', `limites-mac-${exercicio}-coletivas.json`),
+  ]
+}
+
 export async function importLimitesFromJson(
   supabase: SupabaseClient,
   exercicio: number,
 ): Promise<{ pap: number; mac: number; suas_faixas: number }> {
-  const papPath = path.join(process.cwd(), 'data', 'limites-pap-2025.json')
-  const macPath = path.join(process.cwd(), 'data', 'limites-mac-2025.json')
+  const papPaths = pathsPapImport(exercicio)
+  const macPaths = pathsMacImport(exercicio)
 
-  const papLista = JSON.parse(fs.readFileSync(papPath, 'utf8')) as {
+  if (!papPaths.some((p) => fs.existsSync(p)) || !macPaths.some((p) => fs.existsSync(p))) {
+    throw new Error(
+      `Arquivos não encontrados para exercício ${exercicio}. Execute: node scripts/xlsx-to-json-limites-${exercicio}.mjs`,
+    )
+  }
+
+  const papLista = carregarListaJson<{
     municipio: string
     ibge: string | number
     valor: number
-  }[]
+    modalidade?: string
+  }>(papPaths)
 
-  const macLista = JSON.parse(fs.readFileSync(macPath, 'utf8')) as {
+  const macLista = carregarListaJson<{
     municipio: string
     ibge: string | number
     valor: number
-  }[]
+    modalidade?: string
+  }>(macPaths)
 
-  const papByMun = new Map<string, { ibge: string; nome: string; valor: number }>()
+  const papKey = (chave: string, mod: ModalidadeLimite) => `${chave}|${mod}`
+  const papByMun = new Map<string, { ibge: string; nome: string; valor: number; modalidade: ModalidadeLimite }>()
   for (const item of papLista) {
     const chave = normalizeMunicipioNome(item.municipio)
-    papByMun.set(chave, {
+    const modRaw = String(item.modalidade ?? 'individual')
+    const modalidade: ModalidadeLimite = isModalidadeLimite(modRaw) ? modRaw : 'individual'
+    papByMun.set(papKey(chave, modalidade), {
       ibge: String(item.ibge),
       nome: item.municipio,
       valor: item.valor,
+      modalidade,
     })
   }
 
-  const macByMun = new Map<string, { ibge: string; nome: string; valor: number }>()
+  const macKey = (chave: string, mod: ModalidadeLimite) => `${chave}|${mod}`
+  const macByMun = new Map<string, { ibge: string; nome: string; valor: number; modalidade: ModalidadeLimite }>()
   for (const item of macLista) {
     const chave = normalizeMunicipioNome(item.municipio)
-    const prev = macByMun.get(chave)
+    const modRaw = String(item.modalidade ?? 'individual')
+    const modalidade: ModalidadeLimite = isModalidadeLimite(modRaw) ? modRaw : 'individual'
+    const key = macKey(chave, modalidade)
+    const prev = macByMun.get(key)
     const add = item.valor || 0
     if (prev) {
       prev.valor += add
     } else {
-      macByMun.set(chave, {
+      macByMun.set(key, {
         ibge: String(item.ibge),
         nome: item.municipio,
         valor: add,
+        modalidade,
       })
     }
   }
 
-  const papRows = Array.from(papByMun.entries()).map(([chave, v]) => ({
-    exercicio,
-    municipio_chave: chave,
-    municipio_nome: formatarNomeMunicipioLista(v.nome),
-    ibge: v.ibge,
-    valor: v.valor,
-  }))
+  const papRows = Array.from(papByMun.entries()).map(([, v]) => {
+    const chave = normalizeMunicipioNome(v.nome)
+    return {
+      exercicio,
+      municipio_chave: chave,
+      municipio_nome: formatarNomeMunicipioLista(v.nome),
+      modalidade: v.modalidade,
+      ibge: v.ibge,
+      valor: v.valor,
+    }
+  })
 
-  const macRows = Array.from(macByMun.entries()).map(([chave, v]) => ({
-    exercicio,
-    municipio_chave: chave,
-    municipio_nome: formatarNomeMunicipioLista(v.nome),
-    ibge: v.ibge,
-    valor: v.valor,
-  }))
+  const macRows = Array.from(macByMun.entries()).map(([, v]) => {
+    const chave = normalizeMunicipioNome(v.nome)
+    return {
+      exercicio,
+      municipio_chave: chave,
+      municipio_nome: formatarNomeMunicipioLista(v.nome),
+      modalidade: v.modalidade,
+      ibge: v.ibge,
+      valor: v.valor,
+    }
+  })
 
   const batchSize = 200
   for (let i = 0; i < papRows.length; i += batchSize) {
     const { error } = await supabase
       .from('limites_pap')
-      .upsert(papRows.slice(i, i + batchSize), { onConflict: 'exercicio,municipio_chave' })
+      .upsert(papRows.slice(i, i + batchSize), {
+        onConflict: 'exercicio,municipio_chave,modalidade',
+      })
     if (error) throw error
   }
 
   for (let i = 0; i < macRows.length; i += batchSize) {
     const { error } = await supabase
       .from('limites_mac_municipio')
-      .upsert(macRows.slice(i, i + batchSize), { onConflict: 'exercicio,municipio_chave' })
+      .upsert(macRows.slice(i, i + batchSize), {
+        onConflict: 'exercicio,municipio_chave,modalidade',
+      })
     if (error) throw error
   }
 

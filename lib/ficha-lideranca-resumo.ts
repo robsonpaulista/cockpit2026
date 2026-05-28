@@ -1,3 +1,4 @@
+import type { ModalidadeLimite } from '@/lib/emenda-modalidade'
 import {
   calcularResumoMac,
   calcularResumoPap,
@@ -51,9 +52,11 @@ function somarCampoEmendas(
   }, 0)
 }
 
+export type ResumosPorModalidade = Record<ModalidadeLimite, ResumoTeto>
+
 export interface DadosFichaLideranca {
-  resumoMac: ResumoTeto
-  resumoPap: ResumoTeto
+  resumoMac: ResumosPorModalidade
+  resumoPap: ResumosPorModalidade
   resumoSuas: ResumoTeto
   classificacaoSuas: ClassificacaoSuas
   populacao: number | null
@@ -180,13 +183,33 @@ export function montarDadosFichaLideranca(params: {
   const exercicioAtivo = params.exercicioAtivo ?? 2025
   const limites = params.limitesDb
   const propostas = filtrarPropostasFns(params.propostasFns)
-  const limiteMac = limites?.mac?.valor ?? null
-  const limitePap = limites?.pap?.valor ?? null
   const tetoSuas = params.classificacaoSuas.valorNumerico
 
   return {
-    resumoMac: calcularResumoMac(propostas, limiteMac),
-    resumoPap: calcularResumoPap(propostas, limitePap),
+    resumoMac: {
+      individual: calcularResumoMac(
+        propostas,
+        limites?.mac?.individual?.valor ?? null,
+        'individual',
+      ),
+      coletiva: calcularResumoMac(
+        propostas,
+        limites?.mac?.coletiva?.valor ?? null,
+        'coletiva',
+      ),
+    },
+    resumoPap: {
+      individual: calcularResumoPap(
+        propostas,
+        limites?.pap?.individual?.valor ?? null,
+        'individual',
+      ),
+      coletiva: calcularResumoPap(
+        propostas,
+        limites?.pap?.coletiva?.valor ?? null,
+        'coletiva',
+      ),
+    },
     resumoSuas: calcularResumoSuas(tetoSuas, params.totalSuasPropostas, params.totalSuasPagar),
     classificacaoSuas: params.classificacaoSuas,
     populacao: params.populacao,

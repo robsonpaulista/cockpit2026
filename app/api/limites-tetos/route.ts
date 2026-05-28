@@ -12,6 +12,7 @@ import {
   upsertLimitePap,
 } from '@/lib/limites-tetos-db'
 import type { SuasFaixaPorte } from '@/lib/limites-tetos-types'
+import { isModalidadeLimite, type ModalidadeLimite } from '@/lib/emenda-modalidade'
 import { getPopulacaoMunicipio, type MunicipioPopulacao } from '@/lib/populacao-ibge-local'
 import fs from 'fs'
 import path from 'path'
@@ -130,12 +131,34 @@ export async function PUT(request: Request) {
     const ibge = body.ibge != null ? String(body.ibge) : undefined
     const municipio_nome = body.municipio_nome != null ? String(body.municipio_nome) : undefined
 
+    const modalidadeRaw = String(body.modalidade ?? 'individual').trim()
+    const modalidade: ModalidadeLimite = isModalidadeLimite(modalidadeRaw)
+      ? modalidadeRaw
+      : 'individual'
+
     if (tipo === 'pap') {
-      await upsertLimitePap(supabase, { exercicio, municipio, valor, ibge, municipio_nome })
+      await upsertLimitePap(supabase, {
+        exercicio,
+        municipio,
+        valor,
+        modalidade,
+        ibge,
+        municipio_nome,
+      })
     } else if (tipo === 'mac') {
-      await upsertLimiteMac(supabase, { exercicio, municipio, valor, ibge, municipio_nome })
+      await upsertLimiteMac(supabase, {
+        exercicio,
+        municipio,
+        valor,
+        modalidade,
+        ibge,
+        municipio_nome,
+      })
     } else {
-      return NextResponse.json({ error: 'Tipo inválido (pap, mac, suas_faixas, exercicio_ativo)' }, { status: 400 })
+      return NextResponse.json(
+        { error: 'Tipo inválido (pap, mac, suas_faixas, exercicio_ativo)' },
+        { status: 400 },
+      )
     }
 
     const populacaoLista = loadPopulacao()

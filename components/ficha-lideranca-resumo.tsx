@@ -21,6 +21,7 @@ import {
   type CargoFotoCandidato,
   type CandidatoFotoDivulgacand,
 } from '@/lib/candidatos-foto-divulgacand'
+import { MODALIDADE_LIMITE_LABEL } from '@/lib/emenda-modalidade'
 import {
   formatarMoedaFicha,
   formatarSaldoFicha,
@@ -256,37 +257,44 @@ export function FichaLiderancaResumo({
                   </p>
                 )}
 
-                <table className="w-full border-collapse">
-                  <thead>
-                    <tr>
-                      <th className={headCell} />
-                      <th className={cn(headCell, 'text-center')}>MAC</th>
-                      <th className={cn(headCell, 'text-center')}>PAP</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <CelulaDupla
-                      label="Limite (teto)"
-                      mac={formatarMoedaFicha(dados.resumoMac.limite)}
-                      pap={formatarMoedaFicha(dados.resumoPap.limite)}
-                    />
-                    <CelulaDupla
-                      label="Propostas"
-                      mac={formatarMoedaFicha(dados.resumoMac.propostas)}
-                      pap={formatarMoedaFicha(dados.resumoPap.propostas)}
-                    />
-                    <CelulaDupla
-                      label="Saldo"
-                      mac={formatarSaldoFicha(dados.resumoMac.saldo)}
-                      pap={formatarSaldoFicha(dados.resumoPap.saldo)}
-                    />
-                    <CelulaDupla
-                      label="A pagar"
-                      mac={formatarMoedaFicha(dados.resumoMac.valorPagar)}
-                      pap={formatarMoedaFicha(dados.resumoPap.valorPagar)}
-                    />
-                  </tbody>
-                </table>
+                {(['individual', 'coletiva'] as const).map((mod) => (
+                  <table key={mod} className="w-full border-collapse mb-2">
+                    <thead>
+                      <tr>
+                        <th className={headCell} colSpan={3}>
+                          Emendas {MODALIDADE_LIMITE_LABEL[mod]}
+                        </th>
+                      </tr>
+                      <tr>
+                        <th className={headCell} />
+                        <th className={cn(headCell, 'text-center')}>MAC</th>
+                        <th className={cn(headCell, 'text-center')}>PAP</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <CelulaDupla
+                        label="Limite (teto)"
+                        mac={formatarMoedaFicha(dados.resumoMac[mod].limite)}
+                        pap={formatarMoedaFicha(dados.resumoPap[mod].limite)}
+                      />
+                      <CelulaDupla
+                        label="Propostas"
+                        mac={formatarMoedaFicha(dados.resumoMac[mod].propostas)}
+                        pap={formatarMoedaFicha(dados.resumoPap[mod].propostas)}
+                      />
+                      <CelulaDupla
+                        label="Saldo"
+                        mac={formatarSaldoFicha(dados.resumoMac[mod].saldo)}
+                        pap={formatarSaldoFicha(dados.resumoPap[mod].saldo)}
+                      />
+                      <CelulaDupla
+                        label="A pagar"
+                        mac={formatarMoedaFicha(dados.resumoMac[mod].valorPagar)}
+                        pap={formatarMoedaFicha(dados.resumoPap[mod].valorPagar)}
+                      />
+                    </tbody>
+                  </table>
+                ))}
 
                 <table className="w-full border-collapse">
                   <tbody>

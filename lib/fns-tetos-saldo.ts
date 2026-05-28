@@ -1,5 +1,10 @@
 /** Cálculo de saldos MAC/PAP a partir de propostas FNS (mesma regra do jadyelapp). */
 
+import {
+  inferirModalidadePropostaFns,
+  type ModalidadeLimite,
+} from '@/lib/emenda-modalidade'
+
 export interface PropostaFns {
   nuProposta: string
   municipio: string
@@ -34,9 +39,13 @@ export function filtrarPropostasFns(propostas: PropostaFns[]): PropostaFns[] {
 export function calcularResumoMac(
   propostas: PropostaFns[],
   limite: number | null,
+  modalidade: ModalidadeLimite = 'individual',
 ): ResumoTeto {
   const lista = propostas.filter(
-    (p) => p.coTipoProposta && p.coTipoProposta.toUpperCase().includes('MAC'),
+    (p) =>
+      p.coTipoProposta &&
+      p.coTipoProposta.toUpperCase().includes('MAC') &&
+      inferirModalidadePropostaFns(p) === modalidade,
   )
   const propostasValor = lista.reduce((acc, p) => acc + (p.vlProposta || 0), 0)
   const valorPagar = lista.reduce((acc, p) => acc + (p.vlPagar || 0), 0)
@@ -47,9 +56,13 @@ export function calcularResumoMac(
 export function calcularResumoPap(
   propostas: PropostaFns[],
   limite: number | null,
+  modalidade: ModalidadeLimite = 'individual',
 ): ResumoTeto {
   const lista = propostas.filter(
-    (p) => p.coTipoProposta && p.coTipoProposta.toUpperCase().includes('PAP'),
+    (p) =>
+      p.coTipoProposta &&
+      p.coTipoProposta.toUpperCase().includes('PAP') &&
+      inferirModalidadePropostaFns(p) === modalidade,
   )
   const propostasValor = lista.reduce((acc, p) => acc + (p.vlProposta || 0), 0)
   const valorPagar = lista.reduce((acc, p) => acc + (p.vlPagar || 0), 0)

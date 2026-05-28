@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Loader2, Save, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { MODALIDADE_LIMITE_LABEL, type ModalidadeLimite } from '@/lib/emenda-modalidade'
 import type { LimitesMunicipioResponse, SuasFaixaPorte } from '@/lib/limites-tetos-types'
 import { SUAS_FAIXAS_PADRAO } from '@/lib/limites-tetos-types'
 
@@ -31,8 +32,10 @@ export function FichaAtendimentoEditarLimites({ open, municipio, onClose, onSave
   const [error, setError] = useState<string | null>(null)
   const [exercicio, setExercicio] = useState(2025)
   const [exercicioGlobal, setExercicioGlobal] = useState(2025)
-  const [papValor, setPapValor] = useState('')
-  const [macValor, setMacValor] = useState('')
+  const [papIndividual, setPapIndividual] = useState('')
+  const [papColetiva, setPapColetiva] = useState('')
+  const [macIndividual, setMacIndividual] = useState('')
+  const [macColetiva, setMacColetiva] = useState('')
   const [faixas, setFaixas] = useState<SuasFaixaPorte[]>(SUAS_FAIXAS_PADRAO)
 
   const load = useCallback(async () => {
@@ -59,8 +62,10 @@ export function FichaAtendimentoEditarLimites({ open, municipio, onClose, onSave
 
       setExercicio(limites.exercicio ?? exLoad)
 
-      setPapValor(formatInputMoney(limites.pap?.valor ?? null))
-      setMacValor(formatInputMoney(limites.mac?.valor ?? null))
+      setPapIndividual(formatInputMoney(limites.pap?.individual?.valor ?? null))
+      setPapColetiva(formatInputMoney(limites.pap?.coletiva?.valor ?? null))
+      setMacIndividual(formatInputMoney(limites.mac?.individual?.valor ?? null))
+      setMacColetiva(formatInputMoney(limites.mac?.coletiva?.valor ?? null))
       setFaixas(faixasData.faixas ?? limites.suas_faixas ?? SUAS_FAIXAS_PADRAO)
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : 'Erro ao carregar')
@@ -93,35 +98,26 @@ export function FichaAtendimentoEditarLimites({ open, municipio, onClose, onSave
     try {
       await saveExercicioAtivo()
 
-      const papRes = await fetch('/api/limites-tetos', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          tipo: 'pap',
-          exercicio,
-          municipio,
-          valor: parseInputMoney(papValor),
-        }),
-      })
-      if (!papRes.ok) {
-        const d = await papRes.json().catch(() => ({}))
-        throw new Error(d.error || 'Erro ao salvar PAP')
+      const salvarLimite = async (
+        tipo: 'pap' | 'mac',
+        modalidade: ModalidadeLimite,
+        valor: number,
+      ) => {
+        const res = await fetch('/api/limites-tetos', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ tipo, exercicio, municipio, modalidade, valor }),
+        })
+        if (!res.ok) {
+          const d = await res.json().catch(() => ({}))
+          throw new Error(d.error || `Erro ao salvar ${tipo.toUpperCase()} ${modalidade}`)
+        }
       }
 
-      const macRes = await fetch('/api/limites-tetos', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          tipo: 'mac',
-          exercicio,
-          municipio,
-          valor: parseInputMoney(macValor),
-        }),
-      })
-      if (!macRes.ok) {
-        const d = await macRes.json().catch(() => ({}))
-        throw new Error(d.error || 'Erro ao salvar MAC')
-      }
+      await salvarLimite('pap', 'individual', parseInputMoney(papIndividual))
+      await salvarLimite('pap', 'coletiva', parseInputMoney(papColetiva))
+      await salvarLimite('mac', 'individual', parseInputMoney(macIndividual))
+      await salvarLimite('mac', 'coletiva', parseInputMoney(macColetiva))
 
       const faixasRes = await fetch('/api/limites-tetos', {
         method: 'PUT',
@@ -249,34 +245,53 @@ export function FichaAtendimentoEditarLimites({ open, municipio, onClose, onSave
               </div>
 
               <p className="text-xs text-text-secondary">
-                Os valores abaixo valem para o município selecionado no exercício indicado. As faixas
-                SUAS são globais (por população) para todo o estado no mesmo exercício.
+                Tetos por modalidade (individual e coletiva) para o município no exercício indicado.
+                As faixas SUAS são globais (por população) para todo o estado.
               </p>
 
-              <div className="grid gap-3 sm:grid-cols-2">
-                <label className="flex flex-col gap-1">
-                  <span className="text-xs font-medium text-text-secondary">Limite PAP (R$)</span>
-                  <input
-                    type="text"
-                    inputMode="decimal"
-                    value={papValor}
-                    onChange={(e) => setPapValor(e.target.value)}
-                    placeholder="0,00"
-                    className="rounded-lg border border-card bg-background px-3 py-2 text-sm tabular-nums"
-                  />
-                </label>
-                <label className="flex flex-col gap-1">
-                  <span className="text-xs font-medium text-text-secondary">Limite MAC (R$)</span>
-                  <input
-                    type="text"
-                    inputMode="decimal"
-                    value={macValor}
-                    onChange={(e) => setMacValor(e.target.value)}
-                    placeholder="0,00"
-                    className="rounded-lg border border-card bg-background px-3 py-2 text-sm tabular-nums"
-                  />
-                </label>
-              </div>
+              {(['individual', 'coletiva'] as const).map((mod) => (
+                <div key={mod} className="space-y-2 rounded-lg border border-card/80 p-3">
+                  <h3 className="text-xs font-semibold text-text-primary">
+                    Emendas {MODALIDADE_LIMITE_LABEL[mod]}
+                  </h3>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <label className="flex flex-col gap-1">
+                      <span className="text-xs font-medium text-text-secondary">
+                        Limite PAP {MODALIDADE_LIMITE_LABEL[mod]} (R$)
+                      </span>
+                      <input
+                        type="text"
+                        inputMode="decimal"
+                        value={mod === 'individual' ? papIndividual : papColetiva}
+                        onChange={(e) =>
+                          mod === 'individual'
+                            ? setPapIndividual(e.target.value)
+                            : setPapColetiva(e.target.value)
+                        }
+                        placeholder="0,00"
+                        className="rounded-lg border border-card bg-background px-3 py-2 text-sm tabular-nums"
+                      />
+                    </label>
+                    <label className="flex flex-col gap-1">
+                      <span className="text-xs font-medium text-text-secondary">
+                        Limite MAC {MODALIDADE_LIMITE_LABEL[mod]} (R$)
+                      </span>
+                      <input
+                        type="text"
+                        inputMode="decimal"
+                        value={mod === 'individual' ? macIndividual : macColetiva}
+                        onChange={(e) =>
+                          mod === 'individual'
+                            ? setMacIndividual(e.target.value)
+                            : setMacColetiva(e.target.value)
+                        }
+                        placeholder="0,00"
+                        className="rounded-lg border border-card bg-background px-3 py-2 text-sm tabular-nums"
+                      />
+                    </label>
+                  </div>
+                </div>
+              ))}
 
               <div>
                 <h3 className="text-sm font-semibold text-text-primary mb-2">Faixas SUAS por porte</h3>
@@ -331,7 +346,9 @@ export function FichaAtendimentoEditarLimites({ open, municipio, onClose, onSave
                 disabled={importing}
                 className="text-xs text-accent-gold hover:underline disabled:opacity-50"
               >
-                {importing ? 'Importando…' : 'Importar limites dos arquivos JSON (carga inicial 2025)'}
+                {importing
+                  ? 'Importando…'
+                  : `Importar JSON individuais (ex. ${exercicio}) — coletivas em planilha separada`}
               </button>
             </>
           )}

@@ -5,16 +5,21 @@ export interface SuasFaixaPorte {
   valor: number
 }
 
+import type { ModalidadeLimite } from '@/lib/emenda-modalidade'
+
 export interface LimiteMunicipioValor {
   valor: number | null
   ibge: string | null
   municipio_nome: string | null
 }
 
+/** Tetos MAC ou PAP por modalidade (individual / coletiva). */
+export type LimitesMacPapPorModalidade = Record<ModalidadeLimite, LimiteMunicipioValor>
+
 export interface LimitesMunicipioResponse {
   exercicio: number
-  pap: LimiteMunicipioValor
-  mac: LimiteMunicipioValor
+  pap: LimitesMacPapPorModalidade
+  mac: LimitesMacPapPorModalidade
   suas_faixas: SuasFaixaPorte[]
   classificacao_suas: {
     porte: string
