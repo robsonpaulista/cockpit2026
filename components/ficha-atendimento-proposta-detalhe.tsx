@@ -64,6 +64,7 @@ export function FichaAtendimentoPropostaDetalhe({
 
         <div className="flex-1 overflow-y-auto px-5 py-4 space-y-3">
           <DetalheLinha label="Origem">{origem}</DetalheLinha>
+          <DetalheLinha label="Exercício">{proposta.exercicio ?? '—'}</DetalheLinha>
           <DetalheLinha label="Município">{proposta.municipio}</DetalheLinha>
           <DetalheLinha label="Tipo">{proposta.coTipoProposta || '—'}</DetalheLinha>
           <DetalheLinha label="Recurso">{proposta.dsTipoRecurso || '—'}</DetalheLinha>

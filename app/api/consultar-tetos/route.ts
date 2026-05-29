@@ -6,9 +6,11 @@ import {
   mapearNomeMunicipio,
   normalizeMunicipioNome,
 } from '@/lib/fns-municipio-normalize'
-import { getMunicipiosLista } from '@/lib/limites-tetos-db'
+import { fetchPropostasFnsFromApi } from '@/lib/fns-fetch'
+import type { PropostaFnsCompleta } from '@/lib/fns-proposta-normalize'
+import { getExercicioAtivo, getMunicipiosLista } from '@/lib/limites-tetos-db'
+import { getPropostasFnsArquivo } from '@/lib/propostas-fns-db'
 import { createClient } from '@/lib/supabase/server'
-import { normalizePropostaFns, type PropostaFnsCompleta } from '@/lib/fns-proposta-normalize'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 25
@@ -16,12 +18,6 @@ export const maxDuration = 25
 interface MunicipioFns {
   coMunicipioIbge: string
   noMunicipio: string
-}
-
-const HEADERS = {
-  Accept: 'application/json, text/plain, */*',
-  'User-Agent': 'Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N)',
-  Referer: 'https://consultafns.saude.gov.br/',
 }
 
 const cache = new Map<string, { data: unknown; timestamp: number }>()
@@ -75,68 +71,32 @@ async function getMunicipios(): Promise<MunicipioFns[]> {
   return getMunicipiosFromLocal()
 }
 
+/** Exercício corrente: FNS ao vivo (não persiste). Anos anteriores: arquivo no banco. */
 async function getPropostasByMunicipio(
   codigoIbge: string,
   nomeMunicipio: string,
+  ano: number,
+  exercicioAtivo: number,
   maxPages = 5,
-): Promise<PropostaFnsCompleta[]> {
-  const cacheKey = `propostas-${codigoIbge}`
-  const cached = getFromCache<PropostaFnsCompleta[]>(cacheKey)
-  if (cached) return cached
-
-  const propostas: PropostaFnsCompleta[] = []
-  let page = 1
-
-  try {
-    while (page <= maxPages) {
-      const url = 'https://consultafns.saude.gov.br/recursos/proposta/consultar'
-      const params = new URLSearchParams({
-        ano: '2025',
-        sgUf: 'PI',
-        coMunicipioIbge: codigoIbge,
-        count: '100',
-        page: page.toString(),
-        coEsfera: '',
-      })
-
-      const controller = new AbortController()
-      const timeoutId = setTimeout(() => controller.abort(), 5000)
-
-      const response = await fetch(`${url}?${params.toString()}`, {
-        headers: HEADERS,
-        signal: controller.signal,
-      })
-
-      clearTimeout(timeoutId)
-
-      if (!response.ok) break
-
-      const data = await response.json()
-      const propostasPage = data.resultado?.itensPagina || []
-
-      if (propostasPage.length === 0) break
-
-      propostas.push(
-        ...propostasPage.map((p: Record<string, unknown>) =>
-          normalizePropostaFns(p, nomeMunicipio),
-        ),
-      )
-
-      page++
-      await new Promise((resolve) => setTimeout(resolve, 200))
-    }
-
-    setCache(cacheKey, propostas)
-  } catch (error: unknown) {
-    const name = error instanceof Error ? error.name : ''
-    if (name === 'AbortError') {
-      console.error(`Timeout na consulta FNS: ${nomeMunicipio}`)
-    } else {
-      console.error(`Erro FNS ${nomeMunicipio}:`, error)
-    }
+): Promise<{ propostas: PropostaFnsCompleta[]; fonte: 'fns' | 'db' }> {
+  if (ano < exercicioAtivo) {
+    const supabase = createClient()
+    const propostas = await getPropostasFnsArquivo(supabase, ano, nomeMunicipio)
+    return { propostas, fonte: 'db' }
   }
 
-  return propostas
+  const cacheKey = `propostas-${ano}-${codigoIbge}`
+  const cached = getFromCache<PropostaFnsCompleta[]>(cacheKey)
+  if (cached) return { propostas: cached, fonte: 'fns' }
+
+  const propostas = await fetchPropostasFnsFromApi(
+    codigoIbge,
+    nomeMunicipio,
+    ano,
+    maxPages,
+  )
+  setCache(cacheKey, propostas)
+  return { propostas, fonte: 'fns' }
 }
 
 export async function GET(req: NextRequest) {
@@ -147,6 +107,12 @@ export async function GET(req: NextRequest) {
     const municipioParam = searchParams.get('municipio')
     const limit = parseInt(searchParams.get('limit') || '50', 10)
     const onlyMunicipios = searchParams.get('only_municipios') === 'true'
+    const anoParam = searchParams.get('ano')
+
+    const supabase = createClient()
+    const exercicioAtivo = await getExercicioAtivo(supabase)
+    const anoConsulta = anoParam ? parseInt(anoParam, 10) : exercicioAtivo
+    const ano = Number.isFinite(anoConsulta) ? anoConsulta : exercicioAtivo
 
     const municipios = await getMunicipios()
 
@@ -164,6 +130,7 @@ export async function GET(req: NextRequest) {
     }
 
     let allPropostas: PropostaFnsCompleta[] = []
+    let fonte: 'fns' | 'db' = ano >= exercicioAtivo ? 'fns' : 'db'
 
     if (municipioParam) {
       const nomeNormalizado = normalizeMunicipioNome(municipioParam)
@@ -177,17 +144,29 @@ export async function GET(req: NextRequest) {
       )
 
       if (municipioTarget) {
-        allPropostas = await getPropostasByMunicipio(
+        const result = await getPropostasByMunicipio(
           municipioTarget.coMunicipioIbge,
           municipioTarget.noMunicipio,
+          ano,
+          exercicioAtivo,
         )
+        allPropostas = result.propostas
+        fonte = result.fonte
       }
     } else {
-      const cacheKey = 'all-propostas'
+      const cacheKey = `all-propostas-${ano}`
       const cached = getFromCache<PropostaFnsCompleta[]>(cacheKey)
 
       if (cached) {
         allPropostas = cached
+      } else if (ano < exercicioAtivo) {
+        return NextResponse.json(
+          {
+            error:
+              'Consulta em lote disponível apenas para o exercício corrente. Informe ?municipio= para anos anteriores.',
+          },
+          { status: 400 },
+        )
       } else {
         const municipiosLimitados = municipios.slice(0, limit)
         const batchSize = 3
@@ -198,13 +177,19 @@ export async function GET(req: NextRequest) {
           const batch = municipiosLimitados.slice(i, i + batchSize)
           const propostasBatch = await Promise.allSettled(
             batch.map((m) =>
-              getPropostasByMunicipio(m.coMunicipioIbge, m.noMunicipio, 3),
+              getPropostasByMunicipio(
+                m.coMunicipioIbge,
+                m.noMunicipio,
+                ano,
+                exercicioAtivo,
+                3,
+              ),
             ),
           )
 
           propostasBatch.forEach((result) => {
             if (result.status === 'fulfilled') {
-              allPropostas.push(...result.value)
+              allPropostas.push(...result.value.propostas)
             }
           })
 
@@ -218,13 +203,16 @@ export async function GET(req: NextRequest) {
     }
 
     allPropostas.sort((a, b) => {
-      const dateA = new Date(a.dtCadastramento).getTime()
-      const dateB = new Date(b.dtCadastramento).getTime()
+      const dateA = a.dtCadastramento ? new Date(a.dtCadastramento).getTime() : 0
+      const dateB = b.dtCadastramento ? new Date(b.dtCadastramento).getTime() : 0
       return dateB - dateA
     })
 
     return NextResponse.json({
       propostas: allPropostas,
+      ano,
+      exercicio_ativo: exercicioAtivo,
+      fonte,
       municipios: municipios.map((m) => m.noMunicipio).sort((a, b) => a.localeCompare(b, 'pt-BR')),
       total_municipios: municipios.length,
       municipios_consultados: municipioParam ? 1 : limit,

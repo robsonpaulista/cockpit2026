@@ -26,6 +26,7 @@ export interface PropostaFnsCompleta {
   nmPrograma?: string
   acao?: string
   urlConsultaFns: string
+  exercicio?: number
 }
 
 function asRecord(v: unknown): Record<string, unknown> {
@@ -89,6 +90,7 @@ function inferirIdentificador(raw: Record<string, unknown>): string {
 export function normalizePropostaFns(
   raw: Record<string, unknown>,
   municipio: string,
+  exercicio?: number,
 ): PropostaFnsCompleta {
   const vlProposta = parseNum(raw.vlProposta)
   const vlPagar = parseNum(raw.vlPagar)
@@ -138,5 +140,6 @@ export function normalizePropostaFns(
     nmPrograma: raw.nmPrograma != null ? String(raw.nmPrograma) : undefined,
     acao: raw.acao != null ? String(raw.acao) : undefined,
     urlConsultaFns: URL_CONSULTA_FNS,
+    exercicio,
   }
 }

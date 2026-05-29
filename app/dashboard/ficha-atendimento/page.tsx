@@ -168,7 +168,7 @@ export default function FichaAtendimentoPage() {
     }
   }, [])
 
-  const loadFns = useCallback(async (municipio: string) => {
+  const loadFns = useCallback(async (municipio: string, ano: number) => {
     if (!municipio) {
       setPropostasFns([])
       return
@@ -179,7 +179,7 @@ export default function FichaAtendimentoPage() {
       const controller = new AbortController()
       const timeoutId = setTimeout(() => controller.abort(), 30_000)
       const res = await fetch(
-        `/api/consultar-tetos?municipio=${encodeURIComponent(municipio)}`,
+        `/api/consultar-tetos?municipio=${encodeURIComponent(municipio)}&ano=${ano}`,
         { signal: controller.signal },
       )
       clearTimeout(timeoutId)
@@ -233,10 +233,14 @@ export default function FichaAtendimentoPage() {
       setEmendasSuas([])
       return
     }
-    void loadFns(municipioSel)
     void loadSuas(municipioSel)
     void loadLimites(municipioSel)
-  }, [municipioSel, loadFns, loadSuas, loadLimites])
+  }, [municipioSel, loadSuas, loadLimites])
+
+  useEffect(() => {
+    if (!municipioSel || !exercicioAtivo) return
+    void loadFns(municipioSel, exercicioAtivo)
+  }, [municipioSel, exercicioAtivo, loadFns])
 
   const propostasFnsFiltradas = useMemo(
     () => filtrarPropostasFns(propostasFns),
@@ -255,6 +259,28 @@ export default function FichaAtendimentoPage() {
     return classificaPorteSuasFromFaixas(populacao, limitesDb?.suas_faixas)
   }, [limitesDb, populacao])
 
+  const linhasTabela = useMemo((): LinhaProposta[] => {
+    const fns: LinhaProposta[] = propostasFnsFiltradas.map((p) => ({ ...p, origem: 'FNS' }))
+    const suas: LinhaProposta[] = emendasSuas.map((e) => ({
+      nuProposta: `SUAS-${e.id.slice(0, 8)}`,
+      municipio: e.municipio,
+      vlProposta: e.valor_proposta,
+      vlPagar: e.valor_pagar,
+      coTipoProposta: e.tipo_proposta,
+      dsTipoRecurso: e.tipo_recurso,
+      dtCadastramento: e.created_at ?? '',
+      dsSituacaoProposta: 'Lançamento local',
+      exercicio: exercicioAtivo ?? undefined,
+      origem: 'SUAS',
+      emendaSuasId: e.id,
+    }))
+    return [...fns, ...suas].sort((a, b) => {
+      const da = a.dtCadastramento ? new Date(a.dtCadastramento).getTime() : 0
+      const db = b.dtCadastramento ? new Date(b.dtCadastramento).getTime() : 0
+      return db - da
+    })
+  }, [propostasFnsFiltradas, emendasSuas, exercicioAtivo])
+
   const resumosMacPap = useMemo((): ResumosMacPapModalidade => {
     const macInd = limitesDb?.mac?.individual?.valor ?? null
     const macCol = limitesDb?.mac?.coletiva?.valor ?? null
@@ -262,15 +288,15 @@ export default function FichaAtendimentoPage() {
     const papCol = limitesDb?.pap?.coletiva?.valor ?? null
     return {
       mac: {
-        individual: calcularResumoMac(propostasFnsFiltradas, macInd, 'individual'),
-        coletiva: calcularResumoMac(propostasFnsFiltradas, macCol, 'coletiva'),
+        individual: calcularResumoMac(linhasTabela, macInd, 'individual'),
+        coletiva: calcularResumoMac(linhasTabela, macCol, 'coletiva'),
       },
       pap: {
-        individual: calcularResumoPap(propostasFnsFiltradas, papInd, 'individual'),
-        coletiva: calcularResumoPap(propostasFnsFiltradas, papCol, 'coletiva'),
+        individual: calcularResumoPap(linhasTabela, papInd, 'individual'),
+        coletiva: calcularResumoPap(linhasTabela, papCol, 'coletiva'),
       },
     }
-  }, [propostasFnsFiltradas, limitesDb])
+  }, [linhasTabela, limitesDb])
 
   const totalSuasPropostas = useMemo(
     () => emendasSuas.reduce((acc, e) => acc + (e.valor_proposta || 0), 0),
@@ -291,30 +317,9 @@ export default function FichaAtendimentoPage() {
     [classificacaoSuas.valorNumerico, totalSuasPropostas, totalSuasPagar],
   )
 
-  const linhasTabela = useMemo((): LinhaProposta[] => {
-    const fns: LinhaProposta[] = propostasFnsFiltradas.map((p) => ({ ...p, origem: 'FNS' }))
-    const suas: LinhaProposta[] = emendasSuas.map((e) => ({
-      nuProposta: `SUAS-${e.id.slice(0, 8)}`,
-      municipio: e.municipio,
-      vlProposta: e.valor_proposta,
-      vlPagar: e.valor_pagar,
-      coTipoProposta: e.tipo_proposta,
-      dsTipoRecurso: e.tipo_recurso,
-      dtCadastramento: e.created_at ?? '',
-      dsSituacaoProposta: 'Lançamento local',
-      origem: 'SUAS',
-      emendaSuasId: e.id,
-    }))
-    return [...fns, ...suas].sort((a, b) => {
-      const da = a.dtCadastramento ? new Date(a.dtCadastramento).getTime() : 0
-      const db = b.dtCadastramento ? new Date(b.dtCadastramento).getTime() : 0
-      return db - da
-    })
-  }, [propostasFnsFiltradas, emendasSuas])
-
   const handleRefresh = () => {
     if (municipioSel) {
-      void loadFns(municipioSel)
+      if (exercicioAtivo) void loadFns(municipioSel, exercicioAtivo)
       void loadSuas(municipioSel)
       void loadLimites(municipioSel)
     }
@@ -523,8 +528,9 @@ export default function FichaAtendimentoPage() {
             <div>
               <h2 className="text-sm font-semibold text-text-primary">Propostas e lançamentos</h2>
               <p className="text-xs text-text-secondary mt-0.5">
-                FNS (exceto PROGRAMA) + SUAS local. Use o ícone de detalhes ou o link para o portal
-                Consulta FNS.
+                FNS (exceto PROGRAMA) + SUAS local
+                {exercicioAtivo ? ` · exercício ${exercicioAtivo} ao vivo no FNS` : ''}. Use o ícone
+                de detalhes ou o link para o portal Consulta FNS.
               </p>
             </div>
             <button
@@ -554,12 +560,13 @@ export default function FichaAtendimentoPage() {
               <table className="w-full table-fixed text-left text-sm lg:table-auto">
                 <colgroup>
                   <col className="w-[4.5rem] lg:w-[5%]" />
-                  <col className="w-[7.5rem] lg:w-[14%]" />
+                  <col className="w-[7.5rem] lg:w-[12%]" />
+                  <col className="w-[3.5rem] lg:w-[6%]" />
                   <col className="w-[5.5rem] lg:w-[10%]" />
-                  <col className="hidden sm:table-column lg:w-[18%]" />
+                  <col className="hidden sm:table-column lg:w-[16%]" />
                   <col className="hidden md:table-column lg:w-[12%]" />
-                  <col className="w-[6.5rem] lg:w-[11%]" />
-                  <col className="w-[6.5rem] lg:w-[11%]" />
+                  <col className="w-[6.5rem] lg:w-[10%]" />
+                  <col className="w-[6.5rem] lg:w-[10%]" />
                   <col className="w-[5.5rem] lg:w-[8%]" />
                   <col className="w-16 lg:w-[5%]" />
                 </colgroup>
@@ -567,6 +574,7 @@ export default function FichaAtendimentoPage() {
                   <tr className="border-b border-card text-xs text-text-secondary">
                     <th className="py-2 pr-2 font-medium lg:pr-3">Origem</th>
                     <th className="py-2 pr-2 font-medium lg:pr-3">Proposta</th>
+                    <th className="py-2 pr-2 font-medium lg:pr-3">Exerc.</th>
                     <th className="py-2 pr-2 font-medium lg:pr-3">Tipo</th>
                     <th className="hidden py-2 pr-2 font-medium sm:table-cell lg:pr-3">Recurso</th>
                     <th className="hidden py-2 pr-2 font-medium md:table-cell lg:pr-3">Situação</th>
@@ -593,6 +601,9 @@ export default function FichaAtendimentoPage() {
                       </td>
                       <td className="py-2.5 pr-2 font-mono text-xs truncate lg:pr-3" title={row.nuProposta}>
                         {row.nuProposta}
+                      </td>
+                      <td className="py-2.5 pr-2 tabular-nums text-text-secondary lg:pr-3">
+                        {row.exercicio ?? (row.origem === 'SUAS' ? exercicioAtivo : '—')}
                       </td>
                       <td className="py-2.5 pr-2 truncate lg:pr-3" title={row.coTipoProposta || ''}>
                         {row.coTipoProposta || '—'}

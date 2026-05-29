@@ -2,6 +2,8 @@
 
 import {
   inferirModalidadePropostaFns,
+  isPropostaTipoMac,
+  isPropostaTipoPap,
   type ModalidadeLimite,
 } from '@/lib/emenda-modalidade'
 
@@ -23,6 +25,7 @@ export interface PropostaFns {
   nmPrograma?: string
   acao?: string
   urlConsultaFns?: string
+  exercicio?: number
 }
 
 export interface ResumoTeto {
@@ -43,8 +46,7 @@ export function calcularResumoMac(
 ): ResumoTeto {
   const lista = propostas.filter(
     (p) =>
-      p.coTipoProposta &&
-      p.coTipoProposta.toUpperCase().includes('MAC') &&
+      isPropostaTipoMac(p.coTipoProposta) &&
       inferirModalidadePropostaFns(p) === modalidade,
   )
   const propostasValor = lista.reduce((acc, p) => acc + (p.vlProposta || 0), 0)
@@ -60,8 +62,7 @@ export function calcularResumoPap(
 ): ResumoTeto {
   const lista = propostas.filter(
     (p) =>
-      p.coTipoProposta &&
-      p.coTipoProposta.toUpperCase().includes('PAP') &&
+      isPropostaTipoPap(p.coTipoProposta) &&
       inferirModalidadePropostaFns(p) === modalidade,
   )
   const propostasValor = lista.reduce((acc, p) => acc + (p.vlProposta || 0), 0)

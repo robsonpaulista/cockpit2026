@@ -13,12 +13,32 @@ export function isModalidadeLimite(v: string): v is ModalidadeLimite {
   return v === 'individual' || v === 'coletiva'
 }
 
-/** Classifica proposta FNS para confronto com o teto da mesma modalidade. */
+function normalizarTextoEmenda(valor: string): string {
+  return valor
+    .trim()
+    .toUpperCase()
+    .normalize('NFD')
+    .replace(/\p{M}/gu, '')
+}
+
+/** Classifica proposta (coluna Recurso) para confronto com o teto da mesma modalidade. */
 export function inferirModalidadePropostaFns(campos: {
   dsTipoRecurso?: string
   coTipoProposta?: string
-}): ModalidadeLimite {
-  const texto = `${campos.dsTipoRecurso ?? ''} ${campos.coTipoProposta ?? ''}`.toUpperCase()
-  if (texto.includes('COLETIV')) return 'coletiva'
-  return 'individual'
+}): ModalidadeLimite | null {
+  const recurso = normalizarTextoEmenda(campos.dsTipoRecurso ?? '')
+  if (!recurso) return null
+  if (recurso.includes('COMISSAO') || recurso.includes('BANCADA')) return 'coletiva'
+  if (recurso.includes('INDIVIDUAL')) return 'individual'
+  return null
+}
+
+export function isPropostaTipoMac(coTipoProposta?: string): boolean {
+  const tipo = normalizarTextoEmenda(coTipoProposta ?? '')
+  return tipo.includes('MAC')
+}
+
+export function isPropostaTipoPap(coTipoProposta?: string): boolean {
+  const tipo = normalizarTextoEmenda(coTipoProposta ?? '')
+  return tipo.includes('PAP')
 }
