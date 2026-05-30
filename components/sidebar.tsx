@@ -154,6 +154,12 @@ const menuItems: SidebarMenuItem[] = [
         icon: 'History',
         href: '/dashboard/resumo-eleicoes/historico',
       },
+      {
+        id: 'resumo-eleicoes-secao',
+        label: 'Por seção',
+        icon: 'MapPinned',
+        href: '/dashboard/resumo-eleicoes/secao',
+      },
     ],
   },
   {
@@ -301,7 +307,8 @@ function pageKeyForItem(id: string): string {
   if (
     id === 'resumo-eleicoes-menu' ||
     id === 'resumo-eleicoes-principal' ||
-    id === 'resumo-eleicoes-historico'
+    id === 'resumo-eleicoes-historico' ||
+    id === 'resumo-eleicoes-secao'
   ) {
     return 'resumo-eleicoes'
   }

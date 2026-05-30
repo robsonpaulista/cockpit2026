@@ -3,7 +3,7 @@
 import { useMemo, useState, useEffect } from 'react'
 import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
-import { RefreshCw, AlertCircle, Crown, X, Users, Vote, BarChart3, UserCheck, ArrowUpRight, FileText, Loader2, Bot } from 'lucide-react'
+import { RefreshCw, AlertCircle, Crown, X, Users, Vote, BarChart3, UserCheck, ArrowUpRight, FileText, Loader2, Bot, MapPinned } from 'lucide-react'
 import { getEleitoradoByCity } from '@/lib/eleitores'
 import { CityDemandsModal } from '@/components/city-demands-modal'
 import { PollReportsHistoryModal } from '@/components/poll-reports-history-modal'
@@ -1508,11 +1508,18 @@ export default function ResumoEleicoesPage() {
               Demandas
             </button>
             <Link
-              href="/dashboard/resumo-eleicoes/historico"
+              href={`/dashboard/resumo-eleicoes/historico${cidade ? `?cidade=${encodeURIComponent(cidade)}` : ''}`}
               className="flex h-10 items-center gap-2 rounded-lg border border-card bg-surface px-4 text-sm font-medium text-text-primary hover:bg-background"
             >
               <BarChart3 className="h-4 w-4" />
               Histórico
+            </Link>
+            <Link
+              href={`/dashboard/resumo-eleicoes/secao${cidade ? `?cidade=${encodeURIComponent(cidade)}` : ''}`}
+              className="flex h-10 items-center gap-2 rounded-lg border border-card bg-surface px-4 text-sm font-medium text-text-primary hover:bg-background"
+            >
+              <MapPinned className="h-4 w-4" />
+              Por seção
             </Link>
           </div>
         </div>
@@ -1683,10 +1690,16 @@ export default function ResumoEleicoesPage() {
             </span>
             <div className="flex items-center gap-2">
               <Link
-                href="/dashboard/resumo-eleicoes/historico"
+                href={`/dashboard/resumo-eleicoes/historico${cidade ? `?cidade=${encodeURIComponent(cidade)}` : ''}`}
                 className="rounded border border-card bg-surface px-2 py-1 text-text-secondary hover:bg-background"
               >
                 Histórico
+              </Link>
+              <Link
+                href={`/dashboard/resumo-eleicoes/secao${cidade ? `?cidade=${encodeURIComponent(cidade)}&cargo=Prefeito` : ''}`}
+                className="rounded border border-card bg-surface px-2 py-1 text-text-secondary hover:bg-background"
+              >
+                Por seção
               </Link>
               <button
                 type="button"
