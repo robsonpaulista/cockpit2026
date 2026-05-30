@@ -16,17 +16,26 @@ import { cn } from '@/lib/utils'
 import { normalizeMunicipioComparacao } from '@/lib/votacao-secao'
 import type { VotacaoSecaoItem, VotacaoSecaoResumo } from '@/lib/votacao-secao'
 import {
+  agruparMatrizPorBairro,
   agruparMatrizPorLocal,
+  contarBairrosMatriz,
   idsCandidatosPadrao,
   listarCandidatosSecao,
   montarMatrizVotacaoSecao,
   type CandidatoMatrizColuna,
+  type GrupoBairroMatriz,
   type GrupoLocalMatriz,
   type LinhaMatrizSecao,
 } from '@/lib/votacao-secao-matriz'
 
 const LOCAIS_POR_PAGINA = 25
+const BAIRROS_POR_PAGINA = 20
 const CARGOS = ['Prefeito', 'Vereador'] as const
+const AGRUPAMENTOS = [
+  { id: 'local', label: 'Por local' },
+  { id: 'bairro', label: 'Por bairro' },
+] as const
+type AgrupamentoMatriz = (typeof AGRUPAMENTOS)[number]['id']
 
 function normalizeCityName(city: string): string {
   return normalizeMunicipioComparacao(city)
@@ -45,7 +54,9 @@ export default function VotacaoSecaoPage() {
   const [pagina, setPagina] = useState(1)
   const [candidatosSel, setCandidatosSel] = useState<string[]>([])
   const [buscaCandidato, setBuscaCandidato] = useState('')
+  const [agrupamento, setAgrupamento] = useState<AgrupamentoMatriz>('bairro')
   const [locaisExpandidos, setLocaisExpandidos] = useState<Set<string>>(new Set())
+  const [bairrosExpandidos, setBairrosExpandidos] = useState<Set<string>>(new Set())
 
   useEffect(() => {
     fetch('/api/resumo-eleicoes/votacao-secao?only_municipios=true')
@@ -76,6 +87,7 @@ export default function VotacaoSecaoPage() {
     setError(null)
     setPagina(1)
     setLocaisExpandidos(new Set())
+    setBairrosExpandidos(new Set())
     try {
       const params = new URLSearchParams({ cidade: alvo, cargo: cargoSel })
       const res = await fetch(`/api/resumo-eleicoes/votacao-secao?${params.toString()}`)
@@ -115,14 +127,47 @@ export default function VotacaoSecaoPage() {
     [matriz.linhas],
   )
 
-  const totalPaginas = Math.max(1, Math.ceil(gruposLocal.length / LOCAIS_POR_PAGINA))
-  const gruposPagina = useMemo(() => {
+  const gruposBairro = useMemo(
+    () => agruparMatrizPorBairro(matriz.linhas),
+    [matriz.linhas],
+  )
+
+  const totalBairros = useMemo(() => contarBairrosMatriz(matriz.linhas), [matriz.linhas])
+  const secoesComBairro = useMemo(
+    () => matriz.linhas.filter((l) => l.nmBairro?.trim()).length,
+    [matriz.linhas],
+  )
+
+  const totalPaginas =
+    agrupamento === 'bairro'
+      ? Math.max(1, Math.ceil(gruposBairro.length / BAIRROS_POR_PAGINA))
+      : Math.max(1, Math.ceil(gruposLocal.length / LOCAIS_POR_PAGINA))
+
+  const gruposLocalPagina = useMemo(() => {
     const start = (pagina - 1) * LOCAIS_POR_PAGINA
     return gruposLocal.slice(start, start + LOCAIS_POR_PAGINA)
   }, [gruposLocal, pagina])
 
-  const toggleLocal = (id: string) => {
+  const gruposBairroPagina = useMemo(() => {
+    const start = (pagina - 1) * BAIRROS_POR_PAGINA
+    return gruposBairro.slice(start, start + BAIRROS_POR_PAGINA)
+  }, [gruposBairro, pagina])
+
+  const chaveLocalExpandido = (bairroId: string | null, localId: string) =>
+    bairroId ? `${bairroId}::${localId}` : localId
+
+  const toggleLocal = (localId: string, bairroId: string | null = null) => {
+    const key = chaveLocalExpandido(bairroId, localId)
     setLocaisExpandidos((prev) => {
+      const next = new Set(prev)
+      if (next.has(key)) next.delete(key)
+      else next.add(key)
+      return next
+    })
+  }
+
+  const toggleBairro = (id: string) => {
+    setBairrosExpandidos((prev) => {
       const next = new Set(prev)
       if (next.has(id)) next.delete(id)
       else next.add(id)
@@ -130,12 +175,22 @@ export default function VotacaoSecaoPage() {
     })
   }
 
-  const expandirTodosLocais = () => {
+  const expandirTodos = () => {
+    if (agrupamento === 'bairro') {
+      setBairrosExpandidos(new Set(gruposBairro.map((g) => g.id)))
+      setLocaisExpandidos(
+        new Set(
+          gruposBairro.flatMap((b) => b.locais.map((l) => chaveLocalExpandido(b.id, l.id))),
+        ),
+      )
+      return
+    }
     setLocaisExpandidos(new Set(gruposLocal.map((g) => g.id)))
   }
 
-  const recolherTodosLocais = () => {
+  const recolherTodos = () => {
     setLocaisExpandidos(new Set())
+    setBairrosExpandidos(new Set())
   }
 
   const candidatosDisponiveisFiltrados = useMemo(() => {
@@ -216,6 +271,25 @@ export default function VotacaoSecaoPage() {
               ))}
             </select>
           </label>
+          <label className="flex min-w-[10rem] flex-col gap-1">
+            <span className="text-xs font-medium text-text-secondary">Agrupar</span>
+            <select
+              value={agrupamento}
+              onChange={(e) => {
+                setAgrupamento(e.target.value as AgrupamentoMatriz)
+                setPagina(1)
+                recolherTodos()
+              }}
+              disabled={!cidade || loading}
+              className="rounded-lg border border-card bg-background px-3 py-2 text-sm text-text-primary"
+            >
+              {AGRUPAMENTOS.map((a) => (
+                <option key={a.id} value={a.id}>
+                  {a.label}
+                </option>
+              ))}
+            </select>
+          </label>
           <button
             type="button"
             onClick={() => void carregar(cidade, cargo)}
@@ -249,13 +323,31 @@ export default function VotacaoSecaoPage() {
 
         {!loading && resumo && secoes.length > 0 && (
           <>
-            <div className="mb-4 grid grid-cols-2 gap-3 md:grid-cols-5">
+            <div className="mb-4 grid grid-cols-2 gap-3 md:grid-cols-6">
               <ResumoCard label="Município" valor={resumo.municipio} />
               <ResumoCard label="Cargo" valor={cargo} />
               <ResumoCard label="Seções" valor={resumo.totalSecoes.toLocaleString('pt-BR')} />
+              <ResumoCard label="Bairros" valor={String(totalBairros)} />
               <ResumoCard label="Candidatos no cargo" valor={String(todosCandidatos.length)} />
               <ResumoCard label="Exercício" valor={`${resumo.anoEleicao} · ${resumo.nrTurno}º turno`} />
             </div>
+
+            {secoesComBairro === 0 && (
+              <div className="mb-4 rounded-xl border border-accent-gold/30 bg-accent-gold/10 px-4 py-3 text-xs text-text-secondary">
+                Bairros ainda não carregados no banco. Execute{' '}
+                <code className="rounded bg-background px-1">database/alter-votacao-secao-bairro.sql</code>{' '}
+                e{' '}
+                <code className="rounded bg-background px-1">python scripts/enrich-votacao-secao-bairro.py</code>.
+              </div>
+            )}
+
+            {secoesComBairro > 0 && agrupamento === 'local' && (
+              <div className="mb-4 rounded-xl border border-card bg-background/40 px-4 py-2 text-xs text-text-secondary">
+                Bairro oficial TSE disponível ({totalBairros} no município). Use{' '}
+                <strong className="font-medium text-text-primary">Agrupar → Por bairro</strong> para comparar
+                candidatos por região.
+              </div>
+            )}
 
             <div className="mb-4 rounded-2xl border border-card bg-surface p-4">
               <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
@@ -348,19 +440,21 @@ export default function VotacaoSecaoPage() {
             <div className="overflow-hidden rounded-2xl border border-card bg-surface">
               <div className="flex flex-wrap items-center justify-between gap-2 border-b border-card px-4 py-2 text-xs text-text-secondary">
                 <span>
-                  Locais agrupados · expanda para ver seções · colunas = candidatos selecionados
+                  {agrupamento === 'bairro'
+                    ? 'Bairros (TSE) · expanda para locais e seções · colunas = candidatos'
+                    : 'Locais agrupados · expanda para seções · colunas = candidatos'}
                 </span>
                 <div className="flex gap-2">
                   <button
                     type="button"
-                    onClick={expandirTodosLocais}
+                    onClick={expandirTodos}
                     className="rounded border border-card px-2 py-1 hover:bg-background"
                   >
                     Expandir todos
                   </button>
                   <button
                     type="button"
-                    onClick={recolherTodosLocais}
+                    onClick={recolherTodos}
                     className="rounded border border-card px-2 py-1 hover:bg-background"
                   >
                     Recolher todos
@@ -372,7 +466,7 @@ export default function VotacaoSecaoPage() {
                   <thead>
                     <tr className="border-b border-card bg-background/70">
                       <th className="sticky left-0 z-20 min-w-[18rem] bg-background/95 px-2 py-2 font-medium backdrop-blur">
-                        Local / Seção
+                        {agrupamento === 'bairro' ? 'Bairro / Local / Seção' : 'Local / Seção'}
                       </th>
                       {matriz.candidatos.map((c) => (
                         <th
@@ -389,21 +483,33 @@ export default function VotacaoSecaoPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {gruposPagina.map((grupo) => {
-                      const expandido = locaisExpandidos.has(grupo.id)
-                      const multiSecao = grupo.totalSecoes > 1
+                    {agrupamento === 'bairro'
+                      ? gruposBairroPagina.map((grupo) => (
+                          <GrupoBairroRows
+                            key={grupo.id}
+                            grupo={grupo}
+                            candidatos={matriz.candidatos}
+                            bairroExpandido={bairrosExpandidos.has(grupo.id)}
+                            locaisExpandidos={locaisExpandidos}
+                            onToggleBairro={() => toggleBairro(grupo.id)}
+                            onToggleLocal={(localId) => toggleLocal(localId, grupo.id)}
+                          />
+                        ))
+                      : gruposLocalPagina.map((grupo) => {
+                          const expandido = locaisExpandidos.has(grupo.id)
+                          const multiSecao = grupo.totalSecoes > 1
 
-                      return (
-                        <GrupoLocalRows
-                          key={grupo.id}
-                          grupo={grupo}
-                          candidatos={matriz.candidatos}
-                          expandido={expandido}
-                          multiSecao={multiSecao}
-                          onToggle={() => toggleLocal(grupo.id)}
-                        />
-                      )
-                    })}
+                          return (
+                            <GrupoLocalRows
+                              key={grupo.id}
+                              grupo={grupo}
+                              candidatos={matriz.candidatos}
+                              expandido={expandido}
+                              multiSecao={multiSecao}
+                              onToggle={() => toggleLocal(grupo.id)}
+                            />
+                          )
+                        })}
                   </tbody>
                   <tfoot>
                     <tr className="border-t border-card bg-background/80 font-semibold">
@@ -422,8 +528,10 @@ export default function VotacaoSecaoPage() {
               {totalPaginas > 1 && (
                 <div className="flex items-center justify-between border-t border-card px-4 py-3 text-xs text-text-secondary">
                   <span>
-                    Página {pagina} de {totalPaginas} · {gruposLocal.length} locais ·{' '}
-                    {matriz.linhas.length} seções
+                    Página {pagina} de {totalPaginas}
+                    {agrupamento === 'bairro'
+                      ? ` · ${gruposBairro.length} bairros · ${matriz.linhas.length} seções`
+                      : ` · ${gruposLocal.length} locais · ${matriz.linhas.length} seções`}
                   </span>
                   <div className="flex gap-2">
                     <button
@@ -449,6 +557,43 @@ export default function VotacaoSecaoPage() {
           </>
         )}
       </div>
+    </div>
+  )
+}
+
+function BadgeBairro({ bairro }: { bairro: string | null | undefined }) {
+  const nome = bairro?.trim()
+  if (!nome) return null
+  return (
+    <span className="inline-flex rounded-full border border-accent-gold/40 bg-accent-gold/10 px-2 py-0.5 text-[10px] font-medium text-text-primary">
+      {nome}
+    </span>
+  )
+}
+
+function MetaLocalSecao({
+  nrZona,
+  nrSecao,
+  nrLocalVotacao,
+  nmBairro,
+  endereco,
+  ocultarBairro = false,
+}: {
+  nrZona: number
+  nrSecao: number
+  nrLocalVotacao: number | null
+  nmBairro: string | null | undefined
+  endereco: string | null | undefined
+  ocultarBairro?: boolean
+}) {
+  return (
+    <div className="mt-1 flex flex-wrap items-center gap-x-1 gap-y-1 text-[10px] text-text-secondary">
+      <span>
+        Zona {nrZona} · Seção {nrSecao}
+        {nrLocalVotacao != null ? ` · Local ${nrLocalVotacao}` : ''}
+      </span>
+      {!ocultarBairro ? <BadgeBairro bairro={nmBairro} /> : null}
+      {endereco ? <span className="basis-full sm:basis-auto">· {endereco}</span> : null}
     </div>
   )
 }
@@ -486,32 +631,135 @@ function CelulasVotosMatriz({
   )
 }
 
+function GrupoBairroRows({
+  grupo,
+  candidatos,
+  bairroExpandido,
+  locaisExpandidos,
+  onToggleBairro,
+  onToggleLocal,
+}: {
+  grupo: GrupoBairroMatriz
+  candidatos: CandidatoMatrizColuna[]
+  bairroExpandido: boolean
+  locaisExpandidos: Set<string>
+  onToggleBairro: () => void
+  onToggleLocal: (localId: string) => void
+}) {
+  const localUnico = grupo.totalLocais === 1 ? grupo.locais[0] : null
+
+  // 1 local · 1 seção → linha única do bairro (sem badge duplicado)
+  if (localUnico && localUnico.totalSecoes === 1) {
+    const secao = localUnico.secoes[0]
+    const endereco = localUnico.dsEndereco?.trim()
+    return (
+      <tr className="border-b border-card/50 bg-accent-gold/5 hover:bg-accent-gold/10">
+        <td className="sticky left-0 z-10 bg-accent-gold/5 px-2 py-2">
+          <div className="font-semibold text-text-primary">{grupo.nmBairro}</div>
+          <div className="mt-0.5 font-medium text-text-primary">
+            {localUnico.nmLocalVotacao || 'Local não informado'}
+          </div>
+          <MetaLocalSecao
+            nrZona={localUnico.nrZona}
+            nrSecao={secao.nrSecao}
+            nrLocalVotacao={localUnico.nrLocalVotacao}
+            nmBairro={null}
+            endereco={endereco}
+            ocultarBairro
+          />
+        </td>
+        <CelulasVotosMatriz candidatos={candidatos} votos={grupo.votos} liderId={grupo.liderId} />
+      </tr>
+    )
+  }
+
+  const rotuloContagem =
+    grupo.totalLocais === 1
+      ? `${grupo.totalSecoes} seções`
+      : `${grupo.totalLocais} locais · ${grupo.totalSecoes} seções`
+
+  return (
+    <>
+      <tr className="border-b border-card/50 bg-accent-gold/5 hover:bg-accent-gold/10">
+        <td className="sticky left-0 z-10 bg-accent-gold/5 px-2 py-2">
+          <button
+            type="button"
+            onClick={onToggleBairro}
+            className="flex w-full items-start gap-2 text-left"
+            aria-expanded={bairroExpandido}
+          >
+            <span className="mt-0.5 shrink-0 text-text-secondary">
+              {bairroExpandido ? (
+                <ChevronDown className="h-4 w-4" />
+              ) : (
+                <ChevronRight className="h-4 w-4" />
+              )}
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="flex flex-wrap items-center gap-2">
+                <span className="font-semibold text-text-primary">{grupo.nmBairro}</span>
+                <span className="rounded-full border border-card bg-surface px-2 py-0.5 text-[10px] tabular-nums text-text-secondary">
+                  {rotuloContagem}
+                </span>
+              </span>
+            </span>
+          </button>
+        </td>
+        <CelulasVotosMatriz candidatos={candidatos} votos={grupo.votos} liderId={grupo.liderId} />
+      </tr>
+      {bairroExpandido
+        ? grupo.locais.map((local) => (
+            <GrupoLocalRows
+              key={local.id}
+              grupo={local}
+              candidatos={candidatos}
+              expandido={locaisExpandidos.has(`${grupo.id}::${local.id}`)}
+              multiSecao={local.totalSecoes > 1}
+              onToggle={() => onToggleLocal(local.id)}
+              indent={1}
+              ocultarBairro
+            />
+          ))
+        : null}
+    </>
+  )
+}
+
 function GrupoLocalRows({
   grupo,
   candidatos,
   expandido,
   multiSecao,
   onToggle,
+  indent = 0,
+  ocultarBairro = false,
 }: {
   grupo: GrupoLocalMatriz
   candidatos: CandidatoMatrizColuna[]
   expandido: boolean
   multiSecao: boolean
   onToggle: () => void
+  indent?: number
+  ocultarBairro?: boolean
 }) {
   const tituloLocal = grupo.nmLocalVotacao || 'Local não informado'
   const endereco = grupo.dsEndereco?.trim()
+  const padLeft = indent === 0 ? '' : indent === 1 ? 'pl-6' : 'pl-10'
 
   if (!multiSecao) {
     const secao = grupo.secoes[0]
     return (
       <tr className="border-b border-card/50 hover:bg-background/30">
-        <td className="sticky left-0 z-10 bg-surface px-2 py-2">
+        <td className={cn('sticky left-0 z-10 bg-surface px-2 py-2', padLeft)}>
           <div className="font-medium text-text-primary">{tituloLocal}</div>
-          <div className="text-[10px] text-text-secondary">
-            Zona {grupo.nrZona} · Seção {secao.nrSecao}
-            {endereco ? ` · ${endereco}` : ''}
-          </div>
+          <MetaLocalSecao
+            nrZona={grupo.nrZona}
+            nrSecao={secao.nrSecao}
+            nrLocalVotacao={grupo.nrLocalVotacao}
+            nmBairro={grupo.nmBairro ?? secao.nmBairro}
+            endereco={endereco}
+            ocultarBairro={ocultarBairro}
+          />
         </td>
         <CelulasVotosMatriz
           candidatos={candidatos}
@@ -525,7 +773,7 @@ function GrupoLocalRows({
   return (
     <>
       <tr className="border-b border-card/50 bg-background/20 hover:bg-background/40">
-        <td className="sticky left-0 z-10 bg-background/30 px-2 py-2">
+        <td className={cn('sticky left-0 z-10 bg-background/30 px-2 py-2', padLeft)}>
           <button
             type="button"
             onClick={onToggle}
@@ -542,14 +790,20 @@ function GrupoLocalRows({
             <span className="min-w-0 flex-1">
               <span className="flex flex-wrap items-center gap-2">
                 <span className="font-semibold text-text-primary">{tituloLocal}</span>
+                {!ocultarBairro ? <BadgeBairro bairro={grupo.nmBairro} /> : null}
                 <span className="rounded-full border border-card bg-surface px-2 py-0.5 text-[10px] tabular-nums text-text-secondary">
                   {grupo.totalSecoes} seções
                 </span>
               </span>
-              <span className="mt-0.5 block text-[10px] text-text-secondary">
-                Zona {grupo.nrZona}
-                {grupo.nrLocalVotacao != null ? ` · Local ${grupo.nrLocalVotacao}` : ''}
-                {endereco ? ` · ${endereco}` : ''}
+              <span className="mt-0.5 block">
+                <MetaLocalSecao
+                  nrZona={grupo.nrZona}
+                  nrSecao={grupo.secoes[0]?.nrSecao ?? 0}
+                  nrLocalVotacao={grupo.nrLocalVotacao}
+                  nmBairro={grupo.nmBairro}
+                  endereco={endereco}
+                  ocultarBairro={ocultarBairro}
+                />
               </span>
             </span>
           </button>
@@ -562,7 +816,13 @@ function GrupoLocalRows({
       </tr>
       {expandido
         ? grupo.secoes.map((secao) => (
-            <LinhaSecaoMatriz key={secao.localId} secao={secao} candidatos={candidatos} />
+            <LinhaSecaoMatriz
+              key={secao.localId}
+              secao={secao}
+              candidatos={candidatos}
+              indent={indent + 1}
+              ocultarBairro={ocultarBairro}
+            />
           ))
         : null}
     </>
@@ -572,17 +832,27 @@ function GrupoLocalRows({
 function LinhaSecaoMatriz({
   secao,
   candidatos,
+  indent = 0,
+  ocultarBairro = false,
 }: {
   secao: LinhaMatrizSecao
   candidatos: CandidatoMatrizColuna[]
+  indent?: number
+  ocultarBairro?: boolean
 }) {
+  const padLeft = indent <= 0 ? 'pl-9' : indent === 1 ? 'pl-12' : 'pl-16'
+
   return (
     <tr className="border-b border-card/30 hover:bg-background/20">
-      <td className="sticky left-0 z-10 bg-surface/95 px-2 py-1.5 pl-9">
+      <td className={cn('sticky left-0 z-10 bg-surface/95 px-2 py-1.5', padLeft)}>
         <div className="text-text-primary">
           Seção <span className="tabular-nums font-medium">{secao.nrSecao}</span>
         </div>
-        <div className="text-[10px] text-text-secondary">Zona {secao.nrZona}</div>
+        <div className="text-[10px] text-text-secondary">
+          Zona {secao.nrZona}
+          {secao.nrLocalVotacao != null ? ` · Local ${secao.nrLocalVotacao}` : ''}
+        </div>
+        {!ocultarBairro ? <BadgeBairro bairro={secao.nmBairro} /> : null}
       </td>
       <CelulasVotosMatriz
         candidatos={candidatos}

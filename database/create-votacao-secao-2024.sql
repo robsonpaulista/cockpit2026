@@ -13,6 +13,7 @@ CREATE TABLE IF NOT EXISTS public.votacao_secao_local (
   nr_local_votacao INTEGER,
   nm_local_votacao TEXT,
   ds_endereco TEXT,
+  nm_bairro TEXT,
   synced_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   UNIQUE (ano_eleicao, nr_turno, municipio_chave, nr_zona, nr_secao, nr_local_votacao)
 );
@@ -35,6 +36,9 @@ CREATE INDEX IF NOT EXISTS idx_votacao_secao_local_municipio
 
 CREATE INDEX IF NOT EXISTS idx_votacao_secao_local_zona_secao
   ON public.votacao_secao_local (municipio_chave, nr_zona, nr_secao);
+
+CREATE INDEX IF NOT EXISTS idx_votacao_secao_local_bairro
+  ON public.votacao_secao_local (municipio_chave, nm_bairro);
 
 CREATE INDEX IF NOT EXISTS idx_votacao_secao_voto_local
   ON public.votacao_secao_voto (local_id);

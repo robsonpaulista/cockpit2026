@@ -14,6 +14,7 @@ export type LinhaMatrizSecao = {
   nrLocalVotacao: number | null
   nmLocalVotacao: string | null
   dsEndereco: string | null
+  nmBairro: string | null
   totalSecao: number
   votos: Record<string, number>
   liderId: string | null
@@ -30,9 +31,20 @@ export type GrupoLocalMatriz = {
   nrLocalVotacao: number | null
   nmLocalVotacao: string | null
   dsEndereco: string | null
+  nmBairro: string | null
   secoes: LinhaMatrizSecao[]
   votos: Record<string, number>
   liderId: string | null
+  totalSecoes: number
+}
+
+export type GrupoBairroMatriz = {
+  id: string
+  nmBairro: string
+  locais: GrupoLocalMatriz[]
+  votos: Record<string, number>
+  liderId: string | null
+  totalLocais: number
   totalSecoes: number
 }
 
@@ -107,6 +119,7 @@ export function montarMatrizVotacaoSecao(
       nrLocalVotacao: secao.nrLocalVotacao,
       nmLocalVotacao: secao.nmLocalVotacao,
       dsEndereco: secao.dsEndereco,
+      nmBairro: secao.nmBairro,
       totalSecao,
       votos,
       liderId,
@@ -150,6 +163,7 @@ export function agruparMatrizPorLocal(linhas: LinhaMatrizSecao[]): GrupoLocalMat
         nrLocalVotacao: linha.nrLocalVotacao,
         nmLocalVotacao: linha.nmLocalVotacao,
         dsEndereco: linha.dsEndereco,
+        nmBairro: linha.nmBairro,
         secoes: [linha],
         votos: { ...linha.votos },
         liderId: linha.liderId,
@@ -179,4 +193,73 @@ export function agruparMatrizPorLocal(linhas: LinhaMatrizSecao[]): GrupoLocalMat
         (a.nrLocalVotacao ?? 0) - (b.nrLocalVotacao ?? 0) ||
         (a.nmLocalVotacao ?? '').localeCompare(b.nmLocalVotacao ?? '', 'pt-BR'),
     )
+}
+
+const BAIRRO_SEM_CADASTRO = 'Sem bairro cadastrado'
+
+function chaveGrupoBairro(nmBairro: string | null | undefined): string {
+  const nome = (nmBairro || BAIRRO_SEM_CADASTRO).trim()
+  return nome
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-zA-Z0-9\s]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .toLowerCase()
+}
+
+/** Agrupa locais da matriz por bairro oficial (TSE). */
+export function agruparMatrizPorBairro(linhas: LinhaMatrizSecao[]): GrupoBairroMatriz[] {
+  const locais = agruparMatrizPorLocal(linhas)
+  const mapa = new Map<string, GrupoBairroMatriz>()
+
+  for (const local of locais) {
+    const nmBairro =
+      local.nmBairro?.trim() ||
+      local.secoes.find((s) => s.nmBairro?.trim())?.nmBairro?.trim() ||
+      BAIRRO_SEM_CADASTRO
+    const id = chaveGrupoBairro(nmBairro)
+    const existente = mapa.get(id)
+
+    if (!existente) {
+      mapa.set(id, {
+        id,
+        nmBairro,
+        locais: [local],
+        votos: { ...local.votos },
+        liderId: local.liderId,
+        totalLocais: 1,
+        totalSecoes: local.totalSecoes,
+      })
+      continue
+    }
+
+    existente.locais.push(local)
+    existente.totalLocais += 1
+    existente.totalSecoes += local.totalSecoes
+    for (const [candidatoId, qt] of Object.entries(local.votos)) {
+      existente.votos[candidatoId] = (existente.votos[candidatoId] ?? 0) + qt
+    }
+    existente.liderId = calcularLider(existente.votos)
+  }
+
+  return [...mapa.values()]
+    .map((grupo) => ({
+      ...grupo,
+      locais: [...grupo.locais].sort(
+        (a, b) =>
+          a.nrZona - b.nrZona ||
+          (a.nrLocalVotacao ?? 0) - (b.nrLocalVotacao ?? 0) ||
+          (a.nmLocalVotacao ?? '').localeCompare(b.nmLocalVotacao ?? '', 'pt-BR'),
+      ),
+    }))
+    .sort((a, b) => b.totalSecoes - a.totalSecoes || a.nmBairro.localeCompare(b.nmBairro, 'pt-BR'))
+}
+
+export function contarBairrosMatriz(linhas: LinhaMatrizSecao[]): number {
+  const set = new Set<string>()
+  for (const linha of linhas) {
+    set.add(chaveGrupoBairro(linha.nmBairro))
+  }
+  return set.size
 }

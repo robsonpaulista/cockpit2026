@@ -20,6 +20,7 @@ type LocalRow = {
   nr_local_votacao: number | null
   nm_local_votacao: string | null
   ds_endereco: string | null
+  nm_bairro: string | null
   nm_municipio: string
 }
 
@@ -144,7 +145,7 @@ async function fetchLocaisMunicipio(
   return fetchPaginated<LocalRow>(async (from, to) =>
     supabase
       .from('votacao_secao_local')
-      .select('id, nr_zona, nr_secao, nr_local_votacao, nm_local_votacao, ds_endereco, nm_municipio')
+      .select('id, nr_zona, nr_secao, nr_local_votacao, nm_local_votacao, ds_endereco, nm_bairro, nm_municipio')
       .eq('ano_eleicao', ano)
       .eq('nr_turno', turno)
       .eq('municipio_chave', chave)
@@ -246,6 +247,7 @@ export async function getVotacaoSecaoPorMunicipio(
       nrLocalVotacao: local.nr_local_votacao,
       nmLocalVotacao: local.nm_local_votacao,
       dsEndereco: local.ds_endereco,
+      nmBairro: local.nm_bairro,
       totalVotos,
       resultados,
     }

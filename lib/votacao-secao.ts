@@ -34,6 +34,7 @@ export type VotacaoSecaoItem = {
   nrLocalVotacao: number | null
   nmLocalVotacao: string | null
   dsEndereco: string | null
+  nmBairro: string | null
   totalVotos: number
   resultados: VotacaoSecaoResultado[]
 }
