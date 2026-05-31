@@ -1,7 +1,8 @@
-import type { VotacaoSecaoItem } from '@/lib/votacao-secao'
+import { cargoMatch, normalizarNomeCargo, type VotacaoSecaoItem } from '@/lib/votacao-secao'
 
 export type CandidatoMatrizColuna = {
   id: string
+  dsCargo: string
   nrVotavel: number
   nmVotavel: string
   totalVotos: number
@@ -48,23 +49,37 @@ export type GrupoBairroMatriz = {
   totalSecoes: number
 }
 
-export function candidatoMatrizId(nrVotavel: number, nmVotavel: string): string {
-  return `${nrVotavel}:${nmVotavel.trim().toUpperCase()}`
+export function candidatoMatrizId(
+  dsCargo: string,
+  nrVotavel: number,
+  nmVotavel: string,
+): string {
+  const cargo = normalizarNomeCargo(dsCargo)
+  return `${cargo}:${nrVotavel}:${nmVotavel.trim().toUpperCase()}`
 }
 
-/** Lista candidatos do cargo ordenados por total de votos no município. */
-export function listarCandidatosSecao(secoes: VotacaoSecaoItem[]): CandidatoMatrizColuna[] {
+/** Lista candidatos ordenados por total de votos no município. */
+export function listarCandidatosSecao(
+  secoes: VotacaoSecaoItem[],
+  filtroCargos?: readonly string[] | null,
+): CandidatoMatrizColuna[] {
   const totais = new Map<string, CandidatoMatrizColuna>()
 
   for (const secao of secoes) {
     for (const r of secao.resultados) {
-      const id = candidatoMatrizId(r.nrVotavel, r.nmVotavel)
+      if (filtroCargos?.length && !filtroCargos.some((c) => cargoMatch(r.dsCargo, c))) {
+        continue
+      }
+
+      const dsCargo = normalizarNomeCargo(r.dsCargo)
+      const id = candidatoMatrizId(dsCargo, r.nrVotavel, r.nmVotavel)
       const prev = totais.get(id)
       if (prev) {
         prev.totalVotos += r.qtVotos
       } else {
         totais.set(id, {
           id,
+          dsCargo,
           nrVotavel: r.nrVotavel,
           nmVotavel: r.nmVotavel,
           totalVotos: r.qtVotos,
@@ -82,7 +97,11 @@ export function idsCandidatosPadrao(
   candidatos: CandidatoMatrizColuna[],
   cargo: string,
 ): string[] {
-  if (cargo === 'Vereador') {
+  if (
+    cargo === 'Vereador' ||
+    cargo === 'Deputado Federal' ||
+    cargo === 'Deputado Estadual'
+  ) {
     return candidatos.slice(0, 12).map((c) => c.id)
   }
   return candidatos.map((c) => c.id)
@@ -101,7 +120,7 @@ export function montarMatrizVotacaoSecao(
     let liderVotos = -1
 
     for (const r of secao.resultados) {
-      const id = candidatoMatrizId(r.nrVotavel, r.nmVotavel)
+      const id = candidatoMatrizId(r.dsCargo, r.nrVotavel, r.nmVotavel)
       if (!idSet.has(id)) continue
       votos[id] = r.qtVotos
       if (r.qtVotos > liderVotos) {

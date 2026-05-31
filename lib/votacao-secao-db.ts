@@ -2,12 +2,13 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import {
   normalizeMunicipioChaveVotacao,
   normalizeMunicipioComparacao,
-  VOTACAO_SECAO_ANO,
+  VOTACAO_SECAO_ANO_PADRAO,
   VOTACAO_SECAO_TURNO,
   type MunicipioVotacaoSecaoRef,
   type VotacaoSecaoItem,
   type VotacaoSecaoResumo,
   type VotacaoSecaoResultado,
+  type VotacaoSecaoAno,
 } from '@/lib/votacao-secao'
 
 const PAGE_SIZE = 1000
@@ -68,7 +69,7 @@ async function fetchPaginated<T>(
 
 async function listMunicipiosRefs(
   supabase: SupabaseClient,
-  ano = VOTACAO_SECAO_ANO,
+  ano: VotacaoSecaoAno = VOTACAO_SECAO_ANO_PADRAO,
 ): Promise<MunicipioVotacaoSecaoRef[]> {
   const rows = await fetchPaginated<{ municipio_chave: string; nm_municipio: string }>(
     async (from, to) =>
@@ -97,7 +98,7 @@ async function listMunicipiosRefs(
 export async function resolveMunicipioVotacaoSecao(
   supabase: SupabaseClient,
   municipioInput: string,
-  ano = VOTACAO_SECAO_ANO,
+  ano: VotacaoSecaoAno = VOTACAO_SECAO_ANO_PADRAO,
 ): Promise<MunicipioVotacaoSecaoRef | null> {
   const trimmed = municipioInput.trim()
   if (!trimmed) return null
@@ -130,7 +131,7 @@ export async function resolveMunicipioVotacaoSecao(
 
 export async function listMunicipiosVotacaoSecao(
   supabase: SupabaseClient,
-  ano = VOTACAO_SECAO_ANO,
+  ano: VotacaoSecaoAno = VOTACAO_SECAO_ANO_PADRAO,
 ): Promise<string[]> {
   const refs = await listMunicipiosRefs(supabase, ano)
   return refs.map((m) => m.nome)
@@ -172,7 +173,7 @@ async function fetchVotosPorLocais(
         .in('local_id', chunk)
 
       if (cargoFiltro) {
-        q = q.eq('ds_cargo', cargoFiltro)
+        q = q.ilike('ds_cargo', cargoFiltro)
       }
 
       return q.range(from, to)
@@ -187,9 +188,9 @@ async function fetchVotosPorLocais(
 export async function getVotacaoSecaoPorMunicipio(
   supabase: SupabaseClient,
   municipio: string,
-  params?: { cargo?: string | null; ano?: number; turno?: number },
+  params?: { cargo?: string | null; ano?: VotacaoSecaoAno; turno?: number },
 ): Promise<{ resumo: VotacaoSecaoResumo; secoes: VotacaoSecaoItem[] } | null> {
-  const ano = params?.ano ?? VOTACAO_SECAO_ANO
+  const ano = params?.ano ?? VOTACAO_SECAO_ANO_PADRAO
   const turno = params?.turno ?? VOTACAO_SECAO_TURNO
   const cargoFiltro = params?.cargo?.trim() || null
 

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { parseVotacaoSecaoAno } from '@/lib/votacao-secao'
 import {
   getVotacaoSecaoPorMunicipio,
   listMunicipiosVotacaoSecao,
@@ -18,11 +19,12 @@ export async function GET(request: NextRequest) {
     }
 
     const sp = request.nextUrl.searchParams
+    const ano = parseVotacaoSecaoAno(sp.get('ano'))
     const onlyMunicipios = sp.get('only_municipios') === 'true'
 
     if (onlyMunicipios) {
-      const municipios = await listMunicipiosVotacaoSecao(supabase)
-      return NextResponse.json({ municipios })
+      const municipios = await listMunicipiosVotacaoSecao(supabase, ano)
+      return NextResponse.json({ municipios, ano })
     }
 
     const cidade = sp.get('cidade')?.trim()
@@ -33,14 +35,16 @@ export async function GET(request: NextRequest) {
     const cargo = sp.get('cargo')
     const resultado = await getVotacaoSecaoPorMunicipio(supabase, cidade, {
       cargo: cargo === 'todos' ? null : cargo,
+      ano,
     })
 
     if (!resultado) {
       return NextResponse.json(
         {
           error:
-            'Nenhum dado de votação por seção para este município. Verifique o nome ou importe o CSV 2024.',
+            `Nenhum dado de votação por seção para este município (${ano}). Verifique o nome ou importe o CSV.`,
           municipio: cidade,
+          ano,
         },
         { status: 404 },
       )

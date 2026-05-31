@@ -46,8 +46,8 @@ CREATE INDEX IF NOT EXISTS idx_votacao_secao_voto_local
 CREATE INDEX IF NOT EXISTS idx_votacao_secao_voto_cargo
   ON public.votacao_secao_voto (local_id, ds_cargo);
 
-COMMENT ON TABLE public.votacao_secao_local IS 'Locais de votação (zona/seção) por município — TSE 2024 PI.';
-COMMENT ON TABLE public.votacao_secao_voto IS 'Votos por candidato/partido em cada seção — TSE 2024 PI.';
+COMMENT ON TABLE public.votacao_secao_local IS 'Locais de votação (zona/seção) por município — TSE bweb PI (2022 geral, 2024 municipal).';
+COMMENT ON TABLE public.votacao_secao_voto IS 'Votos por candidato em cada seção — TSE bweb PI.';
 
 ALTER TABLE public.votacao_secao_local ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.votacao_secao_voto ENABLE ROW LEVEL SECURITY;

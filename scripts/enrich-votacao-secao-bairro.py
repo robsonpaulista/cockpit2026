@@ -2,27 +2,16 @@
 """
 Enriquece votacao_secao_local com bairro e endereço oficial do TSE.
 
-Fonte: Eleitorado por local de votação 2024 (Sistema ELO)
-  https://dadosabertos.tse.jus.br/dataset/eleitorado-2024
-
-Cruzamento:
-  municipio_chave + NR_ZONA + NR_SECAO + NR_LOCAL_VOTACAO
+Fonte: Eleitorado por local de votação (Sistema ELO)
 
 Uso:
-  pip install supabase requests
-  # Executar database/alter-votacao-secao-bairro.sql no Supabase antes
-  python scripts/enrich-votacao-secao-bairro.py
-
-Variáveis (.env.local):
-  NEXT_PUBLIC_SUPABASE_URL
-  SUPABASE_SERVICE_ROLE_KEY
-
-Opcional:
-  ELEITORADO_LOCAL_ZIP=/caminho/eleitorado_local_votacao_2024.zip
+  python scripts/enrich-votacao-secao-bairro.py --ano 2024
+  python scripts/enrich-votacao-secao-bairro.py --ano 2022
 """
 
 from __future__ import annotations
 
+import argparse
 import csv
 import io
 import os
@@ -35,16 +24,19 @@ from pathlib import Path
 import requests
 
 ROOT = Path(__file__).resolve().parent.parent
-ANO_ELEICAO = 2024
 NR_TURNO = 1
 SG_UF = "PI"
 BATCH_SIZE = 150
-ELEITORADO_URL = (
-    "https://cdn.tse.jus.br/estatistica/sead/odsele/"
-    "eleitorado_locais_votacao/eleitorado_local_votacao_2024.zip"
-)
 CACHE_DIR = ROOT / ".cache"
-DEFAULT_ZIP = CACHE_DIR / "eleitorado_local_votacao_2024.zip"
+
+ELEITORADO_URLS = {
+    2024: "https://cdn.tse.jus.br/estatistica/sead/odsele/eleitorado_locais_votacao/eleitorado_local_votacao_2024.zip",
+    2022: "https://cdn.tse.jus.br/estatistica/sead/odsele/eleitorado_locais_votacao/eleitorado_local_votacao_2022.zip",
+}
+
+
+def cache_zip_path(ano: int) -> Path:
+    return CACHE_DIR / f"eleitorado_local_votacao_{ano}.zip"
 
 
 def load_env_local() -> None:
@@ -85,7 +77,7 @@ def match_key(municipio_chave: str, nr_zona: int, nr_secao: int, nr_local: int |
     return (municipio_chave, nr_zona, nr_secao, nr_local if nr_local and nr_local > 0 else 0)
 
 
-def ensure_zip(path: Path) -> Path:
+def ensure_zip(path: Path, url: str) -> Path:
     env_path = os.environ.get("ELEITORADO_LOCAL_ZIP", "").strip()
     if env_path:
         p = Path(env_path)
@@ -99,8 +91,8 @@ def ensure_zip(path: Path) -> Path:
         return path
 
     path.parent.mkdir(parents=True, exist_ok=True)
-    print(f"Baixando cadastro TSE…\n  {ELEITORADO_URL}")
-    with requests.get(ELEITORADO_URL, stream=True, timeout=600) as resp:
+    print(f"Baixando cadastro TSE ({url})…")
+    with requests.get(url, stream=True, timeout=600) as resp:
         resp.raise_for_status()
         with path.open("wb") as f:
             for chunk in resp.iter_content(chunk_size=1024 * 1024):
@@ -141,7 +133,7 @@ def load_eleitorado_pi(zip_path: Path) -> dict[tuple, dict]:
     return cadastro
 
 
-def fetch_locais(supabase) -> list[dict]:
+def fetch_locais(supabase, ano: int) -> list[dict]:
     rows: list[dict] = []
     start = 0
     page = 1000
@@ -154,7 +146,7 @@ def fetch_locais(supabase) -> list[dict]:
                 "nm_municipio, nr_zona, nr_secao, nr_local_votacao, nm_local_votacao, "
                 "ds_endereco, nm_bairro"
             )
-            .eq("ano_eleicao", ANO_ELEICAO)
+            .eq("ano_eleicao", ano)
             .eq("nr_turno", NR_TURNO)
             .order("id")
             .range(start, end)
@@ -232,6 +224,11 @@ def upsert_batch(supabase, batch: list[dict], attempt: int = 1) -> None:
 
 
 def main() -> None:
+    parser = argparse.ArgumentParser(description="Enriquece locais com bairro TSE")
+    parser.add_argument("--ano", type=int, required=True, choices=[2022, 2024])
+    args = parser.parse_args()
+    ano = args.ano
+
     load_env_local()
 
     try:
@@ -246,12 +243,12 @@ def main() -> None:
         print("Defina NEXT_PUBLIC_SUPABASE_URL e SUPABASE_SERVICE_ROLE_KEY em .env.local")
         sys.exit(1)
 
-    zip_path = ensure_zip(DEFAULT_ZIP)
+    zip_path = ensure_zip(cache_zip_path(ano), ELEITORADO_URLS[ano])
     cadastro = load_eleitorado_pi(zip_path)
 
     supabase = create_client(url, key)
-    locais = fetch_locais(supabase)
-    print(f"Locais no Supabase ({ANO_ELEICAO}): {len(locais)}")
+    locais = fetch_locais(supabase, ano)
+    print(f"Locais no Supabase ({ano}): {len(locais)}")
 
     upsert_rows: list[dict] = []
     matched = 0
