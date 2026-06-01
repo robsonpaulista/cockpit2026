@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useState, useEffect } from 'react'
+import { useMemo, useState, useEffect, useRef, useCallback } from 'react'
 import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { RefreshCw, AlertCircle, Crown, X, Users, Vote, BarChart3, UserCheck, ArrowUpRight, FileText, Loader2, Bot, MapPinned } from 'lucide-react'
@@ -11,6 +11,11 @@ import { AIAgent, type AIAgentPageContext } from '@/components/ai-agent'
 import { cn } from '@/lib/utils'
 import { useTheme } from '@/contexts/theme-context'
 import { sidebarPrimaryCTAButtonClass } from '@/lib/sidebar-menu-active-style'
+import {
+  BotaoNomeCandidatoDistribuicao,
+  PainelVotacaoCandidatoResumo,
+  isMesmoCandidatoResumo,
+} from '@/components/painel-votacao-candidato-resumo'
 
 interface ResultadoEleicao {
   uf: string
@@ -290,6 +295,26 @@ export default function ResumoEleicoesPage() {
   })
   const [selectedVotes, setSelectedVotes] = useState<Record<TableKey, Record<string, number>>>(EMPTY_SELECTIONS)
   const [agenteMontado, setAgenteMontado] = useState(false)
+  const [candidatoDistribuicao, setCandidatoDistribuicao] = useState<ResultadoEleicao | null>(null)
+  const painelSecaoRef = useRef<HTMLElement>(null)
+
+  const alternarDistribuicaoCandidato = useCallback((item: ResultadoEleicao) => {
+    setCandidatoDistribuicao((atual) =>
+      isMesmoCandidatoResumo(item, atual) ? null : item,
+    )
+  }, [])
+
+  useEffect(() => {
+    setCandidatoDistribuicao(null)
+  }, [cidade])
+
+  useEffect(() => {
+    if (!candidatoDistribuicao) return
+    const timer = window.setTimeout(() => {
+      painelSecaoRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }, 80)
+    return () => window.clearTimeout(timer)
+  }, [candidatoDistribuicao])
 
   const setPage = (key: string, page: number) => {
     setCurrentPage((prev) => ({ ...prev, [key]: page }))
@@ -1522,6 +1547,48 @@ export default function ResumoEleicoesPage() {
               Por seção
             </Link>
           </div>
+
+          {!candidatoDistribuicao && (
+            <div className="mt-3 flex justify-end">
+              {!agenteMontado ? (
+                <button
+                  type="button"
+                  onClick={() => setAgenteMontado(true)}
+                  className="flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-accent-gold to-accent-gold shadow-lg shadow-accent-gold/30 transition-transform hover:scale-105"
+                  title="Abrir Agente de IA"
+                >
+                  <Bot className="h-7 w-7 text-white" />
+                </button>
+              ) : (
+                <AIAgent
+                  dockVariant="inline"
+                  enableVoice
+                  immediateChatMode
+                  pageContext={contextoAgenteResumoEleicoes}
+                  loadingKPIs={loadingDados || loadingCidades}
+                  loadingPolls={false}
+                  loadingTerritorios={loadingDados}
+                  loadingAlerts={false}
+                  loadingBandeiras={false}
+                  kpisCount={resumoCidade ? 5 : 0}
+                  expectativa2026={votosCenarioAtivo}
+                  presencaTerritorial={
+                    percentualAlcance !== null
+                      ? `${percentualAlcance.toFixed(1).replace('.', ',')}%`
+                      : undefined
+                  }
+                  pollsCount={pesquisaRecenteCidade ? 1 : 0}
+                  candidatoPadrao={candidatoPadraoPesquisa || CANDIDATO_FEDERAL_FIXO}
+                  territoriosFriosCount={0}
+                  alertsCriticosCount={0}
+                  bandeirasCount={0}
+                  bandeirasPerformance={0}
+                  criticalAlerts={[]}
+                  territoriosFrios={[]}
+                />
+              )}
+            </div>
+          )}
         </div>
 
         {error && (
@@ -1742,7 +1809,13 @@ export default function ResumoEleicoesPage() {
                             className="h-3.5 w-3.5 accent-[rgb(var(--accent-gold))]"
                           />
                         </td>
-                        <td className="py-1 px-1">{item.nomeUrnaCandidato}</td>
+                        <td className="py-1 px-1">
+                          <BotaoNomeCandidatoDistribuicao
+                            item={item}
+                            candidatoAtivo={candidatoDistribuicao}
+                            onVerDistribuicao={alternarDistribuicaoCandidato}
+                          />
+                        </td>
                         <td className="py-1 px-1 text-right">{votes.toLocaleString('pt-BR')}</td>
                       </tr>
                     )
@@ -1815,7 +1888,13 @@ export default function ResumoEleicoesPage() {
                             className="h-3.5 w-3.5 accent-[rgb(var(--accent-gold))]"
                           />
                         </td>
-                        <td className="py-1 px-1">{item.nomeUrnaCandidato}</td>
+                        <td className="py-1 px-1">
+                          <BotaoNomeCandidatoDistribuicao
+                            item={item}
+                            candidatoAtivo={candidatoDistribuicao}
+                            onVerDistribuicao={alternarDistribuicaoCandidato}
+                          />
+                        </td>
                         <td className="py-1 px-1 text-right">{votes.toLocaleString('pt-BR')}</td>
                       </tr>
                     )
@@ -1885,7 +1964,13 @@ export default function ResumoEleicoesPage() {
                             className="h-3.5 w-3.5 accent-[rgb(var(--accent-gold))]"
                           />
                         </td>
-                        <td className="py-1 px-1">{item.nomeUrnaCandidato}</td>
+                        <td className="py-1 px-1">
+                          <BotaoNomeCandidatoDistribuicao
+                            item={item}
+                            candidatoAtivo={candidatoDistribuicao}
+                            onVerDistribuicao={alternarDistribuicaoCandidato}
+                          />
+                        </td>
                         <td className="py-1 px-1 text-text-secondary">{item.partido || '—'}</td>
                         <td className="py-1 px-1 text-right">{votes.toLocaleString('pt-BR')}</td>
                       </tr>
@@ -1970,7 +2055,11 @@ export default function ResumoEleicoesPage() {
                         </td>
                         <td className="px-1 py-1">
                           <span className="inline-flex items-center gap-1">
-                            <span>{item.nomeUrnaCandidato}</span>
+                            <BotaoNomeCandidatoDistribuicao
+                              item={item}
+                              candidatoAtivo={candidatoDistribuicao}
+                              onVerDistribuicao={alternarDistribuicaoCandidato}
+                            />
                             {isPresidente && (
                               <Crown
                                 className={cn(
@@ -2119,6 +2208,15 @@ export default function ResumoEleicoesPage() {
               />
             </div>
           </div>
+
+          {candidatoDistribuicao && (
+            <PainelVotacaoCandidatoResumo
+              ref={painelSecaoRef}
+              candidato={candidatoDistribuicao}
+              municipio={cidade}
+              onClose={() => setCandidatoDistribuicao(null)}
+            />
+          )}
           </>
         )}
       </div>
@@ -2444,38 +2542,6 @@ export default function ResumoEleicoesPage() {
         cidadeNome={cidade}
         cidadeId={cidadePesquisaIdAtual}
       />
-
-      {!agenteMontado ? (
-        <button
-          onClick={() => setAgenteMontado(true)}
-          className="fixed bottom-6 right-6 z-[100] w-14 h-14 rounded-full bg-gradient-to-br from-accent-gold to-accent-gold shadow-lg shadow-accent-gold/30 flex items-center justify-center hover:scale-110 transition-transform"
-          title="Abrir Agente de IA"
-        >
-          <Bot className="w-7 h-7 text-white" />
-        </button>
-      ) : (
-        <AIAgent
-          enableVoice
-          immediateChatMode
-          pageContext={contextoAgenteResumoEleicoes}
-          loadingKPIs={loadingDados || loadingCidades}
-          loadingPolls={false}
-          loadingTerritorios={loadingDados}
-          loadingAlerts={false}
-          loadingBandeiras={false}
-          kpisCount={resumoCidade ? 5 : 0}
-          expectativa2026={votosCenarioAtivo}
-          presencaTerritorial={percentualAlcance !== null ? `${percentualAlcance.toFixed(1).replace('.', ',')}%` : undefined}
-          pollsCount={pesquisaRecenteCidade ? 1 : 0}
-          candidatoPadrao={candidatoPadraoPesquisa || CANDIDATO_FEDERAL_FIXO}
-          territoriosFriosCount={0}
-          alertsCriticosCount={0}
-          bandeirasCount={0}
-          bandeirasPerformance={0}
-          criticalAlerts={[]}
-          territoriosFrios={[]}
-        />
-      )}
 
     </div>
   )

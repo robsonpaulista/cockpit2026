@@ -3,6 +3,7 @@
 import { useEffect, useState, useMemo, useCallback, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { Bot, Sparkles, TrendingUp, AlertTriangle, MapPin, BarChart3, CheckCircle2, Send, ExternalLink, ArrowRight, Loader2, Users, Calendar, Vote, FileText, Flag, Target, Building2, Clock, CheckCheck, XCircle, Circle, ChevronRight, Zap, Mic, HelpCircle, Instagram, Heart, Eye, Share2, Image, Video, Play } from 'lucide-react'
+import { cn } from '@/lib/utils'
 
 interface DataInsight {
   id: string
@@ -78,6 +79,8 @@ interface AIAgentProps {
   immediateChatMode?: boolean
   /** Quando definido, o agente pode executar ações específicas desta tela */
   pageContext?: AIAgentPageContext
+  /** fixed = canto da tela; inline = no fluxo da página (rola com o conteúdo) */
+  dockVariant?: 'fixed' | 'inline'
 }
 
 interface SpeechRecognitionResultLike {
@@ -374,6 +377,7 @@ export function AIAgent({
   enableVoice = false,
   immediateChatMode = false,
   pageContext,
+  dockVariant = 'fixed',
 }: AIAgentProps) {
   const router = useRouter()
   const chatContainerRef = useRef<HTMLDivElement>(null)
@@ -2613,11 +2617,16 @@ export function AIAgent({
 
   if (!showAgent) return null
 
+  const dockInline = dockVariant === 'inline'
+
   return (
-    <div 
-      className={`fixed bottom-6 right-6 z-[100] transition-all duration-500 ${
-        isMinimized ? 'w-14 h-14' : 'w-[420px]'
-      }`}
+    <div
+      className={cn(
+        'transition-all duration-500',
+        dockInline
+          ? cn('relative z-40', isMinimized ? 'h-14 w-14' : 'w-full max-w-[420px]')
+          : cn('fixed bottom-6 right-6 z-[100]', isMinimized ? 'w-14 h-14' : 'w-[420px]'),
+      )}
     >
       {isMinimized ? (
         <button

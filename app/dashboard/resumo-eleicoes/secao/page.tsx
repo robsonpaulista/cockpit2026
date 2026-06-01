@@ -19,6 +19,7 @@ import {
   cargosVotacaoSecao,
   isVotavelLegendaBweb,
   listarCargosAno,
+  normalizarNomeCargo,
   normalizeMunicipioComparacao,
   parseCargosComparacaoParam,
   parseModoComparacaoSecao,
@@ -280,6 +281,7 @@ export default function VotacaoSecaoPage() {
       cargoSel: string,
       anosSel: readonly VotacaoSecaoAno[],
       modoSel: ModoComparacaoSecao,
+      nrPreselecao?: number | null,
     ) => {
       const alvo = nomeCidade.trim()
       if (!alvo) return
@@ -308,7 +310,16 @@ export default function VotacaoSecaoPage() {
           setCandidatosSel([])
         } else {
           const todos = listarCandidatosSecao(listaSecoes)
-          setCandidatosSel(idsCandidatosPadrao(todos, cargoSel))
+          if (nrPreselecao != null && nrPreselecao > 0) {
+            const match = todos.find(
+              (c) =>
+                c.nrVotavel === nrPreselecao &&
+                normalizarNomeCargo(c.dsCargo) === normalizarNomeCargo(cargoSel),
+            )
+            setCandidatosSel(match ? [match.id] : idsCandidatosPadrao(todos, cargoSel))
+          } else {
+            setCandidatosSel(idsCandidatosPadrao(todos, cargoSel))
+          }
         }
       } catch (e: unknown) {
         setError(e instanceof Error ? e.message : 'Erro ao carregar votação por seção')
@@ -325,8 +336,11 @@ export default function VotacaoSecaoPage() {
   useEffect(() => {
     if (!cidade) return
     const anosSel = parseVotacaoSecaoAnos(anosKey, null)
-    void carregar(cidade, cargo, anosSel, modoComparacao)
-  }, [cidade, cargo, anosKey, modoComparacao, carregar])
+    const sp = new URLSearchParams(searchKey)
+    const nrRaw = Number.parseInt(sp.get('nr') ?? '', 10)
+    const nrPreselecao = Number.isFinite(nrRaw) && nrRaw > 0 ? nrRaw : null
+    void carregar(cidade, cargo, anosSel, modoComparacao, nrPreselecao)
+  }, [cidade, cargo, anosKey, modoComparacao, carregar, searchKey])
 
   const todosCandidatos = useMemo(
     () =>
