@@ -6,6 +6,14 @@ export type VotacaoSecaoAno = (typeof VOTACAO_SECAO_ANOS)[number]
 export const VOTACAO_SECAO_ANO_PADRAO: VotacaoSecaoAno = 2024
 export const VOTACAO_SECAO_TURNO = 1
 
+/** Branco e nulo no bweb TSE (não são candidatos). */
+export const NR_VOTAVEL_BRANCO = 95
+export const NR_VOTAVEL_NULO = 96
+
+export function isVotavelLegendaBweb(nrVotavel: number): boolean {
+  return nrVotavel === NR_VOTAVEL_BRANCO || nrVotavel === NR_VOTAVEL_NULO
+}
+
 /** Cargos disponíveis por ano eleitoral. */
 export const VOTACAO_SECAO_CARGOS: Record<VotacaoSecaoAno, readonly string[]> = {
   2024: ['Prefeito', 'Vereador'],
@@ -69,6 +77,32 @@ export function parseCargoAnoKey(key: string): { ano: VotacaoSecaoAno; cargo: st
 export function rotuloCargoAno(key: string): string {
   const ref = parseCargoAnoKey(key)
   return ref ? `${ref.cargo} (${ref.ano})` : key
+}
+
+/**
+ * Hierarquia para mapeamento de voto casado no modal (índice menor = cargo “maior”).
+ * Sempre relaciona o maior com candidatos dos cargos abaixo.
+ */
+export const HIERARQUIA_CARGOS_VOTO_CASADO = [
+  'Governador',
+  'Senador',
+  'Deputado Federal',
+  'Deputado Estadual',
+  'Prefeito',
+  'Vereador',
+] as const
+
+export function ordemHierarquiaCargo(dsCargo: string): number {
+  const norm = normalizarNomeCargo(dsCargo)
+  const idx = HIERARQUIA_CARGOS_VOTO_CASADO.findIndex(
+    (c) => c.toLowerCase() === norm.toLowerCase(),
+  )
+  return idx >= 0 ? idx : HIERARQUIA_CARGOS_VOTO_CASADO.length
+}
+
+/** True se `dsCargoA` está acima de `dsCargoB` na hierarquia (ex.: Federal > Estadual). */
+export function cargoMaiorNaHierarquia(dsCargoA: string, dsCargoB: string): boolean {
+  return ordemHierarquiaCargo(dsCargoA) < ordemHierarquiaCargo(dsCargoB)
 }
 
 export function cargoPermiteSelecaoCandidatos(cargo: string): boolean {

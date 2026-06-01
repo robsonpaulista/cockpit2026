@@ -17,6 +17,7 @@ import {
   cargoAnoKey,
   cargoPermiteSelecaoCandidatos,
   cargosVotacaoSecao,
+  isVotavelLegendaBweb,
   listarCargosAno,
   normalizeMunicipioComparacao,
   parseCargosComparacaoParam,
@@ -32,13 +33,14 @@ import {
   type VotacaoSecaoAno,
 } from '@/lib/votacao-secao'
 import type { VotacaoSecaoItem, VotacaoSecaoResumo } from '@/lib/votacao-secao'
+import { ModalMapearVotoCasado } from '@/components/modal-mapear-voto-casado'
 import {
   analisesComparacaoEntreCargos,
   contarSecoesSemelhantes,
   mapaParesSemelhantesPorSecao,
-  paresSemelhantesAgregados,
-  paresSemelhantesNaLinha,
+  MARGEM_VOTOS_CASADOS,
   MARGEM_VOTOS_PARECIDOS,
+  paresSemelhantesAgregados,
   type AnaliseComparacaoVotos,
   type ParSemelhanteSecao,
 } from '@/lib/votacao-secao-correlacao'
@@ -57,6 +59,8 @@ import {
 
 const LOCAIS_POR_PAGINA = 25
 const BAIRROS_POR_PAGINA = 20
+/** Máximo de candidatos por cargo no mapeamento automático de voto casado. */
+const TOP_CANDIDATOS_MAPEAMENTO_CASADO = 25
 const AGRUPAMENTOS = [
   { id: 'local', label: 'Por local' },
   { id: 'bairro', label: 'Por bairro' },
@@ -164,6 +168,9 @@ export default function VotacaoSecaoPage() {
   const [locaisExpandidos, setLocaisExpandidos] = useState<Set<string>>(new Set())
   const [bairrosExpandidos, setBairrosExpandidos] = useState<Set<string>>(new Set())
   const [filtroSoSemelhantes, setFiltroSoSemelhantes] = useState(false)
+  const [modalVotoCasadoAberto, setModalVotoCasadoAberto] = useState(false)
+  const [paresCasadosChaves, setParesCasadosChaves] = useState<Set<string> | null>(null)
+  const [margemSemelhancaAtiva, setMargemSemelhancaAtiva] = useState(MARGEM_VOTOS_PARECIDOS)
 
   useEffect(() => {
     setLoadingMunicipios(true)
@@ -359,9 +366,14 @@ export default function VotacaoSecaoPage() {
   const paresPorSecao = useMemo(
     () =>
       destacarSemelhanca
-        ? mapaParesSemelhantesPorSecao(matriz.linhas, matriz.candidatos)
+        ? mapaParesSemelhantesPorSecao(
+            matriz.linhas,
+            matriz.candidatos,
+            margemSemelhancaAtiva,
+            paresCasadosChaves,
+          )
         : new Map<string, ParSemelhanteSecao[]>(),
-    [destacarSemelhanca, matriz.linhas, matriz.candidatos],
+    [destacarSemelhanca, matriz.linhas, matriz.candidatos, margemSemelhancaAtiva, paresCasadosChaves],
   )
 
   const totalSecoesSemelhantes = useMemo(
@@ -371,7 +383,37 @@ export default function VotacaoSecaoPage() {
 
   useEffect(() => {
     setFiltroSoSemelhantes(false)
-  }, [cidade, anosKey, modoComparacao, candidatosSel])
+    setParesCasadosChaves(null)
+    setMargemSemelhancaAtiva(MARGEM_VOTOS_PARECIDOS)
+  }, [cidade, anosKey, modoComparacao])
+
+  const podeMapearVotoCasado =
+    !multiAno && modoComparar && Boolean(cidade) && secoes.length > 0 && cargosComparacao.length >= 2
+
+  const candidatosParaMapeamento = useMemo(() => {
+    const todos = listarCandidatosSecao(secoes, cargosComparacao)
+    const porCargo = new Map<string, CandidatoMatrizColuna[]>()
+    for (const c of todos) {
+      if (isVotavelLegendaBweb(c.nrVotavel)) continue
+      const lista = porCargo.get(c.dsCargo) ?? []
+      lista.push(c)
+      porCargo.set(c.dsCargo, lista)
+    }
+    return [...porCargo.values()].flatMap((lista) =>
+      [...lista]
+        .sort((a, b) => b.totalVotos - a.totalVotos)
+        .slice(0, TOP_CANDIDATOS_MAPEAMENTO_CASADO),
+    )
+  }, [secoes, cargosComparacao])
+
+  const linhasMapeamento = useMemo(
+    () =>
+      montarMatrizVotacaoSecao(
+        secoes,
+        candidatosParaMapeamento.map((c) => c.id),
+      ).linhas,
+    [secoes, candidatosParaMapeamento],
+  )
 
   const gruposLocal = useMemo(
     () => agruparMatrizPorLocal(matriz.linhas),
@@ -875,12 +917,37 @@ export default function VotacaoSecaoPage() {
                   <h2 className="text-sm font-semibold text-text-primary">Candidatos na matriz</h2>
                   <p className="text-xs text-text-secondary">
                     {modoComparar
-                      ? 'Marque os cargos desejados e adicione candidatos. Abaixo, veja em quantas seções os votos foram parecidos (margem de 50%).'
+                      ? paresCasadosChaves
+                        ? `Pares de correlação aplicados (margem ${Math.round(margemSemelhancaAtiva * 100)}%).`
+                        : 'Marque os cargos e adicione candidatos, ou use o mapeamento de correlação (um ano).'
                       : permiteSelecaoCandidatos
                         ? 'Compare quantos votos cada candidato teve em cada seção (padrão: top 12).'
                         : 'Todos os candidatos do cargo entram na matriz.'}
                   </p>
                 </div>
+                <div className="flex flex-wrap gap-2">
+                {podeMapearVotoCasado && (
+                  <button
+                    type="button"
+                    onClick={() => setModalVotoCasadoAberto(true)}
+                    disabled={loading || candidatosParaMapeamento.length < 2}
+                    className="rounded-lg border border-accent-gold/40 bg-accent-gold/10 px-3 py-1.5 text-xs font-medium text-text-primary hover:bg-accent-gold/20 disabled:opacity-50"
+                  >
+                    Mapear correlação…
+                  </button>
+                )}
+                {paresCasadosChaves && paresCasadosChaves.size > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setParesCasadosChaves(null)
+                      setMargemSemelhancaAtiva(MARGEM_VOTOS_PARECIDOS)
+                    }}
+                    className="rounded-lg border border-card px-3 py-1.5 text-xs text-text-secondary hover:bg-background"
+                  >
+                    Limpar correlação
+                  </button>
+                )}
                 {permiteSelecaoCandidatos && !modoComparar && (
                   <div className="flex flex-wrap gap-2">
                     <button
@@ -906,6 +973,7 @@ export default function VotacaoSecaoPage() {
                     </button>
                   </div>
                 )}
+                </div>
               </div>
 
               {permiteSelecaoCandidatos && (
@@ -1043,7 +1111,8 @@ export default function VotacaoSecaoPage() {
                   {destacarSemelhanca && (
                     <span className="ml-2 text-text-secondary">
                       pílulas <span className="font-medium text-text-primary">NOME≈NOME</span> =
-                      par com votos semelhantes na seção
+                      votos semelhantes (até {Math.round(margemSemelhancaAtiva * 100)}%)
+                      {paresCasadosChaves?.size ? ' · só pares da correlação' : ''}
                     </span>
                   )}
                 </span>
@@ -1189,6 +1258,22 @@ export default function VotacaoSecaoPage() {
             )}
           </>
         )}
+
+        <ModalMapearVotoCasado
+          aberto={modalVotoCasadoAberto}
+          onFechar={() => setModalVotoCasadoAberto(false)}
+          municipio={cidade || resumo?.municipio || ''}
+          ano={anoPrincipal}
+          linhas={linhasMapeamento}
+          candidatos={candidatosParaMapeamento}
+          onAplicar={({ candidatoIds, paresChaves, margem }) => {
+            setCandidatosSel(candidatoIds)
+            setParesCasadosChaves(paresChaves)
+            setMargemSemelhancaAtiva(margem)
+            setPagina(1)
+            recolherTodos()
+          }}
+        />
       </div>
     </div>
   )
