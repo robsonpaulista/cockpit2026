@@ -21,8 +21,54 @@ export function parseVotacaoSecaoAno(value: string | null | undefined): VotacaoS
   return isVotacaoSecaoAno(n) ? n : VOTACAO_SECAO_ANO_PADRAO
 }
 
+/** Lê um ou mais anos (?anos=2024,2022 ou ?ano=2024). */
+export function parseVotacaoSecaoAnos(
+  anosParam: string | null | undefined,
+  anoLegacyParam?: string | null | undefined,
+): VotacaoSecaoAno[] {
+  const raw = anosParam?.trim() || anoLegacyParam?.trim()
+  if (!raw) return [VOTACAO_SECAO_ANO_PADRAO]
+
+  const parsed = raw
+    .split(',')
+    .map((s) => Number(s.trim()))
+    .filter(isVotacaoSecaoAno)
+
+  const unique = [...new Set(parsed)].sort((a, b) => b - a) as VotacaoSecaoAno[]
+  return unique.length > 0 ? unique : [VOTACAO_SECAO_ANO_PADRAO]
+}
+
+export function serializarAnosVotacaoSecao(anos: readonly VotacaoSecaoAno[]): string {
+  return [...anos].sort((a, b) => b - a).join(',')
+}
+
 export function cargosVotacaoSecao(ano: VotacaoSecaoAno): readonly string[] {
   return VOTACAO_SECAO_CARGOS[ano]
+}
+
+/** Todos os pares ano+cargo para comparação multi-ano. */
+export function listarCargosAno(anos: readonly VotacaoSecaoAno[]): { ano: VotacaoSecaoAno; cargo: string }[] {
+  return anos.flatMap((ano) =>
+    cargosVotacaoSecao(ano).map((cargo) => ({ ano, cargo })),
+  )
+}
+
+export function cargoAnoKey(ano: VotacaoSecaoAno, cargo: string): string {
+  return `${ano}|${cargo}`
+}
+
+export function parseCargoAnoKey(key: string): { ano: VotacaoSecaoAno; cargo: string } | null {
+  const idx = key.indexOf('|')
+  if (idx <= 0) return null
+  const ano = parseVotacaoSecaoAno(key.slice(0, idx))
+  const cargo = key.slice(idx + 1).trim()
+  if (!cargo) return null
+  return { ano, cargo }
+}
+
+export function rotuloCargoAno(key: string): string {
+  const ref = parseCargoAnoKey(key)
+  return ref ? `${ref.cargo} (${ref.ano})` : key
 }
 
 export function cargoPermiteSelecaoCandidatos(cargo: string): boolean {
@@ -40,12 +86,16 @@ export function parseModoComparacaoSecao(value: string | null | undefined): Modo
   return 'cargo'
 }
 
-/** Lê cargos selecionados na URL (?cargos=Dep+Federal,Senador). Default: todos do ano. */
+/** Lê cargos selecionados na URL. Chaves `ano|cargo` (multi) ou nome do cargo (ano único). */
 export function parseCargosComparacaoParam(
   value: string | null | undefined,
-  ano: VotacaoSecaoAno,
+  anos: readonly VotacaoSecaoAno[],
 ): string[] {
-  const disponiveis = [...cargosVotacaoSecao(ano)]
+  const disponiveis =
+    anos.length > 1
+      ? listarCargosAno(anos).map(({ ano, cargo }) => cargoAnoKey(ano, cargo))
+      : [...cargosVotacaoSecao(anos[0] ?? VOTACAO_SECAO_ANO_PADRAO)]
+
   if (!value?.trim()) return disponiveis
 
   const parsed = value
@@ -104,6 +154,8 @@ export type VotacaoSecaoResultado = {
   nmVotavel: string
   sqCandidato: number | null
   qtVotos: number
+  /** Preenchido ao mesclar dados de vários anos na mesma seção. */
+  anoEleicao?: number
 }
 
 export type VotacaoSecaoItem = {
@@ -121,6 +173,7 @@ export type VotacaoSecaoItem = {
 export type VotacaoSecaoResumo = {
   municipio: string
   anoEleicao: number
+  anosEleicao?: number[]
   nrTurno: number
   totalSecoes: number
   totalVotos: number

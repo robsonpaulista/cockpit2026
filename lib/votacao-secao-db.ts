@@ -1,4 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
+import { mesclarVotacaoSecaoMultiAno } from '@/lib/votacao-secao-merge'
 import {
   normalizeMunicipioChaveVotacao,
   normalizeMunicipioComparacao,
@@ -267,6 +268,7 @@ export async function getVotacaoSecaoPorMunicipio(
     resumo: {
       municipio: ref.nome,
       anoEleicao: ano,
+      anosEleicao: [ano],
       nrTurno: turno,
       totalSecoes: secoes.length,
       totalVotos,
@@ -274,4 +276,51 @@ export async function getVotacaoSecaoPorMunicipio(
     },
     secoes,
   }
+}
+
+export async function listMunicipiosVotacaoSecaoMulti(
+  supabase: SupabaseClient,
+  anos: readonly VotacaoSecaoAno[],
+): Promise<string[]> {
+  if (anos.length === 0) return []
+  if (anos.length === 1) return listMunicipiosVotacaoSecao(supabase, anos[0])
+
+  const listas = await Promise.all(anos.map((a) => listMunicipiosVotacaoSecao(supabase, a)))
+  const sets = listas.map((lista) => new Set(lista.map((m) => normalizeMunicipioComparacao(m))))
+
+  return listas[0]
+    .filter((m) => sets.every((s) => s.has(normalizeMunicipioComparacao(m))))
+    .sort((a, b) => a.localeCompare(b, 'pt-BR'))
+}
+
+export async function getVotacaoSecaoPorMunicipioMultiAno(
+  supabase: SupabaseClient,
+  municipio: string,
+  params?: {
+    anos?: readonly VotacaoSecaoAno[]
+    cargo?: string | null
+    turno?: number
+  },
+): Promise<{ resumo: VotacaoSecaoResumo; secoes: VotacaoSecaoItem[] } | null> {
+  const anos = params?.anos?.length ? params.anos : [VOTACAO_SECAO_ANO_PADRAO]
+  if (anos.length === 1) {
+    return getVotacaoSecaoPorMunicipio(supabase, municipio, {
+      cargo: params?.cargo,
+      ano: anos[0],
+      turno: params?.turno,
+    })
+  }
+
+  const porAno = await Promise.all(
+    anos.map(async (ano) => ({
+      ano,
+      data: await getVotacaoSecaoPorMunicipio(supabase, municipio, {
+        cargo: params?.cargo,
+        ano,
+        turno: params?.turno,
+      }),
+    })),
+  )
+
+  return mesclarVotacaoSecaoMultiAno(porAno)
 }

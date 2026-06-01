@@ -1,4 +1,10 @@
-import { cargoMatch, normalizarNomeCargo, type VotacaoSecaoItem } from '@/lib/votacao-secao'
+import {
+  cargoAnoKey,
+  normalizarNomeCargo,
+  parseCargoAnoKey,
+  type VotacaoSecaoAno,
+  type VotacaoSecaoItem,
+} from '@/lib/votacao-secao'
 
 export type CandidatoMatrizColuna = {
   id: string
@@ -6,6 +12,7 @@ export type CandidatoMatrizColuna = {
   nrVotavel: number
   nmVotavel: string
   totalVotos: number
+  anoEleicao?: number
 }
 
 export type LinhaMatrizSecao = {
@@ -53,9 +60,24 @@ export function candidatoMatrizId(
   dsCargo: string,
   nrVotavel: number,
   nmVotavel: string,
+  anoEleicao?: number,
 ): string {
   const cargo = normalizarNomeCargo(dsCargo)
-  return `${cargo}:${nrVotavel}:${nmVotavel.trim().toUpperCase()}`
+  const core = `${cargo}:${nrVotavel}:${nmVotavel.trim().toUpperCase()}`
+  return anoEleicao != null ? `${anoEleicao}:${core}` : core
+}
+
+function resultadoPassaFiltroCargo(
+  dsCargo: string,
+  anoEleicao: number | undefined,
+  filtro: readonly string[] | null | undefined,
+): boolean {
+  if (!filtro?.length) return true
+  const cargoNorm = normalizarNomeCargo(dsCargo)
+  if (anoEleicao != null) {
+    return filtro.includes(cargoAnoKey(anoEleicao as VotacaoSecaoAno, cargoNorm))
+  }
+  return filtro.includes(cargoNorm) || filtro.some((k) => parseCargoAnoKey(k)?.cargo === cargoNorm)
 }
 
 /** Lista candidatos ordenados por total de votos no município. */
@@ -67,12 +89,12 @@ export function listarCandidatosSecao(
 
   for (const secao of secoes) {
     for (const r of secao.resultados) {
-      if (filtroCargos?.length && !filtroCargos.some((c) => cargoMatch(r.dsCargo, c))) {
+      if (!resultadoPassaFiltroCargo(r.dsCargo, r.anoEleicao, filtroCargos)) {
         continue
       }
 
       const dsCargo = normalizarNomeCargo(r.dsCargo)
-      const id = candidatoMatrizId(dsCargo, r.nrVotavel, r.nmVotavel)
+      const id = candidatoMatrizId(dsCargo, r.nrVotavel, r.nmVotavel, r.anoEleicao)
       const prev = totais.get(id)
       if (prev) {
         prev.totalVotos += r.qtVotos
@@ -83,6 +105,7 @@ export function listarCandidatosSecao(
           nrVotavel: r.nrVotavel,
           nmVotavel: r.nmVotavel,
           totalVotos: r.qtVotos,
+          anoEleicao: r.anoEleicao,
         })
       }
     }
@@ -120,7 +143,7 @@ export function montarMatrizVotacaoSecao(
     let liderVotos = -1
 
     for (const r of secao.resultados) {
-      const id = candidatoMatrizId(r.dsCargo, r.nrVotavel, r.nmVotavel)
+      const id = candidatoMatrizId(r.dsCargo, r.nrVotavel, r.nmVotavel, r.anoEleicao)
       if (!idSet.has(id)) continue
       votos[id] = r.qtVotos
       if (r.qtVotos > liderVotos) {

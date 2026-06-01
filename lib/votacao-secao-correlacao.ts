@@ -46,35 +46,53 @@ function primeiroNome(nome: string): string {
   return (nome.trim().split(/\s+/)[0] ?? nome).toUpperCase()
 }
 
-/** Lista pares de cargos diferentes com votos parecidos na linha. */
+function chaveGrupoComparacao(c: CandidatoMatrizColuna): string {
+  return c.anoEleicao != null ? `${c.anoEleicao}:${c.dsCargo}` : c.dsCargo
+}
+
+function rotuloParSemelhante(a: CandidatoMatrizColuna, b: CandidatoMatrizColuna): {
+  nomeA: string
+  nomeB: string
+} {
+  const sufixoA = a.anoEleicao != null ? ` (${String(a.anoEleicao).slice(-2)})` : ''
+  const sufixoB = b.anoEleicao != null ? ` (${String(b.anoEleicao).slice(-2)})` : ''
+  return {
+    nomeA: `${primeiroNome(a.nmVotavel)}${sufixoA}`,
+    nomeB: `${primeiroNome(b.nmVotavel)}${sufixoB}`,
+  }
+}
+
+/** Lista pares de grupos (cargo ou cargo+ano) diferentes com votos parecidos na linha. */
 export function paresSemelhantesNaLinha(
   votos: Record<string, number>,
   candidatos: CandidatoMatrizColuna[],
   margem = MARGEM_VOTOS_PARECIDOS,
 ): ParSemelhanteSecao[] {
   const pares: ParSemelhanteSecao[] = []
-  const porCargo = new Map<string, CandidatoMatrizColuna[]>()
+  const porGrupo = new Map<string, CandidatoMatrizColuna[]>()
   for (const c of candidatos) {
-    const lista = porCargo.get(c.dsCargo) ?? []
+    const chave = chaveGrupoComparacao(c)
+    const lista = porGrupo.get(chave) ?? []
     lista.push(c)
-    porCargo.set(c.dsCargo, lista)
+    porGrupo.set(chave, lista)
   }
 
-  const cargos = [...porCargo.keys()]
-  if (cargos.length < 2) return pares
+  const grupos = [...porGrupo.keys()]
+  if (grupos.length < 2) return pares
 
-  for (let i = 0; i < cargos.length; i++) {
-    for (let j = i + 1; j < cargos.length; j++) {
-      const listaA = porCargo.get(cargos[i]) ?? []
-      const listaB = porCargo.get(cargos[j]) ?? []
+  for (let i = 0; i < grupos.length; i++) {
+    for (let j = i + 1; j < grupos.length; j++) {
+      const listaA = porGrupo.get(grupos[i]) ?? []
+      const listaB = porGrupo.get(grupos[j]) ?? []
       for (const a of listaA) {
         for (const b of listaB) {
           if (votosParecidosNaSecao(votos[a.id] ?? 0, votos[b.id] ?? 0, margem)) {
+            const rotulos = rotuloParSemelhante(a, b)
             pares.push({
               idA: a.id,
               idB: b.id,
-              nomeA: primeiroNome(a.nmVotavel),
-              nomeB: primeiroNome(b.nmVotavel),
+              nomeA: rotulos.nomeA,
+              nomeB: rotulos.nomeB,
             })
           }
         }
@@ -200,22 +218,23 @@ export function analisesComparacaoEntreCargos(
   candidatos: CandidatoMatrizColuna[],
   margem = MARGEM_VOTOS_PARECIDOS,
 ): AnaliseComparacaoVotos[] {
-  const porCargo = new Map<string, CandidatoMatrizColuna[]>()
+  const porGrupo = new Map<string, CandidatoMatrizColuna[]>()
   for (const c of candidatos) {
-    const lista = porCargo.get(c.dsCargo) ?? []
+    const chave = chaveGrupoComparacao(c)
+    const lista = porGrupo.get(chave) ?? []
     lista.push(c)
-    porCargo.set(c.dsCargo, lista)
+    porGrupo.set(chave, lista)
   }
 
-  const cargos = [...porCargo.keys()]
-  if (cargos.length < 2) return []
+  const grupos = [...porGrupo.keys()]
+  if (grupos.length < 2) return []
 
   const analises: AnaliseComparacaoVotos[] = []
 
-  for (let i = 0; i < cargos.length; i++) {
-    for (let j = i + 1; j < cargos.length; j++) {
-      const listaA = porCargo.get(cargos[i]) ?? []
-      const listaB = porCargo.get(cargos[j]) ?? []
+  for (let i = 0; i < grupos.length; i++) {
+    for (let j = i + 1; j < grupos.length; j++) {
+      const listaA = porGrupo.get(grupos[i]) ?? []
+      const listaB = porGrupo.get(grupos[j]) ?? []
       for (const a of listaA) {
         for (const b of listaB) {
           analises.push(analisarComparacaoVotos(linhas, a, b, margem))

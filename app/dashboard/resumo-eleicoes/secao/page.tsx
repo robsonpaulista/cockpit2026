@@ -14,12 +14,17 @@ import {
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import {
+  cargoAnoKey,
   cargoPermiteSelecaoCandidatos,
   cargosVotacaoSecao,
+  listarCargosAno,
   normalizeMunicipioComparacao,
   parseCargosComparacaoParam,
   parseModoComparacaoSecao,
   parseVotacaoSecaoAno,
+  parseVotacaoSecaoAnos,
+  rotuloCargoAno,
+  serializarAnosVotacaoSecao,
   serializarCargosComparacao,
   VOTACAO_SECAO_ANOS,
   VOTACAO_SECAO_ANO_PADRAO,
@@ -75,8 +80,31 @@ function abreviarCargo(dsCargo: string): string {
   return map[dsCargo] ?? dsCargo
 }
 
+function chaveCargoCandidato(c: CandidatoMatrizColuna): string {
+  return c.anoEleicao != null ? cargoAnoKey(c.anoEleicao as VotacaoSecaoAno, c.dsCargo) : c.dsCargo
+}
+
+function rotuloCabecalhoCandidato(c: CandidatoMatrizColuna, multiAno: boolean): string {
+  if (multiAno && c.anoEleicao != null) {
+    return `${abreviarCargo(c.dsCargo)} ${c.anoEleicao}`
+  }
+  return abreviarCargo(c.dsCargo)
+}
+
 function normalizeCityName(city: string): string {
   return normalizeMunicipioComparacao(city)
+}
+
+function anosIguais(
+  a: readonly VotacaoSecaoAno[],
+  b: readonly VotacaoSecaoAno[],
+): boolean {
+  return serializarAnosVotacaoSecao(a) === serializarAnosVotacaoSecao(b)
+}
+
+function listasIguais(a: readonly string[], b: readonly string[]): boolean {
+  if (a.length !== b.length) return false
+  return a.every((v, i) => v === b[i])
 }
 
 export default function VotacaoSecaoPage() {
@@ -85,14 +113,23 @@ export default function VotacaoSecaoPage() {
   const searchParams = useSearchParams()
   const [municipios, setMunicipios] = useState<string[]>([])
   const [cidade, setCidade] = useState('')
-  const [ano, setAno] = useState<VotacaoSecaoAno>(VOTACAO_SECAO_ANO_PADRAO)
+  const [anos, setAnos] = useState<VotacaoSecaoAno[]>([VOTACAO_SECAO_ANO_PADRAO])
+  const anoPrincipal = anos[0] ?? VOTACAO_SECAO_ANO_PADRAO
+  const multiAno = anos.length > 1
   const [cargo, setCargo] = useState<string>(cargosVotacaoSecao(VOTACAO_SECAO_ANO_PADRAO)[0])
   const [modoComparacao, setModoComparacao] = useState<ModoComparacaoSecao>('cargo')
-  const [cargosComparacao, setCargosComparacao] = useState<string[]>(() => [
-    ...cargosVotacaoSecao(VOTACAO_SECAO_ANO_PADRAO),
-  ])
-  const cargosDisponiveis = useMemo(() => [...cargosVotacaoSecao(ano)], [ano])
-  const modoComparar = modoComparacao === 'comparar'
+  const [cargosComparacao, setCargosComparacao] = useState<string[]>(() =>
+    listarCargosAno([VOTACAO_SECAO_ANO_PADRAO]).map(({ ano, cargo: c }) => cargoAnoKey(ano, c)),
+  )
+  const cargosDisponiveis = useMemo(
+    () =>
+      multiAno
+        ? listarCargosAno(anos).map(({ ano, cargo: c }) => cargoAnoKey(ano, c))
+        : [...cargosVotacaoSecao(anoPrincipal)],
+    [anos, multiAno, anoPrincipal],
+  )
+  const modoComparar = multiAno || modoComparacao === 'comparar'
+  const anosKey = useMemo(() => serializarAnosVotacaoSecao(anos), [anos])
   const permiteSelecaoCandidatos =
     modoComparar || cargoPermiteSelecaoCandidatos(cargo)
   const [loading, setLoading] = useState(false)
@@ -110,32 +147,29 @@ export default function VotacaoSecaoPage() {
 
   useEffect(() => {
     setLoadingMunicipios(true)
-    fetch(`/api/resumo-eleicoes/votacao-secao?only_municipios=true&ano=${ano}`)
+    const qs = new URLSearchParams({
+      only_municipios: 'true',
+      anos: anosKey,
+    })
+    fetch(`/api/resumo-eleicoes/votacao-secao?${qs}`)
       .then((r) => r.json())
       .then((data) => {
         setMunicipios(data.municipios ?? [])
       })
       .catch(() => setMunicipios([]))
       .finally(() => setLoadingMunicipios(false))
-  }, [ano])
+  }, [anosKey])
 
   useEffect(() => {
-    const lista = cargosVotacaoSecao(ano)
+    if (multiAno) return
+    const lista = cargosVotacaoSecao(anoPrincipal)
     setCargo((prev) => (lista.includes(prev) ? prev : lista[0]))
-  }, [ano])
-
-  useEffect(() => {
-    setCargosComparacao((prev) => {
-      const disponiveis = [...cargosVotacaoSecao(ano)]
-      const mantidos = prev.filter((c) => disponiveis.includes(c))
-      return mantidos.length > 0 ? mantidos : disponiveis
-    })
-  }, [ano])
+  }, [anoPrincipal, multiAno])
 
   const syncQuery = useCallback(
     (patch: {
       cidade?: string
-      ano?: VotacaoSecaoAno
+      anos?: readonly VotacaoSecaoAno[]
       cargo?: string
       modo?: ModoComparacaoSecao
       cargosComparacao?: readonly string[]
@@ -145,7 +179,10 @@ export default function VotacaoSecaoPage() {
         if (patch.cidade) params.set('cidade', patch.cidade)
         else params.delete('cidade')
       }
-      if (patch.ano !== undefined) params.set('ano', String(patch.ano))
+      if (patch.anos !== undefined) {
+        params.set('anos', serializarAnosVotacaoSecao(patch.anos))
+        params.delete('ano')
+      }
       if (patch.cargo !== undefined) {
         if (patch.cargo) params.set('cargo', patch.cargo)
         else params.delete('cargo')
@@ -155,9 +192,13 @@ export default function VotacaoSecaoPage() {
         else params.delete('modo')
       }
       if (patch.cargosComparacao !== undefined) {
-        const todosDoAno = cargosVotacaoSecao(patch.ano ?? ano)
+        const anosRef = patch.anos ?? anos
+        const todosDisponiveis =
+          anosRef.length > 1
+            ? listarCargosAno(anosRef).map(({ ano, cargo: c }) => cargoAnoKey(ano, c))
+            : [...cargosVotacaoSecao(anosRef[0] ?? VOTACAO_SECAO_ANO_PADRAO)]
         const serializado = serializarCargosComparacao(patch.cargosComparacao)
-        const todosSerializado = serializarCargosComparacao(todosDoAno)
+        const todosSerializado = serializarCargosComparacao(todosDisponiveis)
         if (patch.cargosComparacao.length > 0 && serializado !== todosSerializado) {
           params.set('cargos', serializado)
         } else {
@@ -165,38 +206,52 @@ export default function VotacaoSecaoPage() {
         }
       }
       const qs = params.toString()
+      const atual = searchParams.toString()
+      if (qs === atual) return
       router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false })
     },
-    [pathname, router, searchParams, ano],
+    [pathname, router, searchParams, anos],
   )
 
+  const searchKey = searchParams.toString()
+
   useEffect(() => {
-    const cidadeParam = searchParams.get('cidade')
-    const cargoParam = searchParams.get('cargo')
-    const anoQuery = searchParams.get('ano')
-    const modoFromUrl = parseModoComparacaoSecao(searchParams.get('modo'))
-    const anoFromUrl = anoQuery != null ? parseVotacaoSecaoAno(anoQuery) : null
-    const anoEfetivo = anoFromUrl ?? ano
-    if (anoFromUrl != null) {
-      setAno(anoFromUrl)
+    const sp = new URLSearchParams(searchKey)
+    const cargoParam = sp.get('cargo')
+    const anosFromUrl = parseVotacaoSecaoAnos(sp.get('anos'), sp.get('ano'))
+    const modoFromUrl = parseModoComparacaoSecao(sp.get('modo'))
+    const modoEfetivo = anosFromUrl.length > 1 ? 'comparar' : modoFromUrl
+    const cargosFromUrl = parseCargosComparacaoParam(sp.get('cargos'), anosFromUrl)
+
+    setAnos((prev) => (anosIguais(prev, anosFromUrl) ? prev : anosFromUrl))
+    setModoComparacao((prev) => (prev === modoEfetivo ? prev : modoEfetivo))
+    setCargosComparacao((prev) =>
+      listasIguais(prev, cargosFromUrl) ? prev : cargosFromUrl,
+    )
+
+    const cargosAnoUnico =
+      anosFromUrl.length === 1 ? cargosVotacaoSecao(anosFromUrl[0]) : []
+    if (cargoParam && cargosAnoUnico.includes(cargoParam)) {
+      setCargo((prev) => (prev === cargoParam ? prev : cargoParam))
     }
-    setModoComparacao(modoFromUrl)
-    setCargosComparacao(parseCargosComparacaoParam(searchParams.get('cargos'), anoEfetivo))
-    const cargosAno = cargosVotacaoSecao(anoEfetivo)
-    if (cargoParam && cargosAno.includes(cargoParam)) {
-      setCargo(cargoParam)
-    }
+  }, [searchKey])
+
+  useEffect(() => {
+    const cidadeParam = new URLSearchParams(searchKey).get('cidade')
     if (!cidadeParam) return
 
     const alvo = municipios.find((m) => normalizeCityName(m) === normalizeCityName(cidadeParam))
-    setCidade(alvo ?? cidadeParam)
-  }, [municipios, searchParams, ano])
+    const proxima = alvo ?? cidadeParam
+    setCidade((prev) =>
+      normalizeCityName(prev) === normalizeCityName(proxima) ? prev : proxima,
+    )
+  }, [municipios, searchKey])
 
   const carregar = useCallback(
     async (
       nomeCidade: string,
       cargoSel: string,
-      anoSel: VotacaoSecaoAno,
+      anosSel: readonly VotacaoSecaoAno[],
       modoSel: ModoComparacaoSecao,
     ) => {
       const alvo = nomeCidade.trim()
@@ -207,10 +262,11 @@ export default function VotacaoSecaoPage() {
       setLocaisExpandidos(new Set())
       setBairrosExpandidos(new Set())
       try {
+        const comparar = anosSel.length > 1 || modoSel === 'comparar'
         const params = new URLSearchParams({
           cidade: alvo,
-          cargo: modoSel === 'comparar' ? 'todos' : cargoSel,
-          ano: String(anoSel),
+          cargo: comparar ? 'todos' : cargoSel,
+          anos: serializarAnosVotacaoSecao(anosSel),
         })
         const res = await fetch(`/api/resumo-eleicoes/votacao-secao?${params.toString()}`)
         const data = await res.json().catch(() => ({}))
@@ -221,7 +277,7 @@ export default function VotacaoSecaoPage() {
         setResumo(data.resumo ?? null)
         setSecoes(listaSecoes)
 
-        if (modoSel === 'comparar') {
+        if (comparar) {
           setCandidatosSel([])
         } else {
           const todos = listarCandidatosSecao(listaSecoes)
@@ -241,8 +297,9 @@ export default function VotacaoSecaoPage() {
 
   useEffect(() => {
     if (!cidade) return
-    void carregar(cidade, cargo, ano, modoComparacao)
-  }, [cidade, cargo, ano, modoComparacao, carregar])
+    const anosSel = parseVotacaoSecaoAnos(anosKey, null)
+    void carregar(cidade, cargo, anosSel, modoComparacao)
+  }, [cidade, cargo, anosKey, modoComparacao, carregar])
 
   const todosCandidatos = useMemo(
     () =>
@@ -256,9 +313,10 @@ export default function VotacaoSecaoPage() {
   const candidatosPorCargo = useMemo(() => {
     const mapa = new Map<string, CandidatoMatrizColuna[]>()
     for (const c of todosCandidatos) {
-      const lista = mapa.get(c.dsCargo) ?? []
+      const chave = chaveCargoCandidato(c)
+      const lista = mapa.get(chave) ?? []
       lista.push(c)
-      mapa.set(c.dsCargo, lista)
+      mapa.set(chave, lista)
     }
     return mapa
   }, [todosCandidatos])
@@ -293,7 +351,7 @@ export default function VotacaoSecaoPage() {
 
   useEffect(() => {
     setFiltroSoSemelhantes(false)
-  }, [cidade, ano, modoComparacao, candidatosSel])
+  }, [cidade, anosKey, modoComparacao, candidatosSel])
 
   const gruposLocal = useMemo(
     () => agruparMatrizPorLocal(matriz.linhas),
@@ -404,21 +462,60 @@ export default function VotacaoSecaoPage() {
     })
   }
 
-  const toggleCargoComparacao = (cargoNome: string) => {
-    const ativo = cargosComparacao.includes(cargoNome)
+  const toggleCargoComparacao = (cargoChave: string) => {
+    const ativo = cargosComparacao.includes(cargoChave)
     const next = ativo
-      ? cargosComparacao.filter((c) => c !== cargoNome)
-      : [...cargosComparacao, cargoNome]
+      ? cargosComparacao.filter((c) => c !== cargoChave)
+      : [...cargosComparacao, cargoChave]
     if (next.length === 0) return
 
     setCargosComparacao(next)
     setCandidatosSel((sel) =>
       sel.filter((id) => {
         const cand = todosCandidatos.find((c) => c.id === id)
-        return cand ? next.includes(cand.dsCargo) : false
+        return cand ? next.includes(chaveCargoCandidato(cand)) : false
       }),
     )
-    syncQuery({ cidade, ano, cargo, modo: modoComparacao, cargosComparacao: next })
+    syncQuery({ cidade, anos, cargo, modo: modoComparacao, cargosComparacao: next })
+  }
+
+  const toggleAno = (a: VotacaoSecaoAno) => {
+    const tem = anos.includes(a)
+    const next: VotacaoSecaoAno[] = tem
+      ? anos.length <= 1
+        ? anos
+        : (anos.filter((x) => x !== a) as VotacaoSecaoAno[])
+      : ([...anos, a].sort((x, y) => y - x) as VotacaoSecaoAno[])
+
+    if (next === anos) return
+
+    setAnos(next)
+    setPagina(1)
+    recolherTodos()
+    setCandidatosSel([])
+
+    const proximoModo: ModoComparacaoSecao = next.length > 1 ? 'comparar' : modoComparacao
+    if (next.length > 1) setModoComparacao('comparar')
+
+    const cargosProx =
+      next.length > 1
+        ? listarCargosAno(next).map(({ ano, cargo: c }) => cargoAnoKey(ano, c))
+        : [...cargosVotacaoSecao(next[0])]
+
+    setCargosComparacao(cargosProx)
+
+    if (next.length === 1) {
+      const lista = cargosVotacaoSecao(next[0])
+      setCargo(lista.includes(cargo) ? cargo : lista[0])
+    }
+
+    syncQuery({
+      cidade,
+      anos: next,
+      cargo: next.length === 1 ? cargo : undefined,
+      modo: proximoModo,
+      cargosComparacao: proximoModo === 'comparar' ? cargosProx : undefined,
+    })
   }
 
   const selecionarTop = (n: number) => {
@@ -455,7 +552,8 @@ export default function VotacaoSecaoPage() {
           <div>
             <h1 className="text-xl font-semibold text-text-primary">Votação por seção</h1>
             <p className="text-sm text-text-secondary">
-              Matriz comparativa · Eleições {ano} · 1º turno · TSE (bweb)
+              Matriz comparativa · Eleições {anos.join(' e ')} · 1º turno · TSE (bweb)
+              {multiAno && ' · comparação entre anos'}
             </p>
           </div>
         </div>
@@ -468,7 +566,7 @@ export default function VotacaoSecaoPage() {
               onChange={(e) => {
                 const novaCidade = e.target.value
                 setCidade(novaCidade)
-                syncQuery({ cidade: novaCidade, ano, cargo, modo: modoComparacao })
+                syncQuery({ cidade: novaCidade, anos, cargo, modo: modoComparacao })
               }}
               disabled={loadingMunicipios}
               className="rounded-lg border border-card bg-background px-3 py-2 text-sm text-text-primary"
@@ -481,34 +579,44 @@ export default function VotacaoSecaoPage() {
               ))}
             </select>
           </label>
-          <label className="flex min-w-[8rem] flex-col gap-1">
-            <span className="text-xs font-medium text-text-secondary">Ano</span>
-            <select
-              value={ano}
-              onChange={(e) => {
-                const novoAno = parseVotacaoSecaoAno(e.target.value)
-                const cargosNovos = cargosVotacaoSecao(novoAno)
-                const novoCargo = cargosNovos.includes(cargo) ? cargo : cargosNovos[0]
-                setAno(novoAno)
-                setCargo(novoCargo)
-                setPagina(1)
-                recolherTodos()
-                syncQuery({ cidade, ano: novoAno, cargo: novoCargo, modo: modoComparacao })
-              }}
-              disabled={loading}
-              className="rounded-lg border border-card bg-background px-3 py-2 text-sm text-text-primary"
-            >
-              {VOTACAO_SECAO_ANOS.map((a) => (
-                <option key={a} value={a}>
-                  {a}
-                </option>
-              ))}
-            </select>
-          </label>
+          <div className="flex min-w-[10rem] flex-col gap-1">
+            <span className="text-xs font-medium text-text-secondary">Anos</span>
+            <div className="flex flex-wrap gap-2">
+              {VOTACAO_SECAO_ANOS.map((a) => {
+                const ativo = anos.includes(a)
+                return (
+                  <label
+                    key={a}
+                    className={cn(
+                      'inline-flex cursor-pointer items-center gap-1.5 rounded-full border px-2.5 py-1.5 text-sm',
+                      ativo
+                        ? 'border-accent-gold/50 bg-accent-gold/10 text-text-primary'
+                        : 'border-card bg-background text-text-secondary',
+                    )}
+                  >
+                    <input
+                      type="checkbox"
+                      className="sr-only"
+                      checked={ativo}
+                      disabled={loading || (ativo && anos.length <= 1)}
+                      onChange={() => toggleAno(a)}
+                    />
+                    {a}
+                  </label>
+                )
+              })}
+            </div>
+            {multiAno && (
+              <p className="w-full text-[10px] text-text-secondary">
+                Com 2 anos, compara todos os cargos (municipais + gerais). Municípios listados têm
+                dados em cada ano marcado; seções alinhadas por zona, seção e local.
+              </p>
+            )}
+          </div>
           <label className="flex min-w-[12rem] flex-col gap-1">
               <span className="text-xs font-medium text-text-secondary">Modo</span>
               <select
-                value={modoComparacao}
+                value={modoComparar ? 'comparar' : modoComparacao}
                 onChange={(e) => {
                   const novoModo = parseModoComparacaoSecao(e.target.value)
                   setModoComparacao(novoModo)
@@ -520,14 +628,15 @@ export default function VotacaoSecaoPage() {
                   }
                   syncQuery({
                     cidade,
-                    ano,
+                    anos,
                     cargo,
                     modo: novoModo,
                     cargosComparacao: novoModo === 'comparar' ? cargosDisponiveis : undefined,
                   })
                 }}
-                disabled={!cidade || loading}
-                className="rounded-lg border border-card bg-background px-3 py-2 text-sm text-text-primary"
+                disabled={!cidade || loading || multiAno}
+                title={multiAno ? 'Com vários anos, a comparação entre cargos é automática' : undefined}
+                className="rounded-lg border border-card bg-background px-3 py-2 text-sm text-text-primary disabled:opacity-60"
               >
                 {MODOS_COMPARACAO.map((m) => (
                   <option key={m.id} value={m.id}>
@@ -544,7 +653,7 @@ export default function VotacaoSecaoPage() {
               onChange={(e) => {
                 const novoCargo = e.target.value
                 setCargo(novoCargo)
-                syncQuery({ cidade, ano, cargo: novoCargo, modo: modoComparacao })
+                syncQuery({ cidade, anos, cargo: novoCargo, modo: modoComparacao })
               }}
               disabled={!cidade || loading}
               className="rounded-lg border border-card bg-background px-3 py-2 text-sm text-text-primary"
@@ -563,6 +672,7 @@ export default function VotacaoSecaoPage() {
               <div className="flex flex-wrap gap-2">
                 {cargosDisponiveis.map((c) => {
                   const ativo = cargosComparacao.includes(c)
+                  const rotulo = multiAno ? rotuloCargoAno(c) : c
                   return (
                     <label
                       key={c}
@@ -580,7 +690,7 @@ export default function VotacaoSecaoPage() {
                         disabled={!cidade || loading}
                         onChange={() => toggleCargoComparacao(c)}
                       />
-                      {c}
+                      {rotulo}
                     </label>
                   )
                 })}
@@ -608,7 +718,7 @@ export default function VotacaoSecaoPage() {
           </label>
           <button
             type="button"
-            onClick={() => void carregar(cidade, cargo, ano, modoComparacao)}
+            onClick={() => void carregar(cidade, cargo, anos, modoComparacao)}
             disabled={!cidade || loading}
             className="inline-flex h-10 items-center gap-2 rounded-lg border border-card bg-surface px-4 text-sm font-medium text-text-primary hover:bg-background disabled:opacity-50"
           >
@@ -643,7 +753,11 @@ export default function VotacaoSecaoPage() {
               <ResumoCard label="Município" valor={resumo.municipio} />
               <ResumoCard
                 label={modoComparar ? 'Cargos' : 'Cargo'}
-                valor={modoComparar ? cargosComparacao.join(' · ') : cargo}
+                valor={
+                  modoComparar
+                    ? cargosComparacao.map((c) => (multiAno ? rotuloCargoAno(c) : c)).join(' · ')
+                    : cargo
+                }
               />
               <ResumoCard label="Seções" valor={resumo.totalSecoes.toLocaleString('pt-BR')} />
               <ResumoCard label="Bairros" valor={String(totalBairros)} />
@@ -651,7 +765,10 @@ export default function VotacaoSecaoPage() {
                 label={modoComparar ? 'Candidatos selecionados' : 'Candidatos no cargo'}
                 valor={String(matriz.candidatos.length)}
               />
-              <ResumoCard label="Exercício" valor={`${resumo.anoEleicao} · ${resumo.nrTurno}º turno`} />
+              <ResumoCard
+                label="Exercício"
+                valor={`${(resumo.anosEleicao ?? [resumo.anoEleicao]).join(' · ')} · ${resumo.nrTurno}º turno`}
+              />
             </div>
 
             {secoesComBairro === 0 && (
@@ -659,7 +776,10 @@ export default function VotacaoSecaoPage() {
                 Bairros ainda não carregados no banco. Execute{' '}
                 <code className="rounded bg-background px-1">database/alter-votacao-secao-bairro.sql</code>{' '}
                 e{' '}
-                <code className="rounded bg-background px-1">python scripts/enrich-votacao-secao-bairro.py --ano {ano}</code>.
+                <code className="rounded bg-background px-1">
+                  python scripts/enrich-votacao-secao-bairro.py --ano {anos.join(' / ')}
+                </code>
+                .
               </div>
             )}
 
@@ -729,6 +849,7 @@ export default function VotacaoSecaoPage() {
                     candidato={c}
                     ativo
                     mostrarCargo={modoComparar}
+                    multiAno={multiAno}
                     onRemove={permiteSelecaoCandidatos ? () => toggleCandidato(c.id) : undefined}
                   />
                 ))}
@@ -743,13 +864,14 @@ export default function VotacaoSecaoPage() {
                 <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
                   {cargosComparacao.map((cargoItem) => {
                     const lista = filtrarCandidatosBusca(candidatosPorCargo.get(cargoItem) ?? [])
+                    const tituloCargo = multiAno ? rotuloCargoAno(cargoItem) : cargoItem
                     if (lista.length === 0) {
                       return (
                         <div
                           key={cargoItem}
                           className="rounded-lg border border-card bg-background/40 p-2 text-xs text-text-secondary"
                         >
-                          <p className="font-medium text-text-primary">{cargoItem}</p>
+                          <p className="font-medium text-text-primary">{tituloCargo}</p>
                           <p className="mt-1">Nenhum candidato encontrado.</p>
                         </div>
                       )
@@ -760,7 +882,7 @@ export default function VotacaoSecaoPage() {
                         className="flex max-h-52 flex-col rounded-lg border border-card bg-background/40"
                       >
                         <p className="border-b border-card px-2 py-1.5 text-xs font-semibold text-text-primary">
-                          {cargoItem}
+                          {tituloCargo}
                           <span className="ml-1 font-normal text-text-secondary">
                             ({lista.length})
                           </span>
@@ -898,7 +1020,7 @@ export default function VotacaoSecaoPage() {
                         >
                           {modoComparar && (
                             <div className="truncate text-[9px] font-normal uppercase text-accent-gold">
-                              {abreviarCargo(c.dsCargo)}
+                              {rotuloCabecalhoCandidato(c, multiAno)}
                             </div>
                           )}
                           <div className="truncate">{c.nmVotavel.split(' ')[0]}</div>
@@ -1406,10 +1528,10 @@ function PainelComparacaoVotos({ analises }: { analises: AnaliseComparacaoVotos[
             )}
           >
             <p className="text-[11px] font-medium text-text-secondary">
-              {abreviarCargo(a.candidatoA.dsCargo)}{' '}
+              {rotuloCabecalhoCandidato(a.candidatoA, Boolean(a.candidatoA.anoEleicao))}{' '}
               <span className="text-text-primary">{a.candidatoA.nmVotavel}</span>
               {' × '}
-              {abreviarCargo(a.candidatoB.dsCargo)}{' '}
+              {rotuloCabecalhoCandidato(a.candidatoB, Boolean(a.candidatoB.anoEleicao))}{' '}
               <span className="text-text-primary">{a.candidatoB.nmVotavel}</span>
             </p>
             <p className="mt-3 text-3xl font-bold tabular-nums text-text-primary">
@@ -1448,11 +1570,13 @@ function CandidatoChip({
   candidato,
   ativo,
   mostrarCargo = false,
+  multiAno = false,
   onRemove,
 }: {
   candidato: CandidatoMatrizColuna
   ativo?: boolean
   mostrarCargo?: boolean
+  multiAno?: boolean
   onRemove?: () => void
 }) {
   return (
@@ -1466,7 +1590,7 @@ function CandidatoChip({
     >
       {mostrarCargo && (
         <span className="rounded bg-background/80 px-1 text-[9px] font-semibold uppercase text-accent-gold">
-          {abreviarCargo(candidato.dsCargo)}
+          {rotuloCabecalhoCandidato(candidato, multiAno)}
         </span>
       )}
       <span className="font-medium tabular-nums">{candidato.nrVotavel}</span>
