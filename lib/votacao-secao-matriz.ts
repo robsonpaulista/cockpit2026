@@ -4,6 +4,7 @@ import {
   parseCargoAnoKey,
   type VotacaoSecaoAno,
   type VotacaoSecaoItem,
+  type VotacaoSecaoResultado,
 } from '@/lib/votacao-secao'
 
 export type CandidatoMatrizColuna = {
@@ -61,10 +62,29 @@ export function candidatoMatrizId(
   nrVotavel: number,
   nmVotavel: string,
   anoEleicao?: number,
+  sqCandidato?: number | null,
 ): string {
   const cargo = normalizarNomeCargo(dsCargo)
-  const core = `${cargo}:${nrVotavel}:${nmVotavel.trim().toUpperCase()}`
+  const core =
+    sqCandidato != null && sqCandidato > 0
+      ? `${cargo}:sq:${sqCandidato}`
+      : `${cargo}:${nrVotavel}:${nmVotavel.trim().toUpperCase()}`
   return anoEleicao != null ? `${anoEleicao}:${core}` : core
+}
+
+function idCandidatoFromResultado(
+  r: Pick<
+    VotacaoSecaoResultado,
+    'dsCargo' | 'nrVotavel' | 'nmVotavel' | 'anoEleicao' | 'sqCandidato'
+  >,
+): string {
+  return candidatoMatrizId(
+    r.dsCargo,
+    r.nrVotavel,
+    r.nmVotavel,
+    r.anoEleicao,
+    r.sqCandidato,
+  )
 }
 
 function resultadoPassaFiltroCargo(
@@ -94,10 +114,13 @@ export function listarCandidatosSecao(
       }
 
       const dsCargo = normalizarNomeCargo(r.dsCargo)
-      const id = candidatoMatrizId(dsCargo, r.nrVotavel, r.nmVotavel, r.anoEleicao)
+      const id = idCandidatoFromResultado(r)
       const prev = totais.get(id)
       if (prev) {
         prev.totalVotos += r.qtVotos
+        if (!prev.nmVotavel?.trim() && r.nmVotavel?.trim()) {
+          prev.nmVotavel = r.nmVotavel
+        }
       } else {
         totais.set(id, {
           id,
@@ -143,11 +166,14 @@ export function montarMatrizVotacaoSecao(
     let liderVotos = -1
 
     for (const r of secao.resultados) {
-      const id = candidatoMatrizId(r.dsCargo, r.nrVotavel, r.nmVotavel, r.anoEleicao)
+      const id = idCandidatoFromResultado(r)
       if (!idSet.has(id)) continue
-      votos[id] = r.qtVotos
-      if (r.qtVotos > liderVotos) {
-        liderVotos = r.qtVotos
+      votos[id] = (votos[id] ?? 0) + r.qtVotos
+    }
+
+    for (const [id, qt] of Object.entries(votos)) {
+      if (qt > liderVotos) {
+        liderVotos = qt
         liderId = id
       }
     }
@@ -167,6 +193,14 @@ export function montarMatrizVotacaoSecao(
       liderId,
     }
   })
+
+  for (const c of candidatos) {
+    let somaNasSecoes = 0
+    for (const linha of linhas) {
+      somaNasSecoes += linha.votos[c.id] ?? 0
+    }
+    c.totalVotos = Math.max(c.totalVotos, somaNasSecoes)
+  }
 
   return { candidatos, linhas }
 }

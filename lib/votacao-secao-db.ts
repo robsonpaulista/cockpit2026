@@ -177,7 +177,11 @@ async function fetchVotosPorLocais(
         q = q.ilike('ds_cargo', cargoFiltro)
       }
 
-      return q.range(from, to)
+      return q
+        .order('local_id')
+        .order('cd_cargo')
+        .order('nr_votavel')
+        .range(from, to)
     })
 
     all.push(...chunkRows)
@@ -221,19 +225,36 @@ export async function getVotacaoSecaoPorMunicipio(
   }
 
   const votosPorLocal = new Map<string, VotacaoSecaoResultado[]>()
+  const indiceResultado = new Map<string, VotacaoSecaoResultado>()
   const cargosSet = new Set<string>()
 
   for (const v of votos) {
     cargosSet.add(v.ds_cargo)
-    const lista = votosPorLocal.get(v.local_id) ?? []
-    lista.push({
+    const sq = v.sq_candidato != null ? Number(v.sq_candidato) : null
+    const chaveResultado = `${v.local_id}::${v.cd_cargo}::${v.nr_votavel}`
+    const existente = indiceResultado.get(chaveResultado)
+    if (existente) {
+      existente.qtVotos += parseNum(v.qt_votos)
+      if (!existente.nmVotavel?.trim() && v.nm_votavel?.trim()) {
+        existente.nmVotavel = v.nm_votavel
+      }
+      if (existente.sqCandidato == null && sq != null) {
+        existente.sqCandidato = sq
+      }
+      continue
+    }
+
+    const resultado: VotacaoSecaoResultado = {
       cdCargo: v.cd_cargo,
       dsCargo: v.ds_cargo,
       nrVotavel: v.nr_votavel,
       nmVotavel: v.nm_votavel,
-      sqCandidato: v.sq_candidato != null ? Number(v.sq_candidato) : null,
+      sqCandidato: sq,
       qtVotos: parseNum(v.qt_votos),
-    })
+    }
+    indiceResultado.set(chaveResultado, resultado)
+    const lista = votosPorLocal.get(v.local_id) ?? []
+    lista.push(resultado)
     votosPorLocal.set(v.local_id, lista)
   }
 

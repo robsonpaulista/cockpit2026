@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import {
   AlertCircle,
@@ -93,6 +93,26 @@ function rotuloCabecalhoCandidato(c: CandidatoMatrizColuna, multiAno: boolean): 
 
 function normalizeCityName(city: string): string {
   return normalizeMunicipioComparacao(city)
+}
+
+const selectFiltroClass =
+  'h-10 w-full rounded-lg border border-card bg-background px-3 text-sm text-text-primary disabled:opacity-50'
+
+function CampoFiltro({
+  label,
+  children,
+  className,
+}: {
+  label: string
+  children: ReactNode
+  className?: string
+}) {
+  return (
+    <div className={cn('flex min-w-0 flex-col gap-1.5', className)}>
+      <span className="text-xs font-medium text-text-secondary">{label}</span>
+      {children}
+    </div>
+  )
 }
 
 function anosIguais(
@@ -558,63 +578,60 @@ export default function VotacaoSecaoPage() {
           </div>
         </div>
 
-        <div className="mb-4 flex flex-wrap items-end gap-3 rounded-2xl border border-card bg-surface p-4">
-          <label className="flex min-w-[14rem] flex-col gap-1">
-            <span className="text-xs font-medium text-text-secondary">Município</span>
-            <select
-              value={cidade}
-              onChange={(e) => {
-                const novaCidade = e.target.value
-                setCidade(novaCidade)
-                syncQuery({ cidade: novaCidade, anos, cargo, modo: modoComparacao })
-              }}
-              disabled={loadingMunicipios}
-              className="rounded-lg border border-card bg-background px-3 py-2 text-sm text-text-primary"
+        <div className="mb-4 rounded-2xl border border-card bg-surface p-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-12 lg:items-end">
+            <CampoFiltro
+              label="Município"
+              className={cn('sm:col-span-2', modoComparar ? 'lg:col-span-4' : 'lg:col-span-3')}
             >
-              <option value="">Selecione…</option>
-              {municipios.map((m) => (
-                <option key={m} value={m}>
-                  {m}
-                </option>
-              ))}
-            </select>
-          </label>
-          <div className="flex min-w-[10rem] flex-col gap-1">
-            <span className="text-xs font-medium text-text-secondary">Anos</span>
-            <div className="flex flex-wrap gap-2">
-              {VOTACAO_SECAO_ANOS.map((a) => {
-                const ativo = anos.includes(a)
-                return (
-                  <label
-                    key={a}
-                    className={cn(
-                      'inline-flex cursor-pointer items-center gap-1.5 rounded-full border px-2.5 py-1.5 text-sm',
-                      ativo
-                        ? 'border-accent-gold/50 bg-accent-gold/10 text-text-primary'
-                        : 'border-card bg-background text-text-secondary',
-                    )}
-                  >
-                    <input
-                      type="checkbox"
-                      className="sr-only"
-                      checked={ativo}
-                      disabled={loading || (ativo && anos.length <= 1)}
-                      onChange={() => toggleAno(a)}
-                    />
-                    {a}
-                  </label>
-                )
-              })}
-            </div>
-            {multiAno && (
-              <p className="w-full text-[10px] text-text-secondary">
-                Com 2 anos, compara todos os cargos (municipais + gerais). Municípios listados têm
-                dados em cada ano marcado; seções alinhadas por zona, seção e local.
-              </p>
-            )}
-          </div>
-          <label className="flex min-w-[12rem] flex-col gap-1">
-              <span className="text-xs font-medium text-text-secondary">Modo</span>
+              <select
+                value={cidade}
+                onChange={(e) => {
+                  const novaCidade = e.target.value
+                  setCidade(novaCidade)
+                  syncQuery({ cidade: novaCidade, anos, cargo, modo: modoComparacao })
+                }}
+                disabled={loadingMunicipios}
+                className={selectFiltroClass}
+              >
+                <option value="">Selecione…</option>
+                {municipios.map((m) => (
+                  <option key={m} value={m}>
+                    {m}
+                  </option>
+                ))}
+              </select>
+            </CampoFiltro>
+
+            <CampoFiltro label="Anos" className="lg:col-span-2">
+              <div className="flex h-10 items-center gap-2">
+                {VOTACAO_SECAO_ANOS.map((a) => {
+                  const ativo = anos.includes(a)
+                  return (
+                    <label
+                      key={a}
+                      className={cn(
+                        'inline-flex h-9 min-w-[3.25rem] cursor-pointer items-center justify-center rounded-lg border px-3 text-sm font-medium tabular-nums',
+                        ativo
+                          ? 'border-accent-gold/50 bg-accent-gold/10 text-text-primary'
+                          : 'border-card bg-background text-text-secondary',
+                      )}
+                    >
+                      <input
+                        type="checkbox"
+                        className="sr-only"
+                        checked={ativo}
+                        disabled={loading || (ativo && anos.length <= 1)}
+                        onChange={() => toggleAno(a)}
+                      />
+                      {a}
+                    </label>
+                  )
+                })}
+              </div>
+            </CampoFiltro>
+
+            <CampoFiltro label="Modo" className="lg:col-span-2">
               <select
                 value={modoComparar ? 'comparar' : modoComparacao}
                 onChange={(e) => {
@@ -635,8 +652,10 @@ export default function VotacaoSecaoPage() {
                   })
                 }}
                 disabled={!cidade || loading || multiAno}
-                title={multiAno ? 'Com vários anos, a comparação entre cargos é automática' : undefined}
-                className="rounded-lg border border-card bg-background px-3 py-2 text-sm text-text-primary disabled:opacity-60"
+                title={
+                  multiAno ? 'Com vários anos, a comparação entre cargos é automática' : undefined
+                }
+                className={cn(selectFiltroClass, multiAno && 'opacity-60')}
               >
                 {MODOS_COMPARACAO.map((m) => (
                   <option key={m.id} value={m.id}>
@@ -644,87 +663,146 @@ export default function VotacaoSecaoPage() {
                   </option>
                 ))}
               </select>
-            </label>
-          {!modoComparar && (
-          <label className="flex min-w-[10rem] flex-col gap-1">
-            <span className="text-xs font-medium text-text-secondary">Cargo</span>
-            <select
-              value={cargo}
-              onChange={(e) => {
-                const novoCargo = e.target.value
-                setCargo(novoCargo)
-                syncQuery({ cidade, anos, cargo: novoCargo, modo: modoComparacao })
-              }}
-              disabled={!cidade || loading}
-              className="rounded-lg border border-card bg-background px-3 py-2 text-sm text-text-primary"
+            </CampoFiltro>
+
+            {!modoComparar && (
+              <CampoFiltro label="Cargo" className="lg:col-span-2">
+                <select
+                  value={cargo}
+                  onChange={(e) => {
+                    const novoCargo = e.target.value
+                    setCargo(novoCargo)
+                    syncQuery({ cidade, anos, cargo: novoCargo, modo: modoComparacao })
+                  }}
+                  disabled={!cidade || loading}
+                  className={selectFiltroClass}
+                >
+                  {cargosDisponiveis.map((c) => (
+                    <option key={c} value={c}>
+                      {c}
+                    </option>
+                  ))}
+                </select>
+              </CampoFiltro>
+            )}
+
+            <CampoFiltro
+              label="Agrupar"
+              className={cn('lg:col-span-2', !modoComparar && 'lg:col-span-1')}
             >
-              {cargosDisponiveis.map((c) => (
-                <option key={c} value={c}>
-                  {c}
-                </option>
-              ))}
-            </select>
-          </label>
-          )}
+              <select
+                value={agrupamento}
+                onChange={(e) => {
+                  setAgrupamento(e.target.value as AgrupamentoMatriz)
+                  setPagina(1)
+                  recolherTodos()
+                }}
+                disabled={!cidade || loading}
+                className={selectFiltroClass}
+              >
+                {AGRUPAMENTOS.map((a) => (
+                  <option key={a.id} value={a.id}>
+                    {a.label}
+                  </option>
+                ))}
+              </select>
+            </CampoFiltro>
+
+            <div className="flex sm:col-span-2 lg:col-span-2 lg:justify-end">
+              <button
+                type="button"
+                onClick={() => void carregar(cidade, cargo, anos, modoComparacao)}
+                disabled={!cidade || loading}
+                className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-lg border border-accent-gold/40 bg-accent-gold/10 px-4 text-sm font-medium text-text-primary hover:bg-accent-gold/15 disabled:opacity-50 lg:w-auto"
+              >
+                <RefreshCw className={cn('h-4 w-4 shrink-0', loading && 'animate-spin')} />
+                Atualizar
+              </button>
+            </div>
+          </div>
+
           {modoComparar && (
-            <div className="flex min-w-[16rem] flex-1 flex-col gap-1.5">
-              <span className="text-xs font-medium text-text-secondary">Cargos na comparação</span>
-              <div className="flex flex-wrap gap-2">
-                {cargosDisponiveis.map((c) => {
-                  const ativo = cargosComparacao.includes(c)
-                  const rotulo = multiAno ? rotuloCargoAno(c) : c
-                  return (
-                    <label
-                      key={c}
-                      className={cn(
-                        'inline-flex cursor-pointer items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs',
-                        ativo
-                          ? 'border-accent-gold/50 bg-accent-gold/10 text-text-primary'
-                          : 'border-card bg-background text-text-secondary',
-                      )}
-                    >
-                      <input
-                        type="checkbox"
-                        className="sr-only"
-                        checked={ativo}
-                        disabled={!cidade || loading}
-                        onChange={() => toggleCargoComparacao(c)}
-                      />
-                      {rotulo}
-                    </label>
-                  )
-                })}
-              </div>
+            <div className="mt-4 border-t border-card pt-4">
+              <p className="mb-3 text-xs font-medium text-text-secondary">Cargos na comparação</p>
+              {multiAno ? (
+                <div className="grid gap-4 sm:grid-cols-2">
+                  {anos.map((anoRef) => {
+                    const chips = cargosDisponiveis.filter((c) => c.startsWith(`${anoRef}|`))
+                    if (chips.length === 0) return null
+                    return (
+                      <div
+                        key={anoRef}
+                        className="rounded-xl border border-card bg-background/40 p-3"
+                      >
+                        <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-accent-gold">
+                          Eleição {anoRef}
+                        </p>
+                        <div className="flex flex-wrap gap-1.5">
+                          {chips.map((c) => {
+                            const ativo = cargosComparacao.includes(c)
+                            return (
+                              <label
+                                key={c}
+                                className={cn(
+                                  'inline-flex cursor-pointer items-center rounded-full border px-2.5 py-1 text-xs',
+                                  ativo
+                                    ? 'border-accent-gold/50 bg-accent-gold/10 text-text-primary'
+                                    : 'border-card bg-surface text-text-secondary',
+                                )}
+                              >
+                                <input
+                                  type="checkbox"
+                                  className="sr-only"
+                                  checked={ativo}
+                                  disabled={!cidade || loading}
+                                  onChange={() => toggleCargoComparacao(c)}
+                                />
+                                {rotuloCargoAno(c)}
+                              </label>
+                            )
+                          })}
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              ) : (
+                <div className="flex flex-wrap gap-1.5">
+                  {cargosDisponiveis.map((c) => {
+                    const ativo = cargosComparacao.includes(c)
+                    return (
+                      <label
+                        key={c}
+                        className={cn(
+                          'inline-flex cursor-pointer items-center rounded-full border px-2.5 py-1 text-xs',
+                          ativo
+                            ? 'border-accent-gold/50 bg-accent-gold/10 text-text-primary'
+                            : 'border-card bg-background text-text-secondary',
+                        )}
+                      >
+                        <input
+                          type="checkbox"
+                          className="sr-only"
+                          checked={ativo}
+                          disabled={!cidade || loading}
+                          onChange={() => toggleCargoComparacao(c)}
+                        />
+                        {c}
+                      </label>
+                    )
+                  })}
+                </div>
+              )}
             </div>
           )}
-          <label className="flex min-w-[10rem] flex-col gap-1">
-            <span className="text-xs font-medium text-text-secondary">Agrupar</span>
-            <select
-              value={agrupamento}
-              onChange={(e) => {
-                setAgrupamento(e.target.value as AgrupamentoMatriz)
-                setPagina(1)
-                recolherTodos()
-              }}
-              disabled={!cidade || loading}
-              className="rounded-lg border border-card bg-background px-3 py-2 text-sm text-text-primary"
-            >
-              {AGRUPAMENTOS.map((a) => (
-                <option key={a.id} value={a.id}>
-                  {a.label}
-                </option>
-              ))}
-            </select>
-          </label>
-          <button
-            type="button"
-            onClick={() => void carregar(cidade, cargo, anos, modoComparacao)}
-            disabled={!cidade || loading}
-            className="inline-flex h-10 items-center gap-2 rounded-lg border border-card bg-surface px-4 text-sm font-medium text-text-primary hover:bg-background disabled:opacity-50"
-          >
-            <RefreshCw className={cn('h-4 w-4', loading && 'animate-spin')} />
-            Atualizar
-          </button>
+
+          {multiAno && (
+            <p className="mt-4 rounded-lg border border-card bg-background/50 px-3 py-2 text-[11px] leading-relaxed text-text-secondary">
+              Com dois anos selecionados, você compara cargos municipais e gerais na mesma matriz.
+              Só aparecem municípios com dados em todos os anos marcados; as seções são alinhadas por
+              zona, seção e local de votação.
+            </p>
+          )}
         </div>
 
         {error && (
