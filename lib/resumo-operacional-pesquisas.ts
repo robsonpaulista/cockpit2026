@@ -64,8 +64,8 @@ function formatOndaResumo(r: {
   const cargo = r.cargo ? ` · ${r.cargo}` : ''
   const posicao =
     r.total > 1
-      ? `${r.rank}º de ${r.total} candidatos (${r.intencao.toFixed(1)}%)`
-      : `${r.intencao.toFixed(1)}% (único candidato na onda)`
+      ? `${r.rank}º de ${r.total} candidatos válidos (${r.intencao.toFixed(1)}%)`
+      : `${r.intencao.toFixed(1)}% (único candidato válido na onda)`
   return `${r.dataFmt} · ${r.instituto}${onde} · ${r.tipo}${cargo} — Jadyel Alencar: ${posicao}`
 }
 

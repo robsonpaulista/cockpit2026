@@ -3,7 +3,10 @@
  * Usa apenas intenção, rejeição, tipo, instituto, cidade e série temporal.
  */
 
-import { isNaoSabeOuNaoOpinaNome } from '@/lib/espontanea-normalize'
+import {
+  isBrancoNuloOuNenhumNome,
+  isNaoSabeOuNaoOpinaNome,
+} from '@/lib/espontanea-normalize'
 
 export type PollFeedbackLinha = {
   data: string
@@ -70,6 +73,13 @@ function desvioAmostral(nums: number[]): number {
   return Math.sqrt(s)
 }
 
+/** Candidatos que entram no ranking de posição (exclui branco/nulo e não sabe/não opina). */
+export function isCandidatoElegivelRankingPesquisa(candidatoNome: string): boolean {
+  return (
+    !isNaoSabeOuNaoOpinaNome(candidatoNome) && !isBrancoNuloOuNenhumNome(candidatoNome)
+  )
+}
+
 export function rankeamentoNasOndasOrdenadoPorData(
   candidatoNome: string,
   todos: PollFeedbackLinha[],
@@ -96,9 +106,10 @@ export function rankeamentoNasOndasOrdenadoPorData(
   }[] = []
 
   for (const [, grupo] of map) {
-    const doCandidato = grupo.find((x) => matches(x.candidato_nome))
+    const elegiveis = grupo.filter((x) => isCandidatoElegivelRankingPesquisa(x.candidato_nome))
+    const doCandidato = elegiveis.find((x) => matches(x.candidato_nome))
     if (!doCandidato) continue
-    const ordenados = [...grupo].sort((a, b) => (b.intencao || 0) - (a.intencao || 0))
+    const ordenados = [...elegiveis].sort((a, b) => (b.intencao || 0) - (a.intencao || 0))
     const idx = ordenados.findIndex((x) => matches(x.candidato_nome))
     if (idx < 0) continue
     linhas.push({
