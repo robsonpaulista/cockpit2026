@@ -18,7 +18,7 @@ import {
   X,
 } from 'lucide-react'
 import { MapaPresenca, type PrioridadeCampoMapaRow } from '@/components/mapa-presenca'
-import { cn, formatDate } from '@/lib/utils'
+import { cn, formatDate, monthBucketKey, parseDateOnlyLocal } from '@/lib/utils'
 import { sidebarPrimaryCTAButtonClass } from '@/lib/sidebar-menu-active-style'
 import { useTheme } from '@/contexts/theme-context'
 
@@ -328,9 +328,13 @@ export default function CampoPage() {
     }
   }
 
-  const agendasOrdenadasDesc = [...agendas].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+  const agendasOrdenadasDesc = [...agendas].sort(
+    (a, b) => parseDateOnlyLocal(b.date).getTime() - parseDateOnlyLocal(a.date).getTime(),
+  )
   const agendasConcluidas = agendas.filter((agenda) => agenda.status === 'concluida')
-  const ultimasRealizadas = [...agendasConcluidas].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()).slice(0, 4)
+  const ultimasRealizadas = [...agendasConcluidas]
+    .sort((a, b) => parseDateOnlyLocal(b.date).getTime() - parseDateOnlyLocal(a.date).getTime())
+    .slice(0, 4)
   const cityPresenceMap = agendasConcluidas.reduce<Record<string, { name: string; count: number }>>((acc, agenda) => {
     if (!agenda.cities?.name) return acc
     const key = agenda.cities.id ?? agenda.cities.name
@@ -372,9 +376,7 @@ export default function CampoPage() {
     const cityName = agenda.cities?.name?.toLowerCase() ?? ''
     const description = agenda.description?.toLowerCase() ?? ''
     const matchQuery = query.trim() === '' || cityName.includes(query.toLowerCase()) || description.includes(query.toLowerCase())
-    const agendaDate = new Date(agenda.date)
-    const monthKey = `${agendaDate.getFullYear()}-${agendaDate.getMonth()}`
-    const matchMonth = selectedMonthKey === null || monthKey === selectedMonthKey
+    const matchMonth = selectedMonthKey === null || monthBucketKey(agenda.date) === selectedMonthKey
     return matchCity && matchStatus && matchQuery && matchMonth
   })
   const agendasListadas = showAllAgendas ? agendasFiltradas : agendasFiltradas.slice(0, 8)
@@ -395,13 +397,16 @@ export default function CampoPage() {
     return { key, label, value: 0 }
   })
   agendasConcluidas.forEach((agenda) => {
-    const d = new Date(agenda.date)
-    const key = `${d.getFullYear()}-${d.getMonth()}`
+    const key = monthBucketKey(agenda.date)
     const bucket = monthBuckets.find((m) => m.key === key)
     if (bucket) bucket.value += 1
   })
   const monthMax = Math.max(...monthBuckets.map((m) => m.value), 1)
-  const selectedMonthLabel = selectedMonthKey ? monthBuckets.find((month) => month.key === selectedMonthKey)?.label ?? null : null
+  const selectedMonthMeta = selectedMonthKey
+    ? monthBuckets.find((month) => month.key === selectedMonthKey) ?? null
+    : null
+  const selectedMonthLabel = selectedMonthMeta?.label ?? null
+  const selectedMonthYear = selectedMonthKey?.split('-')[0] ?? null
 
   return (
     <div className={cn('min-h-screen', 'bg-bg-surface')}>
@@ -655,7 +660,12 @@ export default function CampoPage() {
             {selectedMonthLabel ? (
               <div className="mb-4 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border-card bg-bg-app/50 px-3 py-2 text-xs text-text-secondary">
                 <span>
-                  Filtrando agendas de <strong className="uppercase text-text-primary">{selectedMonthLabel}</strong>.
+                  Filtrando agendas de{' '}
+                  <strong className="uppercase text-text-primary">
+                    {selectedMonthLabel}
+                    {selectedMonthYear ? ` de ${selectedMonthYear}` : ''}
+                  </strong>
+                  .
                 </span>
                 <button
                   type="button"

@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
+import { enforceDashboardHighlightLimit } from '@/lib/news-dashboard-highlight'
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
 
@@ -82,6 +83,12 @@ export async function PUT(
       validated.processed = true
     }
 
+    let demotedHighlightId: string | null = null
+    if (validated.dashboard_highlight === true) {
+      const limitResult = await enforceDashboardHighlightLimit(supabase, params.id)
+      demotedHighlightId = limitResult.demotedId
+    }
+
     const { data, error } = await supabase
       .from('news')
       .update(validated)
@@ -93,7 +100,10 @@ export async function PUT(
       return NextResponse.json({ error: error.message }, { status: 500 })
     }
 
-    return NextResponse.json(data)
+    return NextResponse.json({
+      ...data,
+      demoted_highlight_id: demotedHighlightId,
+    })
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json(

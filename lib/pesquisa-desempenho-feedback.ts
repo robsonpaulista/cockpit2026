@@ -70,7 +70,12 @@ function desvioAmostral(nums: number[]): number {
   return Math.sqrt(s)
 }
 
-function rankeamentoNasOndasOrdenadoPorData(candidatoNome: string, todos: PollFeedbackLinha[]) {
+export function rankeamentoNasOndasOrdenadoPorData(
+  candidatoNome: string,
+  todos: PollFeedbackLinha[],
+  matchCandidato?: (nome: string) => boolean
+) {
+  const matches = matchCandidato ?? ((nome: string) => nome === candidatoNome)
   const map = new Map<string, PollFeedbackLinha[]>()
   for (const p of todos) {
     const k = chaveOndaPesquisa(p)
@@ -91,10 +96,10 @@ function rankeamentoNasOndasOrdenadoPorData(candidatoNome: string, todos: PollFe
   }[] = []
 
   for (const [, grupo] of map) {
-    const doCandidato = grupo.find((x) => x.candidato_nome === candidatoNome)
+    const doCandidato = grupo.find((x) => matches(x.candidato_nome))
     if (!doCandidato) continue
     const ordenados = [...grupo].sort((a, b) => (b.intencao || 0) - (a.intencao || 0))
-    const idx = ordenados.findIndex((x) => x.candidato_nome === candidatoNome)
+    const idx = ordenados.findIndex((x) => matches(x.candidato_nome))
     if (idx < 0) continue
     linhas.push({
       rank: idx + 1,

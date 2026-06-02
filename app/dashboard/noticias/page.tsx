@@ -209,16 +209,36 @@ export default function NoticiasPage() {
     allFeeds.length,
   ])
 
+  const applyDashboardHighlightResponse = (
+    itemId: string,
+    highlighted: boolean,
+    demotedId: string | null | undefined
+  ) => {
+    setNews((prev) =>
+      prev.map((n) => {
+        if (n.id === itemId) return { ...n, dashboard_highlight: highlighted }
+        if (demotedId && n.id === demotedId) return { ...n, dashboard_highlight: false }
+        return n
+      })
+    )
+  }
+
   const handleToggleDashboard = async (item: NewsItem) => {
     setTogglingHighlight(item.id)
     try {
+      const nextHighlight = !item.dashboard_highlight
       const response = await fetch(`/api/noticias/${item.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ dashboard_highlight: !item.dashboard_highlight }),
+        body: JSON.stringify({ dashboard_highlight: nextHighlight }),
       })
       if (response.ok) {
-        setNews(prev => prev.map(n => n.id === item.id ? { ...n, dashboard_highlight: !n.dashboard_highlight } : n))
+        const data = (await response.json()) as NewsItem & { demoted_highlight_id?: string | null }
+        applyDashboardHighlightResponse(
+          item.id,
+          nextHighlight,
+          data.demoted_highlight_id
+        )
       }
     } catch (error) {
       console.error('Erro ao destacar notícia:', error)
@@ -273,7 +293,8 @@ export default function NoticiasPage() {
           body: JSON.stringify({ dashboard_highlight: true }),
         })
         if (response.ok) {
-          setNews(prev => prev.map(n => n.id === item.id ? { ...n, dashboard_highlight: true } : n))
+          const data = (await response.json()) as NewsItem & { demoted_highlight_id?: string | null }
+          applyDashboardHighlightResponse(item.id, true, data.demoted_highlight_id)
         }
       } catch {
         // fallback silencioso
@@ -563,7 +584,11 @@ export default function NoticiasPage() {
                                 ? 'bg-accent-gold/15 text-accent-gold'
                                 : 'text-secondary hover:bg-accent-gold/10 hover:text-accent-gold'
                             }`}
-                            title={item.dashboard_highlight ? 'Remover do Monitor (Dashboard)' : 'Destacar no Monitor (Dashboard)'}
+                            title={
+                              item.dashboard_highlight
+                                ? 'Remover do Monitor (Dashboard)'
+                                : 'Destacar no Monitor (Dashboard) — máx. 5; a mais antiga sai automaticamente'
+                            }
                           >
                             <Radio className="w-4 h-4" />
                           </button>

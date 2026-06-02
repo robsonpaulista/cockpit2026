@@ -8,7 +8,7 @@ const PAGE_KEYS = new Set([
   'dashboard', 'fases', 'narrativas', 'campo', 'agenda', 'territorio',
   'ficha-atendimento', 'chapas', 'conteudo', 'noticias', 'mobilizacao', 'whatsapp',
   'pesquisa', 'operacao', 'juridico', 'obras', 'usuarios', 'gestao_pesquisas',
-  'emendas', 'proposicoes', 'sei-pesquisa',
+  'emendas', 'proposicoes', 'sei-pesquisa', 'resumo-operacional',
 ])
 
 function canAccessPageKey(
@@ -17,6 +17,15 @@ function canAccessPageKey(
 ): boolean {
   if (key === 'ficha-atendimento') {
     return canAccess('ficha-atendimento') || canAccess('territorio')
+  }
+  if (key === 'resumo-operacional') {
+    return (
+      canAccess('resumo-operacional') ||
+      canAccess('campo') ||
+      canAccess('operacao') ||
+      canAccess('mobilizacao') ||
+      canAccess('conteudo')
+    )
   }
   return canAccess(key)
 }

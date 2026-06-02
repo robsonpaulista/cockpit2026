@@ -42,6 +42,7 @@ import {
   LineChart,
   Image,
   FileSpreadsheet,
+  Activity,
   type LucideIcon,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -63,6 +64,7 @@ import { useDashboardHomeChrome } from '@/contexts/dashboard-home-chrome-context
 /** Rótulos mais curtos no tema Cockpit Vivo (navegação minimalista). */
 const COCKPIT_MENU_LABEL: Record<string, string> = {
   home: 'Visão',
+  'resumo-operacional': 'Resumo',
   narrativas: 'Estratégia',
   campo: 'Campo',
   agenda: 'Agenda',
@@ -109,6 +111,12 @@ interface SidebarMenuItem extends MenuItem {
 
 const menuItems: SidebarMenuItem[] = [
   { id: 'home', label: 'Visão Geral', icon: 'LayoutDashboard', href: '/dashboard' },
+  {
+    id: 'resumo-operacional',
+    label: 'Resumo Operacional',
+    icon: 'Activity',
+    href: '/dashboard/resumo-operacional',
+  },
   { id: 'narrativas', label: 'Estratégia', icon: 'Target', href: '/dashboard/narrativas' },
   { id: 'agenda', label: 'Agenda', icon: 'Calendar', href: '/dashboard/agenda' },
   { id: 'campo', label: 'Campo & Agenda', icon: 'MapPin', href: '/dashboard/campo' },
@@ -248,6 +256,7 @@ const iconMap: Record<string, LucideIcon> = {
   Image,
   AtSign,
   FileSpreadsheet,
+  Activity,
 }
 
 /** Ícones mais leves / mesma linguagem dos KPIs Cockpit (stroke fino + cor accent). */
@@ -747,6 +756,15 @@ export function Sidebar() {
           }
           if (item.id === 'ficha-atendimento') {
             return canAccess('ficha-atendimento') || canAccess('territorio')
+          }
+          if (item.id === 'resumo-operacional') {
+            return (
+              canAccess('resumo-operacional') ||
+              canAccess('campo') ||
+              canAccess('operacao') ||
+              canAccess('mobilizacao') ||
+              canAccess('conteudo')
+            )
           }
           if (item.children) return item.children.length > 0
           return canAccess(pageKeyForItem(item.id))
