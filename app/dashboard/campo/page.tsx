@@ -329,11 +329,15 @@ export default function CampoPage() {
   }
 
   const agendasOrdenadasDesc = [...agendas].sort(
-    (a, b) => parseDateOnlyLocal(b.date).getTime() - parseDateOnlyLocal(a.date).getTime(),
+    (a, b) =>
+      (parseDateOnlyLocal(b.date)?.getTime() ?? 0) - (parseDateOnlyLocal(a.date)?.getTime() ?? 0),
   )
   const agendasConcluidas = agendas.filter((agenda) => agenda.status === 'concluida')
   const ultimasRealizadas = [...agendasConcluidas]
-    .sort((a, b) => parseDateOnlyLocal(b.date).getTime() - parseDateOnlyLocal(a.date).getTime())
+    .sort(
+      (a, b) =>
+        (parseDateOnlyLocal(b.date)?.getTime() ?? 0) - (parseDateOnlyLocal(a.date)?.getTime() ?? 0)
+    )
     .slice(0, 4)
   const cityPresenceMap = agendasConcluidas.reduce<Record<string, { name: string; count: number }>>((acc, agenda) => {
     if (!agenda.cities?.name) return acc

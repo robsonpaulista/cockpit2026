@@ -15,7 +15,8 @@
     "limites2026:json:coletivas": "node scripts/xlsx-to-json-limites-coletivas-2026.mjs",
     "limites2026:pdf:mac-coletivas": "node scripts/pdf-to-json-limites-mac-coletivas-2026.mjs",
     "limites2026:pdf:pap-coletivas": "node scripts/pdf-to-json-limites-pap-coletivas-2026.mjs",
-    "limites2026:import": "node scripts/import-limites-2026-to-supabase.mjs"
+    "limites2026:import": "node scripts/import-limites-2026-to-supabase.mjs",
+    "processos-dimensao:json": "node scripts/xlsx-to-json-processos-dimensao.mjs"
   },
   "dependencies": {
     "@react-three/drei": "^9.122.0",
