@@ -1,14 +1,17 @@
 'use client'
 
-import { useCallback, useEffect, useState, type FormEvent } from 'react'
-import { History, Loader2, Plus } from 'lucide-react'
+import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react'
+import { Check, Copy, History, Loader2, Plus, Send } from 'lucide-react'
+import { WhatsAppSendModal } from '@/components/whatsapp-send-modal'
 import {
   fetchJuridicoMovimentacoes,
   registrarJuridicoMovimentacao,
 } from '@/lib/services/juridico-processos'
 import type { JuridicoMovimentacao } from '@/lib/juridico-movimentacoes'
 import { formatUltimaMovimentacaoExibicao } from '@/lib/juridico-movimentacoes'
+import { buildJuridicoMovimentacaoWhatsAppText } from '@/lib/juridico-whatsapp'
 import type { ProcessoDimensao } from '@/lib/juridico-processos-dimensao'
+import { sidebarPrimaryCTAButtonClass } from '@/lib/sidebar-menu-active-style'
 import { cn, formatDateShort } from '@/lib/utils'
 
 function todayIso(): string {
@@ -44,6 +47,9 @@ export function JuridicoMovimentacoesPanel({
   const [dataMovimentacao, setDataMovimentacao] = useState(todayIso())
   const [statusProcesso, setStatusProcesso] = useState(processo.status ?? '')
   const [observacoes, setObservacoes] = useState('')
+  const [whatsappSendOpen, setWhatsappSendOpen] = useState(false)
+  const [copiado, setCopiado] = useState(false)
+  const [ultimaRegistradaAgora, setUltimaRegistradaAgora] = useState(false)
 
   const carregar = useCallback(async () => {
     setLoading(true)
@@ -79,6 +85,7 @@ export function JuridicoMovimentacoesPanel({
       setDescricao('')
       setObservacoes('')
       setDataMovimentacao(todayIso())
+      setUltimaRegistradaAgora(true)
       onAtualizado?.()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erro ao salvar')
@@ -88,6 +95,33 @@ export function JuridicoMovimentacoesPanel({
   }
 
   const ultima = historico[0]
+
+  const textoWhatsApp = useMemo(() => {
+    if (!ultima) return ''
+    return buildJuridicoMovimentacaoWhatsAppText({
+      processo,
+      movimentacao: ultima,
+      novaAtualizacao: ultimaRegistradaAgora,
+    })
+  }, [ultima, processo, ultimaRegistradaAgora])
+
+  const copiarWhatsApp = async () => {
+    if (!textoWhatsApp) return
+    try {
+      await navigator.clipboard.writeText(textoWhatsApp)
+    } catch {
+      const textarea = document.createElement('textarea')
+      textarea.value = textoWhatsApp
+      textarea.style.position = 'fixed'
+      textarea.style.opacity = '0'
+      document.body.appendChild(textarea)
+      textarea.select()
+      document.execCommand('copy')
+      document.body.removeChild(textarea)
+    }
+    setCopiado(true)
+    window.setTimeout(() => setCopiado(false), 2000)
+  }
 
   return (
     <section className="rounded-xl border border-border-card bg-bg-app/40 p-3">
@@ -99,10 +133,47 @@ export function JuridicoMovimentacoesPanel({
       </div>
 
       {ultima ? (
-        <p className="mb-3 text-sm text-text-primary">
-          <span className="text-[10px] font-medium uppercase text-text-secondary">Última: </span>
-          {formatUltimaMovimentacaoExibicao(ultima.descricao, ultima.dataMovimentacao)}
-        </p>
+        <div className="mb-3 space-y-2">
+          <p className="text-sm text-text-primary">
+            <span className="text-[10px] font-medium uppercase text-text-secondary">Última: </span>
+            {formatUltimaMovimentacaoExibicao(ultima.descricao, ultima.dataMovimentacao)}
+          </p>
+          {ultimaRegistradaAgora ? (
+            <p className="text-[10px] text-emerald-600 dark:text-emerald-400">
+              Movimentação salva. Você pode avisar o CEO pelo WhatsApp abaixo.
+            </p>
+          ) : null}
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={() => void copiarWhatsApp()}
+              disabled={!textoWhatsApp}
+              className={cn(
+                sidebarPrimaryCTAButtonClass(false),
+                'text-xs',
+                copiado && 'ring-2 ring-status-success/40 ring-offset-2 ring-offset-background'
+              )}
+              title="Copiar alerta formatado para WhatsApp"
+            >
+              {copiado ? (
+                <Check className="h-3.5 w-3.5 shrink-0 text-accent-gold" aria-hidden />
+              ) : (
+                <Copy className="h-3.5 w-3.5 shrink-0 text-accent-gold" aria-hidden />
+              )}
+              {copiado ? 'Copiado!' : 'Copiar'}
+            </button>
+            <button
+              type="button"
+              onClick={() => setWhatsappSendOpen(true)}
+              disabled={!textoWhatsApp}
+              className={cn(sidebarPrimaryCTAButtonClass(false), 'text-xs')}
+              title="Enviar atualização ao CEO pelo WhatsApp"
+            >
+              <Send className="h-3.5 w-3.5 shrink-0 text-accent-gold" aria-hidden />
+              Enviar ao CEO
+            </button>
+          </div>
+        </div>
       ) : (
         <p className="mb-3 text-xs text-text-secondary">
           Nenhum registro no histórico. A tabela usa a planilha até você registrar a primeira
@@ -211,6 +282,20 @@ export function JuridicoMovimentacoesPanel({
           </ul>
         )}
       </div>
+
+      <WhatsAppSendModal
+        isOpen={whatsappSendOpen}
+        onClose={() => {
+          setWhatsappSendOpen(false)
+          setUltimaRegistradaAgora(false)
+        }}
+        text={textoWhatsApp}
+        source="juridico-movimentacao"
+        cidade={processo.processo}
+        preferCeoPhone
+        title="Enviar atualização ao CEO"
+        description="Confira a mensagem e confirme o telefone do CEO antes de enviar."
+      />
     </section>
   )
 }

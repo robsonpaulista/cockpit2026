@@ -12,6 +12,7 @@ import {
   rememberLastUsedPhone,
   sendWhatsAppMessage,
 } from '@/lib/whatsapp/send'
+import { getWhatsAppCeoPhone } from '@/lib/whatsapp/ceo-phone'
 
 interface WhatsAppSendModalProps {
   isOpen: boolean
@@ -26,6 +27,10 @@ interface WhatsAppSendModalProps {
   title?: string
   /** Descrição curta abaixo do título — útil para indicar o contexto. */
   description?: string
+  /** Telefone sugerido ao abrir (ex.: CEO). Se vazio, usa o último número salvo. */
+  defaultPhone?: string
+  /** Prioriza `defaultPhone`, depois CEO (`NEXT_PUBLIC_WHATSAPP_CEO_PHONE`), depois último usado. */
+  preferCeoPhone?: boolean
 }
 
 type EnvioStatus =
@@ -48,15 +53,25 @@ export function WhatsAppSendModal({
   cidade,
   title = 'Enviar pelo WhatsApp',
   description,
+  defaultPhone,
+  preferCeoPhone = false,
 }: WhatsAppSendModalProps) {
   const [phoneInput, setPhoneInput] = useState<string>('')
   const [status, setStatus] = useState<EnvioStatus>({ kind: 'idle' })
 
   useEffect(() => {
     if (!isOpen) return
-    setPhoneInput(getLastUsedPhone())
+    const ceo = getWhatsAppCeoPhone()
+    const last = getLastUsedPhone()
+    let suggested = defaultPhone?.trim() || ''
+    if (!suggested) {
+      if (preferCeoPhone && ceo) suggested = ceo
+      else if (last) suggested = last
+      else suggested = ceo
+    }
+    setPhoneInput(suggested)
     setStatus({ kind: 'idle' })
-  }, [isOpen])
+  }, [isOpen, defaultPhone, preferCeoPhone])
 
   useEffect(() => {
     if (!isOpen) return
