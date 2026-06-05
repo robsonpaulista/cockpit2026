@@ -23,6 +23,8 @@ export type UltimaMovimentacaoResumo = {
   descricao: string
   dataMovimentacao: string | null
   statusProcesso: string | null
+  fonte: JuridicoMovimentacaoFonte
+  atualizadoEm: string
 }
 
 function mapRow(row: MovRow): JuridicoMovimentacao {
@@ -104,7 +106,7 @@ export async function getUltimasMovimentacoesMap(
   const unique = [...new Set(processoIds)]
   const { data, error } = await supabase
     .from('juridico_processo_movimentacoes')
-    .select('processo_id, descricao, data_movimentacao, status_processo, created_at')
+    .select('processo_id, descricao, data_movimentacao, status_processo, fonte, created_at')
     .in('processo_id', unique)
 
   if (error) {
@@ -126,6 +128,8 @@ export async function getUltimasMovimentacoesMap(
         descricao: latest.descricao,
         dataMovimentacao: latest.data_movimentacao,
         statusProcesso: latest.status_processo,
+        fonte: latest.fonte,
+        atualizadoEm: latest.created_at,
       })
     }
   }
@@ -150,11 +154,14 @@ export async function enrichProcessosComMovimentacoes<T extends ProcessoDimensao
   return processos.map((p) => {
     const u = latestMap.get(p.id)
     if (!u) return p
+    const movimentacaoAtualizadaEquipe = u.fonte === 'manual'
     return {
       ...p,
       ultimaMovimentacao: u.descricao,
       dataConsulta: u.dataMovimentacao ?? p.dataConsulta,
       status: u.statusProcesso ?? p.status,
+      movimentacaoAtualizadaEquipe,
+      movimentacaoAtualizadaEm: movimentacaoAtualizadaEquipe ? u.atualizadoEm : null,
     }
   })
 }

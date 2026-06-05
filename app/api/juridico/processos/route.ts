@@ -23,14 +23,14 @@ export async function GET(request: Request) {
 
     const { searchParams } = new URL(request.url)
     const dataset = loadProcessosDimensaoDataset()
-    const filtradosRaw = filtrarProcessosDimensao(dataset.processos, {
+    const todosEnriquecidos = await enrichProcessosComMovimentacoes(supabase, dataset.processos)
+    const filtradosRaw = filtrarProcessosDimensao(todosEnriquecidos, {
       q: searchParams.get('q') ?? undefined,
       status: searchParams.get('status') ?? undefined,
       area: searchParams.get('area') ?? undefined,
       prioridade: searchParams.get('prioridade') ?? undefined,
     })
-    let filtrados = await enrichProcessosComMovimentacoes(supabase, filtradosRaw)
-    filtrados = await enrichProcessosComUltimaDjen(filtrados)
+    const filtrados = await enrichProcessosComUltimaDjen(filtradosRaw)
 
     const statusSet = new Set<string>()
     const areaSet = new Set<string>()
@@ -44,7 +44,7 @@ export async function GET(request: Request) {
     return NextResponse.json({
       geradoEm: dataset.geradoEm,
       parteFiltro: dataset.parteFiltro,
-      kpis: buildProcessosDimensaoKpis(dataset.processos),
+      kpis: buildProcessosDimensaoKpis(todosEnriquecidos),
       filtros: {
         status: [...statusSet].sort((a, b) => a.localeCompare(b, 'pt-BR')),
         areas: [...areaSet].sort((a, b) => a.localeCompare(b, 'pt-BR')),

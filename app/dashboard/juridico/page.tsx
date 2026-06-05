@@ -79,6 +79,7 @@ export default function JuridicoPage() {
   const [filterStatus, setFilterStatus] = useState('all')
   const [filterArea, setFilterArea] = useState('all')
   const [filterPrioridade, setFilterPrioridade] = useState('all')
+  const [filterAtualizado, setFilterAtualizado] = useState(false)
   const [detalhe, setDetalhe] = useState<ProcessoDimensao | null>(null)
   const [sortColumn, setSortColumn] = useState<JuridicoAnySortColumn>('processo')
   const [sortAsc, setSortAsc] = useState(true)
@@ -122,8 +123,13 @@ export default function JuridicoPage() {
     void carregar()
   }, [carregar])
 
-  const processos = data?.processos ?? []
+  const processos = useMemo(() => {
+    const lista = data?.processos ?? []
+    if (!filterAtualizado) return lista
+    return lista.filter((p) => p.movimentacaoAtualizadaEquipe)
+  }, [data?.processos, filterAtualizado])
   const kpis = data?.kpis
+  const totalAtualizados = kpis?.atualizadosEquipe ?? 0
 
   const toggleSort = useCallback((col: JuridicoAnySortColumn) => {
     setSortColumn((prev) => {
@@ -146,8 +152,9 @@ export default function JuridicoPage() {
       searchDebounced.length > 0 ||
       filterStatus !== 'all' ||
       filterArea !== 'all' ||
-      filterPrioridade !== 'all',
-    [searchDebounced, filterStatus, filterArea, filterPrioridade]
+      filterPrioridade !== 'all' ||
+      filterAtualizado,
+    [searchDebounced, filterStatus, filterArea, filterPrioridade, filterAtualizado]
   )
 
   return (
@@ -162,9 +169,9 @@ export default function JuridicoPage() {
             <p className="mt-1 max-w-3xl text-sm text-text-secondary">
               Processos em que <strong className="text-text-primary">{DIMENSAO_PARTY_LABEL}</strong> figura
               como autor ou requerido (base: planilha Base Organizada). Ao expandir a linha, o andamento é
-              Use os links <strong className="text-text-primary">DJEN</strong> (última publicação em PDF, quando
-              disponível) e <strong className="text-text-primary">Tribunal</strong> na coluna Consultas. Detalhes
-              completos no ícone do olho.
+              Use os links <strong className="text-text-primary">DJEN</strong> e <strong className="text-text-primary">Tribunal</strong> na coluna Consultas.
+              Processos com movimentação registrada pela equipe exibem um indicador discreto ao lado do número.
+              Detalhes no ícone do olho.
             </p>
             {data?.geradoEm ? (
               <p className="mt-1 text-xs text-text-secondary">
@@ -203,6 +210,7 @@ export default function JuridicoPage() {
             <KpiCard label="Prioridade alta" value={kpis.prioridadeAlta} tone="red" />
             <KpiCard label="Conclusos" value={kpis.conclusos} tone="blue" />
             <KpiCard label="Encerrados" value={kpis.encerrados} />
+            <KpiCard label="Atualizados equipe" value={kpis.atualizadosEquipe} />
           </div>
         ) : null}
 
@@ -241,6 +249,23 @@ export default function JuridicoPage() {
             onChange={setFilterPrioridade}
             options={data?.filtros.prioridades ?? []}
           />
+
+          <button
+            type="button"
+            onClick={() => setFilterAtualizado((v) => !v)}
+            className={cn(
+              'inline-flex items-center gap-1.5 self-end rounded-lg border px-3 py-2 text-xs transition',
+              filterAtualizado
+                ? 'border-accent-gold/40 bg-accent-gold/5 text-text-primary'
+                : 'border-border-card text-text-secondary hover:text-text-primary'
+            )}
+            title="Mostrar só processos com movimentação registrada pela equipe no Cockpit"
+          >
+            Só atualizados
+            {totalAtualizados > 0 ? (
+              <span className="tabular-nums text-[10px] text-text-secondary">({totalAtualizados})</span>
+            ) : null}
+          </button>
 
           <label className="flex flex-col gap-1">
             <span className="text-[10px] font-medium uppercase tracking-wide text-text-secondary">
@@ -287,6 +312,7 @@ export default function JuridicoPage() {
                 setFilterStatus('all')
                 setFilterArea('all')
                 setFilterPrioridade('all')
+                setFilterAtualizado(false)
               }}
               className="rounded-lg border border-border-card px-3 py-2 text-xs text-text-secondary hover:text-text-primary"
             >
@@ -305,6 +331,12 @@ export default function JuridicoPage() {
                 Ordenado por <strong className="text-text-primary">{getJuridicoSortLabel(sortColumn)}</strong>
                 {' '}
                 ({sortAsc ? 'A→Z' : 'Z→A'})
+                {totalAtualizados > 0 ? (
+                  <span className="text-text-secondary/80">
+                    {' '}
+                    · <span className="text-emerald-600 dark:text-emerald-400">●</span> = atualizado pela equipe
+                  </span>
+                ) : null}
               </p>
             ) : null}
           </div>
@@ -464,11 +496,29 @@ function ProcessoRow({
   processo: ProcessoDimensao
   onDetalhe: () => void
 }) {
+  const atualizado = Boolean(p.movimentacaoAtualizadaEquipe)
+  const atualizadoLabel = p.movimentacaoAtualizadaEm
+    ? `Atualizado pela equipe em ${formatDateShort(p.movimentacaoAtualizadaEm.slice(0, 10))}`
+    : 'Atualizado pela equipe no Cockpit'
+
   return (
       <tr className="border-b border-border-card/80 hover:bg-bg-app/40">
         <td className="px-3 py-3">
-          <div className="font-medium text-text-primary">{p.processo}</div>
-          {p.acao ? <div className="text-xs text-text-secondary">{p.acao}</div> : null}
+          <div className="flex items-start gap-2">
+            {atualizado ? (
+              <span
+                className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-500"
+                title={atualizadoLabel}
+                aria-label={atualizadoLabel}
+              />
+            ) : (
+              <span className="mt-1.5 h-1.5 w-1.5 shrink-0" aria-hidden />
+            )}
+            <div className="min-w-0">
+              <div className="font-medium text-text-primary">{p.processo}</div>
+              {p.acao ? <div className="text-xs text-text-secondary">{p.acao}</div> : null}
+            </div>
+          </div>
         </td>
         <td className="px-3 py-3">
           <span
@@ -503,8 +553,16 @@ function ProcessoRow({
         </td>
         <td className="px-3 py-3 text-xs text-text-secondary">{poloLabel(p.poloDimensao)}</td>
         <td className="px-3 py-3 text-text-secondary">{p.municipioOrigem ?? '—'}</td>
-        <td className="max-w-[12rem] px-3 py-3 text-xs text-text-secondary">
-          {formatUltimaMovimentacaoExibicao(p.ultimaMovimentacao, p.dataConsulta)}
+        <td className="max-w-[12rem] px-3 py-3 text-xs">
+          <span
+            className={cn(
+              atualizado
+                ? 'text-emerald-700 dark:text-emerald-400'
+                : 'text-text-secondary'
+            )}
+          >
+            {formatUltimaMovimentacaoExibicao(p.ultimaMovimentacao, p.dataConsulta)}
+          </span>
         </td>
         <td className="px-3 py-3 text-right tabular-nums text-text-primary">
           {formatMoeda(p.valorAtualizado ?? p.valorRisco)}

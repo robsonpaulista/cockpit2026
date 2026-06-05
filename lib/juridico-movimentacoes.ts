@@ -27,6 +27,11 @@ export type RegistrarMovimentacaoInput = {
   observacoes?: string | null
 }
 
+/** Última movimentação registrada manualmente pela equipe no Cockpit. */
+export function isMovimentacaoAtualizacaoEquipe(fonte: JuridicoMovimentacaoFonte | null | undefined): boolean {
+  return fonte === 'manual'
+}
+
 export function formatUltimaMovimentacaoExibicao(
   descricao: string | null | undefined,
   data: string | null | undefined

@@ -197,10 +197,16 @@ export function getProcessoSortValue(p: ProcessoDimensao, col: JuridicoAnySortCo
 export function sortProcessosDimensao(
   processos: ProcessoDimensao[],
   column: JuridicoAnySortColumn | null,
-  ascending: boolean
+  ascending: boolean,
+  priorizarAtualizados = true
 ): ProcessoDimensao[] {
   if (!column) return processos
   return [...processos].sort((a, b) => {
+    if (priorizarAtualizados) {
+      const pa = a.movimentacaoAtualizadaEquipe ? 1 : 0
+      const pb = b.movimentacaoAtualizadaEquipe ? 1 : 0
+      if (pa !== pb) return pb - pa
+    }
     const va = getProcessoSortValue(a, column)
     const vb = getProcessoSortValue(b, column)
     const cmp =

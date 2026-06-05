@@ -41,6 +41,10 @@ export type ProcessoDimensao = {
   porQueCritico: string | null
   acaoRecomendada: string | null
   poloDimensao: ProcessoDimensaoPolo
+  /** Última movimentação no histórico foi registrada pela equipe (fonte manual). */
+  movimentacaoAtualizadaEquipe?: boolean
+  /** Quando a equipe registrou a movimentação mais recente (ISO). */
+  movimentacaoAtualizadaEm?: string | null
 }
 
 export type ProcessosDimensaoDataset = {
@@ -57,6 +61,7 @@ export type ProcessosDimensaoKpis = {
   prioridadeAlta: number
   conclusos: number
   encerrados: number
+  atualizadosEquipe: number
   porStatus: Record<string, number>
   porArea: Record<string, number>
 }
@@ -88,6 +93,7 @@ export function buildProcessosDimensaoKpis(processos: ProcessoDimensao[]): Proce
   let prioridadeAlta = 0
   let conclusos = 0
   let encerrados = 0
+  let atualizadosEquipe = 0
 
   for (const p of processos) {
     const status = p.status ?? 'Sem status'
@@ -100,6 +106,7 @@ export function buildProcessosDimensaoKpis(processos: ProcessoDimensao[]): Proce
     if (status === 'Concluso') conclusos += 1
     if (status === 'Encerrado/Arquivado') encerrados += 1
     if (p.prioridade === 'Alta' || p.prioridadeEstrategica === 'Alta') prioridadeAlta += 1
+    if (p.movimentacaoAtualizadaEquipe) atualizadosEquipe += 1
   }
 
   return {
@@ -109,6 +116,7 @@ export function buildProcessosDimensaoKpis(processos: ProcessoDimensao[]): Proce
     prioridadeAlta,
     conclusos,
     encerrados,
+    atualizadosEquipe,
     porStatus,
     porArea,
   }
