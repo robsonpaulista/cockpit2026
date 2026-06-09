@@ -22,7 +22,13 @@ type Fase = 'inicio' | 'c' | 'nome' | 'slogan'
  * gradiente com variáveis de acento do tema, logótipo animado e slogan.
  * Respeita tema (agentes / republicanos) e aparência claro/escuro via CSS vars.
  */
-export function DashboardHomeWelcome() {
+interface DashboardHomeWelcomeProps {
+  /** hero = tela cheia central; compact = coluna ao lado do Jarvis na Visão geral */
+  variant?: 'hero' | 'compact'
+}
+
+export function DashboardHomeWelcome({ variant = 'hero' }: DashboardHomeWelcomeProps) {
+  const isCompact = variant === 'compact'
   const { appearance } = useTheme()
   const isGradientHome = useDashboardHomeChrome()
   const isDark = appearance === 'dark'
@@ -70,13 +76,15 @@ export function DashboardHomeWelcome() {
   return (
     <div
       className={cn(
-        'flex min-h-0 flex-1 flex-col items-center justify-center px-4 py-10 sm:py-14',
-        isGradientHome && 'py-6 sm:py-10'
+        'flex min-h-0 flex-1 flex-col items-center justify-center px-4',
+        isCompact ? 'py-4 sm:py-6' : 'py-10 sm:py-14',
+        isGradientHome && !isCompact && 'py-6 sm:py-10'
       )}
     >
       <div
         className={cn(
-          'relative flex w-full flex-col items-center justify-center px-6 py-14 sm:px-10 sm:py-16',
+          'relative flex w-full flex-col items-center justify-center',
+          isCompact ? 'px-4 py-8 sm:px-6 sm:py-10' : 'px-6 py-14 sm:px-10 sm:py-16',
           isGradientHome ? 'overflow-visible' : 'overflow-hidden max-w-3xl rounded-3xl border shadow-xl',
           !isGradientHome && (isDark ? 'border-white/10 shadow-black/25' : 'border-border-card shadow-card')
         )}
@@ -100,7 +108,10 @@ export function DashboardHomeWelcome() {
 
         <div className="relative z-[1] mb-7 flex items-baseline justify-center gap-0">
           <span
-            className="font-sans text-[3.25rem] font-extrabold leading-none text-white drop-shadow-[0_4px_20px_rgba(0,0,0,0.15)] transition-[opacity,transform] duration-700 sm:text-[5.5rem]"
+            className={cn(
+              'font-sans font-extrabold leading-none text-white drop-shadow-[0_4px_20px_rgba(0,0,0,0.15)] transition-[opacity,transform] duration-700',
+              isCompact ? 'text-[2.5rem] sm:text-[3.5rem]' : 'text-[3.25rem] sm:text-[5.5rem]'
+            )}
             style={{
               opacity: fase !== 'inicio' ? 1 : 0,
               transform:
@@ -111,7 +122,10 @@ export function DashboardHomeWelcome() {
             C
           </span>
           <span
-            className="font-sans text-[3.25rem] font-extrabold leading-none text-white drop-shadow-[0_4px_20px_rgba(0,0,0,0.15)] transition-[opacity,transform,letter-spacing] duration-700 sm:text-[5.5rem]"
+            className={cn(
+              'font-sans font-extrabold leading-none text-white drop-shadow-[0_4px_20px_rgba(0,0,0,0.15)] transition-[opacity,transform,letter-spacing] duration-700',
+              isCompact ? 'text-[2.5rem] sm:text-[3.5rem]' : 'text-[3.25rem] sm:text-[5.5rem]'
+            )}
             style={{
               opacity: fase === 'nome' || fase === 'slogan' ? 1 : 0,
               transform:
@@ -163,13 +177,18 @@ export function DashboardHomeWelcome() {
         </p>
 
         <p
-          className="relative z-[1] mt-10 max-w-md text-center text-xs leading-relaxed text-white/55 sm:text-sm"
+          className={cn(
+            'relative z-[1] max-w-md text-center text-xs leading-relaxed text-white/55 sm:text-sm',
+            isCompact ? 'mt-6' : 'mt-10'
+          )}
           style={{
             opacity: fase === 'slogan' ? 1 : 0,
             transition: 'opacity 1s ease 0.4s',
           }}
         >
-          Navegue pelo menu à esquerda para aceder aos módulos do sistema.
+          {isCompact
+            ? 'Fale com o Jarvis ao lado — pesquisas, território, agenda e alertas em linguagem natural. O menu lateral leva aos módulos.'
+            : 'Navegue pelo menu à esquerda para aceder aos módulos do sistema.'}
         </p>
       </div>
     </div>

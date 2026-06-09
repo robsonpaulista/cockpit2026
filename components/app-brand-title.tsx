@@ -16,7 +16,7 @@ export function AppBrandTitle({
       className={cn(
         'text-[1.16rem] font-semibold tracking-[0.024em]',
         lightOnGradient &&
-          'text-white drop-shadow-[0_2px_10px_rgba(0,0,0,0.22)]',
+          'text-[#00D4FF] drop-shadow-[0_0_14px_rgba(0,212,255,0.35)]',
         !lightOnGradient &&
           isCockpit &&
           'bg-[linear-gradient(135deg,#6c7bff_0%,#8e6cfd_35%,#5ed3ff_75%,#3fbac2_100%)] bg-clip-text text-transparent [text-shadow:0_6px_18px_rgba(10,18,28,0.22)]',

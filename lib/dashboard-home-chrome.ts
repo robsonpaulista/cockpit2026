@@ -4,5 +4,10 @@ export function isDashboardHomePath(pathname: string): boolean {
   return n === '/dashboard'
 }
 
-export const DASHBOARD_HOME_ACCENT_GRADIENT =
-  'linear-gradient(145deg, rgb(var(--accent-gold)) 0%, rgb(var(--accent-gold)) 40%, rgb(var(--accent-gold-dark)) 100%)'
+import { JARVIS_CSS_VARS } from '@/lib/jarvis-hud-tokens'
+
+/** Fundo da home — alinhado ao token `--color-void` do HUD Jarvis. */
+export const DASHBOARD_HOME_BG = JARVIS_CSS_VARS.void
+
+/** @deprecated use DASHBOARD_HOME_BG — mantido para o style do layout */
+export const DASHBOARD_HOME_ACCENT_GRADIENT = DASHBOARD_HOME_BG

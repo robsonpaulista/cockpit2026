@@ -6,6 +6,12 @@ import { useAuth } from '@/hooks/use-auth'
 import { LogOut, User, Settings, ChevronDown } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useDashboardHomeChrome } from '@/contexts/dashboard-home-chrome-context'
+import {
+  JARVIS_SIDEBAR_FOCUS,
+  JARVIS_SIDEBAR_HOVER,
+  JARVIS_SIDEBAR_ICON,
+  JARVIS_SIDEBAR_TEXT,
+} from '@/lib/jarvis-sidebar-styles'
 
 /**
  * Altura aproximada do dropdown (cabeçalho do usuário + 3 botões + separadores).
@@ -175,8 +181,8 @@ export function UserMenu() {
         ref={triggerRef}
         onClick={toggleOpen}
         className={cn(
-          'flex items-center gap-2 px-3 py-2 rounded-lg transition-colors',
-          isGradientHome ? 'hover:bg-white/10' : 'hover:bg-accent-gold-soft',
+          'group flex items-center gap-2 rounded-lg px-3 py-2 transition-colors',
+          isGradientHome ? cn(JARVIS_SIDEBAR_HOVER, JARVIS_SIDEBAR_FOCUS) : 'hover:bg-accent-gold-soft',
         )}
       >
         <div
@@ -199,7 +205,7 @@ export function UserMenu() {
           <p
             className={cn(
               'text-sm font-medium',
-              isGradientHome ? 'text-white' : 'text-text-primary',
+              isGradientHome ? 'text-[#E8F4FD] group-hover:text-[#00D4FF]' : 'text-text-primary',
             )}
           >
             {user.profile?.name || user.email}
@@ -208,7 +214,7 @@ export function UserMenu() {
             <p
               className={cn(
                 'text-xs',
-                isGradientHome ? 'text-white/70' : 'text-secondary',
+                isGradientHome ? JARVIS_SIDEBAR_TEXT : 'text-secondary',
               )}
             >
               {roleLabels[user.profile.role] || user.profile.role}
@@ -218,7 +224,7 @@ export function UserMenu() {
         <ChevronDown
           className={cn(
             'w-4 h-4 transition-transform',
-            isGradientHome ? 'text-white/75' : 'text-secondary',
+            isGradientHome ? cn(JARVIS_SIDEBAR_ICON, 'group-hover:!text-[#00D4FF]') : 'text-secondary',
             open && 'rotate-180',
           )}
         />

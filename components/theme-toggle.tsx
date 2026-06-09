@@ -4,6 +4,12 @@ import { useState, useRef, useEffect } from 'react'
 import { useTheme } from '@/contexts/theme-context'
 import { Palette } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import {
+  JARVIS_SIDEBAR_FOCUS,
+  JARVIS_SIDEBAR_HOVER,
+  JARVIS_SIDEBAR_ICON,
+  JARVIS_SIDEBAR_TEXT,
+} from '@/lib/jarvis-sidebar-styles'
 
 interface ThemeToggleProps {
   collapsed?: boolean
@@ -61,7 +67,9 @@ export function ThemeToggle({
         className={cn(
           'flex items-center gap-3 px-3 py-2.5 rounded-[10px] w-full',
           'transition-all duration-200 ease-out group',
-          triggerOnVibrantNav ? 'hover:bg-white/10' : 'hover:bg-accent-gold-soft'
+          triggerOnVibrantNav
+            ? cn(JARVIS_SIDEBAR_HOVER, JARVIS_SIDEBAR_FOCUS)
+            : 'hover:bg-accent-gold-soft'
         )}
         title="Trocar tema visual"
       >
@@ -69,7 +77,7 @@ export function ThemeToggle({
           className={cn(
             'w-5 h-5 flex-shrink-0 transition-colors',
             triggerOnVibrantNav
-              ? 'text-white/75 group-hover:text-white'
+              ? cn(JARVIS_SIDEBAR_ICON, 'group-hover:!text-[#00D4FF]')
               : 'text-text-secondary group-hover:text-accent-gold'
           )}
         />
@@ -78,7 +86,7 @@ export function ThemeToggle({
             className={cn(
               'text-sm transition-colors',
               triggerOnVibrantNav
-                ? 'text-white/85 group-hover:text-white'
+                ? cn(JARVIS_SIDEBAR_TEXT, 'group-hover:!text-[#00D4FF]')
                 : 'text-text-secondary group-hover:text-text-primary'
             )}
           >

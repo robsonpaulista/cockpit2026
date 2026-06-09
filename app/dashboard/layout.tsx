@@ -56,7 +56,13 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
             )}
           >
             <DashboardHeader />
-            <main className={cn('flex min-h-0 flex-1 flex-col overflow-y-auto', columnBgClass)}>
+            <main
+              className={cn(
+                'flex min-h-0 flex-1 flex-col',
+                isHomeAccentChrome ? 'overflow-hidden' : 'overflow-y-auto',
+                columnBgClass
+              )}
+            >
               <DashboardPermissionGuard>
                 <PageTransition>{children}</PageTransition>
               </DashboardPermissionGuard>

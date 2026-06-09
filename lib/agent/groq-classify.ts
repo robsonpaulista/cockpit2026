@@ -1,0 +1,150 @@
+import type { AgentChatMessage, AgentClassifiedIntent, AgentContextPayload } from '@/lib/agent/types'
+
+/** Modelo rápido e gratuito — mesma escolha do módulo de Conteúdo. */
+export const GROQ_AGENT_MODEL = 'llama-3.1-8b-instant'
+
+const MAX_HISTORY_MESSAGES = 4
+const MAX_TOKENS_CLASSIFY = 220
+const TEMPERATURE = 0.1
+
+const INTENT_LIST = [
+  'ajuda',
+  'resposta_direta',
+  'consultar_pesquisas',
+  'consultar_demandas',
+  'consultar_agendas',
+  'consultar_expectativa',
+  'consultar_liderancas',
+  'consultar_chapa',
+  'consultar_instagram_metricas',
+  'consultar_instagram_posts',
+  'consultar_instagram_tipo',
+  'consultar_instagram_tema',
+  'consultar_territorio',
+  'consultar_alertas',
+  'consultar_territorios_frios',
+  'navegar',
+  'resumo_buscar_cidade',
+  'resumo_abrir_demandas',
+  'resumo_abrir_liderancas',
+  'resumo_abrir_pesquisas',
+  'resumo_fechar_modais',
+  'desconhecido',
+] as const
+
+function buildSystemPrompt(context?: AgentContextPayload): string {
+  const ctxLines: string[] = []
+  if (context?.pageKind) ctxLines.push(`Página atual: ${context.pageKind}`)
+  if (context?.cidadeAtual) ctxLines.push(`Cidade selecionada: ${context.cidadeAtual}`)
+  if (context?.buscaIniciada) ctxLines.push('Busca de município já iniciada na página.')
+  if (context?.candidatoPadrao) ctxLines.push(`Candidato foco: ${context.candidatoPadrao}`)
+  if (context?.alertsCriticosCount != null) {
+    ctxLines.push(`Alertas críticos no painel: ${context.alertsCriticosCount}`)
+  }
+  if (context?.territoriosFriosCount != null) {
+    ctxLines.push(`Territórios frios: ${context.territoriosFriosCount}`)
+  }
+  if (context?.cidadesDisponiveis?.length) {
+    const sample = context.cidadesDisponiveis.slice(0, 25).join(', ')
+    ctxLines.push(`Municípios no dropdown (amostra): ${sample}`)
+  }
+
+  return [
+    'Você é o classificador de intenções do assistente Jarvis do Cockpit 2026 (gestão política eleitoral no Piauí).',
+    'Analise a mensagem do usuário e retorne APENAS um JSON válido (sem markdown).',
+    'Formato: {"intent":"<nome>","args":{},"direct_reply":null}',
+    `Intents válidos: ${INTENT_LIST.join(', ')}`,
+    'Regras:',
+    '- Use args.cidade quando mencionar município; args.termo para busca em pesquisas; args.tipo = estimulada|espontanea quando o usuário especificar o tipo.',
+    '- Use args.url e args.label para navegar.',
+    '- resumo_* só quando pageKind for resumo-eleicoes.',
+    '- consultar_instagram_* para métricas/posts do Instagram.',
+    '- resposta_direta: cumprimentos ou respostas curtas sem ferramenta (preencha direct_reply).',
+    '- desconhecido: quando não houver intenção clara.',
+    '- Nunca invente números de pesquisa ou território.',
+    ctxLines.length ? `Contexto:\n${ctxLines.join('\n')}` : '',
+  ]
+    .filter(Boolean)
+    .join('\n')
+}
+
+function extractJsonObject(text: string): string | null {
+  const clean = text.replace(/```json\s*/gi, '').replace(/```/g, '').trim()
+  const start = clean.indexOf('{')
+  const end = clean.lastIndexOf('}')
+  if (start < 0 || end <= start) return null
+  return clean.slice(start, end + 1)
+}
+
+function normalizeIntent(raw: string): AgentClassifiedIntent['intent'] {
+  const normalized = raw.trim().toLowerCase().replace(/\s+/g, '_')
+  if ((INTENT_LIST as readonly string[]).includes(normalized)) {
+    return normalized as AgentClassifiedIntent['intent']
+  }
+  return 'desconhecido'
+}
+
+export async function classifyAgentIntent(
+  message: string,
+  history: AgentChatMessage[] = [],
+  context?: AgentContextPayload
+): Promise<AgentClassifiedIntent | null> {
+  const key = process.env.GROQ_API_KEY?.trim()
+  if (!key) return null
+
+  const recentHistory = history.slice(-MAX_HISTORY_MESSAGES)
+  const messages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }> = [
+    { role: 'system', content: buildSystemPrompt(context) },
+    ...recentHistory.map((m) => ({ role: m.role, content: m.content.slice(0, 600) })),
+    { role: 'user', content: message.slice(0, 800) },
+  ]
+
+  const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${key}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      model: GROQ_AGENT_MODEL,
+      temperature: TEMPERATURE,
+      max_tokens: MAX_TOKENS_CLASSIFY,
+      messages,
+    }),
+  })
+
+  if (!response.ok) {
+    return null
+  }
+
+  const data = (await response.json()) as {
+    choices?: Array<{ message?: { content?: string } }>
+  }
+  const raw = data.choices?.[0]?.message?.content?.trim()
+  if (!raw) return null
+
+  const jsonStr = extractJsonObject(raw)
+  if (!jsonStr) return null
+
+  try {
+    const parsed = JSON.parse(jsonStr) as {
+      intent?: string
+      args?: Record<string, unknown>
+      direct_reply?: string | null
+    }
+    const args: Record<string, string> = {}
+    if (parsed.args && typeof parsed.args === 'object') {
+      for (const [k, v] of Object.entries(parsed.args)) {
+        if (v != null) args[k] = String(v).slice(0, 120)
+      }
+    }
+    return {
+      intent: normalizeIntent(String(parsed.intent ?? 'desconhecido')),
+      args,
+      direct_reply:
+        typeof parsed.direct_reply === 'string' ? parsed.direct_reply.slice(0, 1200) : null,
+    }
+  } catch {
+    return null
+  }
+}

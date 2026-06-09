@@ -4,6 +4,22 @@ import { useEffect, useState, useMemo, useCallback, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { Bot, Sparkles, TrendingUp, AlertTriangle, MapPin, BarChart3, CheckCircle2, Send, ExternalLink, ArrowRight, Loader2, Users, Calendar, Vote, FileText, Flag, Target, Building2, Clock, CheckCheck, XCircle, Circle, ChevronRight, Zap, Mic, HelpCircle, Instagram, Heart, Eye, Share2, Image, Video, Play } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { JarvisHudShell } from '@/components/jarvis/jarvis-hud-shell'
+import type { JarvisLogLine } from '@/components/jarvis/jarvis-hud-widgets'
+import { jarvisHudStyle } from '@/lib/jarvis-hud-tokens'
+import { getAgentSessionId } from '@/lib/agent/client-session'
+import {
+  filterPesquisasByTermo,
+  parsePesquisaTipoFromQuery,
+  resolvePesquisasReply,
+  type PesquisaTipo,
+} from '@/lib/agent/format-pesquisas'
+import { isSpeechSynthesisSupported, speakText, stopSpeaking } from '@/lib/agent/speech-output'
+import type {
+  AgentChatResponse,
+  AgentContextPayload,
+  PesquisaTipoChoicePending,
+} from '@/lib/agent/types'
 
 interface DataInsight {
   id: string
@@ -17,6 +33,7 @@ interface ChatMessage {
   id: string
   role: 'user' | 'assistant'
   content: string
+  viaAi?: boolean
   action?: {
     type: 'navigate' | 'link'
     url: string
@@ -81,6 +98,14 @@ interface AIAgentProps {
   pageContext?: AIAgentPageContext
   /** fixed = canto da tela; inline = no fluxo da página (rola com o conteúdo) */
   dockVariant?: 'fixed' | 'inline'
+  /** Nome exibido no cabeçalho do painel (padrão: Copilot IA) */
+  agentTitle?: string
+  /** Altura máxima do painel expandido (px) */
+  maxPanelHeight?: number
+  /** default = card Cockpit; jarvis-hud = interface neural estilo referência JARVIS */
+  uiVariant?: 'default' | 'jarvis-hud'
+  /** Jarvis HUD ocupa 100% da área útil do dashboard (home) */
+  fullPageHud?: boolean
 }
 
 interface SpeechRecognitionResultLike {
@@ -378,7 +403,12 @@ export function AIAgent({
   immediateChatMode = false,
   pageContext,
   dockVariant = 'fixed',
+  agentTitle = 'Copilot IA',
+  maxPanelHeight = 600,
+  uiVariant = 'default',
+  fullPageHud = false,
 }: AIAgentProps) {
+  const isJarvisHud = uiVariant === 'jarvis-hud'
   const router = useRouter()
   const chatContainerRef = useRef<HTMLDivElement>(null)
   const [isMinimized, setIsMinimized] = useState(false)
@@ -394,22 +424,27 @@ export function AIAgent({
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([])
   const [isProcessing, setIsProcessing] = useState(false)
   const [isListening, setIsListening] = useState(false)
+  const [isSpeaking, setIsSpeaking] = useState(false)
   const [speechSupported, setSpeechSupported] = useState(false)
   const [speechCapabilityResolved, setSpeechCapabilityResolved] = useState(false)
   const [voiceError, setVoiceError] = useState<string | null>(null)
   const recognitionRef = useRef<SpeechRecognitionLike | null>(null)
   const pendingSpeechRef = useRef('')
+  const stopSpeakingReplyRef = useRef<(() => void) | null>(null)
   const pageContextRef = useRef<AIAgentPageContext | undefined>(undefined)
   pageContextRef.current = pageContext
 
   const [resumoDemandasAssistPhase, setResumoDemandasAssistPhase] = useState<
     'idle' | 'awaiting_lideranca_escopo'
   >('idle')
+  const [pesquisaTipoPending, setPesquisaTipoPending] =
+    useState<PesquisaTipoChoicePending | null>(null)
   const resumoEleicoesCidadeChave =
     pageContext?.kind === 'resumo-eleicoes' ? pageContext.cidadeAtual : ''
 
   useEffect(() => {
     setResumoDemandasAssistPhase('idle')
+    setPesquisaTipoPending(null)
   }, [resumoEleicoesCidadeChave])
 
   // Scroll automático para última mensagem
@@ -1343,56 +1378,83 @@ export function AIAgent({
     }
   }
 
-  // Buscar pesquisas
-  const fetchPesquisas = async (termo: string): Promise<string> => {
+  type PesquisasFetchOutcome =
+    | { kind: 'data'; content: string }
+    | { kind: 'ask_tipo'; content: string; pending: PesquisaTipoChoicePending }
+    | { kind: 'error'; content: string }
+
+  const fetchPesquisasOutcome = useCallback(async (
+    termo: string,
+    tipo?: PesquisaTipo,
+    pendingContext?: PesquisaTipoChoicePending
+  ): Promise<PesquisasFetchOutcome> => {
     try {
       const response = await fetch('/api/pesquisa')
       if (!response.ok) {
-        return `Erro ao buscar pesquisas.`
+        return { kind: 'error', content: 'Erro ao buscar pesquisas.' }
       }
 
-      const pesquisas = await response.json()
-      const termoNorm = normalizeText(termo)
-      
-      // Filtrar pesquisas
-      const pesquisasFiltradas = pesquisas.filter((p: { candidato_nome?: string; cidade_nome?: string; instituto?: string }) => {
-        const candidato = normalizeText(p.candidato_nome || '')
-        const cidade = normalizeText(p.cidade_nome || '')
-        const instituto = normalizeText(p.instituto || '')
-        return candidato.includes(termoNorm) || cidade.includes(termoNorm) || instituto.includes(termoNorm)
-      })
+      const pesquisas = (await response.json()) as Array<Record<string, unknown>>
+      const searchTerm = pendingContext?.termo || termo
+      const pesquisasFiltradas = filterPesquisasByTermo(pesquisas, searchTerm)
 
       if (pesquisasFiltradas.length === 0) {
-        return `Não encontrei pesquisas para "${termo}".`
+        return { kind: 'error', content: `Não encontrei pesquisas para "${searchTerm}".` }
       }
 
-      let resposta = `**Pesquisas para "${termo}"**\n\n`
-
-      // Ordenar por data
-      pesquisasFiltradas.sort((a: { data_pesquisa: string }, b: { data_pesquisa: string }) => new Date(b.data_pesquisa).getTime() - new Date(a.data_pesquisa).getTime())
-
-      // Mostrar até 5 pesquisas
-      const pesquisasMostrar = pesquisasFiltradas.slice(0, 5)
-      
-      pesquisasMostrar.forEach((p: { data_pesquisa: string; candidato_nome: string; intencao_voto: number; instituto?: string; cidade_nome?: string }, index: number) => {
-        const data = new Date(p.data_pesquisa).toLocaleDateString('pt-BR')
-        resposta += `**${data}**\n`
-        resposta += `   ${p.candidato_nome}: **${p.intencao_voto}%**\n`
-        if (p.instituto) resposta += `   ${p.instituto}\n`
-        if (p.cidade_nome) resposta += `   ${p.cidade_nome}\n`
-        if (index < pesquisasMostrar.length - 1) resposta += '\n'
+      const result = resolvePesquisasReply(pesquisasFiltradas, {
+        termo: searchTerm,
+        tipoFilter: tipo,
+        pendingContext,
+        maxGrupos: 3,
+        maxCandidatosPorGrupo: 12,
       })
 
-      if (pesquisasFiltradas.length > 5) {
-        resposta += `\n+ ${pesquisasFiltradas.length - 5} pesquisa(s)`
+      if (result.kind === 'ask_tipo') {
+        return { kind: 'ask_tipo', content: result.content, pending: result.pending }
       }
 
-      return resposta
+      if (result.kind === 'empty' || !result.content) {
+        return { kind: 'error', content: result.content || `Não encontrei pesquisas para "${searchTerm}".` }
+      }
+
+      return { kind: 'data', content: result.content }
     } catch (error) {
       console.error('Erro ao buscar pesquisas:', error)
-      return `Erro ao buscar pesquisas. Tente novamente.`
+      return { kind: 'error', content: 'Erro ao buscar pesquisas. Tente novamente.' }
     }
-  }
+  }, [])
+
+  const buildPesquisasChatMessage = useCallback((
+    outcome: PesquisasFetchOutcome,
+    options?: { viaAi?: boolean }
+  ): ChatMessage => {
+    if (outcome.kind === 'ask_tipo') {
+      setPesquisaTipoPending(outcome.pending)
+      return {
+        id: Date.now().toString(),
+        role: 'assistant',
+        content: outcome.content,
+        viaAi: options?.viaAi,
+      }
+    }
+
+    setPesquisaTipoPending(null)
+    return {
+      id: Date.now().toString(),
+      role: 'assistant',
+      content: outcome.content,
+      viaAi: options?.viaAi,
+      action:
+        outcome.kind === 'data'
+          ? {
+              type: 'navigate',
+              url: '/dashboard/pesquisa',
+              label: 'Ver Pesquisas',
+            }
+          : undefined,
+    }
+  }, [])
 
   // ==================== PROCESSAMENTO DE QUERIES ====================
 
@@ -2042,18 +2104,16 @@ export function AIAgent({
     }
 
     // ===== PESQUISAS =====
-    if (queryLower.includes('pesquisa') && cidade) {
-      const resposta = await fetchPesquisas(cidade)
-      return {
-        id: Date.now().toString(),
-        role: 'assistant',
-        content: resposta,
-        action: {
-          type: 'navigate',
-          url: '/dashboard/pesquisa',
-          label: 'Ver Pesquisas',
-        },
-      }
+    const ehConsultaPesquisa =
+      queryLower.includes('pesquisa') ||
+      queryLower.includes('intencao') ||
+      queryLower.includes('intenção') ||
+      /\bvoto\b/.test(queryLower)
+
+    if (ehConsultaPesquisa && cidade) {
+      const tipo = parsePesquisaTipoFromQuery(query)
+      const outcome = await fetchPesquisasOutcome(cidade, tipo ?? undefined)
+      return buildPesquisasChatMessage(outcome)
     }
     
     // ===== INSTAGRAM - MÉTRICAS GERAIS =====
@@ -2387,7 +2447,87 @@ export function AIAgent({
     expectativa2026,
     presencaTerritorial,
     resumoDemandasAssistPhase,
+    fetchPesquisasOutcome,
+    buildPesquisasChatMessage,
   ])
+
+  const buildAgentContext = useCallback((): AgentContextPayload => {
+    const pc = pageContextRef.current
+    return {
+      pageKind: pc?.kind === 'resumo-eleicoes' ? 'resumo-eleicoes' : 'dashboard',
+      cidadeAtual: pc?.kind === 'resumo-eleicoes' ? pc.cidadeAtual : undefined,
+      buscaIniciada: pc?.kind === 'resumo-eleicoes' ? pc.buscaIniciada : undefined,
+      candidatoPadrao,
+      cidadesDisponiveis: pc?.kind === 'resumo-eleicoes' ? pc.cidades.slice(0, 40) : undefined,
+      alertsCriticosCount,
+      territoriosFriosCount,
+      pollsCount,
+      expectativa2026: expectativa2026 != null ? String(expectativa2026) : undefined,
+      presencaTerritorial,
+    }
+  }, [
+    alertsCriticosCount,
+    candidatoPadrao,
+    expectativa2026,
+    pollsCount,
+    presencaTerritorial,
+    territoriosFriosCount,
+  ])
+
+  const tryAgentChat = useCallback(
+    async (message: string, history: ChatMessage[]): Promise<ChatMessage | null> => {
+      try {
+        const res = await fetch('/api/agent/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            message,
+            history: history.slice(-4).map((m) => ({ role: m.role, content: m.content })),
+            context: buildAgentContext(),
+            sessionId: getAgentSessionId(),
+          }),
+        })
+
+        if (!res.ok) return null
+
+        const data = (await res.json()) as AgentChatResponse & { hint?: string }
+
+        if (data.source === 'fallback') {
+          if (data.meta?.rateLimited && data.hint) {
+            return {
+              id: Date.now().toString(),
+              role: 'assistant',
+              content: `${data.hint}\n\nContinuo respondendo com os comandos habituais.`,
+            }
+          }
+          return null
+        }
+
+        if (data.clientQuery?.trim()) {
+          const legacy = await processUserQuery(data.clientQuery.trim())
+          return { ...legacy, viaAi: true }
+        }
+
+        if (data.content?.trim()) {
+          if (data.pesquisaTipoPending) {
+            setPesquisaTipoPending(data.pesquisaTipoPending)
+          }
+          return {
+            id: Date.now().toString(),
+            role: 'assistant',
+            content: data.content.trim(),
+            action: data.action,
+            viaAi: true,
+          }
+        }
+
+        return null
+      } catch {
+        return null
+      }
+    },
+    [buildAgentContext, processUserQuery]
+  )
 
   const submitMessage = useCallback(async (content: string) => {
     const cleanedContent = content.trim()
@@ -2403,18 +2543,75 @@ export function AIAgent({
     setIsProcessing(true)
 
     try {
-      const response = await processUserQuery(userMessage.content)
+      let response: ChatMessage | null = null
+
+      if (pesquisaTipoPending) {
+        const tipo = parsePesquisaTipoFromQuery(cleanedContent)
+        if (tipo) {
+          const outcome = await fetchPesquisasOutcome(
+            pesquisaTipoPending.termo,
+            tipo,
+            pesquisaTipoPending
+          )
+          response = buildPesquisasChatMessage(outcome, { viaAi: true })
+        } else {
+          response = {
+            id: Date.now().toString(),
+            role: 'assistant',
+            content:
+              'Para listar os candidatos, responda **estimulada** ou **espontânea**.',
+          }
+        }
+      } else if (resumoDemandasAssistPhase === 'idle') {
+        response = await tryAgentChat(cleanedContent, chatMessages)
+      }
+
+      if (!response) {
+        response = await processUserQuery(cleanedContent)
+      }
+
       setChatMessages(prev => [...prev, response])
+      if (enableVoice && response.role === 'assistant') {
+        stopSpeakingReplyRef.current?.()
+        void speakText(response.content, {
+          onStart: () => setIsSpeaking(true),
+          onEnd: () => setIsSpeaking(false),
+          onError: () => setIsSpeaking(false),
+        }).then((cancel) => {
+          stopSpeakingReplyRef.current = cancel
+        })
+      }
     } catch (error) {
+      const errorReply = 'Desculpe, ocorreu um erro. Tente novamente.'
       setChatMessages(prev => [...prev, {
         id: Date.now().toString(),
         role: 'assistant',
-        content: 'Desculpe, ocorreu um erro. Tente novamente.',
+        content: errorReply,
       }])
+      if (enableVoice) {
+        stopSpeakingReplyRef.current?.()
+        void speakText(errorReply, {
+          onStart: () => setIsSpeaking(true),
+          onEnd: () => setIsSpeaking(false),
+          onError: () => setIsSpeaking(false),
+        }).then((cancel) => {
+          stopSpeakingReplyRef.current = cancel
+        })
+      }
     } finally {
       setIsProcessing(false)
     }
-  }, [isProcessing, processUserQuery])
+  }, [
+    chatMessages,
+    enableVoice,
+    isProcessing,
+    pesquisaTipoPending,
+    processUserQuery,
+    resumoDemandasAssistPhase,
+    tryAgentChat,
+    fetchPesquisasOutcome,
+    buildPesquisasChatMessage,
+  ])
 
   const submitMessageRef = useRef<(content: string) => Promise<void>>(async () => {})
   useEffect(() => {
@@ -2495,6 +2692,23 @@ export function AIAgent({
     setCurrentMessageIndex(0)
     setCompletedMessages([])
   }, [])
+
+  useEffect(() => {
+    return () => {
+      stopSpeakingReplyRef.current?.()
+      stopSpeaking()
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!enableVoice || typeof window === 'undefined' || !isSpeechSynthesisSupported()) return
+    const loadVoices = () => {
+      window.speechSynthesis.getVoices()
+    }
+    loadVoices()
+    window.speechSynthesis.addEventListener('voiceschanged', loadVoices)
+    return () => window.speechSynthesis.removeEventListener('voiceschanged', loadVoices)
+  }, [enableVoice])
 
   useEffect(() => {
     if (!enableVoice || typeof window === 'undefined') return
@@ -2580,6 +2794,10 @@ export function AIAgent({
       return
     }
 
+    stopSpeakingReplyRef.current?.()
+    stopSpeaking()
+    setIsSpeaking(false)
+
     if (isListening) {
       try {
         recognitionRef.current.stop()
@@ -2615,9 +2833,93 @@ export function AIAgent({
     }
   }, [isListening])
 
+  const jarvisLogLines = useMemo((): JarvisLogLine[] => {
+    return chatMessages.slice(-14).map((m) => ({
+      tag: m.role === 'user' ? 'USER' : 'JARVIS',
+      message: m.content.replace(/\n/g, ' ').slice(0, 220),
+      tone: m.role === 'user' ? 'default' : 'success',
+      at: new Date(Number(m.id) || Date.now()).toLocaleTimeString('pt-BR', {
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: false,
+      }),
+    }))
+  }, [chatMessages])
+
+  const jarvisLastAction = useMemo((): ChatMessage['action'] => {
+    for (let i = chatMessages.length - 1; i >= 0; i -= 1) {
+      const msg = chatMessages[i]
+      if (msg.role === 'assistant' && msg.action) return msg.action
+    }
+    return undefined
+  }, [chatMessages])
+
+  const jarvisStatusMessage = useMemo(() => {
+    if (isSpeaking) return 'SINTETIZANDO RESPOSTA · FALANDO'
+    if (isProcessing) return 'PROCESSANDO CONSULTA · AGUARDE'
+    if (isListening) return 'ESCUTA ATIVA · FALE SUA PERGUNTA'
+    if (allLoaded) return 'JARVIS ONLINE · SISTEMAS PRONTOS · COCKPIT 2026'
+    return 'INICIALIZANDO NÚCLEO NEURAL · CARREGANDO MÓDULOS'
+  }, [isProcessing, isListening, isSpeaking, allLoaded])
+
   if (!showAgent) return null
 
   const dockInline = dockVariant === 'inline'
+
+  if (isJarvisHud) {
+    if (isMinimized) {
+      return (
+        <div className={cn(dockInline ? 'relative z-40' : 'fixed bottom-6 right-6 z-[100]')}>
+          <button
+            type="button"
+            onClick={() => setIsMinimized(false)}
+            className="relative flex h-14 w-14 items-center justify-center rounded-full border-2 border-[var(--color-core)] bg-[var(--color-void)] shadow-[0_0_24px_rgba(0,212,255,0.35)] transition-transform hover:scale-105"
+            style={jarvisHudStyle as React.CSSProperties}
+            title="Abrir Jarvis"
+          >
+            <Bot className="h-7 w-7 text-[var(--color-core)]" />
+            {(alertsCriticosCount > 0 || territoriosFriosCount > 0) && (
+              <span className="absolute -right-0.5 -top-0.5 flex h-5 w-5 items-center justify-center rounded-full bg-[var(--color-online)] text-[9px] font-medium text-[var(--color-void)]">
+                {alertsCriticosCount + territoriosFriosCount}
+              </span>
+            )}
+          </button>
+        </div>
+      )
+    }
+
+    return (
+      <div
+        className={cn(
+          'transition-all duration-500',
+          fullPageHud
+            ? 'relative z-40 flex h-full min-h-0 w-full flex-1 flex-col'
+            : dockInline
+              ? 'relative z-40 w-full'
+              : 'fixed bottom-4 left-4 right-4 z-[100] sm:left-auto sm:right-6 sm:w-[min(100%,1100px)]'
+        )}
+        style={fullPageHud ? undefined : { maxHeight: maxPanelHeight }}
+      >
+        <JarvisHudShell
+          statusMessage={jarvisStatusMessage}
+          isListening={isListening}
+          isSpeaking={isSpeaking}
+          isProcessing={isProcessing}
+          enableVoice={enableVoice}
+          speechSupported={speechSupported}
+          voiceError={voiceError}
+          onMicClick={handleToggleVoiceListening}
+          onMinimize={fullPageHud ? undefined : () => setIsMinimized(true)}
+          lastAction={jarvisLastAction}
+          onActionClick={handleAction}
+          logLines={jarvisLogLines}
+          className={cn(fullPageHud ? 'h-full min-h-0 flex-1' : 'h-full min-h-[min(520px,calc(100vh-7rem))]')}
+          style={fullPageHud ? undefined : { maxHeight: maxPanelHeight }}
+        />
+      </div>
+    )
+  }
 
   return (
     <div
@@ -2644,7 +2946,10 @@ export function AIAgent({
           )}
         </button>
       ) : (
-        <div className="bg-surface rounded-2xl shadow-card shadow-accent-gold/10 border border-card overflow-hidden flex flex-col max-h-[600px]">
+        <div
+          className="bg-surface rounded-2xl shadow-card shadow-accent-gold/10 border border-card overflow-hidden flex flex-col"
+          style={{ maxHeight: maxPanelHeight }}
+        >
           {/* Header */}
           <div className="bg-gradient-to-r from-accent-gold to-accent-gold px-4 py-3 flex items-center justify-between flex-shrink-0">
             <div className="flex items-center gap-3">
@@ -2662,12 +2967,16 @@ export function AIAgent({
                 )}
               </div>
               <div>
-                <h3 className="text-sm font-semibold text-white">Copilot IA</h3>
+                <h3 className="text-sm font-semibold text-white">{agentTitle}</h3>
                 <p className="text-[10px] text-white/70">
                   {chatMode
                     ? pageContext?.kind === 'resumo-eleicoes'
                       ? 'Cidade + Buscar; depois abrir demandas (voz ou texto)'
-                      : enableVoice && speechCapabilityResolved && speechSupported
+                      : agentTitle === 'Jarvis'
+                        ? enableVoice && speechCapabilityResolved && speechSupported
+                          ? 'Assistente do Cockpit · digite ou fale em linguagem natural'
+                          : 'Assistente do Cockpit · pergunte sobre campanha e dados'
+                        : enableVoice && speechCapabilityResolved && speechSupported
                         ? 'Digite ou use o microfone — a transcrição aparece ao vivo'
                         : enableVoice && speechCapabilityResolved && !speechSupported
                           ? 'Este navegador não suporta voz; use o teclado'
@@ -2774,7 +3083,7 @@ export function AIAgent({
                     ) : (
                       <>
                         <p className="text-sm text-text-primary font-medium">
-                          Olá! Pergunte-me qualquer coisa sobre a campanha.
+                          Olá! Pergunte em linguagem natural — a IA interpreta e busca os dados.
                         </p>
                         <div className="mt-3 space-y-1">
                           <p className="text-xs text-accent-gold font-bold">Exemplos:</p>
@@ -2795,7 +3104,10 @@ export function AIAgent({
                       msg.role === 'user' ? 'bg-accent-gold text-white' : 'bg-app border border-card text-text-primary'
                     }`}>
                       <p className="text-sm whitespace-pre-line">{msg.content}</p>
-                      
+                      {msg.viaAi ? (
+                        <p className="mt-1.5 text-[10px] text-text-muted">Interpretado por IA (Groq)</p>
+                      ) : null}
+
                       {msg.action && (
                         <button
                           onClick={() => handleAction(msg.action)}
@@ -2816,7 +3128,7 @@ export function AIAgent({
                 {isProcessing && (
                   <div className="flex items-center gap-2 p-3 rounded-xl bg-accent-gold-soft">
                     <Loader2 className="w-4 h-4 text-accent-gold animate-spin" />
-                    <span className="text-xs text-text-primary font-medium">Buscando dados...</span>
+                    <span className="text-xs text-text-primary font-medium">Interpretando...</span>
                   </div>
                 )}
               </div>
@@ -2836,7 +3148,7 @@ export function AIAgent({
                       ? 'Ouvindo... Diga sua pergunta.'
                       : pageContext?.kind === 'resumo-eleicoes'
                         ? 'Ex: Buscar Teresina · listar cidades · ajuda'
-                        : 'Ex: expectativa em Teresina...'
+                        : 'Pergunte em linguagem natural ou use comandos diretos...'
                   }
                   aria-busy={isListening}
                   className={`flex-1 px-3 py-2 text-sm border rounded-xl focus:outline-none focus:ring-2 focus:ring-accent-gold focus:border-transparent ${
@@ -2872,6 +3184,11 @@ export function AIAgent({
               {isListening && (
                 <p className="mt-2 text-[11px] font-medium text-accent-gold animate-pulse">
                   Ouvindo... — fale e aguarde o envio automático ao terminar a frase.
+                </p>
+              )}
+              {isSpeaking && (
+                <p className="mt-2 text-[11px] font-medium text-accent-gold">
+                  Falando resposta...
                 </p>
               )}
               {enableVoice && chatMode && speechCapabilityResolved && !speechSupported && (

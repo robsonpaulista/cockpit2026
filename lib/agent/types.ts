@@ -1,0 +1,84 @@
+export type AgentPageKind = 'dashboard' | 'resumo-eleicoes' | 'other'
+
+export type AgentIntent =
+  | 'ajuda'
+  | 'resposta_direta'
+  | 'consultar_pesquisas'
+  | 'consultar_demandas'
+  | 'consultar_agendas'
+  | 'consultar_expectativa'
+  | 'consultar_liderancas'
+  | 'consultar_chapa'
+  | 'consultar_instagram_metricas'
+  | 'consultar_instagram_posts'
+  | 'consultar_instagram_tipo'
+  | 'consultar_instagram_tema'
+  | 'consultar_territorio'
+  | 'consultar_alertas'
+  | 'consultar_territorios_frios'
+  | 'navegar'
+  | 'resumo_buscar_cidade'
+  | 'resumo_abrir_demandas'
+  | 'resumo_abrir_liderancas'
+  | 'resumo_abrir_pesquisas'
+  | 'resumo_fechar_modais'
+  | 'desconhecido'
+
+export interface AgentChatMessage {
+  role: 'user' | 'assistant'
+  content: string
+}
+
+export interface AgentContextPayload {
+  pageKind?: AgentPageKind
+  cidadeAtual?: string
+  buscaIniciada?: boolean
+  candidatoPadrao?: string
+  cidadesDisponiveis?: string[]
+  alertsCriticosCount?: number
+  territoriosFriosCount?: number
+  pollsCount?: number
+  expectativa2026?: string | number
+  presencaTerritorial?: string
+}
+
+export interface AgentClassifiedIntent {
+  intent: AgentIntent
+  args: Record<string, string>
+  direct_reply?: string | null
+}
+
+export interface AgentChatRequest {
+  message: string
+  history?: AgentChatMessage[]
+  context?: AgentContextPayload
+  sessionId?: string
+}
+
+export interface AgentNavigateAction {
+  type: 'navigate'
+  url: string
+  label: string
+}
+
+export interface PesquisaTipoChoicePending {
+  termo: string
+  cidade: string
+  data: string
+  instituto: string
+}
+
+export interface AgentChatResponse {
+  source: 'groq' | 'fallback'
+  content: string
+  /** Quando a ação precisa do código legado no cliente (pageContext, Instagram localStorage). */
+  clientQuery?: string
+  action?: AgentNavigateAction
+  /** Aguardando usuário escolher estimulada ou espontânea. */
+  pesquisaTipoPending?: PesquisaTipoChoicePending
+  meta?: {
+    intent?: AgentIntent
+    rateLimited?: boolean
+    groqUnavailable?: boolean
+  }
+}

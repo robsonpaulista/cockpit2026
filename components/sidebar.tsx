@@ -66,6 +66,22 @@ import {
 } from '@/lib/premium-ui-classes'
 import { AppBrandTitle } from '@/components/app-brand-title'
 import { useDashboardHomeChrome } from '@/contexts/dashboard-home-chrome-context'
+import { DASHBOARD_HOME_BG } from '@/lib/dashboard-home-chrome'
+import {
+  JARVIS_SIDEBAR_ACTIVE_CHILD,
+  JARVIS_SIDEBAR_ACTIVE_ITEM,
+  JARVIS_SIDEBAR_DIVIDER,
+  JARVIS_SIDEBAR_FOCUS,
+  JARVIS_SIDEBAR_HOVER,
+  JARVIS_SIDEBAR_ICON,
+  JARVIS_SIDEBAR_ICON_ACTIVE,
+  JARVIS_SIDEBAR_IDLE_ITEM,
+  JARVIS_SIDEBAR_SECTION,
+  JARVIS_SIDEBAR_SUBMENU,
+  JARVIS_SIDEBAR_SUBMENU_LINK,
+  JARVIS_SIDEBAR_TEXT,
+  JARVIS_SIDEBAR_TEXT_ACTIVE,
+} from '@/lib/jarvis-sidebar-styles'
 
 /** Rótulos mais curtos no tema Cockpit Vivo (navegação minimalista). */
 const COCKPIT_MENU_LABEL: Record<string, string> = {
@@ -431,7 +447,7 @@ function SidebarNavItem({
         )}>
           <span className={cn(
             sidebarSectionLabelClass,
-            isGradientHome && 'text-white/45',
+            isGradientHome ? JARVIS_SIDEBAR_SECTION : 'text-white/45',
           )}>
             {sectionLabel}
           </span>
@@ -445,7 +461,7 @@ function SidebarNavItem({
           <span
             className={cn(
               'h-[1px] w-8 rounded-full',
-              isGradientHome ? 'bg-white/25' : 'bg-border-card/60'
+              isGradientHome ? JARVIS_SIDEBAR_DIVIDER : 'bg-border-card/60'
             )}
             aria-hidden
           />
@@ -464,14 +480,16 @@ function SidebarNavItem({
                 ? cn(
                     'relative flex w-full items-center gap-3 rounded-[12px] px-3 py-3',
                     'transition-all duration-200 ease-out',
-                    'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-gold/50 focus-visible:ring-offset-1 focus-visible:ring-offset-bg-sidebar',
+                    isGradientHome ? JARVIS_SIDEBAR_FOCUS : 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-gold/50 focus-visible:ring-offset-1 focus-visible:ring-offset-bg-sidebar',
                     !(filmNav && isActive) &&
                       (isGradientHome
-                        ? 'hover:bg-white/10 hover:text-white'
+                        ? JARVIS_SIDEBAR_HOVER
                         : 'hover:bg-accent-gold-soft/70 hover:text-text-primary'),
                     isActive && !filmNav && 'bg-accent-gold-soft text-text-primary shadow-sm',
                     !isActive &&
-                      'border border-white/[0.04] bg-[linear-gradient(180deg,rgba(255,255,255,0.02)_0%,rgba(255,255,255,0.01)_100%)]',
+                      (isGradientHome
+                        ? JARVIS_SIDEBAR_IDLE_ITEM
+                        : 'border border-white/[0.04] bg-[linear-gradient(180deg,rgba(255,255,255,0.02)_0%,rgba(255,255,255,0.01)_100%)]'),
                     isActive && cockpitActiveItemClass
                   )
                 : sidebarNavItemClass(isActive)
@@ -482,7 +500,13 @@ function SidebarNavItem({
                 filmNav
                   ? cn(
                       'h-4 w-4 shrink-0',
-                      isActive && '!text-white'
+                      isActive
+                        ? isGradientHome
+                          ? JARVIS_SIDEBAR_ICON_ACTIVE
+                          : '!text-white'
+                        : isGradientHome
+                          ? JARVIS_SIDEBAR_ICON
+                          : ''
                     )
                   : sidebarNavIconClass(isActive)
               )}
@@ -496,9 +520,12 @@ function SidebarNavItem({
                         'text-[0.95rem] font-medium leading-none tracking-[0.01em] transition-all duration-200',
                         'group-hover:translate-x-0.5',
                         isActive
-                          ? cn('font-semibold text-text-primary', filmNav && '!text-white')
+                          ? cn(
+                              'font-semibold text-text-primary',
+                              filmNav && (isGradientHome ? JARVIS_SIDEBAR_TEXT_ACTIVE : '!text-white')
+                            )
                           : isGradientHome
-                            ? 'text-white/80 group-hover:text-white'
+                            ? JARVIS_SIDEBAR_TEXT
                             : isCockpit
                               ? 'text-text-primary/90 group-hover:text-text-primary'
                               : 'text-text-secondary group-hover:text-text-primary'
@@ -511,8 +538,8 @@ function SidebarNavItem({
                   className={cn(
                   'ml-auto h-4 w-4 text-text-secondary/85 transition-transform',
                     submenuOpen && 'rotate-180',
-                    isGradientHome && 'text-white/70',
-                    filmNav && isActive && '!text-white/90'
+                    isGradientHome && 'text-[rgba(148,195,220,0.55)]',
+                    filmNav && isActive && (isGradientHome ? JARVIS_SIDEBAR_ICON_ACTIVE : '!text-white/90')
                   )}
                   strokeWidth={filmNav ? 1.35 : 2}
                 />
@@ -524,9 +551,10 @@ function SidebarNavItem({
             filmNav ? (
               <div
                 className={cn(
-                  'mt-2 space-y-1.5 rounded-2xl border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.08)_0%,rgba(255,255,255,0.03)_100%)] p-2',
-                  'text-[0.82rem] shadow-[0_8px_24px_rgba(0,0,0,0.22)]',
-                  isGradientHome ? 'text-white/90' : 'text-text-primary/85',
+                  'mt-2 space-y-1.5 rounded-2xl p-2 text-[0.82rem] shadow-[0_8px_24px_rgba(0,0,0,0.22)]',
+                  isGradientHome
+                    ? JARVIS_SIDEBAR_SUBMENU
+                    : 'border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.08)_0%,rgba(255,255,255,0.03)_100%)] text-text-primary/85',
                 )}
               >
                 {item.children.map((child) => {
@@ -541,7 +569,9 @@ function SidebarNavItem({
                         }}
                         className={cn(
                           'w-full whitespace-nowrap rounded-lg px-2.5 py-2 leading-none transition-all duration-200',
-                          'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-gold/50 focus-visible:ring-offset-1 focus-visible:ring-offset-bg-sidebar',
+                          isGradientHome
+                            ? JARVIS_SIDEBAR_FOCUS
+                            : 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-gold/50 focus-visible:ring-offset-1 focus-visible:ring-offset-bg-sidebar',
                           childActive
                             ? cn(
                                 'font-semibold',
@@ -549,10 +579,9 @@ function SidebarNavItem({
                                 cockpitActiveChildClass
                               )
                             : cn(
-                                'hover:bg-white/10',
                                 isGradientHome
-                                  ? 'text-white/80 hover:text-white'
-                                  : 'text-text-primary/85 hover:text-text-primary'
+                                  ? JARVIS_SIDEBAR_SUBMENU_LINK
+                                  : 'hover:bg-white/10 text-text-primary/85 hover:text-text-primary'
                               )
                         )}
                       >
@@ -597,14 +626,16 @@ function SidebarNavItem({
               ? cn(
                   'relative flex items-center gap-3 rounded-[12px] px-3 py-3',
                   'transition-all duration-200 ease-out',
-                  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-gold/50 focus-visible:ring-offset-1 focus-visible:ring-offset-bg-sidebar',
+                  isGradientHome ? JARVIS_SIDEBAR_FOCUS : 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-gold/50 focus-visible:ring-offset-1 focus-visible:ring-offset-bg-sidebar',
                   !(filmNav && isActive) &&
                     (isGradientHome
-                      ? 'hover:bg-white/10 hover:text-white'
+                      ? JARVIS_SIDEBAR_HOVER
                       : 'hover:bg-accent-gold-soft/70 hover:text-text-primary'),
                   isActive && !filmNav && 'bg-accent-gold-soft text-text-primary shadow-sm',
                   !isActive &&
-                    'border border-white/[0.04] bg-[linear-gradient(180deg,rgba(255,255,255,0.02)_0%,rgba(255,255,255,0.01)_100%)]',
+                    (isGradientHome
+                      ? JARVIS_SIDEBAR_IDLE_ITEM
+                      : 'border border-white/[0.04] bg-[linear-gradient(180deg,rgba(255,255,255,0.02)_0%,rgba(255,255,255,0.01)_100%)]'),
                   isActive && cockpitActiveItemClass
                 )
               : sidebarNavItemClass(isActive)
@@ -613,7 +644,16 @@ function SidebarNavItem({
           <Icon
             className={cn(
               filmNav
-                ? cn('h-4 w-4 shrink-0', isActive && '!text-white')
+                ? cn(
+                    'h-4 w-4 shrink-0',
+                    isActive
+                      ? isGradientHome
+                        ? JARVIS_SIDEBAR_ICON_ACTIVE
+                        : '!text-white'
+                      : isGradientHome
+                        ? JARVIS_SIDEBAR_ICON
+                        : ''
+                  )
                 : sidebarNavIconClass(isActive)
             )}
             strokeWidth={filmNav ? 1.35 : 1.75}
@@ -625,9 +665,12 @@ function SidebarNavItem({
                     'text-[0.95rem] font-medium leading-none tracking-[0.01em] transition-all duration-200',
                     'group-hover:translate-x-0.5',
                     isActive
-                      ? cn('font-semibold text-text-primary', filmNav && '!text-white')
+                      ? cn(
+                          'font-semibold text-text-primary',
+                          filmNav && (isGradientHome ? JARVIS_SIDEBAR_TEXT_ACTIVE : '!text-white')
+                        )
                       : isGradientHome
-                        ? 'text-white/80 group-hover:text-white'
+                        ? JARVIS_SIDEBAR_TEXT
                         : isCockpit
                           ? 'text-text-primary/90 group-hover:text-text-primary'
                           : 'text-text-secondary group-hover:text-text-primary'
@@ -648,20 +691,38 @@ function SidebarNavItem({
       {/* Tooltip quando sidebar está recolhida - usando fixed para sair do overflow */}
       {collapsed && !mobileOpen && tooltipPos && (
         <div
-          className="fixed left-24 z-[200] whitespace-nowrap rounded-xl border border-white/10 px-3 py-2 text-[0.78rem] font-semibold shadow-lg backdrop-blur"
+          className={cn(
+            'fixed left-24 z-[200] whitespace-nowrap rounded-xl px-3 py-2 text-[0.78rem] font-semibold shadow-lg backdrop-blur',
+            isGradientHome
+              ? 'border border-[rgba(0,212,255,0.25)] shadow-[0_0_16px_rgba(0,102,255,0.15)]'
+              : 'border border-white/10'
+          )}
           style={{
             top: `${tooltipPos.top}px`,
             transform: 'translateY(-50%)',
             animation: 'fadeIn 0.2s ease-out',
-            backgroundColor: filmNav ? 'rgba(19, 28, 35, 0.92)' : 'rgb(var(--text-primary))',
-            /* fundo escuro + text-primary no claro = texto ilegível; texto sempre claro no chip escuro */
-            color: filmNav ? 'rgba(255,255,255,0.95)' : 'rgb(var(--bg-surface))',
+            backgroundColor: filmNav
+              ? isGradientHome
+                ? '#051525'
+                : 'rgba(19, 28, 35, 0.92)'
+              : 'rgb(var(--text-primary))',
+            color: filmNav
+              ? isGradientHome
+                ? '#00D4FF'
+                : 'rgba(255,255,255,0.95)'
+              : 'rgb(var(--bg-surface))',
           }}
         >
           {menuLabel(item.id, item.label)}
           <div
             className="absolute right-full top-1/2 -translate-y-1/2 border-4 border-transparent"
-            style={{ borderRightColor: filmNav ? 'rgba(19, 28, 35, 0.92)' : 'rgb(var(--text-primary))' }}
+            style={{
+              borderRightColor: filmNav
+                ? isGradientHome
+                  ? '#051525'
+                  : 'rgba(19, 28, 35, 0.92)'
+                : 'rgb(var(--text-primary))',
+            }}
           />
         </div>
       )}
@@ -682,8 +743,12 @@ export function Sidebar() {
   const isRepublicanosPremium = theme === 'republicanos' && appearance === 'light'
   const showTopbar = useDashboardTopbarVisible()
 
-  const cockpitActiveItemClass = COCKPIT_PAGE_ACTIVE_ITEM
-  const cockpitActiveChildClass = COCKPIT_PAGE_ACTIVE_CHILD_PILL
+  const cockpitActiveItemClass = isGradientHome
+    ? JARVIS_SIDEBAR_ACTIVE_ITEM
+    : COCKPIT_PAGE_ACTIVE_ITEM
+  const cockpitActiveChildClass = isGradientHome
+    ? JARVIS_SIDEBAR_ACTIVE_CHILD
+    : COCKPIT_PAGE_ACTIVE_CHILD_PILL
 
   const menuLabel = (id: string, fallback: string) =>
     isCockpit ? (COCKPIT_MENU_LABEL[id] ?? fallback) : fallback
@@ -752,7 +817,9 @@ export function Sidebar() {
         className={cn(
           'fixed left-4 top-4 z-[110] rounded-full p-2 transition-premium lg:hidden',
           filmNav
-            ? 'cockpit-glass border border-white/15 shadow-[0_4px_20px_rgba(0,0,0,0.12)]'
+            ? isGradientHome
+              ? 'border border-[rgba(0,212,255,0.15)] bg-[#020B14] shadow-[0_4px_20px_rgba(0,0,0,0.3)]'
+              : 'cockpit-glass border border-white/15 shadow-[0_4px_20px_rgba(0,0,0,0.12)]'
             : 'rounded-lg border border-border-card bg-bg-surface shadow-card hover:shadow-card-hover'
         )}
         aria-label="Toggle menu"
@@ -760,7 +827,7 @@ export function Sidebar() {
         {mobileOpen ? (
           <X
             className={cn(
-              isGradientHome ? 'text-white' : 'text-accent-gold',
+              isGradientHome ? 'text-[#00D4FF]' : 'text-accent-gold',
               filmNav ? 'h-4 w-4' : 'h-5 w-5'
             )}
             strokeWidth={filmNav ? 1.35 : 2}
@@ -768,7 +835,7 @@ export function Sidebar() {
         ) : (
           <Menu
             className={cn(
-              isGradientHome ? 'text-white' : 'text-accent-gold',
+              isGradientHome ? 'text-[#00D4FF]' : 'text-accent-gold',
               filmNav ? 'h-4 w-4' : 'h-5 w-5'
             )}
             strokeWidth={filmNav ? 1.35 : 2}
@@ -780,7 +847,7 @@ export function Sidebar() {
       <aside
         className={cn(
           'fixed left-0 top-0 h-full w-72 overflow-visible transition-all duration-300 ease-out',
-          isGradientHome && 'border-r border-white/15 bg-transparent',
+          isGradientHome && 'border-r border-[rgba(0,212,255,0.08)]',
           !isGradientHome && 'border-r border-card bg-[rgb(var(--bg-sidebar))]',
           isCockpit && !isGradientHome && 'sidebar-cockpit-shell',
           isRepublicanosPremium && !isGradientHome && 'republicanos-premium-sidebar',
@@ -789,12 +856,18 @@ export function Sidebar() {
           mobileOpen ? 'translate-x-0' : '-translate-x-full',
           collapsed ? 'lg:w-[5.5rem]' : 'lg:w-72'
         )}
-        style={{ isolation: 'isolate' }}
+        style={{
+          isolation: 'isolate',
+          ...(isGradientHome
+            ? { backgroundColor: DASHBOARD_HOME_BG, ['--jarvis-home-bg' as string]: DASHBOARD_HOME_BG }
+            : {}),
+        }}
       >
         <div
           className={cn(
             'flex h-full min-h-0 flex-col',
-            filmNav ? 'bg-transparent' : 'bg-[rgb(var(--bg-sidebar))]',
+            isGradientHome && 'bg-[var(--jarvis-home-bg)]',
+            !isGradientHome && 'bg-[rgb(var(--bg-sidebar))]',
           )}
         >
           {/* Logo */}
@@ -813,15 +886,15 @@ export function Sidebar() {
                 className={cn(
                   'hidden h-8 w-8 items-center justify-center rounded-lg transition-premium lg:flex',
                   isGradientHome
-                    ? 'hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40 focus-visible:ring-offset-1 focus-visible:ring-offset-transparent'
+                    ? cn(JARVIS_SIDEBAR_HOVER, JARVIS_SIDEBAR_FOCUS)
                     : 'hover:bg-accent-gold-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-gold/50 focus-visible:ring-offset-1 focus-visible:ring-offset-bg-sidebar'
                 )}
                 aria-label="Toggle sidebar"
               >
                 <ChevronLeft
                   className={cn(
-                    'w-4 h-4',
-                    isGradientHome ? 'text-white' : 'text-accent-gold'
+                    'h-4 w-4',
+                    isGradientHome ? 'text-[#00D4FF]' : 'text-accent-gold'
                   )}
                   strokeWidth={filmNav ? 1.35 : 2}
                 />
@@ -833,15 +906,15 @@ export function Sidebar() {
                 className={cn(
                   'hidden h-8 w-8 items-center justify-center rounded-lg transition-premium lg:flex',
                   isGradientHome
-                    ? 'hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40 focus-visible:ring-offset-1 focus-visible:ring-offset-transparent'
+                    ? cn(JARVIS_SIDEBAR_HOVER, JARVIS_SIDEBAR_FOCUS)
                     : 'hover:bg-accent-gold-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-gold/50 focus-visible:ring-offset-1 focus-visible:ring-offset-bg-sidebar'
                 )}
                 aria-label="Toggle sidebar"
               >
                 <ChevronLeft
                   className={cn(
-                    'w-4 h-4 rotate-180',
-                    isGradientHome ? 'text-white' : 'text-accent-gold'
+                    'h-4 w-4 rotate-180',
+                    isGradientHome ? 'text-[#00D4FF]' : 'text-accent-gold'
                   )}
                   strokeWidth={filmNav ? 1.35 : 2}
                 />
@@ -899,7 +972,7 @@ export function Sidebar() {
           <div
             className={cn(
               'space-y-1.5 border-t px-2.5 py-3',
-              isGradientHome ? 'border-white/15' : 'border-border-card/80'
+              isGradientHome ? 'border-[rgba(0,212,255,0.08)]' : 'border-border-card/80'
             )}
           >
             <button
@@ -910,8 +983,10 @@ export function Sidebar() {
               className={cn(
                 'flex w-full items-center gap-3 rounded-[12px] px-3 py-3',
                 'transition-all duration-200 ease-out group',
-                isGradientHome ? 'hover:bg-white/10' : 'hover:bg-accent-gold-soft/70',
-                'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-gold/50 focus-visible:ring-offset-1 focus-visible:ring-offset-bg-sidebar'
+                isGradientHome ? JARVIS_SIDEBAR_HOVER : 'hover:bg-accent-gold-soft/70',
+                isGradientHome
+                  ? JARVIS_SIDEBAR_FOCUS
+                  : 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-gold/50 focus-visible:ring-offset-1 focus-visible:ring-offset-bg-sidebar'
               )}
               title="Ativar tela de descanso"
             >
@@ -919,7 +994,7 @@ export function Sidebar() {
                 className={cn(
                   'flex-shrink-0 transition-colors',
                   isGradientHome
-                    ? 'text-white/75 group-hover:text-white'
+                    ? cn(JARVIS_SIDEBAR_ICON, 'group-hover:!text-[#00D4FF]')
                     : 'text-text-secondary group-hover:text-accent-gold',
                   filmNav ? 'h-4 w-4' : 'h-5 w-5'
                 )}
@@ -930,7 +1005,7 @@ export function Sidebar() {
                   className={cn(
                     'text-[0.92rem] font-medium transition-colors',
                     isGradientHome
-                      ? 'text-white/90 group-hover:text-white'
+                      ? JARVIS_SIDEBAR_TEXT
                       : 'text-text-primary/90 group-hover:text-text-primary'
                   )}
                 >
