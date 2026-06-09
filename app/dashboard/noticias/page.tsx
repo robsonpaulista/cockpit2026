@@ -1,90 +1,104 @@
 'use client'
 
-import { useEffect, useState } from 'react'
-import { Newspaper, RefreshCw, Plus, Edit2, Trash2, Radio, Crown, Search } from 'lucide-react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { ActiveAlertsStrip } from '@/components/noticias/active-alerts-strip'
+import { NewsCard } from '@/components/noticias/news-card'
+import {
+  NoticiasFilterBar,
+  NoticiasPageHeader,
+  NoticiasStatsRow,
+} from '@/components/noticias/noticias-chrome'
+import { SectionDivider } from '@/components/noticias/section-divider'
 import { FeedManagerModal } from '@/components/feed-manager-modal'
 import { EditNewsModal } from '@/components/edit-news-modal'
-import { NewsItem } from '@/types'
-import { cn, formatDate } from '@/lib/utils'
-import { useTheme } from '@/contexts/theme-context'
+import { loadLixoIds, saveLixoIds } from '@/lib/noticias-lixo-store'
+import {
+  buildNewsListSections,
+  dateGroupLabel,
+  filterNewsClientSide,
+  isTodayNews,
+  sanitizeNewsItem,
+  type FiltroDestaque,
+} from '@/lib/noticias-page-utils'
 import { sidebarPrimaryCTAButtonClass } from '@/lib/sidebar-menu-active-style'
+import { cn } from '@/lib/utils'
+import type { NewsItem } from '@/types'
 
-const sentimentColors = {
-  positive: 'bg-status-success/10 text-status-success border-status-success/30',
-  negative: 'bg-status-error/10 text-status-error border-status-error/30',
-  neutral: 'bg-accent-gold-soft text-accent-gold border-accent-gold/30',
+interface UnifiedFeed {
+  id: string
+  name: string
+  type: string
+  active?: boolean
 }
-
-const riskColors = {
-  high: 'bg-status-error/10 text-status-error',
-  medium: 'bg-status-warning/10 text-status-warning',
-  low: 'bg-status-success/10 text-status-success',
-}
-
-type FiltroDestaquePainel = 'all' | 'yes' | 'no'
-type FiltroDestaqueMonitor = 'all' | 'yes'
 
 export default function NoticiasPage() {
-  const { theme } = useTheme()
-  const isCockpit = false
-  const pageShellClass = isCockpit ? 'sidebar-cockpit-shell' : 'bg-background'
-  const sectionShellClass = isCockpit
-    ? 'rounded-2xl border p-5 backdrop-blur border-white/12 bg-[linear-gradient(165deg,rgba(22,34,44,0.82)_0%,rgba(18,30,38,0.86)_100%)] shadow-[0_10px_32px_rgba(3,12,20,0.28)]'
-    : 'bg-surface rounded-2xl border border-card p-6'
-  const innerPanelClass = isCockpit
-    ? 'rounded-xl border p-3 border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.04)_0%,rgba(255,255,255,0.02)_100%)]'
-    : 'rounded-xl border border-card bg-background/50 p-3'
   const [news, setNews] = useState<NewsItem[]>([])
-  const [allFeeds, setAllFeeds] = useState<any[]>([])
+  const [allFeeds, setAllFeeds] = useState<UnifiedFeed[]>([])
   const [loading, setLoading] = useState(true)
   const [showFeedManager, setShowFeedManager] = useState(false)
   const [editingNews, setEditingNews] = useState<NewsItem | null>(null)
-  const [filterSentiment, setFilterSentiment] = useState<string>('all')
-  const [filterRisk, setFilterRisk] = useState<string>('all')
-  const [filterDestaquePainel, setFilterDestaquePainel] = useState<FiltroDestaquePainel>('all')
-  const [filterDestaqueMonitor, setFilterDestaqueMonitor] = useState<FiltroDestaqueMonitor>('all')
-  const [searchInput, setSearchInput] = useState<string>('')
-  const [searchDebounced, setSearchDebounced] = useState<string>('')
-  const [selectedFeeds, setSelectedFeeds] = useState<string[]>([]) // Array de IDs de feeds selecionados
-  const [deletingNewsId, setDeletingNewsId] = useState<string | null>(null)
+  const [filterSentiment, setFilterSentiment] = useState('all')
+  const [filterRisk, setFilterRisk] = useState('all')
+  const [filterDestaque, setFilterDestaque] = useState<FiltroDestaque>('all')
+  const [searchInput, setSearchInput] = useState('')
+  const [searchDebounced, setSearchDebounced] = useState('')
+  const [ocultarLixo, setOcultarLixo] = useState(false)
+  const [lixoIds, setLixoIds] = useState<Set<string>>(new Set())
+  const [hidingIds, setHidingIds] = useState<Set<string>>(new Set())
+  const [undoIds, setUndoIds] = useState<Set<string>>(new Set())
+  const undoTimers = useRef<Map<string, number>>(new Map())
   const [togglingHighlight, setTogglingHighlight] = useState<string | null>(null)
-  const [featuredMonitorNewsIds, setFeaturedMonitorNewsIds] = useState<string[]>([])
-  const [autoCollecting, setAutoCollecting] = useState(false)
+  const [refreshing, setRefreshing] = useState(false)
+  const [lastUpdated, setLastUpdated] = useState<Date>(new Date())
   const [autoCollectStatus, setAutoCollectStatus] = useState<string | null>(null)
 
   useEffect(() => {
+    setLixoIds(loadLixoIds())
     void fetchData()
     void autoCollectOnPageOpen()
-
-    const savedFeatured = localStorage.getItem('monitor_news_featured_id')
-    if (savedFeatured) {
-      try {
-        if (savedFeatured.startsWith('[')) {
-          const parsed = JSON.parse(savedFeatured)
-          if (Array.isArray(parsed)) {
-            setFeaturedMonitorNewsIds(parsed.filter((id): id is string => typeof id === 'string').slice(0, 3))
-          }
-        } else {
-          // Compatibilidade com formato antigo (1 único id)
-          setFeaturedMonitorNewsIds([savedFeatured])
-        }
-      } catch {
-        setFeaturedMonitorNewsIds([])
-      }
-    }
   }, [])
 
   useEffect(() => {
-    const t = window.setTimeout(() => {
-      setSearchDebounced(searchInput.trim())
-    }, 320)
+    const t = window.setTimeout(() => setSearchDebounced(searchInput.trim()), 320)
     return () => clearTimeout(t)
   }, [searchInput])
 
-  const monitorIdsKey =
-    filterDestaqueMonitor === 'yes'
-      ? [...featuredMonitorNewsIds].sort().join('|')
-      : ''
+  useEffect(() => {
+    saveLixoIds(lixoIds)
+  }, [lixoIds])
+
+  useEffect(() => {
+    return () => {
+      undoTimers.current.forEach((timerId) => window.clearTimeout(timerId))
+    }
+  }, [])
+
+  const fetchNews = async () => {
+    try {
+      const params = new URLSearchParams()
+      params.append('limit', '100')
+      const response = await fetch(`/api/noticias?${params}`)
+      if (response.ok) {
+        const data = (await response.json()) as NewsItem[]
+        setNews(data.map(sanitizeNewsItem))
+        setLastUpdated(new Date())
+      }
+    } catch {
+      // silencioso
+    }
+  }
+
+  const fetchAllFeeds = async () => {
+    try {
+      const response = await fetch('/api/noticias/all-feeds')
+      if (response.ok) {
+        const data = (await response.json()) as UnifiedFeed[]
+        setAllFeeds(data)
+      }
+    } catch {
+      // silencioso
+    }
+  }
 
   const fetchData = async () => {
     setLoading(true)
@@ -95,119 +109,33 @@ export default function NoticiasPage() {
     }
   }
 
-  const fetchNews = async () => {
+  const handleRefresh = async () => {
+    setRefreshing(true)
     try {
-      if (filterDestaqueMonitor === 'yes' && featuredMonitorNewsIds.length === 0) {
-        setNews([])
-        return
-      }
-
-      const params = new URLSearchParams()
-      if (filterSentiment !== 'all') params.append('sentiment', filterSentiment)
-      if (filterRisk !== 'all') params.append('risk_level', filterRisk)
-
-      if (filterDestaquePainel === 'yes') params.append('dashboard_highlight', 'true')
-      if (filterDestaquePainel === 'no') params.append('dashboard_highlight', 'false')
-
-      if (searchDebounced.length > 0) params.append('q', searchDebounced)
-
-      if (filterDestaqueMonitor === 'yes' && featuredMonitorNewsIds.length > 0) {
-        params.append('ids', featuredMonitorNewsIds.join(','))
-      }
-
-      if (selectedFeeds.length > 0 && selectedFeeds.length < allFeeds.length) {
-        params.append('feed_ids', selectedFeeds.join(','))
-      }
-
-      params.append('limit', '50')
-
-      const response = await fetch(`/api/noticias?${params}`)
-      if (response.ok) {
-        const data = await response.json()
-        setNews(data)
-      }
-    } catch (error) {
-      // Erro silencioso
+      await fetchData()
+    } finally {
+      setRefreshing(false)
     }
-  }
-
-  const fetchAllFeeds = async () => {
-    try {
-      const response = await fetch('/api/noticias/all-feeds')
-      if (response.ok) {
-        const data = await response.json()
-        setAllFeeds(data)
-        // Por padrão, selecionar todos os feeds apenas na primeira vez
-        if (selectedFeeds.length === 0 && data.length > 0) {
-          setSelectedFeeds(data.map((f: any) => `${f.type}-${f.id}`))
-        }
-      }
-    } catch (error) {
-      // Erro silencioso
-    }
-  }
-
-  const handleManageFeeds = () => {
-    setShowFeedManager(true)
   }
 
   const autoCollectOnPageOpen = async () => {
-    setAutoCollecting(true)
-    setAutoCollectStatus('Atualizando notícias automaticamente...')
-
+    setAutoCollectStatus('Atualizando notícias automaticamente…')
     try {
-      let totalCollected = 0
-      let totalHighRisk = 0
-
-      const userFeedsResponse = await fetch('/api/noticias/collect/my-feeds', {
-        method: 'POST',
-      })
-      if (userFeedsResponse.ok) {
-        const result = await userFeedsResponse.json()
-        totalCollected += result.collected || 0
-        totalHighRisk += result.high_risk || 0
-      }
-
-      const adversaryFeedsResponse = await fetch('/api/noticias/adversarios/collect', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({}),
-      })
-      if (adversaryFeedsResponse.ok) {
-        const result = await adversaryFeedsResponse.json()
-        totalCollected += result.collected || 0
-        totalHighRisk += result.high_risk || 0
-      }
-
-      setAutoCollectStatus(
-        totalCollected > 0
-          ? `Atualização concluída: ${totalCollected} notícia(s) coletada(s)${totalHighRisk > 0 ? `, ${totalHighRisk} de alto risco.` : '.'}`
-          : 'Atualização concluída: nenhuma notícia nova encontrada.'
-      )
-
+      await Promise.all([
+        fetch('/api/noticias/collect/my-feeds', { method: 'POST' }),
+        fetch('/api/noticias/adversarios/collect', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({}),
+        }),
+      ])
       await fetchData()
+      setAutoCollectStatus(null)
     } catch {
-      setAutoCollectStatus('Não foi possível concluir a atualização automática de notícias.')
-    } finally {
-      setAutoCollecting(false)
-      setTimeout(() => {
-        setAutoCollectStatus(null)
-      }, 6000)
+      setAutoCollectStatus('Não foi possível atualizar automaticamente.')
+      window.setTimeout(() => setAutoCollectStatus(null), 5000)
     }
   }
-
-  useEffect(() => {
-    void fetchNews()
-  }, [
-    filterSentiment,
-    filterRisk,
-    selectedFeeds,
-    filterDestaquePainel,
-    filterDestaqueMonitor,
-    searchDebounced,
-    monitorIdsKey,
-    allFeeds.length,
-  ])
 
   const applyDashboardHighlightResponse = (
     itemId: string,
@@ -223,7 +151,7 @@ export default function NoticiasPage() {
     )
   }
 
-  const handleToggleDashboard = async (item: NewsItem) => {
+  const handleToggleHighlight = async (item: NewsItem) => {
     setTogglingHighlight(item.id)
     try {
       const nextHighlight = !item.dashboard_highlight
@@ -234,11 +162,7 @@ export default function NoticiasPage() {
       })
       if (response.ok) {
         const data = (await response.json()) as NewsItem & { demoted_highlight_id?: string | null }
-        applyDashboardHighlightResponse(
-          item.id,
-          nextHighlight,
-          data.demoted_highlight_id
-        )
+        applyDashboardHighlightResponse(item.id, nextHighlight, data.demoted_highlight_id)
       }
     } catch (error) {
       console.error('Erro ao destacar notícia:', error)
@@ -247,462 +171,236 @@ export default function NoticiasPage() {
     }
   }
 
-  const handleDeleteNews = async (newsId: string) => {
-    if (!confirm('Tem certeza que deseja excluir esta notícia?')) {
-      return
-    }
-
-    setDeletingNewsId(newsId)
-    try {
-      const response = await fetch(`/api/noticias/${newsId}`, {
-        method: 'DELETE',
+  const scheduleUndoClear = useCallback((id: string) => {
+    const existing = undoTimers.current.get(id)
+    if (existing) window.clearTimeout(existing)
+    setUndoIds((prev) => new Set(prev).add(id))
+    const timerId = window.setTimeout(() => {
+      setUndoIds((prev) => {
+        const next = new Set(prev)
+        next.delete(id)
+        return next
       })
+      undoTimers.current.delete(id)
+    }, 5000)
+    undoTimers.current.set(id, timerId)
+  }, [])
 
-      if (response.ok) {
-        // Remover da lista local
-        setNews(news.filter(item => item.id !== newsId))
-      } else {
-        const error = await response.json()
-        alert(`Erro ao excluir notícia: ${error.error || 'Erro desconhecido'}`)
-      }
-    } catch (error) {
-      console.error('Erro ao excluir notícia:', error)
-      alert('Erro ao excluir notícia. Tente novamente.')
-    } finally {
-      setDeletingNewsId(null)
-    }
-  }
-
-  const handleToggleFeaturedMonitor = async (item: NewsItem) => {
-    const alreadyFeatured = featuredMonitorNewsIds.includes(item.id)
-    let nextFeatured = alreadyFeatured
-      ? featuredMonitorNewsIds.filter((id) => id !== item.id)
-      : [...featuredMonitorNewsIds, item.id]
-
-    if (!alreadyFeatured && featuredMonitorNewsIds.length >= 3) {
-      alert('Você pode selecionar no máximo 3 notícias em destaque para o monitor.')
-      return
-    }
-
-    // Garante que notícia destacada principal também esteja marcada para o monitor.
-    if (!alreadyFeatured && !item.dashboard_highlight) {
-      try {
-        const response = await fetch(`/api/noticias/${item.id}`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ dashboard_highlight: true }),
+  const handleMarkLixo = (id: string) => {
+    setLixoIds((prev) => new Set(prev).add(id))
+    scheduleUndoClear(id)
+    if (ocultarLixo) {
+      setHidingIds((prev) => new Set(prev).add(id))
+      window.setTimeout(() => {
+        setHidingIds((prev) => {
+          const next = new Set(prev)
+          next.delete(id)
+          return next
         })
-        if (response.ok) {
-          const data = (await response.json()) as NewsItem & { demoted_highlight_id?: string | null }
-          applyDashboardHighlightResponse(item.id, true, data.demoted_highlight_id)
-        }
-      } catch {
-        // fallback silencioso
-      }
+      }, 200)
     }
-
-    nextFeatured = nextFeatured.slice(0, 3)
-
-    if (nextFeatured.length > 0) {
-      localStorage.setItem('monitor_news_featured_id', JSON.stringify(nextFeatured))
-    } else {
-      localStorage.removeItem('monitor_news_featured_id')
-    }
-    setFeaturedMonitorNewsIds(nextFeatured)
   }
 
-  const temFiltrosNoticiasAtivos =
+  const handleUndoLixo = (id: string) => {
+    setLixoIds((prev) => {
+      const next = new Set(prev)
+      next.delete(id)
+      return next
+    })
+    setUndoIds((prev) => {
+      const next = new Set(prev)
+      next.delete(id)
+      return next
+    })
+    const timerId = undoTimers.current.get(id)
+    if (timerId) {
+      window.clearTimeout(timerId)
+      undoTimers.current.delete(id)
+    }
+  }
+
+  const activeFeedKeys = allFeeds.filter((f) => f.active !== false).map((f) => `${f.type}-${f.id}`)
+
+  const visibleNews = useMemo(
+    () =>
+      filterNewsClientSide(news, {
+        filterSentiment,
+        filterRisk,
+        filterDestaque,
+        searchDebounced,
+        ocultarLixo,
+        lixoIds,
+        selectedFeedKeys: activeFeedKeys,
+        allFeedKeysCount: allFeeds.length,
+      }),
+    [
+      news,
+      filterSentiment,
+      filterRisk,
+      filterDestaque,
+      searchDebounced,
+      ocultarLixo,
+      lixoIds,
+      activeFeedKeys,
+      allFeeds.length,
+    ]
+  )
+
+  const listSections = useMemo(() => buildNewsListSections(visibleNews), [visibleNews])
+
+  const stats = useMemo(() => {
+    const base = filterNewsClientSide(news, {
+      filterSentiment,
+      filterRisk,
+      filterDestaque,
+      searchDebounced,
+      ocultarLixo: false,
+      lixoIds,
+      selectedFeedKeys: activeFeedKeys,
+      allFeedKeysCount: allFeeds.length,
+    })
+    return {
+      hoje: base.filter(isTodayNews).length,
+      riscoAlto: base.filter((n) => n.risk_level === 'high').length,
+      destacadas: base.filter((n) => n.dashboard_highlight).length,
+    }
+  }, [news, filterSentiment, filterRisk, filterDestaque, searchDebounced, lixoIds, activeFeedKeys, allFeeds.length])
+
+  const lastUpdatedLabel = useMemo(() => {
+    const diffMs = Date.now() - lastUpdated.getTime()
+    if (diffMs < 60_000) return 'atualizado agora'
+    const mins = Math.floor(diffMs / 60_000)
+    return `atualizado há ${mins} min`
+  }, [lastUpdated])
+
+  const temFiltrosAtivos =
     filterSentiment !== 'all' ||
     filterRisk !== 'all' ||
-    filterDestaquePainel !== 'all' ||
-    filterDestaqueMonitor !== 'all' ||
+    filterDestaque !== 'all' ||
     searchDebounced.length > 0 ||
-    (allFeeds.length > 0 && selectedFeeds.length > 0 && selectedFeeds.length < allFeeds.length)
+    ocultarLixo
 
   return (
-    <div className={cn('min-h-screen', pageShellClass)}>
+    <div className="min-h-screen bg-bg-surface">
+      <NoticiasPageHeader
+        lastUpdatedLabel={lastUpdatedLabel}
+        refreshing={refreshing || loading}
+        onRefresh={() => void handleRefresh()}
+        onNewAlert={() => setShowFeedManager(true)}
+      />
 
-      <div className="px-4 py-6 lg:px-6">
-        <div className={sectionShellClass}>
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-lg font-semibold text-text-primary flex items-center gap-2">
-                  <Newspaper className="w-5 h-5 text-accent-gold" />
-                  Inbox de Notícias
-                </h2>
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={handleManageFeeds}
-                    className={sidebarPrimaryCTAButtonClass(isCockpit)}
-                  >
-                    <Plus className={cn('h-4 w-4 shrink-0', isCockpit ? 'text-white' : 'text-accent-gold')} aria-hidden />
-                    Gerenciar Feeds RSS
-                  </button>
-                </div>
-              </div>
+      <ActiveAlertsStrip feeds={allFeeds} onManageAlerts={() => setShowFeedManager(true)} />
 
-              {(autoCollecting || autoCollectStatus) && (
-                <div
-                  className={`mb-4 rounded-xl border px-3 py-2 text-sm flex items-center gap-2 ${
-                    autoCollecting
-                      ? 'border-accent-gold/30 bg-accent-gold-soft/20 text-text-primary'
-                      : autoCollectStatus?.startsWith('Não foi possível')
-                        ? 'border-status-error/30 bg-status-error/10 text-status-error'
-                        : 'border-status-success/30 bg-status-success/10 text-status-success'
-                  }`}
-                >
-                  <RefreshCw className={`w-4 h-4 ${autoCollecting ? 'animate-spin' : ''}`} />
-                  <span>{autoCollectStatus}</span>
-                </div>
-              )}
+      {autoCollectStatus ? (
+        <p className="border-b border-[rgb(var(--color-border-tertiary)/0.85)] px-5 py-2 text-[11.5px] text-text-muted">
+          {autoCollectStatus}
+        </p>
+      ) : null}
 
-              {/* Filtros — uma linha (scroll horizontal em telas estreitas), padrão /dashboard/pesquisa */}
-              <div className={cn(innerPanelClass, 'mb-4')}>
-                <div className="flex flex-nowrap items-center gap-x-2 sm:gap-3 overflow-x-auto pb-0.5 [scrollbar-width:thin]">
-                  <span className="text-xs font-semibold text-text-primary shrink-0">Filtros</span>
-                  <span className="hidden sm:block h-4 w-px shrink-0 bg-border-card opacity-60" aria-hidden />
+      <NoticiasFilterBar
+        filterSentiment={filterSentiment}
+        filterRisk={filterRisk}
+        filterDestaque={filterDestaque}
+        searchInput={searchInput}
+        ocultarLixo={ocultarLixo}
+        onSentimentChange={setFilterSentiment}
+        onRiskChange={setFilterRisk}
+        onDestaqueChange={setFilterDestaque}
+        onSearchChange={setSearchInput}
+        onOcultarLixoChange={setOcultarLixo}
+      />
 
-                  <label className="flex items-center gap-1.5 shrink-0">
-                    <span className="text-[10px] font-medium uppercase tracking-wide text-secondary whitespace-nowrap">
-                      Sentimento
-                    </span>
-                    <select
-                      value={filterSentiment}
-                      onChange={(e) => setFilterSentiment(e.target.value)}
-                      className="min-w-[5.5rem] max-w-[9rem] rounded-lg border border-card bg-surface px-2 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-accent-gold-soft"
-                    >
-                      <option value="all">Todos</option>
-                      <option value="positive">Positivo</option>
-                      <option value="negative">Negativo</option>
-                      <option value="neutral">Neutro</option>
-                    </select>
-                  </label>
+      <NoticiasStatsRow
+        hojeCount={stats.hoje}
+        riscoAltoCount={stats.riscoAlto}
+        destacadasCount={stats.destacadas}
+      />
 
-                  <span className="hidden sm:block h-4 w-px shrink-0 bg-border-card opacity-60" aria-hidden />
-
-                  <label className="flex items-center gap-1.5 shrink-0">
-                    <span className="text-[10px] font-medium uppercase tracking-wide text-secondary whitespace-nowrap">
-                      Risco
-                    </span>
-                    <select
-                      value={filterRisk}
-                      onChange={(e) => setFilterRisk(e.target.value)}
-                      className="min-w-[4.5rem] max-w-[7rem] rounded-lg border border-card bg-surface px-2 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-accent-gold-soft"
-                    >
-                      <option value="all">Todos</option>
-                      <option value="high">Alto</option>
-                      <option value="medium">Médio</option>
-                      <option value="low">Baixo</option>
-                    </select>
-                  </label>
-
-                  <span className="hidden sm:block h-4 w-px shrink-0 bg-border-card opacity-60" aria-hidden />
-
-                  <label className="flex items-center gap-1.5 shrink-0">
-                    <span className="text-[10px] font-medium uppercase tracking-wide text-secondary whitespace-nowrap">
-                      Destaque painel
-                    </span>
-                    <select
-                      value={filterDestaquePainel}
-                      onChange={(e) => setFilterDestaquePainel(e.target.value as FiltroDestaquePainel)}
-                      title="Notícias marcadas para o Monitor (ícone de rádio) no dashboard"
-                      className="min-w-[6rem] max-w-[10rem] rounded-lg border border-card bg-surface px-2 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-accent-gold-soft"
-                    >
-                      <option value="all">Todos</option>
-                      <option value="yes">Sim</option>
-                      <option value="no">Não</option>
-                    </select>
-                  </label>
-
-                  <span className="hidden sm:block h-4 w-px shrink-0 bg-border-card opacity-60" aria-hidden />
-
-                  <label className="flex items-center gap-1.5 shrink-0">
-                    <span className="text-[10px] font-medium uppercase tracking-wide text-secondary whitespace-nowrap">
-                      Destaque monitor
-                    </span>
-                    <select
-                      value={filterDestaqueMonitor}
-                      onChange={(e) => setFilterDestaqueMonitor(e.target.value as FiltroDestaqueMonitor)}
-                      title="Até 3 notícias com coroa — escolhidas nesta página e salvas no navegador"
-                      className="min-w-[5.5rem] max-w-[9rem] rounded-lg border border-card bg-surface px-2 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-accent-gold-soft"
-                    >
-                      <option value="all">Todos</option>
-                      <option value="yes">Sim</option>
-                    </select>
-                  </label>
-
-                  <span className="hidden sm:block h-4 w-px shrink-0 bg-border-card opacity-60" aria-hidden />
-
-                  <label className="flex min-w-[10rem] max-w-[min(100%,18rem)] flex-1 items-center gap-1.5 shrink-0">
-                    <span className="text-[10px] font-medium uppercase tracking-wide text-secondary whitespace-nowrap">
-                      Palavra-chave
-                    </span>
-                    <span className="relative min-w-0 flex-1">
-                      <Search
-                        className="pointer-events-none absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-secondary"
-                        aria-hidden
-                      />
-                      <input
-                        type="search"
-                        value={searchInput}
-                        onChange={(e) => setSearchInput(e.target.value)}
-                        placeholder="Título, fonte ou tema…"
-                        className="w-full min-w-[7rem] rounded-lg border border-card bg-surface py-1.5 pl-7 pr-2 text-xs placeholder:text-secondary/70 focus:outline-none focus:ring-2 focus:ring-accent-gold-soft"
-                        autoComplete="off"
-                      />
-                    </span>
-                  </label>
-
-                  {allFeeds.length > 0 ? (
-                    <>
-                      <span className="hidden md:block h-4 w-px shrink-0 bg-border-card opacity-60" aria-hidden />
-                      <div className="flex items-center gap-2 shrink-0">
-                        <span className="text-[10px] font-medium uppercase tracking-wide text-secondary whitespace-nowrap">
-                          Feeds
-                        </span>
-                        <div className="flex flex-nowrap items-center gap-x-3 gap-y-1">
-                          {allFeeds.map((feed) => {
-                            const feedId = `${feed.type}-${feed.id}`
-                            return (
-                              <label
-                                key={feedId}
-                                className="flex cursor-pointer items-center gap-1.5 whitespace-nowrap"
-                              >
-                                <input
-                                  type="checkbox"
-                                  checked={selectedFeeds.includes(feedId)}
-                                  onChange={(e) => {
-                                    if (e.target.checked) {
-                                      setSelectedFeeds([...selectedFeeds, feedId])
-                                    } else {
-                                      setSelectedFeeds(selectedFeeds.filter((id) => id !== feedId))
-                                    }
-                                  }}
-                                  className="h-3.5 w-3.5 shrink-0 rounded border-card text-accent-gold focus:ring-accent-gold"
-                                />
-                                <span className="text-xs text-text-primary">{feed.name}</span>
-                                {feed.type === 'adversary_feed' ? (
-                                  <span className="rounded bg-status-error/10 px-1 py-0.5 text-[9px] font-semibold uppercase text-status-error">
-                                    Adv.
-                                  </span>
-                                ) : null}
-                              </label>
-                            )
-                          })}
-                        </div>
-                      </div>
-                    </>
-                  ) : null}
-                </div>
-              </div>
-
-              {loading ? (
-                <div className="space-y-4">
-                  {[1, 2, 3].map((i) => (
-                    <div key={i} className={cn('h-24 rounded-xl animate-pulse', isCockpit ? 'bg-white/10' : 'bg-background')} />
-                  ))}
-                </div>
-              ) : news.length === 0 ? (
-                <div className="text-center py-8">
-                  {filterDestaqueMonitor === 'yes' && featuredMonitorNewsIds.length === 0 ? (
-                    <>
-                      <p className="mb-2 font-medium text-text-primary">Nenhuma notícia em destaque no monitor</p>
-                      <p className="mx-auto max-w-md text-sm text-secondary">
-                        Use o ícone da coroa em até três notícias para defini-las como destaque do monitor neste navegador.
-                      </p>
-                    </>
-                  ) : temFiltrosNoticiasAtivos ? (
-                    <>
-                      <p className="mb-2 font-medium text-text-primary">Nenhuma notícia corresponde aos filtros</p>
-                      <p className="mx-auto max-w-md text-sm text-secondary">
-                        Afrouxe sentimento, risco, destaques, palavra-chave ou feeds — ou aguarde novas coletas.
-                      </p>
-                    </>
-                  ) : (
-                    <>
-                      <p className="mb-4 text-secondary">Nenhuma notícia coletada ainda.</p>
-                      <button
-                        type="button"
-                        onClick={handleManageFeeds}
-                        className={sidebarPrimaryCTAButtonClass(isCockpit)}
-                      >
-                        Configurar Feeds RSS
-                      </button>
-                    </>
-                  )}
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  {news.map((item) => (
-                    <div
-                      key={item.id}
-                      className={cn(
-                        'p-4 rounded-xl border hover:border-accent-gold/20 hover:shadow-card transition-all duration-200 ease-out',
-                        isCockpit
-                          ? 'border-white/12 bg-[linear-gradient(180deg,rgba(255,255,255,0.04)_0%,rgba(255,255,255,0.02)_100%)]'
-                          : 'border-card bg-surface'
-                      )}
-                    >
-                      <div className="flex items-start justify-between mb-2">
-                        <div className="flex-1">
-                          <h3 className="text-sm font-semibold text-text-primary mb-1">
-                            {item.url ? (
-                              <a
-                                href={item.url}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="hover:text-accent-gold transition-colors"
-                              >
-                                {item.title}
-                              </a>
-                            ) : (
-                              item.title
-                            )}
-                          </h3>
-                          {featuredMonitorNewsIds.includes(item.id) && (
-                            <span className="inline-flex items-center gap-1 px-2 py-0.5 text-[10px] rounded border border-amber-300/70 text-amber-700 bg-amber-100/60 mb-1">
-                              <Crown className="w-3 h-3" />
-                              Destaque do Monitor
-                            </span>
-                          )}
-                          <div className="flex items-center gap-2 text-xs text-secondary mb-3">
-                            <span>{item.source}</span>
-                            <span>•</span>
-                            <span>
-                              {formatDate(
-                                item.published_at || item.collected_at || new Date().toISOString()
-                              )}
-                            </span>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-1 ml-2">
-                          <button
-                            onClick={() => handleToggleDashboard(item)}
-                            disabled={togglingHighlight === item.id}
-                            className={`p-1.5 rounded-lg transition-colors disabled:opacity-50 ${
-                              item.dashboard_highlight
-                                ? 'bg-accent-gold/15 text-accent-gold'
-                                : 'text-secondary hover:bg-accent-gold/10 hover:text-accent-gold'
-                            }`}
-                            title={
-                              item.dashboard_highlight
-                                ? 'Remover do Monitor (Dashboard)'
-                                : 'Destacar no Monitor (Dashboard) — máx. 5; a mais antiga sai automaticamente'
-                            }
-                          >
-                            <Radio className="w-4 h-4" />
-                          </button>
-                          <button
-                            onClick={() => handleToggleFeaturedMonitor(item)}
-                            className={`p-1.5 rounded-lg transition-colors ${
-                              featuredMonitorNewsIds.includes(item.id)
-                                ? 'bg-amber-100 text-amber-700'
-                                : 'text-secondary hover:bg-amber-100/60 hover:text-amber-700'
-                            }`}
-                            title={
-                              featuredMonitorNewsIds.includes(item.id)
-                                ? 'Remover notícia dos destaques do monitor'
-                                : 'Definir como destaque do monitor (máx. 3)'
-                            }
-                          >
-                            <Crown className="w-4 h-4" />
-                          </button>
-                          <button
-                            onClick={() => handleDeleteNews(item.id)}
-                            disabled={deletingNewsId === item.id}
-                            className="p-1.5 rounded-lg hover:bg-status-error/10 text-secondary hover:text-status-error transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                            title="Excluir notícia"
-                          >
-                            {deletingNewsId === item.id ? (
-                              <RefreshCw className="w-4 h-4 animate-spin" />
-                            ) : (
-                              <Trash2 className="w-4 h-4" />
-                            )}
-                          </button>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <button
-                          onClick={() => setEditingNews(item)}
-                          className="flex items-center gap-2 flex-wrap group hover:opacity-80 transition-opacity"
-                          title="Clique para editar classificações"
-                        >
-                          <Edit2 className="w-3 h-3 text-secondary group-hover:text-accent-gold transition-colors" />
-                          {item.sentiment ? (
-                            <span
-                              className={`px-2 py-1 text-xs font-medium rounded-lg border cursor-pointer hover:shadow-sm transition-all ${sentimentColors[item.sentiment]}`}
-                            >
-                              {item.sentiment === 'positive'
-                                ? 'Positivo'
-                                : item.sentiment === 'negative'
-                                ? 'Negativo'
-                                : 'Neutro'}
-                            </span>
-                          ) : (
-                            <span className="px-2 py-1 text-xs text-secondary border border-dashed border-card rounded-lg">
-                              Sem sentimento
-                            </span>
-                          )}
-                          {item.risk_level ? (
-                            <span
-                              className={`px-2 py-1 text-xs font-medium rounded-lg cursor-pointer hover:shadow-sm transition-all ${riskColors[item.risk_level]}`}
-                            >
-                              Risco{' '}
-                              {item.risk_level === 'high'
-                                ? 'Alto'
-                                : item.risk_level === 'medium'
-                                ? 'Médio'
-                                : 'Baixo'}
-                            </span>
-                          ) : (
-                            <span className="px-2 py-1 text-xs text-secondary border border-dashed border-card rounded-lg">
-                              Sem risco
-                            </span>
-                          )}
-                          {item.theme ? (
-                            <span className="px-2 py-1 text-xs font-medium bg-accent-gold-soft text-accent-gold rounded-lg cursor-pointer hover:shadow-sm transition-all">
-                              {item.theme}
-                            </span>
-                          ) : (
-                            <span className="px-2 py-1 text-xs text-secondary border border-dashed border-card rounded-lg">
-                              Sem tema
-                            </span>
-                          )}
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-        </div>
+      <div className="px-5 py-2.5">
+        {loading ? (
+          <div className="space-y-1.5">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="h-[88px] animate-pulse rounded-xl border border-[rgb(var(--color-border-tertiary)/0.85)] bg-bg-app" />
+            ))}
+          </div>
+        ) : visibleNews.length === 0 ? (
+          <div className="py-10 text-center">
+            {temFiltrosAtivos ? (
+              <>
+                <p className="mb-1 text-sm font-medium text-text-primary">Nenhuma notícia corresponde aos filtros</p>
+                <p className="mx-auto max-w-md text-[11.5px] text-text-muted">
+                  Afrouxe sentimento, risco, destaque ou palavra-chave — ou aguarde novas coletas.
+                </p>
+              </>
+            ) : (
+              <>
+                <p className="mb-3 text-[11.5px] text-text-muted">Nenhuma notícia coletada ainda.</p>
+                <button type="button" onClick={() => setShowFeedManager(true)} className={sidebarPrimaryCTAButtonClass(false)}>
+                  Configurar alertas RSS
+                </button>
+              </>
+            )}
+          </div>
+        ) : (
+          <div>
+            {listSections.map((section, idx) => {
+              if (section.type === 'risk-divider') {
+                return <SectionDivider key={`risk-${idx}`} label="Risco alto" variant="risk" />
+              }
+              if (section.type === 'date-divider' && section.dateKey) {
+                return (
+                  <SectionDivider
+                    key={`date-${section.dateKey}-${idx}`}
+                    label={dateGroupLabel(section.dateKey)}
+                    variant="date"
+                  />
+                )
+              }
+              if (section.type === 'card' && section.item) {
+                const item = section.item
+                return (
+                  <NewsCard
+                    key={item.id}
+                    item={item}
+                    isLixo={lixoIds.has(item.id)}
+                    isHighlighted={Boolean(item.dashboard_highlight)}
+                    isHiding={hidingIds.has(item.id)}
+                    showUndo={undoIds.has(item.id)}
+                    togglingHighlight={togglingHighlight === item.id}
+                    onToggleHighlight={() => void handleToggleHighlight(item)}
+                    onMarkLixo={() => handleMarkLixo(item.id)}
+                    onUndoLixo={() => handleUndoLixo(item.id)}
+                    onEditTags={() => setEditingNews(item)}
+                  />
+                )
+              }
+              return null
+            })}
+          </div>
+        )}
       </div>
 
-      {/* Modal de Gerenciamento de Feeds (Unificado) */}
-      {showFeedManager && (
+      {showFeedManager ? (
         <FeedManagerModal
           onClose={() => {
             setShowFeedManager(false)
-            fetchAllFeeds()
-            fetchNews()
+            void fetchAllFeeds()
+            void fetchNews()
           }}
-          onCollect={() => {
-            fetchData()
-          }}
+          onCollect={() => void fetchData()}
         />
-      )}
+      ) : null}
 
-      {/* Modal de Edição de Notícia */}
-      {editingNews && (
+      {editingNews ? (
         <EditNewsModal
           news={editingNews}
           onClose={() => setEditingNews(null)}
           onUpdate={() => {
-            fetchNews()
+            void fetchNews()
             setEditingNews(null)
           }}
         />
-      )}
+      ) : null}
     </div>
   )
 }

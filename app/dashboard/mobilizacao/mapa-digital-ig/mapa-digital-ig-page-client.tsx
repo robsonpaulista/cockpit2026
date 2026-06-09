@@ -1,101 +1,161 @@
 'use client'
 
-import dynamic from 'next/dynamic'
-import { useMemo } from 'react'
-import { usePathname, useSearchParams } from 'next/navigation'
-import { useTheme } from '@/contexts/theme-context'
-import { getMapaFuturisticChrome } from '@/lib/dashboard-mapa-futuristic-chrome'
-import { MapaDigitalIgSyncToolbar } from '@/components/mapa-digital-ig-sync-toolbar'
-import { MapaDigitalIgRelatorioCheckExport } from '@/components/mapa-digital-ig-relatorio-check-export'
+// This page measures the "digital mobilization army": leaders in our network
+// were instructed to comment on the deputy's Instagram posts.
+// The goal is to track how many followed through (activation rate),
+// creating a perception of organic engagement and relevance on Instagram.
+// Target: 70%+ activation rate per municipality.
+
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import { Loader2 } from 'lucide-react'
+import { ExercitoDigitalAlertPosts } from '@/components/mapa-exercito-digital/exercito-digital-alert-posts'
+import { ExercitoDigitalCityPanel } from '@/components/mapa-exercito-digital/exercito-digital-city-panel'
+import { ExercitoDigitalBanner, ExercitoDigitalHeader } from '@/components/mapa-exercito-digital/exercito-digital-chrome'
+import { ExercitoDigitalKpiStrip } from '@/components/mapa-exercito-digital/exercito-digital-kpi-strip'
+import { ExercitoDigitalLeaderRanking } from '@/components/mapa-exercito-digital/exercito-digital-leader-ranking'
+import { ExercitoDigitalTrendChart } from '@/components/mapa-exercito-digital/exercito-digital-trend-chart'
+import { fetchInstagramCommentsGrouped } from '@/lib/instagramApi'
+import { INSTAGRAM_COMMENTS_SYNCED_EVENT } from '@/lib/instagram-comments-sync-events'
+import {
+  aggregateExercitoDigitalViewModel,
+  mergeLeadersAcrossTds,
+} from '@/lib/mapa-exercito-digital-aggregator'
+import type { ExercitoDigitalViewModel } from '@/lib/mapa-exercito-digital-types'
+import { fetchMobilizacaoLideresDesempenhoIgPorTd } from '@/lib/mobilizacao-lideres-desempenho-ig-por-td-client'
+import {
+  fetchMobilizacaoLideresInstagramPorTd,
+  type LiderInstagramCoberturaDto,
+} from '@/lib/mobilizacao-lideres-instagram-cobertura-client'
+import { TERRITORIOS_DESENVOLVIMENTO_PI } from '@/lib/piaui-territorio-desenvolvimento'
+import type { RelatorioMapaDigitalIgTdPayload } from '@/lib/relatorio-mapa-digital-ig-td-types'
+import {
+  exercitoDualPanelGridClass,
+  exercitoPageStackClass,
+  exercitoSectionCardClass,
+} from '@/lib/mapa-exercito-digital-layout'
 import { cn } from '@/lib/utils'
 
-const MapaTerritoriosDesenvolvimentoLeaflet = dynamic(
-  () =>
-    import('@/components/mapa-territorios-desenvolvimento-leaflet').then((mod) => ({
-      default: mod.MapaTerritoriosDesenvolvimentoLeaflet,
-    })),
-  { ssr: false, loading: () => <MapaPlaceholder /> }
-)
-
-const TEMA_QUERY = 'tema'
-
-function MapaPlaceholder() {
-  return (
-    <div
-      className="mapa-tds-placeholder h-full min-h-0 w-full animate-pulse rounded-xl bg-bg-surface"
-      aria-hidden
-    />
-  )
-}
+type LoadState = 'loading' | 'ready' | 'error' | 'forbidden'
 
 export default function MapaDigitalIgMobilizacaoPageClient() {
-  const pathname = usePathname()
-  const searchParams = useSearchParams()
-  const { appearance, theme } = useTheme()
-  const temaQuery = searchParams.get(TEMA_QUERY)
+  const [lookbackDays, setLookbackDays] = useState<number>(15)
+  const [loadState, setLoadState] = useState<LoadState>('loading')
+  const [error, setError] = useState<string>('')
+  const [rawPosts, setRawPosts] = useState<Awaited<ReturnType<typeof fetchInstagramCommentsGrouped>>>(null)
+  const [lideresCobertura, setLideresCobertura] = useState<LiderInstagramCoberturaDto[]>([])
+  const [mergedLeaders, setMergedLeaders] = useState<ReturnType<typeof mergeLeadersAcrossTds>>([])
+  const [relatorioPi, setRelatorioPi] = useState<RelatorioMapaDigitalIgTdPayload | null>(null)
 
-  const chrome = useMemo(
-    () =>
-      getMapaFuturisticChrome({
-        pathname: pathname ?? null,
-        theme,
-        appearance,
-        temaQuery,
-      }),
-    [pathname, theme, appearance, temaQuery]
-  )
+  const carregar = useCallback(async () => {
+    setLoadState('loading')
+    setError('')
+    try {
+      const [grouped, lideresRes, relatorioRes, ...tdResults] = await Promise.all([
+        fetchInstagramCommentsGrouped(8000),
+        fetchMobilizacaoLideresInstagramPorTd(null),
+        fetch('/api/mobilizacao/relatorio-check-mapa-digital-ig?escopo=pi', { cache: 'no-store' }),
+        ...TERRITORIOS_DESENVOLVIMENTO_PI.map((td) => fetchMobilizacaoLideresDesempenhoIgPorTd(td)),
+      ])
+
+      if (lideresRes.ok === false) {
+        if (lideresRes.status === 403) {
+          setLoadState('forbidden')
+          setError(lideresRes.message ?? 'Sem permissão.')
+          return
+        }
+        throw new Error(lideresRes.message ?? 'Falha ao carregar líderes.')
+      }
+
+      if (!relatorioRes.ok) {
+        const j = (await relatorioRes.json().catch(() => ({}))) as { error?: string }
+        throw new Error(j.error ?? 'Falha ao carregar relatório PI.')
+      }
+
+      const relatorio = (await relatorioRes.json()) as RelatorioMapaDigitalIgTdPayload
+      const leaderRows = tdResults.flatMap((r) => (r.ok ? r.data.lideres : []))
+
+      setRawPosts(grouped)
+      setLideresCobertura(lideresRes.data.lideres)
+      setMergedLeaders(mergeLeadersAcrossTds(leaderRows))
+      setRelatorioPi(relatorio)
+      setLoadState('ready')
+    } catch (e) {
+      setLoadState('error')
+      setError(e instanceof Error ? e.message : 'Erro ao carregar dados.')
+    }
+  }, [])
+
+  useEffect(() => {
+    void carregar()
+  }, [carregar])
+
+  useEffect(() => {
+    const onSync = () => {
+      void carregar()
+    }
+    window.addEventListener(INSTAGRAM_COMMENTS_SYNCED_EVENT, onSync)
+    return () => window.removeEventListener(INSTAGRAM_COMMENTS_SYNCED_EVENT, onSync)
+  }, [carregar])
+
+  const viewModel: ExercitoDigitalViewModel | null = useMemo(() => {
+    if (!relatorioPi || loadState !== 'ready') return null
+    return aggregateExercitoDigitalViewModel({
+      lookbackDays,
+      posts: rawPosts?.posts ?? [],
+      lideresCobertura,
+      mergedLeaders,
+      relatorioPi,
+    })
+  }, [lookbackDays, rawPosts, lideresCobertura, mergedLeaders, relatorioPi, loadState])
 
   return (
-    <div
-      className={cn(
-        'flex min-h-0 w-full min-w-0 flex-1 flex-col text-text-primary',
-        chrome.mapaShellBgClass
-      )}
-    >
-      <header
-        className={cn(
-          'shrink-0 border-b px-3 pb-2 pt-3 sm:px-5 sm:pb-2.5 sm:pt-3.5 md:px-6',
-          chrome.headerDividerClass,
-          chrome.mapaShellBgClass
-        )}
-      >
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between sm:gap-4">
-          <div className="min-w-0">
-            <h1 className="text-lg font-semibold tracking-tight text-text-primary sm:text-xl">
-              Mapa Exército Digital
-            </h1>
-            <p className="mt-1 text-xs text-text-secondary sm:text-sm">
-              Territórios de desenvolvimento — engajamento digital e mobilização (Instagram).
-            </p>
-          </div>
-          <div className={chrome.igToolsRailClass}>
-            <MapaDigitalIgRelatorioCheckExport
-              exportPiTodas
-              visualPreset="futuristic"
-              visualTheme={chrome.visualTheme}
-              className={chrome.isChromeIgAligned ? 'border-0 bg-transparent p-0 shadow-none' : undefined}
-            />
-            <MapaDigitalIgSyncToolbar className="sm:justify-end" visualTheme={chrome.visualTheme} />
-          </div>
+    <div className={cn(exercitoPageStackClass, 'min-h-0 flex-1 bg-[rgb(var(--color-background-tertiary))] p-4 text-text-primary')}>
+      <ExercitoDigitalHeader
+        lookbackDays={lookbackDays}
+        onLookbackChange={setLookbackDays}
+        onSyncComplete={carregar}
+      />
+      <ExercitoDigitalBanner />
+
+      {loadState === 'loading' ? (
+        <div className="flex flex-1 items-center justify-center py-16">
+          <p className="flex items-center gap-2 text-sm text-text-secondary">
+            <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+            Carregando exército digital…
+          </p>
         </div>
-      </header>
-      <div
-        className={cn(
-          'theme-futuristic relative flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden overflow-x-visible',
-          chrome.mapaShellBgClass,
-          chrome.isRepublicanosLight && 'theme-futuristic--republicanos-light'
-        )}
-      >
-        <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto overflow-x-visible">
-          <MapaTerritoriosDesenvolvimentoLeaflet
-            key="mapa-digital-ig-mobilizacao"
-            visualPreset="futuristic"
-            visualTheme={chrome.visualTheme}
-            painelContext="digitalIg"
-            igViewMode="operacao"
-          />
+      ) : null}
+
+      {loadState === 'forbidden' ? (
+        <div className="rounded-xl border border-[rgb(var(--color-border-tertiary)/0.85)] bg-bg-surface px-4 py-8 text-center text-sm text-text-muted">
+          {error || 'Sem permissão para visualizar mobilização digital.'}
         </div>
-      </div>
+      ) : null}
+
+      {loadState === 'error' ? (
+        <div className="rounded-xl border border-[rgb(var(--color-border-tertiary)/0.85)] bg-bg-surface px-4 py-8 text-center">
+          <p className="text-sm text-status-danger">{error}</p>
+          <button
+            type="button"
+            onClick={() => void carregar()}
+            className="mt-3 text-[12px] font-medium text-[rgb(var(--color-primary))]"
+          >
+            Tentar novamente
+          </button>
+        </div>
+      ) : null}
+
+      {viewModel ? (
+        <>
+          <ExercitoDigitalKpiStrip kpis={viewModel.kpis} lookbackDays={viewModel.lookbackDays} />
+          <ExercitoDigitalAlertPosts posts={viewModel.alertPosts} />
+          <div className={exercitoDualPanelGridClass}>
+            <ExercitoDigitalLeaderRanking leaders={viewModel.leaders} />
+            <ExercitoDigitalCityPanel cities={viewModel.cities} organicTail={viewModel.organicTail} />
+          </div>
+          <ExercitoDigitalTrendChart points={viewModel.trend} />
+        </>
+      ) : null}
     </div>
   )
 }

@@ -2,9 +2,24 @@
 
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { KPICard } from '@/components/kpi-card'
+import { PremiumMetricCard } from '@/components/premium/metric-card'
+import { MunicipalityListItem } from '@/components/territorio/municipality-list-item'
 import { GoogleSheetsConfigModal } from '@/components/google-sheets-config-modal'
-import { Users, Settings, RefreshCw, AlertCircle, ChevronDown, ChevronRight, Network, FileText, Briefcase, Check } from 'lucide-react'
+import {
+  IconAlertCircle,
+  IconBriefcase,
+  IconCheck,
+  IconChevronDown,
+  IconFileText,
+  IconMapPin,
+  IconNetwork,
+  IconRefresh,
+  IconSearch,
+  IconSettings,
+  IconTarget,
+  IconUsers,
+  IconX,
+} from '@tabler/icons-react'
 import { MindMapModal } from '@/components/mind-map-modal'
 import { CityDemandsModal } from '@/components/city-demands-modal'
 import { ExecutiveBriefingModal } from '@/components/executive-briefing-modal'
@@ -12,6 +27,13 @@ import { VoteInvestmentBalanceModal } from '@/components/vote-investment-balance
 import { MapaVotoCruzado } from '@/components/mapa-voto-cruzado'
 import { KPI } from '@/types'
 import { cn } from '@/lib/utils'
+import {
+  cargoChipClass,
+  ghostButtonClass,
+  pillFilterActiveClass,
+  pillFilterIdleClass,
+  pillInputClass,
+} from '@/lib/premium-ui-classes'
 import { sidebarPrimaryCTAButtonClass } from '@/lib/sidebar-menu-active-style'
 import { useTheme } from '@/contexts/theme-context'
 
@@ -33,9 +55,7 @@ export default function TerritorioPage() {
   const { theme } = useTheme()
   const isCockpit = false
   const accentTextClass = isCockpit ? 'text-[#2dd4bf]' : 'text-accent-gold'
-  const accentSoftBgAltClass = isCockpit ? 'bg-[rgba(45,212,191,0.12)]' : 'bg-accent-gold-soft/50'
   const accentBorderClass = isCockpit ? 'border-[#2dd4bf]' : 'border-accent-gold'
-  const accentHoverTextClass = isCockpit ? 'hover:text-[#2dd4bf]' : 'hover:text-accent-gold'
   const sectionShellClass = isCockpit
     ? 'border-white/12 bg-[linear-gradient(165deg,rgba(22,34,44,0.82)_0%,rgba(18,30,38,0.86)_100%)] shadow-[0_10px_32px_rgba(3,12,20,0.28)]'
     : 'border-card bg-surface shadow-card'
@@ -274,10 +294,10 @@ export default function TerritorioPage() {
         : 'votos aferidos'
   const labelTotalCidade =
     cenarioVotos === 'promessa_lideranca'
-      ? 'Total Prometido'
+      ? 'votos prometidos'
       : cenarioVotos === 'legado_anterior'
-        ? 'Total Anterior'
-        : 'Total Aferido'
+        ? 'votos anteriores'
+        : 'votos aferidos'
   const labelValorLideranca =
     cenarioVotos === 'promessa_lideranca'
       ? 'Promessa 2026'
@@ -655,7 +675,7 @@ export default function TerritorioPage() {
                 cenarioVotos === 'promessa_lideranca'
                   ? 'Promessa 2026'
                   : cenarioVotos === 'legado_anterior'
-                    ? 'Anterior 2026'
+                    ? 'Expectativa 2026'
                     : 'Aferido 2026',
               value: Math.round(totalExpectativaVotos).toLocaleString('pt-BR'),
               status: 'success' as const,
@@ -696,6 +716,21 @@ export default function TerritorioPage() {
 
   const totaisPorCargo = calcularTotaisPorCargo()
 
+  const cidadesUnicasCount = new Set(
+    liderancasFiltradas.map((l) => l[cidadeCol] || 'Sem cidade')
+  ).size
+  const todasExpandidas =
+    expandedCities.size === cidadesUnicasCount && cidadesUnicasCount > 0
+  const hasFiltrosAtivos =
+    Boolean(filtroCidade) ||
+    Boolean(filtroNome) ||
+    Boolean(filtroCargo) ||
+    filtroDepEstadual.length > 0 ||
+    Boolean(filtroFaixaVotos)
+  const pageSubtitle = hasFiltrosAtivos
+    ? `${liderancasFiltradas.length} ativas · filtros aplicados`
+    : `${liderancasFiltradas.length} ativas · ${liderancas.length} registros totais`
+
   const cidadesParaAnaliseInvestimento = useMemo(() => {
     const agrupado = liderancasFiltradas.reduce((acc, lider) => {
       const cidade = String(lider[cidadeCol] || 'Sem cidade').trim() || 'Sem cidade'
@@ -718,27 +753,49 @@ export default function TerritorioPage() {
       .sort((a, b) => b.previsaoVotos - a.previsaoVotos)
   }, [liderancasFiltradas, cidadeCol, votosReferenciaCol])
 
-  // Identificar colunas para exibição (nomeCol, cidadeCol e cargoCol já foram definidos no escopo superior)
-  const scoreCol = headers.find((h) =>
-    /score|pontuação|pontuacao|nota/i.test(h)
-  )
-  const statusCol = headers.find((h) =>
-    /status|ativo|situação/i.test(h)
-  )
-  const cargo2024Col = headers.find((h) =>
-    /cargo.*2024/i.test(h)
-  )
-  // liderancaAtualCol e expectativaVotosCol já foram definidos no escopo superior
 
   return (
     <div className={cn('min-h-screen', isCockpit ? 'sidebar-cockpit-shell' : 'bg-bg-surface')}>
 
-      <div className="px-4 py-6 lg:px-6">
-        {/* Botão de Configuração */}
-        <div className="mb-6 flex items-center justify-between">
-          <div className="flex items-center gap-2">
+      <div className="px-4 py-4 lg:px-4">
+        {/* Cabeçalho da página */}
+        <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div className="min-w-0">
+            <h1 className="text-sm font-medium text-text-primary">Território & base</h1>
+            <p className="mt-0.5 text-xs text-text-muted">
+              {(config || serverConfigured) && liderancas.length > 0
+                ? pageSubtitle
+                : 'Configure a planilha para carregar lideranças'}
+            </p>
+          </div>
+          <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
+            {(config || serverConfigured) && liderancasFiltradas.length > 0 && (
+              <>
+                <button
+                  type="button"
+                  onClick={() => setShowMindMap(true)}
+                  className={ghostButtonClass}
+                  title="Ver mapa de lideranças"
+                >
+                  <IconNetwork className="h-[14px] w-[14px] opacity-70" stroke={1.5} aria-hidden />
+                  Mapa mental
+                </button>
+                {votosReferenciaCol ? (
+                  <button
+                    type="button"
+                    onClick={() => setShowVoteInvestmentBalance(true)}
+                    className={ghostButtonClass}
+                    title="Analisar equilíbrio entre investimento e previsão de votos"
+                  >
+                    <IconBriefcase className="h-[14px] w-[14px] opacity-70" stroke={1.5} aria-hidden />
+                    Demandas
+                  </button>
+                ) : null}
+              </>
+            )}
             {(config || serverConfigured) && (
               <button
+                type="button"
                 onClick={() => {
                   if (serverConfigured) {
                     fetchDataFromServer()
@@ -747,220 +804,282 @@ export default function TerritorioPage() {
                   }
                 }}
                 disabled={loading}
-                className="px-4 py-2 text-sm font-medium border border-card rounded-lg hover:bg-background transition-colors disabled:opacity-50 flex items-center gap-2"
+                className={cn(ghostButtonClass, 'disabled:opacity-50')}
               >
-                <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+                <IconRefresh
+                  className={cn('h-[14px] w-[14px] opacity-70', loading && 'animate-spin')}
+                  stroke={1.5}
+                  aria-hidden
+                />
                 Atualizar
               </button>
             )}
+            <button
+              type="button"
+              onClick={() => setShowConfig(true)}
+              className={sidebarPrimaryCTAButtonClass(isCockpit)}
+            >
+              <IconSettings className="h-[14px] w-[14px] shrink-0 text-white" stroke={1.5} aria-hidden />
+              {(config || serverConfigured) ? 'Configurar planilha' : 'Conectar planilha'}
+            </button>
           </div>
-          <button
-            type="button"
-            onClick={() => setShowConfig(true)}
-            className={sidebarPrimaryCTAButtonClass(isCockpit)}
-          >
-            <Settings
-              className={cn('h-4 w-4 shrink-0', isCockpit ? 'text-white' : 'text-accent-gold')}
-              aria-hidden
-            />
-            {(config || serverConfigured) ? 'Configurar Planilha' : 'Conectar Planilha'}
-          </button>
         </div>
 
         {/* Mensagem de Erro */}
         {error && (
-          <div className="mb-6 p-4 rounded-xl border border-status-error/30 bg-status-error/10 flex items-start gap-3">
-            <AlertCircle className="w-5 h-5 text-status-error flex-shrink-0 mt-0.5" />
+          <div className="mb-4 flex items-start gap-3 rounded-xl border border-status-error/30 bg-status-error/10 p-4">
+            <IconAlertCircle className="mt-0.5 h-5 w-5 shrink-0 text-status-error" stroke={1.5} />
             <div className="flex-1">
               <p className="text-sm font-medium text-status-error">Erro ao carregar dados</p>
-              <p className="text-xs text-secondary mt-1">{error}</p>
+              <p className="mt-1 text-xs text-text-secondary">{error}</p>
             </div>
           </div>
         )}
 
         {/* KPIs - Só mostrar se houver configuração e dados */}
         {(config || serverConfigured) && liderancas.length > 0 && (
-          <section className="mb-6">
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-              {kpis.map((kpi) => (
-                <KPICard key={kpi.id} kpi={kpi} variant="default" />
-              ))}
+          <section className="mb-4">
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+              {kpis.map((kpi) => {
+                const metricIcon =
+                  kpi.id === 'liderancas'
+                    ? IconUsers
+                    : kpi.id === 'total'
+                      ? IconFileText
+                      : kpi.id === 'expectativa-votos'
+                        ? IconTarget
+                        : IconMapPin
+                const contextLine =
+                  kpi.id === 'liderancas'
+                    ? `de ${liderancas.length} registros totais`
+                    : kpi.id === 'total'
+                      ? 'na planilha conectada'
+                      : kpi.id === 'expectativa-votos'
+                        ? labelCenarioVotos
+                        : `${cidadesUnicasCount} municípios na base filtrada`
+
+                return (
+                  <PremiumMetricCard
+                    key={kpi.id}
+                    label={kpi.label}
+                    value={kpi.value}
+                    contextLine={contextLine}
+                    icon={metricIcon}
+                  />
+                )
+              })}
             </div>
-            
-            {/* Distribuição por Cargo - Compacto */}
+
             {totaisPorCargo.length > 0 && (
-              <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-secondary">
-                <span className="font-medium text-text-primary">Por cargo:</span>
-                {totaisPorCargo.slice(0, 6).map((item, index) => (
-                  <span key={item.cargo} className="inline-flex items-center">
-                    <span className={cn('font-semibold', accentTextClass)}>{item.total}</span>
-                    <span className="ml-1">{item.cargo}</span>
-                    {index < Math.min(totaisPorCargo.length - 1, 5) && <span className="ml-2">·</span>}
+              <div className="mt-2 flex flex-wrap gap-2">
+                {totaisPorCargo.slice(0, 8).map((item) => (
+                  <span key={item.cargo} className={cargoChipClass}>
+                    <span className="font-medium text-[rgb(var(--color-primary))]">{item.total}</span>
+                    <span className="text-text-muted">{item.cargo}</span>
                   </span>
                 ))}
-                {totaisPorCargo.length > 6 && (
-                  <span className="text-text-muted">+{totaisPorCargo.length - 6} outros</span>
+                {totaisPorCargo.length > 8 && (
+                  <span className={cn(cargoChipClass, 'text-text-muted')}>
+                    +{totaisPorCargo.length - 8} outros
+                  </span>
                 )}
               </div>
             )}
           </section>
         )}
 
-        {/* Filtros — uma linha (scroll horizontal em telas estreitas), padrão /dashboard/pesquisa */}
         {(config || serverConfigured) && liderancas.length > 0 && (
-          <div className={cn('mb-6 rounded-xl border px-3 py-2', innerPanelClass)}>
-            <div className="flex flex-nowrap items-center gap-x-2 sm:gap-3 overflow-x-auto pb-0.5 [scrollbar-width:thin]">
-              <span className="text-xs font-semibold text-text-primary shrink-0">Filtros</span>
-              <span className="hidden sm:block h-4 w-px shrink-0 bg-border-card opacity-60" aria-hidden />
+          <div className="mb-4">
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2 overflow-x-auto pb-0.5 [scrollbar-width:thin]">
+                <label className="relative shrink-0">
+                  <IconSearch
+                    className="pointer-events-none absolute left-3 top-1/2 h-[14px] w-[14px] -translate-y-1/2 text-text-muted opacity-70"
+                    stroke={1.5}
+                    aria-hidden
+                  />
+                  <input
+                    type="text"
+                    value={filtroCidade}
+                    onChange={(e) => setFiltroCidade(e.target.value)}
+                    placeholder="Buscar cidade…"
+                    className={cn(pillInputClass, 'w-[9.5rem] pl-8 sm:w-[10.5rem]')}
+                  />
+                </label>
 
-              <label className="flex min-w-0 shrink-0 items-center gap-1.5">
-                <span className="text-[10px] font-medium uppercase tracking-wide text-secondary whitespace-nowrap">
-                  Cidade
-                </span>
-                <input
-                  type="text"
-                  value={filtroCidade}
-                  onChange={(e) => setFiltroCidade(e.target.value)}
-                  placeholder="Cidade…"
-                  className="w-[6.5rem] min-w-[6rem] max-w-[9rem] rounded-lg border border-card bg-surface px-2 py-1.5 text-xs placeholder:text-secondary/70 focus:outline-none focus:ring-2 focus:ring-accent-gold-soft sm:w-[7.5rem]"
-                />
-              </label>
+                <label className="relative shrink-0">
+                  <IconSearch
+                    className="pointer-events-none absolute left-3 top-1/2 h-[14px] w-[14px] -translate-y-1/2 text-text-muted opacity-70"
+                    stroke={1.5}
+                    aria-hidden
+                  />
+                  <input
+                    type="text"
+                    value={filtroNome}
+                    onChange={(e) => setFiltroNome(e.target.value)}
+                    placeholder="Buscar liderança…"
+                    className={cn(pillInputClass, 'w-[9.5rem] pl-8 sm:w-[10.5rem]')}
+                  />
+                </label>
 
-              <span className="hidden sm:block h-4 w-px shrink-0 bg-border-card opacity-60" aria-hidden />
+                <span className="hidden h-4 w-px shrink-0 bg-[rgb(var(--color-border-tertiary))] sm:block" aria-hidden />
 
-              <label className="flex min-w-0 shrink-0 items-center gap-1.5">
-                <span className="text-[10px] font-medium uppercase tracking-wide text-secondary whitespace-nowrap">
-                  Liderança
-                </span>
-                <input
-                  type="text"
-                  value={filtroNome}
-                  onChange={(e) => setFiltroNome(e.target.value)}
-                  placeholder="Nome…"
-                  className="w-[6.5rem] min-w-[6rem] max-w-[9rem] rounded-lg border border-card bg-surface px-2 py-1.5 text-xs placeholder:text-secondary/70 focus:outline-none focus:ring-2 focus:ring-accent-gold-soft sm:w-[7.5rem]"
-                />
-              </label>
-
-              {cargoCol && cargosUnicos.length > 0 ? (
-                <>
-                  <span className="hidden sm:block h-4 w-px shrink-0 bg-border-card opacity-60" aria-hidden />
-                  <label className="flex shrink-0 items-center gap-1.5">
-                    <span className="text-[10px] font-medium uppercase tracking-wide text-secondary whitespace-nowrap">
-                      Cargo
+                {cargoCol && cargosUnicos.length > 0 ? (
+                  filtroCargo ? (
+                    <span className={pillFilterActiveClass}>
+                      {filtroCargo}
+                      <button
+                        type="button"
+                        onClick={() => setFiltroCargo('')}
+                        className="ml-0.5 inline-flex opacity-80 hover:opacity-100"
+                        aria-label="Limpar filtro de cargo"
+                      >
+                        <IconX className="h-3 w-3" stroke={2} />
+                      </button>
                     </span>
+                  ) : (
                     <select
                       value={filtroCargo}
                       onChange={(e) => setFiltroCargo(e.target.value)}
-                      className="min-w-[6.5rem] max-w-[10rem] rounded-lg border border-card bg-surface px-2 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-accent-gold-soft"
+                      className={cn(pillFilterIdleClass, 'cursor-pointer appearance-none pr-6')}
+                      aria-label="Filtrar por cargo"
                     >
-                      <option value="">Todos</option>
+                      <option value="">Cargo</option>
                       {cargosUnicos.map((cargo) => (
                         <option key={cargo} value={cargo}>
                           {cargo}
                         </option>
                       ))}
                     </select>
-                  </label>
-                </>
-              ) : null}
+                  )
+                ) : null}
 
-              {deputadosEstaduaisUnicos.length > 0 ? (
-                <>
-                  <span className="hidden sm:block h-4 w-px shrink-0 bg-border-card opacity-60" aria-hidden />
+                {deputadosEstaduaisUnicos.length > 0 ? (
                   <div className="relative shrink-0" ref={depDropdownRef}>
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-[10px] font-medium uppercase tracking-wide text-secondary whitespace-nowrap">
-                        Dep. estadual
+                    {filtroDepEstadual.length > 0 ? (
+                      <span className={pillFilterActiveClass}>
+                        {filtroDepEstadual.length === deputadosEstaduaisUnicos.length
+                          ? 'Todos os dep.'
+                          : `${filtroDepEstadual.length} dep.`}
+                        <button
+                          type="button"
+                          onClick={() => setFiltroDepEstadual([])}
+                          className="ml-0.5 inline-flex opacity-80 hover:opacity-100"
+                          aria-label="Limpar filtro de deputado estadual"
+                        >
+                          <IconX className="h-3 w-3" stroke={2} />
+                        </button>
+                        <button
+                          ref={depDropdownButtonRef}
+                          type="button"
+                          onClick={() => setShowDepDropdown((v) => !v)}
+                          className="ml-1 inline-flex opacity-80 hover:opacity-100"
+                          aria-label="Editar filtro de deputado estadual"
+                        >
+                          <IconChevronDown
+                            className={cn('h-3 w-3 transition-transform', showDepDropdown && 'rotate-180')}
+                            stroke={2}
+                          />
+                        </button>
                       </span>
+                    ) : (
                       <button
                         ref={depDropdownButtonRef}
                         type="button"
                         onClick={() => setShowDepDropdown((v) => !v)}
                         title="Voto cruzado: selecione um ou mais deputados"
-                        className="flex min-w-[7.5rem] max-w-[11rem] items-center justify-between gap-1 rounded-lg border border-card bg-surface px-2 py-1.5 text-left text-xs focus:outline-none focus:ring-2 focus:ring-accent-gold-soft"
+                        className={pillFilterIdleClass}
                       >
-                        <span className="truncate">
-                          {filtroDepEstadual.length > 0
-                            ? filtroDepEstadual.length === deputadosEstaduaisUnicos.length
-                              ? 'Todos'
-                              : `${filtroDepEstadual.length} dep.`
-                            : 'Todos'}
-                        </span>
-                        <ChevronDown
-                          className={`h-3.5 w-3.5 shrink-0 text-secondary transition-transform ${showDepDropdown ? 'rotate-180' : ''}`}
+                        Dep. estadual
+                        <IconChevronDown
+                          className={cn('h-3 w-3 opacity-70 transition-transform', showDepDropdown && 'rotate-180')}
+                          stroke={2}
                         />
                       </button>
-                    </div>
+                    )}
                   </div>
-                </>
-              ) : null}
+                ) : null}
 
-              {expectativaJadyelCol || promessaLiderancaCol || expectativaLegadoCol ? (
-                <>
-                  <span className="hidden sm:block h-4 w-px shrink-0 bg-border-card opacity-60" aria-hidden />
-                  <label className="flex shrink-0 items-center gap-1.5">
-                    <span className="text-[10px] font-medium uppercase tracking-wide text-secondary whitespace-nowrap">
-                      Visão votos
-                    </span>
-                    <select
-                      value={cenarioVotos}
-                      onChange={(e) => setCenarioVotos(e.target.value as CenarioVotos)}
-                      className="min-w-[9rem] max-w-[14rem] rounded-lg border border-card bg-surface px-2 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-accent-gold-soft"
-                    >
-                      {expectativaJadyelCol ? (
-                        <option value="aferido_jadyel">Aferido (Expectativa Jadyel 2026)</option>
-                      ) : null}
-                      {promessaLiderancaCol ? (
-                        <option value="promessa_lideranca">Prometido (Promessa da Liderança 2026)</option>
-                      ) : null}
-                      {expectativaLegadoCol ? (
-                        <option value="legado_anterior">Anterior (Expectativa de Votos 2026)</option>
-                      ) : null}
-                    </select>
-                  </label>
-                </>
-              ) : null}
+                {expectativaJadyelCol || promessaLiderancaCol || expectativaLegadoCol ? (
+                  <select
+                    value={cenarioVotos}
+                    onChange={(e) => setCenarioVotos(e.target.value as CenarioVotos)}
+                    className={cn(pillFilterIdleClass, 'cursor-pointer appearance-none')}
+                    aria-label="Visão de votos"
+                  >
+                    {expectativaJadyelCol ? (
+                      <option value="aferido_jadyel">Aferido 2026</option>
+                    ) : null}
+                    {promessaLiderancaCol ? (
+                      <option value="promessa_lideranca">Prometido 2026</option>
+                    ) : null}
+                    {expectativaLegadoCol ? (
+                      <option value="legado_anterior">Anterior 2026</option>
+                    ) : null}
+                  </select>
+                ) : null}
 
-              {votosReferenciaCol ? (
-                <>
-                  <span className="hidden sm:block h-4 w-px shrink-0 bg-border-card opacity-60" aria-hidden />
-                  <label className="flex shrink-0 items-center gap-1.5">
-                    <span
-                      className="max-w-[5.5rem] text-[10px] font-medium uppercase leading-tight tracking-wide text-secondary sm:max-w-none sm:whitespace-nowrap"
-                      title={
-                        cenarioVotos === 'promessa_lideranca'
-                          ? 'Faixa de votos prometidos'
-                          : cenarioVotos === 'legado_anterior'
-                            ? 'Faixa de votos anteriores'
-                            : 'Faixa de votos aferidos'
-                      }
-                    >
-                      Faixa votos
+                {votosReferenciaCol ? (
+                  filtroFaixaVotos ? (
+                    <span className={pillFilterActiveClass}>
+                      {filtroFaixaVotos === 'ate-100'
+                        ? 'Até 100'
+                        : filtroFaixaVotos === 'ate-300'
+                          ? 'Até 300'
+                          : filtroFaixaVotos === 'ate-500'
+                            ? 'Até 500'
+                            : filtroFaixaVotos === 'acima-500'
+                              ? 'Acima de 500'
+                              : 'Acima de 1000'}
+                      <button
+                        type="button"
+                        onClick={() => setFiltroFaixaVotos('')}
+                        className="ml-0.5 inline-flex opacity-80 hover:opacity-100"
+                        aria-label="Limpar faixa de votos"
+                      >
+                        <IconX className="h-3 w-3" stroke={2} />
+                      </button>
                     </span>
+                  ) : (
                     <select
                       value={filtroFaixaVotos}
                       onChange={(e) => setFiltroFaixaVotos(e.target.value)}
-                      className="min-w-[5.5rem] max-w-[8rem] rounded-lg border border-card bg-surface px-2 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-accent-gold-soft"
+                      className={cn(pillFilterIdleClass, 'cursor-pointer appearance-none')}
+                      aria-label="Faixa de votos"
                     >
-                      <option value="">Todas</option>
+                      <option value="">Faixa de votos</option>
                       <option value="ate-100">Até 100</option>
                       <option value="ate-300">Até 300</option>
                       <option value="ate-500">Até 500</option>
                       <option value="acima-500">Acima de 500</option>
                       <option value="acima-1000">Acima de 1000</option>
                     </select>
-                  </label>
-                </>
-              ) : null}
+                  )
+                ) : null}
+              </div>
+
+              {liderancasFiltradas.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (todasExpandidas) {
+                      setExpandedCities(new Set())
+                    } else {
+                      setExpandedCities(
+                        new Set(liderancasFiltradas.map((l) => l[cidadeCol] || 'Sem cidade'))
+                      )
+                    }
+                  }}
+                  className={cn(ghostButtonClass, 'ml-auto shrink-0 text-[11.5px]')}
+                >
+                  {todasExpandidas ? 'Recolher todas' : 'Expandir todas'}
+                </button>
+              )}
             </div>
 
-            {(filtroCidade ||
-              filtroNome ||
-              filtroCargo ||
-              filtroDepEstadual.length > 0 ||
-              filtroFaixaVotos) && (
-              <div className="mt-2 flex flex-wrap items-center justify-between gap-2 border-t border-card/70 pt-2">
-                <span className="text-[11px] text-secondary">
+            {hasFiltrosAtivos && (
+              <div className="mt-2 flex items-center justify-between gap-2">
+                <span className="text-[11px] text-text-muted">
                   {liderancasFiltradas.length} resultado{liderancasFiltradas.length !== 1 ? 's' : ''}
                 </span>
                 <button
@@ -972,7 +1091,7 @@ export default function TerritorioPage() {
                     setFiltroDepEstadual([])
                     setFiltroFaixaVotos('')
                   }}
-                  className={cn('text-[11px] font-medium hover:underline', accentTextClass)}
+                  className="text-[11px] font-medium text-[rgb(var(--color-primary))] hover:underline"
                 >
                   Limpar filtros
                 </button>
@@ -1005,7 +1124,7 @@ export default function TerritorioPage() {
                         <span
                           className={`flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded border ${checked ? `${accentBorderClass} ${isCockpit ? 'bg-[#2dd4bf]' : 'bg-accent-gold'}` : 'border-card bg-white'}`}
                         >
-                          {checked ? <Check className="h-2.5 w-2.5 text-white" /> : null}
+                          {checked ? <IconCheck className="h-2.5 w-2.5 text-white" stroke={2.5} /> : null}
                         </span>
                         <span className="truncate">{dep}</span>
                       </button>
@@ -1079,93 +1198,12 @@ export default function TerritorioPage() {
           </div>
         )}
 
-        {/* Lista de Lideranças */}
-        <div className={cn('rounded-2xl border p-4 sm:p-6', sectionShellClass)}>
-          <div className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-            <div className="min-w-0 flex-1">
-              <h2 className="text-lg font-semibold text-text-primary">
-                {(config || serverConfigured) ? 'Lideranças Atuais' : 'Lideranças'}
-              </h2>
-              {(config || serverConfigured) && (liderancaAtualCol || votosReferenciaCol) && (
-                <p className="mt-1 text-xs text-secondary">
-                  Mostrando lideranças com "Liderança Atual?" = SIM ou com {labelCenarioVotos}
-                </p>
-              )}
-            </div>
-            <div className="flex w-full min-w-0 flex-wrap items-center gap-2 lg:w-auto lg:flex-nowrap lg:justify-end">
-              {/* Botão Mapa Mental */}
-              {(config || serverConfigured) && liderancasFiltradas.length > 0 && (
-                <button
-                  type="button"
-                  onClick={() => setShowMindMap(true)}
-                  className={cn(
-                    sidebarPrimaryCTAButtonClass(isCockpit, 'px-3 py-2'),
-                    'inline-flex shrink-0 items-center gap-2',
-                  )}
-                  title="Ver Mapa de Lideranças"
-                >
-                  <Network
-                    className={cn('h-4 w-4 shrink-0', isCockpit ? 'text-white' : 'text-accent-gold')}
-                    aria-hidden
-                  />
-                  Mapa Mental
-                </button>
-              )}
-              {(config || serverConfigured) && liderancasFiltradas.length > 0 && votosReferenciaCol && (
-                <button
-                  onClick={() => setShowVoteInvestmentBalance(true)}
-                  className="inline-flex shrink-0 items-center gap-2 rounded-lg border border-card px-3 py-2 text-xs font-medium transition-colors hover:bg-background sm:text-sm"
-                  title="Analisar equilíbrio entre investimento e previsão de votos"
-                >
-                  <Briefcase className={cn('h-4 w-4 shrink-0', accentTextClass)} />
-                  Demandas x Previsão
-                </button>
-              )}
-              {(config || serverConfigured) && liderancasFiltradas.length > 0 && (() => {
-                // Contar cidades únicas
-                const cidadesUnicas = new Set(liderancasFiltradas.map(l => l[cidadeCol] || 'Sem cidade')).size
-                const todasExpandidas = expandedCities.size === cidadesUnicas && cidadesUnicas > 0
-                
-                return (
-                  <button
-                    onClick={() => {
-                      if (todasExpandidas) {
-                        // Recolher todas
-                        setExpandedCities(new Set())
-                      } else {
-                        // Expandir todas
-                        const todasCidades = new Set(liderancasFiltradas.map(l => l[cidadeCol] || 'Sem cidade'))
-                        setExpandedCities(todasCidades)
-                      }
-                    }}
-                    className="inline-flex shrink-0 items-center gap-2 rounded-lg border border-card px-3 py-1.5 text-xs font-medium transition-colors hover:bg-background"
-                  >
-                    {todasExpandidas ? (
-                      <>
-                        <ChevronDown className="h-3 w-3 shrink-0" />
-                        Recolher Todas
-                      </>
-                    ) : (
-                      <>
-                        <ChevronRight className="h-3 w-3 shrink-0" />
-                        Expandir Todas
-                      </>
-                    )}
-                  </button>
-                )
-              })()}
-              {(config || serverConfigured) && (
-                <div className="flex basis-full shrink-0 flex-col items-end text-right lg:basis-auto">
-                  <span className="text-sm font-semibold text-text-primary">
-                    {liderancasFiltradas.length}
-                  </span>
-                  <span className="text-xs text-secondary">
-                    de {liderancas.length} registros
-                  </span>
-                </div>
-              )}
-            </div>
-          </div>
+        <div className="mt-2">
+          {(config || serverConfigured) && (liderancaAtualCol || votosReferenciaCol) && (
+            <p className="mb-3 text-[11px] text-text-muted">
+              Mostrando lideranças com liderança atual = sim ou com {labelCenarioVotos.toLowerCase()}
+            </p>
+          )}
 
           {filtroDepEstadual.length > 0 && (
             <div className="mb-4 p-3 rounded-xl border border-accent-gold-soft bg-accent-gold-soft/10">
@@ -1196,9 +1234,9 @@ export default function TerritorioPage() {
               ))}
             </div>
           ) : !(config || serverConfigured) ? (
-            <div className="text-center py-12">
-              <Users className="w-12 h-12 text-secondary mx-auto mb-4" />
-              <p className="text-secondary mb-4">
+            <div className="py-12 text-center">
+              <IconUsers className="mx-auto mb-4 h-12 w-12 text-text-muted opacity-70" stroke={1.5} />
+              <p className="mb-4 text-text-secondary">
                 Configure uma planilha do Google Sheets para começar
               </p>
               <button
@@ -1206,7 +1244,7 @@ export default function TerritorioPage() {
                 onClick={() => setShowConfig(true)}
                 className={sidebarPrimaryCTAButtonClass(isCockpit)}
               >
-                Conectar Planilha
+                Conectar planilha
               </button>
             </div>
           ) : liderancas.length === 0 ? (
@@ -1223,247 +1261,77 @@ export default function TerritorioPage() {
               </p>
             </div>
           ) : (() => {
-            // Função para normalizar números
-            const normalizeNumber = (value: any): number => {
-              if (typeof value === 'number') return value
-              
-              const str = String(value).trim()
-              if (!str) return 0
-              
-              let cleaned = str.replace(/[^\d.,]/g, '')
-              
-              if (cleaned.includes(',') && cleaned.includes('.')) {
-                if (cleaned.lastIndexOf(',') > cleaned.lastIndexOf('.')) {
-                  cleaned = cleaned.replace(/\./g, '').replace(',', '.')
-                } else {
-                  cleaned = cleaned.replace(/,/g, '')
-                }
-              } else if (cleaned.includes(',')) {
-                const parts = cleaned.split(',')
-                if (parts.length === 2) {
-                  if (parts[1].length === 3) {
-                    cleaned = cleaned.replace(/,/g, '')
-                  } else if (parts[1].length <= 2) {
-                    cleaned = cleaned.replace(',', '.')
-                  } else {
-                    cleaned = cleaned.replace(/,/g, '')
-                  }
-                } else {
-                  cleaned = cleaned.replace(/,/g, '')
-                }
-              }
-              
-              const numValue = parseFloat(cleaned)
-              return isNaN(numValue) ? 0 : numValue
-            }
-
-            // Agrupar lideranças por cidade
             const liderancasPorCidade = liderancasFiltradas.reduce((acc, lider) => {
               const cidade = lider[cidadeCol] || 'Sem cidade'
-              if (!acc[cidade]) {
-                acc[cidade] = []
-              }
+              if (!acc[cidade]) acc[cidade] = []
               acc[cidade].push(lider)
               return acc
             }, {} as Record<string, typeof liderancasFiltradas>)
 
-            // Ordenar cidades por total de expectativa de votos (decrescente)
             const cidadesOrdenadas = Object.keys(liderancasPorCidade).sort((a, b) => {
-              const totalA = liderancasPorCidade[a].reduce((sum: number, l: Lideranca) => {
-                return sum + (votosReferenciaCol ? normalizeNumber(l[votosReferenciaCol]) : 0)
-              }, 0)
-              const totalB = liderancasPorCidade[b].reduce((sum: number, l: Lideranca) => {
-                return sum + (votosReferenciaCol ? normalizeNumber(l[votosReferenciaCol]) : 0)
-              }, 0)
+              const totalA = liderancasPorCidade[a].reduce(
+                (sum: number, l: Lideranca) =>
+                  sum + (votosReferenciaCol ? normalizeNumber(l[votosReferenciaCol]) : 0),
+                0
+              )
+              const totalB = liderancasPorCidade[b].reduce(
+                (sum: number, l: Lideranca) =>
+                  sum + (votosReferenciaCol ? normalizeNumber(l[votosReferenciaCol]) : 0),
+                0
+              )
               return totalB - totalA
             })
 
             return (
-          <div className="space-y-3">
+              <div>
                 {cidadesOrdenadas.map((cidade) => {
                   const liderancasCidade = liderancasPorCidade[cidade]
-                  const totalExpectativaCidade = liderancasCidade.reduce((sum: number, l: Lideranca) => {
-                    return sum + (votosReferenciaCol ? normalizeNumber(l[votosReferenciaCol]) : 0)
-                  }, 0)
+                  const totalExpectativaCidade = liderancasCidade.reduce(
+                    (sum: number, l: Lideranca) =>
+                      sum + (votosReferenciaCol ? normalizeNumber(l[votosReferenciaCol]) : 0),
+                    0
+                  )
                   const isExpanded = expandedCities.has(cidade)
 
                   return (
-                    <div
+                    <MunicipalityListItem
                       key={cidade}
-                      className={cn('overflow-hidden rounded-xl border', innerPanelClass)}
-                    >
-                      {/* Cabeçalho da Cidade */}
-                      <div className="w-full p-4 bg-background flex items-center justify-between">
-                        <button
-                          onClick={() => {
-                            const newExpanded = new Set(expandedCities)
-                            if (isExpanded) {
-                              newExpanded.delete(cidade)
-                            } else {
-                              newExpanded.add(cidade)
-                            }
-                            setExpandedCities(newExpanded)
-                          }}
-                          className="flex items-center gap-3 flex-1 hover:bg-background/80 transition-colors rounded-lg p-2 -m-2"
-                        >
-                          {isExpanded ? (
-                            <ChevronDown className="w-4 h-4 text-secondary" />
-                          ) : (
-                            <ChevronRight className="w-4 h-4 text-secondary" />
-                          )}
-                          <div className="p-2 rounded-lg bg-accent-gold-soft">
-                            <Users className={cn('w-4 h-4', accentTextClass)} />
-                          </div>
-                          <div className="flex-1 text-left">
-                            <p className="text-sm font-semibold text-text-primary">{cidade}</p>
-                            <p className="text-xs text-secondary">
-                              {liderancasCidade.length} liderança{liderancasCidade.length !== 1 ? 's' : ''}
-                            </p>
-                          </div>
-                        </button>
-                        <div className="flex items-center gap-2">
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              setSelectedCityForBriefing(cidade)
-                              setSelectedCityLiderancas(liderancasCidade)
-                              setShowExecutiveBriefing(true)
-                            }}
-                            className={cn('p-2 rounded-lg hover:bg-background transition-colors text-secondary', accentHoverTextClass)}
-                            title="Briefing Executivo"
-                          >
-                            <Briefcase className="w-4 h-4" />
-                          </button>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              setSelectedCityForDemands(cidade)
-                              if (typeof window !== 'undefined') {
-                                const liderancasFiltradasParaModal = liderancasCidade
-                                  .map((lider: Lideranca) => String(lider[nomeCol] || '').trim())
-                                  .filter((nome: string) => nome.length > 0)
-                                sessionStorage.setItem(
-                                  'territorio_demands_liderancas',
-                                  JSON.stringify(liderancasFiltradasParaModal)
-                                )
-                              }
-                              setShowCityDemands(true)
-                            }}
-                            className={cn('p-2 rounded-lg hover:bg-background transition-colors text-secondary', accentHoverTextClass)}
-                            title="Ver demandas desta cidade"
-                          >
-                            <FileText className="w-4 h-4" />
-                          </button>
-                          {votosReferenciaCol && totalExpectativaCidade > 0 && (
-                            <div className="text-right ml-2">
-                              <p className="text-xs text-secondary mb-0.5">{labelTotalCidade}</p>
-                              <p className={cn('text-sm font-semibold', accentTextClass)}>
-                                {Math.round(totalExpectativaCidade).toLocaleString('pt-BR')}
-                              </p>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-
-                      {/* Lista de Lideranças da Cidade */}
-                      {isExpanded && (() => {
-                        // Ordenar lideranças por expectativa de votos (decrescente)
-                        const liderancasOrdenadas = [...liderancasCidade].sort((a, b) => {
-                          const expectativaA = votosReferenciaCol ? normalizeNumber(a[votosReferenciaCol]) : 0
-                          const expectativaB = votosReferenciaCol ? normalizeNumber(b[votosReferenciaCol]) : 0
-                          return expectativaB - expectativaA
-                        })
-
-                        return (
-                          <div className={cn('border-t', isCockpit ? 'border-white/10 bg-white/[0.02]' : 'border-card bg-surface')}>
-                            {liderancasOrdenadas.map((lider: Lideranca, idx: number) => {
-                            const numValue = votosReferenciaCol && lider[votosReferenciaCol]
-                              ? normalizeNumber(lider[votosReferenciaCol])
-                              : 0
-
-                            // Verificar se é liderança atual (SIM) ou apenas tem expectativa de votos
-                            const isLiderancaAtual = liderancaAtualCol && 
-                              /sim|yes|true|1/i.test(String(lider[liderancaAtualCol] || '').trim())
-                            const hasExpectativa = numValue > 0
-                            const isDestaque = hasExpectativa && !isLiderancaAtual
-
-                            return (
-                              <div
-                                key={idx}
-                                className={`px-4 py-2.5 border-b border-card last:border-b-0 hover:bg-background/50 transition-colors ${
-                                  isDestaque ? 'bg-status-warning/5 border-l-4 border-l-status-warning' : ''
-                                }`}
-                              >
-                                {/* Identificar colunas inline (cargo, dep. estadual) — ordem: cargo primeiro */}
-                                {(() => {
-                                  const cargoInline = headers.find(h => /cargo.*2024/i.test(h) && h !== nomeCol && h !== cidadeCol && h !== votosReferenciaCol)
-                                  const depEstadual = headers.find(h => /dep.*estadual|deputad.*estadual/i.test(h) && h !== nomeCol && h !== cidadeCol)
-                                  const orderedCols = [cargoInline, depEstadual].filter(Boolean) as string[]
-                                  const inlineInfo = orderedCols
-                                    .map(h => lider[h] ? `${h}: ${lider[h]}` : null)
-                                    .filter(Boolean)
-                                    .join('  ·  ')
-
-                                  return (
-                                    <div className="flex items-center justify-between">
-                                      <div className="flex items-center gap-3 flex-1 min-w-0">
-                                        <div className={cn('p-1.5 rounded-lg', accentSoftBgAltClass)}>
-                                          <Users className={cn('w-3 h-3', accentTextClass)} />
-                                        </div>
-                                        <div className="flex items-center gap-2 flex-1 min-w-0">
-                                          <p className="text-sm font-semibold text-text-primary truncate">
-                                            {lider[nomeCol] || 'Sem nome'}
-                                          </p>
-                                          {inlineInfo && (
-                                            <span className="text-[11px] text-secondary truncate hidden sm:inline">
-                                              {inlineInfo}
-                                            </span>
-                                          )}
-                                          {isDestaque && (
-                                            <span className="px-1.5 py-0.5 text-[10px] font-medium bg-status-warning/20 text-status-warning rounded-lg flex-shrink-0">
-                                              Sem Lid. Atual
-                                            </span>
-                                          )}
-                                        </div>
-                                      </div>
-                                      <div className="flex items-center gap-3 flex-shrink-0">
-                                        {votosReferenciaCol && lider[votosReferenciaCol] && (
-                                          <div className="text-right">
-                                            <p className={cn('text-sm font-semibold', accentTextClass)}>
-                                              {numValue.toLocaleString('pt-BR')}
-                                            </p>
-                                          </div>
-                                        )}
-                                        {scoreCol && lider[scoreCol] && (
-                                          <div className="text-right">
-                                            <p className="text-[10px] text-secondary leading-tight">Score</p>
-                                            <p className="text-sm font-semibold text-text-primary">
-                                              {lider[scoreCol]}
-                                            </p>
-                                          </div>
-                                        )}
-                                        {statusCol && lider[statusCol] && (
-                                          <span
-                                            className={`px-2 py-0.5 text-[10px] rounded-lg ${
-                                              /ativo|active|sim/i.test(String(lider[statusCol]))
-                                                ? 'bg-status-success/10 text-status-success'
-                                                : 'bg-text-muted/10 text-secondary'
-                                            }`}
-                                          >
-                                            {lider[statusCol]}
-                                          </span>
-                                        )}
-                                      </div>
-                                    </div>
-                                  )
-                                })()}
-                              </div>
-                            )
-                          })}
-                          </div>
-                        )
-                      })()}
-                    </div>
+                      cidade={cidade}
+                      liderancasCidade={liderancasCidade}
+                      isExpanded={isExpanded}
+                      onToggle={() => {
+                        const next = new Set(expandedCities)
+                        if (isExpanded) next.delete(cidade)
+                        else next.add(cidade)
+                        setExpandedCities(next)
+                      }}
+                      onBriefing={(e) => {
+                        e.stopPropagation()
+                        setSelectedCityForBriefing(cidade)
+                        setSelectedCityLiderancas(liderancasCidade)
+                        setShowExecutiveBriefing(true)
+                      }}
+                      onObras={(e) => {
+                        e.stopPropagation()
+                        setSelectedCityForDemands(cidade)
+                        if (typeof window !== 'undefined') {
+                          const nomes = liderancasCidade
+                            .map((lider: Lideranca) => String(lider[nomeCol] || '').trim())
+                            .filter((nome: string) => nome.length > 0)
+                          sessionStorage.setItem(
+                            'territorio_demands_liderancas',
+                            JSON.stringify(nomes)
+                          )
+                        }
+                        setShowCityDemands(true)
+                      }}
+                      totalVotos={totalExpectativaCidade}
+                      votosLabel={labelTotalCidade}
+                      nomeCol={nomeCol}
+                      cargoCol={cargoCol}
+                      votosReferenciaCol={votosReferenciaCol}
+                      normalizeNumber={normalizeNumber}
+                    />
                   )
                 })}
               </div>

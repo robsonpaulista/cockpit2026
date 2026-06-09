@@ -1,38 +1,24 @@
 'use client'
 
-import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { PollModal } from '@/components/poll-modal'
 import { PollReportModal } from '@/components/poll-report-modal'
 import { TendenciaIntencaoExecutiveSection } from '@/components/pesquisa/TendenciaIntencaoExecutiveSection'
+import { TendenciaTemporalPanel } from '@/components/pesquisa/TendenciaTemporalPanel'
 import {
-  Plus,
   Edit2,
   Trash2,
-  Maximize2,
   X,
-  ArrowLeft,
   ArrowUp,
   ArrowDown,
   ArrowUpDown,
   FileText,
-  BarChart3,
   Sparkles,
-  LayoutGrid,
-  ClipboardList,
 } from 'lucide-react'
-import {
-  LineChart,
-  Line,
-  LabelList,
-  ResponsiveContainer,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-} from 'recharts'
+import { IconArrowLeft, IconChevronDown, IconPlus, IconX } from '@tabler/icons-react'
 import { cn, formatDate } from '@/lib/utils'
 import { useTheme } from '@/contexts/theme-context'
 import municipiosPiaui from '@/lib/municipios-piaui.json'
@@ -124,397 +110,6 @@ const CIDADE_PARA_REGIAO_PESQUISA = buildCidadeToRegiaoMap(
   municipiosPiaui as ReadonlyArray<{ nome: string; lat: number }>
 )
 
-/** Paleta de alto contraste para leitura rápida em fundo claro. */
-const TENDENCIA_SERIES_COLORS = [
-  '#1D4ED8',
-  '#DC2626',
-  '#059669',
-  '#7C3AED',
-  '#EA580C',
-  '#0891B2',
-  '#BE123C',
-  '#4338CA',
-  '#0F766E',
-  '#9333EA',
-  '#B45309',
-  '#334155',
-  '#65A30D',
-  '#C026D3',
-]
-
-type TendenciaTooltipRow = Record<string, string | number | undefined>
-
-type TendenciaTooltipPayloadItem = {
-  dataKey?: string | number
-  value?: unknown
-  color?: string
-  stroke?: string
-  payload?: TendenciaTooltipRow
-}
-
-function formatTooltipPercent(value: unknown): string {
-  if (typeof value === 'number' && Number.isFinite(value)) return `${value.toFixed(1)}%`
-  if (typeof value === 'string' && value.trim() !== '') return `${value}%`
-  return '—'
-}
-
-/** Índice da última data em que a série tem valor numérico (para rótulo no fim da linha). */
-function lastDatumIndexForSeries(
-  data: ReadonlyArray<Record<string, string | number | undefined>>,
-  valueKey: string
-): number {
-  for (let i = data.length - 1; i >= 0; i--) {
-    const v = data[i][valueKey]
-    if (typeof v === 'number' && Number.isFinite(v)) return i
-  }
-  return -1
-}
-
-/** Índice da primeira data com valor numérico na série. */
-function firstDatumIndexForSeries(
-  data: ReadonlyArray<Record<string, string | number | undefined>>,
-  valueKey: string
-): number {
-  for (let i = 0; i < data.length; i++) {
-    const v = data[i][valueKey]
-    if (typeof v === 'number' && Number.isFinite(v)) return i
-  }
-  return -1
-}
-
-/** Último % da série (mesma ordem da legenda). */
-function ultimaIntencaoSerie(
-  data: ReadonlyArray<Record<string, string | number | undefined>>,
-  valueKey: string
-): string | null {
-  const i = lastDatumIndexForSeries(data, valueKey)
-  if (i < 0) return null
-  const v = data[i][valueKey]
-  return typeof v === 'number' && Number.isFinite(v) ? v.toFixed(1) : null
-}
-
-/** Primeiro % da série (primeira data com dado). */
-function primeiraIntencaoSerie(
-  data: ReadonlyArray<Record<string, string | number | undefined>>,
-  valueKey: string
-): string | null {
-  const i = firstDatumIndexForSeries(data, valueKey)
-  if (i < 0) return null
-  const v = data[i][valueKey]
-  return typeof v === 'number' && Number.isFinite(v) ? v.toFixed(1) : null
-}
-
-function fmtPctPtBR(raw: string): string {
-  return raw.replace('.', ',')
-}
-
-function formatVariacaoPP(variacao: number): string {
-  const abs = Math.abs(variacao).toFixed(1).replace('.', ',')
-  if (variacao > 0) return `Alta +${abs} p.p.`
-  if (variacao < 0) return `Queda -${abs} p.p.`
-  return 'Estável 0,0 p.p.'
-}
-
-function parseValorGraficoPonto(raw: unknown): number | null {
-  if (typeof raw === 'number' && Number.isFinite(raw)) return raw
-  if (typeof raw === 'string') {
-    const t = raw.trim()
-    if (!t) return null
-    const normalized =
-      t.includes(',') && t.includes('.')
-        ? t.replace(/\./g, '').replace(',', '.')
-        : t.includes(',')
-          ? t.replace(',', '.')
-          : t
-    const n = Number(normalized)
-    return Number.isFinite(n) ? n : null
-  }
-  return null
-}
-
-function TendenciaTooltip({
-  active,
-  payload,
-  label,
-  executive = false,
-}: {
-  active?: boolean
-  payload?: TendenciaTooltipPayloadItem[]
-  label?: ReactNode
-  executive?: boolean
-}) {
-  if (!active || !payload?.length) return null
-
-  const row = payload[0]?.payload
-  if (!row) return null
-
-  const intencaoItems = payload.filter((item) => String(item.dataKey ?? '').startsWith('intencao_'))
-  const institutosUnicos = new Set<string>()
-  intencaoItems.forEach((item) => {
-    const dataKey = item.dataKey != null ? String(item.dataKey) : ''
-    const slug = dataKey.replace(/^intencao_/, '')
-    const raw = row[`instituto_${slug}`]
-    if (raw !== undefined && raw !== null && String(raw).trim() !== '') {
-      institutosUnicos.add(String(raw).trim())
-    }
-  })
-  const listaInst = [...institutosUnicos].sort((a, b) => a.localeCompare(b, 'pt-BR'))
-  const institutoNoHeader =
-    listaInst.length === 0
-      ? null
-      : listaInst.length === 1
-        ? `Instituto: ${listaInst[0]}`
-        : `Institutos: ${listaInst.join(', ')}`
-
-  const box = executive
-    ? 'max-w-sm rounded-lg border border-slate-600 bg-slate-900 px-3 py-2.5 text-xs shadow-xl'
-    : 'max-w-sm rounded-xl border border-slate-300 bg-white px-3.5 py-3 text-[12px] shadow-xl'
-  const title = executive
-    ? 'mb-2 border-b border-slate-600 pb-1.5 text-sm font-semibold leading-snug text-white'
-    : 'mb-2 border-b border-slate-200 pb-1.5 text-sm font-bold leading-snug text-slate-900'
-  const sub = executive ? 'font-medium text-slate-300' : 'font-medium text-gray-700'
-  const nameC = executive ? 'font-semibold leading-tight text-slate-100' : 'font-semibold leading-tight text-slate-900'
-  const pctC = executive ? 'font-semibold tabular-nums text-white' : 'font-bold tabular-nums text-slate-900'
-
-  return (
-    <div className={box}>
-      <p className={title}>
-        <span>{label}</span>
-        {institutoNoHeader ? (
-          <span className={sub}>
-            {' '}
-            — {institutoNoHeader}
-          </span>
-        ) : null}
-      </p>
-      <ul className="max-h-64 space-y-2 overflow-y-auto pr-0.5">
-        {intencaoItems.map((item, i) => {
-          const dataKey = item.dataKey != null ? String(item.dataKey) : ''
-          const slug = dataKey.replace(/^intencao_/, '')
-          const nome = slug.replace(/_/g, ' ')
-          const pct = formatTooltipPercent(item.value)
-          const mark = item.color || item.stroke || '#111827'
-          return (
-            <li key={`${dataKey}-${i}`} className="flex items-center gap-2">
-              <span
-                className="h-2.5 w-2.5 shrink-0 rounded-full ring-1 ring-white/30"
-                style={{ backgroundColor: mark }}
-              />
-              <div className="flex min-w-0 flex-1 flex-wrap items-baseline gap-x-2">
-                <span className={nameC}>{nome}</span>
-                <span className={pctC}>{pct}</span>
-              </div>
-            </li>
-          )
-        })}
-      </ul>
-    </div>
-  )
-}
-
-type LabelListPropsRecharts = {
-  x?: number
-  y?: number
-  value?: unknown
-  index?: number
-  payload?: TendenciaTooltipRow
-}
-
-/** Gráfico (fundo claro padrão) + legenda à direita: linhas suaves, rótulos nos pontos e no fim da série. */
-function TendenciaLineChart({
-  pesquisaData,
-  candidatos,
-  cores,
-  chartClassName,
-  resumoLegendaPorCandidato,
-}: {
-  pesquisaData: Record<string, string | number | undefined>[]
-  candidatos: string[]
-  cores: string[]
-  chartClassName: string
-  resumoLegendaPorCandidato: Record<string, string>
-}) {
-  const maiorNome =
-    candidatos.length > 0 ? Math.max(...candidatos.map((c) => Math.min(c.length, 28))) : 12
-  const marginRight = Math.min(340, Math.max(210, 34 + maiorNome * 6.2))
-
-  return (
-    <div
-      className={`flex min-h-0 w-full flex-col gap-3 overflow-hidden md:flex-row md:items-stretch md:gap-3 ${chartClassName}`.trim()}
-    >
-      <div className="min-h-[200px] min-w-0 flex-1 h-full md:min-h-[220px] overflow-hidden rounded-xl border border-slate-300 bg-slate-50">
-        <ResponsiveContainer width="100%" height="100%">
-          <LineChart
-            data={pesquisaData}
-            margin={{ top: 24, right: marginRight, left: 8, bottom: 44 }}
-          >
-            <CartesianGrid
-              strokeDasharray="4 4"
-              stroke="#CBD5E1"
-              vertical={false}
-            />
-            <XAxis
-              dataKey="data"
-              angle={-32}
-              textAnchor="end"
-              height={58}
-              fontSize={12}
-              stroke="#334155"
-              tick={{ fill: '#334155', fontWeight: 600 }}
-              tickMargin={10}
-              minTickGap={18}
-            />
-            <YAxis
-              domain={[0, 100]}
-              width={46}
-              fontSize={12}
-              stroke="#334155"
-              tick={{ fill: '#334155', fontWeight: 600 }}
-              tickFormatter={(v) => `${v}`}
-            />
-            <Tooltip
-              content={(props) => (
-                <TendenciaTooltip
-                  active={props.active}
-                  label={props.label}
-                  payload={props.payload as TendenciaTooltipPayloadItem[] | undefined}
-                />
-              )}
-            />
-            {candidatos.map((candidato, index) => {
-              const key = `intencao_${candidato.replace(/\s+/g, '_')}`
-              const cor = cores[index % cores.length]
-              const lastIdx = lastDatumIndexForSeries(pesquisaData, key)
-              const nomeCurto = candidato.length > 24 ? `${candidato.slice(0, 22)}…` : candidato
-              return (
-                <Line
-                  key={key}
-                  type="monotone"
-                  dataKey={key}
-                  name={candidato}
-                  stroke={cor}
-                  strokeWidth={3}
-                  isAnimationActive={false}
-                  connectNulls={false}
-                  dot={{ r: 4.5, fill: '#ffffff', stroke: cor, strokeWidth: 2.5 }}
-                  activeDot={{ r: 7, fill: '#ffffff', stroke: cor, strokeWidth: 2.5 }}
-                >
-                  <LabelList
-                    dataKey={key}
-                    content={(rawProps: unknown) => {
-                      const props = rawProps as LabelListPropsRecharts
-                      const x = props.x
-                      const y = props.y
-                      const idx = props.index
-                      const payload = props.payload
-                      if (typeof x !== 'number' || typeof y !== 'number' || typeof idx !== 'number') {
-                        return null
-                      }
-                      const val = parseValorGraficoPonto(props.value ?? payload?.[key])
-                      if (val === null) return null
-
-                      if (lastIdx >= 0 && idx === lastIdx) {
-                        const texto = `${nomeCurto} ${val.toFixed(1).replace('.', ',')}%`
-                        return (
-                          <text
-                            x={x}
-                            y={y}
-                            dx={12}
-                            dy={0}
-                            fill="#111827"
-                            fontSize={11}
-                            fontWeight={700}
-                            dominantBaseline="middle"
-                            stroke="#ffffff"
-                            strokeWidth={4}
-                            paintOrder="stroke fill"
-                          >
-                            {texto}
-                          </text>
-                        )
-                      }
-
-                      return null
-                    }}
-                  />
-                </Line>
-              )
-            })}
-          </LineChart>
-        </ResponsiveContainer>
-      </div>
-      <aside
-        className="max-h-[420px] w-full shrink-0 overflow-y-auto rounded-xl border border-slate-300 bg-slate-50/95 px-3 py-3 text-left md:max-h-none md:w-[min(100%,340px)] md:px-3.5"
-        aria-label="Legenda: candidatos, primeira e última leitura da série, texto automático"
-      >
-        <p className="mb-3 px-1 text-[11px] font-semibold uppercase tracking-wide text-slate-700">
-          Candidatos · 1ª → última % · leitura
-        </p>
-        <ul className="m-0 flex list-none flex-col gap-2.5 p-0">
-          {candidatos.map((candidato, index) => {
-            const key = `intencao_${candidato.replace(/\s+/g, '_')}`
-            const pctPrimeira = primeiraIntencaoSerie(pesquisaData, key)
-            const pctUltima = ultimaIntencaoSerie(pesquisaData, key)
-            const i0 = firstDatumIndexForSeries(pesquisaData, key)
-            const i1 = lastDatumIndexForSeries(pesquisaData, key)
-            const cor = cores[index % cores.length]
-            const resumo = resumoLegendaPorCandidato[candidato] ?? ''
-            const variacao =
-              pctPrimeira != null && pctUltima != null ? Number(pctUltima) - Number(pctPrimeira) : null
-            const blocoPct =
-              pctPrimeira != null && pctUltima != null ? (
-                i0 >= 0 && i1 >= 0 && i0 === i1 ? (
-                  <span className="font-bold tabular-nums text-slate-900">
-                    {fmtPctPtBR(pctUltima)}%
-                    <span className="font-normal text-slate-600"> (uma data)</span>
-                  </span>
-                ) : (
-                  <span className="font-bold tabular-nums text-slate-900">
-                    {fmtPctPtBR(pctPrimeira)}% → {fmtPctPtBR(pctUltima)}%
-                  </span>
-                )
-              ) : pctUltima != null ? (
-                <span className="font-bold tabular-nums text-slate-900">{fmtPctPtBR(pctUltima)}%</span>
-              ) : null
-            return (
-              <li key={key} className="rounded-lg border border-slate-200 bg-white/90 px-2.5 py-2 text-[12px] leading-snug shadow-[0_2px_8px_rgba(15,23,42,0.06)]">
-                <div className="flex items-start gap-2">
-                  <span
-                    className="mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full ring-2 ring-white"
-                    style={{ backgroundColor: cor }}
-                  />
-                  <div className="min-w-0 flex-1">
-                    <div className="flex flex-wrap items-baseline gap-x-1.5 gap-y-0">
-                      <span className="font-semibold text-slate-900">{candidato}</span>
-                      {blocoPct}
-                    </div>
-                    {variacao != null ? (
-                      <p
-                        className={cn(
-                          'mt-0.5 text-[11px] font-semibold',
-                          variacao !== 0 ? 'text-slate-900' : 'text-slate-600'
-                        )}
-                      >
-                        {formatVariacaoPP(variacao)}
-                      </p>
-                    ) : null}
-                    {resumo ? (
-                      <p className="mt-1 text-[11px] leading-relaxed text-slate-700">{resumo}</p>
-                    ) : null}
-                  </div>
-                </div>
-              </li>
-            )
-          })}
-        </ul>
-        <p className="mt-3 border-t border-slate-300 px-1 pt-2 text-[10px] leading-snug text-slate-700">
-          Com «Todas», se a série cruza estimulada e espontânea, o texto alerta efeito de indecisão — não só «queda» ou
-          «alta» de voto. Posição na última onda quando houver comparativo.
-        </p>
-      </aside>
-    </div>
-  )
-}
 
 function BlocoFeedbackAutomatico({
   titulo,
@@ -1088,23 +683,55 @@ export default function PesquisaPage() {
     setAbaPesquisa('grafico')
   }
 
+  const candidatosDisponiveis = useMemo(
+    () =>
+      Array.from(new Set(polls.map((poll) => poll.candidato_nome).filter(Boolean))).sort((a, b) =>
+        a.localeCompare(b, 'pt-BR')
+      ),
+    [polls]
+  )
+
+  const tipoPillClass = (active: boolean) =>
+    cn(
+      'cursor-pointer rounded-[99px] border px-2.5 py-1 text-[11.5px] transition-colors',
+      active
+        ? 'border-[rgb(var(--color-primary))] bg-[rgb(var(--color-primary-tint))] font-medium text-[rgb(var(--color-primary))]'
+        : 'border-[rgb(var(--color-border-secondary)/0.85)] bg-transparent text-text-secondary'
+    )
+
+  const filterSelectWrapClass = 'relative inline-flex items-center'
+  const filterSelectClass =
+    'appearance-none rounded-[99px] border border-[rgb(var(--color-border-secondary)/0.85)] bg-transparent py-1 pl-2.5 pr-7 text-[11.5px] text-text-primary focus:outline-none focus:ring-2 focus:ring-[rgb(var(--color-primary)/0.25)]'
+
+  const tabButtonClass = (active: boolean) =>
+    cn(
+      'cursor-pointer rounded-[6px] px-3.5 py-[5px] text-[12px] transition-colors',
+      active
+        ? 'border border-[rgb(var(--color-border-tertiary)/0.85)] bg-bg-surface font-medium text-text-primary'
+        : 'border border-transparent bg-transparent text-text-secondary hover:text-text-primary'
+    )
+
+  const emptyGraficoMessage =
+    polls.length === 0
+      ? 'Nenhuma pesquisa cadastrada'
+      : 'Nenhum registro com os filtros atuais (incluindo região).'
+
   return (
     <div className={cn('min-h-screen font-sans', isCockpit ? 'sidebar-cockpit-shell' : 'bg-bg-surface')}>
 
       <div className="px-4 py-6 lg:px-6">
-        {/* Seletor de Candidato Padrão e Botão Nova Pesquisa */}
-        <div className={cn('mb-6 rounded-2xl border p-4', sectionShellClass)}>
-          <div className="flex items-center gap-4 flex-wrap">
-            <Link
-              href={hrefResumoEleicoes}
-              className={cn('inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-xs font-medium transition-colors', isCockpit ? 'border-white/12 hover:bg-white/10' : 'border-card hover:bg-background')}
-            >
-              <ArrowLeft className="w-4 h-4" />
-              Voltar para Resumo Eleições
-            </Link>
-            <label className="text-sm font-semibold text-text-primary whitespace-nowrap">
-              Candidato para resumo:
-            </label>
+        <div className="mb-2.5 flex flex-row flex-wrap items-center gap-3 rounded-xl border border-[rgb(var(--color-border-tertiary)/0.85)] bg-bg-surface px-4 py-2.5">
+          <Link
+            href={hrefResumoEleicoes}
+            className="inline-flex items-center gap-[5px] rounded-[10px] border border-[rgb(var(--color-border-secondary)/0.85)] bg-transparent px-2 py-[5px] text-[12px] text-text-secondary transition-colors hover:bg-bg-app"
+          >
+            <IconArrowLeft className="h-[13px] w-[13px] shrink-0" stroke={1.75} aria-hidden />
+            Resumo Eleições
+          </Link>
+
+          <span className="text-[12px] text-text-muted">Candidato para resumo:</span>
+
+          <div className="relative inline-flex max-w-xs items-center">
             <select
               value={candidatoPadrao}
               onChange={(e) => {
@@ -1112,93 +739,76 @@ export default function PesquisaPage() {
                 setCandidatoPadrao(novoCandidato)
                 localStorage.setItem('candidatoPadraoPesquisa', novoCandidato)
               }}
-              className={cn('flex-1 max-w-xs rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent-gold-soft', inputShellClass)}
+              className="appearance-none rounded-[99px] border border-[rgb(var(--color-border-secondary)/0.85)] bg-transparent py-1 pl-2.5 pr-7 text-[13px] font-medium text-text-primary transition-colors hover:border-[rgb(var(--color-primary))] focus:outline-none focus:ring-2 focus:ring-[rgb(var(--color-primary)/0.25)]"
             >
               <option value="">Selecione um candidato</option>
-              {Array.from(new Set(polls.map(p => p.candidato_nome).filter(Boolean)))
-                .sort()
-                .map((candidato) => (
-                  <option key={candidato} value={candidato}>
-                    {candidato}
-                  </option>
-                ))}
+              {candidatosDisponiveis.map((candidato) => (
+                <option key={candidato} value={candidato}>
+                  {candidato}
+                </option>
+              ))}
             </select>
-            <button
-              onClick={() => {
-                setEditingPoll(null)
-                setShowModal(true)
-              }}
-              className="ml-auto px-4 py-2 text-sm font-medium bg-accent-gold text-white rounded-lg hover:bg-accent-gold transition-colors flex items-center gap-2"
-            >
-              <Plus className="w-4 h-4" />
-              Nova Pesquisa
-            </button>
+            <IconChevronDown
+              className="pointer-events-none absolute right-2.5 h-[11px] w-[11px] text-text-secondary"
+              stroke={1.75}
+              aria-hidden
+            />
           </div>
+
+          <button
+            type="button"
+            onClick={() => {
+              setEditingPoll(null)
+              setShowModal(true)
+            }}
+            className="ml-auto inline-flex items-center gap-1.5 rounded-[10px] border-none bg-[rgb(var(--color-primary))] px-3 py-1.5 text-[12px] font-medium text-white transition-colors hover:bg-[rgb(var(--color-primary-hover))]"
+          >
+            <IconPlus className="h-[13px] w-[13px] shrink-0" stroke={1.75} aria-hidden />
+            Nova pesquisa
+          </button>
         </div>
 
-        {/* Filtros — uma linha (scroll horizontal em telas estreitas) */}
-        <div id="filtros" className={cn('mb-4 rounded-xl border px-3 py-2', innerPanelClass)}>
-          <div className="flex flex-nowrap items-center gap-x-2 sm:gap-3 overflow-x-auto pb-0.5 [scrollbar-width:thin]">
-            <span className="text-xs font-semibold text-text-primary shrink-0">Filtros</span>
-            <span className="hidden sm:block h-4 w-px shrink-0 bg-border-card opacity-60" aria-hidden />
+        <div
+          id="filtros"
+          className="mb-2.5 flex flex-row flex-wrap items-center gap-2 rounded-xl border border-[rgb(var(--color-border-tertiary)/0.85)] bg-bg-surface px-4 py-2"
+        >
+          <span className="text-[11px] font-medium text-text-muted">Filtros</span>
 
-            <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
-              <span className="text-[10px] font-medium uppercase tracking-wide text-secondary whitespace-nowrap">
-                Tipo
-              </span>
-              <div className="flex items-center gap-x-2 sm:gap-x-3">
-                <label
-                  className="flex items-center gap-1 cursor-pointer whitespace-nowrap"
-                  title={`No gráfico: nas datas em que só há pesquisa espontânea, ${Math.round(DEFAULT_ESPONTANEA_NAO_SABE_EXPANSION_RATE * 100)}% do «Não sabe» é redistribuído entre candidatos. Datas só estimulada ou com os dois tipos permanecem sem esse ajuste.`}
-                >
-                  <input
-                    type="radio"
-                    name="tipoGrafico"
-                    value="todas"
-                    checked={tipoGrafico === 'todas'}
-                    onChange={(e) => setTipoGrafico(e.target.value as TipoGraficoPesquisa)}
-                    className="h-3.5 w-3.5 shrink-0 text-accent-gold focus:ring-accent-gold"
-                  />
-                  <span className="text-xs text-text-primary">Todas</span>
-                </label>
-                <label className="flex items-center gap-1 cursor-pointer whitespace-nowrap">
-                  <input
-                    type="radio"
-                    name="tipoGrafico"
-                    value="estimulada"
-                    checked={tipoGrafico === 'estimulada'}
-                    onChange={(e) => setTipoGrafico(e.target.value as TipoGraficoPesquisa)}
-                    className="h-3.5 w-3.5 shrink-0 text-accent-gold focus:ring-accent-gold"
-                  />
-                  <span className="text-xs text-text-primary">Estimulada</span>
-                </label>
-                <label
-                  className="flex items-center gap-1 cursor-pointer whitespace-nowrap"
-                  title={`No gráfico: ${Math.round(DEFAULT_ESPONTANEA_NAO_SABE_EXPANSION_RATE * 100)}% do «Não sabe» redistribuído; branco/nulo inalterado. Com «Todas», o mesmo nas datas só espontânea. Tabela com valores brutos.`}
-                >
-                  <input
-                    type="radio"
-                    name="tipoGrafico"
-                    value="espontanea"
-                    checked={tipoGrafico === 'espontanea'}
-                    onChange={(e) => setTipoGrafico(e.target.value as TipoGraficoPesquisa)}
-                    className="h-3.5 w-3.5 shrink-0 text-accent-gold focus:ring-accent-gold"
-                  />
-                  <span className="text-xs text-text-primary">Espontânea</span>
-                </label>
-              </div>
-            </div>
+          <div className="flex flex-wrap items-center gap-1.5">
+            {(
+              [
+                { value: 'todas' as const, label: 'Todas' },
+                { value: 'estimulada' as const, label: 'Estimulada' },
+                { value: 'espontanea' as const, label: 'Espontânea' },
+              ] as const
+            ).map((option) => (
+              <button
+                key={option.value}
+                type="button"
+                onClick={() => setTipoGrafico(option.value)}
+                className={tipoPillClass(tipoGrafico === option.value)}
+                title={
+                  option.value === 'todas'
+                    ? `No gráfico: nas datas em que só há pesquisa espontânea, ${Math.round(DEFAULT_ESPONTANEA_NAO_SABE_EXPANSION_RATE * 100)}% do «Não sabe» é redistribuído entre candidatos.`
+                    : option.value === 'espontanea'
+                      ? `No gráfico: ${Math.round(DEFAULT_ESPONTANEA_NAO_SABE_EXPANSION_RATE * 100)}% do «Não sabe» redistribuído; branco/nulo inalterado.`
+                      : undefined
+                }
+              >
+                {option.label}
+              </button>
+            ))}
+          </div>
 
-            <span className="hidden sm:block h-4 w-px shrink-0 bg-border-card opacity-60" aria-hidden />
+          <span className="hidden h-4 w-px shrink-0 bg-[rgb(var(--color-border-tertiary))] sm:block" aria-hidden />
 
-            <label className="flex items-center gap-1.5 shrink-0">
-              <span className="text-[10px] font-medium uppercase tracking-wide text-secondary whitespace-nowrap">
-                Cargo
-              </span>
+          <div className="flex items-center gap-1.5">
+            <span className="text-[11px] font-medium text-text-muted">Cargo</span>
+            <div className={filterSelectWrapClass}>
               <select
                 value={filtroCargo}
                 onChange={(e) => setFiltroCargo(e.target.value)}
-                className={cn('min-w-[6.5rem] max-w-[9rem] rounded-lg border px-2 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-accent-gold-soft', inputShellClass)}
+                className={cn(filterSelectClass, 'min-w-[6.5rem] max-w-[9rem]')}
               >
                 <option value="">Todos</option>
                 <option value="dep_estadual">Dep. Estadual</option>
@@ -1207,35 +817,60 @@ export default function PesquisaPage() {
                 <option value="senador">Senador</option>
                 <option value="presidente">Presidente</option>
               </select>
-            </label>
+              <IconChevronDown
+                className="pointer-events-none absolute right-2 h-[11px] w-[11px] text-text-secondary"
+                stroke={1.75}
+                aria-hidden
+              />
+            </div>
+          </div>
 
-            <label className="flex items-center gap-1.5 shrink-0">
-              <span className="text-[10px] font-medium uppercase tracking-wide text-secondary whitespace-nowrap">
-                Cidade
-              </span>
-              <select
-                value={filtroCidade}
-                onChange={(e) => setFiltroCidade(e.target.value)}
-                className={cn('min-w-[6.5rem] max-w-[10rem] rounded-lg border px-2 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-accent-gold-soft', inputShellClass)}
+          <span className="hidden h-4 w-px shrink-0 bg-[rgb(var(--color-border-tertiary))] sm:block" aria-hidden />
+
+          <div className="flex items-center gap-1.5">
+            <span className="text-[11px] font-medium text-text-muted">Cidade</span>
+            {filtroCidade ? (
+              <button
+                type="button"
+                onClick={() => setFiltroCidade('')}
+                className="inline-flex items-center gap-1 rounded-[99px] border border-[rgb(var(--color-primary))] bg-[rgb(var(--color-primary-tint))] px-2.5 py-1 text-[11.5px] font-medium text-[rgb(var(--color-primary))]"
               >
-                <option value="">Todas</option>
-                {cities.map((city) => (
-                  <option key={city.id} value={city.id}>
-                    {city.name}
-                  </option>
-                ))}
-              </select>
-            </label>
+                {cities.find((city) => city.id === filtroCidade)?.name ?? 'Cidade'}
+                <IconX className="h-[11px] w-[11px] shrink-0" stroke={1.75} aria-hidden />
+              </button>
+            ) : (
+              <div className={filterSelectWrapClass}>
+                <select
+                  value={filtroCidade}
+                  onChange={(e) => setFiltroCidade(e.target.value)}
+                  className={cn(filterSelectClass, 'min-w-[6.5rem] max-w-[10rem]')}
+                >
+                  <option value="">Todas</option>
+                  {cities.map((city) => (
+                    <option key={city.id} value={city.id}>
+                      {city.name}
+                    </option>
+                  ))}
+                </select>
+                <IconChevronDown
+                  className="pointer-events-none absolute right-2 h-[11px] w-[11px] text-text-secondary"
+                  stroke={1.75}
+                  aria-hidden
+                />
+              </div>
+            )}
+          </div>
 
-            <label className="flex items-center gap-1.5 shrink-0">
-              <span className="text-[10px] font-medium uppercase tracking-wide text-secondary whitespace-nowrap">
-                Região
-              </span>
+          <span className="hidden h-4 w-px shrink-0 bg-[rgb(var(--color-border-tertiary))] sm:block" aria-hidden />
+
+          <div className="flex items-center gap-1.5">
+            <span className="text-[11px] font-medium text-text-muted">Região</span>
+            <div className={filterSelectWrapClass}>
               <select
                 value={filtroRegiao}
                 onChange={(e) => setFiltroRegiao(e.target.value as '' | RegiaoPiaui)}
                 title="Mesma lógica do cockpit: município mapeado por latitude (Norte, Centro-Norte, Centro-Sul, Sul)."
-                className={cn('min-w-[5.5rem] max-w-[8rem] rounded-lg border px-2 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-accent-gold-soft', inputShellClass)}
+                className={cn(filterSelectClass, 'min-w-[5.5rem] max-w-[8rem]')}
               >
                 <option value="">Todas</option>
                 {REGIOES_PI_ORDER.map((r) => (
@@ -1244,67 +879,59 @@ export default function PesquisaPage() {
                   </option>
                 ))}
               </select>
-            </label>
+              <IconChevronDown
+                className="pointer-events-none absolute right-2 h-[11px] w-[11px] text-text-secondary"
+                stroke={1.75}
+                aria-hidden
+              />
+            </div>
           </div>
         </div>
 
-        <div className={cn('mb-6 overflow-hidden rounded-2xl border', sectionShellClass)}>
-          <div
-            role="tablist"
-            aria-label="Visualizações da pesquisa"
-            className="flex flex-wrap gap-1 border-b border-card px-2 pt-2 sm:px-3"
-          >
-            <button
-              type="button"
-              role="tab"
-              id="pesquisa-tab-grafico"
-              aria-selected={abaPesquisa === 'grafico'}
-              aria-controls="pesquisa-panel-grafico"
-              tabIndex={abaPesquisa === 'grafico' ? 0 : -1}
-              onClick={() => setAbaPesquisa('grafico')}
-              className={`inline-flex items-center gap-2 rounded-t-lg px-3 py-2.5 text-sm font-medium transition-colors ${
-                abaPesquisa === 'grafico'
-                  ? 'bg-background text-text-primary shadow-[inset_0_-2px_0_0_rgb(var(--accent-gold))]'
-                  : 'text-secondary hover:bg-background/60 hover:text-text-primary'
-              }`}
+        <div className={cn('mb-2.5 overflow-hidden rounded-xl border', sectionShellClass)}>
+          <div className="px-3 pb-2 pt-3 sm:px-4">
+            <div
+              role="tablist"
+              aria-label="Visualizações da pesquisa"
+              className="flex w-fit gap-0.5 rounded-[10px] bg-bg-app p-[3px]"
             >
-              <BarChart3 className="h-4 w-4 shrink-0" aria-hidden />
-              Tendência temporal
-            </button>
-            <button
-              type="button"
-              role="tab"
-              id="pesquisa-tab-tendencia-cards"
-              aria-selected={abaPesquisa === 'tendencia_cards'}
-              aria-controls="pesquisa-panel-tendencia-cards"
-              tabIndex={abaPesquisa === 'tendencia_cards' ? 0 : -1}
-              onClick={() => setAbaPesquisa('tendencia_cards')}
-              className={`inline-flex items-center gap-2 rounded-t-lg px-3 py-2.5 text-sm font-medium transition-colors ${
-                abaPesquisa === 'tendencia_cards'
-                  ? 'bg-background text-text-primary shadow-[inset_0_-2px_0_0_rgb(var(--accent-gold))]'
-                  : 'text-secondary hover:bg-background/60 hover:text-text-primary'
-              }`}
-            >
-              <LayoutGrid className="h-4 w-4 shrink-0" aria-hidden />
-              Intenção de voto (cards)
-            </button>
-            <button
-              type="button"
-              role="tab"
-              id="pesquisa-tab-cadastradas"
-              aria-selected={abaPesquisa === 'cadastradas'}
-              aria-controls="pesquisa-panel-cadastradas"
-              tabIndex={abaPesquisa === 'cadastradas' ? 0 : -1}
-              onClick={() => setAbaPesquisa('cadastradas')}
-              className={`inline-flex items-center gap-2 rounded-t-lg px-3 py-2.5 text-sm font-medium transition-colors ${
-                abaPesquisa === 'cadastradas'
-                  ? 'bg-background text-text-primary shadow-[inset_0_-2px_0_0_rgb(var(--accent-gold))]'
-                  : 'text-secondary hover:bg-background/60 hover:text-text-primary'
-              }`}
-            >
-              <ClipboardList className="h-4 w-4 shrink-0" aria-hidden />
-              Pesquisas cadastradas
-            </button>
+              <button
+                type="button"
+                role="tab"
+                id="pesquisa-tab-grafico"
+                aria-selected={abaPesquisa === 'grafico'}
+                aria-controls="pesquisa-panel-grafico"
+                tabIndex={abaPesquisa === 'grafico' ? 0 : -1}
+                onClick={() => setAbaPesquisa('grafico')}
+                className={tabButtonClass(abaPesquisa === 'grafico')}
+              >
+                Tendência temporal
+              </button>
+              <button
+                type="button"
+                role="tab"
+                id="pesquisa-tab-tendencia-cards"
+                aria-selected={abaPesquisa === 'tendencia_cards'}
+                aria-controls="pesquisa-panel-tendencia-cards"
+                tabIndex={abaPesquisa === 'tendencia_cards' ? 0 : -1}
+                onClick={() => setAbaPesquisa('tendencia_cards')}
+                className={tabButtonClass(abaPesquisa === 'tendencia_cards')}
+              >
+                Intenção de voto (cards)
+              </button>
+              <button
+                type="button"
+                role="tab"
+                id="pesquisa-tab-cadastradas"
+                aria-selected={abaPesquisa === 'cadastradas'}
+                aria-controls="pesquisa-panel-cadastradas"
+                tabIndex={abaPesquisa === 'cadastradas' ? 0 : -1}
+                onClick={() => setAbaPesquisa('cadastradas')}
+                className={tabButtonClass(abaPesquisa === 'cadastradas')}
+              >
+                Pesquisas cadastradas
+              </button>
+            </div>
           </div>
 
           <div className="p-3 sm:p-4">
@@ -1314,74 +941,16 @@ export default function PesquisaPage() {
                 id="pesquisa-panel-grafico"
                 role="tabpanel"
                 aria-labelledby="pesquisa-tab-grafico"
-                className={cn('rounded-xl border p-4', innerPanelClass)}
               >
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex items-center gap-2 min-w-0">
-              <BarChart3 className="w-5 h-5 text-accent-gold shrink-0" />
-              <div className="min-w-0">
-                <h2 className="text-base font-semibold text-text-primary">
-                  Tendência temporal de intenção (todos os candidatos)
-                </h2>
-                <p className="text-[11px] text-secondary mt-0.5">
-                  Uma linha por candidato; legenda à direita.{' '}
-                  <span className="whitespace-nowrap">Tela cheia para mais espaço.</span>
-                </p>
-                {tipoGrafico === 'espontanea' || tipoGrafico === 'todas' ? (
-                  <details className="mt-1 text-[11px] text-secondary">
-                    <summary className="cursor-pointer text-secondary hover:text-text-primary select-none">
-                      Ajuste de espontânea no gráfico
-                    </summary>
-                    <p className="mt-1.5 border-l-2 border-border-card/50 pl-2 leading-snug">
-                      {tipoGrafico === 'espontanea' ? (
-                        <>
-                          {Math.round(DEFAULT_ESPONTANEA_NAO_SABE_EXPANSION_RATE * 100)}% do «Não sabe» redistribuído entre
-                          candidatos (branco/nulo inalterado). Na aba «Pesquisas cadastradas», os valores permanecem brutos.
-                        </>
-                      ) : (
-                        <>
-                          Nas datas em que <strong>só</strong> há espontânea, o mesmo ajuste; nas demais, valores brutos no
-                          gráfico. Na aba «Pesquisas cadastradas», sempre brutos.
-                        </>
-                      )}
-                    </p>
-                  </details>
-                ) : null}
-              </div>
-            </div>
-            <button
-              type="button"
-              onClick={() => setGraficoTelaCheia(true)}
-              className="shrink-0 inline-flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-lg border border-card bg-background hover:bg-background/80 transition-colors"
-              title="Visualizar em tela cheia"
-            >
-              <Maximize2 className="w-4 h-4 text-secondary" />
-              Tela cheia
-            </button>
-          </div>
-          <div className={cn('mt-4 rounded-xl border p-4', innerPanelClass)}>
-            {loading ? (
-              <div className="h-[460px] flex items-center justify-center lg:h-[560px]">
-                <p className="text-secondary">Carregando...</p>
-              </div>
-            ) : pesquisaData.length === 0 ? (
-              <div className="h-[460px] flex items-center justify-center lg:h-[560px]">
-                <p className="text-secondary text-center px-4">
-                  {polls.length === 0
-                    ? 'Nenhuma pesquisa cadastrada'
-                    : 'Nenhum registro com os filtros atuais (incluindo região).'}
-                </p>
-              </div>
-            ) : (
-              <TendenciaLineChart
-                pesquisaData={pesquisaData}
-                candidatos={candidatos}
-                cores={TENDENCIA_SERIES_COLORS}
-                chartClassName="h-[460px] lg:h-[560px] bg-white rounded-lg"
-                resumoLegendaPorCandidato={resumoLegendaPorCandidato}
-              />
-            )}
-          </div>
+                <TendenciaTemporalPanel
+                  pesquisaData={pesquisaData}
+                  candidatos={candidatos}
+                  candidatoPadrao={candidatoPadrao}
+                  resumoLegendaPorCandidato={resumoLegendaPorCandidato}
+                  onTelaCheia={() => setGraficoTelaCheia(true)}
+                  loading={loading}
+                  emptyMessage={emptyGraficoMessage}
+                />
               </div>
             ) : abaPesquisa === 'tendencia_cards' ? (
               <div
@@ -1855,53 +1424,38 @@ export default function PesquisaPage() {
             aria-modal="true"
             aria-labelledby="pesquisa-tendencia-tela-cheia-titulo"
           >
-            <div className="flex shrink-0 items-center justify-between gap-3 border-b border-card bg-surface px-3 py-3 sm:px-4">
-              <div className="flex min-w-0 items-start gap-2">
-                <BarChart3 className="mt-0.5 h-5 w-5 shrink-0 text-accent-gold" />
-                <div>
-                  <h2
-                    id="pesquisa-tendencia-tela-cheia-titulo"
-                    className="text-base font-semibold text-text-primary"
-                  >
-                    Tendência temporal de intenção — tela cheia
-                  </h2>
-                  <p className="mt-0.5 text-xs text-secondary">{subtituloModalTelaCheia}</p>
-                </div>
+            <div className="flex shrink-0 items-center justify-between gap-3 border-b border-[rgb(var(--color-border-tertiary)/0.85)] bg-bg-surface px-3 py-3 sm:px-4">
+              <div className="min-w-0">
+                <h2
+                  id="pesquisa-tendencia-tela-cheia-titulo"
+                  className="text-[13px] font-medium text-text-primary"
+                >
+                  Tendência temporal de intenção · tela cheia
+                </h2>
+                <p className="mt-0.5 text-[11px] text-text-muted">{subtituloModalTelaCheia}</p>
               </div>
               <button
                 type="button"
                 onClick={() => setGraficoTelaCheia(false)}
-                className="shrink-0 rounded-lg p-2 transition-colors hover:bg-background"
+                className="shrink-0 rounded-[10px] border border-[rgb(var(--color-border-secondary)/0.85)] p-2 transition-colors hover:bg-bg-app"
                 title="Fechar tela cheia"
               >
-                <X className="h-6 w-6 text-secondary" />
+                <IconX className="h-5 w-5 text-text-secondary" stroke={1.75} />
               </button>
             </div>
 
             <div className="flex min-h-0 flex-1 flex-col p-2 sm:p-3">
-              {loading ? (
-                <div className="flex h-full items-center justify-center">
-                  <p className="text-secondary">Carregando...</p>
-                </div>
-              ) : pesquisaData.length === 0 ? (
-                <div className="flex h-full items-center justify-center px-4 text-center">
-                  <p className="text-secondary">
-                    {polls.length === 0
-                      ? 'Nenhuma pesquisa cadastrada'
-                      : 'Nenhum registro com os filtros atuais (incluindo região).'}
-                  </p>
-                </div>
-              ) : (
-                <div className="flex h-full min-h-0 flex-1 flex-col overflow-visible rounded-xl border border-card bg-white p-2 sm:p-3">
-                  <TendenciaLineChart
-                    pesquisaData={pesquisaData}
-                    candidatos={candidatos}
-                    cores={TENDENCIA_SERIES_COLORS}
-                    chartClassName="min-h-0 w-full flex-1 basis-0"
-                    resumoLegendaPorCandidato={resumoLegendaPorCandidato}
-                  />
-                </div>
-              )}
+              <TendenciaTemporalPanel
+                pesquisaData={pesquisaData}
+                candidatos={candidatos}
+                candidatoPadrao={candidatoPadrao}
+                resumoLegendaPorCandidato={resumoLegendaPorCandidato}
+                showHeader={false}
+                chartHeight={640}
+                loading={loading}
+                emptyMessage={emptyGraficoMessage}
+                className="flex h-full min-h-0 flex-1 flex-col border-none p-2 sm:p-3"
+              />
             </div>
           </div>,
           document.body

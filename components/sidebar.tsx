@@ -58,6 +58,12 @@ import {
   COCKPIT_PAGE_ACTIVE_CHILD_PILL,
   COCKPIT_PAGE_ACTIVE_MENU_ITEM,
 } from '@/lib/sidebar-menu-active-style'
+import {
+  sidebarChildItemClass,
+  sidebarNavIconClass,
+  sidebarNavItemClass,
+  sidebarSectionLabelClass,
+} from '@/lib/premium-ui-classes'
 import { AppBrandTitle } from '@/components/app-brand-title'
 import { useDashboardHomeChrome } from '@/contexts/dashboard-home-chrome-context'
 
@@ -424,10 +430,8 @@ function SidebarNavItem({
           item.id === 'home' && 'mt-0'
         )}>
           <span className={cn(
-            'text-[0.68rem] font-semibold uppercase tracking-[0.14em]',
+            sidebarSectionLabelClass,
             isGradientHome && 'text-white/45',
-            !isGradientHome && isCockpit && 'text-text-muted/90',
-            !isGradientHome && !isCockpit && 'text-text-muted'
           )}>
             {sectionLabel}
           </span>
@@ -456,65 +460,50 @@ function SidebarNavItem({
               setOpenSubmenuId((prev) => (prev === item.id ? null : item.id))
             }
             className={cn(
-              'relative w-full flex items-center gap-3 px-3 py-3 rounded-[12px]',
-              'transition-all duration-200 ease-out',
-              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-gold/50 focus-visible:ring-offset-1 focus-visible:ring-offset-bg-sidebar',
-              !(filmNav && isActive) &&
-                (isGradientHome
-                  ? 'hover:bg-white/10 hover:text-white'
-                  : 'hover:bg-accent-gold-soft/70 hover:text-text-primary'),
-              isActive && !filmNav && 'bg-accent-gold-soft text-text-primary shadow-sm',
-              filmNav &&
-                !isActive &&
-                'border border-white/[0.04] bg-[linear-gradient(180deg,rgba(255,255,255,0.02)_0%,rgba(255,255,255,0.01)_100%)]',
-              filmNav && isActive && cockpitActiveItemClass,
+              filmNav
+                ? cn(
+                    'relative flex w-full items-center gap-3 rounded-[12px] px-3 py-3',
+                    'transition-all duration-200 ease-out',
+                    'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-gold/50 focus-visible:ring-offset-1 focus-visible:ring-offset-bg-sidebar',
+                    !(filmNav && isActive) &&
+                      (isGradientHome
+                        ? 'hover:bg-white/10 hover:text-white'
+                        : 'hover:bg-accent-gold-soft/70 hover:text-text-primary'),
+                    isActive && !filmNav && 'bg-accent-gold-soft text-text-primary shadow-sm',
+                    !isActive &&
+                      'border border-white/[0.04] bg-[linear-gradient(180deg,rgba(255,255,255,0.02)_0%,rgba(255,255,255,0.01)_100%)]',
+                    isActive && cockpitActiveItemClass
+                  )
+                : sidebarNavItemClass(isActive)
             )}
           >
-            {isActive && !filmNav && (
-              <div
-                className="absolute left-0 top-1/2 h-6 w-1 -translate-y-1/2 rounded-r-full bg-accent-gold"
-                aria-hidden
-              />
-            )}
-            <div
+            <Icon
               className={cn(
-                'flex-shrink-0 transition-all duration-200',
-                !filmNav && 'w-5 h-5 group-hover:scale-110',
-                filmNav &&
-                  'flex h-8 w-8 items-center justify-center rounded-xl border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.10)_0%,rgba(255,255,255,0.03)_100%)]',
-                isActive
+                filmNav
                   ? cn(
-                      'text-accent-gold',
-                      filmNav && '!border-white/25 !bg-white/10 !text-white shadow-[0_6px_16px_rgba(0,0,0,0.25)]'
+                      'h-4 w-4 shrink-0',
+                      isActive && '!text-white'
                     )
-                  : isGradientHome
-                    ? 'text-white/75 group-hover:text-white'
-                    : 'text-text-secondary group-hover:text-accent-gold'
+                  : sidebarNavIconClass(isActive)
               )}
-            >
-              <Icon
-                className={cn(
-                  filmNav ? 'h-4 w-4' : 'h-full w-full',
-                  filmNav && isActive && '!text-white'
-                )}
-                strokeWidth={filmNav ? 1.35 : 2}
-              />
-            </div>
+              strokeWidth={filmNav ? 1.35 : 1.75}
+            />
             {(!collapsed || mobileOpen) && (
               <>
                 <span className={cn(
-                  'text-[0.95rem] font-medium leading-none tracking-[0.01em] transition-all duration-200',
-                  'group-hover:translate-x-0.5',
-                  isActive
+                  filmNav
                     ? cn(
-                        'font-semibold text-text-primary',
-                        filmNav && '!text-white'
+                        'text-[0.95rem] font-medium leading-none tracking-[0.01em] transition-all duration-200',
+                        'group-hover:translate-x-0.5',
+                        isActive
+                          ? cn('font-semibold text-text-primary', filmNav && '!text-white')
+                          : isGradientHome
+                            ? 'text-white/80 group-hover:text-white'
+                            : isCockpit
+                              ? 'text-text-primary/90 group-hover:text-text-primary'
+                              : 'text-text-secondary group-hover:text-text-primary'
                       )
-                    : isGradientHome
-                      ? 'text-white/80 group-hover:text-white'
-                      : isCockpit
-                        ? 'text-text-primary/90 group-hover:text-text-primary'
-                        : 'text-text-secondary group-hover:text-text-primary'
+                    : 'flex-1 truncate text-left'
                 )}>
                   {menuLabel(item.id, item.label)}
                 </span>
@@ -585,13 +574,7 @@ function SidebarNavItem({
                           if (child.href !== pathname) setNavigating(true)
                           setMobileOpen(false)
                         }}
-                        className={cn(
-                          'flex items-center gap-2 px-3 py-2 rounded-[8px] text-sm transition-all',
-                          'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-gold/50 focus-visible:ring-offset-1 focus-visible:ring-offset-bg-sidebar',
-                          childActive
-                            ? 'bg-accent-gold-soft text-text-primary font-semibold'
-                            : 'text-text-secondary hover:bg-accent-gold-soft hover:text-text-primary'
-                        )}
+                        className={sidebarChildItemClass(childActive)}
                       >
                         {menuLabel(child.id, child.label)}
                       </Link>
@@ -610,65 +593,46 @@ function SidebarNavItem({
             setMobileOpen(false)
           }}
           className={cn(
-            'relative flex items-center gap-3 px-3 py-3 rounded-[12px]',
-            'transition-all duration-200 ease-out',
-            'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-gold/50 focus-visible:ring-offset-1 focus-visible:ring-offset-bg-sidebar',
-            !(filmNav && isActive) &&
-              (isGradientHome
-                ? 'hover:bg-white/10 hover:text-white'
-                : 'hover:bg-accent-gold-soft/70 hover:text-text-primary'),
-            isActive && !filmNav && 'bg-accent-gold-soft text-text-primary shadow-sm',
-            filmNav &&
-              !isActive &&
-              'border border-white/[0.04] bg-[linear-gradient(180deg,rgba(255,255,255,0.02)_0%,rgba(255,255,255,0.01)_100%)]',
-            filmNav && isActive && cockpitActiveItemClass
+            filmNav
+              ? cn(
+                  'relative flex items-center gap-3 rounded-[12px] px-3 py-3',
+                  'transition-all duration-200 ease-out',
+                  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-gold/50 focus-visible:ring-offset-1 focus-visible:ring-offset-bg-sidebar',
+                  !(filmNav && isActive) &&
+                    (isGradientHome
+                      ? 'hover:bg-white/10 hover:text-white'
+                      : 'hover:bg-accent-gold-soft/70 hover:text-text-primary'),
+                  isActive && !filmNav && 'bg-accent-gold-soft text-text-primary shadow-sm',
+                  !isActive &&
+                    'border border-white/[0.04] bg-[linear-gradient(180deg,rgba(255,255,255,0.02)_0%,rgba(255,255,255,0.01)_100%)]',
+                  isActive && cockpitActiveItemClass
+                )
+              : sidebarNavItemClass(isActive)
           )}
         >
-          {isActive && !filmNav && (
-            <div
-              className="absolute left-0 top-1/2 h-6 w-1 -translate-y-1/2 rounded-r-full bg-accent-gold"
-              aria-hidden
-            />
-          )}
-
-          <div
+          <Icon
             className={cn(
-              'flex-shrink-0 transition-all duration-200',
-              !filmNav && 'w-5 h-5 group-hover:scale-110',
-              filmNav &&
-                'flex h-8 w-8 items-center justify-center rounded-xl border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.10)_0%,rgba(255,255,255,0.03)_100%)]',
-              isActive
-                ? cn(
-                    'text-accent-gold',
-                    filmNav && '!border-white/25 !bg-white/10 !text-white shadow-[0_6px_16px_rgba(0,0,0,0.25)]'
-                  )
-                : isGradientHome
-                  ? 'text-white/75 group-hover:text-white'
-                  : 'text-text-secondary group-hover:text-accent-gold'
+              filmNav
+                ? cn('h-4 w-4 shrink-0', isActive && '!text-white')
+                : sidebarNavIconClass(isActive)
             )}
-          >
-            <Icon
-              className={cn(
-                filmNav ? 'h-4 w-4' : 'h-full w-full',
-                filmNav && isActive && '!text-white'
-              )}
-              strokeWidth={filmNav ? 1.35 : 2}
-            />
-          </div>
+            strokeWidth={filmNav ? 1.35 : 1.75}
+          />
           {(!collapsed || mobileOpen) && (
             <span className={cn(
-              'text-[0.95rem] font-medium leading-none tracking-[0.01em] transition-all duration-200',
-              'group-hover:translate-x-0.5',
-              isActive
+              filmNav
                 ? cn(
-                    'font-semibold text-text-primary',
-                    filmNav && '!text-white'
+                    'text-[0.95rem] font-medium leading-none tracking-[0.01em] transition-all duration-200',
+                    'group-hover:translate-x-0.5',
+                    isActive
+                      ? cn('font-semibold text-text-primary', filmNav && '!text-white')
+                      : isGradientHome
+                        ? 'text-white/80 group-hover:text-white'
+                        : isCockpit
+                          ? 'text-text-primary/90 group-hover:text-text-primary'
+                          : 'text-text-secondary group-hover:text-text-primary'
                   )
-                : isGradientHome
-                  ? 'text-white/80 group-hover:text-white'
-                  : isCockpit
-                    ? 'text-text-primary/90 group-hover:text-text-primary'
-                    : 'text-text-secondary group-hover:text-text-primary'
+                : 'truncate'
             )}>
               {menuLabel(item.id, item.label)}
             </span>

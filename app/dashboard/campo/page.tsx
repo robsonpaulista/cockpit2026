@@ -9,7 +9,6 @@ import {
   Clock3,
   Filter,
   Loader2,
-  MapPinned,
   Pencil,
   Plus,
   Save,
@@ -18,6 +17,7 @@ import {
   X,
 } from 'lucide-react'
 import { MapaPresenca, type PrioridadeCampoMapaRow } from '@/components/mapa-presenca'
+import { CampoResumoWidget } from '@/components/campo/campo-resumo-widget'
 import { cn, formatDate, monthBucketKey, parseDateOnlyLocal } from '@/lib/utils'
 import { sidebarPrimaryCTAButtonClass } from '@/lib/sidebar-menu-active-style'
 import { useTheme } from '@/contexts/theme-context'
@@ -88,9 +88,6 @@ export default function CampoPage() {
   const premiumPrimaryBarClass = isDarkAppearance
     ? 'bg-[linear-gradient(135deg,rgba(45,212,191,0.95)_0%,rgba(14,165,183,0.95)_100%)]'
     : 'bg-[linear-gradient(135deg,rgb(var(--accent-gold))_0%,rgb(var(--accent-gold-dark))_100%)]'
-  const monthlyBarClass = isDarkAppearance
-    ? 'bg-[linear-gradient(180deg,rgba(45,212,191,0.9)_0%,rgba(14,165,183,0.9)_100%)]'
-    : 'bg-[linear-gradient(180deg,rgb(var(--accent-gold))_0%,rgb(var(--accent-gold-dark))_100%)]'
   const [agendas, setAgendas] = useState<Agenda[]>([])
   const [cities, setCities] = useState<City[]>([])
   const [loading, setLoading] = useState(true)
@@ -373,7 +370,6 @@ export default function CampoPage() {
   }
   const totalPipeline = pipelineDistribuicao.reduce((sum, item) => sum + item.value, 0)
   const cityBars = cityPresence.slice(0, 5)
-  const cityBarsMax = cityBars[0]?.count ?? 1
   const agendasFiltradas = agendasOrdenadasDesc.filter((agenda) => {
     const matchCity = filterCity === 'all' || agenda.city_id === filterCity
     const matchStatus = filterStatus === 'all' || agenda.status === filterStatus
@@ -398,7 +394,7 @@ export default function CampoPage() {
     d.setMonth(d.getMonth() - (5 - idx))
     const key = `${d.getFullYear()}-${d.getMonth()}`
     const label = d.toLocaleDateString('pt-BR', { month: 'short' })
-    return { key, label, value: 0 }
+    return { key, label, value: 0, monthIndex: d.getMonth(), year: d.getFullYear() }
   })
   agendasConcluidas.forEach((agenda) => {
     const key = monthBucketKey(agenda.date)
@@ -498,84 +494,17 @@ export default function CampoPage() {
         </section>
 
         <section className="mb-6 animate-reveal animate-reveal-2">
-          <div className={cn('rounded-2xl border p-5 backdrop-blur', sectionShellClass)}>
-            <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
-              <h2 className="flex items-center gap-2 text-base font-semibold text-text-primary">
-                <MapPinned className="h-4 w-4 text-accent-gold" />
-                Resumo de campo
-              </h2>
-              <span className="text-xs font-medium text-text-secondary">{agendas.length} agendas no total</span>
-            </div>
-
-            <div className="mt-2 grid grid-cols-1 gap-4 lg:grid-cols-2">
-              <div className={cn('rounded-xl border p-3', innerPanelClass)}>
-                <div className="mb-6 flex items-center justify-between">
-                  <p className="text-[11px] font-semibold uppercase tracking-wide text-text-muted">Presença & últimas agendas</p>
-                  <span className="text-[11px] font-semibold uppercase tracking-wide text-text-muted">Top 5 + 3 recentes</span>
-                </div>
-                <div className="grid grid-cols-1 gap-3 xl:grid-cols-2">
-                  <div className="space-y-2">
-                    {cityBars.length === 0 ? (
-                      <p className="text-sm text-text-secondary">Sem dados de presença ainda.</p>
-                    ) : (
-                      cityBars.map((city) => (
-                        <div key={city.name} className="space-y-1">
-                          <div className="flex items-center justify-between text-sm text-text-primary">
-                            <span className="truncate pr-2 font-medium">{city.name}</span>
-                            <span className="font-medium">{city.count}</span>
-                          </div>
-                          <div className={cn('h-1.5 overflow-hidden rounded-full', metricTrackClass)}>
-                            <div className={cn('h-full rounded-full transition-all duration-700 ease-out', premiumPrimaryBarClass)} style={{ width: `${(city.count / cityBarsMax) * 100}%` }} />
-                          </div>
-                        </div>
-                      ))
-                    )}
-                  </div>
-                  <div className="space-y-2">
-                    {ultimasRealizadas.length === 0 ? (
-                      <p className="text-sm text-text-secondary">Nenhuma agenda concluída ainda.</p>
-                    ) : (
-                      ultimasRealizadas.slice(0, 3).map((agenda) => (
-                        <div key={agenda.id} className={cn('grid h-7 grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-2 rounded-lg border px-2', innerItemClass)}>
-                          <p className="truncate text-sm font-medium text-text-primary">{agenda.cities?.name ?? 'Cidade não informada'}</p>
-                          <span className="text-xs text-text-secondary">{formatDate(agenda.date)}</span>
-                          <span className="rounded-md bg-status-success/10 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-status-success">
-                            {agenda.type}
-                          </span>
-                        </div>
-                      ))
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              <div className={cn('rounded-xl border p-3', innerPanelClass)}>
-                <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-text-muted">Ritmo mensal</p>
-                <div className="grid h-44 grid-cols-6 items-end gap-2">
-                  {monthBuckets.map((month) => (
-                    <button
-                      key={month.key}
-                      type="button"
-                      onClick={() => setSelectedMonthKey((prev) => (prev === month.key ? null : month.key))}
-                      className={cn(
-                        'flex h-full flex-col items-center justify-end gap-2 rounded-lg px-1 pb-1 transition-colors',
-                        selectedMonthKey === month.key ? (isDarkAppearance ? 'bg-white/10' : 'bg-bg-app/70') : 'hover:bg-bg-app/40',
-                      )}
-                    >
-                      <span className="text-[10px] font-semibold text-text-secondary">{month.value}</span>
-                      <div className="flex h-28 w-full items-end">
-                        <div
-                          className={cn('w-full rounded-t-md transition-all duration-700 ease-out', monthlyBarClass)}
-                          style={{ height: `${Math.max((month.value / monthMax) * 100, month.value > 0 ? 14 : 5)}%` }}
-                        />
-                      </div>
-                      <span className="text-[10px] uppercase text-text-muted">{month.label}</span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </div>
+          <CampoResumoWidget
+            totalAgendas={agendas.length}
+            cityBars={cityBars}
+            recentAgendas={ultimasRealizadas.slice(0, 3).map((agenda) => ({
+              id: agenda.id,
+              date: agenda.date,
+              type: agenda.type,
+              cityName: agenda.cities?.name ?? 'Cidade não informada',
+            }))}
+            monthBuckets={monthBuckets}
+          />
         </section>
 
         <section className="mb-6 animate-reveal animate-reveal-3">
