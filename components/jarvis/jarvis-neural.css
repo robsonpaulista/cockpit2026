@@ -92,3 +92,14 @@
   transition: stroke-dashoffset 0.9s ease-out;
 }
 
+@media (max-width: 639px) {
+  .jarvis-hud-mobile-compact .jarvis-perspective-grid {
+    opacity: 0.22;
+    background-size: 32px 32px;
+  }
+
+  .jarvis-hud-mobile-compact .jarvis-stagger > * {
+    animation-duration: 0.4s;
+  }
+}
+

@@ -112,12 +112,20 @@ export function DashboardHeader() {
           : cn('bg-[rgb(var(--bg-sidebar))]', isRepublicanosPremium && 'republicanos-premium-header'),
       )}
     >
-      <div className="flex h-16 items-center justify-between gap-2 max-lg:pl-[4.5rem] max-lg:pr-2 sm:gap-3 lg:gap-3 lg:px-6">
+      <div
+        className={cn(
+          'flex items-center justify-between gap-2 max-lg:pl-[4.5rem] max-lg:pr-2 sm:gap-3 lg:h-16 lg:gap-3 lg:px-6',
+          isGradientHome ? 'h-12' : 'h-16',
+        )}
+      >
         <div className="flex min-w-0 flex-1 items-center gap-2 sm:gap-3">
           <AppBrandTitle
             isCockpit={false}
             lightOnGradient={isGradientHome}
-            className="shrink-0 whitespace-nowrap"
+            className={cn(
+              'min-w-0 truncate',
+              isGradientHome ? 'text-[0.95rem] sm:text-[1.16rem]' : 'shrink-0 whitespace-nowrap',
+            )}
           />
           <span
             className={cn(
@@ -131,7 +139,7 @@ export function DashboardHeader() {
           <h1
             className={cn(
               'min-w-0 flex-1 truncate text-sm font-bold tracking-tight sm:text-base',
-              isGradientHome ? 'text-white' : 'text-text-primary',
+              isGradientHome ? 'text-white max-lg:hidden' : 'text-text-primary',
             )}
             title={pageTitle}
           >

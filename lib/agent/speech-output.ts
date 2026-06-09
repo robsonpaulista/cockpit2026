@@ -4,13 +4,34 @@ import {
   getSiriVoiceByNumber,
 } from '@/lib/agent/siri-voices'
 import {
+  getOpenAiVoiceLabel,
+  OPENAI_TTS_VOICES,
+  type OpenAiTtsVoiceId,
+} from '@/lib/agent/openai-voices'
+import {
+  MAX_SPEAK_CHARS,
+  stripTextForNeuralSpeech,
+  stripTextForSpeech,
+} from '@/lib/agent/speech-text'
+import {
   getJarvisTtsMode,
   getPreferredSiriVoiceNumber,
   getPreferredVoiceUri,
+  resolvePreferredOpenAiVoice,
 } from '@/lib/agent/voice-preference'
 
-/** Limite de caracteres para TTS (navegador e API neural). */
-const MAX_SPEAK_CHARS = 900
+export { stripTextForNeuralSpeech, stripTextForSpeech }
+export { OPENAI_TTS_VOICES }
+export type { OpenAiTtsVoiceId }
+
+export interface JarvisSpeechConfig {
+  available: boolean
+  defaultVoice: OpenAiTtsVoiceId
+  model: string
+}
+
+/** Pausa entre compromissos da agenda (ms). */
+const SPEECH_SEGMENT_PAUSE_MS = 700
 
 export interface PortugueseVoiceOption {
   voiceURI: string
@@ -27,33 +48,6 @@ let currentAudioUrl: string | null = null
 
 export function isSpeechSynthesisSupported(): boolean {
   return typeof window !== 'undefined' && 'speechSynthesis' in window
-}
-
-/** Texto para voz do navegador — mais normalizado para engines básicas. */
-export function stripTextForSpeech(text: string): string {
-  return text
-    .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
-    .replace(/https?:\/\/\S+/gi, '')
-    .replace(/[*_#`>|]/g, '')
-    .replace(/^\d+\.\s+/gm, '')
-    .replace(/\s*—\s*/g, ', ')
-    .replace(/(\d),(\d)%/g, '$1 vírgula $2 por cento')
-    .replace(/(\d)%/g, '$1 por cento')
-    .replace(/\n+/g, '. ')
-    .replace(/\s+/g, ' ')
-    .trim()
-    .slice(0, MAX_SPEAK_CHARS)
-}
-
-/** Texto para TTS neural — preserva pontuação e números naturais. */
-export function stripTextForNeuralSpeech(text: string): string {
-  return text
-    .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
-    .replace(/https?:\/\/\S+/gi, '')
-    .replace(/[*_#`]/g, '')
-    .replace(/\n{3,}/g, '\n\n')
-    .trim()
-    .slice(0, MAX_SPEAK_CHARS)
 }
 
 function voiceQualityScore(voice: SpeechSynthesisVoice): number {
@@ -220,6 +214,7 @@ function releaseCurrentAudio(): void {
 }
 
 export function stopSpeaking(): void {
+  segmentSpeechCancelled = true
   if (typeof window !== 'undefined' && window.speechSynthesis) {
     window.speechSynthesis.cancel()
   }
@@ -230,9 +225,114 @@ export interface SpeakTextOptions {
   lang?: string
   rate?: number
   preferNeural?: boolean
+  /** Um segmento por compromisso — fala com pausa entre cada item. */
+  segments?: string[]
   onStart?: () => void
   onEnd?: () => void
   onError?: () => void
+}
+
+function stripSpeechSegment(text: string): string {
+  return text
+    .replace(/[*_#`]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
+function waitForAudioEnd(audio: HTMLAudioElement): Promise<void> {
+  return new Promise((resolve, reject) => {
+    audio.onended = () => resolve()
+    audio.onerror = () => reject(new Error('audio playback failed'))
+  })
+}
+
+async function playNeuralBlob(blob: Blob, options: SpeakTextOptions): Promise<boolean> {
+  releaseCurrentAudio()
+  const url = URL.createObjectURL(blob)
+  currentAudioUrl = url
+
+  const audio = new Audio(url)
+  currentAudio = audio
+  let started = false
+
+  audio.onplay = () => {
+    if (!started) {
+      started = true
+      options.onStart?.()
+    }
+  }
+
+  try {
+    await audio.play()
+    await waitForAudioEnd(audio)
+    releaseCurrentAudio()
+    return true
+  } catch {
+    options.onError?.()
+    releaseCurrentAudio()
+    return false
+  }
+}
+
+let cachedSpeechConfig: JarvisSpeechConfig | null = null
+
+export async function fetchJarvisSpeechConfig(): Promise<JarvisSpeechConfig> {
+  if (cachedSpeechConfig) return cachedSpeechConfig
+
+  try {
+    const res = await fetch('/api/agent/speech', { cache: 'no-store' })
+    if (!res.ok) {
+      return { available: false, defaultVoice: 'coral', model: 'tts-1-hd' }
+    }
+    const data = (await res.json()) as JarvisSpeechConfig
+    cachedSpeechConfig = data
+    return data
+  } catch {
+    return { available: false, defaultVoice: 'coral', model: 'tts-1-hd' }
+  }
+}
+
+export function getActiveJarvisVoiceLabel(voiceId: OpenAiTtsVoiceId): string {
+  return getOpenAiVoiceLabel(voiceId)
+}
+
+async function fetchNeuralSpeechBlob(text: string, voice?: OpenAiTtsVoiceId): Promise<Blob | null> {
+  const config = await fetchJarvisSpeechConfig()
+  const effectiveVoice = voice ?? resolvePreferredOpenAiVoice(config.defaultVoice)
+
+  const res = await fetch('/api/agent/speech', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ text, voice: effectiveVoice }),
+    cache: 'no-store',
+  })
+  if (!res.ok) return null
+  const blob = await res.blob()
+  return blob.size ? blob : null
+}
+
+export async function previewOpenAiVoice(text: string, voiceId: OpenAiTtsVoiceId): Promise<boolean> {
+  if (typeof window === 'undefined') return false
+
+  stopSpeaking()
+  const blob = await fetchNeuralSpeechBlob(text, voiceId)
+  if (!blob) return false
+
+  releaseCurrentAudio()
+  const url = URL.createObjectURL(blob)
+  currentAudioUrl = url
+  const audio = new Audio(url)
+  currentAudio = audio
+
+  try {
+    await audio.play()
+    await waitForAudioEnd(audio)
+    releaseCurrentAudio()
+    return true
+  } catch {
+    releaseCurrentAudio()
+    return false
+  }
 }
 
 async function speakWithNeuralApi(
@@ -243,54 +343,122 @@ async function speakWithNeuralApi(
   if (options.preferNeural === false) return null
 
   try {
-    const res = await fetch('/api/agent/speech', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ text }),
-      cache: 'no-store',
-    })
+    if (options.segments && options.segments.length > 0) {
+      segmentSpeechCancelled = false
 
-    if (!res.ok) return null
+      for (let i = 0; i < options.segments.length; i += 1) {
+        if (segmentSpeechCancelled) return stopSpeaking
 
-    const blob = await res.blob()
-    if (!blob.size) return null
+        const chunk = stripSpeechSegment(options.segments[i]).slice(0, MAX_SPEAK_CHARS)
+        if (!chunk) continue
 
-    releaseCurrentAudio()
-    const url = URL.createObjectURL(blob)
-    currentAudioUrl = url
+        const blob = await fetchNeuralSpeechBlob(chunk)
+        if (!blob) return null
 
-    const audio = new Audio(url)
-    currentAudio = audio
+        const ok = await playNeuralBlob(blob, options)
+        if (!ok) return null
 
-    return await new Promise<(() => void) | null>((resolve) => {
-      audio.onplay = () => options.onStart?.()
-      audio.onended = () => {
-        options.onEnd?.()
-        releaseCurrentAudio()
-      }
-      audio.onerror = () => {
-        options.onError?.()
-        options.onEnd?.()
-        releaseCurrentAudio()
-        resolve(null)
+        const isLast = i === options.segments.length - 1
+        if (!isLast && !segmentSpeechCancelled) {
+          await new Promise<void>((resolve) => {
+            window.setTimeout(resolve, SPEECH_SEGMENT_PAUSE_MS)
+          })
+        }
       }
 
-      void audio.play().then(() => {
-        resolve(stopSpeaking)
-      }).catch(() => {
-        releaseCurrentAudio()
-        resolve(null)
-      })
-    })
+      if (!segmentSpeechCancelled) options.onEnd?.()
+      return stopSpeaking
+    }
+
+    const blob = await fetchNeuralSpeechBlob(stripTextForNeuralSpeech(text))
+    if (!blob) return null
+
+    const ok = await playNeuralBlob(blob, options)
+    if (!ok) return null
+    options.onEnd?.()
+    return stopSpeaking
   } catch {
     return null
   }
+}
+
+let segmentSpeechCancelled = false
+
+async function speakWithBrowserSegments(
+  segments: string[],
+  options: SpeakTextOptions
+): Promise<() => void> {
+  const noop = () => {}
+
+  if (!isSpeechSynthesisSupported()) return noop
+
+  const cleanedSegments = segments
+    .map((s) => stripSpeechSegment(s))
+    .filter(Boolean)
+    .map((s) => s.slice(0, MAX_SPEAK_CHARS))
+
+  if (cleanedSegments.length === 0) return noop
+
+  window.speechSynthesis.cancel()
+  segmentSpeechCancelled = false
+
+  const voices = await ensureVoicesLoaded()
+  const voice = resolvePortugueseVoice(voices)
+  let index = 0
+  let started = false
+
+  const cancel = () => {
+    segmentSpeechCancelled = true
+    stopSpeaking()
+  }
+
+  const speakNext = () => {
+    if (segmentSpeechCancelled || index >= cleanedSegments.length) {
+      if (!segmentSpeechCancelled) options.onEnd?.()
+      return
+    }
+
+    const utterance = new SpeechSynthesisUtterance(cleanedSegments[index])
+    utterance.lang = options.lang ?? 'pt-BR'
+    utterance.rate = options.rate ?? 0.9
+    utterance.pitch = 0.97
+    if (voice) utterance.voice = voice
+
+    utterance.onstart = () => {
+      if (!started) {
+        started = true
+        options.onStart?.()
+      }
+    }
+    utterance.onend = () => {
+      if (segmentSpeechCancelled) return
+      index += 1
+      if (index < cleanedSegments.length) {
+        window.setTimeout(speakNext, SPEECH_SEGMENT_PAUSE_MS)
+      } else {
+        options.onEnd?.()
+      }
+    }
+    utterance.onerror = () => {
+      options.onError?.()
+      options.onEnd?.()
+    }
+
+    window.speechSynthesis.speak(utterance)
+  }
+
+  speakNext()
+  return cancel
 }
 
 async function speakWithBrowser(
   text: string,
   options: SpeakTextOptions
 ): Promise<() => void> {
+  if (options.segments && options.segments.length > 0) {
+    return speakWithBrowserSegments(options.segments, options)
+  }
+
   const noop = () => {}
 
   if (!isSpeechSynthesisSupported()) return noop
@@ -321,12 +489,12 @@ async function speakWithBrowser(
 }
 
 /**
- * Fala o texto: prioriza voz do sistema (Siri/Premium) por padrão; OpenAI se configurado.
+ * Fala o texto: prioriza OpenAI TTS (voz fixa em todos os dispositivos); Siri só como fallback.
  */
 export async function speakText(text: string, options: SpeakTextOptions = {}): Promise<() => void> {
   stopSpeaking()
 
-  const mode = typeof window !== 'undefined' ? getJarvisTtsMode() : 'system'
+  const mode = typeof window !== 'undefined' ? getJarvisTtsMode() : 'openai'
   const tryOpenAiFirst = mode === 'openai' && options.preferNeural !== false
 
   if (tryOpenAiFirst) {

@@ -1,3 +1,5 @@
+import { isCandidatoJadyelAlencar } from '@/lib/resumo-operacional-pesquisas'
+
 export type PesquisaRowInput = {
   data?: string
   instituto?: string
@@ -14,7 +16,16 @@ export interface PesquisaTipoChoicePending {
   cidade: string
   data: string
   instituto: string
+  /** Quando a pergunta era sobre Jadyel Alencar — exibir só % e posição dele. */
+  focoJadyel?: boolean
 }
+
+export function queryMentionsJadyelAlencar(text: string): boolean {
+  const q = normalizeForMatch(text)
+  return /\bjadyel\b/.test(q) || /\bjadyel\s+alencar\b/.test(q) || /\bjadyel\s+da\s+jupi\b/.test(q)
+}
+
+export { isCandidatoJadyelAlencar }
 
 export type PesquisasReplyResult =
   | { kind: 'data'; content: string }
@@ -134,6 +145,8 @@ export interface FormatPesquisasOptions {
   tipoFilter?: PesquisaTipo
   /** Após o usuário escolher estimulada/espontânea */
   pendingContext?: PesquisaTipoChoicePending
+  /** Exibir apenas intenção e colocação do Jadyel Alencar em cada pesquisa. */
+  focoJadyel?: boolean
   maxGrupos?: number
   maxCandidatosPorGrupo?: number
 }
@@ -144,13 +157,18 @@ function pickReferenceRow(rows: PesquisaRowInput[]): PesquisaRowInput | undefine
   )[0]
 }
 
-function buildPendingFromRow(row: PesquisaRowInput, termo?: string): PesquisaTipoChoicePending {
+function buildPendingFromRow(
+  row: PesquisaRowInput,
+  termo?: string,
+  focoJadyel?: boolean
+): PesquisaTipoChoicePending {
   const cidade = row.cidade || 'Estado'
   return {
     termo: termo || cidade,
     cidade,
     data: row.data || '',
     instituto: row.instituto || '',
+    focoJadyel,
   }
 }
 
@@ -176,12 +194,12 @@ function findTipoChoiceNeeded(
     .sort((a, b) => (b[0].split('|')[0] || '').localeCompare(a[0].split('|')[0] || ''))
 
   if (ambiguous.length > 0) {
-    return buildPendingFromRow(ambiguous[0][1].sample, options.termo)
+    return buildPendingFromRow(ambiguous[0][1].sample, options.termo, options.focoJadyel)
   }
 
   // Mesma cidade/data com tipos em chaves distintas (instituto/data com variação) — ainda pergunta
   const ref = pickReferenceRow(scopedRows)
-  return ref ? buildPendingFromRow(ref, options.termo) : null
+  return ref ? buildPendingFromRow(ref, options.termo, options.focoJadyel) : null
 }
 
 function rowMatchesPendingContext(row: PesquisaRowInput, ctx: PesquisaTipoChoicePending): boolean {
@@ -190,6 +208,20 @@ function rowMatchesPendingContext(row: PesquisaRowInput, ctx: PesquisaTipoChoice
     normalizeSurveyDate(row.data || '') === normalizeSurveyDate(ctx.data) &&
     surveyInstitutoKey(row.instituto || '') === surveyInstitutoKey(ctx.instituto)
   )
+}
+
+function formatPosicao(posicao: number): string {
+  return `${posicao}º lugar`
+}
+
+function formatJadyelNoGrupo(grupo: PesquisaRowInput[]): string {
+  const candidatos = [...grupo].sort((a, b) => (b.intencao ?? 0) - (a.intencao ?? 0))
+  const idx = candidatos.findIndex((c) => isCandidatoJadyelAlencar(c.candidato_nome || ''))
+  if (idx < 0) return 'Jadyel Alencar: não consta nesta pesquisa\n'
+
+  const row = candidatos[idx]
+  const nomeExibicao = row.candidato_nome || 'Jadyel Alencar'
+  return `${nomeExibicao}: ${formatPct(row.intencao)}% · ${formatPosicao(idx + 1)}\n`
 }
 
 function formatRowsGrouped(rows: PesquisaRowInput[], options: FormatPesquisasOptions): string {
@@ -215,32 +247,44 @@ function formatRowsGrouped(rows: PesquisaRowInput[], options: FormatPesquisasOpt
   const gruposExibir = sortedGroups.slice(0, maxGrupos)
   let out = ''
 
+  const focoJadyel = options.focoJadyel ?? false
+
   if (sortedGroups.length === 1) {
     const grupo = gruposExibir[0][1]
     const cab = grupo[0]
-    out += `**${cab.cidade}**\n${formatCabecalho(cab)}\n\n`
+    out += focoJadyel
+      ? `**Jadyel Alencar** · ${cab.cidade}\n${formatCabecalho(cab)}\n\n`
+      : `**${cab.cidade}**\n${formatCabecalho(cab)}\n\n`
   } else {
-    const titulo = options.termo
-      ? `**Pesquisas** · ${options.termo} (${rows.length} registros)`
-      : `**Pesquisas** (${rows.length} registros)`
+    const titulo = focoJadyel
+      ? options.termo
+        ? `**Jadyel Alencar** · ${options.termo}`
+        : '**Jadyel Alencar**'
+      : options.termo
+        ? `**Pesquisas** · ${options.termo} (${rows.length} registros)`
+        : `**Pesquisas** (${rows.length} registros)`
     out += `${titulo}\n\n`
   }
 
   gruposExibir.forEach(([_, grupo], index) => {
     const cab = grupo[0]
-    const candidatos = [...grupo].sort((a, b) => (b.intencao ?? 0) - (a.intencao ?? 0))
 
     if (sortedGroups.length > 1) {
       out += `**${cab.cidade}**\n${formatCabecalho(cab)}\n`
     }
 
-    const slice = candidatos.slice(0, maxCandidatos)
-    slice.forEach((c, i) => {
-      out += `${i + 1}. ${c.candidato_nome} — ${formatPct(c.intencao)}%\n`
-    })
+    if (focoJadyel) {
+      out += formatJadyelNoGrupo(grupo)
+    } else {
+      const candidatos = [...grupo].sort((a, b) => (b.intencao ?? 0) - (a.intencao ?? 0))
+      const slice = candidatos.slice(0, maxCandidatos)
+      slice.forEach((c, i) => {
+        out += `${i + 1}. ${c.candidato_nome} — ${formatPct(c.intencao)}%\n`
+      })
 
-    if (candidatos.length > maxCandidatos) {
-      out += `+ ${candidatos.length - maxCandidatos} candidatos\n`
+      if (candidatos.length > maxCandidatos) {
+        out += `+ ${candidatos.length - maxCandidatos} candidatos\n`
+      }
     }
 
     if (index < gruposExibir.length - 1) out += '\n'
@@ -267,6 +311,7 @@ export function resolvePesquisasReply(
   }
 
   const tipoFilter = options.tipoFilter
+  const focoJadyel = options.focoJadyel ?? options.pendingContext?.focoJadyel ?? false
 
   if (!tipoFilter) {
     const pending = findTipoChoiceNeeded(rows, options)
@@ -316,7 +361,7 @@ export function resolvePesquisasReply(
     }
   }
 
-  const content = formatRowsGrouped(working, options)
+  const content = formatRowsGrouped(working, { ...options, focoJadyel })
   if (!content) return { kind: 'empty', content: '' }
   return { kind: 'data', content }
 }
@@ -332,8 +377,25 @@ export function formatPesquisasResposta(
 
 export function filterPesquisasByTermo(
   polls: Array<Record<string, unknown>>,
-  termo: string
+  termo: string,
+  options?: { focoJadyel?: boolean }
 ): Array<Record<string, unknown>> {
-  if (!normalizeForMatch(termo)) return polls
+  const termoNorm = normalizeForMatch(termo)
+  if (!termoNorm) return polls
+
+  const focoJadyel = options?.focoJadyel ?? false
+  if (focoJadyel && queryMentionsJadyelAlencar(termo)) {
+    return polls
+  }
+
+  if (focoJadyel) {
+    return polls.filter((raw) => {
+      const row = normalizePesquisaRow(raw)
+      const city = surveyCidadeKey(row.cidade || '')
+      const inst = surveyInstitutoKey(row.instituto || '')
+      return city.includes(termoNorm) || termoNorm.includes(city) || inst.includes(termoNorm)
+    })
+  }
+
   return polls.filter((raw) => rowMatchesTermo(normalizePesquisaRow(raw), termo))
 }

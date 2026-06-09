@@ -1,12 +1,20 @@
+import type { CalendarEventRow } from '@/lib/agenda/calendar-event-utils'
+import { resolveAgendaReply } from '@/lib/agent/resolve-agenda-reply'
 import {
   filterPesquisasByTermo,
   parsePesquisaTipoFromQuery,
+  queryMentionsJadyelAlencar,
   resolvePesquisasReply,
   type PesquisaTipo,
 } from '@/lib/agent/format-pesquisas'
+import {
+  formatNoticiasDestaqueReply,
+  mapNoticiasApiRows,
+} from '@/lib/agent/format-noticias'
 import type {
   AgentClassifiedIntent,
   AgentContextPayload,
+  AgendaScopePending,
   PesquisaTipoChoicePending,
 } from '@/lib/agent/types'
 
@@ -21,14 +29,6 @@ type PollRow = {
   candidato_nome?: string
   intencao?: number
   tipo?: string
-  cities?: { name?: string } | null
-}
-
-type AgendaRow = {
-  date?: string
-  type?: string
-  status?: string
-  description?: string
   cities?: { name?: string } | null
 }
 
@@ -93,8 +93,12 @@ async function toolConsultarPesquisas(
   }
 
   const termoExibicao = args.termo || args.cidade || args.candidato || ''
+  const focoJadyel =
+    queryMentionsJadyelAlencar(args.candidato || '') ||
+    queryMentionsJadyelAlencar(termoExibicao) ||
+    queryMentionsJadyelAlencar(`${args.cidade || ''} ${args.termo || ''}`)
   const filtered = termoExibicao
-    ? filterPesquisasByTermo(polls as Array<Record<string, unknown>>, termoExibicao)
+    ? filterPesquisasByTermo(polls as Array<Record<string, unknown>>, termoExibicao, { focoJadyel })
     : (polls as Array<Record<string, unknown>>)
 
   if (filtered.length === 0) {
@@ -105,6 +109,7 @@ async function toolConsultarPesquisas(
   const result = resolvePesquisasReply(filtered, {
     termo: termoExibicao || undefined,
     tipoFilter,
+    focoJadyel,
     maxGrupos: 3,
     maxCandidatosPorGrupo: 12,
   })
@@ -124,42 +129,39 @@ async function toolConsultarAgendas(
   origin: string,
   cookie: string,
   args: Record<string, string>
-): Promise<string> {
-  const res = await fetchWithCookies(origin, '/api/campo/agendas', cookie)
-  if (!res.ok) return 'Não consegui acessar as agendas.'
-
-  const agendas = (await res.json()) as AgendaRow[]
-  if (!Array.isArray(agendas) || agendas.length === 0) {
-    return 'Não há agendas cadastradas.'
+): Promise<{ content: string; speechSegments?: string[]; agendaScopePending?: AgendaScopePending }> {
+  const res = await fetchWithCookies(origin, '/api/agenda/events', cookie)
+  if (!res.ok) {
+    return { content: 'Não consegui acessar a agenda do Google Calendar.' }
   }
 
-  const cidadeNorm = args.cidade ? norm(args.cidade) : ''
-  const filtered = cidadeNorm
-    ? agendas.filter((a) => norm(a.cities?.name || '').includes(cidadeNorm))
-    : agendas
-
-  const upcoming = [...filtered]
-    .sort((a, b) => String(a.date).localeCompare(String(b.date)))
-    .slice(0, 8)
-
-  if (upcoming.length === 0) {
-    return args.cidade
-      ? `Não encontrei agendas para **${args.cidade}**.`
-      : 'Não há agendas no período.'
+  const payload = (await res.json()) as {
+    events?: CalendarEventRow[]
+    error?: string
   }
 
-  let out = args.cidade
-    ? `**Agendas em ${args.cidade}**\n\n`
-    : `**Próximas agendas**\n\n`
+  if (payload.error) return { content: payload.error }
 
-  upcoming.forEach((a, i) => {
-    const city = a.cities?.name || '—'
-    out += `${i + 1}. ${formatDatePt(a.date || '')} · ${city}\n`
-    out += `   ${a.type || 'evento'} · ${a.status || 'planejada'}`
-    if (a.description) out += ` — ${a.description.slice(0, 80)}`
-    out += '\n'
+  const events = payload.events ?? []
+  if (events.length === 0) {
+    return { content: 'Não há eventos na agenda configurada.' }
+  }
+
+  const queryHint = [args.data, args.termo, args.cidade, 'agenda'].filter(Boolean).join(' ')
+  const result = resolveAgendaReply(events, queryHint, {
+    cidade: args.cidade?.trim() || undefined,
+    maxItems: 8,
   })
-  return out.trim()
+
+  if (result.kind === 'ask_scope') {
+    return { content: result.content, agendaScopePending: result.pending }
+  }
+
+  if (result.kind === 'error') {
+    return { content: result.content }
+  }
+
+  return { content: result.content, speechSegments: result.speechSegments }
 }
 
 async function toolConsultarDemandas(
@@ -196,6 +198,28 @@ async function toolConsultarDemandas(
   return out.trim()
 }
 
+async function toolConsultarNoticiasDestaque(
+  origin: string,
+  cookie: string
+): Promise<{ content: string; speechSegments: string[] }> {
+  const res = await fetchWithCookies(
+    origin,
+    '/api/noticias?dashboard_highlight=true&limit=8',
+    cookie
+  )
+
+  if (!res.ok) {
+    return {
+      content: 'Não consegui acessar as notícias em destaque.',
+      speechSegments: ['Não consegui acessar as notícias em destaque.'],
+    }
+  }
+
+  const rows = mapNoticiasApiRows((await res.json()) as unknown[])
+  const formatted = formatNoticiasDestaqueReply(rows)
+  return { content: formatted.content, speechSegments: formatted.speechSegments }
+}
+
 function toolConsultarAlertas(context?: AgentContextPayload): string {
   const n = context?.alertsCriticosCount ?? 0
   if (n === 0) return 'Não há alertas críticos no momento.'
@@ -226,7 +250,7 @@ function toolAjuda(context?: AgentContextPayload): string {
     '**Por cidade:** expectativa, lideranças, agendas, demandas',
     '**Pesquisas:** intenção de voto por candidato ou município',
     '**Redes:** métricas e posts do Instagram',
-    '**Geral:** chapa federal, alertas, territórios frios',
+    '**Geral:** chapa federal, notícias em destaque, alertas, territórios frios',
     '',
     'Fale em linguagem natural — a IA interpreta e executa.',
   ].join('\n')
@@ -234,7 +258,12 @@ function toolAjuda(context?: AgentContextPayload): string {
 
 export type ServerToolResult =
   | string
-  | { content: string; pesquisaTipoPending?: PesquisaTipoChoicePending }
+  | {
+      content: string
+      speechSegments?: string[]
+      pesquisaTipoPending?: PesquisaTipoChoicePending
+      agendaScopePending?: AgendaScopePending
+    }
 
 export async function executeServerTool(
   classified: AgentClassifiedIntent,
@@ -249,6 +278,8 @@ export async function executeServerTool(
       return toolConsultarAgendas(origin, cookie, classified.args)
     case 'consultar_demandas':
       return toolConsultarDemandas(origin, cookie, classified.args)
+    case 'consultar_noticias_destaque':
+      return toolConsultarNoticiasDestaque(origin, cookie)
     case 'consultar_alertas':
       return toolConsultarAlertas(context)
     case 'consultar_territorios_frios':
@@ -269,6 +300,14 @@ export async function executeServerTool(
 export function buildNavigateAction(
   classified: AgentClassifiedIntent
 ): { type: 'navigate'; url: string; label: string } | undefined {
+  if (classified.intent === 'consultar_noticias_destaque') {
+    return {
+      type: 'navigate',
+      url: '/dashboard/noticias',
+      label: 'Ver Notícias & Crises',
+    }
+  }
+
   if (classified.intent !== 'navegar') return undefined
   const url = classified.args.url?.trim()
   if (!url || !url.startsWith('/')) return undefined

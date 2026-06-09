@@ -15,6 +15,7 @@ export type AgentIntent =
   | 'consultar_instagram_tema'
   | 'consultar_territorio'
   | 'consultar_alertas'
+  | 'consultar_noticias_destaque'
   | 'consultar_territorios_frios'
   | 'navegar'
   | 'resumo_buscar_cidade'
@@ -61,11 +62,19 @@ export interface AgentNavigateAction {
   label: string
 }
 
+export interface AgendaScopePending {
+  cidade?: string
+  dateIso: string
+  dateLabel: string
+  timePeriod?: 'manha' | 'tarde' | 'noite' | null
+}
+
 export interface PesquisaTipoChoicePending {
   termo: string
   cidade: string
   data: string
   instituto: string
+  focoJadyel?: boolean
 }
 
 export interface AgentChatResponse {
@@ -76,6 +85,10 @@ export interface AgentChatResponse {
   action?: AgentNavigateAction
   /** Aguardando usuário escolher estimulada ou espontânea. */
   pesquisaTipoPending?: PesquisaTipoChoicePending
+  /** Aguardando usuário escolher próximos ou todos (agenda de hoje). */
+  agendaScopePending?: AgendaScopePending
+  /** Segmentos para TTS com pausa (ex.: agenda — um compromisso por frase). */
+  speechSegments?: string[]
   meta?: {
     intent?: AgentIntent
     rateLimited?: boolean

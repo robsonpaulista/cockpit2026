@@ -60,8 +60,8 @@ export function JarvisVoiceBar({
         : 'aguardando voz'
 
   return (
-    <div className={cn('w-full max-w-lg', className)}>
-      <div className="flex items-center gap-3 px-3 py-2.5">
+    <div className={cn('w-full max-w-lg px-1 sm:px-0', className)}>
+      <div className="flex items-center gap-2 px-1 py-1.5 sm:gap-3 sm:px-3 sm:py-2.5">
         {speechSupported ? (
           <button
             type="button"
@@ -89,7 +89,7 @@ export function JarvisVoiceBar({
           </button>
         ) : null}
         <div className="min-w-0 flex-1">
-          <p className="truncate font-jarvis-mono text-[10px] text-[var(--color-text-dim)]">
+          <p className="truncate font-jarvis-mono text-[9px] text-[var(--color-text-dim)] sm:text-[10px]">
             {isListening || isSpeaking || isProcessing ? statusLabel : typed}
             {!isListening && !isSpeaking && !isProcessing ? (
               <span className="jarvis-cursor-blink ml-0.5 inline-block h-[10px] w-[4px] bg-[var(--color-core)]" />
@@ -97,7 +97,7 @@ export function JarvisVoiceBar({
           </p>
         </div>
       </div>
-      <div className="mt-2 rounded px-2 py-1.5">
+      <div className="mt-1 rounded px-1 py-1 sm:mt-2 sm:px-2 sm:py-1.5">
         <JarvisVoicePicker className="!max-w-none" compact />
       </div>
     </div>

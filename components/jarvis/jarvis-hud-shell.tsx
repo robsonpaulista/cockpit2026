@@ -3,7 +3,11 @@
 import { ArrowRight } from 'lucide-react'
 import { JarvisCoreSphere } from '@/components/jarvis/jarvis-core-sphere'
 import { JarvisFontScope } from '@/components/jarvis/jarvis-fonts'
-import { JarvisHudSystemLog, type JarvisLogLine } from '@/components/jarvis/jarvis-hud-widgets'
+import {
+  JarvisHudMetricsBar,
+  JarvisHudSystemLog,
+  type JarvisLogLine,
+} from '@/components/jarvis/jarvis-hud-widgets'
 import { JarvisVoiceBar } from '@/components/jarvis/jarvis-voice-bar'
 import { jarvisHudStyle, jarvisPanelClass } from '@/lib/jarvis-hud-tokens'
 import { cn } from '@/lib/utils'
@@ -37,8 +41,8 @@ function StatusTicker({ message }: { message: string }) {
   const line = parts.length > 1 ? parts.join(' ◆ ') : message
 
   return (
-    <div className="shrink-0 overflow-hidden bg-[var(--color-deep)] py-2">
-      <div className="jarvis-ticker-track flex w-max gap-12 whitespace-nowrap px-4 font-jarvis-mono text-[9px] uppercase tracking-[0.18em] text-[var(--color-text-dim)]">
+    <div className="shrink-0 overflow-hidden bg-[var(--color-deep)] py-1.5 sm:py-2">
+      <div className="jarvis-ticker-track flex w-max gap-8 whitespace-nowrap px-3 font-jarvis-mono text-[8px] uppercase tracking-[0.14em] text-[var(--color-text-dim)] sm:gap-12 sm:px-4 sm:text-[9px] sm:tracking-[0.18em]">
         <span>{line}</span>
         <span aria-hidden>{line}</span>
       </div>
@@ -72,9 +76,9 @@ export function JarvisHudShell({
     >
       <div className="jarvis-perspective-grid pointer-events-none absolute inset-0 opacity-[0.35]" aria-hidden />
 
-      <div className="relative flex h-full min-h-0 flex-1 flex-col gap-3 p-2 sm:p-3 lg:flex-row lg:gap-6 lg:p-4">
-        <div className="jarvis-stagger relative flex h-full min-h-0 flex-1">
-          <div className="mx-auto flex h-full min-h-0 w-full max-w-lg flex-col items-center justify-center py-4 text-center sm:py-6">
+      <div className="jarvis-hud-mobile-compact relative flex h-full min-h-0 flex-1 flex-col gap-1.5 p-1.5 sm:gap-3 sm:p-3 lg:flex-row lg:gap-6 lg:p-4">
+        <div className="jarvis-stagger relative order-2 flex min-h-0 flex-1 lg:order-1">
+          <div className="mx-auto flex h-full min-h-0 w-full max-w-lg flex-col items-center justify-center py-2 text-center sm:py-4 lg:py-6">
             {onMinimize ? (
               <button
                 type="button"
@@ -85,8 +89,8 @@ export function JarvisHudShell({
               </button>
             ) : null}
 
-            <div className="flex w-full flex-col items-center gap-3 sm:gap-4">
-              <p className="font-jarvis-mono text-[10px] uppercase tracking-[0.28em] text-[var(--color-text-dim)]">
+            <div className="flex w-full max-w-full flex-col items-center gap-2 sm:gap-4">
+              <p className="hidden font-jarvis-mono text-[10px] uppercase tracking-[0.28em] text-[var(--color-text-dim)] sm:block">
                 núcleo ativo
               </p>
 
@@ -96,10 +100,10 @@ export function JarvisHudShell({
                 isProcessing={isProcessing}
                 onMicClick={onMicClick}
                 enableMic={enableVoice && speechSupported}
-                className="w-full max-w-[min(100%,clamp(14.5rem,40vh,21rem))]"
+                className="w-full max-w-[min(100%,clamp(8.75rem,34vw,11.5rem))] sm:max-w-[min(100%,clamp(11rem,36vw,16rem))] lg:max-w-[min(100%,clamp(14.5rem,40vh,21rem))]"
               />
 
-              <h1 className="font-jarvis-display text-[clamp(1.35rem,3vh,1.75rem)] font-bold uppercase tracking-[0.3em] text-[var(--color-core)]">
+              <h1 className="font-jarvis-display text-[1.15rem] font-bold uppercase tracking-[0.22em] text-[var(--color-core)] sm:text-[clamp(1.35rem,3vh,1.75rem)] sm:tracking-[0.3em]">
                 Jarvis
               </h1>
 
@@ -115,7 +119,10 @@ export function JarvisHudShell({
               ) : null}
 
               {voiceError ? (
-                <p className="font-jarvis-mono text-[9px] leading-snug text-[var(--color-alert)]" role="alert">
+                <p
+                  className="max-w-full px-2 font-jarvis-mono text-[8px] leading-snug text-[var(--color-alert)] sm:text-[9px]"
+                  role="alert"
+                >
                   {voiceError}
                 </p>
               ) : null}
@@ -137,15 +144,16 @@ export function JarvisHudShell({
           </div>
         </div>
 
-        <div className="jarvis-stagger flex h-full min-h-0 w-full shrink-0 flex-col lg:w-[min(100%,20rem)] xl:w-[min(100%,22rem)]">
+        <div className="jarvis-stagger order-1 flex w-full shrink-0 flex-col max-lg:max-h-[min(22vh,8.5rem)] lg:order-2 lg:h-full lg:min-h-0 lg:max-h-none lg:w-[min(100%,20rem)] xl:w-[min(100%,22rem)]">
           <JarvisHudSystemLog
             extraLines={logLines}
             processing={isProcessing}
-            className="min-h-[10rem] flex-1 lg:min-h-0"
+            className="min-h-0 flex-1 max-lg:max-h-full lg:min-h-0"
           />
         </div>
       </div>
 
+      <JarvisHudMetricsBar className="lg:hidden" />
       <StatusTicker message={statusMessage} />
     </JarvisFontScope>
   )

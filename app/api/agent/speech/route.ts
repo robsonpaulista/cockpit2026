@@ -1,12 +1,30 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import { stripTextForNeuralSpeech } from '@/lib/agent/speech-output'
+import {
+  DEFAULT_OPENAI_TTS_VOICE,
+  OPENAI_TTS_VOICES,
+  resolveOpenAiTtsVoice,
+} from '@/lib/agent/openai-voices'
+import { stripTextForNeuralSpeech } from '@/lib/agent/speech-text'
 
 export const dynamic = 'force-dynamic'
 
 const MAX_CHARS = 900
 
-const OPENAI_VOICES = new Set(['alloy', 'ash', 'ballad', 'coral', 'echo', 'fable', 'nova', 'onyx', 'sage', 'shimmer'])
+export async function GET() {
+  const apiKey = process.env.OPENAI_API_KEY?.trim()
+  const defaultVoice = resolveOpenAiTtsVoice(
+    process.env.JARVIS_TTS_VOICE,
+    DEFAULT_OPENAI_TTS_VOICE
+  )
+
+  return NextResponse.json({
+    available: Boolean(apiKey),
+    defaultVoice,
+    voices: OPENAI_TTS_VOICES,
+    model: process.env.JARVIS_TTS_MODEL?.trim() || 'tts-1-hd',
+  })
+}
 
 export async function POST(request: Request) {
   try {
@@ -24,7 +42,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'TTS neural indisponível' }, { status: 503 })
     }
 
-    const body = (await request.json()) as { text?: string }
+    const body = (await request.json()) as { text?: string; voice?: string }
     const cleaned = stripTextForNeuralSpeech(body.text ?? '')
     if (!cleaned) {
       return NextResponse.json({ error: 'Texto vazio' }, { status: 400 })
@@ -33,8 +51,10 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Texto muito longo' }, { status: 400 })
     }
 
-    const voiceRaw = (process.env.JARVIS_TTS_VOICE || 'nova').toLowerCase()
-    const voice = OPENAI_VOICES.has(voiceRaw) ? voiceRaw : 'nova'
+    const voice = resolveOpenAiTtsVoice(
+      body.voice ?? process.env.JARVIS_TTS_VOICE,
+      DEFAULT_OPENAI_TTS_VOICE
+    )
     const model = process.env.JARVIS_TTS_MODEL?.trim() || 'tts-1-hd'
     const speed = Number(process.env.JARVIS_TTS_SPEED ?? '0.96')
     const safeSpeed = Number.isFinite(speed) ? Math.min(1.2, Math.max(0.8, speed)) : 0.96

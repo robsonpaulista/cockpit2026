@@ -53,11 +53,11 @@ export function JarvisHudSystemLog({
   }, [lines])
 
   return (
-    <div className={cn(jarvisPanelGhostClass, 'flex min-h-[160px] flex-1 flex-col', className)}>
-      <p className={jarvisLabelClass}>system log</p>
+    <div className={cn(jarvisPanelGhostClass, 'flex min-h-0 flex-1 flex-col sm:min-h-[160px]', className)}>
+      <p className={cn(jarvisLabelClass, 'text-[8px] sm:text-[9px]')}>system log</p>
       <div
         ref={logRef}
-        className="mt-2 min-h-0 flex-1 overflow-y-auto font-jarvis-mono text-[9px] leading-relaxed"
+        className="mt-1.5 min-h-0 flex-1 overflow-y-auto font-jarvis-mono text-[8px] leading-relaxed sm:mt-2 sm:text-[9px]"
       >
         {lines.map((line, i) => (
           <p
@@ -77,6 +77,16 @@ export function JarvisHudSystemLog({
           </p>
         ))}
       </div>
+      <div className="max-lg:hidden">
+        <JarvisHudMetrics />
+      </div>
+    </div>
+  )
+}
+
+export function JarvisHudMetricsBar({ className }: { className?: string }) {
+  return (
+    <div className={cn('shrink-0 border-t border-[rgba(0,212,255,0.08)] bg-[var(--color-deep)]/40 px-1 py-2', className)}>
       <JarvisHudMetrics />
     </div>
   )
@@ -97,7 +107,7 @@ function JarvisHudMetrics() {
   )
 
   return (
-    <div className="mt-3 flex pt-2">
+    <div className="mt-2 flex border-t border-[rgba(0,212,255,0.08)] pt-2 sm:mt-3">
       {targets.map((target, i) => (
         <MetricFooterCell key={METRIC_LABELS[i]} label={METRIC_LABELS[i]} value={target} />
       ))}
@@ -109,9 +119,9 @@ function MetricFooterCell({ label, value }: { label: string; value: number }) {
   const display = useCountUp(value, 900)
 
   return (
-    <div className="group flex flex-1 flex-col items-center px-1 transition-shadow hover:shadow-[0_0_12px_rgba(0,102,255,0.15)]">
-      <span className="font-jarvis-mono text-sm text-[var(--color-text-code)]">{display}</span>
-      <span className="mt-0.5 font-jarvis-mono text-[7px] uppercase tracking-wider text-[var(--color-text-dim)]">
+    <div className="group flex min-w-0 flex-1 flex-col items-center px-0.5 transition-shadow hover:shadow-[0_0_12px_rgba(0,102,255,0.15)] sm:px-1">
+      <span className="font-jarvis-mono text-xs text-[var(--color-text-code)] sm:text-sm">{display}</span>
+      <span className="mt-0.5 max-w-full truncate text-center font-jarvis-mono text-[8px] uppercase tracking-wide text-[var(--color-text-dim)] sm:text-[7px] sm:tracking-wider">
         {label}
       </span>
     </div>

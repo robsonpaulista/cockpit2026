@@ -27,14 +27,31 @@ export function intentToSyntheticQuery(
       return cidade ? `lideranças em ${cidade}` : 'território e base'
     case 'consultar_demandas':
       return cidade ? `demandas em ${cidade}` : null
-    case 'consultar_agendas':
-      return cidade ? `agenda em ${cidade}` : 'agendas'
+    case 'consultar_agendas': {
+      const data = args.data?.trim()
+      if (cidade && data) return `agenda de ${data} em ${cidade}`
+      if (data) return `agenda de ${data}`
+      if (cidade) return `agenda em ${cidade}`
+      return 'agenda de hoje'
+    }
     case 'consultar_pesquisas': {
       const tipo = args.tipo?.trim().toLowerCase()
-      if (termo && (tipo === 'estimulada' || tipo === 'espontanea')) {
-        return `pesquisa ${tipo} em ${termo}`
+      const candidato = args.candidato?.trim()
+      const mencionaJadyel = candidato ? /jadyel/i.test(candidato) : false
+      const alvo = cidade || termo
+
+      if (mencionaJadyel && alvo) {
+        if (tipo === 'estimulada' || tipo === 'espontanea') {
+          return `pesquisa ${tipo} jadyel em ${alvo}`
+        }
+        return `pesquisa jadyel em ${alvo}`
       }
-      return termo ? `pesquisa em ${termo}` : 'pesquisas'
+      if (mencionaJadyel) return 'pesquisa jadyel'
+
+      if (alvo && (tipo === 'estimulada' || tipo === 'espontanea')) {
+        return `pesquisa ${tipo} em ${alvo}`
+      }
+      return alvo ? `pesquisa em ${alvo}` : 'pesquisas'
     }
     case 'consultar_chapa':
       return 'projeção chapa federal'
@@ -50,6 +67,8 @@ export function intentToSyntheticQuery(
       return 'território e base'
     case 'consultar_alertas':
       return 'alertas críticos'
+    case 'consultar_noticias_destaque':
+      return 'notícias em destaque'
     case 'consultar_territorios_frios':
       return 'territórios frios'
     default:
@@ -76,6 +95,7 @@ export function isClientOnlyIntent(intent: AgentIntent): boolean {
     'consultar_instagram_tema',
     'consultar_territorio',
     'consultar_alertas',
+    'consultar_noticias_destaque',
     'consultar_territorios_frios',
     'ajuda',
     'navegar',

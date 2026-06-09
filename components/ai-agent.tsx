@@ -8,16 +8,29 @@ import { JarvisHudShell } from '@/components/jarvis/jarvis-hud-shell'
 import type { JarvisLogLine } from '@/components/jarvis/jarvis-hud-widgets'
 import { jarvisHudStyle } from '@/lib/jarvis-hud-tokens'
 import { getAgentSessionId } from '@/lib/agent/client-session'
+import type { CalendarEventRow } from '@/lib/agenda/calendar-event-utils'
+import { parseAgendaDayScopeFromAnswer } from '@/lib/agent/agenda-query'
+import {
+  type AgendaReplyResult,
+  resolveAgendaReply,
+} from '@/lib/agent/resolve-agenda-reply'
 import {
   filterPesquisasByTermo,
   parsePesquisaTipoFromQuery,
+  queryMentionsJadyelAlencar,
   resolvePesquisasReply,
   type PesquisaTipo,
 } from '@/lib/agent/format-pesquisas'
+import {
+  formatNoticiasDestaqueReply,
+  mapNoticiasApiRows,
+  queryAsksNoticiasDestaque,
+} from '@/lib/agent/format-noticias'
 import { isSpeechSynthesisSupported, speakText, stopSpeaking } from '@/lib/agent/speech-output'
 import type {
   AgentChatResponse,
   AgentContextPayload,
+  AgendaScopePending,
   PesquisaTipoChoicePending,
 } from '@/lib/agent/types'
 
@@ -34,6 +47,8 @@ interface ChatMessage {
   role: 'user' | 'assistant'
   content: string
   viaAi?: boolean
+  /** Segmentos para TTS com pausa (ex.: um compromisso por frase na agenda). */
+  speechSegments?: string[]
   action?: {
     type: 'navigate' | 'link'
     url: string
@@ -320,6 +335,18 @@ function extractCityName(query: string): string | null {
   return null
 }
 
+function isExpectativaDetalheAffirmative(query: string): boolean {
+  const q = normalizeText(query)
+  return /\b(sim|quero|pode|detalha|detalhe|detalhada|detalhado|por lideranca|liste|listar|mostra|mostre|manda|ok|claro|com certeza|vai em frente|pode sim)\b/.test(
+    q
+  )
+}
+
+function isExpectativaDetalheNegative(query: string): boolean {
+  const q = normalizeText(query)
+  return /\b(nao|nao preciso|nao quero|negativo|dispensa|so isso|ta bom|obrigado|valeu|por enquanto nao)\b/.test(q)
+}
+
 /** Cruza a fala/texto com os nomes exatos do dropdown de Resumo Eleições */
 function resolveCidadeResumoEleicoesDropdown(query: string, cidades: string[]): string | null {
   const q = normalizeText(query)
@@ -439,13 +466,25 @@ export function AIAgent({
   >('idle')
   const [pesquisaTipoPending, setPesquisaTipoPending] =
     useState<PesquisaTipoChoicePending | null>(null)
+  const [expectativaDetalhePending, setExpectativaDetalhePending] = useState<{
+    cidade: string
+  } | null>(null)
+  const [agendaScopePending, setAgendaScopePending] = useState<AgendaScopePending | null>(null)
+  const agendaScopePendingRef = useRef<AgendaScopePending | null>(null)
+
+  const syncAgendaScopePending = useCallback((pending: AgendaScopePending | null) => {
+    agendaScopePendingRef.current = pending
+    setAgendaScopePending(pending)
+  }, [])
   const resumoEleicoesCidadeChave =
     pageContext?.kind === 'resumo-eleicoes' ? pageContext.cidadeAtual : ''
 
   useEffect(() => {
     setResumoDemandasAssistPhase('idle')
     setPesquisaTipoPending(null)
-  }, [resumoEleicoesCidadeChave])
+    setExpectativaDetalhePending(null)
+    syncAgendaScopePending(null)
+  }, [resumoEleicoesCidadeChave, syncAgendaScopePending])
 
   // Scroll automático para última mensagem
   useEffect(() => {
@@ -522,7 +561,11 @@ export function AIAgent({
   // ==================== FUNÇÕES DE BUSCA ====================
 
   // Buscar dados de expectativa e lideranças por cidade
-  const fetchExpectativaCidade = async (cidade: string): Promise<string> => {
+  const fetchExpectativaCidade = async (
+    cidade: string,
+    options?: { detalhe?: boolean }
+  ): Promise<string> => {
+    const incluirLiderancas = options?.detalhe ?? false
     try {
       // 1. Primeiro verificar configuração do servidor (variáveis de ambiente)
       let config = null
@@ -607,9 +650,23 @@ export function AIAgent({
       liderancas.sort((a, b) => b.expectativa - a.expectativa)
 
       const cidadeFormatada = cidade.charAt(0).toUpperCase() + cidade.slice(1).toLowerCase()
+      const totalFormatado = Math.round(totalExpectativa).toLocaleString('pt-BR')
+      const qtdLiderancas = registrosCidade.length
+
+      if (!incluirLiderancas) {
+        return [
+          `**${cidadeFormatada}**`,
+          '',
+          `Expectativa 2026: **${totalFormatado} votos**`,
+          `Lideranças cadastradas: **${qtdLiderancas}**`,
+          '',
+          'Quer que eu detalhe a expectativa por liderança?',
+        ].join('\n')
+      }
+
       let resposta = `**${cidadeFormatada}**\n\n`
-      resposta += `Expectativa 2026: **${Math.round(totalExpectativa).toLocaleString('pt-BR')} votos**\n`
-      resposta += `Lideranças: **${registrosCidade.length}**`
+      resposta += `Expectativa 2026: **${totalFormatado} votos**\n`
+      resposta += `Lideranças: **${qtdLiderancas}**`
       
       if (liderancas.length > 0 && liderancas.length <= 8) {
         resposta += `\n\n**Lideranças:**\n`
@@ -735,66 +792,129 @@ export function AIAgent({
     }
   }
 
-  // Buscar agendas de uma cidade
-  const fetchAgendasCidade = async (cidade: string): Promise<string> => {
+  type AgendaFetchOutcome =
+    | { kind: 'data'; content: string; speechSegments?: string[] }
+    | { kind: 'ask_scope'; content: string; pending: AgendaScopePending }
+    | { kind: 'error'; content: string }
+
+  const buildNoticiasDestaqueChatMessage = useCallback(async (): Promise<ChatMessage> => {
     try {
-      const response = await fetch('/api/campo/agendas')
+      const response = await fetch('/api/noticias?dashboard_highlight=true&limit=8')
       if (!response.ok) {
-        return `Erro ao buscar agendas.`
-      }
-
-      const agendas = await response.json()
-      const cidadeNorm = normalizeText(cidade)
-      
-      // Filtrar agendas da cidade
-      const agendasCidade = agendas.filter((a: { cities?: { name?: string } }) => {
-        if (!a.cities?.name) return false
-        const nomeCidade = normalizeText(a.cities.name)
-        return nomeCidade.includes(cidadeNorm) || cidadeNorm.includes(nomeCidade)
-      })
-
-      if (agendasCidade.length === 0) {
-        return `Não encontrei agendas em "${cidade}".`
-      }
-
-      const cidadeFormatada = agendasCidade[0]?.cities?.name || cidade
-      let resposta = `**Agendas em ${cidadeFormatada}**\n\n`
-
-      // Ordenar por data (mais recente primeiro)
-      agendasCidade.sort((a: { date: string }, b: { date: string }) => new Date(b.date).getTime() - new Date(a.date).getTime())
-
-      // Mostrar até 5 agendas
-      const agendasMostrar = agendasCidade.slice(0, 5)
-      
-      agendasMostrar.forEach((agenda: { date: string; type: string; status: string; description?: string }, index: number) => {
-        const data = new Date(agenda.date).toLocaleDateString('pt-BR')
-        const tipo = agenda.type === 'visita' ? 'Visita' : 
-                     agenda.type === 'evento' ? 'Evento' :
-                     agenda.type === 'reuniao' ? 'Reunião' : 'Outro'
-        const statusIcon = agenda.status === 'concluida' ? '●' : 
-                           agenda.status === 'cancelada' ? '○' : '◐'
-        
-        resposta += `${statusIcon} **${data}** — ${tipo}\n`
-        if (agenda.description) {
-          resposta += `   ${agenda.description}\n`
+        return {
+          id: Date.now().toString(),
+          role: 'assistant',
+          content: 'Não consegui acessar as notícias em destaque.',
         }
-        if (index < agendasMostrar.length - 1) resposta += '\n'
-      })
-
-      if (agendasCidade.length > 5) {
-        resposta += `\n+ ${agendasCidade.length - 5} agenda(s)`
       }
 
-      // Estatísticas
-      const concluidas = agendasCidade.filter((a: { status: string }) => a.status === 'concluida').length
-      resposta += `\n\nTotal: ${agendasCidade.length} | Concluídas: ${concluidas}`
+      const rows = mapNoticiasApiRows((await response.json()) as unknown[])
+      const formatted = formatNoticiasDestaqueReply(rows)
 
-      return resposta
+      return {
+        id: Date.now().toString(),
+        role: 'assistant',
+        content: formatted.content,
+        speechSegments: formatted.speechSegments,
+        action: {
+          type: 'navigate',
+          url: '/dashboard/noticias',
+          label: 'Ver Notícias & Crises',
+        },
+      }
     } catch (error) {
-      console.error('Erro ao buscar agendas:', error)
-      return `Erro ao buscar agendas. Tente novamente.`
+      console.error('Erro ao buscar notícias em destaque:', error)
+      return {
+        id: Date.now().toString(),
+        role: 'assistant',
+        content: 'Erro ao buscar notícias em destaque. Tente novamente.',
+      }
     }
-  }
+  }, [])
+
+  const fetchAgendaOutcome = useCallback(async (
+    query: string,
+    options?: {
+      cidade?: string
+      scopePending?: AgendaScopePending
+      dayScope?: 'upcoming' | 'all'
+    }
+  ): Promise<AgendaFetchOutcome> => {
+    try {
+      const response = await fetch('/api/agenda/events')
+      if (!response.ok) {
+        return { kind: 'error', content: 'Não consegui acessar a agenda do Google Calendar.' }
+      }
+
+      const payload = (await response.json()) as {
+        events?: CalendarEventRow[]
+        error?: string
+      }
+
+      if (payload.error) return { kind: 'error', content: payload.error }
+
+      const events = payload.events ?? []
+      if (events.length === 0) {
+        return { kind: 'error', content: 'Não há eventos na agenda configurada.' }
+      }
+
+      const result: AgendaReplyResult = resolveAgendaReply(events, query, {
+        cidade: options?.cidade,
+        scopePending: options?.scopePending,
+        dayScope: options?.dayScope,
+        maxItems: 8,
+      })
+
+      if (result.kind === 'ask_scope') {
+        return { kind: 'ask_scope', content: result.content, pending: result.pending }
+      }
+
+      if (result.kind === 'error') {
+        return { kind: 'error', content: result.content }
+      }
+
+      return {
+        kind: 'data',
+        content: result.content,
+        speechSegments: result.speechSegments,
+      }
+    } catch (error) {
+      console.error('Erro ao buscar agenda:', error)
+      return { kind: 'error', content: 'Erro ao buscar a agenda. Tente novamente.' }
+    }
+  }, [])
+
+  const buildAgendaChatMessage = useCallback((
+    outcome: AgendaFetchOutcome,
+    options?: { viaAi?: boolean }
+  ): ChatMessage => {
+    if (outcome.kind === 'ask_scope') {
+      syncAgendaScopePending(outcome.pending)
+      return {
+        id: Date.now().toString(),
+        role: 'assistant',
+        content: outcome.content,
+        viaAi: options?.viaAi,
+      }
+    }
+
+    syncAgendaScopePending(null)
+    return {
+      id: Date.now().toString(),
+      role: 'assistant',
+      content: outcome.content,
+      speechSegments: outcome.kind === 'data' ? outcome.speechSegments : undefined,
+      viaAi: options?.viaAi,
+      action:
+        outcome.kind === 'data'
+          ? {
+              type: 'navigate',
+              url: '/dashboard/agenda',
+              label: 'Ver Agenda',
+            }
+          : undefined,
+    }
+  }, [syncAgendaScopePending])
 
   // Buscar projeção da chapa federal
   const fetchProjecaoChapa = async (): Promise<string> => {
@@ -1386,7 +1506,8 @@ export function AIAgent({
   const fetchPesquisasOutcome = useCallback(async (
     termo: string,
     tipo?: PesquisaTipo,
-    pendingContext?: PesquisaTipoChoicePending
+    pendingContext?: PesquisaTipoChoicePending,
+    options?: { focoJadyel?: boolean }
   ): Promise<PesquisasFetchOutcome> => {
     try {
       const response = await fetch('/api/pesquisa')
@@ -1396,7 +1517,8 @@ export function AIAgent({
 
       const pesquisas = (await response.json()) as Array<Record<string, unknown>>
       const searchTerm = pendingContext?.termo || termo
-      const pesquisasFiltradas = filterPesquisasByTermo(pesquisas, searchTerm)
+      const focoJadyel = options?.focoJadyel ?? pendingContext?.focoJadyel ?? false
+      const pesquisasFiltradas = filterPesquisasByTermo(pesquisas, searchTerm, { focoJadyel })
 
       if (pesquisasFiltradas.length === 0) {
         return { kind: 'error', content: `Não encontrei pesquisas para "${searchTerm}".` }
@@ -1406,6 +1528,7 @@ export function AIAgent({
         termo: searchTerm,
         tipoFilter: tipo,
         pendingContext,
+        focoJadyel,
         maxGrupos: 3,
         maxCandidatosPorGrupo: 12,
       })
@@ -2026,7 +2149,14 @@ export function AIAgent({
     // ===== EXPECTATIVA/VOTOS EM CIDADE ESPECÍFICA =====
     if (cidade && (queryLower.includes('expectativa') || queryLower.includes('voto') || 
         queryLower.includes('2026') || queryLower.includes('quantos') || queryLower.includes('potencial'))) {
-      const resposta = await fetchExpectativaCidade(cidade)
+      const pedeDetalheLideranca =
+        /\b(por lideranca|por liderança|detalhada|detalhado|detalhe|liste|listar|quem)\b/.test(queryLower)
+      const resposta = await fetchExpectativaCidade(cidade, { detalhe: pedeDetalheLideranca })
+      if (!pedeDetalheLideranca) {
+        setExpectativaDetalhePending({ cidade })
+      } else {
+        setExpectativaDetalhePending(null)
+      }
       return {
         id: Date.now().toString(),
         role: 'assistant',
@@ -2034,26 +2164,23 @@ export function AIAgent({
         action: {
           type: 'navigate',
           url: '/dashboard/territorio',
-          label: 'Ver Território Completo',
+          label: pedeDetalheLideranca ? 'Ver Território Completo' : 'Ver Território & Base',
         },
       }
     }
     
     // ===== AGENDA EM CIDADE ESPECÍFICA =====
-    if (cidade && (queryLower.includes('agenda') || queryLower.includes('visita') || 
-        queryLower.includes('evento') || queryLower.includes('reuniao') || queryLower.includes('reunião') ||
-        queryLower.includes('foi') || queryLower.includes('quando') || queryLower.includes('presenca'))) {
-      const resposta = await fetchAgendasCidade(cidade)
-      return {
-        id: Date.now().toString(),
-        role: 'assistant',
-        content: resposta,
-        action: {
-          type: 'navigate',
-          url: '/dashboard/campo',
-          label: 'Ver Campo & Agenda',
-        },
-      }
+    if (
+      cidade &&
+      (queryLower.includes('agenda') ||
+        queryLower.includes('visita') ||
+        queryLower.includes('evento') ||
+        queryLower.includes('reuniao') ||
+        queryLower.includes('reunião') ||
+        queryLower.includes('compromisso'))
+    ) {
+      const outcome = await fetchAgendaOutcome(query, { cidade })
+      return buildAgendaChatMessage(outcome)
     }
 
     // ===== DEMANDAS DE UMA CIDADE =====
@@ -2110,9 +2237,13 @@ export function AIAgent({
       queryLower.includes('intenção') ||
       /\bvoto\b/.test(queryLower)
 
-    if (ehConsultaPesquisa && cidade) {
+    if (ehConsultaPesquisa && (cidade || queryMentionsJadyelAlencar(query))) {
       const tipo = parsePesquisaTipoFromQuery(query)
-      const outcome = await fetchPesquisasOutcome(cidade, tipo ?? undefined)
+      const focoJadyel = queryMentionsJadyelAlencar(query)
+      const searchTerm = cidade || 'jadyel'
+      const outcome = await fetchPesquisasOutcome(searchTerm, tipo ?? undefined, undefined, {
+        focoJadyel,
+      })
       return buildPesquisasChatMessage(outcome)
     }
     
@@ -2319,9 +2450,20 @@ export function AIAgent({
       }
     }
     
+    // ===== NOTÍCIAS EM DESTAQUE (painel) =====
+    if (queryAsksNoticiasDestaque(queryLower)) {
+      return buildNoticiasDestaqueChatMessage()
+    }
+
     // ===== ALERTAS/NOTÍCIAS =====
-    if (queryLower.includes('alerta') || queryLower.includes('noticia') || 
-        queryLower.includes('crise') || queryLower.includes('critico') || queryLower.includes('crítico')) {
+    if (
+      !queryAsksNoticiasDestaque(queryLower) &&
+      (queryLower.includes('alerta') ||
+        queryLower.includes('noticia') ||
+        queryLower.includes('crise') ||
+        queryLower.includes('critico') ||
+        queryLower.includes('crítico'))
+    ) {
       if (criticalAlerts.length > 0) {
         const alert = criticalAlerts[0]
         return {
@@ -2402,24 +2544,20 @@ export function AIAgent({
       }
     }
     
-    // ===== AGENDA GERAL =====
-    if (queryLower.includes('agenda') && !cidade) {
-      return {
-        id: Date.now().toString(),
-        role: 'assistant',
-        content: 'Acesse a página Campo & Agenda para ver suas visitas, fazer check-in e gerenciar demandas.',
-        action: {
-          type: 'navigate',
-          url: '/dashboard/campo',
-          label: 'Ver Campo & Agenda',
-        },
-      }
+    // ===== AGENDA GERAL (Google Calendar — mesma fonte da página Agenda) =====
+    if (
+      queryLower.includes('agenda') ||
+      queryLower.includes('compromisso') ||
+      (queryLower.includes('evento') && /\b(hoje|amanha|ontem|agenda)\b/.test(queryLower))
+    ) {
+      const outcome = await fetchAgendaOutcome(query)
+      return buildAgendaChatMessage(outcome)
     }
 
     // ===== CONSULTA SOBRE CIDADE SEM INDICADOR ESPECÍFICO =====
     if (cidade && !queryLower.includes('pesquisa')) {
-      // Se mencionou uma cidade mas não especificou o que quer, buscar resumo geral
       const expectativaResp = await fetchExpectativaCidade(cidade)
+      setExpectativaDetalhePending({ cidade })
       return {
         id: Date.now().toString(),
         role: 'assistant',
@@ -2427,7 +2565,7 @@ export function AIAgent({
         action: {
           type: 'navigate',
           url: '/dashboard/territorio',
-          label: 'Ver mais detalhes',
+          label: 'Ver Território & Base',
         },
       }
     }
@@ -2436,7 +2574,7 @@ export function AIAgent({
     return {
       id: Date.now().toString(),
       role: 'assistant',
-      content: `**O que posso fazer:**\n\n**Por cidade:**\n› expectativa em Teresina\n› lideranças em Picos\n› agendas em Paes Landim\n› demandas em Parnaíba\n› pedidos em Teresina\n\n**Território & Base:**\n› território e base\n› capilaridade\n› presença territorial\n› expectativa 2026\n› demandas\n\n**Redes Sociais:**\n› métricas do Instagram\n› quantos seguidores tenho?\n› posts mais curtidos\n› melhores posts\n› publicações por tipo\n› qual tema tem melhor performance?\n\n**Geral:**\n› projeção chapa federal\n› alertas críticos\n› territórios frios\n\nDigite sua pergunta!`,
+      content: `**O que posso fazer:**\n\n**Por cidade:**\n› expectativa em Teresina\n› lideranças em Picos\n› agendas em Paes Landim\n› demandas em Parnaíba\n› pedidos em Teresina\n\n**Território & Base:**\n› território e base\n› capilaridade\n› presença territorial\n› expectativa 2026\n› demandas\n\n**Redes Sociais:**\n› métricas do Instagram\n› quantos seguidores tenho?\n› posts mais curtidos\n› melhores posts\n› publicações por tipo\n› qual tema tem melhor performance?\n\n**Geral:**\n› projeção chapa federal\n› notícias em destaque\n› alertas críticos\n› territórios frios\n\nDigite sua pergunta!`,
     }
   }, [
     criticalAlerts,
@@ -2449,6 +2587,9 @@ export function AIAgent({
     resumoDemandasAssistPhase,
     fetchPesquisasOutcome,
     buildPesquisasChatMessage,
+    buildNoticiasDestaqueChatMessage,
+    fetchAgendaOutcome,
+    buildAgendaChatMessage,
   ])
 
   const buildAgentContext = useCallback((): AgentContextPayload => {
@@ -2512,10 +2653,14 @@ export function AIAgent({
           if (data.pesquisaTipoPending) {
             setPesquisaTipoPending(data.pesquisaTipoPending)
           }
+          if (data.agendaScopePending) {
+            syncAgendaScopePending(data.agendaScopePending)
+          }
           return {
             id: Date.now().toString(),
             role: 'assistant',
             content: data.content.trim(),
+            speechSegments: data.speechSegments,
             action: data.action,
             viaAi: true,
           }
@@ -2526,7 +2671,7 @@ export function AIAgent({
         return null
       }
     },
-    [buildAgentContext, processUserQuery]
+    [buildAgentContext, processUserQuery, syncAgendaScopePending]
   )
 
   const submitMessage = useCallback(async (content: string) => {
@@ -2551,7 +2696,8 @@ export function AIAgent({
           const outcome = await fetchPesquisasOutcome(
             pesquisaTipoPending.termo,
             tipo,
-            pesquisaTipoPending
+            pesquisaTipoPending,
+            { focoJadyel: pesquisaTipoPending.focoJadyel }
           )
           response = buildPesquisasChatMessage(outcome, { viaAi: true })
         } else {
@@ -2562,6 +2708,51 @@ export function AIAgent({
               'Para listar os candidatos, responda **estimulada** ou **espontânea**.',
           }
         }
+      } else if (agendaScopePendingRef.current) {
+        const pending = agendaScopePendingRef.current
+        const dayScope = parseAgendaDayScopeFromAnswer(cleanedContent)
+        if (dayScope) {
+          const outcome = await fetchAgendaOutcome('', {
+            scopePending: pending,
+            dayScope,
+            cidade: pending.cidade,
+          })
+          response = buildAgendaChatMessage(outcome, { viaAi: true })
+        } else {
+          response = {
+            id: Date.now().toString(),
+            role: 'assistant',
+            content: 'Responda **próximos** (só o que falta hoje) ou **todos** (dia inteiro, inclusive o que já passou).',
+          }
+        }
+      } else if (expectativaDetalhePending) {
+        if (isExpectativaDetalheAffirmative(cleanedContent)) {
+          const resposta = await fetchExpectativaCidade(expectativaDetalhePending.cidade, {
+            detalhe: true,
+          })
+          setExpectativaDetalhePending(null)
+          response = {
+            id: Date.now().toString(),
+            role: 'assistant',
+            content: resposta,
+            action: {
+              type: 'navigate',
+              url: '/dashboard/territorio',
+              label: 'Ver Território Completo',
+            },
+          }
+        } else if (isExpectativaDetalheNegative(cleanedContent)) {
+          setExpectativaDetalhePending(null)
+          response = {
+            id: Date.now().toString(),
+            role: 'assistant',
+            content: 'Certo. Se quiser, pergunte sobre outra cidade ou outro tema.',
+          }
+        } else {
+          setExpectativaDetalhePending(null)
+        }
+      } else if (queryAsksNoticiasDestaque(normalizeText(cleanedContent))) {
+        response = await buildNoticiasDestaqueChatMessage()
       } else if (resumoDemandasAssistPhase === 'idle') {
         response = await tryAgentChat(cleanedContent, chatMessages)
       }
@@ -2574,6 +2765,7 @@ export function AIAgent({
       if (enableVoice && response.role === 'assistant') {
         stopSpeakingReplyRef.current?.()
         void speakText(response.content, {
+          segments: response.speechSegments,
           onStart: () => setIsSpeaking(true),
           onEnd: () => setIsSpeaking(false),
           onError: () => setIsSpeaking(false),
@@ -2606,11 +2798,17 @@ export function AIAgent({
     enableVoice,
     isProcessing,
     pesquisaTipoPending,
+    expectativaDetalhePending,
+    agendaScopePending,
+    fetchAgendaOutcome,
+    buildAgendaChatMessage,
+    buildNoticiasDestaqueChatMessage,
     processUserQuery,
     resumoDemandasAssistPhase,
     tryAgentChat,
     fetchPesquisasOutcome,
     buildPesquisasChatMessage,
+    fetchExpectativaCidade,
   ])
 
   const submitMessageRef = useRef<(content: string) => Promise<void>>(async () => {})

@@ -82,12 +82,16 @@ export async function POST(request: Request) {
           ? { content: serverContent }
           : {
               content: serverContent.content,
+              speechSegments: serverContent.speechSegments,
               pesquisaTipoPending: serverContent.pesquisaTipoPending,
+              agendaScopePending: serverContent.agendaScopePending,
             }
       return NextResponse.json({
         source: 'groq',
         content: payload.content,
+        speechSegments: payload.speechSegments,
         pesquisaTipoPending: payload.pesquisaTipoPending,
+        agendaScopePending: payload.agendaScopePending,
         action,
         meta: { intent: classified.intent },
       } satisfies AgentChatResponse)

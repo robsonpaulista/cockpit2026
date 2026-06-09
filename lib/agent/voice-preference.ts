@@ -1,18 +1,46 @@
+import {
+  DEFAULT_OPENAI_TTS_VOICE,
+  isValidOpenAiTtsVoice,
+  type OpenAiTtsVoiceId,
+  resolveOpenAiTtsVoice,
+} from '@/lib/agent/openai-voices'
+
 export type JarvisTtsMode = 'system' | 'openai'
 
 const VOICE_URI_KEY = 'jarvis-voice-uri'
 const SIRI_VOICE_NUM_KEY = 'jarvis-siri-voice-number'
 const TTS_MODE_KEY = 'jarvis-tts-mode'
+const OPENAI_VOICE_KEY = 'jarvis-openai-voice'
 
+/** Padrão: TTS neural (OpenAI) — mesma voz em todos os dispositivos. */
 export function getJarvisTtsMode(): JarvisTtsMode {
-  if (typeof window === 'undefined') return 'system'
+  if (typeof window === 'undefined') return 'openai'
   const stored = localStorage.getItem(TTS_MODE_KEY)
-  return stored === 'openai' ? 'openai' : 'system'
+  if (stored === 'system') return 'system'
+  return 'openai'
 }
 
 export function setJarvisTtsMode(mode: JarvisTtsMode): void {
   if (typeof window === 'undefined') return
   localStorage.setItem(TTS_MODE_KEY, mode)
+}
+
+export function getPreferredOpenAiVoice(): OpenAiTtsVoiceId | null {
+  if (typeof window === 'undefined') return null
+  const stored = localStorage.getItem(OPENAI_VOICE_KEY)
+  if (!stored || !isValidOpenAiTtsVoice(stored)) return null
+  return stored
+}
+
+export function setPreferredOpenAiVoice(voice: OpenAiTtsVoiceId | null): void {
+  if (typeof window === 'undefined') return
+  if (!voice) localStorage.removeItem(OPENAI_VOICE_KEY)
+  else localStorage.setItem(OPENAI_VOICE_KEY, voice)
+}
+
+/** Voz efetiva: preferência do usuário ou padrão do servidor. */
+export function resolvePreferredOpenAiVoice(serverDefault?: string | null): OpenAiTtsVoiceId {
+  return getPreferredOpenAiVoice() ?? resolveOpenAiTtsVoice(serverDefault, DEFAULT_OPENAI_TTS_VOICE)
 }
 
 export function getPreferredVoiceUri(): string | null {

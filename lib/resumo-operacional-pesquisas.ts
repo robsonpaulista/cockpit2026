@@ -32,7 +32,7 @@ export function isCandidatoJadyelAlencar(nome: string): boolean {
     .toLowerCase()
     .normalize('NFD')
     .replace(/\p{M}/gu, '')
-  return n.includes('jadyel') && n.includes('alencar')
+  return n.includes('jadyel')
 }
 
 function tipoLabelCurto(t: 'estimulada' | 'espontanea'): string {
