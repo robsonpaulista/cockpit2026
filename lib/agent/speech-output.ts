@@ -14,11 +14,18 @@ import {
   stripTextForSpeech,
 } from '@/lib/agent/speech-text'
 import {
+  configureJarvisAudioElement,
+  primeSpeechSynthesis,
+  unlockJarvisAudio,
+} from '@/lib/agent/audio-unlock'
+import {
   getJarvisTtsMode,
   getPreferredSiriVoiceNumber,
   getPreferredVoiceUri,
   resolvePreferredOpenAiVoice,
 } from '@/lib/agent/voice-preference'
+
+export { unlockJarvisAudio, primeSpeechSynthesis }
 
 export { stripTextForNeuralSpeech, stripTextForSpeech }
 export { OPENAI_TTS_VOICES }
@@ -252,6 +259,7 @@ async function playNeuralBlob(blob: Blob, options: SpeakTextOptions): Promise<bo
   currentAudioUrl = url
 
   const audio = new Audio(url)
+  configureJarvisAudioElement(audio)
   currentAudio = audio
   let started = false
 
@@ -263,6 +271,7 @@ async function playNeuralBlob(blob: Blob, options: SpeakTextOptions): Promise<bo
   }
 
   try {
+    primeSpeechSynthesis()
     await audio.play()
     await waitForAudioEnd(audio)
     releaseCurrentAudio()
@@ -322,9 +331,11 @@ export async function previewOpenAiVoice(text: string, voiceId: OpenAiTtsVoiceId
   const url = URL.createObjectURL(blob)
   currentAudioUrl = url
   const audio = new Audio(url)
+  configureJarvisAudioElement(audio)
   currentAudio = audio
 
   try {
+    primeSpeechSynthesis()
     await audio.play()
     await waitForAudioEnd(audio)
     releaseCurrentAudio()
@@ -399,6 +410,7 @@ async function speakWithBrowserSegments(
 
   if (cleanedSegments.length === 0) return noop
 
+  primeSpeechSynthesis()
   window.speechSynthesis.cancel()
   segmentSpeechCancelled = false
 
@@ -466,6 +478,7 @@ async function speakWithBrowser(
   const cleaned = stripTextForSpeech(text)
   if (!cleaned) return noop
 
+  primeSpeechSynthesis()
   window.speechSynthesis.cancel()
 
   const voices = await ensureVoicesLoaded()
@@ -491,11 +504,31 @@ async function speakWithBrowser(
 /**
  * Fala o texto: prioriza OpenAI TTS (voz fixa em todos os dispositivos); Siri só como fallback.
  */
+async function warmAudioOutput(): Promise<void> {
+  if (typeof window === 'undefined') return
+  primeSpeechSynthesis()
+  try {
+    const audio = new Audio(
+      'data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA'
+    )
+    configureJarvisAudioElement(audio)
+    audio.volume = 0.01
+    await audio.play()
+    audio.pause()
+  } catch {
+    /* sessão pode ainda estar bloqueada — fallback para speechSynthesis */
+  }
+}
+
 export async function speakText(text: string, options: SpeakTextOptions = {}): Promise<() => void> {
+  await warmAudioOutput()
   stopSpeaking()
 
   const mode = typeof window !== 'undefined' ? getJarvisTtsMode() : 'openai'
-  const tryOpenAiFirst = mode === 'openai' && options.preferNeural !== false
+  const config = typeof window !== 'undefined' ? await fetchJarvisSpeechConfig() : null
+  const neuralAvailable = config?.available ?? false
+  const tryOpenAiFirst =
+    mode === 'openai' && options.preferNeural !== false && neuralAvailable
 
   if (tryOpenAiFirst) {
     const neural = await speakWithNeuralApi(text, options)
@@ -505,11 +538,13 @@ export async function speakText(text: string, options: SpeakTextOptions = {}): P
   const browser = await speakWithBrowser(text, { ...options, rate: options.rate ?? 0.92 })
   if (browser) return browser
 
-  if (!tryOpenAiFirst && options.preferNeural !== false) {
+  if (!tryOpenAiFirst && neuralAvailable && options.preferNeural !== false) {
     const neural = await speakWithNeuralApi(text, options)
     if (neural) return neural
   }
 
+  options.onError?.()
+  options.onEnd?.()
   return () => {}
 }
 

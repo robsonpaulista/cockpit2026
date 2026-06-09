@@ -26,6 +26,11 @@ import {
   mapNoticiasApiRows,
   queryAsksNoticiasDestaque,
 } from '@/lib/agent/format-noticias'
+import {
+  startSpeechKeepAlive,
+  stopSpeechKeepAlive,
+  unlockJarvisAudio,
+} from '@/lib/agent/audio-unlock'
 import { isSpeechSynthesisSupported, speakText, stopSpeaking } from '@/lib/agent/speech-output'
 import type {
   AgentChatResponse,
@@ -2963,6 +2968,7 @@ export function AIAgent({
     }
 
     recognition.onend = () => {
+      stopSpeechKeepAlive()
       setIsListening(false)
       const text = pendingSpeechRef.current.trim()
       pendingSpeechRef.current = ''
@@ -2997,6 +3003,7 @@ export function AIAgent({
     setIsSpeaking(false)
 
     if (isListening) {
+      stopSpeechKeepAlive()
       try {
         recognitionRef.current.stop()
       } catch {
@@ -3019,6 +3026,10 @@ export function AIAgent({
       )
       return
     }
+
+    // Desbloqueia áudio/TTS no gesto do toque (obrigatório no iOS antes de respostas assíncronas).
+    unlockJarvisAudio()
+    startSpeechKeepAlive()
 
     // Não usar await/getUserMedia aqui: após um await o navegador perde o "gesto do usuário"
     // e o pré-check pode falhar mesmo com permissão já concedida ao site.

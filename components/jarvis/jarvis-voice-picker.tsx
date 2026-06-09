@@ -6,6 +6,7 @@ import {
   type OpenAiTtsVoiceId,
   OPENAI_TTS_VOICES,
 } from '@/lib/agent/openai-voices'
+import { unlockJarvisAudio } from '@/lib/agent/audio-unlock'
 import {
   fetchJarvisSpeechConfig,
   getActiveJarvisVoiceLabel,
@@ -79,6 +80,7 @@ export function JarvisVoicePicker({
 
   const handlePreview = async () => {
     if (!selectedVoice || previewing || !neuralAvailable) return
+    unlockJarvisAudio()
     setPreviewing(true)
     try {
       await previewOpenAiVoice(PREVIEW_PHRASE, selectedVoice)
@@ -98,8 +100,10 @@ export function JarvisVoicePicker({
           className
         )}
       >
-        <span className="sm:hidden">TTS indisponível — configure OPENAI_API_KEY</span>
-        <span className="hidden sm:inline">TTS neural indisponível — configure OPENAI_API_KEY no servidor</span>
+        <span className="sm:hidden">Voz do navegador (configure OPENAI_API_KEY para TTS fixo)</span>
+        <span className="hidden sm:inline">
+          TTS neural indisponível — usando voz do navegador. Configure OPENAI_API_KEY no servidor.
+        </span>
       </p>
     )
   }
