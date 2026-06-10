@@ -1304,7 +1304,8 @@ export function ExecutiveBriefingModal({
         source="briefing-executivo"
         cidade={cidade}
         title={`Enviar briefing — ${cidade}`}
-        description="Informe o telefone do destinatário e confira a mensagem antes de enviar."
+        description="Escolha um contato salvo ou informe o telefone e confira a mensagem antes de enviar."
+        contactCategory="territorio"
       />
     </div>,
     document.body

@@ -1,6 +1,11 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
+  // Mantém páginas compiladas por mais tempo no dev — reduz 404 ao navegar entre rotas.
+  onDemandEntries: {
+    maxInactiveAge: 60 * 60 * 1000,
+    pagesBufferLength: 5,
+  },
   experimental: {
     /** Resvg usa addon nativo; não empacotar no webpack (API routes / Node). */
     serverComponentsExternalPackages: ['@supabase/supabase-js', '@supabase/ssr', '@resvg/resvg-js'],
@@ -16,7 +21,7 @@ const nextConfig = {
         headers: [{ key: 'Content-Type', value: 'application/javascript; charset=utf-8' }],
       },
       {
-        source: '/:path*',
+        source: '/((?!_next|favicon.ico|icons|sw\\.js|sw-pesquisador\\.js|manifest\\.webmanifest).*)',
         headers: [
           {
             key: 'X-DNS-Prefetch-Control',

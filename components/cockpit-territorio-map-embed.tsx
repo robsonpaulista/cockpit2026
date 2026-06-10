@@ -8,9 +8,9 @@ import { cn } from '@/lib/utils'
 
 const MapaTerritoriosDesenvolvimentoLeaflet = dynamic(
   () =>
-    import('@/components/mapa-territorios-desenvolvimento-leaflet').then((mod) => ({
-      default: mod.MapaTerritoriosDesenvolvimentoLeaflet,
-    })),
+    import('@/components/mapa-territorios-desenvolvimento-leaflet').then(
+      (mod) => mod.MapaTerritoriosDesenvolvimentoLeaflet,
+    ),
   { ssr: false, loading: () => <CockpitMapaPlaceholder /> }
 )
 

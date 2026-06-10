@@ -8,8 +8,15 @@ import { useEffect } from 'react'
  */
 export function RegisterPwa() {
   useEffect(() => {
-    if (process.env.NODE_ENV !== 'production') return
     if (typeof window === 'undefined' || !('serviceWorker' in navigator)) return
+
+    if (process.env.NODE_ENV !== 'production') {
+      // SW de sessões anteriores (prod em localhost) pode servir HTML/chunks velhos.
+      void navigator.serviceWorker.getRegistrations().then((regs) => {
+        regs.forEach((reg) => void reg.unregister())
+      })
+      return
+    }
 
     const register = () => {
       navigator.serviceWorker.register('/sw.js', { scope: '/' }).catch(() => {

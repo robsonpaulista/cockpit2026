@@ -4,7 +4,9 @@ import { classifyAgentIntent } from '@/lib/agent/groq-classify'
 import { buildGreetingReply, isGreetingQuery, isHelpQuery, buildHelpReply } from '@/lib/agent/greeting-reply'
 import { checkAgentRateLimit, AGENT_RATE_LIMITS } from '@/lib/agent/rate-limit'
 import { intentToSyntheticQuery, isClientOnlyIntent } from '@/lib/agent/synthetic-query'
+import { detectWhatsAppSendIntent } from '@/lib/agent/detect-whatsapp-send'
 import { buildNavigateAction, executeServerTool } from '@/lib/agent/server-tools'
+import { toolEnviarWhatsApp } from '@/lib/agent/tool-enviar-whatsapp'
 import type { AgentChatRequest, AgentChatResponse } from '@/lib/agent/types'
 
 export const dynamic = 'force-dynamic'
@@ -67,6 +69,20 @@ export async function POST(request: Request) {
       } satisfies AgentChatResponse & { hint?: string })
     }
 
+    const origin = new URL(request.url).origin
+    const cookie = request.headers.get('cookie') ?? ''
+    const auth = { supabase, user: { id: user.id, email: user.email } }
+
+    const localWhatsapp = detectWhatsAppSendIntent(message)
+    if (localWhatsapp) {
+      const content = await toolEnviarWhatsApp(localWhatsapp.args, origin, cookie, supabase, auth.user)
+      return NextResponse.json({
+        source: 'groq',
+        content,
+        meta: { intent: 'enviar_whatsapp' },
+      } satisfies AgentChatResponse)
+    }
+
     if (!process.env.GROQ_API_KEY?.trim()) {
       return NextResponse.json(fallbackResponse('no_key'))
     }
@@ -88,10 +104,17 @@ export async function POST(request: Request) {
       return NextResponse.json(fallbackResponse('unknown_intent'))
     }
 
-    const origin = new URL(request.url).origin
-    const cookie = request.headers.get('cookie') ?? ''
+    if (classified.intent === 'enviar_whatsapp') {
+      const mergedArgs = { ...detectWhatsAppSendIntent(message)?.args, ...classified.args }
+      const content = await toolEnviarWhatsApp(mergedArgs, origin, cookie, supabase, auth.user)
+      return NextResponse.json({
+        source: 'groq',
+        content,
+        meta: { intent: 'enviar_whatsapp' },
+      } satisfies AgentChatResponse)
+    }
 
-    const serverContent = await executeServerTool(classified, origin, cookie, body.context)
+    const serverContent = await executeServerTool(classified, origin, cookie, body.context, auth)
     if (serverContent) {
       const action = buildNavigateAction(classified)
       const payload =

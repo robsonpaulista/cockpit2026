@@ -11,12 +11,19 @@ import {
   formatNoticiasDestaqueReply,
   mapNoticiasApiRows,
 } from '@/lib/agent/format-noticias'
+import type { SupabaseClient } from '@supabase/supabase-js'
+import { toolEnviarWhatsApp } from '@/lib/agent/tool-enviar-whatsapp'
 import type {
   AgentClassifiedIntent,
   AgentContextPayload,
   AgendaScopePending,
   PesquisaTipoChoicePending,
 } from '@/lib/agent/types'
+
+export interface AgentToolAuth {
+  supabase: SupabaseClient
+  user: { id: string; email?: string | null }
+}
 
 export interface PesquisasToolResult {
   content: string
@@ -251,6 +258,7 @@ function toolAjuda(context?: AgentContextPayload): string {
     '**Pesquisas:** intenção de voto por candidato ou município',
     '**Redes:** métricas e posts do Instagram',
     '**Geral:** chapa federal, notícias em destaque, alertas, territórios frios',
+    '**WhatsApp:** «envia o resumo operacional para o CEO», «manda briefing de Teresina para os executivos»',
     '',
     'Fale em linguagem natural — a IA interpreta e executa.',
   ].join('\n')
@@ -269,9 +277,14 @@ export async function executeServerTool(
   classified: AgentClassifiedIntent,
   origin: string,
   cookie: string,
-  context?: AgentContextPayload
+  context?: AgentContextPayload,
+  auth?: AgentToolAuth,
 ): Promise<ServerToolResult | null> {
   switch (classified.intent) {
+    case 'enviar_whatsapp': {
+      if (!auth) return 'Não foi possível autenticar o envio WhatsApp.'
+      return toolEnviarWhatsApp(classified.args, origin, cookie, auth.supabase, auth.user)
+    }
     case 'consultar_pesquisas':
       return toolConsultarPesquisas(origin, cookie, classified.args)
     case 'consultar_agendas':

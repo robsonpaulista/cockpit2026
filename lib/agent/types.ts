@@ -17,6 +17,7 @@ export type AgentIntent =
   | 'consultar_alertas'
   | 'consultar_noticias_destaque'
   | 'consultar_territorios_frios'
+  | 'enviar_whatsapp'
   | 'navegar'
   | 'resumo_buscar_cidade'
   | 'resumo_abrir_demandas'

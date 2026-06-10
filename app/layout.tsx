@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from 'next'
 import { IBM_Plex_Sans } from 'next/font/google'
 import './globals.css'
 import { RegisterPwa } from '@/components/register-pwa'
+import { DevChunkRecovery } from '@/components/dev-chunk-recovery'
 
 const ibmPlexSans = IBM_Plex_Sans({
   subsets: ['latin'],
@@ -76,6 +77,7 @@ export default function RootLayout({
       </head>
       <body className={`${ibmPlexSans.className} ${ibmPlexSans.variable}`}>
         <RegisterPwa />
+        <DevChunkRecovery />
         {children}
       </body>
     </html>

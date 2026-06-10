@@ -5,6 +5,7 @@ import { useEffect } from 'react'
 export function PesquisadorRootShell({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (typeof window === 'undefined' || !('serviceWorker' in navigator)) return
+    if (process.env.NODE_ENV !== 'production') return
     navigator.serviceWorker
       .register('/sw-pesquisador.js', { scope: '/pesquisador/' })
       .catch(() => {

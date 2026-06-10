@@ -2,10 +2,14 @@
 
 import dynamic from 'next/dynamic'
 
-const AIAgent = dynamic(
-  () => import('@/components/ai-agent').then((mod) => ({ default: mod.AIAgent })),
-  { ssr: false, loading: () => null }
-)
+const JarvisHomeAgent = dynamic(() => import('@/components/jarvis-home-agent'), {
+  ssr: false,
+  loading: () => (
+    <div className="flex h-full min-h-0 flex-1 items-center justify-center text-sm text-text-secondary">
+      Carregando Jarvis…
+    </div>
+  ),
+})
 
 /**
  * Visão Geral — núcleo neural Jarvis em tela cheia (voz + system log).
@@ -13,7 +17,7 @@ const AIAgent = dynamic(
 export default function Home() {
   return (
     <div className="flex h-full min-h-0 flex-1 flex-col">
-      <AIAgent
+      <JarvisHomeAgent
         agentTitle="Jarvis"
         uiVariant="jarvis-hud"
         dockVariant="inline"

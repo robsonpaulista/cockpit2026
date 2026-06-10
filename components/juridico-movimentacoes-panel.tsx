@@ -294,7 +294,8 @@ export function JuridicoMovimentacoesPanel({
         cidade={processo.processo}
         preferCeoPhone
         title="Enviar atualização ao CEO"
-        description="Confira a mensagem e confirme o telefone do CEO antes de enviar."
+        description="Escolha um contato salvo ou confirme o telefone do CEO antes de enviar."
+        contactCategory="executivo"
       />
     </section>
   )

@@ -282,7 +282,9 @@ export default function ResumoOperacionalPage() {
         text={textoWhatsApp}
         source="resumo-operacional"
         title="Enviar resumo operacional"
-        description="Informe o telefone do destinatário. As notícias em destaque saem com link clicável."
+        description="Selecione um ou mais contatos para enviar em fila. As notícias em destaque saem com link clicável."
+        contactCategory="executivo"
+        allowMultipleRecipients
       />
     </div>
   )
