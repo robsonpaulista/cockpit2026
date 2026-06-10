@@ -125,18 +125,47 @@ export async function toolEnviarWhatsApp(
 
   const titulo =
     conteudo === 'briefing_territorio'
-      ? `Briefing de **${cidade}**`
+      ? `Briefing de ${cidade}`
       : `Resumo operacional (${days} dias)`
 
-  let out = `**${titulo}** enviado por WhatsApp.\n\n`
-  out += `Destinatários: ${formatRecipientsList(recipients)}\n\n`
-  out += result.lines.join('\n')
+  const destinatarios = formatRecipientsList(recipients)
+  const linhas = result.lines.map((l) => `› ${l.replace(/^[✓✗]\s*/, '')}`)
 
-  if (result.failed > 0) {
-    out += `\n\n${result.sent} enviado(s), ${result.failed} falha(s).`
-  } else {
-    out += `\n\nTodos os ${result.sent} envios concluídos.`
+  if (result.failed === 0 && result.sent > 0) {
+    return [
+      '**WhatsApp enviado**',
+      '',
+      `Conteúdo: **${titulo}**`,
+      `Destinatário(s): **${destinatarios}**`,
+      `Status: **Enviado com sucesso**`,
+      '',
+      ...linhas,
+      '',
+      `Confirmação: ${result.sent} mensagem(ns) entregue(s) ao provedor.`,
+    ].join('\n')
   }
 
-  return out.trim()
+  if (result.sent === 0) {
+    return [
+      '**Falha no envio WhatsApp**',
+      '',
+      `Conteúdo: **${titulo}**`,
+      `Destinatário(s): **${destinatarios}**`,
+      `Status: **Não enviado**`,
+      '',
+      ...linhas,
+      '',
+      'Verifique o cadastro do contato em Dashboard → WhatsApp e a configuração WHATSAPP_API_KEY.',
+    ].join('\n')
+  }
+
+  return [
+    '**Envio WhatsApp parcial**',
+    '',
+    `Conteúdo: **${titulo}**`,
+    `Destinatário(s): **${destinatarios}**`,
+    `Status: **${result.sent} enviado(s), ${result.failed} falha(s)**`,
+    '',
+    ...linhas,
+  ].join('\n')
 }

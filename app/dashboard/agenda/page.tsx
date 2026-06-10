@@ -7,6 +7,7 @@ import { Calendar, CalendarDays, Clock, MapPin, Users, Settings, Loader2, Maximi
 import { useAuth } from '@/hooks/use-auth'
 import { ArrivalTimer } from '@/components/arrival-timer'
 import { ArrivalNotificationsPanel } from '@/components/arrival-notifications-panel'
+import { formatEventDescriptionForDisplay } from '@/lib/agenda/event-present'
 
 interface CalendarConfig {
   calendarId: string
@@ -790,9 +791,9 @@ export default function AgendaPage() {
                               )}
                             </div>
                             {/* Descrição no canto inferior direito */}
-                            {event.description && (
+                            {formatEventDescriptionForDisplay(event.description) && (
                               <p className="text-sm font-bold text-text-primary mt-2 text-right max-w-xs">
-                                {event.description.replace(/^\([^)]+\)\s*/, '').trim()}
+                                {formatEventDescriptionForDisplay(event.description)}
                               </p>
                             )}
                           </div>
@@ -951,9 +952,9 @@ export default function AgendaPage() {
                           </div>
                           <div className="text-right">
                             {/* Descrição no canto inferior direito */}
-                            {event.description && (
+                            {formatEventDescriptionForDisplay(event.description) && (
                               <p className="text-sm font-bold text-text-primary text-right max-w-xs">
-                                {event.description.replace(/^\([^)]+\)\s*/, '').trim()}
+                                {formatEventDescriptionForDisplay(event.description)}
                               </p>
                             )}
                           </div>

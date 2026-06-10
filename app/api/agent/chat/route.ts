@@ -4,7 +4,10 @@ import { classifyAgentIntent } from '@/lib/agent/groq-classify'
 import { buildGreetingReply, isGreetingQuery, isHelpQuery, buildHelpReply } from '@/lib/agent/greeting-reply'
 import { checkAgentRateLimit, AGENT_RATE_LIMITS } from '@/lib/agent/rate-limit'
 import { intentToSyntheticQuery, isClientOnlyIntent } from '@/lib/agent/synthetic-query'
-import { detectWhatsAppSendIntent } from '@/lib/agent/detect-whatsapp-send'
+import {
+  detectWhatsAppSendIntent,
+  isFakeWhatsAppDirectReply,
+} from '@/lib/agent/detect-whatsapp-send'
 import { detectVisitasCampoIntent } from '@/lib/agent/detect-visitas-campo'
 import { buildNavigateAction, executeServerTool } from '@/lib/agent/server-tools'
 import { toolEnviarWhatsApp } from '@/lib/agent/tool-enviar-whatsapp'
@@ -37,6 +40,34 @@ export async function POST(request: Request) {
     const message = body.message?.trim()
     if (!message || message.length > 1200) {
       return NextResponse.json({ error: 'Mensagem inválida' }, { status: 400 })
+    }
+
+    const localWhatsappEarly = detectWhatsAppSendIntent(message)
+    if (localWhatsappEarly) {
+      const originEarly = new URL(request.url).origin
+      const cookieEarly = request.headers.get('cookie') ?? ''
+      const authEarly = { supabase, user: { id: user.id, email: user.email } }
+      try {
+        const content = await toolEnviarWhatsApp(
+          localWhatsappEarly.args,
+          originEarly,
+          cookieEarly,
+          supabase,
+          authEarly.user
+        )
+        return NextResponse.json({
+          source: 'groq',
+          content,
+          meta: { intent: 'enviar_whatsapp' },
+        } satisfies AgentChatResponse)
+      } catch (err) {
+        console.error('[agent/chat] WhatsApp early:', err)
+        return NextResponse.json({
+          source: 'groq',
+          content: err instanceof Error ? err.message : 'Não foi possível enviar o WhatsApp.',
+          meta: { intent: 'enviar_whatsapp' },
+        } satisfies AgentChatResponse)
+      }
     }
 
     if (isGreetingQuery(message)) {
@@ -74,16 +105,6 @@ export async function POST(request: Request) {
     const cookie = request.headers.get('cookie') ?? ''
     const auth = { supabase, user: { id: user.id, email: user.email } }
 
-    const localWhatsapp = detectWhatsAppSendIntent(message)
-    if (localWhatsapp) {
-      const content = await toolEnviarWhatsApp(localWhatsapp.args, origin, cookie, supabase, auth.user)
-      return NextResponse.json({
-        source: 'groq',
-        content,
-        meta: { intent: 'enviar_whatsapp' },
-      } satisfies AgentChatResponse)
-    }
-
     const localVisitas = detectVisitasCampoIntent(message)
     if (localVisitas) {
       const visitasResult = await executeServerTool(localVisitas, origin, cookie, body.context, auth, message)
@@ -115,9 +136,32 @@ export async function POST(request: Request) {
     }
 
     if (classified.intent === 'resposta_direta') {
+      const directReply = classified.direct_reply?.trim() ?? ''
+      const waRetry = detectWhatsAppSendIntent(message)
+      if (
+        waRetry &&
+        (isFakeWhatsAppDirectReply(directReply) || /\b(envia|enviar|envie|mand[ae]|resumo|briefing)\b/i.test(message))
+      ) {
+        try {
+          const content = await toolEnviarWhatsApp(waRetry.args, origin, cookie, supabase, auth.user)
+          return NextResponse.json({
+            source: 'groq',
+            content,
+            meta: { intent: 'enviar_whatsapp' },
+          } satisfies AgentChatResponse)
+        } catch (err) {
+          console.error('[agent/chat] WhatsApp retry:', err)
+          return NextResponse.json({
+            source: 'groq',
+            content: err instanceof Error ? err.message : 'Não foi possível enviar o WhatsApp.',
+            meta: { intent: 'enviar_whatsapp' },
+          } satisfies AgentChatResponse)
+        }
+      }
+
       const content = isGreetingQuery(message)
         ? buildGreetingReply(message)
-        : classified.direct_reply?.trim() || buildGreetingReply(message)
+        : directReply || buildGreetingReply(message)
       return NextResponse.json({
         source: 'groq',
         content,
@@ -138,13 +182,22 @@ export async function POST(request: Request) {
     }
 
     if (classified.intent === 'enviar_whatsapp') {
-      const mergedArgs = { ...detectWhatsAppSendIntent(message)?.args, ...classified.args }
-      const content = await toolEnviarWhatsApp(mergedArgs, origin, cookie, supabase, auth.user)
-      return NextResponse.json({
-        source: 'groq',
-        content,
-        meta: { intent: 'enviar_whatsapp' },
-      } satisfies AgentChatResponse)
+      try {
+        const mergedArgs = { ...detectWhatsAppSendIntent(message)?.args, ...classified.args }
+        const content = await toolEnviarWhatsApp(mergedArgs, origin, cookie, supabase, auth.user)
+        return NextResponse.json({
+          source: 'groq',
+          content,
+          meta: { intent: 'enviar_whatsapp' },
+        } satisfies AgentChatResponse)
+      } catch (err) {
+        console.error('[agent/chat] WhatsApp groq:', err)
+        return NextResponse.json({
+          source: 'groq',
+          content: err instanceof Error ? err.message : 'Não foi possível enviar o WhatsApp.',
+          meta: { intent: 'enviar_whatsapp' },
+        } satisfies AgentChatResponse)
+      }
     }
 
     const serverContent = await executeServerTool(classified, origin, cookie, body.context, auth, message)
@@ -183,7 +236,8 @@ export async function POST(request: Request) {
     }
 
     return NextResponse.json(fallbackResponse('unhandled'))
-  } catch {
-    return NextResponse.json(fallbackResponse('exception'), { status: 500 })
+  } catch (err) {
+    console.error('[agent/chat] exceção não tratada:', err)
+    return NextResponse.json(fallbackResponse('exception'))
   }
 }

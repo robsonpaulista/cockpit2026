@@ -8,7 +8,9 @@ import {
   JarvisHudSystemLog,
   type JarvisLogLine,
 } from '@/components/jarvis/jarvis-hud-widgets'
+import { JarvisResultPanel } from '@/components/jarvis/jarvis-result-panel'
 import { JarvisVoiceBar } from '@/components/jarvis/jarvis-voice-bar'
+import type { JarvisResultView } from '@/lib/agent/jarvis-result-view'
 import { jarvisHudStyle, jarvisPanelClass } from '@/lib/jarvis-hud-tokens'
 import { cn } from '@/lib/utils'
 import './jarvis-neural.css'
@@ -32,6 +34,12 @@ interface JarvisHudShellProps {
   lastAction?: JarvisHudAction
   onActionClick?: (action: JarvisHudAction) => void
   logLines?: JarvisLogLine[]
+  resultPanel?: {
+    view: JarvisResultView
+    action?: JarvisHudAction
+  } | null
+  onResultPanelClose?: () => void
+  onResultPanelAction?: (action: JarvisHudAction) => void
   className?: string
   style?: React.CSSProperties
 }
@@ -63,9 +71,13 @@ export function JarvisHudShell({
   lastAction,
   onActionClick,
   logLines = [],
+  resultPanel = null,
+  onResultPanelClose,
+  onResultPanelAction,
   className,
   style,
 }: JarvisHudShellProps) {
+  const presentingResult = Boolean(resultPanel)
   return (
     <JarvisFontScope
       className={cn(
@@ -77,7 +89,12 @@ export function JarvisHudShell({
       <div className="jarvis-perspective-grid pointer-events-none absolute inset-0 opacity-[0.35]" aria-hidden />
 
       <div className="jarvis-hud-mobile-compact relative flex h-full min-h-0 flex-1 flex-col gap-1.5 p-1.5 sm:gap-3 sm:p-3 lg:flex-row lg:gap-6 lg:p-4">
-        <div className="jarvis-stagger relative order-2 flex min-h-0 flex-1 lg:order-1">
+        <div
+          className={cn(
+            'jarvis-stagger relative order-2 flex min-h-0 flex-1 transition-all duration-500 lg:order-1',
+            presentingResult && 'jarvis-core-presenting'
+          )}
+        >
           <div className="mx-auto flex h-full min-h-0 w-full max-w-lg flex-col items-center justify-center py-2 text-center sm:py-4 lg:py-6">
             {onMinimize ? (
               <button
@@ -127,7 +144,7 @@ export function JarvisHudShell({
                 </p>
               ) : null}
 
-              {lastAction && onActionClick ? (
+              {lastAction && onActionClick && !presentingResult ? (
                 <button
                   type="button"
                   onClick={() => onActionClick(lastAction)}
@@ -144,12 +161,31 @@ export function JarvisHudShell({
           </div>
         </div>
 
-        <div className="jarvis-stagger order-1 flex w-full shrink-0 flex-col max-lg:max-h-[min(22vh,8.5rem)] lg:order-2 lg:h-full lg:min-h-0 lg:max-h-none lg:w-[min(100%,20rem)] xl:w-[min(100%,22rem)]">
-          <JarvisHudSystemLog
-            extraLines={logLines}
-            processing={isProcessing}
-            className="min-h-0 flex-1 max-lg:max-h-full lg:min-h-0"
-          />
+        <div
+          className={cn(
+            'jarvis-stagger flex w-full shrink-0 flex-col lg:order-2 lg:h-full lg:min-h-0 lg:max-h-none',
+            presentingResult
+              ? 'order-3 max-lg:max-h-[min(34vh,14rem)] lg:w-[min(100%,24rem)] xl:w-[min(100%,26rem)]'
+              : 'order-1 max-lg:max-h-[min(22vh,8.5rem)] lg:w-[min(100%,20rem)] xl:w-[min(100%,22rem)]'
+          )}
+        >
+          {resultPanel && onResultPanelClose ? (
+            <JarvisResultPanel
+              key={resultPanel.view.title}
+              view={resultPanel.view}
+              action={resultPanel.action}
+              isSpeaking={isSpeaking}
+              onAction={onResultPanelAction}
+              onClose={onResultPanelClose}
+              className="min-h-0 flex-1"
+            />
+          ) : (
+            <JarvisHudSystemLog
+              extraLines={logLines}
+              processing={isProcessing}
+              className="min-h-0 flex-1 max-lg:max-h-full lg:min-h-0"
+            />
+          )}
         </div>
       </div>
 

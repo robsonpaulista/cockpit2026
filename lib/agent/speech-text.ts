@@ -5,6 +5,7 @@ export const MAX_SPEAK_CHARS = 900
 /** Texto para voz do navegador — mais normalizado para engines básicas. */
 export function stripTextForSpeech(text: string): string {
   return text
+    .replace(/\p{Extended_Pictographic}/gu, '')
     .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
     .replace(/https?:\/\/\S+/gi, '')
     .replace(/[*_#`>|]/g, '')
@@ -21,6 +22,7 @@ export function stripTextForSpeech(text: string): string {
 /** Texto para TTS neural — preserva pontuação e números naturais. */
 export function stripTextForNeuralSpeech(text: string): string {
   return text
+    .replace(/\p{Extended_Pictographic}/gu, '')
     .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
     .replace(/https?:\/\/\S+/gi, '')
     .replace(/[*_#`]/g, '')

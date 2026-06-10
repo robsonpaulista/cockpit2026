@@ -70,7 +70,7 @@ function buildSystemPrompt(context?: AgentContextPayload): string {
     '- resumo_* só quando pageKind for resumo-eleicoes.',
     '- consultar_instagram_* para métricas/posts do Instagram.',
     '- consultar_noticias_destaque: notícias marcadas como destaque no painel (dashboard_highlight), ex.: «notícias em destaque», «o que está em destaque na imprensa».',
-    '- resposta_direta: cumprimentos (oi, bom dia, boa tarde, boa noite) — direct_reply só saudação social curta (ex.: "Boa tarde! Em que posso ajudar?"). NUNCA liste funcionalidades, agenda ou exemplos. Nunca interprete "jarvis" como cidade.',
+    '- resposta_direta: cumprimentos (oi, bom dia, boa tarde, boa noite) — direct_reply só saudação social curta (ex.: "Boa tarde! Em que posso ajudar?"). NUNCA diga que está enviando, buscando ou executando algo — use o intent correto (enviar_whatsapp, consultar_*). Nunca interprete "jarvis" como cidade.',
     '- ajuda: quando pedir ajuda, comandos, exemplos ou "o que você pode fazer/responder".',
     '- enviar_whatsapp: envio por WhatsApp SOMENTE para destinatários explícitos. args.conteudo = resumo_operacional | briefing_territorio. args.cidade (briefing). args.dias (resumo). args.destinatario = nome ou padrao/ceo. args.destinatarios = «Maria, João» (máx. poucas pessoas). args.grupo_categoria = executivo|assessoria|territorio APENAS se pedir «para os executivos» etc. args.enviar_todos=sim só se pedir «todos os contatos». NUNCA envie para todos sem pedido explícito. Se faltar destinatário, use desconhecido.',
     '- desconhecido: quando não houver intenção clara.',

@@ -2,11 +2,10 @@ import {
   type CalendarEventRow,
   eventMatchesCidade,
   formatAgendaDatePt,
-  formatAgendaTimeForSpeech,
-  formatAgendaTimePt,
   getCalendarEventDate,
   isSameLocalDay,
 } from '@/lib/agenda/calendar-event-utils'
+import { presentCalendarEvent } from '@/lib/agenda/event-present'
 import {
   type AgendaDayScope,
   type AgendaTimePeriod,
@@ -112,13 +111,20 @@ export function formatAgendaReply(
   const slice = filtered.slice(0, maxItems)
 
   slice.forEach((event, index) => {
-    const hora = formatAgendaTimePt(event)
-    const titulo = event.summary?.trim() || 'Sem título'
-    out += `${index + 1}. ${hora} — ${titulo}\n`
-    if (event.location?.trim()) {
-      out += `   ${event.location.trim()}\n`
-    } else if (event.description?.trim()) {
-      out += `   ${event.description.trim().slice(0, 100)}\n`
+    const item = presentCalendarEvent(event)
+    out += `${index + 1}. **${item.time}** — **${item.title}**\n`
+
+    const metaParts = [item.origin, item.location].filter(Boolean)
+    if (metaParts.length > 0) {
+      out += `   _${metaParts.join(' · ')}_\n`
+    }
+
+    if (item.description) {
+      const preview =
+        item.description.length > 160
+          ? `${item.description.slice(0, 160)}…`
+          : item.description
+      out += `   > ${preview}\n`
     }
   })
 
@@ -129,7 +135,7 @@ export function formatAgendaReply(
   return out.trim()
 }
 
-/** Segmentos curtos para TTS — um compromisso por frase, com pausa entre eles. */
+/** TTS: só header (summary) + horário — nunca description nem location. */
 export function buildAgendaSpeechSegments(
   events: CalendarEventRow[],
   options: FormatAgendaOptions
@@ -153,16 +159,8 @@ export function buildAgendaSpeechSegments(
 
   const slice = filtered.slice(0, options.maxItems ?? 8)
   slice.forEach((event, index) => {
-    const hora = formatAgendaTimeForSpeech(event)
-    const titulo = event.summary?.trim() || 'compromisso sem título'
-    let frase =
-      hora === 'dia inteiro'
-        ? `Compromisso ${index + 1}: ${titulo}.`
-        : `Compromisso ${index + 1}: às ${hora}, ${titulo}.`
-    if (event.location?.trim()) {
-      frase += ` Local: ${event.location.trim()}.`
-    }
-    segments.push(frase)
+    const item = presentCalendarEvent(event)
+    segments.push(`Compromisso ${index + 1}: ${item.speechLine}.`)
   })
 
   if (filtered.length > slice.length) {

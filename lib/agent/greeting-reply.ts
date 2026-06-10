@@ -12,7 +12,10 @@ const GREETING_ONLY =
   /^(?:oi|ola|hey|e\s*ai|eai|hello|hi|bom\s+dia|boa\s+tarde|boa\s+noite)(?:\s+(?:jarvis|cockpit|assistente))?[!.?\s]*$/i
 
 const DATA_INTENT =
-  /\b(agenda|noticia|notícias|expectativa|pesquisa|demanda|pedido|teresina|picos|lideranca|liderança|chapa|alerta|instagram|territorio|território|compromisso|destaque)\b/
+  /\b(agenda|noticia|notícias|expectativa|pesquisa|demanda|pedido|teresina|picos|lideranca|liderança|chapa|alerta|instagram|territorio|território|compromisso|destaque|whatsapp|resumo\s+operacional|briefing)\b/
+
+const ACTION_INTENT =
+  /\b(envia|enviar|envie|mand[ae]|dispar[ae]|resumo\s+operacional|briefing)\b/
 
 export function isHelpQuery(query: string): boolean {
   const q = normalize(query)
@@ -32,6 +35,7 @@ export function isGreetingQuery(query: string): boolean {
   if (!raw || raw.length > 60) return false
   if (isHelpQuery(raw)) return false
   if (DATA_INTENT.test(normalize(raw))) return false
+  if (ACTION_INTENT.test(normalize(raw))) return false
 
   if (GREETING_ONLY.test(raw)) return true
 

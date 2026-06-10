@@ -41,6 +41,21 @@ import {
   isGreetingQuery,
   isHelpQuery,
 } from '@/lib/agent/greeting-reply'
+import {
+  detectExpectativaDetalheFollowUp,
+  EXPECTATIVA_DETALHE_DISMISS_REPLY,
+  isExpectativaDetalheAffirmative,
+  isExpectativaDetalheNegative,
+} from '@/lib/agent/expectativa-detalhe-followup'
+import {
+  pickJarvisLoadingPhrase,
+  shouldPlayJarvisLoadingPhrase,
+} from '@/lib/agent/jarvis-loading-phrase'
+import {
+  parseJarvisResultContent,
+  shouldShowJarvisResultPopup,
+  type JarvisResultView,
+} from '@/lib/agent/jarvis-result-view'
 import { isSpeechSynthesisSupported, speakText, stopSpeaking } from '@/lib/agent/speech-output'
 import type {
   AgentChatResponse,
@@ -283,18 +298,6 @@ function extractCityName(query: string): string | null {
   return extractCityNameFromQuery(query)
 }
 
-function isExpectativaDetalheAffirmative(query: string): boolean {
-  const q = normalizeText(query)
-  return /\b(sim|quero|pode|detalha|detalhe|detalhada|detalhado|por lideranca|liste|listar|mostra|mostre|manda|ok|claro|com certeza|vai em frente|pode sim)\b/.test(
-    q
-  )
-}
-
-function isExpectativaDetalheNegative(query: string): boolean {
-  const q = normalizeText(query)
-  return /\b(nao|nao preciso|nao quero|negativo|dispensa|so isso|ta bom|obrigado|valeu|por enquanto nao)\b/.test(q)
-}
-
 /** Cruza a fala/texto com os nomes exatos do dropdown de Resumo Eleições */
 function resolveCidadeResumoEleicoesDropdown(query: string, cidades: string[]): string | null {
   const q = normalizeText(query)
@@ -417,12 +420,25 @@ export function AIAgent({
   const [expectativaDetalhePending, setExpectativaDetalhePending] = useState<{
     cidade: string
   } | null>(null)
+  const expectativaDetalhePendingRef = useRef<{ cidade: string } | null>(null)
   const [agendaScopePending, setAgendaScopePending] = useState<AgendaScopePending | null>(null)
   const agendaScopePendingRef = useRef<AgendaScopePending | null>(null)
+  const [jarvisResultPopup, setJarvisResultPopup] = useState<{
+    id: string
+    view: JarvisResultView
+    action?: ChatMessage['action']
+  } | null>(null)
+  const jarvisLoadingSpeechRef = useRef(false)
+  const jarvisPendingAnswerRef = useRef<{ content: string; segments?: string[] } | null>(null)
 
   const syncAgendaScopePending = useCallback((pending: AgendaScopePending | null) => {
     agendaScopePendingRef.current = pending
     setAgendaScopePending(pending)
+  }, [])
+
+  const syncExpectativaDetalhePending = useCallback((pending: { cidade: string } | null) => {
+    expectativaDetalhePendingRef.current = pending
+    setExpectativaDetalhePending(pending)
   }, [])
   const resumoEleicoesCidadeChave =
     pageContext?.kind === 'resumo-eleicoes' ? pageContext.cidadeAtual : ''
@@ -430,9 +446,9 @@ export function AIAgent({
   useEffect(() => {
     setResumoDemandasAssistPhase('idle')
     setPesquisaTipoPending(null)
-    setExpectativaDetalhePending(null)
+    syncExpectativaDetalhePending(null)
     syncAgendaScopePending(null)
-  }, [resumoEleicoesCidadeChave, syncAgendaScopePending])
+  }, [resumoEleicoesCidadeChave, syncAgendaScopePending, syncExpectativaDetalhePending])
 
   // Scroll automático para última mensagem
   useEffect(() => {
@@ -2139,9 +2155,9 @@ export function AIAgent({
         /\b(por lideranca|por liderança|detalhada|detalhado|detalhe|liste|listar|quem)\b/.test(queryLower)
       const resposta = await fetchExpectativaCidade(cidade, { detalhe: pedeDetalheLideranca })
       if (!pedeDetalheLideranca) {
-        setExpectativaDetalhePending({ cidade })
+        syncExpectativaDetalhePending({ cidade })
       } else {
-        setExpectativaDetalhePending(null)
+        syncExpectativaDetalhePending(null)
       }
       return {
         id: Date.now().toString(),
@@ -2558,7 +2574,7 @@ export function AIAgent({
     // ===== CONSULTA SOBRE CIDADE SEM INDICADOR ESPECÍFICO =====
     if (cidade && !queryLower.includes('pesquisa')) {
       const expectativaResp = await fetchExpectativaCidade(cidade)
-      setExpectativaDetalhePending({ cidade })
+      syncExpectativaDetalhePending({ cidade })
       return {
         id: Date.now().toString(),
         role: 'assistant',
@@ -2683,6 +2699,69 @@ export function AIAgent({
     [buildAgentContext, processUserQuery, syncAgendaScopePending]
   )
 
+  const speakJarvisReply = useCallback(
+    (content: string, segments?: string[]) => {
+      if (!enableVoice) return
+      stopSpeakingReplyRef.current?.()
+      void speakText(content, {
+        segments,
+        onStart: () => {
+          setVoiceError(null)
+          setIsSpeaking(true)
+        },
+        onEnd: () => setIsSpeaking(false),
+        onError: (msg) => {
+          setIsSpeaking(false)
+          if (msg) setVoiceError(msg)
+        },
+      }).then((cancel) => {
+        stopSpeakingReplyRef.current = cancel
+      })
+    },
+    [enableVoice]
+  )
+
+  const scheduleJarvisAnswerSpeech = useCallback(
+    (content: string, segments?: string[]) => {
+      if (!enableVoice) return
+      if (jarvisLoadingSpeechRef.current) {
+        jarvisPendingAnswerRef.current = { content, segments }
+        return
+      }
+      speakJarvisReply(content, segments)
+    },
+    [enableVoice, speakJarvisReply]
+  )
+
+  const deliverAssistantResponse = useCallback(
+    (response: ChatMessage, userQuery: string) => {
+      setChatMessages((prev) => [...prev, response])
+      if (response.role !== 'assistant') return
+
+      if (isJarvisHud && shouldShowJarvisResultPopup(response.content)) {
+        try {
+          setJarvisResultPopup({
+            id: response.id,
+            view: parseJarvisResultContent(response.content, userQuery),
+            action: response.action,
+          })
+          scheduleJarvisAnswerSpeech(response.content, response.speechSegments)
+          return
+        } catch (err) {
+          console.error('[Jarvis] falha ao montar painel de resultado:', err)
+        }
+      }
+
+      scheduleJarvisAnswerSpeech(response.content, response.speechSegments)
+    },
+    [isJarvisHud, scheduleJarvisAnswerSpeech]
+  )
+
+  const handleJarvisResultClose = useCallback(() => {
+    setJarvisResultPopup(null)
+    jarvisPendingAnswerRef.current = null
+  }, [])
+
   const submitMessage = useCallback(async (content: string) => {
     const cleanedContent = content.trim()
     if (!cleanedContent || isProcessing) return
@@ -2694,7 +2773,54 @@ export function AIAgent({
     }
 
     setChatMessages(prev => [...prev, userMessage])
+    setJarvisResultPopup(null)
+    jarvisPendingAnswerRef.current = null
     setIsProcessing(true)
+
+    const expectativaFollowUpFromHistory = detectExpectativaDetalheFollowUp(
+      chatMessages,
+      cleanedContent
+    )
+
+    const playLoadingPhrase =
+      enableVoice &&
+      shouldPlayJarvisLoadingPhrase(cleanedContent, {
+        pesquisaTipoPending: Boolean(pesquisaTipoPending),
+        agendaScopePending: Boolean(agendaScopePendingRef.current),
+        expectativaDetalhePending:
+          Boolean(expectativaDetalhePendingRef.current) || Boolean(expectativaFollowUpFromHistory),
+        parsePesquisaTipo: parsePesquisaTipoFromQuery,
+        parseAgendaDayScope: parseAgendaDayScopeFromAnswer,
+        isExpectativaAffirmative: isExpectativaDetalheAffirmative,
+        isExpectativaNegative: isExpectativaDetalheNegative,
+      })
+
+    if (playLoadingPhrase) {
+      jarvisLoadingSpeechRef.current = true
+      stopSpeakingReplyRef.current?.()
+      void speakText(pickJarvisLoadingPhrase(), {
+        onStart: () => {
+          setVoiceError(null)
+          setIsSpeaking(true)
+        },
+        onEnd: () => {
+          jarvisLoadingSpeechRef.current = false
+          setIsSpeaking(false)
+          const pending = jarvisPendingAnswerRef.current
+          if (pending) {
+            jarvisPendingAnswerRef.current = null
+            speakJarvisReply(pending.content, pending.segments)
+          }
+        },
+        onError: (msg) => {
+          jarvisLoadingSpeechRef.current = false
+          setIsSpeaking(false)
+          if (msg) setVoiceError(msg)
+        },
+      }).then((cancel) => {
+        stopSpeakingReplyRef.current = cancel
+      })
+    }
 
     try {
       let response: ChatMessage | null = null
@@ -2734,47 +2860,74 @@ export function AIAgent({
             content: 'Responda **próximos** (só o que falta hoje) ou **todos** (dia inteiro, inclusive o que já passou).',
           }
         }
-      } else if (expectativaDetalhePending) {
-        if (isExpectativaDetalheAffirmative(cleanedContent)) {
-          const resposta = await fetchExpectativaCidade(expectativaDetalhePending.cidade, {
-            detalhe: true,
-          })
-          setExpectativaDetalhePending(null)
-          response = {
-            id: Date.now().toString(),
-            role: 'assistant',
-            content: resposta,
-            action: {
-              type: 'navigate',
-              url: '/dashboard/territorio',
-              label: 'Ver Território Completo',
-            },
+      } else {
+        const expectativaCidade =
+          expectativaDetalhePendingRef.current?.cidade ??
+          expectativaFollowUpFromHistory?.cidade
+
+        if (expectativaCidade) {
+          const querDetalhe =
+            isExpectativaDetalheAffirmative(cleanedContent) ||
+            expectativaFollowUpFromHistory?.kind === 'affirmative'
+          const recusaDetalhe =
+            isExpectativaDetalheNegative(cleanedContent) ||
+            expectativaFollowUpFromHistory?.kind === 'negative'
+
+          if (recusaDetalhe) {
+            syncExpectativaDetalhePending(null)
+            response = {
+              id: Date.now().toString(),
+              role: 'assistant',
+              content: EXPECTATIVA_DETALHE_DISMISS_REPLY,
+            }
+          } else if (querDetalhe) {
+            const resposta = await fetchExpectativaCidade(expectativaCidade, {
+              detalhe: true,
+            })
+            syncExpectativaDetalhePending(null)
+            response = {
+              id: Date.now().toString(),
+              role: 'assistant',
+              content: resposta,
+              action: {
+                type: 'navigate',
+                url: '/dashboard/territorio',
+                label: 'Ver Território Completo',
+              },
+            }
+          } else {
+            syncExpectativaDetalhePending({ cidade: expectativaCidade })
+            response = {
+              id: Date.now().toString(),
+              role: 'assistant',
+              content:
+                'Responda **sim** se quiser o detalhamento por liderança, ou **não** se já está bom assim.',
+            }
           }
-        } else if (isExpectativaDetalheNegative(cleanedContent)) {
-          setExpectativaDetalhePending(null)
-          response = {
-            id: Date.now().toString(),
-            role: 'assistant',
-            content: 'Certo. Se quiser, pergunte sobre outra cidade ou outro tema.',
-          }
-        } else {
-          setExpectativaDetalhePending(null)
         }
-      } else if (isGreetingQuery(cleanedContent)) {
+      }
+
+      if (!response && isGreetingQuery(cleanedContent)) {
         response = {
           id: Date.now().toString(),
           role: 'assistant',
           content: buildGreetingReply(cleanedContent),
         }
-      } else if (isHelpQuery(cleanedContent)) {
+      }
+
+      if (!response && isHelpQuery(cleanedContent)) {
         response = {
           id: Date.now().toString(),
           role: 'assistant',
           content: buildHelpReply(),
         }
-      } else if (queryAsksNoticiasDestaque(normalizeText(cleanedContent))) {
+      }
+
+      if (!response && queryAsksNoticiasDestaque(normalizeText(cleanedContent))) {
         response = await buildNoticiasDestaqueChatMessage()
-      } else if (resumoDemandasAssistPhase === 'idle') {
+      }
+
+      if (!response && resumoDemandasAssistPhase === 'idle') {
         response = await tryAgentChat(cleanedContent, chatMessages)
       }
 
@@ -2782,47 +2935,17 @@ export function AIAgent({
         response = await processUserQuery(cleanedContent)
       }
 
-      setChatMessages(prev => [...prev, response])
-      if (enableVoice && response.role === 'assistant') {
-        stopSpeakingReplyRef.current?.()
-        void speakText(response.content, {
-          segments: response.speechSegments,
-          onStart: () => {
-            setVoiceError(null)
-            setIsSpeaking(true)
-          },
-          onEnd: () => setIsSpeaking(false),
-          onError: (msg) => {
-            setIsSpeaking(false)
-            if (msg) setVoiceError(msg)
-          },
-        }).then((cancel) => {
-          stopSpeakingReplyRef.current = cancel
-        })
-      }
+      deliverAssistantResponse(response, cleanedContent)
     } catch (error) {
       const errorReply = 'Desculpe, ocorreu um erro. Tente novamente.'
-      setChatMessages(prev => [...prev, {
-        id: Date.now().toString(),
-        role: 'assistant',
-        content: errorReply,
-      }])
-      if (enableVoice) {
-        stopSpeakingReplyRef.current?.()
-        void speakText(errorReply, {
-          onStart: () => {
-            setVoiceError(null)
-            setIsSpeaking(true)
-          },
-          onEnd: () => setIsSpeaking(false),
-          onError: (msg) => {
-            setIsSpeaking(false)
-            if (msg) setVoiceError(msg)
-          },
-        }).then((cancel) => {
-          stopSpeakingReplyRef.current = cancel
-        })
-      }
+      deliverAssistantResponse(
+        {
+          id: Date.now().toString(),
+          role: 'assistant',
+          content: errorReply,
+        },
+        cleanedContent
+      )
     } finally {
       setIsProcessing(false)
     }
@@ -2831,7 +2954,7 @@ export function AIAgent({
     enableVoice,
     isProcessing,
     pesquisaTipoPending,
-    expectativaDetalhePending,
+    syncExpectativaDetalhePending,
     agendaScopePending,
     fetchAgendaOutcome,
     buildAgendaChatMessage,
@@ -2842,6 +2965,8 @@ export function AIAgent({
     fetchPesquisasOutcome,
     buildPesquisasChatMessage,
     fetchExpectativaCidade,
+    deliverAssistantResponse,
+    speakJarvisReply,
   ])
 
   const submitMessageRef = useRef<(content: string) => Promise<void>>(async () => {})
@@ -3093,12 +3218,15 @@ export function AIAgent({
   }, [chatMessages])
 
   const jarvisStatusMessage = useMemo(() => {
+    if (jarvisResultPopup && isSpeaking) return 'APRESENTANDO RESULTADO · JARVIS FALANDO'
+    if (jarvisResultPopup) return 'RESULTADO NA TELA · JARVIS ATIVO'
+    if (isProcessing && isSpeaking) return 'BUSCANDO DADOS · UM MOMENTO'
     if (isSpeaking) return 'SINTETIZANDO RESPOSTA · FALANDO'
     if (isProcessing) return 'PROCESSANDO CONSULTA · AGUARDE'
     if (isListening) return 'ESCUTA ATIVA · FALE SUA PERGUNTA'
     if (allLoaded) return 'JARVIS ONLINE · SISTEMAS PRONTOS · COCKPIT 2026'
     return 'INICIALIZANDO NÚCLEO NEURAL · CARREGANDO MÓDULOS'
-  }, [isProcessing, isListening, isSpeaking, allLoaded])
+  }, [isProcessing, isListening, isSpeaking, allLoaded, jarvisResultPopup])
 
   if (!showAgent) return null
 
@@ -3151,6 +3279,13 @@ export function AIAgent({
           lastAction={jarvisLastAction}
           onActionClick={handleAction}
           logLines={jarvisLogLines}
+          resultPanel={
+            jarvisResultPopup
+              ? { view: jarvisResultPopup.view, action: jarvisResultPopup.action }
+              : null
+          }
+          onResultPanelClose={handleJarvisResultClose}
+          onResultPanelAction={(action) => handleAction(action)}
           className={cn(fullPageHud ? 'h-full min-h-0 flex-1' : 'h-full min-h-[min(520px,calc(100vh-7rem))]')}
           style={fullPageHud ? undefined : { maxHeight: maxPanelHeight }}
         />

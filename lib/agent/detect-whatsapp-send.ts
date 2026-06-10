@@ -19,10 +19,13 @@ function stripCidadeFromRecipientPhrase(alvo: string, cidade?: string): string {
     .trim()
 }
 
+const SEND_VERB =
+  /\b(envia|enviar|envie|mand[ae]|dispar[ae]|whatsapp|zap)\b/
+
 /** Detecta pedidos de envio WhatsApp sem depender só do Groq. */
 export function detectWhatsAppSendIntent(message: string): AgentClassifiedIntent | null {
   const q = norm(message)
-  if (!/\b(envia|enviar|manda|mandar|dispara|disparar|whatsapp|zap)\b/.test(q)) {
+  if (!SEND_VERB.test(q)) {
     return null
   }
 
@@ -66,7 +69,8 @@ export function detectWhatsAppSendIntent(message: string): AgentClassifiedIntent
     args.destinatario = 'padrao'
   }
 
-  const paraMatch = message.match(/\b(?:para|pro|pra)\s+(.+?)(?:\.|$)/i)
+  const paraMatches = [...message.matchAll(/\b(?:para|pro|pra)\s+(.+?)(?:\.|$)/gi)]
+  const paraMatch = paraMatches.length > 0 ? paraMatches[paraMatches.length - 1] : null
   if (paraMatch?.[1]) {
     let alvo = paraMatch[1].trim()
     alvo = stripCidadeFromRecipientPhrase(alvo, args.cidade)
@@ -101,4 +105,18 @@ export function detectWhatsAppSendIntent(message: string): AgentClassifiedIntent
   }
 
   return { intent: 'enviar_whatsapp', args }
+}
+
+/** Groq às vezes responde «estou enviando… aguarde» sem executar — reexecutar o envio real. */
+export function isFakeWhatsAppDirectReply(text: string): boolean {
+  const q = norm(text)
+  return (
+    /\b(estou enviando|enviando agora|vou enviar|por favor aguarde|aguarde um instante|um momento)\b/.test(
+      q
+    ) && /\b(resumo|briefing|whatsapp|zap)\b/.test(q)
+  )
+}
+
+export function isWhatsAppSendQuery(message: string): boolean {
+  return SEND_VERB.test(norm(message)) && detectWhatsAppSendIntent(message) !== null
 }
