@@ -1,8 +1,9 @@
 import {
   DEFAULT_OPENAI_TTS_VOICE,
   isValidOpenAiTtsVoice,
-  type OpenAiTtsVoiceId,
+  LEGACY_FEMININE_AUTO_VOICES,
   resolveOpenAiTtsVoice,
+  type OpenAiTtsVoiceId,
 } from '@/lib/agent/openai-voices'
 
 export type JarvisTtsMode = 'system' | 'openai'
@@ -11,13 +12,70 @@ const VOICE_URI_KEY = 'jarvis-voice-uri'
 const SIRI_VOICE_NUM_KEY = 'jarvis-siri-voice-number'
 const TTS_MODE_KEY = 'jarvis-tts-mode'
 const OPENAI_VOICE_KEY = 'jarvis-openai-voice'
+const OPENAI_VOICE_EXPLICIT_KEY = 'jarvis-openai-voice-explicit'
+const VOICE_MIGRATION_KEY = 'jarvis-voice-migration-v4'
+const SYSTEM_MODE_MIGRATION_KEY = 'jarvis-voice-migration-v5'
 
-/** Padrão: TTS neural (OpenAI) — mesma voz em todos os dispositivos. */
+export function isFeminineOpenAiVoice(voice: OpenAiTtsVoiceId): boolean {
+  return LEGACY_FEMININE_AUTO_VOICES.has(voice) || voice === 'ballad' || voice === 'verse'
+}
+
+/** Padrão: voz do sistema/navegador (Siri, pt-BR). OpenAI só se configurado e escolhido. */
 export function getJarvisTtsMode(): JarvisTtsMode {
-  if (typeof window === 'undefined') return 'openai'
+  if (typeof window === 'undefined') return 'system'
   const stored = localStorage.getItem(TTS_MODE_KEY)
-  if (stored === 'system') return 'system'
-  return 'openai'
+  if (stored === 'openai') return 'openai'
+  return 'system'
+}
+
+export function hasExplicitOpenAiVoicePick(): boolean {
+  if (typeof window === 'undefined') return false
+  return localStorage.getItem(OPENAI_VOICE_EXPLICIT_KEY) === '1'
+}
+
+/** Volta ao modo sistema (sem OpenAI) quem foi migrado para openai sem escolha explícita. */
+export function applyJarvisSystemModeMigration(): void {
+  if (typeof window === 'undefined') return
+  if (localStorage.getItem(SYSTEM_MODE_MIGRATION_KEY) === '1') return
+  if (getJarvisTtsMode() === 'openai' && !hasExplicitOpenAiVoicePick()) {
+    setJarvisTtsMode('system')
+  }
+  localStorage.setItem(SYSTEM_MODE_MIGRATION_KEY, '1')
+}
+
+/** Uma vez por navegador: remove vozes femininas antigas (Coral, Marin…) → Onyx. */
+export function applyJarvisVoiceMigration(): void {
+  if (typeof window === 'undefined') return
+  if (localStorage.getItem(VOICE_MIGRATION_KEY) === '1') return
+
+  const stored = getPreferredOpenAiVoice()
+  if (!stored || isFeminineOpenAiVoice(stored)) {
+    setPreferredOpenAiVoice(DEFAULT_OPENAI_TTS_VOICE, false)
+  }
+  localStorage.setItem(VOICE_MIGRATION_KEY, '1')
+}
+
+/** Alinha com Onyx até o usuário escolher outra voz explicitamente no seletor. */
+export function ensureJarvisNeuralVoicePreference(serverDefault?: string): void {
+  if (typeof window === 'undefined') return
+  applyJarvisVoiceMigration()
+  if (getJarvisTtsMode() !== 'openai') return
+
+  const jarvisDefault = DEFAULT_OPENAI_TTS_VOICE
+  const stored = getPreferredOpenAiVoice()
+  const explicit = hasExplicitOpenAiVoicePick()
+
+  if (!stored || isFeminineOpenAiVoice(stored)) {
+    setPreferredOpenAiVoice(jarvisDefault, false)
+    return
+  }
+
+  if (!explicit) {
+    const serverNorm = resolveOpenAiTtsVoice(serverDefault, jarvisDefault)
+    if (stored !== serverNorm && serverNorm === jarvisDefault) {
+      setPreferredOpenAiVoice(jarvisDefault, false)
+    }
+  }
 }
 
 export function setJarvisTtsMode(mode: JarvisTtsMode): void {
@@ -32,15 +90,31 @@ export function getPreferredOpenAiVoice(): OpenAiTtsVoiceId | null {
   return stored
 }
 
-export function setPreferredOpenAiVoice(voice: OpenAiTtsVoiceId | null): void {
+export function setPreferredOpenAiVoice(
+  voice: OpenAiTtsVoiceId | null,
+  userExplicitPick = true
+): void {
   if (typeof window === 'undefined') return
-  if (!voice) localStorage.removeItem(OPENAI_VOICE_KEY)
-  else localStorage.setItem(OPENAI_VOICE_KEY, voice)
+  if (!voice) {
+    localStorage.removeItem(OPENAI_VOICE_KEY)
+    localStorage.removeItem(OPENAI_VOICE_EXPLICIT_KEY)
+    return
+  }
+  localStorage.setItem(OPENAI_VOICE_KEY, voice)
+  if (userExplicitPick) {
+    localStorage.setItem(OPENAI_VOICE_EXPLICIT_KEY, '1')
+  } else {
+    localStorage.removeItem(OPENAI_VOICE_EXPLICIT_KEY)
+  }
 }
 
-/** Voz efetiva: preferência do usuário ou padrão do servidor. */
+/** Voz usada no TTS — sempre leia do localStorage (fonte única). */
 export function resolvePreferredOpenAiVoice(serverDefault?: string | null): OpenAiTtsVoiceId {
   return getPreferredOpenAiVoice() ?? resolveOpenAiTtsVoice(serverDefault, DEFAULT_OPENAI_TTS_VOICE)
+}
+
+export function getActiveJarvisOpenAiVoice(serverDefault?: string | null): OpenAiTtsVoiceId {
+  return resolvePreferredOpenAiVoice(serverDefault)
 }
 
 export function getPreferredVoiceUri(): string | null {

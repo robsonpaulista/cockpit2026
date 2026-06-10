@@ -2,26 +2,44 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { IconChevronDown, IconPlayerPlay } from '@tabler/icons-react'
-import {
-  type OpenAiTtsVoiceId,
-  OPENAI_TTS_VOICES,
-} from '@/lib/agent/openai-voices'
 import { unlockJarvisAudio } from '@/lib/agent/audio-unlock'
 import {
-  fetchJarvisSpeechConfig,
-  getActiveJarvisVoiceLabel,
-  previewOpenAiVoice,
+  ensureJarvisSystemVoiceDefault,
+  getLiveJarvisSystemVoiceLabel,
+  isSpeechSynthesisSupported,
+  listPortugueseVoices,
+  previewVoice,
+  type PortugueseVoiceOption,
 } from '@/lib/agent/speech-output'
 import {
-  getPreferredOpenAiVoice,
-  resolvePreferredOpenAiVoice,
+  applyJarvisSystemModeMigration,
+  applyJarvisVoiceMigration,
+  getPreferredVoiceUri,
+  getPreferredSiriVoiceNumber,
   setJarvisTtsMode,
-  setPreferredOpenAiVoice,
+  setPreferredSiriVoiceNumber,
+  setPreferredVoiceUri,
 } from '@/lib/agent/voice-preference'
 import { cn } from '@/lib/utils'
 import './jarvis-neural.css'
 
 const PREVIEW_PHRASE = 'Jarvis online. Sistemas prontos para uso.'
+
+function findActiveOption(
+  options: PortugueseVoiceOption[],
+  uri: string | null,
+  siriNumber: number | null
+): PortugueseVoiceOption | undefined {
+  if (uri) {
+    const byUri = options.find((o) => o.voiceURI === uri)
+    if (byUri) return byUri
+  }
+  if (siriNumber) {
+    const bySiri = options.find((o) => o.siriNumber === siriNumber)
+    if (bySiri) return bySiri
+  }
+  return options[0]
+}
 
 export function JarvisVoicePicker({
   className,
@@ -30,30 +48,50 @@ export function JarvisVoicePicker({
   className?: string
   compact?: boolean
 }) {
-  const [selectedVoice, setSelectedVoice] = useState<OpenAiTtsVoiceId>('coral')
-  const [serverDefault, setServerDefault] = useState<OpenAiTtsVoiceId>('coral')
-  const [neuralAvailable, setNeuralAvailable] = useState(true)
+  const [voices, setVoices] = useState<PortugueseVoiceOption[]>([])
+  const [activeUri, setActiveUri] = useState<string | null>(null)
+  const [liveLabel, setLiveLabel] = useState('carregando…')
+  const [speechOk, setSpeechOk] = useState(true)
   const [previewing, setPreviewing] = useState(false)
   const [open, setOpen] = useState(false)
   const rootRef = useRef<HTMLDivElement>(null)
 
-  const loadConfig = useCallback(async () => {
-    const config = await fetchJarvisSpeechConfig()
-    setNeuralAvailable(config.available)
-    setServerDefault(config.defaultVoice)
-
-    const effective = resolvePreferredOpenAiVoice(config.defaultVoice)
-    setSelectedVoice(effective)
-
-    if (!getPreferredOpenAiVoice()) {
-      setPreferredOpenAiVoice(effective)
+  const syncSelection = useCallback(async (options: PortugueseVoiceOption[]) => {
+    const uri = getPreferredVoiceUri()
+    const siriNum = getPreferredSiriVoiceNumber()
+    const match = findActiveOption(options, uri, siriNum)
+    if (match) {
+      setActiveUri(match.voiceURI)
     }
-    setJarvisTtsMode('openai')
+    const label = await getLiveJarvisSystemVoiceLabel()
+    setLiveLabel(label)
   }, [])
 
+  const loadVoices = useCallback(async () => {
+    applyJarvisVoiceMigration()
+    applyJarvisSystemModeMigration()
+    setJarvisTtsMode('system')
+
+    if (!isSpeechSynthesisSupported()) {
+      setSpeechOk(false)
+      setLiveLabel('não suportado neste navegador')
+      return
+    }
+
+    await ensureJarvisSystemVoiceDefault()
+    const options = await listPortugueseVoices()
+    setVoices(options)
+    setSpeechOk(options.length > 0)
+    await syncSelection(options)
+  }, [syncSelection])
+
   useEffect(() => {
-    void loadConfig()
-  }, [loadConfig])
+    void loadVoices()
+    if (!isSpeechSynthesisSupported()) return
+    const onVoicesChanged = () => void loadVoices()
+    window.speechSynthesis?.addEventListener('voiceschanged', onVoicesChanged)
+    return () => window.speechSynthesis?.removeEventListener('voiceschanged', onVoicesChanged)
+  }, [loadVoices])
 
   useEffect(() => {
     if (!open) return
@@ -71,63 +109,52 @@ export function JarvisVoicePicker({
     }
   }, [open])
 
-  const handleChange = (voiceId: OpenAiTtsVoiceId) => {
-    setSelectedVoice(voiceId)
-    setPreferredOpenAiVoice(voiceId)
-    setJarvisTtsMode('openai')
+  const handleChange = (option: PortugueseVoiceOption) => {
+    setPreferredVoiceUri(option.voiceURI)
+    if (option.siriNumber) setPreferredSiriVoiceNumber(option.siriNumber)
+    else setPreferredSiriVoiceNumber(null)
+    setJarvisTtsMode('system')
+    setActiveUri(option.voiceURI)
+    setLiveLabel(option.label)
     setOpen(false)
   }
 
   const handlePreview = async () => {
-    if (!selectedVoice || previewing || !neuralAvailable) return
+    if (!activeUri || previewing || !speechOk) return
     unlockJarvisAudio()
     setPreviewing(true)
     try {
-      await previewOpenAiVoice(PREVIEW_PHRASE, selectedVoice)
+      await previewVoice(PREVIEW_PHRASE, activeUri)
     } finally {
       setPreviewing(false)
     }
   }
 
-  const selectedMeta = OPENAI_TTS_VOICES.find((v) => v.id === selectedVoice)
-  const isServerDefault = selectedVoice === serverDefault
-
-  if (!neuralAvailable) {
-    return (
-      <p
-        className={cn(
-          'text-center font-mono text-[7px] leading-snug text-[rgba(255,180,80,0.85)] sm:text-[8px]',
-          className
-        )}
-      >
-        <span className="sm:hidden">Voz do navegador (configure OPENAI_API_KEY para TTS fixo)</span>
-        <span className="hidden sm:inline">
-          TTS neural indisponível — usando voz do navegador. Configure OPENAI_API_KEY no servidor.
-        </span>
-      </p>
-    )
-  }
+  const activeOption = voices.find((v) => v.voiceURI === activeUri)
 
   return (
     <div className={cn('flex w-full flex-col items-center gap-1.5', compact ? '' : 'max-w-xs', className)}>
-      {!compact ? (
-        <p className="font-jarvis-mono text-[8px] uppercase tracking-[0.18em] text-[var(--color-text-dim)]">
-          voz de resposta · OpenAI
-        </p>
-      ) : null}
+      <p
+        className={cn(
+          'font-jarvis-mono uppercase tracking-[0.18em] text-[var(--color-text-dim)]',
+          compact ? 'text-[7px]' : 'text-[8px]'
+        )}
+      >
+        voz do jarvis · sistema · pt-BR
+      </p>
       <div className="flex w-full items-center gap-1.5">
         <div ref={rootRef} className="relative min-w-0 flex-1">
           <button
             type="button"
             onClick={() => setOpen((v) => !v)}
-            className="flex w-full items-center justify-between gap-2 rounded bg-transparent px-2 py-1.5 font-jarvis-mono text-[10px] text-[var(--color-text-code)] hover:bg-[rgba(0,212,255,0.06)] focus:outline-none focus:ring-1 focus:ring-[var(--color-core)]"
+            disabled={!speechOk || voices.length === 0}
+            className="flex w-full items-center justify-between gap-2 rounded bg-transparent px-2 py-1.5 font-jarvis-mono text-[10px] text-[var(--color-text-code)] hover:bg-[rgba(0,212,255,0.06)] focus:outline-none focus:ring-1 focus:ring-[var(--color-core)] disabled:opacity-40"
             aria-haspopup="listbox"
             aria-expanded={open}
             aria-label="Selecionar voz do Jarvis"
           >
             <span className="truncate text-left">
-              {selectedMeta?.label ?? selectedVoice}
-              {isServerDefault ? ' · padrão' : ''}
+              {activeOption?.label ?? liveLabel}
             </span>
             <IconChevronDown
               className={cn('h-3.5 w-3.5 shrink-0 text-[var(--color-text-dim)] transition-transform', open && 'rotate-180')}
@@ -135,30 +162,32 @@ export function JarvisVoicePicker({
             />
           </button>
 
-          {open ? (
+          {open && voices.length > 0 ? (
             <ul
               role="listbox"
               className="absolute bottom-full left-0 right-0 z-50 mb-1 max-h-52 overflow-y-auto rounded bg-[var(--color-deep)] py-1 shadow-[0_8px_24px_rgba(0,0,0,0.45)]"
             >
-              {OPENAI_TTS_VOICES.map((v) => (
-                <li key={v.id} role="option" aria-selected={v.id === selectedVoice}>
+              {voices.map((v) => (
+                <li key={v.voiceURI} role="option" aria-selected={v.voiceURI === activeUri}>
                   <button
                     type="button"
-                    onClick={() => handleChange(v.id)}
+                    onClick={() => handleChange(v)}
                     className={cn(
                       'w-full px-2.5 py-1.5 text-left hover:bg-[rgba(0,212,255,0.08)]',
-                      v.id === selectedVoice
+                      v.voiceURI === activeUri
                         ? 'text-[var(--color-core)]'
                         : 'text-[var(--color-text-primary)]'
                     )}
                   >
                     <span className="block font-jarvis-mono text-[10px]">
                       {v.label}
-                      {v.id === serverDefault ? ' · padrão servidor' : ''}
+                      {v.voiceURI === activeUri ? ' · em uso' : ''}
                     </span>
-                    <span className="block font-jarvis-mono text-[8px] text-[var(--color-text-dim)]">
-                      {v.tone}
-                    </span>
+                    {v.isSiri ? (
+                      <span className="block font-jarvis-mono text-[8px] text-[var(--color-text-dim)]">
+                        Siri · mesma ordem dos Ajustes do macOS/iOS
+                      </span>
+                    ) : null}
                   </button>
                 </li>
               ))}
@@ -168,23 +197,34 @@ export function JarvisVoicePicker({
         <button
           type="button"
           onClick={() => void handlePreview()}
-          disabled={previewing || !selectedVoice}
-          title="Ouvir amostra"
+          disabled={previewing || !activeUri || !speechOk}
+          title="Ouvir amostra da voz em uso"
           className="flex h-8 w-8 shrink-0 items-center justify-center rounded text-[var(--color-core)] hover:bg-[rgba(0,212,255,0.06)] disabled:opacity-40"
         >
           <IconPlayerPlay className="h-3.5 w-3.5" stroke={1.5} />
         </button>
       </div>
-      {!compact ? (
-        <>
-          <p className="text-center font-jarvis-mono text-[7px] uppercase tracking-wider text-[var(--color-online)]">
-            ativa · {getActiveJarvisVoiceLabel(selectedVoice)}
-          </p>
-          <p className="text-center font-jarvis-mono text-[7px] leading-snug text-[var(--color-text-dim)]">
-            mesma voz em todos os computadores · padrão do servidor: {serverDefault}
-          </p>
-        </>
-      ) : null}
+      {speechOk ? (
+        <p
+          className={cn(
+            'text-center font-jarvis-mono uppercase tracking-wider text-[var(--color-online)]',
+            compact ? 'text-[7px]' : 'text-[7px]'
+          )}
+        >
+          em uso nas respostas · {liveLabel}
+        </p>
+      ) : (
+        <p
+          className={cn(
+            'text-center font-jarvis-mono leading-snug text-[rgba(255,180,80,0.95)]',
+            compact ? 'text-[7px] sm:text-[8px]' : 'text-[8px]'
+          )}
+          role="status"
+        >
+          Este navegador não oferece síntese de voz pt-BR. Use Safari no Mac/iPhone ou Chrome com vozes
+          brasileiras instaladas.
+        </p>
+      )}
     </div>
   )
 }

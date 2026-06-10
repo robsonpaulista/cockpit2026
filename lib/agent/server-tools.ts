@@ -13,6 +13,11 @@ import {
 } from '@/lib/agent/format-noticias'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { toolEnviarWhatsApp } from '@/lib/agent/tool-enviar-whatsapp'
+import {
+  resolveVisitasCampoReply,
+  type CampoAgendaRow,
+  type VisitasCampoModo,
+} from '@/lib/agent/format-visitas-campo'
 import type {
   AgentClassifiedIntent,
   AgentContextPayload,
@@ -171,6 +176,32 @@ async function toolConsultarAgendas(
   return { content: result.content, speechSegments: result.speechSegments }
 }
 
+async function toolConsultarVisitasCampo(
+  origin: string,
+  cookie: string,
+  args: Record<string, string>,
+  queryHint: string
+): Promise<{ content: string; speechSegments?: string[] }> {
+  const res = await fetchWithCookies(origin, '/api/campo/agendas', cookie)
+  if (!res.ok) {
+    return { content: 'Não consegui acessar as visitas do módulo Campo & Agenda.' }
+  }
+
+  const agendas = (await res.json()) as CampoAgendaRow[]
+  if (!Array.isArray(agendas)) {
+    return { content: 'Não consegui ler as agendas de campo.' }
+  }
+
+  const modo = (args.modo?.trim() || undefined) as VisitasCampoModo | undefined
+  return resolveVisitasCampoReply(agendas, queryHint, {
+    cidade: args.cidade?.trim() || undefined,
+    modo,
+    mes: args.mes?.trim(),
+    ano: args.ano?.trim(),
+    limite: args.limite ? Number(args.limite) : undefined,
+  })
+}
+
 async function toolConsultarDemandas(
   origin: string,
   cookie: string,
@@ -240,6 +271,19 @@ function toolConsultarTerritoriosFrios(context?: AgentContextPayload): string {
 }
 
 function toolAjuda(context?: AgentContextPayload): string {
+  if (context?.pageKind === 'campo') {
+    return [
+      '**Jarvis — Campo & Agenda**',
+      '',
+      '› últimas visitas de campo',
+      '› visitas em Teresina',
+      '› quantas viagens em maio de 2026',
+      '› descrição da visita a Picos',
+      '› cidades visitadas',
+      '',
+      'Compromissos do Google Calendar: diga «agenda de hoje».',
+    ].join('\n')
+  }
   if (context?.pageKind === 'resumo-eleicoes') {
     return [
       '**Jarvis — Resumo Eleições**',
@@ -254,7 +298,7 @@ function toolAjuda(context?: AgentContextPayload): string {
   return [
     '**O que posso fazer:**',
     '',
-    '**Por cidade:** expectativa, lideranças, agendas, demandas',
+    '**Por cidade:** expectativa, lideranças, visitas de campo, agendas (Google), demandas',
     '**Pesquisas:** intenção de voto por candidato ou município',
     '**Redes:** métricas e posts do Instagram',
     '**Geral:** chapa federal, notícias em destaque, alertas, territórios frios',
@@ -279,6 +323,7 @@ export async function executeServerTool(
   cookie: string,
   context?: AgentContextPayload,
   auth?: AgentToolAuth,
+  queryHint?: string,
 ): Promise<ServerToolResult | null> {
   switch (classified.intent) {
     case 'enviar_whatsapp': {
@@ -289,6 +334,13 @@ export async function executeServerTool(
       return toolConsultarPesquisas(origin, cookie, classified.args)
     case 'consultar_agendas':
       return toolConsultarAgendas(origin, cookie, classified.args)
+    case 'consultar_visitas_campo':
+      return toolConsultarVisitasCampo(
+        origin,
+        cookie,
+        classified.args,
+        queryHint ?? classified.args.termo ?? ''
+      )
     case 'consultar_demandas':
       return toolConsultarDemandas(origin, cookie, classified.args)
     case 'consultar_noticias_destaque':
@@ -318,6 +370,14 @@ export function buildNavigateAction(
       type: 'navigate',
       url: '/dashboard/noticias',
       label: 'Ver Notícias & Crises',
+    }
+  }
+
+  if (classified.intent === 'consultar_visitas_campo') {
+    return {
+      type: 'navigate',
+      url: '/dashboard/campo',
+      label: 'Ver Campo & Agenda',
     }
   }
 

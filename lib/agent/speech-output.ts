@@ -1,7 +1,9 @@
+import { pickBestBrazilianBrowserVoice } from '@/lib/agent/brazil-browser-voice'
 import {
   buildSiriVoiceLabel,
   getSiriBrazilVoicesInSystemOrder,
   getSiriVoiceByNumber,
+  getSiriVoiceNumber,
 } from '@/lib/agent/siri-voices'
 import {
   getOpenAiVoiceLabel,
@@ -22,7 +24,9 @@ import {
   getJarvisTtsMode,
   getPreferredSiriVoiceNumber,
   getPreferredVoiceUri,
-  resolvePreferredOpenAiVoice,
+  setJarvisTtsMode,
+  setPreferredSiriVoiceNumber,
+  setPreferredVoiceUri,
 } from '@/lib/agent/voice-preference'
 
 export { unlockJarvisAudio, primeSpeechSynthesis }
@@ -35,6 +39,8 @@ export interface JarvisSpeechConfig {
   available: boolean
   defaultVoice: OpenAiTtsVoiceId
   model: string
+  supportsInstructions?: boolean
+  crossDevice?: boolean
 }
 
 /** Pausa entre compromissos da agenda (ms). */
@@ -79,9 +85,9 @@ function voiceQualityScore(voice: SpeechSynthesisVoice): number {
   if (name.includes('google') && name.includes('portugu')) score += 35
   if (name.includes('microsoft') && lang.startsWith('pt')) score += 30
 
-  if (name.includes('luciana')) score += 28
-  if (name.includes('joana')) score += 22
-  if (name.includes('felipe')) score += 18
+  if (name.includes('felipe')) score += 50
+  if (name.includes('luciana')) score += 22
+  if (name.includes('joana')) score -= 200
   if (name.includes('maria')) score += 14
   if (name.includes('daniel')) score += 12
 
@@ -110,20 +116,16 @@ function resolvePortugueseVoice(voices: SpeechSynthesisVoice[]): SpeechSynthesis
   const preferredUri = getPreferredVoiceUri()
   if (preferredUri) {
     const saved = voices.find((v) => v.voiceURI === preferredUri)
-    if (saved) return saved
+    if (saved && pickBestBrazilianBrowserVoice([saved])) return saved
   }
 
   const siriNumber = getPreferredSiriVoiceNumber()
   if (siriNumber) {
     const byNumber = getSiriVoiceByNumber(voices, siriNumber)
-    if (byNumber) return byNumber
+    if (byNumber && pickBestBrazilianBrowserVoice([byNumber])) return byNumber
   }
 
-  const ranked = voices
-    .filter((v) => v.lang.toLowerCase().startsWith('pt'))
-    .sort((a, b) => voiceQualityScore(b) - voiceQualityScore(a))
-
-  return ranked[0]
+  return pickBestBrazilianBrowserVoice(voices)
 }
 
 function pickPortugueseVoice(voices: SpeechSynthesisVoice[]): SpeechSynthesisVoice | undefined {
@@ -150,7 +152,7 @@ export async function listPortugueseVoices(): Promise<PortugueseVoiceOption[]> {
   })
 
   const otherOptions: PortugueseVoiceOption[] = voices
-    .filter((v) => v.lang.toLowerCase().startsWith('pt') && !siriUris.has(v.voiceURI))
+    .filter((v) => pickBestBrazilianBrowserVoice([v]) && !siriUris.has(v.voiceURI))
     .map((v) => ({
       voiceURI: v.voiceURI,
       name: v.name,
@@ -236,7 +238,7 @@ export interface SpeakTextOptions {
   segments?: string[]
   onStart?: () => void
   onEnd?: () => void
-  onError?: () => void
+  onError?: (message?: string) => void
 }
 
 function stripSpeechSegment(text: string): string {
@@ -285,19 +287,24 @@ async function playNeuralBlob(blob: Blob, options: SpeakTextOptions): Promise<bo
 
 let cachedSpeechConfig: JarvisSpeechConfig | null = null
 
+export function invalidateJarvisSpeechConfigCache(): void {
+  cachedSpeechConfig = null
+}
+
 export async function fetchJarvisSpeechConfig(): Promise<JarvisSpeechConfig> {
   if (cachedSpeechConfig) return cachedSpeechConfig
 
   try {
     const res = await fetch('/api/agent/speech', { cache: 'no-store' })
     if (!res.ok) {
-      return { available: false, defaultVoice: 'coral', model: 'tts-1-hd' }
+      return { available: false, defaultVoice: 'onyx', model: 'tts-1-hd' }
     }
     const data = (await res.json()) as JarvisSpeechConfig
     cachedSpeechConfig = data
+    if (!data.available) setJarvisTtsMode('system')
     return data
   } catch {
-    return { available: false, defaultVoice: 'coral', model: 'tts-1-hd' }
+    return { available: false, defaultVoice: 'onyx', model: 'tts-1-hd' }
   }
 }
 
@@ -305,8 +312,35 @@ export function getActiveJarvisVoiceLabel(voiceId: OpenAiTtsVoiceId): string {
   return getOpenAiVoiceLabel(voiceId)
 }
 
+/** Define Siri Voz 1 (ou Felipe) na primeira visita. */
+export async function ensureJarvisSystemVoiceDefault(): Promise<void> {
+  if (!isSpeechSynthesisSupported()) return
+  if (getPreferredVoiceUri() || getPreferredSiriVoiceNumber()) return
+
+  const voices = await ensureVoicesLoaded()
+  const siriOrdered = getSiriBrazilVoicesInSystemOrder(voices)
+  const felipe = siriOrdered.find((v) => v.name.toLowerCase().includes('felipe'))
+  const pick = felipe ?? siriOrdered[0] ?? pickBestBrazilianBrowserVoice(voices)
+  if (!pick) return
+
+  setPreferredVoiceUri(pick.voiceURI)
+  const num = getSiriVoiceNumber(voices, pick.voiceURI)
+  if (num) setPreferredSiriVoiceNumber(num)
+  setJarvisTtsMode('system')
+}
+
+/** Nome da voz do sistema em uso. */
+export async function getLiveJarvisSystemVoiceLabel(): Promise<string> {
+  if (!isSpeechSynthesisSupported()) return 'indisponível'
+  await ensureJarvisSystemVoiceDefault()
+  const voices = await ensureVoicesLoaded()
+  const voice = resolvePortugueseVoice(voices)
+  return voice?.name ?? 'pt-BR automática'
+}
+
 async function fetchNeuralSpeechBlob(text: string, voice?: OpenAiTtsVoiceId): Promise<Blob | null> {
   const config = await fetchJarvisSpeechConfig()
+  const { resolvePreferredOpenAiVoice } = await import('@/lib/agent/voice-preference')
   const effectiveVoice = voice ?? resolvePreferredOpenAiVoice(config.defaultVoice)
 
   const res = await fetch('/api/agent/speech', {
@@ -502,7 +536,7 @@ async function speakWithBrowser(
 }
 
 /**
- * Fala o texto: prioriza OpenAI TTS (voz fixa em todos os dispositivos); Siri só como fallback.
+ * Fala o texto com voz do sistema (padrão) ou OpenAI TTS se modo «openai» e API configurada.
  */
 async function warmAudioOutput(): Promise<void> {
   if (typeof window === 'undefined') return
@@ -524,26 +558,20 @@ export async function speakText(text: string, options: SpeakTextOptions = {}): P
   await warmAudioOutput()
   stopSpeaking()
 
-  const mode = typeof window !== 'undefined' ? getJarvisTtsMode() : 'openai'
+  const mode = typeof window !== 'undefined' ? getJarvisTtsMode() : 'system'
   const config = typeof window !== 'undefined' ? await fetchJarvisSpeechConfig() : null
   const neuralAvailable = config?.available ?? false
-  const tryOpenAiFirst =
-    mode === 'openai' && options.preferNeural !== false && neuralAvailable
+  const useOpenAi = mode === 'openai' && neuralAvailable && options.preferNeural !== false
 
-  if (tryOpenAiFirst) {
+  if (useOpenAi) {
     const neural = await speakWithNeuralApi(text, options)
     if (neural) return neural
   }
 
-  const browser = await speakWithBrowser(text, { ...options, rate: options.rate ?? 0.92 })
+  const browser = await speakWithBrowser(text, { ...options, rate: options.rate ?? 0.9, lang: 'pt-BR' })
   if (browser) return browser
 
-  if (!tryOpenAiFirst && neuralAvailable && options.preferNeural !== false) {
-    const neural = await speakWithNeuralApi(text, options)
-    if (neural) return neural
-  }
-
-  options.onError?.()
+  options.onError?.('Nenhuma voz pt-BR disponível neste dispositivo.')
   options.onEnd?.()
   return () => {}
 }

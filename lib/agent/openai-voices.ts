@@ -1,22 +1,29 @@
 /** Vozes fixas do OpenAI TTS — mesmas em qualquer máquina/navegador. */
 export const OPENAI_TTS_VOICES = [
-  { id: 'coral', label: 'Coral', tone: 'Casual, feminina, conversacional' },
-  { id: 'sage', label: 'Sage', tone: 'Calma, neutra, assistente' },
-  { id: 'nova', label: 'Nova', tone: 'Jovem, clara, equilibrada' },
-  { id: 'shimmer', label: 'Shimmer', tone: 'Suave, amigável' },
-  { id: 'alloy', label: 'Alloy', tone: 'Neutra, versátil' },
-  { id: 'echo', label: 'Echo', tone: 'Masculina, direta' },
-  { id: 'fable', label: 'Fable', tone: 'Expressiva, narrativa' },
-  { id: 'onyx', label: 'Onyx', tone: 'Masculina, grave' },
+  { id: 'onyx', label: 'Onyx', tone: 'Masculina, grave — padrão Jarvis' },
+  { id: 'echo', label: 'Echo', tone: 'Masculina, direta, assistente' },
   { id: 'ash', label: 'Ash', tone: 'Masculina, casual' },
+  { id: 'cedar', label: 'Cedar', tone: 'Masculina, calma e confiante' },
+  { id: 'fable', label: 'Fable', tone: 'Masculina, narrativa' },
+  { id: 'alloy', label: 'Alloy', tone: 'Neutra, versátil' },
+  { id: 'verse', label: 'Verse', tone: 'Expressiva, dinâmica' },
+  { id: 'marin', label: 'Marin', tone: 'Feminina, natural' },
+  { id: 'coral', label: 'Coral', tone: 'Feminina, conversacional' },
+  { id: 'sage', label: 'Sage', tone: 'Feminina, calma' },
+  { id: 'nova', label: 'Nova', tone: 'Feminina, jovem' },
+  { id: 'shimmer', label: 'Shimmer', tone: 'Feminina, suave' },
   { id: 'ballad', label: 'Ballad', tone: 'Quente, melodiosa' },
 ] as const
 
 export type OpenAiTtsVoiceId = (typeof OPENAI_TTS_VOICES)[number]['id']
 
-export const DEFAULT_OPENAI_TTS_VOICE: OpenAiTtsVoiceId = 'coral'
+/** Voz padrão do Jarvis — masculina, grave, estilo assistente. */
+export const DEFAULT_OPENAI_TTS_VOICE: OpenAiTtsVoiceId = 'onyx'
 
 const VOICE_ID_SET = new Set<string>(OPENAI_TTS_VOICES.map((v) => v.id))
+
+/** Vozes que eram padrão antigo (femininas) — migra para Onyx automaticamente. */
+export const LEGACY_FEMININE_AUTO_VOICES = new Set(['marin', 'coral', 'shimmer', 'nova', 'sage'])
 
 export function isValidOpenAiTtsVoice(value: string): value is OpenAiTtsVoiceId {
   return VOICE_ID_SET.has(value.toLowerCase())

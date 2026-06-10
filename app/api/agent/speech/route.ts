@@ -6,23 +6,48 @@ import {
   resolveOpenAiTtsVoice,
 } from '@/lib/agent/openai-voices'
 import { stripTextForNeuralSpeech } from '@/lib/agent/speech-text'
+import {
+  modelSupportsTtsInstructions,
+  resolveJarvisTtsInstructions,
+} from '@/lib/agent/tts-instructions'
 
 export const dynamic = 'force-dynamic'
 
 const MAX_CHARS = 900
+const DEFAULT_MODEL = 'gpt-4o-mini-tts'
+const FALLBACK_MODEL = 'tts-1-hd'
+
+function resolveModel(): string {
+  return process.env.JARVIS_TTS_MODEL?.trim() || DEFAULT_MODEL
+}
 
 export async function GET() {
   const apiKey = process.env.OPENAI_API_KEY?.trim()
-  const defaultVoice = resolveOpenAiTtsVoice(
-    process.env.JARVIS_TTS_VOICE,
-    DEFAULT_OPENAI_TTS_VOICE
-  )
+  const envVoice = process.env.JARVIS_TTS_VOICE?.trim()
+  const defaultVoice = resolveOpenAiTtsVoice(envVoice || DEFAULT_OPENAI_TTS_VOICE, DEFAULT_OPENAI_TTS_VOICE)
+  const model = resolveModel()
 
   return NextResponse.json({
     available: Boolean(apiKey),
     defaultVoice,
     voices: OPENAI_TTS_VOICES,
-    model: process.env.JARVIS_TTS_MODEL?.trim() || 'tts-1-hd',
+    model,
+    supportsInstructions: modelSupportsTtsInstructions(model),
+    crossDevice: true,
+  })
+}
+
+async function requestOpenAiSpeech(
+  apiKey: string,
+  payload: Record<string, unknown>
+): Promise<Response> {
+  return fetch('https://api.openai.com/v1/audio/speech', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(payload),
   })
 }
 
@@ -51,43 +76,57 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Texto muito longo' }, { status: 400 })
     }
 
-    const voice = resolveOpenAiTtsVoice(
-      body.voice ?? process.env.JARVIS_TTS_VOICE,
-      DEFAULT_OPENAI_TTS_VOICE
-    )
-    const model = process.env.JARVIS_TTS_MODEL?.trim() || 'tts-1-hd'
-    const speed = Number(process.env.JARVIS_TTS_SPEED ?? '0.96')
-    const safeSpeed = Number.isFinite(speed) ? Math.min(1.2, Math.max(0.8, speed)) : 0.96
+    const clientVoice = body.voice?.trim()
+    const voice = clientVoice
+      ? resolveOpenAiTtsVoice(clientVoice, DEFAULT_OPENAI_TTS_VOICE)
+      : resolveOpenAiTtsVoice(process.env.JARVIS_TTS_VOICE, DEFAULT_OPENAI_TTS_VOICE)
+    const primaryModel = resolveModel()
+    const instructions = resolveJarvisTtsInstructions(process.env.JARVIS_TTS_INSTRUCTIONS)
 
-    const openaiRes = await fetch('https://api.openai.com/v1/audio/speech', {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
+    const modelsToTry = primaryModel === FALLBACK_MODEL
+      ? [FALLBACK_MODEL]
+      : [primaryModel, FALLBACK_MODEL]
+
+    let lastError = ''
+
+    for (const model of modelsToTry) {
+      const payload: Record<string, unknown> = {
         model,
         voice,
         input: cleaned,
-        speed: safeSpeed,
         response_format: 'mp3',
-      }),
-    })
+      }
 
-    if (!openaiRes.ok) {
-      const errText = await openaiRes.text().catch(() => '')
-      console.error('[agent/speech] OpenAI TTS error:', openaiRes.status, errText.slice(0, 200))
-      return NextResponse.json({ error: 'Falha ao sintetizar voz' }, { status: 502 })
+      if (modelSupportsTtsInstructions(model) && instructions) {
+        payload.instructions = instructions
+      } else {
+        const speed = Number(process.env.JARVIS_TTS_SPEED ?? '0.96')
+        const safeSpeed = Number.isFinite(speed) ? Math.min(1.2, Math.max(0.8, speed)) : 0.96
+        payload.speed = safeSpeed
+      }
+
+      const openaiRes = await requestOpenAiSpeech(apiKey, payload)
+
+      if (openaiRes.ok) {
+        const audioBuffer = await openaiRes.arrayBuffer()
+        return new NextResponse(audioBuffer, {
+          status: 200,
+          headers: {
+            'Content-Type': 'audio/mpeg',
+            'Cache-Control': 'no-store',
+          },
+        })
+      }
+
+      lastError = await openaiRes.text().catch(() => '')
+      console.error('[agent/speech] OpenAI TTS error:', model, openaiRes.status, lastError.slice(0, 200))
+
+      if (openaiRes.status !== 400 && openaiRes.status !== 404) {
+        break
+      }
     }
 
-    const audioBuffer = await openaiRes.arrayBuffer()
-    return new NextResponse(audioBuffer, {
-      status: 200,
-      headers: {
-        'Content-Type': 'audio/mpeg',
-        'Cache-Control': 'no-store',
-      },
-    })
+    return NextResponse.json({ error: 'Falha ao sintetizar voz' }, { status: 502 })
   } catch (error) {
     console.error('[agent/speech]', error)
     return NextResponse.json({ error: 'Erro interno' }, { status: 500 })

@@ -5,6 +5,7 @@ import { buildGreetingReply, isGreetingQuery, isHelpQuery, buildHelpReply } from
 import { checkAgentRateLimit, AGENT_RATE_LIMITS } from '@/lib/agent/rate-limit'
 import { intentToSyntheticQuery, isClientOnlyIntent } from '@/lib/agent/synthetic-query'
 import { detectWhatsAppSendIntent } from '@/lib/agent/detect-whatsapp-send'
+import { detectVisitasCampoIntent } from '@/lib/agent/detect-visitas-campo'
 import { buildNavigateAction, executeServerTool } from '@/lib/agent/server-tools'
 import { toolEnviarWhatsApp } from '@/lib/agent/tool-enviar-whatsapp'
 import type { AgentChatRequest, AgentChatResponse } from '@/lib/agent/types'
@@ -83,6 +84,27 @@ export async function POST(request: Request) {
       } satisfies AgentChatResponse)
     }
 
+    const localVisitas = detectVisitasCampoIntent(message)
+    if (localVisitas) {
+      const visitasResult = await executeServerTool(localVisitas, origin, cookie, body.context, auth, message)
+      if (visitasResult) {
+        const payload =
+          typeof visitasResult === 'string'
+            ? { content: visitasResult }
+            : {
+                content: visitasResult.content,
+                speechSegments: visitasResult.speechSegments,
+              }
+        return NextResponse.json({
+          source: 'groq',
+          content: payload.content,
+          speechSegments: payload.speechSegments,
+          action: buildNavigateAction(localVisitas),
+          meta: { intent: 'consultar_visitas_campo' },
+        } satisfies AgentChatResponse)
+      }
+    }
+
     if (!process.env.GROQ_API_KEY?.trim()) {
       return NextResponse.json(fallbackResponse('no_key'))
     }
@@ -114,7 +136,7 @@ export async function POST(request: Request) {
       } satisfies AgentChatResponse)
     }
 
-    const serverContent = await executeServerTool(classified, origin, cookie, body.context, auth)
+    const serverContent = await executeServerTool(classified, origin, cookie, body.context, auth, message)
     if (serverContent) {
       const action = buildNavigateAction(classified)
       const payload =

@@ -1,7 +1,8 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import {
+  Bot,
   Calendar,
   CheckCircle2,
   ChevronRight,
@@ -16,6 +17,7 @@ import {
   Trash2,
   X,
 } from 'lucide-react'
+import { AIAgent, type AIAgentPageContext } from '@/components/ai-agent'
 import { MapaPresenca, type PrioridadeCampoMapaRow } from '@/components/mapa-presenca'
 import { CampoResumoWidget } from '@/components/campo/campo-resumo-widget'
 import { cn, formatDate, monthBucketKey, parseDateOnlyLocal } from '@/lib/utils'
@@ -112,6 +114,16 @@ export default function CampoPage() {
   >([])
   const [prioridadeCampoListaMapa, setPrioridadeCampoListaMapa] = useState<PrioridadeCampoMapaRow[]>([])
   const [loadingTerritoriosMapa, setLoadingTerritoriosMapa] = useState<boolean>(true)
+  const [agenteMontado, setAgenteMontado] = useState(false)
+
+  const contextoAgenteCampo = useMemo<AIAgentPageContext>(
+    () => ({
+      kind: 'campo',
+      cidades: cities.map((city) => city.name),
+      totalAgendas: agendas.length,
+    }),
+    [agendas.length, cities]
+  )
 
   useEffect(() => {
     void Promise.all([fetchAgendas(), fetchCities()])
@@ -686,6 +698,41 @@ export default function CampoPage() {
             )}
           </div>
         </section>
+      </div>
+
+      <div className="fixed bottom-6 right-6 z-40">
+        {!agenteMontado ? (
+          <button
+            type="button"
+            onClick={() => setAgenteMontado(true)}
+            className="flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-accent-gold to-accent-gold shadow-lg shadow-accent-gold/30 transition-transform hover:scale-105"
+            title="Abrir Jarvis"
+          >
+            <Bot className="h-7 w-7 text-white" />
+          </button>
+        ) : (
+          <div className="w-[min(100vw-2rem,24rem)]">
+            <AIAgent
+              agentTitle="Jarvis"
+              dockVariant="fixed"
+              enableVoice
+              immediateChatMode
+              pageContext={contextoAgenteCampo}
+              loadingKPIs={loading}
+              loadingPolls={false}
+              loadingTerritorios={loadingTerritoriosMapa}
+              loadingAlerts={false}
+              loadingBandeiras={false}
+              kpisCount={agendas.length}
+              territoriosFriosCount={0}
+              alertsCriticosCount={0}
+              bandeirasCount={0}
+              bandeirasPerformance={0}
+              criticalAlerts={[]}
+              territoriosFrios={[]}
+            />
+          </div>
+        )}
       </div>
     </div>
   )

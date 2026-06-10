@@ -32,6 +32,8 @@ import {
   unlockJarvisAudio,
 } from '@/lib/agent/audio-unlock'
 import { extractCityNameFromQuery } from '@/lib/agent/city-extract'
+import { isCampoVisitasQuery } from '@/lib/agent/detect-visitas-campo'
+import { resolveVisitasCampoReply, type CampoAgendaRow } from '@/lib/agent/format-visitas-campo'
 import {
   buildGreetingReply,
   buildHelpReply,
@@ -69,8 +71,7 @@ interface ChatMessage {
   }
 }
 
-/** Contexto da página atual — o agente pode acionar a UI (ex.: Resumo Eleições). */
-export type AIAgentPageContext = {
+type AIAgentResumoEleicoesContext = {
   kind: 'resumo-eleicoes'
   cidades: string[]
   cidadeAtual: string
@@ -101,6 +102,15 @@ export type AIAgentPageContext = {
   fecharModalPesquisas: () => void
   fecharModalDemandasCidade: () => void
 }
+
+type AIAgentCampoContext = {
+  kind: 'campo'
+  cidades: string[]
+  totalAgendas: number
+}
+
+/** Contexto da página atual — o agente pode acionar a UI (ex.: Resumo Eleições). */
+export type AIAgentPageContext = AIAgentResumoEleicoesContext | AIAgentCampoContext
 
 interface AIAgentProps {
   loadingKPIs: boolean
@@ -767,6 +777,28 @@ export function AIAgent({
         role: 'assistant',
         content: 'Erro ao buscar notícias em destaque. Tente novamente.',
       }
+    }
+  }, [])
+
+  const fetchCampoVisitasOutcome = useCallback(async (
+    query: string,
+    options?: { cidade?: string }
+  ): Promise<{ content: string; speechSegments?: string[] }> => {
+    try {
+      const response = await fetch('/api/campo/agendas')
+      if (!response.ok) {
+        return { content: 'Não consegui acessar as visitas do módulo Campo & Agenda.' }
+      }
+      const agendas = (await response.json()) as CampoAgendaRow[]
+      if (!Array.isArray(agendas)) {
+        return { content: 'Não consegui ler as agendas de campo.' }
+      }
+      return resolveVisitasCampoReply(agendas, query, {
+        cidade: options?.cidade,
+      })
+    } catch (error) {
+      console.error('Erro ao buscar visitas de campo:', error)
+      return { content: 'Erro ao buscar visitas de campo. Tente novamente.' }
     }
   }, [])
 
@@ -2123,11 +2155,26 @@ export function AIAgent({
       }
     }
     
-    // ===== AGENDA EM CIDADE ESPECÍFICA =====
+    // ===== VISITAS DE CAMPO (Campo & Agenda) =====
+    if (isCampoVisitasQuery(query)) {
+      const outcome = await fetchCampoVisitasOutcome(query, { cidade: cidade ?? undefined })
+      return {
+        id: Date.now().toString(),
+        role: 'assistant',
+        content: outcome.content,
+        speechSegments: outcome.speechSegments,
+        action: {
+          type: 'navigate',
+          url: '/dashboard/campo',
+          label: 'Ver Campo & Agenda',
+        },
+      }
+    }
+
+    // ===== AGENDA EM CIDADE ESPECÍFICA (Google Calendar) =====
     if (
       cidade &&
       (queryLower.includes('agenda') ||
-        queryLower.includes('visita') ||
         queryLower.includes('evento') ||
         queryLower.includes('reuniao') ||
         queryLower.includes('reunião') ||
@@ -2543,16 +2590,25 @@ export function AIAgent({
     buildNoticiasDestaqueChatMessage,
     fetchAgendaOutcome,
     buildAgendaChatMessage,
+    fetchCampoVisitasOutcome,
   ])
 
   const buildAgentContext = useCallback((): AgentContextPayload => {
     const pc = pageContextRef.current
     return {
-      pageKind: pc?.kind === 'resumo-eleicoes' ? 'resumo-eleicoes' : 'dashboard',
+      pageKind:
+        pc?.kind === 'resumo-eleicoes'
+          ? 'resumo-eleicoes'
+          : pc?.kind === 'campo'
+            ? 'campo'
+            : 'dashboard',
       cidadeAtual: pc?.kind === 'resumo-eleicoes' ? pc.cidadeAtual : undefined,
       buscaIniciada: pc?.kind === 'resumo-eleicoes' ? pc.buscaIniciada : undefined,
       candidatoPadrao,
-      cidadesDisponiveis: pc?.kind === 'resumo-eleicoes' ? pc.cidades.slice(0, 40) : undefined,
+      cidadesDisponiveis:
+        pc?.kind === 'resumo-eleicoes' || pc?.kind === 'campo'
+          ? pc.cidades.slice(0, 40)
+          : undefined,
       alertsCriticosCount,
       territoriosFriosCount,
       pollsCount,
@@ -2731,9 +2787,15 @@ export function AIAgent({
         stopSpeakingReplyRef.current?.()
         void speakText(response.content, {
           segments: response.speechSegments,
-          onStart: () => setIsSpeaking(true),
+          onStart: () => {
+            setVoiceError(null)
+            setIsSpeaking(true)
+          },
           onEnd: () => setIsSpeaking(false),
-          onError: () => setIsSpeaking(false),
+          onError: (msg) => {
+            setIsSpeaking(false)
+            if (msg) setVoiceError(msg)
+          },
         }).then((cancel) => {
           stopSpeakingReplyRef.current = cancel
         })
@@ -2748,9 +2810,15 @@ export function AIAgent({
       if (enableVoice) {
         stopSpeakingReplyRef.current?.()
         void speakText(errorReply, {
-          onStart: () => setIsSpeaking(true),
+          onStart: () => {
+            setVoiceError(null)
+            setIsSpeaking(true)
+          },
           onEnd: () => setIsSpeaking(false),
-          onError: () => setIsSpeaking(false),
+          onError: (msg) => {
+            setIsSpeaking(false)
+            if (msg) setVoiceError(msg)
+          },
         }).then((cancel) => {
           stopSpeakingReplyRef.current = cancel
         })

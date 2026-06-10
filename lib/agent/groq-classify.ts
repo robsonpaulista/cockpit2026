@@ -13,6 +13,7 @@ const INTENT_LIST = [
   'consultar_pesquisas',
   'consultar_demandas',
   'consultar_agendas',
+  'consultar_visitas_campo',
   'consultar_expectativa',
   'consultar_liderancas',
   'consultar_chapa',
@@ -37,6 +38,9 @@ const INTENT_LIST = [
 function buildSystemPrompt(context?: AgentContextPayload): string {
   const ctxLines: string[] = []
   if (context?.pageKind) ctxLines.push(`Página atual: ${context.pageKind}`)
+  if (context?.pageKind === 'campo') {
+    ctxLines.push('O usuário está em Campo & Agenda — priorize consultar_visitas_campo para visitas/viagens/check-in.')
+  }
   if (context?.cidadeAtual) ctxLines.push(`Cidade selecionada: ${context.cidadeAtual}`)
   if (context?.buscaIniciada) ctxLines.push('Busca de município já iniciada na página.')
   if (context?.candidatoPadrao) ctxLines.push(`Candidato foco: ${context.candidatoPadrao}`)
@@ -59,6 +63,8 @@ function buildSystemPrompt(context?: AgentContextPayload): string {
     'Regras:',
     '- Use args.cidade quando mencionar município; args.data quando citar data/período (hoje, amanhã, 15/05/2026); args.termo para busca em pesquisas; args.candidato quando citar candidato (ex.: Jadyel Alencar); args.tipo = estimulada|espontanea quando o usuário especificar o tipo.',
     '- Em consultar_agendas, use a agenda do Google Calendar; preencha args.data com hoje/amanhã/manhã/tarde/noite/data quando o usuário especificar.',
+    '- Em consultar_visitas_campo, use visitas/viagens do módulo Campo & Agenda (não Google Calendar). args.modo = ultima | ultimas | contagem_mes | descricao | lista_cidade | cidades | cidade_mais_visitada («qual cidade mais visitei/fui mais vezes» — só cidade e total, sem listar cada visita). args.cidade quando citar município; args.mes (01-12) e args.ano para contagem mensal; args.termo com trecho da pergunta.',
+    '- visitas/viagens/check-in de cidade → consultar_visitas_campo. compromissos/agenda do dia → consultar_agendas.',
     '- Em consultar_pesquisas sobre Jadyel Alencar, preencha args.candidato com "Jadyel Alencar" (e args.cidade se houver município).',
     '- Use args.url e args.label para navegar.',
     '- resumo_* só quando pageKind for resumo-eleicoes.',

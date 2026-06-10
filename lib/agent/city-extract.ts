@@ -1,4 +1,5 @@
 import { stripAssistantMention } from '@/lib/agent/greeting-reply'
+import { isMonthName } from '@/lib/agent/parse-visitas-mes'
 
 function normalizeText(text: string): string {
   return text
@@ -23,8 +24,37 @@ const CIDADES_PIAUI = [
 ] as const
 
 const STOP_CITY_TOKENS = new Set([
-  'jarvis', 'cockpit', 'assistente', 'copilot', 'oi', 'ola', 'hey', 'bom', 'boa', 'tarde', 'noite', 'dia',
+  'jarvis',
+  'cockpit',
+  'assistente',
+  'copilot',
+  'oi',
+  'ola',
+  'hey',
+  'bom',
+  'boa',
+  'tarde',
+  'noite',
+  'dia',
+  'jogos',
 ])
+
+const INVALID_CITY_PREFIX =
+  /^(que|eu|foi|a|o|as|os|da|do|das|dos|de|em|para|ultima|ultimo|ultimas|ultimos|qual|foi a)\b/
+
+/** Frases que o regex de cidade captura por engano — ex.: «cidade que eu visitei». */
+export function isInvalidCityCandidate(candidata: string): boolean {
+  const c = normalizeText(candidata)
+  if (!c || c.length < 3) return true
+  if (STOP_CITY_TOKENS.has(c)) return true
+  if (INVALID_CITY_PREFIX.test(c)) return true
+  if (/\b(visitei|visita|visitas|viagem|viagens|campo|agenda|municipio|município)\b/.test(c)) {
+    return true
+  }
+  if (/^que\s+eu\b/.test(c) || /\beu\s+visitei\b/.test(c)) return true
+  if (isMonthName(c)) return true
+  return false
+}
 
 /** Extrai município da pergunta — evita falso positivo em "boa tarde jarvis". */
 export function extractCityNameFromQuery(query: string): string | null {
@@ -39,17 +69,22 @@ export function extractCityNameFromQuery(query: string): string | null {
   }
 
   const patterns = [
-    /\b(?:em|de|para)\s+([a-z][a-z\s]*?)(?:\?|$|,|\.|!|;)/,
-    /\bcidade\s+(?:de\s+)?([a-z][a-z\s]*?)(?:\?|$|,|\.|!|;)/,
+    /\b(?:em|para)\s+(?!que\b|eu\b|foi\b)([a-z][a-z\s]*?)(?:\?|$|,|\.|!|;)/,
+    /\bde\s+(?!que\b|eu\b|foi\b|a\b)([a-z][a-z\s]*?)(?:\?|$|,|\.|!|;)/,
+    /\bcidade\s+de\s+(?!que\b|eu\b)([a-z][a-z\s]*?)(?:\?|$|,|\.|!|;)/,
   ]
 
   for (const pattern of patterns) {
     const match = normalized.match(pattern)
     if (!match?.[1]) continue
 
+    const matchIndex = match.index ?? 0
+    const beforeDe = normalized.slice(Math.max(0, matchIndex - 5), matchIndex)
+    if (/\bmes\s*$/.test(beforeDe)) continue
+
     const candidata = match[1].trim()
     if (candidata.length < 3 || candidata.length > 30) continue
-    if (STOP_CITY_TOKENS.has(candidata)) continue
+    if (isInvalidCityCandidate(candidata)) continue
 
     const cidadeEncontrada = CIDADES_PIAUI.find(
       (c) => normalizeText(c).includes(candidata) || candidata.includes(normalizeText(c))

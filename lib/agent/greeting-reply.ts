@@ -66,7 +66,8 @@ export function buildUnknownQueryReply(): string {
 }
 
 export function buildHelpReply(): string {
-  return `**O que posso fazer:**\n\n**Por cidade:**\n› expectativa em Teresina\n› lideranças em Picos\n› agendas em Paes Landim\n› demandas em Parnaíba\n\n**Geral:**\n› notícias em destaque\n› projeção chapa federal\n› alertas críticos\n› territórios frios\n\n**WhatsApp:**\n› envia o resumo operacional para o CEO\n› manda briefing de Picos para Maria e João\n› (sempre diga o destinatário — não envia para todos sem você pedir)\n\n**Redes:**\n› métricas do Instagram`
+  return `**O que posso fazer:**\n\n**Por cidade:**\n› expectativa em Teresina\n› lideranças em Picos\n› visitas em Picos\n› demandas em Parnaíba\n\n**Campo & Agenda:**\n› últimas visitas de campo\n› quantas viagens em maio de 2026\n› descrição da visita a Teresina\n› cidades visitadas
+› qual cidade eu mais visitei\n\n**Agenda (Google):**\n› compromissos de hoje\n› agenda de amanhã\n\n**Geral:**\n› notícias em destaque\n› projeção chapa federal\n› alertas críticos\n› territórios frios\n\n**WhatsApp:**\n› envia o resumo operacional para o CEO\n› manda briefing de Picos para Maria e João\n› (sempre diga o destinatário — não envia para todos sem você pedir)\n\n**Redes:**\n› métricas do Instagram`
 }
 
 /** Remove menção ao assistente para não virar "cidade". */

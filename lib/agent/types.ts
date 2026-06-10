@@ -1,4 +1,4 @@
-export type AgentPageKind = 'dashboard' | 'resumo-eleicoes' | 'other'
+export type AgentPageKind = 'dashboard' | 'resumo-eleicoes' | 'campo' | 'other'
 
 export type AgentIntent =
   | 'ajuda'
@@ -6,6 +6,7 @@ export type AgentIntent =
   | 'consultar_pesquisas'
   | 'consultar_demandas'
   | 'consultar_agendas'
+  | 'consultar_visitas_campo'
   | 'consultar_expectativa'
   | 'consultar_liderancas'
   | 'consultar_chapa'
