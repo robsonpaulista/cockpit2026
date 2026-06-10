@@ -1,4 +1,5 @@
 import type { AgentChatMessage, AgentClassifiedIntent, AgentContextPayload } from '@/lib/agent/types'
+import { sidebarNavTargetListForPrompt } from '@/lib/sidebar-nav-routes'
 
 /** Modelo rápido e gratuito — mesma escolha do módulo de Conteúdo. */
 export const GROQ_AGENT_MODEL = 'llama-3.1-8b-instant'
@@ -66,7 +67,8 @@ function buildSystemPrompt(context?: AgentContextPayload): string {
     '- Em consultar_visitas_campo, use visitas/viagens do módulo Campo & Agenda (não Google Calendar). args.modo = ultima | ultimas | contagem_mes | descricao | lista_cidade | cidades | cidade_mais_visitada («qual cidade mais visitei/fui mais vezes» — só cidade e total, sem listar cada visita). args.cidade quando citar município; args.mes (01-12) e args.ano para contagem mensal; args.termo com trecho da pergunta.',
     '- visitas/viagens/check-in de cidade → consultar_visitas_campo. compromissos/agenda do dia → consultar_agendas.',
     '- Em consultar_pesquisas sobre Jadyel Alencar, preencha args.candidato com "Jadyel Alencar" (e args.cidade se houver município).',
-    '- Use args.url e args.label para navegar.',
+    '- Use args.label com o nome da página da sidebar (ex.: «Agenda», «Território & Base», «WhatsApp»). args.url só se souber o caminho exato (/dashboard/...).',
+    `- navegar: quando pedir abrir/ir/acessar/mostrar uma página do sistema (não confundir com consulta de dados). Páginas: ${sidebarNavTargetListForPrompt(28)}.`,
     '- resumo_* só quando pageKind for resumo-eleicoes.',
     '- consultar_instagram_* para métricas/posts do Instagram.',
     '- consultar_noticias_destaque: notícias marcadas como destaque no painel (dashboard_highlight), ex.: «notícias em destaque», «o que está em destaque na imprensa».',

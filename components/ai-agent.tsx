@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState, useMemo, useCallback, useRef } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, usePathname } from 'next/navigation'
 import { Bot, Sparkles, TrendingUp, AlertTriangle, MapPin, BarChart3, CheckCircle2, Send, ExternalLink, ArrowRight, Loader2, Users, Calendar, Vote, FileText, Flag, Target, Building2, Clock, CheckCheck, XCircle, Circle, ChevronRight, Zap, Mic, HelpCircle, Instagram, Heart, Eye, Share2, Image, Video, Play } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { JarvisHudShell } from '@/components/jarvis/jarvis-hud-shell'
@@ -48,6 +48,11 @@ import {
   isExpectativaDetalheNegative,
 } from '@/lib/agent/expectativa-detalhe-followup'
 import {
+  buildSidebarNavigateReply,
+  detectSidebarNavigate,
+  type SidebarNavigateResult,
+} from '@/lib/agent/detect-sidebar-navigate'
+import {
   pickJarvisLoadingPhrase,
   shouldPlayJarvisLoadingPhrase,
 } from '@/lib/agent/jarvis-loading-phrase'
@@ -84,6 +89,8 @@ interface ChatMessage {
     url: string
     label: string
   }
+  /** Navegação explícita pedida pelo usuário — abre a rota sem exigir clique no botão. */
+  autoNavigate?: boolean
 }
 
 type AIAgentResumoEleicoesContext = {
@@ -159,6 +166,10 @@ interface AIAgentProps {
   uiVariant?: 'default' | 'jarvis-hud'
   /** Jarvis HUD ocupa 100% da área útil do dashboard (home) */
   fullPageHud?: boolean
+  /** full = home; compact = bolha flutuante nas demais páginas */
+  hudLayout?: 'full' | 'compact'
+  /** Ao entrar em páginas internas, inicia recolhido como bolha */
+  floatingMode?: boolean
 }
 
 interface SpeechRecognitionResultLike {
@@ -298,6 +309,34 @@ function extractCityName(query: string): string | null {
   return extractCityNameFromQuery(query)
 }
 
+function buildSidebarNavChatMessage(result: SidebarNavigateResult): ChatMessage {
+  if (result.kind === 'ambiguous') {
+    return {
+      id: Date.now().toString(),
+      role: 'assistant',
+      content: [
+        'Encontrei mais de uma página:',
+        '',
+        ...result.candidates.map((c) => `› **${c.label}**`),
+        '',
+        'Seja mais específico, por exemplo: «abrir território e base» ou «ir para WhatsApp».',
+      ].join('\n'),
+    }
+  }
+
+  return {
+    id: Date.now().toString(),
+    role: 'assistant',
+    content: buildSidebarNavigateReply(result),
+    action: {
+      type: 'navigate',
+      url: result.target.href,
+      label: result.target.label,
+    },
+    autoNavigate: result.kind === 'navigate' || result.kind === 'home',
+  }
+}
+
 /** Cruza a fala/texto com os nomes exatos do dropdown de Resumo Eleições */
 function resolveCidadeResumoEleicoesDropdown(query: string, cidades: string[]): string | null {
   const q = normalizeText(query)
@@ -385,11 +424,16 @@ export function AIAgent({
   maxPanelHeight = 600,
   uiVariant = 'default',
   fullPageHud = false,
+  hudLayout = 'full',
+  floatingMode = false,
 }: AIAgentProps) {
   const isJarvisHud = uiVariant === 'jarvis-hud'
   const router = useRouter()
+  const pathname = usePathname()
+  const pathnameRef = useRef(pathname)
+  pathnameRef.current = pathname
   const chatContainerRef = useRef<HTMLDivElement>(null)
-  const [isMinimized, setIsMinimized] = useState(false)
+  const [isMinimized, setIsMinimized] = useState(() => floatingMode)
   const [currentMessageIndex, setCurrentMessageIndex] = useState(0)
   const [displayedText, setDisplayedText] = useState('')
   const [isTyping, setIsTyping] = useState(false)
@@ -411,6 +455,16 @@ export function AIAgent({
   const stopSpeakingReplyRef = useRef<(() => void) | null>(null)
   const pageContextRef = useRef<AIAgentPageContext | undefined>(undefined)
   pageContextRef.current = pageContext
+
+  const wasFullPageHudRef = useRef(fullPageHud)
+  useEffect(() => {
+    if (fullPageHud) {
+      setIsMinimized(false)
+    } else if (floatingMode && wasFullPageHudRef.current) {
+      setIsMinimized(true)
+    }
+    wasFullPageHudRef.current = fullPageHud
+  }, [floatingMode, fullPageHud])
 
   const [resumoDemandasAssistPhase, setResumoDemandasAssistPhase] = useState<
     'idle' | 'awaiting_lideranca_escopo'
@@ -1588,6 +1642,11 @@ export function AIAgent({
       }
     }
 
+    const sidebarNav = detectSidebarNavigate(query, pathnameRef.current)
+    if (sidebarNav) {
+      return buildSidebarNavChatMessage(sidebarNav)
+    }
+
     if (pc?.kind === 'resumo-eleicoes') {
       if (pc.loadingCidades) {
         return {
@@ -2681,6 +2740,7 @@ export function AIAgent({
           if (data.agendaScopePending) {
             syncAgendaScopePending(data.agendaScopePending)
           }
+          const autoNavigate = data.meta?.intent === 'navegar'
           return {
             id: Date.now().toString(),
             role: 'assistant',
@@ -2688,6 +2748,7 @@ export function AIAgent({
             speechSegments: data.speechSegments,
             action: data.action,
             viaAi: true,
+            autoNavigate,
           }
         }
 
@@ -2735,6 +2796,10 @@ export function AIAgent({
 
   const deliverAssistantResponse = useCallback(
     (response: ChatMessage, userQuery: string) => {
+      if (response.autoNavigate && response.action?.type === 'navigate') {
+        router.push(response.action.url)
+      }
+
       setChatMessages((prev) => [...prev, response])
       if (response.role !== 'assistant') return
 
@@ -2754,7 +2819,7 @@ export function AIAgent({
 
       scheduleJarvisAnswerSpeech(response.content, response.speechSegments)
     },
-    [isJarvisHud, scheduleJarvisAnswerSpeech]
+    [isJarvisHud, router, scheduleJarvisAnswerSpeech]
   )
 
   const handleJarvisResultClose = useCallback(() => {
@@ -2861,6 +2926,11 @@ export function AIAgent({
           }
         }
       } else {
+        const sidebarNav = detectSidebarNavigate(cleanedContent, pathnameRef.current)
+        if (sidebarNav) {
+          syncExpectativaDetalhePending(null)
+          response = buildSidebarNavChatMessage(sidebarNav)
+        } else {
         const expectativaCidade =
           expectativaDetalhePendingRef.current?.cidade ??
           expectativaFollowUpFromHistory?.cidade
@@ -2904,6 +2974,7 @@ export function AIAgent({
                 'Responda **sim** se quiser o detalhamento por liderança, ou **não** se já está bom assim.',
             }
           }
+        }
         }
       }
 
@@ -3239,11 +3310,17 @@ export function AIAgent({
           <button
             type="button"
             onClick={() => setIsMinimized(false)}
-            className="relative flex h-14 w-14 items-center justify-center rounded-full border-2 border-[var(--color-core)] bg-[var(--color-void)] shadow-[0_0_24px_rgba(0,212,255,0.35)] transition-transform hover:scale-105"
+            className={cn(
+              'relative flex items-center justify-center rounded-full border-2 border-[var(--color-core)] bg-[var(--color-void)] shadow-[0_0_24px_rgba(0,212,255,0.35)] transition-transform hover:scale-105',
+              floatingMode ? 'h-12 w-12 sm:h-14 sm:w-14' : 'h-14 w-14'
+            )}
             style={jarvisHudStyle as React.CSSProperties}
             title="Abrir Jarvis"
           >
-            <Bot className="h-7 w-7 text-[var(--color-core)]" />
+            <Bot className={cn('text-[var(--color-core)]', floatingMode ? 'h-6 w-6 sm:h-7 sm:w-7' : 'h-7 w-7')} />
+            {(isSpeaking || isListening || isProcessing) && (
+              <span className="absolute -right-0.5 -top-0.5 h-3 w-3 animate-pulse rounded-full bg-[var(--color-online)]" />
+            )}
             {(alertsCriticosCount > 0 || territoriosFriosCount > 0) && (
               <span className="absolute -right-0.5 -top-0.5 flex h-5 w-5 items-center justify-center rounded-full bg-[var(--color-online)] text-[9px] font-medium text-[var(--color-void)]">
                 {alertsCriticosCount + territoriosFriosCount}
@@ -3254,6 +3331,8 @@ export function AIAgent({
       )
     }
 
+    const compactHud = hudLayout === 'compact'
+
     return (
       <div
         className={cn(
@@ -3262,7 +3341,12 @@ export function AIAgent({
             ? 'relative z-40 flex h-full min-h-0 w-full flex-1 flex-col'
             : dockInline
               ? 'relative z-40 w-full'
-              : 'fixed bottom-4 left-4 right-4 z-[100] sm:left-auto sm:right-6 sm:w-[min(100%,1100px)]'
+              : cn(
+                  'fixed z-[100]',
+                  compactHud
+                    ? 'bottom-4 right-4 w-[min(calc(100vw-2rem),20rem)] sm:bottom-5 sm:right-5 sm:w-[22rem]'
+                    : 'bottom-4 left-4 right-4 sm:left-auto sm:right-6 sm:w-[min(100%,1100px)]'
+                )
         )}
         style={fullPageHud ? undefined : { maxHeight: maxPanelHeight }}
       >
@@ -3279,6 +3363,7 @@ export function AIAgent({
           lastAction={jarvisLastAction}
           onActionClick={handleAction}
           logLines={jarvisLogLines}
+          hudLayout={hudLayout}
           resultPanel={
             jarvisResultPopup
               ? { view: jarvisResultPopup.view, action: jarvisResultPopup.action }
@@ -3286,7 +3371,13 @@ export function AIAgent({
           }
           onResultPanelClose={handleJarvisResultClose}
           onResultPanelAction={(action) => handleAction(action)}
-          className={cn(fullPageHud ? 'h-full min-h-0 flex-1' : 'h-full min-h-[min(520px,calc(100vh-7rem))]')}
+          className={cn(
+            fullPageHud
+              ? 'h-full min-h-0 flex-1'
+              : compactHud
+                ? 'h-full min-h-0 min-h-[min(320px,calc(100vh-6rem))]'
+                : 'h-full min-h-[min(520px,calc(100vh-7rem))]'
+          )}
           style={fullPageHud ? undefined : { maxHeight: maxPanelHeight }}
         />
       </div>

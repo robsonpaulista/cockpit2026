@@ -18,6 +18,11 @@ import {
   type CampoAgendaRow,
   type VisitasCampoModo,
 } from '@/lib/agent/format-visitas-campo'
+import {
+  buildSidebarNavigateReply,
+  detectSidebarNavigate,
+  resolveSidebarNavigateFromGroqArgs,
+} from '@/lib/agent/detect-sidebar-navigate'
 import type {
   AgentClassifiedIntent,
   AgentContextPayload,
@@ -352,10 +357,16 @@ export async function executeServerTool(
     case 'ajuda':
       return toolAjuda(context)
     case 'navegar': {
-      const url = classified.args.url?.trim()
-      const label = classified.args.label?.trim() || 'Abrir página'
-      if (!url) return 'Não identifiquei para qual página navegar.'
-      return `Posso abrir **${label}**. Use o botão abaixo da mensagem.`
+      const resolved =
+        resolveSidebarNavigateFromGroqArgs(queryHint ?? '', classified.args) ??
+        detectSidebarNavigate(queryHint ?? '', undefined)
+      if (!resolved) {
+        return 'Não identifiquei qual página abrir. Diga, por exemplo: «abrir agenda» ou «ir para território».'
+      }
+      if (resolved.kind === 'ambiguous') {
+        return `Encontrei mais de uma página: ${resolved.candidates.map((c) => c.label).join(', ')}. Seja mais específico.`
+      }
+      return buildSidebarNavigateReply(resolved)
     }
     default:
       return null
@@ -382,6 +393,16 @@ export function buildNavigateAction(
   }
 
   if (classified.intent !== 'navegar') return undefined
+
+  const resolved = resolveSidebarNavigateFromGroqArgs('', classified.args)
+  if (resolved?.kind === 'navigate' || resolved?.kind === 'home') {
+    return {
+      type: 'navigate',
+      url: resolved.target.href,
+      label: resolved.target.label,
+    }
+  }
+
   const url = classified.args.url?.trim()
   if (!url || !url.startsWith('/')) return undefined
   return {

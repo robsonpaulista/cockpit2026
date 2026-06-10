@@ -65,6 +65,7 @@ import {
   sidebarSectionLabelClass,
 } from '@/lib/premium-ui-classes'
 import { AppBrandTitle } from '@/components/app-brand-title'
+import { SIDEBAR_MENU_ITEMS, type SidebarMenuItemConfig } from '@/lib/sidebar-nav-routes'
 import { useDashboardHomeChrome } from '@/contexts/dashboard-home-chrome-context'
 import { DASHBOARD_HOME_BG } from '@/lib/dashboard-home-chrome'
 import {
@@ -127,132 +128,9 @@ const COCKPIT_MENU_LABEL: Record<string, string> = {
   emendas: 'Emendas',
 }
 
-interface SidebarMenuItem extends MenuItem {
-  children?: MenuItem[]
-}
+interface SidebarMenuItem extends SidebarMenuItemConfig {}
 
-const menuItems: SidebarMenuItem[] = [
-  { id: 'home', label: 'Visão Geral', icon: 'LayoutDashboard', href: '/dashboard' },
-  {
-    id: 'resumo-operacional',
-    label: 'Resumo Operacional',
-    icon: 'Activity',
-    href: '/dashboard/resumo-operacional',
-  },
-  { id: 'narrativas', label: 'Estratégia', icon: 'Target', href: '/dashboard/narrativas' },
-  { id: 'agenda', label: 'Agenda', icon: 'Calendar', href: '/dashboard/agenda' },
-  { id: 'campo', label: 'Campo & Agenda', icon: 'MapPin', href: '/dashboard/campo' },
-  { id: 'territorio', label: 'Território & Base', icon: 'MapPin', href: '/dashboard/territorio' },
-  {
-    id: 'territorio-mapa-tds',
-    label: 'Mapa dos TDs',
-    icon: 'MapPinned',
-    href: '/dashboard/territorio/mapa-tds',
-  },
-  {
-    id: 'ficha-atendimento',
-    label: 'Ficha de Atendimento',
-    icon: 'ClipboardList',
-    href: '/dashboard/ficha-atendimento',
-  },
-  { id: 'pesquisa', label: 'Pesquisa & Relato', icon: 'BarChart3', href: '/dashboard/pesquisa' },
-  {
-    id: 'chapas-menu',
-    label: 'Chapas',
-    icon: 'Vote',
-    href: '/dashboard/chapas',
-    children: [
-      { id: 'chapas', label: 'Federal', icon: 'Vote', href: '/dashboard/chapas' },
-      { id: 'chapas-estaduais', label: 'Estadual', icon: 'Vote', href: '/dashboard/chapas-estaduais' },
-    ],
-  },
-  {
-    id: 'resumo-eleicoes-menu',
-    label: 'Resumo Eleições',
-    icon: 'BarChart3',
-    href: '/dashboard/resumo-eleicoes',
-    children: [
-      {
-        id: 'resumo-eleicoes-principal',
-        label: 'Resumo por cidade',
-        icon: 'BarChart3',
-        href: '/dashboard/resumo-eleicoes',
-      },
-      {
-        id: 'resumo-eleicoes-historico',
-        label: 'Histórico federal',
-        icon: 'History',
-        href: '/dashboard/resumo-eleicoes/historico',
-      },
-      {
-        id: 'resumo-eleicoes-secao',
-        label: 'Por seção',
-        icon: 'MapPinned',
-        href: '/dashboard/resumo-eleicoes/secao',
-      },
-    ],
-  },
-  {
-    id: 'conteudo-menu',
-    label: 'Presença & Conteúdo',
-    icon: 'MessageSquare',
-    href: '/dashboard/conteudo',
-    children: [
-      { id: 'conteudo-hub', label: 'Visão geral', icon: 'LayoutDashboard', href: '/dashboard/conteudo' },
-      { id: 'conteudo-obras', label: 'Obras (cards)', icon: 'Building2', href: '/dashboard/conteudo/obras' },
-      { id: 'conteudo-agenda', label: 'Agenda campo', icon: 'Calendar', href: '/dashboard/conteudo/agenda' },
-      { id: 'conteudo-cards', label: 'Cards', icon: 'FileText', href: '/dashboard/conteudo/cards' },
-      { id: 'conteudo-referencias', label: 'Banco referências', icon: 'Image', href: '/dashboard/conteudo/referencias' },
-      { id: 'conteudo-analise', label: 'Análise', icon: 'BarChart3', href: '/dashboard/conteudo/analise' },
-      { id: 'conteudo-redes', label: 'Redes & Instagram', icon: 'MessageSquare', href: '/dashboard/conteudo/redes' },
-    ],
-  },
-  { id: 'noticias', label: 'Notícias & Crises', icon: 'Newspaper', href: '/dashboard/noticias' },
-  {
-    id: 'mobilizacao-menu',
-    label: 'Mobilização',
-    icon: 'Users',
-    href: '/dashboard/mobilizacao/config',
-    children: [
-      { id: 'mobilizacao-captacao', label: 'Captação', icon: 'Users', href: '/mobilizacao/detalhe' },
-      {
-        id: 'mobilizacao-mapa-digital-ig',
-        label: 'Mapa Exército Digital',
-        icon: 'AtSign',
-        href: '/dashboard/mobilizacao/mapa-digital-ig',
-      },
-      { id: 'mobilizacao-config', label: 'Config', icon: 'Settings', href: '/dashboard/mobilizacao/config' },
-    ],
-  },
-  { id: 'whatsapp', label: 'WhatsApp', icon: 'MessageCircle', href: '/dashboard/whatsapp' },
-  { id: 'operacao', label: 'Operação & Equipe', icon: 'Settings', href: '/dashboard/operacao' },
-  { id: 'juridico', label: 'Jurídico', icon: 'Scale', href: '/dashboard/juridico' },
-  { id: 'emendas', label: 'Emendas', icon: 'FileSpreadsheet', href: '/dashboard/emendas' },
-  { id: 'obras', label: 'Obras', icon: 'Building2', href: '/dashboard/obras' },
-  { id: 'proposicoes', label: 'Proposições', icon: 'ScrollText', href: '/dashboard/proposicoes' },
-  { id: 'sei-pesquisa', label: 'Pesquisa SEI (teste)', icon: 'Search', href: '/dashboard/sei-pesquisa' },
-  {
-    id: 'gestao-pesquisas-menu',
-    label: 'Gestão de Pesquisas',
-    icon: 'ClipboardList',
-    href: '/dashboard/gestao-pesquisas',
-    children: [
-      {
-        id: 'gestao-pesquisas-inicio',
-        label: 'Visão geral',
-        icon: 'ClipboardList',
-        href: '/dashboard/gestao-pesquisas',
-      },
-      {
-        id: 'gestao-pesquisas-config',
-        label: 'Configurações',
-        icon: 'Settings',
-        href: '/dashboard/gestao-pesquisas/configuracoes',
-      },
-    ],
-  },
-  { id: 'usuarios', label: 'Gestão de Usuários', icon: 'Shield', href: '/dashboard/usuarios' },
-]
+const menuItems: SidebarMenuItem[] = SIDEBAR_MENU_ITEMS
 
 const iconMap: Record<string, LucideIcon> = {
   LayoutDashboard,

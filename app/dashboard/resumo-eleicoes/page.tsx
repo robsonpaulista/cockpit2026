@@ -3,11 +3,12 @@
 import { useMemo, useState, useEffect, useRef, useCallback } from 'react'
 import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
-import { RefreshCw, AlertCircle, Crown, X, Users, Vote, BarChart3, UserCheck, ArrowUpRight, FileText, Loader2, Bot, MapPinned } from 'lucide-react'
+import { RefreshCw, AlertCircle, Crown, X, Users, Vote, BarChart3, UserCheck, ArrowUpRight, FileText, Loader2, MapPinned } from 'lucide-react'
 import { getEleitoradoByCity } from '@/lib/eleitores'
 import { CityDemandsModal } from '@/components/city-demands-modal'
 import { PollReportsHistoryModal } from '@/components/poll-reports-history-modal'
-import { AIAgent, type AIAgentPageContext } from '@/components/ai-agent'
+import type { AIAgentPageContext } from '@/components/ai-agent'
+import { useRegisterJarvisHostProps } from '@/contexts/jarvis-host-props-context'
 import { cn } from '@/lib/utils'
 import { useTheme } from '@/contexts/theme-context'
 import { sidebarPrimaryCTAButtonClass } from '@/lib/sidebar-menu-active-style'
@@ -294,7 +295,6 @@ export default function ResumoEleicoesPage() {
     partido_2024: 1,
   })
   const [selectedVotes, setSelectedVotes] = useState<Record<TableKey, Record<string, number>>>(EMPTY_SELECTIONS)
-  const [agenteMontado, setAgenteMontado] = useState(false)
   const [candidatoDistribuicao, setCandidatoDistribuicao] = useState<ResultadoEleicao | null>(null)
   const painelSecaoRef = useRef<HTMLElement>(null)
 
@@ -1445,6 +1445,21 @@ export default function ResumoEleicoesPage() {
       fecharModalDemandasCidade,
     ],
   )
+
+  useRegisterJarvisHostProps({
+    pageContext: contextoAgenteResumoEleicoes,
+    loadingKPIs: loadingDados || loadingCidades,
+    loadingTerritorios: loadingDados,
+    kpisCount: resumoCidade ? 5 : 0,
+    expectativa2026: votosCenarioAtivo,
+    presencaTerritorial:
+      percentualAlcance !== null
+        ? `${percentualAlcance.toFixed(1).replace('.', ',')}%`
+        : undefined,
+    pollsCount: pesquisaRecenteCidade ? 1 : 0,
+    candidatoPadrao: candidatoPadraoPesquisa || CANDIDATO_FEDERAL_FIXO,
+  })
+
   const summaryCardBaseClass =
     'rounded-[14px] border border-border-card bg-surface p-3 relative overflow-hidden shadow-[0_1px_3px_rgba(0,0,0,0.06)] hover:shadow-[0_8px_24px_rgba(0,0,0,0.08)] hover:-translate-y-[2px] transition-all duration-300 ease-out h-full'
   const kpiAccentTextClass = isCockpit ? 'text-[#0ea5b7]' : 'text-accent-gold'
@@ -1547,48 +1562,6 @@ export default function ResumoEleicoesPage() {
               Por seção
             </Link>
           </div>
-
-          {!candidatoDistribuicao && (
-            <div className="mt-3 flex justify-end">
-              {!agenteMontado ? (
-                <button
-                  type="button"
-                  onClick={() => setAgenteMontado(true)}
-                  className="flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-accent-gold to-accent-gold shadow-lg shadow-accent-gold/30 transition-transform hover:scale-105"
-                  title="Abrir Agente de IA"
-                >
-                  <Bot className="h-7 w-7 text-white" />
-                </button>
-              ) : (
-                <AIAgent
-                  dockVariant="inline"
-                  enableVoice
-                  immediateChatMode
-                  pageContext={contextoAgenteResumoEleicoes}
-                  loadingKPIs={loadingDados || loadingCidades}
-                  loadingPolls={false}
-                  loadingTerritorios={loadingDados}
-                  loadingAlerts={false}
-                  loadingBandeiras={false}
-                  kpisCount={resumoCidade ? 5 : 0}
-                  expectativa2026={votosCenarioAtivo}
-                  presencaTerritorial={
-                    percentualAlcance !== null
-                      ? `${percentualAlcance.toFixed(1).replace('.', ',')}%`
-                      : undefined
-                  }
-                  pollsCount={pesquisaRecenteCidade ? 1 : 0}
-                  candidatoPadrao={candidatoPadraoPesquisa || CANDIDATO_FEDERAL_FIXO}
-                  territoriosFriosCount={0}
-                  alertsCriticosCount={0}
-                  bandeirasCount={0}
-                  bandeirasPerformance={0}
-                  criticalAlerts={[]}
-                  territoriosFrios={[]}
-                />
-              )}
-            </div>
-          )}
         </div>
 
         {error && (

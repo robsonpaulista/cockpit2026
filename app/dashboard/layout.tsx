@@ -19,6 +19,8 @@ import './territorio/mapa-tds/mapa-dom-fut-theme.css' // tema base neutra + lara
 
 import { pathnameUsesMapaFuturisticShell } from '@/lib/dashboard-mapa-futuristic-chrome'
 import { DashboardHomeChromeProvider } from '@/contexts/dashboard-home-chrome-context'
+import { JarvisHostPropsProvider } from '@/contexts/jarvis-host-props-context'
+import { JarvisGlobalHost } from '@/components/jarvis/jarvis-global-host'
 import {
   DASHBOARD_HOME_ACCENT_GRADIENT,
   isDashboardHomePath,
@@ -58,7 +60,7 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
             <DashboardHeader />
             <main
               className={cn(
-                'flex min-h-0 flex-1 flex-col',
+                'relative flex min-h-0 flex-1 flex-col',
                 isHomeAccentChrome ? 'overflow-hidden' : 'overflow-y-auto',
                 columnBgClass
               )}
@@ -66,6 +68,7 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
               <DashboardPermissionGuard>
                 <PageTransition>{children}</PageTransition>
               </DashboardPermissionGuard>
+              <JarvisGlobalHost />
             </main>
           </div>
         </div>
@@ -88,7 +91,9 @@ export default function DashboardLayout({
         <ThemeProvider>
           <NavigationLoadingProvider>
             <SidebarProvider>
-              <DashboardContent>{children}</DashboardContent>
+              <JarvisHostPropsProvider>
+                <DashboardContent>{children}</DashboardContent>
+              </JarvisHostPropsProvider>
             </SidebarProvider>
           </NavigationLoadingProvider>
         </ThemeProvider>
