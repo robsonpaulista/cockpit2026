@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { classifyAgentIntent } from '@/lib/agent/groq-classify'
+import { buildGreetingReply, isGreetingQuery, isHelpQuery, buildHelpReply } from '@/lib/agent/greeting-reply'
 import { checkAgentRateLimit, AGENT_RATE_LIMITS } from '@/lib/agent/rate-limit'
 import { intentToSyntheticQuery, isClientOnlyIntent } from '@/lib/agent/synthetic-query'
 import { buildNavigateAction, executeServerTool } from '@/lib/agent/server-tools'
@@ -33,6 +34,22 @@ export async function POST(request: Request) {
     const message = body.message?.trim()
     if (!message || message.length > 1200) {
       return NextResponse.json({ error: 'Mensagem inválida' }, { status: 400 })
+    }
+
+    if (isGreetingQuery(message)) {
+      return NextResponse.json({
+        source: 'groq',
+        content: buildGreetingReply(message),
+        meta: { intent: 'resposta_direta' },
+      } satisfies AgentChatResponse)
+    }
+
+    if (isHelpQuery(message)) {
+      return NextResponse.json({
+        source: 'groq',
+        content: buildHelpReply(),
+        meta: { intent: 'ajuda' },
+      } satisfies AgentChatResponse)
     }
 
     const sessionId = body.sessionId?.trim() || user.id

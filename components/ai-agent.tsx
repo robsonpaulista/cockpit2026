@@ -31,6 +31,14 @@ import {
   stopSpeechKeepAlive,
   unlockJarvisAudio,
 } from '@/lib/agent/audio-unlock'
+import { extractCityNameFromQuery } from '@/lib/agent/city-extract'
+import {
+  buildGreetingReply,
+  buildHelpReply,
+  buildUnknownQueryReply,
+  isGreetingQuery,
+  isHelpQuery,
+} from '@/lib/agent/greeting-reply'
 import { isSpeechSynthesisSupported, speakText, stopSpeaking } from '@/lib/agent/speech-output'
 import type {
   AgentChatResponse,
@@ -261,83 +269,8 @@ function normalizeNumber(value: any): number {
   return isNaN(numValue) ? 0 : numValue
 }
 
-// Lista de cidades do Piauí para melhor reconhecimento
-const cidadesPiaui = [
-  'teresina', 'picos', 'parnaiba', 'floriano', 'piripiri', 'campo maior', 'oeiras', 
-  'barras', 'pedro ii', 'paes landim', 'jose de freitas', 'uruçui', 'bom jesus', 
-  'corrente', 'agua branca', 'altos', 'amarante', 'angical', 'batalha', 'canto do buriti',
-  'castelo', 'cocal', 'demerval lobao', 'elesbao veloso', 'esperantina', 'fronteiras',
-  'guadalupe', 'ilha grande', 'inhuma', 'itainopolis', 'jaicos', 'joaquim pires',
-  'lagoa do piaui', 'luzilandia', 'miguel alves', 'miguel leao', 'monsenhor gil',
-  'nazare', 'nossa senhora', 'palmeirais', 'paulistana', 'pimenteiras', 'pio ix',
-  'piracuruca', 'regeneracao', 'ribeiro goncalves', 'santa cruz', 'santa filomena',
-  'santana', 'santo antonio', 'sao felix', 'sao goncalo', 'sao joao', 'sao jose',
-  'sao miguel', 'sao pedro', 'sao raimundo', 'simoes', 'simplicio', 'socorro', 'uniao', 
-  'valenca', 'varzea', 'luzilândia', 'são joão do piauí', 'são raimundo nonato',
-  'alto longa', 'beneditinos', 'buriti dos lopes', 'cabeceiras do piauí', 'cajueiro da praia',
-  'campo largo', 'capitão de campos', 'caracol', 'cocal de telha', 'cocal dos alves',
-  'colônia do gurguéia', 'cristino castro', 'curimatá', 'dom expedito lopes', 'dom inocêncio',
-  'domingos mourao', 'eliseu martins', 'fartura do piaui', 'flores do piaui', 'francinopolis',
-  'gilbues', 'hugo napoleao', 'ipiranga do piaui', 'isaias coelho', 'itaueira', 'jacobina do piaui',
-  'jardim do mulato', 'jatoba do piaui', 'jerumenha', 'joao costa', 'juazeiro do piaui',
-  'julio borges', 'jurema', 'lagoa alegre', 'lagoa de sao francisco', 'lagoa do barro do piaui',
-  'lagoa do sitio', 'lagoinha do piaui', 'landri sales', 'luis correia', 'madeiro',
-  'manoel emidio', 'marcolandia', 'marcos parente', 'massape do piaui', 'matias olimpio',
-  'morro cabeca no tempo', 'morro do chapeu do piaui', 'murici dos portelas', 'nazaria',
-  'nossa senhora de nazare', 'nossa senhora dos remedios', 'novo oriente do piaui',
-  'novo santo antonio', 'paqueta', 'parnagua', 'passagem franca do piaui', 'patos do piaui',
-  'pau darco do piaui', 'paulistana', 'pavussu', 'pedro laurentino', 'porto alegre do piaui',
-  'queimada nova', 'redencao do gurgueia', 'riacho frio', 'ribeira do piaui', 'rio grande do piaui',
-  'santa cruz do piaui', 'santa cruz dos milagres', 'santa luz', 'santa rosa do piaui',
-  'santana do piaui', 'santo antonio de lisboa', 'santo antonio dos milagres', 'santo inacio do piaui',
-  'sao braz do piaui', 'sao felix do piaui', 'sao francisco de assis do piaui',
-  'sao francisco do piaui', 'sao goncalo do gurgueia', 'sao goncalo do piaui',
-  'sao joao da canabrava', 'sao joao da fronteira', 'sao joao da serra', 'sao joao da varjota',
-  'sao joao do arraial', 'sao jose do divino', 'sao jose do peixe', 'sao jose do piaui',
-  'sao juliao', 'sao lourenco do piaui', 'sao luis do piaui', 'sao miguel da baixa grande',
-  'sao miguel do fidalgo', 'sao miguel do tapuio', 'sao pedro do piaui', 'sao raimundo nonato',
-  'sebastiao barros', 'sebastiao leal', 'sigefredo pacheco', 'simoes', 'socorro do piaui',
-  'sussuapara', 'tamboril do piaui', 'tanque do piaui', 'vera mendes', 'vila nova do piaui',
-  'wall ferraz'
-]
-
-// Extrair nome de cidade da query
 function extractCityName(query: string): string | null {
-  const normalized = normalizeText(query)
-  
-  // Primeiro tentar encontrar cidade conhecida na query
-  for (const cidade of cidadesPiaui) {
-    const cidadeNorm = normalizeText(cidade)
-    if (normalized.includes(cidadeNorm)) {
-      return cidade
-    }
-  }
-  
-  // Padrões para extrair cidade de forma genérica
-  const patterns = [
-    /em\s+([a-z\s]+?)(?:\?|$|,|\.|!|;)/,
-    /de\s+([a-z\s]+?)(?:\?|$|,|\.|!|;)/,
-    /cidade\s+(?:de\s+)?([a-z\s]+?)(?:\?|$|,|\.|!|;)/,
-    /para\s+([a-z\s]+?)(?:\?|$|,|\.|!|;)/,
-  ]
-  
-  for (const pattern of patterns) {
-    const match = normalized.match(pattern)
-    if (match && match[1]) {
-      const candidata = match[1].trim()
-      // Verificar se é uma cidade conhecida
-      const cidadeEncontrada = cidadesPiaui.find(c => 
-        normalizeText(c).includes(candidata) || candidata.includes(normalizeText(c))
-      )
-      if (cidadeEncontrada) return cidadeEncontrada
-      // Se não é conhecida mas parece ser uma cidade, retornar
-      if (candidata.length >= 3 && candidata.length <= 30) {
-        return candidata
-      }
-    }
-  }
-  
-  return null
+  return extractCityNameFromQuery(query)
 }
 
 function isExpectativaDetalheAffirmative(query: string): boolean {
@@ -1591,6 +1524,22 @@ export function AIAgent({
     const queryLower = normalizeText(query)
     const pc = pageContextRef.current
 
+    if (isGreetingQuery(query)) {
+      return {
+        id: Date.now().toString(),
+        role: 'assistant',
+        content: buildGreetingReply(query),
+      }
+    }
+
+    if (isHelpQuery(query)) {
+      return {
+        id: Date.now().toString(),
+        role: 'assistant',
+        content: buildHelpReply(),
+      }
+    }
+
     if (pc?.kind === 'resumo-eleicoes') {
       if (pc.loadingCidades) {
         return {
@@ -2575,11 +2524,10 @@ export function AIAgent({
       }
     }
     
-    // ===== AJUDA =====
     return {
       id: Date.now().toString(),
       role: 'assistant',
-      content: `**O que posso fazer:**\n\n**Por cidade:**\n› expectativa em Teresina\n› lideranças em Picos\n› agendas em Paes Landim\n› demandas em Parnaíba\n› pedidos em Teresina\n\n**Território & Base:**\n› território e base\n› capilaridade\n› presença territorial\n› expectativa 2026\n› demandas\n\n**Redes Sociais:**\n› métricas do Instagram\n› quantos seguidores tenho?\n› posts mais curtidos\n› melhores posts\n› publicações por tipo\n› qual tema tem melhor performance?\n\n**Geral:**\n› projeção chapa federal\n› notícias em destaque\n› alertas críticos\n› territórios frios\n\nDigite sua pergunta!`,
+      content: buildUnknownQueryReply(),
     }
   }, [
     criticalAlerts,
@@ -2755,6 +2703,18 @@ export function AIAgent({
           }
         } else {
           setExpectativaDetalhePending(null)
+        }
+      } else if (isGreetingQuery(cleanedContent)) {
+        response = {
+          id: Date.now().toString(),
+          role: 'assistant',
+          content: buildGreetingReply(cleanedContent),
+        }
+      } else if (isHelpQuery(cleanedContent)) {
+        response = {
+          id: Date.now().toString(),
+          role: 'assistant',
+          content: buildHelpReply(),
         }
       } else if (queryAsksNoticiasDestaque(normalizeText(cleanedContent))) {
         response = await buildNoticiasDestaqueChatMessage()
