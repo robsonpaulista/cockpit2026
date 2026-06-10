@@ -114,11 +114,22 @@ export async function POST(request: Request) {
       return NextResponse.json(fallbackResponse('groq_error'))
     }
 
-    if (classified.intent === 'resposta_direta' && classified.direct_reply?.trim()) {
+    if (classified.intent === 'resposta_direta') {
+      const content = isGreetingQuery(message)
+        ? buildGreetingReply(message)
+        : classified.direct_reply?.trim() || buildGreetingReply(message)
       return NextResponse.json({
         source: 'groq',
-        content: classified.direct_reply.trim(),
+        content,
         meta: { intent: classified.intent },
+      } satisfies AgentChatResponse)
+    }
+
+    if (classified.intent === 'ajuda') {
+      return NextResponse.json({
+        source: 'groq',
+        content: buildHelpReply(),
+        meta: { intent: 'ajuda' },
       } satisfies AgentChatResponse)
     }
 

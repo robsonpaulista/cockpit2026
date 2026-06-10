@@ -18,9 +18,11 @@ export function isHelpQuery(query: string): boolean {
   const q = normalize(query)
   return (
     q === '?' ||
-    /\b(ajuda|comandos|exemplos|help|menu|o que voce faz|o que você faz|o que posso perguntar|o que voce consegue|o que você consegue)\b/.test(
-      q
-    )
+    /\b(ajuda|comandos|exemplos|help|menu|funcionalidades|capacidades)\b/.test(q) ||
+    /\b(o que (?:voce|você) (?:faz|consegue|sabe|pode fazer|pode responder|responde))\b/.test(q) ||
+    /\b(o que posso (?:perguntar|fazer|pedir))\b/.test(q) ||
+    /\b(quais? (?:sao|são) (?:suas?|as) (?:funcoes|funções|capacidades))\b/.test(q) ||
+    /\b(me (?:ajuda|ajude)|preciso de ajuda)\b/.test(q)
   )
 }
 
@@ -53,12 +55,37 @@ function greetingFromClock(): 'manha' | 'tarde' | 'noite' {
   return 'noite'
 }
 
-export function buildGreetingReply(query?: string): string {
-  const period = greetingFromQuery(query ?? '') ?? greetingFromClock()
-  const saudacao =
-    period === 'manha' ? 'Bom dia!' : period === 'tarde' ? 'Boa tarde!' : 'Boa noite!'
+const JARVIS_RETURNING_KEY = 'jarvis-has-chatted'
 
-  return `${saudacao} Como posso ajudar hoje? Pergunte sobre agenda, notícias em destaque, expectativa em uma cidade — ou diga **ajuda** para ver exemplos.`
+function markJarvisGreeted(): boolean {
+  if (typeof window === 'undefined') return false
+  const returning = localStorage.getItem(JARVIS_RETURNING_KEY) === '1'
+  localStorage.setItem(JARVIS_RETURNING_KEY, '1')
+  return returning
+}
+
+function buildGreetingOpener(query: string): string {
+  const explicit = greetingFromQuery(query)
+  if (explicit === 'manha') return 'Bom dia!'
+  if (explicit === 'tarde') return 'Boa tarde!'
+  if (explicit === 'noite') return 'Boa noite!'
+
+  const q = normalize(query)
+  if (/^(oi|ola|hey|e\s*ai|eai|hello|hi)\b/.test(q)) return 'Olá!'
+
+  const period = greetingFromClock()
+  return period === 'manha' ? 'Bom dia!' : period === 'tarde' ? 'Boa tarde!' : 'Boa noite!'
+}
+
+/** Resposta social curta — sem listar funcionalidades (isso fica em buildHelpReply). */
+export function buildGreetingReply(query?: string): string {
+  const opener = buildGreetingOpener(query ?? '')
+  const returning = markJarvisGreeted()
+  const followUp = returning
+    ? 'Bom falar com você novamente. Em que posso te ajudar?'
+    : 'Em que posso ajudar hoje?'
+
+  return `${opener} ${followUp}`
 }
 
 export function buildUnknownQueryReply(): string {
