@@ -49,6 +49,7 @@ import {
   EXPECTATIVA_DETALHE_DISMISS_REPLY,
   isExpectativaDetalheAffirmative,
   isExpectativaDetalheNegative,
+  querExpectativaPorLideranca,
 } from '@/lib/agent/expectativa-detalhe-followup'
 import {
   buildSidebarNavigateReply,
@@ -704,7 +705,6 @@ export function AIAgent({
         return formatJarvisExpectativaCidadeReply({
           cidade: cidadeFormatada,
           totalFormatado,
-          qtdLiderancas,
         })
       }
 
@@ -734,7 +734,6 @@ export function AIAgent({
       return formatJarvisExpectativaCidadeReply({
         cidade: cidadeFormatada,
         totalFormatado,
-        qtdLiderancas,
         detalhe: true,
         liderancasBloco,
       })
@@ -2231,18 +2230,14 @@ export function AIAgent({
     // ===== EXPECTATIVA/VOTOS EM CIDADE ESPECÍFICA =====
     if (cidade && (queryLower.includes('expectativa') || queryLower.includes('voto') || 
         queryLower.includes('2026') || queryLower.includes('quantos') || queryLower.includes('potencial'))) {
-      const pedeDetalheLideranca =
-        /\b(por lideranca|por liderança|detalhada|detalhado|detalhe|liste|listar|quem)\b/.test(queryLower)
+      const pedeDetalheLideranca = querExpectativaPorLideranca(query)
       const resposta = await fetchExpectativaCidade(cidade, { detalhe: pedeDetalheLideranca })
-      if (!pedeDetalheLideranca) {
-        syncExpectativaDetalhePending({ cidade })
-      } else {
-        syncExpectativaDetalhePending(null)
-      }
+      syncExpectativaDetalhePending(null)
       return {
         id: Date.now().toString(),
         role: 'assistant',
         content: resposta,
+        speechSegments: pedeDetalheLideranca ? undefined : [resposta.replace(/\*\*/g, '')],
         action: {
           type: 'navigate',
           url: '/dashboard/territorio',
@@ -2658,11 +2653,12 @@ export function AIAgent({
     // ===== CONSULTA SOBRE CIDADE SEM INDICADOR ESPECÍFICO =====
     if (cidade && !queryLower.includes('pesquisa')) {
       const expectativaResp = await fetchExpectativaCidade(cidade)
-      syncExpectativaDetalhePending({ cidade })
+      syncExpectativaDetalhePending(null)
       return {
         id: Date.now().toString(),
         role: 'assistant',
         content: expectativaResp,
+        speechSegments: [expectativaResp.replace(/\*\*/g, '')],
         action: {
           type: 'navigate',
           url: '/dashboard/territorio',
@@ -2817,11 +2813,7 @@ export function AIAgent({
         onEnd: () => {
           setIsSpeaking(false)
           if (isJarvisHudRef.current && !listenPausedRef.current) {
-            if (jarvisSkipListenResumeRef.current) {
-              jarvisSkipListenResumeRef.current = false
-            } else {
-              jarvisListenResumePhraseRef.current = 'aguardando'
-            }
+            jarvisSkipListenResumeRef.current = false
             shouldRestartListenRef.current = true
           }
         },
@@ -2829,11 +2821,7 @@ export function AIAgent({
           setIsSpeaking(false)
           if (msg) setVoiceError(msg)
           if (isJarvisHudRef.current && !listenPausedRef.current) {
-            if (jarvisSkipListenResumeRef.current) {
-              jarvisSkipListenResumeRef.current = false
-            } else {
-              jarvisListenResumePhraseRef.current = 'aguardando'
-            }
+            jarvisSkipListenResumeRef.current = false
             shouldRestartListenRef.current = true
           }
         },

@@ -1,3 +1,20 @@
+export function querExpectativaPorLideranca(query: string): boolean {
+  const q = normalize(query)
+  if (
+    /\b(por lideranca|por liderancas|expectativa por lider|detalhamento por lider|detalhar por lider|detalhe por lider)\b/.test(
+      q
+    )
+  ) {
+    return true
+  }
+  return (
+    /\b(expectativa|votos?)\b/.test(q) &&
+    /\b(lideranca|liderancas)\b/.test(q) &&
+    /\b(por|detalh|list)\b/.test(q)
+  )
+}
+
+/** @deprecated follow-up automático removido — use querExpectativaPorLideranca na pergunta. */
 export const EXPECTATIVA_DETALHE_FOLLOWUP_QUESTION =
   'Quer que eu detalhe a expectativa por liderança?'
 

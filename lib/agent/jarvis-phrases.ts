@@ -198,19 +198,16 @@ export function pickJarvisExpectativaPiorCenario(total: string | number): string
 export function formatJarvisExpectativaCidadeReply(options: {
   cidade: string
   totalFormatado: string
-  qtdLiderancas: number
   detalhe?: boolean
   liderancasBloco?: string
 }): string {
   const intro = pickJarvisExpectativaPiorCenario(options.totalFormatado)
-  const linhas = [`**${options.cidade}**`, '', intro]
 
   if (!options.detalhe) {
-    linhas.push('', `Lideranças cadastradas: **${options.qtdLiderancas}**`)
-    linhas.push('', 'Quer detalhar por liderança?')
-    return linhas.join('\n')
+    return intro
   }
 
+  const linhas = [`**${options.cidade}**`, '', intro]
   if (options.liderancasBloco) {
     linhas.push('', options.liderancasBloco)
   }
