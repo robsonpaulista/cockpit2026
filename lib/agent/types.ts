@@ -1,4 +1,4 @@
-export type AgentPageKind = 'dashboard' | 'resumo-eleicoes' | 'campo' | 'other'
+export type AgentPageKind = 'dashboard' | 'resumo-eleicoes' | 'campo' | 'territorio' | 'other'
 
 export type AgentIntent =
   | 'ajuda'

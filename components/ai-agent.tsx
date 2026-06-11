@@ -62,6 +62,15 @@ import {
   isResumoEleicoesPriorityQuery,
   resolveCidadeAlvoResumoEleicoes,
 } from '@/lib/agent/resumo-eleicoes-city'
+import {
+  isTerritorioPriorityQuery,
+  querAtualizarPaginaTerritorio,
+  querExpandirLiderancasTerritorio,
+  querFecharModalTerritorio,
+  querObrasTerritorio,
+  querRecolherLiderancasTerritorio,
+  resolveCidadeAlvoTerritorio,
+} from '@/lib/agent/territorio-page'
 import { shouldPlayJarvisLoadingPhrase } from '@/lib/agent/jarvis-loading-phrase'
 import {
   getPhrase,
@@ -163,8 +172,26 @@ type AIAgentCampoContext = {
   totalAgendas: number
 }
 
+type AIAgentTerritorioContext = {
+  kind: 'territorio'
+  cidades: string[]
+  loading: boolean
+  planilhaConfigurada: boolean
+  cidadesExpandidas: string[]
+  modalObrasAberto: boolean
+  cidadeObrasAtual: string
+  alternarLiderancasCidade: (nomeCidade: string, expandir?: boolean) => void
+  recolherTodasCidades: () => void
+  abrirObrasCidade: (nomeCidade: string) => boolean
+  fecharModalObras: () => void
+  atualizarDados: () => void | Promise<void>
+}
+
 /** Contexto da página atual — o agente pode acionar a UI (ex.: Resumo Eleições). */
-export type AIAgentPageContext = AIAgentResumoEleicoesContext | AIAgentCampoContext
+export type AIAgentPageContext =
+  | AIAgentResumoEleicoesContext
+  | AIAgentCampoContext
+  | AIAgentTerritorioContext
 
 interface AIAgentProps {
   loadingKPIs: boolean
@@ -2191,6 +2218,160 @@ export function AIAgent({
       }
     }
 
+    if (pc?.kind === 'territorio') {
+      if (/\b(ajuda|comandos|exemplos)\b/.test(queryLower) || queryLower === '?') {
+        return {
+          id: Date.now().toString(),
+          role: 'assistant',
+          content: [
+            '**Território & Base (esta página)**',
+            '',
+            'Posso **expandir ou recolher** a lista de lideranças de um município, **abrir obras** da cidade ou **atualizar** os dados da planilha.',
+            '',
+            'Exemplos:',
+            '› "Expandir lideranças de Teresina"',
+            '› "Mostrar Picos" / "Recolher Parnaíba"',
+            '› "Abrir obras de Pedro II"',
+            '› "Atualizar dados"',
+            '',
+            'Diga **listar cidades** para ver os municípios visíveis na lista (com filtros aplicados).',
+          ].join('\n'),
+        }
+      }
+
+      if (
+        queryLower.includes('listar cidades') ||
+        queryLower.includes('cidades disponiveis') ||
+        queryLower.includes('cidades disponíveis') ||
+        queryLower.includes('quais cidades')
+      ) {
+        const total = pc.cidades.length
+        const amostra = pc.cidades.slice(0, 35).join(' | ')
+        return {
+          id: Date.now().toString(),
+          role: 'assistant',
+          content: `**Municípios na lista:** ${total}\n\n${amostra}${total > 35 ? '\n\n… (diga o nome ou parte dele na frase)' : ''}`,
+        }
+      }
+
+      if (!pc.planilhaConfigurada) {
+        return {
+          id: Date.now().toString(),
+          role: 'assistant',
+          content: 'Conecte a planilha em **Configurar planilha** para carregar lideranças.',
+        }
+      }
+
+      if (querFecharModalTerritorio(query)) {
+        if (!pc.modalObrasAberto) {
+          return {
+            id: Date.now().toString(),
+            role: 'assistant',
+            content: 'Não há modal de obras aberto no momento.',
+          }
+        }
+        pc.fecharModalObras()
+        return {
+          id: Date.now().toString(),
+          role: 'assistant',
+          content: 'Fechei o modal de obras.',
+        }
+      }
+
+      if (querAtualizarPaginaTerritorio(query)) {
+        if (pc.loading) {
+          return {
+            id: Date.now().toString(),
+            role: 'assistant',
+            content: pickJarvisCarregando(),
+          }
+        }
+        void Promise.resolve(pc.atualizarDados()).catch(() => {})
+        return {
+          id: Date.now().toString(),
+          role: 'assistant',
+          content: pickJarvisCarregando(),
+        }
+      }
+
+      const nomeCidadeAlvo = resolveCidadeAlvoTerritorio(query, pc.cidades)
+
+      if (querObrasTerritorio(query)) {
+        if (!nomeCidadeAlvo) {
+          return {
+            id: Date.now().toString(),
+            role: 'assistant',
+            content:
+              'Diga qual município, por exemplo: **"Abrir obras de Teresina"**. Diga **listar cidades** se precisar dos nomes.',
+          }
+        }
+        const abriu = pc.abrirObrasCidade(nomeCidadeAlvo)
+        if (!abriu) {
+          return {
+            id: Date.now().toString(),
+            role: 'assistant',
+            content: `Não encontrei **${nomeCidadeAlvo}** na lista atual. Confira filtros ou diga **listar cidades**.`,
+          }
+        }
+        return {
+          id: Date.now().toString(),
+          role: 'assistant',
+          content: `Abri obras de **${nomeCidadeAlvo}**.`,
+        }
+      }
+
+      const querRecolher = querRecolherLiderancasTerritorio(query)
+      const querExpandir = querExpandirLiderancasTerritorio(query)
+
+      if (querRecolher || querExpandir) {
+        const recolherTodas =
+          querRecolher &&
+          (/\b(todas|todas as cidades|tudo)\b/.test(queryLower) || !nomeCidadeAlvo)
+
+        if (recolherTodas) {
+          pc.recolherTodasCidades()
+          return {
+            id: Date.now().toString(),
+            role: 'assistant',
+            content: 'Recolhi todas as cidades da lista.',
+          }
+        }
+
+        if (!nomeCidadeAlvo) {
+          return {
+            id: Date.now().toString(),
+            role: 'assistant',
+            content: querRecolher
+              ? 'Diga qual município recolher, por exemplo: **"Recolher Teresina"**.'
+              : 'Diga qual município expandir, por exemplo: **"Expandir lideranças de Teresina"**.',
+          }
+        }
+
+        const expandir = querExpandir && !querRecolher
+        const jaExpandida = pc.cidadesExpandidas.includes(nomeCidadeAlvo)
+
+        pc.alternarLiderancasCidade(nomeCidadeAlvo, expandir ? true : false)
+
+        if (expandir) {
+          return {
+            id: Date.now().toString(),
+            role: 'assistant',
+            content: jaExpandida
+              ? `**${nomeCidadeAlvo}** já estava expandida.`
+              : `Expandi **${nomeCidadeAlvo}**.`,
+          }
+        }
+
+        return {
+          id: Date.now().toString(),
+          role: 'assistant',
+          content: jaExpandida
+            ? `Recolhi **${nomeCidadeAlvo}**.`
+            : `**${nomeCidadeAlvo}** já estava recolhida.`,
+        }
+      }
+    }
+
     const cidade = extractCityName(query)
     
     // ===== PROJEÇÃO DA CHAPA FEDERAL =====
@@ -2697,12 +2878,16 @@ export function AIAgent({
           ? 'resumo-eleicoes'
           : pc?.kind === 'campo'
             ? 'campo'
-            : 'dashboard',
+            : pc?.kind === 'territorio'
+              ? 'territorio'
+              : 'dashboard',
       cidadeAtual: pc?.kind === 'resumo-eleicoes' ? pc.cidadeAtual : undefined,
       buscaIniciada: pc?.kind === 'resumo-eleicoes' ? pc.buscaIniciada : undefined,
       candidatoPadrao,
       cidadesDisponiveis:
-        pc?.kind === 'resumo-eleicoes' || pc?.kind === 'campo'
+        pc?.kind === 'resumo-eleicoes' ||
+        pc?.kind === 'campo' ||
+        pc?.kind === 'territorio'
           ? pc.cidades.slice(0, 40)
           : undefined,
       alertsCriticosCount,
@@ -3157,14 +3342,19 @@ export function AIAgent({
         response = await buildNoticiasDestaqueChatMessage()
       }
 
-      const pcResumo = pageContextRef.current
-      const onResumoPage = pcResumo?.kind === 'resumo-eleicoes'
+      const pcPage = pageContextRef.current
+      const onResumoPage = pcPage?.kind === 'resumo-eleicoes'
+      const onTerritorioPage = pcPage?.kind === 'territorio'
       const resumoPriority =
         onResumoPage &&
         (resumoDemandasAssistPhase !== 'idle' ||
-          isResumoEleicoesPriorityQuery(cleanedContent, pcResumo.cidades))
+          isResumoEleicoesPriorityQuery(cleanedContent, pcPage.cidades))
+      const territorioPriority =
+        onTerritorioPage &&
+        isTerritorioPriorityQuery(cleanedContent, pcPage.cidades)
+      const pageUiPriority = resumoPriority || territorioPriority
 
-      if (!response && !resumoPriority && isOffTopicAgentQuery(cleanedContent)) {
+      if (!response && !pageUiPriority && isOffTopicAgentQuery(cleanedContent)) {
         resumoBuscaCidadePendingRef.current = null
         resumoBuscaViuLoadingRef.current = false
         response = {
@@ -3174,7 +3364,7 @@ export function AIAgent({
         }
       }
 
-      if (!response && resumoPriority) {
+      if (!response && pageUiPriority) {
         response = await processUserQuery(cleanedContent)
       } else if (!response && resumoDemandasAssistPhase === 'idle') {
         response = await tryAgentChat(cleanedContent, chatMessages)

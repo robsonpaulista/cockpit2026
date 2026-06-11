@@ -107,6 +107,17 @@ function pageContextSemanticEqual(
     return a.cidades === b.cidades && a.totalAgendas === b.totalAgendas
   }
 
+  if (a.kind === 'territorio' && b.kind === 'territorio') {
+    return (
+      a.cidades === b.cidades &&
+      a.loading === b.loading &&
+      a.planilhaConfigurada === b.planilhaConfigurada &&
+      a.cidadesExpandidas === b.cidadesExpandidas &&
+      a.modalObrasAberto === b.modalObrasAberto &&
+      a.cidadeObrasAtual === b.cidadeObrasAtual
+    )
+  }
+
   if (a.kind === 'resumo-eleicoes' && b.kind === 'resumo-eleicoes') {
     return (
       a.cidades === b.cidades &&
@@ -179,6 +190,15 @@ function buildJarvisHostPropsSyncToken(props: JarvisHostPageProps): string {
     )
   } else if (pc?.kind === 'campo') {
     parts.push(pc.cidades.length, pc.totalAgendas)
+  } else if (pc?.kind === 'territorio') {
+    parts.push(
+      pc.loading,
+      pc.planilhaConfigurada,
+      pc.cidades.length,
+      pc.cidadesExpandidas.join('\0'),
+      pc.modalObrasAberto,
+      pc.cidadeObrasAtual
+    )
   }
 
   return JSON.stringify(parts)

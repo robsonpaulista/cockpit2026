@@ -36,6 +36,8 @@ import {
 } from '@/lib/premium-ui-classes'
 import { sidebarPrimaryCTAButtonClass } from '@/lib/sidebar-menu-active-style'
 import { useTheme } from '@/contexts/theme-context'
+import type { AIAgentPageContext } from '@/components/ai-agent'
+import { useRegisterJarvisHostProps } from '@/contexts/jarvis-host-props-context'
 
 interface Lideranca {
   [key: string]: any
@@ -753,6 +755,123 @@ export default function TerritorioPage() {
       .sort((a, b) => b.previsaoVotos - a.previsaoVotos)
   }, [liderancasFiltradas, cidadeCol, votosReferenciaCol])
 
+  const liderancasPorCidadeMap = useMemo(() => {
+    const acc: Record<string, Lideranca[]> = {}
+    for (const l of liderancasFiltradas) {
+      const c = String(l[cidadeCol] || '').trim() || 'Sem cidade'
+      if (!acc[c]) acc[c] = []
+      acc[c].push(l)
+    }
+    return acc
+  }, [liderancasFiltradas, cidadeCol])
+
+  const cidadesTerritorioLista = useMemo(
+    () => Object.keys(liderancasPorCidadeMap).sort((a, b) => a.localeCompare(b, 'pt-BR')),
+    [liderancasPorCidadeMap]
+  )
+
+  const cidadesExpandidasLista = useMemo(() => Array.from(expandedCities), [expandedCities])
+
+  const territorioAgentActionsRef = useRef({
+    alternarLiderancasCidade: (_nomeCidade: string, _expandir?: boolean) => {},
+    recolherTodasCidades: () => {},
+    abrirObrasCidade: (_nomeCidade: string): boolean => false,
+    fecharModalObras: () => {},
+    atualizarDados: () => {},
+  })
+
+  territorioAgentActionsRef.current = {
+    alternarLiderancasCidade: (nomeCidade, expandir) => {
+      setExpandedCities((prev) => {
+        const next = new Set(prev)
+        const isExpanded = next.has(nomeCidade)
+        if (expandir === true) next.add(nomeCidade)
+        else if (expandir === false) next.delete(nomeCidade)
+        else if (isExpanded) next.delete(nomeCidade)
+        else next.add(nomeCidade)
+        return next
+      })
+    },
+    recolherTodasCidades: () => setExpandedCities(new Set()),
+    abrirObrasCidade: (nomeCidade) => {
+      const liderancasCidade = liderancasPorCidadeMap[nomeCidade]
+      if (!liderancasCidade?.length) return false
+      setSelectedCityForDemands(nomeCidade)
+      if (typeof window !== 'undefined') {
+        const nomes = liderancasCidade
+          .map((lider) => String(lider[nomeCol] || '').trim())
+          .filter((nome) => nome.length > 0)
+        sessionStorage.setItem('territorio_demands_liderancas', JSON.stringify(nomes))
+      }
+      setShowCityDemands(true)
+      return true
+    },
+    fecharModalObras: () => {
+      setShowCityDemands(false)
+      setSelectedCityForDemands('')
+      if (typeof window !== 'undefined') {
+        sessionStorage.removeItem('territorio_demands_liderancas')
+      }
+    },
+    atualizarDados: () => {
+      if (serverConfigured) {
+        void fetchDataFromServer()
+      } else if (config) {
+        void fetchData(config)
+      }
+    },
+  }
+
+  const territorioAgentPageActions = useMemo(
+    () => ({
+      alternarLiderancasCidade: (nomeCidade: string, expandir?: boolean) =>
+        territorioAgentActionsRef.current.alternarLiderancasCidade(nomeCidade, expandir),
+      recolherTodasCidades: () => territorioAgentActionsRef.current.recolherTodasCidades(),
+      abrirObrasCidade: (nomeCidade: string) =>
+        territorioAgentActionsRef.current.abrirObrasCidade(nomeCidade),
+      fecharModalObras: () => territorioAgentActionsRef.current.fecharModalObras(),
+      atualizarDados: () => territorioAgentActionsRef.current.atualizarDados(),
+    }),
+    []
+  )
+
+  const contextoAgenteTerritorio = useMemo<AIAgentPageContext>(
+    () => ({
+      kind: 'territorio',
+      cidades: cidadesTerritorioLista,
+      loading,
+      planilhaConfigurada: Boolean(config || serverConfigured),
+      cidadesExpandidas: cidadesExpandidasLista,
+      modalObrasAberto: showCityDemands,
+      cidadeObrasAtual: selectedCityForDemands,
+      ...territorioAgentPageActions,
+    }),
+    [
+      cidadesTerritorioLista,
+      loading,
+      config,
+      serverConfigured,
+      cidadesExpandidasLista,
+      showCityDemands,
+      selectedCityForDemands,
+      territorioAgentPageActions,
+    ]
+  )
+
+  const jarvisHostProps = useMemo(
+    () => ({
+      pageContext: contextoAgenteTerritorio,
+      loadingKPIs: loading,
+      loadingTerritorios: loading,
+      kpisCount: liderancasFiltradas.length > 0 ? 4 : 0,
+      expectativa2026: kpis.find((k) => k.id === 'expectativa-votos')?.value,
+      candidatoPadrao: candidatoPadrao || undefined,
+    }),
+    [contextoAgenteTerritorio, loading, liderancasFiltradas.length, kpis, candidatoPadrao]
+  )
+
+  useRegisterJarvisHostProps(jarvisHostProps)
+
 
   return (
     <div className={cn('min-h-screen', isCockpit ? 'sidebar-cockpit-shell' : 'bg-bg-surface')}>
@@ -796,13 +915,7 @@ export default function TerritorioPage() {
             {(config || serverConfigured) && (
               <button
                 type="button"
-                onClick={() => {
-                  if (serverConfigured) {
-                    fetchDataFromServer()
-                  } else if (config) {
-                    fetchData(config)
-                  }
-                }}
+                onClick={() => territorioAgentActionsRef.current.atualizarDados()}
                 disabled={loading}
                 className={cn(ghostButtonClass, 'disabled:opacity-50')}
               >
@@ -1300,10 +1413,7 @@ export default function TerritorioPage() {
                       liderancasCidade={liderancasCidade}
                       isExpanded={isExpanded}
                       onToggle={() => {
-                        const next = new Set(expandedCities)
-                        if (isExpanded) next.delete(cidade)
-                        else next.add(cidade)
-                        setExpandedCities(next)
+                        territorioAgentActionsRef.current.alternarLiderancasCidade(cidade)
                       }}
                       onBriefing={(e) => {
                         e.stopPropagation()
@@ -1313,17 +1423,7 @@ export default function TerritorioPage() {
                       }}
                       onObras={(e) => {
                         e.stopPropagation()
-                        setSelectedCityForDemands(cidade)
-                        if (typeof window !== 'undefined') {
-                          const nomes = liderancasCidade
-                            .map((lider: Lideranca) => String(lider[nomeCol] || '').trim())
-                            .filter((nome: string) => nome.length > 0)
-                          sessionStorage.setItem(
-                            'territorio_demands_liderancas',
-                            JSON.stringify(nomes)
-                          )
-                        }
-                        setShowCityDemands(true)
+                        territorioAgentActionsRef.current.abrirObrasCidade(cidade)
                       }}
                       totalVotos={totalExpectativaCidade}
                       votosLabel={labelTotalCidade}
@@ -1363,13 +1463,7 @@ export default function TerritorioPage() {
       {/* Modal de Demandas por Cidade */}
       <CityDemandsModal
         isOpen={showCityDemands}
-        onClose={() => {
-          setShowCityDemands(false)
-          setSelectedCityForDemands('')
-          if (typeof window !== 'undefined') {
-            sessionStorage.removeItem('territorio_demands_liderancas')
-          }
-        }}
+        onClose={() => territorioAgentActionsRef.current.fecharModalObras()}
         cidade={selectedCityForDemands}
       />
 
