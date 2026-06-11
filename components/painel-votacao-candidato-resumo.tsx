@@ -7,7 +7,7 @@ import { TabelaMatrizVotacaoSecao } from '@/components/tabela-matriz-votacao-sec
 import type { DistribuicaoCandidatoBweb } from '@/lib/candidato-distribuicao-bweb'
 import { chaveMatchFromResumo, resumoTemVotacaoSecao } from '@/lib/candidato-votacao-secao-match'
 import type { ResultadoEleicao } from '@/lib/resumo-eleicoes-dados'
-import { parseVotosEleicao } from '@/lib/resumo-eleicoes-dados'
+import { nomeCandidatoResumoExibicao, parseVotosEleicao } from '@/lib/resumo-eleicoes-dados'
 import { cn } from '@/lib/utils'
 import type { VotacaoSecaoItem } from '@/lib/votacao-secao'
 import { montarMatrizVotacaoSecao } from '@/lib/votacao-secao-matriz'
@@ -59,9 +59,10 @@ export function BotaoNomeCandidatoDistribuicao({
 }) {
   const temSecao = resumoTemVotacaoSecao(item)
   const ativo = isMesmoCandidatoResumo(item, candidatoAtivo ?? null)
+  const nomeExibicao = nomeCandidatoResumoExibicao(item.nomeUrnaCandidato, item.numeroUrna)
 
   if (!temSecao) {
-    return <span>{item.nomeUrnaCandidato}</span>
+    return <span>{nomeExibicao}</span>
   }
 
   return (
@@ -69,7 +70,7 @@ export function BotaoNomeCandidatoDistribuicao({
       type="button"
       onClick={() => onVerDistribuicao(item)}
       className={cn(
-        'group inline-flex max-w-full items-baseline gap-1 text-left',
+        'group inline-flex max-w-full items-baseline text-left',
         ativo
           ? 'font-semibold text-accent-gold underline decoration-accent-gold/60'
           : 'hover:underline',
@@ -81,15 +82,7 @@ export function BotaoNomeCandidatoDistribuicao({
       }
       aria-pressed={ativo}
     >
-      <span className="truncate">{item.nomeUrnaCandidato}</span>
-      <span
-        className={cn(
-          'shrink-0 font-mono text-[10px]',
-          ativo ? 'text-accent-gold' : 'text-text-secondary group-hover:text-accent-gold',
-        )}
-      >
-        {item.numeroUrna}
-      </span>
+      <span className="truncate">{nomeExibicao}</span>
     </button>
   )
 }
@@ -177,7 +170,7 @@ export const PainelVotacaoCandidatoResumo = forwardRef<HTMLElement, Props>(
               Votação por seção
             </p>
             <h2 className="truncate text-base font-semibold text-text-primary">
-              {candidato.nomeUrnaCandidato}
+              {nomeCandidatoResumoExibicao(candidato.nomeUrnaCandidato, candidato.numeroUrna)}
             </h2>
             <p className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-text-secondary">
               <span>

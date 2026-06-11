@@ -17,6 +17,7 @@ import {
   PainelVotacaoCandidatoResumo,
   isMesmoCandidatoResumo,
 } from '@/components/painel-votacao-candidato-resumo'
+import { nomeCandidatoResumoExibicao } from '@/lib/resumo-eleicoes-dados'
 
 interface ResultadoEleicao {
   uf: string
@@ -2285,7 +2286,12 @@ export default function ResumoEleicoesPage() {
                               resumoTrZebra(rowIndex),
                             )}
                           >
-                            <td className="px-2 py-1.5">{vereador.nomeUrnaCandidato}</td>
+                            <td className="px-2 py-1.5">
+                              {nomeCandidatoResumoExibicao(
+                                vereador.nomeUrnaCandidato,
+                                vereador.numeroUrna,
+                              )}
+                            </td>
                             <td className="px-2 py-1.5 text-right">{votosVereador.toLocaleString('pt-BR')}</td>
                             <td className="px-2 py-1.5">
                               <input

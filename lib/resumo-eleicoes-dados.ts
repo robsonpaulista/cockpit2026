@@ -37,6 +37,30 @@ export function parseVotosEleicao(value: string): number {
   return Number.isNaN(parsed) ? 0 : parsed
 }
 
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+}
+
+/** Nome de urna sem nº embutido — só exibição; matching continua em numeroUrna / nomeUrnaCandidato. */
+export function nomeCandidatoResumoExibicao(
+  nomeUrnaCandidato: string,
+  numeroUrna?: string,
+): string {
+  let nome = String(nomeUrnaCandidato ?? '').trim()
+  if (!nome) return nome
+
+  const nr = String(numeroUrna ?? '').replace(/\D/g, '')
+  if (nr) {
+    nome = nome.replace(new RegExp(`^${escapeRegExp(nr)}\\s*`, 'i'), '').trim()
+    nome = nome.replace(new RegExp(`\\s+${escapeRegExp(nr)}$`, 'i'), '').trim()
+  }
+
+  nome = nome.replace(/\s+\d{2,5}$/, '').trim()
+  nome = nome.replace(/^\d{2,5}\s+/, '').trim()
+
+  return nome
+}
+
 export function includesNormalizedCargo(source: string, term: string): boolean {
   return source.toLowerCase().includes(term.toLowerCase())
 }

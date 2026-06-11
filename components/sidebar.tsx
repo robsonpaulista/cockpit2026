@@ -325,7 +325,7 @@ function SidebarNavItem({
         )}>
           <span className={cn(
             sidebarSectionLabelClass,
-            isGradientHome ? JARVIS_SIDEBAR_SECTION : 'text-white/45',
+            isGradientHome && JARVIS_SIDEBAR_SECTION,
           )}>
             {sectionLabel}
           </span>
@@ -724,7 +724,7 @@ export function Sidebar() {
       {/* Sidebar */}
       <aside
         className={cn(
-          'fixed left-0 top-0 h-full w-72 overflow-visible transition-all duration-300 ease-out',
+          'fixed left-0 top-0 h-full w-64 overflow-visible transition-all duration-300 ease-out',
           isGradientHome && 'border-r border-[rgba(0,212,255,0.08)]',
           !isGradientHome && 'border-r border-card bg-[rgb(var(--bg-sidebar))]',
           isCockpit && !isGradientHome && 'sidebar-cockpit-shell',
@@ -732,7 +732,7 @@ export function Sidebar() {
           'max-lg:z-[100] max-lg:shadow-2xl lg:z-40',
           'lg:translate-x-0',
           mobileOpen ? 'translate-x-0' : '-translate-x-full',
-          collapsed ? 'lg:w-[5.5rem]' : 'lg:w-72'
+          collapsed ? 'lg:w-[5.5rem]' : 'lg:w-64'
         )}
         style={{
           isolation: 'isolate',
