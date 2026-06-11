@@ -6,7 +6,18 @@ import {
   type OpenAiTtsVoiceId,
 } from '@/lib/agent/openai-voices'
 
-export type JarvisTtsMode = 'system' | 'openai'
+import {
+  DEFAULT_KOKORO_VOICE,
+  isValidKokoroVoiceId,
+  type KokoroVoiceId,
+} from '@/lib/agent/kokoro-voices'
+import {
+  isLikelyMacOs,
+  isMacOsSystemDefaultVoiceUri,
+  MACOS_SYSTEM_DEFAULT_VOICE_URI,
+} from '@/lib/agent/system-default-voice'
+
+export type JarvisTtsMode = 'system' | 'openai' | 'kokoro'
 
 const VOICE_URI_KEY = 'jarvis-voice-uri'
 const SIRI_VOICE_NUM_KEY = 'jarvis-siri-voice-number'
@@ -15,7 +26,10 @@ const OPENAI_VOICE_KEY = 'jarvis-openai-voice'
 const OPENAI_VOICE_EXPLICIT_KEY = 'jarvis-openai-voice-explicit'
 const VOICE_MIGRATION_KEY = 'jarvis-voice-migration-v4'
 const SYSTEM_MODE_MIGRATION_KEY = 'jarvis-voice-migration-v5'
+const MAC_SYSTEM_VOICE_MIGRATION_KEY = 'jarvis-voice-migration-v6'
+const FELIPE_DEFAULT_MIGRATION_KEY = 'jarvis-voice-migration-v7'
 const VOICE_OUTPUT_KEY = 'jarvis-voice-output-enabled'
+const KOKORO_VOICE_KEY = 'jarvis-kokoro-voice'
 
 /** Respostas faladas (TTS) — independente do microfone. Padrão: ligado. */
 export function getJarvisVoiceOutputEnabled(): boolean {
@@ -39,6 +53,7 @@ export function getJarvisTtsMode(): JarvisTtsMode {
   if (typeof window === 'undefined') return 'system'
   const stored = localStorage.getItem(TTS_MODE_KEY)
   if (stored === 'openai') return 'openai'
+  if (stored === 'kokoro') return 'kokoro'
   return 'system'
 }
 
@@ -55,6 +70,43 @@ export function applyJarvisSystemModeMigration(): void {
     setJarvisTtsMode('system')
   }
   localStorage.setItem(SYSTEM_MODE_MIGRATION_KEY, '1')
+}
+
+/** v6 legado — mantido para não reexecutar em instalações antigas. */
+export function applyJarvisMacSystemVoiceMigration(): void {
+  if (typeof window === 'undefined') return
+  if (localStorage.getItem(MAC_SYSTEM_VOICE_MIGRATION_KEY) === '1') return
+  localStorage.setItem(MAC_SYSTEM_VOICE_MIGRATION_KEY, '1')
+}
+
+/**
+ * Sai do modo "automática" (caía na Luciana) e de URIs Eloquence enganosas.
+ * A preferência explícita passa a ser definida por ensureJarvisSystemVoiceDefault (Felipe se instalado).
+ */
+export function applyJarvisFelipeDefaultMigration(): void {
+  if (typeof window === 'undefined') return
+  if (localStorage.getItem(FELIPE_DEFAULT_MIGRATION_KEY) === '1') return
+  if (!isLikelyMacOs() || getJarvisTtsMode() !== 'system') {
+    localStorage.setItem(FELIPE_DEFAULT_MIGRATION_KEY, '1')
+    return
+  }
+
+  const uri = getPreferredVoiceUri()
+  const siriNum = getPreferredSiriVoiceNumber()
+  const shouldReset =
+    isMacOsSystemDefaultVoiceUri(uri) ||
+    Boolean(siriNum) ||
+    (uri &&
+      ['reed', 'eddy', 'eddie', 'rocko', 'luciana', 'flo', 'shelley', 'sandy', 'grandma', 'grandpa'].some(
+        (h) => uri.toLowerCase().includes(h)
+      ))
+
+  if (shouldReset) {
+    setPreferredVoiceUri(null)
+    setPreferredSiriVoiceNumber(null)
+  }
+
+  localStorage.setItem(FELIPE_DEFAULT_MIGRATION_KEY, '1')
 }
 
 /** Uma vez por navegador: remove vozes femininas antigas (Coral, Marin…) → Onyx. */
@@ -95,6 +147,18 @@ export function ensureJarvisNeuralVoicePreference(serverDefault?: string): void 
 export function setJarvisTtsMode(mode: JarvisTtsMode): void {
   if (typeof window === 'undefined') return
   localStorage.setItem(TTS_MODE_KEY, mode)
+}
+
+export function getPreferredKokoroVoice(): KokoroVoiceId {
+  if (typeof window === 'undefined') return DEFAULT_KOKORO_VOICE
+  const stored = localStorage.getItem(KOKORO_VOICE_KEY)
+  if (stored && isValidKokoroVoiceId(stored)) return stored
+  return DEFAULT_KOKORO_VOICE
+}
+
+export function setPreferredKokoroVoice(voice: KokoroVoiceId): void {
+  if (typeof window === 'undefined') return
+  localStorage.setItem(KOKORO_VOICE_KEY, voice)
 }
 
 export function getPreferredOpenAiVoice(): OpenAiTtsVoiceId | null {

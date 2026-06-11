@@ -44,3 +44,24 @@ export function getOpenAiVoiceLabel(voiceId: OpenAiTtsVoiceId): string {
   const found = OPENAI_TTS_VOICES.find((v) => v.id === voiceId)
   return found ? `${found.label} — ${found.tone}` : voiceId
 }
+
+const MASCULINE_OPENAI_IDS = new Set<OpenAiTtsVoiceId>([
+  'onyx',
+  'echo',
+  'ash',
+  'cedar',
+  'fable',
+])
+
+export function isMasculineOpenAiVoice(voiceId: OpenAiTtsVoiceId): boolean {
+  return MASCULINE_OPENAI_IDS.has(voiceId)
+}
+
+type OpenAiVoicePickerEntry = (typeof OPENAI_TTS_VOICES)[number]
+
+/** Vozes masculinas primeiro — ideal para Jarvis. */
+export function listOpenAiVoicesForPicker(): OpenAiVoicePickerEntry[] {
+  const masculine = OPENAI_TTS_VOICES.filter((v) => isMasculineOpenAiVoice(v.id))
+  const others = OPENAI_TTS_VOICES.filter((v) => !isMasculineOpenAiVoice(v.id))
+  return [...masculine, ...others]
+}

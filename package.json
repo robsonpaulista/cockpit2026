@@ -18,7 +18,9 @@
     "limites2026:pdf:mac-coletivas": "node scripts/pdf-to-json-limites-mac-coletivas-2026.mjs",
     "limites2026:pdf:pap-coletivas": "node scripts/pdf-to-json-limites-pap-coletivas-2026.mjs",
     "limites2026:import": "node scripts/import-limites-2026-to-supabase.mjs",
-    "processos-dimensao:json": "node scripts/xlsx-to-json-processos-dimensao.mjs"
+    "processos-dimensao:json": "node scripts/xlsx-to-json-processos-dimensao.mjs",
+    "kokoro:assets": "mkdir -p public/kokoro && cp node_modules/kokoro-js/dist/kokoro.web.js public/kokoro/ && cp node_modules/@huggingface/transformers/dist/ort-wasm-simd-threaded.jsep.mjs public/kokoro/ && cp node_modules/@huggingface/transformers/dist/ort-wasm-simd-threaded.jsep.wasm public/kokoro/",
+    "postinstall": "npm run kokoro:assets"
   },
   "dependencies": {
     "@react-three/drei": "^9.122.0",
@@ -38,6 +40,7 @@
     "html2canvas": "^1.4.1",
     "jspdf": "^4.0.0",
     "jspdf-autotable": "^5.0.7",
+    "kokoro-js": "^1.2.1",
     "leaflet": "^1.9.4",
     "lucide-react": "^0.303.0",
     "next": "14.2.35",

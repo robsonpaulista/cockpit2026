@@ -8,7 +8,31 @@ const nextConfig = {
   },
   experimental: {
     /** Resvg usa addon nativo; não empacotar no webpack (API routes / Node). */
-    serverComponentsExternalPackages: ['@supabase/supabase-js', '@supabase/ssr', '@resvg/resvg-js'],
+    serverComponentsExternalPackages: [
+      '@supabase/supabase-js',
+      '@supabase/ssr',
+      '@resvg/resvg-js',
+      'kokoro-js',
+      '@huggingface/transformers',
+      'onnxruntime-node',
+      'sharp',
+    ],
+  },
+  webpack: (config, { isServer }) => {
+    config.resolve.alias = {
+      ...config.resolve.alias,
+      sharp$: false,
+      'onnxruntime-node$': false,
+    }
+    if (isServer) {
+      config.resolve.alias['kokoro-js'] = false
+      config.resolve.alias['@huggingface/transformers'] = false
+    }
+    config.experiments = { ...config.experiments, asyncWebAssembly: true }
+    if (!isServer) {
+      config.output.globalObject = 'self'
+    }
+    return config
   },
   async headers() {
     return [
@@ -19,6 +43,14 @@ const nextConfig = {
       {
         source: '/sw.js',
         headers: [{ key: 'Content-Type', value: 'application/javascript; charset=utf-8' }],
+      },
+      {
+        source: '/kokoro/:path*.mjs',
+        headers: [{ key: 'Content-Type', value: 'application/javascript; charset=utf-8' }],
+      },
+      {
+        source: '/kokoro/:path*.wasm',
+        headers: [{ key: 'Content-Type', value: 'application/wasm' }],
       },
       {
         source: '/((?!_next|favicon.ico|icons|sw\\.js|sw-pesquisador\\.js|manifest\\.webmanifest).*)',

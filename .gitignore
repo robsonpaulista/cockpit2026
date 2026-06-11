@@ -36,6 +36,9 @@ teste-*.js
 # vercel
 .vercel
 
+# Kokoro TTS — gerados por npm run kokoro:assets / postinstall (~24 MB)
+/public/kokoro/
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts

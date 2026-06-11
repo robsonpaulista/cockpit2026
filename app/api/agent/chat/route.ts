@@ -9,6 +9,10 @@ import {
   isFakeWhatsAppDirectReply,
 } from '@/lib/agent/detect-whatsapp-send'
 import { detectVisitasCampoIntent } from '@/lib/agent/detect-visitas-campo'
+import {
+  buildResumoBuscarCidadeSyntheticQuery,
+  detectResumoBuscarCidadeIntent,
+} from '@/lib/agent/resumo-eleicoes-city'
 import { buildNavigateAction, executeServerTool } from '@/lib/agent/server-tools'
 import { toolEnviarWhatsApp } from '@/lib/agent/tool-enviar-whatsapp'
 import type { AgentChatRequest, AgentChatResponse } from '@/lib/agent/types'
@@ -104,6 +108,22 @@ export async function POST(request: Request) {
     const origin = new URL(request.url).origin
     const cookie = request.headers.get('cookie') ?? ''
     const auth = { supabase, user: { id: user.id, email: user.email } }
+
+    if (body.context?.pageKind === 'resumo-eleicoes') {
+      const resumoBusca = detectResumoBuscarCidadeIntent(
+        message,
+        body.context.cidadesDisponiveis ?? [],
+        body.context.cidadeAtual
+      )
+      if (resumoBusca) {
+        return NextResponse.json({
+          source: 'groq',
+          content: '',
+          clientQuery: buildResumoBuscarCidadeSyntheticQuery(resumoBusca),
+          meta: { intent: 'resumo_buscar_cidade' },
+        } satisfies AgentChatResponse)
+      }
+    }
 
     const localVisitas = detectVisitasCampoIntent(message)
     if (localVisitas) {

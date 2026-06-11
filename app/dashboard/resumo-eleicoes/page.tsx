@@ -1392,6 +1392,53 @@ export default function ResumoEleicoesPage() {
       : `Sem proporcional para ${labelCenarioAtivo}`
   const cidadePesquisaIdAtual = cidade ? pesquisaCitiesMap[normalizeCityName(cidade)] || null : null
 
+  const resumoAgentActionsRef = useRef({
+    buscarDadosParaCidade,
+    prepararFiltroDemandas,
+    fecharSeletorDemandas,
+    confirmarDemandasTodasLiderancas,
+    confirmarDemandasComLiderancasNomes,
+    abrirDetalhesLiderancasDoCard,
+    abrirDetalhesPesquisasDoCard,
+    fecharModalLiderancas,
+    fecharModalPesquisas,
+    fecharModalDemandasCidade,
+  })
+  resumoAgentActionsRef.current = {
+    buscarDadosParaCidade,
+    prepararFiltroDemandas,
+    fecharSeletorDemandas,
+    confirmarDemandasTodasLiderancas,
+    confirmarDemandasComLiderancasNomes,
+    abrirDetalhesLiderancasDoCard,
+    abrirDetalhesPesquisasDoCard,
+    fecharModalLiderancas,
+    fecharModalPesquisas,
+    fecharModalDemandasCidade,
+  }
+
+  const resumoAgentPageActions = useMemo(
+    () => ({
+      selecionarCidadeEBuscar: (nomeCidade: string) =>
+        resumoAgentActionsRef.current.buscarDadosParaCidade(nomeCidade),
+      abrirFluxoDemandas: () => resumoAgentActionsRef.current.prepararFiltroDemandas(),
+      fecharSeletorDemandas: () => resumoAgentActionsRef.current.fecharSeletorDemandas(),
+      confirmarDemandasTodasLiderancas: () =>
+        resumoAgentActionsRef.current.confirmarDemandasTodasLiderancas(),
+      confirmarDemandasComLiderancasNomes: (nomes: string[]) =>
+        resumoAgentActionsRef.current.confirmarDemandasComLiderancasNomes(nomes),
+      abrirDetalhesLiderancasCard: () =>
+        resumoAgentActionsRef.current.abrirDetalhesLiderancasDoCard(),
+      abrirDetalhesPesquisasCard: () =>
+        resumoAgentActionsRef.current.abrirDetalhesPesquisasDoCard(),
+      fecharModalLiderancas: () => resumoAgentActionsRef.current.fecharModalLiderancas(),
+      fecharModalPesquisas: () => resumoAgentActionsRef.current.fecharModalPesquisas(),
+      fecharModalDemandasCidade: () =>
+        resumoAgentActionsRef.current.fecharModalDemandasCidade(),
+    }),
+    []
+  )
+
   const contextoAgenteResumoEleicoes = useMemo<AIAgentPageContext>(
     () => ({
       kind: 'resumo-eleicoes',
@@ -1400,23 +1447,14 @@ export default function ResumoEleicoesPage() {
       buscaIniciada,
       loadingCidades,
       loadingDados,
-      selecionarCidadeEBuscar: buscarDadosParaCidade,
       seletorDemandasAberto: showDemandsLeaderSelector,
       seletorDemandasCarregando: loadingDemandasLiderancas,
       liderancasDemandasDisponiveis: liderancasDisponiveisDemandas,
-      abrirFluxoDemandas: prepararFiltroDemandas,
-      fecharSeletorDemandas: fecharSeletorDemandas,
-      confirmarDemandasTodasLiderancas,
-      confirmarDemandasComLiderancasNomes,
       painelResumoCardsVisivel,
-      abrirDetalhesLiderancasCard: abrirDetalhesLiderancasDoCard,
-      abrirDetalhesPesquisasCard: abrirDetalhesPesquisasDoCard,
       modalLiderancasAberto: showLiderancasModal,
       modalPesquisasAberto: showPesquisaHistoricoModal,
       modalDemandasCidadeAberto: showCityDemands,
-      fecharModalLiderancas,
-      fecharModalPesquisas,
-      fecharModalDemandasCidade,
+      ...resumoAgentPageActions,
     }),
     [
       cidades,
@@ -1424,41 +1462,44 @@ export default function ResumoEleicoesPage() {
       buscaIniciada,
       loadingCidades,
       loadingDados,
-      dados.length,
-      resumoCidade,
-      buscarDadosParaCidade,
       showDemandsLeaderSelector,
       showLiderancasModal,
       showPesquisaHistoricoModal,
       showCityDemands,
       loadingDemandasLiderancas,
       liderancasDisponiveisDemandas,
-      prepararFiltroDemandas,
-      fecharSeletorDemandas,
-      confirmarDemandasTodasLiderancas,
-      confirmarDemandasComLiderancasNomes,
       painelResumoCardsVisivel,
-      abrirDetalhesLiderancasDoCard,
-      abrirDetalhesPesquisasDoCard,
-      fecharModalLiderancas,
-      fecharModalPesquisas,
-      fecharModalDemandasCidade,
-    ],
+      resumoAgentPageActions,
+    ]
   )
 
-  useRegisterJarvisHostProps({
-    pageContext: contextoAgenteResumoEleicoes,
-    loadingKPIs: loadingDados || loadingCidades,
-    loadingTerritorios: loadingDados,
-    kpisCount: resumoCidade ? 5 : 0,
-    expectativa2026: votosCenarioAtivo,
-    presencaTerritorial:
-      percentualAlcance !== null
-        ? `${percentualAlcance.toFixed(1).replace('.', ',')}%`
-        : undefined,
-    pollsCount: pesquisaRecenteCidade ? 1 : 0,
-    candidatoPadrao: candidatoPadraoPesquisa || CANDIDATO_FEDERAL_FIXO,
-  })
+  const jarvisHostProps = useMemo(
+    () => ({
+      pageContext: contextoAgenteResumoEleicoes,
+      loadingKPIs: loadingDados || loadingCidades,
+      loadingTerritorios: loadingDados,
+      kpisCount: resumoCidade ? 5 : 0,
+      expectativa2026: votosCenarioAtivo,
+      presencaTerritorial:
+        percentualAlcance !== null
+          ? `${percentualAlcance.toFixed(1).replace('.', ',')}%`
+          : undefined,
+      pollsCount: pesquisaRecenteCidade ? 1 : 0,
+      candidatoPadrao: candidatoPadraoPesquisa || CANDIDATO_FEDERAL_FIXO,
+    }),
+    [
+      contextoAgenteResumoEleicoes,
+      loadingDados,
+      loadingCidades,
+      resumoCidade,
+      votosCenarioAtivo,
+      percentualAlcance,
+      pesquisaRecenteCidade,
+      candidatoPadraoPesquisa,
+    ]
+  )
+
+  useRegisterJarvisHostProps(jarvisHostProps)
 
   const summaryCardBaseClass =
     'rounded-[14px] border border-border-card bg-surface p-3 relative overflow-hidden shadow-[0_1px_3px_rgba(0,0,0,0.06)] hover:shadow-[0_8px_24px_rgba(0,0,0,0.08)] hover:-translate-y-[2px] transition-all duration-300 ease-out h-full'

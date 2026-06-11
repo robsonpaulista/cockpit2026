@@ -6,6 +6,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from 'react'
@@ -74,11 +75,118 @@ interface JarvisHostPropsContextValue {
 
 const JarvisHostPropsContext = createContext<JarvisHostPropsContextValue | null>(null)
 
+const JARVIS_HOST_PROP_KEYS: (keyof JarvisHostPageProps)[] = [
+  'pageContext',
+  'loadingKPIs',
+  'loadingPolls',
+  'loadingTerritorios',
+  'loadingAlerts',
+  'loadingBandeiras',
+  'kpisCount',
+  'expectativa2026',
+  'presencaTerritorial',
+  'pollsCount',
+  'candidatoPadrao',
+  'territoriosFriosCount',
+  'alertsCriticosCount',
+  'bandeirasCount',
+  'bandeirasPerformance',
+  'criticalAlerts',
+  'territoriosFrios',
+]
+
+function pageContextSemanticEqual(
+  a: AIAgentPageContext | undefined,
+  b: AIAgentPageContext | undefined
+): boolean {
+  if (a === b) return true
+  if (!a || !b) return !a && !b
+  if (a.kind !== b.kind) return false
+
+  if (a.kind === 'campo' && b.kind === 'campo') {
+    return a.cidades === b.cidades && a.totalAgendas === b.totalAgendas
+  }
+
+  if (a.kind === 'resumo-eleicoes' && b.kind === 'resumo-eleicoes') {
+    return (
+      a.cidades === b.cidades &&
+      a.cidadeAtual === b.cidadeAtual &&
+      a.buscaIniciada === b.buscaIniciada &&
+      a.loadingCidades === b.loadingCidades &&
+      a.loadingDados === b.loadingDados &&
+      a.seletorDemandasAberto === b.seletorDemandasAberto &&
+      a.seletorDemandasCarregando === b.seletorDemandasCarregando &&
+      a.liderancasDemandasDisponiveis === b.liderancasDemandasDisponiveis &&
+      a.painelResumoCardsVisivel === b.painelResumoCardsVisivel &&
+      a.modalLiderancasAberto === b.modalLiderancasAberto &&
+      a.modalPesquisasAberto === b.modalPesquisasAberto &&
+      a.modalDemandasCidadeAberto === b.modalDemandasCidadeAberto
+    )
+  }
+
+  return false
+}
+
+function jarvisHostPropsEqual(a: JarvisHostPageProps, b: JarvisHostPageProps): boolean {
+  for (const key of JARVIS_HOST_PROP_KEYS) {
+    if (key === 'pageContext') {
+      if (!pageContextSemanticEqual(a.pageContext, b.pageContext)) return false
+      continue
+    }
+    if (a[key] !== b[key]) return false
+  }
+  return true
+}
+
+function buildJarvisHostPropsSyncToken(props: JarvisHostPageProps): string {
+  const pc = props.pageContext
+  const parts: unknown[] = [
+    props.loadingKPIs,
+    props.loadingPolls,
+    props.loadingTerritorios,
+    props.loadingAlerts,
+    props.loadingBandeiras,
+    props.kpisCount,
+    props.expectativa2026,
+    props.presencaTerritorial,
+    props.pollsCount,
+    props.candidatoPadrao,
+    props.territoriosFriosCount,
+    props.alertsCriticosCount,
+    props.bandeirasCount,
+    props.bandeirasPerformance,
+    props.criticalAlerts,
+    props.territoriosFrios,
+    pc?.kind,
+  ]
+
+  if (pc?.kind === 'resumo-eleicoes') {
+    parts.push(
+      pc.cidadeAtual,
+      pc.buscaIniciada,
+      pc.loadingCidades,
+      pc.loadingDados,
+      pc.cidades.length,
+      pc.seletorDemandasAberto,
+      pc.seletorDemandasCarregando,
+      pc.liderancasDemandasDisponiveis.join('\0'),
+      pc.painelResumoCardsVisivel,
+      pc.modalLiderancasAberto,
+      pc.modalPesquisasAberto,
+      pc.modalDemandasCidadeAberto
+    )
+  } else if (pc?.kind === 'campo') {
+    parts.push(pc.cidades.length, pc.totalAgendas)
+  }
+
+  return JSON.stringify(parts)
+}
+
 export function JarvisHostPropsProvider({ children }: { children: ReactNode }) {
   const [pageProps, setPagePropsState] = useState<JarvisHostPageProps>({})
 
   const setPageProps = useCallback((props: JarvisHostPageProps) => {
-    setPagePropsState(props)
+    setPagePropsState((prev) => (jarvisHostPropsEqual(prev, props) ? prev : props))
   }, [])
 
   const value = useMemo(
@@ -105,31 +213,14 @@ export function useJarvisHostPropsContext(): JarvisHostPropsContextValue {
 /** Páginas registram contexto/KPIs enquanto montadas — limpa ao desmontar. */
 export function useRegisterJarvisHostProps(props: JarvisHostPageProps): void {
   const { setPageProps } = useJarvisHostPropsContext()
+  const propsRef = useRef(props)
+  propsRef.current = props
+  const syncToken = buildJarvisHostPropsSyncToken(props)
 
   useEffect(() => {
-    setPageProps(props)
+    setPageProps(propsRef.current)
     return () => setPageProps({})
-  }, [
-    setPageProps,
-    props,
-    props.pageContext,
-    props.loadingKPIs,
-    props.loadingPolls,
-    props.loadingTerritorios,
-    props.loadingAlerts,
-    props.loadingBandeiras,
-    props.kpisCount,
-    props.expectativa2026,
-    props.presencaTerritorial,
-    props.pollsCount,
-    props.candidatoPadrao,
-    props.territoriosFriosCount,
-    props.alertsCriticosCount,
-    props.bandeirasCount,
-    props.bandeirasPerformance,
-    props.criticalAlerts,
-    props.territoriosFrios,
-  ])
+  }, [setPageProps, syncToken])
 }
 
 export function useMergedJarvisHostProps(): JarvisHostPageProps {

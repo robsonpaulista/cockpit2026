@@ -17,6 +17,19 @@ const DATA_INTENT =
 const ACTION_INTENT =
   /\b(envia|enviar|envie|mand[ae]|dispar[ae]|resumo\s+operacional|briefing)\b/
 
+/** Tom de bastidor político — saudação inicial do Jarvis. */
+export const JARVIS_GREETING_LINES = [
+  'Boa! Campanha não para, né? Me diz o que precisa.',
+  'Tô aqui. O que tá na cabeça hoje?',
+  'Dia de trabalho. O que a gente tem pra resolver?',
+  'Pode começar — tô ligado aqui.',
+] as const
+
+export function pickJarvisGreetingLine(): string {
+  const index = Math.floor(Math.random() * JARVIS_GREETING_LINES.length)
+  return JARVIS_GREETING_LINES[index] ?? JARVIS_GREETING_LINES[0]
+}
+
 export function isHelpQuery(query: string): boolean {
   const q = normalize(query)
   return (
@@ -44,52 +57,9 @@ export function isGreetingQuery(query: string): boolean {
   return /^(oi|ola|bom dia|boa tarde|boa noite)\b/.test(q)
 }
 
-function greetingFromQuery(query: string): 'manha' | 'tarde' | 'noite' | null {
-  const q = normalize(query)
-  if (/\bbom\s+dia\b/.test(q)) return 'manha'
-  if (/\bboa\s+tarde\b/.test(q)) return 'tarde'
-  if (/\bboa\s+noite\b/.test(q)) return 'noite'
-  return null
-}
-
-function greetingFromClock(): 'manha' | 'tarde' | 'noite' {
-  const hour = new Date().getHours()
-  if (hour >= 5 && hour < 12) return 'manha'
-  if (hour >= 12 && hour < 18) return 'tarde'
-  return 'noite'
-}
-
-const JARVIS_RETURNING_KEY = 'jarvis-has-chatted'
-
-function markJarvisGreeted(): boolean {
-  if (typeof window === 'undefined') return false
-  const returning = localStorage.getItem(JARVIS_RETURNING_KEY) === '1'
-  localStorage.setItem(JARVIS_RETURNING_KEY, '1')
-  return returning
-}
-
-function buildGreetingOpener(query: string): string {
-  const explicit = greetingFromQuery(query)
-  if (explicit === 'manha') return 'Bom dia!'
-  if (explicit === 'tarde') return 'Boa tarde!'
-  if (explicit === 'noite') return 'Boa noite!'
-
-  const q = normalize(query)
-  if (/^(oi|ola|hey|e\s*ai|eai|hello|hi)\b/.test(q)) return 'Olá!'
-
-  const period = greetingFromClock()
-  return period === 'manha' ? 'Bom dia!' : period === 'tarde' ? 'Boa tarde!' : 'Boa noite!'
-}
-
-/** Resposta social curta — sem listar funcionalidades (isso fica em buildHelpReply). */
-export function buildGreetingReply(query?: string): string {
-  const opener = buildGreetingOpener(query ?? '')
-  const returning = markJarvisGreeted()
-  const followUp = returning
-    ? 'Bom falar com você novamente. Em que posso te ajudar?'
-    : 'Em que posso ajudar hoje?'
-
-  return `${opener} ${followUp}`
+/** Resposta social curta — tom de bastidor político. */
+export function buildGreetingReply(_query?: string): string {
+  return pickJarvisGreetingLine()
 }
 
 export function buildUnknownQueryReply(): string {

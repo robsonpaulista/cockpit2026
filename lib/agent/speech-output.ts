@@ -1,9 +1,18 @@
-import { pickBestBrazilianBrowserVoice } from '@/lib/agent/brazil-browser-voice'
+import {
+  pickBestBrazilianBrowserVoice,
+  pickPreferredMasculineBrazilVoice,
+  scoreBrazilianBrowserVoice,
+} from '@/lib/agent/brazil-browser-voice'
+import {
+  isJarvisBrowserVoice,
+  jarvisBrowserVoicePitch,
+} from '@/lib/agent/jarvis-browser-voice'
 import {
   buildSiriVoiceLabel,
   getSiriBrazilVoicesInSystemOrder,
   getSiriVoiceByNumber,
   getSiriVoiceNumber,
+  SIRI_MASCULINE_HINTS,
 } from '@/lib/agent/siri-voices'
 import {
   getOpenAiVoiceLabel,
@@ -21,6 +30,15 @@ import {
   unlockJarvisAudio,
 } from '@/lib/agent/audio-unlock'
 import {
+  isLikelyMacOs,
+  isMacOsSystemDefaultVoiceUri,
+  MACOS_SIRI_VOICE_UNAVAILABLE_HINT,
+  MACOS_SYSTEM_DEFAULT_VOICE_LABEL,
+  MACOS_SYSTEM_DEFAULT_VOICE_URI,
+} from '@/lib/agent/system-default-voice'
+
+export { MACOS_SIRI_VOICE_UNAVAILABLE_HINT }
+import {
   getJarvisTtsMode,
   getPreferredSiriVoiceNumber,
   getPreferredVoiceUri,
@@ -28,6 +46,11 @@ import {
   setPreferredSiriVoiceNumber,
   setPreferredVoiceUri,
 } from '@/lib/agent/voice-preference'
+import type { SpeakTextOptions } from '@/lib/agent/speech-types'
+
+function isKokoroSupported(): boolean {
+  return typeof window !== 'undefined' && typeof WebAssembly !== 'undefined'
+}
 
 export { unlockJarvisAudio, primeSpeechSynthesis }
 
@@ -54,7 +77,12 @@ export interface PortugueseVoiceOption {
   score: number
   siriNumber: number | null
   isSiri: boolean
+  isSystemDefault?: boolean
 }
+
+type ResolvedBrowserVoice =
+  | { mode: 'system-default' }
+  | { mode: 'explicit'; voice: SpeechSynthesisVoice }
 
 let currentAudio: HTMLAudioElement | null = null
 let currentAudioUrl: string | null = null
@@ -85,8 +113,9 @@ function voiceQualityScore(voice: SpeechSynthesisVoice): number {
   if (name.includes('google') && name.includes('portugu')) score += 35
   if (name.includes('microsoft') && lang.startsWith('pt')) score += 30
 
-  if (name.includes('felipe')) score += 50
-  if (name.includes('luciana')) score += 22
+  if (name.includes('aprimorada') || name.includes('enhanced') || name.includes('melhorada')) score += 65
+  if (name.includes('felipe')) score += 95
+  if (name.includes('luciana')) score += 8
   if (name.includes('joana')) score -= 200
   if (name.includes('maria')) score += 14
   if (name.includes('daniel')) score += 12
@@ -95,8 +124,9 @@ function voiceQualityScore(voice: SpeechSynthesisVoice): number {
 
   if (!voice.localService) score += 8
 
-  if (name.includes('super-compact') || name.includes('super compact') || uri.includes('super-compact')) score -= 90
-  if (name.includes('compact') || uri.includes('.compact')) score -= 65
+  if (name.includes('super-compact') || name.includes('super compact') || uri.includes('super-compact')) score -= 50
+  if (name.includes('compact') || uri.includes('.compact')) score -= 30
+  if (SIRI_MASCULINE_HINTS.some((h) => name.includes(h))) score += 42
   if (name.includes('cellos')) score -= 35
   if (name.includes('samantha') && !name.includes('premium')) score -= 20
 
@@ -112,73 +142,137 @@ function formatVoiceLabel(voice: SpeechSynthesisVoice): string {
   return `${name} (${lang})`
 }
 
-function resolvePortugueseVoice(voices: SpeechSynthesisVoice[]): SpeechSynthesisVoice | undefined {
-  const preferredUri = getPreferredVoiceUri()
-  if (preferredUri) {
-    const saved = voices.find((v) => v.voiceURI === preferredUri)
-    if (saved && pickBestBrazilianBrowserVoice([saved])) return saved
+function buildBrowserVoicePickerLabel(voice: SpeechSynthesisVoice): string {
+  const base = formatVoiceLabel(voice)
+  const n = voice.name.toLowerCase()
+  if (n.includes('felipe')) return `Masculina · ${base} · recomendada no Mac`
+  if (SIRI_MASCULINE_HINTS.some((h) => n.includes(h))) return `Masculina · ${base} · Eloquence`
+  if (n.includes('luciana') || n.includes('fernanda')) return `Feminina · ${base}`
+  return base
+}
+
+function isListablePtBrVoice(voice: SpeechSynthesisVoice): boolean {
+  const lang = voice.lang.toLowerCase().replace('_', '-')
+  if (lang.startsWith('pt-pt')) return false
+  if (lang.startsWith('pt-br')) return true
+  return isJarvisBrowserVoice(voice)
+}
+
+function applyBrowserUtteranceVoice(
+  utterance: SpeechSynthesisUtterance,
+  resolved: ResolvedBrowserVoice
+): void {
+  if (resolved.mode === 'system-default') return
+  utterance.voice = resolved.voice
+  utterance.lang = resolved.voice.lang?.startsWith('pt') ? resolved.voice.lang : 'pt-BR'
+  utterance.pitch = jarvisBrowserVoicePitch(resolved.voice)
+}
+
+/** Alinha voiceURI salva com o número Siri (Voz 1, 2…) após atualização do macOS/navegador. */
+export function syncPreferredVoiceFromSiriNumber(voices: SpeechSynthesisVoice[]): void {
+  if (isMacOsSystemDefaultVoiceUri(getPreferredVoiceUri())) return
+  const siriNumber = getPreferredSiriVoiceNumber()
+  if (!siriNumber) return
+  const byNumber = getSiriVoiceByNumber(voices, siriNumber)
+  if (!byNumber || !isJarvisBrowserVoice(byNumber)) return
+  const storedUri = getPreferredVoiceUri()
+  if (storedUri !== byNumber.voiceURI) {
+    setPreferredVoiceUri(byNumber.voiceURI)
   }
+}
+
+function resolveBrowserVoice(voices: SpeechSynthesisVoice[]): ResolvedBrowserVoice | null {
+  if (isMacOsSystemDefaultVoiceUri(getPreferredVoiceUri())) {
+    return { mode: 'system-default' }
+  }
+
+  syncPreferredVoiceFromSiriNumber(voices)
 
   const siriNumber = getPreferredSiriVoiceNumber()
   if (siriNumber) {
     const byNumber = getSiriVoiceByNumber(voices, siriNumber)
-    if (byNumber && pickBestBrazilianBrowserVoice([byNumber])) return byNumber
+    if (byNumber && isJarvisBrowserVoice(byNumber)) return { mode: 'explicit', voice: byNumber }
   }
 
-  return pickBestBrazilianBrowserVoice(voices)
+  const preferredUri = getPreferredVoiceUri()
+  if (preferredUri) {
+    const saved = voices.find((v) => v.voiceURI === preferredUri)
+    if (saved && isListablePtBrVoice(saved)) return { mode: 'explicit', voice: saved }
+  }
+
+  const auto = pickBestBrazilianBrowserVoice(voices)
+  return auto ? { mode: 'explicit', voice: auto } : null
 }
 
-function pickPortugueseVoice(voices: SpeechSynthesisVoice[]): SpeechSynthesisVoice | undefined {
-  return resolvePortugueseVoice(voices)
+function resolvePortugueseVoice(voices: SpeechSynthesisVoice[]): SpeechSynthesisVoice | undefined {
+  const resolved = resolveBrowserVoice(voices)
+  return resolved?.mode === 'explicit' ? resolved.voice : undefined
 }
 
 export async function listPortugueseVoices(): Promise<PortugueseVoiceOption[]> {
   if (!isSpeechSynthesisSupported()) return []
   const voices = await ensureVoicesLoaded()
   const siriOrdered = getSiriBrazilVoicesInSystemOrder(voices)
-  const siriUris = new Set(siriOrdered.map((v) => v.voiceURI))
 
-  const siriOptions: PortugueseVoiceOption[] = siriOrdered.map((v, index) => {
-    const siriNumber = index + 1
-    return {
-      voiceURI: v.voiceURI,
-      name: v.name,
-      lang: v.lang,
-      label: buildSiriVoiceLabel(v, siriNumber, siriOrdered),
-      score: voiceQualityScore(v),
-      siriNumber,
-      isSiri: true,
-    }
-  })
-
-  const otherOptions: PortugueseVoiceOption[] = voices
-    .filter((v) => pickBestBrazilianBrowserVoice([v]) && !siriUris.has(v.voiceURI))
-    .map((v) => ({
-      voiceURI: v.voiceURI,
-      name: v.name,
-      lang: v.lang,
-      label: `Outra · ${formatVoiceLabel(v)}`,
-      score: voiceQualityScore(v),
-      siriNumber: null,
-      isSiri: false,
-    }))
+  const browserOptions: PortugueseVoiceOption[] = voices
+    .filter(isListablePtBrVoice)
+    .map((v) => {
+      const siriNumber = getSiriVoiceNumber(voices, v.voiceURI)
+      const isEloquence = siriNumber !== null
+      return {
+        voiceURI: v.voiceURI,
+        name: v.name,
+        lang: v.lang,
+        label: isEloquence
+          ? buildSiriVoiceLabel(v, siriNumber, siriOrdered)
+          : buildBrowserVoicePickerLabel(v),
+        score: Math.max(voiceQualityScore(v), scoreBrazilianBrowserVoice(v)),
+        siriNumber,
+        isSiri: isEloquence,
+      }
+    })
     .sort((a, b) => b.score - a.score)
 
-  return [...siriOptions, ...otherOptions]
+  if (!isLikelyMacOs()) return browserOptions
+
+  const systemDefault: PortugueseVoiceOption = {
+    voiceURI: MACOS_SYSTEM_DEFAULT_VOICE_URI,
+    name: 'Automática',
+    lang: 'pt-BR',
+    label: MACOS_SYSTEM_DEFAULT_VOICE_LABEL,
+    score: -100,
+    siriNumber: null,
+    isSiri: false,
+    isSystemDefault: true,
+  }
+
+  return [...browserOptions, systemDefault]
 }
 
-export async function previewVoice(text: string, voiceURI: string): Promise<void> {
+export async function previewVoice(text: string, voiceURI?: string | null): Promise<void> {
   if (!isSpeechSynthesisSupported()) return
   stopSpeaking()
   const voices = await ensureVoicesLoaded()
-  const voice = voices.find((v) => v.voiceURI === voiceURI)
-  if (!voice) return
+
+  let resolved: ResolvedBrowserVoice | null = null
+  if (voiceURI && isMacOsSystemDefaultVoiceUri(voiceURI)) {
+    resolved = { mode: 'system-default' }
+  } else if (voiceURI) {
+    const voice = voices.find((v) => v.voiceURI === voiceURI)
+    if (voice) resolved = { mode: 'explicit', voice }
+  } else {
+    resolved = resolveBrowserVoice(voices)
+  }
+  if (!resolved) return
 
   const utterance = new SpeechSynthesisUtterance(stripTextForSpeech(text))
-  utterance.voice = voice
-  utterance.lang = voice.lang || 'pt-BR'
+  utterance.lang = 'pt-BR'
   utterance.rate = 0.92
-  utterance.pitch = 0.98
+  if (resolved.mode === 'system-default') {
+    utterance.pitch = 1
+  } else {
+    applyBrowserUtteranceVoice(utterance, resolved)
+  }
   window.speechSynthesis.speak(utterance)
 }
 
@@ -224,22 +318,18 @@ function releaseCurrentAudio(): void {
 
 export function stopSpeaking(): void {
   segmentSpeechCancelled = true
+  if (typeof window !== 'undefined') {
+    void import('@/lib/agent/kokoro-engine')
+      .then((m) => m.stopKokoroSpeech())
+      .catch(() => {})
+  }
   if (typeof window !== 'undefined' && window.speechSynthesis) {
     window.speechSynthesis.cancel()
   }
   releaseCurrentAudio()
 }
 
-export interface SpeakTextOptions {
-  lang?: string
-  rate?: number
-  preferNeural?: boolean
-  /** Um segmento por compromisso — fala com pausa entre cada item. */
-  segments?: string[]
-  onStart?: () => void
-  onEnd?: () => void
-  onError?: (message?: string) => void
-}
+export type { SpeakTextOptions } from '@/lib/agent/speech-types'
 
 function stripSpeechSegment(text: string): string {
   return text
@@ -312,20 +402,18 @@ export function getActiveJarvisVoiceLabel(voiceId: OpenAiTtsVoiceId): string {
   return getOpenAiVoiceLabel(voiceId)
 }
 
-/** Define Siri Voz 1 (ou Felipe) na primeira visita. */
+/** Padrão Jarvis no Mac: Felipe (Aprimorada) se o navegador expuser; senão melhor masculina pt-BR. */
 export async function ensureJarvisSystemVoiceDefault(): Promise<void> {
   if (!isSpeechSynthesisSupported()) return
   if (getPreferredVoiceUri() || getPreferredSiriVoiceNumber()) return
 
   const voices = await ensureVoicesLoaded()
-  const siriOrdered = getSiriBrazilVoicesInSystemOrder(voices)
-  const felipe = siriOrdered.find((v) => v.name.toLowerCase().includes('felipe'))
-  const pick = felipe ?? siriOrdered[0] ?? pickBestBrazilianBrowserVoice(voices)
+  const pick = isLikelyMacOs()
+    ? pickPreferredMasculineBrazilVoice(voices)
+    : pickBestBrazilianBrowserVoice(voices)
   if (!pick) return
 
   setPreferredVoiceUri(pick.voiceURI)
-  const num = getSiriVoiceNumber(voices, pick.voiceURI)
-  if (num) setPreferredSiriVoiceNumber(num)
   setJarvisTtsMode('system')
 }
 
@@ -333,6 +421,9 @@ export async function ensureJarvisSystemVoiceDefault(): Promise<void> {
 export async function getLiveJarvisSystemVoiceLabel(): Promise<string> {
   if (!isSpeechSynthesisSupported()) return 'indisponível'
   await ensureJarvisSystemVoiceDefault()
+  if (isMacOsSystemDefaultVoiceUri(getPreferredVoiceUri())) {
+    return MACOS_SYSTEM_DEFAULT_VOICE_LABEL
+  }
   const voices = await ensureVoicesLoaded()
   const voice = resolvePortugueseVoice(voices)
   return voice?.name ?? 'pt-BR automática'
@@ -449,7 +540,8 @@ async function speakWithBrowserSegments(
   segmentSpeechCancelled = false
 
   const voices = await ensureVoicesLoaded()
-  const voice = resolvePortugueseVoice(voices)
+  const resolved = resolveBrowserVoice(voices)
+  if (!resolved) return noop
   let index = 0
   let started = false
 
@@ -467,8 +559,11 @@ async function speakWithBrowserSegments(
     const utterance = new SpeechSynthesisUtterance(cleanedSegments[index])
     utterance.lang = options.lang ?? 'pt-BR'
     utterance.rate = options.rate ?? 0.9
-    utterance.pitch = 0.97
-    if (voice) utterance.voice = voice
+    if (resolved.mode === 'system-default') {
+      utterance.pitch = 1
+    } else {
+      applyBrowserUtteranceVoice(utterance, resolved)
+    }
 
     utterance.onstart = () => {
       if (!started) {
@@ -516,13 +611,20 @@ async function speakWithBrowser(
   window.speechSynthesis.cancel()
 
   const voices = await ensureVoicesLoaded()
+  const resolved = resolveBrowserVoice(voices)
   const utterance = new SpeechSynthesisUtterance(cleaned)
   utterance.lang = options.lang ?? 'pt-BR'
   utterance.rate = options.rate ?? 0.9
-  utterance.pitch = 0.97
-
-  const voice = resolvePortugueseVoice(voices)
-  if (voice) utterance.voice = voice
+  if (!resolved) {
+    options.onError?.()
+    options.onEnd?.()
+    return noop
+  }
+  if (resolved.mode === 'system-default') {
+    utterance.pitch = 1
+  } else {
+    applyBrowserUtteranceVoice(utterance, resolved)
+  }
 
   utterance.onstart = () => options.onStart?.()
   utterance.onend = () => options.onEnd?.()
@@ -561,7 +663,18 @@ export async function speakText(text: string, options: SpeakTextOptions = {}): P
   const mode = typeof window !== 'undefined' ? getJarvisTtsMode() : 'system'
   const config = typeof window !== 'undefined' ? await fetchJarvisSpeechConfig() : null
   const neuralAvailable = config?.available ?? false
+  const useKokoro = mode === 'kokoro' && isKokoroSupported() && options.preferNeural !== false
   const useOpenAi = mode === 'openai' && neuralAvailable && options.preferNeural !== false
+
+  if (useKokoro) {
+    try {
+      const { speakWithKokoro } = await import('@/lib/agent/kokoro-engine')
+      const kokoro = await speakWithKokoro(text, options)
+      if (kokoro) return kokoro
+    } catch {
+      /* fallback para voz do sistema */
+    }
+  }
 
   if (useOpenAi) {
     const neural = await speakWithNeuralApi(text, options)
@@ -579,7 +692,10 @@ export async function speakText(text: string, options: SpeakTextOptions = {}): P
 /** Voz selecionada no navegador (para diagnóstico/UI). */
 export async function getSelectedBrowserVoiceLabel(): Promise<string | null> {
   if (!isSpeechSynthesisSupported()) return null
+  if (isMacOsSystemDefaultVoiceUri(getPreferredVoiceUri())) {
+    return MACOS_SYSTEM_DEFAULT_VOICE_LABEL
+  }
   const voices = await ensureVoicesLoaded()
-  const voice = pickPortugueseVoice(voices)
+  const voice = resolvePortugueseVoice(voices)
   return voice?.name ?? null
 }

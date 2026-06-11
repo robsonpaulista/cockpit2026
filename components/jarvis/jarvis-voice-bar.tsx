@@ -4,10 +4,11 @@ import { useEffect, useState } from 'react'
 import { IconMicrophone, IconVolume, IconVolumeOff } from '@tabler/icons-react'
 import { JarvisVoicePicker } from '@/components/jarvis/jarvis-voice-picker'
 import { cn } from '@/lib/utils'
+import { JARVIS_GREETING_LINES } from '@/lib/agent/greeting-reply'
 import './jarvis-neural.css'
 
 const PLACEHOLDER_HINTS = [
-  'Toque no microfone e fale sua pergunta…',
+  ...JARVIS_GREETING_LINES,
   'Pesquisas · território · agenda · alertas…',
   'Ex.: pesquisa estimulada em Teresina…',
 ]

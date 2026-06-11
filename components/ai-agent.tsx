@@ -40,6 +40,7 @@ import {
   buildUnknownQueryReply,
   isGreetingQuery,
   isHelpQuery,
+  pickJarvisGreetingLine,
 } from '@/lib/agent/greeting-reply'
 import {
   detectExpectativaDetalheFollowUp,
@@ -52,6 +53,10 @@ import {
   detectSidebarNavigate,
   type SidebarNavigateResult,
 } from '@/lib/agent/detect-sidebar-navigate'
+import {
+  isResumoEleicoesPriorityQuery,
+  resolveCidadeAlvoResumoEleicoes,
+} from '@/lib/agent/resumo-eleicoes-city'
 import {
   pickJarvisLoadingPhrase,
   shouldPlayJarvisLoadingPhrase,
@@ -341,35 +346,6 @@ function buildSidebarNavChatMessage(result: SidebarNavigateResult): ChatMessage 
   }
 }
 
-/** Cruza a fala/texto com os nomes exatos do dropdown de Resumo Eleições */
-function resolveCidadeResumoEleicoesDropdown(query: string, cidades: string[]): string | null {
-  const q = normalizeText(query)
-  if (!q || cidades.length === 0) return null
-
-  const pares = cidades.map((c) => ({ original: c, norm: normalizeText(c) }))
-
-  for (const { original, norm } of pares) {
-    if (norm && q === norm) return original
-  }
-
-  let melhor: string | null = null
-  let melhorLen = 0
-  for (const { original, norm } of pares) {
-    if (!norm) continue
-    if (q.includes(norm) && norm.length >= melhorLen) {
-      melhor = original
-      melhorLen = norm.length
-    }
-  }
-  if (melhor) return melhor
-
-  for (const { original, norm } of pares) {
-    if (norm.includes(q) && q.length >= 3) return original
-  }
-
-  return null
-}
-
 /** Cruza texto do usuário com nomes exatos da lista do modal de demandas */
 function resolverLiderancasMencionadas(query: string, liderancas: string[]): string[] {
   const q = normalizeText(query)
@@ -437,6 +413,7 @@ export function AIAgent({
   const pathnameRef = useRef(pathname)
   pathnameRef.current = pathname
   const chatContainerRef = useRef<HTMLDivElement>(null)
+  const jarvisIdleGreetingRef = useRef(pickJarvisGreetingLine())
   const [isMinimized, setIsMinimized] = useState(() => floatingMode)
   const [currentMessageIndex, setCurrentMessageIndex] = useState(0)
   const [displayedText, setDisplayedText] = useState('')
@@ -2100,21 +2077,7 @@ export function AIAgent({
           queryLower,
         )
 
-      let nomeAlvo = resolveCidadeResumoEleicoesDropdown(query, pc.cidades)
-      if (!nomeAlvo) {
-        const extracted = extractCityName(query)
-        if (extracted) {
-          const exNorm = normalizeText(extracted)
-          nomeAlvo =
-            pc.cidades.find((c) => normalizeText(c) === exNorm) ||
-            pc.cidades.find(
-              (c) =>
-                normalizeText(c).includes(exNorm) ||
-                (exNorm.length >= 4 && exNorm.includes(normalizeText(c))),
-            ) ||
-            null
-        }
-      }
+      const nomeAlvo = resolveCidadeAlvoResumoEleicoes(query, pc.cidades)
 
       const pedeBuscaExplicito =
         /buscar|pesquisar|carregar|atualizar|trazer|mostrar|exibir|dados|resultados|executar|rode|roda|faz|faça|faca/.test(queryLower)
@@ -3020,7 +2983,16 @@ export function AIAgent({
         response = await buildNoticiasDestaqueChatMessage()
       }
 
-      if (!response && resumoDemandasAssistPhase === 'idle') {
+      const pcResumo = pageContextRef.current
+      const onResumoPage = pcResumo?.kind === 'resumo-eleicoes'
+      const resumoPriority =
+        onResumoPage &&
+        (resumoDemandasAssistPhase !== 'idle' ||
+          isResumoEleicoesPriorityQuery(cleanedContent, pcResumo.cidades))
+
+      if (!response && resumoPriority) {
+        response = await processUserQuery(cleanedContent)
+      } else if (!response && resumoDemandasAssistPhase === 'idle') {
         response = await tryAgentChat(cleanedContent, chatMessages)
       }
 
@@ -3319,8 +3291,8 @@ export function AIAgent({
     if (!voiceOutputEnabled && isListening) return 'ESCUTA ATIVA · RESPOSTA SÓ NO PAINEL'
     if (isProcessing) return 'PROCESSANDO CONSULTA · AGUARDE'
     if (isListening) return 'ESCUTA ATIVA · FALE SUA PERGUNTA'
-    if (allLoaded) return 'JARVIS ONLINE · SISTEMAS PRONTOS · COCKPIT 2026'
-    return 'INICIALIZANDO NÚCLEO NEURAL · CARREGANDO MÓDULOS'
+    if (allLoaded) return jarvisIdleGreetingRef.current
+    return 'Subindo o painel · já já tô on'
   }, [isProcessing, isListening, isSpeaking, allLoaded, jarvisResultPopup, voiceOutputEnabled])
 
   if (!showAgent) return null

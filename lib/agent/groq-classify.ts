@@ -42,6 +42,11 @@ function buildSystemPrompt(context?: AgentContextPayload): string {
   if (context?.pageKind === 'campo') {
     ctxLines.push('O usuário está em Campo & Agenda — priorize consultar_visitas_campo para visitas/viagens/check-in.')
   }
+  if (context?.pageKind === 'resumo-eleicoes') {
+    ctxLines.push(
+      'O usuário está em Resumo Eleições — para buscar/selecionar município no dropdown (ex.: «Buscar Teresina», «Picos», «atualizar»), use resumo_buscar_cidade com args.cidade. NÃO use consultar_expectativa nem consultar_liderancas só porque citou um município.'
+    )
+  }
   if (context?.cidadeAtual) ctxLines.push(`Cidade selecionada: ${context.cidadeAtual}`)
   if (context?.buscaIniciada) ctxLines.push('Busca de município já iniciada na página.')
   if (context?.candidatoPadrao) ctxLines.push(`Candidato foco: ${context.candidatoPadrao}`)
@@ -69,10 +74,10 @@ function buildSystemPrompt(context?: AgentContextPayload): string {
     '- Em consultar_pesquisas sobre Jadyel Alencar, preencha args.candidato com "Jadyel Alencar" (e args.cidade se houver município).',
     '- Use args.label com o nome da página da sidebar (ex.: «Agenda», «Território & Base», «WhatsApp»). args.url só se souber o caminho exato (/dashboard/...).',
     `- navegar: quando pedir abrir/ir/acessar/mostrar uma página do sistema (não confundir com consulta de dados). Páginas: ${sidebarNavTargetListForPrompt(28)}.`,
-    '- resumo_* só quando pageKind for resumo-eleicoes.',
+    '- resumo_* só quando pageKind for resumo-eleicoes. resumo_buscar_cidade: selecionar município e acionar Buscar (nome da cidade ou «buscar/atualizar/mostrar dados de X»).',
     '- consultar_instagram_* para métricas/posts do Instagram.',
     '- consultar_noticias_destaque: notícias marcadas como destaque no painel (dashboard_highlight), ex.: «notícias em destaque», «o que está em destaque na imprensa».',
-    '- resposta_direta: cumprimentos (oi, bom dia, boa tarde, boa noite) — direct_reply só saudação social curta (ex.: "Boa tarde! Em que posso ajudar?"). NUNCA diga que está enviando, buscando ou executando algo — use o intent correto (enviar_whatsapp, consultar_*). Nunca interprete "jarvis" como cidade.',
+    '- resposta_direta: cumprimentos (oi, bom dia, boa tarde, boa noite) — direct_reply só saudação social curta, tom de bastidor político (ex.: "Tô aqui. O que tá na cabeça hoje?"). NUNCA diga que está enviando, buscando ou executando algo — use o intent correto (enviar_whatsapp, consultar_*). Nunca interprete "jarvis" como cidade.',
     '- ajuda: quando pedir ajuda, comandos, exemplos ou "o que você pode fazer/responder".',
     '- enviar_whatsapp: envio por WhatsApp SOMENTE para destinatários explícitos. args.conteudo = resumo_operacional | briefing_territorio. args.cidade (briefing). args.dias (resumo). args.destinatario = nome ou padrao/ceo. args.destinatarios = «Maria, João» (máx. poucas pessoas). args.grupo_categoria = executivo|assessoria|territorio APENAS se pedir «para os executivos» etc. args.enviar_todos=sim só se pedir «todos os contatos». NUNCA envie para todos sem pedido explícito. Se faltar destinatário, use desconhecido.',
     '- desconhecido: quando não houver intenção clara.',
