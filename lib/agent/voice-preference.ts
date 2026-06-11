@@ -29,7 +29,21 @@ const SYSTEM_MODE_MIGRATION_KEY = 'jarvis-voice-migration-v5'
 const MAC_SYSTEM_VOICE_MIGRATION_KEY = 'jarvis-voice-migration-v6'
 const FELIPE_DEFAULT_MIGRATION_KEY = 'jarvis-voice-migration-v7'
 const VOICE_OUTPUT_KEY = 'jarvis-voice-output-enabled'
+const ALWAYS_LISTEN_KEY = 'jarvis-always-listen'
 const KOKORO_VOICE_KEY = 'jarvis-kokoro-voice'
+
+/** Escuta contínua com wake word — padrão: ligada. */
+export function getJarvisAlwaysListenEnabled(): boolean {
+  if (typeof window === 'undefined') return true
+  const stored = localStorage.getItem(ALWAYS_LISTEN_KEY)
+  if (stored === '0' || stored === 'false') return false
+  return true
+}
+
+export function setJarvisAlwaysListenEnabled(enabled: boolean): void {
+  if (typeof window === 'undefined') return
+  localStorage.setItem(ALWAYS_LISTEN_KEY, enabled ? '1' : '0')
+}
 
 /** Respostas faladas (TTS) — independente do microfone. Padrão: ligado. */
 export function getJarvisVoiceOutputEnabled(): boolean {

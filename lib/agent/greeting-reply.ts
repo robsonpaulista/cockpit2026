@@ -1,3 +1,10 @@
+import {
+  JARVIS_SAUDACAO_LINES,
+  pickJarvisForaDeEscopo,
+  pickJarvisSaudacao,
+  pickJarvisSaudacaoPorHorario,
+} from '@/lib/agent/jarvis-phrases'
+
 function normalize(query: string): string {
   return query
     .toLowerCase()
@@ -17,17 +24,11 @@ const DATA_INTENT =
 const ACTION_INTENT =
   /\b(envia|enviar|envie|mand[ae]|dispar[ae]|resumo\s+operacional|briefing)\b/
 
-/** Tom de bastidor político — saudação inicial do Jarvis. */
-export const JARVIS_GREETING_LINES = [
-  'Boa! Campanha não para, né? Me diz o que precisa.',
-  'Tô aqui. O que tá na cabeça hoje?',
-  'Dia de trabalho. O que a gente tem pra resolver?',
-  'Pode começar — tô ligado aqui.',
-] as const
+/** @deprecated use JARVIS_SAUDACAO_LINES */
+export const JARVIS_GREETING_LINES = JARVIS_SAUDACAO_LINES
 
 export function pickJarvisGreetingLine(): string {
-  const index = Math.floor(Math.random() * JARVIS_GREETING_LINES.length)
-  return JARVIS_GREETING_LINES[index] ?? JARVIS_GREETING_LINES[0]
+  return pickJarvisSaudacao()
 }
 
 export function isHelpQuery(query: string): boolean {
@@ -57,13 +58,27 @@ export function isGreetingQuery(query: string): boolean {
   return /^(oi|ola|bom dia|boa tarde|boa noite)\b/.test(q)
 }
 
-/** Resposta social curta — tom de bastidor político. */
-export function buildGreetingReply(_query?: string): string {
+/** Resposta social curta — saudação por horário ou frase do catálogo. */
+export function buildGreetingReply(query?: string): string {
+  const q = query?.trim().toLowerCase() ?? ''
+  if (/\bbom\s+dia\b/.test(q)) {
+    return pickJarvisSaudacaoPorHorario()
+  }
+  if (/\bboa\s+tarde\b/.test(q)) {
+    return pickJarvisSaudacaoPorHorario()
+  }
+  if (/\bboa\s+noite\b/.test(q)) {
+    return pickJarvisSaudacaoPorHorario()
+  }
   return pickJarvisGreetingLine()
 }
 
 export function buildUnknownQueryReply(): string {
-  return 'Não entendi bem. Posso ajudar com **agenda**, **notícias em destaque**, **expectativa em uma cidade**, **pesquisas** e mais. Diga **ajuda** para ver exemplos.'
+  return pickJarvisForaDeEscopo()
+}
+
+export function buildOutOfScopeReply(): string {
+  return pickJarvisForaDeEscopo()
 }
 
 export function buildHelpReply(): string {

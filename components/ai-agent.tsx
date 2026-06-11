@@ -31,12 +31,14 @@ import {
   stopSpeechKeepAlive,
   unlockJarvisAudio,
 } from '@/lib/agent/audio-unlock'
+import { extractJarvisVoiceCommand } from '@/lib/agent/jarvis-wake-word'
 import { extractCityNameFromQuery } from '@/lib/agent/city-extract'
 import { isCampoVisitasQuery } from '@/lib/agent/detect-visitas-campo'
 import { resolveVisitasCampoReply, type CampoAgendaRow } from '@/lib/agent/format-visitas-campo'
 import {
   buildGreetingReply,
   buildHelpReply,
+  buildOutOfScopeReply,
   buildUnknownQueryReply,
   isGreetingQuery,
   isHelpQuery,
@@ -53,14 +55,26 @@ import {
   detectSidebarNavigate,
   type SidebarNavigateResult,
 } from '@/lib/agent/detect-sidebar-navigate'
+import { shouldBreakJarvisPendingFlow } from '@/lib/agent/detect-pending-break'
+import { isOffTopicAgentQuery } from '@/lib/agent/detect-off-topic-query'
 import {
   isResumoEleicoesPriorityQuery,
   resolveCidadeAlvoResumoEleicoes,
 } from '@/lib/agent/resumo-eleicoes-city'
+import { shouldPlayJarvisLoadingPhrase } from '@/lib/agent/jarvis-loading-phrase'
 import {
+  getPhrase,
+  pickJarvisAguardando,
+  pickJarvisCarregando,
+  pickJarvisDadosCarregados,
+  pickJarvisErro,
   pickJarvisLoadingPhrase,
-  shouldPlayJarvisLoadingPhrase,
-} from '@/lib/agent/jarvis-loading-phrase'
+  pickJarvisSaudacao,
+  pickJarvisSemResultado,
+  formatJarvisExpectativaCidadeReply,
+  pickJarvisExpectativaPiorCenario,
+  pickJarvisNavegacaoFala,
+} from '@/lib/agent/jarvis-phrases'
 import {
   parseJarvisResultContent,
   shouldShowJarvisResultPopup,
@@ -68,7 +82,9 @@ import {
 } from '@/lib/agent/jarvis-result-view'
 import { isSpeechSynthesisSupported, speakText, stopSpeaking } from '@/lib/agent/speech-output'
 import {
+  getJarvisAlwaysListenEnabled,
   getJarvisVoiceOutputEnabled,
+  setJarvisAlwaysListenEnabled,
   setJarvisVoiceOutputEnabled,
 } from '@/lib/agent/voice-preference'
 import type {
@@ -100,6 +116,10 @@ interface ChatMessage {
   }
   /** Navegação explícita pedida pelo usuário — abre a rota sem exigir clique no botão. */
   autoNavigate?: boolean
+  /** Não repetir TTS (ex.: buscando já falado antes da resposta chegar). */
+  skipAnswerSpeech?: boolean
+  /** Não falar aguardando/saudação ao religar o mic após esta resposta. */
+  skipListenResumePhrase?: boolean
 }
 
 type AIAgentResumoEleicoesContext = {
@@ -109,6 +129,8 @@ type AIAgentResumoEleicoesContext = {
   buscaIniciada: boolean
   loadingCidades: boolean
   loadingDados: boolean
+  /** API retornou linhas (resumo KPI pode ainda estar carregando). */
+  resumoTemDados: boolean
   selecionarCidadeEBuscar: (nomeCidade: string) => void | Promise<void>
   /** Fluxo Demandas (botão da página → modal de lideranças) */
   seletorDemandasAberto: boolean
@@ -337,6 +359,8 @@ function buildSidebarNavChatMessage(result: SidebarNavigateResult): ChatMessage 
     id: Date.now().toString(),
     role: 'assistant',
     content: buildSidebarNavigateReply(result),
+    speechSegments: [pickJarvisNavegacaoFala()],
+    skipListenResumePhrase: true,
     action: {
       type: 'navigate',
       url: result.target.href,
@@ -427,6 +451,8 @@ export function AIAgent({
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([])
   const [isProcessing, setIsProcessing] = useState(false)
   const [isListening, setIsListening] = useState(false)
+  const [listenPaused, setListenPaused] = useState(false)
+  const [wakeStandby, setWakeStandby] = useState(true)
   const [isSpeaking, setIsSpeaking] = useState(false)
   const [speechSupported, setSpeechSupported] = useState(false)
   const [speechCapabilityResolved, setSpeechCapabilityResolved] = useState(false)
@@ -434,6 +460,15 @@ export function AIAgent({
   const [voiceOutputEnabled, setVoiceOutputEnabled] = useState(true)
   const recognitionRef = useRef<SpeechRecognitionLike | null>(null)
   const pendingSpeechRef = useRef('')
+  const isJarvisHudRef = useRef(isJarvisHud)
+  const listenPausedRef = useRef(false)
+  const shouldRestartListenRef = useRef(false)
+  const isProcessingRef = useRef(false)
+  const isSpeakingRef = useRef(false)
+  const tryStartListenRef = useRef<() => void>(() => {})
+  isJarvisHudRef.current = isJarvisHud
+  isProcessingRef.current = isProcessing
+  isSpeakingRef.current = isSpeaking
   const stopSpeakingReplyRef = useRef<(() => void) | null>(null)
   const pageContextRef = useRef<AIAgentPageContext | undefined>(undefined)
   pageContextRef.current = pageContext
@@ -466,6 +501,11 @@ export function AIAgent({
   } | null>(null)
   const jarvisLoadingSpeechRef = useRef(false)
   const jarvisPendingAnswerRef = useRef<{ content: string; segments?: string[] } | null>(null)
+  const resumoBuscaCidadePendingRef = useRef<string | null>(null)
+  const resumoBuscaViuLoadingRef = useRef(false)
+  const jarvisListenResumePhraseRef = useRef<'saudacao' | 'aguardando' | null>(null)
+  const jarvisSkipListenResumeRef = useRef(false)
+  const jarvisBootListenSpokenRef = useRef(false)
 
   const syncAgendaScopePending = useCallback((pending: AgendaScopePending | null) => {
     agendaScopePendingRef.current = pending
@@ -485,6 +525,13 @@ export function AIAgent({
     syncExpectativaDetalhePending(null)
     syncAgendaScopePending(null)
   }, [resumoEleicoesCidadeChave, syncAgendaScopePending, syncExpectativaDetalhePending])
+
+  useEffect(() => {
+    setPesquisaTipoPending(null)
+    syncExpectativaDetalhePending(null)
+    syncAgendaScopePending(null)
+    setResumoDemandasAssistPhase('idle')
+  }, [pathname, syncAgendaScopePending, syncExpectativaDetalhePending])
 
   // Scroll automático para última mensagem
   useEffect(() => {
@@ -654,39 +701,43 @@ export function AIAgent({
       const qtdLiderancas = registrosCidade.length
 
       if (!incluirLiderancas) {
-        return [
-          `**${cidadeFormatada}**`,
-          '',
-          `Expectativa 2026: **${totalFormatado} votos**`,
-          `Lideranças cadastradas: **${qtdLiderancas}**`,
-          '',
-          'Quer que eu detalhe a expectativa por liderança?',
-        ].join('\n')
+        return formatJarvisExpectativaCidadeReply({
+          cidade: cidadeFormatada,
+          totalFormatado,
+          qtdLiderancas,
+        })
       }
 
-      let resposta = `**${cidadeFormatada}**\n\n`
-      resposta += `Expectativa 2026: **${totalFormatado} votos**\n`
-      resposta += `Lideranças: **${qtdLiderancas}**`
-      
+      let liderancasBloco = `Lideranças: **${qtdLiderancas}**`
       if (liderancas.length > 0 && liderancas.length <= 8) {
-        resposta += `\n\n**Lideranças:**\n`
-        liderancas.forEach(l => {
-          resposta += `› ${l.nome}`
-          if (l.expectativa > 0) resposta += ` (${l.expectativa.toLocaleString('pt-BR')} votos)`
-          if (l.funcao) resposta += ` — ${l.funcao}`
-          resposta += '\n'
+        liderancasBloco += `\n\n**Lideranças:**\n`
+        liderancas.forEach((l) => {
+          liderancasBloco += `› ${l.nome}`
+          if (l.expectativa > 0) {
+            liderancasBloco += ` (${l.expectativa.toLocaleString('pt-BR')} votos)`
+          }
+          if (l.funcao) liderancasBloco += ` — ${l.funcao}`
+          liderancasBloco += '\n'
         })
       } else if (liderancas.length > 8) {
-        resposta += `\n\n**Top 8 Lideranças:**\n`
-        liderancas.slice(0, 8).forEach(l => {
-          resposta += `› ${l.nome}`
-          if (l.expectativa > 0) resposta += ` (${l.expectativa.toLocaleString('pt-BR')} votos)`
-          resposta += '\n'
+        liderancasBloco += `\n\n**Top 8 Lideranças:**\n`
+        liderancas.slice(0, 8).forEach((l) => {
+          liderancasBloco += `› ${l.nome}`
+          if (l.expectativa > 0) {
+            liderancasBloco += ` (${l.expectativa.toLocaleString('pt-BR')} votos)`
+          }
+          liderancasBloco += '\n'
         })
-        resposta += `+ ${liderancas.length - 8} liderança(s)`
+        liderancasBloco += `+ ${liderancas.length - 8} liderança(s)`
       }
 
-      return resposta
+      return formatJarvisExpectativaCidadeReply({
+        cidade: cidadeFormatada,
+        totalFormatado,
+        qtdLiderancas,
+        detalhe: true,
+        liderancasBloco,
+      })
     } catch (error) {
       console.error('Erro ao buscar expectativa:', error)
       return `Erro ao buscar dados. Tente novamente.`
@@ -1624,6 +1675,14 @@ export function AIAgent({
       }
     }
 
+    if (isOffTopicAgentQuery(query)) {
+      return {
+        id: Date.now().toString(),
+        role: 'assistant',
+        content: buildOutOfScopeReply(),
+      }
+    }
+
     const sidebarNav = detectSidebarNavigate(query, pathnameRef.current)
     if (sidebarNav) {
       return buildSidebarNavChatMessage(sidebarNav)
@@ -1634,7 +1693,7 @@ export function AIAgent({
         return {
           id: Date.now().toString(),
           role: 'assistant',
-          content: 'A lista de municípios ainda está carregando. Aguarde um instante e tente de novo.',
+          content: pickJarvisCarregando(),
         }
       }
 
@@ -2088,45 +2147,39 @@ export function AIAgent({
         )
 
       if (pc.loadingDados && (nomeAlvo || pedeBuscaExplicito || apenasComandoCurto)) {
+        const cidadeEmBusca = (nomeAlvo || pc.cidadeAtual).trim()
         return {
           id: Date.now().toString(),
           role: 'assistant',
-          content: 'Já existe uma busca em andamento na página. Aguarde terminar.',
+          content: pickJarvisCarregando(cidadeEmBusca || undefined),
+        }
+      }
+
+      const iniciarBuscaResumoEleicoes = (cidade: string): ChatMessage => {
+        resumoBuscaCidadePendingRef.current = cidade
+        resumoBuscaViuLoadingRef.current = false
+        void Promise.resolve(pc.selecionarCidadeEBuscar(cidade)).catch(() => {
+          if (
+            resumoBuscaCidadePendingRef.current?.toLowerCase() === cidade.toLowerCase()
+          ) {
+            resumoBuscaCidadePendingRef.current = null
+            resumoBuscaViuLoadingRef.current = false
+          }
+        })
+        return {
+          id: Date.now().toString(),
+          role: 'assistant',
+          content: pickJarvisLoadingPhrase({ cidade }),
+          skipAnswerSpeech: true,
         }
       }
 
       if ((pedeBuscaExplicito || apenasComandoCurto) && !nomeAlvo && pc.cidadeAtual.trim()) {
-        try {
-          await Promise.resolve(pc.selecionarCidadeEBuscar(pc.cidadeAtual.trim()))
-          return {
-            id: Date.now().toString(),
-            role: 'assistant',
-            content: `**${pc.cidadeAtual.trim()}** — acionei **Buscar** de novo (mesma cidade selecionada).`,
-          }
-        } catch {
-          return {
-            id: Date.now().toString(),
-            role: 'assistant',
-            content: 'Não consegui acionar a busca. Use o botão **Buscar** na página.',
-          }
-        }
+        return iniciarBuscaResumoEleicoes(pc.cidadeAtual.trim())
       }
 
       if (nomeAlvo && (!indicaOutrosModulos || pedeBuscaExplicito)) {
-        try {
-          await Promise.resolve(pc.selecionarCidadeEBuscar(nomeAlvo))
-          return {
-            id: Date.now().toString(),
-            role: 'assistant',
-            content: `**${nomeAlvo}** — defini no campo **Cidade** e acionei **Buscar**. Os painéis vão atualizar em instantes.`,
-          }
-        } catch {
-          return {
-            id: Date.now().toString(),
-            role: 'assistant',
-            content: 'Não consegui completar a busca. Tente pelo botão **Buscar** na página.',
-          }
-        }
+        return iniciarBuscaResumoEleicoes(nomeAlvo)
       }
 
       if (pedeBuscaExplicito && !nomeAlvo) {
@@ -2576,10 +2629,14 @@ export function AIAgent({
     
     // ===== EXPECTATIVA GERAL =====
     if ((queryLower.includes('expectativa') || queryLower.includes('projecao')) && !cidade) {
+      const totalGeral =
+        typeof expectativa2026 === 'number'
+          ? expectativa2026.toLocaleString('pt-BR')
+          : expectativa2026 || 'não calculada'
       return {
         id: Date.now().toString(),
         role: 'assistant',
-        content: `**Expectativa de votos 2026:** ${typeof expectativa2026 === 'number' ? expectativa2026.toLocaleString('pt-BR') : expectativa2026 || 'não calculada'}\n\n**Presença territorial:** ${presencaTerritorial || 'não calculada'}`,
+        content: `${pickJarvisExpectativaPiorCenario(totalGeral)}\n\n**Presença territorial:** ${presencaTerritorial || 'não calculada'}`,
         action: {
           type: 'navigate',
           url: '/dashboard/territorio',
@@ -2713,7 +2770,10 @@ export function AIAgent({
             id: Date.now().toString(),
             role: 'assistant',
             content: data.content.trim(),
-            speechSegments: data.speechSegments,
+            speechSegments:
+              data.speechSegments ??
+              (autoNavigate ? [pickJarvisNavegacaoFala()] : undefined),
+            skipListenResumePhrase: autoNavigate,
             action: data.action,
             viaAi: true,
             autoNavigate,
@@ -2754,10 +2814,28 @@ export function AIAgent({
           setVoiceError(null)
           setIsSpeaking(true)
         },
-        onEnd: () => setIsSpeaking(false),
+        onEnd: () => {
+          setIsSpeaking(false)
+          if (isJarvisHudRef.current && !listenPausedRef.current) {
+            if (jarvisSkipListenResumeRef.current) {
+              jarvisSkipListenResumeRef.current = false
+            } else {
+              jarvisListenResumePhraseRef.current = 'aguardando'
+            }
+            shouldRestartListenRef.current = true
+          }
+        },
         onError: (msg) => {
           setIsSpeaking(false)
           if (msg) setVoiceError(msg)
+          if (isJarvisHudRef.current && !listenPausedRef.current) {
+            if (jarvisSkipListenResumeRef.current) {
+              jarvisSkipListenResumeRef.current = false
+            } else {
+              jarvisListenResumePhraseRef.current = 'aguardando'
+            }
+            shouldRestartListenRef.current = true
+          }
         },
       }).then((cancel) => {
         stopSpeakingReplyRef.current = cancel
@@ -2787,6 +2865,21 @@ export function AIAgent({
       setChatMessages((prev) => [...prev, response])
       if (response.role !== 'assistant') return
 
+      if (response.skipAnswerSpeech) {
+        if (jarvisLoadingSpeechRef.current) {
+          jarvisPendingAnswerRef.current = null
+        }
+        return
+      }
+
+      if (response.skipListenResumePhrase) {
+        jarvisSkipListenResumeRef.current = true
+      }
+
+      const speechText = response.speechSegments?.length
+        ? response.speechSegments.join(' ')
+        : response.content
+
       if (isJarvisHud && shouldShowJarvisResultPopup(response.content)) {
         try {
           setJarvisResultPopup({
@@ -2794,17 +2887,80 @@ export function AIAgent({
             view: parseJarvisResultContent(response.content, userQuery),
             action: response.action,
           })
-          scheduleJarvisAnswerSpeech(response.content, response.speechSegments)
+          scheduleJarvisAnswerSpeech(speechText, response.speechSegments)
           return
         } catch (err) {
           console.error('[Jarvis] falha ao montar painel de resultado:', err)
         }
       }
 
-      scheduleJarvisAnswerSpeech(response.content, response.speechSegments)
+      scheduleJarvisAnswerSpeech(speechText, response.speechSegments)
     },
     [isJarvisHud, router, scheduleJarvisAnswerSpeech]
   )
+
+  const deliverAssistantResponseRef = useRef(deliverAssistantResponse)
+  deliverAssistantResponseRef.current = deliverAssistantResponse
+
+  const resumoEleicoesCtx =
+    pageContext?.kind === 'resumo-eleicoes' ? pageContext : null
+
+  useEffect(() => {
+    if (!resumoEleicoesCtx) {
+      resumoBuscaCidadePendingRef.current = null
+      resumoBuscaViuLoadingRef.current = false
+      return
+    }
+
+    const cidadePendente = resumoBuscaCidadePendingRef.current
+    if (!cidadePendente) return
+
+    if (resumoEleicoesCtx.loadingDados) {
+      resumoBuscaViuLoadingRef.current = true
+      return
+    }
+
+    if (!resumoBuscaViuLoadingRef.current || !resumoEleicoesCtx.buscaIniciada) return
+
+    const cidadeAtual = resumoEleicoesCtx.cidadeAtual.trim()
+    if (!cidadeAtual || cidadeAtual.toLowerCase() !== cidadePendente.toLowerCase()) {
+      return
+    }
+
+    if (resumoEleicoesCtx.painelResumoCardsVisivel) {
+      resumoBuscaCidadePendingRef.current = null
+      resumoBuscaViuLoadingRef.current = false
+      deliverAssistantResponseRef.current(
+        {
+          id: `${Date.now()}-resumo-loaded`,
+          role: 'assistant',
+          content: pickJarvisDadosCarregados(cidadeAtual),
+        },
+        ''
+      )
+      return
+    }
+
+    if (!resumoEleicoesCtx.resumoTemDados) {
+      resumoBuscaCidadePendingRef.current = null
+      resumoBuscaViuLoadingRef.current = false
+      deliverAssistantResponseRef.current(
+        {
+          id: `${Date.now()}-resumo-empty`,
+          role: 'assistant',
+          content: pickJarvisSemResultado(cidadeAtual),
+        },
+        ''
+      )
+    }
+  }, [
+    resumoEleicoesCtx?.loadingDados,
+    resumoEleicoesCtx?.painelResumoCardsVisivel,
+    resumoEleicoesCtx?.resumoTemDados,
+    resumoEleicoesCtx?.buscaIniciada,
+    resumoEleicoesCtx?.cidadeAtual,
+    resumoEleicoesCtx,
+  ])
 
   const handleJarvisResultClose = useCallback(() => {
     setJarvisResultPopup(null)
@@ -2814,6 +2970,20 @@ export function AIAgent({
   const submitMessage = useCallback(async (content: string) => {
     const cleanedContent = content.trim()
     if (!cleanedContent || isProcessing) return
+
+    if (isJarvisHudRef.current && recognitionRef.current) {
+      try {
+        recognitionRef.current.stop()
+      } catch {
+        /* já parado */
+      }
+      setIsListening(false)
+      shouldRestartListenRef.current = false
+      if (isOffTopicAgentQuery(cleanedContent)) {
+        resumoBuscaCidadePendingRef.current = null
+        resumoBuscaViuLoadingRef.current = false
+      }
+    }
 
     const userMessage: ChatMessage = {
       id: Date.now().toString(),
@@ -2839,6 +3009,7 @@ export function AIAgent({
         agendaScopePending: Boolean(agendaScopePendingRef.current),
         expectativaDetalhePending:
           Boolean(expectativaDetalhePendingRef.current) || Boolean(expectativaFollowUpFromHistory),
+        currentPath: pathnameRef.current,
         parsePesquisaTipo: parsePesquisaTipoFromQuery,
         parseAgendaDayScope: parseAgendaDayScopeFromAnswer,
         isExpectativaAffirmative: isExpectativaDetalheAffirmative,
@@ -2848,7 +3019,7 @@ export function AIAgent({
     if (playLoadingPhrase) {
       jarvisLoadingSpeechRef.current = true
       stopSpeakingReplyRef.current?.()
-      void speakText(pickJarvisLoadingPhrase(), {
+      void speakText(pickJarvisLoadingPhrase({ cidade: extractCityNameFromQuery(cleanedContent) }), {
         onStart: () => {
           setVoiceError(null)
           setIsSpeaking(true)
@@ -2875,7 +3046,22 @@ export function AIAgent({
     try {
       let response: ChatMessage | null = null
 
-      if (pesquisaTipoPending) {
+      const hasPendingFollowUp =
+        Boolean(pesquisaTipoPending) ||
+        Boolean(agendaScopePendingRef.current) ||
+        Boolean(expectativaDetalhePendingRef.current) ||
+        resumoDemandasAssistPhase !== 'idle'
+
+      let clearedPendingFollowUp = false
+      if (hasPendingFollowUp && shouldBreakJarvisPendingFlow(cleanedContent, pathnameRef.current)) {
+        setPesquisaTipoPending(null)
+        syncAgendaScopePending(null)
+        syncExpectativaDetalhePending(null)
+        setResumoDemandasAssistPhase('idle')
+        clearedPendingFollowUp = true
+      }
+
+      if (pesquisaTipoPending && !clearedPendingFollowUp) {
         const tipo = parsePesquisaTipoFromQuery(cleanedContent)
         if (tipo) {
           const outcome = await fetchPesquisasOutcome(
@@ -2893,7 +3079,7 @@ export function AIAgent({
               'Para listar os candidatos, responda **estimulada** ou **espontânea**.',
           }
         }
-      } else if (agendaScopePendingRef.current) {
+      } else if (agendaScopePendingRef.current && !clearedPendingFollowUp) {
         const pending = agendaScopePendingRef.current
         const dayScope = parseAgendaDayScopeFromAnswer(cleanedContent)
         if (dayScope) {
@@ -2990,6 +3176,16 @@ export function AIAgent({
         (resumoDemandasAssistPhase !== 'idle' ||
           isResumoEleicoesPriorityQuery(cleanedContent, pcResumo.cidades))
 
+      if (!response && !resumoPriority && isOffTopicAgentQuery(cleanedContent)) {
+        resumoBuscaCidadePendingRef.current = null
+        resumoBuscaViuLoadingRef.current = false
+        response = {
+          id: Date.now().toString(),
+          role: 'assistant',
+          content: buildOutOfScopeReply(),
+        }
+      }
+
       if (!response && resumoPriority) {
         response = await processUserQuery(cleanedContent)
       } else if (!response && resumoDemandasAssistPhase === 'idle') {
@@ -3002,7 +3198,7 @@ export function AIAgent({
 
       deliverAssistantResponse(response, cleanedContent)
     } catch (error) {
-      const errorReply = 'Desculpe, ocorreu um erro. Tente novamente.'
+      const errorReply = pickJarvisErro()
       deliverAssistantResponse(
         {
           id: Date.now().toString(),
@@ -3131,6 +3327,116 @@ export function AIAgent({
     return () => window.speechSynthesis.removeEventListener('voiceschanged', loadVoices)
   }, [enableVoice])
 
+  const scheduleListenRestart = useCallback(() => {
+    if (!enableVoice || !isJarvisHudRef.current || listenPausedRef.current) return
+    if (isProcessingRef.current || isSpeakingRef.current) {
+      shouldRestartListenRef.current = true
+      return
+    }
+    window.setTimeout(() => {
+      tryStartListenRef.current()
+    }, 320)
+  }, [enableVoice])
+
+  const actuallyStartRecognition = useCallback(() => {
+    if (!recognitionRef.current || !enableVoice) return
+    if (typeof window !== 'undefined' && !window.isSecureContext) {
+      setVoiceError(
+        [
+          'Este endereço não é um contexto seguro (ex.: http:// + IP na rede).',
+          'O Chrome costuma bloquear microfone mesmo com permissões.',
+          'Use HTTPS ou http://localhost / http://127.0.0.1 na máquina do servidor.',
+        ].join('\n'),
+      )
+      return
+    }
+
+    startSpeechKeepAlive()
+    try {
+      recognitionRef.current.start()
+      setIsListening(true)
+      setWakeStandby(true)
+    } catch {
+      /* sessão ainda ativa ou microfone ocupado — onend vai tentar de novo */
+    }
+  }, [enableVoice])
+
+  const tryStartContinuousListening = useCallback(() => {
+    if (!recognitionRef.current || !enableVoice) return
+    if (isJarvisHudRef.current && listenPausedRef.current) return
+    if (isProcessingRef.current || isSpeakingRef.current) {
+      shouldRestartListenRef.current = true
+      return
+    }
+
+    const phraseKind = jarvisListenResumePhraseRef.current
+    jarvisListenResumePhraseRef.current = null
+
+    if (
+      phraseKind &&
+      isJarvisHudRef.current &&
+      voiceOutputEnabled &&
+      !jarvisLoadingSpeechRef.current
+    ) {
+      try {
+        recognitionRef.current.stop()
+      } catch {
+        /* já parado */
+      }
+      setIsListening(false)
+      stopSpeechKeepAlive()
+
+      const text =
+        phraseKind === 'saudacao' ? pickJarvisSaudacao() : pickJarvisAguardando()
+
+      void speakText(text, {
+        onStart: () => {
+          setVoiceError(null)
+          setIsSpeaking(true)
+        },
+        onEnd: () => {
+          setIsSpeaking(false)
+          window.setTimeout(() => actuallyStartRecognition(), 300)
+        },
+        onError: (msg) => {
+          setIsSpeaking(false)
+          if (msg) setVoiceError(msg)
+          window.setTimeout(() => actuallyStartRecognition(), 300)
+        },
+      })
+      return
+    }
+
+    actuallyStartRecognition()
+  }, [actuallyStartRecognition, enableVoice, voiceOutputEnabled])
+
+  tryStartListenRef.current = tryStartContinuousListening
+
+  const pauseContinuousListening = useCallback(() => {
+    listenPausedRef.current = true
+    setListenPaused(true)
+    setJarvisAlwaysListenEnabled(false)
+    stopSpeechKeepAlive()
+    setWakeStandby(true)
+    setUserInput('')
+    try {
+      recognitionRef.current?.stop()
+    } catch {
+      setIsListening(false)
+    }
+  }, [])
+
+  const resumeContinuousListening = useCallback(() => {
+    listenPausedRef.current = false
+    setListenPaused(false)
+    setJarvisAlwaysListenEnabled(true)
+    setVoiceError(null)
+    unlockJarvisAudio()
+    jarvisListenResumePhraseRef.current =
+      Math.random() < 0.55 ? 'saudacao' : 'aguardando'
+    tryStartContinuousListening()
+  }, [tryStartContinuousListening])
+
   useEffect(() => {
     if (!enableVoice || typeof window === 'undefined') return
 
@@ -3148,7 +3454,7 @@ export function AIAgent({
     setSpeechCapabilityResolved(true)
     const recognition = new SpeechRecognitionAPI()
     recognition.lang = 'pt-BR'
-    recognition.continuous = false
+    recognition.continuous = isJarvisHud
     recognition.interimResults = true
 
     recognition.onresult = (event: SpeechRecognitionEventLike) => {
@@ -3157,9 +3463,34 @@ export function AIAgent({
         const result = event.results[i]
         transcript += result?.[0]?.transcript ?? ''
       }
-      const cleaned = transcript.trim()
-      pendingSpeechRef.current = cleaned
-      setUserInput(cleaned)
+
+      if (!isJarvisHudRef.current) {
+        const cleaned = transcript.trim()
+        pendingSpeechRef.current = cleaned
+        setUserInput(cleaned)
+        return
+      }
+
+      const { triggered, command } = extractJarvisVoiceCommand(transcript)
+      if (!triggered) {
+        setWakeStandby(true)
+        setUserInput('')
+        return
+      }
+
+      setWakeStandby(false)
+      setUserInput(command)
+
+      const last = event.results[event.results.length - 1]
+      if (last?.isFinal && command.trim()) {
+        setUserInput('')
+        try {
+          recognition.stop()
+        } catch {
+          /* ignore */
+        }
+        void submitMessageRef.current(command.trim())
+      }
     }
 
     recognition.onerror = (event: Event) => {
@@ -3176,24 +3507,32 @@ export function AIAgent({
           setVoiceError(detailedMessage)
         })()
         setIsListening(false)
+        listenPausedRef.current = true
+        setListenPaused(true)
         return
       }
+      if (code === 'no-speech' || code === 'aborted') return
       const msg = speechRecognitionErrorMessage(code, {
         isSecureContext: typeof window !== 'undefined' && window.isSecureContext,
       })
       if (msg) setVoiceError(msg)
-      setIsListening(false)
     }
 
     recognition.onend = () => {
       stopSpeechKeepAlive()
       setIsListening(false)
-      const text = pendingSpeechRef.current.trim()
-      pendingSpeechRef.current = ''
-      if (text) {
+      setWakeStandby(true)
+
+      if (!isJarvisHudRef.current) {
+        const text = pendingSpeechRef.current.trim()
+        pendingSpeechRef.current = ''
         setUserInput('')
-        void submitMessageRef.current(text)
+        if (text) void submitMessageRef.current(text)
+        return
       }
+
+      setUserInput('')
+      scheduleListenRestart()
     }
 
     recognitionRef.current = recognition
@@ -3208,11 +3547,56 @@ export function AIAgent({
       setIsListening(false)
       pendingSpeechRef.current = ''
     }
-  }, [enableVoice])
+  }, [enableVoice, isJarvisHud, scheduleListenRestart])
+
+  useEffect(() => {
+    if (!enableVoice || !isJarvisHud || !speechSupported || !speechCapabilityResolved) return
+    listenPausedRef.current = !getJarvisAlwaysListenEnabled()
+    setListenPaused(listenPausedRef.current)
+    if (listenPausedRef.current) return
+
+    const boot = () => {
+      if (!jarvisBootListenSpokenRef.current) {
+        jarvisBootListenSpokenRef.current = true
+        jarvisListenResumePhraseRef.current = 'saudacao'
+      }
+      tryStartContinuousListening()
+    }
+    const timer = window.setTimeout(boot, 500)
+    const onGesture = () => {
+      unlockJarvisAudio()
+      boot()
+    }
+    document.addEventListener('pointerdown', onGesture, { once: true })
+
+    return () => {
+      window.clearTimeout(timer)
+      document.removeEventListener('pointerdown', onGesture)
+    }
+  }, [enableVoice, isJarvisHud, speechSupported, speechCapabilityResolved, tryStartContinuousListening])
+
+  useEffect(() => {
+    if (isProcessing || isSpeaking) return
+    if (!shouldRestartListenRef.current) return
+    shouldRestartListenRef.current = false
+    scheduleListenRestart()
+  }, [isProcessing, isSpeaking, scheduleListenRestart])
 
   const handleToggleVoiceListening = useCallback(() => {
     if (!recognitionRef.current) {
       setVoiceError('Microfone indisponível — recarregue a página ou use Chrome/Edge.')
+      return
+    }
+
+    if (isJarvisHud) {
+      stopSpeakingReplyRef.current?.()
+      stopSpeaking()
+      setIsSpeaking(false)
+      if (!listenPausedRef.current) {
+        pauseContinuousListening()
+      } else {
+        resumeContinuousListening()
+      }
       return
     }
 
@@ -3233,32 +3617,15 @@ export function AIAgent({
     setVoiceError(null)
     pendingSpeechRef.current = ''
     setUserInput('')
-
-    if (typeof window !== 'undefined' && !window.isSecureContext) {
-      setVoiceError(
-        [
-          'Este endereço não é um contexto seguro (ex.: http:// + IP na rede).',
-          'O Chrome costuma bloquear microfone mesmo com permissões.',
-          'Use HTTPS ou http://localhost / http://127.0.0.1 na máquina do servidor.',
-        ].join('\n'),
-      )
-      return
-    }
-
-    // Desbloqueia áudio/TTS no gesto do toque (obrigatório no iOS antes de respostas assíncronas).
     unlockJarvisAudio()
-    startSpeechKeepAlive()
-
-    // Não usar await/getUserMedia aqui: após um await o navegador perde o "gesto do usuário"
-    // e o pré-check pode falhar mesmo com permissão já concedida ao site.
-    try {
-      recognitionRef.current.start()
-      setIsListening(true)
-    } catch {
-      setIsListening(false)
-      setVoiceError('Aguarde um segundo e tente de novo (o microfone pode estar ocupado).')
-    }
-  }, [isListening])
+    tryStartContinuousListening()
+  }, [
+    isJarvisHud,
+    isListening,
+    pauseContinuousListening,
+    resumeContinuousListening,
+    tryStartContinuousListening,
+  ])
 
   const jarvisLogLines = useMemo((): JarvisLogLine[] => {
     return chatMessages.slice(-14).map((m) => ({
@@ -3290,10 +3657,21 @@ export function AIAgent({
     if (isSpeaking) return 'SINTETIZANDO RESPOSTA · FALANDO'
     if (!voiceOutputEnabled && isListening) return 'ESCUTA ATIVA · RESPOSTA SÓ NO PAINEL'
     if (isProcessing) return 'PROCESSANDO CONSULTA · AGUARDE'
-    if (isListening) return 'ESCUTA ATIVA · FALE SUA PERGUNTA'
+    if (listenPaused) return 'ESCUTA PAUSADA · TOQUE NO MICROFONE'
+    if (isListening && !wakeStandby) return 'OUVINDO COMANDO · JARVIS ATIVO'
+    if (isListening) return 'ESCUTA ATIVA · DIGA JARVIS + SEU PEDIDO'
     if (allLoaded) return jarvisIdleGreetingRef.current
-    return 'Subindo o painel · já já tô on'
-  }, [isProcessing, isListening, isSpeaking, allLoaded, jarvisResultPopup, voiceOutputEnabled])
+    return getPhrase('carregando')
+  }, [
+    isProcessing,
+    isListening,
+    isSpeaking,
+    allLoaded,
+    jarvisResultPopup,
+    voiceOutputEnabled,
+    listenPaused,
+    wakeStandby,
+  ])
 
   if (!showAgent) return null
 
@@ -3349,6 +3727,8 @@ export function AIAgent({
         <JarvisHudShell
           statusMessage={jarvisStatusMessage}
           isListening={isListening}
+          listenPaused={listenPaused}
+          wakeStandby={wakeStandby}
           isSpeaking={isSpeaking}
           isProcessing={isProcessing}
           enableVoice={enableVoice}
@@ -3527,7 +3907,7 @@ export function AIAgent({
                     {pageContext?.kind === 'resumo-eleicoes' ? (
                       <>
                         <p className="text-sm text-text-primary font-medium">
-                          Olá! Posso preencher Cidade, acionar Buscar e, com dados carregados, abrir o fluxo de **Demandas** (escopo de lideranças).
+                          Olá! Diga uma cidade (ex.: Picos) ou peça **ajuda** para ver os comandos.
                         </p>
                         <div className="mt-3 space-y-1">
                           <p className="text-xs text-accent-gold font-bold">Exemplos:</p>

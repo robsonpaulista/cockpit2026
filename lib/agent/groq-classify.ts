@@ -77,10 +77,11 @@ function buildSystemPrompt(context?: AgentContextPayload): string {
     '- resumo_* só quando pageKind for resumo-eleicoes. resumo_buscar_cidade: selecionar município e acionar Buscar (nome da cidade ou «buscar/atualizar/mostrar dados de X»).',
     '- consultar_instagram_* para métricas/posts do Instagram.',
     '- consultar_noticias_destaque: notícias marcadas como destaque no painel (dashboard_highlight), ex.: «notícias em destaque», «o que está em destaque na imprensa».',
-    '- resposta_direta: cumprimentos (oi, bom dia, boa tarde, boa noite) — direct_reply só saudação social curta, tom de bastidor político (ex.: "Tô aqui. O que tá na cabeça hoje?"). NUNCA diga que está enviando, buscando ou executando algo — use o intent correto (enviar_whatsapp, consultar_*). Nunca interprete "jarvis" como cidade.',
+    '- resposta_direta: cumprimentos (oi, bom dia, boa tarde, boa noite) — direct_reply só saudação curta e direta (ex.: "Fala." ou "Opa. Pode falar."). Máx. ~6 palavras. Sem "você". NUNCA narre processo ("buscando", "carregando") — use o intent correto (enviar_whatsapp, consultar_*). Nunca interprete "jarvis" como cidade.',
     '- ajuda: quando pedir ajuda, comandos, exemplos ou "o que você pode fazer/responder".',
     '- enviar_whatsapp: envio por WhatsApp SOMENTE para destinatários explícitos. args.conteudo = resumo_operacional | briefing_territorio. args.cidade (briefing). args.dias (resumo). args.destinatario = nome ou padrao/ceo. args.destinatarios = «Maria, João» (máx. poucas pessoas). args.grupo_categoria = executivo|assessoria|territorio APENAS se pedir «para os executivos» etc. args.enviar_todos=sim só se pedir «todos os contatos». NUNCA envie para todos sem pedido explícito. Se faltar destinatário, use desconhecido.',
-    '- desconhecido: quando não houver intenção clara.',
+    '- desconhecido: quando não houver intenção clara OU a pergunta for conversa geral fora do sistema (futebol, Copa do Mundo, clima, curiosidades, entretenimento). NÃO use cidade do contexto se o usuário não citou esse município na mensagem.',
+    '- NUNCA preencha args.cidade/args.termo só com «Cidade selecionada» do contexto se a mensagem não mencionar esse município nem pedir dado dele.',
     '- Nunca invente números de pesquisa ou território.',
     ctxLines.length ? `Contexto:\n${ctxLines.join('\n')}` : '',
   ]

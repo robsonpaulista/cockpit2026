@@ -2,7 +2,12 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import { buildBriefingTerritorioWhatsAppText } from '@/lib/territorio/briefing-whatsapp-text'
 import { buildResumoOperacionalWhatsAppText } from '@/lib/resumo-operacional-whatsapp'
 import type { ResumoOperacionalResponse } from '@/lib/resumo-operacional'
-import { formatRecipientsList, resolveWhatsAppRecipients } from '@/lib/whatsapp/resolve-recipients'
+import {
+  pickJarvisWhatsAppEnviado,
+  pickJarvisWhatsAppFalha,
+  pickJarvisWhatsAppParcial,
+} from '@/lib/agent/jarvis-phrases'
+import { resolveWhatsAppRecipients } from '@/lib/whatsapp/resolve-recipients'
 import { sendWhatsAppQueueServer } from '@/lib/whatsapp/send-server'
 import type { WhatsAppContact } from '@/lib/whatsapp/contact-types'
 import { isWhatsAppContactsTableMissing } from '@/lib/whatsapp/contacts-db-error'
@@ -123,49 +128,16 @@ export async function toolEnviarWhatsApp(
     supabase,
   })
 
-  const titulo =
-    conteudo === 'briefing_territorio'
-      ? `Briefing de ${cidade}`
-      : `Resumo operacional (${days} dias)`
-
-  const destinatarios = formatRecipientsList(recipients)
-  const linhas = result.lines.map((l) => `› ${l.replace(/^[✓✗]\s*/, '')}`)
+  const tipoConteudo =
+    conteudo === 'briefing_territorio' ? 'briefing_territorio' : 'resumo_operacional'
 
   if (result.failed === 0 && result.sent > 0) {
-    return [
-      '**WhatsApp enviado**',
-      '',
-      `Conteúdo: **${titulo}**`,
-      `Destinatário(s): **${destinatarios}**`,
-      `Status: **Enviado com sucesso**`,
-      '',
-      ...linhas,
-      '',
-      `Confirmação: ${result.sent} mensagem(ns) entregue(s) ao provedor.`,
-    ].join('\n')
+    return pickJarvisWhatsAppEnviado({ conteudo: tipoConteudo, cidade })
   }
 
   if (result.sent === 0) {
-    return [
-      '**Falha no envio WhatsApp**',
-      '',
-      `Conteúdo: **${titulo}**`,
-      `Destinatário(s): **${destinatarios}**`,
-      `Status: **Não enviado**`,
-      '',
-      ...linhas,
-      '',
-      'Verifique o cadastro do contato em Dashboard → WhatsApp e a configuração WHATSAPP_API_KEY.',
-    ].join('\n')
+    return pickJarvisWhatsAppFalha()
   }
 
-  return [
-    '**Envio WhatsApp parcial**',
-    '',
-    `Conteúdo: **${titulo}**`,
-    `Destinatário(s): **${destinatarios}**`,
-    `Status: **${result.sent} enviado(s), ${result.failed} falha(s)**`,
-    '',
-    ...linhas,
-  ].join('\n')
+  return pickJarvisWhatsAppParcial()
 }

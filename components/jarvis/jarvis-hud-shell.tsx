@@ -24,6 +24,8 @@ interface JarvisHudAction {
 interface JarvisHudShellProps {
   statusMessage: string
   isListening?: boolean
+  listenPaused?: boolean
+  wakeStandby?: boolean
   isSpeaking?: boolean
   isProcessing?: boolean
   enableVoice?: boolean
@@ -64,6 +66,8 @@ function StatusTicker({ message }: { message: string }) {
 export function JarvisHudShell({
   statusMessage,
   isListening = false,
+  listenPaused = false,
+  wakeStandby = true,
   isSpeaking = false,
   isProcessing = false,
   enableVoice = false,
@@ -146,6 +150,8 @@ export function JarvisHudShell({
 
               <JarvisCoreSphere
                 isListening={isListening}
+                listenPaused={listenPaused}
+                wakeStandby={wakeStandby}
                 isSpeaking={isSpeaking}
                 isProcessing={isProcessing}
                 onMicClick={onMicClick}
@@ -172,6 +178,8 @@ export function JarvisHudShell({
                 {enableVoice && speechSupported ? (
                   <JarvisVoiceBar
                     isListening={isListening}
+                    listenPaused={listenPaused}
+                    wakeStandby={wakeStandby}
                     isSpeaking={isSpeaking}
                     isProcessing={isProcessing}
                     speechSupported={speechSupported}

@@ -114,6 +114,7 @@ function pageContextSemanticEqual(
       a.buscaIniciada === b.buscaIniciada &&
       a.loadingCidades === b.loadingCidades &&
       a.loadingDados === b.loadingDados &&
+      a.resumoTemDados === b.resumoTemDados &&
       a.seletorDemandasAberto === b.seletorDemandasAberto &&
       a.seletorDemandasCarregando === b.seletorDemandasCarregando &&
       a.liderancasDemandasDisponiveis === b.liderancasDemandasDisponiveis &&
@@ -166,6 +167,7 @@ function buildJarvisHostPropsSyncToken(props: JarvisHostPageProps): string {
       pc.buscaIniciada,
       pc.loadingCidades,
       pc.loadingDados,
+      pc.resumoTemDados,
       pc.cidades.length,
       pc.seletorDemandasAberto,
       pc.seletorDemandasCarregando,

@@ -1,7 +1,17 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { classifyAgentIntent } from '@/lib/agent/groq-classify'
-import { buildGreetingReply, isGreetingQuery, isHelpQuery, buildHelpReply } from '@/lib/agent/greeting-reply'
+import {
+  buildGreetingReply,
+  buildHelpReply,
+  buildOutOfScopeReply,
+  isGreetingQuery,
+  isHelpQuery,
+} from '@/lib/agent/greeting-reply'
+import {
+  isOffTopicAgentQuery,
+  validateClassifiedIntentAgainstMessage,
+} from '@/lib/agent/detect-off-topic-query'
 import { checkAgentRateLimit, AGENT_RATE_LIMITS } from '@/lib/agent/rate-limit'
 import { intentToSyntheticQuery, isClientOnlyIntent } from '@/lib/agent/synthetic-query'
 import {
@@ -90,6 +100,14 @@ export async function POST(request: Request) {
       } satisfies AgentChatResponse)
     }
 
+    if (isOffTopicAgentQuery(message)) {
+      return NextResponse.json({
+        source: 'groq',
+        content: buildOutOfScopeReply(),
+        meta: { intent: 'desconhecido' },
+      } satisfies AgentChatResponse)
+    }
+
     const sessionId = body.sessionId?.trim() || user.id
     const rate = checkAgentRateLimit(sessionId)
     if (!rate.ok) {
@@ -155,6 +173,14 @@ export async function POST(request: Request) {
       return NextResponse.json(fallbackResponse('groq_error'))
     }
 
+    if (!validateClassifiedIntentAgainstMessage(message, classified)) {
+      return NextResponse.json({
+        source: 'groq',
+        content: buildOutOfScopeReply(),
+        meta: { intent: 'desconhecido' },
+      } satisfies AgentChatResponse)
+    }
+
     if (classified.intent === 'resposta_direta') {
       const directReply = classified.direct_reply?.trim() ?? ''
       const waRetry = detectWhatsAppSendIntent(message)
@@ -198,7 +224,11 @@ export async function POST(request: Request) {
     }
 
     if (classified.intent === 'desconhecido') {
-      return NextResponse.json(fallbackResponse('unknown_intent'))
+      return NextResponse.json({
+        source: 'groq',
+        content: buildOutOfScopeReply(),
+        meta: { intent: 'desconhecido' },
+      } satisfies AgentChatResponse)
     }
 
     if (classified.intent === 'enviar_whatsapp') {

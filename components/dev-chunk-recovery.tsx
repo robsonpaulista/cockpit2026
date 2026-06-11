@@ -10,9 +10,13 @@ function isChunkLoadError(reason: unknown): boolean {
     reason instanceof Error
       ? `${reason.name} ${reason.message}`
       : String(reason)
-  return /ChunkLoadError|Loading chunk|Failed to fetch dynamically imported module|_next\/undefined|_next\/static/i.test(
+  return /ChunkLoadError|Loading chunk|Failed to fetch dynamically imported module|_next\/undefined|_next\/static|layout\.css|\.css\?v=/i.test(
     msg,
   )
+}
+
+function isNextStaticAsset(url: string): boolean {
+  return /\/_next\/static\//i.test(url)
 }
 
 /**
@@ -35,6 +39,19 @@ export function DevChunkRecovery() {
     }
 
     const onError = (event: ErrorEvent) => {
+      const target = event.target
+      if (target instanceof HTMLElement) {
+        const href =
+          target instanceof HTMLLinkElement
+            ? target.href
+            : target instanceof HTMLScriptElement
+              ? target.src
+              : ''
+        if (href && isNextStaticAsset(href)) {
+          tryReloadOnce(new Error(`Failed to load ${href}`))
+          return
+        }
+      }
       tryReloadOnce(event.error ?? event.message)
     }
 
@@ -42,11 +59,11 @@ export function DevChunkRecovery() {
       tryReloadOnce(event.reason)
     }
 
-    window.addEventListener('error', onError)
+    window.addEventListener('error', onError, true)
     window.addEventListener('unhandledrejection', onRejection)
 
     return () => {
-      window.removeEventListener('error', onError)
+      window.removeEventListener('error', onError, true)
       window.removeEventListener('unhandledrejection', onRejection)
     }
   }, [])

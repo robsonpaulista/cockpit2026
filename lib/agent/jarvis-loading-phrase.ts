@@ -1,22 +1,14 @@
+import { detectSidebarNavigate } from '@/lib/agent/detect-sidebar-navigate'
 import { isGreetingQuery, isHelpQuery } from '@/lib/agent/greeting-reply'
+import { pickJarvisLoadingPhrase } from '@/lib/agent/jarvis-phrases'
 
-const LOADING_PHRASES = [
-  'Um momento, estou buscando os dados.',
-  'Consultando as informações, aguarde.',
-  'Deixe-me verificar isso para você.',
-  'Só um instante enquanto consulto os dados.',
-  'Aguarde, estou processando sua consulta.',
-] as const
-
-export function pickJarvisLoadingPhrase(): string {
-  const index = Math.floor(Math.random() * LOADING_PHRASES.length)
-  return LOADING_PHRASES[index] ?? LOADING_PHRASES[0]
-}
+export { pickJarvisLoadingPhrase }
 
 export interface JarvisLoadingPhraseContext {
   pesquisaTipoPending: boolean
   agendaScopePending: boolean
   expectativaDetalhePending: boolean
+  currentPath?: string
   parsePesquisaTipo?: (query: string) => unknown
   parseAgendaDayScope?: (query: string) => unknown
   isExpectativaAffirmative?: (query: string) => boolean
@@ -31,6 +23,8 @@ export function shouldPlayJarvisLoadingPhrase(
   const trimmed = query.trim()
   if (!trimmed) return false
   if (isGreetingQuery(trimmed) || isHelpQuery(trimmed)) return false
+
+  if (detectSidebarNavigate(trimmed, ctx.currentPath)) return false
 
   if (ctx.pesquisaTipoPending) {
     return Boolean(ctx.parsePesquisaTipo?.(trimmed))

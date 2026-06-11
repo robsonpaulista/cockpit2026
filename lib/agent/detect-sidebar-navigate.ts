@@ -1,3 +1,4 @@
+import { pickJarvisNavegacao } from '@/lib/agent/jarvis-phrases'
 import {
   findSidebarNavTargetByHref,
   normalizeSidebarNavText,
@@ -77,12 +78,12 @@ export function buildSidebarNavigateReply(
   result: Exclude<SidebarNavigateResult, { kind: 'ambiguous' }>
 ): string {
   if (result.kind === 'already_there') {
-    return `Você já está em **${result.target.label}**.`
+    return `Já tá em **${result.target.label}**.`
   }
   if (result.kind === 'home') {
-    return 'Voltando para **Visão Geral**.'
+    return pickJarvisNavegacao('Visão Geral')
   }
-  return `Abrindo **${result.target.label}**.`
+  return pickJarvisNavegacao(result.target.label)
 }
 
 export function detectSidebarNavigate(

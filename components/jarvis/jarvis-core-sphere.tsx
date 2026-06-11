@@ -6,6 +6,8 @@ import { cn } from '@/lib/utils'
 
 interface JarvisCoreSphereProps {
   isListening?: boolean
+  listenPaused?: boolean
+  wakeStandby?: boolean
   isSpeaking?: boolean
   isProcessing?: boolean
   onMicClick?: () => void
@@ -15,6 +17,8 @@ interface JarvisCoreSphereProps {
 
 export function JarvisCoreSphere({
   isListening = false,
+  listenPaused = false,
+  wakeStandby = true,
   isSpeaking = false,
   isProcessing = false,
   onMicClick,
@@ -89,7 +93,13 @@ export function JarvisCoreSphere({
                 ? 'border-[var(--color-core)] bg-[rgba(0,212,255,0.1)] shadow-[0_0_32px_rgba(0,212,255,0.4)]'
                 : 'border-[rgba(0,212,255,0.35)] bg-[var(--color-surface)] hover:border-[var(--color-core)]'
           )}
-          title={isListening ? 'Parar escuta' : 'Falar com o Jarvis'}
+          title={
+            listenPaused
+              ? 'Retomar escuta contínua'
+              : isListening
+                ? 'Pausar escuta'
+                : 'Ativar escuta contínua'
+          }
         >
           {(isListening || isSpeaking) && (
             <span className="jarvis-pulse-expand absolute inset-0 rounded-full border border-current opacity-50" />

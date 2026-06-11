@@ -4,7 +4,7 @@ const nextConfig = {
   // Mantém páginas compiladas por mais tempo no dev — reduz 404 ao navegar entre rotas.
   onDemandEntries: {
     maxInactiveAge: 60 * 60 * 1000,
-    pagesBufferLength: 5,
+    pagesBufferLength: 12,
   },
   experimental: {
     /** Resvg usa addon nativo; não empacotar no webpack (API routes / Node). */

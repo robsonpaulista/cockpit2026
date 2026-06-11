@@ -4,17 +4,20 @@ import { useEffect, useState } from 'react'
 import { IconMicrophone, IconVolume, IconVolumeOff } from '@tabler/icons-react'
 import { JarvisVoicePicker } from '@/components/jarvis/jarvis-voice-picker'
 import { cn } from '@/lib/utils'
-import { JARVIS_GREETING_LINES } from '@/lib/agent/greeting-reply'
+import { JARVIS_SAUDACAO_LINES, pickJarvisSaudacaoPorHorario } from '@/lib/agent/jarvis-phrases'
 import './jarvis-neural.css'
 
 const PLACEHOLDER_HINTS = [
-  ...JARVIS_GREETING_LINES,
-  'Pesquisas · território · agenda · alertas…',
-  'Ex.: pesquisa estimulada em Teresina…',
+  pickJarvisSaudacaoPorHorario(),
+  ...JARVIS_SAUDACAO_LINES,
+  'Agenda, pesquisas, alertas.',
+  'Ex.: estimulada em Teresina.',
 ]
 
 interface JarvisVoiceBarProps {
   isListening?: boolean
+  listenPaused?: boolean
+  wakeStandby?: boolean
   isSpeaking?: boolean
   isProcessing?: boolean
   speechSupported?: boolean
@@ -26,6 +29,8 @@ interface JarvisVoiceBarProps {
 
 export function JarvisVoiceBar({
   isListening = false,
+  listenPaused = false,
+  wakeStandby = true,
   isSpeaking = false,
   isProcessing = false,
   speechSupported = false,
@@ -58,11 +63,15 @@ export function JarvisVoiceBar({
 
   const statusLabel = isSpeaking
     ? 'respondendo'
-    : isListening
-      ? 'ouvindo você'
-      : isProcessing
-        ? 'interpretando'
-        : 'aguardando voz'
+    : isProcessing
+      ? 'interpretando'
+      : listenPaused
+        ? 'escuta pausada · toque no microfone'
+        : isListening
+          ? wakeStandby
+            ? 'escuta ativa · diga jarvis…'
+            : 'ouvindo comando…'
+          : 'iniciando escuta…'
 
   return (
     <div className={cn('w-full max-w-lg px-1 sm:px-0', className)}>
