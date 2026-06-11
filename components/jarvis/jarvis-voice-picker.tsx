@@ -44,9 +44,11 @@ function findActiveOption(
 export function JarvisVoicePicker({
   className,
   compact = false,
+  voiceOutputEnabled = true,
 }: {
   className?: string
   compact?: boolean
+  voiceOutputEnabled?: boolean
 }) {
   const [voices, setVoices] = useState<PortugueseVoiceOption[]>([])
   const [activeUri, setActiveUri] = useState<string | null>(null)
@@ -207,11 +209,14 @@ export function JarvisVoicePicker({
       {speechOk ? (
         <p
           className={cn(
-            'text-center font-jarvis-mono uppercase tracking-wider text-[var(--color-online)]',
+            'text-center font-jarvis-mono uppercase tracking-wider',
+            voiceOutputEnabled ? 'text-[var(--color-online)]' : 'text-[var(--color-text-dim)]',
             compact ? 'text-[7px]' : 'text-[7px]'
           )}
         >
-          em uso nas respostas · {liveLabel}
+          {voiceOutputEnabled
+            ? `em uso nas respostas · ${liveLabel}`
+            : 'respostas só no painel · voz desligada'}
         </p>
       ) : (
         <p

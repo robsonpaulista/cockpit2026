@@ -28,6 +28,8 @@ interface JarvisHudShellProps {
   isProcessing?: boolean
   enableVoice?: boolean
   speechSupported?: boolean
+  voiceOutputEnabled?: boolean
+  onVoiceOutputChange?: (enabled: boolean) => void
   voiceError?: string | null
   onMicClick?: () => void
   onMinimize?: () => void
@@ -66,6 +68,8 @@ export function JarvisHudShell({
   isProcessing = false,
   enableVoice = false,
   speechSupported = false,
+  voiceOutputEnabled = true,
+  onVoiceOutputChange,
   voiceError = null,
   onMicClick,
   onMinimize,
@@ -171,6 +175,8 @@ export function JarvisHudShell({
                     isSpeaking={isSpeaking}
                     isProcessing={isProcessing}
                     speechSupported={speechSupported}
+                    voiceOutputEnabled={voiceOutputEnabled}
+                    onVoiceOutputChange={onVoiceOutputChange}
                     onMicClick={onMicClick}
                     className={compact ? 'mt-0.5' : 'mt-0 w-full'}
                   />

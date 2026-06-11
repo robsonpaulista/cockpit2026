@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { IconMicrophone } from '@tabler/icons-react'
+import { IconMicrophone, IconVolume, IconVolumeOff } from '@tabler/icons-react'
 import { JarvisVoicePicker } from '@/components/jarvis/jarvis-voice-picker'
 import { cn } from '@/lib/utils'
 import './jarvis-neural.css'
@@ -17,6 +17,8 @@ interface JarvisVoiceBarProps {
   isSpeaking?: boolean
   isProcessing?: boolean
   speechSupported?: boolean
+  voiceOutputEnabled?: boolean
+  onVoiceOutputChange?: (enabled: boolean) => void
   onMicClick?: () => void
   className?: string
 }
@@ -26,6 +28,8 @@ export function JarvisVoiceBar({
   isSpeaking = false,
   isProcessing = false,
   speechSupported = false,
+  voiceOutputEnabled = true,
+  onVoiceOutputChange,
   onMicClick,
   className,
 }: JarvisVoiceBarProps) {
@@ -88,6 +92,31 @@ export function JarvisVoiceBar({
             )}
           </button>
         ) : null}
+        {onVoiceOutputChange ? (
+          <button
+            type="button"
+            onClick={() => onVoiceOutputChange(!voiceOutputEnabled)}
+            className={cn(
+              'flex h-9 w-9 shrink-0 items-center justify-center rounded-full border transition-all',
+              voiceOutputEnabled
+                ? 'border-[rgba(0,212,255,0.35)] text-[var(--color-core)] hover:bg-[rgba(0,212,255,0.08)]'
+                : 'border-[rgba(0,212,255,0.15)] text-[var(--color-text-dim)] hover:text-[var(--color-text-primary)]'
+            )}
+            title={
+              voiceOutputEnabled
+                ? 'Desligar resposta por voz (continua ouvindo)'
+                : 'Ligar resposta por voz'
+            }
+            aria-pressed={voiceOutputEnabled}
+            aria-label={voiceOutputEnabled ? 'Resposta por voz ligada' : 'Resposta por voz desligada'}
+          >
+            {voiceOutputEnabled ? (
+              <IconVolume className="h-4 w-4" stroke={1.5} />
+            ) : (
+              <IconVolumeOff className="h-4 w-4" stroke={1.5} />
+            )}
+          </button>
+        ) : null}
         <div className="min-w-0 flex-1">
           <p className="truncate font-jarvis-mono text-[9px] text-[var(--color-text-dim)] sm:text-[10px]">
             {isListening || isSpeaking || isProcessing ? statusLabel : typed}
@@ -98,7 +127,11 @@ export function JarvisVoiceBar({
         </div>
       </div>
       <div className="mt-1 rounded px-1 py-1 sm:mt-2 sm:px-2 sm:py-1.5">
-        <JarvisVoicePicker className="!max-w-none" compact />
+        <JarvisVoicePicker
+          className="!max-w-none"
+          compact
+          voiceOutputEnabled={voiceOutputEnabled}
+        />
       </div>
     </div>
   )

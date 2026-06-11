@@ -15,6 +15,20 @@ const OPENAI_VOICE_KEY = 'jarvis-openai-voice'
 const OPENAI_VOICE_EXPLICIT_KEY = 'jarvis-openai-voice-explicit'
 const VOICE_MIGRATION_KEY = 'jarvis-voice-migration-v4'
 const SYSTEM_MODE_MIGRATION_KEY = 'jarvis-voice-migration-v5'
+const VOICE_OUTPUT_KEY = 'jarvis-voice-output-enabled'
+
+/** Respostas faladas (TTS) — independente do microfone. Padrão: ligado. */
+export function getJarvisVoiceOutputEnabled(): boolean {
+  if (typeof window === 'undefined') return true
+  const stored = localStorage.getItem(VOICE_OUTPUT_KEY)
+  if (stored === '0' || stored === 'false') return false
+  return true
+}
+
+export function setJarvisVoiceOutputEnabled(enabled: boolean): void {
+  if (typeof window === 'undefined') return
+  localStorage.setItem(VOICE_OUTPUT_KEY, enabled ? '1' : '0')
+}
 
 export function isFeminineOpenAiVoice(voice: OpenAiTtsVoiceId): boolean {
   return LEGACY_FEMININE_AUTO_VOICES.has(voice) || voice === 'ballad' || voice === 'verse'

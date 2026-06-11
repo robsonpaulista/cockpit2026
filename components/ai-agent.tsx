@@ -62,6 +62,10 @@ import {
   type JarvisResultView,
 } from '@/lib/agent/jarvis-result-view'
 import { isSpeechSynthesisSupported, speakText, stopSpeaking } from '@/lib/agent/speech-output'
+import {
+  getJarvisVoiceOutputEnabled,
+  setJarvisVoiceOutputEnabled,
+} from '@/lib/agent/voice-preference'
 import type {
   AgentChatResponse,
   AgentContextPayload,
@@ -450,6 +454,7 @@ export function AIAgent({
   const [speechSupported, setSpeechSupported] = useState(false)
   const [speechCapabilityResolved, setSpeechCapabilityResolved] = useState(false)
   const [voiceError, setVoiceError] = useState<string | null>(null)
+  const [voiceOutputEnabled, setVoiceOutputEnabled] = useState(true)
   const recognitionRef = useRef<SpeechRecognitionLike | null>(null)
   const pendingSpeechRef = useRef('')
   const stopSpeakingReplyRef = useRef<(() => void) | null>(null)
@@ -2760,9 +2765,25 @@ export function AIAgent({
     [buildAgentContext, processUserQuery, syncAgendaScopePending]
   )
 
+  const handleVoiceOutputChange = useCallback((enabled: boolean) => {
+    setJarvisVoiceOutputEnabled(enabled)
+    setVoiceOutputEnabled(enabled)
+    if (!enabled) {
+      stopSpeakingReplyRef.current?.()
+      stopSpeaking()
+      setIsSpeaking(false)
+      jarvisPendingAnswerRef.current = null
+      jarvisLoadingSpeechRef.current = false
+    }
+  }, [])
+
+  useEffect(() => {
+    setVoiceOutputEnabled(getJarvisVoiceOutputEnabled())
+  }, [])
+
   const speakJarvisReply = useCallback(
     (content: string, segments?: string[]) => {
-      if (!enableVoice) return
+      if (!enableVoice || !voiceOutputEnabled) return
       stopSpeakingReplyRef.current?.()
       void speakText(content, {
         segments,
@@ -2779,19 +2800,19 @@ export function AIAgent({
         stopSpeakingReplyRef.current = cancel
       })
     },
-    [enableVoice]
+    [enableVoice, voiceOutputEnabled]
   )
 
   const scheduleJarvisAnswerSpeech = useCallback(
     (content: string, segments?: string[]) => {
-      if (!enableVoice) return
+      if (!enableVoice || !voiceOutputEnabled) return
       if (jarvisLoadingSpeechRef.current) {
         jarvisPendingAnswerRef.current = { content, segments }
         return
       }
       speakJarvisReply(content, segments)
     },
-    [enableVoice, speakJarvisReply]
+    [enableVoice, voiceOutputEnabled, speakJarvisReply]
   )
 
   const deliverAssistantResponse = useCallback(
@@ -2849,6 +2870,7 @@ export function AIAgent({
 
     const playLoadingPhrase =
       enableVoice &&
+      voiceOutputEnabled &&
       shouldPlayJarvisLoadingPhrase(cleanedContent, {
         pesquisaTipoPending: Boolean(pesquisaTipoPending),
         agendaScopePending: Boolean(agendaScopePendingRef.current),
@@ -3290,14 +3312,16 @@ export function AIAgent({
 
   const jarvisStatusMessage = useMemo(() => {
     if (jarvisResultPopup && isSpeaking) return 'APRESENTANDO RESULTADO · JARVIS FALANDO'
+    if (jarvisResultPopup && !voiceOutputEnabled) return 'RESULTADO NA TELA · VOZ DESLIGADA'
     if (jarvisResultPopup) return 'RESULTADO NA TELA · JARVIS ATIVO'
     if (isProcessing && isSpeaking) return 'BUSCANDO DADOS · UM MOMENTO'
     if (isSpeaking) return 'SINTETIZANDO RESPOSTA · FALANDO'
+    if (!voiceOutputEnabled && isListening) return 'ESCUTA ATIVA · RESPOSTA SÓ NO PAINEL'
     if (isProcessing) return 'PROCESSANDO CONSULTA · AGUARDE'
     if (isListening) return 'ESCUTA ATIVA · FALE SUA PERGUNTA'
     if (allLoaded) return 'JARVIS ONLINE · SISTEMAS PRONTOS · COCKPIT 2026'
     return 'INICIALIZANDO NÚCLEO NEURAL · CARREGANDO MÓDULOS'
-  }, [isProcessing, isListening, isSpeaking, allLoaded, jarvisResultPopup])
+  }, [isProcessing, isListening, isSpeaking, allLoaded, jarvisResultPopup, voiceOutputEnabled])
 
   if (!showAgent) return null
 
@@ -3357,6 +3381,8 @@ export function AIAgent({
           isProcessing={isProcessing}
           enableVoice={enableVoice}
           speechSupported={speechSupported}
+          voiceOutputEnabled={voiceOutputEnabled}
+          onVoiceOutputChange={handleVoiceOutputChange}
           voiceError={voiceError}
           onMicClick={handleToggleVoiceListening}
           onMinimize={fullPageHud ? undefined : () => setIsMinimized(true)}
