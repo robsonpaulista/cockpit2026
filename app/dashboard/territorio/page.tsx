@@ -25,6 +25,12 @@ import { CityDemandsModal } from '@/components/city-demands-modal'
 import { ExecutiveBriefingModal } from '@/components/executive-briefing-modal'
 import { VoteInvestmentBalanceModal } from '@/components/vote-investment-balance-modal'
 import { MapaVotoCruzado } from '@/components/mapa-voto-cruzado'
+import { MapaExpectativaVs2022 } from '@/components/mapa-expectativa-vs-2022'
+import {
+  agregarExpectativaJadyelPorCidade,
+  buildComparativoExpectativa2022Lista,
+} from '@/lib/comparativo-expectativa-2022'
+import { fetchJadyelFederal2022VotosPorMunicipioPI } from '@/lib/jadyel-federal-2022-pi-votos'
 import { KPI } from '@/types'
 import { cn } from '@/lib/utils'
 import {
@@ -85,6 +91,9 @@ export default function TerritorioPage() {
   const [selectedCityForDemands, setSelectedCityForDemands] = useState<string>('')
   const [showExecutiveBriefing, setShowExecutiveBriefing] = useState(false)
   const [showVoteInvestmentBalance, setShowVoteInvestmentBalance] = useState(false)
+  const [showMapaComparativo2026, setShowMapaComparativo2026] = useState(false)
+  const [mapaVotos2022Jadyel, setMapaVotos2022Jadyel] = useState<Map<string, number> | null>(null)
+  const [loadingVotos2022Jadyel, setLoadingVotos2022Jadyel] = useState(false)
   const [selectedCityForBriefing, setSelectedCityForBriefing] = useState<string>('')
   const [selectedCityLiderancas, setSelectedCityLiderancas] = useState<Lideranca[]>([])
   const [cenarioVotos, setCenarioVotos] = useState<CenarioVotos>('legado_anterior')
@@ -139,6 +148,23 @@ export default function TerritorioPage() {
 
     initConfig()
   }, [])
+
+  useEffect(() => {
+    if (!(config || serverConfigured)) return
+    let cancelled = false
+    setLoadingVotos2022Jadyel(true)
+    void fetchJadyelFederal2022VotosPorMunicipioPI()
+      .then((resultado) => {
+        if (cancelled) return
+        setMapaVotos2022Jadyel(resultado?.mapaNormalizado ?? null)
+      })
+      .finally(() => {
+        if (!cancelled) setLoadingVotos2022Jadyel(false)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [config, serverConfigured, liderancas.length])
 
   const updateDepMenuPosition = useCallback(() => {
     const el = depDropdownButtonRef.current
@@ -571,6 +597,17 @@ export default function TerritorioPage() {
       .sort((a, b) => b.votos - a.votos)
   }, [liderancasFiltradas, cidadeCol, votosReferenciaCol, depEstadualCol, cargoCol])
 
+  const comparativoExpectativa2022Lista = useMemo(() => {
+    if (!expectativaJadyelCol || !mapaVotos2022Jadyel) return []
+    const expectativaMap = agregarExpectativaJadyelPorCidade(
+      liderancas,
+      cidadeCol,
+      expectativaJadyelCol,
+      normalizeNumber
+    )
+    return buildComparativoExpectativa2022Lista(expectativaMap, mapaVotos2022Jadyel)
+  }, [liderancas, cidadeCol, expectativaJadyelCol, mapaVotos2022Jadyel])
+
   // Calcular KPIs baseados nos dados filtrados
   const calcularKPIs = (): KPI[] => {
     const dadosParaKPIs = liderancasFiltradas.length > 0 ? liderancasFiltradas : liderancas
@@ -888,6 +925,18 @@ export default function TerritorioPage() {
             </p>
           </div>
           <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
+            {(config || serverConfigured) && liderancas.length > 0 && expectativaJadyelCol ? (
+              <button
+                type="button"
+                onClick={() => setShowMapaComparativo2026((v) => !v)}
+                disabled={loadingVotos2022Jadyel}
+                className={cn(ghostButtonClass, 'disabled:opacity-50')}
+                title="Comparar expectativa Jadyel 2026 com votos federais de 2022 no mapa"
+              >
+                <IconMapPin className="h-[14px] w-[14px] opacity-70" stroke={1.5} aria-hidden />
+                {showMapaComparativo2026 ? 'Fechar mapa' : 'Mapa 2026 × 2022'}
+              </button>
+            ) : null}
             {(config || serverConfigured) && liderancasFiltradas.length > 0 && (
               <>
                 <button
@@ -947,6 +996,45 @@ export default function TerritorioPage() {
               <p className="mt-1 text-xs text-text-secondary">{error}</p>
             </div>
           </div>
+        )}
+
+        {showMapaComparativo2026 && (
+          <section className={cn('mb-6 rounded-2xl border p-4', sectionShellClass)}>
+            {loadingVotos2022Jadyel ? (
+              <div className="flex min-h-[min(40vh,360px)] items-center justify-center rounded-xl border border-border-card bg-bg-app/40">
+                <p className="text-sm text-text-secondary">Carregando votos federais 2022…</p>
+              </div>
+            ) : !expectativaJadyelCol ? (
+              <div className="rounded-xl border border-border-card bg-bg-app/50 px-4 py-8 text-center text-sm text-text-secondary">
+                A planilha precisa da coluna de <strong>Expectativa Jadyel 2026</strong> para montar o comparativo.
+              </div>
+            ) : !mapaVotos2022Jadyel ? (
+              <div className="rounded-xl border border-border-card bg-bg-app/50 px-4 py-8 text-center text-sm text-text-secondary">
+                Não foi possível carregar os votos de Jadyel em 2022 (Dep. Federal). Tente atualizar a página.
+              </div>
+            ) : (
+              <div
+                id="mapa-comparativo-territorio-container"
+                className={cn(
+                  'relative min-h-0 min-w-0',
+                  '[&:fullscreen]:flex [&:fullscreen]:h-screen [&:fullscreen]:w-full [&:fullscreen]:flex-col [&:fullscreen]:min-h-0 [&:fullscreen]:bg-bg-surface'
+                )}
+              >
+                <MapaExpectativaVs2022
+                  comparativoLista={comparativoExpectativa2022Lista}
+                  onFullscreen={() => {
+                    const container = document.getElementById('mapa-comparativo-territorio-container')
+                    if (!container) return
+                    if (document.fullscreenElement) {
+                      void document.exitFullscreen()
+                    } else {
+                      void container.requestFullscreen()
+                    }
+                  }}
+                />
+              </div>
+            )}
+          </section>
         )}
 
         {/* KPIs - Só mostrar se houver configuração e dados */}

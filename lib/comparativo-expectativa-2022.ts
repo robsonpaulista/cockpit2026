@@ -1,0 +1,119 @@
+import municipiosPiaui from '@/lib/municipios-piaui.json'
+import { normalizeMunicipioNome } from '@/lib/piaui-regiao'
+
+export type TendenciaExpectativa2022 = 'cresceu' | 'manteve' | 'caiu' | 'sem-dados'
+
+export interface ComparativoExpectativa2022Row {
+  cidade: string
+  expectativa2026: number
+  votos2022: number
+  delta: number
+  deltaPercentual: number | null
+  tendencia: TendenciaExpectativa2022
+  liderancas: number
+}
+
+const MANTEVE_PCT_LIMIAR = 5
+const MANTEVE_DELTA_ABSOLUTO = 50
+
+export function classificarTendenciaExpectativa2022(
+  expectativa2026: number,
+  votos2022: number
+): TendenciaExpectativa2022 {
+  if (expectativa2026 <= 0 && votos2022 <= 0) return 'sem-dados'
+  if (votos2022 <= 0 && expectativa2026 > 0) return 'cresceu'
+  if (expectativa2026 <= 0 && votos2022 > 0) return 'caiu'
+
+  const delta = expectativa2026 - votos2022
+  const pct = (delta / votos2022) * 100
+
+  if (Math.abs(pct) <= MANTEVE_PCT_LIMIAR || Math.abs(delta) <= MANTEVE_DELTA_ABSOLUTO) {
+    return 'manteve'
+  }
+  return delta > 0 ? 'cresceu' : 'caiu'
+}
+
+export function labelTendenciaExpectativa2022(tendencia: TendenciaExpectativa2022): string {
+  switch (tendencia) {
+    case 'cresceu':
+      return 'Crescimento'
+    case 'manteve':
+      return 'Estável'
+    case 'caiu':
+      return 'Queda'
+    default:
+      return 'Sem dados'
+  }
+}
+
+export function buildComparativoExpectativa2022Lista(
+  expectativaPorCidade: ReadonlyMap<string, number>,
+  votos2022PorCidade: ReadonlyMap<string, number>,
+  liderancasPorCidade: ReadonlyMap<string, number> = new Map()
+): ComparativoExpectativa2022Row[] {
+  const municipios = municipiosPiaui as Array<{ nome: string }>
+
+  return municipios
+    .map((municipio) => {
+      const key = normalizeMunicipioNome(municipio.nome)
+      const expectativa2026 = Math.round(expectativaPorCidade.get(key) || 0)
+      const votos2022 = Math.round(votos2022PorCidade.get(key) || 0)
+      const delta = expectativa2026 - votos2022
+      const deltaPercentual = votos2022 > 0 ? (delta / votos2022) * 100 : null
+      const tendencia = classificarTendenciaExpectativa2022(expectativa2026, votos2022)
+
+      return {
+        cidade: municipio.nome,
+        expectativa2026,
+        votos2022,
+        delta,
+        deltaPercentual,
+        tendencia,
+        liderancas: liderancasPorCidade.get(key) || 0,
+      }
+    })
+    .sort((a, b) => {
+      const rank = (t: TendenciaExpectativa2022) =>
+        t === 'cresceu' ? 0 : t === 'manteve' ? 1 : t === 'caiu' ? 2 : 3
+      const ra = rank(a.tendencia)
+      const rb = rank(b.tendencia)
+      if (ra !== rb) return ra - rb
+      return Math.abs(b.delta) - Math.abs(a.delta)
+    })
+}
+
+export function agregarExpectativaJadyelPorCidade(
+  liderancas: Array<Record<string, unknown>>,
+  cidadeCol: string,
+  expectativaJadyelCol: string,
+  normalizeNumber: (value: unknown) => number
+): Map<string, number> {
+  const map = new Map<string, number>()
+
+  liderancas.forEach((lider) => {
+    const cidade = String(lider[cidadeCol] || '').trim()
+    if (!cidade) return
+    const key = normalizeMunicipioNome(cidade)
+    const valor = normalizeNumber(lider[expectativaJadyelCol])
+    if (valor <= 0) return
+    map.set(key, (map.get(key) || 0) + valor)
+  })
+
+  return map
+}
+
+export function agregarLiderancasPorCidade(
+  liderancas: Array<Record<string, unknown>>,
+  cidadeCol: string
+): Map<string, number> {
+  const map = new Map<string, number>()
+
+  liderancas.forEach((lider) => {
+    const cidade = String(lider[cidadeCol] || '').trim()
+    if (!cidade) return
+    const key = normalizeMunicipioNome(cidade)
+    map.set(key, (map.get(key) || 0) + 1)
+  })
+
+  return map
+}
