@@ -18,6 +18,8 @@ import {
   type CampoAgendaRow,
   type VisitasCampoModo,
 } from '@/lib/agent/format-visitas-campo'
+import { isPrioridadeVisitasCampoQuery } from '@/lib/agent/detect-prioridade-visitas'
+import { formatPrioridadeVisitasJarvisReply } from '@/lib/agent/format-prioridade-visitas'
 import {
   buildSidebarNavigateReply,
   detectSidebarNavigate,
@@ -65,9 +67,18 @@ function norm(value: string): string {
     .trim()
 }
 
-async function fetchWithCookies(origin: string, path: string, cookie: string): Promise<Response> {
+async function fetchWithCookies(
+  origin: string,
+  path: string,
+  cookie: string,
+  init?: RequestInit
+): Promise<Response> {
   return fetch(`${origin}${path}`, {
-    headers: { cookie },
+    ...init,
+    headers: {
+      ...(init?.headers ?? {}),
+      cookie,
+    },
     cache: 'no-store',
   })
 }
@@ -187,6 +198,23 @@ async function toolConsultarVisitasCampo(
   args: Record<string, string>,
   queryHint: string
 ): Promise<{ content: string; speechSegments?: string[] }> {
+  const modoArg = (args.modo?.trim() || undefined) as VisitasCampoModo | undefined
+  const prioridade =
+    modoArg === 'prioridade_visitas' || isPrioridadeVisitasCampoQuery(queryHint)
+
+  if (prioridade) {
+    const res = await fetchWithCookies(origin, '/api/dashboard/territorios-frios', cookie, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ territorioConfig: {} }),
+    })
+    if (!res.ok) {
+      return { content: 'Não consegui carregar a prioridade de visitas de campo.' }
+    }
+    const data = (await res.json()) as { prioridadeCampoLista?: Parameters<typeof formatPrioridadeVisitasJarvisReply>[0] }
+    return formatPrioridadeVisitasJarvisReply(data.prioridadeCampoLista ?? [])
+  }
+
   const res = await fetchWithCookies(origin, '/api/campo/agendas', cookie)
   if (!res.ok) {
     return { content: 'Não consegui acessar as visitas do módulo Campo & Agenda.' }
@@ -385,6 +413,14 @@ export function buildNavigateAction(
   }
 
   if (classified.intent === 'consultar_visitas_campo') {
+    const modo = classified.args?.modo?.trim()
+    if (modo === 'prioridade_visitas') {
+      return {
+        type: 'navigate',
+        url: '/dashboard/resumo-operacional',
+        label: 'Ver Resumo Operacional',
+      }
+    }
     return {
       type: 'navigate',
       url: '/dashboard/campo',

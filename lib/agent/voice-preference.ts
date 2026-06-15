@@ -17,13 +17,14 @@ import {
   MACOS_SYSTEM_DEFAULT_VOICE_URI,
 } from '@/lib/agent/system-default-voice'
 
-export type JarvisTtsMode = 'system' | 'openai' | 'kokoro'
+export type JarvisTtsMode = 'system' | 'openai' | 'kokoro' | 'elevenlabs'
 
 const VOICE_URI_KEY = 'jarvis-voice-uri'
 const SIRI_VOICE_NUM_KEY = 'jarvis-siri-voice-number'
 const TTS_MODE_KEY = 'jarvis-tts-mode'
 const OPENAI_VOICE_KEY = 'jarvis-openai-voice'
 const OPENAI_VOICE_EXPLICIT_KEY = 'jarvis-openai-voice-explicit'
+const ELEVENLABS_VOICE_KEY = 'jarvis-elevenlabs-voice-id'
 const VOICE_MIGRATION_KEY = 'jarvis-voice-migration-v4'
 const SYSTEM_MODE_MIGRATION_KEY = 'jarvis-voice-migration-v5'
 const MAC_SYSTEM_VOICE_MIGRATION_KEY = 'jarvis-voice-migration-v6'
@@ -68,6 +69,7 @@ export function getJarvisTtsMode(): JarvisTtsMode {
   const stored = localStorage.getItem(TTS_MODE_KEY)
   if (stored === 'openai') return 'openai'
   if (stored === 'kokoro') return 'kokoro'
+  if (stored === 'elevenlabs') return 'elevenlabs'
   return 'system'
 }
 
@@ -155,6 +157,29 @@ export function ensureJarvisNeuralVoicePreference(serverDefault?: string): void 
     if (stored !== serverNorm && serverNorm === jarvisDefault) {
       setPreferredOpenAiVoice(jarvisDefault, false)
     }
+  }
+}
+
+export function setPreferredElevenLabsVoiceId(voiceId: string | null): void {
+  if (typeof window === 'undefined') return
+  if (!voiceId?.trim()) localStorage.removeItem(ELEVENLABS_VOICE_KEY)
+  else localStorage.setItem(ELEVENLABS_VOICE_KEY, voiceId.trim())
+}
+
+export function getPreferredElevenLabsVoiceId(): string | null {
+  if (typeof window === 'undefined') return null
+  const stored = localStorage.getItem(ELEVENLABS_VOICE_KEY)?.trim()
+  return stored && stored.length >= 8 ? stored : null
+}
+
+export function applyJarvisElevenLabsEnvDefault(defaultVoiceId?: string | null): void {
+  if (typeof window === 'undefined') return
+  const current = getJarvisTtsMode()
+  if (current === 'openai' || current === 'kokoro') return
+
+  setJarvisTtsMode('elevenlabs')
+  if (!getPreferredElevenLabsVoiceId() && defaultVoiceId?.trim()) {
+    setPreferredElevenLabsVoiceId(defaultVoiceId.trim())
   }
 }
 

@@ -31,9 +31,13 @@ import {
   stopSpeechKeepAlive,
   unlockJarvisAudio,
 } from '@/lib/agent/audio-unlock'
-import { extractJarvisVoiceCommand } from '@/lib/agent/jarvis-wake-word'
+import {
+  JARVIS_ARMED_LISTEN_MS,
+  resolveJarvisVoiceInput,
+} from '@/lib/agent/jarvis-wake-word'
 import { extractCityNameFromQuery } from '@/lib/agent/city-extract'
 import { isCampoVisitasQuery } from '@/lib/agent/detect-visitas-campo'
+import { isPrioridadeVisitasCampoQuery } from '@/lib/agent/detect-prioridade-visitas'
 import { resolveVisitasCampoReply, type CampoAgendaRow } from '@/lib/agent/format-visitas-campo'
 import {
   buildGreetingReply,
@@ -47,8 +51,12 @@ import {
 import {
   detectExpectativaDetalheFollowUp,
   EXPECTATIVA_DETALHE_DISMISS_REPLY,
+  extractCidadeFromExpectativaReply,
+  isExpectativaComDetalheLiderancaReply,
   isExpectativaDetalheAffirmative,
   isExpectativaDetalheNegative,
+  isExpectativaLiderancaFollowUpQuery,
+  looksLikeExpectativaCidadeReply,
   querExpectativaPorLideranca,
 } from '@/lib/agent/expectativa-detalhe-followup'
 import {
@@ -73,6 +81,16 @@ import {
 } from '@/lib/agent/territorio-page'
 import { shouldPlayJarvisLoadingPhrase } from '@/lib/agent/jarvis-loading-phrase'
 import {
+  isJarvisDismissUiQuery,
+  jarvisSilentDismissFields,
+  pageHasOpenModalForDismiss,
+} from '@/lib/agent/jarvis-ui-dismiss'
+import {
+  findLastJarvisReadableReply,
+  isJarvisReadAloudRequest,
+  shouldAutoSpeakJarvisAnswer,
+} from '@/lib/agent/jarvis-read-aloud'
+import {
   getPhrase,
   pickJarvisAguardando,
   pickJarvisCarregando,
@@ -90,7 +108,7 @@ import {
   shouldShowJarvisResultPopup,
   type JarvisResultView,
 } from '@/lib/agent/jarvis-result-view'
-import { isSpeechSynthesisSupported, speakText, stopSpeaking } from '@/lib/agent/speech-output'
+import { isSpeechSynthesisSupported, fetchJarvisSpeechConfig, speakText, stopSpeaking } from '@/lib/agent/speech-output'
 import {
   getJarvisAlwaysListenEnabled,
   getJarvisVoiceOutputEnabled,
@@ -128,6 +146,8 @@ interface ChatMessage {
   autoNavigate?: boolean
   /** Não repetir TTS (ex.: buscando já falado antes da resposta chegar). */
   skipAnswerSpeech?: boolean
+  /** Falar resposta automaticamente (ex.: saudação). Padrão Jarvis HUD: só modal, TTS sob demanda. */
+  speakAnswer?: boolean
   /** Não falar aguardando/saudação ao religar o mic após esta resposta. */
   skipListenResumePhrase?: boolean
 }
@@ -534,6 +554,10 @@ export function AIAgent({
   const jarvisListenResumePhraseRef = useRef<'saudacao' | 'aguardando' | null>(null)
   const jarvisSkipListenResumeRef = useRef(false)
   const jarvisBootListenSpokenRef = useRef(false)
+  const jarvisCommandArmedRef = useRef(false)
+  const jarvisCommandArmedAtRef = useRef(0)
+  const jarvisResultPopupRef = useRef(jarvisResultPopup)
+  jarvisResultPopupRef.current = jarvisResultPopup
 
   const syncAgendaScopePending = useCallback((pending: AgendaScopePending | null) => {
     agendaScopePendingRef.current = pending
@@ -914,6 +938,13 @@ export function AIAgent({
     options?: { cidade?: string }
   ): Promise<{ content: string; speechSegments?: string[] }> => {
     try {
+      if (isPrioridadeVisitasCampoQuery(query)) {
+        const { fetchPrioridadeVisitasCampoReply } = await import(
+          '@/lib/services/prioridade-visitas-campo'
+        )
+        return fetchPrioridadeVisitasCampoReply()
+      }
+
       const response = await fetch('/api/campo/agendas')
       if (!response.ok) {
         return { content: 'Não consegui acessar as visitas do módulo Campo & Agenda.' }
@@ -1690,6 +1721,7 @@ export function AIAgent({
         id: Date.now().toString(),
         role: 'assistant',
         content: buildGreetingReply(query),
+        speakAnswer: true,
       }
     }
 
@@ -1698,6 +1730,41 @@ export function AIAgent({
         id: Date.now().toString(),
         role: 'assistant',
         content: buildHelpReply(),
+      }
+    }
+
+    let expectativaFollowUp = detectExpectativaDetalheFollowUp(chatMessages, query)
+    if (
+      !expectativaFollowUp &&
+      expectativaDetalhePendingRef.current?.cidade &&
+      isExpectativaLiderancaFollowUpQuery(query)
+    ) {
+      expectativaFollowUp = {
+        cidade: expectativaDetalhePendingRef.current.cidade,
+        kind: 'affirmative',
+      }
+    }
+
+    if (expectativaFollowUp) {
+      if (expectativaFollowUp.kind === 'negative') {
+        syncExpectativaDetalhePending(null)
+        return {
+          id: Date.now().toString(),
+          role: 'assistant',
+          content: EXPECTATIVA_DETALHE_DISMISS_REPLY,
+        }
+      }
+      const resposta = await fetchExpectativaCidade(expectativaFollowUp.cidade, { detalhe: true })
+      syncExpectativaDetalhePending(null)
+      return {
+        id: Date.now().toString(),
+        role: 'assistant',
+        content: resposta,
+        action: {
+          type: 'navigate',
+          url: '/dashboard/territorio',
+          label: 'Ver Território Completo',
+        },
       }
     }
 
@@ -1801,10 +1868,17 @@ export function AIAgent({
           (!citouLiderancas && !citouPesquisas && !citouDemandas)
 
         if (!algumAberto) {
+          if (jarvisResultPopupRef.current) {
+            return {
+              id: Date.now().toString(),
+              role: 'assistant',
+              ...jarvisSilentDismissFields(),
+            }
+          }
           return {
             id: Date.now().toString(),
             role: 'assistant',
-            content: 'Não há modal ou painel desta página aberto no momento.',
+            ...jarvisSilentDismissFields('Não há modal ou painel desta página aberto no momento.'),
           }
         }
 
@@ -1852,18 +1926,18 @@ export function AIAgent({
           return {
             id: Date.now().toString(),
             role: 'assistant',
-            content:
-              'Não identifiquei um modal aberto com esse nome. Diga **fechar** para fechar tudo o que estiver aberto, ou **ajuda**.',
+            ...jarvisSilentDismissFields(
+              'Não identifiquei um modal aberto com esse nome. Diga **fechar** para fechar tudo o que estiver aberto, ou **ajuda**.'
+            ),
           }
         }
 
         return {
           id: Date.now().toString(),
           role: 'assistant',
-          content:
-            fechados.length > 0
-              ? `Fechei: **${fechados.join('**, **')}**.`
-              : 'Pronto.',
+          ...(fechados.length > 0
+            ? jarvisSilentDismissFields(`Fechei: **${fechados.join('**, **')}**.`)
+            : jarvisSilentDismissFields()),
         }
       }
 
@@ -1885,7 +1959,7 @@ export function AIAgent({
             return {
               id: Date.now().toString(),
               role: 'assistant',
-              content: 'Fluxo de demandas cancelado e o painel de lideranças foi fechado.',
+              ...jarvisSilentDismissFields('Fluxo de demandas cancelado e o painel de lideranças foi fechado.'),
             }
           }
 
@@ -2264,17 +2338,24 @@ export function AIAgent({
 
       if (querFecharModalTerritorio(query)) {
         if (!pc.modalObrasAberto) {
+          if (jarvisResultPopupRef.current) {
+            return {
+              id: Date.now().toString(),
+              role: 'assistant',
+              ...jarvisSilentDismissFields(),
+            }
+          }
           return {
             id: Date.now().toString(),
             role: 'assistant',
-            content: 'Não há modal de obras aberto no momento.',
+            ...jarvisSilentDismissFields('Não há modal de obras aberto no momento.'),
           }
         }
         pc.fecharModalObras()
         return {
           id: Date.now().toString(),
           role: 'assistant',
-          content: 'Fechei o modal de obras.',
+          ...jarvisSilentDismissFields('Fechei o modal de obras.'),
         }
       }
 
@@ -2413,7 +2494,12 @@ export function AIAgent({
         queryLower.includes('2026') || queryLower.includes('quantos') || queryLower.includes('potencial'))) {
       const pedeDetalheLideranca = querExpectativaPorLideranca(query)
       const resposta = await fetchExpectativaCidade(cidade, { detalhe: pedeDetalheLideranca })
-      syncExpectativaDetalhePending(null)
+      const cidadeCtx = cidade.charAt(0).toUpperCase() + cidade.slice(1).toLowerCase()
+      if (pedeDetalheLideranca) {
+        syncExpectativaDetalhePending(null)
+      } else {
+        syncExpectativaDetalhePending({ cidade: cidadeCtx })
+      }
       return {
         id: Date.now().toString(),
         role: 'assistant',
@@ -2428,7 +2514,7 @@ export function AIAgent({
     }
     
     // ===== VISITAS DE CAMPO (Campo & Agenda) =====
-    if (isCampoVisitasQuery(query)) {
+    if (isPrioridadeVisitasCampoQuery(query) || isCampoVisitasQuery(query)) {
       const outcome = await fetchCampoVisitasOutcome(query, { cidade: cidade ?? undefined })
       return {
         id: Date.now().toString(),
@@ -2437,8 +2523,12 @@ export function AIAgent({
         speechSegments: outcome.speechSegments,
         action: {
           type: 'navigate',
-          url: '/dashboard/campo',
-          label: 'Ver Campo & Agenda',
+          url: isPrioridadeVisitasCampoQuery(query)
+            ? '/dashboard/resumo-operacional'
+            : '/dashboard/campo',
+          label: isPrioridadeVisitasCampoQuery(query)
+            ? 'Ver Resumo Operacional'
+            : 'Ver Campo & Agenda',
         },
       }
     }
@@ -2834,7 +2924,9 @@ export function AIAgent({
     // ===== CONSULTA SOBRE CIDADE SEM INDICADOR ESPECÍFICO =====
     if (cidade && !queryLower.includes('pesquisa')) {
       const expectativaResp = await fetchExpectativaCidade(cidade)
-      syncExpectativaDetalhePending(null)
+      syncExpectativaDetalhePending({
+        cidade: cidade.charAt(0).toUpperCase() + cidade.slice(1).toLowerCase(),
+      })
       return {
         id: Date.now().toString(),
         role: 'assistant',
@@ -2868,6 +2960,9 @@ export function AIAgent({
     fetchAgendaOutcome,
     buildAgendaChatMessage,
     fetchCampoVisitasOutcome,
+    chatMessages,
+    syncExpectativaDetalhePending,
+    fetchExpectativaCidade,
   ])
 
   const buildAgentContext = useCallback((): AgentContextPayload => {
@@ -2983,6 +3078,7 @@ export function AIAgent({
 
   useEffect(() => {
     setVoiceOutputEnabled(getJarvisVoiceOutputEnabled())
+    void fetchJarvisSpeechConfig()
   }, [])
 
   const speakJarvisReply = useCallback(
@@ -3038,17 +3134,39 @@ export function AIAgent({
       setChatMessages((prev) => [...prev, response])
       if (response.role !== 'assistant') return
 
+      if (looksLikeExpectativaCidadeReply(response.content)) {
+        if (isExpectativaComDetalheLiderancaReply(response.content)) {
+          syncExpectativaDetalhePending(null)
+        } else {
+          const cidadeCtx =
+            extractCidadeFromExpectativaReply(response.content) ??
+            (() => {
+              const extracted = extractCityNameFromQuery(userQuery)
+              return extracted
+                ? extracted.charAt(0).toUpperCase() + extracted.slice(1).toLowerCase()
+                : null
+            })()
+          if (cidadeCtx) {
+            syncExpectativaDetalhePending({ cidade: cidadeCtx })
+          }
+        }
+      }
+
       if (response.skipAnswerSpeech) {
         if (jarvisLoadingSpeechRef.current) {
           jarvisPendingAnswerRef.current = null
         }
-        return
+      } else if (!shouldAutoSpeakJarvisAnswer(userQuery, response)) {
+        if (jarvisLoadingSpeechRef.current) {
+          jarvisPendingAnswerRef.current = null
+        }
       }
 
       if (response.skipListenResumePhrase) {
         jarvisSkipListenResumeRef.current = true
       }
 
+      const autoSpeak = shouldAutoSpeakJarvisAnswer(userQuery, response)
       const speechText = response.speechSegments?.length
         ? response.speechSegments.join(' ')
         : response.content
@@ -3060,16 +3178,24 @@ export function AIAgent({
             view: parseJarvisResultContent(response.content, userQuery),
             action: response.action,
           })
-          scheduleJarvisAnswerSpeech(speechText, response.speechSegments)
+          if (autoSpeak) {
+            scheduleJarvisAnswerSpeech(speechText, response.speechSegments)
+          } else {
+            shouldRestartListenRef.current = true
+          }
           return
         } catch (err) {
           console.error('[Jarvis] falha ao montar painel de resultado:', err)
         }
       }
 
-      scheduleJarvisAnswerSpeech(speechText, response.speechSegments)
+      if (autoSpeak) {
+        scheduleJarvisAnswerSpeech(speechText, response.speechSegments)
+      } else if (isJarvisHudRef.current && !listenPausedRef.current) {
+        shouldRestartListenRef.current = true
+      }
     },
-    [isJarvisHud, router, scheduleJarvisAnswerSpeech]
+    [isJarvisHud, router, scheduleJarvisAnswerSpeech, syncExpectativaDetalhePending]
   )
 
   const deliverAssistantResponseRef = useRef(deliverAssistantResponse)
@@ -3136,15 +3262,88 @@ export function AIAgent({
   ])
 
   const handleJarvisResultClose = useCallback(() => {
-    setJarvisResultPopup(null)
+    stopSpeakingReplyRef.current?.()
+    stopSpeaking()
+    setIsSpeaking(false)
     jarvisPendingAnswerRef.current = null
+    jarvisLoadingSpeechRef.current = false
+    setJarvisResultPopup(null)
   }, [])
 
   const submitMessage = useCallback(async (content: string) => {
     const cleanedContent = content.trim()
     if (!cleanedContent || isProcessing) return
 
+    const dismissQuery = isJarvisDismissUiQuery(cleanedContent)
+    const readAloudRequest = isJarvisReadAloudRequest(cleanedContent)
+    const hadResultPopup = Boolean(jarvisResultPopupRef.current)
+
+    if (dismissQuery) {
+      syncExpectativaDetalhePending(null)
+    }
+
+    if ((dismissQuery || readAloudRequest) && isJarvisHudRef.current) {
+      stopSpeakingReplyRef.current?.()
+      stopSpeaking()
+      setIsSpeaking(false)
+      jarvisPendingAnswerRef.current = null
+      jarvisLoadingSpeechRef.current = false
+    }
+
+    if (readAloudRequest && isJarvisHudRef.current) {
+      if (recognitionRef.current) {
+        jarvisCommandArmedRef.current = false
+        try {
+          recognitionRef.current.stop()
+        } catch {
+          /* ignore */
+        }
+        setIsListening(false)
+        shouldRestartListenRef.current = false
+      }
+
+      const userMessage: ChatMessage = {
+        id: Date.now().toString(),
+        role: 'user',
+        content: cleanedContent,
+      }
+      setChatMessages((prev) => [...prev, userMessage])
+
+      const last = findLastJarvisReadableReply(chatMessages)
+      if (!last) {
+        deliverAssistantResponse(
+          {
+            id: Date.now().toString(),
+            role: 'assistant',
+            content: 'Não há resposta na tela para ler.',
+            skipAnswerSpeech: true,
+          },
+          cleanedContent
+        )
+        return
+      }
+
+      if (shouldShowJarvisResultPopup(last.content)) {
+        try {
+          setJarvisResultPopup({
+            id: last.id,
+            view: parseJarvisResultContent(last.content, cleanedContent),
+            action: last.action,
+          })
+        } catch {
+          /* mantém painel fechado */
+        }
+      }
+
+      const speechText = last.speechSegments?.length
+        ? last.speechSegments.join(' ')
+        : last.content
+      speakJarvisReply(speechText, last.speechSegments)
+      return
+    }
+
     if (isJarvisHudRef.current && recognitionRef.current) {
+      jarvisCommandArmedRef.current = false
       try {
         recognitionRef.current.stop()
       } catch {
@@ -3167,6 +3366,29 @@ export function AIAgent({
     setChatMessages(prev => [...prev, userMessage])
     setJarvisResultPopup(null)
     jarvisPendingAnswerRef.current = null
+
+    if (
+      dismissQuery &&
+      hadResultPopup &&
+      isJarvisHudRef.current &&
+      !pageHasOpenModalForDismiss(pageContextRef.current)
+    ) {
+      setIsProcessing(true)
+      try {
+        deliverAssistantResponse(
+          {
+            id: Date.now().toString(),
+            role: 'assistant',
+            ...jarvisSilentDismissFields(),
+          },
+          cleanedContent
+        )
+      } finally {
+        setIsProcessing(false)
+      }
+      return
+    }
+
     setIsProcessing(true)
 
     const expectativaFollowUpFromHistory = detectExpectativaDetalheFollowUp(
@@ -3177,6 +3399,7 @@ export function AIAgent({
     const playLoadingPhrase =
       enableVoice &&
       voiceOutputEnabled &&
+      !isJarvisHudRef.current &&
       shouldPlayJarvisLoadingPhrase(cleanedContent, {
         pesquisaTipoPending: Boolean(pesquisaTipoPending),
         agendaScopePending: Boolean(agendaScopePendingRef.current),
@@ -3234,6 +3457,47 @@ export function AIAgent({
         clearedPendingFollowUp = true
       }
 
+      let expectativaFollowUp =
+        clearedPendingFollowUp
+          ? null
+          : detectExpectativaDetalheFollowUp(chatMessages, cleanedContent)
+
+      if (
+        !expectativaFollowUp &&
+        !clearedPendingFollowUp &&
+        expectativaDetalhePendingRef.current?.cidade &&
+        isExpectativaLiderancaFollowUpQuery(cleanedContent)
+      ) {
+        expectativaFollowUp = {
+          cidade: expectativaDetalhePendingRef.current.cidade,
+          kind: 'affirmative',
+        }
+      }
+
+      if (expectativaFollowUp) {
+        if (expectativaFollowUp.kind === 'negative') {
+          syncExpectativaDetalhePending(null)
+          response = {
+            id: Date.now().toString(),
+            role: 'assistant',
+            content: EXPECTATIVA_DETALHE_DISMISS_REPLY,
+          }
+        } else {
+          const resposta = await fetchExpectativaCidade(expectativaFollowUp.cidade, { detalhe: true })
+          syncExpectativaDetalhePending(null)
+          response = {
+            id: Date.now().toString(),
+            role: 'assistant',
+            content: resposta,
+            action: {
+              type: 'navigate',
+              url: '/dashboard/territorio',
+              label: 'Ver Território Completo',
+            },
+          }
+        }
+      }
+
       if (pesquisaTipoPending && !clearedPendingFollowUp) {
         const tipo = parsePesquisaTipoFromQuery(cleanedContent)
         if (tipo) {
@@ -3274,51 +3538,6 @@ export function AIAgent({
         if (sidebarNav) {
           syncExpectativaDetalhePending(null)
           response = buildSidebarNavChatMessage(sidebarNav)
-        } else {
-        const expectativaCidade =
-          expectativaDetalhePendingRef.current?.cidade ??
-          expectativaFollowUpFromHistory?.cidade
-
-        if (expectativaCidade) {
-          const querDetalhe =
-            isExpectativaDetalheAffirmative(cleanedContent) ||
-            expectativaFollowUpFromHistory?.kind === 'affirmative'
-          const recusaDetalhe =
-            isExpectativaDetalheNegative(cleanedContent) ||
-            expectativaFollowUpFromHistory?.kind === 'negative'
-
-          if (recusaDetalhe) {
-            syncExpectativaDetalhePending(null)
-            response = {
-              id: Date.now().toString(),
-              role: 'assistant',
-              content: EXPECTATIVA_DETALHE_DISMISS_REPLY,
-            }
-          } else if (querDetalhe) {
-            const resposta = await fetchExpectativaCidade(expectativaCidade, {
-              detalhe: true,
-            })
-            syncExpectativaDetalhePending(null)
-            response = {
-              id: Date.now().toString(),
-              role: 'assistant',
-              content: resposta,
-              action: {
-                type: 'navigate',
-                url: '/dashboard/territorio',
-                label: 'Ver Território Completo',
-              },
-            }
-          } else {
-            syncExpectativaDetalhePending({ cidade: expectativaCidade })
-            response = {
-              id: Date.now().toString(),
-              role: 'assistant',
-              content:
-                'Responda **sim** se quiser o detalhamento por liderança, ou **não** se já está bom assim.',
-            }
-          }
-        }
         }
       }
 
@@ -3327,6 +3546,7 @@ export function AIAgent({
           id: Date.now().toString(),
           role: 'assistant',
           content: buildGreetingReply(cleanedContent),
+          speakAnswer: true,
         }
       }
 
@@ -3372,6 +3592,14 @@ export function AIAgent({
 
       if (!response) {
         response = await processUserQuery(cleanedContent)
+      }
+
+      if (dismissQuery && response) {
+        response = {
+          ...response,
+          skipAnswerSpeech: true,
+          skipListenResumePhrase: true,
+        }
       }
 
       deliverAssistantResponse(response, cleanedContent)
@@ -3550,12 +3778,12 @@ export function AIAgent({
     const phraseKind = jarvisListenResumePhraseRef.current
     jarvisListenResumePhraseRef.current = null
 
-    if (
-      phraseKind &&
-      isJarvisHudRef.current &&
-      voiceOutputEnabled &&
-      !jarvisLoadingSpeechRef.current
-    ) {
+    if (phraseKind && isJarvisHudRef.current) {
+      actuallyStartRecognition()
+      return
+    }
+
+    if (phraseKind && voiceOutputEnabled && !jarvisLoadingSpeechRef.current) {
       try {
         recognitionRef.current.stop()
       } catch {
@@ -3594,6 +3822,7 @@ export function AIAgent({
     listenPausedRef.current = true
     setListenPaused(true)
     setJarvisAlwaysListenEnabled(false)
+    jarvisCommandArmedRef.current = false
     stopSpeechKeepAlive()
     setWakeStandby(true)
     setUserInput('')
@@ -3610,8 +3839,7 @@ export function AIAgent({
     setJarvisAlwaysListenEnabled(true)
     setVoiceError(null)
     unlockJarvisAudio()
-    jarvisListenResumePhraseRef.current =
-      Math.random() < 0.55 ? 'saudacao' : 'aguardando'
+    jarvisListenResumePhraseRef.current = null
     tryStartContinuousListening()
   }, [tryStartContinuousListening])
 
@@ -3649,11 +3877,27 @@ export function AIAgent({
         return
       }
 
-      const { triggered, command } = extractJarvisVoiceCommand(transcript)
-      if (!triggered) {
+      const armed = jarvisCommandArmedRef.current
+      const armedExpired =
+        !armed || Date.now() - jarvisCommandArmedAtRef.current > JARVIS_ARMED_LISTEN_MS
+      const { active, command, arm, disarm } = resolveJarvisVoiceInput(transcript, {
+        armed,
+        armedExpired,
+      })
+
+      if (!active) {
+        jarvisCommandArmedRef.current = false
         setWakeStandby(true)
         setUserInput('')
         return
+      }
+
+      if (arm) {
+        jarvisCommandArmedRef.current = true
+        jarvisCommandArmedAtRef.current = Date.now()
+      }
+      if (disarm) {
+        jarvisCommandArmedRef.current = false
       }
 
       setWakeStandby(false)
@@ -3661,6 +3905,7 @@ export function AIAgent({
 
       const last = event.results[event.results.length - 1]
       if (last?.isFinal && command.trim()) {
+        jarvisCommandArmedRef.current = false
         setUserInput('')
         try {
           recognition.stop()
@@ -3699,7 +3944,9 @@ export function AIAgent({
     recognition.onend = () => {
       stopSpeechKeepAlive()
       setIsListening(false)
-      setWakeStandby(true)
+      if (!jarvisCommandArmedRef.current) {
+        setWakeStandby(true)
+      }
 
       if (!isJarvisHudRef.current) {
         const text = pendingSpeechRef.current.trim()
@@ -3736,7 +3983,6 @@ export function AIAgent({
     const boot = () => {
       if (!jarvisBootListenSpokenRef.current) {
         jarvisBootListenSpokenRef.current = true
-        jarvisListenResumePhraseRef.current = 'saudacao'
       }
       tryStartContinuousListening()
     }
@@ -3830,7 +4076,8 @@ export function AIAgent({
   const jarvisStatusMessage = useMemo(() => {
     if (jarvisResultPopup && isSpeaking) return 'APRESENTANDO RESULTADO · JARVIS FALANDO'
     if (jarvisResultPopup && !voiceOutputEnabled) return 'RESULTADO NA TELA · VOZ DESLIGADA'
-    if (jarvisResultPopup) return 'RESULTADO NA TELA · JARVIS ATIVO'
+    if (jarvisResultPopup && !isSpeaking) return 'RESULTADO NA TELA · DIGA «LER» PARA OUVIR'
+    if (jarvisResultPopup) return 'RESULTADO NA TELA · JARVIS LENDO'
     if (isProcessing && isSpeaking) return 'BUSCANDO DADOS · UM MOMENTO'
     if (isSpeaking) return 'SINTETIZANDO RESPOSTA · FALANDO'
     if (!voiceOutputEnabled && isListening) return 'ESCUTA ATIVA · RESPOSTA SÓ NO PAINEL'

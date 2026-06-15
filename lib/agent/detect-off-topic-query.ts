@@ -1,3 +1,4 @@
+import { isExpectativaLiderancaFollowUpQuery } from '@/lib/agent/expectativa-detalhe-followup'
 import { isGreetingQuery, isHelpQuery } from '@/lib/agent/greeting-reply'
 import type { AgentClassifiedIntent } from '@/lib/agent/types'
 
@@ -40,6 +41,7 @@ export function isOffTopicAgentQuery(message: string): boolean {
   const raw = message.trim()
   if (!raw || raw.length < 10) return false
   if (isGreetingQuery(raw) || isHelpQuery(raw)) return false
+  if (isExpectativaLiderancaFollowUpQuery(raw)) return false
 
   const q = normalize(raw)
   if (AGENT_INTENT_SIGNALS.test(q)) return false
@@ -81,6 +83,9 @@ export function validateClassifiedIntentAgainstMessage(
     case 'consultar_expectativa':
     case 'consultar_liderancas':
     case 'consultar_demandas': {
+      if (isExpectativaLiderancaFollowUpQuery(message)) {
+        return true
+      }
       if (
         !/\b(expectativa|lideranc|demanda|pedido|votos?|2026|territorio|territorio|base)\b/.test(
           q
@@ -104,7 +109,9 @@ export function validateClassifiedIntentAgainstMessage(
       return /\b(buscar|atualizar|carregar|mostrar|dados)\b/.test(q)
     }
     case 'consultar_visitas_campo': {
-      if (!/\b(visita|viagens?|campo|check-?in|viaj)\b/.test(q)) {
+      if (
+        !/\b(visita|visitar|viagens?|campo|check-?in|viaj|prioridad|preciso visitar)\b/.test(q)
+      ) {
         return false
       }
       if (args.cidade?.trim()) {

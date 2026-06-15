@@ -10,7 +10,7 @@ export const sidebarSectionLabelClass =
 
 export const sidebarNavItemClass = (active: boolean) =>
   cn(
-    'relative flex w-full items-center gap-2.5 rounded-[10px] border-l-2 px-3 py-[7px]',
+    'relative flex w-full items-center gap-2 rounded-[10px] border-l-2 px-2.5 py-[7px]',
     'text-[12.5px] font-medium leading-none transition-colors duration-200 ease-out',
     'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[rgb(var(--color-primary)/0.35)] focus-visible:ring-offset-1 focus-visible:ring-offset-bg-sidebar',
     active
@@ -26,7 +26,7 @@ export const sidebarNavIconClass = (active: boolean) =>
 
 export const sidebarChildItemClass = (active: boolean) =>
   cn(
-    'flex items-center gap-2 rounded-[8px] border-l-2 px-3 py-[7px] text-[12.5px] font-medium transition-colors duration-200',
+    'flex w-full min-w-0 items-center gap-2 truncate rounded-[8px] border-l-2 px-2.5 py-[7px] text-[12.5px] font-medium transition-colors duration-200',
     'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[rgb(var(--color-primary)/0.35)] focus-visible:ring-offset-1 focus-visible:ring-offset-bg-sidebar',
     active
       ? 'border-l-[rgb(var(--color-primary))] bg-[rgb(var(--color-primary-tint))] text-text-primary'

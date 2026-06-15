@@ -50,6 +50,40 @@ export function extractJarvisVoiceCommand(transcript: string): {
   return { triggered: true, command }
 }
 
+/** Tempo para falar o comando (ou saudação) após só dizer «Jarvis». */
+export const JARVIS_ARMED_LISTEN_MS = 9000
+
+export function resolveJarvisVoiceInput(
+  transcript: string,
+  options: { armed: boolean; armedExpired: boolean }
+): {
+  active: boolean
+  command: string
+  arm: boolean
+  disarm: boolean
+} {
+  const { triggered, command } = extractJarvisVoiceCommand(transcript)
+
+  if (triggered) {
+    if (command) {
+      return { active: true, command, arm: false, disarm: true }
+    }
+    return { active: true, command: '', arm: true, disarm: false }
+  }
+
+  if (options.armed && !options.armedExpired) {
+    const fallback = normalizeWakeText(transcript)
+      .replace(/^[,.\s!?;:—-]+/, '')
+      .trim()
+    if (fallback) {
+      return { active: true, command: fallback, arm: false, disarm: true }
+    }
+    return { active: true, command: '', arm: true, disarm: false }
+  }
+
+  return { active: false, command: '', arm: false, disarm: false }
+}
+
 export function jarvisWakeHint(): string {
-  return 'Diga «Jarvis» + o que precisa'
+  return 'Diga «Jarvis» + comando ou saudação (ex.: boa noite)'
 }

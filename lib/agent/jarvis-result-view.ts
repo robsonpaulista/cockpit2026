@@ -18,6 +18,13 @@ export interface JarvisAgendaItem {
   description?: string
 }
 
+export interface JarvisNewsItem {
+  index: number
+  title: string
+  meta?: string
+  url?: string
+}
+
 export interface JarvisResultView {
   title: string
   subtitle?: string
@@ -25,6 +32,7 @@ export interface JarvisResultView {
   sections: JarvisResultSection[]
   bullets: string[]
   agendaItems: JarvisAgendaItem[]
+  newsItems: JarvisNewsItem[]
   footer?: string
 }
 
@@ -63,6 +71,7 @@ export function parseJarvisResultContent(content: string, userQuery?: string): J
   const bullets: string[] = []
   const sections: JarvisResultSection[] = []
   const agendaItems: JarvisAgendaItem[] = []
+  const newsItems: JarvisNewsItem[] = []
   let footer: string | undefined
   let title = ''
   let subtitle: string | undefined
@@ -79,6 +88,27 @@ export function parseJarvisResultContent(content: string, userQuery?: string): J
   for (const raw of lines) {
     const line = raw.trim()
     if (!line) continue
+
+    const newsLine = /^(\d+)\.\s+\*\*([^*]+)\*\*\s*$/.exec(line)
+    if (newsLine) {
+      newsItems.push({
+        index: Number.parseInt(newsLine[1], 10),
+        title: newsLine[2].trim(),
+      })
+      continue
+    }
+
+    const newsMeta = /^\s{2,}(.+)$/.exec(raw)
+    if (newsMeta && newsItems.length > 0) {
+      const metaText = newsMeta[1].trim()
+      const last = newsItems[newsItems.length - 1]!
+      if (/^https?:\/\//i.test(metaText)) {
+        last.url = metaText
+      } else if (!last.meta) {
+        last.meta = stripMarkdown(metaText)
+      }
+      continue
+    }
 
     const agendaLine = /^(\d+)\.\s+\*\*([^*]+)\*\*\s+[—–-]\s+\*\*([^*]+)\*\*\s*$/.exec(line)
     if (agendaLine) {
@@ -205,14 +235,16 @@ export function parseJarvisResultContent(content: string, userQuery?: string): J
 
   // Meta/descrição da agenda já vão nos cards — não repetir abaixo.
   const hasAgendaCards = agendaItems.length > 0
+  const hasNewsCards = newsItems.length > 0
 
   return {
     title,
     subtitle,
     stats,
-    sections: hasAgendaCards ? [] : cleanedSections,
-    bullets: hasAgendaCards ? [] : bullets,
+    sections: hasAgendaCards || hasNewsCards ? [] : cleanedSections,
+    bullets: hasAgendaCards || hasNewsCards ? [] : bullets,
     agendaItems,
+    newsItems,
     footer,
   }
 }

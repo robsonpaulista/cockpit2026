@@ -66,6 +66,14 @@ import {
 } from '@/lib/premium-ui-classes'
 import { AppBrandTitle } from '@/components/app-brand-title'
 import { SIDEBAR_MENU_ITEMS, type SidebarMenuItemConfig } from '@/lib/sidebar-nav-routes'
+import {
+  SIDEBAR_WIDTH_COLLAPSED_CLASS,
+  SIDEBAR_WIDTH_EXPANDED_CLASS,
+  sidebarItemIconOnlyClass,
+  sidebarShellFooterClass,
+  sidebarShellHeaderClass,
+  sidebarShellNavClass,
+} from '@/lib/sidebar-layout'
 import { useDashboardHomeChrome } from '@/contexts/dashboard-home-chrome-context'
 import { DASHBOARD_HOME_BG } from '@/lib/dashboard-home-chrome'
 import {
@@ -78,7 +86,6 @@ import {
   JARVIS_SIDEBAR_ICON_ACTIVE,
   JARVIS_SIDEBAR_IDLE_ITEM,
   JARVIS_SIDEBAR_SECTION,
-  JARVIS_SIDEBAR_SUBMENU,
   JARVIS_SIDEBAR_SUBMENU_LINK,
   JARVIS_SIDEBAR_TEXT,
   JARVIS_SIDEBAR_TEXT_ACTIVE,
@@ -338,7 +345,7 @@ function SidebarNavItem({
         )}>
           <span
             className={cn(
-              'h-[1px] w-8 rounded-full',
+              'h-[1px] w-6 rounded-full',
               isGradientHome ? JARVIS_SIDEBAR_DIVIDER : 'bg-border-card/60'
             )}
             aria-hidden
@@ -356,7 +363,8 @@ function SidebarNavItem({
             className={cn(
               filmNav
                 ? cn(
-                    'relative flex w-full items-center gap-3 rounded-[12px] px-3 py-3',
+                    'relative flex w-full items-center gap-2.5 rounded-[12px] px-2.5 py-2.5',
+                    sidebarItemIconOnlyClass(collapsed, mobileOpen),
                     'transition-all duration-200 ease-out',
                     isGradientHome ? JARVIS_SIDEBAR_FOCUS : 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-gold/50 focus-visible:ring-offset-1 focus-visible:ring-offset-bg-sidebar',
                     !(filmNav && isActive) &&
@@ -370,7 +378,7 @@ function SidebarNavItem({
                         : 'border border-white/[0.04] bg-[linear-gradient(180deg,rgba(255,255,255,0.02)_0%,rgba(255,255,255,0.01)_100%)]'),
                     isActive && cockpitActiveItemClass
                   )
-                : sidebarNavItemClass(isActive)
+                : cn(sidebarNavItemClass(isActive), sidebarItemIconOnlyClass(collapsed, mobileOpen))
             )}
           >
             <Icon
@@ -427,18 +435,11 @@ function SidebarNavItem({
 
           {(!collapsed || mobileOpen) && submenuOpen && item.children && (
             filmNav ? (
-              <div
-                className={cn(
-                  'mt-2 space-y-1.5 rounded-2xl p-2 text-[0.82rem] shadow-[0_8px_24px_rgba(0,0,0,0.22)]',
-                  isGradientHome
-                    ? JARVIS_SIDEBAR_SUBMENU
-                    : 'border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.08)_0%,rgba(255,255,255,0.03)_100%)] text-text-primary/85',
-                )}
-              >
+              <ul className="mt-1 space-y-1">
                 {item.children.map((child) => {
                   const childActive = isChildLinkActive(pathname, child.href)
                   return (
-                    <span key={child.id} className="inline-flex items-center">
+                    <li key={child.id}>
                       <Link
                         href={child.href}
                         onClick={() => {
@@ -446,31 +447,28 @@ function SidebarNavItem({
                           setMobileOpen(false)
                         }}
                         className={cn(
-                          'w-full whitespace-nowrap rounded-lg px-2.5 py-2 leading-none transition-all duration-200',
+                          'flex w-full min-w-0 items-center rounded-[12px] px-2.5 py-[7px] text-[0.82rem] font-medium leading-none transition-all duration-200',
                           isGradientHome
                             ? JARVIS_SIDEBAR_FOCUS
                             : 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-gold/50 focus-visible:ring-offset-1 focus-visible:ring-offset-bg-sidebar',
                           childActive
-                            ? cn(
-                                'font-semibold',
-                                'transition-all',
-                                cockpitActiveChildClass
-                              )
+                            ? cn('truncate font-semibold transition-all', cockpitActiveChildClass)
                             : cn(
+                                'truncate',
                                 isGradientHome
                                   ? JARVIS_SIDEBAR_SUBMENU_LINK
-                                  : 'hover:bg-white/10 text-text-primary/85 hover:text-text-primary'
+                                  : 'text-text-primary/85 hover:bg-white/10 hover:text-text-primary'
                               )
                         )}
                       >
                         {menuLabel(child.id, child.label)}
                       </Link>
-                    </span>
+                    </li>
                   )
                 })}
-              </div>
+              </ul>
             ) : (
-              <ul className="mt-1 ml-8 space-y-1">
+              <ul className="mt-1 space-y-1">
                 {item.children.map((child) => {
                   const childActive = isChildLinkActive(pathname, child.href)
                   return (
@@ -502,7 +500,8 @@ function SidebarNavItem({
           className={cn(
             filmNav
               ? cn(
-                  'relative flex items-center gap-3 rounded-[12px] px-3 py-3',
+                  'relative flex w-full items-center gap-2.5 rounded-[12px] px-2.5 py-2.5',
+                  sidebarItemIconOnlyClass(collapsed, mobileOpen),
                   'transition-all duration-200 ease-out',
                   isGradientHome ? JARVIS_SIDEBAR_FOCUS : 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-gold/50 focus-visible:ring-offset-1 focus-visible:ring-offset-bg-sidebar',
                   !(filmNav && isActive) &&
@@ -516,7 +515,7 @@ function SidebarNavItem({
                       : 'border border-white/[0.04] bg-[linear-gradient(180deg,rgba(255,255,255,0.02)_0%,rgba(255,255,255,0.01)_100%)]'),
                   isActive && cockpitActiveItemClass
                 )
-              : sidebarNavItemClass(isActive)
+              : cn(sidebarNavItemClass(isActive), sidebarItemIconOnlyClass(collapsed, mobileOpen))
           )}
         >
           <Icon
@@ -724,7 +723,8 @@ export function Sidebar() {
       {/* Sidebar */}
       <aside
         className={cn(
-          'fixed left-0 top-0 h-full w-64 overflow-visible transition-all duration-300 ease-out',
+          'fixed left-0 top-0 h-full overflow-visible transition-all duration-300 ease-out',
+          SIDEBAR_WIDTH_EXPANDED_CLASS,
           isGradientHome && 'border-r border-[rgba(0,212,255,0.08)]',
           !isGradientHome && 'border-r border-card bg-[rgb(var(--bg-sidebar))]',
           isCockpit && !isGradientHome && 'sidebar-cockpit-shell',
@@ -732,7 +732,7 @@ export function Sidebar() {
           'max-lg:z-[100] max-lg:shadow-2xl lg:z-40',
           'lg:translate-x-0',
           mobileOpen ? 'translate-x-0' : '-translate-x-full',
-          collapsed ? 'lg:w-[5.5rem]' : 'lg:w-64'
+          collapsed ? SIDEBAR_WIDTH_COLLAPSED_CLASS : undefined
         )}
         style={{
           isolation: 'isolate',
@@ -749,7 +749,7 @@ export function Sidebar() {
           )}
         >
           {/* Logo */}
-          <div className="flex h-16 items-center justify-between px-4">
+          <div className={sidebarShellHeaderClass(collapsed, mobileOpen)}>
             {(!collapsed || mobileOpen) && (
               <div className="flex items-center gap-2.5">
                 <AppBrandTitle
@@ -801,7 +801,7 @@ export function Sidebar() {
           </div>
 
           {/* Menu Items */}
-          <nav className="flex-1 overflow-x-visible overflow-y-auto px-2.5 py-4 scrollbar-hide">
+          <nav className={cn('flex-1 overflow-x-visible overflow-y-auto scrollbar-hide', sidebarShellNavClass(collapsed, mobileOpen))}>
             <ul className="space-y-1.5">
               {visibleItems.map((item: SidebarMenuItem) => {
                 const juridicoInMenu = visibleItems.some((i) => i.id === 'juridico')
@@ -849,7 +849,8 @@ export function Sidebar() {
           {/* Ações rápidas: Splash + Tema */}
           <div
             className={cn(
-              'space-y-1.5 border-t px-2.5 py-3',
+              'space-y-1.5 border-t',
+              sidebarShellFooterClass(collapsed, mobileOpen),
               isGradientHome ? 'border-[rgba(0,212,255,0.08)]' : 'border-border-card/80'
             )}
           >
@@ -859,7 +860,8 @@ export function Sidebar() {
                 setMobileOpen(false)
               }}
               className={cn(
-                'flex w-full items-center gap-3 rounded-[12px] px-3 py-3',
+                'flex w-full items-center gap-2.5 rounded-[12px] px-2.5 py-2.5',
+                sidebarItemIconOnlyClass(collapsed, mobileOpen),
                 'transition-all duration-200 ease-out group',
                 isGradientHome ? JARVIS_SIDEBAR_HOVER : 'hover:bg-accent-gold-soft/70',
                 isGradientHome

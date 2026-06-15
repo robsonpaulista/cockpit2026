@@ -65,7 +65,9 @@ export function ThemeToggle({
       <button
         onClick={() => setOpen(!open)}
         className={cn(
-          'flex items-center gap-3 px-3 py-2.5 rounded-[10px] w-full',
+          'flex items-center gap-2.5 rounded-[10px] w-full',
+          !showLabel && 'justify-center gap-0 px-1.5 py-2',
+          showLabel && 'px-2.5 py-2',
           'transition-all duration-200 ease-out group',
           triggerOnVibrantNav
             ? cn(JARVIS_SIDEBAR_HOVER, JARVIS_SIDEBAR_FOCUS)

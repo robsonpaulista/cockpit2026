@@ -1,5 +1,6 @@
 import type { AgentClassifiedIntent } from '@/lib/agent/types'
 import { extractCityNameFromQuery, isInvalidCityCandidate } from '@/lib/agent/city-extract'
+import { isPrioridadeVisitasCampoQuery } from '@/lib/agent/detect-prioridade-visitas'
 import { isMonthName, parseMesAnoFromText } from '@/lib/agent/parse-visitas-mes'
 import {
   isCidadeMaisVisitadaQuery,
@@ -26,10 +27,11 @@ export function isInstagramVisitaQuery(query: string): boolean {
 
 /** Consulta sobre visitas/viagens de campo (Campo & Agenda). */
 export function isCampoVisitasQuery(query: string): boolean {
+  if (isPrioridadeVisitasCampoQuery(query)) return true
   if (isInstagramVisitaQuery(query)) return false
   const q = norm(query)
   return (
-    /\b(visita?s?|viagem|viagens|check-?in|checkin|visitei)\b/.test(q) ||
+    /\b(visita?s?|visitar|viagem|viagens|check-?in|checkin|visitei)\b/.test(q) ||
     /\bultim[ao]s?\s+(visitas?|viagens?|cidades?)\b/.test(q) ||
     /\bultim[ao]\s+cidade\b/.test(q) ||
     /\bque\s+eu\s+visitei\b/.test(q) ||
@@ -49,6 +51,7 @@ function detectModo(
   cidade?: string,
   mesAno?: { month: number; year: number } | null
 ): VisitasCampoModo {
+  if (isPrioridadeVisitasCampoQuery(message)) return 'prioridade_visitas'
   if (isUltimaSingularQuery(message)) return 'ultima'
   if (isCidadeMaisVisitadaQuery(message)) return 'cidade_mais_visitada'
   if (/\bultim[ao]s\b/.test(q) && /\b(visitas?|viagens?|cidades?)\b/.test(q)) return 'ultimas'

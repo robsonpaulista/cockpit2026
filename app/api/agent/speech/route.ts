@@ -1,6 +1,15 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import {
+  ELEVENLABS_FREE_API_HINT,
+  ELEVENLABS_PREMADE_FREE_API_VOICES,
+  formatElevenLabsApiErrorMessage,
+  resolveElevenLabsHttpStatus,
+  resolveElevenLabsModel,
+  resolveElevenLabsVoiceId,
+  resolveElevenLabsVoiceSettings,
+} from '@/lib/agent/elevenlabs-config'
+import {
   DEFAULT_OPENAI_TTS_VOICE,
   OPENAI_TTS_VOICES,
   resolveOpenAiTtsVoice,
@@ -17,23 +26,63 @@ const MAX_CHARS = 900
 const DEFAULT_MODEL = 'gpt-4o-mini-tts'
 const FALLBACK_MODEL = 'tts-1-hd'
 
-function resolveModel(): string {
+type JarvisTtsProvider = 'openai' | 'elevenlabs'
+
+function resolveOpenAiModel(): string {
   return process.env.JARVIS_TTS_MODEL?.trim() || DEFAULT_MODEL
 }
 
+function resolveServerTtsProvider(): JarvisTtsProvider | null {
+  const raw = process.env.JARVIS_TTS_PROVIDER?.trim().toLowerCase()
+  if (raw === 'elevenlabs' || raw === '11labs') return 'elevenlabs'
+  if (raw === 'openai') return 'openai'
+  return null
+}
+
+function pickProvider(requested?: string | null): JarvisTtsProvider {
+  const normalized = requested?.trim().toLowerCase()
+  if (normalized === 'elevenlabs' || normalized === '11labs') return 'elevenlabs'
+  if (normalized === 'openai') return 'openai'
+
+  const envDefault = resolveServerTtsProvider()
+  if (envDefault) return envDefault
+
+  const hasEleven = Boolean(process.env.ELEVENLABS_API_KEY?.trim())
+  const hasOpenAi = Boolean(process.env.OPENAI_API_KEY?.trim())
+  if (hasEleven && !hasOpenAi) return 'elevenlabs'
+  return 'openai'
+}
+
 export async function GET() {
-  const apiKey = process.env.OPENAI_API_KEY?.trim()
+  const openAiKey = process.env.OPENAI_API_KEY?.trim()
+  const elevenKey = process.env.ELEVENLABS_API_KEY?.trim()
   const envVoice = process.env.JARVIS_TTS_VOICE?.trim()
   const defaultVoice = resolveOpenAiTtsVoice(envVoice || DEFAULT_OPENAI_TTS_VOICE, DEFAULT_OPENAI_TTS_VOICE)
-  const model = resolveModel()
+  const openAiModel = resolveOpenAiModel()
+  const elevenModel = resolveElevenLabsModel(process.env.ELEVENLABS_MODEL)
+  const elevenVoiceId = resolveElevenLabsVoiceId(
+    process.env.ELEVENLABS_VOICE_ID,
+    null
+  )
+  const providerDefault = resolveServerTtsProvider()
 
   return NextResponse.json({
-    available: Boolean(apiKey),
+    available: Boolean(openAiKey || elevenKey),
+    openaiAvailable: Boolean(openAiKey),
+    elevenlabsAvailable: Boolean(elevenKey),
+    defaultProvider: providerDefault ?? (elevenKey && !openAiKey ? 'elevenlabs' : 'openai'),
     defaultVoice,
     voices: OPENAI_TTS_VOICES,
-    model,
-    supportsInstructions: modelSupportsTtsInstructions(model),
+    model: openAiModel,
+    supportsInstructions: modelSupportsTtsInstructions(openAiModel),
     crossDevice: true,
+    elevenlabs: {
+      available: Boolean(elevenKey),
+      defaultVoiceId: elevenVoiceId,
+      model: elevenModel,
+      freeTierHint: ELEVENLABS_FREE_API_HINT,
+      suggestedFreeVoiceId: ELEVENLABS_PREMADE_FREE_API_VOICES[0]?.voice_id ?? null,
+    },
   })
 }
 
@@ -51,6 +100,28 @@ async function requestOpenAiSpeech(
   })
 }
 
+async function requestElevenLabsSpeech(
+  apiKey: string,
+  voiceId: string,
+  text: string,
+  model: string,
+  voiceSettings: ReturnType<typeof resolveElevenLabsVoiceSettings>
+): Promise<Response> {
+  return fetch(`https://api.elevenlabs.io/v1/text-to-speech/${encodeURIComponent(voiceId)}`, {
+    method: 'POST',
+    headers: {
+      'xi-api-key': apiKey,
+      'Content-Type': 'application/json',
+      Accept: 'audio/mpeg',
+    },
+    body: JSON.stringify({
+      text,
+      model_id: model,
+      voice_settings: voiceSettings,
+    }),
+  })
+}
+
 export async function POST(request: Request) {
   try {
     const supabase = createClient()
@@ -62,12 +133,13 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
     }
 
-    const apiKey = process.env.OPENAI_API_KEY?.trim()
-    if (!apiKey) {
-      return NextResponse.json({ error: 'TTS neural indisponível' }, { status: 503 })
+    const body = (await request.json()) as {
+      text?: string
+      voice?: string
+      provider?: string
+      elevenVoiceId?: string
     }
 
-    const body = (await request.json()) as { text?: string; voice?: string }
     const cleaned = stripTextForNeuralSpeech(body.text ?? '')
     if (!cleaned) {
       return NextResponse.json({ error: 'Texto vazio' }, { status: 400 })
@@ -76,11 +148,63 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Texto muito longo' }, { status: 400 })
     }
 
+    const provider = pickProvider(body.provider)
+
+    if (provider === 'elevenlabs') {
+      const apiKey = process.env.ELEVENLABS_API_KEY?.trim()
+      if (!apiKey) {
+        return NextResponse.json({ error: 'ElevenLabs indisponível' }, { status: 503 })
+      }
+
+      const voiceId = resolveElevenLabsVoiceId(
+        body.elevenVoiceId ?? body.voice,
+        process.env.ELEVENLABS_VOICE_ID
+      )
+      if (!voiceId) {
+        return NextResponse.json(
+          { error: 'Configure ELEVENLABS_VOICE_ID ou escolha uma voz no seletor' },
+          { status: 400 }
+        )
+      }
+
+      const model = resolveElevenLabsModel(process.env.ELEVENLABS_MODEL)
+      const voiceSettings = resolveElevenLabsVoiceSettings()
+      const elevenRes = await requestElevenLabsSpeech(
+        apiKey,
+        voiceId,
+        cleaned,
+        model,
+        voiceSettings
+      )
+
+      if (!elevenRes.ok) {
+        const detail = await elevenRes.text().catch(() => '')
+        const message = formatElevenLabsApiErrorMessage(detail, elevenRes.status)
+        const status = resolveElevenLabsHttpStatus(detail, elevenRes.status)
+        console.error('[agent/speech] ElevenLabs error:', elevenRes.status, detail.slice(0, 300))
+        return NextResponse.json({ error: message }, { status })
+      }
+
+      const audioBuffer = await elevenRes.arrayBuffer()
+      return new NextResponse(audioBuffer, {
+        status: 200,
+        headers: {
+          'Content-Type': 'audio/mpeg',
+          'Cache-Control': 'no-store',
+        },
+      })
+    }
+
+    const apiKey = process.env.OPENAI_API_KEY?.trim()
+    if (!apiKey) {
+      return NextResponse.json({ error: 'TTS neural indisponível' }, { status: 503 })
+    }
+
     const clientVoice = body.voice?.trim()
     const voice = clientVoice
       ? resolveOpenAiTtsVoice(clientVoice, DEFAULT_OPENAI_TTS_VOICE)
       : resolveOpenAiTtsVoice(process.env.JARVIS_TTS_VOICE, DEFAULT_OPENAI_TTS_VOICE)
-    const primaryModel = resolveModel()
+    const primaryModel = resolveOpenAiModel()
     const instructions = resolveJarvisTtsInstructions(process.env.JARVIS_TTS_INSTRUCTIONS)
 
     const modelsToTry = primaryModel === FALLBACK_MODEL

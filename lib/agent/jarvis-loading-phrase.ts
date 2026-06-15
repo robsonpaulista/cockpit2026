@@ -1,5 +1,6 @@
 import { detectSidebarNavigate } from '@/lib/agent/detect-sidebar-navigate'
 import { isGreetingQuery, isHelpQuery } from '@/lib/agent/greeting-reply'
+import { isJarvisDismissUiQuery } from '@/lib/agent/jarvis-ui-dismiss'
 import { pickJarvisLoadingPhrase } from '@/lib/agent/jarvis-phrases'
 
 export { pickJarvisLoadingPhrase }
@@ -23,6 +24,7 @@ export function shouldPlayJarvisLoadingPhrase(
   const trimmed = query.trim()
   if (!trimmed) return false
   if (isGreetingQuery(trimmed) || isHelpQuery(trimmed)) return false
+  if (isJarvisDismissUiQuery(trimmed)) return false
 
   if (detectSidebarNavigate(trimmed, ctx.currentPath)) return false
 

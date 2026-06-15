@@ -70,10 +70,7 @@ export function formatNoticiasDestaqueReply(rows: NoticiaDestaqueRow[]): {
     if (n.url) content += `   ${n.url}\n`
     content += '\n'
 
-    const frase = n.meta
-      ? `Notícia ${index + 1}: ${n.title}. ${n.source}. ${n.meta}.`
-      : `Notícia ${index + 1}: ${n.title}. ${n.source}.`
-    speechSegments.push(frase)
+    speechSegments.push(n.title)
   })
 
   return { content: content.trim(), speechSegments, links: noticiasLinks }

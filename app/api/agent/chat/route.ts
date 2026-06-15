@@ -12,6 +12,10 @@ import {
   isOffTopicAgentQuery,
   validateClassifiedIntentAgainstMessage,
 } from '@/lib/agent/detect-off-topic-query'
+import {
+  detectExpectativaDetalheFollowUp,
+  EXPECTATIVA_DETALHE_DISMISS_REPLY,
+} from '@/lib/agent/expectativa-detalhe-followup'
 import { checkAgentRateLimit, AGENT_RATE_LIMITS } from '@/lib/agent/rate-limit'
 import { intentToSyntheticQuery, isClientOnlyIntent } from '@/lib/agent/synthetic-query'
 import {
@@ -97,6 +101,23 @@ export async function POST(request: Request) {
         source: 'groq',
         content: buildHelpReply(),
         meta: { intent: 'ajuda' },
+      } satisfies AgentChatResponse)
+    }
+
+    const expectativaFollowUp = detectExpectativaDetalheFollowUp(body.history ?? [], message)
+    if (expectativaFollowUp) {
+      if (expectativaFollowUp.kind === 'negative') {
+        return NextResponse.json({
+          source: 'groq',
+          content: EXPECTATIVA_DETALHE_DISMISS_REPLY,
+          meta: { intent: 'consultar_expectativa' },
+        } satisfies AgentChatResponse)
+      }
+      return NextResponse.json({
+        source: 'groq',
+        content: '',
+        clientQuery: `expectativa em ${expectativaFollowUp.cidade} por liderança`,
+        meta: { intent: 'consultar_expectativa' },
       } satisfies AgentChatResponse)
     }
 

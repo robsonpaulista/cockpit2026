@@ -15,14 +15,21 @@ function normalize(query: string): string {
 
 const ASSISTANT_NAMES = /\b(jarvis|cockpit|assistente|copilot)\b/
 
-const GREETING_ONLY =
-  /^(?:oi|ola|hey|e\s*ai|eai|hello|hi|bom\s+dia|boa\s+tarde|boa\s+noite)(?:\s+(?:jarvis|cockpit|assistente))?[!.?\s]*$/i
-
 const DATA_INTENT =
   /\b(agenda|noticia|notícias|expectativa|pesquisa|demanda|pedido|teresina|picos|lideranca|liderança|chapa|alerta|instagram|territorio|território|compromisso|destaque|whatsapp|resumo\s+operacional|briefing)\b/
 
 const ACTION_INTENT =
   /\b(envia|enviar|envie|mand[ae]|dispar[ae]|resumo\s+operacional|briefing)\b/
+
+const GREETING_ONLY =
+  /^(?:oi|ola|hey|e\s*ai|eai|hello|hi|bom\s+dia|boa\s+tarde|boa\s+noite|tudo\s+bem|beleza|fala|fala\s+ai)(?:\s+(?:jarvis|cockpit|assistente))?[!.?\s]*$/i
+
+function normalizeGreetingText(query: string): string {
+  return normalize(query)
+    .replace(/[,.!?;:]+$/g, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
 
 /** @deprecated use JARVIS_SAUDACAO_LINES */
 export const JARVIS_GREETING_LINES = JARVIS_SAUDACAO_LINES
@@ -48,26 +55,28 @@ export function isGreetingQuery(query: string): boolean {
   const raw = query.trim()
   if (!raw || raw.length > 60) return false
   if (isHelpQuery(raw)) return false
-  if (DATA_INTENT.test(normalize(raw))) return false
-  if (ACTION_INTENT.test(normalize(raw))) return false
 
-  if (GREETING_ONLY.test(raw)) return true
+  const stripped = normalizeGreetingText(stripAssistantMention(raw))
+  if (!stripped) return false
+  if (DATA_INTENT.test(stripped)) return false
+  if (ACTION_INTENT.test(stripped)) return false
 
-  const q = normalize(raw)
-  if (q.length > 35) return false
-  return /^(oi|ola|bom dia|boa tarde|boa noite)\b/.test(q)
+  if (GREETING_ONLY.test(stripped)) return true
+
+  if (stripped.length > 35) return false
+  return /^(oi|ola|bom dia|boa tarde|boa noite|tudo bem|beleza|fala)\b/.test(stripped)
 }
 
 /** Resposta social curta — saudação por horário ou frase do catálogo. */
 export function buildGreetingReply(query?: string): string {
-  const q = query?.trim().toLowerCase() ?? ''
-  if (/\bbom\s+dia\b/.test(q)) {
+  const q = normalizeGreetingText(stripAssistantMention(query ?? ''))
+  if (/\bbom dia\b/.test(q)) {
     return pickJarvisSaudacaoPorHorario()
   }
-  if (/\bboa\s+tarde\b/.test(q)) {
+  if (/\bboa tarde\b/.test(q)) {
     return pickJarvisSaudacaoPorHorario()
   }
-  if (/\bboa\s+noite\b/.test(q)) {
+  if (/\bboa noite\b/.test(q)) {
     return pickJarvisSaudacaoPorHorario()
   }
   return pickJarvisGreetingLine()
@@ -82,7 +91,7 @@ export function buildOutOfScopeReply(): string {
 }
 
 export function buildHelpReply(): string {
-  return `**O que posso fazer:**\n\n**Navegação:**\n› abrir agenda\n› ir para território e base\n› mostrar WhatsApp\n› voltar para visão geral\n\n**Por cidade:**\n› expectativa em Teresina\n› lideranças em Picos\n› visitas em Picos\n› demandas em Parnaíba\n\n**Campo & Agenda:**\n› últimas visitas de campo\n› quantas viagens em maio de 2026\n› descrição da visita a Teresina\n› cidades visitadas
+  return `**O que posso fazer:**\n\n**Navegação:**\n› abrir agenda\n› ir para território e base\n› mostrar WhatsApp\n› voltar para visão geral\n\n**Por cidade:**\n› expectativa em Teresina\n› lideranças em Picos\n› visitas em Picos\n› demandas em Parnaíba\n\n**Campo & Agenda:**\n› quais cidades importantes preciso visitar\n› últimas visitas de campo\n› quantas viagens em maio de 2026\n› descrição da visita a Teresina\n› cidades visitadas
 › qual cidade eu mais visitei\n\n**Agenda (Google):**\n› compromissos de hoje\n› agenda de amanhã\n\n**Geral:**\n› notícias em destaque\n› projeção chapa federal\n› alertas críticos\n› territórios frios\n\n**WhatsApp:**\n› envia o resumo operacional para o CEO\n› manda briefing de Picos para Maria e João\n› (sempre diga o destinatário — não envia para todos sem você pedir)\n\n**Redes:**\n› métricas do Instagram`
 }
 

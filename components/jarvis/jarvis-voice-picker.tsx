@@ -18,11 +18,14 @@ import {
 import {
   ensureJarvisSystemVoiceDefault,
   fetchJarvisSpeechConfig,
+  formatElevenLabsVoiceLabel,
   getLiveJarvisSystemVoiceLabel,
+  listElevenLabsVoices,
   MACOS_SIRI_VOICE_UNAVAILABLE_HINT,
   syncPreferredVoiceFromSiriNumber,
   isSpeechSynthesisSupported,
   listPortugueseVoices,
+  previewElevenLabsVoice,
   previewOpenAiVoice,
   previewVoice,
   type PortugueseVoiceOption,
@@ -35,11 +38,13 @@ import {
   applyJarvisSystemModeMigration,
   applyJarvisVoiceMigration,
   getJarvisTtsMode,
+  getPreferredElevenLabsVoiceId,
   getPreferredKokoroVoice,
   getPreferredOpenAiVoice,
   getPreferredSiriVoiceNumber,
   getPreferredVoiceUri,
   setJarvisTtsMode,
+  setPreferredElevenLabsVoiceId,
   setPreferredKokoroVoice,
   setPreferredOpenAiVoice,
   setPreferredSiriVoiceNumber,
@@ -84,6 +89,19 @@ export function JarvisVoicePicker({
   const [activeUri, setActiveUri] = useState<string | null>(null)
   const [openAiVoice, setOpenAiVoice] = useState<OpenAiTtsVoiceId>('onyx')
   const [openAiAvailable, setOpenAiAvailable] = useState(false)
+  const [elevenLabsAvailable, setElevenLabsAvailable] = useState(false)
+  const [elevenLabsVoices, setElevenLabsVoices] = useState<
+    Array<{
+      voice_id: string
+      name: string
+      labels: Record<string, string>
+      preview_url: string | null
+      category: string | null
+      freeTierApi: boolean
+    }>
+  >([])
+  const [elevenLabsHint, setElevenLabsHint] = useState<string | null>(null)
+  const [elevenVoiceId, setElevenVoiceId] = useState<string | null>(null)
   const [kokoroVoice, setKokoroVoice] = useState<KokoroVoiceId>(DEFAULT_KOKORO_VOICE)
   const [liveLabel, setLiveLabel] = useState('carregando…')
   const [speechOk, setSpeechOk] = useState(true)
@@ -129,9 +147,29 @@ export function JarvisVoicePicker({
     setTtsMode(mode)
     setKokoroVoice(getPreferredKokoroVoice())
     setOpenAiVoice(getPreferredOpenAiVoice() ?? 'onyx')
+    setElevenVoiceId(getPreferredElevenLabsVoiceId())
 
     void fetchJarvisSpeechConfig().then((cfg) => {
-      setOpenAiAvailable(cfg.available)
+      setOpenAiAvailable(Boolean(cfg.openaiAvailable ?? cfg.available))
+      setElevenLabsAvailable(Boolean(cfg.elevenlabsAvailable ?? cfg.elevenlabs?.available))
+      const modeAfter = getJarvisTtsMode()
+      setTtsMode(modeAfter)
+      const storedEleven = getPreferredElevenLabsVoiceId()
+      if (storedEleven) setElevenVoiceId(storedEleven)
+      else if (cfg.elevenlabs?.defaultVoiceId) {
+        setPreferredElevenLabsVoiceId(cfg.elevenlabs.defaultVoiceId)
+        setElevenVoiceId(cfg.elevenlabs.defaultVoiceId)
+      }
+    })
+
+    void listElevenLabsVoices().then(({ voices, hint }) => {
+      setElevenLabsVoices(voices)
+      if (hint) setElevenLabsHint((prev) => prev ?? hint)
+      const current = getPreferredElevenLabsVoiceId()
+      const currentVoice = voices.find((v) => v.voice_id === current)
+      if (currentVoice && !currentVoice.freeTierApi) {
+        setElevenLabsHint('Voz atual exige plano pago na API. Escolha Adam ou Antoni (marcadas «free»).')
+      }
     })
 
     if (mode === 'system') {
@@ -139,6 +177,10 @@ export function JarvisVoicePicker({
     } else if (mode === 'openai') {
       setSpeechOk(true)
       setLiveLabel(getOpenAiVoiceLabel(getPreferredOpenAiVoice() ?? 'onyx'))
+    } else if (mode === 'elevenlabs') {
+      setSpeechOk(true)
+      const id = getPreferredElevenLabsVoiceId()
+      setLiveLabel(id ? `ElevenLabs · ${id.slice(0, 8)}…` : 'ElevenLabs')
     } else {
       setSpeechOk(true)
       setLiveLabel(getKokoroVoiceLabel(getPreferredKokoroVoice()))
@@ -183,6 +225,16 @@ export function JarvisVoicePicker({
     setOpen(false)
   }
 
+  const selectElevenLabsMode = (voiceId: string) => {
+    setJarvisTtsMode('elevenlabs')
+    setPreferredElevenLabsVoiceId(voiceId)
+    setTtsMode('elevenlabs')
+    setElevenVoiceId(voiceId)
+    const match = elevenLabsVoices.find((v) => v.voice_id === voiceId)
+    setLiveLabel(match ? formatElevenLabsVoiceLabel(match) : `ElevenLabs · ${voiceId.slice(0, 8)}…`)
+    setOpen(false)
+  }
+
   const selectKokoroMode = (voice: KokoroVoiceId) => {
     setJarvisTtsMode('kokoro')
     setPreferredKokoroVoice(voice)
@@ -212,6 +264,8 @@ export function JarvisVoicePicker({
       const previewPhrase = pickJarvisGreetingLine()
       if (ttsMode === 'openai' && openAiAvailable) {
         await previewOpenAiVoice(previewPhrase, openAiVoice)
+      } else if (ttsMode === 'elevenlabs' && elevenVoiceId) {
+        await previewElevenLabsVoice(previewPhrase, elevenVoiceId)
       } else if (ttsMode === 'kokoro') {
         if (!kokoro.isReady && !kokoro.isLoading) await kokoro.warm()
         await previewKokoroVoice(previewPhrase, kokoroVoice)
@@ -228,9 +282,17 @@ export function JarvisVoicePicker({
   const hasFelipeVoice = voices.some((v) => v.name.toLowerCase().includes('felipe'))
   const showSiriUnavailableHint = ttsMode === 'system' && isLikelyMacOs() && !hasFelipeVoice
 
+  const activeElevenVoice = elevenLabsVoices.find((v) => v.voice_id === elevenVoiceId)
+
   const dropdownLabel =
     ttsMode === 'openai'
       ? `Neural · ${getOpenAiVoiceLabel(openAiVoice)}`
+      : ttsMode === 'elevenlabs'
+        ? activeElevenVoice
+          ? `ElevenLabs · ${formatElevenLabsVoiceLabel(activeElevenVoice)}`
+          : elevenVoiceId
+            ? `ElevenLabs · ${elevenVoiceId.slice(0, 10)}…`
+            : 'ElevenLabs · escolha uma voz'
       : ttsMode === 'kokoro'
         ? `Kokoro · ${getKokoroVoiceLabel(kokoroVoice)}`
         : (activeOption?.label ?? liveLabel)
@@ -238,6 +300,8 @@ export function JarvisVoicePicker({
   const canPreview =
     ttsMode === 'openai'
       ? openAiAvailable && !previewing
+      : ttsMode === 'elevenlabs'
+        ? elevenLabsAvailable && Boolean(elevenVoiceId) && !previewing
       : ttsMode === 'kokoro'
         ? !previewing
         : Boolean(speechOk && voices.length > 0 && !previewing)
@@ -268,7 +332,24 @@ export function JarvisVoicePicker({
                 : 'text-[var(--color-text-dim)] hover:text-[var(--color-text-primary)]'
             )}
           >
-            Neural M
+            OpenAI
+          </button>
+        ) : null}
+        {elevenLabsAvailable ? (
+          <button
+            type="button"
+            onClick={() => {
+              if (elevenVoiceId) selectElevenLabsMode(elevenVoiceId)
+              else setJarvisTtsMode('elevenlabs')
+            }}
+            className={cn(
+              'flex-1 rounded px-2 py-1 font-jarvis-mono text-[8px] uppercase tracking-wider transition-colors',
+              ttsMode === 'elevenlabs'
+                ? 'bg-[rgba(0,212,255,0.12)] text-[var(--color-core)]'
+                : 'text-[var(--color-text-dim)] hover:text-[var(--color-text-primary)]'
+            )}
+          >
+            ElevenLabs
           </button>
         ) : null}
       </div>
@@ -281,6 +362,8 @@ export function JarvisVoicePicker({
       >
         {ttsMode === 'openai'
           ? 'openai tts · voz masculina estável em pt-br'
+          : ttsMode === 'elevenlabs'
+            ? 'elevenlabs flash v2.5 · teste vozes pt-br · plano free ~10k créditos/mês'
           : ttsMode === 'kokoro'
             ? 'experimental · inglês · qualidade ruim em pt'
             : 'siri voz 1/2 não aparecem no navegador · baixe felipe aprimorada'}
@@ -293,7 +376,8 @@ export function JarvisVoicePicker({
             onClick={() => setOpen((v) => !v)}
             disabled={
               (ttsMode === 'system' && (!speechOk || voices.length === 0)) ||
-              (ttsMode === 'openai' && !openAiAvailable)
+              (ttsMode === 'openai' && !openAiAvailable) ||
+              (ttsMode === 'elevenlabs' && (!elevenLabsAvailable || elevenLabsVoices.length === 0))
             }
             className="flex w-full items-center justify-between gap-2 rounded bg-transparent px-2 py-1.5 font-jarvis-mono text-[10px] text-[var(--color-text-code)] hover:bg-[rgba(0,212,255,0.06)] focus:outline-none focus:ring-1 focus:ring-[var(--color-core)] disabled:opacity-40"
             aria-haspopup="listbox"
@@ -334,6 +418,31 @@ export function JarvisVoicePicker({
                         </span>
                         <span className="block font-jarvis-mono text-[8px] text-[var(--color-text-dim)]">
                           {v.tone}
+                        </span>
+                      </button>
+                    </li>
+                  ))
+                : ttsMode === 'elevenlabs'
+                ? elevenLabsVoices.map((v) => (
+                    <li key={v.voice_id} role="option" aria-selected={v.voice_id === elevenVoiceId}>
+                      <button
+                        type="button"
+                        onClick={() => selectElevenLabsMode(v.voice_id)}
+                        className={cn(
+                          'w-full px-2.5 py-1.5 text-left hover:bg-[rgba(0,212,255,0.08)]',
+                          v.voice_id === elevenVoiceId
+                            ? 'text-[var(--color-core)]'
+                            : 'text-[var(--color-text-primary)]'
+                        )}
+                      >
+                        <span className="block font-jarvis-mono text-[10px]">
+                          {formatElevenLabsVoiceLabel(v)}
+                          {v.voice_id === elevenVoiceId ? ' · em uso' : ''}
+                        </span>
+                        <span className="block font-jarvis-mono text-[8px] text-[var(--color-text-dim)]">
+                          {v.freeTierApi
+                            ? `${v.labels?.use || v.labels?.accent || v.category || 'premade'} · API free`
+                            : `${v.category || 'biblioteca'} · plano pago na API`}
                         </span>
                       </button>
                     </li>
@@ -432,6 +541,27 @@ export function JarvisVoicePicker({
             ? `em uso nas respostas · ${liveLabel}`
             : 'respostas só no painel · voz desligada'}
         </p>
+      ) : ttsMode === 'elevenlabs' ? (
+        <>
+          <p
+            className={cn(
+              'text-center font-jarvis-mono uppercase tracking-wider',
+              voiceOutputEnabled ? 'text-[var(--color-online)]' : 'text-[var(--color-text-dim)]',
+              compact ? 'text-[7px]' : 'text-[7px]'
+            )}
+          >
+            {voiceOutputEnabled
+              ? activeElevenVoice
+                ? `elevenlabs · ${formatElevenLabsVoiceLabel(activeElevenVoice)}`
+                : 'elevenlabs · escolha uma voz na lista'
+              : 'respostas só no painel · voz desligada'}
+          </p>
+          {elevenLabsHint ? (
+            <p className="text-center font-jarvis-mono text-[7px] leading-snug text-[rgba(255,180,80,0.95)]">
+              {elevenLabsHint}
+            </p>
+          ) : null}
+        </>
       ) : ttsMode === 'openai' ? (
         <p
           className={cn(

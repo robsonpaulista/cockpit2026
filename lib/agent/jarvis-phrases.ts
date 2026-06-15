@@ -5,10 +5,10 @@
 
 const phrases = {
   saudacao: [
-    'E aí. O que tem?',
+    'E aí. Pode falar.',
     'Opa. Pode falar.',
     'Fala.',
-    'Tô aqui. O que é?',
+    'Tô aqui, em que posso ajudar.',
     'Oi. Por onde começa?',
     'Pronto. Fala.',
   ],
@@ -16,7 +16,7 @@ const phrases = {
   saudacaoHorario: [
     '{periodo}, meu líder.',
     '{periodo}, fi.',
-    '{periodo}, meu líder. O que tem?',
+    '{periodo}, meu líder. Em que posso ajudar.',
     '{periodo}, fi. Pode falar.',
   ],
 
@@ -91,7 +91,7 @@ const phrases = {
   aguardando: [
     'O que mais?',
     'Pode falar.',
-    'Tô aqui.',
+    'Tô aqui, em que posso ajudar?',
     'Fala.',
   ],
 
@@ -202,12 +202,13 @@ export function formatJarvisExpectativaCidadeReply(options: {
   liderancasBloco?: string
 }): string {
   const intro = pickJarvisExpectativaPiorCenario(options.totalFormatado)
+  const cabecalho = `**${options.cidade}**`
 
   if (!options.detalhe) {
-    return intro
+    return [cabecalho, '', intro].join('\n')
   }
 
-  const linhas = [`**${options.cidade}**`, '', intro]
+  const linhas = [cabecalho, '', intro]
   if (options.liderancasBloco) {
     linhas.push('', options.liderancasBloco)
   }

@@ -19,6 +19,7 @@ export type VisitasCampoModo =
   | 'lista_cidade'
   | 'cidades'
   | 'cidade_mais_visitada'
+  | 'prioridade_visitas'
 
 export interface ResolveVisitasCampoOptions {
   cidade?: string

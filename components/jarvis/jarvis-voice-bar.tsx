@@ -69,8 +69,8 @@ export function JarvisVoiceBar({
         ? 'escuta pausada · toque no microfone'
         : isListening
           ? wakeStandby
-            ? 'escuta ativa · diga jarvis…'
-            : 'ouvindo comando…'
+            ? 'escuta ativa · diga jarvis ou cumprimente…'
+            : 'ouvindo · comando ou saudação…'
           : 'iniciando escuta…'
 
   return (

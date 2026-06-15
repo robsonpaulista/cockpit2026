@@ -40,8 +40,10 @@ import {
 export { MACOS_SIRI_VOICE_UNAVAILABLE_HINT }
 import {
   getJarvisTtsMode,
+  getPreferredElevenLabsVoiceId,
   getPreferredSiriVoiceNumber,
   getPreferredVoiceUri,
+  applyJarvisElevenLabsEnvDefault,
   setJarvisTtsMode,
   setPreferredSiriVoiceNumber,
   setPreferredVoiceUri,
@@ -60,10 +62,20 @@ export type { OpenAiTtsVoiceId }
 
 export interface JarvisSpeechConfig {
   available: boolean
+  openaiAvailable?: boolean
+  elevenlabsAvailable?: boolean
+  defaultProvider?: 'openai' | 'elevenlabs'
   defaultVoice: OpenAiTtsVoiceId
   model: string
   supportsInstructions?: boolean
   crossDevice?: boolean
+  elevenlabs?: {
+    available: boolean
+    defaultVoiceId: string | null
+    model: string
+    freeTierHint?: string
+    suggestedFreeVoiceId?: string | null
+  }
 }
 
 /** Pausa entre compromissos da agenda (ms). */
@@ -391,7 +403,16 @@ export async function fetchJarvisSpeechConfig(): Promise<JarvisSpeechConfig> {
     }
     const data = (await res.json()) as JarvisSpeechConfig
     cachedSpeechConfig = data
-    if (!data.available) setJarvisTtsMode('system')
+    if (!data.available) {
+      if (getJarvisTtsMode() !== 'openai' && getJarvisTtsMode() !== 'kokoro') {
+        setJarvisTtsMode('system')
+      }
+    } else if (
+      data.defaultProvider === 'elevenlabs' &&
+      data.elevenlabs?.available
+    ) {
+      applyJarvisElevenLabsEnvDefault(data.elevenlabs.defaultVoiceId)
+    }
     return data
   } catch {
     return { available: false, defaultVoice: 'onyx', model: 'tts-1-hd' }
@@ -405,6 +426,7 @@ export function getActiveJarvisVoiceLabel(voiceId: OpenAiTtsVoiceId): string {
 /** Padrão Jarvis no Mac: Felipe (Aprimorada) se o navegador expuser; senão melhor masculina pt-BR. */
 export async function ensureJarvisSystemVoiceDefault(): Promise<void> {
   if (!isSpeechSynthesisSupported()) return
+  if (getJarvisTtsMode() !== 'system') return
   if (getPreferredVoiceUri() || getPreferredSiriVoiceNumber()) return
 
   const voices = await ensureVoicesLoaded()
@@ -414,7 +436,6 @@ export async function ensureJarvisSystemVoiceDefault(): Promise<void> {
   if (!pick) return
 
   setPreferredVoiceUri(pick.voiceURI)
-  setJarvisTtsMode('system')
 }
 
 /** Nome da voz do sistema em uso. */
@@ -429,27 +450,93 @@ export async function getLiveJarvisSystemVoiceLabel(): Promise<string> {
   return voice?.name ?? 'pt-BR automática'
 }
 
-async function fetchNeuralSpeechBlob(text: string, voice?: OpenAiTtsVoiceId): Promise<Blob | null> {
+async function fetchNeuralSpeechBlob(
+  text: string,
+  voice?: OpenAiTtsVoiceId,
+  provider?: 'openai' | 'elevenlabs',
+  elevenVoiceIdOverride?: string | null
+): Promise<{ blob: Blob | null; error?: string }> {
   const config = await fetchJarvisSpeechConfig()
   const { resolvePreferredOpenAiVoice } = await import('@/lib/agent/voice-preference')
-  const effectiveVoice = voice ?? resolvePreferredOpenAiVoice(config.defaultVoice)
+  const effectiveProvider =
+    provider ??
+    (getJarvisTtsMode() === 'elevenlabs' ? 'elevenlabs' : 'openai')
+
+  const payload: Record<string, string> = { text }
+  if (effectiveProvider === 'elevenlabs') {
+    payload.provider = 'elevenlabs'
+    const voiceId =
+      elevenVoiceIdOverride?.trim() ||
+      getPreferredElevenLabsVoiceId() ||
+      config.elevenlabs?.defaultVoiceId ||
+      ''
+    if (!voiceId) {
+      return {
+        blob: null,
+        error: 'Nenhuma voz ElevenLabs selecionada. Configure ELEVENLABS_VOICE_ID.',
+      }
+    }
+    payload.elevenVoiceId = voiceId
+  } else {
+    payload.provider = 'openai'
+    payload.voice = voice ?? resolvePreferredOpenAiVoice(config.defaultVoice)
+  }
 
   const res = await fetch('/api/agent/speech', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ text, voice: effectiveVoice }),
+    body: JSON.stringify(payload),
     cache: 'no-store',
   })
-  if (!res.ok) return null
+  if (!res.ok) {
+    let error = `Erro TTS (${res.status})`
+    try {
+      const data = (await res.json()) as { error?: string }
+      if (data.error?.trim()) error = data.error.trim()
+    } catch {
+      const textErr = await res.text().catch(() => '')
+      if (textErr.trim()) error = textErr.slice(0, 180)
+    }
+    return { blob: null, error }
+  }
   const blob = await res.blob()
-  return blob.size ? blob : null
+  if (!blob.size) {
+    return { blob: null, error: 'Áudio vazio retornado pelo servidor.' }
+  }
+  return { blob }
 }
 
 export async function previewOpenAiVoice(text: string, voiceId: OpenAiTtsVoiceId): Promise<boolean> {
   if (typeof window === 'undefined') return false
 
   stopSpeaking()
-  const blob = await fetchNeuralSpeechBlob(text, voiceId)
+  const { blob, error } = await fetchNeuralSpeechBlob(text, voiceId, 'openai')
+  if (!blob) return false
+
+  releaseCurrentAudio()
+  const url = URL.createObjectURL(blob)
+  currentAudioUrl = url
+  const audio = new Audio(url)
+  configureJarvisAudioElement(audio)
+  currentAudio = audio
+
+  try {
+    primeSpeechSynthesis()
+    await audio.play()
+    await waitForAudioEnd(audio)
+    releaseCurrentAudio()
+    return true
+  } catch {
+    releaseCurrentAudio()
+    return false
+  }
+}
+
+export async function previewElevenLabsVoice(text: string, voiceId: string): Promise<boolean> {
+  if (typeof window === 'undefined') return false
+
+  stopSpeaking()
+  const { blob } = await fetchNeuralSpeechBlob(text, undefined, 'elevenlabs', voiceId)
   if (!blob) return false
 
   releaseCurrentAudio()
@@ -478,6 +565,20 @@ async function speakWithNeuralApi(
   if (typeof window === 'undefined') return null
   if (options.preferNeural === false) return null
 
+  const neuralProvider =
+    getJarvisTtsMode() === 'elevenlabs' ? ('elevenlabs' as const) : ('openai' as const)
+
+  const failNeural = (error?: string) => {
+    options.onError?.(
+      error ??
+        (neuralProvider === 'elevenlabs'
+          ? 'ElevenLabs indisponível. Verifique a API key e permissões text_to_speech.'
+          : 'TTS neural indisponível.')
+    )
+    options.onEnd?.()
+    return stopSpeaking
+  }
+
   try {
     if (options.segments && options.segments.length > 0) {
       segmentSpeechCancelled = false
@@ -488,11 +589,11 @@ async function speakWithNeuralApi(
         const chunk = stripSpeechSegment(options.segments[i]).slice(0, MAX_SPEAK_CHARS)
         if (!chunk) continue
 
-        const blob = await fetchNeuralSpeechBlob(chunk)
-        if (!blob) return null
+        const { blob, error } = await fetchNeuralSpeechBlob(chunk, undefined, neuralProvider)
+        if (!blob) return failNeural(error)
 
         const ok = await playNeuralBlob(blob, options)
-        if (!ok) return null
+        if (!ok) return failNeural('Não foi possível reproduzir o áudio.')
 
         const isLast = i === options.segments.length - 1
         if (!isLast && !segmentSpeechCancelled) {
@@ -506,15 +607,19 @@ async function speakWithNeuralApi(
       return stopSpeaking
     }
 
-    const blob = await fetchNeuralSpeechBlob(stripTextForNeuralSpeech(text))
-    if (!blob) return null
+    const { blob, error } = await fetchNeuralSpeechBlob(
+      stripTextForNeuralSpeech(text),
+      undefined,
+      neuralProvider
+    )
+    if (!blob) return failNeural(error)
 
     const ok = await playNeuralBlob(blob, options)
-    if (!ok) return null
+    if (!ok) return failNeural('Não foi possível reproduzir o áudio.')
     options.onEnd?.()
     return stopSpeaking
   } catch {
-    return null
+    return failNeural()
   }
 }
 
@@ -660,11 +765,32 @@ export async function speakText(text: string, options: SpeakTextOptions = {}): P
   await warmAudioOutput()
   stopSpeaking()
 
-  const mode = typeof window !== 'undefined' ? getJarvisTtsMode() : 'system'
   const config = typeof window !== 'undefined' ? await fetchJarvisSpeechConfig() : null
-  const neuralAvailable = config?.available ?? false
+  const mode = typeof window !== 'undefined' ? getJarvisTtsMode() : 'system'
+  const elevenAvailable = Boolean(
+    config?.elevenlabsAvailable ?? config?.elevenlabs?.available ?? false
+  )
+  const openAiAvailable = Boolean(config?.openaiAvailable ?? config?.available ?? false)
   const useKokoro = mode === 'kokoro' && isKokoroSupported() && options.preferNeural !== false
-  const useOpenAi = mode === 'openai' && neuralAvailable && options.preferNeural !== false
+  const useElevenLabs = mode === 'elevenlabs' && elevenAvailable && options.preferNeural !== false
+  const useOpenAi = mode === 'openai' && openAiAvailable && options.preferNeural !== false
+
+  const failExplicitMode = (message: string) => {
+    options.onError?.(message)
+    options.onEnd?.()
+    return () => {}
+  }
+
+  if (mode === 'elevenlabs' && !useElevenLabs) {
+    return failExplicitMode(
+      elevenAvailable
+        ? 'ElevenLabs indisponível nesta sessão.'
+        : 'ElevenLabs indisponível. Verifique ELEVENLABS_API_KEY no servidor.'
+    )
+  }
+  if (mode === 'openai' && !useOpenAi) {
+    return failExplicitMode('OpenAI TTS indisponível. Verifique OPENAI_API_KEY no servidor.')
+  }
 
   if (useKokoro) {
     try {
@@ -676,9 +802,13 @@ export async function speakText(text: string, options: SpeakTextOptions = {}): P
     }
   }
 
-  if (useOpenAi) {
-    const neural = await speakWithNeuralApi(text, options)
+  if (useElevenLabs || useOpenAi) {
+    const neural = await speakWithNeuralApi(
+      text,
+      useElevenLabs ? { ...options, preferNeural: true } : options
+    )
     if (neural) return neural
+    return () => {}
   }
 
   const browser = await speakWithBrowser(text, { ...options, rate: options.rate ?? 0.9, lang: 'pt-BR' })
@@ -687,6 +817,55 @@ export async function speakText(text: string, options: SpeakTextOptions = {}): P
   options.onError?.('Nenhuma voz pt-BR disponível neste dispositivo.')
   options.onEnd?.()
   return () => {}
+}
+
+export async function listElevenLabsVoices(): Promise<{
+  voices: Array<{
+    voice_id: string
+    name: string
+    labels: Record<string, string>
+    preview_url: string | null
+    category: string | null
+    freeTierApi: boolean
+  }>
+  hint: string | null
+}> {
+  try {
+    const res = await fetch('/api/agent/speech/elevenlabs-voices', { cache: 'no-store' })
+    if (!res.ok) return { voices: [], hint: null }
+    const data = (await res.json()) as {
+      voices?: Array<{
+        voice_id: string
+        name: string
+        labels: Record<string, string>
+        preview_url: string | null
+        category: string | null
+        freeTierApi?: boolean
+      }>
+      hint?: string
+    }
+    return {
+      voices: (data.voices ?? []).map((v) => ({
+        ...v,
+        freeTierApi: v.freeTierApi ?? true,
+      })),
+      hint: data.hint ?? null,
+    }
+  } catch {
+    return { voices: [], hint: null }
+  }
+}
+
+export function formatElevenLabsVoiceLabel(voice: {
+  name: string
+  labels?: Record<string, string>
+}): string {
+  const accent = voice.labels?.accent || voice.labels?.language
+  const gender = voice.labels?.gender
+  const parts = [voice.name]
+  if (gender) parts.push(gender)
+  if (accent) parts.push(accent)
+  return parts.join(' · ')
 }
 
 /** Voz selecionada no navegador (para diagnóstico/UI). */

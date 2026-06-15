@@ -1,5 +1,8 @@
 import { detectSidebarNavigate } from '@/lib/agent/detect-sidebar-navigate'
 import { isGreetingQuery, isHelpQuery } from '@/lib/agent/greeting-reply'
+import {
+  isExpectativaDetalheFollowUpQuery,
+} from '@/lib/agent/expectativa-detalhe-followup'
 import { parseAgendaDayScopeFromAnswer } from '@/lib/agent/agenda-query'
 import { parsePesquisaTipoFromQuery } from '@/lib/agent/format-pesquisas'
 
@@ -16,7 +19,7 @@ const CANCEL_PHRASES =
 
 /** Nova consulta de dados — não é resposta a um follow-up pendente. */
 const NEW_DATA_INTENT =
-  /\b(expectativa|pesquisa|pesquisas|demanda|demandas|visita|visitas|agenda|compromisso|noticia|noticias|alerta|alertas|chapa|chapas|whatsapp|envia|enviar|envie|mande|briefing|resumo operacional|territorio|territorio|instagram|lideranca|liderancas|intencao|votos|projecao|quantos|quantas|qual a|quais os|quais as|buscar|busque|liste|listar|novamente|de novo)\b/
+  /\b(expectativa|pesquisa|pesquisas|demanda|demandas|visita|visitas|visitar|visitei|visite|agenda|compromisso|noticia|noticias|alerta|alertas|chapa|chapas|whatsapp|envia|enviar|envie|mande|briefing|resumo operacional|territorio|territorio|instagram|lideranca|liderancas|intencao|votos|projecao|quantos|quantas|qual a|quais os|quais as|buscar|busque|liste|listar|novamente|de novo|relacao|relação|preciso visitar|nao visitei|nunca visitei)\b/
 
 /**
  * Detecta quando o usuário mudou de assunto e deve sair de um follow-up pendente
@@ -34,6 +37,7 @@ export function shouldBreakJarvisPendingFlow(
 
   if (detectSidebarNavigate(raw, currentPath)) return true
   if (isHelpQuery(raw) || isGreetingQuery(raw)) return true
+  if (isExpectativaDetalheFollowUpQuery(raw)) return false
 
   const q = normalize(raw)
   if (CANCEL_PHRASES.test(q)) return true

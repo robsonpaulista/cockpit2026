@@ -1,9 +1,9 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { ArrowRight, X } from 'lucide-react'
+import { ArrowRight, FileText, X } from 'lucide-react'
 import type { JarvisResultView } from '@/lib/agent/jarvis-result-view'
-import { jarvisPanelClass } from '@/lib/jarvis-hud-tokens'
+import { JARVIS_READ_ALOUD_HINT } from '@/lib/agent/jarvis-read-aloud'
 import { cn } from '@/lib/utils'
 import './jarvis-neural.css'
 
@@ -22,23 +22,29 @@ interface JarvisResultPanelProps {
   className?: string
 }
 
-function StatCard({ label, value, highlight }: { label: string; value: string; highlight?: boolean }) {
+function ReportStat({
+  label,
+  value,
+  highlight,
+}: {
+  label: string
+  value: string
+  highlight?: boolean
+}) {
   return (
     <div
       className={cn(
-        'rounded border px-2.5 py-2 sm:px-3 sm:py-2.5',
+        'rounded-lg border px-3 py-2.5',
         highlight
-          ? 'border-[rgba(0,212,255,0.45)] bg-[rgba(0,212,255,0.08)]'
-          : 'border-[rgba(0,212,255,0.18)] bg-[rgba(5,21,37,0.6)]'
+          ? 'border-slate-300 bg-slate-100'
+          : 'border-slate-200 bg-white'
       )}
     >
-      <p className="font-jarvis-mono text-[7px] uppercase tracking-[0.14em] text-[var(--color-text-dim)] sm:text-[8px]">
-        {label}
-      </p>
+      <p className="text-[11px] font-medium uppercase tracking-wide text-slate-500">{label}</p>
       <p
         className={cn(
-          'mt-0.5 font-jarvis-display text-base font-semibold tracking-wide sm:mt-1 sm:text-lg',
-          highlight ? 'text-[var(--color-core)]' : 'text-[var(--color-text-primary)]'
+          'mt-1 text-lg font-semibold leading-snug text-slate-900',
+          highlight && 'text-slate-950'
         )}
       >
         {value}
@@ -65,8 +71,7 @@ export function JarvisResultPanel({
   return (
     <div
       className={cn(
-        jarvisPanelClass,
-        'jarvis-result-panel flex h-full min-h-0 flex-col overflow-hidden border border-[rgba(0,212,255,0.28)]',
+        'jarvis-result-panel jarvis-result-panel--report flex h-full min-h-0 flex-col overflow-hidden rounded-xl border border-slate-200/90 bg-[#faf9f7] text-slate-900 shadow-[0_18px_50px_rgba(15,23,42,0.22)]',
         visible ? 'jarvis-result-panel--visible' : 'jarvis-result-panel--enter',
         isSpeaking && 'jarvis-result-panel--speaking',
         className
@@ -74,90 +79,130 @@ export function JarvisResultPanel({
       role="region"
       aria-labelledby="jarvis-result-title"
     >
-      <div className="flex shrink-0 items-start justify-between gap-2 border-b border-[rgba(0,212,255,0.15)] px-3 py-2.5 sm:px-4 sm:py-3">
+      <div className="flex shrink-0 items-start justify-between gap-3 border-b border-slate-200 bg-white px-4 py-3 sm:px-5 sm:py-4">
         <div className="min-w-0">
-          <p className="font-jarvis-mono text-[7px] uppercase tracking-[0.18em] text-[var(--color-online)] sm:text-[8px]">
-            resultado · jarvis
-            {isSpeaking ? (
-              <span className="ml-2 inline-flex items-center gap-0.5 text-[var(--color-core)]">
-                <span className="jarvis-audio-bar inline-block h-2 w-0.5 rounded-sm bg-current" />
-                <span className="jarvis-audio-bar inline-block h-2.5 w-0.5 rounded-sm bg-current" />
-                <span className="jarvis-audio-bar inline-block h-2 w-0.5 rounded-sm bg-current" />
-              </span>
-            ) : null}
-          </p>
+          <div className="flex items-center gap-2 text-slate-500">
+            <FileText className="h-3.5 w-3.5 shrink-0" aria-hidden />
+            <p className="text-[11px] font-semibold uppercase tracking-[0.14em]">
+              Relatório Jarvis
+              {isSpeaking ? (
+                <span className="ml-2 inline-flex items-center gap-0.5 text-sky-700">
+                  <span className="jarvis-audio-bar inline-block h-2 w-0.5 rounded-sm bg-current" />
+                  <span className="jarvis-audio-bar inline-block h-2.5 w-0.5 rounded-sm bg-current" />
+                  <span className="jarvis-audio-bar inline-block h-2 w-0.5 rounded-sm bg-current" />
+                </span>
+              ) : null}
+            </p>
+          </div>
           <h2
             id="jarvis-result-title"
-            className="mt-0.5 line-clamp-2 font-jarvis-display text-base font-bold leading-tight tracking-wide text-[var(--color-core)] sm:mt-1 sm:text-xl"
+            className="mt-1 font-jarvis-ui text-xl font-bold leading-tight text-slate-950 sm:text-2xl"
           >
             {view.title}
           </h2>
           {view.subtitle ? (
-            <p className="mt-0.5 line-clamp-2 font-jarvis-mono text-[9px] text-[var(--color-text-dim)] sm:text-[10px]">
-              {view.subtitle}
-            </p>
+            <p className="mt-1 text-sm leading-snug text-slate-600">{view.subtitle}</p>
           ) : null}
         </div>
         <button
           type="button"
           onClick={onClose}
-          className="shrink-0 rounded p-1 text-[var(--color-text-dim)] hover:bg-[rgba(0,212,255,0.08)] hover:text-[var(--color-core)]"
-          aria-label="Fechar painel de resultado"
+          className="shrink-0 rounded-lg p-1.5 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700"
+          aria-label="Fechar relatório"
         >
-          <X className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+          <X className="h-4 w-4 sm:h-5 sm:w-5" />
         </button>
       </div>
 
-        <div className="min-h-0 flex-1 overflow-y-auto px-3 py-3 sm:px-4 sm:py-4">
-          {view.agendaItems.length > 0 ? (
-            <ul className="space-y-2.5 sm:space-y-3">
-              {view.agendaItems.map((item, idx) => (
-                <li
-                  key={`${idx}-${item.time}-${item.title.slice(0, 16)}`}
-                  className="rounded border border-[rgba(0,212,255,0.2)] bg-[rgba(0,212,255,0.04)] px-3 py-2.5 sm:px-3.5 sm:py-3"
-                >
-                  <div className="flex items-start gap-2.5">
-                    <span className="shrink-0 rounded bg-[rgba(0,212,255,0.14)] px-2 py-0.5 font-jarvis-mono text-[10px] font-medium text-[var(--color-core)] sm:text-[11px]">
-                      {item.time}
-                    </span>
-                    <p className="min-w-0 flex-1 font-jarvis-display text-[12px] font-semibold leading-snug text-[var(--color-text-primary)] sm:text-[13px]">
+      <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4 sm:px-5 sm:py-5">
+        {view.newsItems.length > 0 ? (
+          <ol className="space-y-4">
+            {view.newsItems.map((item) => (
+              <li
+                key={`${item.index}-${item.title.slice(0, 24)}`}
+                className="rounded-xl border border-slate-200 bg-white px-4 py-3.5 shadow-sm sm:px-5 sm:py-4"
+              >
+                <div className="flex items-start gap-3">
+                  <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-slate-900 text-xs font-bold text-white">
+                    {item.index}
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-base font-semibold leading-snug text-slate-950 sm:text-[17px]">
                       {item.title}
                     </p>
+                    {item.meta ? (
+                      <p className="mt-1.5 text-xs leading-relaxed text-slate-500 sm:text-sm">
+                        {item.meta}
+                      </p>
+                    ) : null}
+                    {item.url ? (
+                      <p className="mt-1 truncate text-[11px] text-sky-700">{item.url}</p>
+                    ) : null}
                   </div>
-                  {item.detail ? (
-                    <p className="mt-1.5 pl-[calc(2.5rem+0.625rem)] font-jarvis-mono text-[9px] leading-relaxed text-[var(--color-text-dim)] sm:text-[10px]">
-                      {item.detail}
-                    </p>
-                  ) : null}
-                  {item.description ? (
-                    <p className="mt-1 pl-[calc(2.5rem+0.625rem)] line-clamp-3 font-jarvis-mono text-[8px] leading-relaxed text-[var(--color-text-dim)] opacity-80 sm:text-[9px]">
-                      {item.description}
-                    </p>
-                  ) : null}
-                </li>
-              ))}
-            </ul>
-          ) : null}
+                </div>
+              </li>
+            ))}
+          </ol>
+        ) : null}
 
-          {view.stats.length > 0 ? (
-          <div className={cn('grid gap-2', view.stats.length > 1 ? 'grid-cols-2' : 'grid-cols-1')}>
+        {view.agendaItems.length > 0 ? (
+          <ul className="space-y-3">
+            {view.agendaItems.map((item, idx) => (
+              <li
+                key={`${idx}-${item.time}-${item.title.slice(0, 16)}`}
+                className="rounded-xl border border-slate-200 bg-white px-4 py-3.5 shadow-sm"
+              >
+                <div className="flex items-start gap-3">
+                  <span className="shrink-0 rounded-md bg-slate-900 px-2.5 py-1 text-xs font-semibold text-white">
+                    {item.time}
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-base font-semibold leading-snug text-slate-950">
+                      {item.title}
+                    </p>
+                    {item.detail ? (
+                      <p className="mt-1 text-sm text-slate-600">{item.detail}</p>
+                    ) : null}
+                    {item.description ? (
+                      <p className="mt-1 line-clamp-3 text-sm leading-relaxed text-slate-500">
+                        {item.description}
+                      </p>
+                    ) : null}
+                  </div>
+                </div>
+              </li>
+            ))}
+          </ul>
+        ) : null}
+
+        {view.stats.length > 0 ? (
+          <div
+            className={cn(
+              'grid gap-3',
+              view.stats.length > 1 ? 'grid-cols-2' : 'grid-cols-1',
+              (view.newsItems.length > 0 || view.agendaItems.length > 0) && 'mt-4'
+            )}
+          >
             {view.stats.map((stat, idx) => (
-              <StatCard key={`${stat.label}-${idx}`} {...stat} />
+              <ReportStat key={`${stat.label}-${idx}`} {...stat} />
             ))}
           </div>
         ) : null}
 
         {view.sections.map((section, idx) => (
-          <div key={`${section.heading ?? 'section'}-${idx}`} className="mt-3 first:mt-0 sm:mt-4">
+          <div
+            key={`${section.heading ?? 'section'}-${idx}`}
+            className="mt-4 rounded-xl border border-slate-200 bg-white px-4 py-3.5 shadow-sm first:mt-0 sm:px-5 sm:py-4"
+          >
             {section.heading ? (
-              <h3 className="mb-1.5 font-jarvis-mono text-[8px] uppercase tracking-[0.16em] text-[var(--color-text-dim)] sm:text-[9px]">
+              <h3 className="mb-2 text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">
                 {section.heading}
               </h3>
             ) : null}
             {section.lines.map((line, lineIdx) => (
               <p
                 key={`${idx}-${lineIdx}-${line.slice(0, 24)}`}
-                className="font-jarvis-mono text-[10px] leading-relaxed text-[var(--color-text-primary)] sm:text-[11px]"
+                className="text-sm leading-relaxed text-slate-800 sm:text-[15px]"
               >
                 {line}
               </p>
@@ -166,13 +211,13 @@ export function JarvisResultPanel({
         ))}
 
         {view.bullets.length > 0 ? (
-          <ul className="mt-3 space-y-1 sm:mt-4 sm:space-y-1.5">
+          <ul className="mt-4 space-y-2 rounded-xl border border-slate-200 bg-white px-4 py-3.5 shadow-sm sm:px-5 sm:py-4">
             {view.bullets.map((item, idx) => (
               <li
                 key={`${idx}-${item.slice(0, 24)}`}
-                className="flex gap-1.5 font-jarvis-mono text-[10px] leading-relaxed text-[var(--color-text-primary)] sm:gap-2 sm:text-[11px]"
+                className="flex gap-2 text-sm leading-relaxed text-slate-800 sm:text-[15px]"
               >
-                <span className="shrink-0 text-[var(--color-core)]">›</span>
+                <span className="shrink-0 font-semibold text-slate-400">{idx + 1}.</span>
                 <span>{item}</span>
               </li>
             ))}
@@ -180,30 +225,33 @@ export function JarvisResultPanel({
         ) : null}
 
         {view.footer ? (
-          <p className="mt-3 rounded border border-[rgba(0,212,255,0.12)] bg-[rgba(0,212,255,0.04)] px-2.5 py-2 font-jarvis-mono text-[9px] leading-relaxed text-[var(--color-text-dim)] sm:mt-4 sm:text-[10px]">
+          <p className="mt-4 rounded-lg border border-amber-200/80 bg-amber-50 px-3 py-2.5 text-sm leading-relaxed text-amber-950">
             {view.footer}
           </p>
         ) : null}
       </div>
 
-      <div className="flex shrink-0 flex-wrap items-center justify-end gap-2 border-t border-[rgba(0,212,255,0.12)] px-3 py-2 sm:px-4 sm:py-3">
+      <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-t border-slate-200 bg-white px-4 py-3 sm:px-5">
+        <p className="text-[11px] leading-snug text-slate-500 sm:text-xs">{JARVIS_READ_ALOUD_HINT}</p>
+        <div className="flex flex-wrap items-center justify-end gap-2">
         {action && onAction ? (
           <button
             type="button"
             onClick={() => onAction(action)}
-            className="inline-flex items-center gap-1.5 rounded border border-[rgba(0,212,255,0.35)] px-2.5 py-1 font-jarvis-mono text-[8px] uppercase tracking-wider text-[var(--color-core)] hover:bg-[rgba(0,212,255,0.08)] sm:px-3 sm:py-1.5 sm:text-[9px]"
+            className="inline-flex items-center gap-1.5 rounded-lg bg-slate-900 px-3 py-2 text-xs font-semibold uppercase tracking-wide text-white transition-colors hover:bg-slate-800 sm:text-[11px]"
           >
-            <ArrowRight className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
+            <ArrowRight className="h-3.5 w-3.5" />
             {action.label}
           </button>
         ) : null}
         <button
           type="button"
           onClick={onClose}
-          className="rounded px-2.5 py-1 font-jarvis-mono text-[8px] uppercase tracking-wider text-[var(--color-text-dim)] hover:text-[var(--color-core)] sm:px-3 sm:py-1.5 sm:text-[9px]"
+          className="rounded-lg px-3 py-2 text-xs font-semibold uppercase tracking-wide text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-800 sm:text-[11px]"
         >
-          fechar
+          Fechar
         </button>
+        </div>
       </div>
     </div>
   )
