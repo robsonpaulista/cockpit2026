@@ -44,11 +44,15 @@ interface TerritorioInfo {
 export interface PrioridadeCampoMapaRow {
   cidade: string
   expectativaVotos: number
+  eleitorado?: number
+  semExpectativa?: boolean
   visitas: number
   agendas: number
   motivo: string
   ultimaVisita: string | null
 }
+
+type PrioridadeCampoFiltro = 'todos' | 'sem-lideranca' | 'com-previsao'
 
 interface MapaPresencaProps {
   cidadesComPresenca: string[]
@@ -171,6 +175,7 @@ export function MapaPresenca({
   const [filtroRegiao, setFiltroRegiao] = useState<string>('todas')
   const [mapStats, setMapStats] = useState<MapStats | null>(null)
   const [prioridadeBuscaMunicipio, setPrioridadeBuscaMunicipio] = useState<string>('')
+  const [prioridadeListaFiltro, setPrioridadeListaFiltro] = useState<PrioridadeCampoFiltro>('sem-lideranca')
   const [cidadePrioridadeSelecionada, setCidadePrioridadeSelecionada] = useState<string>('')
 
   useEffect(() => {
@@ -189,6 +194,7 @@ export function MapaPresenca({
   useEffect(() => {
     if (!isNativeFullscreen) {
       setPrioridadeBuscaMunicipio('')
+      setPrioridadeListaFiltro('sem-lideranca')
       setCidadePrioridadeSelecionada('')
     }
   }, [isNativeFullscreen])
@@ -242,11 +248,19 @@ export function MapaPresenca({
 
   const prioridadeCampoFiltrada = useMemo(() => {
     if (prioridadeCampoLista.length === 0) return []
-    if (filtroRegiao === 'todas') return prioridadeCampoLista
+
+    let lista = prioridadeCampoLista
+    if (prioridadeListaFiltro === 'sem-lideranca') {
+      lista = lista.filter((row) => row.semExpectativa ?? row.expectativaVotos <= 0)
+    } else if (prioridadeListaFiltro === 'com-previsao') {
+      lista = lista.filter((row) => !(row.semExpectativa ?? row.expectativaVotos <= 0))
+    }
+
+    if (filtroRegiao === 'todas') return lista
     const munisFiltrados = municipiosPiaui.filter((m) => getRegiaoByLat(m.lat) === filtroRegiao)
     const nomesSet = new Set(munisFiltrados.map((m) => normalizeName(m.nome)))
-    return prioridadeCampoLista.filter((row) => nomesSet.has(normalizeName(row.cidade)))
-  }, [prioridadeCampoLista, filtroRegiao])
+    return lista.filter((row) => nomesSet.has(normalizeName(row.cidade)))
+  }, [prioridadeCampoLista, prioridadeListaFiltro, filtroRegiao])
 
   const prioridadeCampoExibicao = useMemo(() => {
     const comRank = prioridadeCampoFiltrada.map((row, i) => ({
@@ -707,8 +721,38 @@ export function MapaPresenca({
                     <p className="text-sm font-semibold text-text-primary">Prioridade no campo</p>
                   </div>
                   <p className="mt-1 text-xs leading-snug text-text-muted">
-                    Mais votos previstos com menos visitas primeiro. Clique em um município para ver o perfil demográfico ao lado.
+                    Municípios sem liderança mapeada aparecem primeiro (maior eleitorado e menos visitas). Clique para ver o perfil demográfico ao lado.
                   </p>
+                  <div className="mt-2 flex flex-wrap gap-1.5">
+                    {(
+                      [
+                        ['sem-lideranca', 'Sem liderança'],
+                        ['com-previsao', 'Com previsão'],
+                        ['todos', 'Todos'],
+                      ] as const
+                    ).map(([id, label]) => {
+                      const active = prioridadeListaFiltro === id
+                      return (
+                        <button
+                          key={id}
+                          type="button"
+                          onClick={() => setPrioridadeListaFiltro(id)}
+                          className={cn(
+                            'rounded-full px-2.5 py-1 text-[11px] font-medium transition-colors',
+                            active
+                              ? isDarkAppearance
+                                ? 'bg-amber-500/25 text-amber-100'
+                                : 'bg-amber-100 text-amber-900'
+                              : isDarkAppearance
+                                ? 'bg-white/5 text-text-secondary hover:bg-white/10'
+                                : 'border border-card bg-background/60 text-text-secondary hover:bg-background',
+                          )}
+                        >
+                          {label}
+                        </button>
+                      )
+                    })}
+                  </div>
                   <label
                     className={cn(
                       'mt-2 flex items-center gap-2 rounded-lg border px-2.5 py-2',
@@ -734,16 +778,22 @@ export function MapaPresenca({
                     <div className="px-1 py-3 text-sm leading-relaxed text-text-secondary">
                       {prioridadeCampoLista.length === 0 ? (
                         <>
-                          <p className="font-medium text-text-primary">Nenhum município no ranking por enquanto.</p>
+                          <p className="font-medium text-text-primary">Nenhum município carregado.</p>
                           <p className="mt-1.5 text-xs text-text-muted">
-                            É preciso ao menos previsão na planilha do Território ou agendas/check-ins de campo com cidade para montar o cruzamento.
+                            Aguarde o carregamento do mapa ou configure a planilha do Território para cruzar visitas de campo.
                           </p>
                         </>
                       ) : (
                         <>
-                          <p className="font-medium text-text-primary">Nenhum município desta região na lista.</p>
+                          <p className="font-medium text-text-primary">
+                            {prioridadeListaFiltro === 'sem-lideranca'
+                              ? 'Nenhum município sem liderança nesta região.'
+                              : prioridadeListaFiltro === 'com-previsao'
+                                ? 'Nenhum município com previsão nesta região.'
+                                : 'Nenhum município desta região na lista.'}
+                          </p>
                           <p className="mt-1.5 text-xs text-text-muted">
-                            Escolha outra região no filtro acima ou a opção Todas as regiões para ver a fila completa.
+                            Escolha outra região, outro filtro ou a opção Todas as regiões.
                           </p>
                         </>
                       )}
@@ -759,10 +809,12 @@ export function MapaPresenca({
                     <ol className="list-none space-y-2">
                       {prioridadeCampoExibicao.map(({ row, rankGlobal }) => {
                         const ultima = formatUltimaVisitaCampo(row.ultimaVisita)
-                        const votosLabel =
-                          row.expectativaVotos > 0
-                            ? `${row.expectativaVotos.toLocaleString('pt-BR')} votos previstos (2026)`
-                            : 'Sem previsão na planilha'
+                        const semLideranca = row.semExpectativa ?? row.expectativaVotos <= 0
+                        const votosLabel = semLideranca
+                          ? row.eleitorado && row.eleitorado > 0
+                            ? `Sem liderança mapeada · ${row.eleitorado.toLocaleString('pt-BR')} eleitores`
+                            : 'Sem liderança mapeada'
+                          : `${row.expectativaVotos.toLocaleString('pt-BR')} votos previstos (2026)`
                         const visitasLabel =
                           row.visitas === 0
                             ? 'nenhuma visita com check-in'
@@ -794,7 +846,19 @@ export function MapaPresenca({
                                 {rankGlobal}
                               </span>
                               <div className="min-w-0 flex-1">
-                                <p className="text-sm font-semibold leading-tight text-text-primary">{row.cidade}</p>
+                                <div className="flex items-start gap-2">
+                                  <p className="min-w-0 flex-1 text-sm font-semibold leading-tight text-text-primary">{row.cidade}</p>
+                                  {semLideranca ? (
+                                    <span
+                                      className={cn(
+                                        'shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide',
+                                        isDarkAppearance ? 'bg-cyan-500/15 text-cyan-200' : 'bg-cyan-50 text-cyan-800',
+                                      )}
+                                    >
+                                      Oportunidade
+                                    </span>
+                                  ) : null}
+                                </div>
                                 <p className="mt-1 text-xs leading-snug text-text-secondary">
                                   {votosLabel}
                                   <span className="text-text-muted"> · </span>

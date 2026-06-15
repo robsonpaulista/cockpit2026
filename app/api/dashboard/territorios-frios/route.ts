@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import municipiosPiaui from '@/lib/municipios-piaui.json'
+import { getEleitoradoByCity } from '@/lib/eleitores'
 
 export const dynamic = 'force-dynamic'
 import { NextResponse } from 'next/server'
@@ -535,17 +536,18 @@ export async function POST(request: Request) {
       const ultimaVisita = ultimaVisitaPorCidade[cidadeKey] || null
       const cidadeExibicao =
         nomeOriginalCidade[cidadeKey] || nomeCanonPorChave.get(cidadeKey) || formatCityName(cidadeKey)
+      const eleitorado = getEleitoradoByCity(cidadeExibicao) || 0
+      const semExpectativa = expectativa <= 0
 
-      const score =
-        expectativa > 0
-          ? expectativa / (visitas + 1)
-          : agendas > 0
-            ? agendas / (visitas + 1)
-            : 0
+      const score = semExpectativa
+        ? eleitorado / (visitas + 1)
+        : expectativa / (visitas + 1)
 
       return {
         cidade: cidadeExibicao,
         expectativaVotos: expectativa,
+        eleitorado,
+        semExpectativa,
         visitas,
         agendas,
         ultimaVisita,
@@ -554,18 +556,21 @@ export async function POST(request: Request) {
     })
 
     const prioridadeCampoLista = prioridadeCampoListaRaw
-      .filter((r) => r.expectativaVotos > 0 || r.visitas > 0 || r.agendas > 0)
       .sort((a, b) => {
+        if (a.semExpectativa !== b.semExpectativa) return a.semExpectativa ? -1 : 1
         if (b.score !== a.score) return b.score - a.score
+        if (b.eleitorado !== a.eleitorado) return b.eleitorado - a.eleitorado
         if (b.expectativaVotos !== a.expectativaVotos) return b.expectativaVotos - a.expectativaVotos
         return a.visitas - b.visitas
       })
-      .map(({ cidade, expectativaVotos, visitas, agendas, ultimaVisita }) => ({
+      .map(({ cidade, expectativaVotos, eleitorado, semExpectativa, visitas, agendas, ultimaVisita }) => ({
         cidade,
         expectativaVotos,
+        eleitorado,
+        semExpectativa,
         visitas,
         agendas,
-        motivo: '',
+        motivo: semExpectativa ? 'Sem liderança mapeada' : '',
         ultimaVisita,
       }))
 

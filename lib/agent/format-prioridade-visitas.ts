@@ -1,6 +1,8 @@
 export type PrioridadeCampoApiRow = {
   cidade: string
   expectativaVotos: number
+  eleitorado?: number
+  semExpectativa?: boolean
   visitas: number
   agendas?: number
   motivo?: string

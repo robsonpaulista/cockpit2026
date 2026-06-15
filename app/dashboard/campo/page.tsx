@@ -216,6 +216,8 @@ export default function CampoPage() {
                 data.prioridadeCampoLista.map((item) => ({
                   cidade: String(item.cidade ?? ''),
                   expectativaVotos: Number(item.expectativaVotos) || 0,
+                  eleitorado: Number(item.eleitorado) || 0,
+                  semExpectativa: Boolean(item.semExpectativa),
                   visitas: Number(item.visitas) || 0,
                   agendas: Number(item.agendas) || 0,
                   motivo: String(item.motivo ?? ''),
