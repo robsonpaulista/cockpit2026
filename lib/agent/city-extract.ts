@@ -69,8 +69,8 @@ export function extractCityNameFromQuery(query: string): string | null {
   }
 
   const patterns = [
-    /\b(?:em|para)\s+(?!que\b|eu\b|foi\b)([a-z][a-z\s]*?)(?:\?|$|,|\.|!|;)/,
-    /\bde\s+(?!que\b|eu\b|foi\b|a\b)([a-z][a-z\s]*?)(?:\?|$|,|\.|!|;)/,
+    /\b(?:em|para|na|no)\s+(?!que\b|eu\b|foi\b|jadyel\b|o\s+jadyel\b)([a-z][a-z\s]*?)(?:\?|$|,|\.|!|;)/,
+    /\bde\s+(?!que\b|eu\b|foi\b|a\b|jadyel\b)([a-z][a-z\s]*?)(?:\?|$|,|\.|!|;)/,
     /\bcidade\s+de\s+(?!que\b|eu\b)([a-z][a-z\s]*?)(?:\?|$|,|\.|!|;)/,
   ]
 

@@ -24,6 +24,10 @@ import {
 } from '@/lib/agent/detect-whatsapp-send'
 import { detectVisitasCampoIntent } from '@/lib/agent/detect-visitas-campo'
 import {
+  detectPesquisaTendenciaIntent,
+  detectRankingEstimuladaFederalIntent,
+} from '@/lib/agent/detect-pesquisa-avancada'
+import {
   buildResumoBuscarCidadeSyntheticQuery,
   detectResumoBuscarCidadeIntent,
 } from '@/lib/agent/resumo-eleicoes-city'
@@ -181,6 +185,49 @@ export async function POST(request: Request) {
           speechSegments: payload.speechSegments,
           action: buildNavigateAction(localVisitas),
           meta: { intent: 'consultar_visitas_campo' },
+        } satisfies AgentChatResponse)
+      }
+    }
+
+    const localPesquisaTendencia = detectPesquisaTendenciaIntent(message)
+    if (localPesquisaTendencia) {
+      const tendenciaResult = await executeServerTool(
+        localPesquisaTendencia,
+        origin,
+        cookie,
+        body.context,
+        auth,
+        message
+      )
+      if (tendenciaResult) {
+        const content =
+          typeof tendenciaResult === 'string' ? tendenciaResult : tendenciaResult.content
+        return NextResponse.json({
+          source: 'groq',
+          content,
+          action: buildNavigateAction(localPesquisaTendencia),
+          meta: { intent: 'consultar_pesquisa_tendencia' },
+        } satisfies AgentChatResponse)
+      }
+    }
+
+    const localRankingEstimulada = detectRankingEstimuladaFederalIntent(message)
+    if (localRankingEstimulada) {
+      const rankingResult = await executeServerTool(
+        localRankingEstimulada,
+        origin,
+        cookie,
+        body.context,
+        auth,
+        message
+      )
+      if (rankingResult) {
+        const content = typeof rankingResult === 'string' ? rankingResult : rankingResult.content
+        return NextResponse.json({
+          source: 'groq',
+          content,
+          action: buildNavigateAction(localRankingEstimulada),
+          meta: { intent: 'consultar_ranking_estimulada_federal' },
         } satisfies AgentChatResponse)
       }
     }

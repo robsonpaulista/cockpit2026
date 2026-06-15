@@ -38,6 +38,8 @@ import {
   metaTiposFromRowSet,
 } from '@/lib/pesquisa-desempenho-feedback'
 import { buildExecutiveTendenciaModel } from '@/lib/pesquisa-tendencia-executive'
+import type { AIAgentPageContext } from '@/components/ai-agent'
+import { useRegisterJarvisHostProps } from '@/contexts/jarvis-host-props-context'
 
 interface Poll {
   id: string
@@ -190,6 +192,22 @@ export default function PesquisaPage() {
     useState<ConfiguracaoOrdenacaoPesquisasCadastradas | null>(null)
   const tendenciaGraficoRef = useRef<HTMLDivElement>(null)
   const scrollParaGraficoAposTrocaAbaRef = useRef(false)
+
+  const contextoAgentePesquisa = useMemo<AIAgentPageContext>(
+    () => ({
+      kind: 'pesquisa',
+      candidatoPadrao: candidatoPadrao || undefined,
+      pollsCount: polls.length,
+    }),
+    [candidatoPadrao, polls.length]
+  )
+
+  useRegisterJarvisHostProps({
+    pageContext: contextoAgentePesquisa,
+    loadingPolls: loading,
+    pollsCount: polls.length,
+    candidatoPadrao: candidatoPadrao || undefined,
+  })
 
   const normalizeCityName = (value: string): string =>
     value

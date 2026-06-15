@@ -12,6 +12,8 @@ const INTENT_LIST = [
   'ajuda',
   'resposta_direta',
   'consultar_pesquisas',
+  'consultar_pesquisa_tendencia',
+  'consultar_ranking_estimulada_federal',
   'consultar_demandas',
   'consultar_agendas',
   'consultar_visitas_campo',
@@ -47,6 +49,11 @@ function buildSystemPrompt(context?: AgentContextPayload): string {
       'O usuário está em Resumo Eleições — para buscar/selecionar município no dropdown (ex.: «Buscar Teresina», «Picos», «atualizar»), use resumo_buscar_cidade com args.cidade. NÃO use consultar_expectativa nem consultar_liderancas só porque citou um município.'
     )
   }
+  if (context?.pageKind === 'pesquisa') {
+    ctxLines.push(
+      'O usuário está em Pesquisa & Relato — priorize consultar_pesquisa_tendencia (evolução/gráfico) e consultar_ranking_estimulada_federal (ranking estimulada dep. federal).'
+    )
+  }
   if (context?.cidadeAtual) ctxLines.push(`Cidade selecionada: ${context.cidadeAtual}`)
   if (context?.buscaIniciada) ctxLines.push('Busca de município já iniciada na página.')
   if (context?.candidatoPadrao) ctxLines.push(`Candidato foco: ${context.candidatoPadrao}`)
@@ -72,6 +79,8 @@ function buildSystemPrompt(context?: AgentContextPayload): string {
     '- Em consultar_visitas_campo, use visitas/viagens do módulo Campo & Agenda (não Google Calendar). args.modo = prioridade_visitas («quais cidades preciso visitar», alta expectativa e poucas visitas — igual Resumo Operacional) | ultima | ultimas | contagem_mes | descricao | lista_cidade | cidades | cidade_mais_visitada. args.cidade quando citar município; args.mes (01-12) e args.ano para contagem mensal; args.termo com trecho da pergunta.',
     '- visitas/viagens/check-in de cidade → consultar_visitas_campo. compromissos/agenda do dia → consultar_agendas.',
     '- Em consultar_pesquisas sobre Jadyel Alencar, preencha args.candidato com "Jadyel Alencar" (e args.cidade se houver município).',
+    '- consultar_pesquisa_tendencia: evolução/tendência («como evoluiu a intenção do Jadyel», «tendência em Teresina»). args.candidato quando citar nome; args.cidade SEMPRE que mencionar município (em/na/no Teresina, Picos, etc.).',
+    '- consultar_ranking_estimulada_federal: ranking/colocação na estimulada dep. federal (top 10, média, projeção). args.candidato quando citar nome; senão use Candidato foco.',
     '- Use args.label com o nome da página da sidebar (ex.: «Agenda», «Território & Base», «WhatsApp»). args.url só se souber o caminho exato (/dashboard/...).',
     `- navegar: quando pedir abrir/ir/acessar/mostrar uma página do sistema (não confundir com consulta de dados). Páginas: ${sidebarNavTargetListForPrompt(28)}.`,
     '- resumo_* só quando pageKind for resumo-eleicoes. resumo_buscar_cidade: selecionar município e acionar Buscar (nome da cidade ou «buscar/atualizar/mostrar dados de X»).',

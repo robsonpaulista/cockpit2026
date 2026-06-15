@@ -8,6 +8,17 @@ import {
   type PesquisaTipo,
 } from '@/lib/agent/format-pesquisas'
 import {
+  formatPesquisaTendenciaReply,
+  type HistoricoIntencaoApiPayload,
+} from '@/lib/agent/format-pesquisa-tendencia'
+import {
+  formatRankingEstimuladaFederalReply,
+  type RankingEstimuladaApiPayload,
+} from '@/lib/agent/format-ranking-estimulada'
+import { resolveCandidatoParaPesquisa } from '@/lib/agent/resolve-candidato-pesquisa'
+import { resolveCidadeTendenciaPesquisa } from '@/lib/agent/detect-pesquisa-avancada'
+import { PESQUISA_TENDENCIA_CIDADE_HINT } from '@/lib/agent/pesquisa-tendencia-followup'
+import {
   formatNoticiasDestaqueReply,
   mapNoticiasApiRows,
 } from '@/lib/agent/format-noticias'
@@ -151,6 +162,59 @@ async function toolConsultarPesquisas(
   }
 
   return { content: result.content }
+}
+
+async function toolConsultarPesquisaTendencia(
+  origin: string,
+  cookie: string,
+  args: Record<string, string>,
+  context?: AgentContextPayload,
+  queryHint?: string
+): Promise<{ content: string }> {
+  const resolved = resolveCandidatoParaPesquisa(args, context, queryHint)
+  if (!resolved.candidato) {
+    return { content: resolved.aviso || 'Informe o candidato para ver a tendência.' }
+  }
+
+  const municipio = resolveCidadeTendenciaPesquisa(queryHint ?? '', args.cidade)
+
+  const qs = new URLSearchParams({ candidato: resolved.candidato })
+  if (municipio) qs.set('municipio', municipio)
+
+  const res = await fetchWithCookies(origin, `/api/pesquisa/historico-intencao?${qs.toString()}`, cookie)
+  if (!res.ok) {
+    return { content: 'Não consegui acessar o histórico de intenção. Verifique se está logado.' }
+  }
+
+  const payload = (await res.json()) as HistoricoIntencaoApiPayload
+  const content = formatPesquisaTendenciaReply(payload, {
+    candidato: resolved.candidato,
+    municipio,
+  })
+  const hint = municipio ? '' : PESQUISA_TENDENCIA_CIDADE_HINT
+  return { content: `${content}${hint}`.trim() }
+}
+
+async function toolConsultarRankingEstimuladaFederal(
+  origin: string,
+  cookie: string,
+  args: Record<string, string>,
+  context?: AgentContextPayload,
+  queryHint?: string
+): Promise<{ content: string }> {
+  const resolved = resolveCandidatoParaPesquisa(args, context, queryHint)
+  if (!resolved.candidato) {
+    return { content: resolved.aviso || 'Informe o candidato para ver o ranking estimulada.' }
+  }
+
+  const qs = new URLSearchParams({ candidato: resolved.candidato })
+  const res = await fetchWithCookies(origin, `/api/pesquisa/ranking-estimulada?${qs.toString()}`, cookie)
+  if (!res.ok) {
+    return { content: 'Não consegui acessar o ranking estimulada. Verifique se está logado.' }
+  }
+
+  const payload = (await res.json()) as RankingEstimuladaApiPayload
+  return { content: formatRankingEstimuladaFederalReply(payload) }
 }
 
 async function toolConsultarAgendas(
@@ -328,11 +392,24 @@ function toolAjuda(context?: AgentContextPayload): string {
       'Em outras telas: pesquisas, território, Instagram, chapa federal, alertas.',
     ].join('\n')
   }
+  if (context?.pageKind === 'pesquisa') {
+    return [
+      '**Jarvis — Pesquisa & Relato**',
+      '',
+      '› como evoluiu a intenção do Jadyel',
+      '› tendência em Teresina (por município)',
+      '› depois da tendência geral: «em Picos»',
+      '› ranking estimulada dep federal',
+      '› pesquisa em Picos (intenção pontual)',
+      '',
+      'Use o candidato padrão selecionado nesta página ou cite o nome na pergunta.',
+    ].join('\n')
+  }
   return [
     '**O que posso fazer:**',
     '',
     '**Por cidade:** expectativa, lideranças, visitas de campo, agendas (Google), demandas',
-    '**Pesquisas:** intenção de voto por candidato ou município',
+    '**Pesquisas:** intenção por município, tendência temporal, ranking estimulada dep. federal',
     '**Redes:** métricas e posts do Instagram',
     '**Geral:** chapa federal, notícias em destaque, alertas, territórios frios',
     '**WhatsApp:** «envia o resumo operacional para o CEO», «manda briefing de Teresina para os executivos»',
@@ -365,6 +442,22 @@ export async function executeServerTool(
     }
     case 'consultar_pesquisas':
       return toolConsultarPesquisas(origin, cookie, classified.args)
+    case 'consultar_pesquisa_tendencia':
+      return toolConsultarPesquisaTendencia(
+        origin,
+        cookie,
+        classified.args,
+        context,
+        queryHint ?? classified.args.termo
+      )
+    case 'consultar_ranking_estimulada_federal':
+      return toolConsultarRankingEstimuladaFederal(
+        origin,
+        cookie,
+        classified.args,
+        context,
+        queryHint ?? classified.args.termo
+      )
     case 'consultar_agendas':
       return toolConsultarAgendas(origin, cookie, classified.args)
     case 'consultar_visitas_campo':
@@ -409,6 +502,18 @@ export function buildNavigateAction(
       type: 'navigate',
       url: '/dashboard/noticias',
       label: 'Ver Notícias & Crises',
+    }
+  }
+
+  if (
+    classified.intent === 'consultar_pesquisa_tendencia' ||
+    classified.intent === 'consultar_ranking_estimulada_federal' ||
+    classified.intent === 'consultar_pesquisas'
+  ) {
+    return {
+      type: 'navigate',
+      url: '/dashboard/pesquisa',
+      label: 'Ver Pesquisas & Relato',
     }
   }
 

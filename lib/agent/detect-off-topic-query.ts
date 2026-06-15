@@ -80,6 +80,22 @@ export function validateClassifiedIntentAgainstMessage(
       }
       return true
     }
+    case 'consultar_pesquisa_tendencia': {
+      if (
+        !/\b(tendencia|evolucao|grafico|historico|como\s+esta|como\s+está|subiu|caiu|cresceu)\b/.test(
+          q
+        )
+      ) {
+        return false
+      }
+      return /\b(pesquisa|pesquisas|intencao|intencao|voto|votos)\b/.test(q)
+    }
+    case 'consultar_ranking_estimulada_federal': {
+      if (!/\b(ranking|colocacao|posicao|lugar)\b/.test(q) && !/\branking\s+estimulada\b/.test(q)) {
+        return false
+      }
+      return /\b(estimulada|federal|dep\.?\s*federal|pesquisa|intencao|intencao)\b/.test(q)
+    }
     case 'consultar_expectativa':
     case 'consultar_liderancas':
     case 'consultar_demandas': {

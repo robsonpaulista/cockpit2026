@@ -1,9 +1,11 @@
-export type AgentPageKind = 'dashboard' | 'resumo-eleicoes' | 'campo' | 'territorio' | 'other'
+export type AgentPageKind = 'dashboard' | 'resumo-eleicoes' | 'campo' | 'territorio' | 'pesquisa' | 'other'
 
 export type AgentIntent =
   | 'ajuda'
   | 'resposta_direta'
   | 'consultar_pesquisas'
+  | 'consultar_pesquisa_tendencia'
+  | 'consultar_ranking_estimulada_federal'
   | 'consultar_demandas'
   | 'consultar_agendas'
   | 'consultar_visitas_campo'

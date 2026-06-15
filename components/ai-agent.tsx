@@ -22,6 +22,25 @@ import {
   type PesquisaTipo,
 } from '@/lib/agent/format-pesquisas'
 import {
+  formatPesquisaTendenciaReply,
+  type HistoricoIntencaoApiPayload,
+} from '@/lib/agent/format-pesquisa-tendencia'
+import {
+  formatRankingEstimuladaFederalReply,
+  type RankingEstimuladaApiPayload,
+} from '@/lib/agent/format-ranking-estimulada'
+import { resolveCandidatoParaPesquisa } from '@/lib/agent/resolve-candidato-pesquisa'
+import {
+  isPesquisaTendenciaQuery,
+  isRankingEstimuladaFederalQuery,
+  resolveCidadeTendenciaPesquisa,
+} from '@/lib/agent/detect-pesquisa-avancada'
+import {
+  detectPesquisaTendenciaCidadeFollowUp,
+  PESQUISA_TENDENCIA_CIDADE_HINT,
+  type PesquisaTendenciaCidadePending,
+} from '@/lib/agent/pesquisa-tendencia-followup'
+import {
   formatNoticiasDestaqueReply,
   mapNoticiasApiRows,
   queryAsksNoticiasDestaque,
@@ -192,6 +211,12 @@ type AIAgentCampoContext = {
   totalAgendas: number
 }
 
+type AIAgentPesquisaContext = {
+  kind: 'pesquisa'
+  candidatoPadrao?: string
+  pollsCount?: number
+}
+
 type AIAgentTerritorioContext = {
   kind: 'territorio'
   cidades: string[]
@@ -211,6 +236,7 @@ type AIAgentTerritorioContext = {
 export type AIAgentPageContext =
   | AIAgentResumoEleicoesContext
   | AIAgentCampoContext
+  | AIAgentPesquisaContext
   | AIAgentTerritorioContext
 
 interface AIAgentProps {
@@ -536,6 +562,13 @@ export function AIAgent({
   >('idle')
   const [pesquisaTipoPending, setPesquisaTipoPending] =
     useState<PesquisaTipoChoicePending | null>(null)
+  const [pesquisaTendenciaPending, setPesquisaTendenciaPending] =
+    useState<PesquisaTendenciaCidadePending | null>(null)
+  const pesquisaTendenciaPendingRef = useRef<PesquisaTendenciaCidadePending | null>(null)
+  const syncPesquisaTendenciaPending = useCallback((pending: PesquisaTendenciaCidadePending | null) => {
+    pesquisaTendenciaPendingRef.current = pending
+    setPesquisaTendenciaPending(pending)
+  }, [])
   const [expectativaDetalhePending, setExpectativaDetalhePending] = useState<{
     cidade: string
   } | null>(null)
@@ -1629,7 +1662,12 @@ export function AIAgent({
   }
 
   type PesquisasFetchOutcome =
-    | { kind: 'data'; content: string }
+    | {
+        kind: 'data'
+        content: string
+        tendenciaCandidato?: string
+        tendenciaComFiltroCidade?: boolean
+      }
     | { kind: 'ask_tipo'; content: string; pending: PesquisaTipoChoicePending }
     | { kind: 'error'; content: string }
 
@@ -1678,12 +1716,90 @@ export function AIAgent({
     }
   }, [])
 
+  const fetchPesquisaTendenciaOutcome = useCallback(async (
+    query: string,
+    options?: { cidade?: string; candidato?: string }
+  ): Promise<PesquisasFetchOutcome> => {
+    try {
+      const municipio =
+        options?.cidade?.trim() || resolveCidadeTendenciaPesquisa(query, options?.cidade)
+      const resolved = resolveCandidatoParaPesquisa(
+        options?.candidato ? { candidato: options.candidato } : {},
+        {
+          candidatoPadrao:
+            candidatoPadrao ||
+            (pageContextRef.current?.kind === 'pesquisa'
+              ? pageContextRef.current.candidatoPadrao
+              : undefined),
+        },
+        query
+      )
+      if (!resolved.candidato) {
+        return { kind: 'error', content: resolved.aviso || 'Informe o candidato para ver a tendência.' }
+      }
+
+      const qs = new URLSearchParams({ candidato: resolved.candidato })
+      if (municipio) qs.set('municipio', municipio)
+
+      const response = await fetch(`/api/pesquisa/historico-intencao?${qs.toString()}`)
+      if (!response.ok) {
+        return { kind: 'error', content: 'Erro ao buscar histórico de intenção.' }
+      }
+
+      const payload = (await response.json()) as HistoricoIntencaoApiPayload
+      let content = formatPesquisaTendenciaReply(payload, {
+        candidato: resolved.candidato,
+        municipio,
+      })
+      if (!municipio) {
+        content = `${content}${PESQUISA_TENDENCIA_CIDADE_HINT}`.trim()
+      }
+      return {
+        kind: 'data',
+        content,
+        tendenciaCandidato: resolved.candidato,
+        tendenciaComFiltroCidade: Boolean(municipio),
+      }
+    } catch (error) {
+      console.error('Erro ao buscar tendência de pesquisa:', error)
+      return { kind: 'error', content: 'Erro ao buscar tendência de pesquisa. Tente novamente.' }
+    }
+  }, [candidatoPadrao])
+
+  const fetchRankingEstimuladaOutcome = useCallback(async (
+    query: string
+  ): Promise<PesquisasFetchOutcome> => {
+    try {
+      const resolved = resolveCandidatoParaPesquisa(
+        {},
+        { candidatoPadrao: candidatoPadrao || (pageContextRef.current?.kind === 'pesquisa' ? pageContextRef.current.candidatoPadrao : undefined) },
+        query
+      )
+      if (!resolved.candidato) {
+        return { kind: 'error', content: resolved.aviso || 'Informe o candidato para ver o ranking.' }
+      }
+
+      const qs = new URLSearchParams({ candidato: resolved.candidato })
+      const response = await fetch(`/api/pesquisa/ranking-estimulada?${qs.toString()}`)
+      if (!response.ok) {
+        return { kind: 'error', content: 'Erro ao buscar ranking estimulada.' }
+      }
+
+      const payload = (await response.json()) as RankingEstimuladaApiPayload
+      return { kind: 'data', content: formatRankingEstimuladaFederalReply(payload) }
+    } catch (error) {
+      console.error('Erro ao buscar ranking estimulada:', error)
+      return { kind: 'error', content: 'Erro ao buscar ranking estimulada. Tente novamente.' }
+    }
+  }, [candidatoPadrao])
+
   const buildPesquisasChatMessage = useCallback((
     outcome: PesquisasFetchOutcome,
-    options?: { viaAi?: boolean }
+    options?: { viaAi?: boolean; tendencia?: boolean }
   ): ChatMessage => {
     if (outcome.kind === 'ask_tipo') {
       setPesquisaTipoPending(outcome.pending)
+      syncPesquisaTendenciaPending(null)
       return {
         id: Date.now().toString(),
         role: 'assistant',
@@ -1693,6 +1809,14 @@ export function AIAgent({
     }
 
     setPesquisaTipoPending(null)
+    if (options?.tendencia && outcome.kind === 'data') {
+      if (outcome.tendenciaComFiltroCidade) {
+        syncPesquisaTendenciaPending(null)
+      } else if (outcome.tendenciaCandidato) {
+        syncPesquisaTendenciaPending({ candidato: outcome.tendenciaCandidato })
+      }
+    }
+
     return {
       id: Date.now().toString(),
       role: 'assistant',
@@ -1707,7 +1831,7 @@ export function AIAgent({
             }
           : undefined,
     }
-  }, [])
+  }, [syncPesquisaTendenciaPending])
 
   // ==================== PROCESSAMENTO DE QUERIES ====================
 
@@ -1731,6 +1855,18 @@ export function AIAgent({
         role: 'assistant',
         content: buildHelpReply(),
       }
+    }
+
+    const tendenciaCidadeFollowUp = detectPesquisaTendenciaCidadeFollowUp(
+      query,
+      pesquisaTendenciaPendingRef.current
+    )
+    if (tendenciaCidadeFollowUp) {
+      const outcome = await fetchPesquisaTendenciaOutcome(query, {
+        cidade: tendenciaCidadeFollowUp.cidade,
+        candidato: tendenciaCidadeFollowUp.candidato,
+      })
+      return buildPesquisasChatMessage(outcome, { tendencia: true })
     }
 
     let expectativaFollowUp = detectExpectativaDetalheFollowUp(chatMessages, query)
@@ -2593,6 +2729,19 @@ export function AIAgent({
       }
     }
 
+    // ===== PESQUISAS — TENDÊNCIA TEMPORAL =====
+    if (isPesquisaTendenciaQuery(query)) {
+      const municipio = resolveCidadeTendenciaPesquisa(query, cidade || undefined)
+      const outcome = await fetchPesquisaTendenciaOutcome(query, { cidade: municipio })
+      return buildPesquisasChatMessage(outcome, { tendencia: true })
+    }
+
+    // ===== PESQUISAS — RANKING ESTIMULADA DEP. FEDERAL =====
+    if (isRankingEstimuladaFederalQuery(query)) {
+      const outcome = await fetchRankingEstimuladaOutcome(query)
+      return buildPesquisasChatMessage(outcome)
+    }
+
     // ===== PESQUISAS =====
     const ehConsultaPesquisa =
       queryLower.includes('pesquisa') ||
@@ -2955,7 +3104,10 @@ export function AIAgent({
     presencaTerritorial,
     resumoDemandasAssistPhase,
     fetchPesquisasOutcome,
+    fetchPesquisaTendenciaOutcome,
+    fetchRankingEstimuladaOutcome,
     buildPesquisasChatMessage,
+    syncPesquisaTendenciaPending,
     buildNoticiasDestaqueChatMessage,
     fetchAgendaOutcome,
     buildAgendaChatMessage,
@@ -2975,10 +3127,14 @@ export function AIAgent({
             ? 'campo'
             : pc?.kind === 'territorio'
               ? 'territorio'
-              : 'dashboard',
+              : pc?.kind === 'pesquisa'
+                ? 'pesquisa'
+                : 'dashboard',
       cidadeAtual: pc?.kind === 'resumo-eleicoes' ? pc.cidadeAtual : undefined,
       buscaIniciada: pc?.kind === 'resumo-eleicoes' ? pc.buscaIniciada : undefined,
-      candidatoPadrao,
+      candidatoPadrao:
+        candidatoPadrao ||
+        (pc?.kind === 'pesquisa' ? pc.candidatoPadrao : undefined),
       cidadesDisponiveis:
         pc?.kind === 'resumo-eleicoes' ||
         pc?.kind === 'campo' ||
@@ -3444,6 +3600,7 @@ export function AIAgent({
 
       const hasPendingFollowUp =
         Boolean(pesquisaTipoPending) ||
+        Boolean(pesquisaTendenciaPendingRef.current) ||
         Boolean(agendaScopePendingRef.current) ||
         Boolean(expectativaDetalhePendingRef.current) ||
         resumoDemandasAssistPhase !== 'idle'
@@ -3451,6 +3608,7 @@ export function AIAgent({
       let clearedPendingFollowUp = false
       if (hasPendingFollowUp && shouldBreakJarvisPendingFlow(cleanedContent, pathnameRef.current)) {
         setPesquisaTipoPending(null)
+        syncPesquisaTendenciaPending(null)
         syncAgendaScopePending(null)
         syncExpectativaDetalhePending(null)
         setResumoDemandasAssistPhase('idle')
@@ -3498,7 +3656,19 @@ export function AIAgent({
         }
       }
 
-      if (pesquisaTipoPending && !clearedPendingFollowUp) {
+      if (pesquisaTendenciaPendingRef.current && !clearedPendingFollowUp) {
+        const tendenciaFollowUp = detectPesquisaTendenciaCidadeFollowUp(
+          cleanedContent,
+          pesquisaTendenciaPendingRef.current
+        )
+        if (tendenciaFollowUp) {
+          const outcome = await fetchPesquisaTendenciaOutcome(cleanedContent, {
+            cidade: tendenciaFollowUp.cidade,
+            candidato: tendenciaFollowUp.candidato,
+          })
+          response = buildPesquisasChatMessage(outcome, { viaAi: true, tendencia: true })
+        }
+      } else if (pesquisaTipoPending && !clearedPendingFollowUp) {
         const tipo = parsePesquisaTipoFromQuery(cleanedContent)
         if (tipo) {
           const outcome = await fetchPesquisasOutcome(
@@ -3621,6 +3791,7 @@ export function AIAgent({
     enableVoice,
     isProcessing,
     pesquisaTipoPending,
+    syncPesquisaTendenciaPending,
     syncExpectativaDetalhePending,
     agendaScopePending,
     fetchAgendaOutcome,
@@ -3630,7 +3801,10 @@ export function AIAgent({
     resumoDemandasAssistPhase,
     tryAgentChat,
     fetchPesquisasOutcome,
+    fetchPesquisaTendenciaOutcome,
+    fetchRankingEstimuladaOutcome,
     buildPesquisasChatMessage,
+    syncPesquisaTendenciaPending,
     fetchExpectativaCidade,
     deliverAssistantResponse,
     speakJarvisReply,

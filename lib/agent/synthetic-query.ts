@@ -53,6 +53,15 @@ export function intentToSyntheticQuery(
       }
       return alvo ? `pesquisa em ${alvo}` : 'pesquisas'
     }
+    case 'consultar_pesquisa_tendencia': {
+      const candidato = args.candidato?.trim()
+      if (cidade && candidato) return `como evoluiu a intenção do ${candidato} em ${cidade}`
+      if (cidade) return `tendência de intenção em ${cidade}`
+      if (candidato) return `como evoluiu a intenção do ${candidato}`
+      return 'tendência de pesquisa'
+    }
+    case 'consultar_ranking_estimulada_federal':
+      return 'ranking estimulada dep federal'
     case 'consultar_chapa':
       return 'projeção chapa federal'
     case 'consultar_instagram_metricas':
@@ -88,6 +97,8 @@ export function isClientOnlyIntent(intent: AgentIntent): boolean {
     'consultar_demandas',
     'consultar_agendas',
     'consultar_pesquisas',
+    'consultar_pesquisa_tendencia',
+    'consultar_ranking_estimulada_federal',
     'consultar_chapa',
     'consultar_instagram_metricas',
     'consultar_instagram_posts',
