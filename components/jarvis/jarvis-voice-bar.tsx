@@ -1,8 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { IconMicrophone, IconVolume, IconVolumeOff } from '@tabler/icons-react'
-import { JarvisVoicePicker } from '@/components/jarvis/jarvis-voice-picker'
+import { IconMicrophone, IconVideo, IconVideoOff, IconVolume, IconVolumeOff } from '@tabler/icons-react'
 import { cn } from '@/lib/utils'
 import { JARVIS_SAUDACAO_LINES, pickJarvisSaudacaoPorHorario } from '@/lib/agent/jarvis-phrases'
 import './jarvis-neural.css'
@@ -23,6 +22,8 @@ interface JarvisVoiceBarProps {
   speechSupported?: boolean
   voiceOutputEnabled?: boolean
   onVoiceOutputChange?: (enabled: boolean) => void
+  webcamEnabled?: boolean
+  onWebcamChange?: (enabled: boolean) => void
   onMicClick?: () => void
   className?: string
 }
@@ -36,6 +37,8 @@ export function JarvisVoiceBar({
   speechSupported = false,
   voiceOutputEnabled = true,
   onVoiceOutputChange,
+  webcamEnabled = true,
+  onWebcamChange,
   onMicClick,
   className,
 }: JarvisVoiceBarProps) {
@@ -102,6 +105,31 @@ export function JarvisVoiceBar({
             )}
           </button>
         ) : null}
+        {onWebcamChange ? (
+          <button
+            type="button"
+            onClick={() => onWebcamChange(!webcamEnabled)}
+            className={cn(
+              'flex h-9 w-9 shrink-0 items-center justify-center rounded-full border transition-all',
+              webcamEnabled
+                ? 'border-[rgba(0,212,255,0.35)] text-[var(--color-core)] hover:bg-[rgba(0,212,255,0.08)]'
+                : 'border-[rgba(0,212,255,0.15)] text-[var(--color-text-dim)] hover:text-[var(--color-text-primary)]'
+            )}
+            title={
+              webcamEnabled
+                ? 'Desligar preview da câmera'
+                : 'Ligar preview da câmera ao escutar'
+            }
+            aria-pressed={webcamEnabled}
+            aria-label={webcamEnabled ? 'Preview da câmera ligado' : 'Preview da câmera desligado'}
+          >
+            {webcamEnabled ? (
+              <IconVideo className="h-4 w-4" stroke={1.5} />
+            ) : (
+              <IconVideoOff className="h-4 w-4" stroke={1.5} />
+            )}
+          </button>
+        ) : null}
         {onVoiceOutputChange ? (
           <button
             type="button"
@@ -135,13 +163,6 @@ export function JarvisVoiceBar({
             ) : null}
           </p>
         </div>
-      </div>
-      <div className="mt-1 rounded px-1 py-1 sm:mt-2 sm:px-2 sm:py-1.5">
-        <JarvisVoicePicker
-          className="!max-w-none"
-          compact
-          voiceOutputEnabled={voiceOutputEnabled}
-        />
       </div>
     </div>
   )

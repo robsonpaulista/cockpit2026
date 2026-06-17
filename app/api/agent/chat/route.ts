@@ -27,10 +27,17 @@ import {
   detectPesquisaTendenciaIntent,
   detectRankingEstimuladaFederalIntent,
 } from '@/lib/agent/detect-pesquisa-avancada'
+import { detectComparativoExpectativa2022Intent } from '@/lib/agent/detect-comparativo-expectativa-2022'
 import {
   buildResumoBuscarCidadeSyntheticQuery,
   detectResumoBuscarCidadeIntent,
 } from '@/lib/agent/resumo-eleicoes-city'
+import { isAnthropicAgentEnabled } from '@/lib/agent/claude-config'
+import { runClaudeAnalysis } from '@/lib/agent/claude-analyze'
+import {
+  isMisclassifiedAnalysisIntent,
+  shouldRouteToClaudeAnalysis,
+} from '@/lib/agent/claude-router'
 import { buildNavigateAction, executeServerTool } from '@/lib/agent/server-tools'
 import { toolEnviarWhatsApp } from '@/lib/agent/tool-enviar-whatsapp'
 import type { AgentChatRequest, AgentChatResponse } from '@/lib/agent/types'
@@ -144,7 +151,7 @@ export async function POST(request: Request) {
           rateLimited: true,
           intent: 'desconhecido',
         },
-        hint: `Limite gratuito da IA (${AGENT_RATE_LIMITS.maxPerHour}/h). Tente em ~${rate.retryAfterSec ?? mins * 60}s ou use comandos diretos.`,
+        hint: `Limite do assistente (${AGENT_RATE_LIMITS.maxPerHour}/h). Tente em ~${rate.retryAfterSec ?? mins * 60}s ou use comandos diretos.`,
       } satisfies AgentChatResponse & { hint?: string })
     }
 
@@ -211,6 +218,34 @@ export async function POST(request: Request) {
       }
     }
 
+    const localComparativoExpectativa = detectComparativoExpectativa2022Intent(message)
+    if (localComparativoExpectativa) {
+      const comparativoResult = await executeServerTool(
+        localComparativoExpectativa,
+        origin,
+        cookie,
+        body.context,
+        auth,
+        message
+      )
+      if (comparativoResult) {
+        const payload =
+          typeof comparativoResult === 'string'
+            ? { content: comparativoResult }
+            : {
+                content: comparativoResult.content,
+                speechSegments: comparativoResult.speechSegments,
+              }
+        return NextResponse.json({
+          source: 'groq',
+          content: payload.content,
+          speechSegments: payload.speechSegments,
+          action: buildNavigateAction(localComparativoExpectativa),
+          meta: { intent: 'consultar_comparativo_expectativa_2022' },
+        } satisfies AgentChatResponse)
+      }
+    }
+
     const localRankingEstimulada = detectRankingEstimuladaFederalIntent(message)
     if (localRankingEstimulada) {
       const rankingResult = await executeServerTool(
@@ -232,6 +267,24 @@ export async function POST(request: Request) {
       }
     }
 
+    if (shouldRouteToClaudeAnalysis(message)) {
+      const claude = await runClaudeAnalysis(
+        message,
+        body.history ?? [],
+        origin,
+        cookie,
+        body.context
+      )
+      return NextResponse.json({
+        source: 'anthropic',
+        content: claude.content,
+        meta: {
+          intent: 'consultar_analise_claude',
+          claudeUsage: claude.usage,
+        },
+      } satisfies AgentChatResponse)
+    }
+
     if (!process.env.GROQ_API_KEY?.trim()) {
       return NextResponse.json(fallbackResponse('no_key'))
     }
@@ -239,6 +292,24 @@ export async function POST(request: Request) {
     const classified = await classifyAgentIntent(message, body.history ?? [], body.context)
     if (!classified) {
       return NextResponse.json(fallbackResponse('groq_error'))
+    }
+
+    if (isMisclassifiedAnalysisIntent(message, classified.intent) && isAnthropicAgentEnabled()) {
+      const claude = await runClaudeAnalysis(
+        message,
+        body.history ?? [],
+        origin,
+        cookie,
+        body.context
+      )
+      return NextResponse.json({
+        source: 'anthropic',
+        content: claude.content,
+        meta: {
+          intent: 'consultar_analise_claude',
+          claudeUsage: claude.usage,
+        },
+      } satisfies AgentChatResponse)
     }
 
     if (!validateClassifiedIntentAgainstMessage(message, classified)) {

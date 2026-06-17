@@ -1,4 +1,5 @@
 import { isExpectativaLiderancaFollowUpQuery } from '@/lib/agent/expectativa-detalhe-followup'
+import { isRankingEstimuladaFederalQuery } from '@/lib/agent/detect-pesquisa-avancada'
 import { isGreetingQuery, isHelpQuery } from '@/lib/agent/greeting-reply'
 import type { AgentClassifiedIntent } from '@/lib/agent/types'
 
@@ -90,12 +91,8 @@ export function validateClassifiedIntentAgainstMessage(
       }
       return /\b(pesquisa|pesquisas|intencao|intencao|voto|votos)\b/.test(q)
     }
-    case 'consultar_ranking_estimulada_federal': {
-      if (!/\b(ranking|colocacao|posicao|lugar)\b/.test(q) && !/\branking\s+estimulada\b/.test(q)) {
-        return false
-      }
-      return /\b(estimulada|federal|dep\.?\s*federal|pesquisa|intencao|intencao)\b/.test(q)
-    }
+    case 'consultar_ranking_estimulada_federal':
+      return isRankingEstimuladaFederalQuery(message)
     case 'consultar_expectativa':
     case 'consultar_liderancas':
     case 'consultar_demandas': {

@@ -62,6 +62,8 @@ interface DemografiaMunicipioRow {
 
 export interface MapaExpectativaVs2022Props {
   comparativoLista: ComparativoExpectativa2022Row[]
+  /** Mesmo rótulo do seletor de cenário em Território & Base (ex.: Expectativa de Votos 2026 (Anterior)). */
+  labelExpectativa2026?: string
   onFullscreen?: () => void
 }
 
@@ -77,7 +79,11 @@ function TendenciaIcon({ tendencia }: { tendencia: TendenciaExpectativa2022 }) {
   return <BarChart3 className="h-3.5 w-3.5 text-text-muted" aria-hidden />
 }
 
-export function MapaExpectativaVs2022({ comparativoLista, onFullscreen }: MapaExpectativaVs2022Props) {
+export function MapaExpectativaVs2022({
+  comparativoLista,
+  labelExpectativa2026 = 'Expectativa 2026',
+  onFullscreen,
+}: MapaExpectativaVs2022Props) {
   const { appearance } = useTheme()
   const isDarkAppearance = appearance === 'dark'
   const [clientReady, setClientReady] = useState(false)
@@ -233,7 +239,7 @@ export function MapaExpectativaVs2022({ comparativoLista, onFullscreen }: MapaEx
       >
         <div className="flex flex-col gap-1">
           <h3 className={cn('font-semibold text-text-primary', isNativeFullscreen ? 'text-lg' : 'text-sm')}>
-            Mapa comparativo — Expectativa 2026 × Federal 2022 (Jadyel)
+            Mapa comparativo — {labelExpectativa2026} × Federal 2022 (Jadyel)
           </h3>
           {mapStats?.insightPrincipal ? (
             <p className="text-xs font-medium text-accent-gold">{mapStats.insightPrincipal}</p>
@@ -323,7 +329,7 @@ export function MapaExpectativaVs2022({ comparativoLista, onFullscreen }: MapaEx
                     <p className="text-sm font-semibold text-text-primary">Comparativo por município</p>
                   </div>
                   <p className="mt-1 text-[11px] leading-snug text-text-muted">
-                    Expectativa Jadyel 2026 vs. Federal 2022 (TSE).
+                    {labelExpectativa2026} vs. Federal 2022 (TSE).
                   </p>
                   <label
                     className={cn(
@@ -431,7 +437,7 @@ export function MapaExpectativaVs2022({ comparativoLista, onFullscreen }: MapaEx
                         )}
                       >
                         <div>
-                          <p className="text-[11px] text-text-muted">Expectativa 2026</p>
+                          <p className="text-[11px] text-text-muted">{labelExpectativa2026}</p>
                           <p className="text-sm font-semibold text-text-primary">
                             {cidadeDetalhe.expectativa2026.toLocaleString('pt-BR')}
                           </p>

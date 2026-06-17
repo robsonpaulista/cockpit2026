@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { JarvisVoicePicker } from '@/components/jarvis/jarvis-voice-picker'
 import { jarvisLabelClass, jarvisPanelGhostClass } from '@/lib/jarvis-hud-tokens'
 import { useCountUp } from '@/components/jarvis/use-count-up'
 import { cn } from '@/lib/utils'
@@ -20,17 +21,29 @@ const BOOT_LOGS: JarvisLogLine[] = [
   { tag: 'READY', message: 'AWAITING USER INPUT', tone: 'default' },
 ]
 
-function formatLogTime(date = new Date()): string {
+export function formatJarvisLogTime(date = new Date()): string {
   return date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false })
+}
+
+function formatLogTime(date = new Date()): string {
+  return formatJarvisLogTime(date)
 }
 
 export function JarvisHudSystemLog({
   extraLines = [],
   processing = false,
+  showVoicePicker = false,
+  voiceOutputEnabled = true,
+  webcamEnabled = true,
+  onDiagnosticLog,
   className,
 }: {
   extraLines?: JarvisLogLine[]
   processing?: boolean
+  showVoicePicker?: boolean
+  voiceOutputEnabled?: boolean
+  webcamEnabled?: boolean
+  onDiagnosticLog?: (lines: JarvisLogLine[]) => void
   className?: string
 }) {
   const logRef = useRef<HTMLDivElement>(null)
@@ -77,6 +90,18 @@ export function JarvisHudSystemLog({
           </p>
         ))}
       </div>
+      {showVoicePicker ? (
+        <div className="mt-2 shrink-0 border-t border-[rgba(0,212,255,0.08)] pt-2">
+          <p className={cn(jarvisLabelClass, 'mb-1.5 text-[7px] sm:text-[8px]')}>áudio · voz</p>
+          <JarvisVoicePicker
+            className="!max-w-none items-stretch"
+            logPanel
+            voiceOutputEnabled={voiceOutputEnabled}
+            webcamEnabled={webcamEnabled}
+            onDiagnosticLog={onDiagnosticLog}
+          />
+        </div>
+      ) : null}
       <div className="max-lg:hidden">
         <JarvisHudMetrics />
       </div>

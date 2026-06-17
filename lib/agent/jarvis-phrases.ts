@@ -48,6 +48,20 @@ const phrases = {
     'Quase...',
   ],
 
+  processando: [
+    'Aguarde, estou coletando os dados.',
+    'Um momento, processando sua consulta.',
+    'Já estou buscando. Aguarde.',
+    'Coletando dados do cockpit. Aguarde.',
+    'Processando. Já mostro o resultado.',
+  ],
+
+  resultadoNaTela: [
+    'Pronto. Resultado na tela.',
+    'Dados coletados. Confira o relatório.',
+    'Pronto. Relatório na tela.',
+  ],
+
   semResultado: [
     'Nada sobre {cidade}.',
     '{cidade} não apareceu nada.',
@@ -230,6 +244,17 @@ export function pickJarvisLoadingPhrase(options?: { cidade?: string | null }): s
   const cidade = options?.cidade?.trim()
   if (cidade) return getPhrase('buscando', { cidade })
   return getPhrase('carregando')
+}
+
+/** HUD / consultas com relatório — avisa que está coletando antes de abrir o painel. */
+export function pickJarvisProcessandoPhrase(options?: { cidade?: string | null }): string {
+  const cidade = options?.cidade?.trim()
+  if (cidade) return getPhrase('buscando', { cidade })
+  return getPhrase('processando')
+}
+
+export function pickJarvisResultadoNaTela(): string {
+  return getPhrase('resultadoNaTela')
 }
 
 /** Enquanto uma busca já está em andamento (ex.: Resumo Eleições). */

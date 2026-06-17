@@ -36,6 +36,13 @@ import {
   resolveCidadeTendenciaPesquisa,
 } from '@/lib/agent/detect-pesquisa-avancada'
 import {
+  isComparativoExpectativa2022Query,
+  parseCenarioComparativoExpectativa2022,
+  parseFiltroComparativoExpectativa2022,
+} from '@/lib/agent/detect-comparativo-expectativa-2022'
+import { formatComparativoExpectativa2022JarvisReply } from '@/lib/agent/format-comparativo-expectativa-jarvis'
+import type { ComparativoExpectativa2022Row } from '@/lib/comparativo-expectativa-2022'
+import {
   detectPesquisaTendenciaCidadeFollowUp,
   PESQUISA_TENDENCIA_CIDADE_HINT,
   type PesquisaTendenciaCidadePending,
@@ -107,8 +114,11 @@ import {
 import {
   findLastJarvisReadableReply,
   isJarvisReadAloudRequest,
+  resolveJarvisSpeechForReadAloud,
   shouldAutoSpeakJarvisAnswer,
+  buildJarvisSpeechBrief,
 } from '@/lib/agent/jarvis-read-aloud'
+import { isJarvisAnalysisQuery } from '@/lib/agent/claude-router'
 import {
   getPhrase,
   pickJarvisAguardando,
@@ -116,6 +126,8 @@ import {
   pickJarvisDadosCarregados,
   pickJarvisErro,
   pickJarvisLoadingPhrase,
+  pickJarvisProcessandoPhrase,
+  pickJarvisResultadoNaTela,
   pickJarvisSaudacao,
   pickJarvisSemResultado,
   formatJarvisExpectativaCidadeReply,
@@ -131,8 +143,10 @@ import { isSpeechSynthesisSupported, fetchJarvisSpeechConfig, speakText, stopSpe
 import {
   getJarvisAlwaysListenEnabled,
   getJarvisVoiceOutputEnabled,
+  getJarvisWebcamEnabled,
   setJarvisAlwaysListenEnabled,
   setJarvisVoiceOutputEnabled,
+  setJarvisWebcamEnabled,
 } from '@/lib/agent/voice-preference'
 import type {
   AgentChatResponse,
@@ -532,6 +546,7 @@ export function AIAgent({
   const [speechCapabilityResolved, setSpeechCapabilityResolved] = useState(false)
   const [voiceError, setVoiceError] = useState<string | null>(null)
   const [voiceOutputEnabled, setVoiceOutputEnabled] = useState(true)
+  const [webcamEnabled, setWebcamEnabled] = useState(true)
   const recognitionRef = useRef<SpeechRecognitionLike | null>(null)
   const pendingSpeechRef = useRef('')
   const isJarvisHudRef = useRef(isJarvisHud)
@@ -582,6 +597,12 @@ export function AIAgent({
   } | null>(null)
   const jarvisLoadingSpeechRef = useRef(false)
   const jarvisPendingAnswerRef = useRef<{ content: string; segments?: string[] } | null>(null)
+  const jarvisPendingPopupRef = useRef<{
+    id: string
+    view: JarvisResultView
+    action?: ChatMessage['action']
+    speakCue: boolean
+  } | null>(null)
   const resumoBuscaCidadePendingRef = useRef<string | null>(null)
   const resumoBuscaViuLoadingRef = useRef(false)
   const jarvisListenResumePhraseRef = useRef<'saudacao' | 'aguardando' | null>(null)
@@ -1793,6 +1814,61 @@ export function AIAgent({
     }
   }, [candidatoPadrao])
 
+  const fetchComparativoExpectativa2022Message = useCallback(async (query: string): Promise<ChatMessage> => {
+    try {
+      const filtro = parseFiltroComparativoExpectativa2022(query)
+      const cenario = parseCenarioComparativoExpectativa2022(query)
+      const qs = new URLSearchParams({ filtro, cenario, limit: '25' })
+      const response = await fetch(`/api/territorio/comparativo-expectativa-2022?${qs}`)
+      if (!response.ok) {
+        return {
+          id: Date.now().toString(),
+          role: 'assistant',
+          content: 'Erro ao montar comparativo expectativa 2026 × Federal 2022.',
+        }
+      }
+      const data = (await response.json()) as {
+        rows?: ComparativoExpectativa2022Row[]
+        totalFiltrado?: number
+        filtro?: 'caiu' | 'cresceu' | 'manteve' | 'todos'
+        cenario?: 'legado' | 'aferido' | 'promessa'
+        error?: string
+      }
+      if (data.error) {
+        return {
+          id: Date.now().toString(),
+          role: 'assistant',
+          content: data.error,
+        }
+      }
+      const formatted = formatComparativoExpectativa2022JarvisReply({
+        rows: data.rows ?? [],
+        filtro: data.filtro ?? filtro,
+        cenario: data.cenario ?? cenario,
+        totalFiltrado: data.totalFiltrado ?? 0,
+        limite: 25,
+      })
+      return {
+        id: Date.now().toString(),
+        role: 'assistant',
+        content: formatted.content,
+        speechSegments: formatted.speechSegments,
+        action: {
+          type: 'navigate',
+          url: '/dashboard/territorio',
+          label: 'Ver Mapa 2026 × 2022',
+        },
+      }
+    } catch (error) {
+      console.error('Erro ao buscar comparativo expectativa 2022:', error)
+      return {
+        id: Date.now().toString(),
+        role: 'assistant',
+        content: 'Erro ao buscar comparativo territorial. Tente novamente.',
+      }
+    }
+  }, [])
+
   const buildPesquisasChatMessage = useCallback((
     outcome: PesquisasFetchOutcome,
     options?: { viaAi?: boolean; tendencia?: boolean }
@@ -1839,6 +1915,7 @@ export function AIAgent({
   const processUserQuery = useCallback(async (query: string): Promise<ChatMessage> => {
     const queryLower = normalizeText(query)
     const pc = pageContextRef.current
+    const analysisQuery = isJarvisAnalysisQuery(query)
 
     if (isGreetingQuery(query)) {
       return {
@@ -2626,8 +2703,15 @@ export function AIAgent({
     }
     
     // ===== EXPECTATIVA/VOTOS EM CIDADE ESPECÍFICA =====
-    if (cidade && (queryLower.includes('expectativa') || queryLower.includes('voto') || 
-        queryLower.includes('2026') || queryLower.includes('quantos') || queryLower.includes('potencial'))) {
+    if (
+      !analysisQuery &&
+      cidade &&
+      (queryLower.includes('expectativa') ||
+        queryLower.includes('voto') ||
+        queryLower.includes('2026') ||
+        queryLower.includes('quantos') ||
+        queryLower.includes('potencial'))
+    ) {
       const pedeDetalheLideranca = querExpectativaPorLideranca(query)
       const resposta = await fetchExpectativaCidade(cidade, { detalhe: pedeDetalheLideranca })
       const cidadeCtx = cidade.charAt(0).toUpperCase() + cidade.slice(1).toLowerCase()
@@ -3042,8 +3126,17 @@ export function AIAgent({
       }
     }
     
+    // ===== COMPARATIVO EXPECTATIVA 2026 × FEDERAL 2022 =====
+    if (isComparativoExpectativa2022Query(query)) {
+      return fetchComparativoExpectativa2022Message(query)
+    }
+
     // ===== EXPECTATIVA GERAL =====
-    if ((queryLower.includes('expectativa') || queryLower.includes('projecao')) && !cidade) {
+    if (
+      (queryLower.includes('expectativa') || queryLower.includes('projecao')) &&
+      !cidade &&
+      !isComparativoExpectativa2022Query(query)
+    ) {
       const totalGeral =
         typeof expectativa2026 === 'number'
           ? expectativa2026.toLocaleString('pt-BR')
@@ -3071,7 +3164,7 @@ export function AIAgent({
     }
 
     // ===== CONSULTA SOBRE CIDADE SEM INDICADOR ESPECÍFICO =====
-    if (cidade && !queryLower.includes('pesquisa')) {
+    if (!analysisQuery && cidade && !queryLower.includes('pesquisa')) {
       const expectativaResp = await fetchExpectativaCidade(cidade)
       syncExpectativaDetalhePending({
         cidade: cidade.charAt(0).toUpperCase() + cidade.slice(1).toLowerCase(),
@@ -3106,6 +3199,7 @@ export function AIAgent({
     fetchPesquisasOutcome,
     fetchPesquisaTendenciaOutcome,
     fetchRankingEstimuladaOutcome,
+    fetchComparativoExpectativa2022Message,
     buildPesquisasChatMessage,
     syncPesquisaTendenciaPending,
     buildNoticiasDestaqueChatMessage,
@@ -3185,9 +3279,20 @@ export function AIAgent({
           return null
         }
 
-        if (data.clientQuery?.trim()) {
+        if (data.clientQuery?.trim() && !isJarvisAnalysisQuery(message)) {
           const legacy = await processUserQuery(data.clientQuery.trim())
           return { ...legacy, viaAi: true }
+        }
+
+        if (data.clientQuery?.trim() && isJarvisAnalysisQuery(message)) {
+          return {
+            id: Date.now().toString(),
+            role: 'assistant',
+            content:
+              'Este pedido é uma análise — configure ANTHROPIC_API_KEY no servidor ou reformule como consulta direta (ex.: «expectativa em Parnaíba»).',
+            skipAnswerSpeech: true,
+            viaAi: true,
+          }
         }
 
         if (data.content?.trim()) {
@@ -3198,12 +3303,17 @@ export function AIAgent({
             syncAgendaScopePending(data.agendaScopePending)
           }
           const autoNavigate = data.meta?.intent === 'navegar'
+          const trimmedContent = data.content.trim()
+          const speechBrief = shouldShowJarvisResultPopup(trimmedContent)
+            ? buildJarvisSpeechBrief(trimmedContent)
+            : null
           return {
             id: Date.now().toString(),
             role: 'assistant',
-            content: data.content.trim(),
+            content: trimmedContent,
             speechSegments:
               data.speechSegments ??
+              speechBrief?.segments ??
               (autoNavigate ? [pickJarvisNavegacaoFala()] : undefined),
             skipListenResumePhrase: autoNavigate,
             action: data.action,
@@ -3228,12 +3338,19 @@ export function AIAgent({
       stopSpeaking()
       setIsSpeaking(false)
       jarvisPendingAnswerRef.current = null
+      jarvisPendingPopupRef.current = null
       jarvisLoadingSpeechRef.current = false
     }
   }, [])
 
+  const handleWebcamChange = useCallback((enabled: boolean) => {
+    setJarvisWebcamEnabled(enabled)
+    setWebcamEnabled(enabled)
+  }, [])
+
   useEffect(() => {
     setVoiceOutputEnabled(getJarvisVoiceOutputEnabled())
+    setWebcamEnabled(getJarvisWebcamEnabled())
     void fetchJarvisSpeechConfig()
   }, [])
 
@@ -3268,6 +3385,40 @@ export function AIAgent({
     },
     [enableVoice, voiceOutputEnabled]
   )
+
+  const openJarvisResultPopup = useCallback(
+    (payload: {
+      id: string
+      view: JarvisResultView
+      action?: ChatMessage['action']
+      speakCue?: boolean
+    }) => {
+      setJarvisResultPopup({
+        id: payload.id,
+        view: payload.view,
+        action: payload.action,
+      })
+      if (
+        payload.speakCue &&
+        enableVoice &&
+        voiceOutputEnabled &&
+        isJarvisHudRef.current
+      ) {
+        speakJarvisReply(pickJarvisResultadoNaTela())
+      } else if (isJarvisHudRef.current && !listenPausedRef.current) {
+        shouldRestartListenRef.current = true
+      }
+    },
+    [enableVoice, voiceOutputEnabled, speakJarvisReply]
+  )
+
+  const tryFlushJarvisPendingPopup = useCallback(() => {
+    const pending = jarvisPendingPopupRef.current
+    if (!pending) return false
+    jarvisPendingPopupRef.current = null
+    openJarvisResultPopup(pending)
+    return true
+  }, [openJarvisResultPopup])
 
   const scheduleJarvisAnswerSpeech = useCallback(
     (content: string, segments?: string[]) => {
@@ -3323,21 +3474,34 @@ export function AIAgent({
       }
 
       const autoSpeak = shouldAutoSpeakJarvisAnswer(userQuery, response)
-      const speechText = response.speechSegments?.length
-        ? response.speechSegments.join(' ')
+      const popup = isJarvisHud && shouldShowJarvisResultPopup(response.content)
+      const speechBrief = popup ? buildJarvisSpeechBrief(response.content, userQuery) : null
+      const speechSegments = response.speechSegments?.length
+        ? response.speechSegments
+        : speechBrief?.segments
+      const speechText = speechSegments?.length
+        ? speechSegments.join(' ')
         : response.content
 
-      if (isJarvisHud && shouldShowJarvisResultPopup(response.content)) {
+      if (popup) {
         try {
-          setJarvisResultPopup({
+          const view = parseJarvisResultContent(response.content, userQuery)
+          const popupPayload = {
             id: response.id,
-            view: parseJarvisResultContent(response.content, userQuery),
+            view,
             action: response.action,
-          })
+            speakCue: Boolean(jarvisLoadingSpeechRef.current) && !autoSpeak,
+          }
+          if (jarvisLoadingSpeechRef.current) {
+            jarvisPendingPopupRef.current = popupPayload
+            if (autoSpeak) {
+              scheduleJarvisAnswerSpeech(speechText, speechSegments)
+            }
+            return
+          }
+          openJarvisResultPopup(popupPayload)
           if (autoSpeak) {
-            scheduleJarvisAnswerSpeech(speechText, response.speechSegments)
-          } else {
-            shouldRestartListenRef.current = true
+            scheduleJarvisAnswerSpeech(speechText, speechSegments)
           }
           return
         } catch (err) {
@@ -3346,12 +3510,12 @@ export function AIAgent({
       }
 
       if (autoSpeak) {
-        scheduleJarvisAnswerSpeech(speechText, response.speechSegments)
+        scheduleJarvisAnswerSpeech(speechText, speechSegments)
       } else if (isJarvisHudRef.current && !listenPausedRef.current) {
         shouldRestartListenRef.current = true
       }
     },
-    [isJarvisHud, router, scheduleJarvisAnswerSpeech, syncExpectativaDetalhePending]
+    [isJarvisHud, router, scheduleJarvisAnswerSpeech, syncExpectativaDetalhePending, openJarvisResultPopup]
   )
 
   const deliverAssistantResponseRef = useRef(deliverAssistantResponse)
@@ -3422,6 +3586,7 @@ export function AIAgent({
     stopSpeaking()
     setIsSpeaking(false)
     jarvisPendingAnswerRef.current = null
+    jarvisPendingPopupRef.current = null
     jarvisLoadingSpeechRef.current = false
     setJarvisResultPopup(null)
   }, [])
@@ -3443,6 +3608,7 @@ export function AIAgent({
       stopSpeaking()
       setIsSpeaking(false)
       jarvisPendingAnswerRef.current = null
+      jarvisPendingPopupRef.current = null
       jarvisLoadingSpeechRef.current = false
     }
 
@@ -3491,10 +3657,8 @@ export function AIAgent({
         }
       }
 
-      const speechText = last.speechSegments?.length
-        ? last.speechSegments.join(' ')
-        : last.content
-      speakJarvisReply(speechText, last.speechSegments)
+      const speech = resolveJarvisSpeechForReadAloud(last, cleanedContent)
+      speakJarvisReply(speech.text, speech.segments)
       return
     }
 
@@ -3522,6 +3686,7 @@ export function AIAgent({
     setChatMessages(prev => [...prev, userMessage])
     setJarvisResultPopup(null)
     jarvisPendingAnswerRef.current = null
+    jarvisPendingPopupRef.current = null
 
     if (
       dismissQuery &&
@@ -3552,10 +3717,9 @@ export function AIAgent({
       cleanedContent
     )
 
-    const playLoadingPhrase =
+    const playProcessingPhrase =
       enableVoice &&
       voiceOutputEnabled &&
-      !isJarvisHudRef.current &&
       shouldPlayJarvisLoadingPhrase(cleanedContent, {
         pesquisaTipoPending: Boolean(pesquisaTipoPending),
         agendaScopePending: Boolean(agendaScopePendingRef.current),
@@ -3568,10 +3732,14 @@ export function AIAgent({
         isExpectativaNegative: isExpectativaDetalheNegative,
       })
 
-    if (playLoadingPhrase) {
+    if (playProcessingPhrase) {
       jarvisLoadingSpeechRef.current = true
       stopSpeakingReplyRef.current?.()
-      void speakText(pickJarvisLoadingPhrase({ cidade: extractCityNameFromQuery(cleanedContent) }), {
+      const cidadeLoading = extractCityNameFromQuery(cleanedContent)
+      const processingPhrase = isJarvisHudRef.current
+        ? pickJarvisProcessandoPhrase({ cidade: cidadeLoading })
+        : pickJarvisLoadingPhrase({ cidade: cidadeLoading })
+      void speakText(processingPhrase, {
         onStart: () => {
           setVoiceError(null)
           setIsSpeaking(true)
@@ -3579,6 +3747,7 @@ export function AIAgent({
         onEnd: () => {
           jarvisLoadingSpeechRef.current = false
           setIsSpeaking(false)
+          tryFlushJarvisPendingPopup()
           const pending = jarvisPendingAnswerRef.current
           if (pending) {
             jarvisPendingAnswerRef.current = null
@@ -3589,6 +3758,7 @@ export function AIAgent({
           jarvisLoadingSpeechRef.current = false
           setIsSpeaking(false)
           if (msg) setVoiceError(msg)
+          tryFlushJarvisPendingPopup()
         },
       }).then((cancel) => {
         stopSpeakingReplyRef.current = cancel
@@ -3754,6 +3924,15 @@ export function AIAgent({
         }
       }
 
+      if (!response && isComparativoExpectativa2022Query(cleanedContent)) {
+        response = await fetchComparativoExpectativa2022Message(cleanedContent)
+      }
+
+      if (!response && isRankingEstimuladaFederalQuery(cleanedContent)) {
+        const outcome = await fetchRankingEstimuladaOutcome(cleanedContent)
+        response = buildPesquisasChatMessage(outcome, { viaAi: true })
+      }
+
       if (!response && pageUiPriority) {
         response = await processUserQuery(cleanedContent)
       } else if (!response && resumoDemandasAssistPhase === 'idle') {
@@ -3803,11 +3982,13 @@ export function AIAgent({
     fetchPesquisasOutcome,
     fetchPesquisaTendenciaOutcome,
     fetchRankingEstimuladaOutcome,
+    fetchComparativoExpectativa2022Message,
     buildPesquisasChatMessage,
     syncPesquisaTendenciaPending,
     fetchExpectativaCidade,
     deliverAssistantResponse,
     speakJarvisReply,
+    tryFlushJarvisPendingPopup,
   ])
 
   const submitMessageRef = useRef<(content: string) => Promise<void>>(async () => {})
@@ -4225,11 +4406,18 @@ export function AIAgent({
     tryStartContinuousListening,
   ])
 
+  const [jarvisDiagnosticLines, setJarvisDiagnosticLines] = useState<JarvisLogLine[]>([])
+
+  const pushJarvisDiagnostic = useCallback((lines: JarvisLogLine[]) => {
+    if (!lines.length) return
+    setJarvisDiagnosticLines((prev) => [...prev, ...lines].slice(-24))
+  }, [])
+
   const jarvisLogLines = useMemo((): JarvisLogLine[] => {
-    return chatMessages.slice(-14).map((m) => ({
+    const chatLines: JarvisLogLine[] = chatMessages.slice(-12).map((m) => ({
       tag: m.role === 'user' ? 'USER' : 'JARVIS',
       message: m.content.replace(/\n/g, ' ').slice(0, 220),
-      tone: m.role === 'user' ? 'default' : 'success',
+      tone: m.role === 'user' ? ('default' as const) : ('success' as const),
       at: new Date(Number(m.id) || Date.now()).toLocaleTimeString('pt-BR', {
         hour: '2-digit',
         minute: '2-digit',
@@ -4237,7 +4425,8 @@ export function AIAgent({
         hour12: false,
       }),
     }))
-  }, [chatMessages])
+    return [...jarvisDiagnosticLines, ...chatLines].slice(-18)
+  }, [jarvisDiagnosticLines, chatMessages])
 
   const jarvisLastAction = useMemo((): ChatMessage['action'] => {
     for (let i = chatMessages.length - 1; i >= 0; i -= 1) {
@@ -4334,12 +4523,15 @@ export function AIAgent({
           speechSupported={speechSupported}
           voiceOutputEnabled={voiceOutputEnabled}
           onVoiceOutputChange={handleVoiceOutputChange}
+          webcamEnabled={webcamEnabled}
+          onWebcamChange={handleWebcamChange}
           voiceError={voiceError}
           onMicClick={handleToggleVoiceListening}
           onMinimize={fullPageHud ? undefined : () => setIsMinimized(true)}
           lastAction={jarvisLastAction}
           onActionClick={handleAction}
           logLines={jarvisLogLines}
+          onDiagnosticLog={pushJarvisDiagnostic}
           hudLayout={hudLayout}
           resultPanel={
             jarvisResultPopup

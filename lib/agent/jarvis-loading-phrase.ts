@@ -1,9 +1,9 @@
 import { detectSidebarNavigate } from '@/lib/agent/detect-sidebar-navigate'
 import { isGreetingQuery, isHelpQuery } from '@/lib/agent/greeting-reply'
 import { isJarvisDismissUiQuery } from '@/lib/agent/jarvis-ui-dismiss'
-import { pickJarvisLoadingPhrase } from '@/lib/agent/jarvis-phrases'
+import { pickJarvisLoadingPhrase, pickJarvisProcessandoPhrase } from '@/lib/agent/jarvis-phrases'
 
-export { pickJarvisLoadingPhrase }
+export { pickJarvisLoadingPhrase, pickJarvisProcessandoPhrase }
 
 export interface JarvisLoadingPhraseContext {
   pesquisaTipoPending: boolean

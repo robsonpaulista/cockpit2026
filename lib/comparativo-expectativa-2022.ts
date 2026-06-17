@@ -82,10 +82,38 @@ export function buildComparativoExpectativa2022Lista(
     })
 }
 
-export function agregarExpectativaJadyelPorCidade(
+export function filterComparativoExpectativa2022Lista(
+  rows: ComparativoExpectativa2022Row[],
+  filtro: 'caiu' | 'cresceu' | 'manteve' | 'todos'
+): ComparativoExpectativa2022Row[] {
+  switch (filtro) {
+    case 'caiu':
+      return rows.filter((r) => r.expectativa2026 < r.votos2022 && r.votos2022 > 0)
+    case 'cresceu':
+      return rows.filter((r) => r.expectativa2026 > r.votos2022 && r.expectativa2026 > 0)
+    case 'manteve':
+      return rows.filter((r) => r.tendencia === 'manteve')
+    default:
+      return rows
+  }
+}
+
+export type CenarioExpectativaComparativo = 'legado' | 'aferido' | 'promessa'
+
+export function labelCenarioExpectativaComparativo(cenario: CenarioExpectativaComparativo): string {
+  switch (cenario) {
+    case 'aferido':
+      return 'Expectativa Jadyel 2026 (Aferido)'
+    case 'promessa':
+      return 'Promessa da Liderança 2026'
+    default:
+      return 'Expectativa de Votos 2026 (Anterior)'
+  }
+}
+export function agregarExpectativaPorCidade(
   liderancas: Array<Record<string, unknown>>,
   cidadeCol: string,
-  expectativaJadyelCol: string,
+  expectativaCol: string,
   normalizeNumber: (value: unknown) => number
 ): Map<string, number> {
   const map = new Map<string, number>()
@@ -94,13 +122,16 @@ export function agregarExpectativaJadyelPorCidade(
     const cidade = String(lider[cidadeCol] || '').trim()
     if (!cidade) return
     const key = normalizeMunicipioNome(cidade)
-    const valor = normalizeNumber(lider[expectativaJadyelCol])
+    const valor = normalizeNumber(lider[expectativaCol])
     if (valor <= 0) return
     map.set(key, (map.get(key) || 0) + valor)
   })
 
   return map
 }
+
+/** @deprecated use agregarExpectativaPorCidade */
+export const agregarExpectativaJadyelPorCidade = agregarExpectativaPorCidade
 
 export function agregarLiderancasPorCidade(
   liderancas: Array<Record<string, unknown>>,

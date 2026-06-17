@@ -15,6 +15,10 @@ import {
   formatRankingEstimuladaFederalReply,
   type RankingEstimuladaApiPayload,
 } from '@/lib/agent/format-ranking-estimulada'
+import {
+  formatComparativoExpectativa2022JarvisReply,
+} from '@/lib/agent/format-comparativo-expectativa-jarvis'
+import type { ComparativoExpectativa2022Row } from '@/lib/comparativo-expectativa-2022'
 import { resolveCandidatoParaPesquisa } from '@/lib/agent/resolve-candidato-pesquisa'
 import { resolveCidadeTendenciaPesquisa } from '@/lib/agent/detect-pesquisa-avancada'
 import { PESQUISA_TENDENCIA_CIDADE_HINT } from '@/lib/agent/pesquisa-tendencia-followup'
@@ -193,6 +197,50 @@ async function toolConsultarPesquisaTendencia(
   })
   const hint = municipio ? '' : PESQUISA_TENDENCIA_CIDADE_HINT
   return { content: `${content}${hint}`.trim() }
+}
+
+async function toolConsultarComparativoExpectativa2022(
+  origin: string,
+  cookie: string,
+  args: Record<string, string>
+): Promise<{ content: string; speechSegments: string[] }> {
+  const filtro = args.filtro?.trim() || 'caiu'
+  const cenario = args.cenario?.trim() || 'legado'
+  const qs = new URLSearchParams({ filtro, cenario, limit: '25' })
+  const res = await fetchWithCookies(
+    origin,
+    `/api/territorio/comparativo-expectativa-2022?${qs}`,
+    cookie
+  )
+  if (!res.ok) {
+    return {
+      content: 'Não consegui montar o comparativo expectativa 2026 × Federal 2022. Verifique a planilha em Território & Base.',
+      speechSegments: ['Não consegui montar o comparativo territorial.'],
+    }
+  }
+
+  const data = (await res.json()) as {
+    rows?: ComparativoExpectativa2022Row[]
+    totalFiltrado?: number
+    filtro?: 'caiu' | 'cresceu' | 'manteve' | 'todos'
+    cenario?: 'legado' | 'aferido' | 'promessa'
+    error?: string
+  }
+
+  if (data.error) {
+    return {
+      content: data.error,
+      speechSegments: [data.error],
+    }
+  }
+
+  return formatComparativoExpectativa2022JarvisReply({
+    rows: data.rows ?? [],
+    filtro: data.filtro ?? 'caiu',
+    cenario: data.cenario ?? 'legado',
+    totalFiltrado: data.totalFiltrado ?? 0,
+    limite: 25,
+  })
 }
 
 async function toolConsultarRankingEstimuladaFederal(
@@ -450,6 +498,8 @@ export async function executeServerTool(
         context,
         queryHint ?? classified.args.termo
       )
+    case 'consultar_comparativo_expectativa_2022':
+      return toolConsultarComparativoExpectativa2022(origin, cookie, classified.args)
     case 'consultar_ranking_estimulada_federal':
       return toolConsultarRankingEstimuladaFederal(
         origin,
@@ -502,6 +552,14 @@ export function buildNavigateAction(
       type: 'navigate',
       url: '/dashboard/noticias',
       label: 'Ver Notícias & Crises',
+    }
+  }
+
+  if (classified.intent === 'consultar_comparativo_expectativa_2022') {
+    return {
+      type: 'navigate',
+      url: '/dashboard/territorio',
+      label: 'Ver Mapa 2026 × 2022',
     }
   }
 

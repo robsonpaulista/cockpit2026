@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { ArrowRight, FileText, X } from 'lucide-react'
 import type { JarvisResultView } from '@/lib/agent/jarvis-result-view'
 import { JARVIS_READ_ALOUD_HINT } from '@/lib/agent/jarvis-read-aloud'
+import { JarvisReportMarkdown } from '@/components/jarvis/jarvis-report-markdown'
 import { cn } from '@/lib/utils'
 import './jarvis-neural.css'
 
@@ -189,26 +190,27 @@ export function JarvisResultPanel({
           </div>
         ) : null}
 
-        {view.sections.map((section, idx) => (
-          <div
-            key={`${section.heading ?? 'section'}-${idx}`}
-            className="mt-4 rounded-xl border border-slate-200 bg-white px-4 py-3.5 shadow-sm first:mt-0 sm:px-5 sm:py-4"
-          >
-            {section.heading ? (
-              <h3 className="mb-2 text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">
-                {section.heading}
-              </h3>
-            ) : null}
-            {section.lines.map((line, lineIdx) => (
-              <p
-                key={`${idx}-${lineIdx}-${line.slice(0, 24)}`}
-                className="text-sm leading-relaxed text-slate-800 sm:text-[15px]"
-              >
-                {line}
-              </p>
-            ))}
-          </div>
-        ))}
+        {view.markdownBody ? (
+          <JarvisReportMarkdown content={view.markdownBody} className={view.stats.length > 0 ? 'mt-4' : undefined} />
+        ) : null}
+
+        {!view.markdownBody &&
+          view.sections.map((section, idx) => {
+            const sectionMarkdown = [
+              section.heading ? `## ${section.heading}` : '',
+              ...section.lines,
+            ]
+              .filter(Boolean)
+              .join('\n')
+
+            return (
+              <JarvisReportMarkdown
+                key={`${section.heading ?? 'section'}-${idx}`}
+                content={sectionMarkdown}
+                className={idx > 0 || view.stats.length > 0 ? 'mt-4' : undefined}
+              />
+            )
+          })}
 
         {view.bullets.length > 0 ? (
           <ul className="mt-4 space-y-2 rounded-xl border border-slate-200 bg-white px-4 py-3.5 shadow-sm sm:px-5 sm:py-4">

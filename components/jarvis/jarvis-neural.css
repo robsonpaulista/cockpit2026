@@ -52,10 +52,18 @@
   box-shadow: 0 0 0 1px rgba(0, 212, 255, 0.22), 0 0 24px rgba(0, 212, 255, 0.12);
 }
 
-.jarvis-result-panel--report.jarvis-result-panel--speaking {
-  box-shadow:
-    0 0 0 2px rgba(14, 116, 144, 0.18),
-    0 18px 50px rgba(15, 23, 42, 0.22);
+.jarvis-report-table-wrap {
+  -webkit-overflow-scrolling: touch;
+}
+
+.jarvis-report-markdown a {
+  color: #0369a1;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.jarvis-report-markdown a:hover {
+  color: #0c4a6e;
 }
 
 .jarvis-core-presenting .jarvis-ring-outer,

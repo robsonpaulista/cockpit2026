@@ -53,6 +53,8 @@ import {
 } from '@/lib/agent/voice-preference'
 import { useKokoroTTS } from '@/hooks/useKokoroTTS'
 import { pickJarvisGreetingLine } from '@/lib/agent/greeting-reply'
+import { jarvisDiagnosticLine } from '@/lib/agent/jarvis-diagnostic-log'
+import type { JarvisLogLine } from '@/components/jarvis/jarvis-hud-widgets'
 import { cn } from '@/lib/utils'
 import './jarvis-neural.css'
 
@@ -78,11 +80,17 @@ function findActiveOption(
 export function JarvisVoicePicker({
   className,
   compact = false,
+  logPanel = false,
   voiceOutputEnabled = true,
+  webcamEnabled = true,
+  onDiagnosticLog,
 }: {
   className?: string
   compact?: boolean
+  logPanel?: boolean
   voiceOutputEnabled?: boolean
+  webcamEnabled?: boolean
+  onDiagnosticLog?: (lines: JarvisLogLine[]) => void
 }) {
   const [ttsMode, setTtsMode] = useState<JarvisTtsMode>('system')
   const [voices, setVoices] = useState<PortugueseVoiceOption[]>([])
@@ -108,6 +116,14 @@ export function JarvisVoicePicker({
   const [previewing, setPreviewing] = useState(false)
   const [open, setOpen] = useState(false)
   const rootRef = useRef<HTMLDivElement>(null)
+  const bootLoggedRef = useRef(false)
+
+  const pushDiagnostics = useCallback(
+    (lines: JarvisLogLine[]) => {
+      onDiagnosticLog?.(lines)
+    },
+    [onDiagnosticLog]
+  )
 
   const kokoro = useKokoroTTS({ voice: kokoroVoice })
 
@@ -280,7 +296,6 @@ export function JarvisVoicePicker({
   const activeOption = voices.find((v) => v.voiceURI === activeUri)
   const openAiOptions = listOpenAiVoicesForPicker()
   const hasFelipeVoice = voices.some((v) => v.name.toLowerCase().includes('felipe'))
-  const showSiriUnavailableHint = ttsMode === 'system' && isLikelyMacOs() && !hasFelipeVoice
 
   const activeElevenVoice = elevenLabsVoices.find((v) => v.voice_id === elevenVoiceId)
 
@@ -306,8 +321,126 @@ export function JarvisVoicePicker({
         ? !previewing
         : Boolean(speechOk && voices.length > 0 && !previewing)
 
+  useEffect(() => {
+    if (!onDiagnosticLog || bootLoggedRef.current) return
+
+    const siriHint = ttsMode === 'system' && isLikelyMacOs() && !hasFelipeVoice
+
+    const modeLabel =
+      ttsMode === 'openai'
+        ? 'OPENAI TTS · VOZ MASCULINA ESTÁVEL PT-BR'
+        : ttsMode === 'elevenlabs'
+          ? 'ELEVENLABS FLASH V2.5 · PLANO FREE ~10K CRÉDITOS/MÊS'
+          : ttsMode === 'kokoro'
+            ? 'KOKORO EXPERIMENTAL · INGLÊS'
+            : 'SISTEMA · VOZES PT-BR DO NAVEGADOR'
+
+    const lines: JarvisLogLine[] = [
+      jarvisDiagnosticLine('AUDIO', modeLabel, 'success'),
+      jarvisDiagnosticLine(
+        'AUDIO',
+        voiceOutputEnabled ? 'RESPOSTA POR VOZ LIGADA' : 'RESPOSTA SÓ NO PAINEL · VOZ DESLIGADA'
+      ),
+      jarvisDiagnosticLine(
+        'WEBCAM',
+        webcamEnabled
+          ? 'PREVIEW LIGADO · ATIVA COM MICROFONE'
+          : 'PREVIEW DA CÂMERA DESLIGADO'
+      ),
+    ]
+
+    if (ttsMode === 'system' && speechOk) {
+      lines.push(jarvisDiagnosticLine('TTS', `VOZ · ${liveLabel.toUpperCase()}`))
+      if (siriHint) {
+        lines.push(jarvisDiagnosticLine('TTS', MACOS_SIRI_VOICE_UNAVAILABLE_HINT, 'warn'))
+      }
+    } else if (ttsMode === 'openai' && openAiAvailable) {
+      lines.push(
+        jarvisDiagnosticLine('TTS', `OPENAI · ${getOpenAiVoiceLabel(openAiVoice).toUpperCase()}`)
+      )
+    } else if (ttsMode === 'elevenlabs') {
+      if (activeElevenVoice) {
+        lines.push(
+          jarvisDiagnosticLine(
+            'TTS',
+            `ELEVENLABS · ${formatElevenLabsVoiceLabel(activeElevenVoice).toUpperCase()}`
+          )
+        )
+      } else if (elevenVoiceId) {
+        lines.push(jarvisDiagnosticLine('TTS', `ELEVENLABS · ${elevenVoiceId.slice(0, 12).toUpperCase()}…`))
+      }
+      if (elevenLabsHint) {
+        lines.push(jarvisDiagnosticLine('TTS', elevenLabsHint.toUpperCase(), 'warn'))
+      }
+    } else if (ttsMode === 'kokoro') {
+      lines.push(
+        jarvisDiagnosticLine(
+          'TTS',
+          `KOKORO · ${getKokoroVoiceLabel(kokoroVoice).toUpperCase()} · ${kokoro.isReady ? 'PRONTO' : 'CARREGA NA 1ª FALA'}`
+        )
+      )
+      if (kokoro.isLoading) {
+        lines.push(
+          jarvisDiagnosticLine(
+            'TTS',
+            `BAIXANDO MODELO KOKORO… ${kokoro.loadProgress ?? 0}%`,
+            'warn'
+          )
+        )
+      }
+      if (kokoro.error) {
+        lines.push(jarvisDiagnosticLine('TTS', `KOKORO INDISPONÍVEL: ${kokoro.error}`, 'warn'))
+      }
+    } else if (ttsMode === 'system' && !speechOk) {
+      lines.push(
+        jarvisDiagnosticLine('TTS', 'SÍNTESE PT-BR INDISPONÍVEL NESTE NAVEGADOR', 'warn')
+      )
+    } else if (ttsMode === 'system' && !openAiAvailable) {
+      lines.push(jarvisDiagnosticLine('TTS', 'OPENAI NEURAL: CONFIGURE OPENAI_API_KEY', 'warn'))
+    }
+
+    const ready =
+      ttsMode !== 'system' ||
+      speechOk ||
+      !isSpeechSynthesisSupported() ||
+      voices.length > 0 ||
+      liveLabel !== 'carregando…'
+
+    if (!ready && ttsMode === 'system') return
+
+    bootLoggedRef.current = true
+    pushDiagnostics(lines)
+  }, [
+    onDiagnosticLog,
+    ttsMode,
+    speechOk,
+    liveLabel,
+    voiceOutputEnabled,
+    webcamEnabled,
+    openAiAvailable,
+    openAiVoice,
+    elevenVoiceId,
+    activeElevenVoice,
+    elevenLabsHint,
+    kokoro.isReady,
+    kokoro.isLoading,
+    kokoro.loadProgress,
+    kokoro.error,
+    kokoroVoice,
+    voices.length,
+    hasFelipeVoice,
+    pushDiagnostics,
+  ])
+
   return (
-    <div className={cn('flex w-full flex-col items-center gap-1.5', compact ? '' : 'max-w-xs', className)}>
+    <div
+      className={cn(
+        'flex w-full flex-col gap-1.5',
+        logPanel ? 'items-stretch' : 'items-center',
+        !logPanel && !compact && 'max-w-xs',
+        className
+      )}
+    >
       <div className="flex w-full gap-1">
         <button
           type="button"
@@ -353,21 +486,6 @@ export function JarvisVoicePicker({
           </button>
         ) : null}
       </div>
-
-      <p
-        className={cn(
-          'font-jarvis-mono uppercase tracking-[0.18em] text-[var(--color-text-dim)]',
-          compact ? 'text-[7px]' : 'text-[8px]'
-        )}
-      >
-        {ttsMode === 'openai'
-          ? 'openai tts · voz masculina estável em pt-br'
-          : ttsMode === 'elevenlabs'
-            ? 'elevenlabs flash v2.5 · teste vozes pt-br · plano free ~10k créditos/mês'
-          : ttsMode === 'kokoro'
-            ? 'experimental · inglês · qualidade ruim em pt'
-            : 'siri voz 1/2 não aparecem no navegador · baixe felipe aprimorada'}
-      </p>
 
       <div className="flex w-full items-center gap-1.5">
         <div ref={rootRef} className="relative min-w-0 flex-1">
@@ -515,107 +633,6 @@ export function JarvisVoicePicker({
           <IconPlayerPlay className="h-3.5 w-3.5" stroke={1.5} />
         </button>
       </div>
-
-      {ttsMode === 'kokoro' && kokoro.isLoading ? (
-        <p className="text-center font-jarvis-mono text-[8px] text-[var(--color-core)]">
-          Baixando modelo Kokoro… {kokoro.loadProgress ?? 0}%
-          {kokoro.device ? ` · ${kokoro.device}` : ''}
-        </p>
-      ) : null}
-
-      {ttsMode === 'kokoro' && kokoro.error ? (
-        <p className="text-center font-jarvis-mono text-[8px] leading-snug text-[rgba(255,180,80,0.95)]">
-          Kokoro indisponível: {kokoro.error}. Volte para Sistema pt-BR.
-        </p>
-      ) : null}
-
-      {ttsMode === 'system' && speechOk ? (
-        <p
-          className={cn(
-            'text-center font-jarvis-mono uppercase tracking-wider',
-            voiceOutputEnabled ? 'text-[var(--color-online)]' : 'text-[var(--color-text-dim)]',
-            compact ? 'text-[7px]' : 'text-[7px]'
-          )}
-        >
-          {voiceOutputEnabled
-            ? `em uso nas respostas · ${liveLabel}`
-            : 'respostas só no painel · voz desligada'}
-        </p>
-      ) : ttsMode === 'elevenlabs' ? (
-        <>
-          <p
-            className={cn(
-              'text-center font-jarvis-mono uppercase tracking-wider',
-              voiceOutputEnabled ? 'text-[var(--color-online)]' : 'text-[var(--color-text-dim)]',
-              compact ? 'text-[7px]' : 'text-[7px]'
-            )}
-          >
-            {voiceOutputEnabled
-              ? activeElevenVoice
-                ? `elevenlabs · ${formatElevenLabsVoiceLabel(activeElevenVoice)}`
-                : 'elevenlabs · escolha uma voz na lista'
-              : 'respostas só no painel · voz desligada'}
-          </p>
-          {elevenLabsHint ? (
-            <p className="text-center font-jarvis-mono text-[7px] leading-snug text-[rgba(255,180,80,0.95)]">
-              {elevenLabsHint}
-            </p>
-          ) : null}
-        </>
-      ) : ttsMode === 'openai' ? (
-        <p
-          className={cn(
-            'text-center font-jarvis-mono uppercase tracking-wider',
-            voiceOutputEnabled ? 'text-[var(--color-online)]' : 'text-[var(--color-text-dim)]',
-            compact ? 'text-[7px]' : 'text-[7px]'
-          )}
-        >
-          {voiceOutputEnabled
-            ? `neural · ${getOpenAiVoiceLabel(openAiVoice)}`
-            : 'respostas só no painel · voz desligada'}
-        </p>
-      ) : showSiriUnavailableHint ? (
-        <p
-          className={cn(
-            'text-center font-jarvis-mono leading-snug text-[rgba(255,180,80,0.95)]',
-            compact ? 'text-[6px]' : 'text-[7px]'
-          )}
-        >
-          {MACOS_SIRI_VOICE_UNAVAILABLE_HINT}
-        </p>
-      ) : ttsMode === 'system' && !openAiAvailable ? (
-        <p
-          className={cn(
-            'text-center font-jarvis-mono uppercase tracking-wider text-[var(--color-text-dim)]',
-            compact ? 'text-[6px]' : 'text-[6px]'
-          )}
-        >
-          voz masculina estável: configure OPENAI_API_KEY · aba neural M
-        </p>
-      ) : ttsMode === 'kokoro' && !kokoro.error ? (
-        <p
-          className={cn(
-            'text-center font-jarvis-mono uppercase tracking-wider',
-            voiceOutputEnabled ? 'text-[var(--color-online)]' : 'text-[var(--color-text-dim)]',
-            compact ? 'text-[7px]' : 'text-[7px]'
-          )}
-        >
-          {voiceOutputEnabled
-            ? `kokoro · ${kokoro.isReady ? 'pronto' : 'carrega na 1ª fala'} · ${getKokoroVoiceLabel(kokoroVoice)}`
-            : 'respostas só no painel · voz desligada'}
-        </p>
-      ) : ttsMode === 'system' ? (
-        <p
-          className={cn(
-            'text-center font-jarvis-mono leading-snug text-[rgba(255,180,80,0.95)]',
-            compact ? 'text-[7px] sm:text-[8px]' : 'text-[8px]'
-          )}
-          role="status"
-        >
-          Este navegador não oferece síntese de voz pt-BR. Use Kokoro local ou Chrome/Safari com vozes
-          brasileiras.
-        </p>
-      ) : null}
     </div>
   )
 }

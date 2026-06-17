@@ -92,7 +92,8 @@ export function buildOutOfScopeReply(): string {
 
 export function buildHelpReply(): string {
   return `**O que posso fazer:**\n\n**Navegação:**\n› abrir agenda\n› ir para território e base\n› mostrar WhatsApp\n› voltar para visão geral\n\n**Por cidade:**\n› expectativa em Teresina\n› lideranças em Picos\n› visitas em Picos\n› demandas em Parnaíba\n\n**Campo & Agenda:**\n› quais cidades importantes preciso visitar\n› últimas visitas de campo\n› quantas viagens em maio de 2026\n› descrição da visita a Teresina\n› cidades visitadas
-› qual cidade eu mais visitei\n\n**Agenda (Google):**\n› compromissos de hoje\n› agenda de amanhã\n\n**Geral:**\n› notícias em destaque\n› projeção chapa federal\n› alertas críticos\n› territórios frios\n\n**WhatsApp:**\n› envia o resumo operacional para o CEO\n› manda briefing de Picos para Maria e João\n› (sempre diga o destinatário — não envia para todos sem você pedir)\n\n**Pesquisas:**\n› como evoluiu a intenção do Jadyel\n› tendência em Teresina\n› ranking estimulada dep federal\n› pesquisa em Teresina\n\n**Redes:**\n› métricas do Instagram`
+› qual cidade eu mais visitei\n\n**Agenda (Google):**\n› compromissos de hoje\n› agenda de amanhã\n\n**Geral:**\n› notícias em destaque\n› projeção chapa federal\n› alertas críticos\n› territórios frios\n\n**WhatsApp:**\n› envia o resumo operacional para o CEO\n› manda briefing de Picos para Maria e João\n› (sempre diga o destinatário — não envia para todos sem você pedir)\n\n**Pesquisas:**\n› como evoluiu a intenção do Jadyel\n› tendência em Teresina\n› ranking estimulada dep federal
+› com base nas pesquisas estimuladas, quem seriam os 10 eleitos para dep. federal\n› pesquisa em Teresina\n\n**Redes:**\n› métricas do Instagram`
 }
 
 /** Remove menção ao assistente para não virar "cidade". */

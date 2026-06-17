@@ -1,4 +1,5 @@
 import { isGreetingQuery } from '@/lib/agent/greeting-reply'
+import { parseJarvisResultContent } from '@/lib/agent/jarvis-result-view'
 
 function normalize(query: string): string {
   return query
@@ -6,6 +7,160 @@ function normalize(query: string): string {
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
     .trim()
+}
+
+function stripMarkdown(text: string): string {
+  return text
+    .replace(/\*\*/g, '')
+    .replace(/\*/g, '')
+    .replace(/^#+\s*/, '')
+    .replace(/^[›>•\-]\s*/, '')
+    .trim()
+}
+
+/** Linha de dado bruto (datas, séries, bases) — não entra na leitura em voz. */
+function isDataDetailLine(line: string): boolean {
+  const t = line.trim()
+  if (!t) return false
+  if (/^\d{2}\/\d{2}\/\d{4}\s*[—–-]/.test(t)) return true
+  if (/^[•\-*]\s*\d{2}\/\d{2}\/\d{4}/.test(t)) return true
+  if (/^base:\s*\d+\s*pesquisa/i.test(t)) return true
+  if (/m[eé]dia:\s*[\d,.]+%/i.test(t)) return true
+  if (/^\*\*[A-Za-zÀ-ú\s]{2,28}\*\*\s*$/.test(t)) return true
+  if (/^\d+\.\s+\d{2}\/\d{2}\/\d{4}/.test(t)) return true
+  return false
+}
+
+const INSIGHT_LABEL =
+  /(?:conclus[aã]o(?:\s+r[aá]pida)?|resumo|s[ií]ntese|em\s+resumo|insight|leitura|ressalva|recomenda[cç][aã]o|pontos?\s+principais?|destaque|pr[oó]ximos?\s+passos?)/i
+
+const INLINE_INSIGHT =
+  /\*\*((?:conclus[aã]o(?:\s+r[aá]pida)?|resumo|s[ií]ntese|em\s+resumo|insight|leitura))\*\*:?\s*(.+)/i
+
+const LABELED_INSIGHT =
+  /^(?:[-•*]\s*)?\*\*((?:ressalva|recomenda[cç][aã]o|insight|destaque|alerta|pr[oó]ximos?\s+passos?):)\s*\*\*\s*(.+)/i
+
+const HEADING_INSIGHT = /^#{1,3}\s*(.+)$/
+
+export interface JarvisSpeechBrief {
+  text: string
+  segments: string[]
+}
+
+/** Texto curto para TTS — foco em conclusão, ressalvas e recomendações. */
+export function buildJarvisSpeechBrief(content: string, userQuery?: string): JarvisSpeechBrief {
+  const rawLines = content.split('\n')
+  const segments: string[] = []
+  let title = ''
+  let collectingSection = false
+  let sectionBuffer: string[] = []
+
+  const flushSection = () => {
+    if (sectionBuffer.length > 0) {
+      segments.push(sectionBuffer.join(' '))
+      sectionBuffer = []
+    }
+    collectingSection = false
+  }
+
+  for (const raw of rawLines) {
+    const trimmed = raw.trim()
+    if (!trimmed) {
+      if (collectingSection) flushSection()
+      continue
+    }
+
+    if (!title && /^#{1,3}\s+/.test(trimmed)) {
+      title = stripMarkdown(trimmed)
+      continue
+    }
+
+    if (isDataDetailLine(trimmed)) {
+      if (collectingSection) flushSection()
+      continue
+    }
+
+    const inline = trimmed.match(INLINE_INSIGHT)
+    if (inline?.[2]) {
+      flushSection()
+      segments.push(stripMarkdown(inline[2]))
+      continue
+    }
+
+    const labeled = trimmed.match(LABELED_INSIGHT)
+    if (labeled?.[1] && labeled[2]) {
+      flushSection()
+      const label = stripMarkdown(labeled[1].replace(/:$/, ''))
+      segments.push(`${label}: ${stripMarkdown(labeled[2])}`)
+      continue
+    }
+
+    const heading = trimmed.match(HEADING_INSIGHT)
+    if (heading?.[1] && INSIGHT_LABEL.test(heading[1])) {
+      flushSection()
+      collectingSection = true
+      const rest = heading[1].replace(INSIGHT_LABEL, '').trim()
+      if (rest) sectionBuffer.push(stripMarkdown(rest))
+      continue
+    }
+
+    if (collectingSection) {
+      if (/^#{1,3}\s/.test(trimmed) || isDataDetailLine(trimmed)) {
+        flushSection()
+        continue
+      }
+      sectionBuffer.push(stripMarkdown(trimmed))
+      continue
+    }
+
+    if (INSIGHT_LABEL.test(trimmed) && !/^\*\*[^*]+\*\*\s*$/.test(trimmed)) {
+      flushSection()
+      const cleaned = stripMarkdown(trimmed.replace(/^[^:]+:\s*/, (m) => (INSIGHT_LABEL.test(m) ? '' : m)))
+      if (cleaned.length > 12) segments.push(cleaned)
+    }
+  }
+
+  flushSection()
+
+  if (segments.length > 0) {
+    const intro = title ? `${title}.` : ''
+    const all = intro ? [intro, ...segments] : segments
+    return { text: all.join(' '), segments: all }
+  }
+
+  const view = parseJarvisResultContent(content, userQuery)
+  const fallback: string[] = []
+
+  if (view.title) fallback.push(view.title)
+  for (const stat of view.stats.filter((s) => s.highlight).slice(0, 3)) {
+    fallback.push(`${stat.label}: ${stat.value}`)
+  }
+  if (view.bullets.length > 0) {
+    fallback.push(...view.bullets.slice(0, 4).map(stripMarkdown))
+  }
+  for (const section of view.sections) {
+    if (!section.heading || !INSIGHT_LABEL.test(section.heading)) continue
+    const lines = section.lines.filter((l) => !isDataDetailLine(l)).map(stripMarkdown)
+    if (lines.length) fallback.push(...lines)
+  }
+  if (view.footer) fallback.push(stripMarkdown(view.footer))
+
+  if (fallback.length === 0) {
+    const prose = rawLines
+      .map((l) => l.trim())
+      .filter((l) => l && !isDataDetailLine(l) && !/^#{1,3}\s/.test(l))
+      .map(stripMarkdown)
+      .filter((l) => l.length > 20)
+      .slice(0, 3)
+    fallback.push(...prose)
+  }
+
+  if (fallback.length === 0) {
+    const short = stripMarkdown(content).slice(0, 320)
+    return { text: short, segments: [short] }
+  }
+
+  return { text: fallback.join(' '), segments: fallback }
 }
 
 /** Usuário pede para ouvir a última resposta (economia: TTS só sob demanda). */
@@ -84,4 +239,15 @@ export function findLastJarvisReadableReply(
   return null
 }
 
-export const JARVIS_READ_ALOUD_HINT = 'Diga «ler» ou «fale o resultado» para ouvir em voz alta.'
+export function resolveJarvisSpeechForReadAloud(
+  reply: Pick<JarvisReadableReply, 'content' | 'speechSegments'>,
+  userQuery?: string
+): JarvisSpeechBrief {
+  if (reply.speechSegments?.length) {
+    return { text: reply.speechSegments.join(' '), segments: reply.speechSegments }
+  }
+  return buildJarvisSpeechBrief(reply.content, userQuery)
+}
+
+export const JARVIS_READ_ALOUD_HINT =
+  'Diga «ler» para ouvir só o resumo e os insights do relatório.'

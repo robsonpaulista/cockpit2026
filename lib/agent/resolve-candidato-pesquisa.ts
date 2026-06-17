@@ -1,3 +1,4 @@
+import { isRankingEstimuladaFederalQuery } from '@/lib/agent/detect-pesquisa-avancada'
 import type { AgentContextPayload } from '@/lib/agent/types'
 import { queryMentionsJadyelAlencar } from '@/lib/agent/format-pesquisas'
 import { CANDIDATO_RESUMO_PESQUISAS } from '@/lib/resumo-operacional-pesquisas'
@@ -16,6 +17,10 @@ export function resolveCandidatoParaPesquisa(
 
   const padrao = context?.candidatoPadrao?.trim()
   if (padrao) return { candidato: padrao }
+
+  if (queryHint && isRankingEstimuladaFederalQuery(queryHint)) {
+    return { candidato: CANDIDATO_RESUMO_PESQUISAS }
+  }
 
   return {
     candidato: null,

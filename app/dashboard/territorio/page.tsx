@@ -27,7 +27,8 @@ import { VoteInvestmentBalanceModal } from '@/components/vote-investment-balance
 import { MapaVotoCruzado } from '@/components/mapa-voto-cruzado'
 import { MapaExpectativaVs2022 } from '@/components/mapa-expectativa-vs-2022'
 import {
-  agregarExpectativaJadyelPorCidade,
+  agregarExpectativaPorCidade,
+  agregarLiderancasPorCidade,
   buildComparativoExpectativa2022Lista,
 } from '@/lib/comparativo-expectativa-2022'
 import { fetchJadyelFederal2022VotosPorMunicipioPI } from '@/lib/jadyel-federal-2022-pi-votos'
@@ -598,15 +599,20 @@ export default function TerritorioPage() {
   }, [liderancasFiltradas, cidadeCol, votosReferenciaCol, depEstadualCol, cargoCol])
 
   const comparativoExpectativa2022Lista = useMemo(() => {
-    if (!expectativaJadyelCol || !mapaVotos2022Jadyel) return []
-    const expectativaMap = agregarExpectativaJadyelPorCidade(
-      liderancas,
+    if (!votosReferenciaCol || !mapaVotos2022Jadyel) return []
+    const expectativaMap = agregarExpectativaPorCidade(
+      liderancasFiltradas,
       cidadeCol,
-      expectativaJadyelCol,
+      votosReferenciaCol,
       normalizeNumber
     )
-    return buildComparativoExpectativa2022Lista(expectativaMap, mapaVotos2022Jadyel)
-  }, [liderancas, cidadeCol, expectativaJadyelCol, mapaVotos2022Jadyel])
+    const liderancasMap = agregarLiderancasPorCidade(liderancasFiltradas, cidadeCol)
+    return buildComparativoExpectativa2022Lista(
+      expectativaMap,
+      mapaVotos2022Jadyel,
+      liderancasMap
+    )
+  }, [liderancasFiltradas, cidadeCol, votosReferenciaCol, mapaVotos2022Jadyel])
 
   // Calcular KPIs baseados nos dados filtrados
   const calcularKPIs = (): KPI[] => {
@@ -925,13 +931,13 @@ export default function TerritorioPage() {
             </p>
           </div>
           <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
-            {(config || serverConfigured) && liderancas.length > 0 && expectativaJadyelCol ? (
+            {(config || serverConfigured) && liderancas.length > 0 && votosReferenciaCol ? (
               <button
                 type="button"
                 onClick={() => setShowMapaComparativo2026((v) => !v)}
                 disabled={loadingVotos2022Jadyel}
                 className={cn(ghostButtonClass, 'disabled:opacity-50')}
-                title="Comparar expectativa Jadyel 2026 com votos federais de 2022 no mapa"
+                title={`Comparar ${labelCenarioVotos} com votos federais de Jadyel em 2022 no mapa`}
               >
                 <IconMapPin className="h-[14px] w-[14px] opacity-70" stroke={1.5} aria-hidden />
                 {showMapaComparativo2026 ? 'Fechar mapa' : 'Mapa 2026 × 2022'}
@@ -1004,9 +1010,9 @@ export default function TerritorioPage() {
               <div className="flex min-h-[min(40vh,360px)] items-center justify-center rounded-xl border border-border-card bg-bg-app/40">
                 <p className="text-sm text-text-secondary">Carregando votos federais 2022…</p>
               </div>
-            ) : !expectativaJadyelCol ? (
+            ) : !votosReferenciaCol ? (
               <div className="rounded-xl border border-border-card bg-bg-app/50 px-4 py-8 text-center text-sm text-text-secondary">
-                A planilha precisa da coluna de <strong>Expectativa Jadyel 2026</strong> para montar o comparativo.
+                A planilha precisa de uma coluna de expectativa 2026 (aferido, promessa ou anterior) para montar o comparativo.
               </div>
             ) : !mapaVotos2022Jadyel ? (
               <div className="rounded-xl border border-border-card bg-bg-app/50 px-4 py-8 text-center text-sm text-text-secondary">
@@ -1022,6 +1028,7 @@ export default function TerritorioPage() {
               >
                 <MapaExpectativaVs2022
                   comparativoLista={comparativoExpectativa2022Lista}
+                  labelExpectativa2026={labelCenarioVotos}
                   onFullscreen={() => {
                     const container = document.getElementById('mapa-comparativo-territorio-container')
                     if (!container) return

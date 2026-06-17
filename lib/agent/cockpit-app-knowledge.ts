@@ -1,0 +1,192 @@
+/**
+ * Mapa do Cockpit 2026 para o Claude Haiku (prompt caching).
+ * Mantenha em sincronia com lib/agent/COCKPIT-PAGINAS.md e lib/agent/README.md.
+ */
+
+export const CLAUDE_COCKPIT_KNOWLEDGE = `
+## Mapa do Cockpit 2026 (Jarvis)
+
+Campanha: Jadyel Alencar · deputado federal · Piauí (224 municípios).
+Dois módulos de resposta no Jarvis — NÃO confunda:
+
+| Módulo | Quando | Exemplos |
+|--------|--------|----------|
+| **Regex/Groq** | Dado bruto, navegação, comandos curtos | «pesquisa em X», «expectativa em X», «abrir agenda» |
+| **Claude (você)** | Análise, diagnóstico, síntese, relatório | «diagnóstico territorial em X», «analise o cenário», «compare cidades» |
+
+Se o usuário pedir **número/lista pontual**, diga: «Para o dado exato, use no Jarvis: …» e cite o comando regex. Não repita só expectativa quando pediram diagnóstico.
+
+---
+
+### Visão Geral · /dashboard
+- Jarvis HUD (voz + chat). KPIs globais no contexto (expectativa 2026, alertas, territórios frios).
+- Regex: «alertas críticos», «territórios frios», saudação, ajuda.
+- Claude: panorama geral se houver KPIs no contexto.
+
+### Resumo Operacional · /dashboard/resumo-operacional
+- Briefing 7/14/30 dias: visitas, prioridades, territórios frios.
+- API: GET /api/resumo-operacional?days=
+- Regex: «quais cidades preciso visitar», prioridade visitas.
+- WhatsApp: «envia resumo operacional para [destinatário]».
+- Claude gather: GET /api/resumo-operacional?days=14 quando a pergunta citar briefing/operacional/prioridade.
+
+### Estratégia (Narrativas) · /dashboard/narrativas
+- Bandeiras, fases, radar de posicionamento.
+- API: /api/narrativas, /api/narrativas/performance, /api/fases
+- Jarvis: só navegação + contagem bandeiras do HUD. **Sem consulta de dados via voz hoje.**
+- Claude: sem dados — oriente abrir a página.
+
+### Agenda · /dashboard/agenda
+- Google Calendar + presença/check-in em eventos.
+- API: GET /api/agenda/events, /api/agenda/google-calendar
+- Regex/Groq: «agenda de hoje», «compromissos de amanhã», «agenda em [cidade]».
+- Claude: não substitui lista de compromissos.
+
+### Campo & Agenda · /dashboard/campo
+- Visitas de campo, check-in, mapa de presença, agendas locais.
+- API: GET /api/campo/agendas, /api/campo/cities, POST /api/dashboard/territorios-frios
+- Regex: «últimas visitas», «visitas em [mês]», «cidade que mais visitei», prioridade visitas.
+- Groq: consultar_visitas_campo, consultar_agendas.
+- Claude gather: /api/campo/agendas + prioridade (territorios-frios) em visitas/campo/diagnóstico territorial.
+
+### Território & Base · /dashboard/territorio
+- Planilha Google Sheets: lideranças, expectativa votos 2026, promessas, KPIs, mapas, demandas por cidade.
+- API: POST /api/territorio/expectativa-por-cidade, POST /api/territorio/google-sheets, GET /api/territorio/config
+- Regex: «expectativa em [cidade]» (só números), «lideranças em [cidade]», «demandas em [cidade]».
+- **Diagnóstico territorial → Claude** (cruzar expectativa, lideranças, pesquisas, gaps — não só total de votos).
+- Claude gather: expectativa-por-cidade + pesquisas + visitas + demandas + prioridade visitas do município.
+
+### Mapa dos TDs · /dashboard/territorio/mapa-tds
+- Visualização por Território de Desenvolvimento (TD).
+- Jarvis: navegação («abrir mapa dos TDs»). Sem API dedicada ao agente.
+
+### Ficha de Atendimento · /dashboard/ficha-atendimento
+- Tetos MAC/PAP (SUAS), emendas por município, dados eleitorais locais.
+- API: /api/limites-tetos, /api/emendas-suas, /api/consultar-tetos
+- **Jarvis: sem integração hoje.** Claude: informe limitação; usuário deve abrir a página.
+
+### Pesquisa & Relato · /dashboard/pesquisa
+- Cadastro de pesquisas, gráficos, intenção estimulada/espontânea, relatórios PDF.
+- API: GET /api/pesquisa, /api/pesquisa/historico-intencao, /api/pesquisa/ranking-estimulada, /api/pesquisa/media-estimulada
+- Regex: «pesquisa em [cidade]», «pesquisa estimulada jadyel em X».
+- Regex: «como evoluiu a intenção do Jadyel», «tendência em [cidade]».
+- Regex: «ranking estimulada dep federal».
+- Claude: analisar série, comparar institutos, cenário — dados em gather (pesquisas + histórico).
+
+### Chapas · /dashboard/chapas (+ estadual)
+- Simulador D'Hondt federal e estadual, projeção Republicanos.
+- API: GET /api/chapas/projecao-republicanos
+- Regex: «projeção chapa federal», «republicanos».
+- Claude: interpretar cenário de vagas com dados de chapa no contexto.
+
+### Resumo Eleições · /dashboard/resumo-eleicoes
+- Por município: expectativa, lideranças, pesquisas, simulação vereadores, demandas (modais).
+- API: GET /api/resumo-eleicoes, POST /api/territorio/expectativa-por-cidade, GET /api/pesquisa
+- pageKind=resumo-eleicoes no Jarvis.
+- Regex/UI: «Buscar [cidade]», «abrir demandas», «ver lideranças», «histórico de pesquisas», «fechar modais».
+- Claude: análise integrada do município (não só disparar modal).
+
+### Histórico federal · /dashboard/resumo-eleicoes/historico
+- Votação federal 2018/2022, previsão 2026, mapas.
+- API: /api/resumo-eleicoes/historico-federal
+- Jarvis: navegação. Claude: sem dados automáticos — cite limitação.
+
+### Por seção · /dashboard/resumo-eleicoes/secao
+- Votação por seção eleitoral (mapa).
+- API: /api/resumo-eleicoes/votacao-secao
+- Jarvis: navegação. Claude: sem dados automáticos.
+
+### Presença & Conteúdo · /dashboard/conteudo/*
+- Hub: pipeline de conteúdo (obras, cards, referências, análise).
+- **Redes/Instagram** · /dashboard/conteudo/redes:
+  - API: POST /api/instagram, GET /api/instagram/snapshot, /api/instagram/classifications
+  - Regex: «métricas do instagram», «posts mais curtidos», «qual tema tem melhor performance».
+  - Claude gather: snapshot 30d + classificações (não POST ao vivo).
+- Demais subpáginas (obras cards, agenda campo, referências): navegação; sem consulta Jarvis.
+
+### Notícias & Crises · /dashboard/noticias
+- Radar GDELT, feeds, adversários, destaques, crises.
+- API: GET /api/noticias (?dashboard_highlight=true para destaque)
+- Groq server: consultar_noticias_destaque → «notícias em destaque».
+- Claude gather: destaques do painel (/api/noticias?dashboard_highlight=true) em perguntas sobre notícias/crises/imprensa.
+
+### Mobilização · /mobilizacao/detalhe, /dashboard/mobilizacao/*
+- Captação de leads, mapa Exército Digital (Instagram por TD), config coordenadores.
+- API: /api/mobilizacao/config, /api/mobilizacao/relatorio-check-mapa-digital-ig
+- Jarvis: navegação. Claude: sem dados — oriente a página.
+
+### WhatsApp · /dashboard/whatsapp
+- Fila de envios, contatos, campanhas.
+- API: /api/whatsapp/contacts, envio via tool Jarvis.
+- Regex: «envia resumo/briefing para [nome/CEO/executivos]».
+
+### Operação & Equipe · /dashboard/operacao
+- Kanban de tarefas, líderes por território.
+- API: /api/operacao/tasks, /api/operacao/leaders
+- Jarvis: sem integração. Claude: oriente a página.
+
+### Jurídico · /dashboard/juridico
+- Processos Dimensão, prazos, comunicações.
+- API: /api/juridico/processos
+- Jarvis: sem integração. Claude: oriente a página.
+
+### Emendas · /dashboard/emendas
+- Emendas parlamentares (cadastro, status).
+- API: /api/emendas
+- Jarvis: sem integração. Claude: oriente a página.
+
+### Obras · /dashboard/obras
+- Obras com status SEI.
+- API: /api/obras, /api/obras/sei-status
+- Jarvis: sem integração. Claude: oriente a página.
+
+### Proposições · /dashboard/proposicoes
+- Proposições na Câmara (Jadyel).
+- API: /api/proposicoes
+- Jarvis: sem integração. Claude: oriente a página.
+
+### Pesquisa SEI · /dashboard/sei-pesquisa
+- Busca no SEI-PI (teste).
+- API: /api/sei-pesquisa
+- Jarvis: sem integração.
+
+### Gestão de Pesquisas · /dashboard/gestao-pesquisas
+- App pesquisador de campo (/pesquisador), questionários.
+- API: /api/campo-pesquisa/config, /api/field-survey-settings
+- Jarvis: sem integração.
+
+### Usuários · /dashboard/usuarios
+- Permissões e contas.
+- API: /api/users, /api/auth/permissions
+- Jarvis: sem integração.
+
+---
+
+## APIs que o Claude recebe no gather (automático)
+
+| Gatilho na pergunta | API |
+|---------------------|-----|
+| pesquisa, intenção, tendência | /api/pesquisa, /api/pesquisa/historico-intencao |
+| ranking, chapa, federal | /api/pesquisa/ranking-estimulada, /api/chapas/projecao-republicanos |
+| diagnóstico, territorial, expectativa + cidade | expectativa-por-cidade, pesquisas, visitas, demandas, prioridade visitas |
+| visitas, campo, presença, viagens | /api/campo/agendas, POST /api/dashboard/territorios-frios |
+| briefing, resumo operacional, prioridade | GET /api/resumo-operacional?days=14 |
+| notícias, crises, imprensa | /api/noticias?dashboard_highlight=true&limit=10 |
+| instagram, redes, engajamento | /api/instagram/snapshot?days=30, /api/instagram/classifications |
+
+**Não carregadas automaticamente:** emendas, jurídico, mobilização, obras, ficha-atendimento (tetos), posts Instagram ao vivo (POST /api/instagram).
+
+---
+
+## Comandos regex úteis (orientar o usuário)
+
+- expectativa em [cidade] · lideranças em [cidade] · demandas em [cidade]
+- pesquisa em [cidade] · pesquisa estimulada jadyel em [cidade]
+- como evoluiu a intenção do Jadyel [em cidade]
+- ranking estimulada dep federal
+- agenda de hoje · últimas visitas · prioridade visitas
+- notícias em destaque · alertas críticos
+- métricas do instagram
+- abrir [nome da página na sidebar]
+- envia resumo operacional para [destinatário]
+`

@@ -10,6 +10,7 @@ import {
 } from '@/components/jarvis/jarvis-hud-widgets'
 import { JarvisResultPanel } from '@/components/jarvis/jarvis-result-panel'
 import { JarvisVoiceBar } from '@/components/jarvis/jarvis-voice-bar'
+import { JarvisWebcamPreview } from '@/components/jarvis/jarvis-webcam-preview'
 import type { JarvisResultView } from '@/lib/agent/jarvis-result-view'
 import { jarvisHudStyle, jarvisPanelClass } from '@/lib/jarvis-hud-tokens'
 import { cn } from '@/lib/utils'
@@ -32,12 +33,15 @@ interface JarvisHudShellProps {
   speechSupported?: boolean
   voiceOutputEnabled?: boolean
   onVoiceOutputChange?: (enabled: boolean) => void
+  webcamEnabled?: boolean
+  onWebcamChange?: (enabled: boolean) => void
   voiceError?: string | null
   onMicClick?: () => void
   onMinimize?: () => void
   lastAction?: JarvisHudAction
   onActionClick?: (action: JarvisHudAction) => void
   logLines?: JarvisLogLine[]
+  onDiagnosticLog?: (lines: JarvisLogLine[]) => void
   resultPanel?: {
     view: JarvisResultView
     action?: JarvisHudAction
@@ -74,12 +78,15 @@ export function JarvisHudShell({
   speechSupported = false,
   voiceOutputEnabled = true,
   onVoiceOutputChange,
+  webcamEnabled = true,
+  onWebcamChange,
   voiceError = null,
   onMicClick,
   onMinimize,
   lastAction,
   onActionClick,
   logLines = [],
+  onDiagnosticLog,
   resultPanel = null,
   onResultPanelClose,
   onResultPanelAction,
@@ -139,31 +146,42 @@ export function JarvisHudShell({
             <div
               className={cn(
                 'flex w-full max-w-full items-center',
-                compact ? 'flex-row gap-2' : 'flex-col items-center gap-2 sm:gap-4'
+                compact ? 'flex-row gap-2' : 'relative flex-col items-center gap-2 sm:gap-4'
               )}
             >
-              {!compact ? (
-                <p className="hidden font-jarvis-mono text-[10px] uppercase tracking-[0.28em] text-[var(--color-text-dim)] sm:block">
-                  núcleo ativo
-                </p>
-              ) : null}
-
-              <JarvisCoreSphere
-                isListening={isListening}
-                listenPaused={listenPaused}
-                wakeStandby={wakeStandby}
-                isSpeaking={isSpeaking}
-                isProcessing={isProcessing}
-                onMicClick={onMicClick}
-                enableMic={enableVoice && speechSupported}
-                className={
+              <div
+                className={cn(
+                  'relative',
                   compact
-                    ? 'w-[4.25rem] shrink-0 sm:w-[4.75rem]'
+                    ? 'flex shrink-0 items-center gap-2'
                     : 'w-full max-w-[min(100%,clamp(8.75rem,34vw,11.5rem))] sm:max-w-[min(100%,clamp(11rem,36vw,16rem))] lg:max-w-[min(100%,clamp(14.5rem,40vh,21rem))]'
-                }
-              />
+                )}
+              >
+                <JarvisCoreSphere
+                  isListening={isListening}
+                  listenPaused={listenPaused}
+                  wakeStandby={wakeStandby}
+                  isSpeaking={isSpeaking}
+                  isProcessing={isProcessing}
+                  onMicClick={onMicClick}
+                  enableMic={enableVoice && speechSupported}
+                  className={compact ? 'w-[4.25rem] sm:w-[4.75rem]' : 'w-full'}
+                />
 
-              <div className={cn(compact ? 'min-w-0 flex-1 text-left' : 'w-full')}>
+                <JarvisWebcamPreview
+                  active={Boolean(enableVoice && isListening && !listenPaused)}
+                  enabled={webcamEnabled}
+                  compact={compact}
+                  onDiagnosticLog={onDiagnosticLog}
+                  className={
+                    compact
+                      ? 'shrink-0'
+                      : 'absolute -right-1 top-0 z-10 sm:-right-2 sm:top-1'
+                  }
+                />
+              </div>
+
+              <div className={cn(compact ? 'min-w-0 flex-1 text-left' : 'relative w-full')}>
                 <h1
                   className={cn(
                     'font-jarvis-display font-bold uppercase text-[var(--color-core)]',
@@ -185,6 +203,8 @@ export function JarvisHudShell({
                     speechSupported={speechSupported}
                     voiceOutputEnabled={voiceOutputEnabled}
                     onVoiceOutputChange={onVoiceOutputChange}
+                    webcamEnabled={webcamEnabled}
+                    onWebcamChange={onWebcamChange}
                     onMicClick={onMicClick}
                     className={compact ? 'mt-0.5' : 'mt-0 w-full'}
                   />
@@ -244,12 +264,20 @@ export function JarvisHudShell({
             <JarvisHudSystemLog
               extraLines={logLines.slice(-4)}
               processing={isProcessing}
-              className="min-h-0 max-h-[5.5rem] flex-1"
+              showVoicePicker={enableVoice && speechSupported}
+              voiceOutputEnabled={voiceOutputEnabled}
+              webcamEnabled={webcamEnabled}
+              onDiagnosticLog={onDiagnosticLog}
+              className="min-h-0 flex-1"
             />
           ) : (
             <JarvisHudSystemLog
               extraLines={logLines}
               processing={isProcessing}
+              showVoicePicker={enableVoice && speechSupported}
+              voiceOutputEnabled={voiceOutputEnabled}
+              webcamEnabled={webcamEnabled}
+              onDiagnosticLog={onDiagnosticLog}
               className="min-h-0 flex-1 max-lg:max-h-full lg:min-h-0"
             />
           )}

@@ -30,6 +30,7 @@ const SYSTEM_MODE_MIGRATION_KEY = 'jarvis-voice-migration-v5'
 const MAC_SYSTEM_VOICE_MIGRATION_KEY = 'jarvis-voice-migration-v6'
 const FELIPE_DEFAULT_MIGRATION_KEY = 'jarvis-voice-migration-v7'
 const VOICE_OUTPUT_KEY = 'jarvis-voice-output-enabled'
+const WEBCAM_KEY = 'jarvis-webcam-enabled'
 const ALWAYS_LISTEN_KEY = 'jarvis-always-listen'
 const KOKORO_VOICE_KEY = 'jarvis-kokoro-voice'
 
@@ -57,6 +58,23 @@ export function getJarvisVoiceOutputEnabled(): boolean {
 export function setJarvisVoiceOutputEnabled(enabled: boolean): void {
   if (typeof window === 'undefined') return
   localStorage.setItem(VOICE_OUTPUT_KEY, enabled ? '1' : '0')
+}
+
+/** Preview da webcam no HUD enquanto a escuta estiver ativa — padrão: ligado. */
+export function getJarvisWebcamEnabled(): boolean {
+  if (typeof window === 'undefined') return true
+  const stored = localStorage.getItem(WEBCAM_KEY)
+  if (stored === '0' || stored === 'false') return false
+  return true
+}
+
+export function setJarvisWebcamEnabled(enabled: boolean): void {
+  if (typeof window === 'undefined') return
+  localStorage.setItem(WEBCAM_KEY, enabled ? '1' : '0')
+}
+
+export function isJarvisWebcamSupported(): boolean {
+  return typeof navigator !== 'undefined' && Boolean(navigator.mediaDevices?.getUserMedia)
 }
 
 export function isFeminineOpenAiVoice(voice: OpenAiTtsVoiceId): boolean {

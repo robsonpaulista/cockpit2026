@@ -10,6 +10,7 @@ export type AgentIntent =
   | 'consultar_agendas'
   | 'consultar_visitas_campo'
   | 'consultar_expectativa'
+  | 'consultar_comparativo_expectativa_2022'
   | 'consultar_liderancas'
   | 'consultar_chapa'
   | 'consultar_instagram_metricas'
@@ -27,6 +28,7 @@ export type AgentIntent =
   | 'resumo_abrir_liderancas'
   | 'resumo_abrir_pesquisas'
   | 'resumo_fechar_modais'
+  | 'consultar_analise_claude'
   | 'desconhecido'
 
 export interface AgentChatMessage {
@@ -82,7 +84,7 @@ export interface PesquisaTipoChoicePending {
 }
 
 export interface AgentChatResponse {
-  source: 'groq' | 'fallback'
+  source: 'anthropic' | 'groq' | 'fallback'
   content: string
   /** Quando a ação precisa do código legado no cliente (pageContext, Instagram localStorage). */
   clientQuery?: string
@@ -97,5 +99,12 @@ export interface AgentChatResponse {
     intent?: AgentIntent
     rateLimited?: boolean
     groqUnavailable?: boolean
+    anthropicUnavailable?: boolean
+    claudeUsage?: {
+      input_tokens?: number
+      output_tokens?: number
+      cache_creation_input_tokens?: number
+      cache_read_input_tokens?: number
+    }
   }
 }

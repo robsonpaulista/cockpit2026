@@ -30,6 +30,8 @@ export interface JarvisResultView {
   subtitle?: string
   stats: JarvisResultStat[]
   sections: JarvisResultSection[]
+  /** Relatórios Claude (##, tabelas GFM) — renderizar com markdown no painel. */
+  markdownBody?: string
   bullets: string[]
   agendaItems: JarvisAgendaItem[]
   newsItems: JarvisNewsItem[]
@@ -43,6 +45,39 @@ function stripMarkdown(text: string): string {
 function extractBold(text: string): string | null {
   const match = text.match(/\*\*([^*]+)\*\*/)
   return match?.[1]?.trim() ?? null
+}
+
+function parseMarkdownHeading(line: string): string | null {
+  const match = /^#{1,6}\s+(.+)$/.exec(line.trim())
+  if (!match) return null
+  return stripMarkdown(match[1].trim())
+}
+
+function shouldUseMarkdownBody(content: string): boolean {
+  return (
+    /^#{1,3}\s/m.test(content) ||
+    /^\|.+\|/m.test(content) ||
+    /\|[\s:-]+\|/.test(content)
+  )
+}
+
+function stripLeadingTitleFromMarkdown(content: string, title: string): string {
+  const lines = content.split('\n')
+  if (lines.length === 0) return content
+
+  const normTitle = title.toLowerCase().replace(/\s+/g, ' ').trim()
+  const first = lines[0]?.trim() ?? ''
+  const firstClean = first
+    .replace(/^#{1,6}\s*/, '')
+    .replace(/\*\*/g, '')
+    .toLowerCase()
+    .trim()
+
+  if (first.startsWith('#') || (normTitle && firstClean === normTitle)) {
+    return lines.slice(1).join('\n').trim()
+  }
+
+  return content.trim()
 }
 
 function inferTitleFromQuery(query: string): string | null {
@@ -165,6 +200,17 @@ export function parseJarvisResultContent(content: string, userQuery?: string): J
       continue
     }
 
+    const mdHeading = parseMarkdownHeading(line)
+    if (mdHeading) {
+      if (!title) {
+        title = mdHeading
+        continue
+      }
+      currentSection = { heading: mdHeading, lines: [] }
+      sections.push(currentSection)
+      continue
+    }
+
     const boldOnly = /^\*\*([^*]+)\*\*:?\s*$/.exec(line)
     if (boldOnly) {
       const heading = boldOnly[1].trim()
@@ -236,13 +282,19 @@ export function parseJarvisResultContent(content: string, userQuery?: string): J
   // Meta/descrição da agenda já vão nos cards — não repetir abaixo.
   const hasAgendaCards = agendaItems.length > 0
   const hasNewsCards = newsItems.length > 0
+  const useMarkdownBody =
+    shouldUseMarkdownBody(content) && !hasAgendaCards && !hasNewsCards
+  const markdownBody = useMarkdownBody
+    ? stripLeadingTitleFromMarkdown(content.trim(), title)
+    : undefined
 
   return {
     title,
     subtitle,
     stats,
-    sections: hasAgendaCards || hasNewsCards ? [] : cleanedSections,
-    bullets: hasAgendaCards || hasNewsCards ? [] : bullets,
+    sections: useMarkdownBody || hasAgendaCards || hasNewsCards ? [] : cleanedSections,
+    bullets: useMarkdownBody || hasAgendaCards || hasNewsCards ? [] : bullets,
+    markdownBody,
     agendaItems,
     newsItems,
     footer,

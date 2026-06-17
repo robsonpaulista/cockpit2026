@@ -33,12 +33,60 @@ export function isPesquisaTendenciaQuery(query: string): boolean {
   return /\b(em|na|no)\s+[a-z]/.test(q)
 }
 
-/** Ranking estimulada dep. federal (API dedicada). */
+function isChapaSimulationQuery(q: string): boolean {
+  return /\b(chapa|d'?hondt|dhondt|simulad|vagas?\s+(na|da|de)?\s*chapa|projecao\s+chapa)\b/.test(q)
+}
+
+function hasFederalDeputyContext(q: string): boolean {
+  return (
+    /\bdeputad[oa]s?\s+federais?\b/.test(q) ||
+    /\bdep\.?\s*federais?\b/.test(q) ||
+    (/\bfederais?\b/.test(q) && /\b(eleitos?|eleger|deputad|dep\.?)\b/.test(q))
+  )
+}
+
+function hasEstimuladaContext(q: string): boolean {
+  return (
+    /\bestimulad[ao]s?\b/.test(q) ||
+    /\bpesquisas?\s+eleitorais?\s+estimulad/.test(q) ||
+    /\bpesquisas?\s+estimulad/.test(q) ||
+    /\beleitorais?\s+estimulad/.test(q)
+  )
+}
+
+function asksTopFederalFromPolls(q: string): boolean {
+  return (
+    /\b(eleitos?|eleger|bancada)\b/.test(q) ||
+    /\b(top\s*\d+|dez\s+primeir|\d+\s+primeir|\d+\s+deputad)/.test(q) ||
+    /\bquem\s+(seria|seriam|serao|serão|sao|são|estao|estão|vai|vão|vao)\b/.test(q)
+  )
+}
+
+/**
+ * Ranking / top candidatos na estimulada dep. federal — NÃO é simulador de chapa (D'Hondt).
+ * Ex.: «com base nas pesquisas estimuladas, quem seriam os 10 eleitos para dep. federal»
+ */
 export function isRankingEstimuladaFederalQuery(query: string): boolean {
   const q = norm(query)
+  if (isChapaSimulationQuery(q)) return false
+
   if (/\branking\s+estimulada\b/.test(q)) return true
+
+  const temFederal = hasFederalDeputyContext(q)
+  const temEstimulada = hasEstimuladaContext(q)
+
+  if (temEstimulada && temFederal) return true
+
+  if (temFederal && asksTopFederalFromPolls(q)) {
+    return temEstimulada || /\bpesquisas?\b/.test(q)
+  }
+
+  if (temEstimulada && asksTopFederalFromPolls(q) && /\b(deputad|dep\.?|federais?)\b/.test(q)) {
+    return true
+  }
+
   if (!/\b(ranking|colocacao|posicao|lugar)\b/.test(q)) return false
-  return /\b(estimulada|federal|dep\.?\s*federal)\b/.test(q)
+  return temEstimulada || temFederal
 }
 
 function resolveCandidatoArg(query: string): string | undefined {
@@ -74,8 +122,8 @@ export function detectRankingEstimuladaFederalIntent(message: string): AgentClas
   if (!isRankingEstimuladaFederalQuery(message)) return null
 
   const args: Record<string, string> = { termo: message.slice(0, 120) }
-  const candidato = resolveCandidatoArg(message)
-  if (candidato) args.candidato = candidato
+  const candidato = resolveCandidatoArg(message) ?? CANDIDATO_RESUMO_PESQUISAS
+  args.candidato = candidato
 
   return { intent: 'consultar_ranking_estimulada_federal', args }
 }
