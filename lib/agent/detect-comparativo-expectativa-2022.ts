@@ -3,6 +3,8 @@ import type { CenarioExpectativaComparativo } from '@/lib/comparativo-expectativ
 
 export type FiltroComparativoExpectativa2022 = 'caiu' | 'cresceu' | 'manteve' | 'todos'
 
+export type ModoComparativoExpectativa2022 = 'resumo' | 'lista'
+
 function norm(text: string): string {
   return text
     .normalize('NFD')
@@ -49,6 +51,19 @@ export function parseCenarioComparativoExpectativa2022(query: string): CenarioEx
   return 'legado'
 }
 
+/** Lista de cidades só quando o usuário pede explicitamente; caso contrário, totais gerais. */
+export function parseModoComparativoExpectativa2022(query: string): ModoComparativoExpectativa2022 {
+  const q = norm(query)
+  if (
+    /\b(quais|lista|listar|listagem|municipios?|cidades?|onde|ranking|top\s*\d*|piores|melhores|nomes?)\b/.test(
+      q
+    )
+  ) {
+    return 'lista'
+  }
+  return 'resumo'
+}
+
 export function detectComparativoExpectativa2022Intent(message: string): AgentClassifiedIntent | null {
   if (!isComparativoExpectativa2022Query(message)) return null
 
@@ -57,6 +72,7 @@ export function detectComparativoExpectativa2022Intent(message: string): AgentCl
     args: {
       filtro: parseFiltroComparativoExpectativa2022(message),
       cenario: parseCenarioComparativoExpectativa2022(message),
+      modo: parseModoComparativoExpectativa2022(message),
       termo: message.slice(0, 120),
     },
   }

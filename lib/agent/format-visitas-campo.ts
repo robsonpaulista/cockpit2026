@@ -19,6 +19,7 @@ export type VisitasCampoModo =
   | 'lista_cidade'
   | 'cidades'
   | 'cidade_mais_visitada'
+  | 'cidade_menos_visitadas'
   | 'prioridade_visitas'
 
 export interface ResolveVisitasCampoOptions {
@@ -118,16 +119,42 @@ function countVisitsByCity(rows: CampoAgendaRow[]): Array<{ cidade: string; coun
     .sort((a, b) => b.count - a.count || a.cidade.localeCompare(b.cidade, 'pt-BR'))
 }
 
-/** «qual cidade eu mais visitei / fui mais vezes». */
+function countVisitsByCityAsc(rows: CampoAgendaRow[]): Array<{ cidade: string; count: number }> {
+  return countVisitsByCity(rows).sort(
+    (a, b) => a.count - b.count || a.cidade.localeCompare(b.cidade, 'pt-BR')
+  )
+}
+
+/** «quais cidades com mais visitas / fui mais vezes». */
 export function isCidadeMaisVisitadaQuery(query: string): boolean {
   const q = norm(query)
+  if (isCidadeMenosVisitadasQuery(query)) return false
   if (/\b(descricao|detalhe|liste|listar|ultim[ao])\b/.test(q)) return false
+
   const falaDeCidade = /\b(cidades?|municipios?)\b/.test(q)
-  const pedeRanking =
-    /\b(mais\s+vezes|mais\s+visitad[ao]s?|mais\s+frequente|que\s+mais\s+(visitei|fui|foi)|maior\s+numero)\b/.test(
+  const pedeMais =
+    /\b(mais\s+visitas?|mais\s+vezes|mais\s+visitad[ao]s?|mais\s+frequente|com\s+mais\s+visitas?|maior\s+numero)\b/.test(
       q
-    )
-  return falaDeCidade && pedeRanking
+    ) ||
+    /\b(que\s+mais\s+(visitei|fui|foi)|onde\s+mais\s+(visitei|fui|foi))\b/.test(q)
+
+  return falaDeCidade && pedeMais
+}
+
+/** «quais cidades com menos visitas / fui menos vezes». */
+export function isCidadeMenosVisitadasQuery(query: string): boolean {
+  const q = norm(query)
+  if (/\b(descricao|detalhe|liste|listar|ultim[ao])\b/.test(q)) return false
+  if (/\b(preciso|devo|priorid|nao\s+visitei|nunca\s+visitei|expectativa)\b/.test(q)) return false
+
+  const falaDeCidade = /\b(cidades?|municipios?)\b/.test(q)
+  const pedeMenos =
+    /\b(menos\s+visitas?|menos\s+vezes|menos\s+visitad[ao]s?|poucas?\s+visitas?|menor\s+numero|menos\s+frequente|com\s+menos\s+visitas?)\b/.test(
+      q
+    ) ||
+    /\b(que\s+menos\s+(visitei|fui|foi)|onde\s+menos\s+(visitei|fui|foi))\b/.test(q)
+
+  return falaDeCidade && pedeMenos
 }
 
 function resolveMesAno(
@@ -222,6 +249,7 @@ function asksAboutCity(query: string): boolean {
 function detectModoFromQuery(query: string, cidade?: string): VisitasCampoModo {
   const q = norm(query)
   if (isUltimaSingularQuery(query)) return 'ultima'
+  if (isCidadeMenosVisitadasQuery(query)) return 'cidade_menos_visitadas'
   if (isCidadeMaisVisitadaQuery(query)) return 'cidade_mais_visitada'
   if (/\bultim[ao]s\b/.test(q) && /\b(visitas?|viagens?|cidades?)\b/.test(q)) return 'ultimas'
   if (/\bquantas?\b/.test(q) && /\b(viagens?|visitas?)\b/.test(q)) return 'contagem_mes'
@@ -252,7 +280,7 @@ export function resolveVisitasCampoReply(
     cidade = undefined
   }
   const modo = options.modo ?? detectModoFromQuery(queryHint, cidade)
-  if (modo === 'cidade_mais_visitada') cidade = undefined
+  if (modo === 'cidade_mais_visitada' || modo === 'cidade_menos_visitadas') cidade = undefined
 
   const todas = filterByTripKind(agendas, queryHint)
   const base = cidade ? todas.filter((a) => matchCity(a, cidade)) : todas
@@ -312,36 +340,86 @@ export function resolveVisitasCampoReply(
           : 'Ainda não há visitas de campo registradas para ranquear cidades.',
       }
     }
-    const top = ranking[0]
-    const termo = isBroadTripCountQuery(queryHint) ? 'visitas' : 'visitas'
+
+    const maxCount = ranking[0]?.count ?? 0
+    const comMaximo = ranking.filter((r) => r.count === maxCount)
     const periodo = mesAno
       ? ` em **${mesAno.label.charAt(0).toUpperCase() + mesAno.label.slice(1)}**`
-      : ' no **histórico completo** do Campo & Agenda'
-    const empate = ranking.filter((r) => r.count === top.count).length > 1
-    const speech = empate
-      ? `Há empate: ${ranking
-          .filter((r) => r.count === top.count)
-          .map((r) => r.cidade)
-          .join(', ')} com ${top.count} visitas.`
-      : `A cidade que você mais visitou${periodo.replace(/\*\*/g, '')} foi ${top.cidade}, com ${top.count} ${termo}.`
+      : ' no **histórico do Campo & Agenda**'
+    const termo = isBroadTripCountQuery(queryHint) ? 'deslocamentos' : 'visitas'
+    const show = ranking.slice(0, limite)
 
-    let content = [
-      `**Cidade mais visitada${periodo}:** ${top.cidade}`,
-      '',
-      `Total: **${top.count}** ${termo}`,
-    ]
-    if (empate) {
-      const empatadas = ranking.filter((r) => r.count === top.count).map((r) => r.cidade)
-      content = [
-        `**Empate${periodo}** (${top.count} ${termo} cada):`,
-        '',
-        empatadas.map((c) => `› **${c}**`).join('\n'),
-      ]
-    } else if (ranking.length > 1) {
-      const segundo = ranking[1]
-      content.push('', `Em seguida: **${segundo.cidade}** (${segundo.count} ${termo})`)
+    const linhas = show.map(
+      (row, index) => `${index + 1}. **${row.cidade}** — **${row.count}** ${termo}`
+    )
+
+    const speech =
+      comMaximo.length > 1
+        ? `Empate com mais ${termo}: ${comMaximo.map((r) => r.cidade).join(', ')}, com ${maxCount} cada.`
+        : `Cidade com mais ${termo}${periodo.replace(/\*\*/g, '')}: ${ranking[0]?.cidade}, com ${maxCount}.`
+
+    let content = [`**Cidades com mais visitas${periodo}**`, '']
+    if (comMaximo.length > 1) {
+      content.push(
+        `Maior volume: **${maxCount}** ${termo} (${comMaximo.length} cidade${comMaximo.length !== 1 ? 's' : ''} empatadas)`
+      )
+    } else {
+      content.push(`Maior volume: **${maxCount}** ${termo} (**${ranking[0]?.cidade}**)`)
+    }
+    content.push('', ...linhas)
+    if (ranking.length > limite) {
+      content.push('', `+ ${ranking.length - limite} outra(s) cidade(s) no ranking completo`)
     }
     content.push('', '_Pergunte «visitas em [cidade]» se quiser o detalhe de cada uma._')
+
+    return { content: content.join('\n'), speechSegments: [speech] }
+  }
+
+  if (modo === 'cidade_menos_visitadas') {
+    let pool = todas
+    const mesAno = resolveMesAno(options, queryHint, referenceDate)
+    if (mesAno) {
+      pool = filterByMonth(todas, mesAno)
+    }
+    const ranking = countVisitsByCityAsc(pool)
+    if (ranking.length === 0) {
+      return {
+        content: mesAno
+          ? `Não há visitas registradas em **${mesAno.label.charAt(0).toUpperCase() + mesAno.label.slice(1)}**.`
+          : 'Ainda não há visitas de campo registradas para ranquear cidades.',
+      }
+    }
+
+    const minCount = ranking[0]?.count ?? 0
+    const comMinimo = ranking.filter((r) => r.count === minCount)
+    const periodo = mesAno
+      ? ` em **${mesAno.label.charAt(0).toUpperCase() + mesAno.label.slice(1)}**`
+      : ' no **histórico do Campo & Agenda**'
+    const termo = isBroadTripCountQuery(queryHint) ? 'deslocamentos' : 'visitas'
+    const show = ranking.slice(0, limite)
+
+    const linhas = show.map(
+      (row, index) => `${index + 1}. **${row.cidade}** — **${row.count}** ${termo}`
+    )
+
+    const speech =
+      comMinimo.length > 1
+        ? `Empate com menos ${termo}: ${comMinimo.map((r) => r.cidade).join(', ')}, com ${minCount} cada.`
+        : `Cidade com menos ${termo}${periodo.replace(/\*\*/g, '')}: ${ranking[0]?.cidade}, com ${minCount}.`
+
+    let content = [`**Cidades com menos visitas${periodo}**`, '']
+    if (comMinimo.length > 1) {
+      content.push(
+        `Menor volume: **${minCount}** ${termo} (${comMinimo.length} cidade${comMinimo.length !== 1 ? 's' : ''} empatadas)`
+      )
+    } else {
+      content.push(`Menor volume: **${minCount}** ${termo} (**${ranking[0]?.cidade}**)`)
+    }
+    content.push('', ...linhas)
+    if (ranking.length > limite) {
+      content.push('', `+ ${ranking.length - limite} outra(s) cidade(s) no ranking completo`)
+    }
+    content.push('', '_Para prioridade de campo (alta expectativa e pouca visita), pergunte «quais cidades preciso visitar»._')
 
     return { content: content.join('\n'), speechSegments: [speech] }
   }

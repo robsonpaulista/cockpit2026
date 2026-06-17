@@ -68,7 +68,7 @@ export const SIDEBAR_MENU_ITEMS: SidebarMenuItemConfig[] = [
   },
   {
     id: 'conteudo-menu',
-    label: 'Presença & Conteúdo',
+    label: 'Redes Sociais',
     icon: 'MessageSquare',
     href: '/dashboard/conteudo',
     children: [
@@ -175,8 +175,8 @@ const EXTRA_ALIASES: Record<string, string[]> = {
   'resumo-eleicoes-historico': ['historico federal', 'historico eleicoes'],
   'resumo-eleicoes-secao': ['por secao', 'secao eleitoral', 'resumo secao'],
   'resumo-eleicoes-menu': ['resumo eleicoes', 'eleicoes'],
-  'conteudo-hub': ['presenca e conteudo', 'presenca conteudo', 'conteudo hub'],
-  'conteudo-menu': ['presenca', 'conteudo', 'presenca e conteudo'],
+  'conteudo-hub': ['redes sociais', 'presenca e conteudo', 'presenca conteudo', 'conteudo hub'],
+  'conteudo-menu': ['redes sociais', 'redes', 'presenca', 'conteudo', 'presenca e conteudo'],
   'conteudo-obras': ['obras cards', 'conteudo obras'],
   'conteudo-agenda': ['agenda campo', 'agenda de conteudo'],
   'conteudo-cards': ['cards conteudo'],

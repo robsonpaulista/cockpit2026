@@ -64,14 +64,22 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
             <DashboardHeader />
             <main
               className={cn(
-                'relative flex min-h-0 flex-1 flex-col',
-                isHomeAccentChrome ? 'overflow-hidden' : 'overflow-y-auto',
+                'relative flex min-h-0 flex-1',
+                isHomeAccentChrome
+                  ? 'flex-col overflow-hidden lg:flex-row'
+                  : 'flex-col overflow-y-auto',
                 columnBgClass
               )}
             >
-              <DashboardPermissionGuard>
-                <PageTransition>{children}</PageTransition>
-              </DashboardPermissionGuard>
+              <div
+                className={cn(
+                  isHomeAccentChrome && 'flex min-h-0 min-w-0 flex-1 flex-col'
+                )}
+              >
+                <DashboardPermissionGuard>
+                  <PageTransition>{children}</PageTransition>
+                </DashboardPermissionGuard>
+              </div>
               <JarvisGlobalHost />
             </main>
           </div>

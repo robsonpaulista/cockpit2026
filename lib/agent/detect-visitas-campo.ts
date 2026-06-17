@@ -4,6 +4,7 @@ import { isPrioridadeVisitasCampoQuery } from '@/lib/agent/detect-prioridade-vis
 import { isMonthName, parseMesAnoFromText } from '@/lib/agent/parse-visitas-mes'
 import {
   isCidadeMaisVisitadaQuery,
+  isCidadeMenosVisitadasQuery,
   isUltimaSingularQuery,
   type VisitasCampoModo,
 } from '@/lib/agent/format-visitas-campo'
@@ -41,7 +42,8 @@ export function isCampoVisitasQuery(query: string): boolean {
     /\bagenda\s+de\s+campo\b/.test(q) ||
     /\bcampo\s+e\s+agenda\b/.test(q) ||
     isUltimaSingularQuery(query) ||
-    isCidadeMaisVisitadaQuery(query)
+    isCidadeMaisVisitadaQuery(query) ||
+    isCidadeMenosVisitadasQuery(query)
   )
 }
 
@@ -53,6 +55,7 @@ function detectModo(
 ): VisitasCampoModo {
   if (isPrioridadeVisitasCampoQuery(message)) return 'prioridade_visitas'
   if (isUltimaSingularQuery(message)) return 'ultima'
+  if (isCidadeMenosVisitadasQuery(message)) return 'cidade_menos_visitadas'
   if (isCidadeMaisVisitadaQuery(message)) return 'cidade_mais_visitada'
   if (/\bultim[ao]s\b/.test(q) && /\b(visitas?|viagens?|cidades?)\b/.test(q)) return 'ultimas'
   if (/\bquantas?\b/.test(q) && /\b(viagens?|visitas?)\b/.test(q)) return 'contagem_mes'
@@ -81,7 +84,7 @@ export function detectVisitasCampoIntent(message: string): AgentClassifiedIntent
 
   const modo = detectModo(message, q, cidade ?? undefined, mesAno)
   if (modo === 'contagem_mes' && cidade && isMonthName(cidade)) cidade = null
-  if (modo === 'cidade_mais_visitada') cidade = null
+  if (modo === 'cidade_mais_visitada' || modo === 'cidade_menos_visitadas') cidade = null
   if (cidade) args.cidade = cidade
 
   if (mesAno) {

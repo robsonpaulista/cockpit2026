@@ -4,6 +4,7 @@ import {
   buildComparativoExpectativa2022Lista,
   filterComparativoExpectativa2022Lista,
   labelCenarioExpectativaComparativo,
+  summarizeComparativoExpectativa2022,
   type CenarioExpectativaComparativo,
 } from '@/lib/comparativo-expectativa-2022'
 import { JADYEL_URNA_DEP_FEDERAL_2022 } from '@/lib/jadyel-federal-2022-pi-votos'
@@ -67,6 +68,7 @@ export async function GET(request: NextRequest) {
       | 'manteve'
       | 'todos'
     const cenario = (searchParams.get('cenario') || 'legado') as CenarioExpectativaComparativo
+    const modo = searchParams.get('modo') === 'lista' ? 'lista' : 'resumo'
     const limite = Math.min(Math.max(Number.parseInt(searchParams.get('limit') || '30', 10) || 30, 1), 80)
 
     const { spreadsheetId, sheetName } = getTerritorioExpectativaSheetConfig({})
@@ -91,6 +93,19 @@ export async function GET(request: NextRequest) {
 
     const votos2022 = await fetchVotos2022Jadyel(request.nextUrl.origin)
     const listaCompleta = buildComparativoExpectativa2022Lista(expectativaMap, votos2022)
+
+    if (modo === 'resumo') {
+      return NextResponse.json({
+        cenario,
+        cenarioLabel: labelCenarioExpectativaComparativo(cenario),
+        filtro,
+        modo: 'resumo',
+        totalFiltrado: listaCompleta.length,
+        resumo: summarizeComparativoExpectativa2022(listaCompleta),
+        rows: [],
+      })
+    }
+
     const filtrada = filterComparativoExpectativa2022Lista(listaCompleta, filtro)
     const ordenada =
       filtro === 'caiu'
@@ -101,6 +116,7 @@ export async function GET(request: NextRequest) {
       cenario,
       cenarioLabel: labelCenarioExpectativaComparativo(cenario),
       filtro,
+      modo: 'lista',
       totalFiltrado: ordenada.length,
       rows: ordenada.slice(0, limite),
     })

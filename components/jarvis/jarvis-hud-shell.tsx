@@ -48,7 +48,7 @@ interface JarvisHudShellProps {
   } | null
   onResultPanelClose?: () => void
   onResultPanelAction?: (action: JarvisHudAction) => void
-  hudLayout?: 'full' | 'compact'
+  hudLayout?: 'full' | 'compact' | 'column'
   className?: string
   style?: React.CSSProperties
 }
@@ -96,6 +96,7 @@ export function JarvisHudShell({
 }: JarvisHudShellProps) {
   const presentingResult = Boolean(resultPanel)
   const compact = hudLayout === 'compact'
+  const column = hudLayout === 'column'
   return (
     <JarvisFontScope
       className={cn(
@@ -110,7 +111,11 @@ export function JarvisHudShell({
       <div
         className={cn(
           'jarvis-hud-mobile-compact relative flex h-full min-h-0 flex-1 flex-col',
-          compact ? 'gap-1 p-1.5' : 'gap-1.5 p-1.5 sm:gap-3 sm:p-3 lg:flex-row lg:gap-6 lg:p-4'
+          compact
+            ? 'gap-1 p-1.5'
+            : column
+              ? 'gap-2 p-2 sm:gap-3 sm:p-3 lg:gap-4 lg:p-4 xl:p-5'
+              : 'gap-1.5 p-1.5 sm:gap-3 sm:p-3 lg:flex-row lg:gap-6 lg:p-4'
         )}
       >
         <div
@@ -118,16 +123,18 @@ export function JarvisHudShell({
             'jarvis-stagger relative flex min-h-0 transition-all duration-500',
             compact
               ? 'order-1 shrink-0'
-              : cn(
-                  'order-2 flex-1 lg:order-1',
-                  presentingResult && 'jarvis-core-presenting'
-                )
+              : column
+                ? 'order-1 shrink-0'
+                : cn(
+                    'order-2 flex-1 lg:order-1',
+                    presentingResult && 'jarvis-core-presenting'
+                  )
           )}
         >
           <div
             className={cn(
               'mx-auto flex w-full flex-col items-center justify-center text-center',
-              compact ? 'flex-row gap-2 py-1' : 'h-full min-h-0 max-w-lg flex-col py-2 sm:py-4 lg:py-6'
+              compact ? 'flex-row gap-2 py-1' : column ? 'flex-col py-2 sm:py-3' : 'h-full min-h-0 max-w-lg flex-col py-2 sm:py-4 lg:py-6'
             )}
           >
             {onMinimize ? (
@@ -146,7 +153,7 @@ export function JarvisHudShell({
             <div
               className={cn(
                 'flex w-full max-w-full items-center',
-                compact ? 'flex-row gap-2' : 'relative flex-col items-center gap-2 sm:gap-4'
+                compact ? 'flex-row gap-2' : column ? 'flex-col items-center gap-2' : 'relative flex-col items-center gap-2 sm:gap-4'
               )}
             >
               <div
@@ -154,7 +161,9 @@ export function JarvisHudShell({
                   'relative',
                   compact
                     ? 'flex shrink-0 items-center gap-2'
-                    : 'w-full max-w-[min(100%,clamp(8.75rem,34vw,11.5rem))] sm:max-w-[min(100%,clamp(11rem,36vw,16rem))] lg:max-w-[min(100%,clamp(14.5rem,40vh,21rem))]'
+                    : column
+                      ? 'w-full max-w-[min(100%,10.5rem)] sm:max-w-[11.5rem] lg:max-w-[12.5rem] xl:max-w-[14rem] 2xl:max-w-[15rem]'
+                      : 'w-full max-w-[min(100%,clamp(8.75rem,34vw,11.5rem))] sm:max-w-[min(100%,clamp(11rem,36vw,16rem))] lg:max-w-[min(100%,clamp(14.5rem,40vh,21rem))]'
                 )}
               >
                 <JarvisCoreSphere
@@ -171,7 +180,7 @@ export function JarvisHudShell({
                 <JarvisWebcamPreview
                   active={Boolean(enableVoice && isListening && !listenPaused)}
                   enabled={webcamEnabled}
-                  compact={compact}
+                  compact={compact || column}
                   onDiagnosticLog={onDiagnosticLog}
                   className={
                     compact
@@ -187,7 +196,9 @@ export function JarvisHudShell({
                     'font-jarvis-display font-bold uppercase text-[var(--color-core)]',
                     compact
                       ? 'text-[0.65rem] tracking-[0.16em] sm:text-xs sm:tracking-[0.2em]'
-                      : 'text-[1.15rem] tracking-[0.22em] sm:text-[clamp(1.35rem,3vh,1.75rem)] sm:tracking-[0.3em]'
+                      : column
+                        ? 'text-[1.2rem] tracking-[0.22em] sm:text-[1.35rem] lg:text-[1.5rem] xl:text-[1.65rem]'
+                        : 'text-[1.15rem] tracking-[0.22em] sm:text-[clamp(1.35rem,3vh,1.75rem)] sm:tracking-[0.3em]'
                   )}
                 >
                   Jarvis
@@ -242,12 +253,14 @@ export function JarvisHudShell({
             'jarvis-stagger flex w-full shrink-0 flex-col',
             compact
               ? 'order-2 min-h-0 flex-1'
-              : cn(
-                  'lg:order-2 lg:h-full lg:min-h-0 lg:max-h-none',
-                  presentingResult
-                    ? 'order-3 max-lg:max-h-[min(34vh,14rem)] lg:w-[min(100%,24rem)] xl:w-[min(100%,26rem)]'
-                    : 'order-1 max-lg:max-h-[min(22vh,8.5rem)] lg:w-[min(100%,20rem)] xl:w-[min(100%,22rem)]'
-                )
+              : column
+                ? 'order-2 min-h-0 flex-1'
+                : cn(
+                    'lg:order-2 lg:h-full lg:min-h-0 lg:max-h-none',
+                    presentingResult
+                      ? 'order-3 max-lg:max-h-[min(34vh,14rem)] lg:w-[min(100%,24rem)] xl:w-[min(100%,26rem)]'
+                      : 'order-1 max-lg:max-h-[min(22vh,8.5rem)] lg:w-[min(100%,20rem)] xl:w-[min(100%,22rem)]'
+                  )
           )}
         >
           {resultPanel && onResultPanelClose ? (
@@ -278,13 +291,14 @@ export function JarvisHudShell({
               voiceOutputEnabled={voiceOutputEnabled}
               webcamEnabled={webcamEnabled}
               onDiagnosticLog={onDiagnosticLog}
-              className="min-h-0 flex-1 max-lg:max-h-full lg:min-h-0"
+              comfortable={column}
+              className={cn('min-h-0 flex-1', column ? '' : 'max-lg:max-h-full lg:min-h-0')}
             />
           )}
         </div>
       </div>
 
-      {!compact ? <JarvisHudMetricsBar className="lg:hidden" /> : null}
+      {!compact && !column ? <JarvisHudMetricsBar className="lg:hidden" /> : null}
       <StatusTicker message={statusMessage} />
     </JarvisFontScope>
   )

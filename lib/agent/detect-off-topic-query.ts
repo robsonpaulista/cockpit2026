@@ -1,4 +1,5 @@
 import { isExpectativaLiderancaFollowUpQuery } from '@/lib/agent/expectativa-detalhe-followup'
+import { isLiderancasResumoPorCargoQuery } from '@/lib/agent/detect-liderancas-resumo'
 import { isRankingEstimuladaFederalQuery } from '@/lib/agent/detect-pesquisa-avancada'
 import { isGreetingQuery, isHelpQuery } from '@/lib/agent/greeting-reply'
 import type { AgentClassifiedIntent } from '@/lib/agent/types'
@@ -96,6 +97,9 @@ export function validateClassifiedIntentAgainstMessage(
     case 'consultar_expectativa':
     case 'consultar_liderancas':
     case 'consultar_demandas': {
+      if (intent === 'consultar_liderancas' && isLiderancasResumoPorCargoQuery(message)) {
+        return true
+      }
       if (isExpectativaLiderancaFollowUpQuery(message)) {
         return true
       }

@@ -91,49 +91,7 @@ import {
   JARVIS_SIDEBAR_TEXT_ACTIVE,
 } from '@/lib/jarvis-sidebar-styles'
 
-/** Rótulos mais curtos no tema Cockpit Vivo (navegação minimalista). */
-const COCKPIT_MENU_LABEL: Record<string, string> = {
-  home: 'Visão',
-  'resumo-operacional': 'Resumo',
-  narrativas: 'Estratégia',
-  campo: 'Campo',
-  agenda: 'Agenda',
-  territorio: 'Território',
-  'territorio-mapa-tds': 'Mapa TDs',
-  'ficha-atendimento': 'Ficha',
-  'chapas-menu': 'Chapas',
-  'resumo-eleicoes-menu': 'Eleições',
-  conteudo: 'Presença',
-  'conteudo-menu': 'Presença',
-  'conteudo-hub': 'Visão',
-  'conteudo-obras': 'Obras',
-  'conteudo-agenda': 'Agenda',
-  'conteudo-cards': 'Cards',
-  'conteudo-referencias': 'Referências',
-  'conteudo-analise': 'Análise',
-  'conteudo-redes': 'Instagram',
-  noticias: 'Radar',
-  'mobilizacao-menu': 'Mobilização',
-  'mobilizacao-captacao': 'Captação',
-  'mobilizacao-mapa-digital-ig': 'Mapa IG',
-  'mobilizacao-config': 'Config',
-  whatsapp: 'WhatsApp',
-  pesquisa: 'Pesquisa',
-  operacao: 'Operação',
-  juridico: 'Jurídico',
-  obras: 'Obras',
-  proposicoes: 'Proposições',
-  'sei-pesquisa': 'SEI',
-  'gestao-pesquisas-menu': 'Gestão pesq.',
-  usuarios: 'Usuários',
-  chapas: 'Federal',
-  'chapas-estaduais': 'Estadual',
-  'resumo-eleicoes-principal': 'Por cidade',
-  'resumo-eleicoes-historico': 'Hist. federal',
-  'gestao-pesquisas-inicio': 'Início',
-  'gestao-pesquisas-config': 'Config',
-  emendas: 'Emendas',
-}
+import { COCKPIT_MENU_LABEL } from '@/lib/sidebar-cockpit-labels'
 
 interface SidebarMenuItem extends SidebarMenuItemConfig {}
 

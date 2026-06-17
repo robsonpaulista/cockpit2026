@@ -24,7 +24,10 @@ export function intentToSyntheticQuery(
     case 'consultar_expectativa':
       return cidade ? `expectativa em ${cidade}` : 'expectativa 2026'
     case 'consultar_liderancas':
-      return cidade ? `lideranças em ${cidade}` : 'território e base'
+      if (args.modo === 'por_cargo' || args.agrupamento === 'cargo') {
+        return 'resumo lideranças por cargo'
+      }
+      return cidade ? `lideranças em ${cidade}` : 'resumo lideranças por cargo'
     case 'consultar_demandas':
       return cidade ? `demandas em ${cidade}` : null
     case 'consultar_agendas': {

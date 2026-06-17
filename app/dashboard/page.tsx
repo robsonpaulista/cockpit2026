@@ -1,8 +1,9 @@
-'use client'
+import { DashboardHomeKanban } from '@/components/dashboard-home-kanban'
 
-/**
- * Visão Geral — conteúdo vazio; o Jarvis global (layout) ocupa esta área em full HUD.
- */
 export default function Home() {
-  return <div className="flex h-full min-h-0 flex-1 flex-col" aria-hidden />
+  return (
+    <div className="flex h-full min-h-0 min-w-0 flex-1 flex-col">
+      <DashboardHomeKanban />
+    </div>
+  )
 }

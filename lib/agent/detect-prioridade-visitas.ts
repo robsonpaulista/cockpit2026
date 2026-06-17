@@ -6,6 +6,11 @@ function norm(text: string): string {
     .trim()
 }
 
+const POUCA_VISITA =
+  /\b(poucas?\s+(visitas?|vezes)|pouco\s+visitei|visitei\s+poucas?\s+vezes|visitei\s+pouco|baixa\s+frequencia|sem\s+visita|nenhuma\s+visita|nao\s+visitei|nunca\s+visitei|ainda\s+nao\s+visitei)\b/
+
+const EXPECTATIVA_OU_VOTOS = /\b(expectativa|votos|projec)\b/
+
 /**
  * Perguntas sobre municípios prioritários para visitar
  * (alta expectativa de votos + pouca/nenhuma visita — mesmo critério do Resumo Operacional).
@@ -16,7 +21,9 @@ export function isPrioridadeVisitasCampoQuery(query: string): boolean {
   if (/\b(instagram|insta|perfil)\b/.test(q) && /\bvisita\b/.test(q)) return false
 
   if (
-    /\b(prioridade(s)?\s+(de\s+)?campo|priorizar\s+campo|mapa\s+de\s+prioridade)\b/.test(q)
+    /\b(prioridade(s)?\s+(de\s+)?campo|priorizar\s+campo|mapa\s+de\s+prioridade|territorios?\s+fri[oa]s?)\b/.test(
+      q
+    )
   ) {
     return true
   }
@@ -29,7 +36,7 @@ export function isPrioridadeVisitasCampoQuery(query: string): boolean {
   }
 
   if (
-    /\b(quais|que|lista|listar|relacao|relação|mostre|mostra|me\s+diga|me\s+fala)\b/.test(q) &&
+    /\b(quais|que|lista|listar|relacao|relação|mostre|mostra|me\s+diga|me\s+fala|onde)\b/.test(q) &&
     /\b(cidades?|municipios?)\b/.test(q) &&
     /\b(visitar|visita|campo|importantes?|prioritarias?|prioridade)\b/.test(q)
   ) {
@@ -53,9 +60,22 @@ export function isPrioridadeVisitasCampoQuery(query: string): boolean {
     return true
   }
 
+  if (EXPECTATIVA_OU_VOTOS.test(q) && POUCA_VISITA.test(q)) {
+    return true
+  }
+
   if (
-    /\b(expectativa|votos)\b/.test(q) &&
-    /\b(poucas?\s+visitas?|sem\s+visita|nenhuma\s+visita|nao\s+visitei)\b/.test(q)
+    /\b(alta|elevada|grande|maior)\s+expectativa\b/.test(q) &&
+    POUCA_VISITA.test(q)
+  ) {
+    return true
+  }
+
+  if (
+    /\b(analis[ae]|diagnostico|panorama)\b/.test(q) &&
+    EXPECTATIVA_OU_VOTOS.test(q) &&
+    /\b(visitei|visita|visitas?|vezes)\b/.test(q) &&
+    /\b(poucas?|pouco|baixa|menos|sem\s+visita|nao\s+visitei|nunca)\b/.test(q)
   ) {
     return true
   }

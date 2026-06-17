@@ -88,7 +88,7 @@ export default function ConteudoPresencaHubPage() {
         <div>
           <h1 className="text-2xl font-bold text-text-primary flex items-center gap-2">
             <Sparkles className="h-7 w-7 text-accent-gold" />
-            Presença & Conteúdo
+            Redes Sociais
           </h1>
           <p className="text-text-secondary text-sm mt-1">
             Obras, agenda de campo, cards automáticos e análise de publicações.

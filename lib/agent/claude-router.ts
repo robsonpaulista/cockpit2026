@@ -2,6 +2,8 @@ import { extractCityNameFromQuery } from '@/lib/agent/city-extract'
 
 import { isCampoVisitasQuery } from '@/lib/agent/detect-visitas-campo'
 
+import { isPrioridadeVisitasCampoQuery } from '@/lib/agent/detect-prioridade-visitas'
+
 import { detectSidebarNavigate } from '@/lib/agent/detect-sidebar-navigate'
 
 import {
@@ -77,6 +79,8 @@ function passesJarvisAnalysisGuards(message: string): boolean {
   if (isGreetingQuery(raw) || isHelpQuery(raw)) return false
 
   if (detectWhatsAppSendIntent(raw)) return false
+
+  if (isPrioridadeVisitasCampoQuery(raw)) return false
 
   if (isCampoVisitasQuery(raw)) return false
 

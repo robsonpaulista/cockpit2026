@@ -96,7 +96,7 @@ Se o usuário pedir **número/lista pontual**, diga: «Para o dado exato, use no
 - API: /api/resumo-eleicoes/votacao-secao
 - Jarvis: navegação. Claude: sem dados automáticos.
 
-### Presença & Conteúdo · /dashboard/conteudo/*
+### Redes Sociais · /dashboard/conteudo/*
 - Hub: pipeline de conteúdo (obras, cards, referências, análise).
 - **Redes/Instagram** · /dashboard/conteudo/redes:
   - API: POST /api/instagram, GET /api/instagram/snapshot, /api/instagram/classifications

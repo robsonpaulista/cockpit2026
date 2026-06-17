@@ -16,13 +16,16 @@ import {
   detectExpectativaDetalheFollowUp,
   EXPECTATIVA_DETALHE_DISMISS_REPLY,
 } from '@/lib/agent/expectativa-detalhe-followup'
+import { isLiderancasResumoPorCargoQuery } from '@/lib/agent/detect-liderancas-resumo'
+import { isPrioridadeVisitasCampoQuery } from '@/lib/agent/detect-prioridade-visitas'
+import { detectVisitasCampoIntent } from '@/lib/agent/detect-visitas-campo'
+import { isInvalidCityCandidate } from '@/lib/agent/city-extract'
 import { checkAgentRateLimit, AGENT_RATE_LIMITS } from '@/lib/agent/rate-limit'
 import { intentToSyntheticQuery, isClientOnlyIntent } from '@/lib/agent/synthetic-query'
 import {
   detectWhatsAppSendIntent,
   isFakeWhatsAppDirectReply,
 } from '@/lib/agent/detect-whatsapp-send'
-import { detectVisitasCampoIntent } from '@/lib/agent/detect-visitas-campo'
 import {
   detectPesquisaTendenciaIntent,
   detectRankingEstimuladaFederalIntent,
@@ -113,6 +116,49 @@ export async function POST(request: Request) {
         content: buildHelpReply(),
         meta: { intent: 'ajuda' },
       } satisfies AgentChatResponse)
+    }
+
+    if (isLiderancasResumoPorCargoQuery(message)) {
+      return NextResponse.json({
+        source: 'groq',
+        content: '',
+        clientQuery: 'resumo lideranças por cargo',
+        meta: { intent: 'consultar_liderancas' },
+      } satisfies AgentChatResponse)
+    }
+
+    if (isPrioridadeVisitasCampoQuery(message)) {
+      const visitasIntent =
+        detectVisitasCampoIntent(message) ?? {
+          intent: 'consultar_visitas_campo' as const,
+          args: { modo: 'prioridade_visitas', termo: message.slice(0, 120) },
+        }
+      const origin = new URL(request.url).origin
+      const cookie = request.headers.get('cookie') ?? ''
+      const visitasResult = await executeServerTool(
+        visitasIntent,
+        origin,
+        cookie,
+        body.context,
+        { supabase, user: { id: user.id, email: user.email } },
+        message
+      )
+      if (visitasResult) {
+        const payload =
+          typeof visitasResult === 'string'
+            ? { content: visitasResult }
+            : {
+                content: visitasResult.content,
+                speechSegments: visitasResult.speechSegments,
+              }
+        return NextResponse.json({
+          source: 'groq',
+          content: payload.content,
+          speechSegments: payload.speechSegments,
+          action: buildNavigateAction(visitasIntent),
+          meta: { intent: 'consultar_visitas_campo' },
+        } satisfies AgentChatResponse)
+      }
     }
 
     const expectativaFollowUp = detectExpectativaDetalheFollowUp(body.history ?? [], message)
@@ -413,7 +459,11 @@ export async function POST(request: Request) {
     }
 
     if (isClientOnlyIntent(classified.intent)) {
-      const clientQuery = intentToSyntheticQuery(classified.intent, classified.args)
+      const args = { ...classified.args }
+      if (args.cidade && isInvalidCityCandidate(args.cidade)) {
+        delete args.cidade
+      }
+      const clientQuery = intentToSyntheticQuery(classified.intent, args)
       if (clientQuery) {
         return NextResponse.json({
           source: 'groq',

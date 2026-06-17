@@ -1,4 +1,4 @@
-import { extractCityNameFromQuery } from '@/lib/agent/city-extract'
+import { extractCityNameFromQuery, isInvalidCityCandidate } from '@/lib/agent/city-extract'
 
 /** Liderança completa ou abreviada («lider», «líderes»). */
 const LIDERANCA_TERM = String.raw`(?:liderancas?|liders?)`
@@ -30,12 +30,13 @@ function mentionsLiderancaTerm(query: string): boolean {
 export function pedeExpectativaDetalhePorLideranca(query: string): boolean {
   const q = normalize(query)
   if (!mentionsLiderancaTerm(q)) return false
+  if (/\bpor\s+cargo\b/.test(q)) return false
 
   if (POR_LIDER_PHRASE.test(q)) return true
 
-  if (new RegExp(`${ACAO_LIDERANCA}`).test(q)) return true
+  if (new RegExp(METRICA_VOTOS).test(q) && new RegExp(`${ACAO_LIDERANCA}`).test(q)) return true
 
-  if (new RegExp(METRICA_VOTOS).test(q)) return true
+  if (new RegExp(METRICA_VOTOS).test(q) && POR_LIDER_PHRASE.test(q)) return true
 
   return false
 }
@@ -46,9 +47,11 @@ export function querExpectativaPorLideranca(query: string): boolean {
 
 /** Follow-up curto pedindo detalhamento da última cidade consultada. */
 export function isExpectativaLiderancaFollowUpQuery(query: string): boolean {
-  if (pedeExpectativaDetalhePorLideranca(query)) return true
-
   const q = normalize(query)
+  if (/\bpor\s+cargo\b/.test(q)) return false
+  if (/\b(quadro|tabela)\s+resumo\b/.test(q) || /\bresumo\b.*\bpor\s+cargo\b/.test(q)) return false
+
+  if (pedeExpectativaDetalhePorLideranca(query)) return true
   if (new RegExp(`${ACAO_LIDERANCA}`).test(q) && mentionsLiderancaTerm(q)) {
     return true
   }
@@ -124,12 +127,28 @@ export const EXPECTATIVA_DETALHE_DISMISS_REPLY =
 
 export function extractCidadeFromExpectativaReply(content: string): string | null {
   const match = /^\s*\*\*([^*]+)\*\*/m.exec(content)
-  return match?.[1]?.trim() || null
+  const raw = match?.[1]?.trim()
+  if (!raw || isInvalidCityCandidate(raw)) return null
+  if (isComparativoExpectativaJarvisReply(content)) return null
+  return raw
+}
+
+/** Relatório comparativo 2026 × 2022 — não é resumo de cidade. */
+export function isComparativoExpectativaJarvisReply(content: string): boolean {
+  const trimmed = content.trim()
+  if (!trimmed) return false
+  return (
+    /\bexpectativa\s+2026\s*[×x]\s*federal\s+2022\b/i.test(trimmed) ||
+    /\bcomparativo\s+expectativa\b/i.test(trimmed) ||
+    /\*\*totais\s+gerais\*\*/i.test(trimmed) ||
+    /\bmunicip[ií]pios\*\*\s*\(\d+/i.test(trimmed)
+  )
 }
 
 export function looksLikeExpectativaCidadeReply(content: string): boolean {
   const trimmed = content.trim()
   if (!trimmed) return false
+  if (isComparativoExpectativaJarvisReply(trimmed)) return false
   if (/^\s*\*\*[^*]+\*\*/m.test(trimmed) && /\b(pior cen[aá]rio|expectativa|votos?)\b/i.test(trimmed)) {
     return true
   }

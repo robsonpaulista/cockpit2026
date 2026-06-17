@@ -110,6 +110,39 @@ export function labelCenarioExpectativaComparativo(cenario: CenarioExpectativaCo
       return 'Expectativa de Votos 2026 (Anterior)'
   }
 }
+
+export interface ComparativoExpectativa2022Resumo {
+  totalExpectativa2026: number
+  totalVotos2022: number
+  delta: number
+  deltaPercentual: number | null
+  municipiosComDados: number
+  cresceu: number
+  manteve: number
+  caiu: number
+  semDados: number
+}
+
+export function summarizeComparativoExpectativa2022(
+  rows: ComparativoExpectativa2022Row[]
+): ComparativoExpectativa2022Resumo {
+  const totalExpectativa2026 = rows.reduce((s, r) => s + r.expectativa2026, 0)
+  const totalVotos2022 = rows.reduce((s, r) => s + r.votos2022, 0)
+  const delta = totalExpectativa2026 - totalVotos2022
+  const deltaPercentual = totalVotos2022 > 0 ? (delta / totalVotos2022) * 100 : null
+
+  return {
+    totalExpectativa2026,
+    totalVotos2022,
+    delta,
+    deltaPercentual,
+    municipiosComDados: rows.filter((r) => r.tendencia !== 'sem-dados').length,
+    cresceu: rows.filter((r) => r.tendencia === 'cresceu').length,
+    manteve: rows.filter((r) => r.tendencia === 'manteve').length,
+    caiu: rows.filter((r) => r.tendencia === 'caiu').length,
+    semDados: rows.filter((r) => r.tendencia === 'sem-dados').length,
+  }
+}
 export function agregarExpectativaPorCidade(
   liderancas: Array<Record<string, unknown>>,
   cidadeCol: string,

@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { dedupeJarvisLogLines } from '@/lib/agent/jarvis-diagnostic-log'
 import { JarvisVoicePicker } from '@/components/jarvis/jarvis-voice-picker'
 import { jarvisLabelClass, jarvisPanelGhostClass } from '@/lib/jarvis-hud-tokens'
 import { useCountUp } from '@/components/jarvis/use-count-up'
@@ -36,6 +37,7 @@ export function JarvisHudSystemLog({
   voiceOutputEnabled = true,
   webcamEnabled = true,
   onDiagnosticLog,
+  comfortable = false,
   className,
 }: {
   extraLines?: JarvisLogLine[]
@@ -44,12 +46,14 @@ export function JarvisHudSystemLog({
   voiceOutputEnabled?: boolean
   webcamEnabled?: boolean
   onDiagnosticLog?: (lines: JarvisLogLine[]) => void
+  /** Tipografia maior em telas largas (coluna Jarvis na home). */
+  comfortable?: boolean
   className?: string
 }) {
   const logRef = useRef<HTMLDivElement>(null)
 
   const lines = useMemo(() => {
-    const merged = [...BOOT_LOGS, ...extraLines].slice(-18)
+    const merged = dedupeJarvisLogLines([...BOOT_LOGS, ...extraLines]).slice(-18)
     if (processing) {
       merged.push({ tag: 'AI', message: 'PROCESSING QUERY...', tone: 'warn', at: formatLogTime() })
     }
@@ -67,10 +71,22 @@ export function JarvisHudSystemLog({
 
   return (
     <div className={cn(jarvisPanelGhostClass, 'flex min-h-0 flex-1 flex-col sm:min-h-[160px]', className)}>
-      <p className={cn(jarvisLabelClass, 'text-[8px] sm:text-[9px]')}>system log</p>
+      <p
+        className={cn(
+          jarvisLabelClass,
+          comfortable ? 'text-[9px] sm:text-[10px] lg:text-[11px]' : 'text-[8px] sm:text-[9px]'
+        )}
+      >
+        system log
+      </p>
       <div
         ref={logRef}
-        className="mt-1.5 min-h-0 flex-1 overflow-y-auto font-jarvis-mono text-[8px] leading-relaxed sm:mt-2 sm:text-[9px]"
+        className={cn(
+          'mt-1.5 min-h-0 flex-1 overflow-y-auto font-jarvis-mono leading-relaxed sm:mt-2',
+          comfortable
+            ? 'text-[9px] sm:text-[10px] lg:text-[11px] xl:text-xs'
+            : 'text-[8px] sm:text-[9px]'
+        )}
       >
         {lines.map((line, i) => (
           <p

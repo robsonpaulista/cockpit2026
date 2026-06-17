@@ -36,7 +36,7 @@ export function JarvisGlobalHost() {
       className={cn(
         'pointer-events-none',
         isHome
-          ? 'absolute inset-0 z-30 flex flex-col'
+          ? 'relative z-20 flex h-full min-h-0 w-full shrink-0 flex-col border-[rgba(0,212,255,0.08)] max-lg:max-h-[44vh] max-lg:min-h-[18rem] max-lg:border-l-0 max-lg:border-t lg:w-[26rem] lg:min-w-[26rem] lg:max-w-[26rem] lg:border-l xl:w-[28rem] xl:min-w-[28rem] xl:max-w-[28rem] 2xl:w-[30rem] 2xl:min-w-[30rem] 2xl:max-w-[30rem]'
           : 'fixed bottom-4 right-4 z-[120] sm:bottom-5 sm:right-5'
       )}
       aria-live="polite"
@@ -46,7 +46,7 @@ export function JarvisGlobalHost() {
           agentTitle="Jarvis"
           uiVariant="jarvis-hud"
           fullPageHud={isHome}
-          hudLayout={isHome ? 'full' : 'compact'}
+          hudLayout={isHome ? 'column' : 'compact'}
           floatingMode={!isHome}
           dockVariant={isHome ? 'inline' : 'fixed'}
           maxPanelHeight={isHome ? 720 : 380}

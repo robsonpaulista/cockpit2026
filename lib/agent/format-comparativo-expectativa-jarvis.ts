@@ -1,9 +1,14 @@
 import {
   labelCenarioExpectativaComparativo,
+  summarizeComparativoExpectativa2022,
+  type ComparativoExpectativa2022Resumo,
   type ComparativoExpectativa2022Row,
   type CenarioExpectativaComparativo,
 } from '@/lib/comparativo-expectativa-2022'
-import type { FiltroComparativoExpectativa2022 } from '@/lib/agent/detect-comparativo-expectativa-2022'
+import type {
+  FiltroComparativoExpectativa2022,
+  ModoComparativoExpectativa2022,
+} from '@/lib/agent/detect-comparativo-expectativa-2022'
 
 function tituloFiltro(filtro: FiltroComparativoExpectativa2022): string {
   switch (filtro) {
@@ -18,13 +23,67 @@ function tituloFiltro(filtro: FiltroComparativoExpectativa2022): string {
   }
 }
 
+function formatDeltaPercentual(deltaPercentual: number | null): string {
+  if (deltaPercentual == null) return ''
+  const sinal = deltaPercentual >= 0 ? '+' : ''
+  return ` (${sinal}${deltaPercentual.toFixed(1).replace('.', ',')}%)`
+}
+
+function formatResumoComparativo(options: {
+  resumo: ComparativoExpectativa2022Resumo
+  cenario: CenarioExpectativaComparativo
+}): { content: string; speechSegments: string[] } {
+  const cenarioLabel = labelCenarioExpectativaComparativo(options.cenario)
+  const { resumo } = options
+  const pct = formatDeltaPercentual(resumo.deltaPercentual)
+
+  const veredicto =
+    resumo.delta > 0
+      ? '**Sim.** A expectativa agregada para 2026 é **maior** que o total obtido em 2022 (Federal Jadyel).'
+      : resumo.delta < 0
+        ? '**Não.** A expectativa agregada para 2026 é **menor** que o total de 2022 (Federal Jadyel).'
+        : '**Empate.** A expectativa total e os votos de 2022 estão no mesmo patamar.'
+
+  let out = `**Expectativa 2026 × Federal 2022 — Piauí**\n`
+  out += `Cenário: ${cenarioLabel}\n\n`
+  out += `${veredicto}\n\n`
+  out += `**Totais gerais**\n`
+  out += `- Expectativa 2026: **${resumo.totalExpectativa2026.toLocaleString('pt-BR')}** votos\n`
+  out += `- Federal 2022: **${resumo.totalVotos2022.toLocaleString('pt-BR')}** votos\n`
+  out += `- Diferença: **${resumo.delta >= 0 ? '+' : ''}${resumo.delta.toLocaleString('pt-BR')}**${pct}\n\n`
+  out += `**Municípios** (${resumo.municipiosComDados} com dados): **${resumo.cresceu}** acima de 2022 · **${resumo.manteve}** estáveis · **${resumo.caiu}** abaixo de 2022\n\n`
+  out += `_Para ver cidades específicas, pergunte «quais municípios…» ou abra o **Mapa 2026 × 2022**._`
+
+  const speech = [
+    resumo.delta > 0
+      ? 'Sim. A expectativa total para 2026 é maior que o total de 2022.'
+      : resumo.delta < 0
+        ? 'Não. A expectativa total para 2026 é menor que o total de 2022.'
+        : 'A expectativa total está no mesmo patamar de 2022.',
+    `Expectativa 2026: ${resumo.totalExpectativa2026.toLocaleString('pt-BR')} votos.`,
+    `Federal 2022: ${resumo.totalVotos2022.toLocaleString('pt-BR')} votos.`,
+    `Diferença: ${resumo.delta >= 0 ? 'mais' : 'menos'} ${Math.abs(resumo.delta).toLocaleString('pt-BR')} votos.`,
+  ]
+
+  return { content: out.trim(), speechSegments: speech }
+}
+
 export function formatComparativoExpectativa2022JarvisReply(options: {
   rows: ComparativoExpectativa2022Row[]
   filtro: FiltroComparativoExpectativa2022
   cenario: CenarioExpectativaComparativo
   totalFiltrado: number
   limite?: number
+  modo?: ModoComparativoExpectativa2022
+  resumo?: ComparativoExpectativa2022Resumo
 }): { content: string; speechSegments: string[] } {
+  const modo = options.modo ?? 'lista'
+
+  if (modo === 'resumo') {
+    const resumo = options.resumo ?? summarizeComparativoExpectativa2022(options.rows)
+    return formatResumoComparativo({ resumo, cenario: options.cenario })
+  }
+
   const limite = options.limite ?? 20
   const cenarioLabel = labelCenarioExpectativaComparativo(options.cenario)
   const slice = options.rows.slice(0, limite)
@@ -38,10 +97,7 @@ export function formatComparativoExpectativa2022JarvisReply(options: {
   }
 
   const linhas = slice.map((r, i) => {
-    const pct =
-      r.deltaPercentual != null
-        ? ` (${r.deltaPercentual >= 0 ? '+' : ''}${r.deltaPercentual.toFixed(1).replace('.', ',')}%)`
-        : ''
+    const pct = formatDeltaPercentual(r.deltaPercentual)
     return `${i + 1}. **${r.cidade}** — 2026: **${r.expectativa2026.toLocaleString('pt-BR')}** | 2022: **${r.votos2022.toLocaleString('pt-BR')}** | Δ ${r.delta.toLocaleString('pt-BR')}${pct}`
   })
 

@@ -7,7 +7,7 @@ export function getCockpitPageLabel(pathname: string): string {
   if (p.startsWith('/dashboard/resumo-eleicoes/secao')) return 'Por seção'
   if (p.startsWith('/dashboard/resumo-eleicoes/historico')) return 'Hist. federal'
   if (p.startsWith('/dashboard/territorio/mapa-tds')) return 'Mapa TDs'
-  if (p.startsWith('/dashboard/mobilizacao/mapa-digital-ig')) return 'Mapa IG'
+  if (p.startsWith('/dashboard/mobilizacao/mapa-digital-ig')) return 'Engajamento Líderes'
   if (p.startsWith('/dashboard/conteudo/redes')) return 'Instagram'
   if (p.startsWith('/dashboard/conteudo/obras')) return 'Obras cards'
   if (p.startsWith('/dashboard/conteudo/agenda')) return 'Agenda campo'
@@ -15,7 +15,7 @@ export function getCockpitPageLabel(pathname: string): string {
   if (p.startsWith('/dashboard/conteudo/referencias')) return 'Referências'
   if (p.startsWith('/dashboard/conteudo/analise')) return 'Análise'
   if (p.startsWith('/dashboard/conteudo/instagram-lideres')) return 'IG líderes'
-  if (p.startsWith('/dashboard/conteudo')) return 'Presença'
+  if (p.startsWith('/dashboard/conteudo')) return 'Redes Sociais'
 
   const exact: Record<string, string> = {
     '/dashboard': 'Visão',
@@ -27,11 +27,11 @@ export function getCockpitPageLabel(pathname: string): string {
     '/dashboard/chapas': 'Federal',
     '/dashboard/chapas-estaduais': 'Estadual',
     '/dashboard/resumo-eleicoes': 'Eleições',
-    '/dashboard/conteudo': 'Presença',
+    '/dashboard/conteudo': 'Redes Sociais',
     '/dashboard/noticias': 'Radar',
     '/dashboard/mobilizacao': 'Mobilização',
     '/dashboard/mobilizacao/config': 'Mob. config',
-    '/dashboard/mobilizacao/mapa-digital-ig': 'Mapa IG',
+    '/dashboard/mobilizacao/mapa-digital-ig': 'Engajamento Líderes',
     '/dashboard/whatsapp': 'WhatsApp',
     '/dashboard/pesquisa': 'Pesquisa',
     '/dashboard/operacao': 'Operação',

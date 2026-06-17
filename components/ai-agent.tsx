@@ -6,6 +6,7 @@ import { Bot, Sparkles, TrendingUp, AlertTriangle, MapPin, BarChart3, CheckCircl
 import { cn } from '@/lib/utils'
 import { JarvisHudShell } from '@/components/jarvis/jarvis-hud-shell'
 import type { JarvisLogLine } from '@/components/jarvis/jarvis-hud-widgets'
+import { dedupeJarvisLogLines } from '@/lib/agent/jarvis-diagnostic-log'
 import { jarvisHudStyle } from '@/lib/jarvis-hud-tokens'
 import { getAgentSessionId } from '@/lib/agent/client-session'
 import type { CalendarEventRow } from '@/lib/agenda/calendar-event-utils'
@@ -39,9 +40,13 @@ import {
   isComparativoExpectativa2022Query,
   parseCenarioComparativoExpectativa2022,
   parseFiltroComparativoExpectativa2022,
+  parseModoComparativoExpectativa2022,
 } from '@/lib/agent/detect-comparativo-expectativa-2022'
 import { formatComparativoExpectativa2022JarvisReply } from '@/lib/agent/format-comparativo-expectativa-jarvis'
-import type { ComparativoExpectativa2022Row } from '@/lib/comparativo-expectativa-2022'
+import type {
+  ComparativoExpectativa2022Resumo,
+  ComparativoExpectativa2022Row,
+} from '@/lib/comparativo-expectativa-2022'
 import {
   detectPesquisaTendenciaCidadeFollowUp,
   PESQUISA_TENDENCIA_CIDADE_HINT,
@@ -61,7 +66,7 @@ import {
   JARVIS_ARMED_LISTEN_MS,
   resolveJarvisVoiceInput,
 } from '@/lib/agent/jarvis-wake-word'
-import { extractCityNameFromQuery } from '@/lib/agent/city-extract'
+import { extractCityNameFromQuery, isInvalidCityCandidate } from '@/lib/agent/city-extract'
 import { isCampoVisitasQuery } from '@/lib/agent/detect-visitas-campo'
 import { isPrioridadeVisitasCampoQuery } from '@/lib/agent/detect-prioridade-visitas'
 import { resolveVisitasCampoReply, type CampoAgendaRow } from '@/lib/agent/format-visitas-campo'
@@ -91,6 +96,12 @@ import {
   type SidebarNavigateResult,
 } from '@/lib/agent/detect-sidebar-navigate'
 import { shouldBreakJarvisPendingFlow } from '@/lib/agent/detect-pending-break'
+import { isLiderancasResumoPorCargoQuery } from '@/lib/agent/detect-liderancas-resumo'
+import {
+  aggregateLiderancasPorCargo,
+  formatLiderancasPorCargoJarvisReply,
+  resolveTerritorioCargoColumn,
+} from '@/lib/territorio-liderancas-por-cargo'
 import { isOffTopicAgentQuery } from '@/lib/agent/detect-off-topic-query'
 import {
   isResumoEleicoesPriorityQuery,
@@ -286,7 +297,7 @@ interface AIAgentProps {
   /** Jarvis HUD ocupa 100% da área útil do dashboard (home) */
   fullPageHud?: boolean
   /** full = home; compact = bolha flutuante nas demais páginas */
-  hudLayout?: 'full' | 'compact'
+  hudLayout?: 'full' | 'compact' | 'column'
   /** Ao entrar em páginas internas, inicia recolhido como bolha */
   floatingMode?: boolean
 }
@@ -425,7 +436,9 @@ function normalizeNumber(value: any): number {
 }
 
 function extractCityName(query: string): string | null {
-  return extractCityNameFromQuery(query)
+  const cidade = extractCityNameFromQuery(query)
+  if (!cidade || isInvalidCityCandidate(cidade)) return null
+  return cidade
 }
 
 function buildSidebarNavChatMessage(result: SidebarNavigateResult): ChatMessage {
@@ -845,6 +858,82 @@ export function AIAgent({
     } catch (error) {
       console.error('Erro ao buscar expectativa:', error)
       return `Erro ao buscar dados. Tente novamente.`
+    }
+  }
+
+  const fetchLiderancasPorCargoResumo = async (): Promise<{
+    content: string
+    speechSegments: string[]
+  }> => {
+    try {
+      let config: Record<string, unknown> | null = null
+      try {
+        const serverConfigRes = await fetch('/api/territorio/config')
+        const serverConfig = await serverConfigRes.json()
+        if (serverConfig.configured) {
+          config = {}
+        }
+      } catch {
+        /* localStorage abaixo */
+      }
+
+      if (!config && typeof window !== 'undefined') {
+        const savedConfig = localStorage.getItem('territorio_sheets_config')
+        if (savedConfig) {
+          config = JSON.parse(savedConfig) as Record<string, unknown>
+        }
+      }
+
+      if (!config) {
+        return {
+          content:
+            'Não encontrei configuração de território. Configure a planilha em **Território & Base**.',
+          speechSegments: ['Não encontrei configuração de território.'],
+        }
+      }
+
+      const response = await fetch('/api/territorio/google-sheets', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(config),
+      })
+
+      if (!response.ok) {
+        return {
+          content: 'Erro ao buscar dados do território.',
+          speechSegments: ['Erro ao buscar dados do território.'],
+        }
+      }
+
+      const data = (await response.json()) as {
+        records?: Record<string, unknown>[]
+        headers?: string[]
+      }
+      const records = data.records ?? []
+      const headers = data.headers ?? []
+      const cargoCol = resolveTerritorioCargoColumn(headers)
+
+      if (!cargoCol) {
+        return {
+          content: 'Não encontrei a coluna de **cargo** na planilha de lideranças.',
+          speechSegments: ['Não encontrei a coluna de cargo na planilha.'],
+        }
+      }
+
+      const rows = aggregateLiderancasPorCargo(records, cargoCol)
+      const semCargo = records.filter((r) => !String(r[cargoCol] ?? '').trim()).length
+
+      return formatLiderancasPorCargoJarvisReply({
+        rows,
+        totalLiderancas: records.length,
+        semCargo,
+      })
+    } catch (error) {
+      console.error('Erro ao buscar resumo por cargo:', error)
+      return {
+        content: 'Erro ao montar resumo por cargo. Tente novamente.',
+        speechSegments: ['Erro ao montar resumo por cargo.'],
+      }
     }
   }
 
@@ -1818,7 +1907,8 @@ export function AIAgent({
     try {
       const filtro = parseFiltroComparativoExpectativa2022(query)
       const cenario = parseCenarioComparativoExpectativa2022(query)
-      const qs = new URLSearchParams({ filtro, cenario, limit: '25' })
+      const modo = parseModoComparativoExpectativa2022(query)
+      const qs = new URLSearchParams({ filtro, cenario, modo, limit: '25' })
       const response = await fetch(`/api/territorio/comparativo-expectativa-2022?${qs}`)
       if (!response.ok) {
         return {
@@ -1832,6 +1922,8 @@ export function AIAgent({
         totalFiltrado?: number
         filtro?: 'caiu' | 'cresceu' | 'manteve' | 'todos'
         cenario?: 'legado' | 'aferido' | 'promessa'
+        modo?: 'resumo' | 'lista'
+        resumo?: ComparativoExpectativa2022Resumo
         error?: string
       }
       if (data.error) {
@@ -1847,6 +1939,8 @@ export function AIAgent({
         cenario: data.cenario ?? cenario,
         totalFiltrado: data.totalFiltrado ?? 0,
         limite: 25,
+        modo: data.modo ?? modo,
+        resumo: data.resumo,
       })
       return {
         id: Date.now().toString(),
@@ -1931,6 +2025,21 @@ export function AIAgent({
         id: Date.now().toString(),
         role: 'assistant',
         content: buildHelpReply(),
+      }
+    }
+
+    if (isLiderancasResumoPorCargoQuery(query)) {
+      const formatted = await fetchLiderancasPorCargoResumo()
+      return {
+        id: Date.now().toString(),
+        role: 'assistant',
+        content: formatted.content,
+        speechSegments: formatted.speechSegments,
+        action: {
+          type: 'navigate',
+          url: '/dashboard/territorio',
+          label: 'Ver Território & Base',
+        },
       }
     }
 
@@ -2520,6 +2629,8 @@ export function AIAgent({
             '› "Mostrar Picos" / "Recolher Parnaíba"',
             '› "Abrir obras de Pedro II"',
             '› "Atualizar dados"',
+            '',
+            'Também posso trazer o **resumo por cargo** (ex.: «quadro das lideranças por cargo»).',
             '',
             'Diga **listar cidades** para ver os municípios visíveis na lista (com filtros aplicados).',
           ].join('\n'),
@@ -3209,6 +3320,7 @@ export function AIAgent({
     chatMessages,
     syncExpectativaDetalhePending,
     fetchExpectativaCidade,
+    fetchLiderancasPorCargoResumo,
   ])
 
   const buildAgentContext = useCallback((): AgentContextPayload => {
@@ -3924,6 +4036,39 @@ export function AIAgent({
         }
       }
 
+      if (!response && isLiderancasResumoPorCargoQuery(cleanedContent)) {
+        const formatted = await fetchLiderancasPorCargoResumo()
+        response = {
+          id: Date.now().toString(),
+          role: 'assistant',
+          content: formatted.content,
+          speechSegments: formatted.speechSegments,
+          action: {
+            type: 'navigate',
+            url: '/dashboard/territorio',
+            label: 'Ver Território & Base',
+          },
+        }
+      }
+
+      if (!response && isPrioridadeVisitasCampoQuery(cleanedContent)) {
+        const { fetchPrioridadeVisitasCampoReply } = await import(
+          '@/lib/services/prioridade-visitas-campo'
+        )
+        const formatted = await fetchPrioridadeVisitasCampoReply()
+        response = {
+          id: Date.now().toString(),
+          role: 'assistant',
+          content: formatted.content,
+          speechSegments: formatted.speechSegments,
+          action: {
+            type: 'navigate',
+            url: '/dashboard/resumo-operacional',
+            label: 'Ver Resumo Operacional',
+          },
+        }
+      }
+
       if (!response && isComparativoExpectativa2022Query(cleanedContent)) {
         response = await fetchComparativoExpectativa2022Message(cleanedContent)
       }
@@ -3986,6 +4131,7 @@ export function AIAgent({
     buildPesquisasChatMessage,
     syncPesquisaTendenciaPending,
     fetchExpectativaCidade,
+    fetchLiderancasPorCargoResumo,
     deliverAssistantResponse,
     speakJarvisReply,
     tryFlushJarvisPendingPopup,
@@ -4410,7 +4556,7 @@ export function AIAgent({
 
   const pushJarvisDiagnostic = useCallback((lines: JarvisLogLine[]) => {
     if (!lines.length) return
-    setJarvisDiagnosticLines((prev) => [...prev, ...lines].slice(-24))
+    setJarvisDiagnosticLines((prev) => dedupeJarvisLogLines([...prev, ...lines]).slice(-24))
   }, [])
 
   const jarvisLogLines = useMemo((): JarvisLogLine[] => {
@@ -4425,7 +4571,7 @@ export function AIAgent({
         hour12: false,
       }),
     }))
-    return [...jarvisDiagnosticLines, ...chatLines].slice(-18)
+    return dedupeJarvisLogLines([...jarvisDiagnosticLines, ...chatLines]).slice(-18)
   }, [jarvisDiagnosticLines, chatMessages])
 
   const jarvisLastAction = useMemo((): ChatMessage['action'] => {

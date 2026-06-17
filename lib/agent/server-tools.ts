@@ -18,7 +18,10 @@ import {
 import {
   formatComparativoExpectativa2022JarvisReply,
 } from '@/lib/agent/format-comparativo-expectativa-jarvis'
-import type { ComparativoExpectativa2022Row } from '@/lib/comparativo-expectativa-2022'
+import type {
+  ComparativoExpectativa2022Resumo,
+  ComparativoExpectativa2022Row,
+} from '@/lib/comparativo-expectativa-2022'
 import { resolveCandidatoParaPesquisa } from '@/lib/agent/resolve-candidato-pesquisa'
 import { resolveCidadeTendenciaPesquisa } from '@/lib/agent/detect-pesquisa-avancada'
 import { PESQUISA_TENDENCIA_CIDADE_HINT } from '@/lib/agent/pesquisa-tendencia-followup'
@@ -206,7 +209,8 @@ async function toolConsultarComparativoExpectativa2022(
 ): Promise<{ content: string; speechSegments: string[] }> {
   const filtro = args.filtro?.trim() || 'caiu'
   const cenario = args.cenario?.trim() || 'legado'
-  const qs = new URLSearchParams({ filtro, cenario, limit: '25' })
+  const modo = args.modo?.trim() === 'lista' ? 'lista' : 'resumo'
+  const qs = new URLSearchParams({ filtro, cenario, modo, limit: '25' })
   const res = await fetchWithCookies(
     origin,
     `/api/territorio/comparativo-expectativa-2022?${qs}`,
@@ -224,6 +228,8 @@ async function toolConsultarComparativoExpectativa2022(
     totalFiltrado?: number
     filtro?: 'caiu' | 'cresceu' | 'manteve' | 'todos'
     cenario?: 'legado' | 'aferido' | 'promessa'
+    modo?: 'resumo' | 'lista'
+    resumo?: ComparativoExpectativa2022Resumo
     error?: string
   }
 
@@ -240,6 +246,8 @@ async function toolConsultarComparativoExpectativa2022(
     cenario: data.cenario ?? 'legado',
     totalFiltrado: data.totalFiltrado ?? 0,
     limite: 25,
+    modo: data.modo ?? modo,
+    resumo: data.resumo,
   })
 }
 

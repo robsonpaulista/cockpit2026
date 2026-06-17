@@ -53,6 +53,8 @@ export function isInvalidCityCandidate(candidata: string): boolean {
   }
   if (/^que\s+eu\b/.test(c) || /\beu\s+visitei\b/.test(c)) return true
   if (isMonthName(c)) return true
+  if (/\b(expectativa|federal|comparativo|piau[ií])\b/.test(c) && /\b20(22|26)\b/.test(c)) return true
+  if (/\b(territorio|território|base|jadyel|votos)\b/.test(c) && c.length > 18) return true
   return false
 }
 
