@@ -84,6 +84,23 @@ export function resolveJarvisVoiceInput(
   return { active: false, command: '', arm: false, disarm: false }
 }
 
+/** Tecla que arma a escuta (equivalente a dizer só «Jarvis»). */
+export const JARVIS_WAKE_HOTKEY = '0'
+
+export function isJarvisWakeHotkey(event: KeyboardEvent): boolean {
+  if (event.defaultPrevented) return false
+  if (event.ctrlKey || event.metaKey || event.altKey) return false
+  if (event.key !== JARVIS_WAKE_HOTKEY) return false
+
+  const target = event.target
+  if (!(target instanceof HTMLElement)) return true
+
+  const tag = target.tagName
+  if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return false
+  if (target.isContentEditable) return false
+  return true
+}
+
 export function jarvisWakeHint(): string {
-  return 'Diga «Jarvis» + comando ou saudação (ex.: boa noite)'
+  return `Diga «Jarvis» + comando, pressione ${JARVIS_WAKE_HOTKEY} ou saudação (ex.: boa noite)`
 }

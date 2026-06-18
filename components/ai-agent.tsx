@@ -68,6 +68,7 @@ import {
 } from '@/lib/agent/audio-unlock'
 import {
   JARVIS_ARMED_LISTEN_MS,
+  isJarvisWakeHotkey,
   resolveJarvisVoiceInput,
 } from '@/lib/agent/jarvis-wake-word'
 import { extractCityNameFromQuery, isInvalidCityCandidate } from '@/lib/agent/city-extract'
@@ -4573,7 +4574,9 @@ export function AIAgent({
     try {
       recognitionRef.current.start()
       setIsListening(true)
-      setWakeStandby(true)
+      if (!jarvisCommandArmedRef.current) {
+        setWakeStandby(true)
+      }
     } catch {
       /* sessão ainda ativa ou microfone ocupado — onend vai tentar de novo */
     }
@@ -4654,6 +4657,44 @@ export function AIAgent({
     jarvisListenResumePhraseRef.current = null
     tryStartContinuousListening()
   }, [tryStartContinuousListening])
+
+  const armJarvisListening = useCallback(() => {
+    if (!enableVoice || !isJarvisHudRef.current || !speechSupported) return false
+
+    if (listenPausedRef.current) {
+      listenPausedRef.current = false
+      setListenPaused(false)
+      setJarvisAlwaysListenEnabled(true)
+      unlockJarvisAudio()
+      jarvisListenResumePhraseRef.current = null
+    }
+
+    if (isSpeakingRef.current) {
+      stopSpeakingReplyRef.current?.()
+      stopSpeaking()
+      setIsSpeaking(false)
+    }
+
+    jarvisCommandArmedRef.current = true
+    jarvisCommandArmedAtRef.current = Date.now()
+    setWakeStandby(false)
+    setUserInput('')
+    tryStartContinuousListening()
+    return true
+  }, [enableVoice, speechSupported, tryStartContinuousListening])
+
+  useEffect(() => {
+    if (!enableVoice || !isJarvisHud || !showAgent) return
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (!isJarvisWakeHotkey(event)) return
+      if (!armJarvisListening()) return
+      event.preventDefault()
+    }
+
+    document.addEventListener('keydown', onKeyDown)
+    return () => document.removeEventListener('keydown', onKeyDown)
+  }, [enableVoice, isJarvisHud, showAgent, armJarvisListening])
 
   useEffect(() => {
     if (!enableVoice || typeof window === 'undefined') return
