@@ -20,9 +20,6 @@ function filterVisibleSidebarItems(
   }).filter((item) => {
     if (item.id === 'home') return false
     if (item.id === 'usuarios') return isAdmin
-    if (item.id === 'territorio-mapa-tds') {
-      return canAccess('territorio') || canAccess('conteudo')
-    }
     if (item.id === 'ficha-atendimento') {
       return canAccess('ficha-atendimento') || canAccess('territorio')
     }

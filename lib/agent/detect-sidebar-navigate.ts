@@ -24,6 +24,10 @@ const HOME_PHRASE =
 const DATA_QUERY =
   /\b(hoje|amanha|ontem|expectativa|votos|demandas em|pesquisa em|intencao|visitas em|viagens em|compromissos de|agenda de|agenda do|noticias em destaque|envia|envie|mande|quantos|quantas|qual a|quais os|quais as|detalhe|detalhar|buscar|liste|listar)\b/
 
+/** «Painel da cidade» / atendimento com prefeito — não é navegação genérica do sidebar. */
+const RESUMO_CIDADE_ATENDIMENTO =
+  /\b(painel\s+da\s+cidade|resumo\s+(da|de)\s+(cidade\s+)?|prefeito|prefeita|vereador|vereadora|atendimento|estou\s+(aqui\s+)?com|estamos\s+com)\b/
+
 const FILLER =
   /\b(jarvis|jaques|cockpit|pagina|página|modulo|modulo|tela|aba|secao|seção|do|da|de|o|a|os|as|um|uma|por favor|pfv|pra|pro|para|ao|a|em|na|no|me|minha|minhas|meus)\b/g
 
@@ -33,6 +37,7 @@ function stripNavFluff(text: string): string {
 
 function isDataQueryNotNavigation(query: string): boolean {
   const q = normalizeSidebarNavText(query)
+  if (RESUMO_CIDADE_ATENDIMENTO.test(q)) return true
   if (!NAV_VERB.test(q) && !CLOSE_VERB.test(q)) return true
   return DATA_QUERY.test(q)
 }

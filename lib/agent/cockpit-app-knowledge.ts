@@ -83,6 +83,7 @@ Se o usuário pedir **número/lista pontual**, diga: «Para o dado exato, use no
 - Por município: expectativa, lideranças, pesquisas, simulação vereadores, demandas (modais).
 - API: GET /api/resumo-eleicoes, POST /api/territorio/expectativa-por-cidade, GET /api/pesquisa
 - pageKind=resumo-eleicoes no Jarvis.
+- **Atendimento presencial:** «estou com o prefeito de Picos», «abra o painel da cidade», «mostre o resumo da cidade» → boas-vindas + navega + busca (intent resumo_buscar_cidade).
 - Regex/UI: «Buscar [cidade]», «abrir demandas», «ver lideranças», «histórico de pesquisas», «fechar modais».
 - Claude: análise integrada do município (não só disparar modal).
 
@@ -100,14 +101,19 @@ Se o usuário pedir **número/lista pontual**, diga: «Para o dado exato, use no
 - Hub: pipeline de conteúdo (obras, cards, referências, análise).
 - **Redes/Instagram** · /dashboard/conteudo/redes:
   - API: POST /api/instagram, GET /api/instagram/snapshot, /api/instagram/classifications
-  - Regex: «métricas do instagram», «posts mais curtidos», «qual tema tem melhor performance».
+  - Regex: «métricas do instagram», «qual post com maior engajamento», «posts mais curtidos», «seguidores por dia», «quantos seguidores ganhei», «qual tema tem melhor performance».
   - Claude gather: snapshot 30d + classificações (não POST ao vivo).
 - Demais subpáginas (obras cards, agenda campo, referências): navegação; sem consulta Jarvis.
 
 ### Notícias & Crises · /dashboard/noticias
 - Radar GDELT, feeds, adversários, destaques, crises.
-- API: GET /api/noticias (?dashboard_highlight=true para destaque)
-- Groq server: consultar_noticias_destaque → «notícias em destaque».
+- API: GET /api/noticias (?dashboard_highlight=true, ?risk_level=high, ?sentiment=, ?q=)
+- Indicadores da barra: notícias hoje · risco alto · destacadas.
+- Groq server:
+  - consultar_noticias_resumo → «quantas notícias hoje», «como está o radar»
+  - consultar_noticias_criticas → risco alto / alerta crítico (NÃO é destaque painel)
+  - consultar_noticias_destaque → destaque manual no painel
+  - consultar_noticias_filtradas → negativas/positivas, risco médio/baixo, busca por tema, últimas
 - Claude gather: destaques do painel (/api/noticias?dashboard_highlight=true) em perguntas sobre notícias/crises/imprensa.
 
 ### Mobilização · /mobilizacao/detalhe, /dashboard/mobilizacao/*

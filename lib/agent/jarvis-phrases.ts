@@ -69,6 +69,18 @@ const phrases = {
     'Vazio. Tenta outro nome?',
   ],
 
+  atendimentoBoasVindas: [
+    'Bem-vindo. Abrindo o painel de {cidade}.',
+    'Certo. Vou carregar o resumo de {cidade}.',
+    'Perfeito. Abrindo {cidade} no painel por cidade.',
+  ],
+
+  atendimentoComLideranca: [
+    'Entendido. Atendimento com {lideranca} em {cidade}. Abrindo o painel.',
+    'Certo. Reunião com {lideranca} em {cidade}. Carregando o resumo.',
+    'Bem-vindo. Vou abrir o cenário de {cidade} para o atendimento com {lideranca}.',
+  ],
+
   erro: [
     'Deu erro. Tenta de novo?',
     'Falhou aqui. De novo?',
@@ -138,7 +150,7 @@ const phrases = {
 export type JarvisPhraseCategory = keyof typeof phrases
 
 export type JarvisPhraseVars = Partial<
-  Record<'cidade' | 'filtro' | 'destino' | 'nome' | 'total' | 'periodo', string>
+  Record<'cidade' | 'filtro' | 'destino' | 'nome' | 'total' | 'periodo' | 'lideranca', string>
 >
 
 export type JarvisPeriodoDia = 'Bom dia' | 'Boa tarde' | 'Boa noite'
@@ -270,6 +282,33 @@ export function pickJarvisDadosCarregados(cidade: string): string {
 
 export function pickJarvisSemResultado(cidade: string): string {
   return getPhrase('semResultado', { cidade })
+}
+
+export function formatJarvisResumoAtendimentoReply(options: {
+  cidade: string
+  liderancaCargo?: string
+  liderancaNome?: string
+}): string {
+  const intro = pickJarvisResumoAtendimentoSpeech(options)
+  const cidade = options.cidade.trim()
+  return [`**Atendimento — ${cidade}**`, '', intro].join('\n')
+}
+
+/** Uma única fala contextual — sem «já vai Picos» nem frase de carregamento solta. */
+export function pickJarvisResumoAtendimentoSpeech(options: {
+  cidade: string
+  liderancaCargo?: string
+  liderancaNome?: string
+}): string {
+  const cidade = options.cidade.trim()
+  const cargo = options.liderancaCargo?.trim()
+  const nome = options.liderancaNome?.trim()
+  const liderancaLabel = [cargo, nome].filter(Boolean).join(' ')
+
+  if (liderancaLabel.length > 0) {
+    return getPhrase('atendimentoComLideranca', { cidade, lideranca: liderancaLabel })
+  }
+  return getPhrase('atendimentoBoasVindas', { cidade })
 }
 
 export function pickJarvisErro(): string {

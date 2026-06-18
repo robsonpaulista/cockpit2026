@@ -18,12 +18,6 @@ export const SIDEBAR_MENU_ITEMS: SidebarMenuItemConfig[] = [
   { id: 'campo', label: 'Campo & Agenda', icon: 'MapPin', href: '/dashboard/campo' },
   { id: 'territorio', label: 'Território & Base', icon: 'MapPin', href: '/dashboard/territorio' },
   {
-    id: 'territorio-mapa-tds',
-    label: 'Mapa dos TDs',
-    icon: 'MapPinned',
-    href: '/dashboard/territorio/mapa-tds',
-  },
-  {
     id: 'ficha-atendimento',
     label: 'Ficha de Atendimento',
     icon: 'ClipboardList',
@@ -165,7 +159,6 @@ const EXTRA_ALIASES: Record<string, string[]> = {
   agenda: ['agenda google', 'compromissos', 'calendario'],
   campo: ['campo', 'campo e agenda', 'visitas de campo', 'viagens'],
   territorio: ['territorio', 'territorio e base', 'base', 'liderancas territorio'],
-  'territorio-mapa-tds': ['mapa tds', 'mapa dos tds', 'tds'],
   'ficha-atendimento': ['ficha', 'ficha de atendimento', 'atendimento'],
   pesquisa: ['pesquisa e relato', 'pesquisas', 'relato'],
   chapas: ['chapa federal', 'chapas federal', 'federal'],

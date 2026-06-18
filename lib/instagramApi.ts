@@ -1,4 +1,6 @@
 // Interface para os dados do Instagram
+import type { InstagramDayPostRecord } from '@/lib/instagram-engagement-history'
+
 export interface InstagramMetrics {
   username: string
   profilePic?: string
@@ -222,6 +224,7 @@ export interface InstagramSnapshot {
   accounts_engaged: number
   total_interactions: number
   media_count: number
+  avg_post_engagement?: number
   instagram_username: string
   created_at: string
 }
@@ -229,8 +232,16 @@ export interface InstagramSnapshot {
 /**
  * Interface para histórico de métricas
  */
+export interface InstagramPublishDayEngagementRow {
+  publish_date: string
+  avg_engagement: number
+  post_count: number
+  total_engagement: number
+}
+
 export interface InstagramHistoryResponse {
   history: InstagramSnapshot[]
+  publishDayEngagement?: InstagramPublishDayEngagementRow[]
   summary: {
     totalSnapshots: number
     currentFollowers: number
@@ -246,6 +257,14 @@ export interface InstagramHistoryResponse {
  */
 export async function saveInstagramSnapshot(metrics: InstagramMetrics): Promise<boolean> {
   try {
+    const avgPostEngagement =
+      metrics.posts.length > 0
+        ? Math.round(
+            metrics.posts.reduce((sum, post) => sum + (post.metrics.engagement || 0), 0) /
+              metrics.posts.length
+          )
+        : 0
+
     const response = await fetch('/api/instagram/snapshot', {
       method: 'POST',
       headers: {
@@ -260,7 +279,22 @@ export async function saveInstagramSnapshot(metrics: InstagramMetrics): Promise<
         accounts_engaged: 0,
         total_interactions: metrics.insights.totalInteractions,
         media_count: metrics.posts.length,
+        avg_post_engagement: avgPostEngagement,
         instagram_username: metrics.username,
+        posts: metrics.posts.map((post) => ({
+          id: post.id,
+          type: post.type,
+          posted_at: post.postedAt,
+          post_url: post.url,
+          thumbnail_url: post.thumbnail,
+          caption: post.caption,
+          likes: post.metrics.likes,
+          comments: post.metrics.comments,
+          shares: post.metrics.shares,
+          saves: post.metrics.saves,
+          views: post.metrics.views ?? 0,
+          engagement: post.metrics.engagement,
+        })),
       }),
     })
 
@@ -292,6 +326,27 @@ export async function fetchInstagramHistory(days: number = 30): Promise<Instagra
   } catch (error) {
     console.error('Erro ao buscar histórico:', error)
     return null
+  }
+}
+
+export async function fetchInstagramPostsByPublishDate(
+  publishDate: string
+): Promise<InstagramDayPostRecord[]> {
+  try {
+    const response = await fetch(
+      `/api/instagram/snapshot/posts?publish_date=${encodeURIComponent(publishDate)}`
+    )
+
+    if (!response.ok) {
+      console.error('Erro ao buscar publicações do dia')
+      return []
+    }
+
+    const data = (await response.json()) as { posts: InstagramDayPostRecord[] }
+    return data.posts ?? []
+  } catch (error) {
+    console.error('Erro ao buscar publicações do dia:', error)
+    return []
   }
 }
 

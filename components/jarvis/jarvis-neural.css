@@ -52,6 +52,56 @@
   box-shadow: 0 0 0 1px rgba(0, 212, 255, 0.22), 0 0 24px rgba(0, 212, 255, 0.12);
 }
 
+.jarvis-hud--listening-capture {
+  box-shadow:
+    inset 0 0 88px rgba(0, 212, 255, 0.07),
+    0 0 0 1px rgba(0, 212, 255, 0.32),
+    0 0 28px rgba(0, 212, 255, 0.1);
+}
+
+.jarvis-hud--listening-capture .jarvis-perspective-grid {
+  opacity: 0.62;
+  animation: jarvis-listening-grid-pulse 2.4s ease-in-out infinite;
+}
+
+@keyframes jarvis-listening-grid-pulse {
+  0%, 100% { opacity: 0.38; }
+  50% { opacity: 0.58; }
+}
+
+.jarvis-core-sphere--listening-capture .jarvis-ring-outer {
+  animation-duration: 6s;
+  border-color: rgba(0, 212, 255, 0.38);
+}
+
+.jarvis-core-sphere--listening-capture .jarvis-pulse-expand {
+  border-color: var(--color-core);
+  animation-duration: 2s;
+}
+
+.jarvis-listening-panel {
+  animation: jarvis-fade-up 0.35s ease-out both;
+}
+
+.jarvis-listening-wave-bar {
+  animation: jarvis-listening-wave 0.72s ease-in-out infinite;
+  transform-origin: bottom center;
+}
+
+@keyframes jarvis-listening-wave {
+  0%, 100% { transform: scaleY(0.35); opacity: 0.55; }
+  50% { transform: scaleY(1); opacity: 1; }
+}
+
+.jarvis-listening-radar {
+  animation: jarvis-radar-sweep 3.2s linear infinite;
+  transform-origin: center;
+}
+
+.jarvis-status-ticker--capture {
+  color: var(--color-core);
+}
+
 .jarvis-report-table-wrap {
   -webkit-overflow-scrolling: touch;
 }

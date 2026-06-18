@@ -4,10 +4,16 @@ export function isDashboardHomePath(pathname: string): boolean {
   return n === '/dashboard'
 }
 
-import { JARVIS_CSS_VARS } from '@/lib/jarvis-hud-tokens'
+import { jarvisHudStyle, JARVIS_CSS_VARS } from '@/lib/jarvis-hud-tokens'
 
-/** Fundo da home — alinhado ao token `--color-void` do HUD Jarvis. */
+/** Fundo base da home — token `--color-void` do HUD Jarvis. */
 export const DASHBOARD_HOME_BG = JARVIS_CSS_VARS.void
 
-/** @deprecated use DASHBOARD_HOME_BG — mantido para o style do layout */
+/** Classe compartilhada: gradiente + grid neural do HUD em toda a shell da home. */
+export const DASHBOARD_HOME_SHELL_CLASS = 'jarvis-hud-grid-bg'
+
+/** Variáveis CSS do HUD aplicadas na shell da home (sidebar + kanban + Jarvis). */
+export const dashboardHomeShellStyle = jarvisHudStyle
+
+/** @deprecated use DASHBOARD_HOME_SHELL_CLASS + dashboardHomeShellStyle */
 export const DASHBOARD_HOME_ACCENT_GRADIENT = DASHBOARD_HOME_BG

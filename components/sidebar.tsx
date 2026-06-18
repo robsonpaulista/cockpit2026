@@ -75,7 +75,6 @@ import {
   sidebarShellNavClass,
 } from '@/lib/sidebar-layout'
 import { useDashboardHomeChrome } from '@/contexts/dashboard-home-chrome-context'
-import { DASHBOARD_HOME_BG } from '@/lib/dashboard-home-chrome'
 import {
   JARVIS_SIDEBAR_ACTIVE_CHILD,
   JARVIS_SIDEBAR_ACTIVE_ITEM,
@@ -161,7 +160,6 @@ function resolveMenuIcon(iconName: string, cockpit: boolean): LucideIcon {
 function pageKeyForItem(id: string): string {
   if (id === 'chapas-menu') return 'chapas'
   if (id === 'chapas-estaduais') return 'chapas'
-  if (id === 'territorio-mapa-tds') return 'territorio'
   if (id === 'ficha-atendimento') return 'ficha-atendimento'
   if (
     id === 'mobilizacao-menu' ||
@@ -615,9 +613,6 @@ export function Sidebar() {
         .filter((item) => {
           if (item.id === 'home') return true
           if (item.id === 'usuarios') return isAdmin
-          if (item.id === 'territorio-mapa-tds') {
-            return canAccess('territorio') || canAccess('conteudo')
-          }
           if (item.id === 'ficha-atendimento') {
             return canAccess('ficha-atendimento') || canAccess('territorio')
           }
@@ -692,17 +687,12 @@ export function Sidebar() {
           mobileOpen ? 'translate-x-0' : '-translate-x-full',
           collapsed ? SIDEBAR_WIDTH_COLLAPSED_CLASS : undefined
         )}
-        style={{
-          isolation: 'isolate',
-          ...(isGradientHome
-            ? { backgroundColor: DASHBOARD_HOME_BG, ['--jarvis-home-bg' as string]: DASHBOARD_HOME_BG }
-            : {}),
-        }}
+        style={{ isolation: 'isolate' }}
       >
         <div
           className={cn(
             'flex h-full min-h-0 flex-col',
-            isGradientHome && 'bg-[var(--jarvis-home-bg)]',
+            isGradientHome && 'bg-transparent',
             !isGradientHome && 'bg-[rgb(var(--bg-sidebar))]',
           )}
         >
@@ -771,9 +761,7 @@ export function Sidebar() {
                 const submenuOpen = openSubmenuId === item.id
                 const isActive = hasSubmenu
                   ? Boolean(item.children?.some((c) => isChildLinkActive(pathname, c.href)))
-                  : item.id === 'territorio-mapa-tds'
-                    ? pathname.startsWith('/dashboard/territorio/mapa-tds')
-                    : item.id === 'ficha-atendimento'
+                  : item.id === 'ficha-atendimento'
                       ? pathname.startsWith('/dashboard/ficha-atendimento')
                       : pathname === item.href
 

@@ -41,6 +41,36 @@ import {
   InstagramHistoryResponse,
 } from '@/lib/instagramApi'
 import { useTheme } from '@/contexts/theme-context'
+import { InstagramFollowersHistoryChart } from '@/components/conteudo-redes/instagram-followers-history-chart'
+import { InstagramContentTypeComparison } from '@/components/conteudo-redes/instagram-content-type-comparison'
+import { InstagramThemeComparisonTable } from '@/components/conteudo-redes/instagram-theme-comparison-table'
+import { mapMetricsPostsToDayRecords } from '@/lib/instagram-day-posts'
+import { cn } from '@/lib/utils'
+import {
+  ghostButtonClass,
+  pillFilterActiveClass,
+  pillFilterIdleClass,
+  pillInputClass,
+  primaryButtonClass,
+  municipalityCardClass,
+} from '@/lib/premium-ui-classes'
+import { sidebarPrimaryCTAButtonClass } from '@/lib/sidebar-menu-active-style'
+import { PremiumMetricCard } from '@/components/premium/metric-card'
+import { PremiumSectionHeader } from '@/components/conteudo-redes/premium-section-header'
+import { ChampionPostCard } from '@/components/conteudo-redes/champion-post-card'
+import {
+  IconActivity,
+  IconAlertCircle,
+  IconCalendar,
+  IconExternalLink,
+  IconEye,
+  IconLoader2,
+  IconMapPin,
+  IconRefresh,
+  IconSettings,
+  IconUsers,
+  IconX,
+} from '@tabler/icons-react'
 
 const producao = [
   { etapa: 'Roteiro', quantidade: 3, cor: 'bg-accent-gold-soft border-accent-gold/30' },
@@ -143,13 +173,13 @@ const defaultThemes = [
 export default function ConteudoPage() {
   const { theme } = useTheme()
   const isCockpit = false
-  const pageShellClass = isCockpit ? 'sidebar-cockpit-shell' : 'bg-bg-surface'
   const sectionShellClass = isCockpit
-    ? 'rounded-2xl border p-5 backdrop-blur border-white/12 bg-[linear-gradient(165deg,rgba(22,34,44,0.82)_0%,rgba(18,30,38,0.86)_100%)] shadow-[0_10px_32px_rgba(3,12,20,0.28)]'
-    : 'bg-surface rounded-2xl border border-card p-6'
+    ? 'border-white/12 bg-[linear-gradient(165deg,rgba(22,34,44,0.82)_0%,rgba(18,30,38,0.86)_100%)] shadow-[0_10px_32px_rgba(3,12,20,0.28)]'
+    : 'border-card bg-surface shadow-card'
   const innerPanelClass = isCockpit
-    ? 'rounded-xl border p-3 border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.04)_0%,rgba(255,255,255,0.02)_100%)]'
-    : 'rounded-xl border border-card bg-surface p-3'
+    ? 'border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.04)_0%,rgba(255,255,255,0.02)_100%)]'
+    : 'border-card bg-background/50'
+  const sectionWrapClass = cn('mb-6 rounded-2xl border p-4', sectionShellClass)
 
   const [activeSubTab, setActiveSubTab] = useState<'posts' | 'audience' | 'locations'>('posts')
   const [overviewThemeFilter, setOverviewThemeFilter] = useState<string>('all')
@@ -401,6 +431,11 @@ export default function ConteudoPage() {
     }
   }, [])
 
+  useEffect(() => {
+    if (!isConfigured) return
+    void loadMetricsHistory()
+  }, [dateRange, isConfigured])
+
   // Função para buscar histórico de métricas
   const loadMetricsHistory = async () => {
     setLoadingHistory(true)
@@ -489,6 +524,20 @@ export default function ConteudoPage() {
 
   // Usar posts reais se disponível, senão usar mock
   const postsToDisplay = metrics?.posts || mockPosts
+
+  const postsForEngagementChart = useMemo(
+    () =>
+      (metrics?.posts ?? []).map((post) => ({
+        postedAt: post.postedAt,
+        engagement: post.metrics.engagement || 0,
+      })),
+    [metrics?.posts]
+  )
+
+  const livePostsForChart = useMemo(
+    () => mapMetricsPostsToDayRecords(metrics?.posts ?? []),
+    [metrics?.posts]
+  )
 
   // Calcular estatísticas por tipo de conteúdo
   const contentStats = useMemo(() => {
@@ -654,867 +703,296 @@ export default function ConteudoPage() {
     return posts.sort((a, b) => new Date(b.postedAt).getTime() - new Date(a.postedAt).getTime())
   }, [postsToDisplay, overviewThemeFilter, overviewBoostedFilter, postClassifications])
 
-  return (
-    <div className={`min-h-screen ${pageShellClass}`}>
+  const championPosts = useMemo(() => {
+    if (filteredPosts.length === 0) return null
 
-      <div className="px-4 py-6 lg:px-6">
-        {/* Botões de Configuração e Atualização */}
-        <div className="mb-6 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            {config && (
+    return {
+      likes: filteredPosts.reduce((best, post) =>
+        post.metrics.likes > best.metrics.likes ? post : best, filteredPosts[0]),
+      comments: filteredPosts.reduce((best, post) =>
+        post.metrics.comments > best.metrics.comments ? post : best, filteredPosts[0]),
+      views: filteredPosts.reduce((best, post) =>
+        (post.metrics.views || 0) > (best.metrics.views || 0) ? post : best, filteredPosts[0]),
+      shares: filteredPosts.reduce((best, post) =>
+        (post.metrics.shares || 0) > (best.metrics.shares || 0) ? post : best, filteredPosts[0]),
+      saves: filteredPosts.reduce((best, post) =>
+        (post.metrics.saves || 0) > (best.metrics.saves || 0) ? post : best, filteredPosts[0]),
+      engagement: filteredPosts.reduce((best, post) =>
+        post.metrics.engagement > best.metrics.engagement ? post : best, filteredPosts[0]),
+    }
+  }, [filteredPosts])
+
+  const pageSubtitle = useMemo(() => {
+    if (!config) return 'Conecte o Instagram para ver posts e insights'
+    if (loading && !metrics) return 'Carregando métricas do Instagram…'
+    const followers = metrics?.followers?.total?.toLocaleString('pt-BR') ?? '0'
+    const postsCount = metrics?.posts?.length ?? 0
+    return `${followers} seguidores · ${postsCount} publicações no período`
+  }, [config, loading, metrics])
+
+  const audienceKpis = useMemo(() => {
+    const growth = metricsHistory?.summary
+    const followersContext =
+      growth && growth.growth !== 0
+        ? `${growth.growth > 0 ? '+' : ''}${growth.growth.toLocaleString('pt-BR')} (${growth.growthPercentage}%)`
+        : undefined
+
+    return [
+      {
+        id: 'followers',
+        label: 'Seguidores',
+        value: metrics?.followers?.total?.toLocaleString('pt-BR') || '0',
+        contextLine: followersContext,
+        icon: IconUsers,
+      },
+      {
+        id: 'profile-views',
+        label: 'Visitas ao perfil',
+        value: (metrics?.insights?.profileViews || 0).toLocaleString('pt-BR'),
+        contextLine:
+          metricsHistory?.summary && metricsHistory.summary.totalProfileViews > 0
+            ? `${metricsHistory.summary.totalProfileViews.toLocaleString('pt-BR')} no período`
+            : undefined,
+        icon: IconEye,
+      },
+      {
+        id: 'reach',
+        label: 'Alcance',
+        value: (metrics?.insights?.reach || 0).toLocaleString('pt-BR'),
+        contextLine: 'Contas únicas alcançadas',
+        icon: IconActivity,
+      },
+      {
+        id: 'website-clicks',
+        label: 'Cliques no link',
+        value: (metrics?.insights?.websiteClicks || 0).toLocaleString('pt-BR'),
+        contextLine: 'Cliques no link da bio',
+        icon: IconExternalLink,
+      },
+    ]
+  }, [metrics, metricsHistory?.summary])
+
+  return (
+    <div className={cn('min-h-screen', isCockpit ? 'sidebar-cockpit-shell' : 'bg-bg-surface')}>
+
+      <div className="px-4 py-4 lg:px-4">
+        <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div className="min-w-0">
+            <h1 className="text-sm font-medium text-text-primary">Redes & conteúdo</h1>
+            <p className="mt-0.5 text-xs text-text-muted">{pageSubtitle}</p>
+          </div>
+          <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
+            {config ? (
               <>
                 <button
+                  type="button"
                   onClick={handleRefresh}
                   disabled={loading}
-                  className="px-4 py-2 text-sm font-medium border border-card rounded-lg hover:bg-background transition-colors disabled:opacity-50 flex items-center gap-2"
+                  className={cn(ghostButtonClass, 'disabled:opacity-50')}
                 >
-                  <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+                  <IconRefresh
+                    className={cn('h-[14px] w-[14px] opacity-70', loading && 'animate-spin')}
+                    stroke={1.5}
+                    aria-hidden
+                  />
                   Atualizar
                 </button>
                 <button
+                  type="button"
                   onClick={handleDisconnect}
-                  className="px-4 py-2 text-sm font-medium border border-status-error/30 text-status-error rounded-lg hover:bg-status-error/10 transition-colors flex items-center gap-2"
+                  className={cn(
+                    ghostButtonClass,
+                    'border-status-error/30 text-status-error hover:bg-status-error/10'
+                  )}
                 >
-                  <X className="w-4 h-4" />
+                  <IconX className="h-[14px] w-[14px] opacity-70" stroke={1.5} aria-hidden />
                   Desconectar
                 </button>
               </>
-            )}
+            ) : null}
+            <button
+              type="button"
+              onClick={() => setShowConfig(true)}
+              className={sidebarPrimaryCTAButtonClass(isCockpit)}
+            >
+              <IconSettings className="h-[14px] w-[14px] shrink-0 text-white" stroke={1.5} aria-hidden />
+              {config ? 'Configurar Instagram' : 'Conectar Instagram'}
+            </button>
           </div>
-          <button
-            onClick={() => setShowConfig(true)}
-            className="px-4 py-2 text-sm font-medium bg-accent-gold text-white rounded-lg hover:bg-accent-gold transition-colors flex items-center gap-2"
-          >
-            <Settings className="w-4 h-4" />
-            {config ? 'Configurar Instagram' : 'Conectar Instagram'}
-          </button>
         </div>
 
         {/* Mensagem de Erro */}
         {error && (
-          <div className="mb-6 p-4 rounded-xl border border-status-error/30 bg-status-error/10 flex items-start gap-3">
-            <AlertCircle className="w-5 h-5 text-status-error flex-shrink-0 mt-0.5" />
+          <div className="mb-4 flex items-start gap-3 rounded-xl border border-status-error/30 bg-status-error/10 p-4">
+            <IconAlertCircle className="mt-0.5 h-5 w-5 shrink-0 text-status-error" stroke={1.5} />
             <div className="flex-1">
               <p className="text-sm font-medium text-status-error">Erro ao carregar dados</p>
-              <p className="text-xs text-secondary mt-1">{error}</p>
+              <p className="mt-1 text-xs text-text-secondary">{error}</p>
             </div>
           </div>
         )}
 
-        {/* Visão Geral com sub-tabs */}
         <div className="space-y-6">
-          <div className="mb-4">
-            <h2 className="text-xl font-semibold text-text-primary mb-2">Visão Geral</h2>
-            <p className="text-sm text-secondary">Análise de desempenho e audiência das redes sociais</p>
-                      </div>
-          
-          {/* Sub-tabs dentro da Visão Geral */}
-          <div className="flex gap-2 border-b border-card">
+          <div className="flex flex-wrap items-center gap-2">
             <button
+              type="button"
               onClick={() => setActiveSubTab('posts')}
-              className={`px-4 py-2 text-sm font-medium transition-colors ${
-                activeSubTab === 'posts'
-                  ? 'text-accent-gold border-b-2 border-accent-gold'
-                  : 'text-secondary hover:text-text-primary'
-              }`}
+              className={cn(
+                activeSubTab === 'posts' ? pillFilterActiveClass : pillFilterIdleClass
+              )}
             >
-              <Calendar className="inline-block w-4 h-4 mr-2" />
+              <IconCalendar className="h-[14px] w-[14px] opacity-70" stroke={1.5} aria-hidden />
               Posts & Insights
             </button>
             <button
+              type="button"
               onClick={() => setActiveSubTab('audience')}
-              className={`px-4 py-2 text-sm font-medium transition-colors ${
-                activeSubTab === 'audience'
-                  ? 'text-accent-gold border-b-2 border-accent-gold'
-                  : 'text-secondary hover:text-text-primary'
-              }`}
+              className={cn(
+                activeSubTab === 'audience' ? pillFilterActiveClass : pillFilterIdleClass
+              )}
             >
-              <Users className="inline-block w-4 h-4 mr-2" />
+              <IconUsers className="h-[14px] w-[14px] opacity-70" stroke={1.5} aria-hidden />
               Audiência
             </button>
             <button
+              type="button"
               onClick={() => setActiveSubTab('locations')}
-              className={`px-4 py-2 text-sm font-medium transition-colors ${
-                activeSubTab === 'locations'
-                  ? 'text-accent-gold border-b-2 border-accent-gold'
-                  : 'text-secondary hover:text-text-primary'
-              }`}
+              className={cn(
+                activeSubTab === 'locations' ? pillFilterActiveClass : pillFilterIdleClass
+              )}
             >
-              <MapPin className="inline-block w-4 h-4 mr-2" />
+              <IconMapPin className="h-[14px] w-[14px] opacity-70" stroke={1.5} aria-hidden />
               Seguidores por Cidade
             </button>
-                    </div>
+          </div>
 
           {/* Conteúdo da sub-tab Posts & Insights */}
           {activeSubTab === 'posts' && (
             <div className="space-y-6">
               {loading && !metrics ? (
-                <div className="text-center py-12">
-                  <Loader2 className="w-8 h-8 text-accent-gold animate-spin mx-auto mb-4" />
-                  <p className="text-secondary">Carregando dados do Instagram...</p>
+                <div className="py-12 text-center">
+                  <IconLoader2 className="mx-auto mb-4 h-8 w-8 animate-spin text-[rgb(var(--color-primary))]" stroke={1.5} />
+                  <p className="text-sm text-text-secondary">Carregando dados do Instagram...</p>
                   </div>
               ) : !isConfigured ? (
-                <div className="text-center py-12">
-                  <AlertCircle className="w-12 h-12 text-secondary mx-auto mb-4" />
-                  <p className="text-secondary mb-4">
+                <div className="py-12 text-center">
+                  <IconAlertCircle className="mx-auto mb-4 h-12 w-12 text-text-muted opacity-70" stroke={1.5} />
+                  <p className="mb-4 text-sm text-text-secondary">
                     Configure suas credenciais do Instagram para visualizar os dados
                   </p>
                   <button
+                    type="button"
                     onClick={() => setShowConfig(true)}
-                    className="px-4 py-2 text-sm font-medium bg-accent-gold text-white rounded-lg hover:bg-accent-gold transition-colors"
+                    className={sidebarPrimaryCTAButtonClass(isCockpit)}
                   >
                     Conectar Instagram
                   </button>
-              </div>
-              ) : contentStats ? (
+                </div>
+              ) : (
                 <>
-                  {/* Campeões por Indicador */}
-                  <div className={sectionShellClass}>
-                    <div className="mb-6">
-                      <h2 className="text-xl font-semibold text-text-primary mb-2 flex items-center gap-2">
-                        <BarChart4 className="w-5 h-5 text-accent-gold" />
-                        Campeões por Indicador
-                      </h2>
-                      <p className="text-sm text-secondary">
-                        Postagens que se destacaram em cada métrica
-                      </p>
-                      {(overviewThemeFilter !== 'all' || overviewBoostedFilter !== 'all') && (
-                        <div className="flex items-center gap-2 mt-3">
-                          {overviewThemeFilter !== 'all' && (
-                            <span className="px-2 py-1 bg-accent-gold-soft text-accent-gold rounded text-xs font-medium">
-                              Tema: {overviewThemeFilter}
-                            </span>
-                          )}
-                          {overviewBoostedFilter !== 'all' && (
-                            <span className="px-2 py-1 bg-status-warning/10 text-status-warning rounded text-xs font-medium">
-                              {overviewBoostedFilter === 'boosted' ? 'Impulsionadas' : 'Orgânicas'}
-                            </span>
-                          )}
-              </div>
-                      )}
-            </div>
+                  <section className={sectionWrapClass}>
+                    <InstagramFollowersHistoryChart
+                      metricsHistory={metricsHistory}
+                      loading={loadingHistory}
+                      dateRange={dateRange}
+                      onDateRangeChange={setDateRange}
+                      onRefresh={loadMetricsHistory}
+                      currentFollowers={metrics?.followers?.total}
+                      posts={postsForEngagementChart}
+                      livePosts={livePostsForChart}
+                    />
+                  </section>
 
-                    {(() => {
-                      // Filtrar posts por tema e impulsionamento
-                      const filteredPostsForChampions = filteredPosts
+                  {contentStats ? (
+                <>
+                  <InstagramContentTypeComparison
+                    contentStats={contentStats}
+                    sectionClassName={sectionWrapClass}
+                    panelClassName={innerPanelClass}
+                  />
 
-                      if (filteredPostsForChampions.length === 0) {
-                        return (
-                          <div className="text-center py-8">
-                            <FileText className="h-12 w-12 text-secondary mx-auto mb-4" />
-                            <p className="text-secondary">
-                              Nenhuma postagem encontrada para os filtros selecionados
-                            </p>
-                          </div>
-                        )
-                      }
+                  {themeStats && Object.keys(themeStats).length > 0 && (
+                    <InstagramThemeComparisonTable
+                      themeStats={themeStats}
+                      sectionClassName={sectionWrapClass}
+                      panelClassName={innerPanelClass}
+                    />
+                  )}
 
-                      // Encontrar melhor postagem para cada indicador
-                      const bestLikes = filteredPostsForChampions.reduce((best, post) => 
-                        post.metrics.likes > best.metrics.likes ? post : best, filteredPostsForChampions[0]
-                      )
-                      const bestComments = filteredPostsForChampions.reduce((best, post) => 
-                        post.metrics.comments > best.metrics.comments ? post : best, filteredPostsForChampions[0]
-                      )
-                      const bestViews = filteredPostsForChampions.reduce((best, post) => 
-                        (post.metrics.views || 0) > (best.metrics.views || 0) ? post : best, filteredPostsForChampions[0]
-                      )
-                      const bestShares = filteredPostsForChampions.reduce((best, post) => 
-                        (post.metrics.shares || 0) > (best.metrics.shares || 0) ? post : best, filteredPostsForChampions[0]
-                      )
-                      const bestSaves = filteredPostsForChampions.reduce((best, post) => 
-                        (post.metrics.saves || 0) > (best.metrics.saves || 0) ? post : best, filteredPostsForChampions[0]
-                      )
-                      const bestEngagement = filteredPostsForChampions.reduce((best, post) => 
-                        post.metrics.engagement > best.metrics.engagement ? post : best, filteredPostsForChampions[0]
-                      )
-
-                      return (
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                          {/* Melhor em Curtidas */}
-                          <div className="border rounded-lg p-3 bg-red-50/50 border-red-200">
-                            <div className="flex items-center gap-2 mb-2">
-                              <Heart className="h-4 w-4 text-red-600" />
-                              <span className="text-sm font-semibold text-red-900">Mais Curtidas</span>
-                            </div>
-                            {bestLikes && (
-                              <div className="space-y-2">
-                                <div className="relative w-full h-24 bg-background rounded overflow-hidden">
-                                  {bestLikes.thumbnail && (
-                                    <img 
-                                      src={bestLikes.thumbnail} 
-                                      alt="Post" 
-                                      className="w-full h-full object-cover"
-                                    />
-                                  )}
-                                  <div className="absolute top-1 right-1 bg-red-600 text-white text-xs px-2 py-0.5 rounded">
-                                    {bestLikes.metrics.likes.toLocaleString('pt-BR')}
-                                  </div>
-                                </div>
-                                <p className="text-xs text-secondary line-clamp-2">{bestLikes.caption || 'Sem legenda'}</p>
-                                <a 
-                                  href={bestLikes.url} 
-                                  target="_blank" 
-                                  rel="noopener noreferrer"
-                                  className="text-xs text-accent-gold hover:underline flex items-center gap-1"
-                                >
-                                  <ExternalLink className="h-3 w-3" /> Ver postagem
-                                </a>
-                              </div>
-                            )}
-                          </div>
-
-                          {/* Melhor em Comentários */}
-                          <div className="border rounded-lg p-3 bg-blue-50/50 border-blue-200">
-                            <div className="flex items-center gap-2 mb-2">
-                              <MessageCircle className="h-4 w-4 text-blue-600" />
-                              <span className="text-sm font-semibold text-blue-900">Mais Comentários</span>
-                            </div>
-                            {bestComments && (
-                              <div className="space-y-2">
-                                <div className="relative w-full h-24 bg-background rounded overflow-hidden">
-                                  {bestComments.thumbnail && (
-                                    <img 
-                                      src={bestComments.thumbnail} 
-                                      alt="Post" 
-                                      className="w-full h-full object-cover"
-                                    />
-                                  )}
-                                  <div className="absolute top-1 right-1 bg-blue-600 text-white text-xs px-2 py-0.5 rounded">
-                                    {bestComments.metrics.comments.toLocaleString('pt-BR')}
-                                  </div>
-                                </div>
-                                <p className="text-xs text-secondary line-clamp-2">{bestComments.caption || 'Sem legenda'}</p>
-                                <a 
-                                  href={bestComments.url} 
-                                  target="_blank" 
-                                  rel="noopener noreferrer"
-                                  className="text-xs text-accent-gold hover:underline flex items-center gap-1"
-                                >
-                                  <ExternalLink className="h-3 w-3" /> Ver postagem
-                                </a>
-                              </div>
-                            )}
-                          </div>
-
-                          {/* Melhor em Visualizações */}
-                          <div className="border rounded-lg p-3 bg-blue-50/50 border-blue-200">
-                            <div className="flex items-center gap-2 mb-2">
-                              <Eye className="h-4 w-4 text-blue-600" />
-                              <span className="text-sm font-semibold text-blue-900">Mais Visualizações</span>
-                            </div>
-                            {bestViews && bestViews.metrics.views && (
-                              <div className="space-y-2">
-                                <div className="relative w-full h-24 bg-background rounded overflow-hidden">
-                                  {bestViews.thumbnail && (
-                                    <img 
-                                      src={bestViews.thumbnail} 
-                                      alt="Post" 
-                                      className="w-full h-full object-cover"
-                                    />
-                                  )}
-                                  <div className="absolute top-1 right-1 bg-blue-600 text-white text-xs px-2 py-0.5 rounded">
-                                    {bestViews.metrics.views.toLocaleString('pt-BR')}
-                                  </div>
-                                </div>
-                                <p className="text-xs text-secondary line-clamp-2">{bestViews.caption || 'Sem legenda'}</p>
-                                <a 
-                                  href={bestViews.url} 
-                                  target="_blank" 
-                                  rel="noopener noreferrer"
-                                  className="text-xs text-accent-gold hover:underline flex items-center gap-1"
-                                >
-                                  <ExternalLink className="h-3 w-3" /> Ver postagem
-                                </a>
-                              </div>
-                            )}
-                          </div>
-
-                          {/* Melhor em Compartilhamentos */}
-                          <div className="border rounded-lg p-3 bg-green-50/50 border-green-200">
-                            <div className="flex items-center gap-2 mb-2">
-                              <Share2 className="h-4 w-4 text-green-600" />
-                              <span className="text-sm font-semibold text-green-900">Mais Compartilhamentos</span>
-                            </div>
-                            {bestShares && bestShares.metrics.shares > 0 && (
-                              <div className="space-y-2">
-                                <div className="relative w-full h-24 bg-background rounded overflow-hidden">
-                                  {bestShares.thumbnail && (
-                                    <img 
-                                      src={bestShares.thumbnail} 
-                                      alt="Post" 
-                                      className="w-full h-full object-cover"
-                                    />
-                                  )}
-                                  <div className="absolute top-1 right-1 bg-green-600 text-white text-xs px-2 py-0.5 rounded">
-                                    {bestShares.metrics.shares.toLocaleString('pt-BR')}
-                                  </div>
-                                </div>
-                                <p className="text-xs text-secondary line-clamp-2">{bestShares.caption || 'Sem legenda'}</p>
-                                <a 
-                                  href={bestShares.url} 
-                                  target="_blank" 
-                                  rel="noopener noreferrer"
-                                  className="text-xs text-accent-gold hover:underline flex items-center gap-1"
-                                >
-                                  <ExternalLink className="h-3 w-3" /> Ver postagem
-                                </a>
-                              </div>
-                            )}
-                          </div>
-
-                          {/* Melhor em Salvamentos */}
-                          <div className="border rounded-lg p-3 bg-orange-50/50 border-orange-200">
-                            <div className="flex items-center gap-2 mb-2">
-                              <Download className="h-4 w-4 text-orange-600" />
-                              <span className="text-sm font-semibold text-orange-900">Mais Salvamentos</span>
-                            </div>
-                            {bestSaves && bestSaves.metrics.saves > 0 && (
-                              <div className="space-y-2">
-                                <div className="relative w-full h-24 bg-background rounded overflow-hidden">
-                                  {bestSaves.thumbnail && (
-                                    <img 
-                                      src={bestSaves.thumbnail} 
-                                      alt="Post" 
-                                      className="w-full h-full object-cover"
-                                    />
-                                  )}
-                                  <div className="absolute top-1 right-1 bg-orange-600 text-white text-xs px-2 py-0.5 rounded">
-                                    {bestSaves.metrics.saves.toLocaleString('pt-BR')}
-                                  </div>
-                                </div>
-                                <p className="text-xs text-secondary line-clamp-2">{bestSaves.caption || 'Sem legenda'}</p>
-                                <a 
-                                  href={bestSaves.url} 
-                                  target="_blank" 
-                                  rel="noopener noreferrer"
-                                  className="text-xs text-accent-gold hover:underline flex items-center gap-1"
-                                >
-                                  <ExternalLink className="h-3 w-3" /> Ver postagem
-                                </a>
-                              </div>
-                            )}
-                          </div>
-
-                          {/* Melhor em Engajamento */}
-                          <div className="border rounded-lg p-3 bg-blue-50/50 border-blue-200">
-                            <div className="flex items-center gap-2 mb-2">
-                              <TrendingUp className="h-4 w-4 text-blue-600" />
-                              <span className="text-sm font-semibold text-blue-900">Maior Engajamento</span>
-                            </div>
-                            {bestEngagement && (
-                              <div className="space-y-2">
-                                <div className="relative w-full h-24 bg-background rounded overflow-hidden">
-                                  {bestEngagement.thumbnail && (
-                                    <img 
-                                      src={bestEngagement.thumbnail} 
-                                      alt="Post" 
-                                      className="w-full h-full object-cover"
-                                    />
-                                  )}
-                                  <div className="absolute top-1 right-1 bg-blue-600 text-white text-xs px-2 py-0.5 rounded">
-                                    {bestEngagement.metrics.engagement.toLocaleString('pt-BR')}
-                                  </div>
-                                </div>
-                                <p className="text-xs text-secondary line-clamp-2">{bestEngagement.caption || 'Sem legenda'}</p>
-                                <a 
-                                  href={bestEngagement.url} 
-                                  target="_blank" 
-                                  rel="noopener noreferrer"
-                                  className="text-xs text-accent-gold hover:underline flex items-center gap-1"
-                                >
-                                  <ExternalLink className="h-3 w-3" /> Ver postagem
-                                </a>
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      )
-                    })()}
-                  </div>
-
-                  {/* Comparativo de Aceitação por Tipo de Conteúdo */}
-            <div className={sectionShellClass}>
-                    <div className="mb-6">
-                      <h2 className="text-xl font-semibold text-text-primary mb-2 flex items-center gap-2">
-                        <BarChart4 className="w-5 h-5 text-accent-gold" />
-                        Comparativo de Aceitação por Tipo de Conteúdo
-                      </h2>
-                      <p className="text-sm text-secondary">
-                        Análise comparativa de desempenho entre Imagens, Vídeos e Carrosséis
-                      </p>
-                    </div>
-
-                    <div className="grid md:grid-cols-3 gap-4">
-                      {/* Imagens */}
-                      <div className={innerPanelClass}>
-                        <div className="mb-4">
-                          <h3 className="text-lg font-semibold text-text-primary flex items-center gap-2 mb-1">
-                            <Camera className="h-5 w-5 text-blue-500" />
-                            Imagens
-                          </h3>
-                          <p className="text-sm text-secondary">{contentStats.image.posts} postagens</p>
-                        </div>
-                        <div className="space-y-3">
-                      <div>
-                            <p className="text-xs text-secondary mb-2">Média por postagem</p>
-                            <div className="space-y-2 text-sm">
-                              <div className="flex justify-between">
-                                <span className="flex items-center gap-1">
-                                  <Heart className="h-3 w-3 text-red-500" />
-                                  Curtidas:
-                                </span>
-                                <span className="font-semibold">{contentStats.image.avgLikes.toLocaleString('pt-BR')}</span>
-                        </div>
-                              <div className="flex justify-between">
-                                <span className="flex items-center gap-1">
-                                  <MessageCircle className="h-3 w-3 text-blue-500" />
-                                  Comentários:
-                                </span>
-                                <span className="font-semibold">{contentStats.image.avgComments.toLocaleString('pt-BR')}</span>
+                  <section className={sectionWrapClass}>
+                    <PremiumSectionHeader
+                      title="Campeões por Indicador"
+                      description="Postagens que se destacaram em cada métrica"
+                    />
+                    {(overviewThemeFilter !== 'all' || overviewBoostedFilter !== 'all') && (
+                      <div className="mb-4 flex flex-wrap items-center gap-2">
+                        {overviewThemeFilter !== 'all' && (
+                          <span className={pillFilterActiveClass}>Tema: {overviewThemeFilter}</span>
+                        )}
+                        {overviewBoostedFilter !== 'all' && (
+                          <span className="inline-flex items-center gap-1 rounded-[99px] border border-status-warning/30 bg-status-warning/10 px-2.5 py-1 text-[11.5px] font-medium text-status-warning">
+                            {overviewBoostedFilter === 'boosted' ? 'Impulsionadas' : 'Orgânicas'}
+                          </span>
+                        )}
                       </div>
-                              <div className="flex justify-between">
-                                <span className="flex items-center gap-1">
-                                  <Eye className="h-3 w-3 text-blue-500" />
-                                  Visualizações:
-                        </span>
-                                <span className="font-semibold">
-                                  {contentStats.image.avgViews > 0 ? contentStats.image.avgViews.toLocaleString('pt-BR') : 'N/A'}
-                                </span>
-                              </div>
-                              <div className="flex justify-between">
-                                <span className="flex items-center gap-1">
-                                  <Share2 className="h-3 w-3 text-green-500" />
-                                  Compartilhamentos:
-                                </span>
-                                <span className="font-semibold">
-                                  {contentStats.image.avgShares > 0 ? contentStats.image.avgShares.toLocaleString('pt-BR') : 'N/A'}
-                                </span>
-                              </div>
-                              <div className="flex justify-between">
-                                <span className="flex items-center gap-1">
-                                  <Download className="h-3 w-3 text-orange-500" />
-                                  Salvamentos:
-                                </span>
-                                <span className="font-semibold">
-                                  {contentStats.image.avgSaves > 0 ? contentStats.image.avgSaves.toLocaleString('pt-BR') : 'N/A'}
-                                </span>
-                              </div>
-                              <div className="flex justify-between">
-                                <span className="flex items-center gap-1">
-                                  <TrendingUp className="h-3 w-3 text-accent-gold" />
-                                  Engajamento:
-                                </span>
-                                <span className="font-semibold">{contentStats.image.avgEngagement.toLocaleString('pt-BR')}</span>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                    </div>
+                    )}
 
-                      {/* Vídeos */}
-                      <div className={innerPanelClass}>
-                        <div className="mb-4">
-                          <h3 className="text-lg font-semibold text-text-primary flex items-center gap-2 mb-1">
-                            <Camera className="h-5 w-5 text-red-500" />
-                            Vídeos
-                          </h3>
-                          <p className="text-sm text-secondary">{contentStats.video.posts} postagens</p>
-                        </div>
-                        <div className="space-y-3">
-                      <div>
-                            <p className="text-xs text-secondary mb-2">Média por postagem</p>
-                            <div className="space-y-2 text-sm">
-                              <div className="flex justify-between">
-                                <span className="flex items-center gap-1">
-                                  <Heart className="h-3 w-3 text-red-500" />
-                                  Curtidas:
-                                </span>
-                                <span className="font-semibold">{contentStats.video.avgLikes.toLocaleString('pt-BR')}</span>
-                              </div>
-                              <div className="flex justify-between">
-                                <span className="flex items-center gap-1">
-                                  <MessageCircle className="h-3 w-3 text-blue-500" />
-                                  Comentários:
-                                </span>
-                                <span className="font-semibold">{contentStats.video.avgComments.toLocaleString('pt-BR')}</span>
-                              </div>
-                              <div className="flex justify-between">
-                                <span className="flex items-center gap-1">
-                                  <Eye className="h-3 w-3 text-blue-500" />
-                                  Visualizações:
-                                </span>
-                                <span className="font-semibold">
-                                  {contentStats.video.avgViews > 0 ? contentStats.video.avgViews.toLocaleString('pt-BR') : 'N/A'}
-                                </span>
-                              </div>
-                              <div className="flex justify-between">
-                                <span className="flex items-center gap-1">
-                                  <Share2 className="h-3 w-3 text-green-500" />
-                                  Compartilhamentos:
-                                </span>
-                                <span className="font-semibold">
-                                  {contentStats.video.avgShares > 0 ? contentStats.video.avgShares.toLocaleString('pt-BR') : 'N/A'}
-                                </span>
-                              </div>
-                              <div className="flex justify-between">
-                                <span className="flex items-center gap-1">
-                                  <Download className="h-3 w-3 text-orange-500" />
-                                  Salvamentos:
-                                </span>
-                                <span className="font-semibold">
-                                  {contentStats.video.avgSaves > 0 ? contentStats.video.avgSaves.toLocaleString('pt-BR') : 'N/A'}
-                                </span>
-                              </div>
-                              <div className="flex justify-between">
-                                <span className="flex items-center gap-1">
-                                  <TrendingUp className="h-3 w-3 text-accent-gold" />
-                                  Engajamento:
-                                </span>
-                                <span className="font-semibold">{contentStats.video.avgEngagement.toLocaleString('pt-BR')}</span>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
+                    {!championPosts ? (
+                      <div className="py-8 text-center">
+                        <FileText className="mx-auto mb-4 h-12 w-12 text-text-muted opacity-70" />
+                        <p className="text-sm text-text-secondary">
+                          Nenhuma postagem encontrada para os filtros selecionados
+                        </p>
                       </div>
-
-                      {/* Carrosséis */}
-                      <div className={innerPanelClass}>
-                        <div className="mb-4">
-                          <h3 className="text-lg font-semibold text-text-primary flex items-center gap-2 mb-1">
-                            <Camera className="h-5 w-5 text-blue-700" />
-                            Carrosséis
-                          </h3>
-                          <p className="text-sm text-secondary">{contentStats.carousel.posts} postagens</p>
-                        </div>
-                        <div className="space-y-3">
-                          <div>
-                            <p className="text-xs text-secondary mb-2">Média por postagem</p>
-                            <div className="space-y-2 text-sm">
-                              <div className="flex justify-between">
-                                <span className="flex items-center gap-1">
-                                  <Heart className="h-3 w-3 text-red-500" />
-                                  Curtidas:
-                                </span>
-                                <span className="font-semibold">{contentStats.carousel.avgLikes.toLocaleString('pt-BR')}</span>
-                              </div>
-                              <div className="flex justify-between">
-                                <span className="flex items-center gap-1">
-                                  <MessageCircle className="h-3 w-3 text-blue-500" />
-                                  Comentários:
-                                </span>
-                                <span className="font-semibold">{contentStats.carousel.avgComments.toLocaleString('pt-BR')}</span>
-                              </div>
-                              <div className="flex justify-between">
-                                <span className="flex items-center gap-1">
-                                  <Eye className="h-3 w-3 text-blue-500" />
-                                  Visualizações:
-                                </span>
-                                <span className="font-semibold">
-                                  {contentStats.carousel.avgViews > 0 ? contentStats.carousel.avgViews.toLocaleString('pt-BR') : 'N/A'}
-                                </span>
-                              </div>
-                              <div className="flex justify-between">
-                                <span className="flex items-center gap-1">
-                                  <Share2 className="h-3 w-3 text-green-500" />
-                                  Compartilhamentos:
-                                </span>
-                                <span className="font-semibold">
-                                  {contentStats.carousel.avgShares > 0 ? contentStats.carousel.avgShares.toLocaleString('pt-BR') : 'N/A'}
-                                </span>
-                              </div>
-                              <div className="flex justify-between">
-                                <span className="flex items-center gap-1">
-                                  <Download className="h-3 w-3 text-orange-500" />
-                                  Salvamentos:
-                                </span>
-                                <span className="font-semibold">
-                                  {contentStats.carousel.avgSaves > 0 ? contentStats.carousel.avgSaves.toLocaleString('pt-BR') : 'N/A'}
-                                </span>
-                              </div>
-                              <div className="flex justify-between">
-                                <span className="flex items-center gap-1">
-                                  <TrendingUp className="h-3 w-3 text-accent-gold" />
-                                  Engajamento:
-                                </span>
-                                <span className="font-semibold">{contentStats.carousel.avgEngagement.toLocaleString('pt-BR')}</span>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
+                    ) : (
+                      <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3">
+                        <ChampionPostCard
+                          title="Mais Curtidas"
+                          icon={Heart}
+                          post={championPosts.likes}
+                          metricValue={championPosts.likes.metrics.likes}
+                          panelClassName={innerPanelClass}
+                        />
+                        <ChampionPostCard
+                          title="Mais Comentários"
+                          icon={MessageCircle}
+                          post={championPosts.comments}
+                          metricValue={championPosts.comments.metrics.comments}
+                          panelClassName={innerPanelClass}
+                        />
+                        <ChampionPostCard
+                          title="Mais Visualizações"
+                          icon={Eye}
+                          post={championPosts.views}
+                          metricValue={championPosts.views.metrics.views || 0}
+                          panelClassName={innerPanelClass}
+                        />
+                        <ChampionPostCard
+                          title="Mais Compartilhamentos"
+                          icon={Share2}
+                          post={championPosts.shares}
+                          metricValue={championPosts.shares.metrics.shares || 0}
+                          panelClassName={innerPanelClass}
+                        />
+                        <ChampionPostCard
+                          title="Mais Salvamentos"
+                          icon={Download}
+                          post={championPosts.saves}
+                          metricValue={championPosts.saves.metrics.saves || 0}
+                          panelClassName={innerPanelClass}
+                        />
+                        <ChampionPostCard
+                          title="Maior Engajamento"
+                          icon={TrendingUp}
+                          post={championPosts.engagement}
+                          metricValue={championPosts.engagement.metrics.engagement}
+                          panelClassName={innerPanelClass}
+                        />
                       </div>
-                    </div>
-                  </div>
+                    )}
+                  </section>
 
-                  {/* Comparativo de Indicadores por Tema */}
-                  {themeStats && Object.keys(themeStats).length > 0 && (() => {
-                    const sortedThemes = Object.entries(themeStats)
-                      .sort(([, a], [, b]) => b.avgEngagement - a.avgEngagement)
-                    
-                    const bestTheme = sortedThemes[0]
-                    const totalPosts = sortedThemes.reduce((sum, [, stats]) => sum + stats.posts, 0)
-                    const avgEngagement = sortedThemes.reduce((sum, [, stats]) => sum + stats.avgEngagement, 0) / sortedThemes.length
-                    const maxEngagement = bestTheme[1].avgEngagement
-                    
-                    return (
-                      <div className={`${sectionShellClass} mt-6 space-y-6`}>
-                        <div className="mb-6">
-                          <h2 className="text-xl font-semibold text-text-primary mb-2 flex items-center gap-2">
-                            <BarChart4 className="w-5 h-5 text-accent-gold" />
-                            Comparativo de Indicadores por Tema
-                          </h2>
-                          <p className="text-sm text-secondary">
-                            Análise comparativa de desempenho entre temas de classificação
-                          </p>
-                        </div>
 
-                        {/* KPIs Principais - Gestão à Vista */}
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                          <div className="bg-gradient-to-br from-primary/10 to-primary/5 border-2 border-accent-gold/30 rounded-xl p-5">
-                            <div className="flex items-center justify-between mb-3">
-                              <span className="text-sm font-medium text-text-primary">🏆 Tema Mais Engajado</span>
-                              <TrendingUp className="h-5 w-5 text-accent-gold" />
-                            </div>
-                            <p className="text-2xl font-bold text-accent-gold mb-1">{bestTheme[0]}</p>
-                            <p className="text-xs text-secondary">
-                              {bestTheme[1].avgEngagement.toLocaleString('pt-BR')} engajamento médio
-                            </p>
-                          </div>
-
-                          <div className="bg-gradient-to-br from-green-500/10 to-green-500/5 border-2 border-green-500/30 rounded-xl p-5">
-                            <div className="flex items-center justify-between mb-3">
-                              <span className="text-sm font-medium text-text-primary">📊 Total Classificado</span>
-                              <FileText className="h-5 w-5 text-green-500" />
-                            </div>
-                            <p className="text-2xl font-bold text-green-500 mb-1">{totalPosts}</p>
-                            <p className="text-xs text-secondary">
-                              {sortedThemes.length} {sortedThemes.length === 1 ? 'tema' : 'temas'} diferentes
-                            </p>
-                          </div>
-
-                          <div className="bg-gradient-to-br from-blue-500/10 to-blue-500/5 border-2 border-blue-500/30 rounded-xl p-5">
-                            <div className="flex items-center justify-between mb-3">
-                              <span className="text-sm font-medium text-text-primary">📈 Engajamento Médio</span>
-                              <BarChart4 className="h-5 w-5 text-blue-500" />
-                            </div>
-                            <p className="text-2xl font-bold text-blue-500 mb-1">{Math.round(avgEngagement).toLocaleString('pt-BR')}</p>
-                            <p className="text-xs text-secondary">
-                              Média geral de engajamento
-                            </p>
-                          </div>
-                        </div>
-
-                        {/* Gráfico de Barras: Engajamento por Tema */}
-                        <div className={sectionShellClass}>
-                          <h3 className="text-lg font-semibold text-text-primary mb-4">
-                            Engajamento Médio por Tema
-                          </h3>
-              <div className="space-y-4">
-                            {sortedThemes.map(([theme, stats], index) => {
-                              const percentage = maxEngagement > 0 ? (stats.avgEngagement / maxEngagement) * 100 : 0
-                              const isBest = index === 0
-                              
-                              return (
-                                <div key={theme} className="space-y-2">
-                                  <div className="flex items-center justify-between">
-                                    <div className="flex items-center gap-2 flex-1 min-w-0">
-                                      {isBest && <TrendingUp className="h-4 w-4 text-green-500 flex-shrink-0" />}
-                                      <span className={`font-medium text-sm ${isBest ? 'text-green-600' : 'text-text-primary'} truncate`}>
-                                        {theme}
-                                      </span>
-                                      <span className="text-xs text-secondary ml-2">
-                                        ({stats.posts} {stats.posts === 1 ? 'post' : 'posts'})
-                                      </span>
-                                    </div>
-                                    <span className={`text-lg font-bold ml-4 ${isBest ? 'text-green-600' : 'text-accent-gold'}`}>
-                                      {stats.avgEngagement.toLocaleString('pt-BR')}
-                                    </span>
-                                  </div>
-                                  <div className="relative h-8 bg-surface-secondary rounded-lg overflow-hidden border border-card">
-                                    <div
-                                      className={`h-full rounded-lg transition-all duration-500 ${
-                                        isBest 
-                                          ? 'bg-gradient-to-r from-green-500 to-green-600' 
-                                          : 'bg-gradient-to-r from-primary to-primary-dark'
-                                      }`}
-                                      style={{ width: `${percentage}%` }}
-                                    />
-                                    <div className="absolute inset-0 flex items-center justify-center">
-                                      <span className="text-xs font-semibold text-text-primary">
-                                        {percentage.toFixed(0)}% do melhor tema
-                                      </span>
-                                    </div>
-                                  </div>
-                                </div>
-                              )
-                            })}
-                          </div>
-                        </div>
-
-                        {/* Tabela Comparativa Detalhada */}
-                        <div className={`${innerPanelClass} overflow-hidden`}>
-                          <div className="p-4 border-b border-card bg-surface-secondary">
-                            <h3 className="text-lg font-semibold text-text-primary">
-                              Tabela Comparativa Detalhada
-                            </h3>
-                            <p className="text-sm text-secondary mt-1">
-                              Métricas completas de cada tema classificado
-                            </p>
-                          </div>
-                          <div className="overflow-x-auto">
-                            <table className="w-full text-sm">
-                              <thead>
-                                <tr className="border-b border-card bg-surface-secondary">
-                                  <th className="text-left p-4 font-semibold text-text-primary">Tema</th>
-                                  <th className="text-right p-4 font-semibold text-text-primary">Postagens</th>
-                                  <th className="text-right p-4 font-semibold text-text-primary">Curtidas (média)</th>
-                                  <th className="text-right p-4 font-semibold text-text-primary">Comentários (média)</th>
-                                  <th className="text-right p-4 font-semibold text-text-primary">Visualizações (média)</th>
-                                  <th className="text-right p-4 font-semibold text-text-primary">Compartilhamentos (média)</th>
-                                  <th className="text-right p-4 font-semibold text-text-primary">Salvamentos (média)</th>
-                                  <th className="text-right p-4 font-semibold text-text-primary">Engajamento (média)</th>
-                                </tr>
-                              </thead>
-                              <tbody>
-                                {sortedThemes.map(([theme, stats], index) => {
-                                  const isBest = index === 0
-                                  return (
-                                    <tr 
-                                      key={theme} 
-                                      className={`border-b border-card hover:bg-surface-secondary transition-colors ${
-                                        isBest ? 'bg-green-500/5' : ''
-                                      }`}
-                                    >
-                                      <td className="p-4 font-medium">
-                                        <div className="flex items-center gap-2">
-                                          {isBest && <TrendingUp className="h-4 w-4 text-green-500" />}
-                                          <span className={isBest ? 'text-green-600 font-semibold' : 'text-text-primary'}>
-                                            {theme}
-                                          </span>
-                                        </div>
-                                      </td>
-                                      <td className="text-right p-4 text-text-primary">{stats.posts}</td>
-                                      <td className="text-right p-4 text-text-primary">
-                                        <div className="flex items-center justify-end gap-2">
-                                          <Heart className="h-3 w-3 text-red-500" />
-                                          {stats.avgLikes.toLocaleString('pt-BR')}
-                                        </div>
-                                      </td>
-                                      <td className="text-right p-4 text-text-primary">
-                                        <div className="flex items-center justify-end gap-2">
-                                          <MessageCircle className="h-3 w-3 text-blue-500" />
-                                          {stats.avgComments.toLocaleString('pt-BR')}
-                                        </div>
-                                      </td>
-                                      <td className="text-right p-4 text-secondary">
-                                        {stats.avgViews > 0 ? (
-                                          <div className="flex items-center justify-end gap-2">
-                                            <Eye className="h-3 w-3 text-blue-500" />
-                                            {stats.avgViews.toLocaleString('pt-BR')}
-                                          </div>
-                                        ) : 'N/A'}
-                                      </td>
-                                      <td className="text-right p-4 text-secondary">
-                                        {stats.avgShares > 0 ? (
-                                          <div className="flex items-center justify-end gap-2">
-                                            <Share2 className="h-3 w-3 text-green-500" />
-                                            {stats.avgShares.toLocaleString('pt-BR')}
-                                          </div>
-                                        ) : 'N/A'}
-                                      </td>
-                                      <td className="text-right p-4 text-secondary">
-                                        {stats.avgSaves > 0 ? (
-                                          <div className="flex items-center justify-end gap-2">
-                                            <Download className="h-3 w-3 text-orange-500" />
-                                            {stats.avgSaves.toLocaleString('pt-BR')}
-                                          </div>
-                                        ) : 'N/A'}
-                                      </td>
-                                      <td className={`text-right p-4 font-bold ${isBest ? 'text-green-600' : 'text-accent-gold'}`}>
-                                        {stats.avgEngagement.toLocaleString('pt-BR')}
-                                      </td>
-                                    </tr>
-                                  )
-                                })}
-                              </tbody>
-                            </table>
-                          </div>
-                        </div>
-
-                        {/* Comparativo Visual: Curtidas vs Comentários */}
-                        <div className={sectionShellClass}>
-                          <h3 className="text-lg font-semibold text-text-primary mb-4">
-                            Comparativo Visual: Curtidas vs Comentários
-                          </h3>
-                          <p className="text-sm text-secondary mb-6">
-                            Análise comparativa entre interações por tema
-                          </p>
-                          <div className="space-y-6">
-                            {sortedThemes.map(([theme, stats]) => {
-                              const maxLikes = Math.max(...sortedThemes.map(([, s]) => s.avgLikes))
-                              const maxComments = Math.max(...sortedThemes.map(([, s]) => s.avgComments))
-                              const likesPercentage = maxLikes > 0 ? (stats.avgLikes / maxLikes) * 100 : 0
-                              const commentsPercentage = maxComments > 0 ? (stats.avgComments / maxComments) * 100 : 0
-                              
-                              return (
-                                <div key={theme} className="space-y-3">
-                                  <div className="flex items-center justify-between">
-                                    <span className="font-medium text-text-primary">{theme}</span>
-                                    <div className="flex items-center gap-4 text-xs text-secondary">
-                                      <span className="flex items-center gap-1">
-                                        <Heart className="h-3 w-3 text-red-500" />
-                                        {stats.avgLikes.toLocaleString('pt-BR')}
-                                      </span>
-                                      <span className="flex items-center gap-1">
-                                        <MessageCircle className="h-3 w-3 text-blue-500" />
-                                        {stats.avgComments.toLocaleString('pt-BR')}
-                                      </span>
-                                    </div>
-                                  </div>
-                                  <div className="space-y-2">
-                      <div>
-                                      <div className="flex items-center justify-between mb-1">
-                                        <span className="text-xs text-secondary flex items-center gap-1">
-                                          <Heart className="h-3 w-3 text-red-500" />
-                                          Curtidas
-                                        </span>
-                                        <span className="text-xs font-semibold text-text-primary">
-                                          {stats.avgLikes.toLocaleString('pt-BR')}
-                                        </span>
-                        </div>
-                                      <div className="h-4 bg-surface-secondary rounded-full overflow-hidden border border-card">
-                                        <div
-                                          className="h-full bg-gradient-to-r from-red-500 to-red-600 rounded-full transition-all duration-500"
-                                          style={{ width: `${likesPercentage}%` }}
-                                        />
-                      </div>
-                                    </div>
-                                    <div>
-                                      <div className="flex items-center justify-between mb-1">
-                                        <span className="text-xs text-secondary flex items-center gap-1">
-                                          <MessageCircle className="h-3 w-3 text-blue-500" />
-                                          Comentários
-                        </span>
-                                        <span className="text-xs font-semibold text-text-primary">
-                                          {stats.avgComments.toLocaleString('pt-BR')}
-                                        </span>
-                                      </div>
-                                      <div className="h-4 bg-surface-secondary rounded-full overflow-hidden border border-card">
-                                        <div
-                                          className="h-full bg-gradient-to-r from-blue-500 to-blue-600 rounded-full transition-all duration-500"
-                                          style={{ width: `${commentsPercentage}%` }}
-                                        />
-                                      </div>
-                                    </div>
-                                  </div>
-                                </div>
-                              )
-                            })}
-                          </div>
-                        </div>
-                      </div>
-                    )
-                  })()}
                 </>
               ) : (
                 <div className="text-center py-12">
@@ -1523,7 +1001,9 @@ export default function ConteudoPage() {
                     Nenhum dado disponível. Classifique algumas postagens para ver os comparativos.
                         </p>
                       </div>
-                      )}
+              )}
+                </>
+              )}
                     </div>
           )}
 
@@ -1531,250 +1011,116 @@ export default function ConteudoPage() {
           {activeSubTab === 'audience' && (
             <div className="space-y-6">
               {loading && !metrics ? (
-                <div className="text-center py-12">
-                  <Loader2 className="w-8 h-8 text-accent-gold animate-spin mx-auto mb-4" />
-                  <p className="text-secondary">Carregando dados do Instagram...</p>
+                <div className="py-12 text-center">
+                  <IconLoader2 className="mx-auto mb-4 h-8 w-8 animate-spin text-[rgb(var(--color-primary))]" stroke={1.5} />
+                  <p className="text-sm text-text-secondary">Carregando dados do Instagram...</p>
                 </div>
               ) : !isConfigured ? (
-                <div className="text-center py-12">
-                  <AlertCircle className="w-12 h-12 text-secondary mx-auto mb-4" />
-                  <p className="text-secondary mb-4">
+                <div className="py-12 text-center">
+                  <IconAlertCircle className="mx-auto mb-4 h-12 w-12 text-text-muted opacity-70" stroke={1.5} />
+                  <p className="mb-4 text-sm text-text-secondary">
                     Configure suas credenciais do Instagram para visualizar os dados
                   </p>
                   <button
+                    type="button"
                     onClick={() => setShowConfig(true)}
-                    className="px-4 py-2 text-sm font-medium bg-accent-gold text-white rounded-lg hover:bg-accent-gold transition-colors"
+                    className={sidebarPrimaryCTAButtonClass(isCockpit)}
                   >
                     Conectar Instagram
                   </button>
                       </div>
               ) : (
                 <>
-              {/* Card de Evolução de Seguidores e Métricas */}
-              <div className={sectionShellClass}>
-                <div className="flex items-start justify-between mb-6">
-                  <div>
-                    <h3 className="text-lg font-semibold text-text-primary mb-1 flex items-center gap-2">
-                      <TrendingUp className="w-5 h-5 text-accent-gold" />
-                      Evolução de Seguidores & Métricas
-                    </h3>
-                    <p className="text-sm text-secondary">
-                      Acompanhe o crescimento da sua audiência e visitas ao perfil ao longo do tempo
-                    </p>
-                  </div>
-                  <button 
-                    onClick={loadMetricsHistory}
-                    disabled={loadingHistory}
-                    className="px-4 py-2 text-sm font-medium border border-card rounded-lg hover:bg-background transition-colors flex items-center gap-2"
+              <section className={sectionWrapClass}>
+                <PremiumSectionHeader
+                  title="Evolução de Seguidores & Métricas"
+                  description="Acompanhe o crescimento da sua audiência e visitas ao perfil ao longo do tempo"
+                  actions={
+                    <button
+                      type="button"
+                      onClick={loadMetricsHistory}
+                      disabled={loadingHistory}
+                      className={cn(ghostButtonClass, 'disabled:opacity-50')}
+                    >
+                      {loadingHistory ? (
+                        <IconLoader2 className="h-[14px] w-[14px] animate-spin opacity-70" />
+                      ) : (
+                        <IconRefresh className="h-[14px] w-[14px] opacity-70" stroke={1.5} aria-hidden />
+                      )}
+                      Atualizar
+                    </button>
+                  }
+                />
+
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                  {audienceKpis.map((kpi) => (
+                    <PremiumMetricCard
+                      key={kpi.id}
+                      label={kpi.label}
+                      value={kpi.value}
+                      contextLine={kpi.contextLine}
+                      icon={kpi.icon}
+                    />
+                  ))}
+                </div>
+              </section>
+
+              <section className={sectionWrapClass}>
+                <PremiumSectionHeader
+                  title="Publicações por Tipo de Conteúdo"
+                  description="Visualize todas as postagens para identificar qual conteúdo tem melhor aceitação. Comparação com o post anterior."
+                />
+
+                <div className="mb-4 flex flex-wrap items-center gap-2 border-t border-[rgb(var(--color-border-tertiary)/0.85)] pt-4">
+                  <span className="text-[11px] font-medium uppercase tracking-wide text-text-muted">
+                    Filtros
+                  </span>
+                  <div className="h-4 w-px bg-[rgb(var(--color-border-tertiary))]" />
+                  <select
+                    value={overviewThemeFilter}
+                    onChange={(e) => setOverviewThemeFilter(e.target.value)}
+                    className={cn(pillInputClass, 'pr-8')}
+                    aria-label="Filtrar por tema"
                   >
-                    {loadingHistory ? (
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                    ) : (
-                      <RefreshCw className="w-4 h-4" />
-                    )}
-                    Atualizar
-                  </button>
+                    <option value="all">Todos os temas</option>
+                    {availableThemes.map((theme) => (
+                      <option key={theme} value={theme}>
+                        {theme}
+                      </option>
+                    ))}
+                  </select>
+                  <select
+                    value={overviewBoostedFilter}
+                    onChange={(e) => setOverviewBoostedFilter(e.target.value)}
+                    className={cn(pillInputClass, 'pr-8')}
+                    aria-label="Filtrar por impulsionamento"
+                  >
+                    <option value="all">Todas</option>
+                    <option value="boosted">Impulsionadas</option>
+                    <option value="organic">Orgânicas</option>
+                  </select>
+                  {(overviewThemeFilter !== 'all' || overviewBoostedFilter !== 'all') && (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setOverviewThemeFilter('all')
+                          setOverviewBoostedFilter('all')
+                        }}
+                        className={ghostButtonClass}
+                      >
+                        <IconX className="h-[14px] w-[14px] opacity-70" stroke={1.5} aria-hidden />
+                        Limpar
+                      </button>
+                      <span className="text-[11px] text-text-muted">
+                        {filteredPosts.length}{' '}
+                        {filteredPosts.length === 1 ? 'postagem' : 'postagens'}
+                      </span>
+                    </>
+                  )}
                 </div>
 
-                {/* Cards de Resumo */}
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-                  {/* Seguidores Atuais */}
-                  <div className="bg-gradient-to-br from-primary/10 to-primary/5 rounded-xl border border-accent-gold/20 p-4">
-                    <div className="flex items-center gap-2 mb-2">
-                      <Users className="w-4 h-4 text-accent-gold" />
-                      <span className="text-xs font-medium text-accent-gold uppercase tracking-wide">Seguidores</span>
-                    </div>
-                    <p className="text-2xl font-bold text-text-primary">
-                      {metrics?.followers?.total?.toLocaleString('pt-BR') || '0'}
-                    </p>
-                    {metricsHistory?.summary && metricsHistory.summary.growth !== 0 && (
-                      <p className={`text-xs mt-1 flex items-center gap-1 ${metricsHistory.summary.growth > 0 ? 'text-status-success' : 'text-status-error'}`}>
-                        {metricsHistory.summary.growth > 0 ? (
-                          <TrendingUp className="w-3 h-3" />
-                        ) : (
-                          <TrendingDown className="w-3 h-3" />
-                        )}
-                        {metricsHistory.summary.growth > 0 ? '+' : ''}{metricsHistory.summary.growth.toLocaleString('pt-BR')} ({metricsHistory.summary.growthPercentage}%)
-                      </p>
-                    )}
-                  </div>
-
-                  {/* Visitas ao Perfil */}
-                  <div className="bg-gradient-to-br from-indigo-500/10 to-indigo-500/5 rounded-xl border border-indigo-500/20 p-4">
-                    <div className="flex items-center gap-2 mb-2">
-                      <Eye className="w-4 h-4 text-indigo-500" />
-                      <span className="text-xs font-medium text-indigo-500 uppercase tracking-wide">Visitas ao Perfil</span>
-                    </div>
-                    <p className="text-2xl font-bold text-text-primary">
-                      {(metrics?.insights?.profileViews || 0).toLocaleString('pt-BR')}
-                    </p>
-                    {metricsHistory?.summary && metricsHistory.summary.totalProfileViews > 0 && (
-                      <p className="text-xs mt-1 text-secondary">
-                        {metricsHistory.summary.totalProfileViews.toLocaleString('pt-BR')} no período
-                      </p>
-                    )}
-                  </div>
-
-                  {/* Alcance */}
-                  <div className="bg-gradient-to-br from-cyan-500/10 to-cyan-500/5 rounded-xl border border-cyan-500/20 p-4">
-                    <div className="flex items-center gap-2 mb-2">
-                      <Activity className="w-4 h-4 text-cyan-500" />
-                      <span className="text-xs font-medium text-cyan-500 uppercase tracking-wide">Alcance</span>
-                    </div>
-                    <p className="text-2xl font-bold text-text-primary">
-                      {(metrics?.insights?.reach || 0).toLocaleString('pt-BR')}
-                    </p>
-                    <p className="text-xs mt-1 text-secondary">Contas únicas alcançadas</p>
-                  </div>
-
-                  {/* Cliques no Site */}
-                  <div className="bg-gradient-to-br from-amber-500/10 to-amber-500/5 rounded-xl border border-amber-500/20 p-4">
-                    <div className="flex items-center gap-2 mb-2">
-                      <ExternalLink className="w-4 h-4 text-amber-500" />
-                      <span className="text-xs font-medium text-amber-500 uppercase tracking-wide">Cliques no Link</span>
-                    </div>
-                    <p className="text-2xl font-bold text-text-primary">
-                      {(metrics?.insights?.websiteClicks || 0).toLocaleString('pt-BR')}
-                    </p>
-                    <p className="text-xs mt-1 text-secondary">Cliques no link da bio</p>
-                  </div>
-                </div>
-
-                {/* Histórico de Evolução */}
-                {metricsHistory?.history && metricsHistory.history.length > 0 && (
-                  <div className="border-t border-card pt-6">
-                    <h4 className="text-sm font-semibold text-text-primary mb-4">Histórico de Seguidores</h4>
-                    <div className="overflow-x-auto">
-                      <div className="flex gap-2 min-w-max pb-2">
-                        {metricsHistory.history.slice(-14).map((snapshot, index, arr) => {
-                          const prevSnapshot = index > 0 ? arr[index - 1] : null
-                          const diff = prevSnapshot ? snapshot.followers_count - prevSnapshot.followers_count : 0
-                          
-                          return (
-                            <div 
-                              key={snapshot.id} 
-                              className="flex flex-col items-center p-3 bg-background rounded-lg border border-card min-w-[80px]"
-                            >
-                              <span className="text-xs text-secondary mb-1">
-                                {new Date(snapshot.snapshot_date).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}
-                              </span>
-                              <span className="text-sm font-semibold text-text-primary">
-                                {snapshot.followers_count.toLocaleString('pt-BR')}
-                              </span>
-                              {diff !== 0 && (
-                                <span className={`text-xs mt-0.5 ${diff > 0 ? 'text-status-success' : 'text-status-error'}`}>
-                                  {diff > 0 ? '+' : ''}{diff}
-                                </span>
-                              )}
-                              {snapshot.profile_views > 0 && (
-                                <span className="text-xs text-indigo-500 mt-1 flex items-center gap-0.5">
-                                  <Eye className="w-3 h-3" /> {snapshot.profile_views}
-                                </span>
-                              )}
-                            </div>
-                          )
-                        })}
-                      </div>
-                    </div>
-                    {metricsHistory.history.length === 0 && (
-                      <div className="text-center py-6 text-secondary">
-                        <BarChart4 className="w-8 h-8 mx-auto mb-2 opacity-50" />
-                        <p className="text-sm">Dados de histórico serão coletados automaticamente</p>
-                        <p className="text-xs mt-1">Volte amanhã para ver a evolução</p>
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {(!metricsHistory?.history || metricsHistory.history.length === 0) && !loadingHistory && (
-                  <div className="border-t border-card pt-6 text-center py-6 text-secondary">
-                    <BarChart4 className="w-8 h-8 mx-auto mb-2 opacity-50" />
-                    <p className="text-sm">Dados de histórico serão coletados automaticamente</p>
-                    <p className="text-xs mt-1">Volte amanhã para ver a evolução dos seguidores</p>
-                  </div>
-                )}
-
-                {loadingHistory && (
-                  <div className="border-t border-card pt-6 text-center py-6">
-                    <Loader2 className="w-6 h-6 animate-spin mx-auto text-accent-gold" />
-                    <p className="text-sm text-secondary mt-2">Carregando histórico...</p>
-                  </div>
-                )}
-              </div>
-
-              {/* Card de Publicações por Tipo de Conteúdo */}
-              <div className={sectionShellClass}>
-                <div className="flex items-start justify-between mb-4">
-                      <div>
-                    <h3 className="text-lg font-semibold text-text-primary mb-1">
-                      Publicações por Tipo de Conteúdo
-                    </h3>
-                    <p className="text-sm text-secondary">
-                      Visualize todas as postagens para identificar qual conteúdo tem melhor aceitação. Comparação com o post anterior.
-                        </p>
-                      </div>
-                  <button className="px-4 py-2 text-sm font-medium border border-card rounded-lg hover:bg-background transition-colors flex items-center gap-2">
-                    <BarChart4 className="w-4 h-4" />
-                    Ver Comparativo
-                  </button>
-                    </div>
-
-                {/* Filtros */}
-                <div className="mt-4 pt-4 border-t border-card">
-                  <div className="flex items-center gap-4 flex-wrap">
-                    <div className="flex items-center gap-2">
-                      <Filter className="h-5 w-5 text-secondary" />
-                      <span className="text-sm font-medium text-text-primary">Filtros:</span>
-                  </div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm text-secondary">Tema:</span>
-                      <select
-                        value={overviewThemeFilter}
-                        onChange={(e) => setOverviewThemeFilter(e.target.value)}
-                        className="px-3 py-1.5 text-sm border border-card rounded-lg bg-surface focus:outline-none focus:ring-2 focus:ring-accent-gold-soft"
-                      >
-                        <option value="all">Todos os temas</option>
-                        {availableThemes.map((theme) => (
-                          <option key={theme} value={theme}>
-                            {theme}
-                          </option>
-                        ))}
-                      </select>
-              </div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm text-secondary">Impulsionamento:</span>
-                      <select
-                        value={overviewBoostedFilter}
-                        onChange={(e) => setOverviewBoostedFilter(e.target.value)}
-                        className="px-3 py-1.5 text-sm border border-card rounded-lg bg-surface focus:outline-none focus:ring-2 focus:ring-accent-gold-soft"
-                      >
-                        <option value="all">Todas</option>
-                        <option value="boosted">Impulsionadas</option>
-                        <option value="organic">Orgânicas</option>
-                      </select>
-                    </div>
-                    {(overviewThemeFilter !== 'all' || overviewBoostedFilter !== 'all') && (
-                      <>
-                        <button
-                          onClick={() => {
-                            setOverviewThemeFilter('all')
-                            setOverviewBoostedFilter('all')
-                          }}
-                          className="px-3 py-1.5 text-xs font-medium border border-card rounded-lg hover:bg-background transition-colors flex items-center gap-1"
-                        >
-                          <X className="h-4 w-4" />
-                          Limpar filtros
-                        </button>
-                        <span className="text-sm text-secondary">
-                          {filteredPosts.length} {filteredPosts.length === 1 ? 'postagem encontrada' : 'postagens encontradas'}
-                        </span>
-                      </>
-                    )}
-            </div>
-          </div>
-
-                {/* Lista de Posts */}
-                <div className="mt-6 space-y-4">
+                <div className="space-y-3">
                   {filteredPosts.length === 0 ? (
                     <div className="text-center py-8">
                       <FileText className="h-12 w-12 text-secondary mx-auto mb-4" />
@@ -1812,7 +1158,7 @@ export default function ConteudoPage() {
                       return (
                         <div
                           key={post.id}
-                          className="border-2 border-card rounded-lg overflow-hidden"
+                          className={cn(municipalityCardClass, 'border-2')}
                         >
                           <div className="flex flex-col sm:flex-row">
                             <div className="w-full sm:w-48 h-48 bg-background relative flex-shrink-0">
@@ -1863,7 +1209,7 @@ export default function ConteudoPage() {
                                   href={post.url}
                                   target="_blank"
                                   rel="noopener noreferrer"
-                                  className="text-accent-gold hover:underline text-xs flex items-center"
+                                  className="flex items-center text-[11px] font-medium text-[rgb(var(--color-primary))] hover:underline"
                                 >
                                   <ExternalLink className="h-3 w-3 mr-1" /> Ver
                                 </a>
@@ -1937,7 +1283,7 @@ export default function ConteudoPage() {
                                               handleAddTheme(getPostIdentifier(post), classification?.isBoosted ?? false)
                                             }}
                                             disabled={!newTheme.trim() || availableThemes.includes(newTheme.trim())}
-                                            className="flex-1 px-2 py-1.5 text-xs bg-accent-gold text-white rounded hover:bg-accent-gold transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                            className={cn(primaryButtonClass, 'flex-1 px-2 py-1.5 text-xs')}
                                           >
                                             Adicionar
                                           </button>
@@ -2071,7 +1417,7 @@ export default function ConteudoPage() {
                     })
                   )}
                 </div>
-              </div>
+              </section>
               </>
               )}
             </div>
@@ -2081,61 +1427,49 @@ export default function ConteudoPage() {
           {activeSubTab === 'locations' && (
             <div className="space-y-6">
               {loading && !metrics ? (
-                <div className="text-center py-12">
-                  <Loader2 className="w-8 h-8 text-accent-gold animate-spin mx-auto mb-4" />
-                  <p className="text-secondary">Carregando dados do Instagram...</p>
+                <div className="py-12 text-center">
+                  <IconLoader2 className="mx-auto mb-4 h-8 w-8 animate-spin text-[rgb(var(--color-primary))]" stroke={1.5} />
+                  <p className="text-sm text-text-secondary">Carregando dados do Instagram...</p>
                 </div>
               ) : !isConfigured ? (
-                <div className="text-center py-12">
-                  <AlertCircle className="w-12 h-12 text-secondary mx-auto mb-4" />
-                  <p className="text-secondary mb-4">
+                <div className="py-12 text-center">
+                  <IconAlertCircle className="mx-auto mb-4 h-12 w-12 text-text-muted opacity-70" stroke={1.5} />
+                  <p className="mb-4 text-sm text-text-secondary">
                     Configure suas credenciais do Instagram para visualizar os dados
                   </p>
                   <button
+                    type="button"
                     onClick={() => setShowConfig(true)}
-                    className="px-4 py-2 text-sm font-medium bg-accent-gold text-white rounded-lg hover:bg-accent-gold transition-colors"
+                    className={sidebarPrimaryCTAButtonClass(isCockpit)}
                   >
                     Conectar Instagram
                   </button>
                 </div>
               ) : (
                 <>
-                  {/* Card de Seguidores por Cidade */}
-                  <div className={sectionShellClass}>
-                    <div className="flex items-start justify-between mb-6">
-                      <div>
-                        <h3 className="text-lg font-semibold text-text-primary mb-1 flex items-center gap-2">
-                          <MapPin className="w-5 h-5 text-accent-gold" />
-                          Distribuição de Seguidores por Cidade
-                        </h3>
-                        <p className="text-sm text-secondary">
-                          Visualize de quais cidades vêm seus seguidores do Instagram
-                        </p>
-                      </div>
-                    </div>
+                  <section className={sectionWrapClass}>
+                    <PremiumSectionHeader
+                      title="Distribuição de Seguidores por Cidade"
+                      description="Visualize de quais cidades vêm seus seguidores do Instagram"
+                    />
 
                     {metrics?.demographics?.topLocations && Object.keys(metrics.demographics.topLocations).length > 0 ? (
                       <>
-                        {/* Resumo */}
-                        <div className="mb-6 p-4 bg-gradient-to-br from-primary/10 to-primary/5 rounded-xl border border-accent-gold/20">
-                          <div className="flex items-center gap-4">
-                            <div>
-                              <p className="text-sm text-secondary mb-1">Total de Cidades</p>
-                              <p className="text-2xl font-bold text-text-primary">
-                                {Object.keys(metrics.demographics.topLocations).length}
-                              </p>
-                            </div>
-                            <div className="h-12 w-px bg-border" />
-                            <div>
-                              <p className="text-sm text-secondary mb-1">Total de Seguidores Mapeados</p>
-                              <p className="text-2xl font-bold text-text-primary">
-                                {Object.values(metrics.demographics.topLocations).reduce((sum, count) => sum + count, 0).toLocaleString('pt-BR')}
-                              </p>
-                            </div>
-                          </div>
+                        <div className="mb-4 grid grid-cols-2 gap-3 sm:max-w-lg">
+                          <PremiumMetricCard
+                            label="Total de cidades"
+                            value={Object.keys(metrics.demographics.topLocations).length}
+                            icon={IconMapPin}
+                          />
+                          <PremiumMetricCard
+                            label="Seguidores mapeados"
+                            value={Object.values(metrics.demographics.topLocations)
+                              .reduce((sum, count) => sum + count, 0)
+                              .toLocaleString('pt-BR')}
+                            icon={IconUsers}
+                          />
                         </div>
 
-                        {/* Lista de Cidades */}
                         <div className="space-y-2">
                           {Object.entries(metrics.demographics?.topLocations || {})
                             .sort(([, a], [, b]) => b - a)
@@ -2147,46 +1481,40 @@ export default function ConteudoPage() {
                               const barWidth = maxCount > 0 ? (count / maxCount) * 100 : 0
 
                               return (
-                                <div
-                                  key={city}
-                                  className="p-4 bg-background rounded-lg border border-card hover:border-accent-gold/30 transition-colors"
-                                >
-                                  <div className="flex items-center justify-between mb-2">
-                                    <div className="flex items-center gap-3 flex-1 min-w-0">
-                                      <div className={`flex items-center justify-center w-8 h-8 rounded-full font-semibold text-sm ${
-                                        index === 0 
-                                          ? 'bg-accent-gold text-white' 
-                                          : index === 1 
-                                          ? 'bg-accent-gold/80 text-white'
-                                          : index === 2
-                                          ? 'bg-accent-gold/60 text-white'
-                                          : 'bg-accent-gold-soft text-accent-gold'
-                                      }`}>
+                                <div key={city} className={cn(municipalityCardClass, 'p-4')}>
+                                  <div className="mb-2 flex items-center justify-between">
+                                    <div className="flex min-w-0 flex-1 items-center gap-3">
+                                      <div
+                                        className={cn(
+                                          'flex h-8 w-8 items-center justify-center rounded-full text-[12px] font-medium',
+                                          index === 0
+                                            ? 'bg-[rgb(var(--color-primary))] text-white'
+                                            : 'bg-[rgb(var(--color-primary-tint))] text-[rgb(var(--color-primary))]'
+                                        )}
+                                      >
                                         {index + 1}
                                       </div>
-                                      <div className="flex-1 min-w-0">
-                                        <p className="font-semibold text-text-primary truncate">{city}</p>
-                                        <p className="text-xs text-secondary">
+                                      <div className="min-w-0 flex-1">
+                                        <p className="truncate text-[13.5px] font-medium text-text-primary">
+                                          {city}
+                                        </p>
+                                        <p className="text-[11px] text-text-muted">
                                           {percentage}% do total de seguidores
                                         </p>
                                       </div>
                                     </div>
-                                    <div className="flex items-center gap-4 ml-4">
-                                      <div className="text-right">
-                                        <p className="text-lg font-bold text-text-primary">
-                                          {count.toLocaleString('pt-BR')}
-                                        </p>
-                                        <p className="text-xs text-secondary">seguidores</p>
-                                      </div>
+                                    <div className="ml-4 text-right">
+                                      <p className="text-base font-medium tabular-nums text-[rgb(var(--color-primary))]">
+                                        {count.toLocaleString('pt-BR')}
+                                      </p>
+                                      <p className="text-[11px] text-text-muted">seguidores</p>
                                     </div>
                                   </div>
-                                  <div className="mt-2">
-                                    <div className="w-full bg-background rounded-full h-2 overflow-hidden">
-                                      <div
-                                        className="h-full bg-gradient-to-r from-primary to-primary/80 rounded-full transition-all duration-500"
-                                        style={{ width: `${barWidth}%` }}
-                                      />
-                                    </div>
+                                  <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-bg-app">
+                                    <div
+                                      className="h-full rounded-full bg-[rgb(var(--color-primary))] transition-all duration-500"
+                                      style={{ width: `${barWidth}%` }}
+                                    />
                                   </div>
                                 </div>
                               )
@@ -2194,17 +1522,17 @@ export default function ConteudoPage() {
                         </div>
                       </>
                     ) : (
-                      <div className="text-center py-12">
-                        <MapPin className="w-12 h-12 text-secondary mx-auto mb-4 opacity-50" />
-                        <p className="text-secondary mb-2 font-semibold">
+                      <div className="py-12 text-center">
+                        <IconMapPin className="mx-auto mb-4 h-12 w-12 text-text-muted opacity-70" stroke={1.5} />
+                        <p className="mb-2 font-medium text-text-primary">
                           Dados de localização não disponíveis
                         </p>
-                        <p className="text-sm text-secondary max-w-lg mx-auto">
+                        <p className="mx-auto max-w-lg text-sm text-text-secondary">
                           Dados demográficos de localização podem não estar disponíveis para todas as contas. Verifique os insights diretamente no app do Instagram.
                         </p>
                       </div>
                     )}
-                  </div>
+                  </section>
                 </>
               )}
             </div>

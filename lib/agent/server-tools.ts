@@ -27,10 +27,16 @@ import { resolveCidadeTendenciaPesquisa } from '@/lib/agent/detect-pesquisa-avan
 import { PESQUISA_TENDENCIA_CIDADE_HINT } from '@/lib/agent/pesquisa-tendencia-followup'
 import {
   formatNoticiasDestaqueReply,
+  formatNoticiasCriticasReply,
+  formatNoticiasResumoReply,
+  formatNoticiasFiltradasReply,
   mapNoticiasApiRows,
 } from '@/lib/agent/format-noticias'
+import { buildNoticiasApiPath } from '@/lib/noticias-jarvis-stats'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { toolEnviarWhatsApp } from '@/lib/agent/tool-enviar-whatsapp'
+import { toolConsultarInstagramSeguidoresDiario } from '@/lib/agent/tool-instagram-seguidores-diario'
+import { toolConsultarInstagramPosts } from '@/lib/agent/tool-instagram-posts'
 import {
   resolveVisitasCampoReply,
   type CampoAgendaRow,
@@ -411,6 +417,73 @@ async function toolConsultarNoticiasDestaque(
   return { content: formatted.content, speechSegments: formatted.speechSegments }
 }
 
+async function toolConsultarNoticiasCriticas(
+  origin: string,
+  cookie: string
+): Promise<{ content: string; speechSegments: string[] }> {
+  const res = await fetchWithCookies(
+    origin,
+    '/api/noticias?risk_level=high&limit=10',
+    cookie
+  )
+
+  if (!res.ok) {
+    return {
+      content: 'Não consegui acessar as notícias com alerta crítico.',
+      speechSegments: ['Não consegui acessar as notícias com alerta crítico.'],
+    }
+  }
+
+  const rows = mapNoticiasApiRows((await res.json()) as unknown[])
+  const formatted = formatNoticiasCriticasReply(rows)
+  return { content: formatted.content, speechSegments: formatted.speechSegments }
+}
+
+async function toolConsultarNoticiasResumo(
+  origin: string,
+  cookie: string,
+  args: Record<string, string>
+): Promise<{ content: string; speechSegments: string[] }> {
+  const res = await fetchWithCookies(origin, '/api/noticias?limit=100', cookie)
+
+  if (!res.ok) {
+    return {
+      content: 'Não consegui acessar o monitor de notícias.',
+      speechSegments: ['Não consegui acessar o monitor de notícias.'],
+    }
+  }
+
+  const rows = mapNoticiasApiRows((await res.json()) as unknown[])
+  const formatted = formatNoticiasResumoReply(rows, args.foco)
+  return { content: formatted.content, speechSegments: formatted.speechSegments }
+}
+
+async function toolConsultarNoticiasFiltradas(
+  origin: string,
+  cookie: string,
+  args: Record<string, string>
+): Promise<{ content: string; speechSegments: string[] }> {
+  const path = buildNoticiasApiPath({
+    sentiment: args.sentimento || undefined,
+    risco: args.risco || undefined,
+    termo: args.termo_busca || undefined,
+    limite: 10,
+  })
+
+  const res = await fetchWithCookies(origin, path, cookie)
+
+  if (!res.ok) {
+    return {
+      content: 'Não consegui acessar as notícias com esse filtro.',
+      speechSegments: ['Não consegui acessar as notícias com esse filtro.'],
+    }
+  }
+
+  const rows = mapNoticiasApiRows((await res.json()) as unknown[])
+  const formatted = formatNoticiasFiltradasReply(rows, args)
+  return { content: formatted.content, speechSegments: formatted.speechSegments }
+}
+
 function toolConsultarAlertas(context?: AgentContextPayload): string {
   const n = context?.alertsCriticosCount ?? 0
   if (n === 0) return 'Não há alertas críticos no momento.'
@@ -529,6 +602,34 @@ export async function executeServerTool(
       return toolConsultarDemandas(origin, cookie, classified.args)
     case 'consultar_noticias_destaque':
       return toolConsultarNoticiasDestaque(origin, cookie)
+    case 'consultar_noticias_criticas':
+      return toolConsultarNoticiasCriticas(origin, cookie)
+    case 'consultar_noticias_resumo':
+      return toolConsultarNoticiasResumo(origin, cookie, classified.args)
+    case 'consultar_noticias_filtradas':
+      return toolConsultarNoticiasFiltradas(origin, cookie, classified.args)
+    case 'consultar_instagram_seguidores_diario':
+      return toolConsultarInstagramSeguidoresDiario(
+        origin,
+        cookie,
+        classified.args,
+        queryHint ?? classified.args.termo
+      )
+    case 'consultar_instagram_posts': {
+      if (!auth?.user?.id) {
+        return 'Não foi possível autenticar a consulta de posts do Instagram.'
+      }
+      const content = await toolConsultarInstagramPosts(
+        auth.user.id,
+        classified.args,
+        queryHint ?? classified.args.termo,
+        {
+          token: context?.instagramToken,
+          businessAccountId: context?.instagramBusinessAccountId,
+        }
+      )
+      return content
+    }
     case 'consultar_alertas':
       return toolConsultarAlertas(context)
     case 'consultar_territorios_frios':
@@ -560,6 +661,41 @@ export function buildNavigateAction(
       type: 'navigate',
       url: '/dashboard/noticias',
       label: 'Ver Notícias & Crises',
+    }
+  }
+
+  if (classified.intent === 'consultar_noticias_criticas') {
+    return {
+      type: 'navigate',
+      url: '/dashboard/noticias',
+      label: 'Ver Notícias com Risco Alto',
+    }
+  }
+
+  if (
+    classified.intent === 'consultar_noticias_resumo' ||
+    classified.intent === 'consultar_noticias_filtradas'
+  ) {
+    return {
+      type: 'navigate',
+      url: '/dashboard/noticias',
+      label: 'Ver Notícias & Crises',
+    }
+  }
+
+  if (classified.intent === 'consultar_instagram_seguidores_diario') {
+    return {
+      type: 'navigate',
+      url: '/dashboard/conteudo/redes',
+      label: 'Ver Histórico de Seguidores',
+    }
+  }
+
+  if (classified.intent === 'consultar_instagram_posts') {
+    return {
+      type: 'navigate',
+      url: '/dashboard/conteudo/redes',
+      label: 'Ver Posts & Insights',
     }
   }
 

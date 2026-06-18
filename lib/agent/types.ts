@@ -14,12 +14,16 @@ export type AgentIntent =
   | 'consultar_liderancas'
   | 'consultar_chapa'
   | 'consultar_instagram_metricas'
+  | 'consultar_instagram_seguidores_diario'
   | 'consultar_instagram_posts'
   | 'consultar_instagram_tipo'
   | 'consultar_instagram_tema'
   | 'consultar_territorio'
   | 'consultar_alertas'
   | 'consultar_noticias_destaque'
+  | 'consultar_noticias_criticas'
+  | 'consultar_noticias_resumo'
+  | 'consultar_noticias_filtradas'
   | 'consultar_territorios_frios'
   | 'enviar_whatsapp'
   | 'navegar'
@@ -47,6 +51,8 @@ export interface AgentContextPayload {
   pollsCount?: number
   expectativa2026?: string | number
   presencaTerritorial?: string
+  instagramToken?: string
+  instagramBusinessAccountId?: string
 }
 
 export interface AgentClassifiedIntent {

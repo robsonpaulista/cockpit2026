@@ -69,8 +69,19 @@ export function intentToSyntheticQuery(
       return 'projeção chapa federal'
     case 'consultar_instagram_metricas':
       return 'métricas do instagram'
-    case 'consultar_instagram_posts':
-      return 'posts mais curtidos'
+    case 'consultar_instagram_seguidores_diario': {
+      const dias = args.dias?.trim()
+      return dias ? `seguidores por dia ultimos ${dias} dias` : 'seguidores por dia'
+    }
+    case 'consultar_instagram_posts': {
+      const metrica = args.metrica?.trim().toLowerCase()
+      if (metrica === 'likes' || metrica === 'curtidas') return 'posts mais curtidos'
+      if (metrica === 'comments' || metrica === 'comentarios') return 'posts mais comentados'
+      if (metrica === 'views' || metrica === 'visualizacoes') return 'posts mais visualizados'
+      if (metrica === 'shares' || metrica === 'compartilhamentos') return 'posts mais compartilhados'
+      if (args.modo === 'destaque') return 'post com maior engajamento'
+      return 'post com maior engajamento'
+    }
     case 'consultar_instagram_tipo':
       return 'publicações por tipo'
     case 'consultar_instagram_tema':
@@ -81,6 +92,18 @@ export function intentToSyntheticQuery(
       return 'alertas críticos'
     case 'consultar_noticias_destaque':
       return 'notícias em destaque'
+    case 'consultar_noticias_criticas':
+      return 'notícias com alerta crítico'
+    case 'consultar_noticias_resumo':
+      return 'quantas notícias hoje'
+    case 'consultar_noticias_filtradas': {
+      if (args.sentimento === 'negative') return 'notícias negativas'
+      if (args.sentimento === 'positive') return 'notícias positivas'
+      if (args.risco === 'medium') return 'notícias de risco médio'
+      if (args.risco === 'low') return 'notícias de risco baixo'
+      if (args.termo_busca) return `notícias sobre ${args.termo_busca}`
+      return 'últimas notícias'
+    }
     case 'consultar_territorios_frios':
       return 'territórios frios'
     default:
@@ -104,12 +127,16 @@ export function isClientOnlyIntent(intent: AgentIntent): boolean {
     'consultar_ranking_estimulada_federal',
     'consultar_chapa',
     'consultar_instagram_metricas',
+    'consultar_instagram_seguidores_diario',
     'consultar_instagram_posts',
     'consultar_instagram_tipo',
     'consultar_instagram_tema',
     'consultar_territorio',
     'consultar_alertas',
     'consultar_noticias_destaque',
+    'consultar_noticias_criticas',
+    'consultar_noticias_resumo',
+    'consultar_noticias_filtradas',
     'consultar_territorios_frios',
     'ajuda',
     'navegar',

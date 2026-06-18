@@ -8,6 +8,7 @@ import { getEleitoradoByCity } from '@/lib/eleitores'
 import { CityDemandsModal } from '@/components/city-demands-modal'
 import { PollReportsHistoryModal } from '@/components/poll-reports-history-modal'
 import type { AIAgentPageContext } from '@/components/ai-agent'
+import { consumeJarvisResumoPendingBusca } from '@/lib/jarvis-resumo-pending'
 import { useRegisterJarvisHostProps } from '@/contexts/jarvis-host-props-context'
 import { cn } from '@/lib/utils'
 import { useTheme } from '@/contexts/theme-context'
@@ -952,6 +953,27 @@ export default function ResumoEleicoesPage() {
     if (!cidade) return
     await buscarDadosParaCidade(cidade)
   }
+
+  useEffect(() => {
+    if (cidades.length === 0) return
+
+    const jarvisBuscar = searchParams.get('jarvisBuscar') === '1'
+    const pending = consumeJarvisResumoPendingBusca()
+    const cidadeParam = searchParams.get('cidade')?.trim()
+
+    const alvo =
+      (pending?.cidade &&
+        cidades.find((c) => normalizeCityName(c) === normalizeCityName(pending.cidade))) ||
+      (cidadeParam &&
+        (cidades.find((c) => normalizeCityName(c) === normalizeCityName(cidadeParam)) || cidadeParam)) ||
+      pending?.cidade ||
+      cidadeParam
+
+    if (!alvo) return
+    if (!jarvisBuscar && !pending) return
+
+    void buscarDadosParaCidade(alvo)
+  }, [cidades, searchParams])
 
   const dadosFiltradosPorPartido = useMemo(() => {
     if (!filtroPartidoAtivo) return dados

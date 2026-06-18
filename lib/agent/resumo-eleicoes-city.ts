@@ -1,4 +1,5 @@
 import { extractCityNameFromQuery } from '@/lib/agent/city-extract'
+import { isResumoAtendimentoQuery } from '@/lib/agent/detect-resumo-atendimento'
 
 function normalizeText(text: string): string {
   return text
@@ -44,7 +45,7 @@ const RESUMO_OUTROS_MODULOS =
   /expectativa\s+em|lideranças?\s+em|liderancas?\s+em|demandas?\s+em|agendas?\s+em|instagram|chapa|federal|republicanos|territorio|território|pesquisas?\s+em/
 
 const PEDE_BUSCA_EXPLICITA =
-  /buscar|pesquisar|carregar|atualizar|trazer|mostrar|exibir|dados|resultados|executar|rode|roda|faz|faça|faca|selecionar|escolher|definir|mudar|carrega|abrir\s+dados/
+  /buscar|pesquisar|carregar|atualizar|trazer|mostrar|exibir|dados|resultados|executar|rode|roda|faz|fa[cç]a|selecionar|escolher|definir|mudar|carrega|abrir|abre|abra|painel|resumo|cen[aá]rio|cenario/
 
 const APENAS_COMANDO_CURTO =
   /^(buscar|pesquisar|atualizar|carregar|ok|vai|executa|executar|confirma|confirmar)(\s+agora)?$/
@@ -98,6 +99,10 @@ export function isResumoEleicoesPriorityQuery(query: string, cidades: string[]):
   }
 
   if (PEDE_BUSCA_EXPLICITA.test(q) || APENAS_COMANDO_CURTO.test(q.trim())) {
+    return true
+  }
+
+  if (isResumoAtendimentoQuery(query, cidades)) {
     return true
   }
 

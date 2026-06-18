@@ -185,31 +185,31 @@ export function DashboardHomeKanban() {
 
   return (
     <div className="flex h-full min-h-0 flex-col overflow-hidden">
-      <header className="shrink-0 px-4 pb-8 pt-5 sm:px-6 sm:pb-10 sm:pt-6 lg:px-8 lg:pb-12">
+      <header className="shrink-0 px-4 pb-5 pt-5 sm:px-6 sm:pb-6 sm:pt-6 lg:px-8 xl:pb-7">
         <AppBrandTitle
           isCockpit={false}
           lightOnGradient
-          className="mb-3 block text-[1.16rem] sm:mb-4 sm:text-[1.25rem] lg:text-[1.35rem] xl:text-[1.45rem]"
+          className="mb-2 block text-[1.16rem] sm:mb-3 sm:text-[1.25rem] lg:text-[1.35rem] xl:text-[1.45rem]"
         />
-        <h1 className="font-jarvis-display text-xl font-bold tracking-tight text-white sm:text-2xl lg:text-3xl xl:text-[2rem] 2xl:text-[2.125rem]">
+        <h1 className="font-jarvis-display text-xl font-bold tracking-tight text-white sm:text-2xl lg:text-[1.75rem] xl:text-3xl 2xl:text-[2rem]">
           O que vamos acompanhar hoje?
         </h1>
       </header>
 
-      <div className="min-h-0 flex-1 overflow-x-auto overflow-y-hidden px-4 pb-5 pt-1 sm:px-6 sm:pt-2 lg:px-8 lg:pt-3">
+      <div className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto px-4 pb-4 pt-1 sm:px-6 sm:pt-1 lg:px-8 xl:overflow-hidden">
         {loading ? (
           <div className="flex h-40 items-center justify-center text-sm text-[rgba(148,163,184,0.7)]">
             Carregando módulos…
           </div>
         ) : (
-          <div className="flex h-full min-h-[min(100%,32rem)] gap-4 pb-2 sm:gap-5">
+          <div className="grid h-full min-h-0 grid-cols-1 gap-4 pb-2 sm:grid-cols-2 sm:gap-4 xl:grid-cols-4 xl:gap-4 2xl:gap-5">
             {sections.map((section) => (
               <section
                 key={section.id}
-                className="flex w-[min(100%,17.5rem)] shrink-0 flex-col sm:w-[18.5rem]"
+                className="flex h-full min-h-0 flex-col"
               >
                 <KanbanSectionHeader sectionId={section.id} label={section.label} />
-                <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto pr-1 lg:gap-3.5">
+                <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto pr-0.5 scrollbar-hide lg:gap-3.5">
                   {section.items.map((item) => (
                     <KanbanCard key={item.id} item={item} onNavigate={onNavigate} />
                   ))}

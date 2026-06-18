@@ -2,7 +2,6 @@ import type { SidebarMenuItemConfig } from '@/lib/sidebar-nav-routes'
 
 /** Itens do menu que não aparecem no kanban da home. */
 const KANBAN_HIDDEN_ITEM_IDS = new Set([
-  'territorio-mapa-tds',
   'narrativas',
   'juridico',
   'gestao-pesquisas-menu',

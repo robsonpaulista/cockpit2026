@@ -26,9 +26,11 @@ import { DashboardHomeChromeProvider } from '@/contexts/dashboard-home-chrome-co
 import { JarvisHostPropsProvider } from '@/contexts/jarvis-host-props-context'
 import { JarvisGlobalHost } from '@/components/jarvis/jarvis-global-host'
 import {
-  DASHBOARD_HOME_ACCENT_GRADIENT,
+  DASHBOARD_HOME_SHELL_CLASS,
+  dashboardHomeShellStyle,
   isDashboardHomePath,
 } from '@/lib/dashboard-home-chrome'
+import '@/components/jarvis/jarvis-neural.css'
 
 function DashboardContent({ children }: { children: React.ReactNode }) {
   const { collapsed } = useSidebar()
@@ -47,41 +49,49 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
       <DashboardHomeChromeProvider value={isHomeAccentChrome}>
         <div
           className={cn(
-            'flex h-screen overflow-hidden',
-            isHomeAccentChrome ? 'bg-transparent' : isMapaTdsShell ? columnBgClass : 'bg-bg-surface',
+            'relative flex h-screen overflow-hidden',
+            isHomeAccentChrome ? DASHBOARD_HOME_SHELL_CLASS : isMapaTdsShell ? columnBgClass : 'bg-bg-surface',
           )}
-          style={isHomeAccentChrome ? { background: DASHBOARD_HOME_ACCENT_GRADIENT } : undefined}
+          style={isHomeAccentChrome ? dashboardHomeShellStyle : undefined}
         >
-          <NavigationLoadingBar />
-          <Sidebar />
-          <div
-            className={cn(
-              'flex flex-1 flex-col overflow-hidden transition-all duration-300 ease-out',
-              columnBgClass,
-              collapsed ? SIDEBAR_MAIN_OFFSET_COLLAPSED_CLASS : SIDEBAR_MAIN_OFFSET_EXPANDED_CLASS,
-            )}
-          >
-            <DashboardHeader />
-            <main
+          {isHomeAccentChrome ? (
+            <div
+              className="jarvis-perspective-grid pointer-events-none absolute inset-0 z-0 opacity-[0.22]"
+              aria-hidden
+            />
+          ) : null}
+          <div className={cn('relative z-[1] flex h-full min-h-0 w-full flex-1')}>
+            <NavigationLoadingBar />
+            <Sidebar />
+            <div
               className={cn(
-                'relative flex min-h-0 flex-1',
-                isHomeAccentChrome
-                  ? 'flex-col overflow-hidden lg:flex-row'
-                  : 'flex-col overflow-y-auto',
-                columnBgClass
+                'flex flex-1 flex-col overflow-hidden transition-all duration-300 ease-out',
+                columnBgClass,
+                collapsed ? SIDEBAR_MAIN_OFFSET_COLLAPSED_CLASS : SIDEBAR_MAIN_OFFSET_EXPANDED_CLASS,
               )}
             >
-              <div
+              <DashboardHeader />
+              <main
                 className={cn(
-                  isHomeAccentChrome && 'flex min-h-0 min-w-0 flex-1 flex-col'
+                  'relative flex min-h-0 flex-1',
+                  isHomeAccentChrome
+                    ? 'flex-col overflow-hidden xl:flex-row'
+                    : 'flex-col overflow-y-auto',
+                  columnBgClass
                 )}
               >
-                <DashboardPermissionGuard>
-                  <PageTransition>{children}</PageTransition>
-                </DashboardPermissionGuard>
-              </div>
-              <JarvisGlobalHost />
-            </main>
+                <div
+                  className={cn(
+                    isHomeAccentChrome && 'flex min-h-0 min-w-0 flex-1 flex-col'
+                  )}
+                >
+                  <DashboardPermissionGuard>
+                    <PageTransition>{children}</PageTransition>
+                  </DashboardPermissionGuard>
+                </div>
+                <JarvisGlobalHost />
+              </main>
+            </div>
           </div>
         </div>
       </DashboardHomeChromeProvider>

@@ -250,7 +250,7 @@ Legenda de handlers:
 - `GET /api/instagram/snapshot`
 - `GET /api/instagram/classifications`
 
-**Comandos:** «métricas do instagram», «posts mais curtidos», «qual tema tem melhor performance»
+**Comandos:** «métricas do instagram», «qual post com maior engajamento», «posts mais curtidos», «quantos seguidores ganhei por dia», «evolução diária de seguidores», «qual tema tem melhor performance»
 
 **Claude gather:** snapshot 30d + classificações/temas (não chama POST /api/instagram ao vivo).
 
@@ -260,14 +260,23 @@ Legenda de handlers:
 
 **Rota:** `/dashboard/noticias`
 
-**O que é:** Radar GDELT, feeds, adversários, destaques, crises.
+**O que é:** Inbox RSS, alertas ativos, filtros (sentimento, risco, destaque, busca), indicadores na barra.
 
-| Handler | Exemplos |
-|---------|----------|
-| Groq server | `consultar_noticias_destaque` |
-| Regex | «alertas críticos» (contagem HUD) |
+| Indicador UI | Campo / cálculo |
+|--------------|-----------------|
+| Notícias hoje | `stats.hoje` — data de hoje após filtros |
+| Risco alto | `stats.riscoAlto` — `risk_level === 'high'` |
+| Destacadas | `stats.destacadas` — `dashboard_highlight === true` |
 
-**APIs:** `GET /api/noticias`, `?dashboard_highlight=true`, `/api/noticias/crises`
+| Handler | Intent | Exemplos de pergunta |
+|---------|--------|----------------------|
+| Groq server | `consultar_noticias_resumo` | «quantas notícias hoje?», «como está o monitor?», «resumo das notícias» |
+| Groq server | `consultar_noticias_criticas` | «tem notícia com alerta crítico?», «notícias de risco alto» (≠ destaque painel) |
+| Groq server | `consultar_noticias_destaque` | «notícias em destaque», «destacadas no painel» |
+| Groq server | `consultar_noticias_filtradas` | «notícias negativas», «risco médio», «notícias sobre saúde», «últimas notícias» |
+| Regex cliente | — | «alertas críticos» sem «notícia» → KPI HUD (`consultar_alertas`) |
+
+**APIs:** `GET /api/noticias`, `?dashboard_highlight=true`, `?risk_level=high|medium|low`, `?sentiment=`, `?q=`, `/api/noticias/metrics`
 
 **Claude gather:** destaques do painel (`dashboard_highlight=true&limit=10`) em perguntas sobre notícias/crises/imprensa.
 

@@ -2,6 +2,11 @@ import { createClient } from '@/lib/supabase/server'
 
 export const dynamic = 'force-dynamic'
 import { NextResponse } from 'next/server'
+import type { InstagramPostSnapshotInput } from '@/lib/instagram-engagement-history'
+import {
+  recomputeInstagramPublishDayEngagement,
+  saveInstagramPostSnapshots,
+} from '@/lib/instagram-snapshot-server'
 
 // POST: Salvar snapshot de métricas do Instagram
 export async function POST(request: Request) {
@@ -26,7 +31,9 @@ export async function POST(request: Request) {
       accounts_engaged,
       total_interactions,
       media_count,
+      avg_post_engagement,
       instagram_username,
+      posts = [],
     } = body
 
     if (followers_count === undefined) {
@@ -51,6 +58,7 @@ export async function POST(request: Request) {
           accounts_engaged: accounts_engaged || 0,
           total_interactions: total_interactions || 0,
           media_count: media_count || 0,
+          avg_post_engagement: avg_post_engagement || 0,
           instagram_username: instagram_username || '',
         },
         {
@@ -63,6 +71,19 @@ export async function POST(request: Request) {
     if (error) {
       console.error('Erro ao salvar snapshot:', error)
       return NextResponse.json({ error: error.message }, { status: 500 })
+    }
+
+    if (Array.isArray(posts) && posts.length > 0) {
+      try {
+        await saveInstagramPostSnapshots(
+          supabase,
+          user.id,
+          posts as InstagramPostSnapshotInput[]
+        )
+        await recomputeInstagramPublishDayEngagement(supabase, user.id)
+      } catch (engagementError) {
+        console.error('Erro ao salvar histórico de engajamento:', engagementError)
+      }
     }
 
     return NextResponse.json({
@@ -98,17 +119,29 @@ export async function GET(request: Request) {
     // Buscar histórico dos últimos X dias
     const startDate = new Date()
     startDate.setDate(startDate.getDate() - days)
+    const startDateKey = startDate.toISOString().split('T')[0]
 
     const { data: history, error } = await supabase
       .from('instagram_metrics_history')
       .select('*')
       .eq('user_id', user.id)
-      .gte('snapshot_date', startDate.toISOString().split('T')[0])
+      .gte('snapshot_date', startDateKey)
       .order('snapshot_date', { ascending: true })
 
     if (error) {
       console.error('Erro ao buscar histórico:', error)
       return NextResponse.json({ error: error.message }, { status: 500 })
+    }
+
+    const { data: publishDayEngagement, error: engagementError } = await supabase
+      .from('instagram_publish_day_engagement')
+      .select('publish_date, avg_engagement, post_count, total_engagement')
+      .eq('user_id', user.id)
+      .gte('publish_date', startDateKey)
+      .order('publish_date', { ascending: true })
+
+    if (engagementError) {
+      console.error('Erro ao buscar engajamento por dia:', engagementError)
     }
 
     // Calcular crescimento
@@ -132,6 +165,7 @@ export async function GET(request: Request) {
 
     return NextResponse.json({
       history,
+      publishDayEngagement: publishDayEngagement ?? [],
       summary: {
         totalSnapshots: history?.length || 0,
         currentFollowers: history?.length ? history[history.length - 1].followers_count : 0,
@@ -149,5 +183,3 @@ export async function GET(request: Request) {
     )
   }
 }
-
-

@@ -6,7 +6,6 @@ export const COCKPIT_MENU_LABEL: Record<string, string> = {
   campo: 'Campo',
   agenda: 'Agenda',
   territorio: 'Território',
-  'territorio-mapa-tds': 'Mapa TDs',
   'ficha-atendimento': 'Ficha',
   'chapas-menu': 'Chapas',
   'resumo-eleicoes-menu': 'Eleições',

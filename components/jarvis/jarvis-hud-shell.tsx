@@ -27,6 +27,7 @@ interface JarvisHudShellProps {
   isListening?: boolean
   listenPaused?: boolean
   wakeStandby?: boolean
+  listeningTranscript?: string
   isSpeaking?: boolean
   isProcessing?: boolean
   enableVoice?: boolean
@@ -53,13 +54,26 @@ interface JarvisHudShellProps {
   style?: React.CSSProperties
 }
 
-function StatusTicker({ message }: { message: string }) {
+function StatusTicker({
+  message,
+  listeningCapture = false,
+}: {
+  message: string
+  listeningCapture?: boolean
+}) {
   const parts = message.split('·').map((p) => p.trim()).filter(Boolean)
   const line = parts.length > 1 ? parts.join(' ◆ ') : message
 
   return (
-    <div className="shrink-0 overflow-hidden bg-[var(--color-deep)] py-1.5 sm:py-2">
-      <div className="jarvis-ticker-track flex w-max gap-8 whitespace-nowrap px-3 font-jarvis-mono text-[8px] uppercase tracking-[0.14em] text-[var(--color-text-dim)] sm:gap-12 sm:px-4 sm:text-[9px] sm:tracking-[0.18em]">
+    <div className="shrink-0 overflow-hidden bg-transparent py-1.5 sm:py-2">
+      <div
+        className={cn(
+          'jarvis-ticker-track flex w-max gap-8 whitespace-nowrap px-3 font-jarvis-mono text-[8px] uppercase tracking-[0.14em] sm:gap-12 sm:px-4 sm:text-[9px] sm:tracking-[0.18em]',
+          listeningCapture
+            ? 'jarvis-status-ticker--capture'
+            : 'text-[var(--color-text-dim)]'
+        )}
+      >
         <span>{line}</span>
         <span aria-hidden>{line}</span>
       </div>
@@ -72,6 +86,7 @@ export function JarvisHudShell({
   isListening = false,
   listenPaused = false,
   wakeStandby = true,
+  listeningTranscript = '',
   isSpeaking = false,
   isProcessing = false,
   enableVoice = false,
@@ -97,16 +112,23 @@ export function JarvisHudShell({
   const presentingResult = Boolean(resultPanel)
   const compact = hudLayout === 'compact'
   const column = hudLayout === 'column'
+  const listeningActive = isListening && !listenPaused && !isSpeaking && !isProcessing
+  const listeningCapture = listeningActive && !wakeStandby
   return (
     <JarvisFontScope
       className={cn(
-        'jarvis-hud-grid-bg relative flex h-full min-h-0 w-full flex-col overflow-hidden text-[var(--color-text-primary)]',
+        'relative flex h-full min-h-0 w-full flex-col overflow-hidden text-[var(--color-text-primary)]',
+        !column && 'jarvis-hud-grid-bg',
+        column && 'bg-transparent',
+        listeningCapture && 'jarvis-hud--listening-capture',
         compact && 'jarvis-hud-compact rounded-xl border border-[rgba(0,212,255,0.28)] shadow-[0_8px_32px_rgba(0,0,0,0.45)]',
         className
       )}
       style={{ ...jarvisHudStyle, ...style } as React.CSSProperties}
     >
-      <div className="jarvis-perspective-grid pointer-events-none absolute inset-0 opacity-[0.35]" aria-hidden />
+      {!column ? (
+        <div className="jarvis-perspective-grid pointer-events-none absolute inset-0 opacity-[0.35]" aria-hidden />
+      ) : null}
 
       <div
         className={cn(
@@ -114,7 +136,7 @@ export function JarvisHudShell({
           compact
             ? 'gap-1 p-1.5'
             : column
-              ? 'gap-2 p-2 sm:gap-3 sm:p-3 lg:gap-4 lg:p-4 xl:p-5'
+              ? 'gap-2 p-2 sm:gap-2.5 sm:p-3 lg:gap-3 lg:p-3 xl:p-4'
               : 'gap-1.5 p-1.5 sm:gap-3 sm:p-3 lg:flex-row lg:gap-6 lg:p-4'
         )}
       >
@@ -134,7 +156,7 @@ export function JarvisHudShell({
           <div
             className={cn(
               'mx-auto flex w-full flex-col items-center justify-center text-center',
-              compact ? 'flex-row gap-2 py-1' : column ? 'flex-col py-2 sm:py-3' : 'h-full min-h-0 max-w-lg flex-col py-2 sm:py-4 lg:py-6'
+              compact ? 'flex-row gap-2 py-1' : column ? 'flex-col py-1 sm:py-1.5' : 'h-full min-h-0 max-w-lg flex-col py-2 sm:py-4 lg:py-6'
             )}
           >
             {onMinimize ? (
@@ -209,6 +231,7 @@ export function JarvisHudShell({
                     isListening={isListening}
                     listenPaused={listenPaused}
                     wakeStandby={wakeStandby}
+                    listeningTranscript={listeningTranscript}
                     isSpeaking={isSpeaking}
                     isProcessing={isProcessing}
                     speechSupported={speechSupported}
@@ -299,7 +322,7 @@ export function JarvisHudShell({
       </div>
 
       {!compact && !column ? <JarvisHudMetricsBar className="lg:hidden" /> : null}
-      <StatusTicker message={statusMessage} />
+      <StatusTicker message={statusMessage} listeningCapture={listeningCapture} />
     </JarvisFontScope>
   )
 }

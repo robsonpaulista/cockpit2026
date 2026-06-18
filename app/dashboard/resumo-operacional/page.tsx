@@ -1,12 +1,25 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { Check, Copy, Loader2, RefreshCw, Send } from 'lucide-react'
+import {
+  IconAlertCircle,
+  IconCheck,
+  IconCopy,
+  IconLoader2,
+  IconRefresh,
+  IconSend,
+} from '@tabler/icons-react'
 import { WhatsAppSendModal } from '@/components/whatsapp-send-modal'
+import { PremiumSectionHeader } from '@/components/conteudo-redes/premium-section-header'
 import { fetchResumoOperacional } from '@/lib/services/resumo-operacional'
 import type { ResumoOperacionalResponse } from '@/lib/resumo-operacional'
 import type { ResumoNoticiaDestaque } from '@/lib/resumo-operacional-noticias'
 import { buildResumoOperacionalWhatsAppText } from '@/lib/resumo-operacional-whatsapp'
+import {
+  ghostButtonClass,
+  pillFilterActiveClass,
+  pillFilterIdleClass,
+} from '@/lib/premium-ui-classes'
 import { sidebarPrimaryCTAButtonClass } from '@/lib/sidebar-menu-active-style'
 import { cn, formatDateShort } from '@/lib/utils'
 
@@ -25,21 +38,21 @@ function ResumoNoticiaItem({ noticia }: { noticia: ResumoNoticiaDestaque }) {
       href={noticia.url}
       target="_blank"
       rel="noopener noreferrer"
-      className="font-medium text-accent-gold underline decoration-accent-gold/40 underline-offset-2 hover:decoration-accent-gold"
+      className="font-medium text-[rgb(var(--color-primary))] underline decoration-[rgb(var(--color-primary)/0.35)] underline-offset-2 hover:decoration-[rgb(var(--color-primary))]"
     >
       {noticia.title}
     </a>
   ) : (
-    <span className="font-medium">{noticia.title}</span>
+    <span className="font-medium text-text-primary">{noticia.title}</span>
   )
 
   return (
     <div className="min-w-0 space-y-1">
-      <p className="text-sm text-text-secondary">
+      <p className="text-[11px] text-text-muted">
         {cabecalho}
-        {noticia.meta ? <span className="text-text-secondary/80"> ({noticia.meta})</span> : null}
+        {noticia.meta ? <span className="text-text-muted/80"> ({noticia.meta})</span> : null}
       </p>
-      <p className="text-base leading-relaxed text-text-primary sm:text-lg">{titulo}</p>
+      <p className="text-sm leading-relaxed text-text-primary">{titulo}</p>
     </div>
   )
 }
@@ -56,18 +69,18 @@ function ResumoSecaoItens({
   if (titulo === 'Notícias' && noticiasLinks && noticiasLinks.length > 0) {
     const intro = itens[0]
     return (
-      <ul className="space-y-4">
+      <ul className="space-y-3">
         {intro ? (
-          <li className="flex gap-3 text-base leading-relaxed text-text-primary sm:text-lg">
-            <span className="shrink-0 select-none text-text-secondary" aria-hidden>
+          <li className="flex gap-2.5 text-sm leading-relaxed text-text-primary">
+            <span className="shrink-0 select-none text-text-muted" aria-hidden>
               •
             </span>
             <span>{intro}</span>
           </li>
         ) : null}
         {noticiasLinks.map((noticia, idx) => (
-          <li key={`${noticia.url ?? noticia.title}-${idx}`} className="flex gap-3">
-            <span className="shrink-0 select-none text-text-secondary pt-1" aria-hidden>
+          <li key={`${noticia.url ?? noticia.title}-${idx}`} className="flex gap-2.5">
+            <span className="shrink-0 select-none pt-0.5 text-text-muted" aria-hidden>
               •
             </span>
             <ResumoNoticiaItem noticia={noticia} />
@@ -78,13 +91,10 @@ function ResumoSecaoItens({
   }
 
   return (
-    <ul className="space-y-3">
+    <ul className="space-y-2.5">
       {itens.map((item, idx) => (
-        <li
-          key={`${titulo}-${idx}`}
-          className="flex gap-3 text-base leading-relaxed text-text-primary sm:text-lg sm:leading-relaxed"
-        >
-          <span className="shrink-0 select-none text-text-secondary" aria-hidden>
+        <li key={`${titulo}-${idx}`} className="flex gap-2.5 text-sm leading-relaxed text-text-primary">
+          <span className="shrink-0 select-none text-text-muted" aria-hidden>
             •
           </span>
           <span className="whitespace-pre-line">{item}</span>
@@ -96,6 +106,10 @@ function ResumoSecaoItens({
 
 export default function ResumoOperacionalPage() {
   const isCockpit = false
+  const sectionShellClass = isCockpit
+    ? 'border-white/12 bg-[linear-gradient(165deg,rgba(22,34,44,0.82)_0%,rgba(18,30,38,0.86)_100%)] shadow-[0_10px_32px_rgba(3,12,20,0.28)]'
+    : 'border-card bg-surface shadow-card'
+  const sectionWrapClass = cn('rounded-2xl border p-4 sm:p-5', sectionShellClass)
 
   const [days, setDays] = useState<PeriodoDias>(7)
   const [data, setData] = useState<ResumoOperacionalResponse | null>(null)
@@ -127,6 +141,14 @@ export default function ResumoOperacionalPage() {
     return data.textoWhatsApp || buildResumoOperacionalWhatsAppText(data)
   }, [data])
 
+  const pageSubtitle = useMemo(() => {
+    if (!data) return 'Briefing consolidado da campanha'
+    return `${formatPeriodoLabel(data.periodo.inicio, data.periodo.fim)} · vs ${formatPeriodoLabel(
+      data.periodo.inicioAnterior,
+      data.periodo.fimAnterior
+    )}`
+  }, [data])
+
   const copiarTexto = async (text: string) => {
     try {
       await navigator.clipboard.writeText(text)
@@ -152,22 +174,22 @@ export default function ResumoOperacionalPage() {
   }
 
   return (
-    <div className="flex min-h-full w-full flex-1 flex-col">
-      <div className="flex w-full flex-1 flex-col gap-4 p-4 sm:p-6 lg:p-8 xl:p-10">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-            <div className="grid w-full grid-cols-3 gap-1 rounded-lg border border-border-card bg-bg-surface p-1 sm:inline-flex sm:w-auto sm:grid-cols-none">
+    <div className={cn('min-h-screen', isCockpit ? 'sidebar-cockpit-shell' : 'bg-bg-surface')}>
+      <div className="px-4 py-4 lg:px-4">
+        <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div className="min-w-0">
+            <h1 className="text-sm font-medium text-text-primary">Resumo operacional</h1>
+            <p className="mt-0.5 text-xs text-text-muted">{pageSubtitle}</p>
+          </div>
+
+          <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
+            <div className="flex flex-wrap items-center gap-1.5">
               {PERIODOS.map((p) => (
                 <button
                   key={p}
                   type="button"
                   onClick={() => setDays(p)}
-                  className={cn(
-                    'rounded-md px-3 py-2 text-sm font-medium transition-colors sm:py-1.5',
-                    days === p
-                      ? 'bg-accent-gold text-white'
-                      : 'text-text-secondary hover:text-text-primary'
-                  )}
+                  className={cn(days === p ? pillFilterActiveClass : pillFilterIdleClass)}
                 >
                   {p}d
                 </button>
@@ -177,87 +199,97 @@ export default function ResumoOperacionalPage() {
               type="button"
               onClick={() => void carregar(days)}
               disabled={loading}
-              className="inline-flex items-center justify-center gap-2 rounded-lg border border-border-card px-3 py-2 text-sm text-text-secondary transition hover:text-text-primary disabled:opacity-60"
+              className={cn(ghostButtonClass, 'disabled:opacity-50')}
               title="Atualizar"
             >
-              {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+              <IconRefresh
+                className={cn('h-[14px] w-[14px] opacity-70', loading && 'animate-spin')}
+                stroke={1.5}
+                aria-hidden
+              />
+              Atualizar
             </button>
+            {data ? (
+              <>
+                <button
+                  type="button"
+                  onClick={() => void copiar()}
+                  disabled={loading}
+                  className={cn(
+                    sidebarPrimaryCTAButtonClass(isCockpit),
+                    copiado && 'ring-2 ring-status-success/40 ring-offset-2 ring-offset-background'
+                  )}
+                  title="Copiar resumo formatado para WhatsApp"
+                >
+                  {copiado ? (
+                    <IconCheck className="h-[14px] w-[14px] shrink-0 text-white" stroke={1.5} aria-hidden />
+                  ) : (
+                    <IconCopy className="h-[14px] w-[14px] shrink-0 text-white" stroke={1.5} aria-hidden />
+                  )}
+                  {copiado ? 'Copiado!' : 'Copiar'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setWhatsappSendOpen(true)}
+                  disabled={loading}
+                  className={ghostButtonClass}
+                  title="Enviar resumo pelo WhatsApp"
+                >
+                  <IconSend className="h-[14px] w-[14px] opacity-70" stroke={1.5} aria-hidden />
+                  Enviar
+                </button>
+              </>
+            ) : null}
           </div>
-
-          {data ? (
-            <div className="flex flex-wrap items-center gap-2 self-start sm:self-auto">
-              <button
-                type="button"
-                onClick={() => void copiar()}
-                disabled={loading}
-                className={cn(
-                  sidebarPrimaryCTAButtonClass(isCockpit),
-                  copiado && 'ring-2 ring-status-success/40 ring-offset-2 ring-offset-background'
-                )}
-                title="Copiar resumo formatado para WhatsApp"
-              >
-                {copiado ? (
-                  <Check className={cn('h-4 w-4 shrink-0', isCockpit ? 'text-white' : 'text-accent-gold')} />
-                ) : (
-                  <Copy className={cn('h-4 w-4 shrink-0', isCockpit ? 'text-white' : 'text-accent-gold')} />
-                )}
-                {copiado ? 'Copiado!' : 'Copiar'}
-              </button>
-              <button
-                type="button"
-                onClick={() => setWhatsappSendOpen(true)}
-                disabled={loading}
-                className={sidebarPrimaryCTAButtonClass(isCockpit)}
-                title="Enviar resumo pelo WhatsApp"
-              >
-                <Send className={cn('h-4 w-4 shrink-0', isCockpit ? 'text-white' : 'text-accent-gold')} />
-                Enviar
-              </button>
-            </div>
-          ) : null}
         </div>
 
         {error ? (
-          <div className="rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-700 dark:text-red-300">
-            {error}
+          <div className="mb-4 flex items-start gap-3 rounded-xl border border-status-error/30 bg-status-error/10 p-4">
+            <IconAlertCircle className="mt-0.5 h-5 w-5 shrink-0 text-status-error" stroke={1.5} />
+            <p className="text-sm text-status-error">{error}</p>
           </div>
         ) : null}
 
         {loading && !data ? (
-          <div className="flex min-h-[50vh] flex-1 items-center justify-center">
-            <Loader2 className="h-8 w-8 animate-spin text-accent-gold" />
+          <div className="flex min-h-[40vh] items-center justify-center">
+            <IconLoader2
+              className="h-8 w-8 animate-spin text-[rgb(var(--color-primary))]"
+              stroke={1.5}
+              aria-hidden
+            />
           </div>
         ) : null}
 
         {data ? (
-          <article className="w-full flex-1 rounded-2xl border border-border-card bg-bg-surface px-5 py-6 shadow-card sm:px-8 sm:py-8 lg:px-10 lg:py-10">
-            <header className="mb-8 flex flex-col gap-3 border-b border-border-card/80 pb-6 sm:flex-row sm:items-start sm:justify-between">
-              <div className="min-w-0">
-                <h1 className="font-mono text-sm font-semibold uppercase tracking-[0.18em] text-text-primary sm:text-base">
-                  {data.cabecalho}
-                </h1>
-                <p className="mt-2 text-xs text-text-secondary sm:text-sm">
-                  {formatPeriodoLabel(data.periodo.inicio, data.periodo.fim)}
-                  <span className="mx-2 hidden sm:inline">·</span>
-                  <span className="block sm:inline">
-                    vs {formatPeriodoLabel(data.periodo.inicioAnterior, data.periodo.fimAnterior)}
-                  </span>
-                </p>
-              </div>
-            </header>
+          <section className={sectionWrapClass}>
+            <PremiumSectionHeader
+              title={data.cabecalho}
+              description={pageSubtitle}
+              className="mb-4 border-b border-[rgb(var(--color-border-tertiary)/0.85)] pb-4"
+            />
 
             {data.alertas.length > 0 ? (
-              <div className="mb-8 space-y-1 border-l-2 border-amber-500/60 pl-4 text-sm text-amber-900 dark:text-amber-200">
-                {data.alertas.map((alerta) => (
-                  <p key={alerta}>{alerta}</p>
-                ))}
+              <div className="mb-5 rounded-xl border border-status-warning/30 bg-status-warning/10 px-4 py-3">
+                <p className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-status-warning">
+                  Alertas
+                </p>
+                <div className="space-y-1">
+                  {data.alertas.map((alerta) => (
+                    <p key={alerta} className="text-sm text-text-primary">
+                      {alerta}
+                    </p>
+                  ))}
+                </div>
               </div>
             ) : null}
 
-            <div className="space-y-10 lg:space-y-12">
+            <div className="space-y-6">
               {data.secoes.map((secao) => (
-                <section key={secao.titulo} className="min-w-0">
-                  <h2 className="mb-4 font-mono text-xs font-bold uppercase tracking-[0.22em] text-text-primary sm:text-sm">
+                <section
+                  key={secao.titulo}
+                  className="min-w-0 rounded-xl border border-[rgb(var(--color-border-tertiary)/0.85)] bg-bg-app/40 p-4"
+                >
+                  <h2 className="mb-3 text-[11px] font-semibold uppercase tracking-wide text-text-muted">
                     {secao.titulo}
                   </h2>
                   <ResumoSecaoItens
@@ -269,10 +301,10 @@ export default function ResumoOperacionalPage() {
               ))}
             </div>
 
-            <footer className="mt-10 border-t border-border-card/80 pt-4 text-xs text-text-secondary">
+            <footer className="mt-5 border-t border-[rgb(var(--color-border-tertiary)/0.85)] pt-3 text-[11px] text-text-muted">
               Gerado em {formatDateShort(data.geradoEm)}
             </footer>
-          </article>
+          </section>
         ) : null}
       </div>
 

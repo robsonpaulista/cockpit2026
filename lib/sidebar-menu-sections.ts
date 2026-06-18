@@ -18,7 +18,6 @@ export const DASHBOARD_KANBAN_CARD_HINTS: Record<string, string> = {
   agenda: 'Compromissos e cronograma',
   campo: 'Visitas e ações presenciais',
   territorio: 'Lideranças, expectativa e base por município',
-  'territorio-mapa-tds': 'Territórios de desenvolvimento e municípios',
   'ficha-atendimento': 'Tetos MAC/PAP e emendas por município',
   pesquisa: 'Intenção de voto, relatórios e tendências',
   chapas: 'Simulador de chapa federal — projeção de vagas',

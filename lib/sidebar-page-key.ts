@@ -2,7 +2,6 @@
 export function pageKeyForSidebarItem(id: string): string {
   if (id === 'chapas-menu') return 'chapas'
   if (id === 'chapas-estaduais') return 'chapas'
-  if (id === 'territorio-mapa-tds') return 'territorio'
   if (id === 'ficha-atendimento') return 'ficha-atendimento'
   if (
     id === 'mobilizacao-menu' ||

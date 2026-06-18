@@ -1,4 +1,5 @@
 import { detectSidebarNavigate } from '@/lib/agent/detect-sidebar-navigate'
+import { isResumoAtendimentoQuery } from '@/lib/agent/detect-resumo-atendimento'
 import { isGreetingQuery, isHelpQuery } from '@/lib/agent/greeting-reply'
 import { isJarvisDismissUiQuery } from '@/lib/agent/jarvis-ui-dismiss'
 import { pickJarvisLoadingPhrase, pickJarvisProcessandoPhrase } from '@/lib/agent/jarvis-phrases'
@@ -25,6 +26,7 @@ export function shouldPlayJarvisLoadingPhrase(
   if (!trimmed) return false
   if (isGreetingQuery(trimmed) || isHelpQuery(trimmed)) return false
   if (isJarvisDismissUiQuery(trimmed)) return false
+  if (isResumoAtendimentoQuery(trimmed)) return false
 
   if (detectSidebarNavigate(trimmed, ctx.currentPath)) return false
 

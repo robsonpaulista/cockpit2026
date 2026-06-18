@@ -88,7 +88,20 @@ function inferTitleFromQuery(query: string): string | null {
   if (/\bpesquisas?\b|\binten[cç][aã]o\b/.test(q)) return 'Pesquisas eleitorais'
   if (/\blideran[cç]as?\b/.test(q)) return 'Lideranças'
   if (/\bdemandas?\b/.test(q)) return 'Demandas'
-  if (/\bnot[ií]cias?\b/.test(q)) return 'Notícias em destaque'
+  if (
+    /\bquantas?\s+not[ií]cias?\b/.test(q) ||
+    /\bresumo\b.*\bnot[ií]cias?\b/.test(q) ||
+    /\bmonitor\b.*\bnot[ií]cias?\b/.test(q)
+  ) {
+    return 'Monitor de notícias'
+  }
+  if (/\bnot[ií]cias?\s+(negativ|positiv|neutr)/.test(q)) return 'Notícias por sentimento'
+  if (/\bnot[ií]cias?\s+sobre\b/.test(q)) return 'Busca de notícias'
+  if (/\balerta\s*crit|\brisco\s+alt/.test(q) && /\bnot[ií]cias?\b/.test(q)) {
+    return 'Notícias com alerta crítico'
+  }
+  if (/\bdestaque/.test(q) && /\bnot[ií]cias?\b/.test(q)) return 'Notícias em destaque'
+  if (/\bnot[ií]cias?\b/.test(q)) return 'Notícias'
   if (/\balertas?\b/.test(q)) return 'Alertas'
   if (/\bwhatsapp\b/.test(q)) return 'Envio WhatsApp'
   if (/\bresumo\s+operacional\b/.test(q)) return 'Resumo operacional'

@@ -5,8 +5,6 @@ import { useRouter, usePathname } from 'next/navigation'
 import { Bot, Sparkles, TrendingUp, AlertTriangle, MapPin, BarChart3, CheckCircle2, Send, ExternalLink, ArrowRight, Loader2, Users, Calendar, Vote, FileText, Flag, Target, Building2, Clock, CheckCheck, XCircle, Circle, ChevronRight, Zap, Mic, HelpCircle, Instagram, Heart, Eye, Share2, Image, Video, Play } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { JarvisHudShell } from '@/components/jarvis/jarvis-hud-shell'
-import type { JarvisLogLine } from '@/components/jarvis/jarvis-hud-widgets'
-import { dedupeJarvisLogLines } from '@/lib/agent/jarvis-diagnostic-log'
 import { jarvisHudStyle } from '@/lib/jarvis-hud-tokens'
 import { getAgentSessionId } from '@/lib/agent/client-session'
 import type { CalendarEventRow } from '@/lib/agenda/calendar-event-utils'
@@ -56,7 +54,13 @@ import {
   formatNoticiasDestaqueReply,
   mapNoticiasApiRows,
   queryAsksNoticiasDestaque,
+  queryAsksNoticiasCriticas,
+  formatNoticiasCriticasReply,
+  formatNoticiasResumoReply,
+  formatNoticiasFiltradasReply,
 } from '@/lib/agent/format-noticias'
+import { detectNoticiasIntent } from '@/lib/agent/detect-noticias-query'
+import { buildNoticiasApiPath } from '@/lib/noticias-jarvis-stats'
 import {
   startSpeechKeepAlive,
   stopSpeechKeepAlive,
@@ -104,9 +108,30 @@ import {
 } from '@/lib/territorio-liderancas-por-cargo'
 import { isOffTopicAgentQuery } from '@/lib/agent/detect-off-topic-query'
 import {
+  isInstagramFollowersDailyQuery,
+  parseInstagramFollowersDailyDays,
+} from '@/lib/agent/detect-instagram-followers-daily'
+import {
+  isInstagramPostsQuery,
+  isInstagramSinglePostQuery,
+  parseInstagramPostsMetric,
+} from '@/lib/agent/detect-instagram-posts'
+import { formatInstagramFollowersDailyReport } from '@/lib/instagram-followers-daily-report'
+import {
+  formatInstagramPostsReport,
+  type InstagramPostReportRow,
+  type InstagramPostsMetric,
+} from '@/lib/instagram-posts-report'
+import {
   isResumoEleicoesPriorityQuery,
   resolveCidadeAlvoResumoEleicoes,
 } from '@/lib/agent/resumo-eleicoes-city'
+import {
+  detectResumoAtendimentoIntent,
+  type ResumoAtendimentoContext,
+} from '@/lib/agent/detect-resumo-atendimento'
+import { resolveResumoCidadesForJarvis } from '@/lib/agent/resumo-eleicoes-cidades-cache'
+import { buildResumoEleicoesNavigateUrl, setJarvisResumoPendingBusca } from '@/lib/jarvis-resumo-pending'
 import {
   isTerritorioPriorityQuery,
   querAtualizarPaginaTerritorio,
@@ -142,6 +167,8 @@ import {
   pickJarvisSaudacao,
   pickJarvisSemResultado,
   formatJarvisExpectativaCidadeReply,
+  formatJarvisResumoAtendimentoReply,
+  pickJarvisResumoAtendimentoSpeech,
   pickJarvisExpectativaPiorCenario,
   pickJarvisNavegacaoFala,
 } from '@/lib/agent/jarvis-phrases'
@@ -1060,6 +1087,7 @@ export function AIAgent({
         role: 'assistant',
         content: formatted.content,
         speechSegments: formatted.speechSegments,
+        speakAnswer: true,
         action: {
           type: 'navigate',
           url: '/dashboard/noticias',
@@ -1075,6 +1103,182 @@ export function AIAgent({
       }
     }
   }, [])
+
+  const buildNoticiasCriticasChatMessage = useCallback(async (): Promise<ChatMessage> => {
+    try {
+      const response = await fetch('/api/noticias?risk_level=high&limit=10')
+      if (!response.ok) {
+        return {
+          id: Date.now().toString(),
+          role: 'assistant',
+          content: 'Não consegui acessar as notícias com alerta crítico.',
+        }
+      }
+
+      const rows = mapNoticiasApiRows((await response.json()) as unknown[])
+      const formatted = formatNoticiasCriticasReply(rows)
+
+      return {
+        id: Date.now().toString(),
+        role: 'assistant',
+        content: formatted.content,
+        speechSegments: formatted.speechSegments,
+        speakAnswer: true,
+        action: {
+          type: 'navigate',
+          url: '/dashboard/noticias',
+          label: 'Ver Notícias com Risco Alto',
+        },
+      }
+    } catch (error) {
+      console.error('Erro ao buscar notícias críticas:', error)
+      return {
+        id: Date.now().toString(),
+        role: 'assistant',
+        content: 'Erro ao buscar notícias com alerta crítico. Tente novamente.',
+      }
+    }
+  }, [])
+
+  const buildNoticiasResumoChatMessage = useCallback(async (foco?: string): Promise<ChatMessage> => {
+    try {
+      const response = await fetch('/api/noticias?limit=100')
+      if (!response.ok) {
+        return {
+          id: Date.now().toString(),
+          role: 'assistant',
+          content: 'Não consegui acessar o monitor de notícias.',
+        }
+      }
+
+      const rows = mapNoticiasApiRows((await response.json()) as unknown[])
+      const formatted = formatNoticiasResumoReply(rows, foco)
+
+      return {
+        id: Date.now().toString(),
+        role: 'assistant',
+        content: formatted.content,
+        speechSegments: formatted.speechSegments,
+        speakAnswer: true,
+        action: {
+          type: 'navigate',
+          url: '/dashboard/noticias',
+          label: 'Ver Notícias & Crises',
+        },
+      }
+    } catch (error) {
+      console.error('Erro ao buscar resumo de notícias:', error)
+      return {
+        id: Date.now().toString(),
+        role: 'assistant',
+        content: 'Erro ao buscar resumo de notícias. Tente novamente.',
+      }
+    }
+  }, [])
+
+  const buildNoticiasFiltradasChatMessage = useCallback(
+    async (args: Record<string, string>): Promise<ChatMessage> => {
+      try {
+        const path = buildNoticiasApiPath({
+          sentiment: args.sentimento || undefined,
+          risco: args.risco || undefined,
+          termo: args.termo_busca || undefined,
+          limite: 10,
+        })
+        const response = await fetch(path)
+        if (!response.ok) {
+          return {
+            id: Date.now().toString(),
+            role: 'assistant',
+            content: 'Não consegui acessar as notícias com esse filtro.',
+          }
+        }
+
+        const rows = mapNoticiasApiRows((await response.json()) as unknown[])
+        const formatted = formatNoticiasFiltradasReply(rows, args)
+
+        return {
+          id: Date.now().toString(),
+          role: 'assistant',
+          content: formatted.content,
+          speechSegments: formatted.speechSegments,
+          action: {
+            type: 'navigate',
+            url: '/dashboard/noticias',
+            label: 'Ver Notícias & Crises',
+          },
+        }
+      } catch (error) {
+        console.error('Erro ao buscar notícias filtradas:', error)
+        return {
+          id: Date.now().toString(),
+          role: 'assistant',
+          content: 'Erro ao buscar notícias. Tente novamente.',
+        }
+      }
+    },
+    []
+  )
+
+  const buildResumoAtendimentoChatMessage = useCallback(
+    (ctx: ResumoAtendimentoContext): ChatMessage => {
+      const pc = pageContextRef.current
+      const content = formatJarvisResumoAtendimentoReply({
+        cidade: ctx.cidade,
+        liderancaCargo: ctx.liderancaCargo,
+        liderancaNome: ctx.liderancaNome,
+      })
+      const speechSegments = [
+        pickJarvisResumoAtendimentoSpeech({
+          cidade: ctx.cidade,
+          liderancaCargo: ctx.liderancaCargo,
+          liderancaNome: ctx.liderancaNome,
+        }),
+      ]
+
+      if (pc?.kind === 'resumo-eleicoes') {
+        resumoBuscaCidadePendingRef.current = ctx.cidade
+        resumoBuscaViuLoadingRef.current = false
+        void Promise.resolve(pc.selecionarCidadeEBuscar(ctx.cidade)).catch(() => {
+          if (
+            resumoBuscaCidadePendingRef.current?.toLowerCase() === ctx.cidade.toLowerCase()
+          ) {
+            resumoBuscaCidadePendingRef.current = null
+            resumoBuscaViuLoadingRef.current = false
+          }
+        })
+        return {
+          id: Date.now().toString(),
+          role: 'assistant',
+          content,
+          speechSegments,
+          speakAnswer: true,
+        }
+      }
+
+      setJarvisResumoPendingBusca({
+        cidade: ctx.cidade,
+        liderancaCargo: ctx.liderancaCargo,
+        liderancaNome: ctx.liderancaNome,
+        modo: 'atendimento',
+      })
+
+      return {
+        id: Date.now().toString(),
+        role: 'assistant',
+        content,
+        speechSegments,
+        speakAnswer: true,
+        autoNavigate: true,
+        action: {
+          type: 'navigate',
+          url: buildResumoEleicoesNavigateUrl(ctx.cidade),
+          label: 'Eleições por cidade',
+        },
+      }
+    },
+    []
+  )
 
   const fetchCampoVisitasOutcome = useCallback(async (
     query: string,
@@ -1378,6 +1582,35 @@ export function AIAgent({
     }
   }
 
+  // Buscar variação diária de seguidores (snapshots)
+  const fetchInstagramFollowersDaily = async (days: number = 7): Promise<string> => {
+    try {
+      const response = await fetch(`/api/instagram/snapshot?days=${days}`)
+
+      if (!response.ok) {
+        return `Não há dados históricos ainda. Os dados são coletados automaticamente ao acessar a página **Redes & Instagram**.`
+      }
+
+      const data = await response.json()
+      const history = data.history ?? []
+
+      const username =
+        history.length > 0 ? history[history.length - 1].instagram_username : undefined
+
+      return formatInstagramFollowersDailyReport({
+        history,
+        periodDays: days,
+        username,
+        currentFollowers: data.summary?.currentFollowers,
+        periodGrowth: data.summary?.growth,
+        growthPercentage: data.summary?.growthPercentage,
+      })
+    } catch (error) {
+      console.error('Erro ao buscar histórico diário de seguidores:', error)
+      return `Erro ao buscar histórico. Tente novamente.`
+    }
+  }
+
   // Buscar histórico de evolução do Instagram
   const fetchInstagramHistory = async (): Promise<string> => {
     try {
@@ -1428,21 +1661,22 @@ export function AIAgent({
     }
   }
 
-  // Buscar posts com melhor performance
-  const fetchTopPosts = async (metrica: 'likes' | 'comments' | 'views' | 'shares' | 'all'): Promise<string> => {
+  // Buscar ranking de posts do Instagram
+  const fetchInstagramPostsRank = async (
+    metric: InstagramPostsMetric,
+    highlightSingle = false
+  ): Promise<string> => {
     try {
       const savedConfig = localStorage.getItem('instagramToken')
       const savedBusinessId = localStorage.getItem('instagramBusinessAccountId')
-      
+
       if (!savedConfig || !savedBusinessId) {
-        return `Configure o Instagram na página Conteúdo & Redes Sociais.`
+        return `Configure o Instagram na página **Redes & Instagram** para ver o ranking de publicações.`
       }
 
       const response = await fetch('/api/instagram', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           token: savedConfig,
           businessAccountId: savedBusinessId,
@@ -1455,79 +1689,61 @@ export function AIAgent({
       }
 
       const data = await response.json()
-      const posts = data.posts || []
+      const posts: InstagramPostReportRow[] = (data.posts ?? []).map(
+        (post: {
+          id: string
+          type?: string
+          url?: string
+          caption?: string
+          postedAt: string
+          metrics?: {
+            likes?: number
+            comments?: number
+            shares?: number
+            saves?: number
+            views?: number
+            engagement?: number
+          }
+        }) => ({
+          id: post.id,
+          type: post.type,
+          url: post.url,
+          caption: post.caption,
+          postedAt: post.postedAt,
+          metrics: {
+            likes: post.metrics?.likes ?? 0,
+            comments: post.metrics?.comments ?? 0,
+            shares: post.metrics?.shares ?? 0,
+            saves: post.metrics?.saves ?? 0,
+            views: post.metrics?.views ?? 0,
+            engagement: post.metrics?.engagement ?? 0,
+          },
+        })
+      )
 
-      if (posts.length === 0) {
-        return `Não encontrei publicações no período analisado.`
-      }
-
-      // Ordenar por métrica
-      let sortedPosts = [...posts]
-      let tituloMetrica = ''
-      
-      switch (metrica) {
-        case 'likes':
-          sortedPosts.sort((a, b) => (b.metrics?.likes || 0) - (a.metrics?.likes || 0))
-          tituloMetrica = 'Mais Curtidas'
-          break
-        case 'comments':
-          sortedPosts.sort((a, b) => (b.metrics?.comments || 0) - (a.metrics?.comments || 0))
-          tituloMetrica = 'Mais Comentários'
-          break
-        case 'views':
-          sortedPosts.sort((a, b) => (b.metrics?.views || 0) - (a.metrics?.views || 0))
-          tituloMetrica = 'Mais Visualizações'
-          break
-        case 'shares':
-          sortedPosts.sort((a, b) => (b.metrics?.shares || 0) - (a.metrics?.shares || 0))
-          tituloMetrica = 'Mais Compartilhados'
-          break
-        default:
-          // Ordenar por engajamento total
-          sortedPosts.sort((a, b) => {
-            const engA = (a.metrics?.likes || 0) + (a.metrics?.comments || 0) * 2 + (a.metrics?.shares || 0) * 3
-            const engB = (b.metrics?.likes || 0) + (b.metrics?.comments || 0) * 2 + (b.metrics?.shares || 0) * 3
-            return engB - engA
-          })
-          tituloMetrica = 'Melhor Performance'
-      }
-
-      let resposta = `**Posts com ${tituloMetrica}**\n\n`
-
-      // Top 5 posts
-      const top5 = sortedPosts.slice(0, 5)
-      top5.forEach((post: { type: string; postedAt: string; caption?: string; metrics?: { likes?: number; comments?: number; views?: number; shares?: number } }, index: number) => {
-        const tipo = post.type === 'video' ? '▶ Vídeo' : post.type === 'carousel' ? '◫ Carrossel' : '▣ Imagem'
-        const data = new Date(post.postedAt).toLocaleDateString('pt-BR')
-        
-        // Pegar primeira linha da legenda (título) - até 150 caracteres
-        let titulo = 'Sem legenda'
-        if (post.caption) {
-          // Pegar a primeira linha ou até o primeiro emoji/quebra
-          const primeiraLinha = post.caption.split('\n')[0].trim()
-          titulo = primeiraLinha.length > 150 ? primeiraLinha.substring(0, 150) + '...' : primeiraLinha
-        }
-        
-        resposta += `**${index + 1}. ${titulo}**\n`
-        resposta += `${tipo} — ${data}\n`
-        
-        const metricas = []
-        if (post.metrics?.likes) metricas.push(`♥ ${post.metrics.likes.toLocaleString('pt-BR')}`)
-        if (post.metrics?.comments) metricas.push(`💬 ${post.metrics.comments.toLocaleString('pt-BR')}`)
-        if (post.metrics?.views) metricas.push(`👁 ${post.metrics.views.toLocaleString('pt-BR')}`)
-        if (post.metrics?.shares) metricas.push(`↗ ${post.metrics.shares.toLocaleString('pt-BR')}`)
-        
-        if (metricas.length > 0) {
-          resposta += `${metricas.join(' | ')}\n`
-        }
-        resposta += '\n'
+      return formatInstagramPostsReport({
+        posts,
+        metric,
+        limit: highlightSingle ? 4 : 5,
+        username: data.username,
+        highlightSingle,
       })
-
-      return resposta
     } catch (error) {
-      console.error('Erro ao buscar posts:', error)
+      console.error('Erro ao buscar ranking de posts:', error)
       return `Erro ao buscar posts. Tente novamente.`
     }
+  }
+
+  // Buscar posts com melhor performance
+  const fetchTopPosts = async (metrica: 'likes' | 'comments' | 'views' | 'shares' | 'all'): Promise<string> => {
+    const metricMap: Record<string, InstagramPostsMetric> = {
+      likes: 'likes',
+      comments: 'comments',
+      views: 'views',
+      shares: 'shares',
+      all: 'engagement',
+    }
+    return fetchInstagramPostsRank(metricMap[metrica] ?? 'engagement', false)
   }
 
   // Buscar posts por tipo de conteúdo
@@ -2026,6 +2242,14 @@ export function AIAgent({
         role: 'assistant',
         content: buildHelpReply(),
       }
+    }
+
+    const cidadesResumoProcess = resolveResumoCidadesForJarvis(
+      pc?.kind === 'resumo-eleicoes' ? pc.cidades : undefined
+    )
+    const atendimentoProcess = detectResumoAtendimentoIntent(query, cidadesResumoProcess)
+    if (atendimentoProcess) {
+      return buildResumoAtendimentoChatMessage(atendimentoProcess)
     }
 
     if (isLiderancasResumoPorCargoQuery(query)) {
@@ -2954,6 +3178,37 @@ export function AIAgent({
       return buildPesquisasChatMessage(outcome)
     }
     
+    // ===== INSTAGRAM - RANKING DE POSTS =====
+    if (isInstagramPostsQuery(query)) {
+      const metric = parseInstagramPostsMetric(query)
+      const resposta = await fetchInstagramPostsRank(metric, isInstagramSinglePostQuery(query))
+      return {
+        id: Date.now().toString(),
+        role: 'assistant',
+        content: resposta,
+        action: {
+          type: 'navigate',
+          url: '/dashboard/conteudo/redes',
+          label: 'Ver Posts & Insights',
+        },
+      }
+    }
+
+    // ===== INSTAGRAM - SEGUIDORES POR DIA =====
+    if (isInstagramFollowersDailyQuery(query)) {
+      const resposta = await fetchInstagramFollowersDaily(parseInstagramFollowersDailyDays(query))
+      return {
+        id: Date.now().toString(),
+        role: 'assistant',
+        content: resposta,
+        action: {
+          type: 'navigate',
+          url: '/dashboard/conteudo/redes',
+          label: 'Ver Histórico de Seguidores',
+        },
+      }
+    }
+
     // ===== INSTAGRAM - MÉTRICAS GERAIS =====
     if ((queryLower.includes('instagram') || queryLower.includes('insta') || queryLower.includes('rede') || queryLower.includes('social')) &&
         (queryLower.includes('metrica') || queryLower.includes('dado') || queryLower.includes('numero') || 
@@ -3124,8 +3379,14 @@ export function AIAgent({
       }
     }
 
-    // ===== INSTAGRAM - ENGAJAMENTO =====
-    if (queryLower.includes('engajamento') || queryLower.includes('engajament') || queryLower.includes('interacao') || queryLower.includes('interação')) {
+    // ===== INSTAGRAM - ENGAJAMENTO (agregado do perfil) =====
+    if (
+      !isInstagramPostsQuery(query) &&
+      (queryLower.includes('engajamento') ||
+        queryLower.includes('engajament') ||
+        queryLower.includes('interacao') ||
+        queryLower.includes('interação'))
+    ) {
       const resposta = await fetchInstagramMetrics()
       return {
         id: Date.now().toString(),
@@ -3157,19 +3418,28 @@ export function AIAgent({
       }
     }
     
-    // ===== NOTÍCIAS EM DESTAQUE (painel) =====
-    if (queryAsksNoticiasDestaque(queryLower)) {
+    // ===== NOTÍCIAS (monitor, destaque, críticas, filtros) =====
+    const noticiasIntent = detectNoticiasIntent(query)
+    if (noticiasIntent?.intent === 'consultar_noticias_criticas') {
+      return buildNoticiasCriticasChatMessage()
+    }
+    if (noticiasIntent?.intent === 'consultar_noticias_destaque') {
       return buildNoticiasDestaqueChatMessage()
     }
+    if (noticiasIntent?.intent === 'consultar_noticias_resumo') {
+      return buildNoticiasResumoChatMessage(noticiasIntent.args.foco)
+    }
+    if (noticiasIntent?.intent === 'consultar_noticias_filtradas') {
+      return buildNoticiasFiltradasChatMessage(noticiasIntent.args)
+    }
 
-    // ===== ALERTAS/NOTÍCIAS =====
+    // ===== ALERTAS DO PAINEL (KPI, sem listar matérias) =====
     if (
       !queryAsksNoticiasDestaque(queryLower) &&
-      (queryLower.includes('alerta') ||
-        queryLower.includes('noticia') ||
-        queryLower.includes('crise') ||
-        queryLower.includes('critico') ||
-        queryLower.includes('crítico'))
+      !queryAsksNoticiasCriticas(queryLower) &&
+      !noticiasIntent &&
+      queryLower.includes('alerta') &&
+      !queryLower.includes('noticia')
     ) {
       if (criticalAlerts.length > 0) {
         const alert = criticalAlerts[0]
@@ -3314,6 +3584,10 @@ export function AIAgent({
     buildPesquisasChatMessage,
     syncPesquisaTendenciaPending,
     buildNoticiasDestaqueChatMessage,
+    buildNoticiasCriticasChatMessage,
+    buildNoticiasResumoChatMessage,
+    buildNoticiasFiltradasChatMessage,
+    buildResumoAtendimentoChatMessage,
     fetchAgendaOutcome,
     buildAgendaChatMessage,
     fetchCampoVisitasOutcome,
@@ -3325,6 +3599,13 @@ export function AIAgent({
 
   const buildAgentContext = useCallback((): AgentContextPayload => {
     const pc = pageContextRef.current
+    const instagramToken =
+      typeof window !== 'undefined' ? localStorage.getItem('instagramToken') ?? undefined : undefined
+    const instagramBusinessAccountId =
+      typeof window !== 'undefined'
+        ? localStorage.getItem('instagramBusinessAccountId') ?? undefined
+        : undefined
+
     return {
       pageKind:
         pc?.kind === 'resumo-eleicoes'
@@ -3341,17 +3622,24 @@ export function AIAgent({
       candidatoPadrao:
         candidatoPadrao ||
         (pc?.kind === 'pesquisa' ? pc.candidatoPadrao : undefined),
-      cidadesDisponiveis:
-        pc?.kind === 'resumo-eleicoes' ||
-        pc?.kind === 'campo' ||
-        pc?.kind === 'territorio'
-          ? pc.cidades.slice(0, 40)
-          : undefined,
+      cidadesDisponiveis: (() => {
+        if (
+          pc?.kind === 'resumo-eleicoes' ||
+          pc?.kind === 'campo' ||
+          pc?.kind === 'territorio'
+        ) {
+          return pc.cidades.slice(0, 80)
+        }
+        const cached = resolveResumoCidadesForJarvis()
+        return cached.length > 0 ? cached.slice(0, 80) : undefined
+      })(),
       alertsCriticosCount,
       territoriosFriosCount,
       pollsCount,
       expectativa2026: expectativa2026 != null ? String(expectativa2026) : undefined,
       presencaTerritorial,
+      instagramToken,
+      instagramBusinessAccountId,
     }
   }, [
     alertsCriticosCount,
@@ -3393,7 +3681,11 @@ export function AIAgent({
 
         if (data.clientQuery?.trim() && !isJarvisAnalysisQuery(message)) {
           const legacy = await processUserQuery(data.clientQuery.trim())
-          return { ...legacy, viaAi: true }
+          return {
+            ...legacy,
+            viaAi: true,
+            action: legacy.action ?? data.action,
+          }
         }
 
         if (data.clientQuery?.trim() && isJarvisAnalysisQuery(message)) {
@@ -3414,7 +3706,10 @@ export function AIAgent({
           if (data.agendaScopePending) {
             syncAgendaScopePending(data.agendaScopePending)
           }
-          const autoNavigate = data.meta?.intent === 'navegar'
+          const autoNavigate =
+            data.meta?.intent === 'navegar' ||
+            (data.meta?.intent === 'resumo_buscar_cidade' &&
+              data.action?.type === 'navigate')
           const trimmedContent = data.content.trim()
           const speechBrief = shouldShowJarvisResultPopup(trimmedContent)
             ? buildJarvisSpeechBrief(trimmedContent)
@@ -3427,6 +3722,7 @@ export function AIAgent({
               data.speechSegments ??
               speechBrief?.segments ??
               (autoNavigate ? [pickJarvisNavegacaoFala()] : undefined),
+            speakAnswer: Boolean(data.speechSegments?.length),
             skipListenResumePhrase: autoNavigate,
             action: data.action,
             viaAi: true,
@@ -3986,10 +4282,21 @@ export function AIAgent({
           }
         }
       } else {
-        const sidebarNav = detectSidebarNavigate(cleanedContent, pathnameRef.current)
-        if (sidebarNav) {
-          syncExpectativaDetalhePending(null)
-          response = buildSidebarNavChatMessage(sidebarNav)
+        const pcAtendimentoEarly = pageContextRef.current
+        const cidadesResumoEarly = resolveResumoCidadesForJarvis(
+          pcAtendimentoEarly?.kind === 'resumo-eleicoes' ? pcAtendimentoEarly.cidades : undefined
+        )
+        const atendimentoEarly = detectResumoAtendimentoIntent(cleanedContent, cidadesResumoEarly)
+        if (atendimentoEarly) {
+          response = buildResumoAtendimentoChatMessage(atendimentoEarly)
+        }
+
+        if (!response) {
+          const sidebarNav = detectSidebarNavigate(cleanedContent, pathnameRef.current)
+          if (sidebarNav) {
+            syncExpectativaDetalhePending(null)
+            response = buildSidebarNavChatMessage(sidebarNav)
+          }
         }
       }
 
@@ -4121,6 +4428,10 @@ export function AIAgent({
     fetchAgendaOutcome,
     buildAgendaChatMessage,
     buildNoticiasDestaqueChatMessage,
+    buildNoticiasCriticasChatMessage,
+    buildNoticiasResumoChatMessage,
+    buildNoticiasFiltradasChatMessage,
+    buildResumoAtendimentoChatMessage,
     processUserQuery,
     resumoDemandasAssistPhase,
     tryAgentChat,
@@ -4552,28 +4863,6 @@ export function AIAgent({
     tryStartContinuousListening,
   ])
 
-  const [jarvisDiagnosticLines, setJarvisDiagnosticLines] = useState<JarvisLogLine[]>([])
-
-  const pushJarvisDiagnostic = useCallback((lines: JarvisLogLine[]) => {
-    if (!lines.length) return
-    setJarvisDiagnosticLines((prev) => dedupeJarvisLogLines([...prev, ...lines]).slice(-24))
-  }, [])
-
-  const jarvisLogLines = useMemo((): JarvisLogLine[] => {
-    const chatLines: JarvisLogLine[] = chatMessages.slice(-12).map((m) => ({
-      tag: m.role === 'user' ? 'USER' : 'JARVIS',
-      message: m.content.replace(/\n/g, ' ').slice(0, 220),
-      tone: m.role === 'user' ? ('default' as const) : ('success' as const),
-      at: new Date(Number(m.id) || Date.now()).toLocaleTimeString('pt-BR', {
-        hour: '2-digit',
-        minute: '2-digit',
-        second: '2-digit',
-        hour12: false,
-      }),
-    }))
-    return dedupeJarvisLogLines([...jarvisDiagnosticLines, ...chatLines]).slice(-18)
-  }, [jarvisDiagnosticLines, chatMessages])
-
   const jarvisLastAction = useMemo((): ChatMessage['action'] => {
     for (let i = chatMessages.length - 1; i >= 0; i -= 1) {
       const msg = chatMessages[i]
@@ -4592,8 +4881,7 @@ export function AIAgent({
     if (!voiceOutputEnabled && isListening) return 'ESCUTA ATIVA · RESPOSTA SÓ NO PAINEL'
     if (isProcessing) return 'PROCESSANDO CONSULTA · AGUARDE'
     if (listenPaused) return 'ESCUTA PAUSADA · TOQUE NO MICROFONE'
-    if (isListening && !wakeStandby) return 'OUVINDO COMANDO · JARVIS ATIVO'
-    if (isListening) return 'ESCUTA ATIVA · DIGA JARVIS + SEU PEDIDO'
+    if (isListening && !wakeStandby) return 'MODO ESCUTA · FALE SEU COMANDO AGORA'
     if (allLoaded) return jarvisIdleGreetingRef.current
     return getPhrase('carregando')
   }, [
@@ -4626,8 +4914,13 @@ export function AIAgent({
             title="Abrir Jarvis"
           >
             <Bot className={cn('text-[var(--color-core)]', floatingMode ? 'h-6 w-6 sm:h-7 sm:w-7' : 'h-7 w-7')} />
-            {(isSpeaking || isListening || isProcessing) && (
-              <span className="absolute -right-0.5 -top-0.5 h-3 w-3 animate-pulse rounded-full bg-[var(--color-online)]" />
+            {(isSpeaking || (isListening && !wakeStandby) || isProcessing) && (
+              <span
+                className={cn(
+                  'absolute -right-0.5 -top-0.5 h-3 w-3 animate-pulse rounded-full',
+                  isSpeaking ? 'bg-[var(--color-alert)]' : 'bg-[var(--color-core)]'
+                )}
+              />
             )}
             {(alertsCriticosCount > 0 || territoriosFriosCount > 0) && (
               <span className="absolute -right-0.5 -top-0.5 flex h-5 w-5 items-center justify-center rounded-full bg-[var(--color-online)] text-[9px] font-medium text-[var(--color-void)]">
@@ -4663,6 +4956,7 @@ export function AIAgent({
           isListening={isListening}
           listenPaused={listenPaused}
           wakeStandby={wakeStandby}
+          listeningTranscript={isListening ? userInput : ''}
           isSpeaking={isSpeaking}
           isProcessing={isProcessing}
           enableVoice={enableVoice}
@@ -4676,8 +4970,6 @@ export function AIAgent({
           onMinimize={fullPageHud ? undefined : () => setIsMinimized(true)}
           lastAction={jarvisLastAction}
           onActionClick={handleAction}
-          logLines={jarvisLogLines}
-          onDiagnosticLog={pushJarvisDiagnostic}
           hudLayout={hudLayout}
           resultPanel={
             jarvisResultPopup

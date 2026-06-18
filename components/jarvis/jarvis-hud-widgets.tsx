@@ -66,11 +66,14 @@ export function JarvisHudSystemLog({
   useEffect(() => {
     const el = logRef.current
     if (!el) return
-    el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' })
+    const id = requestAnimationFrame(() => {
+      el.scrollTop = el.scrollHeight
+    })
+    return () => cancelAnimationFrame(id)
   }, [lines])
 
   return (
-    <div className={cn(jarvisPanelGhostClass, 'flex min-h-0 flex-1 flex-col sm:min-h-[160px]', className)}>
+    <div className={cn(jarvisPanelGhostClass, 'flex min-h-0 flex-1 flex-col overflow-hidden sm:min-h-[160px]', className)}>
       <p
         className={cn(
           jarvisLabelClass,
@@ -82,7 +85,7 @@ export function JarvisHudSystemLog({
       <div
         ref={logRef}
         className={cn(
-          'mt-1.5 min-h-0 flex-1 overflow-y-auto font-jarvis-mono leading-relaxed sm:mt-2',
+          'mt-1.5 min-h-0 flex-1 overflow-y-auto overscroll-contain font-jarvis-mono leading-relaxed scrollbar-hide sm:mt-2',
           comfortable
             ? 'text-[9px] sm:text-[10px] lg:text-[11px] xl:text-xs'
             : 'text-[8px] sm:text-[9px]'
@@ -127,7 +130,7 @@ export function JarvisHudSystemLog({
 
 export function JarvisHudMetricsBar({ className }: { className?: string }) {
   return (
-    <div className={cn('shrink-0 border-t border-[rgba(0,212,255,0.08)] bg-[var(--color-deep)]/40 px-1 py-2', className)}>
+    <div className={cn('shrink-0 border-t border-[rgba(0,212,255,0.08)] bg-transparent px-1 py-2', className)}>
       <JarvisHudMetrics />
     </div>
   )

@@ -2,6 +2,7 @@
 
 import './jarvis-neural.css'
 import { IconMicrophone } from '@tabler/icons-react'
+import { JarvisListeningWave } from '@/components/jarvis/jarvis-listening-wave'
 import { cn } from '@/lib/utils'
 
 interface JarvisCoreSphereProps {
@@ -25,12 +26,14 @@ export function JarvisCoreSphere({
   enableMic = true,
   className,
 }: JarvisCoreSphereProps) {
-  const active = isListening || isSpeaking || isProcessing
+  const listeningCapture = isListening && !listenPaused && !wakeStandby && !isSpeaking && !isProcessing
+  const active = listeningCapture || isSpeaking || isProcessing
 
   return (
     <div
       className={cn(
         'relative flex aspect-square h-full max-h-full w-auto max-w-full items-center justify-center',
+        listeningCapture && 'jarvis-core-sphere--listening-capture',
         className
       )}
     >
@@ -41,19 +44,27 @@ export function JarvisCoreSphere({
       />
 
       <div className="jarvis-ring-outer pointer-events-none absolute inset-[2%] rounded-full border border-[rgba(0,212,255,0.18)]" />
-      <div
-        className="jarvis-ring-inner pointer-events-none absolute inset-[10%] rounded-full border border-dashed border-[rgba(0,102,255,0.28)]"
-      />
+      <div className="jarvis-ring-inner pointer-events-none absolute inset-[10%] rounded-full border border-dashed border-[rgba(0,102,255,0.28)]" />
 
       <svg viewBox="0 0 320 320" className="relative z-[1] h-full w-full" aria-hidden>
         <defs>
           <radialGradient id="jarvis-sphere-fill" cx="45%" cy="38%" r="58%">
-            <stop offset="0%" stopColor="rgba(0,212,255,0.12)" />
+            <stop
+              offset="0%"
+              stopColor={listeningCapture ? 'rgba(0,212,255,0.16)' : 'rgba(0,212,255,0.12)'}
+            />
             <stop offset="55%" stopColor="rgba(0,102,255,0.05)" />
             <stop offset="100%" stopColor="rgba(2,11,20,0)" />
           </radialGradient>
         </defs>
-        <circle cx="160" cy="160" r="118" fill="url(#jarvis-sphere-fill)" stroke="rgba(0,212,255,0.2)" strokeWidth="1" />
+        <circle
+          cx="160"
+          cy="160"
+          r="118"
+          fill="url(#jarvis-sphere-fill)"
+          stroke={listeningCapture ? 'rgba(0,212,255,0.35)' : 'rgba(0,212,255,0.2)'}
+          strokeWidth="1"
+        />
         {[0, 30, 60, 90, 120, 150].map((rot) => (
           <ellipse
             key={`m-${rot}`}
@@ -89,8 +100,8 @@ export function JarvisCoreSphere({
             'absolute z-[2] flex h-[4.5rem] w-[4.5rem] items-center justify-center rounded-full border transition-all duration-300 sm:h-20 sm:w-20',
             isSpeaking
               ? 'border-[var(--color-alert)] bg-[rgba(255,107,53,0.12)] shadow-[0_0_28px_rgba(255,107,53,0.35)]'
-              : isListening
-                ? 'border-[var(--color-core)] bg-[rgba(0,212,255,0.1)] shadow-[0_0_32px_rgba(0,212,255,0.4)]'
+              : listeningCapture
+                ? 'border-[var(--color-core)] bg-[rgba(0,212,255,0.14)] shadow-[0_0_36px_rgba(0,212,255,0.45)]'
                 : 'border-[rgba(0,212,255,0.35)] bg-[var(--color-surface)] hover:border-[var(--color-core)]'
           )}
           title={
@@ -101,7 +112,7 @@ export function JarvisCoreSphere({
                 : 'Ativar escuta contínua'
           }
         >
-          {(isListening || isSpeaking) && (
+          {(listeningCapture || isSpeaking) && (
             <span className="jarvis-pulse-expand absolute inset-0 rounded-full border border-current opacity-50" />
           )}
           {isSpeaking ? (
@@ -114,12 +125,11 @@ export function JarvisCoreSphere({
                 />
               ))}
             </div>
+          ) : listeningCapture ? (
+            <JarvisListeningWave variant="capture" barCount={5} className="relative z-[1] h-7" />
           ) : (
             <IconMicrophone
-              className={cn(
-                'relative z-[1] h-7 w-7',
-                isListening ? 'text-[var(--color-core)]' : 'text-[rgba(0,212,255,0.55)]'
-              )}
+              className="relative z-[1] h-7 w-7 text-[rgba(0,212,255,0.55)]"
               stroke={1.5}
             />
           )}
@@ -127,8 +137,17 @@ export function JarvisCoreSphere({
       ) : null}
 
       {active ? (
-        <p className="absolute -bottom-1 font-jarvis-mono text-[9px] uppercase tracking-[0.2em] text-[var(--color-text-dim)]">
-          {isSpeaking ? 'síntese' : isListening ? 'escuta' : 'processando'}
+        <p
+          className={cn(
+            'absolute -bottom-1 font-jarvis-mono text-[9px] uppercase tracking-[0.2em]',
+            isSpeaking
+              ? 'text-[var(--color-alert)]'
+              : listeningCapture
+                ? 'text-[var(--color-core)]'
+                : 'text-[var(--color-text-dim)]'
+          )}
+        >
+          {isSpeaking ? 'síntese' : listeningCapture ? 'ouvindo' : 'processando'}
         </p>
       ) : null}
     </div>

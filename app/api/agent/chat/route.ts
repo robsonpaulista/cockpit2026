@@ -42,6 +42,14 @@ import {
   shouldRouteToClaudeAnalysis,
 } from '@/lib/agent/claude-router'
 import { buildNavigateAction, executeServerTool } from '@/lib/agent/server-tools'
+import { detectInstagramFollowersDailyIntent } from '@/lib/agent/detect-instagram-followers-daily'
+import { detectInstagramPostsIntent } from '@/lib/agent/detect-instagram-posts'
+import { detectNoticiasIntent } from '@/lib/agent/detect-noticias-query'
+import { detectResumoAtendimentoIntent } from '@/lib/agent/detect-resumo-atendimento'
+import { formatJarvisResumoAtendimentoReply } from '@/lib/agent/jarvis-phrases'
+import { buildResumoEleicoesNavigateUrl } from '@/lib/jarvis-resumo-pending'
+import { toolConsultarInstagramSeguidoresDiario } from '@/lib/agent/tool-instagram-seguidores-diario'
+import { toolConsultarInstagramPosts } from '@/lib/agent/tool-instagram-posts'
 import { toolEnviarWhatsApp } from '@/lib/agent/tool-enviar-whatsapp'
 import type { AgentChatRequest, AgentChatResponse } from '@/lib/agent/types'
 
@@ -115,6 +123,120 @@ export async function POST(request: Request) {
         source: 'groq',
         content: buildHelpReply(),
         meta: { intent: 'ajuda' },
+      } satisfies AgentChatResponse)
+    }
+
+    const instagramFollowersDaily = detectInstagramFollowersDailyIntent(message)
+    if (instagramFollowersDaily) {
+      const origin = new URL(request.url).origin
+      const cookie = request.headers.get('cookie') ?? ''
+      const content = await toolConsultarInstagramSeguidoresDiario(
+        origin,
+        cookie,
+        instagramFollowersDaily.args,
+        message
+      )
+      return NextResponse.json({
+        source: 'groq',
+        content,
+        action: {
+          type: 'navigate',
+          url: '/dashboard/conteudo/redes',
+          label: 'Ver Histórico de Seguidores',
+        },
+        meta: { intent: 'consultar_instagram_seguidores_diario' },
+      } satisfies AgentChatResponse)
+    }
+
+    const instagramPosts = detectInstagramPostsIntent(message)
+    if (instagramPosts) {
+      const content = await toolConsultarInstagramPosts(
+        user.id,
+        instagramPosts.args,
+        message,
+        {
+          token: body.context?.instagramToken,
+          businessAccountId: body.context?.instagramBusinessAccountId,
+        }
+      )
+
+      if (content) {
+        return NextResponse.json({
+          source: 'groq',
+          content,
+          action: buildNavigateAction(instagramPosts),
+          meta: { intent: 'consultar_instagram_posts' },
+        } satisfies AgentChatResponse)
+      }
+
+      const clientQuery =
+        intentToSyntheticQuery(instagramPosts.intent, instagramPosts.args) ?? message
+
+      return NextResponse.json({
+        source: 'groq',
+        content: '',
+        clientQuery,
+        action: buildNavigateAction(instagramPosts),
+        meta: { intent: 'consultar_instagram_posts' },
+      } satisfies AgentChatResponse)
+    }
+
+    const noticiasIntent = detectNoticiasIntent(message)
+    if (
+      noticiasIntent &&
+      (noticiasIntent.intent === 'consultar_noticias_criticas' ||
+        noticiasIntent.intent === 'consultar_noticias_destaque' ||
+        noticiasIntent.intent === 'consultar_noticias_resumo' ||
+        noticiasIntent.intent === 'consultar_noticias_filtradas')
+    ) {
+      const origin = new URL(request.url).origin
+      const cookie = request.headers.get('cookie') ?? ''
+      const result = await executeServerTool(
+        noticiasIntent,
+        origin,
+        cookie,
+        body.context,
+        { supabase, user: { id: user.id, email: user.email } },
+        message
+      )
+      if (result) {
+        const payload =
+          typeof result === 'string'
+            ? { content: result }
+            : {
+                content: result.content,
+                speechSegments: result.speechSegments,
+              }
+        return NextResponse.json({
+          source: 'groq',
+          content: payload.content,
+          speechSegments: payload.speechSegments,
+          action: buildNavigateAction(noticiasIntent),
+          meta: { intent: noticiasIntent.intent },
+        } satisfies AgentChatResponse)
+      }
+    }
+
+    const cidadesResumo = body.context?.cidadesDisponiveis ?? []
+    const atendimentoResumo = detectResumoAtendimentoIntent(message, cidadesResumo)
+    if (atendimentoResumo) {
+      const onResumoPage = body.context?.pageKind === 'resumo-eleicoes'
+      return NextResponse.json({
+        source: 'groq',
+        content: formatJarvisResumoAtendimentoReply({
+          cidade: atendimentoResumo.cidade,
+          liderancaCargo: atendimentoResumo.liderancaCargo,
+          liderancaNome: atendimentoResumo.liderancaNome,
+        }),
+        clientQuery: `Buscar ${atendimentoResumo.cidade}`,
+        action: onResumoPage
+          ? undefined
+          : {
+              type: 'navigate',
+              url: buildResumoEleicoesNavigateUrl(atendimentoResumo.cidade),
+              label: 'Eleições por cidade',
+            },
+        meta: { intent: 'resumo_buscar_cidade' },
       } satisfies AgentChatResponse)
     }
 
