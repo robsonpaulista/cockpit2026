@@ -43,6 +43,7 @@ export function getCockpitPageLabel(pathname: string): string {
     '/dashboard/gestao-pesquisas': 'Gestão pesq.',
     '/dashboard/gestao-pesquisas/configuracoes': 'Config',
     '/dashboard/usuarios': 'Usuários',
+    '/dashboard/log-system': 'Log System',
   }
 
   if (exact[p]) return exact[p]

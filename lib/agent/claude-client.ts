@@ -65,7 +65,8 @@ export async function callClaudeAnalysis(
   message: string,
   history: AgentChatMessage[],
   context: AgentContextPayload | undefined,
-  dataBlock: string
+  dataBlock: string,
+  options?: { maxOutputTokens?: number }
 ): Promise<ClaudeMessageResult> {
   const apiKey = getAnthropicApiKey()
   if (!apiKey) {
@@ -83,9 +84,11 @@ export async function callClaudeAnalysis(
     { role: 'user', content: message.trim() },
   ]
 
+  const maxTokens = options?.maxOutputTokens ?? ANTHROPIC_MAX_OUTPUT_TOKENS
+
   const payload = {
     model: ANTHROPIC_AGENT_MODEL,
-    max_tokens: ANTHROPIC_MAX_OUTPUT_TOKENS,
+    max_tokens: maxTokens,
     system: [
       {
         type: 'text',
@@ -115,9 +118,14 @@ export async function callClaudeAnalysis(
 
     if (response.ok) {
       const body = await response.json()
-      const content = extractTextFromAnthropicBody(body)
+      let content = extractTextFromAnthropicBody(body)
       if (!content) {
         throw new ClaudeApiError('Resposta vazia da Anthropic', 502, false)
+      }
+      const stopReason = (body as { stop_reason?: string }).stop_reason
+      if (stopReason === 'max_tokens') {
+        content +=
+          '\n\n---\n_Resposta atingiu o limite de tamanho. Diga **continue o cronograma** para completar as semanas restantes._'
       }
       const usage = (body as { usage?: ClaudeMessageResult['usage'] }).usage
       return { content, usage }

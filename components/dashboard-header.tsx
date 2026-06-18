@@ -34,6 +34,7 @@ const pathToTitle: Record<string, string> = {
   '/dashboard/obras': 'Obras',
   '/dashboard/proposicoes': 'Proposições',
   '/dashboard/usuarios': 'Gestão de Usuários',
+  '/dashboard/log-system': 'Log System',
 }
 
 function getPageTitle(pathname: string): string {

@@ -2,6 +2,7 @@
 
 import { IconCheck, IconX } from '@tabler/icons-react'
 import type { ExercitoDigitalAlertPost } from '@/lib/mapa-exercito-digital-types'
+import type { ExercitoDigitalAudience } from '@/lib/mandatos-instagram-piaui'
 import { formatInt } from '@/lib/mapa-exercito-digital-aggregator'
 import {
   exercitoAlertCardClass,
@@ -14,6 +15,7 @@ import { cn } from '@/lib/utils'
 
 interface ExercitoDigitalAlertPostsProps {
   posts: ExercitoDigitalAlertPost[]
+  audience: ExercitoDigitalAudience
 }
 
 const badgeClass: Record<ExercitoDigitalAlertPost['status'], string> = {
@@ -21,7 +23,7 @@ const badgeClass: Record<ExercitoDigitalAlertPost['status'], string> = {
   Atenção: 'border border-[#FAC775] bg-[#FAEEDA] text-[#854F0B]',
 }
 
-export function ExercitoDigitalAlertPosts({ posts }: ExercitoDigitalAlertPostsProps) {
+export function ExercitoDigitalAlertPosts({ posts, audience }: ExercitoDigitalAlertPostsProps) {
   if (posts.length === 0) return null
 
   const visible = posts.slice(0, 4)
@@ -52,7 +54,14 @@ export function ExercitoDigitalAlertPosts({ posts }: ExercitoDigitalAlertPostsPr
             <div className="mt-auto flex flex-wrap items-center gap-2 pt-2">
               <span className="inline-flex items-center gap-1 text-[11px] text-[#3B6D11]">
                 <IconCheck className="h-3 w-3" stroke={1.5} aria-hidden />
-                {formatInt(post.ativados)} líder{post.ativados === 1 ? '' : 'es'} ativou
+                {formatInt(post.ativados)}{' '}
+                {audience === 'mandatos'
+                  ? post.ativados === 1
+                    ? 'mandatário ativou'
+                    : 'mandatários ativaram'
+                  : post.ativados === 1
+                    ? 'líder ativou'
+                    : 'líderes ativaram'}
               </span>
               <span className="inline-flex items-center gap-1 text-[11px] text-[#A32D2D]">
                 <IconX className="h-3 w-3" stroke={1.5} aria-hidden />

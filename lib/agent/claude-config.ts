@@ -5,8 +5,11 @@ export const ANTHROPIC_API_URL = 'https://api.anthropic.com/v1/messages'
 
 export const ANTHROPIC_API_VERSION = '2023-06-01'
 
-/** Resposta analítica — suficiente para relatórios curtos sem inflar OTPM. */
-export const ANTHROPIC_MAX_OUTPUT_TOKENS = 900
+/** Resposta analítica padrão — relatórios curtos. */
+export const ANTHROPIC_MAX_OUTPUT_TOKENS = 1600
+
+/** Planos de visita, cronogramas e tabelas longas (30 dias, múltiplas semanas). */
+export const ANTHROPIC_MAX_OUTPUT_TOKENS_EXTENDED = 4096
 
 /** Histórico mínimo na chamada analítica (economia de input). */
 export const ANTHROPIC_MAX_HISTORY_MESSAGES = 4

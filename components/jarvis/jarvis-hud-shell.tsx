@@ -9,6 +9,7 @@ import {
   type JarvisLogLine,
 } from '@/components/jarvis/jarvis-hud-widgets'
 import { JarvisResultPanel } from '@/components/jarvis/jarvis-result-panel'
+import { JarvisTextInput } from '@/components/jarvis/jarvis-text-input'
 import { JarvisVoiceBar } from '@/components/jarvis/jarvis-voice-bar'
 import { JarvisWebcamPreview } from '@/components/jarvis/jarvis-webcam-preview'
 import type { JarvisResultView } from '@/lib/agent/jarvis-result-view'
@@ -49,6 +50,13 @@ interface JarvisHudShellProps {
   } | null
   onResultPanelClose?: () => void
   onResultPanelAction?: (action: JarvisHudAction) => void
+  textInputValue?: string
+  onTextInputChange?: (value: string) => void
+  onTextInputFocus?: () => void
+  onTextInputBlur?: () => void
+  onTextInputSubmit?: () => void
+  textInputDisabled?: boolean
+  textInputPlaceholder?: string
   hudLayout?: 'full' | 'compact' | 'column'
   className?: string
   style?: React.CSSProperties
@@ -105,6 +113,13 @@ export function JarvisHudShell({
   resultPanel = null,
   onResultPanelClose,
   onResultPanelAction,
+  textInputValue = '',
+  onTextInputChange,
+  onTextInputFocus,
+  onTextInputBlur,
+  onTextInputSubmit,
+  textInputDisabled = false,
+  textInputPlaceholder,
   hudLayout = 'full',
   className,
   style,
@@ -322,6 +337,18 @@ export function JarvisHudShell({
       </div>
 
       {!compact && !column ? <JarvisHudMetricsBar className="lg:hidden" /> : null}
+      {onTextInputChange && onTextInputSubmit ? (
+        <JarvisTextInput
+          value={textInputValue}
+          onChange={onTextInputChange}
+          onFocus={onTextInputFocus}
+          onBlur={onTextInputBlur}
+          onSubmit={onTextInputSubmit}
+          disabled={textInputDisabled}
+          isListening={listeningCapture}
+          placeholder={textInputPlaceholder}
+        />
+      ) : null}
       <StatusTicker message={statusMessage} listeningCapture={listeningCapture} />
     </JarvisFontScope>
   )

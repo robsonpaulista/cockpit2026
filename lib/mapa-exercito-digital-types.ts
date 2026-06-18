@@ -1,3 +1,5 @@
+import type { ExercitoDigitalAudience } from '@/lib/mandatos-instagram-piaui'
+
 export type AlertPostStatus = 'Crítico' | 'Atenção'
 
 export type LeaderTrendKind =
@@ -69,6 +71,7 @@ export type ExercitoDigitalKpis = {
 }
 
 export type ExercitoDigitalViewModel = {
+  audience: ExercitoDigitalAudience
   lookbackDays: number
   kpis: ExercitoDigitalKpis
   alertPosts: ExercitoDigitalAlertPost[]

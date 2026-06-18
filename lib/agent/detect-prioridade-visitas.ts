@@ -1,3 +1,5 @@
+import { isPlanoVisitasCampoQuery } from '@/lib/agent/detect-plano-visitas'
+
 function norm(text: string): string {
   return text
     .normalize('NFD')
@@ -16,6 +18,8 @@ const EXPECTATIVA_OU_VOTOS = /\b(expectativa|votos|projec)\b/
  * (alta expectativa de votos + pouca/nenhuma visita — mesmo critério do Resumo Operacional).
  */
 export function isPrioridadeVisitasCampoQuery(query: string): boolean {
+  if (isPlanoVisitasCampoQuery(query)) return false
+
   const q = norm(query)
 
   if (/\b(instagram|insta|perfil)\b/.test(q) && /\bvisita\b/.test(q)) return false

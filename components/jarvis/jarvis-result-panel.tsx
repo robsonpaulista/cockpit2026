@@ -1,7 +1,8 @@
 'use client'
 
-import { useEffect, useState } from 'react'
-import { ArrowRight, FileText, X } from 'lucide-react'
+import { useCallback, useEffect, useState } from 'react'
+import { createPortal } from 'react-dom'
+import { ArrowRight, FileText, Maximize2, Minimize2, X } from 'lucide-react'
 import type { JarvisResultView } from '@/lib/agent/jarvis-result-view'
 import { JARVIS_READ_ALOUD_HINT } from '@/lib/agent/jarvis-read-aloud'
 import { JarvisReportMarkdown } from '@/components/jarvis/jarvis-report-markdown'
@@ -63,16 +64,46 @@ export function JarvisResultPanel({
   className,
 }: JarvisResultPanelProps) {
   const [visible, setVisible] = useState(false)
+  const [fullscreen, setFullscreen] = useState(false)
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
 
   useEffect(() => {
     const id = window.requestAnimationFrame(() => setVisible(true))
     return () => window.cancelAnimationFrame(id)
   }, [view.title])
 
-  return (
+  useEffect(() => {
+    setFullscreen(false)
+  }, [view.title])
+
+  useEffect(() => {
+    if (!fullscreen) return
+    const prevOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setFullscreen(false)
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => {
+      document.body.style.overflow = prevOverflow
+      window.removeEventListener('keydown', onKeyDown)
+    }
+  }, [fullscreen])
+
+  const handleClose = useCallback(() => {
+    setFullscreen(false)
+    onClose()
+  }, [onClose])
+
+  const panel = (
     <div
       className={cn(
-        'jarvis-result-panel jarvis-result-panel--report flex h-full min-h-0 flex-col overflow-hidden rounded-xl border border-slate-200/90 bg-[#faf9f7] text-slate-900 shadow-[0_18px_50px_rgba(15,23,42,0.22)]',
+        'jarvis-result-panel jarvis-result-panel--report flex h-full min-h-0 flex-col overflow-hidden border border-slate-200/90 bg-[#faf9f7] text-slate-900 shadow-[0_18px_50px_rgba(15,23,42,0.22)]',
+        fullscreen ? 'rounded-xl sm:rounded-2xl jarvis-result-panel--fullscreen' : 'rounded-xl',
         visible ? 'jarvis-result-panel--visible' : 'jarvis-result-panel--enter',
         isSpeaking && 'jarvis-result-panel--speaking',
         className
@@ -86,6 +117,11 @@ export function JarvisResultPanel({
             <FileText className="h-3.5 w-3.5 shrink-0" aria-hidden />
             <p className="text-[11px] font-semibold uppercase tracking-[0.14em]">
               Relatório Jarvis
+              {fullscreen ? (
+                <span className="ml-2 font-normal normal-case tracking-normal text-slate-400">
+                  · tela cheia
+                </span>
+              ) : null}
               {isSpeaking ? (
                 <span className="ml-2 inline-flex items-center gap-0.5 text-sky-700">
                   <span className="jarvis-audio-bar inline-block h-2 w-0.5 rounded-sm bg-current" />
@@ -105,17 +141,32 @@ export function JarvisResultPanel({
             <p className="mt-1 text-sm leading-snug text-slate-600">{view.subtitle}</p>
           ) : null}
         </div>
-        <button
-          type="button"
-          onClick={onClose}
-          className="shrink-0 rounded-lg p-1.5 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700"
-          aria-label="Fechar relatório"
-        >
-          <X className="h-4 w-4 sm:h-5 sm:w-5" />
-        </button>
+        <div className="flex shrink-0 items-center gap-1">
+          <button
+            type="button"
+            onClick={() => setFullscreen((value) => !value)}
+            className="rounded-lg p-1.5 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700"
+            title={fullscreen ? 'Sair da tela cheia (Esc)' : 'Abrir em tela cheia'}
+            aria-label={fullscreen ? 'Sair da tela cheia' : 'Abrir em tela cheia'}
+          >
+            {fullscreen ? (
+              <Minimize2 className="h-4 w-4 sm:h-5 sm:w-5" />
+            ) : (
+              <Maximize2 className="h-4 w-4 sm:h-5 sm:w-5" />
+            )}
+          </button>
+          <button
+            type="button"
+            onClick={handleClose}
+            className="rounded-lg p-1.5 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700"
+            aria-label="Fechar relatório"
+          >
+            <X className="h-4 w-4 sm:h-5 sm:w-5" />
+          </button>
+        </div>
       </div>
 
-      <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4 sm:px-5 sm:py-5">
+      <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4 sm:px-6 sm:py-5 md:px-8">
         {view.newsItems.length > 0 ? (
           <ol className="space-y-4">
             {view.newsItems.map((item) => (
@@ -233,8 +284,11 @@ export function JarvisResultPanel({
         ) : null}
       </div>
 
-      <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-t border-slate-200 bg-white px-4 py-3 sm:px-5">
-        <p className="text-[11px] leading-snug text-slate-500 sm:text-xs">{JARVIS_READ_ALOUD_HINT}</p>
+      <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-t border-slate-200 bg-white px-4 py-3 sm:px-5 md:px-8">
+        <p className="text-[11px] leading-snug text-slate-500 sm:text-xs">
+          {fullscreen ? 'Esc · sair da tela cheia · ' : ''}
+          {JARVIS_READ_ALOUD_HINT}
+        </p>
         <div className="flex flex-wrap items-center justify-end gap-2">
         {action && onAction ? (
           <button
@@ -248,7 +302,7 @@ export function JarvisResultPanel({
         ) : null}
         <button
           type="button"
-          onClick={onClose}
+          onClick={handleClose}
           className="rounded-lg px-3 py-2 text-xs font-semibold uppercase tracking-wide text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-800 sm:text-[11px]"
         >
           Fechar
@@ -257,4 +311,35 @@ export function JarvisResultPanel({
       </div>
     </div>
   )
+
+  if (fullscreen && mounted) {
+    return (
+      <>
+        <div
+          className="flex min-h-[6rem] flex-1 items-center justify-center rounded-xl border border-dashed border-[rgba(0,212,255,0.18)] bg-[rgba(2,11,20,0.4)] px-4 py-6 text-center"
+          aria-hidden
+        >
+          <p className="font-jarvis-mono text-[10px] uppercase tracking-[0.16em] text-[var(--color-text-dim)]">
+            Relatório em tela cheia
+          </p>
+        </div>
+        {createPortal(
+          <div className="fixed inset-0 z-[220] flex flex-col p-2 sm:p-3 md:p-4">
+            <button
+              type="button"
+              className="absolute inset-0 bg-slate-950/60 backdrop-blur-[2px]"
+              aria-label="Sair da tela cheia"
+              onClick={() => setFullscreen(false)}
+            />
+            <div className="relative z-10 mx-auto flex h-full min-h-0 w-full max-w-[min(100%,90rem)] flex-1 flex-col">
+              {panel}
+            </div>
+          </div>,
+          document.body
+        )}
+      </>
+    )
+  }
+
+  return panel
 }

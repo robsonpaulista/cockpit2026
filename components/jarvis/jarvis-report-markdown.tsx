@@ -56,6 +56,14 @@ const components: Components = {
       {children}
     </code>
   ),
+  img: ({ src, alt }) => (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img
+      src={src}
+      alt={alt ?? ''}
+      className="my-3 max-h-[min(70vh,42rem)] w-full rounded-lg border border-slate-200 object-contain"
+    />
+  ),
 }
 
 interface JarvisReportMarkdownProps {

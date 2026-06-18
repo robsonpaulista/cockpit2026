@@ -10,6 +10,7 @@ import {
   Tooltip,
 } from 'chart.js'
 import type { ExercitoDigitalTrendPoint } from '@/lib/mapa-exercito-digital-types'
+import type { ExercitoDigitalAudience } from '@/lib/mandatos-instagram-piaui'
 import {
   exercitoSectionCardClass,
   exercitoSectionSubtitleClass,
@@ -21,9 +22,11 @@ Chart.register(BarController, BarElement, CategoryScale, LinearScale, Tooltip)
 
 interface ExercitoDigitalTrendChartProps {
   points: ExercitoDigitalTrendPoint[]
+  audience: ExercitoDigitalAudience
 }
 
-export function ExercitoDigitalTrendChart({ points }: ExercitoDigitalTrendChartProps) {
+export function ExercitoDigitalTrendChart({ points, audience }: ExercitoDigitalTrendChartProps) {
+  const redeLabel = audience === 'mandatos' ? 'Mandatários' : 'Liderados'
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const chartRef = useRef<Chart | null>(null)
 
@@ -38,7 +41,7 @@ export function ExercitoDigitalTrendChart({ points }: ExercitoDigitalTrendChartP
         labels: points.map((p) => p.label),
         datasets: [
           {
-            label: 'Liderados',
+            label: redeLabel,
             data: points.map((p) => p.pctLiderados),
             backgroundColor: '#185FA5',
             stack: 'stack',
@@ -96,7 +99,7 @@ export function ExercitoDigitalTrendChart({ points }: ExercitoDigitalTrendChartP
       chartRef.current?.destroy()
       chartRef.current = null
     }
-  }, [points])
+  }, [points, redeLabel])
 
   if (points.length === 0) {
     return (
@@ -111,20 +114,20 @@ export function ExercitoDigitalTrendChart({ points }: ExercitoDigitalTrendChartP
     <div className={exercitoSectionCardClass}>
       <h2 className={exercitoSectionTitleClass}>Tendência de engajamento · por data de publicação</h2>
       <p className={cn(exercitoSectionSubtitleClass, 'mb-2.5')}>
-        % de comentários liderados (azul) vs orgânicos (cinza) por post
+        % de comentários {audience === 'mandatos' ? 'de mandatários' : 'liderados'} (azul) vs orgânicos (cinza) por post
       </p>
       <div className="relative h-[140px] w-full">
         <canvas
           ref={canvasRef}
           id="exercito-trend-chart"
           role="img"
-          aria-label="Gráfico de barras empilhadas: percentual de comentários liderados versus orgânicos por data de publicação"
+          aria-label={`Gráfico de barras empilhadas: percentual de comentários ${redeLabel.toLowerCase()} versus orgânicos por data de publicação`}
         />
       </div>
       <div className="mt-2 flex flex-wrap items-center gap-4 text-[11px] text-text-muted">
         <span className="inline-flex items-center gap-1.5">
           <span className="h-2.5 w-2.5 rounded-[2px] bg-[rgb(var(--color-primary))]" aria-hidden />
-          Liderados (ativação)
+          {redeLabel} (ativação)
         </span>
         <span className="inline-flex items-center gap-1.5">
           <span className="h-2.5 w-2.5 rounded-[2px] bg-[#B4B2A9]" aria-hidden />

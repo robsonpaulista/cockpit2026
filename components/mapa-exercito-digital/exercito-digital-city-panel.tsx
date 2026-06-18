@@ -3,6 +3,7 @@
 import { IconInfoCircle } from '@tabler/icons-react'
 import { formatInt, formatPct } from '@/lib/mapa-exercito-digital-aggregator'
 import type { ExercitoDigitalCityRow } from '@/lib/mapa-exercito-digital-types'
+import type { ExercitoDigitalAudience } from '@/lib/mandatos-instagram-piaui'
 import {
   exercitoDualPanelItemClass,
   exercitoSectionCardClass,
@@ -14,11 +15,13 @@ import { cn } from '@/lib/utils'
 interface ExercitoDigitalCityPanelProps {
   cities: ExercitoDigitalCityRow[]
   organicTail: { comentarios: number; perfis: number }
+  audience: ExercitoDigitalAudience
+  lookbackDays: number
 }
 
 const ROWS = 8
 
-export function ExercitoDigitalCityPanel({ cities, organicTail }: ExercitoDigitalCityPanelProps) {
+export function ExercitoDigitalCityPanel({ cities, organicTail, audience, lookbackDays }: ExercitoDigitalCityPanelProps) {
   const maxComments = Math.max(...cities.map((c) => c.comentarios), 1)
   const withComments = cities.filter((c) => c.comentarios > 0)
   const zeroCities = cities.filter((c) => c.comentarios === 0)
@@ -29,7 +32,17 @@ export function ExercitoDigitalCityPanel({ cities, organicTail }: ExercitoDigita
   return (
     <div className={cn(exercitoSectionCardClass, exercitoDualPanelItemClass)}>
       <h2 className={exercitoSectionTitleClass}>Ativação por município · top 8</h2>
-      <p className={cn(exercitoSectionSubtitleClass, 'mb-3')}>Comentários de líderes · janela selecionada</p>
+      <p className={cn(exercitoSectionSubtitleClass, 'mb-3')}>
+        Comentários {audience === 'mandatos' ? 'de mandatários' : 'de líderes'} · últimos {lookbackDays} dias
+        (mesma janela do ranking)
+      </p>
+
+      <div className="mb-1 flex items-center gap-2 text-[10px] font-medium uppercase tracking-[0.04em] text-text-muted">
+        <span className="w-[90px] shrink-0 text-right">Município</span>
+        <span className="flex-1" />
+        <span className="min-w-[28px] shrink-0 text-right">Com.</span>
+        <span className="min-w-[52px] shrink-0 text-right">Ativação</span>
+      </div>
 
       <div className="flex min-h-0 flex-1 flex-col">
         {padded.map((city, index) => (
@@ -60,8 +73,8 @@ export function ExercitoDigitalCityPanel({ cities, organicTail }: ExercitoDigita
       <div className="mt-2 flex shrink-0 items-start gap-1.5 text-[11px] text-text-muted">
         <IconInfoCircle className="mt-0.5 h-3 w-3 shrink-0 opacity-70" stroke={1.5} aria-hidden />
         <p>
-          {formatInt(organicTail.comentarios)} comentários de {formatInt(organicTail.perfis)} perfis sem match com
-          líderes cadastrados (cauda orgânica)
+          {formatInt(organicTail.comentarios)} comentários de {formatInt(organicTail.perfis)} perfis sem match com{' '}
+          {audience === 'mandatos' ? 'mandatários da planilha' : 'líderes cadastrados'} (cauda orgânica)
         </p>
       </div>
     </div>

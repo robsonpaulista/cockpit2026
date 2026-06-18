@@ -120,6 +120,7 @@ export const SIDEBAR_MENU_ITEMS: SidebarMenuItemConfig[] = [
     ],
   },
   { id: 'usuarios', label: 'Gestão de Usuários', icon: 'Shield', href: '/dashboard/usuarios' },
+  { id: 'log-system', label: 'Log System', icon: 'ScrollText', href: '/dashboard/log-system' },
 ]
 
 export interface SidebarNavTarget {
@@ -192,6 +193,7 @@ const EXTRA_ALIASES: Record<string, string[]> = {
   'gestao-pesquisas-config': ['config gestao pesquisas', 'configuracoes pesquisas'],
   'gestao-pesquisas-menu': ['gestao pesquisas'],
   usuarios: ['usuarios', 'gestao usuarios', 'gestao de usuarios', 'permissoes'],
+  'log-system': ['log system', 'log jarvis', 'logs agente', 'historico jarvis'],
 }
 
 function buildTarget(item: MenuItem): SidebarNavTarget {

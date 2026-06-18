@@ -9,6 +9,7 @@ import {
 } from '@tabler/icons-react'
 import { formatInt, formatPct } from '@/lib/mapa-exercito-digital-aggregator'
 import type { ExercitoDigitalKpis } from '@/lib/mapa-exercito-digital-types'
+import type { ExercitoDigitalAudience } from '@/lib/mandatos-instagram-piaui'
 import {
   exercitoKpiCardClass,
   exercitoKpiHeroValueClass,
@@ -19,6 +20,7 @@ import { cn } from '@/lib/utils'
 interface ExercitoDigitalKpiStripProps {
   kpis: ExercitoDigitalKpis
   lookbackDays: number
+  audience: ExercitoDigitalAudience
 }
 
 function KpiLabel({ icon: Icon, text }: { icon: typeof IconChartPie; text: string }) {
@@ -36,7 +38,10 @@ function KpiFooter({ children }: { children: ReactNode }) {
   )
 }
 
-export function ExercitoDigitalKpiStrip({ kpis, lookbackDays }: ExercitoDigitalKpiStripProps) {
+export function ExercitoDigitalKpiStrip({ kpis, lookbackDays, audience }: ExercitoDigitalKpiStripProps) {
+  const redeLabel = audience === 'mandatos' ? 'mandatários' : 'líderes'
+  const comentariosRedeLabel = audience === 'mandatos' ? 'mandatários' : 'liderados'
+
   return (
     <div className="flex w-full min-w-0 flex-row flex-nowrap items-stretch gap-2">
       <div className={cn(exercitoKpiCardClass('min-w-0 flex-1 border-[#B5D4F4]'))}>
@@ -49,7 +54,7 @@ export function ExercitoDigitalKpiStrip({ kpis, lookbackDays }: ExercitoDigitalK
           />
         </div>
         <KpiFooter>
-          {formatInt(kpis.lideresAtivados)}/{formatInt(kpis.lideresMedidos)} líderes
+          {formatInt(kpis.lideresAtivados)}/{formatInt(kpis.lideresMedidos)} {redeLabel}
           {kpis.abaixoMeta ? (
             <>
               {' · '}
@@ -65,7 +70,7 @@ export function ExercitoDigitalKpiStrip({ kpis, lookbackDays }: ExercitoDigitalK
         <KpiLabel icon={IconMessageCircle} text="Comentários gerados" />
         <p className={exercitoKpiValueClass}>{formatInt(kpis.comentariosTotal)}</p>
         <KpiFooter>
-          <span className="font-medium text-[#3B6D11]">{formatInt(kpis.comentariosLiderados)} liderados</span>
+          <span className="font-medium text-[#3B6D11]">{formatInt(kpis.comentariosLiderados)} {comentariosRedeLabel}</span>
           {' · '}
           {formatInt(kpis.comentariosOrganicos)} org.
         </KpiFooter>

@@ -1,5 +1,6 @@
 import type { AgentClassifiedIntent } from '@/lib/agent/types'
 import { extractCityNameFromQuery, isInvalidCityCandidate } from '@/lib/agent/city-extract'
+import { isPlanoVisitasCampoQuery } from '@/lib/agent/detect-plano-visitas'
 import { isPrioridadeVisitasCampoQuery } from '@/lib/agent/detect-prioridade-visitas'
 import { isMonthName, parseMesAnoFromText } from '@/lib/agent/parse-visitas-mes'
 import {
@@ -28,6 +29,7 @@ export function isInstagramVisitaQuery(query: string): boolean {
 
 /** Consulta sobre visitas/viagens de campo (Campo & Agenda). */
 export function isCampoVisitasQuery(query: string): boolean {
+  if (isPlanoVisitasCampoQuery(query)) return false
   if (isPrioridadeVisitasCampoQuery(query)) return true
   if (isInstagramVisitaQuery(query)) return false
   const q = norm(query)
@@ -68,6 +70,7 @@ function detectModo(
 
 /** Detecta pedidos sobre visitas de campo sem depender só do Groq. */
 export function detectVisitasCampoIntent(message: string): AgentClassifiedIntent | null {
+  if (isPlanoVisitasCampoQuery(message)) return null
   if (!isCampoVisitasQuery(message)) return null
 
   const q = norm(message)

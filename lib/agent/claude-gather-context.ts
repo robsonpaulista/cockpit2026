@@ -1,4 +1,5 @@
 import { extractCityNameFromQuery } from '@/lib/agent/city-extract'
+import { isPlanoVisitasCampoQuery, parsePlanoVisitasDias } from '@/lib/agent/detect-plano-visitas'
 import { pickPrioridadeVisitasRows, type PrioridadeCampoApiRow } from '@/lib/agent/format-prioridade-visitas'
 import { mapNoticiasApiRows } from '@/lib/agent/format-noticias'
 import { resolveCandidatoParaPesquisa } from '@/lib/agent/resolve-candidato-pesquisa'
@@ -202,6 +203,9 @@ export async function gatherClaudeAnalysisContext(
   const candidato = candidatoResolved.candidato ?? 'Jadyel Alencar'
   const blocks: string[] = []
 
+  const wantsPlanoVisitas = isPlanoVisitasCampoQuery(message)
+  const planoDias = wantsPlanoVisitas ? parsePlanoVisitasDias(message) : 30
+
   const wantsPesquisa =
     /\b(pesquisa|intencao|voto|tendencia|ranking|estimulada|espontanea)\b/.test(q)
   const wantsChapa =
@@ -211,12 +215,14 @@ export async function gatherClaudeAnalysisContext(
   const wantsTerritorioDiagnostico =
     /\b(diagnostico|territorial|territorio|lideranc|expectativa|panorama|situac|base|capilar)\b/.test(q)
   const wantsCampo =
+    wantsPlanoVisitas ||
     /\b(visita|viagens?|campo|presenca|check-?in|prioridade)\b/.test(q) ||
     wantsTerritorioDiagnostico
   const wantsNoticias =
     /\b(noticia|noticias|crise|imprensa|midia|manchete|repercussao|alerta)\b/.test(q) ||
     (wantsTerritorioDiagnostico && /\b(crise|repercussao|imprensa)\b/.test(q))
   const wantsResumoOps =
+    wantsPlanoVisitas ||
     /\b(resumo operacional|briefing operacional|briefing|operacional)\b/.test(q) ||
     (wantsCampo && /\b(prioridade|frio)\b/.test(q))
   const wantsInstagram =
@@ -259,8 +265,9 @@ export async function gatherClaudeAnalysisContext(
           if (res.ok) {
             const data = (await res.json()) as { prioridadeCampoLista?: PrioridadeCampoApiRow[] }
             const lista = data.prioridadeCampoLista ?? []
+            const prioridadeLimit = wantsPlanoVisitas ? 28 : 12
             blocks.push(
-              `### Prioridade visitas × expectativa${cidade ? ` (${cidade})` : ''}\n${compactPrioridadeVisitas(lista, cidade)}`
+              `### Prioridade visitas × expectativa${cidade ? ` (${cidade})` : ''}\n${compactPrioridadeVisitas(lista, cidade, prioridadeLimit)}`
             )
           }
         } catch {
@@ -274,16 +281,27 @@ export async function gatherClaudeAnalysisContext(
     fetches.push(
       (async () => {
         try {
-          const res = await fetchWithCookies(origin, '/api/resumo-operacional?days=14', cookie)
+          const days = wantsPlanoVisitas ? planoDias : 14
+          const res = await fetchWithCookies(
+            origin,
+            `/api/resumo-operacional?days=${days}`,
+            cookie
+          )
           if (res.ok) {
             blocks.push(
-              `### Resumo operacional (14 dias)\n${compactResumoOperacional((await res.json()) as ResumoOperacionalJson)}`
+              `### Resumo operacional (${days} dias)\n${compactResumoOperacional((await res.json()) as ResumoOperacionalJson)}`
             )
           }
         } catch {
           blocks.push('### Resumo operacional\nErro ao carregar.')
         }
       })()
+    )
+  }
+
+  if (wantsPlanoVisitas) {
+    blocks.push(
+      `### Instrução de planejamento\nHorizonte pedido: **${planoDias} dias**. Entregue **cronograma completo** (${Math.ceil(planoDias / 7)} semanas ou dias úteis equivalentes) em tabelas markdown — não pare na primeira semana. Priorize municípios com alta expectativa 2026 e pouca/nenhuma visita. Agrupe cidades próximas. Ritmo: 1–3 visitas por dia de campo. Cada linha: dia, cidades, expectativa resumida, motivo.`
     )
   }
 

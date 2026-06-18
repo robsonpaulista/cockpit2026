@@ -7,6 +7,7 @@ import { cn } from '@/lib/utils'
 import { JarvisHudShell } from '@/components/jarvis/jarvis-hud-shell'
 import { jarvisHudStyle } from '@/lib/jarvis-hud-tokens'
 import { getAgentSessionId } from '@/lib/agent/client-session'
+import { logAgentExchangeClient } from '@/lib/agent/client-chat-log'
 import type { CalendarEventRow } from '@/lib/agenda/calendar-event-utils'
 import { parseAgendaDayScopeFromAnswer } from '@/lib/agent/agenda-query'
 import {
@@ -73,6 +74,7 @@ import {
 } from '@/lib/agent/jarvis-wake-word'
 import { extractCityNameFromQuery, isInvalidCityCandidate } from '@/lib/agent/city-extract'
 import { isCampoVisitasQuery } from '@/lib/agent/detect-visitas-campo'
+import { isPlanoVisitasCampoQuery } from '@/lib/agent/detect-plano-visitas'
 import { isPrioridadeVisitasCampoQuery } from '@/lib/agent/detect-prioridade-visitas'
 import { resolveVisitasCampoReply, type CampoAgendaRow } from '@/lib/agent/format-visitas-campo'
 import {
@@ -651,6 +653,8 @@ export function AIAgent({
   const jarvisBootListenSpokenRef = useRef(false)
   const jarvisCommandArmedRef = useRef(false)
   const jarvisCommandArmedAtRef = useRef(0)
+  /** Enquanto o usuário digita no campo de texto, a escuta não pode sobrescrever o input. */
+  const jarvisTextInputActiveRef = useRef(false)
   const jarvisResultPopupRef = useRef(jarvisResultPopup)
   jarvisResultPopupRef.current = jarvisResultPopup
 
@@ -1286,6 +1290,13 @@ export function AIAgent({
     options?: { cidade?: string }
   ): Promise<{ content: string; speechSegments?: string[] }> => {
     try {
+      if (isPlanoVisitasCampoQuery(query)) {
+        return {
+          content:
+            'Para um **plano de visitas** no tempo (ex.: 30 dias), o Jarvis usa análise com Claude. Configure `ANTHROPIC_API_KEY` no servidor ou reformule: **quais cidades preciso visitar**.',
+        }
+      }
+
       if (isPrioridadeVisitasCampoQuery(query)) {
         const { fetchPrioridadeVisitasCampoReply } = await import(
           '@/lib/services/prioridade-visitas-campo'
@@ -3850,6 +3861,15 @@ export function AIAgent({
       setChatMessages((prev) => [...prev, response])
       if (response.role !== 'assistant') return
 
+      if (response.content.trim()) {
+        logAgentExchangeClient({
+          userMessage: userQuery,
+          assistantMessage: response.content,
+          source: response.viaAi ? 'groq' : 'client',
+          pagePath: pathnameRef.current ?? undefined,
+        })
+      }
+
       if (looksLikeExpectativaCidadeReply(response.content)) {
         if (isExpectativaComDetalheLiderancaReply(response.content)) {
           syncExpectativaDetalhePending(null)
@@ -4359,6 +4379,10 @@ export function AIAgent({
         }
       }
 
+      if (!response && isPlanoVisitasCampoQuery(cleanedContent)) {
+        response = await tryAgentChat(cleanedContent, chatMessages)
+      }
+
       if (!response && isPrioridadeVisitasCampoQuery(cleanedContent)) {
         const { fetchPrioridadeVisitasCampoReply } = await import(
           '@/lib/services/prioridade-visitas-campo'
@@ -4458,9 +4482,25 @@ export function AIAgent({
   const handleSendMessage = useCallback(async () => {
     const currentInput = userInput.trim()
     if (!currentInput) return
+    jarvisTextInputActiveRef.current = false
     setUserInput('')
     await submitMessage(currentInput)
   }, [userInput, submitMessage])
+
+  const handleJarvisTextInputChange = useCallback((value: string) => {
+    jarvisTextInputActiveRef.current = true
+    setUserInput(value)
+  }, [])
+
+  const handleJarvisTextInputFocus = useCallback(() => {
+    jarvisTextInputActiveRef.current = true
+  }, [])
+
+  const handleJarvisTextInputBlur = useCallback(() => {
+    window.setTimeout(() => {
+      jarvisTextInputActiveRef.current = false
+    }, 200)
+  }, [])
 
   // Executar ação
   const handleAction = useCallback((action: ChatMessage['action']) => {
@@ -4726,9 +4766,13 @@ export function AIAgent({
       if (!isJarvisHudRef.current) {
         const cleaned = transcript.trim()
         pendingSpeechRef.current = cleaned
-        setUserInput(cleaned)
+        if (!jarvisTextInputActiveRef.current) {
+          setUserInput(cleaned)
+        }
         return
       }
+
+      if (jarvisTextInputActiveRef.current) return
 
       const armed = jarvisCommandArmedRef.current
       const armedExpired =
@@ -4741,7 +4785,9 @@ export function AIAgent({
       if (!active) {
         jarvisCommandArmedRef.current = false
         setWakeStandby(true)
-        setUserInput('')
+        if (!jarvisTextInputActiveRef.current) {
+          setUserInput('')
+        }
         return
       }
 
@@ -4804,12 +4850,16 @@ export function AIAgent({
       if (!isJarvisHudRef.current) {
         const text = pendingSpeechRef.current.trim()
         pendingSpeechRef.current = ''
-        setUserInput('')
+        if (!jarvisTextInputActiveRef.current) {
+          setUserInput('')
+        }
         if (text) void submitMessageRef.current(text)
         return
       }
 
-      setUserInput('')
+      if (!jarvisTextInputActiveRef.current) {
+        setUserInput('')
+      }
       scheduleListenRestart()
     }
 
@@ -5019,6 +5069,19 @@ export function AIAgent({
           }
           onResultPanelClose={handleJarvisResultClose}
           onResultPanelAction={(action) => handleAction(action)}
+          textInputValue={userInput}
+          onTextInputChange={handleJarvisTextInputChange}
+          onTextInputFocus={handleJarvisTextInputFocus}
+          onTextInputBlur={handleJarvisTextInputBlur}
+          onTextInputSubmit={() => void handleSendMessage()}
+          textInputDisabled={isProcessing}
+          textInputPlaceholder={
+            isListening && !wakeStandby
+              ? 'Ouvindo… fale ou digite seu comando'
+              : pageContext?.kind === 'resumo-eleicoes'
+                ? 'Ex.: Buscar Teresina · listar cidades · ajuda'
+                : 'Pergunte em linguagem natural…'
+          }
           className={cn(
             fullPageHud
               ? 'h-full min-h-0 flex-1'

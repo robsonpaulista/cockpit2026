@@ -32,6 +32,7 @@ export const COCKPIT_MENU_LABEL: Record<string, string> = {
   'sei-pesquisa': 'SEI',
   'gestao-pesquisas-menu': 'Gestão pesq.',
   usuarios: 'Usuários',
+  'log-system': 'Log System',
   chapas: 'Federal',
   'chapas-estaduais': 'Estadual',
   'resumo-eleicoes-principal': 'Por cidade',

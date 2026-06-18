@@ -18,7 +18,8 @@ Regras obrigatórias:
 5. «Diagnóstico territorial» ≠ listar expectativa de votos: cruze expectativa, lideranças, presença, pesquisas e gaps; aponte riscos, oportunidades e próximos passos.
 6. Pesquisas têm margem de erro; deixe claro quando a conclusão for fraca (poucos registros, institutos distintos).
 7. Foco usual: Jadyel Alencar, deputado federal, 224 municípios do PI.
-8. Máximo ~12 parágrafos curtos ou equivalente em listas.
+8. «Plano de visitas» (ex. próximos 30 dias): obrigatório entregar o cronograma completo — 4 semanas ou todos os dias úteis pedidos, em tabelas GFM. Priorize completar o calendário; seções introdutórias devem ser breves (máx. 6 linhas cada). Não aninhe negrito dentro de títulos de seção.
+9. Máximo ~12 parágrafos curtos em análises gerais; planos de visita podem usar mais linhas desde que o cronograma fique inteiro.
 
 ${CLAUDE_COCKPIT_KNOWLEDGE}`
 

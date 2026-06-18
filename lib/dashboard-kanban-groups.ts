@@ -25,7 +25,7 @@ export const DASHBOARD_KANBAN_SECTIONS: ReadonlyArray<{
   {
     id: 'administracao',
     label: 'Administração',
-    itemIds: ['usuarios'],
+    itemIds: ['log-system', 'usuarios'],
   },
 ]
 

@@ -14,6 +14,7 @@ import {
   pctMidiasComComentarioPorPostagensProcessadas,
   rotuloEngajamentoIgPorTipo,
 } from '@/lib/instagram-engajamento-ig-classificacao'
+import { buildRelatorioPiMandatos } from '@/lib/mandatos-instagram-relatorio-pi'
 import type {
   RelatorioMapaDigitalIgDetalheLinha,
   RelatorioMapaDigitalIgTdPayload,
@@ -843,12 +844,15 @@ export async function GET(request: Request) {
 
   const { searchParams } = new URL(request.url)
   const escopoPi = searchParams.get('escopo')?.trim().toLowerCase() === 'pi'
+  const baseMandatos = searchParams.get('base')?.trim().toLowerCase() === 'mandatos'
 
   const admin = createAdminClient()
 
   try {
     if (escopoPi) {
-      const body = await buildRelatorioPi(admin, userId)
+      const body = baseMandatos
+        ? await buildRelatorioPiMandatos(admin, userId, passarComentariosIg)
+        : await buildRelatorioPi(admin, userId)
       return NextResponse.json(body)
     }
 

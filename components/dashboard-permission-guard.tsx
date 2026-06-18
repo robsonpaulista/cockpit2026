@@ -7,7 +7,7 @@ import { usePermissions } from '@/hooks/use-permissions'
 const PAGE_KEYS = new Set([
   'dashboard', 'fases', 'narrativas', 'campo', 'agenda', 'territorio',
   'ficha-atendimento', 'chapas', 'conteudo', 'noticias', 'mobilizacao', 'whatsapp',
-  'pesquisa', 'operacao', 'juridico', 'obras', 'usuarios', 'gestao_pesquisas',
+  'pesquisa', 'operacao', 'juridico', 'obras', 'usuarios', 'log_system', 'gestao_pesquisas',
   'emendas', 'proposicoes', 'sei-pesquisa', 'resumo-operacional',
 ])
 
@@ -34,6 +34,7 @@ function getPageKey(pathname: string): string | null {
   if (!pathname?.startsWith('/dashboard')) return null
   if (pathname === '/dashboard' || pathname === '/dashboard/') return 'dashboard'
   if (pathname.startsWith('/dashboard/gestao-pesquisas')) return 'gestao_pesquisas'
+  if (pathname.startsWith('/dashboard/log-system')) return 'log_system'
   // A página de Emendas usa a chave própria 'emendas' (mesma que a sidebar usa
   // em `pageKeyForItem`). Anteriormente esta rota era tratada como 'juridico',
   // o que fazia o guard redirecionar para /dashboard quando o usuário tinha
@@ -56,6 +57,10 @@ export function DashboardPermissionGuard({ children }: { children: React.ReactNo
     if (!key || key === 'dashboard') return
 
     if (key === 'usuarios') {
+      if (!isAdmin) router.replace('/dashboard')
+      return
+    }
+    if (key === 'log_system') {
       if (!isAdmin) router.replace('/dashboard')
       return
     }

@@ -17,6 +17,7 @@ import {
   leaderTabCounts,
 } from '@/lib/mapa-exercito-digital-aggregator'
 import type { ExercitoDigitalLeaderRow, LeaderFilterTab, LeaderStatusDot } from '@/lib/mapa-exercito-digital-types'
+import type { ExercitoDigitalAudience } from '@/lib/mandatos-instagram-piaui'
 import {
   exercitoDualPanelItemClass,
   exercitoSectionCardClass,
@@ -70,6 +71,8 @@ function barRamp(status: LeaderStatusDot, trend: ExercitoDigitalLeaderRow['trend
 
 interface ExercitoDigitalLeaderRankingProps {
   leaders: ExercitoDigitalLeaderRow[]
+  audience: ExercitoDigitalAudience
+  lookbackDays: number
 }
 
 function Sparkline({ id, data, color }: { id: string; data: number[]; color: string }) {
@@ -177,7 +180,7 @@ function WeekBars({
   )
 }
 
-export function ExercitoDigitalLeaderRanking({ leaders }: ExercitoDigitalLeaderRankingProps) {
+export function ExercitoDigitalLeaderRanking({ leaders, audience, lookbackDays }: ExercitoDigitalLeaderRankingProps) {
   const [tab, setTab] = useState<LeaderFilterTab>('todos')
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const counts = useMemo(() => leaderTabCounts(leaders), [leaders])
@@ -194,11 +197,15 @@ export function ExercitoDigitalLeaderRanking({ leaders }: ExercitoDigitalLeaderR
     { id: 'inativos', label: `Inativos (${counts.inativos})` },
   ]
 
+  const entityLabel = audience === 'mandatos' ? 'mandatário' : 'líder'
+
   return (
     <div className={cn(exercitoSectionCardClass, exercitoDualPanelItemClass)}>
-      <h2 className={exercitoSectionTitleClass}>Ranking de líderes · ativação</h2>
+      <h2 className={exercitoSectionTitleClass}>
+        {audience === 'mandatos' ? 'Ranking de mandatários · engajamento' : 'Ranking de líderes · ativação'}
+      </h2>
       <p className={cn(exercitoSectionSubtitleClass, 'mb-3')}>
-        Clique para ver série semanal. Tendência = variação vs semana anterior.
+        Clique para ver série semanal. Tendência = variação vs semana anterior · últimos {lookbackDays} dias.
       </p>
       <div className="mb-3 flex flex-wrap gap-1.5">
         {tabs.map((t) => (
@@ -221,7 +228,7 @@ export function ExercitoDigitalLeaderRanking({ leaders }: ExercitoDigitalLeaderR
       <div className={cn(GRID, 'border-b border-[rgb(var(--color-border-tertiary)/0.85)] pb-1.5 text-[10px] font-medium uppercase tracking-[0.04em] text-text-muted')}>
         <span className="text-right">#</span>
         <span aria-hidden>•</span>
-        <span>Líder</span>
+        <span>{audience === 'mandatos' ? 'Mandatário' : 'Líder'}</span>
         <span className="text-right">Total %</span>
         <span>Semanas</span>
         <span className="text-center">Tendência</span>
@@ -230,7 +237,7 @@ export function ExercitoDigitalLeaderRanking({ leaders }: ExercitoDigitalLeaderR
 
       <div className="min-h-0 flex-1 overflow-y-auto">
         {filtered.length === 0 ? (
-          <p className="py-6 text-center text-[11px] text-text-muted">Nenhum líder neste filtro.</p>
+          <p className="py-6 text-center text-[11px] text-text-muted">Nenhum {entityLabel} neste filtro.</p>
         ) : (
           filtered.slice(0, 40).map((leader, idx) => {
             const expanded = expandedId === leader.id

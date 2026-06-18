@@ -17,6 +17,7 @@ import {
   EXPECTATIVA_DETALHE_DISMISS_REPLY,
 } from '@/lib/agent/expectativa-detalhe-followup'
 import { isLiderancasResumoPorCargoQuery } from '@/lib/agent/detect-liderancas-resumo'
+import { isPlanoVisitasCampoQuery } from '@/lib/agent/detect-plano-visitas'
 import { isPrioridadeVisitasCampoQuery } from '@/lib/agent/detect-prioridade-visitas'
 import { detectVisitasCampoIntent } from '@/lib/agent/detect-visitas-campo'
 import { isInvalidCityCandidate } from '@/lib/agent/city-extract'
@@ -247,6 +248,17 @@ export async function POST(request: Request) {
         clientQuery: 'resumo lideranças por cargo',
         meta: { intent: 'consultar_liderancas' },
       } satisfies AgentChatResponse)
+    }
+
+    if (isPlanoVisitasCampoQuery(message)) {
+      if (!isAnthropicAgentEnabled()) {
+        return NextResponse.json({
+          source: 'groq',
+          content:
+            'Para montar um **plano de visitas** distribuído no tempo (ex.: 30 dias), configure `ANTHROPIC_API_KEY` no servidor.\n\nEnquanto isso, pergunte: **quais cidades preciso visitar** — retorno a lista de prioridade por expectativa e visitas já feitas.',
+          meta: { intent: 'consultar_analise_claude' },
+        } satisfies AgentChatResponse)
+      }
     }
 
     if (isPrioridadeVisitasCampoQuery(message)) {
