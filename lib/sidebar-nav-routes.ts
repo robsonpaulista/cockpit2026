@@ -82,7 +82,12 @@ export const SIDEBAR_MENU_ITEMS: SidebarMenuItemConfig[] = [
     href: '/dashboard/noticias',
     children: [
       { id: 'noticias', label: 'Inbox & Radar', icon: 'Newspaper', href: '/dashboard/noticias' },
-      { id: 'noticias-youtube', label: 'Radar YouTube', icon: 'Youtube', href: '/dashboard/noticias/youtube' },
+      {
+        id: 'noticias-monitoramento',
+        label: 'Central de monitoramento',
+        icon: 'Radar',
+        href: '/dashboard/noticias/monitoramento',
+      },
     ],
   },
   {

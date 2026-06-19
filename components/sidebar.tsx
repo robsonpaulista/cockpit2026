@@ -198,7 +198,7 @@ function pageKeyForItem(id: string): string {
   ) {
     return 'conteudo'
   }
-  if (id === 'noticias-menu' || id === 'noticias-youtube') {
+  if (id === 'noticias-menu' || id === 'noticias-monitoramento') {
     return 'noticias'
   }
   return id === 'home' ? 'dashboard' : id
