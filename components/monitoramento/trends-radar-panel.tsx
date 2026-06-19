@@ -78,15 +78,20 @@ export function TrendsRadarPanel() {
       const j = (await res.json()) as {
         error?: string
         terms?: number
+        termsSucceeded?: number
         rowsUpserted?: number
         errors?: string[]
       }
       if (!res.ok) throw new Error(j.error ?? 'Falha na coleta.')
 
+      const ok = j.termsSucceeded ?? 0
+      const total = j.terms ?? 0
       setCollectMessage(
-        `Coleta concluída: ${j.terms ?? 0} nomes · ${j.rowsUpserted ?? 0} pontos salvos${
-          j.errors?.length ? ` · ${j.errors.length} aviso(s)` : ''
-        }`
+        ok === total
+          ? `Coleta concluída: ${ok} nomes · ${j.rowsUpserted ?? 0} pontos salvos`
+          : `Coleta parcial: ${ok}/${total} nomes · ${j.rowsUpserted ?? 0} pontos salvos${
+              j.errors?.length ? `. Falhas: ${j.errors.join('; ')}` : ''
+            }`
       )
       await carregar()
     } catch (e) {
@@ -138,6 +143,13 @@ export function TrendsRadarPanel() {
           Atualizar Trends
         </button>
       </div>
+
+      {collecting ? (
+        <p className="text-xs text-text-muted">
+          Comparando todos os candidatos em uma requisição (escala relativa do Google). Se houver rate
+          limit, o servidor aguarda e tenta de novo — pode levar até 2 minutos.
+        </p>
+      ) : null}
 
       {collectedAt ? (
         <p className="text-xs text-text-muted">
