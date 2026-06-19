@@ -18,6 +18,7 @@ const nextConfig = {
       'sharp',
       'trendsearch',
       'effect',
+      '@effect/platform-node',
     ],
   },
   webpack: (config, { isServer }) => {

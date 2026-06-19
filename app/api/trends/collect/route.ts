@@ -63,5 +63,6 @@ export async function GET() {
     geo: 'BR-PI',
     defaultTimeframe: 'today 3-m' satisfies GoogleTrendsTimeframe,
     provider: 'trendsearch',
+    runner: 'scripts/collect-google-trends.mjs',
   })
 }
