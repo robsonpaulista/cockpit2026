@@ -1,13 +1,14 @@
 'use client'
 
 import Link from 'next/link'
-import { LineChart, Radar, Youtube } from 'lucide-react'
+import { LineChart, Newspaper, Radar, Youtube } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
-export type MonitoramentoTab = 'youtube' | 'trends'
+export type MonitoramentoTab = 'youtube' | 'trends' | 'google-news'
 
 const TABS: { id: MonitoramentoTab; label: string; icon: typeof Youtube }[] = [
   { id: 'youtube', label: 'YouTube', icon: Youtube },
+  { id: 'google-news', label: 'Google News', icon: Newspaper },
   { id: 'trends', label: 'Google Trends', icon: LineChart },
 ]
 
@@ -28,8 +29,8 @@ export function MonitoramentoShell({ activeTab, onTabChange, children }: Monitor
           </div>
           <h1 className="text-lg font-semibold text-text-primary">Central de monitoramento</h1>
           <p className="mt-1 max-w-2xl text-sm text-text-muted">
-            Compare menções no YouTube, interesse de busca no Google Trends e, em breve, outras fontes
-            públicas — tudo a partir dos mesmos candidatos monitorados.
+            Compare menções no YouTube, notícias no Google News, interesse no Google Trends — tudo a
+            partir dos mesmos candidatos monitorados.
           </p>
         </div>
         <Link

@@ -2,12 +2,14 @@
 
 import { useCallback, useMemo } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
+import { GoogleNewsRadarPanel } from '@/components/monitoramento/google-news-radar-panel'
 import { MonitoramentoShell, type MonitoramentoTab } from '@/components/monitoramento/monitoramento-shell'
 import { TrendsRadarPanel } from '@/components/monitoramento/trends-radar-panel'
 import { YoutubeRadarPanel } from '@/components/monitoramento/youtube-radar-panel'
 
 function parseTab(value: string | null): MonitoramentoTab {
   if (value === 'trends') return 'trends'
+  if (value === 'google-news') return 'google-news'
   return 'youtube'
 }
 
@@ -32,7 +34,13 @@ export default function MonitoramentoPage() {
 
   return (
     <MonitoramentoShell activeTab={activeTab} onTabChange={onTabChange}>
-      {activeTab === 'trends' ? <TrendsRadarPanel /> : <YoutubeRadarPanel />}
+      {activeTab === 'trends' ? (
+        <TrendsRadarPanel />
+      ) : activeTab === 'google-news' ? (
+        <GoogleNewsRadarPanel />
+      ) : (
+        <YoutubeRadarPanel />
+      )}
     </MonitoramentoShell>
   )
 }
