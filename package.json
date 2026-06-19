@@ -57,6 +57,7 @@
     "satori": "^0.10.14",
     "tailwind-merge": "^3.4.0",
     "three": "^0.169.0",
+    "trendsearch": "^0.2.1",
     "xlsx": "^0.18.5",
     "zod": "^3.22.4"
   },

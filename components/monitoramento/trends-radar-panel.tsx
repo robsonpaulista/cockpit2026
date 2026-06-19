@@ -102,8 +102,7 @@ export function TrendsRadarPanel() {
         <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
           Execute{' '}
           <code className="rounded bg-white/80 px-1">database/create-google-trends-tables.sql</code> no
-          Supabase. Instale também{' '}
-          <code className="rounded bg-white/80 px-1">pip install -r scripts/requirements-trends.txt</code>.
+          Supabase antes da primeira coleta.
         </div>
       ) : null}
 

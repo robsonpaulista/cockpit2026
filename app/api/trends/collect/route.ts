@@ -51,7 +51,6 @@ export async function GET() {
   return NextResponse.json({
     geo: 'BR-PI',
     defaultTimeframe: 'today 3-m' satisfies GoogleTrendsTimeframe,
-    python: 'scripts/collect-google-trends.py',
-    requirements: 'scripts/requirements-trends.txt',
+    provider: 'trendsearch',
   })
 }

@@ -16,6 +16,8 @@ const nextConfig = {
       '@huggingface/transformers',
       'onnxruntime-node',
       'sharp',
+      'trendsearch',
+      'effect',
     ],
   },
   webpack: (config, { isServer }) => {

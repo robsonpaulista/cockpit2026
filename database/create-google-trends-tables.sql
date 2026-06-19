@@ -27,4 +27,4 @@ CREATE POLICY "Authenticated read google_trends_interest" ON google_trends_inter
 CREATE POLICY "Authenticated write google_trends_interest" ON google_trends_interest
   FOR ALL USING (auth.role() = 'authenticated') WITH CHECK (auth.role() = 'authenticated');
 
-COMMENT ON TABLE google_trends_interest IS 'Série temporal de interesse no Google Trends por termo (pytrends)';
+COMMENT ON TABLE google_trends_interest IS 'Série temporal de interesse no Google Trends por termo (trendsearch / Node)';
