@@ -7,10 +7,12 @@ import {
 } from '@/lib/google-trends-aggregate'
 import type { GoogleTrendsInterestRow } from '@/lib/google-trends-types'
 import type { PoliticalActorWithTerms } from '@/lib/youtube-radar-types'
+import {
+  googleTrendsTimeframeQueryKeys,
+  normalizeGoogleTrendsTimeframe,
+} from '@/lib/google-trends-timeframe'
 
 export const dynamic = 'force-dynamic'
-
-const ALLOWED_TIMEFRAMES = new Set(['today 3-m', 'today 1-m', 'today 7-d'])
 
 export async function GET(request: Request) {
   try {
@@ -25,8 +27,10 @@ export async function GET(request: Request) {
 
     const { searchParams } = new URL(request.url)
     const geo = searchParams.get('geo')?.trim() || 'BR-PI'
-    const timeframe = searchParams.get('timeframe')?.trim() || 'today 3-m'
-    if (!ALLOWED_TIMEFRAMES.has(timeframe)) {
+    const timeframe =
+      normalizeGoogleTrendsTimeframe(searchParams.get('timeframe')) ??
+      normalizeGoogleTrendsTimeframe('today 3-m')
+    if (!timeframe) {
       return NextResponse.json({ error: 'timeframe inválido.' }, { status: 400 })
     }
 
@@ -69,11 +73,13 @@ export async function GET(request: Request) {
       throw new Error(actorsError.message)
     }
 
+    const timeframeKeys = googleTrendsTimeframeQueryKeys(timeframe)
+
     const { data: interestRows, error: interestError } = await supabase
       .from('google_trends_interest')
       .select('*')
       .eq('geo', geo)
-      .eq('timeframe', timeframe)
+      .in('timeframe', timeframeKeys)
       .order('interest_date', { ascending: true })
 
     if (interestError) {

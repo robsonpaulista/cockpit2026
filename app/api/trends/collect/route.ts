@@ -3,16 +3,26 @@ import { z } from 'zod'
 import { createClient } from '@/lib/supabase/server'
 import { collectGoogleTrends } from '@/lib/google-trends-collect'
 import type { GoogleTrendsTimeframe } from '@/lib/google-trends-types'
+import { normalizeGoogleTrendsTimeframe } from '@/lib/google-trends-timeframe'
 
 export const dynamic = 'force-dynamic'
-export const maxDuration = 120
+export const maxDuration = 300
+
+const timeframeSchema = z
+  .string()
+  .trim()
+  .transform((v, ctx) => {
+    const normalized = normalizeGoogleTrendsTimeframe(v)
+    if (!normalized) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'timeframe inválido.' })
+      return z.NEVER
+    }
+    return normalized
+  })
 
 const bodySchema = z.object({
   geo: z.string().trim().min(2).max(12).optional().default('BR-PI'),
-  timeframe: z
-    .enum(['today 3-m', 'today 1-m', 'today 7-d'])
-    .optional()
-    .default('today 3-m'),
+  timeframe: timeframeSchema.optional().default('today 3-m' satisfies GoogleTrendsTimeframe),
 })
 
 export async function POST(request: Request) {
@@ -37,6 +47,7 @@ export async function POST(request: Request) {
       geo: result.geo ?? body.geo,
       timeframe: result.timeframe ?? body.timeframe,
       terms: result.terms ?? 0,
+      termsSucceeded: result.termsSucceeded ?? 0,
       rowsUpserted: result.rowsUpserted ?? 0,
       errors: result.errors ?? [],
     })

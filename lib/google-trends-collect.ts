@@ -1,5 +1,6 @@
 import { createAdminClient } from '@/lib/supabase/admin'
 import type { GoogleTrendsCollectResult, GoogleTrendsTimeframe } from '@/lib/google-trends-types'
+import { normalizeGoogleTrendsTimeframe, toGoogleTrendsApiTime } from '@/lib/google-trends-timeframe'
 
 /** Google Trends permite até 5 termos por comparação (escala relativa comum). */
 const KEYWORDS_PER_BATCH = 5
@@ -179,7 +180,7 @@ async function fetchBatchInterest(
       const result = await trends.interestOverTime({
         keywords,
         geo,
-        time: timeframe,
+        time: toGoogleTrendsApiTime(timeframe),
         hl: 'pt-BR',
         tz: 180,
       })
@@ -224,7 +225,9 @@ export async function collectGoogleTrends(options: {
   collectInProgress = true
 
   const geo = options.geo ?? 'BR-PI'
-  const timeframe = options.timeframe ?? 'today 3-m'
+  const timeframe =
+    normalizeGoogleTrendsTimeframe(options.timeframe) ??
+    normalizeGoogleTrendsTimeframe('today 3-m')!
 
   try {
     const actors = await loadActiveActors()

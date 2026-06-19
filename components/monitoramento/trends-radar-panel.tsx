@@ -12,7 +12,7 @@ import type {
 import { cn } from '@/lib/utils'
 
 const TIMEFRAME_OPTIONS: { value: GoogleTrendsTimeframe; label: string }[] = [
-  { value: 'today 7-d', label: '7 dias' },
+  { value: 'now 7-d', label: '7 dias' },
   { value: 'today 1-m', label: '1 mês' },
   { value: 'today 3-m', label: '3 meses' },
 ]
