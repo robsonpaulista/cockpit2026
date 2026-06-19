@@ -29,6 +29,7 @@ export function getCockpitPageLabel(pathname: string): string {
     '/dashboard/resumo-eleicoes': 'Eleições',
     '/dashboard/conteudo': 'Redes Sociais',
     '/dashboard/noticias': 'Radar',
+    '/dashboard/noticias/youtube': 'YouTube',
     '/dashboard/mobilizacao': 'Mobilização',
     '/dashboard/mobilizacao/config': 'Mob. config',
     '/dashboard/mobilizacao/mapa-digital-ig': 'Engajamento Líderes',

@@ -75,7 +75,16 @@ export const SIDEBAR_MENU_ITEMS: SidebarMenuItemConfig[] = [
       { id: 'conteudo-redes', label: 'Redes & Instagram', icon: 'MessageSquare', href: '/dashboard/conteudo/redes' },
     ],
   },
-  { id: 'noticias', label: 'Notícias & Crises', icon: 'Newspaper', href: '/dashboard/noticias' },
+  {
+    id: 'noticias-menu',
+    label: 'Notícias & Crises',
+    icon: 'Newspaper',
+    href: '/dashboard/noticias',
+    children: [
+      { id: 'noticias', label: 'Inbox & Radar', icon: 'Newspaper', href: '/dashboard/noticias' },
+      { id: 'noticias-youtube', label: 'Radar YouTube', icon: 'Youtube', href: '/dashboard/noticias/youtube' },
+    ],
+  },
   {
     id: 'mobilizacao-menu',
     label: 'Mobilização',
@@ -178,6 +187,8 @@ const EXTRA_ALIASES: Record<string, string[]> = {
   'conteudo-analise': ['analise conteudo'],
   'conteudo-redes': ['instagram', 'redes sociais', 'redes instagram'],
   noticias: ['noticias', 'crises', 'noticias e crises', 'radar'],
+  'noticias-menu': ['noticias', 'crises', 'radar'],
+  'noticias-youtube': ['youtube', 'radar youtube', 'menções youtube'],
   'mobilizacao-captacao': ['captacao', 'mobilizacao captacao'],
   'mobilizacao-mapa-digital-ig': ['mapa digital', 'exercito digital', 'mapa ig', 'mapa instagram'],
   'mobilizacao-config': ['config mobilizacao', 'mobilizacao config'],

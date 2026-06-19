@@ -1,0 +1,91 @@
+import { NextResponse } from 'next/server'
+import { createClient } from '@/lib/supabase/server'
+import type { YoutubeMentionWithActor, YoutubeRadarSummary } from '@/lib/youtube-radar-types'
+
+export const dynamic = 'force-dynamic'
+
+export async function GET(request: Request) {
+  try {
+    const supabase = createClient()
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+
+    if (!user) {
+      return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
+    }
+
+    const { searchParams } = new URL(request.url)
+    const politicoSlug = searchParams.get('politico')?.trim() ?? 'all'
+    const lookbackDays = Math.min(90, Math.max(1, Number(searchParams.get('days') ?? 7) || 7))
+    const limit = Math.min(500, Math.max(1, Number(searchParams.get('limit') ?? 200) || 200))
+
+    const cutoff = new Date()
+    cutoff.setUTCDate(cutoff.getUTCDate() - lookbackDays)
+
+    let query = supabase
+      .from('youtube_mentions')
+      .select(
+        `
+        *,
+        political_actors!inner ( id, name, slug, actor_type )
+      `
+      )
+      .gte('published_at', cutoff.toISOString())
+      .order('views', { ascending: false })
+      .limit(limit)
+
+    if (politicoSlug && politicoSlug !== 'all') {
+      query = query.eq('political_actors.slug', politicoSlug)
+    }
+
+    const { data, error } = await query
+
+    if (error) {
+      if (error.message.includes('does not exist') || error.code === '42P01') {
+        return NextResponse.json(
+          {
+            error:
+              'Tabelas do Radar YouTube ainda não existem. Execute database/create-youtube-radar-tables.sql no Supabase.',
+          },
+          { status: 503 }
+        )
+      }
+      throw new Error(error.message)
+    }
+
+    const mentions = (data ?? []) as YoutubeMentionWithActor[]
+
+    const channelCounts = new Map<string, number>()
+    let totalViews = 0
+    let latestCollected: string | null = null
+
+    for (const m of mentions) {
+      totalViews += m.views ?? 0
+      const ch = m.channel_title?.trim() || 'Canal desconhecido'
+      channelCounts.set(ch, (channelCounts.get(ch) ?? 0) + 1)
+      if (!latestCollected || m.collected_at > latestCollected) {
+        latestCollected = m.collected_at
+      }
+    }
+
+    const topChannels = [...channelCounts.entries()]
+      .map(([channel_title, count]) => ({ channel_title, count }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 8)
+
+    const summary: YoutubeRadarSummary = {
+      totalVideos: mentions.length,
+      totalViews,
+      topChannels,
+      lookbackDays,
+      collectedAt: latestCollected,
+    }
+
+    return NextResponse.json({ mentions, summary })
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : 'Erro ao listar menções'
+    console.error('[youtube/mentions]', e)
+    return NextResponse.json({ error: msg }, { status: 500 })
+  }
+}

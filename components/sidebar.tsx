@@ -43,6 +43,7 @@ import {
   Image,
   FileSpreadsheet,
   Activity,
+  Youtube,
   type LucideIcon,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -121,6 +122,7 @@ const iconMap: Record<string, LucideIcon> = {
   AtSign,
   FileSpreadsheet,
   Activity,
+  Youtube,
 }
 
 /** Ícones mais leves / mesma linguagem dos KPIs Cockpit (stroke fino + cor accent). */
@@ -195,6 +197,9 @@ function pageKeyForItem(id: string): string {
     id === 'conteudo-redes'
   ) {
     return 'conteudo'
+  }
+  if (id === 'noticias-menu' || id === 'noticias-youtube') {
+    return 'noticias'
   }
   return id === 'home' ? 'dashboard' : id
 }
