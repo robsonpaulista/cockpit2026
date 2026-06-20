@@ -1,10 +1,11 @@
 'use client'
 
+import { useState } from 'react'
 import type { LucideIcon } from 'lucide-react'
-import { Instagram, LineChart as LineChartIcon, Megaphone, Newspaper, Youtube } from 'lucide-react'
+import { Instagram, LineChart as LineChartIcon, Megaphone, Newspaper, X, Youtube } from 'lucide-react'
+import type { DotProps } from 'recharts'
 import {
   CartesianGrid,
-  Legend,
   Line,
   LineChart,
   ResponsiveContainer,
@@ -71,42 +72,64 @@ function formatValue(value: number, metricLabel: string, platformId?: PanoramaPl
   return [new Intl.NumberFormat('pt-BR').format(value), metricLabel]
 }
 
-type MetaAdsTooltipPayload = {
-  name?: string
-  value?: number
-  dataKey?: string | number
-  color?: string
+type MetaAdsPointSelection = {
+  slug: string
+  date: string
+  value: number
 }
 
-function MetaAdsPointTooltip({
-  active,
-  payload,
-  label,
+function MetaAdsPointDetail({
+  selection,
   periodTotals,
+  lines,
+  onClose,
+  className,
 }: {
-  active?: boolean
-  payload?: MetaAdsTooltipPayload[]
-  label?: string | number
+  selection: MetaAdsPointSelection
   periodTotals?: PanoramaMetaAdsPeriodTotal[]
+  lines: PanoramaPlatformChart['lines']
+  onClose?: () => void
+  className?: string
 }) {
-  if (!active || !payload?.length) return null
-
-  const item = payload[0]
-  const slug = String(item.dataKey ?? '')
-  const lineTotal = periodTotals?.find((t) => t.slug === slug)
-  const dayValue = typeof item.value === 'number' ? item.value : Number(item.value)
+  const line = lines.find((l) => l.slug === selection.slug)
+  const lineTotal = periodTotals?.find((t) => t.slug === selection.slug)
+  const displayName = line?.name ?? selection.slug
+  const displayColor = line?.color ?? '#EA580C'
 
   return (
-    <div className="max-w-[240px] rounded-lg border border-[rgb(var(--color-border-tertiary)/0.85)] bg-bg-surface px-3 py-2.5 text-xs shadow-lg">
-      <p className="font-semibold text-text-primary">{formatDateLabel(String(label))}</p>
-      <p className="mt-1 font-medium" style={{ color: item.color }}>
-        {item.name}
-      </p>
+    <div
+      className={cn(
+        'rounded-lg border border-[rgb(var(--color-border-tertiary)/0.85)] bg-bg-app px-3 py-2.5 text-xs',
+        className
+      )}
+    >
+      <div className="flex items-start justify-between gap-2">
+        <div>
+          <p className="font-semibold text-text-primary">{formatDateLabel(selection.date)}</p>
+          <p className="mt-1 font-medium" style={{ color: displayColor }}>
+            {displayName}
+          </p>
+        </div>
+        {onClose ? (
+          <button
+            type="button"
+            onClick={onClose}
+            className="shrink-0 rounded p-0.5 text-text-muted hover:bg-bg-surface hover:text-text-primary"
+            aria-label="Fechar detalhe"
+          >
+            <X className="h-3.5 w-3.5" />
+          </button>
+        ) : null}
+      </div>
       <p className="mt-1.5 text-text-secondary">
         Gasto no dia:{' '}
         <span className="font-medium text-text-primary">
-          {Number.isFinite(dayValue) && dayValue > 0
-            ? new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 }).format(dayValue)
+          {Number.isFinite(selection.value) && selection.value > 0
+            ? new Intl.NumberFormat('pt-BR', {
+                style: 'currency',
+                currency: 'BRL',
+                maximumFractionDigits: 0,
+              }).format(selection.value)
             : '—'}
         </span>
       </p>
@@ -123,6 +146,116 @@ function MetaAdsPointTooltip({
           ) : null}
         </div>
       ) : null}
+    </div>
+  )
+}
+
+function metaAdsDotRenderer(
+  line: PanoramaPlatformChart['lines'][number],
+  onSelect: (selection: MetaAdsPointSelection) => void,
+  selected: MetaAdsPointSelection | null
+) {
+  return (props: DotProps) => {
+    const { cx, cy, payload, value } = props
+    if (cx == null || cy == null || payload == null) return null
+
+    const num = Number(value)
+    if (!Number.isFinite(num) || num <= 0) return null
+
+    const date = String((payload as { date?: string }).date ?? '')
+    const isSelected = selected?.slug === line.slug && selected.date === date
+
+    return (
+      <circle
+        cx={cx}
+        cy={cy}
+        r={isSelected ? 6 : 3}
+        fill={line.color}
+        stroke={isSelected ? '#ffffff' : 'none'}
+        strokeWidth={isSelected ? 1.5 : 0}
+        style={{ cursor: 'pointer' }}
+        onClick={(event) => {
+          event.stopPropagation()
+          onSelect({ slug: line.slug, date, value: num })
+        }}
+      />
+    )
+  }
+}
+
+function MetaAdsPanoramaLineChart({ chart }: { chart: PanoramaPlatformChart }) {
+  const [selection, setSelection] = useState<MetaAdsPointSelection | null>(null)
+
+  return (
+    <div className="flex min-h-0 flex-1 flex-col">
+      {selection ? (
+        <MetaAdsPointDetail
+          selection={selection}
+          lines={chart.lines}
+          periodTotals={chart.periodTotals}
+          onClose={() => setSelection(null)}
+          className="mb-2 shrink-0"
+        />
+      ) : (
+        <p className="mb-2 shrink-0 text-[10px] text-text-muted">
+          Clique em um ponto para ver gasto do dia e total no período.
+        </p>
+      )}
+
+      <div className="min-h-0 flex-1 min-h-[200px] w-full">
+        <ResponsiveContainer width="100%" height="100%">
+          <LineChart
+            data={chart.chartData}
+            margin={{ top: 4, right: 8, left: 0, bottom: 0 }}
+            onClick={() => setSelection(null)}
+          >
+            <CartesianGrid strokeDasharray="3 3" stroke="rgb(var(--color-border-tertiary)/0.45)" />
+            <XAxis
+              dataKey="date"
+              tickFormatter={formatDateLabel}
+              tick={{ fontSize: 10, fill: 'rgb(var(--color-text-muted))' }}
+              minTickGap={20}
+            />
+            <YAxis
+              tick={{ fontSize: 10, fill: 'rgb(var(--color-text-muted))' }}
+              width={52}
+              tickFormatter={(v) => formatCompactBrl(v)}
+            />
+            {chart.lines.map((line) => (
+              <Line
+                key={line.slug}
+                type="monotone"
+                dataKey={line.slug}
+                name={line.name}
+                stroke={line.color}
+                strokeWidth={2.5}
+                dot={metaAdsDotRenderer(line, setSelection, selection)}
+                activeDot={false}
+                connectNulls
+              />
+            ))}
+          </LineChart>
+        </ResponsiveContainer>
+      </div>
+
+      <div className="mt-2 shrink-0 border-t border-[rgb(var(--color-border-tertiary)/0.45)] pt-2">
+        <div className="flex flex-wrap gap-x-3 gap-y-1">
+          {chart.lines.map((line) => (
+            <span
+              key={line.slug}
+              className="inline-flex max-w-full items-center gap-1.5 text-[10px] text-text-secondary"
+              title={line.name}
+            >
+              <span
+                className="h-0.5 w-3 shrink-0 rounded-full"
+                style={{ backgroundColor: line.color }}
+                aria-hidden
+              />
+              <span className="truncate">{line.name}</span>
+            </span>
+          ))}
+        </div>
+      </div>
     </div>
   )
 }
@@ -179,6 +312,8 @@ export function PanoramaPlatformChart({ chart, className }: PanoramaPlatformChar
           enableNewsModal={chart.id === 'google-news'}
           className="min-h-0 flex-1"
         />
+      ) : isMetaAds ? (
+        <MetaAdsPanoramaLineChart chart={chart} />
       ) : (
         <div className={cn('flex min-h-0 flex-col', expandChart && 'flex-1')}>
           <div
@@ -201,42 +336,21 @@ export function PanoramaPlatformChart({ chart, className }: PanoramaPlatformChar
                 />
                 <YAxis
                   tick={{ fontSize: 10, fill: 'rgb(var(--color-text-muted))' }}
-                  width={chart.id === 'meta-ads' ? 52 : chart.id === 'youtube' ? 44 : 36}
+                  width={chart.id === 'youtube' ? 44 : 36}
                   allowDecimals={chart.id === 'google-trends' ? false : true}
                   domain={chart.id === 'google-trends' ? [0, 100] : [0, 'auto']}
                   tickFormatter={
-                    chart.id === 'meta-ads'
-                      ? (v) => formatCompactBrl(v)
-                      : chart.id === 'youtube'
-                        ? (v) => formatCompactNumber(v)
-                        : undefined
+                    chart.id === 'youtube' ? (v) => formatCompactNumber(v) : undefined
                   }
                 />
-                {isMetaAds ? (
-                  <Tooltip
-                    trigger="click"
-                    content={(props) => (
-                      <MetaAdsPointTooltip
-                        active={props.active}
-                        payload={props.payload as MetaAdsTooltipPayload[] | undefined}
-                        label={props.label}
-                        periodTotals={chart.periodTotals}
-                      />
-                    )}
-                  />
-                ) : (
-                  <Tooltip
-                    labelFormatter={(v) => formatDateLabel(String(v))}
-                    formatter={(value: number, _name, item) => {
-                      const line = chart.lines.find((l) => l.slug === item.dataKey)
-                      return formatValue(value, line?.name ?? chart.metricLabel, chart.id)
-                    }}
-                    contentStyle={{ fontSize: 12, borderRadius: 8 }}
-                  />
-                )}
-                {!useExternalLegend ? (
-                  <Legend wrapperStyle={{ fontSize: 11, paddingTop: 8 }} iconType="line" />
-                ) : null}
+                <Tooltip
+                  labelFormatter={(v) => formatDateLabel(String(v))}
+                  formatter={(value: number, _name, item) => {
+                    const line = chart.lines.find((l) => l.slug === item.dataKey)
+                    return formatValue(value, line?.name ?? chart.metricLabel, chart.id)
+                  }}
+                  contentStyle={{ fontSize: 12, borderRadius: 8 }}
+                />
                 {chart.lines.map((line) => (
                   <Line
                     key={line.slug}
@@ -245,11 +359,7 @@ export function PanoramaPlatformChart({ chart, className }: PanoramaPlatformChar
                     name={line.name}
                     stroke={line.color}
                     strokeWidth={2.5}
-                    dot={
-                      isMetaAds
-                        ? { r: 3, fill: line.color, strokeWidth: 0, cursor: 'pointer' }
-                        : false
-                    }
+                    dot={false}
                     activeDot={{ r: 5, strokeWidth: 0, cursor: 'pointer' }}
                     connectNulls
                   />
