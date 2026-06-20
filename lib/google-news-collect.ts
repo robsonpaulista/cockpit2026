@@ -15,7 +15,7 @@ function sleep(ms: number): Promise<void> {
 async function loadActiveActors(supabase: SupabaseClient): Promise<PoliticalActor[]> {
   const { data, error } = await supabase
     .from('political_actors')
-    .select('id, name, slug, actor_type, active, notes, created_at, updated_at')
+    .select('id, name, slug, actor_type, active, notes, instagram_username, created_at, updated_at')
     .eq('active', true)
     .order('name', { ascending: true })
 

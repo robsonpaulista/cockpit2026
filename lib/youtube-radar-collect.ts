@@ -33,6 +33,7 @@ export async function loadActiveActorsWithTerms(
       actor_type,
       active,
       notes,
+      instagram_username,
       created_at,
       updated_at,
       youtube_search_terms (
@@ -60,6 +61,7 @@ export async function loadActiveActorsWithTerms(
       actor_type: row.actor_type as PoliticalActor['actor_type'],
       active: Boolean(row.active),
       notes: (row.notes as string | null) ?? null,
+      instagram_username: (row.instagram_username as string | null) ?? null,
       created_at: row.created_at as string,
       updated_at: row.updated_at as string,
       youtube_search_terms: terms.filter((t) => t.active).sort((a, b) => a.priority - b.priority),
