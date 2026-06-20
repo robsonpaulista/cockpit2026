@@ -187,22 +187,23 @@ function MetaAdsPanoramaLineChart({ chart }: { chart: PanoramaPlatformChart }) {
   const [selection, setSelection] = useState<MetaAdsPointSelection | null>(null)
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col">
-      {selection ? (
-        <MetaAdsPointDetail
-          selection={selection}
-          lines={chart.lines}
-          periodTotals={chart.periodTotals}
-          onClose={() => setSelection(null)}
-          className="mb-2 shrink-0"
-        />
-      ) : (
-        <p className="mb-2 shrink-0 text-[10px] text-text-muted">
-          Clique em um ponto para ver gasto do dia e total no período.
-        </p>
-      )}
+    <div className="flex flex-col">
+      <div className="mb-2 h-[112px] shrink-0 overflow-y-auto rounded-lg border border-transparent">
+        {selection ? (
+          <MetaAdsPointDetail
+            selection={selection}
+            lines={chart.lines}
+            periodTotals={chart.periodTotals}
+            onClose={() => setSelection(null)}
+          />
+        ) : (
+          <p className="flex h-full items-center px-1 text-[10px] leading-snug text-text-muted">
+            Clique em um ponto para ver gasto do dia e total no período.
+          </p>
+        )}
+      </div>
 
-      <div className="min-h-0 flex-1 min-h-[200px] w-full">
+      <div className="h-[220px] w-full shrink-0">
         <ResponsiveContainer width="100%" height="100%">
           <LineChart
             data={chart.chartData}
@@ -277,7 +278,7 @@ export function PanoramaPlatformChart({ chart, className }: PanoramaPlatformChar
     <div
       className={cn(
         'flex flex-col rounded-xl border border-[rgb(var(--color-border-tertiary)/0.85)] bg-bg-surface p-4',
-        isTable ? 'min-h-0' : 'h-full min-h-[360px]',
+        isTable || isMetaAds ? 'min-h-0' : 'h-full min-h-[360px]',
         className
       )}
     >
