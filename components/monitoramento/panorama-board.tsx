@@ -2,6 +2,7 @@
 
 import { PanoramaPlatformChart } from '@/components/monitoramento/panorama-platform-chart'
 import type { PanoramaModel } from '@/lib/monitoramento-panorama'
+import type { PanoramaPlatformChart as PanoramaChartModel } from '@/lib/monitoramento-panorama-charts'
 
 function formatDateTime(iso: string | null): string {
   if (!iso) return '—'
@@ -11,6 +12,10 @@ function formatDateTime(iso: string | null): string {
     hour: '2-digit',
     minute: '2-digit',
   })
+}
+
+function chartsByTier(charts: PanoramaChartModel[], tier: 'detail' | 'simple'): PanoramaChartModel[] {
+  return charts.filter((chart) => chart.layoutTier === tier)
 }
 
 interface PanoramaBoardProps {
@@ -30,10 +35,14 @@ export function PanoramaBoard({ panorama, loading = false }: PanoramaBoardProps)
   if (panorama.columns.length === 0) {
     return (
       <div className="rounded-xl border border-dashed border-[rgb(var(--color-border-tertiary)/0.85)] bg-bg-surface px-6 py-14 text-center text-sm text-text-muted">
-        Cadastre candidatos ativos e colete dados nas abas YouTube, Google News, Meta Ads e Trends.
+        Cadastre candidatos ativos e colete dados nas abas YouTube, Google News, Instagram, Meta Ads e
+        Trends.
       </div>
     )
   }
+
+  const detailCharts = chartsByTier(panorama.charts, 'detail')
+  const simpleCharts = chartsByTier(panorama.charts, 'simple')
 
   return (
     <div className="flex flex-col gap-4">
@@ -52,13 +61,30 @@ export function PanoramaBoard({ panorama, loading = false }: PanoramaBoardProps)
         ) : null}
       </div>
 
-      {panorama.charts.length > 0 ? (
+      {detailCharts.length > 0 ? (
         <section>
           <h3 className="mb-3 text-xs font-semibold uppercase tracking-wide text-text-muted">
-            Comparativo histórico · todas as plataformas
+            Imprensa e Instagram · detalhe comparativo
           </h3>
-          <div className="grid items-stretch gap-4 xl:grid-cols-2">
-            {panorama.charts.map((chart) => (
+          <div className="grid items-start gap-4 xl:grid-cols-2">
+            {detailCharts.map((chart) => (
+              <PanoramaPlatformChart
+                key={chart.id}
+                chart={chart}
+                className={chart.chartType === 'table' ? 'w-full' : 'h-full'}
+              />
+            ))}
+          </div>
+        </section>
+      ) : null}
+
+      {simpleCharts.length > 0 ? (
+        <section>
+          <h3 className="mb-3 text-xs font-semibold uppercase tracking-wide text-text-muted">
+            YouTube, Trends e Meta Ads · séries diárias
+          </h3>
+          <div className="grid items-stretch gap-4 lg:grid-cols-2 xl:grid-cols-3">
+            {simpleCharts.map((chart) => (
               <PanoramaPlatformChart key={chart.id} chart={chart} className="h-full" />
             ))}
           </div>

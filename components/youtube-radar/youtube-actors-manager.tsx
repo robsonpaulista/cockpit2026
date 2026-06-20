@@ -10,12 +10,15 @@ interface YoutubeActorsManagerProps {
   actors: PoliticalActorWithTerms[]
   onChanged: () => void
   disabled?: boolean
+  /** Exibe campo @ Instagram (radar Apify) */
+  showInstagramField?: boolean
 }
 
 export function YoutubeActorsManager({
   actors,
   onChanged,
   disabled = false,
+  showInstagramField = false,
 }: YoutubeActorsManagerProps) {
   const [expanded, setExpanded] = useState(false)
   const [showForm, setShowForm] = useState(false)
@@ -25,6 +28,7 @@ export function YoutubeActorsManager({
   const [actorType, setActorType] = useState<PoliticalActorType>('competitor')
   const [termsText, setTermsText] = useState('')
   const [newTermByActor, setNewTermByActor] = useState<Record<string, string>>({})
+  const [instagramByActor, setInstagramByActor] = useState<Record<string, string>>({})
   const [busyId, setBusyId] = useState<string | null>(null)
 
   const criarCandidato = useCallback(async () => {
@@ -134,6 +138,28 @@ export function YoutubeActorsManager({
     [onChanged]
   )
 
+  const salvarInstagram = useCallback(
+    async (actor: PoliticalActorWithTerms) => {
+      const raw = instagramByActor[actor.id] ?? actor.instagram_username ?? ''
+      setBusyId(actor.id)
+      try {
+        const res = await fetch(`/api/youtube/actors/${actor.id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ instagram_username: raw.trim() || null }),
+        })
+        const j = (await res.json()) as { error?: string }
+        if (!res.ok) throw new Error(j.error ?? 'Falha ao salvar @ Instagram.')
+        onChanged()
+      } catch (e) {
+        window.alert(e instanceof Error ? e.message : 'Erro ao salvar @ Instagram.')
+      } finally {
+        setBusyId(null)
+      }
+    },
+    [instagramByActor, onChanged]
+  )
+
   const activeCount = actors.filter((a) => a.active).length
 
   return (
@@ -234,6 +260,43 @@ export function YoutubeActorsManager({
                     Adicionar
                   </button>
                 </div>
+
+                {showInstagramField ? (
+                  actor.actor_type === 'own_candidate' ? (
+                    <p className="mt-2 text-[11px] text-text-muted">
+                      @ Instagram do candidato próprio vem da API Graph (Redes & Instagram) — não usa Apify.
+                      {actor.instagram_username ? ` Atual: @${actor.instagram_username}` : ''}
+                    </p>
+                  ) : (
+                    <div className="mt-2 flex gap-2">
+                    <input
+                      type="text"
+                      disabled={disabled || busyId === actor.id}
+                      value={
+                        instagramByActor[actor.id] !== undefined
+                          ? instagramByActor[actor.id]
+                          : (actor.instagram_username ?? '')
+                      }
+                      onChange={(e) =>
+                        setInstagramByActor((prev) => ({ ...prev, [actor.id]: e.target.value }))
+                      }
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') void salvarInstagram(actor)
+                      }}
+                      placeholder="@ Instagram (ex.: silviomendes)"
+                      className="min-w-0 flex-1 rounded-lg border border-[rgb(var(--color-border-secondary)/0.85)] bg-bg-surface px-2.5 py-1.5 text-xs text-text-primary"
+                    />
+                    <button
+                      type="button"
+                      disabled={disabled || busyId === actor.id}
+                      onClick={() => void salvarInstagram(actor)}
+                      className="shrink-0 rounded-lg border border-[rgb(var(--color-border-secondary)/0.85)] px-2.5 py-1.5 text-xs text-text-secondary hover:bg-bg-surface"
+                    >
+                      Salvar @
+                    </button>
+                  </div>
+                  )
+                ) : null}
               </li>
             ))}
           </ul>

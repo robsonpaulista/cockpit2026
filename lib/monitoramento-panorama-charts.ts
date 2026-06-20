@@ -1,17 +1,26 @@
 import { buildGoogleTrendsSeries } from '@/lib/google-trends-aggregate'
+import { buildInstagramRadarCompareRows } from '@/lib/instagram-radar-aggregate'
 import type { GoogleNewsMentionWithActor } from '@/lib/google-news-types'
 import type { GoogleTrendsInterestRow } from '@/lib/google-trends-types'
+import type { InstagramRadarPostWithActor } from '@/lib/instagram-radar-types'
 import type { MetaAdsMentionWithActor } from '@/lib/meta-ads-types'
 import { buildMetaAdsPeriodTotals } from '@/lib/meta-ads-aggregate'
 import type { GoogleTrendsSearchContext } from '@/lib/google-trends-types'
-import type { PanoramaCandidateColumn } from '@/lib/monitoramento-panorama'
+import type { PanoramaCandidateColumn, PanoramaHighlight } from '@/lib/monitoramento-panorama'
 import {
   PANORAMA_WINDOW_DAYS,
   panoramaWindowSubtitleSuffix,
 } from '@/lib/monitoramento-panorama-window'
 import type { PoliticalActorWithTerms, YoutubeMentionWithActor } from '@/lib/youtube-radar-types'
 
-export type PanoramaPlatformId = 'youtube' | 'google-news' | 'google-trends' | 'meta-ads'
+export type PanoramaPlatformId =
+  | 'youtube'
+  | 'google-news'
+  | 'instagram'
+  | 'google-trends'
+  | 'meta-ads'
+
+export type PanoramaChartLayoutTier = 'detail' | 'simple'
 
 export type PanoramaChartLine = {
   slug: string
@@ -41,16 +50,36 @@ export type PanoramaTrendsSearchHighlight = {
   context: GoogleTrendsSearchContext
 }
 
+export type PanoramaInstagramTableRow = {
+  slug: string
+  name: string
+  color: string
+  instagramUsername: string | null
+  postCount: number
+  postsPerWeek: number
+  totalEngagement: number
+  avgLikes: number
+  avgComments: number
+  avgEngagement: number
+  highlights: {
+    postCount: PanoramaHighlight
+    totalEngagement: PanoramaHighlight
+    avgEngagement: PanoramaHighlight
+  }
+}
+
 export type PanoramaPlatformChart = {
   id: PanoramaPlatformId
+  layoutTier: PanoramaChartLayoutTier
   title: string
   subtitle: string
   metricLabel: string
-  chartType: 'line' | 'heatmap'
+  chartType: 'line' | 'heatmap' | 'table'
   lines: PanoramaChartLine[]
   chartData: Array<{ date: string } & Record<string, number | string>>
   heatmapDates?: string[]
   heatmapRows?: PanoramaHeatmapRow[]
+  instagramTable?: PanoramaInstagramTableRow[]
   periodTotals?: PanoramaMetaAdsPeriodTotal[]
   searchContexts?: PanoramaTrendsSearchHighlight[]
   empty: boolean
@@ -129,6 +158,7 @@ function buildYoutubeChart(
 
   return {
     id: 'youtube',
+    layoutTier: 'simple',
     title: 'YouTube',
     subtitle: `Visualizações por dia de publicação${windowSuffix}`,
     metricLabel: 'Views',
@@ -163,6 +193,7 @@ function buildGoogleNewsChart(
 
   return {
     id: 'google-news',
+    layoutTier: 'detail',
     title: 'Google News',
     subtitle: `Mapa de calor — menções por dia${windowSuffix}`,
     metricLabel: 'Matérias',
@@ -172,6 +203,70 @@ function buildGoogleNewsChart(
     heatmapDates: dates,
     heatmapRows,
     empty: !chartHasData(chartData, columns),
+  }
+}
+
+function rankMetricHighlights(values: number[], higherIsBetter = true): PanoramaHighlight[] {
+  if (values.length < 2) return values.map(() => 'none')
+  const max = Math.max(...values)
+  const min = Math.min(...values)
+  if (max === min) return values.map(() => 'none')
+  return values.map((v) => {
+    if (higherIsBetter && v === max) return 'best'
+    if (!higherIsBetter && v === min) return 'best'
+    if (higherIsBetter && v === min) return 'worst'
+    if (!higherIsBetter && v === max) return 'worst'
+    return 'none'
+  })
+}
+
+function buildInstagramTable(
+  columns: PanoramaCandidateColumn[],
+  actors: PoliticalActorWithTerms[],
+  posts: InstagramRadarPostWithActor[]
+): PanoramaPlatformChart {
+  const compareRows = buildInstagramRadarCompareRows(actors, posts, CHART_WINDOW)
+  const colorBySlug = new Map(columns.map((c) => [c.slug, c.accentColor]))
+
+  const draft = compareRows.map((row) => ({
+    slug: row.actor.slug,
+    name: row.actor.name,
+    color: colorBySlug.get(row.actor.slug) ?? '#6B7280',
+    instagramUsername: row.instagramUsername,
+    postCount: row.postCount,
+    postsPerWeek: row.postsPerWeek,
+    totalEngagement: row.posts.reduce((sum, p) => sum + p.likes_count + p.comments_count, 0),
+    avgLikes: row.avgLikes,
+    avgComments: row.avgComments,
+    avgEngagement: row.avgEngagement,
+  }))
+
+  const hPosts = rankMetricHighlights(draft.map((r) => r.postCount))
+  const hTotal = rankMetricHighlights(draft.map((r) => r.totalEngagement))
+  const hAvg = rankMetricHighlights(draft.map((r) => r.avgEngagement))
+
+  const instagramTable: PanoramaInstagramTableRow[] = draft.map((row, i) => ({
+    ...row,
+    highlights: {
+      postCount: hPosts[i],
+      totalEngagement: hTotal[i],
+      avgEngagement: hAvg[i],
+    },
+  }))
+
+  const hasData = instagramTable.some((r) => r.postCount > 0)
+
+  return {
+    id: 'instagram',
+    layoutTier: 'detail',
+    title: 'Instagram',
+    subtitle: `Comparativo de posts e engajamento${windowSuffix}`,
+    metricLabel: 'Engajamento',
+    chartType: 'table',
+    lines: [],
+    chartData: [],
+    instagramTable,
+    empty: !hasData,
   }
 }
 
@@ -227,6 +322,7 @@ function buildGoogleTrendsChart(
 
   return {
     id: 'google-trends',
+    layoutTier: 'simple',
     title: 'Google Trends',
     subtitle: `Interesse de busca · índice 0–100${windowSuffix}`,
     metricLabel: 'Interesse',
@@ -287,6 +383,7 @@ function buildMetaAdsChart(
 
   return {
     id: 'meta-ads',
+    layoutTier: 'simple',
     title: 'Meta Ads Library',
     subtitle: `Gasto estimado por dia de início${windowSuffix}`,
     metricLabel: 'Gasto (R$)',
@@ -303,14 +400,16 @@ export function buildPanoramaPlatformCharts(input: {
   actors: PoliticalActorWithTerms[]
   youtubeMentions: YoutubeMentionWithActor[]
   googleNewsMentions: GoogleNewsMentionWithActor[]
+  instagramPosts: InstagramRadarPostWithActor[]
   trendsInterestRows: GoogleTrendsInterestRow[]
   metaAdsMentions: MetaAdsMentionWithActor[]
 }): PanoramaPlatformChart[] {
   if (input.columns.length === 0) return []
 
   return [
-    buildYoutubeChart(input.columns, input.youtubeMentions),
     buildGoogleNewsChart(input.columns, input.googleNewsMentions),
+    buildInstagramTable(input.columns, input.actors, input.instagramPosts),
+    buildYoutubeChart(input.columns, input.youtubeMentions),
     buildGoogleTrendsChart(input.columns, input.actors, input.trendsInterestRows),
     buildMetaAdsChart(input.columns, input.metaAdsMentions),
   ]

@@ -7,6 +7,7 @@ import type {
   GoogleTrendsInterestRow,
   GoogleTrendsRelatedRow,
 } from '@/lib/google-trends-types'
+import type { InstagramRadarPostWithActor } from '@/lib/instagram-radar-types'
 import { buildMetaAdsCompareRows } from '@/lib/meta-ads-aggregate'
 import type { MetaAdsMentionWithActor } from '@/lib/meta-ads-types'
 import { formatSpendBrl } from '@/lib/meta-ads-format'
@@ -323,6 +324,7 @@ export function buildMonitoramentoPanorama(input: {
   trendsInterestRows: GoogleTrendsInterestRow[]
   youtubeMentions: YoutubeMentionWithActor[]
   googleNewsMentions: GoogleNewsMentionWithActor[]
+  instagramPosts: InstagramRadarPostWithActor[]
   metaAdsMentions30d: MetaAdsMentionWithActor[]
   lastUpdated: string | null
   windowLabel?: string
@@ -533,6 +535,12 @@ export function buildMonitoramentoPanorama(input: {
     actors: activeActors,
     youtubeMentions: youtubeMentionsWindow,
     googleNewsMentions: googleNewsMentionsWindow,
+    instagramPosts: input.instagramPosts.filter(
+      (p) => {
+        const dateSource = p.posted_at ?? p.collected_at
+        return dateSource && dateSource >= cutoffIso
+      }
+    ),
     trendsInterestRows: trendsInterestWindow,
     metaAdsMentions: input.metaAdsMentions30d,
   })

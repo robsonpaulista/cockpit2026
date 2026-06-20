@@ -10,6 +10,7 @@ import {
 } from '@/lib/monitoramento-panorama-window'
 import type { GoogleNewsMentionWithActor } from '@/lib/google-news-types'
 import type { GoogleTrendsInterestRow, GoogleTrendsRelatedRow } from '@/lib/google-trends-types'
+import type { InstagramRadarPostWithActor } from '@/lib/instagram-radar-types'
 import type { MetaAdsMentionWithActor } from '@/lib/meta-ads-types'
 import { createClient } from '@/lib/supabase/server'
 import type { PoliticalActorWithTerms, YoutubeMentionWithActor } from '@/lib/youtube-radar-types'
@@ -39,6 +40,7 @@ export async function GET() {
         slug,
         actor_type,
         active,
+        instagram_username,
         notes,
         created_at,
         updated_at,
@@ -64,6 +66,7 @@ export async function GET() {
             trendsInterestRows: [],
             youtubeMentions: [],
             googleNewsMentions: [],
+            instagramPosts: [],
             metaAdsMentions30d: [],
             lastUpdated: null,
             setupRequired: true,
@@ -79,7 +82,8 @@ export async function GET() {
     const cutoffIso = panoramaWindowCutoffIso()
     const cutoffDay = panoramaWindowCutoffDay()
 
-    const [trendsRes, trendsRelatedRes, youtubeRes, newsRes, metaRes, collectLogRes] = await Promise.all([
+    const [trendsRes, trendsRelatedRes, youtubeRes, newsRes, instagramRes, metaRes, collectLogRes, instagramLogRes] =
+      await Promise.all([
       supabase
         .from('google_trends_interest')
         .select('*')
@@ -105,6 +109,12 @@ export async function GET() {
         .order('published_at', { ascending: false })
         .limit(3000),
       supabase
+        .from('instagram_radar_posts')
+        .select(`*, political_actors!inner ( id, name, slug, actor_type )`)
+        .gte('posted_at', cutoffIso)
+        .order('posted_at', { ascending: false })
+        .limit(3000),
+      supabase
         .from('meta_ads_mentions')
         .select(`*, political_actors!inner ( id, name, slug, actor_type )`)
         .or(
@@ -114,6 +124,12 @@ export async function GET() {
         .limit(500),
       supabase
         .from('meta_ads_collect_log')
+        .select('finished_at, started_at')
+        .order('started_at', { ascending: false })
+        .limit(1)
+        .maybeSingle(),
+      supabase
+        .from('instagram_radar_collect_log')
         .select('finished_at, started_at')
         .order('started_at', { ascending: false })
         .limit(1)
@@ -154,6 +170,13 @@ export async function GET() {
         : ((newsRes.data ?? []) as GoogleNewsMentionWithActor[])
     for (const m of googleNewsMentions) timestamps.push(m.collected_at)
 
+    const instagramPosts =
+      instagramRes.error &&
+      (instagramRes.error.message.includes('does not exist') || instagramRes.error.code === '42P01')
+        ? []
+        : ((instagramRes.data ?? []) as InstagramRadarPostWithActor[])
+    for (const p of instagramPosts) timestamps.push(p.collected_at)
+
     const metaAdsMentions =
       metaRes.error &&
       (metaRes.error.message.includes('does not exist') || metaRes.error.code === '42P01')
@@ -163,6 +186,9 @@ export async function GET() {
 
     if (collectLogRes.data?.finished_at) timestamps.push(collectLogRes.data.finished_at)
     else if (collectLogRes.data?.started_at) timestamps.push(collectLogRes.data.started_at)
+
+    if (instagramLogRes.data?.finished_at) timestamps.push(instagramLogRes.data.finished_at)
+    else if (instagramLogRes.data?.started_at) timestamps.push(instagramLogRes.data.started_at)
 
     const lastUpdated =
       timestamps.length > 0
@@ -177,6 +203,7 @@ export async function GET() {
       trendsInterestRows: trendsRows,
       youtubeMentions,
       googleNewsMentions,
+      instagramPosts,
       metaAdsMentions30d: metaAdsMentions,
       lastUpdated,
       setupRequired,

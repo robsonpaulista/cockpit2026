@@ -3,6 +3,7 @@
 import { useCallback, useMemo } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { GoogleNewsRadarPanel } from '@/components/monitoramento/google-news-radar-panel'
+import { InstagramRadarPanel } from '@/components/monitoramento/instagram-radar-panel'
 import { MetaAdsRadarPanel } from '@/components/monitoramento/meta-ads-radar-panel'
 import { MonitoramentoShell, type MonitoramentoTab } from '@/components/monitoramento/monitoramento-shell'
 import { PanoramaPanel } from '@/components/monitoramento/panorama-panel'
@@ -14,6 +15,7 @@ function parseTab(value: string | null): MonitoramentoTab {
   if (value === 'trends') return 'trends'
   if (value === 'google-news') return 'google-news'
   if (value === 'meta-ads') return 'meta-ads'
+  if (value === 'instagram') return 'instagram'
   return 'geral'
 }
 
@@ -46,6 +48,8 @@ export default function MonitoramentoPage() {
         <GoogleNewsRadarPanel />
       ) : activeTab === 'meta-ads' ? (
         <MetaAdsRadarPanel />
+      ) : activeTab === 'instagram' ? (
+        <InstagramRadarPanel />
       ) : (
         <YoutubeRadarPanel />
       )}

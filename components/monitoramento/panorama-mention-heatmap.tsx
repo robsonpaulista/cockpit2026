@@ -40,6 +40,8 @@ interface PanoramaMentionHeatmapProps {
   rows: PanoramaHeatmapRow[]
   metricLabel: string
   className?: string
+  /** Abre modal de matérias ao clicar (só Google News). */
+  enableNewsModal?: boolean
 }
 
 export function PanoramaMentionHeatmap({
@@ -47,6 +49,7 @@ export function PanoramaMentionHeatmap({
   rows,
   metricLabel,
   className,
+  enableNewsModal = true,
 }: PanoramaMentionHeatmapProps) {
   const [scaleMode, setScaleMode] = useState<HeatmapScaleMode>('comparative')
   const [selection, setSelection] = useState<PanoramaNewsDaySelection | null>(null)
@@ -67,6 +70,12 @@ export function PanoramaMentionHeatmap({
       lastMonth = month
     }
   })
+
+  const metricWord = metricLabel.toLowerCase()
+  const lessLabel = enableNewsModal ? 'Menos menções (todos)' : `Menos ${metricWord} (todos)`
+  const moreLabel = enableNewsModal ? 'Mais menções (todos)' : `Mais ${metricWord} (todos)`
+  const lessIndividual = enableNewsModal ? 'Menos menções (candidato)' : `Menos ${metricWord} (candidato)`
+  const moreIndividual = enableNewsModal ? 'Pico do candidato' : `Pico de ${metricWord}`
 
   return (
     <div className={cn('flex flex-col gap-3', className)}>
@@ -97,7 +106,8 @@ export function PanoramaMentionHeatmap({
       </div>
 
       <p className="shrink-0 text-[11px] leading-snug text-text-muted">
-        {activeOption.hint} · clique em um dia para ver as matérias
+        {activeOption.hint}
+        {enableNewsModal ? ' · clique em um dia para ver as matérias' : null}
       </p>
 
       <div className="min-h-0 flex-1 overflow-x-auto">
@@ -130,22 +140,22 @@ export function PanoramaMentionHeatmap({
                       type="button"
                       className={cn(
                         'h-[18px] min-w-0 flex-1 rounded-[3px] transition-opacity hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[rgb(var(--color-primary))]',
-                        value > 0 ? 'cursor-pointer' : 'cursor-default'
+                        value > 0 && enableNewsModal ? 'cursor-pointer' : 'cursor-default'
                       )}
                       style={{
                         backgroundColor: heatmapCellColor(row.color, value, scaleMax, scaleMode),
                       }}
-                      title={`${row.name} · ${formatDayLabel(dates[i])}: ${value} ${metricLabel.toLowerCase()}${
+                      title={`${row.name} · ${formatDayLabel(dates[i])}: ${value} ${metricWord}${
                         scaleMode === 'comparative' && globalMax > 0
                           ? ` (${Math.round((value / globalMax) * 100)}% do pico global)`
                           : scaleMode === 'individual' && scaleMax > 0 && value > 0
                             ? ` (${Math.round((value / scaleMax) * 100)}% do pico de ${row.name})`
                             : ''
-                      }${value > 0 ? ' · clique para ver matérias' : ''}`}
-                      aria-label={`${row.name}, ${formatDayLabel(dates[i])}: ${value} ${metricLabel.toLowerCase()}`}
-                      disabled={value <= 0}
+                      }${value > 0 && enableNewsModal ? ' · clique para ver matérias' : ''}`}
+                      aria-label={`${row.name}, ${formatDayLabel(dates[i])}: ${value} ${metricWord}`}
+                      disabled={value <= 0 || !enableNewsModal}
                       onClick={(e) => {
-                        if (value <= 0) return
+                        if (value <= 0 || !enableNewsModal) return
                         setSelection({
                           slug: row.slug,
                           name: row.name,
@@ -180,7 +190,7 @@ export function PanoramaMentionHeatmap({
       </div>
 
       <div className="flex shrink-0 flex-wrap items-center gap-2 text-[10px] text-text-muted">
-        <span>{scaleMode === 'comparative' ? 'Menos menções (todos)' : 'Menos menções (candidato)'}</span>
+        <span>{scaleMode === 'comparative' ? lessLabel : lessIndividual}</span>
         <div className="flex gap-[2px]">
           {[0.15, 0.35, 0.55, 0.75, 1].map((t) => (
             <div
@@ -192,10 +202,12 @@ export function PanoramaMentionHeatmap({
             />
           ))}
         </div>
-        <span>{scaleMode === 'comparative' ? 'Mais menções (todos)' : 'Pico do candidato'}</span>
+        <span>{scaleMode === 'comparative' ? moreLabel : moreIndividual}</span>
       </div>
 
-      <PanoramaNewsDayModal selection={selection} onClose={() => setSelection(null)} />
+      {enableNewsModal ? (
+        <PanoramaNewsDayModal selection={selection} onClose={() => setSelection(null)} />
+      ) : null}
     </div>
   )
 }

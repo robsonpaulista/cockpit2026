@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { createClient } from '@/lib/supabase/server'
+import { normalizeInstagramUsername } from '@/lib/instagram-radar-username'
 import type { PoliticalActorType } from '@/lib/youtube-radar-types'
 
 export const dynamic = 'force-dynamic'
@@ -10,6 +11,7 @@ const patchSchema = z.object({
   actor_type: z.enum(['own_candidate', 'competitor', 'ally', 'other']).optional(),
   active: z.boolean().optional(),
   notes: z.string().trim().max(500).nullable().optional(),
+  instagram_username: z.string().trim().max(80).nullable().optional(),
 })
 
 export async function PATCH(request: Request, { params }: { params: { id: string } }) {
@@ -29,6 +31,9 @@ export async function PATCH(request: Request, { params }: { params: { id: string
     if (body.actor_type !== undefined) updates.actor_type = body.actor_type as PoliticalActorType
     if (body.active !== undefined) updates.active = body.active
     if (body.notes !== undefined) updates.notes = body.notes
+    if (body.instagram_username !== undefined) {
+      updates.instagram_username = normalizeInstagramUsername(body.instagram_username)
+    }
 
     if (Object.keys(updates).length === 0) {
       return NextResponse.json({ error: 'Nenhum campo para atualizar.' }, { status: 400 })
@@ -38,7 +43,7 @@ export async function PATCH(request: Request, { params }: { params: { id: string
       .from('political_actors')
       .update(updates)
       .eq('id', params.id)
-      .select('id, name, slug, actor_type, active, notes, created_at, updated_at')
+      .select('id, name, slug, actor_type, active, notes, instagram_username, created_at, updated_at')
       .single()
 
     if (error) throw new Error(error.message)

@@ -9,6 +9,7 @@ export type PoliticalActor = {
   actor_type: PoliticalActorType
   active: boolean
   notes: string | null
+  instagram_username: string | null
   created_at: string
   updated_at: string
 }

@@ -1,7 +1,7 @@
 'use client'
 
 import type { LucideIcon } from 'lucide-react'
-import { LineChart as LineChartIcon, Megaphone, Newspaper, Youtube } from 'lucide-react'
+import { Instagram, LineChart as LineChartIcon, Megaphone, Newspaper, Youtube } from 'lucide-react'
 import {
   CartesianGrid,
   Legend,
@@ -12,6 +12,7 @@ import {
   XAxis,
   YAxis,
 } from 'recharts'
+import { PanoramaInstagramTable } from '@/components/monitoramento/panorama-instagram-table'
 import { PanoramaMentionHeatmap } from '@/components/monitoramento/panorama-mention-heatmap'
 import { TrendsSearchContextList } from '@/components/trends-radar/trends-search-context-block'
 import type { PanoramaMetaAdsPeriodTotal, PanoramaPlatformChart, PanoramaPlatformId } from '@/lib/monitoramento-panorama-charts'
@@ -20,6 +21,7 @@ import { cn } from '@/lib/utils'
 const PLATFORM_ICONS: Record<PanoramaPlatformId, LucideIcon> = {
   youtube: Youtube,
   'google-news': Newspaper,
+  instagram: Instagram,
   'google-trends': LineChartIcon,
   'meta-ads': Megaphone,
 }
@@ -27,6 +29,7 @@ const PLATFORM_ICONS: Record<PanoramaPlatformId, LucideIcon> = {
 const PLATFORM_ICON_BG: Record<PanoramaPlatformId, string> = {
   youtube: 'bg-[#FEE2E2] text-[#DC2626]',
   'google-news': 'bg-[#DBEAFE] text-[#2563EB]',
+  instagram: 'bg-[#FCE7F3] text-[#DB2777]',
   'google-trends': 'bg-[#E0E7FF] text-[#4338CA]',
   'meta-ads': 'bg-[#FFEDD5] text-[#EA580C]',
 }
@@ -133,13 +136,15 @@ export function PanoramaPlatformChart({ chart, className }: PanoramaPlatformChar
   const Icon = PLATFORM_ICONS[chart.id]
   const isMetaAds = chart.id === 'meta-ads'
   const isHeatmap = chart.chartType === 'heatmap'
-  const expandChart = !isHeatmap && !chart.empty
+  const isTable = chart.chartType === 'table'
+  const expandChart = !isHeatmap && !isTable && !chart.empty
   const useExternalLegend = expandChart && chart.lines.length > 0
 
   return (
     <div
       className={cn(
-        'flex h-full min-h-[360px] flex-col rounded-xl border border-[rgb(var(--color-border-tertiary)/0.85)] bg-bg-surface p-4',
+        'flex flex-col rounded-xl border border-[rgb(var(--color-border-tertiary)/0.85)] bg-bg-surface p-4',
+        isTable ? 'min-h-0' : 'h-full min-h-[360px]',
         className
       )}
     >
@@ -160,13 +165,18 @@ export function PanoramaPlatformChart({ chart, className }: PanoramaPlatformChar
 
       {chart.empty ? (
         <div className="flex min-h-[220px] flex-1 items-center justify-center rounded-lg border border-dashed border-[rgb(var(--color-border-tertiary)/0.6)] text-xs text-text-muted">
-          Sem série histórica — rode a coleta nesta plataforma.
+          {chart.id === 'instagram'
+            ? 'Sem posts no período — cadastre @ e rode a coleta na aba Instagram.'
+            : 'Sem série histórica — rode a coleta nesta plataforma.'}
         </div>
+      ) : isTable && chart.instagramTable ? (
+        <PanoramaInstagramTable rows={chart.instagramTable} className="w-full" />
       ) : isHeatmap && chart.heatmapDates && chart.heatmapRows ? (
         <PanoramaMentionHeatmap
           dates={chart.heatmapDates}
           rows={chart.heatmapRows}
           metricLabel={chart.metricLabel}
+          enableNewsModal={chart.id === 'google-news'}
           className="min-h-0 flex-1"
         />
       ) : (

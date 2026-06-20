@@ -3,6 +3,7 @@ import { z } from 'zod'
 import { createClient } from '@/lib/supabase/server'
 import { isYoutubeApiConfigured } from '@/lib/youtube-data-api'
 import { parseTermsInput, slugFromPoliticalName } from '@/lib/youtube-radar-slug'
+import { normalizeInstagramUsername } from '@/lib/instagram-radar-username'
 import type { PoliticalActorType } from '@/lib/youtube-radar-types'
 
 export const dynamic = 'force-dynamic'
@@ -12,6 +13,7 @@ const createActorSchema = z.object({
   actor_type: z.enum(['own_candidate', 'competitor', 'ally', 'other']).default('competitor'),
   terms: z.union([z.array(z.string()), z.string()]).optional(),
   notes: z.string().trim().max(500).optional(),
+  instagram_username: z.string().trim().max(80).nullable().optional(),
 })
 
 async function uniqueSlug(
@@ -49,6 +51,7 @@ export async function GET() {
         actor_type,
         active,
         notes,
+        instagram_username,
         created_at,
         updated_at,
         youtube_search_terms (
@@ -105,6 +108,9 @@ export async function POST(request: Request) {
     }
 
     const slug = await uniqueSlug(supabase, slugFromPoliticalName(body.name))
+    const igUser = body.instagram_username !== undefined
+      ? normalizeInstagramUsername(body.instagram_username)
+      : null
 
     const { data: actor, error: actorError } = await supabase
       .from('political_actors')
@@ -114,8 +120,9 @@ export async function POST(request: Request) {
         actor_type: body.actor_type as PoliticalActorType,
         active: true,
         notes: body.notes ?? null,
+        instagram_username: igUser,
       })
-      .select('id, name, slug, actor_type, active, notes, created_at, updated_at')
+      .select('id, name, slug, actor_type, active, notes, instagram_username, created_at, updated_at')
       .single()
 
     if (actorError) throw new Error(actorError.message)

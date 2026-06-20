@@ -77,7 +77,7 @@ export function PanoramaPanel() {
       {panorama.setupRequired ? (
         <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
           Execute os SQLs de monitoramento no Supabase e colete dados nas abas específicas
-          (YouTube, Google News, Meta Ads, Trends) para preencher o panorama.
+          (YouTube, Google News, Instagram, Meta Ads, Trends) para preencher o panorama.
         </div>
       ) : null}
 
