@@ -2,6 +2,7 @@
 
 import { Fragment, useState } from 'react'
 import { ChevronDown, ChevronRight, TrendingDown, TrendingUp } from 'lucide-react'
+import { TrendsSearchContextBlock } from '@/components/trends-radar/trends-search-context-block'
 import type { GoogleTrendsCompareRow } from '@/lib/google-trends-types'
 import { labelActorType } from '@/lib/youtube-radar-labels'
 import { cn } from '@/lib/utils'
@@ -167,24 +168,34 @@ export function TrendsCompareBoard({ rows, loading = false }: TrendsCompareBoard
                   {expanded ? (
                     <tr className="border-b border-[rgb(var(--color-border-tertiary)/0.5)] bg-bg-app">
                       <td colSpan={6} className="p-0">
-                        <ul className="max-h-48 divide-y divide-[rgb(var(--color-border-tertiary)/0.35)] overflow-y-auto">
-                          {row.points.length === 0 ? (
-                            <li className="px-4 py-3 pl-10 text-xs text-text-muted">Sem pontos na série.</li>
-                          ) : (
-                            row.points
-                              .slice()
-                              .reverse()
-                              .map((p) => (
-                                <li
-                                  key={p.date}
-                                  className="flex items-center justify-between px-4 py-1.5 pl-10 text-xs"
-                                >
-                                  <span className="text-text-secondary">{formatDate(p.date)}</span>
-                                  <span className="font-medium tabular-nums text-text-primary">{p.score}</span>
-                                </li>
-                              ))
-                          )}
-                        </ul>
+                        <div className="space-y-3 px-4 py-3 pl-10">
+                          {row.searchContext ? (
+                            <TrendsSearchContextBlock context={row.searchContext} name={row.name} compact />
+                          ) : null}
+                          <div>
+                            <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-text-muted">
+                              Série diária
+                            </p>
+                            <ul className="max-h-48 divide-y divide-[rgb(var(--color-border-tertiary)/0.35)] overflow-y-auto rounded-lg border border-[rgb(var(--color-border-tertiary)/0.35)]">
+                              {row.points.length === 0 ? (
+                                <li className="px-3 py-3 text-xs text-text-muted">Sem pontos na série.</li>
+                              ) : (
+                                row.points
+                                  .slice()
+                                  .reverse()
+                                  .map((p) => (
+                                    <li
+                                      key={p.date}
+                                      className="flex items-center justify-between px-3 py-1.5 text-xs"
+                                    >
+                                      <span className="text-text-secondary">{formatDate(p.date)}</span>
+                                      <span className="font-medium tabular-nums text-text-primary">{p.score}</span>
+                                    </li>
+                                  ))
+                              )}
+                            </ul>
+                          </div>
+                        </div>
                       </td>
                     </tr>
                   ) : null}

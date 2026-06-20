@@ -44,7 +44,7 @@ export async function collectGoogleTrends(options: {
       [scriptPath, '--geo', geo, '--timeframe', timeframe],
       {
         cwd: process.cwd(),
-        timeout: 300_000,
+        timeout: 600_000,
         maxBuffer: 8 * 1024 * 1024,
         env: process.env,
       }

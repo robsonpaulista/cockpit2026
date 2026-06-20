@@ -17,11 +17,9 @@ export async function GET(request: Request) {
 
     const { searchParams } = new URL(request.url)
     const politicoSlug = searchParams.get('politico')?.trim() ?? 'all'
+    const date = searchParams.get('date')?.trim() ?? ''
     const lookbackDays = Math.min(90, Math.max(1, Number(searchParams.get('days') ?? 7) || 7))
     const limit = Math.min(500, Math.max(1, Number(searchParams.get('limit') ?? 200) || 200))
-
-    const cutoff = new Date()
-    cutoff.setUTCDate(cutoff.getUTCDate() - lookbackDays)
 
     let query = supabase
       .from('google_news_mentions')
@@ -31,9 +29,19 @@ export async function GET(request: Request) {
         political_actors!inner ( id, name, slug, actor_type )
       `
       )
-      .gte('published_at', cutoff.toISOString())
       .order('published_at', { ascending: false })
       .limit(limit)
+
+    if (/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+      const nextDay = new Date(`${date}T12:00:00.000Z`)
+      nextDay.setUTCDate(nextDay.getUTCDate() + 1)
+      const endDate = nextDay.toISOString().slice(0, 10)
+      query = query.gte('published_at', `${date}T00:00:00.000Z`).lt('published_at', `${endDate}T00:00:00.000Z`)
+    } else {
+      const cutoff = new Date()
+      cutoff.setUTCDate(cutoff.getUTCDate() - lookbackDays)
+      query = query.gte('published_at', cutoff.toISOString())
+    }
 
     if (politicoSlug && politicoSlug !== 'all') {
       query = query.eq('political_actors.slug', politicoSlug)
@@ -60,7 +68,8 @@ export async function GET(request: Request) {
 
     return NextResponse.json({
       mentions,
-      lookbackDays,
+      lookbackDays: /^\d{4}-\d{2}-\d{2}$/.test(date) ? null : lookbackDays,
+      date: /^\d{4}-\d{2}-\d{2}$/.test(date) ? date : null,
       setupRequired: false,
     })
   } catch (e) {

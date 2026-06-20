@@ -18,6 +18,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const ROOT = path.resolve(__dirname, '..')
 
 const KEYWORDS_PER_BATCH = 5
+const MAX_RELATED_PER_BUCKET = 10
 const MAX_ATTEMPTS = 5
 const INITIAL_BACKOFF_MS = 8_000
 const CHROME_UA =
@@ -101,52 +102,119 @@ function makeTrendsClient() {
   })
 }
 
-async function fetchBatchInterest(batch, geo, timeframe, collectedAt) {
-  const keywords = batch.map((a) => a.name)
+function labelFromRelatedItem(item, kind) {
+  if (kind === 'query') {
+    if (typeof item.query === 'string' && item.query.trim()) return item.query.trim()
+  }
+  if (kind === 'topic') {
+    if (item.topic && typeof item.topic.title === 'string' && item.topic.title.trim()) {
+      return item.topic.title.trim()
+    }
+    if (typeof item.topic_title === 'string' && item.topic_title.trim()) return item.topic_title.trim()
+  }
+  if (typeof item.title === 'string' && item.title.trim()) return item.title.trim()
+  return null
+}
+
+function mapRelatedRows(items, kind, bucket, actor, geo, timeframe, collectedAt) {
+  const rows = []
+  for (let i = 0; i < Math.min(items.length, MAX_RELATED_PER_BUCKET); i++) {
+    const item = items[i]
+    const label = labelFromRelatedItem(item, kind)
+    if (!label) continue
+    const valueScore = typeof item.value === 'number' && Number.isFinite(item.value) ? item.value : null
+    rows.push({
+      politico_id: actor.id,
+      search_term: actor.name,
+      kind,
+      bucket,
+      label,
+      value_score: valueScore,
+      formatted_value: typeof item.formattedValue === 'string' ? item.formattedValue : null,
+      explore_link: typeof item.link === 'string' ? item.link : null,
+      rank: i + 1,
+      geo,
+      timeframe,
+      collected_at: collectedAt,
+    })
+  }
+  return rows
+}
+
+async function withRetry(label, fn) {
   let backoffMs = INITIAL_BACKOFF_MS
-
   for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
-    const trends = makeTrendsClient()
     try {
-      const result = await trends.interestOverTime({
-        keywords,
-        geo,
-        time: timeframe,
-        hl: 'pt-BR',
-        tz: 180,
-      })
-
-      const rows = []
-      for (const point of result.data.timeline) {
-        const interestDate = interestDateFromPoint(point.time, point.formattedTime)
-        batch.forEach((actor, idx) => {
-          const raw = point.value[idx]
-          const score = typeof raw === 'number' && Number.isFinite(raw) ? Math.round(raw) : 0
-          rows.push({
-            politico_id: actor.id,
-            search_term: actor.name,
-            interest_date: interestDate,
-            interest_score: Math.max(0, Math.min(100, score)),
-            geo,
-            timeframe,
-            collected_at: collectedAt,
-          })
-        })
-      }
-      return rows
+      return await fn()
     } catch (error) {
       if (!isRetryable(error) || attempt >= MAX_ATTEMPTS) {
         throw error instanceof Error ? error : new Error(String(error))
       }
       console.error(
-        `[collect-google-trends] retry ${attempt}/${MAX_ATTEMPTS} (${keywords.length} nomes): ${error instanceof Error ? error.message : error}`
+        `[collect-google-trends] retry ${attempt}/${MAX_ATTEMPTS} (${label}): ${error instanceof Error ? error.message : error}`
       )
       await sleep(backoffMs)
       backoffMs = Math.min(Math.round(backoffMs * 1.5), 60_000)
     }
   }
+  throw new Error(`Falha após ${MAX_ATTEMPTS} tentativas (${label}).`)
+}
 
-  throw new Error(`Falha após ${MAX_ATTEMPTS} tentativas.`)
+async function fetchBatchInterest(batch, geo, timeframe, collectedAt) {
+  const keywords = batch.map((a) => a.name)
+  return withRetry(keywords.join(', '), async () => {
+    const trends = makeTrendsClient()
+    const result = await trends.interestOverTime({
+      keywords,
+      geo,
+      time: timeframe,
+      hl: 'pt-BR',
+      tz: 180,
+    })
+
+    const rows = []
+    for (const point of result.data.timeline) {
+      const interestDate = interestDateFromPoint(point.time, point.formattedTime)
+      batch.forEach((actor, idx) => {
+        const raw = point.value[idx]
+        const score = typeof raw === 'number' && Number.isFinite(raw) ? Math.round(raw) : 0
+        rows.push({
+          politico_id: actor.id,
+          search_term: actor.name,
+          interest_date: interestDate,
+          interest_score: Math.max(0, Math.min(100, score)),
+          geo,
+          timeframe,
+          collected_at: collectedAt,
+        })
+      })
+    }
+    return rows
+  })
+}
+
+async function fetchActorRelated(actor, geo, timeframe, collectedAt) {
+  return withRetry(`${actor.name} (related)`, async () => {
+    const trends = makeTrendsClient()
+    const input = {
+      keywords: [actor.name],
+      geo,
+      time: timeframe,
+      hl: 'pt-BR',
+      tz: 180,
+    }
+    const [queries, topics] = await Promise.all([
+      trends.relatedQueries(input),
+      trends.relatedTopics(input),
+    ])
+
+    return [
+      ...mapRelatedRows(queries.data.top ?? [], 'query', 'top', actor, geo, timeframe, collectedAt),
+      ...mapRelatedRows(queries.data.rising ?? [], 'query', 'rising', actor, geo, timeframe, collectedAt),
+      ...mapRelatedRows(topics.data.top ?? [], 'topic', 'top', actor, geo, timeframe, collectedAt),
+      ...mapRelatedRows(topics.data.rising ?? [], 'topic', 'rising', actor, geo, timeframe, collectedAt),
+    ]
+  })
 }
 
 async function main() {
@@ -179,12 +247,22 @@ async function main() {
   }
 
   if (!actors?.length) {
-    emit({ ok: true, terms: 0, termsSucceeded: 0, rowsUpserted: 0, geo, timeframe, errors: [] })
+    emit({
+      ok: true,
+      terms: 0,
+      termsSucceeded: 0,
+      rowsUpserted: 0,
+      relatedRowsUpserted: 0,
+      geo,
+      timeframe,
+      errors: [],
+    })
     return
   }
 
   const collectedAt = new Date().toISOString()
   let rowsUpserted = 0
+  let relatedRowsUpserted = 0
   let termsSucceeded = 0
   const errors = []
 
@@ -205,6 +283,34 @@ async function main() {
     }
   }
 
+  for (const actor of actors) {
+    try {
+      const relatedRows = await fetchActorRelated(actor, geo, timeframe, collectedAt)
+      const { error: deleteError } = await supabase
+        .from('google_trends_related')
+        .delete()
+        .eq('search_term', actor.name)
+        .eq('geo', geo)
+        .eq('timeframe', timeframe)
+      if (deleteError) {
+        if (deleteError.message.includes('does not exist') || deleteError.code === '42P01') {
+          errors.push(
+            `${actor.name} (related): execute database/create-google-trends-related.sql no Supabase`
+          )
+          continue
+        }
+        throw new Error(deleteError.message)
+      }
+      if (relatedRows.length > 0) {
+        const { error: insertError } = await supabase.from('google_trends_related').insert(relatedRows)
+        if (insertError) throw new Error(insertError.message)
+        relatedRowsUpserted += relatedRows.length
+      }
+    } catch (e) {
+      errors.push(`${actor.name} (related): ${e instanceof Error ? e.message : 'Erro'}`)
+    }
+  }
+
   if (rowsUpserted === 0 && errors.length > 0) {
     emit({ ok: false, error: errors[0], geo, timeframe, errors })
     process.exit(1)
@@ -215,6 +321,7 @@ async function main() {
     terms: actors.length,
     termsSucceeded,
     rowsUpserted,
+    relatedRowsUpserted,
     geo,
     timeframe,
     errors,

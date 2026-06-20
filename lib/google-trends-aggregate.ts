@@ -2,6 +2,11 @@ import type {
   GoogleTrendsCompareRow,
   GoogleTrendsInterestPoint,
   GoogleTrendsInterestRow,
+  GoogleTrendsRelatedBucket,
+  GoogleTrendsRelatedItem,
+  GoogleTrendsRelatedKind,
+  GoogleTrendsRelatedRow,
+  GoogleTrendsSearchContext,
   GoogleTrendsSeries,
 } from '@/lib/google-trends-types'
 import type { PoliticalActorWithTerms, PoliticalActorType } from '@/lib/youtube-radar-types'
@@ -127,11 +132,117 @@ export function buildGoogleTrendsSeries(
   })
 }
 
+export function groupTrendsRelatedByTerm(rows: GoogleTrendsRelatedRow[]): Map<string, GoogleTrendsRelatedRow[]> {
+  const map = new Map<string, GoogleTrendsRelatedRow[]>()
+  for (const row of rows) {
+    const arr = map.get(row.search_term) ?? []
+    arr.push(row)
+    map.set(row.search_term, arr)
+  }
+  return map
+}
+
+function relatedItemsForBucket(
+  rows: GoogleTrendsRelatedRow[],
+  kind: GoogleTrendsRelatedKind,
+  bucket: GoogleTrendsRelatedBucket
+): GoogleTrendsRelatedItem[] {
+  return rows
+    .filter((r) => r.kind === kind && r.bucket === bucket)
+    .sort((a, b) => a.rank - b.rank)
+    .map((r) => ({
+      label: r.label,
+      formattedValue: r.formatted_value,
+      valueScore: r.value_score,
+      exploreLink: r.explore_link,
+      rank: r.rank,
+      kind: r.kind,
+      bucket: r.bucket,
+    }))
+}
+
+export function buildGoogleTrendsSearchContext(
+  searchTerm: string,
+  politicoId: string | null,
+  slug: string | null,
+  name: string,
+  relatedRows: GoogleTrendsRelatedRow[]
+): GoogleTrendsSearchContext {
+  const queriesTop = relatedItemsForBucket(relatedRows, 'query', 'top')
+  const queriesRising = relatedItemsForBucket(relatedRows, 'query', 'rising')
+  const topicsTop = relatedItemsForBucket(relatedRows, 'topic', 'top')
+  const topicsRising = relatedItemsForBucket(relatedRows, 'topic', 'rising')
+
+  return {
+    searchTerm,
+    politicoId,
+    slug,
+    name,
+    queriesTop,
+    queriesRising,
+    topicsTop,
+    topicsRising,
+    hasData:
+      queriesTop.length > 0 ||
+      queriesRising.length > 0 ||
+      topicsTop.length > 0 ||
+      topicsRising.length > 0,
+  }
+}
+
+export function buildGoogleTrendsSearchContexts(
+  actors: PoliticalActorWithTerms[],
+  relatedRows: GoogleTrendsRelatedRow[]
+): GoogleTrendsSearchContext[] {
+  const byTerm = groupTrendsRelatedByTerm(relatedRows)
+  const contexts: GoogleTrendsSearchContext[] = []
+
+  for (const actor of actors.filter((a) => a.active)) {
+    contexts.push(
+      buildGoogleTrendsSearchContext(
+        actor.name,
+        actor.id,
+        actor.slug,
+        actor.name,
+        byTerm.get(actor.name) ?? []
+      )
+    )
+  }
+
+  for (const [term, termRows] of byTerm.entries()) {
+    if (contexts.some((c) => c.searchTerm === term)) continue
+    contexts.push(
+      buildGoogleTrendsSearchContext(
+        term,
+        termRows[0]?.politico_id ?? null,
+        null,
+        term,
+        termRows
+      )
+    )
+  }
+
+  return contexts
+}
+
+export function attachSearchContextsToCompareRows(
+  compare: GoogleTrendsCompareRow[],
+  contexts: GoogleTrendsSearchContext[]
+): GoogleTrendsCompareRow[] {
+  const byTerm = new Map(contexts.map((c) => [c.searchTerm, c]))
+  return compare.map((row) => ({
+    ...row,
+    searchContext: byTerm.get(row.searchTerm) ?? null,
+  }))
+}
+
 export function buildGoogleTrendsCompareRows(
   actors: PoliticalActorWithTerms[],
-  rows: GoogleTrendsInterestRow[]
+  rows: GoogleTrendsInterestRow[],
+  relatedRows: GoogleTrendsRelatedRow[] = []
 ): GoogleTrendsCompareRow[] {
-  return buildGoogleTrendsSeries(actors, rows).map((s) => {
+  const contexts = buildGoogleTrendsSearchContexts(actors, relatedRows)
+  const compare = buildGoogleTrendsSeries(actors, rows).map((s) => {
     const { recent, previous } = splitRecentPrevious(s.points)
     const avgRecent = avg(recent)
     const avgPrevious = avg(previous)
@@ -154,8 +265,11 @@ export function buildGoogleTrendsCompareRows(
       latestScore,
       trendAlert: isTrendAlert(s.points, peakDate, peakScore),
       points: s.points,
+      searchContext: null,
     }
   })
+
+  return attachSearchContextsToCompareRows(compare, contexts)
 }
 
 export function buildTrendsChartData(

@@ -46,6 +46,7 @@
     "next": "14.2.35",
     "pdf-parse": "^1.1.1",
     "pdfjs-dist": "^5.5.207",
+    "playwright": "^1.61.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-leaflet": "^4.2.1",

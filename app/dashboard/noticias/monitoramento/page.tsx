@@ -3,14 +3,18 @@
 import { useCallback, useMemo } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { GoogleNewsRadarPanel } from '@/components/monitoramento/google-news-radar-panel'
+import { MetaAdsRadarPanel } from '@/components/monitoramento/meta-ads-radar-panel'
 import { MonitoramentoShell, type MonitoramentoTab } from '@/components/monitoramento/monitoramento-shell'
+import { PanoramaPanel } from '@/components/monitoramento/panorama-panel'
 import { TrendsRadarPanel } from '@/components/monitoramento/trends-radar-panel'
 import { YoutubeRadarPanel } from '@/components/monitoramento/youtube-radar-panel'
 
 function parseTab(value: string | null): MonitoramentoTab {
+  if (value === 'youtube') return 'youtube'
   if (value === 'trends') return 'trends'
   if (value === 'google-news') return 'google-news'
-  return 'youtube'
+  if (value === 'meta-ads') return 'meta-ads'
+  return 'geral'
 }
 
 export default function MonitoramentoPage() {
@@ -21,7 +25,7 @@ export default function MonitoramentoPage() {
   const onTabChange = useCallback(
     (tab: MonitoramentoTab) => {
       const params = new URLSearchParams(searchParams.toString())
-      if (tab === 'youtube') {
+      if (tab === 'geral') {
         params.delete('tab')
       } else {
         params.set('tab', tab)
@@ -34,10 +38,14 @@ export default function MonitoramentoPage() {
 
   return (
     <MonitoramentoShell activeTab={activeTab} onTabChange={onTabChange}>
-      {activeTab === 'trends' ? (
+      {activeTab === 'geral' ? (
+        <PanoramaPanel />
+      ) : activeTab === 'trends' ? (
         <TrendsRadarPanel />
       ) : activeTab === 'google-news' ? (
         <GoogleNewsRadarPanel />
+      ) : activeTab === 'meta-ads' ? (
+        <MetaAdsRadarPanel />
       ) : (
         <YoutubeRadarPanel />
       )}

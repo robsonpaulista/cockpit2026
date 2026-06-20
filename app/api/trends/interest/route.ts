@@ -5,7 +5,7 @@ import {
   buildGoogleTrendsSeries,
   buildTrendsChartData,
 } from '@/lib/google-trends-aggregate'
-import type { GoogleTrendsInterestRow } from '@/lib/google-trends-types'
+import type { GoogleTrendsInterestRow, GoogleTrendsRelatedRow } from '@/lib/google-trends-types'
 import type { PoliticalActorWithTerms } from '@/lib/youtube-radar-types'
 import {
   googleTrendsTimeframeQueryKeys,
@@ -82,6 +82,15 @@ export async function GET(request: Request) {
       .in('timeframe', timeframeKeys)
       .order('interest_date', { ascending: true })
 
+    const { data: relatedRowsRaw } = await supabase
+      .from('google_trends_related')
+      .select('*')
+      .eq('geo', geo)
+      .in('timeframe', timeframeKeys)
+      .order('rank', { ascending: true })
+
+    const relatedRows = (relatedRowsRaw ?? []) as GoogleTrendsRelatedRow[]
+
     if (interestError) {
       if (interestError.message.includes('does not exist') || interestError.code === '42P01') {
         return NextResponse.json({
@@ -99,7 +108,7 @@ export async function GET(request: Request) {
     const typedActors = (actors ?? []) as PoliticalActorWithTerms[]
     const rows = (interestRows ?? []) as GoogleTrendsInterestRow[]
     const series = buildGoogleTrendsSeries(typedActors, rows)
-    const compare = buildGoogleTrendsCompareRows(typedActors, rows)
+    const compare = buildGoogleTrendsCompareRows(typedActors, rows, relatedRows)
     const chartData = buildTrendsChartData(series)
 
     const latestCollected = rows.reduce<string | null>((acc, r) => {
@@ -110,6 +119,7 @@ export async function GET(request: Request) {
     return NextResponse.json({
       actors: typedActors,
       rows,
+      relatedRows,
       series,
       compare,
       chartData,

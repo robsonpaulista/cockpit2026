@@ -1,14 +1,16 @@
 'use client'
 
 import Link from 'next/link'
-import { LineChart, Newspaper, Radar, Youtube } from 'lucide-react'
+import { LayoutGrid, LineChart, Megaphone, Newspaper, Radar, Youtube } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
-export type MonitoramentoTab = 'youtube' | 'trends' | 'google-news'
+export type MonitoramentoTab = 'geral' | 'youtube' | 'trends' | 'google-news' | 'meta-ads'
 
 const TABS: { id: MonitoramentoTab; label: string; icon: typeof Youtube }[] = [
+  { id: 'geral', label: 'Panorama', icon: LayoutGrid },
   { id: 'youtube', label: 'YouTube', icon: Youtube },
   { id: 'google-news', label: 'Google News', icon: Newspaper },
+  { id: 'meta-ads', label: 'Meta Ads', icon: Megaphone },
   { id: 'trends', label: 'Google Trends', icon: LineChart },
 ]
 
@@ -29,9 +31,8 @@ export function MonitoramentoShell({ activeTab, onTabChange, children }: Monitor
           </div>
           <h1 className="text-lg font-semibold text-text-primary">Central de monitoramento</h1>
           <p className="mt-1 max-w-2xl text-sm text-text-muted">
-            Compare menções no YouTube, notícias no Google News, interesse no Google Trends — tudo a
-            partir dos mesmos candidatos monitorados.
-          </p>
+            Panorama geral e comparativo entre candidatos — YouTube, Google News, Meta Ads,
+            Google Trends e presença digital estimada.          </p>
         </div>
         <Link
           href="/dashboard/noticias"

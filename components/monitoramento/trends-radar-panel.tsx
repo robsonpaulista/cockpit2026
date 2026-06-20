@@ -80,16 +80,18 @@ export function TrendsRadarPanel() {
         terms?: number
         termsSucceeded?: number
         rowsUpserted?: number
+        relatedRowsUpserted?: number
         errors?: string[]
       }
       if (!res.ok) throw new Error(j.error ?? 'Falha na coleta.')
 
       const ok = j.termsSucceeded ?? 0
       const total = j.terms ?? 0
+      const related = j.relatedRowsUpserted ?? 0
       setCollectMessage(
         ok === total
-          ? `Coleta concluída: ${ok} nomes · ${j.rowsUpserted ?? 0} pontos salvos`
-          : `Coleta parcial: ${ok}/${total} nomes · ${j.rowsUpserted ?? 0} pontos salvos${
+          ? `Coleta concluída: ${ok} nomes · ${j.rowsUpserted ?? 0} pontos · ${related} itens relacionados`
+          : `Coleta parcial: ${ok}/${total} nomes · ${j.rowsUpserted ?? 0} pontos · ${related} relacionados${
               j.errors?.length ? `. Falhas: ${j.errors.join('; ')}` : ''
             }`
       )
@@ -106,7 +108,8 @@ export function TrendsRadarPanel() {
       {setupRequired ? (
         <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
           Execute{' '}
-          <code className="rounded bg-white/80 px-1">database/create-google-trends-tables.sql</code> no
+          <code className="rounded bg-white/80 px-1">database/create-google-trends-tables.sql</code> e{' '}
+          <code className="rounded bg-white/80 px-1">database/create-google-trends-related.sql</code> no
           Supabase antes da primeira coleta.
         </div>
       ) : null}
@@ -146,8 +149,8 @@ export function TrendsRadarPanel() {
 
       {collecting ? (
         <p className="text-xs text-text-muted">
-          Comparando todos os candidatos em uma requisição (escala relativa do Google). Se houver rate
-          limit, o servidor aguarda e tenta de novo — pode levar até 2 minutos.
+          Comparando candidatos e coletando consultas/tópicos relacionados. Se houver rate limit, o servidor
+          aguarda e tenta de novo — pode levar alguns minutos.
         </p>
       ) : null}
 

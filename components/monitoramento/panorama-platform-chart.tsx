@@ -1,0 +1,277 @@
+'use client'
+
+import type { LucideIcon } from 'lucide-react'
+import { LineChart as LineChartIcon, Megaphone, Newspaper, Youtube } from 'lucide-react'
+import {
+  CartesianGrid,
+  Legend,
+  Line,
+  LineChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from 'recharts'
+import { PanoramaMentionHeatmap } from '@/components/monitoramento/panorama-mention-heatmap'
+import { TrendsSearchContextList } from '@/components/trends-radar/trends-search-context-block'
+import type { PanoramaMetaAdsPeriodTotal, PanoramaPlatformChart, PanoramaPlatformId } from '@/lib/monitoramento-panorama-charts'
+import { cn } from '@/lib/utils'
+
+const PLATFORM_ICONS: Record<PanoramaPlatformId, LucideIcon> = {
+  youtube: Youtube,
+  'google-news': Newspaper,
+  'google-trends': LineChartIcon,
+  'meta-ads': Megaphone,
+}
+
+const PLATFORM_ICON_BG: Record<PanoramaPlatformId, string> = {
+  youtube: 'bg-[#FEE2E2] text-[#DC2626]',
+  'google-news': 'bg-[#DBEAFE] text-[#2563EB]',
+  'google-trends': 'bg-[#E0E7FF] text-[#4338CA]',
+  'meta-ads': 'bg-[#FFEDD5] text-[#EA580C]',
+}
+
+function formatDateLabel(iso: string): string {
+  return new Date(`${iso}T12:00:00`).toLocaleDateString('pt-BR', {
+    day: '2-digit',
+    month: 'short',
+  })
+}
+
+function formatCompactBrl(value: number): string {
+  return new Intl.NumberFormat('pt-BR', {
+    style: 'currency',
+    currency: 'BRL',
+    notation: 'compact',
+    maximumFractionDigits: 1,
+  }).format(value)
+}
+
+function formatCompactNumber(value: number): string {
+  return new Intl.NumberFormat('pt-BR', {
+    notation: 'compact',
+    maximumFractionDigits: 1,
+  }).format(value)
+}
+
+function formatValue(value: number, metricLabel: string, platformId?: PanoramaPlatformId): [string, string] {
+  if (platformId === 'meta-ads') {
+    return [
+      new Intl.NumberFormat('pt-BR', {
+        style: 'currency',
+        currency: 'BRL',
+        maximumFractionDigits: 0,
+      }).format(value),
+      metricLabel,
+    ]
+  }
+  return [new Intl.NumberFormat('pt-BR').format(value), metricLabel]
+}
+
+type MetaAdsTooltipPayload = {
+  name?: string
+  value?: number
+  dataKey?: string | number
+  color?: string
+}
+
+function MetaAdsPointTooltip({
+  active,
+  payload,
+  label,
+  periodTotals,
+}: {
+  active?: boolean
+  payload?: MetaAdsTooltipPayload[]
+  label?: string | number
+  periodTotals?: PanoramaMetaAdsPeriodTotal[]
+}) {
+  if (!active || !payload?.length) return null
+
+  const item = payload[0]
+  const slug = String(item.dataKey ?? '')
+  const lineTotal = periodTotals?.find((t) => t.slug === slug)
+  const dayValue = typeof item.value === 'number' ? item.value : Number(item.value)
+
+  return (
+    <div className="max-w-[240px] rounded-lg border border-[rgb(var(--color-border-tertiary)/0.85)] bg-bg-surface px-3 py-2.5 text-xs shadow-lg">
+      <p className="font-semibold text-text-primary">{formatDateLabel(String(label))}</p>
+      <p className="mt-1 font-medium" style={{ color: item.color }}>
+        {item.name}
+      </p>
+      <p className="mt-1.5 text-text-secondary">
+        Gasto no dia:{' '}
+        <span className="font-medium text-text-primary">
+          {Number.isFinite(dayValue) && dayValue > 0
+            ? new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 }).format(dayValue)
+            : '—'}
+        </span>
+      </p>
+      {lineTotal ? (
+        <div className="mt-2 border-t border-[rgb(var(--color-border-tertiary)/0.45)] pt-2 text-[11px] text-text-muted">
+          <p className="font-medium uppercase tracking-wide text-text-secondary">Total no período</p>
+          <p className="mt-1">
+            Investido: <span className="text-text-primary">{lineTotal.spendLabel}</span>
+          </p>
+          {lineTotal.impressionsLabel ? (
+            <p className="mt-0.5">
+              Imp.: <span className="text-text-primary">{lineTotal.impressionsLabel}</span>
+            </p>
+          ) : null}
+        </div>
+      ) : null}
+    </div>
+  )
+}
+
+interface PanoramaPlatformChartProps {
+  chart: PanoramaPlatformChart
+  className?: string
+}
+
+export function PanoramaPlatformChart({ chart, className }: PanoramaPlatformChartProps) {
+  const Icon = PLATFORM_ICONS[chart.id]
+  const isMetaAds = chart.id === 'meta-ads'
+  const isHeatmap = chart.chartType === 'heatmap'
+  const expandChart = !isHeatmap && !chart.empty
+  const useExternalLegend = expandChart && chart.lines.length > 0
+
+  return (
+    <div
+      className={cn(
+        'flex h-full min-h-[360px] flex-col rounded-xl border border-[rgb(var(--color-border-tertiary)/0.85)] bg-bg-surface p-4',
+        className
+      )}
+    >
+      <div className="mb-3 flex shrink-0 items-start gap-3">
+        <div
+          className={cn(
+            'flex h-9 w-9 shrink-0 items-center justify-center rounded-lg',
+            PLATFORM_ICON_BG[chart.id]
+          )}
+        >
+          <Icon className="h-4 w-4" aria-hidden />
+        </div>
+        <div className="min-w-0">
+          <h3 className="text-sm font-semibold text-text-primary">{chart.title}</h3>
+          <p className="text-xs text-text-muted">{chart.subtitle}</p>
+        </div>
+      </div>
+
+      {chart.empty ? (
+        <div className="flex min-h-[220px] flex-1 items-center justify-center rounded-lg border border-dashed border-[rgb(var(--color-border-tertiary)/0.6)] text-xs text-text-muted">
+          Sem série histórica — rode a coleta nesta plataforma.
+        </div>
+      ) : isHeatmap && chart.heatmapDates && chart.heatmapRows ? (
+        <PanoramaMentionHeatmap
+          dates={chart.heatmapDates}
+          rows={chart.heatmapRows}
+          metricLabel={chart.metricLabel}
+          className="min-h-0 flex-1"
+        />
+      ) : (
+        <div className={cn('flex min-h-0 flex-col', expandChart && 'flex-1')}>
+          <div
+            className={cn(
+              'w-full',
+              expandChart ? 'min-h-0 flex-1 min-h-[200px]' : 'h-[220px]'
+            )}
+          >
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart
+                data={chart.chartData}
+                margin={{ top: 4, right: 8, left: chart.id === 'youtube' ? 4 : 0, bottom: 0 }}
+              >
+                <CartesianGrid strokeDasharray="3 3" stroke="rgb(var(--color-border-tertiary)/0.45)" />
+                <XAxis
+                  dataKey="date"
+                  tickFormatter={formatDateLabel}
+                  tick={{ fontSize: 10, fill: 'rgb(var(--color-text-muted))' }}
+                  minTickGap={expandChart ? 20 : 28}
+                />
+                <YAxis
+                  tick={{ fontSize: 10, fill: 'rgb(var(--color-text-muted))' }}
+                  width={chart.id === 'meta-ads' ? 52 : chart.id === 'youtube' ? 44 : 36}
+                  allowDecimals={chart.id === 'google-trends' ? false : true}
+                  domain={chart.id === 'google-trends' ? [0, 100] : [0, 'auto']}
+                  tickFormatter={
+                    chart.id === 'meta-ads'
+                      ? (v) => formatCompactBrl(v)
+                      : chart.id === 'youtube'
+                        ? (v) => formatCompactNumber(v)
+                        : undefined
+                  }
+                />
+                {isMetaAds ? (
+                  <Tooltip
+                    trigger="click"
+                    content={(props) => (
+                      <MetaAdsPointTooltip
+                        active={props.active}
+                        payload={props.payload as MetaAdsTooltipPayload[] | undefined}
+                        label={props.label}
+                        periodTotals={chart.periodTotals}
+                      />
+                    )}
+                  />
+                ) : (
+                  <Tooltip
+                    labelFormatter={(v) => formatDateLabel(String(v))}
+                    formatter={(value: number, _name, item) => {
+                      const line = chart.lines.find((l) => l.slug === item.dataKey)
+                      return formatValue(value, line?.name ?? chart.metricLabel, chart.id)
+                    }}
+                    contentStyle={{ fontSize: 12, borderRadius: 8 }}
+                  />
+                )}
+                {!useExternalLegend ? (
+                  <Legend wrapperStyle={{ fontSize: 11, paddingTop: 8 }} iconType="line" />
+                ) : null}
+                {chart.lines.map((line) => (
+                  <Line
+                    key={line.slug}
+                    type="monotone"
+                    dataKey={line.slug}
+                    name={line.name}
+                    stroke={line.color}
+                    strokeWidth={2.5}
+                    dot={
+                      isMetaAds
+                        ? { r: 3, fill: line.color, strokeWidth: 0, cursor: 'pointer' }
+                        : false
+                    }
+                    activeDot={{ r: 5, strokeWidth: 0, cursor: 'pointer' }}
+                    connectNulls
+                  />
+                ))}
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+          {useExternalLegend ? (
+            <div className="mt-2 shrink-0 border-t border-[rgb(var(--color-border-tertiary)/0.45)] pt-2">
+              <div className="flex flex-wrap gap-x-3 gap-y-1">
+                {chart.lines.map((line) => (
+                  <span
+                    key={line.slug}
+                    className="inline-flex max-w-full items-center gap-1.5 text-[10px] text-text-secondary"
+                    title={line.name}
+                  >
+                    <span
+                      className="h-0.5 w-3 shrink-0 rounded-full"
+                      style={{ backgroundColor: line.color }}
+                      aria-hidden
+                    />
+                    <span className="truncate">{line.name}</span>
+                  </span>
+                ))}
+              </div>
+            </div>
+          ) : null}
+          {chart.id === 'google-trends' && chart.searchContexts && chart.searchContexts.length > 0 ? (
+            <TrendsSearchContextList contexts={chart.searchContexts} className="mt-3 shrink-0" />
+          ) : null}
+        </div>
+      )}
+    </div>
+  )
+}
