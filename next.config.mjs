@@ -22,9 +22,12 @@ const nextConfig = {
     ],
     outputFileTracingIncludes: {
       '/api/trends/collect': [
-        './scripts/collect-google-trends.mjs',
-        './scripts/lib/supabase-client.mjs',
         './node_modules/trendsearch/**/*',
+        './node_modules/effect/**/*',
+        './node_modules/@effect/**/*',
+        './node_modules/mime/**/*',
+        './node_modules/undici/**/*',
+        './node_modules/ws/**/*',
         './node_modules/@supabase/supabase-js/**/*',
       ],
       '/api/instagram-radar/collect': [

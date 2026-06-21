@@ -3,6 +3,7 @@ import path from 'path'
 import { promisify } from 'util'
 import type { GoogleTrendsCollectResult, GoogleTrendsTimeframe } from '@/lib/google-trends-types'
 import { normalizeGoogleTrendsTimeframe } from '@/lib/google-trends-timeframe'
+import { isVercelServerless } from '@/lib/serverless-runtime'
 
 const execFileAsync = promisify(execFile)
 
@@ -25,6 +26,36 @@ function assertCollectAllowed(): void {
   }
 }
 
+async function collectViaScript(
+  geo: string,
+  timeframe: GoogleTrendsTimeframe
+): Promise<GoogleTrendsCollectResult> {
+  const scriptPath = path.join(process.cwd(), 'scripts', 'collect-google-trends.mjs')
+  const { stdout, stderr } = await execFileAsync(
+    process.execPath,
+    [scriptPath, '--geo', geo, '--timeframe', timeframe],
+    {
+      cwd: process.cwd(),
+      timeout: 600_000,
+      maxBuffer: 8 * 1024 * 1024,
+      env: process.env,
+    }
+  )
+
+  const lines = stdout.trim().split('\n').filter(Boolean)
+  const lastLine = lines.at(-1)
+  if (!lastLine) {
+    throw new Error(stderr.trim() || 'Coleta Trends sem resposta do script Node.')
+  }
+
+  const parsed = JSON.parse(lastLine) as GoogleTrendsCollectResult
+  if (!parsed.ok) {
+    throw new Error(parsed.error ?? 'Falha na coleta Google Trends.')
+  }
+
+  return parsed
+}
+
 export async function collectGoogleTrends(options: {
   geo?: string
   timeframe?: GoogleTrendsTimeframe
@@ -38,30 +69,16 @@ export async function collectGoogleTrends(options: {
     normalizeGoogleTrendsTimeframe('today 3-m')!
 
   try {
-    const scriptPath = path.join(process.cwd(), 'scripts', 'collect-google-trends.mjs')
-    const { stdout, stderr } = await execFileAsync(
-      process.execPath,
-      [scriptPath, '--geo', geo, '--timeframe', timeframe],
-      {
-        cwd: process.cwd(),
-        timeout: 600_000,
-        maxBuffer: 8 * 1024 * 1024,
-        env: process.env,
+    if (isVercelServerless()) {
+      const { runGoogleTrendsCollect } = await import('@/lib/google-trends-collect-core')
+      const result = await runGoogleTrendsCollect({ geo, timeframe })
+      if (!result.ok) {
+        throw new Error(result.error ?? 'Falha na coleta Google Trends.')
       }
-    )
-
-    const lines = stdout.trim().split('\n').filter(Boolean)
-    const lastLine = lines.at(-1)
-    if (!lastLine) {
-      throw new Error(stderr.trim() || 'Coleta Trends sem resposta do script Node.')
+      return result
     }
 
-    const parsed = JSON.parse(lastLine) as GoogleTrendsCollectResult
-    if (!parsed.ok) {
-      throw new Error(parsed.error ?? 'Falha na coleta Google Trends.')
-    }
-
-    return parsed
+    return await collectViaScript(geo, timeframe)
   } finally {
     collectInProgress = false
     lastCollectFinishedAt = Date.now()

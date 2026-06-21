@@ -63,6 +63,6 @@ export async function GET() {
     geo: 'BR-PI',
     defaultTimeframe: 'today 3-m' satisfies GoogleTrendsTimeframe,
     provider: 'trendsearch',
-    runner: 'scripts/collect-google-trends.mjs',
+    runner: process.env.VERCEL === '1' ? 'lib/google-trends-collect-core.ts' : 'scripts/collect-google-trends.mjs',
   })
 }
