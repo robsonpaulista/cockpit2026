@@ -167,8 +167,14 @@ async function collectMetaAdsStep(
     statusRes
   )
 
-  if (status.setupRequired) {
+    if (status.setupRequired) {
     return { skipped: true, message: 'Tabelas não configuradas — etapa ignorada.' }
+  }
+  if (status.runnerAvailable === false) {
+    return {
+      skipped: true,
+      message: status.runnerMessage ?? 'Meta Ads indisponível neste servidor — etapa ignorada.',
+    }
   }
   if (status.collectInProgress) {
     return { skipped: true, message: 'Coleta Meta Ads já em andamento no servidor — etapa ignorada.' }
@@ -221,6 +227,12 @@ async function collectMetaAdsStep(
     if (res.status === 429) {
       return { skipped: true, message: j.error ?? 'Limite diário de coleta Meta Ads.' }
     }
+    if (res.status === 503) {
+      return {
+        skipped: true,
+        message: j.error ?? 'Meta Ads indisponível neste servidor — etapa ignorada.',
+      }
+    }
     if (!res.ok) throw new Error(j.error ?? 'Falha na coleta Meta Ads.')
 
     const t = j.totals
@@ -255,7 +267,12 @@ async function runStep(
 }
 
 function isSkippedMessage(message: string): boolean {
-  return message.includes('ignorada') || message.includes('Limite diário')
+  return (
+    message.includes('ignorada') ||
+    message.includes('Limite diário') ||
+    message.includes('indisponível neste servidor') ||
+    message.includes('indisponível na Vercel')
+  )
 }
 
 export async function runMonitoramentoCollectAll(

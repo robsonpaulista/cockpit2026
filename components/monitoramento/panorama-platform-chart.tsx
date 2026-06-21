@@ -150,17 +150,26 @@ function MetaAdsPointDetail({
   )
 }
 
+type MetaAdsDotProps = DotProps & {
+  payload?: { date?: string }
+  value?: number
+}
+
 function metaAdsDotRenderer(
   line: PanoramaPlatformChart['lines'][number],
   onSelect: (selection: MetaAdsPointSelection) => void,
   selected: MetaAdsPointSelection | null
 ) {
-  return (props: DotProps) => {
+  return (props: MetaAdsDotProps) => {
     const { cx, cy, payload, value } = props
-    if (cx == null || cy == null || payload == null) return null
+    if (cx == null || cy == null || payload == null) {
+      return <circle cx={0} cy={0} r={0} fill="none" />
+    }
 
     const num = Number(value)
-    if (!Number.isFinite(num) || num <= 0) return null
+    if (!Number.isFinite(num) || num <= 0) {
+      return <circle cx={0} cy={0} r={0} fill="none" />
+    }
 
     const date = String((payload as { date?: string }).date ?? '')
     const isSelected = selected?.slug === line.slug && selected.date === date

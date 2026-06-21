@@ -81,6 +81,8 @@ export type MetaAdsCollectStatus = {
   hoursUntilNextCollect: number | null
   collectInProgress: boolean
   progress: MetaAdsCollectProgress | null
+  runnerAvailable: boolean
+  runnerMessage?: string | null
 }
 
 export const META_ADS_DAILY_COOLDOWN_MS = 24 * 60 * 60 * 1000

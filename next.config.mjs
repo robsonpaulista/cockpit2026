@@ -20,6 +20,19 @@ const nextConfig = {
       'effect',
       '@effect/platform-node',
     ],
+    outputFileTracingIncludes: {
+      '/api/trends/collect': [
+        './scripts/collect-google-trends.mjs',
+        './scripts/lib/supabase-client.mjs',
+        './node_modules/trendsearch/**/*',
+        './node_modules/@supabase/supabase-js/**/*',
+      ],
+      '/api/instagram-radar/collect': [
+        './scripts/collect-instagram-radar.mjs',
+        './scripts/lib/supabase-client.mjs',
+        './node_modules/@supabase/supabase-js/**/*',
+      ],
+    },
   },
   webpack: (config, { isServer }) => {
     config.resolve.alias = {

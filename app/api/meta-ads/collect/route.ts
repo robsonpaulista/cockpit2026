@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { collectMetaAds } from '@/lib/meta-ads-collect'
+import { MetaAdsRunnerUnavailableError } from '@/lib/serverless-runtime'
 import { createClient } from '@/lib/supabase/server'
 
 export const dynamic = 'force-dynamic'
@@ -32,6 +33,9 @@ export async function POST(request: Request) {
   } catch (e) {
     const msg = e instanceof Error ? e.message : 'Erro na coleta Meta Ads'
     console.error('[meta-ads/collect]', e)
+    if (e instanceof MetaAdsRunnerUnavailableError) {
+      return NextResponse.json({ error: msg, runnerAvailable: false }, { status: 503 })
+    }
     const status = msg.includes('Limite diário') ? 429 : 500
     return NextResponse.json({ error: msg }, { status })
   }

@@ -81,40 +81,33 @@ export function PanoramaPanel() {
         </div>
       ) : null}
 
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <p className="max-w-2xl text-sm text-text-muted">
-          Painel de gestão à vista: gráficos comparativos por plataforma, contexto de picos e
-          previews de imprensa, YouTube e anúncios Meta por candidato. Use &quot;Atualizar todas as
-          fontes&quot; para rodar as coletas das outras abas em sequência.
-        </p>
-        <div className="flex flex-wrap items-center gap-2">
-          <button
-            type="button"
-            disabled={busy}
-            onClick={() => void coletarTodas()}
-            className="inline-flex items-center gap-1.5 rounded-full bg-[rgb(var(--color-primary))] px-4 py-1.5 text-xs font-medium text-white disabled:opacity-50"
-          >
-            {collectingAll ? (
-              <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
-            ) : (
-              <Download className="h-3.5 w-3.5" aria-hidden />
-            )}
-            Atualizar todas as fontes
-          </button>
-          <button
-            type="button"
-            disabled={busy}
-            onClick={() => void carregar(true)}
-            className="inline-flex items-center gap-1.5 rounded-full border border-[rgb(var(--color-border-secondary)/0.85)] px-4 py-1.5 text-xs font-medium text-text-secondary hover:bg-bg-app disabled:opacity-50"
-          >
-            {refreshing ? (
-              <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
-            ) : (
-              <RefreshCw className="h-3.5 w-3.5" aria-hidden />
-            )}
-            Recarregar panorama
-          </button>
-        </div>
+      <div className="flex flex-wrap items-center justify-end gap-2">
+        <button
+          type="button"
+          disabled={busy}
+          onClick={() => void coletarTodas()}
+          className="inline-flex items-center gap-1.5 rounded-full bg-[rgb(var(--color-primary))] px-4 py-1.5 text-xs font-medium text-white disabled:opacity-50"
+        >
+          {collectingAll ? (
+            <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
+          ) : (
+            <Download className="h-3.5 w-3.5" aria-hidden />
+          )}
+          Atualizar todas as fontes
+        </button>
+        <button
+          type="button"
+          disabled={busy}
+          onClick={() => void carregar(true)}
+          className="inline-flex items-center gap-1.5 rounded-full border border-[rgb(var(--color-border-secondary)/0.85)] px-4 py-1.5 text-xs font-medium text-text-secondary hover:bg-bg-app disabled:opacity-50"
+        >
+          {refreshing ? (
+            <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
+          ) : (
+            <RefreshCw className="h-3.5 w-3.5" aria-hidden />
+          )}
+          Recarregar panorama
+        </button>
       </div>
 
       {collectProgress ? <PanoramaCollectProgress progress={collectProgress} /> : null}

@@ -13,6 +13,11 @@ import {
   type MetaAdsCollectScriptResult,
   type MetaAdsCollectStatus,
 } from '@/lib/meta-ads-types'
+import {
+  isMetaAdsRunnerAvailable,
+  META_ADS_RUNNER_UNAVAILABLE_MESSAGE,
+  MetaAdsRunnerUnavailableError,
+} from '@/lib/serverless-runtime'
 
 const execFileAsync = promisify(execFile)
 
@@ -85,6 +90,9 @@ export async function getMetaAdsCollectStatus(supabase: SupabaseClient): Promise
   const inProgress = collectInProgress || Boolean(runningLog?.started_at)
   const progress = normalizeMetaAdsCollectProgress(runningLog?.progress)
 
+  const runnerAvailable = isMetaAdsRunnerAvailable()
+  const runnerMessage = runnerAvailable ? null : META_ADS_RUNNER_UNAVAILABLE_MESSAGE
+
   if (error) {
     if (error.message.includes('does not exist') || error.code === '42P01') {
       return {
@@ -98,6 +106,8 @@ export async function getMetaAdsCollectStatus(supabase: SupabaseClient): Promise
         hoursUntilNextCollect: null,
         collectInProgress: inProgress,
         progress,
+        runnerAvailable,
+        runnerMessage,
       }
     }
     throw new Error(error.message)
@@ -108,7 +118,7 @@ export async function getMetaAdsCollectStatus(supabase: SupabaseClient): Promise
   const elapsed = lastStarted > 0 ? Date.now() - lastStarted : META_ADS_DAILY_COOLDOWN_MS
   const withinCooldown =
     dailyLimitEnabled && lastStarted > 0 && elapsed < META_ADS_DAILY_COOLDOWN_MS
-  const canCollect = !withinCooldown
+  const canCollect = runnerAvailable && !withinCooldown
   const nextCollectAt = withinCooldown
     ? new Date(lastStarted + META_ADS_DAILY_COOLDOWN_MS).toISOString()
     : null
@@ -125,11 +135,17 @@ export async function getMetaAdsCollectStatus(supabase: SupabaseClient): Promise
     hoursUntilNextCollect: msUntil !== null ? Math.max(0, Math.ceil(msUntil / 3_600_000)) : null,
     collectInProgress: inProgress,
     progress,
+    runnerAvailable,
+    runnerMessage,
   }
 }
 
 async function assertDailyCollectAllowed(supabase: SupabaseClient): Promise<void> {
   await closeStaleCollectLogs(supabase)
+
+  if (!isMetaAdsRunnerAvailable()) {
+    throw new MetaAdsRunnerUnavailableError()
+  }
 
   if (collectInProgress) {
     throw new Error('Coleta Meta Ads já em andamento. Aguarde a conclusão.')

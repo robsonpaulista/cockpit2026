@@ -12,7 +12,7 @@ import fs from 'fs'
 import path from 'path'
 import { fileURLToPath } from 'url'
 import { chromium } from 'playwright'
-import { createClient as createSupabase } from '@supabase/supabase-js'
+import { createSupabaseClient as createSupabase } from './lib/supabase-client.mjs'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const ROOT = path.resolve(__dirname, '..')
