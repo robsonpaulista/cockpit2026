@@ -36,6 +36,7 @@ export function usePanoramaPanel(options: {
   const [collectProgress, setCollectProgress] = useState<MonitoramentoCollectAllProgress | null>(null)
   const [metaAdsProgress, setMetaAdsProgress] = useState<MetaAdsCollectProgress | null>(null)
   const [error, setError] = useState('')
+  const [animationEpoch, setAnimationEpoch] = useState(0)
 
   const carregar = useCallback(async (silent = false) => {
     if (!enabled) return
@@ -47,6 +48,7 @@ export function usePanoramaPanel(options: {
       const j = (await res.json()) as { error?: string; panorama?: PanoramaModel }
       if (!res.ok) throw new Error(j.error ?? 'Falha ao carregar panorama.')
       setPanorama(j.panorama ?? EMPTY_PANORAMA)
+      if (silent) setAnimationEpoch((epoch) => epoch + 1)
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Erro ao carregar panorama.')
     } finally {
@@ -100,6 +102,7 @@ export function usePanoramaPanel(options: {
     metaAdsProgress,
     error,
     busy,
+    animationEpoch,
     carregar,
     coletarTodas,
   }

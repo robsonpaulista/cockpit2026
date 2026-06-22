@@ -201,7 +201,7 @@ export async function collectMetaAds(options?: {
   const progressStartedAt = new Date().toISOString()
   const initialProgress: MetaAdsCollectProgress = {
     phase: 'starting',
-    message: 'Preparando coleta na Meta Ads Library…',
+    message: 'Preparando coleta de anúncios…',
     percent: 0,
     startedAt: progressStartedAt,
     updatedAt: progressStartedAt,

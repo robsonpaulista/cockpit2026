@@ -229,6 +229,60 @@ button:disabled {
   animation: growWidth 0.8s cubic-bezier(0.22, 1, 0.36, 1) forwards;
 }
 
+/* Panorama — células do heatmap surgem em cascata */
+@keyframes panoramaHeatmapCellIn {
+  from {
+    opacity: 0;
+    transform: scale(0.62);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.animate-panorama-heatmap-cell {
+  animation: panoramaHeatmapCellIn 0.36s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* Panorama — pontos clicáveis (Meta Ads) */
+@keyframes panoramaChartDotIn {
+  from {
+    opacity: 0;
+    transform: scale(0);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.animate-panorama-chart-dot {
+  animation: panoramaChartDotIn 0.3s cubic-bezier(0.22, 1, 0.36, 1) both;
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+/* Panorama — botão recarregar */
+@keyframes panoramaReloadBtnPress {
+  0% { transform: scale(1); }
+  45% { transform: scale(0.96); }
+  100% { transform: scale(1); }
+}
+
+@keyframes panoramaRefreshSpin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(-360deg); }
+}
+
+.animate-panorama-reload-btn {
+  animation: panoramaReloadBtnPress 0.38s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.animate-panorama-refresh-once {
+  animation: panoramaRefreshSpin 0.7s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
 /* Sections surgem com fade + slide sutil ao entrar na tela */
 @keyframes revealUp {
   from {

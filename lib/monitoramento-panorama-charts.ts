@@ -398,7 +398,7 @@ function buildMetaAdsChart(
   return {
     id: 'meta-ads',
     layoutTier: 'simple',
-    title: 'Meta Ads Library',
+    title: 'Anúncios',
     subtitle: `Gasto estimado por dia de início${windowSuffix}`,
     metricLabel: 'Gasto (R$)',
     chartType: 'line',

@@ -139,7 +139,7 @@ export function MetaAdsCompareBoard({
       <div className="border-b border-[rgb(var(--color-border-tertiary)/0.85)] px-4 py-3">
         <h2 className="text-sm font-medium text-text-primary">Comparativo · últimos {lookbackDays} dias</h2>
         <p className="text-xs text-text-muted">
-          Anúncios políticos na Meta Ads Library · gasto, impressões e páginas patrocinadoras
+          Anúncios políticos · gasto, impressões e páginas patrocinadoras
         </p>
         {periodTotals.spendLabel !== '—' || periodTotals.impressionsLabel ? (
           <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-text-secondary">

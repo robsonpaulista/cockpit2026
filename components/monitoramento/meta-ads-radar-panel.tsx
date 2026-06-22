@@ -224,7 +224,7 @@ export function MetaAdsRadarPanel() {
           ) : (
             <RefreshCw className="h-3.5 w-3.5" aria-hidden />
           )}
-          Buscar na Meta Ads Library
+          Buscar anúncios
         </button>
       </div>
 

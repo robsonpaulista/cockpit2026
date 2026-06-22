@@ -15,10 +15,12 @@ export function PanoramaPanel({ state }: PanoramaPanelProps) {
   const {
     panorama,
     loading,
+    refreshing,
     collectingAll,
     collectProgress,
     metaAdsProgress,
     error,
+    animationEpoch,
   } = state
 
   return (
@@ -41,7 +43,12 @@ export function PanoramaPanel({ state }: PanoramaPanelProps) {
 
       {error ? <p className="text-sm text-status-danger">{error}</p> : null}
 
-      <PanoramaBoard panorama={panorama} loading={loading} />
+      <PanoramaBoard
+        panorama={panorama}
+        loading={loading}
+        refreshing={refreshing}
+        animationEpoch={animationEpoch}
+      />
     </div>
   )
 }

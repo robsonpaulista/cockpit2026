@@ -1,7 +1,9 @@
 'use client'
 
+import { useEffect, useState } from 'react'
 import { Download, Loader2, RefreshCw } from 'lucide-react'
 import { CollectSourcesProductionInfo } from '@/components/monitoramento/monitoramento-production-collect-notice'
+import { cn } from '@/lib/utils'
 
 interface PanoramaTabActionsProps {
   busy: boolean
@@ -18,6 +20,17 @@ export function PanoramaTabActions({
   onCollectAll,
   onReload,
 }: PanoramaTabActionsProps) {
+  const [reloadAnimating, setReloadAnimating] = useState(false)
+
+  useEffect(() => {
+    if (!refreshing) setReloadAnimating(false)
+  }, [refreshing])
+
+  const handleReload = () => {
+    setReloadAnimating(true)
+    onReload()
+  }
+
   return (
     <>
       <div className="inline-flex items-center gap-0.5">
@@ -39,13 +52,19 @@ export function PanoramaTabActions({
       <button
         type="button"
         disabled={busy}
-        onClick={onReload}
-        className="inline-flex items-center gap-1.5 rounded-full border border-[rgb(var(--color-border-secondary)/0.85)] bg-bg-surface px-3 py-1.5 text-xs font-medium text-text-secondary hover:bg-bg-app disabled:opacity-50"
+        onClick={handleReload}
+        className={cn(
+          'inline-flex items-center gap-1.5 rounded-full border border-[rgb(var(--color-border-secondary)/0.85)] bg-bg-surface px-3 py-1.5 text-xs font-medium text-text-secondary hover:bg-bg-app disabled:opacity-50',
+          reloadAnimating && 'animate-panorama-reload-btn'
+        )}
       >
         {refreshing ? (
           <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
         ) : (
-          <RefreshCw className="h-3.5 w-3.5" aria-hidden />
+          <RefreshCw
+            className={cn('h-3.5 w-3.5', reloadAnimating && 'animate-panorama-refresh-once')}
+            aria-hidden
+          />
         )}
         Recarregar panorama
       </button>

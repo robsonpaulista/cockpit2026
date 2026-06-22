@@ -74,7 +74,7 @@ export function MetaAdsCollectProgressBar({
       </div>
 
       <p className="mt-2 text-[11px] text-text-muted">
-        Consulta automatizada à Meta Ads Library. Costuma levar 1–3 minutos por candidato monitorado.
+        Consulta automatizada de anúncios. Costuma levar 1–3 minutos por candidato monitorado.
       </p>
     </div>
   )

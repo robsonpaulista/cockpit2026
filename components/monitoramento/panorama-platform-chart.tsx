@@ -35,6 +35,21 @@ const PLATFORM_ICON_BG: Record<PanoramaPlatformId, string> = {
   'meta-ads': 'bg-[#FFEDD5] text-[#EA580C]',
 }
 
+/** Altura única para todos os cards do panorama (News, IG, YouTube, Trends, Meta). */
+const PANORAMA_CHART_CARD_HEIGHT = 'h-[440px]'
+
+const LINE_ANIMATION_DURATION = 680
+const LINE_ANIMATION_STAGGER_MS = 90
+
+function panoramaLineAnimationProps(lineIndex: number) {
+  return {
+    isAnimationActive: true as const,
+    animationDuration: LINE_ANIMATION_DURATION,
+    animationBegin: lineIndex * LINE_ANIMATION_STAGGER_MS,
+    animationEasing: 'ease-out' as const,
+  }
+}
+
 function formatDateLabel(iso: string): string {
   return new Date(`${iso}T12:00:00`).toLocaleDateString('pt-BR', {
     day: '2-digit',
@@ -153,15 +168,17 @@ function MetaAdsPointDetail({
 type MetaAdsDotProps = DotProps & {
   payload?: { date?: string }
   value?: number
+  index?: number
 }
 
 function metaAdsDotRenderer(
   line: PanoramaPlatformChart['lines'][number],
+  lineIndex: number,
   onSelect: (selection: MetaAdsPointSelection) => void,
   selected: MetaAdsPointSelection | null
 ) {
   return (props: MetaAdsDotProps) => {
-    const { cx, cy, payload, value } = props
+    const { cx, cy, payload, value, index } = props
     if (cx == null || cy == null || payload == null) {
       return <circle cx={0} cy={0} r={0} fill="none" />
     }
@@ -182,7 +199,13 @@ function metaAdsDotRenderer(
         fill={line.color}
         stroke={isSelected ? '#ffffff' : 'none'}
         strokeWidth={isSelected ? 1.5 : 0}
-        style={{ cursor: 'pointer' }}
+        className="animate-panorama-chart-dot"
+        style={{
+          cursor: 'pointer',
+          animationDelay: `${
+            lineIndex * LINE_ANIMATION_STAGGER_MS + LINE_ANIMATION_DURATION * 0.5 + (index ?? 0) * 22
+          }ms`,
+        }}
         onClick={(event) => {
           event.stopPropagation()
           onSelect({ slug: line.slug, date, value: num })
@@ -196,8 +219,8 @@ function MetaAdsPanoramaLineChart({ chart }: { chart: PanoramaPlatformChart }) {
   const [selection, setSelection] = useState<MetaAdsPointSelection | null>(null)
 
   return (
-    <div className="flex flex-col">
-      <div className="mb-2 h-[112px] shrink-0 overflow-y-auto rounded-lg border border-transparent">
+    <div className="flex min-h-0 flex-1 flex-col">
+      <div className="mb-2 h-[80px] shrink-0 overflow-y-auto rounded-lg border border-transparent">
         {selection ? (
           <MetaAdsPointDetail
             selection={selection}
@@ -212,7 +235,7 @@ function MetaAdsPanoramaLineChart({ chart }: { chart: PanoramaPlatformChart }) {
         )}
       </div>
 
-      <div className="h-[220px] w-full shrink-0">
+      <div className="min-h-[140px] w-full flex-1">
         <ResponsiveContainer width="100%" height="100%">
           <LineChart
             data={chart.chartData}
@@ -231,7 +254,7 @@ function MetaAdsPanoramaLineChart({ chart }: { chart: PanoramaPlatformChart }) {
               width={52}
               tickFormatter={(v) => formatCompactBrl(v)}
             />
-            {chart.lines.map((line) => (
+            {chart.lines.map((line, lineIndex) => (
               <Line
                 key={line.slug}
                 type="monotone"
@@ -239,9 +262,10 @@ function MetaAdsPanoramaLineChart({ chart }: { chart: PanoramaPlatformChart }) {
                 name={line.name}
                 stroke={line.color}
                 strokeWidth={2.5}
-                dot={metaAdsDotRenderer(line, setSelection, selection)}
+                dot={metaAdsDotRenderer(line, lineIndex, setSelection, selection)}
                 activeDot={false}
                 connectNulls
+                {...panoramaLineAnimationProps(lineIndex)}
               />
             ))}
           </LineChart>
@@ -273,24 +297,25 @@ function MetaAdsPanoramaLineChart({ chart }: { chart: PanoramaPlatformChart }) {
 interface PanoramaPlatformChartProps {
   chart: PanoramaPlatformChart
   className?: string
+  revealDelayMs?: number
 }
 
-export function PanoramaPlatformChart({ chart, className }: PanoramaPlatformChartProps) {
+export function PanoramaPlatformChart({ chart, className, revealDelayMs = 0 }: PanoramaPlatformChartProps) {
   const Icon = PLATFORM_ICONS[chart.id]
   const isMetaAds = chart.id === 'meta-ads'
-  const isDetail = chart.layoutTier === 'detail'
   const isHeatmap = chart.chartType === 'heatmap'
   const isTable = chart.chartType === 'table'
-  const expandChart = !isHeatmap && !isTable && !chart.empty
-  const useExternalLegend = expandChart && chart.lines.length > 0
+  const useExternalLegend =
+    !isHeatmap && !isTable && !chart.empty && chart.lines.length > 0 && !isMetaAds
 
   return (
     <div
       className={cn(
-        'flex h-full flex-col rounded-xl border border-[rgb(var(--color-border-tertiary)/0.85)] bg-bg-surface p-4',
-        isDetail ? 'min-h-[440px]' : 'min-h-[360px]',
+        'animate-reveal flex flex-col overflow-hidden rounded-xl border border-[rgb(var(--color-border-tertiary)/0.85)] bg-bg-surface p-4',
+        PANORAMA_CHART_CARD_HEIGHT,
         className
       )}
+      style={{ animationDelay: `${revealDelayMs}ms` }}
     >
       <div className="mb-3 flex shrink-0 items-start gap-3">
         <div
@@ -330,13 +355,8 @@ export function PanoramaPlatformChart({ chart, className }: PanoramaPlatformChar
       ) : isMetaAds ? (
         <MetaAdsPanoramaLineChart chart={chart} />
       ) : (
-        <div className={cn('flex min-h-0 flex-col', expandChart && 'flex-1')}>
-          <div
-            className={cn(
-              'w-full',
-              expandChart ? 'min-h-0 flex-1 min-h-[200px]' : 'h-[220px]'
-            )}
-          >
+        <div className="flex min-h-0 flex-1 flex-col">
+          <div className="min-h-[180px] w-full flex-1">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart
                 data={chart.chartData}
@@ -347,12 +367,12 @@ export function PanoramaPlatformChart({ chart, className }: PanoramaPlatformChar
                   dataKey="date"
                   tickFormatter={formatDateLabel}
                   tick={{ fontSize: 10, fill: 'rgb(var(--color-text-muted))' }}
-                  minTickGap={expandChart ? 20 : 28}
+                  minTickGap={20}
                 />
                 <YAxis
                   tick={{ fontSize: 10, fill: 'rgb(var(--color-text-muted))' }}
                   width={chart.id === 'youtube' ? 44 : 36}
-                  allowDecimals={chart.id === 'google-trends' ? false : true}
+                  allowDecimals={chart.id !== 'google-trends'}
                   domain={chart.id === 'google-trends' ? [0, 100] : [0, 'auto']}
                   tickFormatter={
                     chart.id === 'youtube' ? (v) => formatCompactNumber(v) : undefined
@@ -366,7 +386,7 @@ export function PanoramaPlatformChart({ chart, className }: PanoramaPlatformChar
                   }}
                   contentStyle={{ fontSize: 12, borderRadius: 8 }}
                 />
-                {chart.lines.map((line) => (
+                {chart.lines.map((line, lineIndex) => (
                   <Line
                     key={line.slug}
                     type="monotone"
@@ -377,6 +397,7 @@ export function PanoramaPlatformChart({ chart, className }: PanoramaPlatformChar
                     dot={false}
                     activeDot={{ r: 5, strokeWidth: 0, cursor: 'pointer' }}
                     connectNulls
+                    {...panoramaLineAnimationProps(lineIndex)}
                   />
                 ))}
               </LineChart>
@@ -403,7 +424,9 @@ export function PanoramaPlatformChart({ chart, className }: PanoramaPlatformChar
             </div>
           ) : null}
           {chart.id === 'google-trends' && chart.searchContexts && chart.searchContexts.length > 0 ? (
-            <TrendsSearchContextList contexts={chart.searchContexts} className="mt-3 shrink-0" />
+            <div className="mt-2 max-h-[72px] shrink-0 overflow-y-auto">
+              <TrendsSearchContextList contexts={chart.searchContexts} />
+            </div>
           ) : null}
         </div>
       )}

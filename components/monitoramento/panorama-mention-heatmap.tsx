@@ -112,7 +112,7 @@ export function PanoramaMentionHeatmap({
 
       <div className="min-h-0 flex-1 overflow-x-auto">
         <div className="min-w-[520px]">
-          {rows.map((row) => {
+          {rows.map((row, rowIndex) => {
             const scaleMax = scaleMode === 'comparative' ? globalMax : heatmapRowMax(row.values)
             return (
               <div key={row.slug} className="mb-2 flex items-center gap-2 last:mb-0">
@@ -139,11 +139,12 @@ export function PanoramaMentionHeatmap({
                       key={`${row.slug}-${dates[i]}`}
                       type="button"
                       className={cn(
-                        'h-[18px] min-w-0 flex-1 rounded-[3px] transition-opacity hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[rgb(var(--color-primary))]',
+                        'animate-panorama-heatmap-cell h-[18px] min-w-0 flex-1 rounded-[3px] transition-opacity hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[rgb(var(--color-primary))]',
                         value > 0 && enableNewsModal ? 'cursor-pointer' : 'cursor-default'
                       )}
                       style={{
                         backgroundColor: heatmapCellColor(row.color, value, scaleMax, scaleMode),
+                        animationDelay: `${rowIndex * 22 + i * 5}ms`,
                       }}
                       title={`${row.name} · ${formatDayLabel(dates[i])}: ${value} ${metricWord}${
                         scaleMode === 'comparative' && globalMax > 0
