@@ -67,7 +67,7 @@ export function isOffTopicAgentQuery(message: string): boolean {
 
   const parecePergunta =
     /\?/.test(raw) ||
-    /^(voce|você|jarvis|me diz|me fala|sabia|sera que|será que)\b/.test(q)
+    /^(voce|você|jarvis|cockpit|ia cockpit|me diz|me fala|sabia|sera que|será que)\b/.test(q)
 
   if (parecePergunta) {
     return true

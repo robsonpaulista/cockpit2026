@@ -229,7 +229,7 @@ export function ExercitoDigitalLeaderRanking({ leaders, audience, lookbackDays }
         <span className="text-right">#</span>
         <span aria-hidden>•</span>
         <span>{audience === 'mandatos' ? 'Mandatário' : 'Líder'}</span>
-        <span className="text-right">Total %</span>
+        <span className="text-right">{audience === 'mandatos' ? 'Posts' : 'Total %'}</span>
         <span>Semanas</span>
         <span className="text-center">Tendência</span>
         <span className="text-right">Pos.</span>
@@ -266,14 +266,34 @@ export function ExercitoDigitalLeaderRanking({ leaders, audience, lookbackDays }
                   <div className="min-w-0">
                     <p className="truncate text-xs font-medium text-text-primary">{leader.nome}</p>
                     <p className="text-[10.5px] text-text-muted">
-                      {formatInt(leader.comentarios)} coment · {formatInt(leader.publicacoes)} pub
+                      {formatInt(leader.comentarios)} coment
+                      {audience === 'mandatos'
+                        ? ` · ${formatInt(leader.publicacoes)} de ${formatInt(leader.postsNoPeriodo)} posts`
+                        : ` · ${formatInt(leader.publicacoes)} pub`}
                     </p>
                   </div>
                   <div className="text-right">
-                    <p className="text-[13px] font-medium tabular-nums" style={{ color: activationColor(leader.ativacaoPct) }}>
-                      {formatPct(leader.ativacaoPct)}
-                    </p>
-                    <p className="text-[10px] text-text-muted">ativação</p>
+                    {audience === 'mandatos' ? (
+                      <>
+                        <p
+                          className="text-[13px] font-medium tabular-nums"
+                          style={{ color: activationColor(leader.ativacaoPct) }}
+                        >
+                          {formatInt(leader.publicacoes)}/{formatInt(leader.postsNoPeriodo)}
+                        </p>
+                        <p className="text-[10px] text-text-muted">{formatPct(leader.ativacaoPct)}</p>
+                      </>
+                    ) : (
+                      <>
+                        <p
+                          className="text-[13px] font-medium tabular-nums"
+                          style={{ color: activationColor(leader.ativacaoPct) }}
+                        >
+                          {formatPct(leader.ativacaoPct)}
+                        </p>
+                        <p className="text-[10px] text-text-muted">ativação</p>
+                      </>
+                    )}
                   </div>
                   <Sparkline
                     id={`sp${leader.rank}`}
@@ -300,6 +320,20 @@ export function ExercitoDigitalLeaderRanking({ leaders, audience, lookbackDays }
                   <div className="leader-detail mb-1 block rounded-b-[10px] border border-t-0 border-[rgb(var(--color-border-tertiary)/0.85)] bg-bg-app px-4 py-3">
                     <div className="mb-3 grid grid-cols-2 gap-2.5 sm:grid-cols-4">
                       {[
+                        ...(audience === 'mandatos'
+                          ? [
+                              {
+                                label: 'Posts comentados',
+                                value: `${formatInt(leader.publicacoes)}/${formatInt(leader.postsNoPeriodo)}`,
+                                color: activationColor(leader.ativacaoPct),
+                              },
+                              {
+                                label: 'Cobertura',
+                                value: formatPct(leader.ativacaoPct),
+                                color: activationColor(leader.ativacaoPct),
+                              },
+                            ]
+                          : []),
                         { label: 'Semana atual', value: formatInt(leader.semanaAtual), color: undefined },
                         { label: 'Semana anterior', value: formatInt(leader.semanaAnterior), color: undefined },
                         {

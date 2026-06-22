@@ -13,7 +13,7 @@ export function jarvisDiagnosticLine(
 export function jarvisLogStatusKey(line: JarvisLogLine): string {
   const tag = line.tag.trim().toUpperCase()
   const message = line.message.trim().toUpperCase()
-  if (tag === 'USER' || tag === 'JARVIS') {
+  if (tag === 'USER' || tag === 'IA COCKPIT') {
     return `${tag}::${message}::${line.at ?? ''}`
   }
   return `${tag}::${message}`

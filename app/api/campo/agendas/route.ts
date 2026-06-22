@@ -10,6 +10,8 @@ const agendaSchema = z.object({
   type: z.enum(['visita', 'evento', 'reuniao', 'outro']),
   status: z.enum(['planejada', 'concluida', 'cancelada']).optional(),
   description: z.string().optional(),
+  google_event_id: z.string().optional(),
+  hora_evento: z.string().optional(),
 })
 
 export async function GET() {
@@ -63,6 +65,21 @@ export async function POST(request: Request) {
 
     const body = await request.json()
     const validated = agendaSchema.parse(body)
+
+    if (validated.google_event_id) {
+      const { data: existing } = await supabase
+        .from('agendas')
+        .select('id')
+        .eq('google_event_id', validated.google_event_id)
+        .maybeSingle()
+
+      if (existing) {
+        return NextResponse.json(
+          { error: 'Este compromisso já está registrado em Campo & Agenda', existingId: existing.id },
+          { status: 409 }
+        )
+      }
+    }
 
     const { data, error } = await supabase
       .from('agendas')

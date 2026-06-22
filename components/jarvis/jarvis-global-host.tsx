@@ -5,6 +5,8 @@ import { usePathname } from 'next/navigation'
 import { useEffect } from 'react'
 import { cn } from '@/lib/utils'
 import { isDashboardHomePath } from '@/lib/dashboard-home-chrome'
+import { COCKPIT_AGENT_NAME } from '@/lib/agent/cockpit-agent-brand'
+import { useJarvisVisibility } from '@/contexts/jarvis-visibility-context'
 import {
   JARVIS_HOST_DEFAULT_PROPS,
   useJarvisHostPropsContext,
@@ -23,6 +25,7 @@ const AIAgent = dynamic(() => import('@/components/ai-agent').then((m) => m.AIAg
 export function JarvisGlobalHost() {
   const pathname = usePathname() ?? ''
   const isHome = isDashboardHomePath(pathname)
+  const { visible, hydrated } = useJarvisVisibility()
   const mergedProps = useMergedJarvisHostProps()
   const { setPageProps } = useJarvisHostPropsContext()
 
@@ -30,6 +33,8 @@ export function JarvisGlobalHost() {
     if (!isHome) return
     setPageProps({})
   }, [isHome, setPageProps])
+
+  if (!hydrated || !visible) return null
 
   return (
     <div
@@ -43,7 +48,7 @@ export function JarvisGlobalHost() {
     >
       <div className={cn('pointer-events-auto', isHome ? 'flex h-full min-h-0 flex-1 flex-col' : '')}>
         <AIAgent
-          agentTitle="Jarvis"
+          agentTitle={COCKPIT_AGENT_NAME}
           uiVariant="jarvis-hud"
           fullPageHud={isHome}
           hudLayout={isHome ? 'column' : 'compact'}

@@ -8,6 +8,10 @@ import { useAuth } from '@/hooks/use-auth'
 import { ArrivalTimer } from '@/components/arrival-timer'
 import { ArrivalNotificationsPanel } from '@/components/arrival-notifications-panel'
 import { formatEventDescriptionForDisplay } from '@/lib/agenda/event-present'
+import {
+  AgendaToCampoButton,
+  type CampoGoogleLink,
+} from '@/components/agenda/agenda-to-campo-button'
 
 interface CalendarConfig {
   calendarId: string
@@ -53,6 +57,7 @@ export default function AgendaPage() {
   const [confirmingArrival, setConfirmingArrival] = useState<Record<string, boolean>>({})
   const [upcomingEventAlert, setUpcomingEventAlert] = useState<string | null>(null)
   const [isRefreshing, setIsRefreshing] = useState(false)
+  const [campoLinks, setCampoLinks] = useState<Record<string, CampoGoogleLink>>({})
 
   // Função para destacar origem no texto (ex: "(THE - PI)" ou "(BSB)")
   const highlightOriginInText = (text: string): React.ReactNode => {
@@ -232,6 +237,26 @@ export default function AgendaPage() {
     }
   }, [events, user?.id])
 
+  const loadCampoLinks = useCallback(async () => {
+    if (!user?.id) return
+    try {
+      const response = await fetch('/api/campo/agendas/google-links')
+      if (!response.ok) return
+      const data = (await response.json()) as { links?: Record<string, CampoGoogleLink> }
+      setCampoLinks(data.links ?? {})
+    } catch {
+      // coluna google_event_id pode ainda não existir no banco
+    }
+  }, [user?.id])
+
+  useEffect(() => {
+    void loadCampoLinks()
+  }, [loadCampoLinks])
+
+  const handleCampoLinked = useCallback((eventId: string, link: CampoGoogleLink) => {
+    setCampoLinks((prev) => ({ ...prev, [eventId]: link }))
+  }, [])
+
   // Verificar eventos próximos (5 minutos) para alerta intermitente
   useEffect(() => {
     if (events.length === 0) return
@@ -356,10 +381,12 @@ export default function AgendaPage() {
   const handleConfirmArrival = async (eventId: string, eventSummary?: string) => {
     if (!user?.id) return
 
-    // Mensagem de confirmação
     const eventName = eventSummary || 'este evento'
-    const confirmMessage = `Deseja realmente confirmar a chegada para "${eventName}"?\n\nEsta ação registrará o horário atual como momento da chegada.`
-    
+    const linkedCampo = Boolean(campoLinks[eventId])
+    const confirmMessage = linkedCampo
+      ? `Deseja confirmar a chegada para "${eventName}"?\n\nO horário será registrado na agenda e o check-in em Campo & Agenda será sincronizado automaticamente.`
+      : `Deseja realmente confirmar a chegada para "${eventName}"?\n\nEsta ação registrará o horário atual como momento da chegada.`
+
     if (!window.confirm(confirmMessage)) {
       return
     }
@@ -370,13 +397,14 @@ export default function AgendaPage() {
       const response = await fetch('/api/agenda/attendance/confirm-arrival', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          eventId,
-        }),
+        body: JSON.stringify({ eventId }),
       })
 
       if (response.ok) {
-        const data = await response.json()
+        const data = (await response.json()) as {
+          attendance: { arrival_time?: string }
+          campoSync?: { synced: boolean; agendaId?: string; reason?: string }
+        }
         setAttendanceStatuses((prev) => ({
           ...prev,
           [eventId]: {
@@ -384,6 +412,22 @@ export default function AgendaPage() {
             arrival_time: data.attendance.arrival_time,
           },
         }))
+        if (data.campoSync?.synced && data.campoSync.agendaId) {
+          setCampoLinks((prev) => ({
+            ...prev,
+            [eventId]: {
+              ...(prev[eventId] ?? {
+                id: data.campoSync!.agendaId!,
+                date: '',
+                type: 'visita',
+              }),
+              id: data.campoSync!.agendaId!,
+              status: 'concluida',
+            },
+          }))
+        }
+      } else {
+        alert('Erro ao confirmar chegada. Tente novamente.')
       }
     } catch (err) {
       console.error('Erro ao confirmar chegada:', err)
@@ -754,7 +798,14 @@ export default function AgendaPage() {
                                   )}
                                 {/* Botão de Confirmar Chegada e Timer */}
                                 {attendance?.arrival_time ? (
-                                  <ArrivalTimer arrivalTime={attendance.arrival_time} />
+                                  <div className="flex flex-col items-start gap-1">
+                                    <ArrivalTimer arrivalTime={attendance.arrival_time} />
+                                    {campoLinks[event.id]?.status === 'concluida' ? (
+                                      <span className="text-xs font-medium text-green-600">
+                                        Check-in Campo sincronizado
+                                      </span>
+                                    ) : null}
+                                  </div>
                                 ) : (
                                   <button
                                     onClick={() => handleConfirmArrival(event.id, event.summary)}
@@ -774,6 +825,11 @@ export default function AgendaPage() {
                                     )}
                                   </button>
                                 )}
+                                <AgendaToCampoButton
+                                  event={event}
+                                  linked={campoLinks[event.id]}
+                                  onLinked={handleCampoLinked}
+                                />
                               </div>
                             )}
                           </div>
@@ -927,7 +983,14 @@ export default function AgendaPage() {
                                 )}
                                 {/* Botão de Confirmar Chegada e Timer */}
                                 {attendance?.arrival_time ? (
-                                  <ArrivalTimer arrivalTime={attendance.arrival_time} />
+                                  <div className="flex flex-col items-start gap-1">
+                                    <ArrivalTimer arrivalTime={attendance.arrival_time} />
+                                    {campoLinks[event.id]?.status === 'concluida' ? (
+                                      <span className="text-xs font-medium text-green-600">
+                                        Check-in Campo sincronizado
+                                      </span>
+                                    ) : null}
+                                  </div>
                                 ) : (
                                   <button
                                     onClick={() => handleConfirmArrival(event.id, event.summary)}
@@ -947,6 +1010,11 @@ export default function AgendaPage() {
                                     )}
                                   </button>
                                 )}
+                                <AgendaToCampoButton
+                                  event={event}
+                                  linked={campoLinks[event.id]}
+                                  onLinked={handleCampoLinked}
+                                />
                               </div>
                             )}
                           </div>

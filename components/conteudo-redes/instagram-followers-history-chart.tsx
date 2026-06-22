@@ -2,17 +2,20 @@
 
 import { useCallback, useMemo, useRef, useState } from 'react'
 import {
+  Area,
+  CartesianGrid,
+  ComposedChart,
   LabelList,
-  Legend,
   Line,
-  LineChart,
   ReferenceLine,
   ResponsiveContainer,
   Tooltip,
   XAxis,
   YAxis,
   type DotProps,
+  type TooltipProps,
 } from 'recharts'
+import type { NameType, ValueType } from 'recharts/types/component/DefaultTooltipContent'
 import { Eye, Loader2 } from 'lucide-react'
 import {
   IconChartBar,
@@ -57,11 +60,87 @@ type InstagramFollowersHistoryChartProps = {
   livePosts?: InstagramDayPostRecord[]
 }
 
+const FOLLOWERS_COLOR = 'rgb(var(--color-primary))'
+const ENGAGEMENT_COLOR = '#5B6AD8'
+const GRID_STROKE = 'rgb(var(--color-border-tertiary) / 0.45)'
+const TICK_STYLE = { fontSize: 10, fill: 'rgb(var(--text-muted))' }
+
 function formatCount(value: number): string {
   return value.toLocaleString('pt-BR')
 }
 
-const ENGAGEMENT_LINE_COLOR = '#6366f1'
+function formatAxisEngagement(value: number): string {
+  if (value >= 1000) {
+    return `${(value / 1000).toLocaleString('pt-BR', { maximumFractionDigits: 1 })}k`
+  }
+  return formatEngagementValue(value)
+}
+
+function FollowersHistoryTooltip({
+  active,
+  payload,
+  label,
+}: TooltipProps<ValueType, NameType>) {
+  if (!active || !payload?.length) return null
+
+  const variacao = payload.find((p) => p.dataKey === 'variacao')?.value as number | undefined
+  const engajamento = payload.find((p) => p.dataKey === 'engajamentoMedio')?.value as
+    | number
+    | null
+    | undefined
+
+  return (
+    <div className="min-w-[168px] rounded-xl border border-[rgb(var(--color-border-tertiary)/0.9)] bg-bg-surface/95 px-3 py-2.5 shadow-[0_8px_24px_rgba(15,23,42,0.12)] backdrop-blur-sm">
+      <p className="mb-2 text-[11px] font-medium uppercase tracking-[0.04em] text-text-muted">
+        {label}
+      </p>
+      <div className="space-y-1.5">
+        {typeof variacao === 'number' ? (
+          <div className="flex items-center justify-between gap-3">
+            <span className="inline-flex items-center gap-1.5 text-[11px] text-text-secondary">
+              <span
+                className="h-0.5 w-3 rounded-full"
+                style={{ backgroundColor: FOLLOWERS_COLOR }}
+                aria-hidden
+              />
+              Seguidores
+            </span>
+            <span
+              className={cn(
+                'text-[12px] font-semibold tabular-nums',
+                variacao > 0
+                  ? 'text-status-success'
+                  : variacao < 0
+                    ? 'text-status-error'
+                    : 'text-text-primary'
+              )}
+            >
+              {formatFollowersDelta(variacao)}
+            </span>
+          </div>
+        ) : null}
+        {typeof engajamento === 'number' ? (
+          <div className="flex items-center justify-between gap-3">
+            <span className="inline-flex items-center gap-1.5 text-[11px] text-text-secondary">
+              <span
+                className="h-0.5 w-3 rounded-full border border-dashed"
+                style={{ borderColor: ENGAGEMENT_COLOR }}
+                aria-hidden
+              />
+              Engajamento
+            </span>
+            <span className="text-[12px] font-semibold tabular-nums text-text-primary">
+              {formatEngagementValue(engajamento)}
+            </span>
+          </div>
+        ) : null}
+      </div>
+      <p className="mt-2 border-t border-[rgb(var(--color-border-tertiary)/0.5)] pt-2 text-[10px] text-text-muted">
+        Clique no ponto para ver publicações do dia
+      </p>
+    </div>
+  )
+}
 
 export function InstagramFollowersHistoryChart({
   metricsHistory,
@@ -132,12 +211,39 @@ export function InstagramFollowersHistoryChart({
     setLoadingDayPosts(false)
   }, [])
 
+  const renderFollowerDot = useCallback(
+    (props: DotProps & { payload?: FollowersHistoryChartPoint }) => {
+      const { cx, cy, payload } = props
+      if (cx == null || cy == null || !payload) return <g />
+
+      const point = payload
+      const isSelected = selectedPoint?.fullDate === point.fullDate
+
+      return (
+        <circle
+          cx={cx}
+          cy={cy}
+          r={isSelected ? 6 : 3.5}
+          fill={isSelected ? 'rgb(var(--accent-gold))' : FOLLOWERS_COLOR}
+          stroke="rgb(var(--bg-surface))"
+          strokeWidth={isSelected ? 2 : 1.5}
+          style={{ cursor: 'pointer' }}
+          onClick={(event) => {
+            event.stopPropagation()
+            void openDayPosts(point, cx, cy)
+          }}
+        />
+      )
+    },
+    [openDayPosts, selectedPoint?.fullDate]
+  )
+
   return (
     <div className={className}>
       <PremiumSectionHeader
         title="Histórico de Seguidores"
         description="Variação diária de seguidores e engajamento médio das publicações feitas em cada dia"
-        hint="Clique em um ponto da linha de seguidores para ver as publicações daquele dia."
+        hint="Passe o mouse para detalhes · clique em um ponto para ver as publicações do dia"
         actions={
           <>
             <div className="flex flex-wrap items-center gap-1.5">
@@ -174,7 +280,7 @@ export function InstagramFollowersHistoryChart({
       {summary && summary.growth !== 0 ? (
         <p
           className={cn(
-            'mb-4 flex items-center gap-1 text-[11px]',
+            'mb-3 flex items-center gap-1 text-[11px]',
             summary.growth > 0 ? 'text-status-success' : 'text-status-error'
           )}
         >
@@ -187,7 +293,7 @@ export function InstagramFollowersHistoryChart({
         </p>
       ) : null}
 
-      <div className="mb-4 grid grid-cols-2 gap-3 sm:max-w-md">
+      <div className="mb-3 grid grid-cols-2 gap-2.5 sm:max-w-md">
         {typeof currentFollowers === 'number' ? (
           <PremiumMetricCard
             label="Seguidores atuais"
@@ -205,123 +311,103 @@ export function InstagramFollowersHistoryChart({
       </div>
 
       {loading && !hasChartData ? (
-        <div className="flex h-[300px] flex-col items-center justify-center text-secondary">
+        <div className="flex h-[200px] flex-col items-center justify-center text-secondary">
           <Loader2 className="mb-3 h-7 w-7 animate-spin text-[rgb(var(--color-primary))]" />
           <p className="text-sm">Carregando histórico...</p>
         </div>
       ) : hasChartData ? (
         <>
           {!hasEngagementLine ? (
-            <p className="mb-2 text-xs text-secondary">
+            <p className="mb-2 text-[11px] text-text-muted">
               O engajamento histórico é salvo a cada atualização. Publique conteúdo ou atualize os dados para enriquecer o histórico.
             </p>
           ) : null}
           <div
             ref={chartWrapRef}
-            className="h-[320px] w-full rounded-xl border border-card bg-background/60 p-2 sm:h-[340px] sm:p-3"
+            className="relative h-[220px] w-full overflow-hidden rounded-xl border border-[rgb(var(--color-border-tertiary)/0.85)] bg-[linear-gradient(180deg,rgb(var(--color-primary)/0.04)_0%,transparent_42%)] p-2 sm:h-[240px] sm:p-2.5"
           >
             <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={chartData} margin={{ top: 32, right: 16, left: 4, bottom: 8 }}>
+              <ComposedChart
+                data={chartData}
+                margin={{ top: 22, right: 4, left: -8, bottom: 0 }}
+              >
+                <defs>
+                  <linearGradient id="followersAreaGradient" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="rgb(var(--color-primary))" stopOpacity={0.22} />
+                    <stop offset="100%" stopColor="rgb(var(--color-primary))" stopOpacity={0.02} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid
+                  vertical={false}
+                  stroke={GRID_STROKE}
+                  strokeDasharray="4 6"
+                />
                 <XAxis
                   dataKey="date"
-                  tick={{ fontSize: 11, fill: 'rgb(var(--text-secondary))' }}
+                  axisLine={false}
+                  tickLine={false}
+                  tick={TICK_STYLE}
                   interval="preserveStartEnd"
-                  minTickGap={24}
+                  minTickGap={28}
+                  dy={6}
                 />
                 <YAxis
                   yAxisId="followers"
-                  tick={{ fontSize: 11, fill: 'rgb(var(--text-secondary))' }}
+                  axisLine={false}
+                  tickLine={false}
+                  tick={TICK_STYLE}
                   tickFormatter={(value: number) => formatFollowersDelta(value)}
-                  width={48}
+                  width={44}
                 />
                 <YAxis
                   yAxisId="engagement"
                   orientation="right"
-                  tick={{ fontSize: 11, fill: ENGAGEMENT_LINE_COLOR }}
-                  tickFormatter={(value: number) => formatEngagementValue(value)}
-                  width={52}
+                  axisLine={false}
+                  tickLine={false}
+                  tick={{ ...TICK_STYLE, fill: ENGAGEMENT_COLOR }}
+                  tickFormatter={formatAxisEngagement}
+                  width={40}
+                  hide={!hasEngagementLine}
                 />
-                <ReferenceLine yAxisId="followers" y={0} stroke="rgb(var(--border-card))" strokeWidth={1.5} />
+                <ReferenceLine
+                  yAxisId="followers"
+                  y={0}
+                  stroke={GRID_STROKE}
+                  strokeWidth={1}
+                />
+                {selectedPoint ? (
+                  <ReferenceLine
+                    x={selectedPoint.date}
+                    stroke="rgb(var(--color-primary) / 0.2)"
+                    strokeDasharray="3 4"
+                  />
+                ) : null}
                 <Tooltip
-                  contentStyle={{
-                    backgroundColor: 'rgb(var(--bg-surface))',
-                    border: '1px solid rgb(var(--border-card))',
-                    borderRadius: '0.75rem',
-                    fontSize: '12px',
+                  content={<FollowersHistoryTooltip />}
+                  cursor={{
+                    stroke: 'rgb(var(--color-primary) / 0.25)',
+                    strokeWidth: 1,
+                    strokeDasharray: '4 4',
                   }}
-                  formatter={(value: number, name: string) => {
-                    if (name === 'variacao') {
-                      return [formatFollowersDelta(value), 'Variação de seguidores']
-                    }
-                    return [formatEngagementValue(value), 'Engajamento médio']
-                  }}
-                  labelFormatter={(label) => `Dia: ${label} · clique no ponto para ver posts`}
                 />
-                <Legend
-                  formatter={(value) =>
-                    value === 'variacao' ? 'Variação de seguidores' : 'Engajamento médio'
-                  }
+                <Area
+                  yAxisId="followers"
+                  type="monotone"
+                  dataKey="variacao"
+                  fill="url(#followersAreaGradient)"
+                  stroke="none"
+                  isAnimationActive={false}
                 />
                 <Line
                   yAxisId="followers"
                   type="monotone"
                   dataKey="variacao"
                   name="variacao"
-                  stroke="rgb(var(--accent-gold))"
-                  strokeWidth={2.5}
-                  dot={(props) => {
-                    const { cx, cy, payload } = props
-                    if (cx == null || cy == null || !payload) {
-                      return <g />
-                    }
-
-                    const point = payload as FollowersHistoryChartPoint
-                    const isSelected = selectedPoint?.fullDate === point.fullDate
-                    const color =
-                      point.variacao > 0
-                        ? 'rgb(var(--status-success))'
-                        : point.variacao < 0
-                          ? 'rgb(var(--status-danger))'
-                          : 'rgb(var(--text-secondary))'
-
-                    return (
-                      <circle
-                        cx={cx}
-                        cy={cy}
-                        r={isSelected ? 7 : 5}
-                        fill={color}
-                        stroke={isSelected ? 'rgb(var(--accent-gold))' : 'rgb(var(--bg-surface))'}
-                        strokeWidth={isSelected ? 2.5 : 1.5}
-                        style={{ cursor: 'pointer' }}
-                        onClick={(event) => {
-                          event.stopPropagation()
-                          void openDayPosts(point, cx, cy)
-                        }}
-                      />
-                    )
-                  }}
-                  activeDot={(props: DotProps & { payload?: FollowersHistoryChartPoint }) => {
-                    const { cx, cy, payload } = props
-                    if (cx == null || cy == null || !payload) return <g />
-
-                    const point = payload as FollowersHistoryChartPoint
-
-                    return (
-                      <circle
-                        cx={cx}
-                        cy={cy}
-                        r={7}
-                        fill="rgb(var(--accent-gold))"
-                        stroke="rgb(var(--bg-surface))"
-                        strokeWidth={2.5}
-                        style={{ cursor: 'pointer' }}
-                        onClick={(event) => {
-                          event.stopPropagation()
-                          void openDayPosts(point, cx, cy)
-                        }}
-                      />
-                    )
-                  }}
+                  stroke={FOLLOWERS_COLOR}
+                  strokeWidth={2}
+                  dot={renderFollowerDot}
+                  activeDot={false}
+                  isAnimationActive={false}
                 >
                   <LabelList
                     dataKey="variacao"
@@ -336,8 +422,8 @@ export function InstagramFollowersHistoryChart({
                           ? 'rgb(var(--status-success))'
                           : value < 0
                             ? 'rgb(var(--status-danger))'
-                            : 'rgb(var(--text-secondary))'
-                      const dy = value >= 0 ? -10 : 14
+                            : 'rgb(var(--text-muted))'
+                      const dy = value >= 0 ? -9 : 11
 
                       return (
                         <text
@@ -345,7 +431,7 @@ export function InstagramFollowersHistoryChart({
                           y={y}
                           dy={dy}
                           fill={fill}
-                          fontSize={11}
+                          fontSize={9}
                           fontWeight={600}
                           textAnchor="middle"
                           style={{ pointerEvents: 'none' }}
@@ -356,45 +442,75 @@ export function InstagramFollowersHistoryChart({
                     }}
                   />
                 </Line>
-                <Line
-                  yAxisId="engagement"
-                  type="monotone"
-                  dataKey="engajamentoMedio"
-                  name="engajamentoMedio"
-                  stroke={ENGAGEMENT_LINE_COLOR}
-                  strokeWidth={2}
-                  strokeDasharray="6 4"
-                  connectNulls={false}
-                  dot={{ r: 3.5, fill: ENGAGEMENT_LINE_COLOR, strokeWidth: 1.5, stroke: '#fff' }}
-                  activeDot={{ r: 5 }}
-                >
-                  <LabelList
+                {hasEngagementLine ? (
+                  <Line
+                    yAxisId="engagement"
+                    type="monotone"
                     dataKey="engajamentoMedio"
-                    content={(props) => {
-                      const x = typeof props.x === 'number' ? props.x : Number(props.x)
-                      const y = typeof props.y === 'number' ? props.y : Number(props.y)
-                      const value = typeof props.value === 'number' ? props.value : Number(props.value)
-                      if (!Number.isFinite(x) || !Number.isFinite(y) || !Number.isFinite(value)) return null
-
-                      return (
-                        <text
-                          x={x}
-                          y={y}
-                          dy={-12}
-                          fill={ENGAGEMENT_LINE_COLOR}
-                          fontSize={10}
-                          fontWeight={600}
-                          textAnchor="middle"
-                          style={{ pointerEvents: 'none' }}
-                        >
-                          {formatEngagementValue(value)}
-                        </text>
-                      )
+                    name="engajamentoMedio"
+                    stroke={ENGAGEMENT_COLOR}
+                    strokeWidth={1.5}
+                    strokeDasharray="5 4"
+                    strokeOpacity={0.9}
+                    connectNulls={false}
+                    dot={false}
+                    activeDot={{
+                      r: 4,
+                      fill: ENGAGEMENT_COLOR,
+                      stroke: 'rgb(var(--bg-surface))',
+                      strokeWidth: 2,
                     }}
-                  />
-                </Line>
-              </LineChart>
+                    isAnimationActive={false}
+                  >
+                    <LabelList
+                      dataKey="engajamentoMedio"
+                      content={(props) => {
+                        const x = typeof props.x === 'number' ? props.x : Number(props.x)
+                        const y = typeof props.y === 'number' ? props.y : Number(props.y)
+                        const value = typeof props.value === 'number' ? props.value : Number(props.value)
+                        if (!Number.isFinite(x) || !Number.isFinite(y) || !Number.isFinite(value)) return null
+
+                        return (
+                          <text
+                            x={x}
+                            y={y}
+                            dy={12}
+                            fill={ENGAGEMENT_COLOR}
+                            fontSize={9}
+                            fontWeight={600}
+                            textAnchor="middle"
+                            style={{ pointerEvents: 'none' }}
+                          >
+                            {formatEngagementValue(value)}
+                          </text>
+                        )
+                      }}
+                    />
+                  </Line>
+                ) : null}
+              </ComposedChart>
             </ResponsiveContainer>
+          </div>
+
+          <div className="mt-2 flex flex-wrap items-center justify-center gap-x-4 gap-y-1 sm:justify-start">
+            <span className="inline-flex items-center gap-2 text-[11px] text-text-secondary">
+              <span
+                className="h-0.5 w-5 rounded-full"
+                style={{ backgroundColor: FOLLOWERS_COLOR }}
+                aria-hidden
+              />
+              Variação de seguidores
+            </span>
+            {hasEngagementLine ? (
+              <span className="inline-flex items-center gap-2 text-[11px] text-text-secondary">
+                <span
+                  className="h-0 w-5 border-t-[1.5px] border-dashed"
+                  style={{ borderColor: ENGAGEMENT_COLOR }}
+                  aria-hidden
+                />
+                Engajamento médio
+              </span>
+            ) : null}
           </div>
         </>
       ) : (

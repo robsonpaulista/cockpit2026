@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { syncCampoCheckinFromGoogleEvent } from '@/lib/agenda/sync-campo-checkin'
 
 export async function POST(request: Request) {
   try {
@@ -37,9 +38,15 @@ export async function POST(request: Request) {
     if (existing) {
       // Se já tem arrival_time, não atualizar (não permitir múltiplas confirmações)
       if (existing.arrival_time) {
-        return NextResponse.json({ 
+        const campoSync = await syncCampoCheckinFromGoogleEvent(
+          supabase,
+          eventId,
+          existing.arrival_time
+        )
+        return NextResponse.json({
           attendance: existing,
-          message: 'Chegada já confirmada anteriormente'
+          message: 'Chegada já confirmada anteriormente',
+          campoSync,
         })
       }
 
@@ -63,7 +70,10 @@ export async function POST(request: Request) {
         )
       }
 
-      return NextResponse.json({ attendance: data })
+      const arrivalTime = data.arrival_time ?? new Date().toISOString()
+      const campoSync = await syncCampoCheckinFromGoogleEvent(supabase, eventId, arrivalTime)
+
+      return NextResponse.json({ attendance: data, campoSync })
     } else {
       // Criar novo registro com arrival_time
       const { data, error } = await supabase
@@ -85,13 +95,14 @@ export async function POST(request: Request) {
         )
       }
 
-      return NextResponse.json({ attendance: data })
+      const arrivalTime = data.arrival_time ?? new Date().toISOString()
+      const campoSync = await syncCampoCheckinFromGoogleEvent(supabase, eventId, arrivalTime)
+
+      return NextResponse.json({ attendance: data, campoSync })
     }
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Erro ao confirmar chegada:', error)
-    return NextResponse.json(
-      { error: error.message || 'Erro ao confirmar chegada' },
-      { status: 500 }
-    )
+    const message = error instanceof Error ? error.message : 'Erro ao confirmar chegada'
+    return NextResponse.json({ error: message }, { status: 500 })
   }
 }

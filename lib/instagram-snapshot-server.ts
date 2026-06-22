@@ -6,6 +6,7 @@ import {
   type InstagramDayPostRecord,
   type InstagramPostSnapshotInput,
 } from '@/lib/instagram-engagement-history'
+import { isMissingColumnError } from '@/lib/instagram-schema-compat'
 
 type PostMetricsRow = {
   post_id: string
@@ -32,15 +33,12 @@ export async function saveInstagramPostSnapshots(
 
   const snapshotDate = new Date().toISOString().split('T')[0]
 
-  const rows = posts.map((post) => ({
+  const baseRows = posts.map((post) => ({
     user_id: userId,
     post_id: post.id,
     snapshot_date: snapshotDate,
     posted_at: post.posted_at,
     post_type: post.type ?? null,
-    post_url: post.post_url ?? null,
-    thumbnail_url: post.thumbnail_url ?? null,
-    caption: post.caption ?? null,
     likes: post.likes ?? 0,
     comments: post.comments ?? 0,
     shares: post.shares ?? 0,
@@ -49,9 +47,22 @@ export async function saveInstagramPostSnapshots(
     engagement: post.engagement ?? 0,
   }))
 
-  const { error } = await supabase
+  const fullRows = posts.map((post, i) => ({
+    ...baseRows[i]!,
+    post_url: post.post_url ?? null,
+    thumbnail_url: post.thumbnail_url ?? null,
+    caption: post.caption ?? null,
+  }))
+
+  let { error } = await supabase
     .from('instagram_post_metrics_history')
-    .upsert(rows, { onConflict: 'user_id,post_id,snapshot_date' })
+    .upsert(fullRows, { onConflict: 'user_id,post_id,snapshot_date' })
+
+  if (isMissingColumnError(error)) {
+    ;({ error } = await supabase
+      .from('instagram_post_metrics_history')
+      .upsert(baseRows, { onConflict: 'user_id,post_id,snapshot_date' }))
+  }
 
   if (error) {
     throw new Error(error.message)
@@ -102,9 +113,7 @@ export async function getInstagramPostsByPublishDate(
 ): Promise<InstagramDayPostRecord[]> {
   const { data, error } = await supabase
     .from('instagram_post_metrics_history')
-    .select(
-      'post_id, posted_at, engagement, snapshot_date, post_type, post_url, thumbnail_url, caption, likes, comments, shares, saves, views'
-    )
+    .select('*')
     .eq('user_id', userId)
     .order('snapshot_date', { ascending: false })
 
@@ -141,9 +150,7 @@ export async function getLatestInstagramPostMetrics(
 ): Promise<InstagramDayPostRecord[]> {
   const { data, error } = await supabase
     .from('instagram_post_metrics_history')
-    .select(
-      'post_id, posted_at, engagement, snapshot_date, post_type, post_url, thumbnail_url, caption, likes, comments, shares, saves, views'
-    )
+    .select('*')
     .eq('user_id', userId)
     .order('snapshot_date', { ascending: false })
 

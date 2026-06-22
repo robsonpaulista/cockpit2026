@@ -363,6 +363,7 @@ function buildLeaders(
   posts: InstagramPostWithComments[],
   lideresCobertura: LiderInstagramCoberturaDto[]
 ): ExercitoDigitalLeaderRow[] {
+  const postsNoPeriodo = posts.length
   const coberturaById = new Map(lideresCobertura.map((l) => [l.id, l]))
   const rows: ExercitoDigitalLeaderRow[] = merged
     .filter((l) => l.lideradosComRede > 0)
@@ -382,6 +383,7 @@ function buildLeaders(
         nome,
         comentarios: l.comentarios,
         publicacoes: l.publicacoes,
+        postsNoPeriodo,
         ativacaoPct,
         weeklyCounts,
         trendKind: trend.kind,
@@ -442,6 +444,7 @@ function buildMandatarios(
   mandatos: MandatoInstagramEnriquecido[],
   posts: InstagramPostWithComments[]
 ): ExercitoDigitalLeaderRow[] {
+  const postsNoPeriodo = posts.length
   const rows: ExercitoDigitalLeaderRow[] = mandatos.map((m) => {
     const handles = new Set([m.handle])
     const weeklyCounts = weeklyCommentCountsForHandles(posts, handles)
@@ -458,8 +461,9 @@ function buildMandatarios(
       }
       if (found) medias.add(post.instagram_media_id)
     }
-    const comentou = comentarios > 0
-    const ativacaoPct = comentou ? 100 : 0
+    const postsComentados = medias.size
+    const comentou = postsComentados > 0
+    const ativacaoPct = postsNoPeriodo > 0 ? (postsComentados / postsNoPeriodo) * 100 : 0
     const trend = computeTrend(weeklyCounts)
     const semanaAtual = weeklyCounts[4] ?? 0
     const semanaAnterior = weeklyCounts[3] ?? 0
@@ -470,7 +474,8 @@ function buildMandatarios(
       rank: 0,
       nome,
       comentarios,
-      publicacoes: medias.size,
+      publicacoes: postsComentados,
+      postsNoPeriodo,
       ativacaoPct,
       weeklyCounts,
       trendKind: trend.kind,
@@ -488,7 +493,7 @@ function buildMandatarios(
   })
 
   return rows
-    .sort((a, b) => b.comentarios - a.comentarios || b.ativacaoPct - a.ativacaoPct || a.nome.localeCompare(b.nome, 'pt-BR'))
+    .sort((a, b) => b.ativacaoPct - a.ativacaoPct || b.comentarios - a.comentarios || a.nome.localeCompare(b.nome, 'pt-BR'))
     .map((r, i) => ({ ...r, rank: i + 1 }))
 }
 
@@ -558,7 +563,7 @@ export function aggregateExercitoDigitalViewModel(input: {
     alertPosts: buildAlertPosts(posts, coberturaProfiles),
     leaders: isMandatos
       ? buildMandatarios(mandatos, posts)
-      : buildLeaders(mergedLeaders, input.posts, lideresCobertura),
+      : buildLeaders(mergedLeaders, posts, lideresCobertura),
     cities: cityResult.top,
     trend: buildTrendPoints(posts, profileHandles),
     organicTail: { comentarios: organic.comentarios, perfis: organic.perfis.size },

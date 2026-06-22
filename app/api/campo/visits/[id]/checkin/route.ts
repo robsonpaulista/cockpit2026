@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
+import { syncAgendaArrivalFromCampoCheckin } from '@/lib/agenda/sync-campo-checkin'
 
 export async function POST(
   request: Request,
@@ -98,7 +99,15 @@ export async function POST(
       .update({ status: 'concluida' })
       .eq('id', params.id)
 
-    return NextResponse.json(visitData)
+    const checkinTime = visitData.checkin_time ?? new Date().toISOString()
+    const agendaSync = await syncAgendaArrivalFromCampoCheckin(
+      supabase,
+      params.id,
+      user.id,
+      checkinTime
+    )
+
+    return NextResponse.json({ ...visitData, agendaSync })
   } catch (error) {
     return NextResponse.json(
       { error: 'Erro interno do servidor' },

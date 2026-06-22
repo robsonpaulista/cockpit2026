@@ -79,10 +79,10 @@ export function buildFollowersHistoryChartData(
     const engagement = engagementByDay.get(dayKey)
 
     points.push({
-      date: new Date(current.snapshot_date).toLocaleDateString('pt-BR', {
-        day: '2-digit',
-        month: 'short',
-      }),
+      date: new Date(current.snapshot_date)
+        .toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })
+        .replace(/\./g, '')
+        .replace(' de ', ' '),
       fullDate: current.snapshot_date,
       variacao: current.followers_count - previous.followers_count,
       engajamentoMedio: engagement ?? null,

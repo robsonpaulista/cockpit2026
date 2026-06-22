@@ -38,6 +38,10 @@ type MetricRow = {
 }
 
 const RECENT_DAYS = 7
+const MOMENTUM_MIN_PCT = 8
+const MOMENTUM_MIN_DELTA = 1
+const MOMENTUM_BADGE = 'Maior avanço recente'
+const MOMENTUM_GROWTH_BADGE = 'Maior crescimento em 7d'
 
 function formatInt(n: number): string {
   return n.toLocaleString('pt-BR')
@@ -59,6 +63,11 @@ function sharePct(value: number, total: number): number | null {
   return Math.round((value / total) * 100)
 }
 
+function spendMidpoint(min: number, max: number): number {
+  if (min > 0 && max > 0) return (min + max) / 2
+  return Math.max(min, max, 0)
+}
+
 function sumChartSlices(
   chart: PanoramaPlatformChart | undefined,
   slug: string,
@@ -75,6 +84,7 @@ function metricsFromTotals(
   pickTotal: (col: PanoramaCandidateColumn) => number,
   chart?: PanoramaPlatformChart
 ): MetricRow[] {
+  const hasChart = Boolean(chart?.chartData.length)
   return columns.map((col) => {
     const total = pickTotal(col)
     const recent = sumChartSlices(chart, col.slug, RECENT_DAYS, RECENT_DAYS)
@@ -85,15 +95,21 @@ function metricsFromTotals(
       color: col.accentColor,
       actorType: col.actorType,
       total,
-      recent: chart?.chartData.length ? recent : total,
-      prior: chart?.chartData.length ? prior : 0,
+      recent: hasChart ? recent : 0,
+      prior: hasChart ? prior : 0,
     }
   })
 }
 
+function resolveLeaderSlug(leader: PanoramaKpiInsight | null, rows: MetricRow[]): string | undefined {
+  if (!leader) return undefined
+  return rows.find((r) => r.name === leader.name)?.slug
+}
+
 function leaderInsight(
   rows: MetricRow[],
-  buildText: (leader: MetricRow, share: number | null) => string
+  buildText: (leader: MetricRow, share: number | null) => string,
+  badgeLabel = 'Líder'
 ): PanoramaKpiInsight | null {
   const active = rows.filter((r) => r.total > 0)
   if (active.length === 0) return null
@@ -102,63 +118,128 @@ function leaderInsight(
   const share = sharePct(leader.total, sum)
   return {
     badge: 'leader',
-    badgeLabel: 'Maior volume',
+    badgeLabel,
     name: leader.name,
     color: leader.color,
     text: buildText(leader, share),
   }
 }
 
-function growthInsight(
+function recentActivityInsight(
   rows: MetricRow[],
-  buildText: (row: MetricRow, pct: number) => string,
-  minPct = 15
+  leaderSlug: string | undefined
 ): PanoramaKpiInsight | null {
-  let best: { row: MetricRow; pct: number } | null = null
-  for (const row of rows) {
-    const pct = growthPct(row.recent, row.prior)
-    if (pct === null || pct < minPct) continue
-    if (!best || pct > best.pct) best = { row, pct }
-  }
-  if (!best) return null
+  const withRecent = rows.filter((r) => r.recent > 0)
+  if (withRecent.length < 2) return null
+
+  const nonLeaders = withRecent.filter((r) => r.slug !== leaderSlug)
+  if (nonLeaders.length === 0) return null
+
+  const totalRecent = withRecent.reduce((sum, row) => sum + row.recent, 0)
+  const best = [...nonLeaders].sort((a, b) => b.recent - a.recent)[0]
+  const share = sharePct(best.recent, totalRecent)
+  if (!share || share < 15) return null
+
   return {
     badge: 'growth',
-    badgeLabel: 'Em alta',
-    name: best.row.name,
-    color: best.row.color,
-    text: buildText(best.row, best.pct),
+    badgeLabel: MOMENTUM_BADGE,
+    name: best.name,
+    color: best.color,
+    text: `${share}% da atividade em 7d`,
   }
 }
 
-function outsiderInsight(
+function momentumInsight(
   rows: MetricRow[],
-  leader: PanoramaKpiInsight | null,
-  buildText: (row: MetricRow, pct: number) => string,
-  minPct = 25
+  leader: PanoramaKpiInsight | null
 ): PanoramaKpiInsight | null {
-  const leaderSlug = leader?.name
-    ? rows.find((r) => r.name === leader.name)?.slug
-    : undefined
+  const leaderSlug = resolveLeaderSlug(leader, rows)
 
-  let candidate: { row: MetricRow; pct: number } | null = null
-  for (const row of rows) {
-    if (row.slug === leaderSlug) continue
-    const pct = growthPct(row.recent, row.prior)
-    if (pct === null || pct < minPct) continue
-    if (row.total === 0 && row.recent === 0) continue
-    if (!candidate || pct > candidate.pct) candidate = { row, pct }
+  type Scored = {
+    row: MetricRow
+    pct: number
+    delta: number
+    isLeader: boolean
+    score: number
   }
 
-  if (!candidate) return null
-  if (leader && candidate.row.slug === leaderSlug) return null
+  const scored: Scored[] = []
+
+  for (const row of rows) {
+    const pct = growthPct(row.recent, row.prior)
+    const delta = row.recent - row.prior
+
+    if (row.recent <= 0 && delta <= 0) continue
+
+    const qualifies =
+      (row.prior === 0 && row.recent > 0) ||
+      (pct !== null && pct >= MOMENTUM_MIN_PCT && delta >= MOMENTUM_MIN_DELTA) ||
+      (delta >= 2 && row.recent >= 2)
+
+    if (!qualifies) continue
+
+    const isLeader = row.slug === leaderSlug
+    const score = (isLeader ? 0 : 1_000) + (pct ?? 50) * 10 + delta
+    scored.push({
+      row,
+      pct: pct ?? (row.prior === 0 ? 100 : 0),
+      delta,
+      isLeader,
+      score,
+    })
+  }
+
+  if (scored.length === 0) {
+    return recentActivityInsight(rows, leaderSlug)
+  }
+
+  const pick = [...scored].sort((a, b) => b.score - a.score)[0]
+
+  if (pick.isLeader) {
+    return {
+      badge: 'growth',
+      badgeLabel: MOMENTUM_GROWTH_BADGE,
+      name: pick.row.name,
+      color: pick.row.color,
+      text: `${formatPct(pick.pct)} em 7d`,
+    }
+  }
+
+  if (pick.row.prior === 0) {
+    return {
+      badge: 'growth',
+      badgeLabel: MOMENTUM_BADGE,
+      name: pick.row.name,
+      color: pick.row.color,
+      text: `${formatInt(pick.row.recent)} em 7d (novo)`,
+    }
+  }
 
   return {
-    badge: 'outsider',
-    badgeLabel: 'Aceleração',
-    name: candidate.row.name,
-    color: candidate.row.color,
-    text: buildText(candidate.row, candidate.pct),
+    badge: 'growth',
+    badgeLabel: MOMENTUM_BADGE,
+    name: pick.row.name,
+    color: pick.row.color,
+    text: `${formatPct(pick.pct)} em 7d`,
   }
+}
+
+function stableMomentumInsight(): PanoramaKpiInsight {
+  return {
+    badge: 'growth',
+    badgeLabel: 'Estável',
+    name: '',
+    color: '#6B7280',
+    text: 'Sem aceleração em 7d',
+  }
+}
+
+function pairLeaderAndMomentum(
+  leader: PanoramaKpiInsight | null,
+  momentum: PanoramaKpiInsight | null
+): PanoramaKpiInsight[] {
+  if (!leader) return []
+  return [leader, momentum ?? stableMomentumInsight()]
 }
 
 function buildCard(
@@ -166,28 +247,22 @@ function buildCard(
   platformLabel: string,
   metricLabel: string,
   rows: MetricRow[],
-  windowLabel: string,
-  leaderText: (leader: MetricRow, share: number | null) => string,
-  growthText: (row: MetricRow, pct: number) => string,
-  outsiderText: (row: MetricRow, pct: number) => string
+  leaderText: (leader: MetricRow, share: number | null) => string
 ): PanoramaPlatformKpiCard {
   const hasData = rows.some((r) => r.total > 0 || r.recent > 0)
   if (!hasData) {
     return { platformId, platformLabel, metricLabel, insights: [], empty: true }
   }
 
-  const leader = leaderInsight(rows, leaderText)
-  const growth = growthInsight(rows, growthText)
-  const outsider = outsiderInsight(rows, leader, outsiderText)
-
-  const insights = [leader, growth, outsider].filter((i): i is PanoramaKpiInsight => Boolean(i))
+  const leader = leaderInsight(rows, leaderText, 'Líder')
+  const momentum = momentumInsight(rows, leader)
 
   return {
     platformId,
     platformLabel,
     metricLabel,
-    insights,
-    empty: insights.length === 0,
+    insights: pairLeaderAndMomentum(leader, momentum),
+    empty: false,
   }
 }
 
@@ -197,7 +272,7 @@ function chartById(charts: PanoramaPlatformChart[], id: PanoramaPlatformId): Pan
 
 function buildInstagramKpis(
   table: PanoramaInstagramTableRow[],
-  windowLabel: string
+  igChart: PanoramaPlatformChart | undefined
 ): PanoramaPlatformKpiCard {
   const active = table.filter((r) => r.postCount > 0 || r.avgEngagement > 0)
   if (active.length === 0) {
@@ -210,72 +285,39 @@ function buildInstagramKpis(
     }
   }
 
-  const byAvg = [...active].sort((a, b) => b.avgEngagement - a.avgEngagement)[0]
-  const byTotal = [...active].sort((a, b) => b.totalEngagement - a.totalEngagement)[0]
-  const byPosts = [...active].sort((a, b) => b.postCount - a.postCount)[0]
+  const rows: MetricRow[] = table.map((row) => ({
+    slug: row.slug,
+    name: row.name,
+    color: row.color,
+    actorType: 'other',
+    total: row.avgEngagement,
+    recent: sumChartSlices(igChart, row.slug, RECENT_DAYS, RECENT_DAYS),
+    prior: sumChartSlices(igChart, row.slug, RECENT_DAYS * 2, RECENT_DAYS),
+  }))
 
-  const insights: PanoramaKpiInsight[] = [
-    {
-      badge: 'leader',
-      badgeLabel: 'Maior engajamento',
-      name: byAvg.name,
-      color: byAvg.color,
-      text: `${byAvg.name} apresentou o maior engajamento médio do período (${formatInt(byAvg.avgEngagement)} por post).`,
-    },
-  ]
-
-  if (byTotal.slug !== byAvg.slug && byTotal.totalEngagement > 0) {
-    insights.push({
-      badge: 'leader',
-      badgeLabel: 'Maior volume',
-      name: byTotal.name,
-      color: byTotal.color,
-      text: `${byTotal.name} acumulou o maior engajamento total no Instagram nos ${windowLabel} (${formatInt(byTotal.totalEngagement)} interações).`,
-    })
+  const leaderRow = [...active].sort((a, b) => b.avgEngagement - a.avgEngagement)[0]
+  const leader: PanoramaKpiInsight = {
+    badge: 'leader',
+    badgeLabel: 'Líder',
+    name: leaderRow.name,
+    color: leaderRow.color,
+    text: `${formatInt(leaderRow.avgEngagement)} eng./post`,
   }
 
-  if (byPosts.postCount >= 2 && byPosts.slug !== byAvg.slug) {
-    insights.push({
-      badge: 'outsider',
-      badgeLabel: 'Mais posts',
-      name: byPosts.name,
-      color: byPosts.color,
-      text: `${byPosts.name} publicou com mais frequência no recorte (${formatInt(byPosts.postCount)} posts), abaixo do maior engajamento médio.`,
-    })
-  }
+  const momentum = momentumInsight(rows, leader)
 
   return {
     platformId: 'instagram',
     platformLabel: 'Instagram',
     metricLabel: 'Engajamento médio',
-    insights,
+    insights: pairLeaderAndMomentum(leader, momentum),
     empty: false,
-  }
-}
-
-function buildTrendsGrowthInsight(columns: PanoramaCandidateColumn[]): PanoramaKpiInsight | null {
-  let best: { name: string; color: string; pct: number } | null = null
-  for (const col of columns) {
-    const pct = col.trends?.weekChangePct
-    if (pct === null || pct === undefined || pct <= 0) continue
-    if (!best || pct > best.pct) {
-      best = { name: col.name, color: col.accentColor, pct }
-    }
-  }
-  if (!best || best.pct < 10) return null
-  return {
-    badge: 'growth',
-    badgeLabel: 'Em alta',
-    name: best.name,
-    color: best.color,
-    text: `As buscas por ${best.name} atingiram o maior nível dos últimos 30 dias (alta de ${formatPct(best.pct)} na semana).`,
   }
 }
 
 function buildTrendsCard(
   columns: PanoramaCandidateColumn[],
-  trendsChart: PanoramaPlatformChart | undefined,
-  windowLabel: string
+  trendsChart: PanoramaPlatformChart | undefined
 ): PanoramaPlatformKpiCard {
   const trendsRows: MetricRow[] = columns.map((col) => {
     const current = col.trends?.currentIndex ?? 0
@@ -332,54 +374,139 @@ function buildTrendsCard(
     (leaderCol.trends?.currentIndex ?? 0) === 0 &&
     (leaderCol.trends?.peak3m ?? 0) > 0
 
-  const insights: PanoramaKpiInsight[] = []
+  const leader: PanoramaKpiInsight | null = leaderRow
+    ? {
+        badge: 'leader',
+        badgeLabel: 'Líder',
+        name: leaderRow.name,
+        color: leaderRow.color,
+        text: usesPeak ? `pico ${leaderRow.total}/100` : `${leaderRow.total}/100`,
+      }
+    : null
 
-  if (leaderRow) {
-    insights.push({
-      badge: 'leader',
-      badgeLabel: 'Maior volume',
-      name: leaderRow.name,
-      color: leaderRow.color,
-      text: usesPeak
-        ? `As buscas por ${leaderRow.name} registraram pico de ${leaderRow.total}/100 no recorte de ${windowLabel}.`
-        : `As buscas por ${leaderRow.name} registram o maior índice de interesse no recorte (${leaderRow.total}/100).`,
-    })
+  let momentum: PanoramaKpiInsight | null = null
+
+  let bestTrendsWeek: { name: string; color: string; pct: number } | null = null
+  for (const col of columns) {
+    const pct = col.trends?.weekChangePct
+    if (pct === null || pct === undefined || pct <= 0) continue
+    if (!bestTrendsWeek || pct > bestTrendsWeek.pct) {
+      bestTrendsWeek = { name: col.name, color: col.accentColor, pct }
+    }
   }
 
-  const trendsGrowth = buildTrendsGrowthInsight(columns)
-  if (trendsGrowth) {
-    insights.push(trendsGrowth)
+  if (bestTrendsWeek && bestTrendsWeek.pct >= 8) {
+    const isLeader = bestTrendsWeek.name === leader?.name
+    momentum = {
+      badge: 'growth',
+      badgeLabel: isLeader ? MOMENTUM_GROWTH_BADGE : MOMENTUM_BADGE,
+      name: bestTrendsWeek.name,
+      color: bestTrendsWeek.color,
+      text: `${formatPct(bestTrendsWeek.pct)} na semana`,
+    }
   } else {
-    const chartGrowth = growthInsight(
-      trendsRows,
-      (row, pct) =>
-        `As buscas por ${row.name} apresentaram alta de ${formatPct(pct)} nos últimos ${RECENT_DAYS} dias.`,
-      10
-    )
-    if (chartGrowth) insights.push(chartGrowth)
+    momentum = momentumInsight(trendsRows, leader)
   }
-
-  const leaderInsightRow = insights.find((i) => i.badge === 'leader')
-  const outsider = outsiderInsight(
-    trendsRows,
-    leaderInsightRow ?? null,
-    (row, pct) =>
-      `As buscas por ${row.name} aceleraram ${formatPct(pct)} no curto prazo, abaixo do maior índice do período.`,
-    15
-  )
-  if (outsider) insights.push(outsider)
 
   return {
     platformId: 'google-trends',
     platformLabel: 'Google Trends',
     metricLabel: 'Interesse de busca',
-    insights,
-    empty: insights.length === 0,
+    insights: pairLeaderAndMomentum(leader, momentum),
+    empty: !leader,
+  }
+}
+
+function buildMetaAdsCard(
+  columns: PanoramaCandidateColumn[],
+  metaChart: PanoramaPlatformChart | undefined
+): PanoramaPlatformKpiCard {
+  type MetaRow = {
+    slug: string
+    name: string
+    color: string
+    actorType: PoliticalActorType
+    totalAds: number
+    spendMid: number
+    spendLabel: string | null
+  }
+
+  const baseRows: MetaRow[] = columns
+    .filter((col) => col.metaAds)
+    .map((col) => ({
+      slug: col.slug,
+      name: col.name,
+      color: col.accentColor,
+      actorType: col.actorType,
+      totalAds: col.metaAds?.totalAds ?? 0,
+      spendMid: spendMidpoint(col.metaAds?.spendMinBrl ?? 0, col.metaAds?.spendMaxBrl ?? 0),
+      spendLabel: col.metaAds?.spendLabel ?? null,
+    }))
+
+  const hasData = baseRows.some((r) => r.totalAds > 0 || r.spendMid > 0)
+  if (!hasData) {
+    return {
+      platformId: 'meta-ads',
+      platformLabel: 'Meta Ads',
+      metricLabel: 'Anúncios no período',
+      insights: [],
+      empty: true,
+    }
+  }
+
+  const adsLeader = [...baseRows].filter((r) => r.totalAds > 0).sort((a, b) => b.totalAds - a.totalAds)[0]
+  const spendRows = baseRows.filter((r) => r.spendMid > 0)
+  const totalAdsSum = baseRows.reduce((sum, row) => sum + row.totalAds, 0)
+  const totalSpend = spendRows.reduce((sum, row) => sum + row.spendMid, 0)
+
+  const leader: PanoramaKpiInsight | null = adsLeader
+    ? (() => {
+        const adsShare = sharePct(adsLeader.totalAds, totalAdsSum)
+        const spendShare = sharePct(adsLeader.spendMid, totalSpend)
+        const adsPart =
+          adsShare !== null ? `${adsShare}% anúncios` : `${formatInt(adsLeader.totalAds)} anúncios`
+        const spendPart =
+          adsLeader.spendLabel && spendShare !== null
+            ? `${adsLeader.spendLabel} (${spendShare}% gasto)`
+            : adsLeader.spendLabel ?? null
+
+        return {
+          badge: 'leader' as const,
+          badgeLabel: 'Líder',
+          name: adsLeader.name,
+          color: adsLeader.color,
+          text: spendPart ? `${adsPart} · ${spendPart}` : adsPart,
+        }
+      })()
+    : null
+
+  const spendMetricRows: MetricRow[] = baseRows.map((row) => {
+    const recent = sumChartSlices(metaChart, row.slug, RECENT_DAYS, RECENT_DAYS)
+    const prior = sumChartSlices(metaChart, row.slug, RECENT_DAYS * 2, RECENT_DAYS)
+    return {
+      slug: row.slug,
+      name: row.name,
+      color: row.color,
+      actorType: row.actorType,
+      total: row.spendMid,
+      recent: metaChart?.chartData.length ? recent : 0,
+      prior: metaChart?.chartData.length ? prior : 0,
+    }
+  })
+
+  const momentum = momentumInsight(spendMetricRows, leader)
+
+  return {
+    platformId: 'meta-ads',
+    platformLabel: 'Meta Ads',
+    metricLabel: 'Anúncios no período',
+    insights: pairLeaderAndMomentum(leader, momentum),
+    empty: !leader,
   }
 }
 
 export function buildPanoramaPlatformKpis(panorama: Pick<PanoramaModel, 'columns' | 'charts' | 'windowLabel'>): PanoramaPlatformKpiCard[] {
-  const { columns, charts, windowLabel } = panorama
+  const { columns, charts } = panorama
   if (columns.length === 0) return []
 
   const newsChart = chartById(charts, 'google-news')
@@ -395,18 +522,11 @@ export function buildPanoramaPlatformKpis(panorama: Pick<PanoramaModel, 'columns
   )
 
   const igTable = igChart?.instagramTable ?? []
-  const igLeader = buildInstagramKpis(igTable, windowLabel)
 
   const ytRows = metricsFromTotals(
     columns,
     (c) => c.youtube?.views7d ?? 0,
     ytChart
-  )
-
-  const metaRows = metricsFromTotals(
-    columns,
-    (c) => c.metaAds?.activeAds ?? 0,
-    metaChart
   )
 
   return [
@@ -415,45 +535,23 @@ export function buildPanoramaPlatformKpis(panorama: Pick<PanoramaModel, 'columns
       'Google News',
       'Menções na imprensa',
       newsRows,
-      windowLabel,
       (leader, share) =>
         share !== null && share >= 20
-          ? `${leader.name} concentrou ${share}% das menções da imprensa nos ${windowLabel}.`
-          : `${leader.name} registrou o maior volume de menções na imprensa nos ${windowLabel} (${formatInt(leader.total)} matérias).`,
-      (row, pct) =>
-        `${row.name} apresentou aumento de ${formatPct(pct)} nas menções nos últimos ${RECENT_DAYS} dias, em relação à semana anterior.`,
-      (row, pct) =>
-        `${row.name} registrou aceleração de ${formatPct(pct)} nas menções recentes, sem liderar o volume do período.`
+          ? `${share}% das menções`
+          : `${formatInt(leader.total)} matérias`
     ),
-    igLeader,
+    buildInstagramKpis(igTable, igChart),
     buildCard(
       'youtube',
       'YouTube',
       'Visualizações',
       ytRows,
-      windowLabel,
       (leader, share) =>
         share !== null && share >= 25
-          ? `${leader.name} concentrou ${share}% das visualizações monitoradas no YouTube nos ${windowLabel}.`
-          : `${leader.name} acumulou o maior volume de visualizações no YouTube nos ${windowLabel} (${formatInt(leader.total)} views).`,
-      (row, pct) =>
-        `${row.name} registrou alta de ${formatPct(pct)} nas visualizações nos últimos ${RECENT_DAYS} dias.`,
-      (row, pct) =>
-        `${row.name} apresentou aceleração de ${formatPct(pct)} em views recentes, sem liderar o período completo.`
+          ? `${share}% das views`
+          : `${formatInt(leader.total)} views`
     ),
-    buildTrendsCard(columns, trendsChart, windowLabel),
-    buildCard(
-      'meta-ads',
-      'Meta Ads',
-      'Anúncios ativos',
-      metaRows,
-      windowLabel,
-      (leader) =>
-        `${leader.name} concentrou o maior número de anúncios ativos na biblioteca da Meta (${formatInt(leader.total)}).`,
-      (row, pct) =>
-        `${row.name} registrou aumento de ${formatPct(pct)} em anúncios ativos nos últimos ${RECENT_DAYS} dias.`,
-      (row, pct) =>
-        `${row.name} apresentou aceleração de ${formatPct(pct)} em anúncios recentes, sem liderar o período.`
-    ),
+    buildTrendsCard(columns, trendsChart),
+    buildMetaAdsCard(columns, metaChart),
   ]
 }

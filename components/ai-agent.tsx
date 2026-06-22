@@ -102,6 +102,7 @@ import {
   detectSidebarNavigate,
   type SidebarNavigateResult,
 } from '@/lib/agent/detect-sidebar-navigate'
+import { COCKPIT_AGENT_NAME, isCockpitAgentTitle } from '@/lib/agent/cockpit-agent-brand'
 import { shouldBreakJarvisPendingFlow } from '@/lib/agent/detect-pending-break'
 import { isLiderancasResumoPorCargoQuery } from '@/lib/agent/detect-liderancas-resumo'
 import {
@@ -555,7 +556,7 @@ export function AIAgent({
   immediateChatMode = false,
   pageContext,
   dockVariant = 'fixed',
-  agentTitle = 'Copilot IA',
+  agentTitle = COCKPIT_AGENT_NAME,
   maxPanelHeight = 600,
   uiVariant = 'default',
   fullPageHud = false,
@@ -1293,7 +1294,7 @@ export function AIAgent({
       if (isPlanoVisitasCampoQuery(query)) {
         return {
           content:
-            'Para um **plano de visitas** no tempo (ex.: 30 dias), o Jarvis usa análise com Claude. Configure `ANTHROPIC_API_KEY` no servidor ou reformule: **quais cidades preciso visitar**.',
+            'Para um **plano de visitas** no tempo (ex.: 30 dias), a IA Cockpit usa análise com Claude. Configure `ANTHROPIC_API_KEY` no servidor ou reformule: **quais cidades preciso visitar**.',
         }
       }
 
@@ -4963,10 +4964,10 @@ export function AIAgent({
   }, [chatMessages])
 
   const jarvisStatusMessage = useMemo(() => {
-    if (jarvisResultPopup && isSpeaking) return 'APRESENTANDO RESULTADO · JARVIS FALANDO'
+    if (jarvisResultPopup && isSpeaking) return `APRESENTANDO RESULTADO · ${COCKPIT_AGENT_NAME.toUpperCase()} FALANDO`
     if (jarvisResultPopup && !voiceOutputEnabled) return 'RESULTADO NA TELA · VOZ DESLIGADA'
     if (jarvisResultPopup && !isSpeaking) return 'RESULTADO NA TELA · DIGA «LER» PARA OUVIR'
-    if (jarvisResultPopup) return 'RESULTADO NA TELA · JARVIS LENDO'
+    if (jarvisResultPopup) return `RESULTADO NA TELA · ${COCKPIT_AGENT_NAME.toUpperCase()} LENDO`
     if (isProcessing && isSpeaking) return 'BUSCANDO DADOS · UM MOMENTO'
     if (isSpeaking) return 'SINTETIZANDO RESPOSTA · FALANDO'
     if (!voiceOutputEnabled && isListening) return 'ESCUTA ATIVA · RESPOSTA SÓ NO PAINEL'
@@ -5043,6 +5044,7 @@ export function AIAgent({
         style={fullPageHud ? undefined : { maxHeight: maxPanelHeight }}
       >
         <JarvisHudShell
+          agentTitle={agentTitle}
           statusMessage={jarvisStatusMessage}
           isListening={isListening}
           listenPaused={listenPaused}
@@ -5146,7 +5148,7 @@ export function AIAgent({
                   {chatMode
                     ? pageContext?.kind === 'resumo-eleicoes'
                       ? 'Cidade + Buscar; depois abrir demandas (voz ou texto)'
-                      : agentTitle === 'Jarvis'
+                      : isCockpitAgentTitle(agentTitle)
                         ? enableVoice && speechCapabilityResolved && speechSupported
                           ? 'Assistente do Cockpit · digite ou fale em linguagem natural'
                           : 'Assistente do Cockpit · pergunte sobre campanha e dados'

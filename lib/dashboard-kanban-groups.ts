@@ -1,5 +1,6 @@
 import type { SidebarMenuItemConfig } from '@/lib/sidebar-nav-routes'
 import type { SidebarMenuSection } from '@/lib/sidebar-menu-sections'
+import { resolveKanbanMenuItem } from '@/lib/dashboard-kanban-virtual-items'
 
 /** Colunas do kanban da home — ordem de exibição. */
 export const DASHBOARD_KANBAN_SECTIONS: ReadonlyArray<{
@@ -25,7 +26,7 @@ export const DASHBOARD_KANBAN_SECTIONS: ReadonlyArray<{
   {
     id: 'administracao',
     label: 'Administração',
-    itemIds: ['log-system', 'usuarios'],
+    itemIds: ['jarvis-assistant', 'log-system', 'usuarios'],
   },
 ]
 
@@ -50,15 +51,18 @@ function indexKanbanItems(items: SidebarMenuItemConfig[]): Map<string, SidebarMe
 }
 
 export function groupDashboardKanbanSections(
-  items: SidebarMenuItemConfig[]
+  items: SidebarMenuItemConfig[],
+  options?: { includeJarvis?: boolean }
 ): SidebarMenuSection[] {
   const byId = indexKanbanItems(items)
+  const includeJarvis = options?.includeJarvis ?? false
 
   return DASHBOARD_KANBAN_SECTIONS.map((def) => ({
     id: def.id,
     label: def.label,
     items: def.itemIds
-      .map((id) => byId.get(id))
+      .filter((id) => (id === 'jarvis-assistant' ? includeJarvis : true))
+      .map((id) => resolveKanbanMenuItem(id, byId))
       .filter((item): item is SidebarMenuItemConfig => Boolean(item)),
   })).filter((section) => section.items.length > 0)
 }

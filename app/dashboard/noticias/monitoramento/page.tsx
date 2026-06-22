@@ -6,12 +6,14 @@ import { GoogleAlertsPanel } from '@/components/monitoramento/google-alerts-pane
 import { GoogleNewsRadarPanel } from '@/components/monitoramento/google-news-radar-panel'
 import { InstagramRadarPanel } from '@/components/monitoramento/instagram-radar-panel'
 import { MetaAdsRadarPanel } from '@/components/monitoramento/meta-ads-radar-panel'
+import { PanoramaPanel } from '@/components/monitoramento/panorama-panel'
+import { PanoramaTabActions } from '@/components/monitoramento/panorama-tab-actions'
 import {
   MonitoramentoShell,
   type MonitoramentoPanoramaMeta,
   type MonitoramentoTab,
 } from '@/components/monitoramento/monitoramento-shell'
-import { PanoramaPanel } from '@/components/monitoramento/panorama-panel'
+import { usePanoramaPanel } from '@/components/monitoramento/use-panorama-panel'
 import { TrendsRadarPanel } from '@/components/monitoramento/trends-radar-panel'
 import { YoutubeRadarPanel } from '@/components/monitoramento/youtube-radar-panel'
 
@@ -35,6 +37,11 @@ export default function MonitoramentoPage() {
     setPanoramaMeta(meta)
   }, [])
 
+  const panorama = usePanoramaPanel({
+    enabled: activeTab === 'geral',
+    onMetaChange: onPanoramaMetaChange,
+  })
+
   const onTabChange = useCallback(
     (tab: MonitoramentoTab) => {
       const params = new URLSearchParams(searchParams.toString())
@@ -54,9 +61,20 @@ export default function MonitoramentoPage() {
       activeTab={activeTab}
       onTabChange={onTabChange}
       panoramaMeta={panoramaMeta}
+      tabActions={
+        activeTab === 'geral' ? (
+          <PanoramaTabActions
+            busy={panorama.busy}
+            collectingAll={panorama.collectingAll}
+            refreshing={panorama.refreshing}
+            onCollectAll={() => void panorama.coletarTodas()}
+            onReload={() => void panorama.carregar(true)}
+          />
+        ) : null
+      }
     >
       {activeTab === 'geral' ? (
-        <PanoramaPanel onMetaChange={onPanoramaMetaChange} />
+        <PanoramaPanel state={panorama} />
       ) : activeTab === 'google-alerts' ? (
         <GoogleAlertsPanel />
       ) : activeTab === 'trends' ? (

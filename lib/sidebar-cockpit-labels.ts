@@ -34,6 +34,7 @@ export const COCKPIT_MENU_LABEL: Record<string, string> = {
   'gestao-pesquisas-menu': 'Gestão pesq.',
   usuarios: 'Usuários',
   'log-system': 'Log System',
+  'jarvis-assistant': 'IA Cockpit',
   chapas: 'Federal',
   'chapas-estaduais': 'Estadual',
   'resumo-eleicoes-principal': 'Por cidade',

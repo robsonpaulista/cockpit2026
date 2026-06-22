@@ -161,7 +161,7 @@ export default function LogSystemPage() {
             <div>
               <h1 className="text-xl font-semibold text-text-primary">Log System</h1>
               <p className="mt-1 text-sm text-text-secondary">
-                Perguntas e respostas do Jarvis registradas por usuário e sessão.
+                Histórico de perguntas da IA Cockpit registradas por usuário e sessão.
               </p>
             </div>
           </div>
@@ -208,7 +208,7 @@ export default function LogSystemPage() {
           </div>
         ) : logs.length === 0 ? (
           <div className="rounded-xl border border-card bg-surface px-6 py-12 text-center text-sm text-text-secondary">
-            Nenhum registro encontrado. As conversas com o Jarvis passam a aparecer aqui após o uso.
+            Nenhum registro encontrado. As conversas com a IA Cockpit passam a aparecer aqui após o uso.
           </div>
         ) : (
           <div className="space-y-3">

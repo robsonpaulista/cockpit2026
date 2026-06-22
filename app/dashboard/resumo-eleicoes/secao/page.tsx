@@ -611,8 +611,8 @@ export default function VotacaoSecaoPage() {
   )
 
   return (
-    <div className="min-h-screen bg-bg-surface pb-12">
-      <div className="mx-auto max-w-[100rem] px-4 py-6">
+    <div className="min-h-screen w-full min-w-0 bg-bg-surface pb-12">
+      <div className="w-full min-w-0 px-4 py-6 lg:px-6">
         <div className="mb-6 flex flex-wrap items-center gap-4">
           <Link
             href={

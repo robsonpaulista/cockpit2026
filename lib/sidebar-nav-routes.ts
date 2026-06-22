@@ -200,7 +200,7 @@ const EXTRA_ALIASES: Record<string, string[]> = {
   'gestao-pesquisas-config': ['config gestao pesquisas', 'configuracoes pesquisas'],
   'gestao-pesquisas-menu': ['gestao pesquisas'],
   usuarios: ['usuarios', 'gestao usuarios', 'gestao de usuarios', 'permissoes'],
-  'log-system': ['log system', 'log jarvis', 'logs agente', 'historico jarvis'],
+  'log-system': ['log system', 'log ia cockpit', 'logs agente', 'historico ia cockpit', 'log jarvis', 'historico jarvis'],
 }
 
 function buildTarget(item: MenuItem): SidebarNavTarget {

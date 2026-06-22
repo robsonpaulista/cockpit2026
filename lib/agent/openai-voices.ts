@@ -1,6 +1,6 @@
 /** Vozes fixas do OpenAI TTS — mesmas em qualquer máquina/navegador. */
 export const OPENAI_TTS_VOICES = [
-  { id: 'onyx', label: 'Onyx', tone: 'Masculina, grave — padrão Jarvis' },
+  { id: 'onyx', label: 'Onyx', tone: 'Masculina, grave — padrão IA Cockpit' },
   { id: 'echo', label: 'Echo', tone: 'Masculina, direta, assistente' },
   { id: 'ash', label: 'Ash', tone: 'Masculina, casual' },
   { id: 'cedar', label: 'Cedar', tone: 'Masculina, calma e confiante' },

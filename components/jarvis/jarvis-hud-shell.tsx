@@ -13,6 +13,7 @@ import { JarvisTextInput } from '@/components/jarvis/jarvis-text-input'
 import { JarvisVoiceBar } from '@/components/jarvis/jarvis-voice-bar'
 import { JarvisWebcamPreview } from '@/components/jarvis/jarvis-webcam-preview'
 import type { JarvisResultView } from '@/lib/agent/jarvis-result-view'
+import { COCKPIT_AGENT_NAME } from '@/lib/agent/cockpit-agent-brand'
 import { jarvisHudStyle, jarvisPanelClass } from '@/lib/jarvis-hud-tokens'
 import { cn } from '@/lib/utils'
 import './jarvis-neural.css'
@@ -57,6 +58,7 @@ interface JarvisHudShellProps {
   onTextInputSubmit?: () => void
   textInputDisabled?: boolean
   textInputPlaceholder?: string
+  agentTitle?: string
   hudLayout?: 'full' | 'compact' | 'column'
   className?: string
   style?: React.CSSProperties
@@ -120,6 +122,7 @@ export function JarvisHudShell({
   onTextInputSubmit,
   textInputDisabled = false,
   textInputPlaceholder,
+  agentTitle = COCKPIT_AGENT_NAME,
   hudLayout = 'full',
   className,
   style,
@@ -238,7 +241,7 @@ export function JarvisHudShell({
                         : 'text-[1.15rem] tracking-[0.22em] sm:text-[clamp(1.35rem,3vh,1.75rem)] sm:tracking-[0.3em]'
                   )}
                 >
-                  Jarvis
+                  {agentTitle}
                 </h1>
 
                 {enableVoice && speechSupported ? (

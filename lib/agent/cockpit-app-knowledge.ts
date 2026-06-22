@@ -4,22 +4,22 @@
  */
 
 export const CLAUDE_COCKPIT_KNOWLEDGE = `
-## Mapa do Cockpit 2026 (Jarvis)
+## Mapa do Cockpit 2026 (IA Cockpit)
 
 Campanha: Jadyel Alencar · deputado federal · Piauí (224 municípios).
-Dois módulos de resposta no Jarvis — NÃO confunda:
+Dois módulos de resposta na IA Cockpit — NÃO confunda:
 
 | Módulo | Quando | Exemplos |
 |--------|--------|----------|
 | **Regex/Groq** | Dado bruto, navegação, comandos curtos | «pesquisa em X», «expectativa em X», «abrir agenda» |
 | **Claude (você)** | Análise, diagnóstico, síntese, relatório | «diagnóstico territorial em X», «analise o cenário», «compare cidades» |
 
-Se o usuário pedir **número/lista pontual**, diga: «Para o dado exato, use no Jarvis: …» e cite o comando regex. Não repita só expectativa quando pediram diagnóstico.
+Se o usuário pedir **número/lista pontual**, diga: «Para o dado exato, use na IA Cockpit: …» e cite o comando regex. Não repita só expectativa quando pediram diagnóstico.
 
 ---
 
 ### Visão Geral · /dashboard
-- Jarvis HUD (voz + chat). KPIs globais no contexto (expectativa 2026, alertas, territórios frios).
+- IA Cockpit HUD (voz + chat). KPIs globais no contexto (expectativa 2026, alertas, territórios frios).
 - Regex: «alertas críticos», «territórios frios», saudação, ajuda.
 - Claude: panorama geral se houver KPIs no contexto.
 
@@ -33,7 +33,7 @@ Se o usuário pedir **número/lista pontual**, diga: «Para o dado exato, use no
 ### Estratégia (Narrativas) · /dashboard/narrativas
 - Bandeiras, fases, radar de posicionamento.
 - API: /api/narrativas, /api/narrativas/performance, /api/fases
-- Jarvis: só navegação + contagem bandeiras do HUD. **Sem consulta de dados via voz hoje.**
+- IA Cockpit: só navegação + contagem bandeiras do HUD. **Sem consulta de dados via voz hoje.**
 - Claude: sem dados — oriente abrir a página.
 
 ### Agenda · /dashboard/agenda
@@ -58,12 +58,12 @@ Se o usuário pedir **número/lista pontual**, diga: «Para o dado exato, use no
 
 ### Mapa dos TDs · /dashboard/territorio/mapa-tds
 - Visualização por Território de Desenvolvimento (TD).
-- Jarvis: navegação («abrir mapa dos TDs»). Sem API dedicada ao agente.
+- IA Cockpit: navegação («abrir mapa dos TDs»). Sem API dedicada ao agente.
 
 ### Ficha de Atendimento · /dashboard/ficha-atendimento
 - Tetos MAC/PAP (SUAS), emendas por município, dados eleitorais locais.
 - API: /api/limites-tetos, /api/emendas-suas, /api/consultar-tetos
-- **Jarvis: sem integração hoje.** Claude: informe limitação; usuário deve abrir a página.
+- **IA Cockpit: sem integração hoje.** Claude: informe limitação; usuário deve abrir a página.
 
 ### Pesquisa & Relato · /dashboard/pesquisa
 - Cadastro de pesquisas, gráficos, intenção estimulada/espontânea, relatórios PDF.
@@ -82,7 +82,7 @@ Se o usuário pedir **número/lista pontual**, diga: «Para o dado exato, use no
 ### Resumo Eleições · /dashboard/resumo-eleicoes
 - Por município: expectativa, lideranças, pesquisas, simulação vereadores, demandas (modais).
 - API: GET /api/resumo-eleicoes, POST /api/territorio/expectativa-por-cidade, GET /api/pesquisa
-- pageKind=resumo-eleicoes no Jarvis.
+- pageKind=resumo-eleicoes no IA Cockpit.
 - **Atendimento presencial:** «estou com o prefeito de Picos», «abra o painel da cidade», «mostre o resumo da cidade» → boas-vindas + navega + busca (intent resumo_buscar_cidade).
 - Regex/UI: «Buscar [cidade]», «abrir demandas», «ver lideranças», «histórico de pesquisas», «fechar modais».
 - Claude: análise integrada do município (não só disparar modal).
@@ -90,12 +90,12 @@ Se o usuário pedir **número/lista pontual**, diga: «Para o dado exato, use no
 ### Histórico federal · /dashboard/resumo-eleicoes/historico
 - Votação federal 2018/2022, previsão 2026, mapas.
 - API: /api/resumo-eleicoes/historico-federal
-- Jarvis: navegação. Claude: sem dados automáticos — cite limitação.
+- IA Cockpit: navegação. Claude: sem dados automáticos — cite limitação.
 
 ### Por seção · /dashboard/resumo-eleicoes/secao
 - Votação por seção eleitoral (mapa).
 - API: /api/resumo-eleicoes/votacao-secao
-- Jarvis: navegação. Claude: sem dados automáticos.
+- IA Cockpit: navegação. Claude: sem dados automáticos.
 
 ### Redes Sociais · /dashboard/conteudo/*
 - Hub: pipeline de conteúdo (obras, cards, referências, análise).
@@ -103,7 +103,7 @@ Se o usuário pedir **número/lista pontual**, diga: «Para o dado exato, use no
   - API: POST /api/instagram, GET /api/instagram/snapshot, /api/instagram/classifications
   - Regex: «métricas do instagram», «qual post com maior engajamento», «posts mais curtidos», «seguidores por dia», «quantos seguidores ganhei», «qual tema tem melhor performance».
   - Claude gather: snapshot 30d + classificações (não POST ao vivo).
-- Demais subpáginas (obras cards, agenda campo, referências): navegação; sem consulta Jarvis.
+- Demais subpáginas (obras cards, agenda campo, referências): navegação; sem consulta IA Cockpit.
 
 ### Central de monitoramento · /dashboard/noticias/monitoramento
 - Aba **Google Alerts**: inbox RSS (antigo Radar de notícias)
@@ -122,52 +122,52 @@ Se o usuário pedir **número/lista pontual**, diga: «Para o dado exato, use no
 ### Mobilização · /mobilizacao/detalhe, /dashboard/mobilizacao/*
 - Captação de leads, mapa Exército Digital (Instagram por TD), config coordenadores.
 - API: /api/mobilizacao/config, /api/mobilizacao/relatorio-check-mapa-digital-ig
-- Jarvis: navegação. Claude: sem dados — oriente a página.
+- IA Cockpit: navegação. Claude: sem dados — oriente a página.
 
 ### WhatsApp · /dashboard/whatsapp
 - Fila de envios, contatos, campanhas.
-- API: /api/whatsapp/contacts, envio via tool Jarvis.
+- API: /api/whatsapp/contacts, envio via tool IA Cockpit.
 - Regex: «envia resumo/briefing para [nome/CEO/executivos]».
 
 ### Operação & Equipe · /dashboard/operacao
 - Kanban de tarefas, líderes por território.
 - API: /api/operacao/tasks, /api/operacao/leaders
-- Jarvis: sem integração. Claude: oriente a página.
+- IA Cockpit: sem integração. Claude: oriente a página.
 
 ### Jurídico · /dashboard/juridico
 - Processos Dimensão, prazos, comunicações.
 - API: /api/juridico/processos
-- Jarvis: sem integração. Claude: oriente a página.
+- IA Cockpit: sem integração. Claude: oriente a página.
 
 ### Emendas · /dashboard/emendas
 - Emendas parlamentares (cadastro, status).
 - API: /api/emendas
-- Jarvis: sem integração. Claude: oriente a página.
+- IA Cockpit: sem integração. Claude: oriente a página.
 
 ### Obras · /dashboard/obras
 - Obras com status SEI.
 - API: /api/obras, /api/obras/sei-status
-- Jarvis: sem integração. Claude: oriente a página.
+- IA Cockpit: sem integração. Claude: oriente a página.
 
 ### Proposições · /dashboard/proposicoes
 - Proposições na Câmara (Jadyel).
 - API: /api/proposicoes
-- Jarvis: sem integração. Claude: oriente a página.
+- IA Cockpit: sem integração. Claude: oriente a página.
 
 ### Pesquisa SEI · /dashboard/sei-pesquisa
 - Busca no SEI-PI (teste).
 - API: /api/sei-pesquisa
-- Jarvis: sem integração.
+- IA Cockpit: sem integração.
 
 ### Gestão de Pesquisas · /dashboard/gestao-pesquisas
 - App pesquisador de campo (/pesquisador), questionários.
 - API: /api/campo-pesquisa/config, /api/field-survey-settings
-- Jarvis: sem integração.
+- IA Cockpit: sem integração.
 
 ### Usuários · /dashboard/usuarios
 - Permissões e contas.
 - API: /api/users, /api/auth/permissions
-- Jarvis: sem integração.
+- IA Cockpit: sem integração.
 
 ---
 

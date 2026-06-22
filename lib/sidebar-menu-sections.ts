@@ -38,7 +38,8 @@ export const DASHBOARD_KANBAN_CARD_HINTS: Record<string, string> = {
   'sei-pesquisa': 'Busca no SEI-PI',
   'gestao-pesquisas-menu': 'App pesquisador de campo',
   usuarios: 'Permissões e contas',
-  'log-system': 'Perguntas e respostas do Jarvis',
+  'log-system': 'Histórico de perguntas da IA Cockpit',
+  'jarvis-assistant': 'Assistente de voz e briefing da campanha',
 }
 
 export interface SidebarMenuSection {

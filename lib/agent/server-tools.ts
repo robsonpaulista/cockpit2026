@@ -499,7 +499,7 @@ function toolConsultarTerritoriosFrios(context?: AgentContextPayload): string {
 function toolAjuda(context?: AgentContextPayload): string {
   if (context?.pageKind === 'campo') {
     return [
-      '**Jarvis — Campo & Agenda**',
+      '**IA Cockpit — Campo & Agenda**',
       '',
       '› últimas visitas de campo',
       '› visitas em Teresina',
@@ -512,7 +512,7 @@ function toolAjuda(context?: AgentContextPayload): string {
   }
   if (context?.pageKind === 'resumo-eleicoes') {
     return [
-      '**Jarvis — Resumo Eleições**',
+      '**IA Cockpit — Resumo Eleições**',
       '',
       '› Buscar município: «Buscar Teresina» ou só «Picos»',
       '› Abrir demandas, lideranças ou histórico de pesquisas',
@@ -523,7 +523,7 @@ function toolAjuda(context?: AgentContextPayload): string {
   }
   if (context?.pageKind === 'pesquisa') {
     return [
-      '**Jarvis — Pesquisa & Relato**',
+      '**IA Cockpit — Pesquisa & Relato**',
       '',
       '› como evoluiu a intenção do Jadyel',
       '› tendência em Teresina (por município)',

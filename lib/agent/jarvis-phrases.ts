@@ -1,5 +1,5 @@
 /**
- * Frases do Jarvis.
+ * Frases da IA Cockpit.
  * Tom: direto, sem cerimônia. Máx. ~6 palavras. Sem "você". Sem "sistema".
  */
 

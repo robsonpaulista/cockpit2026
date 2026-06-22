@@ -1,5 +1,10 @@
-/** Variantes comuns do reconhecimento de voz para "Jarvis". */
+import { COCKPIT_AGENT_NAME } from '@/lib/agent/cockpit-agent-brand'
+
+/** Variantes comuns do reconhecimento de voz para acionar o assistente. */
 const WAKE_ALIASES = [
+  'ia cockpit',
+  'i a cockpit',
+  'cockpit',
   'jarvis',
   'javis',
   'jarvi',
@@ -10,6 +15,8 @@ const WAKE_ALIASES = [
   'jarvice',
   'jarvís',
 ] as const
+
+const WAKE_ALIASES_BY_LENGTH = [...WAKE_ALIASES].sort((a, b) => b.length - a.length)
 
 function normalizeWakeText(text: string): string {
   return text
@@ -32,7 +39,7 @@ export function extractJarvisVoiceCommand(transcript: string): {
   if (!norm) return { triggered: false, command: '' }
 
   let wakeEnd = -1
-  for (const alias of WAKE_ALIASES) {
+  for (const alias of WAKE_ALIASES_BY_LENGTH) {
     const idx = norm.lastIndexOf(alias)
     if (idx >= 0) {
       const end = idx + alias.length
@@ -50,7 +57,7 @@ export function extractJarvisVoiceCommand(transcript: string): {
   return { triggered: true, command }
 }
 
-/** Tempo para falar o comando (ou saudação) após só dizer «Jarvis». */
+/** Tempo para falar o comando (ou saudação) após só dizer o nome do assistente. */
 export const JARVIS_ARMED_LISTEN_MS = 9000
 
 export function resolveJarvisVoiceInput(
@@ -84,7 +91,7 @@ export function resolveJarvisVoiceInput(
   return { active: false, command: '', arm: false, disarm: false }
 }
 
-/** Tecla que arma a escuta (equivalente a dizer só «Jarvis»). */
+/** Tecla que arma a escuta (equivalente a dizer só o nome do assistente). */
 export const JARVIS_WAKE_HOTKEY = '0'
 
 export function isJarvisWakeHotkey(event: KeyboardEvent): boolean {
@@ -102,5 +109,5 @@ export function isJarvisWakeHotkey(event: KeyboardEvent): boolean {
 }
 
 export function jarvisWakeHint(): string {
-  return `Diga «Jarvis» + comando, pressione ${JARVIS_WAKE_HOTKEY} ou saudação (ex.: boa noite)`
+  return `Diga «${COCKPIT_AGENT_NAME}» + comando, pressione ${JARVIS_WAKE_HOTKEY} ou saudação (ex.: boa noite)`
 }

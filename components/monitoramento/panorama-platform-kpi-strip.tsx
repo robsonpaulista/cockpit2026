@@ -56,6 +56,7 @@ function KpiInsightRow({
 }) {
   const style = BADGE_STYLES[insight.badge]
   const BadgeIcon = style.icon
+  const isStable = insight.badgeLabel === 'Estável'
 
   return (
     <div className="space-y-1">
@@ -68,18 +69,31 @@ function KpiInsightRow({
         <BadgeIcon className="h-2.5 w-2.5" aria-hidden />
         {insight.badgeLabel}
       </span>
-      <p className="text-[11px] leading-snug text-text-secondary">{insight.text}</p>
+      {insight.name ? (
+        <p className="text-[11px] leading-snug">
+          <span className="font-semibold" style={{ color: insight.color }}>
+            {insight.name}
+          </span>
+          <span className="text-text-secondary"> · {insight.text}</span>
+        </p>
+      ) : (
+        <p className={cn('text-[11px] leading-snug', isStable ? 'text-text-muted' : 'text-text-secondary')}>
+          {insight.text}
+        </p>
+      )}
     </div>
   )
 }
 
 function PlatformKpiCard({ card }: { card: PanoramaPlatformKpiCard }) {
   const PlatformIcon = PLATFORM_ICONS[card.platformId]
+  const leader = card.insights.find((insight) => insight.badge === 'leader')
+  const momentum = card.insights.find((insight) => insight.badge === 'growth')
 
   return (
     <article
       className={cn(
-        'flex min-h-[10.5rem] min-w-0 flex-col rounded-xl border border-[rgb(var(--color-border-tertiary)/0.85)] bg-bg-surface p-3',
+        'flex min-h-[8.5rem] min-w-0 flex-col rounded-xl border border-[rgb(var(--color-border-tertiary)/0.85)] bg-bg-surface p-3',
         card.empty && 'opacity-70'
       )}
     >
@@ -96,10 +110,13 @@ function PlatformKpiCard({ card }: { card: PanoramaPlatformKpiCard }) {
       {card.empty ? (
         <p className="mt-auto text-[11px] leading-snug text-text-muted">Sem dados coletados neste período.</p>
       ) : (
-        <div className="flex flex-col gap-2">
-          {card.insights.slice(0, 3).map((insight) => (
-            <KpiInsightRow key={`${card.platformId}-${insight.badge}-${insight.name}`} insight={insight} />
-          ))}
+        <div className="flex flex-1 flex-col gap-2.5">
+          {leader ? <KpiInsightRow insight={leader} /> : null}
+          {momentum ? (
+            <div className="mt-auto border-t border-[rgb(var(--color-border-tertiary)/0.45)] pt-2.5">
+              <KpiInsightRow insight={momentum} />
+            </div>
+          ) : null}
         </div>
       )}
     </article>
@@ -124,7 +141,7 @@ export function PanoramaPlatformKpiStrip({ cards }: PanoramaPlatformKpiStripProp
           Leitura rápida por plataforma
         </h3>
         <p className="mt-1 text-[11px] text-text-muted">
-          Indicadores observacionais — quem domina, quem cresce e quem acelera no recorte recente.
+          Líder no período · maior avanço nos últimos 7 dias.
         </p>
       </div>
       <div className="grid min-w-0 grid-cols-5 gap-2">

@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 export const dynamic = 'force-dynamic'
 import { NextResponse } from 'next/server'
 import type { InstagramPostSnapshotInput } from '@/lib/instagram-engagement-history'
+import { isMissingColumnError } from '@/lib/instagram-schema-compat'
 import {
   recomputeInstagramPublishDayEngagement,
   saveInstagramPostSnapshots,
@@ -43,30 +44,40 @@ export async function POST(request: Request) {
       )
     }
 
-    // Inserir ou atualizar snapshot do dia
-    const { data, error } = await supabase
+    const snapshotDate = new Date().toISOString().split('T')[0]
+
+    const basePayload = {
+      user_id: user.id,
+      snapshot_date: snapshotDate,
+      followers_count: followers_count || 0,
+      profile_views: profile_views || 0,
+      website_clicks: website_clicks || 0,
+      reach: reach || 0,
+      impressions: impressions || 0,
+      accounts_engaged: accounts_engaged || 0,
+      total_interactions: total_interactions || 0,
+      media_count: media_count || 0,
+      instagram_username: instagram_username || '',
+    }
+
+    const fullPayload = {
+      ...basePayload,
+      avg_post_engagement: avg_post_engagement || 0,
+    }
+
+    let { data, error } = await supabase
       .from('instagram_metrics_history')
-      .upsert(
-        {
-          user_id: user.id,
-          snapshot_date: new Date().toISOString().split('T')[0],
-          followers_count: followers_count || 0,
-          profile_views: profile_views || 0,
-          website_clicks: website_clicks || 0,
-          reach: reach || 0,
-          impressions: impressions || 0,
-          accounts_engaged: accounts_engaged || 0,
-          total_interactions: total_interactions || 0,
-          media_count: media_count || 0,
-          avg_post_engagement: avg_post_engagement || 0,
-          instagram_username: instagram_username || '',
-        },
-        {
-          onConflict: 'user_id,snapshot_date',
-        }
-      )
+      .upsert(fullPayload, { onConflict: 'user_id,snapshot_date' })
       .select()
       .single()
+
+    if (isMissingColumnError(error)) {
+      ;({ data, error } = await supabase
+        .from('instagram_metrics_history')
+        .upsert(basePayload, { onConflict: 'user_id,snapshot_date' })
+        .select()
+        .single())
+    }
 
     if (error) {
       console.error('Erro ao salvar snapshot:', error)

@@ -215,7 +215,7 @@ export function JarvisWebcamPreview({
         compact ? 'h-10 w-10' : 'h-14 w-14 sm:h-16 sm:w-16',
         className
       )}
-      aria-label="Preview da webcam do Jarvis"
+      aria-label="Preview da webcam da IA Cockpit"
       title={title}
     >
       <video

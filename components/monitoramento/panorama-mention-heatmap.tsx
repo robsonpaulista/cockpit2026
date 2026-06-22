@@ -78,7 +78,7 @@ export function PanoramaMentionHeatmap({
   const moreIndividual = enableNewsModal ? 'Pico do candidato' : `Pico de ${metricWord}`
 
   return (
-    <div className={cn('flex flex-col gap-3', className)}>
+    <div className={cn('flex h-full min-h-0 flex-col gap-3', className)}>
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex flex-wrap gap-1">
           {SCALE_OPTIONS.map((opt) => (
@@ -189,7 +189,7 @@ export function PanoramaMentionHeatmap({
         </div>
       </div>
 
-      <div className="flex shrink-0 flex-wrap items-center gap-2 text-[10px] text-text-muted">
+      <div className="mt-auto flex shrink-0 flex-wrap items-center gap-2 text-[10px] text-text-muted">
         <span>{scaleMode === 'comparative' ? lessLabel : lessIndividual}</span>
         <div className="flex gap-[2px]">
           {[0.15, 0.35, 0.55, 0.75, 1].map((t) => (

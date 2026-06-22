@@ -30,8 +30,8 @@ export function PanoramaInstagramTable({ rows, className }: PanoramaInstagramTab
   const withoutUsername = rows.filter((r) => !r.instagramUsername)
 
   return (
-    <div className={cn('flex w-full flex-col gap-1.5', className)}>
-      <div className="w-full overflow-x-auto">
+    <div className={cn('flex min-h-0 flex-1 flex-col gap-1.5', className)}>
+      <div className="min-h-0 flex-1 overflow-x-auto overflow-y-auto">
         <table className="w-full table-fixed border-collapse text-left text-[11px]">
           <colgroup>
             <col className="w-[34%]" />
@@ -112,15 +112,17 @@ export function PanoramaInstagramTable({ rows, className }: PanoramaInstagramTab
         </table>
       </div>
 
-      {withoutUsername.length > 0 ? (
-        <p className="text-[10px] text-amber-800">
-          {withoutUsername.length} sem @ cadastrado — configure em Candidatos monitorados.
-        </p>
-      ) : null}
+      <div className="mt-auto shrink-0 space-y-1.5">
+        {withoutUsername.length > 0 ? (
+          <p className="text-[10px] text-amber-800">
+            {withoutUsername.length} sem @ cadastrado — configure em Candidatos monitorados.
+          </p>
+        ) : null}
 
-      <p className="text-[10px] text-text-muted">
-        Verde = melhor entre monitorados · vermelho = menor no grupo
-      </p>
+        <p className="text-[10px] text-text-muted">
+          Verde = melhor entre monitorados · vermelho = menor no grupo
+        </p>
+      </div>
     </div>
   )
 }

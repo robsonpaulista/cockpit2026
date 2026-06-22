@@ -187,7 +187,7 @@ export function DashboardHomeWelcome({ variant = 'hero' }: DashboardHomeWelcomeP
           }}
         >
           {isCompact
-            ? 'Fale com o Jarvis ao lado — pesquisas, território, agenda e alertas em linguagem natural. O menu lateral leva aos módulos.'
+            ? 'Fale com a IA Cockpit ao lado — pesquisas, território, agenda e alertas em linguagem natural. O menu lateral leva aos módulos.'
             : 'Navegue pelo menu à esquerda para aceder aos módulos do sistema.'}
         </p>
       </div>

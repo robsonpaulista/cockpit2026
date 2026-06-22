@@ -7,7 +7,7 @@ export const ELEVENLABS_PREMADE_FREE_API_VOICES = [
   {
     voice_id: 'pNInz6obpgDQGcFmaJgB',
     name: 'Adam',
-    labels: { gender: 'male', accent: 'american', use: 'Jarvis masculino · free API' },
+    labels: { gender: 'male', accent: 'american', use: 'IA Cockpit · free API' },
     category: 'premade',
   },
   {

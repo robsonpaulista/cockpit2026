@@ -2,7 +2,8 @@
 
 import { useCallback, useEffect, useRef } from 'react'
 import { IconArrowRight } from '@tabler/icons-react'
-import { JARVIS_WAKE_HOTKEY } from '@/lib/agent/jarvis-wake-word'
+import { COCKPIT_AGENT_NAME } from '@/lib/agent/cockpit-agent-brand'
+import { JARVIS_WAKE_HOTKEY, jarvisWakeHint } from '@/lib/agent/jarvis-wake-word'
 import { cn } from '@/lib/utils'
 import './jarvis-neural.css'
 
@@ -70,11 +71,11 @@ export function JarvisTextInput({
           }}
           placeholder={
             placeholder ??
-            `Digite sua pergunta… (${JARVIS_WAKE_HOTKEY} ou «Jarvis» para falar)`
+            jarvisWakeHint()
           }
           disabled={disabled}
           aria-busy={isListening}
-          aria-label="Pergunta ao Jarvis"
+          aria-label={`Pergunta à ${COCKPIT_AGENT_NAME}`}
           className={cn(
             'jarvis-text-input min-h-[2.25rem] min-w-0 flex-1 resize-none rounded-lg border bg-transparent px-2.5 py-2 font-jarvis-ui text-[11px] leading-relaxed text-white placeholder:text-white/40 focus:outline-none focus:ring-1 focus:ring-[var(--color-core)] disabled:opacity-60 sm:text-xs',
             isListening

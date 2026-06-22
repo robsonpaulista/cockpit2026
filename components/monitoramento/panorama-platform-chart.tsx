@@ -278,6 +278,7 @@ interface PanoramaPlatformChartProps {
 export function PanoramaPlatformChart({ chart, className }: PanoramaPlatformChartProps) {
   const Icon = PLATFORM_ICONS[chart.id]
   const isMetaAds = chart.id === 'meta-ads'
+  const isDetail = chart.layoutTier === 'detail'
   const isHeatmap = chart.chartType === 'heatmap'
   const isTable = chart.chartType === 'table'
   const expandChart = !isHeatmap && !isTable && !chart.empty
@@ -286,8 +287,8 @@ export function PanoramaPlatformChart({ chart, className }: PanoramaPlatformChar
   return (
     <div
       className={cn(
-        'flex flex-col rounded-xl border border-[rgb(var(--color-border-tertiary)/0.85)] bg-bg-surface p-4',
-        isTable || isMetaAds ? 'min-h-0' : 'h-full min-h-[360px]',
+        'flex h-full flex-col rounded-xl border border-[rgb(var(--color-border-tertiary)/0.85)] bg-bg-surface p-4',
+        isDetail ? 'min-h-[440px]' : 'min-h-[360px]',
         className
       )}
     >
@@ -313,15 +314,19 @@ export function PanoramaPlatformChart({ chart, className }: PanoramaPlatformChar
             : 'Sem série histórica — rode a coleta nesta plataforma.'}
         </div>
       ) : isTable && chart.instagramTable ? (
-        <PanoramaInstagramTable rows={chart.instagramTable} className="w-full" />
+        <div className="flex min-h-0 flex-1 flex-col">
+          <PanoramaInstagramTable rows={chart.instagramTable} className="min-h-0 flex-1" />
+        </div>
       ) : isHeatmap && chart.heatmapDates && chart.heatmapRows ? (
-        <PanoramaMentionHeatmap
-          dates={chart.heatmapDates}
-          rows={chart.heatmapRows}
-          metricLabel={chart.metricLabel}
-          enableNewsModal={chart.id === 'google-news'}
-          className="min-h-0 flex-1"
-        />
+        <div className="flex min-h-0 flex-1 flex-col">
+          <PanoramaMentionHeatmap
+            dates={chart.heatmapDates}
+            rows={chart.heatmapRows}
+            metricLabel={chart.metricLabel}
+            enableNewsModal={chart.id === 'google-news'}
+            className="min-h-0 flex-1"
+          />
+        </div>
       ) : isMetaAds ? (
         <MetaAdsPanoramaLineChart chart={chart} />
       ) : (

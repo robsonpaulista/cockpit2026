@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { ArrowRight, FileText, Maximize2, Minimize2, X } from 'lucide-react'
 import type { JarvisResultView } from '@/lib/agent/jarvis-result-view'
+import { COCKPIT_AGENT_NAME } from '@/lib/agent/cockpit-agent-brand'
 import { JARVIS_READ_ALOUD_HINT } from '@/lib/agent/jarvis-read-aloud'
 import { JarvisReportMarkdown } from '@/components/jarvis/jarvis-report-markdown'
 import { cn } from '@/lib/utils'
@@ -116,7 +117,7 @@ export function JarvisResultPanel({
           <div className="flex items-center gap-2 text-slate-500">
             <FileText className="h-3.5 w-3.5 shrink-0" aria-hidden />
             <p className="text-[11px] font-semibold uppercase tracking-[0.14em]">
-              Relatório Jarvis
+              Relatório {COCKPIT_AGENT_NAME}
               {fullscreen ? (
                 <span className="ml-2 font-normal normal-case tracking-normal text-slate-400">
                   · tela cheia

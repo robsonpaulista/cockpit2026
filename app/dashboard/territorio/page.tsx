@@ -60,6 +60,15 @@ interface SheetsConfig {
 
 type CenarioVotos = 'aferido_jadyel' | 'promessa_lideranca' | 'legado_anterior'
 
+/** Rótulo fixo na UI — o cenário só altera a coluna da planilha, não o texto exibido. */
+const LABEL_EXPECTATIVA_2026 = 'Expectativa 2026'
+
+function labelCenarioDados(cenario: CenarioVotos): string {
+  if (cenario === 'promessa_lideranca') return 'Prometido'
+  if (cenario === 'legado_anterior') return 'Anterior'
+  return 'Aferido'
+}
+
 export default function TerritorioPage() {
   const { theme } = useTheme()
   const isCockpit = false
@@ -309,30 +318,8 @@ export default function TerritorioPage() {
     return expectativaJadyelCol || expectativaLegadoCol || promessaLiderancaCol
   })()
 
-  const labelCenarioVotos =
-    cenarioVotos === 'promessa_lideranca'
-      ? 'Promessa da Liderança 2026'
-      : cenarioVotos === 'legado_anterior'
-        ? 'Expectativa de Votos 2026 (Anterior)'
-        : 'Expectativa Jadyel 2026'
-  const labelVotosResumo =
-    cenarioVotos === 'promessa_lideranca'
-      ? 'votos prometidos'
-      : cenarioVotos === 'legado_anterior'
-        ? 'votos previstos (anterior)'
-        : 'votos aferidos'
-  const labelTotalCidade =
-    cenarioVotos === 'promessa_lideranca'
-      ? 'votos prometidos'
-      : cenarioVotos === 'legado_anterior'
-        ? 'votos anteriores'
-        : 'votos aferidos'
-  const labelValorLideranca =
-    cenarioVotos === 'promessa_lideranca'
-      ? 'Promessa 2026'
-      : cenarioVotos === 'legado_anterior'
-        ? 'Anterior 2026'
-        : 'Aferido 2026'
+  const labelCenarioVotos = LABEL_EXPECTATIVA_2026
+  const labelCenarioDadosAtivo = labelCenarioDados(cenarioVotos)
 
   useEffect(() => {
     if (cenarioVotos === 'promessa_lideranca' && !promessaLiderancaCol) {
@@ -716,12 +703,7 @@ export default function TerritorioPage() {
         ? [
             {
               id: 'expectativa-votos',
-              label:
-                cenarioVotos === 'promessa_lideranca'
-                  ? 'Promessa 2026'
-                  : cenarioVotos === 'legado_anterior'
-                    ? 'Expectativa 2026'
-                    : 'Aferido 2026',
+              label: LABEL_EXPECTATIVA_2026,
               value: Math.round(totalExpectativaVotos).toLocaleString('pt-BR'),
               status: 'success' as const,
             },
@@ -1063,7 +1045,7 @@ export default function TerritorioPage() {
                     : kpi.id === 'total'
                       ? 'na planilha conectada'
                       : kpi.id === 'expectativa-votos'
-                        ? labelCenarioVotos
+                        ? `Cenário ${labelCenarioDadosAtivo}`
                         : `${cidadesUnicasCount} municípios na base filtrada`
 
                 return (
@@ -1409,7 +1391,7 @@ export default function TerritorioPage() {
         <div className="mt-2">
           {(config || serverConfigured) && (liderancaAtualCol || votosReferenciaCol) && (
             <p className="mb-3 text-[11px] text-text-muted">
-              Mostrando lideranças com liderança atual = sim ou com {labelCenarioVotos.toLowerCase()}
+              Mostrando lideranças com liderança atual = sim ou com {LABEL_EXPECTATIVA_2026.toLowerCase()}
             </p>
           )}
 
@@ -1428,7 +1410,7 @@ export default function TerritorioPage() {
                     </span>{' '}
                     {cidades.size} cidade{cidades.size !== 1 ? 's' : ''},{' '}
                     {liderancasFiltradas.length} liderança{liderancasFiltradas.length !== 1 ? 's' : ''}{' '}
-                    {votosReferenciaCol ? `e ${Math.round(totalVotos).toLocaleString('pt-BR')} ${labelVotosResumo} em conjunto.` : '.'}
+                    {votosReferenciaCol ? `e ${Math.round(totalVotos).toLocaleString('pt-BR')} de ${LABEL_EXPECTATIVA_2026.toLowerCase()} em conjunto.` : '.'}
                   </p>
                 )
               })()}
@@ -1521,7 +1503,7 @@ export default function TerritorioPage() {
                         territorioAgentActionsRef.current.abrirObrasCidade(cidade)
                       }}
                       totalVotos={totalExpectativaCidade}
-                      votosLabel={labelTotalCidade}
+                      votosLabel={LABEL_EXPECTATIVA_2026}
                       nomeCol={nomeCol}
                       cargoCol={cargoCol}
                       votosReferenciaCol={votosReferenciaCol}

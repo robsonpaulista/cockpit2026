@@ -1,6 +1,6 @@
 /** Instruções padrão — voz natural em português brasileiro (mesma em todos os dispositivos). */
 export const DEFAULT_JARVIS_TTS_INSTRUCTIONS =
-  'Fale em português brasileiro (Brasil), com voz masculina, tom calmo e profissional, como o assistente Jarvis. ' +
+  'Fale em português brasileiro (Brasil), com voz masculina, tom calmo e profissional, como assistente do Cockpit. ' +
   'Evite sotaque de Portugal. Ritmo moderado, entonação firme e clara, pausas naturais, sem soar robótico.'
 
 export function resolveJarvisTtsInstructions(envValue?: string | null): string | undefined {

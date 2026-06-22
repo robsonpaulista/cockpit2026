@@ -167,7 +167,7 @@ export function claudeErrorToUserMessage(err: unknown): string {
       return 'Análise por IA indisponível: verifique ANTHROPIC_API_KEY no servidor.'
     }
     if (err.status === 429) {
-      return 'Limite da API Anthropic atingido (rate ou gasto). Tente em alguns minutos ou use comandos diretos no Jarvis.'
+      return 'Limite da API Anthropic atingido (rate ou gasto). Tente em alguns minutos ou use comandos diretos na IA Cockpit.'
     }
     if (err.status === 529) {
       return 'Serviço Anthropic sobrecarregado. Tente novamente em instantes.'

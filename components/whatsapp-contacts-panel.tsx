@@ -128,7 +128,7 @@ export function WhatsAppContactsPanel() {
             <h2 className="text-lg font-semibold text-text-primary">Agenda de contatos</h2>
             <p className="mt-1 text-sm text-text-secondary">
               Cadastre destinatários frequentes para envio rápido no Resumo Operacional, briefing de
-              território e futuras ações do Jarvis — sem redigitar o telefone toda vez.
+              território e futuras ações da IA Cockpit — sem redigitar o telefone toda vez.
             </p>
           </div>
         </div>

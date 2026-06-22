@@ -96,6 +96,6 @@ export function buildBriefingTerritorioWhatsAppText(
   }
 
   lines.push('—')
-  lines.push('Gerado pelo Cockpit 2026 / Jarvis')
+  lines.push('Gerado pelo Cockpit 2026 / IA Cockpit')
   return lines.join('\n').trim()
 }

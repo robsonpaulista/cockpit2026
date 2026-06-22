@@ -75,6 +75,8 @@ export type PanoramaTrendsCell = {
 export type PanoramaMetaAdsCell = {
   activeAds: number
   totalAds: number
+  spendMinBrl: number
+  spendMaxBrl: number
   topPage: string | null
   spendLabel: string | null
   impressionsLabel: string | null
@@ -397,6 +399,8 @@ export function buildMonitoramentoPanorama(input: {
         ? {
             activeAds: meta.activeCount,
             totalAds: meta.adCount,
+            spendMinBrl: meta.spendMinBrl,
+            spendMaxBrl: meta.spendMaxBrl,
             topPage: meta.topPages[0]?.page_name ?? null,
             spendLabel: meta.spendLabel !== '—' ? meta.spendLabel : null,
             impressionsLabel: meta.impressionsLabel,
@@ -406,6 +410,8 @@ export function buildMonitoramentoPanorama(input: {
         : {
             activeAds: 0,
             totalAds: 0,
+            spendMinBrl: 0,
+            spendMaxBrl: 0,
             topPage: null,
             spendLabel: null,
             impressionsLabel: null,
@@ -454,6 +460,8 @@ export function buildMonitoramentoPanorama(input: {
     const metaAds: PanoramaMetaAdsCell = {
       activeAds: draft.metaAds.activeAds,
       totalAds: draft.metaAds.totalAds,
+      spendMinBrl: draft.metaAds.spendMinBrl,
+      spendMaxBrl: draft.metaAds.spendMaxBrl,
       topPage: draft.metaAds.topPage,
       spendLabel: draft.metaAds.spendLabel,
       impressionsLabel: draft.metaAds.impressionsLabel,

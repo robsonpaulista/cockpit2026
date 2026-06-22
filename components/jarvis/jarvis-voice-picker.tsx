@@ -500,7 +500,7 @@ export function JarvisVoicePicker({
             className="flex w-full items-center justify-between gap-2 rounded bg-transparent px-2 py-1.5 font-jarvis-mono text-[10px] text-[var(--color-text-code)] hover:bg-[rgba(0,212,255,0.06)] focus:outline-none focus:ring-1 focus:ring-[var(--color-core)] disabled:opacity-40"
             aria-haspopup="listbox"
             aria-expanded={open}
-            aria-label="Selecionar voz do Jarvis"
+            aria-label="Selecionar voz da IA Cockpit"
           >
             <span className="truncate text-left">{dropdownLabel}</span>
             <IconChevronDown

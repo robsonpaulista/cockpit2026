@@ -27,7 +27,10 @@ export type ExercitoDigitalLeaderRow = {
   rank: number
   nome: string
   comentarios: number
+  /** Posts em que o mandatário/liderado comentou no período */
   publicacoes: number
+  /** Total de posts da conta monitorada no período */
+  postsNoPeriodo: number
   ativacaoPct: number
   weeklyCounts: number[]
   trendKind: LeaderTrendKind

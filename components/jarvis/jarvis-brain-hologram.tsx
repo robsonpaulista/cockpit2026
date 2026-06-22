@@ -1,5 +1,6 @@
 'use client'
 
+import { COCKPIT_AGENT_NAME } from '@/lib/agent/cockpit-agent-brand'
 import './jarvis-neural.css'
 import { cn } from '@/lib/utils'
 
@@ -104,7 +105,7 @@ export function JarvisBrainHologram({
         )}
         preserveAspectRatio="xMidYMid meet"
         role="img"
-        aria-label="Núcleo neural Jarvis"
+        aria-label={`Núcleo neural ${COCKPIT_AGENT_NAME}`}
       >
         <defs>
           <filter id="jarvis-neural-glow" x="-40%" y="-40%" width="180%" height="180%">

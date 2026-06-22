@@ -24,6 +24,7 @@ import './territorio/mapa-tds/mapa-dom-fut-theme.css' // tema base neutra + lara
 import { pathnameUsesMapaFuturisticShell } from '@/lib/dashboard-mapa-futuristic-chrome'
 import { DashboardHomeChromeProvider } from '@/contexts/dashboard-home-chrome-context'
 import { JarvisHostPropsProvider } from '@/contexts/jarvis-host-props-context'
+import { JarvisVisibilityProvider, useJarvisVisibility } from '@/contexts/jarvis-visibility-context'
 import { JarvisGlobalHost } from '@/components/jarvis/jarvis-global-host'
 import {
   DASHBOARD_HOME_SHELL_CLASS,
@@ -37,6 +38,8 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
   const pathname = usePathname() ?? ''
   const isMapaTdsShell = pathnameUsesMapaFuturisticShell(pathname)
   const isHomeAccentChrome = isDashboardHomePath(pathname) && !isMapaTdsShell
+  const { visible: jarvisVisible, hydrated: jarvisHydrated } = useJarvisVisibility()
+  const showHomeJarvisColumn = isHomeAccentChrome && jarvisHydrated && jarvisVisible
   /**
    * Conteúdo sempre em superfície branca (`bg-bg-surface`) para manter o miolo limpo,
    * deixando o cinza restrito à sidebar.
@@ -75,7 +78,7 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
                 className={cn(
                   'relative flex min-h-0 flex-1',
                   isHomeAccentChrome
-                    ? 'flex-col overflow-hidden xl:flex-row'
+                    ? cn('flex-col overflow-hidden', showHomeJarvisColumn && 'xl:flex-row')
                     : 'flex-col overflow-y-auto',
                   columnBgClass
                 )}
@@ -113,9 +116,11 @@ export default function DashboardLayout({
         <ThemeProvider>
           <NavigationLoadingProvider>
             <SidebarProvider>
-              <JarvisHostPropsProvider>
-                <DashboardContent>{children}</DashboardContent>
-              </JarvisHostPropsProvider>
+              <JarvisVisibilityProvider>
+                <JarvisHostPropsProvider>
+                  <DashboardContent>{children}</DashboardContent>
+                </JarvisHostPropsProvider>
+              </JarvisVisibilityProvider>
             </SidebarProvider>
           </NavigationLoadingProvider>
         </ThemeProvider>

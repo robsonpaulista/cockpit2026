@@ -254,6 +254,20 @@ function buildInstagramTable(
     },
   }))
 
+  const dates = lastNDays(CHART_WINDOW)
+  const engagementItems: Array<{ slug: string; date: string; value: number }> = []
+  for (const post of posts) {
+    if (!post.posted_at) continue
+    const slug = slugFromMention(post)
+    if (!slug) continue
+    engagementItems.push({
+      slug,
+      date: dayKey(post.posted_at),
+      value: (post.likes_count ?? 0) + (post.comments_count ?? 0),
+    })
+  }
+  const chartData = buildDailyBuckets(dates, columns, engagementItems)
+
   const hasData = instagramTable.some((r) => r.postCount > 0)
 
   return {
@@ -264,7 +278,7 @@ function buildInstagramTable(
     metricLabel: 'Engajamento',
     chartType: 'table',
     lines: [],
-    chartData: [],
+    chartData,
     instagramTable,
     empty: !hasData,
   }

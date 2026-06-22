@@ -44,13 +44,9 @@ export function PanoramaBoard({ panorama, loading = false }: PanoramaBoardProps)
           <h3 className="mb-3 text-xs font-semibold uppercase tracking-wide text-text-muted">
             Imprensa e Instagram · detalhe comparativo
           </h3>
-          <div className="grid items-start gap-4 xl:grid-cols-2">
+          <div className="grid items-stretch gap-4 xl:grid-cols-2">
             {detailCharts.map((chart) => (
-              <PanoramaPlatformChart
-                key={chart.id}
-                chart={chart}
-                className={chart.chartType === 'table' ? 'w-full' : 'h-full'}
-              />
+              <PanoramaPlatformChart key={chart.id} chart={chart} className="h-full" />
             ))}
           </div>
         </section>

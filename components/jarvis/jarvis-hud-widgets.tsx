@@ -16,7 +16,7 @@ export interface JarvisLogLine {
 }
 
 const BOOT_LOGS: JarvisLogLine[] = [
-  { tag: 'SYSTEM', message: 'JARVIS INITIALIZED', tone: 'success' },
+  { tag: 'SYSTEM', message: 'IA COCKPIT INITIALIZED', tone: 'success' },
   { tag: 'AI', message: 'NEURAL NETWORK ACTIVE', tone: 'success' },
   { tag: 'SCAN', message: 'SYSTEM INTEGRITY CHECK', tone: 'default' },
   { tag: 'READY', message: 'AWAITING USER INPUT', tone: 'default' },
