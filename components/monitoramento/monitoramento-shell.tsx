@@ -10,7 +10,6 @@ import {
   Radar,
   Youtube,
 } from 'lucide-react'
-import { MonitoramentoProductionCollectNotice } from '@/components/monitoramento/monitoramento-production-collect-notice'
 import { cn } from '@/lib/utils'
 
 export type MonitoramentoTab =
@@ -82,8 +81,6 @@ export function MonitoramentoShell({
           </div>
         ) : null}
       </div>
-
-      <MonitoramentoProductionCollectNotice />
 
       <div className="flex flex-wrap gap-1 rounded-xl border border-[rgb(var(--color-border-tertiary)/0.85)] bg-bg-surface p-1">
         {TABS.map((tab) => {

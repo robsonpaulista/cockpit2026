@@ -5,6 +5,7 @@ import { Download, Loader2, RefreshCw } from 'lucide-react'
 import { MetaAdsCollectProgressBar } from '@/components/meta-ads-radar/meta-ads-collect-progress-bar'
 import { PanoramaBoard } from '@/components/monitoramento/panorama-board'
 import { PanoramaCollectProgress } from '@/components/monitoramento/panorama-collect-progress'
+import { CollectSourcesProductionInfo } from '@/components/monitoramento/monitoramento-production-collect-notice'
 import type { MetaAdsCollectProgress } from '@/lib/meta-ads-collect-progress'
 import type { MonitoramentoCollectAllProgress } from '@/lib/monitoramento-collect-all'
 import { runMonitoramentoCollectAll } from '@/lib/monitoramento-collect-all'
@@ -99,19 +100,22 @@ export function PanoramaPanel({ onMetaChange }: PanoramaPanelProps) {
       ) : null}
 
       <div className="flex flex-wrap items-center justify-end gap-2">
-        <button
-          type="button"
-          disabled={busy}
-          onClick={() => void coletarTodas()}
-          className="inline-flex items-center gap-1.5 rounded-full bg-[rgb(var(--color-primary))] px-4 py-1.5 text-xs font-medium text-white disabled:opacity-50"
-        >
-          {collectingAll ? (
-            <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
-          ) : (
-            <Download className="h-3.5 w-3.5" aria-hidden />
-          )}
-          Atualizar todas as fontes
-        </button>
+        <div className="inline-flex items-center gap-0.5">
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => void coletarTodas()}
+            className="inline-flex items-center gap-1.5 rounded-full bg-[rgb(var(--color-primary))] px-4 py-1.5 text-xs font-medium text-white disabled:opacity-50"
+          >
+            {collectingAll ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
+            ) : (
+              <Download className="h-3.5 w-3.5" aria-hidden />
+            )}
+            Atualizar todas as fontes
+          </button>
+          <CollectSourcesProductionInfo />
+        </div>
         <button
           type="button"
           disabled={busy}
