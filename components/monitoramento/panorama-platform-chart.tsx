@@ -15,6 +15,7 @@ import {
 } from 'recharts'
 import { PanoramaInstagramTable } from '@/components/monitoramento/panorama-instagram-table'
 import { PanoramaMentionHeatmap } from '@/components/monitoramento/panorama-mention-heatmap'
+import { PanoramaYoutubeChart } from '@/components/monitoramento/panorama-youtube-chart'
 import { TrendsSearchContextList } from '@/components/trends-radar/trends-search-context-block'
 import type { PanoramaMetaAdsPeriodTotal, PanoramaPlatformChart, PanoramaPlatformId } from '@/lib/monitoramento-panorama-charts'
 import { cn } from '@/lib/utils'
@@ -61,13 +62,6 @@ function formatCompactBrl(value: number): string {
   return new Intl.NumberFormat('pt-BR', {
     style: 'currency',
     currency: 'BRL',
-    notation: 'compact',
-    maximumFractionDigits: 1,
-  }).format(value)
-}
-
-function formatCompactNumber(value: number): string {
-  return new Intl.NumberFormat('pt-BR', {
     notation: 'compact',
     maximumFractionDigits: 1,
   }).format(value)
@@ -303,10 +297,11 @@ interface PanoramaPlatformChartProps {
 export function PanoramaPlatformChart({ chart, className, revealDelayMs = 0 }: PanoramaPlatformChartProps) {
   const Icon = PLATFORM_ICONS[chart.id]
   const isMetaAds = chart.id === 'meta-ads'
+  const isYoutube = chart.id === 'youtube'
   const isHeatmap = chart.chartType === 'heatmap'
   const isTable = chart.chartType === 'table'
   const useExternalLegend =
-    !isHeatmap && !isTable && !chart.empty && chart.lines.length > 0 && !isMetaAds
+    !isHeatmap && !isTable && !isYoutube && !chart.empty && chart.lines.length > 0 && !isMetaAds
 
   return (
     <div
@@ -328,7 +323,7 @@ export function PanoramaPlatformChart({ chart, className, revealDelayMs = 0 }: P
         </div>
         <div className="min-w-0">
           <h3 className="text-sm font-semibold text-text-primary">{chart.title}</h3>
-          <p className="text-xs text-text-muted">{chart.subtitle}</p>
+          {!isYoutube ? <p className="text-xs text-text-muted">{chart.subtitle}</p> : null}
         </div>
       </div>
 
@@ -354,13 +349,15 @@ export function PanoramaPlatformChart({ chart, className, revealDelayMs = 0 }: P
         </div>
       ) : isMetaAds ? (
         <MetaAdsPanoramaLineChart chart={chart} />
+      ) : isYoutube ? (
+        <PanoramaYoutubeChart chart={chart} className="min-h-0 flex-1" />
       ) : (
         <div className="flex min-h-0 flex-1 flex-col">
           <div className="min-h-[180px] w-full flex-1">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart
                 data={chart.chartData}
-                margin={{ top: 4, right: 8, left: chart.id === 'youtube' ? 4 : 0, bottom: 0 }}
+                margin={{ top: 4, right: 8, left: 0, bottom: 0 }}
               >
                 <CartesianGrid strokeDasharray="3 3" stroke="rgb(var(--color-border-tertiary)/0.45)" />
                 <XAxis
@@ -371,12 +368,9 @@ export function PanoramaPlatformChart({ chart, className, revealDelayMs = 0 }: P
                 />
                 <YAxis
                   tick={{ fontSize: 10, fill: 'rgb(var(--color-text-muted))' }}
-                  width={chart.id === 'youtube' ? 44 : 36}
+                  width={36}
                   allowDecimals={chart.id !== 'google-trends'}
                   domain={chart.id === 'google-trends' ? [0, 100] : [0, 'auto']}
-                  tickFormatter={
-                    chart.id === 'youtube' ? (v) => formatCompactNumber(v) : undefined
-                  }
                 />
                 <Tooltip
                   labelFormatter={(v) => formatDateLabel(String(v))}
