@@ -1,48 +1,89 @@
 'use client'
 
-import Link from 'next/link'
-import { Instagram, LayoutGrid, LineChart, Megaphone, Newspaper, Radar, Youtube } from 'lucide-react'
+import {
+  Bell,
+  Instagram,
+  LayoutGrid,
+  LineChart,
+  Megaphone,
+  Newspaper,
+  Radar,
+  Youtube,
+} from 'lucide-react'
+import { MonitoramentoProductionCollectNotice } from '@/components/monitoramento/monitoramento-production-collect-notice'
 import { cn } from '@/lib/utils'
 
-export type MonitoramentoTab = 'geral' | 'youtube' | 'trends' | 'google-news' | 'meta-ads' | 'instagram'
+export type MonitoramentoTab =
+  | 'geral'
+  | 'google-alerts'
+  | 'youtube'
+  | 'trends'
+  | 'google-news'
+  | 'meta-ads'
+  | 'instagram'
 
 const TABS: { id: MonitoramentoTab; label: string; icon: typeof Youtube }[] = [
   { id: 'geral', label: 'Panorama', icon: LayoutGrid },
+  { id: 'google-alerts', label: 'Google Alerts', icon: Bell },
   { id: 'youtube', label: 'YouTube', icon: Youtube },
   { id: 'google-news', label: 'Google News', icon: Newspaper },
-  { id: 'meta-ads', label: 'Meta Ads', icon: Megaphone },
   { id: 'instagram', label: 'Instagram', icon: Instagram },
+  { id: 'meta-ads', label: 'Meta Ads', icon: Megaphone },
   { id: 'trends', label: 'Google Trends', icon: LineChart },
 ]
+
+export type MonitoramentoPanoramaMeta = {
+  lastUpdated: string | null
+  windowLabel: string
+  isLive: boolean
+}
 
 interface MonitoramentoShellProps {
   activeTab: MonitoramentoTab
   onTabChange: (tab: MonitoramentoTab) => void
+  panoramaMeta?: MonitoramentoPanoramaMeta | null
   children: React.ReactNode
 }
 
-export function MonitoramentoShell({ activeTab, onTabChange, children }: MonitoramentoShellProps) {
+function formatPanoramaDateTime(iso: string | null): string {
+  if (!iso) return '—'
+  return new Date(iso).toLocaleString('pt-BR', {
+    day: '2-digit',
+    month: 'short',
+    hour: '2-digit',
+    minute: '2-digit',
+  })
+}
+
+export function MonitoramentoShell({
+  activeTab,
+  onTabChange,
+  panoramaMeta,
+  children,
+}: MonitoramentoShellProps) {
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-4 p-4 md:p-6">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-        <div>
-          <div className="mb-1 flex items-center gap-2 text-[rgb(var(--color-primary))]">
-            <Radar className="h-5 w-5" aria-hidden />
-            <span className="text-xs font-medium uppercase tracking-wide">Radar eleitoral</span>
-          </div>
-          <h1 className="text-lg font-semibold text-text-primary">Central de monitoramento</h1>
-          <p className="mt-1 max-w-2xl text-sm text-text-muted">
-            Panorama geral e comparativo entre candidatos — YouTube, Google News, Meta Ads,
-            Instagram, Google Trends e presença digital estimada.
-          </p>
+      <div>
+        <div className="flex items-center gap-2 text-[rgb(var(--color-primary))]">
+          <Radar className="h-5 w-5" aria-hidden />
+          <span className="text-xs font-medium uppercase tracking-wide">Radar eleitoral</span>
         </div>
-        <Link
-          href="/dashboard/noticias"
-          className="text-sm text-[rgb(var(--color-primary))] hover:underline"
-        >
-          ← Voltar ao Radar de notícias
-        </Link>
+        {panoramaMeta ? (
+          <div className="mt-1 flex flex-wrap items-center gap-2">
+            <p className="text-xs text-text-muted">
+              {formatPanoramaDateTime(panoramaMeta.lastUpdated)} · {panoramaMeta.windowLabel}
+            </p>
+            {panoramaMeta.isLive ? (
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-[#E8F5E0] px-2 py-0.5 text-[10px] font-medium text-[#2D5A1E]">
+                <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-[#3B6D11]" aria-hidden />
+                dados recentes
+              </span>
+            ) : null}
+          </div>
+        ) : null}
       </div>
+
+      <MonitoramentoProductionCollectNotice />
 
       <div className="flex flex-wrap gap-1 rounded-xl border border-[rgb(var(--color-border-tertiary)/0.85)] bg-bg-surface p-1">
         {TABS.map((tab) => {

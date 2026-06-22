@@ -2,6 +2,7 @@ import type { GoogleTrendsTimeframe } from '@/lib/google-trends-types'
 import type { MetaAdsCollectProgress } from '@/lib/meta-ads-collect-progress'
 import { normalizeMetaAdsCollectProgress } from '@/lib/meta-ads-collect-progress'
 import type { MetaAdsCollectStatus } from '@/lib/meta-ads-types'
+import { readResponseJson } from '@/lib/parse-response-json'
 
 export type MonitoramentoCollectStepId = 'youtube' | 'google-news' | 'meta-ads' | 'trends'
 
@@ -70,7 +71,7 @@ function buildProgress(
 }
 
 async function parseJson<T>(res: Response): Promise<T> {
-  return (await res.json()) as T
+  return readResponseJson<T>(res)
 }
 
 async function collectYoutubeStep(): Promise<string> {
@@ -130,7 +131,25 @@ async function collectGoogleNewsStep(): Promise<string> {
     : 'Coleta concluída.'
 }
 
-async function collectTrendsStep(): Promise<string> {
+async function collectTrendsStep(): Promise<{ message: string; skipped: boolean }> {
+  const statusRes = await fetch('/api/trends/status', { cache: 'no-store' })
+  const status = await parseJson<{
+    runnerAvailable?: boolean
+    runnerMessage?: string | null
+    setupRequired?: boolean
+    error?: string
+  }>(statusRes)
+
+  if (status.setupRequired) {
+    return { skipped: true, message: 'Tabelas não configuradas — etapa ignorada.' }
+  }
+  if (status.runnerAvailable === false) {
+    return {
+      skipped: true,
+      message: status.runnerMessage ?? 'Google Trends indisponível neste servidor — etapa ignorada.',
+    }
+  }
+
   const res = await fetch('/api/trends/collect', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -143,10 +162,17 @@ async function collectTrendsStep(): Promise<string> {
     termsSucceeded?: number
     rowsUpserted?: number
     errors?: string[]
+    runnerAvailable?: boolean
   }>(res)
 
   if (j.setupRequired) {
-    return 'Tabelas não configuradas — etapa ignorada.'
+    return { skipped: true, message: 'Tabelas não configuradas — etapa ignorada.' }
+  }
+  if (res.status === 503) {
+    return {
+      skipped: true,
+      message: j.error ?? 'Google Trends indisponível neste servidor — etapa ignorada.',
+    }
   }
   if (!res.ok) throw new Error(j.error ?? 'Falha na coleta Trends.')
 
@@ -154,9 +180,9 @@ async function collectTrendsStep(): Promise<string> {
   const total = j.terms ?? 0
   const base = `${ok}/${total} nomes · ${j.rowsUpserted ?? 0} pontos salvos`
   if (ok < total && j.errors?.length) {
-    return `${base} (parcial: ${j.errors.slice(0, 2).join('; ')})`
+    return { skipped: false, message: `${base} (parcial: ${j.errors.slice(0, 2).join('; ')})` }
   }
-  return base
+  return { skipped: false, message: base }
 }
 
 async function collectMetaAdsStep(
@@ -260,7 +286,7 @@ async function runStep(
     case 'google-news':
       return { message: await collectGoogleNewsStep(), skipped: false }
     case 'trends':
-      return { message: await collectTrendsStep(), skipped: false }
+      return collectTrendsStep()
     case 'meta-ads':
       return collectMetaAdsStep(onMetaAdsProgress)
   }
@@ -271,7 +297,8 @@ function isSkippedMessage(message: string): boolean {
     message.includes('ignorada') ||
     message.includes('Limite diário') ||
     message.includes('indisponível neste servidor') ||
-    message.includes('indisponível na Vercel')
+    message.includes('indisponível na Vercel') ||
+    message.includes('Google Trends indisponível')
   )
 }
 

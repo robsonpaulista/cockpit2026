@@ -4,6 +4,11 @@ import { createClient } from '@/lib/supabase/server'
 import { collectGoogleTrends } from '@/lib/google-trends-collect'
 import type { GoogleTrendsTimeframe } from '@/lib/google-trends-types'
 import { normalizeGoogleTrendsTimeframe } from '@/lib/google-trends-timeframe'
+import {
+  GoogleTrendsRunnerUnavailableError,
+  GOOGLE_TRENDS_RUNNER_UNAVAILABLE_MESSAGE,
+  isGoogleTrendsRunnerAvailable,
+} from '@/lib/serverless-runtime'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 300
@@ -54,6 +59,9 @@ export async function POST(request: Request) {
   } catch (e) {
     const msg = e instanceof Error ? e.message : 'Erro na coleta Google Trends'
     console.error('[trends/collect]', e)
+    if (e instanceof GoogleTrendsRunnerUnavailableError) {
+      return NextResponse.json({ error: msg, runnerAvailable: false }, { status: 503 })
+    }
     return NextResponse.json({ error: msg }, { status: 500 })
   }
 }
@@ -63,6 +71,11 @@ export async function GET() {
     geo: 'BR-PI',
     defaultTimeframe: 'today 3-m' satisfies GoogleTrendsTimeframe,
     provider: 'trendsearch',
-    runner: process.env.VERCEL === '1' ? 'lib/google-trends-collect-core.ts' : 'scripts/collect-google-trends.mjs',
+    runnerAvailable: isGoogleTrendsRunnerAvailable(),
+    runnerMessage: isGoogleTrendsRunnerAvailable() ? null : GOOGLE_TRENDS_RUNNER_UNAVAILABLE_MESSAGE,
+    runner:
+      process.env.VERCEL === '1' && isGoogleTrendsRunnerAvailable()
+        ? 'lib/google-trends-collect-core.ts'
+        : 'scripts/collect-google-trends.mjs',
   })
 }

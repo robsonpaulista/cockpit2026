@@ -3,7 +3,7 @@ import path from 'path'
 import { promisify } from 'util'
 import type { GoogleTrendsCollectResult, GoogleTrendsTimeframe } from '@/lib/google-trends-types'
 import { normalizeGoogleTrendsTimeframe } from '@/lib/google-trends-timeframe'
-import { isVercelServerless } from '@/lib/serverless-runtime'
+import { isGoogleTrendsRunnerAvailable, GoogleTrendsRunnerUnavailableError } from '@/lib/serverless-runtime'
 
 const execFileAsync = promisify(execFile)
 
@@ -60,6 +60,10 @@ export async function collectGoogleTrends(options: {
   geo?: string
   timeframe?: GoogleTrendsTimeframe
 }): Promise<GoogleTrendsCollectResult> {
+  if (!isGoogleTrendsRunnerAvailable()) {
+    throw new GoogleTrendsRunnerUnavailableError()
+  }
+
   assertCollectAllowed()
   collectInProgress = true
 
@@ -69,7 +73,7 @@ export async function collectGoogleTrends(options: {
     normalizeGoogleTrendsTimeframe('today 3-m')!
 
   try {
-    if (isVercelServerless()) {
+    if (process.env.VERCEL === '1') {
       const { runGoogleTrendsCollect } = await import('@/lib/google-trends-collect-core')
       const result = await runGoogleTrendsCollect({ geo, timeframe })
       if (!result.ok) {

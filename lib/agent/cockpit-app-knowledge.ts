@@ -105,7 +105,10 @@ Se o usuário pedir **número/lista pontual**, diga: «Para o dado exato, use no
   - Claude gather: snapshot 30d + classificações (não POST ao vivo).
 - Demais subpáginas (obras cards, agenda campo, referências): navegação; sem consulta Jarvis.
 
-### Notícias & Crises · /dashboard/noticias
+### Central de monitoramento · /dashboard/noticias/monitoramento
+- Aba **Google Alerts**: inbox RSS (antigo Radar de notícias)
+- Abas YouTube, Google News, Instagram, Meta Ads, Google Trends e Panorama comparativo
+- Rota legada /dashboard/noticias redireciona para Google Alerts
 - Radar GDELT, feeds, adversários, destaques, crises.
 - API: GET /api/noticias (?dashboard_highlight=true, ?risk_level=high, ?sentiment=, ?q=)
 - Indicadores da barra: notícias hoje · risco alto · destacadas.

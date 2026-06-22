@@ -25,6 +25,7 @@ export const DASHBOARD_KANBAN_CARD_HINTS: Record<string, string> = {
   'resumo-eleicoes-principal': 'Resumo por cidade — expectativa, lideranças e pesquisas',
   'resumo-eleicoes-secao': 'Votação por seção eleitoral e histórico local',
   'conteudo-redes': 'Métricas, posts e performance no Instagram',
+  'noticias-menu': 'Panorama, Google Alerts, YouTube, Trends e redes',
   'mobilizacao-mapa-digital-ig': 'Engajamento e cobertura dos líderes no Instagram',
   noticias: 'Mídia, crises e notícias em destaque',
   'mobilizacao-menu': 'Ativação de base e coordenação',

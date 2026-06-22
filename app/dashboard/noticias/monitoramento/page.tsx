@@ -1,16 +1,22 @@
 'use client'
 
-import { useCallback, useMemo } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
+import { GoogleAlertsPanel } from '@/components/monitoramento/google-alerts-panel'
 import { GoogleNewsRadarPanel } from '@/components/monitoramento/google-news-radar-panel'
 import { InstagramRadarPanel } from '@/components/monitoramento/instagram-radar-panel'
 import { MetaAdsRadarPanel } from '@/components/monitoramento/meta-ads-radar-panel'
-import { MonitoramentoShell, type MonitoramentoTab } from '@/components/monitoramento/monitoramento-shell'
+import {
+  MonitoramentoShell,
+  type MonitoramentoPanoramaMeta,
+  type MonitoramentoTab,
+} from '@/components/monitoramento/monitoramento-shell'
 import { PanoramaPanel } from '@/components/monitoramento/panorama-panel'
 import { TrendsRadarPanel } from '@/components/monitoramento/trends-radar-panel'
 import { YoutubeRadarPanel } from '@/components/monitoramento/youtube-radar-panel'
 
 function parseTab(value: string | null): MonitoramentoTab {
+  if (value === 'google-alerts') return 'google-alerts'
   if (value === 'youtube') return 'youtube'
   if (value === 'trends') return 'trends'
   if (value === 'google-news') return 'google-news'
@@ -23,6 +29,11 @@ export default function MonitoramentoPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const activeTab = useMemo(() => parseTab(searchParams.get('tab')), [searchParams])
+  const [panoramaMeta, setPanoramaMeta] = useState<MonitoramentoPanoramaMeta | null>(null)
+
+  const onPanoramaMetaChange = useCallback((meta: MonitoramentoPanoramaMeta) => {
+    setPanoramaMeta(meta)
+  }, [])
 
   const onTabChange = useCallback(
     (tab: MonitoramentoTab) => {
@@ -39,9 +50,15 @@ export default function MonitoramentoPage() {
   )
 
   return (
-    <MonitoramentoShell activeTab={activeTab} onTabChange={onTabChange}>
+    <MonitoramentoShell
+      activeTab={activeTab}
+      onTabChange={onTabChange}
+      panoramaMeta={panoramaMeta}
+    >
       {activeTab === 'geral' ? (
-        <PanoramaPanel />
+        <PanoramaPanel onMetaChange={onPanoramaMetaChange} />
+      ) : activeTab === 'google-alerts' ? (
+        <GoogleAlertsPanel />
       ) : activeTab === 'trends' ? (
         <TrendsRadarPanel />
       ) : activeTab === 'google-news' ? (

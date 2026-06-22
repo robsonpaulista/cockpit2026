@@ -1,18 +1,9 @@
 'use client'
 
 import { PanoramaPlatformChart } from '@/components/monitoramento/panorama-platform-chart'
+import { PanoramaPlatformKpiStrip } from '@/components/monitoramento/panorama-platform-kpi-strip'
 import type { PanoramaModel } from '@/lib/monitoramento-panorama'
 import type { PanoramaPlatformChart as PanoramaChartModel } from '@/lib/monitoramento-panorama-charts'
-
-function formatDateTime(iso: string | null): string {
-  if (!iso) return '—'
-  return new Date(iso).toLocaleString('pt-BR', {
-    day: '2-digit',
-    month: 'short',
-    hour: '2-digit',
-    minute: '2-digit',
-  })
-}
 
 function chartsByTier(charts: PanoramaChartModel[], tier: 'detail' | 'simple'): PanoramaChartModel[] {
   return charts.filter((chart) => chart.layoutTier === tier)
@@ -46,20 +37,7 @@ export function PanoramaBoard({ panorama, loading = false }: PanoramaBoardProps)
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[rgb(var(--color-border-tertiary)/0.85)] bg-bg-surface px-4 py-3">
-        <div>
-          <h2 className="text-sm font-semibold text-text-primary">{panorama.title}</h2>
-          <p className="mt-0.5 text-xs text-text-muted">
-            {formatDateTime(panorama.lastUpdated)} · {panorama.windowLabel}
-          </p>
-        </div>
-        {panorama.isLive ? (
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-[#E8F5E0] px-2.5 py-1 text-xs font-medium text-[#2D5A1E]">
-            <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-[#3B6D11]" aria-hidden />
-            dados recentes
-          </span>
-        ) : null}
-      </div>
+      <PanoramaPlatformKpiStrip cards={panorama.platformKpis} />
 
       {detailCharts.length > 0 ? (
         <section>

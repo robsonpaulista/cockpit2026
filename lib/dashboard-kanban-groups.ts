@@ -10,7 +10,7 @@ export const DASHBOARD_KANBAN_SECTIONS: ReadonlyArray<{
   {
     id: 'comunicacao',
     label: 'Comunicação',
-    itemIds: ['conteudo-redes', 'noticias', 'mobilizacao-mapa-digital-ig', 'whatsapp'],
+    itemIds: ['conteudo-redes', 'noticias-menu', 'mobilizacao-mapa-digital-ig', 'whatsapp'],
   },
   {
     id: 'eleicoes',

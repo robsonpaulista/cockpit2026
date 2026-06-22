@@ -198,7 +198,7 @@ function pageKeyForItem(id: string): string {
   ) {
     return 'conteudo'
   }
-  if (id === 'noticias-menu' || id === 'noticias-monitoramento') {
+  if (id === 'noticias-menu') {
     return 'noticias'
   }
   return id === 'home' ? 'dashboard' : id
@@ -769,7 +769,9 @@ export function Sidebar() {
                   ? Boolean(item.children?.some((c) => isChildLinkActive(pathname, c.href)))
                   : item.id === 'ficha-atendimento'
                       ? pathname.startsWith('/dashboard/ficha-atendimento')
-                      : pathname === item.href
+                      : item.id === 'noticias-menu'
+                        ? pathname.startsWith('/dashboard/noticias')
+                        : pathname === item.href
 
                 return (
                   <SidebarNavItem

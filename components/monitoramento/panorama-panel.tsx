@@ -18,10 +18,19 @@ const EMPTY_PANORAMA: PanoramaModel = {
   isLive: false,
   columns: [],
   charts: [],
+  platformKpis: [],
   setupRequired: false,
 }
 
-export function PanoramaPanel() {
+interface PanoramaPanelProps {
+  onMetaChange?: (meta: {
+    lastUpdated: string | null
+    windowLabel: string
+    isLive: boolean
+  }) => void
+}
+
+export function PanoramaPanel({ onMetaChange }: PanoramaPanelProps) {
   const [panorama, setPanorama] = useState<PanoramaModel>(EMPTY_PANORAMA)
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
@@ -50,6 +59,14 @@ export function PanoramaPanel() {
   useEffect(() => {
     void carregar()
   }, [carregar])
+
+  useEffect(() => {
+    onMetaChange?.({
+      lastUpdated: panorama.lastUpdated,
+      windowLabel: panorama.windowLabel,
+      isLive: panorama.isLive,
+    })
+  }, [panorama.lastUpdated, panorama.windowLabel, panorama.isLive, onMetaChange])
 
   const coletarTodas = useCallback(async () => {
     setCollectingAll(true)

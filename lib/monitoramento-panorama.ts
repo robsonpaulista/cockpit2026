@@ -12,6 +12,7 @@ import { buildMetaAdsCompareRows } from '@/lib/meta-ads-aggregate'
 import type { MetaAdsMentionWithActor } from '@/lib/meta-ads-types'
 import { formatSpendBrl } from '@/lib/meta-ads-format'
 import { buildPanoramaPlatformCharts, type PanoramaPlatformChart } from '@/lib/monitoramento-panorama-charts'
+import { buildPanoramaPlatformKpis, type PanoramaPlatformKpiCard } from '@/lib/monitoramento-panorama-kpis'
 import {
   panoramaWindowCutoffDay,
   panoramaWindowCutoffIso,
@@ -132,6 +133,7 @@ export type PanoramaModel = {
   isLive: boolean
   columns: PanoramaCandidateColumn[]
   charts: PanoramaPlatformChart[]
+  platformKpis: PanoramaPlatformKpiCard[]
   setupRequired: boolean
 }
 
@@ -224,40 +226,40 @@ function buildHeadline(input: {
   const { trends, youtube, news, meta, maxCurrent, name } = input
 
   if (!trends && youtube.videos7d === 0 && news.mentions7d === 0 && meta.totalAds === 0) {
-    return 'Sem sinais recentes — rode as coletas nas abas de monitoramento'
+    return 'Sem sinais recentes no recorte — aguardando novas coletas'
   }
 
   if (trends?.trendLabel === 'mais alto agora' && trends.currentIndex > 0) {
-    return `Lidera interesse de busca agora (${trends.currentIndex}/100)`
+    return `As buscas por ${name} registram o maior índice atual (${trends.currentIndex}/100)`
   }
 
   if (trends?.trendLabel === 'caindo' && trends.weekChangePct !== null) {
-    return `Interesse em queda (${trends.weekChangePct}% na semana)`
+    return `As buscas por ${name} recuaram ${trends.weekChangePct}% na comparação semanal`
   }
 
   if (trends?.trendLabel === 'pico passado' && trends.peakDate) {
-    return `Pico de interesse ${trends.peak3m}/100 em ${formatPeakDate(trends.peakDate)}`
+    return `As buscas por ${name} marcaram pico de ${trends.peak3m}/100 em ${formatPeakDate(trends.peakDate)}`
   }
 
   if (meta.activeAds > 0) {
     const page = meta.topPage ? ` via ${meta.topPage}` : ''
     const spend = meta.spendLabel ? ` · gasto est. ${meta.spendLabel}` : ''
-    return `${meta.activeAds} anúncio(s) ativo(s) na Meta${page}${spend}`
+    return `${name} aparece com ${meta.activeAds} anúncio(s) ativo(s) na Meta${page}${spend}`
   }
 
   if (news.mentions7d >= 3) {
-    return `${news.mentions7d} menções na imprensa (${panoramaWindowLabel()})`
+    return `${name} concentrou ${news.mentions7d} menções na imprensa (${panoramaWindowLabel()})`
   }
 
   if (youtube.videos7d >= 2) {
-    return `${youtube.videos7d} vídeos no YouTube (${panoramaWindowLabel()}) · ${youtube.views7d.toLocaleString('pt-BR')} views`
+    return `${name} acumulou ${youtube.videos7d} vídeos no YouTube (${panoramaWindowLabel()}) · ${youtube.views7d.toLocaleString('pt-BR')} views`
   }
 
   if (trends && trends.currentIndex === maxCurrent && maxCurrent > 0) {
-    return `Maior índice Trends entre monitorados (${trends.currentIndex})`
+    return `As buscas por ${name} registram o maior índice entre os monitorados (${trends.currentIndex})`
   }
 
-  return `Monitoramento ativo — acompanhe ${name} nas abas detalhadas`
+  return `${name} com monitoramento ativo no recorte`
 }
 
 export function rankHighlights(
@@ -545,13 +547,17 @@ export function buildMonitoramentoPanorama(input: {
     metaAdsMentions: input.metaAdsMentions30d,
   })
 
+  const windowLabel = input.windowLabel ?? panoramaWindowLabel()
+  const platformKpis = buildPanoramaPlatformKpis({ columns, charts, windowLabel })
+
   return {
     title: input.title ?? 'PAINEL DE MONITORAMENTO — PIAUÍ 2026',
-    windowLabel: input.windowLabel ?? panoramaWindowLabel(),
+    windowLabel,
     lastUpdated: input.lastUpdated,
     isLive,
     columns,
     charts,
+    platformKpis,
     setupRequired: Boolean(input.setupRequired),
   }
 }

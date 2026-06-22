@@ -28,7 +28,7 @@ export function getCockpitPageLabel(pathname: string): string {
     '/dashboard/chapas-estaduais': 'Estadual',
     '/dashboard/resumo-eleicoes': 'Eleições',
     '/dashboard/conteudo': 'Redes Sociais',
-    '/dashboard/noticias': 'Radar',
+    '/dashboard/noticias': 'Monitoramento',
     '/dashboard/noticias/monitoramento': 'Monitoramento',
     '/dashboard/noticias/youtube': 'Monitoramento',
     '/dashboard/mobilizacao': 'Mobilização',

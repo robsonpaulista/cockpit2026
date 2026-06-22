@@ -8,8 +8,17 @@ export function isMetaAdsRunnerAvailable(): boolean {
   return !isVercelServerless()
 }
 
+/** Coleta Trends é longa (rate limit) e instável no serverless compartilhado da Vercel. */
+export function isGoogleTrendsRunnerAvailable(): boolean {
+  if (process.env.GOOGLE_TRENDS_RUNNER_ENABLED === '1') return true
+  return !isVercelServerless()
+}
+
 export const META_ADS_RUNNER_UNAVAILABLE_MESSAGE =
   'Meta Ads requer Playwright + Chromium — indisponível na Vercel. Rode a coleta localmente ou em um cron com npx playwright install chromium.'
+
+export const GOOGLE_TRENDS_RUNNER_UNAVAILABLE_MESSAGE =
+  'Coleta Google Trends indisponível na Vercel (processo longo + rate limit do Google). Rode localmente: node scripts/collect-google-trends.mjs'
 
 export class MetaAdsRunnerUnavailableError extends Error {
   readonly skipInBatch = true
@@ -17,5 +26,14 @@ export class MetaAdsRunnerUnavailableError extends Error {
   constructor(message = META_ADS_RUNNER_UNAVAILABLE_MESSAGE) {
     super(message)
     this.name = 'MetaAdsRunnerUnavailableError'
+  }
+}
+
+export class GoogleTrendsRunnerUnavailableError extends Error {
+  readonly skipInBatch = true
+
+  constructor(message = GOOGLE_TRENDS_RUNNER_UNAVAILABLE_MESSAGE) {
+    super(message)
+    this.name = 'GoogleTrendsRunnerUnavailableError'
   }
 }

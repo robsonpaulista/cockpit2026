@@ -134,10 +134,14 @@ export function MetaAdsRadarPanel() {
   }, [carregar, refreshStatus])
 
   const canCollect = status?.canCollect ?? true
+  const runnerAvailable = status?.runnerAvailable !== false
   const dailyLimitEnabled = status?.dailyLimitEnabled ?? true
   const collectInProgress = collecting || Boolean(status?.collectInProgress)
   const collectDisabled =
-    collectInProgress || setupRequired || (dailyLimitEnabled && !canCollect && !collecting)
+    collectInProgress ||
+    setupRequired ||
+    !runnerAvailable ||
+    (dailyLimitEnabled && !canCollect && !collecting)
 
   return (
     <div className="flex flex-col gap-4">
@@ -154,28 +158,36 @@ export function MetaAdsRadarPanel() {
         </div>
       ) : null}
 
-      <div className="rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-900">
-        <p className="font-medium">
-          {dailyLimitEnabled
-            ? 'Limite de coleta: 1 vez a cada 24 horas'
-            : 'Coleta liberada (sem limite de 24h)'}
-        </p>
-        <p className="mt-1 text-blue-800/90">
-          {statusMessage ||
-            (dailyLimitEnabled
-              ? 'Coleta rápida: listagem na biblioteca da Meta (gasto, impressões, páginas). Limite de 1 busca completa por dia.'
-              : 'Modo desenvolvimento: META_ADS_SKIP_DAILY_LIMIT está ativo. Coleta rápida sem localização geográfica.')}
-        </p>
-        {dailyLimitEnabled && status && !status.canCollect && status.nextCollectAt && !collectInProgress ? (
-          <p className="mt-2 inline-flex items-center gap-1.5 text-xs font-medium text-blue-900">
-            <Clock className="h-3.5 w-3.5" aria-hidden />
-            Próxima coleta disponível: {formatNextCollect(status.nextCollectAt)}
-            {status.hoursUntilNextCollect !== null && status.hoursUntilNextCollect > 0
-              ? ` (≈ ${status.hoursUntilNextCollect}h)`
-              : ''}
+      {!runnerAvailable && statusMessage ? (
+        <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+          {statusMessage}
+        </div>
+      ) : null}
+
+      {runnerAvailable ? (
+        <div className="rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-900">
+          <p className="font-medium">
+            {dailyLimitEnabled
+              ? 'Limite de coleta: 1 vez a cada 24 horas'
+              : 'Coleta liberada (sem limite de 24h)'}
           </p>
-        ) : null}
-      </div>
+          <p className="mt-1 text-blue-800/90">
+            {statusMessage ||
+              (dailyLimitEnabled
+                ? 'Coleta rápida: listagem na biblioteca da Meta (gasto, impressões, páginas). Limite de 1 busca completa por dia.'
+                : 'Modo desenvolvimento: META_ADS_SKIP_DAILY_LIMIT está ativo. Coleta rápida sem localização geográfica.')}
+          </p>
+          {dailyLimitEnabled && status && !status.canCollect && status.nextCollectAt && !collectInProgress ? (
+            <p className="mt-2 inline-flex items-center gap-1.5 text-xs font-medium text-blue-900">
+              <Clock className="h-3.5 w-3.5" aria-hidden />
+              Próxima coleta disponível: {formatNextCollect(status.nextCollectAt)}
+              {status.hoursUntilNextCollect !== null && status.hoursUntilNextCollect > 0
+                ? ` (≈ ${status.hoursUntilNextCollect}h)`
+                : ''}
+            </p>
+          ) : null}
+        </div>
+      ) : null}
 
       <MetaAdsCollectProgressBar progress={progress} collecting={collectInProgress} />
 

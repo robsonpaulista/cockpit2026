@@ -77,18 +77,9 @@ export const SIDEBAR_MENU_ITEMS: SidebarMenuItemConfig[] = [
   },
   {
     id: 'noticias-menu',
-    label: 'Notícias & Crises',
-    icon: 'Newspaper',
-    href: '/dashboard/noticias',
-    children: [
-      { id: 'noticias', label: 'Inbox & Radar', icon: 'Newspaper', href: '/dashboard/noticias' },
-      {
-        id: 'noticias-monitoramento',
-        label: 'Central de monitoramento',
-        icon: 'Radar',
-        href: '/dashboard/noticias/monitoramento',
-      },
-    ],
+    label: 'Central de monitoramento',
+    icon: 'Radar',
+    href: '/dashboard/noticias/monitoramento',
   },
   {
     id: 'mobilizacao-menu',
