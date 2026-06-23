@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
+import { createPortal } from 'react-dom'
 import {
   X,
   Upload,
@@ -273,8 +274,10 @@ export function PollReportModal({ poll, onClose }: PollReportModalProps) {
     }
   }
 
-  return (
-    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
+  if (typeof document === 'undefined') return null
+
+  return createPortal(
+    <div className="fixed inset-0 z-[1200] flex items-center justify-center bg-black/60 p-4">
       <div className="bg-surface rounded-2xl border border-card w-full max-w-5xl max-h-[94vh] flex flex-col">
         {/* Header fixo */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-card flex-shrink-0">
@@ -532,6 +535,7 @@ export function PollReportModal({ poll, onClose }: PollReportModalProps) {
           )}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   )
 }

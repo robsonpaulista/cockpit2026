@@ -4,12 +4,17 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import dynamic from 'next/dynamic'
 import { Maximize2, Minimize2 } from 'lucide-react'
 import { useTheme } from '@/contexts/theme-context'
+import { cn } from '@/lib/utils'
+import { AnimatedBar } from '@/components/animated-bar'
 import {
   CIDADE_INTENCAO_TOP_N,
   type CandidatoMediaNaCidade,
   type CidadeIntencaoTopoRow,
   type ExecutiveTendenciaModel,
+  type ProjecaoVotoCandidatoRow,
   type ProjecaoVotosEleitoradoRecorte,
+  rotuloTendenciaPosicao,
+  type TendenciaPosicaoCandidato,
 } from '@/lib/pesquisa-tendencia-executive'
 
 /**
@@ -23,355 +28,353 @@ const MapaIntencaoMunicipios = dynamic(
 
 const ORDINAIS_TOP10 = Array.from({ length: CIDADE_INTENCAO_TOP_N }, (_, i) => `${i + 1}º`)
 
-/** Largura mínima do bloco (Pesq. + 10 colunas) para alinhar rolagem horizontal do cabeçalho e das linhas. */
-const BLOCO_CIDADE_INTENCAO_MIN_W = 'min-w-[72rem]'
+/** Estilo de tabela alinhado ao panorama de monitoramento (Instagram, etc.). */
+const PANORAMA_TABLE = 'w-full table-fixed border-collapse text-left text-[11px]'
+const PANORAMA_TABLE_HEAD =
+  'border-b border-[rgb(var(--color-border-tertiary)/0.55)] text-[10px] uppercase tracking-wide text-text-muted'
+const PANORAMA_TABLE_TH = 'px-2 py-1 font-semibold'
+const PANORAMA_TABLE_TD =
+  'border-b border-[rgb(var(--color-border-tertiary)/0.35)] px-2 py-1 align-middle'
+const PANORAMA_TABLE_TD_STICKY = cn(
+  PANORAMA_TABLE_TD,
+  'sticky left-0 z-[2] bg-bg-surface shadow-[2px_0_6px_-4px_rgba(0,0,0,0.12)]'
+)
+const PANORAMA_TABLE_TH_STICKY = cn(
+  PANORAMA_TABLE_TH,
+  'sticky left-0 top-0 z-[3] bg-bg-surface shadow-[2px_0_6px_-4px_rgba(0,0,0,0.12)]'
+)
 
-/** Bloco esp./est.: ocupa toda a largura da coluna; rolagem horizontal só dentro (sem barra). */
-const blocoCidadeIntencaoOuterClass = 'h-full w-full min-h-0 min-w-0'
+function formatPctTopo(value: number): string {
+  return value.toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })
+}
 
-type ScrollPorArrastoAxis = 'x' | 'y'
+function primeiroNomeCandidato(nome: string): string {
+  const limpo = nome.trim()
+  if (!limpo) return nome
+  return limpo.split(/\s+/)[0] ?? limpo
+}
 
-const scrollSyncEsp = new Set<HTMLDivElement>()
-const scrollSyncEst = new Set<HTMLDivElement>()
-
-function syncScrollGroupPeers(set: Set<HTMLDivElement>, source: HTMLDivElement) {
-  const left = source.scrollLeft
-  for (const el of set) {
-    if (el !== source && el.scrollLeft !== left) el.scrollLeft = left
+function estiloIndicadorTendenciaCelula(
+  tendencia: TendenciaPosicaoCandidato | null | undefined,
+  intensidade: number | undefined
+): { barra: string; fundo?: string } | undefined {
+  if (!tendencia || tendencia === 'estavel') return undefined
+  const forca = 0.55 + Math.min(1, Math.max(0, intensidade ?? 0.45)) * 0.45
+  if (tendencia === 'subindo') {
+    return {
+      barra: `rgba(22, 163, 74, ${forca})`,
+      fundo: `rgba(22, 163, 74, ${0.04 + forca * 0.05})`,
+    }
+  }
+  return {
+    barra: `rgba(220, 38, 38, ${forca})`,
+    fundo: `rgba(220, 38, 38, ${0.04 + forca * 0.05})`,
   }
 }
 
-/** Rolagem sem barra visível: arrastar com o botão principal do mouse (exceto em links/botões). */
-function ScrollPorArrasto({
-  axis,
-  className,
-  groupId,
-  children,
-}: {
-  axis: ScrollPorArrastoAxis
-  className?: string
-  /** Alinha scroll horizontal entre cabeçalho e todas as linhas do mesmo bloco. */
-  groupId?: 'esp' | 'est'
-  children: React.ReactNode
-}) {
-  const ref = useRef<HTMLDivElement>(null)
-  const drag = useRef({
-    active: false,
-    moved: false,
-    startClient: 0,
-    startScroll: 0,
-  })
-  const bloquearProximoClick = useRef(false)
-
-  /** Em Y, sem overflow-x: evita a tabela deslizar por baixo da coluna fixa “Cidade”. */
-  const overflow =
-    axis === 'x' ? 'overflow-x-auto overflow-y-hidden' : 'overflow-y-auto overflow-x-hidden'
-
-  useEffect(() => {
-    if (axis !== 'x' || !groupId) return
-    const el = ref.current
-    if (!el) return
-    const set = groupId === 'esp' ? scrollSyncEsp : scrollSyncEst
-    set.add(el)
-    const onScroll = () => syncScrollGroupPeers(set, el)
-    el.addEventListener('scroll', onScroll, { passive: true })
-    return () => {
-      el.removeEventListener('scroll', onScroll)
-      set.delete(el)
-    }
-  }, [axis, groupId])
-
-  const onPointerDown = (e: React.PointerEvent) => {
-    if (e.button !== 0) return
-    const el = ref.current
-    if (!el) return
-    if ((e.target as HTMLElement).closest('button, a')) return
-    drag.current = {
-      active: true,
-      moved: false,
-      startClient: axis === 'x' ? e.clientX : e.clientY,
-      startScroll: axis === 'x' ? el.scrollLeft : el.scrollTop,
-    }
-    el.setPointerCapture(e.pointerId)
-  }
-
-  const onPointerMove = (e: React.PointerEvent) => {
-    if (!drag.current.active || !ref.current) return
-    const pos = axis === 'x' ? e.clientX : e.clientY
-    const delta = pos - drag.current.startClient
-    if (Math.abs(delta) > 5) drag.current.moved = true
-    if (!drag.current.moved) return
-    if (axis === 'x') {
-      ref.current.scrollLeft = drag.current.startScroll - delta
-      if (groupId) syncScrollGroupPeers(groupId === 'esp' ? scrollSyncEsp : scrollSyncEst, ref.current)
-    } else ref.current.scrollTop = drag.current.startScroll - delta
-  }
-
-  const onPointerEnd = (e: React.PointerEvent) => {
-    const el = ref.current
-    if (el?.hasPointerCapture(e.pointerId)) el.releasePointerCapture(e.pointerId)
-    if (drag.current.moved) bloquearProximoClick.current = true
-    drag.current.active = false
-    drag.current.moved = false
-  }
-
-  const onClickCapture = (e: React.MouseEvent) => {
-    if (!bloquearProximoClick.current) return
-    bloquearProximoClick.current = false
-    e.preventDefault()
-    e.stopPropagation()
-  }
-
+function LegendaIndicadorTendencia() {
+  const itens: Array<{ rotulo: string; cor: string }> = [
+    { rotulo: 'Melhora', cor: 'rgb(22, 163, 74)' },
+    { rotulo: 'Queda', cor: 'rgb(220, 38, 38)' },
+  ]
   return (
-    <div
-      ref={ref}
-      className={`scrollbar-hide ${overflow} cursor-grab select-none active:cursor-grabbing ${className ?? ''}`}
-      onPointerDown={onPointerDown}
-      onPointerMove={onPointerMove}
-      onPointerUp={onPointerEnd}
-      onPointerCancel={onPointerEnd}
-      onClickCapture={onClickCapture}
-    >
-      {children}
+    <div className="mb-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px] text-text-muted">
+      <span className="font-medium text-text-secondary">Tendência de posição:</span>
+      {itens.map((item) => (
+        <span key={item.rotulo} className="inline-flex items-center gap-1.5">
+          <span
+            className="inline-block h-2.5 w-[2px] rounded-full"
+            style={{ backgroundColor: item.cor }}
+            aria-hidden
+          />
+          {item.rotulo}
+        </span>
+      ))}
+      <span className="text-text-muted">· sem barra = estável ou poucas pesquisas no município</span>
     </div>
   )
 }
 
-function CelulaNomeMediaTopo({
-  item,
-  onVerDetalhesCandidato,
-  tdClass,
-  nomeCandidatoClass,
-}: {
-  item: CandidatoMediaNaCidade | undefined
-  onVerDetalhesCandidato?: (nome: string) => void
-  tdClass: string
-  nomeCandidatoClass: string
-}) {
+function CelulaTopoCompacta({ item }: { item: CandidatoMediaNaCidade | undefined }) {
+  if (!item) {
+    return <td className={cn(PANORAMA_TABLE_TD, 'text-center text-text-muted')}>—</td>
+  }
+
+  const nomeExibicao = primeiroNomeCandidato(item.nome)
+  const tooltipBase = `${formatPctTopo(item.mediaPct)}% · ${item.nome}`
+  const tooltipTendencia =
+    item.tendenciaPosicao && item.ondasTendencia
+      ? ` · ${rotuloTendenciaPosicao(item.tendenciaPosicao, item.ondasTendencia)}`
+      : ''
+  const tooltip = `${tooltipBase}${tooltipTendencia}`
+  const indicador = estiloIndicadorTendenciaCelula(item.tendenciaPosicao, item.intensidadeTendencia)
+
   return (
-    <td className={`${tdClass} text-center align-middle`}>
-      {item ? (
-        <div className="flex min-h-[4.75rem] w-full flex-col items-center justify-center gap-1 px-1 py-2">
-          {onVerDetalhesCandidato ? (
-            <button
-              type="button"
-              onClick={() => onVerDetalhesCandidato(item.nome)}
-              className={`line-clamp-3 w-full max-w-[min(100%,9.5rem)] text-balance text-center leading-snug ${nomeCandidatoClass}`}
-              title={item.nome}
-            >
-              {item.nome}
-            </button>
-          ) : (
-            <span
-              className={`line-clamp-3 w-full max-w-[min(100%,9.5rem)] text-balance text-center leading-snug ${nomeCandidatoClass}`}
-              title={item.nome}
-            >
-              {item.nome}
-            </span>
-          )}
-          <span className="tabular-nums text-xs leading-none text-secondary">
-            {item.mediaPct.toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%
-          </span>
-        </div>
-      ) : (
-        <span className="text-secondary">—</span>
-      )}
+    <td
+      className={cn(PANORAMA_TABLE_TD, 'max-w-[4.25rem] p-0')}
+      style={indicador?.fundo ? { backgroundColor: indicador.fundo } : undefined}
+    >
+      <span className="flex min-w-0 items-center gap-1" title={tooltip}>
+        {indicador ? (
+          <span
+            className="h-2.5 w-[2px] shrink-0 rounded-full"
+            style={{ backgroundColor: indicador.barra }}
+            aria-hidden
+          />
+        ) : null}
+        <span className="min-w-0 flex-1 truncate py-1 pr-1.5 text-[11px] font-medium text-text-primary">
+          {nomeExibicao}
+        </span>
+      </span>
     </td>
   )
 }
 
-function TendenciaResumoTabelaCidadesIntencao({
+/** Altura alinhada aos cards do panorama em /dashboard/noticias/monitoramento. */
+const PANORAMA_PANEL_CARD_HEIGHT = 'h-[440px]'
+
+const PANORAMA_PANEL_CARD_CLASS = cn(
+  'flex flex-col overflow-hidden rounded-xl border border-[rgb(var(--color-border-tertiary)/0.85)] bg-bg-surface p-4',
+  PANORAMA_PANEL_CARD_HEIGHT
+)
+
+const PANORAMA_SECTION_TITLE_CLASS =
+  'mb-3 text-xs font-semibold uppercase tracking-wide text-text-muted'
+
+const PANORAMA_SECTION_CARD_CLASS =
+  'rounded-xl border border-[rgb(var(--color-border-tertiary)/0.85)] bg-bg-surface p-4'
+
+type TipoIntencaoTabela = 'espontanea' | 'estimulada'
+
+const TIPO_INTENCAO_CARD_META: Record<TipoIntencaoTabela, { titulo: string; subtitulo: string }> = {
+  espontanea: {
+    titulo: 'Espontânea',
+    subtitulo: 'Zona de competitividade espontânea por município.',
+  },
+  estimulada: {
+    titulo: 'Estimulada',
+    subtitulo: 'Zona de competitividade estimulada por município.',
+  },
+}
+
+function TendenciaResumoTipoIntencaoCard({
+  tipo,
   linhas,
-  onVerDetalhesCandidato,
-  nomeCandidatoClass,
+  temDadosTipo,
 }: {
+  tipo: TipoIntencaoTabela
   linhas: CidadeIntencaoTopoRow[]
-  onVerDetalhesCandidato?: (nome: string) => void
-  nomeCandidatoClass: string
+  temDadosTipo: boolean
 }) {
-  const thCidade =
-    'whitespace-nowrap border-b border-card bg-background px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wide text-secondary sm:text-xs'
-  const innerThPesq =
-    'w-14 min-w-[3.5rem] whitespace-nowrap border-b border-card bg-background px-2 py-2.5 text-right text-[10px] font-semibold uppercase tracking-wide text-secondary sm:text-[11px]'
-  const innerThOrd =
-    'min-w-[6.25rem] whitespace-normal border-b border-card bg-background px-1.5 py-2.5 text-center text-[10px] font-semibold uppercase tracking-wide text-secondary sm:text-[11px]'
-  const tdCidade =
-    'border-b border-card/80 px-3 py-3 align-middle text-sm font-medium text-text-primary'
-  const tdInnerPesq =
-    'border-b border-card/80 px-2 py-3 text-right align-middle text-sm tabular-nums text-text-primary'
-  const tdInnerCandidato =
-    'border-b border-card/80 px-1.5 py-0 align-middle text-sm text-text-primary'
+  const meta = TIPO_INTENCAO_CARD_META[tipo]
+  const isEspontanea = tipo === 'espontanea'
 
   return (
-    <div className="rounded-xl border border-card">
-      <ScrollPorArrasto axis="y" className="max-h-[min(72vh,760px)] min-h-0">
-        <table className="table-fixed w-full min-w-0 border-collapse text-left">
-          <colgroup>
-            <col className="w-[12.5rem]" />
-            <col />
-            <col />
-          </colgroup>
-          <thead>
-            <tr className="align-top">
-              <th
-                className={`${thCidade} sticky left-0 z-[20] border-b border-r border-card bg-background align-bottom pb-2 shadow-[4px_0_14px_-6px_rgba(0,0,0,0.18)]`}
-              >
-                Cidade
-              </th>
-              <th className="h-full border-b border-l border-card/80 bg-background p-0 align-stretch">
-                <ScrollPorArrasto axis="x" className={`${blocoCidadeIntencaoOuterClass} h-full`} groupId="esp">
-                  <div className={BLOCO_CIDADE_INTENCAO_MIN_W}>
-                    <div className="border-b border-card/60 py-2 text-center text-xs font-semibold uppercase tracking-wide text-text-primary">
-                      Espontânea
-                    </div>
-                    <table className="w-full border-collapse">
-                      <thead>
-                        <tr>
-                          <th className={innerThPesq} title="Pesquisas distintas (espontânea): data + instituto + cidade">
-                            Pesq.
-                          </th>
-                          {ORDINAIS_TOP10.map((ord) => (
-                            <th key={`h-esp-${ord}`} className={innerThOrd} title={`Espontânea — ${ord}`}>
-                              {ord}
-                            </th>
-                          ))}
-                        </tr>
-                      </thead>
-                    </table>
-                  </div>
-                </ScrollPorArrasto>
-              </th>
-              <th className="h-full border-b border-l border-card/80 bg-background p-0 align-stretch">
-                <ScrollPorArrasto axis="x" className={`${blocoCidadeIntencaoOuterClass} h-full`} groupId="est">
-                  <div className={BLOCO_CIDADE_INTENCAO_MIN_W}>
-                    <div className="border-b border-card/60 py-2 text-center text-xs font-semibold uppercase tracking-wide text-text-primary">
-                      Estimulada
-                    </div>
-                    <table className="w-full border-collapse">
-                      <thead>
-                        <tr>
-                          <th className={innerThPesq} title="Pesquisas distintas (estimulada): data + instituto + cidade">
-                            Pesq.
-                          </th>
-                          {ORDINAIS_TOP10.map((ord) => (
-                            <th key={`h-est-${ord}`} className={innerThOrd} title={`Estimulada — ${ord}`}>
-                              {ord}
-                            </th>
-                          ))}
-                        </tr>
-                      </thead>
-                    </table>
-                  </div>
-                </ScrollPorArrasto>
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {linhas.map((row) => (
-              <tr key={row.cidadeChave} className="align-middle hover:bg-background/80">
-                <td
-                  className={`${tdCidade} sticky left-0 z-[20] border-r border-card bg-background shadow-[4px_0_14px_-6px_rgba(0,0,0,0.18)]`}
-                >
-                  <span className="line-clamp-3 leading-snug" title={row.cidadeLabel}>
-                    {row.cidadeLabel}
-                  </span>
-                </td>
-                <td className="border-b border-l border-card/80 p-0 align-stretch">
-                  <ScrollPorArrasto axis="x" className={`${blocoCidadeIntencaoOuterClass} h-full`} groupId="esp">
-                    <table className={`${BLOCO_CIDADE_INTENCAO_MIN_W} w-full border-collapse`}>
-                      <tbody>
-                        <tr className="align-middle">
-                          <td className={tdInnerPesq}>{row.pesquisasDistintasEspontanea}</td>
-                          {Array.from({ length: CIDADE_INTENCAO_TOP_N }, (_, idx) => (
-                            <CelulaNomeMediaTopo
-                              key={`esp-${row.cidadeChave}-${idx}`}
-                              item={row.top10Espontanea[idx]}
-                              onVerDetalhesCandidato={onVerDetalhesCandidato}
-                              tdClass={tdInnerCandidato}
-                              nomeCandidatoClass={nomeCandidatoClass}
-                            />
-                          ))}
-                        </tr>
-                      </tbody>
-                    </table>
-                  </ScrollPorArrasto>
-                </td>
-                <td className="border-b border-l border-card/80 p-0 align-stretch">
-                  <ScrollPorArrasto axis="x" className={`${blocoCidadeIntencaoOuterClass} h-full`} groupId="est">
-                    <table className={`${BLOCO_CIDADE_INTENCAO_MIN_W} w-full border-collapse`}>
-                      <tbody>
-                        <tr className="align-middle">
-                          <td className={tdInnerPesq}>{row.pesquisasDistintasEstimulada}</td>
-                          {Array.from({ length: CIDADE_INTENCAO_TOP_N }, (_, idx) => (
-                            <CelulaNomeMediaTopo
-                              key={`est-${row.cidadeChave}-${idx}`}
-                              item={row.top10Estimulada[idx]}
-                              onVerDetalhesCandidato={onVerDetalhesCandidato}
-                              tdClass={tdInnerCandidato}
-                              nomeCandidatoClass={nomeCandidatoClass}
-                            />
-                          ))}
-                        </tr>
-                      </tbody>
-                    </table>
-                  </ScrollPorArrasto>
-                </td>
+    <div className={PANORAMA_PANEL_CARD_CLASS}>
+      <div className="mb-2 shrink-0 space-y-0.5">
+        <h4 className="text-sm font-semibold text-text-primary">{meta.titulo}</h4>
+        <p className="text-[11px] leading-snug text-text-muted">{meta.subtitulo}</p>
+      </div>
+
+      {!temDadosTipo || linhas.length === 0 ? (
+        <div className="flex min-h-0 flex-1 items-center justify-center rounded-lg border border-dashed border-[rgb(var(--color-border-tertiary)/0.6)] text-[11px] text-text-muted">
+          Sem pesquisas {isEspontanea ? 'espontâneas' : 'estimuladas'} neste recorte.
+        </div>
+      ) : (
+        <div className="min-h-0 flex-1 overflow-auto rounded-lg border border-[rgb(var(--color-border-tertiary)/0.55)]">
+          <table className={cn(PANORAMA_TABLE, 'min-w-[36rem]')}>
+            <colgroup>
+              <col className="w-[5.5rem]" />
+              {ORDINAIS_TOP10.map((ord) => (
+                <col key={`col-${tipo}-${ord}`} className="w-[3.25rem]" />
+              ))}
+            </colgroup>
+            <thead>
+              <tr className={PANORAMA_TABLE_HEAD}>
+                <th className={cn(PANORAMA_TABLE_TH_STICKY, 'text-left')}>Cidade</th>
+                {ORDINAIS_TOP10.map((ord) => (
+                  <th key={`h-${tipo}-${ord}`} className={cn(PANORAMA_TABLE_TH, 'text-left')} title={`${ord} colocado`}>
+                    {ord}
+                  </th>
+                ))}
               </tr>
-            ))}
-          </tbody>
-        </table>
-      </ScrollPorArrasto>
+            </thead>
+            <tbody>
+              {linhas.map((row) => {
+                const pesquisas = isEspontanea
+                  ? row.pesquisasDistintasEspontanea
+                  : row.pesquisasDistintasEstimulada
+                const top10 = isEspontanea ? row.top10Espontanea : row.top10Estimulada
+                const tooltipCidade = `${row.cidadeLabel} · ${pesquisas} pesquisa${pesquisas === 1 ? '' : 's'} distinta${pesquisas === 1 ? '' : 's'}`
+                return (
+                  <tr key={`${tipo}-${row.cidadeChave}`} className="hover:bg-background/40">
+                    <td className={PANORAMA_TABLE_TD_STICKY}>
+                      <span className="line-clamp-2 leading-snug" title={tooltipCidade}>
+                        {row.cidadeLabel}
+                      </span>
+                    </td>
+                    {Array.from({ length: CIDADE_INTENCAO_TOP_N }, (_, idx) => (
+                      <CelulaTopoCompacta
+                        key={`${tipo}-${row.cidadeChave}-${idx}`}
+                        item={top10[idx]}
+                      />
+                    ))}
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
+  )
+}
+
+function IndicadorProjecao({
+  rotulo,
+  descricao,
+  valor,
+}: {
+  rotulo: string
+  descricao: string
+  valor: string
+}) {
+  return (
+    <div className="rounded-lg border border-[rgb(var(--color-border-tertiary)/0.55)] px-2 py-1.5">
+      <p className="text-[10px] font-semibold uppercase tracking-wide text-text-muted">{rotulo}</p>
+      <p className="mt-0.5 text-[9px] leading-snug text-text-secondary">{descricao}</p>
+      <p className="mt-1 text-sm font-semibold tabular-nums text-text-primary">{valor}</p>
+    </div>
+  )
+}
+
+function pillVisaoProjecaoClass(active: boolean): string {
+  return cn(
+    'rounded-[99px] border px-2.5 py-1 text-[11px] transition-colors',
+    active
+      ? 'border-[rgb(var(--color-primary))] bg-[rgb(var(--color-primary-tint))] font-medium text-[rgb(var(--color-primary))]'
+      : 'border-[rgb(var(--color-border-secondary)/0.85)] bg-transparent text-text-secondary hover:text-text-primary'
+  )
+}
+
+function formatPctProjecao(value: number): string {
+  return value.toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })
+}
+
+const PANORAMA_TABLE_TH_NUM = cn(PANORAMA_TABLE_TH, 'text-right pl-2 pr-4')
+const PANORAMA_TABLE_TD_NUM = cn(PANORAMA_TABLE_TD, 'text-right pl-2 pr-4 tabular-nums')
+
+function ProjecaoRankingTabela({ ranking }: { ranking: ProjecaoVotoCandidatoRow[] }) {
+  return (
+    <table className={PANORAMA_TABLE}>
+      <colgroup>
+        <col className="w-[2.5rem]" />
+        <col />
+        <col className="w-[7rem]" />
+        <col className="w-[6rem]" />
+      </colgroup>
+      <thead>
+        <tr className={PANORAMA_TABLE_HEAD}>
+          <th className={cn(PANORAMA_TABLE_TH, 'text-left')}>#</th>
+          <th className={cn(PANORAMA_TABLE_TH, 'text-left')}>Candidato</th>
+          <th className={PANORAMA_TABLE_TH_NUM}>Votos</th>
+          <th className={PANORAMA_TABLE_TH_NUM}>% total</th>
+        </tr>
+      </thead>
+      <tbody>
+        {ranking.map((row) => (
+          <tr key={row.nome} className="hover:bg-background/40">
+            <td className={cn(PANORAMA_TABLE_TD, 'tabular-nums text-text-muted')}>{row.rank}</td>
+            <td className={PANORAMA_TABLE_TD}>
+              <span className="font-medium text-text-primary">{row.nome}</span>
+            </td>
+            <td className={cn(PANORAMA_TABLE_TD_NUM, 'font-medium text-text-primary')}>
+              {row.votosProjetados.toLocaleString('pt-BR')}
+            </td>
+            <td className={cn(PANORAMA_TABLE_TD_NUM, 'text-text-secondary')}>
+              {formatPctProjecao(row.pctSobreSomaProjetada)}%
+            </td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  )
+}
+
+function ProjecaoRankingBarras({ ranking }: { ranking: ProjecaoVotoCandidatoRow[] }) {
+  return (
+    <ul className="space-y-1.5 pr-3 sm:pr-4">
+      {ranking.map((row) => (
+        <li key={row.nome}>
+          <div className="mb-0.5 flex items-center justify-between gap-2">
+            <div className="min-w-0 flex items-center gap-1.5">
+              <span className="w-4 shrink-0 tabular-nums text-[10px] font-semibold text-text-muted">
+                {row.rank}º
+              </span>
+              <span className="truncate text-[11px] font-medium text-text-primary">{row.nome}</span>
+            </div>
+            <span className="shrink-0 pr-0.5 tabular-nums text-[10px] text-text-secondary sm:pr-1">
+              <span className="font-semibold text-text-primary">
+                {formatPctProjecao(row.pctSobreSomaProjetada)}%
+              </span>
+              <span className="mx-1 text-text-muted">·</span>
+              <span className="font-medium text-text-primary">
+                {row.votosProjetados.toLocaleString('pt-BR')}
+              </span>
+            </span>
+          </div>
+          <AnimatedBar
+            percentage={row.pctSobreSomaProjetada}
+            barClassName="bg-[rgb(var(--color-primary))]"
+            height="h-1.5"
+            className="bg-[rgb(var(--color-border-tertiary)/0.35)]"
+          />
+        </li>
+      ))}
+    </ul>
   )
 }
 
 function TendenciaProjecaoEleitoradoPanel({
   projecao,
-  onVerDetalhesCandidato,
-  nomeCandidatoClass,
 }: {
   projecao: ProjecaoVotosEleitoradoRecorte
-  onVerDetalhesCandidato?: (nome: string) => void
-  nomeCandidatoClass: string
 }) {
+  const [visaoRanking, setVisaoRanking] = useState<'tabela' | 'barras'>('barras')
+
   const pctEleitoradoVsProjecao =
     projecao.eleitoradoSomadoRecorte > 0
       ? Math.round((projecao.somaVotosProjetados / projecao.eleitoradoSomadoRecorte) * 1000) / 10
       : null
 
   return (
-    <div className="mt-3 space-y-4">
-      <p className="text-xs leading-relaxed text-secondary">{projecao.baseIntencaoLabel}</p>
-      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-        <div className="rounded-xl border border-card bg-background p-3">
-          <p className="text-[10px] font-semibold uppercase tracking-wide text-secondary">Eleitorado no recorte</p>
-          <p className="mt-1 text-lg font-bold tabular-nums text-text-primary">
-            {projecao.eleitoradoSomadoRecorte.toLocaleString('pt-BR')}
-          </p>
-          <p className="mt-0.5 text-[10px] text-secondary">Soma TRE nos municípios ponderados</p>
-        </div>
-        <div className="rounded-xl border border-card bg-background p-3">
-          <p className="text-[10px] font-semibold uppercase tracking-wide text-secondary">Votos projetados (soma)</p>
-          <p className="mt-1 text-lg font-bold tabular-nums text-text-primary">
-            {projecao.somaVotosProjetados.toLocaleString('pt-BR')}
-          </p>
-          <p className="mt-0.5 text-[10px] text-secondary">Σ (média % × eleitorado) por cidade</p>
-        </div>
-        <div className="rounded-xl border border-card bg-background p-3">
-          <p className="text-[10px] font-semibold uppercase tracking-wide text-secondary">Municípios ponderados</p>
-          <p className="mt-1 text-lg font-bold tabular-nums text-text-primary">{projecao.municipiosPonderados}</p>
-          <p className="mt-0.5 text-[10px] text-secondary">Com cadastro de eleitorado</p>
-        </div>
-        <div className="rounded-xl border border-card bg-background p-3">
-          <p className="text-[10px] font-semibold uppercase tracking-wide text-secondary">Projeção / eleitorado</p>
-          <p className="mt-1 text-lg font-bold tabular-nums text-text-primary">
-            {pctEleitoradoVsProjecao !== null ? `${pctEleitoradoVsProjecao.toLocaleString('pt-BR')}%` : '—'}
-          </p>
-          <p className="mt-0.5 text-[10px] text-secondary">Indicador para confrontar com a base</p>
-        </div>
+    <div className="space-y-3">
+      <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-4">
+        <IndicadorProjecao
+          rotulo="Eleitorado"
+          descricao="Total de eleitores cobertos pelas pesquisas consideradas."
+          valor={projecao.eleitoradoSomadoRecorte.toLocaleString('pt-BR')}
+        />
+        <IndicadorProjecao
+          rotulo="Votos projetados"
+          descricao="Estimativa agregada obtida a partir da posição dos candidatos nos municípios pesquisados."
+          valor={projecao.somaVotosProjetados.toLocaleString('pt-BR')}
+        />
+        <IndicadorProjecao
+          rotulo="Municípios"
+          descricao="Quantidade de cidades consideradas na consolidação."
+          valor={projecao.municipiosPonderados.toLocaleString('pt-BR')}
+        />
+        <IndicadorProjecao
+          rotulo="Cobertura"
+          descricao="Percentual do eleitorado estadual representado na amostra territorial."
+          valor={
+            pctEleitoradoVsProjecao !== null ? `${pctEleitoradoVsProjecao.toLocaleString('pt-BR')}%` : '—'
+          }
+        />
       </div>
       {(projecao.municipiosComPesquisaSemEleitoradoCadastrado > 0 || projecao.municipiosApenasEstadualExcluidos > 0) && (
-        <p className="text-[11px] text-amber-900/90 dark:text-amber-200/90">
+        <p className="text-[10px] text-amber-800">
           {projecao.municipiosApenasEstadualExcluidos > 0
             ? `${projecao.municipiosApenasEstadualExcluidos} recorte(s) só estadual — não entram na projeção por município. `
             : null}
@@ -381,57 +384,44 @@ function TendenciaProjecaoEleitoradoPanel({
         </p>
       )}
       {projecao.ranking.length === 0 ? (
-        <p className="text-sm text-secondary">
+        <p className="text-[11px] text-text-muted">
           Não há municípios com média de intenção e eleitorado cadastrado para montar o acumulado neste recorte.
         </p>
       ) : (
-        <div className="overflow-x-auto rounded-xl border border-card">
-          <table className="w-full min-w-[22rem] border-collapse text-left text-sm">
-            <thead>
-              <tr className="border-b border-card bg-background">
-                <th className="px-3 py-2 text-[11px] font-semibold uppercase tracking-wide text-secondary">#</th>
-                <th className="px-3 py-2 text-[11px] font-semibold uppercase tracking-wide text-secondary">Candidato</th>
-                <th className="px-3 py-2 text-right text-[11px] font-semibold uppercase tracking-wide text-secondary">
-                  Votos proj.
-                </th>
-                <th className="px-3 py-2 text-right text-[11px] font-semibold uppercase tracking-wide text-secondary">
-                  % do total proj.
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {projecao.ranking.map((row) => (
-                <tr key={row.nome} className="border-b border-card/70 hover:bg-background/80">
-                  <td className="px-3 py-2 tabular-nums text-secondary">{row.rank}</td>
-                  <td className="px-3 py-2 font-medium text-text-primary">
-                    {onVerDetalhesCandidato ? (
-                      <button
-                        type="button"
-                        onClick={() => onVerDetalhesCandidato(row.nome)}
-                        className={`text-left ${nomeCandidatoClass}`}
-                      >
-                        {row.nome}
-                      </button>
-                    ) : (
-                      <span className={nomeCandidatoClass}>{row.nome}</span>
-                    )}
-                  </td>
-                  <td className="px-3 py-2 text-right tabular-nums font-semibold text-text-primary">
-                    {row.votosProjetados.toLocaleString('pt-BR')}
-                  </td>
-                  <td className="px-3 py-2 text-right tabular-nums text-secondary">
-                    {row.pctSobreSomaProjetada.toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        <div className="space-y-2">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <p className="text-[11px] leading-snug text-text-muted">
+              Posição consolidada considerando todas as cidades pesquisadas e seus respectivos pesos eleitorais.
+            </p>
+            <div className="flex shrink-0 items-center gap-1">
+              <button
+                type="button"
+                onClick={() => setVisaoRanking('tabela')}
+                className={pillVisaoProjecaoClass(visaoRanking === 'tabela')}
+              >
+                Tabela
+              </button>
+              <button
+                type="button"
+                onClick={() => setVisaoRanking('barras')}
+                className={pillVisaoProjecaoClass(visaoRanking === 'barras')}
+              >
+                Barras
+              </button>
+            </div>
+          </div>
+          {visaoRanking === 'tabela' ? (
+            <div className="overflow-x-auto pr-1 sm:pr-2">
+              <ProjecaoRankingTabela ranking={projecao.ranking} />
+            </div>
+          ) : (
+            <ProjecaoRankingBarras ranking={projecao.ranking} />
+          )}
         </div>
       )}
-      <p className="text-[10px] leading-snug text-secondary">
-        A soma das projeções pode ultrapassar o eleitorado do recorte, pois cada candidato usa sua média isolada por
-        cidade (não é simulação de urna com votos mutuamente exclusivos). Use o ranking e o total para comparar ordens
-        de grandeza com a base real na eleição.
+      <p className="text-[10px] leading-snug text-text-muted">
+        A soma das projeções pode ultrapassar o eleitorado do recorte (médias isoladas por candidato). Use o ranking para
+        comparar ordens de grandeza com a base real.
       </p>
     </div>
   )
@@ -440,10 +430,7 @@ function TendenciaProjecaoEleitoradoPanel({
 export type TendenciaIntencaoExecutiveSectionProps = {
   model: ExecutiveTendenciaModel
   loading?: boolean
-  subtitulo: string
   ajusteNsPct: number
-  tipoGraficoLabel: string
-  onVerDetalhesCandidato?: (nome: string) => void
   /**
    * Candidato em foco para o mapa por município: marcadores ficam coloridos
    * pela posição dele em cada município. 1º lugar usa azul para destacar
@@ -453,19 +440,13 @@ export type TendenciaIntencaoExecutiveSectionProps = {
   candidatoFoco?: string | null
 }
 
-type ModoIntencaoVisao = 'geral' | 'projecao' | 'mapa'
-
 export function TendenciaIntencaoExecutiveSection({
   model,
   loading = false,
-  subtitulo,
   ajusteNsPct,
-  tipoGraficoLabel,
-  onVerDetalhesCandidato,
   candidatoFoco = null,
 }: TendenciaIntencaoExecutiveSectionProps) {
   const { appearance } = useTheme()
-  const [modoIntencaoVisao, setModoIntencaoVisao] = useState<ModoIntencaoVisao>('geral')
   const { resumo, cidadesIntencaoTop10, projecaoVotosEleitorado, temEstimulada, temEspontanea } = model
 
   /**
@@ -504,10 +485,6 @@ export function TendenciaIntencaoExecutiveSection({
     }
   }, [])
   const temDadosPainel = temEstimulada || temEspontanea
-  const nomeCandidatoClass =
-    appearance === 'light'
-      ? 'text-sm font-semibold leading-none text-text-primary transition-colors hover:text-text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-gold/35'
-      : 'bg-[linear-gradient(135deg,#22d3ee_0%,#2dd4bf_100%)] bg-clip-text text-sm font-semibold leading-none text-transparent transition-[filter] hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-400/35'
 
   const tituloBadge =
     temEspontanea && temEstimulada
@@ -517,153 +494,124 @@ export function TendenciaIntencaoExecutiveSection({
         : 'Estimulada'
 
   return (
-    <div id="painel-executivo-tendencia" className="bg-surface rounded-2xl border border-card p-4">
-      <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
-        <div className="min-w-0 flex flex-wrap items-center gap-x-2 gap-y-1">
-          <h2 className="text-base font-semibold text-text-primary">Tendência de intenção de voto</h2>
-          <span className="rounded-full border border-blue-200 bg-blue-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-blue-800">
-            {tituloBadge}
-          </span>
-          <span className="text-xs text-secondary">· {subtitulo}</span>
-        </div>
-        <div className="flex shrink-0 flex-wrap items-center gap-2">
+    <div id="painel-executivo-tendencia" className="flex flex-col gap-4">
+      <div className={PANORAMA_SECTION_CARD_CLASS}>
+        <div className="flex flex-wrap items-center gap-2">
           <span className="rounded-md border border-card bg-background px-2 py-1 text-[11px] text-text-primary tabular-nums">
             {resumo.periodoLabel}
           </span>
-          <span className="rounded-md border border-card bg-background px-2 py-1 text-[11px] text-secondary">
-            {tipoGraficoLabel}
+          <span className="rounded-full border border-blue-200 bg-blue-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-blue-800">
+            {tituloBadge}
           </span>
         </div>
+
+        <details className="mt-2 text-[11px] text-secondary">
+          <summary className="cursor-pointer text-secondary hover:text-text-primary select-none">
+            Metodologia (rankings, projeção e espontânea ajustada)
+          </summary>
+          <div className="mt-1.5 space-y-1.5 border-l-2 border-border-card/50 pl-2 leading-snug">
+            {temEspontanea && temEstimulada ? (
+              <p>
+                Espontânea ajustada: {ajusteNsPct}% do «Não sabe» redistribuído entre citados; estimulada em linha tracejada
+                para comparar.
+              </p>
+            ) : temEspontanea ? (
+              <p>
+                Espontânea ajustada: {ajusteNsPct}% do «Não sabe» redistribuído; branco/nulo inalterado.
+              </p>
+            ) : (
+              <p>
+                Sem espontânea neste recorte: séries e destaque usam a estimulada. Com espontânea cadastrada, o painel passa
+                a mostrar o ajuste ({ajusteNsPct}% do «Não sabe») e a comparação com a estimulada.
+              </p>
+            )}
+            <p>
+              Nos rankings municipais, cada linha é uma <strong>cidade</strong>. A quantidade de{' '}
+              <strong>pesquisas distintas</strong> (data + instituto + cidade) aparece no tooltip ao passar o mouse sobre a
+              cidade. As colunas 1º a 10º listam os candidatos com maior <strong>média de intenção</strong> naquele tipo
+              (exclui «Não sabe» e branco/nulo).
+            </p>
+            <p>
+              Na <strong>projeção estadual ponderada</strong>, somamos, por município com pesquisa, o produto{' '}
+              <strong>eleitorado oficial (TRE, cadastro local)</strong> × <strong>média de intenção %</strong> do candidato
+              naquele município — priorizando a estimulada na cidade quando existir; senão, a espontânea bruta. O total
+              serve para <strong>confrontar ordem de grandeza</strong> com a base na eleição (não é simulação de urna com
+              votos exclusivos entre candidatos).
+            </p>
+            <p className="text-text-muted">{projecaoVotosEleitorado.baseIntencaoLabel}</p>
+          </div>
+        </details>
       </div>
 
-      <details className="mt-2 text-[11px] text-secondary">
-        <summary className="cursor-pointer text-secondary hover:text-text-primary select-none">
-          Metodologia (visão geral, projeção e espontânea ajustada)
-        </summary>
-        <div className="mt-1.5 space-y-1.5 border-l-2 border-border-card/50 pl-2 leading-snug">
-          {temEspontanea && temEstimulada ? (
-            <p>
-              Espontânea ajustada: {ajusteNsPct}% do «Não sabe» redistribuído entre citados; estimulada em linha tracejada
-              para comparar.
-            </p>
-          ) : temEspontanea ? (
-            <p>
-              Espontânea ajustada: {ajusteNsPct}% do «Não sabe» redistribuído; branco/nulo inalterado.
-            </p>
-          ) : (
-            <p>
-              Sem espontânea neste recorte: séries e destaque usam a estimulada. Com espontânea cadastrada, o painel passa
-              a mostrar o ajuste ({ajusteNsPct}% do «Não sabe») e a comparação com a estimulada.
-            </p>
-          )}
-          <p>
-            Na <strong>visão geral</strong>, cada linha é uma <strong>cidade</strong> (ou o recorte estadual). Há dois
-            blocos: <strong>Espontânea</strong> e <strong>Estimulada</strong>. Em cada bloco, «Pesq.» conta só as{' '}
-            <strong>pesquisas distintas</strong> daquele tipo (data + instituto + cidade). As colunas 1º a 10º listam os
-            candidatos com maior <strong>média de intenção</strong> nas linhas daquele tipo na cidade (exclui «Não sabe»
-            e branco/nulo).
-          </p>
-          <p>
-            Na guia <strong>Projeção (eleitorado)</strong>, somamos, por município com pesquisa, o produto{' '}
-            <strong>eleitorado oficial (TRE, cadastro local)</strong> × <strong>média de intenção %</strong> do candidato
-            naquele município — priorizando a estimulada na cidade quando existir; senão, a espontânea bruta. O total
-            serve para <strong>confrontar ordem de grandeza</strong> com a base na eleição (não é simulação de urna com
-            votos exclusivos entre candidatos).
-          </p>
-        </div>
-      </details>
-
       {loading ? (
-        <div className="mt-4 flex h-32 items-center justify-center text-sm text-secondary">Carregando…</div>
+        <div className={cn(PANORAMA_SECTION_CARD_CLASS, 'flex h-32 items-center justify-center text-sm text-secondary')}>
+          Carregando…
+        </div>
       ) : !temDadosPainel ? (
-        <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50/80 px-3 py-2 text-sm text-amber-950">
+        <div className="rounded-xl border border-amber-200 bg-amber-50/80 px-4 py-3 text-sm text-amber-950">
           Não há pesquisas (estimulada ou espontânea) para os filtros atuais.
         </div>
       ) : (
         <>
-          <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
-            <p className="text-xs text-secondary">
-              {modoIntencaoVisao === 'geral'
-                ? 'Visão geral: por cidade — blocos Espontânea e Estimulada (Pesq. + top 10 por média em cada tipo).'
-                : modoIntencaoVisao === 'projecao'
-                  ? 'Projeção acumulada: média de intenção por município × eleitorado (TRE), ranking e totalizadores para bater com a base na eleição.'
-                  : candidatoFoco
-                    ? `Mapa por município: rótulo fixo mostra o 1º colocado; cor e número refletem a posição de ${candidatoFoco} no ranking de cada cidade. Clique para ver top 3.`
-                    : 'Mapa por município: rótulo fixo mostra o 1º colocado; marcadores mostram a quantidade de pesquisas. Selecione um candidato para colorir por posição.'}
+          <section>
+            <h3 className={PANORAMA_SECTION_TITLE_CLASS}>Visão territorial da disputa</h3>
+            <p className="mb-1 text-[11px] leading-relaxed text-text-muted">
+              Os rankings representam os candidatos dentro da faixa competitiva das vagas disponíveis na eleição
+              proporcional.
             </p>
-            <div
-              className="inline-flex shrink-0 rounded-lg border border-card bg-background/80 p-0.5"
-              role="group"
-              aria-label="Modo de visualização da intenção de voto"
-            >
-              <button
-                type="button"
-                aria-pressed={modoIntencaoVisao === 'geral'}
-                onClick={() => setModoIntencaoVisao('geral')}
-                className={`rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
-                  modoIntencaoVisao === 'geral'
-                    ? 'bg-background text-text-primary shadow-sm ring-1 ring-border-card'
-                    : 'text-secondary hover:bg-background/60 hover:text-text-primary'
-                }`}
-              >
-                Visão geral
-              </button>
-              <button
-                type="button"
-                aria-pressed={modoIntencaoVisao === 'projecao'}
-                onClick={() => setModoIntencaoVisao('projecao')}
-                className={`rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
-                  modoIntencaoVisao === 'projecao'
-                    ? 'bg-background text-text-primary shadow-sm ring-1 ring-border-card'
-                    : 'text-secondary hover:bg-background/60 hover:text-text-primary'
-                }`}
-              >
-                Projeção (eleitorado)
-              </button>
-              <button
-                type="button"
-                aria-pressed={modoIntencaoVisao === 'mapa'}
-                onClick={() => setModoIntencaoVisao('mapa')}
-                className={`rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
-                  modoIntencaoVisao === 'mapa'
-                    ? 'bg-background text-text-primary shadow-sm ring-1 ring-border-card'
-                    : 'text-secondary hover:bg-background/60 hover:text-text-primary'
-                }`}
-              >
-                Mapa por município
-              </button>
-            </div>
-          </div>
-
-          {modoIntencaoVisao === 'geral' ? (
-            <div className="mt-3">
-              {cidadesIntencaoTop10.length === 0 ? (
-                <p className="text-sm text-secondary">
+            <LegendaIndicadorTendencia />
+            {cidadesIntencaoTop10.length === 0 ? (
+              <div className={PANORAMA_PANEL_CARD_CLASS}>
+                <p className="flex min-h-0 flex-1 items-center justify-center text-sm text-secondary">
                   Não há linhas de pesquisa com intenção numérica para montar o resumo por cidade neste recorte.
                 </p>
-              ) : (
-                <TendenciaResumoTabelaCidadesIntencao
+              </div>
+            ) : (
+              <div className="grid items-start gap-4 xl:grid-cols-2">
+                <TendenciaResumoTipoIntencaoCard
+                  tipo="espontanea"
                   linhas={cidadesIntencaoTop10}
-                  onVerDetalhesCandidato={onVerDetalhesCandidato}
-                  nomeCandidatoClass={nomeCandidatoClass}
+                  temDadosTipo={temEspontanea}
                 />
-              )}
-            </div>
-          ) : modoIntencaoVisao === 'projecao' ? (
-            <TendenciaProjecaoEleitoradoPanel
-              projecao={projecaoVotosEleitorado}
-              onVerDetalhesCandidato={onVerDetalhesCandidato}
-              nomeCandidatoClass={nomeCandidatoClass}
-            />
-          ) : (
-            <div className="mt-3">
-              {cidadesIntencaoTop10.length === 0 ? (
-                <p className="text-sm text-secondary">
-                  Não há municípios com pesquisas registradas neste recorte para montar o mapa.
+                <TendenciaResumoTipoIntencaoCard
+                  tipo="estimulada"
+                  linhas={cidadesIntencaoTop10}
+                  temDadosTipo={temEstimulada}
+                />
+              </div>
+            )}
+          </section>
+
+          <section>
+            <div className="grid items-start gap-4 xl:grid-cols-2">
+              <div className="min-w-0">
+                <h3 className={PANORAMA_SECTION_TITLE_CLASS}>Projeção estadual ponderada</h3>
+                <p className="mb-3 text-[11px] leading-relaxed text-text-muted">
+                  Consolidação das pesquisas municipais ponderadas pelo eleitorado de cada cidade.
                 </p>
-              ) : (
-                <>
-                  <div className="flex flex-wrap items-center gap-3 rounded-lg border border-card bg-background/50 px-3 py-2 text-[11px] text-secondary">
+                <div className={PANORAMA_PANEL_CARD_CLASS}>
+                  <div className="min-h-0 flex-1 overflow-y-auto">
+                    <TendenciaProjecaoEleitoradoPanel projecao={projecaoVotosEleitorado} />
+                  </div>
+                </div>
+              </div>
+
+              <div className="min-w-0">
+                <h3 className={PANORAMA_SECTION_TITLE_CLASS}>Competitividade territorial</h3>
+                <p className="mb-3 text-[11px] leading-relaxed text-text-muted">
+                  Representação geográfica da posição dos candidatos em cada município pesquisado.
+                  {candidatoFoco
+                    ? ` Cor e número refletem a posição de ${candidatoFoco} no ranking de cada cidade.`
+                    : ' Selecione um candidato acima para colorir o mapa pela posição competitiva em cada município.'}
+                </p>
+                <div className={PANORAMA_PANEL_CARD_CLASS}>
+                  {cidadesIntencaoTop10.length === 0 ? (
+                    <p className="flex min-h-0 flex-1 items-center justify-center text-[11px] text-text-muted">
+                      Não há municípios com pesquisas registradas neste recorte para montar o mapa.
+                    </p>
+                  ) : (
+                    <>
+                      <div className="mb-2 flex shrink-0 flex-wrap items-center gap-x-2 gap-y-1 rounded-lg border border-[rgb(var(--color-border-tertiary)/0.55)] bg-background/50 px-2 py-1.5 text-[9px] text-text-muted">
                     {candidatoFoco ? (
                       <>
                         <span className="font-semibold uppercase tracking-wide text-text-primary">
@@ -671,23 +619,23 @@ export function TendenciaIntencaoExecutiveSection({
                         </span>
                         <span className="inline-flex items-center gap-1.5">
                           <span className="inline-block h-2.5 w-2.5 rounded-full" style={{ background: '#2563eb' }} />
-                          1º lugar (nosso candidato lidera)
+                          1º lugar · liderança local
                         </span>
                         <span className="inline-flex items-center gap-1.5">
                           <span className="inline-block h-2.5 w-2.5 rounded-full" style={{ background: '#65a30d' }} />
-                          Top 3
+                          Top 3 · zona altamente competitiva
                         </span>
                         <span className="inline-flex items-center gap-1.5">
                           <span className="inline-block h-2.5 w-2.5 rounded-full" style={{ background: '#f59e0b' }} />
-                          4º a 5º
+                          4º a 5º · competitividade intermediária
                         </span>
                         <span className="inline-flex items-center gap-1.5">
                           <span className="inline-block h-2.5 w-2.5 rounded-full" style={{ background: '#dc2626' }} />
-                          6º ou pior
+                          6º ou pior · baixa competitividade
                         </span>
                         <span className="inline-flex items-center gap-1.5">
                           <span className="inline-block h-2.5 w-2.5 rounded-full" style={{ background: 'rgba(148,163,184,0.55)' }} />
-                          Sem dados
+                          Sem dados · município sem pesquisa
                         </span>
                       </>
                     ) : (
@@ -719,7 +667,7 @@ export function TendenciaIntencaoExecutiveSection({
                     className={
                       mapaEmTelaCheia
                         ? 'relative h-screen w-screen overflow-hidden bg-background'
-                        : 'relative mt-3 h-[520px] w-full overflow-hidden rounded-xl border border-card bg-background'
+                        : 'relative min-h-0 flex-1 overflow-hidden rounded-lg border border-card bg-background'
                     }
                   >
                     <MapaIntencaoMunicipios
@@ -747,18 +695,18 @@ export function TendenciaIntencaoExecutiveSection({
                       )}
                     </button>
                   </div>
-                  <p className="mt-2 text-[10px] leading-snug text-secondary">
-                    O rótulo permanente mostra o 1º colocado do município (estimulada quando houver; senão, espontânea).
-                    Ao clicar em uma cidade, o popup mantém o top 3 e os valores espontâneos/estimulados já calculados
-                    na guia <strong>Visão geral</strong> (média % por candidato, exclui «Não sabe» e branco/nulo).
+                  <p className="mt-1.5 shrink-0 text-[10px] leading-snug text-text-muted">
+                    O mapa permite identificar áreas de concentração, continuidade territorial e zonas de influência
+                    eleitoral dos candidatos. Clique na cidade para ver o top 3 e detalhes.
                   </p>
                 </>
               )}
+                </div>
+              </div>
             </div>
-          )}
+          </section>
         </>
       )}
-
     </div>
   )
 }

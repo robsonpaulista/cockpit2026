@@ -48,10 +48,173 @@ export function chavePesquisaDistinta(p: PollExecutiveInput): string {
   return `${d}|${inst}|${cidadeChavePoll(p)}`
 }
 
+export type TendenciaPosicaoCandidato = 'subindo' | 'caindo' | 'estavel'
+
 export type CandidatoMediaNaCidade = {
   nome: string
   /** Média aritmética da intenção (%) nas linhas do candidato na cidade. */
   mediaPct: number
+  /**
+   * Tendência da posição nas últimas ondas de pesquisa do município (regressão linear).
+   * `null` quando não há ondas suficientes para estimar.
+   */
+  tendenciaPosicao?: TendenciaPosicaoCandidato | null
+  /** Quantas ondas distintas entraram no cálculo da tendência. */
+  ondasTendencia?: number
+  /** Força da tendência (0–1), para intensidade do heatmap. */
+  intensidadeTendencia?: number
+}
+
+/** Últimas N pesquisas distintas usadas na regressão de posição por município. */
+export const CIDADE_TENDENCIA_ONDAS_MAX = 5
+
+/** Mínimo de ondas no município para exibir seta de tendência. */
+export const CIDADE_TENDENCIA_MIN_ONDAS = 3
+
+/** Inclinação (posições por onda) abaixo disso = melhora; acima = queda; entre = estável. */
+export const CIDADE_TENDENCIA_SLOPE_LIMIAR = 0.2
+
+export function rotuloTendenciaPosicao(
+  tendencia: TendenciaPosicaoCandidato,
+  ondas: number
+): string {
+  const base = `Tendência nas últimas ${ondas} pesquisas distintas do município (regressão da posição no ranking).`
+  if (tendencia === 'subindo') {
+    return `${base} Melhora consistente — posição subindo.`
+  }
+  if (tendencia === 'caindo') {
+    return `${base} Queda consistente — posição caindo.`
+  }
+  return `${base} Posição estável.`
+}
+
+function linhaCandidatoValidaParaRanking(nome: string): boolean {
+  return !isNaoSabeOuNaoOpinaNome(nome) && !isBrancoNuloOuNenhumNome(nome)
+}
+
+function dataOrdenavelDaChavePesquisa(chave: string): string {
+  return chave.split('|')[0] ?? chave
+}
+
+/** Ranking por onda (pesquisa distinta), em ordem cronológica. */
+function rankingsPorOndaCronologicos(linhasTipo: PollExecutiveInput[]): Map<string, number>[] {
+  const porOnda = new Map<string, PollExecutiveInput[]>()
+  for (const q of linhasTipo) {
+    if (!Number.isFinite(q.intencao)) continue
+    if (!linhaCandidatoValidaParaRanking(q.candidato_nome)) continue
+    const chave = chavePesquisaDistinta(q)
+    const bucket = porOnda.get(chave) ?? []
+    bucket.push(q)
+    porOnda.set(chave, bucket)
+  }
+
+  const ondasOrdenadas = [...porOnda.entries()].sort(([a], [b]) => {
+    const da = dataOrdenavelDaChavePesquisa(a)
+    const db = dataOrdenavelDaChavePesquisa(b)
+    if (da !== db) return da.localeCompare(db)
+    return a.localeCompare(b)
+  })
+
+  return ondasOrdenadas.map(([, rows]) => {
+    const mediaPorCandidato = new Map<string, { sum: number; count: number }>()
+    for (const row of rows) {
+      const cur = mediaPorCandidato.get(row.candidato_nome) ?? { sum: 0, count: 0 }
+      cur.sum += row.intencao
+      cur.count += 1
+      mediaPorCandidato.set(row.candidato_nome, cur)
+    }
+    const ordenados = [...mediaPorCandidato.entries()]
+      .map(([nome, { sum, count }]) => ({
+        nome,
+        media: count > 0 ? sum / count : 0,
+      }))
+      .sort((a, b) =>
+        b.media !== a.media
+          ? b.media - a.media
+          : a.nome.localeCompare(b.nome, 'pt-BR', { sensitivity: 'base' })
+      )
+    const posicoes = new Map<string, number>()
+    ordenados.forEach((item, idx) => posicoes.set(item.nome, idx + 1))
+    return posicoes
+  })
+}
+
+function inclinacaoRegressaoLinear(valores: number[]): number {
+  const n = valores.length
+  if (n < 2) return 0
+  let sumX = 0
+  let sumY = 0
+  let sumXY = 0
+  let sumX2 = 0
+  for (let i = 0; i < n; i++) {
+    sumX += i
+    sumY += valores[i]!
+    sumXY += i * valores[i]!
+    sumX2 += i * i
+  }
+  const denom = n * sumX2 - sumX * sumX
+  if (denom === 0) return 0
+  return (n * sumXY - sumX * sumY) / denom
+}
+
+function posicaoCandidatoNaOnda(nome: string, ranking: Map<string, number>): number {
+  const direta = ranking.get(nome)
+  if (direta !== undefined) return direta
+  const maxPos = ranking.size > 0 ? Math.max(...ranking.values()) : 0
+  return maxPos + 1
+}
+
+function intensidadeTendenciaDeSlope(slope: number): number {
+  return Math.min(1, Math.abs(slope) / 1.2)
+}
+
+function tendenciaPosicaoDeSerie(
+  posicoes: number[]
+): { tendencia: TendenciaPosicaoCandidato; intensidade: number } {
+  const slope = inclinacaoRegressaoLinear(posicoes)
+  let tendencia: TendenciaPosicaoCandidato = 'estavel'
+  if (slope <= -CIDADE_TENDENCIA_SLOPE_LIMIAR) tendencia = 'subindo'
+  else if (slope >= CIDADE_TENDENCIA_SLOPE_LIMIAR) tendencia = 'caindo'
+  return { tendencia, intensidade: intensidadeTendenciaDeSlope(slope) }
+}
+
+function tendenciaPosicaoCandidatoNasOndas(
+  nome: string,
+  ondas: Map<string, number>[]
+): {
+  tendencia: TendenciaPosicaoCandidato
+  ondasUsadas: number
+  intensidade: number
+} | null {
+  if (ondas.length < CIDADE_TENDENCIA_MIN_ONDAS) return null
+  const recentes = ondas.slice(-CIDADE_TENDENCIA_ONDAS_MAX)
+  const serie = recentes.map((ranking) => posicaoCandidatoNaOnda(nome, ranking))
+  if (serie.length < CIDADE_TENDENCIA_MIN_ONDAS) return null
+  const { tendencia, intensidade } = tendenciaPosicaoDeSerie(serie)
+  return {
+    tendencia,
+    ondasUsadas: serie.length,
+    intensidade,
+  }
+}
+
+function enriquecerTopComTendencia(
+  top10: CandidatoMediaNaCidade[],
+  linhasTipo: PollExecutiveInput[]
+): CandidatoMediaNaCidade[] {
+  const ondas = rankingsPorOndaCronologicos(linhasTipo)
+  return top10.map((candidato) => {
+    const calc = tendenciaPosicaoCandidatoNasOndas(candidato.nome, ondas)
+    if (!calc) {
+      return { ...candidato, tendenciaPosicao: null, ondasTendencia: ondas.length }
+    }
+    return {
+      ...candidato,
+      tendenciaPosicao: calc.tendencia,
+      ondasTendencia: calc.ondasUsadas,
+      intensidadeTendencia: calc.intensidade,
+    }
+  })
 }
 
 /** Quantidade de posições exibidas no ranking por cidade (vagas típicas na eleição). */
@@ -93,7 +256,10 @@ function pesquisasDistintasELeaderboardTopN(
         : a.nome.localeCompare(b.nome, 'pt-BR', { sensitivity: 'base' })
     )
     .slice(0, CIDADE_INTENCAO_TOP_N)
-  return { pesquisasDistintas, top10 }
+  return {
+    pesquisasDistintas,
+    top10: enriquecerTopComTendencia(top10, linhasTipo),
+  }
 }
 
 /** Por cidade: pesquisas distintas e top N por média, separados entre espontânea e estimulada. */
