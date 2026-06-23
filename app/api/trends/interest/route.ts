@@ -5,11 +5,16 @@ import {
   buildGoogleTrendsSeries,
   buildTrendsChartData,
 } from '@/lib/google-trends-aggregate'
+import {
+  googleTrendsInterestDateRange,
+  normalizeGoogleTrendsInterestRows,
+} from '@/lib/google-trends-normalize-rows'
 import type { GoogleTrendsInterestRow, GoogleTrendsRelatedRow } from '@/lib/google-trends-types'
 import type { PoliticalActorWithTerms } from '@/lib/youtube-radar-types'
 import {
   googleTrendsTimeframeQueryKeys,
   normalizeGoogleTrendsTimeframe,
+  DEFAULT_GOOGLE_TRENDS_TIMEFRAME,
 } from '@/lib/google-trends-timeframe'
 
 export const dynamic = 'force-dynamic'
@@ -28,8 +33,7 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url)
     const geo = searchParams.get('geo')?.trim() || 'BR-PI'
     const timeframe =
-      normalizeGoogleTrendsTimeframe(searchParams.get('timeframe')) ??
-      normalizeGoogleTrendsTimeframe('today 3-m')
+      normalizeGoogleTrendsTimeframe(searchParams.get('timeframe')) ?? DEFAULT_GOOGLE_TRENDS_TIMEFRAME
     if (!timeframe) {
       return NextResponse.json({ error: 'timeframe inválido.' }, { status: 400 })
     }
@@ -106,10 +110,12 @@ export async function GET(request: Request) {
     }
 
     const typedActors = (actors ?? []) as PoliticalActorWithTerms[]
-    const rows = (interestRows ?? []) as GoogleTrendsInterestRow[]
+    const rowsRaw = (interestRows ?? []) as GoogleTrendsInterestRow[]
+    const rows = normalizeGoogleTrendsInterestRows(rowsRaw)
     const series = buildGoogleTrendsSeries(typedActors, rows)
     const compare = buildGoogleTrendsCompareRows(typedActors, rows, relatedRows)
     const chartData = buildTrendsChartData(series)
+    const { dateFrom, dateTo } = googleTrendsInterestDateRange(rows)
 
     const latestCollected = rows.reduce<string | null>((acc, r) => {
       if (!acc || r.collected_at > acc) return r.collected_at
@@ -125,6 +131,8 @@ export async function GET(request: Request) {
       chartData,
       geo,
       timeframe,
+      dateFrom,
+      dateTo,
       collectedAt: latestCollected,
       setupRequired: false,
     })

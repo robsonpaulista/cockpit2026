@@ -5,7 +5,12 @@ import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { Moon, Sun } from 'lucide-react'
 import { UserMenu } from './user-menu'
 import { useTheme } from '@/contexts/theme-context'
-import { MAPA_TDS_ROUTE_PREFIX, MOBILIZACAO_MAPA_DIGITAL_IG_ROUTE } from '@/lib/dashboard-mapa-futuristic-chrome'
+import { MAPA_TDS_ROUTE_PREFIX } from '@/lib/dashboard-mapa-futuristic-chrome'
+import { MONITORAMENTO_TAB_LIDERES } from '@/lib/monitoramento-lideres-route'
+import {
+  TERRITORIO_CAMPO_TAB_BASE,
+  TERRITORIO_CAMPO_TAB_VISITAS,
+} from '@/lib/territorio-campo-route'
 import { cn } from '@/lib/utils'
 import { useDashboardTopbarVisible } from '@/hooks/use-dashboard-topbar-visible'
 import { AppBrandTitle } from '@/components/app-brand-title'
@@ -14,9 +19,9 @@ import { isDashboardHomePath } from '@/lib/dashboard-home-chrome'
 const pathToTitle: Record<string, string> = {
   '/dashboard': 'Visão Geral',
   '/dashboard/narrativas': 'Estratégia',
-  '/dashboard/campo': 'Campo & Agenda',
+  '/dashboard/campo': 'Território & Campo · Visitas',
   '/dashboard/agenda': 'Agenda',
-  '/dashboard/territorio': 'Território & Base',
+  '/dashboard/territorio': 'Território & Campo',
   '/dashboard/territorio/mapa-tds': 'Mapa — Territórios de desenvolvimento',
   '/dashboard/chapas': 'Chapas',
   '/dashboard/chapas-estaduais': 'Chapas Estaduais',
@@ -26,7 +31,7 @@ const pathToTitle: Record<string, string> = {
   '/dashboard/noticias/monitoramento': 'Central de monitoramento',
   '/dashboard/mobilizacao': 'Mobilização',
   '/dashboard/mobilizacao/config': 'Mobilização · Config',
-  '/dashboard/mobilizacao/mapa-digital-ig': 'Mobilização · Mapa Exército Digital',
+  '/dashboard/mobilizacao/mapa-digital-ig': 'Central de monitoramento · Engajamento Líderes',
   '/dashboard/whatsapp': 'WhatsApp',
   '/dashboard/pesquisa': 'Pesquisa & Relato',
   '/dashboard/operacao': 'Operação & Equipe',
@@ -38,7 +43,15 @@ const pathToTitle: Record<string, string> = {
   '/dashboard/log-system': 'Log System',
 }
 
-function getPageTitle(pathname: string): string {
+function getPageTitle(pathname: string, tab: string | null, _view: string | null): string {
+  if (pathname === '/dashboard/noticias/monitoramento' && tab === MONITORAMENTO_TAB_LIDERES) {
+    return 'Central de monitoramento · Engajamento Líderes'
+  }
+  if (pathname === '/dashboard/territorio') {
+    if (tab === TERRITORIO_CAMPO_TAB_BASE) return 'Território & Campo · Base'
+    if (tab === TERRITORIO_CAMPO_TAB_VISITAS) return 'Território & Campo · Visitas'
+    return 'Território & Campo'
+  }
   if (pathname.startsWith('/dashboard/conteudo/')) {
     const rest = pathname.slice('/dashboard/conteudo/'.length)
     if (rest.startsWith('redes')) return 'Redes Sociais · Instagram'
@@ -64,14 +77,11 @@ export function DashboardHeader() {
   const searchParams = useSearchParams()
   const { theme, appearance, setAppearance } = useTheme()
   const p = pathname ?? ''
-  const mapaFuturisticShell =
-    p.startsWith(MAPA_TDS_ROUTE_PREFIX) || p.startsWith(MOBILIZACAO_MAPA_DIGITAL_IG_ROUTE)
-  const mapaFuturisticTituloContexto = p.startsWith(MOBILIZACAO_MAPA_DIGITAL_IG_ROUTE)
-    ? 'Mapa Exército Digital'
-    : p.startsWith(MAPA_TDS_ROUTE_PREFIX)
-      ? mapaTdsHeaderTitleFromSearch(searchParams.get('aba'))
-      : null
-  const pageTitle = mapaFuturisticTituloContexto ?? getPageTitle(pathname ?? '')
+  const mapaFuturisticShell = p.startsWith(MAPA_TDS_ROUTE_PREFIX)
+  const mapaFuturisticTituloContexto = p.startsWith(MAPA_TDS_ROUTE_PREFIX)
+    ? mapaTdsHeaderTitleFromSearch(searchParams.get('aba'))
+    : null
+  const pageTitle = mapaFuturisticTituloContexto ?? getPageTitle(pathname ?? '', searchParams.get('tab'), searchParams.get('view'))
 
   /** Link compartilhado com `tema=republicanos-claro` alinha aparência global para claro. */
   useEffect(() => {

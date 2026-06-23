@@ -5,7 +5,8 @@ import { useCallback, useEffect, useMemo } from 'react'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { useTheme } from '@/contexts/theme-context'
 import { sidebarPrimaryCTAButtonClass } from '@/lib/sidebar-menu-active-style'
-import { getMapaFuturisticChrome, MOBILIZACAO_MAPA_DIGITAL_IG_ROUTE } from '@/lib/dashboard-mapa-futuristic-chrome'
+import { getMapaFuturisticChrome } from '@/lib/dashboard-mapa-futuristic-chrome'
+import { MONITORAMENTO_LIDERES_HREF } from '@/lib/monitoramento-lideres-route'
 import { cn } from '@/lib/utils'
 
 const MapaTerritoriosDesenvolvimentoLeaflet = dynamic(
@@ -48,7 +49,7 @@ export default function MapaTdsTabsClient() {
     const p = new URLSearchParams(searchParams.toString())
     p.delete(ABA_QUERY)
     const q = p.toString()
-    router.replace(q ? `${MOBILIZACAO_MAPA_DIGITAL_IG_ROUTE}?${q}` : MOBILIZACAO_MAPA_DIGITAL_IG_ROUTE, {
+    router.replace(q ? `${MONITORAMENTO_LIDERES_HREF}&${q}` : MONITORAMENTO_LIDERES_HREF, {
       scroll: false,
     })
   }, [router, searchParams])

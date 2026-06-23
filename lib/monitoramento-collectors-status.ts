@@ -38,7 +38,8 @@ export function getMonitoramentoCollectorsStatus(): MonitoramentoCollectorsStatu
     trends: {
       runnerAvailable: trendsAvailable,
       message: trendsAvailable ? null : GOOGLE_TRENDS_RUNNER_UNAVAILABLE_MESSAGE,
-      localCommand: 'node scripts/collect-google-trends.mjs --geo BR-PI --timeframe "today 3-m"',
+      localCommand:
+        'node scripts/collect-google-trends.mjs --geo BR-PI --timeframe "today 1-m"  # 30 dias; --with-related para consultas/tópicos',
     },
     metaAds: {
       runnerAvailable: metaAdsAvailable,

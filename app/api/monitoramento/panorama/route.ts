@@ -3,9 +3,9 @@ import {
   buildMonitoramentoPanorama,
   buildTrendsCompareFromRows,
 } from '@/lib/monitoramento-panorama'
-import { googleTrendsTimeframeQueryKeys } from '@/lib/google-trends-timeframe'
+import { googleTrendsTimeframeQueryKeys, PANORAMA_GOOGLE_TRENDS_TIMEFRAME } from '@/lib/google-trends-timeframe'
+import { normalizeGoogleTrendsInterestRows } from '@/lib/google-trends-normalize-rows'
 import {
-  panoramaWindowCutoffDay,
   panoramaWindowCutoffIso,
 } from '@/lib/monitoramento-panorama-window'
 import type { GoogleNewsMentionWithActor } from '@/lib/google-news-types'
@@ -18,7 +18,7 @@ import type { PoliticalActorWithTerms, YoutubeMentionWithActor } from '@/lib/you
 export const dynamic = 'force-dynamic'
 
 const GEO = 'BR-PI'
-const TIMEFRAME = 'today 3-m'
+const TIMEFRAME = PANORAMA_GOOGLE_TRENDS_TIMEFRAME
 
 export async function GET() {
   try {
@@ -80,7 +80,6 @@ export async function GET() {
     const timeframeKeys = googleTrendsTimeframeQueryKeys(TIMEFRAME)
 
     const cutoffIso = panoramaWindowCutoffIso()
-    const cutoffDay = panoramaWindowCutoffDay()
 
     const [trendsRes, trendsRelatedRes, youtubeRes, newsRes, instagramRes, metaRes, collectLogRes, instagramLogRes] =
       await Promise.all([
@@ -143,8 +142,8 @@ export async function GET() {
       trendsRes.error &&
       (trendsRes.error.message.includes('does not exist') || trendsRes.error.code === '42P01')
         ? []
-        : ((trendsRes.data ?? []) as GoogleTrendsInterestRow[])
-    const trendsRows = trendsRowsAll.filter((r) => r.interest_date >= cutoffDay)
+        : normalizeGoogleTrendsInterestRows((trendsRes.data ?? []) as GoogleTrendsInterestRow[])
+    const trendsRows = trendsRowsAll
     if (trendsRes.error && trendsRowsAll.length === 0) setupRequired = true
 
     for (const r of trendsRows) timestamps.push(r.collected_at)

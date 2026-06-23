@@ -43,6 +43,10 @@ import {
   type VisitasCampoModo,
 } from '@/lib/agent/format-visitas-campo'
 import { isPrioridadeVisitasCampoQuery } from '@/lib/agent/detect-prioridade-visitas'
+import {
+  TERRITORIO_CAMPO_TAB_VISITAS,
+  territorioCampoHref,
+} from '@/lib/territorio-campo-route'
 import { formatPrioridadeVisitasJarvisReply } from '@/lib/agent/format-prioridade-visitas'
 import {
   buildSidebarNavigateReply,
@@ -730,7 +734,7 @@ export function buildNavigateAction(
     }
     return {
       type: 'navigate',
-      url: '/dashboard/campo',
+      url: territorioCampoHref(TERRITORIO_CAMPO_TAB_VISITAS),
       label: 'Ver Campo & Agenda',
     }
   }

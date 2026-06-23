@@ -166,8 +166,7 @@ function pageKeyForItem(id: string): string {
   if (
     id === 'mobilizacao-menu' ||
     id === 'mobilizacao-captacao' ||
-    id === 'mobilizacao-config' ||
-    id === 'mobilizacao-mapa-digital-ig'
+    id === 'mobilizacao-config'
   ) {
     return 'mobilizacao'
   }
@@ -621,6 +620,9 @@ export function Sidebar() {
           if (item.id === 'log-system') return isAdmin
           if (item.id === 'ficha-atendimento') {
             return canAccess('ficha-atendimento') || canAccess('territorio')
+          }
+          if (item.id === 'territorio') {
+            return canAccess('territorio') || canAccess('campo') || canAccess('agenda')
           }
           if (item.id === 'resumo-operacional') {
             return (

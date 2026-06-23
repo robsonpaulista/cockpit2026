@@ -24,6 +24,9 @@ function filterVisibleSidebarItems(
     if (item.id === 'ficha-atendimento') {
       return canAccess('ficha-atendimento') || canAccess('territorio')
     }
+    if (item.id === 'territorio') {
+      return canAccess('territorio') || canAccess('campo') || canAccess('agenda')
+    }
     if (item.id === 'resumo-operacional') {
       return (
         canAccess('resumo-operacional') ||

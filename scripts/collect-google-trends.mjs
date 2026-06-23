@@ -5,7 +5,8 @@
  *
  * Uso:
  *   node scripts/collect-google-trends.mjs
- *   node scripts/collect-google-trends.mjs --geo BR-PI --timeframe "today 3-m"
+ *   node scripts/collect-google-trends.mjs --geo BR-PI --timeframe "today 1-m"
+ *   node scripts/collect-google-trends.mjs --with-related   # inclui consultas/tópicos (lento)
  */
 
 import fs from 'fs'
@@ -17,14 +18,23 @@ import { createSupabaseClient as createSupabase } from './lib/supabase-client.mj
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const ROOT = path.resolve(__dirname, '..')
 
-const KEYWORDS_PER_BATCH = 5
+const KEYWORDS_PER_BATCH = 3
 const MAX_RELATED_PER_BUCKET = 10
-const MAX_ATTEMPTS = 5
+const MAX_ATTEMPTS = 4
 const INITIAL_BACKOFF_MS = 8_000
+const RATE_LIMIT_BACKOFF_MS = 25_000
+const MAX_BACKOFF_MS = 90_000
+const PAUSE_BETWEEN_RELATED_MS = 5_000
+const PAUSE_AFTER_BATCH_MS = 3_000
+const PAUSE_BETWEEN_ACTORS_MS = 5_000
 const CHROME_UA =
   'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36'
 
-const TIMEFRAME_ALIASES = { 'today 7-d': 'now 7-d' }
+const TIMEFRAME_ALIASES = {
+  'today 7-d': 'today 1-m',
+  'now 7-d': 'today 1-m',
+  'today 3-m': 'today 1-m',
+}
 
 function loadEnvLocal() {
   const envPath = path.join(ROOT, '.env.local')
@@ -47,19 +57,22 @@ function sleep(ms) {
 }
 
 function normalizeTimeframe(raw) {
-  const v = (raw ?? 'today 3-m').trim()
+  const v = (raw ?? 'today 1-m').trim()
   return TIMEFRAME_ALIASES[v] ?? v
 }
 
 function parseArgs() {
   const args = process.argv.slice(2)
   let geo = 'BR-PI'
-  let timeframe = 'today 3-m'
+  let timeframe = 'today 1-m'
+  let skipRelated = true
   for (let i = 0; i < args.length; i++) {
     if (args[i] === '--geo' && args[i + 1]) geo = args[++i]
     if (args[i] === '--timeframe' && args[i + 1]) timeframe = args[++i]
+    if (args[i] === '--skip-related') skipRelated = true
+    if (args[i] === '--with-related') skipRelated = false
   }
-  return { geo, timeframe: normalizeTimeframe(timeframe) }
+  return { geo, timeframe: normalizeTimeframe(timeframe), skipRelated }
 }
 
 function isRetryable(error) {
@@ -90,6 +103,17 @@ function interestDateFromPoint(time, formattedTime) {
   throw new Error(`Data Trends inválida: ${time}`)
 }
 
+function isRateLimitError(error) {
+  const msg = error instanceof Error ? error.message : String(error)
+  if (/429|rate.?limit/i.test(msg)) return true
+  if (error && typeof error === 'object') {
+    const e = error
+    if (e.status === 429) return true
+    if (e.code === 'RATE_LIMIT_ERROR' || e._tag === 'RateLimitError') return true
+  }
+  return false
+}
+
 function makeTrendsClient() {
   return createTrendsClient({
     hl: 'pt-BR',
@@ -97,9 +121,16 @@ function makeTrendsClient() {
     timeoutMs: 120_000,
     userAgent: CHROME_UA,
     cookieStore: new MemoryCookieStore(),
-    retries: { maxRetries: 3, baseDelayMs: 4_000, maxDelayMs: 30_000 },
-    rateLimit: { maxConcurrent: 1, minDelayMs: 6_000 },
+    retries: { maxRetries: 2, baseDelayMs: 8_000, maxDelayMs: 45_000 },
+    rateLimit: { maxConcurrent: 1, minDelayMs: 4_000 },
   })
+}
+
+/** Um cliente por execução — preserva cookies/sessão entre chamadas. */
+let sharedTrendsClient = null
+function getTrendsClient() {
+  if (!sharedTrendsClient) sharedTrendsClient = makeTrendsClient()
+  return sharedTrendsClient
 }
 
 function labelFromRelatedItem(item, kind) {
@@ -150,11 +181,13 @@ async function withRetry(label, fn) {
       if (!isRetryable(error) || attempt >= MAX_ATTEMPTS) {
         throw error instanceof Error ? error : new Error(String(error))
       }
+      const rateLimited = isRateLimitError(error)
+      const waitMs = rateLimited ? Math.max(backoffMs, RATE_LIMIT_BACKOFF_MS) : backoffMs
       console.error(
         `[collect-google-trends] retry ${attempt}/${MAX_ATTEMPTS} (${label}): ${error instanceof Error ? error.message : error}`
       )
-      await sleep(backoffMs)
-      backoffMs = Math.min(Math.round(backoffMs * 1.5), 60_000)
+      await sleep(waitMs + Math.floor(Math.random() * 3_000))
+      backoffMs = Math.min(Math.round(backoffMs * (rateLimited ? 2 : 1.5)), MAX_BACKOFF_MS)
     }
   }
   throw new Error(`Falha após ${MAX_ATTEMPTS} tentativas (${label}).`)
@@ -163,7 +196,7 @@ async function withRetry(label, fn) {
 async function fetchBatchInterest(batch, geo, timeframe, collectedAt) {
   const keywords = batch.map((a) => a.name)
   return withRetry(keywords.join(', '), async () => {
-    const trends = makeTrendsClient()
+    const trends = getTrendsClient()
     const result = await trends.interestOverTime({
       keywords,
       geo,
@@ -195,7 +228,7 @@ async function fetchBatchInterest(batch, geo, timeframe, collectedAt) {
 
 async function fetchActorRelated(actor, geo, timeframe, collectedAt) {
   return withRetry(`${actor.name} (related)`, async () => {
-    const trends = makeTrendsClient()
+    const trends = getTrendsClient()
     const input = {
       keywords: [actor.name],
       geo,
@@ -203,10 +236,9 @@ async function fetchActorRelated(actor, geo, timeframe, collectedAt) {
       hl: 'pt-BR',
       tz: 180,
     }
-    const [queries, topics] = await Promise.all([
-      trends.relatedQueries(input),
-      trends.relatedTopics(input),
-    ])
+    const queries = await trends.relatedQueries(input)
+    await sleep(PAUSE_BETWEEN_RELATED_MS)
+    const topics = await trends.relatedTopics(input)
 
     return [
       ...mapRelatedRows(queries.data.top ?? [], 'query', 'top', actor, geo, timeframe, collectedAt),
@@ -219,7 +251,7 @@ async function fetchActorRelated(actor, geo, timeframe, collectedAt) {
 
 async function main() {
   loadEnvLocal()
-  const { geo, timeframe } = parseArgs()
+  const { geo, timeframe, skipRelated } = parseArgs()
 
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY
@@ -281,9 +313,14 @@ async function main() {
     } catch (e) {
       errors.push(`${batch.map((a) => a.name).join(', ')}: ${e instanceof Error ? e.message : 'Erro'}`)
     }
+    if (i + KEYWORDS_PER_BATCH < actors.length) {
+      await sleep(PAUSE_AFTER_BATCH_MS)
+    }
   }
 
-  for (const actor of actors) {
+  if (!skipRelated) {
+  for (let actorIndex = 0; actorIndex < actors.length; actorIndex++) {
+    const actor = actors[actorIndex]
     try {
       const relatedRows = await fetchActorRelated(actor, geo, timeframe, collectedAt)
       const { error: deleteError } = await supabase
@@ -309,6 +346,10 @@ async function main() {
     } catch (e) {
       errors.push(`${actor.name} (related): ${e instanceof Error ? e.message : 'Erro'}`)
     }
+    if (actorIndex < actors.length - 1) {
+      await sleep(PAUSE_BETWEEN_ACTORS_MS)
+    }
+  }
   }
 
   if (rowsUpserted === 0 && errors.length > 0) {

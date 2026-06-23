@@ -1,10 +1,15 @@
 import { createAdminClient } from '@/lib/supabase/admin'
 import type { GoogleTrendsCollectResult, GoogleTrendsTimeframe } from '@/lib/google-trends-types'
 
-const KEYWORDS_PER_BATCH = 5
+const KEYWORDS_PER_BATCH = 3
 const MAX_RELATED_PER_BUCKET = 10
-const MAX_ATTEMPTS = 5
+const MAX_ATTEMPTS = 4
 const INITIAL_BACKOFF_MS = 8_000
+const RATE_LIMIT_BACKOFF_MS = 25_000
+const MAX_BACKOFF_MS = 90_000
+const PAUSE_BETWEEN_RELATED_MS = 5_000
+const PAUSE_AFTER_BATCH_MS = 3_000
+const PAUSE_BETWEEN_ACTORS_MS = 5_000
 const CHROME_UA =
   'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36'
 
@@ -93,6 +98,25 @@ async function loadTrendsearch() {
   }
 }
 
+function isRateLimitError(error: unknown): boolean {
+  const msg = error instanceof Error ? error.message : String(error)
+  if (/429|rate.?limit/i.test(msg)) return true
+  if (error && typeof error === 'object') {
+    const e = error as { status?: number; code?: string; _tag?: string }
+    if (e.status === 429) return true
+    if (e.code === 'RATE_LIMIT_ERROR' || e._tag === 'RateLimitError') return true
+  }
+  return false
+}
+
+type TrendsClient = Awaited<ReturnType<typeof makeTrendsClient>>
+let sharedTrendsClient: TrendsClient | null = null
+
+async function getTrendsClient(): Promise<TrendsClient> {
+  if (!sharedTrendsClient) sharedTrendsClient = await makeTrendsClient()
+  return sharedTrendsClient
+}
+
 async function makeTrendsClient() {
   const { createTrendsClient, MemoryCookieStore } = await loadTrendsearch()
   return createTrendsClient({
@@ -101,8 +125,8 @@ async function makeTrendsClient() {
     timeoutMs: 120_000,
     userAgent: CHROME_UA,
     cookieStore: new MemoryCookieStore(),
-    retries: { maxRetries: 3, baseDelayMs: 4_000, maxDelayMs: 30_000 },
-    rateLimit: { maxConcurrent: 1, minDelayMs: 6_000 },
+    retries: { maxRetries: 2, baseDelayMs: 8_000, maxDelayMs: 45_000 },
+    rateLimit: { maxConcurrent: 1, minDelayMs: 4_000 },
   })
 }
 
@@ -162,11 +186,13 @@ async function withRetry<T>(label: string, fn: () => Promise<T>): Promise<T> {
       if (!isRetryable(error) || attempt >= MAX_ATTEMPTS) {
         throw error instanceof Error ? error : new Error(String(error))
       }
+      const rateLimited = isRateLimitError(error)
+      const waitMs = rateLimited ? Math.max(backoffMs, RATE_LIMIT_BACKOFF_MS) : backoffMs
       console.error(
         `[google-trends-collect] retry ${attempt}/${MAX_ATTEMPTS} (${label}): ${error instanceof Error ? error.message : error}`
       )
-      await sleep(backoffMs)
-      backoffMs = Math.min(Math.round(backoffMs * 1.5), 60_000)
+      await sleep(waitMs + Math.floor(Math.random() * 3_000))
+      backoffMs = Math.min(Math.round(backoffMs * (rateLimited ? 2 : 1.5)), MAX_BACKOFF_MS)
     }
   }
   throw new Error(`Falha após ${MAX_ATTEMPTS} tentativas (${label}).`)
@@ -180,7 +206,7 @@ async function fetchBatchInterest(
 ) {
   const keywords = batch.map((a) => a.name)
   return withRetry(keywords.join(', '), async () => {
-    const trends = await makeTrendsClient()
+    const trends = await getTrendsClient()
     const result = await trends.interestOverTime({
       keywords,
       geo,
@@ -217,7 +243,7 @@ async function fetchActorRelated(
   collectedAt: string
 ) {
   return withRetry(`${actor.name} (related)`, async () => {
-    const trends = await makeTrendsClient()
+    const trends = await getTrendsClient()
     const input = {
       keywords: [actor.name],
       geo,
@@ -225,10 +251,9 @@ async function fetchActorRelated(
       hl: 'pt-BR',
       tz: 180,
     }
-    const [queries, topics] = await Promise.all([
-      trends.relatedQueries(input),
-      trends.relatedTopics(input),
-    ])
+    const queries = await trends.relatedQueries(input)
+    await sleep(PAUSE_BETWEEN_RELATED_MS)
+    const topics = await trends.relatedTopics(input)
 
     return [
       ...mapRelatedRows((queries.data.top ?? []) as unknown as RelatedItem[], 'query', 'top', actor, geo, timeframe, collectedAt),
@@ -242,8 +267,9 @@ async function fetchActorRelated(
 export async function runGoogleTrendsCollect(options: {
   geo: string
   timeframe: GoogleTrendsTimeframe
+  skipRelated?: boolean
 }): Promise<GoogleTrendsCollectResult> {
-  const { geo, timeframe } = options
+  const { geo, timeframe, skipRelated = true } = options
   const supabase = createAdminClient()
 
   const { data: actors, error: actorsError } = await supabase
@@ -294,9 +320,14 @@ export async function runGoogleTrendsCollect(options: {
     } catch (e) {
       errors.push(`${batch.map((a) => a.name).join(', ')}: ${e instanceof Error ? e.message : 'Erro'}`)
     }
+    if (i + KEYWORDS_PER_BATCH < actors.length) {
+      await sleep(PAUSE_AFTER_BATCH_MS)
+    }
   }
 
-  for (const actor of actors) {
+  if (!skipRelated) {
+  for (let actorIndex = 0; actorIndex < actors.length; actorIndex++) {
+    const actor = actors[actorIndex]
     try {
       const relatedRows = await fetchActorRelated(actor, geo, timeframe, collectedAt)
       const { error: deleteError } = await supabase
@@ -322,6 +353,10 @@ export async function runGoogleTrendsCollect(options: {
     } catch (e) {
       errors.push(`${actor.name} (related): ${e instanceof Error ? e.message : 'Erro'}`)
     }
+    if (actorIndex < actors.length - 1) {
+      await sleep(PAUSE_BETWEEN_ACTORS_MS)
+    }
+  }
   }
 
   if (rowsUpserted === 0 && errors.length > 0) {

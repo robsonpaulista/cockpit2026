@@ -18,6 +18,9 @@ function canAccessPageKey(
   if (key === 'ficha-atendimento') {
     return canAccess('ficha-atendimento') || canAccess('territorio')
   }
+  if (key === 'territorio' || key === 'campo' || key === 'agenda') {
+    return canAccess('territorio') || canAccess('campo') || canAccess('agenda')
+  }
   if (key === 'resumo-operacional') {
     return (
       canAccess('resumo-operacional') ||

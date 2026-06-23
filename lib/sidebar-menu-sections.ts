@@ -3,7 +3,8 @@ import type { SidebarMenuItemConfig } from '@/lib/sidebar-nav-routes'
 /** Primeiro item de cada seção na sidebar (rótulo da coluna kanban). */
 export const SIDEBAR_SECTION_START_ID: Record<string, string> = {
   home: 'Painel',
-  campo: 'Território',
+  territorio: 'Território',
+  agenda: 'Território',
   'conteudo-menu': 'Comunicação',
   'mobilizacao-menu': 'Operação',
   juridico: 'Institucional',
@@ -17,7 +18,7 @@ export const DASHBOARD_KANBAN_CARD_HINTS: Record<string, string> = {
   narrativas: 'Cenários, metas e diretrizes',
   agenda: 'Compromissos e cronograma',
   campo: 'Visitas e ações presenciais',
-  territorio: 'Lideranças, expectativa e base por município',
+  territorio: 'Lideranças, expectativa territorial e visitas de campo',
   'ficha-atendimento': 'Tetos MAC/PAP e emendas por município',
   pesquisa: 'Intenção de voto, relatórios e tendências',
   chapas: 'Simulador de chapa federal — projeção de vagas',
@@ -25,8 +26,7 @@ export const DASHBOARD_KANBAN_CARD_HINTS: Record<string, string> = {
   'resumo-eleicoes-principal': 'Resumo por cidade — expectativa, lideranças e pesquisas',
   'resumo-eleicoes-secao': 'Votação por seção eleitoral e histórico local',
   'conteudo-redes': 'Métricas, posts e performance no Instagram',
-  'noticias-menu': 'Panorama, Google Alerts, YouTube, Trends e redes',
-  'mobilizacao-mapa-digital-ig': 'Engajamento e cobertura dos líderes no Instagram',
+  'noticias-menu': 'Panorama, Google Alerts, YouTube, Trends, Instagram e engajamento dos líderes',
   noticias: 'Mídia, crises e notícias em destaque',
   'mobilizacao-menu': 'Ativação de base e coordenação',
   whatsapp: 'Disparos e comunicação direta',

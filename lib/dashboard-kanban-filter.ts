@@ -11,7 +11,7 @@ const KANBAN_HIDDEN_ITEM_IDS = new Set([
 const KANBAN_ALLOWED_CHILDREN: Record<string, readonly string[]> = {
   'resumo-eleicoes-menu': ['resumo-eleicoes-principal', 'resumo-eleicoes-secao'],
   'conteudo-menu': ['conteudo-redes'],
-  'mobilizacao-menu': ['mobilizacao-mapa-digital-ig'],
+  'mobilizacao-menu': [],
 }
 
 /** Menus cujo filho permitido vira card avulso (um ou mais). */

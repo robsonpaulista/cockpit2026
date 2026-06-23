@@ -7,21 +7,24 @@ import { TrendsInterestChart } from '@/components/trends-radar/trends-interest-c
 import type {
   GoogleTrendsCompareRow,
   GoogleTrendsSeries,
-  GoogleTrendsTimeframe,
 } from '@/lib/google-trends-types'
-import { cn } from '@/lib/utils'
+import {
+  DEFAULT_GOOGLE_TRENDS_TIMEFRAME,
+  GOOGLE_TRENDS_WINDOW_LABEL,
+} from '@/lib/google-trends-timeframe'
 import { readResponseJson } from '@/lib/parse-response-json'
 
-const TIMEFRAME_OPTIONS: { value: GoogleTrendsTimeframe; label: string }[] = [
-  { value: 'now 7-d', label: '7 dias' },
-  { value: 'today 1-m', label: '1 mês' },
-  { value: 'today 3-m', label: '3 meses' },
-]
-
 const GEO = 'BR-PI'
+const TIMEFRAME = DEFAULT_GOOGLE_TRENDS_TIMEFRAME
+
+function formatShortDate(iso: string): string {
+  return new Date(`${iso}T12:00:00`).toLocaleDateString('pt-BR', {
+    day: '2-digit',
+    month: 'short',
+  })
+}
 
 export function TrendsRadarPanel() {
-  const [timeframe, setTimeframe] = useState<GoogleTrendsTimeframe>('today 3-m')
   const [series, setSeries] = useState<GoogleTrendsSeries[]>([])
   const [compare, setCompare] = useState<GoogleTrendsCompareRow[]>([])
   const [chartData, setChartData] = useState<Array<Record<string, string | number>>>([])
@@ -31,6 +34,8 @@ export function TrendsRadarPanel() {
   const [error, setError] = useState('')
   const [collectMessage, setCollectMessage] = useState('')
   const [collectedAt, setCollectedAt] = useState<string | null>(null)
+  const [dateFrom, setDateFrom] = useState<string | null>(null)
+  const [dateTo, setDateTo] = useState<string | null>(null)
   const [runnerAvailable, setRunnerAvailable] = useState(true)
   const [runnerMessage, setRunnerMessage] = useState<string | null>(null)
 
@@ -39,7 +44,7 @@ export function TrendsRadarPanel() {
     setError('')
     try {
       const res = await fetch(
-        `/api/trends/interest?geo=${encodeURIComponent(GEO)}&timeframe=${encodeURIComponent(timeframe)}`,
+        `/api/trends/interest?geo=${encodeURIComponent(GEO)}&timeframe=${encodeURIComponent(TIMEFRAME)}`,
         { cache: 'no-store' }
       )
       const j = await readResponseJson<{
@@ -49,6 +54,8 @@ export function TrendsRadarPanel() {
         chartData?: Array<Record<string, string | number>>
         setupRequired?: boolean
         collectedAt?: string | null
+        dateFrom?: string | null
+        dateTo?: string | null
       }>(res)
       if (!res.ok) throw new Error(j.error ?? 'Falha ao carregar Trends.')
 
@@ -57,16 +64,62 @@ export function TrendsRadarPanel() {
       setCompare(j.compare ?? [])
       setChartData(j.chartData ?? [])
       setCollectedAt(j.collectedAt ?? null)
+      setDateFrom(j.dateFrom ?? null)
+      setDateTo(j.dateTo ?? null)
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Erro ao carregar Trends.')
     } finally {
       setLoading(false)
     }
-  }, [timeframe])
+  }, [])
 
   useEffect(() => {
     void carregar()
   }, [carregar])
+
+  const pollCollectUntilDone = useCallback(async () => {
+    const maxMs = 180_000
+    const started = Date.now()
+
+    while (Date.now() - started < maxMs) {
+      const res = await fetch('/api/trends/status', { cache: 'no-store' })
+      const j = await readResponseJson<{
+        collectInProgress?: boolean
+        lastCollectResult?: {
+          terms?: number
+          termsSucceeded?: number
+          rowsUpserted?: number
+          relatedRowsUpserted?: number
+          errors?: string[]
+        } | null
+        lastCollectError?: string | null
+      }>(res)
+
+      if (!j.collectInProgress) {
+        if (j.lastCollectError) throw new Error(j.lastCollectError)
+        const r = j.lastCollectResult
+        if (r) {
+          const ok = r.termsSucceeded ?? 0
+          const total = r.terms ?? 0
+          const related = r.relatedRowsUpserted ?? 0
+          setCollectMessage(
+            ok === total
+              ? `Coleta concluída: ${ok} nomes · ${r.rowsUpserted ?? 0} pontos${
+                  related > 0 ? ` · ${related} itens relacionados` : ''
+                }`
+              : `Coleta parcial: ${ok}/${total} nomes · ${r.rowsUpserted ?? 0} pontos${
+                  related > 0 ? ` · ${related} relacionados` : ''
+                }${r.errors?.length ? `. Falhas: ${r.errors.join('; ')}` : ''}`
+          )
+        }
+        return
+      }
+
+      await new Promise((resolve) => setTimeout(resolve, 2_000))
+    }
+
+    throw new Error('Tempo esgotado na coleta do Google Trends.')
+  }, [])
 
   useEffect(() => {
     void (async () => {
@@ -76,17 +129,30 @@ export function TrendsRadarPanel() {
           runnerAvailable?: boolean
           runnerMessage?: string | null
           setupRequired?: boolean
+          collectInProgress?: boolean
         }>(res)
-        if (res.ok) {
-          setRunnerAvailable(j.runnerAvailable !== false)
-          setRunnerMessage(j.runnerMessage ?? null)
-          if (j.setupRequired) setSetupRequired(true)
+        if (!res.ok) return
+
+        setRunnerAvailable(j.runnerAvailable !== false)
+        setRunnerMessage(j.runnerMessage ?? null)
+        if (j.setupRequired) setSetupRequired(true)
+
+        if (j.collectInProgress) {
+          setCollecting(true)
+          try {
+            await pollCollectUntilDone()
+            await carregar()
+          } catch (e) {
+            setError(e instanceof Error ? e.message : 'Erro na coleta.')
+          } finally {
+            setCollecting(false)
+          }
         }
       } catch {
         /* ignore */
       }
     })()
-  }, [])
+  }, [carregar, pollCollectUntilDone])
 
   const coletar = useCallback(async () => {
     setCollecting(true)
@@ -96,15 +162,12 @@ export function TrendsRadarPanel() {
       const res = await fetch('/api/trends/collect', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ geo: GEO, timeframe }),
+        body: JSON.stringify({ geo: GEO, timeframe: TIMEFRAME, skipRelated: true }),
       })
       const j = await readResponseJson<{
         error?: string
-        terms?: number
-        termsSucceeded?: number
-        rowsUpserted?: number
-        relatedRowsUpserted?: number
-        errors?: string[]
+        started?: boolean
+        collectInProgress?: boolean
         runnerAvailable?: boolean
       }>(res)
       if (res.status === 503) {
@@ -112,23 +175,14 @@ export function TrendsRadarPanel() {
       }
       if (!res.ok) throw new Error(j.error ?? 'Falha na coleta.')
 
-      const ok = j.termsSucceeded ?? 0
-      const total = j.terms ?? 0
-      const related = j.relatedRowsUpserted ?? 0
-      setCollectMessage(
-        ok === total
-          ? `Coleta concluída: ${ok} nomes · ${j.rowsUpserted ?? 0} pontos · ${related} itens relacionados`
-          : `Coleta parcial: ${ok}/${total} nomes · ${j.rowsUpserted ?? 0} pontos · ${related} relacionados${
-              j.errors?.length ? `. Falhas: ${j.errors.join('; ')}` : ''
-            }`
-      )
+      await pollCollectUntilDone()
       await carregar()
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Erro na coleta.')
     } finally {
       setCollecting(false)
     }
-  }, [timeframe, carregar])
+  }, [carregar, pollCollectUntilDone])
 
   return (
     <div className="flex flex-col gap-4">
@@ -149,22 +203,9 @@ export function TrendsRadarPanel() {
       ) : null}
 
       <div className="flex flex-wrap items-center gap-2 rounded-xl border border-[rgb(var(--color-border-tertiary)/0.85)] bg-bg-surface px-4 py-3">
-        <span className="text-xs text-text-muted">Janela:</span>
-        {TIMEFRAME_OPTIONS.map((opt) => (
-          <button
-            key={opt.value}
-            type="button"
-            onClick={() => setTimeframe(opt.value)}
-            className={cn(
-              'rounded-full border px-3 py-1 text-xs font-medium transition-colors',
-              timeframe === opt.value
-                ? 'border-[rgb(var(--color-primary))] bg-[#E6F1FB] text-[rgb(var(--color-primary))]'
-                : 'border-[rgb(var(--color-border-secondary)/0.85)] text-text-secondary hover:bg-bg-app'
-            )}
-          >
-            {opt.label}
-          </button>
-        ))}
+        <span className="rounded-full border border-[rgb(var(--color-primary))] bg-[#E6F1FB] px-3 py-1 text-xs font-medium text-[rgb(var(--color-primary))]">
+          {GOOGLE_TRENDS_WINDOW_LABEL}
+        </span>
         <span className="text-xs text-text-muted">· Piauí ({GEO})</span>
         <button
           type="button"
@@ -183,8 +224,8 @@ export function TrendsRadarPanel() {
 
       {collecting ? (
         <p className="text-xs text-text-muted">
-          Comparando candidatos e coletando consultas/tópicos relacionados. Se houver rate limit, o servidor
-          aguarda e tenta de novo — pode levar alguns minutos.
+          Comparando interesse de busca dos candidatos (~1 min). Se houver rate limit, o servidor aguarda e
+          tenta de novo.
         </p>
       ) : null}
 
@@ -197,6 +238,12 @@ export function TrendsRadarPanel() {
             hour: '2-digit',
             minute: '2-digit',
           })}
+          {dateFrom && dateTo ? (
+            <>
+              {' '}
+              · Período exibido: {formatShortDate(dateFrom)} – {formatShortDate(dateTo)}
+            </>
+          ) : null}
         </p>
       ) : null}
       {collectMessage ? <p className="text-sm text-[#3B6D11]">{collectMessage}</p> : null}

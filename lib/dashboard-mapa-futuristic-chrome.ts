@@ -1,13 +1,12 @@
 import { cn } from '@/lib/utils'
+import { MOBILIZACAO_MAPA_DIGITAL_IG_ROUTE } from '@/lib/monitoramento-lideres-route'
 
 export const MAPA_TDS_ROUTE_PREFIX = '/dashboard/territorio/mapa-tds'
-export const MOBILIZACAO_MAPA_DIGITAL_IG_ROUTE = '/dashboard/mobilizacao/mapa-digital-ig'
+export { MOBILIZACAO_MAPA_DIGITAL_IG_ROUTE }
 
 export function pathnameUsesMapaFuturisticShell(pathname: string | null | undefined): boolean {
   if (!pathname) return false
-  return (
-    pathname.startsWith(MAPA_TDS_ROUTE_PREFIX) || pathname.startsWith(MOBILIZACAO_MAPA_DIGITAL_IG_ROUTE)
-  )
+  return pathname.startsWith(MAPA_TDS_ROUTE_PREFIX)
 }
 
 export type MapaFuturisticChrome = {

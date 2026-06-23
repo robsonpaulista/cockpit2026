@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { getGoogleTrendsCollectState } from '@/lib/google-trends-collect'
 import {
   GOOGLE_TRENDS_RUNNER_UNAVAILABLE_MESSAGE,
   isGoogleTrendsRunnerAvailable,
@@ -19,6 +20,7 @@ export async function GET() {
     }
 
     const runnerAvailable = isGoogleTrendsRunnerAvailable()
+    const collectState = getGoogleTrendsCollectState()
 
     const { error: tableError } = await supabase.from('google_trends_interest').select('id').limit(1)
     if (tableError) {
@@ -28,6 +30,7 @@ export async function GET() {
           runnerAvailable,
           runnerMessage: runnerAvailable ? null : GOOGLE_TRENDS_RUNNER_UNAVAILABLE_MESSAGE,
           setupRequired: true,
+          ...collectState,
         })
       }
       throw new Error(tableError.message)
@@ -37,6 +40,7 @@ export async function GET() {
       runnerAvailable,
       runnerMessage: runnerAvailable ? null : GOOGLE_TRENDS_RUNNER_UNAVAILABLE_MESSAGE,
       setupRequired: false,
+      ...collectState,
     })
   } catch (e) {
     const msg = e instanceof Error ? e.message : 'Erro ao verificar status Trends'

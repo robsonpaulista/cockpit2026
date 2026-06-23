@@ -1,8 +1,8 @@
 'use client'
 
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import dynamic from 'next/dynamic'
-import { Maximize2, Minimize2 } from 'lucide-react'
+import { Info, Maximize2, Minimize2 } from 'lucide-react'
 import { useTheme } from '@/contexts/theme-context'
 import { cn } from '@/lib/utils'
 import { AnimatedBar } from '@/components/animated-bar'
@@ -46,6 +46,136 @@ const PANORAMA_TABLE_TH_STICKY = cn(
 
 function formatPctTopo(value: number): string {
   return value.toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })
+}
+
+function MetodologiaIntencaoPopover({
+  rotulo,
+  tituloPopup,
+  children,
+}: {
+  rotulo: string
+  tituloPopup: string
+  children: ReactNode
+}) {
+  const [aberto, setAberto] = useState<boolean>(false)
+  const containerRef = useRef<HTMLSpanElement>(null)
+
+  useEffect(() => {
+    if (!aberto) return
+    const fecharAoClicarFora = (event: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+        setAberto(false)
+      }
+    }
+    const fecharComEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setAberto(false)
+    }
+    document.addEventListener('mousedown', fecharAoClicarFora)
+    document.addEventListener('keydown', fecharComEscape)
+    return () => {
+      document.removeEventListener('mousedown', fecharAoClicarFora)
+      document.removeEventListener('keydown', fecharComEscape)
+    }
+  }, [aberto])
+
+  return (
+    <span ref={containerRef} className="relative inline-flex items-center gap-0.5">
+      <span>{rotulo}</span>
+      <button
+        type="button"
+        onClick={() => setAberto((v) => !v)}
+        className="inline-flex rounded-full p-0.5 text-blue-700/80 transition-colors hover:bg-blue-100 hover:text-blue-900"
+        aria-label={`Metodologia: ${tituloPopup}`}
+        aria-expanded={aberto}
+      >
+        <Info className="h-3 w-3" aria-hidden />
+      </button>
+      {aberto ? (
+        <div
+          role="dialog"
+          aria-label={tituloPopup}
+          className="absolute left-0 top-full z-50 mt-1.5 w-[min(20rem,calc(100vw-2rem))] rounded-lg border border-card bg-bg-surface p-3 text-left text-[11px] font-normal normal-case leading-snug tracking-normal text-text-primary shadow-lg"
+        >
+          <p className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-text-muted">{tituloPopup}</p>
+          <div className="space-y-2">{children}</div>
+        </div>
+      ) : null}
+    </span>
+  )
+}
+
+function MetodologiaRankingsProjecao({
+  baseIntencaoLabel,
+}: {
+  baseIntencaoLabel: string
+}) {
+  return (
+    <>
+      <p>
+        Nos rankings municipais, cada linha é uma <strong>cidade</strong>. A quantidade de{' '}
+        <strong>pesquisas distintas</strong> (data + instituto + cidade) aparece no tooltip ao passar o mouse sobre a
+        cidade. As colunas 1º a 10º listam os candidatos com maior <strong>média de intenção</strong> naquele tipo
+        (exclui «Não sabe» e branco/nulo).
+      </p>
+      <p>
+        Na <strong>projeção estadual ponderada</strong>, somamos, por município com pesquisa, o produto{' '}
+        <strong>eleitorado oficial (TRE, cadastro local)</strong> × <strong>média de intenção %</strong> do candidato
+        naquele município — priorizando a estimulada na cidade quando existir; senão, a espontânea bruta. O total serve
+        para <strong>confrontar ordem de grandeza</strong> com a base na eleição (não é simulação de urna com votos
+        exclusivos entre candidatos).
+      </p>
+      <p className="text-text-muted">{baseIntencaoLabel}</p>
+    </>
+  )
+}
+
+function BadgeMetodologiaIntencao({
+  temEspontanea,
+  temEstimulada,
+  ajusteNsPct,
+  baseIntencaoLabel,
+}: {
+  temEspontanea: boolean
+  temEstimulada: boolean
+  ajusteNsPct: number
+  baseIntencaoLabel: string
+}) {
+  return (
+    <span className="inline-flex flex-wrap items-center gap-x-1 gap-y-0.5 rounded-full border border-blue-200 bg-blue-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-blue-800">
+      {temEspontanea ? (
+        <MetodologiaIntencaoPopover rotulo="Espontânea ajustada" tituloPopup="Espontânea ajustada">
+          {temEstimulada ? (
+            <p>
+              {ajusteNsPct}% do «Não sabe» redistribuído entre os citados; branco/nulo inalterado. No gráfico temporal, a
+              estimulada aparece em linha tracejada para comparar.
+            </p>
+          ) : (
+            <p>
+              {ajusteNsPct}% do «Não sabe» redistribuído entre os citados; branco/nulo inalterado.
+            </p>
+          )}
+          <MetodologiaRankingsProjecao baseIntencaoLabel={baseIntencaoLabel} />
+        </MetodologiaIntencaoPopover>
+      ) : null}
+      {temEspontanea && temEstimulada ? <span className="font-normal text-blue-700/70">+</span> : null}
+      {temEstimulada ? (
+        <MetodologiaIntencaoPopover rotulo="estimulada" tituloPopup="Estimulada">
+          {temEspontanea ? (
+            <p>
+              Intenção com cartela de nomes. No gráfico, linha sólida para espontânea ajustada e tracejada para
+              estimulada, para comparar os dois tipos no mesmo período.
+            </p>
+          ) : (
+            <p>
+              Sem espontânea neste recorte: séries e destaque usam a estimulada. Com espontânea cadastrada, o painel
+              passa a mostrar o ajuste ({ajusteNsPct}% do «Não sabe») e a comparação com a estimulada.
+            </p>
+          )}
+          <MetodologiaRankingsProjecao baseIntencaoLabel={baseIntencaoLabel} />
+        </MetodologiaIntencaoPopover>
+      ) : null}
+    </span>
+  )
 }
 
 function primeiroNomeCandidato(nome: string): string {
@@ -486,13 +616,6 @@ export function TendenciaIntencaoExecutiveSection({
   }, [])
   const temDadosPainel = temEstimulada || temEspontanea
 
-  const tituloBadge =
-    temEspontanea && temEstimulada
-      ? 'Espontânea ajustada + estimulada'
-      : temEspontanea
-        ? 'Espontânea ajustada'
-        : 'Estimulada'
-
   return (
     <div id="painel-executivo-tendencia" className="flex flex-col gap-4">
       <div className={PANORAMA_SECTION_CARD_CLASS}>
@@ -500,47 +623,13 @@ export function TendenciaIntencaoExecutiveSection({
           <span className="rounded-md border border-card bg-background px-2 py-1 text-[11px] text-text-primary tabular-nums">
             {resumo.periodoLabel}
           </span>
-          <span className="rounded-full border border-blue-200 bg-blue-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-blue-800">
-            {tituloBadge}
-          </span>
+          <BadgeMetodologiaIntencao
+            temEspontanea={temEspontanea}
+            temEstimulada={temEstimulada}
+            ajusteNsPct={ajusteNsPct}
+            baseIntencaoLabel={projecaoVotosEleitorado.baseIntencaoLabel}
+          />
         </div>
-
-        <details className="mt-2 text-[11px] text-secondary">
-          <summary className="cursor-pointer text-secondary hover:text-text-primary select-none">
-            Metodologia (rankings, projeção e espontânea ajustada)
-          </summary>
-          <div className="mt-1.5 space-y-1.5 border-l-2 border-border-card/50 pl-2 leading-snug">
-            {temEspontanea && temEstimulada ? (
-              <p>
-                Espontânea ajustada: {ajusteNsPct}% do «Não sabe» redistribuído entre citados; estimulada em linha tracejada
-                para comparar.
-              </p>
-            ) : temEspontanea ? (
-              <p>
-                Espontânea ajustada: {ajusteNsPct}% do «Não sabe» redistribuído; branco/nulo inalterado.
-              </p>
-            ) : (
-              <p>
-                Sem espontânea neste recorte: séries e destaque usam a estimulada. Com espontânea cadastrada, o painel passa
-                a mostrar o ajuste ({ajusteNsPct}% do «Não sabe») e a comparação com a estimulada.
-              </p>
-            )}
-            <p>
-              Nos rankings municipais, cada linha é uma <strong>cidade</strong>. A quantidade de{' '}
-              <strong>pesquisas distintas</strong> (data + instituto + cidade) aparece no tooltip ao passar o mouse sobre a
-              cidade. As colunas 1º a 10º listam os candidatos com maior <strong>média de intenção</strong> naquele tipo
-              (exclui «Não sabe» e branco/nulo).
-            </p>
-            <p>
-              Na <strong>projeção estadual ponderada</strong>, somamos, por município com pesquisa, o produto{' '}
-              <strong>eleitorado oficial (TRE, cadastro local)</strong> × <strong>média de intenção %</strong> do candidato
-              naquele município — priorizando a estimulada na cidade quando existir; senão, a espontânea bruta. O total
-              serve para <strong>confrontar ordem de grandeza</strong> com a base na eleição (não é simulação de urna com
-              votos exclusivos entre candidatos).
-            </p>
-            <p className="text-text-muted">{projecaoVotosEleitorado.baseIntencaoLabel}</p>
-          </div>
-        </details>
       </div>
 
       {loading ? (

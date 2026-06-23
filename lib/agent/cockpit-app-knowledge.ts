@@ -36,25 +36,26 @@ Se o usuário pedir **número/lista pontual**, diga: «Para o dado exato, use na
 - IA Cockpit: só navegação + contagem bandeiras do HUD. **Sem consulta de dados via voz hoje.**
 - Claude: sem dados — oriente abrir a página.
 
+### Território & Campo · /dashboard/territorio
+Hub com abas **Panorama**, **Base** (lideranças/planilha) e **Visitas** (Campo & Agenda — visitas de campo, check-in, mapa de presença).
+- Panorama: KPIs e resumo de visitas.
+- Base: planilha Google Sheets — lideranças, expectativa votos 2026, promessas, KPIs, mapas, demandas por cidade.
+- Visitas: /dashboard/territorio?tab=visitas — conteúdo da antiga página Campo & Agenda.
+- Rota legada /dashboard/campo redireciona para Visitas.
+- API Base: POST /api/territorio/expectativa-por-cidade, POST /api/territorio/google-sheets, GET /api/territorio/config
+- API Visitas: GET /api/campo/agendas, /api/campo/cities, POST /api/dashboard/territorios-frios
+- Regex Base: «expectativa em [cidade]», «lideranças em [cidade]», «demandas em [cidade]».
+- Regex/Groq Visitas: «últimas visitas», prioridade visitas, «cidade que mais visitei».
+- Groq: consultar_visitas_campo.
+- **Diagnóstico territorial → Claude** (cruzar expectativa, lideranças, pesquisas, gaps).
+- Claude gather: expectativa-por-cidade + pesquisas + visitas + demandas + prioridade visitas do município.
+
 ### Agenda · /dashboard/agenda
-- Google Calendar + presença/check-in em eventos.
+- Google Calendar + presença/check-in em eventos (página separada, não faz parte do hub Território & Campo).
 - API: GET /api/agenda/events, /api/agenda/google-calendar
 - Regex/Groq: «agenda de hoje», «compromissos de amanhã», «agenda em [cidade]».
+- Groq: consultar_agendas.
 - Claude: não substitui lista de compromissos.
-
-### Campo & Agenda · /dashboard/campo
-- Visitas de campo, check-in, mapa de presença, agendas locais.
-- API: GET /api/campo/agendas, /api/campo/cities, POST /api/dashboard/territorios-frios
-- Regex: «últimas visitas», «visitas em [mês]», «cidade que mais visitei», prioridade visitas.
-- Groq: consultar_visitas_campo, consultar_agendas.
-- Claude gather: /api/campo/agendas + prioridade (territorios-frios) em visitas/campo/diagnóstico territorial.
-
-### Território & Base · /dashboard/territorio
-- Planilha Google Sheets: lideranças, expectativa votos 2026, promessas, KPIs, mapas, demandas por cidade.
-- API: POST /api/territorio/expectativa-por-cidade, POST /api/territorio/google-sheets, GET /api/territorio/config
-- Regex: «expectativa em [cidade]» (só números), «lideranças em [cidade]», «demandas em [cidade]».
-- **Diagnóstico territorial → Claude** (cruzar expectativa, lideranças, pesquisas, gaps — não só total de votos).
-- Claude gather: expectativa-por-cidade + pesquisas + visitas + demandas + prioridade visitas do município.
 
 ### Mapa dos TDs · /dashboard/territorio/mapa-tds
 - Visualização por Território de Desenvolvimento (TD).

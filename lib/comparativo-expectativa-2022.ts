@@ -100,14 +100,38 @@ export function filterComparativoExpectativa2022Lista(
 
 export type CenarioExpectativaComparativo = 'legado' | 'aferido' | 'promessa'
 
+/** Mesmo cenário padrão da aba Base: «Anterior 2026». */
+export const CENARIO_EXPECTATIVA_ANTERIOR_2026: CenarioExpectativaComparativo = 'legado'
+
+export interface ExpectativaPorCidadeResumo {
+  expectativaVotos: number
+  promessaVotos: number
+  expectativaLegadoVotos: number
+}
+
+export function pickExpectativaComparativo(
+  summary: ExpectativaPorCidadeResumo,
+  cenario: CenarioExpectativaComparativo = CENARIO_EXPECTATIVA_ANTERIOR_2026
+): number {
+  switch (cenario) {
+    case 'aferido':
+      return Math.round(summary.expectativaVotos || 0)
+    case 'promessa':
+      return Math.round(summary.promessaVotos || 0)
+    case 'legado':
+    default:
+      return Math.round(summary.expectativaLegadoVotos || 0)
+  }
+}
+
 export function labelCenarioExpectativaComparativo(cenario: CenarioExpectativaComparativo): string {
   switch (cenario) {
     case 'aferido':
-      return 'Expectativa Jadyel 2026 (Aferido)'
+      return 'Aferido 2026'
     case 'promessa':
-      return 'Promessa da Liderança 2026'
+      return 'Prometido 2026'
     default:
-      return 'Expectativa de Votos 2026 (Anterior)'
+      return 'Anterior 2026'
   }
 }
 

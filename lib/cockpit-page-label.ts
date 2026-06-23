@@ -8,6 +8,7 @@ export function getCockpitPageLabel(pathname: string): string {
   if (p.startsWith('/dashboard/resumo-eleicoes/historico')) return 'Hist. federal'
   if (p.startsWith('/dashboard/territorio/mapa-tds')) return 'Mapa TDs'
   if (p.startsWith('/dashboard/mobilizacao/mapa-digital-ig')) return 'Engajamento Líderes'
+  if (p.startsWith('/dashboard/noticias/monitoramento')) return 'Monitoramento'
   if (p.startsWith('/dashboard/conteudo/redes')) return 'Instagram'
   if (p.startsWith('/dashboard/conteudo/obras')) return 'Obras cards'
   if (p.startsWith('/dashboard/conteudo/agenda')) return 'Agenda campo'
@@ -20,9 +21,9 @@ export function getCockpitPageLabel(pathname: string): string {
   const exact: Record<string, string> = {
     '/dashboard': 'Visão',
     '/dashboard/narrativas': 'Estratégia',
-    '/dashboard/campo': 'Campo',
+    '/dashboard/campo': 'Campo & Agenda',
     '/dashboard/agenda': 'Agenda',
-    '/dashboard/territorio': 'Território',
+    '/dashboard/territorio': 'Terr. & Campo',
     '/dashboard/ficha-atendimento': 'Ficha',
     '/dashboard/chapas': 'Federal',
     '/dashboard/chapas-estaduais': 'Estadual',

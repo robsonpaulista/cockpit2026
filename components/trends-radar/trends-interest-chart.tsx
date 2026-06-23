@@ -48,7 +48,7 @@ export function TrendsInterestChart({ series, chartData, loading = false }: Tren
     <div className="rounded-xl border border-[rgb(var(--color-border-tertiary)/0.85)] bg-bg-surface p-4">
       <div className="mb-3">
         <h2 className="text-sm font-medium text-text-primary">Interesse de busca ao longo do tempo</h2>
-        <p className="text-xs text-text-muted">Índice relativo 0–100 · Google Trends</p>
+        <p className="text-xs text-text-muted">Índice relativo 0–100 · Google Trends · últimos 30 dias</p>
       </div>
       <div className="h-[280px] w-full">
         <ResponsiveContainer width="100%" height="100%">

@@ -8,6 +8,7 @@ import {
   Megaphone,
   Newspaper,
   Radar,
+  Users,
   Youtube,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -20,6 +21,7 @@ export type MonitoramentoTab =
   | 'google-news'
   | 'meta-ads'
   | 'instagram'
+  | 'lideres'
 
 const TABS: { id: MonitoramentoTab; label: string; icon: typeof Youtube }[] = [
   { id: 'geral', label: 'Panorama', icon: LayoutGrid },
@@ -29,6 +31,7 @@ const TABS: { id: MonitoramentoTab; label: string; icon: typeof Youtube }[] = [
   { id: 'instagram', label: 'Instagram', icon: Instagram },
   { id: 'meta-ads', label: 'Meta Ads', icon: Megaphone },
   { id: 'trends', label: 'Google Trends', icon: LineChart },
+  { id: 'lideres', label: 'Eng. líderes', icon: Users },
 ]
 
 export type MonitoramentoPanoramaMeta = {

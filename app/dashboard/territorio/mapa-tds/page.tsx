@@ -1,7 +1,7 @@
 import { Suspense } from 'react'
 import { redirect } from 'next/navigation'
 import MapaTdsTabsClient from './mapa-tds-tabs-client'
-import { MOBILIZACAO_MAPA_DIGITAL_IG_ROUTE } from '@/lib/dashboard-mapa-futuristic-chrome'
+import { MONITORAMENTO_LIDERES_HREF } from '@/lib/monitoramento-lideres-route'
 
 function MapaTdsSuspenseFallback() {
   return (
@@ -20,7 +20,7 @@ export default function MapaTerritoriosDesenvolvimentoPage({
     const q = new URLSearchParams()
     if (searchParams.tema) q.set('tema', searchParams.tema)
     const s = q.toString()
-    redirect(s ? `${MOBILIZACAO_MAPA_DIGITAL_IG_ROUTE}?${s}` : MOBILIZACAO_MAPA_DIGITAL_IG_ROUTE)
+    redirect(s ? `${MONITORAMENTO_LIDERES_HREF}&${s}` : MONITORAMENTO_LIDERES_HREF)
   }
 
   return (

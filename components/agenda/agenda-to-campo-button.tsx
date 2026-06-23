@@ -10,6 +10,10 @@ import {
   type CampoAgendaType,
   type CampoCityOption,
 } from '@/lib/agenda/calendar-to-campo'
+import {
+  TERRITORIO_CAMPO_TAB_VISITAS,
+  territorioCampoHref,
+} from '@/lib/territorio-campo-route'
 
 export interface CampoGoogleLink {
   id: string
@@ -143,7 +147,7 @@ export function AgendaToCampoButton({ event, linked, onLinked }: AgendaToCampoBu
   if (linked) {
     return (
       <Link
-        href="/dashboard/campo"
+        href={territorioCampoHref(TERRITORIO_CAMPO_TAB_VISITAS)}
         className="inline-flex items-center gap-1.5 rounded-lg border border-status-success/40 bg-status-success/10 px-3 py-1.5 text-sm font-medium text-status-success transition-colors hover:bg-status-success/15"
         title="Abrir Campo & Agenda"
       >

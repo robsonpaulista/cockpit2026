@@ -74,6 +74,10 @@ import {
 } from '@/lib/agent/jarvis-wake-word'
 import { extractCityNameFromQuery, isInvalidCityCandidate } from '@/lib/agent/city-extract'
 import { isCampoVisitasQuery } from '@/lib/agent/detect-visitas-campo'
+import {
+  TERRITORIO_CAMPO_TAB_VISITAS,
+  territorioCampoHref,
+} from '@/lib/territorio-campo-route'
 import { isPlanoVisitasCampoQuery } from '@/lib/agent/detect-plano-visitas'
 import { isPrioridadeVisitasCampoQuery } from '@/lib/agent/detect-prioridade-visitas'
 import { resolveVisitasCampoReply, type CampoAgendaRow } from '@/lib/agent/format-visitas-campo'
@@ -3093,7 +3097,7 @@ export function AIAgent({
           type: 'navigate',
           url: isPrioridadeVisitasCampoQuery(query)
             ? '/dashboard/resumo-operacional'
-            : '/dashboard/campo',
+            : territorioCampoHref(TERRITORIO_CAMPO_TAB_VISITAS),
           label: isPrioridadeVisitasCampoQuery(query)
             ? 'Ver Resumo Operacional'
             : 'Ver Campo & Agenda',

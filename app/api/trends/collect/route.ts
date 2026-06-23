@@ -1,9 +1,8 @@
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { createClient } from '@/lib/supabase/server'
-import { collectGoogleTrends } from '@/lib/google-trends-collect'
-import type { GoogleTrendsTimeframe } from '@/lib/google-trends-types'
-import { normalizeGoogleTrendsTimeframe } from '@/lib/google-trends-timeframe'
+import { startGoogleTrendsCollect } from '@/lib/google-trends-collect'
+import { normalizeGoogleTrendsTimeframe, DEFAULT_GOOGLE_TRENDS_TIMEFRAME } from '@/lib/google-trends-timeframe'
 import {
   GoogleTrendsRunnerUnavailableError,
   GOOGLE_TRENDS_RUNNER_UNAVAILABLE_MESSAGE,
@@ -11,7 +10,6 @@ import {
 } from '@/lib/serverless-runtime'
 
 export const dynamic = 'force-dynamic'
-export const maxDuration = 300
 
 const timeframeSchema = z
   .string()
@@ -27,7 +25,9 @@ const timeframeSchema = z
 
 const bodySchema = z.object({
   geo: z.string().trim().min(2).max(12).optional().default('BR-PI'),
-  timeframe: timeframeSchema.optional().default('today 3-m' satisfies GoogleTrendsTimeframe),
+  timeframe: timeframeSchema.optional().default(DEFAULT_GOOGLE_TRENDS_TIMEFRAME),
+  /** Padrão true: só interesse comparativo (~1 min). Use false para consultas/tópicos relacionados (lento). */
+  skipRelated: z.boolean().optional().default(true),
 })
 
 export async function POST(request: Request) {
@@ -42,19 +42,23 @@ export async function POST(request: Request) {
     }
 
     const body = bodySchema.parse(await request.json().catch(() => ({})))
-    const result = await collectGoogleTrends({
+    const started = startGoogleTrendsCollect({
       geo: body.geo,
       timeframe: body.timeframe,
+      skipRelated: body.skipRelated,
     })
+
+    if (started.status === 'already_running') {
+      return NextResponse.json({ ok: true, started: false, collectInProgress: true })
+    }
 
     return NextResponse.json({
       ok: true,
-      geo: result.geo ?? body.geo,
-      timeframe: result.timeframe ?? body.timeframe,
-      terms: result.terms ?? 0,
-      termsSucceeded: result.termsSucceeded ?? 0,
-      rowsUpserted: result.rowsUpserted ?? 0,
-      errors: result.errors ?? [],
+      started: true,
+      collectInProgress: true,
+      geo: body.geo,
+      timeframe: body.timeframe,
+      skipRelated: body.skipRelated,
     })
   } catch (e) {
     const msg = e instanceof Error ? e.message : 'Erro na coleta Google Trends'
@@ -69,7 +73,7 @@ export async function POST(request: Request) {
 export async function GET() {
   return NextResponse.json({
     geo: 'BR-PI',
-    defaultTimeframe: 'today 3-m' satisfies GoogleTrendsTimeframe,
+    defaultTimeframe: DEFAULT_GOOGLE_TRENDS_TIMEFRAME,
     provider: 'trendsearch',
     runnerAvailable: isGoogleTrendsRunnerAvailable(),
     runnerMessage: isGoogleTrendsRunnerAvailable() ? null : GOOGLE_TRENDS_RUNNER_UNAVAILABLE_MESSAGE,

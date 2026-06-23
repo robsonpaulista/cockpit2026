@@ -11,7 +11,7 @@ export const DASHBOARD_KANBAN_SECTIONS: ReadonlyArray<{
   {
     id: 'comunicacao',
     label: 'Comunicação',
-    itemIds: ['conteudo-redes', 'noticias-menu', 'mobilizacao-mapa-digital-ig', 'whatsapp'],
+    itemIds: ['conteudo-redes', 'noticias-menu', 'whatsapp'],
   },
   {
     id: 'eleicoes',
@@ -21,7 +21,7 @@ export const DASHBOARD_KANBAN_SECTIONS: ReadonlyArray<{
   {
     id: 'atendimentos',
     label: 'Atendimentos',
-    itemIds: ['agenda', 'campo', 'territorio', 'resumo-eleicoes-principal'],
+    itemIds: ['territorio', 'resumo-eleicoes-principal'],
   },
   {
     id: 'administracao',

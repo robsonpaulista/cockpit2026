@@ -6,8 +6,7 @@ export function pageKeyForSidebarItem(id: string): string {
   if (
     id === 'mobilizacao-menu' ||
     id === 'mobilizacao-captacao' ||
-    id === 'mobilizacao-config' ||
-    id === 'mobilizacao-mapa-digital-ig'
+    id === 'mobilizacao-config'
   ) {
     return 'mobilizacao'
   }

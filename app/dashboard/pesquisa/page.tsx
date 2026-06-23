@@ -713,11 +713,6 @@ export default function PesquisaPage() {
   const filterSelectClass =
     'appearance-none rounded-[99px] border border-[rgb(var(--color-border-secondary)/0.85)] bg-transparent py-1 pl-2.5 pr-7 text-[11.5px] text-text-primary focus:outline-none focus:ring-2 focus:ring-[rgb(var(--color-primary)/0.25)]'
 
-  const emptyGraficoMessage =
-    polls.length === 0
-      ? 'Nenhuma pesquisa cadastrada'
-      : 'Nenhum registro com os filtros atuais (incluindo região).'
-
   const barraFiltrosPesquisa = (
     <div
       id="filtros"
@@ -840,58 +835,68 @@ export default function PesquisaPage() {
     </div>
   )
 
+  const emptyGraficoMessage =
+    polls.length === 0
+      ? 'Nenhuma pesquisa cadastrada'
+      : 'Nenhum registro com os filtros atuais (incluindo região).'
+
+  const seletorCandidatoPadrao = (
+    <div className="relative inline-flex max-w-xs items-center">
+      <select
+        value={candidatoPadrao}
+        onChange={(e) => {
+          const novoCandidato = e.target.value
+          setCandidatoPadrao(novoCandidato)
+          localStorage.setItem('candidatoPadraoPesquisa', novoCandidato)
+        }}
+        className="appearance-none rounded-[99px] border border-[rgb(var(--color-border-secondary)/0.85)] bg-transparent py-1 pl-2.5 pr-7 text-[13px] font-medium text-text-primary transition-colors hover:border-[rgb(var(--color-primary))] focus:outline-none focus:ring-2 focus:ring-[rgb(var(--color-primary)/0.25)]"
+      >
+        <option value="">Selecione um candidato</option>
+        {candidatosDisponiveis.map((candidato) => (
+          <option key={candidato} value={candidato}>
+            {candidato}
+          </option>
+        ))}
+      </select>
+      <IconChevronDown
+        className="pointer-events-none absolute right-2.5 h-[11px] w-[11px] text-text-secondary"
+        stroke={1.75}
+        aria-hidden
+      />
+    </div>
+  )
+
+  const barraAcoesCadastradas = (
+    <div className="flex flex-row flex-wrap items-center gap-3 rounded-xl border border-[rgb(var(--color-border-tertiary)/0.85)] bg-bg-surface px-4 py-2.5">
+      <Link
+        href={hrefResumoEleicoes}
+        className="inline-flex items-center gap-[5px] rounded-[10px] border border-[rgb(var(--color-border-secondary)/0.85)] bg-transparent px-2 py-[5px] text-[12px] text-text-secondary transition-colors hover:bg-bg-app"
+      >
+        <IconArrowLeft className="h-[13px] w-[13px] shrink-0" stroke={1.75} aria-hidden />
+        Resumo Eleições
+      </Link>
+
+      <span className="text-[12px] text-text-muted">Candidato para resumo:</span>
+      {seletorCandidatoPadrao}
+
+      <button
+        type="button"
+        onClick={() => {
+          setEditingPoll(null)
+          setShowModal(true)
+        }}
+        className="ml-auto inline-flex items-center gap-1.5 rounded-[10px] border-none bg-[rgb(var(--color-primary))] px-3 py-1.5 text-[12px] font-medium text-white transition-colors hover:bg-[rgb(var(--color-primary-hover))]"
+      >
+        <IconPlus className="h-[13px] w-[13px] shrink-0" stroke={1.75} aria-hidden />
+        Nova pesquisa
+      </button>
+    </div>
+  )
+
   return (
     <div className={cn('min-h-screen font-sans', isCockpit ? 'sidebar-cockpit-shell' : 'bg-bg-surface')}>
 
       <div className="px-4 py-6 lg:px-6">
-        <div className="mb-2.5 flex flex-row flex-wrap items-center gap-3 rounded-xl border border-[rgb(var(--color-border-tertiary)/0.85)] bg-bg-surface px-4 py-2.5">
-          <Link
-            href={hrefResumoEleicoes}
-            className="inline-flex items-center gap-[5px] rounded-[10px] border border-[rgb(var(--color-border-secondary)/0.85)] bg-transparent px-2 py-[5px] text-[12px] text-text-secondary transition-colors hover:bg-bg-app"
-          >
-            <IconArrowLeft className="h-[13px] w-[13px] shrink-0" stroke={1.75} aria-hidden />
-            Resumo Eleições
-          </Link>
-
-          <span className="text-[12px] text-text-muted">Candidato para resumo:</span>
-
-          <div className="relative inline-flex max-w-xs items-center">
-            <select
-              value={candidatoPadrao}
-              onChange={(e) => {
-                const novoCandidato = e.target.value
-                setCandidatoPadrao(novoCandidato)
-                localStorage.setItem('candidatoPadraoPesquisa', novoCandidato)
-              }}
-              className="appearance-none rounded-[99px] border border-[rgb(var(--color-border-secondary)/0.85)] bg-transparent py-1 pl-2.5 pr-7 text-[13px] font-medium text-text-primary transition-colors hover:border-[rgb(var(--color-primary))] focus:outline-none focus:ring-2 focus:ring-[rgb(var(--color-primary)/0.25)]"
-            >
-              <option value="">Selecione um candidato</option>
-              {candidatosDisponiveis.map((candidato) => (
-                <option key={candidato} value={candidato}>
-                  {candidato}
-                </option>
-              ))}
-            </select>
-            <IconChevronDown
-              className="pointer-events-none absolute right-2.5 h-[11px] w-[11px] text-text-secondary"
-              stroke={1.75}
-              aria-hidden
-            />
-          </div>
-
-          <button
-            type="button"
-            onClick={() => {
-              setEditingPoll(null)
-              setShowModal(true)
-            }}
-            className="ml-auto inline-flex items-center gap-1.5 rounded-[10px] border-none bg-[rgb(var(--color-primary))] px-3 py-1.5 text-[12px] font-medium text-white transition-colors hover:bg-[rgb(var(--color-primary-hover))]"
-          >
-            <IconPlus className="h-[13px] w-[13px] shrink-0" stroke={1.75} aria-hidden />
-            Nova pesquisa
-          </button>
-        </div>
-
         <PesquisaShell activeTab={activeTab} onTabChange={onTabChange}>
           {activeTab === 'panorama' ? (
             <div className="flex flex-col gap-4">
@@ -903,12 +908,20 @@ export default function PesquisaPage() {
               />
 
               <section>
-                <h3 className="mb-3 text-xs font-semibold uppercase tracking-wide text-text-muted">
-                  Resumo de desempenho
-                </h3>
-                <p className="mb-3 text-[11px] text-text-muted">
-                  Consolidado do candidato selecionado em todas as pesquisas cadastradas.
-                </p>
+                <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                  <div>
+                    <h3 className="text-xs font-semibold uppercase tracking-wide text-text-muted">
+                      Resumo de desempenho
+                    </h3>
+                    <p className="mt-1 text-[11px] text-text-muted">
+                      Consolidado do candidato selecionado em todas as pesquisas cadastradas.
+                    </p>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="text-[11px] text-text-muted">Candidato:</span>
+                    {seletorCandidatoPadrao}
+                  </div>
+                </div>
                 <div
                   className={cn(
                     'flex h-[440px] flex-col overflow-hidden rounded-xl border border-[rgb(var(--color-border-tertiary)/0.85)] bg-bg-surface p-4 sm:p-6'
@@ -917,7 +930,7 @@ export default function PesquisaPage() {
                   <div className="min-h-0 flex-1 overflow-y-auto">
                   {!candidatoPadrao ? (
                     <p className="text-sm text-secondary">
-                      Selecione um candidato acima para visualizar o resumo consolidado.
+                      Selecione um candidato para visualizar o resumo consolidado.
                     </p>
                   ) : !resumoDesempenho ? (
                     <p className="text-sm text-secondary">
@@ -1033,6 +1046,7 @@ export default function PesquisaPage() {
             </div>
           ) : (
             <div className="flex flex-col gap-2.5">
+              {barraAcoesCadastradas}
               {barraFiltrosPesquisa}
               <div className={cn('rounded-xl border p-4 sm:p-6', innerPanelClass)}>
           <h2 className="text-lg font-semibold text-text-primary mb-6">Pesquisas Cadastradas</h2>

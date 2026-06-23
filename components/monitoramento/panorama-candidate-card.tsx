@@ -6,6 +6,7 @@ import { TrendsSearchContextBlock } from '@/components/trends-radar/trends-searc
 import type { PanoramaCandidateColumn, PanoramaHighlight } from '@/lib/monitoramento-panorama'
 import { PANORAMA_WINDOW_DAYS } from '@/lib/monitoramento-panorama-window'
 import type { GoogleTrendsInterestPoint } from '@/lib/google-trends-types'
+import { googleTrendsTimeframeLabel, PANORAMA_GOOGLE_TRENDS_TIMEFRAME } from '@/lib/google-trends-timeframe'
 import { cn } from '@/lib/utils'
 
 function formatInt(n: number): string {
@@ -137,7 +138,7 @@ export function PanoramaCandidateCard({ column: col }: PanoramaCandidateCardProp
         <div className="flex items-center justify-between gap-3 border-b border-[rgb(var(--color-border-tertiary)/0.4)] px-4 py-2">
           <div className="min-w-0 flex-1">
             <p className="text-[10px] font-medium uppercase tracking-wide text-text-muted">
-              Curva Trends · 3 meses
+              Curva Trends · {googleTrendsTimeframeLabel(PANORAMA_GOOGLE_TRENDS_TIMEFRAME)}
             </p>
             {col.trends.weekChangePct !== null ? (
               <p

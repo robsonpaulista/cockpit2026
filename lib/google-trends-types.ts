@@ -1,6 +1,6 @@
 import type { PoliticalActorType } from '@/lib/youtube-radar-types'
 
-export type GoogleTrendsTimeframe = 'today 3-m' | 'today 1-m' | 'now 7-d'
+export type { GoogleTrendsTimeframe } from '@/lib/google-trends-timeframe'
 
 export type GoogleTrendsInterestRow = {
   id: string

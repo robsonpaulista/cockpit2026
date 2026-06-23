@@ -1,4 +1,5 @@
 import type { GoogleTrendsTimeframe } from '@/lib/google-trends-types'
+import { PANORAMA_GOOGLE_TRENDS_TIMEFRAME } from '@/lib/google-trends-timeframe'
 import type { MetaAdsCollectProgress } from '@/lib/meta-ads-collect-progress'
 import { normalizeMetaAdsCollectProgress } from '@/lib/meta-ads-collect-progress'
 import type { MetaAdsCollectStatus } from '@/lib/meta-ads-types'
@@ -35,7 +36,7 @@ export const MONITORAMENTO_COLLECT_STEPS: ReadonlyArray<{
 
 const PANORAMA_YOUTUBE_LOOKBACK_DAYS = 7 as const
 const PANORAMA_TRENDS_GEO = 'BR-PI'
-const PANORAMA_TRENDS_TIMEFRAME: GoogleTrendsTimeframe = 'today 3-m'
+const PANORAMA_TRENDS_TIMEFRAME: GoogleTrendsTimeframe = PANORAMA_GOOGLE_TRENDS_TIMEFRAME
 
 function initialSteps(): MonitoramentoCollectStep[] {
   return MONITORAMENTO_COLLECT_STEPS.map((step) => ({
@@ -153,15 +154,16 @@ async function collectTrendsStep(): Promise<{ message: string; skipped: boolean 
   const res = await fetch('/api/trends/collect', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ geo: PANORAMA_TRENDS_GEO, timeframe: PANORAMA_TRENDS_TIMEFRAME }),
+    body: JSON.stringify({
+      geo: PANORAMA_TRENDS_GEO,
+      timeframe: PANORAMA_TRENDS_TIMEFRAME,
+      skipRelated: true,
+    }),
   })
   const j = await parseJson<{
     error?: string
     setupRequired?: boolean
-    terms?: number
-    termsSucceeded?: number
-    rowsUpserted?: number
-    errors?: string[]
+    started?: boolean
     runnerAvailable?: boolean
   }>(res)
 
@@ -176,11 +178,44 @@ async function collectTrendsStep(): Promise<{ message: string; skipped: boolean 
   }
   if (!res.ok) throw new Error(j.error ?? 'Falha na coleta Trends.')
 
-  const ok = j.termsSucceeded ?? 0
-  const total = j.terms ?? 0
-  const base = `${ok}/${total} nomes · ${j.rowsUpserted ?? 0} pontos salvos`
-  if (ok < total && j.errors?.length) {
-    return { skipped: false, message: `${base} (parcial: ${j.errors.slice(0, 2).join('; ')})` }
+  const maxMs = 180_000
+  const started = Date.now()
+  let lastResult: {
+    terms?: number
+    termsSucceeded?: number
+    rowsUpserted?: number
+    errors?: string[]
+  } | null = null
+
+  while (Date.now() - started < maxMs) {
+    const pollRes = await fetch('/api/trends/status', { cache: 'no-store' })
+    const poll = await parseJson<{
+      collectInProgress?: boolean
+      lastCollectResult?: {
+        terms?: number
+        termsSucceeded?: number
+        rowsUpserted?: number
+        errors?: string[]
+      } | null
+      lastCollectError?: string | null
+    }>(pollRes)
+
+    if (!poll.collectInProgress) {
+      if (poll.lastCollectError) throw new Error(poll.lastCollectError)
+      lastResult = poll.lastCollectResult ?? null
+      break
+    }
+
+    await new Promise((resolve) => setTimeout(resolve, 2_000))
+  }
+
+  if (!lastResult) throw new Error('Tempo esgotado na coleta Trends.')
+
+  const ok = lastResult.termsSucceeded ?? 0
+  const total = lastResult.terms ?? 0
+  const base = `${ok}/${total} nomes · ${lastResult.rowsUpserted ?? 0} pontos salvos`
+  if (ok < total && lastResult.errors?.length) {
+    return { skipped: false, message: `${base} (parcial: ${lastResult.errors.slice(0, 2).join('; ')})` }
   }
   return { skipped: false, message: base }
 }
