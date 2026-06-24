@@ -894,10 +894,8 @@ export default function PesquisaPage() {
   )
 
   return (
-    <div className={cn('min-h-screen font-sans', isCockpit ? 'sidebar-cockpit-shell' : 'bg-bg-surface')}>
-
-      <div className="px-4 py-6 lg:px-6">
-        <PesquisaShell activeTab={activeTab} onTabChange={onTabChange}>
+    <>
+      <PesquisaShell activeTab={activeTab} onTabChange={onTabChange}>
           {activeTab === 'panorama' ? (
             <div className="flex flex-col gap-4">
               <TendenciaIntencaoExecutiveSection
@@ -1362,7 +1360,6 @@ export default function PesquisaPage() {
             </div>
           )}
         </PesquisaShell>
-      </div>
 
       {/* Modal de Pesquisa */}
       {showModal && (
@@ -1434,7 +1431,7 @@ export default function PesquisaPage() {
           </div>,
           document.body
         )}
-    </div>
+    </>
   )
 }
 

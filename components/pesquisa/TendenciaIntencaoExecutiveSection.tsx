@@ -455,7 +455,7 @@ function ProjecaoRankingBarras({ ranking }: { ranking: ProjecaoVotoCandidatoRow[
           </div>
           <AnimatedBar
             percentage={row.pctSobreSomaProjetada}
-            barClassName="bg-[rgb(var(--color-primary))]"
+            barClassName="bg-[#C8900A]"
             height="h-1.5"
             className="bg-[rgb(var(--color-border-tertiary)/0.35)]"
           />
