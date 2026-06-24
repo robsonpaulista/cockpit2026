@@ -57,7 +57,13 @@ const config: Config = {
         },
       },
       fontFamily: {
-        sans: ['var(--font-sans)', 'IBM Plex Sans', 'system-ui', 'sans-serif'],
+        sans: [
+          'var(--font-sans)',
+          'var(--font-sans-fallback)',
+          'IBM Plex Sans',
+          'Inter',
+          'sans-serif',
+        ],
       },
       borderRadius: {
         '2xl': '16px',

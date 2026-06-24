@@ -11,7 +11,7 @@ export function isSidebarIconOnly(collapsed: boolean, mobileOpen: boolean): bool
 }
 
 export function sidebarShellNavClass(collapsed: boolean, mobileOpen: boolean): string {
-  return isSidebarIconOnly(collapsed, mobileOpen) ? 'px-1 py-3' : 'px-2 py-4'
+  return isSidebarIconOnly(collapsed, mobileOpen) ? 'px-1.5 pb-3 pt-0' : 'px-2.5 py-3'
 }
 
 export function sidebarShellFooterClass(collapsed: boolean, mobileOpen: boolean): string {

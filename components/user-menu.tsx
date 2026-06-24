@@ -1,11 +1,15 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
 import { useAuth } from '@/hooks/use-auth'
 import { LogOut, User, Settings, ChevronDown } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useDashboardHomeChrome } from '@/contexts/dashboard-home-chrome-context'
+import {
+  sidebarActiveFocusRingClass,
+  sidebarBrandWelcomeClass,
+  sidebarBrandWelcomeNameClass,
+} from '@/lib/sidebar-brand-styles'
 import {
   JARVIS_SIDEBAR_FOCUS,
   JARVIS_SIDEBAR_HOVER,
@@ -13,21 +17,29 @@ import {
   JARVIS_SIDEBAR_TEXT,
 } from '@/lib/jarvis-sidebar-styles'
 
-/**
- * Altura aproximada do dropdown (cabeçalho do usuário + 3 botões + separadores).
- * Usada para decidir se há espaço suficiente abaixo do gatilho antes de abrir
- * (caso contrário, o popover é renderizado para cima evitando que ele seja
- * cortado pelo rodapé da viewport — caso da Sidebar com Topbar oculta).
- */
 const USER_MENU_DROPDOWN_HEIGHT = 260
 const USER_MENU_VIEWPORT_MARGIN = 12
 
 type UserMenuPlacement = 'bottom' | 'top'
 
-export function UserMenu() {
+type UserMenuProps = {
+  variant?: 'default' | 'sidebar'
+  className?: string
+}
+
+function resolveWelcomeName(name: string | undefined, email: string | undefined): string {
+  if (name?.trim()) {
+    const first = name.trim().split(/\s+/)[0]
+    return first || name.trim()
+  }
+  if (email) return email.split('@')[0] ?? email
+  return 'Usuário'
+}
+
+export function UserMenu({ variant = 'default', className }: UserMenuProps) {
   const { user, loading, signOut } = useAuth()
   const isGradientHome = useDashboardHomeChrome()
-  const router = useRouter()
+  const isSidebar = variant === 'sidebar'
   const [open, setOpen] = useState(false)
   const [placement, setPlacement] = useState<UserMenuPlacement>('bottom')
   const menuRef = useRef<HTMLDivElement>(null)
@@ -54,12 +66,6 @@ export function UserMenu() {
     }
   }, [open])
 
-  /**
-   * Calcula o melhor lado para abrir o popover comparando o espaço abaixo e
-   * acima do gatilho na viewport. Roda no toggle (antes de abrir) e também
-   * em resize/scroll enquanto o menu está aberto, para manter o posicionamento
-   * coerente quando o layout muda.
-   */
   const recomputePlacement = () => {
     const trigger = triggerRef.current
     if (!trigger) return
@@ -102,58 +108,52 @@ export function UserMenu() {
   const handleSignOut = async () => {
     try {
       setOpen(false)
-      
-      // Limpar localStorage
       localStorage.removeItem('auth_redirect')
       localStorage.removeItem('candidatoPadraoPesquisa')
-      
-      // Fazer logout no Supabase
       await signOut()
-      
-      // Aguardar um pouco para garantir que a sessão foi limpa
-      await new Promise(resolve => setTimeout(resolve, 200))
-      
-      // Redirecionar para login usando window.location para forçar reload completo
+      await new Promise((resolve) => setTimeout(resolve, 200))
       window.location.href = '/login'
     } catch (error) {
       console.error('Erro ao fazer logout:', error)
-      // Mesmo com erro, tentar redirecionar
       window.location.href = '/login'
     }
   }
 
-  // Se ainda não montou, não mostrar nada (evita erro de hidratação)
   if (!mounted) {
     return null
   }
 
-  // Se está carregando, mostrar um placeholder
   if (loading) {
+    if (isSidebar) {
+      return (
+        <div className={cn('h-[14px] w-32 animate-pulse rounded bg-bg-app', className)} aria-hidden />
+      )
+    }
     return (
       <div className="flex items-center gap-2 px-3 py-2">
-        <div className="w-8 h-8 rounded-full bg-background animate-pulse" />
+        <div className="h-8 w-8 animate-pulse rounded-full bg-background" />
         <div className="hidden md:block">
-          <div className="h-4 w-24 bg-background rounded animate-pulse" />
+          <div className="h-4 w-24 animate-pulse rounded bg-background" />
         </div>
       </div>
     )
   }
 
-  // Se não há usuário após carregar, mostrar um botão de fallback para logout
-  // Isso garante que sempre há uma forma de sair
   if (!user) {
     return (
-      <div className="relative">
+      <div className={cn('relative', className)}>
         <button
           onClick={async () => {
-            // Limpar tudo e redirecionar
             localStorage.clear()
             window.location.href = '/login'
           }}
-          className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-accent-gold-soft transition-colors text-secondary"
+          className={cn(
+            'flex items-center gap-2 rounded-lg px-3 py-2 transition-colors text-secondary',
+            isSidebar && 'px-0 py-0.5 text-[10px] text-[#888888] hover:text-[#1a1a1a]'
+          )}
           title="Sair"
         >
-          <LogOut className="w-5 h-5" />
+          {isSidebar ? 'Entrar' : <LogOut className="h-5 w-5" />}
         </button>
       </div>
     )
@@ -166,6 +166,8 @@ export function UserMenu() {
     .toUpperCase()
     .slice(0, 2) || user.email?.[0].toUpperCase() || 'U'
 
+  const welcomeName = resolveWelcomeName(user.profile?.name, user.email ?? undefined)
+
   const roleLabels: Record<string, string> = {
     candidato: 'Candidato',
     coordenacao: 'Coordenação',
@@ -176,118 +178,138 @@ export function UserMenu() {
   }
 
   return (
-    <div className="relative" ref={menuRef}>
+    <div className={cn('relative min-w-0', className)} ref={menuRef}>
       <button
         ref={triggerRef}
+        type="button"
         onClick={toggleOpen}
+        aria-expanded={open}
+        aria-haspopup="menu"
         className={cn(
-          'group flex items-center gap-2 rounded-lg px-3 py-2 transition-colors',
-          isGradientHome ? cn(JARVIS_SIDEBAR_HOVER, JARVIS_SIDEBAR_FOCUS) : 'hover:bg-accent-gold-soft',
+          'group flex min-w-0 items-center gap-1.5 rounded-md transition-colors',
+          isSidebar
+            ? cn('w-full py-0.5 text-left', sidebarActiveFocusRingClass, 'hover:opacity-80')
+            : cn(
+                'gap-2 rounded-lg px-3 py-2',
+                isGradientHome ? cn(JARVIS_SIDEBAR_HOVER, JARVIS_SIDEBAR_FOCUS) : 'hover:bg-accent-gold-soft'
+              )
         )}
       >
-        <div
-          className={cn(
-            'flex h-8 w-8 items-center justify-center overflow-hidden rounded-full text-sm font-semibold text-white',
-            user.profile?.avatar_url ? 'bg-accent-gold' : 'bg-accent-gold'
-          )}
-        >
-          {user.profile?.avatar_url ? (
-            <img
-              src={user.profile.avatar_url}
-              alt={user.profile.name}
-              className="h-full w-full rounded-full object-cover"
-            />
-          ) : (
-            userInitials
-          )}
-        </div>
-        <div className="hidden md:block text-left">
-          <p
+        {!isSidebar ? (
+          <div
             className={cn(
-              'text-sm font-medium',
-              isGradientHome ? 'text-[#E8F4FD] group-hover:text-[#00D4FF]' : 'text-text-primary',
+              'flex h-8 w-8 items-center justify-center overflow-hidden rounded-full text-sm font-semibold text-white',
+              'bg-accent-gold'
             )}
           >
-            {user.profile?.name || user.email}
-          </p>
-          {user.profile?.role && (
+            {user.profile?.avatar_url ? (
+              <img
+                src={user.profile.avatar_url}
+                alt={user.profile.name}
+                className="h-full w-full rounded-full object-cover"
+              />
+            ) : (
+              userInitials
+            )}
+          </div>
+        ) : null}
+
+        {isSidebar ? (
+          <span className={cn('min-w-0 flex-1 truncate', sidebarBrandWelcomeClass)}>
+            Bem-vindo,{' '}
+            <span className={sidebarBrandWelcomeNameClass}>{welcomeName}</span>
+          </span>
+        ) : (
+          <div className="hidden text-left md:block">
             <p
               className={cn(
-                'text-xs',
-                isGradientHome ? JARVIS_SIDEBAR_TEXT : 'text-secondary',
+                'text-sm font-medium',
+                isGradientHome ? 'text-[#E8F4FD] group-hover:text-[#00D4FF]' : 'text-text-primary'
               )}
             >
-              {roleLabels[user.profile.role] || user.profile.role}
+              {user.profile?.name || user.email}
             </p>
-          )}
-        </div>
+            {user.profile?.role ? (
+              <p className={cn('text-xs', isGradientHome ? JARVIS_SIDEBAR_TEXT : 'text-secondary')}>
+                {roleLabels[user.profile.role] || user.profile.role}
+              </p>
+            ) : null}
+          </div>
+        )}
+
         <ChevronDown
           className={cn(
-            'w-4 h-4 transition-transform',
-            isGradientHome ? cn(JARVIS_SIDEBAR_ICON, 'group-hover:!text-[#00D4FF]') : 'text-secondary',
-            open && 'rotate-180',
+            'h-3.5 w-3.5 shrink-0 transition-transform',
+            isSidebar
+              ? 'text-[#888888]'
+              : isGradientHome
+                ? cn(JARVIS_SIDEBAR_ICON, 'group-hover:!text-[#00D4FF]')
+                : 'text-secondary',
+            open && 'rotate-180'
           )}
         />
       </button>
 
-      {open && (
+      {open ? (
         <div
+          role="menu"
           className={cn(
-            'absolute right-0 w-56 bg-surface border border-card rounded-xl shadow-card z-50 overflow-hidden',
+            'absolute z-50 w-56 overflow-hidden rounded-xl border border-card bg-surface shadow-card',
+            isSidebar ? 'left-0' : 'right-0',
             placement === 'top' ? 'bottom-full mb-2' : 'top-full mt-2'
           )}
         >
-          <div className="p-4 border-b border-card">
+          <div className="border-b border-card p-4">
             <p className="text-sm font-semibold text-text-primary">
               {user.profile?.name || 'Usuário'}
             </p>
-            <p className="text-xs text-secondary mt-1">{user.email}</p>
-            {user.profile?.role && (
-              <span className="inline-block mt-2 px-2 py-1 text-xs font-medium bg-accent-gold-soft text-accent-gold rounded-lg">
+            <p className="mt-1 text-xs text-secondary">{user.email}</p>
+            {user.profile?.role ? (
+              <span className="mt-2 inline-block rounded-lg bg-accent-gold-soft px-2 py-1 text-xs font-medium text-accent-gold">
                 {roleLabels[user.profile.role] || user.profile.role}
               </span>
-            )}
+            ) : null}
           </div>
 
           <div className="p-1">
             <button
+              type="button"
+              role="menuitem"
               onClick={() => {
                 setOpen(false)
-                // TODO: Navegar para página de perfil quando criarmos
               }}
-              className="w-full flex items-center gap-3 px-3 py-2 text-sm text-text-primary hover:bg-background rounded-lg transition-colors"
+              className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm text-text-primary transition-colors hover:bg-background"
             >
-              <User className="w-4 h-4 text-secondary" />
+              <User className="h-4 w-4 text-secondary" />
               <span>Meu Perfil</span>
             </button>
 
             <button
+              type="button"
+              role="menuitem"
               onClick={() => {
                 setOpen(false)
-                // TODO: Navegar para configurações quando criarmos
               }}
-              className="w-full flex items-center gap-3 px-3 py-2 text-sm text-text-primary hover:bg-background rounded-lg transition-colors"
+              className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm text-text-primary transition-colors hover:bg-background"
             >
-              <Settings className="w-4 h-4 text-secondary" />
+              <Settings className="h-4 w-4 text-secondary" />
               <span>Configurações</span>
             </button>
 
             <div className="my-1 border-t border-card" />
 
             <button
+              type="button"
+              role="menuitem"
               onClick={handleSignOut}
-              className="w-full flex items-center gap-3 px-3 py-2 text-sm text-status-error hover:bg-status-error/10 rounded-lg transition-colors"
+              className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm text-status-error transition-colors hover:bg-status-error/10"
             >
-              <LogOut className="w-4 h-4" />
+              <LogOut className="h-4 w-4" />
               <span>Sair</span>
             </button>
           </div>
         </div>
-      )}
+      ) : null}
     </div>
   )
 }
-
-
-
-

@@ -1,0 +1,91 @@
+import {
+  sidebarBrandDividerClass,
+  sidebarBrandSectionLabelClass,
+  sidebarActiveBorderClass,
+  sidebarActiveFocusRingClass,
+  dashboardHubTabActiveClass,
+  dashboardHubTabBaseClass,
+  dashboardHubTabIdleClass,
+} from '@/lib/sidebar-brand-styles'
+import { cn } from '@/lib/utils'
+import {
+  typographyBodyClass,
+  typographyBodyMediumClass,
+  typographyLinkClass,
+  typographyTabClass,
+} from '@/lib/typography-chrome'
+
+/** Classe no `<aside>` — fundo branco, borda fina (estilo Apify). */
+export const SIDEBAR_APIFY_SHELL_CLASS = 'sidebar-apify-shell'
+
+export const sidebarApifySectionLabelClass = sidebarBrandSectionLabelClass
+
+export const sidebarApifyNavItemClass = (active: boolean) =>
+  cn(
+    'relative flex w-full items-center gap-2.5 rounded-none border-l-2 px-2.5 py-2',
+    typographyBodyMediumClass,
+    'leading-none transition-colors duration-150',
+    sidebarActiveFocusRingClass,
+    active
+      ? cn(sidebarActiveBorderClass, 'bg-bg-app text-text-primary')
+      : 'border-l-transparent hover:bg-bg-app'
+  )
+
+export const sidebarApifyNavIconClass = (active: boolean) =>
+  cn('h-4 w-4 shrink-0 text-text-primary', !active && 'opacity-80')
+
+/** Ícones decorativos no conteúdo — mesma cor dos ícones da sidebar. */
+export const dashboardChromeIconClass = 'text-text-primary'
+
+export const dashboardChromeIconShellSmClass =
+  'flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-[rgb(var(--color-border-secondary)/0.55)] bg-bg-app text-text-primary'
+
+export const dashboardChromeIconShellMdClass =
+  'flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-[rgb(var(--color-border-secondary)/0.55)] bg-bg-app text-text-primary'
+
+export const sidebarApifyChildItemClass = (active: boolean) =>
+  cn(
+    'flex w-full min-w-0 items-center truncate rounded-none border-l-2 py-1.5 pl-9 pr-2.5',
+    typographyBodyMediumClass,
+    'transition-colors duration-150',
+    sidebarActiveFocusRingClass,
+    active
+      ? cn(sidebarActiveBorderClass, 'bg-bg-app text-text-primary')
+      : 'border-l-transparent hover:bg-bg-app'
+  )
+
+export const sidebarApifyIconButtonClass =
+  'inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-text-primary transition-colors hover:bg-bg-app focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[rgb(var(--color-primary)/0.22)]'
+
+export const sidebarApifyFooterActionClass = cn(
+  'flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 transition-colors hover:bg-bg-app focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[rgb(var(--color-primary)/0.22)]',
+  typographyBodyMediumClass
+)
+
+export const sidebarApifySearchInputClass = cn(
+  'w-full rounded-md border border-[rgb(var(--color-border-secondary)/0.5)] bg-bg-app py-1.5 pl-8 pr-11 outline-none transition-colors placeholder:text-text-muted focus:border-[rgb(var(--color-primary)/0.45)] focus:bg-bg-surface focus:ring-2 focus:ring-[rgb(var(--color-primary)/0.1)]',
+  typographyBodyClass
+)
+
+export const sidebarApifySearchKbdClass = cn(
+  'pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 rounded border border-[rgb(var(--color-border-secondary)/0.45)] bg-bg-surface px-1.5 py-0.5 text-text-muted',
+  'text-[10px] font-medium uppercase tracking-[var(--caps-tracking)]',
+  'normal-case tracking-normal'
+)
+
+export const sidebarApifyTooltipClass = cn(
+  'fixed z-[200] whitespace-nowrap rounded-md border border-[rgb(var(--color-border-secondary)/0.6)] bg-bg-surface px-2.5 py-1.5 shadow-[0_4px_14px_rgb(0_0_0/0.08)]',
+  typographyBodyMediumClass
+)
+
+export const sidebarApifyMobileToggleClass =
+  'rounded-lg border border-[rgb(var(--color-border-secondary)/0.65)] bg-bg-surface p-2 text-text-primary shadow-[0_1px_3px_rgb(0_0_0/0.06)] transition-colors hover:bg-bg-app'
+
+export const sidebarApifyDividerClass = sidebarBrandDividerClass
+
+export const sidebarApifyHubTabClass = (active: boolean) =>
+  cn(
+    dashboardHubTabBaseClass,
+    typographyTabClass,
+    active ? dashboardHubTabActiveClass : dashboardHubTabIdleClass
+  )

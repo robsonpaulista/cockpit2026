@@ -6,6 +6,8 @@ import { GoogleNewsCompareBoard } from '@/components/google-news-radar/google-ne
 import { YoutubeActorsManager } from '@/components/youtube-radar/youtube-actors-manager'
 import type { GoogleNewsMentionWithActor } from '@/lib/google-news-types'
 import type { PoliticalActorWithTerms } from '@/lib/youtube-radar-types'
+import { chromeButtonClass, chromeFilterChipClass, chromePanelToolbarClass } from '@/lib/button-chrome'
+import { typographyBodyMutedClass } from '@/lib/typography-chrome'
 import { cn } from '@/lib/utils'
 
 const LOOKBACK_OPTIONS = [1, 7, 30] as const
@@ -25,7 +27,7 @@ export function GoogleNewsRadarPanel() {
     setError('')
     try {
       const [actorsRes, mentionsRes] = await Promise.all([
-        fetch('/api/youtube/actors', { cache: 'no-store' }),
+        fetch('/api/monitoramento/actors', { cache: 'no-store' }),
         fetch(`/api/google-news/mentions?politico=all&days=${lookbackDays}&limit=500`, {
           cache: 'no-store',
         }),
@@ -110,19 +112,14 @@ export function GoogleNewsRadarPanel() {
         </div>
       ) : null}
 
-      <div className="flex flex-wrap items-center gap-2 rounded-xl border border-[rgb(var(--color-border-tertiary)/0.85)] bg-bg-surface px-4 py-3">
-        <span className="text-xs text-text-muted">Janela:</span>
+      <div className={chromePanelToolbarClass}>
+        <span className={typographyBodyMutedClass}>Janela:</span>
         {LOOKBACK_OPTIONS.map((days) => (
           <button
             key={days}
             type="button"
             onClick={() => setLookbackDays(days)}
-            className={cn(
-              'rounded-full border px-3 py-1 text-xs font-medium transition-colors',
-              lookbackDays === days
-                ? 'border-[rgb(var(--color-primary))] bg-[#E6F1FB] text-[rgb(var(--color-primary))]'
-                : 'border-[rgb(var(--color-border-secondary)/0.85)] text-text-secondary hover:bg-bg-app'
-            )}
+            className={chromeFilterChipClass(lookbackDays === days)}
           >
             {days} dia{days === 1 ? '' : 's'}
           </button>
@@ -131,7 +128,7 @@ export function GoogleNewsRadarPanel() {
           type="button"
           disabled={collecting || setupRequired}
           onClick={() => void coletar()}
-          className="ml-auto inline-flex items-center gap-1.5 rounded-full bg-[rgb(var(--color-primary))] px-4 py-1.5 text-xs font-medium text-white disabled:opacity-50"
+          className={cn(chromeButtonClass, 'ml-auto')}
         >
           {collecting ? (
             <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />

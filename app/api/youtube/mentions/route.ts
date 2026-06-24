@@ -1,19 +1,16 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { requireRouteUser } from '@/lib/supabase/route-auth'
 import type { YoutubeMentionWithActor, YoutubeRadarSummary } from '@/lib/youtube-radar-types'
 
 export const dynamic = 'force-dynamic'
 
 export async function GET(request: Request) {
   try {
-    const supabase = createClient()
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
+    const auth = await requireRouteUser()
+    if (!auth.ok) return auth.response
 
-    if (!user) {
-      return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
-    }
+    const supabase = createClient()
 
     const { searchParams } = new URL(request.url)
     const politicoSlug = searchParams.get('politico')?.trim() ?? 'all'

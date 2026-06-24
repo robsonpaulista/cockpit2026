@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
+import { requireRouteUser } from '@/lib/supabase/route-auth'
 
 export const dynamic = 'force-dynamic'
 import { NextResponse } from 'next/server'
@@ -16,15 +17,11 @@ import {
 // Coleta notícias dos feeds configurados pelo usuário logado
 export async function POST() {
   try {
+    const auth = await requireRouteUser()
+    if (!auth.ok) return auth.response
+    const user = auth.user
+
     const supabase = createClient()
-
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
-
-    if (!user) {
-      return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
-    }
 
     // Buscar feeds ativos do usuário
     const { data: feeds, error: feedsError } = await supabase

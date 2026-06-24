@@ -1,9 +1,10 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import type { MetaAdsCollectProgress } from '@/lib/meta-ads-collect-progress'
 import type { MonitoramentoCollectAllProgress } from '@/lib/monitoramento-collect-all'
 import { runMonitoramentoCollectAll } from '@/lib/monitoramento-collect-all'
+import type { MonitoramentoCollectorsStatus } from '@/lib/monitoramento-collectors-status'
 import type { PanoramaModel } from '@/lib/monitoramento-panorama'
 import { panoramaWindowLabel } from '@/lib/monitoramento-panorama-window'
 
@@ -37,23 +38,49 @@ export function usePanoramaPanel(options: {
   const [metaAdsProgress, setMetaAdsProgress] = useState<MetaAdsCollectProgress | null>(null)
   const [error, setError] = useState('')
   const [animationEpoch, setAnimationEpoch] = useState(0)
+  const [collectorsStatus, setCollectorsStatus] = useState<MonitoramentoCollectorsStatus | null>(null)
+  const loadInFlightRef = useRef<Promise<void> | null>(null)
 
   const carregar = useCallback(async (silent = false) => {
     if (!enabled) return
-    if (!silent) setLoading(true)
-    else setRefreshing(true)
-    setError('')
+
+    if (loadInFlightRef.current) {
+      await loadInFlightRef.current
+      return
+    }
+
+    const run = (async () => {
+      if (!silent) setLoading(true)
+      else setRefreshing(true)
+      setError('')
+      try {
+        let res = await fetch('/api/monitoramento/panorama', { cache: 'no-store' })
+        if (res.status === 503) {
+          await new Promise((r) => setTimeout(r, 800))
+          res = await fetch('/api/monitoramento/panorama', { cache: 'no-store' })
+        }
+        const j = (await res.json()) as {
+          error?: string
+          panorama?: PanoramaModel
+          collectorsStatus?: MonitoramentoCollectorsStatus
+        }
+        if (!res.ok) throw new Error(j.error ?? 'Falha ao carregar panorama.')
+        setPanorama(j.panorama ?? EMPTY_PANORAMA)
+        if (j.collectorsStatus) setCollectorsStatus(j.collectorsStatus)
+        if (silent) setAnimationEpoch((epoch) => epoch + 1)
+      } catch (e) {
+        setError(e instanceof Error ? e.message : 'Erro ao carregar panorama.')
+      } finally {
+        setLoading(false)
+        setRefreshing(false)
+      }
+    })()
+
+    loadInFlightRef.current = run
     try {
-      const res = await fetch('/api/monitoramento/panorama', { cache: 'no-store' })
-      const j = (await res.json()) as { error?: string; panorama?: PanoramaModel }
-      if (!res.ok) throw new Error(j.error ?? 'Falha ao carregar panorama.')
-      setPanorama(j.panorama ?? EMPTY_PANORAMA)
-      if (silent) setAnimationEpoch((epoch) => epoch + 1)
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Erro ao carregar panorama.')
+      await run
     } finally {
-      setLoading(false)
-      setRefreshing(false)
+      loadInFlightRef.current = null
     }
   }, [enabled])
 
@@ -103,6 +130,7 @@ export function usePanoramaPanel(options: {
     error,
     busy,
     animationEpoch,
+    collectorsStatus,
     carregar,
     coletarTodas,
   }

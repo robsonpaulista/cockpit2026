@@ -12,7 +12,10 @@ import {
   DEFAULT_GOOGLE_TRENDS_TIMEFRAME,
   GOOGLE_TRENDS_WINDOW_LABEL,
 } from '@/lib/google-trends-timeframe'
+import { chromeButtonClass, chromeFilterChipClass, chromePanelToolbarClass } from '@/lib/button-chrome'
 import { readResponseJson } from '@/lib/parse-response-json'
+import { typographyBodyMutedClass } from '@/lib/typography-chrome'
+import { cn } from '@/lib/utils'
 
 const GEO = 'BR-PI'
 const TIMEFRAME = DEFAULT_GOOGLE_TRENDS_TIMEFRAME
@@ -36,6 +39,7 @@ export function TrendsRadarPanel() {
   const [collectedAt, setCollectedAt] = useState<string | null>(null)
   const [dateFrom, setDateFrom] = useState<string | null>(null)
   const [dateTo, setDateTo] = useState<string | null>(null)
+  const [seriesStale, setSeriesStale] = useState(false)
   const [runnerAvailable, setRunnerAvailable] = useState(true)
   const [runnerMessage, setRunnerMessage] = useState<string | null>(null)
 
@@ -56,6 +60,7 @@ export function TrendsRadarPanel() {
         collectedAt?: string | null
         dateFrom?: string | null
         dateTo?: string | null
+        seriesStale?: boolean
       }>(res)
       if (!res.ok) throw new Error(j.error ?? 'Falha ao carregar Trends.')
 
@@ -66,6 +71,7 @@ export function TrendsRadarPanel() {
       setCollectedAt(j.collectedAt ?? null)
       setDateFrom(j.dateFrom ?? null)
       setDateTo(j.dateTo ?? null)
+      setSeriesStale(Boolean(j.seriesStale))
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Erro ao carregar Trends.')
     } finally {
@@ -202,16 +208,14 @@ export function TrendsRadarPanel() {
         </div>
       ) : null}
 
-      <div className="flex flex-wrap items-center gap-2 rounded-xl border border-[rgb(var(--color-border-tertiary)/0.85)] bg-bg-surface px-4 py-3">
-        <span className="rounded-full border border-[rgb(var(--color-primary))] bg-[#E6F1FB] px-3 py-1 text-xs font-medium text-[rgb(var(--color-primary))]">
-          {GOOGLE_TRENDS_WINDOW_LABEL}
-        </span>
-        <span className="text-xs text-text-muted">· Piauí ({GEO})</span>
+      <div className={chromePanelToolbarClass}>
+        <span className={chromeFilterChipClass(true)}>{GOOGLE_TRENDS_WINDOW_LABEL}</span>
+        <span className={typographyBodyMutedClass}>· Piauí ({GEO})</span>
         <button
           type="button"
           disabled={collecting || setupRequired || !runnerAvailable}
           onClick={() => void coletar()}
-          className="ml-auto inline-flex items-center gap-1.5 rounded-full bg-[rgb(var(--color-primary))] px-4 py-1.5 text-xs font-medium text-white disabled:opacity-50"
+          className={cn(chromeButtonClass, 'ml-auto')}
         >
           {collecting ? (
             <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
@@ -227,6 +231,16 @@ export function TrendsRadarPanel() {
           Comparando interesse de busca dos candidatos (~1 min). Se houver rate limit, o servidor aguarda e
           tenta de novo.
         </p>
+      ) : null}
+
+      {seriesStale ? (
+        <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+          <p className="font-medium">Série desatualizada</p>
+          <p className="mt-1">
+            O gráfico não chega aos últimos dias. Clique em <strong>Atualizar Trends</strong> para
+            recarregar os 30 dias mais recentes do Google.
+          </p>
+        </div>
       ) : null}
 
       {collectedAt ? (

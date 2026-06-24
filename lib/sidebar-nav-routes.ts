@@ -76,7 +76,7 @@ export const SIDEBAR_MENU_ITEMS: SidebarMenuItemConfig[] = [
   },
   {
     id: 'noticias-menu',
-    label: 'Central de monitoramento',
+    label: 'Radar Eleitoral',
     icon: 'Radar',
     href: '/dashboard/noticias/monitoramento',
   },

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { createClient } from '@/lib/supabase/server'
+import { requireRouteUser } from '@/lib/supabase/route-auth'
 import { collectGoogleNewsRadar } from '@/lib/google-news-collect'
 
 export const dynamic = 'force-dynamic'
@@ -12,14 +13,10 @@ const bodySchema = z.object({
 
 export async function POST(request: Request) {
   try {
-    const supabase = createClient()
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
+    const auth = await requireRouteUser()
+    if (!auth.ok) return auth.response
 
-    if (!user) {
-      return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
-    }
+    const supabase = createClient()
 
     const body = bodySchema.parse(await request.json().catch(() => ({})))
     const results = await collectGoogleNewsRadar(supabase, {

@@ -14,10 +14,22 @@ import {
   YAxis,
 } from 'recharts'
 import { PanoramaInstagramTable } from '@/components/monitoramento/panorama-instagram-table'
-import { PanoramaMentionHeatmap } from '@/components/monitoramento/panorama-mention-heatmap'
+import {
+  PanoramaHeatmapScaleToggle,
+  PanoramaMentionHeatmap,
+} from '@/components/monitoramento/panorama-mention-heatmap'
 import { PanoramaYoutubeChart } from '@/components/monitoramento/panorama-youtube-chart'
 import { TrendsSearchContextList } from '@/components/trends-radar/trends-search-context-block'
+import type { HeatmapScaleMode } from '@/lib/monitoramento-heatmap-colors'
 import type { PanoramaMetaAdsPeriodTotal, PanoramaPlatformChart, PanoramaPlatformId } from '@/lib/monitoramento-panorama-charts'
+import { premiumCardHoverClass, premiumStaggerClass } from '@/lib/premium-ui-motion'
+import {
+  typographyBodyClass,
+  typographyBodyMutedClass,
+  typographySectionLabelClass,
+  typographySectionTitleClass,
+} from '@/lib/typography-chrome'
+import { dashboardChromeIconShellMdClass } from '@/lib/sidebar-apify-styles'
 import { cn } from '@/lib/utils'
 
 const PLATFORM_ICONS: Record<PanoramaPlatformId, LucideIcon> = {
@@ -28,16 +40,8 @@ const PLATFORM_ICONS: Record<PanoramaPlatformId, LucideIcon> = {
   'meta-ads': Megaphone,
 }
 
-const PLATFORM_ICON_BG: Record<PanoramaPlatformId, string> = {
-  youtube: 'bg-[#FEE2E2] text-[#DC2626]',
-  'google-news': 'bg-[#DBEAFE] text-[#2563EB]',
-  instagram: 'bg-[#FCE7F3] text-[#DB2777]',
-  'google-trends': 'bg-[#E0E7FF] text-[#4338CA]',
-  'meta-ads': 'bg-[#FFEDD5] text-[#EA580C]',
-}
-
-/** Altura única para todos os cards do panorama (News, IG, YouTube, Trends, Meta). */
-const PANORAMA_CHART_CARD_HEIGHT = 'h-[440px]'
+/** Altura fixa para cards com gráfico de linha (YouTube, Trends, Meta). */
+const PANORAMA_CHART_CARD_HEIGHT_SIMPLE = 'h-[440px]'
 
 const LINE_ANIMATION_DURATION = 680
 const LINE_ANIMATION_STAGGER_MS = 90
@@ -108,7 +112,8 @@ function MetaAdsPointDetail({
   return (
     <div
       className={cn(
-        'rounded-lg border border-[rgb(var(--color-border-tertiary)/0.85)] bg-bg-app px-3 py-2.5 text-xs',
+        'rounded-lg border border-[rgb(var(--color-border-tertiary)/0.85)] bg-bg-app px-3 py-2.5',
+        typographyBodyClass,
         className
       )}
     >
@@ -143,8 +148,8 @@ function MetaAdsPointDetail({
         </span>
       </p>
       {lineTotal ? (
-        <div className="mt-2 border-t border-[rgb(var(--color-border-tertiary)/0.45)] pt-2 text-[11px] text-text-muted">
-          <p className="font-medium uppercase tracking-wide text-text-secondary">Total no período</p>
+        <div className={cn('mt-2 border-t border-[rgb(var(--color-border-tertiary)/0.45)] pt-2', typographyBodyMutedClass)}>
+          <p className={cn('font-medium text-text-secondary', typographySectionLabelClass)}>Total no período</p>
           <p className="mt-1">
             Investido: <span className="text-text-primary">{lineTotal.spendLabel}</span>
           </p>
@@ -223,7 +228,7 @@ function MetaAdsPanoramaLineChart({ chart }: { chart: PanoramaPlatformChart }) {
             onClose={() => setSelection(null)}
           />
         ) : (
-          <p className="flex h-full items-center px-1 text-[10px] leading-snug text-text-muted">
+          <p className={cn('flex h-full items-center px-1 leading-snug', typographyBodyMutedClass)}>
             Clique em um ponto para ver gasto do dia e total no período.
           </p>
         )}
@@ -240,11 +245,11 @@ function MetaAdsPanoramaLineChart({ chart }: { chart: PanoramaPlatformChart }) {
             <XAxis
               dataKey="date"
               tickFormatter={formatDateLabel}
-              tick={{ fontSize: 10, fill: 'rgb(var(--color-text-muted))' }}
+              tick={{ fontSize: 13, fill: 'rgb(var(--color-text-muted))' }}
               minTickGap={20}
             />
             <YAxis
-              tick={{ fontSize: 10, fill: 'rgb(var(--color-text-muted))' }}
+              tick={{ fontSize: 13, fill: 'rgb(var(--color-text-muted))' }}
               width={52}
               tickFormatter={(v) => formatCompactBrl(v)}
             />
@@ -271,7 +276,7 @@ function MetaAdsPanoramaLineChart({ chart }: { chart: PanoramaPlatformChart }) {
           {chart.lines.map((line) => (
             <span
               key={line.slug}
-              className="inline-flex max-w-full items-center gap-1.5 text-[10px] text-text-secondary"
+              className={cn('inline-flex max-w-full items-center gap-1.5 text-text-secondary', typographyBodyMutedClass)}
               title={line.name}
             >
               <span
@@ -291,62 +296,77 @@ function MetaAdsPanoramaLineChart({ chart }: { chart: PanoramaPlatformChart }) {
 interface PanoramaPlatformChartProps {
   chart: PanoramaPlatformChart
   className?: string
-  revealDelayMs?: number
+  staggerIndex?: number
+  animationEpoch?: number
 }
 
-export function PanoramaPlatformChart({ chart, className, revealDelayMs = 0 }: PanoramaPlatformChartProps) {
+export function PanoramaPlatformChart({
+  chart,
+  className,
+  staggerIndex = 0,
+  animationEpoch = 0,
+}: PanoramaPlatformChartProps) {
   const Icon = PLATFORM_ICONS[chart.id]
   const isMetaAds = chart.id === 'meta-ads'
   const isYoutube = chart.id === 'youtube'
   const isHeatmap = chart.chartType === 'heatmap'
   const isTable = chart.chartType === 'table'
+  const isDetailLayout = chart.layoutTier === 'detail'
+  const [heatmapScaleMode, setHeatmapScaleMode] = useState<HeatmapScaleMode>('comparative')
   const useExternalLegend =
     !isHeatmap && !isTable && !isYoutube && !chart.empty && chart.lines.length > 0 && !isMetaAds
 
   return (
     <div
       className={cn(
-        'animate-reveal flex flex-col overflow-hidden rounded-xl border border-[rgb(var(--color-border-tertiary)/0.85)] bg-bg-surface p-4',
-        PANORAMA_CHART_CARD_HEIGHT,
+        'flex flex-col overflow-hidden rounded-xl border border-[rgb(var(--color-border-tertiary)/0.85)] bg-bg-surface p-4',
+        isDetailLayout ? 'h-full min-h-0' : PANORAMA_CHART_CARD_HEIGHT_SIMPLE,
+        premiumCardHoverClass,
+        premiumStaggerClass(staggerIndex),
         className
       )}
-      style={{ animationDelay: `${revealDelayMs}ms` }}
     >
-      <div className="mb-3 flex shrink-0 items-start gap-3">
-        <div
-          className={cn(
-            'flex h-9 w-9 shrink-0 items-center justify-center rounded-lg',
-            PLATFORM_ICON_BG[chart.id]
-          )}
-        >
-          <Icon className="h-4 w-4" aria-hidden />
+      <div className="mb-2 flex shrink-0 items-start justify-between gap-3">
+        <div className="flex min-w-0 items-start gap-3">
+          <div className={dashboardChromeIconShellMdClass}>
+            <Icon className="h-4 w-4" aria-hidden />
+          </div>
+          <div className="min-w-0">
+            <h3 className={typographySectionTitleClass}>{chart.title}</h3>
+            {!isYoutube ? <p className={typographyBodyMutedClass}>{chart.subtitle}</p> : null}
+          </div>
         </div>
-        <div className="min-w-0">
-          <h3 className="text-sm font-semibold text-text-primary">{chart.title}</h3>
-          {!isYoutube ? <p className="text-xs text-text-muted">{chart.subtitle}</p> : null}
-        </div>
+        {isHeatmap && !chart.empty ? (
+          <PanoramaHeatmapScaleToggle
+            scaleMode={heatmapScaleMode}
+            onScaleModeChange={setHeatmapScaleMode}
+          />
+        ) : null}
       </div>
 
       {chart.empty ? (
-        <div className="flex min-h-[220px] flex-1 items-center justify-center rounded-lg border border-dashed border-[rgb(var(--color-border-tertiary)/0.6)] text-xs text-text-muted">
+        <div className={cn('flex min-h-[220px] flex-1 items-center justify-center rounded-lg border border-dashed border-[rgb(var(--color-border-tertiary)/0.6)]', typographyBodyMutedClass)}>
           {chart.id === 'instagram'
             ? 'Sem posts no período — cadastre @ e rode a coleta na aba Instagram.'
             : 'Sem série histórica — rode a coleta nesta plataforma.'}
         </div>
       ) : isTable && chart.instagramTable ? (
-        <div className="flex min-h-0 flex-1 flex-col">
-          <PanoramaInstagramTable rows={chart.instagramTable} className="min-h-0 flex-1" />
-        </div>
+        <PanoramaInstagramTable
+          rows={chart.instagramTable}
+          animationEpoch={animationEpoch}
+          className="min-h-0 flex-1"
+        />
       ) : isHeatmap && chart.heatmapDates && chart.heatmapRows ? (
-        <div className="flex min-h-0 flex-1 flex-col">
-          <PanoramaMentionHeatmap
-            dates={chart.heatmapDates}
-            rows={chart.heatmapRows}
-            metricLabel={chart.metricLabel}
-            enableNewsModal={chart.id === 'google-news'}
-            className="min-h-0 flex-1"
-          />
-        </div>
+        <PanoramaMentionHeatmap
+          dates={chart.heatmapDates}
+          rows={chart.heatmapRows}
+          metricLabel={chart.metricLabel}
+          enableNewsModal={chart.id === 'google-news'}
+          scaleMode={heatmapScaleMode}
+          onScaleModeChange={setHeatmapScaleMode}
+          hideScaleControls
+          className="min-h-0 flex-1"
+        />
       ) : isMetaAds ? (
         <MetaAdsPanoramaLineChart chart={chart} />
       ) : isYoutube ? (
@@ -363,11 +383,11 @@ export function PanoramaPlatformChart({ chart, className, revealDelayMs = 0 }: P
                 <XAxis
                   dataKey="date"
                   tickFormatter={formatDateLabel}
-                  tick={{ fontSize: 10, fill: 'rgb(var(--color-text-muted))' }}
+                  tick={{ fontSize: 13, fill: 'rgb(var(--color-text-muted))' }}
                   minTickGap={20}
                 />
                 <YAxis
-                  tick={{ fontSize: 10, fill: 'rgb(var(--color-text-muted))' }}
+                  tick={{ fontSize: 13, fill: 'rgb(var(--color-text-muted))' }}
                   width={36}
                   allowDecimals={chart.id !== 'google-trends'}
                   domain={chart.id === 'google-trends' ? [0, 100] : [0, 'auto']}
@@ -403,7 +423,7 @@ export function PanoramaPlatformChart({ chart, className, revealDelayMs = 0 }: P
                 {chart.lines.map((line) => (
                   <span
                     key={line.slug}
-                    className="inline-flex max-w-full items-center gap-1.5 text-[10px] text-text-secondary"
+                    className={cn('inline-flex max-w-full items-center gap-1.5 text-text-secondary', typographyBodyMutedClass)}
                     title={line.name}
                   >
                     <span

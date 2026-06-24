@@ -3,6 +3,7 @@
 import { useEffect, useRef } from 'react'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
+import { APP_FONT_STACK_CSS } from '@/lib/app-font-stack'
 
 interface Point {
   cidade: string
@@ -113,7 +114,7 @@ export function MapaVotoCruzadoWrapperLeaflet({ points }: MapaVotoCruzadoWrapper
       })
 
       marker.bindPopup(`
-        <div style="font-family:system-ui,-apple-system,sans-serif;min-width:180px">
+        <div style="font-family:${APP_FONT_STACK_CSS};min-width:180px">
           <div style="font-size:13px;font-weight:700;color:#111827;margin-bottom:6px">${escapeHtml(point.cidade)}</div>
           <div style="font-size:11px;color:#4B5563;margin-bottom:6px">
             Deputado dominante:

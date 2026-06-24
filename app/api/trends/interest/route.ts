@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { requireRouteUser } from '@/lib/supabase/route-auth'
 import {
   buildGoogleTrendsCompareRows,
   buildGoogleTrendsSeries,
@@ -7,8 +8,11 @@ import {
 } from '@/lib/google-trends-aggregate'
 import {
   googleTrendsInterestDateRange,
+  googleTrendsInterestQueryCutoffDay,
+  GOOGLE_TRENDS_INTEREST_QUERY_LIMIT,
   normalizeGoogleTrendsInterestRows,
 } from '@/lib/google-trends-normalize-rows'
+import { isGoogleTrendsSeriesStale } from '@/lib/google-trends-interest-date'
 import type { GoogleTrendsInterestRow, GoogleTrendsRelatedRow } from '@/lib/google-trends-types'
 import type { PoliticalActorWithTerms } from '@/lib/youtube-radar-types'
 import {
@@ -21,14 +25,10 @@ export const dynamic = 'force-dynamic'
 
 export async function GET(request: Request) {
   try {
-    const supabase = createClient()
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
+    const auth = await requireRouteUser()
+    if (!auth.ok) return auth.response
 
-    if (!user) {
-      return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
-    }
+    const supabase = createClient()
 
     const { searchParams } = new URL(request.url)
     const geo = searchParams.get('geo')?.trim() || 'BR-PI'
@@ -78,13 +78,16 @@ export async function GET(request: Request) {
     }
 
     const timeframeKeys = googleTrendsTimeframeQueryKeys(timeframe)
+    const interestCutoffDay = googleTrendsInterestQueryCutoffDay()
 
     const { data: interestRows, error: interestError } = await supabase
       .from('google_trends_interest')
       .select('*')
       .eq('geo', geo)
       .in('timeframe', timeframeKeys)
+      .gte('interest_date', interestCutoffDay)
       .order('interest_date', { ascending: true })
+      .limit(GOOGLE_TRENDS_INTEREST_QUERY_LIMIT)
 
     const { data: relatedRowsRaw } = await supabase
       .from('google_trends_related')
@@ -116,6 +119,7 @@ export async function GET(request: Request) {
     const compare = buildGoogleTrendsCompareRows(typedActors, rows, relatedRows)
     const chartData = buildTrendsChartData(series)
     const { dateFrom, dateTo } = googleTrendsInterestDateRange(rows)
+    const seriesStale = isGoogleTrendsSeriesStale(dateTo)
 
     const latestCollected = rows.reduce<string | null>((acc, r) => {
       if (!acc || r.collected_at > acc) return r.collected_at
@@ -133,6 +137,7 @@ export async function GET(request: Request) {
       timeframe,
       dateFrom,
       dateTo,
+      seriesStale,
       collectedAt: latestCollected,
       setupRequired: false,
     })

@@ -25,10 +25,10 @@ export function PanoramaPanel({ state }: PanoramaPanelProps) {
 
   return (
     <div className="flex flex-col gap-4">
-      {panorama.setupRequired ? (
+      {panorama.setupRequired && panorama.columns.length === 0 ? (
         <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-          Execute os SQLs de monitoramento no Supabase e colete dados nas abas específicas
-          (YouTube, Google News, Instagram, Meta Ads, Trends) para preencher o panorama.
+          Execute os SQLs de monitoramento no Supabase e cadastre candidatos ativos para habilitar o
+          panorama.
         </div>
       ) : null}
 

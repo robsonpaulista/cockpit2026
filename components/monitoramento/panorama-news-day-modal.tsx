@@ -1,7 +1,9 @@
 'use client'
 
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { ExternalLink, Loader2, X } from 'lucide-react'
+import { computeAnchoredPopupPosition } from '@/lib/anchored-popup-position'
 import type { GoogleNewsMentionWithActor } from '@/lib/google-news-types'
 import { cn } from '@/lib/utils'
 
@@ -18,10 +20,8 @@ interface PanoramaNewsDayModalProps {
   onClose: () => void
 }
 
-const VIEWPORT_PADDING = 12
-const ANCHOR_OFFSET = 10
 const PANEL_WIDTH = 400
-const PANEL_MAX_HEIGHT = 420
+const PANEL_ESTIMATED_HEIGHT = 360
 
 function formatDayLabel(iso: string): string {
   return new Date(`${iso}T12:00:00`).toLocaleDateString('pt-BR', {
@@ -37,39 +37,17 @@ function formatTime(iso: string | null): string {
   return new Date(iso).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
 }
 
-function clampPanelPosition(
-  anchor: { x: number; y: number },
-  panel: { width: number; height: number }
-): { top: number; left: number } {
-  const vw = window.innerWidth
-  const vh = window.innerHeight
-
-  let left = anchor.x + ANCHOR_OFFSET
-  let top = anchor.y + ANCHOR_OFFSET
-
-  if (left + panel.width + VIEWPORT_PADDING > vw) {
-    left = anchor.x - panel.width - ANCHOR_OFFSET
-  }
-  if (left < VIEWPORT_PADDING) {
-    left = Math.max(VIEWPORT_PADDING, vw - panel.width - VIEWPORT_PADDING)
-  }
-
-  if (top + panel.height + VIEWPORT_PADDING > vh) {
-    top = anchor.y - panel.height - ANCHOR_OFFSET
-  }
-  if (top < VIEWPORT_PADDING) {
-    top = VIEWPORT_PADDING
-  }
-
-  return { top, left }
-}
-
 export function PanoramaNewsDayModal({ selection, onClose }: PanoramaNewsDayModalProps) {
   const panelRef = useRef<HTMLDivElement>(null)
-  const [position, setPosition] = useState<{ top: number; left: number } | null>(null)
+  const [mounted, setMounted] = useState(false)
+  const [position, setPosition] = useState<{ left: number; top: number } | null>(null)
   const [mentions, setMentions] = useState<GoogleNewsMentionWithActor[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
 
   const carregar = useCallback(async (sel: PanoramaNewsDaySelection) => {
     setLoading(true)
@@ -105,52 +83,57 @@ export function PanoramaNewsDayModal({ selection, onClose }: PanoramaNewsDayModa
     void carregar(selection)
   }, [selection, carregar])
 
-  const updatePosition = useCallback(() => {
-    if (!selection || !panelRef.current) return
-    const rect = panelRef.current.getBoundingClientRect()
-    setPosition(clampPanelPosition(selection.anchor, { width: rect.width, height: rect.height }))
-  }, [selection])
-
   useLayoutEffect(() => {
-    if (!selection) return
+    if (!selection) {
+      setPosition(null)
+      return
+    }
+
+    const updatePosition = () => {
+      if (!selection) return
+      const rect = panelRef.current?.getBoundingClientRect()
+      const width = rect && rect.width > 0 ? rect.width : PANEL_WIDTH
+      const height = rect && rect.height > 0 ? rect.height : PANEL_ESTIMATED_HEIGHT
+      setPosition(computeAnchoredPopupPosition(selection.anchor, width, height))
+    }
+
     updatePosition()
-  }, [selection, loading, mentions.length, error, updatePosition])
+    window.addEventListener('resize', updatePosition)
+    window.addEventListener('scroll', updatePosition, true)
+
+    return () => {
+      window.removeEventListener('resize', updatePosition)
+      window.removeEventListener('scroll', updatePosition, true)
+    }
+  }, [selection, loading, mentions.length, error])
 
   useEffect(() => {
     if (!selection) return
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose()
     }
-    const onResize = () => updatePosition()
     window.addEventListener('keydown', onKey)
-    window.addEventListener('resize', onResize)
-    window.addEventListener('scroll', onResize, true)
-    return () => {
-      window.removeEventListener('keydown', onKey)
-      window.removeEventListener('resize', onResize)
-      window.removeEventListener('scroll', onResize, true)
-    }
-  }, [selection, onClose, updatePosition])
+    return () => window.removeEventListener('keydown', onKey)
+  }, [selection, onClose])
 
-  if (!selection) return null
+  if (!mounted || !selection) return null
 
-  return (
-    <div
-      className="fixed inset-0 z-50 bg-black/20"
-      role="presentation"
-      onClick={onClose}
-    >
+  const panel = (
+    <>
+      <div
+        className="fixed inset-0 z-[119] bg-black/25"
+        role="presentation"
+        onClick={onClose}
+        aria-hidden
+      />
       <div
         ref={panelRef}
-        className={cn(
-          'fixed flex flex-col overflow-hidden rounded-xl border border-[rgb(var(--color-border-tertiary)/0.85)] bg-bg-surface shadow-2xl',
-          position ? 'opacity-100' : 'pointer-events-none opacity-0'
-        )}
+        className="fixed z-[120] flex w-[min(400px,calc(100vw-1.5rem))] flex-col overflow-hidden rounded-xl border border-[rgb(var(--color-border-tertiary)/0.85)] bg-bg-surface shadow-2xl"
         style={{
-          top: position?.top ?? selection.anchor.y,
-          left: position?.left ?? selection.anchor.x,
-          width: `min(${PANEL_WIDTH}px, calc(100vw - ${VIEWPORT_PADDING * 2}px))`,
-          maxHeight: `min(${PANEL_MAX_HEIGHT}px, calc(100vh - ${VIEWPORT_PADDING * 2}px))`,
+          left: position?.left ?? -9999,
+          top: position?.top ?? -9999,
+          visibility: position ? 'visible' : 'hidden',
+          maxHeight: 'min(420px, calc(100vh - 1.5rem))',
         }}
         role="dialog"
         aria-modal="true"
@@ -159,9 +142,7 @@ export function PanoramaNewsDayModal({ selection, onClose }: PanoramaNewsDayModa
       >
         <div className="flex items-start justify-between gap-3 border-b border-[rgb(var(--color-border-tertiary)/0.85)] px-4 py-3">
           <div className="min-w-0">
-            <p className="text-[10px] font-semibold uppercase tracking-wide text-[rgb(var(--color-primary))]">
-              Google News
-            </p>
+            <p className="text-[10px] font-semibold uppercase tracking-wide text-text-muted">Notícias relacionadas</p>
             <h2 id="panorama-news-day-title" className="truncate text-sm font-semibold text-text-primary">
               {selection.name}
             </h2>
@@ -203,7 +184,7 @@ export function PanoramaNewsDayModal({ selection, onClose }: PanoramaNewsDayModa
                     href={m.url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="group flex items-start gap-2 text-sm font-medium leading-snug text-text-primary hover:text-[rgb(var(--color-primary))]"
+                    className="group flex items-start gap-2 text-sm font-medium leading-snug text-text-primary hover:text-text-secondary"
                   >
                     <span className="min-w-0 flex-1">{m.title}</span>
                     <ExternalLink
@@ -234,6 +215,8 @@ export function PanoramaNewsDayModal({ selection, onClose }: PanoramaNewsDayModa
             : `${mentions.length} matéria${mentions.length === 1 ? '' : 's'} · heatmap: ${selection.count}`}
         </div>
       </div>
-    </div>
+    </>
   )
+
+  return createPortal(panel, document.body)
 }

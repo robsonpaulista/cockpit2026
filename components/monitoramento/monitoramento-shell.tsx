@@ -7,11 +7,22 @@ import {
   LineChart,
   Megaphone,
   Newspaper,
-  Radar,
   Users,
   Youtube,
 } from 'lucide-react'
+import {
+  DashboardHubTabBar,
+  DashboardPageChrome,
+  DashboardPageContent,
+  DashboardPageHeader,
+  DashboardPageMetaStrip,
+  DashboardPageShell,
+} from '@/components/dashboard/dashboard-page-chrome'
+import { DataFreshnessIndicator } from '@/components/monitoramento/data-freshness-indicator'
+import { MONITORAMENTO_TAB_LIDERES } from '@/lib/monitoramento-lideres-route'
+import { typographyContentRootClass, typographyPageLeadClass } from '@/lib/typography-chrome'
 import { cn } from '@/lib/utils'
+import { useDashboardTopbarVisible } from '@/hooks/use-dashboard-topbar-visible'
 
 export type MonitoramentoTab =
   | 'geral'
@@ -65,60 +76,43 @@ export function MonitoramentoShell({
   tabActions,
   children,
 }: MonitoramentoShellProps) {
-  return (
-    <div className="flex min-h-0 flex-1 flex-col gap-4 p-4 md:p-6">
-      <div>
-        <div className="flex items-center gap-2 text-[rgb(var(--color-primary))]">
-          <Radar className="h-5 w-5" aria-hidden />
-          <span className="text-xs font-medium uppercase tracking-wide">Radar eleitoral</span>
-        </div>
-        {panoramaMeta ? (
-          <div className="mt-1 flex flex-wrap items-center gap-2">
-            <p className="text-xs text-text-muted">
-              {formatPanoramaDateTime(panoramaMeta.lastUpdated)} · {panoramaMeta.windowLabel}
-            </p>
-            {panoramaMeta.isLive ? (
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-[#E8F5E0] px-2 py-0.5 text-[10px] font-medium text-[#2D5A1E]">
-                <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-[#3B6D11]" aria-hidden />
-                dados recentes
-              </span>
-            ) : null}
-          </div>
-        ) : null}
-      </div>
+  const topbarVisible = useDashboardTopbarVisible()
+  const pageTitle =
+    activeTab === MONITORAMENTO_TAB_LIDERES ? 'Radar eleitoral · Eng. líderes' : 'Radar eleitoral'
 
-      <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-[rgb(var(--color-border-tertiary)/0.85)] bg-bg-surface p-1">
-        <div className="flex min-w-0 flex-1 flex-wrap gap-1">
-          {TABS.map((tab) => {
-            const Icon = tab.icon
-            const active = activeTab === tab.id
-            return (
-              <button
-                key={tab.id}
-                type="button"
-                onClick={() => onTabChange(tab.id)}
-                className={cn(
-                  'inline-flex items-center gap-1.5 rounded-lg px-4 py-2 text-xs font-medium transition-colors',
-                  active
-                    ? 'bg-[#E6F1FB] text-[rgb(var(--color-primary))]'
-                    : 'text-text-secondary hover:bg-bg-app hover:text-text-primary'
-                )}
-                aria-current={active ? 'page' : undefined}
-              >
-                <Icon className="h-3.5 w-3.5" aria-hidden />
-                {tab.label}
-              </button>
-            )
-          })}
-        </div>
-        {tabActions ? (
-          <div className="flex shrink-0 flex-wrap items-center justify-end gap-1.5 px-1 py-0.5">
-            {tabActions}
-          </div>
-        ) : null}
-      </div>
-
-      {children}
+  const description = panoramaMeta ? (
+    <div className="flex flex-wrap items-center gap-2">
+      <span className={typographyPageLeadClass}>{panoramaMeta.windowLabel}</span>
+      <DataFreshnessIndicator
+        lastUpdated={panoramaMeta.lastUpdated}
+        isLive={panoramaMeta.isLive}
+      />
+      {panoramaMeta.lastUpdated ? (
+        <span className={cn(typographyPageLeadClass, 'text-text-muted')}>
+          {formatPanoramaDateTime(panoramaMeta.lastUpdated)}
+        </span>
+      ) : null}
     </div>
+  ) : (
+    'Panorama e coletas de mídia em um só lugar.'
+  )
+
+  return (
+    <DashboardPageShell>
+      <DashboardPageChrome>
+        {topbarVisible ? (
+          description ? <DashboardPageMetaStrip>{description}</DashboardPageMetaStrip> : null
+        ) : (
+          <DashboardPageHeader title={pageTitle} description={description} />
+        )}
+        <DashboardHubTabBar
+          tabs={TABS}
+          activeTab={activeTab}
+          onTabChange={(tab) => onTabChange(tab as MonitoramentoTab)}
+          actions={tabActions}
+        />
+      </DashboardPageChrome>
+      <DashboardPageContent className={typographyContentRootClass}>{children}</DashboardPageContent>
+    </DashboardPageShell>
   )
 }

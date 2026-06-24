@@ -4,9 +4,10 @@
 
 @import './theme.css';
 
-/* Tipografia base — IBM Plex Sans via next/font (--font-sans no body) */
+/* Tipografia base — IBM Plex Sans + Inter (fallback) via next/font */
 html {
   font-size: 16px;
+  font-family: var(--font-sans), var(--font-sans-fallback), 'IBM Plex Sans', 'Inter', sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
@@ -27,7 +28,7 @@ body {
 [data-theme="republicanos"] {
   --bg-app: 241 243 246;
   --bg-surface: 252 253 255;
-  --bg-sidebar: 241 243 246;
+  --bg-sidebar: 249 250 251;
 
   /* Textos neutros (sem azul nos textos) */
   --text-primary: 30 33 39;
@@ -47,6 +48,10 @@ body {
 
   --border-card: 204 212 224;
 
+  /* Sidebar — tipografia de seção */
+  --text-2xs: 0.625rem;
+  --caps-tracking: 0.08em;
+
   /* Premium UI — Cockpit 2026 (#185FA5) */
   --color-primary: 24 95 165;
   --color-primary-tint: 230 241 251;
@@ -60,7 +65,7 @@ body {
 [data-theme="agentes"] {
   --bg-app: 248 250 252;
   --bg-surface: 255 255 255;
-  --bg-sidebar: 236 238 242;
+  --bg-sidebar: 243 244 246;
 
   --text-primary: 26 26 31;
   --text-secondary: 104 120 142;
@@ -106,7 +111,7 @@ body {
 [data-theme="republicanos"] {
   --bg-app: 241 243 246;
   --bg-surface: 252 253 255;
-  --bg-sidebar: 232 236 242;
+  --bg-sidebar: 249 250 251;
 
   --text-primary: 30 33 39;
   --text-secondary: 98 107 122;
@@ -2063,45 +2068,14 @@ table.td-resumo-table td.td-resumo-table__cell--estrategia {
    REPUBLICANOS PREMIUM (LIGHT) — polimento visual global
    ============================================================================= */
 
-[data-theme='republicanos'][data-appearance='light'] .republicanos-premium-sidebar {
-  background: rgb(var(--bg-app)) !important;
-  border-right-color: rgb(var(--border-card) / 0.9) !important;
-  box-shadow: 10px 0 28px rgba(15, 23, 42, 0.08);
+/* Sidebar Apify — fundo branco, hover cinza */
+.sidebar-apify-shell {
+  background: rgb(var(--bg-surface)) !important;
+  box-shadow: none !important;
 }
 
-[data-theme='republicanos'][data-appearance='light'] .republicanos-premium-sidebar > div {
-  background: rgb(var(--bg-app)) !important;
-}
-
-[data-theme='republicanos'][data-appearance='light'] .republicanos-premium-sidebar nav a,
-[data-theme='republicanos'][data-appearance='light'] .republicanos-premium-sidebar nav button {
-  border-radius: 12px;
-  min-height: 44px;
-  letter-spacing: 0.005em;
-  transition:
-    background-color 180ms ease,
-    color 180ms ease,
-    box-shadow 180ms ease,
-    transform 180ms ease;
-}
-
-[data-theme='republicanos'][data-appearance='light'] .republicanos-premium-sidebar nav a:hover,
-[data-theme='republicanos'][data-appearance='light'] .republicanos-premium-sidebar nav button:hover {
-  background: rgb(var(--accent-gold-soft) / 0.78) !important;
-  box-shadow: inset 0 0 0 1px rgb(var(--accent-gold) / 0.12);
-  transform: translateY(-0.5px);
-}
-
-[data-theme='republicanos'][data-appearance='light'] .republicanos-premium-sidebar nav a:focus-visible,
-[data-theme='republicanos'][data-appearance='light'] .republicanos-premium-sidebar nav button:focus-visible {
-  box-shadow:
-    0 0 0 2px rgb(var(--accent-gold) / 0.22),
-    inset 0 0 0 1px rgb(var(--accent-gold) / 0.2);
-}
-
-[data-theme='republicanos'][data-appearance='light'] .republicanos-premium-sidebar nav .bg-accent-gold-soft {
-  background: linear-gradient(180deg, rgb(var(--accent-gold-soft) / 0.92) 0%, rgb(var(--accent-gold-soft) / 0.78) 100%) !important;
-  box-shadow: inset 0 0 0 1px rgb(var(--accent-gold) / 0.14);
+.sidebar-apify-shell > div {
+  background: rgb(var(--bg-surface)) !important;
 }
 
 [data-theme='republicanos'][data-appearance='light'] .republicanos-premium-header {
@@ -2134,16 +2108,6 @@ table.td-resumo-table td.td-resumo-table__cell--estrategia {
 }
 
 @media (min-width: 1024px) {
-  [data-theme='republicanos'][data-appearance='light'] .republicanos-premium-sidebar {
-    box-shadow: 12px 0 32px rgba(15, 23, 42, 0.09);
-  }
-
-  [data-theme='republicanos'][data-appearance='light'] .republicanos-premium-sidebar nav a,
-  [data-theme='republicanos'][data-appearance='light'] .republicanos-premium-sidebar nav button {
-    min-height: 42px;
-    border-radius: 13px;
-  }
-
   [data-theme='republicanos'][data-appearance='light'] .republicanos-premium-header {
     box-shadow: 0 10px 28px rgba(15, 23, 42, 0.065);
   }

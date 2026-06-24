@@ -86,3 +86,38 @@ export function cargoColumnsFromResumo(cargosEstado: CargoCountRow[]): string[] 
 export function countCargoNaCidade(row: CidadeLiderancasCargoRow, cargo: string): number {
   return row.cargos.find((c) => c.cargo === cargo)?.total ?? 0
 }
+
+/** Chaves normalizadas de municípios com pelo menos uma liderança no cargo. */
+export function buildCidadesComCargoSet(
+  rows: CidadeLiderancasCargoRow[],
+  cargo: string
+): Set<string> {
+  const set = new Set<string>()
+  for (const row of rows) {
+    if (countCargoNaCidade(row, cargo) > 0) {
+      set.add(normalizeMunicipioNome(row.cidade))
+    }
+  }
+  return set
+}
+
+export function buildLiderancasPorCidadeKeyMap(
+  rows: CidadeLiderancasCargoRow[]
+): Map<string, CidadeLiderancasCargoRow> {
+  const map = new Map<string, CidadeLiderancasCargoRow>()
+  for (const row of rows) {
+    map.set(normalizeMunicipioNome(row.cidade), row)
+  }
+  return map
+}
+
+/** Total exibido na coluna Lideranças — por cargo quando filtrado, senão total na cidade. */
+export function liderancasExibidasNaCidade(
+  cidadeRow: CidadeLiderancasCargoRow | undefined,
+  cargoFiltro: string | null,
+  fallbackTotal = 0
+): number {
+  if (!cidadeRow) return fallbackTotal
+  if (cargoFiltro) return countCargoNaCidade(cidadeRow, cargoFiltro)
+  return cidadeRow.total
+}

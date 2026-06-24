@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { requireRouteUser } from '@/lib/supabase/route-auth'
 import { getGoogleTrendsCollectState } from '@/lib/google-trends-collect'
 import {
   GOOGLE_TRENDS_RUNNER_UNAVAILABLE_MESSAGE,
@@ -10,14 +11,10 @@ export const dynamic = 'force-dynamic'
 
 export async function GET() {
   try {
-    const supabase = createClient()
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
+    const auth = await requireRouteUser()
+    if (!auth.ok) return auth.response
 
-    if (!user) {
-      return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
-    }
+    const supabase = createClient()
 
     const runnerAvailable = isGoogleTrendsRunnerAvailable()
     const collectState = getGoogleTrendsCollectState()

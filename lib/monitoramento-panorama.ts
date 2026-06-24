@@ -146,8 +146,20 @@ const ACTOR_TYPE_ORDER: Record<string, number> = {
   other: 3,
 }
 
-const COMPETITOR_COLORS = ['#2563EB', '#7C3AED', '#EA580C', '#6B7280', '#0891B2', '#BE185D']
-const OWN_CANDIDATE_COLOR = '#2D7A4F'
+/** Paleta institucional — âmbar da marca + neutros quentes (menos contraste entre séries). */
+const OWN_CANDIDATE_COLOR = '#C8900A'
+
+const COMPETITOR_COLORS = [
+  '#6B7280',
+  '#8A7560',
+  '#64748B',
+  '#A68952',
+  '#78716C',
+  '#9E8B78',
+  '#5C6370',
+  '#B5A088',
+  '#737373',
+]
 
 function assignAccentColor(actorType: PoliticalActorType, competitorIndex: number): string {
   if (actorType === 'own_candidate') return OWN_CANDIDATE_COLOR

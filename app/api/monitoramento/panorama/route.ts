@@ -3,8 +3,9 @@ import {
   buildMonitoramentoPanorama,
   buildTrendsCompareFromRows,
 } from '@/lib/monitoramento-panorama'
+import { getMonitoramentoCollectorsStatus } from '@/lib/monitoramento-collectors-status'
 import { googleTrendsTimeframeQueryKeys, PANORAMA_GOOGLE_TRENDS_TIMEFRAME } from '@/lib/google-trends-timeframe'
-import { normalizeGoogleTrendsInterestRows } from '@/lib/google-trends-normalize-rows'
+import { normalizeGoogleTrendsInterestRows, googleTrendsInterestQueryCutoffDay, GOOGLE_TRENDS_INTEREST_QUERY_LIMIT } from '@/lib/google-trends-normalize-rows'
 import {
   panoramaWindowCutoffIso,
 } from '@/lib/monitoramento-panorama-window'
@@ -13,6 +14,8 @@ import type { GoogleTrendsInterestRow, GoogleTrendsRelatedRow } from '@/lib/goog
 import type { InstagramRadarPostWithActor } from '@/lib/instagram-radar-types'
 import type { MetaAdsMentionWithActor } from '@/lib/meta-ads-types'
 import { createClient } from '@/lib/supabase/server'
+import { requireRouteUser } from '@/lib/supabase/route-auth'
+import { isSupabaseMissingTableError } from '@/lib/supabase/table-error'
 import type { PoliticalActorWithTerms, YoutubeMentionWithActor } from '@/lib/youtube-radar-types'
 
 export const dynamic = 'force-dynamic'
@@ -22,15 +25,10 @@ const TIMEFRAME = PANORAMA_GOOGLE_TRENDS_TIMEFRAME
 
 export async function GET() {
   try {
+    const auth = await requireRouteUser()
+    if (!auth.ok) return auth.response
+
     const supabase = createClient()
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
-
-    if (!user) {
-      return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
-    }
-
     const { data: actors, error: actorsError } = await supabase
       .from('political_actors')
       .select(
@@ -58,7 +56,7 @@ export async function GET() {
       .order('name', { ascending: true })
 
     if (actorsError) {
-      if (actorsError.message.includes('does not exist') || actorsError.code === '42P01') {
+      if (isSupabaseMissingTableError(actorsError)) {
         return NextResponse.json({
           panorama: buildMonitoramentoPanorama({
             actors: [],
@@ -71,6 +69,7 @@ export async function GET() {
             lastUpdated: null,
             setupRequired: true,
           }),
+          collectorsStatus: getMonitoramentoCollectorsStatus(),
         })
       }
       throw new Error(actorsError.message)
@@ -78,6 +77,7 @@ export async function GET() {
 
     const typedActors = (actors ?? []) as PoliticalActorWithTerms[]
     const timeframeKeys = googleTrendsTimeframeQueryKeys(TIMEFRAME)
+    const trendsInterestCutoffDay = googleTrendsInterestQueryCutoffDay()
 
     const cutoffIso = panoramaWindowCutoffIso()
 
@@ -88,7 +88,9 @@ export async function GET() {
         .select('*')
         .eq('geo', GEO)
         .in('timeframe', timeframeKeys)
-        .order('interest_date', { ascending: true }),
+        .gte('interest_date', trendsInterestCutoffDay)
+        .order('interest_date', { ascending: true })
+        .limit(GOOGLE_TRENDS_INTEREST_QUERY_LIMIT),
       supabase
         .from('google_trends_related')
         .select('*')
@@ -139,12 +141,15 @@ export async function GET() {
     const timestamps: string[] = []
 
     const trendsRowsAll =
-      trendsRes.error &&
-      (trendsRes.error.message.includes('does not exist') || trendsRes.error.code === '42P01')
+      isSupabaseMissingTableError(trendsRes.error)
         ? []
         : normalizeGoogleTrendsInterestRows((trendsRes.data ?? []) as GoogleTrendsInterestRow[])
     const trendsRows = trendsRowsAll
-    if (trendsRes.error && trendsRowsAll.length === 0) setupRequired = true
+    if (isSupabaseMissingTableError(trendsRes.error)) {
+      setupRequired = true
+    } else if (trendsRes.error) {
+      console.warn('[monitoramento/panorama] google_trends_interest:', trendsRes.error.message)
+    }
 
     for (const r of trendsRows) timestamps.push(r.collected_at)
 
@@ -208,7 +213,10 @@ export async function GET() {
       setupRequired,
     })
 
-    return NextResponse.json({ panorama })
+    return NextResponse.json({
+      panorama,
+      collectorsStatus: getMonitoramentoCollectorsStatus(),
+    })
   } catch (e) {
     const msg = e instanceof Error ? e.message : 'Erro ao carregar panorama'
     console.error('[monitoramento/panorama]', e)

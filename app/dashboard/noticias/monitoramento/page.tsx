@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import dynamic from 'next/dynamic'
 import { Loader2 } from 'lucide-react'
 import { useRouter, useSearchParams } from 'next/navigation'
@@ -48,7 +48,13 @@ function parseTab(value: string | null): MonitoramentoTab {
 export default function MonitoramentoPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const activeTab = useMemo(() => parseTab(searchParams.get('tab')), [searchParams])
+  const urlTab = useMemo(() => parseTab(searchParams.get('tab')), [searchParams])
+  const [activeTab, setActiveTab] = useState<MonitoramentoTab>(urlTab)
+
+  useEffect(() => {
+    setActiveTab(urlTab)
+  }, [urlTab])
+
   const [panoramaMeta, setPanoramaMeta] = useState<MonitoramentoPanoramaMeta | null>(null)
 
   const onPanoramaMetaChange = useCallback((meta: MonitoramentoPanoramaMeta) => {
@@ -62,6 +68,7 @@ export default function MonitoramentoPage() {
 
   const onTabChange = useCallback(
     (tab: MonitoramentoTab) => {
+      setActiveTab(tab)
       const params = new URLSearchParams(searchParams.toString())
       if (tab === 'geral') {
         params.delete('tab')
@@ -74,6 +81,29 @@ export default function MonitoramentoPage() {
     [router, searchParams]
   )
 
+  const tabPanel = (() => {
+    switch (activeTab) {
+      case 'geral':
+        return <PanoramaPanel state={panorama} />
+      case 'google-alerts':
+        return <GoogleAlertsPanel />
+      case 'youtube':
+        return <YoutubeRadarPanel />
+      case 'trends':
+        return <TrendsRadarPanel />
+      case 'google-news':
+        return <GoogleNewsRadarPanel />
+      case 'meta-ads':
+        return <MetaAdsRadarPanel />
+      case 'instagram':
+        return <InstagramRadarPanel />
+      case 'lideres':
+        return <LideresEngajamentoPanel />
+      default:
+        return <PanoramaPanel state={panorama} />
+    }
+  })()
+
   return (
     <MonitoramentoShell
       activeTab={activeTab}
@@ -85,29 +115,14 @@ export default function MonitoramentoPage() {
             busy={panorama.busy}
             collectingAll={panorama.collectingAll}
             refreshing={panorama.refreshing}
+            collectorsStatus={panorama.collectorsStatus}
             onCollectAll={() => void panorama.coletarTodas()}
             onReload={() => void panorama.carregar(true)}
           />
         ) : null
       }
     >
-      {activeTab === 'geral' ? (
-        <PanoramaPanel state={panorama} />
-      ) : activeTab === 'google-alerts' ? (
-        <GoogleAlertsPanel />
-      ) : activeTab === 'trends' ? (
-        <TrendsRadarPanel />
-      ) : activeTab === 'google-news' ? (
-        <GoogleNewsRadarPanel />
-      ) : activeTab === 'meta-ads' ? (
-        <MetaAdsRadarPanel />
-      ) : activeTab === 'instagram' ? (
-        <InstagramRadarPanel />
-      ) : activeTab === 'lideres' ? (
-        <LideresEngajamentoPanel />
-      ) : (
-        <YoutubeRadarPanel />
-      )}
+      <div key={activeTab}>{tabPanel}</div>
     </MonitoramentoShell>
   )
 }

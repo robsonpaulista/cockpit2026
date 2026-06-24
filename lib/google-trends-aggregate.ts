@@ -89,17 +89,29 @@ export function groupTrendsByTerm(rows: GoogleTrendsInterestRow[]): Map<string, 
   return map
 }
 
+function groupTrendsByPoliticoId(rows: GoogleTrendsInterestRow[]): Map<string, GoogleTrendsInterestRow[]> {
+  const map = new Map<string, GoogleTrendsInterestRow[]>()
+  for (const row of rows) {
+    if (!row.politico_id) continue
+    const arr = map.get(row.politico_id) ?? []
+    arr.push(row)
+    map.set(row.politico_id, arr)
+  }
+  return map
+}
+
 export function buildGoogleTrendsSeries(
   actors: PoliticalActorWithTerms[],
   rows: GoogleTrendsInterestRow[]
 ): GoogleTrendsSeries[] {
   const byTerm = groupTrendsByTerm(rows)
+  const byPoliticoId = groupTrendsByPoliticoId(rows)
   const meta = actorMetaByName(actors)
 
   const series: GoogleTrendsSeries[] = []
 
   for (const actor of actors.filter((a) => a.active)) {
-    const termRows = byTerm.get(actor.name) ?? []
+    const termRows = byTerm.get(actor.name) ?? byPoliticoId.get(actor.id) ?? []
     series.push({
       searchTerm: actor.name,
       politicoId: actor.id,

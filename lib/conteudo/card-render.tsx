@@ -11,10 +11,18 @@ const H = 1080
 
 let fontRegular: ArrayBuffer | null = null
 let fontBold: ArrayBuffer | null = null
+let fontFallbackRegular: ArrayBuffer | null = null
+let fontFallbackBold: ArrayBuffer | null = null
 
 async function loadFonts(): Promise<void> {
-  if (fontRegular && fontBold) return
-  const [r, b] = await Promise.all([
+  if (fontRegular && fontBold && fontFallbackRegular && fontFallbackBold) return
+  const [plexRegular, plexBold, interRegular, interBold] = await Promise.all([
+    fetch(
+      'https://cdn.jsdelivr.net/npm/@fontsource/ibm-plex-sans@5.0.8/files/ibm-plex-sans-latin-400-normal.woff'
+    ).then((res) => res.arrayBuffer()),
+    fetch(
+      'https://cdn.jsdelivr.net/npm/@fontsource/ibm-plex-sans@5.0.8/files/ibm-plex-sans-latin-700-normal.woff'
+    ).then((res) => res.arrayBuffer()),
     fetch(
       'https://cdn.jsdelivr.net/npm/@fontsource/inter@5.0.16/files/inter-latin-400-normal.woff'
     ).then((res) => res.arrayBuffer()),
@@ -22,8 +30,10 @@ async function loadFonts(): Promise<void> {
       'https://cdn.jsdelivr.net/npm/@fontsource/inter@5.0.16/files/inter-latin-700-normal.woff'
     ).then((res) => res.arrayBuffer()),
   ])
-  fontRegular = r
-  fontBold = b
+  fontRegular = plexRegular
+  fontBold = plexBold
+  fontFallbackRegular = interRegular
+  fontFallbackBold = interBold
 }
 
 const palette: Record<string, { bg: string; accent: string; sub: string }> = {
@@ -59,7 +69,7 @@ function CardLayout(input: {
         display: 'flex',
         position: 'relative',
         backgroundColor: bg,
-        fontFamily: 'Inter',
+        fontFamily: 'IBM Plex Sans, Inter, sans-serif',
       }}
     >
       {imagemFundo ? (
@@ -161,14 +171,26 @@ export async function renderCardPng(input: {
     height: H,
     fonts: [
       {
-        name: 'Inter',
+        name: 'IBM Plex Sans',
         data: fontRegular!,
         weight: 400,
         style: 'normal',
       },
       {
-        name: 'Inter',
+        name: 'IBM Plex Sans',
         data: fontBold!,
+        weight: 700,
+        style: 'normal',
+      },
+      {
+        name: 'Inter',
+        data: fontFallbackRegular!,
+        weight: 400,
+        style: 'normal',
+      },
+      {
+        name: 'Inter',
+        data: fontFallbackBold!,
         weight: 700,
         style: 'normal',
       },

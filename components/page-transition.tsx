@@ -43,7 +43,7 @@ export function PageTransition({ children }: PageTransitionProps) {
 
   return (
     <div
-      className="page-transition flex min-h-0 flex-1 flex-col"
+      className="page-transition flex min-h-0 flex-1 flex-col overflow-hidden"
       style={{
         opacity: isTransitioning ? 0 : 1,
         transform: isTransitioning ? 'translateY(4px)' : 'translateY(0)',

@@ -6,12 +6,22 @@ import type { MonitoramentoCollectorsStatus } from '@/lib/monitoramento-collecto
 import { readResponseJson } from '@/lib/parse-response-json'
 import { cn } from '@/lib/utils'
 
-export function CollectSourcesProductionInfo() {
-  const [status, setStatus] = useState<MonitoramentoCollectorsStatus | null>(null)
+interface CollectSourcesProductionInfoProps {
+  /** Quando já veio do /api/monitoramento/panorama, evita fetch extra. */
+  status?: MonitoramentoCollectorsStatus | null
+}
+
+export function CollectSourcesProductionInfo({ status: statusProp }: CollectSourcesProductionInfoProps) {
+  const [status, setStatus] = useState<MonitoramentoCollectorsStatus | null>(statusProp ?? null)
   const [open, setOpen] = useState(false)
   const rootRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
+    if (statusProp) setStatus(statusProp)
+  }, [statusProp])
+
+  useEffect(() => {
+    if (statusProp !== undefined) return
     void (async () => {
       try {
         const res = await fetch('/api/monitoramento/collectors-status', { cache: 'no-store' })
@@ -21,7 +31,7 @@ export function CollectSourcesProductionInfo() {
         /* ignore */
       }
     })()
-  }, [])
+  }, [statusProp])
 
   useEffect(() => {
     if (!open) return

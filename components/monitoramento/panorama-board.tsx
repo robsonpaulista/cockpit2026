@@ -1,9 +1,11 @@
 'use client'
 
+import { PanoramaBoardSkeleton } from '@/components/monitoramento/panorama-board-skeleton'
 import { PanoramaPlatformChart } from '@/components/monitoramento/panorama-platform-chart'
 import { PanoramaPlatformKpiStrip } from '@/components/monitoramento/panorama-platform-kpi-strip'
 import type { PanoramaModel } from '@/lib/monitoramento-panorama'
 import type { PanoramaPlatformChart as PanoramaChartModel } from '@/lib/monitoramento-panorama-charts'
+import { typographySectionLabelClass } from '@/lib/typography-chrome'
 import { cn } from '@/lib/utils'
 
 function chartsByTier(charts: PanoramaChartModel[], tier: 'detail' | 'simple'): PanoramaChartModel[] {
@@ -24,11 +26,7 @@ export function PanoramaBoard({
   animationEpoch = 0,
 }: PanoramaBoardProps) {
   if (loading) {
-    return (
-      <div className="rounded-xl border border-[rgb(var(--color-border-tertiary)/0.85)] bg-bg-surface px-4 py-16 text-center text-sm text-text-muted">
-        Montando painel de gestão…
-      </div>
-    )
+    return <PanoramaBoardSkeleton />
   }
 
   if (panorama.columns.length === 0) {
@@ -50,19 +48,20 @@ export function PanoramaBoard({
         refreshing && 'opacity-80'
       )}
     >
-      <PanoramaPlatformKpiStrip cards={panorama.platformKpis} />
+      <PanoramaPlatformKpiStrip cards={panorama.platformKpis} animationEpoch={animationEpoch} />
 
       {detailCharts.length > 0 ? (
         <section>
-          <h3 className="mb-3 text-xs font-semibold uppercase tracking-wide text-text-muted">
+          <h3 className={cn('mb-3', typographySectionLabelClass)}>
             Imprensa e Instagram · detalhe comparativo
           </h3>
-          <div className="grid items-start gap-4 xl:grid-cols-2">
+          <div className="grid items-stretch gap-4 xl:grid-cols-2">
             {detailCharts.map((chart, chartIndex) => (
               <PanoramaPlatformChart
                 key={`${chart.id}-${animationEpoch}`}
                 chart={chart}
-                revealDelayMs={chartIndex * 60}
+                staggerIndex={chartIndex}
+                animationEpoch={animationEpoch}
               />
             ))}
           </div>
@@ -71,7 +70,7 @@ export function PanoramaBoard({
 
       {simpleCharts.length > 0 ? (
         <section>
-          <h3 className="mb-3 text-xs font-semibold uppercase tracking-wide text-text-muted">
+          <h3 className={cn('mb-3', typographySectionLabelClass)}>
             YouTube, Trends e Meta Ads · séries diárias
           </h3>
           <div className="grid items-start gap-4 lg:grid-cols-2 xl:grid-cols-3">
@@ -79,7 +78,8 @@ export function PanoramaBoard({
               <PanoramaPlatformChart
                 key={`${chart.id}-${animationEpoch}`}
                 chart={chart}
-                revealDelayMs={(detailCharts.length + chartIndex) * 60}
+                staggerIndex={detailCharts.length + chartIndex}
+                animationEpoch={animationEpoch}
               />
             ))}
           </div>

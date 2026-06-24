@@ -247,7 +247,7 @@ export default function SplashPage() {
         }
 
         .splash-c {
-          font-family: 'Outfit', 'Inter', sans-serif;
+          font-family: var(--font-sans), var(--font-sans-fallback), 'IBM Plex Sans', 'Inter', sans-serif;
           font-size: 4.6rem;
           font-weight: 800;
           color: #eaf2f7;
@@ -270,7 +270,7 @@ export default function SplashPage() {
         }
 
         .splash-ockpit {
-          font-family: 'Outfit', 'Inter', sans-serif;
+          font-family: var(--font-sans), var(--font-sans-fallback), 'IBM Plex Sans', 'Inter', sans-serif;
           font-size: 4.6rem;
           font-weight: 800;
           color: #eaf2f7;
@@ -293,7 +293,7 @@ export default function SplashPage() {
         }
 
         .splash-ano {
-          font-family: 'Outfit', 'Inter', sans-serif;
+          font-family: var(--font-sans), var(--font-sans-fallback), 'IBM Plex Sans', 'Inter', sans-serif;
           font-size: 2rem;
           font-weight: 300;
           color: rgba(168, 186, 198, 0.8);
@@ -328,7 +328,7 @@ export default function SplashPage() {
         }
 
         .splash-slogan {
-          font-family: 'DM Sans', 'Inter', sans-serif;
+          font-family: var(--font-sans), var(--font-sans-fallback), 'IBM Plex Sans', 'Inter', sans-serif;
           font-size: 0.92rem;
           font-weight: 500;
           color: rgba(168, 186, 198, 0.88);

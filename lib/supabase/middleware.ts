@@ -3,6 +3,12 @@ import { NextResponse, type NextRequest } from 'next/server'
 
 export async function updateSession(request: NextRequest) {
   const pathname = request.nextUrl.pathname
+
+  // Rotas de API autenticam por conta própria — evita getUser() duplicado (middleware + handler).
+  if (pathname.startsWith('/api/')) {
+    return NextResponse.next()
+  }
+
   if (
     pathname.startsWith('/_next') ||
     pathname.startsWith('/icons') ||

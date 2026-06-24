@@ -7,6 +7,10 @@ import {
 } from '@/components/monitoramento/panorama-youtube-day-modal'
 import { heatmapCellColor } from '@/lib/monitoramento-heatmap-colors'
 import type { YoutubePanoramaHeatmapRow } from '@/lib/youtube-panorama-series'
+import {
+  typographyBodyMediumClass,
+  typographyBodyMutedClass,
+} from '@/lib/typography-chrome'
 import { cn } from '@/lib/utils'
 
 type YoutubeHeatmapHover = {
@@ -72,7 +76,7 @@ export function PanoramaYoutubeMovimentoHeatmap({
 
   return (
     <div className={cn('flex min-h-0 flex-1 flex-col', className)}>
-      <div className="mb-2 min-h-[36px] shrink-0 rounded-lg border border-[rgb(var(--color-border-tertiary)/0.45)] bg-bg-app px-2.5 py-2 text-[10px] leading-snug text-text-muted">
+      <div className={cn('mb-2 min-h-[36px] shrink-0 rounded-lg border border-[rgb(var(--color-border-tertiary)/0.45)] bg-bg-app px-2.5 py-2 leading-snug', typographyBodyMutedClass)}>
         {hover ? (
           <span>
             <span className="font-medium text-text-primary">{hover.name}</span>
@@ -93,7 +97,7 @@ export function PanoramaYoutubeMovimentoHeatmap({
           {rows.map((row, rowIndex) => (
             <div key={row.slug} className="mb-1.5 flex items-center gap-2 last:mb-0">
               <span
-                className="w-[118px] shrink-0 truncate text-[11px] font-medium text-text-secondary"
+                className={cn('w-[120px] shrink-0 truncate text-text-secondary', typographyBodyMediumClass)}
                 title={row.name}
               >
                 {row.name}
@@ -148,12 +152,12 @@ export function PanoramaYoutubeMovimentoHeatmap({
           ))}
 
           {ticks.length > 0 ? (
-            <div className="mt-1 flex gap-2 pl-[126px]">
+            <div className="mt-1 flex gap-2 pl-[128px]">
               <div className="relative h-3 min-w-0 flex-1">
                 {ticks.map((tick) => (
                   <span
                     key={tick.index}
-                    className="absolute text-[9px] text-text-muted"
+                    className={cn('absolute', typographyBodyMutedClass)}
                     style={{ left: `${(tick.index / Math.max(dates.length - 1, 1)) * 100}%` }}
                   >
                     {tick.label}
@@ -165,7 +169,7 @@ export function PanoramaYoutubeMovimentoHeatmap({
         </div>
       </div>
 
-      <div className="mt-2 flex shrink-0 flex-wrap items-center gap-2 text-[10px] text-text-muted">
+      <div className={cn('mt-2 flex shrink-0 flex-wrap items-center gap-2', typographyBodyMutedClass)}>
         <span>Sem atividade</span>
         <div className="flex gap-[2px]">
           {[0, 0.25, 0.5, 0.75, 1].map((t) => (

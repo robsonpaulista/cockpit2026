@@ -1,7 +1,8 @@
 'use client'
 
-import { Inter, JetBrains_Mono, Orbitron } from 'next/font/google'
+import { JetBrains_Mono, Orbitron } from 'next/font/google'
 import { cn } from '@/lib/utils'
+import { APP_FONT_BODY_CLASS } from '@/lib/app-font-stack'
 
 const orbitron = Orbitron({
   subsets: ['latin'],
@@ -17,13 +18,6 @@ const jetbrains = JetBrains_Mono({
   display: 'swap',
 })
 
-const inter = Inter({
-  subsets: ['latin'],
-  weight: ['400', '500'],
-  variable: '--font-jarvis-ui',
-  display: 'swap',
-})
-
 export function JarvisFontScope({
   children,
   className,
@@ -35,13 +29,7 @@ export function JarvisFontScope({
 }) {
   return (
     <div
-      className={cn(
-        orbitron.variable,
-        jetbrains.variable,
-        inter.variable,
-        'font-jarvis-ui',
-        className
-      )}
+      className={cn(orbitron.variable, jetbrains.variable, APP_FONT_BODY_CLASS, className)}
       style={style}
     >
       {children}

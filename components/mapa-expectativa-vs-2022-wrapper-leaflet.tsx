@@ -10,6 +10,7 @@ import {
   type TendenciaExpectativa2022,
 } from '@/lib/comparativo-expectativa-2022'
 import { normalizeMunicipioNome } from '@/lib/piaui-regiao'
+import { APP_FONT_STACK_CSS } from '@/lib/app-font-stack'
 
 type MapAppearance = 'light' | 'dark'
 
@@ -59,7 +60,7 @@ function createPopupHTML(row: ComparativoExpectativa2022Row, appearance: MapAppe
   const deltaLabel = `${row.delta >= 0 ? '+' : ''}${row.delta.toLocaleString('pt-BR')}`
 
   return `
-    <div style="font-family:system-ui,sans-serif;min-width:200px;color:${isDark ? '#e2e8f0' : '#111827'};">
+    <div style="font-family:${APP_FONT_STACK_CSS};min-width:200px;color:${isDark ? '#e2e8f0' : '#111827'};">
       <div style="font-weight:700;font-size:13px;margin-bottom:6px;">${row.cidade}</div>
       <div style="font-size:11px;margin-bottom:4px;">
         <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${cor.bg};margin-right:6px;"></span>

@@ -5,6 +5,7 @@ import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import municipiosPiaui from '@/lib/municipios-piaui.json'
 import type { CidadeIntencaoTopoRow } from '@/lib/pesquisa-tendencia-executive'
+import { APP_FONT_STACK_CSS } from '@/lib/app-font-stack'
 
 interface Municipio {
   nome: string
@@ -227,7 +228,7 @@ function createPopupHTML(
     : ''
 
   if (semDados) {
-    return `<div style="font-family:system-ui,-apple-system,sans-serif;min-width:220px;max-width:280px;">
+    return `<div style="font-family:${APP_FONT_STACK_CSS};min-width:220px;max-width:280px;">
       <div style="background:${headerBg};padding:10px 14px;">
         <strong style="color:white;font-size:14px;">${config.nome}</strong>
       </div>
@@ -237,7 +238,7 @@ function createPopupHTML(
     </div>`
   }
 
-  return `<div style="font-family:system-ui,-apple-system,sans-serif;min-width:240px;max-width:300px;">
+  return `<div style="font-family:${APP_FONT_STACK_CSS};min-width:240px;max-width:300px;">
     <div style="background:${headerBg};padding:10px 14px;">
       <strong style="color:white;font-size:14px;">${config.nome}</strong>
       ${candidatoLabel}
@@ -290,7 +291,7 @@ function getMapStyles(appearance: MapAppearance): string {
     border-radius: 999px !important;
     box-shadow: 0 4px 14px rgba(15,23,42,0.14) !important;
     color: #0f172a !important;
-    font-family: system-ui,-apple-system,sans-serif !important;
+    font-family: ${APP_FONT_STACK_CSS} !important;
     font-size: 10px !important;
     font-weight: 700 !important;
     line-height: 1.1 !important;

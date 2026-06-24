@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
+import { requireRouteUser } from '@/lib/supabase/route-auth'
 import { NextResponse } from 'next/server'
 
 export const dynamic = 'force-dynamic'
@@ -6,15 +7,11 @@ export const dynamic = 'force-dynamic'
 // Retorna todos os feeds unificados (do usuário + adversários)
 export async function GET() {
   try {
+    const auth = await requireRouteUser()
+    if (!auth.ok) return auth.response
+    const user = auth.user
+
     const supabase = createClient()
-
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
-
-    if (!user) {
-      return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
-    }
 
     // Buscar feeds do usuário
     const { data: userFeeds, error: userFeedsError } = await supabase

@@ -1,19 +1,16 @@
 import { NextResponse } from 'next/server'
 import { getInstagramRadarCollectStatus } from '@/lib/instagram-radar-collect'
 import { createClient } from '@/lib/supabase/server'
+import { requireRouteUser } from '@/lib/supabase/route-auth'
 
 export const dynamic = 'force-dynamic'
 
 export async function GET() {
   try {
-    const supabase = createClient()
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
+    const auth = await requireRouteUser()
+    if (!auth.ok) return auth.response
 
-    if (!user) {
-      return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
-    }
+    const supabase = createClient()
 
     const status = await getInstagramRadarCollectStatus(supabase)
 

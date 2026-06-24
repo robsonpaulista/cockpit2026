@@ -1,7 +1,7 @@
 import { buildGoogleTrendsSeries } from '@/lib/google-trends-aggregate'
 import { buildInstagramRadarCompareRows } from '@/lib/instagram-radar-aggregate'
 import type { GoogleNewsMentionWithActor } from '@/lib/google-news-types'
-import type { GoogleTrendsInterestRow } from '@/lib/google-trends-types'
+import type { GoogleTrendsInterestPoint, GoogleTrendsInterestRow } from '@/lib/google-trends-types'
 import type { InstagramRadarPostWithActor } from '@/lib/instagram-radar-types'
 import type { MetaAdsMentionWithActor } from '@/lib/meta-ads-types'
 import { buildMetaAdsPeriodTotals } from '@/lib/meta-ads-aggregate'
@@ -194,8 +194,8 @@ function buildGoogleNewsChart(
   return {
     id: 'google-news',
     layoutTier: 'detail',
-    title: 'Google News',
-    subtitle: `Mapa de calor — menções por dia${windowSuffix}`,
+    title: 'Notícias relacionadas',
+    subtitle: `Menções por dia · ${PANORAMA_WINDOW_DAYS} dias`,
     metricLabel: 'Matérias',
     chartType: 'heatmap',
     lines: linesFromColumns(columns),
@@ -245,14 +245,16 @@ function buildInstagramTable(
   const hTotal = rankMetricHighlights(draft.map((r) => r.totalEngagement))
   const hAvg = rankMetricHighlights(draft.map((r) => r.avgEngagement))
 
-  const instagramTable: PanoramaInstagramTableRow[] = draft.map((row, i) => ({
-    ...row,
-    highlights: {
-      postCount: hPosts[i],
-      totalEngagement: hTotal[i],
-      avgEngagement: hAvg[i],
-    },
-  }))
+  const instagramTable: PanoramaInstagramTableRow[] = draft
+    .map((row, i) => ({
+      ...row,
+      highlights: {
+        postCount: hPosts[i],
+        totalEngagement: hTotal[i],
+        avgEngagement: hAvg[i],
+      },
+    }))
+    .sort((a, b) => b.avgEngagement - a.avgEngagement)
 
   const dates = lastNDays(CHART_WINDOW)
   const engagementItems: Array<{ slug: string; date: string; value: number }> = []
@@ -289,8 +291,31 @@ function buildGoogleTrendsChart(
   actors: PoliticalActorWithTerms[],
   interestRows: GoogleTrendsInterestRow[]
 ): PanoramaPlatformChart {
-  const series = buildGoogleTrendsSeries(actors, interestRows)
-  const slugByName = new Map(columns.map((c) => [c.name, c.slug]))
+  type PointSeries = {
+    slug: string
+    name: string
+    color: string
+    points: GoogleTrendsInterestPoint[]
+  }
+
+  let series: PointSeries[] = columns
+    .filter((col) => (col.trends?.points.length ?? 0) > 0)
+    .map((col) => ({
+      slug: col.slug,
+      name: col.name,
+      color: col.accentColor,
+      points: col.trends!.points,
+    }))
+
+  if (series.length === 0) {
+    series = buildGoogleTrendsSeries(actors, interestRows)
+      .map((s) => {
+        const col = columns.find((c) => c.slug === s.slug || c.name === s.name)
+        if (!col || s.points.length === 0) return null
+        return { slug: col.slug, name: col.name, color: col.accentColor, points: s.points }
+      })
+      .filter((s): s is PointSeries => s !== null)
+  }
 
   const dateSet = new Set<string>()
   for (const s of series) {
@@ -298,17 +323,17 @@ function buildGoogleTrendsChart(
   }
 
   let dates = [...dateSet].sort()
-  if (dates.length > CHART_WINDOW) {
+  if (dates.length === 0) {
+    dates = lastNDays(CHART_WINDOW)
+  } else if (dates.length > CHART_WINDOW) {
     dates = dates.slice(-CHART_WINDOW)
   }
 
   const chartData = dates.map((date) => {
     const row: { date: string } & Record<string, number | string> = { date }
     for (const s of series) {
-      const slug = s.slug ?? slugByName.get(s.name)
-      if (!slug) continue
       const point = s.points.find((p) => p.date === date)
-      if (point) row[slug] = point.score
+      row[s.slug] = point?.score ?? 0
     }
     for (const col of columns) {
       if (row[col.slug] === undefined) row[col.slug] = 0
@@ -316,13 +341,10 @@ function buildGoogleTrendsChart(
     return row
   })
 
-  const lines = series
-    .map((s) => {
-      const col = columns.find((c) => c.slug === s.slug || c.name === s.name)
-      if (!col) return null
-      return { slug: col.slug, name: col.name, color: col.accentColor }
-    })
-    .filter((l): l is PanoramaChartLine => l !== null)
+  const lines: PanoramaChartLine[] =
+    series.length > 0
+      ? series.map((s) => ({ slug: s.slug, name: s.name, color: s.color }))
+      : linesFromColumns(columns)
 
   const searchContexts: PanoramaTrendsSearchHighlight[] = columns
     .filter((col) => col.trends?.searchContext)
@@ -337,11 +359,11 @@ function buildGoogleTrendsChart(
   return {
     id: 'google-trends',
     layoutTier: 'simple',
-    title: 'Google Trends',
+    title: 'Buscas pelo nome dos candidatos',
     subtitle: `Interesse de busca · índice 0–100${windowSuffix}`,
     metricLabel: 'Interesse',
     chartType: 'line',
-    lines: lines.length > 0 ? lines : linesFromColumns(columns),
+    lines,
     chartData,
     searchContexts: searchContexts.length > 0 ? searchContexts : undefined,
     empty: chartData.length === 0 || !chartHasData(chartData, columns),

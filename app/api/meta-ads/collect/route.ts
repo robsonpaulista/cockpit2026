@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { collectMetaAds } from '@/lib/meta-ads-collect'
 import { MetaAdsRunnerUnavailableError } from '@/lib/serverless-runtime'
-import { createClient } from '@/lib/supabase/server'
+import { requireRouteUser } from '@/lib/supabase/route-auth'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 900
@@ -13,14 +13,8 @@ const bodySchema = z.object({
 
 export async function POST(request: Request) {
   try {
-    const supabase = createClient()
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
-
-    if (!user) {
-      return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
-    }
+    const auth = await requireRouteUser()
+    if (!auth.ok) return auth.response
 
     const body = bodySchema.parse(await request.json().catch(() => ({})))
     const parsed = await collectMetaAds({ politicoSlug: body.politicoSlug })

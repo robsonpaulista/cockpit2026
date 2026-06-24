@@ -2,6 +2,13 @@
 
 import { IconMapPin } from '@tabler/icons-react'
 import { cn, parseDateOnlyLocal } from '@/lib/utils'
+import {
+  typographyBodyClass,
+  typographyBodyMediumClass,
+  typographyBodyMutedClass,
+  typographySectionLabelClass,
+  typographySectionTitleClass,
+} from '@/lib/typography-chrome'
 
 export type CampoResumoCityBar = {
   name: string
@@ -99,23 +106,23 @@ export function CampoResumoWidget({
       <div className="mb-3.5 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <IconMapPin className="h-4 w-4 shrink-0 text-[rgb(var(--color-primary))]" stroke={1.5} aria-hidden />
-          <h2 className="text-[13px] font-medium text-text-primary">Resumo de campo</h2>
+          <h2 className={typographySectionTitleClass}>Resumo de campo</h2>
         </div>
-        <span className="text-xs text-text-muted">{totalAgendas} agendas no total</span>
+        <span className={typographyBodyMutedClass}>{totalAgendas} agendas no total</span>
       </div>
 
       <div className="grid grid-cols-[1fr_1fr_1.4fr] items-stretch gap-0">
         <div className="flex min-h-0 flex-col border-r border-[rgb(var(--color-border-tertiary)/0.85)] pr-4 mr-4">
-          <p className="mb-2.5 shrink-0 text-[10px] font-medium uppercase tracking-[0.05em] text-text-muted">
+          <p className={cn('mb-2.5 shrink-0', typographySectionLabelClass)}>
             Presença por cidade
           </p>
           {cityBars.length === 0 ? (
-            <p className="text-xs text-text-secondary">Sem dados de presença ainda.</p>
+            <p className={typographyBodyMutedClass}>Sem dados de presença ainda.</p>
           ) : (
             <div className="flex min-h-0 flex-1 flex-col justify-between">
               {cityBars.map((city, index) => (
                 <div key={city.name} className="flex items-center gap-2">
-                  <span className="w-[72px] shrink-0 truncate text-xs font-medium text-text-primary">{city.name}</span>
+                  <span className={cn('w-[72px] shrink-0 truncate', typographyBodyMediumClass)}>{city.name}</span>
                   <div className="h-1.5 flex-1 overflow-hidden rounded-[99px] bg-bg-app">
                     <div
                       className="h-full rounded-[99px]"
@@ -125,7 +132,7 @@ export function CampoResumoWidget({
                       }}
                     />
                   </div>
-                  <span className="min-w-[14px] shrink-0 text-right text-xs font-medium tabular-nums text-text-secondary">
+                  <span className={cn('min-w-[14px] shrink-0 text-right tabular-nums', typographyBodyMutedClass)}>
                     {city.count}
                   </span>
                 </div>
@@ -135,11 +142,11 @@ export function CampoResumoWidget({
         </div>
 
         <div className="flex min-h-0 flex-col border-r border-[rgb(var(--color-border-tertiary)/0.85)] pr-4 mr-4">
-          <p className="mb-2.5 shrink-0 text-[10px] font-medium uppercase tracking-[0.05em] text-text-muted">
+          <p className={cn('mb-2.5 shrink-0', typographySectionLabelClass)}>
             Últimas agendas
           </p>
           {recentAgendas.length === 0 ? (
-            <p className="text-xs text-text-secondary">Nenhuma agenda concluída ainda.</p>
+            <p className={typographyBodyMutedClass}>Nenhuma agenda concluída ainda.</p>
           ) : (
             <div className="flex min-h-0 flex-1 flex-col">
               {recentAgendas.map((agenda, index) => {
@@ -158,12 +165,13 @@ export function CampoResumoWidget({
                       aria-hidden
                     />
                     <div className="min-w-0 flex-1">
-                      <p className="truncate text-xs font-medium text-text-primary">{agenda.cityName}</p>
-                      <p className="mt-px text-[11px] text-text-muted">{formatAgendaDate(agenda.date)}</p>
+                      <p className={cn('truncate', typographyBodyMediumClass)}>{agenda.cityName}</p>
+                      <p className={cn('mt-px', typographyBodyMutedClass)}>{formatAgendaDate(agenda.date)}</p>
                     </div>
                     <span
                       className={cn(
-                        'shrink-0 rounded-[99px] px-[7px] py-0.5 text-[10px] font-medium',
+                        'shrink-0 rounded-[99px] px-[7px] py-0.5',
+                        typographyBodyMediumClass,
                         badge.className
                       )}
                     >
@@ -178,9 +186,9 @@ export function CampoResumoWidget({
 
         <div className="flex min-h-0 flex-col">
           <div className="mb-2.5 flex shrink-0 items-center justify-between gap-2">
-            <p className="text-[10px] font-medium uppercase tracking-[0.05em] text-text-muted">Ritmo mensal</p>
+            <p className={typographySectionLabelClass}>Ritmo mensal</p>
             {showCurrentMonthNote ? (
-              <span className="text-[10px] text-text-muted">* mês atual em andamento</span>
+              <span className={typographyBodyMutedClass}>* mês atual em andamento</span>
             ) : null}
           </div>
           <div className="flex min-h-0 flex-1 flex-col justify-end">
@@ -193,7 +201,7 @@ export function CampoResumoWidget({
 
                 return (
                   <div key={month.key} className="bar-col flex h-full min-h-[80px] flex-1 flex-col items-center justify-end gap-0.5">
-                    <span className="text-[10px] font-medium tabular-nums text-text-secondary">{value}</span>
+                    <span className={cn('font-medium tabular-nums', typographyBodyMutedClass)}>{value}</span>
                     <div className="flex w-full flex-1 items-end">
                       <div
                         className={cn(
@@ -205,7 +213,7 @@ export function CampoResumoWidget({
                         style={{ height: `${Math.max(heightPct, value > 0 ? 4 : 3)}%` }}
                       />
                     </div>
-                    <span className="text-[10px] text-text-muted">{formatMonthLabel(month.label)}</span>
+                    <span className={typographyBodyMutedClass}>{formatMonthLabel(month.label)}</span>
                   </div>
                 )
               })}

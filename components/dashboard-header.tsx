@@ -27,8 +27,8 @@ const pathToTitle: Record<string, string> = {
   '/dashboard/chapas-estaduais': 'Chapas Estaduais',
   '/dashboard/resumo-eleicoes': 'Resumo Eleições',
   '/dashboard/conteudo': 'Redes Sociais',
-  '/dashboard/noticias': 'Central de monitoramento',
-  '/dashboard/noticias/monitoramento': 'Central de monitoramento',
+  '/dashboard/noticias': 'Radar eleitoral',
+  '/dashboard/noticias/monitoramento': 'Radar eleitoral',
   '/dashboard/mobilizacao': 'Mobilização',
   '/dashboard/mobilizacao/config': 'Mobilização · Config',
   '/dashboard/mobilizacao/mapa-digital-ig': 'Central de monitoramento · Engajamento Líderes',
@@ -45,7 +45,7 @@ const pathToTitle: Record<string, string> = {
 
 function getPageTitle(pathname: string, tab: string | null, _view: string | null): string {
   if (pathname === '/dashboard/noticias/monitoramento' && tab === MONITORAMENTO_TAB_LIDERES) {
-    return 'Central de monitoramento · Engajamento Líderes'
+    return 'Radar eleitoral · Eng. líderes'
   }
   if (pathname === '/dashboard/territorio') {
     if (tab === TERRITORIO_CAMPO_TAB_BASE) return 'Território & Campo · Base'

@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useRef, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { APP_FONT_STACK_CSS } from '@/lib/app-font-stack'
 
 const TEMPO_INATIVIDADE = 10 * 60 * 1000 // 10 minutos
 const IDLE_SPLASH_LOCK_KEY = 'idle_splash_locked_v1'
@@ -287,7 +288,7 @@ export function IdleSplash() {
         {/* C */}
         <span
           style={{
-            fontFamily: "'Outfit', 'Inter', sans-serif",
+            fontFamily: APP_FONT_STACK_CSS,
             fontSize: '5.5rem',
             fontWeight: 800,
             color: 'white',
@@ -304,7 +305,7 @@ export function IdleSplash() {
         {/* ockpit */}
         <span
           style={{
-            fontFamily: "'Outfit', 'Inter', sans-serif",
+            fontFamily: APP_FONT_STACK_CSS,
             fontSize: '5.5rem',
             fontWeight: 800,
             color: 'white',
@@ -322,7 +323,7 @@ export function IdleSplash() {
         {/* 2026 */}
         <span
           style={{
-            fontFamily: "'Outfit', 'Inter', sans-serif",
+            fontFamily: APP_FONT_STACK_CSS,
             fontSize: '2rem',
             fontWeight: 300,
             color: 'rgba(255, 255, 255, 0.6)',
@@ -356,7 +357,7 @@ export function IdleSplash() {
       {/* Slogan */}
       <span
         style={{
-          fontFamily: "'DM Sans', 'Inter', sans-serif",
+          fontFamily: APP_FONT_STACK_CSS,
           fontSize: '1.15rem',
           fontWeight: 500,
           color: 'rgba(255, 255, 255, 0.85)',
@@ -375,7 +376,7 @@ export function IdleSplash() {
         style={{
           position: 'absolute',
           bottom: '40px',
-          fontFamily: "'DM Sans', 'Inter', sans-serif",
+          fontFamily: APP_FONT_STACK_CSS,
           fontSize: '0.8rem',
           color: 'rgba(255, 255, 255, 0.4)',
           letterSpacing: '0.08em',
@@ -424,7 +425,7 @@ export function IdleSplash() {
               style={{
                 margin: 0,
                 marginBottom: '6px',
-                fontFamily: "'Outfit', 'Inter', sans-serif",
+                fontFamily: APP_FONT_STACK_CSS,
                 fontSize: '1rem',
                 fontWeight: 700,
                 color: 'white',
@@ -436,7 +437,7 @@ export function IdleSplash() {
               style={{
                 margin: 0,
                 marginBottom: '12px',
-                fontFamily: "'DM Sans', 'Inter', sans-serif",
+                fontFamily: APP_FONT_STACK_CSS,
                 fontSize: '0.85rem',
                 color: 'rgba(255,255,255,0.82)',
               }}

@@ -89,18 +89,82 @@ function isRetryable(error) {
   return false
 }
 
+const PANORAMA_WINDOW_DAYS = 30
+
+const brDateFormatter = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Fortaleza' })
+
+function formatGoogleTrendsInterestDay(ms) {
+  return brDateFormatter.format(new Date(ms))
+}
+
+function interestQueryCutoffDay() {
+  const d = new Date()
+  d.setUTCHours(12, 0, 0, 0)
+  d.setUTCDate(d.getUTCDate() - PANORAMA_WINDOW_DAYS)
+  return d.toISOString().slice(0, 10)
+}
+
 function interestDateFromPoint(time, formattedTime) {
+  if (formattedTime) {
+    const parsed = Date.parse(formattedTime)
+    if (!Number.isNaN(parsed)) return formatGoogleTrendsInterestDay(parsed)
+  }
   const asNum = Number(time)
   if (Number.isFinite(asNum) && asNum > 0) {
     const ms = asNum > 1e12 ? asNum : asNum * 1000
-    return new Date(ms).toISOString().slice(0, 10)
+    return formatGoogleTrendsInterestDay(ms)
   }
-  if (/^\d{4}-\d{2}-\d{2}/.test(time)) return time.slice(0, 10)
-  if (formattedTime) {
-    const parsed = Date.parse(formattedTime)
-    if (!Number.isNaN(parsed)) return new Date(parsed).toISOString().slice(0, 10)
-  }
+  if (typeof time === 'string' && /^\d{4}-\d{2}-\d{2}/.test(time)) return time.slice(0, 10)
   throw new Error(`Data Trends inválida: ${time}`)
+}
+
+function buildInterestRowsFromTimeline(timeline, batch) {
+  const scoreByTermDate = new Map()
+  for (const point of timeline) {
+    const interestDate = interestDateFromPoint(point.time, point.formattedTime)
+    batch.forEach((actor, idx) => {
+      const raw = point.value[idx]
+      const score = typeof raw === 'number' && Number.isFinite(raw) ? Math.round(raw) : 0
+      const clamped = Math.max(0, Math.min(100, score))
+      const key = `${actor.name}\0${interestDate}`
+      scoreByTermDate.set(key, Math.max(scoreByTermDate.get(key) ?? 0, clamped))
+    })
+  }
+
+  const rows = []
+  for (const [key, interest_score] of scoreByTermDate) {
+    const [search_term, interest_date] = key.split('\0')
+    const actor = batch.find((a) => a.name === search_term)
+    if (!actor) continue
+    rows.push({
+      politico_id: actor.id,
+      search_term,
+      interest_date,
+      interest_score,
+    })
+  }
+  return rows
+}
+
+async function pruneStaleGoogleTrendsInterest(supabase, geo, timeframe, cutoffDay) {
+  const { error: legacyError } = await supabase
+    .from('google_trends_interest')
+    .delete()
+    .eq('geo', geo)
+    .neq('timeframe', timeframe)
+  if (legacyError && !legacyError.message.includes('does not exist')) {
+    throw new Error(legacyError.message)
+  }
+
+  const { error: oldDatesError } = await supabase
+    .from('google_trends_interest')
+    .delete()
+    .eq('geo', geo)
+    .eq('timeframe', timeframe)
+    .lt('interest_date', cutoffDay)
+  if (oldDatesError && !oldDatesError.message.includes('does not exist')) {
+    throw new Error(oldDatesError.message)
+  }
 }
 
 function isRateLimitError(error) {
@@ -205,23 +269,13 @@ async function fetchBatchInterest(batch, geo, timeframe, collectedAt) {
       tz: 180,
     })
 
-    const rows = []
-    for (const point of result.data.timeline) {
-      const interestDate = interestDateFromPoint(point.time, point.formattedTime)
-      batch.forEach((actor, idx) => {
-        const raw = point.value[idx]
-        const score = typeof raw === 'number' && Number.isFinite(raw) ? Math.round(raw) : 0
-        rows.push({
-          politico_id: actor.id,
-          search_term: actor.name,
-          interest_date: interestDate,
-          interest_score: Math.max(0, Math.min(100, score)),
-          geo,
-          timeframe,
-          collected_at: collectedAt,
-        })
-      })
-    }
+    const drafts = buildInterestRowsFromTimeline(result.data.timeline, batch)
+    const rows = drafts.map((draft) => ({
+      ...draft,
+      geo,
+      timeframe,
+      collected_at: collectedAt,
+    }))
     return rows
   })
 }
@@ -355,6 +409,14 @@ async function main() {
   if (rowsUpserted === 0 && errors.length > 0) {
     emit({ ok: false, error: errors[0], geo, timeframe, errors })
     process.exit(1)
+  }
+
+  if (rowsUpserted > 0) {
+    try {
+      await pruneStaleGoogleTrendsInterest(supabase, geo, timeframe, interestQueryCutoffDay())
+    } catch (e) {
+      errors.push(`limpeza: ${e instanceof Error ? e.message : 'Erro'}`)
+    }
   }
 
   emit({

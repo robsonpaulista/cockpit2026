@@ -307,6 +307,58 @@ button:disabled {
 .animate-reveal-5 { animation-delay: 240ms; }
 .animate-reveal-6 { animation-delay: 300ms; }
 
+/* Premium — entrada rápida com stagger (monitoramento) */
+@keyframes revealPremium {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-reveal-premium {
+  animation: revealPremium 0.3s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.animate-reveal-premium-1 { animation-delay: 0ms; }
+.animate-reveal-premium-2 { animation-delay: 70ms; }
+.animate-reveal-premium-3 { animation-delay: 140ms; }
+.animate-reveal-premium-4 { animation-delay: 210ms; }
+.animate-reveal-premium-5 { animation-delay: 280ms; }
+.animate-reveal-premium-6 { animation-delay: 350ms; }
+.animate-reveal-premium-7 { animation-delay: 420ms; }
+.animate-reveal-premium-8 { animation-delay: 490ms; }
+
+@keyframes premiumShimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+.animate-premium-shimmer {
+  animation: premiumShimmer 1.8s ease-in-out infinite;
+}
+
+@keyframes dataFreshnessPulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.42;
+  }
+}
+
+.data-freshness-pulse {
+  animation: dataFreshnessPulse 2.8s ease-in-out infinite;
+}
+
 /* Pulse sutil para ícones de alerta (lento, sério) */
 @keyframes subtlePulse {
   0%, 100% { opacity: 1; }

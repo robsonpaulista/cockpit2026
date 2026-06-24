@@ -19,6 +19,11 @@ import {
   type YoutubePanoramaViewMode,
   youtubePanoramaSubtitle,
 } from '@/lib/youtube-panorama-series'
+import { chromeFilterChipClass } from '@/lib/button-chrome'
+import {
+  typographyBodyClass,
+  typographyBodyMutedClass,
+} from '@/lib/typography-chrome'
 import { cn } from '@/lib/utils'
 
 const VIEW_OPTIONS: { value: YoutubePanoramaViewMode; label: string }[] = [
@@ -79,7 +84,7 @@ function YoutubeVolumeTooltip({ active, payload, label, absoluteRows, lines }: Y
   if (entries.length === 0) return null
 
   return (
-    <div className="max-w-[240px] rounded-lg border border-[rgb(var(--color-border-tertiary)/0.85)] bg-bg-surface px-3 py-2.5 text-xs shadow-sm">
+    <div className={cn('max-w-[240px] rounded-lg border border-[rgb(var(--color-border-tertiary)/0.85)] bg-bg-surface px-3 py-2.5 shadow-sm', typographyBodyClass)}>
       {entries.map((entry) => (
         <div
           key={entry.line.slug}
@@ -111,19 +116,14 @@ export function PanoramaYoutubeChart({ chart, className }: PanoramaYoutubeChartP
   return (
     <div className={cn('flex min-h-0 flex-1 flex-col', className)}>
       <div className="mb-2 flex shrink-0 flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-        <p className="text-xs text-text-muted">{subtitle}</p>
+        <p className={typographyBodyMutedClass}>{subtitle}</p>
         <div className="flex shrink-0 gap-1">
           {VIEW_OPTIONS.map((opt) => (
             <button
               key={opt.value}
               type="button"
               onClick={() => setViewMode(opt.value)}
-              className={cn(
-                'rounded-full border px-3 py-1 text-[11px] font-medium transition-colors',
-                viewMode === opt.value
-                  ? 'border-[rgb(var(--color-primary))] bg-[#E6F1FB] text-[rgb(var(--color-primary))]'
-                  : 'border-[rgb(var(--color-border-secondary)/0.85)] text-text-secondary hover:bg-bg-app'
-              )}
+              className={chromeFilterChipClass(viewMode === opt.value)}
               aria-pressed={viewMode === opt.value}
             >
               {opt.label}
@@ -133,7 +133,7 @@ export function PanoramaYoutubeChart({ chart, className }: PanoramaYoutubeChartP
       </div>
 
       {isMovimento ? (
-        <p className="mb-2 shrink-0 text-[10px] leading-snug text-text-muted">{MOVIMENTO_HINT}</p>
+        <p className={cn('mb-2 shrink-0 leading-snug', typographyBodyMutedClass)}>{MOVIMENTO_HINT}</p>
       ) : null}
 
       {isMovimento ? (
@@ -151,11 +151,11 @@ export function PanoramaYoutubeChart({ chart, className }: PanoramaYoutubeChartP
                 <XAxis
                   dataKey="date"
                   tickFormatter={formatDateLabel}
-                  tick={{ fontSize: 10, fill: 'rgb(var(--color-text-muted))' }}
+                  tick={{ fontSize: 13, fill: 'rgb(var(--color-text-muted))' }}
                   minTickGap={20}
                 />
                 <YAxis
-                  tick={{ fontSize: 10, fill: 'rgb(var(--color-text-muted))' }}
+                  tick={{ fontSize: 13, fill: 'rgb(var(--color-text-muted))' }}
                   width={44}
                   domain={[0, 'auto']}
                   tickFormatter={(value) => formatCompactNumber(Number(value))}
@@ -188,7 +188,7 @@ export function PanoramaYoutubeChart({ chart, className }: PanoramaYoutubeChartP
               {chart.lines.map((line) => (
                 <span
                   key={line.slug}
-                  className="inline-flex max-w-full items-center gap-1.5 text-[10px] text-text-secondary"
+                  className={cn('inline-flex max-w-full items-center gap-1.5 text-text-secondary', typographyBodyMutedClass)}
                   title={line.name}
                 >
                   <span

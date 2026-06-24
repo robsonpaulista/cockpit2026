@@ -1,4 +1,6 @@
 import { createAdminClient } from '@/lib/supabase/admin'
+import { buildInterestRowsFromTimeline } from '@/lib/google-trends-interest-date'
+import { googleTrendsInterestQueryCutoffDay } from '@/lib/google-trends-normalize-rows'
 import type { GoogleTrendsCollectResult, GoogleTrendsTimeframe } from '@/lib/google-trends-types'
 
 const KEYWORDS_PER_BATCH = 3
@@ -62,6 +64,34 @@ function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms))
 }
 
+async function pruneStaleGoogleTrendsInterest(
+  geo: string,
+  timeframe: string,
+  cutoffDay: string
+): Promise<void> {
+  const supabase = createAdminClient()
+  const { error: legacyError } = await supabase
+    .from('google_trends_interest')
+    .delete()
+    .eq('geo', geo)
+    .neq('timeframe', timeframe)
+
+  if (legacyError && !legacyError.message.includes('does not exist')) {
+    throw new Error(legacyError.message)
+  }
+
+  const { error: oldDatesError } = await supabase
+    .from('google_trends_interest')
+    .delete()
+    .eq('geo', geo)
+    .eq('timeframe', timeframe)
+    .lt('interest_date', cutoffDay)
+
+  if (oldDatesError && !oldDatesError.message.includes('does not exist')) {
+    throw new Error(oldDatesError.message)
+  }
+}
+
 function isRetryable(error: unknown): boolean {
   const msg = error instanceof Error ? error.message : String(error)
   if (/429|rate.?limit|fetch failed|network|timeout|ECONNRESET|ETIMEDOUT|socket/i.test(msg)) {
@@ -74,20 +104,6 @@ function isRetryable(error: unknown): boolean {
     if (e._tag === 'RateLimitError' || e._tag === 'TransportError') return true
   }
   return false
-}
-
-function interestDateFromPoint(time: string | number, formattedTime?: string): string {
-  const asNum = Number(time)
-  if (Number.isFinite(asNum) && asNum > 0) {
-    const ms = asNum > 1e12 ? asNum : asNum * 1000
-    return new Date(ms).toISOString().slice(0, 10)
-  }
-  if (typeof time === 'string' && /^\d{4}-\d{2}-\d{2}/.test(time)) return time.slice(0, 10)
-  if (formattedTime) {
-    const parsed = Date.parse(formattedTime)
-    if (!Number.isNaN(parsed)) return new Date(parsed).toISOString().slice(0, 10)
-  }
-  throw new Error(`Data Trends inválida: ${time}`)
 }
 
 async function loadTrendsearch() {
@@ -216,20 +232,13 @@ async function fetchBatchInterest(
     })
 
     const rows: InterestRow[] = []
-    for (const point of result.data.timeline as TimelinePoint[]) {
-      const interestDate = interestDateFromPoint(point.time, point.formattedTime)
-      batch.forEach((actor, idx) => {
-        const raw = point.value[idx]
-        const score = typeof raw === 'number' && Number.isFinite(raw) ? Math.round(raw) : 0
-        rows.push({
-          politico_id: actor.id,
-          search_term: actor.name,
-          interest_date: interestDate,
-          interest_score: Math.max(0, Math.min(100, score)),
-          geo,
-          timeframe,
-          collected_at: collectedAt,
-        })
+    const drafts = buildInterestRowsFromTimeline(result.data.timeline as TimelinePoint[], batch)
+    for (const draft of drafts) {
+      rows.push({
+        ...draft,
+        geo,
+        timeframe,
+        collected_at: collectedAt,
       })
     }
     return rows
@@ -361,6 +370,14 @@ export async function runGoogleTrendsCollect(options: {
 
   if (rowsUpserted === 0 && errors.length > 0) {
     return { ok: false, error: errors[0], geo, timeframe, errors }
+  }
+
+  if (rowsUpserted > 0) {
+    try {
+      await pruneStaleGoogleTrendsInterest(geo, timeframe, googleTrendsInterestQueryCutoffDay())
+    } catch (e) {
+      errors.push(`limpeza: ${e instanceof Error ? e.message : 'Erro'}`)
+    }
   }
 
   return {

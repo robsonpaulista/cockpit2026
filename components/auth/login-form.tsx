@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { APP_FONT_STACK_CSS } from '@/lib/app-font-stack'
 
 /** Credenciais em texto no dispositivo — útil em tablets; não usar em computadores compartilhados. */
 const SAVED_LOGIN_STORAGE_KEY = 'cockpit_saved_login_v1'
@@ -137,7 +138,7 @@ export function LoginForm() {
         <div className="text-center mb-8">
           <h1
             style={{
-              fontFamily: "'Outfit', 'Inter', sans-serif",
+              fontFamily: APP_FONT_STACK_CSS,
               fontSize: '2.8rem',
               fontWeight: 800,
               color: 'white',
@@ -150,7 +151,7 @@ export function LoginForm() {
           </h1>
           <p
             style={{
-              fontFamily: "'DM Sans', 'Inter', sans-serif",
+              fontFamily: APP_FONT_STACK_CSS,
               fontSize: '0.85rem',
               fontWeight: 500,
               color: 'rgba(255,255,255,0.7)',

@@ -4,6 +4,8 @@ import { useEffect, useMemo, useState } from 'react'
 import { Loader2 } from 'lucide-react'
 import { CampoResumoWidget } from '@/components/campo/campo-resumo-widget'
 import { PanoramaTerritorioTopRow } from '@/components/territorio-campo/panorama-territorio-top-row'
+import { TerritorioKpiCard } from '@/components/territorio-campo/territorio-panorama-panel-chrome'
+import { typographyBodyMutedClass } from '@/lib/typography-chrome'
 import { cn, monthBucketKey } from '@/lib/utils'
 
 type AgendaRow = {
@@ -93,7 +95,7 @@ export function TerritorioCampoPanoramaPanel() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center gap-2 py-16 text-sm text-text-muted">
+      <div className={cn('flex items-center justify-center gap-2 py-16', typographyBodyMutedClass)}>
         <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
         Carregando panorama…
       </div>
@@ -111,18 +113,12 @@ export function TerritorioCampoPanoramaPanel() {
           { label: 'Planejadas', value: String(planejadas) },
           { label: 'Taxa de conclusão', value: `${taxaConclusao}%` },
         ].map((item) => (
-          <div
-            key={item.label}
-            className="rounded-xl border border-[rgb(var(--color-border-tertiary)/0.85)] bg-bg-surface px-3 py-2.5"
-          >
-            <p className="text-[10px] uppercase tracking-wide text-text-muted">{item.label}</p>
-            <p className="mt-1 text-lg font-semibold tabular-nums text-text-primary">{item.value}</p>
-          </div>
+          <TerritorioKpiCard key={item.label} label={item.label} value={item.value} />
         ))}
       </div>
 
       {canceladas > 0 ? (
-        <p className="text-xs text-text-muted">{canceladas} visita(s) cancelada(s) no período.</p>
+        <p className={typographyBodyMutedClass}>{canceladas} visita(s) cancelada(s) no período.</p>
       ) : null}
 
       <CampoResumoWidget
@@ -132,7 +128,7 @@ export function TerritorioCampoPanoramaPanel() {
         monthBuckets={monthBuckets}
       />
 
-      <p className={cn('text-[11px] leading-relaxed text-text-muted')}>
+      <p className={cn('leading-relaxed', typographyBodyMutedClass)}>
         Use a aba <strong className="font-medium text-text-secondary">Base</strong> para lideranças e
         detalhes por município. Em <strong className="font-medium text-text-secondary">Visitas</strong>,
         cadastre Campo &amp; Agenda. O mapa 2026 × 2022 está acima em <strong className="font-medium text-text-secondary">Mapa</strong>.

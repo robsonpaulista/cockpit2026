@@ -12,6 +12,7 @@ import {
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import { cn } from '@/lib/utils'
+import { APP_FONT_STACK_CSS } from '@/lib/app-font-stack'
 import bbox from '@turf/bbox'
 import bboxPolygon from '@turf/bbox-polygon'
 import difference from '@turf/difference'
@@ -4182,12 +4183,12 @@ export function MapaTerritoriosDesenvolvimentoLeaflet({
             const p = feature.properties as GeoProps
             const nome = p.nm_mun ?? p.codarea
             const td = p.td ?? '—'
-            const tipHtmlFuturista = `<div style="font-family:system-ui,sans-serif;min-width:140px">
+            const tipHtmlFuturista = `<div style="font-family:${APP_FONT_STACK_CSS};min-width:140px">
                 <div style="font-weight:700;font-size:12px;color:#e0f2fe;margin-bottom:2px">${escapeHtml(String(nome))}</div>
                 <div style="font-size:10px;color:#94a3b8">${escapeHtml(String(td))}</div>
                 <div style="margin-top:6px;font-size:10px;color:#7dd3fc">Duplo clique no mapa: resumo + lideranças deste município</div>
               </div>`
-            const tipHtmlClassico = `<div style="font-family:system-ui,sans-serif;min-width:140px">
+            const tipHtmlClassico = `<div style="font-family:${APP_FONT_STACK_CSS};min-width:140px">
                 <div style="font-weight:700;font-size:12px;color:#1c1c1c;margin-bottom:2px">${escapeHtml(String(nome))}</div>
                 <div style="font-size:10px;color:#6b6b6b">${escapeHtml(String(td))}</div>
                 <div style="margin-top:6px;font-size:10px;color:#737373">Duplo clique no mapa: resumo + lideranças deste município</div>

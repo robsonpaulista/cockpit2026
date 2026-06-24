@@ -3,6 +3,7 @@
 import { useEffect, useRef } from 'react'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
+import { APP_FONT_STACK_CSS } from '@/lib/app-font-stack'
 
 // ========== Types ==========
 interface Municipio {
@@ -180,7 +181,7 @@ function createTooltipHTML(
     extras += `<div style="margin-top:6px;padding:6px 8px;background:${oportBoxBg};border-radius:6px;font-size:11px;color:${oportBoxFg};font-weight:600;text-align:center;">🚀 Alto potencial de crescimento</div>`
   }
 
-  return `<div style="font-family:system-ui,-apple-system,sans-serif;min-width:220px;max-width:280px;">
+  return `<div style="font-family:${APP_FONT_STACK_CSS};min-width:220px;max-width:280px;">
     <div style="background:${s.headerBg};padding:10px 14px;display:flex;justify-content:space-between;align-items:center;gap:8px;">
       <strong style="color:white;font-size:14px;">${nome}</strong>
       ${classificacaoBadge}
@@ -301,7 +302,7 @@ function getMapLeafletStyles(appearance: MapAppearance): string {
     -webkit-backdrop-filter: blur(8px);
     border-radius: 10px;
     padding: 8px 12px;
-    font-family: system-ui, -apple-system, sans-serif;
+    font-family: ${APP_FONT_STACK_CSS};
     box-shadow: 0 2px 12px rgba(0,0,0,0.1);
     border: 1px solid rgba(0,0,0,0.06);
     text-align: center;

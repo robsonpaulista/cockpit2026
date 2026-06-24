@@ -76,7 +76,7 @@ async function parseJson<T>(res: Response): Promise<T> {
 }
 
 async function collectYoutubeStep(): Promise<string> {
-  const actorsRes = await fetch('/api/youtube/actors', { cache: 'no-store' })
+  const actorsRes = await fetch('/api/monitoramento/actors', { cache: 'no-store' })
   const actorsJson = await parseJson<{ configured?: boolean; setupRequired?: boolean; error?: string }>(
     actorsRes
   )
@@ -228,7 +228,17 @@ async function collectMetaAdsStep(
     statusRes
   )
 
-    if (status.setupRequired) {
+  if (!statusRes.ok) {
+    if (statusRes.status === 503 || statusRes.status === 401) {
+      return {
+        skipped: true,
+        message: status.error ?? 'Meta Ads indisponível no momento — etapa ignorada.',
+      }
+    }
+    throw new Error(status.error ?? 'Falha ao consultar status Meta Ads.')
+  }
+
+  if (status.setupRequired) {
     return { skipped: true, message: 'Tabelas não configuradas — etapa ignorada.' }
   }
   if (status.runnerAvailable === false) {

@@ -4,6 +4,7 @@ import { useEffect, useRef, useMemo } from 'react'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import municipiosPiaui from '@/lib/municipios-piaui.json'
+import { APP_FONT_STACK_CSS } from '@/lib/app-font-stack'
 
 export type PontoVotosMunicipio = { municipio: string; votos: number }
 
@@ -100,7 +101,7 @@ export function MapaVotosHistoricoMunicipal({
       const marker = L.marker([mun.lat, mun.lng], { icon })
       const pct = maxVotos > 0 ? ((v / maxVotos) * 100).toFixed(1) : '0'
       marker.bindPopup(
-        `<div style="font-family:system-ui,sans-serif;min-width:180px;padding:4px 0;">
+        `<div style="font-family:${APP_FONT_STACK_CSS};min-width:180px;padding:4px 0;">
           <strong style="font-size:13px;">${mun.nome}</strong>
           <div style="margin-top:6px;font-size:12px;color:#374151;">
             <span style="color:#6b7280;">Votos:</span> <strong>${v.toLocaleString('pt-BR')}</strong>
@@ -278,7 +279,7 @@ export function MapaVotosMunicipioCompare({
       const lider =
         votosA > votosB ? la : votosB > votosA ? lb : 'Empate'
       marker.bindPopup(
-        `<div style="font-family:system-ui,sans-serif;min-width:200px;padding:4px 0;">
+        `<div style="font-family:${APP_FONT_STACK_CSS};min-width:200px;padding:4px 0;">
           <strong style="font-size:13px;">${nomeE}</strong>
           <div style="margin-top:8px;font-size:12px;color:#374151;line-height:1.45;">
             <div><span style="color:#1d4ed8;font-weight:600;">${la}:</span> ${votosA.toLocaleString('pt-BR')}</div>

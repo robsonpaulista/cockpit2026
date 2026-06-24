@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
+import { requireRouteUser } from '@/lib/supabase/route-auth'
 
 export const dynamic = 'force-dynamic'
 import { NextResponse } from 'next/server'
@@ -19,15 +20,11 @@ const newsSchema = z.object({
 
 export async function GET(request: Request) {
   try {
+    const auth = await requireRouteUser()
+    if (!auth.ok) return auth.response
+    const user = auth.user
+
     const supabase = createClient()
-
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
-
-    if (!user) {
-      return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
-    }
 
     const { searchParams } = new URL(request.url)
     const sentiment = searchParams.get('sentiment')
@@ -163,15 +160,10 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
+    const auth = await requireRouteUser()
+    if (!auth.ok) return auth.response
+
     const supabase = createClient()
-
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
-
-    if (!user) {
-      return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
-    }
 
     const body = await request.json()
     const validated = newsSchema.parse(body)

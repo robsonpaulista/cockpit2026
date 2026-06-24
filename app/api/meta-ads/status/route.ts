@@ -2,21 +2,18 @@ import { NextResponse } from 'next/server'
 import { getMetaAdsCollectStatus } from '@/lib/meta-ads-collect'
 import { isMetaAdsDailyLimitEnabled } from '@/lib/meta-ads-types'
 import { META_ADS_RUNNER_UNAVAILABLE_MESSAGE, isMetaAdsRunnerAvailable } from '@/lib/serverless-runtime'
+import { requireRouteUser } from '@/lib/supabase/route-auth'
+import { isSupabaseMissingTableError } from '@/lib/supabase/table-error'
 import { createClient } from '@/lib/supabase/server'
 
 export const dynamic = 'force-dynamic'
 
 export async function GET() {
   try {
+    const auth = await requireRouteUser()
+    if (!auth.ok) return auth.response
+
     const supabase = createClient()
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
-
-    if (!user) {
-      return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
-    }
-
     const status = await getMetaAdsCollectStatus(supabase)
     const dailyLimitEnabled = isMetaAdsDailyLimitEnabled()
 
@@ -31,7 +28,7 @@ export async function GET() {
     })
   } catch (e) {
     const msg = e instanceof Error ? e.message : 'Erro ao consultar status Meta Ads'
-    if (msg.includes('does not exist') || msg.includes('42P01')) {
+    if (isSupabaseMissingTableError(e instanceof Error ? { message: e.message } : null)) {
       return NextResponse.json({
         canCollect: false,
         setupRequired: true,

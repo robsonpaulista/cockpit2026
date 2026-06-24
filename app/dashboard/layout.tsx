@@ -4,6 +4,7 @@ import { usePathname } from 'next/navigation'
 import { Sidebar } from '@/components/sidebar'
 import { ProtectedRoute } from '@/components/protected-route'
 import { DashboardHeader } from '@/components/dashboard-header'
+import { DashboardScrollRegion } from '@/components/dashboard/dashboard-scroll-region'
 import { DashboardPermissionGuard } from '@/components/dashboard-permission-guard'
 import { NavigationLoadingBar } from '@/components/navigation-loading-bar'
 import { PageTransition } from '@/components/page-transition'
@@ -22,6 +23,7 @@ import { DashboardPesquisadorRedirect } from '@/components/dashboard-pesquisador
 import './territorio/mapa-tds/mapa-dom-fut-theme.css' // tema base neutra + laranja estratégico v3
 
 import { pathnameUsesMapaFuturisticShell } from '@/lib/dashboard-mapa-futuristic-chrome'
+import { DashboardPageChromeProvider } from '@/contexts/dashboard-page-chrome-context'
 import { DashboardHomeChromeProvider } from '@/contexts/dashboard-home-chrome-context'
 import { JarvisHostPropsProvider } from '@/contexts/jarvis-host-props-context'
 import { JarvisVisibilityProvider, useJarvisVisibility } from '@/contexts/jarvis-visibility-context'
@@ -50,6 +52,7 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
   return (
     <CockpitStatusProvider>
       <DashboardHomeChromeProvider value={isHomeAccentChrome}>
+        <DashboardPageChromeProvider>
         <div
           className={cn(
             'relative flex h-screen overflow-hidden',
@@ -76,27 +79,26 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
               <DashboardHeader />
               <main
                 className={cn(
-                  'relative flex min-h-0 flex-1',
+                  'relative flex min-h-0 flex-1 overflow-hidden',
                   isHomeAccentChrome
-                    ? cn('flex-col overflow-hidden', showHomeJarvisColumn && 'xl:flex-row')
-                    : 'flex-col overflow-y-auto',
+                    ? cn('flex-col', showHomeJarvisColumn && 'xl:flex-row')
+                    : 'flex-col',
                   columnBgClass
                 )}
               >
-                <div
-                  className={cn(
-                    isHomeAccentChrome && 'flex min-h-0 min-w-0 flex-1 flex-col'
-                  )}
-                >
-                  <DashboardPermissionGuard>
-                    <PageTransition>{children}</PageTransition>
-                  </DashboardPermissionGuard>
+                <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+                  <DashboardScrollRegion>
+                    <DashboardPermissionGuard>
+                      <PageTransition>{children}</PageTransition>
+                    </DashboardPermissionGuard>
+                  </DashboardScrollRegion>
                 </div>
                 <JarvisGlobalHost />
               </main>
             </div>
           </div>
         </div>
+        </DashboardPageChromeProvider>
       </DashboardHomeChromeProvider>
     </CockpitStatusProvider>
   )

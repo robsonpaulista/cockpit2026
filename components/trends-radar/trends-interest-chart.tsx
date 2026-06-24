@@ -67,7 +67,7 @@ export function TrendsInterestChart({ series, chartData, loading = false }: Tren
             />
             <Tooltip
               labelFormatter={(v) => formatDateLabel(String(v))}
-              formatter={(value: number) => [value, 'Interesse']}
+              formatter={(value: number, name: string) => [value, name]}
               contentStyle={{ fontSize: 12 }}
             />
             <Legend wrapperStyle={{ fontSize: 11 }} />

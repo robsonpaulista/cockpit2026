@@ -10,6 +10,7 @@ import {
   JARVIS_SIDEBAR_ICON,
   JARVIS_SIDEBAR_TEXT,
 } from '@/lib/jarvis-sidebar-styles'
+import { sidebarApifyFooterActionClass } from '@/lib/sidebar-apify-styles'
 
 interface ThemeToggleProps {
   collapsed?: boolean
@@ -65,31 +66,32 @@ export function ThemeToggle({
       <button
         onClick={() => setOpen(!open)}
         className={cn(
-          'flex items-center gap-2.5 rounded-[10px] w-full',
+          'flex items-center gap-2.5 rounded-md w-full',
           !showLabel && 'justify-center gap-0 px-1.5 py-2',
           showLabel && 'px-2.5 py-2',
-          'transition-all duration-200 ease-out group',
+          'transition-colors duration-150 group',
           triggerOnVibrantNav
             ? cn(JARVIS_SIDEBAR_HOVER, JARVIS_SIDEBAR_FOCUS)
-            : 'hover:bg-accent-gold-soft'
+            : sidebarApifyFooterActionClass
         )}
         title="Trocar tema visual"
       >
         <Palette
           className={cn(
-            'w-5 h-5 flex-shrink-0 transition-colors',
+            'h-4 w-4 flex-shrink-0 transition-colors',
             triggerOnVibrantNav
               ? cn(JARVIS_SIDEBAR_ICON, 'group-hover:!text-[#00D4FF]')
-              : 'text-text-secondary group-hover:text-accent-gold'
+              : 'text-text-primary group-hover:text-text-primary'
           )}
+          strokeWidth={1.5}
         />
         {showLabel && (
           <span
             className={cn(
-              'text-sm transition-colors',
+              'text-[13px] font-medium transition-colors',
               triggerOnVibrantNav
                 ? cn(JARVIS_SIDEBAR_TEXT, 'group-hover:!text-[#00D4FF]')
-                : 'text-text-secondary group-hover:text-text-primary'
+                : 'text-text-primary group-hover:text-text-primary'
             )}
           >
             Tema

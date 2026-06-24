@@ -343,14 +343,24 @@ function buildTrendsCard(
     }
   })
 
-  const hasTrendsColumn = columns.some((c) => c.trends !== null)
+  const hasTrendsColumn = columns.some(
+    (c) =>
+      c.trends !== null &&
+      ((c.trends.currentIndex ?? 0) > 0 ||
+        (c.trends.peak3m ?? 0) > 0 ||
+        (c.trends.points?.length ?? 0) > 0)
+  )
   const hasChart = Boolean(trendsChart && !trendsChart.empty)
-  const hasValues = trendsRows.some((r) => r.total > 0 || r.recent > 0)
+  const hasValues =
+    trendsRows.some((r) => r.total > 0 || r.recent > 0) ||
+    columns.some(
+      (c) => (c.trends?.currentIndex ?? 0) > 0 || (c.trends?.peak3m ?? 0) > 0
+    )
 
-  if (!hasTrendsColumn && !hasChart) {
+  if (!hasTrendsColumn && !hasChart && !hasValues) {
     return {
       platformId: 'google-trends',
-      platformLabel: 'Google Trends',
+      platformLabel: 'Buscas pelo nome dos candidatos',
       metricLabel: 'Interesse de busca',
       insights: [],
       empty: true,
@@ -360,7 +370,7 @@ function buildTrendsCard(
   if (!hasValues) {
     return {
       platformId: 'google-trends',
-      platformLabel: 'Google Trends',
+      platformLabel: 'Buscas pelo nome dos candidatos',
       metricLabel: 'Interesse de busca',
       insights: [],
       empty: true,
@@ -410,11 +420,17 @@ function buildTrendsCard(
 
   return {
     platformId: 'google-trends',
-    platformLabel: 'Google Trends',
+    platformLabel: 'Buscas pelo nome dos candidatos',
     metricLabel: 'Interesse de busca',
     insights: pairLeaderAndMomentum(leader, momentum),
     empty: !leader,
   }
+}
+
+function compactSpendLabel(label: string | null): string | null {
+  if (!label) return null
+  const match = label.match(/R\$\s*[\d.,]+/)
+  return match ? match[0] : label
 }
 
 function buildMetaAdsCard(
@@ -455,27 +471,21 @@ function buildMetaAdsCard(
   }
 
   const adsLeader = [...baseRows].filter((r) => r.totalAds > 0).sort((a, b) => b.totalAds - a.totalAds)[0]
-  const spendRows = baseRows.filter((r) => r.spendMid > 0)
   const totalAdsSum = baseRows.reduce((sum, row) => sum + row.totalAds, 0)
-  const totalSpend = spendRows.reduce((sum, row) => sum + row.spendMid, 0)
 
   const leader: PanoramaKpiInsight | null = adsLeader
     ? (() => {
         const adsShare = sharePct(adsLeader.totalAds, totalAdsSum)
-        const spendShare = sharePct(adsLeader.spendMid, totalSpend)
         const adsPart =
           adsShare !== null ? `${adsShare}% anúncios` : `${formatInt(adsLeader.totalAds)} anúncios`
-        const spendPart =
-          adsLeader.spendLabel && spendShare !== null
-            ? `${adsLeader.spendLabel} (${spendShare}% gasto)`
-            : adsLeader.spendLabel ?? null
+        const spendCompact = compactSpendLabel(adsLeader.spendLabel)
 
         return {
           badge: 'leader' as const,
           badgeLabel: 'Líder',
           name: adsLeader.name,
           color: adsLeader.color,
-          text: spendPart ? `${adsPart} · ${spendPart}` : adsPart,
+          text: spendCompact ? `${adsPart} · ${spendCompact}` : adsPart,
         }
       })()
     : null
@@ -532,7 +542,7 @@ export function buildPanoramaPlatformKpis(panorama: Pick<PanoramaModel, 'columns
   return [
     buildCard(
       'google-news',
-      'Google News',
+      'Notícias relacionadas',
       'Menções na imprensa',
       newsRows,
       (leader, share) =>
