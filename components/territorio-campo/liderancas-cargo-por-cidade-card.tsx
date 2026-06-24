@@ -1,27 +1,30 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
-import { Briefcase, Loader2 } from 'lucide-react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { Briefcase, Filter, Loader2 } from 'lucide-react'
 import type {
   CidadeLiderancasCargoRow,
   LiderancasCargoPorCidadeResumo,
 } from '@/lib/territorio-liderancas-cargo-por-cidade'
 import {
-  TERRITORIO_PANORAMA_PANEL_HEIGHT_PX,
   TerritorioDataPanel,
-  TerritorioMetaChip,
   TerritorioPanelHeader,
-  TerritorioRowIcon,
-  TerritorioTableScroll,
+  TerritorioPanoramaTableSection,
   TerritorioTextButton,
   TerritorioThinProgress,
-  territorioTdClass,
-  territorioThClass,
+  territorioPanoramaPanelHeaderClass,
+  territorioPanoramaTopRowPanelLayout,
+  territorioPanoramaTableTotalClass,
+  TERRITORIO_PANORAMA_PREVIEW_ROWS,
 } from '@/components/territorio-campo/territorio-panorama-panel-chrome'
-import { typographyBodyClass, typographyBodyMediumClass, typographyBodyMutedClass } from '@/lib/typography-chrome'
+import { typographyBodyClass, typographyBodyMediumClass, typographyBodyMutedClass, typographySectionLabelClass } from '@/lib/typography-chrome'
 import { cn } from '@/lib/utils'
 
-function cargoPercent(total: number, base: number): number {
+function formatVotos(value: number): string {
+  return value.toLocaleString('pt-BR')
+}
+
+function expectativaPercent(total: number, base: number): number {
   if (base <= 0) return 0
   return Math.round((total / base) * 100)
 }
@@ -30,52 +33,75 @@ export type LiderancasCargoPorCidadeCardProps = {
   cargoSelecionado: string | null
   onCargoSelecionado: (cargo: string | null) => void
   onRowsLoaded?: (rows: CidadeLiderancasCargoRow[]) => void
+  onResumoLoaded?: (resumo: LiderancasCargoPorCidadeResumo | null) => void
 }
 
 export function LiderancasCargoPorCidadeCard({
   cargoSelecionado,
   onCargoSelecionado,
   onRowsLoaded,
+  onResumoLoaded,
 }: LiderancasCargoPorCidadeCardProps) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [resumo, setResumo] = useState<LiderancasCargoPorCidadeResumo | null>(null)
+  const [showAll, setShowAll] = useState(false)
+  const onRowsLoadedRef = useRef(onRowsLoaded)
+  const onResumoLoadedRef = useRef(onResumoLoaded)
+  onRowsLoadedRef.current = onRowsLoaded
+  onResumoLoadedRef.current = onResumoLoaded
 
   useEffect(() => {
+    let cancelled = false
+
     void (async () => {
       setLoading(true)
       setError(null)
       try {
         const res = await fetch('/api/territorio/liderancas-por-cargo-cidade')
+        if (cancelled) return
+
         if (!res.ok) {
           const payload = (await res.json().catch(() => ({}))) as { error?: string }
           setError(payload.error ?? 'Não foi possível carregar lideranças por cargo.')
           setResumo(null)
-          onRowsLoaded?.([])
+          onRowsLoadedRef.current?.([])
+          onResumoLoadedRef.current?.(null)
           return
         }
         const data = (await res.json()) as {
           resumo?: LiderancasCargoPorCidadeResumo
           rows?: CidadeLiderancasCargoRow[]
         }
-        setResumo(data.resumo ?? null)
-        onRowsLoaded?.(data.rows ?? [])
+        const nextResumo = data.resumo ?? null
+        setResumo(nextResumo)
+        onRowsLoadedRef.current?.(data.rows ?? [])
+        onResumoLoadedRef.current?.(nextResumo)
       } catch {
+        if (cancelled) return
         setError('Erro ao carregar lideranças por cargo.')
         setResumo(null)
-        onRowsLoaded?.([])
+        onRowsLoadedRef.current?.([])
+        onResumoLoadedRef.current?.(null)
       } finally {
-        setLoading(false)
+        if (!cancelled) setLoading(false)
       }
     })()
-  }, [onRowsLoaded])
 
-  const cargos = useMemo(() => resumo?.cargosEstado ?? [], [resumo])
-  const totalBase = resumo?.totalLiderancas ?? 0
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  const cargos = useMemo(() => resumo?.cargosDetalhe ?? [], [resumo])
+  const totalExpectativa = resumo?.totalExpectativaVotos ?? 0
+  const totalLiderancas = resumo?.totalLiderancas ?? cargos.reduce((s, c) => s + c.totalLiderancas, 0)
+
+  const cargosVisiveis = showAll ? cargos : cargos.slice(0, TERRITORIO_PANORAMA_PREVIEW_ROWS)
 
   if (loading) {
     return (
-      <TerritorioDataPanel style={{ maxHeight: TERRITORIO_PANORAMA_PANEL_HEIGHT_PX }}>
+      <TerritorioDataPanel {...territorioPanoramaTopRowPanelLayout}>
         <div className={cn('flex flex-1 items-center justify-center gap-2 py-12', typographyBodyMutedClass)}>
           <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
           Carregando base política…
@@ -86,94 +112,121 @@ export function LiderancasCargoPorCidadeCard({
 
   if (error) {
     return (
-      <TerritorioDataPanel style={{ maxHeight: TERRITORIO_PANORAMA_PANEL_HEIGHT_PX }}>
-        <TerritorioPanelHeader title="Base política" description={error} />
+      <TerritorioDataPanel {...territorioPanoramaTopRowPanelLayout}>
+        <TerritorioPanelHeader title="Composição da Base Política (2026)" description={error} />
       </TerritorioDataPanel>
     )
   }
 
   return (
-    <TerritorioDataPanel style={{ maxHeight: TERRITORIO_PANORAMA_PANEL_HEIGHT_PX }}>
+    <TerritorioDataPanel {...territorioPanoramaTopRowPanelLayout}>
       <TerritorioPanelHeader
-        title="Base política"
-        description="Composição por cargo no estado — selecione uma linha para filtrar o comparativo."
-        meta={
-          resumo ? (
-            <>
-              <TerritorioMetaChip label="Lideranças" value={totalBase.toLocaleString('pt-BR')} />
-              <TerritorioMetaChip label="Cidades" value={String(resumo.totalCidades)} />
-              {cargoSelecionado ? (
-                <TerritorioMetaChip label="Filtro" value={cargoSelecionado} tone="primary" />
-              ) : null}
-            </>
-          ) : null
-        }
+        title="Composição da Base Política (2026)"
+        className={territorioPanoramaPanelHeaderClass}
+        description="Peso eleitoral por cargo — barras usam a soma da expectativa de votos 2026, não só a quantidade de lideranças."
         action={
           cargoSelecionado ? (
-            <TerritorioTextButton onClick={() => onCargoSelecionado(null)}>Limpar filtro</TerritorioTextButton>
+            <TerritorioTextButton onClick={() => onCargoSelecionado(null)}>
+              <Filter className="mr-1 inline h-3.5 w-3.5" aria-hidden />
+              Limpar filtro
+            </TerritorioTextButton>
           ) : null
         }
       />
 
-      <TerritorioTableScroll>
-        <table className="w-full min-w-[16rem] border-collapse">
-          <thead>
+      <TerritorioPanoramaTableSection
+        footer={
+          cargos.length > 0 ? (
+            <div className={territorioPanoramaTableTotalClass}>
+              <div className="flex w-full items-center gap-2 px-2 py-1.5">
+                <div className="min-w-0 flex-1">
+                  <p className={cn('text-[12px] font-semibold text-text-primary', typographyBodyMediumClass)}>
+                    Total
+                  </p>
+                  <p className={cn('mt-0.5 text-[10px] text-text-muted', typographyBodyMutedClass)}>
+                    {cargos.length} cargos · {totalLiderancas} lideranças · {formatVotos(totalExpectativa)} votos
+                  </p>
+                </div>
+                <span className="flex w-28 shrink-0 items-center gap-2">
+                  <TerritorioThinProgress percent={100} active />
+                </span>
+                <span className="w-9 shrink-0 text-right tabular-nums text-[12px] font-bold text-text-primary">
+                  100%
+                </span>
+                <span className={cn('w-10 shrink-0 text-right tabular-nums text-[12px] font-bold', typographyBodyClass)}>
+                  {totalLiderancas}
+                </span>
+              </div>
+            </div>
+          ) : null
+        }
+        expandAction={
+          cargos.length > TERRITORIO_PANORAMA_PREVIEW_ROWS ? (
+            <button
+              type="button"
+              onClick={() => setShowAll((v) => !v)}
+              className="shrink-0 text-left text-[12px] font-medium text-[rgb(var(--color-primary))] hover:underline"
+            >
+              {showAll ? 'Mostrar menos cargos' : `Ver todos os cargos (${cargos.length}) ›`}
+            </button>
+          ) : null
+        }
+      >
+        <table className="w-full border-collapse">
+          <thead className="sticky top-0 z-10 bg-bg-surface">
             <tr>
-              <th className={territorioThClass}>Cargo</th>
-              <th className={cn(territorioThClass, 'w-36')}>Participação</th>
-              <th className={cn(territorioThClass, 'w-16 text-right')}>Total</th>
+              <th className={cn('pb-1 text-left', typographySectionLabelClass)}>Cargo</th>
+              <th className={cn('pb-1', typographySectionLabelClass)}>Peso (expectativa)</th>
+              <th className={cn('pb-1 text-right', typographySectionLabelClass)}>%</th>
+              <th className={cn('pb-1 text-right', typographySectionLabelClass)}>Lid.</th>
             </tr>
           </thead>
           <tbody>
-            {cargos.length === 0 ? (
+            {cargosVisiveis.length === 0 ? (
               <tr>
-                <td colSpan={3} className={cn('px-4 py-8 text-center', typographyBodyMutedClass)}>
+                <td colSpan={4} className={cn('py-6 text-center', typographyBodyMutedClass)}>
                   Nenhum cargo na base.
                 </td>
               </tr>
             ) : (
-              cargos.map((item) => {
+              cargosVisiveis.map((item) => {
                 const selected = cargoSelecionado === item.cargo
-                const percent = cargoPercent(item.total, totalBase)
+                const pctExp = expectativaPercent(item.expectativaVotos, totalExpectativa)
                 return (
                   <tr key={item.cargo}>
-                    <td colSpan={3} className="p-0">
+                    <td colSpan={4} className="p-0">
                       <button
                         type="button"
-                        title={`${item.cargo} — ${item.total.toLocaleString('pt-BR')} lideranças`}
+                        title={`${item.cargo} — ${formatVotos(item.expectativaVotos)} votos · ${item.totalLiderancas} lideranças`}
                         aria-pressed={selected}
                         onClick={() => onCargoSelecionado(selected ? null : item.cargo)}
                         className={cn(
-                          'flex w-full items-center gap-3 border-b border-[rgb(var(--color-border-secondary)/0.3)] bg-bg-surface px-4 py-2.5 text-left transition-colors hover:bg-bg-app/55',
-                          selected &&
-                            'border-l-2 border-l-[rgb(var(--color-primary))] bg-[rgb(var(--color-primary-tint)/0.45)] pl-[14px]'
+                          'flex w-full min-h-[2rem] items-center gap-2 border-b border-[rgb(var(--color-border-secondary)/0.3)] bg-bg-surface px-2 py-1 text-left transition-colors hover:bg-bg-app/55',
+                          selected && 'border-l-2 border-l-[#C8900A] bg-[#C8900A]/10 pl-[6px]'
                         )}
                       >
-                        <TerritorioRowIcon>
-                          <Briefcase className="h-4 w-4" aria-hidden />
-                        </TerritorioRowIcon>
+                        <Briefcase className="h-3.5 w-3.5 shrink-0 text-[#C8900A]/80" aria-hidden />
                         <span
                           className={cn(
-                            'min-w-0 flex-1 truncate',
-                            selected ? cn(typographyBodyMediumClass, 'font-medium') : typographyBodyClass,
-                            !selected && 'text-text-secondary'
+                            'min-w-0 flex-1 truncate text-[12px]',
+                            selected ? 'font-semibold text-text-primary' : 'text-text-secondary'
                           )}
                         >
                           {item.cargo}
                         </span>
-                        <span className="flex w-36 shrink-0 items-center gap-2">
-                          <TerritorioThinProgress percent={percent} active={selected} />
-                          <span
-                            className={cn(
-                              'w-9 shrink-0 text-right tabular-nums',
-                              selected ? 'font-semibold text-[rgb(var(--color-primary))]' : typographyBodyMutedClass
-                            )}
-                          >
-                            {percent}%
-                          </span>
+                        <span className="flex w-28 shrink-0 items-center gap-2">
+                          <TerritorioThinProgress percent={pctExp} active={selected} />
                         </span>
-                        <span className={cn('w-16 shrink-0 text-right tabular-nums', typographyBodyClass)}>
-                          {item.total.toLocaleString('pt-BR')}
+                        <span
+                          className={cn(
+                            'w-9 shrink-0 text-right tabular-nums text-[12px]',
+                            selected ? 'font-semibold text-[#C8900A]' : typographyBodyMutedClass
+                          )}
+                        >
+                          {pctExp}%
+                        </span>
+                        <span className={cn('w-10 shrink-0 text-right tabular-nums text-[12px]', typographyBodyClass)}>
+                          {item.totalLiderancas}
                         </span>
                       </button>
                     </td>
@@ -183,7 +236,7 @@ export function LiderancasCargoPorCidadeCard({
             )}
           </tbody>
         </table>
-      </TerritorioTableScroll>
+      </TerritorioPanoramaTableSection>
     </TerritorioDataPanel>
   )
 }

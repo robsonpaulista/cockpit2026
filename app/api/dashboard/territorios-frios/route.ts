@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
+import { requireRouteUser } from '@/lib/supabase/route-auth'
 import municipiosPiaui from '@/lib/municipios-piaui.json'
 import { getEleitoradoByCity } from '@/lib/eleitores'
 
@@ -72,15 +73,10 @@ function normalizeNumber(value: any): number {
 
 export async function POST(request: Request) {
   try {
+    const auth = await requireRouteUser()
+    if (!auth.ok) return auth.response
+
     const supabase = createClient()
-
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
-
-    if (!user) {
-      return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
-    }
 
     const body = await request.json().catch(() => ({}))
     let { territorioConfig } = body

@@ -1,39 +1,35 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import dynamic from 'next/dynamic'
-import { LayoutGrid, Loader2, Map, MapPin } from 'lucide-react'
+import {
+  Loader2,
+  MapPin,
+  TrendingDown,
+  TrendingUp,
+} from 'lucide-react'
 import type {
   ComparativoExpectativa2022Resumo,
   ComparativoExpectativa2022Row,
-  TendenciaExpectativa2022,
 } from '@/lib/comparativo-expectativa-2022'
 import { loadComparativoAnterior2026Client } from '@/lib/territorio-comparativo-anterior-2026-client'
 import {
   buildCidadesComCargoSet,
-  buildLiderancasPorCidadeKeyMap,
-  liderancasExibidasNaCidade,
   type CidadeLiderancasCargoRow,
 } from '@/lib/territorio-liderancas-cargo-por-cidade'
 import { normalizeMunicipioNome } from '@/lib/piaui-regiao'
-import { typographyBodyMutedClass, typographySectionLabelClass } from '@/lib/typography-chrome'
+import { typographyBodyClass, typographyBodyMediumClass, typographyBodyMutedClass } from '@/lib/typography-chrome'
 import { cn } from '@/lib/utils'
 import {
-  TERRITORIO_PANORAMA_PANEL_HEIGHT_PX,
-  TERRITORIO_PANORAMA_TABLE_MAX_HEIGHT_PX,
   TerritorioDataPanel,
-  TerritorioFilterChip,
-  TerritorioMetaChip,
   TerritorioPanelHeader,
-  TerritorioPanelSearchBar,
-  TerritorioPanelToolbar,
-  TerritorioRowIcon,
-  TerritorioSearchField,
-  TerritorioTabButton,
-  TerritorioTableScroll,
+  TerritorioPanoramaTableSection,
   TerritorioTextButton,
+  territorioPanoramaPanelHeaderClass,
+  territorioPanoramaTopRowPanelLayout,
+  territorioPanoramaTableTotalClass,
+  TERRITORIO_PANORAMA_PREVIEW_ROWS,
   territorioTdClass,
-  territorioTfootClass,
   territorioThClass,
 } from '@/components/territorio-campo/territorio-panorama-panel-chrome'
 
@@ -50,48 +46,31 @@ const MapaExpectativaVs2022 = dynamic(
   }
 )
 
-type ComparativoView = 'tabela' | 'mapa'
-
-const FILTROS: Array<{ id: TendenciaExpectativa2022 | 'todos'; label: string }> = [
-  { id: 'todos', label: 'Todos' },
-  { id: 'cresceu', label: 'Cresceu' },
-  { id: 'manteve', label: 'Estável' },
-  { id: 'caiu', label: 'Caiu' },
-]
-
-const VIEWS: { id: ComparativoView; label: string; icon: typeof LayoutGrid }[] = [
-  { id: 'tabela', label: 'Tabela', icon: LayoutGrid },
-  { id: 'mapa', label: 'Mapa', icon: Map },
-]
+const PREVIEW_ROWS = TERRITORIO_PANORAMA_PREVIEW_ROWS
 
 function formatVotos(value: number): string {
   return value.toLocaleString('pt-BR')
+}
+
+function formatPct(value: number | null): string {
+  if (value == null || !Number.isFinite(value)) return '—'
+  const sign = value > 0 ? '+' : ''
+  return `${sign}${Math.round(value)}%`
 }
 
 function ComparativoBarraCell({ row }: { row: ComparativoExpectativa2022Row }) {
   const max = Math.max(row.votos2022, row.expectativa2026, 1)
   const pct2022 = (row.votos2022 / max) * 100
   const pct2026 = (row.expectativa2026 / max) * 100
-  const lo = Math.min(pct2022, pct2026)
-  const hi = Math.max(pct2022, pct2026)
   const cresceu = row.expectativa2026 > row.votos2022
-  const caiu = row.expectativa2026 < row.votos2022
 
   return (
-    <div className="relative mx-auto h-1.5 w-full min-w-[4rem] max-w-[7rem] overflow-hidden rounded-full bg-[rgb(var(--color-border-secondary)/0.45)]">
+    <div className="relative mx-auto h-2 w-full min-w-[3.5rem] max-w-[5.5rem] overflow-hidden rounded-full bg-[rgb(var(--color-border-secondary)/0.45)]">
+      <div className="absolute inset-y-0 left-0 rounded-full bg-text-primary/20" style={{ width: `${pct2022}%` }} />
       <div
-        className="absolute inset-y-0 left-0 rounded-full bg-text-primary/25"
-        style={{ width: `${lo}%` }}
+        className={cn('absolute inset-y-0 left-0 rounded-full', cresceu ? 'bg-emerald-500' : 'bg-red-500')}
+        style={{ width: `${pct2026}%` }}
       />
-      {hi > lo ? (
-        <div
-          className={cn(
-            'absolute inset-y-0 rounded-full',
-            cresceu ? 'bg-emerald-500' : caiu ? 'bg-red-500' : 'bg-amber-500'
-          )}
-          style={{ left: `${lo}%`, width: `${hi - lo}%` }}
-        />
-      ) : null}
     </div>
   )
 }
@@ -100,45 +79,58 @@ export type ComparativoExpectativa2022BarrasProps = {
   cargoFiltro?: string | null
   liderancasPorCidade?: CidadeLiderancasCargoRow[]
   onClearCargoFiltro?: () => void
+  onResumoLoaded?: (resumo: ComparativoExpectativa2022Resumo | null, rows: ComparativoExpectativa2022Row[]) => void
 }
 
 export function ComparativoExpectativa2022Barras({
   cargoFiltro = null,
   liderancasPorCidade = [],
   onClearCargoFiltro,
+  onResumoLoaded,
 }: ComparativoExpectativa2022BarrasProps = {}) {
+  const mapContainerRef = useRef<HTMLDivElement>(null)
+  const onResumoLoadedRef = useRef(onResumoLoaded)
+  onResumoLoadedRef.current = onResumoLoaded
+
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [cenarioLabel, setCenarioLabel] = useState('Anterior 2026')
-  const [resumo, setResumo] = useState<ComparativoExpectativa2022Resumo | null>(null)
+  const [cenarioLabel, setCenarioLabel] = useState('Expectativa 2026')
   const [rows, setRows] = useState<ComparativoExpectativa2022Row[]>([])
-  const [view, setView] = useState<ComparativoView>('tabela')
-  const [filtro, setFiltro] = useState<TendenciaExpectativa2022 | 'todos'>('todos')
-  const [busca, setBusca] = useState('')
+  const [view, setView] = useState<'tabela' | 'mapa'>('tabela')
+  const [showAll, setShowAll] = useState(false)
 
   useEffect(() => {
+    let cancelled = false
+
     void (async () => {
       setLoading(true)
       setError(null)
       try {
         const result = await loadComparativoAnterior2026Client()
+        if (cancelled) return
+
         if (!result.ok) {
           setError(result.error)
-          setResumo(null)
           setRows([])
+          onResumoLoadedRef.current?.(null, [])
           return
         }
         setCenarioLabel(result.cenarioLabel)
-        setResumo(result.resumo)
         setRows(result.rows)
+        onResumoLoadedRef.current?.(result.resumo, result.rows)
       } catch {
+        if (cancelled) return
         setError('Erro ao carregar comparativo territorial.')
-        setResumo(null)
         setRows([])
+        onResumoLoadedRef.current?.(null, [])
       } finally {
-        setLoading(false)
+        if (!cancelled) setLoading(false)
       }
     })()
+
+    return () => {
+      cancelled = true
+    }
   }, [])
 
   const cidadesCargoSet = useMemo(() => {
@@ -146,39 +138,44 @@ export function ComparativoExpectativa2022Barras({
     return buildCidadesComCargoSet(liderancasPorCidade, cargoFiltro)
   }, [cargoFiltro, liderancasPorCidade])
 
-  const liderancasPorCidadeMap = useMemo(
-    () => buildLiderancasPorCidadeKeyMap(liderancasPorCidade),
-    [liderancasPorCidade]
-  )
-
-  const liderancasColumnTitle = cargoFiltro
-    ? `Lideranças com cargo: ${cargoFiltro}`
-    : 'Lideranças na cidade (base Território)'
-
   const rowsFiltradas = useMemo(() => {
-    const q = busca.trim().toLowerCase()
     return rows.filter((row) => {
       if (cidadesCargoSet && !cidadesCargoSet.has(normalizeMunicipioNome(row.cidade))) return false
-      if (filtro !== 'todos' && row.tendencia !== filtro) return false
-      if (q && !row.cidade.toLowerCase().includes(q)) return false
       if (row.tendencia === 'sem-dados') return false
       return row.votos2022 > 0 || row.expectativa2026 > 0
     })
-  }, [rows, filtro, busca, cidadesCargoSet])
+  }, [rows, cidadesCargoSet])
 
-  const totalLiderancasVisiveis = useMemo(() => {
-    return rowsFiltradas.reduce((acc, row) => {
-      const cidadeRow = liderancasPorCidadeMap.get(normalizeMunicipioNome(row.cidade))
-      return acc + liderancasExibidasNaCidade(cidadeRow, cargoFiltro, row.liderancas)
-    }, 0)
-  }, [rowsFiltradas, liderancasPorCidadeMap, cargoFiltro])
+  const rowsOrdenadas = useMemo(
+    () => [...rowsFiltradas].sort((a, b) => b.expectativa2026 - a.expectativa2026),
+    [rowsFiltradas]
+  )
+
+  const rowsVisiveis = showAll ? rowsOrdenadas : rowsOrdenadas.slice(0, PREVIEW_ROWS)
+
+  const totais = useMemo(() => {
+    const totalVotos2022 = rowsFiltradas.reduce((s, r) => s + r.votos2022, 0)
+    const totalExpectativa2026 = rowsFiltradas.reduce((s, r) => s + r.expectativa2026, 0)
+    const delta = totalExpectativa2026 - totalVotos2022
+    const deltaPercentual = totalVotos2022 > 0 ? (delta / totalVotos2022) * 100 : null
+    const cresceu = rowsFiltradas.filter((r) => r.tendencia === 'cresceu').length
+
+    return {
+      totalVotos2022,
+      totalExpectativa2026,
+      delta,
+      deltaPercentual,
+      municipios: rowsFiltradas.length,
+      cresceu,
+    }
+  }, [rowsFiltradas])
 
   if (loading) {
     return (
-      <TerritorioDataPanel style={{ maxHeight: TERRITORIO_PANORAMA_PANEL_HEIGHT_PX }}>
+      <TerritorioDataPanel {...territorioPanoramaTopRowPanelLayout}>
         <div className={cn('flex flex-1 items-center justify-center gap-2 py-12', typographyBodyMutedClass)}>
           <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
-          Carregando comparativo 2026 × 2022…
+          Carregando potencial eleitoral…
         </div>
       </TerritorioDataPanel>
     )
@@ -186,99 +183,46 @@ export function ComparativoExpectativa2022Barras({
 
   if (error) {
     return (
-      <TerritorioDataPanel style={{ maxHeight: TERRITORIO_PANORAMA_PANEL_HEIGHT_PX }}>
-        <TerritorioPanelHeader title="Anterior 2026 × Federal 2022" description={error} />
+      <TerritorioDataPanel {...territorioPanoramaTopRowPanelLayout}>
+        <TerritorioPanelHeader title="Potencial Eleitoral: 2022 → 2026" description={error} />
       </TerritorioDataPanel>
     )
   }
 
   return (
-    <TerritorioDataPanel style={{ maxHeight: TERRITORIO_PANORAMA_PANEL_HEIGHT_PX }}>
+    <TerritorioDataPanel {...territorioPanoramaTopRowPanelLayout}>
       <TerritorioPanelHeader
-        title="Anterior 2026 × Federal 2022"
+        title="Potencial Eleitoral: 2022 → 2026"
+        className={territorioPanoramaPanelHeaderClass}
         description={
-          <>
-            Cenário <span className="font-medium text-text-secondary">{cenarioLabel}</span> — expectativa da aba Base
-            versus votação federal de 2022.
-          </>
-        }
-        meta={
-          resumo ? (
+          cargoFiltro ? (
             <>
-              <TerritorioMetaChip label="Anterior" value={formatVotos(resumo.totalExpectativa2026)} />
-              <TerritorioMetaChip label="2022" value={formatVotos(resumo.totalVotos2022)} />
-              <TerritorioMetaChip
-                label="Δ"
-                value={`${resumo.delta >= 0 ? '+' : ''}${formatVotos(resumo.delta)}`}
-                tone={resumo.delta >= 0 ? 'positive' : 'negative'}
-              />
-              {rowsFiltradas.length > 0 ? (
-                <TerritorioMetaChip
-                  label={cargoFiltro ? 'Lid. filtro' : 'Lideranças'}
-                  value={formatVotos(totalLiderancasVisiveis)}
-                />
-              ) : null}
-              {cargoFiltro ? (
-                <TerritorioMetaChip label="Cargo" value={cargoFiltro} tone="primary" />
-              ) : null}
+              Comparativo filtrado por cargo <span className="font-medium text-text-secondary">{cargoFiltro}</span> — cenário{' '}
+              {cenarioLabel}.
             </>
-          ) : null
+          ) : (
+            <>Comparativo do potencial de votos por município — cenário {cenarioLabel}.</>
+          )
         }
         action={
-          cargoFiltro && onClearCargoFiltro ? (
-            <TerritorioTextButton onClick={onClearCargoFiltro}>Limpar filtro</TerritorioTextButton>
-          ) : null
+          <div className="flex items-center gap-2">
+            {cargoFiltro && onClearCargoFiltro ? (
+              <TerritorioTextButton onClick={onClearCargoFiltro}>Limpar filtro</TerritorioTextButton>
+            ) : null}
+            <TerritorioTextButton onClick={() => setView((v) => (v === 'mapa' ? 'tabela' : 'mapa'))}>
+              <MapPin className="mr-1 inline h-3.5 w-3.5" aria-hidden />
+              {view === 'mapa' ? 'Ver tabela' : 'Ver mapa'}
+            </TerritorioTextButton>
+          </div>
         }
       />
 
-      <TerritorioPanelToolbar>
-        <div className="flex items-center gap-4">
-          {VIEWS.map((item) => (
-            <TerritorioTabButton
-              key={item.id}
-              active={view === item.id}
-              onClick={() => setView(item.id)}
-              icon={item.icon}
-            >
-              {item.label}
-            </TerritorioTabButton>
-          ))}
-        </div>
-
-        {view === 'tabela' ? (
-          <>
-            <div className="ml-auto flex flex-wrap items-center gap-1.5">
-              {FILTROS.map((item) => (
-                <TerritorioFilterChip
-                  key={item.id}
-                  active={filtro === item.id}
-                  onClick={() => setFiltro(item.id)}
-                >
-                  {item.label}
-                </TerritorioFilterChip>
-              ))}
-            </div>
-          </>
-        ) : null}
-      </TerritorioPanelToolbar>
-
-      {view === 'tabela' ? (
-        <TerritorioPanelSearchBar>
-          <TerritorioSearchField
-            value={busca}
-            onChange={setBusca}
-            placeholder="Buscar município"
-            className="max-w-md"
-          />
-        </TerritorioPanelSearchBar>
-      ) : null}
-
       {view === 'mapa' ? (
-        <div className="min-h-0 flex-1 p-4">
+        <div className="p-3 pt-0 pb-3">
           <div
-            id="mapa-comparativo-panorama-container"
+            ref={mapContainerRef}
             className={cn(
-              'relative min-h-[min(40vh,360px)] min-w-0 overflow-hidden rounded-md border border-[rgb(var(--color-border-secondary)/0.55)]',
+              'relative h-[18rem] min-w-0 overflow-hidden rounded-md border border-[rgb(var(--color-border-secondary)/0.55)]',
               '[&:fullscreen]:flex [&:fullscreen]:h-screen [&:fullscreen]:w-full [&:fullscreen]:flex-col [&:fullscreen]:min-h-0 [&:fullscreen]:bg-bg-surface'
             )}
           >
@@ -286,7 +230,7 @@ export function ComparativoExpectativa2022Barras({
               comparativoLista={rowsFiltradas}
               labelExpectativa2026={cenarioLabel}
               onFullscreen={() => {
-                const container = document.getElementById('mapa-comparativo-panorama-container')
+                const container = mapContainerRef.current
                 if (!container) return
                 if (document.fullscreenElement) {
                   void document.exitFullscreen()
@@ -298,107 +242,150 @@ export function ComparativoExpectativa2022Barras({
           </div>
         </div>
       ) : (
-        <TerritorioTableScroll maxHeight={TERRITORIO_PANORAMA_TABLE_MAX_HEIGHT_PX}>
-          <table className="w-full min-w-[22rem] border-collapse">
-            <thead>
-              <tr>
-                <th className={territorioThClass}>Município</th>
-                <th className={cn(territorioThClass, 'w-12 text-center')} title={liderancasColumnTitle}>
-                  Lid.
-                </th>
-                <th className={cn(territorioThClass, 'w-16 text-right')}>2022</th>
-                <th className={cn(territorioThClass, 'w-24 text-center')}>Variação</th>
-                <th className={cn(territorioThClass, 'w-16 text-right')}>2026</th>
-                <th className={cn(territorioThClass, 'w-16 text-right')}>Δ</th>
-              </tr>
-            </thead>
-            <tbody>
-              {rowsFiltradas.length === 0 ? (
-                <tr>
-                  <td colSpan={6} className={cn('px-4 py-8 text-center', typographyBodyMutedClass)}>
-                    Nenhum município neste filtro.
-                  </td>
-                </tr>
-              ) : (
-                rowsFiltradas.map((row) => {
-                  const cresceu = row.expectativa2026 > row.votos2022
-                  const caiu = row.expectativa2026 < row.votos2022
-                  const cidadeRow = liderancasPorCidadeMap.get(normalizeMunicipioNome(row.cidade))
-                  const liderancasCount = liderancasExibidasNaCidade(
-                    cidadeRow,
-                    cargoFiltro,
-                    row.liderancas
-                  )
-                  return (
-                    <tr key={row.cidade} className="transition-colors hover:bg-bg-app/50">
-                      <td className={territorioTdClass}>
-                        <div className="flex min-w-0 items-center gap-2.5">
-                          <TerritorioRowIcon>
-                            <MapPin className="h-4 w-4" aria-hidden />
-                          </TerritorioRowIcon>
-                          <span className="truncate font-medium">{row.cidade}</span>
-                        </div>
+        <TerritorioPanoramaTableSection
+          footer={
+            rowsFiltradas.length > 0 ? (
+              <div className={territorioPanoramaTableTotalClass}>
+                <table className="w-full min-w-[18rem] border-collapse">
+                  <tbody>
+                    <tr>
+                      <td className={cn(territorioTdClass, 'border-b-0 py-1.5')}>
+                        <p className={cn('font-semibold text-text-primary', typographyBodyMediumClass)}>Total</p>
+                        <p className={cn('mt-0.5 text-[10px] text-text-muted', typographyBodyMutedClass)}>
+                          {totais.municipios} municípios · {totais.cresceu} com avanço
+                        </p>
+                      </td>
+                      <td className={cn(territorioTdClass, 'w-14 border-b-0 py-1.5 text-right tabular-nums font-semibold text-text-primary', typographyBodyClass)}>
+                        {formatVotos(totais.totalVotos2022)}
+                      </td>
+                      <td className={cn(territorioTdClass, 'w-20 border-b-0 px-1 py-1.5')}>
+                        <ComparativoBarraCell
+                          row={{
+                            cidade: 'Total',
+                            votos2022: totais.totalVotos2022,
+                            expectativa2026: totais.totalExpectativa2026,
+                            delta: totais.delta,
+                            deltaPercentual: totais.deltaPercentual,
+                            tendencia: totais.delta > 0 ? 'cresceu' : totais.delta < 0 ? 'caiu' : 'manteve',
+                            liderancas: 0,
+                          }}
+                        />
                       </td>
                       <td
                         className={cn(
                           territorioTdClass,
-                          'text-center tabular-nums',
-                          liderancasCount > 0 ? 'text-text-primary' : 'text-text-muted/50'
+                          'w-14 border-b-0 py-1.5 text-right tabular-nums font-bold',
+                          totais.delta > 0 ? 'text-emerald-700' : totais.delta < 0 ? 'text-red-700' : 'text-text-primary'
                         )}
-                        title={liderancasColumnTitle}
                       >
-                        {liderancasCount > 0 ? liderancasCount : '—'}
+                        {formatVotos(totais.totalExpectativa2026)}
                       </td>
-                      <td className={cn(territorioTdClass, 'text-right tabular-nums text-text-secondary')}>
+                      <td className={cn(territorioTdClass, 'w-24 border-b-0 py-1.5 text-right')}>
+                        <span
+                          className={cn(
+                            'inline-flex items-center justify-end gap-0.5 tabular-nums text-[11px] font-bold',
+                            totais.delta > 0 ? 'text-emerald-600' : totais.delta < 0 ? 'text-red-600' : 'text-text-muted'
+                          )}
+                        >
+                          {totais.delta > 0 ? (
+                            <TrendingUp className="h-3 w-3" aria-hidden />
+                          ) : totais.delta < 0 ? (
+                            <TrendingDown className="h-3 w-3" aria-hidden />
+                          ) : null}
+                          {totais.delta >= 0 ? '+' : ''}
+                          {formatVotos(totais.delta)}
+                          {totais.deltaPercentual != null ? (
+                            <span className="ml-0.5 font-semibold">{formatPct(totais.deltaPercentual)}</span>
+                          ) : null}
+                        </span>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            ) : null
+          }
+          expandAction={
+            rowsOrdenadas.length > PREVIEW_ROWS ? (
+              <button
+                type="button"
+                onClick={() => setShowAll((v) => !v)}
+                className="shrink-0 text-left text-[12px] font-medium text-[rgb(var(--color-primary))] hover:underline"
+              >
+                {showAll
+                  ? 'Mostrar menos municípios'
+                  : `Ver todos os municípios (${rowsOrdenadas.length}) ›`}
+              </button>
+            ) : null
+          }
+        >
+          <table className="w-full min-w-[18rem] border-collapse">
+            <thead className="sticky top-0 z-10 bg-bg-surface">
+              <tr>
+                <th className={cn(territorioThClass, 'text-left')}>Município</th>
+                <th className={cn(territorioThClass, 'w-14 text-right')}>2022</th>
+                <th className={cn(territorioThClass, 'w-20 text-center')}> </th>
+                <th className={cn(territorioThClass, 'w-14 text-right')}>2026</th>
+                <th className={cn(territorioThClass, 'w-24 text-right')}>Variação</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rowsVisiveis.length === 0 ? (
+                <tr>
+                  <td colSpan={5} className={cn('px-4 py-8 text-center', typographyBodyMutedClass)}>
+                    Nenhum município neste filtro.
+                  </td>
+                </tr>
+              ) : (
+                rowsVisiveis.map((row) => {
+                  const cresceu = row.expectativa2026 > row.votos2022
+                  const caiu = row.expectativa2026 < row.votos2022
+                  return (
+                    <tr key={row.cidade} className="border-t border-[rgb(var(--color-border-secondary)/0.25)] hover:bg-bg-app/40">
+                      <td className={cn(territorioTdClass, 'min-h-[2rem]', typographyBodyMediumClass)}>
+                        <span className="truncate">{row.cidade}</span>
+                      </td>
+                      <td className={cn(territorioTdClass, 'text-right tabular-nums text-text-secondary', typographyBodyClass)}>
                         {formatVotos(row.votos2022)}
                       </td>
-                      <td className={cn(territorioTdClass, 'text-center')}>
+                      <td className={cn(territorioTdClass, 'px-1')}>
                         <ComparativoBarraCell row={row} />
                       </td>
                       <td
                         className={cn(
                           territorioTdClass,
-                          'text-right tabular-nums',
+                          'text-right tabular-nums font-medium',
                           cresceu ? 'text-emerald-700' : caiu ? 'text-red-700' : 'text-text-secondary'
                         )}
                       >
                         {formatVotos(row.expectativa2026)}
                       </td>
-                      <td
-                        className={cn(
-                          territorioTdClass,
-                          'text-right font-medium tabular-nums',
-                          cresceu ? 'text-emerald-600' : caiu ? 'text-red-600' : 'text-text-muted'
-                        )}
-                      >
-                        {row.delta >= 0 ? '+' : ''}
-                        {formatVotos(row.delta)}
+                      <td className={cn(territorioTdClass, 'text-right')}>
+                        <span
+                          className={cn(
+                            'inline-flex items-center justify-end gap-0.5 tabular-nums text-[11px] font-semibold',
+                            cresceu ? 'text-emerald-600' : caiu ? 'text-red-600' : 'text-text-muted'
+                          )}
+                        >
+                          {cresceu ? (
+                            <TrendingUp className="h-3 w-3" aria-hidden />
+                          ) : caiu ? (
+                            <TrendingDown className="h-3 w-3" aria-hidden />
+                          ) : null}
+                          {row.delta >= 0 ? '+' : ''}
+                          {formatVotos(row.delta)}
+                          {row.deltaPercentual != null ? (
+                            <span className="ml-0.5 font-medium">{formatPct(row.deltaPercentual)}</span>
+                          ) : null}
+                        </span>
                       </td>
                     </tr>
                   )
                 })
               )}
             </tbody>
-            {rowsFiltradas.length > 0 ? (
-              <tfoot className={territorioTfootClass}>
-                <tr>
-                  <td className={cn(territorioTdClass, 'border-b-0 bg-bg-app', typographySectionLabelClass)}>
-                    {rowsFiltradas.length} municípios
-                  </td>
-                  <td
-                    className={cn(territorioTdClass, 'border-b-0 bg-bg-app text-center font-semibold tabular-nums text-text-primary')}
-                    title={liderancasColumnTitle}
-                  >
-                    {totalLiderancasVisiveis.toLocaleString('pt-BR')}
-                  </td>
-                  <td colSpan={4} className={cn(territorioTdClass, 'border-b-0 bg-bg-app text-right', typographyBodyMutedClass)}>
-                    {cargoFiltro ? `Total · ${cargoFiltro}` : 'Total de lideranças visíveis'}
-                  </td>
-                </tr>
-              </tfoot>
-            ) : null}
           </table>
-        </TerritorioTableScroll>
+        </TerritorioPanoramaTableSection>
       )}
     </TerritorioDataPanel>
   )

@@ -7,6 +7,20 @@ export interface CargoCountRow {
   total: number
 }
 
+export interface CargoEstadoDetalhe {
+  cargo: string
+  totalLiderancas: number
+  expectativaVotos: number
+}
+
+export interface CargoDestaqueExpectativa {
+  cargo: string
+  percentualExpectativa: number
+  expectativaVotos: number
+  totalLiderancas: number
+  percentualLiderancas: number
+}
+
 export interface CidadeLiderancasCargoRow {
   cidade: string
   total: number
@@ -52,11 +66,73 @@ export function buildLiderancasCargoPorCidade(
 export interface LiderancasCargoPorCidadeResumo {
   totalLiderancas: number
   totalCidades: number
+  totalExpectativaVotos: number
   cargosEstado: CargoCountRow[]
+  cargosDetalhe: CargoEstadoDetalhe[]
+  destaqueExpectativa: CargoDestaqueExpectativa | null
+}
+
+function expectativaLideranca(leader: LiderancaResumo): number {
+  return Math.round(leader.projecaoLegado || 0)
+}
+
+export function summarizeCargosComExpectativa(
+  leadersByCity: ReadonlyMap<string, LiderancaResumo[]>
+): {
+  totalLiderancas: number
+  totalExpectativaVotos: number
+  cargosDetalhe: CargoEstadoDetalhe[]
+  destaqueExpectativa: CargoDestaqueExpectativa | null
+} {
+  const cargosMap = new Map<string, { liderancas: number; expectativa: number }>()
+  let totalLiderancas = 0
+  let totalExpectativaVotos = 0
+
+  for (const leaders of leadersByCity.values()) {
+    for (const leader of leaders) {
+      const cargo = leader.cargo?.trim() || 'Sem cargo'
+      const exp = expectativaLideranca(leader)
+      totalLiderancas += 1
+      totalExpectativaVotos += exp
+      const cur = cargosMap.get(cargo) ?? { liderancas: 0, expectativa: 0 }
+      cur.liderancas += 1
+      cur.expectativa += exp
+      cargosMap.set(cargo, cur)
+    }
+  }
+
+  const cargosDetalhe = [...cargosMap.entries()]
+    .map(([cargo, v]) => ({
+      cargo,
+      totalLiderancas: v.liderancas,
+      expectativaVotos: v.expectativa,
+    }))
+    .sort(
+      (a, b) =>
+        b.expectativaVotos - a.expectativaVotos ||
+        b.totalLiderancas - a.totalLiderancas ||
+        a.cargo.localeCompare(b.cargo, 'pt-BR')
+    )
+
+  const top = cargosDetalhe[0]
+  const destaqueExpectativa =
+    top && totalExpectativaVotos > 0
+      ? {
+          cargo: top.cargo,
+          percentualExpectativa: Math.round((top.expectativaVotos / totalExpectativaVotos) * 100),
+          expectativaVotos: top.expectativaVotos,
+          totalLiderancas: top.totalLiderancas,
+          percentualLiderancas:
+            totalLiderancas > 0 ? Math.round((top.totalLiderancas / totalLiderancas) * 100) : 0,
+        }
+      : null
+
+  return { totalLiderancas, totalExpectativaVotos, cargosDetalhe, destaqueExpectativa }
 }
 
 export function summarizeLiderancasCargoPorCidade(
-  rows: CidadeLiderancasCargoRow[]
+  rows: CidadeLiderancasCargoRow[],
+  leadersByCity?: ReadonlyMap<string, LiderancaResumo[]>
 ): LiderancasCargoPorCidadeResumo {
   const cargosMap = new Map<string, number>()
   let totalLiderancas = 0
@@ -72,10 +148,27 @@ export function summarizeLiderancasCargoPorCidade(
     .map(([cargo, total]) => ({ cargo, total }))
     .sort((a, b) => b.total - a.total || a.cargo.localeCompare(b.cargo, 'pt-BR'))
 
+  const expectativa =
+    leadersByCity && leadersByCity.size > 0
+      ? summarizeCargosComExpectativa(leadersByCity)
+      : {
+          totalLiderancas,
+          totalExpectativaVotos: 0,
+          cargosDetalhe: cargosEstado.map((c) => ({
+            cargo: c.cargo,
+            totalLiderancas: c.total,
+            expectativaVotos: 0,
+          })),
+          destaqueExpectativa: null,
+        }
+
   return {
-    totalLiderancas,
+    totalLiderancas: expectativa.totalLiderancas || totalLiderancas,
     totalCidades: rows.length,
+    totalExpectativaVotos: expectativa.totalExpectativaVotos,
     cargosEstado,
+    cargosDetalhe: expectativa.cargosDetalhe,
+    destaqueExpectativa: expectativa.destaqueExpectativa,
   }
 }
 

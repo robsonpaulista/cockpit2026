@@ -55,6 +55,10 @@ interface MapWrapperProps {
   onStatsCalculated?: (stats: MapStats) => void
   /** Alinha tiles, popups e marcadores ao tema claro/escuro do app */
   appearance?: MapAppearance
+  /** Rótulos de região (Norte, Centro-Norte…) no mapa */
+  showRegionLabels?: boolean
+  /** Marcadores menores para cards embutidos */
+  compactMarkers?: boolean
 }
 
 // ========== Constants ==========
@@ -65,7 +69,15 @@ function normalizeName(name: string): string {
   return name.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim()
 }
 
-function getMarkerSize(eleitorado: number): number {
+function getMarkerSize(eleitorado: number, compact = false): number {
+  if (compact) {
+    if (eleitorado >= 100000) return 11
+    if (eleitorado >= 50000) return 9
+    if (eleitorado >= 20000) return 8
+    if (eleitorado >= 10000) return 7
+    if (eleitorado >= 5000) return 6
+    return 4
+  }
   if (eleitorado >= 100000) return 18
   if (eleitorado >= 50000) return 15
   if (eleitorado >= 20000) return 12
@@ -341,6 +353,8 @@ export function MapWrapperLeaflet({
   filtroAtivo = 'todas',
   onStatsCalculated,
   appearance = 'light',
+  showRegionLabels = true,
+  compactMarkers = false,
 }: MapWrapperProps) {
   const mapRef = useRef<HTMLDivElement>(null)
   const mapInstanceRef = useRef<L.Map | null>(null)
@@ -539,10 +553,11 @@ export function MapWrapperLeaflet({
 
     // ========== 1) HEATMAP CIRCLES ==========
     const heatColor = isDark ? '#2dd4bf' : '#3B82F6'
+    const heatRadius = compactMarkers ? 16000 : 25000
     cidades.filter(c => c.tipo === 'visitada' || c.tipo === 'com-presenca').forEach(c => {
       const opacity = c.tipo === 'visitada' ? (isDark ? 0.14 : 0.1) : (isDark ? 0.09 : 0.06)
       L.circle([c.municipio.lat, c.municipio.lng], {
-        radius: 25000,
+        radius: heatRadius,
         fillColor: heatColor,
         fillOpacity: opacity,
         stroke: false,
@@ -566,7 +581,9 @@ export function MapWrapperLeaflet({
       const tooltipHTML = createTooltipHTML(appearance, { nome: municipio.nome, tipo, eleitorado, classificacao, motivo, expectativaVotos, visitas })
 
       if (tipo === 'visitada') {
-        const size = 24
+        const size = compactMarkers ? 12 : 24
+        const checkSize = compactMarkers ? 7 : 12
+        const borderWidth = compactMarkers ? 1.5 : 2
         const vBg = isDark ? '#0d9488' : '#2563EB'
         const vBorder = isDark ? '#0f766e' : '#1D4ED8'
         const vShadow = isDark ? '0 2px 12px rgba(45,212,191,0.45)' : '0 2px 8px rgba(37,99,235,0.5)'
@@ -576,12 +593,12 @@ export function MapWrapperLeaflet({
             <div class="mapa-marker-dot" style="
               width:${size}px;height:${size}px;
               background:${vBg};
-              border:2px solid ${vBorder};
+              border:${borderWidth}px solid ${vBorder};
               display:flex;align-items:center;justify-content:center;
               box-shadow:${vShadow};
               animation-delay:${animDelay}ms;
             ">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+              <svg width="${checkSize}" height="${checkSize}" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
                 <polyline points="20 6 9 17 4 12"></polyline>
               </svg>
             </div>
@@ -595,8 +612,9 @@ export function MapWrapperLeaflet({
         marker.addTo(visitadasLayer)
 
       } else if (tipo === 'com-presenca') {
-        const size = 14
-        const container = size + 10
+        const size = compactMarkers ? 9 : 14
+        const container = size + (compactMarkers ? 6 : 10)
+        const borderWidth = compactMarkers ? 1.5 : 2
         const cBg = isDark ? '#14b8a6' : '#3B82F6'
         const cBorder = isDark ? '#0d9488' : '#2563EB'
         const cShadow = isDark ? '0 1px 6px rgba(45,212,191,0.35)' : '0 1px 4px rgba(37,99,235,0.4)'
@@ -606,7 +624,7 @@ export function MapWrapperLeaflet({
             <div class="mapa-marker-dot" style="
               width:${size}px;height:${size}px;
               background:${cBg};
-              border:2px solid ${cBorder};
+              border:${borderWidth}px solid ${cBorder};
               box-shadow:${cShadow};
               animation-delay:${animDelay}ms;
             "></div>
@@ -620,9 +638,9 @@ export function MapWrapperLeaflet({
         marker.addTo(comPresencaLayer)
 
       } else if (tipo === 'oportunidade') {
-        const size = getMarkerSize(eleitorado)
-        const pulseSize = size * 2.5
-        const container = pulseSize + 6
+        const size = getMarkerSize(eleitorado, compactMarkers)
+        const pulseSize = size * (compactMarkers ? 2 : 2.5)
+        const container = pulseSize + (compactMarkers ? 4 : 6)
         const icon = L.divIcon({
           className: '',
           html: `<div style="width:${container}px;height:${container}px;position:relative;">
@@ -644,8 +662,8 @@ export function MapWrapperLeaflet({
 
       } else {
         // sem-presenca
-        const size = getMarkerSize(eleitorado)
-        const container = size + 10
+        const size = getMarkerSize(eleitorado, compactMarkers)
+        const container = size + (compactMarkers ? 6 : 10)
         const isLarge = eleitorado >= 20000
         const isMedium = eleitorado >= 10000
         const bgColor = isLarge ? 'rgba(220,38,38,0.85)' : isMedium ? 'rgba(239,68,68,0.7)' : 'rgba(248,113,113,0.5)'
@@ -680,21 +698,23 @@ export function MapWrapperLeaflet({
       'critico': 'Crítico',
     }
 
-    regioes.forEach(regiao => {
-      const icon = L.divIcon({
-        className: '',
-        html: `<div class="mapa-zone-label">
-          <div class="mapa-zone-name">${regiao.nome}</div>
-          <div class="mapa-zone-status mapa-zone-${regiao.classificacao}">
-            ${statusLabels[regiao.classificacao]} • ${regiao.percentual}%
-          </div>
-        </div>`,
-        iconSize: [130, 44],
-        iconAnchor: [65, 22],
-        pane: 'labelsPane',
+    if (showRegionLabels) {
+      regioes.forEach(regiao => {
+        const icon = L.divIcon({
+          className: '',
+          html: `<div class="mapa-zone-label">
+            <div class="mapa-zone-name">${regiao.nome}</div>
+            <div class="mapa-zone-status mapa-zone-${regiao.classificacao}">
+              ${statusLabels[regiao.classificacao]} • ${regiao.percentual}%
+            </div>
+          </div>`,
+          iconSize: [130, 44],
+          iconAnchor: [65, 22],
+          pane: 'labelsPane',
+        })
+        L.marker([regiao.centroLat, regiao.centroLng], { icon, interactive: false }).addTo(zonasLayer)
       })
-      L.marker([regiao.centroLat, regiao.centroLng], { icon, interactive: false }).addTo(zonasLayer)
-    })
+    }
 
     // ========== Store layers and add all to map ==========
     layersRef.current = {
@@ -745,7 +765,7 @@ export function MapWrapperLeaflet({
         statsCalculatedRef.current = false
       }
     }
-  }, [cidadesComPresenca, cidadesVisitadas, municipiosPiaui, eleitoresPorCidade, onStatsCalculated, appearance])
+  }, [cidadesComPresenca, cidadesVisitadas, municipiosPiaui, eleitoresPorCidade, onStatsCalculated, appearance, showRegionLabels, compactMarkers])
 
   // ========== Handle filter changes ==========
   useEffect(() => {

@@ -63,6 +63,9 @@ interface MapaPresencaProps {
   onFullscreen?: () => void
   fullscreen?: boolean
   showStatsOverlay?: boolean
+  embedded?: boolean
+  hideFooterLegend?: boolean
+  onMapStatsChange?: (stats: MapStats) => void
   territoriosQuentes?: TerritorioInfo[]
   territoriosMornos?: TerritorioInfo[]
   territoriosFrios?: TerritorioInfo[]
@@ -162,6 +165,9 @@ export function MapaPresenca({
   onFullscreen,
   fullscreen = false,
   showStatsOverlay = true,
+  embedded = false,
+  hideFooterLegend = false,
+  onMapStatsChange,
   territoriosQuentes = [],
   territoriosMornos = [],
   territoriosFrios = [],
@@ -242,9 +248,13 @@ export function MapaPresenca({
     }
   }, [filtroRegiao, cidadesComPresenca, cidadesVisitadas, territoriosQuentes, territoriosMornos, territoriosFrios])
 
-  const handleStatsCalculated = useCallback((stats: MapStats) => {
-    setMapStats(stats)
-  }, [])
+  const handleStatsCalculated = useCallback(
+    (stats: MapStats) => {
+      setMapStats(stats)
+      onMapStatsChange?.(stats)
+    },
+    [onMapStatsChange]
+  )
 
   const prioridadeCampoFiltrada = useMemo(() => {
     if (prioridadeCampoLista.length === 0) return []
@@ -479,7 +489,12 @@ export function MapaPresenca({
 
   if (!clientReady) {
     return (
-      <div className="w-full h-96 bg-surface rounded-2xl border border-card flex items-center justify-center">
+      <div
+        className={cn(
+          'flex w-full items-center justify-center bg-surface',
+          embedded ? 'min-h-0 flex-1' : 'h-96 rounded-2xl border border-card'
+        )}
+      >
         <div className="flex flex-col items-center gap-3">
           <div className="w-8 h-8 border-2 border-accent-gold border-t-transparent rounded-full animate-spin" />
           <p className="text-secondary text-sm">Carregando mapa estratégico...</p>
@@ -502,6 +517,8 @@ export function MapaPresenca({
         territoriosFrios={dadosRegiao.frios}
         filtroAtivo={filtroAtivo}
         onStatsCalculated={handleStatsCalculated}
+        showRegionLabels={!embedded || isNativeFullscreen}
+        compactMarkers={embedded && !isNativeFullscreen}
       />
 
       {(fullscreen || isNativeFullscreen) && (
@@ -544,8 +561,8 @@ export function MapaPresenca({
         </div>
       )}
 
-      {/* Live Counter Overlay */}
-      {showStatsOverlay && mapStats && (
+      {/* Live Counter Overlay — oculto no card embutido; visível em tela cheia */}
+      {showStatsOverlay && mapStats && (!embedded || isNativeFullscreen) && (
         <div
           className={cn(
             'pointer-events-none absolute right-3 top-3 z-[1000] min-w-[170px] space-y-1.5 rounded-xl border p-3 shadow-lg backdrop-blur-md',
@@ -580,9 +597,17 @@ export function MapaPresenca({
 
   return (
     <div
-      className={`w-full min-h-0 ${isNativeFullscreen ? 'flex h-full max-h-full min-h-0 w-full flex-col overflow-hidden bg-background' : 'space-y-3'}`}
+      className={cn(
+        'w-full min-h-0',
+        embedded
+          ? 'flex h-full min-h-0 flex-col overflow-hidden'
+          : isNativeFullscreen
+            ? 'flex h-full max-h-full min-h-0 w-full flex-col overflow-hidden bg-background'
+            : 'space-y-3'
+      )}
     >
       {/* Header com Título Dinâmico */}
+      {!embedded ? (
       <div
         className={`flex items-center justify-between ${isNativeFullscreen ? 'shrink-0 bg-surface border-b border-card px-4 py-3' : ''}`}
       >
@@ -639,9 +664,16 @@ export function MapaPresenca({
           )}
         </div>
       </div>
+      ) : null}
 
-      {/* Filtros Rápidos + Região */}
-      <div className={`flex flex-wrap items-center gap-1.5 ${isNativeFullscreen ? 'shrink-0 border-b border-card bg-surface px-4 py-2' : ''}`}>
+      {/* Filtros Rápidos + Região — ocultos no card embutido; disponíveis em tela cheia */}
+      {(!embedded || isNativeFullscreen) ? (
+      <div
+        className={cn(
+          'flex flex-wrap items-center gap-1.5',
+          embedded ? 'shrink-0 px-1 pb-1.5' : isNativeFullscreen ? 'shrink-0 border-b border-card bg-surface px-4 py-2' : ''
+        )}
+      >
         <Filter className="w-3.5 h-3.5 text-secondary mr-0.5" />
         {FILTROS.map(filtro => {
           const Icon = filtro.icon
@@ -696,6 +728,7 @@ export function MapaPresenca({
           ))}
         </select>
       </div>
+      ) : null}
 
       {/* Mapa com Overlay de Contadores — em tela cheia, apenas acrescenta coluna ao lado */}
       {isNativeFullscreen ? (
@@ -982,17 +1015,27 @@ export function MapaPresenca({
         </div>
       ) : (
         <div
-          className={`relative w-full min-h-0 overflow-hidden bg-surface ${
-            fullscreen ? 'h-[calc(100vh-300px)] rounded-2xl border border-card' : 'h-96 rounded-2xl border border-card'
-          }`}
+          className={cn(
+            'relative w-full min-h-0 overflow-hidden bg-surface',
+            embedded
+              ? 'h-full min-h-[240px] flex-1'
+              : fullscreen
+                ? 'h-[calc(100vh-300px)] rounded-2xl border border-card'
+                : 'h-96 rounded-2xl border border-card'
+          )}
         >
           {mapaComOverlays}
         </div>
       )}
 
       {/* Legenda Aprimorada */}
+      {!hideFooterLegend ? (
       <div
-        className={`flex flex-wrap items-center justify-center gap-4 text-xs text-secondary ${isNativeFullscreen ? 'shrink-0 bg-surface border-t border-card px-4 py-3' : ''}`}
+        className={cn(
+          'flex flex-wrap items-center justify-center gap-3 text-secondary',
+          embedded ? 'shrink-0 gap-2 px-1 pb-0.5 text-[10px]' : 'gap-4 text-xs',
+          isNativeFullscreen ? 'shrink-0 bg-surface border-t border-card px-4 py-3' : ''
+        )}
       >
         <div className="flex items-center gap-1.5">
           <div className="w-4 h-4 rounded-full bg-blue-600 border-2 border-blue-700 flex items-center justify-center">
@@ -1019,6 +1062,7 @@ export function MapaPresenca({
           <span>Zona de presença</span>
         </div>
       </div>
+      ) : null}
     </div>
   )
 }

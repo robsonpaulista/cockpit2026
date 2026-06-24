@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
+import { requireRouteUser } from '@/lib/supabase/route-auth'
 import {
   buildLiderancasCargoPorCidade,
   summarizeLiderancasCargoPorCidade,
@@ -14,14 +14,8 @@ export const dynamic = 'force-dynamic'
 
 export async function GET() {
   try {
-    const supabase = createClient()
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
-
-    if (!user) {
-      return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
-    }
+    const auth = await requireRouteUser()
+    if (!auth.ok) return auth.response
 
     const { spreadsheetId, sheetName } = getTerritorioExpectativaSheetConfig({})
     const credentials = getTerritorioExpectativaSheetCredentials(undefined, 'territorio')
@@ -35,7 +29,7 @@ export async function GET() {
 
     const { leadersByCity } = await buildCitySummaries(spreadsheetId, sheetName, undefined, credentials)
     const rows = buildLiderancasCargoPorCidade(leadersByCity)
-    const resumo = summarizeLiderancasCargoPorCidade(rows)
+    const resumo = summarizeLiderancasCargoPorCidade(rows, leadersByCity)
 
     return NextResponse.json({ resumo, rows })
   } catch (error: unknown) {

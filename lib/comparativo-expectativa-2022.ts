@@ -100,7 +100,7 @@ export function filterComparativoExpectativa2022Lista(
 
 export type CenarioExpectativaComparativo = 'legado' | 'aferido' | 'promessa'
 
-/** Mesmo cenário padrão da aba Base: «Anterior 2026». */
+/** Mesmo cenário padrão da aba Base: «Expectativa 2026». */
 export const CENARIO_EXPECTATIVA_ANTERIOR_2026: CenarioExpectativaComparativo = 'legado'
 
 export interface ExpectativaPorCidadeResumo {
@@ -131,7 +131,7 @@ export function labelCenarioExpectativaComparativo(cenario: CenarioExpectativaCo
     case 'promessa':
       return 'Prometido 2026'
     default:
-      return 'Anterior 2026'
+      return 'Expectativa 2026'
   }
 }
 

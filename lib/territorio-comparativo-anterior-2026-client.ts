@@ -97,8 +97,31 @@ export type ComparativoAnterior2026LoadResult =
       error: string
     }
 
+const COMPARATIVO_CLIENT_CACHE_TTL_MS = 5 * 60 * 1000
+let comparativoClientCache: { expiresAt: number; result: ComparativoAnterior2026LoadResult } | null = null
+let comparativoClientInflight: Promise<ComparativoAnterior2026LoadResult> | null = null
+
 /** Mesma origem da aba Base: planilha Território + votos 2022 (Dep. Federal). */
 export async function loadComparativoAnterior2026Client(): Promise<ComparativoAnterior2026LoadResult> {
+  const now = Date.now()
+  if (comparativoClientCache && comparativoClientCache.expiresAt > now) {
+    return comparativoClientCache.result
+  }
+  if (comparativoClientInflight) return comparativoClientInflight
+
+  comparativoClientInflight = loadComparativoAnterior2026ClientUncached()
+    .then((result) => {
+      comparativoClientCache = { expiresAt: Date.now() + COMPARATIVO_CLIENT_CACHE_TTL_MS, result }
+      return result
+    })
+    .finally(() => {
+      comparativoClientInflight = null
+    })
+
+  return comparativoClientInflight
+}
+
+async function loadComparativoAnterior2026ClientUncached(): Promise<ComparativoAnterior2026LoadResult> {
   try {
     const [sheetRes, votos2022Result] = await Promise.all([
       fetch('/api/territorio/google-sheets', {
@@ -129,7 +152,7 @@ export async function loadComparativoAnterior2026Client(): Promise<ComparativoAn
     if (!expectativaCol) {
       return {
         ok: false,
-        error: 'Coluna Anterior 2026 não encontrada na planilha.',
+        error: 'Coluna Expectativa 2026 não encontrada na planilha.',
       }
     }
 

@@ -58,7 +58,7 @@ const LABEL_EXPECTATIVA_2026 = 'Expectativa 2026'
 
 function labelCenarioDados(cenario: CenarioVotos): string {
   if (cenario === 'promessa_lideranca') return 'Prometido'
-  if (cenario === 'legado_anterior') return 'Anterior'
+  if (cenario === 'legado_anterior') return 'Expectativa'
   return 'Aferido'
 }
 
@@ -1105,7 +1105,7 @@ export function TerritorioBasePanel() {
                       <option value="promessa_lideranca">Prometido 2026</option>
                     ) : null}
                     {expectativaLegadoCol ? (
-                      <option value="legado_anterior">Anterior 2026</option>
+                      <option value="legado_anterior">{LABEL_EXPECTATIVA_2026}</option>
                     ) : null}
                   </select>
                 ) : null}

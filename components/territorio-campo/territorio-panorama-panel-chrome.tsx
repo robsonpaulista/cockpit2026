@@ -31,8 +31,57 @@ import {
 export const territorioPageBgClass = dashboardPageBgClass
 export const territorioMutedBgClass = 'bg-bg-app'
 
-export const TERRITORIO_PANORAMA_PANEL_HEIGHT_PX = 440
+export const TERRITORIO_PANORAMA_PANEL_HEIGHT_PX = 500
 export const TERRITORIO_PANORAMA_TABLE_MAX_HEIGHT_PX = 300
+/** 8 linhas × 2rem + cabeçalho — corpo rolável alinhado entre os painéis da linha superior. */
+export const TERRITORIO_PANORAMA_TABLE_BODY_HEIGHT_PX = 284
+export const TERRITORIO_PANORAMA_PREVIEW_ROWS = 8
+/** Altura mínima igual do cabeçalho nos painéis do Panorama (linha superior). */
+export const territorioPanoramaPanelHeaderClass = 'min-h-[4rem]'
+
+export const territorioPanoramaPanelLayout = {
+  className: 'h-full',
+  style: { height: TERRITORIO_PANORAMA_PANEL_HEIGHT_PX },
+} as const
+
+/** Painéis da linha superior: altura pelo conteúdo, sem folga na base. */
+export const territorioPanoramaTopRowPanelLayout = {
+  className: 'h-auto',
+} as const
+
+export const territorioPanoramaTableTotalClass =
+  'shrink-0 border-t-2 border-[rgb(var(--color-border-secondary)/0.55)] bg-bg-surface'
+
+/** Scroll só no corpo da tabela; total e link fixos abaixo. */
+export function TerritorioPanoramaTableSection({
+  children,
+  footer,
+  expandAction,
+}: {
+  children: React.ReactNode
+  footer?: React.ReactNode
+  expandAction?: React.ReactNode
+}) {
+  return (
+    <div className="flex shrink-0 flex-col gap-1 px-4 pb-2 pt-1.5">
+      <div
+        className="shrink-0 overflow-auto"
+        style={{ height: TERRITORIO_PANORAMA_TABLE_BODY_HEIGHT_PX }}
+      >
+        {children}
+      </div>
+      {footer ? <div className="shrink-0">{footer}</div> : null}
+      {expandAction ? <div className="shrink-0 leading-none">{expandAction}</div> : null}
+    </div>
+  )
+}
+
+export const TERRITORIO_PANORAMA_QUADRANT_PANEL_HEIGHT_PX = 520
+
+export const territorioPanoramaQuadrantLayout = {
+  className: 'h-full xl:col-span-2',
+  style: { height: TERRITORIO_PANORAMA_QUADRANT_PANEL_HEIGHT_PX },
+} as const
 
 export function TerritorioDataPanel({
   children,
@@ -61,22 +110,29 @@ export function TerritorioPanelHeader({
   description,
   meta,
   action,
+  className,
 }: {
   title: string
   description?: React.ReactNode
   meta?: React.ReactNode
   action?: React.ReactNode
+  className?: string
 }) {
   return (
-    <div className="shrink-0 border-b border-[rgb(var(--color-border-secondary)/0.5)] bg-bg-surface px-4 pb-3 pt-4">
+    <div
+      className={cn(
+        'shrink-0 border-b border-[rgb(var(--color-border-secondary)/0.5)] bg-bg-surface px-4 pb-2 pt-3',
+        className
+      )}
+    >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
           <h2 className={typographySectionTitleClass}>{title}</h2>
           {description ? (
-            <p className={cn('mt-1', typographySectionLeadClass)}>{description}</p>
+            <p className={cn('mt-0.5', typographySectionLeadClass)}>{description}</p>
           ) : null}
         </div>
-        {action ? <div className="shrink-0">{action}</div> : null}
+        {action ? <div className="shrink-0 self-start pt-0.5">{action}</div> : null}
       </div>
       {meta ? <div className="mt-2.5 flex flex-wrap items-center gap-2">{meta}</div> : null}
     </div>
@@ -190,21 +246,71 @@ export function TerritorioFilterChip({
   )
 }
 
+export function TerritorioPanelIconButton({
+  active = false,
+  onClick,
+  title,
+  icon: Icon,
+}: {
+  active?: boolean
+  onClick: () => void
+  title: string
+  icon: React.ComponentType<{ className?: string }>
+}) {
+  return (
+    <button
+      type="button"
+      title={title}
+      aria-label={title}
+      aria-pressed={active}
+      onClick={onClick}
+      className={cn(
+        'inline-flex h-7 w-7 items-center justify-center rounded-md transition-colors',
+        active
+          ? 'bg-[#C8900A]/12 text-[#C8900A] ring-1 ring-[#C8900A]/35'
+          : 'text-text-muted hover:bg-bg-surface hover:text-text-primary'
+      )}
+    >
+      <Icon className="h-3.5 w-3.5" aria-hidden />
+    </button>
+  )
+}
+
+export function TerritorioPanelIconToolbar({ children }: { children: React.ReactNode }) {
+  return (
+    <div
+      className="flex shrink-0 items-center gap-0.5 rounded-md border border-[rgb(var(--color-border-secondary)/0.55)] bg-bg-app p-0.5"
+      role="toolbar"
+    >
+      {children}
+    </div>
+  )
+}
+
+export function TerritorioPanelIconDivider() {
+  return <span className="mx-0.5 h-4 w-px shrink-0 bg-[rgb(var(--color-border-secondary)/0.55)]" aria-hidden />
+}
+
 export function TerritorioSearchField({
   value,
   onChange,
   placeholder,
   className,
+  compact = false,
 }: {
   value: string
   onChange: (value: string) => void
   placeholder: string
   className?: string
+  compact?: boolean
 }) {
   return (
-    <label className={cn('relative block min-w-[12rem] flex-1', className)}>
+    <label className={cn('relative block min-w-[8rem]', compact ? 'w-36' : 'min-w-[12rem] flex-1', className)}>
       <Search
-        className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-text-muted"
+        className={cn(
+          'pointer-events-none absolute top-1/2 -translate-y-1/2 text-text-muted',
+          compact ? 'left-2 h-3 w-3' : 'left-3 h-3.5 w-3.5'
+        )}
         aria-hidden
       />
       <input
@@ -213,8 +319,9 @@ export function TerritorioSearchField({
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
         className={cn(
-          'w-full rounded-md border border-[rgb(var(--color-border-secondary)/0.65)] bg-bg-surface py-1.5 pl-8 pr-3 outline-none transition-colors placeholder:text-text-muted focus:border-[rgb(var(--color-primary)/0.55)] focus:ring-2 focus:ring-[rgb(var(--color-primary)/0.12)]',
-          typographyBodyClass
+          'w-full rounded-md border border-[rgb(var(--color-border-secondary)/0.65)] bg-bg-surface outline-none transition-colors placeholder:text-text-muted focus:border-[#C8900A]/55 focus:ring-2 focus:ring-[#C8900A]/12',
+          typographyBodyClass,
+          compact ? 'py-1 pl-7 pr-2' : 'py-1.5 pl-8 pr-3'
         )}
       />
     </label>
@@ -223,25 +330,28 @@ export function TerritorioSearchField({
 
 export function TerritorioTableScroll({
   children,
-  maxHeight = TERRITORIO_PANORAMA_TABLE_MAX_HEIGHT_PX,
+  maxHeight,
 }: {
   children: React.ReactNode
   maxHeight?: number
 }) {
   return (
-    <div className="min-h-0 flex-1 overflow-auto bg-bg-surface" style={{ maxHeight }}>
+    <div
+      className="min-h-0 flex-1 overflow-auto bg-bg-surface"
+      style={maxHeight != null ? { maxHeight } : undefined}
+    >
       {children}
     </div>
   )
 }
 
 export const territorioThClass = cn(
-  'sticky top-0 z-10 border-b border-[rgb(var(--color-border-secondary)/0.5)] bg-bg-app px-4 py-2',
+  'sticky top-0 z-10 border-b border-[rgb(var(--color-border-secondary)/0.5)] bg-bg-app px-3 py-1',
   typographyTableThClass
 )
 
 export const territorioTdClass = cn(
-  'border-b border-[rgb(var(--color-border-secondary)/0.3)] bg-bg-surface px-4 py-2.5',
+  'border-b border-[rgb(var(--color-border-secondary)/0.3)] bg-bg-surface px-3 py-1 leading-tight',
   typographyTableTdClass
 )
 
@@ -263,7 +373,7 @@ export function TerritorioThinProgress({
       <div
         className={cn(
           'h-full rounded-full transition-all',
-          active ? 'bg-[rgb(var(--color-primary))]' : 'bg-text-primary/70'
+          active ? 'bg-[#C8900A]' : 'bg-[#C8900A]/55'
         )}
         style={{ width: `${width}%` }}
       />
@@ -273,7 +383,7 @@ export function TerritorioThinProgress({
 
 export function TerritorioRowIcon({ children }: { children: React.ReactNode }) {
   return (
-    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-[rgb(var(--color-border-secondary)/0.55)] bg-bg-app text-text-muted">
+    <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-[rgb(var(--color-border-secondary)/0.55)] bg-bg-app text-text-muted">
       {children}
     </span>
   )
