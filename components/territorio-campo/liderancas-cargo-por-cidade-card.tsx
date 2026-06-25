@@ -208,8 +208,8 @@ export function LiderancasCargoPorCidadeCard({
                         <Briefcase className="h-3.5 w-3.5 shrink-0 text-[#C8900A]/80" aria-hidden />
                         <span
                           className={cn(
-                            'min-w-0 flex-1 truncate text-[12px]',
-                            selected ? 'font-semibold text-text-primary' : 'text-text-secondary'
+                            'min-w-0 flex-1 truncate text-[12px] text-text-primary',
+                            selected && 'font-semibold'
                           )}
                         >
                           {item.cargo}
@@ -219,13 +219,18 @@ export function LiderancasCargoPorCidadeCard({
                         </span>
                         <span
                           className={cn(
-                            'w-9 shrink-0 text-right tabular-nums text-[12px]',
-                            selected ? 'font-semibold text-[#C8900A]' : typographyBodyMutedClass
+                            'w-9 shrink-0 text-right tabular-nums text-[12px] text-text-primary',
+                            selected && 'font-semibold'
                           )}
                         >
                           {pctExp}%
                         </span>
-                        <span className={cn('w-10 shrink-0 text-right tabular-nums text-[12px]', typographyBodyClass)}>
+                        <span
+                          className={cn(
+                            'w-10 shrink-0 text-right tabular-nums text-[12px] text-text-primary',
+                            selected && 'font-semibold'
+                          )}
+                        >
                           {item.totalLiderancas}
                         </span>
                       </button>

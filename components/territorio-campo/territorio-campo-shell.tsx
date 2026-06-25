@@ -10,7 +10,7 @@ import {
   DashboardPageShell,
 } from '@/components/dashboard/dashboard-page-chrome'
 import { typographyContentRootClass, typographyPageLeadClass } from '@/lib/typography-chrome'
-import type { TerritorioCampoTab } from '@/lib/territorio-campo-route'
+import { TERRITORIO_CAMPO_PAGE_TITLE, type TerritorioCampoTab } from '@/lib/territorio-campo-route'
 import { useDashboardTopbarVisible } from '@/hooks/use-dashboard-topbar-visible'
 
 const TABS: { id: TerritorioCampoTab; label: string; icon: typeof LayoutGrid }[] = [
@@ -33,7 +33,7 @@ export function TerritorioCampoShell({
   children,
 }: TerritorioCampoShellProps) {
   const topbarVisible = useDashboardTopbarVisible()
-  const pageTitle = 'Território & Campo'
+  const pageTitle = TERRITORIO_CAMPO_PAGE_TITLE
   const descriptionText =
     'Base de lideranças, expectativa territorial e visitas de campo (Campo & Agenda).'
 

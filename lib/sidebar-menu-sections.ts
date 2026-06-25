@@ -5,7 +5,6 @@ export const SIDEBAR_SECTION_START_ID: Record<string, string> = {
   home: 'Painel',
   territorio: 'Território',
   agenda: 'Território',
-  'conteudo-menu': 'Comunicação',
   'mobilizacao-menu': 'Operação',
   juridico: 'Institucional',
   'gestao-pesquisas-menu': 'Administração',

@@ -8,6 +8,7 @@ import {
   type TerritorioDesenvolvimentoPI,
 } from '@/lib/piaui-territorio-desenvolvimento'
 import { normalizeMunicipioNome } from '@/lib/piaui-regiao'
+import { agregarResultadosEleicao } from '@/lib/resumo-eleicoes-aggregate'
 
 export const dynamic = 'force-dynamic'
 
@@ -243,12 +244,26 @@ export async function GET(request: NextRequest) {
   try {
     const cidade = request.nextUrl.searchParams.get('cidade')
     const totals = request.nextUrl.searchParams.get('totals')
+    const aggregado = request.nextUrl.searchParams.get('aggregado') === 'true'
     const refresh = request.nextUrl.searchParams.get('refresh') === 'true'
 
     await buildCityIndex(refresh)
 
     if (!cachedCityIndex) {
       return NextResponse.json({ error: 'Falha ao carregar dados da planilha.' }, { status: 500 })
+    }
+
+    if (aggregado) {
+      const resultados = agregarResultadosEleicao(cachedAllResultados)
+      return NextResponse.json({
+        agregado: true,
+        total: resultados.length,
+        resultados,
+        cache: {
+          updatedAt: cacheUpdatedAt,
+          ttlMs: CACHE_TTL_MS,
+        },
+      })
     }
 
     if (totals === 'federal2022') {

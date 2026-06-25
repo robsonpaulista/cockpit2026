@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
+import { usePathname, useSearchParams } from 'next/navigation'
 import { type Dispatch, type SetStateAction, useEffect, useMemo, useRef, useState } from 'react'
 import {
   LayoutDashboard,
@@ -63,7 +63,9 @@ import {
   sidebarSectionLabelClass,
 } from '@/lib/premium-ui-classes'
 import { AppBrandHeader, SidebarBrandMark } from '@/components/app-brand-title'
+import { SidebarQuickAccess } from '@/components/sidebar/sidebar-quick-access'
 import { SIDEBAR_MENU_ITEMS, type SidebarMenuItemConfig } from '@/lib/sidebar-nav-routes'
+import { isSidebarMenuItemHidden, isSidebarChildMenuItemHidden } from '@/lib/sidebar-hidden-items'
 import {
   SIDEBAR_WIDTH_COLLAPSED_CLASS,
   SIDEBAR_WIDTH_EXPANDED_CLASS,
@@ -72,7 +74,6 @@ import {
   sidebarShellHeaderClass,
   sidebarShellNavClass,
 } from '@/lib/sidebar-layout'
-import { useDashboardHomeChrome } from '@/contexts/dashboard-home-chrome-context'
 import { useDashboardFixedChromeActive } from '@/contexts/dashboard-page-chrome-context'
 import { useDashboardTopbarVisible } from '@/hooks/use-dashboard-topbar-visible'
 import {
@@ -94,8 +95,7 @@ import {
   dashboardPageHeaderZoneSidebarClass,
   dashboardSubnavStripSidebarClass,
   dashboardSubnavStripSidebarInnerClass,
-  dashboardSidebarCollapsedPageHeaderSpacerClass,
-  dashboardSidebarCollapsedPageHeaderCompactSpacerClass,
+  dashboardSidebarCollapsedPageHeaderSpacerClassFor,
   dashboardSidebarCollapsedSubnavSpacerClass,
   dashboardSidebarCollapsedTopbarZoneClass,
 } from '@/lib/dashboard-chrome-layout'
@@ -163,7 +163,6 @@ const cockpitIconMap: Record<string, LucideIcon> = {
 const SIDEBAR_SECTION_START_LABEL: Record<string, string> = {
   home: 'Painel',
   campo: 'Território',
-  'conteudo-menu': 'Comunicação',
   'mobilizacao-menu': 'Operação',
   juridico: 'Institucional',
   'gestao-pesquisas-menu': 'Administração',
@@ -199,9 +198,13 @@ function pageKeyForItem(id: string): string {
     id === 'resumo-eleicoes-menu' ||
     id === 'resumo-eleicoes-principal' ||
     id === 'resumo-eleicoes-historico' ||
-    id === 'resumo-eleicoes-secao'
+    id === 'resumo-eleicoes-secao' ||
+    id === 'resumo-eleicoes-chapa-federal' ||
+    id === 'resumo-eleicoes-chapa-estadual'
   ) {
-    return 'resumo-eleicoes'
+    return id === 'resumo-eleicoes-chapa-federal' || id === 'resumo-eleicoes-chapa-estadual'
+      ? 'chapas'
+      : 'resumo-eleicoes'
   }
   if (
     id === 'conteudo-menu' ||
@@ -221,14 +224,32 @@ function pageKeyForItem(id: string): string {
   return id === 'home' ? 'dashboard' : id
 }
 
-/** Ativa item filho; evita que `/resumo-eleicoes/historico` marque o link só `/resumo-eleicoes`. */
-function isChildLinkActive(pathname: string, href: string): boolean {
-  if (pathname === href) return true
-  if (href === '/dashboard/resumo-eleicoes') return false
-  if (href === '/dashboard/conteudo') {
-    return pathname === '/dashboard/conteudo' || pathname === '/dashboard/conteudo/'
+/** Ativa item filho; considera `?tab=` no hub Resumo Eleições. */
+function isChildLinkActive(pathname: string, href: string, search: string): boolean {
+  const [hrefPath, hrefQuery = ''] = href.split('?')
+  if (pathname !== hrefPath) {
+    if (hrefPath === '/dashboard/resumo-eleicoes') return false
+    if (href === '/dashboard/conteudo') {
+      return pathname === '/dashboard/conteudo' || pathname === '/dashboard/conteudo/'
+    }
+    return pathname.startsWith(`${href}/`)
   }
-  return pathname.startsWith(`${href}/`)
+
+  const currentParams = new URLSearchParams(search)
+  if (hrefQuery) {
+    const hrefParams = new URLSearchParams(hrefQuery)
+    for (const [key, value] of hrefParams.entries()) {
+      if (currentParams.get(key) !== value) return false
+    }
+    return true
+  }
+
+  if (hrefPath === '/dashboard/resumo-eleicoes') {
+    const tab = currentParams.get('tab')
+    return !tab || tab === 'atendimento'
+  }
+
+  return true
 }
 
 interface SidebarNavItemProps {
@@ -239,6 +260,7 @@ interface SidebarNavItemProps {
   submenuOpen: boolean
   isActive: boolean
   pathname: string
+  searchKey: string
   collapsed: boolean
   mobileOpen: boolean
   filmNav: boolean
@@ -270,6 +292,7 @@ function SidebarNavItem({
   submenuOpen,
   isActive,
   pathname,
+  searchKey,
   collapsed,
   mobileOpen,
   filmNav,
@@ -406,7 +429,7 @@ function SidebarNavItem({
             filmNav ? (
               <ul className="mt-1 space-y-1">
                 {item.children.map((child) => {
-                  const childActive = isChildLinkActive(pathname, child.href)
+                  const childActive = isChildLinkActive(pathname, child.href, searchKey)
                   return (
                     <li key={child.id}>
                       <Link
@@ -439,7 +462,7 @@ function SidebarNavItem({
             ) : (
               <ul className="mt-0.5 space-y-0.5">
                 {item.children.map((child) => {
-                  const childActive = isChildLinkActive(pathname, child.href)
+                  const childActive = isChildLinkActive(pathname, child.href, searchKey)
                   return (
                     <li key={child.id}>
                       <Link
@@ -583,25 +606,20 @@ export function Sidebar() {
   const { collapsed, setCollapsed, mobileOpen, setMobileOpen } = useSidebar()
   const { setNavigating } = useNavigationLoading()
   const pathname = usePathname()
+  const searchParams = useSearchParams()
+  const searchKey = searchParams.toString()
   const { canAccess, isAdmin, loading: permLoading } = usePermissions()
 
   const isCockpit = false
-  const isGradientHome = useDashboardHomeChrome()
+  /** Shell lateral branco padrão — inclusive na home com gradiente âmbar. */
+  const isGradientHome = false
   const hasFixedPageChrome = useDashboardFixedChromeActive()
   const topbarVisible = useDashboardTopbarVisible()
-  const isMonitoramentoRoute = (pathname ?? '').startsWith('/dashboard/noticias/monitoramento')
-  const collapsedPageHeaderSpacerClass =
-    topbarVisible && isMonitoramentoRoute
-      ? dashboardSidebarCollapsedPageHeaderCompactSpacerClass
-      : dashboardSidebarCollapsedPageHeaderSpacerClass
-  const filmNav = isCockpit || isGradientHome
+  const collapsedPageHeaderSpacerClass = dashboardSidebarCollapsedPageHeaderSpacerClassFor(topbarVisible)
+  const filmNav = isCockpit
 
-  const cockpitActiveItemClass = isGradientHome
-    ? JARVIS_SIDEBAR_ACTIVE_ITEM
-    : COCKPIT_PAGE_ACTIVE_ITEM
-  const cockpitActiveChildClass = isGradientHome
-    ? JARVIS_SIDEBAR_ACTIVE_CHILD
-    : COCKPIT_PAGE_ACTIVE_CHILD_PILL
+  const cockpitActiveItemClass = COCKPIT_PAGE_ACTIVE_ITEM
+  const cockpitActiveChildClass = COCKPIT_PAGE_ACTIVE_CHILD_PILL
 
   const menuLabel = (id: string, fallback: string) =>
     isCockpit ? (COCKPIT_MENU_LABEL[id] ?? fallback) : fallback
@@ -623,36 +641,42 @@ export function Sidebar() {
     }
   }, [pathname])
 
-  const visibleItems = permLoading
-    ? menuItems
-    : menuItems
-        .map((item) => {
-          if (!item.children) return item
-          const children = item.children.filter((child) => canAccess(pageKeyForItem(child.id)))
-          return { ...item, children }
-        })
-        .filter((item) => {
-          if (item.id === 'home') return true
-          if (item.id === 'usuarios') return isAdmin
-          if (item.id === 'log-system') return isAdmin
-          if (item.id === 'ficha-atendimento') {
-            return canAccess('ficha-atendimento') || canAccess('territorio')
-          }
-          if (item.id === 'territorio') {
-            return canAccess('territorio') || canAccess('campo') || canAccess('agenda')
-          }
-          if (item.id === 'resumo-operacional') {
-            return (
-              canAccess('resumo-operacional') ||
-              canAccess('campo') ||
-              canAccess('operacao') ||
-              canAccess('mobilizacao') ||
-              canAccess('conteudo')
+  const visibleItems = useMemo(() => {
+    const base = permLoading
+      ? menuItems
+      : menuItems
+          .map((item) => {
+            if (!item.children) return item
+            const children = item.children.filter(
+              (child) =>
+                canAccess(pageKeyForItem(child.id)) && !isSidebarChildMenuItemHidden(child.id),
             )
-          }
-          if (item.children) return item.children.length > 0
-          return canAccess(pageKeyForItem(item.id))
-        })
+            return { ...item, children }
+          })
+          .filter((item) => {
+            if (item.id === 'usuarios') return isAdmin
+            if (item.id === 'log-system') return isAdmin
+            if (item.id === 'ficha-atendimento') {
+              return canAccess('ficha-atendimento') || canAccess('territorio')
+            }
+            if (item.id === 'territorio') {
+              return canAccess('territorio') || canAccess('campo') || canAccess('agenda')
+            }
+            if (item.id === 'resumo-operacional') {
+              return (
+                canAccess('resumo-operacional') ||
+                canAccess('campo') ||
+                canAccess('operacao') ||
+                canAccess('mobilizacao') ||
+                canAccess('conteudo')
+              )
+            }
+            if (item.children) return item.children.length > 0
+            return canAccess(pageKeyForItem(item.id))
+          })
+
+    return base.filter((item) => !isSidebarMenuItemHidden(item.id))
+  }, [canAccess, isAdmin, permLoading])
 
   const filteredItems = useMemo(() => {
     const q = menuSearch.trim().toLowerCase()
@@ -745,7 +769,7 @@ export function Sidebar() {
             )}
           >
             {(!collapsed || mobileOpen) && (
-              <div className="flex w-full min-w-0 flex-col gap-2">
+              <div className="flex h-full min-h-0 w-full flex-col justify-center gap-1.5 overflow-visible">
                 <div className="flex items-start justify-between gap-2">
                   <AppBrandHeader
                     isCockpit={isCockpit}
@@ -757,7 +781,7 @@ export function Sidebar() {
                     <button
                       onClick={toggleCollapse}
                       className={cn(
-                        'hidden lg:flex',
+                        'hidden lg:flex shrink-0',
                         isGradientHome
                           ? cn('h-8 w-8 items-center justify-center rounded-lg', JARVIS_SIDEBAR_HOVER, JARVIS_SIDEBAR_FOCUS)
                           : sidebarApifyIconButtonClass
@@ -795,11 +819,30 @@ export function Sidebar() {
                 </div>
               ) : (
                 <>
-                  <div className={dashboardSidebarCollapsedTopbarZoneClass}>
+                  <div
+                    className={cn(
+                      dashboardSidebarCollapsedTopbarZoneClass,
+                      !hasFixedPageChrome && 'flex-col justify-center gap-0.5 py-1',
+                    )}
+                  >
                     <SidebarBrandMark />
+                    {!hasFixedPageChrome ? (
+                      <button
+                        onClick={toggleCollapse}
+                        className={cn('hidden lg:flex', sidebarApifyIconButtonClass)}
+                        aria-label="Expandir sidebar"
+                      >
+                        <ChevronLeft className="h-4 w-4 rotate-180" strokeWidth={1.5} />
+                      </button>
+                    ) : null}
                   </div>
                   {hasFixedPageChrome ? (
-                    <div className={collapsedPageHeaderSpacerClass}>
+                    <div
+                      className={cn(
+                        collapsedPageHeaderSpacerClass,
+                        'flex items-center justify-center',
+                      )}
+                    >
                       <button
                         onClick={toggleCollapse}
                         className={cn('hidden lg:flex', sidebarApifyIconButtonClass)}
@@ -808,20 +851,7 @@ export function Sidebar() {
                         <ChevronLeft className="h-4 w-4 rotate-180" strokeWidth={1.5} />
                       </button>
                     </div>
-                  ) : (
-                    <div className={dashboardSidebarCollapsedTopbarZoneClass}>
-                      <div className="flex flex-col items-center justify-center gap-1">
-                        <SidebarBrandMark />
-                        <button
-                          onClick={toggleCollapse}
-                          className={cn('hidden lg:flex', sidebarApifyIconButtonClass)}
-                          aria-label="Expandir sidebar"
-                        >
-                          <ChevronLeft className="h-4 w-4 rotate-180" strokeWidth={1.5} />
-                        </button>
-                      </div>
-                    </div>
-                  )}
+                  ) : null}
                 </>
               )
             )}
@@ -854,6 +884,17 @@ export function Sidebar() {
             </div>
           ) : null}
 
+          <SidebarQuickAccess
+            collapsed={collapsed}
+            mobileOpen={mobileOpen}
+            isGradientHome={isGradientHome}
+            searchKey={searchKey}
+            onNavigate={(href) => {
+              if (href !== pathname) setNavigating(true)
+              setMobileOpen(false)
+            }}
+          />
+
           {/* Menu Items */}
           <nav className={cn('flex-1 overflow-x-visible overflow-y-auto scrollbar-hide', sidebarShellNavClass(collapsed, mobileOpen))}>
             <ul className="space-y-0.5">
@@ -866,7 +907,7 @@ export function Sidebar() {
                 const hasSubmenu = Boolean(item.children?.length)
                 const submenuOpen = openSubmenuId === item.id
                 const isActive = hasSubmenu
-                  ? Boolean(item.children?.some((c) => isChildLinkActive(pathname, c.href)))
+                  ? Boolean(item.children?.some((c) => isChildLinkActive(pathname, c.href, searchKey)))
                   : item.id === 'ficha-atendimento'
                       ? pathname.startsWith('/dashboard/ficha-atendimento')
                       : item.id === 'noticias-menu'
@@ -883,6 +924,7 @@ export function Sidebar() {
                     submenuOpen={submenuOpen}
                     isActive={isActive}
                     pathname={pathname}
+                    searchKey={searchKey}
                     collapsed={collapsed}
                     mobileOpen={mobileOpen}
                     filmNav={filmNav}

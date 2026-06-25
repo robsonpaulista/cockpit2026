@@ -4,7 +4,7 @@ import { cn } from '@/lib/utils'
 export const SIDEBAR_BRAND_AMBER = '#C8900A'
 
 export const sidebarBrandLogoMarkClass =
-  'flex h-[22px] w-[22px] shrink-0 items-center justify-center rounded-[5px] bg-[#C8900A] text-white'
+  'flex h-6 w-6 shrink-0 items-center justify-center rounded-[5px] bg-[#C8900A] text-white'
 
 /** Nome do produto na sidebar — 12px / 600 / #1a1a1a */
 export const sidebarBrandNameClass =

@@ -134,7 +134,7 @@ export function InstagramRadarPanel() {
       setCollectWarnings(warnings)
       setCollectMessage(
         t
-          ? `Coleta concluída: ${t.postsFound} posts · ${t.postsInserted} novos · ${t.postsUpdated} atualizados · ~US$ ${t.estimatedCostUsd?.toFixed(3) ?? '0'}`
+          ? `Coleta concluída: ${t.postsFound} posts · ${t.postsInserted} novos · ${t.postsUpdated} atualizados`
           : 'Coleta concluída.'
       )
       await carregar()
@@ -164,33 +164,33 @@ export function InstagramRadarPanel() {
         <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
           Execute{' '}
           <code className="rounded bg-white/80 px-1">database/create-instagram-radar-tables.sql</code> no
-          Supabase. Configure <code className="rounded bg-white/80 px-1">APIFY_TOKEN</code> no servidor
-          (conta free: US$ 5/mês em créditos).
+          Supabase e configure o candidato próprio em Redes &amp; Instagram.
         </div>
       ) : null}
 
       <div className="rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-900">
-        <p className="font-medium">Duas fontes · Jadyel não usa Apify</p>
+        <p className="font-medium">Duas fontes de dados</p>
         <p className="mt-1 text-blue-800/90">
-          <strong>Jadyel Alencar</strong>: mesma conta de Redes & Instagram (token no navegador + histórico no
-          Supabase). <strong>Concorrentes</strong>: Apify (US$ 1,50/1.000 posts).
+          <strong>Jadyel Alencar</strong>: mesma conta de Redes &amp; Instagram (token no navegador + histórico no
+          Supabase). <strong>Concorrentes</strong>: coleta automatizada de posts públicos dos perfis cadastrados.
         </p>
         {statusMessage ? <p className="mt-1 text-blue-800/90">{statusMessage}</p> : null}
         {limits ? (
           <p className="mt-2 text-xs text-blue-900/90">
-            Apify (concorrentes): até {limits.maxActors} perfis × {limits.postsPerProfile} posts · teto US${' '}
-            {limits.maxChargeUsd}/run · 1 coleta a cada {status?.cooldownDays ?? 7} dias.
+            Concorrentes: até {limits.maxActors} perfis × {limits.postsPerProfile} posts · 1 coleta a cada{' '}
+            {status?.cooldownDays ?? 7} dias.
           </p>
         ) : null}
         {!ownAccountConfigured ? (
           <p className="mt-2 text-xs font-medium text-amber-800">
-            Jadyel: abra Redes & Instagram e clique em atualizar para gravar posts no histórico (ou conecte o
+            Jadyel: abra Redes &amp; Instagram e clique em atualizar para gravar posts no histórico (ou conecte o
             Instagram no navegador).
           </p>
         ) : null}
         {!apifyConfigured ? (
           <p className="mt-2 text-xs text-amber-800">
-            Apify não detectado no servidor — concorrentes só serão coletados após configurar APIFY_TOKEN.
+            Coleta de concorrentes não configurada no servidor — apenas o candidato próprio será atualizado até a
+            configuração ser concluída.
           </p>
         ) : null}
         {cooldownEnabled && status && !status.canCollect && status.nextCollectAt && !collecting ? (

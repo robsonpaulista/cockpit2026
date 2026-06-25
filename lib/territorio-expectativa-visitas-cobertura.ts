@@ -8,6 +8,8 @@ export type FiltroCobertura = FaixaCobertura | 'todos'
 export type ExpectativaVisitasMunicipio = {
   cidade: string
   expectativa: number
+  /** Peso da cidade sobre a expectativa total de votos (0–100). */
+  pctPesoExpectativa: number
   visitas: number
   coberturaPct: number
   faixa: FaixaCobertura
@@ -25,6 +27,7 @@ export type CoberturaTerritorialFaixa = {
 
 export type ExpectativaVisitasPanelModel = {
   municipios: ExpectativaVisitasMunicipio[]
+  totalExpectativa: number
   faixaCounts: Record<FaixaCobertura, number>
   coberturaTerritorial: CoberturaTerritorialFaixa[]
 }
@@ -101,6 +104,7 @@ export function buildExpectativaVisitasPanelModel(
 
   const medianaExpectativa = medianaRobustaExpectativa(base.map((m) => m.expectativa))
   const metaPorMil = buildMetaVisitasRatio(base)
+  const totalExpectativa = base.reduce((sum, m) => sum + m.expectativa, 0)
 
   const municipios: ExpectativaVisitasMunicipio[] = base
     .map((m) => {
@@ -108,6 +112,7 @@ export function buildExpectativaVisitasPanelModel(
       const faixa = classificarFaixa(m.expectativa, m.visitas, coberturaPct, medianaExpectativa)
       return {
         ...m,
+        pctPesoExpectativa: calcPesoExpectativaPct(m.expectativa, totalExpectativa),
         coberturaPct,
         faixa,
         gapScore: m.expectativa * (100 - coberturaPct),
@@ -164,9 +169,21 @@ export function buildExpectativaVisitasPanelModel(
 
   return {
     municipios,
+    totalExpectativa,
     faixaCounts,
     coberturaTerritorial,
   }
+}
+
+export function calcPesoExpectativaPct(expectativa: number, totalExpectativa: number): number {
+  if (totalExpectativa <= 0) return 0
+  return Math.round((expectativa / totalExpectativa) * 1000) / 10
+}
+
+export function formatPesoExpectativaPct(value: number): string {
+  const rounded = Math.round(value * 10) / 10
+  if (Number.isInteger(rounded)) return String(rounded)
+  return rounded.toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })
 }
 
 export function formatExpectativaCompact(value: number): string {

@@ -39,7 +39,7 @@ function PostList({ posts }: { posts: InstagramRadarPostWithActor[] }) {
   if (posts.length === 0) {
     return (
       <p className="px-4 py-2.5 pl-10 text-xs text-text-muted">
-        Nenhum post nesta janela. Cadastre o @ Instagram e rode a coleta Apify.
+        Nenhum post nesta janela. Cadastre o @ Instagram e rode a coleta de posts.
       </p>
     )
   }
@@ -109,7 +109,7 @@ function ActorRow({ row }: { row: InstagramRadarCompareActorRow }) {
                 API própria
               </span>
             ) : (
-              <span className="rounded bg-bg-app px-1.5 py-0.5 text-[10px] text-text-muted">Apify</span>
+              <span className="rounded bg-bg-app px-1.5 py-0.5 text-[10px] text-text-muted">Coleta pública</span>
             )}
           </div>
           <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-xs text-text-secondary">

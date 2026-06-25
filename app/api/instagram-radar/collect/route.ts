@@ -50,13 +50,12 @@ export async function GET() {
       source: 'redes-instagram (localStorage + histórico Supabase) ou INSTAGRAM_TOKEN no servidor',
     },
     competitors: {
-      source: 'apify/instagram-scraper',
-      env: ['APIFY_TOKEN'],
+      source: 'instagram-scraper',
+      env: ['INSTAGRAM_RADAR_COLLECTOR'],
     },
     pricing: {
       postsUsdPer1000: 1.5,
       freeMonthlyUsd: 5,
-      source: 'https://apify.com/apify/instagram-scraper',
     },
     limits: budget,
     cooldown: '1 coleta a cada 7 dias (INSTAGRAM_RADAR_SKIP_COOLDOWN=1 para desativar)',

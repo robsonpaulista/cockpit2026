@@ -8,9 +8,9 @@ import { cn } from '@/lib/utils'
  * Rótulos de seção (overline)  → 11px uppercase
  */
 
-/** Título principal: header de página e “Cockpit 2026” na sidebar. */
+/** Título principal: header de página e marca na sidebar (mesma escala nos dois lados). */
 export const typographyPageTitleClass =
-  'text-xl font-semibold leading-tight tracking-tight text-text-primary'
+  'text-xl !text-xl font-semibold !font-semibold leading-tight tracking-tight text-text-primary'
 
 /** Subtítulo / descrição logo abaixo do título de página. */
 export const typographyPageLeadClass = 'text-[13px] leading-relaxed text-text-muted'

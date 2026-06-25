@@ -1,0 +1,2813 @@
+'use client'
+
+import { useMemo, useState, useEffect, useRef, useCallback } from 'react'
+import { useSearchParams } from 'next/navigation'
+import Link from 'next/link'
+import { RefreshCw, AlertCircle, Crown, X, Users, Vote, BarChart3, UserCheck, ArrowUpRight, FileText, Loader2, MapPinned } from 'lucide-react'
+import { getEleitoradoByCity } from '@/lib/eleitores'
+import { CityDemandsModal } from '@/components/city-demands-modal'
+import { PollReportsHistoryModal } from '@/components/poll-reports-history-modal'
+import type { AIAgentPageContext } from '@/components/ai-agent'
+import { consumeJarvisResumoPendingBusca } from '@/lib/jarvis-resumo-pending'
+import { useRegisterJarvisHostProps } from '@/contexts/jarvis-host-props-context'
+import { cn } from '@/lib/utils'
+import { useTheme } from '@/contexts/theme-context'
+import { sidebarPrimaryCTAButtonClass } from '@/lib/sidebar-menu-active-style'
+import {
+  BotaoNomeCandidatoDistribuicao,
+  PainelVotacaoCandidatoResumo,
+  isMesmoCandidatoResumo,
+} from '@/components/painel-votacao-candidato-resumo'
+import { nomeCandidatoResumoExibicao } from '@/lib/resumo-eleicoes-dados'
+import {
+  RESUMO_TODAS_CIDADES,
+  RESUMO_TODAS_CIDADES_LABEL,
+} from '@/lib/resumo-eleicoes-aggregate'
+import {
+  resumoEleicoesHubHref,
+  RESUMO_ELEICOES_TAB_SECAO,
+} from '@/lib/resumo-eleicoes-hub-route'
+import {
+  resumoTrZebra,
+  resumoTrSelecionado,
+  resumoTrDestaqueForte,
+  resumoTableFooterClass,
+  resumoKpiValueClass,
+  resumoKpiLabelClass,
+  resumoKpiMetaClass,
+  resumoKpiLinkClass,
+} from '@/lib/resumo-eleicoes-table-styles'
+import {
+  ResumoEleicoesCidadesTabela,
+  type ResumoEleicoesCidadeLinha,
+} from '@/components/resumo-eleicoes/resumo-eleicoes-cidades-tabela'
+
+interface ResultadoEleicao {
+  uf: string
+  municipio: string
+  codigoCargo: string
+  cargo: string
+  numeroUrna: string
+  nomeCandidato: string
+  nomeUrnaCandidato: string
+  partido: string
+  coligacao: string
+  turno: string
+  situacao: string
+  dataUltimaTotalizacao: string
+  ue: string
+  sequencialCandidato: string
+  tipoDestinacaoVotos: string
+  sequencialEleicao: string
+  anoEleicao: string
+  regiao: string
+  percentualVotosValidos: string
+  quantidadeVotosNominais: string
+  quantidadeVotosConcorrentes: string
+}
+
+interface PartidoResumo {
+  partido: string
+  votos: number
+  eleitos: number
+}
+
+interface ResumoCidade {
+  eleitores: number | null
+  votos2026: number
+  promessa2026: number
+  legado2026: number
+  votacaoFinal2022: number
+  liderancas: number
+  liderancasDetalhe: Array<{
+    nome: string
+    cargo: string
+    projecaoVotos: number
+    projecaoAferida: number
+    projecaoPromessa: number
+    projecaoLegado: number
+  }>
+}
+
+interface LiderancaDetalheResponse {
+  nome?: string
+  cargo?: string
+  projecaoVotos?: number
+  projecaoAferida?: number
+  projecaoPromessa?: number
+  projecaoLegado?: number
+}
+
+interface PesquisaRecenteCidade {
+  intencao: number
+  data: string
+  instituto: string
+}
+
+type ResumosCidadeMap = Record<string, { expectativaVotos: number; promessaVotos: number; expectativaLegadoVotos: number; votacaoFinal2022: number; liderancas: number }>
+type PesquisaCitiesMap = Record<string, string>
+type CenarioVotos = 'aferido_jadyel' | 'promessa_lideranca' | 'legado_anterior'
+type SimulacaoMapeamento = Record<string, string>
+type ResumoEleicoesSnapshot = {
+  cidade: string
+  cidades: string[]
+  dados: ResultadoEleicao[]
+  buscaIniciada: boolean
+  presidenteCamaraNome: string | null
+  filtroPartidoAtivo: string | null
+  resumoCidade: ResumoCidade | null
+  resumosCidadeMap: ResumosCidadeMap
+  pesquisaRecenteCidade: PesquisaRecenteCidade | null
+  pesquisaCitiesMap: PesquisaCitiesMap
+  candidatoPadraoPesquisa: string
+  cenarioVotos: CenarioVotos
+  simulacaoMapeamento: SimulacaoMapeamento
+}
+
+type TableKey =
+  | 'deputado_estadual'
+  | 'deputado_federal'
+  | 'prefeito_2024'
+  | 'vereador_2024'
+  | 'partido_2024'
+
+const ITEMS_PER_PAGE = 10
+const CANDIDATO_FEDERAL_FIXO = 'JADYEL DA JUPI'
+const RESUMO_STATE_SESSION_KEY = 'resumo_eleicoes_state_v1'
+const RESUMO_CIDADES_CACHE_KEY = 'resumo_eleicoes_cidades_cache_v1'
+
+const EMPTY_SELECTIONS: Record<TableKey, Record<string, number>> = {
+  deputado_estadual: {},
+  deputado_federal: {},
+  prefeito_2024: {},
+  vereador_2024: {},
+  partido_2024: {},
+}
+
+function parseVotos(value: string): number {
+  const parsed = Number.parseInt(value || '0', 10)
+  return Number.isNaN(parsed) ? 0 : parsed
+}
+
+function vereadorSimulacaoKey(item: ResultadoEleicao): string {
+  return `${item.nomeUrnaCandidato}::${item.numeroUrna}`
+}
+
+function limparNomeSimulacaoFederal(value: string): string {
+  const nome = String(value || '')
+    .replace(/\s+/g, ' ')
+    .trim()
+  // Compatibilidade com formato legado "NOME::NUMERO"
+  return nome.includes('::') ? nome.split('::')[0].trim() : nome
+}
+
+function sanitizarMapeamentoSimulacao(value: unknown): SimulacaoMapeamento {
+  if (!value || typeof value !== 'object') return {}
+  const entries = Object.entries(value as Record<string, unknown>)
+  const out: SimulacaoMapeamento = {}
+  entries.forEach(([vereadorKey, federalRaw]) => {
+    const nome = limparNomeSimulacaoFederal(String(federalRaw || ''))
+    if (nome) out[vereadorKey] = nome
+  })
+  return out
+}
+
+function includesNormalized(source: string, term: string): boolean {
+  return source.toLowerCase().includes(term.toLowerCase())
+}
+
+function normalizeText(value: string): string {
+  return String(value || '')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^\w\s]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
+function extrairAliases(nome: string): string[] {
+  const bruto = String(nome || '')
+  const partes = bruto
+    .split(/[\/|;]+/g)
+    .map((parte) => normalizeText(parte))
+    .filter((parte) => parte.length > 0)
+
+  const normalizadoCompleto = normalizeText(bruto)
+  if (normalizadoCompleto && !partes.includes(normalizadoCompleto)) {
+    partes.unshift(normalizadoCompleto)
+  }
+
+  return Array.from(new Set(partes))
+}
+
+function tokensSignificativos(nome: string): string[] {
+  const stopwords = new Set(['de', 'da', 'do', 'dos', 'das', 'e'])
+  return normalizeText(nome)
+    .split(' ')
+    .map((token) => token.trim())
+    .filter((token) => token.length >= 3 && !stopwords.has(token) && !/^\d+$/.test(token))
+}
+
+function normalizeCityName(city: string): string {
+  return city
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .trim()
+}
+
+function normalizarPartidoLabel(value?: string | null): string {
+  return String(value || '')
+    .trim()
+    .toUpperCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+}
+
+function partidosIguais(a?: string | null, b?: string | null): boolean {
+  const pa = normalizarPartidoLabel(a)
+  const pb = normalizarPartidoLabel(b)
+  if (!pa || !pb) return false
+  return pa === pb
+}
+
+function Pagination({
+  totalItems,
+  currentPage,
+  onPageChange,
+}: {
+  totalItems: number
+  currentPage: number
+  onPageChange: (page: number) => void
+}) {
+  const totalPages = Math.ceil(totalItems / ITEMS_PER_PAGE)
+  if (totalPages <= 1) return null
+
+  return (
+    <div className="mt-3 flex items-center justify-center gap-2">
+      <button
+        type="button"
+        onClick={() => onPageChange(Math.max(1, currentPage - 1))}
+        disabled={currentPage === 1}
+        className="rounded border border-card bg-surface px-2 py-1 text-xs text-text-primary hover:bg-background disabled:opacity-50"
+      >
+        Anterior
+      </button>
+      <span className="text-xs text-text-secondary">
+        Pág {currentPage}/{totalPages}
+      </span>
+      <button
+        type="button"
+        onClick={() => onPageChange(Math.min(totalPages, currentPage + 1))}
+        disabled={currentPage === totalPages}
+        className="rounded border border-card bg-surface px-2 py-1 text-xs text-text-primary hover:bg-background disabled:opacity-50"
+      >
+        Próxima
+      </button>
+    </div>
+  )
+}
+
+export function ResumoEleicoesAtendimentoPanel() {
+  const searchParams = useSearchParams()
+  const { theme } = useTheme()
+  const isCockpit = false
+  const pageShellClass = isCockpit ? 'sidebar-cockpit-shell' : 'bg-bg-surface'
+  const sectionShellClass = isCockpit
+    ? 'rounded-2xl border p-5 backdrop-blur border-white/12 bg-[linear-gradient(165deg,rgba(22,34,44,0.82)_0%,rgba(18,30,38,0.86)_100%)] shadow-[0_10px_32px_rgba(3,12,20,0.28)]'
+    : 'rounded-2xl border border-card bg-surface p-4 shadow-card'
+  const innerPanelClass = isCockpit
+    ? 'rounded-xl border p-3 border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.04)_0%,rgba(255,255,255,0.02)_100%)]'
+    : 'rounded-xl border border-card bg-surface p-3'
+  const [cidade, setCidade] = useState('')
+  const [cidades, setCidades] = useState<string[]>([])
+  const [dados, setDados] = useState<ResultadoEleicao[]>([])
+  /** Filtro interno na visão “Todas as cidades” (clique na tabela; não altera o dropdown). */
+  const [cidadeFiltroLista, setCidadeFiltroLista] = useState<string | null>(null)
+  const [dadosCidadeFiltro, setDadosCidadeFiltro] = useState<ResultadoEleicao[]>([])
+  const [loadingCidadeFiltro, setLoadingCidadeFiltro] = useState(false)
+  const [loadingCidades, setLoadingCidades] = useState(true)
+  const [loadingDados, setLoadingDados] = useState(false)
+  const [savingPresidente, setSavingPresidente] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [buscaIniciada, setBuscaIniciada] = useState(false)
+  const [presidenteCamaraNome, setPresidenteCamaraNome] = useState<string | null>(null)
+  const [filtroPartidoAtivo, setFiltroPartidoAtivo] = useState<string | null>(null)
+  const [resumoCidade, setResumoCidade] = useState<ResumoCidade | null>(null)
+  const [resumosCidadeMap, setResumosCidadeMap] = useState<ResumosCidadeMap>({})
+  const [showLiderancasModal, setShowLiderancasModal] = useState(false)
+  const [cidadeLiderancasModal, setCidadeLiderancasModal] = useState<string | null>(null)
+  const [resumoLiderancasModal, setResumoLiderancasModal] = useState<ResumoCidade | null>(null)
+  const [loadingLiderancasModal, setLoadingLiderancasModal] = useState(false)
+  const [showDemandsLeaderSelector, setShowDemandsLeaderSelector] = useState(false)
+  const [showCityDemands, setShowCityDemands] = useState(false)
+  const [loadingDemandasLiderancas, setLoadingDemandasLiderancas] = useState(false)
+  const [selectedDemandasLiderancas, setSelectedDemandasLiderancas] = useState<string[]>([])
+  const [liderancasDemandasInicializadas, setLiderancasDemandasInicializadas] = useState(false)
+  const [feedbackMarcacao, setFeedbackMarcacao] = useState<string | null>(null)
+  const [mostrarFeedbackMarcacao, setMostrarFeedbackMarcacao] = useState(false)
+  const [pesquisaRecenteCidade, setPesquisaRecenteCidade] = useState<PesquisaRecenteCidade | null>(null)
+  const [pesquisaCitiesMap, setPesquisaCitiesMap] = useState<PesquisaCitiesMap>({})
+  const [candidatoPadraoPesquisa, setCandidatoPadraoPesquisa] = useState<string>('')
+  const [cenarioVotos, setCenarioVotos] = useState<CenarioVotos>('legado_anterior')
+  const [showSimulacaoModal, setShowSimulacaoModal] = useState(false)
+  const [showPesquisaHistoricoModal, setShowPesquisaHistoricoModal] = useState(false)
+  const [simulacaoMapeamento, setSimulacaoMapeamento] = useState<SimulacaoMapeamento>({})
+  const [loadingSimulacao, setLoadingSimulacao] = useState(false)
+  const [savingSimulacao, setSavingSimulacao] = useState(false)
+  const [restaurouEstadoRetorno, setRestaurouEstadoRetorno] = useState(false)
+  const [currentPage, setCurrentPage] = useState<Record<string, number>>({
+    deputado_estadual: 1,
+    deputado_federal: 1,
+    prefeito_2024: 1,
+    vereador_2024: 1,
+    partido_2024: 1,
+  })
+  const [selectedVotes, setSelectedVotes] = useState<Record<TableKey, Record<string, number>>>(EMPTY_SELECTIONS)
+  const [candidatoDistribuicao, setCandidatoDistribuicao] = useState<ResultadoEleicao | null>(null)
+  const painelSecaoRef = useRef<HTMLElement>(null)
+
+  const visaoTodasCidades = cidade === RESUMO_TODAS_CIDADES
+
+  const dadosAtivos = useMemo(() => {
+    if (visaoTodasCidades && cidadeFiltroLista) return dadosCidadeFiltro
+    return dados
+  }, [visaoTodasCidades, cidadeFiltroLista, dadosCidadeFiltro, dados])
+
+  const alternarDistribuicaoCandidato = useCallback((item: ResultadoEleicao) => {
+    if (cidade === RESUMO_TODAS_CIDADES) return
+    setCandidatoDistribuicao((atual) =>
+      isMesmoCandidatoResumo(item, atual) ? null : item,
+    )
+  }, [cidade])
+
+  useEffect(() => {
+    setCandidatoDistribuicao(null)
+  }, [cidade, cidadeFiltroLista])
+
+  useEffect(() => {
+    if (!candidatoDistribuicao) return
+    const timer = window.setTimeout(() => {
+      painelSecaoRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }, 80)
+    return () => window.clearTimeout(timer)
+  }, [candidatoDistribuicao])
+
+  const setPage = (key: string, page: number) => {
+    setCurrentPage((prev) => ({ ...prev, [key]: page }))
+  }
+
+  const toggleSelection = (table: TableKey, rowId: string, votes: number) => {
+    setSelectedVotes((prev) => {
+      const tableSelection = prev[table]
+      if (tableSelection[rowId] !== undefined) {
+        const { [rowId]: _, ...rest } = tableSelection
+        return { ...prev, [table]: rest }
+      }
+      return {
+        ...prev,
+        [table]: {
+          ...tableSelection,
+          [rowId]: votes,
+        },
+      }
+    })
+  }
+
+  const clearTableSelection = (table: TableKey) => {
+    setSelectedVotes((prev) => ({ ...prev, [table]: {} }))
+  }
+
+  const getSelectedCount = (table: TableKey): number => Object.keys(selectedVotes[table]).length
+
+  const getSelectedTotal = (table: TableKey): number =>
+    Object.values(selectedVotes[table]).reduce((sum, value) => sum + value, 0)
+
+  const getSelectedVotesTotalFromSelection = (selection: Record<TableKey, Record<string, number>>): number =>
+    (Object.keys(selection) as TableKey[]).reduce((sum, table) => {
+      return sum + Object.values(selection[table]).reduce((tableSum, value) => tableSum + value, 0)
+    }, 0)
+
+  const liderancasDisponiveisDemandas = useMemo(() => {
+    const nomes = (resumoCidade?.liderancasDetalhe || [])
+      .map((item) => String(item.nome || '').trim())
+      .filter((nome) => nome.length > 0)
+    return Array.from(new Set(nomes)).sort((a, b) => a.localeCompare(b, 'pt-BR'))
+  }, [resumoCidade])
+
+  const formatarPercentual = (valor: number | null): string => {
+    if (valor === null || !Number.isFinite(valor)) return '-'
+    return `${valor.toFixed(1).replace('.', ',')}%`
+  }
+
+  const formatarResumoPenetracao = (selection: Record<TableKey, Record<string, number>>): string => {
+    const votosSelecionadosTotal = getSelectedVotesTotalFromSelection(selection)
+    const votosPrefeitoSelecionados = Object.values(selection.prefeito_2024).reduce((sum, value) => sum + value, 0)
+    const votosPenetracao = votosSelecionadosTotal - votosPrefeitoSelecionados
+    const totalPrefeitoCidade = prefeito2024.reduce(
+      (sum, item) => sum + parseVotos(item.quantidadeVotosNominais),
+      0
+    )
+
+    const votosMeta = resumoCidade
+      ? (cenarioVotos === 'promessa_lideranca'
+        ? resumoCidade.promessa2026
+        : cenarioVotos === 'legado_anterior'
+          ? resumoCidade.legado2026
+          : resumoCidade.votos2026)
+      : 0
+    const labelMeta =
+      cenarioVotos === 'promessa_lideranca'
+        ? 'Promessa 2026'
+        : cenarioVotos === 'legado_anterior'
+          ? 'Expectativa 2026'
+          : 'Aferido 2026'
+    const percentualSobre2026 =
+      votosMeta > 0 ? (votosPenetracao / votosMeta) * 100 : null
+    const percentualSobreEleitores =
+      resumoCidade && resumoCidade.eleitores && resumoCidade.eleitores > 0
+        ? (votosPenetracao / resumoCidade.eleitores) * 100
+        : null
+    const percentualPrefeito =
+      totalPrefeitoCidade > 0 ? (votosPrefeitoSelecionados / totalPrefeitoCidade) * 100 : null
+
+    return [
+      `Alcance (sem prefeito): ${votosPenetracao.toLocaleString('pt-BR')} votos`,
+      `${formatarPercentual(percentualSobre2026)} de ${labelMeta}`,
+      `${formatarPercentual(percentualSobreEleitores)} de Eleitores`,
+      `Prefeito: ${votosPrefeitoSelecionados.toLocaleString('pt-BR')} (${formatarPercentual(percentualPrefeito)} do total Prefeito 2024)`,
+    ].join(' | ')
+  }
+
+  const toggleFiltroPartido = (partido: string) => {
+    const partidoNormalizado = normalizarPartidoLabel(partido)
+    if (!partidoNormalizado || partidoNormalizado === '-') return
+    setFiltroPartidoAtivo((prev) =>
+      partidosIguais(prev, partidoNormalizado) ? null : partidoNormalizado,
+    )
+    setCurrentPage((prev) => ({
+      ...prev,
+      deputado_estadual: 1,
+      deputado_federal: 1,
+      prefeito_2024: 1,
+      vereador_2024: 1,
+      partido_2024: 1,
+    }))
+  }
+
+  const getResumoFromMap = (
+    cidadeAlvo: string
+  ): { expectativaVotos: number; promessaVotos: number; expectativaLegadoVotos: number; votacaoFinal2022: number; liderancas: number } | null => {
+    const normalized = normalizeCityName(cidadeAlvo)
+    if (!normalized) return null
+
+    if (resumosCidadeMap[normalized]) return resumosCidadeMap[normalized]
+
+    let fallback: { expectativaVotos: number; promessaVotos: number; expectativaLegadoVotos: number; votacaoFinal2022: number; liderancas: number } | null = null
+    Object.entries(resumosCidadeMap).forEach(([key, value]) => {
+      if (key.includes(normalized) || normalized.includes(key)) {
+        fallback = {
+          expectativaVotos: (fallback?.expectativaVotos || 0) + value.expectativaVotos,
+          promessaVotos: (fallback?.promessaVotos || 0) + (value.promessaVotos || 0),
+          expectativaLegadoVotos: (fallback?.expectativaLegadoVotos || 0) + (value.expectativaLegadoVotos || 0),
+          votacaoFinal2022: (fallback?.votacaoFinal2022 || 0) + value.votacaoFinal2022,
+          liderancas: (fallback?.liderancas || 0) + value.liderancas,
+        }
+      }
+    })
+    return fallback
+  }
+
+  const montarResumoAgregado = (): ResumoCidade => {
+    let eleitores = 0
+    let votos2026 = 0
+    let promessa2026 = 0
+    let legado2026 = 0
+    let votacaoFinal2022 = 0
+    let liderancas = 0
+
+    for (const nomeCidade of cidades) {
+      const fromMap = getResumoFromMap(nomeCidade)
+      if (!fromMap) continue
+      const ele = getEleitoradoByCity(nomeCidade)
+      if (ele != null) eleitores += ele
+      votos2026 += fromMap.expectativaVotos
+      promessa2026 += fromMap.promessaVotos
+      legado2026 += fromMap.expectativaLegadoVotos
+      votacaoFinal2022 += fromMap.votacaoFinal2022
+      liderancas += fromMap.liderancas
+    }
+
+    return {
+      eleitores: eleitores > 0 ? eleitores : null,
+      votos2026,
+      promessa2026,
+      legado2026,
+      votacaoFinal2022,
+      liderancas,
+      liderancasDetalhe: [],
+    }
+  }
+
+  const buscarResumoCidadeDetalhe = async (cidadeAlvo: string): Promise<ResumoCidade> => {
+    const eleitores = getEleitoradoByCity(cidadeAlvo)
+    const vazio: ResumoCidade = {
+      eleitores,
+      votos2026: 0,
+      promessa2026: 0,
+      legado2026: 0,
+      votacaoFinal2022: 0,
+      liderancas: 0,
+      liderancasDetalhe: [],
+    }
+
+    try {
+      const res = await fetch('/api/territorio/expectativa-por-cidade', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ cidade: cidadeAlvo }),
+      })
+      const json = await res.json()
+      if (!res.ok) throw new Error(json.error || 'Erro ao buscar resumo da cidade')
+      const cityKey = normalizeCityName(cidadeAlvo)
+      if (cityKey) {
+        setResumosCidadeMap((prev) => ({
+          ...prev,
+          [cityKey]: {
+            expectativaVotos: Number(json.expectativaVotos || 0),
+            promessaVotos: Number(json.promessaVotos || 0),
+            expectativaLegadoVotos: Number(json.expectativaLegadoVotos || 0),
+            votacaoFinal2022: Number(json.votacaoFinal2022 || 0),
+            liderancas: Number(json.liderancas || 0),
+          },
+        }))
+      }
+      return {
+        eleitores,
+        votos2026: Number(json.expectativaVotos || 0),
+        promessa2026: Number(json.promessaVotos || 0),
+        legado2026: Number(json.expectativaLegadoVotos || 0),
+        votacaoFinal2022: Number(json.votacaoFinal2022 || 0),
+        liderancas: Number(json.liderancas || 0),
+        liderancasDetalhe: Array.isArray(json.liderancasDetalhe)
+          ? (json.liderancasDetalhe as LiderancaDetalheResponse[]).map((item) => ({
+              nome: String(item.nome || ''),
+              cargo: String(item.cargo || '-'),
+              projecaoVotos: Number(item.projecaoVotos || 0),
+              projecaoAferida: Number(item.projecaoAferida || item.projecaoVotos || 0),
+              projecaoPromessa: Number(item.projecaoPromessa || 0),
+              projecaoLegado: Number(item.projecaoLegado || 0),
+            }))
+          : [],
+      }
+    } catch {
+      return vazio
+    }
+  }
+
+  const carregarResumoCidade = async (cidadeAlvo: string): Promise<void> => {
+    const eleitores = getEleitoradoByCity(cidadeAlvo)
+    const fromMap = getResumoFromMap(cidadeAlvo)
+    if (fromMap) {
+      setResumoCidade({
+        eleitores,
+        votos2026: fromMap.expectativaVotos,
+        promessa2026: fromMap.promessaVotos || 0,
+        legado2026: fromMap.expectativaLegadoVotos || 0,
+        votacaoFinal2022: fromMap.votacaoFinal2022,
+        liderancas: fromMap.liderancas,
+        liderancasDetalhe: [],
+      })
+    }
+
+    const resumo = await buscarResumoCidadeDetalhe(cidadeAlvo)
+    setResumoCidade(resumo)
+  }
+
+  const carregarPresidenteCamara = async (cidadeAlvo: string) => {
+    try {
+      const res = await fetch(`/api/resumo-eleicoes/presidente-camara?cidade=${encodeURIComponent(cidadeAlvo)}`)
+      const json = await res.json()
+      if (res.ok) {
+        setPresidenteCamaraNome(json.presidente || null)
+      } else {
+        setPresidenteCamaraNome(null)
+      }
+    } catch {
+      setPresidenteCamaraNome(null)
+    }
+  }
+
+  const formatarDataPesquisa = (dataRaw: string): string => {
+    const base = String(dataRaw || '')
+    const normalizada = base.includes('T') ? base.split('T')[0] : base
+    const partes = normalizada.split('-')
+    if (partes.length === 3) return `${partes[2]}/${partes[1]}`
+    return normalizada || '-'
+  }
+
+  const carregarPesquisaRecenteCidade = async (cidadeAlvo: string): Promise<void> => {
+    const cityKey = normalizeCityName(cidadeAlvo)
+    if (!cityKey) {
+      setPesquisaRecenteCidade(null)
+      return
+    }
+
+    if (!candidatoPadraoPesquisa) {
+      setPesquisaRecenteCidade(null)
+      return
+    }
+
+    const cidadeId = pesquisaCitiesMap[cityKey]
+    if (!cidadeId) {
+      setPesquisaRecenteCidade(null)
+      return
+    }
+
+    try {
+      const res = await fetch(`/api/pesquisa?cidade_id=${encodeURIComponent(cidadeId)}&limit=300`)
+      const json = await res.json()
+      if (!res.ok || !Array.isArray(json)) throw new Error('Erro ao buscar pesquisas da cidade')
+
+      const candidatoNormalizado = normalizeText(candidatoPadraoPesquisa)
+      const pollMaisRecente = json.find((poll: Record<string, unknown>) => {
+        const candidato = normalizeText(String(poll.candidato_nome || ''))
+        return candidato === candidatoNormalizado
+      }) as Record<string, unknown> | undefined
+
+      if (!pollMaisRecente) {
+        setPesquisaRecenteCidade(null)
+        return
+      }
+
+      setPesquisaRecenteCidade({
+        intencao: Number(pollMaisRecente.intencao || 0),
+        data: formatarDataPesquisa(String(pollMaisRecente.data || '')),
+        instituto: String(pollMaisRecente.instituto || 'Não informado'),
+      })
+    } catch {
+      setPesquisaRecenteCidade(null)
+    }
+  }
+
+  const carregarSimulacaoCidade = async (cidadeAlvo: string): Promise<void> => {
+    if (!cidadeAlvo) {
+      setSimulacaoMapeamento({})
+      return
+    }
+
+    setLoadingSimulacao(true)
+    try {
+      const res = await fetch(`/api/resumo-eleicoes/simulacao-vereadores?cidade=${encodeURIComponent(cidadeAlvo)}`)
+      const json = await res.json()
+      if (!res.ok) throw new Error(json.error || 'Erro ao carregar simulação')
+      setSimulacaoMapeamento(sanitizarMapeamentoSimulacao(json.mapeamento))
+    } catch {
+      setSimulacaoMapeamento({})
+    } finally {
+      setLoadingSimulacao(false)
+    }
+  }
+
+  const prepararFiltroDemandas = async (): Promise<void> => {
+    if (!cidade) return
+    setShowDemandsLeaderSelector(true)
+    setLoadingDemandasLiderancas(true)
+    setLiderancasDemandasInicializadas(false)
+    try {
+      if (!resumoCidade || resumoCidade.liderancasDetalhe.length === 0) {
+        await carregarResumoCidade(cidade)
+      }
+    } finally {
+      setLoadingDemandasLiderancas(false)
+    }
+  }
+
+  const toggleLiderancaDemanda = (nome: string) => {
+    setSelectedDemandasLiderancas((prev) =>
+      prev.includes(nome) ? prev.filter((item) => item !== nome) : [...prev, nome]
+    )
+  }
+
+  const selecionarTodasLiderancasDemanda = () => {
+    setSelectedDemandasLiderancas(liderancasDisponiveisDemandas)
+  }
+
+  const limparLiderancasDemanda = () => {
+    setSelectedDemandasLiderancas([])
+  }
+
+  const abrirModalDemandasFiltrado = (nomesOpcional?: string[]) => {
+    const lista = nomesOpcional ?? selectedDemandasLiderancas
+    if (lista.length === 0) return
+    if (typeof window !== 'undefined') {
+      sessionStorage.setItem('territorio_demands_liderancas', JSON.stringify(lista))
+    }
+    setShowDemandsLeaderSelector(false)
+    setShowCityDemands(true)
+  }
+
+  const confirmarDemandasTodasLiderancas = async (): Promise<void> => {
+    const lista = liderancasDisponiveisDemandas
+    if (lista.length === 0) return
+    abrirModalDemandasFiltrado(lista)
+  }
+
+  const confirmarDemandasComLiderancasNomes = async (nomes: string[]): Promise<void> => {
+    const validos = nomes.filter((n) => liderancasDisponiveisDemandas.includes(n))
+    if (validos.length === 0) return
+    abrirModalDemandasFiltrado(validos)
+  }
+
+  const painelResumoCardsVisivel =
+    buscaIniciada && !loadingDados && dados.length > 0 && resumoCidade !== null
+
+  const abrirLiderancasCidade = async (nomeCidade: string) => {
+    setCidadeLiderancasModal(nomeCidade)
+    setShowLiderancasModal(true)
+
+    const cidadeResumoAtual = visaoTodasCidades ? cidadeFiltroLista : cidade
+    if (
+      resumoCidade &&
+      cidadeResumoAtual &&
+      normalizeCityName(cidadeResumoAtual) === normalizeCityName(nomeCidade) &&
+      resumoCidade.liderancasDetalhe.length > 0
+    ) {
+      setResumoLiderancasModal(resumoCidade)
+      setLoadingLiderancasModal(false)
+      return
+    }
+
+    setResumoLiderancasModal(null)
+    setLoadingLiderancasModal(true)
+    try {
+      const resumo = await buscarResumoCidadeDetalhe(nomeCidade)
+      setResumoLiderancasModal(resumo)
+    } finally {
+      setLoadingLiderancasModal(false)
+    }
+  }
+
+  const abrirDetalhesLiderancasDoCard = () => {
+    const alvo = visaoTodasCidades ? cidadeFiltroLista : cidade
+    if (!alvo || alvo === RESUMO_TODAS_CIDADES) return
+    void abrirLiderancasCidade(alvo)
+  }
+
+  const abrirDetalhesPesquisasDoCard = () => {
+    setShowPesquisaHistoricoModal(true)
+  }
+
+  const fecharModalLiderancas = () => {
+    setShowLiderancasModal(false)
+    setCidadeLiderancasModal(null)
+    setResumoLiderancasModal(null)
+    setLoadingLiderancasModal(false)
+  }
+
+  const fecharModalPesquisas = () => {
+    setShowPesquisaHistoricoModal(false)
+  }
+
+  const fecharModalDemandasCidade = () => {
+    setShowCityDemands(false)
+  }
+
+  const fecharSeletorDemandas = () => {
+    setShowDemandsLeaderSelector(false)
+    setLoadingDemandasLiderancas(false)
+    setSelectedDemandasLiderancas([])
+    setLiderancasDemandasInicializadas(false)
+  }
+
+  const salvarSimulacaoCidade = async (): Promise<void> => {
+    if (!cidade) return
+    setSavingSimulacao(true)
+    try {
+      const res = await fetch('/api/resumo-eleicoes/simulacao-vereadores', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          cidade,
+          mapeamento: sanitizarMapeamentoSimulacao(simulacaoMapeamento),
+        }),
+      })
+      const json = await res.json()
+      if (!res.ok) throw new Error(json.error || 'Erro ao salvar simulação')
+      setSimulacaoMapeamento(sanitizarMapeamentoSimulacao(json.mapeamento))
+      setFeedbackMarcacao('Simulação de vereadores salva com sucesso.')
+      setMostrarFeedbackMarcacao(true)
+    } catch {
+      setFeedbackMarcacao('Não foi possível salvar a simulação agora.')
+      setMostrarFeedbackMarcacao(true)
+    } finally {
+      setSavingSimulacao(false)
+    }
+  }
+
+  const definirPresidenteCamara = async (vereadorNome: string) => {
+    if (!cidade || savingPresidente) return
+
+    const anterior = presidenteCamaraNome
+    const nomeNormalizado = vereadorNome.trim()
+    setPresidenteCamaraNome(nomeNormalizado)
+    setSavingPresidente(true)
+    try {
+      const res = await fetch('/api/resumo-eleicoes/presidente-camara', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          cidade,
+          vereadorNome: nomeNormalizado,
+        }),
+      })
+      const json = await res.json()
+      if (!res.ok) throw new Error(json.error || 'Erro ao salvar presidente da câmara')
+      setPresidenteCamaraNome(json.presidente || nomeNormalizado)
+    } catch {
+      setPresidenteCamaraNome(anterior)
+    } finally {
+      setSavingPresidente(false)
+    }
+  }
+
+  useEffect(() => {
+    const retornoDaPesquisa = searchParams.get('returnFromPesquisa') === '1'
+    if (!retornoDaPesquisa || typeof window === 'undefined') return
+
+    try {
+      const raw = sessionStorage.getItem(RESUMO_STATE_SESSION_KEY)
+      if (!raw) return
+      const parsed = JSON.parse(raw) as ResumoEleicoesSnapshot
+      if (!parsed) return
+
+      setCidade(parsed.cidade || '')
+      setCidades(Array.isArray(parsed.cidades) ? parsed.cidades : [])
+      setDados(Array.isArray(parsed.dados) ? parsed.dados : [])
+      setBuscaIniciada(Boolean(parsed.buscaIniciada))
+      setPresidenteCamaraNome(parsed.presidenteCamaraNome || null)
+      setFiltroPartidoAtivo(parsed.filtroPartidoAtivo || null)
+      setResumoCidade(
+        parsed.resumoCidade
+          ? {
+              ...parsed.resumoCidade,
+              legado2026: Number(parsed.resumoCidade.legado2026 || 0),
+              liderancasDetalhe: Array.isArray(parsed.resumoCidade.liderancasDetalhe)
+                ? parsed.resumoCidade.liderancasDetalhe.map((item) => ({
+                    ...item,
+                    projecaoLegado: Number(item.projecaoLegado || 0),
+                  }))
+                : [],
+            }
+          : null
+      )
+      setResumosCidadeMap(parsed.resumosCidadeMap || {})
+      setPesquisaRecenteCidade(parsed.pesquisaRecenteCidade || null)
+      setPesquisaCitiesMap(parsed.pesquisaCitiesMap || {})
+      setCandidatoPadraoPesquisa(parsed.candidatoPadraoPesquisa || '')
+      setCenarioVotos('legado_anterior')
+      setSimulacaoMapeamento(sanitizarMapeamentoSimulacao(parsed.simulacaoMapeamento))
+      setLoadingCidades(false)
+      setRestaurouEstadoRetorno(true)
+    } catch {
+      // Se falhar a restauração, segue fluxo padrão.
+    }
+  }, [searchParams])
+
+  useEffect(() => {
+    if (!showDemandsLeaderSelector || loadingDemandasLiderancas || liderancasDemandasInicializadas) return
+    setSelectedDemandasLiderancas(liderancasDisponiveisDemandas)
+    setLiderancasDemandasInicializadas(true)
+  }, [
+    showDemandsLeaderSelector,
+    loadingDemandasLiderancas,
+    liderancasDemandasInicializadas,
+    liderancasDisponiveisDemandas,
+  ])
+
+  useEffect(() => {
+    if (restaurouEstadoRetorno && cidades.length > 0) return
+    let mounted = true
+
+    const hydrateCitiesFromCache = (): boolean => {
+      if (typeof window === 'undefined') return false
+      try {
+        const raw = localStorage.getItem(RESUMO_CIDADES_CACHE_KEY)
+        if (!raw) return false
+        const parsed = JSON.parse(raw)
+        if (!Array.isArray(parsed)) return false
+        const cidadesCache = parsed
+          .map((item) => String(item || '').trim())
+          .filter((item) => item.length > 0)
+        if (cidadesCache.length === 0) return false
+        setCidades(cidadesCache)
+        setLoadingCidades(false)
+        return true
+      } catch {
+        return false
+      }
+    }
+
+    const loadCities = async () => {
+      const loadedFromCache = hydrateCitiesFromCache()
+      if (loadedFromCache) return
+      setLoadingCidades(true)
+      try {
+        const res = await fetch('/api/resumo-eleicoes')
+        const json = await res.json()
+        if (!res.ok) throw new Error(json.error || 'Erro ao carregar municípios')
+        if (!mounted) return
+        const cidadesApi = Array.isArray(json.cidades)
+          ? json.cidades
+              .map((item: unknown) => String(item || '').trim())
+              .filter((item: string) => item.length > 0)
+          : []
+        setCidades(cidadesApi)
+        if (typeof window !== 'undefined' && cidadesApi.length > 0) {
+          localStorage.setItem(RESUMO_CIDADES_CACHE_KEY, JSON.stringify(cidadesApi))
+        }
+      } catch (e) {
+        if (!mounted) return
+        setError(e instanceof Error ? e.message : 'Erro ao carregar municípios')
+      } finally {
+        if (mounted) setLoadingCidades(false)
+      }
+    }
+
+    loadCities()
+    return () => {
+      mounted = false
+    }
+  }, [restaurouEstadoRetorno, cidades.length])
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const candidatoSalvo = localStorage.getItem('candidatoPadraoPesquisa') || ''
+    setCandidatoPadraoPesquisa(candidatoSalvo)
+  }, [])
+
+  useEffect(() => {
+    let active = true
+
+    const preloadPesquisaCities = async () => {
+      try {
+        const res = await fetch('/api/campo/cities')
+        const json = await res.json()
+        if (!res.ok || !Array.isArray(json) || !active) return
+
+        const nextMap: PesquisaCitiesMap = {}
+        json.forEach((city: { id?: string; name?: string }) => {
+          if (!city?.id || !city?.name) return
+          nextMap[normalizeCityName(city.name)] = city.id
+        })
+        setPesquisaCitiesMap(nextMap)
+      } catch {
+        // fallback silencioso
+      }
+    }
+
+    preloadPesquisaCities()
+    return () => {
+      active = false
+    }
+  }, [])
+
+  useEffect(() => {
+    if (cidades.length === 0) return
+    let active = true
+
+    const preloadResumos = async () => {
+      try {
+        const res = await fetch('/api/territorio/expectativa-por-cidade')
+        const json = await res.json()
+        if (!res.ok || !active) return
+        const summaries = (json.summaries || {}) as ResumosCidadeMap
+        if (Object.keys(summaries).length > 0) {
+          setResumosCidadeMap(summaries)
+        }
+      } catch {
+        // fallback silencioso: o POST por cidade continua funcionando
+      }
+    }
+
+    preloadResumos()
+    return () => {
+      active = false
+    }
+  }, [cidades.length])
+
+  useEffect(() => {
+    if (cidades.length === 0) return
+    const cidadeParam = searchParams.get('cidade')
+    if (!cidadeParam) return
+
+    const cidadeNormalizada = normalizeCityName(cidadeParam)
+    const encontrada = cidades.find((item) => normalizeCityName(item) === cidadeNormalizada)
+    if (encontrada) {
+      setCidade(encontrada)
+    }
+  }, [cidades, searchParams])
+
+  useEffect(() => {
+    if (!buscaIniciada || dados.length === 0) return
+    if (Object.keys(pesquisaCitiesMap).length === 0) return
+    const alvoPesquisa =
+      visaoTodasCidades ? cidadeFiltroLista : cidade && cidade !== RESUMO_TODAS_CIDADES ? cidade : null
+    if (!alvoPesquisa) {
+      if (visaoTodasCidades && !cidadeFiltroLista) setPesquisaRecenteCidade(null)
+      return
+    }
+    void carregarPesquisaRecenteCidade(alvoPesquisa)
+  }, [
+    buscaIniciada,
+    cidade,
+    cidadeFiltroLista,
+    visaoTodasCidades,
+    dados.length,
+    pesquisaCitiesMap,
+    candidatoPadraoPesquisa,
+  ])
+
+  const limparFiltroCidadeLista = () => {
+    setCidadeFiltroLista(null)
+    setDadosCidadeFiltro([])
+    setLoadingCidadeFiltro(false)
+    setSelectedVotes(EMPTY_SELECTIONS)
+    setPresidenteCamaraNome(null)
+    setPesquisaRecenteCidade(null)
+    setCandidatoDistribuicao(null)
+    setFiltroPartidoAtivo(null)
+    if (visaoTodasCidades && buscaIniciada) {
+      setResumoCidade(montarResumoAgregado())
+    }
+  }
+
+  const buscarDadosParaCidade = async (nomeCidade: string) => {
+    const alvo = String(nomeCidade || '').trim()
+    if (!alvo || alvo === RESUMO_TODAS_CIDADES) return
+    setCidadeFiltroLista(null)
+    setDadosCidadeFiltro([])
+    setCidade(alvo)
+    setBuscaIniciada(true)
+    setLoadingDados(true)
+    setError(null)
+    setDados([])
+    setSelectedVotes(EMPTY_SELECTIONS)
+    setPresidenteCamaraNome(null)
+    setFiltroPartidoAtivo(null)
+    setResumoCidade(null)
+    setShowLiderancasModal(false)
+    setFeedbackMarcacao(null)
+    setMostrarFeedbackMarcacao(false)
+    setPesquisaRecenteCidade(null)
+    setCurrentPage({
+      deputado_estadual: 1,
+      deputado_federal: 1,
+      prefeito_2024: 1,
+      vereador_2024: 1,
+      partido_2024: 1,
+    })
+
+    try {
+      const res = await fetch(`/api/resumo-eleicoes?cidade=${encodeURIComponent(alvo)}`)
+      const json = await res.json()
+      if (!res.ok) throw new Error(json.error || 'Erro ao buscar resultados')
+      setDados(Array.isArray(json.resultados) ? json.resultados : [])
+      await carregarPresidenteCamara(alvo)
+      void carregarResumoCidade(alvo)
+      void carregarPesquisaRecenteCidade(alvo)
+      void carregarSimulacaoCidade(alvo)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Erro ao buscar resultados')
+    } finally {
+      setLoadingDados(false)
+    }
+  }
+
+  const buscarDadosTodasCidades = async () => {
+    setCidadeFiltroLista(null)
+    setDadosCidadeFiltro([])
+    setCidade(RESUMO_TODAS_CIDADES)
+    setBuscaIniciada(true)
+    setLoadingDados(true)
+    setError(null)
+    setDados([])
+    setSelectedVotes(EMPTY_SELECTIONS)
+    setPresidenteCamaraNome(null)
+    setFiltroPartidoAtivo(null)
+    setShowLiderancasModal(false)
+    setFeedbackMarcacao(null)
+    setMostrarFeedbackMarcacao(false)
+    setPesquisaRecenteCidade(null)
+    setCandidatoDistribuicao(null)
+    setCurrentPage({
+      deputado_estadual: 1,
+      deputado_federal: 1,
+      prefeito_2024: 1,
+      vereador_2024: 1,
+      partido_2024: 1,
+    })
+
+    try {
+      const res = await fetch('/api/resumo-eleicoes?aggregado=true')
+      const json = await res.json()
+      if (!res.ok) throw new Error(json.error || 'Erro ao buscar resultados agregados')
+      setDados(Array.isArray(json.resultados) ? json.resultados : [])
+      setResumoCidade(montarResumoAgregado())
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Erro ao buscar resultados agregados')
+      setResumoCidade(null)
+    } finally {
+      setLoadingDados(false)
+    }
+  }
+
+  const buscarDados = async () => {
+    if (!cidade) return
+    if (cidade === RESUMO_TODAS_CIDADES) {
+      await buscarDadosTodasCidades()
+      return
+    }
+    await buscarDadosParaCidade(cidade)
+  }
+
+  const selecionarCidadeDaLista = async (nomeCidade: string) => {
+    if (!visaoTodasCidades || !buscaIniciada) return
+
+    if (cidadeFiltroLista === nomeCidade) {
+      limparFiltroCidadeLista()
+      return
+    }
+
+    setCidadeFiltroLista(nomeCidade)
+    setDadosCidadeFiltro([])
+    setLoadingCidadeFiltro(true)
+    setError(null)
+    setSelectedVotes(EMPTY_SELECTIONS)
+    setCandidatoDistribuicao(null)
+    setCurrentPage({
+      deputado_estadual: 1,
+      deputado_federal: 1,
+      prefeito_2024: 1,
+      vereador_2024: 1,
+      partido_2024: 1,
+    })
+
+    try {
+      const res = await fetch(`/api/resumo-eleicoes?cidade=${encodeURIComponent(nomeCidade)}`)
+      const json = await res.json()
+      if (!res.ok) throw new Error(json.error || 'Erro ao buscar resultados da cidade')
+      setDadosCidadeFiltro(Array.isArray(json.resultados) ? json.resultados : [])
+      await carregarPresidenteCamara(nomeCidade)
+      void carregarResumoCidade(nomeCidade)
+      void carregarPesquisaRecenteCidade(nomeCidade)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Erro ao buscar resultados da cidade')
+      setDadosCidadeFiltro([])
+    } finally {
+      setLoadingCidadeFiltro(false)
+    }
+  }
+
+  useEffect(() => {
+    if (cidades.length === 0) return
+
+    const jarvisBuscar = searchParams.get('jarvisBuscar') === '1'
+    const pending = consumeJarvisResumoPendingBusca()
+    const cidadeParam = searchParams.get('cidade')?.trim()
+
+    const alvo =
+      (pending?.cidade &&
+        cidades.find((c) => normalizeCityName(c) === normalizeCityName(pending.cidade))) ||
+      (cidadeParam &&
+        (cidades.find((c) => normalizeCityName(c) === normalizeCityName(cidadeParam)) || cidadeParam)) ||
+      pending?.cidade ||
+      cidadeParam
+
+    if (!alvo) return
+    if (!jarvisBuscar && !pending) return
+
+    void buscarDadosParaCidade(alvo)
+  }, [cidades, searchParams])
+
+  const dadosFiltradosPorPartido = useMemo(() => {
+    if (!filtroPartidoAtivo) return dadosAtivos
+    return dadosAtivos.filter((item) => partidosIguais(item.partido, filtroPartidoAtivo))
+  }, [dadosAtivos, filtroPartidoAtivo])
+
+  const chaveTabelasResultado = `${cidadeFiltroLista ?? cidade}|${filtroPartidoAtivo ?? 'todos'}|${dadosAtivos.length}`
+
+  const deputadoEstadual2022 = useMemo(
+    () =>
+      dadosFiltradosPorPartido
+        .filter((item) => includesNormalized(item.cargo, 'estadual') && item.anoEleicao === '2022')
+        .sort((a, b) => parseVotos(b.quantidadeVotosNominais) - parseVotos(a.quantidadeVotosNominais)),
+    [dadosFiltradosPorPartido]
+  )
+
+  const deputadoFederal2022 = useMemo(
+    () =>
+      dadosFiltradosPorPartido
+        .filter((item) => includesNormalized(item.cargo, 'federal') && item.anoEleicao === '2022')
+        .sort((a, b) => parseVotos(b.quantidadeVotosNominais) - parseVotos(a.quantidadeVotosNominais)),
+    [dadosFiltradosPorPartido]
+  )
+
+  const prefeito2024 = useMemo(
+    () =>
+      dadosFiltradosPorPartido
+        .filter((item) => includesNormalized(item.cargo, 'prefeito') && item.anoEleicao === '2024')
+        .sort((a, b) => parseVotos(b.quantidadeVotosNominais) - parseVotos(a.quantidadeVotosNominais)),
+    [dadosFiltradosPorPartido]
+  )
+
+  const vereador2024 = useMemo(
+    () =>
+      dadosFiltradosPorPartido
+        .filter((item) => includesNormalized(item.cargo, 'vereador') && item.anoEleicao === '2024')
+        .sort((a, b) => parseVotos(b.quantidadeVotosNominais) - parseVotos(a.quantidadeVotosNominais)),
+    [dadosFiltradosPorPartido]
+  )
+
+  // Base completa da cidade para simulação (não depende do filtro de partido)
+  const vereador2024Completo = useMemo(
+    () =>
+      dadosAtivos
+        .filter((item) => includesNormalized(item.cargo, 'vereador') && item.anoEleicao === '2024')
+        .sort((a, b) => parseVotos(b.quantidadeVotosNominais) - parseVotos(a.quantidadeVotosNominais)),
+    [dadosAtivos]
+  )
+
+  const partido2024 = useMemo<PartidoResumo[]>(() => {
+    const grouped = new Map<string, PartidoResumo>()
+
+    for (const item of dadosAtivos) {
+      if (item.anoEleicao !== '2024') continue
+      const key = item.partido || '-'
+      const current = grouped.get(key) || { partido: key, votos: 0, eleitos: 0 }
+      current.votos += parseVotos(item.quantidadeVotosNominais)
+      if (includesNormalized(item.situacao, 'eleito')) current.eleitos += 1
+      grouped.set(key, current)
+    }
+
+    return Array.from(grouped.values()).sort((a, b) => b.votos - a.votos)
+  }, [dadosAtivos])
+
+  const linhasCidadesResumo = useMemo((): ResumoEleicoesCidadeLinha[] => {
+    if (!visaoTodasCidades) return []
+
+    return cidades
+      .map((nome) => {
+        const fromMap = getResumoFromMap(nome)
+        if (!fromMap) return null
+        const expectativa2026 =
+          cenarioVotos === 'promessa_lideranca'
+            ? fromMap.promessaVotos
+            : cenarioVotos === 'legado_anterior'
+              ? fromMap.expectativaLegadoVotos
+              : fromMap.expectativaVotos
+        const votacao2022 = fromMap.votacaoFinal2022
+        const eleitores = getEleitoradoByCity(nome)
+        const percentualExpectativaEleitorado =
+          eleitores !== null && eleitores > 0 ? (expectativa2026 / eleitores) * 100 : null
+        return {
+          nome,
+          eleitores,
+          votacao2022,
+          liderancas: fromMap.liderancas,
+          expectativa2026,
+          percentualExpectativaEleitorado,
+          variacao: expectativa2026 - votacao2022,
+        }
+      })
+      .filter((row): row is ResumoEleicoesCidadeLinha => row != null)
+  }, [visaoTodasCidades, cidades, resumosCidadeMap, cenarioVotos])
+
+  useEffect(() => {
+    if (!visaoTodasCidades || !buscaIniciada) return
+    if (cidadeFiltroLista) {
+      const fromMap = getResumoFromMap(cidadeFiltroLista)
+      if (!fromMap) return
+      const eleitores = getEleitoradoByCity(cidadeFiltroLista)
+      setResumoCidade((prev) => ({
+        eleitores,
+        votos2026: fromMap.expectativaVotos,
+        promessa2026: fromMap.promessaVotos || 0,
+        legado2026: fromMap.expectativaLegadoVotos || 0,
+        votacaoFinal2022: fromMap.votacaoFinal2022,
+        liderancas: fromMap.liderancas,
+        liderancasDetalhe: prev?.liderancasDetalhe ?? [],
+      }))
+      return
+    }
+    setResumoCidade(montarResumoAgregado())
+  }, [cenarioVotos, visaoTodasCidades, buscaIniciada, cidades, resumosCidadeMap, cidadeFiltroLista])
+
+  const rankingSimulacaoFederal = useMemo(() => {
+    const mapaFederal = new Map<string, { nome: string; votosEstimados: number; vereadores: number }>()
+
+    vereador2024Completo.forEach((vereador) => {
+      const vereadorKey = vereadorSimulacaoKey(vereador)
+      const federalNome = limparNomeSimulacaoFederal(simulacaoMapeamento[vereadorKey] || '')
+      if (!federalNome) return
+      const federalKey = normalizeText(federalNome)
+      if (!federalKey) return
+
+      const votosVereador = parseVotos(vereador.quantidadeVotosNominais)
+      const atual = mapaFederal.get(federalKey) || {
+        nome: federalNome,
+        votosEstimados: 0,
+        vereadores: 0,
+      }
+      atual.votosEstimados += votosVereador
+      atual.vereadores += 1
+      mapaFederal.set(federalKey, atual)
+    })
+
+    return Array.from(mapaFederal.values()).sort(
+      (a, b) => b.votosEstimados - a.votosEstimados || a.nome.localeCompare(b.nome, 'pt-BR')
+    )
+  }, [simulacaoMapeamento, vereador2024Completo])
+
+  const paginated = <T,>(list: T[], page: number): T[] => {
+    const start = (page - 1) * ITEMS_PER_PAGE
+    return list.slice(start, start + ITEMS_PER_PAGE)
+  }
+
+  const scoreCorrespondencia = (nomeCandidato: string, alvo: string): number => {
+    const candidato = normalizeText(nomeCandidato)
+    if (!candidato) return 0
+
+    const aliases = extrairAliases(alvo)
+    let melhorScore = 0
+
+    for (const alias of aliases) {
+      const aliasNorm = normalizeText(alias)
+      if (!aliasNorm) continue
+
+      if (candidato === aliasNorm) {
+        melhorScore = Math.max(melhorScore, 100)
+        continue
+      }
+
+      const tokensAlias = tokensSignificativos(aliasNorm)
+      const primeiroToken = tokensAlias[0]
+
+      if (tokensAlias.length >= 2 && tokensAlias.every((token) => candidato.includes(token))) {
+        melhorScore = Math.max(melhorScore, 90)
+        continue
+      }
+
+      if (primeiroToken && candidato.includes(primeiroToken)) {
+        melhorScore = Math.max(melhorScore, 75)
+        continue
+      }
+    }
+
+    return melhorScore
+  }
+
+  const selecionarMelhorCandidato = (
+    itens: ResultadoEleicao[],
+    alvos: string[]
+  ): ResultadoEleicao | null => {
+    let melhor: ResultadoEleicao | null = null
+    let melhorScore = 0
+
+    for (const item of itens) {
+      let scoreItem = 0
+      for (const alvo of alvos) {
+        scoreItem = Math.max(scoreItem, scoreCorrespondencia(item.nomeUrnaCandidato, alvo))
+      }
+      if (scoreItem > melhorScore) {
+        melhorScore = scoreItem
+        melhor = item
+      }
+    }
+
+    // corte mínimo para evitar match fraco/genérico por sobrenome
+    return melhorScore >= 75 ? melhor : null
+  }
+
+  const tabelasPorCargo = (cargo: string): Array<'deputado_estadual' | 'prefeito_2024' | 'vereador_2024'> => {
+    const cargoNormalizado = normalizeText(cargo)
+    const tabelas: Array<'deputado_estadual' | 'prefeito_2024' | 'vereador_2024'> = []
+    if (cargoNormalizado.includes('vereador')) tabelas.push('vereador_2024')
+    if (cargoNormalizado.includes('prefeito')) tabelas.push('prefeito_2024')
+    if (cargoNormalizado.includes('deputado estadual') || cargoNormalizado.includes('dep estadual')) {
+      tabelas.push('deputado_estadual')
+    }
+    return tabelas
+  }
+
+  const extrairNomeDoCargo = (cargoTexto: string, padrao: RegExp): string | null => {
+    const match = cargoTexto.match(padrao)
+    const nome = match?.[1]?.trim()
+    return nome ? nome : null
+  }
+
+  const obterAlvosPorTabela = (lideranca: { nome: string; cargo: string }) => {
+    const cargoBruto = String(lideranca.cargo || '')
+    const tabelasAlvo = tabelasPorCargo(cargoBruto)
+    const alvos: Record<'deputado_estadual' | 'prefeito_2024' | 'vereador_2024', string[]> = {
+      deputado_estadual: [],
+      prefeito_2024: [],
+      vereador_2024: [],
+    }
+
+    const depNome = extrairNomeDoCargo(
+      cargoBruto,
+      /(?:dep\.?\s*estadual|deputad[oa]\s*estadual)\s*:?\s*([^|;·]+?)(?=\s{2,}|[|;·]|$)/i
+    )
+    const prefNome = extrairNomeDoCargo(
+      cargoBruto,
+      /(?:prefeit[oa])\s*:?\s*([^|;·]+?)(?=\s{2,}|[|;·]|$)/i
+    )
+    const verNome = extrairNomeDoCargo(
+      cargoBruto,
+      /(?:vereador(?:a)?)\s*:?\s*([^|;·]+?)(?=\s{2,}|[|;·]|$)/i
+    )
+
+    if (depNome) alvos.deputado_estadual.push(depNome)
+    if (prefNome) alvos.prefeito_2024.push(prefNome)
+    if (verNome) alvos.vereador_2024.push(verNome)
+
+    // Fallback: quando o cargo indica a tabela, mas não trouxe nome explícito.
+    if (tabelasAlvo.includes('deputado_estadual') && alvos.deputado_estadual.length === 0) {
+      alvos.deputado_estadual.push(lideranca.nome)
+    }
+    if (tabelasAlvo.includes('prefeito_2024') && alvos.prefeito_2024.length === 0) {
+      alvos.prefeito_2024.push(lideranca.nome)
+    }
+    if (tabelasAlvo.includes('vereador_2024') && alvos.vereador_2024.length === 0) {
+      alvos.vereador_2024.push(lideranca.nome)
+    }
+
+    return { tabelasAlvo, alvos }
+  }
+
+  const selecionarLiderancaNasTabelas = (lideranca: { nome: string; cargo: string }) => {
+    const { tabelasAlvo, alvos } = obterAlvosPorTabela(lideranca)
+    if (tabelasAlvo.length === 0) {
+      setFeedbackMarcacao(`"${lideranca.nome}": cargo sem correspondência com as tabelas eleitorais.`)
+      return
+    }
+
+    const aplicarMarcacao = (
+      next: Record<TableKey, Record<string, number>>
+    ): { novosMarcados: number; porTabela: { deputado_estadual: number; prefeito_2024: number; vereador_2024: number } } => {
+      let novosMarcados = 0
+      const porTabela = {
+        deputado_estadual: 0,
+        prefeito_2024: 0,
+        vereador_2024: 0,
+      }
+
+      if (tabelasAlvo.includes('deputado_estadual')) {
+        const melhor = selecionarMelhorCandidato(deputadoEstadual2022, alvos.deputado_estadual)
+        if (melhor) {
+          const rowId = `deputado_estadual:${melhor.nomeUrnaCandidato}:${melhor.numeroUrna}`
+          if (next.deputado_estadual[rowId] === undefined) {
+            next.deputado_estadual[rowId] = parseVotos(melhor.quantidadeVotosNominais)
+            novosMarcados += 1
+            porTabela.deputado_estadual += 1
+          }
+        }
+      }
+
+      if (tabelasAlvo.includes('prefeito_2024')) {
+        const melhor = selecionarMelhorCandidato(prefeito2024, alvos.prefeito_2024)
+        if (melhor) {
+          const rowId = `prefeito_2024:${melhor.nomeUrnaCandidato}:${melhor.numeroUrna}`
+          if (next.prefeito_2024[rowId] === undefined) {
+            next.prefeito_2024[rowId] = parseVotos(melhor.quantidadeVotosNominais)
+            novosMarcados += 1
+            porTabela.prefeito_2024 += 1
+          }
+        }
+      }
+
+      if (tabelasAlvo.includes('vereador_2024')) {
+        const melhor = selecionarMelhorCandidato(vereador2024, alvos.vereador_2024)
+        if (melhor) {
+          const rowId = `vereador_2024:${melhor.nomeUrnaCandidato}:${melhor.numeroUrna}`
+          if (next.vereador_2024[rowId] === undefined) {
+            next.vereador_2024[rowId] = parseVotos(melhor.quantidadeVotosNominais)
+            novosMarcados += 1
+            porTabela.vereador_2024 += 1
+          }
+        }
+      }
+
+      return { novosMarcados, porTabela }
+    }
+
+    let resultado = {
+      novosMarcados: 0,
+      porTabela: { deputado_estadual: 0, prefeito_2024: 0, vereador_2024: 0 },
+    }
+
+    const next = {
+      ...selectedVotes,
+      deputado_estadual: { ...selectedVotes.deputado_estadual },
+      prefeito_2024: { ...selectedVotes.prefeito_2024 },
+      vereador_2024: { ...selectedVotes.vereador_2024 },
+    }
+    resultado = aplicarMarcacao(next)
+    setSelectedVotes(next)
+    const penetracao = formatarResumoPenetracao(next)
+
+    if (resultado.novosMarcados > 0) {
+      const detalhes: string[] = []
+      if (resultado.porTabela.deputado_estadual > 0) detalhes.push(`Dep. Estadual: ${resultado.porTabela.deputado_estadual}`)
+      if (resultado.porTabela.prefeito_2024 > 0) detalhes.push(`Prefeito: ${resultado.porTabela.prefeito_2024}`)
+      if (resultado.porTabela.vereador_2024 > 0) detalhes.push(`Vereador: ${resultado.porTabela.vereador_2024}`)
+      setFeedbackMarcacao(
+        `"${lideranca.nome}": ${resultado.novosMarcados} marcação(ões). ${detalhes.join(' | ')}. ${penetracao}`
+      )
+    } else {
+      setFeedbackMarcacao(`"${lideranca.nome}": nenhum novo candidato marcado. ${penetracao}`)
+    }
+  }
+
+  const marcarLiderancasDoCard = () => {
+    setMostrarFeedbackMarcacao(true)
+
+    if (!resumoCidade || resumoCidade.liderancasDetalhe.length === 0) {
+      setFeedbackMarcacao('Nenhuma liderança disponível para marcação automática.')
+      return
+    }
+
+    let totalMarcacoes = 0
+    let liderancasComMatch = 0
+
+    const next = {
+      ...selectedVotes,
+      deputado_estadual: { ...selectedVotes.deputado_estadual },
+      prefeito_2024: { ...selectedVotes.prefeito_2024 },
+      vereador_2024: { ...selectedVotes.vereador_2024 },
+    }
+
+    resumoCidade.liderancasDetalhe.forEach((lideranca) => {
+      const { tabelasAlvo, alvos } = obterAlvosPorTabela(lideranca)
+      if (tabelasAlvo.length === 0) return
+
+      let marcacoesDaLideranca = 0
+
+      if (tabelasAlvo.includes('deputado_estadual')) {
+        const melhor = selecionarMelhorCandidato(deputadoEstadual2022, alvos.deputado_estadual)
+        if (melhor) {
+          const rowId = `deputado_estadual:${melhor.nomeUrnaCandidato}:${melhor.numeroUrna}`
+          if (next.deputado_estadual[rowId] === undefined) {
+            next.deputado_estadual[rowId] = parseVotos(melhor.quantidadeVotosNominais)
+            marcacoesDaLideranca += 1
+          }
+        }
+      }
+
+      if (tabelasAlvo.includes('prefeito_2024')) {
+        const melhor = selecionarMelhorCandidato(prefeito2024, alvos.prefeito_2024)
+        if (melhor) {
+          const rowId = `prefeito_2024:${melhor.nomeUrnaCandidato}:${melhor.numeroUrna}`
+          if (next.prefeito_2024[rowId] === undefined) {
+            next.prefeito_2024[rowId] = parseVotos(melhor.quantidadeVotosNominais)
+            marcacoesDaLideranca += 1
+          }
+        }
+      }
+
+      if (tabelasAlvo.includes('vereador_2024')) {
+        const melhor = selecionarMelhorCandidato(vereador2024, alvos.vereador_2024)
+        if (melhor) {
+          const rowId = `vereador_2024:${melhor.nomeUrnaCandidato}:${melhor.numeroUrna}`
+          if (next.vereador_2024[rowId] === undefined) {
+            next.vereador_2024[rowId] = parseVotos(melhor.quantidadeVotosNominais)
+            marcacoesDaLideranca += 1
+          }
+        }
+      }
+
+      if (marcacoesDaLideranca > 0) {
+        liderancasComMatch += 1
+        totalMarcacoes += marcacoesDaLideranca
+      }
+    })
+
+    setSelectedVotes(next)
+    const penetracao = formatarResumoPenetracao(next)
+
+    if (totalMarcacoes > 0) {
+      setFeedbackMarcacao(
+        `Auto-marcação: ${totalMarcacoes} candidato(s) em ${liderancasComMatch} liderança(s). ${penetracao}.`
+      )
+    } else {
+      setFeedbackMarcacao(`Nenhum novo candidato correspondente foi marcado. ${penetracao}.`)
+    }
+  }
+
+  const atualizarMapeamentoVereador = (vereadorKey: string, federalNome: string) => {
+    setSimulacaoMapeamento((prev) => {
+      const nomeLimpo = limparNomeSimulacaoFederal(federalNome)
+      if (!nomeLimpo) {
+        const { [vereadorKey]: _, ...rest } = prev
+        return rest
+      }
+      return {
+        ...prev,
+        [vereadorKey]: nomeLimpo,
+      }
+    })
+  }
+
+  const limparSimulacao = () => {
+    setSimulacaoMapeamento({})
+  }
+
+  const vereadoresMapeadosCount = vereador2024Completo.reduce((acc, vereador) => {
+    const vereadorKey = vereadorSimulacaoKey(vereador)
+    return limparNomeSimulacaoFederal(simulacaoMapeamento[vereadorKey] || '') ? acc + 1 : acc
+  }, 0)
+
+  const votosCenarioAtivo =
+    resumoCidade
+      ? (cenarioVotos === 'promessa_lideranca'
+        ? resumoCidade.promessa2026
+        : cenarioVotos === 'legado_anterior'
+          ? resumoCidade.legado2026
+          : resumoCidade.votos2026)
+      : 0
+  const labelCenarioAtivo =
+    cenarioVotos === 'promessa_lideranca'
+      ? 'Promessa 2026'
+      : cenarioVotos === 'legado_anterior'
+        ? 'Expectativa 2026'
+        : 'Aferido 2026'
+  const diferencaCenarioVs2022 = resumoCidade ? votosCenarioAtivo - resumoCidade.votacaoFinal2022 : 0
+  const statusComparativoCurto =
+    diferencaCenarioVs2022 > 0
+      ? `+${diferencaCenarioVs2022.toLocaleString('pt-BR')} vs 22`
+      : diferencaCenarioVs2022 < 0
+        ? `${diferencaCenarioVs2022.toLocaleString('pt-BR')} vs 22`
+        : '= 2022'
+  const percentualAlcance =
+    resumoCidade && resumoCidade.eleitores && resumoCidade.eleitores > 0
+      ? (votosCenarioAtivo / resumoCidade.eleitores) * 100
+      : null
+  const votosProporcionaisPesquisaRecente =
+    pesquisaRecenteCidade && resumoCidade?.eleitores && resumoCidade.eleitores > 0
+      ? Math.round((pesquisaRecenteCidade.intencao / 100) * resumoCidade.eleitores)
+      : null
+  const diferencaPesquisaVsCenario =
+    votosProporcionaisPesquisaRecente !== null ? votosProporcionaisPesquisaRecente - votosCenarioAtivo : null
+  const percentualPesquisaVsCenario =
+    diferencaPesquisaVsCenario !== null && votosCenarioAtivo > 0
+      ? (diferencaPesquisaVsCenario / votosCenarioAtivo) * 100
+      : null
+  const statusPesquisaCurto =
+    percentualPesquisaVsCenario === null
+      ? 'Sem base'
+      : percentualPesquisaVsCenario > 0
+        ? `Acima (+${percentualPesquisaVsCenario.toFixed(1).replace('.', ',')}%)`
+        : percentualPesquisaVsCenario < 0
+          ? `Abaixo (${percentualPesquisaVsCenario.toFixed(1).replace('.', ',')}%)`
+          : 'No alvo (0,0%)'
+  const metaPesquisaCurta =
+    pesquisaRecenteCidade
+      ? `${pesquisaRecenteCidade.data} · ${statusPesquisaCurto}`
+      : candidatoPadraoPesquisa
+        ? 'Sem pesquisa'
+        : 'Sem candidato padrão'
+  const cidadePesquisaIdAtual = cidade ? pesquisaCitiesMap[normalizeCityName(cidade)] || null : null
+
+  const resumoAgentActionsRef = useRef({
+    buscarDadosParaCidade,
+    prepararFiltroDemandas,
+    fecharSeletorDemandas,
+    confirmarDemandasTodasLiderancas,
+    confirmarDemandasComLiderancasNomes,
+    abrirDetalhesLiderancasDoCard,
+    abrirDetalhesPesquisasDoCard,
+    fecharModalLiderancas,
+    fecharModalPesquisas,
+    fecharModalDemandasCidade,
+  })
+  resumoAgentActionsRef.current = {
+    buscarDadosParaCidade,
+    prepararFiltroDemandas,
+    fecharSeletorDemandas,
+    confirmarDemandasTodasLiderancas,
+    confirmarDemandasComLiderancasNomes,
+    abrirDetalhesLiderancasDoCard,
+    abrirDetalhesPesquisasDoCard,
+    fecharModalLiderancas,
+    fecharModalPesquisas,
+    fecharModalDemandasCidade,
+  }
+
+  const resumoAgentPageActions = useMemo(
+    () => ({
+      selecionarCidadeEBuscar: (nomeCidade: string) =>
+        resumoAgentActionsRef.current.buscarDadosParaCidade(nomeCidade),
+      abrirFluxoDemandas: () => resumoAgentActionsRef.current.prepararFiltroDemandas(),
+      fecharSeletorDemandas: () => resumoAgentActionsRef.current.fecharSeletorDemandas(),
+      confirmarDemandasTodasLiderancas: () =>
+        resumoAgentActionsRef.current.confirmarDemandasTodasLiderancas(),
+      confirmarDemandasComLiderancasNomes: (nomes: string[]) =>
+        resumoAgentActionsRef.current.confirmarDemandasComLiderancasNomes(nomes),
+      abrirDetalhesLiderancasCard: () =>
+        resumoAgentActionsRef.current.abrirDetalhesLiderancasDoCard(),
+      abrirDetalhesPesquisasCard: () =>
+        resumoAgentActionsRef.current.abrirDetalhesPesquisasDoCard(),
+      fecharModalLiderancas: () => resumoAgentActionsRef.current.fecharModalLiderancas(),
+      fecharModalPesquisas: () => resumoAgentActionsRef.current.fecharModalPesquisas(),
+      fecharModalDemandasCidade: () =>
+        resumoAgentActionsRef.current.fecharModalDemandasCidade(),
+    }),
+    []
+  )
+
+  const contextoAgenteResumoEleicoes = useMemo<AIAgentPageContext>(
+    () => ({
+      kind: 'resumo-eleicoes',
+      cidades,
+      cidadeAtual: cidade,
+      buscaIniciada,
+      loadingCidades,
+      loadingDados,
+      resumoTemDados: dados.length > 0,
+      seletorDemandasAberto: showDemandsLeaderSelector,
+      seletorDemandasCarregando: loadingDemandasLiderancas,
+      liderancasDemandasDisponiveis: liderancasDisponiveisDemandas,
+      painelResumoCardsVisivel,
+      modalLiderancasAberto: showLiderancasModal,
+      modalPesquisasAberto: showPesquisaHistoricoModal,
+      modalDemandasCidadeAberto: showCityDemands,
+      ...resumoAgentPageActions,
+    }),
+    [
+      cidades,
+      cidade,
+      buscaIniciada,
+      loadingCidades,
+      loadingDados,
+      dados.length,
+      showDemandsLeaderSelector,
+      showLiderancasModal,
+      showPesquisaHistoricoModal,
+      showCityDemands,
+      loadingDemandasLiderancas,
+      liderancasDisponiveisDemandas,
+      painelResumoCardsVisivel,
+      resumoAgentPageActions,
+    ]
+  )
+
+  const jarvisHostProps = useMemo(
+    () => ({
+      pageContext: contextoAgenteResumoEleicoes,
+      loadingKPIs: loadingDados || loadingCidades,
+      loadingTerritorios: loadingDados,
+      kpisCount: resumoCidade ? 5 : 0,
+      expectativa2026: votosCenarioAtivo,
+      presencaTerritorial:
+        percentualAlcance !== null
+          ? `${percentualAlcance.toFixed(1).replace('.', ',')}%`
+          : undefined,
+      pollsCount: pesquisaRecenteCidade ? 1 : 0,
+      candidatoPadrao: candidatoPadraoPesquisa || CANDIDATO_FEDERAL_FIXO,
+    }),
+    [
+      contextoAgenteResumoEleicoes,
+      loadingDados,
+      loadingCidades,
+      resumoCidade,
+      votosCenarioAtivo,
+      percentualAlcance,
+      pesquisaRecenteCidade,
+      candidatoPadraoPesquisa,
+    ]
+  )
+
+  useRegisterJarvisHostProps(jarvisHostProps)
+
+  const summaryCardBaseClass = 'rounded-lg border border-card bg-background/40 px-2 py-1.5 min-w-0'
+  const kpiLabelClass = resumoKpiLabelClass()
+  const kpiValueClass = resumoKpiValueClass()
+  const kpiMetaClass = resumoKpiMetaClass()
+  const kpiLinkClass = resumoKpiLinkClass()
+  const labelValorModalLiderancas =
+    cenarioVotos === 'promessa_lideranca'
+      ? 'Promessa 2026'
+      : cenarioVotos === 'legado_anterior'
+        ? 'Expectativa 2026'
+        : 'Aferido 2026'
+  const liderancasDetalheOrdenadasModal = useMemo(() => {
+    if (!resumoLiderancasModal) return []
+    return [...resumoLiderancasModal.liderancasDetalhe].sort((a, b) => {
+      const valorA = cenarioVotos === 'promessa_lideranca'
+        ? a.projecaoPromessa
+        : cenarioVotos === 'legado_anterior'
+          ? a.projecaoLegado
+          : a.projecaoAferida
+      const valorB = cenarioVotos === 'promessa_lideranca'
+        ? b.projecaoPromessa
+        : cenarioVotos === 'legado_anterior'
+          ? b.projecaoLegado
+          : b.projecaoAferida
+      return valorB - valorA || a.nome.localeCompare(b.nome, 'pt-BR')
+    })
+  }, [resumoLiderancasModal, cenarioVotos])
+
+  return (
+    <div className="w-full min-w-0">
+        <div className={cn(sectionShellClass, 'mb-4')}>
+          <div className="flex flex-col md:flex-row md:items-end gap-3">
+            <div className="flex-1">
+              <label className="text-xs font-medium text-text-secondary block mb-1">Cidade</label>
+              <select
+                value={cidade}
+                onChange={(e) => {
+                  setCidade(e.target.value)
+                  setCidadeFiltroLista(null)
+                  setDadosCidadeFiltro([])
+                }}
+                disabled={loadingCidades}
+                className="h-10 w-full rounded-lg border border-card bg-background px-3 text-sm text-text-primary"
+              >
+                <option value="">
+                  {loadingCidades ? 'Carregando municípios...' : 'Selecione um município...'}
+                </option>
+                <option value={RESUMO_TODAS_CIDADES}>{RESUMO_TODAS_CIDADES_LABEL}</option>
+                {cidades.map((item) => (
+                  <option key={item} value={item}>
+                    {item}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="w-full md:w-[300px]">
+              <label className="text-xs font-medium text-text-secondary block mb-1">Visão de Votos 2026</label>
+              <select
+                value={cenarioVotos}
+                onChange={(e) => setCenarioVotos(e.target.value as CenarioVotos)}
+                className="h-10 w-full rounded-lg border border-card bg-background px-3 text-sm text-text-primary"
+              >
+                <option value="aferido_jadyel">Aferido (Expectativa Jadyel 2026)</option>
+                <option value="promessa_lideranca">Prometido (Promessa da Liderança 2026)</option>
+                <option value="legado_anterior">Anterior (Expectativa de Votos 2026)</option>
+              </select>
+            </div>
+            <button
+              type="button"
+              onClick={buscarDados}
+              disabled={!cidade || loadingDados}
+              className={cn(sidebarPrimaryCTAButtonClass(isCockpit), 'h-10')}
+            >
+              <RefreshCw
+                className={cn('h-4 w-4 shrink-0', loadingDados && 'animate-spin', isCockpit ? 'text-white' : 'text-accent-gold')}
+                aria-hidden
+              />
+              Buscar
+            </button>
+            <button
+              type="button"
+              onClick={prepararFiltroDemandas}
+              disabled={!cidade || visaoTodasCidades || loadingDados || !buscaIniciada}
+              className="flex h-10 items-center gap-2 rounded-lg border border-card bg-surface px-4 text-sm font-medium text-text-primary hover:bg-background disabled:opacity-50"
+            >
+              <FileText className="h-4 w-4 shrink-0" aria-hidden />
+              Demandas
+            </button>
+            <Link
+              href={`/dashboard/resumo-eleicoes/historico${cidade && !visaoTodasCidades ? `?cidade=${encodeURIComponent(cidade)}` : ''}`}
+              className="flex h-10 items-center gap-2 rounded-lg border border-card bg-surface px-4 text-sm font-medium text-text-primary hover:bg-background"
+            >
+              <BarChart3 className="h-4 w-4" />
+              Histórico
+            </Link>
+            <Link
+              href={resumoEleicoesHubHref(RESUMO_ELEICOES_TAB_SECAO, {
+                cidade: cidade && !visaoTodasCidades ? cidade : undefined,
+              })}
+              className="flex h-10 items-center gap-2 rounded-lg border border-card bg-surface px-4 text-sm font-medium text-text-primary hover:bg-background"
+            >
+              <MapPinned className="h-4 w-4" />
+              Por seção
+            </Link>
+          </div>
+        </div>
+
+        {error && (
+          <div className="mb-4 p-3 rounded-xl border border-status-danger/30 bg-status-danger/10 text-status-danger text-sm flex items-center gap-2">
+            <AlertCircle className="w-4 h-4" />
+            {error}
+          </div>
+        )}
+
+        {buscaIniciada && !loadingDados && dados.length === 0 && !error && (
+          <div className={cn(sectionShellClass, 'text-sm text-text-secondary')}>
+            {visaoTodasCidades
+              ? 'Nenhum resultado agregado disponível.'
+              : `Nenhum resultado encontrado para ${cidade}.`}
+          </div>
+        )}
+
+        {loadingDados && (
+          <div className={cn(sectionShellClass, 'mb-4 flex items-center gap-2 text-sm text-text-secondary')}>
+            <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+            {visaoTodasCidades ? 'Consolidando dados de todas as cidades…' : 'Carregando resultados…'}
+          </div>
+        )}
+
+        {dados.length > 0 && (
+          <>
+          {resumoCidade && (
+            <div className={cn(innerPanelClass, 'mb-2')}>
+            <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-3 md:grid-cols-5">
+              <div className={summaryCardBaseClass}>
+                <p className={kpiLabelClass}>Eleitores</p>
+                <p className={kpiValueClass}>
+                  {resumoCidade.eleitores !== null
+                    ? resumoCidade.eleitores.toLocaleString('pt-BR')
+                    : '-'}
+                </p>
+                <p className={kpiMetaClass} title="Alcance sobre o eleitorado">
+                  {percentualAlcance !== null ? `${percentualAlcance.toFixed(1).replace('.', ',')}% alcance` : '—'}
+                </p>
+              </div>
+              <div className={summaryCardBaseClass}>
+                <p className={kpiLabelClass}>{labelCenarioAtivo}</p>
+                <p className={kpiValueClass}>{votosCenarioAtivo.toLocaleString('pt-BR')}</p>
+                <p
+                  className={cn(
+                    kpiMetaClass,
+                    diferencaCenarioVs2022 > 0
+                      ? 'text-status-success'
+                      : diferencaCenarioVs2022 < 0
+                        ? 'text-status-danger'
+                        : undefined,
+                  )}
+                >
+                  {statusComparativoCurto}
+                </p>
+              </div>
+              <div className={summaryCardBaseClass}>
+                <p className={kpiLabelClass}>Votos 2022</p>
+                <p className={kpiValueClass}>{resumoCidade.votacaoFinal2022.toLocaleString('pt-BR')}</p>
+              </div>
+              <div className={summaryCardBaseClass}>
+                <p className={kpiLabelClass}>Lideranças</p>
+                <p className={kpiValueClass}>{resumoCidade.liderancas.toLocaleString('pt-BR')}</p>
+                {!visaoTodasCidades ? (
+                  <p className={cn(kpiMetaClass, 'flex flex-wrap gap-x-1.5')}>
+                    <button type="button" onClick={marcarLiderancasDoCard} className={kpiLinkClass}>
+                      Marcar
+                    </button>
+                    <span className="text-text-muted/50">·</span>
+                    <button type="button" onClick={abrirDetalhesLiderancasDoCard} className={kpiLinkClass}>
+                      Detalhes
+                    </button>
+                  </p>
+                ) : null}
+              </div>
+              <div className={summaryCardBaseClass}>
+                <p className={kpiLabelClass}>Pesquisas</p>
+                <p className={kpiValueClass}>
+                  {pesquisaRecenteCidade ? `${pesquisaRecenteCidade.intencao.toFixed(1).replace('.', ',')}%` : '—'}
+                </p>
+                <p className={kpiMetaClass}>{metaPesquisaCurta}</p>
+                <button type="button" onClick={abrirDetalhesPesquisasDoCard} className={cn(kpiLinkClass, 'mt-0.5')}>
+                  Detalhes
+                </button>
+              </div>
+            </div>
+            </div>
+          )}
+          {visaoTodasCidades && buscaIniciada && dados.length > 0 ? (
+            <ResumoEleicoesCidadesTabela
+              linhas={linhasCidadesResumo}
+              cidadeAtiva={cidadeFiltroLista}
+              labelExpectativa={labelCenarioAtivo}
+              panelClassName={innerPanelClass}
+              onSelecionarCidade={selecionarCidadeDaLista}
+              onAbrirLiderancas={(nome) => void abrirLiderancasCidade(nome)}
+            />
+          ) : null}
+          {mostrarFeedbackMarcacao && feedbackMarcacao && (
+            <div className="mb-3 rounded-md border border-card bg-surface px-3 py-2 text-xs text-text-primary">
+              {feedbackMarcacao}
+            </div>
+          )}
+          <div className="mb-3 flex items-center justify-between rounded-lg border border-card bg-surface p-2 text-xs">
+            <span className="text-text-secondary">
+              Simulação de vereadores: <strong className="text-text-primary">{vereadoresMapeadosCount}</strong> de{' '}
+              <strong className="text-text-primary">{vereador2024Completo.length}</strong> mapeados
+            </span>
+            <div className="flex items-center gap-2">
+              <Link
+                href={`/dashboard/resumo-eleicoes/historico${cidade && !visaoTodasCidades ? `?cidade=${encodeURIComponent(cidade)}` : ''}`}
+                className="rounded border border-card bg-surface px-2 py-1 text-text-secondary hover:bg-background"
+              >
+                Histórico
+              </Link>
+              <Link
+                href={resumoEleicoesHubHref(RESUMO_ELEICOES_TAB_SECAO, {
+                  cidade: cidade && !visaoTodasCidades ? cidade : undefined,
+                  cargo: cidade && !visaoTodasCidades ? 'Prefeito' : undefined,
+                })}
+                className="rounded border border-card bg-surface px-2 py-1 text-text-secondary hover:bg-background"
+              >
+                Por seção
+              </Link>
+              <button
+                type="button"
+                onClick={() => setShowSimulacaoModal(true)}
+                disabled={visaoTodasCidades}
+                className="rounded border border-card bg-surface px-2 py-1 text-text-secondary hover:bg-background disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                Abrir simulador
+              </button>
+            </div>
+          </div>
+          <div
+            key={chaveTabelasResultado}
+            className="grid grid-cols-1 md:flex md:flex-nowrap gap-4 overflow-x-auto pb-2"
+          >
+            <div className={cn(innerPanelClass, 'md:flex-1 min-w-[240px]')}>
+              <h3 className="mb-2 text-center text-xs font-semibold text-text-primary">Deputado Estadual 2022</h3>
+              <table className="w-full text-xs">
+                <thead>
+                  <tr>
+                    <th className="w-8 bg-background px-1 py-1 text-center text-text-secondary">Sel.</th>
+                    <th className="bg-background px-1 py-1 text-left text-text-secondary">Candidato</th>
+                    <th className="bg-background px-1 py-1 text-right text-text-secondary">Votos</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {paginated(deputadoEstadual2022, currentPage.deputado_estadual).map((item, rowIndex) => {
+                    const rowId = `deputado_estadual:${item.nomeUrnaCandidato}:${item.numeroUrna}`
+                    const votes = parseVotos(item.quantidadeVotosNominais)
+                    const isSelected = selectedVotes.deputado_estadual[rowId] !== undefined
+                    return (
+                      <tr
+                        key={`${item.nomeUrnaCandidato}-${item.numeroUrna}`}
+                        className={cn(
+                          'border-b border-card text-text-primary transition-colors hover:bg-[#C8900A]/6',
+                          isSelected ? resumoTrSelecionado() : resumoTrZebra(rowIndex),
+                        )}
+                      >
+                        <td className="py-1 px-1 text-center">
+                          <input
+                            type="checkbox"
+                            checked={isSelected}
+                            onChange={() => toggleSelection('deputado_estadual', rowId, votes)}
+                            className="h-3.5 w-3.5 accent-[rgb(var(--accent-gold))]"
+                          />
+                        </td>
+                        <td className="py-1 px-1">
+                          <BotaoNomeCandidatoDistribuicao
+                            item={item}
+                            candidatoAtivo={candidatoDistribuicao}
+                            onVerDistribuicao={alternarDistribuicaoCandidato}
+                          />
+                        </td>
+                        <td className="py-1 px-1 text-right">{votes.toLocaleString('pt-BR')}</td>
+                      </tr>
+                    )
+                  })}
+                  <tr className="border-t border-card bg-background/90 font-semibold text-text-primary">
+                    <td className="px-1 py-1"></td>
+                    <td className="px-1 py-1">TOTAL</td>
+                    <td className="px-1 py-1 text-right">
+                      {deputadoEstadual2022
+                        .reduce((acc, item) => acc + parseVotos(item.quantidadeVotosNominais), 0)
+                        .toLocaleString('pt-BR')}
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+              <div className={resumoTableFooterClass()}>
+                <span>
+                  Selecionados: <strong>{getSelectedCount('deputado_estadual')}</strong> | Votos:{' '}
+                  <strong>{getSelectedTotal('deputado_estadual').toLocaleString('pt-BR')}</strong>
+                </span>
+                {getSelectedCount('deputado_estadual') > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => clearTableSelection('deputado_estadual')}
+                    className="rounded border border-card bg-surface px-2 py-1 text-text-primary hover:bg-background"
+                  >
+                    Limpar seleção
+                  </button>
+                )}
+              </div>
+              <Pagination
+                totalItems={deputadoEstadual2022.length}
+                currentPage={currentPage.deputado_estadual}
+                onPageChange={(page) => setPage('deputado_estadual', page)}
+              />
+            </div>
+
+            <div className={cn(innerPanelClass, 'md:flex-1 min-w-[240px]')}>
+              <h3 className="mb-2 text-center text-xs font-semibold text-text-primary">Deputado Federal 2022</h3>
+              <table className="w-full text-xs">
+                <thead>
+                  <tr>
+                    <th className="w-8 bg-background px-1 py-1 text-center text-text-secondary">Sel.</th>
+                    <th className="bg-background px-1 py-1 text-left text-text-secondary">Candidato</th>
+                    <th className="bg-background px-1 py-1 text-right text-text-secondary">Votos</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {paginated(deputadoFederal2022, currentPage.deputado_federal).map((item, rowIndex) => {
+                    const isJadyel = item.nomeUrnaCandidato?.trim().toUpperCase() === CANDIDATO_FEDERAL_FIXO
+                    const rowId = `deputado_federal:${item.nomeUrnaCandidato}:${item.numeroUrna}`
+                    const votes = parseVotos(item.quantidadeVotosNominais)
+                    const isSelected = selectedVotes.deputado_federal[rowId] !== undefined
+                    return (
+                      <tr
+                        key={`${item.nomeUrnaCandidato}-${item.numeroUrna}`}
+                        className={cn(
+                          'border-b border-card transition-colors hover:bg-[#C8900A]/6',
+                          isJadyel && resumoTrDestaqueForte(),
+                          !isJadyel && isSelected && resumoTrSelecionado(),
+                          !isJadyel && !isSelected && resumoTrZebra(rowIndex),
+                          !isJadyel && 'text-text-primary',
+                        )}
+                      >
+                        <td className="py-1 px-1 text-center">
+                          <input
+                            type="checkbox"
+                            checked={isSelected}
+                            onChange={() => toggleSelection('deputado_federal', rowId, votes)}
+                            className="h-3.5 w-3.5 accent-[rgb(var(--accent-gold))]"
+                          />
+                        </td>
+                        <td className="py-1 px-1">
+                          <BotaoNomeCandidatoDistribuicao
+                            item={item}
+                            candidatoAtivo={candidatoDistribuicao}
+                            onVerDistribuicao={alternarDistribuicaoCandidato}
+                          />
+                        </td>
+                        <td className="py-1 px-1 text-right">{votes.toLocaleString('pt-BR')}</td>
+                      </tr>
+                    )
+                  })}
+                  <tr className="border-t border-card bg-background/90 font-semibold text-text-primary">
+                    <td className="px-1 py-1"></td>
+                    <td className="px-1 py-1">TOTAL</td>
+                    <td className="px-1 py-1 text-right">
+                      {deputadoFederal2022
+                        .reduce((acc, item) => acc + parseVotos(item.quantidadeVotosNominais), 0)
+                        .toLocaleString('pt-BR')}
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+              <div className={resumoTableFooterClass()}>
+                <span>
+                  Selecionados: <strong>{getSelectedCount('deputado_federal')}</strong> | Votos:{' '}
+                  <strong>{getSelectedTotal('deputado_federal').toLocaleString('pt-BR')}</strong>
+                </span>
+                {getSelectedCount('deputado_federal') > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => clearTableSelection('deputado_federal')}
+                    className="rounded border border-card bg-surface px-2 py-1 text-text-primary hover:bg-background"
+                  >
+                    Limpar seleção
+                  </button>
+                )}
+              </div>
+              <Pagination
+                totalItems={deputadoFederal2022.length}
+                currentPage={currentPage.deputado_federal}
+                onPageChange={(page) => setPage('deputado_federal', page)}
+              />
+            </div>
+
+            <div className={cn(innerPanelClass, 'md:flex-1 min-w-[240px]')}>
+              <h3 className="mb-2 text-center text-xs font-semibold text-text-primary">Prefeito 2024</h3>
+              <table className="w-full text-xs">
+                <thead>
+                  <tr>
+                    <th className="w-8 bg-background px-1 py-1 text-center text-text-secondary">Sel.</th>
+                    <th className="bg-background px-1 py-1 text-left text-text-secondary">Candidato</th>
+                    <th className="bg-background px-1 py-1 text-left text-text-secondary">Partido</th>
+                    <th className="bg-background px-1 py-1 text-right text-text-secondary">Votos</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {paginated(prefeito2024, currentPage.prefeito_2024).map((item, rowIndex) => {
+                    const rowId = `prefeito_2024:${item.nomeUrnaCandidato}:${item.numeroUrna}`
+                    const votes = parseVotos(item.quantidadeVotosNominais)
+                    const isSelected = selectedVotes.prefeito_2024[rowId] !== undefined
+                    return (
+                      <tr
+                        key={`${item.nomeUrnaCandidato}-${item.numeroUrna}`}
+                        className={cn(
+                          'border-b border-card text-text-primary transition-colors hover:bg-[#C8900A]/6',
+                          isSelected ? resumoTrSelecionado() : resumoTrZebra(rowIndex),
+                        )}
+                      >
+                        <td className="py-1 px-1 text-center">
+                          <input
+                            type="checkbox"
+                            checked={isSelected}
+                            onChange={() => toggleSelection('prefeito_2024', rowId, votes)}
+                            className="h-3.5 w-3.5 accent-[rgb(var(--accent-gold))]"
+                          />
+                        </td>
+                        <td className="py-1 px-1">
+                          <BotaoNomeCandidatoDistribuicao
+                            item={item}
+                            candidatoAtivo={candidatoDistribuicao}
+                            onVerDistribuicao={alternarDistribuicaoCandidato}
+                          />
+                        </td>
+                        <td className="py-1 px-1 text-text-secondary">{item.partido || '—'}</td>
+                        <td className="py-1 px-1 text-right">{votes.toLocaleString('pt-BR')}</td>
+                      </tr>
+                    )
+                  })}
+                  <tr className="border-t border-card bg-background/90 font-semibold text-text-primary">
+                    <td className="px-1 py-1"></td>
+                    <td className="px-1 py-1">TOTAL</td>
+                    <td className="px-1 py-1"></td>
+                    <td className="px-1 py-1 text-right">
+                      {prefeito2024
+                        .reduce((acc, item) => acc + parseVotos(item.quantidadeVotosNominais), 0)
+                        .toLocaleString('pt-BR')}
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+              <div className={resumoTableFooterClass()}>
+                <span>
+                  Selecionados: <strong>{getSelectedCount('prefeito_2024')}</strong> | Votos:{' '}
+                  <strong>{getSelectedTotal('prefeito_2024').toLocaleString('pt-BR')}</strong>
+                </span>
+                {getSelectedCount('prefeito_2024') > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => clearTableSelection('prefeito_2024')}
+                    className="rounded border border-card bg-surface px-2 py-1 text-text-primary hover:bg-background"
+                  >
+                    Limpar seleção
+                  </button>
+                )}
+              </div>
+              <Pagination
+                totalItems={prefeito2024.length}
+                currentPage={currentPage.prefeito_2024}
+                onPageChange={(page) => setPage('prefeito_2024', page)}
+              />
+            </div>
+
+            <div className={cn(innerPanelClass, 'md:flex-1 min-w-[280px]')}>
+              <h3 className="mb-2 text-center text-xs font-semibold text-text-primary">Vereador 2024</h3>
+              <table className="w-full text-xs">
+                <thead>
+                  <tr>
+                    <th className="w-8 bg-background px-1 py-1 text-center text-text-secondary">Sel.</th>
+                    <th className="bg-background px-1 py-1 text-left text-text-secondary">Candidato</th>
+                    <th className="bg-background px-1 py-1 text-right text-text-secondary">Votos</th>
+                    <th className="bg-background px-1 py-1 text-center text-text-secondary">Situação</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {paginated(vereador2024, currentPage.vereador_2024).map((item, rowIndex) => {
+                    const rowId = `vereador_2024:${item.nomeUrnaCandidato}:${item.numeroUrna}`
+                    const votes = parseVotos(item.quantidadeVotosNominais)
+                    const isSelected = selectedVotes.vereador_2024[rowId] !== undefined
+                    const isPresidente =
+                      item.nomeUrnaCandidato?.trim().toUpperCase() === presidenteCamaraNome?.trim().toUpperCase()
+                    const isEleito = includesNormalized(item.situacao, 'eleito')
+                    return (
+                      <tr
+                        key={`${item.nomeUrnaCandidato}-${item.numeroUrna}`}
+                        onDoubleClick={() => definirPresidenteCamara(item.nomeUrnaCandidato)}
+                        title="Dê duplo clique para definir como Presidente da Câmara"
+                        className={cn(
+                          'border-b border-card transition-colors hover:bg-[#C8900A]/6',
+                          isPresidente && 'select-none',
+                          isPresidente && resumoTrDestaqueForte(),
+                          !isPresidente &&
+                            isSelected &&
+                            resumoTrSelecionado(),
+                          !isPresidente && !isSelected && resumoTrZebra(rowIndex),
+                          !isPresidente && 'text-text-primary',
+                        )}
+                      >
+                        <td className="px-1 py-1 text-center">
+                          <input
+                            type="checkbox"
+                            checked={isSelected}
+                            onChange={() => toggleSelection('vereador_2024', rowId, votes)}
+                            className="h-3.5 w-3.5 accent-[rgb(var(--accent-gold))]"
+                          />
+                        </td>
+                        <td className="px-1 py-1">
+                          <span className="inline-flex items-center gap-1">
+                            <BotaoNomeCandidatoDistribuicao
+                              item={item}
+                              candidatoAtivo={candidatoDistribuicao}
+                              onVerDistribuicao={alternarDistribuicaoCandidato}
+                            />
+                            {isPresidente && (
+                              <Crown
+                                className="h-3 w-3 shrink-0 text-[#C8900A]"
+                                aria-hidden
+                              />
+                            )}
+                          </span>
+                        </td>
+                        <td className="px-1 py-1 text-right">{votes.toLocaleString('pt-BR')}</td>
+                        <td className="px-1 py-1 text-center">
+                          <span
+                            className={cn(
+                              'inline-flex rounded-full px-1.5 py-0.5 text-xs',
+                              isPresidente &&
+                                'border border-[#C8900A]/35 bg-[#C8900A]/12 font-medium text-[#C8900A]',
+                              !isPresidente &&
+                                isEleito &&
+                                'bg-[#C8900A]/12 font-medium text-[#C8900A]',
+                              !isPresidente &&
+                                !isEleito &&
+                                'bg-background text-text-secondary',
+                            )}
+                          >
+                            {item.situacao || '-'}
+                          </span>
+                        </td>
+                      </tr>
+                    )
+                  })}
+                  <tr className="border-t border-card bg-background/90 font-semibold text-text-primary">
+                    <td className="px-1 py-1"></td>
+                    <td className="px-1 py-1">TOTAL</td>
+                    <td className="px-1 py-1 text-right">
+                      {vereador2024
+                        .reduce((acc, item) => acc + parseVotos(item.quantidadeVotosNominais), 0)
+                        .toLocaleString('pt-BR')}
+                    </td>
+                    <td className="py-1 px-1 text-center">
+                      {vereador2024.filter((item) => includesNormalized(item.situacao, 'eleito')).length} eleitos
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+              <div className={resumoTableFooterClass()}>
+                <span>
+                  Selecionados: <strong>{getSelectedCount('vereador_2024')}</strong> | Votos:{' '}
+                  <strong>{getSelectedTotal('vereador_2024').toLocaleString('pt-BR')}</strong>
+                </span>
+                {getSelectedCount('vereador_2024') > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => clearTableSelection('vereador_2024')}
+                    className="rounded border border-card bg-surface px-2 py-1 text-text-primary hover:bg-background"
+                  >
+                    Limpar seleção
+                  </button>
+                )}
+              </div>
+              <Pagination
+                totalItems={vereador2024.length}
+                currentPage={currentPage.vereador_2024}
+                onPageChange={(page) => setPage('vereador_2024', page)}
+              />
+            </div>
+
+            <div className={cn(innerPanelClass, 'md:flex-1 min-w-[240px]')}>
+              <h3 className="mb-2 text-center text-xs font-semibold text-text-primary">Votação por Partido 2024</h3>
+              <table className="w-full text-xs">
+                <thead>
+                  <tr>
+                    <th className="w-8 bg-background px-1 py-1 text-center text-text-secondary">Sel.</th>
+                    <th className="bg-background px-1 py-1 text-left text-text-secondary">Partido</th>
+                    <th className="bg-background px-1 py-1 text-right text-text-secondary">Votos</th>
+                    <th className="bg-background px-1 py-1 text-right text-text-secondary">Eleitos</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {paginated(partido2024, currentPage.partido_2024).map((item, rowIndex) => {
+                    const rowId = `partido_2024:${item.partido}`
+                    const isSelected = selectedVotes.partido_2024[rowId] !== undefined
+                    const isPartidoAtivo = partidosIguais(item.partido, filtroPartidoAtivo)
+                    return (
+                      <tr
+                        key={item.partido}
+                        title="Dê duplo clique no partido para filtrar as demais tabelas"
+                        className={cn(
+                          'border-b border-card transition-colors hover:bg-[#C8900A]/6',
+                          isPartidoAtivo && resumoTrDestaqueForte(),
+                          !isPartidoAtivo && isSelected && resumoTrSelecionado(),
+                          !isPartidoAtivo && !isSelected && resumoTrZebra(rowIndex),
+                          !isPartidoAtivo && 'text-text-primary',
+                        )}
+                      >
+                        <td className="px-1 py-1 text-center">
+                          <input
+                            type="checkbox"
+                            checked={isSelected}
+                            onChange={() => toggleSelection('partido_2024', rowId, item.votos)}
+                            className="h-3.5 w-3.5 accent-[rgb(var(--accent-gold))]"
+                          />
+                        </td>
+                        <td
+                          className="cursor-pointer px-1 py-1"
+                          onDoubleClick={() => toggleFiltroPartido(item.partido)}
+                        >
+                          {item.partido}
+                        </td>
+                        <td className="px-1 py-1 text-right">{item.votos.toLocaleString('pt-BR')}</td>
+                        <td className="px-1 py-1 text-right">{item.eleitos}</td>
+                      </tr>
+                    )
+                  })}
+                  <tr className="border-t border-card bg-background/90 font-semibold text-text-primary">
+                    <td className="px-1 py-1"></td>
+                    <td className="px-1 py-1">TOTAL</td>
+                    <td className="py-1 px-1 text-right">
+                      {partido2024.reduce((acc, item) => acc + item.votos, 0).toLocaleString('pt-BR')}
+                    </td>
+                    <td className="py-1 px-1 text-right">
+                      {partido2024.reduce((acc, item) => acc + item.eleitos, 0)}
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+              <div className={resumoTableFooterClass()}>
+                <span>
+                  Selecionados: <strong>{getSelectedCount('partido_2024')}</strong> | Votos:{' '}
+                  <strong>{getSelectedTotal('partido_2024').toLocaleString('pt-BR')}</strong>
+                </span>
+                {getSelectedCount('partido_2024') > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => clearTableSelection('partido_2024')}
+                    className="rounded border border-card bg-surface px-2 py-1 text-text-primary hover:bg-background"
+                  >
+                    Limpar seleção
+                  </button>
+                )}
+              </div>
+              <Pagination
+                totalItems={partido2024.length}
+                currentPage={currentPage.partido_2024}
+                onPageChange={(page) => setPage('partido_2024', page)}
+              />
+            </div>
+          </div>
+
+          {candidatoDistribuicao && (
+            <PainelVotacaoCandidatoResumo
+              ref={painelSecaoRef}
+              candidato={candidatoDistribuicao}
+              municipio={cidade}
+              onClose={() => setCandidatoDistribuicao(null)}
+            />
+          )}
+          </>
+        )}
+
+      {showSimulacaoModal && (
+        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
+          <div className="w-full max-w-5xl max-h-[88vh] bg-surface rounded-xl border border-card overflow-hidden flex flex-col">
+            <div className="flex items-center justify-between px-4 py-3 border-b border-card">
+              <div>
+                <h3 className="text-sm font-semibold text-text-primary">
+                  Simulação de Votos por Vereador
+                </h3>
+                <p className="text-xs text-text-secondary">
+                  Base: Vereador 2024 | Cidade: {cidade}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowSimulacaoModal(false)}
+                className="rounded p-1.5 transition-colors hover:bg-background"
+              >
+                <X className="h-4 w-4 text-text-secondary" />
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 p-3 overflow-auto">
+              <div className="rounded-lg border border-card">
+                <div className="px-3 py-2 border-b border-card bg-background text-xs font-medium text-text-secondary">
+                  Mapeamento Vereador ➜ Federal ({vereadoresMapeadosCount}/{vereador2024Completo.length})
+                </div>
+                <div className="max-h-[52vh] overflow-auto">
+                  <table className="w-full text-xs">
+                    <thead>
+                      <tr>
+                        <th className="bg-background px-2 py-2 text-left text-text-secondary">Vereador 2024</th>
+                        <th className="bg-background px-2 py-2 text-right text-text-secondary">Votos</th>
+                        <th className="bg-background px-2 py-2 text-left text-text-secondary">Federal (nome digitado)</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {vereador2024Completo.map((vereador, rowIndex) => {
+                        const vereadorKey = vereadorSimulacaoKey(vereador)
+                        const valorSelecionado = limparNomeSimulacaoFederal(simulacaoMapeamento[vereadorKey] || '')
+                        const votosVereador = parseVotos(vereador.quantidadeVotosNominais)
+                        return (
+                          <tr
+                            key={vereadorKey}
+                            className={cn(
+                              'border-b border-card text-text-primary transition-colors hover:bg-background/50',
+                              resumoTrZebra(rowIndex),
+                            )}
+                          >
+                            <td className="px-2 py-1.5">
+                              {nomeCandidatoResumoExibicao(
+                                vereador.nomeUrnaCandidato,
+                                vereador.numeroUrna,
+                              )}
+                            </td>
+                            <td className="px-2 py-1.5 text-right">{votosVereador.toLocaleString('pt-BR')}</td>
+                            <td className="px-2 py-1.5">
+                              <input
+                                value={valorSelecionado}
+                                onChange={(event) => atualizarMapeamentoVereador(vereadorKey, event.target.value)}
+                                placeholder="Ex.: JADYEL ALENCAR"
+                                className="h-8 w-full rounded border border-card bg-surface px-2 text-xs text-text-primary"
+                              />
+                            </td>
+                          </tr>
+                        )
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              <div className="rounded-lg border border-card">
+                <div className="px-3 py-2 border-b border-card bg-background text-xs font-medium text-text-secondary">
+                  Ranking Geral (soma dos votos dos vereadores mapeados)
+                </div>
+                <div className="max-h-[52vh] overflow-auto p-2">
+                  {rankingSimulacaoFederal.length === 0 ? (
+                    <p className="text-xs text-text-secondary py-4 text-center">
+                      Nenhum vereador mapeado ainda.
+                    </p>
+                  ) : (
+                    <table className="w-full text-xs">
+                      <thead>
+                        <tr>
+                          <th className="bg-background px-2 py-2 text-left text-text-secondary">Federal</th>
+                          <th className="bg-background px-2 py-2 text-right text-text-secondary">Vereadores</th>
+                          <th className="bg-background px-2 py-2 text-right text-text-secondary">Votos estimados</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {rankingSimulacaoFederal.map((item, rowIndex) => (
+                          <tr
+                            key={item.nome}
+                            className={cn(
+                              'border-b border-card text-text-primary transition-colors hover:bg-background/50',
+                              resumoTrZebra(rowIndex),
+                            )}
+                          >
+                            <td className="px-2 py-1.5">{item.nome}</td>
+                            <td className="px-2 py-1.5 text-right">{item.vereadores}</td>
+                            <td className="px-2 py-1.5 text-right font-semibold">{item.votosEstimados.toLocaleString('pt-BR')}</td>
+                          </tr>
+                        ))}
+                        <tr className="border-t border-card bg-background/90 font-semibold text-text-primary">
+                          <td className="py-1.5 px-2">TOTAL</td>
+                          <td className="py-1.5 px-2 text-right">
+                            {rankingSimulacaoFederal.reduce((acc, item) => acc + item.vereadores, 0)}
+                          </td>
+                          <td className="py-1.5 px-2 text-right">
+                            {rankingSimulacaoFederal.reduce((acc, item) => acc + item.votosEstimados, 0).toLocaleString('pt-BR')}
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            <div className="px-3 py-2 border-t border-card bg-background flex items-center justify-between gap-2">
+              <div className="text-xs text-text-secondary">
+                {loadingSimulacao ? 'Carregando simulação salva...' : 'Persistência ativa por cidade no Supabase.'}
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={limparSimulacao}
+                  className="rounded border border-card bg-surface px-3 py-1.5 text-xs text-text-primary hover:bg-background"
+                >
+                  Limpar mapeamento
+                </button>
+                <button
+                  type="button"
+                  onClick={salvarSimulacaoCidade}
+                  disabled={savingSimulacao || !cidade}
+                  className={cn(sidebarPrimaryCTAButtonClass(isCockpit, 'px-3 py-1.5 text-xs'))}
+                >
+                  {savingSimulacao ? 'Salvando...' : 'Salvar simulação'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showLiderancasModal && cidadeLiderancasModal && (
+        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
+          <div className="w-full max-w-3xl max-h-[85vh] bg-surface rounded-xl border border-card overflow-hidden flex flex-col">
+            <div className="flex items-center justify-between px-4 py-3 border-b border-card">
+              <div>
+                <h3 className="text-sm font-semibold text-text-primary">
+                  Lideranças de {cidadeLiderancasModal}
+                </h3>
+                <p className="text-xs text-text-secondary">
+                  {loadingLiderancasModal
+                    ? 'Carregando…'
+                    : `${resumoLiderancasModal?.liderancasDetalhe.length ?? 0} registro(s)`}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={fecharModalLiderancas}
+                className="rounded p-1.5 transition-colors hover:bg-background"
+              >
+                <X className="h-4 w-4 text-text-secondary" />
+              </button>
+            </div>
+
+            <div className="overflow-auto p-3">
+              {loadingLiderancasModal ? (
+                <div className="flex items-center justify-center gap-2 py-10 text-sm text-text-secondary">
+                  <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+                  Carregando lideranças…
+                </div>
+              ) : !resumoLiderancasModal || resumoLiderancasModal.liderancasDetalhe.length === 0 ? (
+                <p className="text-sm text-text-secondary py-6 text-center">
+                  Nenhuma liderança encontrada para os filtros atuais.
+                </p>
+              ) : (
+                <table className="w-full text-xs">
+                  <thead>
+                    <tr>
+                      <th className="bg-background px-2 py-2 text-left text-text-secondary">Nome</th>
+                      <th className="bg-background px-2 py-2 text-left text-text-secondary">Cargo</th>
+                      <th className="bg-background px-2 py-2 text-right text-text-secondary">{labelValorModalLiderancas}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {liderancasDetalheOrdenadasModal.map((lideranca, rowIndex) => (
+                      <tr
+                        key={`${lideranca.nome}-${lideranca.cargo}`}
+                        className={cn(
+                          'border-b border-card text-text-primary transition-colors hover:bg-background/50',
+                          resumoTrZebra(rowIndex),
+                        )}
+                      >
+                        <td className="px-2 py-1.5">{lideranca.nome || '-'}</td>
+                        <td className="px-2 py-1.5">{lideranca.cargo || '-'}</td>
+                        <td className="px-2 py-1.5 text-right">
+                          {(cenarioVotos === 'promessa_lideranca'
+                            ? lideranca.projecaoPromessa
+                            : cenarioVotos === 'legado_anterior'
+                              ? lideranca.projecaoLegado
+                              : lideranca.projecaoAferida).toLocaleString('pt-BR')}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showDemandsLeaderSelector && (
+        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
+          <div className="w-full max-w-2xl max-h-[85vh] bg-surface rounded-xl border border-card overflow-hidden flex flex-col">
+            <div className="flex items-center justify-between px-4 py-3 border-b border-card">
+              <div>
+                <h3 className="text-sm font-semibold text-text-primary">
+                  Filtrar demandas por liderança
+                </h3>
+                <p className="text-xs text-text-secondary">
+                  Cidade: {cidade}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={fecharSeletorDemandas}
+                className="rounded p-1.5 transition-colors hover:bg-background"
+              >
+                <X className="h-4 w-4 text-text-secondary" />
+              </button>
+            </div>
+
+            <div className="p-3 border-b border-card flex items-center justify-between gap-2">
+              <div className="text-xs text-text-secondary">
+                {loadingDemandasLiderancas
+                  ? 'Pré-carregando lideranças...'
+                  : `${selectedDemandasLiderancas.length} selecionada(s) de ${liderancasDisponiveisDemandas.length}`}
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={selecionarTodasLiderancasDemanda}
+                  disabled={loadingDemandasLiderancas || liderancasDisponiveisDemandas.length === 0}
+                  className="rounded border border-card bg-surface px-2 py-1 text-xs text-text-primary hover:bg-background disabled:opacity-50"
+                >
+                  Selecionar todas
+                </button>
+                <button
+                  type="button"
+                  onClick={limparLiderancasDemanda}
+                  disabled={loadingDemandasLiderancas || selectedDemandasLiderancas.length === 0}
+                  className="rounded border border-card bg-surface px-2 py-1 text-xs text-text-primary hover:bg-background disabled:opacity-50"
+                >
+                  Limpar
+                </button>
+              </div>
+            </div>
+
+            <div className="flex-1 overflow-auto p-3">
+              {loadingDemandasLiderancas ? (
+                <div className="flex items-center justify-center py-8 text-sm text-text-secondary">
+                  <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                  Carregando lideranças...
+                </div>
+              ) : liderancasDisponiveisDemandas.length === 0 ? (
+                <p className="text-sm text-text-secondary py-6 text-center">
+                  Nenhuma liderança disponível para esta cidade.
+                </p>
+              ) : (
+                <div className="space-y-2">
+                  {liderancasDisponiveisDemandas.map((nome) => {
+                    const checked = selectedDemandasLiderancas.includes(nome)
+                    return (
+                      <label
+                        key={nome}
+                        className="flex items-center gap-2 p-2 rounded border border-card hover:bg-background cursor-pointer"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          onChange={() => toggleLiderancaDemanda(nome)}
+                          className="h-3.5 w-3.5 accent-[rgb(var(--accent-gold))]"
+                        />
+                        <span className="text-sm text-text-primary">{nome}</span>
+                      </label>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
+
+            <div className="px-3 py-2 border-t border-card bg-background flex items-center justify-end gap-2">
+              <button
+                type="button"
+                onClick={fecharSeletorDemandas}
+                className="rounded border border-card bg-surface px-3 py-1.5 text-xs text-text-primary hover:bg-background"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={() => abrirModalDemandasFiltrado()}
+                disabled={loadingDemandasLiderancas || selectedDemandasLiderancas.length === 0}
+                className={cn(sidebarPrimaryCTAButtonClass(isCockpit, 'px-3 py-1.5 text-xs'))}
+              >
+                Ver demandas selecionadas
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <CityDemandsModal
+        isOpen={showCityDemands}
+        onClose={() => {
+          setShowCityDemands(false)
+          if (typeof window !== 'undefined') {
+            sessionStorage.removeItem('territorio_demands_liderancas')
+          }
+        }}
+        cidade={cidade}
+      />
+
+      <PollReportsHistoryModal
+        isOpen={showPesquisaHistoricoModal}
+        onClose={() => setShowPesquisaHistoricoModal(false)}
+        cidadeNome={cidade}
+        cidadeId={cidadePesquisaIdAtual}
+      />
+
+    </div>
+  )
+}

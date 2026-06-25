@@ -3,6 +3,11 @@
 import { useEffect, useState, useRef, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { APP_FONT_STACK_CSS } from '@/lib/app-font-stack'
+import {
+  REST_SCREEN_AMBER_DARK,
+  REST_SCREEN_GRADIENT,
+  REST_SCREEN_RADIAL_GLOW,
+} from '@/lib/rest-screen-chrome'
 
 const TEMPO_INATIVIDADE = 10 * 60 * 1000 // 10 minutos
 const IDLE_SPLASH_LOCK_KEY = 'idle_splash_locked_v1'
@@ -251,8 +256,7 @@ export function IdleSplash() {
         flexDirection: 'column',
         alignItems: 'center',
         justifyContent: 'center',
-        background:
-          'linear-gradient(145deg, rgb(var(--accent-gold)) 0%, rgb(var(--accent-gold)) 40%, rgb(var(--accent-gold-dark)) 100%)',
+        background: REST_SCREEN_GRADIENT,
         zIndex: 99999,
         overflow: 'hidden',
         cursor: 'pointer',
@@ -271,7 +275,7 @@ export function IdleSplash() {
           left: '-50%',
           width: '200%',
           height: '200%',
-          background: 'radial-gradient(circle at 30% 40%, rgba(255,255,255,0.08) 0%, transparent 50%)',
+          background: REST_SCREEN_RADIAL_GLOW,
           pointerEvents: 'none',
         }}
       />
@@ -514,7 +518,7 @@ export function IdleSplash() {
                   borderRadius: '10px',
                   border: 'none',
                   background: 'rgb(var(--bg-surface))',
-                  color: 'rgb(var(--accent-gold-dark))',
+                  color: REST_SCREEN_AMBER_DARK,
                   cursor: verificandoSenha ? 'not-allowed' : 'pointer',
                   opacity: verificandoSenha ? 0.7 : 1,
                   fontWeight: 600,

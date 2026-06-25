@@ -9,6 +9,14 @@ export type TerritorioCampoTab =
 
 export const TERRITORIO_CAMPO_HREF = '/dashboard/territorio'
 
+/** Título do hub no header / topbar. */
+export const TERRITORIO_CAMPO_PAGE_TITLE = 'Base Eleitoral'
+
+export function territorioCampoPageTitle(tab: string | null): string {
+  if (tab === TERRITORIO_CAMPO_TAB_VISITAS) return `${TERRITORIO_CAMPO_PAGE_TITLE} · Visitas`
+  return TERRITORIO_CAMPO_PAGE_TITLE
+}
+
 export function territorioCampoHref(
   tab: TerritorioCampoTab = TERRITORIO_CAMPO_TAB_PANORAMA
 ): string {

@@ -25,6 +25,9 @@ export function pageKeyForSidebarItem(id: string): string {
   ) {
     return 'resumo-eleicoes'
   }
+  if (id === 'resumo-eleicoes-chapa-federal' || id === 'resumo-eleicoes-chapa-estadual') {
+    return 'chapas'
+  }
   if (
     id === 'conteudo-menu' ||
     id === 'conteudo-hub' ||

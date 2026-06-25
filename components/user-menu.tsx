@@ -7,9 +7,8 @@ import { cn } from '@/lib/utils'
 import { useDashboardHomeChrome } from '@/contexts/dashboard-home-chrome-context'
 import {
   sidebarActiveFocusRingClass,
-  sidebarBrandWelcomeClass,
-  sidebarBrandWelcomeNameClass,
 } from '@/lib/sidebar-brand-styles'
+import { typographyPageLeadClass } from '@/lib/typography-chrome'
 import {
   JARVIS_SIDEBAR_FOCUS,
   JARVIS_SIDEBAR_HOVER,
@@ -42,6 +41,11 @@ export function UserMenu({ variant = 'default', className }: UserMenuProps) {
   const isSidebar = variant === 'sidebar'
   const [open, setOpen] = useState(false)
   const [placement, setPlacement] = useState<UserMenuPlacement>('bottom')
+  const [sidebarDropdownCoords, setSidebarDropdownCoords] = useState<{
+    top?: number
+    bottom?: number
+    left: number
+  } | null>(null)
   const menuRef = useRef<HTMLDivElement>(null)
   const triggerRef = useRef<HTMLButtonElement>(null)
   const [mounted, setMounted] = useState(false)
@@ -74,13 +78,21 @@ export function UserMenu({ variant = 'default', className }: UserMenuProps) {
       typeof window !== 'undefined' ? window.innerHeight : 0
     const espacoAbaixo = viewportHeight - rect.bottom - USER_MENU_VIEWPORT_MARGIN
     const espacoAcima = rect.top - USER_MENU_VIEWPORT_MARGIN
-    if (
-      espacoAbaixo < USER_MENU_DROPDOWN_HEIGHT &&
-      espacoAcima > espacoAbaixo
-    ) {
-      setPlacement('top')
+    const nextPlacement: UserMenuPlacement =
+      espacoAbaixo < USER_MENU_DROPDOWN_HEIGHT && espacoAcima > espacoAbaixo
+        ? 'top'
+        : 'bottom'
+
+    setPlacement(nextPlacement)
+
+    if (isSidebar) {
+      setSidebarDropdownCoords(
+        nextPlacement === 'bottom'
+          ? { top: rect.bottom + 8, left: rect.left }
+          : { bottom: viewportHeight - rect.top + 8, left: rect.left },
+      )
     } else {
-      setPlacement('bottom')
+      setSidebarDropdownCoords(null)
     }
   }
 
@@ -215,9 +227,9 @@ export function UserMenu({ variant = 'default', className }: UserMenuProps) {
         ) : null}
 
         {isSidebar ? (
-          <span className={cn('min-w-0 flex-1 truncate', sidebarBrandWelcomeClass)}>
+          <span className={cn('min-w-0 flex-1 truncate', typographyPageLeadClass)}>
             Bem-vindo,{' '}
-            <span className={sidebarBrandWelcomeNameClass}>{welcomeName}</span>
+            <span className="font-medium text-text-primary">{welcomeName}</span>
           </span>
         ) : (
           <div className="hidden text-left md:block">
@@ -254,10 +266,24 @@ export function UserMenu({ variant = 'default', className }: UserMenuProps) {
         <div
           role="menu"
           className={cn(
-            'absolute z-50 w-56 overflow-hidden rounded-xl border border-card bg-surface shadow-card',
-            isSidebar ? 'left-0' : 'right-0',
-            placement === 'top' ? 'bottom-full mb-2' : 'top-full mt-2'
+            'w-56 overflow-hidden rounded-xl border border-card bg-surface shadow-card',
+            isSidebar
+              ? 'fixed z-[200]'
+              : cn(
+                  'absolute z-50',
+                  placement === 'top' ? 'bottom-full mb-2' : 'top-full mt-2',
+                  'right-0',
+                ),
           )}
+          style={
+            isSidebar && sidebarDropdownCoords
+              ? {
+                  top: sidebarDropdownCoords.top,
+                  bottom: sidebarDropdownCoords.bottom,
+                  left: sidebarDropdownCoords.left,
+                }
+              : undefined
+          }
         >
           <div className="border-b border-card p-4">
             <p className="text-sm font-semibold text-text-primary">

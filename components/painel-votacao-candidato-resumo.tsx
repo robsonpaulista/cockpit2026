@@ -11,6 +11,10 @@ import { nomeCandidatoResumoExibicao, parseVotosEleicao } from '@/lib/resumo-ele
 import { cn } from '@/lib/utils'
 import type { VotacaoSecaoItem } from '@/lib/votacao-secao'
 import { montarMatrizVotacaoSecao } from '@/lib/votacao-secao-matriz'
+import {
+  resumoEleicoesHubHref,
+  RESUMO_ELEICOES_TAB_SECAO,
+} from '@/lib/resumo-eleicoes-hub-route'
 
 type Props = {
   candidato: ResultadoEleicao
@@ -39,13 +43,12 @@ function urlSecaoCandidato(
   municipio: string,
   distribuicao: DistribuicaoCandidatoBweb,
 ): string {
-  const params = new URLSearchParams({
+  return resumoEleicoesHubHref(RESUMO_ELEICOES_TAB_SECAO, {
     cidade: municipio,
     ano: String(distribuicao.chave.ano),
     cargo: distribuicao.chave.dsCargo,
     nr: String(distribuicao.chave.nrVotavel),
   })
-  return `/dashboard/resumo-eleicoes/secao?${params.toString()}`
 }
 
 export function BotaoNomeCandidatoDistribuicao({

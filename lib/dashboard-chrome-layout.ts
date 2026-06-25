@@ -6,7 +6,16 @@ const chromeBorderClass = 'border-[rgb(var(--color-border-secondary)/0.5)]'
 export const DASHBOARD_SUBNAV_STRIP_MIN_H_CLASS = 'min-h-[2.6875rem]'
 
 /** Altura fixa da zona de título (logo na sidebar ↔ título+descrição na página). */
-export const DASHBOARD_PAGE_HEADER_H_CLASS = 'h-[6rem]'
+export const DASHBOARD_PAGE_HEADER_H_CLASS = 'h-[7rem]'
+export const DASHBOARD_PAGE_HEADER_BAND_CLASS = 'h-[7rem] min-h-[7rem] max-h-[7rem]'
+
+/** Base compartilhada — mesma altura rígida na sidebar e no conteúdo (evita esticar por min-height:auto do flex). */
+const dashboardHeaderBandBaseClass = cn(
+  'box-border shrink-0 min-h-0 overflow-hidden border-b bg-bg-surface',
+  chromeBorderClass,
+  DASHBOARD_PAGE_HEADER_BAND_CLASS,
+  'flex flex-col justify-center',
+)
 
 /** Zona compacta quando o topbar já exibe o título da página. */
 export const DASHBOARD_PAGE_HEADER_COMPACT_H_CLASS = 'h-[2.75rem]'
@@ -24,9 +33,9 @@ export const dashboardSidebarCollapsedTopbarZoneClass = cn(
 
 /** Sidebar recolhida: faixa vazia alinhada ao título fixo da página (`DashboardPageHeader`). */
 export const dashboardSidebarCollapsedPageHeaderSpacerClass = cn(
-  'flex shrink-0 items-center justify-center border-b bg-bg-surface',
+  'box-border flex shrink-0 min-h-0 items-center justify-center overflow-hidden border-b bg-bg-surface',
   chromeBorderClass,
-  DASHBOARD_PAGE_HEADER_H_CLASS,
+  DASHBOARD_PAGE_HEADER_BAND_CLASS,
   'px-1'
 )
 
@@ -38,19 +47,25 @@ export const dashboardSidebarCollapsedPageHeaderCompactSpacerClass = cn(
   'px-1'
 )
 
+/** Sidebar recolhida: faixa abaixo do logo — espelha meta ou título da página. */
+export function dashboardSidebarCollapsedPageHeaderSpacerClassFor(topbarVisible: boolean): string {
+  return topbarVisible
+    ? dashboardSidebarCollapsedPageHeaderCompactSpacerClass
+    : dashboardSidebarCollapsedPageHeaderSpacerClass
+}
+
 /** Sidebar recolhida: faixa vazia alinhada à barra de abas / busca. */
 export const dashboardSidebarCollapsedSubnavSpacerClass = cn(
-  'shrink-0 border-b bg-bg-app',
+  'box-border shrink-0 border-b bg-bg-app',
   chromeBorderClass,
-  DASHBOARD_SUBNAV_STRIP_MIN_H_CLASS
+  DASHBOARD_SUBNAV_STRIP_MIN_H_CLASS,
+  'h-[2.6875rem] max-h-[2.6875rem]',
 )
 
 /** Zona do título da página (sidebar: logo; conteúdo: título + descrição). */
 export const dashboardPageHeaderZoneClass = cn(
-  'shrink-0 flex flex-col justify-center overflow-hidden border-b bg-bg-surface',
-  chromeBorderClass,
-  'px-4 py-4 md:px-6',
-  DASHBOARD_PAGE_HEADER_H_CLASS
+  dashboardHeaderBandBaseClass,
+  'px-4 py-3 md:px-6',
 )
 
 /** Faixa meta (período, frescor) quando o título está no topbar. */
@@ -62,10 +77,8 @@ export const dashboardPageMetaStripClass = cn(
 )
 
 export const dashboardPageHeaderZoneSidebarClass = cn(
-  'shrink-0 flex flex-col justify-center overflow-hidden border-b bg-bg-surface',
-  chromeBorderClass,
-  'px-3 py-4',
-  DASHBOARD_PAGE_HEADER_H_CLASS
+  dashboardHeaderBandBaseClass,
+  'px-3 py-3',
 )
 
 /** Faixa cinza contínua: busca (sidebar) ↔ abas (página). */
@@ -75,8 +88,9 @@ export const dashboardSubnavStripClass = cn(
 )
 
 export const dashboardSubnavStripPageInnerClass = cn(
-  'flex flex-wrap items-end justify-between gap-3',
+  'box-border flex flex-wrap items-end justify-between gap-3',
   DASHBOARD_SUBNAV_STRIP_MIN_H_CLASS,
+  'h-[2.6875rem] max-h-[2.6875rem]',
   'px-4 md:px-6'
 )
 

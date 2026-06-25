@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { REST_SCREEN_GRADIENT, REST_SCREEN_RADIAL_GLOW } from '@/lib/rest-screen-chrome'
 
 /**
  * Overlay temático que aparece sobre o dashboard após o splash screen.
@@ -56,8 +57,7 @@ export function SplashOverlay() {
         position: 'fixed',
         inset: 0,
         zIndex: 9998,
-        background:
-          'linear-gradient(145deg, rgb(var(--accent-gold)) 0%, rgb(var(--accent-gold)) 40%, rgb(var(--accent-gold-dark)) 100%)',
+        background: REST_SCREEN_GRADIENT,
         opacity: opacidade,
         transition: 'opacity 2.8s cubic-bezier(0.25, 0.1, 0.25, 1)',
         pointerEvents: 'none',

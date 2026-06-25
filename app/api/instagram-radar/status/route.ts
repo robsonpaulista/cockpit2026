@@ -17,11 +17,11 @@ export async function GET() {
     let message = ''
     if (!status.apifyConfigured && !status.ownAccountConfigured) {
       message =
-        'Configure APIFY_TOKEN no .env.local (concorrentes) ou abra Redes & Instagram para gravar dados do Jadyel.'
+        'Configure a coleta de concorrentes no servidor ou abra Redes & Instagram para gravar dados do Jadyel.'
     } else if (status.ownAccountConfigured && status.ownInstagramSource === 'metrics_history') {
-      message = `Jadyel: dados da página Redes & Instagram (${status.ownInstagramPostsInHistory ?? 0} posts no histórico). Concorrentes: Apify.`
+      message = `Jadyel: dados da página Redes & Instagram (${status.ownInstagramPostsInHistory ?? 0} posts no histórico). Concorrentes: coleta automatizada.`
     } else if (status.canCollect) {
-      message = `Coleta liberada · Jadyel via ${status.ownAccountConfigured ? 'conta autenticada/histórico ✓' : '—'} · Apify ${status.apifyConfigured ? '✓' : '(opcional)'}.`
+      message = `Coleta liberada · Jadyel via ${status.ownAccountConfigured ? 'conta autenticada/histórico ✓' : '—'} · concorrentes ${status.apifyConfigured ? '✓' : '(opcional)'}.`
     } else if (status.cooldownEnabled && !status.canCollect && status.nextCollectAt) {
       message = `Próxima coleta disponível em ${new Date(status.nextCollectAt).toLocaleString('pt-BR')}.`
     }

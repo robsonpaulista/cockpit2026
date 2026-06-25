@@ -2,6 +2,12 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import {
+  REST_SCREEN_AMBER_DARK,
+  REST_SCREEN_AMBER_DARK_RGB,
+  REST_SCREEN_AMBER_RGB,
+  REST_SCREEN_GRADIENT,
+} from '@/lib/rest-screen-chrome'
 
 export default function SplashPage() {
   const router = useRouter()
@@ -52,8 +58,7 @@ export default function SplashPage() {
     flexDirection: 'column',
     alignItems: 'center',
     justifyContent: 'center',
-    background:
-      'linear-gradient(145deg, rgb(var(--accent-gold)) 0%, rgb(var(--accent-gold)) 40%, rgb(var(--accent-gold-dark)) 100%)',
+    background: REST_SCREEN_GRADIENT,
     zIndex: 9999,
     overflow: 'hidden',
   }
@@ -72,7 +77,7 @@ export default function SplashPage() {
       <style jsx global>{`
         /* Impedir qualquer background do body/html durante splash */
         html, body {
-          background: rgb(var(--accent-gold-dark)) !important;
+          background: ${REST_SCREEN_AMBER_DARK} !important;
         }
 
         @keyframes splash-c-in {
@@ -137,7 +142,7 @@ export default function SplashPage() {
           flex-direction: column;
           align-items: center;
           justify-content: center;
-          background: linear-gradient(145deg, rgb(var(--accent-gold)) 0%, rgb(var(--accent-gold)) 40%, rgb(var(--accent-gold-dark)) 100%);
+          background: ${REST_SCREEN_GRADIENT};
           z-index: 9999;
           overflow: hidden;
           isolation: isolate;
@@ -162,8 +167,8 @@ export default function SplashPage() {
           pointer-events: none;
           background: linear-gradient(
             135deg,
-            rgba(var(--accent-gold), 0.22),
-            rgba(var(--accent-gold-dark), 0.24),
+            rgba(${REST_SCREEN_AMBER_RGB}, 0.22),
+            rgba(${REST_SCREEN_AMBER_DARK_RGB}, 0.24),
             rgba(255, 255, 255, 0.18)
           );
           border-top-left-radius: 60% 40%;

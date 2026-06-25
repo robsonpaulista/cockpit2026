@@ -10,7 +10,7 @@ interface YoutubeActorsManagerProps {
   actors: PoliticalActorWithTerms[]
   onChanged: () => void
   disabled?: boolean
-  /** Exibe campo @ Instagram (radar Apify) */
+  /** Exibe campo @ Instagram (radar de concorrentes) */
   showInstagramField?: boolean
 }
 
@@ -264,7 +264,7 @@ export function YoutubeActorsManager({
                 {showInstagramField ? (
                   actor.actor_type === 'own_candidate' ? (
                     <p className="mt-2 text-[11px] text-text-muted">
-                      @ Instagram do candidato próprio vem da API Graph (Redes & Instagram) — não usa Apify.
+                      @ Instagram do candidato próprio vem da API Graph (Redes &amp; Instagram).
                       {actor.instagram_username ? ` Atual: @${actor.instagram_username}` : ''}
                     </p>
                   ) : (

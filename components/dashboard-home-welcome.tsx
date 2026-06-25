@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback, useRef } from 'react'
 import { useTheme } from '@/contexts/theme-context'
 import { useDashboardHomeChrome } from '@/contexts/dashboard-home-chrome-context'
 import { cn } from '@/lib/utils'
+import { REST_SCREEN_GRADIENT, REST_SCREEN_RADIAL_GLOW } from '@/lib/rest-screen-chrome'
 
 const SLOGAN = 'Comando Central de Eleições Dep Fed Jadyel Alencar'
 
@@ -85,24 +86,21 @@ export function DashboardHomeWelcome({ variant = 'hero' }: DashboardHomeWelcomeP
         className={cn(
           'relative flex w-full flex-col items-center justify-center',
           isCompact ? 'px-4 py-8 sm:px-6 sm:py-10' : 'px-6 py-14 sm:px-10 sm:py-16',
-          isGradientHome ? 'overflow-visible' : 'overflow-hidden max-w-3xl rounded-3xl border shadow-xl',
+          isGradientHome ? 'relative overflow-visible' : 'relative overflow-hidden max-w-3xl rounded-3xl border shadow-xl',
           !isGradientHome && (isDark ? 'border-white/10 shadow-black/25' : 'border-border-card shadow-card')
         )}
         style={
           isGradientHome
             ? undefined
             : {
-                background:
-                  'linear-gradient(145deg, rgb(var(--accent-gold)) 0%, rgb(var(--accent-gold)) 40%, rgb(var(--accent-gold-dark)) 100%)',
+                background: REST_SCREEN_GRADIENT,
               }
         }
       >
         {!isGradientHome ? (
           <div
             className="pointer-events-none absolute inset-0"
-            style={{
-              background: 'radial-gradient(circle at 30% 40%, rgba(255,255,255,0.1) 0%, transparent 50%)',
-            }}
+            style={{ background: REST_SCREEN_RADIAL_GLOW }}
           />
         ) : null}
 
@@ -188,7 +186,7 @@ export function DashboardHomeWelcome({ variant = 'hero' }: DashboardHomeWelcomeP
         >
           {isCompact
             ? 'Fale com a IA Cockpit ao lado — pesquisas, território, agenda e alertas em linguagem natural. O menu lateral leva aos módulos.'
-            : 'Navegue pelo menu à esquerda para aceder aos módulos do sistema.'}
+            : 'Use o menu lateral ou o acesso rápido para abrir os módulos do sistema.'}
         </p>
       </div>
     </div>

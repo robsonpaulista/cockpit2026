@@ -1,21 +1,17 @@
 import { LayoutDashboard } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import {
-  sidebarBrandClientClass,
-  sidebarBrandLogoMarkClass,
-  sidebarBrandNameClass,
-} from '@/lib/sidebar-brand-styles'
+import { sidebarBrandLogoMarkClass } from '@/lib/sidebar-brand-styles'
 import { typographyPageLeadClass, typographyPageTitleClass } from '@/lib/typography-chrome'
 
 export const APP_BRAND_LEAD = 'Gestão integrada de campanha e monitoramento'
 
-/** Cliente / campanha ativa exibido na sidebar. */
-export const APP_ACTIVE_CLIENT_LABEL = 'Republicanos — PI'
+/** Cliente / campanha ativa (opcional na sidebar). */
+export const APP_ACTIVE_CLIENT_LABEL = ''
 
 export function SidebarBrandMark({ className }: { className?: string }) {
   return (
     <span className={cn(sidebarBrandLogoMarkClass, className)} aria-hidden>
-      <LayoutDashboard className="h-3 w-3" strokeWidth={2.25} />
+      <LayoutDashboard className="h-3.5 w-3.5" strokeWidth={2.25} />
     </span>
   )
 }
@@ -49,7 +45,7 @@ export function AppBrandTitle({
   )
 }
 
-/** Bloco de marca na sidebar — logo mark + nome + cliente ativo. */
+/** Bloco de marca na sidebar — logo mark + nome. */
 export function SidebarBrandHeader({
   clientLabel = APP_ACTIVE_CLIENT_LABEL,
   className,
@@ -61,8 +57,10 @@ export function SidebarBrandHeader({
     <div className={cn('flex min-w-0 items-start gap-2.5', className)}>
       <SidebarBrandMark />
       <div className="min-w-0 flex-1">
-        <p className={sidebarBrandNameClass}>Cockpit 2026</p>
-        {clientLabel ? <p className={sidebarBrandClientClass}>{clientLabel}</p> : null}
+        <h1 className={typographyPageTitleClass}>Cockpit 2026</h1>
+        {clientLabel ? (
+          <p className={cn('mt-1 line-clamp-2', typographyPageLeadClass)}>{clientLabel}</p>
+        ) : null}
       </div>
     </div>
   )

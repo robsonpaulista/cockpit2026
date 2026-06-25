@@ -1,4 +1,10 @@
 import type { MenuItem } from '@/types'
+import {
+  resumoEleicoesHubHref,
+  RESUMO_ELEICOES_TAB_CHAPA_ESTADUAL,
+  RESUMO_ELEICOES_TAB_CHAPA_FEDERAL,
+  RESUMO_ELEICOES_TAB_SECAO,
+} from '@/lib/resumo-eleicoes-hub-route'
 
 export interface SidebarMenuItemConfig extends MenuItem {
   children?: MenuItem[]
@@ -27,10 +33,20 @@ export const SIDEBAR_MENU_ITEMS: SidebarMenuItemConfig[] = [
     id: 'chapas-menu',
     label: 'Chapas',
     icon: 'Vote',
-    href: '/dashboard/chapas',
+    href: resumoEleicoesHubHref(RESUMO_ELEICOES_TAB_CHAPA_FEDERAL),
     children: [
-      { id: 'chapas', label: 'Federal', icon: 'Vote', href: '/dashboard/chapas' },
-      { id: 'chapas-estaduais', label: 'Estadual', icon: 'Vote', href: '/dashboard/chapas-estaduais' },
+      {
+        id: 'chapas',
+        label: 'Federal',
+        icon: 'Vote',
+        href: resumoEleicoesHubHref(RESUMO_ELEICOES_TAB_CHAPA_FEDERAL),
+      },
+      {
+        id: 'chapas-estaduais',
+        label: 'Estadual',
+        icon: 'Vote',
+        href: resumoEleicoesHubHref(RESUMO_ELEICOES_TAB_CHAPA_ESTADUAL),
+      },
     ],
   },
   {
@@ -41,21 +57,33 @@ export const SIDEBAR_MENU_ITEMS: SidebarMenuItemConfig[] = [
     children: [
       {
         id: 'resumo-eleicoes-principal',
-        label: 'Resumo por cidade',
-        icon: 'BarChart3',
+        label: 'Atendimento',
+        icon: 'ClipboardList',
         href: '/dashboard/resumo-eleicoes',
+      },
+      {
+        id: 'resumo-eleicoes-secao',
+        label: 'Votação por seção',
+        icon: 'MapPinned',
+        href: resumoEleicoesHubHref(RESUMO_ELEICOES_TAB_SECAO),
+      },
+      {
+        id: 'resumo-eleicoes-chapa-federal',
+        label: 'Chapa Federal',
+        icon: 'Vote',
+        href: resumoEleicoesHubHref(RESUMO_ELEICOES_TAB_CHAPA_FEDERAL),
+      },
+      {
+        id: 'resumo-eleicoes-chapa-estadual',
+        label: 'Chapa Estadual',
+        icon: 'BarChart3',
+        href: resumoEleicoesHubHref(RESUMO_ELEICOES_TAB_CHAPA_ESTADUAL),
       },
       {
         id: 'resumo-eleicoes-historico',
         label: 'Histórico federal',
         icon: 'History',
         href: '/dashboard/resumo-eleicoes/historico',
-      },
-      {
-        id: 'resumo-eleicoes-secao',
-        label: 'Por seção',
-        icon: 'MapPinned',
-        href: '/dashboard/resumo-eleicoes/secao',
       },
     ],
   },
@@ -162,9 +190,11 @@ const EXTRA_ALIASES: Record<string, string[]> = {
   chapas: ['chapa federal', 'chapas federal', 'federal'],
   'chapas-estaduais': ['chapa estadual', 'chapas estadual', 'estadual'],
   'chapas-menu': ['chapas'],
-  'resumo-eleicoes-principal': ['resumo eleicoes', 'resumo por cidade', 'eleicoes por cidade'],
+  'resumo-eleicoes-principal': ['atendimento', 'resumo eleicoes', 'resumo por cidade', 'eleicoes por cidade'],
   'resumo-eleicoes-historico': ['historico federal', 'historico eleicoes'],
-  'resumo-eleicoes-secao': ['por secao', 'secao eleitoral', 'resumo secao'],
+  'resumo-eleicoes-secao': ['votacao por secao', 'por secao', 'secao eleitoral', 'resumo secao'],
+  'resumo-eleicoes-chapa-federal': ['chapa federal', 'chapas federal', 'federal'],
+  'resumo-eleicoes-chapa-estadual': ['chapa estadual', 'chapas estadual', 'estadual'],
   'resumo-eleicoes-menu': ['resumo eleicoes', 'eleicoes'],
   'conteudo-hub': ['redes sociais', 'presenca e conteudo', 'presenca conteudo', 'conteudo hub'],
   'conteudo-menu': ['redes sociais', 'redes', 'presenca', 'conteudo', 'presenca e conteudo'],

@@ -2078,6 +2078,17 @@ table.td-resumo-table td.td-resumo-table__cell--estrategia {
   background: rgb(var(--bg-surface)) !important;
 }
 
+/* Links da sidebar — não herdar `a:hover` global (accent-gold-soft ≈ branco no tema republicanos). */
+.sidebar-apify-shell a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.sidebar-apify-shell a:hover {
+  color: rgb(var(--text-primary));
+  text-decoration: none;
+}
+
 [data-theme='republicanos'][data-appearance='light'] .republicanos-premium-header {
   /* Alinha à sidebar premium (mesmo token que .republicanos-premium-sidebar). */
   background: rgb(var(--bg-app)) !important;

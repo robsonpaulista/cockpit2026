@@ -26,7 +26,7 @@ import { pathnameUsesMapaFuturisticShell } from '@/lib/dashboard-mapa-futuristic
 import { DashboardPageChromeProvider } from '@/contexts/dashboard-page-chrome-context'
 import { DashboardHomeChromeProvider } from '@/contexts/dashboard-home-chrome-context'
 import { JarvisHostPropsProvider } from '@/contexts/jarvis-host-props-context'
-import { JarvisVisibilityProvider, useJarvisVisibility } from '@/contexts/jarvis-visibility-context'
+import { JarvisVisibilityProvider } from '@/contexts/jarvis-visibility-context'
 import { JarvisGlobalHost } from '@/components/jarvis/jarvis-global-host'
 import {
   DASHBOARD_HOME_SHELL_CLASS,
@@ -40,13 +40,6 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
   const pathname = usePathname() ?? ''
   const isMapaTdsShell = pathnameUsesMapaFuturisticShell(pathname)
   const isHomeAccentChrome = isDashboardHomePath(pathname) && !isMapaTdsShell
-  const { visible: jarvisVisible, hydrated: jarvisHydrated } = useJarvisVisibility()
-  const showHomeJarvisColumn = isHomeAccentChrome && jarvisHydrated && jarvisVisible
-  /**
-   * Conteúdo sempre em superfície branca (`bg-bg-surface`) para manter o miolo limpo,
-   * deixando o cinza restrito à sidebar.
-   * Na home `/dashboard`, fundo único em gradiente de acento (sidebar + coluna).
-   */
   const columnBgClass = isHomeAccentChrome ? 'bg-transparent' : 'bg-bg-surface'
 
   return (
@@ -55,34 +48,25 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
         <DashboardPageChromeProvider>
         <div
           className={cn(
-            'relative flex h-screen overflow-hidden',
-            isHomeAccentChrome ? DASHBOARD_HOME_SHELL_CLASS : isMapaTdsShell ? columnBgClass : 'bg-bg-surface',
+            'relative flex h-screen overflow-hidden bg-bg-surface',
+            !isHomeAccentChrome && isMapaTdsShell && columnBgClass,
           )}
-          style={isHomeAccentChrome ? dashboardHomeShellStyle : undefined}
         >
-          {isHomeAccentChrome ? (
-            <div
-              className="jarvis-perspective-grid pointer-events-none absolute inset-0 z-0 opacity-[0.22]"
-              aria-hidden
-            />
-          ) : null}
           <div className={cn('relative z-[1] flex h-full min-h-0 w-full flex-1')}>
             <NavigationLoadingBar />
             <Sidebar />
             <div
               className={cn(
                 'flex flex-1 flex-col overflow-hidden transition-all duration-300 ease-out',
-                columnBgClass,
+                isHomeAccentChrome ? DASHBOARD_HOME_SHELL_CLASS : columnBgClass,
                 collapsed ? SIDEBAR_MAIN_OFFSET_COLLAPSED_CLASS : SIDEBAR_MAIN_OFFSET_EXPANDED_CLASS,
               )}
+              style={isHomeAccentChrome ? dashboardHomeShellStyle : undefined}
             >
               <DashboardHeader />
               <main
                 className={cn(
-                  'relative flex min-h-0 flex-1 overflow-hidden',
-                  isHomeAccentChrome
-                    ? cn('flex-col', showHomeJarvisColumn && 'xl:flex-row')
-                    : 'flex-col',
+                  'relative flex min-h-0 flex-1 overflow-hidden flex-col',
                   columnBgClass
                 )}
               >

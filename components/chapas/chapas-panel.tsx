@@ -1,0 +1,2715 @@
+'use client'
+
+import React, { useEffect, useState, useRef, useMemo } from 'react'
+import Link from 'next/link'
+import { usePathname } from 'next/navigation'
+import { Trash2, Plus, RefreshCw, Check, Printer, Info, Eye, EyeOff, X, Maximize2, Minimize2, ArrowRightLeft, PenSquare, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Cenario, CenarioCompleto, PartidoCenario } from '@/lib/chapasService'
+import { gerarRelatorioChapasPdf } from '@/lib/chapas-pdf-report'
+import * as chapasFederalService from '@/lib/chapasService'
+import * as chapasEstaduaisService from '@/lib/chapas-estaduais-service'
+import CenariosTabs from '@/components/cenarios-tabs'
+import {
+  encontrarPartidoRepublicanos,
+  nomePartidoEhRepublicanos,
+} from '@/lib/chapas-republicanos-match'
+import {
+  buildSegundaVagaFeedbackLabel,
+  calcularDistanciaProximaVagaPartido,
+} from '@/lib/chapas-segunda-vaga-republicanos'
+import { cn } from '@/lib/utils'
+import { useAuth } from '@/hooks/use-auth'
+import { sidebarPrimaryCTAButtonClass } from '@/lib/sidebar-menu-active-style'
+
+/** Mesmo gradiente do item ativo da sidebar / KPIs (Republicanos no mapa). */
+const COR_REPUBLICANOS_GRADIENTE =
+  'border border-white/15 bg-[linear-gradient(135deg,#0b4f6c_0%,#0ea5b7_52%,#2dd4bf_100%)]'
+
+const coresPartidosFederais = {
+  'PT': { cor: 'bg-accent-gold', corTexto: 'text-white' },
+  'PSD/MDB': { cor: 'bg-accent-gold-soft', corTexto: 'text-text-primary' },
+  'PP': { cor: 'bg-text-secondary', corTexto: 'text-white' },
+  'REPUBLICANOS': { cor: COR_REPUBLICANOS_GRADIENTE, corTexto: 'text-white' },
+  REPUB: { cor: COR_REPUBLICANOS_GRADIENTE, corTexto: 'text-white' },
+  'PODEMOS': { cor: 'bg-accent-gold', corTexto: 'text-white' },
+}
+
+const coresPartidosEstaduais = {
+  'PT': { cor: 'bg-accent-gold', corTexto: 'text-white' },
+  'MDB': { cor: 'bg-accent-gold-soft', corTexto: 'text-text-primary' },
+  'PP': { cor: 'bg-text-secondary', corTexto: 'text-white' },
+  'REPUBLICANOS': { cor: COR_REPUBLICANOS_GRADIENTE, corTexto: 'text-white' },
+  REPUB: { cor: COR_REPUBLICANOS_GRADIENTE, corTexto: 'text-white' },
+}
+
+// Interface para partido local
+interface PartidoLocal {
+  nome: string
+  cor: string
+  corTexto: string
+  candidatos: Array<{
+    nome: string
+    votos: number
+    genero?: string
+  }>
+}
+
+// Função para criar estrutura inicial de partidos
+const criarPartidosIniciais = (coresPartidosAtivos: Record<string, { cor: string; corTexto: string }>): PartidoLocal[] => {
+  return Object.keys(coresPartidosAtivos).map(nome => ({
+    nome,
+    ...coresPartidosAtivos[nome as keyof typeof coresPartidosAtivos],
+    candidatos: []
+  }))
+}
+
+const NOMES_FEMININOS_COMUNS = [
+  'ANA',
+  'ANYARA',
+  'ALINE',
+  'JANAINA',
+  'ELIZANGELA',
+  'EUZUILA',
+  'TERESA',
+  'SIMONE',
+  'GRACINHA',
+  'DRAGA ALANA',
+  'RAIMUNDINHA',
+  'PASTORA',
+  'MELKA',
+  'KARLA',
+  'DIANA',
+  'FIDELIS',
+  'GABRIELA',
+  'SAMANTA',
+  'MARINA',
+  'RAISSA',
+]
+
+const normalizarNomeGenero = (nome: string) =>
+  nome
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toUpperCase()
+
+const inferirGeneroCandidatoInicial = (nome: string, generoInformado?: string): 'homem' | 'mulher' | undefined => {
+  if (generoInformado === 'mulher') return 'mulher'
+  if (generoInformado === 'homem') return 'homem'
+
+  const nomeNormalizado = normalizarNomeGenero(nome)
+  if (nomeNormalizado.includes('MULHER')) return 'mulher'
+  if (NOMES_FEMININOS_COMUNS.some((token) => nomeNormalizado.includes(token))) return 'mulher'
+  return undefined
+}
+
+export type ChapasEscopo = 'federal' | 'estadual'
+
+type ChapasPanelProps = {
+  escopoOverride?: ChapasEscopo
+  embedded?: boolean
+  onTrocarEscopo?: () => void
+}
+
+export function ChapasPanel({
+  escopoOverride,
+  embedded = false,
+  onTrocarEscopo,
+}: ChapasPanelProps = {}) {
+  const { user } = useAuth()
+  const isCockpit = false
+  const pathname = usePathname()
+  const isChapasEstaduais =
+    escopoOverride === 'estadual' ||
+    (escopoOverride !== 'federal' && pathname === '/dashboard/chapas-estaduais')
+  const isFederalCockpit = isCockpit && !isChapasEstaduais
+  const pageShellClass = isFederalCockpit ? 'sidebar-cockpit-shell' : 'bg-surface'
+  const sectionShellClass = isCockpit
+    ? 'rounded-2xl border p-5 backdrop-blur border-white/12 bg-[linear-gradient(165deg,rgba(22,34,44,0.82)_0%,rgba(18,30,38,0.86)_100%)] shadow-[0_10px_32px_rgba(3,12,20,0.28)]'
+    : 'rounded-xl border border-card bg-surface shadow-card p-4'
+  const innerPanelClass = isCockpit
+    ? 'rounded-xl border p-3 border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.04)_0%,rgba(255,255,255,0.02)_100%)]'
+    : 'rounded-lg border border-card bg-surface p-3'
+  const fullscreenShellClass = isCockpit
+    ? 'sidebar-cockpit-shell rounded-2xl border border-white/12 p-5 sm:p-6 shadow-[0_16px_44px_rgba(3,12,20,0.32)]'
+    : 'bg-surface rounded-xl border border-card p-4 sm:p-5'
+  const controlButtonClass = isCockpit
+    ? 'flex items-center gap-2 rounded-xl border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.04)_0%,rgba(255,255,255,0.02)_100%)] px-4 py-2 text-sm text-text-primary hover:bg-white/10 disabled:opacity-50'
+    : 'flex items-center gap-2 rounded-lg border border-card bg-surface px-4 py-2 text-sm text-text-primary hover:bg-background disabled:opacity-50'
+  const accentTextClass = isFederalCockpit ? 'text-[#0ea5b7]' : 'text-accent-gold'
+  const accentHoverTextClass = isFederalCockpit ? 'hover:text-[#2dd4bf]' : 'hover:text-accent-gold'
+  const accentSoftBgClass = isFederalCockpit ? 'bg-[#0ea5b7]/15' : 'bg-accent-gold-soft/20'
+  const accentSoftActionClass = isFederalCockpit
+    ? 'border-[#0ea5b7]/35 bg-[#0ea5b7]/18 hover:bg-[#0ea5b7]/28'
+    : 'border-accent-gold/40 bg-accent-gold-soft/30 hover:bg-accent-gold-soft/50'
+  const accentBorderFocusClass = isFederalCockpit ? 'focus:border-[#0ea5b7]' : 'focus:border-accent-gold'
+  const accentRingFocusClass = isFederalCockpit ? 'focus:ring-[#0ea5b7]/35' : 'focus:ring-accent-gold-soft'
+  const service = isChapasEstaduais ? chapasEstaduaisService : chapasFederalService
+  const coresPartidosAtivos = isChapasEstaduais ? coresPartidosEstaduais : coresPartidosFederais
+  const ordemPartidosPadrao = isChapasEstaduais
+    ? ['PT', 'MDB', 'PP', 'REPUBLICANOS']
+    : ['PT', 'PSD/MDB', 'PP', 'REPUBLICANOS', 'PODEMOS']
+  const initialQuociente = isChapasEstaduais ? 67000 : 190000
+  const initialNumVagas = isChapasEstaduais ? 30 : 10
+  const userIdRef = useRef<string | null>(null)
+  const [loading, setLoading] = useState(false)
+  const [modoImpressao, setModoImpressao] = useState(false)
+  const [exportandoPdf, setExportandoPdf] = useState(false)
+
+  const [partidos, setPartidos] = useState<PartidoLocal[]>(criarPartidosIniciais(coresPartidosAtivos))
+  const [quociente, setQuociente] = useState(initialQuociente)
+  const [quocienteCarregado, setQuocienteCarregado] = useState(false)
+  const [cenarioAtivo, setCenarioAtivo] = useState<CenarioCompleto | null>(null)
+
+  const [editVoto, setEditVoto] = useState<{ partidoIdx: number; candidatoIdx: number } | null>(null)
+  const [hoveredRow, setHoveredRow] = useState<{ partidoIdx: number; candidatoIdx: number } | null>(null)
+  const [editingName, setEditingName] = useState<{ partidoIdx: number; candidatoIdx: number; tempValue: string } | null>(null)
+  const [votosLegenda, setVotosLegenda] = useState<{ [partido: string]: number }>({})
+
+  // Estados para adicionar novo candidato
+  const [dialogAberto, setDialogAberto] = useState<number | null>(null)
+  const [novoCandidato, setNovoCandidato] = useState({ nome: '', votos: 0, genero: 'homem' as 'homem' | 'mulher' })
+  const [salvandoCandidato, setSalvandoCandidato] = useState(false)
+  
+  // Estados para adicionar novo partido
+  const [dialogNovoPartidoAberto, setDialogNovoPartidoAberto] = useState(false)
+  const [novoPartido, setNovoPartido] = useState({ nome: '', cor: 'bg-border-card', corTexto: 'text-text-primary' })
+  const [salvandoPartido, setSalvandoPartido] = useState(false)
+  const [dialogEditarPartidoAberto, setDialogEditarPartidoAberto] = useState<string | null>(null)
+  const [nomePartidoEdicao, setNomePartidoEdicao] = useState('')
+  const [salvandoEdicaoPartido, setSalvandoEdicaoPartido] = useState(false)
+
+  // Adicionar estado para edição temporária dos votos de legenda
+  const [votosLegendaTemp, setVotosLegendaTemp] = useState<{ [partido: string]: string }>({})
+  const [salvandoMudancas, setSalvandoMudancas] = useState(false)
+  const [notificacaoAutoSave, setNotificacaoAutoSave] = useState<string | null>(null)
+  const [carregandoCenario, setCarregandoCenario] = useState(false)
+  const [dadosCarregados, setDadosCarregados] = useState(false)
+  const [numVagas, setNumVagas] = useState(initialNumVagas)
+  const [openAnaliseRepublicanos, setOpenAnaliseRepublicanos] = useState(false)
+  const [mostrarDetalhesSobras, setMostrarDetalhesSobras] = useState(false)
+  
+  // Estado para gerenciar partidos ocultos
+  const [partidosOcultos, setPartidosOcultos] = useState<{ [partidoNome: string]: boolean }>({})
+  const [ordemPartidosManual, setOrdemPartidosManual] = useState<{ [partidoNome: string]: number }>({})
+  const [isFullscreen, setIsFullscreen] = useState(false)
+  const fullscreenRef = useRef<HTMLDivElement>(null)
+  
+  // Estado para cenários (compartilhado com CenariosTabs para evitar fetch duplicado)
+  const [cenariosLista, setCenariosLista] = useState<Cenario[]>([])
+  const [cenariosCarregados, setCenariosCarregados] = useState(false)
+  
+  // Controle simples de save
+  const saveEmAndamentoRef = useRef(false)
+
+  const mostrarNotificacaoAutoSave = (mensagem: string) => {
+    setNotificacaoAutoSave(mensagem)
+    setTimeout(() => setNotificacaoAutoSave(null), 3000)
+  }
+
+  const construirMapaOrdem = <T extends { nome: string }>(listaPartidos: T[]) => {
+    const mapa: { [partidoNome: string]: number } = {}
+    listaPartidos.forEach((partido, idx) => {
+      mapa[partido.nome] = idx + 1
+    })
+    return mapa
+  }
+
+  // Função para alternar visibilidade de partido
+  const togglePartidoVisibilidade = (partidoNome: string) => {
+    setPartidosOcultos(prev => {
+      if (prev[partidoNome]) {
+        const proximo = { ...prev }
+        delete proximo[partidoNome]
+        return proximo
+      }
+
+      return {
+        ...prev,
+        [partidoNome]: true
+      }
+    })
+  }
+
+  // Função para toggle fullscreen
+  const toggleFullscreen = async () => {
+    try {
+      if (!isFullscreen) {
+        if (fullscreenRef.current?.requestFullscreen) {
+          await fullscreenRef.current.requestFullscreen()
+          setIsFullscreen(true)
+        }
+      } else {
+        if (document.fullscreenElement) {
+          await document.exitFullscreen()
+          setIsFullscreen(false)
+        }
+      }
+    } catch (err) {
+      console.error('Erro ao alternar fullscreen:', err)
+    }
+  }
+
+  // Listener para detectar saída de fullscreen
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      setIsFullscreen(!!document.fullscreenElement)
+    }
+    document.addEventListener('fullscreenchange', handleFullscreenChange)
+    return () => document.removeEventListener('fullscreenchange', handleFullscreenChange)
+  }, [])
+
+  // Função para carregar dados do cenário base
+  const carregarDadosSupabase = async () => {
+    try {
+      // Tentar carregar do cenário base
+      const cenarioBase = await service.carregarCenario('base')
+      if (cenarioBase) {
+        setCenarioAtivo(cenarioBase)
+        const partidosOrdenados = ordenarPartidos(cenarioBase.partidos)
+        setPartidos(partidosOrdenados)
+        setOrdemPartidosManual(construirMapaOrdem(cenarioBase.partidos))
+        if (!quocienteCarregado) {
+          setQuociente(cenarioBase.quocienteEleitoral)
+          setQuocienteCarregado(true)
+        }
+        const votosLegendaTemp: { [partido: string]: number } = {}
+        cenarioBase.partidos.forEach(partido => {
+          if (partido.votosLegenda) {
+            votosLegendaTemp[partido.nome] = partido.votosLegenda
+          }
+        })
+        setVotosLegenda(votosLegendaTemp)
+        // Sincroniza a barra de cenários (evita "Nenhum cenário encontrado" após criar base)
+        const listaAtualizada = await service.listarCenarios()
+        setCenariosLista(listaAtualizada)
+        setCenariosCarregados(true)
+        mostrarNotificacaoAutoSave('Dados carregados com sucesso')
+      } else {
+        // Se não existe cenário base, criar um com dados iniciais
+        const partidosIniciais = criarPartidosIniciais(coresPartidosAtivos)
+        // Popular com dados iniciais
+        service.dadosIniciais.forEach((item: { partido: string; nome: string; votos: number; genero?: string }) => {
+          const partido = partidosIniciais.find(p => p.nome === item.partido)
+          if (partido) {
+            partido.candidatos.push({
+              nome: item.nome,
+              votos: item.votos,
+              genero: inferirGeneroCandidatoInicial(item.nome, item.genero)
+            })
+          }
+        })
+        const partidosConvertidos: PartidoCenario[] = partidosIniciais.map(p => ({
+          nome: p.nome,
+          cor: p.cor,
+          corTexto: p.corTexto,
+          candidatos: p.candidatos,
+          votosLegenda: 0
+        }))
+        await service.criarCenarioBase(partidosConvertidos, initialQuociente)
+        await carregarDadosSupabase()
+      }
+    } catch (error: any) {
+      const errorMessage = error?.message || 'Erro desconhecido'
+      console.error('Erro ao carregar dados:', error)
+      alert(`Erro ao carregar dados: ${errorMessage}. Verifique se as tabelas foram criadas no banco de dados.`)
+    }
+  }
+
+  // Estado para erro de carregamento (permite retry)
+  const [erroCarregamento, setErroCarregamento] = useState<string | null>(null)
+  const carregandoRef = useRef(false)
+
+  // Função de carregamento com retry automático
+  const carregarDadosIniciais = async (tentativa: number = 1) => {
+    if (carregandoRef.current) return
+    carregandoRef.current = true
+    setErroCarregamento(null)
+    
+    // Garantir cache do userId em TODA tentativa (ref sobrevive a closures)
+    if (userIdRef.current) {
+      service.preWarmUserIdCache(userIdRef.current)
+    }
+    
+    try {
+      console.log(`[Chapas] Carregando dados... (tentativa ${tentativa})`)
+      
+      // Uma única chamada que busca cenários + cenário ativo com partidos
+      const { cenarios: listaCenarios, cenarioAtivo: cenarioAtivoData } = await service.listarCenariosComAtivo()
+      
+      console.log(`[Chapas] Dados carregados: ${listaCenarios.length} cenários`)
+      
+      // Compartilhar cenários com CenariosTabs (evita fetch duplicado)
+      setCenariosLista(listaCenarios)
+      setCenariosCarregados(true)
+      setDadosCarregados(true)
+      
+      if (cenarioAtivoData) {
+        setCenarioAtivo(cenarioAtivoData)
+        const partidosOrdenados = ordenarPartidos(cenarioAtivoData.partidos)
+        setPartidos(partidosOrdenados)
+        setOrdemPartidosManual(construirMapaOrdem(cenarioAtivoData.partidos))
+        setQuociente(cenarioAtivoData.quocienteEleitoral)
+        setQuocienteCarregado(true)
+        
+        const votosLegendaTemp: { [partido: string]: number } = {}
+        cenarioAtivoData.partidos.forEach(partido => {
+          if (partido.votosLegenda) {
+            votosLegendaTemp[partido.nome] = partido.votosLegenda
+          }
+        })
+        setVotosLegenda(votosLegendaTemp)
+      } else {
+        // Se não há cenário ativo, carregar o cenário base
+        await carregarDadosSupabase()
+      }
+    } catch (error: unknown) {
+      const err = error as Error
+      const errorMessage = err?.message || 'Erro desconhecido'
+      console.error(`[Chapas] Erro na tentativa ${tentativa}:`, errorMessage)
+      
+      // Retry automático (até 2 tentativas)
+      if (tentativa < 2) {
+        console.log(`[Chapas] Retry automático em 1s...`)
+        carregandoRef.current = false
+        await new Promise(resolve => setTimeout(resolve, 1000))
+        return carregarDadosIniciais(tentativa + 1)
+      }
+      
+      // Após 2 tentativas, mostrar erro com opção de retry manual
+      setErroCarregamento(errorMessage)
+    } finally {
+      carregandoRef.current = false
+    }
+  }
+
+  // Manter ref do userId sempre atualizado (sobrevive a closures e retries)
+  useEffect(() => {
+    if (user?.id) {
+      userIdRef.current = user.id
+      service.preWarmUserIdCache(user.id)
+    }
+  }, [user?.id])
+
+  // Carregar dados do Supabase ao abrir a página (só quando user estiver disponível)
+  useEffect(() => {
+    if (dadosCarregados) return
+    if (!user?.id) return
+    carregarDadosIniciais()
+  }, [dadosCarregados, user?.id])
+
+  // Função para ordenar partidos na ordem fixa
+  const ordenarPartidos = <T extends { nome: string }>(partidosParaOrdenar: T[]): T[] => {
+    const indexMap = new Map<string, number>()
+    partidosParaOrdenar.forEach((partido, index) => {
+      indexMap.set(partido.nome, index)
+    })
+
+    const resolverOrdem = (nome: string) => {
+      const manual = ordemPartidosManual[nome]
+      if (typeof manual === 'number' && Number.isFinite(manual) && manual > 0) {
+        return manual
+      }
+
+      const idxPadrao = ordemPartidosPadrao.indexOf(nome)
+      if (idxPadrao >= 0) return idxPadrao + 1
+
+      const idxAtual = indexMap.get(nome) ?? 0
+      return ordemPartidosPadrao.length + idxAtual + 1
+    }
+
+    return [...partidosParaOrdenar].sort((a, b) => {
+      const ordemA = resolverOrdem(a.nome)
+      const ordemB = resolverOrdem(b.nome)
+      if (ordemA !== ordemB) return ordemA - ordemB
+
+      const idxA = indexMap.get(a.nome) ?? 0
+      const idxB = indexMap.get(b.nome) ?? 0
+      return idxA - idxB
+    })
+  }
+
+  const handleMoverPartido = (partidoNome: string, direcao: 'esquerda' | 'direita') => {
+    const nomesOrdenados = ordenarPartidos(partidos).map((partido) => partido.nome)
+    const indiceAtual = nomesOrdenados.findIndex((nome) => nome === partidoNome)
+    if (indiceAtual < 0) return
+
+    const delta = direcao === 'esquerda' ? -1 : 1
+    const indiceDestino = indiceAtual + delta
+    if (indiceDestino < 0 || indiceDestino >= nomesOrdenados.length) return
+
+    const [movido] = nomesOrdenados.splice(indiceAtual, 1)
+    nomesOrdenados.splice(indiceDestino, 0, movido)
+
+    const novaOrdem: { [partidoNome: string]: number } = {}
+    nomesOrdenados.forEach((nome, idx) => {
+      novaOrdem[nome] = idx + 1
+    })
+
+    setOrdemPartidosManual(novaOrdem)
+  }
+
+  const partidosOcultosLista = ordenarPartidos(partidos)
+    .filter(partido => partidosOcultos[partido.nome])
+    .map(partido => partido.nome)
+
+  const mostrarTodosPartidos = () => {
+    setPartidosOcultos({})
+  }
+
+  // Função para converter partidos para o formato do cenário
+  const converterPartidosParaCenario = (): PartidoCenario[] => {
+    const partidosOrdenados = ordenarPartidos(partidos)
+    return partidosOrdenados.map(partido => ({
+      nome: partido.nome,
+      cor: partido.cor,
+      corTexto: partido.corTexto,
+      candidatos: partido.candidatos
+        .filter(c => c.nome !== 'VOTOS LEGENDA')
+        .map(c => ({
+          nome: c.nome,
+          votos: c.votos,
+          genero: (c as any).genero
+        })),
+      votosLegenda: votosLegenda[partido.nome] || 0
+    }))
+  }
+
+  // Função para salvar mudanças no cenário ativo (simples e direta)
+  const salvarMudancasCenario = async () => {
+    if (!cenarioAtivo) {
+      alert('Nenhum cenário ativo encontrado. Tente selecionar um cenário primeiro.')
+      return
+    }
+    
+    // Evitar duplo-clique
+    if (saveEmAndamentoRef.current) return
+    saveEmAndamentoRef.current = true
+    setSalvandoMudancas(true)
+    
+    // Garantir cache do userId antes de salvar
+    if (userIdRef.current) service.preWarmUserIdCache(userIdRef.current)
+    
+    try {
+      const partidosConvertidos = converterPartidosParaCenario()
+      await service.atualizarCenario(cenarioAtivo.id, partidosConvertidos, quociente)
+      
+      setCenarioAtivo(prev => prev ? { ...prev, atualizadoEm: new Date().toISOString(), quocienteEleitoral: quociente } : null)
+      mostrarNotificacaoAutoSave(`Mudanças salvas no cenário "${cenarioAtivo.nome}"`)
+    } catch (error: unknown) {
+      const err = error as Error
+      if (err?.message?.includes('Timeout')) {
+        alert('O salvamento demorou muito. Verifique sua conexão e tente novamente.')
+      } else {
+        alert('Erro ao salvar mudanças. Tente novamente.')
+      }
+    } finally {
+      saveEmAndamentoRef.current = false
+      setSalvandoMudancas(false)
+    }
+  }
+
+  // Função para atualizar apenas o estado local
+  const updateLocalState = (partidoIdx: number, candidatoIdx: number, field: 'nome' | 'votos', value: string) => {
+    setPartidos(prev => prev.map((p, i) => {
+      if (i !== partidoIdx) return p
+      const candidatos = p.candidatos.map((c, idx) => {
+        if (idx !== candidatoIdx) return c
+        if (field === 'nome') {
+          return { ...c, nome: value }
+        }
+        let votos = parseInt(value.replace(/\D/g, ''), 10) || 0
+        if (votos < 0) votos = 0
+        return { ...c, votos }
+      })
+      return { ...p, candidatos }
+    }))
+  }
+
+  // Função para iniciar edição de nome
+  const startEditingName = (partidoIdx: number, candidatoIdx: number) => {
+    const candidato = partidos[partidoIdx]?.candidatos[candidatoIdx]
+    if (candidato) {
+      setEditingName({ partidoIdx, candidatoIdx, tempValue: candidato.nome })
+      setHoveredRow({ partidoIdx, candidatoIdx })
+    }
+  }
+
+  // Função para salvar nome (só atualiza estado local + agenda auto-save)
+  const saveNameChange = (partidoIdx: number, candidatoIdx: number) => {
+    if (!editingName || editingName.partidoIdx !== partidoIdx || editingName.candidatoIdx !== candidatoIdx) {
+      setEditingName(null)
+      setHoveredRow(null)
+      return
+    }
+
+    const oldNome = partidos[partidoIdx]?.candidatos[candidatoIdx]?.nome ?? ''
+    const newNome = editingName.tempValue.trim()
+    
+    if (newNome && newNome !== oldNome) {
+      setPartidos(prev => prev.map((p, i) => {
+        if (i !== partidoIdx) return p
+        return {
+          ...p,
+          candidatos: p.candidatos.map((c, idx) => idx === candidatoIdx ? { ...c, nome: newNome } : c)
+        }
+      }))
+    }
+    
+    setEditingName(null)
+    setHoveredRow(null)
+  }
+
+  // Função para salvar votos (só atualiza estado local - salva via botão "Salvar Mudanças")
+  const saveVotosChange = (partidoIdx: number, candidatoIdx: number, votos: number) => {
+    setPartidos(prev => prev.map((p, i) => {
+      if (i !== partidoIdx) return p
+      return {
+        ...p,
+        candidatos: p.candidatos.map((c, idx) => idx === candidatoIdx ? { ...c, votos } : c)
+      }
+    }))
+  }
+
+  // Soma dos votos e cálculo da projeção
+  const getVotosProjetados = (candidatos: { votos: number; nome: string }[], partidoNome: string) => {
+    const votosLegendaPartido = votosLegenda[partidoNome] || 0
+    return candidatos
+      .filter(c => c.nome !== 'VOTOS LEGENDA')
+      .reduce((acc, c) => acc + c.votos, 0) + votosLegendaPartido
+  }
+
+  // Calcular 80% do Quociente Eleitoral
+  const getQuocienteMinimo = () => {
+    return quociente * 0.8
+  }
+
+  // Verificar se partido atingiu o mínimo de 80% do quociente
+  const partidoAtingiuMinimo = (partidoNome: string) => {
+    const votosProjetados = getVotosProjetados(
+      partidos.find(p => p.nome === partidoNome)?.candidatos || [], 
+      partidoNome
+    )
+    const quocienteMinimo = getQuocienteMinimo()
+    return votosProjetados >= quocienteMinimo
+  }
+
+  const getProjecaoEleitos = (votosTotal: number) => (votosTotal / quociente).toFixed(2)
+
+  const feedbackSegundaVagaPorPartido = useMemo(() => {
+    const rows = partidos.map((partido) => ({
+      nome: partido.nome,
+      votosTotal: getVotosProjetados(partido.candidatos, partido.nome),
+      atingiuMinimo: partidoAtingiuMinimo(partido.nome),
+    }))
+    const escopo = isChapasEstaduais ? 'estadual' : 'federal'
+    const mapa: Record<string, NonNullable<ReturnType<typeof buildSegundaVagaFeedbackLabel>>> = {}
+    for (const p of partidos) {
+      const raw = calcularDistanciaProximaVagaPartido(rows, quociente, numVagas, (nome) => nome === p.nome)
+      const label = buildSegundaVagaFeedbackLabel(raw, {
+        escopo,
+        simulacao: {
+          partidosRows: rows,
+          quociente,
+          numVagas,
+          nomePartidoAlvo: p.nome,
+        },
+      })
+      if (label) mapa[p.nome] = label
+    }
+    return mapa
+  }, [partidos, votosLegenda, quociente, numVagas, isChapasEstaduais])
+
+  // Calcular vagas diretas
+  const calcularVagasDiretas = (votosTotal: number) => {
+    return Math.floor(votosTotal / quociente)
+  }
+
+  // MÉTODO D'HONDT CORRETO
+  const calcularDistribuicaoDHondt = () => {
+    const VAGAS_TOTAIS = numVagas
+    
+    const partidosElegiveis = partidos.filter(partido => partidoAtingiuMinimo(partido.nome))
+    
+    const partidosComVagas = partidosElegiveis.map(partido => {
+      const votosTotal = getVotosProjetados(partido.candidatos, partido.nome)
+      const vagasDiretas = calcularVagasDiretas(votosTotal)
+      
+      return {
+        partido: partido.nome,
+        votosTotal,
+        vagasObtidas: vagasDiretas,
+        vagasDiretas: vagasDiretas
+      }
+    })
+    
+    const vagasDistribuidas = partidosComVagas.reduce((total, p) => total + p.vagasObtidas, 0)
+    const vagasRestantes = VAGAS_TOTAIS - vagasDistribuidas
+    
+    const historicoSobras = []
+    
+    for (let i = 0; i < vagasRestantes; i++) {
+      const quocientesPartidarios = partidosComVagas.map(p => ({
+        partido: p.partido,
+        quocientePartidario: p.votosTotal / (p.vagasObtidas + 1)
+      }))
+      
+      quocientesPartidarios.sort((a, b) => b.quocientePartidario - a.quocientePartidario)
+      
+      const ganhador = quocientesPartidarios[0]
+      
+      if (ganhador && ganhador.partido) {
+        historicoSobras.push({
+          rodada: i + 1,
+          partido: ganhador.partido,
+          quocientePartidario: ganhador.quocientePartidario,
+          vaga: vagasDistribuidas + i + 1
+        })
+        
+        const partidoGanhador = partidosComVagas.find(p => p.partido === ganhador.partido)
+        if (partidoGanhador) {
+          partidoGanhador.vagasObtidas++
+        }
+      } else {
+        break
+      }
+    }
+    
+    return {
+      partidosComVagas,
+      vagasDistribuidas,
+      vagasRestantes,
+      historicoSobras,
+      totalVagas: VAGAS_TOTAIS
+    }
+  }
+
+  // Calcular sobras
+  const calcularSobras = () => {
+    const partidosElegiveis = partidos.filter(partido => partidoAtingiuMinimo(partido.nome) && !partidosOcultos[partido.nome])
+    
+    const resultados = partidos
+      .filter(partido => !partidosOcultos[partido.nome])
+      .map(partido => {
+        const votosTotal = getVotosProjetados(partido.candidatos, partido.nome)
+        const vagasDiretas = calcularVagasDiretas(votosTotal)
+        const divisao = votosTotal / quociente
+        const atingiuMinimo = partidoAtingiuMinimo(partido.nome)
+        
+        const quocientePartidario = atingiuMinimo ? votosTotal / (vagasDiretas + 1) : 0
+        
+        return {
+          partido: partido.nome,
+          votosTotal,
+          vagasDiretas,
+          sobra: quocientePartidario,
+          divisao,
+          projecaoEleitos: divisao.toFixed(2),
+          atingiuMinimo,
+          quocientePartidario
+        }
+      })
+
+    const ordenadosPorSobras = resultados
+      .filter(r => r.atingiuMinimo && r.quocientePartidario !== undefined)
+      .sort((a, b) => (b.quocientePartidario || 0) - (a.quocientePartidario || 0))
+    
+    return {
+      resultados,
+      ordenadosPorSobras,
+      maiorSobra: ordenadosPorSobras[0]?.quocientePartidario || 0
+    }
+  }
+
+  // Simular distribuição completa
+  const simularDistribuicaoCompleta = () => {
+    return calcularDistribuicaoDHondt()
+  }
+
+  // Função genérica para separar candidatos por gênero
+  const separarCandidatosPorGenero = (candidatos: { nome: string; votos: number; genero?: string }[]) => {
+    const candidatosFiltrados = candidatos.filter(c => c.nome !== 'VOTOS LEGENDA')
+    
+    const homens = candidatosFiltrados
+      .filter(c => c.genero !== 'mulher')
+      .sort((a, b) => b.votos - a.votos)
+    
+    const mulheres = candidatosFiltrados
+      .filter(c => c.genero === 'mulher')
+      .sort((a, b) => b.votos - a.votos)
+    
+    return { homens, mulheres }
+  }
+
+  // Funções específicas
+  const separarCandidatosPT = (candidatos: { nome: string; votos: number; genero?: string }[]) => {
+    return separarCandidatosPorGenero(candidatos)
+  }
+
+  const separarCandidatosPSDMDB = (candidatos: { nome: string; votos: number; genero?: string }[]) => {
+    return separarCandidatosPorGenero(candidatos)
+  }
+
+  const separarCandidatosPP = (candidatos: { nome: string; votos: number; genero?: string }[]) => {
+    return separarCandidatosPorGenero(candidatos)
+  }
+
+  const separarCandidatosRepublicanos = (candidatos: { nome: string; votos: number; genero?: string }[]) => {
+    return separarCandidatosPorGenero(candidatos)
+  }
+
+  const separarCandidatosPodemos = (candidatos: { nome: string; votos: number; genero?: string }[]) => {
+    return separarCandidatosPorGenero(candidatos)
+  }
+
+  // Função para excluir candidato
+  const handleExcluirCandidato = async (partidoIdx: number, candidatoIdx: number) => {
+    try {
+      if (!cenarioAtivo) {
+        throw new Error('Cenário base não encontrado')
+      }
+      
+      setPartidos(prev => prev.map((p, i) => {
+        if (i !== partidoIdx) return p
+        return {
+          ...p,
+          candidatos: p.candidatos.filter((_, idx) => idx !== candidatoIdx)
+        }
+      }))
+
+      const partidosConvertidos = converterPartidosParaCenario()
+      await service.atualizarCenario(cenarioAtivo.id, partidosConvertidos, cenarioAtivo.quocienteEleitoral)
+      mostrarNotificacaoAutoSave('Candidato excluído com sucesso')
+    } catch (error) {
+      await carregarDadosSupabase()
+      alert('Candidato não encontrado. Dados foram recarregados automaticamente.')
+    }
+  }
+
+  // Função para excluir partido completo
+  const handleExcluirPartido = async (partidoNome: string) => {
+    try {
+      if (!cenarioAtivo) {
+        throw new Error('Cenário base não encontrado')
+      }
+      
+      setPartidos(prev => prev.filter(p => p.nome !== partidoNome))
+      setOrdemPartidosManual(prev => {
+        const proximo = { ...prev }
+        delete proximo[partidoNome]
+        return proximo
+      })
+      
+      setVotosLegenda(prev => {
+        const novo = { ...prev }
+        delete novo[partidoNome]
+        return novo
+      })
+
+      const partidosConvertidos = converterPartidosParaCenario().filter(p => p.nome !== partidoNome)
+      await service.atualizarCenario(cenarioAtivo.id, partidosConvertidos, cenarioAtivo.quocienteEleitoral)
+      mostrarNotificacaoAutoSave(`Partido ${partidoNome} excluído com sucesso`)
+    } catch (error) {
+      await carregarDadosSupabase()
+      alert('Erro ao excluir partido. Dados foram recarregados automaticamente.')
+    }
+  }
+
+  // Função para adicionar novo partido
+  const handleAdicionarPartido = async () => {
+    if (!novoPartido.nome.trim()) {
+      alert('Por favor, digite o nome do partido')
+      return
+    }
+
+    const partidoExistente = partidos.find(p => p.nome === novoPartido.nome)
+    if (partidoExistente) {
+      alert('Este partido já existe!')
+      return
+    }
+
+    setSalvandoPartido(true)
+    
+    try {
+      if (!cenarioAtivo) {
+        throw new Error('Cenário base não encontrado')
+      }
+      
+      const novoPartidoObj: PartidoLocal = {
+        nome: novoPartido.nome,
+        cor: novoPartido.cor,
+        corTexto: novoPartido.corTexto,
+        candidatos: []
+      }
+      
+      const partidosAtualizados = [...partidos, novoPartidoObj]
+      const partidosOrdenados = ordenarPartidos(partidosAtualizados)
+      const partidosConvertidos = partidosOrdenados.map(partido => ({
+        nome: partido.nome,
+        cor: partido.cor,
+        corTexto: partido.corTexto,
+        candidatos: partido.candidatos.map(c => ({
+          nome: c.nome,
+          votos: c.votos,
+          genero: (c as any).genero
+        })),
+        votosLegenda: votosLegenda[partido.nome] || 0
+      }))
+      
+      setPartidos(partidosAtualizados)
+      setOrdemPartidosManual(construirMapaOrdem(ordenarPartidos(partidosAtualizados)))
+      
+      await service.atualizarCenario(cenarioAtivo.id, partidosConvertidos, cenarioAtivo.quocienteEleitoral)
+      
+      setNovoPartido({ nome: '', cor: 'bg-border-card', corTexto: 'text-text-primary' })
+      setDialogNovoPartidoAberto(false)
+      
+      mostrarNotificacaoAutoSave(`Partido ${novoPartido.nome} adicionado com sucesso`)
+    } catch (error) {
+      await carregarDadosSupabase()
+      alert('Erro ao adicionar partido. Dados foram recarregados automaticamente.')
+    } finally {
+      setSalvandoPartido(false)
+    }
+  }
+
+  const handleAbrirEditarPartido = (nomeAtual: string) => {
+    setDialogEditarPartidoAberto(nomeAtual)
+    setNomePartidoEdicao(nomeAtual)
+  }
+
+  const handleSalvarEdicaoPartido = () => {
+    if (!dialogEditarPartidoAberto) return
+
+    const nomeAtual = dialogEditarPartidoAberto
+    const novoNome = nomePartidoEdicao.trim()
+
+    if (!novoNome) {
+      alert('Digite um nome válido para o partido.')
+      return
+    }
+
+    if (novoNome === nomeAtual) {
+      setDialogEditarPartidoAberto(null)
+      setNomePartidoEdicao('')
+      return
+    }
+
+    const duplicado = partidos.some(
+      (p) => p.nome.toUpperCase() === novoNome.toUpperCase() && p.nome !== nomeAtual
+    )
+    if (duplicado) {
+      alert('Já existe um partido com esse nome.')
+      return
+    }
+
+    const partidosAtualizados = partidos.map((partido) =>
+      partido.nome === nomeAtual ? { ...partido, nome: novoNome } : partido
+    )
+
+    const votosLegendaAtualizados = { ...votosLegenda }
+    if (Object.prototype.hasOwnProperty.call(votosLegendaAtualizados, nomeAtual)) {
+      votosLegendaAtualizados[novoNome] = votosLegendaAtualizados[nomeAtual]
+      delete votosLegendaAtualizados[nomeAtual]
+    }
+
+    const votosLegendaTempAtualizados = { ...votosLegendaTemp }
+    if (Object.prototype.hasOwnProperty.call(votosLegendaTempAtualizados, nomeAtual)) {
+      votosLegendaTempAtualizados[novoNome] = votosLegendaTempAtualizados[nomeAtual]
+      delete votosLegendaTempAtualizados[nomeAtual]
+    }
+
+    const partidosOcultosAtualizados = { ...partidosOcultos }
+    if (Object.prototype.hasOwnProperty.call(partidosOcultosAtualizados, nomeAtual)) {
+      partidosOcultosAtualizados[novoNome] = partidosOcultosAtualizados[nomeAtual]
+      delete partidosOcultosAtualizados[nomeAtual]
+    }
+
+    setPartidos(partidosAtualizados)
+    setOrdemPartidosManual(prev => {
+      const proximo = { ...prev }
+      const ordemAtual = proximo[nomeAtual]
+      delete proximo[nomeAtual]
+      if (typeof ordemAtual === 'number' && Number.isFinite(ordemAtual)) {
+        proximo[novoNome] = ordemAtual
+      }
+      return proximo
+    })
+    setVotosLegenda(votosLegendaAtualizados)
+    setVotosLegendaTemp(votosLegendaTempAtualizados)
+    setPartidosOcultos(partidosOcultosAtualizados)
+
+    setDialogEditarPartidoAberto(null)
+    setNomePartidoEdicao('')
+    mostrarNotificacaoAutoSave(`Nome alterado para ${novoNome}. Clique em "Salvar Mudanças" para persistir.`)
+  }
+
+  // Função para adicionar novo candidato
+  const handleAdicionarCandidato = async (partidoIdx: number) => {
+    if (!novoCandidato.nome.trim()) {
+      alert('Por favor, digite o nome do candidato')
+      return
+    }
+
+    setSalvandoCandidato(true)
+    const partido = partidos[partidoIdx]
+    
+    try {
+      const candidatoExistente = partido.candidatos.find(c => c.nome === novoCandidato.nome)
+      if (candidatoExistente) {
+        alert('Este candidato já existe no partido!')
+        return
+      }
+
+      if (!cenarioAtivo) {
+        throw new Error('Cenário base não encontrado')
+      }
+      
+      setPartidos(prev => prev.map((p, i) => {
+        if (i !== partidoIdx) return p
+        
+        const candidatosAtuais = [...p.candidatos]
+        
+        const candidatoComGenero = { 
+          nome: novoCandidato.nome, 
+          votos: novoCandidato.votos,
+          genero: novoCandidato.genero 
+        }
+        
+        if (novoCandidato.genero === 'mulher') {
+          const ultimaMulherIndex = candidatosAtuais.findLastIndex(c => c.genero === 'mulher')
+          
+          if (ultimaMulherIndex === -1) {
+            candidatosAtuais.push(candidatoComGenero)
+          } else {
+            candidatosAtuais.splice(ultimaMulherIndex + 1, 0, candidatoComGenero)
+          }
+        } else {
+          const primeiraMulherIndex = candidatosAtuais.findIndex(c => c.genero === 'mulher')
+          
+          if (primeiraMulherIndex === -1) {
+            candidatosAtuais.push(candidatoComGenero)
+          } else {
+            candidatosAtuais.splice(primeiraMulherIndex, 0, candidatoComGenero)
+          }
+        }
+        
+        return {
+          ...p,
+          candidatos: candidatosAtuais
+        }
+      }))
+
+      const partidosConvertidos = converterPartidosParaCenario()
+      await service.atualizarCenario(cenarioAtivo.id, partidosConvertidos, cenarioAtivo.quocienteEleitoral)
+
+      setNovoCandidato({ nome: '', votos: 0, genero: 'homem' })
+      setDialogAberto(null)
+      
+      mostrarNotificacaoAutoSave('Candidato adicionado com sucesso')
+    } catch (error) {
+      alert('Erro ao adicionar candidato. Tente novamente.')
+    } finally {
+      setSalvandoCandidato(false)
+    }
+  }
+
+  // Função para verificar se o candidato atingiu 20% do quociente
+  const candidatoAtingiuMinimo = (votos: number) => {
+    return votos >= (quociente * 0.2)
+  }
+
+  // Função para calcular os candidatos eleitos
+  const calcularCandidatosEleitos = () => {
+    try {
+      const simulacao = simularDistribuicaoCompleta()
+      const candidatosEleitos: Array<{
+        partido: string
+        nome: string
+        votos: number
+        posicao: number
+        tipoEleicao: 'direta' | 'sobra'
+        atingiuMinimo: boolean
+      }> = []
+
+      if (!simulacao || !simulacao.partidosComVagas) {
+        return []
+      }
+
+      simulacao.partidosComVagas.forEach(partidoInfo => {
+        if (!partidoInfo || !partidoInfo.partido || typeof partidoInfo.vagasObtidas !== 'number') {
+          return
+        }
+
+        const partido = partidos.find(p => p.nome === partidoInfo.partido)
+        if (!partido || partidoInfo.vagasObtidas === 0) return
+
+        const candidatosValidos = partido.candidatos.filter(c => c.nome !== 'VOTOS LEGENDA')
+        
+        const candidatosComMinimo = candidatosValidos.filter(c => candidatoAtingiuMinimo(c.votos))
+        const candidatosSemMinimo = candidatosValidos.filter(c => !candidatoAtingiuMinimo(c.votos))
+        
+        const candidatosComMinimoOrdenados = [...candidatosComMinimo].sort((a, b) => b.votos - a.votos)
+        const candidatosSemMinimoOrdenados = [...candidatosSemMinimo].sort((a, b) => b.votos - a.votos)
+        
+        let candidatosSelecionados: Array<{candidato: any, atingiuMinimo: boolean}> = []
+        
+        for (let i = 0; i < partidoInfo.vagasObtidas && i < candidatosComMinimoOrdenados.length; i++) {
+          candidatosSelecionados.push({
+            candidato: candidatosComMinimoOrdenados[i],
+            atingiuMinimo: true
+          })
+        }
+        
+        const vagasRestantes = partidoInfo.vagasObtidas - candidatosSelecionados.length
+        if (vagasRestantes > 0) {
+          for (let i = 0; i < vagasRestantes && i < candidatosSemMinimoOrdenados.length; i++) {
+            candidatosSelecionados.push({
+              candidato: candidatosSemMinimoOrdenados[i],
+              atingiuMinimo: false
+            })
+          }
+        }
+        
+        candidatosSelecionados.forEach((selecao, index) => {
+          const candidato = selecao.candidato
+          if (candidato && candidato.nome) {
+            candidatosEleitos.push({
+              partido: partido.nome,
+              nome: candidato.nome,
+              votos: candidato.votos || 0,
+              posicao: index + 1,
+              tipoEleicao: index < calcularVagasDiretas(partidoInfo.votosTotal || 0) ? 'direta' : 'sobra',
+              atingiuMinimo: selecao.atingiuMinimo
+            })
+          }
+        })
+      })
+
+      return candidatosEleitos.sort((a, b) => {
+        if (a.partido !== b.partido) return a.partido.localeCompare(b.partido)
+        return b.votos - a.votos
+      })
+    } catch (error) {
+      return []
+    }
+  }
+
+  // Análise simples do Republicanos (REPUBLICANOS, REPUB, coligações)
+  const analisarRepublicanos = () => {
+    const partido = encontrarPartidoRepublicanos(partidos)
+    const partidoNome = partido?.nome ?? 'REPUBLICANOS'
+    const votos = partido ? getVotosProjetados(partido.candidatos, partido.nome) : 0
+    const minimo80 = getQuocienteMinimo()
+    const atingiuMinimo = votos >= minimo80
+    const vagasDiretas = calcularVagasDiretas(votos)
+
+    const simulacao = simularDistribuicaoCompleta()
+    const infoPartidoSim = simulacao.partidosComVagas.find((p) =>
+      nomePartidoEhRepublicanos(p.partido)
+    )
+    const vagasTotaisPrevistas = infoPartidoSim?.vagasObtidas || 0
+    const vagasSobra = vagasTotaisPrevistas - vagasDiretas
+
+    const cenarios = {
+      atual: {
+        votos,
+        vagasDiretas,
+        vagasSobra,
+        vagasTotais: vagasTotaisPrevistas,
+        elegivel: atingiuMinimo
+      }
+    }
+
+    const riscos: Array<{
+      partido: string
+      votosAtuais: number
+      deltaParaDireta: number
+      deltaParaSobra: number
+      deltaMinimo: number
+      elegivel: boolean
+    }> = []
+    const adversarios = partidos.filter((p) => !nomePartidoEhRepublicanos(p.nome))
+
+    adversarios.forEach(adversario => {
+      const votosAdv = getVotosProjetados(adversario.candidatos, adversario.nome)
+      const vagasDiretasAdv = calcularVagasDiretas(votosAdv)
+      const minimo80Adv = getQuocienteMinimo()
+      const atingiuMinimoAdv = votosAdv >= minimo80Adv
+
+      const deltaParaDireta = Math.max(0, Math.ceil(quociente - votosAdv))
+
+      let deltaParaSobra = Infinity
+      if (atingiuMinimoAdv && vagasSobra > 0) {
+        const qRepublicanos = votos / (vagasDiretas + 1)
+        const qAdversario = votosAdv / (vagasDiretasAdv + 1)
+        if (qAdversario < qRepublicanos) {
+          deltaParaSobra = Math.max(0, Math.ceil(qRepublicanos * (vagasDiretasAdv + 1) - votosAdv))
+        } else {
+          deltaParaSobra = 0
+        }
+      }
+
+      riscos.push({
+        partido: adversario.nome,
+        votosAtuais: votosAdv,
+        deltaParaDireta,
+        deltaParaSobra,
+        deltaMinimo: Math.min(deltaParaDireta, deltaParaSobra),
+        elegivel: atingiuMinimoAdv
+      })
+    })
+
+    riscos.sort((a, b) => a.deltaMinimo - b.deltaMinimo)
+
+    return {
+      cenarios,
+      riscos,
+      conclusao:
+        vagasTotaisPrevistas > 0
+          ? `${partidoNome} elege ${vagasTotaisPrevistas} candidato(s) (${vagasDiretas} diretas + ${vagasSobra} sobras)`
+          : `${partidoNome} não elege ninguém`,
+    }
+  }
+
+  const handleGerarPdf = () => {
+    if (!dadosCarregados || exportandoPdf) return
+
+    setExportandoPdf(true)
+    try {
+      const partidosVis = ordenarPartidos(partidos).filter((p) => !partidosOcultos[p.nome])
+      const sim = simularDistribuicaoCompleta()
+      const eleitos = calcularCandidatosEleitos()
+      const { ordenadosPorSobras } = calcularSobras()
+      const qMin = getQuocienteMinimo()
+
+      const totalVotos = partidosVis.reduce(
+        (s, p) => s + getVotosProjetados(p.candidatos, p.nome),
+        0
+      )
+      const numElegiveis = partidosVis.filter((p) => partidoAtingiuMinimo(p.nome)).length
+
+      const partidosDetalhe = partidosVis.map((p) => {
+        const { homens, mulheres } = separarCandidatosPorGenero(p.candidatos)
+        const chip = feedbackSegundaVagaPorPartido[p.nome]
+        const notas = chip?.notaImpacto
+          ? chip.notaImpacto.split('\n').map((l) => l.trim()).filter(Boolean)
+          : []
+        const vp = getVotosProjetados(p.candidatos, p.nome)
+        return {
+          nome: p.nome,
+          elegivel: partidoAtingiuMinimo(p.nome),
+          votosProjetados: vp,
+          projecaoEleitos: getProjecaoEleitos(vp),
+          votosLegenda: votosLegenda[p.nome] || 0,
+          homens: homens.map((c, i) => ({ ordem: i + 1, nome: c.nome, votos: c.votos })),
+          mulheres: mulheres.map((c, i) => ({ ordem: i + 1, nome: c.nome, votos: c.votos })),
+          disputaLinha1: chip?.text ?? 'Sem indicador de disputa de sobra para este partido.',
+          disputaLinha2: chip?.segundaLinha,
+          disputaNotasLinhas: notas,
+        }
+      })
+
+      const tabelaSobras = ordenadosPorSobras.map((r) => ({
+        partido: r.partido,
+        votosTotal: r.votosTotal,
+        vagasDiretas: r.vagasDiretas,
+        projecaoEleitos: r.projecaoEleitos,
+        qp: (r.quocientePartidario ?? 0).toLocaleString('pt-BR', {
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2,
+        }),
+      }))
+
+      const eleitosLinhas = eleitos.map((e) => ({
+        partido: e.partido,
+        posicao: e.posicao,
+        nome: e.nome,
+        votos: e.votos,
+        tipoEleicao: e.tipoEleicao,
+      }))
+
+      gerarRelatorioChapasPdf(
+        {
+          tipo: isChapasEstaduais ? 'estaduais' : 'federais',
+          cenarioNome: cenarioAtivo?.nome ?? 'Sem nome',
+          quociente,
+          quocienteMinimo: qMin,
+          numVagas,
+          totalVotos,
+          numElegiveis,
+          numPartidosVisiveis: partidosVis.length,
+          partidosDetalhe,
+          tabelaSobras,
+          eleitos: eleitosLinhas,
+          distribuicao: {
+            vagasDiretas: sim.vagasDistribuidas,
+            vagasSobras: sim.vagasRestantes,
+            vagasPorPartido: sim.partidosComVagas.map((x) => ({
+              partido: x.partido,
+              vagas: x.vagasObtidas,
+            })),
+          },
+        },
+        `Chapas-Relatorio-${new Date().toISOString().slice(0, 10)}`
+      )
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Erro ao gerar PDF.'
+      alert(`Falha ao gerar PDF: ${message}`)
+    } finally {
+      setExportandoPdf(false)
+    }
+  }
+
+  return (
+    <div className={cn('w-full', embedded ? 'min-w-0' : cn('min-h-screen', pageShellClass))}>
+      <div className={`w-full py-4 ${modoImpressao ? 'px-3 sm:px-5' : embedded ? 'px-0' : 'px-4 sm:px-6 lg:px-8'}`}>
+        {/* Notificação de auto-save */}
+        {notificacaoAutoSave && (
+          <div className="fixed top-4 right-4 z-50 flex items-center gap-2 rounded-lg bg-status-success px-4 py-2 text-white shadow-lg">
+            <Check className="h-4 w-4" />
+            <span className="text-sm">{notificacaoAutoSave}</span>
+          </div>
+        )}
+
+        {/* Indicador de carregamento / erro com retry */}
+        {!dadosCarregados && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-surface rounded-lg p-6 flex flex-col items-center gap-4 max-w-sm">
+              {erroCarregamento ? (
+                <>
+                  <div className="flex h-12 w-12 items-center justify-center rounded-full bg-status-error/15">
+                    <span className="text-xl font-bold text-status-error">!</span>
+                  </div>
+                  <span className="text-text-primary text-center text-sm">
+                    Não foi possível carregar os dados.<br/>
+                    <span className="text-muted text-xs">{erroCarregamento}</span>
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setErroCarregamento(null)
+                      carregarDadosIniciais()
+                    }}
+                    className={sidebarPrimaryCTAButtonClass(isCockpit, 'text-sm')}
+                  >
+                    Tentar novamente
+                  </button>
+                </>
+              ) : (
+                <>
+                  <RefreshCw className={cn('h-8 w-8 animate-spin', accentTextClass)} />
+                  <span className="text-text-primary">Carregando dados...</span>
+                </>
+              )}
+            </div>
+          </div>
+        )}
+        
+        <div
+          ref={fullscreenRef}
+          className={cn(
+            isFullscreen ? cn('max-h-screen overflow-y-auto', fullscreenShellClass) : 'bg-transparent',
+            'transition-all duration-300'
+          )}
+        >
+          <div id="chapas-pdf-content" className={cn('w-full space-y-4', isFullscreen ? 'py-1' : 'py-2')}>
+            {/* Controles */}
+            <div data-chapas-pdf-toolbar className="flex items-center justify-between mb-4">
+              <div />
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={handleGerarPdf}
+                  disabled={exportandoPdf || !dadosCarregados}
+                  title="Baixar relatorio em PDF (texto nativo, um partido por pagina)"
+                  className={controlButtonClass}
+                >
+                  {exportandoPdf ? (
+                    <>
+                      <RefreshCw className="h-4 w-4 animate-spin" />
+                      Gerando PDF...
+                    </>
+                  ) : (
+                    <>
+                      <Printer className="h-4 w-4" />
+                      Gerar PDF
+                    </>
+                  )}
+                </button>
+                {embedded && onTrocarEscopo ? (
+                  <button
+                    type="button"
+                    onClick={onTrocarEscopo}
+                    title={isChapasEstaduais ? 'Ir para Chapas Federais' : 'Ir para Chapas Estaduais'}
+                    className={cn(controlButtonClass, 'disabled:opacity-100')}
+                  >
+                    <ArrowRightLeft className="h-4 w-4" />
+                    {isChapasEstaduais ? 'Federais' : 'Estaduais'}
+                  </button>
+                ) : (
+                  <Link
+                    href={isChapasEstaduais ? '/dashboard/chapas' : '/dashboard/chapas-estaduais'}
+                    title={isChapasEstaduais ? 'Ir para Chapas Federais' : 'Ir para Chapas Estaduais'}
+                    className={cn(controlButtonClass, 'disabled:opacity-100')}
+                  >
+                    <ArrowRightLeft className="h-4 w-4" />
+                    {isChapasEstaduais ? 'Federais' : 'Estaduais'}
+                  </Link>
+                )}
+                <button
+                  type="button"
+                  onClick={toggleFullscreen}
+                  title={isFullscreen ? 'Sair de tela cheia' : 'Tela cheia'}
+                  className={cn('rounded-lg p-2 text-text-secondary transition-colors hover:bg-background', accentHoverTextClass)}
+                >
+                  {isFullscreen ? (
+                    <Minimize2 className="h-5 w-5" />
+                  ) : (
+                    <Maximize2 className="h-5 w-5" />
+                  )}
+                </button>
+                <button
+                  type="button"
+                  onClick={salvarMudancasCenario}
+                  disabled={salvandoMudancas}
+                  className={sidebarPrimaryCTAButtonClass(isCockpit)}
+                >
+                  {salvandoMudancas ? (
+                    <>
+                      <RefreshCw
+                        className={cn('h-4 w-4 shrink-0 animate-spin', isCockpit ? 'text-white' : accentTextClass)}
+                        aria-hidden
+                      />
+                      Salvando...
+                    </>
+                  ) : (
+                    <>
+                      <Check
+                        className={cn('h-4 w-4 shrink-0', isCockpit ? 'text-white' : accentTextClass)}
+                        aria-hidden
+                      />
+                      Salvar Mudanças
+                    </>
+                  )}
+                </button>
+            </div>
+          </div>
+
+          {/* Gerenciador de Cenários — no PDF vira só o nome do cenário */}
+          <div
+            data-chapas-cenarios-wrap
+            data-cenario-ativo={cenarioAtivo?.nome ?? '—'}
+            className={sectionShellClass}
+          >
+            <CenariosTabs
+              service={service}
+              partidosAtuais={converterPartidosParaCenario()}
+              quocienteAtual={quociente}
+              cenariosIniciais={cenariosCarregados ? cenariosLista : undefined}
+              cenarioAtivoId={cenarioAtivo?.id}
+              carregandoExterno={!cenariosCarregados}
+              onCenarioChange={(cenario) => {
+                setCenarioAtivo(cenario)
+                const partidosOrdenados = ordenarPartidos(cenario.partidos)
+                setPartidos(partidosOrdenados)
+                setOrdemPartidosManual(construirMapaOrdem(cenario.partidos))
+                setQuociente(cenario.quocienteEleitoral)
+                const votosLegendaTemp: { [partido: string]: number } = {}
+                cenario.partidos.forEach(partido => {
+                  if (partido.votosLegenda) {
+                    votosLegendaTemp[partido.nome] = partido.votosLegenda
+                  }
+                })
+                setVotosLegenda(votosLegendaTemp)
+              }}
+              onCenarioBaseCreated={() => {
+                carregarDadosSupabase()
+              }}
+              onCenarioDeleted={() => {
+                carregarDadosSupabase()
+              }}
+              onCenarioClick={async (cenarioId) => {
+                if (carregandoCenario) return
+                setCarregandoCenario(true)
+                try {
+                  const novoCenario = await service.carregarCenario(cenarioId)
+                  if (novoCenario) {
+                    setCenarioAtivo(novoCenario)
+                    const partidosOrdenados = ordenarPartidos(novoCenario.partidos)
+                    setPartidos(partidosOrdenados)
+                    setOrdemPartidosManual(construirMapaOrdem(novoCenario.partidos))
+                    setQuociente(novoCenario.quocienteEleitoral)
+                    const votosLegendaTemp: { [partido: string]: number } = {}
+                    novoCenario.partidos.forEach(partido => {
+                      if (partido.votosLegenda) {
+                        votosLegendaTemp[partido.nome] = partido.votosLegenda
+                      }
+                    })
+                    setVotosLegenda(votosLegendaTemp)
+                    mostrarNotificacaoAutoSave(`Cenário "${novoCenario.nome}" carregado com sucesso`)
+                  }
+                } catch (error) {
+                  alert('Erro ao carregar cenário. Tente novamente.')
+                } finally {
+                  setCarregandoCenario(false)
+                }
+              }}
+              onSalvarMudancas={salvarMudancasCenario}
+              salvandoMudancas={salvandoMudancas}
+            />
+          </div>
+
+          {/* Resumo do Quociente */}
+          <div className={innerPanelClass}>
+            <div className="flex flex-wrap items-center gap-4 text-xs justify-between">
+              <div className="flex flex-wrap items-center gap-4">
+                <div className="flex items-center gap-2">
+                  <span className="font-semibold text-text-primary">Vagas:</span>
+                  <input
+                    type="number"
+                    value={numVagas}
+                    onChange={(e) => setNumVagas(Math.max(1, parseInt(e.target.value) || 10))}
+                    className={cn(
+                      'text-sm font-bold text-text-primary bg-transparent border-b border-card outline-none w-20 text-center px-1',
+                      accentBorderFocusClass
+                    )}
+                    min="1"
+                    max="20"
+                  />
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <span className="font-semibold text-text-primary">QE 2026:</span>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    pattern="[0-9.]*"
+                    value={quociente.toLocaleString('pt-BR')}
+                    onChange={e => {
+                      const raw = e.target.value.replace(/\./g, '')
+                      const num = Number(raw)
+                      if (!isNaN(num) && num >= 0) {
+                        setQuociente(num)
+                      }
+                    }}
+                    onBlur={() => {
+                      // Quociente salvo via botão "Salvar Mudanças"
+                    }}
+                    className={cn(
+                      'text-sm font-bold text-text-primary bg-transparent border-b border-card outline-none w-32 text-center px-1',
+                      accentBorderFocusClass
+                    )}
+                  />
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <span className="font-semibold text-text-primary">Mínimo:</span>
+                  <span className="text-sm font-bold text-text-primary">{getQuocienteMinimo().toLocaleString('pt-BR')}</span>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <span className="font-semibold text-text-primary">Elegíveis:</span>
+                  <span className="text-sm font-bold text-text-primary">
+                    {partidos.filter(p => partidoAtingiuMinimo(p.nome) && !partidosOcultos[p.nome]).length}/{partidos.filter(p => !partidosOcultos[p.nome]).length}
+                  </span>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <span className="font-semibold text-text-primary">Total de Votos:</span>
+                  <span className="text-sm font-bold text-text-primary">
+                    {partidos
+                      .filter(p => !partidosOcultos[p.nome])
+                      .reduce((total, partido) => total + getVotosProjetados(partido.candidatos, partido.nome), 0)
+                      .toLocaleString('pt-BR')}
+                  </span>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={mostrarTodosPartidos}
+                  disabled={partidosOcultosLista.length === 0}
+                  className="flex items-center gap-2 whitespace-nowrap rounded-lg border border-card bg-surface px-3 py-2 text-sm text-text-primary hover:bg-background disabled:cursor-not-allowed disabled:opacity-50"
+                  title={partidosOcultosLista.length > 0 ? 'Reexibir todos os partidos ocultos' : 'Não há partidos ocultos'}
+                >
+                  <Eye className="h-4 w-4" />
+                  Mostrar todos {partidosOcultosLista.length > 0 ? `(${partidosOcultosLista.length})` : ''}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setDialogNovoPartidoAberto(true)}
+                  className={cn(sidebarPrimaryCTAButtonClass(isCockpit), 'whitespace-nowrap')}
+                >
+                  <Plus className={cn('h-4 w-4 shrink-0', isCockpit ? 'text-white' : accentTextClass)} aria-hidden />
+                  Adicionar Partido
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {partidosOcultosLista.length > 0 && (
+            <div className={cn(innerPanelClass, 'mb-4', accentSoftBgClass)}>
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-xs font-semibold text-text-primary">
+                  Partidos ocultos ({partidosOcultosLista.length}):
+                </span>
+                {partidosOcultosLista.map((partidoNome) => (
+                  <button
+                    key={partidoNome}
+                    type="button"
+                    onClick={() => togglePartidoVisibilidade(partidoNome)}
+                    className="inline-flex items-center gap-1 rounded-full border border-card bg-surface px-2 py-1 text-xs text-text-primary hover:bg-background"
+                    title={`Mostrar ${partidoNome}`}
+                  >
+                    <Eye className="h-3 w-3" />
+                    {partidoNome}
+                  </button>
+                ))}
+                <button
+                  type="button"
+                  onClick={mostrarTodosPartidos}
+                  className={cn(
+                    'inline-flex items-center gap-1 rounded-full border px-2 py-1 text-xs font-semibold text-text-primary',
+                    accentSoftActionClass
+                  )}
+                >
+                  Mostrar todos
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Grid de partidos */}
+          <div
+            data-chapas-partidos-grid
+            className={`w-full grid gap-4 ${
+              modoImpressao
+                ? 'grid-cols-1'
+                : isChapasEstaduais
+                  ? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5'
+                  : 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5'
+            }`}
+          >
+            {ordenarPartidos(partidos)
+              .filter(partido => !partidosOcultos[partido.nome])
+              .map((partido) => {
+                const partidoIdx = partidos.findIndex(p => p.nome === partido.nome)
+                const posicaoAtualNaOrdem = ordenarPartidos(partidos).findIndex((p) => p.nome === partido.nome)
+                
+                const atingiuMinimo = partidoAtingiuMinimo(partido.nome)
+                const quocienteMinimo = getQuocienteMinimo()
+                const votosProjetados = getVotosProjetados(partido.candidatos, partido.nome)
+                const feedbackVagasChip = feedbackSegundaVagaPorPartido[partido.nome]
+
+                return (
+                  <div
+                    key={partido.nome}
+                    data-chapas-partido-card
+                    className={cn(
+                      innerPanelClass,
+                      `w-full flex flex-col ${modoImpressao ? 'h-auto items-stretch' : 'h-full items-center'} ${
+                        atingiuMinimo ? 'border-border-card' : 'border-status-error/50 bg-status-error/5'
+                      }`
+                    )}
+                  >
+                    {modoImpressao ? (
+                      <div
+                        data-chapas-partido-titulo-pdf
+                        className={`w-full py-2.5 px-3 font-bold text-base mb-3 rounded text-center break-words whitespace-normal ${
+                          atingiuMinimo
+                            ? 'bg-bg-surface text-text-primary'
+                            : 'bg-status-error/10 text-status-error'
+                        }`}
+                      >
+                        {partido.nome}
+                      </div>
+                    ) : (
+                    <div className={`w-full py-2 px-3 font-bold text-sm mb-3 rounded text-center ${
+                      atingiuMinimo 
+                        ? 'bg-bg-surface text-text-primary' 
+                        : 'bg-status-error/10 text-status-error'
+                    }`}>
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-1">
+                          <button
+                            type="button"
+                            onClick={() => handleMoverPartido(partido.nome, 'esquerda')}
+                            className="text-text-secondary hover:text-text-primary transition-colors p-1 disabled:opacity-40 disabled:cursor-not-allowed"
+                            title="Mover partido para a esquerda"
+                            disabled={posicaoAtualNaOrdem <= 0}
+                          >
+                            <ChevronLeft className="h-3.5 w-3.5" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleMoverPartido(partido.nome, 'direita')}
+                            className="text-text-secondary hover:text-text-primary transition-colors p-1 disabled:opacity-40 disabled:cursor-not-allowed"
+                            title="Mover partido para a direita"
+                            disabled={posicaoAtualNaOrdem >= partidos.length - 1}
+                          >
+                            <ChevronRight className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
+                        <span className="px-2 truncate">{partido.nome}</span>
+                        <div className="flex items-center gap-1">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (confirm(`Tem certeza que deseja excluir o partido ${partido.nome} e todos os seus candidatos?`)) {
+                                handleExcluirPartido(partido.nome)
+                              }
+                            }}
+                            className="text-status-error hover:text-status-error/80 transition-colors p-1"
+                            title="Remover partido"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleAbrirEditarPartido(partido.nome)}
+                            className="text-text-secondary hover:text-text-primary transition-colors p-1"
+                            title="Editar nome do partido"
+                          >
+                            <PenSquare className="h-3.5 w-3.5" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => togglePartidoVisibilidade(partido.nome)}
+                            className="text-text-secondary hover:text-text-primary transition-colors p-1"
+                            title={partidosOcultos[partido.nome] ? 'Mostrar partido' : 'Ocultar partido'}
+                          >
+                            {partidosOcultos[partido.nome] ? (
+                              <EyeOff className="h-3.5 w-3.5" />
+                            ) : (
+                              <Eye className="h-3.5 w-3.5" />
+                            )}
+                          </button>
+                          {nomePartidoEhRepublicanos(partido.nome) && (
+                            <button
+                              type="button"
+                              onClick={() => setOpenAnaliseRepublicanos(true)}
+                              className={cn('text-text-primary transition-colors p-1', accentHoverTextClass)}
+                            >
+                              <Info className="h-3.5 w-3.5" />
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                    )}
+                    
+                    {!atingiuMinimo && (
+                      <div className="w-full mb-2 p-2 bg-status-error/10 border border-status-error/30 rounded text-xs text-status-error text-center">
+                        <div className="font-semibold">⚠️ Não atingiu mínimo</div>
+                        <div className="text-[10px] mt-1">{votosProjetados.toLocaleString('pt-BR')} / {quocienteMinimo.toLocaleString('pt-BR')}</div>
+                      </div>
+                    )}
+                    
+                    <div
+                      data-chapas-partido-body
+                      className={`w-full flex flex-col ${modoImpressao ? 'overflow-visible' : 'flex-1 overflow-y-auto'}`}
+                    >
+                      <div className="space-y-0.5">
+                        <table className="w-full text-xs">
+                          <tbody>
+                            {(() => {
+                              const homens = partido.candidatos
+                                .map((candidato, originalIdx) => ({ candidato, originalIdx }))
+                                .filter(({ candidato }) => candidato.nome !== 'VOTOS LEGENDA' && candidato.genero !== 'mulher')
+                                .sort((a, b) => b.candidato.votos - a.candidato.votos)
+                              return homens.map(({ candidato: c, originalIdx: candidatoIdx }, idx) => {
+                                return (
+                                <tr 
+                                  key={`homem-${c.nome}-${idx}`}
+                                  className="group relative hover:bg-bg-app transition-colors"
+                                  onMouseEnter={() => setHoveredRow({ partidoIdx: partidoIdx, candidatoIdx })}
+                                  onMouseLeave={() => {
+                                    if (!(editingName?.partidoIdx === partidoIdx && editingName?.candidatoIdx === candidatoIdx)) {
+                                      setHoveredRow(null)
+                                    }
+                                  }}
+                                >
+                                  <td className="pr-1 text-left font-normal align-top">
+                                    <div className="flex items-center gap-1">
+                                      <span className="text-xs text-text-secondary">{idx + 1}.</span>
+                                      {modoImpressao ? (
+                                        <span className="text-xs font-medium text-text-primary">{c.nome}</span>
+                                      ) : (
+                                        <input
+                                          type="text"
+                                          value={editingName?.partidoIdx === partidoIdx && editingName?.candidatoIdx === candidatoIdx 
+                                            ? editingName.tempValue 
+                                            : c.nome}
+                                          onFocus={() => startEditingName(partidoIdx, candidatoIdx)}
+                                          onChange={e => {
+                                            if (editingName?.partidoIdx === partidoIdx && editingName?.candidatoIdx === candidatoIdx) {
+                                              setEditingName({ ...editingName, tempValue: e.target.value })
+                                            }
+                                          }}
+                                          onBlur={() => saveNameChange(partidoIdx, candidatoIdx)}
+                                          onKeyDown={e => {
+                                            if (e.key === 'Enter') {
+                                              e.currentTarget.blur()
+                                            } else if (e.key === 'Escape') {
+                                              setEditingName(null)
+                                              e.currentTarget.blur()
+                                            }
+                                          }}
+                                          className={cn(
+                                            'bg-transparent border-b border-border-card outline-none w-32 text-xs py-0.5 px-1 text-text-primary',
+                                            accentBorderFocusClass
+                                          )}
+                                        />
+                                      )}
+                                    </div>
+                                  </td>
+                                  <td className="text-right whitespace-nowrap font-normal align-top">
+                                    {modoImpressao ? (
+                                      <span className="text-xs font-medium">
+                                        {Number(c.votos).toLocaleString('pt-BR')}
+                                      </span>
+                                    ) : (
+                                      editVoto && editVoto.partidoIdx === partidoIdx && editVoto.candidatoIdx === candidatoIdx ? (
+                                        <input
+                                          type="number"
+                                          min={0}
+                                          value={c.votos}
+                                          autoFocus
+                                          onChange={e => {
+                                            const value = e.target.value
+                                            updateLocalState(partidoIdx, candidatoIdx, 'votos', value)
+                                          }}
+                                          onBlur={() => {
+                                            saveVotosChange(partidoIdx, candidatoIdx, c.votos)
+                                            setEditVoto(null)
+                                          }}
+                                          onKeyDown={e => {
+                                            if (e.key === 'Enter') {
+                                              saveVotosChange(partidoIdx, candidatoIdx, c.votos)
+                                              setEditVoto(null)
+                                            }
+                                          }}
+                                          className={cn(
+                                            'bg-transparent border-b border-card outline-none w-full text-xs py-0.5 px-1 text-right',
+                                            accentBorderFocusClass
+                                          )}
+                                          style={{ textAlign: 'right' }}
+                                        />
+                                      ) : (
+                                        <span
+                                          className="cursor-pointer select-text"
+                                          onClick={() => setEditVoto({ partidoIdx: partidoIdx, candidatoIdx })}
+                                        >
+                                          {Number(c.votos).toLocaleString('pt-BR')}
+                                        </span>
+                                      )
+                                    )}
+                                  </td>
+                                  <td className="pl-2 text-right whitespace-nowrap font-normal align-top w-8">
+                                    {(hoveredRow?.partidoIdx === partidoIdx && hoveredRow?.candidatoIdx === candidatoIdx) || 
+                                     (editingName?.partidoIdx === partidoIdx && editingName?.candidatoIdx === candidatoIdx) ? (
+                                      <button
+                                        onClick={() => {
+                                          if (confirm(`Tem certeza que deseja excluir o candidato ${c.nome}?`)) {
+                                            handleExcluirCandidato(partidoIdx, candidatoIdx)
+                                          }
+                                        }}
+                                        className="rounded p-1 text-status-error hover:bg-status-error/10 hover:text-status-danger"
+                                      >
+                                        <Trash2 className="h-4 w-4" />
+                                      </button>
+                                    ) : null}
+                                  </td>
+                                </tr>
+                              )})
+                            })()}
+                          </tbody>
+                        </table>
+
+                        <div className="border-t border-border-card my-1"></div>
+
+                        <table className="w-full text-xs">
+                          <tbody>
+                            {(() => {
+                              const mulheres = partido.candidatos
+                                .map((candidato, originalIdx) => ({ candidato, originalIdx }))
+                                .filter(({ candidato }) => candidato.nome !== 'VOTOS LEGENDA' && candidato.genero === 'mulher')
+                                .sort((a, b) => b.candidato.votos - a.candidato.votos)
+                              return mulheres.map(({ candidato: c, originalIdx: candidatoIdx }, idx) => {
+                                return (
+                                <tr 
+                                  key={`mulher-${c.nome}-${idx}`}
+                                  className="group relative hover:bg-bg-app transition-colors"
+                                  onMouseEnter={() => setHoveredRow({ partidoIdx: partidoIdx, candidatoIdx })}
+                                  onMouseLeave={() => {
+                                    if (!(editingName?.partidoIdx === partidoIdx && editingName?.candidatoIdx === candidatoIdx)) {
+                                      setHoveredRow(null)
+                                    }
+                                  }}
+                                >
+                                  <td className="pr-1 text-left font-normal align-top">
+                                    <div className="flex items-center gap-1">
+                                      <span className="text-xs text-text-secondary">{idx + 1}.</span>
+                                      {modoImpressao ? (
+                                        <span className="text-xs font-medium text-text-primary">{c.nome}</span>
+                                      ) : (
+                                        <input
+                                          type="text"
+                                          value={editingName?.partidoIdx === partidoIdx && editingName?.candidatoIdx === candidatoIdx 
+                                            ? editingName.tempValue 
+                                            : c.nome}
+                                          onFocus={() => startEditingName(partidoIdx, candidatoIdx)}
+                                          onChange={e => {
+                                            if (editingName?.partidoIdx === partidoIdx && editingName?.candidatoIdx === candidatoIdx) {
+                                              setEditingName({ ...editingName, tempValue: e.target.value })
+                                            }
+                                          }}
+                                          onBlur={() => saveNameChange(partidoIdx, candidatoIdx)}
+                                          onKeyDown={e => {
+                                            if (e.key === 'Enter') {
+                                              e.currentTarget.blur()
+                                            } else if (e.key === 'Escape') {
+                                              setEditingName(null)
+                                              e.currentTarget.blur()
+                                            }
+                                          }}
+                                          className={cn(
+                                            'bg-transparent border-b border-border-card outline-none w-32 text-xs py-0.5 px-1 text-text-primary',
+                                            accentBorderFocusClass
+                                          )}
+                                        />
+                                      )}
+                                    </div>
+                                  </td>
+                                  <td className="pl-1 text-right whitespace-nowrap font-normal align-top">
+                                    {modoImpressao ? (
+                                      <span className={cn('text-xs font-semibold', accentTextClass)}>
+                                        {Number(c.votos).toLocaleString('pt-BR')}
+                                      </span>
+                                    ) : (
+                                      editVoto && editVoto.partidoIdx === partidoIdx && editVoto.candidatoIdx === candidatoIdx ? (
+                                        <input
+                                          type="number"
+                                          min={0}
+                                          value={c.votos}
+                                          autoFocus
+                                          onChange={e => {
+                                            const value = e.target.value
+                                            updateLocalState(partidoIdx, candidatoIdx, 'votos', value)
+                                          }}
+                                          onBlur={() => {
+                                            saveVotosChange(partidoIdx, candidatoIdx, c.votos)
+                                            setEditVoto(null)
+                                          }}
+                                          onKeyDown={e => {
+                                            if (e.key === 'Enter') {
+                                              saveVotosChange(partidoIdx, candidatoIdx, c.votos)
+                                              setEditVoto(null)
+                                            }
+                                          }}
+                                          className={cn(
+                                            'bg-transparent border-b border-border-card outline-none text-xs py-0.5 px-1 text-right text-text-primary',
+                                            accentBorderFocusClass
+                                          )}
+                                          style={{ textAlign: 'right' }}
+                                        />
+                                      ) : (
+                                        <span
+                                          className={cn('cursor-pointer select-text font-semibold', accentTextClass)}
+                                          onClick={() => setEditVoto({ partidoIdx: partidoIdx, candidatoIdx })}
+                                        >
+                                          {Number(c.votos).toLocaleString('pt-BR')}
+                                        </span>
+                                      )
+                                    )}
+                                  </td>
+                                  <td className="pl-1 text-right font-normal align-top w-6">
+                                    {(hoveredRow?.partidoIdx === partidoIdx && hoveredRow?.candidatoIdx === candidatoIdx) || 
+                                     (editingName?.partidoIdx === partidoIdx && editingName?.candidatoIdx === candidatoIdx) ? (
+                                      <button
+                                        onClick={() => {
+                                          if (confirm(`Tem certeza que deseja excluir o candidato ${c.nome}?`)) {
+                                            handleExcluirCandidato(partidoIdx, candidatoIdx)
+                                          }
+                                        }}
+                                        className="text-status-error hover:text-status-error/80 hover:bg-status-error/10 p-0.5 rounded"
+                                      >
+                                        <Trash2 className="h-3.5 w-3.5" />
+                                      </button>
+                                    ) : null}
+                                  </td>
+                                </tr>
+                              )})
+                            })()}
+                          </tbody>
+                        </table>
+                      </div>
+
+                      {/* Input de Votos de Legenda */}
+                      <div className="mt-3 pt-2 border-t border-card">
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="text-xs font-semibold text-text-primary">VOTOS LEGENDA:</span>
+                          {modoImpressao ? (
+                            <span className="text-xs font-semibold text-text-primary">
+                              {(votosLegenda[partido.nome] || 0).toLocaleString('pt-BR')}
+                            </span>
+                          ) : (
+                            <input
+                              type="text"
+                              inputMode="numeric"
+                              pattern="[0-9.]*"
+                              value={votosLegendaTemp[partido.nome] 
+                                ? votosLegendaTemp[partido.nome] 
+                                : (votosLegenda[partido.nome] || 0).toLocaleString('pt-BR')}
+                              onChange={e => {
+                                const raw = e.target.value.replace(/\./g, '')
+                                const num = Number(raw)
+                                if (!isNaN(num) && num >= 0) {
+                                  setVotosLegendaTemp(prev => ({ ...prev, [partido.nome]: raw || '0' }))
+                                } else if (raw === '') {
+                                  setVotosLegendaTemp(prev => ({ ...prev, [partido.nome]: '0' }))
+                                }
+                              }}
+                              onBlur={() => {
+                                const raw = votosLegendaTemp[partido.nome]
+                                if (raw) {
+                                  const num = Number(raw.replace(/\./g, ''))
+                                  if (!isNaN(num) && num >= 0) {
+                                    setVotosLegenda(prev => ({ ...prev, [partido.nome]: num }))
+                                    // Limpar temp removendo a chave
+                                    setVotosLegendaTemp(prev => {
+                                      const novo = { ...prev }
+                                      delete novo[partido.nome]
+                                      return novo
+                                    })
+                                    // Votos legenda salvos via botão "Salvar Mudanças"
+                                  }
+                                }
+                              }}
+                              onKeyDown={e => {
+                                if (e.key === 'Enter') {
+                                  e.currentTarget.blur()
+                                }
+                              }}
+                              className={cn(
+                                'text-xs font-medium text-text-primary bg-transparent border-b border-card outline-none w-24 text-right px-1',
+                                accentBorderFocusClass
+                              )}
+                            />
+                          )}
+                        </div>
+                      </div>
+
+                      {!modoImpressao ? (
+                        <button
+                          onClick={() => setDialogAberto(partidoIdx)}
+                          className={cn(
+                            'mt-2 px-3 py-1 text-xs rounded flex items-center gap-1 justify-center self-center',
+                            isFederalCockpit
+                              ? 'bg-[#0ea5b7]/18 text-[#0ea5b7] hover:bg-[#0ea5b7]/28'
+                              : 'bg-accent-gold-soft text-accent-gold hover:bg-accent-gold-soft/80'
+                          )}
+                        >
+                          <Plus className="h-3 w-3" />
+                          Adicionar Candidato
+                        </button>
+                      ) : null}
+                    </div>
+
+                    <div
+                      data-chapas-partido-rodape
+                      className={cn('w-full pt-2', modoImpressao ? 'mt-0 border-t border-card' : 'mt-auto')}
+                    >
+                      <div className="font-bold text-xs mb-0.5 text-center">VOTOS PROJETADOS</div>
+                      <div className="text-base font-extrabold mb-1 text-center">{getVotosProjetados(partido.candidatos, partido.nome).toLocaleString('pt-BR')}</div>
+                      <div className="font-bold text-xs mb-0.5 text-center">PROJEÇÃO ELEITOS</div>
+                      <div className="text-base font-extrabold mb-1 text-center">{getProjecaoEleitos(getVotosProjetados(partido.candidatos, partido.nome))}</div>
+
+                      {modoImpressao ? (
+                        feedbackVagasChip ? (
+                          <div
+                            data-chapas-feedback-print
+                            className="mb-2 w-full max-w-none box-border overflow-visible rounded-md border border-card bg-background px-3 py-2.5 text-left"
+                          >
+                            <p
+                              className={cn(
+                                'm-0 text-sm font-semibold leading-snug break-words',
+                                feedbackVagasChip.tone === 'positive' && 'text-status-success',
+                                feedbackVagasChip.tone === 'negative' && 'text-status-error',
+                                feedbackVagasChip.tone === 'neutral' && 'text-text-primary'
+                              )}
+                            >
+                              {feedbackVagasChip.text}
+                            </p>
+                            {feedbackVagasChip.segundaLinha ? (
+                              <p className="m-0 mt-2 break-words text-xs font-semibold leading-relaxed text-status-error">
+                                {feedbackVagasChip.segundaLinha}
+                              </p>
+                            ) : null}
+                            {feedbackVagasChip.notaImpacto ? (
+                              <div className="mt-2 space-y-1.5 overflow-visible border-t border-card pt-2">
+                                {feedbackVagasChip.notaImpacto.split('\n').map((linha, idxLinha) => (
+                                  <p
+                                    key={idxLinha}
+                                    className="m-0 text-[11px] leading-relaxed text-text-primary break-words"
+                                  >
+                                    {linha}
+                                  </p>
+                                ))}
+                              </div>
+                            ) : null}
+                          </div>
+                        ) : null
+                      ) : (
+                        <div className="mb-1 flex min-h-[10rem] w-full items-start justify-center px-0.5">
+                          {feedbackVagasChip ? (
+                            <span
+                              className={cn(
+                                'inline-flex max-w-full flex-col items-center justify-center gap-1 rounded-lg border px-2 py-1 text-center text-[11px] font-medium leading-tight tracking-tight',
+                                feedbackVagasChip.tone === 'positive' &&
+                                  'border-status-success/35 bg-status-success/10 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]',
+                                feedbackVagasChip.tone === 'negative' &&
+                                  'border-status-error/35 bg-status-error/10 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]',
+                                feedbackVagasChip.tone === 'neutral' && 'border-card bg-surface/95'
+                              )}
+                              title={
+                                [
+                                  feedbackVagasChip.text,
+                                  feedbackVagasChip.segundaLinha,
+                                  feedbackVagasChip.notaImpacto,
+                                ]
+                                  .filter(Boolean)
+                                  .join('\n')
+                              }
+                            >
+                              <span
+                                className={cn(
+                                  feedbackVagasChip.tone === 'positive' && 'text-status-success',
+                                  feedbackVagasChip.tone === 'negative' && 'text-status-error',
+                                  feedbackVagasChip.tone === 'neutral' && 'text-text-secondary'
+                                )}
+                              >
+                                {feedbackVagasChip.text}
+                              </span>
+                              {feedbackVagasChip.segundaLinha ? (
+                                <span className="text-[10px] font-semibold leading-tight text-status-error">
+                                  {feedbackVagasChip.segundaLinha}
+                                </span>
+                              ) : null}
+                              {feedbackVagasChip.notaImpacto ? (
+                                <span className="w-full max-w-full text-left text-[9px] font-normal leading-snug text-secondary whitespace-pre-line">
+                                  {feedbackVagasChip.notaImpacto}
+                                </span>
+                              ) : null}
+                            </span>
+                          ) : null}
+                        </div>
+                      )}
+                      <div className="text-[10px] text-muted mb-1 text-center">{getVotosProjetados(partido.candidatos, partido.nome).toLocaleString('pt-BR')} / {quociente.toLocaleString('pt-BR')} = {getProjecaoEleitos(getVotosProjetados(partido.candidatos, partido.nome))}</div>
+                    </div>
+                  </div>
+                )
+              })}
+          </div>
+
+          {/* Seção de detalhes das sobras - Método D'Hondt (largura alinhada ao grid de partidos acima) */}
+          <div className={cn(sectionShellClass, 'mt-4 w-full min-w-0')}>
+            <div className="text-base font-semibold mb-3 text-text-primary">
+              📊 Cálculo de Sobras - Método D'Hondt (Legislação Brasileira)
+            </div>
+            <div className="text-sm text-text-primary mb-3">
+              <strong>Fórmula:</strong> Quociente Partidário = Votos ÷ (Vagas Obtidas + 1)
+            </div>
+            
+            <div data-chapas-sobras-grid className="grid grid-cols-5 gap-4">
+              {(() => {
+                const { ordenadosPorSobras } = calcularSobras()
+                
+                return ordenadosPorSobras.map((resultado, index) => (
+                  <div key={resultado.partido} className={innerPanelClass}>
+                    <div className="font-semibold text-sm mb-2 text-text-primary">
+                      {resultado.partido}
+                    </div>
+                    
+                    <div className="space-y-1 text-xs">
+                      <div className="flex justify-between">
+                        <span>Votos Totais:</span>
+                        <span className="font-medium">{resultado.votosTotal.toLocaleString('pt-BR')}</span>
+                      </div>
+                      
+                      <div className="flex justify-between">
+                        <span>Vagas Diretas:</span>
+                        <span className="font-medium">{resultado.vagasDiretas}</span>
+                      </div>
+                      
+                      <div className="flex justify-between">
+                        <span>Projeção:</span>
+                        <span className="font-medium">{resultado.projecaoEleitos}</span>
+                      </div>
+                      
+                      <div className="border-t pt-1 mt-2">
+                        <div className="flex justify-between">
+                          <span>Quociente Partidário:</span>
+                          <span className="font-bold text-text-primary">
+                            {resultado.quocientePartidario.toLocaleString('pt-BR', { 
+                              minimumFractionDigits: 2, 
+                              maximumFractionDigits: 2 
+                            })}
+                          </span>
+                        </div>
+                        
+                        <div className="text-xs text-muted mt-1 whitespace-nowrap">
+                          {resultado.votosTotal.toLocaleString('pt-BR')} ÷ ({resultado.vagasDiretas} + 1) = {resultado.quocientePartidario.toLocaleString('pt-BR', { 
+                            minimumFractionDigits: 2, 
+                            maximumFractionDigits: 2 
+                          })}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))
+              })()}
+            </div>
+            
+            {/* Seção de distribuição completa das vagas */}
+            <div className={cn(sectionShellClass, 'mt-4')}>
+              <div className="text-base font-semibold mb-3 text-text-primary">
+                🎯 Distribuição Completa das {numVagas} Vagas - Método D'Hondt
+              </div>
+              
+              {(() => {
+                const simulacao = simularDistribuicaoCompleta()
+                
+                return (
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className={innerPanelClass}>
+                        <div className="mb-2 text-sm font-semibold text-text-primary">📊 Resumo das Vagas</div>
+                        <div className="text-xs space-y-1">
+                          <div className="flex justify-between">
+                            <span>Vagas Diretas:</span>
+                            <span className="font-medium">{simulacao.vagasDistribuidas}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span>Vagas por Sobras:</span>
+                            <span className="font-medium">{simulacao.vagasRestantes}</span>
+                          </div>
+                          <div className="flex justify-between font-bold">
+                            <span>Total de Vagas:</span>
+                            <span>{simulacao.totalVagas}</span>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      <div className={innerPanelClass}>
+                        <div className="mb-2 text-sm font-semibold text-text-primary">🏆 Vagas por Partido</div>
+                        <div className="text-xs space-y-1">
+                          {simulacao.partidosComVagas.map(partido => (
+                            <div key={partido.partido} className="flex justify-between">
+                              <span>{partido.partido}:</span>
+                              <span className="font-medium">{partido.vagasObtidas} vaga{partido.vagasObtidas !== 1 ? 's' : ''}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Histórico das sobras */}
+                    <div className={innerPanelClass}>
+                      <div className="mb-2 text-sm font-semibold text-text-primary">📋 Histórico das Sobras - Método D'Hondt</div>
+                      <div className="text-xs space-y-3">
+                        {simulacao.historicoSobras.map((sobra, index) => {
+                          const quocientesRodada = simulacao.partidosComVagas
+                            .filter(p => p.vagasObtidas > 0 || index === 0)
+                            .map(p => {
+                              let vagasAntes: number
+                              if (index === 0) {
+                                vagasAntes = p.vagasDiretas
+                              } else {
+                                let vagasGanhasAteAgora = 0
+                                for (let j = 0; j < index; j++) {
+                                  if (simulacao.historicoSobras[j].partido === p.partido) {
+                                    vagasGanhasAteAgora++
+                                  }
+                                }
+                                vagasAntes = p.vagasDiretas + vagasGanhasAteAgora
+                              }
+                              
+                              return {
+                                partido: p.partido,
+                                votos: p.votosTotal,
+                                vagasAntes: vagasAntes,
+                                quocientePartidario: p.votosTotal / (vagasAntes + 1)
+                              }
+                            })
+                            .sort((a, b) => b.quocientePartidario - a.quocientePartidario)
+
+                          return (
+                            <div key={index} className={innerPanelClass}>
+                              <div className="flex items-center gap-3 mb-2 p-2 bg-surface rounded">
+                                <span className="font-bold text-text-primary">🎯 Rodada {sobra.rodada}</span>
+                                <span className="text-secondary">→</span>
+                                <span className="font-medium bg-background/70 px-2 py-1 rounded">{sobra.partido}</span>
+                                <span className="text-secondary">ganha a</span>
+                                <span className="font-bold text-text-primary bg-background/70 px-2 py-1 rounded">Vaga #{sobra.vaga}</span>
+                              </div>
+
+                              <div className="mb-2 p-2 bg-surface rounded">
+                                <div className="font-semibold text-text-primary mb-1">📊 Cálculo dos Quocientes Partidários:</div>
+                                <div className="space-y-1">
+                                  {quocientesRodada.map((q) => (
+                                    <div key={q.partido} className={`flex justify-between items-center p-1 rounded ${
+                                      q.partido === sobra.partido ? 'bg-background/70' : 'bg-background'
+                                    }`}>
+                                      <span className="font-medium">{q.partido}:</span>
+                                      <span className="text-xs text-secondary">
+                                        {q.votos.toLocaleString('pt-BR')} ÷ ({q.vagasAntes} + 1) = 
+                                      </span>
+                                      <span className="font-bold text-text-primary">
+                                        {q.quocientePartidario.toLocaleString('pt-BR', { 
+                                          minimumFractionDigits: 2, 
+                                          maximumFractionDigits: 2 
+                                        })}
+                                      </span>
+                                      {q.partido === sobra.partido && (
+                                        <span className="text-secondary font-bold ml-2">🏆 MAIOR</span>
+                                      )}
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+
+                              <div className="p-2 bg-background/70 rounded">
+                                <div className="font-semibold text-text-primary">
+                                  ✅ Resultado: {sobra.partido} ganha a Vaga #{sobra.vaga} com quociente partidário de{' '}
+                                  {sobra.quocientePartidario.toLocaleString('pt-BR', { 
+                                    minimumFractionDigits: 2, 
+                                    maximumFractionDigits: 2 
+                                  })}
+                                </div>
+                              </div>
+                            </div>
+                          )
+                        })}
+                      </div>
+                    </div>
+
+                    {/* Seção dos candidatos eleitos */}
+                    <div className={innerPanelClass}>
+                      <div className="mb-3 text-sm font-semibold text-text-primary">🏆 Candidatos Eleitos</div>
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+                        {(() => {
+                          try {
+                            const candidatosEleitos = calcularCandidatosEleitos()
+                            
+                            if (!candidatosEleitos || candidatosEleitos.length === 0) {
+                              return (
+                                <div className="col-span-full text-center text-muted py-4">
+                                  Nenhum candidato eleito encontrado
+                                </div>
+                              )
+                            }
+                            
+                            const candidatosPorPartido = candidatosEleitos.reduce((acc, candidato) => {
+                              if (candidato && candidato.partido) {
+                                if (!acc[candidato.partido]) {
+                                  acc[candidato.partido] = []
+                                }
+                                acc[candidato.partido].push(candidato)
+                              }
+                              return acc
+                            }, {} as { [partido: string]: typeof candidatosEleitos })
+
+                            const partidosOrdenados = ordenarPartidos(
+                              Object.keys(candidatosPorPartido).map(nomePartido => ({ 
+                                nome: nomePartido, 
+                                candidatos: candidatosPorPartido[nomePartido] || [] 
+                              }))
+                            ).filter(item => item.candidatos.length > 0)
+
+                            return partidosOrdenados.map(({ nome: partido, candidatos }) => (
+                              <div key={partido} className={innerPanelClass}>
+                                <div className={`font-semibold text-sm mb-2 text-center ${coresPartidosAtivos[partido as keyof typeof coresPartidosAtivos]?.cor || 'bg-border-card'} ${coresPartidosAtivos[partido as keyof typeof coresPartidosAtivos]?.corTexto || 'text-text-primary'}`}>{partido}</div>
+                                <div className="space-y-2">
+                                  {candidatos.map((candidato, index) => (
+                                    <div key={index} className="flex items-center justify-between p-2 bg-background rounded text-xs">
+                                      <div className="flex items-center gap-2">
+                                        <span className={cn('font-bold', accentTextClass)}>#{candidato.posicao}</span>
+                                        <span className="font-medium">{candidato.nome}</span>
+                                      </div>
+                                      <div className="text-right">
+                                        <div className="font-semibold">
+                                          {candidato.votos.toLocaleString('pt-BR')}
+                                        </div>
+                                        <div className={`text-xs ${candidato.tipoEleicao === 'direta' ? 'text-green-600' : 'text-orange-600'}`}>{candidato.tipoEleicao === 'direta' ? 'Direta' : 'Sobra'}</div>
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            ))
+                          } catch (error) {
+                            return (
+                              <div className="col-span-full py-4 text-center text-status-error">
+                                Erro ao carregar candidatos eleitos
+                              </div>
+                            )
+                          }
+                        })()}
+                      </div>
+                    </div>
+                  </div>
+                )
+              })()}
+            </div>
+          </div>
+        </div>
+        </div>
+
+        {/* Modal para adicionar novo candidato */}
+        {dialogAberto !== null && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-surface rounded-lg p-6 max-w-md w-full border border-card">
+              <div className="mb-4 flex items-center justify-between">
+                <h2 className="text-lg font-semibold text-text-primary">Adicionar Candidato</h2>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setDialogAberto(null)
+                    setNovoCandidato({ nome: '', votos: 0, genero: 'homem' })
+                  }}
+                  className="text-muted hover:text-text-primary"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+              <div className="space-y-4">
+                <div>
+                  <label className="mb-2 block text-sm font-medium text-text-primary">Nome do Candidato</label>
+                  <input
+                    type="text"
+                    placeholder="Nome do candidato"
+                    value={novoCandidato.nome}
+                    onChange={(e) => setNovoCandidato(prev => ({ ...prev, nome: e.target.value }))}
+                    disabled={salvandoCandidato}
+                    className={cn(
+                      'w-full rounded-lg border border-card bg-surface px-3 py-2 text-text-primary focus:outline-none focus:ring-2',
+                      accentRingFocusClass
+                    )}
+                  />
+                </div>
+                <div>
+                  <label className="mb-2 block text-sm font-medium text-text-primary">Votos</label>
+                  <input
+                    type="number"
+                    placeholder="0"
+                    min="0"
+                    value={novoCandidato.votos}
+                    onChange={(e) => setNovoCandidato(prev => ({ ...prev, votos: parseInt(e.target.value) || 0 }))}
+                    disabled={salvandoCandidato}
+                    className={cn(
+                      'w-full rounded-lg border border-card bg-surface px-3 py-2 text-text-primary focus:outline-none focus:ring-2',
+                      accentRingFocusClass
+                    )}
+                  />
+                </div>
+                <div>
+                  <label className="mb-2 block text-sm font-medium text-text-primary">Gênero</label>
+                  <div className="flex gap-4">
+                    <label className="flex items-center gap-2 text-sm text-text-primary">
+                      <input
+                        type="radio"
+                        name="genero"
+                        value="homem"
+                        checked={novoCandidato.genero === 'homem'}
+                        onChange={(e) => setNovoCandidato(prev => ({ ...prev, genero: e.target.value as 'homem' | 'mulher' }))}
+                        disabled={salvandoCandidato}
+                        className={cn('w-4 h-4', accentTextClass)}
+                      />
+                      <span>Homem</span>
+                    </label>
+                    <label className="flex items-center gap-2 text-sm text-text-primary">
+                      <input
+                        type="radio"
+                        name="genero"
+                        value="mulher"
+                        checked={novoCandidato.genero === 'mulher'}
+                        onChange={(e) => setNovoCandidato(prev => ({ ...prev, genero: e.target.value as 'homem' | 'mulher' }))}
+                        disabled={salvandoCandidato}
+                        className={cn('w-4 h-4', accentTextClass)}
+                      />
+                      <span>Mulher</span>
+                    </label>
+                  </div>
+                </div>
+                <div className="flex justify-end gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setDialogAberto(null)
+                      setNovoCandidato({ nome: '', votos: 0, genero: 'homem' })
+                    }}
+                    disabled={salvandoCandidato}
+                    className="rounded-lg border border-card bg-surface px-4 py-2 text-sm text-text-primary hover:bg-background disabled:opacity-50"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleAdicionarCandidato(dialogAberto)}
+                    disabled={salvandoCandidato || !novoCandidato.nome.trim()}
+                    className={sidebarPrimaryCTAButtonClass(isCockpit)}
+                  >
+                    {salvandoCandidato ? 'Salvando...' : 'Adicionar'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Modal para adicionar novo partido */}
+        {dialogNovoPartidoAberto && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="w-full max-w-md rounded-lg border border-card bg-surface p-6">
+              <div className="mb-4 flex items-center justify-between">
+                <h2 className="text-lg font-semibold text-text-primary">Adicionar Partido</h2>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setDialogNovoPartidoAberto(false)
+                    setNovoPartido({ nome: '', cor: 'bg-border-card', corTexto: 'text-text-primary' })
+                  }}
+                  className="text-muted hover:text-text-primary"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+              <div className="space-y-4">
+                <div>
+                  <label className="mb-2 block text-sm font-medium text-text-primary">Nome do Partido</label>
+                  <input
+                    type="text"
+                    placeholder="Nome do partido"
+                    value={novoPartido.nome}
+                    onChange={(e) => setNovoPartido(prev => ({ ...prev, nome: e.target.value }))}
+                    disabled={salvandoPartido}
+                    className={cn(
+                      'w-full rounded-lg border border-card bg-surface px-3 py-2 text-text-primary focus:outline-none focus:ring-2',
+                      accentRingFocusClass
+                    )}
+                  />
+                </div>
+                <div>
+                  <label className="mb-2 block text-sm font-medium text-text-primary">Cor</label>
+                  <select
+                    value={novoPartido.cor}
+                    onChange={(e) => {
+                      const cor = e.target.value
+                      const corTextoClara =
+                        cor.includes('yellow-400') ||
+                        cor.includes('border-card') ||
+                        cor.includes('gray-200') ||
+                        cor.includes('accent-gold-soft')
+                      const corTexto = cor.includes('linear-gradient') || !corTextoClara ? 'text-white' : 'text-text-primary'
+                      setNovoPartido(prev => ({ ...prev, cor, corTexto }))
+                    }}
+                    disabled={salvandoPartido}
+                    className={cn(
+                      'w-full rounded-lg border border-card bg-surface px-3 py-2 text-text-primary focus:outline-none focus:ring-2',
+                      accentRingFocusClass
+                    )}
+                  >
+                    <option value="bg-border-card">Cinza</option>
+                    <option value="bg-red-600">Vermelho</option>
+                    <option value={COR_REPUBLICANOS_GRADIENTE}>Azul (Republicanos)</option>
+                    <option value="bg-green-600">Verde</option>
+                    <option value="bg-yellow-400">Amarelo</option>
+                    <option value="bg-purple-500">Roxo</option>
+                    <option value="bg-orange-500">Laranja</option>
+                    <option value="bg-pink-500">Rosa</option>
+                    <option value="bg-indigo-500">Índigo</option>
+                    <option value="bg-teal-500">Verde-água</option>
+                  </select>
+                </div>
+                <div className="flex justify-end gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setDialogNovoPartidoAberto(false)
+                      setNovoPartido({ nome: '', cor: 'bg-border-card', corTexto: 'text-text-primary' })
+                    }}
+                    disabled={salvandoPartido}
+                    className="rounded-lg border border-card bg-surface px-4 py-2 text-sm text-text-primary hover:bg-background disabled:opacity-50"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleAdicionarPartido}
+                    disabled={salvandoPartido || !novoPartido.nome.trim()}
+                    className={sidebarPrimaryCTAButtonClass(isCockpit)}
+                  >
+                    {salvandoPartido ? 'Salvando...' : 'Adicionar Partido'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Modal para editar nome do partido */}
+        {dialogEditarPartidoAberto && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="w-full max-w-md rounded-lg border border-card bg-surface p-6">
+              <div className="mb-4 flex items-center justify-between">
+                <h2 className="text-lg font-semibold text-text-primary">Editar Partido</h2>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setDialogEditarPartidoAberto(null)
+                    setNomePartidoEdicao('')
+                  }}
+                  className="text-muted hover:text-text-primary"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+              <div className="space-y-4">
+                <div>
+                  <label className="mb-2 block text-sm font-medium text-text-primary">Novo nome do partido</label>
+                  <input
+                    type="text"
+                    placeholder="Nome do partido"
+                    value={nomePartidoEdicao}
+                    onChange={(e) => setNomePartidoEdicao(e.target.value)}
+                    disabled={salvandoEdicaoPartido}
+                    className={cn(
+                      'w-full rounded-lg border border-card bg-surface px-3 py-2 text-text-primary focus:outline-none focus:ring-2',
+                      accentRingFocusClass
+                    )}
+                  />
+                </div>
+                <div className="flex justify-end gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setDialogEditarPartidoAberto(null)
+                      setNomePartidoEdicao('')
+                    }}
+                    disabled={salvandoEdicaoPartido}
+                    className="rounded-lg border border-card bg-surface px-4 py-2 text-sm text-text-primary hover:bg-background disabled:opacity-50"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleSalvarEdicaoPartido}
+                    disabled={salvandoEdicaoPartido || !nomePartidoEdicao.trim()}
+                    className={sidebarPrimaryCTAButtonClass(isCockpit)}
+                  >
+                    {salvandoEdicaoPartido ? 'Salvando...' : 'Salvar Nome'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Diálogo de Análise - REPUBLICANOS */}
+        {openAnaliseRepublicanos && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-lg border border-card bg-surface p-6">
+              <div className="mb-4 flex items-center justify-between">
+                <h2 className="text-lg font-semibold text-text-primary">REPUBLICANOS — Análise</h2>
+                <button
+                  type="button"
+                  onClick={() => setOpenAnaliseRepublicanos(false)}
+                  className="text-muted hover:text-text-primary"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+              {(() => {
+                const a = analisarRepublicanos()
+                return (
+                  <div className="space-y-3 text-sm">
+                    <div className="grid grid-cols-5 gap-2">
+                      <div className="rounded border border-card bg-background p-2 text-center">
+                        <div className="text-[11px] text-secondary">Votos</div>
+                        <div className="text-sm font-bold">{a.cenarios.atual.votos.toLocaleString('pt-BR')}</div>
+                      </div>
+                      <div className="rounded border border-card bg-background p-2 text-center">
+                        <div className="text-[11px] text-secondary">QE</div>
+                        <div className="text-sm font-bold">{quociente.toLocaleString('pt-BR')}</div>
+                      </div>
+                      <div className="rounded border border-card bg-background p-2 text-center">
+                        <div className="text-[11px] text-secondary">80% QE</div>
+                        <div className="text-sm font-bold">{getQuocienteMinimo().toLocaleString('pt-BR')}</div>
+                      </div>
+                      <div className="rounded border border-card bg-background p-2 text-center">
+                        <div className="text-[11px] text-secondary">Vagas</div>
+                        <div className="text-sm font-bold">{a.cenarios.atual.vagasTotais}</div>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <span
+                        className={`rounded px-2 py-1 text-xs ${a.cenarios.atual.elegivel ? 'bg-status-success text-white' : 'bg-status-error text-white'}`}
+                      >
+                        {a.cenarios.atual.elegivel ? '≥ 80% do QE' : '< 80% do QE'}
+                      </span>
+                      <span className="px-2 py-1 rounded text-xs border border-card">
+                        {a.cenarios.atual.vagasDiretas} diretas + {a.cenarios.atual.vagasSobra} sobras
+                      </span>
+                    </div>
+
+                    <div className="rounded border border-card bg-background p-2 text-xs">
+                      <div className="mb-2 font-medium text-text-primary">
+                        Análise de Risco — Quanto cada adversário precisa crescer para nos tirar vagas:
+                      </div>
+                      
+                      {a.riscos.map((risco, index) => (
+                        <div key={risco.partido} className="mb-2 rounded border border-card bg-surface p-2">
+                          <div className="font-medium text-text-primary">{risco.partido}</div>
+                          <div className="grid grid-cols-2 gap-2 mt-1 text-[11px]">
+                            <div>
+                              <span className="text-secondary">Para vaga direta:</span>
+                              <span className="font-semibold ml-1">+{risco.deltaParaDireta.toLocaleString('pt-BR')} votos</span>
+                            </div>
+                            <div>
+                              <span className="text-secondary">Para sobra:</span>
+                              <span className="font-semibold ml-1">
+                                {risco.deltaParaSobra === Infinity ? '—' : `+${risco.deltaParaSobra.toLocaleString('pt-BR')}`}
+                              </span>
+                            </div>
+                          </div>
+                          <div className="mt-1 text-[10px] text-secondary">
+                            Menor delta: <strong>+{risco.deltaMinimo.toLocaleString('pt-BR')} votos</strong>
+                            {index === 0 && ' (MAIS PERIGOSO)'}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+
+                    <div className="text-xs text-text-primary font-medium">{a.conclusao}</div>
+                  </div>
+                )
+              })()}
+              <div className="mt-4 flex justify-end">
+                <button
+                  type="button"
+                  onClick={() => setOpenAnaliseRepublicanos(false)}
+                  className={sidebarPrimaryCTAButtonClass(isCockpit)}
+                >
+                  Fechar
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+

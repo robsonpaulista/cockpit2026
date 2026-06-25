@@ -153,13 +153,13 @@ async function startApifyRun(token, directUrls) {
 
   if (!res.ok) {
     const err = await res.text()
-    throw new Error(`Apify run failed (${res.status}): ${err.slice(0, 400)}`)
+    throw new Error(`Coleta de concorrentes falhou (${res.status}): ${err.slice(0, 400)}`)
   }
 
   const run = await res.json()
   const data = run.data ?? run
   if (data.status === 'FAILED' || data.status === 'ABORTED') {
-    throw new Error(`Apify run ${data.status}: ${data.statusMessage ?? 'unknown'}`)
+    throw new Error(`Coleta de concorrentes ${data.status}: ${data.statusMessage ?? 'unknown'}`)
   }
   return data
 }
@@ -174,7 +174,7 @@ async function fetchDatasetItems(token, datasetId) {
     const res = await fetch(`https://api.apify.com/v2/datasets/${datasetId}/items?${qs}`)
     if (!res.ok) {
       const err = await res.text()
-      throw new Error(`Apify dataset fetch failed: ${err.slice(0, 300)}`)
+      throw new Error(`Falha ao buscar posts de concorrentes: ${err.slice(0, 300)}`)
     }
     const batch = await res.json()
     if (!Array.isArray(batch) || batch.length === 0) break
@@ -190,7 +190,7 @@ async function fetchDatasetItems(token, datasetId) {
 async function main() {
   const token = process.env.APIFY_TOKEN?.trim()
   if (!token) {
-    throw new Error('APIFY_TOKEN não configurado. Crie em https://console.apify.com/account/integrations')
+    throw new Error('Coleta de concorrentes não configurada no servidor.')
   }
 
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
@@ -242,7 +242,7 @@ async function main() {
         ownCandidateSynced: 0,
         errors: slug
           ? [`Nenhum concorrente com @ para slug "${slug}" (candidato próprio usa API Graph).`]
-          : ['Nenhum concorrente ativo com @ Instagram — Apify não executado.'],
+          : ['Nenhum concorrente ativo com @ Instagram — coleta de concorrentes não executada.'],
       },
     }))
     return

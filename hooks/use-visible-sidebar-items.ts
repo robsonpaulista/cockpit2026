@@ -3,6 +3,7 @@
 import { useMemo } from 'react'
 import { SIDEBAR_MENU_ITEMS, type SidebarMenuItemConfig } from '@/lib/sidebar-nav-routes'
 import { filterItemsForDashboardKanban } from '@/lib/dashboard-kanban-filter'
+import { isSidebarMenuItemHidden, isSidebarChildMenuItemHidden } from '@/lib/sidebar-hidden-items'
 import { pageKeyForSidebarItem } from '@/lib/sidebar-page-key'
 import { usePermissions } from '@/hooks/use-permissions'
 
@@ -11,14 +12,19 @@ function filterVisibleSidebarItems(
   canAccess: (page: string) => boolean,
   isAdmin: boolean
 ): SidebarMenuItemConfig[] {
-  if (permLoading) return SIDEBAR_MENU_ITEMS
+  if (permLoading) {
+    return SIDEBAR_MENU_ITEMS.filter((item) => !isSidebarMenuItemHidden(item.id))
+  }
 
   return SIDEBAR_MENU_ITEMS.map((item) => {
     if (!item.children) return item
-    const children = item.children.filter((child) => canAccess(pageKeyForSidebarItem(child.id)))
+    const children = item.children.filter(
+      (child) =>
+        canAccess(pageKeyForSidebarItem(child.id)) && !isSidebarChildMenuItemHidden(child.id),
+    )
     return { ...item, children }
   }).filter((item) => {
-    if (item.id === 'home') return false
+    if (isSidebarMenuItemHidden(item.id)) return false
     if (item.id === 'usuarios') return isAdmin
     if (item.id === 'log-system') return isAdmin
     if (item.id === 'ficha-atendimento') {

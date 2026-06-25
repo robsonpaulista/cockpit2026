@@ -244,7 +244,7 @@ async function assertCollectAllowed(
   const needsOwn = shouldSyncOwnCandidate(options)
 
   if (needsApify && !apifyConfigured && !(needsOwn && ownReady.ready)) {
-    throw new Error('APIFY_TOKEN não configurado e dados do candidato próprio indisponíveis.')
+    throw new Error('Coleta de concorrentes não configurada e dados do candidato próprio indisponíveis.')
   }
   if (needsOwn && options?.politicoSlug && !ownReady.ready && !needsApify) {
     throw new Error(

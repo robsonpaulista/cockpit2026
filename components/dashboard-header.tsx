@@ -8,8 +8,8 @@ import { useTheme } from '@/contexts/theme-context'
 import { MAPA_TDS_ROUTE_PREFIX } from '@/lib/dashboard-mapa-futuristic-chrome'
 import { MONITORAMENTO_TAB_LIDERES } from '@/lib/monitoramento-lideres-route'
 import {
-  TERRITORIO_CAMPO_TAB_BASE,
-  TERRITORIO_CAMPO_TAB_VISITAS,
+  TERRITORIO_CAMPO_PAGE_TITLE,
+  territorioCampoPageTitle,
 } from '@/lib/territorio-campo-route'
 import { cn } from '@/lib/utils'
 import { useDashboardTopbarVisible } from '@/hooks/use-dashboard-topbar-visible'
@@ -19,13 +19,13 @@ import { isDashboardHomePath } from '@/lib/dashboard-home-chrome'
 const pathToTitle: Record<string, string> = {
   '/dashboard': 'Visão Geral',
   '/dashboard/narrativas': 'Estratégia',
-  '/dashboard/campo': 'Território & Campo · Visitas',
+  '/dashboard/campo': 'Base Eleitoral · Visitas',
   '/dashboard/agenda': 'Agenda',
-  '/dashboard/territorio': 'Território & Campo',
+  '/dashboard/territorio': 'Base Eleitoral',
   '/dashboard/territorio/mapa-tds': 'Mapa — Territórios de desenvolvimento',
   '/dashboard/chapas': 'Chapas',
   '/dashboard/chapas-estaduais': 'Chapas Estaduais',
-  '/dashboard/resumo-eleicoes': 'Resumo Eleições',
+  '/dashboard/resumo-eleicoes': 'Painel de Atendimentos',
   '/dashboard/conteudo': 'Redes Sociais',
   '/dashboard/noticias': 'Radar eleitoral',
   '/dashboard/noticias/monitoramento': 'Radar eleitoral',
@@ -48,9 +48,7 @@ function getPageTitle(pathname: string, tab: string | null, _view: string | null
     return 'Radar eleitoral · Eng. líderes'
   }
   if (pathname === '/dashboard/territorio') {
-    if (tab === TERRITORIO_CAMPO_TAB_BASE) return 'Território & Campo · Base'
-    if (tab === TERRITORIO_CAMPO_TAB_VISITAS) return 'Território & Campo · Visitas'
-    return 'Território & Campo'
+    return territorioCampoPageTitle(tab)
   }
   if (pathname.startsWith('/dashboard/conteudo/')) {
     const rest = pathname.slice('/dashboard/conteudo/'.length)

@@ -36,6 +36,9 @@ export function JarvisGlobalHost() {
 
   if (!hydrated || !visible) return null
 
+  /** Home = tela de descanso — Jarvis fica oculto; use o menu para navegar. */
+  if (isHome) return null
+
   return (
     <div
       className={cn(

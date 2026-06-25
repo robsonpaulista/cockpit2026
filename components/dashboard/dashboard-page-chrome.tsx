@@ -41,24 +41,26 @@ export function DashboardPageHeader({
 }) {
   return (
     <header className={dashboardPageHeaderZoneClass}>
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0 flex-1">
-          {title ? <h1 className={typographyPageTitleClass}>{title}</h1> : null}
-          {description ? (
-            <div
-              className={cn(
-                'max-w-3xl line-clamp-2',
-                title ? 'mt-1' : undefined,
-                typographyPageLeadClass
-              )}
-            >
-              {description}
-            </div>
-          ) : null}
+      <div className="flex h-full min-h-0 flex-col justify-center overflow-hidden">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0 flex-1">
+            {title ? <h1 className={typographyPageTitleClass}>{title}</h1> : null}
+            {description ? (
+              <div
+                className={cn(
+                  'max-w-3xl line-clamp-2',
+                  title ? 'mt-1' : undefined,
+                  typographyPageLeadClass
+                )}
+              >
+                {description}
+              </div>
+            ) : null}
+          </div>
+          {action ? <div className="shrink-0">{action}</div> : null}
         </div>
-        {action ? <div className="shrink-0">{action}</div> : null}
+        {meta ? <div className="mt-2 flex flex-wrap items-center gap-2">{meta}</div> : null}
       </div>
-      {meta ? <div className="mt-2.5 flex flex-wrap items-center gap-2">{meta}</div> : null}
     </header>
   )
 }

@@ -47,7 +47,7 @@ a {
 }
 
 a:hover {
-  color: rgb(var(--accent-gold-soft));
+  color: rgb(var(--accent-gold-dark));
   text-decoration: underline;
 }
 

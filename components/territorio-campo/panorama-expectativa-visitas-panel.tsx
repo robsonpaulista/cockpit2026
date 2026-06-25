@@ -8,6 +8,7 @@ import type {
 import {
   FAIXA_COBERTURA_STYLES,
   formatExpectativaCompact,
+  formatPesoExpectativaPct,
 } from '@/lib/territorio-expectativa-visitas-cobertura'
 import {
   typographyBodyClass,
@@ -39,6 +40,12 @@ function MunicipiosTable({
               <th className={cn('px-2 py-1.5 text-left', typographySectionLabelClass)}>#</th>
               <th className={cn('px-2 py-1.5 text-left', typographySectionLabelClass)}>Município</th>
               <th className={cn('px-2 py-1.5 text-right', typographySectionLabelClass)}>Votos</th>
+              <th
+                className={cn('px-2 py-1.5 text-right', typographySectionLabelClass)}
+                title="Percentual da expectativa de votos do município sobre o total estadual"
+              >
+                % exp. total
+              </th>
               <th className={cn('px-2 py-1.5 text-right', typographySectionLabelClass)}>Vis.</th>
               <th className={cn('px-2 py-1.5', typographySectionLabelClass)}>Cob.</th>
               <th className={cn('px-2 py-1.5', typographySectionLabelClass)}>Faixa</th>
@@ -47,7 +54,7 @@ function MunicipiosTable({
           <tbody>
             {rows.length === 0 ? (
               <tr>
-                <td colSpan={6} className={cn('px-3 py-6 text-center', typographyBodyMutedClass)}>
+                <td colSpan={7} className={cn('px-3 py-6 text-center', typographyBodyMutedClass)}>
                   Nenhum município neste filtro
                 </td>
               </tr>
@@ -64,6 +71,12 @@ function MunicipiosTable({
                     </td>
                     <td className={cn('px-2 py-1.5 text-right tabular-nums', typographyBodyClass)}>
                       {formatExpectativaCompact(row.expectativa)}
+                    </td>
+                    <td
+                      className={cn('px-2 py-1.5 text-right tabular-nums text-text-secondary', typographyBodyClass)}
+                      title={`${formatPesoExpectativaPct(row.pctPesoExpectativa)}% da expectativa total`}
+                    >
+                      {formatPesoExpectativaPct(row.pctPesoExpectativa)}%
                     </td>
                     <td className={cn('px-2 py-1.5 text-right tabular-nums', typographyBodyClass)}>{row.visitas}</td>
                     <td className="px-2 py-1.5">

@@ -3,6 +3,11 @@
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { APP_FONT_STACK_CSS } from '@/lib/app-font-stack'
+import {
+  REST_SCREEN_AMBER_DARK,
+  REST_SCREEN_GRADIENT,
+  REST_SCREEN_RADIAL_GLOW,
+} from '@/lib/rest-screen-chrome'
 
 /** Credenciais em texto no dispositivo — útil em tablets; não usar em computadores compartilhados. */
 const SAVED_LOGIN_STORAGE_KEY = 'cockpit_saved_login_v1'
@@ -111,10 +116,8 @@ export function LoginForm() {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        // Gradient derivado das variáveis do tema ativo:
-        // tema "republicanos" → azul; tema "agentes" → laranja; ambos seguem aparência light/dark.
-        background:
-          'linear-gradient(145deg, rgb(var(--accent-gold)) 0%, rgb(var(--accent-gold)) 40%, rgb(var(--accent-gold-dark)) 100%)',
+        // Âmbar fixo da marca — não depende de `--accent-gold` (azul no tema republicanos).
+        background: REST_SCREEN_GRADIENT,
         padding: '1rem',
         position: 'relative',
         overflow: 'hidden',
@@ -128,7 +131,7 @@ export function LoginForm() {
           left: '-50%',
           width: '200%',
           height: '200%',
-          background: 'radial-gradient(circle at 30% 40%, rgba(255,255,255,0.08) 0%, transparent 50%)',
+          background: REST_SCREEN_RADIAL_GLOW,
           pointerEvents: 'none',
         }}
       />
@@ -280,7 +283,7 @@ export function LoginForm() {
                 style={{
                   width: '18px',
                   height: '18px',
-                  accentColor: 'rgb(var(--accent-gold-dark))',
+                  accentColor: REST_SCREEN_AMBER_DARK,
                   cursor: 'pointer',
                 }}
               />
@@ -307,7 +310,7 @@ export function LoginForm() {
                 width: '100%',
                 padding: '12px',
                 background: loading ? 'rgba(255,255,255,0.25)' : 'white',
-                color: loading ? 'rgba(255,255,255,0.8)' : 'rgb(var(--accent-gold-dark))',
+                color: loading ? 'rgba(255,255,255,0.8)' : REST_SCREEN_AMBER_DARK,
                 borderRadius: '10px',
                 fontWeight: 600,
                 fontSize: '0.95rem',

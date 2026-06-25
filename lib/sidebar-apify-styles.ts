@@ -22,13 +22,13 @@ export const sidebarApifySectionLabelClass = sidebarBrandSectionLabelClass
 
 export const sidebarApifyNavItemClass = (active: boolean) =>
   cn(
-    'relative flex w-full items-center gap-2.5 rounded-none border-l-2 px-2.5 py-2',
+    'relative flex w-full items-center gap-2.5 rounded-none border-l-2 px-2.5 py-2 no-underline hover:no-underline',
     typographyBodyMediumClass,
     'leading-none transition-colors duration-150',
     sidebarActiveFocusRingClass,
     active
-      ? cn(sidebarActiveBorderClass, 'bg-bg-app text-text-primary')
-      : 'border-l-transparent hover:bg-bg-app'
+      ? cn(sidebarActiveBorderClass, 'bg-bg-app text-text-primary hover:text-text-primary')
+      : 'border-l-transparent text-text-primary hover:bg-bg-app hover:text-text-primary',
   )
 
 export const sidebarApifyNavIconClass = (active: boolean) =>
@@ -45,13 +45,13 @@ export const dashboardChromeIconShellMdClass =
 
 export const sidebarApifyChildItemClass = (active: boolean) =>
   cn(
-    'flex w-full min-w-0 items-center truncate rounded-none border-l-2 py-1.5 pl-9 pr-2.5',
+    'flex w-full min-w-0 items-center truncate rounded-none border-l-2 py-1.5 pl-9 pr-2.5 no-underline hover:no-underline',
     typographyBodyMediumClass,
     'transition-colors duration-150',
     sidebarActiveFocusRingClass,
     active
-      ? cn(sidebarActiveBorderClass, 'bg-bg-app text-text-primary')
-      : 'border-l-transparent hover:bg-bg-app'
+      ? cn(sidebarActiveBorderClass, 'bg-bg-app text-text-primary hover:text-text-primary')
+      : 'border-l-transparent text-text-primary hover:bg-bg-app hover:text-text-primary',
   )
 
 export const sidebarApifyIconButtonClass =
