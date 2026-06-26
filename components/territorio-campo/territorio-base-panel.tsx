@@ -28,12 +28,14 @@ import { MapaVotoCruzado } from '@/components/mapa-voto-cruzado'
 import { KPI } from '@/types'
 import { cn } from '@/lib/utils'
 import {
-  cargoChipClass,
-  ghostButtonClass,
-  pillFilterActiveClass,
-  pillFilterIdleClass,
-  pillInputClass,
-} from '@/lib/premium-ui-classes'
+  territorioBaseCargoChipClass,
+  territorioBaseGhostButtonClass,
+  territorioBaseKpiGridClass,
+  territorioBasePillFilterActiveClass,
+  territorioBasePillFilterIdleClass,
+  territorioBasePillInputClass,
+  territorioBaseTextClass,
+} from '@/lib/territorio-base-styles'
 import { sidebarPrimaryCTAButtonClass } from '@/lib/sidebar-menu-active-style'
 import { useTheme } from '@/contexts/theme-context'
 import type { AIAgentPageContext } from '@/components/ai-agent'
@@ -65,8 +67,8 @@ function labelCenarioDados(cenario: CenarioVotos): string {
 export function TerritorioBasePanel() {
   const { theme } = useTheme()
   const isCockpit = false
-  const accentTextClass = isCockpit ? 'text-[#2dd4bf]' : 'text-accent-gold'
-  const accentBorderClass = isCockpit ? 'border-[#2dd4bf]' : 'border-accent-gold'
+  const accentTextClass = isCockpit ? 'text-[#2dd4bf]' : territorioBaseTextClass
+  const accentBorderClass = isCockpit ? 'border-[#2dd4bf]' : 'border-[#C8900A]'
   const sectionShellClass = isCockpit
     ? 'border-white/12 bg-[linear-gradient(165deg,rgba(22,34,44,0.82)_0%,rgba(18,30,38,0.86)_100%)] shadow-[0_10px_32px_rgba(3,12,20,0.28)]'
     : 'border-card bg-surface shadow-card'
@@ -856,10 +858,10 @@ export function TerritorioBasePanel() {
 
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className={cn('flex flex-col gap-4', territorioBaseTextClass)}>
         <div className="mb-2 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div className="min-w-0">
-            <p className="text-xs text-text-muted">
+            <p className="text-xs">
               {(config || serverConfigured) && liderancas.length > 0
                 ? pageSubtitle
                 : 'Configure a planilha para carregar lideranças'}
@@ -871,7 +873,7 @@ export function TerritorioBasePanel() {
                 <button
                   type="button"
                   onClick={() => setShowMindMap(true)}
-                  className={ghostButtonClass}
+                  className={territorioBaseGhostButtonClass}
                   title="Ver mapa de lideranças"
                 >
                   <IconNetwork className="h-[14px] w-[14px] opacity-70" stroke={1.5} aria-hidden />
@@ -881,7 +883,7 @@ export function TerritorioBasePanel() {
                   <button
                     type="button"
                     onClick={() => setShowVoteInvestmentBalance(true)}
-                    className={ghostButtonClass}
+                    className={territorioBaseGhostButtonClass}
                     title="Analisar equilíbrio entre investimento e previsão de votos"
                   >
                     <IconBriefcase className="h-[14px] w-[14px] opacity-70" stroke={1.5} aria-hidden />
@@ -895,7 +897,7 @@ export function TerritorioBasePanel() {
                 type="button"
                 onClick={() => territorioAgentActionsRef.current.atualizarDados()}
                 disabled={loading}
-                className={cn(ghostButtonClass, 'disabled:opacity-50')}
+                className={cn(territorioBaseGhostButtonClass, 'disabled:opacity-50')}
               >
                 <IconRefresh
                   className={cn('h-[14px] w-[14px] opacity-70', loading && 'animate-spin')}
@@ -922,15 +924,15 @@ export function TerritorioBasePanel() {
             <IconAlertCircle className="mt-0.5 h-5 w-5 shrink-0 text-status-error" stroke={1.5} />
             <div className="flex-1">
               <p className="text-sm font-medium text-status-error">Erro ao carregar dados</p>
-              <p className="mt-1 text-xs text-text-secondary">{error}</p>
+              <p className="mt-1 text-xs">{error}</p>
             </div>
           </div>
         )}
 
         {/* KPIs - Só mostrar se houver configuração e dados */}
         {(config || serverConfigured) && liderancas.length > 0 && (
-          <section className="mb-4">
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <section className="mb-2">
+            <div className={territorioBaseKpiGridClass}>
               {kpis.map((kpi) => {
                 const metricIcon =
                   kpi.id === 'liderancas'
@@ -952,25 +954,30 @@ export function TerritorioBasePanel() {
                 return (
                   <PremiumMetricCard
                     key={kpi.id}
+                    compact
                     label={kpi.label}
                     value={kpi.value}
                     contextLine={contextLine}
                     icon={metricIcon}
+                    labelClassName={territorioBaseTextClass}
+                    valueClassName={territorioBaseTextClass}
+                    contextClassName={territorioBaseTextClass}
+                    iconClassName={kpi.id === 'cidades' ? 'text-[#C8900A]' : territorioBaseTextClass}
                   />
                 )
               })}
             </div>
 
             {totaisPorCargo.length > 0 && (
-              <div className="mt-2 flex flex-wrap gap-2">
+              <div className="mt-1.5 flex flex-wrap gap-1.5">
                 {totaisPorCargo.slice(0, 8).map((item) => (
-                  <span key={item.cargo} className={cargoChipClass}>
-                    <span className="font-medium text-[rgb(var(--color-primary))]">{item.total}</span>
-                    <span className="text-text-muted">{item.cargo}</span>
+                  <span key={item.cargo} className={territorioBaseCargoChipClass}>
+                    <span className="font-medium">{item.total}</span>
+                    <span>{item.cargo}</span>
                   </span>
                 ))}
                 {totaisPorCargo.length > 8 && (
-                  <span className={cn(cargoChipClass, 'text-text-muted')}>
+                  <span className={territorioBaseCargoChipClass}>
                     +{totaisPorCargo.length - 8} outros
                   </span>
                 )}
@@ -985,7 +992,7 @@ export function TerritorioBasePanel() {
               <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2 overflow-x-auto pb-0.5 [scrollbar-width:thin]">
                 <label className="relative shrink-0">
                   <IconSearch
-                    className="pointer-events-none absolute left-3 top-1/2 h-[14px] w-[14px] -translate-y-1/2 text-text-muted opacity-70"
+                    className="pointer-events-none absolute left-3 top-1/2 h-[14px] w-[14px] -translate-y-1/2 opacity-50"
                     stroke={1.5}
                     aria-hidden
                   />
@@ -994,13 +1001,13 @@ export function TerritorioBasePanel() {
                     value={filtroCidade}
                     onChange={(e) => setFiltroCidade(e.target.value)}
                     placeholder="Buscar cidade…"
-                    className={cn(pillInputClass, 'w-[9.5rem] pl-8 sm:w-[10.5rem]')}
+                    className={cn(territorioBasePillInputClass, 'w-[9.5rem] pl-8 sm:w-[10.5rem]')}
                   />
                 </label>
 
                 <label className="relative shrink-0">
                   <IconSearch
-                    className="pointer-events-none absolute left-3 top-1/2 h-[14px] w-[14px] -translate-y-1/2 text-text-muted opacity-70"
+                    className="pointer-events-none absolute left-3 top-1/2 h-[14px] w-[14px] -translate-y-1/2 opacity-50"
                     stroke={1.5}
                     aria-hidden
                   />
@@ -1009,7 +1016,7 @@ export function TerritorioBasePanel() {
                     value={filtroNome}
                     onChange={(e) => setFiltroNome(e.target.value)}
                     placeholder="Buscar liderança…"
-                    className={cn(pillInputClass, 'w-[9.5rem] pl-8 sm:w-[10.5rem]')}
+                    className={cn(territorioBasePillInputClass, 'w-[9.5rem] pl-8 sm:w-[10.5rem]')}
                   />
                 </label>
 
@@ -1017,7 +1024,7 @@ export function TerritorioBasePanel() {
 
                 {cargoCol && cargosUnicos.length > 0 ? (
                   filtroCargo ? (
-                    <span className={pillFilterActiveClass}>
+                    <span className={territorioBasePillFilterActiveClass}>
                       {filtroCargo}
                       <button
                         type="button"
@@ -1032,7 +1039,7 @@ export function TerritorioBasePanel() {
                     <select
                       value={filtroCargo}
                       onChange={(e) => setFiltroCargo(e.target.value)}
-                      className={cn(pillFilterIdleClass, 'cursor-pointer appearance-none pr-6')}
+                      className={cn(territorioBasePillFilterIdleClass, 'cursor-pointer appearance-none pr-6')}
                       aria-label="Filtrar por cargo"
                     >
                       <option value="">Cargo</option>
@@ -1048,7 +1055,7 @@ export function TerritorioBasePanel() {
                 {deputadosEstaduaisUnicos.length > 0 ? (
                   <div className="relative shrink-0" ref={depDropdownRef}>
                     {filtroDepEstadual.length > 0 ? (
-                      <span className={pillFilterActiveClass}>
+                      <span className={territorioBasePillFilterActiveClass}>
                         {filtroDepEstadual.length === deputadosEstaduaisUnicos.length
                           ? 'Todos os dep.'
                           : `${filtroDepEstadual.length} dep.`}
@@ -1079,7 +1086,7 @@ export function TerritorioBasePanel() {
                         type="button"
                         onClick={() => setShowDepDropdown((v) => !v)}
                         title="Voto cruzado: selecione um ou mais deputados"
-                        className={pillFilterIdleClass}
+                        className={territorioBasePillFilterIdleClass}
                       >
                         Dep. estadual
                         <IconChevronDown
@@ -1095,7 +1102,7 @@ export function TerritorioBasePanel() {
                   <select
                     value={cenarioVotos}
                     onChange={(e) => setCenarioVotos(e.target.value as CenarioVotos)}
-                    className={cn(pillFilterIdleClass, 'cursor-pointer appearance-none')}
+                    className={cn(territorioBasePillFilterIdleClass, 'cursor-pointer appearance-none')}
                     aria-label="Visão de votos"
                   >
                     {expectativaJadyelCol ? (
@@ -1112,7 +1119,7 @@ export function TerritorioBasePanel() {
 
                 {votosReferenciaCol ? (
                   filtroFaixaVotos ? (
-                    <span className={pillFilterActiveClass}>
+                    <span className={territorioBasePillFilterActiveClass}>
                       {filtroFaixaVotos === 'ate-100'
                         ? 'Até 100'
                         : filtroFaixaVotos === 'ate-300'
@@ -1135,7 +1142,7 @@ export function TerritorioBasePanel() {
                     <select
                       value={filtroFaixaVotos}
                       onChange={(e) => setFiltroFaixaVotos(e.target.value)}
-                      className={cn(pillFilterIdleClass, 'cursor-pointer appearance-none')}
+                      className={cn(territorioBasePillFilterIdleClass, 'cursor-pointer appearance-none')}
                       aria-label="Faixa de votos"
                     >
                       <option value="">Faixa de votos</option>
@@ -1161,7 +1168,7 @@ export function TerritorioBasePanel() {
                       )
                     }
                   }}
-                  className={cn(ghostButtonClass, 'ml-auto shrink-0 text-[11.5px]')}
+                  className={cn(territorioBaseGhostButtonClass, 'ml-auto shrink-0 text-[11.5px]')}
                 >
                   {todasExpandidas ? 'Recolher todas' : 'Expandir todas'}
                 </button>
@@ -1170,7 +1177,7 @@ export function TerritorioBasePanel() {
 
             {hasFiltrosAtivos && (
               <div className="mt-2 flex items-center justify-between gap-2">
-                <span className="text-[11px] text-text-muted">
+                <span className="text-[11px]">
                   {liderancasFiltradas.length} resultado{liderancasFiltradas.length !== 1 ? 's' : ''}
                 </span>
                 <button
@@ -1182,7 +1189,7 @@ export function TerritorioBasePanel() {
                     setFiltroDepEstadual([])
                     setFiltroFaixaVotos('')
                   }}
-                  className="text-[11px] font-medium text-[rgb(var(--color-primary))] hover:underline"
+                  className="text-[11px] font-medium hover:underline"
                 >
                   Limpar filtros
                 </button>
@@ -1213,7 +1220,7 @@ export function TerritorioBasePanel() {
                         className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-xs hover:bg-background"
                       >
                         <span
-                          className={`flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded border ${checked ? `${accentBorderClass} ${isCockpit ? 'bg-[#2dd4bf]' : 'bg-accent-gold'}` : 'border-card bg-white'}`}
+                          className={`flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded border ${checked ? `${accentBorderClass} ${isCockpit ? 'bg-[#2dd4bf]' : 'bg-[#C8900A]'}` : 'border-card bg-white'}`}
                         >
                           {checked ? <IconCheck className="h-2.5 w-2.5 text-white" stroke={2.5} /> : null}
                         </span>
@@ -1223,7 +1230,7 @@ export function TerritorioBasePanel() {
                   })}
                 </div>
                 <div className="flex items-center justify-between border-t border-card p-2">
-                  <span className="text-[10px] text-secondary">{filtroDepEstadual.length} sel.</span>
+                  <span className="text-[10px]">{filtroDepEstadual.length} sel.</span>
                   <div className="flex items-center gap-2">
                     <button
                       type="button"
@@ -1291,13 +1298,13 @@ export function TerritorioBasePanel() {
 
         <div className="mt-2">
           {(config || serverConfigured) && (liderancaAtualCol || votosReferenciaCol) && (
-            <p className="mb-3 text-[11px] text-text-muted">
+            <p className="mb-3 text-[11px]">
               Mostrando lideranças com liderança atual = sim ou com {LABEL_EXPECTATIVA_2026.toLowerCase()}
             </p>
           )}
 
           {filtroDepEstadual.length > 0 && (
-            <div className="mb-4 p-3 rounded-xl border border-accent-gold-soft bg-accent-gold-soft/10">
+            <div className="mb-4 rounded-xl border border-[#C8900A]/30 bg-[#C8900A]/10 p-3">
               {(() => {
                 const cidades = new Set(liderancasFiltradas.map((l) => String(l[cidadeCol] || 'Sem cidade')))
                 const totalVotos = votosReferenciaCol
@@ -1305,7 +1312,7 @@ export function TerritorioBasePanel() {
                   : 0
 
                 return (
-                  <p className="text-sm text-text-primary">
+                  <p className="text-sm">
                     <span className="font-semibold">
                       Voto cruzado com {filtroDepEstadual.length} deputado(s):
                     </span>{' '}
@@ -1326,8 +1333,8 @@ export function TerritorioBasePanel() {
             </div>
           ) : !(config || serverConfigured) ? (
             <div className="py-12 text-center">
-              <IconUsers className="mx-auto mb-4 h-12 w-12 text-text-muted opacity-70" stroke={1.5} />
-              <p className="mb-4 text-text-secondary">
+              <IconUsers className="mx-auto mb-4 h-12 w-12 opacity-40" stroke={1.5} />
+              <p className="mb-4">
                 Configure uma planilha do Google Sheets para começar
               </p>
               <button
@@ -1340,14 +1347,14 @@ export function TerritorioBasePanel() {
             </div>
           ) : liderancas.length === 0 ? (
             <div className="text-center py-12">
-              <p className="text-secondary">Nenhum dado encontrado na planilha</p>
+              <p>Nenhum dado encontrado na planilha</p>
             </div>
           ) : liderancasFiltradas.length === 0 && liderancaAtualCol ? (
             <div className="text-center py-12">
-              <p className="text-secondary mb-2">
+              <p className="mb-2">
                 Nenhuma liderança atual encontrada
               </p>
-              <p className="text-xs text-secondary">
+              <p className="text-xs">
                 Verifique se há registros com "Liderança Atual?" = SIM na planilha
               </p>
             </div>

@@ -24,11 +24,15 @@ export function PremiumSectionHeader({
       )}
     >
       <div className="min-w-0">
-        <h2 className="text-sm font-medium text-text-primary">{title}</h2>
-        {description ? <p className="mt-0.5 text-xs text-text-muted">{description}</p> : null}
-        {hint ? <p className="mt-1 text-[11px] text-text-muted">{hint}</p> : null}
+        <h2 className="text-sm font-medium text-black">{title}</h2>
+        {description ? <p className="mt-0.5 text-xs text-black">{description}</p> : null}
+        {hint ? <p className="mt-1 text-[11px] text-black">{hint}</p> : null}
       </div>
-      {actions ? <div className="flex shrink-0 flex-wrap items-center gap-2">{actions}</div> : null}
+      {actions ? (
+        <div className="-mx-1 flex shrink-0 items-center gap-2 overflow-x-auto px-1 pb-1 [scrollbar-width:thin]">
+          {actions}
+        </div>
+      ) : null}
     </div>
   )
 }

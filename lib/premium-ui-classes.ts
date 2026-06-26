@@ -28,6 +28,9 @@ export const primaryButtonClass =
 export const metricCardClass =
   'rounded-xl border border-[rgb(var(--color-border-tertiary)/0.85)] bg-bg-surface p-[14px]'
 
+export const metricCardCompactClass =
+  'rounded-xl border border-[rgb(var(--color-border-tertiary)/0.85)] bg-bg-surface p-2'
+
 export const pillInputClass =
   'rounded-[99px] border border-[rgb(var(--color-border-tertiary)/0.85)] bg-bg-app px-3 py-1 text-[13px] text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-[rgb(var(--color-primary)/0.25)]'
 

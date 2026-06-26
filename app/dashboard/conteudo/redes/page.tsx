@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useEffect, useRef } from 'react'
 import { InstagramConfigModal } from '@/components/instagram-config-modal'
+import { ConteudoRedesShell } from '@/components/conteudo-redes/conteudo-redes-shell'
 import { 
   MessageSquare, 
   TrendingUp, 
@@ -46,14 +47,14 @@ import { InstagramContentTypeComparison } from '@/components/conteudo-redes/inst
 import { InstagramThemeComparisonTable } from '@/components/conteudo-redes/instagram-theme-comparison-table'
 import { mapMetricsPostsToDayRecords } from '@/lib/instagram-day-posts'
 import { cn } from '@/lib/utils'
+import { municipalityCardClass } from '@/lib/premium-ui-classes'
 import {
-  ghostButtonClass,
-  pillFilterActiveClass,
-  pillFilterIdleClass,
-  pillInputClass,
-  primaryButtonClass,
-  municipalityCardClass,
-} from '@/lib/premium-ui-classes'
+  conteudoRedesAmberTextClass,
+  conteudoRedesGhostButtonClass,
+  conteudoRedesPillFilterActiveClass,
+  conteudoRedesPillInputClass,
+  conteudoRedesTextClass,
+} from '@/lib/conteudo-redes-styles'
 import { sidebarPrimaryCTAButtonClass } from '@/lib/sidebar-menu-active-style'
 import { PremiumMetricCard } from '@/components/premium/metric-card'
 import { PremiumSectionHeader } from '@/components/conteudo-redes/premium-section-header'
@@ -61,7 +62,6 @@ import { ChampionPostCard } from '@/components/conteudo-redes/champion-post-card
 import {
   IconActivity,
   IconAlertCircle,
-  IconCalendar,
   IconExternalLink,
   IconEye,
   IconLoader2,
@@ -73,7 +73,7 @@ import {
 } from '@tabler/icons-react'
 
 const producao = [
-  { etapa: 'Roteiro', quantidade: 3, cor: 'bg-accent-gold-soft border-accent-gold/30' },
+  { etapa: 'Roteiro', quantidade: 3, cor: 'bg-[#C8900A]/10 border-[#C8900A]/30' },
   { etapa: 'Gravação', quantidade: 2, cor: 'bg-status-warning/10 border-status-warning/30' },
   { etapa: 'Edição', quantidade: 4, cor: 'bg-status-warning/10 border-status-warning/30' },
   { etapa: 'Aprovação', quantidade: 1, cor: 'bg-status-success/10 border-status-success/30' },
@@ -367,7 +367,7 @@ export default function ConteudoPage() {
     
     if (comparison.isEqual) {
       return (
-        <span className="text-xs text-secondary" title={`Igual ao post anterior`}>
+        <span className="text-xs" title={`Igual ao post anterior`}>
           =
         </span>
       )
@@ -772,112 +772,78 @@ export default function ConteudoPage() {
     ]
   }, [metrics, metricsHistory?.summary])
 
+  const headerActions = (
+    <>
+      {config ? (
+        <>
+          <button
+            type="button"
+            onClick={handleRefresh}
+            disabled={loading}
+            className={cn(conteudoRedesGhostButtonClass, 'disabled:opacity-50')}
+          >
+            <IconRefresh
+              className={cn('h-[14px] w-[14px] opacity-70', loading && 'animate-spin')}
+              stroke={1.5}
+              aria-hidden
+            />
+            Atualizar
+          </button>
+          <button
+            type="button"
+            onClick={handleDisconnect}
+            className={cn(
+              conteudoRedesGhostButtonClass,
+              'border-status-error/30 text-status-error hover:bg-status-error/10',
+            )}
+          >
+            <IconX className="h-[14px] w-[14px] opacity-70" stroke={1.5} aria-hidden />
+            Desconectar
+          </button>
+        </>
+      ) : null}
+      <button
+        type="button"
+        onClick={() => setShowConfig(true)}
+        className={sidebarPrimaryCTAButtonClass(isCockpit)}
+      >
+        <IconSettings className="h-[14px] w-[14px] shrink-0 text-white" stroke={1.5} aria-hidden />
+        {config ? 'Configurar Instagram' : 'Conectar Instagram'}
+      </button>
+    </>
+  )
+
   return (
-    <div className={cn('min-h-screen', isCockpit ? 'sidebar-cockpit-shell' : 'bg-bg-surface')}>
-
-      <div className="px-4 py-4 lg:px-4">
-        <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-          <div className="min-w-0">
-            <h1 className="text-sm font-medium text-text-primary">Redes & conteúdo</h1>
-            <p className="mt-0.5 text-xs text-text-muted">{pageSubtitle}</p>
-          </div>
-          <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
-            {config ? (
-              <>
-                <button
-                  type="button"
-                  onClick={handleRefresh}
-                  disabled={loading}
-                  className={cn(ghostButtonClass, 'disabled:opacity-50')}
-                >
-                  <IconRefresh
-                    className={cn('h-[14px] w-[14px] opacity-70', loading && 'animate-spin')}
-                    stroke={1.5}
-                    aria-hidden
-                  />
-                  Atualizar
-                </button>
-                <button
-                  type="button"
-                  onClick={handleDisconnect}
-                  className={cn(
-                    ghostButtonClass,
-                    'border-status-error/30 text-status-error hover:bg-status-error/10'
-                  )}
-                >
-                  <IconX className="h-[14px] w-[14px] opacity-70" stroke={1.5} aria-hidden />
-                  Desconectar
-                </button>
-              </>
-            ) : null}
-            <button
-              type="button"
-              onClick={() => setShowConfig(true)}
-              className={sidebarPrimaryCTAButtonClass(isCockpit)}
-            >
-              <IconSettings className="h-[14px] w-[14px] shrink-0 text-white" stroke={1.5} aria-hidden />
-              {config ? 'Configurar Instagram' : 'Conectar Instagram'}
-            </button>
-          </div>
-        </div>
-
-        {/* Mensagem de Erro */}
+    <>
+      <ConteudoRedesShell
+        activeTab={activeSubTab}
+        onTabChange={setActiveSubTab}
+        metaLine={pageSubtitle}
+        tabActions={headerActions}
+      >
         {error && (
           <div className="mb-4 flex items-start gap-3 rounded-xl border border-status-error/30 bg-status-error/10 p-4">
             <IconAlertCircle className="mt-0.5 h-5 w-5 shrink-0 text-status-error" stroke={1.5} />
             <div className="flex-1">
               <p className="text-sm font-medium text-status-error">Erro ao carregar dados</p>
-              <p className="mt-1 text-xs text-text-secondary">{error}</p>
+              <p className="mt-1 text-xs">{error}</p>
             </div>
           </div>
         )}
 
         <div className="space-y-6">
-          <div className="flex flex-wrap items-center gap-2">
-            <button
-              type="button"
-              onClick={() => setActiveSubTab('posts')}
-              className={cn(
-                activeSubTab === 'posts' ? pillFilterActiveClass : pillFilterIdleClass
-              )}
-            >
-              <IconCalendar className="h-[14px] w-[14px] opacity-70" stroke={1.5} aria-hidden />
-              Posts & Insights
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveSubTab('audience')}
-              className={cn(
-                activeSubTab === 'audience' ? pillFilterActiveClass : pillFilterIdleClass
-              )}
-            >
-              <IconUsers className="h-[14px] w-[14px] opacity-70" stroke={1.5} aria-hidden />
-              Audiência
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveSubTab('locations')}
-              className={cn(
-                activeSubTab === 'locations' ? pillFilterActiveClass : pillFilterIdleClass
-              )}
-            >
-              <IconMapPin className="h-[14px] w-[14px] opacity-70" stroke={1.5} aria-hidden />
-              Seguidores por Cidade
-            </button>
-          </div>
-
           {/* Conteúdo da sub-tab Posts & Insights */}
           {activeSubTab === 'posts' && (
             <div className="space-y-6">
               {loading && !metrics ? (
                 <div className="py-12 text-center">
-                  <IconLoader2 className="mx-auto mb-4 h-8 w-8 animate-spin text-[rgb(var(--color-primary))]" stroke={1.5} />
-                  <p className="text-sm text-text-secondary">Carregando dados do Instagram...</p>
+                  <IconLoader2 className="mx-auto mb-4 h-8 w-8 animate-spin text-[#C8900A]" stroke={1.5} />
+                  <p className="text-sm">Carregando dados do Instagram...</p>
                   </div>
               ) : !isConfigured ? (
                 <div className="py-12 text-center">
-                  <IconAlertCircle className="mx-auto mb-4 h-12 w-12 text-text-muted opacity-70" stroke={1.5} />
-                  <p className="mb-4 text-sm text-text-secondary">
+                  <IconAlertCircle className="mx-auto mb-4 h-12 w-12 opacity-70" stroke={1.5} />
+                  <p className="mb-4 text-sm">
                     Configure suas credenciais do Instagram para visualizar os dados
                   </p>
                   <button
@@ -927,7 +893,7 @@ export default function ConteudoPage() {
                     {(overviewThemeFilter !== 'all' || overviewBoostedFilter !== 'all') && (
                       <div className="mb-4 flex flex-wrap items-center gap-2">
                         {overviewThemeFilter !== 'all' && (
-                          <span className={pillFilterActiveClass}>Tema: {overviewThemeFilter}</span>
+                          <span className={conteudoRedesPillFilterActiveClass}>Tema: {overviewThemeFilter}</span>
                         )}
                         {overviewBoostedFilter !== 'all' && (
                           <span className="inline-flex items-center gap-1 rounded-[99px] border border-status-warning/30 bg-status-warning/10 px-2.5 py-1 text-[11.5px] font-medium text-status-warning">
@@ -939,8 +905,8 @@ export default function ConteudoPage() {
 
                     {!championPosts ? (
                       <div className="py-8 text-center">
-                        <FileText className="mx-auto mb-4 h-12 w-12 text-text-muted opacity-70" />
-                        <p className="text-sm text-text-secondary">
+                        <FileText className="mx-auto mb-4 h-12 w-12 opacity-70" />
+                        <p className="text-sm">
                           Nenhuma postagem encontrada para os filtros selecionados
                         </p>
                       </div>
@@ -996,15 +962,15 @@ export default function ConteudoPage() {
                 </>
               ) : (
                 <div className="text-center py-12">
-                  <FileText className="w-12 h-12 text-secondary mx-auto mb-4" />
-                  <p className="text-secondary">
+                  <FileText className="mx-auto mb-4 h-12 w-12 opacity-70" />
+                  <p className="text-sm">
                     Nenhum dado disponível. Classifique algumas postagens para ver os comparativos.
-                        </p>
-                      </div>
+                  </p>
+                </div>
               )}
                 </>
               )}
-                    </div>
+            </div>
           )}
 
           {/* Conteúdo da sub-tab Audiência - Estrutura correta */}
@@ -1012,13 +978,13 @@ export default function ConteudoPage() {
             <div className="space-y-6">
               {loading && !metrics ? (
                 <div className="py-12 text-center">
-                  <IconLoader2 className="mx-auto mb-4 h-8 w-8 animate-spin text-[rgb(var(--color-primary))]" stroke={1.5} />
-                  <p className="text-sm text-text-secondary">Carregando dados do Instagram...</p>
+                  <IconLoader2 className="mx-auto mb-4 h-8 w-8 animate-spin text-[#C8900A]" stroke={1.5} />
+                  <p className="text-sm">Carregando dados do Instagram...</p>
                 </div>
               ) : !isConfigured ? (
                 <div className="py-12 text-center">
-                  <IconAlertCircle className="mx-auto mb-4 h-12 w-12 text-text-muted opacity-70" stroke={1.5} />
-                  <p className="mb-4 text-sm text-text-secondary">
+                  <IconAlertCircle className="mx-auto mb-4 h-12 w-12 opacity-70" stroke={1.5} />
+                  <p className="mb-4 text-sm">
                     Configure suas credenciais do Instagram para visualizar os dados
                   </p>
                   <button
@@ -1040,7 +1006,7 @@ export default function ConteudoPage() {
                       type="button"
                       onClick={loadMetricsHistory}
                       disabled={loadingHistory}
-                      className={cn(ghostButtonClass, 'disabled:opacity-50')}
+                      className={cn(conteudoRedesGhostButtonClass, 'disabled:opacity-50')}
                     >
                       {loadingHistory ? (
                         <IconLoader2 className="h-[14px] w-[14px] animate-spin opacity-70" />
@@ -1056,10 +1022,15 @@ export default function ConteudoPage() {
                   {audienceKpis.map((kpi) => (
                     <PremiumMetricCard
                       key={kpi.id}
+                      compact
                       label={kpi.label}
                       value={kpi.value}
                       contextLine={kpi.contextLine}
                       icon={kpi.icon}
+                      labelClassName={conteudoRedesTextClass}
+                      valueClassName={conteudoRedesTextClass}
+                      contextClassName={conteudoRedesTextClass}
+                      iconClassName={conteudoRedesAmberTextClass}
                     />
                   ))}
                 </div>
@@ -1072,14 +1043,14 @@ export default function ConteudoPage() {
                 />
 
                 <div className="mb-4 flex flex-wrap items-center gap-2 border-t border-[rgb(var(--color-border-tertiary)/0.85)] pt-4">
-                  <span className="text-[11px] font-medium uppercase tracking-wide text-text-muted">
+                  <span className="text-[11px] font-medium uppercase tracking-wide">
                     Filtros
                   </span>
                   <div className="h-4 w-px bg-[rgb(var(--color-border-tertiary))]" />
                   <select
                     value={overviewThemeFilter}
                     onChange={(e) => setOverviewThemeFilter(e.target.value)}
-                    className={cn(pillInputClass, 'pr-8')}
+                    className={cn(conteudoRedesPillInputClass, 'pr-8')}
                     aria-label="Filtrar por tema"
                   >
                     <option value="all">Todos os temas</option>
@@ -1092,7 +1063,7 @@ export default function ConteudoPage() {
                   <select
                     value={overviewBoostedFilter}
                     onChange={(e) => setOverviewBoostedFilter(e.target.value)}
-                    className={cn(pillInputClass, 'pr-8')}
+                    className={cn(conteudoRedesPillInputClass, 'pr-8')}
                     aria-label="Filtrar por impulsionamento"
                   >
                     <option value="all">Todas</option>
@@ -1107,12 +1078,12 @@ export default function ConteudoPage() {
                           setOverviewThemeFilter('all')
                           setOverviewBoostedFilter('all')
                         }}
-                        className={ghostButtonClass}
+                        className={conteudoRedesGhostButtonClass}
                       >
                         <IconX className="h-[14px] w-[14px] opacity-70" stroke={1.5} aria-hidden />
                         Limpar
                       </button>
-                      <span className="text-[11px] text-text-muted">
+                      <span className="text-[11px]">
                         {filteredPosts.length}{' '}
                         {filteredPosts.length === 1 ? 'postagem' : 'postagens'}
                       </span>
@@ -1123,11 +1094,11 @@ export default function ConteudoPage() {
                 <div className="space-y-3">
                   {filteredPosts.length === 0 ? (
                     <div className="text-center py-8">
-                      <FileText className="h-12 w-12 text-secondary mx-auto mb-4" />
-                      <p className="text-secondary">
+                      <FileText className="mx-auto mb-4 h-12 w-12 opacity-70" />
+                      <p>
                         Nenhuma postagem encontrada para os filtros selecionados
-                  </p>
-                </div>
+                      </p>
+                    </div>
                   ) : (
                     filteredPosts.map((post, index) => {
                       const previousPost = index < filteredPosts.length - 1 ? filteredPosts[index + 1] : null
@@ -1172,8 +1143,8 @@ export default function ConteudoPage() {
                                     post.type === 'video'
                                       ? 'bg-red-500'
                                       : post.type === 'carousel'
-                                      ? 'bg-blue-700'
-                                      : 'bg-blue-500'
+                                      ? 'bg-[#9A6B08]'
+                                      : 'bg-[#C8900A]'
                                   }`}
                                 >
                                   {typeLabels[post.type as keyof typeof typeLabels] || post.type}
@@ -1192,10 +1163,10 @@ export default function ConteudoPage() {
                               </div>
                             </div>
 
-                            <div className="p-3 flex-1 h-48 flex flex-col overflow-hidden">
+                            <div className="p-3 flex-1 flex flex-col min-h-0">
                               <div className="flex justify-between items-start mb-1.5 flex-shrink-0">
                                 <div>
-                                  <span className="text-xs text-secondary">
+                                  <span className="text-xs">
                                     {new Date(post.postedAt).toLocaleDateString('pt-BR', {
                                       day: '2-digit',
                                       month: '2-digit',
@@ -1209,7 +1180,7 @@ export default function ConteudoPage() {
                                   href={post.url}
                                   target="_blank"
                                   rel="noopener noreferrer"
-                                  className="flex items-center text-[11px] font-medium text-[rgb(var(--color-primary))] hover:underline"
+                                  className="flex items-center text-[11px] font-medium text-[#C8900A] hover:underline"
                                 >
                                   <ExternalLink className="h-3 w-3 mr-1" /> Ver
                                 </a>
@@ -1232,7 +1203,7 @@ export default function ConteudoPage() {
                                         saveClassification(post, e.target.value, classification?.isBoosted ?? false)
                                       }
                                     }}
-                                    className="h-7 text-xs w-full px-2 border border-card rounded-lg bg-surface focus:outline-none focus:ring-2 focus:ring-accent-gold-soft"
+                                    className="h-7 text-xs w-full px-2 border border-card rounded-lg bg-surface focus:outline-none focus:ring-2 focus:ring-[#C8900A]/30"
                                   >
                                     <option value="">Tema</option>
                                     {availableThemes.map((theme) => (
@@ -1250,7 +1221,7 @@ export default function ConteudoPage() {
                                       className="absolute top-full left-0 mt-1 z-50 bg-surface border border-card rounded-lg shadow-lg p-3 min-w-[200px]"
                                     >
                                       <div className="flex flex-col gap-2">
-                                        <label className="text-xs font-medium text-text-primary">
+                                        <label className="text-xs font-medium">
                                           Novo Tema
                                         </label>
                                         <input
@@ -1267,7 +1238,7 @@ export default function ConteudoPage() {
                                             }
                                           }}
                                           placeholder="Digite o nome do tema"
-                                          className="text-xs px-2 py-1.5 border border-card rounded bg-background focus:outline-none focus:ring-2 focus:ring-accent-gold-soft"
+                                          className="text-xs px-2 py-1.5 border border-card rounded bg-background focus:outline-none focus:ring-2 focus:ring-[#C8900A]/30"
                                           autoFocus
                                         />
                                         {newTheme.trim() && availableThemes.includes(newTheme.trim()) && (
@@ -1283,7 +1254,7 @@ export default function ConteudoPage() {
                                               handleAddTheme(getPostIdentifier(post), classification?.isBoosted ?? false)
                                             }}
                                             disabled={!newTheme.trim() || availableThemes.includes(newTheme.trim())}
-                                            className={cn(primaryButtonClass, 'flex-1 px-2 py-1.5 text-xs')}
+                                            className="flex-1 rounded-[10px] bg-[#C8900A] px-2 py-1.5 text-xs font-medium text-white hover:bg-[#B07F09]"
                                           >
                                             Adicionar
                                           </button>
@@ -1312,7 +1283,7 @@ export default function ConteudoPage() {
                                       e.target.value === 'sim'
                                     )
                                   }
-                                  className="h-7 text-xs w-[90px] px-2 border border-card rounded-lg bg-surface focus:outline-none focus:ring-2 focus:ring-accent-gold-soft"
+                                  className="h-7 text-xs w-[90px] px-2 border border-card rounded-lg bg-surface focus:outline-none focus:ring-2 focus:ring-[#C8900A]/30"
                                 >
                                   <option value="nao">Não</option>
                                   <option value="sim">Sim</option>
@@ -1329,7 +1300,7 @@ export default function ConteudoPage() {
                                     </span>
                     </div>
                                   <div className="flex items-center justify-center gap-0.5 mt-0.5">
-                                    <span className="text-[10px] text-secondary">Curtidas</span>
+                                    <span className="text-[10px]">Curtidas</span>
                                     {previousPost && (
                                       <ComparisonBadge comparison={likesComparison} label="Curtidas" />
                                     )}
@@ -1337,13 +1308,13 @@ export default function ConteudoPage() {
               </div>
                                 <div>
                                   <div className="flex items-center justify-center">
-                                    <MessageCircle className="h-3 w-3 text-blue-500 mr-0.5" />
+                                    <MessageCircle className="h-3 w-3 text-[#C8900A] mr-0.5" />
                                     <span className="text-xs font-medium">
                                       {post.metrics.comments.toLocaleString('pt-BR')}
                                     </span>
             </div>
                                   <div className="flex items-center justify-center gap-0.5 mt-0.5">
-                                    <span className="text-[10px] text-secondary">Coment.</span>
+                                    <span className="text-[10px]">Coment.</span>
                                     {previousPost && (
                                       <ComparisonBadge
                                         comparison={commentsComparison}
@@ -1354,7 +1325,7 @@ export default function ConteudoPage() {
         </div>
                                 <div>
                                   <div className="flex items-center justify-center">
-                                    <Eye className="h-3 w-3 text-blue-500 mr-0.5" />
+                                    <Eye className="h-3 w-3 text-[#C8900A] mr-0.5" />
                                     <span className="text-xs font-medium">
                                       {post.metrics.views
                                         ? post.metrics.views.toLocaleString('pt-BR')
@@ -1362,7 +1333,7 @@ export default function ConteudoPage() {
                                     </span>
       </div>
                                   <div className="flex items-center justify-center gap-0.5 mt-0.5">
-                                    <span className="text-[10px] text-secondary">Visual.</span>
+                                    <span className="text-[10px]">Visual.</span>
                                     {previousPost && viewsComparison && (
                                       <ComparisonBadge
                                         comparison={viewsComparison}
@@ -1381,7 +1352,7 @@ export default function ConteudoPage() {
                                     </span>
                                   </div>
                                   <div className="flex items-center justify-center gap-0.5 mt-0.5">
-                                    <span className="text-[10px] text-secondary">Compart.</span>
+                                    <span className="text-[10px]">Compart.</span>
                                     {previousPost && sharesComparison && (
                                       <ComparisonBadge
                                         comparison={sharesComparison}
@@ -1400,7 +1371,7 @@ export default function ConteudoPage() {
                                     </span>
                                   </div>
                                   <div className="flex items-center justify-center gap-0.5 mt-0.5">
-                                    <span className="text-[10px] text-secondary">Salvam.</span>
+                                    <span className="text-[10px]">Salvam.</span>
                                     {previousPost && savesComparison && (
                                       <ComparisonBadge
                                         comparison={savesComparison}
@@ -1428,13 +1399,13 @@ export default function ConteudoPage() {
             <div className="space-y-6">
               {loading && !metrics ? (
                 <div className="py-12 text-center">
-                  <IconLoader2 className="mx-auto mb-4 h-8 w-8 animate-spin text-[rgb(var(--color-primary))]" stroke={1.5} />
-                  <p className="text-sm text-text-secondary">Carregando dados do Instagram...</p>
+                  <IconLoader2 className="mx-auto mb-4 h-8 w-8 animate-spin text-[#C8900A]" stroke={1.5} />
+                  <p className="text-sm">Carregando dados do Instagram...</p>
                 </div>
               ) : !isConfigured ? (
                 <div className="py-12 text-center">
-                  <IconAlertCircle className="mx-auto mb-4 h-12 w-12 text-text-muted opacity-70" stroke={1.5} />
-                  <p className="mb-4 text-sm text-text-secondary">
+                  <IconAlertCircle className="mx-auto mb-4 h-12 w-12 opacity-70" stroke={1.5} />
+                  <p className="mb-4 text-sm">
                     Configure suas credenciais do Instagram para visualizar os dados
                   </p>
                   <button
@@ -1488,31 +1459,31 @@ export default function ConteudoPage() {
                                         className={cn(
                                           'flex h-8 w-8 items-center justify-center rounded-full text-[12px] font-medium',
                                           index === 0
-                                            ? 'bg-[rgb(var(--color-primary))] text-white'
-                                            : 'bg-[rgb(var(--color-primary-tint))] text-[rgb(var(--color-primary))]'
+                                            ? 'bg-[#C8900A] text-white'
+                                            : 'bg-[#C8900A]/12 text-[#C8900A]'
                                         )}
                                       >
                                         {index + 1}
                                       </div>
                                       <div className="min-w-0 flex-1">
-                                        <p className="truncate text-[13.5px] font-medium text-text-primary">
+                                        <p className="truncate text-[13.5px] font-medium">
                                           {city}
                                         </p>
-                                        <p className="text-[11px] text-text-muted">
+                                        <p className="text-[11px]">
                                           {percentage}% do total de seguidores
                                         </p>
                                       </div>
                                     </div>
                                     <div className="ml-4 text-right">
-                                      <p className="text-base font-medium tabular-nums text-[rgb(var(--color-primary))]">
+                                      <p className="text-base font-medium tabular-nums text-[#C8900A]">
                                         {count.toLocaleString('pt-BR')}
                                       </p>
-                                      <p className="text-[11px] text-text-muted">seguidores</p>
+                                      <p className="text-[11px]">seguidores</p>
                                     </div>
                                   </div>
                                   <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-bg-app">
                                     <div
-                                      className="h-full rounded-full bg-[rgb(var(--color-primary))] transition-all duration-500"
+                                      className="h-full rounded-full bg-[#C8900A] transition-all duration-500"
                                       style={{ width: `${barWidth}%` }}
                                     />
                                   </div>
@@ -1523,11 +1494,11 @@ export default function ConteudoPage() {
                       </>
                     ) : (
                       <div className="py-12 text-center">
-                        <IconMapPin className="mx-auto mb-4 h-12 w-12 text-text-muted opacity-70" stroke={1.5} />
-                        <p className="mb-2 font-medium text-text-primary">
+                        <IconMapPin className={cn('mx-auto mb-4 h-12 w-12 opacity-70', conteudoRedesAmberTextClass)} stroke={1.5} />
+                        <p className="mb-2 font-medium">
                           Dados de localização não disponíveis
                         </p>
-                        <p className="mx-auto max-w-lg text-sm text-text-secondary">
+                        <p className="mx-auto max-w-lg text-sm">
                           Dados demográficos de localização podem não estar disponíveis para todas as contas. Verifique os insights diretamente no app do Instagram.
                         </p>
                       </div>
@@ -1538,7 +1509,7 @@ export default function ConteudoPage() {
             </div>
           )}
         </div>
-      </div>
+      </ConteudoRedesShell>
 
       {/* Modal de Configuração do Instagram */}
       {showConfig && (
@@ -1559,6 +1530,6 @@ export default function ConteudoPage() {
           }
         />
       )}
-    </div>
+    </>
   )
 }

@@ -17,6 +17,7 @@ import type { InstagramDayPostRecord } from '@/lib/instagram-engagement-history'
 import { formatEngagementValue, formatFollowersDelta } from '@/lib/instagram-followers-history-chart'
 import { computeAnchoredPopupPosition, type PopupAnchor } from '@/lib/anchored-popup-position'
 import { cn } from '@/lib/utils'
+import { conteudoRedesAmberTextClass, conteudoRedesTextClass } from '@/lib/conteudo-redes-styles'
 
 const TYPE_LABELS: Record<string, string> = {
   image: 'Imagem',
@@ -56,7 +57,7 @@ function MetricPill({
       title={label}
     >
       <Icon className="h-3.5 w-3.5 shrink-0" />
-      <span className="font-semibold text-text-primary">{value.toLocaleString('pt-BR')}</span>
+      <span className={cn('font-semibold', conteudoRedesTextClass)}>{value.toLocaleString('pt-BR')}</span>
     </div>
   )
 }
@@ -71,7 +72,7 @@ function PostCard({ post }: { post: InstagramDayPostRecord }) {
           {post.thumbnail ? (
             <img src={post.thumbnail} alt="" className="h-full w-full object-cover" />
           ) : (
-            <div className="flex h-full items-center justify-center text-xs text-secondary">Sem preview</div>
+            <div className={cn('flex h-full items-center justify-center text-xs', conteudoRedesTextClass)}>Sem preview</div>
           )}
           <span className="absolute left-2 top-2 rounded bg-black/60 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-white">
             {typeLabel}
@@ -85,7 +86,7 @@ function PostCard({ post }: { post: InstagramDayPostRecord }) {
               icon={MessageCircle}
               label="Comentários"
               value={post.metrics.comments}
-              className="text-blue-600"
+              className="text-[#C8900A]"
             />
             <MetricPill icon={Share2} label="Compartilhamentos" value={post.metrics.shares} className="text-green-600" />
             <MetricPill icon={Download} label="Salvamentos" value={post.metrics.saves} className="text-orange-600" />
@@ -96,16 +97,16 @@ function PostCard({ post }: { post: InstagramDayPostRecord }) {
               icon={BarChart4}
               label="Engajamento"
               value={post.metrics.engagement}
-              className="text-accent-gold"
+              className={conteudoRedesAmberTextClass}
             />
           </div>
-          <p className="line-clamp-2 text-xs text-text-primary">{post.caption?.trim() || 'Sem legenda'}</p>
+          <p className={cn('line-clamp-2 text-xs', conteudoRedesTextClass)}>{post.caption?.trim() || 'Sem legenda'}</p>
           {post.url ? (
             <a
               href={post.url}
               target="_blank"
               rel="noopener noreferrer"
-              className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-accent-gold hover:underline"
+              className={cn('mt-2 inline-flex items-center gap-1 text-xs font-medium hover:underline', conteudoRedesAmberTextClass)}
             >
               <ExternalLink className="h-3.5 w-3.5" />
               Abrir no Instagram
@@ -174,10 +175,10 @@ export function InstagramFollowersDayPostsModal({
       >
         <div className="flex items-start justify-between gap-3 border-b border-card px-4 py-3">
           <div className="min-w-0">
-            <h3 id="followers-day-posts-title" className="text-base font-semibold text-text-primary">
+            <h3 id="followers-day-posts-title" className={cn('text-base font-semibold', conteudoRedesTextClass)}>
               Publicações · {displayDate}
             </h3>
-            <p className="mt-1 text-xs text-secondary">
+            <p className={cn('mt-1 text-xs', conteudoRedesTextClass)}>
               Seguidores:{' '}
               <span
                 className={cn(
@@ -186,7 +187,7 @@ export function InstagramFollowersDayPostsModal({
                     ? 'text-status-success'
                     : followerDelta < 0
                       ? 'text-status-error'
-                      : 'text-text-primary'
+                      : conteudoRedesTextClass
                 )}
               >
                 {formatFollowersDelta(followerDelta)}
@@ -195,7 +196,7 @@ export function InstagramFollowersDayPostsModal({
                 <>
                   {' '}
                   · Engajamento médio:{' '}
-                  <span className="font-semibold text-indigo-600">
+                  <span className={cn('font-semibold', conteudoRedesAmberTextClass)}>
                     {formatEngagementValue(avgEngagement)}
                   </span>
                 </>
@@ -205,7 +206,7 @@ export function InstagramFollowersDayPostsModal({
           <button
             type="button"
             onClick={onClose}
-            className="rounded-lg border border-card p-1.5 text-secondary transition-colors hover:bg-background hover:text-text-primary"
+            className={cn('rounded-lg border border-card p-1.5 transition-colors hover:bg-background', conteudoRedesTextClass)}
             aria-label="Fechar"
           >
             <X className="h-4 w-4" />
@@ -214,12 +215,12 @@ export function InstagramFollowersDayPostsModal({
 
         <div className="min-h-0 flex-1 overflow-y-auto px-4 py-3">
           {loading ? (
-            <div className="flex h-32 flex-col items-center justify-center text-secondary">
-              <Loader2 className="mb-2 h-6 w-6 animate-spin text-accent-gold" />
+            <div className={cn('flex h-32 flex-col items-center justify-center', conteudoRedesTextClass)}>
+              <Loader2 className={cn('mb-2 h-6 w-6 animate-spin', conteudoRedesAmberTextClass)} />
               <p className="text-sm">Carregando...</p>
             </div>
           ) : posts.length === 0 ? (
-            <div className="flex h-32 flex-col items-center justify-center rounded-xl border border-dashed border-card text-secondary">
+            <div className={cn('flex h-32 flex-col items-center justify-center rounded-xl border border-dashed border-card', conteudoRedesTextClass)}>
               <p className="text-sm">Nenhuma publicação neste dia.</p>
               <p className="mt-1 text-xs">{publishDate}</p>
             </div>

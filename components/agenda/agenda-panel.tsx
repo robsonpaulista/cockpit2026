@@ -24,6 +24,9 @@ import {
   typographySectionTitleClass,
 } from '@/lib/typography-chrome'
 
+/** Âmbar fixo da marca — não usar `text-accent-gold` (azul no tema republicanos). */
+const agendaAmberIconClass = 'text-[#C8900A]'
+
 const agendaAmberButtonClass = cn(
   'inline-flex items-center justify-center gap-2 rounded-lg border border-accent-gold/40 bg-accent-gold/10 transition-colors hover:bg-accent-gold/15 disabled:cursor-not-allowed disabled:opacity-50',
   typographyBodyMediumClass,
@@ -89,7 +92,7 @@ export function AgendaPanel({ embedded = true }: { embedded?: boolean }) {
       
       return (
         <>
-          <span className={cn('rounded px-2 py-0.5 font-medium text-white', typographySectionLabelClass, 'normal-case tracking-normal', getOriginColor(originText))}>
+          <span className={cn('rounded px-2 py-0.5 text-[11px] font-medium tracking-normal !text-white', getOriginColor(originText))}>
             {origin}
           </span>
           {rest}
@@ -677,7 +680,7 @@ export function AgendaPanel({ embedded = true }: { embedded?: boolean }) {
             <div className="py-2">
               <div className="mb-4 flex items-center justify-between">
                 <h3 className={cn(typographySectionTitleClass, 'flex items-center gap-2')}>
-                  <Calendar className="w-5 h-5 text-accent-gold" />
+                  <Calendar className={cn('h-5 w-5', agendaAmberIconClass)} />
                   {selectedDate ? `Eventos de ${formatDateOnly(selectedDate)}` : 'Todos os Eventos'}
                 </h3>
                 <button
@@ -854,7 +857,7 @@ export function AgendaPanel({ embedded = true }: { embedded?: boolean }) {
           
           <div className="bg-surface border-b border-card p-4 flex items-center justify-between">
             <h2 className={cn(typographySectionTitleClass, 'flex items-center gap-2')}>
-              <Calendar className="w-6 h-6 text-accent-gold" />
+              <Calendar className={cn('h-6 w-6', agendaAmberIconClass)} />
               {selectedDate ? `Eventos de ${formatDateOnly(selectedDate)}` : 'Todos os Eventos'}
             </h2>
             <button

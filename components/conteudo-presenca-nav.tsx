@@ -18,7 +18,8 @@ export function ConteudoPresencaNav() {
   const pathname = usePathname()
 
   return (
-    <nav className="flex flex-wrap gap-2 border-b border-border-card pb-4 mb-6">
+    <nav className="mb-6 border-b border-border-card pb-4">
+      <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1 [scrollbar-width:thin]">
       {links.map(({ href, label }) => {
         const active =
           href === '/dashboard/conteudo'
@@ -29,16 +30,17 @@ export function ConteudoPresencaNav() {
             key={href}
             href={href}
             className={cn(
-              'rounded-full px-4 py-2 text-sm font-medium transition-premium',
+              'shrink-0 rounded-full px-4 py-2 text-sm font-medium transition-premium',
               active
-                ? 'bg-accent-gold text-white shadow-card'
-                : 'bg-bg-surface text-text-secondary hover:bg-accent-gold-soft border border-border-card'
+                ? 'border border-[#C8900A] bg-[#C8900A] text-white shadow-card'
+                : 'border border-border-card bg-bg-surface text-black hover:bg-[#C8900A]/10',
             )}
           >
             {label}
           </Link>
         )
       })}
+      </div>
     </nav>
   )
 }

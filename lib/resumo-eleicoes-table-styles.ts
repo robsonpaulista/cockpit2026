@@ -67,3 +67,45 @@ export function resumoKpiMetaClass(): string {
 export function resumoKpiLinkClass(): string {
   return 'text-xs font-medium text-[#C8900A] hover:underline disabled:cursor-not-allowed disabled:opacity-40'
 }
+
+/** Âmbar fixo — substitui `accent-gold` (azul no tema republicanos) na aba Votação por Seção. */
+export const resumoAmberChipActiveClass =
+  'border-[#C8900A]/50 bg-[#C8900A]/10 text-text-primary'
+
+export const resumoAmberChipActiveStrongClass =
+  'border-[#C8900A]/50 bg-[#C8900A]/15 text-text-primary'
+
+export const resumoAmberButtonOutlineClass =
+  'border-[#C8900A]/40 bg-[#C8900A]/10 text-text-primary hover:bg-[#C8900A]/15'
+
+export const resumoAmberButtonOutlineHover20Class =
+  'border-[#C8900A]/40 bg-[#C8900A]/10 text-text-primary hover:bg-[#C8900A]/20'
+
+export const resumoAmberInfoBoxClass =
+  'border-[#C8900A]/30 bg-[#C8900A]/10'
+
+export const resumoAmberPillClass =
+  'border-[#C8900A]/35 bg-[#C8900A]/10'
+
+export const resumoAmberBadgeClass =
+  'border-[#C8900A]/40 bg-[#C8900A]/10'
+
+export const resumoAmberColHighlightClass = 'bg-[#C8900A]/15'
+
+export const resumoAmberGroupRowClass =
+  'border-b border-card/50 bg-[#C8900A]/5 hover:bg-[#C8900A]/10'
+
+export const resumoAmberGroupCellClass = 'sticky left-0 z-10 bg-[#C8900A]/5 px-2 py-2'
+
+export const resumoAmberSimilaridadeAltaClass =
+  'border-[#C8900A]/50 bg-[#C8900A]/10'
+
+export const resumoAmberSimilaridadeMediaClass =
+  'border-[#C8900A]/30 bg-[#C8900A]/5'
+
+export const resumoAmberBarAltaClass = 'bg-[#C8900A]'
+
+export const resumoAmberBarMediaClass = 'bg-[#C8900A]/70'
+
+export const resumoAmberAtualizarButtonClass =
+  'inline-flex h-10 w-full items-center justify-center gap-2 rounded-lg border border-[#C8900A]/40 bg-[#C8900A]/10 px-4 text-sm font-medium text-text-primary hover:bg-[#C8900A]/15 disabled:opacity-50 lg:w-auto'

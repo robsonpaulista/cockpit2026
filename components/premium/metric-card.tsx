@@ -2,7 +2,7 @@
 
 import type { TablerIcon } from '@tabler/icons-react'
 import { cn } from '@/lib/utils'
-import { metricCardClass } from '@/lib/premium-ui-classes'
+import { metricCardClass, metricCardCompactClass } from '@/lib/premium-ui-classes'
 
 interface PremiumMetricCardProps {
   label: string
@@ -10,6 +10,11 @@ interface PremiumMetricCardProps {
   contextLine?: string
   icon: TablerIcon
   className?: string
+  compact?: boolean
+  labelClassName?: string
+  valueClassName?: string
+  contextClassName?: string
+  iconClassName?: string
 }
 
 export function PremiumMetricCard({
@@ -18,20 +23,45 @@ export function PremiumMetricCard({
   contextLine,
   icon: Icon,
   className,
+  compact = false,
+  labelClassName,
+  valueClassName,
+  contextClassName,
+  iconClassName,
 }: PremiumMetricCardProps) {
   return (
-    <div className={cn(metricCardClass, 'text-center', className)}>
-      <div className="mb-2 flex items-center justify-center gap-1.5">
+    <div className={cn(compact ? metricCardCompactClass : metricCardClass, 'text-center', className)}>
+      <div className={cn('flex items-center justify-center gap-1.5', compact ? 'mb-1' : 'mb-2')}>
         <Icon
-          className="h-[14px] w-[14px] shrink-0 text-[rgb(var(--color-primary))]"
+          className={cn(
+            'h-[14px] w-[14px] shrink-0',
+            iconClassName ?? 'text-[rgb(var(--color-primary))]',
+          )}
           stroke={1.5}
           aria-hidden
         />
-        <span className="text-[12px] font-medium text-text-secondary">{label}</span>
+        <span className={cn('text-[12px] font-medium', labelClassName ?? 'text-text-secondary')}>
+          {label}
+        </span>
       </div>
-      <p className="text-[26px] font-medium leading-none tabular-nums text-text-primary">{value}</p>
+      <p
+        className={cn(
+          'text-[26px] font-medium leading-none tabular-nums',
+          valueClassName ?? 'text-text-primary',
+        )}
+      >
+        {value}
+      </p>
       {contextLine ? (
-        <p className="mt-2 text-[11px] text-text-muted">{contextLine}</p>
+        <p
+          className={cn(
+            compact ? 'mt-1' : 'mt-2',
+            'text-[11px]',
+            contextClassName ?? 'text-text-muted',
+          )}
+        >
+          {contextLine}
+        </p>
       ) : null}
     </div>
   )

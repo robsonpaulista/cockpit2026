@@ -144,6 +144,27 @@ const EMPTY_SELECTIONS: Record<TableKey, Record<string, number>> = {
   partido_2024: {},
 }
 
+/** Rola até o elemento no ancestral scrollável do hub (DashboardPageContent). */
+function scrollParaElementoNoDashboard(el: HTMLElement | null) {
+  if (!el) return
+  let parent: HTMLElement | null = el.parentElement
+  while (parent) {
+    const { overflowY } = getComputedStyle(parent)
+    if (
+      (overflowY === 'auto' || overflowY === 'scroll') &&
+      parent.scrollHeight > parent.clientHeight + 1
+    ) {
+      const parentRect = parent.getBoundingClientRect()
+      const elRect = el.getBoundingClientRect()
+      const top = elRect.top - parentRect.top + parent.scrollTop - 16
+      parent.scrollTo({ top: Math.max(0, top), behavior: 'smooth' })
+      return
+    }
+    parent = parent.parentElement
+  }
+  el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+}
+
 function parseVotos(value: string): number {
   const parsed = Number.parseInt(value || '0', 10)
   return Number.isNaN(parsed) ? 0 : parsed
@@ -330,27 +351,33 @@ export function ResumoEleicoesAtendimentoPanel() {
 
   const visaoTodasCidades = cidade === RESUMO_TODAS_CIDADES
 
+  const municipioAtivo = useMemo(() => {
+    if (visaoTodasCidades) return cidadeFiltroLista
+    if (cidade && cidade !== RESUMO_TODAS_CIDADES) return cidade
+    return null
+  }, [visaoTodasCidades, cidadeFiltroLista, cidade])
+
   const dadosAtivos = useMemo(() => {
     if (visaoTodasCidades && cidadeFiltroLista) return dadosCidadeFiltro
     return dados
   }, [visaoTodasCidades, cidadeFiltroLista, dadosCidadeFiltro, dados])
 
   const alternarDistribuicaoCandidato = useCallback((item: ResultadoEleicao) => {
-    if (cidade === RESUMO_TODAS_CIDADES) return
+    if (!municipioAtivo) return
     setCandidatoDistribuicao((atual) =>
       isMesmoCandidatoResumo(item, atual) ? null : item,
     )
-  }, [cidade])
+  }, [municipioAtivo])
 
   useEffect(() => {
     setCandidatoDistribuicao(null)
-  }, [cidade, cidadeFiltroLista])
+  }, [municipioAtivo])
 
   useEffect(() => {
     if (!candidatoDistribuicao) return
     const timer = window.setTimeout(() => {
-      painelSecaoRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-    }, 80)
+      scrollParaElementoNoDashboard(painelSecaoRef.current)
+    }, 120)
     return () => window.clearTimeout(timer)
   }, [candidatoDistribuicao])
 
@@ -2070,6 +2097,7 @@ export function ResumoEleicoesAtendimentoPanel() {
                             item={item}
                             candidatoAtivo={candidatoDistribuicao}
                             onVerDistribuicao={alternarDistribuicaoCandidato}
+                            habilitado={Boolean(municipioAtivo)}
                           />
                         </td>
                         <td className="py-1 px-1 text-right">{votes.toLocaleString('pt-BR')}</td>
@@ -2149,6 +2177,7 @@ export function ResumoEleicoesAtendimentoPanel() {
                             item={item}
                             candidatoAtivo={candidatoDistribuicao}
                             onVerDistribuicao={alternarDistribuicaoCandidato}
+                            habilitado={Boolean(municipioAtivo)}
                           />
                         </td>
                         <td className="py-1 px-1 text-right">{votes.toLocaleString('pt-BR')}</td>
@@ -2225,6 +2254,7 @@ export function ResumoEleicoesAtendimentoPanel() {
                             item={item}
                             candidatoAtivo={candidatoDistribuicao}
                             onVerDistribuicao={alternarDistribuicaoCandidato}
+                            habilitado={Boolean(municipioAtivo)}
                           />
                         </td>
                         <td className="py-1 px-1 text-text-secondary">{item.partido || '—'}</td>
@@ -2315,6 +2345,7 @@ export function ResumoEleicoesAtendimentoPanel() {
                               item={item}
                               candidatoAtivo={candidatoDistribuicao}
                               onVerDistribuicao={alternarDistribuicaoCandidato}
+                              habilitado={Boolean(municipioAtivo)}
                             />
                             {isPresidente && (
                               <Crown
@@ -2463,11 +2494,11 @@ export function ResumoEleicoesAtendimentoPanel() {
             </div>
           </div>
 
-          {candidatoDistribuicao && (
+          {candidatoDistribuicao && municipioAtivo && (
             <PainelVotacaoCandidatoResumo
               ref={painelSecaoRef}
               candidato={candidatoDistribuicao}
-              municipio={cidade}
+              municipio={municipioAtivo}
               onClose={() => setCandidatoDistribuicao(null)}
             />
           )}

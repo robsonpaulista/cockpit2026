@@ -9,6 +9,10 @@ import {
 import { cn } from '@/lib/utils'
 import { cargoTierDotClass } from '@/lib/cargo-tier-color'
 import { municipalityCardClass } from '@/lib/premium-ui-classes'
+import {
+  TERRITORIO_BASE_AMBER,
+  territorioBaseTextClass,
+} from '@/lib/territorio-base-styles'
 
 interface LiderancaRow {
   [key: string]: unknown
@@ -65,34 +69,38 @@ export function MunicipalityListItem({
       >
         <IconChevronRight
           className={cn(
-            'ml-0.5 h-[14px] w-[14px] shrink-0 text-text-muted transition-transform duration-200',
-            isExpanded && 'rotate-90'
+            'ml-0.5 h-[14px] w-[14px] shrink-0 text-black/50 transition-transform duration-200',
+            isExpanded && 'rotate-90',
           )}
           stroke={1.5}
           aria-hidden
         />
 
-        <div className="flex h-[34px] w-[34px] shrink-0 items-center justify-center rounded-lg bg-[rgb(var(--color-primary-tint))]">
+        <div
+          className="flex h-[34px] w-[34px] shrink-0 items-center justify-center rounded-lg"
+          style={{ backgroundColor: `${TERRITORIO_BASE_AMBER}1F` }}
+        >
           <IconMapPin
-            className="h-4 w-4 text-[rgb(var(--color-primary))]"
+            className="h-4 w-4"
+            style={{ color: TERRITORIO_BASE_AMBER }}
             stroke={1.5}
             aria-hidden
           />
         </div>
 
         <div className="min-w-0 flex-1">
-          <p className="truncate text-[13.5px] font-medium text-text-primary">{cidade}</p>
-          <p className="mt-px text-[11.5px] text-text-muted">
+          <p className={cn('truncate text-[13.5px] font-medium', territorioBaseTextClass)}>{cidade}</p>
+          <p className={cn('mt-px text-[11.5px]', territorioBaseTextClass)}>
             {liderancasCidade.length} liderança{liderancasCidade.length !== 1 ? 's' : ''}
           </p>
         </div>
 
         {votosReferenciaCol && totalVotos > 0 ? (
           <div className="ml-2 shrink-0 text-right">
-            <p className="text-base font-medium tabular-nums text-[rgb(var(--color-primary))]">
+            <p className={cn('text-base font-medium tabular-nums', territorioBaseTextClass)}>
               {Math.round(totalVotos).toLocaleString('pt-BR')}
             </p>
-            <p className="text-[10.5px] text-text-muted">{votosLabel}</p>
+            <p className={cn('text-[10.5px]', territorioBaseTextClass)}>{votosLabel}</p>
           </div>
         ) : null}
 
@@ -100,7 +108,10 @@ export function MunicipalityListItem({
           <button
             type="button"
             onClick={onBriefing}
-            className="inline-flex items-center gap-1 rounded-lg border border-[rgb(var(--color-border-secondary)/0.85)] bg-transparent px-2 py-1 text-[11px] font-medium text-text-primary transition-colors hover:bg-bg-app"
+            className={cn(
+              'inline-flex items-center gap-1 rounded-lg border border-[rgb(var(--color-border-secondary)/0.85)] bg-transparent px-2 py-1 text-[11px] font-medium transition-colors hover:bg-bg-app',
+              territorioBaseTextClass,
+            )}
             aria-label={`Briefing de ${cidade}`}
           >
             <IconFileDescription className="h-[13px] w-[13px] opacity-70" stroke={1.5} aria-hidden />
@@ -109,7 +120,10 @@ export function MunicipalityListItem({
           <button
             type="button"
             onClick={onObras}
-            className="inline-flex items-center gap-1 rounded-lg border border-[rgb(var(--color-border-secondary)/0.85)] bg-transparent px-2 py-1 text-[11px] font-medium text-text-primary transition-colors hover:bg-bg-app"
+            className={cn(
+              'inline-flex items-center gap-1 rounded-lg border border-[rgb(var(--color-border-secondary)/0.85)] bg-transparent px-2 py-1 text-[11px] font-medium transition-colors hover:bg-bg-app',
+              territorioBaseTextClass,
+            )}
             aria-label={`Obras de ${cidade}`}
           >
             <IconBuildingCommunity className="h-[13px] w-[13px] opacity-70" stroke={1.5} aria-hidden />
@@ -138,18 +152,18 @@ export function MunicipalityListItem({
                   aria-hidden
                 />
                 <div className="flex min-w-0 flex-1 items-baseline gap-1.5 overflow-hidden">
-                  <span className="truncate text-xs font-medium text-text-primary">{nome}</span>
+                  <span className={cn('truncate text-xs font-medium', territorioBaseTextClass)}>{nome}</span>
                   {cargo ? (
                     <>
-                      <span className="shrink-0 text-[11px] text-text-muted" aria-hidden>
+                      <span className={cn('shrink-0 text-[11px]', territorioBaseTextClass)} aria-hidden>
                         ·
                       </span>
-                      <span className="truncate text-[11px] text-text-muted">{cargo}</span>
+                      <span className={cn('truncate text-[11px]', territorioBaseTextClass)}>{cargo}</span>
                     </>
                   ) : null}
                 </div>
                 {votosReferenciaCol && votos > 0 ? (
-                  <p className="shrink-0 text-[11.5px] font-medium tabular-nums text-[rgb(var(--color-primary))]">
+                  <p className={cn('shrink-0 text-[11.5px] font-medium tabular-nums', territorioBaseTextClass)}>
                     {votos.toLocaleString('pt-BR')}
                   </p>
                 ) : null}

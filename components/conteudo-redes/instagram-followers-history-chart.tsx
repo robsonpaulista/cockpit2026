@@ -44,7 +44,13 @@ import {
   type PostEngagementInput,
 } from '@/lib/instagram-followers-history-chart'
 import { cn } from '@/lib/utils'
-import { ghostButtonClass, pillFilterActiveClass, pillFilterIdleClass } from '@/lib/premium-ui-classes'
+import {
+  conteudoRedesAmberTextClass,
+  conteudoRedesGhostButtonClass,
+  conteudoRedesPillFilterActiveClass,
+  conteudoRedesPillFilterIdleClass,
+  conteudoRedesTextClass,
+} from '@/lib/conteudo-redes-styles'
 import type { PopupAnchor } from '@/lib/anchored-popup-position'
 import { getChartPointAnchor } from '@/lib/chart-svg-anchor'
 
@@ -60,10 +66,10 @@ type InstagramFollowersHistoryChartProps = {
   livePosts?: InstagramDayPostRecord[]
 }
 
-const FOLLOWERS_COLOR = 'rgb(var(--color-primary))'
-const ENGAGEMENT_COLOR = '#5B6AD8'
+const FOLLOWERS_COLOR = '#C8900A'
+const ENGAGEMENT_COLOR = '#9A6B08'
 const GRID_STROKE = 'rgb(var(--color-border-tertiary) / 0.45)'
-const TICK_STYLE = { fontSize: 10, fill: 'rgb(var(--text-muted))' }
+const TICK_STYLE = { fontSize: 10, fill: '#000000' }
 
 function formatCount(value: number): string {
   return value.toLocaleString('pt-BR')
@@ -91,13 +97,13 @@ function FollowersHistoryTooltip({
 
   return (
     <div className="min-w-[168px] rounded-xl border border-[rgb(var(--color-border-tertiary)/0.9)] bg-bg-surface/95 px-3 py-2.5 shadow-[0_8px_24px_rgba(15,23,42,0.12)] backdrop-blur-sm">
-      <p className="mb-2 text-[11px] font-medium uppercase tracking-[0.04em] text-text-muted">
+      <p className={cn('mb-2 text-[11px] font-medium uppercase tracking-[0.04em]', conteudoRedesTextClass)}>
         {label}
       </p>
       <div className="space-y-1.5">
         {typeof variacao === 'number' ? (
           <div className="flex items-center justify-between gap-3">
-            <span className="inline-flex items-center gap-1.5 text-[11px] text-text-secondary">
+            <span className={cn('inline-flex items-center gap-1.5 text-[11px]', conteudoRedesTextClass)}>
               <span
                 className="h-0.5 w-3 rounded-full"
                 style={{ backgroundColor: FOLLOWERS_COLOR }}
@@ -112,7 +118,7 @@ function FollowersHistoryTooltip({
                   ? 'text-status-success'
                   : variacao < 0
                     ? 'text-status-error'
-                    : 'text-text-primary'
+                    : conteudoRedesTextClass
               )}
             >
               {formatFollowersDelta(variacao)}
@@ -121,7 +127,7 @@ function FollowersHistoryTooltip({
         ) : null}
         {typeof engajamento === 'number' ? (
           <div className="flex items-center justify-between gap-3">
-            <span className="inline-flex items-center gap-1.5 text-[11px] text-text-secondary">
+            <span className={cn('inline-flex items-center gap-1.5 text-[11px]', conteudoRedesTextClass)}>
               <span
                 className="h-0.5 w-3 rounded-full border border-dashed"
                 style={{ borderColor: ENGAGEMENT_COLOR }}
@@ -129,13 +135,13 @@ function FollowersHistoryTooltip({
               />
               Engajamento
             </span>
-            <span className="text-[12px] font-semibold tabular-nums text-text-primary">
+            <span className={cn('text-[12px] font-semibold tabular-nums', conteudoRedesTextClass)}>
               {formatEngagementValue(engajamento)}
             </span>
           </div>
         ) : null}
       </div>
-      <p className="mt-2 border-t border-[rgb(var(--color-border-tertiary)/0.5)] pt-2 text-[10px] text-text-muted">
+      <p className={cn('mt-2 border-t border-[rgb(var(--color-border-tertiary)/0.5)] pt-2 text-[10px]', conteudoRedesTextClass)}>
         Clique no ponto para ver publicações do dia
       </p>
     </div>
@@ -224,7 +230,7 @@ export function InstagramFollowersHistoryChart({
           cx={cx}
           cy={cy}
           r={isSelected ? 6 : 3.5}
-          fill={isSelected ? 'rgb(var(--accent-gold))' : FOLLOWERS_COLOR}
+          fill={isSelected ? '#C8900A' : FOLLOWERS_COLOR}
           stroke="rgb(var(--bg-surface))"
           strokeWidth={isSelected ? 2 : 1.5}
           style={{ cursor: 'pointer' }}
@@ -246,14 +252,14 @@ export function InstagramFollowersHistoryChart({
         hint="Passe o mouse para detalhes · clique em um ponto para ver as publicações do dia"
         actions={
           <>
-            <div className="flex flex-wrap items-center gap-1.5">
+            <div className="-mx-1 flex items-center gap-1.5 overflow-x-auto px-1 pb-1 [scrollbar-width:thin]">
               {FOLLOWERS_HISTORY_RANGE_OPTIONS.map((option) => (
                 <button
                   key={option.value}
                   type="button"
                   onClick={() => onDateRangeChange(option.value)}
                   className={cn(
-                    dateRange === option.value ? pillFilterActiveClass : pillFilterIdleClass
+                    dateRange === option.value ? conteudoRedesPillFilterActiveClass : conteudoRedesPillFilterIdleClass
                   )}
                 >
                   {option.label}
@@ -264,7 +270,7 @@ export function InstagramFollowersHistoryChart({
               type="button"
               onClick={onRefresh}
               disabled={loading}
-              className={cn(ghostButtonClass, 'disabled:opacity-50')}
+              className={cn(conteudoRedesGhostButtonClass, 'disabled:opacity-50')}
             >
               {loading ? (
                 <Loader2 className="h-[14px] w-[14px] animate-spin opacity-70" />
@@ -296,35 +302,43 @@ export function InstagramFollowersHistoryChart({
       <div className="mb-3 grid grid-cols-2 gap-2.5 sm:max-w-md">
         {typeof currentFollowers === 'number' ? (
           <PremiumMetricCard
+            compact
             label="Seguidores atuais"
             value={formatCount(currentFollowers)}
             icon={IconUsers}
+            labelClassName={conteudoRedesTextClass}
+            valueClassName={conteudoRedesTextClass}
+            iconClassName={conteudoRedesAmberTextClass}
           />
         ) : null}
         {typeof currentAvgEngagement === 'number' && currentAvgEngagement > 0 ? (
           <PremiumMetricCard
+            compact
             label="Engajamento médio"
             value={formatEngagementValue(currentAvgEngagement)}
             icon={IconChartBar}
+            labelClassName={conteudoRedesTextClass}
+            valueClassName={conteudoRedesTextClass}
+            iconClassName={conteudoRedesAmberTextClass}
           />
         ) : null}
       </div>
 
       {loading && !hasChartData ? (
-        <div className="flex h-[200px] flex-col items-center justify-center text-secondary">
-          <Loader2 className="mb-3 h-7 w-7 animate-spin text-[rgb(var(--color-primary))]" />
+        <div className={cn('flex h-[200px] flex-col items-center justify-center', conteudoRedesTextClass)}>
+          <Loader2 className={cn('mb-3 h-7 w-7 animate-spin', conteudoRedesAmberTextClass)} />
           <p className="text-sm">Carregando histórico...</p>
         </div>
       ) : hasChartData ? (
         <>
           {!hasEngagementLine ? (
-            <p className="mb-2 text-[11px] text-text-muted">
+            <p className={cn('mb-2 text-[11px]', conteudoRedesTextClass)}>
               O engajamento histórico é salvo a cada atualização. Publique conteúdo ou atualize os dados para enriquecer o histórico.
             </p>
           ) : null}
           <div
             ref={chartWrapRef}
-            className="relative h-[220px] w-full overflow-hidden rounded-xl border border-[rgb(var(--color-border-tertiary)/0.85)] bg-[linear-gradient(180deg,rgb(var(--color-primary)/0.04)_0%,transparent_42%)] p-2 sm:h-[240px] sm:p-2.5"
+            className="relative h-[220px] w-full overflow-hidden rounded-xl border border-[rgb(var(--color-border-tertiary)/0.85)] bg-[linear-gradient(180deg,rgba(200,144,10,0.04)_0%,transparent_42%)] p-2 sm:h-[240px] sm:p-2.5"
           >
             <ResponsiveContainer width="100%" height="100%">
               <ComposedChart
@@ -333,8 +347,8 @@ export function InstagramFollowersHistoryChart({
               >
                 <defs>
                   <linearGradient id="followersAreaGradient" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="rgb(var(--color-primary))" stopOpacity={0.22} />
-                    <stop offset="100%" stopColor="rgb(var(--color-primary))" stopOpacity={0.02} />
+                    <stop offset="0%" stopColor="#C8900A" stopOpacity={0.22} />
+                    <stop offset="100%" stopColor="#C8900A" stopOpacity={0.02} />
                   </linearGradient>
                 </defs>
                 <CartesianGrid
@@ -378,14 +392,14 @@ export function InstagramFollowersHistoryChart({
                 {selectedPoint ? (
                   <ReferenceLine
                     x={selectedPoint.date}
-                    stroke="rgb(var(--color-primary) / 0.2)"
+                    stroke="rgba(200, 144, 10, 0.2)"
                     strokeDasharray="3 4"
                   />
                 ) : null}
                 <Tooltip
                   content={<FollowersHistoryTooltip />}
                   cursor={{
-                    stroke: 'rgb(var(--color-primary) / 0.25)',
+                    stroke: 'rgba(200, 144, 10, 0.25)',
                     strokeWidth: 1,
                     strokeDasharray: '4 4',
                   }}
@@ -493,7 +507,7 @@ export function InstagramFollowersHistoryChart({
           </div>
 
           <div className="mt-2 flex flex-wrap items-center justify-center gap-x-4 gap-y-1 sm:justify-start">
-            <span className="inline-flex items-center gap-2 text-[11px] text-text-secondary">
+            <span className={cn('inline-flex items-center gap-2 text-[11px]', conteudoRedesTextClass)}>
               <span
                 className="h-0.5 w-5 rounded-full"
                 style={{ backgroundColor: FOLLOWERS_COLOR }}
@@ -502,7 +516,7 @@ export function InstagramFollowersHistoryChart({
               Variação de seguidores
             </span>
             {hasEngagementLine ? (
-              <span className="inline-flex items-center gap-2 text-[11px] text-text-secondary">
+              <span className={cn('inline-flex items-center gap-2 text-[11px]', conteudoRedesTextClass)}>
                 <span
                   className="h-0 w-5 border-t-[1.5px] border-dashed"
                   style={{ borderColor: ENGAGEMENT_COLOR }}
@@ -514,7 +528,7 @@ export function InstagramFollowersHistoryChart({
           </div>
         </>
       ) : (
-        <div className="flex h-[220px] flex-col items-center justify-center rounded-xl border border-dashed border-card text-secondary">
+        <div className={cn('flex h-[220px] flex-col items-center justify-center rounded-xl border border-dashed border-card', conteudoRedesTextClass)}>
           <Eye className="mb-2 h-8 w-8 opacity-50" />
           {(metricsHistory?.history?.length ?? 0) === 1 ? (
             <>

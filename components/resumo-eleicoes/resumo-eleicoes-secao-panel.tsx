@@ -14,6 +14,23 @@ import {
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import {
+  resumoAmberAtualizarButtonClass,
+  resumoAmberBadgeClass,
+  resumoAmberBarAltaClass,
+  resumoAmberBarMediaClass,
+  resumoAmberButtonOutlineHover20Class,
+  resumoAmberChipActiveClass,
+  resumoAmberChipActiveStrongClass,
+  resumoAmberColHighlightClass,
+  resumoAmberGroupCellClass,
+  resumoAmberGroupRowClass,
+  resumoAmberInfoBoxClass,
+  resumoAmberPillClass,
+  resumoAmberSimilaridadeAltaClass,
+  resumoAmberSimilaridadeMediaClass,
+  resumoAccentTextClass,
+} from '@/lib/resumo-eleicoes-table-styles'
+import {
   cargoAnoKey,
   cargoPermiteSelecaoCandidatos,
   cargosVotacaoSecao,
@@ -676,7 +693,7 @@ export function ResumoEleicoesSecaoPanel({ embedded = false }: { embedded?: bool
                       className={cn(
                         'inline-flex h-9 min-w-[3.25rem] cursor-pointer items-center justify-center rounded-lg border px-3 text-sm font-medium tabular-nums',
                         ativo
-                          ? 'border-accent-gold/50 bg-accent-gold/10 text-text-primary'
+                          ? resumoAmberChipActiveClass
                           : 'border-card bg-background text-text-secondary',
                       )}
                     >
@@ -776,7 +793,7 @@ export function ResumoEleicoesSecaoPanel({ embedded = false }: { embedded?: bool
                 type="button"
                 onClick={() => void carregar(cidade, cargo, anos, modoComparacao)}
                 disabled={!cidade || loading}
-                className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-lg border border-accent-gold/40 bg-accent-gold/10 px-4 text-sm font-medium text-text-primary hover:bg-accent-gold/15 disabled:opacity-50 lg:w-auto"
+                className={resumoAmberAtualizarButtonClass}
               >
                 <RefreshCw className={cn('h-4 w-4 shrink-0', loading && 'animate-spin')} />
                 Atualizar
@@ -797,7 +814,7 @@ export function ResumoEleicoesSecaoPanel({ embedded = false }: { embedded?: bool
                         key={anoRef}
                         className="rounded-xl border border-card bg-background/40 p-3"
                       >
-                        <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-accent-gold">
+                        <p className={cn('mb-2 text-[11px] font-semibold uppercase tracking-wide', resumoAccentTextClass())}>
                           Eleição {anoRef}
                         </p>
                         <div className="flex flex-wrap gap-1.5">
@@ -809,7 +826,7 @@ export function ResumoEleicoesSecaoPanel({ embedded = false }: { embedded?: bool
                                 className={cn(
                                   'inline-flex cursor-pointer items-center rounded-full border px-2.5 py-1 text-xs',
                                   ativo
-                                    ? 'border-accent-gold/50 bg-accent-gold/10 text-text-primary'
+                                    ? resumoAmberChipActiveClass
                                     : 'border-card bg-surface text-text-secondary',
                                 )}
                               >
@@ -839,7 +856,7 @@ export function ResumoEleicoesSecaoPanel({ embedded = false }: { embedded?: bool
                         className={cn(
                           'inline-flex cursor-pointer items-center rounded-full border px-2.5 py-1 text-xs',
                           ativo
-                            ? 'border-accent-gold/50 bg-accent-gold/10 text-text-primary'
+                            ? resumoAmberChipActiveClass
                             : 'border-card bg-background text-text-secondary',
                         )}
                       >
@@ -913,7 +930,7 @@ export function ResumoEleicoesSecaoPanel({ embedded = false }: { embedded?: bool
             </div>
 
             {secoesComBairro === 0 && (
-              <div className="mb-4 rounded-xl border border-accent-gold/30 bg-accent-gold/10 px-4 py-3 text-xs text-text-secondary">
+              <div className={cn('mb-4 rounded-xl px-4 py-3 text-xs text-text-secondary', resumoAmberInfoBoxClass)}>
                 Bairros ainda não carregados no banco. Execute{' '}
                 <code className="rounded bg-background px-1">database/alter-votacao-secao-bairro.sql</code>{' '}
                 e{' '}
@@ -952,7 +969,7 @@ export function ResumoEleicoesSecaoPanel({ embedded = false }: { embedded?: bool
                     type="button"
                     onClick={() => setModalVotoCasadoAberto(true)}
                     disabled={loading || candidatosParaMapeamento.length < 2}
-                    className="rounded-lg border border-accent-gold/40 bg-accent-gold/10 px-3 py-1.5 text-xs font-medium text-text-primary hover:bg-accent-gold/20 disabled:opacity-50"
+                    className={cn('rounded-lg px-3 py-1.5 text-xs font-medium disabled:opacity-50', resumoAmberButtonOutlineHover20Class)}
                   >
                     Mapear correlação…
                   </button>
@@ -1065,7 +1082,7 @@ export function ResumoEleicoesSecaoPanel({ embedded = false }: { embedded?: bool
                                 className={cn(
                                   'flex w-full items-center justify-between rounded px-2 py-1.5 text-left text-xs',
                                   selecionado
-                                    ? 'bg-accent-gold/15 text-text-primary'
+                                    ? cn(resumoAmberColHighlightClass, 'text-text-primary')
                                     : 'hover:bg-surface',
                                 )}
                               >
@@ -1148,7 +1165,7 @@ export function ResumoEleicoesSecaoPanel({ embedded = false }: { embedded?: bool
                       className={cn(
                         'rounded border px-2 py-1 transition-colors',
                         filtroSoSemelhantes
-                          ? 'border-accent-gold/50 bg-accent-gold/15 text-text-primary'
+                          ? resumoAmberChipActiveStrongClass
                           : 'border-card hover:bg-background',
                       )}
                     >
@@ -1187,7 +1204,7 @@ export function ResumoEleicoesSecaoPanel({ embedded = false }: { embedded?: bool
                           title={`${c.dsCargo} · ${c.nmVotavel} · total ${c.totalVotos.toLocaleString('pt-BR')}`}
                         >
                           {modoComparar && (
-                            <div className="truncate text-[9px] font-normal uppercase text-accent-gold">
+                            <div className={cn('truncate text-[9px] font-normal uppercase', resumoAccentTextClass())}>
                               {rotuloCabecalhoCandidato(c, multiAno)}
                             </div>
                           )}
@@ -1315,7 +1332,7 @@ function PilulasSemelhanca({
         {pares.slice(0, 2).map((p) => (
           <span
             key={`${p.idA}-${p.idB}`}
-            className="inline-flex shrink-0 rounded-full border border-accent-gold/35 bg-accent-gold/10 px-1.5 py-px text-[9px] font-medium text-text-primary"
+            className={cn('inline-flex shrink-0 rounded-full px-1.5 py-px text-[9px] font-medium text-text-primary', resumoAmberPillClass)}
             title={`${p.nomeA} e ${p.nomeB} — votos semelhantes`}
           >
             {p.nomeA}≈{p.nomeB}
@@ -1331,7 +1348,7 @@ function PilulasSemelhanca({
       {pares.map((p) => (
         <span
           key={`${p.idA}-${p.idB}`}
-          className="inline-flex shrink-0 rounded-full border border-accent-gold/35 bg-accent-gold/10 px-1.5 py-px text-[9px] font-medium text-text-primary"
+          className={cn('inline-flex shrink-0 rounded-full px-1.5 py-px text-[9px] font-medium text-text-primary', resumoAmberPillClass)}
           title={`${p.nomeA} e ${p.nomeB} — votos semelhantes nesta seção`}
         >
           {p.nomeA}≈{p.nomeB}
@@ -1345,7 +1362,7 @@ function BadgeBairro({ bairro }: { bairro: string | null | undefined }) {
   const nome = bairro?.trim()
   if (!nome) return null
   return (
-    <span className="inline-flex rounded-full border border-accent-gold/40 bg-accent-gold/10 px-2 py-0.5 text-[10px] font-medium text-text-primary">
+    <span className={cn('inline-flex rounded-full px-2 py-0.5 text-[10px] font-medium text-text-primary', resumoAmberBadgeClass)}>
       {nome}
     </span>
   )
@@ -1399,7 +1416,7 @@ function CelulasVotosMatriz({
             key={c.id}
             className={cn(
               'px-2 py-2 text-right tabular-nums',
-              lider && 'bg-accent-gold/15 font-semibold text-text-primary',
+              lider && cn(resumoAmberColHighlightClass, 'font-semibold text-text-primary'),
               !qt && 'text-text-secondary/40',
             )}
           >
@@ -1439,8 +1456,8 @@ function GrupoBairroRows({
     const endereco = localUnico.dsEndereco?.trim()
     const pares = paresPorSecao.get(secao.localId) ?? []
     return (
-      <tr className="border-b border-card/50 bg-accent-gold/5 hover:bg-accent-gold/10">
-        <td className="sticky left-0 z-10 bg-accent-gold/5 px-2 py-2">
+      <tr className={resumoAmberGroupRowClass}>
+        <td className={resumoAmberGroupCellClass}>
           <div className="flex flex-wrap items-center gap-x-2 gap-y-1 font-semibold text-text-primary">
             <span>{grupo.nmBairro}</span>
             {destacarSemelhanca && <PilulasSemelhanca pares={pares} />}
@@ -1469,8 +1486,8 @@ function GrupoBairroRows({
 
   return (
     <>
-      <tr className="border-b border-card/50 bg-accent-gold/5 hover:bg-accent-gold/10">
-        <td className="sticky left-0 z-10 bg-accent-gold/5 px-2 py-2">
+      <tr className={resumoAmberGroupRowClass}>
+        <td className={resumoAmberGroupCellClass}>
           <button
             type="button"
             onClick={onToggleBairro}
@@ -1705,8 +1722,8 @@ function PainelComparacaoVotos({ analises }: { analises: AnaliseComparacaoVotos[
             key={`${a.candidatoA.id}::${a.candidatoB.id}`}
             className={cn(
               'rounded-xl border p-4',
-              a.nivel === 'alta' && 'border-accent-gold/50 bg-accent-gold/10',
-              a.nivel === 'media' && 'border-accent-gold/30 bg-accent-gold/5',
+              a.nivel === 'alta' && resumoAmberSimilaridadeAltaClass,
+              a.nivel === 'media' && resumoAmberSimilaridadeMediaClass,
               a.nivel === 'baixa' && 'border-card bg-background/40',
               a.nivel === 'minima' && 'border-card bg-background/20',
             )}
@@ -1730,8 +1747,8 @@ function PainelComparacaoVotos({ analises }: { analises: AnaliseComparacaoVotos[
               <div
                 className={cn(
                   'h-full rounded-full',
-                  a.nivel === 'alta' && 'bg-accent-gold',
-                  a.nivel === 'media' && 'bg-accent-gold/70',
+                  a.nivel === 'alta' && resumoAmberBarAltaClass,
+                  a.nivel === 'media' && resumoAmberBarMediaClass,
                   a.nivel === 'baixa' && 'bg-text-secondary/40',
                   a.nivel === 'minima' && 'bg-text-secondary/25',
                 )}
@@ -1768,12 +1785,12 @@ function CandidatoChip({
       className={cn(
         'inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[11px]',
         ativo
-          ? 'border-accent-gold/40 bg-accent-gold/10 text-text-primary'
+          ? resumoAmberChipActiveClass
           : 'border-card bg-background text-text-secondary',
       )}
     >
       {mostrarCargo && (
-        <span className="rounded bg-background/80 px-1 text-[9px] font-semibold uppercase text-accent-gold">
+        <span className={cn('rounded bg-background/80 px-1 text-[9px] font-semibold uppercase', resumoAccentTextClass())}>
           {rotuloCabecalhoCandidato(candidato, multiAno)}
         </span>
       )}

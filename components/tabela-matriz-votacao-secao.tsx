@@ -9,6 +9,15 @@ import {
 } from 'react'
 import { ChevronDown, ChevronRight } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import {
+  resumoAccentTextClass,
+  resumoAmberBadgeClass,
+  resumoAmberChipActiveStrongClass,
+  resumoAmberColHighlightClass,
+  resumoAmberGroupCellClass,
+  resumoAmberGroupRowClass,
+  resumoAmberPillClass,
+} from '@/lib/resumo-eleicoes-table-styles'
 import type { ParSemelhanteSecao } from '@/lib/votacao-secao-correlacao'
 import { paresSemelhantesAgregados } from '@/lib/votacao-secao-correlacao'
 import {
@@ -211,7 +220,7 @@ export const TabelaMatrizVotacaoSecao = forwardRef<
                   className={cn(
                     'rounded-md px-2 py-1 text-[11px] transition-colors',
                     agrupamento === opt.id
-                      ? 'bg-accent-gold/15 font-medium text-text-primary'
+                      ? cn(resumoAmberColHighlightClass, 'font-medium text-text-primary')
                       : 'text-text-secondary hover:bg-background',
                   )}
                 >
@@ -230,7 +239,7 @@ export const TabelaMatrizVotacaoSecao = forwardRef<
               className={cn(
                 'rounded border px-2 py-1 transition-colors',
                 filtroSoSemelhantes
-                  ? 'border-accent-gold/50 bg-accent-gold/15 text-text-primary'
+                  ? resumoAmberChipActiveStrongClass
                   : 'border-card hover:bg-background',
               )}
             >
@@ -269,7 +278,7 @@ export const TabelaMatrizVotacaoSecao = forwardRef<
                   title={`${c.dsCargo} · ${c.nmVotavel} · total ${c.totalVotos.toLocaleString('pt-BR')}`}
                 >
                   {modoComparar && (
-                    <div className="truncate text-[9px] font-normal uppercase text-accent-gold">
+                    <div className={cn('truncate text-[9px] font-normal uppercase', resumoAccentTextClass())}>
                       {rotuloCabecalhoCandidato(c, multiAno)}
                     </div>
                   )}
@@ -373,7 +382,7 @@ function PilulasSemelhanca({
         {pares.slice(0, 2).map((p) => (
           <span
             key={`${p.idA}-${p.idB}`}
-            className="inline-flex shrink-0 rounded-full border border-accent-gold/35 bg-accent-gold/10 px-1.5 py-px text-[9px] font-medium text-text-primary"
+            className={cn('inline-flex shrink-0 rounded-full px-1.5 py-px text-[9px] font-medium text-text-primary', resumoAmberPillClass)}
             title={`${p.nomeA} e ${p.nomeB} — votos semelhantes`}
           >
             {p.nomeA}≈{p.nomeB}
@@ -389,7 +398,7 @@ function PilulasSemelhanca({
       {pares.map((p) => (
         <span
           key={`${p.idA}-${p.idB}`}
-          className="inline-flex shrink-0 rounded-full border border-accent-gold/35 bg-accent-gold/10 px-1.5 py-px text-[9px] font-medium text-text-primary"
+          className={cn('inline-flex shrink-0 rounded-full px-1.5 py-px text-[9px] font-medium text-text-primary', resumoAmberPillClass)}
           title={`${p.nomeA} e ${p.nomeB} — votos semelhantes nesta seção`}
         >
           {p.nomeA}≈{p.nomeB}
@@ -403,7 +412,7 @@ function BadgeBairro({ bairro }: { bairro: string | null | undefined }) {
   const nome = bairro?.trim()
   if (!nome) return null
   return (
-    <span className="inline-flex rounded-full border border-accent-gold/40 bg-accent-gold/10 px-2 py-0.5 text-[10px] font-medium text-text-primary">
+    <span className={cn('inline-flex rounded-full px-2 py-0.5 text-[10px] font-medium text-text-primary', resumoAmberBadgeClass)}>
       {nome}
     </span>
   )
@@ -457,7 +466,7 @@ function CelulasVotosMatriz({
             key={c.id}
             className={cn(
               'px-2 py-2 text-right tabular-nums',
-              lider && 'bg-accent-gold/15 font-semibold text-text-primary',
+              lider && cn(resumoAmberColHighlightClass, 'font-semibold text-text-primary'),
               !qt && 'text-text-secondary/40',
             )}
           >
@@ -497,8 +506,8 @@ function GrupoBairroRows({
     const endereco = localUnico.dsEndereco?.trim()
     const pares = paresPorSecao.get(secao.localId) ?? []
     return (
-      <tr className="border-b border-card/50 bg-accent-gold/5 hover:bg-accent-gold/10">
-        <td className="sticky left-0 z-10 bg-accent-gold/5 px-2 py-2">
+      <tr className={resumoAmberGroupRowClass}>
+        <td className={resumoAmberGroupCellClass}>
           <div className="flex flex-wrap items-center gap-x-2 gap-y-1 font-semibold text-text-primary">
             <span>{grupo.nmBairro}</span>
             {destacarSemelhanca && <PilulasSemelhanca pares={pares} />}
@@ -527,8 +536,8 @@ function GrupoBairroRows({
 
   return (
     <>
-      <tr className="border-b border-card/50 bg-accent-gold/5 hover:bg-accent-gold/10">
-        <td className="sticky left-0 z-10 bg-accent-gold/5 px-2 py-2">
+      <tr className={resumoAmberGroupRowClass}>
+        <td className={resumoAmberGroupCellClass}>
           <button
             type="button"
             onClick={onToggleBairro}

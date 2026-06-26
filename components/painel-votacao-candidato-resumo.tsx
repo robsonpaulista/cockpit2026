@@ -55,17 +55,23 @@ export function BotaoNomeCandidatoDistribuicao({
   item,
   candidatoAtivo,
   onVerDistribuicao,
+  habilitado = true,
 }: {
   item: ResultadoEleicao
   candidatoAtivo?: ResultadoEleicao | null
   onVerDistribuicao: (item: ResultadoEleicao) => void
+  habilitado?: boolean
 }) {
   const temSecao = resumoTemVotacaoSecao(item)
   const ativo = isMesmoCandidatoResumo(item, candidatoAtivo ?? null)
   const nomeExibicao = nomeCandidatoResumoExibicao(item.nomeUrnaCandidato, item.numeroUrna)
 
-  if (!temSecao) {
-    return <span>{nomeExibicao}</span>
+  if (!temSecao || !habilitado) {
+    return (
+      <span title={temSecao && !habilitado ? 'Selecione uma cidade para ver votação por seção' : undefined}>
+        {nomeExibicao}
+      </span>
+    )
   }
 
   return (

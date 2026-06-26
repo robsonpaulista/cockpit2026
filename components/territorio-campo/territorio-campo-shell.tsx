@@ -10,7 +10,13 @@ import {
   DashboardPageShell,
 } from '@/components/dashboard/dashboard-page-chrome'
 import { typographyContentRootClass, typographyPageLeadClass } from '@/lib/typography-chrome'
-import { TERRITORIO_CAMPO_PAGE_TITLE, type TerritorioCampoTab } from '@/lib/territorio-campo-route'
+import {
+  TERRITORIO_CAMPO_PAGE_TITLE,
+  TERRITORIO_CAMPO_TAB_BASE,
+  type TerritorioCampoTab,
+} from '@/lib/territorio-campo-route'
+import { territorioBaseTextClass } from '@/lib/territorio-base-styles'
+import { cn } from '@/lib/utils'
 import { useDashboardTopbarVisible } from '@/hooks/use-dashboard-topbar-visible'
 
 const TABS: { id: TerritorioCampoTab; label: string; icon: typeof LayoutGrid }[] = [
@@ -34,6 +40,7 @@ export function TerritorioCampoShell({
 }: TerritorioCampoShellProps) {
   const topbarVisible = useDashboardTopbarVisible()
   const pageTitle = TERRITORIO_CAMPO_PAGE_TITLE
+  const isBaseTab = activeTab === TERRITORIO_CAMPO_TAB_BASE
   const descriptionText =
     'Base de lideranças, expectativa territorial e visitas de campo (Campo & Agenda).'
 
@@ -42,7 +49,9 @@ export function TerritorioCampoShell({
       <DashboardPageChrome>
         {topbarVisible ? (
           <DashboardPageMetaStrip>
-            <span className={typographyPageLeadClass}>{descriptionText}</span>
+            <span className={cn(typographyPageLeadClass, isBaseTab && territorioBaseTextClass)}>
+              {descriptionText}
+            </span>
           </DashboardPageMetaStrip>
         ) : (
           <DashboardPageHeader title={pageTitle} description={descriptionText} />
@@ -54,7 +63,11 @@ export function TerritorioCampoShell({
           actions={tabActions}
         />
       </DashboardPageChrome>
-      <DashboardPageContent className={typographyContentRootClass}>{children}</DashboardPageContent>
+      <DashboardPageContent
+        className={cn(typographyContentRootClass, isBaseTab && territorioBaseTextClass)}
+      >
+        {children}
+      </DashboardPageContent>
     </DashboardPageShell>
   )
 }

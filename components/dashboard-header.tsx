@@ -52,7 +52,7 @@ function getPageTitle(pathname: string, tab: string | null, _view: string | null
   }
   if (pathname.startsWith('/dashboard/conteudo/')) {
     const rest = pathname.slice('/dashboard/conteudo/'.length)
-    if (rest.startsWith('redes')) return 'Redes Sociais · Instagram'
+    if (rest.startsWith('redes')) return 'Instagram Pessoal'
     if (rest.startsWith('obras')) return 'Redes Sociais · Obras (cards)'
     if (rest.startsWith('agenda')) return 'Redes Sociais · Agenda campo'
     if (rest.startsWith('cards')) return 'Redes Sociais · Cards'
