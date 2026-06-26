@@ -3,11 +3,13 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "concurrently --kill-others -n next,recface -c blue,magenta \"npm run dev:next\" \"npm run recface:server\"",
+    "dev:next": "next dev",
     "dev:turbo": "next dev --turbo",
-    "dev:clean": "rm -rf .next node_modules/.cache && next dev",
+    "dev:clean": "rm -rf .next node_modules/.cache && npm run dev",
     "build": "next build",
     "start": "next start",
+    "start:all": "concurrently --kill-others -n next,recface -c blue,magenta \"npm run start\" \"RECFACE_SKIP_PIP=1 npm run recface:server\"",
     "lint": "next lint",
     "obras:import": "node scripts/xlsx-to-json-obras.mjs",
     "federal2018:json": "node scripts/xlsx-to-json-federal2018.mjs",
@@ -20,7 +22,8 @@
     "limites2026:import": "node scripts/import-limites-2026-to-supabase.mjs",
     "processos-dimensao:json": "node scripts/xlsx-to-json-processos-dimensao.mjs",
     "kokoro:assets": "mkdir -p public/kokoro && cp node_modules/kokoro-js/dist/kokoro.web.js public/kokoro/ && cp node_modules/@huggingface/transformers/dist/ort-wasm-simd-threaded.jsep.mjs public/kokoro/ && cp node_modules/@huggingface/transformers/dist/ort-wasm-simd-threaded.jsep.wasm public/kokoro/",
-    "postinstall": "npm run kokoro:assets"
+    "postinstall": "npm run kokoro:assets",
+    "recface:server": "bash scripts/run-recface-server.sh"
   },
   "dependencies": {
     "@react-three/drei": "^9.122.0",
@@ -68,6 +71,7 @@
     "@types/react": "^18.2.48",
     "@types/react-dom": "^18.2.18",
     "autoprefixer": "^10.4.17",
+    "concurrently": "^9.2.3",
     "eslint": "^8.56.0",
     "eslint-config-next": "14.2.35",
     "postcss": "^8.4.33",

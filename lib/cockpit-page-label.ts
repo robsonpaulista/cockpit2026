@@ -47,6 +47,7 @@ export function getCockpitPageLabel(pathname: string): string {
     '/dashboard/gestao-pesquisas/configuracoes': 'Config',
     '/dashboard/usuarios': 'Usuários',
     '/dashboard/log-system': 'Log System',
+    '/dashboard/arquivos': 'Arquivos',
   }
 
   if (exact[p]) return exact[p]

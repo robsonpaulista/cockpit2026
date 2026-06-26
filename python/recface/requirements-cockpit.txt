@@ -1,0 +1,9 @@
+# Cockpit 2026 — motor facial (sem Streamlit / UI acadêmica)
+opencv-python
+numpy
+Pillow
+onnxruntime>=1.16.0
+insightface>=0.7.3
+fastapi>=0.115.0
+uvicorn[standard]>=0.32.0
+python-multipart>=0.0.12

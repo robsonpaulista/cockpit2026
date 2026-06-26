@@ -2,7 +2,15 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { BarChart3, ClipboardList, MapPin, MessageSquare, Radar, type LucideIcon } from 'lucide-react'
+import {
+  BarChart3,
+  ClipboardList,
+  FolderOpen,
+  MapPin,
+  MessageSquare,
+  Radar,
+  type LucideIcon,
+} from 'lucide-react'
 import { cn } from '@/lib/utils'
 import {
   isSidebarQuickAccessActive,
@@ -25,6 +33,7 @@ const ICON_MAP: Record<SidebarQuickAccessItem['icon'], LucideIcon> = {
   MapPin,
   BarChart3,
   MessageSquare,
+  FolderOpen,
 }
 
 type Props = {

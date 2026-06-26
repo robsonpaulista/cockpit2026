@@ -1,0 +1,4 @@
+# Ordem: dlib → face_recognition → modelos (face_recognition exige este pacote em runtime).
+dlib
+face_recognition
+face_recognition_models

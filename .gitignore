@@ -49,8 +49,30 @@ next-env.d.ts
 
 # PDFs de apoio (não versionar — podem ser grandes)
 /PesqAferir*.pdf
-/Pesq Aferir*.pdf
+# PhotoFinder — código de referência extraído localmente (zip), não faz parte do build
+/photofinder/
+photofinder-main.zip
 
+# FaceAgenda (recface) — venv, modelos ONNX e dados locais de visitantes
+/python/recface/venv/
+/python/recface/data/.insightface/
+/python/recface/data/encodings/
+/python/recface/data/visitors/
+/python/recface/data/captures/
+/python/recface/data/logs/
+/python/recface/data/agenda/
+__pycache__/
+*.pyc
 
-
+# Dados locais / cache (não versionar)
+.cache/
+votacao_secao_*.csv
+jadyelapp-master.zip
+_ref/
+Limites Coletivas*.pdf
+Processos_Dimensao_2026_Organizado.xlsx
+Teto_*_2026*.xlsx
+piaui_mandatos_instagram_2024.xlsx
+scripts/db_cluster-*.backup.gz
+database/restore-from-backup-public-data-extracted.sql
 

@@ -1,0 +1,19 @@
+# Motor facial InsightFace — serviço separado do Next.js
+# Uso: docker compose up recface -d
+# Cockpit (local ou VPS): RECFACE_API_URL=http://127.0.0.1:8502
+
+services:
+  recface:
+    build: ./python/recface
+    container_name: cockpit-recface
+    restart: unless-stopped
+    ports:
+      - "${RECFACE_PORT:-8502}:8502"
+    volumes:
+      - recface-data:/app/data
+    environment:
+      RECFACE_HOST: 0.0.0.0
+      RECFACE_PORT: 8502
+
+volumes:
+  recface-data:

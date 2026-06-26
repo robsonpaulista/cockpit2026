@@ -1,0 +1,4 @@
+# Cadastro/reconhecimento sem dlib: wheels via pip (Linux/macOS/Windows, CPU).
+# Na primeira execução o InsightFace baixa o pacote buffalo_s (~dezenas de MB) para data/.insightface/
+onnxruntime>=1.16.0
+insightface>=0.7.3

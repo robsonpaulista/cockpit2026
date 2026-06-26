@@ -8,7 +8,7 @@ const PAGE_KEYS = new Set([
   'dashboard', 'fases', 'narrativas', 'campo', 'agenda', 'territorio',
   'ficha-atendimento', 'chapas', 'conteudo', 'noticias', 'mobilizacao', 'whatsapp',
   'pesquisa', 'operacao', 'juridico', 'obras', 'usuarios', 'log_system', 'gestao_pesquisas',
-  'emendas', 'proposicoes', 'sei-pesquisa', 'resumo-operacional',
+  'emendas', 'proposicoes', 'sei-pesquisa', 'resumo-operacional', 'arquivos',
 ])
 
 function canAccessPageKey(

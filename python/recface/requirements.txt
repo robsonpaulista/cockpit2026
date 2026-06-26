@@ -1,0 +1,4 @@
+# Uso típico (professor/aluno): só pip — cadastro/reconhecimento via InsightFace+ONNX.
+# Para o stack face_recognition+dlib (Docker/Conda), instale também: -r requirements-face.txt
+-r requirements-base.txt
+-r requirements-onnx.txt

@@ -8,7 +8,7 @@ export type SidebarQuickAccessItem = {
   id: string
   label: string
   href: string
-  icon: 'Radar' | 'ClipboardList' | 'MapPin' | 'BarChart3' | 'MessageSquare'
+  icon: 'Radar' | 'ClipboardList' | 'MapPin' | 'BarChart3' | 'MessageSquare' | 'FolderOpen'
   pageKey: string
 }
 
@@ -48,6 +48,13 @@ export const SIDEBAR_QUICK_ACCESS_ITEMS: SidebarQuickAccessItem[] = [
     icon: 'MessageSquare',
     pageKey: 'conteudo',
   },
+  {
+    id: 'quick-arquivos',
+    label: 'Arquivos',
+    href: '/dashboard/arquivos',
+    icon: 'FolderOpen',
+    pageKey: 'arquivos',
+  },
 ]
 
 export function isSidebarQuickAccessActive(
@@ -71,6 +78,8 @@ export function isSidebarQuickAccessActive(
       return pathname.startsWith('/dashboard/pesquisa')
     case 'quick-instagram-pessoal':
       return pathname.startsWith('/dashboard/conteudo/redes')
+    case 'quick-arquivos':
+      return pathname.startsWith('/dashboard/arquivos')
     default:
       return pathname === item.href
   }
