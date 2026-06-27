@@ -1,3 +1,4 @@
+import { resolverColunaDepEstadualLideranca } from '@/lib/planilha-dep-estadual-lideranca'
 import {
   getTerritorioDesenvolvimentoPI,
   TERRITORIOS_DESENVOLVIMENTO_PI,
@@ -14,6 +15,8 @@ export type ColunasLiderancaTerritorio = {
   expectativaJadyelCol?: string
   promessaLiderancaCol?: string
   expectativaLegadoCol?: string
+  /** Coluna do deputado estadual da liderança. */
+  depEstadualCol?: string
   cidadeCol?: string
   /** Coluna de @ do Instagram na planilha (vínculo com comentários no mapa digital). */
   instagramCol?: string
@@ -76,6 +79,7 @@ export function resolverColunasLiderancaTerritorio(headers: string[]): ColunasLi
   })
   const cidadeCol =
     headers.find((h) => /cidade|city|município|municipio/i.test(h)) || headers[1] || undefined
+  const depEstadualCol = resolverColunaDepEstadualLideranca(headers)
   const instagramCol = headers.find((h) => {
     const t = h.toLowerCase().trim()
     return (
@@ -106,6 +110,7 @@ export function resolverColunasLiderancaTerritorio(headers: string[]): ColunasLi
     promessaLiderancaCol,
     expectativaLegadoCol,
     cidadeCol,
+    depEstadualCol,
     instagramCol,
   }
 }

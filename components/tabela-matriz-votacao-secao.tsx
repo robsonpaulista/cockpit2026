@@ -29,6 +29,7 @@ import {
   type LinhaMatrizSecao,
   type MatrizVotacaoSecao,
 } from '@/lib/votacao-secao-matriz'
+import { isColunaExpectativaLideranca } from '@/lib/lideranca-expectativa-secao'
 
 const LOCAIS_POR_PAGINA = 25
 const BAIRROS_POR_PAGINA = 20
@@ -74,6 +75,7 @@ function abreviarCargo(dsCargo: string): string {
 }
 
 function rotuloCabecalhoCandidato(c: CandidatoMatrizColuna, multiAno: boolean): string {
+  if (isColunaExpectativaLideranca(c.id)) return 'Exp. 2026'
   if (multiAno && c.anoEleicao != null) {
     return `${abreviarCargo(c.dsCargo)} ${c.anoEleicao}`
   }
@@ -274,17 +276,26 @@ export const TabelaMatrizVotacaoSecao = forwardRef<
               {matriz.candidatos.map((c) => (
                 <th
                   key={c.id}
-                  className="min-w-[5.5rem] max-w-[8rem] px-2 py-2 text-right font-medium align-bottom"
-                  title={`${c.dsCargo} · ${c.nmVotavel} · total ${c.totalVotos.toLocaleString('pt-BR')}`}
+                  className={cn(
+                    'min-w-[5.5rem] max-w-[8rem] px-2 py-2 text-right font-medium align-bottom',
+                    isColunaExpectativaLideranca(c.id) && 'bg-accent-gold/10',
+                  )}
+                  title={
+                    isColunaExpectativaLideranca(c.id)
+                      ? `${c.nmVotavel} · expectativa distribuída por seção · total ${c.totalVotos.toLocaleString('pt-BR')}`
+                      : `${c.dsCargo} · ${c.nmVotavel} · total ${c.totalVotos.toLocaleString('pt-BR')}`
+                  }
                 >
                   {modoComparar && (
                     <div className={cn('truncate text-[9px] font-normal uppercase', resumoAccentTextClass())}>
                       {rotuloCabecalhoCandidato(c, multiAno)}
                     </div>
                   )}
-                  <div className="truncate">{c.nmVotavel.split(' ')[0]}</div>
+                  <div className="truncate">
+                    {isColunaExpectativaLideranca(c.id) ? c.nmVotavel.split(' ')[0] : c.nmVotavel.split(' ')[0]}
+                  </div>
                   <div className="truncate font-normal text-[10px] text-text-secondary">
-                    {c.nrVotavel}
+                    {isColunaExpectativaLideranca(c.id) ? 'liderança' : c.nrVotavel}
                   </div>
                 </th>
               ))}
@@ -461,11 +472,13 @@ function CelulasVotosMatriz({
       {candidatos.map((c) => {
         const qt = votos[c.id] ?? 0
         const lider = destacarLider && liderId === c.id && qt > 0
+        const expectativa = isColunaExpectativaLideranca(c.id)
         return (
           <td
             key={c.id}
             className={cn(
               'px-2 py-2 text-right tabular-nums',
+              expectativa && 'bg-accent-gold/5 font-medium text-text-primary',
               lider && cn(resumoAmberColHighlightClass, 'font-semibold text-text-primary'),
               !qt && 'text-text-secondary/40',
             )}

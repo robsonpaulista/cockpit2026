@@ -3,6 +3,11 @@
  * Usado pelo endpoint de expectativa por cidade e pela importação em Mobilização.
  */
 
+import {
+  extrairDepEstadualDeLideranca,
+  resolverColunaDepEstadualLideranca,
+} from '@/lib/planilha-dep-estadual-lideranca'
+
 export type ResumoCidade = {
   expectativaVotos: number
   promessaVotos: number
@@ -14,6 +19,8 @@ export type ResumoCidade = {
 export type LiderancaResumo = {
   nome: string
   cargo: string
+  /** Deputado estadual da liderança (coluna dedicada ou extraído do cargo). */
+  depEstadual: string
   projecaoVotos: number
   projecaoAferida: number
   projecaoPromessa: number
@@ -28,7 +35,7 @@ type CitySummaryCache = {
 }
 
 const CACHE_TTL_MS = 10 * 60 * 1000
-const CACHE_SCHEMA_VERSION = 'v4-expectativa-promessa-legado-2026'
+const CACHE_SCHEMA_VERSION = 'v5-dep-estadual-lideranca'
 let citySummaryCache: CitySummaryCache | null = null
 
 function formatPrivateKey(key: string): string {
@@ -293,6 +300,8 @@ export async function buildCitySummaries(
   const votacaoFinal2022Index = votacaoFinal2022Col ? headers.indexOf(votacaoFinal2022Col) : -1
   const nomeIndex = headers.indexOf(nomeCol)
   const cargoIndex = cargoCol ? headers.indexOf(cargoCol) : -1
+  const depEstadualCol = resolverColunaDepEstadualLideranca(headers)
+  const depEstadualIndex = depEstadualCol ? headers.indexOf(depEstadualCol) : -1
   const summaries = new Map<string, ResumoCidade>()
   const leadersAccumulator = new Map<string, Map<string, LiderancaResumo>>()
 
@@ -333,15 +342,22 @@ export async function buildCitySummaries(
     const nome = nomeIndex >= 0 ? String(row[nomeIndex] || '').trim() : ''
     if (!nome) return
     const cargo = cargoIndex >= 0 ? String(row[cargoIndex] || '').trim() : '-'
+    const depEstadualDireto =
+      depEstadualIndex >= 0 ? String(row[depEstadualIndex] || '').trim() : ''
+    const depEstadual = extrairDepEstadualDeLideranca({ nome, cargo, depEstadual: depEstadualDireto })
     const key = `${nome.toUpperCase()}|${cargo.toUpperCase()}`
     const cityLeaders = leadersAccumulator.get(cidadeValueNormalizada) || new Map<string, LiderancaResumo>()
     const leaderCurrent = cityLeaders.get(key) || {
       nome,
       cargo,
+      depEstadual,
       projecaoVotos: 0,
       projecaoAferida: 0,
       projecaoPromessa: 0,
       projecaoLegado: 0,
+    }
+    if (depEstadual && !leaderCurrent.depEstadual) {
+      leaderCurrent.depEstadual = depEstadual
     }
     leaderCurrent.projecaoAferida += expectativaValor
     leaderCurrent.projecaoPromessa += promessaValor
@@ -384,10 +400,14 @@ export function resolveCityLeaders(city: string, leadersByCity: Map<string, Lide
       const current = merged.get(key) || {
         nome: leader.nome,
         cargo: leader.cargo,
+        depEstadual: leader.depEstadual,
         projecaoVotos: 0,
         projecaoAferida: 0,
         projecaoPromessa: 0,
         projecaoLegado: 0,
+      }
+      if (leader.depEstadual && !current.depEstadual) {
+        current.depEstadual = leader.depEstadual
       }
       current.projecaoAferida += Number(leader.projecaoAferida || 0)
       current.projecaoPromessa += Number(leader.projecaoPromessa || 0)

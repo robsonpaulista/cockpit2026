@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import {
   AlertCircle,
@@ -52,6 +52,7 @@ import {
 } from '@/lib/votacao-secao'
 import type { VotacaoSecaoItem, VotacaoSecaoResumo } from '@/lib/votacao-secao'
 import { ModalMapearVotoCasado } from '@/components/modal-mapear-voto-casado'
+import { PainelComparacaoVotosSecao } from '@/components/resumo-eleicoes/painel-comparacao-votos-secao'
 import {
   analisesComparacaoEntreCargos,
   contarSecoesSemelhantes,
@@ -74,6 +75,19 @@ import {
   type GrupoLocalMatriz,
   type LinhaMatrizSecao,
 } from '@/lib/votacao-secao-matriz'
+import {
+  ANO_JADYEL_DEP_FEDERAL,
+  ANOS_COMPARACAO_VEREADOR_JADYEL,
+  CARGO_VEREADOR,
+  CARGOS_COMPARACAO_VEREADOR_JADYEL,
+  completarSelecaoVereadorJadyel,
+  deveCompararVereadorComJadyel,
+  encontrarJadyelDepFederal,
+  idsComparacaoVereadorEJadyel,
+  isJadyelDepFederal2022,
+  isVereador2024,
+  selecaoTemVereadorSemJadyel,
+} from '@/lib/votacao-secao-jadyel-comparacao'
 
 const LOCAIS_POR_PAGINA = 25
 const BAIRROS_POR_PAGINA = 20
@@ -194,6 +208,7 @@ export function ResumoEleicoesSecaoPanel({ embedded = false }: { embedded?: bool
   const [modalVotoCasadoAberto, setModalVotoCasadoAberto] = useState(false)
   const [paresCasadosChaves, setParesCasadosChaves] = useState<Set<string> | null>(null)
   const [margemSemelhancaAtiva, setMargemSemelhancaAtiva] = useState(MARGEM_VOTOS_PARECIDOS)
+  const pendingSelecaoRef = useRef<string[] | null>(null)
 
   useEffect(() => {
     setLoadingMunicipios(true)
@@ -268,10 +283,20 @@ export function ResumoEleicoesSecaoPanel({ embedded = false }: { embedded?: bool
   useEffect(() => {
     const sp = new URLSearchParams(searchKey)
     const cargoParam = sp.get('cargo')
-    const anosFromUrl = parseVotacaoSecaoAnos(sp.get('anos'), sp.get('ano'))
-    const modoFromUrl = parseModoComparacaoSecao(sp.get('modo'))
+    const nrRaw = Number.parseInt(sp.get('nr') ?? '', 10)
+    const nrPreselecao = Number.isFinite(nrRaw) && nrRaw > 0 ? nrRaw : null
+    const comparacaoVereadorJadyel = deveCompararVereadorComJadyel(cargoParam, nrPreselecao)
+
+    const anosFromUrl = comparacaoVereadorJadyel
+      ? ANOS_COMPARACAO_VEREADOR_JADYEL
+      : parseVotacaoSecaoAnos(sp.get('anos'), sp.get('ano'))
+    const modoFromUrl = comparacaoVereadorJadyel
+      ? ('comparar' as const)
+      : parseModoComparacaoSecao(sp.get('modo'))
     const modoEfetivo = anosFromUrl.length > 1 ? 'comparar' : modoFromUrl
-    const cargosFromUrl = parseCargosComparacaoParam(sp.get('cargos'), anosFromUrl)
+    const cargosFromUrl = comparacaoVereadorJadyel
+      ? [...CARGOS_COMPARACAO_VEREADOR_JADYEL]
+      : parseCargosComparacaoParam(sp.get('cargos'), anosFromUrl)
 
     setAnos((prev) => (anosIguais(prev, anosFromUrl) ? prev : anosFromUrl))
     setModoComparacao((prev) => (prev === modoEfetivo ? prev : modoEfetivo))
@@ -281,10 +306,25 @@ export function ResumoEleicoesSecaoPanel({ embedded = false }: { embedded?: bool
 
     const cargosAnoUnico =
       anosFromUrl.length === 1 ? cargosVotacaoSecao(anosFromUrl[0]) : []
-    if (cargoParam && cargosAnoUnico.includes(cargoParam)) {
+    if (cargoParam && (cargosAnoUnico.includes(cargoParam) || comparacaoVereadorJadyel)) {
       setCargo((prev) => (prev === cargoParam ? prev : cargoParam))
     }
-  }, [searchKey])
+
+    if (comparacaoVereadorJadyel) {
+      const anosUrlAtual = parseVotacaoSecaoAnos(sp.get('anos'), sp.get('ano'))
+      const precisaSyncUrl =
+        !anosIguais(anosUrlAtual, ANOS_COMPARACAO_VEREADOR_JADYEL) ||
+        parseModoComparacaoSecao(sp.get('modo')) !== 'comparar'
+      if (precisaSyncUrl) {
+        syncQuery({
+          anos: ANOS_COMPARACAO_VEREADOR_JADYEL,
+          modo: 'comparar',
+          cargosComparacao: [...CARGOS_COMPARACAO_VEREADOR_JADYEL],
+          cargo: undefined,
+        })
+      }
+    }
+  }, [searchKey, syncQuery])
 
   useEffect(() => {
     const cidadeParam = new URLSearchParams(searchKey).get('cidade')
@@ -304,6 +344,7 @@ export function ResumoEleicoesSecaoPanel({ embedded = false }: { embedded?: bool
       anosSel: readonly VotacaoSecaoAno[],
       modoSel: ModoComparacaoSecao,
       nrPreselecao?: number | null,
+      comparacaoVereadorJadyel = false,
     ) => {
       const alvo = nomeCidade.trim()
       if (!alvo) return
@@ -313,7 +354,8 @@ export function ResumoEleicoesSecaoPanel({ embedded = false }: { embedded?: bool
       setLocaisExpandidos(new Set())
       setBairrosExpandidos(new Set())
       try {
-        const comparar = anosSel.length > 1 || modoSel === 'comparar'
+        const comparar =
+          comparacaoVereadorJadyel || anosSel.length > 1 || modoSel === 'comparar'
         const params = new URLSearchParams({
           cidade: alvo,
           cargo: comparar ? 'todos' : cargoSel,
@@ -328,8 +370,21 @@ export function ResumoEleicoesSecaoPanel({ embedded = false }: { embedded?: bool
         setResumo(data.resumo ?? null)
         setSecoes(listaSecoes)
 
-        if (comparar) {
-          setCandidatosSel([])
+        if (comparacaoVereadorJadyel && nrPreselecao != null && nrPreselecao > 0) {
+          const todos = listarCandidatosSecao(listaSecoes, [...CARGOS_COMPARACAO_VEREADOR_JADYEL])
+          const vereador = todos.find(
+            (c) => c.nrVotavel === nrPreselecao && isVereador2024(c),
+          )
+          setCandidatosSel(
+            vereador ? idsComparacaoVereadorEJadyel(vereador.id, todos) : [],
+          )
+        } else if (comparar) {
+          if (pendingSelecaoRef.current) {
+            setCandidatosSel(pendingSelecaoRef.current)
+            pendingSelecaoRef.current = null
+          } else {
+            setCandidatosSel([])
+          }
         } else {
           const todos = listarCandidatosSecao(listaSecoes)
           if (nrPreselecao != null && nrPreselecao > 0) {
@@ -357,12 +412,59 @@ export function ResumoEleicoesSecaoPanel({ embedded = false }: { embedded?: bool
 
   useEffect(() => {
     if (!cidade) return
-    const anosSel = parseVotacaoSecaoAnos(anosKey, null)
     const sp = new URLSearchParams(searchKey)
     const nrRaw = Number.parseInt(sp.get('nr') ?? '', 10)
     const nrPreselecao = Number.isFinite(nrRaw) && nrRaw > 0 ? nrRaw : null
-    void carregar(cidade, cargo, anosSel, modoComparacao, nrPreselecao)
+    const cargoParam = sp.get('cargo')
+    const comparacaoVereadorJadyel = deveCompararVereadorComJadyel(
+      cargoParam ?? cargo,
+      nrPreselecao,
+    )
+    const anosSel = comparacaoVereadorJadyel
+      ? ANOS_COMPARACAO_VEREADOR_JADYEL
+      : parseVotacaoSecaoAnos(anosKey, null)
+    const modoSel = comparacaoVereadorJadyel ? ('comparar' as const) : modoComparacao
+    const cargoCarregar =
+      cargoParam && normalizarNomeCargo(cargoParam) === CARGO_VEREADOR
+        ? cargoParam
+        : cargo
+    void carregar(
+      cidade,
+      cargoCarregar,
+      anosSel,
+      modoSel,
+      nrPreselecao,
+      comparacaoVereadorJadyel,
+    )
   }, [cidade, cargo, anosKey, modoComparacao, carregar, searchKey])
+
+  useEffect(() => {
+    if (secoes.length === 0) return
+    const todos = listarCandidatosSecao(
+      secoes,
+      modoComparar ? cargosComparacao : null,
+    )
+    if (!selecaoTemVereadorSemJadyel(candidatosSel, todos)) return
+
+    if (!encontrarJadyelDepFederal(todos) && !anos.includes(ANO_JADYEL_DEP_FEDERAL)) {
+      pendingSelecaoRef.current = completarSelecaoVereadorJadyel(candidatosSel, todos)
+      setAnos(ANOS_COMPARACAO_VEREADOR_JADYEL)
+      setModoComparacao('comparar')
+      setCargosComparacao([...CARGOS_COMPARACAO_VEREADOR_JADYEL])
+      syncQuery({
+        anos: ANOS_COMPARACAO_VEREADOR_JADYEL,
+        modo: 'comparar',
+        cargosComparacao: [...CARGOS_COMPARACAO_VEREADOR_JADYEL],
+        cargo: undefined,
+      })
+      return
+    }
+
+    const atualizado = completarSelecaoVereadorJadyel(candidatosSel, todos)
+    if (!listasIguais(candidatosSel, atualizado)) {
+      setCandidatosSel(atualizado)
+    }
+  }, [secoes, candidatosSel, modoComparar, cargosComparacao, anos, syncQuery])
 
   const todosCandidatos = useMemo(
     () =>
@@ -553,10 +655,34 @@ export function ResumoEleicoesSecaoPanel({ embedded = false }: { embedded?: bool
   const toggleCandidato = (id: string) => {
     setCandidatosSel((prev) => {
       if (prev.includes(id)) {
+        const cand = todosCandidatos.find((c) => c.id === id)
+        if (cand && isJadyelDepFederal2022(cand)) {
+          const temVereador = prev.some((pid) => {
+            const c = todosCandidatos.find((x) => x.id === pid)
+            return c != null && isVereador2024(c)
+          })
+          if (temVereador) return prev
+        }
         if (!modoComparar && prev.length <= 1) return prev
         return prev.filter((x) => x !== id)
       }
-      return [...prev, id]
+
+      const cand = todosCandidatos.find((c) => c.id === id)
+      if (cand && isVereador2024(cand) && !modoComparar) {
+        pendingSelecaoRef.current = completarSelecaoVereadorJadyel([...prev, id], todosCandidatos)
+        setAnos(ANOS_COMPARACAO_VEREADOR_JADYEL)
+        setModoComparacao('comparar')
+        setCargosComparacao([...CARGOS_COMPARACAO_VEREADOR_JADYEL])
+        syncQuery({
+          anos: ANOS_COMPARACAO_VEREADOR_JADYEL,
+          modo: 'comparar',
+          cargosComparacao: [...CARGOS_COMPARACAO_VEREADOR_JADYEL],
+          cargo: undefined,
+        })
+        return [...prev, id]
+      }
+
+      return completarSelecaoVereadorJadyel([...prev, id], todosCandidatos)
     })
   }
 
@@ -1130,7 +1256,7 @@ export function ResumoEleicoesSecaoPanel({ embedded = false }: { embedded?: bool
             </div>
 
             {modoComparar && analisesComparacao.length > 0 && (
-              <PainelComparacaoVotos analises={analisesComparacao} />
+              <PainelComparacaoVotosSecao analises={analisesComparacao} />
             )}
 
             {modoComparar && matriz.candidatos.length >= 2 && analisesComparacao.length === 0 && (
@@ -1702,85 +1828,6 @@ function ResumoCard({ label, valor }: { label: string; valor: string }) {
       <p className="text-lg font-semibold text-text-primary truncate" title={valor}>
         {valor}
       </p>
-    </div>
-  )
-}
-
-function PainelComparacaoVotos({ analises }: { analises: AnaliseComparacaoVotos[] }) {
-  const margemPct = Math.round(MARGEM_VOTOS_PARECIDOS * 100)
-
-  return (
-    <div className="mb-4 rounded-2xl border border-card bg-surface p-4">
-      <h2 className="mb-1 text-sm font-semibold text-text-primary">Semelhança de votos por seção</h2>
-      <p className="mb-3 text-xs text-text-secondary">
-        O percentual indica em quantas urnas os dois candidatos tiveram quantidade de votos semelhante
-        (diferença de até {margemPct}%). Abaixo, a soma de votos de cada um nessas urnas.
-      </p>
-      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-        {analises.map((a) => (
-          <div
-            key={`${a.candidatoA.id}::${a.candidatoB.id}`}
-            className={cn(
-              'rounded-xl border p-4',
-              a.nivel === 'alta' && resumoAmberSimilaridadeAltaClass,
-              a.nivel === 'media' && resumoAmberSimilaridadeMediaClass,
-              a.nivel === 'baixa' && 'border-card bg-background/40',
-              a.nivel === 'minima' && 'border-card bg-background/20',
-            )}
-          >
-            <p className="text-[11px] font-medium text-text-secondary">
-              {rotuloCabecalhoCandidato(a.candidatoA, Boolean(a.candidatoA.anoEleicao))}{' '}
-              <span className="text-text-primary">{a.candidatoA.nmVotavel}</span>
-              {' × '}
-              {rotuloCabecalhoCandidato(a.candidatoB, Boolean(a.candidatoB.anoEleicao))}{' '}
-              <span className="text-text-primary">{a.candidatoB.nmVotavel}</span>
-            </p>
-            <p className="mt-3 text-3xl font-bold tabular-nums text-text-primary">
-              {a.pctSecoesParecidas.toFixed(0)}%
-            </p>
-            <p className="text-xs text-text-secondary">de urnas com votos semelhantes</p>
-            {a.secoesParecidas > 0 ? (
-              <div className="mt-2 space-y-1 text-[11px] leading-snug text-text-secondary">
-                <p>
-                  <span className="font-medium text-text-primary">
-                    {a.votosASemelhantes.toLocaleString('pt-BR')} votos
-                  </span>{' '}
-                  ({a.pctVotosASobreTotal.toFixed(0)}% do total){' '}
-                  <span className="text-text-primary">{a.candidatoA.nmVotavel}</span>
-                </p>
-                <p>
-                  <span className="font-medium text-text-primary">
-                    {a.votosBSemelhantes.toLocaleString('pt-BR')} votos
-                  </span>{' '}
-                  ({a.pctVotosBSobreTotal.toFixed(0)}% do total){' '}
-                  <span className="text-text-primary">{a.candidatoB.nmVotavel}</span>
-                </p>
-              </div>
-            ) : null}
-            <p className="mt-1 text-xs font-semibold text-text-primary">{a.rotuloNivel}</p>
-            <div
-              className="mt-2 h-2 overflow-hidden rounded-full bg-background"
-              role="presentation"
-            >
-              <div
-                className={cn(
-                  'h-full rounded-full',
-                  a.nivel === 'alta' && resumoAmberBarAltaClass,
-                  a.nivel === 'media' && resumoAmberBarMediaClass,
-                  a.nivel === 'baixa' && 'bg-text-secondary/40',
-                  a.nivel === 'minima' && 'bg-text-secondary/25',
-                )}
-                style={{ width: `${Math.min(100, a.pctSecoesParecidas)}%` }}
-              />
-            </div>
-            <p className="mt-2 text-[11px] leading-relaxed text-text-secondary">{a.resumo}</p>
-            <p className="mt-1 text-[10px] text-text-secondary">
-              {a.secoesParecidas} seções semelhantes · {a.secoesComAmbos} com votos nos dois ·{' '}
-              {a.secoesTotal} seções no município
-            </p>
-          </div>
-        ))}
-      </div>
     </div>
   )
 }

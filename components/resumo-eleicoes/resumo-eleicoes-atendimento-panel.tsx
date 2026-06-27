@@ -3,6 +3,7 @@
 import { useMemo, useState, useEffect, useRef, useCallback } from 'react'
 import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
+import { resolverDepEstadualLiderancaCidade } from '@/lib/planilha-dep-estadual-lideranca'
 import { RefreshCw, AlertCircle, Crown, X, Users, Vote, BarChart3, UserCheck, ArrowUpRight, FileText, Loader2, MapPinned } from 'lucide-react'
 import { getEleitoradoByCity } from '@/lib/eleitores'
 import { CityDemandsModal } from '@/components/city-demands-modal'
@@ -82,6 +83,7 @@ interface ResumoCidade {
   liderancasDetalhe: Array<{
     nome: string
     cargo: string
+    depEstadual?: string
     projecaoVotos: number
     projecaoAferida: number
     projecaoPromessa: number
@@ -92,6 +94,7 @@ interface ResumoCidade {
 interface LiderancaDetalheResponse {
   nome?: string
   cargo?: string
+  depEstadual?: string
   projecaoVotos?: number
   projecaoAferida?: number
   projecaoPromessa?: number
@@ -581,6 +584,7 @@ export function ResumoEleicoesAtendimentoPanel() {
           ? (json.liderancasDetalhe as LiderancaDetalheResponse[]).map((item) => ({
               nome: String(item.nome || ''),
               cargo: String(item.cargo || '-'),
+              depEstadual: String(item.depEstadual || ''),
               projecaoVotos: Number(item.projecaoVotos || 0),
               projecaoAferida: Number(item.projecaoAferida || item.projecaoVotos || 0),
               projecaoPromessa: Number(item.projecaoPromessa || 0),
@@ -1357,6 +1361,11 @@ export function ResumoEleicoesAtendimentoPanel() {
     )
   }, [simulacaoMapeamento, vereador2024Completo])
 
+  const depEstadualLiderancaCidade = useMemo(
+    () => resolverDepEstadualLiderancaCidade(resumoCidade?.liderancasDetalhe ?? []),
+    [resumoCidade?.liderancasDetalhe],
+  )
+
   const paginated = <T,>(list: T[], page: number): T[] => {
     const start = (page - 1) * ITEMS_PER_PAGE
     return list.slice(start, start + ITEMS_PER_PAGE)
@@ -1434,7 +1443,7 @@ export function ResumoEleicoesAtendimentoPanel() {
     return nome ? nome : null
   }
 
-  const obterAlvosPorTabela = (lideranca: { nome: string; cargo: string }) => {
+  const obterAlvosPorTabela = (lideranca: { nome: string; cargo: string; depEstadual?: string }) => {
     const cargoBruto = String(lideranca.cargo || '')
     const tabelasAlvo = tabelasPorCargo(cargoBruto)
     const alvos: Record<'deputado_estadual' | 'prefeito_2024' | 'vereador_2024', string[]> = {
@@ -1442,6 +1451,9 @@ export function ResumoEleicoesAtendimentoPanel() {
       prefeito_2024: [],
       vereador_2024: [],
     }
+
+    const depColuna = String(lideranca.depEstadual || '').trim()
+    if (depColuna) alvos.deputado_estadual.push(depColuna)
 
     const depNome = extrairNomeDoCargo(
       cargoBruto,
@@ -2499,6 +2511,10 @@ export function ResumoEleicoesAtendimentoPanel() {
               ref={painelSecaoRef}
               candidato={candidatoDistribuicao}
               municipio={municipioAtivo}
+              depEstadualLideranca={depEstadualLiderancaCidade}
+              liderancasDetalhe={resumoCidade?.liderancasDetalhe ?? []}
+              cenarioVotos={cenarioVotos}
+              labelExpectativa={labelCenarioAtivo}
               onClose={() => setCandidatoDistribuicao(null)}
             />
           )}

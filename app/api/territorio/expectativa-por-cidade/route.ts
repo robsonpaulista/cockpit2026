@@ -78,6 +78,7 @@ export async function POST(request: Request) {
       liderancasDetalhe: cityLeaders.map((leader) => ({
         nome: leader.nome,
         cargo: leader.cargo || '-',
+        depEstadual: leader.depEstadual || '',
         projecaoVotos: Math.round(leader.projecaoVotos),
         projecaoAferida: Math.round(leader.projecaoAferida || 0),
         projecaoPromessa: Math.round(leader.projecaoPromessa || 0),

@@ -40,6 +40,7 @@ import { sidebarPrimaryCTAButtonClass } from '@/lib/sidebar-menu-active-style'
 import { useTheme } from '@/contexts/theme-context'
 import type { AIAgentPageContext } from '@/components/ai-agent'
 import { useRegisterJarvisHostProps } from '@/contexts/jarvis-host-props-context'
+import { resolverColunaDepEstadualLideranca, extrairDepEstadualDeLideranca } from '@/lib/planilha-dep-estadual-lideranca'
 
 interface Lideranca {
   [key: string]: any
@@ -375,19 +376,16 @@ export function TerritorioBasePanel() {
              !/expectativa|votos|telefone|email|whatsapp|contato|endereco|endereço/i.test(normalized)
     })
   })()
-  const depEstadualCol = headers.find((h) =>
-    /dep.*estadual|deputad.*estadual/i.test(h)
-  )
+  const depEstadualCol = resolverColunaDepEstadualLideranca(headers)
 
   const extrairDepEstadual = (lider: Lideranca): string => {
-    const direto = depEstadualCol ? String(lider[depEstadualCol] || '').trim() : ''
-    if (direto) return direto
-
-    const cargoTexto = cargoCol ? String(lider[cargoCol] || '') : ''
-    if (!cargoTexto) return ''
-
-    const match = cargoTexto.match(/dep\.?\s*estadual\s*:?\s*([^·|]+?)(?:\s{2,}|·|$)/i)
-    return match?.[1]?.trim() || ''
+    const cargoColNome = cargoCol ? String(lider[cargoCol] || '') : ''
+    const nomeColValor = nomeCol ? String(lider[nomeCol] || '') : ''
+    return extrairDepEstadualDeLideranca({
+      nome: nomeColValor,
+      cargo: cargoColNome,
+      depEstadual: depEstadualCol ? String(lider[depEstadualCol] || '') : '',
+    })
   }
 
   const deputadosEstaduaisUnicos = Array.from(
