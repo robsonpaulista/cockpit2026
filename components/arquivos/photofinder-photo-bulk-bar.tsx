@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { CheckSquare, Loader2, Square, Tag, X } from 'lucide-react'
+import { CheckSquare, Loader2, ScanFace, Square, Tag, X } from 'lucide-react'
 import { photofinderApi } from '@/lib/photofinder-api'
 import { cn } from '@/lib/utils'
 import { sidebarPrimaryCTAButtonClass } from '@/lib/sidebar-menu-active-style'
@@ -11,8 +11,10 @@ interface PhotofinderPhotoBulkBarProps {
   selectedIds: string[]
   pagePhotoCount: number
   allPageSelected: boolean
+  recognitionDisabled?: boolean
   onToggleSelectionMode: () => void
   onSelectAllPage: () => void
+  onRecognizeSelected: (overwrite: boolean) => void
   onApplied: (result: { updated: number; eventType: string | null; cleared: boolean }) => void
 }
 
@@ -21,8 +23,10 @@ export function PhotofinderPhotoBulkBar({
   selectedIds,
   pagePhotoCount,
   allPageSelected,
+  recognitionDisabled = false,
   onToggleSelectionMode,
   onSelectAllPage,
+  onRecognizeSelected,
   onApplied,
 }: PhotofinderPhotoBulkBarProps) {
   const [eventTypes, setEventTypes] = useState<string[]>([])
@@ -123,6 +127,29 @@ export function PhotofinderPhotoBulkBar({
         <span className="text-xs text-text-muted">
           {selectedIds.length} {selectedIds.length === 1 ? 'selecionada' : 'selecionadas'}
         </span>
+
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            disabled={recognitionDisabled || selectedIds.length === 0}
+            onClick={() => onRecognizeSelected(false)}
+            title="Identifica pessoas apenas nas fotos selecionadas"
+            className="flex items-center gap-1.5 rounded-lg border border-[rgb(var(--color-border-secondary))] px-2.5 py-1.5 text-xs text-text-primary hover:bg-bg-muted disabled:opacity-50"
+          >
+            <ScanFace className="h-3.5 w-3.5" />
+            Identificar selecionadas
+          </button>
+          <button
+            type="button"
+            disabled={recognitionDisabled || selectedIds.length === 0}
+            onClick={() => onRecognizeSelected(true)}
+            title="Reanalisa e substitui tags nas fotos selecionadas"
+            className="flex items-center gap-1.5 rounded-lg border border-[rgb(var(--color-border-secondary))] px-2.5 py-1.5 text-xs text-text-muted hover:bg-bg-muted disabled:opacity-50"
+          >
+            <ScanFace className="h-3.5 w-3.5" />
+            Reidentificar selecionadas
+          </button>
+        </div>
 
         <div className="ml-auto flex min-w-0 flex-1 flex-wrap items-center justify-end gap-2 sm:flex-none">
           <div className="relative min-w-[180px] flex-1 sm:flex-none">

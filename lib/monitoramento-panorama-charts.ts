@@ -61,6 +61,10 @@ export type PanoramaInstagramTableRow = {
   avgLikes: number
   avgComments: number
   avgEngagement: number
+  recent7dAvgEngagement: number
+  prior7dAvgEngagement: number
+  recent7dPostCount: number
+  prior7dPostCount: number
   highlights: {
     postCount: PanoramaHighlight
     totalEngagement: PanoramaHighlight
@@ -86,6 +90,7 @@ export type PanoramaPlatformChart = {
 }
 
 const CHART_WINDOW = PANORAMA_WINDOW_DAYS
+const RECENT_IG_WINDOW_DAYS = 7
 const windowSuffix = panoramaWindowSubtitleSuffix()
 
 function dayKey(iso: string): string {
@@ -220,6 +225,29 @@ function rankMetricHighlights(values: number[], higherIsBetter = true): Panorama
   })
 }
 
+function avgEngagementInDateRange(
+  posts: InstagramRadarPostWithActor[],
+  slug: string,
+  fromDate: string,
+  toDate: string
+): { postCount: number; avgEngagement: number } {
+  let postCount = 0
+  let totalEngagement = 0
+
+  for (const post of posts) {
+    if (post.political_actors?.slug !== slug || !post.posted_at) continue
+    const day = dayKey(post.posted_at)
+    if (day < fromDate || day > toDate) continue
+    postCount += 1
+    totalEngagement += (post.likes_count ?? 0) + (post.comments_count ?? 0)
+  }
+
+  return {
+    postCount,
+    avgEngagement: postCount > 0 ? Math.round(totalEngagement / postCount) : 0,
+  }
+}
+
 function buildInstagramTable(
   columns: PanoramaCandidateColumn[],
   actors: PoliticalActorWithTerms[],
@@ -228,18 +256,33 @@ function buildInstagramTable(
   const compareRows = buildInstagramRadarCompareRows(actors, posts, CHART_WINDOW)
   const colorBySlug = new Map(columns.map((c) => [c.slug, c.accentColor]))
 
-  const draft = compareRows.map((row) => ({
-    slug: row.actor.slug,
-    name: row.actor.name,
-    color: colorBySlug.get(row.actor.slug) ?? '#6B7280',
-    instagramUsername: row.instagramUsername,
-    postCount: row.postCount,
-    postsPerWeek: row.postsPerWeek,
-    totalEngagement: row.posts.reduce((sum, p) => sum + p.likes_count + p.comments_count, 0),
-    avgLikes: row.avgLikes,
-    avgComments: row.avgComments,
-    avgEngagement: row.avgEngagement,
-  }))
+  const dates = lastNDays(CHART_WINDOW)
+  const recentFrom = dates[Math.max(0, dates.length - RECENT_IG_WINDOW_DAYS)] ?? dates[0]
+  const recentTo = dates.at(-1) ?? dates[0]
+  const priorFrom = dates[Math.max(0, dates.length - RECENT_IG_WINDOW_DAYS * 2)] ?? dates[0]
+  const priorTo = dates[Math.max(0, dates.length - RECENT_IG_WINDOW_DAYS - 1)] ?? dates[0]
+
+  const draft = compareRows.map((row) => {
+    const recent7d = avgEngagementInDateRange(posts, row.actor.slug, recentFrom, recentTo)
+    const prior7d = avgEngagementInDateRange(posts, row.actor.slug, priorFrom, priorTo)
+
+    return {
+      slug: row.actor.slug,
+      name: row.actor.name,
+      color: colorBySlug.get(row.actor.slug) ?? '#6B7280',
+      instagramUsername: row.instagramUsername,
+      postCount: row.postCount,
+      postsPerWeek: row.postsPerWeek,
+      totalEngagement: row.posts.reduce((sum, p) => sum + p.likes_count + p.comments_count, 0),
+      avgLikes: row.avgLikes,
+      avgComments: row.avgComments,
+      avgEngagement: row.avgEngagement,
+      recent7dAvgEngagement: recent7d.avgEngagement,
+      prior7dAvgEngagement: prior7d.avgEngagement,
+      recent7dPostCount: recent7d.postCount,
+      prior7dPostCount: prior7d.postCount,
+    }
+  })
 
   const hPosts = rankMetricHighlights(draft.map((r) => r.postCount))
   const hTotal = rankMetricHighlights(draft.map((r) => r.totalEngagement))
@@ -256,7 +299,6 @@ function buildInstagramTable(
     }))
     .sort((a, b) => b.avgEngagement - a.avgEngagement)
 
-  const dates = lastNDays(CHART_WINDOW)
   const engagementItems: Array<{ slug: string; date: string; value: number }> = []
   for (const post of posts) {
     if (!post.posted_at) continue

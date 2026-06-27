@@ -61,17 +61,28 @@ export function usePhotofinderSync(onChunkComplete?: () => void | Promise<void>)
     async (
       folderName: string,
       syncStats: { processed: number; added: number; updated: number },
-      eventFolderIds?: string[],
+      scope?: { eventFolderIds?: string[]; photoIds?: string[] },
       options?: { overwrite?: boolean },
     ) => {
       const overwrite = options?.overwrite === true
+      const photoIds = scope?.photoIds?.filter(Boolean)
+      const usingSelection = Boolean(photoIds?.length)
+      const eventFolderIds = usingSelection ? undefined : scope?.eventFolderIds
       let totalRecognized = 0
       let totalProcessed = 0
       let totalErrors = 0
 
       try {
-        const status = await photofinderApi.getRecognizeStatus(eventFolderIds, { overwrite })
-        const initial = overwrite ? (status.total ?? 0) : status.pending
+        const status = await photofinderApi.getRecognizeStatus({
+          photoIds,
+          eventFolderIds,
+          overwrite,
+        })
+        const initial = overwrite
+          ? usingSelection
+            ? status.total ?? photoIds!.length
+            : status.total ?? 0
+          : status.pending
 
         if (status.enrolledPersons === 0 || initial === 0) {
           return {
@@ -83,11 +94,15 @@ export function usePhotofinderSync(onChunkComplete?: () => void | Promise<void>)
             reason:
               status.enrolledPersons === 0
                 ? 'Cadastre pessoas em Cadastro de pessoas para identificação automática.'
-                : eventFolderIds?.length === 0
-                  ? 'Nenhuma pasta de evento selecionada.'
-                  : overwrite
-                    ? 'Nenhuma foto nas pastas selecionadas.'
-                    : 'Nenhuma foto pendente de análise nas pastas selecionadas.',
+                : usingSelection
+                  ? overwrite
+                    ? 'Nenhuma foto selecionada.'
+                    : 'As fotos selecionadas já foram analisadas. Use Reidentificar selecionadas.'
+                  : eventFolderIds?.length === 0
+                    ? 'Nenhuma pasta de evento selecionada.'
+                    : overwrite
+                      ? 'Nenhuma foto nas pastas selecionadas.'
+                      : 'Nenhuma foto pendente de análise nas pastas selecionadas.',
           }
         }
 
@@ -98,13 +113,15 @@ export function usePhotofinderSync(onChunkComplete?: () => void | Promise<void>)
         let afterPhotoId: string | undefined
         startedAtRef.current = Date.now()
 
+        const selectionLabel = usingSelection ? 'seleção' : 'fotos'
+
         setProgress((prev) => ({
           ...prev,
           phase: 'recognizing',
           recognizeOverwrite: overwrite,
           message: overwrite
-            ? `Reidentificando fotos… 0 de ${remaining} · 0 identificadas`
-            : `Analisando fotos… 0 de ${remaining} · 0 identificadas`,
+            ? `Reidentificando ${selectionLabel}… 0 de ${remaining} · 0 identificadas`
+            : `Analisando ${selectionLabel}… 0 de ${remaining} · 0 identificadas`,
           recognizeRemaining: remaining,
           recognizeProcessed: 0,
           recognizeErrors: 0,
@@ -119,6 +136,7 @@ export function usePhotofinderSync(onChunkComplete?: () => void | Promise<void>)
             overwrite,
             afterPhotoId,
             eventFolderIds,
+            photoIds,
           })
           done = chunk.done
           totalRecognized += chunk.recognized
@@ -154,8 +172,8 @@ export function usePhotofinderSync(onChunkComplete?: () => void | Promise<void>)
               !overwrite && remaining > 0 && staleChunks >= 2
                 ? `Finalizando… ${analyzed} de ${initial} analisadas · ${remaining} com falha persistente`
                 : overwrite
-                  ? `Reidentificando fotos… ${analyzed} de ${initial} · ${totalRecognized} identificadas · ${remaining} restantes`
-                  : `Analisando fotos… ${analyzed} de ${initial} · ${totalRecognized} identificadas · ${remaining} restantes`,
+                  ? `Reidentificando ${selectionLabel}… ${analyzed} de ${initial} · ${totalRecognized} identificadas · ${remaining} restantes`
+                  : `Analisando ${selectionLabel}… ${analyzed} de ${initial} · ${totalRecognized} identificadas · ${remaining} restantes`,
             recognized: totalRecognized,
             recognizeProcessed: analyzed,
             recognizeErrors: totalErrors,
@@ -249,11 +267,15 @@ export function usePhotofinderSync(onChunkComplete?: () => void | Promise<void>)
           if (!done && !pageToken) break
         }
 
-        const recognition = await runRecognition(folderName, {
-          processed: syncProcessed,
-          added: syncAdded,
-          updated: syncUpdated,
-        })
+        const recognition = await runRecognition(
+          folderName,
+          {
+            processed: syncProcessed,
+            added: syncAdded,
+            updated: syncUpdated,
+          },
+          undefined,
+        )
 
         const recognizeMsg =
           recognition.recognized > 0
@@ -385,17 +407,26 @@ export function usePhotofinderSync(onChunkComplete?: () => void | Promise<void>)
   )
 
   const startRecognitionOnly = useCallback(
-    async (eventFolderIds: string[], options?: { overwrite?: boolean }) => {
+    async (
+      eventFolderIds: string[],
+      options?: { overwrite?: boolean; photoIds?: string[] },
+    ) => {
       const overwrite = options?.overwrite === true
+      const photoIds = options?.photoIds?.filter(Boolean)
+      const usingSelection = Boolean(photoIds?.length)
       if (processingRef.current) return
       processingRef.current = true
       try {
         setProgress({
           phase: 'recognizing',
           folderName: '',
-          message: overwrite
-            ? 'Iniciando reidentificação de pessoas…'
-            : 'Iniciando identificação de pessoas…',
+          message: usingSelection
+            ? overwrite
+              ? `Reidentificando ${photoIds!.length} foto(s) selecionada(s)…`
+              : `Identificando ${photoIds!.length} foto(s) selecionada(s)…`
+            : overwrite
+              ? 'Iniciando reidentificação de pessoas…'
+              : 'Iniciando identificação de pessoas…',
           totalPhotos: null,
           processed: 0,
           added: 0,
@@ -413,7 +444,9 @@ export function usePhotofinderSync(onChunkComplete?: () => void | Promise<void>)
         const recognition = await runRecognition(
           '',
           { processed: 0, added: 0, updated: 0 },
-          eventFolderIds,
+          usingSelection
+            ? { photoIds }
+            : { eventFolderIds },
           { overwrite },
         )
 

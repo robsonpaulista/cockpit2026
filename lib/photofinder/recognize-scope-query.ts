@@ -6,6 +6,52 @@ import { applyPhotofinderUserScope } from '@/lib/photofinder/user-scope'
 const PHOTO_SELECT =
   'id, drive_id, mime_type, name, thumbnail_url, person_tag'
 
+export function buildRecognizePhotoIdsCountQuery(
+  supabase: SupabaseClient,
+  userIds: string[],
+  photoIds: string[],
+  options: { pendingOnly?: boolean } = {},
+) {
+  let query = applyPhotofinderUserScope(
+    supabase.from('photos').select('*', { count: 'exact', head: true }).in('id', photoIds),
+    userIds,
+  )
+
+  if (options.pendingOnly) {
+    query = applyPendingRecognitionFilter(query)
+  }
+
+  return query
+}
+
+export async function fetchRecognizePhotosByIds(
+  supabase: SupabaseClient,
+  userIds: string[],
+  photoIds: string[],
+): Promise<
+  Array<{
+    id: string
+    drive_id: string
+    mime_type: string
+    name: string
+    thumbnail_url: string | null
+    person_tag: string | null
+  }>
+> {
+  if (photoIds.length === 0) return []
+
+  const { data, error } = await applyPhotofinderUserScope(
+    supabase.from('photos').select(PHOTO_SELECT).in('id', photoIds),
+    userIds,
+  )
+  if (error) throw error
+
+  const byId = new Map((data ?? []).map((row) => [row.id, row]))
+  return photoIds
+    .map((id) => byId.get(id))
+    .filter((row): row is NonNullable<typeof row> => row != null)
+}
+
 export function buildRecognizeScopeCountQuery(
   supabase: SupabaseClient,
   userIds: string[],

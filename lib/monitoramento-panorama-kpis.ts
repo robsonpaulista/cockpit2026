@@ -41,7 +41,8 @@ const RECENT_DAYS = 7
 const MOMENTUM_MIN_PCT = 8
 const MOMENTUM_MIN_DELTA = 1
 const MOMENTUM_BADGE = 'Maior avanço recente'
-const MOMENTUM_GROWTH_BADGE = 'Maior crescimento em 7d'
+const MOMENTUM_GROWTH_BADGE = 'Maior crescimento recente'
+const PERIOD_LABEL = '30 dias'
 
 function formatInt(n: number): string {
   return n.toLocaleString('pt-BR')
@@ -77,6 +78,84 @@ function sumChartSlices(
   if (!chart?.chartData.length) return 0
   const rows = chart.chartData.slice(-fromEnd).slice(-count)
   return rows.reduce((sum, row) => sum + Number(row[slug] ?? 0), 0)
+}
+
+function chartSum(chart: PanoramaPlatformChart | undefined, slug: string): number {
+  if (!chart?.chartData.length) return 0
+  return chart.chartData.reduce((acc, row) => acc + Number(row[slug] ?? 0), 0)
+}
+
+function chartActiveDays(chart: PanoramaPlatformChart | undefined, slug: string): number {
+  if (!chart?.chartData.length) return 0
+  return chart.chartData.reduce((acc, row) => acc + (Number(row[slug] ?? 0) > 0 ? 1 : 0), 0)
+}
+
+function chartAccumulated(
+  chart: PanoramaPlatformChart | undefined,
+  slug: string
+): { sum: number; activeDays: number } {
+  return { sum: chartSum(chart, slug), activeDays: chartActiveDays(chart, slug) }
+}
+
+function trendsLeaderTotal(
+  col: PanoramaCandidateColumn,
+  trendsChart: PanoramaPlatformChart | undefined
+): number {
+  const fromChart = chartSum(trendsChart, col.slug)
+  if (fromChart > 0) return fromChart
+
+  const points = col.trends?.points ?? []
+  if (points.length > 0) {
+    return points.reduce((acc, p) => acc + p.score, 0)
+  }
+
+  return col.trends?.currentIndex ?? 0
+}
+
+function buildTrendsLeaderInsight(
+  rows: MetricRow[],
+  trendsChart: PanoramaPlatformChart | undefined
+): PanoramaKpiInsight | null {
+  const active = rows.filter((row) => {
+    const { sum, activeDays } = chartAccumulated(trendsChart, row.slug)
+    return sum > 0 || activeDays > 0
+  })
+  if (active.length === 0) return null
+
+  const leader = [...active].sort((a, b) => {
+    const aa = chartAccumulated(trendsChart, a.slug)
+    const bb = chartAccumulated(trendsChart, b.slug)
+    if (bb.activeDays !== aa.activeDays) return bb.activeDays - aa.activeDays
+    return bb.sum - aa.sum
+  })[0]
+
+  const { sum, activeDays } = chartAccumulated(trendsChart, leader.slug)
+  const totalSum = active.reduce((acc, row) => acc + chartAccumulated(trendsChart, row.slug).sum, 0)
+  const share = sharePct(sum, totalSum)
+
+  const text =
+    share !== null && share >= 15
+      ? `${share}% do acumulado`
+      : activeDays > 1
+        ? `${activeDays} dias · ${formatInt(sum)} pts`
+        : `${formatInt(sum)} pts acumulados`
+
+  return {
+    badge: 'leader',
+    badgeLabel: 'Líder',
+    name: leader.name,
+    color: leader.color,
+    text,
+  }
+}
+
+function columnPeriodTotal(
+  chart: PanoramaPlatformChart | undefined,
+  slug: string,
+  fallback: number
+): number {
+  const fromChart = chartSum(chart, slug)
+  return fromChart > 0 ? fromChart : fallback
 }
 
 function metricsFromTotals(
@@ -145,7 +224,7 @@ function recentActivityInsight(
     badgeLabel: MOMENTUM_BADGE,
     name: best.name,
     color: best.color,
-    text: `${share}% da atividade em 7d`,
+    text: `${share}% da atividade recente`,
   }
 }
 
@@ -201,7 +280,7 @@ function momentumInsight(
       badgeLabel: MOMENTUM_GROWTH_BADGE,
       name: pick.row.name,
       color: pick.row.color,
-      text: `${formatPct(pick.pct)} em 7d`,
+      text: `${formatPct(pick.pct)}`,
     }
   }
 
@@ -211,7 +290,7 @@ function momentumInsight(
       badgeLabel: MOMENTUM_BADGE,
       name: pick.row.name,
       color: pick.row.color,
-      text: `${formatInt(pick.row.recent)} em 7d (novo)`,
+      text: `${formatInt(pick.row.recent)} (novo)`,
     }
   }
 
@@ -220,7 +299,7 @@ function momentumInsight(
     badgeLabel: MOMENTUM_BADGE,
     name: pick.row.name,
     color: pick.row.color,
-    text: `${formatPct(pick.pct)} em 7d`,
+    text: `${formatPct(pick.pct)}`,
   }
 }
 
@@ -230,7 +309,7 @@ function stableMomentumInsight(): PanoramaKpiInsight {
     badgeLabel: 'Estável',
     name: '',
     color: '#6B7280',
-    text: 'Sem aceleração em 7d',
+    text: 'Sem aceleração recente',
   }
 }
 
@@ -270,30 +349,138 @@ function chartById(charts: PanoramaPlatformChart[], id: PanoramaPlatformId): Pan
   return charts.find((c) => c.id === id)
 }
 
-function buildInstagramKpis(
+function rankByMetric(items: Array<{ slug: string; value: number }>): Map<string, number> {
+  const total = items.length
+  if (total === 0) return new Map()
+
+  const sorted = [...items].sort((a, b) => b.value - a.value)
+  const ranks = new Map<string, number>()
+
+  let rank = 0
+  let prevValue: number | null = null
+  for (let i = 0; i < sorted.length; i++) {
+    const { slug, value } = sorted[i]
+    if (value <= 0) {
+      ranks.set(slug, total)
+      continue
+    }
+    if (prevValue !== value) rank = i + 1
+    ranks.set(slug, rank)
+    prevValue = value
+  }
+
+  for (const item of items) {
+    if (!ranks.has(item.slug)) ranks.set(item.slug, total)
+  }
+
+  return ranks
+}
+
+function formatRankPosition(rank: number): string {
+  return `${rank}º`
+}
+
+function instagramMomentumInsight(
   table: PanoramaInstagramTableRow[],
-  igChart: PanoramaPlatformChart | undefined
-): PanoramaPlatformKpiCard {
+  leader: PanoramaKpiInsight
+): PanoramaKpiInsight | null {
+  const ranked = table.filter(
+    (row) => row.recent7dPostCount > 0 || row.prior7dPostCount > 0 || row.avgEngagement > 0
+  )
+  if (ranked.length < 2) return null
+
+  const tableOrder = [...ranked].sort((a, b) => b.avgEngagement - a.avgEngagement)
+  const lastInTableSlug = tableOrder.at(-1)?.slug
+  const leaderSlug = ranked.find((row) => row.name === leader.name)?.slug
+  const rankInputs = ranked.map((row) => ({
+    slug: row.slug,
+    recent: row.recent7dAvgEngagement,
+    prior: row.prior7dAvgEngagement,
+  }))
+
+  const recentRank = rankByMetric(rankInputs.map((row) => ({ slug: row.slug, value: row.recent })))
+  const priorRank = rankByMetric(rankInputs.map((row) => ({ slug: row.slug, value: row.prior })))
+
+  type Climber = {
+    row: PanoramaInstagramTableRow
+    positions: number
+    priorPosition: number
+    recentPosition: number
+    pct: number | null
+    score: number
+  }
+
+  const climbers: Climber[] = []
+
+  for (const row of ranked) {
+    const priorPosition = priorRank.get(row.slug) ?? ranked.length
+    const recentPosition = recentRank.get(row.slug) ?? ranked.length
+    const positions = priorPosition - recentPosition
+    if (positions <= 0) continue
+
+    // Ainda último na tabela do período ou no ranking recente → não é destaque.
+    if (row.slug === lastInTableSlug) continue
+    if (recentPosition >= ranked.length) continue
+
+    const pct = growthPct(row.recent7dAvgEngagement, row.prior7dAvgEngagement)
+    const isLeader = row.slug === leaderSlug
+    const score =
+      positions * 100 +
+      (pct ?? 0) +
+      (row.prior7dPostCount === 0 && row.recent7dPostCount > 0 ? 25 : 0) +
+      (isLeader ? -500 : 0)
+
+    climbers.push({ row, positions, priorPosition, recentPosition, pct, score })
+  }
+
+  if (climbers.length > 0) {
+    const best = [...climbers].sort((a, b) => b.score - a.score)[0]
+    const pctSuffix =
+      best.pct !== null && best.pct >= MOMENTUM_MIN_PCT ? ` · ${formatPct(best.pct)}` : ''
+
+    return {
+      badge: 'growth',
+      badgeLabel: MOMENTUM_BADGE,
+      name: best.row.name,
+      color: best.row.color,
+      text: `${formatRankPosition(best.priorPosition)} → ${formatRankPosition(best.recentPosition)}${pctSuffix}`,
+    }
+  }
+
+  let bestGrowth: { row: PanoramaInstagramTableRow; pct: number } | null = null
+  for (const row of ranked) {
+    if (row.slug === leaderSlug) continue
+    if (row.slug === lastInTableSlug) continue
+    if (row.recent7dPostCount <= 0) continue
+    const pct = growthPct(row.recent7dAvgEngagement, row.prior7dAvgEngagement)
+    if (pct === null || pct < MOMENTUM_MIN_PCT) continue
+    if (!bestGrowth || pct > bestGrowth.pct) bestGrowth = { row, pct }
+  }
+
+  if (bestGrowth) {
+    return {
+      badge: 'growth',
+      badgeLabel: MOMENTUM_BADGE,
+      name: bestGrowth.row.name,
+      color: bestGrowth.row.color,
+      text: `${formatPct(bestGrowth.pct)}`,
+    }
+  }
+
+  return null
+}
+
+function buildInstagramKpis(table: PanoramaInstagramTableRow[]): PanoramaPlatformKpiCard {
   const active = table.filter((r) => r.postCount > 0 || r.avgEngagement > 0)
   if (active.length === 0) {
     return {
       platformId: 'instagram',
       platformLabel: 'Instagram',
-      metricLabel: 'Engajamento médio',
+      metricLabel: `${PERIOD_LABEL} · engajamento médio`,
       insights: [],
       empty: true,
     }
   }
-
-  const rows: MetricRow[] = table.map((row) => ({
-    slug: row.slug,
-    name: row.name,
-    color: row.color,
-    actorType: 'other',
-    total: row.avgEngagement,
-    recent: sumChartSlices(igChart, row.slug, RECENT_DAYS, RECENT_DAYS),
-    prior: sumChartSlices(igChart, row.slug, RECENT_DAYS * 2, RECENT_DAYS),
-  }))
 
   const leaderRow = [...active].sort((a, b) => b.avgEngagement - a.avgEngagement)[0]
   const leader: PanoramaKpiInsight = {
@@ -304,12 +491,12 @@ function buildInstagramKpis(
     text: `${formatInt(leaderRow.avgEngagement)} eng./post`,
   }
 
-  const momentum = momentumInsight(rows, leader)
+  const momentum = instagramMomentumInsight(table, leader)
 
   return {
     platformId: 'instagram',
     platformLabel: 'Instagram',
-    metricLabel: 'Engajamento médio',
+    metricLabel: `${PERIOD_LABEL} · engajamento médio`,
     insights: pairLeaderAndMomentum(leader, momentum),
     empty: false,
   }
@@ -319,29 +506,11 @@ function buildTrendsCard(
   columns: PanoramaCandidateColumn[],
   trendsChart: PanoramaPlatformChart | undefined
 ): PanoramaPlatformKpiCard {
-  const trendsRows: MetricRow[] = columns.map((col) => {
-    const current = col.trends?.currentIndex ?? 0
-    const peak = col.trends?.peak3m ?? 0
-    const recent = sumChartSlices(trendsChart, col.slug, RECENT_DAYS, RECENT_DAYS)
-    const prior = sumChartSlices(trendsChart, col.slug, RECENT_DAYS * 2, RECENT_DAYS)
-    const chartAvg =
-      trendsChart && trendsChart.chartData.length > 0
-        ? Math.round(
-            sumChartSlices(trendsChart, col.slug, trendsChart.chartData.length, trendsChart.chartData.length) /
-              trendsChart.chartData.length
-          )
-        : 0
-
-    return {
-      slug: col.slug,
-      name: col.name,
-      color: col.accentColor,
-      actorType: col.actorType,
-      total: Math.max(current, peak, chartAvg),
-      recent: recent > 0 ? recent : current,
-      prior,
-    }
-  })
+  const trendsRows = metricsFromTotals(
+    columns,
+    (col) => trendsLeaderTotal(col, trendsChart),
+    trendsChart
+  )
 
   const hasTrendsColumn = columns.some(
     (c) =>
@@ -351,17 +520,13 @@ function buildTrendsCard(
         (c.trends.points?.length ?? 0) > 0)
   )
   const hasChart = Boolean(trendsChart && !trendsChart.empty)
-  const hasValues =
-    trendsRows.some((r) => r.total > 0 || r.recent > 0) ||
-    columns.some(
-      (c) => (c.trends?.currentIndex ?? 0) > 0 || (c.trends?.peak3m ?? 0) > 0
-    )
+  const hasValues = trendsRows.some((r) => r.total > 0 || r.recent > 0)
 
   if (!hasTrendsColumn && !hasChart && !hasValues) {
     return {
       platformId: 'google-trends',
       platformLabel: 'Buscas pelo nome dos candidatos',
-      metricLabel: 'Interesse de busca',
+      metricLabel: `${PERIOD_LABEL} · acumulado`,
       insights: [],
       empty: true,
     }
@@ -371,28 +536,13 @@ function buildTrendsCard(
     return {
       platformId: 'google-trends',
       platformLabel: 'Buscas pelo nome dos candidatos',
-      metricLabel: 'Interesse de busca',
+      metricLabel: `${PERIOD_LABEL} · acumulado`,
       insights: [],
       empty: true,
     }
   }
 
-  const leaderRow = [...trendsRows].filter((r) => r.total > 0).sort((a, b) => b.total - a.total)[0]
-  const leaderCol = leaderRow ? columns.find((c) => c.slug === leaderRow.slug) : null
-  const usesPeak =
-    leaderCol &&
-    (leaderCol.trends?.currentIndex ?? 0) === 0 &&
-    (leaderCol.trends?.peak3m ?? 0) > 0
-
-  const leader: PanoramaKpiInsight | null = leaderRow
-    ? {
-        badge: 'leader',
-        badgeLabel: 'Líder',
-        name: leaderRow.name,
-        color: leaderRow.color,
-        text: usesPeak ? `pico ${leaderRow.total}/100` : `${leaderRow.total}/100`,
-      }
-    : null
+  const leader = buildTrendsLeaderInsight(trendsRows, trendsChart)
 
   let momentum: PanoramaKpiInsight | null = null
 
@@ -412,7 +562,7 @@ function buildTrendsCard(
       badgeLabel: isLeader ? MOMENTUM_GROWTH_BADGE : MOMENTUM_BADGE,
       name: bestTrendsWeek.name,
       color: bestTrendsWeek.color,
-      text: `${formatPct(bestTrendsWeek.pct)} na semana`,
+      text: `${formatPct(bestTrendsWeek.pct)}`,
     }
   } else {
     momentum = momentumInsight(trendsRows, leader)
@@ -421,7 +571,7 @@ function buildTrendsCard(
   return {
     platformId: 'google-trends',
     platformLabel: 'Buscas pelo nome dos candidatos',
-    metricLabel: 'Interesse de busca',
+    metricLabel: `${PERIOD_LABEL} · acumulado`,
     insights: pairLeaderAndMomentum(leader, momentum),
     empty: !leader,
   }
@@ -464,7 +614,7 @@ function buildMetaAdsCard(
     return {
       platformId: 'meta-ads',
       platformLabel: 'Meta Ads',
-      metricLabel: 'Anúncios no período',
+      metricLabel: `${PERIOD_LABEL} · anúncios`,
       insights: [],
       empty: true,
     }
@@ -509,7 +659,7 @@ function buildMetaAdsCard(
   return {
     platformId: 'meta-ads',
     platformLabel: 'Meta Ads',
-    metricLabel: 'Anúncios no período',
+    metricLabel: `${PERIOD_LABEL} · anúncios`,
     insights: pairLeaderAndMomentum(leader, momentum),
     empty: !leader,
   }
@@ -527,7 +677,7 @@ export function buildPanoramaPlatformKpis(panorama: Pick<PanoramaModel, 'columns
 
   const newsRows = metricsFromTotals(
     columns,
-    (c) => c.googleNews?.mentions7d ?? 0,
+    (c) => columnPeriodTotal(newsChart, c.slug, c.googleNews?.mentions7d ?? 0),
     newsChart
   )
 
@@ -535,7 +685,7 @@ export function buildPanoramaPlatformKpis(panorama: Pick<PanoramaModel, 'columns
 
   const ytRows = metricsFromTotals(
     columns,
-    (c) => c.youtube?.views7d ?? 0,
+    (c) => columnPeriodTotal(ytChart, c.slug, c.youtube?.views7d ?? 0),
     ytChart
   )
 
@@ -543,18 +693,18 @@ export function buildPanoramaPlatformKpis(panorama: Pick<PanoramaModel, 'columns
     buildCard(
       'google-news',
       'Notícias relacionadas',
-      'Menções na imprensa',
+      `${PERIOD_LABEL} · menções`,
       newsRows,
       (leader, share) =>
         share !== null && share >= 20
           ? `${share}% das menções`
           : `${formatInt(leader.total)} matérias`
     ),
-    buildInstagramKpis(igTable, igChart),
+    buildInstagramKpis(igTable),
     buildCard(
       'youtube',
       'YouTube',
-      'Visualizações',
+      `${PERIOD_LABEL} · visualizações`,
       ytRows,
       (leader, share) =>
         share !== null && share >= 25

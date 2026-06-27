@@ -6,7 +6,7 @@ import { recognizePhotoChunk } from '@/lib/photofinder-recognize'
 import {
   parseEventFolderIdsParam,
 } from '@/lib/photofinder/recognize-event-scope'
-import { buildRecognizeScopeCountQuery } from '@/lib/photofinder/recognize-scope-query'
+import { buildRecognizeScopeCountQuery, buildRecognizePhotoIdsCountQuery } from '@/lib/photofinder/recognize-scope-query'
 import {
   applyPhotofinderUserScope,
   resolvePhotofinderUserIds,
@@ -28,10 +28,11 @@ export async function POST(request: NextRequest) {
       overwrite?: boolean
       afterPhotoId?: string
       eventFolderIds?: string[]
+      photoIds?: string[]
     }
 
     const eventFolderIds =
-      body.eventFolderIds !== undefined ? body.eventFolderIds : undefined
+      body.photoIds?.length ? undefined : body.eventFolderIds !== undefined ? body.eventFolderIds : undefined
 
     const supabase = createAdminClient()
     const userIds = await resolvePhotofinderUserIds(supabase, request)
@@ -45,6 +46,7 @@ export async function POST(request: NextRequest) {
       overwrite: body.overwrite === true,
       afterPhotoId: body.afterPhotoId,
       eventFolderIds,
+      photoIds: body.photoIds,
     })
 
     return NextResponse.json(result)
@@ -71,26 +73,47 @@ export async function GET(request: NextRequest) {
     const eventFolderIds = parseEventFolderIdsParam(
       request.nextUrl.searchParams.get('eventFolderIds'),
     )
+    const photoIdsParam = request.nextUrl.searchParams.get('photoIds')
+    const photoIds =
+      photoIdsParam?.trim()
+        ? photoIdsParam.split(',').map((id) => id.trim()).filter(Boolean)
+        : undefined
     const overwrite = request.nextUrl.searchParams.get('overwrite') === 'true'
 
-    const { count: pending, error: pendingError } = await buildRecognizeScopeCountQuery(
-      supabase,
-      userIds,
-      eventFolderIds,
-      { pendingOnly: !overwrite },
-    )
-
-    if (pendingError) throw pendingError
-
+    let pending = 0
     let total: number | undefined
-    if (overwrite) {
-      const { count: totalCount, error: totalError } = await buildRecognizeScopeCountQuery(
+
+    if (photoIds?.length) {
+      const { count: pendingCount, error: pendingError } = await buildRecognizePhotoIdsCountQuery(
+        supabase,
+        userIds,
+        photoIds,
+        { pendingOnly: !overwrite },
+      )
+      if (pendingError) throw pendingError
+      pending = pendingCount ?? 0
+      if (overwrite) {
+        total = photoIds.length
+      }
+    } else {
+      const { count: pendingCount, error: pendingError } = await buildRecognizeScopeCountQuery(
         supabase,
         userIds,
         eventFolderIds,
+        { pendingOnly: !overwrite },
       )
-      if (totalError) throw totalError
-      total = totalCount ?? 0
+      if (pendingError) throw pendingError
+      pending = pendingCount ?? 0
+
+      if (overwrite) {
+        const { count: totalCount, error: totalError } = await buildRecognizeScopeCountQuery(
+          supabase,
+          userIds,
+          eventFolderIds,
+        )
+        if (totalError) throw totalError
+        total = totalCount ?? 0
+      }
     }
 
     const { count: enrolledPersons } = await supabase

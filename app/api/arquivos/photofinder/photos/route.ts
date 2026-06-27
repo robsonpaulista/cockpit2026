@@ -8,6 +8,10 @@ import {
 } from '@/lib/photofinder/user-scope'
 import { applyUnclassifiedEventFilter } from '@/lib/photofinder/event-query'
 import { normalizeWhitespaceEventTypes } from '@/lib/photofinder/normalize-event-types'
+import {
+  applyPhotofinderPhotoListFilters,
+  parseBrowseFiltersFromSearchParams,
+} from '@/lib/photofinder/photo-query-filters'
 
 export const dynamic = 'force-dynamic'
 
@@ -21,15 +25,7 @@ export async function GET(request: NextRequest) {
     const { searchParams } = request.nextUrl
     const page = parseInt(searchParams.get('page') ?? '1', 10)
     const limit = parseInt(searchParams.get('limit') ?? '50', 10)
-    const search = searchParams.get('search')
-    const person = searchParams.get('person')
-    const withoutPerson = searchParams.get('withoutPerson')
-    const city = searchParams.get('city')
-    const dateFrom = searchParams.get('dateFrom')
-    const dateTo = searchParams.get('dateTo')
-    const minFaces = searchParams.get('minFaces')
-    const maxFaces = searchParams.get('maxFaces')
-    const joy = searchParams.get('joy')
+    const browseFilters = parseBrowseFiltersFromSearchParams(searchParams)
     const eventType = searchParams.get('eventType')
     const withoutEvent = searchParams.get('withoutEvent')
 
@@ -48,20 +44,12 @@ export async function GET(request: NextRequest) {
       userIds,
     ).order('created_at', { ascending: false })
 
-    if (search) query = query.ilike('name', `%${search}%`)
-    if (withoutPerson === 'true') query = query.is('person_tag', null)
-    else if (person) query = query.ilike('person_tag', `%${person}%`)
-    if (joy) query = query.eq('joy_likelihood', joy)
-    if (city) query = query.or(`event_city.ilike.*${city}*,location_name.ilike.*${city}*`)
+    query = applyPhotofinderPhotoListFilters(query, browseFilters)
     if (withoutEvent === 'true') {
       query = applyUnclassifiedEventFilter(query)
     } else if (eventType) {
       query = query.eq('event_type', eventType)
     }
-    if (dateFrom) query = query.gte('created_at', `${dateFrom}T00:00:00`)
-    if (dateTo) query = query.lte('created_at', `${dateTo}T23:59:59`)
-    if (minFaces) query = query.gte('faces_detected', parseInt(minFaces, 10))
-    if (maxFaces) query = query.lte('faces_detected', parseInt(maxFaces, 10))
 
     const offset = (page - 1) * limit
     query = query.range(offset, offset + limit - 1)

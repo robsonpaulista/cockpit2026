@@ -228,7 +228,8 @@ export function PanoramaPlatformKpiStrip({ cards, animationEpoch = 0 }: Panorama
       <div className="mb-3">
         <h3 className={typographySectionLabelClass}>Leitura rápida por plataforma</h3>
         <p className={cn('mt-1', typographySectionLeadClass)}>
-          Líder no período · maior avanço nos últimos 7 dias.
+          O primeiro indicador resume os últimos 30 dias; o segundo destaca quem mais avançou na comparação dos
+          últimos 7 dias com a semana anterior.
         </p>
       </div>
       <div className="grid min-w-0 grid-cols-5 gap-2">

@@ -15,6 +15,7 @@ import {
   JARVIS_SIDEBAR_ICON,
   JARVIS_SIDEBAR_TEXT,
 } from '@/lib/jarvis-sidebar-styles'
+import { UserAvatarPatch } from '@/components/user-avatar-patch'
 
 const USER_MENU_DROPDOWN_HEIGHT = 260
 const USER_MENU_VIEWPORT_MARGIN = 12
@@ -138,12 +139,15 @@ export function UserMenu({ variant = 'default', className }: UserMenuProps) {
   if (loading) {
     if (isSidebar) {
       return (
-        <div className={cn('h-[14px] w-32 animate-pulse rounded bg-bg-app', className)} aria-hidden />
+        <div className={cn('flex items-center gap-2', className)} aria-hidden>
+          <div className="h-7 w-7 animate-pulse rounded-full bg-[#C8900A]/25" />
+          <div className="h-[14px] flex-1 animate-pulse rounded bg-bg-app" />
+        </div>
       )
     }
     return (
       <div className="flex items-center gap-2 px-3 py-2">
-        <div className="h-8 w-8 animate-pulse rounded-full bg-background" />
+        <div className="h-8 w-8 animate-pulse rounded-full bg-[#C8900A]/25" aria-hidden />
         <div className="hidden md:block">
           <div className="h-4 w-24 animate-pulse rounded bg-background" />
         </div>
@@ -170,13 +174,6 @@ export function UserMenu({ variant = 'default', className }: UserMenuProps) {
       </div>
     )
   }
-
-  const userInitials = user.profile?.name
-    ?.split(' ')
-    .map((n) => n[0])
-    .join('')
-    .toUpperCase()
-    .slice(0, 2) || user.email?.[0].toUpperCase() || 'U'
 
   const welcomeName = resolveWelcomeName(user.profile?.name, user.email ?? undefined)
 
@@ -207,24 +204,12 @@ export function UserMenu({ variant = 'default', className }: UserMenuProps) {
               )
         )}
       >
-        {!isSidebar ? (
-          <div
-            className={cn(
-              'flex h-8 w-8 items-center justify-center overflow-hidden rounded-full text-sm font-semibold text-white',
-              'bg-accent-gold'
-            )}
-          >
-            {user.profile?.avatar_url ? (
-              <img
-                src={user.profile.avatar_url}
-                alt={user.profile.name}
-                className="h-full w-full rounded-full object-cover"
-              />
-            ) : (
-              userInitials
-            )}
-          </div>
-        ) : null}
+        <UserAvatarPatch
+          name={user.profile?.name}
+          email={user.email ?? undefined}
+          avatarUrl={user.profile?.avatar_url}
+          size={isSidebar ? 'sm' : 'md'}
+        />
 
         {isSidebar ? (
           <span className={cn('min-w-0 flex-1 truncate', typographyPageLeadClass)}>

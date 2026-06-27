@@ -44,6 +44,9 @@ export function FotosDrivePanel() {
   const [eventFolderName, setEventFolderName] = useState<string | null>(null)
   const [eventFolders, setEventFolders] = useState<PhotofinderEventFolder[]>([])
   const [eventFoldersLoading, setEventFoldersLoading] = useState(false)
+  const [eventFoldersTotal, setEventFoldersTotal] = useState(0)
+  const [eventFoldersFiltered, setEventFoldersFiltered] = useState(false)
+  const [browseFilters, setBrowseFilters] = useState<Pick<PhotofinderPhotoFilters, 'search' | 'person' | 'city'>>({})
   const [recognizeModalOpen, setRecognizeModalOpen] = useState(false)
   const [recognizeModalMode, setRecognizeModalMode] = useState<'identify' | 'reidentify'>('identify')
 
@@ -55,18 +58,27 @@ export function FotosDrivePanel() {
   const { photos, filters, loading, error: photosError, pagination, updateFilters, goToPage, refresh } =
     usePhotofinderPhotos({}, authenticated && insideEventFolder)
 
-  const loadEventFolders = useCallback(async (options?: { silent?: boolean }) => {
-    if (!authenticated) return
-    try {
-      if (!options?.silent) setEventFoldersLoading(true)
-      const data = await photofinderApi.getEventFolders()
-      setEventFolders(data.folders)
-    } catch (err) {
-      console.error('Erro ao carregar pastas de evento:', err)
-    } finally {
-      if (!options?.silent) setEventFoldersLoading(false)
-    }
-  }, [authenticated])
+  const loadEventFolders = useCallback(
+    async (options?: {
+      silent?: boolean
+      filters?: Pick<PhotofinderPhotoFilters, 'search' | 'person' | 'city'>
+    }) => {
+      if (!authenticated) return
+      const activeFilters = options?.filters ?? browseFilters
+      try {
+        if (!options?.silent) setEventFoldersLoading(true)
+        const data = await photofinderApi.getEventFolders(activeFilters)
+        setEventFolders(data.folders)
+        setEventFoldersTotal(data.totalPhotos)
+        setEventFoldersFiltered(Boolean(data.filtered))
+      } catch (err) {
+        console.error('Erro ao carregar pastas de evento:', err)
+      } finally {
+        if (!options?.silent) setEventFoldersLoading(false)
+      }
+    },
+    [authenticated, browseFilters],
+  )
 
   useEffect(() => {
     if (authenticated) void loadEventFolders()
@@ -74,19 +86,40 @@ export function FotosDrivePanel() {
 
   const refreshGallery = useCallback(async () => {
     await refresh()
-    await loadEventFolders()
-  }, [refresh, loadEventFolders])
+    await loadEventFolders({ filters: browseFilters })
+  }, [refresh, loadEventFolders, browseFilters])
 
   const handleFilterChange = useCallback(
     (partial: Partial<PhotofinderPhotoFilters>) => {
       const folderFilters = eventFolderId ? eventFolderToFilters(eventFolderId) : {}
+      const nextBrowse: Pick<PhotofinderPhotoFilters, 'search' | 'person' | 'city'> =
+        Object.keys(partial).length === 0
+          ? {}
+          : {
+              search: partial.search,
+              person: partial.person,
+              city: partial.city,
+            }
+
+      setBrowseFilters(nextBrowse)
+
       if (Object.keys(partial).length === 0) {
-        updateFilters(folderFilters)
+        if (insideEventFolder) {
+          updateFilters(folderFilters)
+        } else {
+          void loadEventFolders({ filters: {} })
+        }
         return
       }
-      updateFilters({ ...partial, ...folderFilters })
+
+      const merged = { ...nextBrowse, ...folderFilters }
+      if (insideEventFolder) {
+        updateFilters(merged)
+      } else {
+        void loadEventFolders({ filters: nextBrowse })
+      }
     },
-    [eventFolderId, updateFilters],
+    [eventFolderId, insideEventFolder, loadEventFolders, updateFilters],
   )
 
   const openEventFolder = useCallback(
@@ -97,11 +130,12 @@ export function FotosDrivePanel() {
       setSelectedIds(new Set())
       const folderFilters = eventFolderToFilters(folder.id)
       updateFilters({
+        ...browseFilters,
         eventType: folderFilters.eventType,
         withoutEvent: folderFilters.withoutEvent,
       })
     },
-    [updateFilters],
+    [browseFilters, updateFilters],
   )
 
   const navigateToRoot = useCallback(() => {
@@ -109,9 +143,9 @@ export function FotosDrivePanel() {
     setEventFolderName(null)
     setSelectionMode(false)
     setSelectedIds(new Set())
-    updateFilters({ eventType: undefined, withoutEvent: undefined })
-    void loadEventFolders({ silent: true })
-  }, [loadEventFolders, updateFilters])
+    updateFilters({ eventType: undefined, withoutEvent: undefined, ...browseFilters })
+    void loadEventFolders({ silent: true, filters: browseFilters })
+  }, [browseFilters, loadEventFolders, updateFilters])
 
   const {
     syncStatus,
@@ -181,12 +215,20 @@ export function FotosDrivePanel() {
       if (eventFolderId && response?.pagination.total != null) {
         setEventFolders((prev) => patchEventFolderCount(prev, eventFolderId, response.pagination.total))
       }
-      void loadEventFolders({ silent: true })
+      void loadEventFolders({ silent: true, filters: browseFilters })
     },
-    [eventFolderId, refresh, loadEventFolders],
+    [eventFolderId, refresh, loadEventFolders, browseFilters],
   )
 
   const currentFolderCount = insideEventFolder ? pagination.total : null
+  const displayedPhotoCount = insideEventFolder
+    ? pagination.total
+    : eventFoldersFiltered
+      ? eventFoldersTotal
+      : eventFoldersTotal || photosCount || 0
+  const filtersPanelValue: PhotofinderPhotoFilters = insideEventFolder
+    ? filters
+    : browseFilters
 
   useEffect(() => {
     if (!eventFolderId || !insideEventFolder) return
@@ -230,6 +272,21 @@ export function FotosDrivePanel() {
     setRecognizeModalMode('reidentify')
     void loadEventFolders({ silent: true })
     setRecognizeModalOpen(true)
+  }
+
+  const handleRecognizeSelected = async (overwrite: boolean) => {
+    const ids = [...selectedIds]
+    if (ids.length === 0) return
+    setSyncModalOpen(true)
+    setLastSyncMessage(null)
+    setSelectionMode(false)
+    setSelectedIds(new Set())
+    try {
+      await startRecognitionOnly([], { overwrite, photoIds: ids })
+      await refreshGallery()
+    } catch {
+      // erro já refletido em progress.phase === 'error'
+    }
   }
 
   const handleConfirmRecognize = async (selectedFolderIds: string[]) => {
@@ -341,8 +398,11 @@ export function FotosDrivePanel() {
           </div>
           <div>
             <p className="text-sm font-semibold text-text-primary">
-              {pagination.total || photosCount || 0}{' '}
-              {(pagination.total || photosCount || 0) === 1 ? 'foto' : 'fotos'}
+              {displayedPhotoCount}{' '}
+              {displayedPhotoCount === 1 ? 'foto' : 'fotos'}
+              {!insideEventFolder && eventFoldersFiltered ? (
+                <span className="font-normal text-text-muted"> com filtro</span>
+              ) : null}
             </p>
             <p className="text-xs text-text-muted">
               {user?.email}
@@ -431,11 +491,12 @@ export function FotosDrivePanel() {
         </div>
       ) : null}
 
-      <PhotofinderPhotoFiltersPanel filters={filters} onFilterChange={handleFilterChange} />
+      <PhotofinderPhotoFiltersPanel filters={filtersPanelValue} onFilterChange={handleFilterChange} />
 
       <PhotofinderEventExplorer
         folders={eventFolders}
         foldersLoading={eventFoldersLoading}
+        foldersFiltered={eventFoldersFiltered}
         currentFolderId={eventFolderId}
         currentFolderName={eventFolderName}
         currentFolderCount={currentFolderCount}
@@ -448,8 +509,10 @@ export function FotosDrivePanel() {
             selectedIds={[...selectedIds]}
             pagePhotoCount={photos.length}
             allPageSelected={allPageSelected}
+            recognitionDisabled={isInProgress}
             onToggleSelectionMode={toggleSelectionMode}
             onSelectAllPage={toggleSelectAllPage}
+            onRecognizeSelected={(overwrite) => void handleRecognizeSelected(overwrite)}
             onApplied={(result) => void handleBulkApplied(result)}
           />
 

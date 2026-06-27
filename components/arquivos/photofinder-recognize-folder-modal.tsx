@@ -82,7 +82,7 @@ export function PhotofinderRecognizeFolderModal({
               <p className="mt-0.5 text-xs text-text-muted">
                 {isReidentify
                   ? 'Reanalisa todas as fotos das pastas selecionadas, inclusive as já etiquetadas (útil após cadastrar novas pessoas ou melhorar detecção multi-rosto).'
-                  : 'Escolha em quais pastas de evento rodar o reconhecimento facial.'}
+                  : 'Escolha pastas de evento ou, dentro de uma pasta, use Selecionar fotos → Identificar selecionadas para processar só algumas imagens.'}
               </p>
             </div>
           </div>

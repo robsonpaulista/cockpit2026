@@ -82,8 +82,7 @@ export function LoginForm() {
         const me = await fetch('/api/auth/me')
         if (!me.ok) {
           localStorage.setItem('auth_redirect', 'dashboard')
-          await new Promise((resolve) => setTimeout(resolve, 300))
-          window.location.href = '/splash'
+          window.location.href = '/dashboard'
           return
         }
         const body = (await me.json()) as {
@@ -97,8 +96,7 @@ export function LoginForm() {
           return
         }
         localStorage.setItem('auth_redirect', 'dashboard')
-        await new Promise((resolve) => setTimeout(resolve, 300))
-        window.location.href = '/splash'
+        window.location.href = '/dashboard'
       } else {
         setError('Erro ao fazer login. Tente novamente.')
         setLoading(false)

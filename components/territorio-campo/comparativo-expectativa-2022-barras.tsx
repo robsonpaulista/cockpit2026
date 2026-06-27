@@ -1,8 +1,11 @@
 'use client'
 
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import dynamic from 'next/dynamic'
 import {
+  ArrowDown,
+  ArrowUp,
+  ArrowUpDown,
   Loader2,
   MapPin,
   TrendingDown,
@@ -47,6 +50,82 @@ const MapaExpectativaVs2022 = dynamic(
 )
 
 const PREVIEW_ROWS = TERRITORIO_PANORAMA_PREVIEW_ROWS
+
+type SortColumn = 'cidade' | 'votos2022' | 'barra' | 'expectativa2026' | 'delta'
+
+const SORT_LABELS: Record<SortColumn, string> = {
+  cidade: 'Município',
+  votos2022: '2022',
+  barra: 'Comparativo',
+  expectativa2026: '2026',
+  delta: 'Variação',
+}
+
+function compareRows(a: ComparativoExpectativa2022Row, b: ComparativoExpectativa2022Row, column: SortColumn): number {
+  switch (column) {
+    case 'cidade':
+      return a.cidade.localeCompare(b.cidade, 'pt-BR')
+    case 'votos2022':
+      return a.votos2022 - b.votos2022
+    case 'expectativa2026':
+      return a.expectativa2026 - b.expectativa2026
+    case 'delta':
+      return a.delta - b.delta
+    case 'barra': {
+      const pctA = a.deltaPercentual ?? (a.delta === 0 ? 0 : a.delta > 0 ? Number.POSITIVE_INFINITY : Number.NEGATIVE_INFINITY)
+      const pctB = b.deltaPercentual ?? (b.delta === 0 ? 0 : b.delta > 0 ? Number.POSITIVE_INFINITY : Number.NEGATIVE_INFINITY)
+      if (pctA !== pctB) return pctA - pctB
+      return a.delta - b.delta
+    }
+    default:
+      return 0
+  }
+}
+
+function SortableTh({
+  column,
+  sortColumn,
+  sortAsc,
+  onSort,
+  className,
+  children,
+}: {
+  column: SortColumn
+  sortColumn: SortColumn
+  sortAsc: boolean
+  onSort: (column: SortColumn) => void
+  className?: string
+  children: ReactNode
+}) {
+  const active = sortColumn === column
+  const nextDirection = active && sortAsc ? 'Z→A' : 'A→Z'
+
+  return (
+    <th className={className}>
+      <button
+        type="button"
+        onClick={() => onSort(column)}
+        className={cn(
+          'inline-flex w-full items-center gap-0.5 hover:text-text-primary',
+          column === 'barra' ? 'justify-center' : column === 'cidade' ? 'justify-start' : 'justify-end'
+        )}
+        title={`Ordenar ${SORT_LABELS[column]} (${nextDirection})`}
+        aria-label={`Ordenar ${SORT_LABELS[column]} (${nextDirection})`}
+      >
+        <span>{children}</span>
+        {active ? (
+          sortAsc ? (
+            <ArrowUp className="h-3 w-3 shrink-0" aria-hidden />
+          ) : (
+            <ArrowDown className="h-3 w-3 shrink-0" aria-hidden />
+          )
+        ) : (
+          <ArrowUpDown className="h-3 w-3 shrink-0 opacity-45" aria-hidden />
+        )}
+      </button>
+    </th>
+  )
+}
 
 function formatVotos(value: number): string {
   return value.toLocaleString('pt-BR')
@@ -98,6 +177,17 @@ export function ComparativoExpectativa2022Barras({
   const [rows, setRows] = useState<ComparativoExpectativa2022Row[]>([])
   const [view, setView] = useState<'tabela' | 'mapa'>('tabela')
   const [showAll, setShowAll] = useState(false)
+  const [sortColumn, setSortColumn] = useState<SortColumn>('expectativa2026')
+  const [sortAsc, setSortAsc] = useState(false)
+
+  const toggleSort = (column: SortColumn) => {
+    if (sortColumn === column) {
+      setSortAsc((value) => !value)
+      return
+    }
+    setSortColumn(column)
+    setSortAsc(column === 'cidade')
+  }
 
   useEffect(() => {
     let cancelled = false
@@ -146,10 +236,12 @@ export function ComparativoExpectativa2022Barras({
     })
   }, [rows, cidadesCargoSet])
 
-  const rowsOrdenadas = useMemo(
-    () => [...rowsFiltradas].sort((a, b) => b.expectativa2026 - a.expectativa2026),
-    [rowsFiltradas]
-  )
+  const rowsOrdenadas = useMemo(() => {
+    return [...rowsFiltradas].sort((a, b) => {
+      const cmp = compareRows(a, b, sortColumn)
+      return sortAsc ? cmp : -cmp
+    })
+  }, [rowsFiltradas, sortColumn, sortAsc])
 
   const rowsVisiveis = showAll ? rowsOrdenadas : rowsOrdenadas.slice(0, PREVIEW_ROWS)
 
@@ -322,11 +414,51 @@ export function ComparativoExpectativa2022Barras({
           <table className="w-full min-w-[18rem] border-collapse">
             <thead className="sticky top-0 z-10 bg-bg-surface">
               <tr>
-                <th className={cn(territorioThClass, 'text-left')}>Município</th>
-                <th className={cn(territorioThClass, 'w-14 text-right')}>2022</th>
-                <th className={cn(territorioThClass, 'w-20 text-center')}> </th>
-                <th className={cn(territorioThClass, 'w-14 text-right')}>2026</th>
-                <th className={cn(territorioThClass, 'w-24 text-right')}>Variação</th>
+                <SortableTh
+                  column="cidade"
+                  sortColumn={sortColumn}
+                  sortAsc={sortAsc}
+                  onSort={toggleSort}
+                  className={cn(territorioThClass, 'text-left')}
+                >
+                  Município
+                </SortableTh>
+                <SortableTh
+                  column="votos2022"
+                  sortColumn={sortColumn}
+                  sortAsc={sortAsc}
+                  onSort={toggleSort}
+                  className={cn(territorioThClass, 'w-14 text-right')}
+                >
+                  2022
+                </SortableTh>
+                <SortableTh
+                  column="barra"
+                  sortColumn={sortColumn}
+                  sortAsc={sortAsc}
+                  onSort={toggleSort}
+                  className={cn(territorioThClass, 'w-20 text-center')}
+                >
+                  Δ%
+                </SortableTh>
+                <SortableTh
+                  column="expectativa2026"
+                  sortColumn={sortColumn}
+                  sortAsc={sortAsc}
+                  onSort={toggleSort}
+                  className={cn(territorioThClass, 'w-14 text-right')}
+                >
+                  2026
+                </SortableTh>
+                <SortableTh
+                  column="delta"
+                  sortColumn={sortColumn}
+                  sortAsc={sortAsc}
+                  onSort={toggleSort}
+                  className={cn(territorioThClass, 'w-24 text-right')}
+                >
+                  Variação
+                </SortableTh>
               </tr>
             </thead>
             <tbody>

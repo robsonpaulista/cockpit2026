@@ -7,6 +7,8 @@ import type { RecognizeEventFolderScope } from '@/lib/photofinder/recognize-even
 import {
   buildRecognizePhotosQuery,
   buildRecognizeRemainingCountQuery,
+  buildRecognizePhotoIdsCountQuery,
+  fetchRecognizePhotosByIds,
 } from '@/lib/photofinder/recognize-scope-query'
 
 export interface KnownPersonEmbedding {
@@ -234,10 +236,12 @@ export async function recognizePhotoChunk(
     overwrite?: boolean
     afterPhotoId?: string
     eventFolderIds?: RecognizeEventFolderScope
+    photoIds?: string[]
   } = {},
 ): Promise<RecognizeChunkResult> {
   const limit = options.limit ?? CHUNK_DEFAULT
   const overwrite = options.overwrite === true
+  const photoIds = options.photoIds?.filter(Boolean) ?? []
 
   const engineOk = await recfaceEngineAvailable()
   if (!engineOk) {
@@ -261,13 +265,50 @@ export async function recognizePhotoChunk(
     }
   }
 
-  const query = buildRecognizePhotosQuery(supabase, userIds, options.eventFolderIds, {
-    overwrite,
-    afterPhotoId: options.afterPhotoId,
-  })
+  let photos: Awaited<ReturnType<typeof fetchRecognizePhotosByIds>> = []
+  let lastPhotoId: string | null = null
+  let remaining = 0
 
-  const { data: photos, error } = await query.limit(limit)
-  if (error) throw error
+  if (photoIds.length > 0) {
+    const startIndex =
+      options.afterPhotoId != null ? Math.max(0, photoIds.indexOf(options.afterPhotoId) + 1) : 0
+    const batchIds = photoIds.slice(startIndex, startIndex + limit)
+    photos = await fetchRecognizePhotosByIds(supabase, userIds, batchIds)
+    lastPhotoId = batchIds.length > 0 ? batchIds[batchIds.length - 1] ?? null : null
+
+    const remainingIds = photoIds.slice(startIndex + batchIds.length)
+    if (overwrite) {
+      remaining = remainingIds.length
+    } else if (remainingIds.length > 0) {
+      const { count: pendingRemaining } = await buildRecognizePhotoIdsCountQuery(
+        supabase,
+        userIds,
+        remainingIds,
+        { pendingOnly: true },
+      )
+      remaining = pendingRemaining ?? 0
+    }
+  } else {
+    const query = buildRecognizePhotosQuery(supabase, userIds, options.eventFolderIds, {
+      overwrite,
+      afterPhotoId: options.afterPhotoId,
+    })
+
+    const { data, error } = await query.limit(limit)
+    if (error) throw error
+    photos = data ?? []
+    lastPhotoId = photos.length ? photos[photos.length - 1]?.id ?? null : null
+
+    const remainingQuery = buildRecognizeRemainingCountQuery(
+      supabase,
+      userIds,
+      options.eventFolderIds,
+      { overwrite, afterPhotoId: lastPhotoId ?? options.afterPhotoId },
+    )
+
+    const { count: remainingAfter } = await remainingQuery
+    remaining = remainingAfter ?? 0
+  }
 
   const results: RecognizePhotoResult[] = []
   let recognized = 0
@@ -275,7 +316,7 @@ export async function recognizePhotoChunk(
   let noFace = 0
   let errors = 0
 
-  for (const photo of photos ?? []) {
+  for (const photo of photos) {
     const result = await recognizeSinglePhoto(supabase, auth, photo, known, { overwrite })
     results.push(result)
     if (result.status === 'recognized') recognized++
@@ -284,19 +325,8 @@ export async function recognizePhotoChunk(
     else if (result.status === 'error') errors++
   }
 
-  const lastPhotoId = photos?.length ? photos[photos.length - 1]?.id ?? null : null
-
-  const remainingQuery = buildRecognizeRemainingCountQuery(
-    supabase,
-    userIds,
-    options.eventFolderIds,
-    { overwrite, afterPhotoId: lastPhotoId ?? options.afterPhotoId },
-  )
-
-  const { count: remainingAfter } = await remainingQuery
-
-  const remaining = remainingAfter ?? 0
   const processed = results.filter((r) => r.status !== 'skipped').length
+  const batchEmpty = photos.length === 0
 
   return {
     processed,
@@ -304,7 +334,7 @@ export async function recognizePhotoChunk(
     noMatch,
     noFace,
     errors,
-    done: (photos?.length ?? 0) === 0 || remaining === 0,
+    done: batchEmpty || remaining === 0,
     remaining,
     lastPhotoId,
     results,

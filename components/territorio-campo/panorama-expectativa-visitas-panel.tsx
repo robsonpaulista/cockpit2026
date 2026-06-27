@@ -1,12 +1,20 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useMemo, useState, type ReactNode } from 'react'
+import {
+  ArrowDown,
+  ArrowUp,
+  ArrowUpDown,
+} from 'lucide-react'
 import type {
+  ExpectativaVisitasMunicipio,
   ExpectativaVisitasPanelModel,
+  FaixaCobertura,
   FiltroCobertura,
 } from '@/lib/territorio-expectativa-visitas-cobertura'
 import {
   FAIXA_COBERTURA_STYLES,
+  FAIXAS_FILTRO,
   formatExpectativaCompact,
   formatPesoExpectativaPct,
 } from '@/lib/territorio-expectativa-visitas-cobertura'
@@ -18,6 +26,92 @@ import {
 } from '@/lib/typography-chrome'
 import { cn } from '@/lib/utils'
 
+type SortColumn = 'rank' | 'cidade' | 'expectativa' | 'pctPesoExpectativa' | 'visitas' | 'coberturaPct' | 'faixa'
+
+const SORT_LABELS: Record<SortColumn, string> = {
+  rank: 'Posição',
+  cidade: 'Município',
+  expectativa: 'Votos',
+  pctPesoExpectativa: '% exp. total',
+  visitas: 'Visitas',
+  coberturaPct: 'Cobertura',
+  faixa: 'Faixa',
+}
+
+function faixaRank(faixa: FaixaCobertura): number {
+  const index = FAIXAS_FILTRO.indexOf(faixa)
+  return index >= 0 ? index : FAIXAS_FILTRO.length
+}
+
+function compareMunicipioRows(a: ExpectativaVisitasMunicipio, b: ExpectativaVisitasMunicipio, column: SortColumn): number {
+  switch (column) {
+    case 'rank':
+      return a.gapScore - b.gapScore
+    case 'cidade':
+      return a.cidade.localeCompare(b.cidade, 'pt-BR')
+    case 'expectativa':
+      return a.expectativa - b.expectativa
+    case 'pctPesoExpectativa':
+      return a.pctPesoExpectativa - b.pctPesoExpectativa
+    case 'visitas':
+      return a.visitas - b.visitas
+    case 'coberturaPct':
+      return a.coberturaPct - b.coberturaPct
+    case 'faixa':
+      return faixaRank(a.faixa) - faixaRank(b.faixa)
+    default:
+      return 0
+  }
+}
+
+function SortableTh({
+  column,
+  sortColumn,
+  sortAsc,
+  onSort,
+  className,
+  title,
+  children,
+}: {
+  column: SortColumn
+  sortColumn: SortColumn
+  sortAsc: boolean
+  onSort: (column: SortColumn) => void
+  className?: string
+  title?: string
+  children: ReactNode
+}) {
+  const active = sortColumn === column
+  const nextDirection = active && sortAsc ? 'Z→A' : 'A→Z'
+  const headerTitle = title ?? SORT_LABELS[column]
+
+  return (
+    <th className={className}>
+      <button
+        type="button"
+        onClick={() => onSort(column)}
+        className={cn(
+          'inline-flex w-full items-center gap-0.5 hover:text-text-primary',
+          column === 'cidade' || column === 'faixa' ? 'justify-start' : 'justify-end'
+        )}
+        title={`Ordenar ${headerTitle} (${nextDirection})`}
+        aria-label={`Ordenar ${headerTitle} (${nextDirection})`}
+      >
+        <span>{children}</span>
+        {active ? (
+          sortAsc ? (
+            <ArrowUp className="h-3 w-3 shrink-0" aria-hidden />
+          ) : (
+            <ArrowDown className="h-3 w-3 shrink-0" aria-hidden />
+          )
+        ) : (
+          <ArrowUpDown className="h-3 w-3 shrink-0 opacity-45" aria-hidden />
+        )}
+      </button>
+    </th>
+  )
+}
+
 function MunicipiosTable({
   rows,
   filtro,
@@ -27,6 +121,25 @@ function MunicipiosTable({
   filtro: FiltroCobertura
   total: number
 }) {
+  const [sortColumn, setSortColumn] = useState<SortColumn>('expectativa')
+  const [sortAsc, setSortAsc] = useState(false)
+
+  const toggleSort = (column: SortColumn) => {
+    if (sortColumn === column) {
+      setSortAsc((value) => !value)
+      return
+    }
+    setSortColumn(column)
+    setSortAsc(column === 'cidade' || column === 'faixa')
+  }
+
+  const rowsOrdenadas = useMemo(() => {
+    return [...rows].sort((a, b) => {
+      const cmp = compareMunicipioRows(a, b, sortColumn)
+      return sortAsc ? cmp : -cmp
+    })
+  }, [rows, sortColumn, sortAsc])
+
   return (
     <div className="flex min-h-0 min-w-0 flex-1 flex-col">
       <p className={cn('mb-2 shrink-0', typographySectionLabelClass)}>
@@ -37,29 +150,82 @@ function MunicipiosTable({
         <table className="w-full border-collapse">
           <thead className="sticky top-0 z-10 bg-bg-surface">
             <tr>
-              <th className={cn('px-2 py-1.5 text-left', typographySectionLabelClass)}>#</th>
-              <th className={cn('px-2 py-1.5 text-left', typographySectionLabelClass)}>Município</th>
-              <th className={cn('px-2 py-1.5 text-right', typographySectionLabelClass)}>Votos</th>
-              <th
+              <SortableTh
+                column="rank"
+                sortColumn={sortColumn}
+                sortAsc={sortAsc}
+                onSort={toggleSort}
+                className={cn('px-2 py-1.5 text-left', typographySectionLabelClass)}
+                title="Prioridade (gap)"
+              >
+                #
+              </SortableTh>
+              <SortableTh
+                column="cidade"
+                sortColumn={sortColumn}
+                sortAsc={sortAsc}
+                onSort={toggleSort}
+                className={cn('px-2 py-1.5 text-left', typographySectionLabelClass)}
+              >
+                Município
+              </SortableTh>
+              <SortableTh
+                column="expectativa"
+                sortColumn={sortColumn}
+                sortAsc={sortAsc}
+                onSort={toggleSort}
+                className={cn('px-2 py-1.5 text-right', typographySectionLabelClass)}
+              >
+                Votos
+              </SortableTh>
+              <SortableTh
+                column="pctPesoExpectativa"
+                sortColumn={sortColumn}
+                sortAsc={sortAsc}
+                onSort={toggleSort}
                 className={cn('px-2 py-1.5 text-right', typographySectionLabelClass)}
                 title="Percentual da expectativa de votos do município sobre o total estadual"
               >
                 % exp. total
-              </th>
-              <th className={cn('px-2 py-1.5 text-right', typographySectionLabelClass)}>Vis.</th>
-              <th className={cn('px-2 py-1.5', typographySectionLabelClass)}>Cob.</th>
-              <th className={cn('px-2 py-1.5', typographySectionLabelClass)}>Faixa</th>
+              </SortableTh>
+              <SortableTh
+                column="visitas"
+                sortColumn={sortColumn}
+                sortAsc={sortAsc}
+                onSort={toggleSort}
+                className={cn('px-2 py-1.5 text-right', typographySectionLabelClass)}
+              >
+                Vis.
+              </SortableTh>
+              <SortableTh
+                column="coberturaPct"
+                sortColumn={sortColumn}
+                sortAsc={sortAsc}
+                onSort={toggleSort}
+                className={cn('px-2 py-1.5 text-left', typographySectionLabelClass)}
+              >
+                Cob.
+              </SortableTh>
+              <SortableTh
+                column="faixa"
+                sortColumn={sortColumn}
+                sortAsc={sortAsc}
+                onSort={toggleSort}
+                className={cn('px-2 py-1.5 text-left', typographySectionLabelClass)}
+              >
+                Faixa
+              </SortableTh>
             </tr>
           </thead>
           <tbody>
-            {rows.length === 0 ? (
+            {rowsOrdenadas.length === 0 ? (
               <tr>
                 <td colSpan={7} className={cn('px-3 py-6 text-center', typographyBodyMutedClass)}>
                   Nenhum município neste filtro
                 </td>
               </tr>
             ) : (
-              rows.map((row, index) => {
+              rowsOrdenadas.map((row, index) => {
                 const st = FAIXA_COBERTURA_STYLES[row.faixa]
                 return (
                   <tr key={row.cidade} className="border-t border-[rgb(var(--color-border-secondary)/0.25)]">

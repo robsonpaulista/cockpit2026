@@ -8,6 +8,7 @@ import { cn } from '@/lib/utils'
 interface PhotofinderEventExplorerProps {
   folders: PhotofinderEventFolder[]
   foldersLoading: boolean
+  foldersFiltered?: boolean
   currentFolderId: string | null
   currentFolderName: string | null
   currentFolderCount?: number | null
@@ -32,6 +33,7 @@ function FolderIcon({ unclassified }: { unclassified: boolean }) {
 export function PhotofinderEventExplorer({
   folders,
   foldersLoading,
+  foldersFiltered = false,
   currentFolderId,
   currentFolderName,
   currentFolderCount,
@@ -84,15 +86,20 @@ export function PhotofinderEventExplorer({
         ) : folders.length === 0 ? (
           <div className="rounded-xl border border-dashed border-[rgb(var(--color-border-secondary))] px-6 py-16 text-center">
             <Folder className="mx-auto mb-3 h-10 w-10 text-text-muted" />
-            <p className="font-medium text-text-primary">Nenhuma foto importada</p>
+            <p className="font-medium text-text-primary">
+              {foldersFiltered ? 'Nenhuma pasta com fotos neste filtro' : 'Nenhuma foto importada'}
+            </p>
             <p className="mt-1 text-sm text-text-muted">
-              Sincronize uma pasta do Drive para ver as fotos organizadas por evento.
+              {foldersFiltered
+                ? 'Tente outro nome de pessoa, cidade ou arquivo, ou limpe os filtros.'
+                : 'Sincronize uma pasta do Drive para ver as fotos organizadas por evento.'}
             </p>
           </div>
         ) : (
           <div className="rounded-xl border border-[rgb(var(--color-border-secondary)/0.85)] bg-bg-surface p-4">
             <p className="mb-3 text-xs text-text-muted">
-              {folders.length} {folders.length === 1 ? 'pasta' : 'pastas'} · clique para abrir
+              {folders.length} {folders.length === 1 ? 'pasta' : 'pastas'}
+              {foldersFiltered ? ' com correspondências' : ''} · clique para abrir
             </p>
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
               {folders.map((folder) => {
@@ -110,6 +117,7 @@ export function PhotofinderEventExplorer({
                       <p className="truncate text-xs font-medium text-text-primary">{folder.name}</p>
                       <p className="text-[11px] text-text-muted">
                         {folder.count} {folder.count === 1 ? 'foto' : 'fotos'}
+                        {foldersFiltered ? ' no filtro' : ''}
                       </p>
                     </div>
                   </button>

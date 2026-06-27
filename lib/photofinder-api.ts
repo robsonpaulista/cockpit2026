@@ -87,8 +87,15 @@ export const photofinderApi = {
     return requestJson('/stats/types')
   },
 
-  getEventFolders(): Promise<{ folders: PhotofinderEventFolder[]; totalPhotos: number }> {
-    return requestJson('/stats/event-folders')
+  getEventFolders(
+    filters?: Pick<PhotofinderPhotoFilters, 'search' | 'person' | 'city'>,
+  ): Promise<{ folders: PhotofinderEventFolder[]; totalPhotos: number; filtered?: boolean }> {
+    const params = new URLSearchParams()
+    if (filters?.search) params.set('search', filters.search)
+    if (filters?.person) params.set('person', filters.person)
+    if (filters?.city) params.set('city', filters.city)
+    const qs = params.toString()
+    return requestJson(`/stats/event-folders${qs ? `?${qs}` : ''}`)
   },
 
   getFolders(): Promise<{ tree: PhotofinderDriveFolder[]; total: number }> {
@@ -126,16 +133,19 @@ export const photofinderApi = {
     })
   },
 
-  getRecognizeStatus(
-    eventFolderIds?: string[],
-    options?: { overwrite?: boolean },
-  ): Promise<{ pending: number; total?: number; enrolledPersons: number }> {
+  getRecognizeStatus(options?: {
+    eventFolderIds?: string[]
+    photoIds?: string[]
+    overwrite?: boolean
+  }): Promise<{ pending: number; total?: number; enrolledPersons: number }> {
     const params = new URLSearchParams()
-    if (eventFolderIds !== undefined) {
-      if (eventFolderIds.length === 0) {
+    if (options?.photoIds?.length) {
+      params.set('photoIds', options.photoIds.join(','))
+    } else if (options?.eventFolderIds !== undefined) {
+      if (options.eventFolderIds.length === 0) {
         params.set('eventFolderIds', '__none__')
       } else {
-        params.set('eventFolderIds', eventFolderIds.join(','))
+        params.set('eventFolderIds', options.eventFolderIds.join(','))
       }
     }
     if (options?.overwrite) {
@@ -151,6 +161,7 @@ export const photofinderApi = {
     overwrite?: boolean
     afterPhotoId?: string
     eventFolderIds?: string[]
+    photoIds?: string[]
   }): Promise<{
     processed: number
     recognized: number
