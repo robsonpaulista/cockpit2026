@@ -351,6 +351,7 @@ export function ResumoEleicoesAtendimentoPanel() {
   const [selectedVotes, setSelectedVotes] = useState<Record<TableKey, Record<string, number>>>(EMPTY_SELECTIONS)
   const [candidatoDistribuicao, setCandidatoDistribuicao] = useState<ResultadoEleicao | null>(null)
   const painelSecaoRef = useRef<HTMLElement>(null)
+  const resumoCidadeRequestRef = useRef(0)
 
   const visaoTodasCidades = cidade === RESUMO_TODAS_CIDADES
 
@@ -359,6 +360,20 @@ export function ResumoEleicoesAtendimentoPanel() {
     if (cidade && cidade !== RESUMO_TODAS_CIDADES) return cidade
     return null
   }, [visaoTodasCidades, cidadeFiltroLista, cidade])
+
+  /** Eleitorado TSE (lib/eleitores-piaui.json) — sempre derivado do município ativo, não do state cacheado. */
+  const eleitoresMunicipioAtivo = useMemo((): number | null => {
+    if (municipioAtivo) return getEleitoradoByCity(municipioAtivo)
+    if (visaoTodasCidades && buscaIniciada && cidades.length > 0) {
+      let total = 0
+      for (const nome of cidades) {
+        const ele = getEleitoradoByCity(nome)
+        if (ele != null) total += ele
+      }
+      return total > 0 ? total : null
+    }
+    return null
+  }, [municipioAtivo, visaoTodasCidades, buscaIniciada, cidades])
 
   const dadosAtivos = useMemo(() => {
     if (visaoTodasCidades && cidadeFiltroLista) return dadosCidadeFiltro
@@ -456,8 +471,8 @@ export function ResumoEleicoesAtendimentoPanel() {
     const percentualSobre2026 =
       votosMeta > 0 ? (votosPenetracao / votosMeta) * 100 : null
     const percentualSobreEleitores =
-      resumoCidade && resumoCidade.eleitores && resumoCidade.eleitores > 0
-        ? (votosPenetracao / resumoCidade.eleitores) * 100
+      eleitoresMunicipioAtivo && eleitoresMunicipioAtivo > 0
+        ? (votosPenetracao / eleitoresMunicipioAtivo) * 100
         : null
     const percentualPrefeito =
       totalPrefeitoCidade > 0 ? (votosPrefeitoSelecionados / totalPrefeitoCidade) * 100 : null
@@ -518,10 +533,10 @@ export function ResumoEleicoesAtendimentoPanel() {
     let liderancas = 0
 
     for (const nomeCidade of cidades) {
-      const fromMap = getResumoFromMap(nomeCidade)
-      if (!fromMap) continue
       const ele = getEleitoradoByCity(nomeCidade)
       if (ele != null) eleitores += ele
+      const fromMap = getResumoFromMap(nomeCidade)
+      if (!fromMap) continue
       votos2026 += fromMap.expectativaVotos
       promessa2026 += fromMap.promessaVotos
       legado2026 += fromMap.expectativaLegadoVotos
@@ -598,6 +613,7 @@ export function ResumoEleicoesAtendimentoPanel() {
   }
 
   const carregarResumoCidade = async (cidadeAlvo: string): Promise<void> => {
+    const requestId = ++resumoCidadeRequestRef.current
     const eleitores = getEleitoradoByCity(cidadeAlvo)
     const fromMap = getResumoFromMap(cidadeAlvo)
     if (fromMap) {
@@ -613,6 +629,7 @@ export function ResumoEleicoesAtendimentoPanel() {
     }
 
     const resumo = await buscarResumoCidadeDetalhe(cidadeAlvo)
+    if (requestId !== resumoCidadeRequestRef.current) return
     setResumoCidade(resumo)
   }
 
@@ -879,10 +896,16 @@ export function ResumoEleicoesAtendimentoPanel() {
       setBuscaIniciada(Boolean(parsed.buscaIniciada))
       setPresidenteCamaraNome(parsed.presidenteCamaraNome || null)
       setFiltroPartidoAtivo(parsed.filtroPartidoAtivo || null)
+      const cidadeRestaurada = String(parsed.cidade || '').trim()
+      const eleitoresRestaurados =
+        cidadeRestaurada && cidadeRestaurada !== RESUMO_TODAS_CIDADES
+          ? getEleitoradoByCity(cidadeRestaurada)
+          : parsed.resumoCidade?.eleitores ?? null
       setResumoCidade(
         parsed.resumoCidade
           ? {
               ...parsed.resumoCidade,
+              eleitores: eleitoresRestaurados,
               legado2026: Number(parsed.resumoCidade.legado2026 || 0),
               liderancasDetalhe: Array.isArray(parsed.resumoCidade.liderancasDetalhe)
                 ? parsed.resumoCidade.liderancasDetalhe.map((item) => ({
@@ -1690,12 +1713,12 @@ export function ResumoEleicoesAtendimentoPanel() {
         ? `${diferencaCenarioVs2022.toLocaleString('pt-BR')} vs 22`
         : '= 2022'
   const percentualAlcance =
-    resumoCidade && resumoCidade.eleitores && resumoCidade.eleitores > 0
-      ? (votosCenarioAtivo / resumoCidade.eleitores) * 100
+    eleitoresMunicipioAtivo && eleitoresMunicipioAtivo > 0
+      ? (votosCenarioAtivo / eleitoresMunicipioAtivo) * 100
       : null
   const votosProporcionaisPesquisaRecente =
-    pesquisaRecenteCidade && resumoCidade?.eleitores && resumoCidade.eleitores > 0
-      ? Math.round((pesquisaRecenteCidade.intencao / 100) * resumoCidade.eleitores)
+    pesquisaRecenteCidade && eleitoresMunicipioAtivo && eleitoresMunicipioAtivo > 0
+      ? Math.round((pesquisaRecenteCidade.intencao / 100) * eleitoresMunicipioAtivo)
       : null
   const diferencaPesquisaVsCenario =
     votosProporcionaisPesquisaRecente !== null ? votosProporcionaisPesquisaRecente - votosCenarioAtivo : null
@@ -1967,8 +1990,8 @@ export function ResumoEleicoesAtendimentoPanel() {
               <div className={summaryCardBaseClass}>
                 <p className={kpiLabelClass}>Eleitores</p>
                 <p className={kpiValueClass}>
-                  {resumoCidade.eleitores !== null
-                    ? resumoCidade.eleitores.toLocaleString('pt-BR')
+                  {eleitoresMunicipioAtivo !== null
+                    ? eleitoresMunicipioAtivo.toLocaleString('pt-BR')
                     : '-'}
                 </p>
                 <p className={kpiMetaClass} title="Alcance sobre o eleitorado">
@@ -2236,7 +2259,6 @@ export function ResumoEleicoesAtendimentoPanel() {
                   <tr>
                     <th className="w-8 bg-background px-1 py-1 text-center text-text-secondary">Sel.</th>
                     <th className="bg-background px-1 py-1 text-left text-text-secondary">Candidato</th>
-                    <th className="bg-background px-1 py-1 text-left text-text-secondary">Partido</th>
                     <th className="bg-background px-1 py-1 text-right text-text-secondary">Votos</th>
                   </tr>
                 </thead>
@@ -2269,7 +2291,6 @@ export function ResumoEleicoesAtendimentoPanel() {
                             habilitado={Boolean(municipioAtivo)}
                           />
                         </td>
-                        <td className="py-1 px-1 text-text-secondary">{item.partido || '—'}</td>
                         <td className="py-1 px-1 text-right">{votes.toLocaleString('pt-BR')}</td>
                       </tr>
                     )
@@ -2277,7 +2298,6 @@ export function ResumoEleicoesAtendimentoPanel() {
                   <tr className="border-t border-card bg-background/90 font-semibold text-text-primary">
                     <td className="px-1 py-1"></td>
                     <td className="px-1 py-1">TOTAL</td>
-                    <td className="px-1 py-1"></td>
                     <td className="px-1 py-1 text-right">
                       {prefeito2024
                         .reduce((acc, item) => acc + parseVotos(item.quantidadeVotosNominais), 0)
