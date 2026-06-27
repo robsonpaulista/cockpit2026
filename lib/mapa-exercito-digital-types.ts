@@ -1,4 +1,5 @@
 import type { ExercitoDigitalAudience } from '@/lib/mandatos-instagram-piaui'
+import type { LideradoIgEngajamentoLinha } from '@/lib/mobilizacao-lideres-desempenho-ig-por-td-client'
 
 export type AlertPostStatus = 'Crítico' | 'Atenção'
 
@@ -22,9 +23,13 @@ export type ExercitoDigitalAlertPost = {
   naoAtivados: number
 }
 
+export type LeaderBaseTipo = 'lider' | 'mandato'
+
 export type ExercitoDigitalLeaderRow = {
   id: string
   rank: number
+  /** Rede de mobilização (líder) ou mandatário da planilha. */
+  tipo: LeaderBaseTipo
   nome: string
   comentarios: number
   /** Posts em que o mandatário/liderado comentou no período */
@@ -44,6 +49,9 @@ export type ExercitoDigitalLeaderRow = {
   lideradosComRede: number
   lideradosQueComentaram: number
   inactiveWeeks: number
+  /** Detalhamento por @ — só para `tipo === 'lider'`. */
+  lideradosInstagram?: string[]
+  lideradosEngajamento?: LideradoIgEngajamentoLinha[]
 }
 
 export type ExercitoDigitalCityRow = {

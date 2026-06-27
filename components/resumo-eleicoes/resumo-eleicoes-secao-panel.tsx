@@ -1713,8 +1713,8 @@ function PainelComparacaoVotos({ analises }: { analises: AnaliseComparacaoVotos[
     <div className="mb-4 rounded-2xl border border-card bg-surface p-4">
       <h2 className="mb-1 text-sm font-semibold text-text-primary">Semelhança de votos por seção</h2>
       <p className="mb-3 text-xs text-text-secondary">
-        O percentual indica em quantas seções os dois candidatos tiveram quantidade de votos
-        semelhante (diferença de até {margemPct}%) — ex.: 100 × 140 → semelhante; 100 × 160 → não.
+        O percentual indica em quantas urnas os dois candidatos tiveram quantidade de votos semelhante
+        (diferença de até {margemPct}%). Abaixo, a soma de votos de cada um nessas urnas.
       </p>
       <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
         {analises.map((a) => (
@@ -1738,7 +1738,25 @@ function PainelComparacaoVotos({ analises }: { analises: AnaliseComparacaoVotos[
             <p className="mt-3 text-3xl font-bold tabular-nums text-text-primary">
               {a.pctSecoesParecidas.toFixed(0)}%
             </p>
-            <p className="text-xs text-text-secondary">de semelhança entre os votos</p>
+            <p className="text-xs text-text-secondary">de urnas com votos semelhantes</p>
+            {a.secoesParecidas > 0 ? (
+              <div className="mt-2 space-y-1 text-[11px] leading-snug text-text-secondary">
+                <p>
+                  <span className="font-medium text-text-primary">
+                    {a.votosASemelhantes.toLocaleString('pt-BR')} votos
+                  </span>{' '}
+                  ({a.pctVotosASobreTotal.toFixed(0)}% do total){' '}
+                  <span className="text-text-primary">{a.candidatoA.nmVotavel}</span>
+                </p>
+                <p>
+                  <span className="font-medium text-text-primary">
+                    {a.votosBSemelhantes.toLocaleString('pt-BR')} votos
+                  </span>{' '}
+                  ({a.pctVotosBSobreTotal.toFixed(0)}% do total){' '}
+                  <span className="text-text-primary">{a.candidatoB.nmVotavel}</span>
+                </p>
+              </div>
+            ) : null}
             <p className="mt-1 text-xs font-semibold text-text-primary">{a.rotuloNivel}</p>
             <div
               className="mt-2 h-2 overflow-hidden rounded-full bg-background"

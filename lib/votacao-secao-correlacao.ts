@@ -24,6 +24,14 @@ export type AnaliseComparacaoVotos = {
   secoesComAmbos: number
   secoesParecidas: number
   pctSecoesParecidas: number
+  /** Soma dos votos do candidato A nas seções com semelhança. */
+  votosASemelhantes: number
+  /** Soma dos votos do candidato B nas seções com semelhança. */
+  votosBSemelhantes: number
+  /** % dos votos totais do candidato A concentrados nas seções semelhantes. */
+  pctVotosASobreTotal: number
+  /** % dos votos totais do candidato B concentrados nas seções semelhantes. */
+  pctVotosBSobreTotal: number
   nivel: NivelSemelhancaVotos
   rotuloNivel: string
   resumo: string
@@ -201,24 +209,34 @@ export function analisarComparacaoVotos(
 ): AnaliseComparacaoVotos {
   let secoesComAmbos = 0
   let secoesParecidas = 0
+  let votosASemelhantes = 0
+  let votosBSemelhantes = 0
 
   for (const linha of linhas) {
     const va = linha.votos[candidatoA.id] ?? 0
     const vb = linha.votos[candidatoB.id] ?? 0
     if (va <= 0 || vb <= 0) continue
     secoesComAmbos += 1
-    if (votosParecidosNaSecao(va, vb, margem)) secoesParecidas += 1
+    if (votosParecidosNaSecao(va, vb, margem)) {
+      secoesParecidas += 1
+      votosASemelhantes += va
+      votosBSemelhantes += vb
+    }
   }
 
   const secoesTotal = linhas.length
   const pctSecoesParecidas = secoesTotal > 0 ? (secoesParecidas / secoesTotal) * 100 : 0
+  const pctVotosASobreTotal =
+    candidatoA.totalVotos > 0 ? (votosASemelhantes / candidatoA.totalVotos) * 100 : 0
+  const pctVotosBSobreTotal =
+    candidatoB.totalVotos > 0 ? (votosBSemelhantes / candidatoB.totalVotos) * 100 : 0
   const { nivel, rotulo } = classificarSemelhancaVotos(pctSecoesParecidas)
   const margemPct = Math.round(margem * 100)
 
   const resumo =
     secoesParecidas === 0
       ? `Nenhuma seção com semelhança de votos (margem de até ${margemPct}%).`
-      : `${secoesParecidas} de ${secoesTotal} seções tiveram quantidade de votos semelhante (diferença de até ${margemPct}%).`
+      : `${secoesParecidas} de ${secoesTotal} seções com votos semelhantes (até ${margemPct}% de diferença) — ${votosASemelhantes.toLocaleString('pt-BR')} votos (${primeiroNome(candidatoA.nmVotavel)}) e ${votosBSemelhantes.toLocaleString('pt-BR')} votos (${primeiroNome(candidatoB.nmVotavel)}) nessas urnas.`
 
   return {
     candidatoA,
@@ -228,6 +246,10 @@ export function analisarComparacaoVotos(
     secoesComAmbos,
     secoesParecidas,
     pctSecoesParecidas,
+    votosASemelhantes,
+    votosBSemelhantes,
+    pctVotosASobreTotal,
+    pctVotosBSobreTotal,
     nivel,
     rotuloNivel: rotulo,
     resumo,

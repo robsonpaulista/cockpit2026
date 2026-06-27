@@ -23,8 +23,6 @@ import {
 import { dispatchInstagramCommentsSynced } from '@/lib/instagram-comments-sync-events'
 import { loadInstagramConfigAsync, saveInstagramConfig, syncInstagramComments } from '@/lib/instagramApi'
 import type { RelatorioMapaDigitalIgTdPayload } from '@/lib/relatorio-mapa-digital-ig-td-types'
-import type { ExercitoDigitalAudience } from '@/lib/mandatos-instagram-piaui'
-import { labelAudience } from '@/lib/mandatos-instagram-piaui'
 import { ghostButtonClass, primaryButtonClass } from '@/lib/premium-ui-classes'
 import { exercitoSectionCardClass } from '@/lib/mapa-exercito-digital-layout'
 import { cn } from '@/lib/utils'
@@ -34,19 +32,13 @@ const LOOKBACK_OPTIONS = [7, 15, 30] as const
 
 type IgCfg = { token: string; businessAccountId: string }
 
-const AUDIENCE_OPTIONS: ExercitoDigitalAudience[] = ['liderados', 'mandatos']
-
 interface ExercitoDigitalHeaderProps {
-  audience: ExercitoDigitalAudience
-  onAudienceChange: (audience: ExercitoDigitalAudience) => void
   lookbackDays: number
   onLookbackChange: (days: number) => void
   onSyncComplete: () => void
 }
 
 export function ExercitoDigitalHeader({
-  audience,
-  onAudienceChange,
   lookbackDays,
   onLookbackChange,
   onSyncComplete,
@@ -57,7 +49,6 @@ export function ExercitoDigitalHeader({
   const [syncing, setSyncing] = useState(false)
   const [exportBusy, setExportBusy] = useState<'idle' | 'xlsx' | 'pdf'>('idle')
   const [windowOpen, setWindowOpen] = useState(false)
-  const [audienceOpen, setAudienceOpen] = useState(false)
 
   useEffect(() => {
     let cancelled = false
@@ -90,20 +81,16 @@ export function ExercitoDigitalHeader({
     }
   }, [cfg, lookbackDays, onSyncComplete])
 
-  const relatorioUrl = useCallback(
-    (aud: ExercitoDigitalAudience) =>
-      `/api/mobilizacao/relatorio-check-mapa-digital-ig?escopo=pi${aud === 'mandatos' ? '&base=mandatos' : ''}`,
-    []
-  )
+  const relatorioUrl = '/api/mobilizacao/relatorio-check-mapa-digital-ig?escopo=pi'
 
   const carregarPi = useCallback(async (): Promise<RelatorioMapaDigitalIgTdPayload> => {
-    const res = await fetch(relatorioUrl(audience), { cache: 'no-store' })
+    const res = await fetch(relatorioUrl, { cache: 'no-store' })
     if (!res.ok) {
       const j = (await res.json().catch(() => ({}))) as { error?: string }
       throw new Error(j.error ?? 'Falha ao montar o relatório.')
     }
     return (await res.json()) as RelatorioMapaDigitalIgTdPayload
-  }, [audience, relatorioUrl])
+  }, [])
 
   const exportXls = useCallback(async () => {
     if (exportBusy !== 'idle') return
@@ -146,43 +133,11 @@ export function ExercitoDigitalHeader({
             <div>
               <h1 className="text-sm font-medium text-text-primary">Mobilização digital · Exército</h1>
               <p className="text-[11.5px] text-text-muted">
-                {audience === 'mandatos'
-                  ? 'Engajamento de prefeitos e vereadores nas postagens do Instagram'
-                  : 'Ativação de líderes nas postagens do Instagram'}
+                Base eleitoral unificada: rede de liderados e mandatários nas postagens do Instagram
               </p>
             </div>
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            <div className="relative">
-              <button
-                type="button"
-                onClick={() => setAudienceOpen((v) => !v)}
-                className="inline-flex items-center gap-1.5 rounded-[99px] border border-[rgb(var(--color-border-secondary)/0.85)] bg-bg-surface px-3 py-1.5 text-[11.5px] font-medium text-text-primary"
-              >
-                {labelAudience(audience)}
-                <IconChevronDown className="h-3 w-3 opacity-60" stroke={1.5} aria-hidden />
-              </button>
-              {audienceOpen ? (
-                <div className="absolute right-0 top-full z-20 mt-1 min-w-[180px] rounded-lg border border-[rgb(var(--color-border-tertiary)/0.85)] bg-bg-surface py-1">
-                  {AUDIENCE_OPTIONS.map((opt) => (
-                    <button
-                      key={opt}
-                      type="button"
-                      onClick={() => {
-                        onAudienceChange(opt)
-                        setAudienceOpen(false)
-                      }}
-                      className={cn(
-                        'block w-full px-3 py-1.5 text-left text-[11.5px] transition-colors hover:bg-bg-app',
-                        opt === audience ? 'font-medium text-[rgb(var(--color-primary))]' : 'text-text-secondary'
-                      )}
-                    >
-                      {labelAudience(opt)}
-                    </button>
-                  ))}
-                </div>
-              ) : null}
-            </div>
             <div className="relative">
               <button
                 type="button"
@@ -275,7 +230,7 @@ export function ExercitoDigitalHeader({
   )
 }
 
-export function ExercitoDigitalBanner({ audience }: { audience: ExercitoDigitalAudience }) {
+export function ExercitoDigitalBanner() {
   const [dismissed, setDismissed] = useState(() => {
     if (typeof window === 'undefined') return false
     try {
@@ -291,19 +246,10 @@ export function ExercitoDigitalBanner({ audience }: { audience: ExercitoDigitalA
     <div className="flex items-start gap-2.5 rounded-[10px] border border-[#B5D4F4] bg-[#E6F1FB] px-3.5 py-2.5">
       <IconInfoCircle className="mt-px h-[15px] w-[15px] shrink-0 text-[rgb(var(--color-primary))]" stroke={1.5} aria-hidden />
       <p className="flex-1 text-[11.5px] leading-[1.5] text-[#0C447C]">
-        {audience === 'mandatos' ? (
-          <>
-            <strong className="font-medium">O que é medido aqui:</strong> cruzamos os comentários nas postagens do
-            deputado com os perfis de Instagram de prefeitos e vereadores do Piauí (planilha mandatos 2024). Mostra
-            quantos mandatários com perfil cadastrado interagiram e o engajamento por município.
-          </>
-        ) : (
-          <>
-            <strong className="font-medium">O que é medido aqui:</strong> cada líder da nossa rede recebeu uma instrução
-            para comentar nas postagens do deputado. Esta página mostra quantos cumpriram a missão (ativação), gerando
-            percepção de relevância e engajamento orgânico no Instagram. Meta: acima de 70% de ativação por município.
-          </>
-        )}
+        <strong className="font-medium">O que é medido aqui:</strong> cruzamos comentários nas postagens do deputado
+        com a base eleitoral completa — liderados da rede de mobilização e mandatários (prefeitos/vereadores) com
+        perfil cadastrado. Perfis marcados como <strong className="font-medium">Rede</strong> são líderes com
+        liderados vinculados; clique para ver o detalhamento por @.
       </p>
       <button
         type="button"

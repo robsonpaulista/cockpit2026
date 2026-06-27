@@ -33,7 +33,13 @@ export function ExercitoDigitalCityPanel({ cities, organicTail, audience, lookba
     <div className={cn(exercitoSectionCardClass, exercitoDualPanelItemClass)}>
       <h2 className={exercitoSectionTitleClass}>Ativação por município · top 8</h2>
       <p className={cn(exercitoSectionSubtitleClass, 'mb-3')}>
-        Comentários {audience === 'mandatos' ? 'de mandatários' : 'de líderes'} · últimos {lookbackDays} dias
+        Comentários{' '}
+        {audience === 'unificado'
+          ? 'da base eleitoral'
+          : audience === 'mandatos'
+            ? 'de mandatários'
+            : 'de líderes'}{' '}
+        · últimos {lookbackDays} dias
         (mesma janela do ranking)
       </p>
 
@@ -74,7 +80,12 @@ export function ExercitoDigitalCityPanel({ cities, organicTail, audience, lookba
         <IconInfoCircle className="mt-0.5 h-3 w-3 shrink-0 opacity-70" stroke={1.5} aria-hidden />
         <p>
           {formatInt(organicTail.comentarios)} comentários de {formatInt(organicTail.perfis)} perfis sem match com{' '}
-          {audience === 'mandatos' ? 'mandatários da planilha' : 'líderes cadastrados'} (cauda orgânica)
+          {audience === 'unificado'
+            ? 'perfis da base eleitoral'
+            : audience === 'mandatos'
+              ? 'mandatários da planilha'
+              : 'líderes cadastrados'}{' '}
+          (cauda orgânica)
         </p>
       </div>
     </div>

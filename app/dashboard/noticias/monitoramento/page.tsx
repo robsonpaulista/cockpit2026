@@ -113,10 +113,7 @@ export default function MonitoramentoPage() {
         activeTab === 'geral' ? (
           <PanoramaTabActions
             busy={panorama.busy}
-            collectingAll={panorama.collectingAll}
             refreshing={panorama.refreshing}
-            collectorsStatus={panorama.collectorsStatus}
-            onCollectAll={() => void panorama.coletarTodas()}
             onReload={() => void panorama.carregar(true)}
           />
         ) : null

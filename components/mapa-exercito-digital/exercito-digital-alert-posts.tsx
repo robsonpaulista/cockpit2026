@@ -55,13 +55,17 @@ export function ExercitoDigitalAlertPosts({ posts, audience }: ExercitoDigitalAl
               <span className="inline-flex items-center gap-1 text-[11px] text-[#3B6D11]">
                 <IconCheck className="h-3 w-3" stroke={1.5} aria-hidden />
                 {formatInt(post.ativados)}{' '}
-                {audience === 'mandatos'
+                {audience === 'unificado'
                   ? post.ativados === 1
-                    ? 'mandatário ativou'
-                    : 'mandatários ativaram'
-                  : post.ativados === 1
-                    ? 'líder ativou'
-                    : 'líderes ativaram'}
+                    ? 'perfil ativou'
+                    : 'perfis ativaram'
+                  : audience === 'mandatos'
+                    ? post.ativados === 1
+                      ? 'mandatário ativou'
+                      : 'mandatários ativaram'
+                    : post.ativados === 1
+                      ? 'líder ativou'
+                      : 'líderes ativaram'}
               </span>
               <span className="inline-flex items-center gap-1 text-[11px] text-[#A32D2D]">
                 <IconX className="h-3 w-3" stroke={1.5} aria-hidden />

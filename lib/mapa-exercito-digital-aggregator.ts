@@ -358,6 +358,48 @@ function buildLideradosMunicipioMaps(relatorio: RelatorioMapaDigitalIgTdPayload)
   return { handleToMunicipio, perfisPorMunicipio }
 }
 
+function mergeMunicipioMaps(
+  a: { handleToMunicipio: Map<string, string>; perfisPorMunicipio: Map<string, Set<string>> },
+  b: { handleToMunicipio: Map<string, string>; perfisPorMunicipio: Map<string, Set<string>> }
+): { handleToMunicipio: Map<string, string>; perfisPorMunicipio: Map<string, Set<string>> } {
+  const handleToMunicipio = new Map(a.handleToMunicipio)
+  const perfisPorMunicipio = new Map<string, Set<string>>()
+
+  for (const [mun, handles] of a.perfisPorMunicipio) {
+    perfisPorMunicipio.set(mun, new Set(handles))
+  }
+  for (const [mun, handles] of b.perfisPorMunicipio) {
+    const set = perfisPorMunicipio.get(mun) ?? new Set<string>()
+    for (const h of handles) set.add(h)
+    perfisPorMunicipio.set(mun, set)
+  }
+  for (const [h, mun] of b.handleToMunicipio) {
+    if (!handleToMunicipio.has(h)) handleToMunicipio.set(h, mun)
+  }
+
+  return { handleToMunicipio, perfisPorMunicipio }
+}
+
+function buildUnifiedHandleSet(
+  lideres: LiderInstagramCoberturaDto[],
+  mandatos: MandatoInstagramEnriquecido[]
+): Set<string> {
+  const handles = buildLideradosHandleSet(lideres)
+  for (const m of mandatos) {
+    if (m.handle) handles.add(m.handle)
+  }
+  return handles
+}
+
+function analisarCoberturaHandles(handles: Set<string>, commenters: Set<string>) {
+  const comRede = [...handles]
+  const comentaram = comRede.filter((h) => commenters.has(h))
+  const nMedido = comRede.length
+  const nOk = comentaram.length
+  const pct = nMedido > 0 ? (nOk / nMedido) * 100 : 0
+  return { nMedido, nOk, pct }
+}
+
 function buildLeaders(
   merged: MergedLeader[],
   posts: InstagramPostWithComments[],
@@ -370,7 +412,7 @@ function buildLeaders(
     .map((l) => {
       const handles = new Set(l.lideradosInstagram.map((h) => normalizeInstagramHandle(h)).filter(Boolean) as string[])
       const weeklyCounts = weeklyCommentCountsForHandles(posts, handles)
-      const ativacaoPct = l.lideradosComRede > 0 ? (l.lideradosQueComentaram / l.lideradosComRede) * 100 : 0
+      const ativacaoPct = postsNoPeriodo > 0 ? (l.publicacoes / postsNoPeriodo) * 100 : 0
       const trend = computeTrend(weeklyCounts)
       const semanaAtual = weeklyCounts[4] ?? 0
       const semanaAnterior = weeklyCounts[3] ?? 0
@@ -380,6 +422,7 @@ function buildLeaders(
       return {
         id: l.id,
         rank: 0,
+        tipo: 'lider' as const,
         nome,
         comentarios: l.comentarios,
         publicacoes: l.publicacoes,
@@ -397,6 +440,8 @@ function buildLeaders(
         lideradosComRede: l.lideradosComRede,
         lideradosQueComentaram: l.lideradosQueComentaram,
         inactiveWeeks: trend.inactiveWeeks,
+        lideradosInstagram: l.lideradosInstagram ?? [],
+        lideradosEngajamento: l.lideradosEngajamento ?? [],
       }
     })
     .sort((a, b) => b.ativacaoPct - a.ativacaoPct || b.comentarios - a.comentarios)
@@ -472,6 +517,7 @@ function buildMandatarios(
     return {
       id: m.id,
       rank: 0,
+      tipo: 'mandato' as const,
       nome,
       comentarios,
       publicacoes: postsComentados,
@@ -497,6 +543,24 @@ function buildMandatarios(
     .map((r, i) => ({ ...r, rank: i + 1 }))
 }
 
+function buildUnifiedLeaders(
+  merged: MergedLeader[],
+  posts: InstagramPostWithComments[],
+  lideresCobertura: LiderInstagramCoberturaDto[],
+  mandatos: MandatoInstagramEnriquecido[]
+): ExercitoDigitalLeaderRow[] {
+  const lideres = buildLeaders(merged, posts, lideresCobertura)
+  const mandatarios = buildMandatarios(mandatos, posts)
+  return [...lideres, ...mandatarios]
+    .sort(
+      (a, b) =>
+        b.ativacaoPct - a.ativacaoPct ||
+        b.comentarios - a.comentarios ||
+        a.nome.localeCompare(b.nome, 'pt-BR')
+    )
+    .map((r, i) => ({ ...r, rank: i + 1 }))
+}
+
 export function aggregateExercitoDigitalViewModel(input: {
   lookbackDays: number
   audience: ExercitoDigitalAudience
@@ -509,20 +573,29 @@ export function aggregateExercitoDigitalViewModel(input: {
   const { lookbackDays, audience, lideresCobertura, mergedLeaders, relatorioPi } = input
   const posts = filterPostsByLookback(input.posts, lookbackDays)
   const isMandatos = audience === 'mandatos'
+  const isUnificado = audience === 'unificado'
   const mandatos = input.mandatos ?? []
 
-  const profileHandles = isMandatos
-    ? buildMandatosHandleSet(mandatos)
-    : buildLideradosHandleSet(lideresCobertura)
+  const profileHandles = isUnificado
+    ? buildUnifiedHandleSet(lideresCobertura, mandatos)
+    : isMandatos
+      ? buildMandatosHandleSet(mandatos)
+      : buildLideradosHandleSet(lideresCobertura)
 
-  const coberturaProfiles = isMandatos ? mandatosToCoberturaDto(mandatos) : lideresCobertura
+  const coberturaProfiles = isUnificado
+    ? [...lideresCobertura, ...mandatosToCoberturaDto(mandatos)]
+    : isMandatos
+      ? mandatosToCoberturaDto(mandatos)
+      : lideresCobertura
 
   const allCommenters = new Set<string>()
   for (const post of posts) {
     for (const h of commentersNormalizados(post.comments)) allCommenters.add(h)
   }
 
-  const coberturaGeral = analisarCoberturaLideres(coberturaProfiles, allCommenters)
+  const coberturaGeral = isUnificado
+    ? analisarCoberturaHandles(profileHandles, allCommenters)
+    : analisarCoberturaLideres(coberturaProfiles, allCommenters)
   const organic = countOrganicTail(posts, profileHandles)
 
   let comentariosRede = 0
@@ -535,9 +608,11 @@ export function aggregateExercitoDigitalViewModel(input: {
   const comentariosTotal = posts.reduce((acc, p) => acc + p.comments.length, 0)
   const comentariosOrganicos = comentariosTotal - comentariosRede
 
-  const municipioMaps = isMandatos
-    ? buildMandatosMunicipioMaps(mandatos)
-    : buildLideradosMunicipioMaps(relatorioPi)
+  const municipioMaps = isUnificado
+    ? mergeMunicipioMaps(buildLideradosMunicipioMaps(relatorioPi), buildMandatosMunicipioMaps(mandatos))
+    : isMandatos
+      ? buildMandatosMunicipioMaps(mandatos)
+      : buildLideradosMunicipioMaps(relatorioPi)
   const cityResult = buildCities(posts, municipioMaps.handleToMunicipio, municipioMaps.perfisPorMunicipio)
 
   const municipiosCriticos = cityResult.all.filter((r) => r.comentarios === 0 || r.ativacaoPct === 0).length
@@ -561,9 +636,11 @@ export function aggregateExercitoDigitalViewModel(input: {
     lookbackDays,
     kpis,
     alertPosts: buildAlertPosts(posts, coberturaProfiles),
-    leaders: isMandatos
-      ? buildMandatarios(mandatos, posts)
-      : buildLeaders(mergedLeaders, posts, lideresCobertura),
+    leaders: isUnificado
+      ? buildUnifiedLeaders(mergedLeaders, posts, lideresCobertura, mandatos)
+      : isMandatos
+        ? buildMandatarios(mandatos, posts)
+        : buildLeaders(mergedLeaders, posts, lideresCobertura),
     cities: cityResult.top,
     trend: buildTrendPoints(posts, profileHandles),
     organicTail: { comentarios: organic.comentarios, perfis: organic.perfis.size },

@@ -18,6 +18,7 @@ import {
 } from '@/lib/mapa-exercito-digital-aggregator'
 import type { ExercitoDigitalLeaderRow, LeaderFilterTab, LeaderStatusDot } from '@/lib/mapa-exercito-digital-types'
 import type { ExercitoDigitalAudience } from '@/lib/mandatos-instagram-piaui'
+import type { LideradoIgEngajamentoLinha } from '@/lib/mobilizacao-lideres-desempenho-ig-por-td-client'
 import {
   exercitoDualPanelItemClass,
   exercitoSectionCardClass,
@@ -27,6 +28,69 @@ import {
 import { cn } from '@/lib/utils'
 
 Chart.register(LineController, LineElement, PointElement, LinearScale, CategoryScale)
+
+const fmtDataHora = new Intl.DateTimeFormat('pt-BR', {
+  dateStyle: 'short',
+  timeStyle: 'short',
+})
+
+function formatHandle(h: string): string {
+  const t = h.trim()
+  if (!t) return ''
+  return t.startsWith('@') ? t : `@${t}`
+}
+
+function formatarUltimaPub(iso: string | null | undefined): string {
+  if (!iso) return '—'
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return '—'
+  return fmtDataHora.format(d)
+}
+
+function buildLideradosLinhas(leader: ExercitoDigitalLeaderRow): LideradoIgEngajamentoLinha[] {
+  const handles = leader.lideradosInstagram ?? []
+  const porHandle = new Map((leader.lideradosEngajamento ?? []).map((r) => [r.handle, r]))
+  return handles
+    .map((handle) => {
+      const row = porHandle.get(handle)
+      return (
+        row ?? {
+          handle,
+          nome: null,
+          comentarios: 0,
+          publicacoesComComentario: 0,
+          ultimaPublicacaoComentadaEm: null,
+        }
+      )
+    })
+    .sort((a, b) => b.comentarios - a.comentarios || a.handle.localeCompare(b.handle, 'pt-BR', { sensitivity: 'base' }))
+}
+
+function isMandatoRow(leader: ExercitoDigitalLeaderRow, audience: ExercitoDigitalAudience): boolean {
+  return audience === 'mandatos' || (audience === 'unificado' && leader.tipo === 'mandato')
+}
+
+function isLiderRow(leader: ExercitoDigitalLeaderRow, audience: ExercitoDigitalAudience): boolean {
+  return audience === 'liderados' || (audience === 'unificado' && leader.tipo === 'lider')
+}
+
+function rankingTitle(audience: ExercitoDigitalAudience): string {
+  if (audience === 'unificado') return 'Ranking · base eleitoral'
+  if (audience === 'mandatos') return 'Ranking de mandatários · engajamento'
+  return 'Ranking de líderes · ativação'
+}
+
+function profileColumnLabel(audience: ExercitoDigitalAudience): string {
+  if (audience === 'unificado') return 'Perfil'
+  if (audience === 'mandatos') return 'Mandatário'
+  return 'Líder'
+}
+
+function metricColumnLabel(audience: ExercitoDigitalAudience): string {
+  if (audience === 'unificado') return 'Ativação'
+  if (audience === 'mandatos') return 'Posts'
+  return 'Total %'
+}
 
 const GRID = 'grid grid-cols-[18px_8px_1fr_52px_90px_70px_36px] items-center gap-2'
 const WEEK_LABELS = ['S-4', 'S-3', 'S-2', 'S-1', 'Atual'] as const
@@ -197,15 +261,16 @@ export function ExercitoDigitalLeaderRanking({ leaders, audience, lookbackDays }
     { id: 'inativos', label: `Inativos (${counts.inativos})` },
   ]
 
-  const entityLabel = audience === 'mandatos' ? 'mandatário' : 'líder'
+  const entityLabel =
+    audience === 'unificado' ? 'perfil' : audience === 'mandatos' ? 'mandatário' : 'líder'
 
   return (
     <div className={cn(exercitoSectionCardClass, exercitoDualPanelItemClass)}>
-      <h2 className={exercitoSectionTitleClass}>
-        {audience === 'mandatos' ? 'Ranking de mandatários · engajamento' : 'Ranking de líderes · ativação'}
-      </h2>
+      <h2 className={exercitoSectionTitleClass}>{rankingTitle(audience)}</h2>
       <p className={cn(exercitoSectionSubtitleClass, 'mb-3')}>
-        Clique para ver série semanal. Tendência = variação vs semana anterior · últimos {lookbackDays} dias.
+        Clique para expandir. Ativação = posts com engajamento ÷ total no período. Perfis{' '}
+        <strong className="font-medium text-[#854F0B]">Rede</strong> exibem detalhamento por liderado · últimos{' '}
+        {lookbackDays} dias.
       </p>
       <div className="mb-3 flex flex-wrap gap-1.5">
         {tabs.map((t) => (
@@ -228,8 +293,8 @@ export function ExercitoDigitalLeaderRanking({ leaders, audience, lookbackDays }
       <div className={cn(GRID, 'border-b border-[rgb(var(--color-border-tertiary)/0.85)] pb-1.5 text-[10px] font-medium uppercase tracking-[0.04em] text-text-muted')}>
         <span className="text-right">#</span>
         <span aria-hidden>•</span>
-        <span>{audience === 'mandatos' ? 'Mandatário' : 'Líder'}</span>
-        <span className="text-right">{audience === 'mandatos' ? 'Posts' : 'Total %'}</span>
+        <span>{profileColumnLabel(audience)}</span>
+        <span className="text-right">{metricColumnLabel(audience)}</span>
         <span>Semanas</span>
         <span className="text-center">Tendência</span>
         <span className="text-right">Pos.</span>
@@ -242,6 +307,9 @@ export function ExercitoDigitalLeaderRanking({ leaders, audience, lookbackDays }
           filtered.slice(0, 40).map((leader, idx) => {
             const expanded = expandedId === leader.id
             const isLast = idx === filtered.length - 1 || idx === 39
+            const mandato = isMandatoRow(leader, audience)
+            const liderRede = isLiderRow(leader, audience)
+            const lideradosLinhas = liderRede ? buildLideradosLinhas(leader) : []
             return (
               <Fragment key={leader.id}>
                 <button
@@ -264,36 +332,31 @@ export function ExercitoDigitalLeaderRanking({ leaders, audience, lookbackDays }
                     aria-hidden
                   />
                   <div className="min-w-0">
-                    <p className="truncate text-xs font-medium text-text-primary">{leader.nome}</p>
+                    <div className="flex min-w-0 items-center gap-1.5">
+                      <p className="truncate text-xs font-medium text-text-primary">{leader.nome}</p>
+                      {liderRede ? (
+                        <span className="shrink-0 rounded-[99px] border border-[#C8900A]/45 bg-[#FAEEDA] px-1.5 py-0 text-[8.5px] font-semibold uppercase tracking-wide text-[#854F0B]">
+                          Rede
+                        </span>
+                      ) : audience === 'unificado' ? (
+                        <span className="shrink-0 rounded-[99px] border border-[rgb(var(--color-border-secondary)/0.85)] bg-bg-surface px-1.5 py-0 text-[8.5px] font-medium uppercase tracking-wide text-text-muted">
+                          Mandato
+                        </span>
+                      ) : null}
+                    </div>
                     <p className="text-[10.5px] text-text-muted">
-                      {formatInt(leader.comentarios)} coment
-                      {audience === 'mandatos'
-                        ? ` · ${formatInt(leader.publicacoes)} de ${formatInt(leader.postsNoPeriodo)} posts`
-                        : ` · ${formatInt(leader.publicacoes)} pub`}
+                      {formatInt(leader.comentarios)} coment · {formatInt(leader.publicacoes)} de{' '}
+                      {formatInt(leader.postsNoPeriodo)} posts
                     </p>
                   </div>
                   <div className="text-right">
-                    {audience === 'mandatos' ? (
-                      <>
-                        <p
-                          className="text-[13px] font-medium tabular-nums"
-                          style={{ color: activationColor(leader.ativacaoPct) }}
-                        >
-                          {formatInt(leader.publicacoes)}/{formatInt(leader.postsNoPeriodo)}
-                        </p>
-                        <p className="text-[10px] text-text-muted">{formatPct(leader.ativacaoPct)}</p>
-                      </>
-                    ) : (
-                      <>
-                        <p
-                          className="text-[13px] font-medium tabular-nums"
-                          style={{ color: activationColor(leader.ativacaoPct) }}
-                        >
-                          {formatPct(leader.ativacaoPct)}
-                        </p>
-                        <p className="text-[10px] text-text-muted">ativação</p>
-                      </>
-                    )}
+                    <p
+                      className="text-[13px] font-medium tabular-nums"
+                      style={{ color: activationColor(leader.ativacaoPct) }}
+                    >
+                      {formatInt(leader.publicacoes)}/{formatInt(leader.postsNoPeriodo)}
+                    </p>
+                    <p className="text-[10px] text-text-muted">{formatPct(leader.ativacaoPct)}</p>
                   </div>
                   <Sparkline
                     id={`sp${leader.rank}`}
@@ -320,7 +383,7 @@ export function ExercitoDigitalLeaderRanking({ leaders, audience, lookbackDays }
                   <div className="leader-detail mb-1 block rounded-b-[10px] border border-t-0 border-[rgb(var(--color-border-tertiary)/0.85)] bg-bg-app px-4 py-3">
                     <div className="mb-3 grid grid-cols-2 gap-2.5 sm:grid-cols-4">
                       {[
-                        ...(audience === 'mandatos'
+                        ...(mandato || liderRede
                           ? [
                               {
                                 label: 'Posts comentados',
@@ -332,6 +395,15 @@ export function ExercitoDigitalLeaderRanking({ leaders, audience, lookbackDays }
                                 value: formatPct(leader.ativacaoPct),
                                 color: activationColor(leader.ativacaoPct),
                               },
+                              ...(liderRede
+                                ? [
+                                    {
+                                      label: 'Liderados ativos',
+                                      value: `${formatInt(leader.lideradosQueComentaram)}/${formatInt(leader.lideradosComRede)}`,
+                                      color: undefined,
+                                    },
+                                  ]
+                                : []),
                             ]
                           : []),
                         { label: 'Semana atual', value: formatInt(leader.semanaAtual), color: undefined },
@@ -369,6 +441,72 @@ export function ExercitoDigitalLeaderRanking({ leaders, audience, lookbackDays }
                       status={leader.statusDot}
                       trend={leader.trendKind}
                     />
+                    {liderRede ? (
+                      <div className="mt-4 border-t border-[rgb(var(--color-border-tertiary)/0.85)] pt-3">
+                        <p className="mb-2 text-[10.5px] font-medium text-text-secondary">
+                          Liderados · engajamento no Instagram
+                        </p>
+                        {lideradosLinhas.length === 0 ? (
+                          <p className="text-[11px] text-text-muted">
+                            Nenhum @ de liderado ativo vinculado a este líder no recorte atual.
+                          </p>
+                        ) : (
+                          <div className="overflow-x-auto">
+                            <table className="w-full min-w-[28rem] border-collapse text-left">
+                              <thead>
+                                <tr className="border-b border-[rgb(var(--color-border-tertiary)/0.85)]">
+                                  <th className="px-2 py-1.5 text-[10px] font-semibold uppercase tracking-wide text-text-muted">
+                                    Nome
+                                  </th>
+                                  <th className="px-2 py-1.5 text-[10px] font-semibold uppercase tracking-wide text-text-muted">
+                                    Perfil
+                                  </th>
+                                  <th className="px-2 py-1.5 text-right text-[10px] font-semibold uppercase tracking-wide text-text-muted">
+                                    Coment.
+                                  </th>
+                                  <th
+                                    className="px-2 py-1.5 text-right text-[10px] font-semibold uppercase tracking-wide text-text-muted"
+                                    title="Publicações distintas em que comentou"
+                                  >
+                                    Posts c/ com.
+                                  </th>
+                                  <th
+                                    className="px-2 py-1.5 text-[10px] font-semibold uppercase tracking-wide text-text-muted"
+                                    title="Data da publicação do comentário mais recente"
+                                  >
+                                    Última pub.
+                                  </th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {lideradosLinhas.map((row) => (
+                                  <tr
+                                    key={row.handle}
+                                    className="border-b border-dashed border-[rgb(var(--color-border-tertiary)/0.55)] last:border-0"
+                                  >
+                                    <td className="px-2 py-1.5 text-[11px] text-text-primary">
+                                      {(row.nome ?? '').trim() || '—'}
+                                    </td>
+                                    <td className="px-2 py-1.5 font-mono text-[11px] text-text-primary">
+                                      {formatHandle(row.handle)}
+                                    </td>
+                                    <td className="px-2 py-1.5 text-right text-[11px] tabular-nums text-text-primary">
+                                      {row.comentarios}
+                                    </td>
+                                    <td className="px-2 py-1.5 text-right text-[11px] tabular-nums text-text-primary">
+                                      {row.publicacoesComComentario}
+                                    </td>
+                                    <td className="whitespace-nowrap px-2 py-1.5 text-[11px] tabular-nums text-text-secondary">
+                                      {formatarUltimaPub(row.ultimaPublicacaoComentadaEm)}
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        )}
+                      </div>
+                    ) : null}
                   </div>
                 ) : null}
               </Fragment>
@@ -391,8 +529,14 @@ export function ExercitoDigitalLeaderRanking({ leaders, audience, lookbackDays }
             <span className="h-2 w-2 rounded-full bg-[#E24B4A]" aria-hidden />
             Em queda / inativo
           </span>
+          <span className="inline-flex items-center gap-1.5">
+            <span className="rounded-[99px] border border-[#C8900A]/45 bg-[#FAEEDA] px-1.5 py-0 text-[8px] font-semibold uppercase text-[#854F0B]" aria-hidden>
+              Rede
+            </span>
+            Líder com liderados
+          </span>
         </div>
-        <span>Clique para expandir série semanal</span>
+        <span>Clique para expandir detalhes</span>
       </div>
     </div>
   )

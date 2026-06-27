@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useMemo } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import dynamic from 'next/dynamic'
 import { Loader2 } from 'lucide-react'
 import { useRouter, useSearchParams } from 'next/navigation'
@@ -12,6 +12,7 @@ import {
   TERRITORIO_CAMPO_TAB_PANORAMA,
   TERRITORIO_CAMPO_TAB_VISITAS,
   type TerritorioCampoTab,
+  parseTerritorioCampoTab,
   territorioCampoHref,
 } from '@/lib/territorio-campo-route'
 
@@ -28,19 +29,29 @@ const TerritorioBasePanel = dynamic(
   }
 )
 
-function parseTab(value: string | null): TerritorioCampoTab {
-  if (value === TERRITORIO_CAMPO_TAB_BASE) return TERRITORIO_CAMPO_TAB_BASE
-  if (value === TERRITORIO_CAMPO_TAB_VISITAS) return TERRITORIO_CAMPO_TAB_VISITAS
-  return TERRITORIO_CAMPO_TAB_PANORAMA
-}
-
 export default function TerritorioCampoPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const activeTab = useMemo(() => parseTab(searchParams.get('tab')), [searchParams])
+  const urlTab = useMemo(
+    () => parseTerritorioCampoTab(searchParams.get('tab')),
+    [searchParams]
+  )
+  const [activeTab, setActiveTab] = useState<TerritorioCampoTab>(urlTab)
+
+  useEffect(() => {
+    setActiveTab(urlTab)
+  }, [urlTab])
+
+  useEffect(() => {
+    const rawTab = searchParams.get('tab')
+    if (rawTab === TERRITORIO_CAMPO_TAB_PANORAMA) {
+      router.replace(territorioCampoHref(TERRITORIO_CAMPO_TAB_PANORAMA))
+    }
+  }, [router, searchParams])
 
   const onTabChange = useCallback(
     (tab: TerritorioCampoTab) => {
+      setActiveTab(tab)
       router.replace(territorioCampoHref(tab))
     },
     [router]

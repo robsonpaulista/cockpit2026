@@ -546,7 +546,9 @@ function NoDestino({
           {formatarNome(dest.nmVotavel)}
         </p>
         <p className="text-[11px] text-text-secondary">
-          {analise.secoesParecidas}/{analise.secoesTotal} seções
+          {analise.secoesParecidas}/{analise.secoesTotal} urnas ·{' '}
+          {analise.votosASemelhantes.toLocaleString('pt-BR')} /{' '}
+          {analise.votosBSemelhantes.toLocaleString('pt-BR')} votos
         </p>
       </button>
 

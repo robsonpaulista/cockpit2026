@@ -39,8 +39,10 @@ function KpiFooter({ children }: { children: ReactNode }) {
 }
 
 export function ExercitoDigitalKpiStrip({ kpis, lookbackDays, audience }: ExercitoDigitalKpiStripProps) {
-  const redeLabel = audience === 'mandatos' ? 'mandatários' : 'líderes'
-  const comentariosRedeLabel = audience === 'mandatos' ? 'mandatários' : 'liderados'
+  const redeLabel =
+    audience === 'unificado' ? 'perfis da base' : audience === 'mandatos' ? 'mandatários' : 'líderes'
+  const comentariosRedeLabel =
+    audience === 'unificado' ? 'base eleitoral' : audience === 'mandatos' ? 'mandatários' : 'liderados'
 
   return (
     <div className="flex w-full min-w-0 flex-row flex-nowrap items-stretch gap-2">

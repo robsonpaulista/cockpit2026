@@ -35,7 +35,7 @@ export type MandatoInstagramEnriquecido = MandatoInstagramPI & {
   territorioTd: TerritorioDesenvolvimentoPI
 }
 
-export type ExercitoDigitalAudience = 'liderados' | 'mandatos'
+export type ExercitoDigitalAudience = 'liderados' | 'mandatos' | 'unificado'
 
 const payload = dados as MandatoInstagramPIPayload
 
@@ -91,5 +91,7 @@ export function labelCargoMandato(cargo: MandatoCargo): string {
 }
 
 export function labelAudience(audience: ExercitoDigitalAudience): string {
-  return audience === 'mandatos' ? 'Prefeitos/Vereadores' : 'Liderados'
+  if (audience === 'mandatos') return 'Prefeitos/Vereadores'
+  if (audience === 'unificado') return 'Base eleitoral'
+  return 'Liderados'
 }

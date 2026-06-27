@@ -17,6 +17,12 @@ export function territorioCampoPageTitle(tab: string | null): string {
   return TERRITORIO_CAMPO_PAGE_TITLE
 }
 
+export function parseTerritorioCampoTab(value: string | null | undefined): TerritorioCampoTab {
+  if (value === TERRITORIO_CAMPO_TAB_BASE) return TERRITORIO_CAMPO_TAB_BASE
+  if (value === TERRITORIO_CAMPO_TAB_VISITAS) return TERRITORIO_CAMPO_TAB_VISITAS
+  return TERRITORIO_CAMPO_TAB_PANORAMA
+}
+
 export function territorioCampoHref(
   tab: TerritorioCampoTab = TERRITORIO_CAMPO_TAB_PANORAMA
 ): string {

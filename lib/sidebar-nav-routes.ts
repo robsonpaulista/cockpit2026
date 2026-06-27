@@ -5,6 +5,10 @@ import {
   RESUMO_ELEICOES_TAB_CHAPA_FEDERAL,
   RESUMO_ELEICOES_TAB_SECAO,
 } from '@/lib/resumo-eleicoes-hub-route'
+import {
+  TERRITORIO_CAMPO_TAB_PANORAMA,
+  territorioCampoHref,
+} from '@/lib/territorio-campo-route'
 
 export interface SidebarMenuItemConfig extends MenuItem {
   children?: MenuItem[]
@@ -20,7 +24,12 @@ export const SIDEBAR_MENU_ITEMS: SidebarMenuItemConfig[] = [
     href: '/dashboard/resumo-operacional',
   },
   { id: 'narrativas', label: 'Estratégia', icon: 'Target', href: '/dashboard/narrativas' },
-  { id: 'territorio', label: 'Território & Campo', icon: 'MapPin', href: '/dashboard/territorio' },
+  {
+    id: 'territorio',
+    label: 'Território & Campo',
+    icon: 'MapPin',
+    href: territorioCampoHref(TERRITORIO_CAMPO_TAB_PANORAMA),
+  },
   { id: 'agenda', label: 'Agenda', icon: 'Calendar', href: '/dashboard/agenda' },
   {
     id: 'ficha-atendimento',

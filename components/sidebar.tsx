@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { usePathname, useSearchParams } from 'next/navigation'
+import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { type Dispatch, type SetStateAction, useEffect, useMemo, useRef, useState } from 'react'
 import {
   LayoutDashboard,
@@ -65,6 +65,10 @@ import {
 import { AppBrandHeader, SidebarBrandMark } from '@/components/app-brand-title'
 import { SidebarQuickAccess } from '@/components/sidebar/sidebar-quick-access'
 import { SIDEBAR_MENU_ITEMS, type SidebarMenuItemConfig } from '@/lib/sidebar-nav-routes'
+import {
+  TERRITORIO_CAMPO_TAB_PANORAMA,
+  territorioCampoHref,
+} from '@/lib/territorio-campo-route'
 import { isSidebarMenuItemHidden, isSidebarChildMenuItemHidden } from '@/lib/sidebar-hidden-items'
 import {
   SIDEBAR_WIDTH_COLLAPSED_CLASS,
@@ -305,6 +309,7 @@ function SidebarNavItem({
   setMobileOpen,
   menuLabel,
 }: SidebarNavItemProps) {
+  const router = useRouter()
   const itemRef = useRef<HTMLLIElement>(null)
   const [tooltipPos, setTooltipPos] = useState<{ top: number } | null>(null)
 
@@ -485,7 +490,18 @@ function SidebarNavItem({
       ) : (
         <Link
           href={item.href}
-          onClick={() => {
+          onClick={(e) => {
+            if (item.id === 'territorio') {
+              const panoramaHref = territorioCampoHref(TERRITORIO_CAMPO_TAB_PANORAMA)
+              if (pathname.startsWith('/dashboard/territorio') && searchKey) {
+                e.preventDefault()
+                router.replace(panoramaHref)
+              } else if (item.href !== pathname) {
+                setNavigating(true)
+              }
+              setMobileOpen(false)
+              return
+            }
             if (item.href !== pathname) setNavigating(true)
             setMobileOpen(false)
           }}

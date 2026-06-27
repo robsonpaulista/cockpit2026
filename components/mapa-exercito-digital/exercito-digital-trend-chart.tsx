@@ -26,7 +26,8 @@ interface ExercitoDigitalTrendChartProps {
 }
 
 export function ExercitoDigitalTrendChart({ points, audience }: ExercitoDigitalTrendChartProps) {
-  const redeLabel = audience === 'mandatos' ? 'Mandatários' : 'Liderados'
+  const redeLabel =
+    audience === 'unificado' ? 'Base eleitoral' : audience === 'mandatos' ? 'Mandatários' : 'Liderados'
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const chartRef = useRef<Chart | null>(null)
 
@@ -114,7 +115,13 @@ export function ExercitoDigitalTrendChart({ points, audience }: ExercitoDigitalT
     <div className={exercitoSectionCardClass}>
       <h2 className={exercitoSectionTitleClass}>Tendência de engajamento · por data de publicação</h2>
       <p className={cn(exercitoSectionSubtitleClass, 'mb-2.5')}>
-        % de comentários {audience === 'mandatos' ? 'de mandatários' : 'liderados'} (azul) vs orgânicos (cinza) por post
+        % de comentários{' '}
+        {audience === 'unificado'
+          ? 'da base eleitoral'
+          : audience === 'mandatos'
+            ? 'de mandatários'
+            : 'liderados'}{' '}
+        (azul) vs orgânicos (cinza) por post
       </p>
       <div className="relative h-[140px] w-full">
         <canvas
