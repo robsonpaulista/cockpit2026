@@ -19,8 +19,8 @@ import { cn } from '@/lib/utils'
 
 interface ExercitoDigitalKpiStripProps {
   kpis: ExercitoDigitalKpis
-  lookbackDays: number
   audience: ExercitoDigitalAudience
+  referenceMonthLabel: string
 }
 
 function KpiLabel({ icon: Icon, text }: { icon: typeof IconChartPie; text: string }) {
@@ -38,7 +38,7 @@ function KpiFooter({ children }: { children: ReactNode }) {
   )
 }
 
-export function ExercitoDigitalKpiStrip({ kpis, lookbackDays, audience }: ExercitoDigitalKpiStripProps) {
+export function ExercitoDigitalKpiStrip({ kpis, audience, referenceMonthLabel }: ExercitoDigitalKpiStripProps) {
   const redeLabel =
     audience === 'unificado' ? 'perfis da base' : audience === 'mandatos' ? 'mandatários' : 'líderes'
   const comentariosRedeLabel =
@@ -56,7 +56,7 @@ export function ExercitoDigitalKpiStrip({ kpis, lookbackDays, audience }: Exerci
           />
         </div>
         <KpiFooter>
-          {formatInt(kpis.lideresAtivados)}/{formatInt(kpis.lideresMedidos)} {redeLabel}
+          {formatInt(kpis.lideresAtivados)}/{formatInt(kpis.lideresMedidos)} {redeLabel} · {referenceMonthLabel}
           {kpis.abaixoMeta ? (
             <>
               {' · '}
@@ -90,7 +90,7 @@ export function ExercitoDigitalKpiStrip({ kpis, lookbackDays, audience }: Exerci
         <KpiLabel icon={IconPhoto} text="Publicações analisadas" />
         <p className={exercitoKpiValueClass}>{formatInt(kpis.publicacoesAnalisadas)}</p>
         <KpiFooter>
-          {lookbackDays} dias · IG
+          {formatInt(kpis.publicacoesAnalisadas)} publicações em {referenceMonthLabel}
         </KpiFooter>
       </div>
     </div>

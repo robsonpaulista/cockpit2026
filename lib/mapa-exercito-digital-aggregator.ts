@@ -24,6 +24,16 @@ import type {
   LeaderStatusDot,
   LeaderTrendKind,
 } from '@/lib/mapa-exercito-digital-types'
+import {
+  formatMonthLabelLong,
+  getCurrentReferenceMonth,
+  getMonthWindow,
+  isTimestampInMonth,
+  parseReferenceMonth,
+  startOfMonthMs,
+  endOfMonthMs,
+  type MonthRef,
+} from '@/lib/mapa-exercito-digital-month'
 
 const META_ATIVACAO = 70
 const fmtPct = new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })
@@ -102,45 +112,55 @@ function mergeLeadersAcrossTds(rows: LiderDesempenhoIgLinha[]): MergedLeader[] {
   return [...map.values()]
 }
 
-function startOfWeek(ref: Date): Date {
-  const d = new Date(ref)
-  d.setHours(0, 0, 0, 0)
-  const day = d.getDay()
-  d.setDate(d.getDate() - ((day + 6) % 7))
-  return d
+function postsInCalendarMonth(posts: InstagramPostWithComments[], ref: MonthRef): InstagramPostWithComments[] {
+  const start = startOfMonthMs(ref)
+  const end = endOfMonthMs(ref)
+  return posts.filter((p) => {
+    const t = timestampMediaPostedAt(p)
+    return t >= start && t <= end
+  })
 }
 
-function weeklyCommentCountsForHandles(
+function monthlyCommentCountsForHandles(
   posts: InstagramPostWithComments[],
   handles: Set<string>,
-  now = new Date()
+  referenceMonth: string
 ): number[] {
-  const weekStarts: Date[] = []
-  const monday = startOfWeek(now)
-  for (let i = 4; i >= 0; i--) {
-    const w = new Date(monday)
-    w.setDate(monday.getDate() - i * 7)
-    weekStarts.push(w)
-  }
-
-  const counts = [0, 0, 0, 0, 0]
-  for (const post of posts) {
-    for (const c of post.comments) {
-      const h = normalizeInstagramHandle(c.commenter_username)
-      if (!h || !handles.has(h)) continue
-      const t = timestampComment(c)
-      if (t <= 0) continue
-      for (let i = 0; i < weekStarts.length; i++) {
-        const start = weekStarts[i]!.getTime()
-        const end = start + 7 * 24 * 60 * 60 * 1000
-        if (t >= start && t < end) {
-          counts[i]! += 1
-          break
-        }
+  const months = getMonthWindow(referenceMonth, 5)
+  return months.map((ref) => {
+    let count = 0
+    for (const post of posts) {
+      for (const c of post.comments) {
+        const h = normalizeInstagramHandle(c.commenter_username)
+        if (!h || !handles.has(h)) continue
+        const t = timestampComment(c)
+        if (isTimestampInMonth(t, ref)) count += 1
       }
     }
-  }
-  return counts
+    return count
+  })
+}
+
+function monthlyCommentCountsForMunicipio(
+  posts: InstagramPostWithComments[],
+  handleToMunicipio: Map<string, string>,
+  municipio: string,
+  referenceMonth: string
+): number[] {
+  const months = getMonthWindow(referenceMonth, 5)
+  return months.map((ref) => {
+    let count = 0
+    for (const post of posts) {
+      for (const c of post.comments) {
+        const h = normalizeInstagramHandle(c.commenter_username)
+        if (!h) continue
+        if (handleToMunicipio.get(h) !== municipio) continue
+        const t = timestampComment(c)
+        if (isTimestampInMonth(t, ref)) count += 1
+      }
+    }
+    return count
+  })
 }
 
 function pctChange(current: number, previous: number): number | null {
@@ -148,53 +168,53 @@ function pctChange(current: number, previous: number): number | null {
   return ((current - previous) / previous) * 100
 }
 
-function computeTrend(weekly: number[]): {
+function computeMonthlyTrend(monthly: number[]): {
   kind: LeaderTrendKind
   label: string
   deltaPct: number | null
-  inactiveWeeks: number
+  inactiveMonths: number
 } {
-  const current = weekly[4] ?? 0
-  const previous = weekly[3] ?? 0
+  const current = monthly[4] ?? 0
+  const previous = monthly[3] ?? 0
   const delta = pctChange(current, previous)
 
-  let inactiveWeeks = 0
-  for (let i = weekly.length - 1; i >= 0; i--) {
-    if ((weekly[i] ?? 0) === 0) inactiveWeeks += 1
+  let inactiveMonths = 0
+  for (let i = monthly.length - 1; i >= 0; i--) {
+    if ((monthly[i] ?? 0) === 0) inactiveMonths += 1
     else break
   }
 
-  if (inactiveWeeks >= 2) {
+  if (inactiveMonths >= 2) {
     return {
       kind: 'inactive',
-      label: `Inativo há ${inactiveWeeks}sem`,
+      label: `Inativo há ${inactiveMonths} ${inactiveMonths === 1 ? 'mês' : 'meses'}`,
       deltaPct: delta,
-      inactiveWeeks,
+      inactiveMonths,
     }
   }
 
-  const w2 = weekly[2] ?? 0
-  const w1 = weekly[1] ?? 0
-  const w0 = weekly[0] ?? 0
-  if (w0 < w1 && w1 < w2 && w2 < previous && previous < current) {
-    return { kind: 'accelerating', label: 'Crescendo', deltaPct: delta, inactiveWeeks: 0 }
+  const m2 = monthly[2] ?? 0
+  const m1 = monthly[1] ?? 0
+  const m0 = monthly[0] ?? 0
+  if (m0 < m1 && m1 < m2 && m2 < previous && previous < current) {
+    return { kind: 'accelerating', label: 'Crescendo', deltaPct: delta, inactiveMonths: 0 }
   }
 
   if (delta != null && delta >= 15) {
-    return { kind: 'growing', label: `+${Math.round(delta)}% semana`, deltaPct: delta, inactiveWeeks: 0 }
+    return { kind: 'growing', label: `+${Math.round(delta)}% mês`, deltaPct: delta, inactiveMonths: 0 }
   }
   if (delta != null && delta <= -15) {
-    return { kind: 'falling', label: `-${Math.abs(Math.round(delta))}% semana`, deltaPct: delta, inactiveWeeks: 0 }
+    return { kind: 'falling', label: `-${Math.abs(Math.round(delta))}% mês`, deltaPct: delta, inactiveMonths: 0 }
   }
-  return { kind: 'stable', label: 'Estável', deltaPct: delta, inactiveWeeks: 0 }
+  return { kind: 'stable', label: 'Estável', deltaPct: delta, inactiveMonths: 0 }
 }
 
 function computeStatusDot(
   ativacaoPct: number,
   trendKind: LeaderTrendKind,
-  inactiveWeeks: number
+  inactiveMonths: number
 ): LeaderStatusDot {
-  if (inactiveWeeks >= 2 || ativacaoPct < 5) return 'red'
+  if (inactiveMonths >= 2 || ativacaoPct < 5) return 'red'
   if (ativacaoPct > 30 && (trendKind === 'growing' || trendKind === 'accelerating' || trendKind === 'stable')) {
     return 'green'
   }
@@ -287,11 +307,62 @@ function buildTrendPoints(
   return linhas.slice(-14)
 }
 
+function countCommentsForHandlesInMonth(
+  posts: InstagramPostWithComments[],
+  handles: Set<string>,
+  ref: MonthRef
+): number {
+  let count = 0
+  for (const post of posts) {
+    for (const c of post.comments) {
+      const h = normalizeInstagramHandle(c.commenter_username)
+      if (!h || !handles.has(h)) continue
+      if (isTimestampInMonth(timestampComment(c), ref)) count += 1
+    }
+  }
+  return count
+}
+
+function postsComentadosByHandlesInMonth(
+  posts: InstagramPostWithComments[],
+  handles: Set<string>,
+  ref: MonthRef
+): number {
+  const medias = new Set<string>()
+  for (const post of posts) {
+    for (const c of post.comments) {
+      const h = normalizeInstagramHandle(c.commenter_username)
+      if (!h || !handles.has(h)) continue
+      if (isTimestampInMonth(timestampComment(c), ref)) {
+        medias.add(post.instagram_media_id)
+        break
+      }
+    }
+  }
+  return medias.size
+}
+
+function lideradosQueComentaramNoMes(
+  posts: InstagramPostWithComments[],
+  handles: string[],
+  ref: MonthRef
+): number {
+  let count = 0
+  for (const handle of handles) {
+    const h = normalizeInstagramHandle(handle)
+    if (!h) continue
+    if (countCommentsForHandlesInMonth(posts, new Set([h]), ref) > 0) count += 1
+  }
+  return count
+}
+
 function buildCities(
   posts: InstagramPostWithComments[],
   handleToMunicipio: Map<string, string>,
-  perfisPorMunicipio: Map<string, Set<string>>
+  perfisPorMunicipio: Map<string, Set<string>>,
+  referenceMonth: string
 ): { top: ExercitoDigitalCityRow[]; all: ExercitoDigitalCityRow[] } {
+  const ref = parseReferenceMonth(referenceMonth)
   const comentariosPorMun = new Map<string, number>()
   const comentaramPorMun = new Map<string, Set<string>>()
 
@@ -306,6 +377,7 @@ function buildCities(
       if (!h) continue
       const mun = handleToMunicipio.get(h)
       if (!mun || !perfisPorMunicipio.has(mun)) continue
+      if (!isTimestampInMonth(timestampComment(c), ref)) continue
       comentariosPorMun.set(mun, (comentariosPorMun.get(mun) ?? 0) + 1)
       comentaramPorMun.get(mun)?.add(h)
     }
@@ -315,15 +387,21 @@ function buildCities(
   for (const [municipio, perfis] of perfisPorMunicipio) {
     const comentaram = comentaramPorMun.get(municipio)?.size ?? 0
     rows.push({
+      rank: 0,
       municipio,
       comentarios: comentariosPorMun.get(municipio) ?? 0,
       ativacaoPct: perfis.size > 0 ? (comentaram / perfis.size) * 100 : 0,
+      monthlyCounts: monthlyCommentCountsForMunicipio(posts, handleToMunicipio, municipio, referenceMonth),
     })
   }
 
   const withComments = rows.filter((r) => r.comentarios > 0).sort((a, b) => b.comentarios - a.comentarios)
   const zero = rows.filter((r) => r.comentarios === 0).sort((a, b) => a.municipio.localeCompare(b.municipio, 'pt-BR'))
-  return { all: rows, top: [...withComments, ...zero].slice(0, 8) }
+  const ordered = [...withComments, ...zero]
+  ordered.forEach((row, index) => {
+    row.rank = index + 1
+  })
+  return { all: rows, top: ordered.slice(0, 8) }
 }
 
 function buildMandatosMunicipioMaps(mandatos: MandatoInstagramEnriquecido[]): {
@@ -403,48 +481,53 @@ function analisarCoberturaHandles(handles: Set<string>, commenters: Set<string>)
 function buildLeaders(
   merged: MergedLeader[],
   posts: InstagramPostWithComments[],
-  lideresCobertura: LiderInstagramCoberturaDto[]
+  lideresCobertura: LiderInstagramCoberturaDto[],
+  referenceMonth: string
 ): ExercitoDigitalLeaderRow[] {
-  const postsNoPeriodo = posts.length
+  const ref = parseReferenceMonth(referenceMonth)
+  const postsNoPeriodo = postsInCalendarMonth(posts, ref).length
   const coberturaById = new Map(lideresCobertura.map((l) => [l.id, l]))
   const rows: ExercitoDigitalLeaderRow[] = merged
     .filter((l) => l.lideradosComRede > 0)
     .map((l) => {
       const handles = new Set(l.lideradosInstagram.map((h) => normalizeInstagramHandle(h)).filter(Boolean) as string[])
-      const weeklyCounts = weeklyCommentCountsForHandles(posts, handles)
-      const ativacaoPct = postsNoPeriodo > 0 ? (l.publicacoes / postsNoPeriodo) * 100 : 0
-      const trend = computeTrend(weeklyCounts)
-      const semanaAtual = weeklyCounts[4] ?? 0
-      const semanaAnterior = weeklyCounts[3] ?? 0
-      const variacaoPct = pctChange(semanaAtual, semanaAnterior)
+      const monthlyCounts = monthlyCommentCountsForHandles(posts, handles, referenceMonth)
+      const mesAtual = monthlyCounts[4] ?? 0
+      const mesAnterior = monthlyCounts[3] ?? 0
+      const publicacoes = postsComentadosByHandlesInMonth(posts, handles, ref)
+      const comentarios = countCommentsForHandlesInMonth(posts, handles, ref)
+      const ativacaoPct = postsNoPeriodo > 0 ? (publicacoes / postsNoPeriodo) * 100 : 0
+      const trend = computeMonthlyTrend(monthlyCounts)
+      const variacaoPct = pctChange(mesAtual, mesAnterior)
       const cobertura = coberturaById.get(l.id)
       const nome = cobertura?.nome ?? l.nome
+      const lideradosQueComentaram = lideradosQueComentaramNoMes(posts, l.lideradosInstagram, ref)
       return {
         id: l.id,
         rank: 0,
         tipo: 'lider' as const,
         nome,
-        comentarios: l.comentarios,
-        publicacoes: l.publicacoes,
+        comentarios,
+        publicacoes,
         postsNoPeriodo,
         ativacaoPct,
-        weeklyCounts,
+        monthlyCounts,
         trendKind: trend.kind,
         trendLabel: trend.label,
         trendDeltaPct: trend.deltaPct,
-        statusDot: computeStatusDot(ativacaoPct, trend.kind, trend.inactiveWeeks),
-        semanaAtual,
-        semanaAnterior,
+        statusDot: computeStatusDot(ativacaoPct, trend.kind, trend.inactiveMonths),
+        mesAtual,
+        mesAnterior,
         variacaoPct,
         consistencia: computeConsistencia(trend.kind, variacaoPct),
         lideradosComRede: l.lideradosComRede,
-        lideradosQueComentaram: l.lideradosQueComentaram,
-        inactiveWeeks: trend.inactiveWeeks,
+        lideradosQueComentaram,
+        inactiveMonths: trend.inactiveMonths,
         lideradosInstagram: l.lideradosInstagram ?? [],
         lideradosEngajamento: l.lideradosEngajamento ?? [],
       }
     })
-    .sort((a, b) => b.ativacaoPct - a.ativacaoPct || b.comentarios - a.comentarios)
+    .sort((a, b) => b.mesAtual - a.mesAtual || b.comentarios - a.comentarios)
 
   return rows.map((r, i) => ({ ...r, rank: i + 1 }))
 }
@@ -468,8 +551,8 @@ function countOrganicTail(
 
 export function filterLeadersByTab(leaders: ExercitoDigitalLeaderRow[], tab: LeaderFilterTab): ExercitoDigitalLeaderRow[] {
   if (tab === 'todos') return leaders
-  if (tab === 'ativos') return leaders.filter((l) => l.lideradosQueComentaram > 0)
-  if (tab === 'inativos') return leaders.filter((l) => l.lideradosQueComentaram === 0 || l.inactiveWeeks >= 2)
+  if (tab === 'ativos') return leaders.filter((l) => l.mesAtual > 0)
+  if (tab === 'inativos') return leaders.filter((l) => l.mesAtual === 0 || l.inactiveMonths >= 2)
   return leaders.filter((l) => {
     const delta = l.trendDeltaPct
     return delta != null && delta <= -15
@@ -479,7 +562,7 @@ export function filterLeadersByTab(leaders: ExercitoDigitalLeaderRow[], tab: Lea
 export function leaderTabCounts(leaders: ExercitoDigitalLeaderRow[]): Record<LeaderFilterTab, number> {
   return {
     todos: leaders.length,
-    ativos: leaders.filter((l) => l.lideradosQueComentaram > 0).length,
+    ativos: leaders.filter((l) => l.mesAtual > 0).length,
     'em-queda': filterLeadersByTab(leaders, 'em-queda').length,
     inativos: filterLeadersByTab(leaders, 'inativos').length,
   }
@@ -487,32 +570,21 @@ export function leaderTabCounts(leaders: ExercitoDigitalLeaderRow[]): Record<Lea
 
 function buildMandatarios(
   mandatos: MandatoInstagramEnriquecido[],
-  posts: InstagramPostWithComments[]
+  posts: InstagramPostWithComments[],
+  referenceMonth: string
 ): ExercitoDigitalLeaderRow[] {
-  const postsNoPeriodo = posts.length
+  const ref = parseReferenceMonth(referenceMonth)
+  const postsNoPeriodo = postsInCalendarMonth(posts, ref).length
   const rows: ExercitoDigitalLeaderRow[] = mandatos.map((m) => {
     const handles = new Set([m.handle])
-    const weeklyCounts = weeklyCommentCountsForHandles(posts, handles)
-    let comentarios = 0
-    const medias = new Set<string>()
-    for (const post of posts) {
-      let found = false
-      for (const c of post.comments) {
-        const h = normalizeInstagramHandle(c.commenter_username)
-        if (h === m.handle) {
-          comentarios += 1
-          found = true
-        }
-      }
-      if (found) medias.add(post.instagram_media_id)
-    }
-    const postsComentados = medias.size
-    const comentou = postsComentados > 0
+    const monthlyCounts = monthlyCommentCountsForHandles(posts, handles, referenceMonth)
+    const mesAtual = monthlyCounts[4] ?? 0
+    const mesAnterior = monthlyCounts[3] ?? 0
+    const comentarios = countCommentsForHandlesInMonth(posts, handles, ref)
+    const postsComentados = postsComentadosByHandlesInMonth(posts, handles, ref)
     const ativacaoPct = postsNoPeriodo > 0 ? (postsComentados / postsNoPeriodo) * 100 : 0
-    const trend = computeTrend(weeklyCounts)
-    const semanaAtual = weeklyCounts[4] ?? 0
-    const semanaAnterior = weeklyCounts[3] ?? 0
-    const variacaoPct = pctChange(semanaAtual, semanaAnterior)
+    const trend = computeMonthlyTrend(monthlyCounts)
+    const variacaoPct = pctChange(mesAtual, mesAnterior)
     const nome = `${m.nome} · ${m.municipioOficial}${m.cargo === 'prefeito' ? ' (Pref.)' : ' (Ver.)'}`
     return {
       id: m.id,
@@ -523,23 +595,23 @@ function buildMandatarios(
       publicacoes: postsComentados,
       postsNoPeriodo,
       ativacaoPct,
-      weeklyCounts,
+      monthlyCounts,
       trendKind: trend.kind,
       trendLabel: trend.label,
       trendDeltaPct: trend.deltaPct,
-      statusDot: computeStatusDot(ativacaoPct, trend.kind, trend.inactiveWeeks),
-      semanaAtual,
-      semanaAnterior,
+      statusDot: computeStatusDot(ativacaoPct, trend.kind, trend.inactiveMonths),
+      mesAtual,
+      mesAnterior,
       variacaoPct,
       consistencia: computeConsistencia(trend.kind, variacaoPct),
       lideradosComRede: 1,
-      lideradosQueComentaram: comentou ? 1 : 0,
-      inactiveWeeks: trend.inactiveWeeks,
+      lideradosQueComentaram: mesAtual > 0 ? 1 : 0,
+      inactiveMonths: trend.inactiveMonths,
     }
   })
 
   return rows
-    .sort((a, b) => b.ativacaoPct - a.ativacaoPct || b.comentarios - a.comentarios || a.nome.localeCompare(b.nome, 'pt-BR'))
+    .sort((a, b) => b.mesAtual - a.mesAtual || b.comentarios - a.comentarios || a.nome.localeCompare(b.nome, 'pt-BR'))
     .map((r, i) => ({ ...r, rank: i + 1 }))
 }
 
@@ -547,14 +619,15 @@ function buildUnifiedLeaders(
   merged: MergedLeader[],
   posts: InstagramPostWithComments[],
   lideresCobertura: LiderInstagramCoberturaDto[],
-  mandatos: MandatoInstagramEnriquecido[]
+  mandatos: MandatoInstagramEnriquecido[],
+  referenceMonth: string
 ): ExercitoDigitalLeaderRow[] {
-  const lideres = buildLeaders(merged, posts, lideresCobertura)
-  const mandatarios = buildMandatarios(mandatos, posts)
+  const lideres = buildLeaders(merged, posts, lideresCobertura, referenceMonth)
+  const mandatarios = buildMandatarios(mandatos, posts, referenceMonth)
   return [...lideres, ...mandatarios]
     .sort(
       (a, b) =>
-        b.ativacaoPct - a.ativacaoPct ||
+        b.mesAtual - a.mesAtual ||
         b.comentarios - a.comentarios ||
         a.nome.localeCompare(b.nome, 'pt-BR')
     )
@@ -563,6 +636,7 @@ function buildUnifiedLeaders(
 
 export function aggregateExercitoDigitalViewModel(input: {
   lookbackDays: number
+  referenceMonth?: string
   audience: ExercitoDigitalAudience
   posts: InstagramPostWithComments[]
   lideresCobertura: LiderInstagramCoberturaDto[]
@@ -571,7 +645,10 @@ export function aggregateExercitoDigitalViewModel(input: {
   relatorioPi: RelatorioMapaDigitalIgTdPayload
 }): ExercitoDigitalViewModel {
   const { lookbackDays, audience, lideresCobertura, mergedLeaders, relatorioPi } = input
-  const posts = filterPostsByLookback(input.posts, lookbackDays)
+  const referenceMonth = input.referenceMonth ?? getCurrentReferenceMonth()
+  const ref = parseReferenceMonth(referenceMonth)
+  const allPosts = input.posts
+  const postsMes = postsInCalendarMonth(allPosts, ref)
   const isMandatos = audience === 'mandatos'
   const isUnificado = audience === 'unificado'
   const mandatos = input.mandatos ?? []
@@ -588,32 +665,37 @@ export function aggregateExercitoDigitalViewModel(input: {
       ? mandatosToCoberturaDto(mandatos)
       : lideresCobertura
 
-  const allCommenters = new Set<string>()
-  for (const post of posts) {
-    for (const h of commentersNormalizados(post.comments)) allCommenters.add(h)
+  const commentersNoMes = new Set<string>()
+  for (const post of allPosts) {
+    for (const c of post.comments) {
+      const h = normalizeInstagramHandle(c.commenter_username)
+      if (!h) continue
+      if (isTimestampInMonth(timestampComment(c), ref)) commentersNoMes.add(h)
+    }
   }
 
   const coberturaGeral = isUnificado
-    ? analisarCoberturaHandles(profileHandles, allCommenters)
-    : analisarCoberturaLideres(coberturaProfiles, allCommenters)
-  const organic = countOrganicTail(posts, profileHandles)
+    ? analisarCoberturaHandles(profileHandles, commentersNoMes)
+    : analisarCoberturaLideres(coberturaProfiles, commentersNoMes)
 
   let comentariosRede = 0
-  for (const post of posts) {
+  let comentariosTotal = 0
+  for (const post of allPosts) {
     for (const c of post.comments) {
+      if (!isTimestampInMonth(timestampComment(c), ref)) continue
+      comentariosTotal += 1
       const h = normalizeInstagramHandle(c.commenter_username)
       if (h && profileHandles.has(h)) comentariosRede += 1
     }
   }
-  const comentariosTotal = posts.reduce((acc, p) => acc + p.comments.length, 0)
-  const comentariosOrganicos = comentariosTotal - comentariosRede
+  const organic = countOrganicTail(postsMes, profileHandles)
 
   const municipioMaps = isUnificado
     ? mergeMunicipioMaps(buildLideradosMunicipioMaps(relatorioPi), buildMandatosMunicipioMaps(mandatos))
     : isMandatos
       ? buildMandatosMunicipioMaps(mandatos)
       : buildLideradosMunicipioMaps(relatorioPi)
-  const cityResult = buildCities(posts, municipioMaps.handleToMunicipio, municipioMaps.perfisPorMunicipio)
+  const cityResult = buildCities(allPosts, municipioMaps.handleToMunicipio, municipioMaps.perfisPorMunicipio, referenceMonth)
 
   const municipiosCriticos = cityResult.all.filter((r) => r.comentarios === 0 || r.ativacaoPct === 0).length
 
@@ -625,24 +707,26 @@ export function aggregateExercitoDigitalViewModel(input: {
     abaixoMeta: coberturaGeral.pct < META_ATIVACAO,
     comentariosTotal,
     comentariosLiderados: comentariosRede,
-    comentariosOrganicos,
+    comentariosOrganicos: comentariosTotal - comentariosRede,
     perfisOrganicos: organic.perfis.size,
     municipiosCriticos,
-    publicacoesAnalisadas: posts.length,
+    publicacoesAnalisadas: postsMes.length,
   }
 
   return {
     audience,
     lookbackDays,
+    referenceMonth,
+    referenceMonthLabel: formatMonthLabelLong(ref),
     kpis,
-    alertPosts: buildAlertPosts(posts, coberturaProfiles),
+    alertPosts: buildAlertPosts(postsMes, coberturaProfiles),
     leaders: isUnificado
-      ? buildUnifiedLeaders(mergedLeaders, posts, lideresCobertura, mandatos)
+      ? buildUnifiedLeaders(mergedLeaders, allPosts, lideresCobertura, mandatos, referenceMonth)
       : isMandatos
-        ? buildMandatarios(mandatos, posts)
-        : buildLeaders(mergedLeaders, posts, lideresCobertura),
+        ? buildMandatarios(mandatos, allPosts, referenceMonth)
+        : buildLeaders(mergedLeaders, allPosts, lideresCobertura, referenceMonth),
     cities: cityResult.top,
-    trend: buildTrendPoints(posts, profileHandles),
+    trend: buildTrendPoints(postsMes, profileHandles),
     organicTail: { comentarios: organic.comentarios, perfis: organic.perfis.size },
   }
 }

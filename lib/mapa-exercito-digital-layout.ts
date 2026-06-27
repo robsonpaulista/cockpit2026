@@ -10,11 +10,10 @@ export const exercitoSectionCardClass =
 export const exercitoSectionTitleClass = 'text-[13px] font-medium text-text-primary'
 export const exercitoSectionSubtitleClass = 'mt-0.5 text-[11px] text-text-muted'
 
-/** Altura fixa dos dois painéis lado a lado (ranking + municípios). */
-export const exercitoDualPanelGridClass =
-  'grid grid-cols-1 items-stretch gap-3 lg:grid-cols-2 lg:h-[440px]'
+/** Disputa de líderes + municípios empilhados (uma seção por linha). */
+export const exercitoDualPanelGridClass = 'grid grid-cols-1 items-stretch gap-3'
 
-export const exercitoDualPanelItemClass = 'flex h-full min-h-[360px] flex-col overflow-hidden lg:min-h-0'
+export const exercitoDualPanelItemClass = 'flex flex-col'
 
 /** KPI: 4 colunas iguais na mesma linha, compactos. */
 export const exercitoKpiGridClass = 'grid grid-cols-4 items-stretch gap-2'

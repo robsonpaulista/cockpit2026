@@ -37,27 +37,34 @@ export type ExercitoDigitalLeaderRow = {
   /** Total de posts da conta monitorada no período */
   postsNoPeriodo: number
   ativacaoPct: number
-  weeklyCounts: number[]
+  /** Comentários por mês (M-4 … mês de referência). */
+  monthlyCounts: number[]
   trendKind: LeaderTrendKind
   trendLabel: string
   trendDeltaPct: number | null
   statusDot: LeaderStatusDot
-  semanaAtual: number
-  semanaAnterior: number
+  /** Comentários no mês de referência. */
+  mesAtual: number
+  /** Comentários no mês anterior ao de referência. */
+  mesAnterior: number
   variacaoPct: number | null
   consistencia: string
   lideradosComRede: number
   lideradosQueComentaram: number
-  inactiveWeeks: number
+  /** Meses consecutivos sem comentários até o mês de referência. */
+  inactiveMonths: number
   /** Detalhamento por @ — só para `tipo === 'lider'`. */
   lideradosInstagram?: string[]
   lideradosEngajamento?: LideradoIgEngajamentoLinha[]
 }
 
 export type ExercitoDigitalCityRow = {
+  rank: number
   municipio: string
   comentarios: number
   ativacaoPct: number
+  /** Comentários por mês (M-4 … mês de referência). */
+  monthlyCounts: number[]
 }
 
 export type ExercitoDigitalTrendPoint = {
@@ -84,6 +91,9 @@ export type ExercitoDigitalKpis = {
 export type ExercitoDigitalViewModel = {
   audience: ExercitoDigitalAudience
   lookbackDays: number
+  /** Mês de referência do placar (YYYY-MM). */
+  referenceMonth: string
+  referenceMonthLabel: string
   kpis: ExercitoDigitalKpis
   alertPosts: ExercitoDigitalAlertPost[]
   leaders: ExercitoDigitalLeaderRow[]

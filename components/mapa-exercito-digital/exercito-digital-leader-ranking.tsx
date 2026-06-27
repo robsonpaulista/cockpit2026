@@ -3,19 +3,18 @@
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { IconTrendingDown, IconTrendingUp } from '@tabler/icons-react'
 import {
-  Chart,
-  LineController,
-  LineElement,
-  PointElement,
-  LinearScale,
-  CategoryScale,
-} from 'chart.js'
-import {
   filterLeadersByTab,
   formatInt,
   formatPct,
   leaderTabCounts,
 } from '@/lib/mapa-exercito-digital-aggregator'
+import {
+  initialsFromName,
+  leaderDisputeScore,
+  leaderScoreMax,
+  PERIOD_BAR_LABELS,
+  PODIUM_STYLES,
+} from '@/lib/mapa-exercito-digital-gamification'
 import type { ExercitoDigitalLeaderRow, LeaderFilterTab, LeaderStatusDot } from '@/lib/mapa-exercito-digital-types'
 import type { ExercitoDigitalAudience } from '@/lib/mandatos-instagram-piaui'
 import type { LideradoIgEngajamentoLinha } from '@/lib/mobilizacao-lideres-desempenho-ig-por-td-client'
@@ -26,8 +25,6 @@ import {
   exercitoSectionTitleClass,
 } from '@/lib/mapa-exercito-digital-layout'
 import { cn } from '@/lib/utils'
-
-Chart.register(LineController, LineElement, PointElement, LinearScale, CategoryScale)
 
 const fmtDataHora = new Intl.DateTimeFormat('pt-BR', {
   dateStyle: 'short',
@@ -74,26 +71,14 @@ function isLiderRow(leader: ExercitoDigitalLeaderRow, audience: ExercitoDigitalA
   return audience === 'liderados' || (audience === 'unificado' && leader.tipo === 'lider')
 }
 
-function rankingTitle(audience: ExercitoDigitalAudience): string {
-  if (audience === 'unificado') return 'Ranking · base eleitoral'
-  if (audience === 'mandatos') return 'Ranking de mandatários · engajamento'
-  return 'Ranking de líderes · ativação'
-}
-
 function profileColumnLabel(audience: ExercitoDigitalAudience): string {
   if (audience === 'unificado') return 'Perfil'
   if (audience === 'mandatos') return 'Mandatário'
   return 'Líder'
 }
 
-function metricColumnLabel(audience: ExercitoDigitalAudience): string {
-  if (audience === 'unificado') return 'Ativação'
-  if (audience === 'mandatos') return 'Posts'
-  return 'Total %'
-}
-
-const GRID = 'grid grid-cols-[18px_8px_1fr_52px_90px_70px_36px] items-center gap-2'
-const WEEK_LABELS = ['S-4', 'S-3', 'S-2', 'S-1', 'Atual'] as const
+const GRID = 'grid grid-cols-[28px_32px_1fr_48px_72px] items-center gap-2'
+const MONTH_LABELS = PERIOD_BAR_LABELS
 
 const dotColor: Record<LeaderStatusDot, string> = {
   green: '#639922',
@@ -136,63 +121,10 @@ function barRamp(status: LeaderStatusDot, trend: ExercitoDigitalLeaderRow['trend
 interface ExercitoDigitalLeaderRankingProps {
   leaders: ExercitoDigitalLeaderRow[]
   audience: ExercitoDigitalAudience
-  lookbackDays: number
+  referenceMonthLabel: string
 }
 
-function Sparkline({ id, data, color }: { id: string; data: number[]; color: string }) {
-  const canvasRef = useRef<HTMLCanvasElement>(null)
-  const chartRef = useRef<Chart | null>(null)
-
-  useEffect(() => {
-    const canvas = canvasRef.current
-    if (!canvas) return
-    chartRef.current?.destroy()
-    chartRef.current = new Chart(canvas, {
-      type: 'line',
-      data: {
-        labels: data.map((_, i) => String(i)),
-        datasets: [
-          {
-            data,
-            borderColor: color,
-            borderWidth: 1.5,
-            pointRadius: 0,
-            fill: false,
-            tension: 0.35,
-          },
-        ],
-      },
-      options: {
-        responsive: false,
-        maintainAspectRatio: false,
-        animation: false,
-        plugins: { legend: { display: false }, tooltip: { enabled: false } },
-        scales: {
-          x: { display: false },
-          y: { display: false, min: 0 },
-        },
-      },
-    })
-    return () => {
-      chartRef.current?.destroy()
-      chartRef.current = null
-    }
-  }, [color, data])
-
-  return (
-    <canvas
-      ref={canvasRef}
-      id={id}
-      width={90}
-      height={28}
-      role="img"
-      aria-label={`Série semanal: ${data.join(', ')} comentários`}
-      className="block"
-    />
-  )
-}
-
-function WeekBars({
+function PeriodBars({
   leaderId,
   counts,
   status,
@@ -226,7 +158,7 @@ function WeekBars({
       bar.style.background = ramp[i] ?? ramp[ramp.length - 1]!
       const label = document.createElement('span')
       label.className = 'text-[9px] text-text-muted'
-      label.textContent = WEEK_LABELS[i] ?? ''
+      label.textContent = MONTH_LABELS[i] ?? ''
       barWrap.appendChild(bar)
       col.appendChild(val)
       col.appendChild(barWrap)
@@ -239,12 +171,12 @@ function WeekBars({
     <div
       ref={wrapRef}
       id={`week-bars-${leaderId}`}
-      className="week-bars flex h-12 items-end gap-1"
+      className="period-bars flex h-12 items-end gap-1"
     />
   )
 }
 
-export function ExercitoDigitalLeaderRanking({ leaders, audience, lookbackDays }: ExercitoDigitalLeaderRankingProps) {
+export function ExercitoDigitalLeaderRanking({ leaders, audience, referenceMonthLabel }: ExercitoDigitalLeaderRankingProps) {
   const [tab, setTab] = useState<LeaderFilterTab>('todos')
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const counts = useMemo(() => leaderTabCounts(leaders), [leaders])
@@ -264,14 +196,24 @@ export function ExercitoDigitalLeaderRanking({ leaders, audience, lookbackDays }
   const entityLabel =
     audience === 'unificado' ? 'perfil' : audience === 'mandatos' ? 'mandatário' : 'líder'
 
+  const scoreMax = useMemo(() => leaderScoreMax(filtered), [filtered])
+  const podium = filtered.slice(0, 3)
+  const listRows = filtered.slice(0, 12)
+
   return (
-    <div className={cn(exercitoSectionCardClass, exercitoDualPanelItemClass)}>
-      <h2 className={exercitoSectionTitleClass}>{rankingTitle(audience)}</h2>
-      <p className={cn(exercitoSectionSubtitleClass, 'mb-3')}>
-        Clique para expandir. Ativação = posts com engajamento ÷ total no período. Perfis{' '}
-        <strong className="font-medium text-[#854F0B]">Rede</strong> exibem detalhamento por liderado · últimos{' '}
-        {lookbackDays} dias.
-      </p>
+    <div className={cn(exercitoSectionCardClass, exercitoDualPanelItemClass, 'border-[#C8900A]/20')}>
+      <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+        <div>
+          <h2 className={exercitoSectionTitleClass}>⚔️ Disputa de líderes</h2>
+          <p className={exercitoSectionSubtitleClass}>
+            Pontuação = comentários em {referenceMonthLabel} · clique para expandir detalhes
+          </p>
+        </div>
+        <span className="rounded-[99px] border border-[#C8900A]/45 bg-[#FAEEDA] px-2 py-0.5 text-[10px] font-semibold text-[#854F0B]">
+          top {Math.min(12, filtered.length)}
+        </span>
+      </div>
+
       <div className="mb-3 flex flex-wrap gap-1.5">
         {tabs.map((t) => (
           <button
@@ -281,7 +223,7 @@ export function ExercitoDigitalLeaderRanking({ leaders, audience, lookbackDays }
             className={cn(
               'rounded-[99px] border px-3 py-1 text-[11.5px] transition-colors',
               tab === t.id
-                ? 'border-[rgb(var(--color-primary))] bg-[#E6F1FB] font-medium text-[rgb(var(--color-primary))]'
+                ? 'border-[#C8900A]/60 bg-[#FAEEDA] font-semibold text-[#854F0B]'
                 : 'border-[rgb(var(--color-border-secondary)/0.85)] text-text-secondary hover:bg-bg-app'
             )}
           >
@@ -290,94 +232,133 @@ export function ExercitoDigitalLeaderRanking({ leaders, audience, lookbackDays }
         ))}
       </div>
 
-      <div className={cn(GRID, 'border-b border-[rgb(var(--color-border-tertiary)/0.85)] pb-1.5 text-[10px] font-medium uppercase tracking-[0.04em] text-text-muted')}>
-        <span className="text-right">#</span>
-        <span aria-hidden>•</span>
+      {podium.length > 0 ? (
+        <div className="mb-3 grid grid-cols-3 gap-2">
+          {podium.map((leader, idx) => {
+            const style = PODIUM_STYLES[idx]!
+            const score = leaderDisputeScore(leader)
+            const firstName = leader.nome.split(' ')[0] ?? leader.nome
+            return (
+              <div
+                key={leader.id}
+                className={cn(
+                  'rounded-[10px] px-2 py-2 text-center',
+                  style.bg,
+                  style.ring
+                )}
+              >
+                <span className="text-lg leading-none" aria-hidden>
+                  {style.medal}
+                </span>
+                <p className="mt-0.5 truncate text-[10px] font-bold text-text-primary" title={leader.nome}>
+                  {firstName}
+                </p>
+                <p className="text-[18px] font-bold tabular-nums text-[rgb(var(--color-primary))]">{score}</p>
+                <p className="text-[9px] text-text-muted">pts · {referenceMonthLabel}</p>
+                <span className={cn('mt-1 inline-flex rounded-[99px] px-1.5 py-0 text-[9px] font-medium', trendBadgeClass(leader.trendKind))}>
+                  {leader.trendLabel}
+                </span>
+              </div>
+            )
+          })}
+        </div>
+      ) : null}
+
+      <div className={cn(GRID, 'border-b border-[rgb(var(--color-border-tertiary)/0.85)] pb-1.5 text-[10px] font-semibold uppercase tracking-[0.04em] text-text-muted')}>
+        <span className="text-center">#</span>
+        <span aria-hidden />
         <span>{profileColumnLabel(audience)}</span>
-        <span className="text-right">{metricColumnLabel(audience)}</span>
-        <span>Semanas</span>
-        <span className="text-center">Tendência</span>
-        <span className="text-right">Pos.</span>
+        <span className="text-right">Pts</span>
+        <span className="text-center">Forma</span>
       </div>
 
       <div className="min-h-0 flex-1 overflow-y-auto">
-        {filtered.length === 0 ? (
+        {listRows.length === 0 ? (
           <p className="py-6 text-center text-[11px] text-text-muted">Nenhum {entityLabel} neste filtro.</p>
         ) : (
-          filtered.slice(0, 40).map((leader, idx) => {
+          listRows.map((leader, idx) => {
             const expanded = expandedId === leader.id
-            const isLast = idx === filtered.length - 1 || idx === 39
+            const isLast = idx === listRows.length - 1
             const mandato = isMandatoRow(leader, audience)
             const liderRede = isLiderRow(leader, audience)
             const lideradosLinhas = liderRede ? buildLideradosLinhas(leader) : []
+            const score = leaderDisputeScore(leader)
+            const barPct = scoreMax > 0 ? (score / scoreMax) * 100 : 0
+            const rising = leader.trendKind === 'growing' || leader.trendKind === 'accelerating'
+
             return (
               <Fragment key={leader.id}>
                 <button
                   type="button"
                   onClick={() => toggleRow(leader.id)}
                   className={cn(
-                    'leader-row',
-                    GRID,
-                    'w-full px-1 py-1.5 text-left transition-colors',
+                    'leader-row w-full px-1 py-2 text-left transition-colors',
                     !isLast && !expanded && 'border-b border-[rgb(var(--color-border-tertiary)/0.85)]',
                     expanded
                       ? 'expanded rounded-[10px] rounded-b-none bg-bg-app'
-                      : 'hover:rounded-[10px] hover:bg-bg-app'
+                      : 'hover:rounded-[10px] hover:bg-bg-app',
+                    rising && !expanded && 'bg-[#EAF3DE]/30'
                   )}
                 >
-                  <span className="text-right text-[11px] text-text-muted">{leader.rank}</span>
-                  <span
-                    className="h-2 w-2 shrink-0 rounded-full"
-                    style={{ backgroundColor: dotColor[leader.statusDot] }}
-                    aria-hidden
-                  />
-                  <div className="min-w-0">
-                    <div className="flex min-w-0 items-center gap-1.5">
-                      <p className="truncate text-xs font-medium text-text-primary">{leader.nome}</p>
-                      {liderRede ? (
-                        <span className="shrink-0 rounded-[99px] border border-[#C8900A]/45 bg-[#FAEEDA] px-1.5 py-0 text-[8.5px] font-semibold uppercase tracking-wide text-[#854F0B]">
-                          Rede
-                        </span>
-                      ) : audience === 'unificado' ? (
-                        <span className="shrink-0 rounded-[99px] border border-[rgb(var(--color-border-secondary)/0.85)] bg-bg-surface px-1.5 py-0 text-[8.5px] font-medium uppercase tracking-wide text-text-muted">
-                          Mandato
-                        </span>
-                      ) : null}
-                    </div>
-                    <p className="text-[10.5px] text-text-muted">
-                      {formatInt(leader.comentarios)} coment · {formatInt(leader.publicacoes)} de{' '}
-                      {formatInt(leader.postsNoPeriodo)} posts
-                    </p>
-                  </div>
-                  <div className="text-right">
-                    <p
-                      className="text-[13px] font-medium tabular-nums"
-                      style={{ color: activationColor(leader.ativacaoPct) }}
+                  <div className={GRID}>
+                    <span
+                      className={cn(
+                        'text-center text-[12px] font-bold tabular-nums',
+                        leader.rank <= 3 ? 'text-[#854F0B]' : 'text-text-muted'
+                      )}
                     >
-                      {formatInt(leader.publicacoes)}/{formatInt(leader.postsNoPeriodo)}
-                    </p>
-                    <p className="text-[10px] text-text-muted">{formatPct(leader.ativacaoPct)}</p>
+                      {leader.rank}
+                    </span>
+                    <span
+                      className={cn(
+                        'flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-[10px] font-bold',
+                        leader.rank === 1
+                          ? 'bg-[#FAEEDA] text-[#854F0B] ring-2 ring-[#C8900A]/50'
+                          : leader.rank <= 3
+                            ? 'bg-[#E6F1FB] text-[rgb(var(--color-primary))]'
+                            : 'bg-bg-app text-text-secondary'
+                      )}
+                      aria-hidden
+                    >
+                      {initialsFromName(leader.nome)}
+                    </span>
+                    <div className="min-w-0">
+                      <div className="flex min-w-0 items-center gap-1.5">
+                        <p className="truncate text-xs font-semibold text-text-primary">{leader.nome}</p>
+                        {liderRede ? (
+                          <span className="shrink-0 rounded-[99px] border border-[#C8900A]/45 bg-[#FAEEDA] px-1.5 py-0 text-[8.5px] font-semibold uppercase tracking-wide text-[#854F0B]">
+                            Rede
+                          </span>
+                        ) : audience === 'unificado' ? (
+                          <span className="shrink-0 rounded-[99px] border border-[rgb(var(--color-border-secondary)/0.85)] bg-bg-surface px-1.5 py-0 text-[8.5px] font-medium uppercase tracking-wide text-text-muted">
+                            Mandato
+                          </span>
+                        ) : null}
+                      </div>
+                      <div className="mt-1 h-1.5 w-full overflow-hidden rounded-[99px] bg-bg-app">
+                        <div
+                          className="h-full rounded-[99px] bg-[rgb(var(--color-primary))] transition-all"
+                          style={{ width: `${barPct}%` }}
+                        />
+                      </div>
+                      <p className="mt-0.5 text-[10px] text-text-muted">
+                        {formatInt(leader.publicacoes)}/{formatInt(leader.postsNoPeriodo)} posts ·{' '}
+                        {formatPct(leader.ativacaoPct)} ativ.
+                      </p>
+                    </div>
+                    <span className="text-right text-[14px] font-bold tabular-nums text-[rgb(var(--color-primary))]">
+                      {score}
+                    </span>
+                    <span className={cn('inline-flex items-center justify-center gap-0.5 whitespace-nowrap rounded-[99px] px-[6px] py-0.5 text-[10px] font-medium', trendBadgeClass(leader.trendKind))}>
+                      {leader.trendKind === 'growing' || leader.trendKind === 'accelerating' ? (
+                        <IconTrendingUp className="h-3 w-3 shrink-0" stroke={1.5} aria-hidden />
+                      ) : null}
+                      {leader.trendKind === 'falling' ? (
+                        <IconTrendingDown className="h-3 w-3 shrink-0" stroke={1.5} aria-hidden />
+                      ) : null}
+                      {leader.trendLabel}
+                    </span>
                   </div>
-                  <Sparkline
-                    id={`sp${leader.rank}`}
-                    data={leader.weeklyCounts}
-                    color={dotColor[leader.statusDot]}
-                  />
-                  <span className={cn('inline-flex items-center justify-center gap-0.5 whitespace-nowrap rounded-[99px] px-[7px] py-0.5 text-[10.5px] font-medium', trendBadgeClass(leader.trendKind))}>
-                    {leader.trendKind === 'growing' || leader.trendKind === 'accelerating' ? (
-                      <IconTrendingUp className="h-3 w-3 shrink-0" stroke={1.5} aria-hidden />
-                    ) : null}
-                    {leader.trendKind === 'falling' ? (
-                      <IconTrendingDown className="h-3 w-3 shrink-0" stroke={1.5} aria-hidden />
-                    ) : null}
-                    {leader.trendLabel}
-                  </span>
-                  <span
-                    className="text-right text-[11px] font-medium tabular-nums"
-                    style={{ color: dotColor[leader.statusDot] }}
-                  >
-                    {leader.rank}
-                  </span>
                 </button>
                 {expanded ? (
                   <div className="leader-detail mb-1 block rounded-b-[10px] border border-t-0 border-[rgb(var(--color-border-tertiary)/0.85)] bg-bg-app px-4 py-3">
@@ -406,8 +387,8 @@ export function ExercitoDigitalLeaderRanking({ leaders, audience, lookbackDays }
                                 : []),
                             ]
                           : []),
-                        { label: 'Semana atual', value: formatInt(leader.semanaAtual), color: undefined },
-                        { label: 'Semana anterior', value: formatInt(leader.semanaAnterior), color: undefined },
+                        { label: 'Mês ref.', value: formatInt(leader.mesAtual), color: undefined },
+                        { label: 'Mês anterior', value: formatInt(leader.mesAnterior), color: undefined },
                         {
                           label: 'Variação',
                           value: leader.variacaoPct == null ? '—' : formatPct(leader.variacaoPct),
@@ -434,10 +415,10 @@ export function ExercitoDigitalLeaderRanking({ leaders, audience, lookbackDays }
                         </div>
                       ))}
                     </div>
-                    <p className="mb-1.5 text-[10.5px] text-text-muted">Comentários por semana (últimas 5 semanas)</p>
-                    <WeekBars
+                    <p className="mb-1.5 text-[10.5px] text-text-muted">Comentários por mês (últimos 5 meses)</p>
+                    <PeriodBars
                       leaderId={leader.id}
-                      counts={leader.weeklyCounts}
+                      counts={leader.monthlyCounts}
                       status={leader.statusDot}
                       trend={leader.trendKind}
                     />
@@ -518,25 +499,19 @@ export function ExercitoDigitalLeaderRanking({ leaders, audience, lookbackDays }
       <div className="mt-auto shrink-0 flex flex-wrap items-center justify-between gap-3 border-t border-[rgb(var(--color-border-tertiary)/0.85)] pt-2.5 text-[11px] text-text-muted">
         <div className="flex flex-wrap items-center gap-3">
           <span className="inline-flex items-center gap-1.5">
-            <span className="h-2 w-2 rounded-full bg-[#639922]" aria-hidden />
-            Ativo e crescendo
+            <span className="text-sm" aria-hidden>🥇</span>
+            Pódio = mês de referência
           </span>
           <span className="inline-flex items-center gap-1.5">
-            <span className="h-2 w-2 rounded-full bg-[#BA7517]" aria-hidden />
-            Parcial / estável
+            <span className="h-2 w-2 rounded-full bg-[#639922]" aria-hidden />
+            Subindo
           </span>
           <span className="inline-flex items-center gap-1.5">
             <span className="h-2 w-2 rounded-full bg-[#E24B4A]" aria-hidden />
-            Em queda / inativo
-          </span>
-          <span className="inline-flex items-center gap-1.5">
-            <span className="rounded-[99px] border border-[#C8900A]/45 bg-[#FAEEDA] px-1.5 py-0 text-[8px] font-semibold uppercase text-[#854F0B]" aria-hidden>
-              Rede
-            </span>
-            Líder com liderados
+            Em queda
           </span>
         </div>
-        <span>Clique para expandir detalhes</span>
+        <span>Clique na linha para detalhes · {referenceMonthLabel}</span>
       </div>
     </div>
   )

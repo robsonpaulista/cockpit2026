@@ -1,7 +1,12 @@
 'use client'
 
-import { IconInfoCircle } from '@tabler/icons-react'
+import { IconInfoCircle, IconRocket, IconSwords, IconTrophy } from '@tabler/icons-react'
 import { formatInt, formatPct } from '@/lib/mapa-exercito-digital-aggregator'
+import {
+  buildCityInsights,
+  getHeatmapLabels,
+  heatCellStyle,
+} from '@/lib/mapa-exercito-digital-gamification'
 import type { ExercitoDigitalCityRow } from '@/lib/mapa-exercito-digital-types'
 import type { ExercitoDigitalAudience } from '@/lib/mandatos-instagram-piaui'
 import {
@@ -16,116 +21,158 @@ interface ExercitoDigitalCityPanelProps {
   cities: ExercitoDigitalCityRow[]
   organicTail: { comentarios: number; perfis: number }
   audience: ExercitoDigitalAudience
-  lookbackDays: number
+  referenceMonth: string
+  referenceMonthLabel: string
 }
 
-const ROWS = 8
+const HEATMAP_ROWS = 4
+const TOP_CARD_ICONS = [IconTrophy, IconSwords, IconRocket] as const
+const TOP_CARD_LABELS = ['Líder', 'Disputa', 'Eficiência'] as const
 
-export function ExercitoDigitalCityPanel({ cities, organicTail, audience, lookbackDays }: ExercitoDigitalCityPanelProps) {
-  const maxComments = Math.max(...cities.map((c) => c.comentarios), 1)
-  const withComments = cities.filter((c) => c.comentarios > 0)
-  const zeroCities = cities.filter((c) => c.comentarios === 0)
-  const ordered = [...withComments, ...zeroCities].slice(0, ROWS)
-  const padded: (ExercitoDigitalCityRow | null)[] = [...ordered]
-  while (padded.length < ROWS) padded.push(null)
+export function ExercitoDigitalCityPanel({
+  cities,
+  organicTail,
+  audience,
+  referenceMonth,
+  referenceMonthLabel,
+}: ExercitoDigitalCityPanelProps) {
+  const active = cities.filter((c) => c.comentarios > 0)
+  const topThree = active.slice(0, 3)
+  const heatmapCities = active.slice(0, HEATMAP_ROWS)
+  const weekLabels = getHeatmapLabels(referenceMonth)
+  const insights = buildCityInsights(cities, referenceMonth)
+  const heatMax = Math.max(...heatmapCities.flatMap((c) => c.monthlyCounts.slice(0, 4)), 1)
 
   return (
-    <div className={cn(exercitoSectionCardClass, exercitoDualPanelItemClass)}>
-      <h2 className={exercitoSectionTitleClass}>Ativação por município · top 8</h2>
-      <p className={cn(exercitoSectionSubtitleClass, 'mb-3')}>
-        Comentários{' '}
-        {audience === 'unificado'
-          ? 'da base eleitoral'
-          : audience === 'mandatos'
-            ? 'de mandatários'
-            : 'de líderes'}{' '}
-        · últimos {lookbackDays} dias
-        (mesma janela do ranking)
-      </p>
-
-      <div className="mb-1 flex items-center gap-2 text-[10px] font-medium uppercase tracking-[0.04em] text-text-muted">
-        <span className="w-[90px] shrink-0 text-right">Município</span>
-        <span className="flex-1" />
-        <span className="min-w-[28px] shrink-0 text-right">Com.</span>
-        <span className="min-w-[52px] shrink-0 text-right">Ativação</span>
+    <div className={cn(exercitoSectionCardClass, exercitoDualPanelItemClass, 'border-[rgb(var(--color-primary)/0.15)]')}>
+      <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+        <div>
+          <h2 className={exercitoSectionTitleClass}>🏙 Disputa de municípios</h2>
+          <p className={exercitoSectionSubtitleClass}>
+            Quem domina o território · mês: {referenceMonthLabel}
+          </p>
+        </div>
+        <span className="rounded-[99px] border border-[rgb(var(--color-primary)/0.35)] bg-[#E6F1FB] px-2 py-0.5 text-[10px] font-semibold text-[rgb(var(--color-primary))]">
+          top {Math.min(8, cities.length)}
+        </span>
       </div>
 
-      <div className="flex min-h-0 flex-1 flex-col">
-        {padded.map((city, index) => (
-          <div
-            key={city?.municipio ?? `empty-${index}`}
-            className="flex flex-1 items-center border-b border-[rgb(var(--color-border-tertiary)/0.35)] last:border-b-0"
-          >
-            {city ? (
-              <CityRow city={city} maxComments={maxComments} />
-            ) : (
-              <div className="h-4 w-full opacity-0" aria-hidden />
-            )}
+      {topThree.length > 0 ? (
+        <div className="mb-3 grid grid-cols-3 gap-2">
+          {topThree.map((city, idx) => {
+            const Icon = TOP_CARD_ICONS[idx] ?? IconTrophy
+            const label = TOP_CARD_LABELS[idx] ?? 'Top'
+            return (
+              <div
+                key={city.municipio}
+                className={cn(
+                  'rounded-[10px] border px-2 py-2 text-center',
+                  idx === 0
+                    ? 'border-[#C8900A]/50 bg-gradient-to-b from-[#FAEEDA] to-[#FFF8ED]'
+                    : 'border-[rgb(var(--color-border-tertiary)/0.85)] bg-bg-app'
+                )}
+              >
+                <Icon
+                  className={cn(
+                    'mx-auto mb-1 h-4 w-4',
+                    idx === 0 ? 'text-[#854F0B]' : idx === 1 ? 'text-[rgb(var(--color-primary))]' : 'text-[#3B6D11]'
+                  )}
+                  stroke={1.5}
+                  aria-hidden
+                />
+                <p className="truncate text-[10px] font-semibold text-text-primary" title={city.municipio}>
+                  {city.municipio}
+                </p>
+                <p className="text-[9px] text-text-muted">{label}</p>
+                <p className="mt-0.5 text-[13px] font-semibold tabular-nums text-[rgb(var(--color-primary))]">
+                  {formatInt(city.comentarios)} com.
+                </p>
+                <p className="text-[9px] tabular-nums text-text-muted">{formatPct(city.ativacaoPct)} activ.</p>
+              </div>
+            )
+          })}
+        </div>
+      ) : null}
+
+      {heatmapCities.length > 0 ? (
+        <div className="mb-3">
+          <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-[0.06em] text-text-muted">
+            Calor de ativação
+          </p>
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[240px] border-collapse text-center">
+              <thead>
+                <tr>
+                  <th className="px-1 py-1 text-left text-[9px] font-medium text-text-muted">Cidade</th>
+                  {weekLabels.map((label) => (
+                    <th key={label} className="px-1 py-1 text-[9px] font-medium text-text-muted">
+                      {label}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {heatmapCities.map((city) => (
+                  <tr key={city.municipio}>
+                    <td
+                      className="max-w-[72px] truncate px-1 py-1 text-left text-[10px] font-medium text-text-secondary"
+                      title={city.municipio}
+                    >
+                      {city.municipio}
+                    </td>
+                    {city.monthlyCounts.slice(0, 4).map((value, wi) => {
+                      const style = heatCellStyle(value, heatMax)
+                      return (
+                        <td key={`${city.municipio}-${wi}`} className="px-0.5 py-0.5">
+                          <div
+                            className="rounded-[4px] px-1 py-1 text-[10px] font-semibold tabular-nums"
+                            style={{ background: style.background, color: style.color }}
+                          >
+                            {value > 0 ? value : '·'}
+                          </div>
+                        </td>
+                      )
+                    })}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
-        ))}
-      </div>
+        </div>
+      ) : null}
 
-      <div className="mt-3 flex shrink-0 flex-wrap items-center gap-3 border-t border-[rgb(var(--color-border-tertiary)/0.85)] pt-2.5 text-[11px] text-text-muted">
-        <span className="inline-flex items-center gap-1.5">
-          <span className="h-1 w-2.5 rounded-[2px] bg-[rgb(var(--color-primary))]" aria-hidden />
-          Com ativação
-        </span>
-        <span className="inline-flex items-center gap-1.5">
-          <span className="h-1 w-2.5 rounded-[2px] border border-[rgb(var(--color-border-secondary)/0.85)]" aria-hidden />
-          Sem ativação
-        </span>
-      </div>
+      {insights.length > 0 ? (
+        <ul className="mb-2 space-y-1.5">
+          {insights.map((item) => (
+            <li key={item.text} className="flex items-start justify-between gap-2 text-[10.5px] text-text-secondary">
+              <span>
+                <span className="mr-1" aria-hidden>
+                  {item.emoji}
+                </span>
+                {item.text}
+              </span>
+              <span className={cn('shrink-0 rounded-[99px] px-1.5 py-0 text-[9px] font-semibold', item.badgeClass)}>
+                {item.badge}
+              </span>
+            </li>
+          ))}
+        </ul>
+      ) : null}
 
-      <div className="mt-2 flex shrink-0 items-start gap-1.5 text-[11px] text-text-muted">
-        <IconInfoCircle className="mt-0.5 h-3 w-3 shrink-0 opacity-70" stroke={1.5} aria-hidden />
-        <p>
-          {formatInt(organicTail.comentarios)} comentários de {formatInt(organicTail.perfis)} perfis sem match com{' '}
-          {audience === 'unificado'
-            ? 'perfis da base eleitoral'
-            : audience === 'mandatos'
-              ? 'mandatários da planilha'
-              : 'líderes cadastrados'}{' '}
-          (cauda orgânica)
-        </p>
+      <div className="mt-auto shrink-0 border-t border-[rgb(var(--color-border-tertiary)/0.85)] pt-2 text-[10px] text-text-muted">
+        <div className="flex items-start gap-1.5">
+          <IconInfoCircle className="mt-0.5 h-3 w-3 shrink-0 opacity-70" stroke={1.5} aria-hidden />
+          <p>
+            {formatInt(organicTail.comentarios)} comentários de {formatInt(organicTail.perfis)} perfis sem match com{' '}
+            {audience === 'unificado'
+              ? 'perfis da base eleitoral'
+              : audience === 'mandatos'
+                ? 'mandatários da planilha'
+                : 'líderes cadastrados'}{' '}
+            (cauda orgânica)
+          </p>
+        </div>
       </div>
-    </div>
-  )
-}
-
-function CityRow({ city, maxComments }: { city: ExercitoDigitalCityRow; maxComments: number }) {
-  const hasComments = city.comentarios > 0
-  const widthPct = hasComments ? (city.comentarios / maxComments) * 100 : 100
-
-  return (
-    <div className="flex w-full items-center gap-2 py-0.5">
-      <span
-        className="w-[90px] shrink-0 truncate text-right text-[11px] text-text-secondary"
-        title={city.municipio}
-      >
-        {city.municipio}
-      </span>
-      <div className="h-4 flex-1 overflow-hidden rounded bg-bg-app">
-        <div
-          className={cn('h-full rounded', hasComments ? 'bg-[rgb(var(--color-primary))]' : 'bg-transparent')}
-          style={{ width: `${widthPct}%` }}
-        />
-      </div>
-      <span
-        className={cn(
-          'min-w-[28px] shrink-0 text-right text-[11px] font-medium tabular-nums',
-          hasComments ? 'text-[rgb(var(--color-primary))]' : 'text-text-muted'
-        )}
-      >
-        {formatInt(city.comentarios)}
-      </span>
-      <span
-        className={cn(
-          'min-w-[52px] shrink-0 text-right text-[10px] tabular-nums',
-          city.ativacaoPct === 0 ? 'text-[#A32D2D]' : 'text-text-muted'
-        )}
-      >
-        {formatPct(city.ativacaoPct)}
-      </span>
     </div>
   )
 }

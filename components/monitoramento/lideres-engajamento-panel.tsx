@@ -2,12 +2,17 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Loader2 } from 'lucide-react'
-import { ExercitoDigitalAlertPosts } from '@/components/mapa-exercito-digital/exercito-digital-alert-posts'
 import { ExercitoDigitalCityPanel } from '@/components/mapa-exercito-digital/exercito-digital-city-panel'
 import { ExercitoDigitalBanner, ExercitoDigitalHeader } from '@/components/mapa-exercito-digital/exercito-digital-chrome'
 import { ExercitoDigitalKpiStrip } from '@/components/mapa-exercito-digital/exercito-digital-kpi-strip'
 import { ExercitoDigitalLeaderRanking } from '@/components/mapa-exercito-digital/exercito-digital-leader-ranking'
 import { ExercitoDigitalTrendChart } from '@/components/mapa-exercito-digital/exercito-digital-trend-chart'
+import {
+  ExercitoDigitalCorrelationBar,
+  ExercitoDigitalScoreboardHeader,
+} from '@/components/mapa-exercito-digital/exercito-digital-scoreboard-header'
+import { buildLeaderCityCorrelation } from '@/lib/mapa-exercito-digital-gamification'
+import { getCurrentReferenceMonth } from '@/lib/mapa-exercito-digital-month'
 import { fetchInstagramCommentsGrouped } from '@/lib/instagramApi'
 import { INSTAGRAM_COMMENTS_SYNCED_EVENT } from '@/lib/instagram-comments-sync-events'
 import { getMandatosInstagramEnriquecidos } from '@/lib/mandatos-instagram-piaui'
@@ -32,6 +37,7 @@ const RELATORIO_URL = '/api/mobilizacao/relatorio-check-mapa-digital-ig?escopo=p
 
 export function LideresEngajamentoPanel() {
   const [lookbackDays, setLookbackDays] = useState<number>(15)
+  const [referenceMonth, setReferenceMonth] = useState<string>(() => getCurrentReferenceMonth())
   const [loadState, setLoadState] = useState<LoadState>('loading')
   const [error, setError] = useState<string>('')
   const [rawPosts, setRawPosts] = useState<Awaited<ReturnType<typeof fetchInstagramCommentsGrouped>>>(null)
@@ -96,6 +102,7 @@ export function LideresEngajamentoPanel() {
     if (!relatorioPi || loadState !== 'ready') return null
     return aggregateExercitoDigitalViewModel({
       lookbackDays,
+      referenceMonth,
       audience: 'unificado',
       posts: rawPosts?.posts ?? [],
       lideresCobertura,
@@ -103,7 +110,14 @@ export function LideresEngajamentoPanel() {
       mandatos,
       relatorioPi,
     })
-  }, [lookbackDays, rawPosts, lideresCobertura, mergedLeaders, mandatos, relatorioPi, loadState])
+  }, [lookbackDays, referenceMonth, rawPosts, lideresCobertura, mergedLeaders, mandatos, relatorioPi, loadState])
+
+  const correlationNote = useMemo(() => {
+    if (!viewModel) return null
+    const topLeader = viewModel.leaders[0]
+    const topCity = viewModel.cities.find((c) => c.comentarios > 0)
+    return buildLeaderCityCorrelation(topLeader, topCity)
+  }, [viewModel])
 
   return (
     <div className={cn(exercitoPageStackClass, 'min-h-0 flex-1 text-text-primary')}>
@@ -144,12 +158,31 @@ export function LideresEngajamentoPanel() {
 
       {viewModel ? (
         <>
-          <ExercitoDigitalKpiStrip kpis={viewModel.kpis} lookbackDays={viewModel.lookbackDays} audience={viewModel.audience} />
-          <ExercitoDigitalAlertPosts posts={viewModel.alertPosts} audience={viewModel.audience} />
+          <ExercitoDigitalScoreboardHeader
+            referenceMonth={viewModel.referenceMonth}
+            referenceMonthLabel={viewModel.referenceMonthLabel}
+            onReferenceMonthChange={setReferenceMonth}
+          />
+          <ExercitoDigitalKpiStrip
+            kpis={viewModel.kpis}
+            audience={viewModel.audience}
+            referenceMonthLabel={viewModel.referenceMonthLabel}
+          />
           <div className={exercitoDualPanelGridClass}>
-            <ExercitoDigitalLeaderRanking leaders={viewModel.leaders} audience={viewModel.audience} lookbackDays={viewModel.lookbackDays} />
-            <ExercitoDigitalCityPanel cities={viewModel.cities} organicTail={viewModel.organicTail} audience={viewModel.audience} lookbackDays={viewModel.lookbackDays} />
+            <ExercitoDigitalLeaderRanking
+              leaders={viewModel.leaders}
+              audience={viewModel.audience}
+              referenceMonthLabel={viewModel.referenceMonthLabel}
+            />
+            <ExercitoDigitalCityPanel
+              cities={viewModel.cities}
+              organicTail={viewModel.organicTail}
+              audience={viewModel.audience}
+              referenceMonth={viewModel.referenceMonth}
+              referenceMonthLabel={viewModel.referenceMonthLabel}
+            />
           </div>
+          <ExercitoDigitalCorrelationBar note={correlationNote} />
           <ExercitoDigitalTrendChart points={viewModel.trend} audience={viewModel.audience} />
         </>
       ) : null}
