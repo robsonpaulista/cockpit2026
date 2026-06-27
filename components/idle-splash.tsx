@@ -1,273 +1,57 @@
 'use client'
 
-import { useEffect, useState, useRef, useCallback } from 'react'
-import { createClient } from '@/lib/supabase/client'
 import { APP_FONT_STACK_CSS } from '@/lib/app-font-stack'
+import { useIdleSplash } from '@/contexts/idle-splash-context'
+import { useSidebar } from '@/contexts/sidebar-context'
 import {
   REST_SCREEN_AMBER_DARK,
   REST_SCREEN_GRADIENT,
   REST_SCREEN_RADIAL_GLOW,
 } from '@/lib/rest-screen-chrome'
-
-const TEMPO_INATIVIDADE = 10 * 60 * 1000 // 10 minutos
-const IDLE_SPLASH_LOCK_KEY = 'idle_splash_locked_v1'
+import { isSidebarIconOnly } from '@/lib/sidebar-layout'
+import { cn } from '@/lib/utils'
 
 /**
- * Screensaver por inatividade.
- * Após 10 minutos sem interação, exibe a splash animada como overlay.
- * Qualquer clique ou tecla dispensa o overlay e volta para onde o usuário estava.
+ * Overlay da tela de descanso — cobre apenas a área principal (não a sidebar).
+ * A sidebar permanece visível e bloqueada até a confirmação de senha.
  */
-export function IdleSplash() {
-  const [ativo, setAtivo] = useState<boolean>(false)
-  const [fase, setFase] = useState<'inicio' | 'c' | 'nome' | 'slogan'>('inicio')
-  const [dispensando, setDispensando] = useState<boolean>(false)
-  const [requerSenha, setRequerSenha] = useState<boolean>(false)
-  const [senha, setSenha] = useState<string>('')
-  const [erroSenha, setErroSenha] = useState<string | null>(null)
-  const [verificandoSenha, setVerificandoSenha] = useState<boolean>(false)
-
-  const timerInatividade = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const timersAnimacao = useRef<ReturnType<typeof setTimeout>[]>([])
-  const protecaoManual = useRef<boolean>(false) // Ignora eventos por 1s após ativação manual
-  const supabaseRef = useRef(createClient())
-
-  const registrarBloqueioPersistente = useCallback(() => {
-    if (typeof window === 'undefined') return
-    sessionStorage.setItem(IDLE_SPLASH_LOCK_KEY, '1')
-  }, [])
-
-  const limparBloqueioPersistente = useCallback(() => {
-    if (typeof window === 'undefined') return
-    sessionStorage.removeItem(IDLE_SPLASH_LOCK_KEY)
-  }, [])
-
-  // Limpar timers de animação
-  const limparTimersAnimacao = useCallback(() => {
-    timersAnimacao.current.forEach(clearTimeout)
-    timersAnimacao.current = []
-  }, [])
-
-  // Resetar timer de inatividade
-  const resetarTimer = useCallback(() => {
-    if (timerInatividade.current) {
-      clearTimeout(timerInatividade.current)
-    }
-
-    // Não reiniciar se está ativo ou dispensando
-    if (ativo || dispensando) return
-
-    timerInatividade.current = setTimeout(() => {
-      setAtivo(true)
-      setFase('inicio')
-      setDispensando(false)
-      setRequerSenha(false)
-      setSenha('')
-      setErroSenha(null)
-      registrarBloqueioPersistente()
-    }, TEMPO_INATIVIDADE)
-  }, [ativo, dispensando, registrarBloqueioPersistente])
-
-  // Dispensar o screensaver
-  const dispensar = useCallback(() => {
-    if (!ativo || dispensando) return
-
-    setDispensando(true)
-    limparTimersAnimacao()
-
-    // Fade out suave, depois limpar tudo
-    setTimeout(() => {
-      setAtivo(false)
-      setFase('inicio')
-      setDispensando(false)
-      setRequerSenha(false)
-      setSenha('')
-      setErroSenha(null)
-    }, 600)
-  }, [ativo, dispensando, limparTimersAnimacao])
-
-  const solicitarDesbloqueio = useCallback(() => {
-    if (!ativo || dispensando) return
-    setRequerSenha(true)
-    setErroSenha(null)
-  }, [ativo, dispensando])
-
-  const validarSenha = useCallback(async () => {
-    if (verificandoSenha) return
-    const senhaLimpa = senha.trim()
-    if (!senhaLimpa) {
-      setErroSenha('Digite sua senha para desbloquear.')
-      return
-    }
-
-    setVerificandoSenha(true)
-    setErroSenha(null)
-
-    try {
-      const supabase = supabaseRef.current
-      const { data: userData, error: userError } = await supabase.auth.getUser()
-      if (userError || !userData.user?.email) {
-        setErroSenha('Sessão indisponível. Faça login novamente.')
-        return
-      }
-
-      const { error: signInError } = await supabase.auth.signInWithPassword({
-        email: userData.user.email,
-        password: senhaLimpa,
-      })
-
-      if (signInError) {
-        setErroSenha('Senha inválida. Tente novamente.')
-        return
-      }
-
-      setSenha('')
-      setRequerSenha(false)
-      setErroSenha(null)
-      limparBloqueioPersistente()
-      dispensar()
-    } catch {
-      setErroSenha('Não foi possível validar a senha.')
-    } finally {
-      setVerificandoSenha(false)
-    }
-  }, [senha, verificandoSenha, dispensar, limparBloqueioPersistente])
-
-  // Se a página for recarregada enquanto a splash estava bloqueando, restaura o bloqueio imediatamente.
-  useEffect(() => {
-    if (typeof window === 'undefined') return
-    const bloqueado = sessionStorage.getItem(IDLE_SPLASH_LOCK_KEY) === '1'
-    if (!bloqueado) return
-
-    setAtivo(true)
-    setFase('inicio')
-    setDispensando(false)
-    setRequerSenha(true)
-    setSenha('')
-    setErroSenha(null)
-  }, [])
-
-  // Ciclo de animação contínuo (loop enquanto ativo)
-  useEffect(() => {
-    if (!ativo || dispensando) return
-
-    // Duração de cada ciclo completo: ~8s
-    const CICLO = {
-      mostrarC: 200,
-      mostrarNome: 1600,
-      mostrarSlogan: 3400,
-      pausaNoSlogan: 6000,  // slogan fica visível por ~2.6s
-      fadeOut: 6800,         // fade out antes de reiniciar
-      reinicio: 8000,        // reinicia o ciclo
-    }
-
-    let cancelado = false
-
-    const iniciarCiclo = () => {
-      if (cancelado) return
-
-      setFase('inicio')
-
-      const t1 = setTimeout(() => { if (!cancelado) setFase('c') }, CICLO.mostrarC)
-      const t2 = setTimeout(() => { if (!cancelado) setFase('nome') }, CICLO.mostrarNome)
-      const t3 = setTimeout(() => { if (!cancelado) setFase('slogan') }, CICLO.mostrarSlogan)
-      // Fade out: volta para 'inicio' (os elementos fazem fade out via CSS transition)
-      const t4 = setTimeout(() => { if (!cancelado) setFase('inicio') }, CICLO.fadeOut)
-      // Reinicia o ciclo
-      const t5 = setTimeout(() => { if (!cancelado) iniciarCiclo() }, CICLO.reinicio)
-
-      timersAnimacao.current = [t1, t2, t3, t4, t5]
-    }
-
-    iniciarCiclo()
-
-    return () => {
-      cancelado = true
-      limparTimersAnimacao()
-    }
-  }, [ativo, dispensando, limparTimersAnimacao])
-
-  // Listeners de atividade do usuário
-  useEffect(() => {
-    // Eventos que DISPENSAM a splash (ação intencional: click, tecla, toque)
-    const eventosDispensar = ['mousedown', 'keydown', 'touchstart', 'pointerdown']
-    // Eventos que apenas RESETAM o timer de inatividade (movimento passivo)
-    const eventosResetar = ['mousemove', 'scroll']
-
-    const handleDispensar = () => {
-      if (protecaoManual.current) return
-      if (ativo) {
-        solicitarDesbloqueio()
-      } else {
-        resetarTimer()
-      }
-    }
-
-    const handleResetar = () => {
-      if (!ativo) {
-        resetarTimer()
-      }
-      // Se ativo, mousemove/scroll NÃO dispensam — só click/tecla dispensam
-    }
-
-    // Ativação manual via evento customizado (sidebar, atalho, etc.)
-    const handleActivateSplash = () => {
-      if (!ativo && !dispensando) {
-        protecaoManual.current = true
-        setTimeout(() => { protecaoManual.current = false }, 1000)
-        setAtivo(true)
-        setFase('inicio')
-        setDispensando(false)
-        setRequerSenha(false)
-        setSenha('')
-        setErroSenha(null)
-        registrarBloqueioPersistente()
-      }
-    }
-
-    eventosDispensar.forEach(e => window.addEventListener(e, handleDispensar, { passive: true }))
-    eventosResetar.forEach(e => window.addEventListener(e, handleResetar, { passive: true }))
-    window.addEventListener('activateSplash', handleActivateSplash)
-
-    // Iniciar timer pela primeira vez
-    resetarTimer()
-
-    return () => {
-      eventosDispensar.forEach(e => window.removeEventListener(e, handleDispensar))
-      eventosResetar.forEach(e => window.removeEventListener(e, handleResetar))
-      window.removeEventListener('activateSplash', handleActivateSplash)
-      if (timerInatividade.current) {
-        clearTimeout(timerInatividade.current)
-      }
-      limparTimersAnimacao()
-    }
-  }, [ativo, dispensando, solicitarDesbloqueio, resetarTimer, limparTimersAnimacao, registrarBloqueioPersistente])
+export function IdleSplashOverlay() {
+  const {
+    ativo,
+    fase,
+    dispensando,
+    requerSenha,
+    senha,
+    setSenha,
+    erroSenha,
+    verificandoSenha,
+    solicitarDesbloqueio,
+    validarSenha,
+    cancelarSenha,
+  } = useIdleSplash()
+  const { collapsed, mobileOpen } = useSidebar()
+  const sidebarIconOnly = isSidebarIconOnly(collapsed, mobileOpen)
 
   if (!ativo) return null
 
   return (
-    <>
-      <div
-        onClick={solicitarDesbloqueio}
-        onKeyDown={solicitarDesbloqueio}
-        style={{
-        position: 'fixed',
-        inset: 0,
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
+    <div
+      onClick={solicitarDesbloqueio}
+      onKeyDown={solicitarDesbloqueio}
+      className={cn(
+        'fixed top-0 right-0 bottom-0 z-[75] flex cursor-pointer flex-col items-center justify-center overflow-hidden',
+        sidebarIconOnly ? 'lg:left-14' : 'lg:left-56',
+        'left-0',
+      )}
+      style={{
         background: REST_SCREEN_GRADIENT,
-        zIndex: 99999,
-        overflow: 'hidden',
-        cursor: 'pointer',
         opacity: dispensando ? 0 : 1,
         transition: 'opacity 0.5s cubic-bezier(0.4, 0, 0.2, 1)',
       }}
       role="button"
       tabIndex={0}
-      aria-label="Clique ou pressione qualquer tecla para voltar"
+      aria-label="Clique ou pressione qualquer tecla para desbloquear"
     >
-      {/* Efeito de luz radial */}
       <div
         style={{
           position: 'absolute',
@@ -280,7 +64,6 @@ export function IdleSplash() {
         }}
       />
 
-      {/* Logo animado */}
       <div
         style={{
           display: 'flex',
@@ -289,7 +72,6 @@ export function IdleSplash() {
           marginBottom: '28px',
         }}
       >
-        {/* C */}
         <span
           style={{
             fontFamily: APP_FONT_STACK_CSS,
@@ -300,13 +82,13 @@ export function IdleSplash() {
             textShadow: '0 4px 20px rgba(0,0,0,0.15)',
             opacity: fase !== 'inicio' ? 1 : 0,
             transform: fase !== 'inicio' ? 'scale(1) rotate(0deg)' : 'scale(0.3) rotate(-15deg)',
-            transition: 'opacity 0.7s cubic-bezier(0.34, 1.56, 0.64, 1), transform 0.9s cubic-bezier(0.34, 1.56, 0.64, 1)',
+            transition:
+              'opacity 0.7s cubic-bezier(0.34, 1.56, 0.64, 1), transform 0.9s cubic-bezier(0.34, 1.56, 0.64, 1)',
           }}
         >
           C
         </span>
 
-        {/* ockpit */}
         <span
           style={{
             fontFamily: APP_FONT_STACK_CSS,
@@ -318,13 +100,13 @@ export function IdleSplash() {
             opacity: fase === 'nome' || fase === 'slogan' ? 1 : 0,
             transform: fase === 'nome' || fase === 'slogan' ? 'translateX(0)' : 'translateX(-20px)',
             letterSpacing: fase === 'nome' || fase === 'slogan' ? '0.05em' : '0.3em',
-            transition: 'opacity 0.8s cubic-bezier(0.22, 1, 0.36, 1), transform 1s cubic-bezier(0.22, 1, 0.36, 1), letter-spacing 1s cubic-bezier(0.22, 1, 0.36, 1)',
+            transition:
+              'opacity 0.8s cubic-bezier(0.22, 1, 0.36, 1), transform 1s cubic-bezier(0.22, 1, 0.36, 1), letter-spacing 1s cubic-bezier(0.22, 1, 0.36, 1)',
           }}
         >
           ockpit
         </span>
 
-        {/* 2026 */}
         <span
           style={{
             fontFamily: APP_FONT_STACK_CSS,
@@ -337,14 +119,14 @@ export function IdleSplash() {
             paddingBottom: '8px',
             opacity: fase === 'nome' || fase === 'slogan' ? 1 : 0,
             transform: fase === 'nome' || fase === 'slogan' ? 'translateY(0)' : 'translateY(15px)',
-            transition: 'opacity 0.7s cubic-bezier(0.22, 1, 0.36, 1) 0.3s, transform 0.7s cubic-bezier(0.22, 1, 0.36, 1) 0.3s',
+            transition:
+              'opacity 0.7s cubic-bezier(0.22, 1, 0.36, 1) 0.3s, transform 0.7s cubic-bezier(0.22, 1, 0.36, 1) 0.3s',
           }}
         >
           2026
         </span>
       </div>
 
-      {/* Divisor */}
       <div
         style={{
           width: '60px',
@@ -354,11 +136,11 @@ export function IdleSplash() {
           marginBottom: '20px',
           opacity: fase === 'slogan' ? 1 : 0,
           transform: fase === 'slogan' ? 'scaleX(1)' : 'scaleX(0)',
-          transition: 'opacity 0.6s cubic-bezier(0.22, 1, 0.36, 1), transform 0.8s cubic-bezier(0.22, 1, 0.36, 1)',
+          transition:
+            'opacity 0.6s cubic-bezier(0.22, 1, 0.36, 1), transform 0.8s cubic-bezier(0.22, 1, 0.36, 1)',
         }}
       />
 
-      {/* Slogan */}
       <span
         style={{
           fontFamily: APP_FONT_STACK_CSS,
@@ -369,13 +151,13 @@ export function IdleSplash() {
           textTransform: 'uppercase' as const,
           opacity: fase === 'slogan' ? 1 : 0,
           transform: fase === 'slogan' ? 'translateY(0)' : 'translateY(15px)',
-          transition: 'opacity 0.9s cubic-bezier(0.22, 1, 0.36, 1), transform 0.9s cubic-bezier(0.22, 1, 0.36, 1)',
+          transition:
+            'opacity 0.9s cubic-bezier(0.22, 1, 0.36, 1), transform 0.9s cubic-bezier(0.22, 1, 0.36, 1)',
         }}
       >
         Comando Central de Eleições Dep Fed Jadyel Alencar
       </span>
 
-      {/* Instrução para voltar */}
       <span
         style={{
           position: 'absolute',
@@ -454,7 +236,6 @@ export function IdleSplash() {
               value={senha}
               onChange={(e) => {
                 setSenha(e.target.value)
-                setErroSenha(null)
               }}
               autoFocus
               placeholder="Sua senha"
@@ -493,11 +274,7 @@ export function IdleSplash() {
             >
               <button
                 type="button"
-                onClick={() => {
-                  setRequerSenha(false)
-                  setSenha('')
-                  setErroSenha(null)
-                }}
+                onClick={cancelarSenha}
                 style={{
                   padding: '8px 12px',
                   borderRadius: '10px',
@@ -530,8 +307,11 @@ export function IdleSplash() {
           </div>
         </div>
       )}
-
     </div>
-    </>
   )
+}
+
+/** @deprecated use IdleSplashOverlay dentro do layout do dashboard */
+export function IdleSplash() {
+  return <IdleSplashOverlay />
 }

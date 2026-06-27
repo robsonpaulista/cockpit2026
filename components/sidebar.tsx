@@ -49,6 +49,7 @@ import {
 import { cn } from '@/lib/utils'
 import { MenuItem } from '@/types'
 import { useSidebar } from '@/contexts/sidebar-context'
+import { useIdleSplash } from '@/contexts/idle-splash-context'
 import { useNavigationLoading } from '@/contexts/navigation-loading-context'
 import { usePermissions } from '@/hooks/use-permissions'
 import { UserMenu } from '@/components/user-menu'
@@ -625,6 +626,24 @@ export function Sidebar() {
   const searchParams = useSearchParams()
   const searchKey = searchParams.toString()
   const { canAccess, isAdmin, loading: permLoading } = usePermissions()
+  const { ativo: idleSplashAtivo } = useIdleSplash()
+  const asideRef = useRef<HTMLElement | null>(null)
+
+  /** Na tela de descanso, manter sidebar colapsada (só ícones) e bloquear cliques. */
+  const navCollapsed = collapsed
+  const navMobileOpen = idleSplashAtivo ? false : mobileOpen
+  const collapsedIconOnly = navCollapsed && !navMobileOpen
+  const idleCollapsedChrome = idleSplashAtivo && collapsedIconOnly
+
+  useEffect(() => {
+    const el = asideRef.current
+    if (!el) return
+    if (idleSplashAtivo) {
+      el.setAttribute('inert', '')
+    } else {
+      el.removeAttribute('inert')
+    }
+  }, [idleSplashAtivo])
 
   const isCockpit = false
   /** Shell lateral branco padrão — inclusive na home com gradiente âmbar. */
@@ -656,6 +675,12 @@ export function Sidebar() {
       setOpenSubmenuId('conteudo-menu')
     }
   }, [pathname])
+
+  useEffect(() => {
+    if (idleSplashAtivo && mobileOpen) {
+      setMobileOpen(false)
+    }
+  }, [idleSplashAtivo, mobileOpen, setMobileOpen])
 
   const visibleItems = useMemo(() => {
     const base = permLoading
@@ -717,8 +742,18 @@ export function Sidebar() {
       {/* Mobile Menu Button */}
       <button
         type="button"
+        data-sidebar-shell
         data-sidebar-mobile-toggle={filmNav ? 'true' : undefined}
-        onClick={toggleMobile}
+        onMouseDown={(e) => {
+          if (idleSplashAtivo) e.stopPropagation()
+        }}
+        onClick={(e) => {
+          if (idleSplashAtivo) {
+            e.stopPropagation()
+            return
+          }
+          toggleMobile()
+        }}
         className={cn(
           'fixed left-4 top-4 z-[110] transition-premium lg:hidden',
           filmNav
@@ -753,38 +788,40 @@ export function Sidebar() {
 
       {/* Sidebar */}
       <aside
+        ref={asideRef}
+        data-sidebar-shell
         className={cn(
           'fixed left-0 top-0 h-full overflow-visible transition-all duration-300 ease-out',
           SIDEBAR_WIDTH_EXPANDED_CLASS,
           isGradientHome && 'border-r border-[rgba(0,212,255,0.08)]',
           !isGradientHome && cn('border-r border-[rgb(var(--color-border-secondary)/0.45)]', SIDEBAR_APIFY_SHELL_CLASS),
           isCockpit && !isGradientHome && 'sidebar-cockpit-shell',
-          'max-lg:z-[100] max-lg:shadow-2xl lg:z-40',
+          idleSplashAtivo ? 'z-[100]' : 'max-lg:z-[100] max-lg:shadow-2xl lg:z-40',
+          'max-lg:shadow-2xl',
           'lg:translate-x-0',
           mobileOpen ? 'translate-x-0' : '-translate-x-full',
-          collapsed ? SIDEBAR_WIDTH_COLLAPSED_CLASS : undefined
+          collapsed ? SIDEBAR_WIDTH_COLLAPSED_CLASS : undefined,
+          idleSplashAtivo && 'cursor-not-allowed',
         )}
         style={{ isolation: 'isolate' }}
       >
         <div
           className={cn(
-            'flex h-full min-h-0 flex-col',
-            isGradientHome && 'bg-transparent',
-            !isGradientHome && 'bg-bg-surface',
+            'relative z-0 flex h-full min-h-0 flex-col bg-bg-surface',
           )}
         >
           {/* Logo (zona do título) + busca (faixa das abas) */}
           <div
             className={cn(
               filmNav
-                ? sidebarShellHeaderClass(collapsed, mobileOpen)
-                : collapsed && !mobileOpen
+                ? sidebarShellHeaderClass(navCollapsed, navMobileOpen)
+                : navCollapsed && !navMobileOpen
                   ? 'shrink-0'
                   : dashboardPageHeaderZoneSidebarClass,
               filmNav && !isGradientHome && 'border-b border-[rgb(var(--color-border-secondary)/0.35)]'
             )}
           >
-            {(!collapsed || mobileOpen) && (
+            {(!navCollapsed || navMobileOpen) && (
               <div className="flex h-full min-h-0 w-full flex-col justify-center gap-1.5 overflow-visible">
                 <div className="flex items-start justify-between gap-2">
                   <AppBrandHeader
@@ -814,7 +851,7 @@ export function Sidebar() {
                 <UserMenu variant="sidebar" />
               </div>
             )}
-            {collapsed && !mobileOpen && (
+            {navCollapsed && !navMobileOpen && (
               filmNav ? (
                 <div className="flex w-full flex-col items-center gap-2">
                   <button
@@ -839,10 +876,11 @@ export function Sidebar() {
                     className={cn(
                       dashboardSidebarCollapsedTopbarZoneClass,
                       !hasFixedPageChrome && 'flex-col justify-center gap-0.5 py-1',
+                      idleCollapsedChrome && hasFixedPageChrome && 'flex-col justify-center gap-0.5 py-1',
                     )}
                   >
                     <SidebarBrandMark />
-                    {!hasFixedPageChrome ? (
+                    {!hasFixedPageChrome || idleCollapsedChrome ? (
                       <button
                         onClick={toggleCollapse}
                         className={cn('hidden lg:flex', sidebarApifyIconButtonClass)}
@@ -852,7 +890,7 @@ export function Sidebar() {
                       </button>
                     ) : null}
                   </div>
-                  {hasFixedPageChrome ? (
+                  {hasFixedPageChrome && !idleSplashAtivo ? (
                     <div
                       className={cn(
                         collapsedPageHeaderSpacerClass,
@@ -873,11 +911,11 @@ export function Sidebar() {
             )}
           </div>
 
-          {collapsed && !mobileOpen && !filmNav && hasFixedPageChrome ? (
+          {navCollapsed && !navMobileOpen && !filmNav && hasFixedPageChrome && !idleSplashAtivo ? (
             <div className={dashboardSidebarCollapsedSubnavSpacerClass} aria-hidden />
           ) : null}
 
-          {(!collapsed || mobileOpen) && !filmNav ? (
+          {(!navCollapsed || navMobileOpen) && !filmNav ? (
             <div className={dashboardSubnavStripSidebarClass}>
               <div className={dashboardSubnavStripSidebarInnerClass}>
                 <label className="relative block w-full">
@@ -901,8 +939,8 @@ export function Sidebar() {
           ) : null}
 
           <SidebarQuickAccess
-            collapsed={collapsed}
-            mobileOpen={mobileOpen}
+            collapsed={navCollapsed}
+            mobileOpen={navMobileOpen}
             isGradientHome={isGradientHome}
             searchKey={searchKey}
             onNavigate={(href) => {
@@ -912,7 +950,7 @@ export function Sidebar() {
           />
 
           {/* Menu Items */}
-          <nav className={cn('flex-1 overflow-x-visible overflow-y-auto scrollbar-hide', sidebarShellNavClass(collapsed, mobileOpen))}>
+          <nav className={cn('flex-1 overflow-x-visible overflow-y-auto scrollbar-hide', sidebarShellNavClass(navCollapsed, navMobileOpen))}>
             <ul className="space-y-0.5">
               {filteredItems.map((item: SidebarMenuItem) => {
                 const juridicoInMenu = filteredItems.some((i) => i.id === 'juridico')
@@ -941,8 +979,8 @@ export function Sidebar() {
                     isActive={isActive}
                     pathname={pathname}
                     searchKey={searchKey}
-                    collapsed={collapsed}
-                    mobileOpen={mobileOpen}
+                    collapsed={navCollapsed}
+                    mobileOpen={navMobileOpen}
                     filmNav={filmNav}
                     isGradientHome={isGradientHome}
                     isCockpit={isCockpit}
@@ -962,7 +1000,7 @@ export function Sidebar() {
           <div
             className={cn(
               'space-y-0.5 border-t',
-              sidebarShellFooterClass(collapsed, mobileOpen),
+              sidebarShellFooterClass(navCollapsed, navMobileOpen),
               isGradientHome ? 'border-[rgba(0,212,255,0.08)]' : 'border-[rgb(var(--color-border-secondary)/0.35)]'
             )}
           >
@@ -972,7 +1010,7 @@ export function Sidebar() {
                 setMobileOpen(false)
               }}
               className={cn(
-                sidebarItemIconOnlyClass(collapsed, mobileOpen),
+                sidebarItemIconOnlyClass(navCollapsed, navMobileOpen),
                 isGradientHome
                   ? cn(
                       'flex w-full items-center gap-2.5 rounded-[12px] px-2.5 py-2.5 transition-all duration-200 ease-out group',
@@ -993,7 +1031,7 @@ export function Sidebar() {
                 )}
                 strokeWidth={filmNav ? 1.35 : 1.5}
               />
-              {(!collapsed || mobileOpen) && (
+              {(!navCollapsed || navMobileOpen) && (
                 <span
                   className={cn(
                     isGradientHome
@@ -1010,7 +1048,7 @@ export function Sidebar() {
       </aside>
 
       {/* Overlay for mobile */}
-      {mobileOpen && (
+      {mobileOpen && !idleSplashAtivo && (
         <div
           className="fixed inset-0 z-[90] bg-black/50 lg:hidden"
           aria-hidden

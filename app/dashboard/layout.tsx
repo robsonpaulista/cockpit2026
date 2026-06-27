@@ -12,7 +12,8 @@ import { SidebarProvider, useSidebar } from '@/contexts/sidebar-context'
 import { NavigationLoadingProvider } from '@/contexts/navigation-loading-context'
 import { ThemeProvider } from '@/contexts/theme-context'
 import { CockpitStatusProvider } from '@/contexts/cockpit-status-context'
-import { IdleSplash } from '@/components/idle-splash'
+import { IdleSplashOverlay } from '@/components/idle-splash'
+import { IdleSplashProvider } from '@/contexts/idle-splash-context'
 import { cn } from '@/lib/utils'
 import {
   SIDEBAR_MAIN_OFFSET_COLLAPSED_CLASS,
@@ -40,6 +41,9 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
   const isMapaTdsShell = pathnameUsesMapaFuturisticShell(pathname)
   const isHomeAccentChrome = isDashboardHomePath(pathname) && !isMapaTdsShell
   const columnBgClass = isHomeAccentChrome ? 'bg-transparent' : 'bg-bg-surface'
+  const mainOffsetClass = collapsed
+    ? SIDEBAR_MAIN_OFFSET_COLLAPSED_CLASS
+    : SIDEBAR_MAIN_OFFSET_EXPANDED_CLASS
 
   return (
     <CockpitStatusProvider>
@@ -54,11 +58,12 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
           <div className={cn('relative z-[1] flex h-full min-h-0 w-full flex-1')}>
             <NavigationLoadingBar />
             <Sidebar />
+            <IdleSplashOverlay />
             <div
               className={cn(
-                'flex flex-1 flex-col overflow-hidden transition-all duration-300 ease-out',
+                'relative flex flex-1 flex-col overflow-hidden transition-all duration-300 ease-out',
                 isHomeAccentChrome ? DASHBOARD_HOME_SHELL_CLASS : columnBgClass,
-                collapsed ? SIDEBAR_MAIN_OFFSET_COLLAPSED_CLASS : SIDEBAR_MAIN_OFFSET_EXPANDED_CLASS,
+                mainOffsetClass,
               )}
               style={isHomeAccentChrome ? dashboardHomeShellStyle : undefined}
             >
@@ -94,8 +99,8 @@ export default function DashboardLayout({
 }) {
   return (
     <>
-      <IdleSplash />
       <ProtectedRoute>
+        <IdleSplashProvider>
         <DashboardPesquisadorRedirect />
         <ThemeProvider>
           <NavigationLoadingProvider>
@@ -108,6 +113,7 @@ export default function DashboardLayout({
             </SidebarProvider>
           </NavigationLoadingProvider>
         </ThemeProvider>
+        </IdleSplashProvider>
       </ProtectedRoute>
     </>
   )
