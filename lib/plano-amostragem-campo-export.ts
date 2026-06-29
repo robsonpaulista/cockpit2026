@@ -1,0 +1,244 @@
+import * as XLSX from 'xlsx'
+import { jsPDF } from 'jspdf'
+import { applyPlugin, type UserOptions } from 'jspdf-autotable'
+import type { PlanoAmostragemPublico } from '@/lib/plano-amostragem-publico-types'
+import {
+  montarRoteiroCampo,
+  type ContextoRoteiroCampo,
+  type FichaCampoEntrevista,
+} from '@/lib/plano-amostragem-campo'
+
+let jspdfAutotableApplied = false
+
+function ensureJspdfAutotable(): void {
+  if (!jspdfAutotableApplied) {
+    applyPlugin(jsPDF)
+    jspdfAutotableApplied = true
+  }
+}
+
+type JsPdfWithAutoTable = InstanceType<typeof jsPDF> & {
+  autoTable: (options: UserOptions) => InstanceType<typeof jsPDF>
+  lastAutoTable: false | { finalY: number }
+}
+
+function slugArquivo(nome: string): string {
+  return nome
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-zA-Z0-9]+/g, '-')
+    .replace(/^-|-$/g, '')
+    .toLowerCase()
+}
+
+const COLUNAS_FICHA = [
+  'ID ficha',
+  'Entrevistador',
+  'Seq.',
+  'Bloco sugerido',
+  'Tipo bloco',
+  'Local sugerido',
+  'Bairro / recorte',
+  'Instrução de campo',
+  'Data',
+  'Horário início',
+  'Sexo (M/F)',
+  'Faixa etária',
+  'Endereço / ponto',
+  'Latitude',
+  'Longitude',
+  'Resultado',
+  'Observações',
+  'Auditoria OK',
+] as const
+
+function fichaParaLinhaExport(f: FichaCampoEntrevista) {
+  return {
+    'ID ficha': f.id,
+    Entrevistador: f.entrevistador,
+    'Seq.': f.sequencia,
+    'Bloco sugerido': f.blocoSugerido,
+    'Tipo bloco': f.tipoBloco,
+    'Local sugerido': f.localCampo,
+    'Bairro / recorte': f.bairroRecorte ?? '',
+    'Instrução de campo': f.instrucaoCampo,
+    Data: '',
+    'Horário início': '',
+    'Sexo (M/F)': '',
+    'Faixa etária': '',
+    'Endereço / ponto': f.enderecoSugerido ?? '',
+    Latitude: f.latitudeSugerida ?? '',
+    Longitude: f.longitudeSugerida ?? '',
+    Resultado: '',
+    Observações: '',
+    'Auditoria OK': '',
+  }
+}
+
+export function exportarRoteiroCampoExcel(
+  plano: PlanoAmostragemPublico,
+  ctx: ContextoRoteiroCampo = {},
+): void {
+  const roteiro = montarRoteiroCampo(plano, ctx)
+  const wb = XLSX.utils.book_new()
+
+  const capa = [
+    ['Roteiro de campo — pesquisa'],
+    ['Município', plano.municipio],
+    ['IBGE', plano.codigoIbge],
+    ['Tipo', plano.tipoPesquisa === 'eleitoral' ? 'Eleitoral' : 'Opinião pública'],
+    ['Instituto', plano.institutoDestino ?? '—'],
+    ['Amostra (N)', plano.amostraTotal],
+    ['Entrevistadores', roteiro.totalEntrevistadores],
+    ['Fichas geradas', roteiro.fichas.length],
+    ['Fonte pontos', ctx.usarSetoresIbge ? 'Setores censitários IBGE' : 'Locais de votação TSE'],
+    [],
+    ['Instruções'],
+    ['1. Cada ficha indica ONDE ir (local TSE ou setor IBGE) dentro do bloco territorial.'],
+    ['2. Preencher uma linha por entrevista realizada.'],
+    ['3. Registrar sexo, idade e horário para conferência de cotas.'],
+    ['4. GPS sugerido é ponto de partida — anotar coordenada real se diferente.'],
+    ['5. Resultado: completa | recusa | ausente | inelegivel'],
+    ['6. Supervisor preenche coluna Auditoria OK em 10% das fichas.'],
+  ]
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(capa), 'Capa')
+
+  XLSX.utils.book_append_sheet(
+    wb,
+    XLSX.utils.json_to_sheet(
+      plano.equipeCampo.map((e) => ({
+        Entrevistador: e.entrevistador,
+        'Meta entrevistas': e.entrevistas,
+        'Blocos sugeridos': e.blocosSugeridos,
+      })),
+    ),
+    'Roteiro equipe',
+  )
+
+  const pontosUnicos = new Map<string, (typeof roteiro.pontosPorBloco)[number]>()
+  for (const p of roteiro.pontosPorBloco) {
+    pontosUnicos.set(`${p.blocoId}|${p.titulo}`, p)
+  }
+  XLSX.utils.book_append_sheet(
+    wb,
+    XLSX.utils.json_to_sheet(
+      [...pontosUnicos.values()].map((p) => ({
+        Bloco: p.blocoNome,
+        'Local / setor': p.titulo,
+        'Bairro / recorte': p.bairroRecorte ?? '',
+        Endereço: p.endereco ?? '',
+        Latitude: p.lat ?? '',
+        Longitude: p.lng ?? '',
+        Fonte: p.fonte === 'tse' ? 'TSE 2024' : p.fonte === 'ibge' ? 'IBGE 2022' : 'Genérico',
+        Instrução: p.instrucao,
+      })),
+    ),
+    'Guia pontos',
+  )
+
+  XLSX.utils.book_append_sheet(
+    wb,
+    XLSX.utils.json_to_sheet(
+      roteiro.monitorCotas.map((c) => ({
+        Categoria: c.categoria,
+        Perfil: c.perfil,
+        Meta: c.meta,
+        '%': c.pct,
+        Realizado: c.realizado,
+        Pendente: c.pendente,
+      })),
+    ),
+    'Monitor cotas',
+  )
+
+  XLSX.utils.book_append_sheet(
+    wb,
+    XLSX.utils.json_to_sheet(roteiro.fichas.map(fichaParaLinhaExport)),
+    'Fichas campo',
+  )
+
+  for (const membro of plano.equipeCampo) {
+    const fichasMembro = roteiro.fichas.filter((f) => f.entrevistador === membro.entrevistador)
+    if (fichasMembro.length === 0) continue
+    const nomeAba = `Ent_${String(membro.entrevistador).padStart(2, '0')}`.slice(0, 31)
+    XLSX.utils.book_append_sheet(
+      wb,
+      XLSX.utils.json_to_sheet(fichasMembro.map(fichaParaLinhaExport)),
+      nomeAba,
+    )
+  }
+
+  const dia = new Date().toISOString().slice(0, 10)
+  XLSX.writeFile(wb, `roteiro-campo-${slugArquivo(plano.municipio)}-${dia}.xlsx`)
+}
+
+export function exportarRoteiroCampoPdf(
+  plano: PlanoAmostragemPublico,
+  ctx: ContextoRoteiroCampo = {},
+): void {
+  ensureJspdfAutotable()
+  const roteiro = montarRoteiroCampo(plano, ctx)
+  const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' }) as JsPdfWithAutoTable
+
+  for (const membro of plano.equipeCampo) {
+    const fichasMembro = roteiro.fichas.filter((f) => f.entrevistador === membro.entrevistador)
+
+    doc.setFontSize(13)
+    doc.text(`Roteiro de campo — Entrevistador ${membro.entrevistador}`, 14, 16)
+    doc.setFontSize(9)
+    doc.text(
+      `${plano.municipio} (PI) · N=${plano.amostraTotal} · ${plano.tipoPesquisa === 'eleitoral' ? 'Eleitoral' : 'Opinião'}`,
+      14,
+      22,
+    )
+    doc.text(`Blocos: ${membro.blocosSugeridos}`, 14, 28)
+
+    doc.autoTable({
+      startY: 34,
+      head: [['#', 'Bloco', 'Onde ir (local/setor)', 'Bairro', 'GPS', 'Data', 'Resultado']],
+      body: fichasMembro.map((f, i) => [
+        String(i + 1),
+        f.blocoSugerido,
+        f.localCampo,
+        f.bairroRecorte ?? '',
+        f.latitudeSugerida != null && f.longitudeSugerida != null
+          ? `${f.latitudeSugerida.toFixed(5)}, ${f.longitudeSugerida.toFixed(5)}`
+          : '',
+        '',
+        '',
+      ]),
+      styles: { fontSize: 6.5, cellPadding: 1.2 },
+      headStyles: { fillColor: [30, 58, 74] },
+      columnStyles: {
+        0: { cellWidth: 7 },
+        1: { cellWidth: 28 },
+        2: { cellWidth: 42 },
+        3: { cellWidth: 22 },
+        4: { cellWidth: 28 },
+        5: { cellWidth: 14 },
+        6: { cellWidth: 16 },
+      },
+    })
+
+    const y =
+      (doc.lastAutoTable && typeof doc.lastAutoTable === 'object'
+        ? doc.lastAutoTable.finalY
+        : 34) + 6
+
+    doc.setFontSize(7)
+    doc.text(
+      'Instruções por ficha no Excel (aba Fichas campo). GPS = ponto de partida sugerido. Auditoria: 10% das fichas.',
+      14,
+      y,
+    )
+
+    if (membro.entrevistador < plano.equipeCampo.length) {
+      doc.addPage()
+    }
+  }
+
+  const dia = new Date().toISOString().slice(0, 10)
+  doc.save(`roteiro-campo-${slugArquivo(plano.municipio)}-${dia}.pdf`)
+}
+
+export { COLUNAS_FICHA }

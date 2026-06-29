@@ -1,6 +1,6 @@
 'use client'
 
-import { ClipboardList, LayoutGrid, LineChart } from 'lucide-react'
+import { ClipboardList, LayoutGrid, LineChart, UsersRound } from 'lucide-react'
 import {
   DashboardHubTabBar,
   DashboardPageChrome,
@@ -12,12 +12,13 @@ import {
 import { typographyContentRootClass, typographyPageLeadClass } from '@/lib/typography-chrome'
 import { useDashboardTopbarVisible } from '@/hooks/use-dashboard-topbar-visible'
 
-export type PesquisaTab = 'panorama' | 'tendencia' | 'cadastradas'
+export type PesquisaTab = 'panorama' | 'tendencia' | 'cadastradas' | 'gerar-publico'
 
 const TABS: { id: PesquisaTab; label: string; icon: typeof LayoutGrid }[] = [
   { id: 'panorama', label: 'Panorama', icon: LayoutGrid },
   { id: 'tendencia', label: 'Tendência temporal', icon: LineChart },
   { id: 'cadastradas', label: 'Pesquisas cadastradas', icon: ClipboardList },
+  { id: 'gerar-publico', label: 'Gerar público pesquisa', icon: UsersRound },
 ]
 
 interface PesquisaShellProps {

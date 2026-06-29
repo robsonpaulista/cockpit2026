@@ -334,8 +334,14 @@ export const PainelVotacaoCandidatoResumo = forwardRef<HTMLElement, Props>(
       return () => controller.abort()
     }, [candidato, chave, municipio, compararComReferentes, nomeDepEstadualPlanilha])
 
-    const matriz = useMemo(() => {
-      if (candidatoIds.length === 0 || secoes.length === 0) return null
+    const expectativaResult = useMemo(() => {
+      if (candidatoIds.length === 0 || secoes.length === 0) {
+        return {
+          matriz: null as ReturnType<typeof montarMatrizVotacaoSecao> | null,
+          detalhesPorSecao: new Map<string, never>(),
+          detalhesPorBairro: new Map<string, never>(),
+        }
+      }
       const base = montarMatrizVotacaoSecao(secoes, candidatoIds)
       if (
         !compararComReferentes ||
@@ -343,23 +349,36 @@ export const PainelVotacaoCandidatoResumo = forwardRef<HTMLElement, Props>(
         !liderancaSelecionada ||
         expectativaLiderancaTotal <= 0
       ) {
-        return base
+        return {
+          matriz: base,
+          detalhesPorSecao: new Map(),
+          detalhesPorBairro: new Map(),
+        }
       }
-      return injetarColunaExpectativaLideranca(base, {
+      const injetado = injetarColunaExpectativaLideranca(base, {
         nomeLideranca: liderancaSelecionada.nome,
         totalExpectativa: expectativaLiderancaTotal,
         candidatoIdReferencia: vereadorId,
+        candidatoIdEstadual: depEstadualSelecionadoId || null,
         rotuloCargo: labelExpectativa,
       })
+      return {
+        matriz: injetado.matriz,
+        detalhesPorSecao: injetado.detalhesPorSecao,
+        detalhesPorBairro: injetado.detalhesPorBairro,
+      }
     }, [
       candidatoIds,
       secoes,
       compararComReferentes,
       vereadorId,
+      depEstadualSelecionadoId,
       liderancaSelecionada,
       expectativaLiderancaTotal,
       labelExpectativa,
     ])
+
+    const matriz = expectativaResult.matriz
 
     const candidatosSemelhanca = useMemo(
       () => matriz?.candidatos.filter((c) => !isColunaExpectativaLideranca(c.id)) ?? [],
@@ -537,6 +556,16 @@ export const PainelVotacaoCandidatoResumo = forwardRef<HTMLElement, Props>(
                       Coluna <strong className="text-text-primary">Exp. 2026</strong> distribuída
                       proporcionalmente aos votos do vereador em cada seção (
                       {expectativaLiderancaTotal.toLocaleString('pt-BR')} no município).
+                      {depEstadualSelecionadoId ? (
+                        <span>
+                          {' '}
+                          · bairros com similaridade vereador × dep. estadual ≥ 50% mantêm o peso
+                          integral; abaixo disso, −30% no peso do vereador · clique no valor Exp.
+                          2026 para ver a regra aplicada
+                        </span>
+                      ) : (
+                        <span> · clique no valor Exp. 2026 para ver a distribuição</span>
+                      )}
                       {liderancaMatchInicial &&
                       chaveLideranca(liderancaMatchInicial) !== liderancaSelecionadaKey ? (
                         <span> · substituída manualmente</span>
@@ -595,6 +624,8 @@ export const PainelVotacaoCandidatoResumo = forwardRef<HTMLElement, Props>(
                   totalSecoesSemelhantes={totalSecoesSemelhantes}
                   mostrarToolbarSemelhanca={compararComReferentes && matriz.candidatos.length >= 2}
                   compacto
+                  detalhesExpectativaPorSecao={expectativaResult.detalhesPorSecao}
+                  detalhesExpectativaPorBairro={expectativaResult.detalhesPorBairro}
                 />
               )}
 

@@ -55,6 +55,7 @@ photofinder-main.zip
 
 # FaceAgenda (recface) — venv, modelos ONNX e dados locais de visitantes
 /python/recface/venv/
+.venv-scripts/
 /python/recface/data/.insightface/
 /python/recface/data/encodings/
 /python/recface/data/visitors/

@@ -8,6 +8,7 @@ import { PollModal } from '@/components/poll-modal'
 import { PollReportModal } from '@/components/poll-report-modal'
 import { TendenciaIntencaoExecutiveSection } from '@/components/pesquisa/TendenciaIntencaoExecutiveSection'
 import { TendenciaTemporalPanel } from '@/components/pesquisa/TendenciaTemporalPanel'
+import { GerarPublicoPesquisaPanel } from '@/components/pesquisa/gerar-publico-pesquisa-panel'
 import { PesquisaShell, type PesquisaTab } from '@/components/pesquisa/pesquisa-shell'
 import {
   Edit2,
@@ -79,6 +80,7 @@ const POLLS_FETCH_LIMIT = 5000
 function parsePesquisaTab(value: string | null): PesquisaTab {
   if (value === 'tendencia') return 'tendencia'
   if (value === 'cadastradas') return 'cadastradas'
+  if (value === 'gerar-publico') return 'gerar-publico'
   return 'panorama'
 }
 
@@ -1042,6 +1044,8 @@ export default function PesquisaPage() {
                 />
               </div>
             </div>
+          ) : activeTab === 'gerar-publico' ? (
+            <GerarPublicoPesquisaPanel />
           ) : (
             <div className="flex flex-col gap-2.5">
               {barraAcoesCadastradas}

@@ -5,8 +5,9 @@ Enriquece votacao_secao_local com bairro e endereço oficial do TSE.
 Fonte: Eleitorado por local de votação (Sistema ELO)
 
 Uso:
-  python scripts/enrich-votacao-secao-bairro.py --ano 2024
-  python scripts/enrich-votacao-secao-bairro.py --ano 2022
+  pip3 install supabase requests
+  python3 scripts/enrich-votacao-secao-bairro.py --ano 2024
+  python3 scripts/enrich-votacao-secao-bairro.py --ano 2022
 """
 
 from __future__ import annotations
@@ -102,6 +103,34 @@ def ensure_zip(path: Path, url: str) -> Path:
     return path
 
 
+def parse_float_coord(value: str | None) -> float | None:
+    if value is None:
+        return None
+    s = str(value).strip()
+    if not s or s == "-1":
+        return None
+    try:
+        n = float(s.replace(",", "."))
+    except ValueError:
+        return None
+    if not (-180 <= n <= 180):
+        return None
+    return n
+
+
+def is_zona_rural(row: dict) -> bool:
+    endereco = (row.get("DS_ENDERECO") or "").upper()
+    bairro = (row.get("NM_BAIRRO") or "").upper()
+    tipo = (row.get("DS_TIPO_LOCAL") or "").upper()
+    if "ZONA RURAL" in endereco or "POVOADO" in endereco:
+        return True
+    if "RURAL" in bairro or "POVOADO" in bairro or "DISTRITO" in bairro:
+        return True
+    if "RURAL" in tipo:
+        return True
+    return False
+
+
 def load_eleitorado_pi(zip_path: Path) -> dict[tuple, dict]:
     cadastro: dict[tuple, dict] = {}
     total_pi = 0
@@ -127,6 +156,12 @@ def load_eleitorado_pi(zip_path: Path) -> dict[tuple, dict]:
                     "nm_bairro": (row.get("NM_BAIRRO") or "").strip() or None,
                     "ds_endereco": (row.get("DS_ENDERECO") or "").strip() or None,
                     "nm_local_votacao": (row.get("NM_LOCAL_VOTACAO") or "").strip() or None,
+                    "qt_eleitores_secao": parse_int(row.get("QT_ELEITOR_SECAO")),
+                    "nr_latitude": parse_float_coord(row.get("NR_LATITUDE")),
+                    "nr_longitude": parse_float_coord(row.get("NR_LONGITUDE")),
+                    "nr_cep": (row.get("NR_CEP") or "").strip() or None,
+                    "ds_tipo_local": (row.get("DS_TIPO_LOCAL") or "").strip() or None,
+                    "zona_rural": is_zona_rural(row),
                 }
 
     print(f"Cadastro TSE PI: {total_pi} linhas · {len(cadastro)} chaves únicas")
@@ -144,7 +179,8 @@ def fetch_locais(supabase, ano: int) -> list[dict]:
             .select(
                 "id, ano_eleicao, nr_turno, sg_uf, cd_municipio, municipio_chave, "
                 "nm_municipio, nr_zona, nr_secao, nr_local_votacao, nm_local_votacao, "
-                "ds_endereco, nm_bairro"
+                "ds_endereco, nm_bairro, qt_eleitores_secao, nr_latitude, nr_longitude, "
+                "nr_cep, ds_tipo_local, zona_rural"
             )
             .eq("ano_eleicao", ano)
             .eq("nr_turno", NR_TURNO)
@@ -199,6 +235,12 @@ def build_upsert_row(local: dict, hit: dict) -> dict:
         "nm_local_votacao": hit.get("nm_local_votacao") or local.get("nm_local_votacao"),
         "ds_endereco": hit.get("ds_endereco") or local.get("ds_endereco"),
         "nm_bairro": hit.get("nm_bairro") or local.get("nm_bairro"),
+        "qt_eleitores_secao": hit.get("qt_eleitores_secao") or local.get("qt_eleitores_secao"),
+        "nr_latitude": hit.get("nr_latitude") if hit.get("nr_latitude") is not None else local.get("nr_latitude"),
+        "nr_longitude": hit.get("nr_longitude") if hit.get("nr_longitude") is not None else local.get("nr_longitude"),
+        "nr_cep": hit.get("nr_cep") or local.get("nr_cep"),
+        "ds_tipo_local": hit.get("ds_tipo_local") or local.get("ds_tipo_local"),
+        "zona_rural": hit.get("zona_rural") if hit.get("zona_rural") is not None else local.get("zona_rural"),
     }
     return row
 
@@ -210,8 +252,9 @@ def upsert_batch(supabase, batch: list[dict], attempt: int = 1) -> None:
         msg = str(exc)
         if "nm_bairro" in msg and "schema cache" in msg:
             print(
-                "\nErro: coluna nm_bairro ausente. Execute no Supabase SQL Editor:\n"
+                "\nErro: colunas TSE ausentes. Execute no Supabase SQL Editor:\n"
                 "  database/alter-votacao-secao-bairro.sql\n"
+                "  database/alter-votacao-secao-eleitorado-geo.sql\n"
             )
             raise
         if attempt < 4 and ("timeout" in msg.lower() or "timed out" in msg.lower()):
@@ -223,11 +266,29 @@ def upsert_batch(supabase, batch: list[dict], attempt: int = 1) -> None:
         raise
 
 
+def needs_enrich(local: dict, force: bool) -> bool:
+    if force:
+        return True
+    if not local.get("nm_bairro"):
+        return True
+    if local.get("qt_eleitores_secao") is None:
+        return True
+    if local.get("nr_latitude") is None or local.get("nr_longitude") is None:
+        return True
+    return False
+
+
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Enriquece locais com bairro TSE")
+    parser = argparse.ArgumentParser(description="Enriquece locais com cadastro TSE (ELO)")
     parser.add_argument("--ano", type=int, required=True, choices=[2022, 2024])
+    parser.add_argument(
+        "--force",
+        action="store_true",
+        help="Reaplica cadastro TSE mesmo em registros já enriquecidos",
+    )
     args = parser.parse_args()
     ano = args.ano
+    force = args.force
 
     load_env_local()
 
@@ -257,7 +318,7 @@ def main() -> None:
     ja_enriquecidos = 0
 
     for local in locais:
-        if local.get("nm_bairro"):
+        if not needs_enrich(local, force):
             ja_enriquecidos += 1
             continue
 

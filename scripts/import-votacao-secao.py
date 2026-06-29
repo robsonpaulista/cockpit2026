@@ -5,10 +5,10 @@ Importa CSV bweb (votação por seção TSE) para Supabase.
 Mesmas tabelas votacao_secao_local + votacao_secao_voto, filtradas por ano_eleicao.
 
 Uso:
-  pip install supabase
-  python scripts/import-votacao-secao.py --ano 2024
-  python scripts/import-votacao-secao.py --ano 2022
-  python scripts/import-votacao-secao.py --ano 2022 --continue
+  pip3 install supabase
+  python3 scripts/import-votacao-secao.py --ano 2024
+  python3 scripts/import-votacao-secao.py --ano 2022
+  python3 scripts/import-votacao-secao.py --ano 2022 --continue
 
 Arquivos esperados na raiz:
   votacao_secao_2024_PI.csv

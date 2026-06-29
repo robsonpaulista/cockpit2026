@@ -6,6 +6,7 @@ import {
   useImperativeHandle,
   useMemo,
   useState,
+  type MouseEvent,
 } from 'react'
 import { ChevronDown, ChevronRight } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -30,6 +31,14 @@ import {
   type MatrizVotacaoSecao,
 } from '@/lib/votacao-secao-matriz'
 import { isColunaExpectativaLideranca } from '@/lib/lideranca-expectativa-secao'
+import type {
+  ExpectativaBairroDetalhe,
+  ExpectativaSecaoDetalhe,
+} from '@/lib/lideranca-expectativa-secao'
+import {
+  ModalExplicacaoExpectativaSecao,
+  type SelecaoExplicacaoExpectativa,
+} from '@/components/modal-explicacao-expectativa-secao'
 
 const LOCAIS_POR_PAGINA = 25
 const BAIRROS_POR_PAGINA = 20
@@ -60,7 +69,13 @@ export type TabelaMatrizVotacaoSecaoProps = {
   totalSecoesSemelhantes?: number
   mostrarToolbarSemelhanca?: boolean
   compacto?: boolean
+  detalhesExpectativaPorSecao?: Map<string, ExpectativaSecaoDetalhe>
+  detalhesExpectativaPorBairro?: Map<string, ExpectativaBairroDetalhe>
 }
+
+type ContextoExpClick =
+  | { escopo: 'secao'; localId: string; rotulo: string }
+  | { escopo: 'bairro'; bairroId: string; rotulo: string }
 
 function abreviarCargo(dsCargo: string): string {
   const map: Record<string, string> = {
@@ -100,9 +115,39 @@ export const TabelaMatrizVotacaoSecao = forwardRef<
     totalSecoesSemelhantes = 0,
     mostrarToolbarSemelhanca = true,
     compacto = false,
+    detalhesExpectativaPorSecao,
+    detalhesExpectativaPorBairro,
   },
   ref,
 ) {
+  const [expSelecionada, setExpSelecionada] = useState<SelecaoExplicacaoExpectativa | null>(null)
+  const [expAnchor, setExpAnchor] = useState<{ x: number; y: number } | null>(null)
+
+  const abrirExplicacaoExpectativa = useCallback(
+    (ctx: ContextoExpClick, event: MouseEvent<HTMLButtonElement>) => {
+      if (ctx.escopo === 'secao') {
+        const detalhe = detalhesExpectativaPorSecao?.get(ctx.localId)
+        if (!detalhe || detalhe.expectativaSecao <= 0) return
+        setExpSelecionada({ escopo: 'secao', detalhe, rotulo: ctx.rotulo })
+      } else {
+        const detalhe = detalhesExpectativaPorBairro?.get(ctx.bairroId)
+        if (!detalhe || detalhe.expectativaBairro <= 0) return
+        setExpSelecionada({ escopo: 'bairro', detalhe, rotulo: ctx.rotulo })
+      }
+      setExpAnchor({ x: event.clientX, y: event.clientY })
+    },
+    [detalhesExpectativaPorBairro, detalhesExpectativaPorSecao],
+  )
+
+  const fecharExplicacaoExpectativa = useCallback(() => {
+    setExpSelecionada(null)
+    setExpAnchor(null)
+  }, [])
+
+  const temExplicacaoExpectativa = Boolean(
+    (detalhesExpectativaPorSecao?.size ?? 0) > 0 ||
+      (detalhesExpectativaPorBairro?.size ?? 0) > 0,
+  )
   const [agrupamentoInterno, setAgrupamentoInterno] = useState<AgrupamentoMatriz>('bairro')
   const agrupamento = agrupamentoControlado ?? agrupamentoInterno
   const setAgrupamento = onAgrupamentoChange ?? setAgrupamentoInterno
@@ -282,7 +327,7 @@ export const TabelaMatrizVotacaoSecao = forwardRef<
                   )}
                   title={
                     isColunaExpectativaLideranca(c.id)
-                      ? `${c.nmVotavel} · expectativa distribuída por seção · total ${c.totalVotos.toLocaleString('pt-BR')}`
+                      ? `${c.nmVotavel} · expectativa distribuída por seção · total ${c.totalVotos.toLocaleString('pt-BR')}${temExplicacaoExpectativa ? ' · clique no valor para ver a regra aplicada' : ''}`
                       : `${c.dsCargo} · ${c.nmVotavel} · total ${c.totalVotos.toLocaleString('pt-BR')}`
                   }
                 >
@@ -314,6 +359,7 @@ export const TabelaMatrizVotacaoSecao = forwardRef<
                     destacarSemelhanca={destacarSemelhanca}
                     onToggleBairro={() => toggleBairro(grupo.id)}
                     onToggleLocal={(localId) => toggleLocal(localId, grupo.id)}
+                    onAbrirExplicacaoExpectativa={abrirExplicacaoExpectativa}
                   />
                 ))
               : gruposLocalPagina.map((grupo) => {
@@ -329,6 +375,7 @@ export const TabelaMatrizVotacaoSecao = forwardRef<
                       paresPorSecao={paresPorSecao}
                       destacarSemelhanca={destacarSemelhanca}
                       onToggle={() => toggleLocal(grupo.id)}
+                      onAbrirExplicacaoExpectativa={abrirExplicacaoExpectativa}
                     />
                   )
                 })}
@@ -374,6 +421,11 @@ export const TabelaMatrizVotacaoSecao = forwardRef<
           </div>
         </div>
       )}
+      <ModalExplicacaoExpectativaSecao
+        selecao={expSelecionada}
+        anchor={expAnchor}
+        onClose={fecharExplicacaoExpectativa}
+      />
     </div>
   )
 })
@@ -461,11 +513,15 @@ function CelulasVotosMatriz({
   votos,
   liderId,
   destacarLider = true,
+  contextoExp,
+  onAbrirExplicacaoExpectativa,
 }: {
   candidatos: CandidatoMatrizColuna[]
   votos: Record<string, number>
   liderId: string | null
   destacarLider?: boolean
+  contextoExp?: ContextoExpClick
+  onAbrirExplicacaoExpectativa?: (ctx: ContextoExpClick, event: MouseEvent<HTMLButtonElement>) => void
 }) {
   return (
     <>
@@ -473,6 +529,7 @@ function CelulasVotosMatriz({
         const qt = votos[c.id] ?? 0
         const lider = destacarLider && liderId === c.id && qt > 0
         const expectativa = isColunaExpectativaLideranca(c.id)
+        const clicavel = expectativa && qt > 0 && contextoExp && onAbrirExplicacaoExpectativa
         return (
           <td
             key={c.id}
@@ -483,7 +540,18 @@ function CelulasVotosMatriz({
               !qt && 'text-text-secondary/40',
             )}
           >
-            {qt > 0 ? qt.toLocaleString('pt-BR') : '—'}
+            {clicavel ? (
+              <button
+                type="button"
+                onClick={(e) => onAbrirExplicacaoExpectativa(contextoExp, e)}
+                className="w-full rounded px-1 py-0.5 text-right underline decoration-accent-gold/50 decoration-dotted underline-offset-2 hover:bg-accent-gold/10"
+                title="Ver como a Exp. 2026 foi calculada neste ponto"
+              >
+                {qt.toLocaleString('pt-BR')}
+              </button>
+            ) : (
+              qt > 0 ? qt.toLocaleString('pt-BR') : '—'
+            )}
           </td>
         )
       })}
@@ -500,6 +568,7 @@ function GrupoBairroRows({
   destacarSemelhanca,
   onToggleBairro,
   onToggleLocal,
+  onAbrirExplicacaoExpectativa,
 }: {
   grupo: GrupoBairroMatriz
   candidatos: CandidatoMatrizColuna[]
@@ -509,6 +578,7 @@ function GrupoBairroRows({
   destacarSemelhanca: boolean
   onToggleBairro: () => void
   onToggleLocal: (localId: string) => void
+  onAbrirExplicacaoExpectativa?: (ctx: ContextoExpClick, event: MouseEvent<HTMLButtonElement>) => void
 }) {
   const localUnico = grupo.totalLocais === 1 ? grupo.locais[0] : null
   const secoesGrupo = grupo.locais.flatMap((l) => l.secoes)
@@ -537,7 +607,13 @@ function GrupoBairroRows({
             ocultarBairro
           />
         </td>
-        <CelulasVotosMatriz candidatos={candidatos} votos={grupo.votos} liderId={grupo.liderId} />
+        <CelulasVotosMatriz
+          candidatos={candidatos}
+          votos={grupo.votos}
+          liderId={grupo.liderId}
+          contextoExp={{ escopo: 'bairro', bairroId: grupo.id, rotulo: grupo.nmBairro }}
+          onAbrirExplicacaoExpectativa={onAbrirExplicacaoExpectativa}
+        />
       </tr>
     )
   }
@@ -577,7 +653,13 @@ function GrupoBairroRows({
             </span>
           </button>
         </td>
-        <CelulasVotosMatriz candidatos={candidatos} votos={grupo.votos} liderId={grupo.liderId} />
+        <CelulasVotosMatriz
+          candidatos={candidatos}
+          votos={grupo.votos}
+          liderId={grupo.liderId}
+          contextoExp={{ escopo: 'bairro', bairroId: grupo.id, rotulo: grupo.nmBairro }}
+          onAbrirExplicacaoExpectativa={onAbrirExplicacaoExpectativa}
+        />
       </tr>
       {bairroExpandido
         ? grupo.locais.map((local) => (
@@ -592,6 +674,7 @@ function GrupoBairroRows({
               onToggle={() => onToggleLocal(local.id)}
               indent={1}
               ocultarBairro
+              onAbrirExplicacaoExpectativa={onAbrirExplicacaoExpectativa}
             />
           ))
         : null}
@@ -609,6 +692,7 @@ function GrupoLocalRows({
   onToggle,
   indent = 0,
   ocultarBairro = false,
+  onAbrirExplicacaoExpectativa,
 }: {
   grupo: GrupoLocalMatriz
   candidatos: CandidatoMatrizColuna[]
@@ -619,6 +703,7 @@ function GrupoLocalRows({
   onToggle: () => void
   indent?: number
   ocultarBairro?: boolean
+  onAbrirExplicacaoExpectativa?: (ctx: ContextoExpClick, event: MouseEvent<HTMLButtonElement>) => void
 }) {
   const tituloLocal = grupo.nmLocalVotacao || 'Local não informado'
   const endereco = grupo.dsEndereco?.trim()
@@ -648,6 +733,12 @@ function GrupoLocalRows({
           candidatos={candidatos}
           votos={secao.votos}
           liderId={secao.liderId}
+          contextoExp={{
+            escopo: 'secao',
+            localId: secao.localId,
+            rotulo: `${grupo.nmLocalVotacao || 'Local'} · Seção ${secao.nrSecao}`,
+          }}
+          onAbrirExplicacaoExpectativa={onAbrirExplicacaoExpectativa}
         />
       </tr>
     )
@@ -698,6 +789,16 @@ function GrupoLocalRows({
           candidatos={candidatos}
           votos={grupo.votos}
           liderId={grupo.liderId}
+          contextoExp={
+            grupo.secoes.length === 1
+              ? {
+                  escopo: 'secao',
+                  localId: grupo.secoes[0].localId,
+                  rotulo: `${tituloLocal} · Seção ${grupo.secoes[0].nrSecao}`,
+                }
+              : undefined
+          }
+          onAbrirExplicacaoExpectativa={onAbrirExplicacaoExpectativa}
         />
       </tr>
       {expandido
@@ -710,6 +811,7 @@ function GrupoLocalRows({
               destacarSemelhanca={destacarSemelhanca}
               indent={indent + 1}
               ocultarBairro={ocultarBairro}
+              onAbrirExplicacaoExpectativa={onAbrirExplicacaoExpectativa}
             />
           ))
         : null}
@@ -724,6 +826,7 @@ function LinhaSecaoMatriz({
   destacarSemelhanca,
   indent = 0,
   ocultarBairro = false,
+  onAbrirExplicacaoExpectativa,
 }: {
   secao: LinhaMatrizSecao
   candidatos: CandidatoMatrizColuna[]
@@ -731,6 +834,7 @@ function LinhaSecaoMatriz({
   destacarSemelhanca: boolean
   indent?: number
   ocultarBairro?: boolean
+  onAbrirExplicacaoExpectativa?: (ctx: ContextoExpClick, event: MouseEvent<HTMLButtonElement>) => void
 }) {
   const padLeft = indent <= 0 ? 'pl-9' : indent === 1 ? 'pl-12' : 'pl-16'
 
@@ -753,6 +857,12 @@ function LinhaSecaoMatriz({
         candidatos={candidatos}
         votos={secao.votos}
         liderId={secao.liderId}
+        contextoExp={{
+          escopo: 'secao',
+          localId: secao.localId,
+          rotulo: `Seção ${secao.nrSecao} · Zona ${secao.nrZona}`,
+        }}
+        onAbrirExplicacaoExpectativa={onAbrirExplicacaoExpectativa}
       />
     </tr>
   )

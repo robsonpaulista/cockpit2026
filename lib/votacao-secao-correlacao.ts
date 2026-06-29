@@ -440,6 +440,10 @@ export function mapearVotosCasadosMunicipio(
 
 const BAIRRO_SEM_CADASTRO = 'Sem bairro cadastrado'
 
+export function chaveBairroMatriz(nmBairro: string | null | undefined): string {
+  return chaveBairroDistribuicao(nmBairro)
+}
+
 function chaveBairroDistribuicao(nmBairro: string | null | undefined): string {
   const nome = (nmBairro || BAIRRO_SEM_CADASTRO).trim()
   return nome
@@ -474,6 +478,46 @@ export type BairroDistribuicaoVinculo = {
   secoesParecidas: number
   pctParecidasNoBairro: number
   locais: LocalVinculoParecido[]
+}
+
+/**
+ * % de seções com votos nos dois candidatos em que os votos são semelhantes, por bairro.
+ * Denominador: seções em que ambos receberam votos no bairro.
+ */
+export function mapaPctSimilaridadePorBairro(
+  linhas: LinhaMatrizSecao[],
+  candidatoIdA: string,
+  candidatoIdB: string,
+  margem = MARGEM_VOTOS_PARECIDOS,
+): Map<string, number> {
+  const blocos = new Map<string, { secoesComAmbos: number; secoesParecidas: number }>()
+
+  for (const linha of linhas) {
+    const bid = chaveBairroDistribuicao(linha.nmBairro)
+    const va = linha.votos[candidatoIdA] ?? 0
+    const vb = linha.votos[candidatoIdB] ?? 0
+
+    let bloco = blocos.get(bid)
+    if (!bloco) {
+      bloco = { secoesComAmbos: 0, secoesParecidas: 0 }
+      blocos.set(bid, bloco)
+    }
+
+    if (va <= 0 || vb <= 0) continue
+    bloco.secoesComAmbos += 1
+    if (votosParecidosNaSecao(va, vb, margem)) {
+      bloco.secoesParecidas += 1
+    }
+  }
+
+  const out = new Map<string, number>()
+  for (const [bid, b] of blocos) {
+    out.set(
+      bid,
+      b.secoesComAmbos > 0 ? (b.secoesParecidas / b.secoesComAmbos) * 100 : 0,
+    )
+  }
+  return out
 }
 
 /**

@@ -1,0 +1,1577 @@
+{
+  "ano": 2022,
+  "fonte": "IBGE Malha Setores Censitários CD2022 + Agregados básicos por setor",
+  "geradoEm": "2026-06-28T23:15:29.464Z",
+  "totalSetores": 7340,
+  "totalMunicipios": 224,
+  "municipios": [
+    {
+      "chave": "acaua",
+      "nmMunicipio": "Acauã",
+      "cdMunicipio": "2200053",
+      "totalSetores": 23,
+      "arquivo": "acaua.json"
+    },
+    {
+      "chave": "agricolandia",
+      "nmMunicipio": "Agricolândia",
+      "cdMunicipio": "2200103",
+      "totalSetores": 14,
+      "arquivo": "agricolandia.json"
+    },
+    {
+      "chave": "agua branca",
+      "nmMunicipio": "Água Branca",
+      "cdMunicipio": "2200202",
+      "totalSetores": 42,
+      "arquivo": "agua branca.json"
+    },
+    {
+      "chave": "alagoinha do piaui",
+      "nmMunicipio": "Alagoinha do Piauí",
+      "cdMunicipio": "2200251",
+      "totalSetores": 22,
+      "arquivo": "alagoinha do piaui.json"
+    },
+    {
+      "chave": "alegrete do piaui",
+      "nmMunicipio": "Alegrete do Piauí",
+      "cdMunicipio": "2200277",
+      "totalSetores": 12,
+      "arquivo": "alegrete do piaui.json"
+    },
+    {
+      "chave": "alto longa",
+      "nmMunicipio": "Alto Longá",
+      "cdMunicipio": "2200301",
+      "totalSetores": 31,
+      "arquivo": "alto longa.json"
+    },
+    {
+      "chave": "altos",
+      "nmMunicipio": "Altos",
+      "cdMunicipio": "2200400",
+      "totalSetores": 91,
+      "arquivo": "altos.json"
+    },
+    {
+      "chave": "alvorada do gurgueia",
+      "nmMunicipio": "Alvorada do Gurguéia",
+      "cdMunicipio": "2200459",
+      "totalSetores": 15,
+      "arquivo": "alvorada do gurgueia.json"
+    },
+    {
+      "chave": "amarante",
+      "nmMunicipio": "Amarante",
+      "cdMunicipio": "2200509",
+      "totalSetores": 53,
+      "arquivo": "amarante.json"
+    },
+    {
+      "chave": "angical do piaui",
+      "nmMunicipio": "Angical do Piauí",
+      "cdMunicipio": "2200608",
+      "totalSetores": 26,
+      "arquivo": "angical do piaui.json"
+    },
+    {
+      "chave": "anisio de abreu",
+      "nmMunicipio": "Anísio de Abreu",
+      "cdMunicipio": "2200707",
+      "totalSetores": 25,
+      "arquivo": "anisio de abreu.json"
+    },
+    {
+      "chave": "antonio almeida",
+      "nmMunicipio": "Antônio Almeida",
+      "cdMunicipio": "2200806",
+      "totalSetores": 10,
+      "arquivo": "antonio almeida.json"
+    },
+    {
+      "chave": "aroazes",
+      "nmMunicipio": "Aroazes",
+      "cdMunicipio": "2200905",
+      "totalSetores": 17,
+      "arquivo": "aroazes.json"
+    },
+    {
+      "chave": "aroeiras do itaim",
+      "nmMunicipio": "Aroeiras do Itaim",
+      "cdMunicipio": "2200954",
+      "totalSetores": 9,
+      "arquivo": "aroeiras do itaim.json"
+    },
+    {
+      "chave": "arraial",
+      "nmMunicipio": "Arraial",
+      "cdMunicipio": "2201002",
+      "totalSetores": 12,
+      "arquivo": "arraial.json"
+    },
+    {
+      "chave": "assuncao do piaui",
+      "nmMunicipio": "Assunção do Piauí",
+      "cdMunicipio": "2201051",
+      "totalSetores": 25,
+      "arquivo": "assuncao do piaui.json"
+    },
+    {
+      "chave": "avelino lopes",
+      "nmMunicipio": "Avelino Lopes",
+      "cdMunicipio": "2201101",
+      "totalSetores": 21,
+      "arquivo": "avelino lopes.json"
+    },
+    {
+      "chave": "baixa grande do ribeiro",
+      "nmMunicipio": "Baixa Grande do Ribeiro",
+      "cdMunicipio": "2201150",
+      "totalSetores": 33,
+      "arquivo": "baixa grande do ribeiro.json"
+    },
+    {
+      "chave": "barra d alcantara",
+      "nmMunicipio": "Barra D'alcântara",
+      "cdMunicipio": "2201176",
+      "totalSetores": 13,
+      "arquivo": "barra d alcantara.json"
+    },
+    {
+      "chave": "barras",
+      "nmMunicipio": "Barras",
+      "cdMunicipio": "2201200",
+      "totalSetores": 107,
+      "arquivo": "barras.json"
+    },
+    {
+      "chave": "barreiras do piaui",
+      "nmMunicipio": "Barreiras do Piauí",
+      "cdMunicipio": "2201309",
+      "totalSetores": 9,
+      "arquivo": "barreiras do piaui.json"
+    },
+    {
+      "chave": "barro duro",
+      "nmMunicipio": "Barro Duro",
+      "cdMunicipio": "2201408",
+      "totalSetores": 16,
+      "arquivo": "barro duro.json"
+    },
+    {
+      "chave": "batalha",
+      "nmMunicipio": "Batalha",
+      "cdMunicipio": "2201507",
+      "totalSetores": 74,
+      "arquivo": "batalha.json"
+    },
+    {
+      "chave": "bela vista do piaui",
+      "nmMunicipio": "Bela Vista do Piauí",
+      "cdMunicipio": "2201556",
+      "totalSetores": 10,
+      "arquivo": "bela vista do piaui.json"
+    },
+    {
+      "chave": "belem do piaui",
+      "nmMunicipio": "Belém do Piauí",
+      "cdMunicipio": "2201572",
+      "totalSetores": 9,
+      "arquivo": "belem do piaui.json"
+    },
+    {
+      "chave": "beneditinos",
+      "nmMunicipio": "Beneditinos",
+      "cdMunicipio": "2201606",
+      "totalSetores": 26,
+      "arquivo": "beneditinos.json"
+    },
+    {
+      "chave": "bertolinia",
+      "nmMunicipio": "Bertolínia",
+      "cdMunicipio": "2201705",
+      "totalSetores": 11,
+      "arquivo": "bertolinia.json"
+    },
+    {
+      "chave": "betania do piaui",
+      "nmMunicipio": "Betânia do Piauí",
+      "cdMunicipio": "2201739",
+      "totalSetores": 17,
+      "arquivo": "betania do piaui.json"
+    },
+    {
+      "chave": "boa hora",
+      "nmMunicipio": "Boa Hora",
+      "cdMunicipio": "2201770",
+      "totalSetores": 12,
+      "arquivo": "boa hora.json"
+    },
+    {
+      "chave": "bocaina",
+      "nmMunicipio": "Bocaina",
+      "cdMunicipio": "2201804",
+      "totalSetores": 16,
+      "arquivo": "bocaina.json"
+    },
+    {
+      "chave": "bom jesus",
+      "nmMunicipio": "Bom Jesus",
+      "cdMunicipio": "2201903",
+      "totalSetores": 51,
+      "arquivo": "bom jesus.json"
+    },
+    {
+      "chave": "bom principio do piaui",
+      "nmMunicipio": "Bom Princípio do Piauí",
+      "cdMunicipio": "2201919",
+      "totalSetores": 12,
+      "arquivo": "bom principio do piaui.json"
+    },
+    {
+      "chave": "bonfim do piaui",
+      "nmMunicipio": "Bonfim do Piauí",
+      "cdMunicipio": "2201929",
+      "totalSetores": 16,
+      "arquivo": "bonfim do piaui.json"
+    },
+    {
+      "chave": "boqueirao do piaui",
+      "nmMunicipio": "Boqueirão do Piauí",
+      "cdMunicipio": "2201945",
+      "totalSetores": 19,
+      "arquivo": "boqueirao do piaui.json"
+    },
+    {
+      "chave": "brasileira",
+      "nmMunicipio": "Brasileira",
+      "cdMunicipio": "2201960",
+      "totalSetores": 28,
+      "arquivo": "brasileira.json"
+    },
+    {
+      "chave": "brejo do piaui",
+      "nmMunicipio": "Brejo do Piauí",
+      "cdMunicipio": "2201988",
+      "totalSetores": 14,
+      "arquivo": "brejo do piaui.json"
+    },
+    {
+      "chave": "buriti dos lopes",
+      "nmMunicipio": "Buriti dos Lopes",
+      "cdMunicipio": "2202000",
+      "totalSetores": 40,
+      "arquivo": "buriti dos lopes.json"
+    },
+    {
+      "chave": "buriti dos montes",
+      "nmMunicipio": "Buriti dos Montes",
+      "cdMunicipio": "2202026",
+      "totalSetores": 24,
+      "arquivo": "buriti dos montes.json"
+    },
+    {
+      "chave": "cabeceiras do piaui",
+      "nmMunicipio": "Cabeceiras do Piauí",
+      "cdMunicipio": "2202059",
+      "totalSetores": 26,
+      "arquivo": "cabeceiras do piaui.json"
+    },
+    {
+      "chave": "cajazeiras do piaui",
+      "nmMunicipio": "Cajazeiras do Piauí",
+      "cdMunicipio": "2202075",
+      "totalSetores": 7,
+      "arquivo": "cajazeiras do piaui.json"
+    },
+    {
+      "chave": "cajueiro da praia",
+      "nmMunicipio": "Cajueiro da Praia",
+      "cdMunicipio": "2202083",
+      "totalSetores": 21,
+      "arquivo": "cajueiro da praia.json"
+    },
+    {
+      "chave": "caldeirao grande do piaui",
+      "nmMunicipio": "Caldeirão Grande do Piauí",
+      "cdMunicipio": "2202091",
+      "totalSetores": 13,
+      "arquivo": "caldeirao grande do piaui.json"
+    },
+    {
+      "chave": "campinas do piaui",
+      "nmMunicipio": "Campinas do Piauí",
+      "cdMunicipio": "2202109",
+      "totalSetores": 15,
+      "arquivo": "campinas do piaui.json"
+    },
+    {
+      "chave": "campo alegre do fidalgo",
+      "nmMunicipio": "Campo Alegre do Fidalgo",
+      "cdMunicipio": "2202117",
+      "totalSetores": 11,
+      "arquivo": "campo alegre do fidalgo.json"
+    },
+    {
+      "chave": "campo grande do piaui",
+      "nmMunicipio": "Campo Grande do Piauí",
+      "cdMunicipio": "2202133",
+      "totalSetores": 16,
+      "arquivo": "campo grande do piaui.json"
+    },
+    {
+      "chave": "campo largo do piaui",
+      "nmMunicipio": "Campo Largo do Piauí",
+      "cdMunicipio": "2202174",
+      "totalSetores": 23,
+      "arquivo": "campo largo do piaui.json"
+    },
+    {
+      "chave": "campo maior",
+      "nmMunicipio": "Campo Maior",
+      "cdMunicipio": "2202208",
+      "totalSetores": 108,
+      "arquivo": "campo maior.json"
+    },
+    {
+      "chave": "canavieira",
+      "nmMunicipio": "Canavieira",
+      "cdMunicipio": "2202251",
+      "totalSetores": 15,
+      "arquivo": "canavieira.json"
+    },
+    {
+      "chave": "canto do buriti",
+      "nmMunicipio": "Canto do Buriti",
+      "cdMunicipio": "2202307",
+      "totalSetores": 41,
+      "arquivo": "canto do buriti.json"
+    },
+    {
+      "chave": "capitao de campos",
+      "nmMunicipio": "Capitão de Campos",
+      "cdMunicipio": "2202406",
+      "totalSetores": 21,
+      "arquivo": "capitao de campos.json"
+    },
+    {
+      "chave": "capitao gervasio oliveira",
+      "nmMunicipio": "Capitão Gervásio Oliveira",
+      "cdMunicipio": "2202455",
+      "totalSetores": 11,
+      "arquivo": "capitao gervasio oliveira.json"
+    },
+    {
+      "chave": "caracol",
+      "nmMunicipio": "Caracol",
+      "cdMunicipio": "2202505",
+      "totalSetores": 28,
+      "arquivo": "caracol.json"
+    },
+    {
+      "chave": "caraubas do piaui",
+      "nmMunicipio": "Caraúbas do Piauí",
+      "cdMunicipio": "2202539",
+      "totalSetores": 9,
+      "arquivo": "caraubas do piaui.json"
+    },
+    {
+      "chave": "caridade do piaui",
+      "nmMunicipio": "Caridade do Piauí",
+      "cdMunicipio": "2202554",
+      "totalSetores": 18,
+      "arquivo": "caridade do piaui.json"
+    },
+    {
+      "chave": "castelo do piaui",
+      "nmMunicipio": "Castelo do Piauí",
+      "cdMunicipio": "2202604",
+      "totalSetores": 49,
+      "arquivo": "castelo do piaui.json"
+    },
+    {
+      "chave": "caxingo",
+      "nmMunicipio": "Caxingó",
+      "cdMunicipio": "2202653",
+      "totalSetores": 17,
+      "arquivo": "caxingo.json"
+    },
+    {
+      "chave": "cocal",
+      "nmMunicipio": "Cocal",
+      "cdMunicipio": "2202703",
+      "totalSetores": 66,
+      "arquivo": "cocal.json"
+    },
+    {
+      "chave": "cocal de telha",
+      "nmMunicipio": "Cocal de Telha",
+      "cdMunicipio": "2202711",
+      "totalSetores": 12,
+      "arquivo": "cocal de telha.json"
+    },
+    {
+      "chave": "cocal dos alves",
+      "nmMunicipio": "Cocal dos Alves",
+      "cdMunicipio": "2202729",
+      "totalSetores": 16,
+      "arquivo": "cocal dos alves.json"
+    },
+    {
+      "chave": "coivaras",
+      "nmMunicipio": "Coivaras",
+      "cdMunicipio": "2202737",
+      "totalSetores": 10,
+      "arquivo": "coivaras.json"
+    },
+    {
+      "chave": "colonia do gurgueia",
+      "nmMunicipio": "Colônia do Gurguéia",
+      "cdMunicipio": "2202752",
+      "totalSetores": 14,
+      "arquivo": "colonia do gurgueia.json"
+    },
+    {
+      "chave": "colonia do piaui",
+      "nmMunicipio": "Colônia do Piauí",
+      "cdMunicipio": "2202778",
+      "totalSetores": 18,
+      "arquivo": "colonia do piaui.json"
+    },
+    {
+      "chave": "conceicao do caninde",
+      "nmMunicipio": "Conceição do Canindé",
+      "cdMunicipio": "2202802",
+      "totalSetores": 18,
+      "arquivo": "conceicao do caninde.json"
+    },
+    {
+      "chave": "coronel jose dias",
+      "nmMunicipio": "Coronel José Dias",
+      "cdMunicipio": "2202851",
+      "totalSetores": 12,
+      "arquivo": "coronel jose dias.json"
+    },
+    {
+      "chave": "corrente",
+      "nmMunicipio": "Corrente",
+      "cdMunicipio": "2202901",
+      "totalSetores": 64,
+      "arquivo": "corrente.json"
+    },
+    {
+      "chave": "cristalandia do piaui",
+      "nmMunicipio": "Cristalândia do Piauí",
+      "cdMunicipio": "2203008",
+      "totalSetores": 14,
+      "arquivo": "cristalandia do piaui.json"
+    },
+    {
+      "chave": "cristino castro",
+      "nmMunicipio": "Cristino Castro",
+      "cdMunicipio": "2203107",
+      "totalSetores": 22,
+      "arquivo": "cristino castro.json"
+    },
+    {
+      "chave": "curimata",
+      "nmMunicipio": "Curimatá",
+      "cdMunicipio": "2203206",
+      "totalSetores": 23,
+      "arquivo": "curimata.json"
+    },
+    {
+      "chave": "currais",
+      "nmMunicipio": "Currais",
+      "cdMunicipio": "2203230",
+      "totalSetores": 16,
+      "arquivo": "currais.json"
+    },
+    {
+      "chave": "curral novo do piaui",
+      "nmMunicipio": "Curral Novo do Piauí",
+      "cdMunicipio": "2203271",
+      "totalSetores": 16,
+      "arquivo": "curral novo do piaui.json"
+    },
+    {
+      "chave": "curralinhos",
+      "nmMunicipio": "Curralinhos",
+      "cdMunicipio": "2203255",
+      "totalSetores": 8,
+      "arquivo": "curralinhos.json"
+    },
+    {
+      "chave": "demerval lobao",
+      "nmMunicipio": "Demerval Lobão",
+      "cdMunicipio": "2203305",
+      "totalSetores": 35,
+      "arquivo": "demerval lobao.json"
+    },
+    {
+      "chave": "dirceu arcoverde",
+      "nmMunicipio": "Dirceu Arcoverde",
+      "cdMunicipio": "2203354",
+      "totalSetores": 15,
+      "arquivo": "dirceu arcoverde.json"
+    },
+    {
+      "chave": "dom expedito lopes",
+      "nmMunicipio": "Dom Expedito Lopes",
+      "cdMunicipio": "2203404",
+      "totalSetores": 12,
+      "arquivo": "dom expedito lopes.json"
+    },
+    {
+      "chave": "dom inocencio",
+      "nmMunicipio": "Dom Inocêncio",
+      "cdMunicipio": "2203453",
+      "totalSetores": 25,
+      "arquivo": "dom inocencio.json"
+    },
+    {
+      "chave": "domingos mourao",
+      "nmMunicipio": "Domingos Mourão",
+      "cdMunicipio": "2203420",
+      "totalSetores": 9,
+      "arquivo": "domingos mourao.json"
+    },
+    {
+      "chave": "elesbao veloso",
+      "nmMunicipio": "Elesbão Veloso",
+      "cdMunicipio": "2203503",
+      "totalSetores": 34,
+      "arquivo": "elesbao veloso.json"
+    },
+    {
+      "chave": "eliseu martins",
+      "nmMunicipio": "Eliseu Martins",
+      "cdMunicipio": "2203602",
+      "totalSetores": 11,
+      "arquivo": "eliseu martins.json"
+    },
+    {
+      "chave": "esperantina",
+      "nmMunicipio": "Esperantina",
+      "cdMunicipio": "2203701",
+      "totalSetores": 89,
+      "arquivo": "esperantina.json"
+    },
+    {
+      "chave": "fartura do piaui",
+      "nmMunicipio": "Fartura do Piauí",
+      "cdMunicipio": "2203750",
+      "totalSetores": 32,
+      "arquivo": "fartura do piaui.json"
+    },
+    {
+      "chave": "flores do piaui",
+      "nmMunicipio": "Flores do Piauí",
+      "cdMunicipio": "2203800",
+      "totalSetores": 13,
+      "arquivo": "flores do piaui.json"
+    },
+    {
+      "chave": "floresta do piaui",
+      "nmMunicipio": "Floresta do Piauí",
+      "cdMunicipio": "2203859",
+      "totalSetores": 8,
+      "arquivo": "floresta do piaui.json"
+    },
+    {
+      "chave": "floriano",
+      "nmMunicipio": "Floriano",
+      "cdMunicipio": "2203909",
+      "totalSetores": 123,
+      "arquivo": "floriano.json"
+    },
+    {
+      "chave": "francinopolis",
+      "nmMunicipio": "Francinópolis",
+      "cdMunicipio": "2204006",
+      "totalSetores": 14,
+      "arquivo": "francinopolis.json"
+    },
+    {
+      "chave": "francisco ayres",
+      "nmMunicipio": "Francisco Ayres",
+      "cdMunicipio": "2204105",
+      "totalSetores": 16,
+      "arquivo": "francisco ayres.json"
+    },
+    {
+      "chave": "francisco macedo",
+      "nmMunicipio": "Francisco Macedo",
+      "cdMunicipio": "2204154",
+      "totalSetores": 10,
+      "arquivo": "francisco macedo.json"
+    },
+    {
+      "chave": "francisco santos",
+      "nmMunicipio": "Francisco Santos",
+      "cdMunicipio": "2204204",
+      "totalSetores": 19,
+      "arquivo": "francisco santos.json"
+    },
+    {
+      "chave": "fronteiras",
+      "nmMunicipio": "Fronteiras",
+      "cdMunicipio": "2204303",
+      "totalSetores": 29,
+      "arquivo": "fronteiras.json"
+    },
+    {
+      "chave": "geminiano",
+      "nmMunicipio": "Geminiano",
+      "cdMunicipio": "2204352",
+      "totalSetores": 18,
+      "arquivo": "geminiano.json"
+    },
+    {
+      "chave": "gilbues",
+      "nmMunicipio": "Gilbués",
+      "cdMunicipio": "2204402",
+      "totalSetores": 22,
+      "arquivo": "gilbues.json"
+    },
+    {
+      "chave": "guadalupe",
+      "nmMunicipio": "Guadalupe",
+      "cdMunicipio": "2204501",
+      "totalSetores": 17,
+      "arquivo": "guadalupe.json"
+    },
+    {
+      "chave": "guaribas",
+      "nmMunicipio": "Guaribas",
+      "cdMunicipio": "2204550",
+      "totalSetores": 12,
+      "arquivo": "guaribas.json"
+    },
+    {
+      "chave": "hugo napoleao",
+      "nmMunicipio": "Hugo Napoleão",
+      "cdMunicipio": "2204600",
+      "totalSetores": 7,
+      "arquivo": "hugo napoleao.json"
+    },
+    {
+      "chave": "ilha grande",
+      "nmMunicipio": "Ilha Grande",
+      "cdMunicipio": "2204659",
+      "totalSetores": 15,
+      "arquivo": "ilha grande.json"
+    },
+    {
+      "chave": "inhuma",
+      "nmMunicipio": "Inhuma",
+      "cdMunicipio": "2204709",
+      "totalSetores": 37,
+      "arquivo": "inhuma.json"
+    },
+    {
+      "chave": "ipiranga do piaui",
+      "nmMunicipio": "Ipiranga do Piauí",
+      "cdMunicipio": "2204808",
+      "totalSetores": 22,
+      "arquivo": "ipiranga do piaui.json"
+    },
+    {
+      "chave": "isaias coelho",
+      "nmMunicipio": "Isaías Coelho",
+      "cdMunicipio": "2204907",
+      "totalSetores": 32,
+      "arquivo": "isaias coelho.json"
+    },
+    {
+      "chave": "itainopolis",
+      "nmMunicipio": "Itainópolis",
+      "cdMunicipio": "2205003",
+      "totalSetores": 35,
+      "arquivo": "itainopolis.json"
+    },
+    {
+      "chave": "itaueira",
+      "nmMunicipio": "Itaueira",
+      "cdMunicipio": "2205102",
+      "totalSetores": 23,
+      "arquivo": "itaueira.json"
+    },
+    {
+      "chave": "jacobina do piaui",
+      "nmMunicipio": "Jacobina do Piauí",
+      "cdMunicipio": "2205151",
+      "totalSetores": 21,
+      "arquivo": "jacobina do piaui.json"
+    },
+    {
+      "chave": "jaicos",
+      "nmMunicipio": "Jaicós",
+      "cdMunicipio": "2205201",
+      "totalSetores": 38,
+      "arquivo": "jaicos.json"
+    },
+    {
+      "chave": "jardim do mulato",
+      "nmMunicipio": "Jardim do Mulato",
+      "cdMunicipio": "2205250",
+      "totalSetores": 14,
+      "arquivo": "jardim do mulato.json"
+    },
+    {
+      "chave": "jatoba do piaui",
+      "nmMunicipio": "Jatobá do Piauí",
+      "cdMunicipio": "2205276",
+      "totalSetores": 12,
+      "arquivo": "jatoba do piaui.json"
+    },
+    {
+      "chave": "jerumenha",
+      "nmMunicipio": "Jerumenha",
+      "cdMunicipio": "2205300",
+      "totalSetores": 13,
+      "arquivo": "jerumenha.json"
+    },
+    {
+      "chave": "joao costa",
+      "nmMunicipio": "João Costa",
+      "cdMunicipio": "2205359",
+      "totalSetores": 10,
+      "arquivo": "joao costa.json"
+    },
+    {
+      "chave": "joaquim pires",
+      "nmMunicipio": "Joaquim Pires",
+      "cdMunicipio": "2205409",
+      "totalSetores": 36,
+      "arquivo": "joaquim pires.json"
+    },
+    {
+      "chave": "joca marques",
+      "nmMunicipio": "Joca Marques",
+      "cdMunicipio": "2205458",
+      "totalSetores": 17,
+      "arquivo": "joca marques.json"
+    },
+    {
+      "chave": "jose de freitas",
+      "nmMunicipio": "José de Freitas",
+      "cdMunicipio": "2205508",
+      "totalSetores": 77,
+      "arquivo": "jose de freitas.json"
+    },
+    {
+      "chave": "juazeiro do piaui",
+      "nmMunicipio": "Juazeiro do Piauí",
+      "cdMunicipio": "2205516",
+      "totalSetores": 22,
+      "arquivo": "juazeiro do piaui.json"
+    },
+    {
+      "chave": "julio borges",
+      "nmMunicipio": "Júlio Borges",
+      "cdMunicipio": "2205524",
+      "totalSetores": 13,
+      "arquivo": "julio borges.json"
+    },
+    {
+      "chave": "jurema",
+      "nmMunicipio": "Jurema",
+      "cdMunicipio": "2205532",
+      "totalSetores": 17,
+      "arquivo": "jurema.json"
+    },
+    {
+      "chave": "lagoa alegre",
+      "nmMunicipio": "Lagoa Alegre",
+      "cdMunicipio": "2205557",
+      "totalSetores": 16,
+      "arquivo": "lagoa alegre.json"
+    },
+    {
+      "chave": "lagoa de sao francisco",
+      "nmMunicipio": "Lagoa de São Francisco",
+      "cdMunicipio": "2205573",
+      "totalSetores": 20,
+      "arquivo": "lagoa de sao francisco.json"
+    },
+    {
+      "chave": "lagoa do barro do piaui",
+      "nmMunicipio": "Lagoa do Barro do Piauí",
+      "cdMunicipio": "2205565",
+      "totalSetores": 16,
+      "arquivo": "lagoa do barro do piaui.json"
+    },
+    {
+      "chave": "lagoa do piaui",
+      "nmMunicipio": "Lagoa do Piauí",
+      "cdMunicipio": "2205581",
+      "totalSetores": 11,
+      "arquivo": "lagoa do piaui.json"
+    },
+    {
+      "chave": "lagoa do sitio",
+      "nmMunicipio": "Lagoa do Sítio",
+      "cdMunicipio": "2205599",
+      "totalSetores": 16,
+      "arquivo": "lagoa do sitio.json"
+    },
+    {
+      "chave": "lagoinha do piaui",
+      "nmMunicipio": "Lagoinha do Piauí",
+      "cdMunicipio": "2205540",
+      "totalSetores": 9,
+      "arquivo": "lagoinha do piaui.json"
+    },
+    {
+      "chave": "landri sales",
+      "nmMunicipio": "Landri Sales",
+      "cdMunicipio": "2205607",
+      "totalSetores": 17,
+      "arquivo": "landri sales.json"
+    },
+    {
+      "chave": "luis correia",
+      "nmMunicipio": "Luís Correia",
+      "cdMunicipio": "2205706",
+      "totalSetores": 75,
+      "arquivo": "luis correia.json"
+    },
+    {
+      "chave": "luzilandia",
+      "nmMunicipio": "Luzilândia",
+      "cdMunicipio": "2205805",
+      "totalSetores": 59,
+      "arquivo": "luzilandia.json"
+    },
+    {
+      "chave": "madeiro",
+      "nmMunicipio": "Madeiro",
+      "cdMunicipio": "2205854",
+      "totalSetores": 16,
+      "arquivo": "madeiro.json"
+    },
+    {
+      "chave": "manoel emidio",
+      "nmMunicipio": "Manoel Emídio",
+      "cdMunicipio": "2205904",
+      "totalSetores": 14,
+      "arquivo": "manoel emidio.json"
+    },
+    {
+      "chave": "marcolandia",
+      "nmMunicipio": "Marcolândia",
+      "cdMunicipio": "2205953",
+      "totalSetores": 15,
+      "arquivo": "marcolandia.json"
+    },
+    {
+      "chave": "marcos parente",
+      "nmMunicipio": "Marcos Parente",
+      "cdMunicipio": "2206001",
+      "totalSetores": 12,
+      "arquivo": "marcos parente.json"
+    },
+    {
+      "chave": "massape do piaui",
+      "nmMunicipio": "Massapê do Piauí",
+      "cdMunicipio": "2206050",
+      "totalSetores": 14,
+      "arquivo": "massape do piaui.json"
+    },
+    {
+      "chave": "matias olimpio",
+      "nmMunicipio": "Matias Olímpio",
+      "cdMunicipio": "2206100",
+      "totalSetores": 26,
+      "arquivo": "matias olimpio.json"
+    },
+    {
+      "chave": "miguel alves",
+      "nmMunicipio": "Miguel Alves",
+      "cdMunicipio": "2206209",
+      "totalSetores": 58,
+      "arquivo": "miguel alves.json"
+    },
+    {
+      "chave": "miguel leao",
+      "nmMunicipio": "Miguel Leão",
+      "cdMunicipio": "2206308",
+      "totalSetores": 6,
+      "arquivo": "miguel leao.json"
+    },
+    {
+      "chave": "milton brandao",
+      "nmMunicipio": "Milton Brandão",
+      "cdMunicipio": "2206357",
+      "totalSetores": 18,
+      "arquivo": "milton brandao.json"
+    },
+    {
+      "chave": "monsenhor gil",
+      "nmMunicipio": "Monsenhor Gil",
+      "cdMunicipio": "2206407",
+      "totalSetores": 28,
+      "arquivo": "monsenhor gil.json"
+    },
+    {
+      "chave": "monsenhor hipolito",
+      "nmMunicipio": "Monsenhor Hipólito",
+      "cdMunicipio": "2206506",
+      "totalSetores": 19,
+      "arquivo": "monsenhor hipolito.json"
+    },
+    {
+      "chave": "monte alegre do piaui",
+      "nmMunicipio": "Monte Alegre do Piauí",
+      "cdMunicipio": "2206605",
+      "totalSetores": 22,
+      "arquivo": "monte alegre do piaui.json"
+    },
+    {
+      "chave": "morro cabeca no tempo",
+      "nmMunicipio": "Morro Cabeça No Tempo",
+      "cdMunicipio": "2206654",
+      "totalSetores": 12,
+      "arquivo": "morro cabeca no tempo.json"
+    },
+    {
+      "chave": "morro do chapeu do piaui",
+      "nmMunicipio": "Morro do Chapéu do Piauí",
+      "cdMunicipio": "2206670",
+      "totalSetores": 14,
+      "arquivo": "morro do chapeu do piaui.json"
+    },
+    {
+      "chave": "murici dos portelas",
+      "nmMunicipio": "Murici dos Portelas",
+      "cdMunicipio": "2206696",
+      "totalSetores": 22,
+      "arquivo": "murici dos portelas.json"
+    },
+    {
+      "chave": "nazare do piaui",
+      "nmMunicipio": "Nazaré do Piauí",
+      "cdMunicipio": "2206704",
+      "totalSetores": 19,
+      "arquivo": "nazare do piaui.json"
+    },
+    {
+      "chave": "nazaria",
+      "nmMunicipio": "Nazária",
+      "cdMunicipio": "2206720",
+      "totalSetores": 29,
+      "arquivo": "nazaria.json"
+    },
+    {
+      "chave": "nossa senhora de nazare",
+      "nmMunicipio": "Nossa Senhora de Nazaré",
+      "cdMunicipio": "2206753",
+      "totalSetores": 11,
+      "arquivo": "nossa senhora de nazare.json"
+    },
+    {
+      "chave": "nossa senhora dos remedios",
+      "nmMunicipio": "Nossa Senhora dos Remédios",
+      "cdMunicipio": "2206803",
+      "totalSetores": 19,
+      "arquivo": "nossa senhora dos remedios.json"
+    },
+    {
+      "chave": "nova santa rita",
+      "nmMunicipio": "Nova Santa Rita",
+      "cdMunicipio": "2207959",
+      "totalSetores": 10,
+      "arquivo": "nova santa rita.json"
+    },
+    {
+      "chave": "novo oriente do piaui",
+      "nmMunicipio": "Novo Oriente do Piauí",
+      "cdMunicipio": "2206902",
+      "totalSetores": 16,
+      "arquivo": "novo oriente do piaui.json"
+    },
+    {
+      "chave": "novo santo antonio",
+      "nmMunicipio": "Novo Santo Antônio",
+      "cdMunicipio": "2206951",
+      "totalSetores": 11,
+      "arquivo": "novo santo antonio.json"
+    },
+    {
+      "chave": "oeiras",
+      "nmMunicipio": "Oeiras",
+      "cdMunicipio": "2207009",
+      "totalSetores": 95,
+      "arquivo": "oeiras.json"
+    },
+    {
+      "chave": "olho d agua do piaui",
+      "nmMunicipio": "Olho D'água do Piauí",
+      "cdMunicipio": "2207108",
+      "totalSetores": 8,
+      "arquivo": "olho d agua do piaui.json"
+    },
+    {
+      "chave": "padre marcos",
+      "nmMunicipio": "Padre Marcos",
+      "cdMunicipio": "2207207",
+      "totalSetores": 16,
+      "arquivo": "padre marcos.json"
+    },
+    {
+      "chave": "paes landim",
+      "nmMunicipio": "Paes Landim",
+      "cdMunicipio": "2207306",
+      "totalSetores": 9,
+      "arquivo": "paes landim.json"
+    },
+    {
+      "chave": "pajeu do piaui",
+      "nmMunicipio": "Pajeú do Piauí",
+      "cdMunicipio": "2207355",
+      "totalSetores": 10,
+      "arquivo": "pajeu do piaui.json"
+    },
+    {
+      "chave": "palmeira do piaui",
+      "nmMunicipio": "Palmeira do Piauí",
+      "cdMunicipio": "2207405",
+      "totalSetores": 11,
+      "arquivo": "palmeira do piaui.json"
+    },
+    {
+      "chave": "palmeirais",
+      "nmMunicipio": "Palmeirais",
+      "cdMunicipio": "2207504",
+      "totalSetores": 37,
+      "arquivo": "palmeirais.json"
+    },
+    {
+      "chave": "paqueta",
+      "nmMunicipio": "Paquetá",
+      "cdMunicipio": "2207553",
+      "totalSetores": 15,
+      "arquivo": "paqueta.json"
+    },
+    {
+      "chave": "parnagua",
+      "nmMunicipio": "Parnaguá",
+      "cdMunicipio": "2207603",
+      "totalSetores": 19,
+      "arquivo": "parnagua.json"
+    },
+    {
+      "chave": "parnaiba",
+      "nmMunicipio": "Parnaíba",
+      "cdMunicipio": "2207702",
+      "totalSetores": 265,
+      "arquivo": "parnaiba.json"
+    },
+    {
+      "chave": "passagem franca do piaui",
+      "nmMunicipio": "Passagem Franca do Piauí",
+      "cdMunicipio": "2207751",
+      "totalSetores": 11,
+      "arquivo": "passagem franca do piaui.json"
+    },
+    {
+      "chave": "patos do piaui",
+      "nmMunicipio": "Patos do Piauí",
+      "cdMunicipio": "2207777",
+      "totalSetores": 18,
+      "arquivo": "patos do piaui.json"
+    },
+    {
+      "chave": "pau d arco do piaui",
+      "nmMunicipio": "Pau D'arco do Piauí",
+      "cdMunicipio": "2207793",
+      "totalSetores": 11,
+      "arquivo": "pau d arco do piaui.json"
+    },
+    {
+      "chave": "paulistana",
+      "nmMunicipio": "Paulistana",
+      "cdMunicipio": "2207801",
+      "totalSetores": 62,
+      "arquivo": "paulistana.json"
+    },
+    {
+      "chave": "pavussu",
+      "nmMunicipio": "Pavussu",
+      "cdMunicipio": "2207850",
+      "totalSetores": 12,
+      "arquivo": "pavussu.json"
+    },
+    {
+      "chave": "pedro ii",
+      "nmMunicipio": "Pedro Ii",
+      "cdMunicipio": "2207900",
+      "totalSetores": 81,
+      "arquivo": "pedro ii.json"
+    },
+    {
+      "chave": "pedro laurentino",
+      "nmMunicipio": "Pedro Laurentino",
+      "cdMunicipio": "2207934",
+      "totalSetores": 10,
+      "arquivo": "pedro laurentino.json"
+    },
+    {
+      "chave": "picos",
+      "nmMunicipio": "Picos",
+      "cdMunicipio": "2208007",
+      "totalSetores": 165,
+      "arquivo": "picos.json"
+    },
+    {
+      "chave": "pimenteiras",
+      "nmMunicipio": "Pimenteiras",
+      "cdMunicipio": "2208106",
+      "totalSetores": 39,
+      "arquivo": "pimenteiras.json"
+    },
+    {
+      "chave": "pio ix",
+      "nmMunicipio": "Pio Ix",
+      "cdMunicipio": "2208205",
+      "totalSetores": 54,
+      "arquivo": "pio ix.json"
+    },
+    {
+      "chave": "piracuruca",
+      "nmMunicipio": "Piracuruca",
+      "cdMunicipio": "2208304",
+      "totalSetores": 67,
+      "arquivo": "piracuruca.json"
+    },
+    {
+      "chave": "piripiri",
+      "nmMunicipio": "Piripiri",
+      "cdMunicipio": "2208403",
+      "totalSetores": 150,
+      "arquivo": "piripiri.json"
+    },
+    {
+      "chave": "porto",
+      "nmMunicipio": "Porto",
+      "cdMunicipio": "2208502",
+      "totalSetores": 26,
+      "arquivo": "porto.json"
+    },
+    {
+      "chave": "porto alegre do piaui",
+      "nmMunicipio": "Porto Alegre do Piauí",
+      "cdMunicipio": "2208551",
+      "totalSetores": 7,
+      "arquivo": "porto alegre do piaui.json"
+    },
+    {
+      "chave": "prata do piaui",
+      "nmMunicipio": "Prata do Piauí",
+      "cdMunicipio": "2208601",
+      "totalSetores": 6,
+      "arquivo": "prata do piaui.json"
+    },
+    {
+      "chave": "queimada nova",
+      "nmMunicipio": "Queimada Nova",
+      "cdMunicipio": "2208650",
+      "totalSetores": 34,
+      "arquivo": "queimada nova.json"
+    },
+    {
+      "chave": "redencao do gurgueia",
+      "nmMunicipio": "Redenção do Gurguéia",
+      "cdMunicipio": "2208700",
+      "totalSetores": 20,
+      "arquivo": "redencao do gurgueia.json"
+    },
+    {
+      "chave": "regeneracao",
+      "nmMunicipio": "Regeneração",
+      "cdMunicipio": "2208809",
+      "totalSetores": 37,
+      "arquivo": "regeneracao.json"
+    },
+    {
+      "chave": "riacho frio",
+      "nmMunicipio": "Riacho Frio",
+      "cdMunicipio": "2208858",
+      "totalSetores": 10,
+      "arquivo": "riacho frio.json"
+    },
+    {
+      "chave": "ribeira do piaui",
+      "nmMunicipio": "Ribeira do Piauí",
+      "cdMunicipio": "2208874",
+      "totalSetores": 13,
+      "arquivo": "ribeira do piaui.json"
+    },
+    {
+      "chave": "ribeiro goncalves",
+      "nmMunicipio": "Ribeiro Gonçalves",
+      "cdMunicipio": "2208908",
+      "totalSetores": 17,
+      "arquivo": "ribeiro goncalves.json"
+    },
+    {
+      "chave": "rio grande do piaui",
+      "nmMunicipio": "Rio Grande do Piauí",
+      "cdMunicipio": "2209005",
+      "totalSetores": 14,
+      "arquivo": "rio grande do piaui.json"
+    },
+    {
+      "chave": "santa cruz do piaui",
+      "nmMunicipio": "Santa Cruz do Piauí",
+      "cdMunicipio": "2209104",
+      "totalSetores": 14,
+      "arquivo": "santa cruz do piaui.json"
+    },
+    {
+      "chave": "santa cruz dos milagres",
+      "nmMunicipio": "Santa Cruz dos Milagres",
+      "cdMunicipio": "2209153",
+      "totalSetores": 11,
+      "arquivo": "santa cruz dos milagres.json"
+    },
+    {
+      "chave": "santa filomena",
+      "nmMunicipio": "Santa Filomena",
+      "cdMunicipio": "2209203",
+      "totalSetores": 15,
+      "arquivo": "santa filomena.json"
+    },
+    {
+      "chave": "santa luz",
+      "nmMunicipio": "Santa Luz",
+      "cdMunicipio": "2209302",
+      "totalSetores": 10,
+      "arquivo": "santa luz.json"
+    },
+    {
+      "chave": "santa rosa do piaui",
+      "nmMunicipio": "Santa Rosa do Piauí",
+      "cdMunicipio": "2209377",
+      "totalSetores": 9,
+      "arquivo": "santa rosa do piaui.json"
+    },
+    {
+      "chave": "santana do piaui",
+      "nmMunicipio": "Santana do Piauí",
+      "cdMunicipio": "2209351",
+      "totalSetores": 9,
+      "arquivo": "santana do piaui.json"
+    },
+    {
+      "chave": "santo antonio de lisboa",
+      "nmMunicipio": "Santo Antônio de Lisboa",
+      "cdMunicipio": "2209401",
+      "totalSetores": 12,
+      "arquivo": "santo antonio de lisboa.json"
+    },
+    {
+      "chave": "santo antonio dos milagres",
+      "nmMunicipio": "Santo Antônio dos Milagres",
+      "cdMunicipio": "2209450",
+      "totalSetores": 5,
+      "arquivo": "santo antonio dos milagres.json"
+    },
+    {
+      "chave": "santo inacio do piaui",
+      "nmMunicipio": "Santo Inácio do Piauí",
+      "cdMunicipio": "2209500",
+      "totalSetores": 11,
+      "arquivo": "santo inacio do piaui.json"
+    },
+    {
+      "chave": "sao braz do piaui",
+      "nmMunicipio": "São Braz do Piauí",
+      "cdMunicipio": "2209559",
+      "totalSetores": 14,
+      "arquivo": "sao braz do piaui.json"
+    },
+    {
+      "chave": "sao felix do piaui",
+      "nmMunicipio": "São Félix do Piauí",
+      "cdMunicipio": "2209609",
+      "totalSetores": 14,
+      "arquivo": "sao felix do piaui.json"
+    },
+    {
+      "chave": "sao francisco de assis do piaui",
+      "nmMunicipio": "São Francisco de Assis do Piauí",
+      "cdMunicipio": "2209658",
+      "totalSetores": 13,
+      "arquivo": "sao francisco de assis do piaui.json"
+    },
+    {
+      "chave": "sao francisco do piaui",
+      "nmMunicipio": "São Francisco do Piauí",
+      "cdMunicipio": "2209708",
+      "totalSetores": 17,
+      "arquivo": "sao francisco do piaui.json"
+    },
+    {
+      "chave": "sao goncalo do gurgueia",
+      "nmMunicipio": "São Gonçalo do Gurguéia",
+      "cdMunicipio": "2209757",
+      "totalSetores": 8,
+      "arquivo": "sao goncalo do gurgueia.json"
+    },
+    {
+      "chave": "sao goncalo do piaui",
+      "nmMunicipio": "São Gonçalo do Piauí",
+      "cdMunicipio": "2209807",
+      "totalSetores": 11,
+      "arquivo": "sao goncalo do piaui.json"
+    },
+    {
+      "chave": "sao joao da canabrava",
+      "nmMunicipio": "São João da Canabrava",
+      "cdMunicipio": "2209856",
+      "totalSetores": 11,
+      "arquivo": "sao joao da canabrava.json"
+    },
+    {
+      "chave": "sao joao da fronteira",
+      "nmMunicipio": "São João da Fronteira",
+      "cdMunicipio": "2209872",
+      "totalSetores": 11,
+      "arquivo": "sao joao da fronteira.json"
+    },
+    {
+      "chave": "sao joao da serra",
+      "nmMunicipio": "São João da Serra",
+      "cdMunicipio": "2209906",
+      "totalSetores": 15,
+      "arquivo": "sao joao da serra.json"
+    },
+    {
+      "chave": "sao joao da varjota",
+      "nmMunicipio": "São João da Varjota",
+      "cdMunicipio": "2209955",
+      "totalSetores": 19,
+      "arquivo": "sao joao da varjota.json"
+    },
+    {
+      "chave": "sao joao do arraial",
+      "nmMunicipio": "São João do Arraial",
+      "cdMunicipio": "2209971",
+      "totalSetores": 20,
+      "arquivo": "sao joao do arraial.json"
+    },
+    {
+      "chave": "sao joao do piaui",
+      "nmMunicipio": "São João do Piauí",
+      "cdMunicipio": "2210003",
+      "totalSetores": 54,
+      "arquivo": "sao joao do piaui.json"
+    },
+    {
+      "chave": "sao jose do divino",
+      "nmMunicipio": "São José do Divino",
+      "cdMunicipio": "2210052",
+      "totalSetores": 12,
+      "arquivo": "sao jose do divino.json"
+    },
+    {
+      "chave": "sao jose do peixe",
+      "nmMunicipio": "São José do Peixe",
+      "cdMunicipio": "2210102",
+      "totalSetores": 12,
+      "arquivo": "sao jose do peixe.json"
+    },
+    {
+      "chave": "sao jose do piaui",
+      "nmMunicipio": "São José do Piauí",
+      "cdMunicipio": "2210201",
+      "totalSetores": 22,
+      "arquivo": "sao jose do piaui.json"
+    },
+    {
+      "chave": "sao juliao",
+      "nmMunicipio": "São Julião",
+      "cdMunicipio": "2210300",
+      "totalSetores": 17,
+      "arquivo": "sao juliao.json"
+    },
+    {
+      "chave": "sao lourenco do piaui",
+      "nmMunicipio": "São Lourenço do Piauí",
+      "cdMunicipio": "2210359",
+      "totalSetores": 11,
+      "arquivo": "sao lourenco do piaui.json"
+    },
+    {
+      "chave": "sao luis do piaui",
+      "nmMunicipio": "São Luis do Piauí",
+      "cdMunicipio": "2210375",
+      "totalSetores": 9,
+      "arquivo": "sao luis do piaui.json"
+    },
+    {
+      "chave": "sao miguel da baixa grande",
+      "nmMunicipio": "São Miguel da Baixa Grande",
+      "cdMunicipio": "2210383",
+      "totalSetores": 5,
+      "arquivo": "sao miguel da baixa grande.json"
+    },
+    {
+      "chave": "sao miguel do fidalgo",
+      "nmMunicipio": "São Miguel do Fidalgo",
+      "cdMunicipio": "2210391",
+      "totalSetores": 10,
+      "arquivo": "sao miguel do fidalgo.json"
+    },
+    {
+      "chave": "sao miguel do tapuio",
+      "nmMunicipio": "São Miguel do Tapuio",
+      "cdMunicipio": "2210409",
+      "totalSetores": 55,
+      "arquivo": "sao miguel do tapuio.json"
+    },
+    {
+      "chave": "sao pedro do piaui",
+      "nmMunicipio": "São Pedro do Piauí",
+      "cdMunicipio": "2210508",
+      "totalSetores": 31,
+      "arquivo": "sao pedro do piaui.json"
+    },
+    {
+      "chave": "sao raimundo nonato",
+      "nmMunicipio": "São Raimundo Nonato",
+      "cdMunicipio": "2210607",
+      "totalSetores": 92,
+      "arquivo": "sao raimundo nonato.json"
+    },
+    {
+      "chave": "sebastiao barros",
+      "nmMunicipio": "Sebastião Barros",
+      "cdMunicipio": "2210623",
+      "totalSetores": 8,
+      "arquivo": "sebastiao barros.json"
+    },
+    {
+      "chave": "sebastiao leal",
+      "nmMunicipio": "Sebastião Leal",
+      "cdMunicipio": "2210631",
+      "totalSetores": 11,
+      "arquivo": "sebastiao leal.json"
+    },
+    {
+      "chave": "sigefredo pacheco",
+      "nmMunicipio": "Sigefredo Pacheco",
+      "cdMunicipio": "2210656",
+      "totalSetores": 28,
+      "arquivo": "sigefredo pacheco.json"
+    },
+    {
+      "chave": "simoes",
+      "nmMunicipio": "Simões",
+      "cdMunicipio": "2210706",
+      "totalSetores": 43,
+      "arquivo": "simoes.json"
+    },
+    {
+      "chave": "simplicio mendes",
+      "nmMunicipio": "Simplício Mendes",
+      "cdMunicipio": "2210805",
+      "totalSetores": 28,
+      "arquivo": "simplicio mendes.json"
+    },
+    {
+      "chave": "socorro do piaui",
+      "nmMunicipio": "Socorro do Piauí",
+      "cdMunicipio": "2210904",
+      "totalSetores": 12,
+      "arquivo": "socorro do piaui.json"
+    },
+    {
+      "chave": "sussuapara",
+      "nmMunicipio": "Sussuapara",
+      "cdMunicipio": "2210938",
+      "totalSetores": 19,
+      "arquivo": "sussuapara.json"
+    },
+    {
+      "chave": "tamboril do piaui",
+      "nmMunicipio": "Tamboril do Piauí",
+      "cdMunicipio": "2210953",
+      "totalSetores": 8,
+      "arquivo": "tamboril do piaui.json"
+    },
+    {
+      "chave": "tanque do piaui",
+      "nmMunicipio": "Tanque do Piauí",
+      "cdMunicipio": "2210979",
+      "totalSetores": 7,
+      "arquivo": "tanque do piaui.json"
+    },
+    {
+      "chave": "teresina",
+      "nmMunicipio": "Teresina",
+      "cdMunicipio": "2211001",
+      "totalSetores": 1531,
+      "arquivo": "teresina.json"
+    },
+    {
+      "chave": "uniao",
+      "nmMunicipio": "União",
+      "cdMunicipio": "2211100",
+      "totalSetores": 97,
+      "arquivo": "uniao.json"
+    },
+    {
+      "chave": "urucui",
+      "nmMunicipio": "Uruçuí",
+      "cdMunicipio": "2211209",
+      "totalSetores": 44,
+      "arquivo": "urucui.json"
+    },
+    {
+      "chave": "valenca do piaui",
+      "nmMunicipio": "Valença do Piauí",
+      "cdMunicipio": "2211308",
+      "totalSetores": 48,
+      "arquivo": "valenca do piaui.json"
+    },
+    {
+      "chave": "varzea branca",
+      "nmMunicipio": "Várzea Branca",
+      "cdMunicipio": "2211357",
+      "totalSetores": 29,
+      "arquivo": "varzea branca.json"
+    },
+    {
+      "chave": "varzea grande",
+      "nmMunicipio": "Várzea Grande",
+      "cdMunicipio": "2211407",
+      "totalSetores": 13,
+      "arquivo": "varzea grande.json"
+    },
+    {
+      "chave": "vera mendes",
+      "nmMunicipio": "Vera Mendes",
+      "cdMunicipio": "2211506",
+      "totalSetores": 8,
+      "arquivo": "vera mendes.json"
+    },
+    {
+      "chave": "vila nova do piaui",
+      "nmMunicipio": "Vila Nova do Piauí",
+      "cdMunicipio": "2211605",
+      "totalSetores": 10,
+      "arquivo": "vila nova do piaui.json"
+    },
+    {
+      "chave": "wall ferraz",
+      "nmMunicipio": "Wall Ferraz",
+      "cdMunicipio": "2211704",
+      "totalSetores": 11,
+      "arquivo": "wall ferraz.json"
+    }
+  ]
+}
