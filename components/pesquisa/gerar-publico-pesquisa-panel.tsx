@@ -2,7 +2,7 @@
 
 import dynamic from 'next/dynamic'
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { AlertTriangle, Download, FileSpreadsheet, Loader2, MapPin, Users } from 'lucide-react'
+import { AlertTriangle, Download, FileSpreadsheet, HelpCircle, Loader2, MapPin, Users } from 'lucide-react'
 import type { PlanoAmostragemPublico } from '@/lib/plano-amostragem-publico-types'
 import type { LocalMapaPlano } from '@/lib/eleitorado-locais-pi'
 import type { SetorMapaPlano } from '@/lib/setores-censitarios-pi'
@@ -12,6 +12,7 @@ import {
   exportarPlanoAmostragemPdf,
 } from '@/lib/plano-amostragem-publico-export'
 import { PlanoCampoRoteiroSection } from '@/components/pesquisa/plano-campo-roteiro-section'
+import { PlanoAmostragemComoFuncionaModal } from '@/components/pesquisa/plano-amostragem-como-funciona-modal'
 import { sugerirEntrevistadores } from '@/lib/plano-amostragem-publico'
 
 const MapaPlanoAmostragem = dynamic(
@@ -73,6 +74,7 @@ export function GerarPublicoPesquisaPanel() {
   const [loadingPlano, setLoadingPlano] = useState<boolean>(false)
   const [erro, setErro] = useState<string | null>(null)
   const [exportBusy, setExportBusy] = useState<'idle' | 'xlsx' | 'pdf'>('idle')
+  const [comoFuncionaAberto, setComoFuncionaAberto] = useState<boolean>(false)
 
   useEffect(() => {
     let cancelado = false
@@ -169,18 +171,33 @@ export function GerarPublicoPesquisaPanel() {
 
   return (
     <div className="flex flex-col gap-4">
+      <PlanoAmostragemComoFuncionaModal
+        open={comoFuncionaAberto}
+        onClose={() => setComoFuncionaAberto(false)}
+      />
       <section className="rounded-xl border border-card bg-surface p-4 sm:p-5 shadow-card">
-        <div className="mb-4 flex items-start gap-3">
-          <div className="rounded-lg bg-accent-gold/10 p-2 text-accent-gold">
-            <Users className="h-5 w-5" aria-hidden />
+        <div className="mb-4 flex items-start justify-between gap-3">
+          <div className="flex items-start gap-3 min-w-0">
+            <div className="rounded-lg bg-accent-gold/10 p-2 text-accent-gold shrink-0">
+              <Users className="h-5 w-5" aria-hidden />
+            </div>
+            <div className="min-w-0">
+              <h2 className="text-base font-semibold text-text-primary">Gerar público para pesquisa</h2>
+              <p className="mt-1 text-sm text-secondary leading-relaxed">
+                Plano metodológico preliminar para o instituto executar no campo: cotas demográficas,
+                blocos urbano/rural e roteiro de equipe. Valide povoados e limites locais antes da coleta.
+              </p>
+            </div>
           </div>
-          <div>
-            <h2 className="text-base font-semibold text-text-primary">Gerar público para pesquisa</h2>
-            <p className="mt-1 text-sm text-secondary leading-relaxed">
-              Plano metodológico preliminar para o instituto executar no campo: cotas demográficas,
-              blocos urbano/rural e roteiro de equipe. Valide povoados e limites locais antes da coleta.
-            </p>
-          </div>
+          <button
+            type="button"
+            onClick={() => setComoFuncionaAberto(true)}
+            className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-card bg-background px-3 py-2 text-xs font-medium text-text-primary hover:bg-surface sm:text-sm"
+            title="Entenda como o plano distribui entrevistas por área"
+          >
+            <HelpCircle className="h-4 w-4 text-accent-gold" aria-hidden />
+            Como funciona?
+          </button>
         </div>
 
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
