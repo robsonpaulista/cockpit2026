@@ -327,7 +327,7 @@ export const TabelaMatrizVotacaoSecao = forwardRef<
                   )}
                   title={
                     isColunaExpectativaLideranca(c.id)
-                      ? `${c.nmVotavel} · expectativa distribuída por seção · total ${c.totalVotos.toLocaleString('pt-BR')}${temExplicacaoExpectativa ? ' · clique no valor para ver a regra aplicada' : ''}`
+                      ? `${c.nmVotavel} · expectativa por seção (urnas 2024 + similaridade) · total ${c.totalVotos.toLocaleString('pt-BR')}${temExplicacaoExpectativa ? ' · clique no valor para ver como chegamos no número' : ''}`
                       : `${c.dsCargo} · ${c.nmVotavel} · total ${c.totalVotos.toLocaleString('pt-BR')}`
                   }
                 >

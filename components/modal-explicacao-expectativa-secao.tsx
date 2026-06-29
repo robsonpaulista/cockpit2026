@@ -23,8 +23,16 @@ type ModalExplicacaoExpectativaSecaoProps = {
   onClose: () => void
 }
 
-const PANEL_WIDTH = 460
-const PANEL_ESTIMATED_HEIGHT = 420
+const PANEL_WIDTH = 400
+const PANEL_ESTIMATED_HEIGHT = 320
+
+function fmtVotos(n: number): string {
+  return n.toLocaleString('pt-BR')
+}
+
+function expectativaDestaque(selecao: SelecaoExplicacaoExpectativa): number {
+  return selecao.escopo === 'secao' ? selecao.detalhe.expectativaSecao : selecao.detalhe.expectativaBairro
+}
 
 function badgeRegraClass(regra: ExpectativaSecaoDetalhe['regra'] | ExpectativaBairroDetalhe['regra']) {
   if (regra === 'similaridade_baixa') {
@@ -94,11 +102,12 @@ export function ModalExplicacaoExpectativaSecao({
         <div className="mb-3 flex items-start justify-between gap-3">
           <div className="min-w-0">
             <p className="text-[10px] font-semibold uppercase tracking-wide text-text-secondary">
-              Exp. 2026 · memória de cálculo
+              Expectativa 2026
             </p>
             <h3 id="exp-explicacao-titulo" className="mt-0.5 text-sm font-semibold text-text-primary">
-              {selecao.rotulo}
+              Como chegamos nesse número?
             </h3>
+            <p className="mt-0.5 text-xs text-text-secondary">{selecao.rotulo}</p>
           </div>
           <button
             type="button"
@@ -108,6 +117,15 @@ export function ModalExplicacaoExpectativaSecao({
           >
             <X className="h-4 w-4" />
           </button>
+        </div>
+
+        <div className="mb-4 rounded-xl border border-accent-gold/25 bg-accent-gold/8 px-4 py-3 text-center">
+          <p className="text-2xl font-bold tabular-nums text-text-primary">
+            {fmtVotos(expectativaDestaque(selecao))}
+          </p>
+          <p className="mt-0.5 text-[11px] text-text-secondary">
+            votos esperados {selecao.escopo === 'secao' ? 'nesta seção' : 'neste bairro'}
+          </p>
         </div>
 
         <span
@@ -122,22 +140,12 @@ export function ModalExplicacaoExpectativaSecao({
         <div className="space-y-4">
           {blocos.map((bloco) => (
             <section key={bloco.titulo}>
-              <h4 className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-text-primary">
-                {bloco.titulo}
-              </h4>
-              <ul className="space-y-1 text-[12px] leading-relaxed text-text-secondary">
+              <h4 className="mb-2 text-xs font-semibold text-text-primary">{bloco.titulo}</h4>
+              <div className="space-y-2 text-[13px] leading-relaxed text-text-secondary">
                 {bloco.linhas.map((linha) => (
-                  <li key={linha} className="flex gap-2">
-                    <span className="mt-2 h-1 w-1 shrink-0 rounded-full bg-text-secondary/60" aria-hidden />
-                    <span>{linha}</span>
-                  </li>
+                  <p key={linha}>{linha}</p>
                 ))}
-              </ul>
-              {bloco.formula ? (
-                <div className="mt-2 rounded-lg border border-accent-gold/30 bg-accent-gold/5 px-3 py-2 font-mono text-[11px] leading-relaxed text-text-primary">
-                  {bloco.formula}
-                </div>
-              ) : null}
+              </div>
             </section>
           ))}
         </div>

@@ -340,19 +340,22 @@ export const PainelVotacaoCandidatoResumo = forwardRef<HTMLElement, Props>(
           matriz: null as ReturnType<typeof montarMatrizVotacaoSecao> | null,
           detalhesPorSecao: new Map<string, never>(),
           detalhesPorBairro: new Map<string, never>(),
+          totalMapaEleitoral: 0,
+          totalReferenciaPlanilha: 0,
         }
       }
       const base = montarMatrizVotacaoSecao(secoes, candidatoIds)
       if (
         !compararComReferentes ||
         !vereadorId ||
-        !liderancaSelecionada ||
-        expectativaLiderancaTotal <= 0
+        !liderancaSelecionada
       ) {
         return {
           matriz: base,
           detalhesPorSecao: new Map(),
           detalhesPorBairro: new Map(),
+          totalMapaEleitoral: 0,
+          totalReferenciaPlanilha: 0,
         }
       }
       const injetado = injetarColunaExpectativaLideranca(base, {
@@ -366,6 +369,8 @@ export const PainelVotacaoCandidatoResumo = forwardRef<HTMLElement, Props>(
         matriz: injetado.matriz,
         detalhesPorSecao: injetado.detalhesPorSecao,
         detalhesPorBairro: injetado.detalhesPorBairro,
+        totalMapaEleitoral: injetado.totalMapaEleitoral,
+        totalReferenciaPlanilha: injetado.totalReferenciaPlanilha,
       }
     }, [
       candidatoIds,
@@ -551,21 +556,48 @@ export const PainelVotacaoCandidatoResumo = forwardRef<HTMLElement, Props>(
                       )
                     })}
                   </select>
-                  {liderancaSelecionada && expectativaLiderancaTotal > 0 && vereadorId && (
+                  {liderancaSelecionada && vereadorId && expectativaResult.totalMapaEleitoral > 0 && (
                     <p className="mt-1.5 text-[10px] text-text-secondary">
-                      Coluna <strong className="text-text-primary">Exp. 2026</strong> distribuída
-                      proporcionalmente aos votos do vereador em cada seção (
-                      {expectativaLiderancaTotal.toLocaleString('pt-BR')} no município).
+                      Coluna <strong className="text-text-primary">Exp. 2026</strong> projeta o
+                      território pelas urnas de 2024 do vereador
                       {depEstadualSelecionadoId ? (
                         <span>
                           {' '}
-                          · bairros com similaridade vereador × dep. estadual ≥ 50% mantêm o peso
-                          integral; abaixo disso, −30% no peso do vereador · clique no valor Exp.
-                          2026 para ver a regra aplicada
+                          (com ajuste onde vereador × dep. estadual divergem no bairro)
                         </span>
-                      ) : (
-                        <span> · clique no valor Exp. 2026 para ver a distribuição</span>
-                      )}
+                      ) : null}
+                      . Total do mapa:{' '}
+                      <strong className="text-text-primary">
+                        {expectativaResult.totalMapaEleitoral.toLocaleString('pt-BR')} votos
+                      </strong>
+                      {expectativaResult.totalReferenciaPlanilha > 0 ? (
+                        <span>
+                          {' '}
+                          · referência na planilha:{' '}
+                          <strong className="text-text-primary">
+                            {expectativaResult.totalReferenciaPlanilha.toLocaleString('pt-BR')}
+                          </strong>
+                          {expectativaResult.totalMapaEleitoral !==
+                          expectativaResult.totalReferenciaPlanilha ? (
+                            <span>
+                              {' '}
+                              (diferença:{' '}
+                              {expectativaResult.totalMapaEleitoral -
+                                expectativaResult.totalReferenciaPlanilha >
+                              0
+                                ? '+'
+                                : ''}
+                              {(
+                                expectativaResult.totalMapaEleitoral -
+                                expectativaResult.totalReferenciaPlanilha
+                              ).toLocaleString('pt-BR')}
+                              )
+                            </span>
+                          ) : null}
+                        </span>
+                      ) : null}
+                      {' '}
+                      · clique no valor Exp. 2026 para ver como chegamos no número
                       {liderancaMatchInicial &&
                       chaveLideranca(liderancaMatchInicial) !== liderancaSelecionadaKey ? (
                         <span> · substituída manualmente</span>

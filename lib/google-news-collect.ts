@@ -1,5 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { fetchGoogleNewsRss } from '@/lib/google-news-rss'
+import { resolveGoogleNewsSearchQueryForActor } from '@/lib/google-news-search-term'
 import type {
   GoogleNewsCollectResult,
   GoogleNewsRssItem,
@@ -81,9 +82,10 @@ export async function collectGoogleNewsForActor(
   }
 
   try {
-    const items = await fetchGoogleNewsRss(actor.name)
+    const searchQuery = resolveGoogleNewsSearchQueryForActor(actor)
+    const items = await fetchGoogleNewsRss(searchQuery)
     result.articlesFound = items.length
-    const { inserted, updated } = await upsertArticles(supabase, actor.id, actor.name, items)
+    const { inserted, updated } = await upsertArticles(supabase, actor.id, searchQuery, items)
     result.articlesInserted = inserted
     result.articlesUpdated = updated
   } catch (e) {

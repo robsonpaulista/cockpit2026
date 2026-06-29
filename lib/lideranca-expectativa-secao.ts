@@ -39,6 +39,7 @@ export type ExpectativaSecaoDetalhe = {
   secoesComAmbosNoBairro: number
   secoesParecidasNoBairro: number
   totalExpectativaMunicipio: number
+  totalMapaEleitoral: number
   totalPesoMunicipio: number
   nomeLideranca: string
 }
@@ -57,6 +58,7 @@ export type ExpectativaBairroDetalhe = {
   secoesComAmbosNoBairro: number
   secoesParecidasNoBairro: number
   totalExpectativaMunicipio: number
+  totalMapaEleitoral: number
   nomeLideranca: string
 }
 
@@ -77,14 +79,14 @@ function fmtPct(n: number): string {
   return `${n.toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%`
 }
 
-function descricaoFatorPeso(regra: RegraExpectativaDistribuicao): string {
+function textoAjusteSimilaridade(regra: RegraExpectativaDistribuicao): string | null {
   if (regra === 'similaridade_baixa') {
-    return `Regra 2: corte de ${Math.round(CORTE_PESO_VEREADOR_SIMILARIDADE_BAIXA * 100)}% → fator ${fmtPct((1 - CORTE_PESO_VEREADOR_SIMILARIDADE_BAIXA) * 100)}`
+    return `Neste bairro, vereador e dep. estadual não votaram parecido em muitas seções (menos de ${LIMIAR_SIMILARIDADE_BAIRRO_EXP}%). Para não superestimar, reduzimos ${Math.round(CORTE_PESO_VEREADOR_SIMILARIDADE_BAIXA * 100)}% nesta parte.`
   }
   if (regra === 'similaridade_alta') {
-    return 'Regra 1: peso integral → fator 100%'
+    return 'Neste bairro, o padrão de voto do vereador e do dep. estadual é consistente — usamos a base de 2024 sem desconto.'
   }
-  return 'Proporcional simples → fator 100%'
+  return null
 }
 
 export type InjetarExpectativaLiderancaResult = {
@@ -92,6 +94,8 @@ export type InjetarExpectativaLiderancaResult = {
   detalhesPorSecao: Map<string, ExpectativaSecaoDetalhe>
   detalhesPorBairro: Map<string, ExpectativaBairroDetalhe>
   usaRegraSimilaridade: boolean
+  totalMapaEleitoral: number
+  totalReferenciaPlanilha: number
 }
 
 export function rotuloRegraExpectativa(regra: RegraExpectativaDistribuicao): string {
@@ -102,145 +106,108 @@ export function rotuloRegraExpectativa(regra: RegraExpectativaDistribuicao): str
 
 export function tituloRegraExpectativa(regra: RegraExpectativaDistribuicao): string {
   if (regra === 'similaridade_baixa') {
-    return 'Regra 2 — similaridade baixa no bairro'
+    return 'Estimativa cautelosa neste bairro'
   }
   if (regra === 'similaridade_alta') {
-    return 'Regra 1 — similaridade alta no bairro'
+    return 'Base de 2024 confiável neste bairro'
   }
-  return 'Distribuição proporcional (sem dep. estadual)'
+  return 'Mapa pelas urnas de 2024'
+}
+
+function linhasIntroExpectativa(d: {
+  regra: RegraExpectativaDistribuicao
+  nomeLideranca: string
+  totalExpectativaMunicipio: number
+  totalMapaEleitoral: number
+}): string[] {
+  const linhas = [
+    'Partimos do que o vereador fez nas urnas de 2024 — quanto ele teve em cada seção.',
+  ]
+  if (d.regra !== 'proporcional_simples') {
+    linhas.push(
+      'Cruzamos com o dep. estadual na mesma urna: onde os dois tiveram votos parecidos no bairro, confiamos na base de 2024; onde divergiram, a estimativa fica mais conservadora.',
+    )
+  }
+  linhas.push(
+    `Somando o mapa, chegamos a ${fmtV(d.totalMapaEleitoral)} votos. Na planilha, ${d.nomeLideranca} consta com ${fmtV(d.totalExpectativaMunicipio)} — são números independentes para comparar, não um rateio da meta.`,
+  )
+  return linhas
 }
 
 export function montarExplicacaoExpectativaSecao(d: ExpectativaSecaoDetalhe): BlocoExplicacaoExpectativa[] {
-  const blocos: BlocoExplicacaoExpectativa[] = [
-    {
-      titulo: 'Referência',
-      linhas: [
-        `Liderança: ${d.nomeLideranca}`,
-        `Bairro: ${d.nmBairro}`,
-        `Expectativa total no município: ${fmtV(d.totalExpectativaMunicipio)} votos`,
-      ],
-    },
-  ]
+  const share =
+    d.pesoVereadorUsado > 0 && d.totalPesoMunicipio > 0
+      ? (d.pesoVereadorUsado / d.totalPesoMunicipio) * 100
+      : 0
 
-  if (d.regra !== 'proporcional_simples') {
-    const pct = d.pctSimilaridadeBairro != null ? fmtPct(d.pctSimilaridadeBairro) : '—'
-    blocos.push({
-      titulo: 'Similaridade no bairro',
-      linhas: [
-        `Vereador × dep. estadual: ${pct} (${d.secoesParecidasNoBairro}/${d.secoesComAmbosNoBairro} seções com ambos e votos parecidos).`,
-        `Limiar Regra 1: ≥ ${LIMIAR_SIMILARIDADE_BAIRRO_EXP}%.`,
-        `Aplicada: ${tituloRegraExpectativa(d.regra)}.`,
-      ],
-    })
-  }
+  const resumo: string[] = [...linhasIntroExpectativa(d)]
 
-  blocos.push({
-    titulo: 'Peso desta seção',
-    linhas: [
-      `Votos do vereador na seção: ${fmtV(d.votosVereadorSecao)}`,
-      ...(d.votosEstadualSecao > 0
-        ? [`Votos do dep. estadual na seção: ${fmtV(d.votosEstadualSecao)}`]
-        : []),
-      descricaoFatorPeso(d.regra),
-      ...(d.votosVereadorSecao > 0
-        ? [
-            `Peso usado = ${fmtV(d.votosVereadorSecao)} × ${fmtPct((d.pesoVereadorUsado / d.votosVereadorSecao) * 100)} = ${fmtV(d.pesoVereadorUsado, d.pesoVereadorUsado % 1 === 0 ? 0 : 1)}`,
-          ]
-        : ['Peso usado = 0']),
-      `Peso total do município (soma de todas as seções): ${fmtV(d.totalPesoMunicipio)}`,
-    ],
-  })
-
-  if (d.pesoVereadorUsado > 0 && d.totalPesoMunicipio > 0) {
-    const share = (d.pesoVereadorUsado / d.totalPesoMunicipio) * 100
-    blocos.push({
-      titulo: 'Cálculo',
-      linhas: [
-        `Participação desta seção no peso municipal: ${fmtPct(share)}`,
-        `Valor exato antes do arredondamento: ${fmtV(d.expectativaExataSecao, 2)} votos`,
-        `Valor final (arredondamento por seção): ${fmtV(d.expectativaSecao)} votos`,
-      ],
-      formula: `${fmtV(d.totalExpectativaMunicipio)} × (${fmtV(d.pesoVereadorUsado)} ÷ ${fmtV(d.totalPesoMunicipio)}) = ${fmtV(d.expectativaExataSecao, 2)} → ${fmtV(d.expectativaSecao)}`,
-    })
+  if (d.votosVereadorSecao <= 0) {
+    resumo.push('Nesta seção o vereador não teve votos em 2024, então a expectativa aqui fica em zero.')
   } else {
-    blocos.push({
-      titulo: 'Cálculo',
-      linhas: ['Sem votos do vereador nesta seção → Exp. 2026 = 0.'],
-    })
+    resumo.push(
+      `Nesta seção (${d.nmBairro}), o vereador teve ${fmtV(d.votosVereadorSecao)} votos em 2024 — cerca de ${fmtPct(share)} do mapa municipal.`,
+    )
+    const ajuste = textoAjusteSimilaridade(d.regra)
+    if (ajuste) resumo.push(ajuste)
+    resumo.push(`Com isso, a expectativa nesta seção é de ${fmtV(d.expectativaSecao)} votos.`)
   }
 
-  blocos.push({
-    titulo: 'Resultado',
-    linhas: [`Exp. 2026 nesta seção: ${fmtV(d.expectativaSecao)} votos`],
-    formula: `Exp. 2026 = ${fmtV(d.expectativaSecao)}`,
-  })
+  const referencia: string[] = [
+    `Total do mapa eleitoral: ${fmtV(d.totalMapaEleitoral)} votos`,
+    `Referência na planilha (${d.nomeLideranca}): ${fmtV(d.totalExpectativaMunicipio)} votos`,
+    `Votos do vereador nesta seção (2024): ${fmtV(d.votosVereadorSecao)}`,
+  ]
+  if (d.votosEstadualSecao > 0) {
+    referencia.push(`Votos do dep. estadual nesta seção (2024): ${fmtV(d.votosEstadualSecao)}`)
+  }
+  if (d.regra !== 'proporcional_simples' && d.pctSimilaridadeBairro != null) {
+    referencia.push(
+      `Seções parecidas no bairro (vereador × estadual): ${d.secoesParecidasNoBairro} de ${d.secoesComAmbosNoBairro}`,
+    )
+  }
 
-  return blocos
+  return [
+    { titulo: 'Em resumo', linhas: resumo },
+    { titulo: 'Números de referência', linhas: referencia },
+  ]
 }
 
 export function montarExplicacaoExpectativaBairro(d: ExpectativaBairroDetalhe): BlocoExplicacaoExpectativa[] {
-  const blocos: BlocoExplicacaoExpectativa[] = [
-    {
-      titulo: 'Referência',
-      linhas: [
-        `Liderança: ${d.nomeLideranca}`,
-        `Bairro: ${d.nmBairro}`,
-        `Expectativa total no município: ${fmtV(d.totalExpectativaMunicipio)} votos`,
-        `Seções no bairro: ${fmtV(d.totalSecoesBairro)}`,
-      ],
-    },
+  const share =
+    d.pesoUsadoBairro > 0 && d.totalPesoMunicipio > 0
+      ? (d.pesoUsadoBairro / d.totalPesoMunicipio) * 100
+      : 0
+
+  const resumo: string[] = [...linhasIntroExpectativa(d)]
+
+  if (d.votosVereadorBairro > 0) {
+    resumo.push(
+      `Em ${d.nmBairro}, o vereador somou ${fmtV(d.votosVereadorBairro)} votos em 2024 — cerca de ${fmtPct(share)} do mapa municipal.`,
+    )
+    const ajuste = textoAjusteSimilaridade(d.regra)
+    if (ajuste) resumo.push(ajuste)
+    resumo.push(`Somando as ${fmtV(d.totalSecoesBairro)} seções do bairro, a expectativa aqui é de ${fmtV(d.expectativaBairro)} votos.`)
+  } else {
+    resumo.push(`Em ${d.nmBairro} o vereador não teve votos em 2024, então a expectativa aqui fica em zero.`)
+  }
+
+  const referencia: string[] = [
+    `Total do mapa eleitoral: ${fmtV(d.totalMapaEleitoral)} votos`,
+    `Referência na planilha (${d.nomeLideranca}): ${fmtV(d.totalExpectativaMunicipio)} votos`,
+    `Votos do vereador no bairro (2024): ${fmtV(d.votosVereadorBairro)}`,
+    `Seções no bairro: ${fmtV(d.totalSecoesBairro)}`,
   ]
-
-  if (d.regra !== 'proporcional_simples') {
-    const pct = d.pctSimilaridadeBairro != null ? fmtPct(d.pctSimilaridadeBairro) : '—'
-    blocos.push({
-      titulo: 'Similaridade no bairro',
-      linhas: [
-        `Vereador × dep. estadual: ${pct} (${d.secoesParecidasNoBairro}/${d.secoesComAmbosNoBairro} seções).`,
-        `Limiar Regra 1: ≥ ${LIMIAR_SIMILARIDADE_BAIRRO_EXP}%.`,
-        `Aplicada: ${tituloRegraExpectativa(d.regra)}.`,
-      ],
-    })
+  if (d.regra !== 'proporcional_simples' && d.pctSimilaridadeBairro != null) {
+    referencia.push(
+      `Seções parecidas no bairro (vereador × estadual): ${d.secoesParecidasNoBairro} de ${d.secoesComAmbosNoBairro}`,
+    )
   }
 
-  blocos.push({
-    titulo: 'Peso do bairro',
-    linhas: [
-      `Soma dos votos do vereador no bairro: ${fmtV(d.votosVereadorBairro)}`,
-      descricaoFatorPeso(d.regra),
-      ...(d.votosVereadorBairro > 0
-        ? [
-            `Peso usado no bairro = ${fmtV(d.votosVereadorBairro)} × ${fmtPct((d.pesoUsadoBairro / d.votosVereadorBairro) * 100)} = ${fmtV(d.pesoUsadoBairro, d.pesoUsadoBairro % 1 === 0 ? 0 : 1)}`,
-          ]
-        : ['Peso usado no bairro = 0']),
-      `Peso total do município (soma de todas as seções): ${fmtV(d.totalPesoMunicipio)}`,
-    ],
-  })
-
-  if (d.pesoUsadoBairro > 0 && d.totalPesoMunicipio > 0) {
-    const share = (d.pesoUsadoBairro / d.totalPesoMunicipio) * 100
-    const diff = d.expectativaBairro - Math.round(d.expectativaProporcionalExataBairro)
-    blocos.push({
-      titulo: 'Cálculo',
-      linhas: [
-        `Participação do bairro no peso municipal: ${fmtPct(share)}`,
-        `Proporção teórica do bairro: ${fmtV(d.expectativaProporcionalExataBairro, 2)} votos`,
-        `Resultado agregado (soma seção a seção, com arredondamento): ${fmtV(d.expectativaBairro)} votos`,
-        ...(diff !== 0
-          ? [`Ajuste por arredondamento seção a seção: ${diff > 0 ? '+' : ''}${fmtV(diff)} votos`]
-          : ['Sem diferença de arredondamento em relação à proporção teórica.']),
-      ],
-      formula: `${fmtV(d.totalExpectativaMunicipio)} × (${fmtV(d.pesoUsadoBairro)} ÷ ${fmtV(d.totalPesoMunicipio)}) ≈ ${fmtV(d.expectativaProporcionalExataBairro, 2)} → soma das seções = ${fmtV(d.expectativaBairro)}`,
-    })
-  }
-
-  blocos.push({
-    titulo: 'Resultado',
-    linhas: [`Exp. 2026 no bairro: ${fmtV(d.expectativaBairro)} votos`],
-    formula: `Exp. 2026 = ${fmtV(d.expectativaBairro)}`,
-  })
-
-  return blocos
+  return [
+    { titulo: 'Em resumo', linhas: resumo },
+    { titulo: 'Números de referência', linhas: referencia },
+  ]
 }
 
 /** @deprecated use montarExplicacaoExpectativaSecao */
@@ -407,9 +374,9 @@ export function ajustarPesoVereadorPorSimilaridadeBairro(
   }
 }
 
-/** Distribui expectativa com metadados por seção e bairro. */
+/** Projeta expectativa por seção a partir das urnas de 2024 (+ similaridade), sem forçar soma = planilha. */
 export function distribuirExpectativaComDetalhes(
-  totalExpectativa: number,
+  referenciaPlanilha: number,
   linhas: readonly LinhaMatrizSecao[],
   params: {
     nomeLideranca: string
@@ -421,13 +388,20 @@ export function distribuirExpectativaComDetalhes(
   detalhesPorSecao: Map<string, ExpectativaSecaoDetalhe>
   detalhesPorBairro: Map<string, ExpectativaBairroDetalhe>
   usaRegraSimilaridade: boolean
+  totalMapaEleitoral: number
 } {
   const detalhesPorSecao = new Map<string, ExpectativaSecaoDetalhe>()
   const porSecao = new Map<string, number>()
   const detalhesPorBairro = new Map<string, ExpectativaBairroDetalhe>()
 
-  if (totalExpectativa <= 0 || linhas.length === 0) {
-    return { porSecao, detalhesPorSecao, detalhesPorBairro, usaRegraSimilaridade: false }
+  if (linhas.length === 0) {
+    return {
+      porSecao,
+      detalhesPorSecao,
+      detalhesPorBairro,
+      usaRegraSimilaridade: false,
+      totalMapaEleitoral: 0,
+    }
   }
 
   const usaRegraSimilaridade = Boolean(
@@ -459,23 +433,30 @@ export function distribuirExpectativaComDetalhes(
 
   const totalPeso = itens.reduce((s, i) => s + i.pesoUsado, 0)
   if (totalPeso <= 0) {
-    return { porSecao, detalhesPorSecao, detalhesPorBairro, usaRegraSimilaridade }
+    return {
+      porSecao,
+      detalhesPorSecao,
+      detalhesPorBairro,
+      usaRegraSimilaridade,
+      totalMapaEleitoral: 0,
+    }
   }
 
+  const alvoMapa = Math.round(totalPeso)
   const quotas = itens
     .filter((i) => i.pesoUsado > 0)
     .map((i) => {
-      const exact = (totalExpectativa * i.pesoUsado) / totalPeso
+      const exact = (alvoMapa * i.pesoUsado) / totalPeso
       const floor = Math.floor(exact)
-      return { ...i, floor, remainder: exact - floor }
+      return { ...i, exact, floor, remainder: exact - floor }
     })
 
-  let restante = totalExpectativa - quotas.reduce((s, q) => s + q.floor, 0)
+  let restante = alvoMapa - quotas.reduce((s, q) => s + q.floor, 0)
   quotas.sort((a, b) => b.remainder - a.remainder)
 
   const expectativaExataPorLocal = new Map<string, number>()
   for (const q of quotas) {
-    expectativaExataPorLocal.set(q.linha.localId, (totalExpectativa * q.pesoUsado) / totalPeso)
+    expectativaExataPorLocal.set(q.linha.localId, q.exact)
   }
 
   const expectativaPorLocal = new Map<string, number>()
@@ -487,6 +468,8 @@ export function distribuirExpectativaComDetalhes(
   for (const i of itens) {
     if (i.pesoUsado <= 0) expectativaPorLocal.set(i.linha.localId, 0)
   }
+
+  const totalMapaEleitoral = [...expectativaPorLocal.values()].reduce((s, v) => s + v, 0)
 
   const acumuloBairro = new Map<
     string,
@@ -522,7 +505,8 @@ export function distribuirExpectativaComDetalhes(
       pctSimilaridadeBairro: i.bloco?.pct ?? null,
       secoesComAmbosNoBairro: i.bloco?.secoesComAmbos ?? 0,
       secoesParecidasNoBairro: i.bloco?.secoesParecidas ?? 0,
-      totalExpectativaMunicipio: totalExpectativa,
+      totalExpectativaMunicipio: referenciaPlanilha,
+      totalMapaEleitoral,
       totalPesoMunicipio: totalPeso,
       nomeLideranca: params.nomeLideranca,
     })
@@ -544,14 +528,12 @@ export function distribuirExpectativaComDetalhes(
   }
 
   for (const [bairroId, acc] of acumuloBairro) {
-    const expectativaProporcionalExataBairro =
-      totalPeso > 0 ? (totalExpectativa * acc.pesoUsado) / totalPeso : 0
     detalhesPorBairro.set(bairroId, {
       regra: acc.regra,
       bairroId,
       nmBairro: acc.nmBairro,
       expectativaBairro: acc.expectativa,
-      expectativaProporcionalExataBairro,
+      expectativaProporcionalExataBairro: acc.pesoUsado,
       votosVereadorBairro: acc.votosVereador,
       pesoUsadoBairro: acc.pesoUsado,
       totalPesoMunicipio: totalPeso,
@@ -559,12 +541,19 @@ export function distribuirExpectativaComDetalhes(
       pctSimilaridadeBairro: acc.bloco?.pct ?? null,
       secoesComAmbosNoBairro: acc.bloco?.secoesComAmbos ?? 0,
       secoesParecidasNoBairro: acc.bloco?.secoesParecidas ?? 0,
-      totalExpectativaMunicipio: totalExpectativa,
+      totalExpectativaMunicipio: referenciaPlanilha,
+      totalMapaEleitoral,
       nomeLideranca: params.nomeLideranca,
     })
   }
 
-  return { porSecao, detalhesPorSecao, detalhesPorBairro, usaRegraSimilaridade }
+  return {
+    porSecao,
+    detalhesPorSecao,
+    detalhesPorBairro,
+    usaRegraSimilaridade,
+    totalMapaEleitoral,
+  }
 }
 
 /** Distribui expectativa inteira proporcionalmente aos votos do candidato referência por seção. */
@@ -624,22 +613,24 @@ export function injetarColunaExpectativaLideranca(
     detalhesPorSecao: new Map(),
     detalhesPorBairro: new Map(),
     usaRegraSimilaridade: false,
+    totalMapaEleitoral: 0,
+    totalReferenciaPlanilha: 0,
   }
 
-  if (!params || params.totalExpectativa <= 0 || !params.candidatoIdReferencia) {
+  if (!params || !params.candidatoIdReferencia) {
     return vazio
   }
 
-  const { porSecao, detalhesPorSecao, detalhesPorBairro, usaRegraSimilaridade } =
-    distribuirExpectativaComDetalhes(params.totalExpectativa, matriz.linhas, {
+  const { porSecao, detalhesPorSecao, detalhesPorBairro, usaRegraSimilaridade, totalMapaEleitoral } =
+    distribuirExpectativaComDetalhes(params.totalExpectativa ?? 0, matriz.linhas, {
       nomeLideranca: params.nomeLideranca,
       candidatoIdReferencia: params.candidatoIdReferencia,
       candidatoIdEstadual: params.candidatoIdEstadual,
     })
 
-  if (porSecao.size === 0) return vazio
+  if (porSecao.size === 0 || totalMapaEleitoral <= 0) return vazio
 
-  const totalDistribuido = [...porSecao.values()].reduce((s, v) => s + v, 0)
+  const totalDistribuido = totalMapaEleitoral
 
   const candidatoExtra: CandidatoMatrizColuna = {
     id: CANDIDATO_EXPECTATIVA_LIDERANCA_ID,
@@ -666,6 +657,8 @@ export function injetarColunaExpectativaLideranca(
     detalhesPorSecao,
     detalhesPorBairro,
     usaRegraSimilaridade,
+    totalMapaEleitoral,
+    totalReferenciaPlanilha: Math.round(params.totalExpectativa ?? 0),
   }
 }
 
