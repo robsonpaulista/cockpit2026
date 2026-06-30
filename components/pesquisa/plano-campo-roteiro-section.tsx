@@ -14,6 +14,7 @@ import {
   exportarRoteiroCampoPdf,
 } from '@/lib/plano-amostragem-campo-export'
 import type { SetorMapaPlano } from '@/lib/setores-censitarios-pi'
+import { brandAmberIconClass, brandAmberIconWrapClass } from '@/lib/sidebar-brand-styles'
 
 type PlanoCampoRoteiroSectionProps = {
   plano: PlanoAmostragemPublico
@@ -45,7 +46,7 @@ export function PlanoCampoRoteiroSection({
     <section className="rounded-xl border border-card bg-surface p-4 sm:p-5">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="flex items-start gap-3">
-          <div className="rounded-lg bg-emerald-500/10 p-2 text-emerald-600 dark:text-emerald-400">
+          <div className={brandAmberIconWrapClass}>
             <ClipboardList className="h-5 w-5" aria-hidden />
           </div>
           <div>
@@ -166,7 +167,7 @@ export function PlanoCampoRoteiroSection({
                             <p className="mt-0.5 text-text-primary">
                               <span className="text-text-muted">Bloco:</span> {f.blocoSugerido}
                             </p>
-                            <p className="mt-0.5 font-medium text-emerald-700 dark:text-emerald-400">
+                            <p className={`mt-0.5 font-medium ${brandAmberIconClass}`}>
                               → {f.localCampo}
                               {f.bairroRecorte ? ` (${f.bairroRecorte})` : ''}
                             </p>

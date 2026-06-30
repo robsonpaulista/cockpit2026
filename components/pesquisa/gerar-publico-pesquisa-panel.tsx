@@ -14,6 +14,11 @@ import {
 import { PlanoCampoRoteiroSection } from '@/components/pesquisa/plano-campo-roteiro-section'
 import { PlanoAmostragemComoFuncionaModal } from '@/components/pesquisa/plano-amostragem-como-funciona-modal'
 import { sugerirEntrevistadores } from '@/lib/plano-amostragem-publico'
+import {
+  brandAmberButtonClass,
+  brandAmberIconClass,
+  brandAmberIconWrapClass,
+} from '@/lib/sidebar-brand-styles'
 
 const MapaPlanoAmostragem = dynamic(
   () => import('./mapa-plano-amostragem').then((m) => m.MapaPlanoAmostragem),
@@ -178,7 +183,7 @@ export function GerarPublicoPesquisaPanel() {
       <section className="rounded-xl border border-card bg-surface p-4 sm:p-5 shadow-card">
         <div className="mb-4 flex items-start justify-between gap-3">
           <div className="flex items-start gap-3 min-w-0">
-            <div className="rounded-lg bg-accent-gold/10 p-2 text-accent-gold shrink-0">
+            <div className={brandAmberIconWrapClass}>
               <Users className="h-5 w-5" aria-hidden />
             </div>
             <div className="min-w-0">
@@ -195,7 +200,7 @@ export function GerarPublicoPesquisaPanel() {
             className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-card bg-background px-3 py-2 text-xs font-medium text-text-primary hover:bg-surface sm:text-sm"
             title="Entenda como o plano distribui entrevistas por área"
           >
-            <HelpCircle className="h-4 w-4 text-accent-gold" aria-hidden />
+            <HelpCircle className={`h-4 w-4 ${brandAmberIconClass}`} aria-hidden />
             Como funciona?
           </button>
         </div>
@@ -288,7 +293,7 @@ export function GerarPublicoPesquisaPanel() {
             type="button"
             onClick={() => void gerarPlano()}
             disabled={!municipio || loadingPlano || loadingLista}
-            className="inline-flex items-center gap-2 rounded-lg bg-accent-gold px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-accent-gold/90 disabled:opacity-50"
+            className={brandAmberButtonClass}
           >
             {loadingPlano ? (
               <Loader2 className="h-4 w-4 animate-spin" aria-hidden />

@@ -5,6 +5,14 @@ import dynamic from 'next/dynamic'
 import { Info, Maximize2, Minimize2 } from 'lucide-react'
 import { useTheme } from '@/contexts/theme-context'
 import { cn } from '@/lib/utils'
+import {
+  brandAmberBadgeClass,
+  brandAmberFocusRingClass,
+  brandAmberInfoButtonClass,
+  brandAmberPillActiveClass,
+  brandAmberPillBaseClass,
+  brandAmberPillIdleClass,
+} from '@/lib/sidebar-brand-styles'
 import { AnimatedBar } from '@/components/animated-bar'
 import {
   CIDADE_INTENCAO_TOP_N,
@@ -84,7 +92,7 @@ function MetodologiaIntencaoPopover({
       <button
         type="button"
         onClick={() => setAberto((v) => !v)}
-        className="inline-flex rounded-full p-0.5 text-blue-700/80 transition-colors hover:bg-blue-100 hover:text-blue-900"
+        className={brandAmberInfoButtonClass}
         aria-label={`Metodologia: ${tituloPopup}`}
         aria-expanded={aberto}
       >
@@ -141,7 +149,7 @@ function BadgeMetodologiaIntencao({
   baseIntencaoLabel: string
 }) {
   return (
-    <span className="inline-flex flex-wrap items-center gap-x-1 gap-y-0.5 rounded-full border border-blue-200 bg-blue-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-blue-800">
+    <span className={brandAmberBadgeClass}>
       {temEspontanea ? (
         <MetodologiaIntencaoPopover rotulo="Espontânea ajustada" tituloPopup="Espontânea ajustada">
           {temEstimulada ? (
@@ -157,7 +165,7 @@ function BadgeMetodologiaIntencao({
           <MetodologiaRankingsProjecao baseIntencaoLabel={baseIntencaoLabel} />
         </MetodologiaIntencaoPopover>
       ) : null}
-      {temEspontanea && temEstimulada ? <span className="font-normal text-blue-700/70">+</span> : null}
+      {temEspontanea && temEstimulada ? <span className="font-normal text-[#A87408]/70">+</span> : null}
       {temEstimulada ? (
         <MetodologiaIntencaoPopover rotulo="estimulada" tituloPopup="Estimulada">
           {temEspontanea ? (
@@ -380,10 +388,9 @@ function IndicadorProjecao({
 
 function pillVisaoProjecaoClass(active: boolean): string {
   return cn(
-    'rounded-[99px] border px-2.5 py-1 text-[11px] transition-colors',
-    active
-      ? 'border-[rgb(var(--color-primary))] bg-[rgb(var(--color-primary-tint))] font-medium text-[rgb(var(--color-primary))]'
-      : 'border-[rgb(var(--color-border-secondary)/0.85)] bg-transparent text-text-secondary hover:text-text-primary'
+    brandAmberPillBaseClass,
+    'text-[11px]',
+    active ? brandAmberPillActiveClass : brandAmberPillIdleClass,
   )
 }
 
@@ -767,7 +774,10 @@ export function TendenciaIntencaoExecutiveSection({
                     <button
                       type="button"
                       onClick={alternarMapaTelaCheia}
-                      className="absolute right-3 top-3 z-[500] inline-flex items-center gap-1.5 rounded-md border border-card bg-surface/95 px-2.5 py-1.5 text-xs font-medium text-text-primary shadow-sm transition-colors hover:bg-background focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-gold/40"
+                      className={cn(
+                        'absolute right-3 top-3 z-[500] inline-flex items-center gap-1.5 rounded-md border border-card bg-surface/95 px-2.5 py-1.5 text-xs font-medium text-text-primary shadow-sm transition-colors hover:bg-background focus:outline-none',
+                        brandAmberFocusRingClass,
+                      )}
                       aria-label={mapaEmTelaCheia ? 'Sair da tela cheia' : 'Abrir mapa em tela cheia'}
                       title={mapaEmTelaCheia ? 'Sair da tela cheia (Esc)' : 'Abrir mapa em tela cheia'}
                     >

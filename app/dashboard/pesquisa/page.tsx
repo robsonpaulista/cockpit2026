@@ -22,6 +22,20 @@ import {
 } from 'lucide-react'
 import { IconArrowLeft, IconChevronDown, IconPlus, IconX } from '@tabler/icons-react'
 import { cn, formatDate } from '@/lib/utils'
+import {
+  brandAmberButtonClass,
+  brandAmberChipClass,
+  brandAmberCompactButtonClass,
+  brandAmberFilterSelectClass,
+  brandAmberIconClass,
+  brandAmberMetricClass,
+  brandAmberPanelBorderClass,
+  brandAmberPillActiveClass,
+  brandAmberPillBaseClass,
+  brandAmberPillIdleClass,
+  brandAmberSortButtonClass,
+  brandAmberSortIconClass,
+} from '@/lib/sidebar-brand-styles'
 import { useTheme } from '@/contexts/theme-context'
 import municipiosPiaui from '@/lib/municipios-piaui.json'
 import {
@@ -135,10 +149,10 @@ function BlocoFeedbackAutomatico({
 }) {
   if (bullets.length === 0 && avisos.length === 0) return null
   return (
-    <div className="rounded-xl border border-accent-gold-soft/50 bg-background/90 p-4">
+    <div className={brandAmberPanelBorderClass}>
       {mostrarCabecalhoInterno ? (
         <div className="flex items-start gap-2 mb-3">
-          <Sparkles className="w-4 h-4 text-accent-gold shrink-0 mt-0.5" aria-hidden />
+          <Sparkles className={`w-4 h-4 shrink-0 mt-0.5 ${brandAmberIconClass}`} aria-hidden />
           <div className="min-w-0">
             <h3 className="text-sm font-semibold text-text-primary">{titulo}</h3>
             {subtitulo ? <p className="text-xs text-secondary mt-0.5 leading-snug">{subtitulo}</p> : null}
@@ -704,16 +718,10 @@ export default function PesquisaPage() {
   )
 
   const tipoPillClass = (active: boolean) =>
-    cn(
-      'cursor-pointer rounded-[99px] border px-2.5 py-1 text-[11.5px] transition-colors',
-      active
-        ? 'border-[rgb(var(--color-primary))] bg-[rgb(var(--color-primary-tint))] font-medium text-[rgb(var(--color-primary))]'
-        : 'border-[rgb(var(--color-border-secondary)/0.85)] bg-transparent text-text-secondary'
-    )
+    cn(brandAmberPillBaseClass, active ? brandAmberPillActiveClass : brandAmberPillIdleClass)
 
   const filterSelectWrapClass = 'relative inline-flex items-center'
-  const filterSelectClass =
-    'appearance-none rounded-[99px] border border-[rgb(var(--color-border-secondary)/0.85)] bg-transparent py-1 pl-2.5 pr-7 text-[11.5px] text-text-primary focus:outline-none focus:ring-2 focus:ring-[rgb(var(--color-primary)/0.25)]'
+  const filterSelectClass = brandAmberFilterSelectClass
 
   const barraFiltrosPesquisa = (
     <div
@@ -781,7 +789,7 @@ export default function PesquisaPage() {
           <button
             type="button"
             onClick={() => setFiltroCidade('')}
-            className="inline-flex items-center gap-1 rounded-[99px] border border-[rgb(var(--color-primary))] bg-[rgb(var(--color-primary-tint))] px-2.5 py-1 text-[11.5px] font-medium text-[rgb(var(--color-primary))]"
+            className={brandAmberChipClass}
           >
             {cities.find((city) => city.id === filtroCidade)?.name ?? 'Cidade'}
             <IconX className="h-[11px] w-[11px] shrink-0" stroke={1.75} aria-hidden />
@@ -851,7 +859,7 @@ export default function PesquisaPage() {
           setCandidatoPadrao(novoCandidato)
           localStorage.setItem('candidatoPadraoPesquisa', novoCandidato)
         }}
-        className="appearance-none rounded-[99px] border border-[rgb(var(--color-border-secondary)/0.85)] bg-transparent py-1 pl-2.5 pr-7 text-[13px] font-medium text-text-primary transition-colors hover:border-[rgb(var(--color-primary))] focus:outline-none focus:ring-2 focus:ring-[rgb(var(--color-primary)/0.25)]"
+        className="appearance-none rounded-[99px] border border-[rgb(var(--color-border-secondary)/0.85)] bg-transparent py-1 pl-2.5 pr-7 text-[13px] font-medium text-text-primary transition-colors hover:border-[#C8900A] focus:outline-none focus:ring-2 focus:ring-[#C8900A]/25"
       >
         <option value="">Selecione um candidato</option>
         {candidatosDisponiveis.map((candidato) => (
@@ -887,7 +895,7 @@ export default function PesquisaPage() {
           setEditingPoll(null)
           setShowModal(true)
         }}
-        className="ml-auto inline-flex items-center gap-1.5 rounded-[10px] border-none bg-[rgb(var(--color-primary))] px-3 py-1.5 text-[12px] font-medium text-white transition-colors hover:bg-[rgb(var(--color-primary-hover))]"
+        className={cn('ml-auto', brandAmberCompactButtonClass)}
       >
         <IconPlus className="h-[13px] w-[13px] shrink-0" stroke={1.75} aria-hidden />
         Nova pesquisa
@@ -1065,7 +1073,7 @@ export default function PesquisaPage() {
                   setEditingPoll(null)
                   setShowModal(true)
                 }}
-                className="px-4 py-2 text-sm font-medium bg-accent-gold text-white rounded-lg hover:bg-accent-gold transition-colors"
+                className={brandAmberButtonClass}
               >
                 Adicionar Primeira Pesquisa
               </button>
@@ -1084,7 +1092,7 @@ export default function PesquisaPage() {
                       <button
                         type="button"
                         onClick={() => alternarOrdenacaoCadastradas('data')}
-                        className="inline-flex items-center gap-1 select-none transition-colors hover:text-accent-gold focus:outline-none focus:ring-2 focus:ring-accent-gold/40 rounded"
+                        className={brandAmberSortButtonClass}
                         aria-label={
                           ordenacaoCadastradas?.chave !== 'data'
                             ? 'Ordenar por Data (A→Z)'
@@ -1097,9 +1105,9 @@ export default function PesquisaPage() {
                         {ordenacaoCadastradas?.chave !== 'data' ? (
                           <ArrowUpDown className="h-3.5 w-3.5 opacity-40" aria-hidden="true" />
                         ) : ordenacaoCadastradas.direcao === 'asc' ? (
-                          <ArrowUp className="h-3.5 w-3.5 text-accent-gold" aria-hidden="true" />
+                          <ArrowUp className={brandAmberSortIconClass} aria-hidden="true" />
                         ) : (
-                          <ArrowDown className="h-3.5 w-3.5 text-accent-gold" aria-hidden="true" />
+                          <ArrowDown className={brandAmberSortIconClass} aria-hidden="true" />
                         )}
                       </button>
                     </th>
@@ -1107,7 +1115,7 @@ export default function PesquisaPage() {
                       <button
                         type="button"
                         onClick={() => alternarOrdenacaoCadastradas('instituto')}
-                        className="inline-flex items-center gap-1 select-none transition-colors hover:text-accent-gold focus:outline-none focus:ring-2 focus:ring-accent-gold/40 rounded"
+                        className={brandAmberSortButtonClass}
                         aria-label={
                           ordenacaoCadastradas?.chave !== 'instituto'
                             ? 'Ordenar por Instituto (A→Z)'
@@ -1120,9 +1128,9 @@ export default function PesquisaPage() {
                         {ordenacaoCadastradas?.chave !== 'instituto' ? (
                           <ArrowUpDown className="h-3.5 w-3.5 opacity-40" aria-hidden="true" />
                         ) : ordenacaoCadastradas.direcao === 'asc' ? (
-                          <ArrowUp className="h-3.5 w-3.5 text-accent-gold" aria-hidden="true" />
+                          <ArrowUp className={brandAmberSortIconClass} aria-hidden="true" />
                         ) : (
-                          <ArrowDown className="h-3.5 w-3.5 text-accent-gold" aria-hidden="true" />
+                          <ArrowDown className={brandAmberSortIconClass} aria-hidden="true" />
                         )}
                       </button>
                     </th>
@@ -1130,7 +1138,7 @@ export default function PesquisaPage() {
                       <button
                         type="button"
                         onClick={() => alternarOrdenacaoCadastradas('candidato')}
-                        className="inline-flex items-center gap-1 select-none transition-colors hover:text-accent-gold focus:outline-none focus:ring-2 focus:ring-accent-gold/40 rounded"
+                        className={brandAmberSortButtonClass}
                         aria-label={
                           ordenacaoCadastradas?.chave !== 'candidato'
                             ? 'Ordenar por Candidato (A→Z)'
@@ -1143,9 +1151,9 @@ export default function PesquisaPage() {
                         {ordenacaoCadastradas?.chave !== 'candidato' ? (
                           <ArrowUpDown className="h-3.5 w-3.5 opacity-40" aria-hidden="true" />
                         ) : ordenacaoCadastradas.direcao === 'asc' ? (
-                          <ArrowUp className="h-3.5 w-3.5 text-accent-gold" aria-hidden="true" />
+                          <ArrowUp className={brandAmberSortIconClass} aria-hidden="true" />
                         ) : (
-                          <ArrowDown className="h-3.5 w-3.5 text-accent-gold" aria-hidden="true" />
+                          <ArrowDown className={brandAmberSortIconClass} aria-hidden="true" />
                         )}
                       </button>
                       <label htmlFor="pesquisa-cadastradas-filtro-candidato" className="sr-only">
@@ -1158,7 +1166,7 @@ export default function PesquisaPage() {
                         onChange={(e) => setFiltroTextoCandidatoCadastradas(e.target.value)}
                         placeholder="Buscar nome…"
                         className={cn(
-                          'mt-2 w-full min-w-[8rem] max-w-[18rem] rounded-md border px-2 py-1.5 text-xs font-normal text-text-primary placeholder:text-secondary focus:outline-none focus:ring-2 focus:ring-accent-gold/40',
+                          'mt-2 w-full min-w-[8rem] max-w-[18rem] rounded-md border px-2 py-1.5 text-xs font-normal text-text-primary placeholder:text-secondary focus:outline-none focus:ring-2 focus:ring-[#C8900A]/40',
                           inputShellClass
                         )}
                         autoComplete="off"
@@ -1168,7 +1176,7 @@ export default function PesquisaPage() {
                       <button
                         type="button"
                         onClick={() => alternarOrdenacaoCadastradas('cidade')}
-                        className="inline-flex items-center gap-1 select-none transition-colors hover:text-accent-gold focus:outline-none focus:ring-2 focus:ring-accent-gold/40 rounded"
+                        className={brandAmberSortButtonClass}
                         aria-label={
                           ordenacaoCadastradas?.chave !== 'cidade'
                             ? 'Ordenar por Cidade (A→Z)'
@@ -1181,9 +1189,9 @@ export default function PesquisaPage() {
                         {ordenacaoCadastradas?.chave !== 'cidade' ? (
                           <ArrowUpDown className="h-3.5 w-3.5 opacity-40" aria-hidden="true" />
                         ) : ordenacaoCadastradas.direcao === 'asc' ? (
-                          <ArrowUp className="h-3.5 w-3.5 text-accent-gold" aria-hidden="true" />
+                          <ArrowUp className={brandAmberSortIconClass} aria-hidden="true" />
                         ) : (
-                          <ArrowDown className="h-3.5 w-3.5 text-accent-gold" aria-hidden="true" />
+                          <ArrowDown className={brandAmberSortIconClass} aria-hidden="true" />
                         )}
                       </button>
                     </th>
@@ -1191,7 +1199,7 @@ export default function PesquisaPage() {
                       <button
                         type="button"
                         onClick={() => alternarOrdenacaoCadastradas('tipo')}
-                        className="inline-flex items-center gap-1 select-none transition-colors hover:text-accent-gold focus:outline-none focus:ring-2 focus:ring-accent-gold/40 rounded"
+                        className={brandAmberSortButtonClass}
                         aria-label={
                           ordenacaoCadastradas?.chave !== 'tipo'
                             ? 'Ordenar por Tipo (A→Z)'
@@ -1204,9 +1212,9 @@ export default function PesquisaPage() {
                         {ordenacaoCadastradas?.chave !== 'tipo' ? (
                           <ArrowUpDown className="h-3.5 w-3.5 opacity-40" aria-hidden="true" />
                         ) : ordenacaoCadastradas.direcao === 'asc' ? (
-                          <ArrowUp className="h-3.5 w-3.5 text-accent-gold" aria-hidden="true" />
+                          <ArrowUp className={brandAmberSortIconClass} aria-hidden="true" />
                         ) : (
-                          <ArrowDown className="h-3.5 w-3.5 text-accent-gold" aria-hidden="true" />
+                          <ArrowDown className={brandAmberSortIconClass} aria-hidden="true" />
                         )}
                       </button>
                     </th>
@@ -1214,7 +1222,7 @@ export default function PesquisaPage() {
                       <button
                         type="button"
                         onClick={() => alternarOrdenacaoCadastradas('cargo')}
-                        className="inline-flex items-center gap-1 select-none transition-colors hover:text-accent-gold focus:outline-none focus:ring-2 focus:ring-accent-gold/40 rounded"
+                        className={brandAmberSortButtonClass}
                         aria-label={
                           ordenacaoCadastradas?.chave !== 'cargo'
                             ? 'Ordenar por Cargo (A→Z)'
@@ -1227,9 +1235,9 @@ export default function PesquisaPage() {
                         {ordenacaoCadastradas?.chave !== 'cargo' ? (
                           <ArrowUpDown className="h-3.5 w-3.5 opacity-40" aria-hidden="true" />
                         ) : ordenacaoCadastradas.direcao === 'asc' ? (
-                          <ArrowUp className="h-3.5 w-3.5 text-accent-gold" aria-hidden="true" />
+                          <ArrowUp className={brandAmberSortIconClass} aria-hidden="true" />
                         ) : (
-                          <ArrowDown className="h-3.5 w-3.5 text-accent-gold" aria-hidden="true" />
+                          <ArrowDown className={brandAmberSortIconClass} aria-hidden="true" />
                         )}
                       </button>
                     </th>
@@ -1237,7 +1245,7 @@ export default function PesquisaPage() {
                       <button
                         type="button"
                         onClick={() => alternarOrdenacaoCadastradas('intencao')}
-                        className="inline-flex items-center gap-1 select-none transition-colors hover:text-accent-gold focus:outline-none focus:ring-2 focus:ring-accent-gold/40 rounded ml-auto"
+                        className={cn(brandAmberSortButtonClass, 'ml-auto')}
                         aria-label={
                           ordenacaoCadastradas?.chave !== 'intencao'
                             ? 'Ordenar por Intenção (menor → maior)'
@@ -1250,9 +1258,9 @@ export default function PesquisaPage() {
                         {ordenacaoCadastradas?.chave !== 'intencao' ? (
                           <ArrowUpDown className="h-3.5 w-3.5 opacity-40" aria-hidden="true" />
                         ) : ordenacaoCadastradas.direcao === 'asc' ? (
-                          <ArrowUp className="h-3.5 w-3.5 text-accent-gold" aria-hidden="true" />
+                          <ArrowUp className={brandAmberSortIconClass} aria-hidden="true" />
                         ) : (
-                          <ArrowDown className="h-3.5 w-3.5 text-accent-gold" aria-hidden="true" />
+                          <ArrowDown className={brandAmberSortIconClass} aria-hidden="true" />
                         )}
                       </button>
                     </th>
@@ -1260,7 +1268,7 @@ export default function PesquisaPage() {
                       <button
                         type="button"
                         onClick={() => alternarOrdenacaoCadastradas('rejeicao')}
-                        className="inline-flex items-center gap-1 select-none transition-colors hover:text-accent-gold focus:outline-none focus:ring-2 focus:ring-accent-gold/40 rounded ml-auto"
+                        className={cn(brandAmberSortButtonClass, 'ml-auto')}
                         aria-label={
                           ordenacaoCadastradas?.chave !== 'rejeicao'
                             ? 'Ordenar por Rejeição (menor → maior)'
@@ -1273,9 +1281,9 @@ export default function PesquisaPage() {
                         {ordenacaoCadastradas?.chave !== 'rejeicao' ? (
                           <ArrowUpDown className="h-3.5 w-3.5 opacity-40" aria-hidden="true" />
                         ) : ordenacaoCadastradas.direcao === 'asc' ? (
-                          <ArrowUp className="h-3.5 w-3.5 text-accent-gold" aria-hidden="true" />
+                          <ArrowUp className={brandAmberSortIconClass} aria-hidden="true" />
                         ) : (
-                          <ArrowDown className="h-3.5 w-3.5 text-accent-gold" aria-hidden="true" />
+                          <ArrowDown className={brandAmberSortIconClass} aria-hidden="true" />
                         )}
                       </button>
                     </th>
@@ -1320,7 +1328,7 @@ export default function PesquisaPage() {
                       </td>
                       <td className="py-3 px-4 text-sm text-secondary">{tipoLabels[poll.tipo]}</td>
                       <td className="py-3 px-4 text-sm text-secondary">{cargoLabels[poll.cargo]}</td>
-                      <td className="py-3 px-4 text-sm text-right font-semibold text-accent-gold">
+                      <td className={cn('py-3 px-4 text-sm text-right', brandAmberMetricClass)}>
                         {poll.intencao.toFixed(1)}%
                       </td>
                       <td className="py-3 px-4 text-sm text-right font-semibold text-status-error">
@@ -1333,7 +1341,7 @@ export default function PesquisaPage() {
                             className="p-2 rounded-lg hover:bg-background transition-colors"
                             title="Anexar PDF e gerar análise"
                           >
-                            <FileText className="w-4 h-4 text-blue-600" />
+                            <FileText className={cn('w-4 h-4', brandAmberIconClass)} />
                           </button>
                           <button
                             onClick={() => {

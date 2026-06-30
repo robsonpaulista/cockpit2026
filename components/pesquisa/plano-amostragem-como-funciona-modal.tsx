@@ -3,6 +3,11 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { HelpCircle, X } from 'lucide-react'
+import {
+  brandAmberButtonClass,
+  brandAmberCalloutClass,
+  brandAmberIconClass,
+} from '@/lib/sidebar-brand-styles'
 
 type PlanoAmostragemComoFuncionaModalProps = {
   open: boolean
@@ -55,7 +60,7 @@ export function PlanoAmostragemComoFuncionaModal({
       >
         <div className="flex shrink-0 items-start justify-between gap-3 border-b border-card px-4 py-3 sm:px-5">
           <div className="flex items-start gap-2.5">
-            <HelpCircle className="mt-0.5 h-5 w-5 shrink-0 text-accent-gold" aria-hidden />
+            <HelpCircle className={`mt-0.5 h-5 w-5 shrink-0 ${brandAmberIconClass}`} aria-hidden />
             <div>
               <h2 id="como-funciona-titulo" className="text-base font-semibold text-text-primary">
                 Como funciona o plano?
@@ -156,7 +161,7 @@ export function PlanoAmostragemComoFuncionaModal({
             </ul>
           </Secao>
 
-          <p className="rounded-lg border border-accent-gold/30 bg-accent-gold/5 px-3 py-2.5 text-sm text-text-primary">
+          <p className={brandAmberCalloutClass}>
             Em resumo: cada número existe para a amostra parecer com o município — na divisão cidade/interior, nos recortes mais povoados, no perfil demográfico e no tamanho da equipe — e as fichas traduzem isso em endereços onde o entrevistador deve começar.
           </p>
         </div>
@@ -165,7 +170,7 @@ export function PlanoAmostragemComoFuncionaModal({
           <button
             type="button"
             onClick={onClose}
-            className="w-full rounded-lg bg-accent-gold px-4 py-2 text-sm font-medium text-white hover:bg-accent-gold/90 sm:w-auto"
+            className={`w-full sm:w-auto ${brandAmberButtonClass}`}
           >
             Entendi
           </button>
