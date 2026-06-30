@@ -3,7 +3,10 @@ export type TipoPesquisaPublico = 'opiniao' | 'eleitoral'
 export type PlanoAmostragemBloco = {
   id: string
   nome: string
+  /** Percentual dentro do estrato (urbano ou rural). */
   pesoPct: number
+  /** Percentual sobre a amostra total (N). */
+  pctAmostra: number
   entrevistas: number
   tipo: 'urbano' | 'rural' | 'transicao'
   notas?: string

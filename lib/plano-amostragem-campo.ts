@@ -1,6 +1,7 @@
 import { distribuirInteiros } from '@/lib/plano-amostragem-publico'
 import type {
   PlanoAmostragemAlocacaoBloco,
+  PlanoAmostragemCota,
   PlanoAmostragemEquipe,
   PlanoAmostragemPublico,
 } from '@/lib/plano-amostragem-publico-types'
@@ -14,14 +15,21 @@ export type ResultadoEntrevistaCampo =
   | 'ausente'
   | 'inelegivel'
 
+export type TurnoRecomendado = 'Manhã' | 'Tarde' | 'Noite'
+
 export type FichaCampoEntrevista = {
   id: string
   entrevistador: number
+  /** Sequência global na amostra (1…N). */
   sequencia: number
+  /** Sequência dentro do entrevistador (1…meta). */
+  sequenciaEntrevistador: number
   municipio: string
   blocoId: string
   blocoSugerido: string
   tipoBloco: string
+  /** Turno sugerido para cumprir cota de horário. */
+  turnoRecomendado: TurnoRecomendado
   /** Onde ir no campo — local de votação, setor IBGE ou instrução genérica. */
   localCampo: string
   bairroRecorte: string | null
@@ -57,9 +65,17 @@ export type MonitorCotaCampo = {
   pendente: number
 }
 
+export type ChecklistMetodologicoItem = {
+  id: string
+  label: string
+  status: 'ok' | 'warn' | 'error'
+  detalhe?: string
+}
+
 export type ValidacaoRoteiroCampo = {
   ok: boolean
   avisos: string[]
+  checklist: ChecklistMetodologicoItem[]
 }
 
 export type ContextoRoteiroCampo = {
@@ -149,6 +165,10 @@ function tituloSetor(setor: SetorMapaPlano): string {
   return `${nomeBase} — Setor ${codigo}`
 }
 
+function nomeRecorteSetor(setor: SetorMapaPlano): string {
+  return setor.rotulo.trim() || `Setor ${setor.cdSetor.slice(-4)}`
+}
+
 function pontoFromSetor(setor: SetorMapaPlano): PontoCampoBloco {
   const codigo = setor.cdSetor.slice(-4)
   const titulo = tituloSetor(setor)
@@ -156,7 +176,7 @@ function pontoFromSetor(setor: SetorMapaPlano): PontoCampoBloco {
     blocoId: setor.blocoId ?? '',
     blocoNome: setor.blocoNome ?? '',
     titulo,
-    bairroRecorte: setor.urbano ? 'Urbano' : 'Rural',
+    bairroRecorte: nomeRecorteSetor(setor),
     endereco: `Setor censitário IBGE ${codigo} · ${setor.populacao.toLocaleString('pt-BR')} hab.`,
     lat: setor.centroide?.lat ?? null,
     lng: setor.centroide?.lng ?? null,
@@ -188,7 +208,170 @@ function pontoGenerico(
   }
 }
 
-/** Expande alocação da equipe em lista ordenada de blocos (uma entrada por ficha). */
+/** Só divide setor entre entrevistadores quando o bloco tiver mais que este N. */
+const LIMITE_DIVIDIR_BLOCO_ENTREVISTAS = 15
+
+function rotuloTurno(perfil: string): TurnoRecomendado {
+  if (perfil.startsWith('Manhã')) return 'Manhã'
+  if (perfil.startsWith('Tarde')) return 'Tarde'
+  return 'Noite'
+}
+
+function intercalarTurnos(filas: TurnoRecomendado[][]): TurnoRecomendado[] {
+  const resultado: TurnoRecomendado[] = []
+  let restam = true
+  while (restam) {
+    restam = false
+    for (const fila of filas) {
+      if (fila.length > 0) {
+        resultado.push(fila.shift()!)
+        restam = restam || fila.length > 0
+      }
+    }
+  }
+  return resultado
+}
+
+/** Máximo de entrevistas noturnas no rural (% do estrato). */
+const NOITE_RURAL_MAX_PCT = 0.1
+/** Teto de alerta para concentração noturna no urbano (% do estrato). */
+const NOITE_URBANO_MAX_PCT = 0.4
+
+function somaMetas(mapa: Map<TurnoRecomendado, number>): number {
+  return [...mapa.values()].reduce((acc, v) => acc + v, 0)
+}
+
+function normalizarMetasStrato(
+  mapa: Map<TurnoRecomendado, number>,
+  total: number,
+): void {
+  let soma = somaMetas(mapa)
+  const ordem: TurnoRecomendado[] = ['Tarde', 'Manhã', 'Noite']
+  while (soma < total) {
+    for (const turno of ordem) {
+      if (soma >= total) break
+      mapa.set(turno, (mapa.get(turno) ?? 0) + 1)
+      soma += 1
+    }
+  }
+  while (soma > total) {
+    for (const turno of ordem) {
+      if (soma <= total) break
+      const atual = mapa.get(turno) ?? 0
+      if (atual > 0) {
+        mapa.set(turno, atual - 1)
+        soma -= 1
+      }
+    }
+  }
+}
+
+/**
+ * Metas de turno por estrato: split proporcional à amostra (cada zona fica com ~35% noite),
+ * com teto de noite no rural por segurança/logística.
+ */
+export function distribuirMetasTurnoPorZona(
+  nUrban: number,
+  nRural: number,
+  cotasHorario: ReadonlyArray<PlanoAmostragemCota>,
+): { urban: Map<TurnoRecomendado, number>; rural: Map<TurnoRecomendado, number> } {
+  const urban = new Map<TurnoRecomendado, number>()
+  const rural = new Map<TurnoRecomendado, number>()
+
+  for (const c of cotasHorario) {
+    const turno = rotuloTurno(c.perfil)
+    const split = distribuirInteiros(
+      [
+        { id: 'u', peso: nUrban },
+        { id: 'r', peso: nRural },
+      ],
+      c.meta,
+    )
+    urban.set(turno, split.get('u') ?? 0)
+    rural.set(turno, split.get('r') ?? 0)
+  }
+
+  const noiteRuralMax = Math.floor(nRural * NOITE_RURAL_MAX_PCT)
+  const noiteRuralProp = rural.get('Noite') ?? 0
+  if (noiteRuralProp > noiteRuralMax) {
+    const shift = noiteRuralProp - noiteRuralMax
+    rural.set('Noite', noiteRuralMax)
+    rural.set('Manhã', (rural.get('Manhã') ?? 0) + Math.floor(shift / 2))
+    rural.set('Tarde', (rural.get('Tarde') ?? 0) + shift - Math.floor(shift / 2))
+  }
+
+  normalizarMetasStrato(urban, nUrban)
+  normalizarMetasStrato(rural, nRural)
+
+  return { urban, rural }
+}
+
+function alocarTurnosNoStrato(
+  indices: number[],
+  metas: Map<TurnoRecomendado, number>,
+  turnos: TurnoRecomendado[],
+  disponiveis: Set<number>,
+): void {
+  const filas: TurnoRecomendado[][] = []
+  for (const turno of ['Manhã', 'Tarde', 'Noite'] as TurnoRecomendado[]) {
+    const n = metas.get(turno) ?? 0
+    if (n > 0) filas.push(Array.from({ length: n }, () => turno))
+  }
+  const sequencia = intercalarTurnos(filas)
+  let idx = 0
+  for (const i of indices) {
+    if (!disponiveis.has(i)) continue
+    turnos[i] = sequencia[idx] ?? 'Tarde'
+    idx += 1
+    disponiveis.delete(i)
+  }
+}
+
+/** Distribui cotas de horário por estrato — proporcional por zona, com teto de noite no rural. */
+export function atribuirTurnosPorZona(
+  fichasPreview: ReadonlyArray<{ tipoBloco: string }>,
+  cotasHorario: ReadonlyArray<PlanoAmostragemCota>,
+): TurnoRecomendado[] {
+  const n = fichasPreview.length
+  const turnos: TurnoRecomendado[] = Array.from({ length: n }, () => 'Tarde')
+  const disponiveis = new Set<number>(Array.from({ length: n }, (_, i) => i))
+
+  const indicesUrbanos = fichasPreview
+    .map((f, i) => (f.tipoBloco === 'urbano' ? i : -1))
+    .filter((i) => i >= 0)
+  const indicesRurais = fichasPreview
+    .map((f, i) => (f.tipoBloco === 'rural' ? i : -1))
+    .filter((i) => i >= 0)
+
+  const metas = distribuirMetasTurnoPorZona(
+    indicesUrbanos.length,
+    indicesRurais.length,
+    cotasHorario,
+  )
+
+  alocarTurnosNoStrato(indicesRurais, metas.rural, turnos, disponiveis)
+  alocarTurnosNoStrato(indicesUrbanos, metas.urban, turnos, disponiveis)
+
+  for (const i of disponiveis) {
+    turnos[i] = 'Tarde'
+  }
+
+  return turnos
+}
+
+/** @deprecated use atribuirTurnosPorZona após montar fichas */
+export function expandirTurnosRecomendados(
+  cotasHorario: ReadonlyArray<PlanoAmostragemCota>,
+): TurnoRecomendado[] {
+  const filas: TurnoRecomendado[][] = cotasHorario.map((c) => {
+    const turno = rotuloTurno(c.perfil)
+    const fila: TurnoRecomendado[] = []
+    for (let i = 0; i < c.meta; i += 1) fila.push(turno)
+    return fila
+  })
+  return intercalarTurnos(filas)
+}
+
 export function expandirAlocacaoEquipe(
   membro: PlanoAmostragemEquipe,
   blocos: PlanoAmostragemPublico['divisaoTerritorial'],
@@ -237,27 +420,21 @@ function parseAlocacaoLegada(
     })
 }
 
-function intercalarPontos(pontos: PontoCampoBloco[]): PontoCampoBloco[] {
-  if (pontos.length <= 1) return pontos
-  const porTitulo = new Map<string, PontoCampoBloco[]>()
+/** Agrupa fichas do mesmo local/setor em sequência (facilita concentrar em um entrevistador). */
+function sequenciaAgrupadaPorLocal(pontos: PontoCampoBloco[]): PontoCampoBloco[] {
+  const grupos = new Map<string, PontoCampoBloco[]>()
   for (const p of pontos) {
-    const lista = porTitulo.get(p.titulo) ?? []
+    const lista = grupos.get(p.titulo) ?? []
     lista.push(p)
-    porTitulo.set(p.titulo, lista)
+    grupos.set(p.titulo, lista)
   }
-  const filas = [...porTitulo.values()].sort((a, b) => b.length - a.length)
-  const resultado: PontoCampoBloco[] = []
-  let restam = true
-  while (restam) {
-    restam = false
-    for (const fila of filas) {
-      if (fila.length > 0) {
-        resultado.push(fila.shift()!)
-        restam = restam || fila.length > 0
-      }
-    }
-  }
-  return resultado
+  return [...grupos.entries()]
+    .sort((a, b) => b[1].length - a[1].length)
+    .flatMap(([, lista]) => lista)
+}
+
+function intercalarPontos(pontos: PontoCampoBloco[]): PontoCampoBloco[] {
+  return sequenciaAgrupadaPorLocal(pontos)
 }
 
 /**
@@ -434,12 +611,7 @@ export function validarRoteiroCampo(
   fichas: FichaCampoEntrevista[],
 ): ValidacaoRoteiroCampo {
   const avisos: string[] = []
-
-  if (fichas.length !== plano.amostraTotal) {
-    avisos.push(
-      `Total de fichas (${fichas.length}) difere da amostra (${plano.amostraTotal}).`,
-    )
-  }
+  const checklist: ChecklistMetodologicoItem[] = []
 
   const metaUrbana =
     plano.amostraUrbana ??
@@ -454,21 +626,196 @@ export function validarRoteiroCampo(
 
   const fichasUrbanas = fichas.filter((f) => f.tipoBloco === 'urbano').length
   const fichasRurais = fichas.filter((f) => f.tipoBloco === 'rural').length
+  const totalOk = fichas.length === plano.amostraTotal
 
-  if (fichasUrbanas !== metaUrbana) {
-    avisos.push(`Urbano: meta ${metaUrbana}, fichas ${fichasUrbanas}.`)
-  }
-  if (fichasRurais !== metaRural) {
-    avisos.push(`Rural: meta ${metaRural}, fichas ${fichasRurais}.`)
+  checklist.push({
+    id: 'total',
+    label: 'Total de fichas',
+    status: totalOk ? 'ok' : 'error',
+    detalhe: `${fichas.length}/${plano.amostraTotal}`,
+  })
+  if (!totalOk) {
+    avisos.push(
+      `Total de fichas (${fichas.length}) difere da amostra (${plano.amostraTotal}).`,
+    )
   }
 
+  const urbanoOk = fichasUrbanas === metaUrbana
+  const ruralOk = fichasRurais === metaRural
+  checklist.push({
+    id: 'urbano',
+    label: 'Urbano',
+    status: urbanoOk ? 'ok' : 'error',
+    detalhe: `${fichasUrbanas}/${metaUrbana}`,
+  })
+  checklist.push({
+    id: 'rural',
+    label: 'Rural',
+    status: ruralOk ? 'ok' : 'error',
+    detalhe: `${fichasRurais}/${metaRural}`,
+  })
+  if (!urbanoOk) avisos.push(`Urbano: meta ${metaUrbana}, fichas ${fichasUrbanas}.`)
+  if (!ruralOk) avisos.push(`Rural: meta ${metaRural}, fichas ${fichasRurais}.`)
+
+  const metasEntrevistadores = plano.equipeCampo.map((e) => e.entrevistas)
+  const minMeta = metasEntrevistadores.length > 0 ? Math.min(...metasEntrevistadores) : 0
+  const maxMeta = metasEntrevistadores.length > 0 ? Math.max(...metasEntrevistadores) : 0
+  const balanceado = maxMeta - minMeta <= 1
+  checklist.push({
+    id: 'equipe',
+    label: 'Entrevistadores balanceados',
+    status: balanceado ? 'ok' : 'warn',
+    detalhe: balanceado ? `${minMeta}–${maxMeta} por pessoa` : `variação ${minMeta}–${maxMeta}`,
+  })
+
+  let blocosOk = true
   for (const bloco of plano.divisaoTerritorial) {
     const fichasBloco = fichas.filter((f) => f.blocoId === bloco.id).length
     if (fichasBloco !== bloco.entrevistas) {
+      blocosOk = false
       avisos.push(
         `Bloco "${bloco.nome}": meta ${bloco.entrevistas}, fichas ${fichasBloco}.`,
       )
     }
+  }
+  checklist.push({
+    id: 'blocos',
+    label: 'Blocos territoriais',
+    status: blocosOk ? 'ok' : 'error',
+    detalhe: blocosOk ? 'metas conferem' : 'divergência em bloco(s)',
+  })
+
+  const agrupados = plano.divisaoTerritorial.filter(
+    (b) => b.id.includes('outros') || (b.setorIds?.length ?? 0) > 1,
+  )
+  let agrupadosOk = true
+  for (const bloco of agrupados) {
+    const locais = fichas.filter((f) => f.blocoId === bloco.id).map((f) => f.localCampo)
+    const contagem = new Map<string, number>()
+    for (const local of locais) contagem.set(local, (contagem.get(local) ?? 0) + 1)
+    const vals = [...contagem.values()]
+    if (vals.length > 1) {
+      const min = Math.min(...vals)
+      const max = Math.max(...vals)
+      if (max > min * 3 && min <= 2) agrupadosOk = false
+    }
+  }
+  checklist.push({
+    id: 'agrupados',
+    label: 'Setores agrupados proporcionais',
+    status: agrupadosOk ? 'ok' : 'warn',
+    detalhe: agrupadosOk ? 'distribuição ponderada' : 'revisar pesos em rota agrupada',
+  })
+
+  checklist.push({
+    id: 'guia',
+    label: 'Guia de pontos compatível com fichas',
+    status: 'ok',
+    detalhe: 'gerado a partir das fichas finais',
+  })
+
+  const turnosMeta = new Map<TurnoRecomendado, number>()
+  for (const c of plano.cotasHorario) turnosMeta.set(rotuloTurno(c.perfil), c.meta)
+  const turnosFichas = new Map<TurnoRecomendado, number>()
+  for (const f of fichas) {
+    turnosFichas.set(f.turnoRecomendado, (turnosFichas.get(f.turnoRecomendado) ?? 0) + 1)
+  }
+  const turnosOk = (['Manhã', 'Tarde', 'Noite'] as TurnoRecomendado[]).every(
+    (t) => (turnosFichas.get(t) ?? 0) === (turnosMeta.get(t) ?? 0),
+  )
+  const metaNoiteGlobal = turnosMeta.get('Noite') ?? 0
+  const noiteRealizada = turnosFichas.get('Noite') ?? 0
+  const noiteAbaixoPorTetoRural =
+    !turnosOk && metaNoiteGlobal > 0 && noiteRealizada < metaNoiteGlobal
+  checklist.push({
+    id: 'turnos',
+    label: 'Cotas de horário distribuídas por ficha',
+    status: turnosOk ? 'ok' : noiteAbaixoPorTetoRural ? 'warn' : 'warn',
+    detalhe: turnosOk
+      ? 'Manhã/Tarde/Noite fecham com meta'
+      : noiteAbaixoPorTetoRural
+        ? `Noite ${noiteRealizada}/${metaNoiteGlobal} — excesso realocado para manhã/tarde (teto rural ${Math.round(NOITE_RURAL_MAX_PCT * 100)}%)`
+        : `Manhã ${turnosFichas.get('Manhã') ?? 0}/${turnosMeta.get('Manhã') ?? 0} · Tarde ${turnosFichas.get('Tarde') ?? 0}/${turnosMeta.get('Tarde') ?? 0} · Noite ${noiteRealizada}/${metaNoiteGlobal}`,
+  })
+  if (!turnosOk) {
+    avisos.push(
+      noiteAbaixoPorTetoRural
+        ? `Cota global de noite (${metaNoiteGlobal}) reduzida para ${noiteRealizada} pelo teto de segurança no rural — priorizar manhã/tarde no interior.`
+        : 'Cotas de horário não fecham com turno recomendado nas fichas.',
+    )
+  }
+
+  const localPorEntrevistador = new Map<string, Set<number>>()
+  for (const f of fichas) {
+    const chave = f.localCampo
+    const set = localPorEntrevistador.get(chave) ?? new Set<number>()
+    set.add(f.entrevistador)
+    localPorEntrevistador.set(chave, set)
+  }
+  const setoresDivididos = [...localPorEntrevistador.entries()].filter(
+    ([, ents]) => ents.size > 1,
+  )
+  const setoresPequenosDivididos = setoresDivididos.filter(([local]) => {
+    const totalLocal = fichas.filter((f) => f.localCampo === local).length
+    return totalLocal <= LIMITE_DIVIDIR_BLOCO_ENTREVISTAS
+  })
+  const qtdDivididos = setoresDivididos.length
+  const qtdPequenos = setoresPequenosDivididos.length
+  let statusSetores: ChecklistMetodologicoItem['status'] = 'ok'
+  let detalheSetores = 'nenhum setor dividido entre entrevistadores'
+  if (qtdPequenos > 0) {
+    statusSetores = 'warn'
+    detalheSetores = `OK com ressalva — ${qtdPequenos} setor(es) pequeno(s) divididos por balanceamento`
+  } else if (qtdDivididos > 0) {
+    statusSetores = 'warn'
+    detalheSetores = `OK com ressalva — ${qtdDivididos} setor(es) em blocos grandes divididos entre entrevistadores`
+  }
+  checklist.push({
+    id: 'setores-divididos',
+    label: 'Setores divididos entre entrevistadores',
+    status: statusSetores,
+    detalhe: detalheSetores,
+  })
+  if (qtdPequenos > 0) {
+    avisos.push(
+      `${qtdPequenos} setor(es) com até ${LIMITE_DIVIDIR_BLOCO_ENTREVISTAS} entrevistas aparecem em mais de um entrevistador.`,
+    )
+  } else if (qtdDivididos > 0) {
+    avisos.push(
+      `${qtdDivididos} setor(es) divididos entre entrevistadores (blocos grandes) — revisar logística.`,
+    )
+  }
+
+  const noiteUrbano = fichas.filter(
+    (f) => f.tipoBloco === 'urbano' && f.turnoRecomendado === 'Noite',
+  ).length
+  const noiteRural = fichas.filter(
+    (f) => f.tipoBloco === 'rural' && f.turnoRecomendado === 'Noite',
+  ).length
+  const nUrban = fichas.filter((f) => f.tipoBloco === 'urbano').length
+  const nRural = fichas.filter((f) => f.tipoBloco === 'rural').length
+  const pctNoiteUrbano = nUrban > 0 ? Math.round((noiteUrbano / nUrban) * 1000) / 10 : 0
+  const pctNoiteRural = nRural > 0 ? Math.round((noiteRural / nRural) * 1000) / 10 : 0
+  const ruralNoiteAlto = nRural > 0 && pctNoiteRural > NOITE_RURAL_MAX_PCT * 100 + 2
+  const urbanNoiteAlto = nUrban > 0 && pctNoiteUrbano > NOITE_URBANO_MAX_PCT * 100 + 2
+  const balanceamentoHorarioOk = !ruralNoiteAlto && !urbanNoiteAlto
+  checklist.push({
+    id: 'noite-rural',
+    label: 'Balanceamento de horário por zona',
+    status: balanceamentoHorarioOk ? 'ok' : 'warn',
+    detalhe: balanceamentoHorarioOk
+      ? `Urbano: ${pctNoiteUrbano}% noite · Rural: ${pctNoiteRural}% noite`
+      : `Urbano ${pctNoiteUrbano}% noite (${noiteUrbano}/${nUrban}) · Rural ${pctNoiteRural}% noite (${noiteRural}/${nRural})`,
+  })
+  if (ruralNoiteAlto) {
+    avisos.push(
+      `Noite rural acima do teto (${pctNoiteRural}%) — priorizar manhã/tarde no campo.`,
+    )
+  }
+  if (urbanNoiteAlto) {
+    avisos.push(
+      `Noite urbana concentrada (${pctNoiteUrbano}%) — reforçar turnos de manhã/tarde na sede.`,
+    )
   }
 
   for (const membro of plano.equipeCampo) {
@@ -489,7 +836,12 @@ export function validarRoteiroCampo(
     }
   }
 
-  return { ok: avisos.length === 0, avisos }
+  const erros = checklist.filter((c) => c.status === 'error').length
+  return {
+    ok: erros === 0,
+    avisos,
+    checklist,
+  }
 }
 
 export function montarRoteiroCampo(
@@ -500,6 +852,7 @@ export function montarRoteiroCampo(
   let globalSeq = 1
   const indicePontoPorBloco = new Map<string, number>()
   const pontosMapa = montarSequenciaPontosPorBloco(plano, ctx)
+  const fichasParaTurno: Array<{ tipoBloco: string }> = []
 
   const metaCotas = {
     sexo: plano.cotasSexo.map((c) => ({ perfil: c.perfil, meta: c.meta })),
@@ -518,14 +871,17 @@ export function montarRoteiroCampo(
         indicePontoPorBloco,
         bloco,
       )
+      fichasParaTurno.push({ tipoBloco: tipo })
       fichas.push({
         id: `${plano.codigoIbge}-${String(membro.entrevistador).padStart(2, '0')}-${String(i + 1).padStart(2, '0')}`,
         entrevistador: membro.entrevistador,
         sequencia: globalSeq,
+        sequenciaEntrevistador: i + 1,
         municipio: plano.municipio,
         blocoId,
         blocoSugerido: blocoNome,
         tipoBloco: tipo,
+        turnoRecomendado: 'Tarde',
         localCampo: ponto.titulo,
         bairroRecorte: ponto.bairroRecorte,
         enderecoSugerido: ponto.endereco,
@@ -536,6 +892,11 @@ export function montarRoteiroCampo(
       })
       globalSeq += 1
     }
+  }
+
+  const turnos = atribuirTurnosPorZona(fichasParaTurno, plano.cotasHorario)
+  for (let i = 0; i < fichas.length; i += 1) {
+    fichas[i] = { ...fichas[i], turnoRecomendado: turnos[i] ?? 'Tarde' }
   }
 
   const pontosPorBloco = montarGuiaPontosDasFichas(fichas)

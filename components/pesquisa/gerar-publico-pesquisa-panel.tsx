@@ -463,13 +463,14 @@ function PlanoPreview({
         <h3 className="mb-3 text-sm font-semibold text-text-primary">
           Divisão territorial ({totalBlocos} entrevistas)
         </h3>
-        <table className="w-full min-w-[520px] text-left text-sm">
+        <table className="w-full min-w-[600px] text-left text-sm">
           <thead>
             <tr className="border-b border-card text-xs uppercase tracking-wide text-text-muted">
               <th className="py-2 pr-3 font-semibold">Bloco</th>
               <th className="py-2 pr-3 font-semibold">Tipo</th>
               <th className="py-2 pr-3 font-semibold text-right">N</th>
-              <th className="py-2 font-semibold text-right">%</th>
+              <th className="py-2 pr-3 font-semibold text-right">% no estrato</th>
+              <th className="py-2 font-semibold text-right">% da amostra</th>
             </tr>
           </thead>
           <tbody>
@@ -483,7 +484,8 @@ function PlanoPreview({
                 </td>
                 <td className="py-2 pr-3 capitalize text-secondary">{b.tipo}</td>
                 <td className="py-2 pr-3 text-right font-medium">{b.entrevistas}</td>
-                <td className="py-2 text-right text-secondary">{b.pesoPct}%</td>
+                <td className="py-2 pr-3 text-right text-secondary">{b.pesoPct}%</td>
+                <td className="py-2 text-right text-secondary">{b.pctAmostra}%</td>
               </tr>
             ))}
           </tbody>

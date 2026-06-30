@@ -95,6 +95,20 @@ function pct(numerador: number, denominador: number): number {
   return Math.round((numerador / denominador) * 1000) / 10
 }
 
+function comPctAmostra(
+  bloco: Omit<PlanoAmostragemBloco, 'pctAmostra'>,
+  amostraTotal: number,
+): PlanoAmostragemBloco {
+  return { ...bloco, pctAmostra: pct(bloco.entrevistas, amostraTotal) }
+}
+
+type BlocoSemPctAmostra = Omit<PlanoAmostragemBloco, 'pctAmostra'>
+
+/** Só divide bloco entre entrevistadores quando tiver mais que este N. */
+const LIMITE_DIVIDIR_BLOCO_ENTREVISTAS = 15
+/** Fragmento mínimo ao dividir bloco grande (evita pedaços de 1–3 entrevistas). */
+const MIN_FRAGMENTO_BLOCO_ENTREVISTAS = 4
+
 /** Subdivisão da faixa 15–59 em faixas de entrevista (proporções médias NE — ver aviso no plano). */
 const SUBFAIXAS_15_59: ReadonlyArray<{ id: string; perfil: string; peso: number }> = [
   { id: '16-24', perfil: '16 a 24 anos', peso: 0.28 },
@@ -177,7 +191,7 @@ function montarBlocosUrbanos(
   bairros: BairroReferencia[],
   entrevistasUrbanas: number,
   pesoPorEleitores: boolean,
-): PlanoAmostragemBloco[] {
+): BlocoSemPctAmostra[] {
   const validos = bairros.filter(
     (b) => b.nome.trim().length > 0 && !b.zonaRural && pesoBairro(b, pesoPorEleitores) > 0,
   )
@@ -294,7 +308,7 @@ function montarBlocosPorSetores(
   setores: SetorReferencia[],
   totalEntrevistas: number,
   tipo: 'urbano' | 'rural',
-): PlanoAmostragemBloco[] {
+): BlocoSemPctAmostra[] {
   const filtrados = setores.filter(
     (s) => (tipo === 'urbano' ? s.urbano : !s.urbano) && s.populacao > 0,
   )
@@ -309,7 +323,7 @@ function montarBlocosPorSetores(
     totalEntrevistas,
   )
 
-  const blocos: PlanoAmostragemBloco[] = []
+  const blocos: BlocoSemPctAmostra[] = []
   const agrupados: SetorReferencia[] = []
 
   const ordenados = [...filtrados].sort((a, b) => b.populacao - a.populacao)
@@ -361,21 +375,21 @@ function montarBlocosPorSetores(
 function montarBlocosUrbanosSetores(
   setores: SetorReferencia[],
   entrevistasUrbanas: number,
-): PlanoAmostragemBloco[] {
+): BlocoSemPctAmostra[] {
   return montarBlocosPorSetores(setores, entrevistasUrbanas, 'urbano')
 }
 
 function montarBlocosRuraisSetores(
   setores: SetorReferencia[],
   entrevistasRurais: number,
-): PlanoAmostragemBloco[] {
+): BlocoSemPctAmostra[] {
   return montarBlocosPorSetores(setores, entrevistasRurais, 'rural')
 }
 
 function montarBlocosRuraisTse(
   bairros: BairroReferencia[],
   entrevistasRurais: number,
-): PlanoAmostragemBloco[] {
+): BlocoSemPctAmostra[] {
   const validos = bairros.filter((b) => b.zonaRural && b.eleitores > 0)
   if (validos.length === 0) {
     return montarBlocosRurais(entrevistasRurais)
@@ -418,7 +432,7 @@ function montarBlocosRuraisTse(
   }))
 }
 
-function montarBlocosRurais(entrevistasRurais: number): PlanoAmostragemBloco[] {
+function montarBlocosRurais(entrevistasRurais: number): BlocoSemPctAmostra[] {
   const blocos = [
     {
       id: 'rur-proxima',
@@ -461,49 +475,132 @@ function montarEquipe(
   nEntrevistadores: number,
 ): PlanoAmostragemEquipe[] {
   const n = Math.max(1, Math.min(50, Math.round(nEntrevistadores)))
+  const capacidades = new Map<number, number>()
+  const alocacoes = new Map<number, PlanoAmostragemAlocacaoBloco[]>()
+
   const cotas = distribuirInteiros(
     Array.from({ length: n }, (_, i) => ({ id: String(i + 1), peso: 1 })),
     total,
   )
 
-  const equipe: PlanoAmostragemEquipe[] = []
-  const blocosOrdenados = [...blocos].sort((a, b) => b.entrevistas - a.entrevistas)
-  let blocoIdx = 0
-  let restanteBloco = blocosOrdenados[0]?.entrevistas ?? 0
-  let blocoAtual = blocosOrdenados[0]
+  for (let i = 1; i <= n; i += 1) {
+    const meta = cotas.get(String(i)) ?? 0
+    capacidades.set(i, meta)
+    alocacoes.set(i, [])
+  }
 
+  const pushAlocacao = (entrevistador: number, bloco: PlanoAmostragemBloco, qtd: number) => {
+    if (qtd <= 0) return
+    const lista = alocacoes.get(entrevistador) ?? []
+    const ultimo = lista[lista.length - 1]
+    if (ultimo?.blocoId === bloco.id) {
+      ultimo.entrevistas += qtd
+    } else {
+      lista.push({ blocoId: bloco.id, blocoNome: bloco.nome, entrevistas: qtd })
+    }
+    alocacoes.set(entrevistador, lista)
+    capacidades.set(entrevistador, (capacidades.get(entrevistador) ?? 0) - qtd)
+  }
+
+  const melhorEncaixe = (qtd: number): number | null => {
+    const candidatos = [...capacidades.entries()]
+      .filter(([, cap]) => cap >= qtd)
+      .sort((a, b) => a[1] - b[1])
+    return candidatos[0]?.[0] ?? null
+  }
+
+  const maiorCapacidade = (): number | null => {
+    let melhor: number | null = null
+    let maxCap = 0
+    for (const [id, cap] of capacidades) {
+      if (cap > maxCap) {
+        maxCap = cap
+        melhor = id
+      }
+    }
+    return melhor
+  }
+
+  type Pendente = { bloco: PlanoAmostragemBloco; restante: number }
+  const indivisiveis: Pendente[] = blocos
+    .filter((b) => b.entrevistas > 0 && b.entrevistas <= LIMITE_DIVIDIR_BLOCO_ENTREVISTAS)
+    .map((bloco) => ({ bloco, restante: bloco.entrevistas }))
+    .sort((a, b) => b.restante - a.restante)
+
+  const divisiveis: Pendente[] = blocos
+    .filter((b) => b.entrevistas > LIMITE_DIVIDIR_BLOCO_ENTREVISTAS)
+    .map((bloco) => ({ bloco, restante: bloco.entrevistas }))
+    .sort((a, b) => b.restante - a.restante)
+
+  // Blocos ≤15 entrevistas: sempre inteiros em um único entrevistador (best-fit decrescente)
+  for (const item of indivisiveis) {
+    const ent = melhorEncaixe(item.restante) ?? maiorCapacidade()
+    if (ent == null || (capacidades.get(ent) ?? 0) < item.restante) {
+      continue
+    }
+    pushAlocacao(ent, item.bloco, item.restante)
+    item.restante = 0
+  }
+
+  // Repescagem: blocos indivisíveis que não encaixaram — maior capacidade disponível
+  for (const item of indivisiveis.filter((p) => p.restante > 0)) {
+    const ent = maiorCapacidade()
+    if (ent == null || (capacidades.get(ent) ?? 0) < item.restante) continue
+    pushAlocacao(ent, item.bloco, item.restante)
+    item.restante = 0
+  }
+
+  // Blocos grandes: dividir com fragmentos ≥ MIN_FRAGMENTO
+  for (const item of divisiveis) {
+    while (item.restante > 0) {
+      const ent = melhorEncaixe(item.restante) ?? maiorCapacidade()
+      if (ent == null || (capacidades.get(ent) ?? 0) <= 0) break
+
+      const cap = capacidades.get(ent) ?? 0
+      let take = Math.min(cap, item.restante)
+
+      if (take < item.restante && item.restante - take < MIN_FRAGMENTO_BLOCO_ENTREVISTAS) {
+        take = item.restante - MIN_FRAGMENTO_BLOCO_ENTREVISTAS
+      }
+      if (take < MIN_FRAGMENTO_BLOCO_ENTREVISTAS && item.restante > MIN_FRAGMENTO_BLOCO_ENTREVISTAS) {
+        const outro = melhorEncaixe(item.restante)
+        if (outro != null && outro !== ent) {
+          pushAlocacao(outro, item.bloco, item.restante)
+          item.restante = 0
+          continue
+        }
+      }
+      if (take <= 0) break
+
+      pushAlocacao(ent, item.bloco, take)
+      item.restante -= take
+    }
+  }
+
+  // Passagem final: esgotar blocos pendentes e capacidades restantes
+  const pendentesFinais = [...indivisiveis, ...divisiveis].filter((p) => p.restante > 0)
+  for (const item of pendentesFinais) {
+    while (item.restante > 0) {
+      const ent = melhorEncaixe(item.restante) ?? maiorCapacidade()
+      if (ent == null || (capacidades.get(ent) ?? 0) <= 0) break
+      const take = Math.min(capacidades.get(ent) ?? 0, item.restante)
+      if (take <= 0) break
+      pushAlocacao(ent, item.bloco, take)
+      item.restante -= take
+    }
+  }
+
+  const equipe: PlanoAmostragemEquipe[] = []
   for (let i = 1; i <= n; i += 1) {
     const meta = cotas.get(String(i)) ?? 0
     if (meta <= 0) continue
-
-    const atribuidos: PlanoAmostragemAlocacaoBloco[] = []
-    let falta = meta
-    while (falta > 0 && blocoIdx < blocosOrdenados.length && blocoAtual) {
-      const take = Math.min(falta, restanteBloco)
-      if (take > 0) {
-        atribuidos.push({
-          blocoId: blocoAtual.id,
-          blocoNome: blocoAtual.nome,
-          entrevistas: take,
-        })
-        falta -= take
-        restanteBloco -= take
-      }
-      if (restanteBloco <= 0) {
-        blocoIdx += 1
-        blocoAtual = blocosOrdenados[blocoIdx]
-        restanteBloco = blocoAtual?.entrevistas ?? 0
-      }
-    }
-
+    const atribuidos = alocacoes.get(i) ?? []
     equipe.push({
       entrevistador: i,
       entrevistas: meta,
       alocacao: atribuidos,
       blocosSugeridos:
-        atribuidos.map((a) => `${a.blocoNome} (${a.entrevistas})`).join('; ') ||
-        blocoAtual?.nome ||
-        '—',
+        atribuidos.map((a) => `${a.blocoNome} (${a.entrevistas})`).join('; ') || '—',
     })
   }
 
@@ -592,7 +689,7 @@ export function gerarPlanoAmostragemPublico(input: GerarPlanoAmostragemInput): P
   const divisaoTerritorial: PlanoAmostragemBloco[] = [
     ...blocosUrbanos,
     ...blocosRurais,
-  ]
+  ].map((b) => comPctAmostra(b, amostraTotal))
 
   const entrevistadoresPrevistos =
     input.entrevistadores != null
@@ -678,8 +775,10 @@ export function gerarPlanoAmostragemPublico(input: GerarPlanoAmostragemInput): P
       'Substituir recusa mantendo estrato (mesmo bloco, sexo e faixa etária).',
     ],
     auditoria: [
-      'Supervisor deve recontactar 10% das fichas por telefone ou visita de checagem.',
-      'Conferir distribuição real vs. cotas ao final de cada dia de campo.',
+      'Auditoria mínima obrigatória: recontactar 10% das fichas por telefone ou visita de checagem.',
+      'Auditoria recomendada: 20% das fichas, com prioridade para zona rural e blocos agrupados.',
+      'Auditoria dirigida (100%): todos os casos suspeitos — entrevistas muito rápidas; muitas no mesmo GPS; alta taxa de recusa; todas no mesmo horário; entrevistador acima da média de produtividade.',
+      'Conferir distribuição real vs. cotas (sexo, idade e horário) ao final de cada dia de campo.',
       'Anexar mapa fotográfico ou croqui dos pontos sorteados por bloco.',
     ],
     avisos,

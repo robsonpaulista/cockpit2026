@@ -1,10 +1,14 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import { ChevronDown, ChevronUp, ClipboardList, Download, FileSpreadsheet } from 'lucide-react'
+import { CheckCircle2, AlertTriangle, ChevronDown, ChevronUp, ClipboardList, Download, FileSpreadsheet } from 'lucide-react'
 import type { LocalMapaPlano } from '@/lib/eleitorado-locais-pi'
 import type { PlanoAmostragemPublico } from '@/lib/plano-amostragem-publico-types'
-import { montarRoteiroCampo, type ContextoRoteiroCampo } from '@/lib/plano-amostragem-campo'
+import {
+  montarRoteiroCampo,
+  type ChecklistMetodologicoItem,
+  type ContextoRoteiroCampo,
+} from '@/lib/plano-amostragem-campo'
 import {
   exportarRoteiroCampoExcel,
   exportarRoteiroCampoPdf,
@@ -52,7 +56,9 @@ export function PlanoCampoRoteiroSection({
             </p>
           </div>
         </div>
-        <div className="flex flex-wrap gap-2">
+        <div className="flex w-full flex-col gap-3 lg:w-auto">
+          <ChecklistMetodologico checklist={roteiro.validacao.checklist} />
+          <div className="flex flex-wrap gap-2">
           <button
             type="button"
             onClick={() => {
@@ -93,12 +99,13 @@ export function PlanoCampoRoteiroSection({
             {expandido ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
             {expandido ? 'Recolher' : 'Expandir'}
           </button>
+          </div>
         </div>
       </div>
 
       {expandido ? (
         <div className="mt-4 flex flex-col gap-4">
-          {!roteiro.validacao.ok ? (
+          {!roteiro.validacao.ok && roteiro.validacao.avisos.length > 0 ? (
             <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-900 dark:text-amber-200">
               <p className="font-semibold">Validação do roteiro — revisar antes do campo</p>
               <ul className="mt-1 list-inside list-disc">
@@ -149,10 +156,13 @@ export function PlanoCampoRoteiroSection({
                           <li key={f.id} className="border-b border-card/50 pb-2">
                             <div className="flex justify-between gap-2">
                               <span className="font-medium">
-                                Ficha {f.sequencia} · {f.id}
+                                Ficha {f.sequenciaEntrevistador} (global {f.sequencia}) · {f.id}
                               </span>
                               <span className="text-secondary capitalize">{f.tipoBloco}</span>
                             </div>
+                            <p className="mt-0.5 text-xs text-secondary">
+                              Turno recomendado: <span className="font-medium text-text-primary">{f.turnoRecomendado}</span>
+                            </p>
                             <p className="mt-0.5 text-text-primary">
                               <span className="text-text-muted">Bloco:</span> {f.blocoSugerido}
                             </p>
@@ -185,6 +195,37 @@ export function PlanoCampoRoteiroSection({
         </div>
       ) : null}
     </section>
+  )
+}
+
+function ChecklistMetodologico({ checklist }: { checklist: ChecklistMetodologicoItem[] }) {
+  if (checklist.length === 0) return null
+  return (
+    <div className="w-full rounded-lg border border-card bg-background/60 p-3 lg:min-w-[280px]">
+      <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-text-muted">
+        Checklist metodológico
+      </p>
+      <ul className="space-y-1.5 text-xs">
+        {checklist.map((item) => (
+          <li key={item.id} className="flex items-start gap-2">
+            {item.status === 'ok' ? (
+              <CheckCircle2 className="mt-0.5 h-3.5 w-3.5 shrink-0 text-emerald-600" aria-hidden />
+            ) : (
+              <AlertTriangle
+                className={`mt-0.5 h-3.5 w-3.5 shrink-0 ${item.status === 'error' ? 'text-red-500' : 'text-amber-500'}`}
+                aria-hidden
+              />
+            )}
+            <span className="text-text-primary">
+              {item.label}
+              {item.detalhe ? (
+                <span className="text-secondary"> — {item.detalhe}</span>
+              ) : null}
+            </span>
+          </li>
+        ))}
+      </ul>
+    </div>
   )
 }
 

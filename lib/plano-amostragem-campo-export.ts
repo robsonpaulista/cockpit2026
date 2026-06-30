@@ -34,7 +34,9 @@ function slugArquivo(nome: string): string {
 const COLUNAS_FICHA = [
   'ID ficha',
   'Entrevistador',
-  'Seq.',
+  'Seq. global',
+  'Seq. entrevistador',
+  'Turno recomendado',
   'Bloco sugerido',
   'Tipo bloco',
   'Local sugerido',
@@ -56,7 +58,9 @@ function fichaParaLinhaExport(f: FichaCampoEntrevista) {
   return {
     'ID ficha': f.id,
     Entrevistador: f.entrevistador,
-    'Seq.': f.sequencia,
+    'Seq. global': f.sequencia,
+    'Seq. entrevistador': f.sequenciaEntrevistador,
+    'Turno recomendado': f.turnoRecomendado,
     'Bloco sugerido': f.blocoSugerido,
     'Tipo bloco': f.tipoBloco,
     'Local sugerido': f.localCampo,
@@ -99,7 +103,7 @@ export function exportarRoteiroCampoExcel(
     ['3. Registrar sexo, idade e horário para conferência de cotas.'],
     ['4. GPS sugerido é ponto de partida — anotar coordenada real se diferente.'],
     ['5. Resultado: completa | recusa | ausente | inelegivel'],
-    ['6. Supervisor preenche coluna Auditoria OK em 10% das fichas.'],
+    ['6. Auditoria mínima 10% · recomendada 20% · dirigida 100% nos casos suspeitos.'],
   ]
   XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(capa), 'Capa')
 
@@ -132,6 +136,20 @@ export function exportarRoteiroCampoExcel(
     ),
     'Guia pontos',
   )
+
+  if (roteiro.validacao.checklist.length > 0) {
+    XLSX.utils.book_append_sheet(
+      wb,
+      XLSX.utils.json_to_sheet(
+        roteiro.validacao.checklist.map((c) => ({
+          Item: c.label,
+          Status: c.status === 'ok' ? 'OK' : c.status === 'warn' ? 'Revisar' : 'Erro',
+          Detalhe: c.detalhe ?? '',
+        })),
+      ),
+      'Checklist',
+    )
+  }
 
   if (roteiro.validacao.avisos.length > 0) {
     XLSX.utils.book_append_sheet(
@@ -205,9 +223,10 @@ export function exportarRoteiroCampoPdf(
 
     doc.autoTable({
       startY: 34,
-      head: [['#', 'Bloco', 'Onde ir (local/setor)', 'Bairro', 'GPS', 'Data', 'Resultado']],
-      body: fichasMembro.map((f, i) => [
-        String(i + 1),
+      head: [['#', 'Turno', 'Bloco', 'Onde ir (local/setor)', 'Bairro', 'GPS', 'Data', 'Resultado']],
+      body: fichasMembro.map((f) => [
+        String(f.sequenciaEntrevistador),
+        f.turnoRecomendado,
         f.blocoSugerido,
         f.localCampo,
         f.bairroRecorte ?? '',
@@ -221,12 +240,13 @@ export function exportarRoteiroCampoPdf(
       headStyles: { fillColor: [30, 58, 74] },
       columnStyles: {
         0: { cellWidth: 7 },
-        1: { cellWidth: 28 },
-        2: { cellWidth: 42 },
-        3: { cellWidth: 22 },
-        4: { cellWidth: 28 },
-        5: { cellWidth: 14 },
-        6: { cellWidth: 16 },
+        1: { cellWidth: 12 },
+        2: { cellWidth: 24 },
+        3: { cellWidth: 38 },
+        4: { cellWidth: 18 },
+        5: { cellWidth: 24 },
+        6: { cellWidth: 12 },
+        7: { cellWidth: 14 },
       },
     })
 
@@ -237,7 +257,7 @@ export function exportarRoteiroCampoPdf(
 
     doc.setFontSize(7)
     doc.text(
-      'Instruções por ficha no Excel (aba Fichas campo). GPS = ponto de partida sugerido. Auditoria: 10% das fichas.',
+      'Instruções por ficha no Excel (aba Fichas campo). GPS = ponto de partida sugerido. Auditoria: mín. 10%, recom. 20%.',
       14,
       y,
     )

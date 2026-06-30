@@ -64,7 +64,8 @@ export function exportarPlanoAmostragemExcel(plano: PlanoAmostragemPublico): voi
       Bloco: b.nome,
       Tipo: b.tipo,
       'Entrevistas (N)': b.entrevistas,
-      'Peso (%)': b.pesoPct,
+      '% no estrato': b.pesoPct,
+      '% da amostra': b.pctAmostra,
       Observações: b.notas ?? '',
     })),
   )
@@ -132,12 +133,13 @@ export function exportarPlanoAmostragemPdf(plano: PlanoAmostragemPublico): void 
 
   doc.autoTable({
     startY: y + 2,
-    head: [['Bloco territorial', 'Tipo', 'N', '%']],
+    head: [['Bloco territorial', 'Tipo', 'N', '% estrato', '% amostra']],
     body: plano.divisaoTerritorial.map((b) => [
       b.nome,
       b.tipo,
       String(b.entrevistas),
       `${b.pesoPct}%`,
+      `${b.pctAmostra}%`,
     ]),
     styles: { fontSize: 8 },
     headStyles: { fillColor: [30, 58, 74] },
