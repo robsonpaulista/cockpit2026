@@ -205,7 +205,7 @@ export function ExercitoDigitalLeaderRanking({ leaders, audience, referenceMonth
         <div>
           <h2 className={exercitoSectionTitleClass}>⚔️ Disputa de líderes</h2>
           <p className={exercitoSectionSubtitleClass}>
-            Pontuação = comentários em {referenceMonthLabel} · clique para expandir detalhes
+            Ranking por total de comentários em {referenceMonthLabel} · clique para expandir detalhes
           </p>
         </div>
         <span className="rounded-[99px] border border-[#C8900A]/45 bg-[#FAEEDA] px-2 py-0.5 text-[10px] font-semibold text-[#854F0B]">
@@ -253,7 +253,7 @@ export function ExercitoDigitalLeaderRanking({ leaders, audience, referenceMonth
                   {firstName}
                 </p>
                 <p className="text-[18px] font-bold tabular-nums text-[rgb(var(--color-primary))]">{score}</p>
-                <p className="text-[9px] text-text-muted">pts · {referenceMonthLabel}</p>
+                <p className="text-[9px] text-text-muted">com. · {referenceMonthLabel}</p>
                 <span className={cn('mt-1 inline-flex text-[9px] font-medium', trendBadgeClass(leader.trendKind))}>
                   {leader.trendLabel}
                 </span>
@@ -266,8 +266,12 @@ export function ExercitoDigitalLeaderRanking({ leaders, audience, referenceMonth
       <div className={cn(GRID, 'border-b border-[rgb(var(--color-border-tertiary)/0.85)] pb-1.5 text-[10px] font-semibold uppercase tracking-[0.04em] text-text-muted')}>
         <span className="text-center">#</span>
         <span>{profileColumnLabel(audience)}</span>
-        <span className="text-right">Pts</span>
-        <span className="text-center">Forma</span>
+        <span className="text-right" title="Comentários no mês de referência">
+          Com.
+        </span>
+        <span className="text-center" title="Tendência vs. mês anterior (volume de comentários)">
+          Tendência
+        </span>
       </div>
 
       <div className="min-h-0 flex-1 overflow-y-auto">
@@ -325,8 +329,8 @@ export function ExercitoDigitalLeaderRanking({ leaders, audience, referenceMonth
                         />
                       </div>
                       <p className="mt-0.5 text-[10px] text-text-muted">
-                        {formatInt(leader.publicacoes)}/{formatInt(leader.postsNoPeriodo)} posts ·{' '}
-                        {formatPct(leader.ativacaoPct)} ativ.
+                        {formatInt(score)} coment. · {formatInt(leader.publicacoes)}/
+                        {formatInt(leader.postsNoPeriodo)} posts ({formatPct(leader.ativacaoPct)} ativ.)
                       </p>
                     </div>
                     <span className="text-right text-[14px] font-bold tabular-nums text-[rgb(var(--color-primary))]">
@@ -374,13 +378,20 @@ export function ExercitoDigitalLeaderRanking({ leaders, audience, referenceMonth
                         { label: 'Mês anterior', value: formatInt(leader.mesAnterior), color: undefined },
                         {
                           label: 'Variação',
-                          value: leader.variacaoPct == null ? '—' : formatPct(leader.variacaoPct),
+                          value:
+                            leader.mesAnterior <= 0 && leader.mesAtual > 0
+                              ? `0 → ${formatInt(leader.mesAtual)} com.`
+                              : leader.variacaoPct == null
+                                ? '—'
+                                : formatPct(leader.variacaoPct),
                           color:
-                            leader.variacaoPct == null
-                              ? undefined
-                              : leader.variacaoPct >= 0
-                                ? '#3B6D11'
-                                : '#A32D2D',
+                            leader.mesAnterior <= 0 && leader.mesAtual > 0
+                              ? '#3B6D11'
+                              : leader.variacaoPct == null
+                                ? undefined
+                                : leader.variacaoPct >= 0
+                                  ? '#3B6D11'
+                                  : '#A32D2D',
                         },
                         { label: 'Consistência', value: leader.consistencia, color: undefined },
                       ].map((item) => (

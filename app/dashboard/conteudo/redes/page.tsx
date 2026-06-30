@@ -56,14 +56,12 @@ import {
   conteudoRedesTextClass,
 } from '@/lib/conteudo-redes-styles'
 import { sidebarPrimaryCTAButtonClass } from '@/lib/sidebar-menu-active-style'
+import { InstagramAudienceKpiStrip } from '@/components/conteudo-redes/instagram-audience-kpi-strip'
 import { PremiumMetricCard } from '@/components/premium/metric-card'
 import { PremiumSectionHeader } from '@/components/conteudo-redes/premium-section-header'
 import { ChampionPostCard } from '@/components/conteudo-redes/champion-post-card'
 import {
-  IconActivity,
   IconAlertCircle,
-  IconExternalLink,
-  IconEye,
   IconLoader2,
   IconMapPin,
   IconRefresh,
@@ -730,47 +728,18 @@ export default function ConteudoPage() {
     return `${followers} seguidores · ${postsCount} publicações no período`
   }, [config, loading, metrics])
 
-  const audienceKpis = useMemo(() => {
-    const growth = metricsHistory?.summary
-    const followersContext =
-      growth && growth.growth !== 0
-        ? `${growth.growth > 0 ? '+' : ''}${growth.growth.toLocaleString('pt-BR')} (${growth.growthPercentage}%)`
-        : undefined
-
-    return [
-      {
-        id: 'followers',
-        label: 'Seguidores',
-        value: metrics?.followers?.total?.toLocaleString('pt-BR') || '0',
-        contextLine: followersContext,
-        icon: IconUsers,
-      },
-      {
-        id: 'profile-views',
-        label: 'Visitas ao perfil',
-        value: (metrics?.insights?.profileViews || 0).toLocaleString('pt-BR'),
-        contextLine:
-          metricsHistory?.summary && metricsHistory.summary.totalProfileViews > 0
-            ? `${metricsHistory.summary.totalProfileViews.toLocaleString('pt-BR')} no período`
-            : undefined,
-        icon: IconEye,
-      },
-      {
-        id: 'reach',
-        label: 'Alcance',
-        value: (metrics?.insights?.reach || 0).toLocaleString('pt-BR'),
-        contextLine: 'Contas únicas alcançadas',
-        icon: IconActivity,
-      },
-      {
-        id: 'website-clicks',
-        label: 'Cliques no link',
-        value: (metrics?.insights?.websiteClicks || 0).toLocaleString('pt-BR'),
-        contextLine: 'Cliques no link da bio',
-        icon: IconExternalLink,
-      },
-    ]
-  }, [metrics, metricsHistory?.summary])
+  const audienceKpiData = useMemo(
+    () => ({
+      followers: metrics?.followers?.total ?? 0,
+      profileViews: metrics?.insights?.profileViews ?? 0,
+      reach: metrics?.insights?.reach ?? 0,
+      websiteClicks: metrics?.insights?.websiteClicks ?? 0,
+      periodGrowth: metricsHistory?.summary?.growth,
+      growthPercentage: metricsHistory?.summary?.growthPercentage,
+      totalProfileViewsInPeriod: metricsHistory?.summary?.totalProfileViews,
+    }),
+    [metrics, metricsHistory?.summary]
+  )
 
   const headerActions = (
     <>
@@ -1018,22 +987,7 @@ export default function ConteudoPage() {
                   }
                 />
 
-                <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-                  {audienceKpis.map((kpi) => (
-                    <PremiumMetricCard
-                      key={kpi.id}
-                      compact
-                      label={kpi.label}
-                      value={kpi.value}
-                      contextLine={kpi.contextLine}
-                      icon={kpi.icon}
-                      labelClassName={conteudoRedesTextClass}
-                      valueClassName={conteudoRedesTextClass}
-                      contextClassName={conteudoRedesTextClass}
-                      iconClassName={conteudoRedesAmberTextClass}
-                    />
-                  ))}
-                </div>
+                <InstagramAudienceKpiStrip {...audienceKpiData} />
               </section>
 
               <section className={sectionWrapClass}>

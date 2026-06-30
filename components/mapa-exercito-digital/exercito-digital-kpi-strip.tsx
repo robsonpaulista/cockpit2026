@@ -1,21 +1,13 @@
 'use client'
 
-import type { ReactNode } from 'react'
+import { AlertTriangle, Image, MessageCircle, PieChart } from 'lucide-react'
 import {
-  IconAlertTriangle,
-  IconChartPie,
-  IconMessageCircle,
-  IconPhoto,
-} from '@tabler/icons-react'
+  QuickAccessKpiStrip,
+  type QuickAccessKpiCardModel,
+} from '@/components/monitoramento/quick-access-kpi-card'
 import { formatInt, formatPct } from '@/lib/mapa-exercito-digital-aggregator'
 import type { ExercitoDigitalKpis } from '@/lib/mapa-exercito-digital-types'
 import type { ExercitoDigitalAudience } from '@/lib/mandatos-instagram-piaui'
-import {
-  exercitoKpiCardClass,
-  exercitoKpiHeroValueClass,
-  exercitoKpiValueClass,
-} from '@/lib/mapa-exercito-digital-layout'
-import { cn } from '@/lib/utils'
 
 interface ExercitoDigitalKpiStripProps {
   kpis: ExercitoDigitalKpis
@@ -23,76 +15,103 @@ interface ExercitoDigitalKpiStripProps {
   referenceMonthLabel: string
 }
 
-function KpiLabel({ icon: Icon, text }: { icon: typeof IconChartPie; text: string }) {
-  return (
-    <div className="mb-1 flex items-center gap-1">
-      <Icon className="h-2.5 w-2.5 shrink-0 text-[rgb(var(--color-primary))]" stroke={1.5} aria-hidden />
-      <span className="truncate text-[10px] text-text-muted">{text}</span>
-    </div>
-  )
-}
-
-function KpiFooter({ children }: { children: ReactNode }) {
-  return (
-    <p className="mt-auto pt-1.5 text-[10px] leading-snug text-text-muted line-clamp-2">{children}</p>
-  )
-}
-
-export function ExercitoDigitalKpiStrip({ kpis, audience, referenceMonthLabel }: ExercitoDigitalKpiStripProps) {
+function buildCards(
+  kpis: ExercitoDigitalKpis,
+  audience: ExercitoDigitalAudience,
+  referenceMonthLabel: string
+): QuickAccessKpiCardModel[] {
   const redeLabel =
     audience === 'unificado' ? 'perfis da base' : audience === 'mandatos' ? 'mandatários' : 'líderes'
   const comentariosRedeLabel =
     audience === 'unificado' ? 'base eleitoral' : audience === 'mandatos' ? 'mandatários' : 'liderados'
 
+  const metaFooter = kpis.abaixoMeta
+    ? `abaixo de ${formatInt(kpis.metaPct)}% · meta ${formatInt(kpis.metaPct)}%`
+    : `meta ${formatInt(kpis.metaPct)}%`
+
+  return [
+    {
+      id: 'ativacao',
+      icon: PieChart,
+      title: 'Ativação geral',
+      metricLabel: `${referenceMonthLabel.toUpperCase()} · REDE`,
+      insights: [
+        {
+          badge: 'leader',
+          badgeLabel: 'Ativação',
+          text: `${formatPct(kpis.ativacaoPct)} de ativação na rede`,
+        },
+        {
+          badge: 'growth',
+          badgeLabel: 'Cobertura',
+          text: `${formatInt(kpis.lideresAtivados)}/${formatInt(kpis.lideresMedidos)} ${redeLabel} · ${metaFooter}`,
+        },
+      ],
+    },
+    {
+      id: 'comentarios',
+      icon: MessageCircle,
+      title: 'Comentários gerados',
+      metricLabel: `${referenceMonthLabel.toUpperCase()} · VOLUME`,
+      insights: [
+        {
+          badge: 'leader',
+          badgeLabel: 'Total',
+          text: `${formatInt(kpis.comentariosTotal)} comentários no mês`,
+        },
+        {
+          badge: 'growth',
+          badgeLabel: 'Origem',
+          text: `${formatInt(kpis.comentariosLiderados)} ${comentariosRedeLabel} · ${formatInt(kpis.comentariosOrganicos)} org.`,
+        },
+      ],
+    },
+    {
+      id: 'municipios',
+      icon: AlertTriangle,
+      title: 'Municípios críticos',
+      metricLabel: `${referenceMonthLabel.toUpperCase()} · COBERTURA`,
+      insights: [
+        {
+          badge: 'leader',
+          badgeLabel: 'Críticos',
+          text: `${formatInt(kpis.municipiosCriticos)} municípios sem tração`,
+        },
+        {
+          badge: 'growth',
+          badgeLabel: 'Critério',
+          text: 'Sem comentários ou 0% de ativação',
+        },
+      ],
+    },
+    {
+      id: 'publicacoes',
+      icon: Image,
+      title: 'Publicações analisadas',
+      metricLabel: `${referenceMonthLabel.toUpperCase()} · POSTS`,
+      insights: [
+        {
+          badge: 'leader',
+          badgeLabel: 'Volume',
+          text: `${formatInt(kpis.publicacoesAnalisadas)} publicações no período`,
+        },
+        {
+          badge: 'growth',
+          badgeLabel: 'Base',
+          text: `Posts dos ${redeLabel} monitorados`,
+        },
+      ],
+    },
+  ]
+}
+
+export function ExercitoDigitalKpiStrip({ kpis, audience, referenceMonthLabel }: ExercitoDigitalKpiStripProps) {
+  const cards = buildCards(kpis, audience, referenceMonthLabel)
+
   return (
-    <div className="grid w-full min-w-0 grid-cols-2 gap-2 md:grid-cols-4">
-      <div className={cn(exercitoKpiCardClass('min-w-0 flex-1 border-[#B5D4F4]'))}>
-        <KpiLabel icon={IconChartPie} text="Ativação geral" />
-        <p className={exercitoKpiHeroValueClass}>{formatPct(kpis.ativacaoPct)}</p>
-        <div className="mt-1.5 h-1 w-full overflow-hidden rounded-[99px] bg-bg-app">
-          <div
-            className="h-full rounded-[99px] bg-[rgb(var(--color-primary))]"
-            style={{ width: `${Math.min(100, Math.max(0, kpis.ativacaoPct))}%` }}
-          />
-        </div>
-        <KpiFooter>
-          {formatInt(kpis.lideresAtivados)}/{formatInt(kpis.lideresMedidos)} {redeLabel} · {referenceMonthLabel}
-          {kpis.abaixoMeta ? (
-            <>
-              {' · '}
-              <span className="font-medium text-[#854F0B]">abaixo de {formatInt(kpis.metaPct)}%</span>
-            </>
-          ) : (
-            <> · meta {formatInt(kpis.metaPct)}%</>
-          )}
-        </KpiFooter>
-      </div>
-
-      <div className={cn(exercitoKpiCardClass(), 'min-w-0 flex-1')}>
-        <KpiLabel icon={IconMessageCircle} text="Comentários gerados" />
-        <p className={exercitoKpiValueClass}>{formatInt(kpis.comentariosTotal)}</p>
-        <KpiFooter>
-          <span className="font-medium text-[#3B6D11]">{formatInt(kpis.comentariosLiderados)} {comentariosRedeLabel}</span>
-          {' · '}
-          {formatInt(kpis.comentariosOrganicos)} org.
-        </KpiFooter>
-      </div>
-
-      <div className={cn(exercitoKpiCardClass(), 'min-w-0 flex-1')}>
-        <KpiLabel icon={IconAlertTriangle} text="Municípios críticos" />
-        <p className={cn(exercitoKpiValueClass, 'text-[#A32D2D]')}>{formatInt(kpis.municipiosCriticos)}</p>
-        <KpiFooter>
-          <span className="font-medium text-[#A32D2D]">0% ativação</span>
-        </KpiFooter>
-      </div>
-
-      <div className={cn(exercitoKpiCardClass(), 'min-w-0 flex-1')}>
-        <KpiLabel icon={IconPhoto} text="Publicações analisadas" />
-        <p className={exercitoKpiValueClass}>{formatInt(kpis.publicacoesAnalisadas)}</p>
-        <KpiFooter>
-          {formatInt(kpis.publicacoesAnalisadas)} publicações em {referenceMonthLabel}
-        </KpiFooter>
-      </div>
-    </div>
+    <QuickAccessKpiStrip
+      cards={cards}
+      gridClassName="grid-cols-2 md:grid-cols-4 xl:grid-cols-4"
+    />
   )
 }

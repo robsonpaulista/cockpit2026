@@ -4,7 +4,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { IconPlus, IconRefresh } from '@tabler/icons-react'
 import { ActiveAlertsStrip } from '@/components/noticias/active-alerts-strip'
 import { NewsCard } from '@/components/noticias/news-card'
-import { NoticiasFilterBar, NoticiasStatsRow } from '@/components/noticias/noticias-chrome'
+import { AlertasKpiStrip } from '@/components/monitoramento/alertas-kpi-strip'
+import { NoticiasFilterBar } from '@/components/noticias/noticias-chrome'
 import { SectionDivider } from '@/components/noticias/section-divider'
 import { FeedManagerModal } from '@/components/feed-manager-modal'
 import { EditNewsModal } from '@/components/edit-news-modal'
@@ -322,7 +323,7 @@ export function GoogleAlertsPanel() {
         onOcultarLixoChange={setOcultarLixo}
       />
 
-      <NoticiasStatsRow
+      <AlertasKpiStrip
         hojeCount={stats.hoje}
         riscoAltoCount={stats.riscoAlto}
         destacadasCount={stats.destacadas}

@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { PremiumMetricCard } from '@/components/premium/metric-card'
+import { TerritorioBaseKpiStrip } from '@/components/territorio-campo/territorio-base-kpi-strip'
 import { MunicipalityListItem } from '@/components/territorio/municipality-list-item'
 import { GoogleSheetsConfigModal } from '@/components/google-sheets-config-modal'
 import {
@@ -10,13 +10,10 @@ import {
   IconBriefcase,
   IconCheck,
   IconChevronDown,
-  IconFileText,
-  IconMapPin,
   IconNetwork,
   IconRefresh,
   IconSearch,
   IconSettings,
-  IconTarget,
   IconUsers,
   IconX,
 } from '@tabler/icons-react'
@@ -30,7 +27,6 @@ import { cn } from '@/lib/utils'
 import {
   territorioBaseCargoChipClass,
   territorioBaseGhostButtonClass,
-  territorioBaseKpiGridClass,
   territorioBasePillFilterActiveClass,
   territorioBasePillFilterIdleClass,
   territorioBasePillInputClass,
@@ -930,41 +926,12 @@ export function TerritorioBasePanel() {
         {/* KPIs - Só mostrar se houver configuração e dados */}
         {(config || serverConfigured) && liderancas.length > 0 && (
           <section className="mb-2">
-            <div className={territorioBaseKpiGridClass}>
-              {kpis.map((kpi) => {
-                const metricIcon =
-                  kpi.id === 'liderancas'
-                    ? IconUsers
-                    : kpi.id === 'total'
-                      ? IconFileText
-                      : kpi.id === 'expectativa-votos'
-                        ? IconTarget
-                        : IconMapPin
-                const contextLine =
-                  kpi.id === 'liderancas'
-                    ? `de ${liderancas.length} registros totais`
-                    : kpi.id === 'total'
-                      ? 'na planilha conectada'
-                      : kpi.id === 'expectativa-votos'
-                        ? `Cenário ${labelCenarioDadosAtivo}`
-                        : `${cidadesUnicasCount} municípios na base filtrada`
-
-                return (
-                  <PremiumMetricCard
-                    key={kpi.id}
-                    compact
-                    label={kpi.label}
-                    value={kpi.value}
-                    contextLine={contextLine}
-                    icon={metricIcon}
-                    labelClassName={territorioBaseTextClass}
-                    valueClassName={territorioBaseTextClass}
-                    contextClassName={territorioBaseTextClass}
-                    iconClassName={kpi.id === 'cidades' ? 'text-[#C8900A]' : territorioBaseTextClass}
-                  />
-                )
-              })}
-            </div>
+            <TerritorioBaseKpiStrip
+              kpis={kpis}
+              totalRegistros={liderancas.length}
+              cenarioLabel={labelCenarioDadosAtivo}
+              cidadesUnicasCount={cidadesUnicasCount}
+            />
 
             {totaisPorCargo.length > 0 && (
               <div className="mt-1.5 flex flex-wrap gap-1.5">

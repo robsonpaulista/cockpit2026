@@ -17,14 +17,8 @@ import {
 } from 'recharts'
 import type { NameType, ValueType } from 'recharts/types/component/DefaultTooltipContent'
 import { Eye, Loader2 } from 'lucide-react'
-import {
-  IconChartBar,
-  IconRefresh,
-  IconTrendingDown,
-  IconTrendingUp,
-  IconUsers,
-} from '@tabler/icons-react'
-import { PremiumMetricCard } from '@/components/premium/metric-card'
+import { IconRefresh } from '@tabler/icons-react'
+import { InstagramPostsKpiStrip } from '@/components/conteudo-redes/instagram-posts-kpi-strip'
 import { PremiumSectionHeader } from '@/components/conteudo-redes/premium-section-header'
 import { InstagramFollowersDayPostsModal } from '@/components/conteudo-redes/instagram-followers-day-posts-modal'
 import type { InstagramHistoryResponse } from '@/lib/instagramApi'
@@ -70,10 +64,6 @@ const FOLLOWERS_COLOR = '#C8900A'
 const ENGAGEMENT_COLOR = '#9A6B08'
 const GRID_STROKE = 'rgb(var(--color-border-tertiary) / 0.45)'
 const TICK_STYLE = { fontSize: 10, fill: '#000000' }
-
-function formatCount(value: number): string {
-  return value.toLocaleString('pt-BR')
-}
 
 function formatAxisEngagement(value: number): string {
   if (value >= 1000) {
@@ -181,6 +171,9 @@ export function InstagramFollowersHistoryChart({
   const hasChartData = chartData.length > 0
   const hasEngagementLine = chartData.some((point) => point.engajamentoMedio != null)
 
+  const periodLabel =
+    FOLLOWERS_HISTORY_RANGE_OPTIONS.find((option) => option.value === dateRange)?.label ?? 'Período'
+
   const resolveChartAnchor = useCallback((cx: number, cy: number): PopupAnchor | null => {
     return getChartPointAnchor(chartWrapRef.current, cx, cy)
   }, [])
@@ -283,45 +276,15 @@ export function InstagramFollowersHistoryChart({
         }
       />
 
-      {summary && summary.growth !== 0 ? (
-        <p
-          className={cn(
-            'mb-3 flex items-center gap-1 text-[11px]',
-            summary.growth > 0 ? 'text-status-success' : 'text-status-error'
-          )}
-        >
-          {summary.growth > 0 ? (
-            <IconTrendingUp className="h-3.5 w-3.5" stroke={1.5} aria-hidden />
-          ) : (
-            <IconTrendingDown className="h-3.5 w-3.5" stroke={1.5} aria-hidden />
-          )}
-          {formatFollowersDelta(summary.growth)} no período ({summary.growthPercentage}%)
-        </p>
-      ) : null}
-
-      <div className="mb-3 grid grid-cols-2 gap-2.5 sm:max-w-md">
-        {typeof currentFollowers === 'number' ? (
-          <PremiumMetricCard
-            compact
-            label="Seguidores atuais"
-            value={formatCount(currentFollowers)}
-            icon={IconUsers}
-            labelClassName={conteudoRedesTextClass}
-            valueClassName={conteudoRedesTextClass}
-            iconClassName={conteudoRedesAmberTextClass}
-          />
-        ) : null}
-        {typeof currentAvgEngagement === 'number' && currentAvgEngagement > 0 ? (
-          <PremiumMetricCard
-            compact
-            label="Engajamento médio"
-            value={formatEngagementValue(currentAvgEngagement)}
-            icon={IconChartBar}
-            labelClassName={conteudoRedesTextClass}
-            valueClassName={conteudoRedesTextClass}
-            iconClassName={conteudoRedesAmberTextClass}
-          />
-        ) : null}
+      <div className="mb-3">
+        <InstagramPostsKpiStrip
+          currentFollowers={currentFollowers}
+          currentAvgEngagement={currentAvgEngagement}
+          postsCount={posts.length}
+          periodLabel={periodLabel}
+          growth={summary?.growth}
+          growthPercentage={summary?.growthPercentage}
+        />
       </div>
 
       {loading && !hasChartData ? (

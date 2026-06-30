@@ -207,18 +207,4 @@ export function NoticiasFilterBar({
   )
 }
 
-interface NoticiasStatsRowProps {
-  hojeCount: number
-  riscoAltoCount: number
-  destacadasCount: number
-}
-
-export function NoticiasStatsRow({ hojeCount, riscoAltoCount, destacadasCount }: NoticiasStatsRowProps) {
-  return (
-    <p className="px-5 pt-2.5 text-[11.5px] text-text-muted">
-      <span className="font-medium text-text-primary">{hojeCount}</span> notícias hoje ·{' '}
-      <span className="font-medium text-[#A32D2D]">{riscoAltoCount}</span> risco alto ·{' '}
-      <span className="font-medium text-[rgb(var(--color-primary))]">{destacadasCount}</span> destacadas
-    </p>
-  )
-}
+export { AlertasKpiStrip as NoticiasStatsRow } from '@/components/monitoramento/alertas-kpi-strip'

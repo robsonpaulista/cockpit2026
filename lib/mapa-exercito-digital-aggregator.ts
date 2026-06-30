@@ -164,7 +164,7 @@ function monthlyCommentCountsForMunicipio(
 }
 
 function pctChange(current: number, previous: number): number | null {
-  if (previous <= 0) return current > 0 ? 100 : null
+  if (previous <= 0) return null
   return ((current - previous) / previous) * 100
 }
 
@@ -190,6 +190,24 @@ function computeMonthlyTrend(monthly: number[]): {
       label: `Inativo há ${inactiveMonths} ${inactiveMonths === 1 ? 'mês' : 'meses'}`,
       deltaPct: delta,
       inactiveMonths,
+    }
+  }
+
+  if (previous <= 0 && current > 0) {
+    return {
+      kind: 'growing',
+      label: current === 1 ? 'Entrada (1 com.)' : `Entrada (${current} com.)`,
+      deltaPct: null,
+      inactiveMonths: 0,
+    }
+  }
+
+  if (previous > 0 && current <= 0) {
+    return {
+      kind: 'falling',
+      label: 'Zerou no mês',
+      deltaPct: -100,
+      inactiveMonths: 0,
     }
   }
 
