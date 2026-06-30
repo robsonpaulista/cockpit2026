@@ -23,9 +23,15 @@ import {
 import { dispatchInstagramCommentsSynced } from '@/lib/instagram-comments-sync-events'
 import { loadInstagramConfigAsync, saveInstagramConfig, syncInstagramComments } from '@/lib/instagramApi'
 import type { RelatorioMapaDigitalIgTdPayload } from '@/lib/relatorio-mapa-digital-ig-td-types'
-import { ghostButtonClass, primaryButtonClass } from '@/lib/premium-ui-classes'
+import { ghostButtonClass } from '@/lib/premium-ui-classes'
 import { exercitoSectionCardClass } from '@/lib/mapa-exercito-digital-layout'
+import { resumoAmberInfoBoxClass } from '@/lib/resumo-eleicoes-table-styles'
 import { cn } from '@/lib/utils'
+
+const exercitoAmberIconClass = 'text-[#C8900A]'
+const exercitoAmberTextClass = 'text-[#854F0B]'
+const exercitoAmberPrimaryButtonClass =
+  'inline-flex items-center justify-center gap-2 rounded-[10px] bg-[#C8900A] px-4 py-2 text-[13px] font-medium text-white transition-colors hover:bg-[#A87308] disabled:pointer-events-none disabled:opacity-50'
 
 const BANNER_STORAGE_KEY = 'cockpit2026.exercito-digital.banner.dismissed'
 const LOOKBACK_OPTIONS = [7, 15, 30] as const
@@ -122,23 +128,23 @@ export function ExercitoDigitalHeader({
 
   return (
     <>
-      <div className={cn(exercitoSectionCardClass, 'px-4 py-3')}>
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <div className={cn(exercitoSectionCardClass, 'px-3 py-3 md:px-4')}>
+        <div className="flex flex-col gap-3">
           <div className="flex min-w-0 items-start gap-2.5">
             <IconMilitaryRank
-              className="mt-0.5 h-[18px] w-[18px] shrink-0 text-[rgb(var(--color-primary))]"
+              className={cn('mt-0.5 h-[18px] w-[18px] shrink-0', exercitoAmberIconClass)}
               stroke={1.5}
               aria-hidden
             />
-            <div>
+            <div className="min-w-0">
               <h1 className="text-sm font-medium text-text-primary">Mobilização digital · Exército</h1>
-              <p className="text-[11.5px] text-text-muted">
+              <p className="mt-0.5 text-[11.5px] leading-relaxed text-text-muted">
                 Base eleitoral unificada: rede de liderados e mandatários nas postagens do Instagram
               </p>
             </div>
           </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <div className="relative">
+          <div className="flex gap-2 overflow-x-auto pb-0.5 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden md:flex-wrap md:overflow-visible md:pb-0">
+            <div className="relative shrink-0">
               <button
                 type="button"
                 onClick={() => setWindowOpen((v) => !v)}
@@ -160,7 +166,7 @@ export function ExercitoDigitalHeader({
                       }}
                       className={cn(
                         'block w-full px-3 py-1.5 text-left text-[11.5px] transition-colors hover:bg-bg-app',
-                        days === lookbackDays ? 'font-medium text-[rgb(var(--color-primary))]' : 'text-text-secondary'
+                        days === lookbackDays ? cn('font-medium', exercitoAmberIconClass) : 'text-text-secondary'
                       )}
                     >
                       {days} dias
@@ -173,7 +179,7 @@ export function ExercitoDigitalHeader({
               type="button"
               disabled={exportBusy !== 'idle'}
               onClick={() => void exportXls()}
-              className={cn(ghostButtonClass, 'disabled:opacity-50')}
+              className={cn(ghostButtonClass, 'shrink-0 disabled:opacity-50')}
             >
               {exportBusy === 'xlsx' ? (
                 <Loader2 className="h-3.5 w-3.5 animate-spin opacity-70" aria-hidden />
@@ -186,7 +192,7 @@ export function ExercitoDigitalHeader({
               type="button"
               disabled={exportBusy !== 'idle'}
               onClick={() => void exportPdf()}
-              className={cn(ghostButtonClass, 'disabled:opacity-50')}
+              className={cn(ghostButtonClass, 'shrink-0 disabled:opacity-50')}
             >
               {exportBusy === 'pdf' ? (
                 <Loader2 className="h-3.5 w-3.5 animate-spin opacity-70" aria-hidden />
@@ -195,7 +201,7 @@ export function ExercitoDigitalHeader({
               )}
               PDF
             </button>
-            <button type="button" onClick={() => setShowConfig(true)} className={ghostButtonClass}>
+            <button type="button" onClick={() => setShowConfig(true)} className={cn(ghostButtonClass, 'shrink-0')}>
               <IconKey className="h-3.5 w-3.5 opacity-70" stroke={1.5} aria-hidden />
               Credenciais
             </button>
@@ -203,7 +209,7 @@ export function ExercitoDigitalHeader({
               type="button"
               disabled={syncing || loadingCfg}
               onClick={() => void handleSync()}
-              className={cn(primaryButtonClass, 'disabled:opacity-50')}
+              className={cn(exercitoAmberPrimaryButtonClass, 'shrink-0 disabled:opacity-50')}
             >
               {syncing ? (
                 <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
@@ -243,9 +249,9 @@ export function ExercitoDigitalBanner() {
   if (dismissed) return null
 
   return (
-    <div className="flex items-start gap-2.5 rounded-[10px] border border-[#B5D4F4] bg-[#E6F1FB] px-3.5 py-2.5">
-      <IconInfoCircle className="mt-px h-[15px] w-[15px] shrink-0 text-[rgb(var(--color-primary))]" stroke={1.5} aria-hidden />
-      <p className="flex-1 text-[11.5px] leading-[1.5] text-[#0C447C]">
+    <div className={cn('flex items-start gap-2.5 rounded-[10px] px-3.5 py-2.5', resumoAmberInfoBoxClass)}>
+      <IconInfoCircle className={cn('mt-px h-[15px] w-[15px] shrink-0', exercitoAmberIconClass)} stroke={1.5} aria-hidden />
+      <p className={cn('flex-1 text-[11.5px] leading-[1.5]', exercitoAmberTextClass)}>
         <strong className="font-medium">O que é medido aqui:</strong> cruzamos comentários nas postagens do deputado
         com a base eleitoral completa — liderados da rede de mobilização e mandatários (prefeitos/vereadores) com
         perfil cadastrado. Perfis marcados como <strong className="font-medium">Rede</strong> são líderes com
@@ -262,7 +268,7 @@ export function ExercitoDigitalBanner() {
           }
           setDismissed(true)
         }}
-        className="shrink-0 text-[rgb(var(--color-primary))]"
+        className={cn('shrink-0', exercitoAmberIconClass)}
       >
         <IconX className="h-3 w-3" stroke={1.5} aria-hidden />
       </button>

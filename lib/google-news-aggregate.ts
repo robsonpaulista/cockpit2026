@@ -1,4 +1,5 @@
 import type { GoogleNewsMentionWithActor } from '@/lib/google-news-types'
+import { googleNewsMentionMatchesActorQuery } from '@/lib/google-news-search-term'
 import type { PoliticalActorWithTerms } from '@/lib/youtube-radar-types'
 
 export type GoogleNewsCompareSourceRow = {
@@ -51,7 +52,9 @@ export function buildGoogleNewsCompareRows(
   const rows: GoogleNewsCompareActorRow[] = actors
     .filter((a) => a.active)
     .map((actor) => {
-      const actorMentions = [...(bySlug.get(actor.slug) ?? [])].sort((a, b) => {
+      const actorMentions = [...(bySlug.get(actor.slug) ?? [])]
+        .filter((m) => googleNewsMentionMatchesActorQuery(m, actor))
+        .sort((a, b) => {
         const da = a.published_at ?? ''
         const db = b.published_at ?? ''
         return db.localeCompare(da)

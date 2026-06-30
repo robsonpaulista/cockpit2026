@@ -59,6 +59,13 @@ async function upsertArticles(
   })
   if (error) throw new Error(error.message)
 
+  const { error: purgeError } = await supabase
+    .from('google_news_mentions')
+    .delete()
+    .eq('politico_id', politicoId)
+    .neq('search_term', searchTerm)
+  if (purgeError) throw new Error(purgeError.message)
+
   let inserted = 0
   let updated = 0
   for (const item of items) {

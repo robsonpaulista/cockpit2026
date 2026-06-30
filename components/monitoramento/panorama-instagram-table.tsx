@@ -38,9 +38,19 @@ export function PanoramaInstagramTable({
 
   return (
     <div className={cn('flex h-full min-h-0 flex-col gap-1', className)}>
-      <div className="min-h-0 flex-1 overflow-x-auto">
-        <table className={cn('w-full table-fixed border-collapse text-left', typographyBodyClass)}>
-          <colgroup>
+      <div className="min-h-0 flex-1 max-md:overflow-x-hidden md:overflow-x-auto">
+        <table
+          className={cn(
+            'w-full border-collapse text-left max-md:table-auto md:table-fixed',
+            typographyBodyClass
+          )}
+        >
+          <colgroup className="md:hidden">
+            <col className="w-[46%]" />
+            <col className="w-[22%]" />
+            <col className="w-[32%]" />
+          </colgroup>
+          <colgroup className="max-md:hidden">
             <col className="w-[34%]" />
             <col className="w-[10%]" />
             <col className="w-[10%]" />
@@ -53,11 +63,17 @@ export function PanoramaInstagramTable({
             <tr className={cn('border-b border-[rgb(var(--color-border-tertiary)/0.55)]', typographyTableThClass)}>
               <th className="px-2 py-0.5 font-semibold">Candidato</th>
               <th className="whitespace-nowrap px-2 py-0.5 text-right font-semibold">Posts</th>
-              <th className="whitespace-nowrap px-2 py-0.5 text-right font-semibold">/sem</th>
-              <th className="whitespace-nowrap px-2 py-0.5 text-right font-semibold">Eng. total</th>
+              <th className="hidden whitespace-nowrap px-2 py-0.5 text-right font-semibold md:table-cell">/sem</th>
+              <th className="hidden whitespace-nowrap px-2 py-0.5 text-right font-semibold md:table-cell">
+                Eng. total
+              </th>
               <th className="whitespace-nowrap px-2 py-0.5 text-right font-semibold">Eng. médio</th>
-              <th className="whitespace-nowrap px-2 py-0.5 text-right font-semibold">Curt. média</th>
-              <th className="whitespace-nowrap px-2 py-0.5 text-right font-semibold">Com. média</th>
+              <th className="hidden whitespace-nowrap px-2 py-0.5 text-right font-semibold md:table-cell">
+                Curt. média
+              </th>
+              <th className="hidden whitespace-nowrap px-2 py-0.5 text-right font-semibold md:table-cell">
+                Com. média
+              </th>
             </tr>
           </thead>
           <tbody>
@@ -75,25 +91,27 @@ export function PanoramaInstagramTable({
                         : row.name
                     }
                   >
-                    <span className="font-medium">{row.name}</span>
+                    <span className="block truncate font-medium">{row.name}</span>
                     {row.instagramUsername ? (
-                      <span className="ml-1.5 whitespace-nowrap text-text-muted">
+                      <span className="block truncate text-text-muted max-md:text-[10px] md:ml-1.5 md:inline md:whitespace-nowrap">
                         @{row.instagramUsername}
                       </span>
                     ) : (
-                      <span className="ml-1.5 whitespace-nowrap text-amber-700">sem @</span>
+                      <span className="block whitespace-nowrap text-amber-700 max-md:text-[10px] md:ml-1.5 md:inline">
+                        sem @
+                      </span>
                     )}
                   </p>
                 </td>
                 <td className={cn('px-2 py-0.5 text-right tabular-nums', cellHighlight(row.highlights.postCount))}>
                   <AnimatedCounter value={row.postCount} resetKey={animationEpoch} />
                 </td>
-                <td className="px-2 py-0.5 text-right tabular-nums text-text-secondary">
+                <td className="hidden px-2 py-0.5 text-right tabular-nums text-text-secondary md:table-cell">
                   {formatDecimal(row.postsPerWeek)}
                 </td>
                 <td
                   className={cn(
-                    'px-2 py-0.5 text-right tabular-nums',
+                    'hidden px-2 py-0.5 text-right tabular-nums md:table-cell',
                     cellHighlight(row.highlights.totalEngagement)
                   )}
                 >
@@ -107,14 +125,14 @@ export function PanoramaInstagramTable({
                 >
                   <AnimatedCounter value={row.avgEngagement} resetKey={animationEpoch} />
                 </td>
-                <td className="px-2 py-0.5 text-right tabular-nums text-text-secondary">
+                <td className="hidden px-2 py-0.5 text-right tabular-nums text-text-secondary md:table-cell">
                   {row.postCount > 0 ? (
                     <AnimatedCounter value={row.avgLikes} resetKey={animationEpoch} />
                   ) : (
                     '—'
                   )}
                 </td>
-                <td className="px-2 py-0.5 text-right tabular-nums text-text-secondary">
+                <td className="hidden px-2 py-0.5 text-right tabular-nums text-text-secondary md:table-cell">
                   {row.postCount > 0 ? (
                     <AnimatedCounter value={row.avgComments} resetKey={animationEpoch} />
                   ) : (

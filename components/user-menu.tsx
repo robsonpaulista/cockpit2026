@@ -25,6 +25,8 @@ type UserMenuPlacement = 'bottom' | 'top'
 type UserMenuProps = {
   variant?: 'default' | 'sidebar'
   className?: string
+  /** Topbar âmbar no mobile — ícones e hover claros. */
+  amberMobileChrome?: boolean
 }
 
 function resolveWelcomeName(name: string | undefined, email: string | undefined): string {
@@ -36,7 +38,7 @@ function resolveWelcomeName(name: string | undefined, email: string | undefined)
   return 'Usuário'
 }
 
-export function UserMenu({ variant = 'default', className }: UserMenuProps) {
+export function UserMenu({ variant = 'default', className, amberMobileChrome = false }: UserMenuProps) {
   const { user, loading, signOut } = useAuth()
   const isGradientHome = useDashboardHomeChrome()
   const isSidebar = variant === 'sidebar'
@@ -200,7 +202,10 @@ export function UserMenu({ variant = 'default', className }: UserMenuProps) {
             ? cn('w-full py-0.5 text-left', sidebarActiveFocusRingClass, 'hover:opacity-80')
             : cn(
                 'gap-2 rounded-lg px-3 py-2',
-                isGradientHome ? cn(JARVIS_SIDEBAR_HOVER, JARVIS_SIDEBAR_FOCUS) : 'hover:bg-accent-gold-soft'
+                amberMobileChrome && 'max-lg:hover:bg-white/12',
+                isGradientHome
+                  ? cn(JARVIS_SIDEBAR_HOVER, JARVIS_SIDEBAR_FOCUS)
+                  : !amberMobileChrome && 'hover:bg-accent-gold-soft'
               )
         )}
       >
@@ -239,9 +244,11 @@ export function UserMenu({ variant = 'default', className }: UserMenuProps) {
             'h-3.5 w-3.5 shrink-0 transition-transform',
             isSidebar
               ? 'text-[#888888]'
-              : isGradientHome
-                ? cn(JARVIS_SIDEBAR_ICON, 'group-hover:!text-[#00D4FF]')
-                : 'text-secondary',
+              : amberMobileChrome
+                ? 'text-secondary max-lg:text-white/85'
+                : isGradientHome
+                  ? cn(JARVIS_SIDEBAR_ICON, 'group-hover:!text-[#00D4FF]')
+                  : 'text-secondary',
             open && 'rotate-180'
           )}
         />

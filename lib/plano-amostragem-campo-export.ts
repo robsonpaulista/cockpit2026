@@ -115,14 +115,11 @@ export function exportarRoteiroCampoExcel(
     'Roteiro equipe',
   )
 
-  const pontosUnicos = new Map<string, (typeof roteiro.pontosPorBloco)[number]>()
-  for (const p of roteiro.pontosPorBloco) {
-    pontosUnicos.set(`${p.blocoId}|${p.titulo}`, p)
-  }
+  const pontosGuia = roteiro.pontosPorBloco
   XLSX.utils.book_append_sheet(
     wb,
     XLSX.utils.json_to_sheet(
-      [...pontosUnicos.values()].map((p) => ({
+      pontosGuia.map((p) => ({
         Bloco: p.blocoNome,
         'Local / setor': p.titulo,
         'Bairro / recorte': p.bairroRecorte ?? '',
@@ -135,6 +132,19 @@ export function exportarRoteiroCampoExcel(
     ),
     'Guia pontos',
   )
+
+  if (roteiro.validacao.avisos.length > 0) {
+    XLSX.utils.book_append_sheet(
+      wb,
+      XLSX.utils.aoa_to_sheet([
+        ['Validação do roteiro'],
+        ['Status', roteiro.validacao.ok ? 'OK' : 'Revisar'],
+        [],
+        ...roteiro.validacao.avisos.map((a) => [a]),
+      ]),
+      'Validação',
+    )
+  }
 
   XLSX.utils.book_append_sheet(
     wb,

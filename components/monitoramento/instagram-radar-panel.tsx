@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
-import { Clock, Loader2, RefreshCw } from 'lucide-react'
+import { Loader2, RefreshCw } from 'lucide-react'
 import { InstagramCompareBoard } from '@/components/instagram-radar/instagram-compare-board'
 import { YoutubeActorsManager } from '@/components/youtube-radar/youtube-actors-manager'
 import type { InstagramRadarCollectStatus } from '@/lib/instagram-radar-types'
@@ -30,7 +30,6 @@ export function InstagramRadarPanel() {
   const [setupRequired, setSetupRequired] = useState(false)
   const [posts, setPosts] = useState<InstagramRadarPostWithActor[]>([])
   const [status, setStatus] = useState<InstagramRadarCollectStatus | null>(null)
-  const [statusMessage, setStatusMessage] = useState('')
   const [loading, setLoading] = useState(true)
   const [collecting, setCollecting] = useState(false)
   const [error, setError] = useState('')
@@ -49,7 +48,6 @@ export function InstagramRadarPanel() {
       return null
     }
     setStatus(j)
-    if (j.message) setStatusMessage(j.message)
     return j
   }, [])
 
@@ -156,8 +154,6 @@ export function InstagramRadarPanel() {
     (!apifyConfigured && !ownAccountConfigured) ||
     (cooldownEnabled && !canCollect && !collecting)
 
-  const limits = status?.limits
-
   return (
     <div className="flex flex-col gap-4">
       {setupRequired ? (
@@ -167,42 +163,6 @@ export function InstagramRadarPanel() {
           Supabase e configure o candidato próprio em Redes &amp; Instagram.
         </div>
       ) : null}
-
-      <div className="rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-900">
-        <p className="font-medium">Duas fontes de dados</p>
-        <p className="mt-1 text-blue-800/90">
-          <strong>Jadyel Alencar</strong>: mesma conta de Redes &amp; Instagram (token no navegador + histórico no
-          Supabase). <strong>Concorrentes</strong>: coleta automatizada de posts públicos dos perfis cadastrados.
-        </p>
-        {statusMessage ? <p className="mt-1 text-blue-800/90">{statusMessage}</p> : null}
-        {limits ? (
-          <p className="mt-2 text-xs text-blue-900/90">
-            Concorrentes: até {limits.maxActors} perfis × {limits.postsPerProfile} posts · 1 coleta a cada{' '}
-            {status?.cooldownDays ?? 7} dias.
-          </p>
-        ) : null}
-        {!ownAccountConfigured ? (
-          <p className="mt-2 text-xs font-medium text-amber-800">
-            Jadyel: abra Redes &amp; Instagram e clique em atualizar para gravar posts no histórico (ou conecte o
-            Instagram no navegador).
-          </p>
-        ) : null}
-        {!apifyConfigured ? (
-          <p className="mt-2 text-xs text-amber-800">
-            Coleta de concorrentes não configurada no servidor — apenas o candidato próprio será atualizado até a
-            configuração ser concluída.
-          </p>
-        ) : null}
-        {cooldownEnabled && status && !status.canCollect && status.nextCollectAt && !collecting ? (
-          <p className="mt-2 inline-flex items-center gap-1.5 text-xs font-medium text-blue-900">
-            <Clock className="h-3.5 w-3.5" aria-hidden />
-            Próxima coleta: {formatNextCollect(status.nextCollectAt)}
-            {status.hoursUntilNextCollect !== null && status.hoursUntilNextCollect > 0
-              ? ` (≈ ${status.hoursUntilNextCollect}h)`
-              : ''}
-          </p>
-        ) : null}
-      </div>
 
       <div className={chromePanelToolbarClass}>
         <span className={typographyBodyMutedClass}>Janela:</span>
@@ -232,7 +192,7 @@ export function InstagramRadarPanel() {
           ) : (
             <RefreshCw className="h-3.5 w-3.5" aria-hidden />
           )}
-          Coletar Instagram
+          Atualizar
         </button>
       </div>
 

@@ -9,7 +9,6 @@ import {
   leaderTabCounts,
 } from '@/lib/mapa-exercito-digital-aggregator'
 import {
-  initialsFromName,
   leaderDisputeScore,
   leaderScoreMax,
   PERIOD_BAR_LABELS,
@@ -77,7 +76,7 @@ function profileColumnLabel(audience: ExercitoDigitalAudience): string {
   return 'Líder'
 }
 
-const GRID = 'grid grid-cols-[28px_32px_1fr_48px_72px] items-center gap-2'
+const GRID = 'grid grid-cols-[28px_minmax(0,1fr)_48px_72px] items-center gap-2'
 const MONTH_LABELS = PERIOD_BAR_LABELS
 
 const dotColor: Record<LeaderStatusDot, string> = {
@@ -99,14 +98,14 @@ function activationColor(pct: number): string {
 function trendBadgeClass(kind: ExercitoDigitalLeaderRow['trendKind']): string {
   switch (kind) {
     case 'growing':
-      return 'border border-[#C0DD97] bg-[#EAF3DE] text-[#3B6D11]'
+      return 'text-[#3B6D11]'
     case 'falling':
     case 'inactive':
-      return 'border border-[#F09595] bg-[#FCEBEB] text-[#A32D2D]'
+      return 'text-[#A32D2D]'
     case 'accelerating':
-      return 'border border-[#B5D4F4] bg-[#E6F1FB] text-[rgb(var(--color-primary))]'
+      return 'text-[rgb(var(--color-primary))]'
     default:
-      return 'border border-[#D3D1C7] bg-[#F1EFE8] text-[#5F5E5A]'
+      return 'text-text-muted'
   }
 }
 
@@ -255,7 +254,7 @@ export function ExercitoDigitalLeaderRanking({ leaders, audience, referenceMonth
                 </p>
                 <p className="text-[18px] font-bold tabular-nums text-[rgb(var(--color-primary))]">{score}</p>
                 <p className="text-[9px] text-text-muted">pts · {referenceMonthLabel}</p>
-                <span className={cn('mt-1 inline-flex rounded-[99px] px-1.5 py-0 text-[9px] font-medium', trendBadgeClass(leader.trendKind))}>
+                <span className={cn('mt-1 inline-flex text-[9px] font-medium', trendBadgeClass(leader.trendKind))}>
                   {leader.trendLabel}
                 </span>
               </div>
@@ -266,7 +265,6 @@ export function ExercitoDigitalLeaderRanking({ leaders, audience, referenceMonth
 
       <div className={cn(GRID, 'border-b border-[rgb(var(--color-border-tertiary)/0.85)] pb-1.5 text-[10px] font-semibold uppercase tracking-[0.04em] text-text-muted')}>
         <span className="text-center">#</span>
-        <span aria-hidden />
         <span>{profileColumnLabel(audience)}</span>
         <span className="text-right">Pts</span>
         <span className="text-center">Forma</span>
@@ -284,7 +282,6 @@ export function ExercitoDigitalLeaderRanking({ leaders, audience, referenceMonth
             const lideradosLinhas = liderRede ? buildLideradosLinhas(leader) : []
             const score = leaderDisputeScore(leader)
             const barPct = scoreMax > 0 ? (score / scoreMax) * 100 : 0
-            const rising = leader.trendKind === 'growing' || leader.trendKind === 'accelerating'
 
             return (
               <Fragment key={leader.id}>
@@ -296,8 +293,7 @@ export function ExercitoDigitalLeaderRanking({ leaders, audience, referenceMonth
                     !isLast && !expanded && 'border-b border-[rgb(var(--color-border-tertiary)/0.85)]',
                     expanded
                       ? 'expanded rounded-[10px] rounded-b-none bg-bg-app'
-                      : 'hover:rounded-[10px] hover:bg-bg-app',
-                    rising && !expanded && 'bg-[#EAF3DE]/30'
+                      : 'hover:rounded-[10px] hover:bg-bg-app'
                   )}
                 >
                   <div className={GRID}>
@@ -308,19 +304,6 @@ export function ExercitoDigitalLeaderRanking({ leaders, audience, referenceMonth
                       )}
                     >
                       {leader.rank}
-                    </span>
-                    <span
-                      className={cn(
-                        'flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-[10px] font-bold',
-                        leader.rank === 1
-                          ? 'bg-[#FAEEDA] text-[#854F0B] ring-2 ring-[#C8900A]/50'
-                          : leader.rank <= 3
-                            ? 'bg-[#E6F1FB] text-[rgb(var(--color-primary))]'
-                            : 'bg-bg-app text-text-secondary'
-                      )}
-                      aria-hidden
-                    >
-                      {initialsFromName(leader.nome)}
                     </span>
                     <div className="min-w-0">
                       <div className="flex min-w-0 items-center gap-1.5">
@@ -349,7 +332,7 @@ export function ExercitoDigitalLeaderRanking({ leaders, audience, referenceMonth
                     <span className="text-right text-[14px] font-bold tabular-nums text-[rgb(var(--color-primary))]">
                       {score}
                     </span>
-                    <span className={cn('inline-flex items-center justify-center gap-0.5 whitespace-nowrap rounded-[99px] px-[6px] py-0.5 text-[10px] font-medium', trendBadgeClass(leader.trendKind))}>
+                    <span className={cn('inline-flex items-center justify-center gap-0.5 whitespace-nowrap text-[10px] font-medium', trendBadgeClass(leader.trendKind))}>
                       {leader.trendKind === 'growing' || leader.trendKind === 'accelerating' ? (
                         <IconTrendingUp className="h-3 w-3 shrink-0" stroke={1.5} aria-hidden />
                       ) : null}

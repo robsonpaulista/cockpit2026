@@ -88,10 +88,10 @@ export const dashboardSubnavStripClass = cn(
 )
 
 export const dashboardSubnavStripPageInnerClass = cn(
-  'box-border flex flex-wrap items-end justify-between gap-3',
-  DASHBOARD_SUBNAV_STRIP_MIN_H_CLASS,
-  'h-[2.6875rem] max-h-[2.6875rem]',
-  'px-4 md:px-6'
+  'box-border flex flex-col items-stretch justify-between gap-2 py-2',
+  'min-h-[2.6875rem]',
+  'px-4 md:px-6',
+  'lg:h-[2.6875rem] lg:max-h-[2.6875rem] lg:flex-row lg:flex-wrap lg:items-end lg:gap-3 lg:py-0'
 )
 
 export const dashboardSubnavStripSidebarClass = cn(

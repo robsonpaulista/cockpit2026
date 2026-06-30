@@ -45,7 +45,7 @@ export function ExercitoDigitalKpiStrip({ kpis, audience, referenceMonthLabel }:
     audience === 'unificado' ? 'base eleitoral' : audience === 'mandatos' ? 'mandatários' : 'liderados'
 
   return (
-    <div className="flex w-full min-w-0 flex-row flex-nowrap items-stretch gap-2">
+    <div className="grid w-full min-w-0 grid-cols-2 gap-2 md:grid-cols-4">
       <div className={cn(exercitoKpiCardClass('min-w-0 flex-1 border-[#B5D4F4]'))}>
         <KpiLabel icon={IconChartPie} text="Ativação geral" />
         <p className={exercitoKpiHeroValueClass}>{formatPct(kpis.ativacaoPct)}</p>

@@ -98,6 +98,16 @@ export function PlanoCampoRoteiroSection({
 
       {expandido ? (
         <div className="mt-4 flex flex-col gap-4">
+          {!roteiro.validacao.ok ? (
+            <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-900 dark:text-amber-200">
+              <p className="font-semibold">Validação do roteiro — revisar antes do campo</p>
+              <ul className="mt-1 list-inside list-disc">
+                {roteiro.validacao.avisos.map((a) => (
+                  <li key={a}>{a}</li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
           <div className="rounded-lg border border-card bg-background/50 p-3">
             <h4 className="mb-2 text-xs font-semibold uppercase tracking-wide text-text-muted">
               Monitor de cotas (meta)

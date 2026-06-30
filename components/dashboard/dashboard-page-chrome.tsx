@@ -90,7 +90,10 @@ export function DashboardHubTabBar({
   return (
     <div className={dashboardSubnavStripClass}>
       <div className={dashboardSubnavStripPageInnerClass}>
-        <nav className="-mb-px flex min-w-0 flex-1 flex-wrap gap-5" aria-label="Seções">
+        <nav
+          className="-mb-px flex min-w-0 flex-1 gap-3 overflow-x-auto overscroll-x-contain scroll-smooth pb-px [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden lg:flex-wrap lg:gap-5 lg:overflow-visible"
+          aria-label="Seções"
+        >
           {tabs.map((tab) => {
             const Icon = tab.icon
             const active = activeTab === tab.id
@@ -103,6 +106,7 @@ export function DashboardHubTabBar({
                 className={cn(
                   dashboardHubTabBaseClass,
                   typographyTabClass,
+                  'shrink-0 whitespace-nowrap',
                   active ? dashboardHubTabActiveClass : dashboardHubTabIdleClass
                 )}
               >
@@ -112,7 +116,9 @@ export function DashboardHubTabBar({
             )
           })}
         </nav>
-        {actions ? <div className="flex shrink-0 flex-wrap items-center gap-2 pb-2">{actions}</div> : null}
+        {actions ? (
+          <div className="flex shrink-0 flex-wrap items-center justify-end gap-2 lg:pb-2">{actions}</div>
+        ) : null}
       </div>
     </div>
   )

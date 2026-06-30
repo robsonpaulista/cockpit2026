@@ -3,6 +3,7 @@ import { getEleitoradoByCity } from '@/lib/eleitores'
 import { getTerritorioDesenvolvimentoPI } from '@/lib/piaui-territorio-desenvolvimento'
 import { normalizeMunicipioNome } from '@/lib/piaui-regiao'
 import type {
+  PlanoAmostragemAlocacaoBloco,
   PlanoAmostragemBloco,
   PlanoAmostragemCota,
   PlanoAmostragemEquipe,
@@ -143,9 +144,9 @@ function montarCotasSexo(demo: DemografiaMunicipio, total: number): PlanoAmostra
 
 function montarCotasHorario(total: number): PlanoAmostragemCota[] {
   const faixas = [
-    { id: 'manha', perfil: 'Manhã (8h–12h)', peso: 40 },
-    { id: 'tarde', perfil: 'Tarde (13h–17h)', peso: 35 },
-    { id: 'noite', perfil: 'Noite (18h–21h)', peso: 25 },
+    { id: 'manha', perfil: 'Manhã (8h–12h)', peso: 28 },
+    { id: 'tarde', perfil: 'Tarde (13h–17h)', peso: 37 },
+    { id: 'noite', perfil: 'Noite (18h–21h)', peso: 35 },
   ]
   const mapa = distribuirInteiros(
     faixas.map((f) => ({ id: f.id, peso: f.peso })),
@@ -199,134 +200,176 @@ function montarBlocosUrbanos(
   const ordenados = [...validos].sort(
     (a, b) => pesoBairro(b, pesoPorEleitores) - pesoBairro(a, pesoPorEleitores),
   )
-  const top = ordenados.slice(0, Math.min(6, ordenados.length))
-  const resto = ordenados.slice(top.length)
-  const rotuloPeso = pesoPorEleitores ? 'eleitores' : 'seções'
-  const blocos: Array<{ id: string; nome: string; peso: number; notas?: string }> = top.map(
-    (b, i) => ({
-      id: `bairro-${i}`,
-      nome: b.nome,
-      peso: pesoBairro(b, pesoPorEleitores),
-      notas: pesoPorEleitores
-        ? `${b.eleitores.toLocaleString('pt-BR')} eleitores · ${b.secoes} seção(ões) TSE 2024.`
-        : `${b.secoes} seção(ões) eleitoral(is) de referência (TSE 2024).`,
-    }),
-  )
 
-  if (resto.length > 0) {
-    blocos.push({
-      id: 'bairro-outros',
-      nome: 'Demais bairros (agrupados)',
-      peso: resto.reduce((acc, b) => acc + pesoBairro(b, pesoPorEleitores), 0),
-      notas: `${resto.length} bairro(s) agrupados por baixa densidade de ${rotuloPeso}.`,
-    })
-  }
+  const chaveBairro = (b: BairroReferencia) => `${b.nome}|${b.secoes}|${b.eleitores}`
 
-  const mapa = distribuirInteiros(
-    blocos.map((b) => ({ id: b.id, peso: b.peso })),
+  const mapaEntrevistas = distribuirInteiros(
+    ordenados.map((b) => ({ id: chaveBairro(b), peso: pesoBairro(b, pesoPorEleitores) })),
     entrevistasUrbanas,
   )
 
-  return blocos.map((b) => ({
-    id: b.id,
-    nome: b.nome,
-    pesoPct: pct(mapa.get(b.id) ?? 0, entrevistasUrbanas),
-    entrevistas: mapa.get(b.id) ?? 0,
-    tipo: 'urbano' as const,
-    notas: b.notas,
-  }))
+  const contagemNomes = new Map<string, number>()
+  for (const b of ordenados) {
+    const chave = b.nome.toLowerCase()
+    contagemNomes.set(chave, (contagemNomes.get(chave) ?? 0) + 1)
+  }
+
+  const rotuloPeso = pesoPorEleitores ? 'eleitores' : 'seções'
+  const blocos: Array<{ id: string; nome: string; peso: number; notas?: string; entrevistas: number }> =
+    []
+  const agrupados: BairroReferencia[] = []
+
+  for (const b of ordenados) {
+    const entrevistas = mapaEntrevistas.get(chaveBairro(b)) ?? 0
+    if (entrevistas <= 0) continue
+
+    const individual =
+      entrevistas >= MIN_ENTREVISTAS_BLOCO_INDIVIDUAL &&
+      pesoBairro(b, pesoPorEleitores) >= MIN_POPULACAO_PONTO_ISOLADO
+
+    if (individual) {
+      const duplicado = (contagemNomes.get(b.nome.toLowerCase()) ?? 0) > 1
+      const nomeExibicao = duplicado
+        ? `${b.nome} — ${pesoPorEleitores ? `${b.eleitores.toLocaleString('pt-BR')} eleitores` : `${b.secoes} seção(ões)`}`
+        : b.nome
+      blocos.push({
+        id: `bairro-${b.nome}-${b.secoes}`,
+        nome: nomeExibicao,
+        peso: pesoBairro(b, pesoPorEleitores),
+        entrevistas,
+        notas: pesoPorEleitores
+          ? `${b.eleitores.toLocaleString('pt-BR')} eleitores · ${b.secoes} seção(ões) TSE 2024.`
+          : `${b.secoes} seção(ões) eleitoral(is) de referência (TSE 2024).`,
+      })
+    } else {
+      agrupados.push(b)
+    }
+  }
+
+  if (agrupados.length > 0) {
+    const entrevistasAgrupadas = agrupados.reduce(
+      (acc, b) => acc + (mapaEntrevistas.get(chaveBairro(b)) ?? 0),
+      0,
+    )
+    blocos.push({
+      id: 'bairro-outros',
+      nome: 'Demais bairros (agrupados)',
+      peso: agrupados.reduce((acc, b) => acc + pesoBairro(b, pesoPorEleitores), 0),
+      entrevistas: entrevistasAgrupadas,
+      notas: `${agrupados.length} bairro(s) agrupados por baixa densidade de ${rotuloPeso} — entrevistas proporcionais ao peso de cada bairro na rota.`,
+    })
+  }
+
+  return blocos
+    .sort((a, b) => b.entrevistas - a.entrevistas)
+    .map((b) => ({
+      id: b.id,
+      nome: b.nome,
+      pesoPct: pct(b.entrevistas, entrevistasUrbanas),
+      entrevistas: b.entrevistas,
+      tipo: 'urbano' as const,
+      notas: b.notas,
+    }))
+}
+
+function codigoSetor(cdSetor: string): string {
+  return cdSetor.slice(-4)
+}
+
+function formatarNomeSetor(s: SetorReferencia): string {
+  const codigo = codigoSetor(s.cdSetor)
+  const nomeBase = s.nome.trim()
+  const jaTemCodigo =
+    nomeBase.toLowerCase().endsWith(codigo.toLowerCase()) ||
+    nomeBase.toLowerCase() === `setor ${codigo}`.toLowerCase()
+  if (jaTemCodigo) return nomeBase
+  return `${nomeBase} — Setor ${codigo}`
+}
+
+/** Setores com ≥3 entrevistas e ≥100 hab. viram bloco individual; demais entram em rota agrupada. */
+const MIN_ENTREVISTAS_BLOCO_INDIVIDUAL = 3
+const MIN_POPULACAO_PONTO_ISOLADO = 100
+
+function montarBlocosPorSetores(
+  setores: SetorReferencia[],
+  totalEntrevistas: number,
+  tipo: 'urbano' | 'rural',
+): PlanoAmostragemBloco[] {
+  const filtrados = setores.filter(
+    (s) => (tipo === 'urbano' ? s.urbano : !s.urbano) && s.populacao > 0,
+  )
+  if (filtrados.length === 0) {
+    return tipo === 'urbano'
+      ? montarBlocosUrbanos([], totalEntrevistas, true)
+      : montarBlocosRurais(totalEntrevistas)
+  }
+
+  const mapaEntrevistas = distribuirInteiros(
+    filtrados.map((s) => ({ id: s.cdSetor, peso: s.populacao })),
+    totalEntrevistas,
+  )
+
+  const blocos: PlanoAmostragemBloco[] = []
+  const agrupados: SetorReferencia[] = []
+
+  const ordenados = [...filtrados].sort((a, b) => b.populacao - a.populacao)
+  for (const s of ordenados) {
+    const entrevistas = mapaEntrevistas.get(s.cdSetor) ?? 0
+    if (entrevistas <= 0) continue
+
+    const individual =
+      entrevistas >= MIN_ENTREVISTAS_BLOCO_INDIVIDUAL &&
+      s.populacao >= MIN_POPULACAO_PONTO_ISOLADO
+
+    if (individual) {
+      blocos.push({
+        id: `setor-${s.cdSetor}`,
+        nome: formatarNomeSetor(s),
+        pesoPct: pct(entrevistas, totalEntrevistas),
+        entrevistas,
+        tipo,
+        notas: `${s.populacao.toLocaleString('pt-BR')} hab. · setor ${codigoSetor(s.cdSetor)} (IBGE 2022).`,
+        setorIds: [s.cdSetor],
+      })
+    } else {
+      agrupados.push(s)
+    }
+  }
+
+  if (agrupados.length > 0) {
+    const entrevistasAgrupadas = agrupados.reduce(
+      (acc, s) => acc + (mapaEntrevistas.get(s.cdSetor) ?? 0),
+      0,
+    )
+    blocos.push({
+      id: tipo === 'urbano' ? 'setor-outros' : 'rur-setor-outros',
+      nome:
+        tipo === 'urbano'
+          ? 'Demais setores urbanos (agrupados)'
+          : 'Demais setores rurais (agrupados)',
+      pesoPct: pct(entrevistasAgrupadas, totalEntrevistas),
+      entrevistas: entrevistasAgrupadas,
+      tipo,
+      notas: `${agrupados.length} setor(es) IBGE — entrevistas proporcionais à população de cada setor na rota.`,
+      setorIds: agrupados.map((s) => s.cdSetor),
+    })
+  }
+
+  return blocos.sort((a, b) => b.entrevistas - a.entrevistas)
 }
 
 function montarBlocosUrbanosSetores(
   setores: SetorReferencia[],
   entrevistasUrbanas: number,
 ): PlanoAmostragemBloco[] {
-  const validos = setores.filter((s) => s.urbano && s.populacao > 0)
-  if (validos.length === 0) {
-    return montarBlocosUrbanos([], entrevistasUrbanas, true)
-  }
-
-  const ordenados = [...validos].sort((a, b) => b.populacao - a.populacao)
-  const top = ordenados.slice(0, Math.min(6, ordenados.length))
-  const resto = ordenados.slice(top.length)
-
-  const blocos: Array<{ id: string; nome: string; peso: number; notas?: string }> = top.map(
-    (s, i) => ({
-      id: `setor-${i}`,
-      nome: s.nome,
-      peso: s.populacao,
-      notas: `${s.populacao.toLocaleString('pt-BR')} hab. · setor ${s.cdSetor.slice(-4)} (IBGE 2022).`,
-    }),
-  )
-
-  if (resto.length > 0) {
-    blocos.push({
-      id: 'setor-outros',
-      nome: 'Demais setores urbanos (agrupados)',
-      peso: resto.reduce((acc, s) => acc + s.populacao, 0),
-      notas: `${resto.length} setor(es) IBGE agrupados por baixa população.`,
-    })
-  }
-
-  const mapa = distribuirInteiros(
-    blocos.map((b) => ({ id: b.id, peso: b.peso })),
-    entrevistasUrbanas,
-  )
-
-  return blocos.map((b) => ({
-    id: b.id,
-    nome: b.nome,
-    pesoPct: pct(mapa.get(b.id) ?? 0, entrevistasUrbanas),
-    entrevistas: mapa.get(b.id) ?? 0,
-    tipo: 'urbano' as const,
-    notas: b.notas,
-  }))
+  return montarBlocosPorSetores(setores, entrevistasUrbanas, 'urbano')
 }
 
 function montarBlocosRuraisSetores(
   setores: SetorReferencia[],
   entrevistasRurais: number,
 ): PlanoAmostragemBloco[] {
-  const rurais = setores.filter((s) => !s.urbano && s.populacao > 0)
-  if (rurais.length === 0) {
-    return montarBlocosRurais(entrevistasRurais)
-  }
-
-  const ordenados = [...rurais].sort((a, b) => b.populacao - a.populacao)
-  const top = ordenados.slice(0, Math.min(4, ordenados.length))
-  const resto = ordenados.slice(top.length)
-
-  const blocos: Array<{ id: string; nome: string; peso: number; notas?: string }> = top.map(
-    (s, i) => ({
-      id: `rur-setor-${i}`,
-      nome: s.nome,
-      peso: s.populacao,
-      notas: `${s.populacao.toLocaleString('pt-BR')} hab. · setor rural IBGE.`,
-    }),
-  )
-
-  if (resto.length > 0) {
-    blocos.push({
-      id: 'rur-setor-outros',
-      nome: 'Demais setores rurais (agrupados)',
-      peso: resto.reduce((acc, s) => acc + s.populacao, 0),
-      notas: `${resto.length} setor(es) rurais IBGE agrupados.`,
-    })
-  }
-
-  const mapa = distribuirInteiros(
-    blocos.map((b) => ({ id: b.id, peso: b.peso })),
-    entrevistasRurais,
-  )
-
-  return blocos.map((b) => ({
-    id: b.id,
-    nome: b.nome,
-    pesoPct: pct(mapa.get(b.id) ?? 0, entrevistasRurais),
-    entrevistas: mapa.get(b.id) ?? 0,
-    tipo: 'rural' as const,
-    notas: b.notas,
-  }))
+  return montarBlocosPorSetores(setores, entrevistasRurais, 'rural')
 }
 
 function montarBlocosRuraisTse(
@@ -427,32 +470,40 @@ function montarEquipe(
   const blocosOrdenados = [...blocos].sort((a, b) => b.entrevistas - a.entrevistas)
   let blocoIdx = 0
   let restanteBloco = blocosOrdenados[0]?.entrevistas ?? 0
-  let blocoAtual = blocosOrdenados[0]?.nome ?? '—'
+  let blocoAtual = blocosOrdenados[0]
 
   for (let i = 1; i <= n; i += 1) {
     const meta = cotas.get(String(i)) ?? 0
     if (meta <= 0) continue
 
-    const atribuidos: string[] = []
+    const atribuidos: PlanoAmostragemAlocacaoBloco[] = []
     let falta = meta
-    while (falta > 0 && blocoIdx < blocosOrdenados.length) {
+    while (falta > 0 && blocoIdx < blocosOrdenados.length && blocoAtual) {
       const take = Math.min(falta, restanteBloco)
       if (take > 0) {
-        atribuidos.push(`${blocoAtual} (${take})`)
+        atribuidos.push({
+          blocoId: blocoAtual.id,
+          blocoNome: blocoAtual.nome,
+          entrevistas: take,
+        })
         falta -= take
         restanteBloco -= take
       }
       if (restanteBloco <= 0) {
         blocoIdx += 1
-        blocoAtual = blocosOrdenados[blocoIdx]?.nome ?? '—'
-        restanteBloco = blocosOrdenados[blocoIdx]?.entrevistas ?? 0
+        blocoAtual = blocosOrdenados[blocoIdx]
+        restanteBloco = blocoAtual?.entrevistas ?? 0
       }
     }
 
     equipe.push({
       entrevistador: i,
       entrevistas: meta,
-      blocosSugeridos: atribuidos.join('; ') || blocoAtual,
+      alocacao: atribuidos,
+      blocosSugeridos:
+        atribuidos.map((a) => `${a.blocoNome} (${a.entrevistas})`).join('; ') ||
+        blocoAtual?.nome ||
+        '—',
     })
   }
 
@@ -595,6 +646,8 @@ export function gerarPlanoAmostragemPublico(input: GerarPlanoAmostragemInput): P
     taxaRuralPct: taxaRural,
     eleitorado,
     amostraTotal,
+    amostraUrbana: entrevistasUrbanas,
+    amostraRural: entrevistasRurais,
     entrevistadoresPrevistos,
     tipoPesquisa: input.tipoPesquisa,
     institutoDestino: input.institutoDestino?.trim() || null,

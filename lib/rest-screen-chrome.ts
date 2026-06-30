@@ -15,3 +15,6 @@ export const dashboardHomeShellStyle = {
 } as const
 
 export const DASHBOARD_HOME_SHELL_CLASS = 'relative'
+
+/** Classe CSS (globals) — fundo âmbar do topbar em viewports menores que lg. */
+export const dashboardMobilePageHeaderClass = 'dashboard-mobile-page-header'

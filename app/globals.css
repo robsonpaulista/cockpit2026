@@ -2091,9 +2091,22 @@ table.td-resumo-table td.td-resumo-table__cell--estrategia {
 
 [data-theme='republicanos'][data-appearance='light'] .republicanos-premium-header {
   /* Alinha à sidebar premium (mesmo token que .republicanos-premium-sidebar). */
-  background: rgb(var(--bg-app)) !important;
   border-bottom: none !important;
   box-shadow: 0 8px 24px rgba(15, 23, 42, 0.06);
+}
+
+/* Topbar das páginas no mobile — mesmo âmbar da tela de descanso. */
+@media (max-width: 1023px) {
+  header.dashboard-mobile-page-header,
+  [data-theme='republicanos'][data-appearance='light'] header.dashboard-mobile-page-header.republicanos-premium-header,
+  [data-theme='cockpit'] header.dashboard-mobile-page-header,
+  [data-theme='agentes'] header.dashboard-mobile-page-header,
+  [data-theme='premium'] header.dashboard-mobile-page-header {
+    background-color: #c8900a !important;
+    background-image: linear-gradient(145deg, #c8900a 0%, #c8900a 40%, #a87308 100%) !important;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.15) !important;
+    box-shadow: none !important;
+  }
 }
 
 [data-theme='republicanos'][data-appearance='light'] .card-premium {
@@ -2120,6 +2133,7 @@ table.td-resumo-table td.td-resumo-table__cell--estrategia {
 
 @media (min-width: 1024px) {
   [data-theme='republicanos'][data-appearance='light'] .republicanos-premium-header {
+    background: rgb(var(--bg-app)) !important;
     box-shadow: 0 10px 28px rgba(15, 23, 42, 0.065);
   }
 }

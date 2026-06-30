@@ -31,25 +31,24 @@ export function atribuirLocaisAosBlocos(
 
   const mapaBairroBloco = new Map<string, PlanoAmostragemBloco>()
   for (const bloco of urbanos) {
-    if (
-      (bloco.id.startsWith('bairro-') || bloco.id.startsWith('setor-')) &&
-      !bloco.id.includes('outros')
-    ) {
+    if (bloco.id.startsWith('bairro-') && !bloco.id.includes('outros')) {
+      const nomeBase = bloco.nome.split(' — ')[0].toLowerCase()
+      mapaBairroBloco.set(nomeBase, bloco)
       mapaBairroBloco.set(bloco.nome.toLowerCase(), bloco)
     }
   }
-  const blocoOutros = urbanos.find(
-    (b) => b.id === 'bairro-outros' || b.id === 'setor-outros',
-  )
+  const blocoOutros = urbanos.find((b) => b.id === 'bairro-outros')
   const blocoRuralOutros = rurais.find((b) => b.id === 'rur-bairro-outros' || b.id === 'rur-setor-outros')
   const blocoRuralDefault = rurais[0] ?? null
 
   const mapaRuralBloco = new Map<string, PlanoAmostragemBloco>()
   for (const bloco of rurais) {
     if (
-      (bloco.id.startsWith('rur-bairro-') || bloco.id.startsWith('rur-setor-')) &&
+      (bloco.id.startsWith('rur-bairro-') || bloco.id.startsWith('rur-setor-') || bloco.id.startsWith('setor-')) &&
       !bloco.id.includes('outros')
     ) {
+      const nomeBase = bloco.nome.split(' — ')[0].toLowerCase()
+      mapaRuralBloco.set(nomeBase, bloco)
       mapaRuralBloco.set(bloco.nome.toLowerCase(), bloco)
     }
   }
@@ -88,37 +87,43 @@ export function atribuirLocaisAosBlocos(
   })
 }
 
-/** Associa setores IBGE aos blocos do plano (por rótulo/nome do bloco). */
+/** Associa setores IBGE aos blocos do plano (por setorIds ou rótulo). */
 export function atribuirSetoresAosBlocos(
   setores: SetorMapaPlano[],
   blocos: PlanoAmostragemBloco[],
 ): SetorMapaPlano[] {
-  const urbanos = blocos.filter((b) => b.tipo === 'urbano')
-  const rurais = blocos.filter((b) => b.tipo === 'rural')
-
+  const mapaSetorBloco = new Map<string, PlanoAmostragemBloco>()
   const mapaNomeBloco = new Map<string, PlanoAmostragemBloco>()
-  for (const bloco of [...urbanos, ...rurais]) {
+
+  for (const bloco of blocos) {
     mapaNomeBloco.set(bloco.nome.toLowerCase(), bloco)
+    const nomeBase = bloco.nome.split(' — ')[0].toLowerCase()
+    mapaNomeBloco.set(nomeBase, bloco)
+    if (bloco.setorIds) {
+      for (const cdSetor of bloco.setorIds) {
+        mapaSetorBloco.set(cdSetor, bloco)
+      }
+    }
   }
 
+  const urbanos = blocos.filter((b) => b.tipo === 'urbano')
+  const rurais = blocos.filter((b) => b.tipo === 'rural')
   const blocoOutrosUrbano = urbanos.find((b) => b.id === 'setor-outros')
   const blocoOutrosRural = rurais.find((b) => b.id === 'rur-setor-outros')
 
   return setores.map((setor) => {
-    const chave = setor.rotulo.toLowerCase()
-    let bloco = mapaNomeBloco.get(chave)
+    let bloco = mapaSetorBloco.get(setor.cdSetor)
+
+    if (!bloco) {
+      const chave = setor.rotulo.toLowerCase()
+      bloco = mapaNomeBloco.get(chave)
+    }
 
     if (!bloco) {
       if (setor.urbano) {
-        bloco =
-          urbanos.find((b) => chave.includes(b.nome.toLowerCase()) || b.nome.toLowerCase().includes(chave)) ??
-          blocoOutrosUrbano ??
-          urbanos[0]
+        bloco = blocoOutrosUrbano ?? urbanos[0]
       } else {
-        bloco =
-          rurais.find((b) => chave.includes(b.nome.toLowerCase()) || b.nome.toLowerCase().includes(chave)) ??
-          blocoOutrosRural ??
-          rurais[0]
+        bloco = blocoOutrosRural ?? rurais[0]
       }
     }
 

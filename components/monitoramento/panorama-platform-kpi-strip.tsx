@@ -144,7 +144,10 @@ function KpiInsightRow({
       )}
       {insight.name ? (
         <p
-          className={cn('min-w-0 flex-1 truncate leading-snug', typographyBodyClass)}
+          className={cn(
+            'min-w-0 flex-1 leading-snug line-clamp-2 sm:line-clamp-none sm:truncate',
+            typographyBodyClass
+          )}
           title={`${insight.name} · ${insight.text}`}
         >
           <span className="text-text-primary">{insight.name}</span>
@@ -179,7 +182,8 @@ function PlatformKpiCard({
   return (
     <article
       className={cn(
-        'flex min-h-[7rem] min-w-0 flex-col rounded-xl border border-[rgb(var(--color-border-tertiary)/0.85)] bg-bg-surface p-3',
+        'flex min-w-0 flex-col rounded-xl border border-[rgb(var(--color-border-tertiary)/0.85)] bg-bg-surface p-3',
+        'min-h-[6.5rem] sm:min-h-[7rem]',
         premiumCardHoverClass,
         premiumStaggerClass(index),
         card.empty && 'opacity-70'
@@ -189,9 +193,11 @@ function PlatformKpiCard({
         <span className={dashboardChromeIconShellSmClass}>
           <PlatformIcon className={cn('h-3.5 w-3.5', KPI_ICON_CLASS)} aria-hidden />
         </span>
-        <div className="min-w-0">
-          <h4 className={cn('truncate', typographySectionTitleClass)}>{card.platformLabel}</h4>
-          <p className={cn('truncate uppercase font-normal', typographySectionLabelClass)}>{card.metricLabel}</p>
+        <div className="min-w-0 flex-1">
+          <h4 className={cn('leading-snug sm:truncate', typographySectionTitleClass)}>{card.platformLabel}</h4>
+          <p className={cn('leading-snug uppercase font-normal sm:truncate', typographySectionLabelClass)}>
+            {card.metricLabel}
+          </p>
         </div>
       </div>
 
@@ -227,12 +233,12 @@ export function PanoramaPlatformKpiStrip({ cards, animationEpoch = 0 }: Panorama
     <section>
       <div className="mb-3">
         <h3 className={typographySectionLabelClass}>Leitura rápida por plataforma</h3>
-        <p className={cn('mt-1', typographySectionLeadClass)}>
+        <p className={cn('mt-1 hidden sm:block', typographySectionLeadClass)}>
           O primeiro indicador resume os últimos 30 dias; o segundo destaca quem mais avançou na comparação dos
           últimos 7 dias com a semana anterior.
         </p>
       </div>
-      <div className="grid min-w-0 grid-cols-5 gap-2">
+      <div className="grid min-w-0 grid-cols-1 gap-2 min-[480px]:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
         {ordered.map((card, index) => (
           <PlatformKpiCard key={card.platformId} card={card} index={index} animationEpoch={animationEpoch} />
         ))}

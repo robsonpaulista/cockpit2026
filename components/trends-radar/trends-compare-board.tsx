@@ -82,13 +82,13 @@ export function TrendsCompareBoard({ rows, loading = false }: TrendsCompareBoard
         <p className="text-xs text-text-muted">Quem cresceu, picos recentes e alertas de tendência</p>
       </div>
 
-      <div className="overflow-x-auto">
-        <table className="w-full min-w-[720px] border-collapse text-left">
+      <div className="max-md:overflow-x-hidden md:overflow-x-auto">
+        <table className="w-full border-collapse text-left max-md:min-w-0 md:min-w-[720px]">
           <thead>
             <tr className="border-b border-[rgb(var(--color-border-tertiary)/0.85)] text-[10px] font-medium uppercase tracking-wide text-text-muted">
               <th className="px-4 py-2 font-medium">Nome</th>
-              <th className="w-20 px-3 py-2 text-right font-medium">Atual</th>
-              <th className="w-24 px-3 py-2 text-right font-medium">Crescimento</th>
+              <th className="hidden w-20 px-3 py-2 text-right font-medium md:table-cell">Atual</th>
+              <th className="w-24 px-3 py-2 text-right font-medium">%CRESC.</th>
               <th className="w-28 px-3 py-2 text-right font-medium">Pico</th>
               <th className="w-32 px-3 py-2 font-medium">Quando</th>
               <th className="w-[130px] px-3 py-2 font-medium">Tendência</th>
@@ -140,7 +140,7 @@ export function TrendsCompareBoard({ rows, loading = false }: TrendsCompareBoard
                         </span>
                       </button>
                     </td>
-                    <td className="px-3 py-2 text-right text-sm font-medium tabular-nums text-text-primary">
+                    <td className="hidden px-3 py-2 text-right text-sm font-medium tabular-nums text-text-primary md:table-cell">
                       {row.latestScore}
                     </td>
                     <td className="px-3 py-2 text-right">

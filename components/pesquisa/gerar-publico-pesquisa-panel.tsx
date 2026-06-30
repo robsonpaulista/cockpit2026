@@ -403,7 +403,10 @@ function PlanoPreview({
           <div>
             <dt className="text-xs text-text-muted">Urbano / rural</dt>
             <dd className="font-medium text-text-primary">
-              {plano.taxaUrbanaPct}% / {plano.taxaRuralPct}%
+              {plano.taxaUrbanaPct}% / {plano.taxaRuralPct}% (município)
+              <span className="mt-0.5 block text-xs font-normal text-secondary">
+                Meta amostra: {plano.amostraUrbana} urb. + {plano.amostraRural} rur. = {plano.amostraTotal}
+              </span>
             </dd>
           </div>
           <div>

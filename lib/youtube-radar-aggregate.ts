@@ -35,6 +35,17 @@ const ACTOR_TYPE_ORDER: Record<string, number> = {
   other: 3,
 }
 
+/** Mais recente primeiro; sem data vai para o fim; empate por views. */
+export function compareYoutubeMentionsByPublishedAtDesc(
+  a: YoutubeMentionWithActor,
+  b: YoutubeMentionWithActor
+): number {
+  const da = a.published_at ?? ''
+  const db = b.published_at ?? ''
+  if (da !== db) return db.localeCompare(da)
+  return b.views - a.views
+}
+
 /** Agrupa menções por candidato e monta linhas do quadro comparativo. */
 export function buildYoutubeCompareRows(
   actors: PoliticalActorWithTerms[],
@@ -52,7 +63,7 @@ export function buildYoutubeCompareRows(
   const rows: YoutubeCompareActorRow[] = actors
     .filter((a) => a.active)
     .map((actor) => {
-      const actorMentions = [...(bySlug.get(actor.slug) ?? [])].sort((a, b) => b.views - a.views)
+      const actorMentions = [...(bySlug.get(actor.slug) ?? [])].sort(compareYoutubeMentionsByPublishedAtDesc)
       const totalViews = actorMentions.reduce((acc, m) => acc + (m.views ?? 0), 0)
       return {
         actor,

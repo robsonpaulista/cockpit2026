@@ -5,14 +5,14 @@ import { Loader2, RefreshCw } from 'lucide-react'
 import { YoutubeActorsManager } from '@/components/youtube-radar/youtube-actors-manager'
 import { YoutubeCompareBoard } from '@/components/youtube-radar/youtube-compare-board'
 import type { PoliticalActorWithTerms, YoutubeMentionWithActor } from '@/lib/youtube-radar-types'
-import { chromeButtonClass, chromeFilterChipClass, chromePanelToolbarClass } from '@/lib/button-chrome'
+import { chromeButtonClass, chromePanelToolbarClass } from '@/lib/button-chrome'
 import { typographyBodyMutedClass } from '@/lib/typography-chrome'
 import { cn } from '@/lib/utils'
 
-const LOOKBACK_OPTIONS = [1, 7, 30] as const
+const LOOKBACK_DAYS = 30
 
 export function YoutubeRadarPanel() {
-  const [lookbackDays, setLookbackDays] = useState<number>(7)
+  const lookbackDays = LOOKBACK_DAYS
   const [actors, setActors] = useState<PoliticalActorWithTerms[]>([])
   const [apiConfigured, setApiConfigured] = useState<boolean | null>(null)
   const [setupRequired, setSetupRequired] = useState(false)
@@ -111,17 +111,7 @@ export function YoutubeRadarPanel() {
       ) : null}
 
       <div className={chromePanelToolbarClass}>
-        <span className={typographyBodyMutedClass}>Janela:</span>
-        {LOOKBACK_OPTIONS.map((days) => (
-          <button
-            key={days}
-            type="button"
-            onClick={() => setLookbackDays(days)}
-            className={chromeFilterChipClass(lookbackDays === days)}
-          >
-            {days} dia{days === 1 ? '' : 's'}
-          </button>
-        ))}
+        <span className={typographyBodyMutedClass}>Janela: {lookbackDays} dias</span>
         <button
           type="button"
           disabled={collecting || apiConfigured === false || setupRequired}
@@ -133,7 +123,7 @@ export function YoutubeRadarPanel() {
           ) : (
             <RefreshCw className="h-3.5 w-3.5" aria-hidden />
           )}
-          Buscar todos no YouTube
+          Atualizar
         </button>
       </div>
 

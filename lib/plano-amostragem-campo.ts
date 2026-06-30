@@ -1,5 +1,10 @@
+import { distribuirInteiros } from '@/lib/plano-amostragem-publico'
+import type {
+  PlanoAmostragemAlocacaoBloco,
+  PlanoAmostragemEquipe,
+  PlanoAmostragemPublico,
+} from '@/lib/plano-amostragem-publico-types'
 import type { LocalMapaPlano } from '@/lib/eleitorado-locais-pi'
-import type { PlanoAmostragemPublico } from '@/lib/plano-amostragem-publico-types'
 import type { SetorMapaPlano } from '@/lib/setores-censitarios-pi'
 
 export type ResultadoEntrevistaCampo =
@@ -14,6 +19,7 @@ export type FichaCampoEntrevista = {
   entrevistador: number
   sequencia: number
   municipio: string
+  blocoId: string
   blocoSugerido: string
   tipoBloco: string
   /** Onde ir no campo — local de votação, setor IBGE ou instrução genérica. */
@@ -51,6 +57,11 @@ export type MonitorCotaCampo = {
   pendente: number
 }
 
+export type ValidacaoRoteiroCampo = {
+  ok: boolean
+  avisos: string[]
+}
+
 export type ContextoRoteiroCampo = {
   locais?: LocalMapaPlano[]
   setores?: SetorMapaPlano[]
@@ -64,33 +75,14 @@ export type RoteiroCampoResumo = {
   pontosPorBloco: PontoCampoBloco[]
   monitorCotas: MonitorCotaCampo[]
   totalEntrevistadores: number
+  validacao: ValidacaoRoteiroCampo
 }
 
-function parseBlocosEntrevistador(texto: string): string[] {
-  if (!texto.trim()) return ['—']
-  return texto
-    .split(';')
-    .map((part) => {
-      const trimmed = part.trim()
-      const match = trimmed.match(/^(.+?)\s*\(\d+\)\s*$/)
-      return match ? match[1].trim() : trimmed
-    })
-    .filter((b) => b.length > 0)
-}
-
-function tipoBlocoPorNome(
-  nome: string,
-  blocos: PlanoAmostragemPublico['divisaoTerritorial'],
-): string {
-  const alvo = blocos.find((b) => b.nome.toLowerCase() === nome.toLowerCase())
-  return alvo?.tipo ?? '—'
-}
-
-function blocoPorNome(
-  nome: string,
+function blocoPorId(
+  blocoId: string,
   blocos: PlanoAmostragemPublico['divisaoTerritorial'],
 ) {
-  return blocos.find((b) => b.nome.toLowerCase() === nome.toLowerCase()) ?? null
+  return blocos.find((b) => b.id === blocoId) ?? null
 }
 
 function chaveLocalUnico(local: LocalMapaPlano): string {
@@ -147,12 +139,23 @@ function pontoFromLocal(local: LocalMapaPlano): PontoCampoBloco {
   }
 }
 
+function tituloSetor(setor: SetorMapaPlano): string {
+  const codigo = setor.cdSetor.slice(-4)
+  const nomeBase = setor.rotulo.trim()
+  const jaTemCodigo =
+    nomeBase.toLowerCase().endsWith(codigo.toLowerCase()) ||
+    nomeBase.toLowerCase() === `setor ${codigo}`.toLowerCase()
+  if (jaTemCodigo) return nomeBase
+  return `${nomeBase} — Setor ${codigo}`
+}
+
 function pontoFromSetor(setor: SetorMapaPlano): PontoCampoBloco {
   const codigo = setor.cdSetor.slice(-4)
+  const titulo = tituloSetor(setor)
   return {
     blocoId: setor.blocoId ?? '',
     blocoNome: setor.blocoNome ?? '',
-    titulo: setor.rotulo,
+    titulo,
     bairroRecorte: setor.urbano ? 'Urbano' : 'Rural',
     endereco: `Setor censitário IBGE ${codigo} · ${setor.populacao.toLocaleString('pt-BR')} hab.`,
     lat: setor.centroide?.lat ?? null,
@@ -185,8 +188,82 @@ function pontoGenerico(
   }
 }
 
-/** Monta lista de pontos de campo por bloco territorial (TSE, IBGE ou fallback). */
-export function montarPontosCampoPorBloco(
+/** Expande alocação da equipe em lista ordenada de blocos (uma entrada por ficha). */
+export function expandirAlocacaoEquipe(
+  membro: PlanoAmostragemEquipe,
+  blocos: PlanoAmostragemPublico['divisaoTerritorial'],
+): Array<{ blocoId: string; blocoNome: string; tipo: string }> {
+  const alocacao: PlanoAmostragemAlocacaoBloco[] =
+    membro.alocacao?.length > 0
+      ? membro.alocacao
+      : parseAlocacaoLegada(membro.blocosSugeridos, blocos)
+
+  const expandido: Array<{ blocoId: string; blocoNome: string; tipo: string }> = []
+  for (const item of alocacao) {
+    const bloco =
+      blocoPorId(item.blocoId, blocos) ??
+      blocos.find((b) => b.nome.toLowerCase() === item.blocoNome.toLowerCase())
+    const tipo = bloco?.tipo ?? '—'
+    for (let i = 0; i < item.entrevistas; i += 1) {
+      expandido.push({
+        blocoId: item.blocoId || bloco?.id || '',
+        blocoNome: item.blocoNome,
+        tipo,
+      })
+    }
+  }
+  return expandido
+}
+
+function parseAlocacaoLegada(
+  texto: string,
+  blocos: PlanoAmostragemPublico['divisaoTerritorial'],
+): PlanoAmostragemAlocacaoBloco[] {
+  if (!texto.trim()) return []
+  return texto
+    .split(';')
+    .map((part) => part.trim())
+    .filter(Boolean)
+    .map((part) => {
+      const match = part.match(/^(.+?)\s*\((\d+)\)\s*$/)
+      const blocoNome = match ? match[1].trim() : part
+      const entrevistas = match ? Number.parseInt(match[2], 10) : 1
+      const bloco = blocos.find((b) => b.nome.toLowerCase() === blocoNome.toLowerCase())
+      return {
+        blocoId: bloco?.id ?? '',
+        blocoNome,
+        entrevistas,
+      }
+    })
+}
+
+function intercalarPontos(pontos: PontoCampoBloco[]): PontoCampoBloco[] {
+  if (pontos.length <= 1) return pontos
+  const porTitulo = new Map<string, PontoCampoBloco[]>()
+  for (const p of pontos) {
+    const lista = porTitulo.get(p.titulo) ?? []
+    lista.push(p)
+    porTitulo.set(p.titulo, lista)
+  }
+  const filas = [...porTitulo.values()].sort((a, b) => b.length - a.length)
+  const resultado: PontoCampoBloco[] = []
+  let restam = true
+  while (restam) {
+    restam = false
+    for (const fila of filas) {
+      if (fila.length > 0) {
+        resultado.push(fila.shift()!)
+        restam = restam || fila.length > 0
+      }
+    }
+  }
+  return resultado
+}
+
+/**
+ * Monta sequência de pontos por bloco — uma entrada por ficha, proporcional à população/eleitorado.
+ */
+export function montarSequenciaPontosPorBloco(
   plano: PlanoAmostragemPublico,
   ctx: ContextoRoteiroCampo = {},
 ): Map<string, PontoCampoBloco[]> {
@@ -196,60 +273,223 @@ export function montarPontosCampoPorBloco(
   const mapa = new Map<string, PontoCampoBloco[]>()
 
   for (const bloco of plano.divisaoTerritorial) {
-    let pontos: PontoCampoBloco[] = []
+    if (bloco.entrevistas <= 0) {
+      mapa.set(bloco.id, [])
+      continue
+    }
+
+    let pontosExpandidos: PontoCampoBloco[] = []
 
     if (usarSetores && setores.length > 0) {
-      pontos = setores
-        .filter((s) => s.blocoId === bloco.id)
-        .sort((a, b) => b.populacao - a.populacao)
-        .map(pontoFromSetor)
-    } else if (locais.length > 0) {
-      pontos = deduplicarLocais(locais.filter((l) => l.blocoId === bloco.id))
-        .sort((a, b) => b.eleitores - a.eleitores)
-        .map(pontoFromLocal)
-    }
-
-    if (pontos.length === 0 && locais.length > 0 && !usarSetores) {
-      const tipoRural = bloco.tipo === 'rural'
-      pontos = deduplicarLocais(
-        locais.filter((l) => (tipoRural ? l.zonaRural : !l.zonaRural)),
+      const setoresBloco = setores.filter(
+        (s) =>
+          (bloco.setorIds?.includes(s.cdSetor) ?? false) || s.blocoId === bloco.id,
       )
-        .sort((a, b) => b.eleitores - a.eleitores)
-        .slice(0, 12)
-        .map(pontoFromLocal)
+      if (setoresBloco.length > 0) {
+        const mapaSector = distribuirInteiros(
+          setoresBloco.map((s) => ({ id: s.cdSetor, peso: s.populacao })),
+          bloco.entrevistas,
+        )
+        for (const s of setoresBloco) {
+          const n = mapaSector.get(s.cdSetor) ?? 0
+          const ponto = pontoFromSetor(s)
+          for (let i = 0; i < n; i += 1) pontosExpandidos.push(ponto)
+        }
+        pontosExpandidos = intercalarPontos(pontosExpandidos)
+      }
+    } else if (locais.length > 0) {
+      const locaisBloco = deduplicarLocais(
+        locais.filter((l) => l.blocoId === bloco.id),
+      ).sort((a, b) => b.eleitores - a.eleitores)
+
+      if (locaisBloco.length > 0) {
+        const mapaLocal = distribuirInteiros(
+          locaisBloco.map((l) => ({ id: l.id, peso: l.eleitores })),
+          bloco.entrevistas,
+        )
+        for (const l of locaisBloco) {
+          const n = mapaLocal.get(l.id) ?? 0
+          const ponto = pontoFromLocal(l)
+          for (let i = 0; i < n; i += 1) pontosExpandidos.push(ponto)
+        }
+        pontosExpandidos = intercalarPontos(pontosExpandidos)
+      }
     }
 
-    if (pontos.length === 0 && setores.length > 0 && usarSetores) {
-      const tipoRural = bloco.tipo === 'rural'
-      pontos = setores
-        .filter((s) => (tipoRural ? !s.urbano : s.urbano))
-        .sort((a, b) => b.populacao - a.populacao)
-        .slice(0, 8)
-        .map(pontoFromSetor)
+    if (pontosExpandidos.length === 0) {
+      const fallback = locais.length > 0 && !usarSetores
+        ? deduplicarLocais(
+            locais.filter((l) =>
+              bloco.tipo === 'rural' ? l.zonaRural : !l.zonaRural,
+            ),
+          )
+            .sort((a, b) => b.eleitores - a.eleitores)
+            .slice(0, 12)
+            .map(pontoFromLocal)
+        : usarSetores && setores.length > 0
+          ? setores
+              .filter((s) => (bloco.tipo === 'rural' ? !s.urbano : s.urbano))
+              .sort((a, b) => b.populacao - a.populacao)
+              .slice(0, 8)
+              .map(pontoFromSetor)
+          : []
+
+      if (fallback.length > 0) {
+        const mapaFallback = distribuirInteiros(
+          fallback.map((p, i) => ({
+            id: String(i),
+            peso: usarSetores
+              ? (setores.find((s) => tituloSetor(s) === p.titulo)?.populacao ?? 1)
+              : (locais.find((l) => pontoFromLocal(l).titulo === p.titulo)?.eleitores ?? 1),
+          })),
+          bloco.entrevistas,
+        )
+        for (let i = 0; i < fallback.length; i += 1) {
+          const n = mapaFallback.get(String(i)) ?? 0
+          for (let j = 0; j < n; j += 1) pontosExpandidos.push(fallback[i])
+        }
+        pontosExpandidos = intercalarPontos(pontosExpandidos)
+      }
     }
 
-    if (pontos.length === 0) {
-      pontos = [pontoGenerico(bloco)]
+    while (pontosExpandidos.length < bloco.entrevistas) {
+      pontosExpandidos.push(pontoGenerico(bloco))
+    }
+    if (pontosExpandidos.length > bloco.entrevistas) {
+      pontosExpandidos = pontosExpandidos.slice(0, bloco.entrevistas)
     }
 
-    mapa.set(bloco.id, pontos)
+    mapa.set(bloco.id, pontosExpandidos)
   }
 
   return mapa
 }
 
-function proximoPonto(
-  blocoNome: string,
-  blocos: PlanoAmostragemPublico['divisaoTerritorial'],
+/** Lista única de pontos por bloco (para mapa/referência). */
+export function montarPontosCampoPorBloco(
+  plano: PlanoAmostragemPublico,
+  ctx: ContextoRoteiroCampo = {},
+): Map<string, PontoCampoBloco[]> {
+  const sequencia = montarSequenciaPontosPorBloco(plano, ctx)
+  const mapa = new Map<string, PontoCampoBloco[]>()
+  for (const [blocoId, pontos] of sequencia) {
+    const unicos = new Map<string, PontoCampoBloco>()
+    for (const p of pontos) {
+      unicos.set(`${p.titulo}|${p.lat ?? ''}|${p.lng ?? ''}`, p)
+    }
+    mapa.set(blocoId, [...unicos.values()])
+  }
+  return mapa
+}
+
+function proximoPontoPorBlocoId(
+  blocoId: string,
   pontosMapa: Map<string, PontoCampoBloco[]>,
   indicePorBloco: Map<string, number>,
+  blocoFallback: PlanoAmostragemPublico['divisaoTerritorial'][number] | null,
 ): PontoCampoBloco {
-  const bloco = blocoPorNome(blocoNome, blocos)
-  const blocoId = bloco?.id ?? ''
-  const pontos = pontosMapa.get(blocoId) ?? (bloco ? [pontoGenerico(bloco)] : [])
-  const idx = indicePorBloco.get(blocoNome) ?? 0
-  indicePorBloco.set(blocoNome, idx + 1)
-  return pontos[idx % pontos.length]
+  const pontos = pontosMapa.get(blocoId) ?? []
+  const idx = indicePorBloco.get(blocoId) ?? 0
+  indicePorBloco.set(blocoId, idx + 1)
+  if (pontos[idx]) return pontos[idx]
+  if (blocoFallback) return pontoGenerico(blocoFallback)
+  return {
+    blocoId,
+    blocoNome: '—',
+    titulo: '—',
+    bairroRecorte: null,
+    endereco: null,
+    lat: null,
+    lng: null,
+    instrucao: 'Validar ponto com supervisor local.',
+    fonte: 'generico',
+  }
+}
+
+export function montarGuiaPontosDasFichas(fichas: FichaCampoEntrevista[]): PontoCampoBloco[] {
+  const mapa = new Map<string, PontoCampoBloco>()
+  for (const f of fichas) {
+    const chave = `${f.blocoId}|${f.localCampo}|${f.latitudeSugerida ?? ''}|${f.longitudeSugerida ?? ''}`
+    if (mapa.has(chave)) continue
+    mapa.set(chave, {
+      blocoId: f.blocoId,
+      blocoNome: f.blocoSugerido,
+      titulo: f.localCampo,
+      bairroRecorte: f.bairroRecorte,
+      endereco: f.enderecoSugerido,
+      lat: f.latitudeSugerida,
+      lng: f.longitudeSugerida,
+      instrucao: f.instrucaoCampo,
+      fonte: f.latitudeSugerida != null ? 'ibge' : 'generico',
+    })
+  }
+  return [...mapa.values()].sort((a, b) =>
+    a.blocoNome.localeCompare(b.blocoNome, 'pt-BR') ||
+    a.titulo.localeCompare(b.titulo, 'pt-BR'),
+  )
+}
+
+export function validarRoteiroCampo(
+  plano: PlanoAmostragemPublico,
+  fichas: FichaCampoEntrevista[],
+): ValidacaoRoteiroCampo {
+  const avisos: string[] = []
+
+  if (fichas.length !== plano.amostraTotal) {
+    avisos.push(
+      `Total de fichas (${fichas.length}) difere da amostra (${plano.amostraTotal}).`,
+    )
+  }
+
+  const metaUrbana =
+    plano.amostraUrbana ??
+    plano.divisaoTerritorial
+      .filter((b) => b.tipo === 'urbano')
+      .reduce((acc, b) => acc + b.entrevistas, 0)
+  const metaRural =
+    plano.amostraRural ??
+    plano.divisaoTerritorial
+      .filter((b) => b.tipo === 'rural')
+      .reduce((acc, b) => acc + b.entrevistas, 0)
+
+  const fichasUrbanas = fichas.filter((f) => f.tipoBloco === 'urbano').length
+  const fichasRurais = fichas.filter((f) => f.tipoBloco === 'rural').length
+
+  if (fichasUrbanas !== metaUrbana) {
+    avisos.push(`Urbano: meta ${metaUrbana}, fichas ${fichasUrbanas}.`)
+  }
+  if (fichasRurais !== metaRural) {
+    avisos.push(`Rural: meta ${metaRural}, fichas ${fichasRurais}.`)
+  }
+
+  for (const bloco of plano.divisaoTerritorial) {
+    const fichasBloco = fichas.filter((f) => f.blocoId === bloco.id).length
+    if (fichasBloco !== bloco.entrevistas) {
+      avisos.push(
+        `Bloco "${bloco.nome}": meta ${bloco.entrevistas}, fichas ${fichasBloco}.`,
+      )
+    }
+  }
+
+  for (const membro of plano.equipeCampo) {
+    const fichasMembro = fichas.filter((f) => f.entrevistador === membro.entrevistador)
+    if (fichasMembro.length !== membro.entrevistas) {
+      avisos.push(
+        `Entrevistador ${membro.entrevistador}: meta ${membro.entrevistas}, fichas ${fichasMembro.length}.`,
+      )
+      continue
+    }
+    for (const aloc of membro.alocacao ?? []) {
+      const fichasAloc = fichasMembro.filter((f) => f.blocoId === aloc.blocoId).length
+      if (fichasAloc !== aloc.entrevistas) {
+        avisos.push(
+          `Entrevistador ${membro.entrevistador} · ${aloc.blocoNome}: roteiro ${aloc.entrevistas}, fichas ${fichasAloc}.`,
+        )
+      }
+    }
+  }
+
+  return { ok: avisos.length === 0, avisos }
 }
 
 export function montarRoteiroCampo(
@@ -259,8 +499,7 @@ export function montarRoteiroCampo(
   const fichas: FichaCampoEntrevista[] = []
   let globalSeq = 1
   const indicePontoPorBloco = new Map<string, number>()
-  const pontosMapa = montarPontosCampoPorBloco(plano, ctx)
-  const pontosPorBloco = [...pontosMapa.values()].flat()
+  const pontosMapa = montarSequenciaPontosPorBloco(plano, ctx)
 
   const metaCotas = {
     sexo: plano.cotasSexo.map((c) => ({ perfil: c.perfil, meta: c.meta })),
@@ -269,17 +508,24 @@ export function montarRoteiroCampo(
   }
 
   for (const membro of plano.equipeCampo) {
-    const blocos = parseBlocosEntrevistador(membro.blocosSugeridos)
-    for (let i = 0; i < membro.entrevistas; i += 1) {
-      const bloco = blocos[i % blocos.length] ?? blocos[0] ?? '—'
-      const ponto = proximoPonto(bloco, plano.divisaoTerritorial, pontosMapa, indicePontoPorBloco)
+    const alocacoes = expandirAlocacaoEquipe(membro, plano.divisaoTerritorial)
+    for (let i = 0; i < alocacoes.length; i += 1) {
+      const { blocoId, blocoNome, tipo } = alocacoes[i]
+      const bloco = blocoPorId(blocoId, plano.divisaoTerritorial)
+      const ponto = proximoPontoPorBlocoId(
+        blocoId,
+        pontosMapa,
+        indicePontoPorBloco,
+        bloco,
+      )
       fichas.push({
         id: `${plano.codigoIbge}-${String(membro.entrevistador).padStart(2, '0')}-${String(i + 1).padStart(2, '0')}`,
         entrevistador: membro.entrevistador,
         sequencia: globalSeq,
         municipio: plano.municipio,
-        blocoSugerido: bloco,
-        tipoBloco: tipoBlocoPorNome(bloco, plano.divisaoTerritorial),
+        blocoId,
+        blocoSugerido: blocoNome,
+        tipoBloco: tipo,
         localCampo: ponto.titulo,
         bairroRecorte: ponto.bairroRecorte,
         enderecoSugerido: ponto.endereco,
@@ -291,6 +537,9 @@ export function montarRoteiroCampo(
       globalSeq += 1
     }
   }
+
+  const pontosPorBloco = montarGuiaPontosDasFichas(fichas)
+  const validacao = validarRoteiroCampo(plano, fichas)
 
   const monitorCotas: MonitorCotaCampo[] = [
     ...plano.cotasSexo.map((c) => ({
@@ -325,5 +574,6 @@ export function montarRoteiroCampo(
     pontosPorBloco,
     monitorCotas,
     totalEntrevistadores: plano.equipeCampo.length,
+    validacao,
   }
 }

@@ -26,7 +26,7 @@ export async function GET(request: Request) {
         political_actors!inner ( id, name, slug, actor_type )
       `
       )
-      .order('views', { ascending: false })
+      .order('published_at', { ascending: false, nullsFirst: false })
       .limit(limit)
 
     if (/^\d{4}-\d{2}-\d{2}$/.test(date)) {

@@ -28,6 +28,10 @@ import {
   parseSerieValue,
   serieKeyForCandidate,
 } from '@/lib/pesquisa-tendencia-chart-config'
+import {
+  computeEndLabelRightPadding,
+  createPesquisaEndLineLabelsPlugin,
+} from '@/lib/pesquisa-tendencia-chart-end-labels-plugin'
 import { cn } from '@/lib/utils'
 
 Chart.register(LineController, LineElement, PointElement, CategoryScale, LinearScale, Tooltip)
@@ -77,7 +81,23 @@ export function TendenciaTemporalPanel({
 }: TendenciaTemporalPanelProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const chartRef = useRef<ChartJsInstance | null>(null)
+  const candidatoPadraoRef = useRef(candidatoPadrao)
+  candidatoPadraoRef.current = candidatoPadrao
   const [hiddenCandidates, setHiddenCandidates] = useState<Set<string>>(new Set())
+
+  const endLineLabelsPlugin = useMemo(
+    () =>
+      createPesquisaEndLineLabelsPlugin({
+        isHidden: () => false,
+        isBold: (label) => label === candidatoPadraoRef.current,
+      }),
+    []
+  )
+
+  const endLabelPadding = useMemo(
+    () => computeEndLabelRightPadding(candidatos),
+    [candidatos]
+  )
 
   const topActiveCandidates = useMemo(
     () => getTopActiveCandidates(candidatos, pesquisaData),
@@ -170,8 +190,9 @@ export function TendenciaTemporalPanel({
           color: dataset.color,
           style: dataset.style,
         })),
+        endLabelPadding,
       }),
-    [chartLabels, yAxisMax, candidatoPadrao, datasetBundle]
+    [chartLabels, yAxisMax, candidatoPadrao, datasetBundle, endLabelPadding]
   )
 
   useEffect(() => {
@@ -190,6 +211,7 @@ export function TendenciaTemporalPanel({
 
     chartRef.current = new Chart(canvas, {
       type: 'line',
+      plugins: [endLineLabelsPlugin],
       data: {
         labels: chartLabels,
         datasets: datasetBundle.map((dataset) => ({
@@ -253,7 +275,7 @@ export function TendenciaTemporalPanel({
           },
         },
         layout: {
-          padding: { bottom: 8 },
+          padding: { right: endLabelPadding, bottom: 8 },
         },
         scales: {
           x: {
@@ -332,8 +354,11 @@ export function TendenciaTemporalPanel({
     }
 
     return (
-      <div className="grid grid-cols-1 items-stretch gap-4 lg:grid-cols-[1fr_220px]">
-        <div className="relative min-h-[480px] w-full" style={{ height: resolvedChartHeight }}>
+      <div className="grid grid-cols-1 items-stretch gap-4 lg:grid-cols-[1fr_200px]">
+        <div
+          className="relative min-h-[480px] w-full overflow-visible"
+          style={{ height: resolvedChartHeight }}
+        >
           <canvas
             ref={canvasRef}
             role="img"
@@ -348,7 +373,7 @@ export function TendenciaTemporalPanel({
           style={{ maxHeight: resolvedChartHeight }}
         >
           <p className="mb-0.5 border-b border-[rgb(var(--color-border-tertiary)/0.85)] pb-1.5 text-[10px] font-medium uppercase tracking-[0.05em] text-text-muted">
-            Candidatos · 1ª → última leitura
+            Variação · clique para ocultar linha
           </p>
 
           {legendEntries.map((entry, index) => {
@@ -428,7 +453,8 @@ export function TendenciaTemporalPanel({
               Tendência temporal de intenção · todos os candidatos
             </h2>
             <p className="mt-0.5 text-[11px] text-text-muted">
-              Uma linha por candidato · pontos = datas de pesquisa · valores em % de intenção de voto
+              Uma linha por candidato · nomes alinhados ao fim de cada linha · clique na legenda para
+              ocultar
             </p>
           </div>
           {onTelaCheia ? (

@@ -550,12 +550,17 @@ export function AgendaPanel({ embedded = true }: { embedded?: boolean }) {
         formatTime={formatTime}
       />
 
-      <div className={embedded ? (hasActiveArrivals ? 'mr-80' : undefined) : `px-4 py-6 lg:px-6 ${hasActiveArrivals ? 'mr-80' : ''}`}>
+      <div
+        className={cn(
+          embedded ? undefined : 'px-4 py-6 lg:px-6',
+          hasActiveArrivals && 'lg:mr-80',
+        )}
+      >
         {/* Botão de Configuração */}
-        <div className="mb-6 flex items-center justify-between">
-          <div>
+        <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div className="min-w-0 flex-1">
             <h2 className={cn(typographySectionTitleClass, 'mb-2')}>Eventos do Google Calendar</h2>
-            <p className={typographySectionLeadClass}>
+            <p className={cn(typographySectionLeadClass, 'break-words')}>
               {!configLoaded
                 ? 'Carregando...'
                 : config
@@ -563,13 +568,13 @@ export function AgendaPanel({ embedded = true }: { embedded?: boolean }) {
                   : 'Configure sua conexão com o Google Calendar para visualizar seus eventos'}
             </p>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex w-full shrink-0 flex-col gap-2 sm:w-auto sm:flex-row">
             {config && (
               <button
                 onClick={() => fetchEvents(true)}
                 disabled={isRefreshing || loading}
                 className={cn(
-                  'flex items-center gap-2 rounded-lg border border-card bg-surface px-4 py-2 text-text-primary transition-colors hover:bg-background disabled:cursor-not-allowed disabled:opacity-50',
+                  'flex w-full items-center justify-center gap-2 rounded-lg border border-card bg-surface px-4 py-2 text-text-primary transition-colors hover:bg-background disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto',
                   typographyBodyClass,
                 )}
                 title="Atualizar eventos manualmente"
@@ -581,7 +586,7 @@ export function AgendaPanel({ embedded = true }: { embedded?: boolean }) {
             <button
               onClick={() => setShowConfig(true)}
               disabled={!configLoaded}
-              className={cn(agendaAmberButtonClass, 'px-4 py-2')}
+              className={cn(agendaAmberButtonClass, 'w-full justify-center px-4 py-2 sm:w-auto')}
             >
               <Settings className="w-4 h-4" />
               {config ? 'Reconfigurar' : 'Configurar'}
@@ -636,11 +641,11 @@ export function AgendaPanel({ embedded = true }: { embedded?: boolean }) {
         ) : (
           <>
             {/* Filtro de Data */}
-            <div className="mb-6 bg-surface rounded-xl border border-card p-4">
+            <div className="mb-6 rounded-xl border border-card bg-surface p-4">
               <label className={cn('mb-2 block', typographyBodyMediumClass)}>
                 Filtrar por Data
               </label>
-              <div className="flex items-center gap-3">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
                 <input
                   type="date"
                   value={selectedDate ? selectedDate.toISOString().split('T')[0] : ''}
@@ -656,14 +661,17 @@ export function AgendaPanel({ embedded = true }: { embedded?: boolean }) {
                   }}
                   min="2026-01-01"
                   className={cn(
-                    'rounded-lg border border-card bg-background px-4 py-2 text-text-primary focus:outline-none focus:ring-2 focus:ring-accent-gold-soft',
+                    'w-full rounded-lg border border-card bg-background px-4 py-2 text-text-primary focus:outline-none focus:ring-2 focus:ring-accent-gold-soft sm:w-auto',
                     typographyBodyClass,
                   )}
                 />
                 {selectedDate && (
                   <button
                     onClick={() => setSelectedDate(null)}
-                    className={cn('px-4 py-2 transition-colors hover:text-text-primary', typographyBodyMutedClass)}
+                    className={cn(
+                      'w-full px-4 py-2 text-center transition-colors hover:text-text-primary sm:w-auto sm:text-left',
+                      typographyBodyMutedClass,
+                    )}
                   >
                     Limpar filtro
                   </button>
@@ -868,7 +876,7 @@ export function AgendaPanel({ embedded = true }: { embedded?: boolean }) {
               <X className="w-6 h-6 text-secondary" />
             </button>
           </div>
-          <div className={`flex-1 p-6 overflow-auto ${hasActiveArrivals ? 'mr-80' : ''}`}>
+          <div className={cn('flex-1 overflow-auto p-4 sm:p-6', hasActiveArrivals && 'lg:mr-80')}>
             <div className="max-w-5xl mx-auto">
               {sortedEvents.length === 0 ? (
                 <div className="text-center py-12">

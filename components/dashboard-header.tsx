@@ -1,8 +1,7 @@
 'use client'
 
 import { useEffect } from 'react'
-import { usePathname, useRouter, useSearchParams } from 'next/navigation'
-import { Moon, Sun } from 'lucide-react'
+import { usePathname, useSearchParams } from 'next/navigation'
 import { UserMenu } from './user-menu'
 import { useTheme } from '@/contexts/theme-context'
 import { MAPA_TDS_ROUTE_PREFIX } from '@/lib/dashboard-mapa-futuristic-chrome'
@@ -16,6 +15,7 @@ import { useDashboardTopbarVisible } from '@/hooks/use-dashboard-topbar-visible'
 import { AppBrandTitle } from '@/components/app-brand-title'
 import { useDashboardHomeChrome } from '@/contexts/dashboard-home-chrome-context'
 import { isDashboardHomePath } from '@/lib/dashboard-home-chrome'
+import { dashboardMobilePageHeaderClass } from '@/lib/rest-screen-chrome'
 const pathToTitle: Record<string, string> = {
   '/dashboard': 'Visão Geral',
   '/dashboard/narrativas': 'Estratégia',
@@ -71,7 +71,6 @@ function mapaTdsHeaderTitleFromSearch(aba: string | null): string {
 }
 
 export function DashboardHeader() {
-  const router = useRouter()
   const pathname = usePathname()
   const searchParams = useSearchParams()
   const { theme, appearance, setAppearance } = useTheme()
@@ -90,23 +89,6 @@ export function DashboardHeader() {
     }
   }, [mapaFuturisticShell, searchParams, appearance, setAppearance])
 
-  const syncMapaTemaQuery = (mode: 'light' | 'dark') => {
-    if (!mapaFuturisticShell || !pathname) return
-    const p = new URLSearchParams(searchParams.toString())
-    if (mode === 'light') {
-      p.set('tema', 'republicanos-claro')
-    } else {
-      p.delete('tema')
-    }
-    const q = p.toString()
-    router.replace(q ? `${pathname}?${q}` : pathname, { scroll: false })
-  }
-
-  const applyAppearanceMode = (mode: 'light' | 'dark') => {
-    setAppearance(mode)
-    syncMapaTemaQuery(mode)
-  }
-
   const showTopbar = useDashboardTopbarVisible()
   const isRepublicanosPremium = theme === 'republicanos' && appearance === 'light'
   const isGradientHome = useDashboardHomeChrome()
@@ -116,13 +98,19 @@ export function DashboardHeader() {
     return null
   }
 
+  const mobileAmberHeader = !isGradientHome
+
   return (
     <header
       className={cn(
         'sticky top-0 z-30',
         isGradientHome
           ? 'bg-transparent backdrop-blur-md'
-          : cn('bg-[rgb(var(--bg-sidebar))]', isRepublicanosPremium && 'republicanos-premium-header'),
+          : cn(
+              'lg:bg-[rgb(var(--bg-sidebar))]',
+              isRepublicanosPremium && 'republicanos-premium-header',
+              mobileAmberHeader && dashboardMobilePageHeaderClass,
+            ),
       )}
     >
       <div
@@ -138,12 +126,15 @@ export function DashboardHeader() {
             className={cn(
               'min-w-0 truncate',
               isGradientHome ? 'text-[0.95rem] sm:text-[1.16rem]' : 'shrink-0 whitespace-nowrap',
+              mobileAmberHeader &&
+                'max-lg:!bg-none max-lg:!bg-clip-border max-lg:!text-white max-lg:[text-shadow:0_1px_10px_rgba(0,0,0,0.14)]',
             )}
           />
           <span
             className={cn(
               'hidden shrink-0 sm:inline',
               isGradientHome ? 'text-white/35' : 'text-border-card/70',
+              mobileAmberHeader && 'max-lg:text-white/40',
             )}
             aria-hidden
           >
@@ -153,6 +144,7 @@ export function DashboardHeader() {
             className={cn(
               'min-w-0 flex-1 truncate text-sm font-bold tracking-tight sm:text-base',
               isGradientHome ? 'text-white max-lg:hidden' : 'text-text-primary',
+              mobileAmberHeader && 'max-lg:text-white/95',
             )}
             title={pageTitle}
           >
@@ -160,53 +152,7 @@ export function DashboardHeader() {
           </h1>
         </div>
         <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
-          <div
-            className={cn(
-              'inline-flex items-center gap-1 rounded-lg border p-1',
-              isGradientHome
-                ? 'border-white/25 bg-white/10 backdrop-blur-sm'
-                : 'border-border-card bg-bg-app',
-            )}
-            aria-label="Alternar aparência clara ou escura"
-          >
-            <button
-              type="button"
-              onClick={() => applyAppearanceMode('dark')}
-              aria-label="Aparência escura"
-              title="Escuro"
-              className={cn(
-                'inline-flex items-center justify-center rounded-md p-1.5 transition-colors duration-200 ease-out',
-                appearance === 'dark'
-                  ? isGradientHome
-                    ? 'bg-white/20 text-white'
-                    : 'bg-accent-gold-soft text-text-primary'
-                  : isGradientHome
-                    ? 'text-white/80 hover:bg-white/15'
-                    : 'text-text-secondary hover:bg-accent-gold-soft/60',
-              )}
-            >
-              <Moon className="h-3.5 w-3.5" />
-            </button>
-            <button
-              type="button"
-              onClick={() => applyAppearanceMode('light')}
-              aria-label="Aparência clara"
-              title="Claro"
-              className={cn(
-                'inline-flex items-center justify-center rounded-md p-1.5 transition-colors duration-200 ease-out',
-                appearance === 'light'
-                  ? isGradientHome
-                    ? 'bg-white/20 text-white'
-                    : 'bg-accent-gold-soft text-text-primary'
-                  : isGradientHome
-                    ? 'text-white/80 hover:bg-white/15'
-                    : 'text-text-secondary hover:bg-accent-gold-soft/60',
-              )}
-            >
-              <Sun className="h-3.5 w-3.5" />
-            </button>
-          </div>
-          <UserMenu />
+          <UserMenu amberMobileChrome={mobileAmberHeader} />
         </div>
       </div>
     </header>

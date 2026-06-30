@@ -7,6 +7,14 @@ export type PlanoAmostragemBloco = {
   entrevistas: number
   tipo: 'urbano' | 'rural' | 'transicao'
   notas?: string
+  /** Setores IBGE que compõem o bloco (individual ou agrupado). */
+  setorIds?: string[]
+}
+
+export type PlanoAmostragemAlocacaoBloco = {
+  blocoId: string
+  blocoNome: string
+  entrevistas: number
 }
 
 export type PlanoAmostragemCota = {
@@ -18,6 +26,8 @@ export type PlanoAmostragemCota = {
 export type PlanoAmostragemEquipe = {
   entrevistador: number
   entrevistas: number
+  /** Alocação exata por bloco — fonte de verdade para fichas. */
+  alocacao: PlanoAmostragemAlocacaoBloco[]
   blocosSugeridos: string
 }
 
@@ -32,6 +42,10 @@ export type PlanoAmostragemPublico = {
   taxaRuralPct: number
   eleitorado: number | null
   amostraTotal: number
+  /** Meta de entrevistas na zona urbana (fecha com amostraRural = amostraTotal). */
+  amostraUrbana: number
+  /** Meta de entrevistas na zona rural. */
+  amostraRural: number
   entrevistadoresPrevistos: number
   tipoPesquisa: TipoPesquisaPublico
   institutoDestino: string | null

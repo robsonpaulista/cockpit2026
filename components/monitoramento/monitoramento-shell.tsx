@@ -36,12 +36,12 @@ export type MonitoramentoTab =
 
 const TABS: { id: MonitoramentoTab; label: string; icon: typeof Youtube }[] = [
   { id: 'geral', label: 'Panorama', icon: LayoutGrid },
-  { id: 'google-alerts', label: 'Google Alerts', icon: Bell },
+  { id: 'google-alerts', label: 'Alertas', icon: Bell },
   { id: 'youtube', label: 'YouTube', icon: Youtube },
-  { id: 'google-news', label: 'Google News', icon: Newspaper },
+  { id: 'google-news', label: 'Notícias', icon: Newspaper },
   { id: 'instagram', label: 'Instagram', icon: Instagram },
-  { id: 'meta-ads', label: 'Meta Ads', icon: Megaphone },
-  { id: 'trends', label: 'Google Trends', icon: LineChart },
+  { id: 'meta-ads', label: 'Anúncios', icon: Megaphone },
+  { id: 'trends', label: 'Buscas', icon: LineChart },
   { id: 'lideres', label: 'Eng. líderes', icon: Users },
 ]
 
@@ -81,7 +81,7 @@ export function MonitoramentoShell({
     activeTab === MONITORAMENTO_TAB_LIDERES ? 'Radar eleitoral · Eng. líderes' : 'Radar eleitoral'
 
   const description = panoramaMeta ? (
-    <div className="flex flex-wrap items-center gap-2">
+    <div className="flex flex-col gap-1 sm:flex-row sm:flex-wrap sm:items-center sm:gap-2">
       <span className={typographyPageLeadClass}>{panoramaMeta.windowLabel}</span>
       <DataFreshnessIndicator
         lastUpdated={panoramaMeta.lastUpdated}
