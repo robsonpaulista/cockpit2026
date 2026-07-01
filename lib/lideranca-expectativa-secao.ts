@@ -75,18 +75,21 @@ function fmtV(n: number, dec = 0): string {
   })
 }
 
-function fmtPct(n: number): string {
-  return `${n.toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%`
-}
+function linhaRegraExpectativa(params: {
+  nmBairro: string
+  regra: RegraExpectativaDistribuicao
+  votosVereador: number
+}): string {
+  const local = params.nmBairro
+  const votos = fmtV(params.votosVereador)
 
-function textoAjusteSimilaridade(regra: RegraExpectativaDistribuicao): string | null {
-  if (regra === 'similaridade_baixa') {
-    return `Neste bairro, vereador e dep. estadual não votaram parecido em muitas seções (menos de ${LIMIAR_SIMILARIDADE_BAIRRO_EXP}%). Para não superestimar, reduzimos ${Math.round(CORTE_PESO_VEREADOR_SIMILARIDADE_BAIXA * 100)}% nesta parte.`
+  if (params.regra === 'similaridade_alta') {
+    return `${local}: similaridade com dep. estadual ≥ 50% — foi considerada a votação do vereador de 2024 (${votos} votos), quando maior que a do deputado.`
   }
-  if (regra === 'similaridade_alta') {
-    return 'Neste bairro, o padrão de voto do vereador e do dep. estadual é consistente — usamos a base de 2024 sem desconto.'
+  if (params.regra === 'similaridade_baixa') {
+    return `${local}: similaridade com dep. estadual < 50% — foi considerada a votação do vereador de 2024 (${votos} votos) menos 30%.`
   }
-  return null
+  return `${local}: foi considerada a votação do vereador de 2024 (${votos} votos).`
 }
 
 export type InjetarExpectativaLiderancaResult = {
@@ -106,107 +109,51 @@ export function rotuloRegraExpectativa(regra: RegraExpectativaDistribuicao): str
 
 export function tituloRegraExpectativa(regra: RegraExpectativaDistribuicao): string {
   if (regra === 'similaridade_baixa') {
-    return 'Estimativa cautelosa neste bairro'
+    return 'Similaridade < 50%'
   }
   if (regra === 'similaridade_alta') {
-    return 'Base de 2024 confiável neste bairro'
+    return 'Similaridade ≥ 50%'
   }
-  return 'Mapa pelas urnas de 2024'
-}
-
-function linhasIntroExpectativa(d: {
-  regra: RegraExpectativaDistribuicao
-  nomeLideranca: string
-  totalExpectativaMunicipio: number
-  totalMapaEleitoral: number
-}): string[] {
-  const linhas = [
-    'Partimos do que o vereador fez nas urnas de 2024 — quanto ele teve em cada seção.',
-  ]
-  if (d.regra !== 'proporcional_simples') {
-    linhas.push(
-      'Cruzamos com o dep. estadual na mesma urna: onde os dois tiveram votos parecidos no bairro, confiamos na base de 2024; onde divergiram, a estimativa fica mais conservadora.',
-    )
-  }
-  linhas.push(
-    `Somando o mapa, chegamos a ${fmtV(d.totalMapaEleitoral)} votos. Na planilha, ${d.nomeLideranca} consta com ${fmtV(d.totalExpectativaMunicipio)} — são números independentes para comparar, não um rateio da meta.`,
-  )
-  return linhas
+  return 'Base de 2024'
 }
 
 export function montarExplicacaoExpectativaSecao(d: ExpectativaSecaoDetalhe): BlocoExplicacaoExpectativa[] {
-  const share =
-    d.pesoVereadorUsado > 0 && d.totalPesoMunicipio > 0
-      ? (d.pesoVereadorUsado / d.totalPesoMunicipio) * 100
-      : 0
-
-  const resumo: string[] = [...linhasIntroExpectativa(d)]
-
   if (d.votosVereadorSecao <= 0) {
-    resumo.push('Nesta seção o vereador não teve votos em 2024, então a expectativa aqui fica em zero.')
-  } else {
-    resumo.push(
-      `Nesta seção (${d.nmBairro}), o vereador teve ${fmtV(d.votosVereadorSecao)} votos em 2024 — cerca de ${fmtPct(share)} do mapa municipal.`,
-    )
-    const ajuste = textoAjusteSimilaridade(d.regra)
-    if (ajuste) resumo.push(ajuste)
-    resumo.push(`Com isso, a expectativa nesta seção é de ${fmtV(d.expectativaSecao)} votos.`)
-  }
-
-  const referencia: string[] = [
-    `Total do mapa eleitoral: ${fmtV(d.totalMapaEleitoral)} votos`,
-    `Referência na planilha (${d.nomeLideranca}): ${fmtV(d.totalExpectativaMunicipio)} votos`,
-    `Votos do vereador nesta seção (2024): ${fmtV(d.votosVereadorSecao)}`,
-  ]
-  if (d.votosEstadualSecao > 0) {
-    referencia.push(`Votos do dep. estadual nesta seção (2024): ${fmtV(d.votosEstadualSecao)}`)
-  }
-  if (d.regra !== 'proporcional_simples' && d.pctSimilaridadeBairro != null) {
-    referencia.push(
-      `Seções parecidas no bairro (vereador × estadual): ${d.secoesParecidasNoBairro} de ${d.secoesComAmbosNoBairro}`,
-    )
+    return [{ titulo: '', linhas: ['Sem votos do vereador em 2024 nesta seção.'] }]
   }
 
   return [
-    { titulo: 'Em resumo', linhas: resumo },
-    { titulo: 'Números de referência', linhas: referencia },
+    {
+      titulo: '',
+      linhas: [
+        linhaRegraExpectativa({
+          nmBairro: d.nmBairro,
+          regra: d.regra,
+          votosVereador: d.votosVereadorSecao,
+        }),
+        `Expectativa nesta seção: ${fmtV(d.expectativaSecao)} votos.`,
+      ],
+    },
   ]
 }
 
 export function montarExplicacaoExpectativaBairro(d: ExpectativaBairroDetalhe): BlocoExplicacaoExpectativa[] {
-  const share =
-    d.pesoUsadoBairro > 0 && d.totalPesoMunicipio > 0
-      ? (d.pesoUsadoBairro / d.totalPesoMunicipio) * 100
-      : 0
-
-  const resumo: string[] = [...linhasIntroExpectativa(d)]
-
-  if (d.votosVereadorBairro > 0) {
-    resumo.push(
-      `Em ${d.nmBairro}, o vereador somou ${fmtV(d.votosVereadorBairro)} votos em 2024 — cerca de ${fmtPct(share)} do mapa municipal.`,
-    )
-    const ajuste = textoAjusteSimilaridade(d.regra)
-    if (ajuste) resumo.push(ajuste)
-    resumo.push(`Somando as ${fmtV(d.totalSecoesBairro)} seções do bairro, a expectativa aqui é de ${fmtV(d.expectativaBairro)} votos.`)
-  } else {
-    resumo.push(`Em ${d.nmBairro} o vereador não teve votos em 2024, então a expectativa aqui fica em zero.`)
-  }
-
-  const referencia: string[] = [
-    `Total do mapa eleitoral: ${fmtV(d.totalMapaEleitoral)} votos`,
-    `Referência na planilha (${d.nomeLideranca}): ${fmtV(d.totalExpectativaMunicipio)} votos`,
-    `Votos do vereador no bairro (2024): ${fmtV(d.votosVereadorBairro)}`,
-    `Seções no bairro: ${fmtV(d.totalSecoesBairro)}`,
-  ]
-  if (d.regra !== 'proporcional_simples' && d.pctSimilaridadeBairro != null) {
-    referencia.push(
-      `Seções parecidas no bairro (vereador × estadual): ${d.secoesParecidasNoBairro} de ${d.secoesComAmbosNoBairro}`,
-    )
+  if (d.votosVereadorBairro <= 0) {
+    return [{ titulo: '', linhas: [`Sem votos do vereador em 2024 em ${d.nmBairro}.`] }]
   }
 
   return [
-    { titulo: 'Em resumo', linhas: resumo },
-    { titulo: 'Números de referência', linhas: referencia },
+    {
+      titulo: '',
+      linhas: [
+        linhaRegraExpectativa({
+          nmBairro: d.nmBairro,
+          regra: d.regra,
+          votosVereador: d.votosVereadorBairro,
+        }),
+        `Expectativa no bairro: ${fmtV(d.expectativaBairro)} votos.`,
+      ],
+    },
   ]
 }
 
