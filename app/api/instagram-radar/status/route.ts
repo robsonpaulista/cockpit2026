@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { getInstagramRadarCollectStatus } from '@/lib/instagram-radar-collect'
+import { isSupabaseNetworkError } from '@/lib/supabase/network-error'
 import { createClient } from '@/lib/supabase/server'
 import { requireRouteUser } from '@/lib/supabase/route-auth'
 
@@ -32,6 +33,15 @@ export async function GET() {
       message,
     })
   } catch (e) {
+    if (isSupabaseNetworkError(e)) {
+      return NextResponse.json(
+        {
+          error: 'Conexão com o Supabase temporariamente indisponível. Aguarde alguns segundos e tente novamente.',
+          retryable: true,
+        },
+        { status: 503 }
+      )
+    }
     const msg = e instanceof Error ? e.message : 'Erro ao carregar status'
     if (msg.includes('does not exist') || msg.includes('42P01')) {
       return NextResponse.json({

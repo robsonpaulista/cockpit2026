@@ -32,11 +32,24 @@ export async function getOwnInstagramRadarReady(
     }
   }
 
-  const { data: ownActor } = await supabase
-    .from('political_actors')
-    .select('id, instagram_username')
-    .eq('slug', OWN_CANDIDATE_SLUG)
-    .maybeSingle()
+  const [ownActorRes, metricsRes, postCountRes] = await Promise.all([
+    supabase
+      .from('political_actors')
+      .select('id, instagram_username')
+      .eq('slug', OWN_CANDIDATE_SLUG)
+      .maybeSingle(),
+    supabase
+      .from('instagram_metrics_history')
+      .select('instagram_username, snapshot_date')
+      .order('snapshot_date', { ascending: false })
+      .limit(1)
+      .maybeSingle(),
+    supabase
+      .from('instagram_post_metrics_history')
+      .select('post_id', { count: 'exact', head: true }),
+  ])
+
+  const ownActor = ownActorRes.data
 
   if (ownActor?.id) {
     const { count } = await supabase
@@ -55,36 +68,25 @@ export async function getOwnInstagramRadarReady(
     }
   }
 
-  const { data: metricsRow, error: metricsErr } = await supabase
-    .from('instagram_metrics_history')
-    .select('instagram_username, snapshot_date')
-    .order('snapshot_date', { ascending: false })
-    .limit(1)
-    .maybeSingle()
+  const metricsRow = metricsRes.data
+  const metricsErr = metricsRes.error
+  const postCountOnly = postCountRes.count ?? 0
 
   if (!metricsErr && metricsRow) {
-    const { count: postCount } = await supabase
-      .from('instagram_post_metrics_history')
-      .select('post_id', { count: 'exact', head: true })
-
     return {
       ready: true,
       source: 'metrics_history',
-      postsInHistory: postCount ?? 0,
+      postsInHistory: postCountOnly,
       username: metricsRow.instagram_username || null,
       lastSnapshotDate: metricsRow.snapshot_date ?? null,
     }
   }
 
-  const { count: postCountOnly } = await supabase
-    .from('instagram_post_metrics_history')
-    .select('post_id', { count: 'exact', head: true })
-
-  if ((postCountOnly ?? 0) > 0) {
+  if (postCountOnly > 0) {
     return {
       ready: true,
       source: 'metrics_history',
-      postsInHistory: postCountOnly ?? 0,
+      postsInHistory: postCountOnly,
       username: ownActor?.instagram_username ?? null,
       lastSnapshotDate: null,
     }

@@ -53,8 +53,9 @@ export async function GET() {
       message = status.runnerMessage ?? 'Playwright indisponível neste ambiente.'
 
     } else if (status.canCollect) {
-
-      message = `Coleta liberada · Playwright · cooldown ${status.cooldownDays} dias.`
+      message = status.cooldownEnabled
+        ? `Coleta liberada · Playwright · cooldown ${status.cooldownDays} dias.`
+        : 'Coleta liberada · Playwright · sem cooldown.'
 
     } else if (status.cooldownEnabled && status.nextCollectAt) {
 
@@ -89,13 +90,9 @@ export async function GET() {
       },
 
       cooldown: {
-
         enabled: isGoogleVideosCooldownEnabled(),
-
         days: cooldownDays,
-
-        skipEnv: 'GOOGLE_VIDEOS_SKIP_COOLDOWN=1',
-
+        enableEnv: 'GOOGLE_VIDEOS_COOLDOWN_DAYS=7',
       },
 
     })

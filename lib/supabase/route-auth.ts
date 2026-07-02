@@ -1,14 +1,7 @@
 import { NextResponse } from 'next/server'
 import type { User } from '@supabase/supabase-js'
 import { createClient } from '@/lib/supabase/server'
-
-function isNetworkFailure(error: unknown): boolean {
-  if (!(error instanceof Error)) return false
-  const msg = error.message.toLowerCase()
-  if (msg.includes('fetch failed') || msg.includes('connect timeout')) return true
-  const cause = (error as Error & { cause?: { code?: string } }).cause
-  return cause?.code === 'UND_ERR_CONNECT_TIMEOUT'
-}
+import { isSupabaseNetworkError } from '@/lib/supabase/network-error'
 
 export type RouteAuthResult =
   | { ok: true; user: User }
@@ -25,7 +18,7 @@ export async function requireRouteUser(): Promise<RouteAuthResult> {
     const { data, error } = await supabase.auth.getSession()
 
     if (error) {
-      if (isNetworkFailure(error)) {
+      if (isSupabaseNetworkError(error)) {
         return {
           ok: false,
           response: NextResponse.json(
@@ -46,7 +39,7 @@ export async function requireRouteUser(): Promise<RouteAuthResult> {
 
     return { ok: true, user }
   } catch (error) {
-    if (isNetworkFailure(error)) {
+    if (isSupabaseNetworkError(error)) {
       return {
         ok: false,
         response: NextResponse.json(

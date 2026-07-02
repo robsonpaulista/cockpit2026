@@ -346,7 +346,7 @@ export function GoogleVideosRadarPanel() {
 
           <code className="rounded bg-white/80 px-1">database/create-google-videos-collect-log.sql</code> no
 
-          Supabase para habilitar cooldown e log de coletas.
+          Supabase para habilitar log de coletas.
 
         </div>
 
@@ -385,8 +385,8 @@ export function GoogleVideosRadarPanel() {
         <div className="rounded-xl border border-sky-200/60 bg-sky-50/60 px-4 py-3 text-sm text-sky-950">
 
           <strong>Piloto castração:</strong> aba Vídeos do Google (Playwright · Instagram, YouTube, Facebook…) ·{' '}
-
-          {pilotTerms.length} termos · cooldown {status?.cooldownDays ?? 7} dias
+          {pilotTerms.length} termos
+          {status?.cooldownEnabled ? ` · cooldown ${status.cooldownDays} dias` : null}
 
         </div>
 

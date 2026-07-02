@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
+import { isSupabaseNetworkError } from '@/lib/supabase/network-error'
 import { createClient } from '@/lib/supabase/server'
 import { requireRouteUser } from '@/lib/supabase/route-auth'
 import { isYoutubeApiConfigured } from '@/lib/youtube-data-api'
@@ -81,6 +82,15 @@ export async function GET() {
       setupRequired: false,
     })
   } catch (e) {
+    if (isSupabaseNetworkError(e)) {
+      return NextResponse.json(
+        {
+          error: 'Conexão com o Supabase temporariamente indisponível. Aguarde alguns segundos e tente novamente.',
+          retryable: true,
+        },
+        { status: 503 }
+      )
+    }
     const msg = e instanceof Error ? e.message : 'Erro ao carregar atores'
     return NextResponse.json({ error: msg }, { status: 500 })
   }

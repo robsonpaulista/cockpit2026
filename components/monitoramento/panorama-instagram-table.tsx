@@ -83,25 +83,25 @@ export function PanoramaInstagramTable({
                 className="border-b border-[rgb(var(--color-border-tertiary)/0.35)] last:border-b-0"
               >
                 <td className="px-2 py-0.5">
-                  <p
-                    className="min-w-0 leading-tight text-text-primary"
+                  <div
+                    className="flex min-w-0 items-baseline gap-1.5"
                     title={
                       row.instagramUsername
                         ? `${row.name} (@${row.instagramUsername})`
                         : row.name
                     }
                   >
-                    <span className="block truncate font-medium">{row.name}</span>
+                    <span className="min-w-0 truncate font-medium text-text-primary">{row.name}</span>
                     {row.instagramUsername ? (
-                      <span className="block truncate text-text-muted max-md:text-[10px] md:ml-1.5 md:inline md:whitespace-nowrap">
+                      <span className="shrink-0 whitespace-nowrap text-text-muted max-md:text-[10px]">
                         @{row.instagramUsername}
                       </span>
                     ) : (
-                      <span className="block whitespace-nowrap text-amber-700 max-md:text-[10px] md:ml-1.5 md:inline">
+                      <span className="shrink-0 whitespace-nowrap text-amber-700 max-md:text-[10px]">
                         sem @
                       </span>
                     )}
-                  </p>
+                  </div>
                 </td>
                 <td className={cn('px-2 py-0.5 text-right tabular-nums', cellHighlight(row.highlights.postCount))}>
                   <AnimatedCounter value={row.postCount} resetKey={animationEpoch} />

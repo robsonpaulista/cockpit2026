@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { isSupabaseNetworkError } from '@/lib/supabase/network-error'
 import { createClient } from '@/lib/supabase/server'
 import { requireRouteUser } from '@/lib/supabase/route-auth'
 import type { InstagramRadarPostWithActor } from '@/lib/instagram-radar-types'
@@ -52,6 +53,15 @@ export async function GET(request: Request) {
       lookbackDays: days,
     })
   } catch (e) {
+    if (isSupabaseNetworkError(e)) {
+      return NextResponse.json(
+        {
+          error: 'Conexão com o Supabase temporariamente indisponível. Aguarde alguns segundos e tente novamente.',
+          retryable: true,
+        },
+        { status: 503 }
+      )
+    }
     const msg = e instanceof Error ? e.message : 'Erro ao carregar posts Instagram'
     return NextResponse.json({ error: msg }, { status: 500 })
   }

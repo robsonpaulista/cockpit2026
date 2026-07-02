@@ -29,15 +29,17 @@ export function isGoogleVideosLocalFilterEnabled(): boolean {
   return raw === '1' || raw === 'true' || raw === 'yes'
 }
 
-/** Cooldown entre coletas (padrão 7 dias). */
+/** Cooldown entre coletas — desligado por padrão (Playwright local, sem custo de API). Use GOOGLE_VIDEOS_COOLDOWN_DAYS=N para limitar. */
 export function getGoogleVideosCooldownMs(): number {
   const raw = process.env.GOOGLE_VIDEOS_COOLDOWN_DAYS?.trim()
-  const days = raw ? Number(raw) : 7
-  if (!Number.isFinite(days) || days <= 0) return 7 * 24 * 60 * 60 * 1000
+  if (!raw) return 0
+  const days = Number(raw)
+  if (!Number.isFinite(days) || days <= 0) return 0
   return Math.min(30, Math.floor(days)) * 24 * 60 * 60 * 1000
 }
 
 export function isGoogleVideosCooldownEnabled(): boolean {
   const skip = process.env.GOOGLE_VIDEOS_SKIP_COOLDOWN?.trim().toLowerCase()
-  return !(skip === '1' || skip === 'true' || skip === 'yes')
+  if (skip === '1' || skip === 'true' || skip === 'yes') return false
+  return getGoogleVideosCooldownMs() > 0
 }

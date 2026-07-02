@@ -14,6 +14,49 @@ import { cn } from '@/lib/utils'
 
 const LOOKBACK_OPTIONS = [30, 60, 90] as const
 
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms))
+}
+
+async function fetchInstagramStatus(attempt = 0): Promise<{
+  res: Response
+  json: InstagramRadarCollectStatus & { setupRequired?: boolean; message?: string; error?: string; retryable?: boolean }
+}> {
+  const res = await fetch('/api/instagram-radar/status', { cache: 'no-store' })
+  const json = (await res.json()) as InstagramRadarCollectStatus & {
+    setupRequired?: boolean
+    message?: string
+    error?: string
+    retryable?: boolean
+  }
+  if ((res.status === 503 || json.retryable) && attempt < 2) {
+    await sleep(2500 * (attempt + 1))
+    return fetchInstagramStatus(attempt + 1)
+  }
+  return { res, json }
+}
+
+async function fetchInstagramBootstrap(days: number, attempt = 0) {
+  const res = await fetch(`/api/instagram-radar/bootstrap?days=${days}&limit=400`, {
+    cache: 'no-store',
+  })
+  const json = (await res.json()) as {
+    error?: string
+    retryable?: boolean
+    setupRequired?: boolean
+    actors?: PoliticalActorWithTerms[]
+    posts?: InstagramRadarPostWithActor[]
+    status?: InstagramRadarCollectStatus & { message?: string }
+  }
+
+  if ((res.status === 503 || json.retryable) && attempt < 2) {
+    await sleep(2500 * (attempt + 1))
+    return fetchInstagramBootstrap(days, attempt + 1)
+  }
+
+  return { res, json }
+}
+
 function formatNextCollect(iso: string | null): string {
   if (!iso) return ''
   return new Date(iso).toLocaleString('pt-BR', {
@@ -37,12 +80,7 @@ export function InstagramRadarPanel() {
   const [collectWarnings, setCollectWarnings] = useState<string[]>([])
 
   const refreshStatus = useCallback(async () => {
-    const res = await fetch('/api/instagram-radar/status', { cache: 'no-store' })
-    const j = (await res.json()) as InstagramRadarCollectStatus & {
-      setupRequired?: boolean
-      message?: string
-      error?: string
-    }
+    const { res, json: j } = await fetchInstagramStatus()
     if (!res.ok && !j.setupRequired) {
       setError(j.error ?? 'Falha ao carregar status do Instagram Radar.')
       return null
@@ -55,46 +93,26 @@ export function InstagramRadarPanel() {
     setLoading(true)
     setError('')
     try {
-      const [actorsRes, postsRes, statusJson] = await Promise.all([
-        fetch('/api/monitoramento/actors', { cache: 'no-store' }),
-        fetch(`/api/instagram-radar/mentions?politico=all&days=${lookbackDays}&limit=400`, {
-          cache: 'no-store',
-        }),
-        refreshStatus(),
-      ])
+      const { res, json } = await fetchInstagramBootstrap(lookbackDays)
 
-      const actorsJson = (await actorsRes.json()) as {
-        setupRequired?: boolean
-        actors?: PoliticalActorWithTerms[]
-      }
-      setSetupRequired(Boolean(actorsJson.setupRequired))
-      setActors(actorsJson.actors ?? [])
+      setSetupRequired(Boolean(json.setupRequired))
+      setActors(json.actors ?? [])
+      setPosts(json.posts ?? [])
+      if (json.status) setStatus(json.status)
 
-      const postsJson = (await postsRes.json()) as {
-        error?: string
-        setupRequired?: boolean
-        posts?: InstagramRadarPostWithActor[]
-      }
-
-      if (!postsRes.ok) {
-        if (postsJson.setupRequired) {
-          setSetupRequired(true)
+      if (!res.ok) {
+        if (json.setupRequired) {
           setPosts([])
         } else {
-          throw new Error(postsJson.error ?? 'Falha ao carregar posts Instagram.')
+          throw new Error(json.error ?? 'Falha ao carregar Instagram Radar.')
         }
-      } else {
-        setSetupRequired(Boolean(postsJson.setupRequired))
-        setPosts(postsJson.posts ?? [])
       }
-
-      if (statusJson?.setupRequired) setSetupRequired(true)
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Erro ao carregar Instagram.')
     } finally {
       setLoading(false)
     }
-  }, [lookbackDays, refreshStatus])
+  }, [lookbackDays])
 
   useEffect(() => {
     void carregar()
