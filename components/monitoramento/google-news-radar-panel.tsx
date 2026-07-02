@@ -16,6 +16,7 @@ export function GoogleNewsRadarPanel() {
   const lookbackDays = LOOKBACK_DAYS
   const [actors, setActors] = useState<PoliticalActorWithTerms[]>([])
   const [setupRequired, setSetupRequired] = useState(false)
+  const [webSearchEnabled, setWebSearchEnabled] = useState<boolean | null>(null)
   const [mentions, setMentions] = useState<GoogleNewsMentionWithActor[]>([])
   const [loading, setLoading] = useState(true)
   const [collecting, setCollecting] = useState(false)
@@ -26,12 +27,16 @@ export function GoogleNewsRadarPanel() {
     setLoading(true)
     setError('')
     try {
-      const [actorsRes, mentionsRes] = await Promise.all([
+      const [actorsRes, mentionsRes, configRes] = await Promise.all([
         fetch('/api/monitoramento/actors', { cache: 'no-store' }),
-        fetch(`/api/google-news/mentions?politico=all&days=${lookbackDays}&limit=500`, {
+        fetch(`/api/google-news/mentions?politico=all&days=${lookbackDays}&limit=500&channel=news`, {
           cache: 'no-store',
         }),
+        fetch('/api/google-news/collect', { cache: 'no-store' }),
       ])
+
+      const configJson = (await configRes.json()) as { webSearchEnabled?: boolean }
+      setWebSearchEnabled(Boolean(configJson.webSearchEnabled))
 
       const actorsJson = (await actorsRes.json()) as {
         setupRequired?: boolean
@@ -80,10 +85,12 @@ export function GoogleNewsRadarPanel() {
       })
       const j = (await res.json()) as {
         error?: string
+        webSearchEnabled?: boolean
         totals?: {
           articlesFound: number
           articlesInserted: number
           articlesUpdated: number
+          webArticlesFound?: number
         }
       }
       if (!res.ok) throw new Error(j.error ?? 'Falha na coleta.')
@@ -91,7 +98,11 @@ export function GoogleNewsRadarPanel() {
       const t = j.totals
       setCollectMessage(
         t
-          ? `Coleta concluída: ${t.articlesFound} notícias encontradas · ${t.articlesInserted} novas · ${t.articlesUpdated} atualizadas`
+          ? `Coleta concluída: ${t.articlesFound} no Google Notícias${
+              j.webSearchEnabled && t.webArticlesFound != null && t.webArticlesFound > 0
+                ? ` · ${t.webArticlesFound} na busca web`
+                : ''
+            } · ${t.articlesInserted} novas · ${t.articlesUpdated} atualizadas`
           : 'Coleta concluída.'
       )
       await carregar()
@@ -112,8 +123,17 @@ export function GoogleNewsRadarPanel() {
         </div>
       ) : null}
 
+      {webSearchEnabled === false ? (
+        <div className="rounded-xl border border-amber-200/80 bg-amber-50/80 px-4 py-3 text-sm text-amber-950">
+          Busca web (Google.com + Instagram indexado) desativada. Configure{' '}
+          <code className="rounded bg-white/80 px-1">GOOGLE_CSE_API_KEY</code> e{' '}
+          <code className="rounded bg-white/80 px-1">GOOGLE_CSE_ID</code> no ambiente. Vídeos (Playwright) estão
+          na aba <strong>Google Vídeos</strong>.
+        </div>
+      ) : null}
+
       <div className={chromePanelToolbarClass}>
-        <span className={typographyBodyMutedClass}>Janela: {lookbackDays} dias</span>
+        <span className={typographyBodyMutedClass}>Janela: {lookbackDays} dias · Google Notícias RSS</span>
         <button
           type="button"
           disabled={collecting || setupRequired}
@@ -125,7 +145,7 @@ export function GoogleNewsRadarPanel() {
           ) : (
             <RefreshCw className="h-3.5 w-3.5" aria-hidden />
           )}
-          Atualizar
+          Atualizar notícias
         </button>
       </div>
 
@@ -137,6 +157,7 @@ export function GoogleNewsRadarPanel() {
         mentions={mentions}
         lookbackDays={lookbackDays}
         loading={loading}
+        variant="news"
       />
 
       {!setupRequired ? (

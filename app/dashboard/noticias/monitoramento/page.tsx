@@ -6,6 +6,7 @@ import { Loader2 } from 'lucide-react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { GoogleAlertsPanel } from '@/components/monitoramento/google-alerts-panel'
 import { GoogleNewsRadarPanel } from '@/components/monitoramento/google-news-radar-panel'
+import { GoogleVideosRadarPanel } from '@/components/monitoramento/google-videos-radar-panel'
 import { InstagramRadarPanel } from '@/components/monitoramento/instagram-radar-panel'
 import { MetaAdsRadarPanel } from '@/components/monitoramento/meta-ads-radar-panel'
 import { PanoramaPanel } from '@/components/monitoramento/panorama-panel'
@@ -39,6 +40,7 @@ function parseTab(value: string | null): MonitoramentoTab {
   if (value === 'youtube') return 'youtube'
   if (value === 'trends') return 'trends'
   if (value === 'google-news') return 'google-news'
+  if (value === 'google-videos') return 'google-videos'
   if (value === 'meta-ads') return 'meta-ads'
   if (value === 'instagram') return 'instagram'
   if (value === MONITORAMENTO_TAB_LIDERES) return 'lideres'
@@ -93,6 +95,8 @@ export default function MonitoramentoPage() {
         return <TrendsRadarPanel />
       case 'google-news':
         return <GoogleNewsRadarPanel />
+      case 'google-videos':
+        return <GoogleVideosRadarPanel />
       case 'meta-ads':
         return <MetaAdsRadarPanel />
       case 'instagram':

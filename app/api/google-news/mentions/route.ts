@@ -15,6 +15,7 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url)
     const politicoSlug = searchParams.get('politico')?.trim() ?? 'all'
     const date = searchParams.get('date')?.trim() ?? ''
+    const channel = searchParams.get('channel')?.trim() ?? 'all'
     const lookbackDays = Math.min(90, Math.max(1, Number(searchParams.get('days') ?? 7) || 7))
     const limit = Math.min(500, Math.max(1, Number(searchParams.get('limit') ?? 200) || 200))
 
@@ -26,22 +27,46 @@ export async function GET(request: Request) {
         political_actors!inner ( id, name, slug, actor_type )
       `
       )
-      .order('published_at', { ascending: false })
+      .order('published_at', { ascending: false, nullsFirst: false })
       .limit(limit)
 
     if (/^\d{4}-\d{2}-\d{2}$/.test(date)) {
       const nextDay = new Date(`${date}T12:00:00.000Z`)
       nextDay.setUTCDate(nextDay.getUTCDate() + 1)
       const endDate = nextDay.toISOString().slice(0, 10)
-      query = query.gte('published_at', `${date}T00:00:00.000Z`).lt('published_at', `${endDate}T00:00:00.000Z`)
+      if (channel === 'google_videos') {
+        query = query
+          .gte('collected_at', `${date}T00:00:00.000Z`)
+          .lt('collected_at', `${endDate}T00:00:00.000Z`)
+      } else {
+        query = query
+          .gte('published_at', `${date}T00:00:00.000Z`)
+          .lt('published_at', `${endDate}T00:00:00.000Z`)
+      }
     } else {
       const cutoff = new Date()
       cutoff.setUTCDate(cutoff.getUTCDate() - lookbackDays)
-      query = query.gte('published_at', cutoff.toISOString())
+      const cutoffIso = cutoff.toISOString()
+      if (channel === 'google_videos') {
+        // Janela = última coleta; data exibida = published_at (data do vídeo)
+        query = query.gte('collected_at', cutoffIso)
+      } else {
+        query = query.gte('published_at', cutoffIso)
+      }
     }
 
     if (politicoSlug && politicoSlug !== 'all') {
       query = query.eq('political_actors.slug', politicoSlug)
+    }
+
+    if (channel === 'google_videos') {
+      query = query
+        .eq('collect_channel', 'google_videos')
+        .in('platform', ['instagram', 'facebook', 'youtube', 'tiktok', 'twitter'])
+    } else if (channel === 'news') {
+      query = query.in('collect_channel', ['google_news_rss', 'google_web'])
+    } else if (channel === 'google_news_rss' || channel === 'google_web') {
+      query = query.eq('collect_channel', channel)
     }
 
     const { data, error } = await query

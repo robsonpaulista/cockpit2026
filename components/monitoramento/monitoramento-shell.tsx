@@ -8,6 +8,7 @@ import {
   Megaphone,
   Newspaper,
   Users,
+  Video,
   Youtube,
 } from 'lucide-react'
 import {
@@ -30,6 +31,7 @@ export type MonitoramentoTab =
   | 'youtube'
   | 'trends'
   | 'google-news'
+  | 'google-videos'
   | 'meta-ads'
   | 'instagram'
   | 'lideres'
@@ -39,6 +41,7 @@ const TABS: { id: MonitoramentoTab; label: string; icon: typeof Youtube }[] = [
   { id: 'google-alerts', label: 'Alertas', icon: Bell },
   { id: 'youtube', label: 'YouTube', icon: Youtube },
   { id: 'google-news', label: 'Notícias', icon: Newspaper },
+  { id: 'google-videos', label: 'Google Vídeos', icon: Video },
   { id: 'instagram', label: 'Instagram', icon: Instagram },
   { id: 'meta-ads', label: 'Anúncios', icon: Megaphone },
   { id: 'trends', label: 'Buscas', icon: LineChart },

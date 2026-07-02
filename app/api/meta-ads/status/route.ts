@@ -23,7 +23,7 @@ export async function GET() {
       message: !status.runnerAvailable
         ? (status.runnerMessage ?? META_ADS_RUNNER_UNAVAILABLE_MESSAGE)
         : dailyLimitEnabled
-          ? 'A Biblioteca de Anúncios da Meta é consultada via automação (Playwright). Para evitar bloqueios, a coleta completa fica limitada a 1 vez a cada 24 horas.'
+          ? 'A Biblioteca de Anúncios da Meta é consultada via automação (Playwright + GraphQL). Limite de 1 execução a cada 24 horas.'
           : 'Limite de 24 horas desativado (META_ADS_SKIP_DAILY_LIMIT). Use com moderação para evitar bloqueio pela Meta.',
     })
   } catch (e) {

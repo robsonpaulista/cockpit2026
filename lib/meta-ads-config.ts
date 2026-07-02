@@ -7,3 +7,9 @@ export function isMetaAdsGeoCollectionEnabled(): boolean {
   }
   return false
 }
+
+export function getMetaAdsMaxScrolls(): number {
+  const raw = process.env.META_ADS_MAX_SCROLLS?.trim()
+  const n = raw ? Number(raw) : 12
+  return Number.isFinite(n) && n > 0 ? Math.min(30, Math.floor(n)) : 12
+}

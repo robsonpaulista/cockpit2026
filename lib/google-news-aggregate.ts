@@ -14,6 +14,12 @@ export type GoogleNewsCompareActorRow = {
   mentions: GoogleNewsMentionWithActor[]
 }
 
+function effectiveMentionDate(m: GoogleNewsMentionWithActor): string {
+  if (m.published_at) return m.published_at
+  if (m.collect_channel === 'google_videos') return ''
+  return m.collected_at ?? ''
+}
+
 const ACTOR_TYPE_ORDER: Record<string, number> = {
   own_candidate: 0,
   competitor: 1,
@@ -54,11 +60,7 @@ export function buildGoogleNewsCompareRows(
     .map((actor) => {
       const actorMentions = [...(bySlug.get(actor.slug) ?? [])]
         .filter((m) => googleNewsMentionMatchesActorQuery(m, actor))
-        .sort((a, b) => {
-        const da = a.published_at ?? ''
-        const db = b.published_at ?? ''
-        return db.localeCompare(da)
-      })
+        .sort((a, b) => effectiveMentionDate(b).localeCompare(effectiveMentionDate(a)))
       return {
         actor,
         articleCount: actorMentions.length,

@@ -17,14 +17,48 @@ import { createSupabaseClient as createSupabase } from './lib/supabase-client.mj
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const ROOT = path.resolve(__dirname, '..')
 
-const MAX_SCROLLS = 2
-const MAX_ADS_PER_ACTOR = 60
+const MAX_ADS_PER_ACTOR = 200
 const DETAIL_PAUSE_MS = 600
 const DETAIL_TIMEOUT_MS = 35_000
 const PAUSE_BETWEEN_ACTORS_MS = 2_000
 const PAGE_TIMEOUT_MS = 45_000
 const LISTING_SETTLE_MS = 2_000
 const SCROLL_PAUSE_MS = 700
+
+function getMaxScrolls() {
+  const raw = process.env.META_ADS_MAX_SCROLLS?.trim()
+  const n = raw ? Number(raw) : 14
+  return Number.isFinite(n) && n > 0 ? Math.min(40, Math.floor(n)) : 14
+}
+
+function isDualSearchEnabled() {
+  const v = process.env.META_ADS_DUAL_SEARCH?.trim().toLowerCase()
+  return v === '1' || v === 'true' || v === 'yes'
+}
+
+function getSearchTypeOverride() {
+  const override = process.env.META_ADS_SEARCH_TYPE?.trim().toLowerCase()
+  if (override === 'keyword_exact_phrase' || override === 'exact' || override === 'exact_phrase') {
+    return 'keyword_exact_phrase'
+  }
+  if (override === 'keyword_unordered' || override === 'unordered') {
+    return 'keyword_unordered'
+  }
+  return null
+}
+
+function formatElapsed(ms) {
+  const sec = Math.max(0, Math.round(ms / 1000))
+  if (sec < 60) return `${sec}s`
+  return `${Math.floor(sec / 60)}min ${sec % 60}s`
+}
+
+function getActiveStatusFilter() {
+  const raw = process.env.META_ADS_ACTIVE_STATUS?.trim().toLowerCase()
+  if (raw === 'active' || raw === 'ativos') return 'active'
+  if (raw === 'inactive' || raw === 'inativos') return 'inactive'
+  return 'all'
+}
 
 function isGeoCollectionEnabled() {
   const enable = process.env.META_ADS_GEO_DETAILS?.trim().toLowerCase()
@@ -122,17 +156,232 @@ function parseArgs() {
   return { politicoSlug }
 }
 
-function buildSearchUrl(searchTerm) {
+function buildSearchUrl(searchTerm, opts = {}) {
   const params = new URLSearchParams({
-    active_status: 'all',
+    active_status: getActiveStatusFilter(),
     ad_type: 'political_and_issue_ads',
     country: 'BR',
     q: searchTerm,
-    search_type: 'keyword_unordered',
+    search_type: opts.searchType ?? 'keyword_unordered',
     media_type: 'all',
   })
   return `https://www.facebook.com/ads/library/?${params.toString()}`
 }
+
+function unixToIso(ts) {
+  if (ts == null || ts === '') return null
+  const n = Number(ts)
+  if (!Number.isFinite(n) || n <= 0) return null
+  const ms = n > 1e12 ? n : n * 1000
+  const d = new Date(ms)
+  return Number.isNaN(d.getTime()) ? null : d.toISOString()
+}
+
+function formatInsightsRange(range) {
+  if (!range || typeof range !== 'object') return null
+  const lo = range.lower_bound ?? range.lower ?? ''
+  const hi = range.upper_bound ?? range.upper ?? ''
+  if (!lo && !hi) return null
+  if (lo && hi && lo !== hi) return `${lo} – ${hi}`
+  return String(lo || hi)
+}
+
+function parseMoneyFromRange(range, currency) {
+  if (!range || typeof range !== 'object') {
+    return { spendText: null, spendMinBrl: null, spendMaxBrl: null }
+  }
+  const text = formatInsightsRange(range)
+  if (!text) return { spendText: null, spendMinBrl: null, spendMaxBrl: null }
+  const spendText = currency === 'BRL' ? `R$ ${text}` : text
+  const lo = parseMoneyToken(String(range.lower_bound ?? range.lower ?? ''))
+  const hi = parseMoneyToken(String(range.upper_bound ?? range.upper ?? range.lower_bound ?? ''))
+  if (currency !== 'BRL') return { spendText, spendMinBrl: null, spendMaxBrl: null }
+  return { spendText, spendMinBrl: lo, spendMaxBrl: hi ?? lo }
+}
+
+function mapGraphqlAdNode(node) {
+  if (!node || typeof node !== 'object') return null
+  const collated = Array.isArray(node.collated_results) ? node.collated_results[0] : null
+  const base = collated ?? node
+  const libraryAdId = String(base.ad_archive_id ?? node.ad_archive_id ?? '').trim()
+  if (!libraryAdId || !/^\d+$/.test(libraryAdId)) return null
+
+  const snap = base.snapshot ?? base
+  const bodyText =
+    snap.body?.text ??
+    snap.body ??
+    (Array.isArray(snap.ad_creative_bodies) ? snap.ad_creative_bodies[0] : null) ??
+    null
+
+  const spendRaw = base.spend ?? snap.spend ?? node.spend
+  const impressionsRaw = base.impressions ?? snap.impressions ?? node.impressions
+  const currency = base.currency ?? snap.currency ?? node.currency ?? 'BRL'
+  const spend = parseMoneyFromRange(spendRaw, currency)
+
+  const platformsRaw =
+    base.publisher_platform ??
+    base.publisher_platforms ??
+    snap.publisher_platform ??
+    snap.publisher_platforms ??
+    node.publisher_platform ??
+    node.publisher_platforms
+  const platforms = Array.isArray(platformsRaw)
+    ? platformsRaw.join(', ')
+    : typeof platformsRaw === 'string'
+      ? platformsRaw
+      : null
+
+  const startedRunningAt =
+    unixToIso(base.start_date ?? node.start_date ?? base.ad_delivery_start_time) ?? null
+  const endedRunningAt =
+    unixToIso(base.end_date ?? node.end_date ?? base.ad_delivery_stop_time) ?? null
+
+  let isActive = base.is_active ?? node.is_active
+  if (typeof isActive !== 'boolean') {
+    isActive = endedRunningAt ? new Date(endedRunningAt).getTime() > Date.now() : true
+  }
+
+  const payerName =
+    base.bylines ??
+    snap.bylines ??
+    base.paid_for_by ??
+    snap.paid_for_by ??
+    null
+
+  const brReach = base.br_total_reach ?? snap.br_total_reach ?? node.br_total_reach
+  const audienceSizeText =
+    brReach != null
+      ? `Alcance BR: ${Number(brReach).toLocaleString('pt-BR')}`
+      : formatInsightsRange(base.estimated_audience_size ?? snap.estimated_audience_size)
+
+  return {
+    libraryAdId,
+    pageName: snap.page_name ?? base.page_name ?? node.page_name ?? null,
+    pageId: snap.page_id ?? base.page_id ?? node.page_id ?? null,
+    payerName: typeof payerName === 'string' ? payerName.trim() : null,
+    adBody: typeof bodyText === 'string' ? bodyText.trim() : null,
+    libraryUrl: `https://www.facebook.com/ads/library/?id=${libraryAdId}`,
+    isActive,
+    startedRunningAt,
+    endedRunningAt,
+    spendText: spend.spendText,
+    spendMinBrl: spend.spendMinBrl,
+    spendMaxBrl: spend.spendMaxBrl,
+    impressionsText: formatInsightsRange(impressionsRaw),
+    audienceSizeText,
+    adsInGroup: Array.isArray(node.collated_results) ? node.collated_results.length : null,
+    targetLocations: [],
+    targetLocationsText: null,
+    deliveryByRegion: [],
+    deliveryByRegionText: null,
+  }
+}
+
+function ingestGraphqlPayload(json, adsById) {
+  if (!json || typeof json !== 'object') return 0
+  let added = 0
+
+  const edges = json?.data?.ad_library_main?.search_results_connection?.edges
+  if (Array.isArray(edges)) {
+    for (const edge of edges) {
+      const node = edge?.node
+      if (!node) continue
+      if (Array.isArray(node.collated_results)) {
+        for (const item of node.collated_results) {
+          const mapped = mapGraphqlAdNode({ ...node, ...item, collated_results: node.collated_results })
+          if (mapped && !adsById.has(mapped.libraryAdId)) {
+            adsById.set(mapped.libraryAdId, mapped)
+            added += 1
+          }
+        }
+        continue
+      }
+      const mapped = mapGraphqlAdNode(node)
+      if (mapped && !adsById.has(mapped.libraryAdId)) {
+        adsById.set(mapped.libraryAdId, mapped)
+        added += 1
+      }
+    }
+  }
+
+  function walk(obj) {
+    if (!obj || typeof obj !== 'object') return
+    if (Array.isArray(obj)) {
+      for (const item of obj) walk(item)
+      return
+    }
+    if (obj.ad_archive_id != null && (obj.snapshot || obj.page_name || obj.start_date != null)) {
+      const mapped = mapGraphqlAdNode(obj)
+      if (mapped && !adsById.has(mapped.libraryAdId)) {
+        adsById.set(mapped.libraryAdId, mapped)
+        added += 1
+      }
+    }
+    for (const value of Object.values(obj)) walk(value)
+  }
+
+  walk(json)
+  return added
+}
+
+function ingestGraphqlRawText(text, adsById) {
+  if (!text || typeof text !== 'string') return 0
+  let added = 0
+
+  const tryParse = (chunk) => {
+    const trimmed = chunk.replace(/^\s*for\s*\(\s*;;\s*\)\s*;\s*/, '').trim()
+    if (!trimmed.startsWith('{')) return 0
+    try {
+      return ingestGraphqlPayload(JSON.parse(trimmed), adsById)
+    } catch {
+      return 0
+    }
+  }
+
+  for (const line of text.split('\n')) {
+    added += tryParse(line)
+  }
+  if (added === 0) {
+    added += tryParse(text)
+  }
+
+  return added
+}
+
+function createGraphqlAdCollector() {
+  const adsById = new Map()
+  let attached = false
+
+  function attachToPage(page) {
+    if (attached) return
+    attached = true
+
+    page.on('response', async (response) => {
+      const url = response.url()
+      if (!url.includes('/api/graphql/')) return
+      try {
+        const text = await response.text()
+        const before = adsById.size
+        ingestGraphqlRawText(text, adsById)
+        const added = adsById.size - before
+        if (added > 0) {
+          logProgress(`GraphQL: +${added} anúncio(s) (total ${adsById.size})`)
+        }
+      } catch {
+        // stream indisponível
+      }
+    })
+  }
+
+  return {
+    attachToPage,
+    clear: () => adsById.clear(),
+    size: () => adsById.size,
+    getAds: () => [...adsById.values()],
+  }
+}
+
+const LIBRARY_ID_RE = /(?:Identifica(?:ç|c)ão da biblioteca|Library ID)[:\s]*(\d+)/gi
 
 function parsePtMonth(monthStr) {
   const key = monthStr.toLowerCase().slice(0, 3)
@@ -473,7 +722,89 @@ function parseAdDetailFromBodyText(bodyText) {
   }
 }
 
-function parseAdsFromBodyText(bodyText) {
+function parseAdBlock(libraryAdId, block, statusHint) {
+  const isActive =
+    statusHint != null
+      ? /^Ativo|^Active/i.test(statusHint)
+      : /\bAtivo\b/i.test(block.slice(0, 120)) && !/\bInativo\b/i.test(block.slice(0, 80))
+
+  const dateRangeMatch = block.match(
+    /(\d{1,2}\s+de\s+\w+\s+de\s+\d{4})(?:\s+a\s+(\d{1,2}\s+de\s+\w+\s+de\s+\d{4}))?/i
+  )
+  const startedRunningAt = dateRangeMatch ? parsePtDate(dateRangeMatch[1]) : null
+  const endedRunningAt = dateRangeMatch?.[2] ? parsePtDate(dateRangeMatch[2]) : null
+
+  const spendRaw = extractMetricLine(block, [
+    'Valor gasto \\(BRL\\)',
+    'Valor gasto',
+    'Amount spent \\(BRL\\)',
+    'Amount spent',
+  ])
+  const impressionsText = extractMetricLine(block, ['Impressões', 'Impressions'])
+  const { spendText, spendMinBrl, spendMaxBrl } = parseSpendRange(spendRaw)
+
+  const groupMatch = block.match(/(\d+)\s+anúncios usam esse criativo/i)
+  const adsInGroup = groupMatch ? Number(groupMatch[1]) : null
+
+  let pageName = null
+  let adBody = null
+  let payerName = null
+
+  const detailIdx = block.search(/Ver detalhes do anúncio|See ad details|Ver resumo|See summary/i)
+  const afterDetail = detailIdx >= 0 ? block.slice(detailIdx) : block
+  const lines = afterDetail
+    .split('\n')
+    .map((l) => l.trim())
+    .filter(Boolean)
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i]
+    if (/^Ver (detalhes|resumo)|^See (ad details|summary)/i.test(line)) continue
+    if (/^Patrocinado|^Sponsored/i.test(line)) {
+      const payerMatch = line.match(/Pago por\s+(.+)$/i) || line.match(/Paid for by\s+(.+)$/i)
+      payerName = payerMatch?.[1]?.trim() ?? null
+      if (i > 0 && !/^Plataformas|^Platforms|^Categorias|^Abrir menu|^WWW\.|^http/i.test(lines[i - 1])) {
+        pageName = lines[i - 1]
+      }
+      const bodyLines = []
+      for (let j = i + 1; j < lines.length; j++) {
+        const bl = lines[j]
+        if (/^\d+:\d+\s*\/\s*\d+:\d+$/.test(bl)) break
+        if (/^WWW\.|^HTTP/i.test(bl)) break
+        if (/^Saiba mais|^Learn more|^Shop now|^Inscrever-se|^Sign up/i.test(bl)) break
+        if (/^Plataformas|^Platforms|^Categorias|^Impressões|^Impressions|^Valor gasto|^Amount spent/i.test(bl)) {
+          break
+        }
+        bodyLines.push(bl)
+      }
+      adBody = bodyLines.join('\n').trim() || null
+      break
+    }
+  }
+
+  return {
+    libraryAdId,
+    pageName,
+    payerName,
+    adBody,
+    libraryUrl: `https://www.facebook.com/ads/library/?id=${libraryAdId}`,
+    isActive,
+    startedRunningAt,
+    endedRunningAt,
+    spendText,
+    spendMinBrl,
+    spendMaxBrl,
+    impressionsText,
+    audienceSizeText: null,
+    adsInGroup,
+    targetLocations: [],
+    targetLocationsText: null,
+    deliveryByRegion: [],
+    deliveryByRegionText: null,
+  }
+}
+
+function parseAdsFromBodyTextStrict(bodyText) {
   const ads = []
   const seen = new Set()
   const re =
@@ -481,92 +812,296 @@ function parseAdsFromBodyText(bodyText) {
 
   let match
   while ((match = re.exec(bodyText)) !== null) {
-    const statusRaw = match[1]
     const libraryAdId = match[2]
     if (seen.has(libraryAdId)) continue
     seen.add(libraryAdId)
-
-    const block = match[3]
-    const isActive = /^Ativo|^Active/i.test(statusRaw)
-
-    const dateRangeMatch = block.match(
-      /(\d{1,2}\s+de\s+\w+\s+de\s+\d{4})(?:\s+a\s+(\d{1,2}\s+de\s+\w+\s+de\s+\d{4}))?/i
-    )
-    const startedRunningAt = dateRangeMatch ? parsePtDate(dateRangeMatch[1]) : null
-    const endedRunningAt = dateRangeMatch?.[2] ? parsePtDate(dateRangeMatch[2]) : null
-
-    const audienceSizeText = null
-    const spendRaw = extractMetricLine(block, [
-      'Valor gasto \\(BRL\\)',
-      'Valor gasto',
-      'Amount spent \\(BRL\\)',
-      'Amount spent',
-    ])
-    const impressionsText = extractMetricLine(block, ['Impressões', 'Impressions'])
-    const { spendText, spendMinBrl, spendMaxBrl } = parseSpendRange(spendRaw)
-
-    const groupMatch = block.match(/(\d+)\s+anúncios usam esse criativo/i)
-    const adsInGroup = groupMatch ? Number(groupMatch[1]) : null
-
-    let pageName = null
-    let adBody = null
-    let payerName = null
-
-    const detailIdx = block.search(/Ver detalhes do anúncio|See ad details|Ver resumo|See summary/i)
-    const afterDetail = detailIdx >= 0 ? block.slice(detailIdx) : block
-    const lines = afterDetail
-      .split('\n')
-      .map((l) => l.trim())
-      .filter(Boolean)
-
-    for (let i = 0; i < lines.length; i++) {
-      const line = lines[i]
-      if (/^Ver (detalhes|resumo)|^See (ad details|summary)/i.test(line)) continue
-      if (/^Patrocinado|^Sponsored/i.test(line)) {
-        const payerMatch = line.match(/Pago por\s+(.+)$/i) || line.match(/Paid for by\s+(.+)$/i)
-        payerName = payerMatch?.[1]?.trim() ?? null
-        if (i > 0 && !/^Plataformas|^Platforms|^Categorias|^Abrir menu|^WWW\.|^http/i.test(lines[i - 1])) {
-          pageName = lines[i - 1]
-        }
-        const bodyLines = []
-        for (let j = i + 1; j < lines.length; j++) {
-          const bl = lines[j]
-          if (/^\d+:\d+\s*\/\s*\d+:\d+$/.test(bl)) break
-          if (/^WWW\.|^HTTP/i.test(bl)) break
-          if (/^Saiba mais|^Learn more|^Shop now|^Inscrever-se|^Sign up/i.test(bl)) break
-          if (/^Plataformas|^Platforms|^Categorias|^Impressões|^Impressions|^Valor gasto|^Amount spent/i.test(bl)) {
-            break
-          }
-          bodyLines.push(bl)
-        }
-        adBody = bodyLines.join('\n').trim() || null
-        break
-      }
-    }
-
-    ads.push({
-      libraryAdId,
-      pageName,
-      payerName,
-      adBody,
-      libraryUrl: `https://www.facebook.com/ads/library/?id=${libraryAdId}`,
-      isActive,
-      startedRunningAt,
-      endedRunningAt,
-      spendText,
-      spendMinBrl,
-      spendMaxBrl,
-      impressionsText,
-      audienceSizeText,
-      adsInGroup,
-      targetLocations: [],
-      targetLocationsText: null,
-      deliveryByRegion: [],
-      deliveryByRegionText: null,
-    })
-
+    ads.push(parseAdBlock(libraryAdId, match[3], match[1]))
     if (ads.length >= MAX_ADS_PER_ACTOR) break
   }
+  return ads
+}
+
+function parseAdsFromBodyTextRelaxed(bodyText) {
+  const ads = []
+  const seen = new Set()
+  const re =
+    /(Ativo|Inativo|Active|Inactive)[\s\S]{0,120}?(?:Identifica(?:ç|c)ão da biblioteca|Library ID)[:\s]*(\d+)([\s\S]*?)(?=(?:Ativo|Inativo|Active|Inactive)[\s\S]{0,120}?(?:Identifica(?:ç|c)ão da biblioteca|Library ID)|$)/gi
+
+  let match
+  while ((match = re.exec(bodyText)) !== null) {
+    const libraryAdId = match[2]
+    if (seen.has(libraryAdId)) continue
+    seen.add(libraryAdId)
+    ads.push(parseAdBlock(libraryAdId, match[3], match[1]))
+    if (ads.length >= MAX_ADS_PER_ACTOR) break
+  }
+  return ads
+}
+
+function parseAdsFromBodyTextByIds(bodyText) {
+  const markers = []
+  let match
+  LIBRARY_ID_RE.lastIndex = 0
+  while ((match = LIBRARY_ID_RE.exec(bodyText)) !== null) {
+    markers.push({ index: match.index, id: match[1] })
+  }
+  if (markers.length === 0) return []
+
+  const ads = []
+  const seen = new Set()
+  for (let i = 0; i < markers.length; i++) {
+    const { index, id } = markers[i]
+    if (seen.has(id)) continue
+    seen.add(id)
+    const end = markers[i + 1]?.index ?? bodyText.length
+    const before = bodyText.slice(Math.max(0, index - 180), index)
+    const block = bodyText.slice(index, end)
+    const statusMatch = before.match(/(Ativo|Inativo|Active|Inactive)\s*$/i)
+    ads.push(parseAdBlock(id, block, statusMatch?.[1] ?? null))
+    if (ads.length >= MAX_ADS_PER_ACTOR) break
+  }
+  return ads
+}
+
+function mergeAdsByLibraryId(...lists) {
+  const byId = new Map()
+  for (const list of lists) {
+    for (const ad of list) {
+      const prev = byId.get(ad.libraryAdId)
+      if (!prev) {
+        byId.set(ad.libraryAdId, ad)
+        continue
+      }
+      byId.set(ad.libraryAdId, {
+        ...prev,
+        pageName: prev.pageName || ad.pageName,
+        pageId: prev.pageId || ad.pageId,
+        payerName: prev.payerName || ad.payerName,
+        adBody: prev.adBody || ad.adBody,
+        isActive: prev.isActive ?? ad.isActive,
+        startedRunningAt: prev.startedRunningAt || ad.startedRunningAt,
+        endedRunningAt: prev.endedRunningAt || ad.endedRunningAt,
+        spendText: prev.spendText || ad.spendText,
+        spendMinBrl: prev.spendMinBrl ?? ad.spendMinBrl,
+        spendMaxBrl: prev.spendMaxBrl ?? ad.spendMaxBrl,
+        impressionsText: prev.impressionsText || ad.impressionsText,
+        audienceSizeText: prev.audienceSizeText || ad.audienceSizeText,
+        adsInGroup: prev.adsInGroup ?? ad.adsInGroup,
+        platforms: prev.platforms || ad.platforms,
+      })
+    }
+  }
+  return [...byId.values()].slice(0, MAX_ADS_PER_ACTOR)
+}
+
+function parseAdsFromBodyText(bodyText) {
+  const strict = parseAdsFromBodyTextStrict(bodyText)
+  const relaxed = parseAdsFromBodyTextRelaxed(bodyText)
+  const byIds = parseAdsFromBodyTextByIds(bodyText)
+  return mergeAdsByLibraryId(strict, relaxed, byIds)
+}
+
+async function extractAdsFromDom(page) {
+  return page.evaluate(() => {
+    const results = []
+    const seen = new Set()
+
+    for (const link of document.querySelectorAll('a[href*="ads/library/?id="]')) {
+      const href = link.href
+      const idMatch = href.match(/[?&]id=(\d+)/)
+      if (!idMatch) continue
+      const libraryAdId = idMatch[1]
+      if (seen.has(libraryAdId)) continue
+      seen.add(libraryAdId)
+
+      let card = link.closest('div[data-testid]') ?? link.parentElement
+      for (let depth = 0; depth < 10 && card; depth++) {
+        const text = card.innerText?.trim() ?? ''
+        if (text.length > 120) break
+        card = card.parentElement
+      }
+      const text = card?.innerText ?? link.innerText ?? ''
+      const head = text.slice(0, 250)
+      const isActive = /\bAtivo\b/i.test(head) || /\bActive\b/i.test(head)
+      const isInactive = /\bInativo\b/i.test(head) || /\bInactive\b/i.test(head)
+
+      results.push({
+        libraryAdId,
+        pageName: null,
+        payerName: null,
+        adBody: text.slice(0, 500) || null,
+        libraryUrl: `https://www.facebook.com/ads/library/?id=${libraryAdId}`,
+        isActive: isActive && !isInactive,
+        startedRunningAt: null,
+        endedRunningAt: null,
+        spendText: null,
+        spendMinBrl: null,
+        spendMaxBrl: null,
+        impressionsText: null,
+        audienceSizeText: null,
+        adsInGroup: null,
+        targetLocations: [],
+        targetLocationsText: null,
+        deliveryByRegion: [],
+        deliveryByRegionText: null,
+      })
+    }
+
+    return results
+  })
+}
+
+async function countVisibleLibraryIds(page) {
+  try {
+    return await page.evaluate(() => {
+      const body = document.body
+      if (!body) return 0
+      const fromText = (body.innerText.match(/(?:Identifica(?:ç|c)ão da biblioteca|Library ID)[:\s]*\d+/gi) || [])
+        .length
+      const fromLinks = document.querySelectorAll('a[href*="ads/library/?id="]').length
+      return Math.max(fromText, fromLinks)
+    })
+  } catch {
+    return 0
+  }
+}
+
+async function clickLoadMoreIfPresent(page) {
+  const patterns = [/ver mais/i, /see more/i, /carregar mais/i, /load more/i, /mostrar mais/i]
+  for (const pattern of patterns) {
+    const btn = page.getByRole('button', { name: pattern })
+    if (await btn.count()) {
+      await btn.first().click({ timeout: 2500 }).catch(() => {})
+      await page.waitForTimeout(900)
+      return true
+    }
+  }
+  return false
+}
+
+async function scrollResultsContainer(page) {
+  try {
+    await page.evaluate(() => {
+      function safeScroll(el) {
+        if (!el || typeof el.scrollHeight !== 'number') return false
+        try {
+          el.scrollTop = el.scrollHeight
+          return true
+        } catch {
+          return false
+        }
+      }
+
+      const candidates = [...document.querySelectorAll('div')].filter((el) => {
+        if (!el?.isConnected) return false
+        try {
+          const style = window.getComputedStyle(el)
+          const overflowY = style.overflowY
+          return (
+            (overflowY === 'auto' || overflowY === 'scroll') &&
+            el.scrollHeight > el.clientHeight + 80 &&
+            el.clientHeight > 200
+          )
+        } catch {
+          return false
+        }
+      })
+      candidates.sort((a, b) => b.clientHeight - a.clientHeight)
+
+      if (safeScroll(candidates[0])) return
+      if (safeScroll(document.documentElement)) return
+
+      const body = document.body
+      if (body && typeof body.scrollHeight === 'number') {
+        window.scrollTo(0, body.scrollHeight)
+        return
+      }
+      window.scrollBy(0, 900)
+    })
+  } catch {
+    // DOM incompleto ou página em transição — wheel no Playwright compensa
+  }
+}
+
+async function scrollAdListing(page, searchTerm, graphqlCollector) {
+  const maxScrolls = getMaxScrolls()
+  const minScrolls = 4
+  let prevCount = 0
+  let stableRounds = 0
+
+  for (let i = 0; i < maxScrolls; i++) {
+    await clickLoadMoreIfPresent(page)
+    await scrollResultsContainer(page)
+    await page.mouse.wheel(0, 2200)
+    await page.waitForTimeout(SCROLL_PAUSE_MS)
+
+    const gqlCount = graphqlCollector.size()
+    const domCount = await countVisibleLibraryIds(page)
+    const count = Math.max(gqlCount, domCount)
+
+    logProgress(
+      `${searchTerm}: scroll ${i + 1}/${maxScrolls} — ${count} anúncio(s) (GraphQL ${gqlCount}, DOM ${domCount})`
+    )
+
+    if (count <= prevCount) stableRounds += 1
+    else {
+      stableRounds = 0
+      prevCount = count
+    }
+
+    if (i + 1 >= minScrolls && stableRounds >= 2 && prevCount > 0) break
+    if (i + 1 >= 8 && stableRounds >= 3 && prevCount === 0) break
+  }
+
+  logProgress(`${searchTerm}: scroll concluído — ${prevCount} anúncio(s) visíveis`)
+}
+
+async function runListingSearch(page, searchTerm, searchType, ctx, graphqlCollector) {
+  const override = getSearchTypeOverride()
+  const effectiveType = override ?? searchType
+  const label =
+    effectiveType === 'keyword_exact_phrase'
+      ? `${searchTerm} (frase exata)`
+      : searchTerm
+
+  graphqlCollector.clear()
+
+  await ctx.report({
+    phase: 'listing',
+    message: `Abrindo biblioteca — ${label}`,
+  })
+
+  const url = buildSearchUrl(searchTerm, { searchType: effectiveType })
+  logProgress(`Buscando: ${label}`)
+  const navStarted = Date.now()
+  await page.goto(url, { waitUntil: 'domcontentloaded', timeout: PAGE_TIMEOUT_MS })
+  await dismissCookieBanner(page)
+  await page.waitForTimeout(LISTING_SETTLE_MS)
+
+  await ctx.report({
+    phase: 'listing',
+    message: `${label}: rolando listagem…`,
+  })
+
+  await scrollAdListing(page, label, graphqlCollector)
+  await page.waitForTimeout(800)
+
+  const graphqlAds = graphqlCollector.getAds()
+  const bodyText = await page.evaluate(() => document.body.innerText)
+  const domAds = await extractAdsFromDom(page)
+  const textAds = parseAdsFromBodyText(bodyText)
+  const ads = mergeAdsByLibraryId(graphqlAds, domAds, textAds)
+
+  logProgress(
+    `${label}: ${ads.length} anúncio(s) em ${formatElapsed(Date.now() - navStarted)} ` +
+      `(${graphqlAds.length} GraphQL · ${domAds.length} DOM · ${textAds.length} texto)`
+  )
+
+  await ctx.report({
+    phase: 'listing',
+    message: `${label}: ${ads.length} anúncio(s) encontrados`,
+    adsFound: ads.length,
+  })
 
   return ads
 }
@@ -786,38 +1321,40 @@ async function enrichAdsWithDetails(page, ads, actorName, ctx) {
   return ads
 }
 
-async function scrapeAdsForTerm(page, searchTerm, ctx) {
-  logProgress(`Buscando anúncios: ${searchTerm}`)
-  await ctx.report({
-    phase: 'listing',
-    message: `Abrindo biblioteca da Meta — ${searchTerm}`,
-  })
-  const url = buildSearchUrl(searchTerm)
-  await page.goto(url, { waitUntil: 'domcontentloaded', timeout: PAGE_TIMEOUT_MS })
-  await dismissCookieBanner(page)
-  await page.waitForTimeout(LISTING_SETTLE_MS)
+async function scrapeAdsForTerm(page, searchTerm, ctx, graphqlCollector) {
+  const override = getSearchTypeOverride()
+  const words = searchTerm.trim().split(/\s+/).filter(Boolean)
 
-  await ctx.report({
-    phase: 'listing',
-    message: `${searchTerm}: rolando listagem de anúncios…`,
-  })
+  let ads
+  if (override === 'keyword_exact_phrase') {
+    ads = await runListingSearch(page, searchTerm, 'keyword_exact_phrase', ctx, graphqlCollector)
+  } else if (override === 'keyword_unordered') {
+    ads = await runListingSearch(page, searchTerm, 'keyword_unordered', ctx, graphqlCollector)
+  } else {
+    ads = await runListingSearch(page, searchTerm, 'keyword_unordered', ctx, graphqlCollector)
 
-  for (let i = 0; i < MAX_SCROLLS; i++) {
-    await page.mouse.wheel(0, 1400)
-    await page.waitForTimeout(SCROLL_PAUSE_MS)
+    const tryExact =
+      words.length >= 2 &&
+      (isDualSearchEnabled() || ads.length < 8)
+
+    if (tryExact) {
+      logProgress(
+        `${searchTerm}: segunda busca (frase exata) — ${isDualSearchEnabled() ? 'META_ADS_DUAL_SEARCH' : `só ${ads.length} na 1ª passagem`}`
+      )
+      await sleep(800)
+      const exactAds = await runListingSearch(
+        page,
+        searchTerm,
+        'keyword_exact_phrase',
+        ctx,
+        graphqlCollector
+      )
+      ads = mergeAdsByLibraryId(ads, exactAds)
+      logProgress(`${searchTerm}: total após merge — ${ads.length} anúncio(s)`)
+    }
   }
 
-  const bodyText = await page.evaluate(() => document.body.innerText)
-  const ads = parseAdsFromBodyText(bodyText)
-  logProgress(`${searchTerm}: ${ads.length} anúncio(s) na listagem`)
-  await ctx.report({
-    phase: 'listing',
-    message: `${searchTerm}: ${ads.length} anúncio(s) encontrados na listagem`,
-    adsFound: ads.length,
-  })
-  if (SKIP_GEO_DETAILS) {
-    return ads
-  }
+  if (SKIP_GEO_DETAILS) return ads
   return enrichAdsWithDetails(page, ads, searchTerm, ctx)
 }
 
@@ -944,8 +1481,15 @@ async function main() {
     process.exit(1)
   }
 
+  const estSecPerActor = SKIP_GEO_DETAILS ? 18 : 90
+  logProgress(
+    `${actors.length} candidato(s) ativo(s) · modo ${SKIP_GEO_DETAILS ? 'rápido (sem geo)' : 'com detalhes geo'} · ` +
+      `estimativa ~${Math.max(1, Math.ceil((actors.length * estSecPerActor) / 60))} min`
+  )
+
   const results = []
   let browser
+  const collectStarted = Date.now()
 
   try {
     await report({
@@ -965,6 +1509,8 @@ async function main() {
       viewport: { width: 1280, height: 900 },
     })
     const page = await context.newPage()
+    const graphqlCollector = createGraphqlAdCollector()
+    graphqlCollector.attachToPage(page)
 
     for (let i = 0; i < actors.length; i++) {
       const actor = actors[i]
@@ -990,12 +1536,13 @@ async function main() {
       }
 
       try {
+        const actorStarted = Date.now()
         logProgress(`Candidato ${i + 1}/${actors.length}: ${actor.name}`)
         await ctx.report({
           phase: 'listing',
           message: `Candidato ${i + 1}/${actors.length}: ${actor.name}`,
         })
-        const ads = await scrapeAdsForTerm(page, actor.name, ctx)
+        const ads = await scrapeAdsForTerm(page, actor.name, ctx, graphqlCollector)
         result.adsFound = ads.length
         await ctx.report({
           phase: 'upsert',
@@ -1005,7 +1552,10 @@ async function main() {
         const { inserted, updated } = await upsertAds(supabase, actor.id, actor.name, ads)
         result.adsInserted = inserted
         result.adsUpdated = updated
-        logProgress(`${actor.name}: upsert ${inserted} novos, ${updated} atualizados`)
+        logProgress(
+          `${actor.name}: concluído em ${formatElapsed(Date.now() - actorStarted)} — ` +
+            `${ads.length} anúncios (${inserted} novos, ${updated} atualizados)`
+        )
       } catch (e) {
         const msg = e instanceof Error ? e.message : 'Erro desconhecido'
         result.errors.push(msg)
@@ -1043,6 +1593,7 @@ async function main() {
   )
 
   emit({ ok: true, results, totals })
+  logProgress(`Coleta total: ${formatElapsed(Date.now() - collectStarted)} — ${totals.adsFound} anúncios`)
 }
 
 main().catch((e) => {

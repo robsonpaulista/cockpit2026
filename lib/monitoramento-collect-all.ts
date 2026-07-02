@@ -110,26 +110,53 @@ async function collectYoutubeStep(): Promise<string> {
 }
 
 async function collectGoogleNewsStep(): Promise<string> {
-  const res = await fetch('/api/google-news/collect', {
+  const newsRes = await fetch('/api/google-news/collect', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({}),
   })
-  const j = await parseJson<{
+  const newsJson = await parseJson<{
     error?: string
     setupRequired?: boolean
-    totals?: { articlesFound: number; articlesInserted: number; articlesUpdated: number }
-  }>(res)
+    totals?: { articlesFound: number; articlesInserted: number; articlesUpdated: number; webArticlesFound?: number }
+  }>(newsRes)
 
-  if (j.setupRequired) {
+  if (newsJson.setupRequired) {
     return 'Tabelas não configuradas — etapa ignorada.'
   }
-  if (!res.ok) throw new Error(j.error ?? 'Falha na coleta Google News.')
+  if (!newsRes.ok) throw new Error(newsJson.error ?? 'Falha na coleta Google News.')
 
-  const t = j.totals
-  return t
+  const videosRes = await fetch('/api/google-videos/collect', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({}),
+  })
+  const videosJson = await parseJson<{
+    error?: string
+    totals?: {
+      videosFound: number
+      collectSkipped?: boolean
+      skipReason?: string | null
+    }
+  }>(videosRes)
+
+  const t = newsJson.totals
+  const newsPart = t
     ? `${t.articlesFound} notícias · ${t.articlesInserted} novas · ${t.articlesUpdated} atualizadas`
     : 'Coleta concluída.'
+
+  if (!videosRes.ok) {
+    return `${newsPart} (vídeos: ${videosJson.error ?? 'falha'})`
+  }
+
+  const v = videosJson.totals
+  if (v?.collectSkipped && v.skipReason) {
+    return `${newsPart} · vídeos: cooldown`
+  }
+  if (v && v.videosFound > 0) {
+    return `${newsPart} · ${v.videosFound} vídeos Google`
+  }
+  return newsPart
 }
 
 async function collectTrendsStep(): Promise<{ message: string; skipped: boolean }> {
