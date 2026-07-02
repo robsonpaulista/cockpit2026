@@ -1,5 +1,6 @@
 import type { GoogleNewsMentionWithActor } from '@/lib/google-news-types'
 import { googleNewsMentionMatchesActorQuery } from '@/lib/google-news-search-term'
+import { effectiveGoogleVideosPublishedAt } from '@/lib/google-videos-date'
 import type { PoliticalActorWithTerms } from '@/lib/youtube-radar-types'
 
 export type GoogleNewsCompareSourceRow = {
@@ -15,8 +16,10 @@ export type GoogleNewsCompareActorRow = {
 }
 
 function effectiveMentionDate(m: GoogleNewsMentionWithActor): string {
+  if (m.collect_channel === 'google_videos') {
+    return effectiveGoogleVideosPublishedAt(m) ?? ''
+  }
   if (m.published_at) return m.published_at
-  if (m.collect_channel === 'google_videos') return ''
   return m.collected_at ?? ''
 }
 

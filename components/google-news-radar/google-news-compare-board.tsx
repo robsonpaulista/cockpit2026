@@ -1,11 +1,15 @@
 'use client'
 
 import { Fragment, useState } from 'react'
-import { ChevronDown, ChevronRight, ExternalLink } from 'lucide-react'
+import { ChevronDown, ChevronRight } from 'lucide-react'
 import { buildGoogleNewsCompareRows } from '@/lib/google-news-aggregate'
 import type { GoogleNewsCompareSourceRow } from '@/lib/google-news-aggregate'
 import { labelActorType } from '@/lib/youtube-radar-labels'
 import { labelGoogleNewsCollectChannel, labelGoogleNewsPlatform } from '@/lib/google-news-platform'
+import {
+  effectiveGoogleVideosPublishedAt,
+  extractVideoDateHint,
+} from '@/lib/google-videos-date'
 import type { GoogleNewsMentionWithActor } from '@/lib/google-news-types'
 import type { PoliticalActorWithTerms } from '@/lib/youtube-radar-types'
 import { cn } from '@/lib/utils'
@@ -15,20 +19,8 @@ function formatInt(n: number): string {
 }
 
 /** Extrai texto de data relativa do summary (vídeos Google). */
-function extractVideoDateHint(summary: string | null | undefined): string | null {
-  if (!summary?.trim()) return null
-  const patterns = [
-    /\d{1,2}\s+de\s+[\wçãéíóú.]+\s+de\s+\d{4}/i,
-    /\d+\s+[\wçãéíóú]+\s+atrás/i,
-    /há\s+\d+\s*[\wçãéíóú]+/i,
-    /\d+\s+(?:weeks?|days?|hours?|months?|years?)\s+ago/i,
-    /\b(?:ontem|hoje|yesterday|today)\b/i,
-  ]
-  for (const pattern of patterns) {
-    const match = summary.match(pattern)
-    if (match?.[0]) return match[0].trim()
-  }
-  return null
+function videoDateHint(m: GoogleNewsMentionWithActor): string | null {
+  return extractVideoDateHint(m.summary)
 }
 
 function formatDate(
@@ -38,16 +30,14 @@ function formatDate(
   dateHint?: string | null
 ): string {
   if (preferVideoDate) {
+    if (dateHint?.trim()) return dateHint.trim()
     if (iso) {
-      const formatted = new Date(iso).toLocaleDateString('pt-BR', {
+      return new Date(iso).toLocaleDateString('pt-BR', {
         day: '2-digit',
         month: 'short',
         year: 'numeric',
       })
-      if (dateHint?.trim()) return `${formatted} (${dateHint.trim()})`
-      return formatted
     }
-    if (dateHint?.trim()) return dateHint.trim()
     return 'data indisponível'
   }
   const value = iso ?? fallbackIso
@@ -106,20 +96,22 @@ function ArticleList({
         <li
           key={m.id}
           className={cn(
-            'flex gap-3 border-b border-[rgb(var(--color-border-tertiary)/0.3)] px-4 py-2.5 pl-10 last:border-b-0',
-            preferVideoDate ? 'items-start' : 'items-center'
+            'border-b border-[rgb(var(--color-border-tertiary)/0.3)] px-4 py-2.5 pl-10 last:border-b-0'
           )}
         >
-          <div className="min-w-0 flex-1">
-            <p
+          <div className="min-w-0">
+            <a
+              href={m.url}
+              target="_blank"
+              rel="noopener noreferrer"
               className={cn(
-                'text-sm text-text-primary',
+                'block text-sm text-text-primary transition-colors hover:text-[rgb(var(--color-primary))]',
                 preferVideoDate ? 'whitespace-normal leading-snug' : 'truncate'
               )}
               title={m.title}
             >
               {m.title}
-            </p>
+            </a>
             <p className="mt-0.5 truncate text-[11px] text-text-muted">
               <span className="font-medium text-[#C8900A]">
                 {labelGoogleNewsPlatform(m.platform ?? 'website')}
@@ -130,22 +122,15 @@ function ArticleList({
               {labelGoogleNewsCollectChannel(m.collect_channel ?? 'google_news_rss')}
               {' · '}
               {formatDate(
-                m.published_at,
+                preferVideoDate
+                  ? effectiveGoogleVideosPublishedAt(m)
+                  : m.published_at,
                 m.collected_at,
                 preferVideoDate,
-                preferVideoDate ? extractVideoDateHint(m.summary) : null
+                preferVideoDate ? videoDateHint(m) : null
               )}
             </p>
           </div>
-          <a
-            href={m.url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className={cn('shrink-0 text-[rgb(var(--color-primary))]', preferVideoDate && 'mt-0.5')}
-            aria-label={`Abrir ${m.title}`}
-          >
-            <ExternalLink className="h-3.5 w-3.5" aria-hidden />
-          </a>
         </li>
       ))}
     </ul>

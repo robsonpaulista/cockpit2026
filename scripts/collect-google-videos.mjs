@@ -13,6 +13,11 @@ import path from 'path'
 import { fileURLToPath } from 'url'
 import { chromium } from 'playwright'
 import { createSupabaseClient as createSupabase } from './lib/supabase-client.mjs'
+import {
+  extractVideoDateHint,
+  parseGoogleVideosDateHint,
+  parseMetadataRow,
+} from './lib/google-videos-date.mjs'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const ROOT = path.resolve(__dirname, '..')
@@ -123,174 +128,39 @@ function articleIdFromUrl(url) {
   return normalizeVideoUrl(url).slice(0, 500)
 }
 
-function parsePtMonth(monthStr) {
-  const key = monthStr.toLowerCase().replace(/\./g, '').slice(0, 3)
-  const map = {
-    jan: 0,
-    fev: 1,
-    feb: 1,
-    mar: 2,
-    abr: 3,
-    apr: 3,
-    mai: 4,
-    may: 4,
-    jun: 5,
-    jul: 6,
-    ago: 7,
-    aug: 7,
-    set: 8,
-    sep: 8,
-    out: 9,
-    oct: 9,
-    nov: 10,
-    dez: 11,
-    dec: 11,
-  }
-  return map[key] ?? null
-}
-
 function extractDateHintFromText(text) {
-  if (!text?.trim()) return null
-
-  const metaLine = text.match(
-    /(?:Instagram|Facebook|YouTube|TikTok|Twitter)\s*·\s*[^·]+?\s*·\s*([^·]{2,48})/i
-  )
-  if (metaLine?.[1]) {
-    const candidate = metaLine[1].trim()
-    if (parseRelativeDate(candidate) || /atrás|ago|há|ontem|yesterday|today|hoje|semana|week|dia|day|hora|hour/i.test(candidate)) {
-      return candidate
-    }
-  }
-
-  const candidates = []
-  const patterns = [
-    /\d{1,2}\s+de\s+[a-zçãéíóú]+\.?\s+de\s+\d{4}/gi,
-    /\d{1,2}\s+(?:jan|fev|mar|abr|mai|jun|jul|ago|set|out|nov|dez)[a-z]*\.?\s+de\s+\d{4}/gi,
-    /\d+\s+(?:minuto|minutos|hora|horas|dia|dias|semana|semanas|mês|mes|meses|ano|anos)\s+atrás/gi,
-    /há\s+\d+\s*(?:minuto|minutos|hora|horas|dia|dias|semana|semanas|mês|mes|meses|ano|anos)?/gi,
-    /\d+\s+(?:second|seconds|minute|minutes|hour|hours|day|days|week|weeks|month|months|year|years)\s+ago/gi,
-    /\b(?:ontem|hoje|yesterday|today)\b/gi,
-    /(?:jan|fev|mar|abr|mai|jun|jul|ago|set|out|nov|dez)[a-z]*\.?\s+\d{1,2},?\s+\d{4}/gi,
-  ]
-  for (const pattern of patterns) {
-    for (const match of text.matchAll(pattern)) {
-      candidates.push(match[0])
-    }
-  }
-  if (candidates.length === 0) return null
-
-  const recencyRank = (hint) => {
-    const h = hint.toLowerCase()
-    if (/hora|hour/.test(h)) return 0
-    if (/dia|day|ontem|yesterday|hoje|today/.test(h)) return 1
-    if (/semana|week/.test(h)) return 2
-    if (/mês|mes|month/.test(h)) return 3
-    if (/ano|year/.test(h)) return 4
-    return 5
-  }
-
-  return candidates.sort((a, b) => recencyRank(a) - recencyRank(b))[0]
+  return extractVideoDateHint(text)
 }
 
 function parseRelativeDate(raw) {
-  if (!raw?.trim()) return null
-  const text = raw.trim().toLowerCase()
-  const now = Date.now()
+  return parseGoogleVideosDateHint(raw)
+}
 
-  const absolute = text.match(/(\d{1,2})\s+de\s+(\w+\.?)\s+de\s+(\d{4})/i)
-  if (absolute) {
-    const month = parsePtMonth(absolute[2])
-    if (month !== null) {
-      const day = Number(absolute[1])
-      const year = Number(absolute[3])
-      const d = new Date(Date.UTC(year, month, day, 12, 0, 0))
-      if (!Number.isNaN(d.getTime())) return d.toISOString()
-    }
+function authorFromTitle(title) {
+  const ig = title.match(/^(.+?)\s+on\s+Instagram:/i)
+  if (ig?.[1] && ig[1].length <= 80) return ig[1].trim()
+  const yt = title.match(/^(.+?)\s+-\s+YouTube$/i)
+  if (yt?.[1] && yt[1].length <= 80) return yt[1].trim()
+  return null
+}
+
+function platformLabel(platform) {
+  if (platform === 'instagram') return 'Instagram'
+  if (platform === 'facebook') return 'Facebook'
+  if (platform === 'youtube') return 'YouTube'
+  if (platform === 'tiktok') return 'TikTok'
+  return null
+}
+
+function buildVideoSummary(row, meta, dateHint, platform, sourceName) {
+  if (row.metaLine?.trim()) return row.metaLine.trim()
+  const plat = platformLabel(platform)
+  if (dateHint && plat) {
+    return `${plat} · ${sourceName ?? plat} · ${dateHint}`
   }
-
-  const ptRelative = text.match(/há\s+(\d+)?\s*(hora|horas|dia|dias|semana|semanas|mês|mes|meses|ano|anos)/i)
-  if (ptRelative) {
-    const n = ptRelative[1] ? Number(ptRelative[1]) : 1
-    const unit = ptRelative[2]
-    let ms = 0
-    if (/hora/i.test(unit)) ms = n * 3_600_000
-    else if (/dia/i.test(unit)) ms = n * 86_400_000
-    else if (/semana/i.test(unit)) ms = n * 7 * 86_400_000
-    else if (/mês|mes/i.test(unit)) ms = n * 30 * 86_400_000
-    else if (/ano/i.test(unit)) ms = n * 365 * 86_400_000
-    if (ms > 0) return new Date(now - ms).toISOString()
-  }
-
-  const agoMatch = text.match(
-    /(\d+)\s*(hora|horas|dia|dias|semana|semanas|mês|mes|meses|ano|anos)\s+atrás/i
-  )
-  if (agoMatch) {
-    const n = Number(agoMatch[1])
-    const unit = agoMatch[2]
-    let ms = 0
-    if (/hora/i.test(unit)) ms = n * 3_600_000
-    else if (/dia/i.test(unit)) ms = n * 86_400_000
-    else if (/semana/i.test(unit)) ms = n * 7 * 86_400_000
-    else if (/mês|mes/i.test(unit)) ms = n * 30 * 86_400_000
-    else if (/ano/i.test(unit)) ms = n * 365 * 86_400_000
-    if (ms > 0) return new Date(now - ms).toISOString()
-  }
-
-  const enAgo = text.match(
-    /(\d+)\s*(second|seconds|minute|minutes|hour|hours|day|days|week|weeks|month|months|year|years)\s+ago/i
-  )
-  if (enAgo) {
-    const n = Number(enAgo[1])
-    const unit = enAgo[2]
-    let ms = 0
-    if (/second/i.test(unit)) ms = n * 1000
-    else if (/minute/i.test(unit)) ms = n * 60_000
-    else if (/hour/i.test(unit)) ms = n * 3_600_000
-    else if (/day/i.test(unit)) ms = n * 86_400_000
-    else if (/week/i.test(unit)) ms = n * 7 * 86_400_000
-    else if (/month/i.test(unit)) ms = n * 30 * 86_400_000
-    else if (/year/i.test(unit)) ms = n * 365 * 86_400_000
-    if (ms > 0) return new Date(now - ms).toISOString()
-  }
-
-  if (/\b(?:ontem|yesterday)\b/i.test(text)) {
-    return new Date(now - 86_400_000).toISOString()
-  }
-  if (/\b(?:hoje|today)\b/i.test(text)) {
-    return new Date(now).toISOString()
-  }
-
-  const enMonth = text.match(
-    /(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\.?\s+(\d{1,2}),?\s+(\d{4})/i
-  )
-  if (enMonth) {
-    const month = parsePtMonth(enMonth[1])
-    if (month !== null) {
-      const day = Number(enMonth[2])
-      const year = Number(enMonth[3])
-      const d = new Date(Date.UTC(year, month, day, 12, 0, 0))
-      if (!Number.isNaN(d.getTime())) return d.toISOString()
-    }
-  }
-
-  const numMatch = text.match(
-    /(\d+)\s*(second|minute|hour|day|week|month|year|segundo|minuto|hora|dia|semana|semanas|mês|mes|meses|ano|anos)/i
-  )
-  if (!numMatch) return null
-
-  const n = Number(numMatch[1])
-  if (!Number.isFinite(n) || n <= 0) return null
-  const unit = numMatch[2]
-  let ms = 0
-  if (/second|segundo/i.test(unit)) ms = n * 1000
-  else if (/minute|minuto/i.test(unit)) ms = n * 60_000
-  else if (/hour|hora/i.test(unit)) ms = n * 3_600_000
-  else if (/day|dia/i.test(unit)) ms = n * 86_400_000
-  else if (/week|semana/i.test(unit)) ms = n * 7 * 86_400_000
-  else if (/month|mês|mes/i.test(unit)) ms = n * 30 * 86_400_000
-  else if (/year|ano/i.test(unit)) ms = n * 365 * 86_400_000
-  else return null
-  return new Date(now - ms).toISOString()
+  const parts = [row.duration, dateHint].filter(Boolean)
+  if (parts.length) return parts.join(' · ')
+  return row.blockText?.slice(0, 300) || null
 }
 
 function matchesLocalRelevance(item) {
@@ -450,89 +320,157 @@ async function extractVideosFromPage(page, maxItems) {
     function isSocialVideoLink(href) {
       const host = hostOf(href)
       if (!host) return false
-      if (host.includes('instagram.com')) {
-        return /\/(reel|reels|p|tv)\//i.test(href) || href.includes('instagram.com')
-      }
+      if (host.includes('instagram.com')) return /\/(reel|reels|p|tv)\//i.test(href)
       if (host.includes('youtube.com') || host === 'youtu.be') return true
       if (host.includes('facebook.com') || host === 'fb.watch') {
-        return /\/(videos|watch|reel|reels)\//i.test(href) || host === 'fb.watch' || href.includes('facebook.com/watch')
+        return /\/(videos|watch|reel|reels)\//i.test(href) || host === 'fb.watch'
       }
       if (host.includes('tiktok.com')) return true
-      if (host === 'twitter.com' || host === 'x.com') return /\/status\//i.test(href)
       return false
     }
 
-    function findCard(el) {
-      let node = el
-      for (let depth = 0; depth < 10 && node; depth++) {
-        if (
-          node.getAttribute?.('data-ved') ||
-          node.classList?.contains('MjjYud') ||
-          node.classList?.contains('g') ||
-          node.getAttribute?.('data-sokoban-feature')
-        ) {
-          return node
-        }
-        node = node.parentElement
-      }
-      return el.parentElement ?? el
+    function cardVisibleText(card) {
+      if (!card) return ''
+      const clone = card.cloneNode(true)
+      clone.querySelectorAll('script, style, noscript').forEach((el) => el.remove())
+      return clone.textContent?.replace(/\s+/g, ' ').trim() ?? ''
     }
 
-    function pickTitle(anchor, blockText) {
-      const candidates = []
+    function hasDateSignal(text) {
+      return (
+        /(?:Instagram|Facebook|YouTube|TikTok)\s*·/i.test(text) ||
+        /\d+\s+(?:minuto|minutos|hora|horas|dia|dias|semana|semanas|mês|meses)\s+atrás/i.test(text) ||
+        /\d{1,2}\s+de\s+[\wçãéíóú.]+\s+de\s+\d{4}/i.test(text)
+      )
+    }
 
-      const fromH3 = anchor.querySelector('h3')?.textContent?.trim()
-      if (fromH3 && fromH3.length >= 6) candidates.push(fromH3)
+    function findResultContainer(anchor) {
+      let best = null
+      let tight = anchor.parentElement
+      for (let depth = 0; depth < 12 && tight; depth++) {
+        const links = tight.querySelectorAll(
+          'a[href*="instagram.com"], a[href*="youtube.com"], a[href*="youtu.be"], a[href*="facebook.com"], a[href*="fb.watch"]'
+        )
+        const textLen = cardVisibleText(tight).length
+        if (links.length >= 1 && links.length <= 3 && textLen >= 40 && textLen <= 1200) {
+          const text = cardVisibleText(tight)
+          if (hasDateSignal(text)) return tight
+          if (!best && textLen <= 900) best = tight
+        }
+        tight = tight.parentElement
+      }
+      return best ?? anchor.closest('.MjjYud') ?? anchor.closest('div.g') ?? anchor.parentElement ?? anchor
+    }
+
+    function isCleanTitle(text) {
+      if (!text) return false
+      const t = text.trim()
+      if (t.length < 8 || t.length > 320) return false
+      if (/function\s*\(|setAttribute|document\.|Date\.now|javascript:/i.test(t)) return false
+      if (/www\.\w+[\w.-]*\s*›/i.test(t)) return false
+      if (/\.com\s*›/i.test(t)) return false
+      if ((t.match(/https?:\/\//gi) || []).length > 0) return false
+      if (/^\d{1,2}:\d{2}$/.test(t)) return false
+      return true
+    }
+
+    function pickTitle(anchor) {
+      const h3 = anchor.querySelector('h3')?.textContent?.trim()
+      if (isCleanTitle(h3)) return h3
 
       const aria = anchor.getAttribute('aria-label')?.trim()
-      if (aria && aria.length >= 6) candidates.push(aria)
+      if (isCleanTitle(aria)) return aria
 
-      const lines = (anchor.textContent ?? '')
-        .split('\n')
-        .map((l) => l.trim())
-        .filter((l) => l.length >= 8)
-      if (lines.length) candidates.push(...lines)
+      const candidates = []
+      for (const line of (anchor.innerText ?? '').split('\n')) {
+        const t = line.trim()
+        if (isCleanTitle(t)) candidates.push(t)
+      }
 
-      const igOn = blockText.match(
-        /[^·]{8,}?\s+on\s+Instagram:\s*['"]?([^'"]{8,})/i
+      const card = findResultContainer(anchor)
+      const cardText = cardVisibleText(card)
+      const igMatch = cardText.match(
+        /[\w\sÀ-ú.'-]{4,80}\s+on\s+Instagram:\s*['"]([^'"]{8,})['"]?/i
       )
-      if (igOn?.[0]) candidates.push(igOn[0].trim())
+      if (igMatch?.[0] && isCleanTitle(igMatch[0])) candidates.push(igMatch[0].trim())
+      if (igMatch?.[1] && isCleanTitle(igMatch[1])) candidates.push(igMatch[1].trim())
 
-      const beforePlatform = blockText
-        .split(/(?:Instagram|Facebook|YouTube|TikTok)\s*·/i)[0]
-        ?.replace(/\b\d{1,2}:\d{2}\b/g, '')
-        .trim()
-      if (beforePlatform && beforePlatform.length >= 12) candidates.push(beforePlatform)
+      const beforeDot = cardText.split(/\s+Instagram\s*·/i)[0]?.trim()
+      if (isCleanTitle(beforeDot)) candidates.push(beforeDot)
 
-      const cleanedBlock = blockText
-        .replace(/\b\d{1,2}:\d{2}\b/g, '')
-        .replace(
-          /\d+\s+(?:minuto|minutos|hora|horas|dia|dias|semana|semanas|mês|mes|meses|ano|anos)\s+atrás/gi,
-          ''
-        )
-        .replace(/há\s+\d+\s*[\wçãéíóú]+/gi, '')
-        .replace(/\d+\s+(?:weeks?|days?|hours?|months?|years?)\s+ago/gi, '')
-        .trim()
-      if (cleanedBlock.length >= 12) candidates.push(cleanedBlock)
-
-      const best = candidates.sort((a, b) => b.length - a.length)[0]
-      return best ? best.slice(0, 500) : blockText.slice(0, 500)
+      const best = candidates.sort((a, b) => b.length - a.length).find(isCleanTitle)
+      if (best) return best
+      if (isCleanTitle(h3)) return h3
+      if (isCleanTitle(aria)) return aria
+      return ''
     }
 
-    function extractDateHint(blockText) {
-      const meta = blockText.match(
-        /(?:Instagram|Facebook|YouTube|TikTok)\s*·\s*[^·]+?\s*·\s*([^·]{2,48})/i
+    function extractMetaLine(cardText) {
+      if (!cardText) return ''
+      const idx = cardText.search(/(?:Instagram|Facebook|YouTube|TikTok)\s*·/i)
+      if (idx >= 0) return cardText.slice(idx, idx + 140).trim()
+      const dateOnly = cardText.match(
+        /\d+\s+(?:minuto|minutos|hora|horas|dia|dias|semana|semanas|mês|meses)\s+atrás/i
       )
-      if (meta?.[1]) {
-        const c = meta[1].trim()
-        if (/atrás|ago|há|ontem|yesterday|semana|week|dia|day|\d/.test(c)) return c
+      if (dateOnly?.index != null && dateOnly.index > 0) {
+        return cardText.slice(Math.max(0, dateOnly.index - 80), dateOnly.index + dateOnly[0].length).trim()
       }
-      const m =
-        blockText.match(/\d+\s+[\wçãéíóú]+\s+atrás/i) ||
-        blockText.match(/há\s+\d+\s*[\wçãéíóú]+/i) ||
-        blockText.match(/\d+\s+(?:weeks?|days?|hours?|months?|years?)\s+ago/i) ||
-        blockText.match(/\d{1,2}\s+de\s+[\wçãéíóú.]+\s+de\s+\d{4}/i)
-      return m?.[0]?.trim() ?? null
+      return ''
+    }
+
+    function extractDateHintFallback(text) {
+      if (!text) return null
+      const patterns = [
+        /\d+\s+(?:minuto|minutos|hora|horas|dia|dias|semana|semanas|mês|meses|ano|anos)\s+atrás/i,
+        /\d{1,2}\s+de\s+[\wçãéíóú.]+\s+de\s+\d{4}/i,
+        /\bhá\s+\d+\s+(?:minuto|minutos|hora|horas|dia|dias|semana|semanas)/i,
+      ]
+      for (const pattern of patterns) {
+        const match = text.match(pattern)
+        if (match?.[0]) return match[0].trim()
+      }
+      return null
+    }
+
+    function extractDateHint(metaLine) {
+      if (!metaLine) return null
+      const meta = metaLine.match(
+        /(Instagram|Facebook|YouTube|TikTok|Twitter)\s*·\s*([^·]+?)\s*·\s*([^·]{2,40})/i
+      )
+      if (meta?.[3]) {
+        const seg = meta[3].trim()
+        if (
+          /atrás|ago|\bhá\s+\d|^\d+\s+(hora|horas|dia|dias|semana|semanas)/i.test(seg) &&
+          seg.split(/\s+/).length <= 6
+        ) {
+          return seg
+        }
+      }
+      for (const seg of metaLine.split('·')) {
+        const s = seg.trim()
+        if (
+          s.length >= 2 &&
+          s.length <= 40 &&
+          s.split(/\s+/).length <= 6 &&
+          !/^(Instagram|Facebook|YouTube|TikTok|Twitter)$/i.test(s) &&
+          (/atrás|ago|\bhá\s+\d|^\d+\s+(hora|horas|dia|dias|semana|semanas)/i.test(s) ||
+            /^\d{1,2}\s+de\s+[a-zç]/i.test(s))
+        ) {
+          return s
+        }
+      }
+      return null
+    }
+
+    function extractAuthor(metaLine) {
+      const meta = metaLine.match(
+        /(Instagram|Facebook|YouTube|TikTok|Twitter)\s*·\s*([^·]+?)\s*·/i
+      )
+      if (!meta?.[2]) return null
+      const author = meta[2].trim()
+      if (author.toLowerCase() === meta[1].trim().toLowerCase()) return null
+      if (author.length > 60) return null
+      return author
     }
 
     const root = document.querySelector('#search') || document.querySelector('#rso') || document.body
@@ -545,21 +483,25 @@ async function extractVideosFromPage(page, maxItems) {
       if (href.includes('google.com/search') || href.includes('accounts.google')) continue
       if (!isSocialVideoLink(href)) continue
 
-      const card = findCard(anchor)
-      const blockText = (card?.textContent ?? anchor.textContent ?? '').replace(/\s+/g, ' ').trim()
-      const title = pickTitle(anchor, blockText)
-      if (!title || title.length < 6) continue
+      const card = findResultContainer(anchor)
+      const cardText = cardVisibleText(card)
+      const metaLine = extractMetaLine(cardText)
+      const title = pickTitle(anchor)
+      if (!title || title.length < 8) continue
 
-      const durationMatch = blockText.match(/\b(\d{1,2}:\d{2})\b/)
-      const dateHint = extractDateHint(blockText)
+      const durationMatch = cardText.match(/\b(\d{1,2}:\d{2})\b/)
+      const dateHint = extractDateHint(metaLine) || extractDateHintFallback(cardText)
+      const author = extractAuthor(metaLine)
       seen.add(href)
       out.push({
         title: title.slice(0, 500),
         url: href,
-        blockText: blockText.slice(0, 900),
+        blockText: cardText.slice(0, 400),
+        metaLine,
         duration: durationMatch?.[1] ?? null,
         hasDuration: Boolean(durationMatch),
         dateHint,
+        author,
       })
     }
 
@@ -620,37 +562,41 @@ async function scrapeVideosForQuery(page, query, maxItems) {
     const url = unwrapGoogleRedirectUrl(row.url)
     if (!isSocialHostUrl(url)) continue
 
-    const platform = inferPlatform(url)
-    if (socialOnly && !['instagram', 'facebook', 'youtube', 'tiktok', 'twitter'].includes(platform)) {
-      continue
-    }
-
-    const sourceMatch = row.blockText.match(
-      /(?:Instagram|Facebook|YouTube|TikTok|Twitter)\s*·\s*([^·]+?)(?:\s*·\s*há|\s*·\s*\d|$)/i
-    )
-    const sourceName =
-      sourceMatch?.[1]?.trim() ||
-      (platform === 'instagram'
-        ? 'Instagram'
-        : platform === 'facebook'
-          ? 'Facebook'
-          : platform === 'youtube'
-            ? 'YouTube'
-            : null)
-
+    const meta = parseMetadataRow(row.metaLine || row.blockText)
     const dateHint =
-      row.dateHint || extractDateHintFromText(row.blockText) || extractDateHintFromText(row.title)
+      row.dateHint ||
+      meta.dateHint ||
+      extractDateHintFromText(row.metaLine || row.blockText || '')
     const publishedAt = parseRelativeDate(dateHint)
-    const summaryParts = [row.duration, dateHint].filter(Boolean)
+
+    const platform = inferPlatform(url)
+    const sourceName =
+      row.author?.trim() ||
+      meta.author ||
+      authorFromTitle(row.title) ||
+      null
+
     const item = {
       articleId: articleIdFromUrl(url),
       title: row.title,
-      sourceName,
+      sourceName:
+        sourceName ||
+        (platform === 'instagram'
+          ? 'Instagram'
+          : platform === 'facebook'
+            ? 'Facebook'
+            : platform === 'youtube'
+              ? 'YouTube'
+              : null),
       url,
-      summary: summaryParts.length ? summaryParts.join(' · ') : row.blockText.slice(0, 300) || null,
+      summary: buildVideoSummary(row, meta, dateHint, platform, sourceName),
       publishedAt,
       platform,
       searchQuery: query,
+    }
+
+    if (socialOnly && !['instagram', 'facebook', 'youtube', 'tiktok', 'twitter'].includes(platform)) {
+      continue
     }
 
     if (localFilter && !matchesLocalRelevance(item)) continue
@@ -658,7 +604,9 @@ async function scrapeVideosForQuery(page, query, maxItems) {
     if (filtered.length >= maxItems) break
   }
 
-  logProgress(`${query}: ${filtered.length} vídeo(s) após filtros (bruto ${allRaw.length})`)
+  logProgress(
+    `${query}: ${filtered.length} vídeo(s) após filtros — ${filtered.filter((i) => i.publishedAt).length} com data`
+  )
   return filtered
 }
 
