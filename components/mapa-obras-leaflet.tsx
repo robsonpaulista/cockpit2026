@@ -10,6 +10,7 @@ import {
   type MunicipioObrasMarcador,
   type ObraFaseFiltro,
   type ObraMapaRow,
+  type ObraMapaVisao,
   faseMarkerParaMunicipio,
   normalizeObraText,
 } from '@/lib/obras-mapa'
@@ -20,7 +21,7 @@ import {
   getObraMapLeafletStyles,
   type ObraMapAppearance,
 } from '@/lib/obras-mapa-markers'
-import { municipioUsaMarcadorFoto, primeiraImagemObraUrl } from '@/lib/google-drive-image-url'
+import { primeiraImagemObraUrl } from '@/lib/google-drive-image-url'
 import { useTheme } from '@/contexts/theme-context'
 import { cn } from '@/lib/utils'
 
@@ -30,9 +31,11 @@ interface MapaObrasLeafletProps {
   marcadores: MunicipioObrasMarcador[]
   obras: ObraMapaRow[]
   filtroFase: ObraFaseFiltro
+  visaoMapa?: ObraMapaVisao
   selectedMarcadorKey?: string | null
   onSelectMarcador?: (markerKey: string) => void
   isFullscreen?: boolean
+  animacaoEntrada?: boolean
 }
 
 function findMunicipioCoords(nome: string): { lat: number; lng: number } | null {
@@ -70,9 +73,11 @@ export function MapaObrasLeaflet({
   marcadores,
   obras,
   filtroFase,
+  visaoMapa = 'operacional',
   selectedMarcadorKey,
   onSelectMarcador,
   isFullscreen = false,
+  animacaoEntrada = false,
 }: MapaObrasLeafletProps) {
   const { appearance } = useTheme()
   const mapAppearance: ObraMapAppearance = appearance === 'dark' ? 'dark' : 'light'
@@ -160,10 +165,12 @@ export function MapaObrasLeaflet({
       const fase = faseMarkerParaMunicipio(m, filtroFase)
       const selected = m.markerKey === selectedMarcadorKey
       const normalizedLat = (baseCoords.lat - minLat) / latRange
-      const animDelayMs = Math.round((1 - normalizedLat) * 600 + index * 40)
+      const animDelayMs = animacaoEntrada
+        ? 120 + index * 85
+        : Math.round((1 - normalizedLat) * 600 + index * 40)
 
       let photoUrl: string | null = null
-      if (municipioUsaMarcadorFoto(m.municipio) && m.tema === 'pavimentacao') {
+      if (visaoMapa === 'comunicacao') {
         photoUrl = primeiraImagemObraUrl(m.obras, 200)
       }
 
@@ -179,6 +186,7 @@ export function MapaObrasLeaflet({
           total: m.total,
           animDelayMs,
           photoUrl,
+          entradaSequencial: animacaoEntrada,
         }),
         iconSize: [pinSize, pinHeight],
         iconAnchor: [pinSize / 2, anchorY],
@@ -191,8 +199,8 @@ export function MapaObrasLeaflet({
         zIndexOffset: selected ? 1000 : 0,
       })
         .bindPopup(createObraPopupHtml(m, fase, mapAppearance, m.tema), {
-          maxWidth: 320,
-          className: mapAppearance === 'dark' ? 'mapa-obras-popup-dark' : '',
+          maxWidth: 288,
+          className: mapAppearance === 'dark' ? 'mapa-obras-popup-dark' : 'mapa-obras-popup-soft',
         })
         .bindTooltip(createObraTooltipHtml(m, fase, m.tema), {
           direction: 'top',
@@ -224,7 +232,7 @@ export function MapaObrasLeaflet({
       hasFitBoundsRef.current = true
       scheduleInvalidateSize(map)
     }
-  }, [filtroFase, mapAppearance, marcadores, onSelectMarcador, selectedMarcadorKey, temasPorMunicipio])
+  }, [animacaoEntrada, filtroFase, mapAppearance, marcadores, onSelectMarcador, selectedMarcadorKey, temasPorMunicipio, visaoMapa])
 
   useEffect(() => {
     const map = mapInstanceRef.current
@@ -274,7 +282,8 @@ export function MapaObrasLeaflet({
       className={cn(
         hostClass,
         'relative w-full overflow-hidden',
-        isFullscreen ? 'h-full min-h-0 flex-1' : ''
+        isFullscreen ? 'h-full min-h-0 flex-1' : '',
+        animacaoEntrada ? 'animate-cockpit-fade-in' : ''
       )}
       style={isFullscreen ? undefined : { height: MAP_HEIGHT_PX }}
     >

@@ -1,3 +1,5 @@
+export type ObraMapaVisao = 'operacional' | 'comunicacao'
+
 export type ObraMapaTema = 'pavimentacao' | 'quadras-esportivas'
 export type ObraMapaTemaFiltro = ObraMapaTema | 'todos'
 

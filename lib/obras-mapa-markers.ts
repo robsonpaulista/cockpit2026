@@ -97,15 +97,17 @@ export function createObraMarkerHtml(options: {
   total: number
   animDelayMs?: number
   photoUrl?: string | null
+  entradaSequencial?: boolean
 }): string {
-  const { fase, tema = 'pavimentacao', selected, total, animDelayMs = 0, photoUrl } = options
+  const { fase, tema = 'pavimentacao', selected, total, animDelayMs = 0, photoUrl, entradaSequencial = false } = options
   const color = OBRA_FASE_COLOR[fase]
   const badge = total > 1 ? `<span class="obra-marker-badge">${total}</span>` : ''
   const pulse = selected ? '<span class="obra-marker-pulse"></span>' : ''
+  const wrapClass = entradaSequencial ? 'obra-marker-wrap obra-marker-wrap--sequential' : 'obra-marker-wrap'
 
   if (photoUrl) {
     const size = selected ? 52 : 46
-    return `<div class="obra-marker-wrap obra-marker-wrap--photo" style="width:${size}px;height:${size + 10}px;animation-delay:${animDelayMs}ms;--obra-color:${color}">
+    return `<div class="${wrapClass} obra-marker-wrap--photo" style="width:${size}px;height:${size + 10}px;animation-delay:${animDelayMs}ms;--obra-color:${color}">
       ${pulse}
       <div class="obra-marker-photo${selected ? ' obra-marker-photo--selected' : ''}" style="width:${size}px;height:${size}px">
         <img src="${photoUrl.replace(/"/g, '&quot;')}" alt="" class="obra-marker-photo-img" loading="eager" referrerpolicy="no-referrer" />
@@ -117,7 +119,7 @@ export function createObraMarkerHtml(options: {
 
   const size = selected ? 44 : 38
 
-  return `<div class="obra-marker-wrap" style="width:${size}px;height:${size + 8}px;animation-delay:${animDelayMs}ms">
+  return `<div class="${wrapClass}" style="width:${size}px;height:${size + 8}px;animation-delay:${animDelayMs}ms">
     ${pulse}
     <div class="obra-marker-pin${selected ? ' obra-marker-pin--selected' : ''}" style="--obra-color:${color}">
       <span class="obra-marker-icon">${obraFaseSvgIcon(fase, tema)}</span>
@@ -148,65 +150,61 @@ export function createObraPopupHtml(
   tema: ObraMapaTema = 'pavimentacao'
 ): string {
   const isDark = appearance === 'dark'
-  const bg = isDark ? '#0f172a' : '#ffffff'
-  const text = isDark ? '#e2e8f0' : '#111827'
-  const muted = isDark ? '#94a3b8' : '#6b7280'
-  const border = isDark ? 'rgba(148,163,184,0.25)' : 'rgba(0,0,0,0.08)'
-  const chipBg = isDark ? 'rgba(148,163,184,0.12)' : 'rgba(0,0,0,0.04)'
+  const text = isDark ? '#f1f5f9' : '#1e293b'
+  const muted = isDark ? '#94a3b8' : '#64748b'
+  const soft = isDark ? 'rgba(148,163,184,0.1)' : 'rgba(15,23,42,0.04)'
+  const faseColor = OBRA_FASE_COLOR[fase]
 
-  const faseChip = `<span style="display:inline-flex;align-items:center;gap:5px;padding:3px 8px;border-radius:999px;font-size:10px;font-weight:600;color:${OBRA_FASE_COLOR[fase]};background:${chipBg}">
-    ${obraFaseSvgIcon(fase, tema).replace('width="18" height="18"', 'width="12" height="12"')}
-    ${OBRA_FASE_LABEL[fase]}
-  </span>`
+  const temaLabel = tema === 'pavimentacao' ? 'Pavimentação' : 'Quadras e areninhas'
+
+  const stats = [
+    { label: 'andamento', value: m.emAndamento, color: OBRA_FASE_COLOR.em_andamento },
+    { label: 'finalizadas', value: m.finalizadas, color: OBRA_FASE_COLOR.finalizada },
+    { label: 'a iniciar', value: m.aIniciar, color: OBRA_FASE_COLOR.a_iniciar },
+  ]
+    .filter((s) => s.value > 0)
+    .map(
+      (s) =>
+        `<span style="display:inline-flex;align-items:center;gap:4px;font-size:11px;color:${muted}">
+          <span style="width:6px;height:6px;border-radius:50%;background:${s.color};opacity:0.85"></span>
+          <strong style="color:${text};font-weight:600">${s.value}</strong> ${s.label}
+        </span>`
+    )
+    .join('<span style="color:rgba(148,163,184,0.5);margin:0 2px">·</span>')
 
   const obrasList = m.obras
-    .slice(0, 5)
+    .slice(0, 4)
     .map((o) => {
-      const obraFase = o.status?.toLowerCase().includes('conclu') ? 'finalizada' : fase
       const previewSrc = googleDriveImagePreviewUrl(o.imagem_url, 480)
       const fotoHtml = previewSrc
-        ? `<div style="margin-top:6px;overflow:hidden;border-radius:6px;border:1px solid ${border}">
-            <img src="${escapeHtml(previewSrc)}" alt="" style="display:block;width:100%;max-height:120px;object-fit:cover" loading="lazy" />
+        ? `<div style="margin-top:8px;overflow:hidden;border-radius:10px">
+            <img src="${escapeHtml(previewSrc)}" alt="" style="display:block;width:100%;max-height:108px;object-fit:cover" loading="lazy" />
           </div>`
         : ''
-      return `<li style="margin:6px 0;padding:6px 8px;border-radius:8px;background:${chipBg}">
-        <div style="font-weight:600;color:${text};font-size:12px;line-height:1.35">${escapeHtml(o.obra ?? 'Obra')}</div>
-        <div style="margin-top:2px;font-size:11px;color:${muted}">${escapeHtml(o.status ?? 'Sem status')}</div>
-        <div style="margin-top:2px;font-size:10px;color:${OBRA_FASE_COLOR[obraFase as ObraFaseMapa] ?? muted}">${escapeHtml(o.orgao ?? 'Órgão não informado')}</div>
+      return `<li style="margin:0;padding:10px 0;border-bottom:1px solid ${isDark ? 'rgba(148,163,184,0.12)' : 'rgba(15,23,42,0.06)'}">
+        <div style="font-weight:500;color:${text};font-size:12px;line-height:1.4;letter-spacing:-0.01em">${escapeHtml(o.obra ?? 'Obra')}</div>
+        <div style="margin-top:3px;font-size:11px;color:${muted};line-height:1.35">${escapeHtml(o.orgao ?? 'Órgão não informado')} · ${escapeHtml(o.status ?? 'Sem status')}</div>
         ${fotoHtml}
       </li>`
     })
     .join('')
 
   const mais =
-    m.obras.length > 5
-      ? `<p style="margin:8px 0 0;color:${muted};font-size:11px">+${m.obras.length - 5} obra(s) neste município</p>`
+    m.obras.length > 4
+      ? `<p style="margin:8px 0 0;font-size:11px;color:${muted}">+${m.obras.length - 4} obra(s)</p>`
       : ''
 
-  const stats = [
-    { label: 'Andamento', value: m.emAndamento, color: OBRA_FASE_COLOR.em_andamento },
-    { label: 'Finaliz.', value: m.finalizadas, color: OBRA_FASE_COLOR.finalizada },
-    { label: 'A iniciar', value: m.aIniciar, color: OBRA_FASE_COLOR.a_iniciar },
-  ]
-    .map(
-      (s) =>
-        `<div style="flex:1;text-align:center;padding:6px 4px;border-radius:8px;background:${chipBg}">
-          <div style="font-size:14px;font-weight:700;color:${s.color}">${s.value}</div>
-          <div style="font-size:9px;color:${muted};text-transform:uppercase;letter-spacing:0.04em">${s.label}</div>
-        </div>`
-    )
-    .join('')
-
-  return `<div style="min-width:240px;max-width:300px;font-family:system-ui,sans-serif">
-    <div style="padding:12px 14px;border-bottom:1px solid ${border};background:${bg}">
-      <div style="font-weight:700;color:${text};font-size:14px">${escapeHtml(m.municipio)}</div>
-      <div style="margin-top:6px">${faseChip}</div>
+  return `<div class="obra-popup-soft" style="min-width:220px;max-width:268px;font-family:system-ui,-apple-system,sans-serif;padding:14px 16px 12px">
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px">
+      <div style="min-width:0">
+        <div style="font-weight:600;color:${text};font-size:14px;letter-spacing:-0.02em;line-height:1.2">${escapeHtml(m.municipio)}</div>
+        <div style="margin-top:3px;font-size:11px;color:${muted}">${temaLabel} · ${m.total} obra${m.total === 1 ? '' : 's'}</div>
+      </div>
+      <span style="flex-shrink:0;padding:3px 9px;border-radius:999px;font-size:10px;font-weight:500;color:${faseColor};background:${soft};letter-spacing:0.01em">${OBRA_FASE_LABEL[fase]}</span>
     </div>
-    <div style="padding:10px 14px;background:${bg}">
-      <div style="display:flex;gap:6px">${stats}</div>
-      <ul style="margin:10px 0 0;padding:0;list-style:none">${obrasList}</ul>
-      ${mais}
-    </div>
+    ${stats ? `<div style="display:flex;flex-wrap:wrap;align-items:center;gap:4px;margin-top:10px">${stats}</div>` : ''}
+    <ul style="margin:10px 0 0;padding:0;list-style:none">${obrasList}</ul>
+    ${mais}
   </div>`
 }
 
@@ -216,19 +214,23 @@ export function getObraMapLeafletStyles(appearance: ObraMapAppearance): string {
       ? `
   .mapa-obras-host--dark .leaflet-container { background: #0f1419 !important; }
   .mapa-obras-host--dark .leaflet-popup-content-wrapper {
-    background: #0f172a !important;
-    border: 1px solid rgba(148,163,184,0.25) !important;
-    box-shadow: 0 12px 40px rgba(0,0,0,0.55) !important;
+    background: rgba(15,23,42,0.92) !important;
+    backdrop-filter: blur(12px) !important;
+    -webkit-backdrop-filter: blur(12px) !important;
+    border: 1px solid rgba(148,163,184,0.12) !important;
+    box-shadow: 0 12px 40px rgba(0,0,0,0.35), 0 2px 8px rgba(0,0,0,0.2) !important;
   }
-  .mapa-obras-host--dark .leaflet-popup-tip { background: #0f172a !important; }
+  .mapa-obras-host--dark .leaflet-popup-tip { background: rgba(15,23,42,0.92) !important; }
+  .mapa-obras-host--dark .leaflet-popup-close-button { color: #94a3b8 !important; }
   .mapa-obras-host--dark .leaflet-control-zoom a {
     background: #1e293b !important;
     color: #e2e8f0 !important;
     border-color: #334155 !important;
   }
   .mapa-obras-host--dark .obra-marker-tooltip {
-    background: rgba(15,23,42,0.95) !important;
-    border-color: rgba(148,163,184,0.3) !important;
+    background: rgba(15,23,42,0.88) !important;
+    backdrop-filter: blur(8px) !important;
+    border-color: rgba(148,163,184,0.15) !important;
     color: #e2e8f0 !important;
   }
   .mapa-obras-host--dark .obra-marker-tooltip em { color: #94a3b8 !important; }
@@ -245,12 +247,31 @@ export function getObraMapLeafletStyles(appearance: ObraMapAppearance): string {
     opacity: 1;
   }
   .mapa-obras-host .leaflet-popup-content-wrapper {
-    border-radius: 12px !important;
+    border-radius: 16px !important;
     padding: 0 !important;
     overflow: hidden;
-    box-shadow: 0 10px 30px rgba(0,0,0,0.16) !important;
+    background: rgba(255,255,255,0.96) !important;
+    backdrop-filter: blur(12px) !important;
+    -webkit-backdrop-filter: blur(12px) !important;
+    border: 1px solid rgba(15,23,42,0.06) !important;
+    box-shadow: 0 8px 32px rgba(15,23,42,0.1), 0 2px 8px rgba(15,23,42,0.04) !important;
   }
-  .mapa-obras-host .leaflet-popup-content { margin: 0 !important; line-height: 1.4 !important; }
+  .mapa-obras-host .leaflet-popup-tip {
+    box-shadow: none !important;
+  }
+  .mapa-obras-host .leaflet-popup-close-button {
+    top: 6px !important;
+    right: 6px !important;
+    width: 24px !important;
+    height: 24px !important;
+    font-size: 18px !important;
+    font-weight: 400 !important;
+    color: #94a3b8 !important;
+    opacity: 0.7 !important;
+  }
+  .mapa-obras-host .leaflet-popup-close-button:hover { opacity: 1 !important; color: #64748b !important; }
+  .mapa-obras-host .leaflet-popup-content { margin: 0 !important; line-height: 1.45 !important; }
+  .obra-popup-soft li:last-child { border-bottom: none !important; padding-bottom: 0 !important; }
   .mapa-obras-host .leaflet-tooltip.obra-marker-tooltip-shell {
     background: transparent !important;
     border: none !important;
@@ -277,6 +298,9 @@ export function getObraMapLeafletStyles(appearance: ObraMapAppearance): string {
     cursor: pointer;
     animation: obra-marker-enter 0.45s ease-out forwards;
     opacity: 0;
+  }
+  .obra-marker-wrap--sequential {
+    animation: obra-marker-enter 0.55s cubic-bezier(0.22, 1, 0.36, 1) forwards;
   }
   .obra-marker-pin {
     position: relative;
@@ -400,11 +424,12 @@ export function getObraMapLeafletStyles(appearance: ObraMapAppearance): string {
     font-size: 11px;
     line-height: 1.35;
     padding: 6px 10px;
-    border-radius: 8px;
-    background: rgba(255,255,255,0.96);
-    border: 1px solid rgba(0,0,0,0.08);
-    box-shadow: 0 4px 16px rgba(0,0,0,0.12);
-    color: #111827;
+    border-radius: 10px;
+    background: rgba(255,255,255,0.94);
+    backdrop-filter: blur(8px);
+    border: 1px solid rgba(15,23,42,0.06);
+    box-shadow: 0 4px 20px rgba(15,23,42,0.08);
+    color: #1e293b;
     white-space: nowrap;
   }
   .obra-marker-tooltip strong { display: block; font-size: 12px; margin-bottom: 2px; }

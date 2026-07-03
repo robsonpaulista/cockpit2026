@@ -73,13 +73,3 @@ export function primeiraImagemObraUrl(
   }
   return null
 }
-
-/** Municípios em teste com marcador de foto no mapa (por enquanto só Parnaíba). */
-export function municipioUsaMarcadorFoto(municipio: string): boolean {
-  const n = municipio
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .trim()
-  return n === 'parnaiba'
-}

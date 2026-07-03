@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import dynamic from 'next/dynamic'
-import { ExternalLink, Loader2, MapPinned, Maximize2, Minimize2, RefreshCw } from 'lucide-react'
+import { ExternalLink, ImageIcon, Loader2, MapPinned, Maximize2, Minimize2, RefreshCw } from 'lucide-react'
 import Link from 'next/link'
 import {
   OBRA_FASE_LABEL,
@@ -15,8 +15,10 @@ import {
   type ObraFaseFiltro,
   type ObraMapaRow,
   type ObraMapaTemaFiltro,
+  type ObraMapaVisao,
 } from '@/lib/obras-mapa'
 import { MapaObrasKpiStrip } from '@/components/territorio-campo/mapa-obras-kpi-strip'
+import { MapaObrasSplash } from '@/components/territorio-campo/mapa-obras-splash'
 import { ObraFotoUrlField } from '@/components/obras/obra-foto-url-field'
 import { ObraFaseIcon } from '@/components/territorio-campo/obra-fase-icon'
 import { OBRA_FASE_COLOR } from '@/lib/obras-mapa'
@@ -50,6 +52,10 @@ function formatCurrency(value?: number | null): string {
   return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 }).format(value)
 }
 
+/** Ocupa toda a área útil da guia (compensa padding do DashboardPageContent). */
+const MAPA_OBRAS_TAB_SPLASH_CLASS =
+  '-mx-4 -mb-4 flex min-h-[calc(100dvh-11.5rem)] w-[calc(100%+2rem)] flex-col md:-mx-6 md:-mb-6 md:w-[calc(100%+3rem)]'
+
 export function MapaObrasPanel() {
   const mapContainerRef = useRef<HTMLDivElement>(null)
   const [isNativeFullscreen, setIsNativeFullscreen] = useState(false)
@@ -58,6 +64,9 @@ export function MapaObrasPanel() {
   const [error, setError] = useState('')
   const [filtroFase, setFiltroFase] = useState<ObraFaseFiltro>('todas')
   const [temaAtivo, setTemaAtivo] = useState<ObraMapaTemaFiltro>('todos')
+  const [visaoMapa, setVisaoMapa] = useState<ObraMapaVisao>('operacional')
+  const [splashConcluido, setSplashConcluido] = useState<boolean>(false)
+  const [animacaoEntradaMapa, setAnimacaoEntradaMapa] = useState<boolean>(false)
   const [selectedMarcadorKey, setSelectedMarcadorKey] = useState<string | null>(null)
 
   const temaConfig = useMemo(() => obraMapaTemaConfig(temaAtivo), [temaAtivo])
@@ -81,6 +90,12 @@ export function MapaObrasPanel() {
   useEffect(() => {
     void carregar()
   }, [carregar])
+
+  useEffect(() => {
+    if (!loading && (obras.length === 0 || error)) {
+      setSplashConcluido(true)
+    }
+  }, [error, loading, obras.length])
 
   useEffect(() => {
     const handleFullscreenChange = () => {
@@ -149,6 +164,32 @@ export function MapaObrasPanel() {
   const atualizarImagemObra = useCallback((obraId: string, imagem_url: string | null) => {
     setObras((prev) => prev.map((o) => (o.id === obraId ? { ...o, imagem_url } : o)))
   }, [])
+
+  const exibirSplash = !loading && !error && obras.length > 0 && !splashConcluido
+
+  const concluirSplash = useCallback(() => {
+    setSplashConcluido(true)
+    setAnimacaoEntradaMapa(true)
+  }, [])
+
+  if (loading && !splashConcluido) {
+    return (
+      <div className={cn(MAPA_OBRAS_TAB_SPLASH_CLASS, 'items-center justify-center bg-bg-surface text-sm text-text-muted')}>
+        <Loader2 className="mr-2 h-5 w-5 animate-spin" aria-hidden />
+        Carregando obras…
+      </div>
+    )
+  }
+
+  if (exibirSplash) {
+    return (
+      <MapaObrasSplash
+        obras={obras}
+        onConcluir={concluirSplash}
+        className={cn(MAPA_OBRAS_TAB_SPLASH_CLASS, 'min-h-full flex-1')}
+      />
+    )
+  }
 
   const filtrosMapa = (
     <div
@@ -229,6 +270,18 @@ export function MapaObrasPanel() {
                 : `${new Set(marcadoresFiltrados.map((m) => m.municipio)).size} município(s) no mapa`}
             </div>
             <div className="flex flex-wrap items-center gap-3">
+              <button
+                type="button"
+                onClick={() => setVisaoMapa((v) => (v === 'operacional' ? 'comunicacao' : 'operacional'))}
+                className={cn(
+                  chromeFilterChipClass(visaoMapa === 'comunicacao'),
+                  'inline-flex items-center gap-1.5'
+                )}
+                title={visaoMapa === 'comunicacao' ? 'Voltar aos ícones operacionais' : 'Exibir fotos nos marcadores'}
+              >
+                <ImageIcon className="h-3.5 w-3.5" aria-hidden />
+                Comunicação
+              </button>
               {OBRA_MAPA_LEGENDA.map((item) => (
                 <span
                   key={item.fase}
@@ -271,6 +324,7 @@ export function MapaObrasPanel() {
           </div>
           <p className={cn('mt-1.5', typographyBodyMutedClass)}>
             Passe o mouse para ver o resumo · clique no pin para detalhes
+            {visaoMapa === 'comunicacao' ? ' · visão Comunicação: fotos nos marcadores com imagem cadastrada' : ''}
             {temaAtivo === 'todos' ? ' · cidades com mais de um tema exibem pins separados' : ''}
             {isNativeFullscreen ? '' : ' e painel abaixo'}
           </p>
@@ -278,11 +332,7 @@ export function MapaObrasPanel() {
 
         {filtrosMapa}
 
-        <div
-          className={cn(
-            isNativeFullscreen ? 'flex min-h-0 flex-1 flex-col' : 'h-[480px]'
-          )}
-        >
+        <div className={cn(isNativeFullscreen ? 'flex min-h-0 flex-1 flex-col' : 'h-[480px]')}>
           {loading ? (
             <div className="flex min-h-[420px] items-center justify-center text-sm text-text-muted">
               <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden />
@@ -301,6 +351,8 @@ export function MapaObrasPanel() {
               marcadores={marcadoresFiltrados}
               obras={obras}
               filtroFase={filtroFase}
+              visaoMapa={visaoMapa}
+              animacaoEntrada={animacaoEntradaMapa}
               selectedMarcadorKey={selectedMarcadorKey}
               onSelectMarcador={setSelectedMarcadorKey}
               isFullscreen={isNativeFullscreen}
