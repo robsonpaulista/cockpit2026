@@ -62,25 +62,13 @@ function formatDateLabel(iso: string): string {
   })
 }
 
-function formatCompactBrl(value: number): string {
-  return new Intl.NumberFormat('pt-BR', {
-    style: 'currency',
-    currency: 'BRL',
-    notation: 'compact',
-    maximumFractionDigits: 1,
-  }).format(value)
+function formatCompactCount(value: number): string {
+  return new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 0 }).format(value)
 }
 
 function formatValue(value: number, metricLabel: string, platformId?: PanoramaPlatformId): [string, string] {
   if (platformId === 'meta-ads') {
-    return [
-      new Intl.NumberFormat('pt-BR', {
-        style: 'currency',
-        currency: 'BRL',
-        maximumFractionDigits: 0,
-      }).format(value),
-      metricLabel,
-    ]
+    return [formatCompactCount(value), metricLabel]
   }
   return [new Intl.NumberFormat('pt-BR').format(value), metricLabel]
 }
@@ -136,14 +124,10 @@ function MetaAdsPointDetail({
         ) : null}
       </div>
       <p className="mt-1.5 text-text-secondary">
-        Gasto no dia:{' '}
+        Anúncios iniciados no dia:{' '}
         <span className="font-medium text-text-primary">
           {Number.isFinite(selection.value) && selection.value > 0
-            ? new Intl.NumberFormat('pt-BR', {
-                style: 'currency',
-                currency: 'BRL',
-                maximumFractionDigits: 0,
-              }).format(selection.value)
+            ? formatCompactCount(selection.value)
             : '—'}
         </span>
       </p>
@@ -151,8 +135,13 @@ function MetaAdsPointDetail({
         <div className={cn('mt-2 border-t border-[rgb(var(--color-border-tertiary)/0.45)] pt-2', typographyBodyMutedClass)}>
           <p className={cn('font-medium text-text-secondary', typographySectionLabelClass)}>Total no período</p>
           <p className="mt-1">
-            Investido: <span className="text-text-primary">{lineTotal.spendLabel}</span>
+            Ativos: <span className="text-text-primary">{formatCompactCount(lineTotal.activeCount)}</span>
           </p>
+          {lineTotal.spendLabel !== '—' ? (
+            <p className="mt-0.5">
+              Investido: <span className="text-text-primary">{lineTotal.spendLabel}</span>
+            </p>
+          ) : null}
           {lineTotal.impressionsLabel ? (
             <p className="mt-0.5">
               Imp.: <span className="text-text-primary">{lineTotal.impressionsLabel}</span>
@@ -229,7 +218,7 @@ function MetaAdsPanoramaLineChart({ chart }: { chart: PanoramaPlatformChart }) {
           />
         ) : (
           <p className={cn('flex h-full items-center px-1 leading-snug', typographyBodyMutedClass)}>
-            Clique em um ponto para ver gasto do dia e total no período.
+            Clique em um ponto para ver anúncios do dia e total no período.
           </p>
         )}
       </div>
@@ -250,8 +239,9 @@ function MetaAdsPanoramaLineChart({ chart }: { chart: PanoramaPlatformChart }) {
             />
             <YAxis
               tick={{ fontSize: 13, fill: 'rgb(var(--color-text-muted))' }}
-              width={52}
-              tickFormatter={(v) => formatCompactBrl(v)}
+              width={40}
+              allowDecimals={false}
+              tickFormatter={(v) => formatCompactCount(v)}
             />
             {chart.lines.map((line, lineIndex) => (
               <Line

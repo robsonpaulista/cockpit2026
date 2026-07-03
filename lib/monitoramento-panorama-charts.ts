@@ -39,6 +39,7 @@ export type PanoramaMetaAdsPeriodTotal = {
   slug: string
   name: string
   color: string
+  activeCount: number
   spendLabel: string
   impressionsLabel: string | null
 }
@@ -420,6 +421,7 @@ function buildMetaAdsChart(
   const items: Array<{ slug: string; date: string; value: number }> = []
 
   for (const ad of ads) {
+    if (ad.is_active !== true) continue
     const slug = slugFromMention(ad)
     if (!slug) continue
     const date = ad.started_running_at
@@ -428,9 +430,7 @@ function buildMetaAdsChart(
         ? dayKey(ad.collected_at)
         : null
     if (!date) continue
-    const spend = ad.spend_max_brl ?? ad.spend_min_brl ?? 0
-    if (spend <= 0) continue
-    items.push({ slug, date, value: spend })
+    items.push({ slug, date, value: 1 })
   }
 
   const chartData = buildDailyBuckets(dates, columns, items)
@@ -445,14 +445,15 @@ function buildMetaAdsChart(
 
   const periodTotals = columns
     .map((col) => {
-      const totals = buildMetaAdsPeriodTotals(adsBySlug.get(col.slug) ?? [])
-      if (totals.spendLabel === '—' && !totals.impressionsLabel) {
-        return null
-      }
+      const slugAds = adsBySlug.get(col.slug) ?? []
+      const activeAds = slugAds.filter((a) => a.is_active === true)
+      if (activeAds.length === 0) return null
+      const totals = buildMetaAdsPeriodTotals(slugAds)
       return {
         slug: col.slug,
         name: col.name,
         color: col.accentColor,
+        activeCount: activeAds.length,
         spendLabel: totals.spendLabel,
         impressionsLabel: totals.impressionsLabel,
       }
@@ -463,8 +464,8 @@ function buildMetaAdsChart(
     id: 'meta-ads',
     layoutTier: 'simple',
     title: 'Anúncios',
-    subtitle: `Gasto estimado por dia de início${windowSuffix}`,
-    metricLabel: 'Gasto (R$)',
+    subtitle: `Anúncios ativos por dia de início${windowSuffix}`,
+    metricLabel: 'Anúncios ativos',
     chartType: 'line',
     lines: linesFromColumns(columns),
     chartData,

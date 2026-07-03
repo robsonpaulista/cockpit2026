@@ -648,7 +648,7 @@ function buildMetaAdsCard(
       name: row.name,
       color: row.color,
       actorType: row.actorType,
-      total: row.spendMid,
+      total: row.totalAds,
       recent: metaChart?.chartData.length ? recent : 0,
       prior: metaChart?.chartData.length ? prior : 0,
     }
