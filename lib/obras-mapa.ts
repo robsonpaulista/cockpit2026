@@ -1,6 +1,6 @@
 export type ObraMapaVisao = 'operacional' | 'comunicacao'
 
-export type ObraMapaTema = 'pavimentacao' | 'quadras-esportivas'
+export type ObraMapaTema = 'pavimentacao' | 'quadras-esportivas' | 'maquinario-agricola'
 export type ObraMapaTemaFiltro = ObraMapaTema | 'todos'
 
 export interface ObraMapaTemaConfig {
@@ -40,9 +40,18 @@ export const OBRA_MAPA_TEMAS: ObraMapaTemaConfig[] = [
     kpiEscopo: 'municípios com quadras/areninhas',
     kpiTipo: 'Quadras esportivas e areninhas',
   },
+  {
+    id: 'maquinario-agricola',
+    label: 'Maquinário agrícola',
+    titulo: 'Mapa de Obras · Maquinário agrícola',
+    descricao:
+      'Municípios com entrega ou aquisição de trator, escavadeira, arado e demais maquinários agrícolas, classificados por fase.',
+    kpiEscopo: 'municípios com maquinário agrícola',
+    kpiTipo: 'Trator, escavadeira, arado e afins',
+  },
 ]
 
-export const OBRA_MAPA_TEMAS_OBRA: ObraMapaTema[] = ['pavimentacao', 'quadras-esportivas']
+export const OBRA_MAPA_TEMAS_OBRA: ObraMapaTema[] = ['pavimentacao', 'quadras-esportivas', 'maquinario-agricola']
 
 export function obraMapaTemaConfig(tema: ObraMapaTemaFiltro): ObraMapaTemaConfig {
   return OBRA_MAPA_TEMAS.find((t) => t.id === tema) ?? OBRA_MAPA_TEMAS[1]
@@ -139,9 +148,23 @@ export function isObraQuadrasEsportivas(obra: Pick<ObraMapaRow, 'tipo' | 'obra'>
   )
 }
 
+const MAQUINARIO_AGRICOLA_RE =
+  /trator|escavadeira|retroescavadeira|arado|grade aradora|colheitadeira|plantadeira|pulverizador|subsolador|implemento agricola|maquinario agricola|maquina agricola|maquinario|entrega de trator|aquisicao de trator|trator agricola/
+
+export function isObraMaquinarioAgricola(obra: Pick<ObraMapaRow, 'tipo' | 'obra'>): boolean {
+  if (isObraPavimentacao(obra) || isObraQuadrasEsportivas(obra)) return false
+
+  const tipo = normalizeObraText(obra.tipo ?? '')
+  if (MAQUINARIO_AGRICOLA_RE.test(tipo)) return true
+
+  const nome = normalizeObraText(obra.obra ?? '')
+  return MAQUINARIO_AGRICOLA_RE.test(nome)
+}
+
 export function obraCorrespondeTema(obra: Pick<ObraMapaRow, 'tipo' | 'obra'>, tema: ObraMapaTema): boolean {
   if (tema === 'pavimentacao') return isObraPavimentacao(obra)
   if (tema === 'quadras-esportivas') return isObraQuadrasEsportivas(obra)
+  if (tema === 'maquinario-agricola') return isObraMaquinarioAgricola(obra)
   return false
 }
 
@@ -266,6 +289,28 @@ export function coordsMarcadorPorTema(
     lat: base.lat + radius * Math.cos(angle),
     lng: base.lng + radius * Math.sin(angle),
   }
+}
+
+export function listarMunicipiosComObras(
+  obras: ObraMapaRow[],
+  temaFiltro: ObraMapaTemaFiltro
+): string[] {
+  const fonte = temaFiltro === 'todos' ? obras : filtrarObrasPorTema(obras, temaFiltro)
+  const municipios = new Set<string>()
+  for (const obra of fonte) {
+    const municipio = obra.municipio?.trim()
+    if (municipio) municipios.add(municipio)
+  }
+  return [...municipios].sort((a, b) => a.localeCompare(b, 'pt-BR'))
+}
+
+export function filtrarMarcadoresPorMunicipio(
+  marcadores: MunicipioObrasMarcador[],
+  municipio: string | null | undefined
+): MunicipioObrasMarcador[] {
+  const alvo = municipio?.trim()
+  if (!alvo) return marcadores
+  return marcadores.filter((m) => m.municipio.trim() === alvo)
 }
 
 export function filtrarMarcadoresPorFase(

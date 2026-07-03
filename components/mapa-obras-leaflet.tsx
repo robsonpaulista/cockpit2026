@@ -19,9 +19,11 @@ import {
   createObraPopupHtml,
   createObraTooltipHtml,
   getObraMapLeafletStyles,
+  OBRA_MARKER_SIZE,
   type ObraMapAppearance,
 } from '@/lib/obras-mapa-markers'
 import { primeiraImagemObraUrl } from '@/lib/google-drive-image-url'
+import type { ObraMaquinario3dVariant, ObraPavimentacao3dVariant } from '@/lib/obras-mapa-tema-icons'
 import { useTheme } from '@/contexts/theme-context'
 import { cn } from '@/lib/utils'
 
@@ -36,6 +38,10 @@ interface MapaObrasLeafletProps {
   onSelectMarcador?: (markerKey: string) => void
   isFullscreen?: boolean
   animacaoEntrada?: boolean
+  mostrarTodosPopups?: boolean
+  usarIcone3d?: boolean
+  pavimentacao3dVariant?: ObraPavimentacao3dVariant
+  maquinario3dVariant?: ObraMaquinario3dVariant
 }
 
 function findMunicipioCoords(nome: string): { lat: number; lng: number } | null {
@@ -78,6 +84,10 @@ export function MapaObrasLeaflet({
   onSelectMarcador,
   isFullscreen = false,
   animacaoEntrada = false,
+  mostrarTodosPopups = false,
+  usarIcone3d = true,
+  pavimentacao3dVariant = 'oncoming',
+  maquinario3dVariant = 'trator',
 }: MapaObrasLeafletProps) {
   const { appearance } = useTheme()
   const mapAppearance: ObraMapAppearance = appearance === 'dark' ? 'dark' : 'light'
@@ -174,7 +184,13 @@ export function MapaObrasLeaflet({
         photoUrl = primeiraImagemObraUrl(m.obras, 200)
       }
 
-      const pinSize = photoUrl ? (selected ? 52 : 46) : selected ? 44 : 38
+      const pinSize = photoUrl
+        ? selected
+          ? OBRA_MARKER_SIZE.photoSelected
+          : OBRA_MARKER_SIZE.photo
+        : selected
+          ? OBRA_MARKER_SIZE.discSelected
+          : OBRA_MARKER_SIZE.disc
       const pinHeight = photoUrl ? pinSize + 10 : pinSize + 8
       const anchorY = photoUrl ? pinSize + 6 : pinSize + 4
       const icon = L.divIcon({
@@ -187,6 +203,9 @@ export function MapaObrasLeaflet({
           animDelayMs,
           photoUrl,
           entradaSequencial: animacaoEntrada,
+          usarIcone3d: visaoMapa !== 'comunicacao' && usarIcone3d,
+          pavimentacao3dVariant,
+          maquinario3dVariant,
         }),
         iconSize: [pinSize, pinHeight],
         iconAnchor: [pinSize / 2, anchorY],
@@ -201,6 +220,8 @@ export function MapaObrasLeaflet({
         .bindPopup(createObraPopupHtml(m, fase, mapAppearance, m.tema), {
           maxWidth: 288,
           className: mapAppearance === 'dark' ? 'mapa-obras-popup-dark' : 'mapa-obras-popup-soft',
+          autoClose: !mostrarTodosPopups,
+          closeOnClick: !mostrarTodosPopups,
         })
         .bindTooltip(createObraTooltipHtml(m, fase, m.tema), {
           direction: 'top',
@@ -232,7 +253,18 @@ export function MapaObrasLeaflet({
       hasFitBoundsRef.current = true
       scheduleInvalidateSize(map)
     }
-  }, [animacaoEntrada, filtroFase, mapAppearance, marcadores, onSelectMarcador, selectedMarcadorKey, temasPorMunicipio, visaoMapa])
+
+    if (mostrarTodosPopups) {
+      requestAnimationFrame(() => {
+        markersByKeyRef.current.forEach((marker) => marker.openPopup())
+      })
+    }
+  }, [animacaoEntrada, filtroFase, mapAppearance, maquinario3dVariant, marcadores, mostrarTodosPopups, onSelectMarcador, pavimentacao3dVariant, selectedMarcadorKey, temasPorMunicipio, usarIcone3d, visaoMapa])
+
+  useEffect(() => {
+    if (mostrarTodosPopups) return
+    markersByKeyRef.current.forEach((marker) => marker.closePopup())
+  }, [mostrarTodosPopups])
 
   useEffect(() => {
     const map = mapInstanceRef.current
@@ -244,7 +276,12 @@ export function MapaObrasLeaflet({
     const latLng = marker.getLatLng()
     map.flyTo(latLng, Math.max(map.getZoom(), 9), { duration: 0.55 })
     marker.openPopup()
-  }, [selectedMarcadorKey])
+    if (mostrarTodosPopups) {
+      markersByKeyRef.current.forEach((m) => {
+        if (m !== marker) m.openPopup()
+      })
+    }
+  }, [mostrarTodosPopups, selectedMarcadorKey])
 
   useEffect(() => {
     hasFitBoundsRef.current = false

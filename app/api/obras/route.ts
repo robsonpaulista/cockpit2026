@@ -1,19 +1,16 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { requireRouteUser } from '@/lib/supabase/route-auth'
+import { supabaseNetworkErrorResponse } from '@/lib/supabase/network-error'
 
 export const dynamic = 'force-dynamic'
 
 export async function GET(request: Request) {
   try {
+    const auth = await requireRouteUser()
+    if (!auth.ok) return auth.response
+
     const supabase = createClient()
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
-
-    if (!user) {
-      return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
-    }
-
     const { searchParams } = new URL(request.url)
     const municipio = searchParams.get('municipio')
     const status = searchParams.get('status')
@@ -51,6 +48,8 @@ export async function GET(request: Request) {
 
     return NextResponse.json({ obras: data || [] })
   } catch (error: unknown) {
+    const networkResponse = supabaseNetworkErrorResponse(error)
+    if (networkResponse) return networkResponse
     console.error('Erro ao buscar obras:', error)
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Erro interno do servidor' },
@@ -61,15 +60,10 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
+    const auth = await requireRouteUser()
+    if (!auth.ok) return auth.response
+
     const supabase = createClient()
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
-
-    if (!user) {
-      return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
-    }
-
     const body = await request.json()
     const {
       municipio,
@@ -140,6 +134,8 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ obra: data })
   } catch (error: unknown) {
+    const networkResponse = supabaseNetworkErrorResponse(error)
+    if (networkResponse) return networkResponse
     console.error('Erro ao criar obra:', error)
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Erro interno do servidor' },

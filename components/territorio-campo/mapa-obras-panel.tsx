@@ -2,15 +2,18 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import dynamic from 'next/dynamic'
-import { ExternalLink, ImageIcon, Loader2, MapPinned, Maximize2, Minimize2, RefreshCw } from 'lucide-react'
+import { ExternalLink, Box, ImageIcon, Loader2, MapPinned, Maximize2, MessageSquare, Minimize2, RefreshCw } from 'lucide-react'
 import Link from 'next/link'
 import {
+  OBRA_FASE_COLOR,
   OBRA_FASE_LABEL,
   OBRA_MAPA_TEMAS,
   OBRA_MAPA_TEMAS_OBRA,
   agregarMarcadoresPorMunicipioETema,
   filtrarMarcadoresPorFase,
+  filtrarMarcadoresPorMunicipio,
   filtrarObrasPorTema,
+  listarMunicipiosComObras,
   obraMapaTemaConfig,
   type ObraFaseFiltro,
   type ObraMapaRow,
@@ -20,8 +23,14 @@ import {
 import { MapaObrasKpiStrip } from '@/components/territorio-campo/mapa-obras-kpi-strip'
 import { MapaObrasSplash } from '@/components/territorio-campo/mapa-obras-splash'
 import { ObraFotoUrlField } from '@/components/obras/obra-foto-url-field'
-import { ObraFaseIcon } from '@/components/territorio-campo/obra-fase-icon'
-import { OBRA_FASE_COLOR } from '@/lib/obras-mapa'
+import { ObraTemaMarkerPreview } from '@/components/territorio-campo/obra-tema-scene-icon'
+import {
+  OBRA_MAQUINARIO_3D_VARIANTS,
+  OBRA_PAVIMENTACAO_3D_VARIANTS,
+  OBRA_TEMA_MARKER_LABEL,
+  type ObraMaquinario3dVariant,
+  type ObraPavimentacao3dVariant,
+} from '@/lib/obras-mapa-tema-icons'
 import { OBRA_MAPA_LEGENDA } from '@/lib/obras-mapa-markers'
 import { chromeButtonClass, chromeFilterChipClass } from '@/lib/button-chrome'
 import { typographyBodyMutedClass } from '@/lib/typography-chrome'
@@ -63,8 +72,13 @@ export function MapaObrasPanel() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [filtroFase, setFiltroFase] = useState<ObraFaseFiltro>('todas')
+  const [filtroMunicipio, setFiltroMunicipio] = useState<string>('')
   const [temaAtivo, setTemaAtivo] = useState<ObraMapaTemaFiltro>('todos')
   const [visaoMapa, setVisaoMapa] = useState<ObraMapaVisao>('operacional')
+  const [usarIcone3d, setUsarIcone3d] = useState<boolean>(true)
+  const [pavimentacao3dVariant, setPavimentacao3dVariant] = useState<ObraPavimentacao3dVariant>('oncoming')
+  const [maquinario3dVariant, setMaquinario3dVariant] = useState<ObraMaquinario3dVariant>('trator')
+  const [mostrarTodosPopups, setMostrarTodosPopups] = useState<boolean>(false)
   const [splashConcluido, setSplashConcluido] = useState<boolean>(false)
   const [animacaoEntradaMapa, setAnimacaoEntradaMapa] = useState<boolean>(false)
   const [selectedMarcadorKey, setSelectedMarcadorKey] = useState<string | null>(null)
@@ -131,14 +145,24 @@ export function MapaObrasPanel() {
     [obras, temaAtivo]
   )
 
+  const municipiosDisponiveis = useMemo(
+    () => listarMunicipiosComObras(obras, temaAtivo),
+    [obras, temaAtivo]
+  )
+
+  const marcadoresPorMunicipio = useMemo(
+    () => filtrarMarcadoresPorMunicipio(marcadoresAgregados, filtroMunicipio),
+    [filtroMunicipio, marcadoresAgregados]
+  )
+
   const marcadoresFiltrados = useMemo(
-    () => filtrarMarcadoresPorFase(marcadoresAgregados, filtroFase),
-    [filtroFase, marcadoresAgregados]
+    () => filtrarMarcadoresPorFase(marcadoresPorMunicipio, filtroFase),
+    [filtroFase, marcadoresPorMunicipio]
   )
 
   const totais = useMemo(() => {
-    const municipiosUnicos = new Set(marcadoresAgregados.map((m) => m.municipio))
-    return marcadoresAgregados.reduce(
+    const municipiosUnicos = new Set(marcadoresPorMunicipio.map((m) => m.municipio))
+    return marcadoresPorMunicipio.reduce(
       (acc, m) => ({
         municipios: municipiosUnicos.size,
         obras: acc.obras + m.total,
@@ -148,16 +172,28 @@ export function MapaObrasPanel() {
       }),
       { municipios: municipiosUnicos.size, obras: 0, emAndamento: 0, finalizadas: 0, aIniciar: 0 }
     )
-  }, [marcadoresAgregados])
+  }, [marcadoresPorMunicipio])
 
   const marcadorSelecionado = useMemo(
-    () => marcadoresAgregados.find((m) => m.markerKey === selectedMarcadorKey) ?? null,
-    [marcadoresAgregados, selectedMarcadorKey]
+    () => marcadoresFiltrados.find((m) => m.markerKey === selectedMarcadorKey) ?? null,
+    [marcadoresFiltrados, selectedMarcadorKey]
   )
+
+  useEffect(() => {
+    if (filtroMunicipio && !municipiosDisponiveis.includes(filtroMunicipio)) {
+      setFiltroMunicipio('')
+      setSelectedMarcadorKey(null)
+    }
+  }, [filtroMunicipio, municipiosDisponiveis])
+
+  useEffect(() => {
+    setMostrarTodosPopups(false)
+  }, [filtroFase, filtroMunicipio, temaAtivo])
 
   const onTemaChange = useCallback((tema: ObraMapaTemaFiltro) => {
     setTemaAtivo(tema)
     setFiltroFase('todas')
+    setFiltroMunicipio('')
     setSelectedMarcadorKey(null)
   }, [])
 
@@ -198,7 +234,7 @@ export function MapaObrasPanel() {
         isNativeFullscreen ? 'shrink-0 bg-bg-surface' : 'bg-bg-app/40'
       )}
     >
-      <div className="flex flex-wrap gap-2">
+      <div className="flex flex-wrap items-center gap-2">
         {OBRA_MAPA_TEMAS.map((tema) => (
           <button
             key={tema.id}
@@ -212,8 +248,9 @@ export function MapaObrasPanel() {
             </span>
           </button>
         ))}
-      </div>
-      <div className="mt-2 flex flex-wrap gap-2">
+
+        <span className="hidden h-4 w-px shrink-0 bg-border-card opacity-60 sm:block" aria-hidden />
+
         {FILTROS.map((f) => (
           <button
             key={f.id}
@@ -224,6 +261,30 @@ export function MapaObrasPanel() {
             {f.label}
           </button>
         ))}
+
+        <span className="hidden h-4 w-px shrink-0 bg-border-card opacity-60 sm:block" aria-hidden />
+
+        <label className="flex min-w-0 items-center gap-1.5">
+          <span className="shrink-0 text-[10px] font-medium uppercase tracking-wide text-text-secondary">
+            Município
+          </span>
+          <select
+            value={filtroMunicipio}
+            onChange={(e) => {
+              setFiltroMunicipio(e.target.value)
+              setSelectedMarcadorKey(null)
+            }}
+            title="Filtrar por município"
+            className="max-w-[9rem] truncate rounded-lg border border-card bg-bg-app px-2 py-1 text-xs text-text-primary focus:outline-none focus:ring-2 focus:ring-accent-gold-soft sm:max-w-[11rem]"
+          >
+            <option value="">Todos ({municipiosDisponiveis.length})</option>
+            {municipiosDisponiveis.map((municipio) => (
+              <option key={municipio} value={municipio}>
+                {municipio}
+              </option>
+            ))}
+          </select>
+        </label>
       </div>
     </div>
   )
@@ -270,6 +331,93 @@ export function MapaObrasPanel() {
                 : `${new Set(marcadoresFiltrados.map((m) => m.municipio)).size} município(s) no mapa`}
             </div>
             <div className="flex flex-wrap items-center gap-3">
+              {(temaAtivo === 'todos' ? OBRA_MAPA_TEMAS_OBRA : [temaAtivo]).map((temaLeg) => (
+                <span key={temaLeg} className="inline-flex items-center gap-1.5 text-[11px] text-text-muted">
+                  <ObraTemaMarkerPreview
+                    tema={temaLeg}
+                    fase="em_andamento"
+                    size={24}
+                    usarIcone3d={usarIcone3d && visaoMapa !== 'comunicacao'}
+                    pavimentacao3dVariant={pavimentacao3dVariant}
+                    maquinario3dVariant={maquinario3dVariant}
+                  />
+                  {OBRA_TEMA_MARKER_LABEL[temaLeg]}
+                </span>
+              ))}
+              <span className="hidden h-4 w-px shrink-0 bg-border-card opacity-60 sm:block" aria-hidden />
+              {OBRA_MAPA_LEGENDA.map((item) => (
+                <span
+                  key={item.fase}
+                  className="inline-flex items-center gap-1.5 text-[11px] text-text-muted"
+                >
+                  <span
+                    className="inline-block h-3 w-3 rounded-full ring-2 ring-white/90"
+                    style={{ backgroundColor: OBRA_FASE_COLOR[item.fase] }}
+                  />
+                  {item.label}
+                </span>
+              ))}
+              <span className="hidden h-4 w-px shrink-0 bg-border-card opacity-60 sm:block" aria-hidden />
+              <button
+                type="button"
+                onClick={() => setMostrarTodosPopups((v) => !v)}
+                className={cn(
+                  chromeFilterChipClass(mostrarTodosPopups),
+                  'inline-flex items-center gap-1.5'
+                )}
+                title={
+                  mostrarTodosPopups
+                    ? 'Ocultar popups do mapa'
+                    : 'Exibir popups de todos os marcadores visíveis'
+                }
+                disabled={marcadoresFiltrados.length === 0}
+              >
+                <MessageSquare className="h-3.5 w-3.5" aria-hidden />
+                Popups
+              </button>
+              <button
+                type="button"
+                onClick={() => setUsarIcone3d((v) => !v)}
+                className={cn(
+                  chromeFilterChipClass(usarIcone3d),
+                  'inline-flex items-center gap-1.5'
+                )}
+                title={usarIcone3d ? 'Voltar aos ícones SVG' : 'Usar ícones 3D estáticos'}
+                disabled={visaoMapa === 'comunicacao' || marcadoresFiltrados.length === 0}
+              >
+                <Box className="h-3.5 w-3.5" aria-hidden />
+                3D
+              </button>
+              {usarIcone3d && visaoMapa !== 'comunicacao' && (temaAtivo === 'todos' || temaAtivo === 'pavimentacao') ? (
+                <select
+                  value={pavimentacao3dVariant}
+                  onChange={(e) => setPavimentacao3dVariant(e.target.value as ObraPavimentacao3dVariant)}
+                  className="h-8 max-w-[9.5rem] truncate rounded-lg border border-card bg-bg-surface px-2 text-xs text-text-secondary"
+                  title="Ícone 3D de pavimentação"
+                  disabled={marcadoresFiltrados.length === 0}
+                >
+                  {OBRA_PAVIMENTACAO_3D_VARIANTS.map((v) => (
+                    <option key={v.id} value={v.id} title={v.descricao}>
+                      {v.label}
+                    </option>
+                  ))}
+                </select>
+              ) : null}
+              {usarIcone3d && visaoMapa !== 'comunicacao' && (temaAtivo === 'todos' || temaAtivo === 'maquinario-agricola') ? (
+                <select
+                  value={maquinario3dVariant}
+                  onChange={(e) => setMaquinario3dVariant(e.target.value as ObraMaquinario3dVariant)}
+                  className="h-8 max-w-[9.5rem] truncate rounded-lg border border-card bg-bg-surface px-2 text-xs text-text-secondary"
+                  title="Ícone 3D de maquinário agrícola"
+                  disabled={marcadoresFiltrados.length === 0}
+                >
+                  {OBRA_MAQUINARIO_3D_VARIANTS.map((v) => (
+                    <option key={v.id} value={v.id} title={v.descricao}>
+                      {v.label}
+                    </option>
+                  ))}
+                </select>
+              ) : null}
               <button
                 type="button"
                 onClick={() => setVisaoMapa((v) => (v === 'operacional' ? 'comunicacao' : 'operacional'))}
@@ -282,24 +430,6 @@ export function MapaObrasPanel() {
                 <ImageIcon className="h-3.5 w-3.5" aria-hidden />
                 Comunicação
               </button>
-              {OBRA_MAPA_LEGENDA.map((item) => (
-                <span
-                  key={item.fase}
-                  className="inline-flex items-center gap-1.5 text-[11px] text-text-muted"
-                >
-                  <span
-                    className="inline-flex h-6 w-6 items-center justify-center rounded-full border border-white/80 text-white shadow-sm"
-                    style={{ backgroundColor: OBRA_FASE_COLOR[item.fase] }}
-                  >
-                    <ObraFaseIcon
-                      fase={item.fase}
-                      tema={temaAtivo === 'todos' ? 'pavimentacao' : temaAtivo}
-                      size={12}
-                    />
-                  </span>
-                  {item.label}
-                </span>
-              ))}
               {!isNativeFullscreen ? (
                 <button
                   type="button"
@@ -324,7 +454,8 @@ export function MapaObrasPanel() {
           </div>
           <p className={cn('mt-1.5', typographyBodyMutedClass)}>
             Passe o mouse para ver o resumo · clique no pin para detalhes
-            {visaoMapa === 'comunicacao' ? ' · visão Comunicação: fotos nos marcadores com imagem cadastrada' : ''}
+            {visaoMapa === 'comunicacao' ? ' · visão Comunicação: fotos nos marcadores com imagem cadastrada' : usarIcone3d ? ' · ícones 3D estáticos (Fluent Emoji)' : ' · ícones SVG · anel colorido = fase'}
+            {mostrarTodosPopups ? ' · popups abertos em todos os marcadores' : ''}
             {temaAtivo === 'todos' ? ' · cidades com mais de um tema exibem pins separados' : ''}
             {isNativeFullscreen ? '' : ' e painel abaixo'}
           </p>
@@ -340,7 +471,10 @@ export function MapaObrasPanel() {
             </div>
           ) : marcadoresFiltrados.length === 0 ? (
             <div className="flex min-h-[320px] flex-col items-center justify-center gap-2 px-6 text-center text-sm text-text-muted">
-              <p>Nenhuma obra de {temaConfig.label.toLowerCase()} encontrada para este filtro.</p>
+              <p>
+                Nenhuma obra de {temaConfig.label.toLowerCase()} encontrada
+                {filtroMunicipio ? ` em ${filtroMunicipio}` : ''} para este filtro.
+              </p>
               <Link href="/dashboard/obras" className="inline-flex items-center gap-1 text-[rgb(var(--color-primary))] hover:underline">
                 Cadastrar obras
                 <ExternalLink className="h-3.5 w-3.5" aria-hidden />
@@ -353,6 +487,10 @@ export function MapaObrasPanel() {
               filtroFase={filtroFase}
               visaoMapa={visaoMapa}
               animacaoEntrada={animacaoEntradaMapa}
+              mostrarTodosPopups={mostrarTodosPopups}
+              usarIcone3d={usarIcone3d}
+              pavimentacao3dVariant={pavimentacao3dVariant}
+              maquinario3dVariant={maquinario3dVariant}
               selectedMarcadorKey={selectedMarcadorKey}
               onSelectMarcador={setSelectedMarcadorKey}
               isFullscreen={isNativeFullscreen}

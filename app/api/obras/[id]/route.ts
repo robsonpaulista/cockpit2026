@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { requireRouteUser } from '@/lib/supabase/route-auth'
+import { supabaseNetworkErrorResponse } from '@/lib/supabase/network-error'
 
 export const dynamic = 'force-dynamic'
 
@@ -8,15 +10,10 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const auth = await requireRouteUser()
+    if (!auth.ok) return auth.response
+
     const supabase = createClient()
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
-
-    if (!user) {
-      return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
-    }
-
     const { id } = await params
     if (!id) {
       return NextResponse.json({ error: 'ID da obra é obrigatório' }, { status: 400 })
@@ -112,6 +109,8 @@ export async function PATCH(
 
     return NextResponse.json({ obra: data })
   } catch (error: unknown) {
+    const networkResponse = supabaseNetworkErrorResponse(error)
+    if (networkResponse) return networkResponse
     console.error('Erro ao atualizar obra:', error)
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Erro interno do servidor' },
@@ -125,15 +124,10 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const auth = await requireRouteUser()
+    if (!auth.ok) return auth.response
+
     const supabase = createClient()
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
-
-    if (!user) {
-      return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
-    }
-
     const { id } = await params
     if (!id) {
       return NextResponse.json({ error: 'ID da obra é obrigatório' }, { status: 400 })
@@ -151,6 +145,8 @@ export async function DELETE(
 
     return NextResponse.json({ success: true })
   } catch (error: unknown) {
+    const networkResponse = supabaseNetworkErrorResponse(error)
+    if (networkResponse) return networkResponse
     console.error('Erro ao excluir obra:', error)
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Erro interno do servidor' },

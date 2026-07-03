@@ -6,8 +6,32 @@ import {
   type ObraMapaTema,
 } from '@/lib/obras-mapa'
 import { googleDriveImagePreviewUrl } from '@/lib/google-drive-image-url'
+import {
+  OBRA_TEMA_MARKER_COLOR,
+  OBRA_TEMA_MARKER_LABEL,
+  obraFaseDotHtml,
+  obraTemaGlyphHtml,
+  type ObraMaquinario3dVariant,
+  type ObraPavimentacao3dVariant,
+} from '@/lib/obras-mapa-tema-icons'
 
 export type ObraMapAppearance = 'light' | 'dark'
+
+/** Tamanhos dos pins no mapa (px). */
+export const OBRA_MARKER_SIZE = {
+  disc: 30,
+  discSelected: 34,
+  glyph: 20,
+  glyphSelected: 22,
+  photo: 36,
+  photoSelected: 40,
+} as const
+
+function obraMarkerTemaClass(tema: ObraMapaTema): string {
+  if (tema === 'quadras-esportivas') return 'obra-marker-wrap--quadras'
+  if (tema === 'maquinario-agricola') return 'obra-marker-wrap--maquinario'
+  return 'obra-marker-wrap--pavimentacao'
+}
 
 function escapeHtml(value: string): string {
   return value
@@ -98,34 +122,54 @@ export function createObraMarkerHtml(options: {
   animDelayMs?: number
   photoUrl?: string | null
   entradaSequencial?: boolean
+  usarIcone3d?: boolean
+  pavimentacao3dVariant?: ObraPavimentacao3dVariant
+  maquinario3dVariant?: ObraMaquinario3dVariant
 }): string {
-  const { fase, tema = 'pavimentacao', selected, total, animDelayMs = 0, photoUrl, entradaSequencial = false } = options
-  const color = OBRA_FASE_COLOR[fase]
+  const {
+    fase,
+    tema = 'pavimentacao',
+    selected,
+    total,
+    animDelayMs = 0,
+    photoUrl,
+    entradaSequencial = false,
+    usarIcone3d = false,
+    pavimentacao3dVariant = 'oncoming',
+    maquinario3dVariant = 'trator',
+  } = options
+  const faseColor = OBRA_FASE_COLOR[fase]
+  const temaColor = OBRA_TEMA_MARKER_COLOR[tema]
   const badge = total > 1 ? `<span class="obra-marker-badge">${total}</span>` : ''
   const pulse = selected ? '<span class="obra-marker-pulse"></span>' : ''
   const wrapClass = entradaSequencial ? 'obra-marker-wrap obra-marker-wrap--sequential' : 'obra-marker-wrap'
+  const temaClass = obraMarkerTemaClass(tema)
 
   if (photoUrl) {
-    const size = selected ? 52 : 46
-    return `<div class="${wrapClass} obra-marker-wrap--photo" style="width:${size}px;height:${size + 10}px;animation-delay:${animDelayMs}ms;--obra-color:${color}">
+    const size = selected ? OBRA_MARKER_SIZE.photoSelected : OBRA_MARKER_SIZE.photo
+    return `<div class="${wrapClass} obra-marker-wrap--photo ${temaClass}" style="width:${size}px;height:${size + 10}px;animation-delay:${animDelayMs}ms;--obra-tema:${temaColor};--obra-fase:${faseColor}">
       ${pulse}
-      <div class="obra-marker-photo${selected ? ' obra-marker-photo--selected' : ''}" style="width:${size}px;height:${size}px">
+      <div class="obra-marker-photo${selected ? ' obra-marker-photo--selected' : ''}" style="width:${size}px;height:${size}px;border-color:${faseColor}">
         <img src="${photoUrl.replace(/"/g, '&quot;')}" alt="" class="obra-marker-photo-img" loading="eager" referrerpolicy="no-referrer" />
+        ${obraFaseDotHtml(fase)}
         ${badge}
       </div>
-      <span class="obra-marker-tail obra-marker-tail--photo"></span>
+      <span class="obra-marker-tail obra-marker-tail--photo" style="border-top-color:${temaColor}"></span>
     </div>`
   }
 
-  const size = selected ? 44 : 38
+  const size = selected ? OBRA_MARKER_SIZE.discSelected : OBRA_MARKER_SIZE.disc
+  const glyphSize = selected ? OBRA_MARKER_SIZE.glyphSelected : OBRA_MARKER_SIZE.glyph
+  const glyphClass = usarIcone3d ? 'obra-marker-glyph obra-marker-glyph--3d' : 'obra-marker-glyph'
 
-  return `<div class="${wrapClass}" style="width:${size}px;height:${size + 8}px;animation-delay:${animDelayMs}ms">
+  return `<div class="${wrapClass} ${temaClass}${usarIcone3d ? ' obra-marker-wrap--3d' : ''}" style="width:${size}px;height:${size + 8}px;animation-delay:${animDelayMs}ms;--obra-tema:${temaColor};--obra-fase:${faseColor}">
     ${pulse}
-    <div class="obra-marker-pin${selected ? ' obra-marker-pin--selected' : ''}" style="--obra-color:${color}">
-      <span class="obra-marker-icon">${obraFaseSvgIcon(fase, tema)}</span>
+    <div class="obra-marker-disc${selected ? ' obra-marker-disc--selected' : ''}" style="width:${size}px;height:${size}px">
+      <span class="${glyphClass}">${obraTemaGlyphHtml(tema, glyphSize, usarIcone3d, pavimentacao3dVariant, maquinario3dVariant)}</span>
+      ${obraFaseDotHtml(fase)}
       ${badge}
     </div>
-    <span class="obra-marker-tail" style="border-top-color:${color}"></span>
+    <span class="obra-marker-tail" style="border-top-color:${temaColor}"></span>
   </div>`
 }
 
@@ -134,7 +178,7 @@ export function createObraTooltipHtml(
   fase: ObraFaseMapa,
   tema: ObraMapaTema = 'pavimentacao'
 ): string {
-  const temaLabel = tema === 'pavimentacao' ? 'Pavimentação' : 'Quadras e areninhas'
+  const temaLabel = OBRA_TEMA_MARKER_LABEL[tema]
   return `<div class="obra-marker-tooltip">
     <strong>${escapeHtml(m.municipio)}</strong>
     <span style="color:${OBRA_FASE_COLOR[fase]}">${OBRA_FASE_LABEL[fase]}</span>
@@ -155,7 +199,7 @@ export function createObraPopupHtml(
   const soft = isDark ? 'rgba(148,163,184,0.1)' : 'rgba(15,23,42,0.04)'
   const faseColor = OBRA_FASE_COLOR[fase]
 
-  const temaLabel = tema === 'pavimentacao' ? 'Pavimentação' : 'Quadras e areninhas'
+  const temaLabel = OBRA_TEMA_MARKER_LABEL[tema]
 
   const stats = [
     { label: 'andamento', value: m.emAndamento, color: OBRA_FASE_COLOR.em_andamento },
@@ -302,59 +346,112 @@ export function getObraMapLeafletStyles(appearance: ObraMapAppearance): string {
   .obra-marker-wrap--sequential {
     animation: obra-marker-enter 0.55s cubic-bezier(0.22, 1, 0.36, 1) forwards;
   }
-  .obra-marker-pin {
+  .obra-marker-disc {
     position: relative;
     z-index: 2;
-    width: 34px;
-    height: 34px;
-    border-radius: 50% 50% 50% 12%;
-    transform: rotate(-45deg);
-    background: var(--obra-color);
-    border: 2px solid rgba(255,255,255,0.92);
-    box-shadow: 0 4px 14px rgba(15,23,42,0.28);
+    background: var(--obra-tema);
+    border: 2px solid #fff;
+    border-radius: 50%;
+    box-shadow: 0 0 0 2px var(--obra-fase), 0 4px 14px rgba(15,23,42,0.3);
     display: flex;
     align-items: center;
     justify-content: center;
     transition: transform 0.2s ease, box-shadow 0.2s ease;
   }
-  .obra-marker-pin--selected {
-    transform: rotate(-45deg) scale(1.12);
-    box-shadow: 0 6px 20px rgba(15,23,42,0.35);
+  .obra-marker-disc--selected {
+    transform: scale(1.1);
+    box-shadow: 0 0 0 3px var(--obra-fase), 0 6px 20px rgba(15,23,42,0.38);
   }
-  .obra-marker-wrap:hover .obra-marker-pin {
-    transform: rotate(-45deg) scale(1.14);
-    box-shadow: 0 8px 22px rgba(15,23,42,0.32);
+  .obra-marker-wrap--pavimentacao:hover .obra-marker-disc,
+  .obra-marker-wrap--quadras:hover .obra-marker-disc,
+  .obra-marker-wrap--maquinario:hover .obra-marker-disc {
+    transform: scale(1.12);
     z-index: 50;
   }
-  .obra-marker-wrap:hover .obra-marker-pin--selected {
-    transform: rotate(-45deg) scale(1.18);
+  .obra-marker-wrap--pavimentacao:hover .obra-marker-disc--selected,
+  .obra-marker-wrap--quadras:hover .obra-marker-disc--selected,
+  .obra-marker-wrap--maquinario:hover .obra-marker-disc--selected {
+    transform: scale(1.14);
   }
-  .obra-marker-icon {
-    transform: rotate(45deg);
-    color: #fff;
+  .obra-marker-wrap--pavimentacao .obra-marker-disc {
+    border-color: #cbd5e1;
+    box-shadow: 0 0 0 2px var(--obra-fase), 0 4px 14px rgba(15,23,42,0.22);
+  }
+  .obra-marker-wrap--pavimentacao .obra-marker-disc--selected {
+    box-shadow: 0 0 0 3px var(--obra-fase), 0 6px 20px rgba(15,23,42,0.3);
+  }
+  .obra-marker-wrap--pavimentacao .obra-marker-tail {
+    border-top-color: #94a3b8;
+  }
+  .obra-marker-wrap--pavimentacao .obra-marker-tail--photo {
+    border-top-color: #94a3b8;
+  }
+  .obra-marker-wrap--maquinario .obra-marker-disc {
+    border-color: #fef3c7;
+    box-shadow: 0 0 0 2px var(--obra-fase), 0 4px 14px rgba(120,53,15,0.28);
+  }
+  .obra-marker-wrap--maquinario .obra-marker-disc--selected {
+    box-shadow: 0 0 0 3px var(--obra-fase), 0 6px 20px rgba(120,53,15,0.34);
+  }
+  .obra-marker-wrap--maquinario .obra-marker-tail,
+  .obra-marker-wrap--maquinario .obra-marker-tail--photo {
+    border-top-color: #92400e;
+  }
+  .obra-marker-glyph {
     display: flex;
     align-items: center;
     justify-content: center;
     line-height: 0;
   }
+  .obra-marker-glyph--3d {
+    width: 82%;
+    height: 82%;
+  }
+  .obra-marker-glyph-3d-img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    filter: drop-shadow(0 2px 3px rgba(15,23,42,0.18));
+    pointer-events: none;
+  }
+  .obra-marker-wrap--3d .obra-marker-disc {
+    background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+  }
+  .obra-marker-wrap--3d.obra-marker-wrap--quadras .obra-marker-disc {
+    background: linear-gradient(180deg, #22c55e 0%, #15803d 100%);
+  }
+  .obra-marker-wrap--3d.obra-marker-wrap--maquinario .obra-marker-disc {
+    background: linear-gradient(180deg, #fbbf24 0%, #b45309 100%);
+  }
+  .obra-marker-fase-dot {
+    position: absolute;
+    bottom: 1px;
+    right: 1px;
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    border: 1.5px solid #fff;
+    box-shadow: 0 1px 4px rgba(15,23,42,0.35);
+    z-index: 4;
+  }
   .obra-marker-badge {
     position: absolute;
     top: -4px;
     right: -4px;
-    transform: rotate(45deg);
-    min-width: 16px;
-    height: 16px;
-    padding: 0 4px;
+    min-width: 15px;
+    height: 15px;
+    padding: 0 3px;
     border-radius: 999px;
     background: #0f172a;
     color: #fff;
-    font-size: 9px;
+    font-size: 8px;
     font-weight: 700;
     display: flex;
     align-items: center;
     justify-content: center;
     border: 1.5px solid #fff;
-    z-index: 3;
+    z-index: 5;
   }
   .obra-marker-tail {
     width: 0;
@@ -362,41 +459,50 @@ export function getObraMapLeafletStyles(appearance: ObraMapAppearance): string {
     margin-top: -3px;
     border-left: 5px solid transparent;
     border-right: 5px solid transparent;
-    border-top: 7px solid var(--obra-color);
+    border-top: 7px solid var(--obra-tema);
     filter: drop-shadow(0 2px 2px rgba(15,23,42,0.2));
     z-index: 1;
   }
   .obra-marker-pulse {
     position: absolute;
-    top: 17px;
+    top: 15px;
     left: 50%;
-    width: 34px;
-    height: 34px;
+    width: 30px;
+    height: 30px;
     border-radius: 50%;
-    background: var(--obra-color);
-    opacity: 0.35;
+    background: var(--obra-fase);
+    opacity: 0.28;
     animation: obra-marker-pulse 1.8s ease-out infinite;
     pointer-events: none;
     z-index: 0;
   }
   .obra-marker-wrap--photo .obra-marker-pulse {
-    top: 23px;
-    width: 46px;
-    height: 46px;
+    top: 18px;
+    width: 36px;
+    height: 36px;
   }
   .obra-marker-wrap--photo .obra-marker-badge {
     transform: none;
     top: -2px;
     right: -2px;
   }
+  .obra-marker-wrap--photo .obra-marker-fase-dot {
+    transform: none;
+    bottom: 2px;
+    right: 2px;
+  }
   .obra-marker-photo {
     position: relative;
     z-index: 2;
     border-radius: 50%;
-    overflow: hidden;
-    border: 3px solid var(--obra-color);
+    overflow: visible;
+    border: 2.5px solid var(--obra-fase);
     box-shadow: 0 4px 16px rgba(15,23,42,0.32), 0 0 0 2px rgba(255,255,255,0.95);
     transition: transform 0.2s ease, box-shadow 0.2s ease;
+  }
+  .obra-marker-photo .obra-marker-photo-img {
+    border-radius: 50%;
+    overflow: hidden;
   }
   .obra-marker-photo--selected {
     transform: scale(1.08);
@@ -417,7 +523,7 @@ export function getObraMapLeafletStyles(appearance: ObraMapAppearance): string {
     object-fit: cover;
   }
   .obra-marker-tail--photo {
-    border-top-color: var(--obra-color);
+    border-top-color: var(--obra-tema);
   }
   .obra-marker-tooltip {
     font-family: system-ui, sans-serif;
