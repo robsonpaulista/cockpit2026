@@ -9,6 +9,7 @@ import { TerritorioCampoPanoramaPanel } from '@/components/territorio-campo/terr
 import { VisitasPanel } from '@/components/territorio-campo/visitas-panel'
 import {
   TERRITORIO_CAMPO_TAB_BASE,
+  TERRITORIO_CAMPO_TAB_MAPA_OBRAS,
   TERRITORIO_CAMPO_TAB_PANORAMA,
   TERRITORIO_CAMPO_TAB_VISITAS,
   type TerritorioCampoTab,
@@ -24,6 +25,19 @@ const TerritorioBasePanel = dynamic(
       <div className="flex items-center justify-center gap-2 py-16 text-sm text-text-muted">
         <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
         Carregando base territorial…
+      </div>
+    ),
+  }
+)
+
+const MapaObrasPanel = dynamic(
+  () => import('@/components/territorio-campo/mapa-obras-panel').then((mod) => mod.MapaObrasPanel),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="flex items-center justify-center gap-2 py-16 text-sm text-text-muted">
+        <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+        Carregando mapa de obras…
       </div>
     ),
   }
@@ -63,6 +77,8 @@ export default function TerritorioCampoPage() {
         <TerritorioCampoPanoramaPanel />
       ) : activeTab === TERRITORIO_CAMPO_TAB_BASE ? (
         <TerritorioBasePanel />
+      ) : activeTab === TERRITORIO_CAMPO_TAB_MAPA_OBRAS ? (
+        <MapaObrasPanel />
       ) : (
         <VisitasPanel />
       )}

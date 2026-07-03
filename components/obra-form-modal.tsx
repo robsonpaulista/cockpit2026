@@ -27,6 +27,7 @@ export interface ObraFormData {
   valor_pago?: number | null
   data_pagamento?: string
   nro_doc?: string
+  imagem_url?: string | null
 }
 
 interface ObraFormModalProps {
@@ -65,6 +66,7 @@ export function ObraFormModal({ obra, defaultTipo, onClose, onSuccess }: ObraFor
     valor_pago: null,
     data_pagamento: '',
     nro_doc: '',
+    imagem_url: '',
   })
 
   const municipios = useMemo(
@@ -98,6 +100,7 @@ export function ObraFormModal({ obra, defaultTipo, onClose, onSuccess }: ObraFor
         valor_pago: obra.valor_pago ?? null,
         data_pagamento: toYyyyMmDd(obra.data_pagamento) || '',
         nro_doc: obra.nro_doc ?? '',
+        imagem_url: obra.imagem_url ?? '',
       })
     } else {
       setForm({
@@ -116,6 +119,7 @@ export function ObraFormModal({ obra, defaultTipo, onClose, onSuccess }: ObraFor
         valor_pago: null,
         data_pagamento: '',
         nro_doc: '',
+        imagem_url: '',
       })
     }
   }, [obra, defaultTipo, municipios])
@@ -162,6 +166,7 @@ export function ObraFormModal({ obra, defaultTipo, onClose, onSuccess }: ObraFor
         valor_pago: form.valor_pago != null ? Number(form.valor_pago) : null,
         data_pagamento: (form.data_pagamento ?? '').trim() || null,
         nro_doc: (form.nro_doc ?? '').trim() || null,
+        imagem_url: (form.imagem_url ?? '').trim() || null,
       }
 
       const url = isEdit ? `/api/obras/${form.id}` : '/api/obras'
@@ -346,6 +351,22 @@ export function ObraFormModal({ obra, defaultTipo, onClose, onSuccess }: ObraFor
                 placeholder="0,00"
               />
             </div>
+          </div>
+
+          <div className="rounded-xl border border-card bg-background p-4">
+            <label className="block text-sm font-medium text-text-primary mb-1">
+              Link da foto (Google Drive)
+            </label>
+            <input
+              type="url"
+              value={form.imagem_url ?? ''}
+              onChange={(e) => update('imagem_url', e.target.value)}
+              className="w-full px-3 py-2 border border-card rounded-lg bg-bg-surface focus:outline-none focus:ring-2 focus:ring-accent-gold-soft text-sm"
+              placeholder="https://drive.google.com/file/d/.../view?usp=sharing"
+            />
+            <p className="mt-1.5 text-xs text-text-muted">
+              Cole o link de compartilhamento do Drive. O arquivo deve estar acessível por &quot;Qualquer pessoa com o link&quot;.
+            </p>
           </div>
 
           {/* Seção de Pagamento */}

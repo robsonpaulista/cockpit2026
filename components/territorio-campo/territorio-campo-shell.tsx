@@ -1,6 +1,6 @@
 'use client'
 
-import { LayoutGrid, MapPin, Route } from 'lucide-react'
+import { HardHat, LayoutGrid, MapPin, Route } from 'lucide-react'
 import {
   DashboardHubTabBar,
   DashboardPageChrome,
@@ -22,6 +22,7 @@ import { useDashboardTopbarVisible } from '@/hooks/use-dashboard-topbar-visible'
 const TABS: { id: TerritorioCampoTab; label: string; icon: typeof LayoutGrid }[] = [
   { id: 'panorama', label: 'Panorama', icon: LayoutGrid },
   { id: 'base', label: 'Base', icon: MapPin },
+  { id: 'mapa-obras', label: 'Mapa de Obras', icon: HardHat },
   { id: 'visitas', label: 'Visitas', icon: Route },
 ]
 

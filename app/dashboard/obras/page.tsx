@@ -35,6 +35,7 @@ interface Obra {
   valor_pago?: number
   data_pagamento?: string
   nro_doc?: string
+  imagem_url?: string | null
   created_at?: string
   updated_at?: string
 }
