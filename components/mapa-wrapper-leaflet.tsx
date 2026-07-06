@@ -4,6 +4,12 @@ import { useEffect, useRef } from 'react'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import { APP_FONT_STACK_CSS } from '@/lib/app-font-stack'
+import type { IptIndicador, IptMunicipio } from '@/lib/ipt'
+import type { TerritorioDesenvolvimentoPI } from '@/lib/piaui-territorio-desenvolvimento'
+import { buildIptMunicipiosComTooltipAutomatico, iptMarkerSize } from '@/lib/ipt'
+import { iptZoomLevel } from '@/lib/ipt-chip'
+import { IPT_MAP_VIEW_PI, iptLatLngPointsFromMunicipios } from '@/lib/ipt-td'
+import { createIptMarkerHtml, createIptPopupHtml, createIptTooltipBasicoHtml } from '@/lib/ipt-popup'
 
 // ========== Types ==========
 interface Municipio {
@@ -59,6 +65,14 @@ interface MapWrapperProps {
   showRegionLabels?: boolean
   /** Marcadores menores para cards embutidos */
   compactMarkers?: boolean
+  /** Modo IPT: um marcador por município com score 0–100 */
+  iptMunicipios?: IptMunicipio[]
+  /** Lente do mapa IPT: recolore pins pelo sinal do indicador escolhido */
+  iptIndicadorFiltro?: IptIndicador | null
+  /** TD ativo — dispara zoom automático no mapa IPT */
+  iptFiltroTd?: TerritorioDesenvolvimentoPI | null
+  /** Municípios do TD (sem filtro de prioridade) — base do enquadramento */
+  iptMunicipiosBounds?: IptMunicipio[]
 }
 
 // ========== Constants ==========
@@ -355,6 +369,10 @@ export function MapWrapperLeaflet({
   appearance = 'light',
   showRegionLabels = true,
   compactMarkers = false,
+  iptMunicipios,
+  iptIndicadorFiltro = null,
+  iptFiltroTd = null,
+  iptMunicipiosBounds = [],
 }: MapWrapperProps) {
   const mapRef = useRef<HTMLDivElement>(null)
   const mapInstanceRef = useRef<L.Map | null>(null)
@@ -436,6 +454,127 @@ export function MapWrapperLeaflet({
       if (m.lat > maxLat) maxLat = m.lat
     })
     const latRange = maxLat - minLat || 1
+
+    if (iptMunicipios && iptMunicipios.length > 0) {
+      const iptLayer = L.layerGroup()
+      const iptByNome = new Map(iptMunicipios.map((row) => [normalizeName(row.municipio), row]))
+      const tooltipsAutomaticos = buildIptMunicipiosComTooltipAutomatico(iptMunicipios, iptIndicadorFiltro)
+      const mapContainer = map.getContainer()
+      mapContainer.classList.add('ipt-map-mode')
+
+      const syncIptZoomClass = () => {
+        mapContainer.classList.remove('ipt-zoom-far', 'ipt-zoom-mid', 'ipt-zoom-near')
+        mapContainer.classList.add(`ipt-zoom-${iptZoomLevel(map.getZoom())}`)
+      }
+
+      const clearIptFocus = () => {
+        mapContainer.classList.remove('ipt-map--focus')
+        mapContainer.querySelectorAll('.ipt-chip--active').forEach((el) => {
+          el.classList.remove('ipt-chip--active')
+        })
+      }
+
+      const setIptFocus = (municipioKey: string) => {
+        clearIptFocus()
+        mapContainer.classList.add('ipt-map--focus')
+        const chip = mapContainer.querySelector(
+          `[data-ipt-municipio="${municipioKey.replace(/"/g, '\\"')}"]`
+        )
+        chip?.classList.add('ipt-chip--active')
+      }
+
+      map.on('zoomend', syncIptZoomClass)
+      syncIptZoomClass()
+
+      municipiosPiaui.forEach((municipio, index) => {
+        const row = iptByNome.get(normalizeName(municipio.nome))
+        if (!row) return
+
+        const municipioKey = normalizeName(row.municipio)
+        const normalizedLat = (municipio.lat - minLat) / latRange
+        const animDelay = Math.round((1 - normalizedLat) * 1200) + (index % 7) * 20
+        const size = iptMarkerSize(row.pesoExpectativaPct, compactMarkers)
+        const icon = L.divIcon({
+          className: '',
+          html: createIptMarkerHtml(row, size, animDelay, iptIndicadorFiltro),
+          iconSize: [size, size],
+          iconAnchor: [size / 2, size / 2],
+          popupAnchor: [0, -size / 2 - 4],
+        })
+
+        const marker = L.marker([municipio.lat, municipio.lng], { icon, pane: 'markersPane' })
+          .bindPopup(createIptPopupHtml(row, appearance, iptIndicadorFiltro), {
+            maxWidth: 280,
+            className: appearance === 'dark' ? 'mapa-obras-popup-dark' : 'mapa-obras-popup-soft',
+          })
+
+        marker.on('popupopen', () => setIptFocus(municipioKey))
+        marker.on('popupclose', () => clearIptFocus())
+
+        if (tooltipsAutomaticos.has(municipioKey)) {
+          const chipHtml = createIptTooltipBasicoHtml(row, appearance, iptIndicadorFiltro, {
+            municipioKey,
+            animDelay,
+          })
+          if (chipHtml) {
+            marker.bindTooltip(chipHtml, {
+              permanent: true,
+              direction: 'top',
+              offset: [0, -(size / 2 + 6)],
+              className: 'ipt-chip-tooltip',
+              opacity: 1,
+              interactive: true,
+            })
+          }
+        }
+
+        marker.addTo(iptLayer)
+      })
+
+      layersRef.current = { ipt: iptLayer }
+      iptLayer.addTo(map)
+
+      const containerEl = mapRef.current
+      const scheduleInvalidateSize = () => {
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => {
+            const m = mapInstanceRef.current
+            if (!m) return
+            try {
+              m.invalidateSize({ animate: false })
+            } catch {
+              // mapa removido
+            }
+          })
+        })
+      }
+
+      let resizeObserver: ResizeObserver | null = null
+      if (typeof ResizeObserver !== 'undefined' && containerEl) {
+        resizeObserver = new ResizeObserver(() => scheduleInvalidateSize())
+        resizeObserver.observe(containerEl)
+      }
+      window.addEventListener('resize', scheduleInvalidateSize)
+      document.addEventListener('fullscreenchange', scheduleInvalidateSize)
+      scheduleInvalidateSize()
+      const invalidateDelays = [120, 400].map((ms) => window.setTimeout(scheduleInvalidateSize, ms))
+
+      return () => {
+        map.off('zoomend', syncIptZoomClass)
+        clearIptFocus()
+        mapContainer.classList.remove('ipt-map-mode', 'ipt-zoom-far', 'ipt-zoom-mid', 'ipt-zoom-near', 'ipt-map--focus')
+        invalidateDelays.forEach((id) => window.clearTimeout(id))
+        resizeObserver?.disconnect()
+        window.removeEventListener('resize', scheduleInvalidateSize)
+        document.removeEventListener('fullscreenchange', scheduleInvalidateSize)
+        if (mapInstanceRef.current) {
+          mapInstanceRef.current.remove()
+          mapInstanceRef.current = null
+          layersRef.current = {}
+          statsCalculatedRef.current = false
+        }
+      }
+    }
 
     municipiosPiaui.forEach((municipio) => {
       const nomeNorm = normalizeName(municipio.nome)
@@ -765,13 +904,14 @@ export function MapWrapperLeaflet({
         statsCalculatedRef.current = false
       }
     }
-  }, [cidadesComPresenca, cidadesVisitadas, municipiosPiaui, eleitoresPorCidade, onStatsCalculated, appearance, showRegionLabels, compactMarkers])
+  }, [cidadesComPresenca, cidadesVisitadas, municipiosPiaui, eleitoresPorCidade, onStatsCalculated, appearance, showRegionLabels, compactMarkers, iptMunicipios, iptIndicadorFiltro])
 
   // ========== Handle filter changes ==========
   useEffect(() => {
     const layers = layersRef.current
     const map = mapInstanceRef.current
     if (!map || Object.keys(layers).length === 0) return
+    if (layers.ipt) return
 
     // Remove all layers
     Object.values(layers).forEach(layer => {
@@ -802,6 +942,39 @@ export function MapWrapperLeaflet({
         break
     }
   }, [filtroAtivo])
+
+  /** Zoom automático ao filtrar TD — recorte territorial sem depender da prioridade. */
+  useEffect(() => {
+    const map = mapInstanceRef.current
+    if (!map || !iptMunicipios) return
+
+    const applyView = () => {
+      const m = mapInstanceRef.current
+      if (!m) return
+
+      if (!iptFiltroTd) {
+        m.setView(IPT_MAP_VIEW_PI.center, IPT_MAP_VIEW_PI.zoom, { animate: true })
+        return
+      }
+
+      const pts = iptLatLngPointsFromMunicipios(iptMunicipiosBounds)
+      if (pts.length === 0) return
+
+      if (pts.length === 1) {
+        m.setView(pts[0], 10, { animate: true })
+        return
+      }
+
+      m.fitBounds(L.latLngBounds(pts), {
+        padding: [48, 48],
+        maxZoom: 10,
+        animate: true,
+      })
+    }
+
+    const id = window.requestAnimationFrame(applyView)
+    return () => window.cancelAnimationFrame(id)
+  }, [iptMunicipios, iptFiltroTd, iptMunicipiosBounds])
 
   const hostClass = appearance === 'dark' ? 'mapa-leaflet-host--dark' : 'mapa-leaflet-host--light'
 

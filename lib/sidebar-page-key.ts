@@ -41,6 +41,7 @@ export function pageKeyForSidebarItem(id: string): string {
     return 'conteudo'
   }
   if (id === 'noticias-menu') return 'noticias'
+  if (id === 'territorio-ipt') return 'territorio'
   if (id === 'log-system') return 'log_system'
   return id === 'home' ? 'dashboard' : id
 }

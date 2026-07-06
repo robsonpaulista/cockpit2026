@@ -28,6 +28,13 @@ export const SIDEBAR_QUICK_ACCESS_ITEMS: SidebarQuickAccessItem[] = [
     pageKey: 'resumo-eleicoes',
   },
   {
+    id: 'quick-ipt',
+    label: 'IPT',
+    href: '/dashboard/territorio/ipt',
+    icon: 'MapPin',
+    pageKey: 'territorio',
+  },
+  {
     id: 'quick-base-eleitoral',
     label: 'Base Eleitoral',
     href: territorioCampoHref(TERRITORIO_CAMPO_TAB_BASE),
@@ -72,6 +79,8 @@ export function isSidebarQuickAccessActive(
       const tab = params.get('tab')
       return !tab || tab === RESUMO_ELEICOES_TAB_ATENDIMENTO
     }
+    case 'quick-ipt':
+      return pathname.startsWith('/dashboard/territorio/ipt')
     case 'quick-base-eleitoral':
       return pathname.startsWith('/dashboard/territorio') && params.get('tab') === TERRITORIO_CAMPO_TAB_BASE
     case 'quick-pesquisas-opiniao':

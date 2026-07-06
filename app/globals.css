@@ -1162,6 +1162,436 @@ table.td-resumo-table--premium .td-resumo-table__rank--first {
   display: none !important;
 }
 
+/* IPT — chips (etiquetas) no mapa de diagnóstico */
+.leaflet-tooltip.ipt-tooltip-basico,
+.leaflet-tooltip.ipt-chip-tooltip {
+  margin: 0 !important;
+  padding: 0 !important;
+  border: none !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  pointer-events: auto !important;
+  width: max-content !important;
+  max-width: none !important;
+  min-width: 0 !important;
+  overflow: visible !important;
+  white-space: nowrap !important;
+}
+
+.leaflet-tooltip.ipt-tooltip-basico::before,
+.leaflet-tooltip.ipt-chip-tooltip::before {
+  display: none !important;
+}
+
+.leaflet-container.ipt-map-mode {
+  --ipt-chip-enter-ms: 200ms;
+}
+
+.leaflet-container.ipt-map-mode.ipt-zoom-far .ipt-chip__linha {
+  display: none;
+}
+
+.leaflet-container.ipt-map-mode.ipt-zoom-far .ipt-chip {
+  padding: 2px 6px;
+  gap: 0;
+}
+
+.leaflet-container.ipt-map-mode.ipt-zoom-mid .ipt-chip__linha {
+  font-size: 9px;
+}
+
+.leaflet-container.ipt-map-mode.ipt-map--focus .ipt-chip:not(.ipt-chip--active) {
+  opacity: 0.42;
+  transition: opacity var(--ipt-chip-enter-ms) ease;
+}
+
+.ipt-chip {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  width: max-content;
+  max-width: none;
+  padding: 3px 8px 4px;
+  border-radius: 6px;
+  background: var(--ipt-chip-bg, #f8fafc);
+  color: var(--ipt-chip-text, #0f172a);
+  border: 1px solid var(--ipt-chip-border, rgba(148, 163, 184, 0.28));
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
+  font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+  line-height: 1.2;
+  pointer-events: auto;
+  transition:
+    transform var(--ipt-chip-enter-ms) ease,
+    opacity var(--ipt-chip-enter-ms) ease,
+    box-shadow var(--ipt-chip-enter-ms) ease,
+    border-color var(--ipt-chip-enter-ms) ease;
+}
+
+.ipt-chip--enter {
+  animation: ipt-chip-enter var(--ipt-chip-enter-ms, 200ms) ease both;
+  animation-delay: var(--ipt-chip-delay, 0ms);
+}
+
+@keyframes ipt-chip-enter {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.ipt-chip--active {
+  transform: translateY(-2px);
+  box-shadow: 0 3px 10px rgba(15, 23, 42, 0.1);
+  border-color: var(--ipt-chip-sub, rgba(15, 23, 42, 0.35));
+  opacity: 1 !important;
+  z-index: 2;
+}
+
+.ipt-chip__nome {
+  font-size: 10px;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+  color: var(--ipt-chip-text);
+  white-space: nowrap;
+}
+
+.ipt-chip__linha {
+  display: inline-flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 4px;
+  font-size: 9px;
+  font-weight: 500;
+  color: var(--ipt-chip-sub);
+  white-space: nowrap;
+  width: max-content;
+  max-width: none;
+}
+
+.ipt-chip-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  flex-shrink: 0;
+}
+
+.ipt-chip-item__txt {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.ipt-chip-sep {
+  width: 3px;
+  height: 3px;
+  border-radius: 999px;
+  background: var(--ipt-chip-border);
+  flex-shrink: 0;
+  opacity: 0.85;
+}
+
+.ipt-chip-ico {
+  width: 11px;
+  height: 11px;
+  flex-shrink: 0;
+  opacity: 0.88;
+}
+
+.ipt-chip-ico--glyph {
+  width: 10px;
+  height: 10px;
+  opacity: 0.75;
+}
+
+.ipt-chip-item--glyph .ipt-chip-ico:first-child {
+  opacity: 0.72;
+}
+
+.mapa-ipt-marker {
+  transition: transform var(--ipt-chip-enter-ms, 200ms) ease;
+}
+
+.leaflet-container.ipt-map-mode.ipt-map--focus .mapa-ipt-marker {
+  opacity: 0.55;
+}
+
+/* IPT — toolbar premium (filtros + lente) */
+.ipt-toolbar {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.ipt-toolbar__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: flex-start;
+  gap: 10px 14px;
+}
+
+.ipt-toolbar__group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.ipt-toolbar__label {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-muted, #94a3b8);
+  line-height: 1;
+}
+
+.ipt-toolbar__divider {
+  display: none;
+  width: 1px;
+  align-self: stretch;
+  min-height: 36px;
+  background: rgba(148, 163, 184, 0.22);
+  margin: 18px 0 0;
+}
+
+@media (min-width: 900px) {
+  .ipt-toolbar__row {
+    flex-wrap: nowrap;
+    align-items: center;
+  }
+
+  .ipt-toolbar__divider {
+    display: block;
+  }
+
+  .ipt-toolbar__group {
+    flex: 0 1 auto;
+  }
+
+  .ipt-toolbar__group--diag {
+    flex: 0 1 auto;
+    min-width: 0;
+  }
+
+  .ipt-toolbar__group--td {
+    flex: 0 0 auto;
+  }
+
+  .ipt-toolbar__group--lente {
+    flex: 0 0 auto;
+  }
+}
+
+.ipt-toolbar__group--td .ipt-toolbar__select-shell {
+  min-width: 118px;
+  max-width: 168px;
+}
+
+.ipt-toolbar__group--diag .ipt-toolbar__segments {
+  width: max-content;
+  max-width: 100%;
+}
+
+.ipt-toolbar__segments {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 3px;
+  padding: 2px;
+  border-radius: 8px;
+  background: rgba(248, 250, 252, 0.9);
+  border: 1px solid rgba(148, 163, 184, 0.18);
+}
+
+.ipt-toolbar-seg {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  border-radius: 6px;
+  border: none;
+  background: transparent;
+  color: var(--text-secondary, #64748b);
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1.2;
+  cursor: pointer;
+  white-space: nowrap;
+  transition:
+    background 180ms ease,
+    color 180ms ease,
+    box-shadow 180ms ease;
+}
+
+.ipt-toolbar-seg:hover:not(:disabled) {
+  color: var(--text-primary, #0f172a);
+  background: rgba(255, 255, 255, 0.75);
+}
+
+.ipt-toolbar-seg--active {
+  background: #fff;
+  color: var(--text-primary, #0f172a);
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.07);
+}
+
+.ipt-toolbar-seg--diag.ipt-toolbar-seg--active {
+  background: var(--ipt-t-bg, #fff);
+  color: var(--ipt-t-text, #0f172a);
+  box-shadow:
+    0 1px 3px rgba(15, 23, 42, 0.06),
+    inset 0 0 0 1px var(--ipt-t-border, rgba(148, 163, 184, 0.2));
+}
+
+.ipt-toolbar-seg--diag.ipt-toolbar-seg--active .ipt-toolbar-seg__count {
+  color: var(--ipt-t-sub, inherit);
+  opacity: 0.85;
+}
+
+.ipt-toolbar-seg:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.ipt-toolbar-seg__ico {
+  width: 13px;
+  height: 13px;
+  flex-shrink: 0;
+  opacity: 0.82;
+}
+
+.ipt-toolbar-seg__ico--diag {
+  color: var(--ipt-t-dot, #94a3b8);
+  opacity: 1;
+}
+
+.ipt-toolbar-seg--diag.ipt-toolbar-seg--active .ipt-toolbar-seg__ico--diag {
+  color: var(--ipt-t-sub, var(--ipt-t-dot, #0f172a));
+}
+
+.ipt-toolbar-seg--active .ipt-toolbar-seg__ico {
+  opacity: 1;
+}
+
+.ipt-toolbar-seg__count {
+  font-size: 9px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  opacity: 0.55;
+}
+
+.ipt-toolbar__actions {
+  display: flex;
+  align-items: center;
+  margin-left: auto;
+}
+
+.ipt-toolbar-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 7px;
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  background: rgba(255, 255, 255, 0.7);
+  color: var(--text-secondary, #64748b);
+  cursor: pointer;
+  transition:
+    background 180ms ease,
+    border-color 180ms ease,
+    color 180ms ease;
+}
+
+.ipt-toolbar-icon-btn:hover:not(:disabled) {
+  background: #fff;
+  border-color: rgba(148, 163, 184, 0.35);
+  color: var(--text-primary, #0f172a);
+}
+
+.ipt-toolbar-icon-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.ipt-toolbar__hint {
+  margin: 0;
+  font-size: 11px;
+  line-height: 1.45;
+  color: var(--text-muted, #94a3b8);
+}
+
+.ipt-toolbar__select-shell {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 8px 2px 6px;
+  border-radius: 8px;
+  background: rgba(248, 250, 252, 0.9);
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  transition:
+    border-color 180ms ease,
+    box-shadow 180ms ease;
+}
+
+.ipt-toolbar__select-shell--active {
+  border-color: rgba(148, 163, 184, 0.35);
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
+  background: #fff;
+}
+
+.ipt-toolbar__select-ico {
+  width: 13px;
+  height: 13px;
+  flex-shrink: 0;
+  color: var(--text-secondary, #64748b);
+}
+
+.ipt-toolbar__select-shell--active .ipt-toolbar__select-ico {
+  color: var(--text-primary, #0f172a);
+}
+
+.ipt-toolbar__select {
+  flex: 1 1 auto;
+  min-width: 0;
+  border: none;
+  background: transparent;
+  padding: 4px 0;
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1.2;
+  color: var(--text-secondary, #64748b);
+  cursor: pointer;
+  appearance: none;
+}
+
+.ipt-toolbar__select:focus {
+  outline: none;
+}
+
+.ipt-toolbar__select-shell:focus-within {
+  border-color: rgba(148, 163, 184, 0.4);
+  box-shadow: 0 0 0 2px rgba(148, 163, 184, 0.12);
+}
+
+.ipt-toolbar__select-shell--active .ipt-toolbar__select {
+  color: var(--text-primary, #0f172a);
+}
+
+.ipt-toolbar__select:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.leaflet-marker-icon:has(.ipt-chip--active) .mapa-ipt-marker,
+.ipt-map--focus .leaflet-tooltip:has(.ipt-chip--active) + .leaflet-marker-icon .mapa-ipt-marker {
+  opacity: 1;
+}
+
 /* Marcadores flutuantes — peso do eleitorado por TD (mapa Territórios) */
 .leaflet-div-icon.td-eleitores-peso-marker {
   background: transparent !important;

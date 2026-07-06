@@ -33,6 +33,9 @@ function filterVisibleSidebarItems(
     if (item.id === 'territorio') {
       return canAccess('territorio') || canAccess('campo') || canAccess('agenda')
     }
+    if (item.id === 'territorio-ipt') {
+      return canAccess('territorio') || canAccess('campo') || canAccess('agenda')
+    }
     if (item.id === 'resumo-operacional') {
       return (
         canAccess('resumo-operacional') ||

@@ -23,6 +23,12 @@ export const SIDEBAR_MENU_ITEMS: SidebarMenuItemConfig[] = [
     icon: 'Activity',
     href: '/dashboard/resumo-operacional',
   },
+  {
+    id: 'territorio-ipt',
+    label: 'IPT',
+    icon: 'Target',
+    href: '/dashboard/territorio/ipt',
+  },
   { id: 'narrativas', label: 'Estratégia', icon: 'Target', href: '/dashboard/narrativas' },
   {
     id: 'territorio',

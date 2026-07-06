@@ -38,11 +38,31 @@ function extrairVisitasAgenda(visits: unknown): { id: string; checkin_time: stri
   }))
 }
 
+function parseDateOnly(value: string): string {
+  const s = value.trim()
+  if (!s) return ''
+  return s.includes('T') ? (s.split('T')[0] ?? s) : s
+}
+
+function isWithinLastDays(dateStr: string, days: number): boolean {
+  const normalized = parseDateOnly(dateStr)
+  if (!normalized || days <= 0) return true
+  const [y, m, d] = normalized.split('-').map(Number)
+  if (!y || !m || !d) return false
+  const visitDate = new Date(y, m - 1, d)
+  visitDate.setHours(0, 0, 0, 0)
+  const cutoff = new Date()
+  cutoff.setHours(0, 0, 0, 0)
+  cutoff.setDate(cutoff.getDate() - days)
+  return visitDate >= cutoff
+}
+
 /**
  * Agrega check-ins (registros em `visits` com `checkin_time`) em agendas concluídas,
  * por município oficial do PI (JSON TD) e por Território de Desenvolvimento.
+ * Query opcional: `days=N` limita ao período (ex.: days=15).
  */
-export async function GET() {
+export async function GET(request: Request) {
   try {
     const supabase = createClient()
 
@@ -54,12 +74,17 @@ export async function GET() {
       return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
     }
 
+    const { searchParams } = new URL(request.url)
+    const daysParam = parseInt(searchParams.get('days') ?? '0', 10)
+    const days = Number.isFinite(daysParam) && daysParam > 0 ? daysParam : 0
+
     const { data: agendasRaw, error } = await supabase
       .from('agendas')
       .select(
         `
         status,
         type,
+        date,
         cities ( name, state ),
         visits ( id, checkin_time )
       `
@@ -74,12 +99,19 @@ export async function GET() {
     const displayNameByNorm = new Map<string, string>()
 
     for (const row of agendasRaw ?? []) {
-      const ag = row as { status?: unknown; cities?: unknown; visits?: unknown }
+      const ag = row as { status?: unknown; date?: unknown; cities?: unknown; visits?: unknown }
       if (String(ag.status ?? '') !== 'concluida') continue
 
       const visitsArr = extrairVisitasAgenda(ag.visits)
-      const comCheckin = visitsArr.filter((v) => v.checkin_time != null && String(v.checkin_time).length > 0).length
-      if (comCheckin === 0) continue
+      const agendaDate = String(ag.date ?? '')
+      let checkinsNoRecorte = 0
+      for (const v of visitsArr) {
+        if (v.checkin_time == null || String(v.checkin_time).length === 0) continue
+        const refDate = parseDateOnly(String(v.checkin_time)) || parseDateOnly(agendaDate)
+        if (days > 0 && !isWithinLastDays(refDate, days)) continue
+        checkinsNoRecorte += 1
+      }
+      if (checkinsNoRecorte === 0) continue
 
       const cidade = extrairCidadeAgenda(ag.cities)
       const cityName = cidade?.name
@@ -91,7 +123,7 @@ export async function GET() {
       if (!displayNameByNorm.has(norm)) {
         displayNameByNorm.set(norm, cityName.trim())
       }
-      visitCountByNorm.set(norm, (visitCountByNorm.get(norm) ?? 0) + comCheckin)
+      visitCountByNorm.set(norm, (visitCountByNorm.get(norm) ?? 0) + checkinsNoRecorte)
     }
 
     const oficialNorm = new Set<string>()
@@ -142,6 +174,7 @@ export async function GET() {
       municipios,
       foraDoMapaTd,
       totalVisitas,
+      days: days > 0 ? days : null,
     })
   } catch (e) {
     console.error(e)
