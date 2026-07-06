@@ -14,6 +14,13 @@ export type SidebarQuickAccessItem = {
 
 export const SIDEBAR_QUICK_ACCESS_ITEMS: SidebarQuickAccessItem[] = [
   {
+    id: 'quick-ipt',
+    label: 'Mapa Diagnóstico Campanha',
+    href: '/dashboard/territorio/ipt',
+    icon: 'MapPin',
+    pageKey: 'territorio',
+  },
+  {
     id: 'quick-radar-eleitoral',
     label: 'Radar Eleitoral',
     href: '/dashboard/noticias/monitoramento',
@@ -26,13 +33,6 @@ export const SIDEBAR_QUICK_ACCESS_ITEMS: SidebarQuickAccessItem[] = [
     href: resumoEleicoesHubHref(RESUMO_ELEICOES_TAB_ATENDIMENTO),
     icon: 'ClipboardList',
     pageKey: 'resumo-eleicoes',
-  },
-  {
-    id: 'quick-ipt',
-    label: 'Mapa Diagnóstico Campanha',
-    href: '/dashboard/territorio/ipt',
-    icon: 'MapPin',
-    pageKey: 'territorio',
   },
   {
     id: 'quick-base-eleitoral',

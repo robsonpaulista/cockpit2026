@@ -1,4 +1,5 @@
 import {
+  IPT_VISITAS_JANELA_DIAS,
   IPT_SINAL_LABEL,
   iptLabelIndicador,
   iptPrioridadeCor,
@@ -44,9 +45,9 @@ function sinalColor(sinal: IptSinal): string {
   return '#94a3b8'
 }
 
-function detalheVisitas(qtd15d: number): string {
-  const n = Math.max(0, qtd15d)
-  return `${n} visita${n === 1 ? '' : 's'} nos últimos 15 dias`
+function detalheVisitas(qtd: number): string {
+  const n = Math.max(0, qtd)
+  return `${n} visita${n === 1 ? '' : 's'} nos últimos ${IPT_VISITAS_JANELA_DIAS} dias`
 }
 
 function detalheObras(valor: number): string {
@@ -158,7 +159,7 @@ export function createIptPopupHtml(
     ${contextoLente}
     <div style="margin-top:6px;font-size:11px;line-height:1.45;color:${muted}">${escapeHtml(detalhePesoExpectativa(m))}</div>
     <div style="margin:12px 0 4px;height:1px;background:${line}"></div>
-    ${sinalRow('Visitas de campo', m.sinais.visitas, detalheVisitas(detalhes.visitasUltimos15Dias), muted, undefined, indicador === 'visitas', 'visitas', m.overridesAtivos)}
+    ${sinalRow('Visitas de campo', m.sinais.visitas, detalheVisitas(detalhes.visitasNoPeriodo), muted, undefined, indicador === 'visitas', 'visitas', m.overridesAtivos)}
     ${sinalRow('Obras destinadas', m.sinais.obras, detalheObras(detalhes.obrasValorTotal), muted, { bem: 'Temos Obras' }, indicador === 'obras', 'obras', m.overridesAtivos)}
     ${sinalRow(labelPesquisa(detalhes.pesquisaBase), m.sinais.pesquisa, detalhePesquisa(detalhes.pesquisaPosicaoTop5, detalhes.pesquisaTop5, detalhes.pesquisaBase), muted, undefined, indicador === 'pesquisa', 'pesquisa', m.overridesAtivos)}
     ${createIptInsightsSectionShell(m, appearance)}

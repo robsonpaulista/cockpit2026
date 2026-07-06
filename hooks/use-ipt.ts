@@ -7,6 +7,7 @@ import type { ObraMapaRow } from '@/lib/obras-mapa'
 import {
   calcularIptMunicipios,
   calcularIptResumo,
+  IPT_VISITAS_JANELA_DIAS,
   normalizeIptMunicipio,
   type IptMunicipio,
   type IptMunicipioInput,
@@ -46,7 +47,7 @@ function agregarObrasPorMunicipio(obras: ObraMapaRow[]): Map<string, ObrasAgg> {
   return map
 }
 
-function mapVisitas15Dias(
+function mapVisitasNoPeriodo(
   rows: Array<{ municipio: string; visitas: number }> | undefined
 ): Map<string, number> {
   const map = new Map<string, number>()
@@ -83,7 +84,7 @@ export function useIpt() {
         if (saved) territorioConfig = JSON.parse(saved) as Record<string, unknown>
       }
 
-      const [territorioRes, pesquisaRes, obrasRes, visitas15Res, insightsRes] = await Promise.all([
+      const [territorioRes, pesquisaRes, obrasRes, visitasPeriodoRes, insightsRes] = await Promise.all([
         fetch('/api/dashboard/territorios-frios', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -92,7 +93,7 @@ export function useIpt() {
         }),
         fetch('/api/pesquisa?limit=5000', { cache: 'no-store' }),
         fetch('/api/obras', { cache: 'no-store' }),
-        fetch('/api/campo/visitas-resumo-td?days=15', { cache: 'no-store' }),
+        fetch(`/api/campo/visitas-resumo-td?days=${IPT_VISITAS_JANELA_DIAS}`, { cache: 'no-store' }),
         fetch('/api/ipt/insights?mode=overrides', { cache: 'no-store' }),
       ])
 
@@ -108,9 +109,9 @@ export function useIpt() {
         ? agregarObrasPorMunicipio(((await obrasRes.json()) as { obras?: ObraMapaRow[] }).obras ?? [])
         : new Map<string, ObrasAgg>()
 
-      const visitas15PorMunicipio = visitas15Res.ok
-        ? mapVisitas15Dias(
-            ((await visitas15Res.json()) as { municipios?: Array<{ municipio: string; visitas: number }> })
+      const visitasPorMunicipio = visitasPeriodoRes.ok
+        ? mapVisitasNoPeriodo(
+            ((await visitasPeriodoRes.json()) as { municipios?: Array<{ municipio: string; visitas: number }> })
               .municipios
           )
         : new Map<string, number>()
@@ -140,7 +141,7 @@ export function useIpt() {
           eleitorado: row?.eleitorado ?? getEleitoradoByCity(m.nome) ?? 0,
           liderancas: 0,
           visitas: row?.visitas ?? 0,
-          visitasUltimos15Dias: visitas15PorMunicipio.get(key) ?? 0,
+          visitasNoPeriodo: visitasPorMunicipio.get(key) ?? 0,
           obrasCount: obras?.count ?? 0,
           obrasValorTotal: obras?.valorTotal ?? 0,
           intencaoPesquisa: intencaoPorMunicipio.get(key) ?? null,

@@ -107,7 +107,7 @@ function textoPesquisaChipCompacto(m: IptMunicipio): string {
 export function iptChipLinhaIndicador(m: IptMunicipio, indicador: IptIndicador): string {
   const { detalhes } = m
   if (indicador === 'visitas') {
-    return chipItem(ICON.visitas, textoVisitasOperacional(detalhes.visitasUltimos15Dias))
+    return chipItem(ICON.visitas, textoVisitasOperacional(detalhes.visitasNoPeriodo))
   }
   if (indicador === 'obras') {
     return chipItem(ICON.obras, textoObrasOperacional(detalhes.obrasValorTotal))
@@ -118,7 +118,7 @@ export function iptChipLinhaIndicador(m: IptMunicipio, indicador: IptIndicador):
 /** Visão geral — três indicadores compactos. */
 export function iptChipLinhaGeral(m: IptMunicipio): string {
   const { detalhes, sinais } = m
-  const visitas = chipItem(ICON.visitas, textoVisitasOperacional(detalhes.visitasUltimos15Dias))
+  const visitas = chipItem(ICON.visitas, textoVisitasOperacional(detalhes.visitasNoPeriodo))
 
   const obras =
     sinais.obras === 'mal'

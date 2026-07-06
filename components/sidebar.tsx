@@ -704,9 +704,6 @@ export function Sidebar() {
             if (item.id === 'territorio') {
               return canAccess('territorio') || canAccess('campo') || canAccess('agenda')
             }
-            if (item.id === 'territorio-ipt') {
-              return canAccess('territorio') || canAccess('campo') || canAccess('agenda')
-            }
             if (item.id === 'resumo-operacional') {
               return (
                 canAccess('resumo-operacional') ||
@@ -967,8 +964,6 @@ export function Sidebar() {
                   ? Boolean(item.children?.some((c) => isChildLinkActive(pathname, c.href, searchKey)))
                   : item.id === 'ficha-atendimento'
                       ? pathname.startsWith('/dashboard/ficha-atendimento')
-                      : item.id === 'territorio-ipt'
-                        ? pathname.startsWith('/dashboard/territorio/ipt')
                       : item.id === 'noticias-menu'
                         ? pathname.startsWith('/dashboard/noticias')
                         : pathname === item.href

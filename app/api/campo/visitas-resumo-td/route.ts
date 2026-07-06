@@ -60,7 +60,7 @@ function isWithinLastDays(dateStr: string, days: number): boolean {
 /**
  * Agrega check-ins (registros em `visits` com `checkin_time`) em agendas concluídas,
  * por município oficial do PI (JSON TD) e por Território de Desenvolvimento.
- * Query opcional: `days=N` limita ao período (ex.: days=15).
+ * Query opcional: `days=N` limita ao período (ex.: days=30 no IPT).
  */
 export async function GET(request: Request) {
   try {

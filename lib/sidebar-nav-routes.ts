@@ -23,12 +23,6 @@ export const SIDEBAR_MENU_ITEMS: SidebarMenuItemConfig[] = [
     icon: 'Activity',
     href: '/dashboard/resumo-operacional',
   },
-  {
-    id: 'territorio-ipt',
-    label: 'Mapa Diagnóstico Campanha',
-    icon: 'Target',
-    href: '/dashboard/territorio/ipt',
-  },
   { id: 'narrativas', label: 'Estratégia', icon: 'Target', href: '/dashboard/narrativas' },
   {
     id: 'territorio',
@@ -237,6 +231,7 @@ const EXTRA_ALIASES: Record<string, string[]> = {
   'gestao-pesquisas-menu': ['gestao pesquisas'],
   usuarios: ['usuarios', 'gestao usuarios', 'gestao de usuarios', 'permissoes'],
   'log-system': ['log system', 'log ia cockpit', 'logs agente', 'historico ia cockpit', 'log jarvis', 'historico jarvis'],
+  'territorio-ipt': ['mapa diagnostico campanha', 'mapa diagnostico', 'ipt', 'diagnostico campanha'],
 }
 
 function buildTarget(item: MenuItem): SidebarNavTarget {
@@ -275,7 +270,15 @@ function flattenMenu(items: SidebarMenuItemConfig[]): SidebarNavTarget[] {
   return out
 }
 
-export const SIDEBAR_NAV_TARGETS: SidebarNavTarget[] = flattenMenu(SIDEBAR_MENU_ITEMS)
+export const SIDEBAR_NAV_TARGETS: SidebarNavTarget[] = [
+  ...flattenMenu(SIDEBAR_MENU_ITEMS),
+  buildTarget({
+    id: 'territorio-ipt',
+    label: 'Mapa Diagnóstico Campanha',
+    icon: 'MapPin',
+    href: '/dashboard/territorio/ipt',
+  }),
+]
 
 export function findSidebarNavTargetByHref(href: string): SidebarNavTarget | undefined {
   return SIDEBAR_NAV_TARGETS.find((t) => t.href === href)

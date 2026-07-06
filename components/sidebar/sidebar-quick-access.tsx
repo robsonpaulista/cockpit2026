@@ -57,7 +57,7 @@ export function SidebarQuickAccess({
   const items = loading
     ? SIDEBAR_QUICK_ACCESS_ITEMS
     : SIDEBAR_QUICK_ACCESS_ITEMS.filter((item) => {
-        if (item.id === 'quick-base-eleitoral') {
+        if (item.id === 'quick-base-eleitoral' || item.id === 'quick-ipt') {
           return canAccess('territorio') || canAccess('campo') || canAccess('agenda')
         }
         return canAccess(item.pageKey)

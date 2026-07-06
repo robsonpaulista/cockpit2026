@@ -13,8 +13,11 @@ export type IptPesquisaTopItem = {
 
 export type IptPesquisaBase = 'estimulada' | 'espontanea'
 
+/** Janela de avaliação de visitas de campo no IPT (dias corridos). */
+export const IPT_VISITAS_JANELA_DIAS = 30
+
 export type IptDetalhes = {
-  visitasUltimos15Dias: number
+  visitasNoPeriodo: number
   /** Total acumulado de visitas (planilha Território). */
   visitasHistorico: number
   obrasQuantidade: number
@@ -67,7 +70,7 @@ export type IptMunicipioInput = {
   eleitorado: number
   liderancas: number
   visitas: number
-  visitasUltimos15Dias: number
+  visitasNoPeriodo: number
   obrasCount: number
   obrasValorTotal: number
   intencaoPesquisa?: number | null
@@ -85,15 +88,15 @@ export function normalizeIptMunicipio(nome: string): string {
     .trim()
 }
 
-/** Sinal de visitas alinhado ao popup: recorte dos últimos 15 dias. Zero visitas = mal (nunca sem dado). */
+/** Sinal de visitas alinhado ao popup: recorte dos últimos {@link IPT_VISITAS_JANELA_DIAS} dias. Zero visitas = mal (nunca sem dado). */
 export function classificarSinalVisitas(
   expectativa: number,
-  visitasUltimos15Dias: number,
+  visitasNoPeriodo: number,
   pesoExpectativaPct: number
 ): IptSinal {
-  if (visitasUltimos15Dias <= 0) return 'mal'
+  if (visitasNoPeriodo <= 0) return 'mal'
   if (expectativa >= 1200 || pesoExpectativaPct >= 2) {
-    return visitasUltimos15Dias >= 2 ? 'bem' : 'neutro'
+    return visitasNoPeriodo >= 2 ? 'bem' : 'neutro'
   }
   return 'bem'
 }
@@ -164,7 +167,7 @@ export function iptLabelTipoPesquisa(base: IptPesquisaBase | null): string {
 }
 
 function partesVisitasObras(detalhes: IptDetalhes): string[] {
-  const visitas = detalhes.visitasUltimos15Dias
+  const visitas = detalhes.visitasNoPeriodo
   return [
     `${visitas} visita${visitas === 1 ? '' : 's'}`,
     formatObrasValorAbreviado(detalhes.obrasValorTotal),
@@ -184,7 +187,7 @@ export function iptTextoTooltipPorIndicador(m: IptMunicipio, indicador: IptIndic
   const { detalhes } = m
 
   if (indicador === 'visitas') {
-    const n = detalhes.visitasUltimos15Dias
+    const n = detalhes.visitasNoPeriodo
     return `${n} visita${n === 1 ? '' : 's'}`
   }
   if (indicador === 'obras') {
@@ -213,7 +216,7 @@ export function iptTextoTooltipSintetico(
 
   if (m.prioridade === 'critico' || m.prioridade === 'atencao') {
     if (m.sinais.visitas === 'mal') {
-      const n = detalhes.visitasUltimos15Dias
+      const n = detalhes.visitasNoPeriodo
       partes.push(`${n} visita${n === 1 ? '' : 's'}`)
     }
     if (m.sinais.obras === 'mal') {
@@ -321,7 +324,7 @@ export function calcularIptMunicipios(inputs: IptMunicipioInput[]): IptMunicipio
       const sinais = {
         visitas: classificarSinalVisitas(
           expectativaVotos,
-          input.visitasUltimos15Dias,
+          input.visitasNoPeriodo,
           pesoExpectativaPct
         ),
         obras: classificarSinalObras(input.obrasCount),
@@ -345,7 +348,7 @@ export function calcularIptMunicipios(inputs: IptMunicipioInput[]): IptMunicipio
         pesoExpectativaPct,
         sinais,
         detalhes: {
-          visitasUltimos15Dias: input.visitasUltimos15Dias,
+          visitasNoPeriodo: input.visitasNoPeriodo,
           visitasHistorico: Math.max(0, input.visitas),
           obrasQuantidade: input.obrasCount,
           obrasValorTotal: input.obrasValorTotal,
@@ -412,7 +415,7 @@ export function iptMunicipioComCoberturaIndicador(m: IptMunicipio, indicador: Ip
   if (m.prioridade === 'sem_expectativa') return false
 
   if (indicador === 'visitas') {
-    return m.detalhes.visitasUltimos15Dias > 0 || m.detalhes.visitasHistorico > 0
+    return m.detalhes.visitasNoPeriodo > 0 || m.detalhes.visitasHistorico > 0
   }
   if (indicador === 'obras') {
     return m.detalhes.obrasQuantidade > 0
