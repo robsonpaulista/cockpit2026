@@ -2,7 +2,7 @@
 export const COCKPIT_MENU_LABEL: Record<string, string> = {
   home: 'Visão',
   'resumo-operacional': 'Resumo',
-  'territorio-ipt': 'IPT',
+  'territorio-ipt': 'Mapa Diagnóstico Campanha',
   narrativas: 'Estratégia',
   agenda: 'Agenda',
   territorio: 'Território & Campo',

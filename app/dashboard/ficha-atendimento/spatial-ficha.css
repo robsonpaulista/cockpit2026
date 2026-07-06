@@ -1,0 +1,292 @@
+/* Spatial Computing — Ficha de Atendimento (cores do sistema / Radar Eleitoral) */
+
+.spatial-ficha-page {
+  font-family: var(--font-sans), var(--font-sans-fallback), 'IBM Plex Sans', 'Inter', sans-serif;
+  background: rgb(var(--bg-app));
+  color: rgb(var(--text-primary));
+}
+
+.spatial-shell {
+  position: relative;
+  min-height: 100%;
+  overflow: hidden;
+  isolation: isolate;
+  color: rgb(var(--text-primary));
+}
+
+.spatial-shell__gradient {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  background:
+    radial-gradient(ellipse 75% 55% at 12% 8%, rgb(var(--accent-gold-soft) / 0.55), transparent 58%),
+    radial-gradient(ellipse 65% 50% at 88% 12%, rgb(var(--color-primary-tint) / 0.45), transparent 52%),
+    radial-gradient(ellipse 80% 60% at 50% 100%, rgb(var(--color-background-tertiary) / 0.9), transparent 65%),
+    linear-gradient(
+      160deg,
+      rgb(var(--bg-app)) 0%,
+      rgb(var(--bg-surface)) 42%,
+      rgb(var(--color-background-tertiary)) 100%
+    );
+  animation: spatial-gradient-shift 20s ease-in-out infinite alternate;
+}
+
+@keyframes spatial-gradient-shift {
+  0% {
+    filter: saturate(1);
+  }
+  100% {
+    filter: saturate(1.04);
+  }
+}
+
+.spatial-shell__grid {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  opacity: 0.35;
+  background-image:
+    linear-gradient(rgb(var(--border-card) / 0.22) 1px, transparent 1px),
+    linear-gradient(90deg, rgb(var(--border-card) / 0.22) 1px, transparent 1px);
+  background-size: 48px 48px;
+  mask-image: radial-gradient(ellipse 90% 80% at 50% 40%, #000 15%, transparent 78%);
+}
+
+.spatial-shell__orbs {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+}
+
+.spatial-shell__orb {
+  position: absolute;
+  border-radius: 999px;
+  filter: blur(48px);
+  opacity: 0.5;
+  animation: spatial-orb-float 14s ease-in-out infinite;
+}
+
+.spatial-shell__orb--a {
+  width: 260px;
+  height: 260px;
+  top: 6%;
+  left: -3%;
+  background: rgb(var(--accent-gold-soft) / 0.75);
+}
+
+.spatial-shell__orb--b {
+  width: 200px;
+  height: 200px;
+  top: 40%;
+  right: -1%;
+  background: rgb(var(--color-primary-tint) / 0.65);
+  animation-delay: -4s;
+}
+
+.spatial-shell__orb--c {
+  width: 170px;
+  height: 170px;
+  bottom: 5%;
+  left: 36%;
+  background: rgb(var(--accent-gold-soft) / 0.45);
+  animation-delay: -8s;
+}
+
+@keyframes spatial-orb-float {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  50% {
+    transform: translate3d(10px, -14px, 0) scale(1.05);
+  }
+}
+
+.spatial-shell__floats {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+}
+
+.spatial-float {
+  position: absolute;
+  color: rgb(var(--text-muted) / 0.28);
+  filter: drop-shadow(0 0 12px rgb(var(--accent-gold-soft) / 0.6));
+}
+
+.spatial-float--1 {
+  top: 12%;
+  left: 8%;
+  animation: spatial-icon-drift 16s ease-in-out infinite;
+}
+
+.spatial-float--2 {
+  top: 22%;
+  right: 10%;
+  opacity: 0.45;
+  animation: spatial-icon-drift 20s ease-in-out infinite reverse;
+}
+
+.spatial-float--3 {
+  bottom: 18%;
+  left: 14%;
+  opacity: 0.35;
+  animation: spatial-icon-drift 18s ease-in-out infinite;
+  animation-delay: -3s;
+}
+
+.spatial-float--4 {
+  top: 48%;
+  right: 18%;
+  opacity: 0.25;
+  animation: spatial-icon-drift 22s ease-in-out infinite reverse;
+}
+
+.spatial-float--5 {
+  bottom: 10%;
+  right: 28%;
+  opacity: 0.38;
+  animation: spatial-icon-drift 15s ease-in-out infinite;
+  animation-delay: -6s;
+}
+
+@keyframes spatial-icon-drift {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) rotate(0deg);
+  }
+  50% {
+    transform: translate3d(0, -12px, 0) rotate(5deg);
+  }
+}
+
+.spatial-shell__badge {
+  position: absolute;
+  top: 12px;
+  right: 16px;
+  z-index: 3;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgb(var(--text-secondary));
+  background: rgb(var(--bg-surface) / 0.88);
+  border: 1px solid rgb(var(--border-card) / 0.85);
+  backdrop-filter: blur(12px);
+  box-shadow: 0 4px 16px rgb(15 23 42 / 0.05);
+}
+
+.spatial-shell__content {
+  position: relative;
+  z-index: 2;
+}
+
+.spatial-glass-card {
+  position: relative;
+  border-radius: 16px;
+  transform-style: preserve-3d;
+  will-change: transform;
+}
+
+.spatial-glass-card__border {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(
+    135deg,
+    rgb(255 255 255 / 0.95) 0%,
+    rgb(var(--border-card) / 0.35) 45%,
+    rgb(var(--accent-gold) / 0.18) 100%
+  );
+  mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+  mask-composite: exclude;
+  pointer-events: none;
+}
+
+.spatial-glass-card__shine {
+  position: absolute;
+  inset: 1px;
+  border-radius: calc(16px - 1px);
+  background: linear-gradient(
+    145deg,
+    rgb(255 255 255 / 0.72) 0%,
+    rgb(255 255 255 / 0.12) 30%,
+    transparent 55%
+  );
+  pointer-events: none;
+}
+
+.spatial-glass-card__content {
+  position: relative;
+  z-index: 1;
+  border-radius: calc(16px - 1px);
+  background: rgb(var(--bg-surface) / 0.78);
+  backdrop-filter: blur(20px) saturate(1.2);
+  -webkit-backdrop-filter: blur(20px) saturate(1.2);
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.85),
+    0 1px 2px rgb(15 23 42 / 0.04),
+    0 8px 24px rgb(15 23 42 / 0.06);
+}
+
+.spatial-glass-card--glow-cyan .spatial-glass-card__content {
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.9),
+    0 0 0 1px rgb(var(--border-card) / 0.55),
+    0 8px 24px rgb(15 23 42 / 0.06),
+    0 0 32px rgb(var(--accent-gold-soft) / 0.45);
+}
+
+.spatial-glass-card--glow-violet .spatial-glass-card__content {
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.9),
+    0 0 0 1px rgb(var(--color-border-secondary) / 0.35),
+    0 8px 24px rgb(15 23 42 / 0.06),
+    0 0 28px rgb(var(--color-background-tertiary) / 0.8);
+}
+
+.spatial-glass-card--glow-gold .spatial-glass-card__content {
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.9),
+    0 0 0 1px rgb(200 144 10 / 0.18),
+    0 8px 24px rgb(15 23 42 / 0.06),
+    0 0 28px rgb(250 238 218 / 0.55);
+}
+
+.spatial-glass-card:hover .spatial-glass-card__content {
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.95),
+    0 0 0 1px rgb(var(--accent-gold) / 0.22),
+    0 12px 32px rgb(15 23 42 / 0.08),
+    0 0 40px rgb(var(--accent-gold-soft) / 0.55);
+}
+
+/* Blocos internos — harmoniza sem forçar tema escuro */
+.spatial-glass-card .spatial-glass-card__content > section.rounded-2xl {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+
+.spatial-ficha-page .shadow-sm {
+  box-shadow: none !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .spatial-shell__gradient,
+  .spatial-shell__orb,
+  .spatial-float {
+    animation: none !important;
+  }
+
+  .spatial-glass-card {
+    transform: none !important;
+  }
+}

@@ -189,6 +189,7 @@ export function IptPanel() {
                 filtroTd={filtroTd}
                 municipiosBoundsTd={municipiosNoEscopo}
                 isFullscreen={isNativeFullscreen}
+                onInsightSaved={recarregar}
               />
             )}
           </div>

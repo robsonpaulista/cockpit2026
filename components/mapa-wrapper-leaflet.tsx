@@ -10,6 +10,7 @@ import { buildIptMunicipiosComTooltipAutomatico, iptMarkerSize } from '@/lib/ipt
 import { iptZoomLevel } from '@/lib/ipt-chip'
 import { IPT_MAP_VIEW_PI, iptLatLngPointsFromMunicipios } from '@/lib/ipt-td'
 import { createIptMarkerHtml, createIptPopupHtml, createIptTooltipBasicoHtml } from '@/lib/ipt-popup'
+import { hydrateIptPopupInsights } from '@/lib/ipt-popup-insights'
 
 // ========== Types ==========
 interface Municipio {
@@ -73,6 +74,8 @@ interface MapWrapperProps {
   iptFiltroTd?: TerritorioDesenvolvimentoPI | null
   /** Municípios do TD (sem filtro de prioridade) — base do enquadramento */
   iptMunicipiosBounds?: IptMunicipio[]
+  /** Recarrega IPT após salvar insight no popup */
+  onIptInsightSaved?: () => void
 }
 
 // ========== Constants ==========
@@ -373,6 +376,7 @@ export function MapWrapperLeaflet({
   iptIndicadorFiltro = null,
   iptFiltroTd = null,
   iptMunicipiosBounds = [],
+  onIptInsightSaved,
 }: MapWrapperProps) {
   const mapRef = useRef<HTMLDivElement>(null)
   const mapInstanceRef = useRef<L.Map | null>(null)
@@ -504,11 +508,17 @@ export function MapWrapperLeaflet({
 
         const marker = L.marker([municipio.lat, municipio.lng], { icon, pane: 'markersPane' })
           .bindPopup(createIptPopupHtml(row, appearance, iptIndicadorFiltro), {
-            maxWidth: 280,
-            className: appearance === 'dark' ? 'mapa-obras-popup-dark' : 'mapa-obras-popup-soft',
+            maxWidth: 320,
+            className: appearance === 'dark' ? 'mapa-obras-popup-dark' : 'mapa-obras-popup-soft ipt-popup-shell',
           })
 
-        marker.on('popupopen', () => setIptFocus(municipioKey))
+        marker.on('popupopen', () => {
+          setIptFocus(municipioKey)
+          const popupEl = marker.getPopup()?.getElement()
+          if (popupEl) {
+            void hydrateIptPopupInsights(popupEl, appearance, onIptInsightSaved)
+          }
+        })
         marker.on('popupclose', () => clearIptFocus())
 
         if (tooltipsAutomaticos.has(municipioKey)) {
@@ -904,7 +914,7 @@ export function MapWrapperLeaflet({
         statsCalculatedRef.current = false
       }
     }
-  }, [cidadesComPresenca, cidadesVisitadas, municipiosPiaui, eleitoresPorCidade, onStatsCalculated, appearance, showRegionLabels, compactMarkers, iptMunicipios, iptIndicadorFiltro])
+  }, [cidadesComPresenca, cidadesVisitadas, municipiosPiaui, eleitoresPorCidade, onStatsCalculated, appearance, showRegionLabels, compactMarkers, iptMunicipios, iptIndicadorFiltro, onIptInsightSaved])
 
   // ========== Handle filter changes ==========
   useEffect(() => {

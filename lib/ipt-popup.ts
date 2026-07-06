@@ -16,6 +16,7 @@ import {
   createIptChipHtml,
   iptChipTheme,
 } from '@/lib/ipt-chip'
+import { createIptInsightsSectionShell, overrideBadgeHtml } from '@/lib/ipt-popup-insights'
 import {
   formatExpectativaCompact,
   formatPesoExpectativaPct,
@@ -89,15 +90,21 @@ function sinalRow(
   detalhe: string,
   muted: string,
   rotulos?: Partial<Record<IptSinal, string>>,
-  destaque = false
+  destaque = false,
+  indicador?: IptIndicador,
+  overridesAtivos?: IptMunicipio['overridesAtivos']
 ): string {
   const rotulo = rotulos?.[sinal] ?? IPT_SINAL_LABEL[sinal]
   const destaqueStyle = destaque
     ? `border-left:3px solid ${sinalColor(sinal)};padding-left:10px;margin-left:-2px;border-radius:0 6px 6px 0`
     : ''
+  const ajustado =
+    indicador && overridesAtivos?.[indicador]
+      ? overrideBadgeHtml(indicador, muted)
+      : ''
   return `<div style="margin-top:12px;${destaqueStyle}">
     <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px">
-      <span style="font-size:13px;font-weight:600;color:inherit;flex:1;min-width:0">${escapeHtml(label)}</span>
+      <span style="font-size:13px;font-weight:600;color:inherit;flex:1;min-width:0">${escapeHtml(label)}${ajustado}</span>
       <span style="display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;color:${sinalColor(sinal)};flex-shrink:0">
         <span style="width:18px;height:18px;border-radius:999px;background:${sinalColor(sinal)}18;color:${sinalColor(sinal)};display:inline-flex;align-items:center;justify-content:center;font-size:11px">${sinalIcon(sinal)}</span>
         ${escapeHtml(rotulo)}
@@ -142,7 +149,7 @@ export function createIptPopupHtml(
       ? `<div style="margin-top:4px;font-size:10px;line-height:1.4;color:${muted}">${escapeHtml(iptLabelIndicador(indicador))} · prioridade geral: ${escapeHtml(iptPrioridadeLabel(m.prioridade))}</div>`
       : ''
 
-  return `<div style="min-width:240px;max-width:320px;font-family:system-ui,-apple-system,sans-serif;padding:14px 16px 12px;color:${text}">
+  return `<div style="min-width:260px;max-width:340px;font-family:system-ui,-apple-system,sans-serif;padding:14px 16px 12px;color:${text}" class="ipt-popup-root">
     <div style="font-weight:700;font-size:15px;color:${text};letter-spacing:-0.02em">${escapeHtml(m.municipio)}</div>
     <div style="margin-top:8px;display:inline-flex;align-items:center;gap:8px;padding:5px 10px;border-radius:999px;background:${cor}18">
       <span style="width:10px;height:10px;border-radius:999px;background:${cor}"></span>
@@ -151,9 +158,10 @@ export function createIptPopupHtml(
     ${contextoLente}
     <div style="margin-top:6px;font-size:11px;line-height:1.45;color:${muted}">${escapeHtml(detalhePesoExpectativa(m))}</div>
     <div style="margin:12px 0 4px;height:1px;background:${line}"></div>
-    ${sinalRow('Visitas de campo', m.sinais.visitas, detalheVisitas(detalhes.visitasUltimos15Dias), muted, undefined, indicador === 'visitas')}
-    ${sinalRow('Obras destinadas', m.sinais.obras, detalheObras(detalhes.obrasValorTotal), muted, { bem: 'Temos Obras' }, indicador === 'obras')}
-    ${sinalRow(labelPesquisa(detalhes.pesquisaBase), m.sinais.pesquisa, detalhePesquisa(detalhes.pesquisaPosicaoTop5, detalhes.pesquisaTop5, detalhes.pesquisaBase), muted, undefined, indicador === 'pesquisa')}
+    ${sinalRow('Visitas de campo', m.sinais.visitas, detalheVisitas(detalhes.visitasUltimos15Dias), muted, undefined, indicador === 'visitas', 'visitas', m.overridesAtivos)}
+    ${sinalRow('Obras destinadas', m.sinais.obras, detalheObras(detalhes.obrasValorTotal), muted, { bem: 'Temos Obras' }, indicador === 'obras', 'obras', m.overridesAtivos)}
+    ${sinalRow(labelPesquisa(detalhes.pesquisaBase), m.sinais.pesquisa, detalhePesquisa(detalhes.pesquisaPosicaoTop5, detalhes.pesquisaTop5, detalhes.pesquisaBase), muted, undefined, indicador === 'pesquisa', 'pesquisa', m.overridesAtivos)}
+    ${createIptInsightsSectionShell(m, appearance)}
   </div>`
 }
 

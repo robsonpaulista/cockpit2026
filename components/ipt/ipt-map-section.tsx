@@ -13,6 +13,7 @@ interface IptMapSectionProps {
   filtroTd?: TerritorioDesenvolvimentoPI | null
   municipiosBoundsTd?: IptMunicipio[]
   isFullscreen?: boolean
+  onInsightSaved?: () => void
 }
 
 export function IptMapSection({
@@ -21,6 +22,7 @@ export function IptMapSection({
   filtroTd = null,
   municipiosBoundsTd = [],
   isFullscreen = false,
+  onInsightSaved,
 }: IptMapSectionProps) {
   const { appearance } = useTheme()
 
@@ -36,6 +38,7 @@ export function IptMapSection({
         iptIndicadorFiltro={indicadorFiltro}
         iptFiltroTd={filtroTd}
         iptMunicipiosBounds={municipiosBoundsTd}
+        onIptInsightSaved={onInsightSaved}
       />
     </div>
   )

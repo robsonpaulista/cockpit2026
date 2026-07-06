@@ -25,7 +25,7 @@ export const SIDEBAR_MENU_ITEMS: SidebarMenuItemConfig[] = [
   },
   {
     id: 'territorio-ipt',
-    label: 'IPT',
+    label: 'Mapa Diagnóstico Campanha',
     icon: 'Target',
     href: '/dashboard/territorio/ipt',
   },

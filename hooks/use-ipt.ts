@@ -18,6 +18,10 @@ import {
   resolveCandidatoIpt,
   type PollIptRow,
 } from '@/lib/ipt-pesquisa'
+import {
+  aplicarOverridesIpt,
+  type IptInsightOverrideMap,
+} from '@/lib/ipt-insights'
 
 type PrioridadeRow = {
   cidade: string
@@ -79,7 +83,7 @@ export function useIpt() {
         if (saved) territorioConfig = JSON.parse(saved) as Record<string, unknown>
       }
 
-      const [territorioRes, pesquisaRes, obrasRes, visitas15Res] = await Promise.all([
+      const [territorioRes, pesquisaRes, obrasRes, visitas15Res, insightsRes] = await Promise.all([
         fetch('/api/dashboard/territorios-frios', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -89,6 +93,7 @@ export function useIpt() {
         fetch('/api/pesquisa?limit=5000', { cache: 'no-store' }),
         fetch('/api/obras', { cache: 'no-store' }),
         fetch('/api/campo/visitas-resumo-td?days=15', { cache: 'no-store' }),
+        fetch('/api/ipt/insights?mode=overrides', { cache: 'no-store' }),
       ])
 
       if (!territorioRes.ok) {
@@ -146,8 +151,18 @@ export function useIpt() {
       })
 
       const calculados = calcularIptMunicipios(inputs)
-      setMunicipios(calculados)
-      setResumo(calcularIptResumo(calculados))
+
+      let overrideMap: IptInsightOverrideMap = new Map()
+      if (insightsRes.ok) {
+        const insightsJson = (await insightsRes.json()) as {
+          overrides?: Record<string, Partial<Record<'visitas' | 'obras' | 'pesquisa', import('@/lib/ipt').IptSinal>>>
+        }
+        overrideMap = new Map(Object.entries(insightsJson.overrides ?? {}))
+      }
+
+      const comOverrides = aplicarOverridesIpt(calculados, overrideMap)
+      setMunicipios(comOverrides)
+      setResumo(calcularIptResumo(comOverrides))
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Erro ao calcular prioridades.')
       setMunicipios([])

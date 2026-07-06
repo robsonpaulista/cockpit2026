@@ -29,7 +29,7 @@ export const SIDEBAR_QUICK_ACCESS_ITEMS: SidebarQuickAccessItem[] = [
   },
   {
     id: 'quick-ipt',
-    label: 'IPT',
+    label: 'Mapa Diagnóstico Campanha',
     href: '/dashboard/territorio/ipt',
     icon: 'MapPin',
     pageKey: 'territorio',

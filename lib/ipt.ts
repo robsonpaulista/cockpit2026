@@ -37,6 +37,16 @@ export type IptMunicipio = {
     obras: IptSinal
     pesquisa: IptSinal
   }
+  /** Sinais calculados antes de override manual (quando houver). */
+  sinaisOriginais?: {
+    visitas: IptSinal
+    obras: IptSinal
+    pesquisa: IptSinal
+  }
+  /** Indicadores com avaliação ajustada por insight de campo. */
+  overridesAtivos?: Partial<
+    Record<IptIndicador, { sinal: IptSinal }>
+  >
   detalhes: IptDetalhes
   lat: number
   lng: number

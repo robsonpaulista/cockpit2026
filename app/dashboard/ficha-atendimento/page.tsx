@@ -1,10 +1,18 @@
 'use client'
 
+import './spatial-ficha.css'
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { useRouter } from 'next/navigation'
+import { SpatialShell } from '@/components/spatial/spatial-shell'
+import { SpatialGlassCard } from '@/components/spatial/spatial-glass-card'
 import { usePermissions } from '@/hooks/use-permissions'
 import { cn, formatDateShort } from '@/lib/utils'
 import { sidebarPrimaryCTAButtonClass } from '@/lib/sidebar-menu-active-style'
+import {
+  typographyPageLeadClass,
+  typographyPageTitleClass,
+  typographySectionTitleClass,
+} from '@/lib/typography-chrome'
 import {
   FichaAtendimentoTetosBloco,
   type ResumosMacPapModalidade,
@@ -79,8 +87,8 @@ function emptySuasForm(municipio: string): Omit<EmendaSuas, 'id'> & { id?: strin
 
 export default function FichaAtendimentoPage() {
   const router = useRouter()
-  const pageShellClass = 'bg-white min-h-full'
-  const sectionShellClass = 'rounded-2xl bg-surface p-5 shadow-sm border border-card'
+  const isCockpit = false
+  const pageShellClass = 'spatial-ficha-page bg-bg-app min-h-full'
   const { canAccess, isAdmin, loading: permLoading } = usePermissions()
 
   const [municipios, setMunicipios] = useState<string[]>([])
@@ -380,95 +388,104 @@ export default function FichaAtendimentoPage() {
 
   if (permLoading) {
     return (
-      <div className={cn('flex items-center justify-center p-12', pageShellClass)}>
-        <Loader2 className="h-8 w-8 animate-spin text-accent-gold" />
+      <div className={cn('flex min-h-full items-center justify-center p-12', pageShellClass)}>
+        <SpatialShell>
+          <Loader2 className="h-8 w-8 animate-spin text-accent-gold" />
+        </SpatialShell>
       </div>
     )
   }
 
   return (
-    <div className={cn('flex min-h-0 flex-1 flex-col w-full', pageShellClass)}>
-      <div className="flex w-full min-w-0 flex-1 flex-col gap-5 px-4 py-6 lg:px-6 xl:gap-6">
-        <header className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between lg:gap-4">
-          <div className="min-w-0 flex-1">
-            <h1 className="text-xl font-semibold text-text-primary xl:text-2xl">
-              Ficha de Atendimento
-            </h1>
-            <p className="mt-1 text-sm text-text-secondary lg:max-w-3xl xl:max-w-none">
-              Tetos MAC, PAP e SUAS centralizados no banco
-              {exercicioAtivo ? ` (exercício ${exercicioAtivo})` : ''}, com propostas FNS e lançamentos
-              SUAS locais.
+    <div className={cn('flex min-h-0 w-full flex-1 flex-col', pageShellClass)}>
+        <SpatialShell badge="Spatial Preview">
+        <div className="flex w-full min-w-0 flex-1 flex-col gap-5 px-4 py-6 lg:px-6 xl:gap-6">
+          <SpatialGlassCard glow="cyan">
+            <header className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between lg:gap-4">
+              <div className="min-w-0 flex-1">
+                <h1 className={typographyPageTitleClass}>Ficha de Atendimento</h1>
+                <p className={cn('mt-1 lg:max-w-3xl xl:max-w-none', typographyPageLeadClass)}>
+                  Tetos MAC, PAP e SUAS centralizados no banco
+                  {exercicioAtivo ? ` (exercício ${exercicioAtivo})` : ''}, com propostas FNS e
+                  lançamentos SUAS locais.
+                </p>
+              </div>
+              <div className="flex shrink-0 flex-wrap items-end gap-2 sm:gap-3">
+                <label className="flex min-w-[12rem] max-w-[min(100%,20rem)] flex-col gap-1">
+                  <span className="text-xs font-medium text-text-secondary">Município (PI)</span>
+                  <select
+                    value={municipioSel}
+                    onChange={(e) => setMunicipioSel(e.target.value)}
+                    className="w-full rounded-lg border border-card bg-background px-3 py-2 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-accent-gold/40"
+                  >
+                    <option value="">Selecione…</option>
+                    {municipios.map((m) => (
+                      <option key={m} value={m}>
+                        {m}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <button
+                  type="button"
+                  onClick={() => setLimitesModalOpen(true)}
+                  disabled={!municipioSel}
+                  className="inline-flex shrink-0 items-center gap-2 rounded-xl border border-card px-4 py-2 text-sm font-medium text-text-primary hover:bg-background/80 disabled:opacity-50"
+                >
+                  <Settings2 className="h-4 w-4" />
+                  Limites
+                </button>
+                <button
+                  type="button"
+                  onClick={handleRefresh}
+                  disabled={!municipioSel || loadingFns || loadingSuas || loadingLimites}
+                  className={cn(
+                    'inline-flex shrink-0 items-center gap-2 rounded-xl border border-card px-4 py-2 text-sm font-medium text-text-primary hover:bg-background/80 disabled:opacity-50',
+                    sidebarPrimaryCTAButtonClass(isCockpit),
+                  )}
+                >
+                  <RefreshCw
+                    className={cn(
+                      'h-4 w-4',
+                      (loadingFns || loadingSuas || loadingLimites) && 'animate-spin',
+                    )}
+                  />
+                  Atualizar
+                </button>
+              </div>
+            </header>
+          </SpatialGlassCard>
+
+          {(loadingFns || loadingSuas || loadingLimites) && municipioSel && (
+            <p className="-mt-2 inline-flex items-center gap-2 text-xs text-text-secondary">
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              Consultando FNS e emendas SUAS…
             </p>
-          </div>
-          <div className="flex flex-wrap items-end gap-2 sm:gap-3 shrink-0">
-            <label className="flex min-w-[12rem] max-w-[min(100%,20rem)] flex-col gap-1">
-              <span className="text-xs font-medium text-text-secondary">Município (PI)</span>
-              <select
-                value={municipioSel}
-                onChange={(e) => setMunicipioSel(e.target.value)}
-                className="w-full rounded-lg border border-card bg-background px-3 py-2 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-accent-gold/40"
-              >
-                <option value="">Selecione…</option>
-                {municipios.map((m) => (
-                  <option key={m} value={m}>
-                    {m}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <button
-              type="button"
-              onClick={() => setLimitesModalOpen(true)}
-              disabled={!municipioSel}
-              className="inline-flex shrink-0 items-center gap-2 rounded-xl border border-card px-4 py-2 text-sm font-medium text-text-primary hover:bg-background/80 disabled:opacity-50"
-            >
-              <Settings2 className="h-4 w-4" />
-              Limites
-            </button>
-            <button
-              type="button"
-              onClick={handleRefresh}
-              disabled={!municipioSel || loadingFns || loadingSuas || loadingLimites}
-              className={cn(
-                'inline-flex shrink-0 items-center gap-2 rounded-xl border border-card px-4 py-2 text-sm font-medium text-text-primary hover:bg-background/80 disabled:opacity-50',
-                sidebarPrimaryCTAButtonClass,
-              )}
-            >
-              <RefreshCw
-                className={cn(
-                  'h-4 w-4',
-                  (loadingFns || loadingSuas || loadingLimites) && 'animate-spin',
-                )}
-              />
-              Atualizar
-            </button>
-          </div>
-        </header>
+          )}
 
-        {(loadingFns || loadingSuas || loadingLimites) && municipioSel && (
-          <p className="inline-flex items-center gap-2 text-xs text-text-secondary -mt-2">
-            <Loader2 className="h-3.5 w-3.5 animate-spin" />
-            Consultando FNS e emendas SUAS…
-          </p>
-        )}
+          {error && (
+            <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">
+              {error}
+            </p>
+          )}
 
-        {error && (
-          <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">
-            {error}
-          </p>
-        )}
-
-        <FichaAtendimentoTetosBloco
-          municipio={municipioSel || null}
-          resumos={municipioSel ? resumosMacPap : {
-            mac: { individual: null, coletiva: null },
-            pap: { individual: null, coletiva: null },
-          }}
-          resumoSuas={municipioSel ? resumoSuas : null}
-          populacao={populacao}
-          classificacaoSuas={classificacaoSuas}
-          exercicioAtivo={exercicioAtivo}
-        />
+          <SpatialGlassCard glow="violet" padding="sm">
+            <FichaAtendimentoTetosBloco
+              municipio={municipioSel || null}
+              resumos={
+                municipioSel
+                  ? resumosMacPap
+                  : {
+                      mac: { individual: null, coletiva: null },
+                      pap: { individual: null, coletiva: null },
+                    }
+              }
+              resumoSuas={municipioSel ? resumoSuas : null}
+              populacao={populacao}
+              classificacaoSuas={classificacaoSuas}
+              exercicioAtivo={exercicioAtivo}
+            />
+          </SpatialGlassCard>
 
         <FichaAtendimentoEditarLimites
           open={limitesModalOpen}
@@ -486,17 +503,19 @@ export default function FichaAtendimentoPage() {
         />
 
         {municipioSel ? (
-          <FichaAtendimentoResultadosEleicao
-            municipio={municipioSel}
-            onVerFicha={(candidato, cargo) => {
-              setAutoPrintFicha(false)
-              setFichaLideranca({ candidato, cargo })
-            }}
-            onImprimirFicha={(candidato, cargo) => {
-              setAutoPrintFicha(true)
-              setFichaLideranca({ candidato, cargo })
-            }}
-          />
+          <SpatialGlassCard glow="gold" padding="sm">
+            <FichaAtendimentoResultadosEleicao
+              municipio={municipioSel}
+              onVerFicha={(candidato, cargo) => {
+                setAutoPrintFicha(false)
+                setFichaLideranca({ candidato, cargo })
+              }}
+              onImprimirFicha={(candidato, cargo) => {
+                setAutoPrintFicha(true)
+                setFichaLideranca({ candidato, cargo })
+              }}
+            />
+          </SpatialGlassCard>
         ) : null}
 
         {fichaLideranca && municipioSel ? (
@@ -521,13 +540,22 @@ export default function FichaAtendimentoPage() {
           />
         ) : null}
 
-        {municipioSel ? <FichaAtendimentoEmendasMandato municipio={municipioSel} /> : null}
+        {municipioSel ? (
+          <SpatialGlassCard glow="violet" padding="sm">
+            <FichaAtendimentoEmendasMandato municipio={municipioSel} />
+          </SpatialGlassCard>
+        ) : null}
 
-        <section className={cn(sectionShellClass, 'flex min-w-0 flex-1 flex-col overflow-hidden')}>
+        <SpatialGlassCard
+          glow="cyan"
+          className="flex min-w-0 flex-1 flex-col overflow-hidden"
+          padding="md"
+        >
+          <section className="flex min-w-0 flex-1 flex-col overflow-hidden">
           <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <h2 className="text-sm font-semibold text-text-primary">Propostas e lançamentos</h2>
-              <p className="text-xs text-text-secondary mt-0.5">
+              <h2 className={typographySectionTitleClass}>Propostas e lançamentos</h2>
+              <p className="mt-0.5 text-xs text-text-secondary">
                 FNS (exceto PROGRAMA) + SUAS local
                 {exercicioAtivo ? ` · exercício ${exercicioAtivo} ao vivo no FNS` : ''}. Use o ícone
                 de detalhes ou o link para o portal Consulta FNS.
@@ -539,7 +567,7 @@ export default function FichaAtendimentoPage() {
               onClick={openNovaSuas}
               className={cn(
                 'inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-medium text-white disabled:opacity-50',
-                sidebarPrimaryCTAButtonClass,
+                sidebarPrimaryCTAButtonClass(isCockpit),
               )}
             >
               <Plus className="h-4 w-4" />
@@ -688,14 +716,16 @@ export default function FichaAtendimentoPage() {
               </table>
             </div>
           )}
-        </section>
+          </section>
+        </SpatialGlassCard>
 
-        <p className="text-[11px] text-text-secondary pb-4">
+        <p className="pb-4 text-[11px] text-text-secondary">
           MAC/PAP: limites por exercício (planilhas/ banco); propostas via API pública do FNS. SUAS: teto calculado
           pela população (arquivo IBGE local); propostas SUAS são registradas neste sistema (tabela{' '}
           <code className="text-[10px]">emendas_suas</code>).
         </p>
-      </div>
+        </div>
+      </SpatialShell>
 
       <FichaAtendimentoPropostaDetalhe
         open={detalheProposta != null}
@@ -800,7 +830,7 @@ function SuasModal({
             disabled={saving}
             className={cn(
               'inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-medium text-white',
-              sidebarPrimaryCTAButtonClass,
+              sidebarPrimaryCTAButtonClass(false),
             )}
           >
             {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}

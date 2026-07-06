@@ -1592,6 +1592,219 @@ table.td-resumo-table--premium .td-resumo-table__rank--first {
   opacity: 1;
 }
 
+/* IPT — insights de campo no popup do município */
+.leaflet-popup.ipt-popup-shell .leaflet-popup-content {
+  margin: 0;
+  width: auto !important;
+}
+
+.leaflet-popup.ipt-popup-shell .leaflet-popup-content-wrapper {
+  border-radius: 12px;
+  padding: 0;
+}
+
+.ipt-insights-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  margin: 0;
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: 1px solid rgb(var(--border-card) / 0.85);
+  background: rgb(var(--bg-app) / 0.65);
+  color: rgb(var(--text-primary));
+  font-size: 11px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition:
+    background 160ms ease,
+    border-color 160ms ease,
+    box-shadow 160ms ease;
+}
+
+.ipt-insights-toggle:hover {
+  background: rgb(var(--accent-gold-soft) / 0.45);
+  border-color: rgb(var(--accent-gold) / 0.35);
+}
+
+.ipt-insights-toggle__ico {
+  display: inline-flex;
+  color: #185fa5;
+  flex-shrink: 0;
+}
+
+.ipt-insights-toggle__label {
+  flex: 1;
+  text-align: left;
+}
+
+.ipt-insights-toggle__count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: #185fa5;
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.ipt-insights-toggle__chevron {
+  display: inline-flex;
+  color: rgb(var(--text-muted));
+  flex-shrink: 0;
+  transition: transform 180ms ease;
+}
+
+.ipt-insights-root--open .ipt-insights-toggle__chevron {
+  transform: rotate(180deg);
+}
+
+.ipt-insights-panel {
+  margin-top: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.ipt-insights-panel[hidden] {
+  display: none !important;
+}
+
+.ipt-insights-panel__lead {
+  margin: 0;
+  font-size: 10px;
+  line-height: 1.45;
+  color: rgb(var(--text-muted));
+}
+
+.ipt-insights-form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.ipt-insights-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.ipt-insights-field__label {
+  font-size: 10px;
+  font-weight: 600;
+  color: rgb(var(--text-muted));
+}
+
+.ipt-insights-fieldset {
+  border: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.ipt-insights-fieldset legend {
+  padding: 0;
+  margin-bottom: 2px;
+}
+
+.ipt-insights-radio {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  cursor: pointer;
+  color: rgb(var(--text-primary));
+}
+
+.ipt-insights-input {
+  width: 100%;
+  border-radius: 8px;
+  border: 1px solid rgb(var(--border-card) / 0.85);
+  background: rgb(var(--bg-surface));
+  color: rgb(var(--text-primary));
+  padding: 6px 8px;
+  font-size: 11px;
+  font-family: inherit;
+}
+
+.ipt-insights-input:focus {
+  outline: none;
+  border-color: rgb(var(--accent-gold) / 0.55);
+  box-shadow: 0 0 0 2px rgb(var(--accent-gold-soft) / 0.65);
+}
+
+.ipt-insights-textarea {
+  resize: vertical;
+  min-height: 64px;
+}
+
+.ipt-insights-submit {
+  align-self: flex-start;
+  border: none;
+  border-radius: 8px;
+  background: #185fa5;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 7px 12px;
+  cursor: pointer;
+}
+
+.ipt-insights-submit:hover:not(:disabled) {
+  background: #0c447c;
+}
+
+.ipt-insights-submit:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.ipt-insights-history {
+  max-height: 180px;
+  overflow-y: auto;
+  margin-top: 4px;
+}
+
+.ipt-insights-history__title {
+  font-size: 10px;
+  font-weight: 600;
+  color: rgb(var(--text-muted));
+  margin-bottom: 6px;
+}
+
+.ipt-insights-history__empty {
+  font-size: 10px;
+  color: rgb(var(--text-muted));
+}
+
+.ipt-insights-history__error {
+  color: #dc2626;
+}
+
+.ipt-insights-history__loading {
+  font-size: 10px;
+  color: rgb(var(--text-muted));
+}
+
+.ipt-insights-error {
+  margin: 0;
+  font-size: 10px;
+  color: #dc2626;
+}
+
+.ipt-insights-error[hidden] {
+  display: none !important;
+}
+
 /* Marcadores flutuantes — peso do eleitorado por TD (mapa Territórios) */
 .leaflet-div-icon.td-eleitores-peso-marker {
   background: transparent !important;
