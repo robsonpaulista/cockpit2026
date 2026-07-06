@@ -3,7 +3,6 @@
 import dynamic from 'next/dynamic'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Loader2, RefreshCw } from 'lucide-react'
-import { IptKpiStrip } from '@/components/ipt/ipt-kpi-strip'
 import { IptMapToolbar } from '@/components/ipt/ipt-map-toolbar'
 import { useIpt } from '@/hooks/use-ipt'
 import { IPT_INDICADOR_OPCOES, buildContagemIptPorIndicador, type IptIndicador, type IptPrioridade } from '@/lib/ipt'
@@ -40,7 +39,7 @@ export function IptPanel() {
   const [filtroPrioridade, setFiltroPrioridade] = useState<IptPrioridade | null>(null)
   const [filtroIndicador, setFiltroIndicador] = useState<IptIndicador | 'geral'>('geral')
   const [filtroTd, setFiltroTd] = useState<TerritorioDesenvolvimentoPI | null>(null)
-  const { loading, error, municipios, resumo, recarregar } = useIpt()
+  const { loading, error, municipios, recarregar } = useIpt()
 
   const municipiosNoEscopo = useMemo(
     () => filtrarIptMunicipiosPorTd(municipios, filtroTd),
@@ -120,17 +119,16 @@ export function IptPanel() {
         />
       </DashboardPageChrome>
 
-      <DashboardPageContent>
-        {!isNativeFullscreen ? <IptKpiStrip resumo={resumo} /> : null}
-
+      <DashboardPageContent className="min-h-0 flex-1">
         {error ? (
-          <div className="mt-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">{error}</div>
+          <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">{error}</div>
         ) : null}
 
         <div
           ref={mapContainerRef}
           className={cn(
-            'mt-4 overflow-hidden rounded-xl border border-card bg-bg-surface',
+            'flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-card bg-bg-surface',
+            !isNativeFullscreen && 'h-[calc(100dvh-13rem)] min-h-[520px]',
             '[&:fullscreen]:mt-0 [&:fullscreen]:flex [&:fullscreen]:h-screen [&:fullscreen]:w-full [&:fullscreen]:flex-col [&:fullscreen]:min-h-0 [&:fullscreen]:rounded-none [&:fullscreen]:border-none [&:fullscreen]:bg-bg-surface'
           )}
         >
@@ -176,7 +174,7 @@ export function IptPanel() {
             />
           </div>
 
-          <div className={cn(isNativeFullscreen ? 'flex min-h-0 flex-1 flex-col' : 'h-[560px]')}>
+          <div className="flex min-h-0 flex-1 flex-col">
             {loading ? (
               <div className="flex h-full min-h-[420px] items-center justify-center text-sm text-text-muted">
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden />

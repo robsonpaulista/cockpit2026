@@ -21,13 +21,13 @@ export function IptMapSection({
   indicadorFiltro = null,
   filtroTd = null,
   municipiosBoundsTd = [],
-  isFullscreen = false,
+  isFullscreen: _isFullscreen = false,
   onInsightSaved,
 }: IptMapSectionProps) {
   const { appearance } = useTheme()
 
   return (
-    <div className={cn('overflow-hidden', isFullscreen ? 'h-full min-h-0 flex-1' : 'h-full')}>
+    <div className="h-full min-h-0 flex-1 overflow-hidden">
       <MapWrapperLeaflet
         cidadesComPresenca={[]}
         municipiosPiaui={municipiosPiaui as Array<{ nome: string; lat: number; lng: number }>}
