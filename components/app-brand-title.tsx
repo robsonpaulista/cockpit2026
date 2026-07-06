@@ -1,74 +1,199 @@
-import { LayoutDashboard } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { sidebarBrandLogoMarkClass } from '@/lib/sidebar-brand-styles'
-import { typographyPageLeadClass, typographyPageTitleClass } from '@/lib/typography-chrome'
+import {
+  APP_BRAND_TAGLINE,
+  brandWordmarkClass,
+  brandWordmarkTaglineClass,
+  sidebarBrandLogoMarkClass,
+} from '@/lib/sidebar-brand-styles'
+import { typographyPageLeadClass } from '@/lib/typography-chrome'
 
 export const APP_BRAND_LEAD = 'Gestão integrada de campanha e monitoramento'
 
 /** Cliente / campanha ativa (opcional na sidebar). */
 export const APP_ACTIVE_CLIENT_LABEL = ''
 
-export function SidebarBrandMark({ className }: { className?: string }) {
-  return (
-    <span className={cn(sidebarBrandLogoMarkClass, className)} aria-hidden>
-      <LayoutDashboard className="h-3.5 w-3.5" strokeWidth={2.25} />
-    </span>
-  )
+export type AppBrandWordmarkSize = 'xs' | 'sm' | 'md' | 'lg' | 'sidebar'
+
+const WORDMARK_SIZE: Record<
+  AppBrandWordmarkSize,
+  { main: string; tag: string }
+> = {
+  xs: { main: 'text-[13px]', tag: 'mt-0.5 text-[7px] tracking-[0.2em]' },
+  sm: { main: 'text-[15px]', tag: 'mt-0.5 text-[8px] tracking-[0.18em]' },
+  md: { main: 'text-[17px] sm:text-[18px]', tag: 'mt-0.5 text-[9px] tracking-[0.16em]' },
+  lg: {
+    main: 'text-[22px] sm:text-[26px] lg:text-[28px] tracking-[-0.05em]',
+    tag: 'mt-1 text-[10px] tracking-[0.14em]',
+  },
+  sidebar: {
+    main: 'text-[2rem] leading-[0.88] tracking-[-0.05em]',
+    tag: 'mt-2 text-[9px] tracking-[0.32em]',
+  },
 }
 
-/** Mesmo bloco tipográfico do topo da sidebar (nome da aplicação). */
-export function AppBrandTitle({
-  isCockpit,
+type WordmarkTone = 'default' | 'onGradient'
+
+function wordmarkTone({
   lightOnGradient,
+}: {
+  lightOnGradient?: boolean
+}): WordmarkTone {
+  if (lightOnGradient) return 'onGradient'
+  return 'default'
+}
+
+function wordmarkSegmentColors(
+  tone: WordmarkTone,
+  lightOnAmber?: boolean,
+) {
+  if (tone === 'onGradient') {
+    return { cock: 'text-white', pit: 'text-[#C8900A]' }
+  }
+  return {
+    cock: cn('text-text-primary', lightOnAmber && 'max-lg:text-white'),
+    pit: cn('text-[#C8900A]', lightOnAmber && 'max-lg:text-[#1a1a1a]/90'),
+  }
+}
+
+/** Wordmark COCK + PIT — tipografia bold, duas cores, sem ícone. */
+export function AppBrandWordmark({
+  size = 'sm',
+  showTagline = false,
+  lightOnGradient,
+  lightOnAmber,
+  compact = false,
+  fullWidth = false,
   className,
 }: {
-  isCockpit: boolean
-  /** Texto claro sobre o gradiente dourado da home (sidebar/header). */
+  size?: AppBrandWordmarkSize
+  showTagline?: boolean
   lightOnGradient?: boolean
+  lightOnAmber?: boolean
+  /** Monograma CP para sidebar recolhida. */
+  compact?: boolean
+  /** Ocupa toda a largura do container (sidebar expandida). */
+  fullWidth?: boolean
   className?: string
 }) {
+  const tone = wordmarkTone({ lightOnGradient })
+  const colors = wordmarkSegmentColors(tone, lightOnAmber)
+  const sizes = WORDMARK_SIZE[size]
+
+  if (compact) {
+    return (
+      <span
+        className={cn(sidebarBrandLogoMarkClass, className)}
+        aria-label="Cockpit"
+      >
+        <span className={colors.cock}>C</span>
+        <span className={colors.pit}>P</span>
+      </span>
+    )
+  }
+
   return (
     <span
       className={cn(
-        typographyPageTitleClass,
-        lightOnGradient &&
-          'text-[#00D4FF] drop-shadow-[0_0_14px_rgba(0,212,255,0.35)]',
-        !lightOnGradient &&
-          isCockpit &&
-          'bg-[linear-gradient(135deg,#6c7bff_0%,#8e6cfd_35%,#5ed3ff_75%,#3fbac2_100%)] bg-clip-text text-transparent [text-shadow:0_6px_18px_rgba(10,18,28,0.22)]',
-        !lightOnGradient && !isCockpit && 'text-text-primary',
+        'min-w-0 flex-col',
+        fullWidth ? 'flex w-full' : 'inline-flex',
         className,
       )}
     >
-      Cockpit 2026
+      <span
+        className={cn(
+          brandWordmarkClass,
+          sizes.main,
+          fullWidth ? 'block w-full whitespace-nowrap' : 'truncate whitespace-nowrap',
+        )}
+        aria-label="Cockpit"
+      >
+        <span className={colors.cock}>Cock</span>
+        <span className={colors.pit}>pit</span>
+      </span>
+      {showTagline ? (
+        <span
+          className={cn(
+            brandWordmarkTaglineClass,
+            sizes.tag,
+            fullWidth && 'block w-full',
+            lightOnGradient && 'text-white/55',
+            lightOnAmber && 'max-lg:text-white/70',
+          )}
+        >
+          {APP_BRAND_TAGLINE}
+        </span>
+      ) : null}
     </span>
   )
 }
 
-/** Bloco de marca na sidebar — logo mark + nome. */
-export function SidebarBrandHeader({
-  clientLabel = APP_ACTIVE_CLIENT_LABEL,
+/** @deprecated Use AppBrandWordmark compact — mantido para imports existentes. */
+export function SidebarBrandMark({
+  className,
+  lightOnGradient,
+}: {
+  className?: string
+  lightOnGradient?: boolean
+}) {
+  return (
+    <AppBrandWordmark compact lightOnGradient={lightOnGradient} className={className} />
+  )
+}
+
+export function AppBrandTitle({
+  isCockpit: _isCockpit,
+  lightOnGradient,
+  lightOnAmber,
+  showTagline,
+  size,
   className,
 }: {
-  clientLabel?: string
+  isCockpit: boolean
+  lightOnGradient?: boolean
+  lightOnAmber?: boolean
+  showTagline?: boolean
+  size?: AppBrandWordmarkSize
   className?: string
 }) {
   return (
-    <div className={cn('flex min-w-0 items-start gap-2.5', className)}>
-      <SidebarBrandMark />
-      <div className="min-w-0 flex-1">
-        <h1 className={typographyPageTitleClass}>Cockpit 2026</h1>
-        {clientLabel ? (
-          <p className={cn('mt-1 line-clamp-2', typographyPageLeadClass)}>{clientLabel}</p>
-        ) : null}
-      </div>
+    <AppBrandWordmark
+      size={size ?? 'md'}
+      showTagline={showTagline}
+      lightOnGradient={lightOnGradient}
+      lightOnAmber={lightOnAmber}
+      className={className}
+    />
+  )
+}
+
+/** Bloco de marca na sidebar — wordmark tipográfico. */
+export function SidebarBrandHeader({
+  clientLabel = APP_ACTIVE_CLIENT_LABEL,
+  className,
+  lightOnGradient,
+}: {
+  clientLabel?: string
+  className?: string
+  lightOnGradient?: boolean
+}) {
+  return (
+    <div className={cn('flex min-w-0 w-full flex-col', className)}>
+      <AppBrandWordmark
+        size="sidebar"
+        showTagline
+        fullWidth
+        lightOnGradient={lightOnGradient}
+      />
+      {clientLabel ? (
+        <p className={cn('mt-1 line-clamp-2', typographyPageLeadClass)}>{clientLabel}</p>
+      ) : null}
     </div>
   )
 }
 
 /** Título + linha de detalhe (alinha com headers de página). */
 export function AppBrandHeader({
-  isCockpit,
+  isCockpit: _isCockpit,
   lightOnGradient,
   className,
   lead = APP_BRAND_LEAD,
@@ -83,19 +208,29 @@ export function AppBrandHeader({
   clientLabel?: string
 }) {
   if (variant === 'sidebar' && !lightOnGradient) {
-    return <SidebarBrandHeader clientLabel={clientLabel} className={className} />
+    return (
+      <SidebarBrandHeader
+        clientLabel={clientLabel}
+        className={className}
+        lightOnGradient={lightOnGradient}
+      />
+    )
   }
 
   return (
     <div className={cn('min-w-0', className)}>
-      <AppBrandTitle isCockpit={isCockpit} lightOnGradient={lightOnGradient} />
+      <AppBrandWordmark
+        size={lightOnGradient ? 'md' : 'sm'}
+        showTagline={lightOnGradient}
+        lightOnGradient={lightOnGradient}
+      />
       {lead ? (
         <p
           className={cn(
             'mt-1 line-clamp-2',
             lightOnGradient
               ? 'text-[13px] leading-relaxed text-white/65'
-              : typographyPageLeadClass
+              : typographyPageLeadClass,
           )}
         >
           {lead}

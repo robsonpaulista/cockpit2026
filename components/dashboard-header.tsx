@@ -124,11 +124,12 @@ export function DashboardHeader() {
           <AppBrandTitle
             isCockpit={false}
             lightOnGradient={isGradientHome}
+            lightOnAmber={mobileAmberHeader}
+            size="md"
             className={cn(
-              'min-w-0 truncate',
-              isGradientHome ? 'text-[0.95rem] sm:text-[1.16rem]' : 'shrink-0 whitespace-nowrap',
-              mobileAmberHeader &&
-                'max-lg:!bg-none max-lg:!bg-clip-border max-lg:!text-white max-lg:[text-shadow:0_1px_10px_rgba(0,0,0,0.14)]',
+              'min-w-0',
+              isGradientHome ? 'sm:scale-105' : 'shrink-0',
+              mobileAmberHeader && 'max-lg:[&_span]:drop-shadow-[0_1px_8px_rgba(0,0,0,0.12)]',
             )}
           />
           <span

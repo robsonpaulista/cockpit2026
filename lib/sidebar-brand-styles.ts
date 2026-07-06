@@ -1,10 +1,19 @@
 import { cn } from '@/lib/utils'
 
-/** Marca âmbar 22×22 — logo mark da sidebar. */
+/** Marca âmbar — cor do segmento PIT e acentos da UI. */
 export const SIDEBAR_BRAND_AMBER = '#C8900A'
 
+export const APP_BRAND_TAGLINE = 'Campanha · 2026'
+
+/** Wordmark tipográfico COCK + PIT — sans extrabold, máximo impacto. */
+export const brandWordmarkClass =
+  'font-sans font-extrabold uppercase leading-none tracking-[-0.04em]'
+
+export const brandWordmarkTaglineClass =
+  'font-sans text-[length:var(--text-2xs)] font-medium uppercase leading-none tracking-[0.16em] text-text-muted'
+
 export const sidebarBrandLogoMarkClass =
-  'flex h-6 w-6 shrink-0 items-center justify-center rounded-[5px] bg-[#C8900A] text-white'
+  'flex h-6 w-6 shrink-0 items-center justify-center font-sans text-[11px] font-extrabold leading-none tracking-tighter'
 
 /** Nome do produto na sidebar — 12px / 600 / #1a1a1a */
 export const sidebarBrandNameClass =

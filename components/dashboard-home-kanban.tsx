@@ -244,7 +244,9 @@ export function DashboardHomeKanban() {
         <AppBrandTitle
           isCockpit={false}
           lightOnGradient
-          className="mb-2 block text-[1.16rem] sm:mb-3 sm:text-[1.25rem] lg:text-[1.35rem] xl:text-[1.45rem]"
+          size="lg"
+          showTagline
+          className="mb-2 block sm:mb-3"
         />
         <h1 className="font-jarvis-display text-xl font-bold tracking-tight text-white sm:text-2xl lg:text-[1.75rem] xl:text-3xl 2xl:text-[2rem]">
           O que vamos acompanhar hoje?

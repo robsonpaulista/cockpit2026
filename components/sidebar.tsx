@@ -826,13 +826,13 @@ export function Sidebar() {
             )}
           >
             {(!navCollapsed || navMobileOpen) && (
-              <div className="flex h-full min-h-0 w-full flex-col justify-center gap-1.5 overflow-visible">
-                <div className="flex items-start justify-between gap-2">
+              <div className="flex h-full min-h-0 w-full flex-col justify-center overflow-visible">
+                <div className="flex w-full items-center justify-between gap-1.5">
                   <AppBrandHeader
                     isCockpit={isCockpit}
                     lightOnGradient={isGradientHome}
                     variant={filmNav ? 'page' : 'sidebar'}
-                    className="min-w-0 flex-1"
+                    className="min-w-0 w-full flex-1"
                   />
                   {!collapsed && (
                     <button
@@ -852,7 +852,6 @@ export function Sidebar() {
                     </button>
                   )}
                 </div>
-                <UserMenu variant="sidebar" />
               </div>
             )}
             {navCollapsed && !navMobileOpen && (
@@ -883,7 +882,7 @@ export function Sidebar() {
                       idleCollapsedChrome && hasFixedPageChrome && 'flex-col justify-center gap-0.5 py-1',
                     )}
                   >
-                    <SidebarBrandMark />
+                    <SidebarBrandMark lightOnGradient={isGradientHome} />
                     {!hasFixedPageChrome || idleCollapsedChrome ? (
                       <button
                         onClick={toggleCollapse}
@@ -1010,6 +1009,11 @@ export function Sidebar() {
               isGradientHome ? 'border-[rgba(0,212,255,0.08)]' : 'border-[rgb(var(--color-border-secondary)/0.35)]'
             )}
           >
+            <UserMenu
+              variant="sidebar"
+              collapsed={navCollapsed && !navMobileOpen}
+              className={sidebarItemIconOnlyClass(navCollapsed, navMobileOpen)}
+            />
             <button
               onClick={() => {
                 window.dispatchEvent(new Event('activateSplash'))

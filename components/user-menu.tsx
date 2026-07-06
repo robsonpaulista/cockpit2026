@@ -7,8 +7,9 @@ import { cn } from '@/lib/utils'
 import { useDashboardHomeChrome } from '@/contexts/dashboard-home-chrome-context'
 import {
   sidebarActiveFocusRingClass,
+  sidebarBrandWelcomeClass,
+  sidebarBrandWelcomeNameClass,
 } from '@/lib/sidebar-brand-styles'
-import { typographyPageLeadClass } from '@/lib/typography-chrome'
 import {
   JARVIS_SIDEBAR_FOCUS,
   JARVIS_SIDEBAR_HOVER,
@@ -25,6 +26,8 @@ type UserMenuPlacement = 'bottom' | 'top'
 type UserMenuProps = {
   variant?: 'default' | 'sidebar'
   className?: string
+  /** Sidebar recolhida — só avatar no rodapé. */
+  collapsed?: boolean
   /** Topbar âmbar no mobile — ícones e hover claros. */
   amberMobileChrome?: boolean
 }
@@ -38,7 +41,12 @@ function resolveWelcomeName(name: string | undefined, email: string | undefined)
   return 'Usuário'
 }
 
-export function UserMenu({ variant = 'default', className, amberMobileChrome = false }: UserMenuProps) {
+export function UserMenu({
+  variant = 'default',
+  className,
+  collapsed = false,
+  amberMobileChrome = false,
+}: UserMenuProps) {
   const { user, loading, signOut } = useAuth()
   const isGradientHome = useDashboardHomeChrome()
   const isSidebar = variant === 'sidebar'
@@ -141,9 +149,18 @@ export function UserMenu({ variant = 'default', className, amberMobileChrome = f
   if (loading) {
     if (isSidebar) {
       return (
-        <div className={cn('flex items-center gap-2', className)} aria-hidden>
+        <div
+          className={cn(
+            'flex items-center gap-2',
+            collapsed && 'justify-center',
+            className,
+          )}
+          aria-hidden
+        >
           <div className="h-7 w-7 animate-pulse rounded-full bg-[#C8900A]/25" />
-          <div className="h-[14px] flex-1 animate-pulse rounded bg-bg-app" />
+          {!collapsed ? (
+            <div className="h-[10px] flex-1 animate-pulse rounded bg-bg-app" />
+          ) : null}
         </div>
       )
     }
@@ -196,10 +213,16 @@ export function UserMenu({ variant = 'default', className, amberMobileChrome = f
         onClick={toggleOpen}
         aria-expanded={open}
         aria-haspopup="menu"
+        title={isSidebar && collapsed ? welcomeName : undefined}
         className={cn(
           'group flex min-w-0 items-center gap-1.5 rounded-md transition-colors',
           isSidebar
-            ? cn('w-full py-0.5 text-left', sidebarActiveFocusRingClass, 'hover:opacity-80')
+            ? cn(
+                'w-full text-left',
+                collapsed ? 'justify-center px-1 py-1' : 'px-0.5 py-1',
+                sidebarActiveFocusRingClass,
+                'hover:opacity-80',
+              )
             : cn(
                 'gap-2 rounded-lg px-3 py-2',
                 amberMobileChrome && 'max-lg:hover:bg-white/12',
@@ -217,10 +240,14 @@ export function UserMenu({ variant = 'default', className, amberMobileChrome = f
         />
 
         {isSidebar ? (
-          <span className={cn('min-w-0 flex-1 truncate', typographyPageLeadClass)}>
-            Bem-vindo,{' '}
-            <span className="font-medium text-text-primary">{welcomeName}</span>
-          </span>
+          collapsed ? (
+            <span className="sr-only">{welcomeName}</span>
+          ) : (
+            <span className={cn('min-w-0 flex-1 truncate', sidebarBrandWelcomeClass)}>
+              Bem-vindo,{' '}
+              <span className={sidebarBrandWelcomeNameClass}>{welcomeName}</span>
+            </span>
+          )
         ) : (
           <div className="hidden text-left md:block">
             <p
@@ -243,7 +270,9 @@ export function UserMenu({ variant = 'default', className, amberMobileChrome = f
           className={cn(
             'h-3.5 w-3.5 shrink-0 transition-transform',
             isSidebar
-              ? 'text-[#888888]'
+              ? collapsed
+                ? 'hidden'
+                : 'text-[#888888]'
               : amberMobileChrome
                 ? 'text-secondary max-lg:text-white/85'
                 : isGradientHome
