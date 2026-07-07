@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { requireRouteUser } from '@/lib/supabase/route-auth'
+import { isSupabaseNetworkError } from '@/lib/supabase/network-error'
 import type { MetaAdsMentionWithActor } from '@/lib/meta-ads-types'
 
 export const dynamic = 'force-dynamic'
@@ -62,6 +63,17 @@ export async function GET(request: Request) {
       setupRequired: false,
     })
   } catch (e) {
+    if (isSupabaseNetworkError(e)) {
+      console.warn('[meta-ads/mentions] Supabase indisponível (rede). Respondendo 503 retryable.')
+      return NextResponse.json(
+        {
+          error: 'Conexão com o Supabase temporariamente indisponível. Aguarde alguns segundos e tente novamente.',
+          retryable: true,
+          ads: [],
+        },
+        { status: 503 }
+      )
+    }
     const msg = e instanceof Error ? e.message : 'Erro ao listar anúncios Meta Ads'
     console.error('[meta-ads/mentions]', e)
     return NextResponse.json({ error: msg }, { status: 500 })

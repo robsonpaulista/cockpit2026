@@ -4,6 +4,7 @@ import { isMetaAdsDailyLimitEnabled } from '@/lib/meta-ads-types'
 import { META_ADS_RUNNER_UNAVAILABLE_MESSAGE, isMetaAdsRunnerAvailable } from '@/lib/serverless-runtime'
 import { requireRouteUser } from '@/lib/supabase/route-auth'
 import { isSupabaseMissingTableError } from '@/lib/supabase/table-error'
+import { isSupabaseNetworkError } from '@/lib/supabase/network-error'
 import { createClient } from '@/lib/supabase/server'
 
 export const dynamic = 'force-dynamic'
@@ -28,6 +29,16 @@ export async function GET() {
     })
   } catch (e) {
     const msg = e instanceof Error ? e.message : 'Erro ao consultar status Meta Ads'
+    if (isSupabaseNetworkError(e)) {
+      console.warn('[meta-ads/status] Supabase indisponível (rede). Respondendo 503 retryable.')
+      return NextResponse.json(
+        {
+          error: 'Conexão com o Supabase temporariamente indisponível. Aguarde alguns segundos e tente novamente.',
+          retryable: true,
+        },
+        { status: 503 }
+      )
+    }
     if (isSupabaseMissingTableError(e instanceof Error ? { message: e.message } : null)) {
       return NextResponse.json({
         canCollect: false,

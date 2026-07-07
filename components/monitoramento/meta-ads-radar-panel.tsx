@@ -36,6 +36,7 @@ export function MetaAdsRadarPanel() {
   const [collectMessage, setCollectMessage] = useState('')
   const [collectWarnings, setCollectWarnings] = useState<string[]>([])
   const [pollCollect, setPollCollect] = useState(false)
+  const [conexaoInstavel, setConexaoInstavel] = useState(false)
 
   const { progress, status, refresh: refreshStatus } = useMetaAdsCollectPolling(
     collecting || pollCollect
@@ -49,6 +50,7 @@ export function MetaAdsRadarPanel() {
   const carregar = useCallback(async () => {
     setLoading(true)
     setError('')
+    let instavel = false
     try {
       const [actorsRes, adsRes, statusJson] = await Promise.all([
         fetch('/api/monitoramento/actors', { cache: 'no-store' }),
@@ -59,14 +61,24 @@ export function MetaAdsRadarPanel() {
       ])
 
       const actorsJson = (await actorsRes.json()) as {
+        error?: string
+        retryable?: boolean
         setupRequired?: boolean
         actors?: PoliticalActorWithTerms[]
       }
-      setSetupRequired(Boolean(actorsJson.setupRequired))
-      setActors(actorsJson.actors ?? [])
+      if (actorsRes.ok) {
+        setSetupRequired(Boolean(actorsJson.setupRequired))
+        setActors(actorsJson.actors ?? [])
+      } else if (actorsJson.retryable) {
+        // Rede instável: mantém dados atuais e sinaliza para nova tentativa.
+        instavel = true
+      } else if (actorsJson.setupRequired) {
+        setSetupRequired(true)
+      }
 
       const adsJson = (await adsRes.json()) as {
         error?: string
+        retryable?: boolean
         setupRequired?: boolean
         ads?: MetaAdsMentionWithActor[]
       }
@@ -75,6 +87,8 @@ export function MetaAdsRadarPanel() {
         if (adsJson.setupRequired) {
           setSetupRequired(true)
           setAds([])
+        } else if (adsJson.retryable) {
+          instavel = true
         } else {
           throw new Error(adsJson.error ?? 'Falha ao carregar anúncios Meta.')
         }
@@ -85,6 +99,7 @@ export function MetaAdsRadarPanel() {
 
       if (statusJson?.setupRequired) setSetupRequired(true)
       if (statusJson?.message) setStatusMessage(statusJson.message)
+      setConexaoInstavel(instavel)
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Erro ao carregar Meta Ads.')
     } finally {
@@ -95,6 +110,13 @@ export function MetaAdsRadarPanel() {
   useEffect(() => {
     void carregar()
   }, [carregar])
+
+  // Rede instável (503 retryable do Supabase): nova tentativa automática após alguns segundos.
+  useEffect(() => {
+    if (!conexaoInstavel) return
+    const id = window.setTimeout(() => void carregar(), 5000)
+    return () => window.clearTimeout(id)
+  }, [conexaoInstavel, carregar])
 
   const coletar = useCallback(async () => {
     setCollecting(true)
@@ -234,6 +256,12 @@ export function MetaAdsRadarPanel() {
               <li key={w}>{w}</li>
             ))}
           </ul>
+        </div>
+      ) : null}
+      {conexaoInstavel && !error ? (
+        <div className="flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
+          <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
+          Conexão com o Supabase instável. Tentando novamente…
         </div>
       ) : null}
       {error ? <p className="text-sm text-status-danger">{error}</p> : null}
