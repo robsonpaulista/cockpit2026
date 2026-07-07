@@ -7,7 +7,6 @@ import {
   formatValorMandatoCompacto,
   type ObrasMandatoSplashStats,
 } from '@/lib/obras-mapa-splash-stats'
-import { REST_SCREEN_GRADIENT, REST_SCREEN_RADIAL_GLOW } from '@/lib/rest-screen-chrome'
 import type { ObraMapaRow } from '@/lib/obras-mapa'
 import { cn } from '@/lib/utils'
 
@@ -184,20 +183,15 @@ export function MapaObrasSplash({ obras, onConcluir, className }: MapaObrasSplas
         className
       )}
       style={{
-        background: REST_SCREEN_GRADIENT,
+        background: '#ffffff',
         opacity: fase === 'saida' ? 0 : 1,
         transform: fase === 'saida' ? 'scale(1.02)' : 'scale(1)',
         transition: 'opacity 0.48s cubic-bezier(0.4, 0, 0.2, 1), transform 0.48s cubic-bezier(0.4, 0, 0.2, 1)',
       }}
     >
-      <div
-        className="pointer-events-none absolute -left-1/2 -top-1/2 h-[200%] w-[200%]"
-        style={{ background: REST_SCREEN_RADIAL_GLOW }}
-      />
-
       <div className="relative z-[1] flex w-full max-w-xl flex-col items-center text-center">
         <p
-          className="font-sans text-xs font-medium uppercase tracking-[0.32em] text-white/70 transition-[opacity,transform] duration-700 sm:text-sm"
+          className="font-sans text-xs font-medium uppercase tracking-[0.32em] text-black/60 transition-[opacity,transform] duration-700 sm:text-sm"
           style={{
             opacity: fase !== 'inicio' ? 1 : 0,
             transform: fase !== 'inicio' ? 'translateY(0)' : 'translateY(12px)',
@@ -208,7 +202,7 @@ export function MapaObrasSplash({ obras, onConcluir, className }: MapaObrasSplas
         </p>
 
         <div
-          className="my-6 h-px w-16 rounded-full bg-white/35 transition-[opacity,transform] duration-700 sm:my-8"
+          className="my-6 h-px w-16 rounded-full bg-black/15 transition-[opacity,transform] duration-700 sm:my-8"
           style={{
             opacity: fase === 'titulo' || fase === 'kpis' ? 1 : 0,
             transform: fase === 'titulo' || fase === 'kpis' ? 'scaleX(1)' : 'scaleX(0)',
@@ -219,7 +213,7 @@ export function MapaObrasSplash({ obras, onConcluir, className }: MapaObrasSplas
           {kpis.map((kpi, i) => (
             <p
               key={i}
-              className="font-sans text-[2rem] font-semibold leading-tight tracking-tight text-white drop-shadow-[0_2px_16px_rgba(0,0,0,0.12)] transition-[opacity,transform] duration-700 sm:text-[2.75rem] lg:text-[3rem]"
+              className="font-sans text-[2rem] font-semibold leading-tight tracking-tight text-black transition-[opacity,transform] duration-700 sm:text-[2.75rem] lg:text-[3rem]"
               style={{
                 opacity: kpi.visivel ? 1 : 0,
                 transform: kpi.visivel ? 'translateY(0)' : 'translateY(18px)',
@@ -241,17 +235,17 @@ export function MapaObrasSplash({ obras, onConcluir, className }: MapaObrasSplas
           }}
         >
           <p
-            className="font-sans text-[2rem] font-semibold tabular-nums leading-tight tracking-tight text-white drop-shadow-[0_2px_16px_rgba(0,0,0,0.12)] sm:text-[2.75rem] lg:text-[3rem]"
+            className="font-sans text-[2rem] font-semibold tabular-nums leading-tight tracking-tight text-black sm:text-[2.75rem] lg:text-[3rem]"
             aria-live="polite"
             aria-atomic="true"
           >
             {populacaoAoVivo.toLocaleString('pt-BR')}
           </p>
-          <p className="mt-2 flex flex-wrap items-center justify-center gap-x-2 gap-y-1 font-sans text-xs uppercase tracking-[0.2em] text-white/55 sm:text-sm">
+          <p className="mt-2 flex flex-wrap items-center justify-center gap-x-2 gap-y-1 font-sans text-xs uppercase tracking-[0.2em] text-black/55 sm:text-sm">
             <span>População impactada</span>
-            <span className="inline-flex items-center gap-1.5 normal-case tracking-normal text-white/45">
+            <span className="inline-flex items-center gap-1.5 normal-case tracking-normal text-black/45">
               <span
-                className="inline-block h-1.5 w-1.5 rounded-full bg-white/75"
+                className="inline-block h-1.5 w-1.5 rounded-full bg-black/60"
                 style={{ animation: 'mapa-obras-splash-pulse 1.1s ease-in-out infinite' }}
               />
               atualizando…
@@ -260,16 +254,16 @@ export function MapaObrasSplash({ obras, onConcluir, className }: MapaObrasSplas
         </div>
 
         <p
-          className="mt-12 font-sans text-xs tracking-[0.08em] text-white/45 transition-opacity duration-1000 sm:mt-16 sm:text-sm"
+          className="mt-12 font-sans text-xs tracking-[0.08em] text-black/45 transition-opacity duration-1000 sm:mt-16 sm:text-sm"
           style={{ opacity: fase === 'kpis' ? 1 : 0, transitionDelay: '2.2s' }}
         >
           Clique para ir ao mapa
         </p>
       </div>
 
-      <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-white/10">
+      <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-black/10">
         <div
-          className="h-full bg-white/50"
+          className="h-full bg-black/40"
           style={{
             animation: `mapa-obras-splash-progress ${SPLASH_MS}ms linear forwards`,
           }}

@@ -4,7 +4,8 @@ import { useMemo, useState, useEffect, useRef, useCallback } from 'react'
 import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { resolverDepEstadualLiderancaCidade } from '@/lib/planilha-dep-estadual-lideranca'
-import { RefreshCw, AlertCircle, Crown, X, Users, Vote, BarChart3, UserCheck, ArrowUpRight, FileText, Loader2, MapPinned } from 'lucide-react'
+import { RefreshCw, AlertCircle, Crown, X, Users, Vote, BarChart3, UserCheck, ArrowUpRight, FileText, Loader2, MapPinned, Target } from 'lucide-react'
+import { dashboardChromeIconShellSmClass } from '@/lib/sidebar-apify-styles'
 import { getEleitoradoByCity } from '@/lib/eleitores'
 import { CityDemandsModal } from '@/components/city-demands-modal'
 import { PollReportsHistoryModal } from '@/components/poll-reports-history-modal'
@@ -1853,7 +1854,9 @@ export function ResumoEleicoesAtendimentoPanel() {
 
   useRegisterJarvisHostProps(jarvisHostProps)
 
-  const summaryCardBaseClass = 'rounded-lg border border-card bg-background/40 px-2 py-1.5 min-w-0'
+  const summaryCardBaseClass =
+    'flex min-w-0 flex-col rounded-xl border border-[rgb(var(--color-border-tertiary)/0.85)] bg-bg-surface p-3'
+  const kpiIconClass = 'h-3.5 w-3.5 text-[#C8900A]'
   const kpiLabelClass = resumoKpiLabelClass()
   const kpiValueClass = resumoKpiValueClass()
   const kpiMetaClass = resumoKpiMetaClass()
@@ -1986,9 +1989,14 @@ export function ResumoEleicoesAtendimentoPanel() {
           <>
           {resumoCidade && (
             <div className={cn(innerPanelClass, 'mb-2')}>
-            <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-3 md:grid-cols-5">
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-5">
               <div className={summaryCardBaseClass}>
-                <p className={kpiLabelClass}>Eleitores</p>
+                <div className="mb-2 flex items-center gap-2">
+                  <span className={dashboardChromeIconShellSmClass}>
+                    <Users className={kpiIconClass} aria-hidden />
+                  </span>
+                  <p className={kpiLabelClass}>Eleitores</p>
+                </div>
                 <p className={kpiValueClass}>
                   {eleitoresMunicipioAtivo !== null
                     ? eleitoresMunicipioAtivo.toLocaleString('pt-BR')
@@ -1999,7 +2007,12 @@ export function ResumoEleicoesAtendimentoPanel() {
                 </p>
               </div>
               <div className={summaryCardBaseClass}>
-                <p className={kpiLabelClass}>{labelCenarioAtivo}</p>
+                <div className="mb-2 flex items-center gap-2">
+                  <span className={dashboardChromeIconShellSmClass}>
+                    <Target className={kpiIconClass} aria-hidden />
+                  </span>
+                  <p className={kpiLabelClass}>{labelCenarioAtivo}</p>
+                </div>
                 <p className={kpiValueClass}>{votosCenarioAtivo.toLocaleString('pt-BR')}</p>
                 <p
                   className={cn(
@@ -2015,11 +2028,21 @@ export function ResumoEleicoesAtendimentoPanel() {
                 </p>
               </div>
               <div className={summaryCardBaseClass}>
-                <p className={kpiLabelClass}>Votos 2022</p>
+                <div className="mb-2 flex items-center gap-2">
+                  <span className={dashboardChromeIconShellSmClass}>
+                    <Vote className={kpiIconClass} aria-hidden />
+                  </span>
+                  <p className={kpiLabelClass}>Votos 2022</p>
+                </div>
                 <p className={kpiValueClass}>{resumoCidade.votacaoFinal2022.toLocaleString('pt-BR')}</p>
               </div>
               <div className={summaryCardBaseClass}>
-                <p className={kpiLabelClass}>Lideranças</p>
+                <div className="mb-2 flex items-center gap-2">
+                  <span className={dashboardChromeIconShellSmClass}>
+                    <Crown className={kpiIconClass} aria-hidden />
+                  </span>
+                  <p className={kpiLabelClass}>Lideranças</p>
+                </div>
                 <p className={kpiValueClass}>{resumoCidade.liderancas.toLocaleString('pt-BR')}</p>
                 {!visaoTodasCidades ? (
                   <p className={cn(kpiMetaClass, 'flex flex-wrap gap-x-1.5')}>
@@ -2034,7 +2057,12 @@ export function ResumoEleicoesAtendimentoPanel() {
                 ) : null}
               </div>
               <div className={summaryCardBaseClass}>
-                <p className={kpiLabelClass}>Pesquisas</p>
+                <div className="mb-2 flex items-center gap-2">
+                  <span className={dashboardChromeIconShellSmClass}>
+                    <BarChart3 className={kpiIconClass} aria-hidden />
+                  </span>
+                  <p className={kpiLabelClass}>Pesquisas</p>
+                </div>
                 <p className={kpiValueClass}>
                   {pesquisaRecenteCidade ? `${pesquisaRecenteCidade.intencao.toFixed(1).replace('.', ',')}%` : '—'}
                 </p>

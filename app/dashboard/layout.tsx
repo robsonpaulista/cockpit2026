@@ -14,6 +14,7 @@ import { ThemeProvider } from '@/contexts/theme-context'
 import { CockpitStatusProvider } from '@/contexts/cockpit-status-context'
 import { IdleSplashOverlay } from '@/components/idle-splash'
 import { IdleSplashProvider } from '@/contexts/idle-splash-context'
+import { SplashScreenRestHost } from '@/components/splash-screen/splash-screen-rest-host'
 import { cn } from '@/lib/utils'
 import {
   SIDEBAR_MAIN_OFFSET_COLLAPSED_CLASS,
@@ -59,6 +60,7 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
             <NavigationLoadingBar />
             <Sidebar />
             <IdleSplashOverlay />
+            <SplashScreenRestHost />
             <div
               className={cn(
                 'relative flex flex-1 flex-col overflow-hidden transition-all duration-300 ease-out',

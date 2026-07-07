@@ -274,7 +274,7 @@ export const SIDEBAR_NAV_TARGETS: SidebarNavTarget[] = [
   ...flattenMenu(SIDEBAR_MENU_ITEMS),
   buildTarget({
     id: 'territorio-ipt',
-    label: 'Mapa Diagnóstico Campanha',
+    label: 'Mapa Campanha',
     icon: 'MapPin',
     href: '/dashboard/territorio/ipt',
   }),

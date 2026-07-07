@@ -3,12 +3,12 @@ import { SIDEBAR_BRAND_AMBER } from '@/lib/sidebar-brand-styles'
 
 /** Seleção de linha — âmbar (padrão Central de Comunicação / sidebar). */
 export function resumoTrSelecionado(): string {
-  return 'bg-[#C8900A]/12 ring-1 ring-inset ring-[#C8900A]/35'
+  return 'bg-[#C8900A]/12 ring-1 ring-inset ring-[#C8900A]'
 }
 
-/** Destaque forte (ex.: candidato principal, partido filtrado). */
+/** Destaque forte (ex.: candidato principal, partido filtrado) — linha âmbar sólida, texto preto. */
 export function resumoTrDestaqueForte(): string {
-  return 'border-b border-card bg-[#C8900A]/14 font-semibold text-[#C8900A] ring-1 ring-inset ring-[#C8900A]/28'
+  return 'border-b border-[#C8900A] !bg-[#C8900A] font-semibold !text-black hover:!bg-[#C8900A]'
 }
 
 export function resumoTrZebra(rowIndex: number): string {

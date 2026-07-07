@@ -386,6 +386,45 @@ body[data-ipt-refine] .ipt-page-shell {
     0 0 0 1px rgba(220, 38, 38, 0.08);
 }
 
+.ipt-category-pill__head {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.ipt-category-pill__icon {
+  width: 15px;
+  height: 15px;
+  flex-shrink: 0;
+  stroke-width: 2.1;
+  color: var(--ipt-cat-text, rgb(var(--text-primary)));
+  opacity: 0.9;
+}
+
+/* Crítico: ícone pulsa para reforçar urgência. */
+.ipt-category-pill--alert .ipt-category-pill__icon {
+  opacity: 1;
+  animation: ipt-icon-pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes ipt-icon-pulse {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 0.75;
+  }
+  50% {
+    transform: scale(1.18);
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ipt-category-pill--alert .ipt-category-pill__icon {
+    animation: none;
+  }
+}
+
 .ipt-category-pill__count {
   font-size: 16px;
   font-weight: 500;

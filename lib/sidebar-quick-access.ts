@@ -15,7 +15,7 @@ export type SidebarQuickAccessItem = {
 export const SIDEBAR_QUICK_ACCESS_ITEMS: SidebarQuickAccessItem[] = [
   {
     id: 'quick-ipt',
-    label: 'Mapa Diagnóstico Campanha',
+    label: 'Mapa Campanha',
     href: '/dashboard/territorio/ipt',
     icon: 'MapPin',
     pageKey: 'territorio',

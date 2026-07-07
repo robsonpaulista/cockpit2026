@@ -2,10 +2,9 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import dynamic from 'next/dynamic'
-import { ExternalLink, Box, ImageIcon, Loader2, MapPinned, Maximize2, MessageSquare, Minimize2, RefreshCw } from 'lucide-react'
+import { ExternalLink, Loader2, MapPinned, Maximize2, Minimize2, RefreshCw } from 'lucide-react'
 import Link from 'next/link'
 import {
-  OBRA_FASE_COLOR,
   OBRA_FASE_LABEL,
   OBRA_MAPA_TEMAS,
   OBRA_MAPA_TEMAS_OBRA,
@@ -22,16 +21,12 @@ import {
 } from '@/lib/obras-mapa'
 import { MapaObrasKpiStrip } from '@/components/territorio-campo/mapa-obras-kpi-strip'
 import { MapaObrasSplash } from '@/components/territorio-campo/mapa-obras-splash'
+import { MapaObrasDisplayControls } from '@/components/territorio-campo/mapa-obras-display-controls'
 import { ObraFotoUrlField } from '@/components/obras/obra-foto-url-field'
-import { ObraTemaMarkerPreview } from '@/components/territorio-campo/obra-tema-scene-icon'
 import {
-  OBRA_MAQUINARIO_3D_VARIANTS,
-  OBRA_PAVIMENTACAO_3D_VARIANTS,
-  OBRA_TEMA_MARKER_LABEL,
   type ObraMaquinario3dVariant,
   type ObraPavimentacao3dVariant,
 } from '@/lib/obras-mapa-tema-icons'
-import { OBRA_MAPA_LEGENDA } from '@/lib/obras-mapa-markers'
 import { chromeButtonClass, chromeFilterChipClass } from '@/lib/button-chrome'
 import { typographyBodyMutedClass } from '@/lib/typography-chrome'
 import { cn } from '@/lib/utils'
@@ -330,134 +325,40 @@ export function MapaObrasPanel() {
                 ? `${marcadoresFiltrados.length} marcador(es) no mapa`
                 : `${new Set(marcadoresFiltrados.map((m) => m.municipio)).size} município(s) no mapa`}
             </div>
-            <div className="flex flex-wrap items-center gap-3">
-              {(temaAtivo === 'todos' ? OBRA_MAPA_TEMAS_OBRA : [temaAtivo]).map((temaLeg) => (
-                <span key={temaLeg} className="inline-flex items-center gap-1.5 text-[11px] text-text-muted">
-                  <ObraTemaMarkerPreview
-                    tema={temaLeg}
-                    fase="em_andamento"
-                    size={24}
-                    usarIcone3d={usarIcone3d && visaoMapa !== 'comunicacao'}
-                    pavimentacao3dVariant={pavimentacao3dVariant}
-                    maquinario3dVariant={maquinario3dVariant}
-                  />
-                  {OBRA_TEMA_MARKER_LABEL[temaLeg]}
-                </span>
-              ))}
-              <span className="hidden h-4 w-px shrink-0 bg-border-card opacity-60 sm:block" aria-hidden />
-              {OBRA_MAPA_LEGENDA.map((item) => (
-                <span
-                  key={item.fase}
-                  className="inline-flex items-center gap-1.5 text-[11px] text-text-muted"
-                >
-                  <span
-                    className="inline-block h-3 w-3 rounded-full ring-2 ring-white/90"
-                    style={{ backgroundColor: OBRA_FASE_COLOR[item.fase] }}
-                  />
-                  {item.label}
-                </span>
-              ))}
-              <span className="hidden h-4 w-px shrink-0 bg-border-card opacity-60 sm:block" aria-hidden />
-              <button
-                type="button"
-                onClick={() => setMostrarTodosPopups((v) => !v)}
-                className={cn(
-                  chromeFilterChipClass(mostrarTodosPopups),
-                  'inline-flex items-center gap-1.5'
-                )}
-                title={
-                  mostrarTodosPopups
-                    ? 'Ocultar popups do mapa'
-                    : 'Exibir popups de todos os marcadores visíveis'
-                }
+            <div className="flex items-center gap-2">
+              <MapaObrasDisplayControls
+                temaAtivo={temaAtivo}
+                visaoMapa={visaoMapa}
+                usarIcone3d={usarIcone3d}
+                pavimentacao3dVariant={pavimentacao3dVariant}
+                maquinario3dVariant={maquinario3dVariant}
+                mostrarTodosPopups={mostrarTodosPopups}
                 disabled={marcadoresFiltrados.length === 0}
-              >
-                <MessageSquare className="h-3.5 w-3.5" aria-hidden />
-                Popups
-              </button>
+                onTogglePopups={() => setMostrarTodosPopups((v) => !v)}
+                onToggleIcone3d={() => setUsarIcone3d((v) => !v)}
+                onToggleComunicacao={() =>
+                  setVisaoMapa((v) => (v === 'operacional' ? 'comunicacao' : 'operacional'))
+                }
+                onChangePavimentacao={setPavimentacao3dVariant}
+                onChangeMaquinario={setMaquinario3dVariant}
+              />
               <button
                 type="button"
-                onClick={() => setUsarIcone3d((v) => !v)}
-                className={cn(
-                  chromeFilterChipClass(usarIcone3d),
-                  'inline-flex items-center gap-1.5'
-                )}
-                title={usarIcone3d ? 'Voltar aos ícones SVG' : 'Usar ícones 3D estáticos'}
-                disabled={visaoMapa === 'comunicacao' || marcadoresFiltrados.length === 0}
+                onClick={toggleFullscreen}
+                className="rounded-lg p-2 text-text-secondary transition-colors hover:bg-bg-app hover:text-text-primary"
+                title={isNativeFullscreen ? 'Sair da tela cheia' : 'Expandir mapa em tela cheia'}
+                disabled={!isNativeFullscreen && (loading || marcadoresFiltrados.length === 0)}
               >
-                <Box className="h-3.5 w-3.5" aria-hidden />
-                3D
-              </button>
-              {usarIcone3d && visaoMapa !== 'comunicacao' && (temaAtivo === 'todos' || temaAtivo === 'pavimentacao') ? (
-                <select
-                  value={pavimentacao3dVariant}
-                  onChange={(e) => setPavimentacao3dVariant(e.target.value as ObraPavimentacao3dVariant)}
-                  className="h-8 max-w-[9.5rem] truncate rounded-lg border border-card bg-bg-surface px-2 text-xs text-text-secondary"
-                  title="Ícone 3D de pavimentação"
-                  disabled={marcadoresFiltrados.length === 0}
-                >
-                  {OBRA_PAVIMENTACAO_3D_VARIANTS.map((v) => (
-                    <option key={v.id} value={v.id} title={v.descricao}>
-                      {v.label}
-                    </option>
-                  ))}
-                </select>
-              ) : null}
-              {usarIcone3d && visaoMapa !== 'comunicacao' && (temaAtivo === 'todos' || temaAtivo === 'maquinario-agricola') ? (
-                <select
-                  value={maquinario3dVariant}
-                  onChange={(e) => setMaquinario3dVariant(e.target.value as ObraMaquinario3dVariant)}
-                  className="h-8 max-w-[9.5rem] truncate rounded-lg border border-card bg-bg-surface px-2 text-xs text-text-secondary"
-                  title="Ícone 3D de maquinário agrícola"
-                  disabled={marcadoresFiltrados.length === 0}
-                >
-                  {OBRA_MAQUINARIO_3D_VARIANTS.map((v) => (
-                    <option key={v.id} value={v.id} title={v.descricao}>
-                      {v.label}
-                    </option>
-                  ))}
-                </select>
-              ) : null}
-              <button
-                type="button"
-                onClick={() => setVisaoMapa((v) => (v === 'operacional' ? 'comunicacao' : 'operacional'))}
-                className={cn(
-                  chromeFilterChipClass(visaoMapa === 'comunicacao'),
-                  'inline-flex items-center gap-1.5'
-                )}
-                title={visaoMapa === 'comunicacao' ? 'Voltar aos ícones operacionais' : 'Exibir fotos nos marcadores'}
-              >
-                <ImageIcon className="h-3.5 w-3.5" aria-hidden />
-                Comunicação
-              </button>
-              {!isNativeFullscreen ? (
-                <button
-                  type="button"
-                  onClick={toggleFullscreen}
-                  className="rounded-lg p-2 text-text-secondary transition-colors hover:bg-bg-app hover:text-text-primary"
-                  title="Expandir mapa em tela cheia"
-                  disabled={loading || marcadoresFiltrados.length === 0}
-                >
-                  <Maximize2 className="h-4 w-4" aria-hidden />
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  onClick={toggleFullscreen}
-                  className="rounded-lg p-2 text-text-secondary transition-colors hover:bg-bg-app hover:text-text-primary"
-                  title="Sair da tela cheia"
-                >
+                {isNativeFullscreen ? (
                   <Minimize2 className="h-5 w-5" aria-hidden />
-                </button>
-              )}
+                ) : (
+                  <Maximize2 className="h-4 w-4" aria-hidden />
+                )}
+              </button>
             </div>
           </div>
           <p className={cn('mt-1.5', typographyBodyMutedClass)}>
             Passe o mouse para ver o resumo · clique no pin para detalhes
-            {visaoMapa === 'comunicacao' ? ' · visão Comunicação: fotos nos marcadores com imagem cadastrada' : usarIcone3d ? ' · ícones 3D estáticos (Fluent Emoji)' : ' · ícones SVG · anel colorido = fase'}
-            {mostrarTodosPopups ? ' · popups abertos em todos os marcadores' : ''}
-            {temaAtivo === 'todos' ? ' · cidades com mais de um tema exibem pins separados' : ''}
-            {isNativeFullscreen ? '' : ' e painel abaixo'}
           </p>
         </div>
 

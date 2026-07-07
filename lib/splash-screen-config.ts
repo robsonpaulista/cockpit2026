@@ -2,6 +2,12 @@
 
 export const SPLASH_SESSION_KEY = 'cockpit_splash_shown'
 
+/**
+ * Evento global que abre a splash como "tela de descanso" a partir da sidebar.
+ * Ao concluir, apenas fecha o overlay (não redireciona para o login).
+ */
+export const SPLASH_PREVIEW_EVENT = 'cockpitSplashPreview'
+
 /** Duração total da sequência automática (ms) até a cena "Pronto". */
 export const SPLASH_TOTAL_MS = 7800
 

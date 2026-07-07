@@ -15,6 +15,7 @@ import { cn } from '@/lib/utils'
 import { MenuItem } from '@/types'
 import { useSidebar } from '@/contexts/sidebar-context'
 import { useIdleSplash } from '@/contexts/idle-splash-context'
+import { SPLASH_PREVIEW_EVENT } from '@/lib/splash-screen-config'
 import { useNavigationLoading } from '@/contexts/navigation-loading-context'
 import { usePermissions } from '@/hooks/use-permissions'
 import { UserMenu } from '@/components/user-menu'
@@ -86,15 +87,6 @@ import {
 interface SidebarMenuItem extends SidebarMenuItemConfig {}
 
 const menuItems: SidebarMenuItem[] = SIDEBAR_MENU_ITEMS
-
-/** Início de seção para melhorar escaneabilidade da navegação. */
-const SIDEBAR_SECTION_START_LABEL: Record<string, string> = {
-  home: 'Painel',
-  campo: 'Território',
-  'mobilizacao-menu': 'Operação',
-  juridico: 'Institucional',
-  'gestao-pesquisas-menu': 'Administração',
-}
 
 /** Item ativo Cockpit / submenu pill: `@/lib/sidebar-menu-active-style`. */
 const COCKPIT_PAGE_ACTIVE_ITEM = COCKPIT_PAGE_ACTIVE_MENU_ITEM
@@ -858,10 +850,8 @@ export function Sidebar() {
           <nav className={cn('flex-1 overflow-x-visible overflow-y-auto scrollbar-hide', sidebarShellNavClass(navCollapsed, navMobileOpen))}>
             <ul className="space-y-0.5">
               {visibleItems.map((item: SidebarMenuItem) => {
-                const juridicoInMenu = visibleItems.some((i) => i.id === 'juridico')
-                const sectionLabel: string | undefined =
-                  SIDEBAR_SECTION_START_LABEL[item.id] ??
-                  (item.id === 'emendas' && !juridicoInMenu ? 'Institucional' : undefined)
+                // Bloco único e plano — sem rótulos de seção.
+                const sectionLabel: string | undefined = undefined
                 const Icon = resolveSidebarTablerIcon(item.icon, isCockpit)
                 const hasSubmenu = Boolean(item.children?.length)
                 const submenuOpen = openSubmenuId === item.id
@@ -916,7 +906,7 @@ export function Sidebar() {
             />
             <button
               onClick={() => {
-                window.dispatchEvent(new Event('activateSplash'))
+                window.dispatchEvent(new Event(SPLASH_PREVIEW_EVENT))
                 setMobileOpen(false)
               }}
               className={cn(

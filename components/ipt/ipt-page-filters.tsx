@@ -1,6 +1,14 @@
 'use client'
 
 import type { CSSProperties } from 'react'
+import {
+  AlertTriangle,
+  CircleDashed,
+  Eye,
+  ShieldCheck,
+  Siren,
+  type LucideIcon,
+} from 'lucide-react'
 import { IptTdSelect } from '@/components/ipt/ipt-td-select'
 import { iptPrioridadeTheme } from '@/lib/ipt-chip'
 import {
@@ -10,6 +18,15 @@ import {
 } from '@/lib/ipt'
 import type { TerritorioDesenvolvimentoPI } from '@/lib/piaui-territorio-desenvolvimento'
 import { cn } from '@/lib/utils'
+
+/** Ícone por prioridade — escalada visual de urgência. */
+const IPT_PRIORIDADE_ICON: Record<IptPrioridade, LucideIcon> = {
+  forte: ShieldCheck,
+  estavel: Eye,
+  atencao: AlertTriangle,
+  critico: Siren,
+  sem_expectativa: CircleDashed,
+}
 
 type IptPageFiltersProps = {
   loading: boolean
@@ -55,6 +72,7 @@ export function IptPageFilters({
           const disabled = loading || qtd === 0
           const alerta =
             faixa.prioridade === 'critico' && criticoAlerta && qtd > 0
+          const Icon = IPT_PRIORIDADE_ICON[faixa.prioridade]
 
           return (
             <button
@@ -77,7 +95,10 @@ export function IptPageFilters({
                 } as CSSProperties
               }
             >
-              <span className="ipt-category-pill__count">{qtd}</span>
+              <span className="ipt-category-pill__head">
+                <Icon className="ipt-category-pill__icon" aria-hidden />
+                <span className="ipt-category-pill__count">{qtd}</span>
+              </span>
               <span className="ipt-category-pill__label">{faixa.descricao}</span>
             </button>
           )
