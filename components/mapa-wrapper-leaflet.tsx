@@ -462,7 +462,7 @@ export function MapWrapperLeaflet({
     if (iptMunicipios && iptMunicipios.length > 0) {
       const iptLayer = L.layerGroup()
       const iptByNome = new Map(iptMunicipios.map((row) => [normalizeName(row.municipio), row]))
-      const tooltipsAutomaticos = buildIptMunicipiosComTooltipAutomatico(iptMunicipios, iptIndicadorFiltro)
+      const tooltipsAutomaticos = buildIptMunicipiosComTooltipAutomatico(iptMunicipios, null)
       const mapContainer = map.getContainer()
       mapContainer.classList.add('ipt-map-mode')
 

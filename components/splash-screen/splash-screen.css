@@ -1,0 +1,748 @@
+/* Splash Screen — "ligar a máquina" (startup sequence do Cockpit) */
+
+.ss-root {
+  --splash-bg: #0b0b0d;
+  --splash-gold: #c99a2e;
+  --splash-gold-glow: rgba(201, 154, 46, 0.55);
+  --splash-gold-soft: rgba(201, 154, 46, 0.18);
+  --splash-graphite: #3a3d42;
+  --splash-light: #f8f6f0;
+
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  overflow: hidden;
+  font-family: var(--font-sans), var(--font-sans-fallback), 'Inter', sans-serif;
+  background: var(--splash-bg);
+  color: #fff;
+}
+
+.ss-root--exit {
+  pointer-events: none;
+}
+
+/* ── Backgrounds ── */
+.ss-bg-dark {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse 90% 70% at 50% 42%, #141518 0%, #0b0b0d 62%, #060608 100%);
+}
+
+.ss-bg-light {
+  position: absolute;
+  inset: 0;
+  background: var(--splash-light);
+}
+
+.ss-vignette {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse 78% 74% at 50% 46%, transparent 30%, rgba(0, 0, 0, 0.62) 100%);
+  pointer-events: none;
+  z-index: 3;
+}
+
+.ss-root--light .ss-vignette {
+  opacity: 0;
+}
+
+/* ── Botão Pular ── */
+.ss-skip {
+  position: absolute;
+  top: 20px;
+  right: 24px;
+  z-index: 60;
+  padding: 8px 14px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.06);
+  color: rgba(255, 255, 255, 0.55);
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  backdrop-filter: blur(8px);
+  transition: color 200ms ease, border-color 200ms ease, background 200ms ease;
+}
+
+.ss-skip:hover {
+  color: #fff;
+  border-color: var(--splash-gold-glow);
+  background: var(--splash-gold-soft);
+}
+
+.ss-root--light .ss-skip {
+  border-color: rgba(17, 24, 39, 0.12);
+  background: rgba(255, 255, 255, 0.7);
+  color: #6b7280;
+}
+
+.ss-root--light .ss-skip:hover {
+  color: #111827;
+}
+
+/* ── Cena 1: botão START ── */
+.ss-start {
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+}
+
+.ss-start__stage {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 84px;
+  height: 84px;
+}
+
+.ss-start__ring {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 84px;
+  height: 84px;
+  margin: -42px 0 0 -42px;
+  border-radius: 50%;
+  border: 1.5px solid var(--splash-gold);
+  box-shadow: 0 0 22px 1px var(--splash-gold-glow), inset 0 0 14px var(--splash-gold-soft);
+  pointer-events: none;
+}
+
+.ss-start__btn {
+  position: relative;
+  z-index: 2;
+  width: 84px;
+  height: 84px;
+  border-radius: 50%;
+  border: 1.5px solid var(--splash-gold);
+  background: radial-gradient(circle at 50% 40%, rgba(201, 154, 46, 0.16), rgba(11, 11, 13, 0.9));
+  color: var(--splash-gold);
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  animation: ss-pulse 2.4s ease-in-out infinite;
+}
+
+.ss-start__btn:active {
+  transform: scale(0.92);
+}
+
+.ss-start__power {
+  width: 34px;
+  height: 34px;
+  display: block;
+}
+
+.ss-start__power svg {
+  width: 100%;
+  height: 100%;
+  fill: none;
+  stroke: var(--splash-gold);
+  stroke-width: 2;
+  stroke-linecap: round;
+}
+
+.ss-start__label {
+  font-size: 12px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+@keyframes ss-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(201, 154, 46, 0.5), 0 0 22px 2px rgba(201, 154, 46, 0.35);
+  }
+  50% {
+    box-shadow: 0 0 0 14px rgba(201, 154, 46, 0), 0 0 34px 6px rgba(201, 154, 46, 0.55);
+  }
+}
+
+/* ── Cena 2: flicker sutil do arranque ── */
+.ss-flash {
+  position: absolute;
+  inset: 0;
+  z-index: 55;
+  background: radial-gradient(circle at 50% 46%, rgba(255, 250, 240, 0.85) 0%, rgba(201, 154, 46, 0.18) 45%, rgba(201, 154, 46, 0) 72%);
+  pointer-events: none;
+}
+
+/* ── Cena 3: painéis HUD ── */
+.ss-hud {
+  position: absolute;
+  inset: 0;
+  z-index: 8;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(16px, 4vw, 48px);
+  padding: 0 4vw;
+  pointer-events: none;
+}
+
+.ss-hud__gauge {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+
+.ss-hud__svg {
+  width: clamp(96px, 15vw, 150px);
+  height: auto;
+  overflow: visible;
+}
+
+.ss-hud__gauge--rpm .ss-hud__svg,
+.ss-hud__gauge--gps .ss-hud__svg {
+  width: clamp(72px, 10vw, 108px);
+}
+
+.ss-hud__track {
+  fill: none;
+  stroke: var(--splash-graphite);
+  stroke-width: 7;
+  stroke-linecap: round;
+  opacity: 0.55;
+}
+
+.ss-hud__value {
+  fill: none;
+  stroke: var(--splash-gold);
+  stroke-width: 7;
+  stroke-linecap: round;
+  filter: drop-shadow(0 0 6px var(--splash-gold-glow));
+}
+
+.ss-hud__tick {
+  stroke: rgba(255, 255, 255, 0.28);
+  stroke-width: 1.5;
+}
+
+.ss-hud__needle {
+  stroke: #fff;
+  stroke-width: 2.5;
+  stroke-linecap: round;
+  filter: drop-shadow(0 0 4px var(--splash-gold-glow));
+}
+
+.ss-hud__hub {
+  fill: var(--splash-gold);
+}
+
+.ss-hud__bar-bg {
+  fill: var(--splash-graphite);
+  opacity: 0.4;
+}
+
+.ss-hud__bar {
+  fill: var(--splash-gold);
+  filter: drop-shadow(0 0 4px var(--splash-gold-glow));
+}
+
+.ss-hud__ring {
+  fill: none;
+  stroke: var(--splash-graphite);
+  stroke-width: 1.5;
+  opacity: 0.7;
+}
+
+.ss-hud__ring--cross {
+  opacity: 0.4;
+}
+
+.ss-hud__radar-sweep {
+  animation: ss-radar 2.4s linear infinite;
+}
+
+.ss-hud__sweep-wedge {
+  fill: var(--splash-gold);
+  opacity: 0.28;
+}
+
+.ss-hud__blip {
+  fill: var(--splash-gold);
+  filter: drop-shadow(0 0 5px var(--splash-gold-glow));
+}
+
+.ss-hud__nav {
+  fill: var(--splash-gold-soft);
+  stroke: var(--splash-gold);
+  stroke-width: 2;
+  stroke-linejoin: round;
+  filter: drop-shadow(0 0 5px var(--splash-gold-glow));
+}
+
+.ss-hud__label {
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.45);
+}
+
+@keyframes ss-radar {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* ── Cena 4: módulos inicializando ── */
+.ss-mod-grid {
+  position: absolute;
+  inset: 0;
+  z-index: 9;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-auto-rows: min-content;
+  align-content: center;
+  justify-content: center;
+  gap: 14px;
+  max-width: min(720px, 88vw);
+  margin: 0 auto;
+  padding: 0 4vw;
+  transform: translateY(5vh);
+  pointer-events: none;
+}
+
+@media (max-width: 640px) {
+  .ss-mod-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.ss-mod {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+}
+
+.ss-mod__icon {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  flex: 0 0 auto;
+}
+
+.ss-mod__icon svg {
+  width: 22px;
+  height: 22px;
+}
+
+.ss-mod__glyph {
+  fill: var(--splash-gold-soft);
+  stroke: var(--splash-gold);
+  stroke-width: 1.6;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+
+.ss-mod__glyph--line {
+  fill: none;
+}
+
+.ss-mod__label {
+  flex: 1;
+  font-size: 13px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.86);
+  white-space: nowrap;
+}
+
+.ss-mod__check {
+  display: grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  flex: 0 0 auto;
+}
+
+.ss-mod__check svg {
+  width: 16px;
+  height: 16px;
+}
+
+.ss-mod__check .ss-mod__glyph--line {
+  stroke: #4ade80;
+  stroke-width: 2.4;
+}
+
+/* ── Cena 5: texto de sistema ── */
+.ss-sys {
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.ss-sys__glass {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 28px 40px;
+  text-align: center;
+}
+
+.ss-sys__line {
+  margin: 0;
+}
+
+.ss-sys__line--brand {
+  font-size: clamp(28px, 5vw, 46px);
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: var(--splash-gold);
+  text-shadow: 0 0 22px var(--splash-gold-soft);
+}
+
+.ss-sys__line--status {
+  font-size: clamp(13px, 2vw, 16px);
+  color: rgba(255, 255, 255, 0.72);
+}
+
+.ss-sys__line--dest {
+  font-size: clamp(13px, 2vw, 16px);
+  font-weight: 600;
+  color: #fff;
+}
+
+/* ── Cena 5–6: carro isolado (surge atrás do texto e ganha presença) ── */
+.ss-sunrise {
+  position: absolute;
+  inset: 0;
+  z-index: 6;
+}
+
+.ss-sunrise__photo {
+  object-fit: cover;
+  object-position: center center;
+}
+
+/* Funde a imagem com o fundo preto da splash e abre espaço p/ logo e CTA,
+   sem criar bordas "de bloco" — a imagem preenche a tela toda. */
+.ss-sunrise::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(
+      to bottom,
+      rgba(11, 11, 13, 0.72) 0%,
+      rgba(11, 11, 13, 0.28) 22%,
+      rgba(11, 11, 13, 0) 46%,
+      rgba(11, 11, 13, 0.35) 80%,
+      rgba(11, 11, 13, 0.7) 100%
+    );
+}
+
+/* ── Cena 6: logo + CTA ── */
+.ss-ready {
+  position: absolute;
+  inset: 0;
+  z-index: 16;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  padding: clamp(110px, 26vh, 300px) 6vw clamp(130px, 27vh, 300px);
+}
+
+.ss-ready__cta {
+  margin: 0;
+}
+
+.ss-ready__inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  text-align: center;
+}
+
+.ss-ready__brand {
+  margin: 0;
+  font-size: clamp(22px, 4vw, 38px);
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  color: #fff;
+  text-shadow: 0 2px 20px rgba(0, 0, 0, 0.6);
+}
+
+.ss-ready__brand-strong {
+  font-weight: 700;
+  color: var(--splash-gold);
+}
+
+.ss-ready__tag {
+  margin: 4px 0 0;
+  font-size: clamp(12px, 1.7vw, 14px);
+  color: rgba(255, 255, 255, 0.78);
+  text-shadow: 0 1px 14px rgba(0, 0, 0, 0.6);
+}
+
+.ss-ready__dest {
+  margin: 0;
+  font-size: clamp(12px, 1.7vw, 14px);
+  font-weight: 600;
+  color: var(--splash-gold);
+  text-shadow: 0 1px 14px rgba(0, 0, 0, 0.6);
+}
+
+.ss-cta {
+  margin-top: 18px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 10px 20px;
+  border: none;
+  border-radius: 999px;
+  background: var(--splash-gold);
+  color: #14110a;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  box-shadow: 0 8px 26px rgba(201, 154, 46, 0.38);
+  transition: background 180ms ease, transform 180ms ease, box-shadow 180ms ease;
+}
+
+.ss-cta:hover {
+  background: #dcae42;
+  transform: translateY(-1px);
+  box-shadow: 0 12px 40px rgba(201, 154, 46, 0.5);
+}
+
+.ss-cta:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 3px;
+}
+
+/* ── Acessibilidade / leitor de tela ── */
+.ss-live {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ── Estúdio (frame a frame) ── */
+.ss-root--studio {
+  padding-bottom: 220px;
+}
+
+.ss-studio {
+  position: absolute;
+  left: 16px;
+  right: 16px;
+  bottom: 16px;
+  z-index: 40;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px 16px;
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(8, 8, 10, 0.88);
+  backdrop-filter: blur(14px);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.45);
+}
+
+.ss-root--light .ss-studio {
+  border-color: rgba(17, 24, 39, 0.1);
+  background: rgba(255, 255, 255, 0.92);
+}
+
+.ss-studio__readout {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  font-size: 12px;
+}
+
+.ss-studio__badge {
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(201, 154, 46, 0.18);
+  color: var(--splash-gold);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.ss-studio__label {
+  color: rgba(255, 255, 255, 0.9);
+  font-weight: 600;
+}
+
+.ss-root--light .ss-studio__label {
+  color: #111827;
+}
+
+.ss-studio__time {
+  margin-left: auto;
+  color: rgba(255, 255, 255, 0.5);
+  font-variant-numeric: tabular-nums;
+}
+
+.ss-root--light .ss-studio__time {
+  color: #6b7280;
+}
+
+.ss-studio__timeline {
+  position: relative;
+  padding-top: 10px;
+}
+
+.ss-studio__scrub {
+  width: 100%;
+  accent-color: var(--splash-gold);
+  cursor: pointer;
+}
+
+.ss-studio__markers {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 8px;
+}
+
+.ss-studio__marker {
+  position: absolute;
+  top: 0;
+  width: 8px;
+  height: 8px;
+  margin-left: -4px;
+  border: none;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.25);
+  cursor: pointer;
+  padding: 0;
+}
+
+.ss-studio__marker--active {
+  background: var(--splash-gold);
+  box-shadow: 0 0 8px rgba(201, 154, 46, 0.8);
+}
+
+.ss-studio__controls {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.ss-studio__btn {
+  min-width: 40px;
+  height: 36px;
+  padding: 0 12px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.05);
+  color: #fff;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.ss-studio__btn:hover {
+  border-color: rgba(201, 154, 46, 0.45);
+  background: rgba(201, 154, 46, 0.12);
+}
+
+.ss-studio__btn--primary {
+  min-width: 52px;
+  background: rgba(201, 154, 46, 0.2);
+  border-color: rgba(201, 154, 46, 0.5);
+}
+
+.ss-root--light .ss-studio__btn {
+  border-color: rgba(17, 24, 39, 0.12);
+  background: rgba(17, 24, 39, 0.04);
+  color: #111827;
+}
+
+.ss-studio__scenes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.ss-studio__scene-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.ss-studio__scene {
+  padding: 5px 10px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 999px;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.72);
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.ss-studio__scene--active {
+  border-color: rgba(201, 154, 46, 0.55);
+  background: rgba(201, 154, 46, 0.14);
+  color: #fff;
+}
+
+.ss-studio__scene-sub {
+  width: 22px;
+  height: 26px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 6px;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.45);
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.ss-root--light .ss-studio__scene {
+  border-color: rgba(17, 24, 39, 0.1);
+  color: #4b5563;
+}
+
+.ss-studio__hint {
+  margin: 0;
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.38);
+  text-align: center;
+}
+
+.ss-root--light .ss-studio__hint {
+  color: #9ca3af;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ss-start__btn,
+  .ss-hud__radar-sweep {
+    animation: none;
+  }
+}

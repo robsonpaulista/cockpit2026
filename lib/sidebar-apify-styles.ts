@@ -22,17 +22,17 @@ export const sidebarApifySectionLabelClass = sidebarBrandSectionLabelClass
 
 export const sidebarApifyNavItemClass = (active: boolean) =>
   cn(
-    'relative flex w-full items-center gap-2.5 rounded-none border-l-2 px-2.5 py-2 no-underline hover:no-underline',
-    typographyBodyMediumClass,
-    'leading-none transition-colors duration-150',
+    'cockpit-sidebar-item relative flex w-full items-center gap-2 rounded-none border-l-2 px-2.5 py-2 no-underline hover:no-underline',
+    'text-[13px] font-medium leading-[17px]',
+    'transition-colors duration-150',
     sidebarActiveFocusRingClass,
     active
-      ? cn(sidebarActiveBorderClass, 'bg-bg-app text-text-primary hover:text-text-primary')
-      : 'border-l-transparent text-text-primary hover:bg-bg-app hover:text-text-primary',
+      ? cn(sidebarActiveBorderClass, 'bg-white/[0.06] text-white hover:text-white')
+      : 'border-l-transparent text-white/72 hover:bg-white/[0.05] hover:text-white/90',
   )
 
 export const sidebarApifyNavIconClass = (active: boolean) =>
-  cn('h-4 w-4 shrink-0 text-text-primary', !active && 'opacity-80')
+  cn('cockpit-icon shrink-0', active ? 'text-[#c99a2e]' : 'text-white/55')
 
 /** Ícones decorativos no conteúdo — mesma cor dos ícones da sidebar. */
 export const dashboardChromeIconClass = 'text-text-primary'
@@ -50,15 +50,15 @@ export const sidebarApifyChildItemClass = (active: boolean) =>
     'transition-colors duration-150',
     sidebarActiveFocusRingClass,
     active
-      ? cn(sidebarActiveBorderClass, 'bg-bg-app text-text-primary hover:text-text-primary')
-      : 'border-l-transparent text-text-primary hover:bg-bg-app hover:text-text-primary',
+      ? cn(sidebarActiveBorderClass, 'bg-white/[0.06] text-white hover:text-white')
+      : 'border-l-transparent text-white/65 hover:bg-white/[0.05] hover:text-white/85',
   )
 
 export const sidebarApifyIconButtonClass =
-  'inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-text-primary transition-colors hover:bg-bg-app focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[rgb(var(--color-primary)/0.22)]'
+  'inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-white/70 transition-colors hover:bg-white/[0.06] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#c99a2e]/30'
 
 export const sidebarApifyFooterActionClass = cn(
-  'flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 transition-colors hover:bg-bg-app focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[rgb(var(--color-primary)/0.22)]',
+  'flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-white/72 transition-colors hover:bg-white/[0.05] hover:text-white/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#c99a2e]/30',
   typographyBodyMediumClass
 )
 
@@ -74,7 +74,7 @@ export const sidebarApifySearchKbdClass = cn(
 )
 
 export const sidebarApifyTooltipClass = cn(
-  'fixed z-[200] whitespace-nowrap rounded-md border border-[rgb(var(--color-border-secondary)/0.6)] bg-bg-surface px-2.5 py-1.5 shadow-[0_4px_14px_rgb(0_0_0/0.08)]',
+  'fixed z-[200] whitespace-nowrap rounded-md border border-white/12 bg-[#141518] px-2.5 py-1.5 text-white/90 shadow-[0_8px_24px_rgb(0_0_0/0.45)]',
   typographyBodyMediumClass
 )
 

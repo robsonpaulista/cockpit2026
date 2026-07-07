@@ -1,0 +1,622 @@
+/**
+ * Refinamento visual v2 — Mapa de Diagnóstico (IPT)
+ * Escopo: body[data-ipt-refine] + .ipt-page-refine (somente esta rota).
+ */
+
+body[data-ipt-refine] {
+  --surface-0: #f3f1ea;
+  --surface-1: #ffffff;
+  --surface-2: #ffffff;
+  --surface-page: var(--surface-0);
+  --surface-sidebar: #fafaf7;
+  --border-danger: #dc2626;
+
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+}
+
+/* --- Planos: header branco (chrome) vs corpo bege --- */
+body[data-ipt-refine] .ipt-page-shell {
+  background: rgb(var(--bg-surface));
+}
+
+.ipt-page-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+  padding: var(--space-4);
+  min-height: 0;
+  flex: 1;
+  overflow: hidden;
+  background: var(--surface-0);
+}
+
+@media (min-width: 768px) {
+  .ipt-page-body {
+    padding: var(--space-4) var(--space-6);
+  }
+}
+
+/* --- Header + breadcrumb (mesma faixa fixa da sidebar / dashboardPageHeaderZone) --- */
+.ipt-breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-size: 11px;
+  font-weight: 400;
+  color: rgb(var(--text-muted));
+  margin-bottom: var(--space-1);
+}
+
+.ipt-page-header-band--compact .ipt-breadcrumb {
+  margin-bottom: 0;
+}
+
+.ipt-page-title {
+  font-size: 17px;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  color: rgb(var(--text-primary));
+  line-height: 1.25;
+}
+
+@media (min-width: 768px) {
+  .ipt-page-title {
+    font-size: 18px;
+  }
+}
+
+.ipt-page-lead {
+  margin-top: var(--space-1);
+  font-size: 13px;
+  font-weight: 400;
+  line-height: 1.35;
+  color: rgb(var(--text-muted));
+  max-width: 42rem;
+}
+
+/* --- Botão Atualizar (3º ponto de marca) --- */
+.ipt-btn-atualizar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  background: var(--brand-accent);
+  color: var(--on-brand-accent);
+  border: none;
+  font-weight: 500;
+  font-size: 12px;
+  padding: 7px 13px;
+  border-radius: 6px;
+  transition: background 150ms ease;
+}
+
+.ipt-btn-atualizar:hover:not(:disabled) {
+  background: var(--brand-accent-hover);
+}
+
+.ipt-btn-atualizar:disabled {
+  opacity: 0.55;
+  pointer-events: none;
+}
+
+/* --- Filtros: escopo + pílulas de categoria --- */
+.ipt-controls {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.ipt-scope-row {
+  display: flex;
+  align-items: center;
+}
+
+.ipt-category-row .ipt-scope-select-wrap {
+  min-width: 0;
+}
+
+.ipt-category-row .ipt-scope-select {
+  width: 100%;
+  justify-content: space-between;
+  min-height: 52px;
+  border-radius: var(--space-2);
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.2;
+  text-align: left;
+}
+
+.ipt-scope-select--active {
+  box-shadow:
+    var(--shadow-card),
+    inset 0 0 0 2px rgba(0, 0, 0, 0.12);
+  transform: translateY(-1px);
+}
+
+.ipt-scope-select-wrap {
+  position: relative;
+}
+
+.ipt-scope-select {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  border: 1px solid var(--border-hairline);
+  border-radius: var(--radius-chip);
+  background: var(--surface-1);
+  padding: var(--space-2) var(--space-3);
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 17px;
+  color: rgb(var(--text-primary));
+  cursor: pointer;
+  box-shadow: var(--shadow-chip);
+  transition:
+    background 150ms ease,
+    border-color 150ms ease,
+    box-shadow 150ms ease;
+}
+
+.ipt-scope-select:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.92);
+  border-color: rgba(0, 0, 0, 0.12);
+}
+
+.ipt-scope-select--open {
+  background: rgba(255, 255, 255, 0.78);
+  backdrop-filter: blur(14px) saturate(160%);
+  -webkit-backdrop-filter: blur(14px) saturate(160%);
+  border-color: rgba(255, 255, 255, 0.85);
+  box-shadow: var(--shadow-popover);
+}
+
+.ipt-scope-select:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.ipt-scope-select__chevron {
+  color: rgb(var(--text-muted));
+  transition: transform 180ms ease;
+}
+
+.ipt-stat-select-wrap {
+  position: relative;
+}
+
+.ipt-stat-select {
+  width: 100%;
+  min-width: 0;
+  border: none;
+  background: var(--surface-sidebar);
+  border-radius: 6px;
+  padding: var(--space-1) var(--space-2);
+  font-size: 11px;
+  font-weight: 500;
+  color: rgb(var(--text-secondary));
+  cursor: pointer;
+}
+
+.ipt-stat-select-trigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  width: 100%;
+  text-align: left;
+  border: 1px solid transparent;
+  transition:
+    background 150ms ease,
+    color 150ms ease,
+    border-color 150ms ease,
+    box-shadow 150ms ease;
+}
+
+.ipt-stat-select-trigger:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.72);
+  border-color: rgba(255, 255, 255, 0.55);
+  color: rgb(var(--text-primary));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.65);
+}
+
+.ipt-stat-select-trigger--open {
+  background: rgba(255, 255, 255, 0.58);
+  border-color: rgba(255, 255, 255, 0.72);
+  color: rgb(var(--text-primary));
+  backdrop-filter: blur(14px) saturate(160%);
+  -webkit-backdrop-filter: blur(14px) saturate(160%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.75),
+    0 4px 14px rgba(0, 0, 0, 0.06);
+}
+
+.ipt-stat-select-trigger:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.ipt-stat-select-chevron {
+  width: 12px;
+  height: 12px;
+  flex-shrink: 0;
+  color: rgb(var(--text-muted));
+  transition: transform 180ms ease;
+}
+
+.ipt-td-select-menu {
+  position: fixed;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: var(--space-1);
+  border-radius: 12px;
+  isolation: isolate;
+  background: rgba(255, 255, 255, 0.68);
+  backdrop-filter: blur(22px) saturate(185%);
+  -webkit-backdrop-filter: blur(22px) saturate(185%);
+  border: 1px solid rgba(255, 255, 255, 0.72);
+  box-shadow:
+    0 16px 40px rgba(0, 0, 0, 0.1),
+    0 4px 12px rgba(0, 0, 0, 0.05),
+    inset 0 1px 0 rgba(255, 255, 255, 0.85),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.03);
+}
+
+.ipt-td-select-menu__shine {
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(
+    145deg,
+    rgba(255, 255, 255, 0.52) 0%,
+    rgba(255, 255, 255, 0.08) 42%,
+    rgba(255, 255, 255, 0) 58%,
+    rgba(255, 255, 255, 0.18) 100%
+  );
+}
+
+.ipt-td-select-option {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  border: none;
+  border-radius: 8px;
+  padding: var(--space-2) var(--space-3);
+  font-size: 11px;
+  font-weight: 400;
+  line-height: 1.35;
+  text-align: left;
+  color: rgb(var(--text-secondary));
+  background: transparent;
+  cursor: pointer;
+  transition:
+    background 140ms ease,
+    color 140ms ease,
+    transform 140ms ease;
+}
+
+.ipt-td-select-option:hover {
+  background: rgba(255, 255, 255, 0.42);
+  color: rgb(var(--text-primary));
+}
+
+.ipt-td-select-option--selected {
+  background: rgba(200, 144, 10, 0.16);
+  color: #6b3f09;
+  font-weight: 500;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35);
+}
+
+.ipt-td-select-option--selected:hover {
+  background: rgba(200, 144, 10, 0.22);
+  color: #5a3408;
+}
+
+.ipt-td-select-check.cockpit-icon {
+  width: 12px;
+  height: 12px;
+}
+
+/* --- Pílulas de categoria --- */
+.ipt-category-row {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--space-2);
+}
+
+@media (min-width: 640px) {
+  .ipt-category-row {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+@media (min-width: 1024px) {
+  .ipt-category-row {
+    grid-template-columns: repeat(6, 1fr);
+  }
+}
+
+.ipt-category-pill {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--space-2);
+  padding: 9px var(--space-2);
+  border: none;
+  background: var(--ipt-cat-bg, var(--surface-1));
+  color: var(--ipt-cat-text, rgb(var(--text-primary)));
+  box-shadow: var(--shadow-chip);
+  cursor: pointer;
+  transition:
+    box-shadow 150ms ease,
+    transform 150ms ease;
+}
+
+.ipt-category-pill:hover:not(:disabled) {
+  box-shadow: var(--shadow-card);
+}
+
+.ipt-category-pill:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.ipt-category-pill--active {
+  box-shadow:
+    var(--shadow-card),
+    inset 0 0 0 2px var(--ipt-cat-border, rgba(0, 0, 0, 0.12));
+  transform: translateY(-1px);
+}
+
+.ipt-category-pill--alert {
+  border: 1.5px solid var(--border-danger);
+  box-shadow:
+    var(--shadow-chip),
+    0 0 0 1px rgba(220, 38, 38, 0.08);
+}
+
+.ipt-category-pill__count {
+  font-size: 16px;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.1;
+}
+
+.ipt-category-pill__label {
+  font-size: 10px;
+  font-weight: 400;
+  margin-top: 2px;
+  color: var(--ipt-cat-sub, rgb(var(--text-secondary)));
+  text-align: center;
+  line-height: 1.2;
+}
+
+/* --- Card do mapa --- */
+.ipt-map-card {
+  background: var(--surface-2);
+  border-radius: 12px;
+  padding: var(--space-4);
+  box-shadow: var(--shadow-card);
+  min-height: 0;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.ipt-map-card--fullscreen {
+  border-radius: 0;
+  padding: var(--space-3);
+  min-height: 100vh;
+}
+
+.ipt-map-card__header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-bottom: var(--space-3);
+}
+
+.ipt-map-card__title {
+  font-size: 14px;
+  font-weight: 500;
+  color: rgb(var(--text-primary));
+  line-height: 1.2;
+}
+
+.ipt-map-card__subtitle {
+  margin: 2px 0 0;
+  font-size: 11px;
+  font-weight: 400;
+  color: rgb(var(--text-muted));
+}
+
+.ipt-lens-toggle {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+  padding: 2px;
+  border-radius: var(--space-2);
+  background: var(--surface-sidebar);
+}
+
+.ipt-lens-toggle__btn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-size: 11px;
+  font-weight: 400;
+  line-height: 17px;
+  padding: 3px 10px;
+  border-radius: 5px;
+  border: none;
+  background: transparent;
+  color: rgb(var(--text-secondary));
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.ipt-lens-toggle__btn--active {
+  background: #fff;
+  box-shadow: var(--shadow-chip);
+  font-weight: 500;
+  color: rgb(var(--text-primary));
+}
+
+.ipt-lens-toggle__btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.ipt-map-card__fullscreen {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--space-2);
+  border: none;
+  background: var(--surface-sidebar);
+  color: rgb(var(--text-secondary));
+  cursor: pointer;
+  box-shadow: var(--shadow-chip);
+}
+
+.ipt-map-card__fullscreen:hover:not(:disabled) {
+  color: rgb(var(--text-primary));
+}
+
+.ipt-map-card__fullscreen:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.ipt-map-card__body {
+  border-radius: var(--space-2);
+  overflow: hidden;
+  min-height: 320px;
+}
+
+/* --- Sidebar + ícones IPT (somente nesta rota) --- */
+/* Mesmo tom escuro da splash / login / demais páginas. */
+body[data-ipt-refine] aside[data-sidebar-shell].sidebar-apify-shell {
+  background: #0b0b0d !important;
+  border-right: 1px solid rgba(255, 255, 255, 0.08) !important;
+  box-shadow: none !important;
+}
+
+body[data-ipt-refine] aside[data-sidebar-shell].sidebar-apify-shell > div {
+  background: transparent !important;
+}
+
+body[data-ipt-refine] aside[data-sidebar-shell].sidebar-apify-shell nav,
+body[data-ipt-refine] aside[data-sidebar-shell].sidebar-apify-shell .sidebar-quick-access,
+body[data-ipt-refine] aside[data-sidebar-shell].sidebar-apify-shell footer {
+  background: transparent;
+}
+
+/* Zona do logo — mesmo preenchimento escuro do restante da sidebar. */
+body[data-ipt-refine] aside[data-sidebar-shell].sidebar-apify-shell > div > div:first-child {
+  background: #0b0b0d !important;
+  border-color: rgba(255, 255, 255, 0.08) !important;
+}
+
+body[data-ipt-refine] aside[data-sidebar-shell] .cockpit-sidebar-item,
+body[data-ipt-refine] aside[data-sidebar-shell] nav a,
+body[data-ipt-refine] aside[data-sidebar-shell] nav button,
+body[data-ipt-refine] aside[data-sidebar-shell] .sidebar-quick-access a {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  line-height: 1;
+  font-size: 13px;
+  font-weight: 400;
+  letter-spacing: 0.01em;
+  padding-top: 6px;
+  padding-bottom: 6px;
+  border-radius: 6px;
+}
+
+body[data-ipt-refine] aside[data-sidebar-shell] .cockpit-sidebar-item > span,
+body[data-ipt-refine] aside[data-sidebar-shell] nav a > span,
+body[data-ipt-refine] aside[data-sidebar-shell] nav button > span,
+body[data-ipt-refine] aside[data-sidebar-shell] .sidebar-quick-access a > span {
+  font-size: 13px;
+  line-height: 17px;
+}
+
+body[data-ipt-refine] aside[data-sidebar-shell] .cockpit-icon,
+body[data-ipt-refine] aside[data-sidebar-shell] nav svg,
+body[data-ipt-refine] aside[data-sidebar-shell] .sidebar-quick-access svg {
+  width: 17px;
+  height: 17px;
+  flex-shrink: 0;
+  stroke-width: 1.6;
+}
+
+body[data-ipt-refine] .ipt-btn-atualizar,
+body[data-ipt-refine] .ipt-lens-toggle__btn,
+body[data-ipt-refine] .ipt-map-card__fullscreen,
+body[data-ipt-refine] .ipt-scope-select {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  line-height: 1;
+}
+
+body[data-ipt-refine] .ipt-btn-atualizar .cockpit-icon--sm,
+body[data-ipt-refine] .ipt-lens-toggle__btn .cockpit-icon--sm {
+  width: 14px;
+  height: 14px;
+  stroke-width: 1.6;
+}
+
+body[data-ipt-refine] .ipt-map-card__fullscreen .cockpit-icon {
+  width: 16px;
+  height: 16px;
+  stroke-width: 1.6;
+}
+
+/* Item ativo — barra dourada + realce escuro sutil (tema escuro). */
+body[data-ipt-refine] aside[data-sidebar-shell] nav a.border-l-\[\#c99a2e\] {
+  border-left-width: 3px !important;
+  border-left-color: #c99a2e !important;
+  background: rgba(255, 255, 255, 0.06) !important;
+  font-weight: 500;
+  color: #ffffff !important;
+}
+
+body[data-ipt-refine] aside[data-sidebar-shell] .sidebar-quick-access a.border-l-\[\#c99a2e\] {
+  border-left-width: 3px !important;
+  border-left-color: #c99a2e !important;
+  background: rgba(255, 255, 255, 0.06) !important;
+  font-weight: 500;
+}
+
+/* Seções da sidebar — mais respiro */
+body[data-ipt-refine] aside[data-sidebar-shell] nav > ul {
+  gap: var(--space-1);
+}
+
+body[data-ipt-refine] aside[data-sidebar-shell] [class*='text-[length:var(--text-2xs)]'] {
+  margin-top: 14px;
+  margin-bottom: 6px;
+}
+
+/* Avatar — anel dourado (3º ponto visual de marca no chrome) */
+body[data-ipt-refine] aside[data-sidebar-shell] footer button .rounded-full,
+body[data-ipt-refine] aside[data-sidebar-shell] footer [class*='rounded-full'] {
+  box-shadow: 0 0 0 2px var(--brand-accent);
+}

@@ -26,33 +26,36 @@ const WORDMARK_SIZE: Record<
     tag: 'mt-1 text-[10px] tracking-[0.14em]',
   },
   sidebar: {
-    main: 'text-[2rem] leading-[0.88] tracking-[-0.05em]',
-    tag: 'mt-2 text-[9px] tracking-[0.32em]',
+    main: 'text-[1.55rem] leading-[0.95] tracking-[-0.01em]',
+    tag: 'mt-2 text-[7px] leading-snug tracking-[0.12em]',
   },
 }
 
-type WordmarkTone = 'default' | 'onGradient'
+type WordmarkTone = 'default' | 'onGradient' | 'onAmber'
 
 function wordmarkTone({
   lightOnGradient,
+  lightOnAmber,
 }: {
   lightOnGradient?: boolean
+  lightOnAmber?: boolean
 }): WordmarkTone {
   if (lightOnGradient) return 'onGradient'
+  if (lightOnAmber) return 'onAmber'
   return 'default'
 }
 
-function wordmarkSegmentColors(
-  tone: WordmarkTone,
-  lightOnAmber?: boolean,
-) {
+function wordmarkColors(tone: WordmarkTone) {
   if (tone === 'onGradient') {
-    return { cock: 'text-white', pit: 'text-[#C8900A]' }
+    return { cockpit: 'text-white', year: 'text-[#c99a2e]' }
   }
-  return {
-    cock: cn('text-text-primary', lightOnAmber && 'max-lg:text-white'),
-    pit: cn('text-[#C8900A]', lightOnAmber && 'max-lg:text-[#1a1a1a]/90'),
+  if (tone === 'onAmber') {
+    return {
+      cockpit: 'text-[#c99a2e] max-lg:text-white',
+      year: 'text-white max-lg:text-white/70',
+    }
   }
+  return { cockpit: 'text-[#c99a2e]', year: 'text-white' }
 }
 
 /** Wordmark COCK + PIT — tipografia bold, duas cores, sem ícone. */
@@ -75,18 +78,18 @@ export function AppBrandWordmark({
   fullWidth?: boolean
   className?: string
 }) {
-  const tone = wordmarkTone({ lightOnGradient })
-  const colors = wordmarkSegmentColors(tone, lightOnAmber)
+  const tone = wordmarkTone({ lightOnGradient, lightOnAmber })
+  const colors = wordmarkColors(tone)
   const sizes = WORDMARK_SIZE[size]
 
   if (compact) {
     return (
       <span
         className={cn(sidebarBrandLogoMarkClass, className)}
-        aria-label="Cockpit"
+        aria-label="Cockpit 2026"
       >
-        <span className={colors.cock}>C</span>
-        <span className={colors.pit}>P</span>
+        <span className={colors.cockpit}>C</span>
+        <span className={colors.year}>P</span>
       </span>
     )
   }
@@ -103,21 +106,21 @@ export function AppBrandWordmark({
         className={cn(
           brandWordmarkClass,
           sizes.main,
-          fullWidth ? 'block w-full whitespace-nowrap' : 'truncate whitespace-nowrap',
+          fullWidth ? 'block w-full whitespace-nowrap text-center' : 'truncate whitespace-nowrap',
         )}
-        aria-label="Cockpit"
+        aria-label="Cockpit 2026"
       >
-        <span className={colors.cock}>Cock</span>
-        <span className={colors.pit}>pit</span>
+        <span className={colors.cockpit}>COCKPIT</span>
+        <span className={cn(colors.year, 'font-medium')}> 2026</span>
       </span>
       {showTagline ? (
         <span
           className={cn(
             brandWordmarkTaglineClass,
             sizes.tag,
-            fullWidth && 'block w-full',
-            lightOnGradient && 'text-white/55',
-            lightOnAmber && 'max-lg:text-white/70',
+            fullWidth && 'block w-full text-center',
+            tone === 'onGradient' && 'text-white/55',
+            tone === 'onAmber' && 'max-lg:text-white/70',
           )}
         >
           {APP_BRAND_TAGLINE}
@@ -177,12 +180,13 @@ export function SidebarBrandHeader({
   lightOnGradient?: boolean
 }) {
   return (
-    <div className={cn('flex min-w-0 w-full flex-col', className)}>
+    <div className={cn('flex min-w-0 w-full flex-col items-center text-center', className)}>
       <AppBrandWordmark
         size="sidebar"
         showTagline
         fullWidth
         lightOnGradient={lightOnGradient}
+        className="items-center text-center"
       />
       {clientLabel ? (
         <p className={cn('mt-1 line-clamp-2', typographyPageLeadClass)}>{clientLabel}</p>

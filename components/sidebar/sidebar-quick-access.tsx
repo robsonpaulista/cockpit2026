@@ -2,15 +2,6 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import {
-  BarChart3,
-  ClipboardList,
-  FolderOpen,
-  MapPin,
-  MessageSquare,
-  Radar,
-  type LucideIcon,
-} from 'lucide-react'
 import { cn } from '@/lib/utils'
 import {
   isSidebarQuickAccessActive,
@@ -26,15 +17,7 @@ import { sidebarItemIconOnlyClass } from '@/lib/sidebar-layout'
 import { sidebarApifyDividerClass, sidebarApifyTooltipClass } from '@/lib/sidebar-apify-styles'
 import { JARVIS_SIDEBAR_DIVIDER, JARVIS_SIDEBAR_SECTION } from '@/lib/jarvis-sidebar-styles'
 import { usePermissions } from '@/hooks/use-permissions'
-
-const ICON_MAP: Record<SidebarQuickAccessItem['icon'], LucideIcon> = {
-  Radar,
-  ClipboardList,
-  MapPin,
-  BarChart3,
-  MessageSquare,
-  FolderOpen,
-}
+import { resolveSidebarTablerIcon, SidebarTablerIcon } from '@/lib/sidebar-tabler-icons'
 
 type Props = {
   collapsed: boolean
@@ -70,7 +53,9 @@ export function SidebarQuickAccess({
   return (
     <div
       className={cn(
-        'border-b border-[rgb(var(--color-border-secondary)/0.35)]',
+        isGradientHome
+          ? 'border-b border-[rgba(0,212,255,0.08)]'
+          : 'border-b border-white/10',
         iconOnly ? 'px-1.5 py-1' : 'px-2.5 pb-2 pt-1',
       )}
     >
@@ -96,8 +81,8 @@ export function SidebarQuickAccess({
 
       <ul className="space-y-0.5">
         {items.map((item) => {
-          const Icon = ICON_MAP[item.icon]
           const active = isSidebarQuickAccessActive(item, pathname, searchKey)
+          const Icon = resolveSidebarTablerIcon(item.icon, false)
 
           return (
             <li key={item.id} className="group relative">
@@ -111,8 +96,10 @@ export function SidebarQuickAccess({
                   iconOnly && 'justify-center px-1.5',
                 )}
               >
-                <Icon className={sidebarNavIconClass(active)} strokeWidth={1.5} aria-hidden />
-                {!iconOnly ? <span className="truncate">{item.label}</span> : null}
+                <SidebarTablerIcon icon={Icon} className={sidebarNavIconClass(active)} />
+                {!iconOnly ? (
+                  <span className="truncate text-[13px] leading-[17px]">{item.label}</span>
+                ) : null}
               </Link>
               {iconOnly ? (
                 <span

@@ -3,20 +3,23 @@
 import dynamic from 'next/dynamic'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Loader2, RefreshCw } from 'lucide-react'
-import { IptMapToolbar } from '@/components/ipt/ipt-map-toolbar'
-import { useIpt } from '@/hooks/use-ipt'
-import { IPT_INDICADOR_OPCOES, buildContagemIptPorIndicador, type IptIndicador, type IptPrioridade } from '@/lib/ipt'
-import { filtrarIptMunicipiosPorTd, buildContagemIptPorTd, IPT_TD_LABEL_CURTO } from '@/lib/ipt-td'
-import type { TerritorioDesenvolvimentoPI } from '@/lib/piaui-territorio-desenvolvimento'
-import { chromeButtonClass } from '@/lib/button-chrome'
-import { cn } from '@/lib/utils'
+import { CockpitIcon } from '@/components/ui/cockpit-icon'
 import {
   DashboardPageChrome,
-  DashboardPageContent,
-  DashboardPageHeader,
+  DashboardPageShell,
 } from '@/components/dashboard/dashboard-page-chrome'
+import { IptMapCardHeader } from '@/components/ipt/ipt-map-card-header'
+import { IptPageFilters } from '@/components/ipt/ipt-page-filters'
+import { IptPageHeader } from '@/components/ipt/ipt-page-header'
+import { useDashboardTopbarVisible } from '@/hooks/use-dashboard-topbar-visible'
+import { useIpt } from '@/hooks/use-ipt'
+import { type IptIndicador, type IptPrioridade } from '@/lib/ipt'
+import { filtrarIptMunicipiosPorTd } from '@/lib/ipt-td'
+import type { TerritorioDesenvolvimentoPI } from '@/lib/piaui-territorio-desenvolvimento'
+import { cn } from '@/lib/utils'
+import '@/app/dashboard/territorio/ipt/ipt-visual-refine.css'
 
-const IPT_PAGE_TITLE = 'Mapa de Diagnóstico da Campanha'
+const IPT_PAGE_TITLE = 'Mapa de diagnóstico da campanha'
 const IPT_PAGE_DESCRIPTION =
   'Gestão à vista: diagnóstico territorial por município — chips no mapa, popup completo no clique.'
 
@@ -25,7 +28,7 @@ const IptMapSection = dynamic(
   {
     ssr: false,
     loading: () => (
-      <div className="flex h-full min-h-[420px] items-center justify-center bg-bg-app text-sm text-text-muted">
+      <div className="flex h-full min-h-[320px] items-center justify-center text-sm text-text-muted">
         <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden />
         Carregando mapa…
       </div>
@@ -39,6 +42,7 @@ export function IptPanel() {
   const [filtroPrioridade, setFiltroPrioridade] = useState<IptPrioridade | null>(null)
   const [filtroIndicador, setFiltroIndicador] = useState<IptIndicador | 'geral'>('geral')
   const [filtroTd, setFiltroTd] = useState<TerritorioDesenvolvimentoPI | null>(null)
+  const topbarVisible = useDashboardTopbarVisible()
   const { loading, error, municipios, recarregar } = useIpt()
 
   const municipiosNoEscopo = useMemo(
@@ -64,24 +68,17 @@ export function IptPanel() {
   }, [municipiosNoEscopo, filtroPrioridade])
 
   const indicadorAtivo = filtroIndicador === 'geral' ? null : filtroIndicador
-
-  /** Com lente de indicador: todos com expectativa, independente da prioridade. */
-  const municipiosNoMapa = useMemo(() => {
-    if (indicadorAtivo) {
-      return municipiosNoEscopo.filter((m) => m.prioridade !== 'sem_expectativa')
-    }
-    return municipiosFiltrados
-  }, [municipiosNoEscopo, municipiosFiltrados, indicadorAtivo])
-
-  const contagemPorIndicador = useMemo(() => buildContagemIptPorIndicador(municipiosNoEscopo), [municipiosNoEscopo])
-
-  const contagemPorTd = useMemo(() => buildContagemIptPorTd(municipios), [municipios])
-
-  const legendaIndicadorAtiva = IPT_INDICADOR_OPCOES.find((o) => o.id === filtroIndicador)?.label ?? ''
-  const rotuloTdAtivo = filtroTd ? IPT_TD_LABEL_CURTO[filtroTd] : null
+  const municipiosNoMapa = municipiosFiltrados
 
   const toggleFiltroPrioridade = useCallback((prioridade: IptPrioridade) => {
     setFiltroPrioridade((atual) => (atual === prioridade ? null : prioridade))
+  }, [])
+
+  useEffect(() => {
+    document.body.dataset.iptRefine = 'true'
+    return () => {
+      delete document.body.dataset.iptRefine
+    }
   }, [])
 
   useEffect(() => {
@@ -103,80 +100,67 @@ export function IptPanel() {
   }, [])
 
   const headerAction = (
-    <button type="button" onClick={() => void recarregar()} className={chromeButtonClass} disabled={loading}>
-      <RefreshCw className={`mr-2 h-4 w-4 ${loading ? 'animate-spin' : ''}`} aria-hidden />
+    <button
+      type="button"
+      onClick={() => void recarregar()}
+      className="ipt-btn-atualizar"
+      disabled={loading}
+    >
+      <CockpitIcon icon={RefreshCw} size="sm" className={loading ? 'animate-spin' : undefined} />
       Atualizar
     </button>
   )
 
   return (
-    <>
-      <DashboardPageChrome>
-        <DashboardPageHeader
-          title={IPT_PAGE_TITLE}
-          description={IPT_PAGE_DESCRIPTION}
-          action={headerAction}
-        />
-      </DashboardPageChrome>
+    <DashboardPageShell className="ipt-page-shell">
+      {!isNativeFullscreen ? (
+        <DashboardPageChrome>
+          <IptPageHeader
+            compact={topbarVisible}
+            title={IPT_PAGE_TITLE}
+            description={IPT_PAGE_DESCRIPTION}
+            action={headerAction}
+          />
+        </DashboardPageChrome>
+      ) : null}
 
-      <DashboardPageContent className="min-h-0 flex-1">
+      <div className="ipt-page-body flex min-h-0 flex-1 flex-col">
         {error ? (
-          <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">{error}</div>
+          <div className="ipt-page-alert rounded-lg bg-red-50 px-4 py-3 text-sm text-red-800">{error}</div>
+        ) : null}
+
+        {!isNativeFullscreen ? (
+          <IptPageFilters
+            loading={loading}
+            filtroPrioridade={filtroPrioridade}
+            filtroTd={filtroTd}
+            contagemPorPrioridade={contagemPorPrioridade}
+            totalMunicipios={municipiosNoEscopo.length}
+            totalMunicipiosPi={municipios.length}
+            onTogglePrioridade={toggleFiltroPrioridade}
+            onTdChange={setFiltroTd}
+          />
         ) : null}
 
         <div
           ref={mapContainerRef}
           className={cn(
-            'flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-card bg-bg-surface',
-            !isNativeFullscreen && 'h-[calc(100dvh-13rem)] min-h-[520px]',
-            '[&:fullscreen]:mt-0 [&:fullscreen]:flex [&:fullscreen]:h-screen [&:fullscreen]:w-full [&:fullscreen]:flex-col [&:fullscreen]:min-h-0 [&:fullscreen]:rounded-none [&:fullscreen]:border-none [&:fullscreen]:bg-bg-surface'
+            'ipt-map-card flex min-h-0 flex-1 flex-col',
+            isNativeFullscreen && 'ipt-map-card--fullscreen',
           )}
         >
-          {isNativeFullscreen ? (
-            <DashboardPageHeader
-              title={IPT_PAGE_TITLE}
-              description={IPT_PAGE_DESCRIPTION}
-              action={headerAction}
-            />
-          ) : null}
+          <IptMapCardHeader
+            loading={loading}
+            filtroIndicador={filtroIndicador}
+            isNativeFullscreen={isNativeFullscreen}
+            mapEmpty={municipiosNoMapa.length === 0}
+            onIndicadorChange={setFiltroIndicador}
+            onToggleFullscreen={toggleFullscreen}
+          />
 
-          <div className={cn('border-b border-card bg-bg-surface/80 px-3 py-2.5 sm:px-4', isNativeFullscreen && 'shrink-0')}>
-            <IptMapToolbar
-              loading={loading}
-              filtroPrioridade={filtroPrioridade}
-              filtroIndicador={filtroIndicador}
-              filtroTd={filtroTd}
-              contagemPorPrioridade={contagemPorPrioridade}
-              totalMunicipios={municipiosNoEscopo.length}
-              totalMunicipiosPi={municipios.length}
-              contagemPorIndicador={contagemPorIndicador}
-              contagemPorTd={contagemPorTd}
-              indicadorAtivo={indicadorAtivo}
-              isNativeFullscreen={isNativeFullscreen}
-              onTogglePrioridade={toggleFiltroPrioridade}
-              onClearPrioridade={() => setFiltroPrioridade(null)}
-              onIndicadorChange={(valor) => {
-                setFiltroIndicador(valor)
-                if (valor !== 'geral') setFiltroPrioridade(null)
-              }}
-              onTdChange={setFiltroTd}
-              onToggleFullscreen={toggleFullscreen}
-              showHint={!isNativeFullscreen}
-              hint={
-                indicadorAtivo
-                  ? `${legendaIndicadorAtiva}${rotuloTdAtivo ? ` · TD ${rotuloTdAtivo}` : ''} · ${contagemPorIndicador[indicadorAtivo]} com dado · ${municipiosNoMapa.length} no mapa · verde bem · amarelo neutro · vermelho mal · cinza sem dado`
-                  : filtroPrioridade
-                    ? `${municipiosFiltrados.length} município${municipiosFiltrados.length === 1 ? '' : 's'} no mapa${rotuloTdAtivo ? ` · TD ${rotuloTdAtivo}` : ''} · clique em «Todos» ou no chip ativo para limpar`
-                    : rotuloTdAtivo
-                      ? `TD ${rotuloTdAtivo} · ${municipiosNoEscopo.length} municípios · filtre por diagnóstico ou escolha uma lente`
-                      : 'Filtre por território, diagnóstico ou lente para ler o mapa por recorte'
-              }
-            />
-          </div>
-
-          <div className="flex min-h-0 flex-1 flex-col">
+          <div className="ipt-map-card__body flex min-h-0 flex-1 flex-col">
             {loading ? (
-              <div className="flex h-full min-h-[420px] items-center justify-center text-sm text-text-muted">
+              <div className="flex h-full min-h-[320px] items-center justify-center text-sm text-text-muted">
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden />
                 Calculando prioridades…
               </div>
@@ -192,7 +176,7 @@ export function IptPanel() {
             )}
           </div>
         </div>
-      </DashboardPageContent>
-    </>
+      </div>
+    </DashboardPageShell>
   )
 }

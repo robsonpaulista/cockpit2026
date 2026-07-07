@@ -41,7 +41,7 @@ export function DashboardPageHeader({
 }) {
   return (
     <header className={dashboardPageHeaderZoneClass}>
-      <div className="flex h-full min-h-0 flex-col justify-center overflow-hidden">
+      <div className="flex min-w-0 flex-1 flex-col justify-center overflow-hidden">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0 flex-1">
             {title ? <h1 className={typographyPageTitleClass}>{title}</h1> : null}

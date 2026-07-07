@@ -1,44 +1,48 @@
 import { cn } from '@/lib/utils'
 
-/** Marca âmbar — cor do segmento PIT e acentos da UI. */
-export const SIDEBAR_BRAND_AMBER = '#C8900A'
+/** Marca dourada — mesma cor da splash e do login (#c99a2e). */
+export const SIDEBAR_BRAND_AMBER = '#c99a2e'
 
-export const APP_BRAND_TAGLINE = 'Campanha · 2026'
+/** Slogan institucional — igual splash / login. */
+export const APP_BRAND_TAGLINE = 'Comando Central de Eleições Dep Fed Jadyel Alencar'
 
-/** Wordmark tipográfico COCK + PIT — sans extrabold, máximo impacto. */
+/** Wordmark tipográfico COCKPIT 2026 — sans bold, alinhado à splash. */
 export const brandWordmarkClass =
-  'font-sans font-extrabold uppercase leading-none tracking-[-0.04em]'
+  'font-sans font-bold uppercase leading-none tracking-[-0.01em]'
 
 export const brandWordmarkTaglineClass =
-  'font-sans text-[length:var(--text-2xs)] font-medium uppercase leading-none tracking-[0.16em] text-text-muted'
+  'font-sans text-[length:var(--text-2xs)] font-medium uppercase leading-snug tracking-[0.14em] text-white/50'
 
 export const sidebarBrandLogoMarkClass =
   'flex h-6 w-6 shrink-0 items-center justify-center font-sans text-[11px] font-extrabold leading-none tracking-tighter'
 
-/** Nome do produto na sidebar — 12px / 600 / #1a1a1a */
+/** Nome do produto na sidebar — contraste sobre fundo escuro. */
 export const sidebarBrandNameClass =
-  'truncate text-xs font-semibold leading-tight tracking-tight text-[#1a1a1a]'
+  'truncate text-xs font-semibold leading-tight tracking-tight text-white/90'
 
-/** Sub-label do cliente ativo — 10px / 400 / #888 */
+/** Sub-label do cliente ativo */
 export const sidebarBrandClientClass =
-  'mt-0.5 truncate text-[10px] font-normal leading-snug text-[#888888]'
+  'mt-0.5 truncate text-[10px] font-normal leading-snug text-white/45'
 
-/** Saudação do usuário na sidebar — 10px */
+/** Saudação do usuário na sidebar */
 export const sidebarBrandWelcomeClass =
-  'truncate text-[10px] font-normal leading-snug text-[#888888]'
+  'truncate text-[10px] font-normal leading-snug text-white/50'
 
-export const sidebarBrandWelcomeNameClass = 'font-medium text-[#1a1a1a]'
+export const sidebarBrandWelcomeNameClass = 'font-medium text-white/85'
 
-/** Rótulo de seção CAPS — --text-2xs, --caps-tracking, #aaa */
+/** Rótulo de seção CAPS — sobre fundo escuro */
 export const sidebarBrandSectionLabelClass = cn(
-  'px-[14px] text-[length:var(--text-2xs)] font-normal uppercase tracking-[var(--caps-tracking)] text-[#aaaaaa]'
+  'px-[14px] text-[length:var(--text-2xs)] font-semibold uppercase tracking-[0.18em] text-white/45'
 )
 
-/** Borda e foco do item ativo na sidebar — mesma cor do logo mark. */
-export const sidebarActiveBorderClass = 'border-l-[#C8900A]'
+/** Borda e foco do item ativo na sidebar */
+export const sidebarActiveBorderClass = 'border-l-[#c99a2e]'
 
 export const sidebarActiveFocusRingClass =
-  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C8900A]/25 focus-visible:ring-offset-1 focus-visible:ring-offset-bg-surface'
+  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#c99a2e]/30 focus-visible:ring-offset-1 focus-visible:ring-offset-[#0b0b0d]'
+
+/** Divider entre seções */
+export const sidebarBrandDividerClass = 'mx-[14px] h-px bg-white/10'
 
 /** Abas horizontais das páginas (DashboardHubTabBar) — guia ativa âmbar. */
 export const dashboardHubTabBaseClass =
@@ -96,6 +100,3 @@ export const brandAmberPanelBorderClass =
   'rounded-xl border border-[#E8D4A8]/50 bg-background/90 p-4'
 
 export const brandAmberFocusRingClass = 'focus-visible:ring-2 focus-visible:ring-[#C8900A]/40'
-
-/** Divider entre seções — 0.5px #E2E4E8, margem horizontal 14px */
-export const sidebarBrandDividerClass = 'mx-[14px] h-[0.5px] bg-[#E2E4E8]'

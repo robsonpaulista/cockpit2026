@@ -59,6 +59,19 @@ body {
   --color-background-tertiary: 245 247 250;
   --color-border-secondary: 180 190 204;
   --color-border-tertiary: 204 212 224;
+
+  /* Refinamento visual — elevação, planos, marca */
+  --shadow-chip: 0 1px 2px rgba(0, 0, 0, 0.08), 0 1px 1px rgba(0, 0, 0, 0.04);
+  --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
+  --shadow-popover: 0 8px 24px rgba(0, 0, 0, 0.1), 0 2px 6px rgba(0, 0, 0, 0.06);
+  --surface-page: #ffffff;
+  --surface-sidebar: #fafaf7;
+  --border-hairline: rgba(0, 0, 0, 0.08);
+  --brand-accent: #e0a030;
+  --brand-accent-hover: #c98f28;
+  --on-brand-accent: #3d2a08;
+  --radius-chip: 7px;
+  --radius-card: 10px;
 }
 
 /* Tema Agentes (mantido como alternativa) */
@@ -136,6 +149,18 @@ body {
   --color-background-tertiary: 245 247 250;
   --color-border-secondary: 180 190 204;
   --color-border-tertiary: 204 212 224;
+
+  --shadow-chip: 0 1px 2px rgba(0, 0, 0, 0.08), 0 1px 1px rgba(0, 0, 0, 0.04);
+  --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
+  --shadow-popover: 0 8px 24px rgba(0, 0, 0, 0.1), 0 2px 6px rgba(0, 0, 0, 0.06);
+  --surface-page: #ffffff;
+  --surface-sidebar: #fafaf7;
+  --border-hairline: rgba(0, 0, 0, 0.08);
+  --brand-accent: #e0a030;
+  --brand-accent-hover: #c98f28;
+  --on-brand-accent: #3d2a08;
+  --radius-chip: 7px;
+  --radius-card: 10px;
 }
 
 /* Tema 4: Cockpit Vivo — gradiente azul frio, vidro, ciano “sistema ativo” */
@@ -291,8 +316,8 @@ body {
 }
 
 [data-appearance='dark'][data-theme='cockpit'] .sidebar-cockpit-shell {
-  background: rgba(17, 26, 40, 0.88) !important;
-  border-color: rgba(71, 85, 105, 0.45) !important;
+  background: #0b0b0d !important;
+  border-color: rgba(255, 255, 255, 0.08) !important;
 }
 
 [data-appearance='dark'][data-theme='cockpit'] .cockpit-premium-bg {
@@ -408,10 +433,10 @@ body {
 }
 
 [data-theme="cockpit"] .sidebar-cockpit-shell {
-  background: rgba(255, 255, 255, 0.52) !important;
-  backdrop-filter: blur(18px);
-  -webkit-backdrop-filter: blur(18px);
-  border-color: rgb(var(--border-card) / 0.45) !important;
+  background: #0b0b0d !important;
+  border-color: rgba(255, 255, 255, 0.08) !important;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
 }
 
 /* Vidro Cockpit só na sidebar: borda sem branco (evita “halo” claro na borda direita) */
@@ -655,6 +680,25 @@ html[data-theme='cockpit'] .td-mapa-statusbar__dot {
 }
 
 @layer utilities {
+  /* Ícones outline normalizados (Lucide) */
+  .cockpit-icon {
+    width: 17px;
+    height: 17px;
+    flex-shrink: 0;
+  }
+
+  .cockpit-icon--sm {
+    width: 14px;
+    height: 14px;
+  }
+
+  .cockpit-sidebar-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    line-height: 1;
+  }
+
   /* Card Padrão */
   .card-premium {
     @apply bg-bg-surface border border-border-card rounded-[14px] p-5 shadow-card transition-all duration-200 ease-out;
@@ -1212,20 +1256,21 @@ table.td-resumo-table--premium .td-resumo-table__rank--first {
   gap: 2px;
   width: max-content;
   max-width: none;
-  padding: 3px 8px 4px;
-  border-radius: 6px;
+  padding: 5px 11px;
+  border-radius: var(--radius-chip, 7px);
   background: var(--ipt-chip-bg, #f8fafc);
   color: var(--ipt-chip-text, #0f172a);
-  border: 1px solid var(--ipt-chip-border, rgba(148, 163, 184, 0.28));
-  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
+  border: none;
+  box-shadow: var(--shadow-chip);
   font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+  font-size: 12px;
+  font-weight: 500;
   line-height: 1.2;
   pointer-events: auto;
   transition:
     transform var(--ipt-chip-enter-ms) ease,
     opacity var(--ipt-chip-enter-ms) ease,
-    box-shadow var(--ipt-chip-enter-ms) ease,
-    border-color var(--ipt-chip-enter-ms) ease;
+    box-shadow var(--ipt-chip-enter-ms) ease;
 }
 
 .ipt-chip--enter {
@@ -1246,15 +1291,14 @@ table.td-resumo-table--premium .td-resumo-table__rank--first {
 
 .ipt-chip--active {
   transform: translateY(-2px);
-  box-shadow: 0 3px 10px rgba(15, 23, 42, 0.1);
-  border-color: var(--ipt-chip-sub, rgba(15, 23, 42, 0.35));
+  box-shadow: var(--shadow-card);
   opacity: 1 !important;
   z-index: 2;
 }
 
 .ipt-chip__nome {
-  font-size: 10px;
-  font-weight: 650;
+  font-size: 12px;
+  font-weight: 500;
   letter-spacing: -0.01em;
   color: var(--ipt-chip-text);
   white-space: nowrap;
@@ -1312,7 +1356,14 @@ table.td-resumo-table--premium .td-resumo-table__rank--first {
 }
 
 .mapa-ipt-marker {
-  transition: transform var(--ipt-chip-enter-ms, 200ms) ease;
+  transition:
+    transform var(--ipt-chip-enter-ms, 200ms) ease,
+    opacity var(--ipt-chip-enter-ms, 200ms) ease;
+}
+
+.mapa-ipt-marker--no-votes {
+  opacity: 0.55;
+  transform: scale(0.85);
 }
 
 .leaflet-container.ipt-map-mode.ipt-map--focus .mapa-ipt-marker {
@@ -1343,7 +1394,7 @@ table.td-resumo-table--premium .td-resumo-table__rank--first {
 
 .ipt-toolbar__label {
   font-size: 10px;
-  font-weight: 600;
+  font-weight: 500;
   letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--text-muted, #94a3b8);
@@ -1374,7 +1425,7 @@ table.td-resumo-table--premium .td-resumo-table__rank--first {
   }
 
   .ipt-toolbar__group--diag {
-    flex: 0 1 auto;
+    flex: 1 1 auto;
     min-width: 0;
   }
 
@@ -1395,6 +1446,13 @@ table.td-resumo-table--premium .td-resumo-table__rank--first {
 .ipt-toolbar__group--diag .ipt-toolbar__segments {
   width: max-content;
   max-width: 100%;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.ipt-toolbar__group--diag .ipt-toolbar__segments::-webkit-scrollbar {
+  display: none;
 }
 
 .ipt-toolbar__segments {
@@ -1411,7 +1469,7 @@ table.td-resumo-table--premium .td-resumo-table__rank--first {
 .ipt-toolbar-seg {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
+  gap: 6px;
   padding: 4px 8px;
   border-radius: 6px;
   border: none;
@@ -1428,6 +1486,27 @@ table.td-resumo-table--premium .td-resumo-table__rank--first {
     box-shadow 180ms ease;
 }
 
+.ipt-toolbar-seg__label {
+  flex: 0 1 auto;
+  font-weight: 500;
+}
+
+.ipt-toolbar__group--diag .ipt-toolbar-seg {
+  min-width: 0;
+  gap: 4px;
+  padding: 3px 6px;
+}
+
+.ipt-toolbar__group--diag .ipt-toolbar-seg .ipt-toolbar-seg__count {
+  margin-left: 0;
+  padding: 1px 5px;
+  font-size: 10px;
+}
+
+.ipt-toolbar-seg--diag {
+  min-width: 0;
+}
+
 .ipt-toolbar-seg:hover:not(:disabled) {
   color: var(--text-primary, #0f172a);
   background: rgba(255, 255, 255, 0.75);
@@ -1436,7 +1515,7 @@ table.td-resumo-table--premium .td-resumo-table__rank--first {
 .ipt-toolbar-seg--active {
   background: #fff;
   color: var(--text-primary, #0f172a);
-  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.07);
+  box-shadow: var(--shadow-chip);
 }
 
 .ipt-toolbar-seg--diag.ipt-toolbar-seg--active {
@@ -1447,9 +1526,43 @@ table.td-resumo-table--premium .td-resumo-table__rank--first {
     inset 0 0 0 1px var(--ipt-t-border, rgba(148, 163, 184, 0.2));
 }
 
+.ipt-toolbar-seg__count {
+  flex-shrink: 0;
+  margin-left: auto;
+  background: var(--surface-sidebar, #fafaf7);
+  font-size: 11px;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  padding: 2px 7px;
+  border-radius: 5px;
+  opacity: 1;
+  line-height: 1.2;
+}
+
+.ipt-toolbar-seg__count--alert {
+  background: #fef2f2;
+  color: #b91c1c;
+}
+
+.ipt-toolbar-seg__count--warn {
+  background: #fff7ed;
+  color: #c2410c;
+}
+
 .ipt-toolbar-seg--diag.ipt-toolbar-seg--active .ipt-toolbar-seg__count {
+  background: rgba(255, 255, 255, 0.55);
   color: var(--ipt-t-sub, inherit);
-  opacity: 0.85;
+  opacity: 1;
+}
+
+.ipt-toolbar-seg--diag.ipt-toolbar-seg--active .ipt-toolbar-seg__count--alert {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.ipt-toolbar-seg--diag.ipt-toolbar-seg--active .ipt-toolbar-seg__count--warn {
+  background: #ffedd5;
+  color: #9a3412;
 }
 
 .ipt-toolbar-seg:disabled {
@@ -1475,13 +1588,6 @@ table.td-resumo-table--premium .td-resumo-table__rank--first {
 
 .ipt-toolbar-seg--active .ipt-toolbar-seg__ico {
   opacity: 1;
-}
-
-.ipt-toolbar-seg__count {
-  font-size: 9px;
-  font-weight: 600;
-  font-variant-numeric: tabular-nums;
-  opacity: 0.55;
 }
 
 .ipt-toolbar__actions {
@@ -2711,24 +2817,32 @@ table.td-resumo-table td.td-resumo-table__cell--estrategia {
    REPUBLICANOS PREMIUM (LIGHT) — polimento visual global
    ============================================================================= */
 
-/* Sidebar Apify — fundo branco, hover cinza */
+/* Sidebar — tom escuro alinhado à splash e ao login (#0b0b0d) */
 .sidebar-apify-shell {
-  background: rgb(var(--bg-surface)) !important;
-  box-shadow: none !important;
+  background: #0b0b0d !important;
+  border-color: rgba(255, 255, 255, 0.08) !important;
+  box-shadow: inset -1px 0 0 rgba(255, 255, 255, 0.04) !important;
+  color: rgba(255, 255, 255, 0.8);
 }
 
 .sidebar-apify-shell > div {
-  background: rgb(var(--bg-surface)) !important;
+  background: transparent !important;
 }
 
-/* Links da sidebar — não herdar `a:hover` global (accent-gold-soft ≈ branco no tema republicanos). */
+/* Zona do título (logo) — mesmo preenchimento escuro do restante da sidebar. */
+.sidebar-apify-shell > div > div:first-child {
+  background: #0b0b0d !important;
+  border-color: rgba(255, 255, 255, 0.08) !important;
+}
+
+/* Links da sidebar — cor clara explícita (vence a regra global de `a:hover`). */
 .sidebar-apify-shell a {
-  color: inherit;
+  color: rgba(255, 255, 255, 0.8);
   text-decoration: none;
 }
 
 .sidebar-apify-shell a:hover {
-  color: rgb(var(--text-primary));
+  color: #ffffff;
   text-decoration: none;
 }
 

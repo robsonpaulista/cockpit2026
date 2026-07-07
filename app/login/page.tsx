@@ -4,7 +4,6 @@ import { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { LoginForm } from '@/components/auth/login-form'
-import { REST_SCREEN_AMBER_DARK } from '@/lib/rest-screen-chrome'
 
 export default function LoginPage() {
   const router = useRouter()
@@ -25,14 +24,14 @@ export default function LoginPage() {
   return (
     <>
       <style jsx global>{`
-        /* Fundo âmbar fixo — evita flash branco ou azul do tema republicanos. */
+        /* Fundo escuro fixo — mesma base da splash (evita flash claro ou azul do tema). */
         html,
         body {
-          background: ${REST_SCREEN_AMBER_DARK} !important;
+          background: #0b0b0d !important;
         }
-        /* Placeholders brancos nos inputs de login */
+        /* Placeholders discretos nos inputs de login */
         input::placeholder {
-          color: rgba(255, 255, 255, 0.45) !important;
+          color: rgba(255, 255, 255, 0.4) !important;
         }
       `}</style>
       <LoginForm />

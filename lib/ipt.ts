@@ -438,6 +438,14 @@ export function buildContagemIptPorIndicador(municipios: IptMunicipio[]): Record
   }
 }
 
+export function buildContagemIptSinalMal(municipios: IptMunicipio[]): Record<IptIndicador, number> {
+  return {
+    visitas: contagemIptSinalMal(municipios, 'visitas'),
+    obras: contagemIptSinalMal(municipios, 'obras'),
+    pesquisa: contagemIptSinalMal(municipios, 'pesquisa'),
+  }
+}
+
 export function contagemIptSinalMal(
   municipios: IptMunicipio[],
   indicador: IptIndicador
@@ -474,6 +482,9 @@ export function iptPrioridadeLabel(prioridade: IptPrioridade): string {
       return 'Sem votos'
   }
 }
+
+/** Acima deste valor, a pílula "Prioridade crítica" ganha destaque de alerta. */
+export const IPT_LIMIAR_ALERTA_CRITICO = 1
 
 export const IPT_FAIXAS: {
   prioridade: IptPrioridade

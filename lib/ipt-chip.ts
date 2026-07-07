@@ -147,7 +147,7 @@ export function createIptChipHtml(
 ): string {
   if (!iptChipDeveExibir(m)) return ''
 
-  const theme = iptChipTheme(m, indicador)
+  const theme = iptPrioridadeTheme(m.prioridade)
   const linha = indicador ? iptChipLinhaIndicador(m, indicador) : iptChipLinhaGeral(m)
   const key = opts?.municipioKey ?? m.municipio
   const delay = opts?.animDelay ?? 0

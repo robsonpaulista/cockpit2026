@@ -14,7 +14,7 @@ const dashboardHeaderBandBaseClass = cn(
   'box-border shrink-0 min-h-0 overflow-hidden border-b bg-bg-surface',
   chromeBorderClass,
   DASHBOARD_PAGE_HEADER_BAND_CLASS,
-  'flex flex-col justify-center',
+  'flex items-center',
 )
 
 /** Zona compacta quando o topbar já exibe o título da página. */
@@ -65,7 +65,7 @@ export const dashboardSidebarCollapsedSubnavSpacerClass = cn(
 /** Zona do título da página (sidebar: logo; conteúdo: título + descrição). */
 export const dashboardPageHeaderZoneClass = cn(
   dashboardHeaderBandBaseClass,
-  'px-4 py-3 md:px-6',
+  'px-4 md:px-6',
 )
 
 /** Faixa meta (período, frescor) quando o título está no topbar. */
@@ -78,7 +78,7 @@ export const dashboardPageMetaStripClass = cn(
 
 export const dashboardPageHeaderZoneSidebarClass = cn(
   dashboardHeaderBandBaseClass,
-  'px-3 py-3',
+  'relative px-3',
 )
 
 /** Faixa cinza contínua: busca (sidebar) ↔ abas (página). */

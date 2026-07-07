@@ -3,11 +3,11 @@
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { APP_FONT_STACK_CSS } from '@/lib/app-font-stack'
-import {
-  REST_SCREEN_AMBER_DARK,
-  REST_SCREEN_GRADIENT,
-  REST_SCREEN_RADIAL_GLOW,
-} from '@/lib/rest-screen-chrome'
+
+/** Paleta compartilhada com a splash ("ligar a máquina"). */
+const GOLD = '#c99a2e'
+const GOLD_HOVER = '#dcae42'
+const CAR_IMAGE = '/splash/cockpit-track-full.png'
 
 /** Credenciais em texto no dispositivo — útil em tablets; não usar em computadores compartilhados. */
 const SAVED_LOGIN_STORAGE_KEY = 'cockpit_saved_login_v1'
@@ -107,6 +107,18 @@ export function LoginForm() {
     }
   }
 
+  const inputBase: React.CSSProperties = {
+    width: '100%',
+    padding: '11px 16px',
+    background: 'rgba(255,255,255,0.05)',
+    border: '1px solid rgba(255,255,255,0.12)',
+    borderRadius: '10px',
+    color: 'white',
+    fontSize: '0.95rem',
+    outline: 'none',
+    transition: 'all 0.2s ease',
+  }
+
   return (
     <div
       style={{
@@ -114,77 +126,79 @@ export function LoginForm() {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        // Âmbar fixo da marca — não depende de `--accent-gold` (azul no tema republicanos).
-        background: REST_SCREEN_GRADIENT,
+        background: '#0b0b0d',
         padding: '1rem',
         position: 'relative',
         overflow: 'hidden',
       }}
     >
-      {/* Efeito de luz radial (mesmo da splash) */}
+      {/* Fundo: apenas um leve indício da foto da splash (carro na pista) */}
       <div
+        aria-hidden
         style={{
           position: 'absolute',
-          top: '-50%',
-          left: '-50%',
-          width: '200%',
-          height: '200%',
-          background: REST_SCREEN_RADIAL_GLOW,
+          inset: 0,
+          backgroundImage: `url(${CAR_IMAGE})`,
+          backgroundSize: 'cover',
+          backgroundPosition: 'center center',
+          opacity: 0.22,
+        }}
+      />
+      {/* Scrim escuro para legibilidade + vinheta (mesma lógica da splash) */}
+      <div
+        aria-hidden
+        style={{
+          position: 'absolute',
+          inset: 0,
+          background:
+            'radial-gradient(ellipse 75% 75% at 50% 48%, rgba(11,11,13,0.55) 0%, rgba(11,11,13,0.9) 68%, rgba(6,6,8,0.97) 100%)',
           pointerEvents: 'none',
         }}
       />
 
       <div className="w-full max-w-md" style={{ position: 'relative', zIndex: 1 }}>
-        {/* Título e slogan acima do card */}
-        <div className="text-center mb-8">
+        {/* Título e slogan — "COCKPIT" dourado + "2026" claro (igual à splash) */}
+        <div className="text-center mb-10">
           <h1
             style={{
               fontFamily: APP_FONT_STACK_CSS,
-              fontSize: '2.8rem',
-              fontWeight: 800,
+              fontSize: 'clamp(1.9rem, 6vw, 2.6rem)',
+              fontWeight: 500,
               color: 'white',
               lineHeight: 1.1,
-              textShadow: '0 2px 12px rgba(0,0,0,0.12)',
-              marginBottom: '8px',
+              letterSpacing: '-0.01em',
+              textShadow: '0 2px 20px rgba(0,0,0,0.6)',
+              marginBottom: '12px',
             }}
           >
-            Cockpit <span style={{ fontWeight: 300, fontSize: '1.5rem', opacity: 0.6 }}>2026</span>
+            <span style={{ fontWeight: 700, color: GOLD }}>COCKPIT</span> 2026
           </h1>
           <p
             style={{
               fontFamily: APP_FONT_STACK_CSS,
-              fontSize: '0.85rem',
+              fontSize: '0.7rem',
               fontWeight: 500,
-              color: 'rgba(255,255,255,0.7)',
-              letterSpacing: '0.12em',
+              color: 'rgba(255,255,255,0.5)',
+              letterSpacing: '0.18em',
               textTransform: 'uppercase',
+              textShadow: '0 1px 14px rgba(0,0,0,0.6)',
             }}
           >
             Comando Central de Eleições Dep Fed Jadyel Alencar
           </p>
         </div>
 
-        {/* Card do formulário */}
-        <div
-          style={{
-            background: 'rgba(255,255,255,0.12)',
-            backdropFilter: 'blur(20px)',
-            WebkitBackdropFilter: 'blur(20px)',
-            borderRadius: '16px',
-            border: '1px solid rgba(255,255,255,0.2)',
-            padding: '2rem',
-            boxShadow: '0 8px 32px rgba(0,0,0,0.12)',
-          }}
-        >
+        {/* Formulário direto sobre o fundo — sem card, mais minimalista */}
+        <div style={{ padding: '0 0.5rem' }}>
           <form onSubmit={handleSubmit} className="space-y-5">
             <div>
               <label
                 htmlFor="email"
                 style={{
                   display: 'block',
-                  fontSize: '0.85rem',
+                  fontSize: '0.8rem',
                   fontWeight: 500,
-                  color: 'rgba(255,255,255,0.85)',
+                  color: 'rgba(255,255,255,0.7)',
                   marginBottom: '8px',
                 }}
               >
@@ -198,24 +212,16 @@ export function LoginForm() {
                 onChange={(e) => setEmail(e.target.value)}
                 required
                 placeholder="seu@email.com"
-                style={{
-                  width: '100%',
-                  padding: '10px 16px',
-                  background: 'rgba(255,255,255,0.15)',
-                  border: '1px solid rgba(255,255,255,0.25)',
-                  borderRadius: '10px',
-                  color: 'white',
-                  fontSize: '0.95rem',
-                  outline: 'none',
-                  transition: 'all 0.2s ease',
-                }}
+                style={inputBase}
                 onFocus={(e) => {
-                  e.currentTarget.style.background = 'rgba(255,255,255,0.22)'
-                  e.currentTarget.style.borderColor = 'rgba(255,255,255,0.5)'
+                  e.currentTarget.style.background = 'rgba(255,255,255,0.08)'
+                  e.currentTarget.style.borderColor = GOLD
+                  e.currentTarget.style.boxShadow = '0 0 0 3px rgba(201,154,46,0.18)'
                 }}
                 onBlur={(e) => {
-                  e.currentTarget.style.background = 'rgba(255,255,255,0.15)'
-                  e.currentTarget.style.borderColor = 'rgba(255,255,255,0.25)'
+                  e.currentTarget.style.background = 'rgba(255,255,255,0.05)'
+                  e.currentTarget.style.borderColor = 'rgba(255,255,255,0.12)'
+                  e.currentTarget.style.boxShadow = 'none'
                 }}
               />
             </div>
@@ -225,9 +231,9 @@ export function LoginForm() {
                 htmlFor="password"
                 style={{
                   display: 'block',
-                  fontSize: '0.85rem',
+                  fontSize: '0.8rem',
                   fontWeight: 500,
-                  color: 'rgba(255,255,255,0.85)',
+                  color: 'rgba(255,255,255,0.7)',
                   marginBottom: '8px',
                 }}
               >
@@ -241,24 +247,16 @@ export function LoginForm() {
                 onChange={(e) => setPassword(e.target.value)}
                 required
                 placeholder="••••••••"
-                style={{
-                  width: '100%',
-                  padding: '10px 16px',
-                  background: 'rgba(255,255,255,0.15)',
-                  border: '1px solid rgba(255,255,255,0.25)',
-                  borderRadius: '10px',
-                  color: 'white',
-                  fontSize: '0.95rem',
-                  outline: 'none',
-                  transition: 'all 0.2s ease',
-                }}
+                style={inputBase}
                 onFocus={(e) => {
-                  e.currentTarget.style.background = 'rgba(255,255,255,0.22)'
-                  e.currentTarget.style.borderColor = 'rgba(255,255,255,0.5)'
+                  e.currentTarget.style.background = 'rgba(255,255,255,0.08)'
+                  e.currentTarget.style.borderColor = GOLD
+                  e.currentTarget.style.boxShadow = '0 0 0 3px rgba(201,154,46,0.18)'
                 }}
                 onBlur={(e) => {
-                  e.currentTarget.style.background = 'rgba(255,255,255,0.15)'
-                  e.currentTarget.style.borderColor = 'rgba(255,255,255,0.25)'
+                  e.currentTarget.style.background = 'rgba(255,255,255,0.05)'
+                  e.currentTarget.style.borderColor = 'rgba(255,255,255,0.12)'
+                  e.currentTarget.style.boxShadow = 'none'
                 }}
               />
             </div>
@@ -270,8 +268,8 @@ export function LoginForm() {
                 gap: '10px',
                 cursor: 'pointer',
                 userSelect: 'none',
-                fontSize: '0.85rem',
-                color: 'rgba(255,255,255,0.88)',
+                fontSize: '0.8rem',
+                color: 'rgba(255,255,255,0.72)',
               }}
             >
               <input
@@ -281,7 +279,7 @@ export function LoginForm() {
                 style={{
                   width: '18px',
                   height: '18px',
-                  accentColor: REST_SCREEN_AMBER_DARK,
+                  accentColor: GOLD,
                   cursor: 'pointer',
                 }}
               />
@@ -292,8 +290,8 @@ export function LoginForm() {
               <div
                 style={{
                   padding: '12px',
-                  background: 'rgba(255,255,255,0.15)',
-                  border: '1px solid rgba(255,255,255,0.3)',
+                  background: 'rgba(201,154,46,0.1)',
+                  border: '1px solid rgba(201,154,46,0.35)',
                   borderRadius: '10px',
                 }}
               >
@@ -306,36 +304,39 @@ export function LoginForm() {
               disabled={loading}
               style={{
                 width: '100%',
-                padding: '12px',
-                background: loading ? 'rgba(255,255,255,0.25)' : 'white',
-                color: loading ? 'rgba(255,255,255,0.8)' : REST_SCREEN_AMBER_DARK,
-                borderRadius: '10px',
-                fontWeight: 600,
+                padding: '13px',
+                background: loading ? 'rgba(201,154,46,0.4)' : GOLD,
+                color: '#14110a',
+                borderRadius: '999px',
+                fontWeight: 700,
                 fontSize: '0.95rem',
+                letterSpacing: '0.02em',
                 border: 'none',
                 cursor: loading ? 'not-allowed' : 'pointer',
                 transition: 'all 0.2s ease',
-                opacity: loading ? 0.7 : 1,
-                boxShadow: loading ? 'none' : '0 4px 16px rgba(0,0,0,0.1)',
+                opacity: loading ? 0.8 : 1,
+                boxShadow: loading ? 'none' : '0 8px 26px rgba(201,154,46,0.38)',
               }}
               onMouseEnter={(e) => {
                 if (!loading) {
+                  e.currentTarget.style.background = GOLD_HOVER
                   e.currentTarget.style.transform = 'translateY(-1px)'
-                  e.currentTarget.style.boxShadow = '0 6px 20px rgba(0,0,0,0.15)'
+                  e.currentTarget.style.boxShadow = '0 12px 40px rgba(201,154,46,0.5)'
                 }
               }}
               onMouseLeave={(e) => {
+                e.currentTarget.style.background = loading ? 'rgba(201,154,46,0.4)' : GOLD
                 e.currentTarget.style.transform = 'translateY(0)'
-                e.currentTarget.style.boxShadow = loading ? 'none' : '0 4px 16px rgba(0,0,0,0.1)'
+                e.currentTarget.style.boxShadow = loading ? 'none' : '0 8px 26px rgba(201,154,46,0.38)'
               }}
             >
-              {loading ? 'Entrando...' : 'Entrar'}
+              {loading ? 'Entrando...' : 'Entrar no Cockpit'}
             </button>
           </form>
-          <p className="mt-4 text-center">
+          <p className="mt-5 text-center">
             <a
               href="/pesquisador/login"
-              className="text-xs font-medium text-white/80 underline decoration-white/40 underline-offset-2 hover:text-white"
+              className="text-xs font-medium text-white/60 underline decoration-white/25 underline-offset-2 hover:text-white"
             >
               Acesso pesquisadores de campo
             </a>

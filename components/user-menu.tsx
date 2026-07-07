@@ -272,7 +272,7 @@ export function UserMenu({
             isSidebar
               ? collapsed
                 ? 'hidden'
-                : 'text-[#888888]'
+                : 'text-white/45'
               : amberMobileChrome
                 ? 'text-secondary max-lg:text-white/85'
                 : isGradientHome

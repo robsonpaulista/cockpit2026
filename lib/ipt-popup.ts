@@ -15,7 +15,7 @@ import {
 } from '@/lib/ipt'
 import {
   createIptChipHtml,
-  iptChipTheme,
+  iptPrioridadeTheme,
 } from '@/lib/ipt-chip'
 import { createIptInsightsSectionShell, overrideBadgeHtml } from '@/lib/ipt-popup-insights'
 import {
@@ -170,10 +170,11 @@ export function createIptMarkerHtml(
   m: IptMunicipio,
   size: number,
   animDelay = 0,
-  indicador: IptIndicador | null = null
+  _indicador: IptIndicador | null = null
 ): string {
-  const dot = iptChipTheme(m, indicador).dot
-  return `<div class="mapa-marker-dot mapa-ipt-marker" style="
+  const dot = iptPrioridadeTheme(m.prioridade).dot
+  const noVotesClass = m.prioridade === 'sem_expectativa' ? ' mapa-ipt-marker--no-votes' : ''
+  return `<div class="mapa-marker-dot mapa-ipt-marker${noVotesClass}" style="
     width:${size}px;height:${size}px;
     background:${dot};
     border:2px solid rgba(255,255,255,0.95);

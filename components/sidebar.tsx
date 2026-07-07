@@ -4,48 +4,13 @@ import Link from 'next/link'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { type Dispatch, type SetStateAction, useEffect, useMemo, useRef, useState } from 'react'
 import {
-  LayoutDashboard,
-  Calendar,
-  FileText,
-  MessageSquare,
-  Newspaper,
-  MapPin,
-  MapPinned,
-  Users,
-  UsersRound,
-  MessageCircle,
-  BarChart3,
-  BarChart2,
-  Settings,
-  Scale,
-  Menu,
-  X,
-  ChevronLeft,
-  Vote,
-  BadgeCheck,
-  Building2,
-  Shield,
-  Search,
-  Monitor,
-  ScrollText,
-  Target,
-  ChevronDown,
-  ClipboardList,
-  History,
-  Radar,
-  Megaphone,
-  AtSign,
-  ShieldCheck,
-  UserCog,
-  Landmark,
-  FileBadge2,
-  LineChart,
-  Image,
-  FileSpreadsheet,
-  Activity,
-  Youtube,
-  type LucideIcon,
-} from 'lucide-react'
+  IconChevronDown,
+  IconChevronLeft,
+  IconDeviceDesktop,
+  IconMenu2,
+  IconX,
+  type Icon as TablerIcon,
+} from '@tabler/icons-react'
 import { cn } from '@/lib/utils'
 import { MenuItem } from '@/types'
 import { useSidebar } from '@/contexts/sidebar-context'
@@ -66,6 +31,12 @@ import {
 import { AppBrandHeader, SidebarBrandMark } from '@/components/app-brand-title'
 import { SidebarQuickAccess } from '@/components/sidebar/sidebar-quick-access'
 import { SIDEBAR_MENU_ITEMS, type SidebarMenuItemConfig } from '@/lib/sidebar-nav-routes'
+import {
+  resolveSidebarTablerIcon,
+  SIDEBAR_ICON_SIZE,
+  SIDEBAR_ICON_STROKE,
+  SidebarTablerIcon,
+} from '@/lib/sidebar-tabler-icons'
 import {
   TERRITORIO_CAMPO_TAB_PANORAMA,
   territorioCampoHref,
@@ -98,8 +69,6 @@ import {
 
 import {
   dashboardPageHeaderZoneSidebarClass,
-  dashboardSubnavStripSidebarClass,
-  dashboardSubnavStripSidebarInnerClass,
   dashboardSidebarCollapsedPageHeaderSpacerClassFor,
   dashboardSidebarCollapsedSubnavSpacerClass,
   dashboardSidebarCollapsedTopbarZoneClass,
@@ -111,58 +80,12 @@ import {
   sidebarApifyFooterActionClass,
   sidebarApifyIconButtonClass,
   sidebarApifyMobileToggleClass,
-  sidebarApifySearchInputClass,
-  sidebarApifySearchKbdClass,
   sidebarApifyTooltipClass,
 } from '@/lib/sidebar-apify-styles'
 
 interface SidebarMenuItem extends SidebarMenuItemConfig {}
 
 const menuItems: SidebarMenuItem[] = SIDEBAR_MENU_ITEMS
-
-const iconMap: Record<string, LucideIcon> = {
-  LayoutDashboard,
-  Calendar,
-  FileText,
-  MessageSquare,
-  Newspaper,
-  MapPin,
-  Users,
-  MessageCircle,
-  BarChart3,
-  Settings,
-  Scale,
-  Vote,
-  Building2,
-  Shield,
-  Search,
-  ScrollText,
-  Target,
-  ClipboardList,
-  History,
-  MapPinned,
-  Image,
-  AtSign,
-  FileSpreadsheet,
-  Activity,
-  Youtube,
-}
-
-/** Ícones mais leves / mesma linguagem dos KPIs Cockpit (stroke fino + cor accent). */
-const cockpitIconMap: Record<string, LucideIcon> = {
-  ...iconMap,
-  MapPin: MapPinned,
-  Users: UsersRound,
-  BarChart3: LineChart,
-  MessageSquare: Megaphone,
-  Newspaper: Radar,
-  Vote: BadgeCheck,
-  Scale: Landmark,
-  Settings: UserCog,
-  Shield: ShieldCheck,
-  ClipboardList: FileBadge2,
-  MessageCircle,
-}
 
 /** Início de seção para melhorar escaneabilidade da navegação. */
 const SIDEBAR_SECTION_START_LABEL: Record<string, string> = {
@@ -176,9 +99,41 @@ const SIDEBAR_SECTION_START_LABEL: Record<string, string> = {
 /** Item ativo Cockpit / submenu pill: `@/lib/sidebar-menu-active-style`. */
 const COCKPIT_PAGE_ACTIVE_ITEM = COCKPIT_PAGE_ACTIVE_MENU_ITEM
 
-function resolveMenuIcon(iconName: string, cockpit: boolean): LucideIcon {
-  const map = cockpit ? cockpitIconMap : iconMap
-  return map[iconName] ?? iconMap[iconName] ?? LayoutDashboard
+function sidebarMenuIconClass(active: boolean, filmNav: boolean, isGradientHome: boolean, isActive: boolean) {
+  if (filmNav) {
+    return cn(
+      isActive
+        ? isGradientHome
+          ? JARVIS_SIDEBAR_ICON_ACTIVE
+          : '!text-white'
+        : isGradientHome
+          ? JARVIS_SIDEBAR_ICON
+          : '',
+    )
+  }
+  return sidebarNavIconClass(active)
+}
+
+interface SidebarNavItemProps {
+  item: SidebarMenuItem
+  sectionLabel: string | undefined
+  Icon: TablerIcon
+  hasSubmenu: boolean
+  submenuOpen: boolean
+  isActive: boolean
+  pathname: string
+  searchKey: string
+  collapsed: boolean
+  mobileOpen: boolean
+  filmNav: boolean
+  isGradientHome: boolean
+  isCockpit: boolean
+  cockpitActiveItemClass: string
+  cockpitActiveChildClass: string
+  setOpenSubmenuId: Dispatch<SetStateAction<string | null>>
+  setNavigating: (loading: boolean) => void
+  setMobileOpen: (open: boolean) => void
+  menuLabel: (id: string, fallback: string) => string
 }
 
 function pageKeyForItem(id: string): string {
@@ -256,28 +211,6 @@ function isChildLinkActive(pathname: string, href: string, search: string): bool
   }
 
   return true
-}
-
-interface SidebarNavItemProps {
-  item: SidebarMenuItem
-  sectionLabel: string | undefined
-  Icon: LucideIcon
-  hasSubmenu: boolean
-  submenuOpen: boolean
-  isActive: boolean
-  pathname: string
-  searchKey: string
-  collapsed: boolean
-  mobileOpen: boolean
-  filmNav: boolean
-  isGradientHome: boolean
-  isCockpit: boolean
-  cockpitActiveItemClass: string
-  cockpitActiveChildClass: string
-  setOpenSubmenuId: Dispatch<SetStateAction<string | null>>
-  setNavigating: (loading: boolean) => void
-  setMobileOpen: (open: boolean) => void
-  menuLabel: (id: string, fallback: string) => string
 }
 
 /**
@@ -380,22 +313,11 @@ function SidebarNavItem({
                 : cn(sidebarNavItemClass(isActive), sidebarItemIconOnlyClass(collapsed, mobileOpen))
             )}
           >
-            <Icon
-              className={cn(
-                filmNav
-                  ? cn(
-                      'h-4 w-4 shrink-0',
-                      isActive
-                        ? isGradientHome
-                          ? JARVIS_SIDEBAR_ICON_ACTIVE
-                          : '!text-white'
-                        : isGradientHome
-                          ? JARVIS_SIDEBAR_ICON
-                          : ''
-                    )
-                  : sidebarNavIconClass(isActive)
-              )}
-              strokeWidth={filmNav ? 1.35 : 1.5}
+            <SidebarTablerIcon
+              icon={Icon}
+              size={filmNav ? 16 : SIDEBAR_ICON_SIZE}
+              stroke={filmNav ? 1.35 : SIDEBAR_ICON_STROKE}
+              className={sidebarMenuIconClass(isActive, filmNav, isGradientHome, isActive)}
             />
             {(!collapsed || mobileOpen) && (
               <>
@@ -415,18 +337,20 @@ function SidebarNavItem({
                               ? 'text-text-primary/90 group-hover:text-text-primary'
                               : 'text-text-secondary group-hover:text-text-primary'
                       )
-                    : 'flex-1 truncate text-left'
+                    : 'flex-1 truncate text-left text-[13px] leading-[17px]'
                 )}>
                   {menuLabel(item.id, item.label)}
                 </span>
-                <ChevronDown
+                <IconChevronDown
+                  size={SIDEBAR_ICON_SIZE}
+                  stroke={filmNav ? 1.35 : SIDEBAR_ICON_STROKE}
                   className={cn(
-                  'ml-auto h-4 w-4 text-text-secondary/85 transition-transform',
+                    'cockpit-icon ml-auto shrink-0 text-text-secondary/85 transition-transform',
                     submenuOpen && 'rotate-180',
                     isGradientHome && 'text-[rgba(148,195,220,0.55)]',
-                    filmNav && isActive && (isGradientHome ? JARVIS_SIDEBAR_ICON_ACTIVE : '!text-white/90')
+                    filmNav && isActive && (isGradientHome ? JARVIS_SIDEBAR_ICON_ACTIVE : '!text-white/90'),
                   )}
-                  strokeWidth={filmNav ? 1.35 : 2}
+                  aria-hidden
                 />
               </>
             )}
@@ -528,22 +452,11 @@ function SidebarNavItem({
               : cn(sidebarNavItemClass(isActive), sidebarItemIconOnlyClass(collapsed, mobileOpen))
           )}
         >
-          <Icon
-            className={cn(
-              filmNav
-                ? cn(
-                    'h-4 w-4 shrink-0',
-                    isActive
-                      ? isGradientHome
-                        ? JARVIS_SIDEBAR_ICON_ACTIVE
-                        : '!text-white'
-                      : isGradientHome
-                        ? JARVIS_SIDEBAR_ICON
-                        : ''
-                  )
-                : sidebarNavIconClass(isActive)
-            )}
-            strokeWidth={filmNav ? 1.35 : 1.5}
+          <SidebarTablerIcon
+            icon={Icon}
+            size={filmNav ? 16 : SIDEBAR_ICON_SIZE}
+            stroke={filmNav ? 1.35 : SIDEBAR_ICON_STROKE}
+            className={sidebarMenuIconClass(isActive, filmNav, isGradientHome, isActive)}
           />
           {(!collapsed || mobileOpen) && (
             <span className={cn(
@@ -562,7 +475,7 @@ function SidebarNavItem({
                           ? 'text-text-primary/90 group-hover:text-text-primary'
                           : 'text-text-secondary group-hover:text-text-primary'
                   )
-                : 'truncate'
+                : 'truncate text-[13px] leading-[17px]'
             )}>
               {menuLabel(item.id, item.label)}
             </span>
@@ -652,6 +565,10 @@ export function Sidebar() {
   const hasFixedPageChrome = useDashboardFixedChromeActive()
   const topbarVisible = useDashboardTopbarVisible()
   const collapsedPageHeaderSpacerClass = dashboardSidebarCollapsedPageHeaderSpacerClassFor(topbarVisible)
+  const showCollapsedSubnavSpacer =
+    hasFixedPageChrome &&
+    !idleSplashAtivo &&
+    !pathname.startsWith('/dashboard/territorio/ipt')
   const filmNav = isCockpit
 
   const cockpitActiveItemClass = COCKPIT_PAGE_ACTIVE_ITEM
@@ -661,7 +578,6 @@ export function Sidebar() {
     isCockpit ? (COCKPIT_MENU_LABEL[id] ?? fallback) : fallback
 
   const [openSubmenuId, setOpenSubmenuId] = useState<string | null>(null)
-  const [menuSearch, setMenuSearch] = useState('')
 
   useEffect(() => {
     if (pathname.startsWith('/dashboard/gestao-pesquisas')) {
@@ -720,16 +636,6 @@ export function Sidebar() {
     return base.filter((item) => !isSidebarMenuItemHidden(item.id))
   }, [canAccess, isAdmin, permLoading])
 
-  const filteredItems = useMemo(() => {
-    const q = menuSearch.trim().toLowerCase()
-    if (!q) return visibleItems
-    return visibleItems.filter((item) => {
-      const label = menuLabel(item.id, item.label).toLowerCase()
-      if (label.includes(q)) return true
-      return item.children?.some((child) => menuLabel(child.id, child.label).toLowerCase().includes(q))
-    })
-  }, [visibleItems, menuSearch, menuLabel])
-
   const toggleCollapse = () => {
     setCollapsed(!collapsed)
   }
@@ -769,20 +675,24 @@ export function Sidebar() {
         aria-label="Toggle menu"
       >
         {mobileOpen ? (
-          <X
+          <IconX
+            size={filmNav ? 16 : 20}
+            stroke={filmNav ? 1.35 : SIDEBAR_ICON_STROKE}
             className={cn(
+              'cockpit-icon',
               isGradientHome ? 'text-[#00D4FF]' : filmNav ? 'text-accent-gold' : 'text-text-secondary',
-              filmNav ? 'h-4 w-4' : 'h-5 w-5'
             )}
-            strokeWidth={filmNav ? 1.35 : 1.5}
+            aria-hidden
           />
         ) : (
-          <Menu
+          <IconMenu2
+            size={filmNav ? 16 : 20}
+            stroke={filmNav ? 1.35 : SIDEBAR_ICON_STROKE}
             className={cn(
+              'cockpit-icon',
               isGradientHome ? 'text-[#00D4FF]' : filmNav ? 'text-accent-gold' : 'text-text-secondary',
-              filmNav ? 'h-4 w-4' : 'h-5 w-5'
             )}
-            strokeWidth={filmNav ? 1.35 : 1.5}
+            aria-hidden
           />
         )}
       </button>
@@ -795,7 +705,7 @@ export function Sidebar() {
           'fixed left-0 top-0 h-full overflow-visible transition-all duration-300 ease-out',
           SIDEBAR_WIDTH_EXPANDED_CLASS,
           isGradientHome && 'border-r border-[rgba(0,212,255,0.08)]',
-          !isGradientHome && cn('border-r border-[rgb(var(--color-border-secondary)/0.45)]', SIDEBAR_APIFY_SHELL_CLASS),
+          !isGradientHome && cn('border-r border-white/10', SIDEBAR_APIFY_SHELL_CLASS),
           isCockpit && !isGradientHome && 'sidebar-cockpit-shell',
           idleSplashAtivo ? 'z-[100]' : 'max-lg:z-[100] max-lg:shadow-2xl lg:z-40',
           'max-lg:shadow-2xl',
@@ -808,10 +718,12 @@ export function Sidebar() {
       >
         <div
           className={cn(
-            'relative z-0 flex h-full min-h-0 flex-col bg-bg-surface',
+            'relative z-0 flex h-full min-h-0 flex-col',
+            !isGradientHome && 'bg-transparent',
+            isGradientHome && 'bg-bg-surface',
           )}
         >
-          {/* Logo (zona do título) + busca (faixa das abas) */}
+          {/* Logo (zona do título) */}
           <div
             className={cn(
               filmNav
@@ -819,37 +731,39 @@ export function Sidebar() {
                 : navCollapsed && !navMobileOpen
                   ? 'shrink-0'
                   : dashboardPageHeaderZoneSidebarClass,
-              filmNav && !isGradientHome && 'border-b border-[rgb(var(--color-border-secondary)/0.35)]'
+              !isGradientHome && 'border-b border-white/10',
             )}
           >
             {(!navCollapsed || navMobileOpen) && (
-              <div className="flex h-full min-h-0 w-full flex-col justify-center overflow-visible">
-                <div className="flex w-full items-center justify-between gap-1.5">
+              <>
+                <div className="flex min-w-0 flex-1 items-center justify-center pr-8">
                   <AppBrandHeader
                     isCockpit={isCockpit}
                     lightOnGradient={isGradientHome}
                     variant={filmNav ? 'page' : 'sidebar'}
-                    className="min-w-0 w-full flex-1"
+                    className="min-w-0 w-full max-w-full items-center text-center"
                   />
-                  {!collapsed && (
-                    <button
-                      onClick={toggleCollapse}
-                      className={cn(
-                        'hidden lg:flex shrink-0',
-                        isGradientHome
-                          ? cn('h-8 w-8 items-center justify-center rounded-lg', JARVIS_SIDEBAR_HOVER, JARVIS_SIDEBAR_FOCUS)
-                          : sidebarApifyIconButtonClass
-                      )}
-                      aria-label="Toggle sidebar"
-                    >
-                      <ChevronLeft
-                        className={cn('h-4 w-4', isGradientHome ? 'text-[#00D4FF]' : 'text-text-primary')}
-                        strokeWidth={filmNav ? 1.35 : 1.5}
-                      />
-                    </button>
-                  )}
                 </div>
-              </div>
+                {!collapsed && (
+                  <button
+                    onClick={toggleCollapse}
+                    className={cn(
+                      'absolute right-3 top-1/2 hidden -translate-y-1/2 lg:flex shrink-0',
+                      isGradientHome
+                        ? cn('h-8 w-8 items-center justify-center rounded-lg', JARVIS_SIDEBAR_HOVER, JARVIS_SIDEBAR_FOCUS)
+                        : sidebarApifyIconButtonClass
+                    )}
+                    aria-label="Toggle sidebar"
+                  >
+                      <IconChevronLeft
+                        size={SIDEBAR_ICON_SIZE}
+                        stroke={filmNav ? 1.35 : SIDEBAR_ICON_STROKE}
+                        className={cn('cockpit-icon', isGradientHome ? 'text-[#00D4FF]' : 'text-white/70')}
+                        aria-hidden
+                      />
+                  </button>
+                )}
+              </>
             )}
             {navCollapsed && !navMobileOpen && (
               filmNav ? (
@@ -864,9 +778,11 @@ export function Sidebar() {
                     )}
                     aria-label="Toggle sidebar"
                   >
-                    <ChevronLeft
-                      className={cn('h-4 w-4 rotate-180', isGradientHome ? 'text-[#00D4FF]' : 'text-text-primary')}
-                      strokeWidth={filmNav ? 1.35 : 1.5}
+                    <IconChevronLeft
+                      size={SIDEBAR_ICON_SIZE}
+                      stroke={filmNav ? 1.35 : SIDEBAR_ICON_STROKE}
+                      className={cn('cockpit-icon rotate-180', isGradientHome ? 'text-[#00D4FF]' : 'text-text-primary')}
+                      aria-hidden
                     />
                   </button>
                 </div>
@@ -875,6 +791,7 @@ export function Sidebar() {
                   <div
                     className={cn(
                       dashboardSidebarCollapsedTopbarZoneClass,
+                      '!bg-transparent !border-white/10',
                       !hasFixedPageChrome && 'flex-col justify-center gap-0.5 py-1',
                       idleCollapsedChrome && hasFixedPageChrome && 'flex-col justify-center gap-0.5 py-1',
                     )}
@@ -886,7 +803,12 @@ export function Sidebar() {
                         className={cn('hidden lg:flex', sidebarApifyIconButtonClass)}
                         aria-label="Expandir sidebar"
                       >
-                        <ChevronLeft className="h-4 w-4 rotate-180" strokeWidth={1.5} />
+                        <IconChevronLeft
+                          size={SIDEBAR_ICON_SIZE}
+                          stroke={SIDEBAR_ICON_STROKE}
+                          className="cockpit-icon rotate-180"
+                          aria-hidden
+                        />
                       </button>
                     ) : null}
                   </div>
@@ -894,6 +816,7 @@ export function Sidebar() {
                     <div
                       className={cn(
                         collapsedPageHeaderSpacerClass,
+                        '!bg-transparent !border-white/10',
                         'flex items-center justify-center',
                       )}
                     >
@@ -902,7 +825,12 @@ export function Sidebar() {
                         className={cn('hidden lg:flex', sidebarApifyIconButtonClass)}
                         aria-label="Expandir sidebar"
                       >
-                        <ChevronLeft className="h-4 w-4 rotate-180" strokeWidth={1.5} />
+                        <IconChevronLeft
+                          size={SIDEBAR_ICON_SIZE}
+                          stroke={SIDEBAR_ICON_STROKE}
+                          className="cockpit-icon rotate-180"
+                          aria-hidden
+                        />
                       </button>
                     </div>
                   ) : null}
@@ -911,31 +839,8 @@ export function Sidebar() {
             )}
           </div>
 
-          {navCollapsed && !navMobileOpen && !filmNav && hasFixedPageChrome && !idleSplashAtivo ? (
-            <div className={dashboardSidebarCollapsedSubnavSpacerClass} aria-hidden />
-          ) : null}
-
-          {(!navCollapsed || navMobileOpen) && !filmNav ? (
-            <div className={dashboardSubnavStripSidebarClass}>
-              <div className={dashboardSubnavStripSidebarInnerClass}>
-                <label className="relative block w-full">
-                  <Search
-                    className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-text-muted"
-                    aria-hidden
-                  />
-                  <input
-                    type="search"
-                    value={menuSearch}
-                    onChange={(e) => setMenuSearch(e.target.value)}
-                    placeholder="Buscar no menu"
-                    className={sidebarApifySearchInputClass}
-                  />
-                  <kbd className={sidebarApifySearchKbdClass} aria-hidden>
-                    ⌘K
-                  </kbd>
-                </label>
-              </div>
-            </div>
+          {navCollapsed && !navMobileOpen && !filmNav && showCollapsedSubnavSpacer ? (
+            <div className={cn(dashboardSidebarCollapsedSubnavSpacerClass, '!bg-transparent !border-white/10')} aria-hidden />
           ) : null}
 
           <SidebarQuickAccess
@@ -952,12 +857,12 @@ export function Sidebar() {
           {/* Menu Items */}
           <nav className={cn('flex-1 overflow-x-visible overflow-y-auto scrollbar-hide', sidebarShellNavClass(navCollapsed, navMobileOpen))}>
             <ul className="space-y-0.5">
-              {filteredItems.map((item: SidebarMenuItem) => {
-                const juridicoInMenu = filteredItems.some((i) => i.id === 'juridico')
+              {visibleItems.map((item: SidebarMenuItem) => {
+                const juridicoInMenu = visibleItems.some((i) => i.id === 'juridico')
                 const sectionLabel: string | undefined =
                   SIDEBAR_SECTION_START_LABEL[item.id] ??
                   (item.id === 'emendas' && !juridicoInMenu ? 'Institucional' : undefined)
-                const Icon = resolveMenuIcon(item.icon, isCockpit)
+                const Icon = resolveSidebarTablerIcon(item.icon, isCockpit)
                 const hasSubmenu = Boolean(item.children?.length)
                 const submenuOpen = openSubmenuId === item.id
                 const isActive = hasSubmenu
@@ -1001,7 +906,7 @@ export function Sidebar() {
             className={cn(
               'space-y-0.5 border-t',
               sidebarShellFooterClass(navCollapsed, navMobileOpen),
-              isGradientHome ? 'border-[rgba(0,212,255,0.08)]' : 'border-[rgb(var(--color-border-secondary)/0.35)]'
+              isGradientHome ? 'border-[rgba(0,212,255,0.08)]' : 'border-white/10'
             )}
           >
             <UserMenu
@@ -1026,22 +931,24 @@ export function Sidebar() {
               )}
               title="Ativar tela de descanso"
             >
-              <Monitor
-                  className={cn(
-                  'flex-shrink-0 transition-colors',
+              <IconDeviceDesktop
+                size={SIDEBAR_ICON_SIZE}
+                stroke={filmNav ? 1.35 : SIDEBAR_ICON_STROKE}
+                className={cn(
+                  'cockpit-icon shrink-0 transition-colors',
                   isGradientHome
                     ? cn(JARVIS_SIDEBAR_ICON, 'group-hover:!text-[#00D4FF]')
-                    : 'h-4 w-4 text-text-primary',
-                  filmNav && !isGradientHome && 'h-4 w-4 text-text-secondary group-hover:text-accent-gold'
+                    : 'text-white/55 group-hover:text-[#c99a2e]',
+                  filmNav && !isGradientHome && 'group-hover:text-[#c99a2e]',
                 )}
-                strokeWidth={filmNav ? 1.35 : 1.5}
+                aria-hidden
               />
               {(!navCollapsed || navMobileOpen) && (
                 <span
                   className={cn(
                     isGradientHome
                       ? cn('text-[0.92rem] font-medium transition-colors', JARVIS_SIDEBAR_TEXT)
-                      : 'text-[13px] font-medium text-text-primary'
+                      : 'text-[13px] font-medium text-white/72',
                   )}
                 >
                   Tela de descanso
