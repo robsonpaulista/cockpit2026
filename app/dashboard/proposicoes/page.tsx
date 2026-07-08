@@ -21,6 +21,26 @@ import {
   Table2,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import {
+  brandAmberBadgeClass,
+  brandAmberButtonClass,
+  brandAmberChipClass,
+  brandAmberCompactButtonClass,
+  brandAmberIconClass,
+  brandAmberIconWrapClass,
+  brandAmberMetricClass,
+} from '@/lib/sidebar-brand-styles'
+
+const INPUT_FOCUS_CLASS =
+  'focus:outline-none focus:ring-2 focus:ring-[#C8900A]/25 focus:border-[#C8900A]'
+
+const SECONDARY_ACTION_CLASS = cn(
+  brandAmberChipClass,
+  'rounded-lg text-xs font-medium transition-all duration-200 hover:bg-[#C8900A] hover:text-white hover:border-[#C8900A]',
+)
+
+const GHOST_ACTION_CLASS =
+  'rounded-lg border border-card bg-background text-xs font-medium text-text-secondary transition-all duration-200 hover:border-[#C8900A]/30 hover:bg-[#FAEEDA] hover:text-[#854F0B]'
 
 interface Proposicao {
   id: number
@@ -231,7 +251,7 @@ const SITUACOES_PROPOSICAO = [
 ]
 
 const BADGE_COLORS: Record<string, string> = {
-  PL: 'bg-blue-500/15 text-blue-400 border-blue-500/30',
+  PL: 'bg-[#FAEEDA] text-[#854F0B] border-[#E8D4A8]',
   PLP: 'bg-purple-500/15 text-purple-400 border-purple-500/30',
   PEC: 'bg-red-500/15 text-red-400 border-red-500/30',
   MPV: 'bg-orange-500/15 text-orange-400 border-orange-500/30',
@@ -248,7 +268,7 @@ const BADGE_COLORS: Record<string, string> = {
 }
 
 function getBadgeColor(tipo: string): string {
-  return BADGE_COLORS[tipo] || 'bg-accent-gold-soft text-accent-gold border-accent-gold/30'
+  return BADGE_COLORS[tipo] || brandAmberBadgeClass
 }
 
 function formatDataApresentacao(data: string): string {
@@ -561,7 +581,7 @@ export default function ProposicoesPage() {
           </div>
           <div className="flex items-center justify-center py-16">
             <div className="text-center">
-              <Loader2 className="w-8 h-8 text-accent-gold animate-spin mx-auto mb-4" />
+              <Loader2 className={cn('w-8 h-8 animate-spin mx-auto mb-4', brandAmberIconClass)} />
               <p className="text-sm text-text-secondary">Carregando todas as proposições...</p>
               <p className="text-xs text-text-secondary/60 mt-1">Isso pode levar alguns segundos</p>
             </div>
@@ -577,8 +597,8 @@ export default function ProposicoesPage() {
         {/* Header */}
         <div className="mb-6">
           <div className="flex items-center gap-3 mb-2">
-            <div className="w-10 h-10 rounded-xl bg-accent-gold-soft flex items-center justify-center">
-              <FileText className="w-5 h-5 text-accent-gold" />
+            <div className={cn('w-10 h-10 rounded-xl flex items-center justify-center', brandAmberIconWrapClass)}>
+              <FileText className={cn('w-5 h-5', brandAmberIconClass)} />
             </div>
             <div>
               <h2 className="text-2xl font-bold text-text-primary">Proposições Legislativas</h2>
@@ -595,7 +615,7 @@ export default function ProposicoesPage() {
           <img
             src="https://www.camara.leg.br/internet/deputado/bandep/220697.jpg"
             alt="Dep. Jadyel Alencar"
-            className="w-16 h-16 rounded-full object-cover border-2 border-accent-gold shadow-md"
+            className="w-16 h-16 rounded-full object-cover border-2 border-[#C8900A] shadow-md"
           />
           <div className="flex-1">
             <h3 className="text-lg font-semibold text-text-primary">Jadyel Alencar</h3>
@@ -605,7 +625,7 @@ export default function ProposicoesPage() {
             href="https://www.camara.leg.br/deputados/220697"
             target="_blank"
             rel="noopener noreferrer"
-            className="px-4 py-2 bg-accent-gold-soft text-accent-gold rounded-lg text-sm font-medium hover:bg-accent-gold hover:text-white transition-all duration-200 flex items-center gap-2"
+            className={cn(SECONDARY_ACTION_CLASS, 'px-4 py-2 text-sm')}
           >
             Perfil na Câmara
             <ExternalLink className="w-4 h-4" />
@@ -617,7 +637,7 @@ export default function ProposicoesPage() {
           <div className="mb-4 p-4 rounded-xl bg-surface border border-card">
             <div className="flex items-center justify-between mb-2">
               <p className="text-xs text-text-secondary flex items-center gap-2">
-                <Loader2 className="w-3.5 h-3.5 text-accent-gold animate-spin" />
+                <Loader2 className={cn('w-3.5 h-3.5 animate-spin', brandAmberIconClass)} />
                 Carregando status das proposições...
               </p>
               <span className="text-xs font-medium text-text-primary">
@@ -626,7 +646,7 @@ export default function ProposicoesPage() {
             </div>
             <div className="w-full h-1.5 bg-background rounded-full overflow-hidden">
               <div
-                className="h-full bg-accent-gold rounded-full transition-all duration-300"
+                className="h-full bg-[#C8900A] rounded-full transition-all duration-300"
                 style={{ width: `${progressPercent}%` }}
               />
             </div>
@@ -637,13 +657,13 @@ export default function ProposicoesPage() {
         {deputadosBundles.length > 0 && (
           <div className="mb-6 rounded-2xl border border-card bg-surface overflow-hidden shadow-sm">
             <div className="flex items-center gap-2 px-4 py-3 border-b border-card bg-background/80">
-              <Table2 className="w-4 h-4 text-accent-gold" />
+              <Table2 className={cn('w-4 h-4', brandAmberIconClass)} />
               <h3 className="text-sm font-semibold text-text-primary">Quadro resumo legislativo</h3>
             </div>
             <div className="overflow-x-auto">
               <table className="w-full min-w-[880px] border-collapse text-sm text-text-primary">
                 <thead>
-                  <tr className="bg-accent-gold-soft/25 text-text-primary">
+                  <tr className="bg-[#FAEEDA]/60 text-text-primary">
                     <th className="border border-card px-3 py-2.5 text-left font-semibold">Deputado</th>
                     {COLUNAS_QUADRO_RESUMO.map((col) => (
                       <th
@@ -661,7 +681,7 @@ export default function ProposicoesPage() {
                       key={dep.id}
                       className={cn(
                         'border-b border-card last:border-b-0 transition-colors',
-                        dep.destaque ? 'bg-accent-gold-soft/15' : 'bg-surface hover:bg-background/80'
+                        dep.destaque ? 'bg-[#FAEEDA]/40' : 'bg-surface hover:bg-background/80'
                       )}
                     >
                       <td className="border border-card px-3 py-2.5 font-medium text-left text-text-primary">
@@ -684,7 +704,7 @@ export default function ProposicoesPage() {
                                 'min-w-[2.25rem] tabular-nums rounded-lg px-2 py-1 text-sm font-semibold transition-colors',
                                 loading
                                   ? 'text-text-secondary cursor-wait'
-                                  : 'text-accent-gold hover:bg-accent-gold-soft/50 focus:outline-none focus:ring-2 focus:ring-accent-gold-soft'
+                                  : cn(brandAmberMetricClass, 'hover:bg-[#FAEEDA] focus:outline-none focus:ring-2 focus:ring-[#C8900A]/25')
                               )}
                             >
                               {loading ? '…' : n}
@@ -721,23 +741,23 @@ export default function ProposicoesPage() {
                 onChange={(e) => setSearchInput(e.target.value)}
                 onKeyDown={handleKeyDown}
                 placeholder="Buscar por palavra-chave na ementa..."
-                className="w-full pl-10 pr-4 py-2.5 bg-background border border-card rounded-xl text-sm text-text-primary placeholder:text-text-secondary/50 focus:outline-none focus:ring-2 focus:ring-accent-gold-soft focus:border-accent-gold transition-all"
+                className={cn('w-full pl-10 pr-4 py-2.5 bg-background border border-card rounded-xl text-sm text-text-primary placeholder:text-text-secondary/50 transition-all', INPUT_FOCUS_CLASS)}
               />
             </div>
-            <button onClick={handleSearch} className="px-5 py-2.5 bg-accent-gold text-white rounded-xl text-sm font-medium hover:bg-accent-gold/90 transition-colors">
+            <button onClick={handleSearch} className={cn(brandAmberButtonClass, 'rounded-xl px-5 py-2.5')}>
               Buscar
             </button>
             <button
               onClick={() => setShowFilters(!showFilters)}
               className={cn(
                 'px-4 py-2.5 rounded-xl text-sm font-medium flex items-center gap-2 transition-all border',
-                showFilters ? 'bg-accent-gold-soft text-accent-gold border-accent-gold/30' : 'bg-background text-text-secondary border-card hover:border-accent-gold/30'
+                showFilters ? cn(brandAmberChipClass, 'rounded-xl') : 'bg-background text-text-secondary border-card hover:border-[#C8900A]/30'
               )}
             >
               <Filter className="w-4 h-4" />
               Filtros
               {activeFilterCount > 0 && (
-                <span className="min-w-[18px] h-[18px] flex items-center justify-center text-[10px] font-bold rounded-full bg-accent-gold text-white">
+                <span className="min-w-[18px] h-[18px] flex items-center justify-center text-[10px] font-bold rounded-full bg-[#C8900A] text-white">
                   {activeFilterCount}
                 </span>
               )}
@@ -752,7 +772,7 @@ export default function ProposicoesPage() {
                   <select
                     value={filtroTipo}
                     onChange={(e) => { setFiltroTipo(e.target.value); setPagina(1) }}
-                    className="w-full px-3 py-2.5 bg-background border border-card rounded-xl text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-accent-gold-soft focus:border-accent-gold transition-all"
+                    className={cn('w-full px-3 py-2.5 bg-background border border-card rounded-xl text-sm text-text-primary transition-all', INPUT_FOCUS_CLASS)}
                   >
                     {TIPOS_PROPOSICAO.map((t) => (<option key={t.value} value={t.value}>{t.label}</option>))}
                   </select>
@@ -761,13 +781,13 @@ export default function ProposicoesPage() {
                   <label className="block text-xs font-medium text-text-secondary mb-1.5">
                     Status / Situação
                     {!statusesFullyLoaded && statusProgress.total > 0 && (
-                      <span className="ml-2 text-accent-gold">({progressPercent}% carregado)</span>
+                      <span className={cn('ml-2', brandAmberMetricClass)}>({progressPercent}% carregado)</span>
                     )}
                   </label>
                   <select
                     value={filtroStatus}
                     onChange={(e) => { setFiltroStatus(e.target.value); setPagina(1) }}
-                    className="w-full px-3 py-2.5 bg-background border border-card rounded-xl text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-accent-gold-soft focus:border-accent-gold transition-all"
+                    className={cn('w-full px-3 py-2.5 bg-background border border-card rounded-xl text-sm text-text-primary transition-all', INPUT_FOCUS_CLASS)}
                   >
                     {SITUACOES_PROPOSICAO.map((s) => (<option key={s.value} value={s.value}>{s.label}</option>))}
                   </select>
@@ -781,7 +801,7 @@ export default function ProposicoesPage() {
                     placeholder="Ex: 2026"
                     min="2000"
                     max="2030"
-                    className="w-full px-3 py-2.5 bg-background border border-card rounded-xl text-sm text-text-primary placeholder:text-text-secondary/50 focus:outline-none focus:ring-2 focus:ring-accent-gold-soft focus:border-accent-gold transition-all"
+                    className={cn('w-full px-3 py-2.5 bg-background border border-card rounded-xl text-sm text-text-primary placeholder:text-text-secondary/50 transition-all', INPUT_FOCUS_CLASS)}
                   />
                 </div>
               </div>
@@ -804,14 +824,14 @@ export default function ProposicoesPage() {
                     </span>
                   )}
                   {filtroTipo && (
-                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium bg-accent-gold-soft text-accent-gold rounded-lg">
+                    <span className={cn('inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-lg', brandAmberChipClass)}>
                       <FileText className="w-3 h-3" />
                       {TIPOS_PROPOSICAO.find(t => t.value === filtroTipo)?.label?.split(' — ')[0] || filtroTipo}
                       <button onClick={() => { setFiltroTipo(''); setPagina(1) }} className="ml-0.5 hover:text-status-danger transition-colors"><X className="w-3 h-3" /></button>
                     </span>
                   )}
                   {filtroStatus && (
-                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium bg-status-info/15 text-status-info rounded-lg">
+                    <span className={cn('inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-lg', brandAmberChipClass)}>
                       <GitBranch className="w-3 h-3" />
                       {SITUACOES_PROPOSICAO.find(s => s.value === filtroStatus)?.label || filtroStatus}
                       <button onClick={() => { setFiltroStatus(''); setPagina(1) }} className="ml-0.5 hover:text-status-danger transition-colors"><X className="w-3 h-3" /></button>
@@ -843,13 +863,13 @@ export default function ProposicoesPage() {
 
         {/* Info banner */}
         {hasActiveFilters && (
-          <div className="mb-4 p-3 rounded-xl bg-status-info/10 border border-status-info/20 flex items-center gap-3">
-            <Filter className="w-4 h-4 text-status-info flex-shrink-0" />
+          <div className="mb-4 p-3 rounded-xl bg-[#FAEEDA]/50 border border-[#E8D4A8]/60 flex items-center gap-3">
+            <Filter className={cn('w-4 h-4 flex-shrink-0', brandAmberIconClass)} />
             <p className="text-xs text-text-secondary">
               <span className="font-semibold text-text-primary">{filteredItems.length}</span> proposição(ões) encontrada(s)
               {' '}de {allProposicoes.length} no total
               {(statusFilterActive || filtroColunaQuadro != null) && !statusesFullyLoaded && (
-                <span className="text-accent-gold"> — status ainda carregando, resultado pode mudar</span>
+                <span className={brandAmberMetricClass}> — status ainda carregando, resultado pode mudar</span>
               )}
             </p>
           </div>
@@ -866,7 +886,7 @@ export default function ProposicoesPage() {
                 : 'Nenhuma proposição encontrada.'}
             </p>
             {hasActiveFilters && (
-              <button onClick={clearFilters} className="text-sm text-accent-gold hover:underline mt-2">
+              <button onClick={clearFilters} className={cn('text-sm hover:underline mt-2', brandAmberMetricClass)}>
                 Limpar filtros
               </button>
             )}
@@ -876,7 +896,7 @@ export default function ProposicoesPage() {
             {paginatedItems.map((prop) => {
               const status = statusMap[prop.id]
               return (
-                <div key={prop.id} className="bg-surface rounded-2xl border border-card p-5 hover:shadow-card-hover hover:border-accent-gold/20 transition-all duration-200 group">
+                <div key={prop.id} className="bg-surface rounded-2xl border border-card p-5 hover:shadow-card-hover hover:border-[#C8900A]/25 transition-all duration-200 group">
                   <div className="flex items-start gap-4">
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-3 mb-2 flex-wrap">
@@ -907,13 +927,13 @@ export default function ProposicoesPage() {
                     <div className="flex flex-col gap-2 flex-shrink-0">
                       <button
                         onClick={() => fetchTramitacoes(prop.id, `${prop.siglaTipo} ${prop.numero}/${prop.ano}`)}
-                        className="px-3 py-2 bg-accent-gold text-white rounded-lg text-xs font-medium hover:bg-accent-gold/90 transition-all duration-200 flex items-center gap-1.5"
+                        className={cn(brandAmberCompactButtonClass, 'rounded-lg px-3 py-2')}
                       >
                         <GitBranch className="w-3.5 h-3.5" />Tramitação
                       </button>
                       <button
                         onClick={() => fetchAutores(prop.id, `${prop.siglaTipo} ${prop.numero}/${prop.ano}`)}
-                        className="px-3 py-2 bg-accent-gold-soft text-accent-gold rounded-lg text-xs font-medium hover:bg-accent-gold hover:text-white transition-all duration-200 flex items-center gap-1.5"
+                        className={cn(SECONDARY_ACTION_CLASS, 'px-3 py-2 flex items-center gap-1.5')}
                       >
                         <Users className="w-3.5 h-3.5" />Autores
                       </button>
@@ -921,7 +941,7 @@ export default function ProposicoesPage() {
                         href={`https://www.camara.leg.br/propostas-legislativas/${prop.id}`}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="px-3 py-2 bg-background text-text-secondary rounded-lg text-xs font-medium hover:text-accent-gold hover:bg-accent-gold-soft border border-card transition-all duration-200 flex items-center gap-1.5"
+                        className={cn(GHOST_ACTION_CLASS, 'px-3 py-2 flex items-center gap-1.5')}
                       >
                         <ExternalLink className="w-3.5 h-3.5" />Detalhes
                       </a>
@@ -945,7 +965,7 @@ export default function ProposicoesPage() {
                 disabled={pagina <= 1}
                 className={cn(
                   'px-4 py-2 rounded-xl text-sm font-medium flex items-center gap-1 transition-all border',
-                  pagina > 1 ? 'bg-surface border-card text-text-primary hover:bg-accent-gold-soft hover:text-accent-gold hover:border-accent-gold/30' : 'bg-background border-card text-text-secondary/40 cursor-not-allowed'
+                  pagina > 1 ? 'bg-surface border-card text-text-primary hover:bg-[#FAEEDA] hover:text-[#854F0B] hover:border-[#C8900A]/30' : 'bg-background border-card text-text-secondary/40 cursor-not-allowed'
                 )}
               >
                 <ChevronLeft className="w-4 h-4" />Anterior
@@ -958,7 +978,7 @@ export default function ProposicoesPage() {
                 disabled={pagina >= totalPages}
                 className={cn(
                   'px-4 py-2 rounded-xl text-sm font-medium flex items-center gap-1 transition-all border',
-                  pagina < totalPages ? 'bg-surface border-card text-text-primary hover:bg-accent-gold-soft hover:text-accent-gold hover:border-accent-gold/30' : 'bg-background border-card text-text-secondary/40 cursor-not-allowed'
+                  pagina < totalPages ? 'bg-surface border-card text-text-primary hover:bg-[#FAEEDA] hover:text-[#854F0B] hover:border-[#C8900A]/30' : 'bg-background border-card text-text-secondary/40 cursor-not-allowed'
                 )}
               >
                 Próxima<ChevronRight className="w-4 h-4" />
@@ -969,9 +989,9 @@ export default function ProposicoesPage() {
         </div>
 
         {/* Info box */}
-        <div className="mt-8 bg-accent-gold-soft/30 rounded-2xl border border-accent-gold/20 p-6">
+        <div className="mt-8 rounded-2xl border border-[#E8D4A8]/60 bg-[#FAEEDA]/50 p-6">
           <h3 className="text-base font-semibold text-text-primary mb-2 flex items-center gap-2">
-            <FileText className="w-4 h-4 text-accent-gold" />Sobre as Proposições
+            <FileText className={cn('w-4 h-4', brandAmberIconClass)} />Sobre as Proposições
           </h3>
           <p className="text-sm text-text-secondary leading-relaxed">
             As proposições legislativas incluem projetos de lei, requerimentos, indicações e outras iniciativas
@@ -996,20 +1016,20 @@ export default function ProposicoesPage() {
               </button>
             </div>
             {autoresLoading ? (
-              <div className="flex items-center justify-center py-8"><Loader2 className="w-6 h-6 text-accent-gold animate-spin" /></div>
+              <div className="flex items-center justify-center py-8"><Loader2 className={cn('w-6 h-6 animate-spin', brandAmberIconClass)} /></div>
             ) : autores.length === 0 ? (
               <p className="text-sm text-text-secondary text-center py-8">Nenhum autor encontrado.</p>
             ) : (
               <div className="space-y-3">
                 {autores.map((autor, idx) => (
                   <div key={`${autor.nome}-${idx}`} className="flex items-center gap-3 p-3 rounded-xl bg-background border border-card">
-                    <div className="w-9 h-9 rounded-full bg-accent-gold-soft flex items-center justify-center flex-shrink-0"><Users className="w-4 h-4 text-accent-gold" /></div>
+                    <div className={cn('w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0', brandAmberIconWrapClass)}><Users className={cn('w-4 h-4', brandAmberIconClass)} /></div>
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium text-text-primary truncate">{autor.nome}</p>
                       <p className="text-xs text-text-secondary">{autor.tipo}</p>
                     </div>
                     <div className="flex items-center gap-2 flex-shrink-0">
-                      {autor.proponente === 1 && (<span className="px-2 py-0.5 text-xs font-medium bg-accent-gold-soft text-accent-gold rounded-md">Proponente</span>)}
+                      {autor.proponente === 1 && (<span className={cn('px-2 py-0.5 text-xs font-medium rounded-md', brandAmberChipClass)}>Proponente</span>)}
                       <span className="text-xs text-text-secondary">#{autor.ordemAssinatura}</span>
                     </div>
                   </div>
@@ -1027,7 +1047,7 @@ export default function ProposicoesPage() {
             <div className="flex items-center justify-between mb-5 flex-shrink-0">
               <div>
                 <h2 className="text-lg font-semibold text-text-primary flex items-center gap-2">
-                  <GitBranch className="w-5 h-5 text-accent-gold" />Tramitação
+                  <GitBranch className={cn('w-5 h-5', brandAmberIconClass)} />Tramitação
                 </h2>
                 <p className="text-sm text-text-secondary">{tramitacoesProposicao}</p>
               </div>
@@ -1037,13 +1057,13 @@ export default function ProposicoesPage() {
             </div>
 
             {tramitacoesLoading ? (
-              <div className="flex items-center justify-center py-12"><Loader2 className="w-6 h-6 text-accent-gold animate-spin" /></div>
+              <div className="flex items-center justify-center py-12"><Loader2 className={cn('w-6 h-6 animate-spin', brandAmberIconClass)} /></div>
             ) : tramitacoes.length === 0 ? (
               <p className="text-sm text-text-secondary text-center py-12">Nenhuma tramitação encontrada.</p>
             ) : (
               <div className="overflow-y-auto flex-1 pr-2 scrollbar-hide">
-                <div className="mb-6 p-4 rounded-xl bg-accent-gold-soft/30 border border-accent-gold/20">
-                  <p className="text-xs font-medium text-accent-gold mb-1">Status Atual</p>
+                <div className="mb-6 p-4 rounded-xl bg-[#FAEEDA]/60 border border-[#E8D4A8]/60">
+                  <p className={cn('text-xs font-medium mb-1', brandAmberMetricClass)}>Status Atual</p>
                   <p className="text-sm font-semibold text-text-primary">
                     {tramitacoes[0].descricaoSituacao || tramitacoes[0].descricaoTramitacao}
                   </p>
@@ -1061,12 +1081,12 @@ export default function ProposicoesPage() {
                     const Icon = getTimelineIcon(tram.descricaoTramitacao)
                     return (
                       <div key={`${tram.sequencia}-${idx}`} className="relative pl-12 pb-6 last:pb-0">
-                        <div className={cn('absolute left-0 top-0 w-[35px] h-[35px] rounded-full flex items-center justify-center z-10', isFirst ? 'bg-accent-gold text-white shadow-md' : 'bg-background border-2 border-card text-text-secondary')}>
+                        <div className={cn('absolute left-0 top-0 w-[35px] h-[35px] rounded-full flex items-center justify-center z-10', isFirst ? 'bg-[#C8900A] text-white shadow-md' : 'bg-background border-2 border-card text-text-secondary')}>
                           <Icon className="w-4 h-4" />
                         </div>
-                        <div className={cn('rounded-xl p-4 border transition-all', isFirst ? 'bg-accent-gold-soft/20 border-accent-gold/20' : 'bg-background border-card hover:border-accent-gold/10')}>
+                        <div className={cn('rounded-xl p-4 border transition-all', isFirst ? 'bg-[#FAEEDA]/40 border-[#E8D4A8]/60' : 'bg-background border-card hover:border-[#C8900A]/15')}>
                           <div className="flex items-start justify-between gap-2 mb-1">
-                            <p className={cn('text-sm font-medium', isFirst ? 'text-accent-gold' : 'text-text-primary')}>{tram.descricaoTramitacao}</p>
+                            <p className={cn('text-sm font-medium', isFirst ? brandAmberMetricClass : 'text-text-primary')}>{tram.descricaoTramitacao}</p>
                             <span className="text-xs text-text-secondary whitespace-nowrap flex-shrink-0">#{tram.sequencia}</span>
                           </div>
                           <div className="flex items-center gap-3 mb-2 text-xs text-text-secondary flex-wrap">
@@ -1078,7 +1098,7 @@ export default function ProposicoesPage() {
                           </div>
                           {tram.despacho && <p className="text-xs text-text-secondary/80 leading-relaxed line-clamp-3">{tram.despacho}</p>}
                           {tram.url && (
-                            <a href={tram.url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 mt-2 text-xs text-accent-gold hover:underline">
+                            <a href={tram.url} target="_blank" rel="noopener noreferrer" className={cn('inline-flex items-center gap-1 mt-2 text-xs hover:underline', brandAmberMetricClass)}>
                               <ExternalLink className="w-3 h-3" />Ver documento
                             </a>
                           )}

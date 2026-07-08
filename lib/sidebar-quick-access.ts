@@ -8,24 +8,26 @@ export type SidebarQuickAccessItem = {
   id: string
   label: string
   href: string
-  icon: 'Radar' | 'ClipboardList' | 'MapPin' | 'BarChart3' | 'MessageSquare' | 'FolderOpen'
+  icon:
+    | 'Radar'
+    | 'ClipboardList'
+    | 'MapPin'
+    | 'BarChart3'
+    | 'MessageSquare'
+    | 'FolderOpen'
+    | 'FileSpreadsheet'
+    | 'ScrollText'
   pageKey: string
 }
 
+/** Ordem alfabética por rótulo (pt-BR). */
 export const SIDEBAR_QUICK_ACCESS_ITEMS: SidebarQuickAccessItem[] = [
   {
-    id: 'quick-ipt',
-    label: 'Mapa Campanha',
-    href: '/dashboard/territorio/ipt',
-    icon: 'MapPin',
-    pageKey: 'territorio',
-  },
-  {
-    id: 'quick-radar-eleitoral',
-    label: 'Radar Eleitoral',
-    href: '/dashboard/noticias/monitoramento',
-    icon: 'Radar',
-    pageKey: 'noticias',
+    id: 'quick-arquivos',
+    label: 'Arquivos',
+    href: '/dashboard/arquivos',
+    icon: 'FolderOpen',
+    pageKey: 'arquivos',
   },
   {
     id: 'quick-atendimentos',
@@ -42,11 +44,11 @@ export const SIDEBAR_QUICK_ACCESS_ITEMS: SidebarQuickAccessItem[] = [
     pageKey: 'territorio',
   },
   {
-    id: 'quick-pesquisas-opiniao',
-    label: 'Pesquisas de Opinião',
-    href: '/dashboard/pesquisa',
-    icon: 'BarChart3',
-    pageKey: 'pesquisa',
+    id: 'quick-emendas',
+    label: 'Emendas',
+    href: '/dashboard/emendas',
+    icon: 'FileSpreadsheet',
+    pageKey: 'emendas',
   },
   {
     id: 'quick-instagram-pessoal',
@@ -56,11 +58,32 @@ export const SIDEBAR_QUICK_ACCESS_ITEMS: SidebarQuickAccessItem[] = [
     pageKey: 'conteudo',
   },
   {
-    id: 'quick-arquivos',
-    label: 'Arquivos',
-    href: '/dashboard/arquivos',
-    icon: 'FolderOpen',
-    pageKey: 'arquivos',
+    id: 'quick-ipt',
+    label: 'Mapa Campanha',
+    href: '/dashboard/territorio/ipt',
+    icon: 'MapPin',
+    pageKey: 'territorio',
+  },
+  {
+    id: 'quick-pesquisas-opiniao',
+    label: 'Pesquisas de Opinião',
+    href: '/dashboard/pesquisa',
+    icon: 'BarChart3',
+    pageKey: 'pesquisa',
+  },
+  {
+    id: 'quick-proposicoes',
+    label: 'Proposições',
+    href: '/dashboard/proposicoes',
+    icon: 'ScrollText',
+    pageKey: 'proposicoes',
+  },
+  {
+    id: 'quick-radar-eleitoral',
+    label: 'Radar Eleitoral',
+    href: '/dashboard/noticias/monitoramento',
+    icon: 'Radar',
+    pageKey: 'noticias',
   },
 ]
 
@@ -89,6 +112,10 @@ export function isSidebarQuickAccessActive(
       return pathname.startsWith('/dashboard/conteudo/redes')
     case 'quick-arquivos':
       return pathname.startsWith('/dashboard/arquivos')
+    case 'quick-emendas':
+      return pathname.startsWith('/dashboard/emendas')
+    case 'quick-proposicoes':
+      return pathname.startsWith('/dashboard/proposicoes')
     default:
       return pathname === item.href
   }

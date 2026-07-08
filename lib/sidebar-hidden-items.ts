@@ -9,6 +9,8 @@ export const SIDEBAR_HIDDEN_MENU_IDS = new Set([
   'conteudo-menu',
   'agenda',
   'gestao-pesquisas-menu',
+  'emendas',
+  'proposicoes',
 ])
 
 export function isSidebarMenuItemHidden(id: string): boolean {
