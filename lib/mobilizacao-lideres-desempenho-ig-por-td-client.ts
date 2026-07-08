@@ -1,6 +1,6 @@
 import type { TerritorioDesenvolvimentoPI } from '@/lib/piaui-territorio-desenvolvimento'
 
-/** Métricas por liderado (@) no recorte — alimenta o modal do ranking “Engajamento por líder”. */
+/** Métricas por liderado (@) — no mapa digital IG usa histórico completo; no monitoramento usa o mês de referência. */
 export type LideradoIgEngajamentoLinha = {
   handle: string
   /** Nome do liderado em `leads_militancia`, quando disponível. */

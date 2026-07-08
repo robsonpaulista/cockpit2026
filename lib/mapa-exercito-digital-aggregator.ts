@@ -10,6 +10,7 @@ import type { LiderInstagramCoberturaDto } from '@/lib/mobilizacao-lideres-insta
 import {
   mergeLideradosEngajamentoPorHandle,
   type LiderDesempenhoIgLinha,
+  type LideradoIgEngajamentoLinha,
 } from '@/lib/mobilizacao-lideres-desempenho-ig-por-td-client'
 import type { RelatorioMapaDigitalIgTdPayload } from '@/lib/relatorio-mapa-digital-ig-td-types'
 import type {
@@ -374,6 +375,64 @@ function lideradosQueComentaramNoMes(
   return count
 }
 
+/** Engajamento por @ no mês de referência — alinha com `mesAtual` do ranking. */
+function buildLideradosEngajamentoNoMes(
+  posts: InstagramPostWithComments[],
+  handles: string[],
+  nomePorHandle: Map<string, string | null>,
+  ref: MonthRef
+): LideradoIgEngajamentoLinha[] {
+  const eng = new Map<string, { comentarios: number; medias: Set<string>; ultima: string | null }>()
+
+  for (const raw of handles) {
+    const h = normalizeInstagramHandle(raw)
+    if (!h) continue
+    eng.set(h, { comentarios: 0, medias: new Set(), ultima: null })
+  }
+
+  for (const post of posts) {
+    const mid = post.instagram_media_id
+    const mediaPostedAt = post.media_posted_at ?? null
+    for (const c of post.comments) {
+      const h = normalizeInstagramHandle(c.commenter_username)
+      if (!h) continue
+      const acc = eng.get(h)
+      if (!acc) continue
+      if (!isTimestampInMonth(timestampComment(c), ref)) continue
+
+      acc.comentarios += 1
+      if (mid) acc.medias.add(mid)
+      const commentedAt = (c.commented_at || c.synced_at || '').trim()
+      if (commentedAt && (!acc.ultima || commentedAt > acc.ultima)) {
+        acc.ultima = mediaPostedAt || commentedAt || null
+      }
+    }
+  }
+
+  return [...eng.entries()]
+    .map(([handle, acc]) => ({
+      handle,
+      nome: nomePorHandle.get(handle) ?? null,
+      comentarios: acc.comentarios,
+      publicacoesComComentario: acc.medias.size,
+      ultimaPublicacaoComentadaEm: acc.ultima,
+    }))
+    .sort(
+      (a, b) =>
+        b.comentarios - a.comentarios ||
+        a.handle.localeCompare(b.handle, 'pt-BR', { sensitivity: 'base' })
+    )
+}
+
+function nomePorHandleFromMerged(merged: MergedLeader): Map<string, string | null> {
+  const map = new Map<string, string | null>()
+  for (const row of merged.lideradosEngajamento ?? []) {
+    const nome = (row.nome ?? '').trim()
+    if (nome) map.set(row.handle, nome)
+  }
+  return map
+}
+
 function buildCities(
   posts: InstagramPostWithComments[],
   handleToMunicipio: Map<string, string>,
@@ -542,7 +601,12 @@ function buildLeaders(
         lideradosQueComentaram,
         inactiveMonths: trend.inactiveMonths,
         lideradosInstagram: l.lideradosInstagram ?? [],
-        lideradosEngajamento: l.lideradosEngajamento ?? [],
+        lideradosEngajamento: buildLideradosEngajamentoNoMes(
+          posts,
+          l.lideradosInstagram ?? [],
+          nomePorHandleFromMerged(l),
+          ref
+        ),
       }
     })
     .sort((a, b) => b.mesAtual - a.mesAtual || b.comentarios - a.comentarios)

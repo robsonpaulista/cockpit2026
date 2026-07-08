@@ -266,8 +266,8 @@ export function ExercitoDigitalLeaderRanking({ leaders, audience, referenceMonth
       <div className={cn(GRID, 'border-b border-[rgb(var(--color-border-tertiary)/0.85)] pb-1.5 text-[10px] font-semibold uppercase tracking-[0.04em] text-text-muted')}>
         <span className="text-center">#</span>
         <span>{profileColumnLabel(audience)}</span>
-        <span className="text-right" title="Comentários no mês de referência">
-          Com.
+        <span className="text-right" title={`Comentários da rede no mês de referência (${referenceMonthLabel})`}>
+          Com. mês
         </span>
         <span className="text-center" title="Tendência vs. mês anterior (volume de comentários)">
           Tendência
@@ -329,7 +329,7 @@ export function ExercitoDigitalLeaderRanking({ leaders, audience, referenceMonth
                         />
                       </div>
                       <p className="mt-0.5 text-[10px] text-text-muted">
-                        {formatInt(score)} coment. · {formatInt(leader.publicacoes)}/
+                        {formatInt(score)} coment. em {referenceMonthLabel} · {formatInt(leader.publicacoes)}/
                         {formatInt(leader.postsNoPeriodo)} posts ({formatPct(leader.ativacaoPct)} ativ.)
                       </p>
                     </div>
@@ -418,8 +418,12 @@ export function ExercitoDigitalLeaderRanking({ leaders, audience, referenceMonth
                     />
                     {liderRede ? (
                       <div className="mt-4 border-t border-[rgb(var(--color-border-tertiary)/0.85)] pt-3">
-                        <p className="mb-2 text-[10.5px] font-medium text-text-secondary">
+                        <p className="mb-0.5 text-[10.5px] font-medium text-text-secondary">
                           Liderados · engajamento no Instagram
+                        </p>
+                        <p className="mb-2 text-[10px] text-text-muted">
+                          Mesmos números do placar: comentários contados em {referenceMonthLabel}. A soma dos
+                          liderados deve bater com o total do líder no mês.
                         </p>
                         {lideradosLinhas.length === 0 ? (
                           <p className="text-[11px] text-text-muted">
@@ -436,12 +440,15 @@ export function ExercitoDigitalLeaderRanking({ leaders, audience, referenceMonth
                                   <th className="px-2 py-1.5 text-[10px] font-semibold uppercase tracking-wide text-text-muted">
                                     Perfil
                                   </th>
-                                  <th className="px-2 py-1.5 text-right text-[10px] font-semibold uppercase tracking-wide text-text-muted">
-                                    Coment.
+                                  <th
+                                    className="px-2 py-1.5 text-right text-[10px] font-semibold uppercase tracking-wide text-text-muted"
+                                    title={`Comentários deste @ em ${referenceMonthLabel}`}
+                                  >
+                                    Com. mês ref.
                                   </th>
                                   <th
                                     className="px-2 py-1.5 text-right text-[10px] font-semibold uppercase tracking-wide text-text-muted"
-                                    title="Publicações distintas em que comentou"
+                                    title={`Publicações distintas em que comentou em ${referenceMonthLabel}`}
                                   >
                                     Posts c/ com.
                                   </th>
