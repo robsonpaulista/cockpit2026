@@ -17,14 +17,14 @@ import {
 
 export type ObraMapAppearance = 'light' | 'dark'
 
-/** Tamanhos dos pins no mapa (px). */
+/** Tamanhos dos pins no mapa (px) — footprint compacto; glifos renderizam em 2× para nitidez retina. */
 export const OBRA_MARKER_SIZE = {
-  disc: 30,
-  discSelected: 34,
-  glyph: 20,
-  glyphSelected: 22,
-  photo: 36,
-  photoSelected: 40,
+  disc: 24,
+  discSelected: 28,
+  glyph: 16,
+  glyphSelected: 18,
+  photo: 30,
+  photoSelected: 34,
 } as const
 
 function obraMarkerTemaClass(tema: ObraMapaTema): string {
@@ -353,13 +353,17 @@ export function getObraMapLeafletStyles(appearance: ObraMapAppearance): string {
     position: relative;
     z-index: 2;
     background: var(--obra-tema);
-    border: 2px solid #fff;
+    border: 2px solid rgba(255, 255, 255, 0.98);
     border-radius: 50%;
-    box-shadow: 0 0 0 2px var(--obra-fase), 0 4px 14px rgba(15,23,42,0.3);
+    box-shadow:
+      0 0 0 1.5px var(--obra-fase),
+      0 2px 8px rgba(15, 23, 42, 0.2),
+      0 6px 16px rgba(15, 23, 42, 0.14);
     display: flex;
     align-items: center;
     justify-content: center;
     transition: transform 0.2s ease, box-shadow 0.2s ease;
+    -webkit-font-smoothing: antialiased;
   }
   .obra-marker-disc--selected {
     transform: scale(1.1);
@@ -444,18 +448,36 @@ export function getObraMapLeafletStyles(appearance: ObraMapAppearance): string {
     align-items: center;
     justify-content: center;
     line-height: 0;
+    width: 100%;
+    height: 100%;
   }
-  .obra-marker-glyph--3d {
-    width: 82%;
-    height: 82%;
+  .obra-marker-glyph-media {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: var(--obra-glyph-display);
+    height: var(--obra-glyph-display);
+    flex-shrink: 0;
+    overflow: visible;
+    pointer-events: none;
+  }
+  .obra-marker-glyph-media > svg,
+  .obra-marker-glyph-media > img {
+    flex-shrink: 0;
+    width: calc(var(--obra-glyph-display) * var(--obra-glyph-render-scale, 2));
+    height: calc(var(--obra-glyph-display) * var(--obra-glyph-render-scale, 2));
+    max-width: none;
+    max-height: none;
+    transform: scale(calc(1 / var(--obra-glyph-render-scale, 2)));
+    transform-origin: center center;
+    backface-visibility: hidden;
   }
   .obra-marker-glyph-3d-img {
     display: block;
-    width: 100%;
-    height: 100%;
     object-fit: contain;
-    filter: drop-shadow(0 2px 3px rgba(15,23,42,0.18));
+    filter: drop-shadow(0 1px 2px rgba(15, 23, 42, 0.2)) drop-shadow(0 3px 6px rgba(15, 23, 42, 0.12));
     pointer-events: none;
+    image-rendering: auto;
   }
   .obra-marker-wrap--3d .obra-marker-disc {
     background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
@@ -470,47 +492,47 @@ export function getObraMapLeafletStyles(appearance: ObraMapAppearance): string {
     position: absolute;
     bottom: 1px;
     right: 1px;
-    width: 9px;
-    height: 9px;
+    width: 7px;
+    height: 7px;
     border-radius: 50%;
-    border: 1.5px solid #fff;
+    border: 1px solid #fff;
     box-shadow: 0 1px 4px rgba(15,23,42,0.35);
     z-index: 4;
   }
   .obra-marker-badge {
     position: absolute;
-    top: -4px;
-    right: -4px;
-    min-width: 15px;
-    height: 15px;
-    padding: 0 3px;
+    top: -2px;
+    right: -2px;
+    min-width: 12px;
+    height: 12px;
+    padding: 0 2px;
     border-radius: 999px;
     background: #0f172a;
     color: #fff;
-    font-size: 8px;
+    font-size: 7px;
     font-weight: 700;
     display: flex;
     align-items: center;
     justify-content: center;
-    border: 1.5px solid #fff;
+    border: 1px solid #fff;
     z-index: 5;
   }
   .obra-marker-tail {
     width: 0;
     height: 0;
-    margin-top: -3px;
-    border-left: 5px solid transparent;
-    border-right: 5px solid transparent;
-    border-top: 7px solid var(--obra-tema);
+    margin-top: -2px;
+    border-left: 3px solid transparent;
+    border-right: 3px solid transparent;
+    border-top: 5px solid var(--obra-tema);
     filter: drop-shadow(0 2px 2px rgba(15,23,42,0.2));
     z-index: 1;
   }
   .obra-marker-pulse {
     position: absolute;
-    top: 15px;
+    top: 12px;
     left: 50%;
-    width: 30px;
-    height: 30px;
+    width: 24px;
+    height: 24px;
     border-radius: 50%;
     background: var(--obra-fase);
     opacity: 0.28;
@@ -519,9 +541,9 @@ export function getObraMapLeafletStyles(appearance: ObraMapAppearance): string {
     z-index: 0;
   }
   .obra-marker-wrap--photo .obra-marker-pulse {
-    top: 18px;
-    width: 36px;
-    height: 36px;
+    top: 15px;
+    width: 30px;
+    height: 30px;
   }
   .obra-marker-wrap--photo .obra-marker-badge {
     transform: none;
@@ -538,8 +560,11 @@ export function getObraMapLeafletStyles(appearance: ObraMapAppearance): string {
     z-index: 2;
     border-radius: 50%;
     overflow: visible;
-    border: 2.5px solid var(--obra-fase);
-    box-shadow: 0 4px 16px rgba(15,23,42,0.32), 0 0 0 2px rgba(255,255,255,0.95);
+    border: 2px solid var(--obra-fase);
+    box-shadow:
+      0 0 0 1.5px rgba(255, 255, 255, 0.95),
+      0 3px 12px rgba(15, 23, 42, 0.26),
+      0 8px 20px rgba(15, 23, 42, 0.12);
     transition: transform 0.2s ease, box-shadow 0.2s ease;
   }
   .obra-marker-photo .obra-marker-photo-img {
@@ -563,6 +588,7 @@ export function getObraMapLeafletStyles(appearance: ObraMapAppearance): string {
     width: 100%;
     height: 100%;
     object-fit: cover;
+    image-rendering: auto;
   }
   .obra-marker-tail--photo {
     border-top-color: var(--obra-tema);

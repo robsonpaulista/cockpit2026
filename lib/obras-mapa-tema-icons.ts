@@ -69,7 +69,12 @@ const OBRA_MAQUINARIO_3D_ICON: Record<ObraMaquinario3dVariant, string> = {
   arado: '/icons/obras/maquinario-3d-arado.png',
 }
 
-/** PNG 3D estático — ver public/icons/obras/ */
+/** Escala de renderização interna dos glifos (2× → downscale nítido em telas retina). */
+export const OBRA_GLYPH_RENDER_SCALE = 2
+
+function wrapObraGlyphMedia(innerHtml: string, displaySize: number): string {
+  return `<span class="obra-marker-glyph-media" style="--obra-glyph-display:${displaySize}px;--obra-glyph-render-scale:${OBRA_GLYPH_RENDER_SCALE}">${innerHtml}</span>`
+}
 export const OBRA_TEMA_3D_ICON: Record<ObraMapaTema, string> = {
   asfalto: OBRA_PAVIMENTACAO_3D_ICON.motorway,
   paralelepipedo: '/icons/obras/pavimentacao-3d-construction.png',
@@ -91,24 +96,28 @@ export function obraTema3dIconUrl(
 
 export function obraTemaGlyph3dHtml(
   tema: ObraMapaTema,
-  size = 26,
+  displaySize = 26,
   pavimentacaoVariant: ObraPavimentacao3dVariant = 'oncoming',
   maquinarioVariant: ObraMaquinario3dVariant = 'trator'
 ): string {
+  const renderSize = Math.round(displaySize * OBRA_GLYPH_RENDER_SCALE)
   const src = obraTema3dIconUrl(tema, pavimentacaoVariant, maquinarioVariant).replace(/"/g, '&quot;')
   const alt = OBRA_TEMA_MARKER_LABEL[tema]
-  return `<img src="${src}" alt="${alt}" class="obra-marker-glyph-3d-img" width="${size}" height="${size}" loading="eager" decoding="async" />`
+  const img = `<img src="${src}" alt="${alt}" class="obra-marker-glyph-3d-img" width="${renderSize}" height="${renderSize}" loading="eager" decoding="async" />`
+  return wrapObraGlyphMedia(img, displaySize)
 }
 
 export function obraTemaGlyphHtml(
   tema: ObraMapaTema,
-  size = 24,
+  displaySize = 24,
   usar3d = false,
   pavimentacaoVariant: ObraPavimentacao3dVariant = 'oncoming',
   maquinarioVariant: ObraMaquinario3dVariant = 'trator'
 ): string {
-  if (usar3d) return obraTemaGlyph3dHtml(tema, size + 2, pavimentacaoVariant, maquinarioVariant)
-  return obraTemaGlyphSvgHtml(tema, size, maquinarioVariant)
+  if (usar3d) {
+    return obraTemaGlyph3dHtml(tema, displaySize + 1, pavimentacaoVariant, maquinarioVariant)
+  }
+  return obraTemaGlyphSvgHtml(tema, displaySize, maquinarioVariant)
 }
 
 /** Via vertical (vista de cima) — faixa larga, carro visto de cima. */
@@ -190,9 +199,10 @@ const PASSAGENS_CISTERNAS_GLYPH_SVG = `
 /** Ícone branco em traço — legível no mapa. */
 export function obraTemaGlyphSvgHtml(
   tema: ObraMapaTema,
-  size = 22,
+  displaySize = 22,
   maquinarioVariant: ObraMaquinario3dVariant = 'trator'
 ): string {
+  const renderSize = Math.round(displaySize * OBRA_GLYPH_RENDER_SCALE)
   const inner =
     tema === 'quadras-esportivas'
       ? QUADRA_GLYPH_SVG
@@ -205,7 +215,8 @@ export function obraTemaGlyphSvgHtml(
         : tema === 'outros'
           ? OUTROS_GLYPH_SVG
           : PAVIMENTACAO_GLYPH_SVG
-  return `<svg viewBox="0 0 24 24" width="${size}" height="${size}" fill="none" aria-hidden="true">${inner}</svg>`
+  const svg = `<svg viewBox="0 0 24 24" width="${renderSize}" height="${renderSize}" fill="none" shape-rendering="geometricPrecision" aria-hidden="true">${inner}</svg>`
+  return wrapObraGlyphMedia(svg, displaySize)
 }
 
 export function obraFaseDotHtml(fase: ObraFaseMapa): string {

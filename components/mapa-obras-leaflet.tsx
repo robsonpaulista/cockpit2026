@@ -181,7 +181,7 @@ export function MapaObrasLeaflet({
 
       let photoUrl: string | null = null
       if (visaoMapa === 'comunicacao') {
-        photoUrl = primeiraImagemObraUrl(m.obras, 200)
+        photoUrl = primeiraImagemObraUrl(m.obras, 192)
       }
 
       const pinSize = photoUrl
