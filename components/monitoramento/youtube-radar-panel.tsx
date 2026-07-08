@@ -21,10 +21,12 @@ export function YoutubeRadarPanel() {
   const [collecting, setCollecting] = useState(false)
   const [error, setError] = useState('')
   const [collectMessage, setCollectMessage] = useState('')
+  const [conexaoInstavel, setConexaoInstavel] = useState(false)
 
   const carregar = useCallback(async () => {
     setLoading(true)
     setError('')
+    let instavel = false
     try {
       const [actorsRes, mentionsRes] = await Promise.all([
         fetch('/api/youtube/actors', { cache: 'no-store' }),
@@ -38,20 +40,36 @@ export function YoutubeRadarPanel() {
         setupRequired?: boolean
         actors?: PoliticalActorWithTerms[]
         error?: string
+        retryable?: boolean
       }
-      setApiConfigured(Boolean(actorsJson.configured))
-      setSetupRequired(Boolean(actorsJson.setupRequired))
-      setActors(actorsJson.actors ?? [])
-
-      if (!mentionsRes.ok) {
-        const j = (await mentionsRes.json().catch(() => ({}))) as { error?: string }
-        throw new Error(j.error ?? 'Falha ao carregar menções.')
+      if (actorsRes.ok) {
+        setApiConfigured(Boolean(actorsJson.configured))
+        setSetupRequired(Boolean(actorsJson.setupRequired))
+        setActors(actorsJson.actors ?? [])
+      } else if (actorsJson.retryable) {
+        instavel = true
+      } else if (actorsJson.setupRequired) {
+        setSetupRequired(true)
       }
 
       const mentionsJson = (await mentionsRes.json()) as {
-        mentions: YoutubeMentionWithActor[]
+        mentions?: YoutubeMentionWithActor[]
+        error?: string
+        retryable?: boolean
+        setupRequired?: boolean
       }
-      setMentions(mentionsJson.mentions)
+
+      if (!mentionsRes.ok) {
+        if (mentionsJson.retryable) {
+          instavel = true
+        } else {
+          throw new Error(mentionsJson.error ?? 'Falha ao carregar menções.')
+        }
+      } else {
+        setMentions(mentionsJson.mentions ?? [])
+      }
+
+      setConexaoInstavel(instavel)
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Erro ao carregar radar.')
     } finally {
@@ -62,6 +80,12 @@ export function YoutubeRadarPanel() {
   useEffect(() => {
     void carregar()
   }, [carregar])
+
+  useEffect(() => {
+    if (!conexaoInstavel) return
+    const id = window.setTimeout(() => void carregar(), 5000)
+    return () => window.clearTimeout(id)
+  }, [conexaoInstavel, carregar])
 
   const coletar = useCallback(async () => {
     setCollecting(true)
@@ -128,6 +152,12 @@ export function YoutubeRadarPanel() {
       </div>
 
       {collectMessage ? <p className="text-sm text-[#3B6D11]">{collectMessage}</p> : null}
+      {conexaoInstavel && !error ? (
+        <div className="flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
+          <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
+          Conexão com o Supabase instável. Tentando novamente…
+        </div>
+      ) : null}
       {error ? <p className="text-sm text-status-danger">{error}</p> : null}
 
       <YoutubeCompareBoard

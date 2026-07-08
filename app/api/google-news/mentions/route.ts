@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { requireRouteUser } from '@/lib/supabase/route-auth'
+import { isSupabaseNetworkError } from '@/lib/supabase/network-error'
 import type { GoogleNewsMentionWithActor } from '@/lib/google-news-types'
 
 export const dynamic = 'force-dynamic'
@@ -95,6 +96,17 @@ export async function GET(request: Request) {
       setupRequired: false,
     })
   } catch (e) {
+    if (isSupabaseNetworkError(e)) {
+      console.warn('[google-news/mentions] Supabase indisponível (rede). Respondendo 503 retryable.')
+      return NextResponse.json(
+        {
+          error: 'Conexão com o Supabase temporariamente indisponível. Aguarde alguns segundos e tente novamente.',
+          retryable: true,
+          mentions: [],
+        },
+        { status: 503 }
+      )
+    }
     const msg = e instanceof Error ? e.message : 'Erro ao listar notícias Google News'
     console.error('[google-news/mentions]', e)
     return NextResponse.json({ error: msg }, { status: 500 })
