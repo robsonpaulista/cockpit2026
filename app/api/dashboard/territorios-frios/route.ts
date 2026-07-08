@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { requireRouteUser } from '@/lib/supabase/route-auth'
+import { isSupabaseNetworkError } from '@/lib/supabase/network-error'
 import municipiosPiaui from '@/lib/municipios-piaui.json'
 import { getEleitoradoByCity } from '@/lib/eleitores'
 
@@ -588,10 +589,20 @@ export async function POST(request: Request) {
         percentualCobertura: totalCidades > 0 ? Math.round((cidadesVisitadas / totalCidades) * 100) : 0,
       },
     })
-  } catch (error: any) {
+  } catch (error: unknown) {
+    if (isSupabaseNetworkError(error)) {
+      console.warn('[territorios-frios] Supabase indisponível (rede). Respondendo 503 retryable.')
+      return NextResponse.json(
+        {
+          error: 'Conexão com o Supabase temporariamente indisponível. Aguarde alguns segundos e tente novamente.',
+          retryable: true,
+        },
+        { status: 503 }
+      )
+    }
     console.error('Erro ao calcular Territórios:', error)
     return NextResponse.json(
-      { error: error.message || 'Erro ao processar dados' },
+      { error: error instanceof Error ? error.message : 'Erro ao processar dados' },
       { status: 500 }
     )
   }

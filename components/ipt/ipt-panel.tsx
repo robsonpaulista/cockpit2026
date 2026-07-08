@@ -43,7 +43,7 @@ export function IptPanel() {
   const [filtroIndicador, setFiltroIndicador] = useState<IptIndicador | 'geral'>('geral')
   const [filtroTd, setFiltroTd] = useState<TerritorioDesenvolvimentoPI | null>(null)
   const topbarVisible = useDashboardTopbarVisible()
-  const { loading, error, municipios, recarregar } = useIpt()
+  const { loading, error, conexaoInstavel, municipios, recarregar } = useIpt()
 
   const municipiosNoEscopo = useMemo(
     () => filtrarIptMunicipiosPorTd(municipios, filtroTd),
@@ -125,6 +125,12 @@ export function IptPanel() {
       ) : null}
 
       <div className="ipt-page-body flex min-h-0 flex-1 flex-col">
+        {conexaoInstavel && !error ? (
+          <div className="ipt-page-alert flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+            <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+            Conexão com o Supabase instável. Tentando novamente…
+          </div>
+        ) : null}
         {error ? (
           <div className="ipt-page-alert rounded-lg bg-red-50 px-4 py-3 text-sm text-red-800">{error}</div>
         ) : null}

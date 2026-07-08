@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { requireRouteUser } from '@/lib/supabase/route-auth'
-import { supabaseNetworkErrorResponse } from '@/lib/supabase/network-error'
+import { supabaseNetworkErrorResponse, isSupabaseNetworkError } from '@/lib/supabase/network-error'
 
 export const dynamic = 'force-dynamic'
 
@@ -39,6 +39,15 @@ export async function GET(request: Request) {
     const { data, error } = await query
 
     if (error) {
+      if (isSupabaseNetworkError(error)) {
+        return NextResponse.json(
+          {
+            error: 'Conexão com o Supabase temporariamente indisponível. Aguarde alguns segundos e tente novamente.',
+            retryable: true,
+          },
+          { status: 503 }
+        )
+      }
       console.error('Erro ao buscar obras:', error)
       return NextResponse.json(
         { error: 'Erro ao buscar obras' },

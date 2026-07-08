@@ -1,5 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
+import { requireRouteUser } from '@/lib/supabase/route-auth'
+import { isSupabaseNetworkError } from '@/lib/supabase/network-error'
 import {
   TERRITORIOS_DESENVOLVIMENTO_PI,
   getMunicipiosPorTerritorioDesenvolvimentoPI,
@@ -64,16 +66,10 @@ function isWithinLastDays(dateStr: string, days: number): boolean {
  */
 export async function GET(request: Request) {
   try {
+    const auth = await requireRouteUser()
+    if (!auth.ok) return auth.response
+
     const supabase = createClient()
-
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
-
-    if (!user) {
-      return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
-    }
-
     const { searchParams } = new URL(request.url)
     const daysParam = parseInt(searchParams.get('days') ?? '0', 10)
     const days = Number.isFinite(daysParam) && daysParam > 0 ? daysParam : 0
@@ -92,6 +88,15 @@ export async function GET(request: Request) {
       .eq('status', 'concluida')
 
     if (error) {
+      if (isSupabaseNetworkError(error)) {
+        return NextResponse.json(
+          {
+            error: 'Conexão com o Supabase temporariamente indisponível. Aguarde alguns segundos e tente novamente.',
+            retryable: true,
+          },
+          { status: 503 }
+        )
+      }
       return NextResponse.json({ error: error.message }, { status: 500 })
     }
 
@@ -177,6 +182,16 @@ export async function GET(request: Request) {
       days: days > 0 ? days : null,
     })
   } catch (e) {
+    if (isSupabaseNetworkError(e)) {
+      console.warn('[visitas-resumo-td] Supabase indisponível (rede). Respondendo 503 retryable.')
+      return NextResponse.json(
+        {
+          error: 'Conexão com o Supabase temporariamente indisponível. Aguarde alguns segundos e tente novamente.',
+          retryable: true,
+        },
+        { status: 503 }
+      )
+    }
     console.error(e)
     return NextResponse.json({ error: 'Erro interno do servidor' }, { status: 500 })
   }

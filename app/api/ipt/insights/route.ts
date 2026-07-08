@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { requireRouteUser } from '@/lib/supabase/route-auth'
+import { isSupabaseNetworkError } from '@/lib/supabase/network-error'
 import {
   buildOverrideMapFromInsights,
   createIptInsightSchema,
@@ -30,14 +32,10 @@ const SELECT_WITH_PROFILE = `
 
 export async function GET(request: NextRequest) {
   try {
-    const supabase = createClient()
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
-    if (!user) {
-      return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
-    }
+    const auth = await requireRouteUser()
+    if (!auth.ok) return auth.response
 
+    const supabase = createClient()
     const mode = request.nextUrl.searchParams.get('mode')
     const municipio = request.nextUrl.searchParams.get('municipio')?.trim()
 
@@ -80,6 +78,16 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ insights: data ?? [] })
   } catch (e: unknown) {
+    if (isSupabaseNetworkError(e)) {
+      console.warn('[ipt/insights] Supabase indisponível (rede). Respondendo 503 retryable.')
+      return NextResponse.json(
+        {
+          error: 'Conexão com o Supabase temporariamente indisponível. Aguarde alguns segundos e tente novamente.',
+          retryable: true,
+        },
+        { status: 503 }
+      )
+    }
     console.error(e)
     return NextResponse.json(
       { error: e instanceof Error ? e.message : 'Erro interno' },
@@ -90,14 +98,11 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: Request) {
   try {
-    const supabase = createClient()
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
-    if (!user) {
-      return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
-    }
+    const auth = await requireRouteUser()
+    if (!auth.ok) return auth.response
 
+    const supabase = createClient()
+    const user = auth.user
     const body = await request.json()
     const parsed = createIptInsightSchema.safeParse(body)
     if (!parsed.success) {
@@ -139,6 +144,16 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ insight: data })
   } catch (e: unknown) {
+    if (isSupabaseNetworkError(e)) {
+      console.warn('[ipt/insights] Supabase indisponível (rede). Respondendo 503 retryable.')
+      return NextResponse.json(
+        {
+          error: 'Conexão com o Supabase temporariamente indisponível. Aguarde alguns segundos e tente novamente.',
+          retryable: true,
+        },
+        { status: 503 }
+      )
+    }
     console.error(e)
     return NextResponse.json(
       { error: e instanceof Error ? e.message : 'Erro interno' },

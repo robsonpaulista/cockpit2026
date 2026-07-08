@@ -60,6 +60,7 @@ function mapVisitasNoPeriodo(
 export function useIpt() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [conexaoInstavel, setConexaoInstavel] = useState(false)
   const [municipios, setMunicipios] = useState<IptMunicipio[]>([])
   const [resumo, setResumo] = useState<IptResumo>({
     municipiosMonitorados: 0,
@@ -73,6 +74,7 @@ export function useIpt() {
   const carregar = useCallback(async () => {
     setLoading(true)
     setError('')
+    let instavel = false
     try {
       let territorioConfig: Record<string, unknown> | null = null
       const configRes = await fetch('/api/territorio/config', { cache: 'no-store' })
@@ -97,29 +99,51 @@ export function useIpt() {
         fetch('/api/ipt/insights?mode=overrides', { cache: 'no-store' }),
       ])
 
+      const territorioJson = (await territorioRes.json()) as { retryable?: boolean }
       if (!territorioRes.ok) {
-        throw new Error('Não foi possível carregar dados territoriais.')
+        if (territorioJson.retryable || territorioRes.status === 503) {
+          instavel = true
+        } else {
+          throw new Error('Não foi possível carregar dados territoriais.')
+        }
       }
 
-      const territorioData = (await territorioRes.json()) as {
-        prioridadeCampoLista?: PrioridadeRow[]
-      }
+      const territorioData = territorioRes.ok
+        ? ((territorioJson as { prioridadeCampoLista?: PrioridadeRow[] }) ?? {})
+        : { prioridadeCampoLista: [] as PrioridadeRow[] }
 
+      const obrasJson = obrasRes.ok
+        ? ((await obrasRes.json()) as { obras?: ObraMapaRow[] })
+        : (await obrasRes.json()) as { retryable?: boolean }
+      if (!obrasRes.ok && (obrasRes.status === 503 || (obrasJson as { retryable?: boolean }).retryable)) {
+        instavel = true
+      }
       const obrasPorMunicipio = obrasRes.ok
-        ? agregarObrasPorMunicipio(((await obrasRes.json()) as { obras?: ObraMapaRow[] }).obras ?? [])
+        ? agregarObrasPorMunicipio(obrasJson.obras ?? [])
         : new Map<string, ObrasAgg>()
 
+      const visitasJson = visitasPeriodoRes.ok
+        ? ((await visitasPeriodoRes.json()) as { municipios?: Array<{ municipio: string; visitas: number }> })
+        : (await visitasPeriodoRes.json()) as { retryable?: boolean }
+      if (
+        !visitasPeriodoRes.ok &&
+        (visitasPeriodoRes.status === 503 || (visitasJson as { retryable?: boolean }).retryable)
+      ) {
+        instavel = true
+      }
       const visitasPorMunicipio = visitasPeriodoRes.ok
-        ? mapVisitasNoPeriodo(
-            ((await visitasPeriodoRes.json()) as { municipios?: Array<{ municipio: string; visitas: number }> })
-              .municipios
-          )
+        ? mapVisitasNoPeriodo(visitasJson.municipios)
         : new Map<string, number>()
 
-      const candidatoPesquisa = resolveCandidatoIpt()
-      const polls: PollIptRow[] = pesquisaRes.ok
+      const pesquisaJson = pesquisaRes.ok
         ? ((await pesquisaRes.json()) as PollIptRow[])
-        : []
+        : (await pesquisaRes.json()) as { retryable?: boolean }
+      if (!pesquisaRes.ok && (pesquisaRes.status === 503 || (pesquisaJson as { retryable?: boolean }).retryable)) {
+        instavel = true
+      }
+
+      const candidatoPesquisa = resolveCandidatoIpt()
+      const polls: PollIptRow[] = pesquisaRes.ok ? (pesquisaJson as PollIptRow[]) : []
       const { intencaoPorMunicipio, top5PorMunicipio, basePorMunicipio } =
         buildPesquisaIptPorMunicipio(polls, candidatoPesquisa)
 
@@ -154,16 +178,20 @@ export function useIpt() {
       const calculados = calcularIptMunicipios(inputs)
 
       let overrideMap: IptInsightOverrideMap = new Map()
-      if (insightsRes.ok) {
-        const insightsJson = (await insightsRes.json()) as {
-          overrides?: Record<string, Partial<Record<'visitas' | 'obras' | 'pesquisa', import('@/lib/ipt').IptSinal>>>
-        }
+      const insightsJson = (await insightsRes.json()) as {
+        overrides?: Record<string, Partial<Record<'visitas' | 'obras' | 'pesquisa', import('@/lib/ipt').IptSinal>>>
+        retryable?: boolean
+      }
+      if (!insightsRes.ok && (insightsRes.status === 503 || insightsJson.retryable)) {
+        instavel = true
+      } else if (insightsRes.ok) {
         overrideMap = new Map(Object.entries(insightsJson.overrides ?? {}))
       }
 
       const comOverrides = aplicarOverridesIpt(calculados, overrideMap)
       setMunicipios(comOverrides)
       setResumo(calcularIptResumo(comOverrides))
+      setConexaoInstavel(instavel)
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Erro ao calcular prioridades.')
       setMunicipios([])
@@ -177,11 +205,17 @@ export function useIpt() {
     void carregar()
   }, [carregar])
 
+  useEffect(() => {
+    if (!conexaoInstavel) return
+    const id = window.setTimeout(() => void carregar(), 5000)
+    return () => window.clearTimeout(id)
+  }, [conexaoInstavel, carregar])
+
   const porNome = useMemo(() => {
     const map = new Map<string, IptMunicipio>()
     for (const m of municipios) map.set(normalizeIptMunicipio(m.municipio), m)
     return map
   }, [municipios])
 
-  return { loading, error, municipios, resumo, porNome, recarregar: carregar }
+  return { loading, error, conexaoInstavel, municipios, resumo, porNome, recarregar: carregar }
 }

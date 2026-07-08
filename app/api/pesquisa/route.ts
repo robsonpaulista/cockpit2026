@@ -1,5 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { requireRouteUser } from '@/lib/supabase/route-auth'
+import { isSupabaseNetworkError } from '@/lib/supabase/network-error'
 
 export const dynamic = 'force-dynamic'
 import { NextResponse } from 'next/server'
@@ -18,15 +20,11 @@ const pollSchema = z.object({
 
 export async function GET(request: Request) {
   try {
+    const auth = await requireRouteUser()
+    if (!auth.ok) return auth.response
+
     const supabase = createClient()
-
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
-
-    if (!user) {
-      return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
-    }
+    const user = auth.user
 
     const { data: profile } = await supabase
       .from('profiles')
@@ -110,11 +108,29 @@ export async function GET(request: Request) {
 
     const { data, error } = await dataQuery
     if (error) {
+      if (isSupabaseNetworkError(error)) {
+        return NextResponse.json(
+          {
+            error: 'Conexão com o Supabase temporariamente indisponível. Aguarde alguns segundos e tente novamente.',
+            retryable: true,
+          },
+          { status: 503 }
+        )
+      }
       return NextResponse.json({ error: error.message }, { status: 500 })
     }
 
     return NextResponse.json(data || [])
-  } catch (error: any) {
+  } catch (error: unknown) {
+    if (isSupabaseNetworkError(error)) {
+      return NextResponse.json(
+        {
+          error: 'Conexão com o Supabase temporariamente indisponível. Aguarde alguns segundos e tente novamente.',
+          retryable: true,
+        },
+        { status: 503 }
+      )
+    }
     return NextResponse.json(
       { error: 'Erro interno do servidor' },
       { status: 500 }
