@@ -18,6 +18,9 @@ import {
   FileText,
   Columns2,
   Copy,
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown,
 } from 'lucide-react'
 import {
   EMENDAS_LIST_COLUMN_KEYS,
@@ -267,6 +270,31 @@ function isEmendaPaga(r: Emenda): boolean {
   return Number.isFinite(vp) && vp > 0
 }
 
+function getEmendaSortValue(r: Emenda, col: EmendaListColumnKey): string | number {
+  switch (col) {
+    case 'exercicio':
+      return r.exercicio ?? Number.NEGATIVE_INFINITY
+    case 'valor_indicado':
+    case 'valor_empenhado':
+    case 'valor_a_empenhar':
+    case 'valor_pago':
+    case 'valor_a_ser_pago':
+      return r[col] ?? Number.NEGATIVE_INFINITY
+    case 'data_empenho':
+    case 'data_pagamento':
+    case 'created_at':
+    case 'updated_at': {
+      const d = r[col]
+      return d ? new Date(d).getTime() : Number.NEGATIVE_INFINITY
+    }
+    default: {
+      const v = r[col as keyof Emenda]
+      if (v == null) return ''
+      return String(v).toLowerCase()
+    }
+  }
+}
+
 function Field({
   label,
   className,
@@ -317,6 +345,8 @@ export default function EmendasPage() {
   )
   const [showColumnPicker, setShowColumnPicker] = useState(false)
   const columnPickerRef = useRef<HTMLDivElement>(null)
+  const [sortColumn, setSortColumn] = useState<EmendaListColumnKey | null>(null)
+  const [sortAsc, setSortAsc] = useState(true)
 
   const municipiosBeneficiariosNaBase = useMemo(() => {
     const set = new Set<string>()
@@ -356,6 +386,28 @@ export default function EmendasPage() {
       return true
     })
   }, [rows, filterExercicio, filterEmenda, filterMunicipio, filterStatus])
+
+  const toggleSort = useCallback((col: EmendaListColumnKey) => {
+    if (sortColumn === col) {
+      setSortAsc((asc) => !asc)
+    } else {
+      setSortColumn(col)
+      setSortAsc(true)
+    }
+  }, [sortColumn])
+
+  const sortedFilteredRows = useMemo(() => {
+    if (!sortColumn) return filteredRows
+    return [...filteredRows].sort((a, b) => {
+      const va = getEmendaSortValue(a, sortColumn)
+      const vb = getEmendaSortValue(b, sortColumn)
+      const cmp =
+        typeof va === 'string' && typeof vb === 'string'
+          ? va.localeCompare(vb, 'pt-BR')
+          : Number(va) - Number(vb)
+      return sortAsc ? cmp : -cmp
+    })
+  }, [filteredRows, sortColumn, sortAsc])
 
   const filtrosAtivos =
     filterExercicio.trim() !== '' ||
@@ -631,14 +683,17 @@ export default function EmendasPage() {
     : 'min-w-[6.5rem] max-w-[11rem] rounded-lg border border-card bg-surface px-2 py-1.5 text-xs text-text-primary focus:outline-none focus:ring-2 focus:ring-accent-gold-soft'
 
   const tableShellClass = isCockpit
-    ? 'overflow-hidden rounded-xl border border-white/10 bg-white/[0.03]'
-    : 'overflow-hidden rounded-xl border border-card bg-white'
+    ? 'flex min-h-0 flex-col overflow-hidden rounded-xl border border-white/10 bg-white/[0.03]'
+    : 'flex min-h-0 flex-col overflow-hidden rounded-xl border border-card bg-white'
+
+  const tableScrollClass =
+    'min-h-0 max-h-[min(70vh,calc(100dvh-14rem))] flex-1 overflow-auto overscroll-contain [scrollbar-width:thin]'
 
   return (
-    <div className={cn('flex min-h-screen flex-1 flex-col', pageShellClass)}>
-      <div className="flex flex-1 flex-col px-4 py-6 lg:px-6">
-        <div className={sectionShellClass}>
-          <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+    <div className={cn('flex min-h-0 flex-1 flex-col', pageShellClass)}>
+      <div className="flex min-h-0 flex-1 flex-col px-4 py-6 lg:px-6">
+        <div className={cn(sectionShellClass, 'flex min-h-0 flex-1 flex-col')}>
+          <div className="mb-6 flex shrink-0 flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
             <div>
               <h1 className="text-lg font-semibold text-text-primary sm:text-xl">Emendas</h1>
               <p className="mt-1 text-sm text-secondary">
@@ -689,14 +744,14 @@ export default function EmendasPage() {
 
           {error && (
             <div
-              className="mb-4 rounded-xl border border-status-danger/40 bg-status-danger/10 px-4 py-3 text-sm text-status-danger"
+              className="mb-4 shrink-0 rounded-xl border border-status-danger/40 bg-status-danger/10 px-4 py-3 text-sm text-status-danger"
               role="alert"
             >
               {error}
             </div>
           )}
 
-          <div className={cn(innerPanelClass, 'mb-4')}>
+          <div className={cn(innerPanelClass, 'mb-4 shrink-0')}>
             <div className="flex flex-nowrap items-center gap-x-2 sm:gap-3 overflow-x-auto pb-0.5 [scrollbar-width:thin]">
               <Filter className="h-3.5 w-3.5 shrink-0 text-secondary" aria-hidden />
               <span className="text-xs font-semibold text-text-primary shrink-0">Filtros</span>
@@ -797,7 +852,7 @@ export default function EmendasPage() {
             </div>
           </div>
 
-          <div className="mb-3 flex flex-wrap items-center justify-between gap-2 text-xs text-secondary">
+          <div className="mb-3 flex shrink-0 flex-wrap items-center justify-between gap-2 text-xs text-secondary">
             <div className="flex flex-wrap items-center gap-3">
               <span>
                 {loading
@@ -894,7 +949,7 @@ export default function EmendasPage() {
                 Nenhuma emenda corresponde aos filtros. Ajuste ou use Limpar.
               </p>
             ) : (
-              <div className="overflow-x-auto">
+              <div className={tableScrollClass}>
                 <table
                   className={cn(
                     'w-full text-left text-sm',
@@ -910,22 +965,47 @@ export default function EmendasPage() {
                   <thead>
                     <tr
                       className={cn(
-                        'border-b',
+                        'sticky top-0 z-10 border-b',
                         isCockpit ? 'border-white/10 bg-white/[0.06]' : 'border-card bg-white',
                       )}
                     >
-                      {activeColumnList.map((col) => (
-                        <th
-                          key={col}
-                          className={cn(
-                            'px-4 py-2 font-semibold',
-                            isCockpit ? 'text-text-primary' : 'text-black',
-                          )}
-                          scope="col"
-                        >
-                          {EMENDAS_LIST_COLUMN_LABELS[col]}
-                        </th>
-                      ))}
+                      {activeColumnList.map((col) => {
+                        const isActive = sortColumn === col
+                        return (
+                          <th
+                            key={col}
+                            className={cn(
+                              'px-4 py-2 font-semibold',
+                              isCockpit ? 'text-text-primary' : 'text-black',
+                            )}
+                            scope="col"
+                            aria-sort={
+                              isActive ? (sortAsc ? 'ascending' : 'descending') : 'none'
+                            }
+                          >
+                            <button
+                              type="button"
+                              onClick={() => toggleSort(col)}
+                              className={cn(
+                                'flex w-full items-center gap-1 text-left transition-colors',
+                                isCockpit ? 'hover:text-accent-gold' : 'hover:text-accent-gold',
+                              )}
+                              title={`Ordenar ${EMENDAS_LIST_COLUMN_LABELS[col]} (${isActive && !sortAsc ? 'A→Z' : 'Z→A'})`}
+                            >
+                              {EMENDAS_LIST_COLUMN_LABELS[col]}
+                              {isActive ? (
+                                sortAsc ? (
+                                  <ArrowUp className="h-3.5 w-3.5 shrink-0" aria-hidden />
+                                ) : (
+                                  <ArrowDown className="h-3.5 w-3.5 shrink-0" aria-hidden />
+                                )
+                              ) : (
+                                <ArrowUpDown className="h-3.5 w-3.5 shrink-0 opacity-50" aria-hidden />
+                              )}
+                            </button>
+                          </th>
+                        )
+                      })}
                       <th
                         className={cn(
                           'w-28 px-4 py-2 text-right font-semibold',
@@ -938,7 +1018,7 @@ export default function EmendasPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {filteredRows.map((r) => (
+                    {sortedFilteredRows.map((r) => (
                       <tr
                         key={r.id}
                         className={cn(
