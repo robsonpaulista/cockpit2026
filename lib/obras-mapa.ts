@@ -1,6 +1,12 @@
 export type ObraMapaVisao = 'operacional' | 'comunicacao'
 
-export type ObraMapaTema = 'pavimentacao' | 'quadras-esportivas' | 'maquinario-agricola'
+export type ObraMapaTema =
+  | 'asfalto'
+  | 'paralelepipedo'
+  | 'quadras-esportivas'
+  | 'maquinario-agricola'
+  | 'passagens-cisternas'
+  | 'outros'
 export type ObraMapaTemaFiltro = ObraMapaTema | 'todos'
 
 export interface ObraMapaTemaConfig {
@@ -23,22 +29,31 @@ export const OBRA_MAPA_TEMAS: ObraMapaTemaConfig[] = [
     kpiTipo: 'Todos os temas mapeados',
   },
   {
-    id: 'pavimentacao',
-    label: 'Pavimentação',
-    titulo: 'Mapa de Obras · Pavimentação',
+    id: 'asfalto',
+    label: 'Asfalto',
+    titulo: 'Mapa de Obras · Asfalto',
     descricao:
-      'Municípios com obras de pavimentação e asfalto cadastradas, classificadas por fase com base no status da obra.',
-    kpiEscopo: 'municípios com pavimentação',
-    kpiTipo: 'Pavimentação e asfalto',
+      'Municípios com obras de pavimentação asfáltica (CBUQ, TSD e similares) cadastradas, classificadas por fase com base no status da obra.',
+    kpiEscopo: 'municípios com asfalto',
+    kpiTipo: 'Pavimentação asfáltica',
+  },
+  {
+    id: 'paralelepipedo',
+    label: 'Paralelepípedo',
+    titulo: 'Mapa de Obras · Paralelepípedo',
+    descricao:
+      'Municípios com obras de pavimentação em paralelepípedo cadastradas, classificadas por fase com base no status da obra.',
+    kpiEscopo: 'municípios com paralelepípedo',
+    kpiTipo: 'Pavimentação em paralelepípedo',
   },
   {
     id: 'quadras-esportivas',
     label: 'Quadras e areninhas',
     titulo: 'Mapa de Obras · Quadras e areninhas',
     descricao:
-      'Municípios com obras de quadras esportivas e areninhas cadastradas, classificadas por fase com base no status da obra.',
+      'Municípios com obras de quadras esportivas, areninhas, campos society e reformas de estádio, classificadas por fase com base no status da obra.',
     kpiEscopo: 'municípios com quadras/areninhas',
-    kpiTipo: 'Quadras esportivas e areninhas',
+    kpiTipo: 'Quadras, society e estádios',
   },
   {
     id: 'maquinario-agricola',
@@ -49,9 +64,34 @@ export const OBRA_MAPA_TEMAS: ObraMapaTemaConfig[] = [
     kpiEscopo: 'municípios com maquinário agrícola',
     kpiTipo: 'Trator, escavadeira, arado e afins',
   },
+  {
+    id: 'passagens-cisternas',
+    label: 'Passagens e cisternas',
+    titulo: 'Mapa de Obras · Passagens e cisternas',
+    descricao:
+      'Municípios com passagens molhadas, cisternas e infraestrutura de captação/armazenamento de água.',
+    kpiEscopo: 'municípios com obras de água',
+    kpiTipo: 'Passagens molhadas e cisternas',
+  },
+  {
+    id: 'outros',
+    label: 'Outros',
+    titulo: 'Mapa de Obras · Outros',
+    descricao:
+      'Demais obras da planilha Jadyel (praças, estradas vicinais, cofinanciamentos e outras entregas por município).',
+    kpiEscopo: 'municípios com outras obras',
+    kpiTipo: 'Obras diversas do mandato',
+  },
 ]
 
-export const OBRA_MAPA_TEMAS_OBRA: ObraMapaTema[] = ['pavimentacao', 'quadras-esportivas', 'maquinario-agricola']
+export const OBRA_MAPA_TEMAS_OBRA: ObraMapaTema[] = [
+  'asfalto',
+  'paralelepipedo',
+  'quadras-esportivas',
+  'maquinario-agricola',
+  'passagens-cisternas',
+  'outros',
+]
 
 export function obraMapaTemaConfig(tema: ObraMapaTemaFiltro): ObraMapaTemaConfig {
   return OBRA_MAPA_TEMAS.find((t) => t.id === tema) ?? OBRA_MAPA_TEMAS[1]
@@ -129,11 +169,33 @@ export function normalizeObraText(value: string): string {
     .trim()
 }
 
-export function isObraPavimentacao(obra: Pick<ObraMapaRow, 'tipo' | 'obra'>): boolean {
+const ASFALTO_RE =
+  /asfalt|cbuq|tsd|pmf|paviment|calcamento|recuperacao de estrada|estrada vicinal|restauracao.*estrada/
+
+export function isObraParalelepipedo(obra: Pick<ObraMapaRow, 'tipo' | 'obra'>): boolean {
   const tipo = normalizeObraText(obra.tipo ?? '')
-  if (tipo === 'pavimentacao') return true
+  if (tipo === 'paralelepipedo') return true
+  if (tipo === 'pavimentacao') {
+    return /paralelepipedo/.test(normalizeObraText(obra.obra ?? ''))
+  }
+
   const nome = normalizeObraText(obra.obra ?? '')
-  return /paviment|asfalt/.test(nome)
+  return /paralelepipedo/.test(nome)
+}
+
+export function isObraAsfalto(obra: Pick<ObraMapaRow, 'tipo' | 'obra'>): boolean {
+  if (isObraParalelepipedo(obra)) return false
+
+  const tipo = normalizeObraText(obra.tipo ?? '')
+  if (tipo === 'asfalto') return true
+  if (tipo === 'pavimentacao') return true
+
+  const nome = normalizeObraText(obra.obra ?? '')
+  return ASFALTO_RE.test(nome)
+}
+
+export function isObraPavimentacao(obra: Pick<ObraMapaRow, 'tipo' | 'obra'>): boolean {
+  return isObraAsfalto(obra) || isObraParalelepipedo(obra)
 }
 
 export function isObraQuadrasEsportivas(obra: Pick<ObraMapaRow, 'tipo' | 'obra'>): boolean {
@@ -143,9 +205,25 @@ export function isObraQuadrasEsportivas(obra: Pick<ObraMapaRow, 'tipo' | 'obra'>
   if (/quadra|areninha|esportiv|poliesportiv|campo sintet|ginasio/.test(tipo)) return true
 
   const nome = normalizeObraText(obra.obra ?? '')
-  return /quadra|areninha|esportiv|poliesportiv|campo sintet|ginasio|futebol de areia|beach tennis|campo de areia/.test(
+  return /quadra|areninha|esportiv|poliesportiv|campo sintet|ginasio|futebol de areia|beach tennis|campo de areia|society|estadio|reforma de estadio/.test(
     nome
   )
+}
+
+const PASSAGENS_CISTERNAS_RE =
+  /passagem molhada|passagens molhadas|cisterna|cisternas|sistema de abastecimento de agua|abastecimento de agua/
+
+export function isObraPassagensCisternas(obra: Pick<ObraMapaRow, 'tipo' | 'obra'>): boolean {
+  if (isObraPavimentacao(obra) || isObraQuadrasEsportivas(obra) || isObraMaquinarioAgricola(obra)) {
+    return false
+  }
+
+  const tipo = normalizeObraText(obra.tipo ?? '')
+  if (tipo === 'passagens-cisternas') return true
+  if (PASSAGENS_CISTERNAS_RE.test(tipo)) return true
+
+  const nome = normalizeObraText(obra.obra ?? '')
+  return PASSAGENS_CISTERNAS_RE.test(nome)
 }
 
 const MAQUINARIO_AGRICOLA_RE =
@@ -162,9 +240,23 @@ export function isObraMaquinarioAgricola(obra: Pick<ObraMapaRow, 'tipo' | 'obra'
 }
 
 export function obraCorrespondeTema(obra: Pick<ObraMapaRow, 'tipo' | 'obra'>, tema: ObraMapaTema): boolean {
-  if (tema === 'pavimentacao') return isObraPavimentacao(obra)
+  const tipoSlug = normalizeObraText(obra.tipo ?? '')
+  if (tipoSlug === tema) return true
+  if (tema === 'outros') {
+    return (
+      tipoSlug === 'outros' ||
+      (!isObraAsfalto(obra) &&
+        !isObraParalelepipedo(obra) &&
+        !isObraQuadrasEsportivas(obra) &&
+        !isObraMaquinarioAgricola(obra) &&
+        !isObraPassagensCisternas(obra))
+    )
+  }
+  if (tema === 'asfalto') return isObraAsfalto(obra)
+  if (tema === 'paralelepipedo') return isObraParalelepipedo(obra)
   if (tema === 'quadras-esportivas') return isObraQuadrasEsportivas(obra)
   if (tema === 'maquinario-agricola') return isObraMaquinarioAgricola(obra)
+  if (tema === 'passagens-cisternas') return isObraPassagensCisternas(obra)
   return false
 }
 
@@ -173,7 +265,15 @@ export function filtrarObrasPorTema(obras: ObraMapaRow[], tema: ObraMapaTema): O
 }
 
 export function filtrarObrasPavimentacao(obras: ObraMapaRow[]): ObraMapaRow[] {
-  return filtrarObrasPorTema(obras, 'pavimentacao')
+  return obras.filter((obra) => isObraPavimentacao(obra))
+}
+
+export function filtrarObrasAsfalto(obras: ObraMapaRow[]): ObraMapaRow[] {
+  return filtrarObrasPorTema(obras, 'asfalto')
+}
+
+export function filtrarObrasParalelepipedo(obras: ObraMapaRow[]): ObraMapaRow[] {
+  return filtrarObrasPorTema(obras, 'paralelepipedo')
 }
 
 export function classificarObraFase(status: string | null | undefined): ObraFaseMapa {
@@ -184,7 +284,7 @@ export function classificarObraFase(status: string | null | undefined): ObraFase
   if (/andamento|execu|em curso|o\.?s\.?\s*public|publicada|medicao|medicao|em exec/.test(s)) {
     return 'em_andamento'
   }
-  if (/aguard|a iniciar|planej|licit|orcament|paralis|nao inici|não inici/.test(s)) {
+  if (/aguard|a iniciar|planej|licit|orcament|paralis|nao inici|não inici|em projeto/.test(s)) {
     return 'a_iniciar'
   }
 

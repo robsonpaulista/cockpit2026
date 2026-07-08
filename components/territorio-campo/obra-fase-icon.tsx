@@ -8,7 +8,7 @@ interface ObraFaseIconProps {
   className?: string
 }
 
-export function ObraFaseIcon({ fase, tema = 'pavimentacao', size = 18, className }: ObraFaseIconProps) {
+export function ObraFaseIcon({ fase, tema = 'asfalto', size = 18, className }: ObraFaseIconProps) {
   const props = {
     viewBox: '0 0 24 24',
     width: size,

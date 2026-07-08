@@ -116,7 +116,7 @@ export function MapaObrasDisplayControls({
   const temasLegenda: ObraMapaTema[] =
     temaAtivo === 'todos' ? OBRA_MAPA_TEMAS_OBRA : [temaAtivo]
   const mostrarSelectPav =
-    usarIcone3d && !comunicacaoAtiva && (temaAtivo === 'todos' || temaAtivo === 'pavimentacao')
+    usarIcone3d && !comunicacaoAtiva && (temaAtivo === 'todos' || temaAtivo === 'asfalto')
   const mostrarSelectMaq =
     usarIcone3d && !comunicacaoAtiva && (temaAtivo === 'todos' || temaAtivo === 'maquinario-agricola')
 
@@ -202,7 +202,7 @@ export function MapaObrasDisplayControls({
                 {mostrarSelectPav ? (
                   <label className="flex flex-col gap-1">
                     <span className="text-[10px] font-medium uppercase tracking-wide text-text-secondary">
-                      Ícone 3D · Pavimentação
+                      Ícone 3D · Asfalto
                     </span>
                     <select
                       value={pavimentacao3dVariant}

@@ -33,6 +33,9 @@ type PrioridadeRow = {
 
 type ObrasAgg = { count: number; valorTotal: number }
 
+/** Obras do mandato Jadyel (planilhas → data/obras-jadyel.json), mesma fonte do Mapa de Obras. */
+const IPT_OBRAS_API = '/api/obras/mapa?escopo=lista&periodo=todos'
+
 function agregarObrasPorMunicipio(obras: ObraMapaRow[]): Map<string, ObrasAgg> {
   const map = new Map<string, ObrasAgg>()
   for (const obra of obras) {
@@ -94,7 +97,7 @@ export function useIpt() {
           cache: 'no-store',
         }),
         fetch('/api/pesquisa?limit=5000', { cache: 'no-store' }),
-        fetch('/api/obras', { cache: 'no-store' }),
+        fetch(IPT_OBRAS_API, { cache: 'no-store' }),
         fetch(`/api/campo/visitas-resumo-td?days=${IPT_VISITAS_JANELA_DIAS}`, { cache: 'no-store' }),
         fetch('/api/ipt/insights?mode=overrides', { cache: 'no-store' }),
       ])
@@ -119,7 +122,7 @@ export function useIpt() {
         instavel = true
       }
       const obrasPorMunicipio = obrasRes.ok
-        ? agregarObrasPorMunicipio(obrasJson.obras ?? [])
+        ? agregarObrasPorMunicipio((obrasJson as { obras?: ObraMapaRow[] }).obras ?? [])
         : new Map<string, ObrasAgg>()
 
       const visitasJson = visitasPeriodoRes.ok
@@ -132,7 +135,9 @@ export function useIpt() {
         instavel = true
       }
       const visitasPorMunicipio = visitasPeriodoRes.ok
-        ? mapVisitasNoPeriodo(visitasJson.municipios)
+        ? mapVisitasNoPeriodo(
+            (visitasJson as { municipios?: Array<{ municipio: string; visitas: number }> }).municipios
+          )
         : new Map<string, number>()
 
       const pesquisaJson = pesquisaRes.ok

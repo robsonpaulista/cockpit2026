@@ -93,15 +93,31 @@ function MaquinarioGlyph({ variant, size }: { variant: ObraMaquinario3dVariant; 
   return <TratorGlyph size={size} />
 }
 
+function ParalelepipedoGlyph({ size }: { size: number }) {
+  return (
+    <svg viewBox="0 0 24 24" width={size} height={size} fill="none" aria-hidden>
+      <rect x="3" y="14" width="18" height="7" rx="1" fill="#fff" opacity="0.25" />
+      <rect x="4" y="5" width="4" height="3" rx="0.4" fill="#fff" />
+      <rect x="9" y="5" width="4" height="3" rx="0.4" fill="#fff" />
+      <rect x="14" y="5" width="4" height="3" rx="0.4" fill="#fff" />
+      <rect x="6.5" y="9" width="4" height="3" rx="0.4" fill="#fff" />
+      <rect x="11.5" y="9" width="4" height="3" rx="0.4" fill="#fff" />
+      <rect x="16.5" y="9" width="4" height="3" rx="0.4" fill="#fff" />
+    </svg>
+  )
+}
+
 function previewBackground(tema: ObraMapaTema, usarIcone3d: boolean): string {
   if (!usarIcone3d) return OBRA_TEMA_MARKER_COLOR[tema]
   if (tema === 'quadras-esportivas') return 'linear-gradient(180deg, #22c55e 0%, #15803d 100%)'
   if (tema === 'maquinario-agricola') return 'linear-gradient(180deg, #fbbf24 0%, #b45309 100%)'
+  if (tema === 'passagens-cisternas') return 'linear-gradient(180deg, #22d3ee 0%, #0891b2 100%)'
+  if (tema === 'paralelepipedo') return 'linear-gradient(180deg, #a8a29e 0%, #78716c 100%)'
   return 'linear-gradient(180deg, #ffffff 0%, #f8fafc 100%)'
 }
 
 function previewRing(tema: ObraMapaTema, faseColor: string): string {
-  if (tema === 'pavimentacao') return `0 0 0 1.5px #cbd5e1, 0 0 0 3.5px ${faseColor}`
+  if (tema === 'asfalto') return `0 0 0 1.5px #cbd5e1, 0 0 0 3.5px ${faseColor}`
   if (tema === 'maquinario-agricola') return `0 0 0 2px #fef3c7, 0 0 0 4px ${faseColor}`
   return `0 0 0 2px #fff, 0 0 0 4px ${faseColor}`
 }
@@ -144,6 +160,8 @@ export function ObraTemaMarkerPreview({
           <QuadraGlyph size={Math.round(size * 0.52)} />
         ) : tema === 'maquinario-agricola' ? (
           <MaquinarioGlyph variant={maquinario3dVariant} size={Math.round(size * 0.52)} />
+        ) : tema === 'paralelepipedo' ? (
+          <ParalelepipedoGlyph size={Math.round(size * 0.52)} />
         ) : (
           <PavimentacaoGlyph size={Math.round(size * 0.52)} />
         )}

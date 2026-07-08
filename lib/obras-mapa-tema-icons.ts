@@ -2,15 +2,21 @@ import { OBRA_FASE_COLOR, type ObraFaseMapa, type ObraMapaTema } from '@/lib/obr
 
 /** Cor base do marcador — identifica o TEMA (não a fase). */
 export const OBRA_TEMA_MARKER_COLOR: Record<ObraMapaTema, string> = {
-  pavimentacao: '#ffffff',
+  asfalto: '#ffffff',
+  paralelepipedo: '#78716c',
   'quadras-esportivas': '#15803d',
   'maquinario-agricola': '#b45309',
+  'passagens-cisternas': '#0891b2',
+  outros: '#6366f1',
 }
 
 export const OBRA_TEMA_MARKER_LABEL: Record<ObraMapaTema, string> = {
-  pavimentacao: 'Pavimentação',
+  asfalto: 'Asfalto',
+  paralelepipedo: 'Paralelepípedo',
   'quadras-esportivas': 'Quadras e areninhas',
   'maquinario-agricola': 'Maquinário agrícola',
+  'passagens-cisternas': 'Passagens e cisternas',
+  outros: 'Outros',
 }
 
 /** Variantes 3D para pavimentação (Microsoft Fluent Emoji, MIT). */
@@ -65,9 +71,12 @@ const OBRA_MAQUINARIO_3D_ICON: Record<ObraMaquinario3dVariant, string> = {
 
 /** PNG 3D estático — ver public/icons/obras/ */
 export const OBRA_TEMA_3D_ICON: Record<ObraMapaTema, string> = {
-  pavimentacao: OBRA_PAVIMENTACAO_3D_ICON.motorway,
+  asfalto: OBRA_PAVIMENTACAO_3D_ICON.motorway,
+  paralelepipedo: '/icons/obras/pavimentacao-3d-construction.png',
   'quadras-esportivas': '/icons/obras/quadras-3d.png',
   'maquinario-agricola': OBRA_MAQUINARIO_3D_ICON.trator,
+  'passagens-cisternas': '/icons/obras/pavimentacao-3d-construction.png',
+  outros: '/icons/obras/pavimentacao-3d-construction.png',
 }
 
 export function obraTema3dIconUrl(
@@ -75,7 +84,7 @@ export function obraTema3dIconUrl(
   pavimentacaoVariant: ObraPavimentacao3dVariant = 'oncoming',
   maquinarioVariant: ObraMaquinario3dVariant = 'trator'
 ): string {
-  if (tema === 'pavimentacao') return OBRA_PAVIMENTACAO_3D_ICON[pavimentacaoVariant]
+  if (tema === 'asfalto') return OBRA_PAVIMENTACAO_3D_ICON[pavimentacaoVariant]
   if (tema === 'maquinario-agricola') return OBRA_MAQUINARIO_3D_ICON[maquinarioVariant]
   return OBRA_TEMA_3D_ICON[tema]
 }
@@ -157,6 +166,27 @@ const MAQUINARIO_GLYPH_BY_VARIANT: Record<ObraMaquinario3dVariant, string> = {
   arado: ARADO_GLYPH_SVG,
 }
 
+const PARALELEPIPEDO_GLYPH_SVG = `
+  <rect x="3" y="14" width="18" height="7" rx="1" fill="currentColor" opacity="0.25"/>
+  <rect x="4" y="5" width="4" height="3" rx="0.4" fill="currentColor"/>
+  <rect x="9" y="5" width="4" height="3" rx="0.4" fill="currentColor"/>
+  <rect x="14" y="5" width="4" height="3" rx="0.4" fill="currentColor"/>
+  <rect x="6.5" y="9" width="4" height="3" rx="0.4" fill="currentColor"/>
+  <rect x="11.5" y="9" width="4" height="3" rx="0.4" fill="currentColor"/>
+  <rect x="16.5" y="9" width="4" height="3" rx="0.4" fill="currentColor"/>
+`
+
+const OUTROS_GLYPH_SVG = `
+  <path d="M4 20h16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+  <path d="M6 20V9l6-4 6 4v11" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+  <path d="M10 20v-5h4v5" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+`
+
+const PASSAGENS_CISTERNAS_GLYPH_SVG = `
+  <path d="M12 3.5c-3.2 4.8-5 8.1-5 10.8a5 5 0 0 0 10 0c0-2.7-1.8-6-5-10.8z" stroke="currentColor" stroke-width="2" stroke-linejoin="round" fill="none"/>
+  <path d="M8.5 18.5h7" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+`
+
 /** Ícone branco em traço — legível no mapa. */
 export function obraTemaGlyphSvgHtml(
   tema: ObraMapaTema,
@@ -168,7 +198,13 @@ export function obraTemaGlyphSvgHtml(
       ? QUADRA_GLYPH_SVG
       : tema === 'maquinario-agricola'
         ? MAQUINARIO_GLYPH_BY_VARIANT[maquinarioVariant]
-        : PAVIMENTACAO_GLYPH_SVG
+        : tema === 'passagens-cisternas'
+          ? PASSAGENS_CISTERNAS_GLYPH_SVG
+        : tema === 'paralelepipedo'
+          ? PARALELEPIPEDO_GLYPH_SVG
+        : tema === 'outros'
+          ? OUTROS_GLYPH_SVG
+          : PAVIMENTACAO_GLYPH_SVG
   return `<svg viewBox="0 0 24 24" width="${size}" height="${size}" fill="none" aria-hidden="true">${inner}</svg>`
 }
 

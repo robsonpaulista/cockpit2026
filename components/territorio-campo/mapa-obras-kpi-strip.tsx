@@ -1,6 +1,6 @@
 'use client'
 
-import { CheckCircle2, Clock, HardHat, MapPin, PlayCircle, Tractor, Trophy } from 'lucide-react'
+import { CheckCircle2, Clock, Droplets, Grid2x2, HardHat, Layers, MapPin, PlayCircle, Tractor, Trophy } from 'lucide-react'
 import {
   QuickAccessKpiStrip,
   type QuickAccessKpiCardModel,
@@ -18,7 +18,17 @@ export interface MapaObrasKpiTotais {
 function buildCards(totais: MapaObrasKpiTotais, tema: ObraMapaTemaFiltro): QuickAccessKpiCardModel[] {
   const temaConfig = obraMapaTemaConfig(tema)
   const volumeIcon =
-    tema === 'quadras-esportivas' ? Trophy : tema === 'maquinario-agricola' ? Tractor : HardHat
+    tema === 'quadras-esportivas'
+      ? Trophy
+      : tema === 'maquinario-agricola'
+        ? Tractor
+        : tema === 'passagens-cisternas'
+          ? Droplets
+        : tema === 'paralelepipedo'
+          ? Grid2x2
+        : tema === 'outros'
+          ? Layers
+          : HardHat
   const pctAndamento =
     totais.obras > 0 ? Math.round((totais.emAndamento / totais.obras) * 100) : 0
   const pctFinalizadas =
@@ -121,7 +131,7 @@ function buildCards(totais: MapaObrasKpiTotais, tema: ObraMapaTemaFiltro): Quick
 
 export function MapaObrasKpiStrip({
   totais,
-  tema = 'pavimentacao',
+  tema = 'asfalto',
 }: {
   totais: MapaObrasKpiTotais
   tema?: ObraMapaTemaFiltro

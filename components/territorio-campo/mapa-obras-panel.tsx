@@ -2,8 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import dynamic from 'next/dynamic'
-import { ExternalLink, Loader2, MapPinned, Maximize2, Minimize2, RefreshCw } from 'lucide-react'
-import Link from 'next/link'
+import { Loader2, MapPinned, Maximize2, Minimize2, RefreshCw } from 'lucide-react'
 import {
   OBRA_FASE_LABEL,
   OBRA_MAPA_TEMAS,
@@ -20,6 +19,7 @@ import {
   type ObraMapaVisao,
 } from '@/lib/obras-mapa'
 import { MapaObrasKpiStrip } from '@/components/territorio-campo/mapa-obras-kpi-strip'
+import { MapaObrasListaStatus } from '@/components/territorio-campo/mapa-obras-lista-status'
 import { MapaObrasSplash } from '@/components/territorio-campo/mapa-obras-splash'
 import { MapaObrasDisplayControls } from '@/components/territorio-campo/mapa-obras-display-controls'
 import { ObraFotoUrlField } from '@/components/obras/obra-foto-url-field'
@@ -60,8 +60,11 @@ function formatCurrency(value?: number | null): string {
 const MAPA_OBRAS_TAB_SPLASH_CLASS =
   '-mx-4 -mb-4 flex min-h-[calc(100dvh-11.5rem)] w-[calc(100%+2rem)] flex-col md:-mx-6 md:-mb-6 md:w-[calc(100%+3rem)]'
 
+type MapaObrasVisao = 'mapa' | 'lista'
+
 export function MapaObrasPanel() {
   const mapContainerRef = useRef<HTMLDivElement>(null)
+  const [visaoPainel, setVisaoPainel] = useState<MapaObrasVisao>('mapa')
   const [isNativeFullscreen, setIsNativeFullscreen] = useState(false)
   const [obras, setObras] = useState<ObraMapaRow[]>([])
   const [loading, setLoading] = useState(true)
@@ -84,9 +87,15 @@ export function MapaObrasPanel() {
     setLoading(true)
     setError('')
     try {
-      const res = await fetch('/api/obras', { cache: 'no-store' })
-      const json = (await res.json()) as { obras?: ObraMapaRow[]; error?: string }
-      if (!res.ok) throw new Error(json.error ?? 'Falha ao carregar obras.')
+      const res = await fetch('/api/obras/mapa?escopo=mapa', { cache: 'no-store' })
+      const json = (await res.json()) as { obras?: ObraMapaRow[]; error?: string; retryable?: boolean }
+      if (!res.ok) {
+        if (json.retryable) {
+          setError('Conexão instável com o Supabase. Tente atualizar em instantes.')
+          return
+        }
+        throw new Error(json.error ?? 'Falha ao carregar obras.')
+      }
       setObras(json.obras ?? [])
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Erro ao carregar obras.')
@@ -203,7 +212,7 @@ export function MapaObrasPanel() {
     setAnimacaoEntradaMapa(true)
   }, [])
 
-  if (loading && !splashConcluido) {
+  if (loading && !splashConcluido && visaoPainel === 'mapa') {
     return (
       <div className={cn(MAPA_OBRAS_TAB_SPLASH_CLASS, 'items-center justify-center bg-bg-surface text-sm text-text-muted')}>
         <Loader2 className="mr-2 h-5 w-5 animate-spin" aria-hidden />
@@ -212,7 +221,7 @@ export function MapaObrasPanel() {
     )
   }
 
-  if (exibirSplash) {
+  if (exibirSplash && visaoPainel === 'mapa') {
     return (
       <MapaObrasSplash
         obras={obras}
@@ -286,6 +295,27 @@ export function MapaObrasPanel() {
 
   return (
     <div className="flex flex-col gap-4">
+      <div className="flex flex-wrap items-center gap-2 border-b border-card pb-3">
+        <button
+          type="button"
+          onClick={() => setVisaoPainel('mapa')}
+          className={chromeFilterChipClass(visaoPainel === 'mapa')}
+        >
+          Mapa
+        </button>
+        <button
+          type="button"
+          onClick={() => setVisaoPainel('lista')}
+          className={chromeFilterChipClass(visaoPainel === 'lista')}
+        >
+          Lista e status
+        </button>
+      </div>
+
+      {visaoPainel === 'lista' ? (
+        <MapaObrasListaStatus onStatusSalvo={() => void carregar()} />
+      ) : (
+        <>
       <section>
         <MapaObrasKpiStrip totais={totais} tema={temaAtivo} />
       </section>
@@ -376,10 +406,13 @@ export function MapaObrasPanel() {
                 Nenhuma obra de {temaConfig.label.toLowerCase()} encontrada
                 {filtroMunicipio ? ` em ${filtroMunicipio}` : ''} para este filtro.
               </p>
-              <Link href="/dashboard/obras" className="inline-flex items-center gap-1 text-[rgb(var(--color-primary))] hover:underline">
-                Cadastrar obras
-                <ExternalLink className="h-3.5 w-3.5" aria-hidden />
-              </Link>
+              <button
+                type="button"
+                onClick={() => setVisaoPainel('lista')}
+                className="inline-flex items-center gap-1 text-[rgb(var(--color-primary))] hover:underline"
+              >
+                Informar status na lista de obras
+              </button>
             </div>
           ) : (
             <MapaObrasLeaflet
@@ -432,18 +465,22 @@ export function MapaObrasPanel() {
                   <p className="shrink-0 text-sm tabular-nums text-text-secondary">{formatCurrency(obra.valor_total)}</p>
                 </div>
                 <div className="mt-3">
-                  <ObraFotoUrlField
-                    obraId={obra.id}
-                    initialUrl={obra.imagem_url}
-                    compact
-                    onSaved={(url) => atualizarImagemObra(obra.id, url)}
-                  />
+                  {!obra.id.startsWith('jad-') ? (
+                    <ObraFotoUrlField
+                      obraId={obra.id}
+                      initialUrl={obra.imagem_url}
+                      compact
+                      onSaved={(url) => atualizarImagemObra(obra.id, url)}
+                    />
+                  ) : null}
                 </div>
               </li>
             ))}
           </ul>
         </div>
       ) : null}
+        </>
+      )}
     </div>
   )
 }

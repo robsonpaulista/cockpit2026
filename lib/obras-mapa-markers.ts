@@ -30,7 +30,10 @@ export const OBRA_MARKER_SIZE = {
 function obraMarkerTemaClass(tema: ObraMapaTema): string {
   if (tema === 'quadras-esportivas') return 'obra-marker-wrap--quadras'
   if (tema === 'maquinario-agricola') return 'obra-marker-wrap--maquinario'
-  return 'obra-marker-wrap--pavimentacao'
+  if (tema === 'passagens-cisternas') return 'obra-marker-wrap--passagens'
+  if (tema === 'paralelepipedo') return 'obra-marker-wrap--paralelepipedo'
+  if (tema === 'outros') return 'obra-marker-wrap--outros'
+  return 'obra-marker-wrap--asfalto'
 }
 
 function escapeHtml(value: string): string {
@@ -42,7 +45,7 @@ function escapeHtml(value: string): string {
 }
 
 /** Ícones SVG por fase — pavimentação ou quadras esportivas. */
-export function obraFaseSvgIcon(fase: ObraFaseMapa, tema: ObraMapaTema = 'pavimentacao'): string {
+export function obraFaseSvgIcon(fase: ObraFaseMapa, tema: ObraMapaTema = 'asfalto'): string {
   if (tema === 'quadras-esportivas') {
     switch (fase) {
       case 'em_andamento':
@@ -128,7 +131,7 @@ export function createObraMarkerHtml(options: {
 }): string {
   const {
     fase,
-    tema = 'pavimentacao',
+    tema = 'asfalto',
     selected,
     total,
     animDelayMs = 0,
@@ -176,7 +179,7 @@ export function createObraMarkerHtml(options: {
 export function createObraTooltipHtml(
   m: MunicipioObrasResumo,
   fase: ObraFaseMapa,
-  tema: ObraMapaTema = 'pavimentacao'
+  tema: ObraMapaTema = 'asfalto'
 ): string {
   const temaLabel = OBRA_TEMA_MARKER_LABEL[tema]
   return `<div class="obra-marker-tooltip">
@@ -191,7 +194,7 @@ export function createObraPopupHtml(
   m: MunicipioObrasResumo,
   fase: ObraFaseMapa,
   appearance: ObraMapAppearance,
-  tema: ObraMapaTema = 'pavimentacao'
+  tema: ObraMapaTema = 'asfalto'
 ): string {
   const isDark = appearance === 'dark'
   const text = isDark ? '#f1f5f9' : '#1e293b'
@@ -362,29 +365,46 @@ export function getObraMapLeafletStyles(appearance: ObraMapAppearance): string {
     transform: scale(1.1);
     box-shadow: 0 0 0 3px var(--obra-fase), 0 6px 20px rgba(15,23,42,0.38);
   }
-  .obra-marker-wrap--pavimentacao:hover .obra-marker-disc,
+  .obra-marker-wrap--asfalto:hover .obra-marker-disc,
   .obra-marker-wrap--quadras:hover .obra-marker-disc,
-  .obra-marker-wrap--maquinario:hover .obra-marker-disc {
+  .obra-marker-wrap--maquinario:hover .obra-marker-disc,
+  .obra-marker-wrap--passagens:hover .obra-marker-disc,
+  .obra-marker-wrap--paralelepipedo:hover .obra-marker-disc,
+  .obra-marker-wrap--outros:hover .obra-marker-disc {
     transform: scale(1.12);
     z-index: 50;
   }
-  .obra-marker-wrap--pavimentacao:hover .obra-marker-disc--selected,
+  .obra-marker-wrap--asfalto:hover .obra-marker-disc--selected,
   .obra-marker-wrap--quadras:hover .obra-marker-disc--selected,
-  .obra-marker-wrap--maquinario:hover .obra-marker-disc--selected {
+  .obra-marker-wrap--maquinario:hover .obra-marker-disc--selected,
+  .obra-marker-wrap--passagens:hover .obra-marker-disc--selected,
+  .obra-marker-wrap--paralelepipedo:hover .obra-marker-disc--selected,
+  .obra-marker-wrap--outros:hover .obra-marker-disc--selected {
     transform: scale(1.14);
   }
-  .obra-marker-wrap--pavimentacao .obra-marker-disc {
+  .obra-marker-wrap--asfalto .obra-marker-disc {
     border-color: #cbd5e1;
     box-shadow: 0 0 0 2px var(--obra-fase), 0 4px 14px rgba(15,23,42,0.22);
   }
-  .obra-marker-wrap--pavimentacao .obra-marker-disc--selected {
+  .obra-marker-wrap--asfalto .obra-marker-disc--selected {
     box-shadow: 0 0 0 3px var(--obra-fase), 0 6px 20px rgba(15,23,42,0.3);
   }
-  .obra-marker-wrap--pavimentacao .obra-marker-tail {
+  .obra-marker-wrap--asfalto .obra-marker-tail {
     border-top-color: #94a3b8;
   }
-  .obra-marker-wrap--pavimentacao .obra-marker-tail--photo {
+  .obra-marker-wrap--asfalto .obra-marker-tail--photo {
     border-top-color: #94a3b8;
+  }
+  .obra-marker-wrap--paralelepipedo .obra-marker-disc {
+    border-color: #d6d3d1;
+    box-shadow: 0 0 0 2px var(--obra-fase), 0 4px 14px rgba(68,64,60,0.28);
+  }
+  .obra-marker-wrap--paralelepipedo .obra-marker-disc--selected {
+    box-shadow: 0 0 0 3px var(--obra-fase), 0 6px 20px rgba(68,64,60,0.34);
+  }
+  .obra-marker-wrap--paralelepipedo .obra-marker-tail,
+  .obra-marker-wrap--paralelepipedo .obra-marker-tail--photo {
+    border-top-color: #57534e;
   }
   .obra-marker-wrap--maquinario .obra-marker-disc {
     border-color: #fef3c7;
@@ -396,6 +416,28 @@ export function getObraMapLeafletStyles(appearance: ObraMapAppearance): string {
   .obra-marker-wrap--maquinario .obra-marker-tail,
   .obra-marker-wrap--maquinario .obra-marker-tail--photo {
     border-top-color: #92400e;
+  }
+  .obra-marker-wrap--passagens .obra-marker-disc {
+    border-color: #a5f3fc;
+    box-shadow: 0 0 0 2px var(--obra-fase), 0 4px 14px rgba(8,145,178,0.24);
+  }
+  .obra-marker-wrap--passagens .obra-marker-disc--selected {
+    box-shadow: 0 0 0 3px var(--obra-fase), 0 6px 20px rgba(8,145,178,0.32);
+  }
+  .obra-marker-wrap--passagens .obra-marker-tail,
+  .obra-marker-wrap--passagens .obra-marker-tail--photo {
+    border-top-color: #0e7490;
+  }
+  .obra-marker-wrap--outros .obra-marker-disc {
+    border-color: #c7d2fe;
+    box-shadow: 0 0 0 2px var(--obra-fase), 0 4px 14px rgba(67,56,202,0.24);
+  }
+  .obra-marker-wrap--outros .obra-marker-disc--selected {
+    box-shadow: 0 0 0 3px var(--obra-fase), 0 6px 20px rgba(67,56,202,0.32);
+  }
+  .obra-marker-wrap--outros .obra-marker-tail,
+  .obra-marker-wrap--outros .obra-marker-tail--photo {
+    border-top-color: #4f46e5;
   }
   .obra-marker-glyph {
     display: flex;
