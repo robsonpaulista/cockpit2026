@@ -6,6 +6,8 @@ import 'leaflet/dist/leaflet.css'
 import municipiosPiaui from '@/lib/municipios-piaui.json'
 import type { CidadeIntencaoTopoRow } from '@/lib/pesquisa-tendencia-executive'
 import { APP_FONT_STACK_CSS } from '@/lib/app-font-stack'
+import { scoreCorrespondenciaNomeCandidato } from '@/lib/candidato-nome-correspondencia'
+import { isCandidatoJadyelAlencar } from '@/lib/resumo-operacional-pesquisas'
 
 interface Municipio {
   nome: string
@@ -42,11 +44,9 @@ function buscaPosicaoCandidato(
   lista: ReadonlyArray<{ nome: string; mediaPct: number }>,
   candidato: string | null | undefined,
 ): { posicao: number; mediaPct: number } | null {
-  if (!candidato) return null
-  const alvo = candidato.trim().toLowerCase()
-  if (!alvo) return null
+  if (!candidato?.trim()) return null
   for (let i = 0; i < lista.length; i++) {
-    if (lista[i].nome.trim().toLowerCase() === alvo) {
+    if (scoreCorrespondenciaNomeCandidato(lista[i].nome, candidato) >= 75) {
       return { posicao: i + 1, mediaPct: lista[i].mediaPct }
     }
   }
@@ -467,10 +467,9 @@ export function MapaIntencaoMunicipios({
       })
       marker.bindPopup(popupHTML, { maxWidth: 320 })
       if (primeiroColocado) {
-        const liderEhCandidatoFoco = Boolean(
-          candidatoFoco && normalizeName(primeiroColocado.nome) === normalizeName(candidatoFoco),
-        )
-        const tooltipClassName = liderEhCandidatoFoco
+        // Chip preenchido quando Jadyel lidera — independente do candidato padrão da aba Pesquisas.
+        const liderEhNossoCandidato = isCandidatoJadyelAlencar(primeiroColocado.nome)
+        const tooltipClassName = liderEhNossoCandidato
           ? 'mapa-intencao-leader-tooltip mapa-intencao-leader-tooltip--candidato-padrao'
           : 'mapa-intencao-leader-tooltip'
         marker.bindTooltip(primeiroColocado.nome, {

@@ -6,6 +6,8 @@ import {
   ArrowDown,
   ArrowUp,
   ArrowUpDown,
+  FileSpreadsheet,
+  FileText,
   Loader2,
   MapPin,
   TrendingDown,
@@ -16,6 +18,10 @@ import type {
   ComparativoExpectativa2022Row,
 } from '@/lib/comparativo-expectativa-2022'
 import { loadComparativoAnterior2026Client } from '@/lib/territorio-comparativo-anterior-2026-client'
+import {
+  exportPotencialEleitoralToPdf,
+  exportPotencialEleitoralToXlsx,
+} from '@/lib/potencial-eleitoral-export'
 import {
   buildCidadesComCargoSet,
   type CidadeLiderancasCargoRow,
@@ -179,6 +185,7 @@ export function ComparativoExpectativa2022Barras({
   const [showAll, setShowAll] = useState(false)
   const [sortColumn, setSortColumn] = useState<SortColumn>('expectativa2026')
   const [sortAsc, setSortAsc] = useState(false)
+  const [exportBusy, setExportBusy] = useState<'idle' | 'xlsx' | 'pdf'>('idle')
 
   const toggleSort = (column: SortColumn) => {
     if (sortColumn === column) {
@@ -262,6 +269,36 @@ export function ComparativoExpectativa2022Barras({
     }
   }, [rowsFiltradas])
 
+  const exportOptions = useMemo(
+    () => ({
+      rows: rowsOrdenadas,
+      totais,
+      cenarioLabel,
+      cargoFiltro,
+    }),
+    [rowsOrdenadas, totais, cenarioLabel, cargoFiltro],
+  )
+
+  const handleExportXlsx = () => {
+    if (rowsOrdenadas.length === 0 || exportBusy !== 'idle') return
+    setExportBusy('xlsx')
+    try {
+      exportPotencialEleitoralToXlsx(exportOptions)
+    } finally {
+      setExportBusy('idle')
+    }
+  }
+
+  const handleExportPdf = () => {
+    if (rowsOrdenadas.length === 0 || exportBusy !== 'idle') return
+    setExportBusy('pdf')
+    try {
+      exportPotencialEleitoralToPdf(exportOptions)
+    } finally {
+      setExportBusy('idle')
+    }
+  }
+
   if (loading) {
     return (
       <TerritorioDataPanel {...territorioPanoramaTopRowPanelLayout}>
@@ -297,9 +334,41 @@ export function ComparativoExpectativa2022Barras({
           )
         }
         action={
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center justify-end gap-2">
             {cargoFiltro && onClearCargoFiltro ? (
               <TerritorioTextButton onClick={onClearCargoFiltro}>Limpar filtro</TerritorioTextButton>
+            ) : null}
+            {view === 'tabela' ? (
+              <>
+                <button
+                  type="button"
+                  onClick={handleExportXlsx}
+                  disabled={rowsOrdenadas.length === 0 || exportBusy !== 'idle'}
+                  title="Exportar tabela completa para Excel"
+                  className="inline-flex items-center gap-1 rounded-md border border-[rgb(var(--color-border-secondary)/0.7)] bg-bg-app px-2 py-1 text-[11px] font-medium text-text-primary transition-colors hover:bg-bg-surface disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {exportBusy === 'xlsx' ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
+                  ) : (
+                    <FileSpreadsheet className="h-3.5 w-3.5" aria-hidden />
+                  )}
+                  Excel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleExportPdf}
+                  disabled={rowsOrdenadas.length === 0 || exportBusy !== 'idle'}
+                  title="Exportar tabela completa para PDF"
+                  className="inline-flex items-center gap-1 rounded-md border border-[rgb(var(--color-border-secondary)/0.7)] bg-bg-app px-2 py-1 text-[11px] font-medium text-text-primary transition-colors hover:bg-bg-surface disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {exportBusy === 'pdf' ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
+                  ) : (
+                    <FileText className="h-3.5 w-3.5" aria-hidden />
+                  )}
+                  PDF
+                </button>
+              </>
             ) : null}
             <TerritorioTextButton onClick={() => setView((v) => (v === 'mapa' ? 'tabela' : 'mapa'))}>
               <MapPin className="mr-1 inline h-3.5 w-3.5" aria-hidden />

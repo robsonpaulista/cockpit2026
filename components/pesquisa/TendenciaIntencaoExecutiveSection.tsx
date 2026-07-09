@@ -697,8 +697,10 @@ export function TendenciaIntencaoExecutiveSection({
                 <p className="mb-3 text-[11px] leading-relaxed text-text-muted">
                   Representação geográfica da posição dos candidatos em cada município pesquisado.
                   {candidatoFoco
-                    ? ` Cor e número refletem a posição de ${candidatoFoco} no ranking de cada cidade.`
-                    : ' Selecione um candidato acima para colorir o mapa pela posição competitiva em cada município.'}
+                    ? ` Os marcadores refletem a posição de ${candidatoFoco} no ranking de cada cidade.`
+                    : ' Selecione um candidato padrão em Pesquisas cadastradas para colorir os marcadores pela posição competitiva.'}
+                  {' '}
+                  Chips em azul indicam municípios em que Jadyel Alencar lidera o ranking.
                 </p>
                 <div className={PANORAMA_PANEL_CARD_CLASS}>
                   {cidadesIntencaoTop10.length === 0 ? (
@@ -714,8 +716,17 @@ export function TendenciaIntencaoExecutiveSection({
                           Legenda — posição de {candidatoFoco}
                         </span>
                         <span className="inline-flex items-center gap-1.5">
+                          <span
+                            className="inline-block rounded-full px-1.5 py-0.5 text-[8px] font-bold text-white"
+                            style={{ background: '#2563eb' }}
+                          >
+                            Nome
+                          </span>
+                          Chip azul · Jadyel Alencar em 1º
+                        </span>
+                        <span className="inline-flex items-center gap-1.5">
                           <span className="inline-block h-2.5 w-2.5 rounded-full" style={{ background: '#2563eb' }} />
-                          1º lugar · liderança local
+                          1º lugar · marcador ({candidatoFoco})
                         </span>
                         <span className="inline-flex items-center gap-1.5">
                           <span className="inline-block h-2.5 w-2.5 rounded-full" style={{ background: '#65a30d' }} />
