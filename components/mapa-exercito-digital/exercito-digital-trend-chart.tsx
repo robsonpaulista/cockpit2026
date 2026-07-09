@@ -113,32 +113,25 @@ export function ExercitoDigitalTrendChart({ points, audience }: ExercitoDigitalT
 
   if (points.length === 0) {
     return (
-      <div className={cn(exercitoSectionCardClass, 'border-[rgb(var(--color-primary)/0.12)]')}>
-        <h2 className={exercitoSectionTitleClass}>📊 Tendência de engajamento · por data de publicação</h2>
+      <div className={cn(exercitoSectionCardClass)}>
+        <h2 className={exercitoSectionTitleClass}>Evolução por publicação</h2>
         <p className="mt-4 text-[11px] text-text-muted">Sincronize comentários para ver a tendência por publicação.</p>
       </div>
     )
   }
 
   return (
-    <div
-      className={cn(
-        exercitoSectionCardClass,
-        'border-[rgb(var(--color-primary)/0.15)] bg-gradient-to-b from-[#E6F1FB]/25 to-bg-surface'
-      )}
-    >
-      <div className="mb-2 flex flex-wrap items-start justify-between gap-2">
+    <div className={cn(exercitoSectionCardClass)}>
+      <div className="mb-3 flex flex-wrap items-start justify-between gap-2">
         <div>
-          <h2 className={exercitoSectionTitleClass}>📊 Tendência de engajamento · por data de publicação</h2>
+          <h2 className={exercitoSectionTitleClass}>Evolução por publicação</h2>
           <p className={cn(exercitoSectionSubtitleClass, 'mb-0')}>
-            Histórico de batalhas — % {redeLabel.toLowerCase()} (azul) vs orgânicos (cinza) por post
+            % {redeLabel.toLowerCase()} vs. orgânicos em cada post
           </p>
         </div>
-        <span className="rounded-[99px] border border-[rgb(var(--color-primary)/0.3)] bg-[#E6F1FB] px-2 py-0.5 text-[10px] font-semibold text-[rgb(var(--color-primary))]">
-          {points.length} publicações
-        </span>
+        <span className="text-[10px] font-medium text-text-muted">{points.length} publicações</span>
       </div>
-      <div className="relative h-[160px] w-full rounded-lg border border-[rgb(var(--color-border-tertiary)/0.5)] bg-bg-surface/80 px-1 pt-1">
+      <div className="relative h-[200px] w-full rounded-lg border border-[rgb(var(--color-border-tertiary)/0.5)] bg-bg-app px-1 pt-1">
         <canvas
           ref={canvasRef}
           id="exercito-trend-chart"
@@ -146,14 +139,14 @@ export function ExercitoDigitalTrendChart({ points, audience }: ExercitoDigitalT
           aria-label={`Gráfico de barras empilhadas: percentual de comentários ${redeLabel.toLowerCase()} versus orgânicos por data de publicação`}
         />
       </div>
-      <div className="mt-2.5 flex flex-wrap items-center gap-4 text-[11px] text-text-muted">
+      <div className="mt-2 flex flex-wrap items-center gap-4 text-[10px] text-text-muted">
         <span className="inline-flex items-center gap-1.5">
-          <span className="h-2.5 w-2.5 rounded-[3px] bg-[rgb(var(--color-primary))]" aria-hidden />
-          {redeLabel} — nossa base
+          <span className="h-2 w-2 rounded-[2px] bg-[rgb(var(--color-primary))]" aria-hidden />
+          {redeLabel}
         </span>
         <span className="inline-flex items-center gap-1.5">
-          <span className="h-2.5 w-2.5 rounded-[3px] bg-[#E8E6DF]" aria-hidden />
-          Orgânicos — terreno neutro
+          <span className="h-2 w-2 rounded-[2px] bg-[#E8E6DF]" aria-hidden />
+          Orgânicos
         </span>
       </div>
     </div>

@@ -23,6 +23,7 @@ import {
 import { dispatchInstagramCommentsSynced } from '@/lib/instagram-comments-sync-events'
 import { loadInstagramConfigAsync, saveInstagramConfig, syncInstagramComments } from '@/lib/instagramApi'
 import type { RelatorioMapaDigitalIgTdPayload } from '@/lib/relatorio-mapa-digital-ig-td-types'
+import { getReferenceMonthOptions } from '@/lib/mapa-exercito-digital-gamification'
 import { ghostButtonClass } from '@/lib/premium-ui-classes'
 import { exercitoSectionCardClass } from '@/lib/mapa-exercito-digital-layout'
 import { resumoAmberInfoBoxClass } from '@/lib/resumo-eleicoes-table-styles'
@@ -42,12 +43,20 @@ interface ExercitoDigitalHeaderProps {
   lookbackDays: number
   onLookbackChange: (days: number) => void
   onSyncComplete: () => void
+  variant?: 'default' | 'compact'
+  referenceMonth?: string
+  referenceMonthLabel?: string
+  onReferenceMonthChange?: (value: string) => void
 }
 
 export function ExercitoDigitalHeader({
   lookbackDays,
   onLookbackChange,
   onSyncComplete,
+  variant = 'default',
+  referenceMonth,
+  referenceMonthLabel,
+  onReferenceMonthChange,
 }: ExercitoDigitalHeaderProps) {
   const [cfg, setCfg] = useState<IgCfg | null>(null)
   const [loadingCfg, setLoadingCfg] = useState(true)
@@ -126,100 +135,147 @@ export function ExercitoDigitalHeader({
     }
   }, [carregarPi, exportBusy])
 
+  const monthOptions = getReferenceMonthOptions(12)
+  const isCompact = variant === 'compact'
+
+  const controlsRow = (
+    <div className="flex gap-2 overflow-x-auto pb-0.5 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden md:flex-wrap md:overflow-visible md:pb-0">
+      {isCompact && referenceMonth && onReferenceMonthChange ? (
+        <label className="relative shrink-0">
+          <span className="sr-only">Mês de referência</span>
+          <select
+            value={referenceMonth}
+            onChange={(e) => onReferenceMonthChange(e.target.value)}
+            className="h-8 appearance-none rounded-[10px] border border-[rgb(var(--color-border-secondary)/0.85)] bg-bg-surface py-0 pl-2.5 pr-7 text-[11.5px] font-medium text-text-primary"
+          >
+            {monthOptions.map((opt) => (
+              <option key={opt.value} value={opt.value}>
+                {opt.label}
+              </option>
+            ))}
+          </select>
+          <IconChevronDown
+            className="pointer-events-none absolute right-2 top-1/2 h-3 w-3 -translate-y-1/2 opacity-50"
+            stroke={1.5}
+            aria-hidden
+          />
+        </label>
+      ) : null}
+      <div className="relative shrink-0">
+        <button
+          type="button"
+          onClick={() => setWindowOpen((v) => !v)}
+          className="inline-flex h-8 items-center gap-1.5 rounded-[10px] border border-[rgb(var(--color-border-secondary)/0.85)] bg-bg-surface px-2.5 text-[11.5px] font-medium text-text-primary"
+        >
+          <IconCalendar className="h-3.5 w-3.5 opacity-70" stroke={1.5} aria-hidden />
+          {lookbackDays}d
+          <IconChevronDown className="h-3 w-3 opacity-60" stroke={1.5} aria-hidden />
+        </button>
+        {windowOpen ? (
+          <div className="absolute right-0 top-full z-20 mt-1 min-w-[120px] rounded-lg border border-[rgb(var(--color-border-tertiary)/0.85)] bg-bg-surface py-1 shadow-sm">
+            {LOOKBACK_OPTIONS.map((days) => (
+              <button
+                key={days}
+                type="button"
+                onClick={() => {
+                  onLookbackChange(days)
+                  setWindowOpen(false)
+                }}
+                className={cn(
+                  'block w-full px-3 py-1.5 text-left text-[11.5px] transition-colors hover:bg-bg-app',
+                  days === lookbackDays ? cn('font-medium', exercitoAmberIconClass) : 'text-text-secondary'
+                )}
+              >
+                {days} dias
+              </button>
+            ))}
+          </div>
+        ) : null}
+      </div>
+      <button
+        type="button"
+        disabled={exportBusy !== 'idle'}
+        onClick={() => void exportXls()}
+        className={cn(ghostButtonClass, 'h-8 shrink-0 px-2.5 py-0 text-[11.5px] disabled:opacity-50')}
+      >
+        {exportBusy === 'xlsx' ? (
+          <Loader2 className="h-3.5 w-3.5 animate-spin opacity-70" aria-hidden />
+        ) : (
+          <IconTableExport className="h-3.5 w-3.5 opacity-70" stroke={1.5} aria-hidden />
+        )}
+        XLS
+      </button>
+      <button
+        type="button"
+        disabled={exportBusy !== 'idle'}
+        onClick={() => void exportPdf()}
+        className={cn(ghostButtonClass, 'h-8 shrink-0 px-2.5 py-0 text-[11.5px] disabled:opacity-50')}
+      >
+        {exportBusy === 'pdf' ? (
+          <Loader2 className="h-3.5 w-3.5 animate-spin opacity-70" aria-hidden />
+        ) : (
+          <IconFileTypePdf className="h-3.5 w-3.5 opacity-70" stroke={1.5} aria-hidden />
+        )}
+        PDF
+      </button>
+      <button
+        type="button"
+        onClick={() => setShowConfig(true)}
+        className={cn(ghostButtonClass, 'h-8 shrink-0 px-2.5 py-0 text-[11.5px]')}
+      >
+        <IconKey className="h-3.5 w-3.5 opacity-70" stroke={1.5} aria-hidden />
+        <span className="max-md:sr-only">Credenciais</span>
+      </button>
+      <button
+        type="button"
+        disabled={syncing || loadingCfg}
+        onClick={() => void handleSync()}
+        className={cn(exercitoAmberPrimaryButtonClass, 'h-8 shrink-0 px-3 py-0 text-[11.5px] disabled:opacity-50')}
+      >
+        {syncing ? (
+          <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
+        ) : (
+          <IconRefresh className="h-3.5 w-3.5" stroke={1.5} aria-hidden />
+        )}
+        Sincronizar
+      </button>
+    </div>
+  )
+
   return (
     <>
       <div className={cn(exercitoSectionCardClass, 'px-3 py-3 md:px-4')}>
-        <div className="flex flex-col gap-3">
-          <div className="flex min-w-0 items-start gap-2.5">
-            <IconMilitaryRank
-              className={cn('mt-0.5 h-[18px] w-[18px] shrink-0', exercitoAmberIconClass)}
-              stroke={1.5}
-              aria-hidden
-            />
-            <div className="min-w-0">
-              <h1 className="text-sm font-medium text-text-primary">Mobilização digital · Exército</h1>
-              <p className="mt-0.5 text-[11.5px] leading-relaxed text-text-muted">
-                Base eleitoral unificada: rede de liderados e mandatários nas postagens do Instagram
-              </p>
-            </div>
-          </div>
-          <div className="flex gap-2 overflow-x-auto pb-0.5 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden md:flex-wrap md:overflow-visible md:pb-0">
-            <div className="relative shrink-0">
-              <button
-                type="button"
-                onClick={() => setWindowOpen((v) => !v)}
-                className="inline-flex items-center gap-1.5 rounded-[99px] border border-[rgb(var(--color-border-secondary)/0.85)] bg-bg-surface px-3 py-1.5 text-[11.5px] font-medium text-text-primary"
-              >
-                <IconCalendar className="h-3.5 w-3.5 opacity-70" stroke={1.5} aria-hidden />
-                {lookbackDays} dias
-                <IconChevronDown className="h-3 w-3 opacity-60" stroke={1.5} aria-hidden />
-              </button>
-              {windowOpen ? (
-                <div className="absolute right-0 top-full z-20 mt-1 min-w-[120px] rounded-lg border border-[rgb(var(--color-border-tertiary)/0.85)] bg-bg-surface py-1">
-                  {LOOKBACK_OPTIONS.map((days) => (
-                    <button
-                      key={days}
-                      type="button"
-                      onClick={() => {
-                        onLookbackChange(days)
-                        setWindowOpen(false)
-                      }}
-                      className={cn(
-                        'block w-full px-3 py-1.5 text-left text-[11.5px] transition-colors hover:bg-bg-app',
-                        days === lookbackDays ? cn('font-medium', exercitoAmberIconClass) : 'text-text-secondary'
-                      )}
-                    >
-                      {days} dias
-                    </button>
-                  ))}
-                </div>
+        {isCompact ? (
+          <div className="flex flex-col gap-2.5 md:flex-row md:items-center md:justify-between">
+            <p className="min-w-0 text-[11.5px] leading-relaxed text-text-muted">
+              Comentários da base eleitoral nas publicações do deputado
+              {referenceMonthLabel ? (
+                <>
+                  {' '}
+                  · mês <span className="font-medium text-text-secondary">{referenceMonthLabel}</span>
+                </>
               ) : null}
-            </div>
-            <button
-              type="button"
-              disabled={exportBusy !== 'idle'}
-              onClick={() => void exportXls()}
-              className={cn(ghostButtonClass, 'shrink-0 disabled:opacity-50')}
-            >
-              {exportBusy === 'xlsx' ? (
-                <Loader2 className="h-3.5 w-3.5 animate-spin opacity-70" aria-hidden />
-              ) : (
-                <IconTableExport className="h-3.5 w-3.5 opacity-70" stroke={1.5} aria-hidden />
-              )}
-              XLS
-            </button>
-            <button
-              type="button"
-              disabled={exportBusy !== 'idle'}
-              onClick={() => void exportPdf()}
-              className={cn(ghostButtonClass, 'shrink-0 disabled:opacity-50')}
-            >
-              {exportBusy === 'pdf' ? (
-                <Loader2 className="h-3.5 w-3.5 animate-spin opacity-70" aria-hidden />
-              ) : (
-                <IconFileTypePdf className="h-3.5 w-3.5 opacity-70" stroke={1.5} aria-hidden />
-              )}
-              PDF
-            </button>
-            <button type="button" onClick={() => setShowConfig(true)} className={cn(ghostButtonClass, 'shrink-0')}>
-              <IconKey className="h-3.5 w-3.5 opacity-70" stroke={1.5} aria-hidden />
-              Credenciais
-            </button>
-            <button
-              type="button"
-              disabled={syncing || loadingCfg}
-              onClick={() => void handleSync()}
-              className={cn(exercitoAmberPrimaryButtonClass, 'shrink-0 disabled:opacity-50')}
-            >
-              {syncing ? (
-                <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
-              ) : (
-                <IconRefresh className="h-3.5 w-3.5" stroke={1.5} aria-hidden />
-              )}
-              Sincronizar
-            </button>
+            </p>
+            {controlsRow}
           </div>
-        </div>
+        ) : (
+          <div className="flex flex-col gap-3">
+            <div className="flex min-w-0 items-start gap-2.5">
+              <IconMilitaryRank
+                className={cn('mt-0.5 h-[18px] w-[18px] shrink-0', exercitoAmberIconClass)}
+                stroke={1.5}
+                aria-hidden
+              />
+              <div className="min-w-0">
+                <h1 className="text-sm font-medium text-text-primary">Mobilização digital · Exército</h1>
+                <p className="mt-0.5 text-[11.5px] leading-relaxed text-text-muted">
+                  Base eleitoral unificada: rede de liderados e mandatários nas postagens do Instagram
+                </p>
+              </div>
+            </div>
+            {controlsRow}
+          </div>
+        )}
       </div>
       {showConfig ? (
         <InstagramConfigModal

@@ -8,13 +8,8 @@ import {
   formatPct,
   leaderTabCounts,
 } from '@/lib/mapa-exercito-digital-aggregator'
-import {
-  leaderDisputeScore,
-  leaderScoreMax,
-  PERIOD_BAR_LABELS,
-  PODIUM_STYLES,
-} from '@/lib/mapa-exercito-digital-gamification'
-import type { ExercitoDigitalLeaderRow, LeaderFilterTab, LeaderStatusDot } from '@/lib/mapa-exercito-digital-types'
+import { PERIOD_BAR_LABELS } from '@/lib/mapa-exercito-digital-gamification'
+import type { ExercitoDigitalAccumulatedLeaderRow, ExercitoDigitalLeaderRow, LeaderFilterTab, LeaderStatusDot } from '@/lib/mapa-exercito-digital-types'
 import type { ExercitoDigitalAudience } from '@/lib/mandatos-instagram-piaui'
 import type { LideradoIgEngajamentoLinha } from '@/lib/mobilizacao-lideres-desempenho-ig-por-td-client'
 import {
@@ -77,14 +72,8 @@ function profileColumnLabel(audience: ExercitoDigitalAudience): string {
 }
 
 const GRID = 'grid grid-cols-[28px_minmax(0,1fr)_48px_72px] items-center gap-2'
+const ACCUM_GRID = 'grid grid-cols-[22px_minmax(0,1fr)_36px] items-center gap-1.5'
 const MONTH_LABELS = PERIOD_BAR_LABELS
-
-const dotColor: Record<LeaderStatusDot, string> = {
-  green: '#639922',
-  amber: '#BA7517',
-  red: '#E24B4A',
-  gray: '#B4B2A9',
-}
 
 const blueRamp = ['#E6F1FB', '#B5D4F4', '#85B7EB', '#378ADD', '#185FA5']
 const amberRamp = ['#FAEEDA', '#FAC775', '#EF9F27', '#BA7517', '#854F0B']
@@ -119,6 +108,8 @@ function barRamp(status: LeaderStatusDot, trend: ExercitoDigitalLeaderRow['trend
 
 interface ExercitoDigitalLeaderRankingProps {
   leaders: ExercitoDigitalLeaderRow[]
+  accumulatedLeaders: ExercitoDigitalAccumulatedLeaderRow[]
+  accumulatedWindowDays: number
   audience: ExercitoDigitalAudience
   referenceMonthLabel: string
 }
@@ -175,11 +166,18 @@ function PeriodBars({
   )
 }
 
-export function ExercitoDigitalLeaderRanking({ leaders, audience, referenceMonthLabel }: ExercitoDigitalLeaderRankingProps) {
+export function ExercitoDigitalLeaderRanking({
+  leaders,
+  accumulatedLeaders,
+  accumulatedWindowDays,
+  audience,
+  referenceMonthLabel,
+}: ExercitoDigitalLeaderRankingProps) {
   const [tab, setTab] = useState<LeaderFilterTab>('todos')
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const counts = useMemo(() => leaderTabCounts(leaders), [leaders])
   const filtered = useMemo(() => filterLeadersByTab(leaders, tab), [leaders, tab])
+  const accumulatedTop = useMemo(() => accumulatedLeaders.slice(0, 20), [accumulatedLeaders])
 
   const toggleRow = useCallback((id: string) => {
     setExpandedId((prev) => (prev === id ? null : id))
@@ -195,75 +193,48 @@ export function ExercitoDigitalLeaderRanking({ leaders, audience, referenceMonth
   const entityLabel =
     audience === 'unificado' ? 'perfil' : audience === 'mandatos' ? 'mandatário' : 'líder'
 
-  const scoreMax = useMemo(() => leaderScoreMax(filtered), [filtered])
-  const podium = filtered.slice(0, 3)
-  const listRows = filtered.slice(0, 12)
+  const listRows = filtered.slice(0, 20)
 
   return (
-    <div className={cn(exercitoSectionCardClass, exercitoDualPanelItemClass, 'border-[#C8900A]/20')}>
-      <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+    <div className={cn(exercitoSectionCardClass, exercitoDualPanelItemClass)}>
+      <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h2 className={exercitoSectionTitleClass}>⚔️ Disputa de líderes</h2>
+          <h2 className={exercitoSectionTitleClass}>Ranking de líderes</h2>
           <p className={exercitoSectionSubtitleClass}>
-            Ranking por total de comentários em {referenceMonthLabel} · clique para expandir detalhes
+            Comentários em {referenceMonthLabel} · clique na linha para ver liderados
           </p>
         </div>
-        <span className="rounded-[99px] border border-[#C8900A]/45 bg-[#FAEEDA] px-2 py-0.5 text-[10px] font-semibold text-[#854F0B]">
-          top {Math.min(12, filtered.length)}
-        </span>
+        <div className="flex flex-wrap gap-1">
+          {tabs.map((t) => (
+            <button
+              key={t.id}
+              type="button"
+              onClick={() => setTab(t.id)}
+              className={cn(
+                'rounded-[99px] border px-2.5 py-0.5 text-[11px] transition-colors',
+                tab === t.id
+                  ? 'border-[#C8900A]/50 bg-[#FAEEDA] font-medium text-[#854F0B]'
+                  : 'border-[rgb(var(--color-border-secondary)/0.85)] text-text-secondary hover:bg-bg-app'
+              )}
+            >
+              {t.label}
+            </button>
+          ))}
+        </div>
       </div>
 
-      <div className="mb-3 flex flex-wrap gap-1.5">
-        {tabs.map((t) => (
-          <button
-            key={t.id}
-            type="button"
-            onClick={() => setTab(t.id)}
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-start">
+        <div className="min-w-0 flex-1">
+          <h3 className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-text-muted">
+            Mês atual · {referenceMonthLabel}
+          </h3>
+
+          <div
             className={cn(
-              'rounded-[99px] border px-3 py-1 text-[11.5px] transition-colors',
-              tab === t.id
-                ? 'border-[#C8900A]/60 bg-[#FAEEDA] font-semibold text-[#854F0B]'
-                : 'border-[rgb(var(--color-border-secondary)/0.85)] text-text-secondary hover:bg-bg-app'
+              GRID,
+              'border-b border-[rgb(var(--color-border-tertiary)/0.85)] pb-1.5 text-[10px] font-semibold uppercase tracking-[0.04em] text-text-muted'
             )}
           >
-            {t.label}
-          </button>
-        ))}
-      </div>
-
-      {podium.length > 0 ? (
-        <div className="mb-3 grid grid-cols-3 gap-2">
-          {podium.map((leader, idx) => {
-            const style = PODIUM_STYLES[idx]!
-            const score = leaderDisputeScore(leader)
-            const firstName = leader.nome.split(' ')[0] ?? leader.nome
-            return (
-              <div
-                key={leader.id}
-                className={cn(
-                  'rounded-[10px] px-2 py-2 text-center',
-                  style.bg,
-                  style.ring
-                )}
-              >
-                <span className="text-lg leading-none" aria-hidden>
-                  {style.medal}
-                </span>
-                <p className="mt-0.5 truncate text-[10px] font-bold text-text-primary" title={leader.nome}>
-                  {firstName}
-                </p>
-                <p className="text-[18px] font-bold tabular-nums text-[rgb(var(--color-primary))]">{score}</p>
-                <p className="text-[9px] text-text-muted">com. · {referenceMonthLabel}</p>
-                <span className={cn('mt-1 inline-flex text-[9px] font-medium', trendBadgeClass(leader.trendKind))}>
-                  {leader.trendLabel}
-                </span>
-              </div>
-            )
-          })}
-        </div>
-      ) : null}
-
-      <div className={cn(GRID, 'border-b border-[rgb(var(--color-border-tertiary)/0.85)] pb-1.5 text-[10px] font-semibold uppercase tracking-[0.04em] text-text-muted')}>
         <span className="text-center">#</span>
         <span>{profileColumnLabel(audience)}</span>
         <span className="text-right" title={`Comentários da rede no mês de referência (${referenceMonthLabel})`}>
@@ -284,8 +255,7 @@ export function ExercitoDigitalLeaderRanking({ leaders, audience, referenceMonth
             const mandato = isMandatoRow(leader, audience)
             const liderRede = isLiderRow(leader, audience)
             const lideradosLinhas = liderRede ? buildLideradosLinhas(leader) : []
-            const score = leaderDisputeScore(leader)
-            const barPct = scoreMax > 0 ? (score / scoreMax) * 100 : 0
+            const score = leader.mesAtual
 
             return (
               <Fragment key={leader.id}>
@@ -322,15 +292,9 @@ export function ExercitoDigitalLeaderRanking({ leaders, audience, referenceMonth
                           </span>
                         ) : null}
                       </div>
-                      <div className="mt-1 h-1.5 w-full overflow-hidden rounded-[99px] bg-bg-app">
-                        <div
-                          className="h-full rounded-[99px] bg-[rgb(var(--color-primary))] transition-all"
-                          style={{ width: `${barPct}%` }}
-                        />
-                      </div>
                       <p className="mt-0.5 text-[10px] text-text-muted">
-                        {formatInt(score)} coment. em {referenceMonthLabel} · {formatInt(leader.publicacoes)}/
-                        {formatInt(leader.postsNoPeriodo)} posts ({formatPct(leader.ativacaoPct)} ativ.)
+                        {formatInt(leader.publicacoes)}/{formatInt(leader.postsNoPeriodo)} posts ·{' '}
+                        {formatPct(leader.ativacaoPct)} ativ.
                       </p>
                     </div>
                     <span className="text-right text-[14px] font-bold tabular-nums text-[rgb(var(--color-primary))]">
@@ -497,22 +461,68 @@ export function ExercitoDigitalLeaderRanking({ leaders, audience, referenceMonth
         )}
       </div>
 
-      <div className="mt-auto shrink-0 flex flex-wrap items-center justify-between gap-3 border-t border-[rgb(var(--color-border-tertiary)/0.85)] pt-2.5 text-[11px] text-text-muted">
-        <div className="flex flex-wrap items-center gap-3">
-          <span className="inline-flex items-center gap-1.5">
-            <span className="text-sm" aria-hidden>🥇</span>
-            Pódio = mês de referência
-          </span>
-          <span className="inline-flex items-center gap-1.5">
-            <span className="h-2 w-2 rounded-full bg-[#639922]" aria-hidden />
-            Subindo
-          </span>
-          <span className="inline-flex items-center gap-1.5">
-            <span className="h-2 w-2 rounded-full bg-[#E24B4A]" aria-hidden />
-            Em queda
-          </span>
+      <p className="mt-2 text-[10px] text-text-muted">
+        {filtered.length} {entityLabel}s no filtro · tendência vs. mês anterior
+      </p>
         </div>
-        <span>Clique na linha para detalhes · {referenceMonthLabel}</span>
+
+        <aside className="w-full shrink-0 rounded-[10px] border border-[rgb(var(--color-border-tertiary)/0.85)] bg-bg-app p-3 lg:w-[min(100%,280px)] lg:max-w-[280px]">
+          <div className="mb-2.5 border-b border-[rgb(var(--color-border-tertiary)/0.55)] pb-2">
+            <h3 className="text-[11px] font-semibold uppercase tracking-wide text-[#854F0B]">Acumulado</h3>
+            <p className="mt-0.5 text-[10px] text-text-muted">Últimos {accumulatedWindowDays} dias</p>
+          </div>
+
+          <div
+            className={cn(
+              ACCUM_GRID,
+              'border-b border-[rgb(var(--color-border-tertiary)/0.55)] pb-1 text-[9px] font-semibold uppercase tracking-[0.04em] text-text-muted'
+            )}
+          >
+            <span className="text-center">#</span>
+            <span>Perfil</span>
+            <span className="text-right">Com.</span>
+          </div>
+
+          <div className="max-h-[min(60vh,520px)] overflow-y-auto">
+            {accumulatedTop.length === 0 ? (
+              <p className="py-6 text-center text-[11px] text-text-muted">Sem dados no período.</p>
+            ) : (
+              accumulatedTop.map((leader, idx) => {
+                const isLast = idx === accumulatedTop.length - 1
+                return (
+                  <div
+                    key={leader.id}
+                    className={cn(
+                      'py-1.5',
+                      !isLast && 'border-b border-[rgb(var(--color-border-tertiary)/0.45)]'
+                    )}
+                  >
+                    <div className={ACCUM_GRID}>
+                      <span
+                        className={cn(
+                          'text-center text-[11px] font-bold tabular-nums',
+                          leader.rank <= 3 ? 'text-[#854F0B]' : 'text-text-muted'
+                        )}
+                      >
+                        {leader.rank}
+                      </span>
+                      <p className="truncate text-[11px] font-medium text-text-primary" title={leader.nome}>
+                        {leader.nome}
+                      </p>
+                      <span className="text-right text-[12px] font-semibold tabular-nums text-[#854F0B]">
+                        {formatInt(leader.comentarios)}
+                      </span>
+                    </div>
+                  </div>
+                )
+              })
+            )}
+          </div>
+
+          <p className="mt-2 border-t border-[rgb(var(--color-border-tertiary)/0.55)] pt-2 text-[9px] text-text-muted">
+            Top {Math.min(20, accumulatedLeaders.length)} no período
+          </p>
+        </aside>
       </div>
     </div>
   )

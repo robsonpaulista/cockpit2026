@@ -88,15 +88,26 @@ export type ExercitoDigitalKpis = {
   publicacoesAnalisadas: number
 }
 
+export type ExercitoDigitalAccumulatedLeaderRow = {
+  id: string
+  rank: number
+  nome: string
+  tipo: LeaderBaseTipo
+  comentarios: number
+}
+
 export type ExercitoDigitalViewModel = {
   audience: ExercitoDigitalAudience
   lookbackDays: number
   /** Mês de referência do placar (YYYY-MM). */
   referenceMonth: string
   referenceMonthLabel: string
+  /** Janela do ranking acumulado (90, 60 ou dias disponíveis na base). */
+  accumulatedWindowDays: number
   kpis: ExercitoDigitalKpis
   alertPosts: ExercitoDigitalAlertPost[]
   leaders: ExercitoDigitalLeaderRow[]
+  accumulatedLeaders: ExercitoDigitalAccumulatedLeaderRow[]
   cities: ExercitoDigitalCityRow[]
   trend: ExercitoDigitalTrendPoint[]
   organicTail: { comentarios: number; perfis: number }

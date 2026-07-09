@@ -1,16 +1,12 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { Loader2 } from 'lucide-react'
+import { BarChart3, Loader2, MapPin, Users } from 'lucide-react'
 import { ExercitoDigitalCityPanel } from '@/components/mapa-exercito-digital/exercito-digital-city-panel'
-import { ExercitoDigitalBanner, ExercitoDigitalHeader } from '@/components/mapa-exercito-digital/exercito-digital-chrome'
-import { ExercitoDigitalKpiStrip } from '@/components/mapa-exercito-digital/exercito-digital-kpi-strip'
+import { ExercitoDigitalHeader } from '@/components/mapa-exercito-digital/exercito-digital-chrome'
 import { ExercitoDigitalLeaderRanking } from '@/components/mapa-exercito-digital/exercito-digital-leader-ranking'
 import { ExercitoDigitalTrendChart } from '@/components/mapa-exercito-digital/exercito-digital-trend-chart'
-import {
-  ExercitoDigitalCorrelationBar,
-  ExercitoDigitalScoreboardHeader,
-} from '@/components/mapa-exercito-digital/exercito-digital-scoreboard-header'
+import { LideresEngajamentoKpis } from '@/components/monitoramento/lideres-engajamento-kpis'
 import { buildLeaderCityCorrelation } from '@/lib/mapa-exercito-digital-gamification'
 import { getCurrentReferenceMonth } from '@/lib/mapa-exercito-digital-month'
 import { fetchInstagramCommentsGrouped } from '@/lib/instagramApi'
@@ -21,23 +17,32 @@ import {
   mergeLeadersAcrossTds,
 } from '@/lib/mapa-exercito-digital-aggregator'
 import type { ExercitoDigitalViewModel } from '@/lib/mapa-exercito-digital-types'
-import { exercitoDualPanelGridClass, exercitoPageStackClass } from '@/lib/mapa-exercito-digital-layout'
+import { exercitoPageStackClass } from '@/lib/mapa-exercito-digital-layout'
 import { fetchMobilizacaoLideresDesempenhoIgPorTd } from '@/lib/mobilizacao-lideres-desempenho-ig-por-td-client'
 import {
   fetchMobilizacaoLideresInstagramPorTd,
   type LiderInstagramCoberturaDto,
 } from '@/lib/mobilizacao-lideres-instagram-cobertura-client'
+import { pillFilterActiveClass, pillFilterIdleClass } from '@/lib/premium-ui-classes'
 import { TERRITORIOS_DESENVOLVIMENTO_PI } from '@/lib/piaui-territorio-desenvolvimento'
 import type { RelatorioMapaDigitalIgTdPayload } from '@/lib/relatorio-mapa-digital-ig-td-types'
 import { cn } from '@/lib/utils'
 
 type LoadState = 'loading' | 'ready' | 'error' | 'forbidden'
+type SectionTab = 'lideres' | 'municipios' | 'evolucao'
 
 const RELATORIO_URL = '/api/mobilizacao/relatorio-check-mapa-digital-ig?escopo=pi'
+
+const SECTION_TABS: { id: SectionTab; label: string; icon: typeof Users }[] = [
+  { id: 'lideres', label: 'Ranking', icon: Users },
+  { id: 'municipios', label: 'Municípios', icon: MapPin },
+  { id: 'evolucao', label: 'Evolução', icon: BarChart3 },
+]
 
 export function LideresEngajamentoPanel() {
   const [lookbackDays, setLookbackDays] = useState<number>(15)
   const [referenceMonth, setReferenceMonth] = useState<string>(() => getCurrentReferenceMonth())
+  const [sectionTab, setSectionTab] = useState<SectionTab>('lideres')
   const [loadState, setLoadState] = useState<LoadState>('loading')
   const [error, setError] = useState<string>('')
   const [rawPosts, setRawPosts] = useState<Awaited<ReturnType<typeof fetchInstagramCommentsGrouped>>>(null)
@@ -122,11 +127,14 @@ export function LideresEngajamentoPanel() {
   return (
     <div className={cn(exercitoPageStackClass, 'min-h-0 flex-1 text-text-primary')}>
       <ExercitoDigitalHeader
+        variant="compact"
         lookbackDays={lookbackDays}
         onLookbackChange={setLookbackDays}
         onSyncComplete={carregar}
+        referenceMonth={referenceMonth}
+        referenceMonthLabel={viewModel?.referenceMonthLabel}
+        onReferenceMonthChange={setReferenceMonth}
       />
-      <ExercitoDigitalBanner />
 
       {loadState === 'loading' ? (
         <div className="flex flex-1 items-center justify-center py-16">
@@ -158,22 +166,50 @@ export function LideresEngajamentoPanel() {
 
       {viewModel ? (
         <>
-          <ExercitoDigitalScoreboardHeader
-            referenceMonth={viewModel.referenceMonth}
-            referenceMonthLabel={viewModel.referenceMonthLabel}
-            onReferenceMonthChange={setReferenceMonth}
-          />
-          <ExercitoDigitalKpiStrip
+          <LideresEngajamentoKpis
             kpis={viewModel.kpis}
             audience={viewModel.audience}
             referenceMonthLabel={viewModel.referenceMonthLabel}
           />
-          <div className={exercitoDualPanelGridClass}>
+
+          {correlationNote ? (
+            <p className="px-0.5 text-[11px] leading-relaxed text-text-muted">
+              <span className="font-medium text-text-secondary">Destaque:</span> {correlationNote}
+            </p>
+          ) : null}
+
+          <div className="flex flex-wrap gap-1.5">
+            {SECTION_TABS.map((tab) => {
+              const Icon = tab.icon
+              const active = sectionTab === tab.id
+              return (
+                <button
+                  key={tab.id}
+                  type="button"
+                  onClick={() => setSectionTab(tab.id)}
+                  className={cn(
+                    active ? pillFilterActiveClass : pillFilterIdleClass,
+                    'text-[12px]'
+                  )}
+                >
+                  <Icon className="h-3.5 w-3.5" aria-hidden />
+                  {tab.label}
+                </button>
+              )
+            })}
+          </div>
+
+          {sectionTab === 'lideres' ? (
             <ExercitoDigitalLeaderRanking
               leaders={viewModel.leaders}
+              accumulatedLeaders={viewModel.accumulatedLeaders}
+              accumulatedWindowDays={viewModel.accumulatedWindowDays}
               audience={viewModel.audience}
               referenceMonthLabel={viewModel.referenceMonthLabel}
             />
+          ) : null}
+
+          {sectionTab === 'municipios' ? (
             <ExercitoDigitalCityPanel
               cities={viewModel.cities}
               organicTail={viewModel.organicTail}
@@ -181,9 +217,11 @@ export function LideresEngajamentoPanel() {
               referenceMonth={viewModel.referenceMonth}
               referenceMonthLabel={viewModel.referenceMonthLabel}
             />
-          </div>
-          <ExercitoDigitalCorrelationBar note={correlationNote} />
-          <ExercitoDigitalTrendChart points={viewModel.trend} audience={viewModel.audience} />
+          ) : null}
+
+          {sectionTab === 'evolucao' ? (
+            <ExercitoDigitalTrendChart points={viewModel.trend} audience={viewModel.audience} />
+          ) : null}
         </>
       ) : null}
     </div>

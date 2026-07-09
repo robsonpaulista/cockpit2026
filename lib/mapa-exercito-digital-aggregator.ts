@@ -15,6 +15,7 @@ import {
 import type { RelatorioMapaDigitalIgTdPayload } from '@/lib/relatorio-mapa-digital-ig-td-types'
 import type {
   AlertPostStatus,
+  ExercitoDigitalAccumulatedLeaderRow,
   ExercitoDigitalAlertPost,
   ExercitoDigitalCityRow,
   ExercitoDigitalKpis,
@@ -340,6 +341,98 @@ function countCommentsForHandlesInMonth(
     }
   }
   return count
+}
+
+/** Dias entre o comentário mais antigo e hoje (mín. 1 se houver dados). */
+export function computeCommentDataSpanDays(
+  posts: InstagramPostWithComments[],
+  now = Date.now()
+): number {
+  let oldest = now
+  let hasData = false
+  for (const post of posts) {
+    for (const c of post.comments) {
+      const t = timestampComment(c)
+      if (t > 0) {
+        hasData = true
+        oldest = Math.min(oldest, t)
+      }
+    }
+  }
+  if (!hasData) return 0
+  const msPerDay = 24 * 60 * 60 * 1000
+  return Math.max(1, Math.ceil((now - oldest) / msPerDay))
+}
+
+/** 90 dias se a base cobrir; senão 60; senão o que houver. */
+export function resolveAccumulatedWindowDays(spanDays: number): number {
+  if (spanDays >= 90) return 90
+  if (spanDays >= 60) return 60
+  return Math.max(1, spanDays)
+}
+
+function countCommentsForHandlesSince(
+  posts: InstagramPostWithComments[],
+  handles: Set<string>,
+  cutoffMs: number
+): number {
+  let count = 0
+  for (const post of posts) {
+    for (const c of post.comments) {
+      const h = normalizeInstagramHandle(c.commenter_username)
+      if (!h || !handles.has(h)) continue
+      const t = timestampComment(c)
+      if (t === 0 || t < cutoffMs) continue
+      count += 1
+    }
+  }
+  return count
+}
+
+function mandatoHandleById(mandatos: MandatoInstagramEnriquecido[]): Map<string, string> {
+  const map = new Map<string, string>()
+  for (const m of mandatos) {
+    if (m.handle) map.set(m.id, m.handle)
+  }
+  return map
+}
+
+function handlesForLeaderRow(
+  leader: ExercitoDigitalLeaderRow,
+  mandatoHandles: Map<string, string>
+): Set<string> {
+  if (leader.tipo === 'lider') {
+    const handles = new Set<string>()
+    for (const raw of leader.lideradosInstagram ?? []) {
+      const h = normalizeInstagramHandle(raw)
+      if (h) handles.add(h)
+    }
+    return handles
+  }
+  const handle = mandatoHandles.get(leader.id)
+  return handle ? new Set([handle]) : new Set()
+}
+
+function buildAccumulatedLeaders(
+  monthlyLeaders: ExercitoDigitalLeaderRow[],
+  posts: InstagramPostWithComments[],
+  mandatos: MandatoInstagramEnriquecido[],
+  windowDays: number
+): ExercitoDigitalAccumulatedLeaderRow[] {
+  const cutoffMs = Date.now() - windowDays * 24 * 60 * 60 * 1000
+  const mandatoHandles = mandatoHandleById(mandatos)
+
+  const rows: ExercitoDigitalAccumulatedLeaderRow[] = monthlyLeaders.map((leader) => ({
+    id: leader.id,
+    rank: 0,
+    nome: leader.nome,
+    tipo: leader.tipo,
+    comentarios: countCommentsForHandlesSince(posts, handlesForLeaderRow(leader, mandatoHandles), cutoffMs),
+  }))
+
+  return rows
+    .sort((a, b) => b.comentarios - a.comentarios || a.nome.localeCompare(b.nome, 'pt-BR'))
+    .map((row, index) => ({ ...row, rank: index + 1 }))
 }
 
 function postsComentadosByHandlesInMonth(
@@ -781,6 +874,15 @@ export function aggregateExercitoDigitalViewModel(input: {
 
   const municipiosCriticos = cityResult.all.filter((r) => r.comentarios === 0 || r.ativacaoPct === 0).length
 
+  const dataSpanDays = computeCommentDataSpanDays(allPosts)
+  const accumulatedWindowDays = resolveAccumulatedWindowDays(dataSpanDays)
+  const leaders = isUnificado
+    ? buildUnifiedLeaders(mergedLeaders, allPosts, lideresCobertura, mandatos, referenceMonth)
+    : isMandatos
+      ? buildMandatarios(mandatos, allPosts, referenceMonth)
+      : buildLeaders(mergedLeaders, allPosts, lideresCobertura, referenceMonth)
+  const accumulatedLeaders = buildAccumulatedLeaders(leaders, allPosts, mandatos, accumulatedWindowDays)
+
   const kpis: ExercitoDigitalKpis = {
     ativacaoPct: coberturaGeral.pct,
     lideresAtivados: coberturaGeral.nOk,
@@ -800,13 +902,11 @@ export function aggregateExercitoDigitalViewModel(input: {
     lookbackDays,
     referenceMonth,
     referenceMonthLabel: formatMonthLabelLong(ref),
+    accumulatedWindowDays,
     kpis,
     alertPosts: buildAlertPosts(postsMes, coberturaProfiles),
-    leaders: isUnificado
-      ? buildUnifiedLeaders(mergedLeaders, allPosts, lideresCobertura, mandatos, referenceMonth)
-      : isMandatos
-        ? buildMandatarios(mandatos, allPosts, referenceMonth)
-        : buildLeaders(mergedLeaders, allPosts, lideresCobertura, referenceMonth),
+    leaders,
+    accumulatedLeaders,
     cities: cityResult.top,
     trend: buildTrendPoints(postsMes, profileHandles),
     organicTail: { comentarios: organic.comentarios, perfis: organic.perfis.size },
