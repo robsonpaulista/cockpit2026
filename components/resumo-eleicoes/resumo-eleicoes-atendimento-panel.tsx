@@ -2409,7 +2409,7 @@ export function ResumoEleicoesAtendimentoPanel() {
                             />
                             {isPresidente && (
                               <Crown
-                                className="h-3 w-3 shrink-0 text-[#C8900A]"
+                                className="h-3 w-3 shrink-0 text-white"
                                 aria-hidden
                               />
                             )}
@@ -2421,7 +2421,7 @@ export function ResumoEleicoesAtendimentoPanel() {
                             className={cn(
                               'inline-flex rounded-full px-1.5 py-0.5 text-xs',
                               isPresidente &&
-                                'border border-[#C8900A]/35 bg-[#C8900A]/12 font-medium text-[#C8900A]',
+                                'border border-white/40 bg-white/15 font-medium text-white',
                               !isPresidente &&
                                 isEleito &&
                                 'bg-[#C8900A]/12 font-medium text-[#C8900A]',

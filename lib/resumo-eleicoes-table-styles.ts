@@ -6,9 +6,13 @@ export function resumoTrSelecionado(): string {
   return 'bg-[#C8900A]/12 ring-1 ring-inset ring-[#C8900A]'
 }
 
-/** Destaque forte (ex.: candidato principal, partido filtrado) — linha âmbar sólida, texto preto. */
+/** Destaque forte (ex.: candidato principal, partido filtrado) — linha âmbar sólida, texto branco. */
 export function resumoTrDestaqueForte(): string {
-  return 'border-b border-[#C8900A] !bg-[#C8900A] font-semibold !text-black hover:!bg-[#C8900A]'
+  return cn(
+    'border-b border-[#C8900A] !bg-[#C8900A] font-semibold !text-white hover:!bg-[#C8900A]',
+    '[&_button]:!text-white [&_button]:decoration-white/50',
+    '[&_a]:!text-white',
+  )
 }
 
 export function resumoTrZebra(rowIndex: number): string {
