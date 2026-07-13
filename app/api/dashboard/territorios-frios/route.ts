@@ -3,6 +3,7 @@ import { requireRouteUser } from '@/lib/supabase/route-auth'
 import { isSupabaseNetworkError } from '@/lib/supabase/network-error'
 import municipiosPiaui from '@/lib/municipios-piaui.json'
 import { getEleitoradoByCity } from '@/lib/eleitores'
+import { deveIncluirLiderancaPlanilha } from '@/lib/territorio-lideranca-atual'
 
 export const dynamic = 'force-dynamic'
 import { NextResponse } from 'next/server'
@@ -217,24 +218,15 @@ export async function POST(request: Request) {
               return record
             })
 
-            // Filtrar lideranças
+            // Filtrar lideranças (exclui LIDERANCA ATUAL = N/Não)
             let liderancasFiltradas = liderancas
             if (liderancaAtualCol || expectativaVotosCol) {
-              liderancasFiltradas = liderancas.filter((l) => {
-                if (liderancaAtualCol) {
-                  const value = String(l[liderancaAtualCol] || '').trim().toUpperCase()
-                  if (value === 'SIM' || value === 'YES' || value === 'TRUE' || value === '1') {
-                    return true
-                  }
-                }
-                if (expectativaVotosCol) {
-                  const expectativaValue = normalizeNumber(l[expectativaVotosCol])
-                  if (expectativaValue > 0) {
-                    return true
-                  }
-                }
-                return false
-              })
+              liderancasFiltradas = liderancas.filter((l) =>
+                deveIncluirLiderancaPlanilha(l, {
+                  liderancaAtualCol,
+                  colunasVotos: [expectativaVotosCol],
+                })
+              )
             }
 
             // Agrupar por cidade e somar expectativa + contar lideranças

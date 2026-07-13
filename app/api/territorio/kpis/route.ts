@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { deveIncluirLiderancaPlanilha } from '@/lib/territorio-lideranca-atual'
 
 export const dynamic = 'force-dynamic'
 
@@ -224,30 +225,16 @@ export async function POST(request: Request) {
       return record
     })
 
-    // Filtrar lideranças: incluir "Liderança Atual?" = SIM OU que tenham valor no cenário ativo
-    // (mesma lógica da página território)
+    // Filtrar lideranças: exclui N/Não; inclui SIM ou com votos no cenário ativo
     let liderancasFiltradas = liderancas
 
     if (liderancaAtualCol || votosCenarioCol) {
-      liderancasFiltradas = liderancas.filter((l) => {
-        // Se tem "Liderança Atual?" = SIM, incluir
-        if (liderancaAtualCol) {
-          const value = String(l[liderancaAtualCol] || '').trim().toUpperCase()
-          if (value === 'SIM' || value === 'YES' || value === 'TRUE' || value === '1') {
-            return true
-          }
-        }
-
-        // Se tem valor no cenário ativo, incluir também
-        if (votosCenarioCol) {
-          const expectativaValue = normalizeNumber(l[votosCenarioCol])
-          if (expectativaValue > 0) {
-            return true
-          }
-        }
-
-        return false
-      })
+      liderancasFiltradas = liderancas.filter((l) =>
+        deveIncluirLiderancaPlanilha(l, {
+          liderancaAtualCol,
+          colunasVotos: [votosCenarioCol],
+        })
+      )
     }
 
     // Se não há filtros aplicados e não há dados filtrados, usar todos os dados

@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { deveIncluirLiderancaPlanilha } from '@/lib/territorio-lideranca-atual'
 
 // Função para normalizar números (mesma lógica da página território)
 function normalizeNumber(value: any): number {
@@ -131,30 +132,16 @@ export async function POST(request: Request) {
       return record
     })
 
-    // Filtrar lideranças: incluir "Liderança Atual?" = SIM OU que tenham "Expectativa de Votos 2026"
-    // (mesma lógica da página território)
+    // Filtrar lideranças: exclui N/Não; inclui SIM ou com expectativa de votos
     let liderancasFiltradas = liderancas
 
     if (liderancaAtualCol || expectativaVotosCol) {
-      liderancasFiltradas = liderancas.filter((l) => {
-        // Se tem "Liderança Atual?" = SIM, incluir
-        if (liderancaAtualCol) {
-          const value = String(l[liderancaAtualCol] || '').trim().toUpperCase()
-          if (value === 'SIM' || value === 'YES' || value === 'TRUE' || value === '1') {
-            return true
-          }
-        }
-
-        // Se tem "Expectativa de Votos 2026" com valor, incluir também
-        if (expectativaVotosCol) {
-          const expectativaValue = normalizeNumber(l[expectativaVotosCol])
-          if (expectativaValue > 0) {
-            return true
-          }
-        }
-
-        return false
-      })
+      liderancasFiltradas = liderancas.filter((l) =>
+        deveIncluirLiderancaPlanilha(l, {
+          liderancaAtualCol,
+          colunasVotos: [expectativaVotosCol],
+        })
+      )
     }
 
     // Se não há filtros aplicados e não há dados filtrados, usar todos os dados

@@ -7,6 +7,7 @@ import {
   extrairDepEstadualDeLideranca,
   resolverColunaDepEstadualLideranca,
 } from '@/lib/planilha-dep-estadual-lideranca'
+import { deveIncluirLiderancaPlanilha, isLiderancaAtualEmDialogo } from '@/lib/territorio-lideranca-atual'
 
 export type ResumoCidade = {
   expectativaVotos: number
@@ -25,6 +26,8 @@ export type LiderancaResumo = {
   projecaoAferida: number
   projecaoPromessa: number
   projecaoLegado: number
+  /** Coluna LIDERANCA ATUAL = EM DIÁLOGO */
+  emDialogo: boolean
 }
 
 type CitySummaryCache = {
@@ -35,7 +38,7 @@ type CitySummaryCache = {
 }
 
 const CACHE_TTL_MS = 10 * 60 * 1000
-const CACHE_SCHEMA_VERSION = 'v5-dep-estadual-lideranca'
+const CACHE_SCHEMA_VERSION = 'v7-em-dialogo-destaque'
 let citySummaryCache: CitySummaryCache | null = null
 
 function formatPrivateKey(key: string): string {
@@ -147,11 +150,6 @@ export function normalizeTerritorioExpectativaCityKey(city: string): string {
     .trim()
 }
 
-function isLiderancaAtual(value: unknown): boolean {
-  const normalized = String(value || '').trim().toUpperCase()
-  return normalized === 'SIM' || normalized === 'YES' || normalized === 'TRUE' || normalized === '1'
-}
-
 function shouldIncludeRecord(
   liderancaAtualCol: string | undefined,
   expectativaVotosCol: string | undefined,
@@ -159,12 +157,10 @@ function shouldIncludeRecord(
   expectativaLegadoCol: string | undefined,
   rowData: Record<string, unknown>
 ): boolean {
-  if (!liderancaAtualCol && !expectativaVotosCol && !promessaVotosCol && !expectativaLegadoCol) return true
-  if (liderancaAtualCol && isLiderancaAtual(rowData[liderancaAtualCol])) return true
-  if (expectativaVotosCol && normalizeNumber(rowData[expectativaVotosCol]) > 0) return true
-  if (promessaVotosCol && normalizeNumber(rowData[promessaVotosCol]) > 0) return true
-  if (expectativaLegadoCol && normalizeNumber(rowData[expectativaLegadoCol]) > 0) return true
-  return false
+  return deveIncluirLiderancaPlanilha(rowData, {
+    liderancaAtualCol,
+    colunasVotos: [expectativaVotosCol, promessaVotosCol, expectativaLegadoCol],
+  })
 }
 
 export function resolveCitySummary(city: string, summaries: Map<string, ResumoCidade>): ResumoCidade {
@@ -345,6 +341,9 @@ export async function buildCitySummaries(
     const depEstadualDireto =
       depEstadualIndex >= 0 ? String(row[depEstadualIndex] || '').trim() : ''
     const depEstadual = extrairDepEstadualDeLideranca({ nome, cargo, depEstadual: depEstadualDireto })
+    const liderancaAtualIndex = liderancaAtualCol ? headers.indexOf(liderancaAtualCol) : -1
+    const emDialogo =
+      liderancaAtualIndex >= 0 && isLiderancaAtualEmDialogo(row[liderancaAtualIndex])
     const key = `${nome.toUpperCase()}|${cargo.toUpperCase()}`
     const cityLeaders = leadersAccumulator.get(cidadeValueNormalizada) || new Map<string, LiderancaResumo>()
     const leaderCurrent = cityLeaders.get(key) || {
@@ -355,9 +354,13 @@ export async function buildCitySummaries(
       projecaoAferida: 0,
       projecaoPromessa: 0,
       projecaoLegado: 0,
+      emDialogo: false,
     }
     if (depEstadual && !leaderCurrent.depEstadual) {
       leaderCurrent.depEstadual = depEstadual
+    }
+    if (emDialogo) {
+      leaderCurrent.emDialogo = true
     }
     leaderCurrent.projecaoAferida += expectativaValor
     leaderCurrent.projecaoPromessa += promessaValor
@@ -405,9 +408,13 @@ export function resolveCityLeaders(city: string, leadersByCity: Map<string, Lide
         projecaoAferida: 0,
         projecaoPromessa: 0,
         projecaoLegado: 0,
+        emDialogo: false,
       }
       if (leader.depEstadual && !current.depEstadual) {
         current.depEstadual = leader.depEstadual
+      }
+      if (leader.emDialogo) {
+        current.emDialogo = true
       }
       current.projecaoAferida += Number(leader.projecaoAferida || 0)
       current.projecaoPromessa += Number(leader.projecaoPromessa || 0)

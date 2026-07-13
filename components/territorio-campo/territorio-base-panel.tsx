@@ -37,6 +37,7 @@ import { useTheme } from '@/contexts/theme-context'
 import type { AIAgentPageContext } from '@/components/ai-agent'
 import { useRegisterJarvisHostProps } from '@/contexts/jarvis-host-props-context'
 import { resolverColunaDepEstadualLideranca, extrairDepEstadualDeLideranca } from '@/lib/planilha-dep-estadual-lideranca'
+import { deveIncluirLiderancaPlanilha } from '@/lib/territorio-lideranca-atual'
 
 interface Lideranca {
   [key: string]: any
@@ -407,34 +408,16 @@ export function TerritorioBasePanel() {
       )).sort((a, b) => a.localeCompare(b, 'pt-BR'))
     : []
 
-  // Filtrar lideranças: incluir "Liderança Atual?" = SIM OU que tenham valor no cenário de votos selecionado
+  // Filtrar lideranças: exclui LIDERANCA ATUAL = N/Não; inclui SIM ou com votos no cenário
   const liderancasFiltradas = (() => {
     if (liderancas.length === 0) return []
 
-    if (!liderancaAtualCol && !votosReferenciaCol) {
-      // Se não encontrar nenhuma das colunas, retorna todos
-      return liderancas
-    }
-
-    let filtradas = liderancas.filter((l) => {
-      // Se tem "Liderança Atual?" = SIM, incluir
-      if (liderancaAtualCol) {
-        const value = String(l[liderancaAtualCol] || '').trim().toUpperCase()
-        if (value === 'SIM' || value === 'YES' || value === 'TRUE' || value === '1') {
-          return true
-        }
-      }
-
-      // Se tem valor no cenário de votos selecionado, incluir também
-      if (votosReferenciaCol) {
-        const expectativaValue = normalizeNumber(l[votosReferenciaCol])
-        if (expectativaValue > 0) {
-          return true
-        }
-      }
-
-      return false
-    })
+    let filtradas = liderancas.filter((l) =>
+      deveIncluirLiderancaPlanilha(l, {
+        liderancaAtualCol,
+        colunasVotos: [votosReferenciaCol],
+      })
+    )
 
     // Aplicar filtros adicionais (Cidade, Nome, Cargo)
     if (filtroCidade) {

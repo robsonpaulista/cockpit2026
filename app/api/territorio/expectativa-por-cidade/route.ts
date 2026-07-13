@@ -83,6 +83,7 @@ export async function POST(request: Request) {
         projecaoAferida: Math.round(leader.projecaoAferida || 0),
         projecaoPromessa: Math.round(leader.projecaoPromessa || 0),
         projecaoLegado: Math.round(leader.projecaoLegado || 0),
+        emDialogo: Boolean(leader.emDialogo),
       })),
     })
   } catch (error: unknown) {

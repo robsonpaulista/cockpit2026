@@ -9,6 +9,7 @@ import {
   type ComparativoExpectativa2022Row,
 } from '@/lib/comparativo-expectativa-2022'
 import { fetchJadyelFederal2022VotosPorMunicipioPI } from '@/lib/jadyel-federal-2022-pi-votos'
+import { deveIncluirLiderancaPlanilha } from '@/lib/territorio-lideranca-atual'
 
 function normalizeNumber(value: unknown): number {
   if (typeof value === 'number') return value
@@ -69,20 +70,12 @@ export function filterLiderancasParaComparativo(
   liderancaAtualCol: string | undefined,
   expectativaCol: string | undefined
 ): Array<Record<string, unknown>> {
-  if (!liderancaAtualCol && !expectativaCol) return records
-
-  return records.filter((record) => {
-    if (liderancaAtualCol) {
-      const value = String(record[liderancaAtualCol] ?? '').trim().toUpperCase()
-      if (value === 'SIM' || value === 'YES' || value === 'TRUE' || value === '1') {
-        return true
-      }
-    }
-    if (expectativaCol) {
-      if (normalizeNumber(record[expectativaCol]) > 0) return true
-    }
-    return false
-  })
+  return records.filter((record) =>
+    deveIncluirLiderancaPlanilha(record, {
+      liderancaAtualCol,
+      colunasVotos: [expectativaCol],
+    })
+  )
 }
 
 export type ComparativoAnterior2026LoadResult =

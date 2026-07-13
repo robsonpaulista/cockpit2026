@@ -89,6 +89,7 @@ interface ResumoCidade {
     projecaoAferida: number
     projecaoPromessa: number
     projecaoLegado: number
+    emDialogo?: boolean
   }>
 }
 
@@ -100,6 +101,7 @@ interface LiderancaDetalheResponse {
   projecaoAferida?: number
   projecaoPromessa?: number
   projecaoLegado?: number
+  emDialogo?: boolean
 }
 
 interface PesquisaRecenteCidade {
@@ -605,6 +607,7 @@ export function ResumoEleicoesAtendimentoPanel() {
               projecaoAferida: Number(item.projecaoAferida || item.projecaoVotos || 0),
               projecaoPromessa: Number(item.projecaoPromessa || 0),
               projecaoLegado: Number(item.projecaoLegado || 0),
+              emDialogo: Boolean(item.emDialogo),
             }))
           : [],
       }
@@ -912,6 +915,7 @@ export function ResumoEleicoesAtendimentoPanel() {
                 ? parsed.resumoCidade.liderancasDetalhe.map((item) => ({
                     ...item,
                     projecaoLegado: Number(item.projecaoLegado || 0),
+                    emDialogo: Boolean(item.emDialogo),
                   }))
                 : [],
             }
@@ -2757,15 +2761,29 @@ export function ResumoEleicoesAtendimentoPanel() {
                     </tr>
                   </thead>
                   <tbody>
-                    {liderancasDetalheOrdenadasModal.map((lideranca, rowIndex) => (
+                    {liderancasDetalheOrdenadasModal.map((lideranca, rowIndex) => {
+                      const emDialogo = Boolean(lideranca.emDialogo)
+                      return (
                       <tr
                         key={`${lideranca.nome}-${lideranca.cargo}`}
                         className={cn(
-                          'border-b border-card text-text-primary transition-colors hover:bg-background/50',
-                          resumoTrZebra(rowIndex),
+                          'border-b border-card transition-colors',
+                          emDialogo
+                            ? 'bg-red-50 text-red-700 hover:bg-red-100/80'
+                            : cn('text-text-primary hover:bg-background/50', resumoTrZebra(rowIndex)),
                         )}
+                        title={emDialogo ? 'Liderança atual: Em diálogo' : undefined}
                       >
-                        <td className="px-2 py-1.5">{lideranca.nome || '-'}</td>
+                        <td className="px-2 py-1.5">
+                          <span className={cn(emDialogo && 'font-semibold')}>
+                            {lideranca.nome || '-'}
+                          </span>
+                          {emDialogo ? (
+                            <span className="ml-1.5 inline-flex rounded px-1 py-0.5 text-[10px] font-semibold uppercase tracking-wide bg-red-600 text-white">
+                              Em diálogo
+                            </span>
+                          ) : null}
+                        </td>
                         <td className="px-2 py-1.5">{lideranca.cargo || '-'}</td>
                         <td className="px-2 py-1.5 text-right">
                           {(cenarioVotos === 'promessa_lideranca'
@@ -2775,7 +2793,8 @@ export function ResumoEleicoesAtendimentoPanel() {
                               : lideranca.projecaoAferida).toLocaleString('pt-BR')}
                         </td>
                       </tr>
-                    ))}
+                      )
+                    })}
                   </tbody>
                 </table>
               )}

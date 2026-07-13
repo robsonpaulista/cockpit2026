@@ -1,4 +1,5 @@
 import { resolverColunaDepEstadualLideranca } from '@/lib/planilha-dep-estadual-lideranca'
+import { deveIncluirLiderancaPlanilha } from '@/lib/territorio-lideranca-atual'
 import {
   getTerritorioDesenvolvimentoPI,
   TERRITORIOS_DESENVOLVIMENTO_PI,
@@ -116,8 +117,8 @@ export function resolverColunasLiderancaTerritorio(headers: string[]): ColunasLi
 }
 
 /**
- * Inclui quem tem “Liderança Atual?” = SIM ou valor &gt; 0 em qualquer coluna de votos conhecida
- * (alinhado ao espírito da página Território sem depender do seletor de cenário).
+ * Inclui quem tem “Liderança Atual?” = SIM ou valor &gt; 0 em coluna de votos;
+ * exclui sempre quem tem LIDERANCA ATUAL = N / Não.
  */
 export function filtrarLiderancasRelevantesPlanilha(
   liderancas: LiderancaPlanilha[],
@@ -126,26 +127,13 @@ export function filtrarLiderancasRelevantesPlanilha(
   if (liderancas.length === 0) return []
 
   const { liderancaAtualCol, expectativaJadyelCol, promessaLiderancaCol, expectativaLegadoCol } = cols
-  const colunasVotos = [expectativaLegadoCol, expectativaJadyelCol, promessaLiderancaCol].filter(
-    (c): c is string => Boolean(c)
+
+  return liderancas.filter((l) =>
+    deveIncluirLiderancaPlanilha(l, {
+      liderancaAtualCol,
+      colunasVotos: [expectativaLegadoCol, expectativaJadyelCol, promessaLiderancaCol],
+    })
   )
-
-  if (!liderancaAtualCol && colunasVotos.length === 0) {
-    return liderancas
-  }
-
-  return liderancas.filter((l) => {
-    if (liderancaAtualCol) {
-      const value = String(l[liderancaAtualCol] ?? '').trim().toUpperCase()
-      if (value === 'SIM' || value === 'YES' || value === 'TRUE' || value === '1') {
-        return true
-      }
-    }
-    for (const c of colunasVotos) {
-      if (normalizarNumeroPlanilhaTerritorio(l[c]) > 0) return true
-    }
-    return false
-  })
 }
 
 export type AgregadoPlanilhaPorTd = {
