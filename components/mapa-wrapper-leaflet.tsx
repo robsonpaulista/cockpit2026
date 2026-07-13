@@ -70,16 +70,24 @@ interface MapWrapperProps {
   iptMunicipios?: IptMunicipio[]
   /** Lente do mapa IPT: recolore pins pelo sinal do indicador escolhido */
   iptIndicadorFiltro?: IptIndicador | null
+  /** Filtro de evolução IPT — quando ≠ todos, pins/chips usam cor da evolução */
+  iptEvolucaoFiltro?: import('@/lib/ipt-evolucao').IptEvolucaoFiltro
   /** TD ativo — dispara zoom automático no mapa IPT */
   iptFiltroTd?: TerritorioDesenvolvimentoPI | null
   /** Municípios do TD (sem filtro de prioridade) — base do enquadramento */
   iptMunicipiosBounds?: IptMunicipio[]
   /** Recarrega IPT após salvar insight no popup */
   onIptInsightSaved?: () => void
+  /** Município selecionado no mapa IPT (abre perfil demográfico) */
+  onIptMunicipioSelect?: (municipio: string) => void
 }
 
 // ========== Constants ==========
 const OPPORTUNITY_THRESHOLD = 15000
+const EMPTY_STRING_ARRAY: string[] = []
+const EMPTY_TERRITORIO_ARRAY: TerritorioInfo[] = []
+const EMPTY_ELEITORES: Record<string, number> = {}
+const EMPTY_IPT_BOUNDS: IptMunicipio[] = []
 
 // ========== Helper Functions ==========
 function normalizeName(name: string): string {
@@ -361,12 +369,12 @@ function getMapLeafletStyles(appearance: MapAppearance): string {
 // ========== Component ==========
 export function MapWrapperLeaflet({
   cidadesComPresenca,
-  cidadesVisitadas = [],
+  cidadesVisitadas = EMPTY_STRING_ARRAY,
   municipiosPiaui,
-  eleitoresPorCidade = {},
-  territoriosQuentes = [],
-  territoriosMornos = [],
-  territoriosFrios = [],
+  eleitoresPorCidade = EMPTY_ELEITORES,
+  territoriosQuentes = EMPTY_TERRITORIO_ARRAY,
+  territoriosMornos = EMPTY_TERRITORIO_ARRAY,
+  territoriosFrios = EMPTY_TERRITORIO_ARRAY,
   filtroAtivo = 'todas',
   onStatsCalculated,
   appearance = 'light',
@@ -374,14 +382,20 @@ export function MapWrapperLeaflet({
   compactMarkers = false,
   iptMunicipios,
   iptIndicadorFiltro = null,
+  iptEvolucaoFiltro = 'todos',
   iptFiltroTd = null,
-  iptMunicipiosBounds = [],
+  iptMunicipiosBounds = EMPTY_IPT_BOUNDS,
   onIptInsightSaved,
+  onIptMunicipioSelect,
 }: MapWrapperProps) {
   const mapRef = useRef<HTMLDivElement>(null)
   const mapInstanceRef = useRef<L.Map | null>(null)
   const layersRef = useRef<Record<string, L.LayerGroup>>({})
   const statsCalculatedRef = useRef(false)
+  const onIptMunicipioSelectRef = useRef(onIptMunicipioSelect)
+  const onIptInsightSavedRef = useRef(onIptInsightSaved)
+  onIptMunicipioSelectRef.current = onIptMunicipioSelect
+  onIptInsightSavedRef.current = onIptInsightSaved
 
   // Build territory classification lookup
   const classificacaoMapRef = useRef(new Map<string, { tipo: string; motivo: string; expectativaVotos?: number; visitas?: number }>())
@@ -462,7 +476,10 @@ export function MapWrapperLeaflet({
     if (iptMunicipios && iptMunicipios.length > 0) {
       const iptLayer = L.layerGroup()
       const iptByNome = new Map(iptMunicipios.map((row) => [normalizeName(row.municipio), row]))
-      const tooltipsAutomaticos = buildIptMunicipiosComTooltipAutomatico(iptMunicipios, null)
+      const tooltipsAutomaticos = buildIptMunicipiosComTooltipAutomatico(
+        iptMunicipios,
+        iptIndicadorFiltro
+      )
       const mapContainer = map.getContainer()
       mapContainer.classList.add('ipt-map-mode')
 
@@ -487,8 +504,35 @@ export function MapWrapperLeaflet({
         chip?.classList.add('ipt-chip--active')
       }
 
+      const markersByKey = new Map<string, L.Marker>()
+
+      const openIptMunicipio = (row: IptMunicipio, municipioKey: string, marker: L.Marker) => {
+        setIptFocus(municipioKey)
+        onIptMunicipioSelectRef.current?.(row.municipio)
+        if (!marker.isPopupOpen()) {
+          marker.openPopup()
+        }
+      }
+
       map.on('zoomend', syncIptZoomClass)
       syncIptZoomClass()
+
+      // Clique no chip (tooltip interativo) → mesmo fluxo do marcador: perfil + popup.
+      const onChipClick = (event: Event) => {
+        const target = event.target
+        if (!(target instanceof Element)) return
+        const chip = target.closest('[data-ipt-municipio]')
+        if (!chip) return
+        const key = chip.getAttribute('data-ipt-municipio')
+        if (!key) return
+        const marker = markersByKey.get(key)
+        const row = iptByNome.get(key)
+        if (!marker || !row) return
+        event.preventDefault()
+        event.stopPropagation()
+        openIptMunicipio(row, key, marker)
+      }
+      mapContainer.addEventListener('click', onChipClick, true)
 
       municipiosPiaui.forEach((municipio, index) => {
         const row = iptByNome.get(normalizeName(municipio.nome))
@@ -500,7 +544,7 @@ export function MapWrapperLeaflet({
         const size = iptMarkerSize(row.pesoExpectativaPct, compactMarkers)
         const icon = L.divIcon({
           className: '',
-          html: createIptMarkerHtml(row, size, animDelay, iptIndicadorFiltro),
+          html: createIptMarkerHtml(row, size, animDelay, iptIndicadorFiltro, iptEvolucaoFiltro),
           iconSize: [size, size],
           iconAnchor: [size / 2, size / 2],
           popupAnchor: [0, -size / 2 - 4],
@@ -512,11 +556,18 @@ export function MapWrapperLeaflet({
             className: appearance === 'dark' ? 'mapa-obras-popup-dark' : 'mapa-obras-popup-soft ipt-popup-shell',
           })
 
+        markersByKey.set(municipioKey, marker)
+
+        marker.on('click', () => {
+          openIptMunicipio(row, municipioKey, marker)
+        })
+
         marker.on('popupopen', () => {
           setIptFocus(municipioKey)
+          onIptMunicipioSelectRef.current?.(row.municipio)
           const popupEl = marker.getPopup()?.getElement()
           if (popupEl) {
-            void hydrateIptPopupInsights(popupEl, appearance, onIptInsightSaved)
+            void hydrateIptPopupInsights(popupEl, appearance, onIptInsightSavedRef.current)
           }
         })
         marker.on('popupclose', () => clearIptFocus())
@@ -525,6 +576,7 @@ export function MapWrapperLeaflet({
           const chipHtml = createIptTooltipBasicoHtml(row, appearance, iptIndicadorFiltro, {
             municipioKey,
             animDelay,
+            evolucaoFiltro: iptEvolucaoFiltro,
           })
           if (chipHtml) {
             marker.bindTooltip(chipHtml, {
@@ -571,6 +623,7 @@ export function MapWrapperLeaflet({
 
       return () => {
         map.off('zoomend', syncIptZoomClass)
+        mapContainer.removeEventListener('click', onChipClick, true)
         clearIptFocus()
         mapContainer.classList.remove('ipt-map-mode', 'ipt-zoom-far', 'ipt-zoom-mid', 'ipt-zoom-near', 'ipt-map--focus')
         invalidateDelays.forEach((id) => window.clearTimeout(id))
@@ -914,7 +967,7 @@ export function MapWrapperLeaflet({
         statsCalculatedRef.current = false
       }
     }
-  }, [cidadesComPresenca, cidadesVisitadas, municipiosPiaui, eleitoresPorCidade, onStatsCalculated, appearance, showRegionLabels, compactMarkers, iptMunicipios, iptIndicadorFiltro, onIptInsightSaved])
+  }, [cidadesComPresenca, cidadesVisitadas, municipiosPiaui, eleitoresPorCidade, onStatsCalculated, appearance, showRegionLabels, compactMarkers, iptMunicipios, iptIndicadorFiltro, iptEvolucaoFiltro])
 
   // ========== Handle filter changes ==========
   useEffect(() => {

@@ -309,8 +309,7 @@ export function buildIptMunicipiosComTooltipAutomatico(
   if (indicador) {
     const porSinal = new Map<IptSinal, IptMunicipio[]>()
     for (const m of municipios) {
-      if (indicador !== 'digital' && m.prioridade === 'sem_expectativa') continue
-      if (indicador === 'digital' && m.sinais.digital === 'sem_dado') continue
+      if (!iptMunicipioComCoberturaIndicador(m, indicador)) continue
       const sinal = m.sinais[indicador]
       const lista = porSinal.get(sinal) ?? []
       lista.push(m)
@@ -501,6 +500,16 @@ export function iptMunicipioComCoberturaIndicador(m: IptMunicipio, indicador: Ip
     )
   }
 
+  // Pesquisa: qualquer cidade com ranking/média (estimulada ou espontânea),
+  // mesmo sem expectativa cadastrada na planilha.
+  if (indicador === 'pesquisa') {
+    return (
+      m.sinais.pesquisa !== 'sem_dado' ||
+      m.detalhes.pesquisaTop5.length > 0 ||
+      m.detalhes.pesquisaMediaPct != null
+    )
+  }
+
   if (m.prioridade === 'sem_expectativa') return false
 
   if (indicador === 'visitas') {
@@ -509,7 +518,7 @@ export function iptMunicipioComCoberturaIndicador(m: IptMunicipio, indicador: Ip
   if (indicador === 'obras') {
     return m.detalhes.obrasQuantidade > 0
   }
-  return m.sinais.pesquisa !== 'sem_dado'
+  return false
 }
 
 export function contagemIptPorIndicador(

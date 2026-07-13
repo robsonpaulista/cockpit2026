@@ -48,16 +48,18 @@ export function classificarEvolucaoPesquisaPp(
   anterior: number | null | undefined,
   limiarPp = IPT_EVOLUCAO_PESQUISA_LIMIAR_PP
 ): IptEvolucao {
-  if (recente == null || anterior == null || !Number.isFinite(recente) || !Number.isFinite(anterior)) {
-    return 'sem_dado'
-  }
+  if (recente == null || !Number.isFinite(recente)) return 'sem_dado'
+  // Uma única onda (sem anterior): trata como estável — há pesquisa, sem tendência a medir.
+  if (anterior == null || !Number.isFinite(anterior)) return 'estavel'
   const delta = recente - anterior
   if (Math.abs(delta) < limiarPp) return 'estavel'
   return delta > 0 ? 'cresceu' : 'diminuiu'
 }
 
 export function classificarEvolucaoVisitas(atual: number, anterior: number): IptEvolucao {
-  if (atual === 0 && anterior === 0) return 'sem_dado'
+  // Sem visitas em 0–30d e 31–60d: estável (cobertura por histórico, sem tendência recente).
+  // Assim Todos = Cresceu + Estável + Diminuiu na lente Campo.
+  if (atual === 0 && anterior === 0) return 'estavel'
   if (atual === anterior) return 'estavel'
   return atual > anterior ? 'cresceu' : 'diminuiu'
 }
@@ -115,6 +117,8 @@ export function municipioPassaFiltroEvolucao(
   evolucao: IptEvolucao,
   filtro: IptEvolucaoFiltro
 ): boolean {
+  // "Todos" = universo da lente (ex.: todas as cidades com pesquisa),
+  // inclusive as que ainda não têm 2 ondas / histórico para classificar.
   if (filtro === 'todos') return true
   return evolucao === filtro
 }

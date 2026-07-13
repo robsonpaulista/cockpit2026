@@ -12,7 +12,6 @@ import { SidebarProvider, useSidebar } from '@/contexts/sidebar-context'
 import { NavigationLoadingProvider } from '@/contexts/navigation-loading-context'
 import { ThemeProvider } from '@/contexts/theme-context'
 import { CockpitStatusProvider } from '@/contexts/cockpit-status-context'
-import { IdleSplashOverlay } from '@/components/idle-splash'
 import { IdleSplashProvider } from '@/contexts/idle-splash-context'
 import { SplashScreenRestHost } from '@/components/splash-screen/splash-screen-rest-host'
 import { cn } from '@/lib/utils'
@@ -59,7 +58,6 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
           <div className={cn('relative z-[1] flex h-full min-h-0 w-full flex-1')}>
             <NavigationLoadingBar />
             <Sidebar />
-            <IdleSplashOverlay />
             <SplashScreenRestHost />
             <div
               className={cn(

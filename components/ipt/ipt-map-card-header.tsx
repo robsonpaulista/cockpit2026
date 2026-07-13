@@ -29,6 +29,7 @@ type IptMapCardHeaderProps = {
   loading: boolean
   filtroIndicador: IptIndicador | 'geral'
   filtroEvolucao: IptEvolucaoFiltro
+  contagemEvolucao?: Record<IptEvolucaoFiltro, number>
   isNativeFullscreen: boolean
   mapEmpty: boolean
   onIndicadorChange: (valor: IptIndicador | 'geral') => void
@@ -40,6 +41,7 @@ export function IptMapCardHeader({
   loading,
   filtroIndicador,
   filtroEvolucao,
+  contagemEvolucao,
   isNativeFullscreen,
   mapEmpty,
   onIndicadorChange,
@@ -52,9 +54,9 @@ export function IptMapCardHeader({
     filtroIndicador === 'digital'
       ? 'Lente digital · chips com seguidores e % no top Instagram'
       : filtroIndicador === 'pesquisa'
-        ? 'Lente pesquisa · média de intenção + evolução entre ondas'
+        ? 'Lente pesquisa · média de intenção · 1 onda = estável'
         : filtroIndicador === 'visitas'
-          ? 'Lente campo · visitas 0–30d vs 31–60d'
+          ? 'Lente campo · visitas 0–30d vs 31–60d · sem variação = estável'
           : 'Cores = diagnóstico geral · clique no município para detalhes'
 
   return (
@@ -114,6 +116,7 @@ export function IptMapCardHeader({
             >
               {IPT_EVOLUCAO_FILTRO_OPCOES.map((opcao) => {
                 const ativo = filtroEvolucao === opcao.id
+                const n = contagemEvolucao?.[opcao.id]
                 return (
                   <button
                     key={opcao.id}
@@ -132,6 +135,9 @@ export function IptMapCardHeader({
                     title={opcao.label}
                   >
                     <span>{opcao.label}</span>
+                    {typeof n === 'number' ? (
+                      <span className="ipt-lens-toggle__count tabular-nums">{n}</span>
+                    ) : null}
                   </button>
                 )
               })}

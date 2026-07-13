@@ -11,9 +11,10 @@ import {
 import { IptMapCardHeader } from '@/components/ipt/ipt-map-card-header'
 import { IptPageFilters } from '@/components/ipt/ipt-page-filters'
 import { IptPageHeader } from '@/components/ipt/ipt-page-header'
+import { PerfilPopulacaoPanel } from '@/components/perfil-populacao-panel'
 import { useDashboardTopbarVisible } from '@/hooks/use-dashboard-topbar-visible'
 import { useIpt } from '@/hooks/use-ipt'
-import { type IptIndicador, type IptPrioridade } from '@/lib/ipt'
+import { type IptIndicador, type IptPrioridade, iptMunicipioComCoberturaIndicador } from '@/lib/ipt'
 import {
   evolucaoDaLente,
   municipioPassaFiltroEvolucao,
@@ -21,6 +22,7 @@ import {
 } from '@/lib/ipt-evolucao'
 import { filtrarIptMunicipiosPorTd } from '@/lib/ipt-td'
 import type { TerritorioDesenvolvimentoPI } from '@/lib/piaui-territorio-desenvolvimento'
+import { useTheme } from '@/contexts/theme-context'
 import { cn } from '@/lib/utils'
 import '@/app/dashboard/territorio/ipt/ipt-visual-refine.css'
 
@@ -48,9 +50,10 @@ export function IptPanel() {
   const [filtroIndicador, setFiltroIndicador] = useState<IptIndicador | 'geral'>('geral')
   const [filtroEvolucao, setFiltroEvolucao] = useState<IptEvolucaoFiltro>('todos')
   const [filtroTd, setFiltroTd] = useState<TerritorioDesenvolvimentoPI | null>(null)
+  const [municipioSelecionado, setMunicipioSelecionado] = useState<string | null>(null)
   const topbarVisible = useDashboardTopbarVisible()
-  const { loading, error, conexaoInstavel, municipios, recarregar, presencaDigitalCobertura } =
-    useIpt()
+  const { appearance } = useTheme()
+  const { loading, error, conexaoInstavel, municipios, recarregar } = useIpt()
 
   const municipiosNoEscopo = useMemo(
     () => filtrarIptMunicipiosPorTd(municipios, filtroTd),
@@ -77,11 +80,49 @@ export function IptPanel() {
   const indicadorAtivo = filtroIndicador === 'geral' ? null : filtroIndicador
 
   const municipiosNoMapa = useMemo(() => {
-    if (filtroIndicador === 'obras' || filtroEvolucao === 'todos') return municipiosFiltrados
-    return municipiosFiltrados.filter((m) =>
+    // Obras: sem filtro de evolução (sem série eleitoral).
+    if (filtroIndicador === 'obras') {
+      return municipiosFiltrados.filter((m) => iptMunicipioComCoberturaIndicador(m, 'obras'))
+    }
+
+    // Lente específica: só municípios com dado daquele indicador.
+    // Geral: mantém o universo filtrado por prioridade/TD.
+    const base =
+      indicadorAtivo == null
+        ? municipiosFiltrados
+        : municipiosFiltrados.filter((m) =>
+            iptMunicipioComCoberturaIndicador(m, indicadorAtivo)
+          )
+
+    // Evolução: Todos = base da lente; Cresceu/Estável/Diminuiu filtram a classificação
+    // (1 onda de pesquisa → estável).
+    if (filtroEvolucao === 'todos') return base
+    return base.filter((m) =>
       municipioPassaFiltroEvolucao(evolucaoDaLente(m, indicadorAtivo), filtroEvolucao)
     )
   }, [municipiosFiltrados, filtroIndicador, filtroEvolucao, indicadorAtivo])
+
+  const baseEvolucao = useMemo(() => {
+    if (filtroIndicador === 'obras') return []
+    if (indicadorAtivo == null) return municipiosFiltrados
+    return municipiosFiltrados.filter((m) =>
+      iptMunicipioComCoberturaIndicador(m, indicadorAtivo)
+    )
+  }, [municipiosFiltrados, filtroIndicador, indicadorAtivo])
+
+  const contagemEvolucao = useMemo(() => {
+    const counts: Record<IptEvolucaoFiltro, number> = {
+      todos: baseEvolucao.length,
+      cresceu: 0,
+      estavel: 0,
+      diminuiu: 0,
+    }
+    for (const m of baseEvolucao) {
+      const e = evolucaoDaLente(m, indicadorAtivo)
+      if (e === 'cresceu' || e === 'estavel' || e === 'diminuiu') counts[e] += 1
+    }
+    return counts
+  }, [baseEvolucao, indicadorAtivo])
 
   const handleIndicadorChange = useCallback((valor: IptIndicador | 'geral') => {
     setFiltroIndicador(valor)
@@ -153,31 +194,6 @@ export function IptPanel() {
           <div className="ipt-page-alert rounded-lg bg-red-50 px-4 py-3 text-sm text-red-800">{error}</div>
         ) : null}
 
-        {presencaDigitalCobertura && presencaDigitalCobertura.totalLabels > 0 ? (
-          <div className="ipt-page-alert rounded-lg border border-[#C8900A]/30 bg-[#C8900A]/8 px-4 py-3 text-sm text-text-primary">
-            <p className="font-medium text-[#854F0B]">
-              Presença digital · Instagram → mapa PI:{' '}
-              {presencaDigitalCobertura.matchedPi}/{presencaDigitalCobertura.totalLabels} cidades
-              normalizadas
-              {presencaDigitalCobertura.todasNormalizadasNoMapa
-                ? ' (todas casaram com o mapa)'
-                : ''}
-            </p>
-            {!presencaDigitalCobertura.todasNormalizadasNoMapa ? (
-              <p className="mt-1 text-[12px] text-text-muted">
-                Fora do PI / sem match ({presencaDigitalCobertura.unmatched.length}):{' '}
-                {presencaDigitalCobertura.unmatched
-                  .slice(0, 12)
-                  .map((r) => r.labelInstagram)
-                  .join(' · ')}
-                {presencaDigitalCobertura.unmatched.length > 12
-                  ? ` · +${presencaDigitalCobertura.unmatched.length - 12}`
-                  : ''}
-              </p>
-            ) : null}
-          </div>
-        ) : null}
-
         {!isNativeFullscreen ? (
           <IptPageFilters
             loading={loading}
@@ -202,6 +218,7 @@ export function IptPanel() {
             loading={loading}
             filtroIndicador={filtroIndicador}
             filtroEvolucao={filtroEvolucao}
+            contagemEvolucao={contagemEvolucao}
             isNativeFullscreen={isNativeFullscreen}
             mapEmpty={municipiosNoMapa.length === 0}
             onIndicadorChange={handleIndicadorChange}
@@ -209,22 +226,32 @@ export function IptPanel() {
             onToggleFullscreen={toggleFullscreen}
           />
 
-          <div className="ipt-map-card__body flex min-h-0 flex-1 flex-col">
+          <div className="ipt-map-card__body flex min-h-0 flex-1 flex-row overflow-hidden">
             {loading ? (
-              <div className="flex h-full min-h-[320px] items-center justify-center text-sm text-text-muted">
+              <div className="flex h-full min-h-[320px] flex-1 items-center justify-center text-sm text-text-muted">
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden />
                 Calculando prioridades…
               </div>
             ) : (
-              <IptMapSection
-                municipios={municipiosNoMapa}
-                indicadorFiltro={indicadorAtivo}
-                filtroTd={filtroTd}
-                municipiosBoundsTd={municipiosNoEscopo}
-                isFullscreen={isNativeFullscreen}
-                onInsightSaved={recarregar}
-              />
+              <div className="relative min-h-0 min-w-0 flex-1 overflow-hidden">
+                <IptMapSection
+                  municipios={municipiosNoMapa}
+                  indicadorFiltro={indicadorAtivo}
+                  evolucaoFiltro={filtroEvolucao}
+                  filtroTd={filtroTd}
+                  municipiosBoundsTd={municipiosNoEscopo}
+                  isFullscreen={isNativeFullscreen}
+                  onInsightSaved={recarregar}
+                  onMunicipioSelect={setMunicipioSelecionado}
+                />
+              </div>
             )}
+            <PerfilPopulacaoPanel
+              municipio={municipioSelecionado}
+              appearance={appearance === 'dark' ? 'dark' : 'light'}
+              className="ipt-perfil-populacao w-[min(360px,40vw)] shrink-0"
+              onClear={() => setMunicipioSelecionado(null)}
+            />
           </div>
         </div>
       </div>

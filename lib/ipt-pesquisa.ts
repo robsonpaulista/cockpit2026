@@ -103,8 +103,8 @@ function buildMediaPorMunicipioETipo(
 }
 
 /**
- * Por município: estimulada quando houver linhas estimuladas na cidade;
- * caso contrário, média da espontânea (mesma regra do Panorama territorial).
+ * Por município: preferir estimulada; se não houver estimulada (ou top vazio),
+ * usar espontânea — para ampliar cobertura no mapa IPT.
  *
  * A intenção exibida é **média aritmética de todas as linhas** do candidato nesse tipo
  * (não só a última onda). Em paralelo, calcula evolução última onda vs penúltima.
@@ -127,32 +127,67 @@ export function buildPesquisaIptPorMunicipio(
   for (const row of cidades) {
     if (row.cidadeLabel.startsWith('Estado')) continue
     const key = normalizeIptMunicipio(row.cidadeLabel)
+    if (!key) continue
 
-    const usaEstimulada = row.pesquisasDistintasEstimulada > 0
-    const base: 'estimulada' | 'espontanea' = usaEstimulada ? 'estimulada' : 'espontanea'
-    const top10 = usaEstimulada ? row.top10Estimulada : row.top10Espontanea
-    if (top10.length === 0) continue
+    const temEstimulada =
+      row.pesquisasDistintasEstimulada > 0 && row.top10Estimulada.length > 0
+    const temEspontanea =
+      row.pesquisasDistintasEspontanea > 0 && row.top10Espontanea.length > 0
 
+    // Estimulada quando existir; senão espontânea.
+    const base: 'estimulada' | 'espontanea' | null = temEstimulada
+      ? 'estimulada'
+      : temEspontanea
+        ? 'espontanea'
+        : null
+    if (base == null) continue
+
+    const top10 = base === 'estimulada' ? row.top10Estimulada : row.top10Espontanea
     basePorMunicipio.set(key, base)
     top5PorMunicipio.set(
       key,
       top10.slice(0, 5).map((c) => ({ nome: c.nome, mediaPct: c.mediaPct }))
     )
 
-    const media = (usaEstimulada ? mediaEst : mediaEsp).get(key)
-    if (media != null) intencaoPorMunicipio.set(key, media)
+    const media = (base === 'estimulada' ? mediaEst : mediaEsp).get(key)
+    // Se a média do candidato não veio no tipo da base, tenta o outro tipo
+    // (ex.: ranking estimulada sem linha do foco → espontânea com o candidato).
+    const mediaDoTop = top10.find(
+      (c) => candidatoNormalizado(c.nome) === candidatoNormalizado(candidato)
+    )?.mediaPct
+    const mediaFallback =
+      media ??
+      (base === 'estimulada' ? mediaEsp.get(key) : mediaEst.get(key)) ??
+      mediaDoTop ??
+      null
+    if (mediaFallback != null) intencaoPorMunicipio.set(key, mediaFallback)
 
-    const evo = (usaEstimulada ? evolucaoEst : evolucaoEsp).get(key)
-    if (evo && media != null) {
-      evolucaoPorMunicipio.set(key, { ...evo, mediaPct: media })
-    } else if (media != null) {
+    const evo = (base === 'estimulada' ? evolucaoEst : evolucaoEsp).get(key)
+    // Evolução: se a base não tem 2 ondas, usa o outro tipo quando houver comparativo.
+    const evoAlt = (base === 'estimulada' ? evolucaoEsp : evolucaoEst).get(key)
+    const evoUsavel =
+      evo && evo.anteriorPct != null
+        ? evo
+        : evoAlt && evoAlt.anteriorPct != null
+          ? evoAlt
+          : evo ?? evoAlt ?? null
+
+    // Com pesquisa na cidade: sempre classifica (1 onda → estável).
+    const mediaPct = mediaFallback ?? mediaDoTop ?? top10[0]?.mediaPct ?? 0
+    if (evoUsavel) {
       evolucaoPorMunicipio.set(key, {
-        mediaPct: media,
-        recentePct: null,
+        ...evoUsavel,
+        mediaPct,
+        evolucao: classificarEvolucaoPesquisaPp(evoUsavel.recentePct, evoUsavel.anteriorPct),
+      })
+    } else {
+      evolucaoPorMunicipio.set(key, {
+        mediaPct,
+        recentePct: mediaPct,
         anteriorPct: null,
         deltaPp: null,
-        evolucao: 'sem_dado',
-        ondasComparadas: 0,
+        evolucao: 'estavel',
+        ondasComparadas: 1,
         dataRecente: null,
         dataAnterior: null,
       })

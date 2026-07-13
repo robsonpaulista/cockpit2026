@@ -504,15 +504,29 @@ body[data-ipt-refine] .ipt-page-shell {
 }
 
 .ipt-lens-toggle--evolucao .ipt-evolucao-btn--up.ipt-lens-toggle__btn--active {
-  color: #059669;
+  background: #059669;
+  color: #fff;
+  box-shadow: none;
 }
 
 .ipt-lens-toggle--evolucao .ipt-evolucao-btn--down.ipt-lens-toggle__btn--active {
-  color: #dc2626;
+  background: #dc2626;
+  color: #fff;
+  box-shadow: none;
 }
 
 .ipt-lens-toggle--evolucao .ipt-evolucao-btn--flat.ipt-lens-toggle__btn--active {
-  color: #ca8a04;
+  background: #ca8a04;
+  color: #fff;
+  box-shadow: none;
+}
+
+.ipt-lens-toggle--evolucao .ipt-evolucao-btn--up.ipt-lens-toggle__btn--active .ipt-lens-toggle__count,
+.ipt-lens-toggle--evolucao .ipt-evolucao-btn--down.ipt-lens-toggle__btn--active .ipt-lens-toggle__count,
+.ipt-lens-toggle--evolucao .ipt-evolucao-btn--flat.ipt-lens-toggle__btn--active .ipt-lens-toggle__count {
+  background: rgba(255, 255, 255, 0.22);
+  color: #fff;
+  opacity: 1;
 }
 
 .ipt-map-card__title {
@@ -554,6 +568,25 @@ body[data-ipt-refine] .ipt-page-shell {
   white-space: nowrap;
 }
 
+.ipt-lens-toggle__count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.1rem;
+  padding: 0 4px;
+  border-radius: 4px;
+  background: rgba(15, 23, 42, 0.06);
+  font-size: 10px;
+  font-weight: 600;
+  color: inherit;
+  opacity: 0.85;
+}
+
+.ipt-lens-toggle__btn--active .ipt-lens-toggle__count {
+  background: rgba(15, 23, 42, 0.08);
+  opacity: 1;
+}
+
 .ipt-lens-toggle__btn--active {
   background: #fff;
   box-shadow: var(--shadow-chip);
@@ -593,6 +626,23 @@ body[data-ipt-refine] .ipt-page-shell {
   border-radius: var(--space-2);
   overflow: hidden;
   min-height: 320px;
+}
+
+.ipt-perfil-populacao {
+  max-width: 100%;
+}
+
+@media (max-width: 900px) {
+  .ipt-map-card__body {
+    flex-direction: column;
+  }
+
+  .ipt-perfil-populacao {
+    width: 100% !important;
+    max-height: 42vh;
+    border-left: none;
+    border-top: 1px solid rgba(15, 23, 42, 0.08);
+  }
 }
 
 /* --- Sidebar + ícones IPT (somente nesta rota) --- */

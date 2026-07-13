@@ -53,24 +53,28 @@ function sceneSeekTime(sceneId: SplashSceneId, edge: 'start' | 'mid' | 'end'): n
 }
 
 /** Pré-carrega a foto da cena 6 (com fallback) e as fontes. */
-function useSplashPhoto(): { ready: boolean; photoSrc: string | null } {
-  const [state, setState] = useState<{ ready: boolean; photoSrc: string | null }>({
+function useSplashPhoto(): { ready: boolean; photoSrc: string } {
+  const [state, setState] = useState<{ ready: boolean; photoSrc: string }>({
     ready: false,
-    photoSrc: null,
+    photoSrc: SPLASH_SUNRISE_ASSET,
   })
 
   useEffect(() => {
     let cancelled = false
     let settled = false
 
-    const settle = (photoSrc: string | null) => {
+    const settle = (photoSrc: string) => {
       if (cancelled || settled) return
       settled = true
       window.clearTimeout(timeoutId)
       setState({ ready: true, photoSrc })
     }
 
-    const timeoutId = window.setTimeout(() => settle(null), SPLASH_PRELOAD_TIMEOUT_MS)
+    // Nunca abandona a imagem: se o preload demorar, segue com o asset principal.
+    const timeoutId = window.setTimeout(
+      () => settle(SPLASH_SUNRISE_ASSET),
+      SPLASH_PRELOAD_TIMEOUT_MS
+    )
 
     const tryLoad = (src: string, onFail: () => void) => {
       const img = new window.Image()
@@ -79,7 +83,9 @@ function useSplashPhoto(): { ready: boolean; photoSrc: string | null } {
       img.src = src
     }
 
-    tryLoad(SPLASH_SUNRISE_ASSET, () => tryLoad(SPLASH_SUNRISE_FALLBACK, () => settle(null)))
+    tryLoad(SPLASH_SUNRISE_ASSET, () =>
+      tryLoad(SPLASH_SUNRISE_FALLBACK, () => settle(SPLASH_SUNRISE_ASSET))
+    )
     void document.fonts?.ready?.catch(() => undefined)
 
     return () => {
@@ -462,11 +468,18 @@ export function SplashScreen({
       <SplashSystemLines clock={clockMotion} lines={SPLASH_SYSTEM_LINES} />
 
       {/* Cena 5–6 — carro isolado */}
-      {photoSrc ? (
-        <motion.div className="ss-sunrise" style={{ opacity: photoOpacity, scale: photoScale }} aria-hidden>
-          <Image src={photoSrc} alt="" fill priority sizes="100vw" className="ss-sunrise__photo" />
-        </motion.div>
-      ) : null}
+      <motion.div className="ss-sunrise" style={{ opacity: photoOpacity, scale: photoScale }} aria-hidden>
+        {/* unoptimized: asset estático em /public — evita falha do optimizer em overlay montado tarde (idle). */}
+        <Image
+          src={photoSrc}
+          alt=""
+          fill
+          priority
+          unoptimized
+          sizes="100vw"
+          className="ss-sunrise__photo"
+        />
+      </motion.div>
 
       {showReady ? (
         <div className="ss-ready">

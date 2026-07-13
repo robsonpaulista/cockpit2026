@@ -20,7 +20,7 @@ import {
 } from '@/lib/ipt-evolucao'
 import {
   createIptChipHtml,
-  iptPrioridadeTheme,
+  iptChipTheme,
 } from '@/lib/ipt-chip'
 import { createIptInsightsSectionShell, overrideBadgeHtml } from '@/lib/ipt-popup-insights'
 import {
@@ -242,7 +242,7 @@ function quadroIndicadores(
   const segTxt = temSeg ? detalhes.digitalSeguidores!.toLocaleString('pt-BR') : '—'
   const engTxt = temEng ? detalhes.digitalContasEngajadas!.toLocaleString('pt-BR') : '—'
 
-  let pesquisaEvoDetalhe = 'Sem ondas para comparar'
+  let pesquisaEvoDetalhe = 'Sem pesquisa para classificar'
   if (detalhes.pesquisaRecentePct != null && detalhes.pesquisaAnteriorPct != null && detalhes.pesquisaDeltaPp != null) {
     const deltaCor =
       detalhes.pesquisaDeltaPp > 0 ? '#059669' : detalhes.pesquisaDeltaPp < 0 ? '#dc2626' : muted
@@ -250,8 +250,9 @@ function quadroIndicadores(
       <span> vs </span>
       <strong style="color:${text};font-variant-numeric:tabular-nums">${escapeHtml(formatPctNum(detalhes.pesquisaAnteriorPct))}</strong></div>
       <div style="margin-top:2px;font-weight:700;font-variant-numeric:tabular-nums;color:${deltaCor}">${escapeHtml(formatPp(detalhes.pesquisaDeltaPp))}</div>`
-  } else if (detalhes.pesquisaRecentePct != null) {
-    pesquisaEvoDetalhe = `Recente ${escapeHtml(formatPctNum(detalhes.pesquisaRecentePct))} · sem anterior`
+  } else if (detalhes.pesquisaRecentePct != null || detalhes.pesquisaMediaPct != null) {
+    const pct = detalhes.pesquisaRecentePct ?? detalhes.pesquisaMediaPct
+    pesquisaEvoDetalhe = `Uma onda · ${escapeHtml(formatPctNum(pct!))} (sem anterior → estável)`
   }
 
   const deltaSeg =
@@ -395,7 +396,7 @@ export function createIptTooltipBasicoHtml(
   m: IptMunicipio,
   _appearance: 'light' | 'dark' = 'light',
   indicador: IptIndicador | null = null,
-  opts?: { municipioKey?: string; animDelay?: number }
+  opts?: { municipioKey?: string; animDelay?: number; evolucaoFiltro?: import('@/lib/ipt-evolucao').IptEvolucaoFiltro }
 ): string {
   return createIptChipHtml(m, indicador, opts)
 }
@@ -452,15 +453,13 @@ export function createIptMarkerHtml(
   m: IptMunicipio,
   size: number,
   animDelay = 0,
-  indicador: IptIndicador | null = null
+  indicador: IptIndicador | null = null,
+  evolucaoFiltro: import('@/lib/ipt-evolucao').IptEvolucaoFiltro = 'todos'
 ): string {
-  const theme =
-    indicador === 'digital'
-      ? iptPrioridadeTheme(m.sinais.digital === 'bem' ? 'forte' : 'sem_expectativa')
-      : iptPrioridadeTheme(m.prioridade)
+  const theme = iptChipTheme(m, indicador, evolucaoFiltro)
   const noVotesClass =
-    indicador === 'digital'
-      ? m.sinais.digital === 'sem_dado'
+    indicador != null
+      ? m.sinais[indicador] === 'sem_dado'
         ? ' mapa-ipt-marker--no-votes'
         : ''
       : m.prioridade === 'sem_expectativa'

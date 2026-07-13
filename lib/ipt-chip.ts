@@ -2,12 +2,17 @@ import {
   formatObrasValorAbreviado,
   iptCorMunicipio,
   iptLabelTipoPesquisa,
+  iptMunicipioComCoberturaIndicador,
   type IptIndicador,
   type IptMunicipio,
   type IptPrioridade,
   type IptSinal,
 } from '@/lib/ipt'
-import type { IptEvolucao } from '@/lib/ipt-evolucao'
+import {
+  evolucaoDaLente,
+  type IptEvolucao,
+  type IptEvolucaoFiltro,
+} from '@/lib/ipt-evolucao'
 
 export type IptChipZoom = 'far' | 'mid' | 'near'
 
@@ -46,7 +51,23 @@ const SINAL_THEME: Record<IptSinal, IptChipTheme> = {
   sem_dado: { bg: '#f8fafc', text: '#64748b', sub: '#94a3b8', border: 'rgba(148,163,184,0.28)', dot: '#94a3b8' },
 }
 
-export function iptChipTheme(m: IptMunicipio, indicador: IptIndicador | null): IptChipTheme {
+const EVOLUCAO_THEME: Record<IptEvolucao, IptChipTheme> = {
+  cresceu: SINAL_THEME.bem,
+  estavel: SINAL_THEME.neutro,
+  diminuiu: SINAL_THEME.mal,
+  sem_dado: SINAL_THEME.sem_dado,
+}
+
+export function iptChipTheme(
+  m: IptMunicipio,
+  indicador: IptIndicador | null,
+  evolucaoFiltro: IptEvolucaoFiltro = 'todos'
+): IptChipTheme {
+  // Filtro composto (ex.: Pesquisa + Estável): cor da evolução ativa.
+  if (indicador && evolucaoFiltro !== 'todos') {
+    return EVOLUCAO_THEME[evolucaoDaLente(m, indicador)]
+  }
+  // Só a lente: cor do sinal do indicador (não da prioridade geral).
   if (indicador) return SINAL_THEME[m.sinais[indicador]]
   return PRIORIDADE_THEME[m.prioridade]
 }
@@ -167,7 +188,7 @@ export function iptChipLinhaGeral(m: IptMunicipio): string {
 }
 
 export function iptChipDeveExibir(m: IptMunicipio, indicador: IptIndicador | null = null): boolean {
-  if (indicador === 'digital') return m.sinais.digital !== 'sem_dado'
+  if (indicador) return iptMunicipioComCoberturaIndicador(m, indicador)
   return m.prioridade !== 'sem_expectativa'
 }
 
@@ -175,12 +196,11 @@ export function iptChipDeveExibir(m: IptMunicipio, indicador: IptIndicador | nul
 export function createIptChipHtml(
   m: IptMunicipio,
   indicador: IptIndicador | null = null,
-  opts?: { municipioKey?: string; animDelay?: number }
+  opts?: { municipioKey?: string; animDelay?: number; evolucaoFiltro?: IptEvolucaoFiltro }
 ): string {
   if (!iptChipDeveExibir(m, indicador)) return ''
 
-  const theme =
-    indicador === 'digital' ? SINAL_THEME[m.sinais.digital] : iptPrioridadeTheme(m.prioridade)
+  const theme = iptChipTheme(m, indicador, opts?.evolucaoFiltro ?? 'todos')
   const linha = indicador ? iptChipLinhaIndicador(m, indicador) : iptChipLinhaGeral(m)
   const key = opts?.municipioKey ?? m.municipio
   const delay = opts?.animDelay ?? 0
