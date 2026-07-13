@@ -51,6 +51,12 @@ export type PanoramaTrendsSearchHighlight = {
   context: GoogleTrendsSearchContext
 }
 
+export type PanoramaInstagramTopPost = {
+  engagement: number
+  caption: string | null
+  postUrl: string | null
+}
+
 export type PanoramaInstagramTableRow = {
   slug: string
   name: string
@@ -66,6 +72,7 @@ export type PanoramaInstagramTableRow = {
   prior7dAvgEngagement: number
   recent7dPostCount: number
   prior7dPostCount: number
+  topPost: PanoramaInstagramTopPost | null
   highlights: {
     postCount: PanoramaHighlight
     totalEngagement: PanoramaHighlight
@@ -282,6 +289,13 @@ function buildInstagramTable(
       prior7dAvgEngagement: prior7d.avgEngagement,
       recent7dPostCount: recent7d.postCount,
       prior7dPostCount: prior7d.postCount,
+      topPost: row.topPost
+        ? {
+            engagement: row.topPost.engagement,
+            caption: row.topPost.caption,
+            postUrl: row.topPost.post_url?.trim() || null,
+          }
+        : null,
     }
   })
 

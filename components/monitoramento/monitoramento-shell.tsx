@@ -7,6 +7,7 @@ import {
   LineChart,
   Megaphone,
   Newspaper,
+  Flame,
   Users,
   Video,
   Youtube,
@@ -30,6 +31,7 @@ export type MonitoramentoTab =
   | 'google-alerts'
   | 'youtube'
   | 'trends'
+  | 'viral'
   | 'google-news'
   | 'google-videos'
   | 'meta-ads'
@@ -45,6 +47,7 @@ const TABS: { id: MonitoramentoTab; label: string; icon: typeof Youtube }[] = [
   { id: 'instagram', label: 'Instagram', icon: Instagram },
   { id: 'meta-ads', label: 'Anúncios', icon: Megaphone },
   { id: 'trends', label: 'Buscas', icon: LineChart },
+  { id: 'viral', label: 'Viral', icon: Flame },
   { id: 'lideres', label: 'Eng. líderes', icon: Users },
 ]
 

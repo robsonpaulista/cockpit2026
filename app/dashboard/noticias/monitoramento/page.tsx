@@ -18,6 +18,7 @@ import {
 } from '@/components/monitoramento/monitoramento-shell'
 import { usePanoramaPanel } from '@/components/monitoramento/use-panorama-panel'
 import { TrendsRadarPanel } from '@/components/monitoramento/trends-radar-panel'
+import { ViralTrendsPanel } from '@/components/monitoramento/viral-trends-panel'
 import { YoutubeRadarPanel } from '@/components/monitoramento/youtube-radar-panel'
 import { MONITORAMENTO_TAB_LIDERES } from '@/lib/monitoramento-lideres-route'
 
@@ -39,6 +40,7 @@ function parseTab(value: string | null): MonitoramentoTab {
   if (value === 'google-alerts') return 'google-alerts'
   if (value === 'youtube') return 'youtube'
   if (value === 'trends') return 'trends'
+  if (value === 'viral') return 'viral'
   if (value === 'google-news') return 'google-news'
   if (value === 'google-videos') return 'google-videos'
   if (value === 'meta-ads') return 'meta-ads'
@@ -93,6 +95,8 @@ export default function MonitoramentoPage() {
         return <YoutubeRadarPanel />
       case 'trends':
         return <TrendsRadarPanel />
+      case 'viral':
+        return <ViralTrendsPanel />
       case 'google-news':
         return <GoogleNewsRadarPanel />
       case 'google-videos':
