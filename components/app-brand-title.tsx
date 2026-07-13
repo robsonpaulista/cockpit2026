@@ -50,11 +50,13 @@ function wordmarkColors(tone: WordmarkTone) {
     return { cockpit: 'text-white', year: 'text-[#c99a2e]' }
   }
   if (tone === 'onAmber') {
+    // Mobile (header âmbar): texto claro. Desktop (header claro / sidebar light): COCKPIT preto + 2026 âmbar.
     return {
-      cockpit: 'text-[#c99a2e] max-lg:text-white',
-      year: 'text-white max-lg:text-white/70',
+      cockpit: 'text-text-primary max-lg:text-white',
+      year: 'text-[#c99a2e] max-lg:text-white/90',
     }
   }
+  // Sidebar escura / superfícies escuras
   return { cockpit: 'text-[#c99a2e]', year: 'text-white' }
 }
 
