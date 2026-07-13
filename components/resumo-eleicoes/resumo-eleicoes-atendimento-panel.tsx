@@ -113,7 +113,13 @@ interface PesquisaRecenteCidade {
 type ResumosCidadeMap = Record<string, { expectativaVotos: number; promessaVotos: number; expectativaLegadoVotos: number; votacaoFinal2022: number; liderancas: number }>
 type PesquisaCitiesMap = Record<string, string>
 type CenarioVotos = 'aferido_jadyel' | 'promessa_lideranca' | 'legado_anterior'
-type SimulacaoMapeamento = Record<string, string>
+type SimulacaoVereadorEntry = {
+  federal: string
+  depEstadual: string
+  /** Expectativa potencial 2026 digitada (null = não informada). */
+  expec2026: number | null
+}
+type SimulacaoMapeamento = Record<string, SimulacaoVereadorEntry>
 type ResumoEleicoesSnapshot = {
   cidade: string
   cidades: string[]
@@ -188,13 +194,44 @@ function limparNomeSimulacaoFederal(value: string): string {
   return nome.includes('::') ? nome.split('::')[0].trim() : nome
 }
 
+function entrySimulacaoVazia(): SimulacaoVereadorEntry {
+  return { federal: '', depEstadual: '', expec2026: null }
+}
+
+function parseExpec2026Simulacao(raw: unknown): number | null {
+  if (raw == null || raw === '') return null
+  if (typeof raw === 'number') {
+    return Number.isFinite(raw) && raw >= 0 ? Math.round(raw) : null
+  }
+  const cleaned = String(raw).replace(/[^\d]/g, '')
+  if (!cleaned) return null
+  const n = Number(cleaned)
+  return Number.isFinite(n) && n >= 0 ? n : null
+}
+
+function entrySimulacaoTemDados(entry: SimulacaoVereadorEntry): boolean {
+  return Boolean(entry.federal || entry.depEstadual || entry.expec2026 != null)
+}
+
 function sanitizarMapeamentoSimulacao(value: unknown): SimulacaoMapeamento {
   if (!value || typeof value !== 'object') return {}
-  const entries = Object.entries(value as Record<string, unknown>)
   const out: SimulacaoMapeamento = {}
-  entries.forEach(([vereadorKey, federalRaw]) => {
-    const nome = limparNomeSimulacaoFederal(String(federalRaw || ''))
-    if (nome) out[vereadorKey] = nome
+  Object.entries(value as Record<string, unknown>).forEach(([vereadorKey, raw]) => {
+    const entry = entrySimulacaoVazia()
+    if (typeof raw === 'string') {
+      // Formato legado: apenas o nome do federal.
+      entry.federal = limparNomeSimulacaoFederal(raw)
+    } else if (raw && typeof raw === 'object') {
+      const obj = raw as Record<string, unknown>
+      entry.federal = limparNomeSimulacaoFederal(String(obj.federal ?? obj.federalNome ?? ''))
+      entry.depEstadual = limparNomeSimulacaoFederal(
+        String(obj.depEstadual ?? obj.estadual ?? obj.dep_estadual ?? '')
+      )
+      entry.expec2026 = parseExpec2026Simulacao(
+        obj.expec2026 ?? obj.expectativa2026 ?? obj.expec ?? null
+      )
+    }
+    if (entrySimulacaoTemDados(entry)) out[vereadorKey] = entry
   })
   return out
 }
@@ -257,6 +294,11 @@ function partidosIguais(a?: string | null, b?: string | null): boolean {
   const pb = normalizarPartidoLabel(b)
   if (!pa || !pb) return false
   return pa === pb
+}
+
+function labelPartidoCurto(partido?: string | null): string {
+  const label = String(partido || '').trim()
+  return label || '-'
 }
 
 function Pagination({
@@ -1368,12 +1410,14 @@ export function ResumoEleicoesAtendimentoPanel() {
 
     vereador2024Completo.forEach((vereador) => {
       const vereadorKey = vereadorSimulacaoKey(vereador)
-      const federalNome = limparNomeSimulacaoFederal(simulacaoMapeamento[vereadorKey] || '')
+      const entry = simulacaoMapeamento[vereadorKey]
+      const federalNome = limparNomeSimulacaoFederal(entry?.federal || '')
       if (!federalNome) return
       const federalKey = normalizeText(federalNome)
       if (!federalKey) return
 
-      const votosVereador = parseVotos(vereador.quantidadeVotosNominais)
+      const votosBase = parseVotos(vereador.quantidadeVotosNominais)
+      const votosVereador = entry?.expec2026 != null ? entry.expec2026 : votosBase
       const atual = mapaFederal.get(federalKey) || {
         nome: federalNome,
         votosEstimados: 0,
@@ -1673,16 +1717,30 @@ export function ResumoEleicoesAtendimentoPanel() {
     }
   }
 
-  const atualizarMapeamentoVereador = (vereadorKey: string, federalNome: string) => {
+  const atualizarMapeamentoVereador = (
+    vereadorKey: string,
+    patch: Partial<SimulacaoVereadorEntry>
+  ) => {
     setSimulacaoMapeamento((prev) => {
-      const nomeLimpo = limparNomeSimulacaoFederal(federalNome)
-      if (!nomeLimpo) {
+      const atual = prev[vereadorKey] || entrySimulacaoVazia()
+      const next: SimulacaoVereadorEntry = {
+        federal:
+          patch.federal !== undefined
+            ? limparNomeSimulacaoFederal(patch.federal)
+            : atual.federal,
+        depEstadual:
+          patch.depEstadual !== undefined
+            ? limparNomeSimulacaoFederal(patch.depEstadual)
+            : atual.depEstadual,
+        expec2026: patch.expec2026 !== undefined ? patch.expec2026 : atual.expec2026,
+      }
+      if (!entrySimulacaoTemDados(next)) {
         const { [vereadorKey]: _, ...rest } = prev
         return rest
       }
       return {
         ...prev,
-        [vereadorKey]: nomeLimpo,
+        [vereadorKey]: next,
       }
     })
   }
@@ -1693,7 +1751,8 @@ export function ResumoEleicoesAtendimentoPanel() {
 
   const vereadoresMapeadosCount = vereador2024Completo.reduce((acc, vereador) => {
     const vereadorKey = vereadorSimulacaoKey(vereador)
-    return limparNomeSimulacaoFederal(simulacaoMapeamento[vereadorKey] || '') ? acc + 1 : acc
+    const entry = simulacaoMapeamento[vereadorKey]
+    return entry && entrySimulacaoTemDados(entry) ? acc + 1 : acc
   }, 0)
 
   const votosCenarioAtivo =
@@ -2130,12 +2189,13 @@ export function ResumoEleicoesAtendimentoPanel() {
           >
             <div className={cn(innerPanelClass, 'md:flex-1 min-w-[240px]')}>
               <h3 className="mb-2 text-center text-xs font-semibold text-text-primary">Deputado Estadual 2022</h3>
-              <table className="w-full text-xs">
+              <table className="w-full table-fixed text-xs">
                 <thead>
                   <tr>
                     <th className="w-8 bg-background px-1 py-1 text-center text-text-secondary">Sel.</th>
                     <th className="bg-background px-1 py-1 text-left text-text-secondary">Candidato</th>
-                    <th className="bg-background px-1 py-1 text-right text-text-secondary">Votos</th>
+                    <th className="w-[4.25rem] bg-background px-1 py-1 text-left text-text-secondary">Partido</th>
+                    <th className="w-14 bg-background px-1 py-1 text-right text-text-secondary">Votos</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -2159,7 +2219,7 @@ export function ResumoEleicoesAtendimentoPanel() {
                             className="h-3.5 w-3.5 accent-[rgb(var(--accent-gold))]"
                           />
                         </td>
-                        <td className="py-1 px-1">
+                        <td className="min-w-0 py-1 px-1">
                           <BotaoNomeCandidatoDistribuicao
                             item={item}
                             candidatoAtivo={candidatoDistribuicao}
@@ -2167,14 +2227,21 @@ export function ResumoEleicoesAtendimentoPanel() {
                             habilitado={Boolean(municipioAtivo)}
                           />
                         </td>
-                        <td className="py-1 px-1 text-right">{votes.toLocaleString('pt-BR')}</td>
+                        <td
+                          className="truncate px-1 py-1 text-left text-[11px] text-text-secondary"
+                          title={labelPartidoCurto(item.partido)}
+                        >
+                          {labelPartidoCurto(item.partido)}
+                        </td>
+                        <td className="py-1 px-1 text-right tabular-nums">{votes.toLocaleString('pt-BR')}</td>
                       </tr>
                     )
                   })}
                   <tr className="border-t border-card bg-background/90 font-semibold text-text-primary">
                     <td className="px-1 py-1"></td>
                     <td className="px-1 py-1">TOTAL</td>
-                    <td className="px-1 py-1 text-right">
+                    <td className="px-1 py-1"></td>
+                    <td className="px-1 py-1 text-right tabular-nums">
                       {deputadoEstadual2022
                         .reduce((acc, item) => acc + parseVotos(item.quantidadeVotosNominais), 0)
                         .toLocaleString('pt-BR')}
@@ -2206,12 +2273,13 @@ export function ResumoEleicoesAtendimentoPanel() {
 
             <div className={cn(innerPanelClass, 'md:flex-1 min-w-[240px]')}>
               <h3 className="mb-2 text-center text-xs font-semibold text-text-primary">Deputado Federal 2022</h3>
-              <table className="w-full text-xs">
+              <table className="w-full table-fixed text-xs">
                 <thead>
                   <tr>
                     <th className="w-8 bg-background px-1 py-1 text-center text-text-secondary">Sel.</th>
                     <th className="bg-background px-1 py-1 text-left text-text-secondary">Candidato</th>
-                    <th className="bg-background px-1 py-1 text-right text-text-secondary">Votos</th>
+                    <th className="w-[4.25rem] bg-background px-1 py-1 text-left text-text-secondary">Partido</th>
+                    <th className="w-14 bg-background px-1 py-1 text-right text-text-secondary">Votos</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -2239,7 +2307,7 @@ export function ResumoEleicoesAtendimentoPanel() {
                             className="h-3.5 w-3.5 accent-[rgb(var(--accent-gold))]"
                           />
                         </td>
-                        <td className="py-1 px-1">
+                        <td className="min-w-0 py-1 px-1">
                           <BotaoNomeCandidatoDistribuicao
                             item={item}
                             candidatoAtivo={candidatoDistribuicao}
@@ -2247,14 +2315,21 @@ export function ResumoEleicoesAtendimentoPanel() {
                             habilitado={Boolean(municipioAtivo)}
                           />
                         </td>
-                        <td className="py-1 px-1 text-right">{votes.toLocaleString('pt-BR')}</td>
+                        <td
+                          className="truncate px-1 py-1 text-left text-[11px] text-text-secondary"
+                          title={labelPartidoCurto(item.partido)}
+                        >
+                          {labelPartidoCurto(item.partido)}
+                        </td>
+                        <td className="py-1 px-1 text-right tabular-nums">{votes.toLocaleString('pt-BR')}</td>
                       </tr>
                     )
                   })}
                   <tr className="border-t border-card bg-background/90 font-semibold text-text-primary">
                     <td className="px-1 py-1"></td>
                     <td className="px-1 py-1">TOTAL</td>
-                    <td className="px-1 py-1 text-right">
+                    <td className="px-1 py-1"></td>
+                    <td className="px-1 py-1 text-right tabular-nums">
                       {deputadoFederal2022
                         .reduce((acc, item) => acc + parseVotos(item.quantidadeVotosNominais), 0)
                         .toLocaleString('pt-BR')}
@@ -2286,12 +2361,13 @@ export function ResumoEleicoesAtendimentoPanel() {
 
             <div className={cn(innerPanelClass, 'md:flex-1 min-w-[240px]')}>
               <h3 className="mb-2 text-center text-xs font-semibold text-text-primary">Prefeito 2024</h3>
-              <table className="w-full text-xs">
+              <table className="w-full table-fixed text-xs">
                 <thead>
                   <tr>
                     <th className="w-8 bg-background px-1 py-1 text-center text-text-secondary">Sel.</th>
                     <th className="bg-background px-1 py-1 text-left text-text-secondary">Candidato</th>
-                    <th className="bg-background px-1 py-1 text-right text-text-secondary">Votos</th>
+                    <th className="w-[4.25rem] bg-background px-1 py-1 text-left text-text-secondary">Partido</th>
+                    <th className="w-14 bg-background px-1 py-1 text-right text-text-secondary">Votos</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -2315,7 +2391,7 @@ export function ResumoEleicoesAtendimentoPanel() {
                             className="h-3.5 w-3.5 accent-[rgb(var(--accent-gold))]"
                           />
                         </td>
-                        <td className="py-1 px-1">
+                        <td className="min-w-0 py-1 px-1">
                           <BotaoNomeCandidatoDistribuicao
                             item={item}
                             candidatoAtivo={candidatoDistribuicao}
@@ -2323,14 +2399,21 @@ export function ResumoEleicoesAtendimentoPanel() {
                             habilitado={Boolean(municipioAtivo)}
                           />
                         </td>
-                        <td className="py-1 px-1 text-right">{votes.toLocaleString('pt-BR')}</td>
+                        <td
+                          className="truncate px-1 py-1 text-left text-[11px] text-text-secondary"
+                          title={labelPartidoCurto(item.partido)}
+                        >
+                          {labelPartidoCurto(item.partido)}
+                        </td>
+                        <td className="py-1 px-1 text-right tabular-nums">{votes.toLocaleString('pt-BR')}</td>
                       </tr>
                     )
                   })}
                   <tr className="border-t border-card bg-background/90 font-semibold text-text-primary">
                     <td className="px-1 py-1"></td>
                     <td className="px-1 py-1">TOTAL</td>
-                    <td className="px-1 py-1 text-right">
+                    <td className="px-1 py-1"></td>
+                    <td className="px-1 py-1 text-right tabular-nums">
                       {prefeito2024
                         .reduce((acc, item) => acc + parseVotos(item.quantidadeVotosNominais), 0)
                         .toLocaleString('pt-BR')}
@@ -2362,13 +2445,14 @@ export function ResumoEleicoesAtendimentoPanel() {
 
             <div className={cn(innerPanelClass, 'md:flex-1 min-w-[280px]')}>
               <h3 className="mb-2 text-center text-xs font-semibold text-text-primary">Vereador 2024</h3>
-              <table className="w-full text-xs">
+              <table className="w-full table-fixed text-xs">
                 <thead>
                   <tr>
                     <th className="w-8 bg-background px-1 py-1 text-center text-text-secondary">Sel.</th>
                     <th className="bg-background px-1 py-1 text-left text-text-secondary">Candidato</th>
-                    <th className="bg-background px-1 py-1 text-right text-text-secondary">Votos</th>
-                    <th className="bg-background px-1 py-1 text-center text-text-secondary">Situação</th>
+                    <th className="w-[3.75rem] bg-background px-0.5 py-1 text-left text-text-secondary">Partido</th>
+                    <th className="w-12 bg-background px-1 py-1 text-right text-text-secondary">Votos</th>
+                    <th className="w-[4.5rem] bg-background px-0.5 py-1 text-center text-text-secondary">Situação</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -2403,8 +2487,8 @@ export function ResumoEleicoesAtendimentoPanel() {
                             className="h-3.5 w-3.5 accent-[rgb(var(--accent-gold))]"
                           />
                         </td>
-                        <td className="px-1 py-1">
-                          <span className="inline-flex items-center gap-1">
+                        <td className="min-w-0 px-1 py-1">
+                          <span className="inline-flex max-w-full items-center gap-1">
                             <BotaoNomeCandidatoDistribuicao
                               item={item}
                               candidatoAtivo={candidatoDistribuicao}
@@ -2419,11 +2503,17 @@ export function ResumoEleicoesAtendimentoPanel() {
                             )}
                           </span>
                         </td>
-                        <td className="px-1 py-1 text-right">{votes.toLocaleString('pt-BR')}</td>
-                        <td className="px-1 py-1 text-center">
+                        <td
+                          className="truncate px-0.5 py-1 text-left text-[11px] text-text-secondary"
+                          title={labelPartidoCurto(item.partido)}
+                        >
+                          {labelPartidoCurto(item.partido)}
+                        </td>
+                        <td className="px-1 py-1 text-right tabular-nums">{votes.toLocaleString('pt-BR')}</td>
+                        <td className="px-0.5 py-1 text-center">
                           <span
                             className={cn(
-                              'inline-flex rounded-full px-1.5 py-0.5 text-xs',
+                              'inline-flex max-w-full truncate rounded-full px-1.5 py-0.5 text-[10px]',
                               isPresidente &&
                                 'border border-white/40 bg-white/15 font-medium text-white',
                               !isPresidente &&
@@ -2443,12 +2533,13 @@ export function ResumoEleicoesAtendimentoPanel() {
                   <tr className="border-t border-card bg-background/90 font-semibold text-text-primary">
                     <td className="px-1 py-1"></td>
                     <td className="px-1 py-1">TOTAL</td>
-                    <td className="px-1 py-1 text-right">
+                    <td className="px-0.5 py-1"></td>
+                    <td className="px-1 py-1 text-right tabular-nums">
                       {vereador2024
                         .reduce((acc, item) => acc + parseVotos(item.quantidadeVotosNominais), 0)
                         .toLocaleString('pt-BR')}
                     </td>
-                    <td className="py-1 px-1 text-center">
+                    <td className="px-0.5 py-1 text-center text-[11px]">
                       {vereador2024.filter((item) => includesNormalized(item.situacao, 'eleito')).length} eleitos
                     </td>
                   </tr>
@@ -2575,7 +2666,7 @@ export function ResumoEleicoesAtendimentoPanel() {
 
       {showSimulacaoModal && (
         <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
-          <div className="w-full max-w-5xl max-h-[88vh] bg-surface rounded-xl border border-card overflow-hidden flex flex-col">
+          <div className="w-full max-w-6xl max-h-[88vh] bg-surface rounded-xl border border-card overflow-hidden flex flex-col">
             <div className="flex items-center justify-between px-4 py-3 border-b border-card">
               <div>
                 <h3 className="text-sm font-semibold text-text-primary">
@@ -2597,21 +2688,34 @@ export function ResumoEleicoesAtendimentoPanel() {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 p-3 overflow-auto">
               <div className="rounded-lg border border-card">
                 <div className="px-3 py-2 border-b border-card bg-background text-xs font-medium text-text-secondary">
-                  Mapeamento Vereador ➜ Federal ({vereadoresMapeadosCount}/{vereador2024Completo.length})
+                  Mapeamento Vereador ➜ Federal / Estadual ({vereadoresMapeadosCount}/
+                  {vereador2024Completo.length})
                 </div>
                 <div className="max-h-[52vh] overflow-auto">
                   <table className="w-full text-xs">
                     <thead>
                       <tr>
-                        <th className="bg-background px-2 py-2 text-left text-text-secondary">Vereador 2024</th>
-                        <th className="bg-background px-2 py-2 text-right text-text-secondary">Votos</th>
-                        <th className="bg-background px-2 py-2 text-left text-text-secondary">Federal (nome digitado)</th>
+                        <th className="bg-background px-2 py-2 text-left text-text-secondary">
+                          Vereador 2024
+                        </th>
+                        <th className="bg-background px-2 py-2 text-right text-text-secondary">
+                          Votos
+                        </th>
+                        <th className="bg-background px-2 py-2 text-right text-text-secondary">
+                          Expec. 2026
+                        </th>
+                        <th className="bg-background px-2 py-2 text-left text-text-secondary">
+                          Federal
+                        </th>
+                        <th className="bg-background px-2 py-2 text-left text-text-secondary">
+                          Dep. Estadual
+                        </th>
                       </tr>
                     </thead>
                     <tbody>
                       {vereador2024Completo.map((vereador, rowIndex) => {
                         const vereadorKey = vereadorSimulacaoKey(vereador)
-                        const valorSelecionado = limparNomeSimulacaoFederal(simulacaoMapeamento[vereadorKey] || '')
+                        const entry = simulacaoMapeamento[vereadorKey] || entrySimulacaoVazia()
                         const votosVereador = parseVotos(vereador.quantidadeVotosNominais)
                         return (
                           <tr
@@ -2627,13 +2731,45 @@ export function ResumoEleicoesAtendimentoPanel() {
                                 vereador.numeroUrna,
                               )}
                             </td>
-                            <td className="px-2 py-1.5 text-right">{votosVereador.toLocaleString('pt-BR')}</td>
+                            <td className="px-2 py-1.5 text-right tabular-nums">
+                              {votosVereador.toLocaleString('pt-BR')}
+                            </td>
                             <td className="px-2 py-1.5">
                               <input
-                                value={valorSelecionado}
-                                onChange={(event) => atualizarMapeamentoVereador(vereadorKey, event.target.value)}
+                                type="text"
+                                inputMode="numeric"
+                                value={entry.expec2026 == null ? '' : String(entry.expec2026)}
+                                onChange={(event) =>
+                                  atualizarMapeamentoVereador(vereadorKey, {
+                                    expec2026: parseExpec2026Simulacao(event.target.value),
+                                  })
+                                }
+                                placeholder="0"
+                                className="h-8 w-full min-w-[4.5rem] rounded border border-card bg-surface px-2 text-right text-xs text-text-primary tabular-nums"
+                              />
+                            </td>
+                            <td className="px-2 py-1.5">
+                              <input
+                                value={entry.federal}
+                                onChange={(event) =>
+                                  atualizarMapeamentoVereador(vereadorKey, {
+                                    federal: event.target.value,
+                                  })
+                                }
                                 placeholder="Ex.: JADYEL ALENCAR"
-                                className="h-8 w-full rounded border border-card bg-surface px-2 text-xs text-text-primary"
+                                className="h-8 w-full min-w-[7rem] rounded border border-card bg-surface px-2 text-xs text-text-primary"
+                              />
+                            </td>
+                            <td className="px-2 py-1.5">
+                              <input
+                                value={entry.depEstadual}
+                                onChange={(event) =>
+                                  atualizarMapeamentoVereador(vereadorKey, {
+                                    depEstadual: event.target.value,
+                                  })
+                                }
+                                placeholder="Ex.: nome do estadual"
+                                className="h-8 w-full min-w-[7rem] rounded border border-card bg-surface px-2 text-xs text-text-primary"
                               />
                             </td>
                           </tr>
@@ -2646,7 +2782,7 @@ export function ResumoEleicoesAtendimentoPanel() {
 
               <div className="rounded-lg border border-card">
                 <div className="px-3 py-2 border-b border-card bg-background text-xs font-medium text-text-secondary">
-                  Ranking Geral (soma dos votos dos vereadores mapeados)
+                  Ranking Geral (usa Expec. 2026 quando preenchida; senão votos 2024)
                 </div>
                 <div className="max-h-[52vh] overflow-auto p-2">
                   {rankingSimulacaoFederal.length === 0 ? (
@@ -2673,7 +2809,9 @@ export function ResumoEleicoesAtendimentoPanel() {
                           >
                             <td className="px-2 py-1.5">{item.nome}</td>
                             <td className="px-2 py-1.5 text-right">{item.vereadores}</td>
-                            <td className="px-2 py-1.5 text-right font-semibold">{item.votosEstimados.toLocaleString('pt-BR')}</td>
+                            <td className="px-2 py-1.5 text-right font-semibold">
+                              {item.votosEstimados.toLocaleString('pt-BR')}
+                            </td>
                           </tr>
                         ))}
                         <tr className="border-t border-card bg-background/90 font-semibold text-text-primary">
@@ -2682,7 +2820,9 @@ export function ResumoEleicoesAtendimentoPanel() {
                             {rankingSimulacaoFederal.reduce((acc, item) => acc + item.vereadores, 0)}
                           </td>
                           <td className="py-1.5 px-2 text-right">
-                            {rankingSimulacaoFederal.reduce((acc, item) => acc + item.votosEstimados, 0).toLocaleString('pt-BR')}
+                            {rankingSimulacaoFederal
+                              .reduce((acc, item) => acc + item.votosEstimados, 0)
+                              .toLocaleString('pt-BR')}
                           </td>
                         </tr>
                       </tbody>
@@ -2694,7 +2834,9 @@ export function ResumoEleicoesAtendimentoPanel() {
 
             <div className="px-3 py-2 border-t border-card bg-background flex items-center justify-between gap-2">
               <div className="text-xs text-text-secondary">
-                {loadingSimulacao ? 'Carregando simulação salva...' : 'Persistência ativa por cidade no Supabase.'}
+                {loadingSimulacao
+                  ? 'Carregando simulação salva...'
+                  : 'Persistência ativa por cidade no Supabase.'}
               </div>
               <div className="flex items-center gap-2">
                 <button

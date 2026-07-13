@@ -4,9 +4,18 @@ import { createClient } from '@/lib/supabase/server'
 
 export const dynamic = 'force-dynamic'
 
+const entrySchema = z.union([
+  z.string(),
+  z.object({
+    federal: z.string().optional(),
+    depEstadual: z.string().optional(),
+    expec2026: z.number().nullable().optional(),
+  }),
+])
+
 const schema = z.object({
   cidade: z.string().min(1),
-  mapeamento: z.record(z.string(), z.string()),
+  mapeamento: z.record(z.string(), entrySchema),
 })
 
 function normalizeCity(value: string): string {
@@ -15,6 +24,50 @@ function normalizeCity(value: string): string {
     .replace(/[\u0300-\u036f]/g, '')
     .toUpperCase()
     .trim()
+}
+
+function limparNome(value: unknown): string {
+  return String(value || '')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
+function parseExpec(raw: unknown): number | null {
+  if (raw == null || raw === '') return null
+  if (typeof raw === 'number') {
+    return Number.isFinite(raw) && raw >= 0 ? Math.round(raw) : null
+  }
+  const cleaned = String(raw).replace(/[^\d]/g, '')
+  if (!cleaned) return null
+  const n = Number(cleaned)
+  return Number.isFinite(n) && n >= 0 ? n : null
+}
+
+type SimulacaoEntry = {
+  federal: string
+  depEstadual: string
+  expec2026: number | null
+}
+
+function sanitizarMapeamento(value: unknown): Record<string, SimulacaoEntry> {
+  if (!value || typeof value !== 'object') return {}
+  const out: Record<string, SimulacaoEntry> = {}
+  for (const [key, raw] of Object.entries(value as Record<string, unknown>)) {
+    let federal = ''
+    let depEstadual = ''
+    let expec2026: number | null = null
+    if (typeof raw === 'string') {
+      federal = limparNome(raw.includes('::') ? raw.split('::')[0] : raw)
+    } else if (raw && typeof raw === 'object') {
+      const obj = raw as Record<string, unknown>
+      federal = limparNome(obj.federal ?? obj.federalNome)
+      depEstadual = limparNome(obj.depEstadual ?? obj.estadual ?? obj.dep_estadual)
+      expec2026 = parseExpec(obj.expec2026 ?? obj.expectativa2026 ?? obj.expec)
+    }
+    if (!federal && !depEstadual && expec2026 == null) continue
+    out[key] = { federal, depEstadual, expec2026 }
+  }
+  return out
 }
 
 export async function GET(request: NextRequest) {
@@ -46,7 +99,7 @@ export async function GET(request: NextRequest) {
     }
 
     return NextResponse.json({
-      mapeamento: (data?.mapeamento || {}) as Record<string, string>,
+      mapeamento: sanitizarMapeamento(data?.mapeamento),
     })
   } catch (error) {
     console.error('Erro ao buscar simulação de vereadores:', error)
@@ -68,6 +121,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const parsed = schema.parse(body)
     const municipioNormalizado = normalizeCity(parsed.cidade)
+    const mapeamento = sanitizarMapeamento(parsed.mapeamento)
 
     const { data, error } = await supabase
       .from('resumo_eleicoes_simulacoes')
@@ -75,7 +129,7 @@ export async function POST(request: NextRequest) {
         {
           municipio: parsed.cidade,
           municipio_normalizado: municipioNormalizado,
-          mapeamento: parsed.mapeamento,
+          mapeamento,
           created_by: user.id,
           updated_by: user.id,
           updated_at: new Date().toISOString(),
@@ -92,7 +146,7 @@ export async function POST(request: NextRequest) {
     }
 
     return NextResponse.json({
-      mapeamento: (data?.mapeamento || {}) as Record<string, string>,
+      mapeamento: sanitizarMapeamento(data?.mapeamento),
     })
   } catch (error) {
     if (error instanceof z.ZodError) {
