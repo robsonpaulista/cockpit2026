@@ -19,7 +19,7 @@ const INDICADOR_ICONE: Record<IptIndicador | 'geral', typeof LayoutGrid> = {
 
 const INDICADOR_LABEL_CURTO: Record<IptIndicador | 'geral', string> = {
   geral: 'Geral',
-  visitas: 'Campo',
+  visitas: 'Visitas',
   obras: 'Obras',
   pesquisa: 'Pesquisa',
   digital: 'Digital',
@@ -30,6 +30,8 @@ type IptMapCardHeaderProps = {
   filtroIndicador: IptIndicador | 'geral'
   filtroEvolucao: IptEvolucaoFiltro
   contagemEvolucao?: Record<IptEvolucaoFiltro, number>
+  /** Quantidade de municípios na lente Obras (sem evolução). */
+  contagemObrasMunicipios?: number
   isNativeFullscreen: boolean
   mapEmpty: boolean
   onIndicadorChange: (valor: IptIndicador | 'geral') => void
@@ -42,6 +44,7 @@ export function IptMapCardHeader({
   filtroIndicador,
   filtroEvolucao,
   contagemEvolucao,
+  contagemObrasMunicipios,
   isNativeFullscreen,
   mapEmpty,
   onIndicadorChange,
@@ -56,8 +59,10 @@ export function IptMapCardHeader({
       : filtroIndicador === 'pesquisa'
         ? 'Lente pesquisa · média de intenção · 1 onda = estável'
         : filtroIndicador === 'visitas'
-          ? 'Lente campo · visitas 0–30d vs 31–60d · sem variação = estável'
-          : 'Cores = diagnóstico geral · clique no município para detalhes'
+          ? 'Lente visitas · 0–30d vs 31–60d · sem visita = diminuiu · sem expectativa = cinza'
+          : filtroIndicador === 'obras'
+            ? 'Lente obras · sem série de evolução · municípios com obra destinada'
+            : 'Cores = diagnóstico geral · clique no município para detalhes'
 
   return (
     <div className="ipt-map-card__header">
@@ -144,9 +149,21 @@ export function IptMapCardHeader({
             </div>
           </div>
         ) : (
-          <p className="ipt-map-card__evolucao-hint">
-            Evolução não se aplica a Obras.
-          </p>
+          <div className="ipt-filter-group">
+            <span className="ipt-filter-group__label">Municípios:</span>
+            <div
+              className="ipt-lens-toggle"
+              role="status"
+              aria-label="Quantidade de municípios com obras"
+            >
+              <span className="ipt-lens-toggle__btn ipt-lens-toggle__btn--active">
+                <span>Com obras</span>
+                <span className="ipt-lens-toggle__count tabular-nums">
+                  {typeof contagemObrasMunicipios === 'number' ? contagemObrasMunicipios : '—'}
+                </span>
+              </span>
+            </div>
+          </div>
         )}
       </div>
     </div>

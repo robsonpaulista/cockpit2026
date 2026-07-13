@@ -63,6 +63,10 @@ export function iptChipTheme(
   indicador: IptIndicador | null,
   evolucaoFiltro: IptEvolucaoFiltro = 'todos'
 ): IptChipTheme {
+  // Visitas sem expectativa cadastrada: sempre cinza (independente da evolução).
+  if (indicador === 'visitas' && m.prioridade === 'sem_expectativa') {
+    return PRIORIDADE_THEME.sem_expectativa
+  }
   // Filtro composto (ex.: Pesquisa + Estável): cor da evolução ativa.
   if (indicador && evolucaoFiltro !== 'todos') {
     return EVOLUCAO_THEME[evolucaoDaLente(m, indicador)]

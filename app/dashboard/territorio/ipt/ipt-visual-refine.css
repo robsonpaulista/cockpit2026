@@ -81,6 +81,12 @@ body[data-ipt-refine] .ipt-page-shell {
 }
 
 /* --- Botão Atualizar (3º ponto de marca) --- */
+.ipt-header-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .ipt-btn-atualizar {
   display: inline-flex;
   align-items: center;
@@ -103,6 +109,44 @@ body[data-ipt-refine] .ipt-page-shell {
 .ipt-btn-atualizar:disabled {
   opacity: 0.55;
   pointer-events: none;
+}
+
+.ipt-btn-exportar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  background: transparent;
+  color: var(--text-primary, #1a1a1a);
+  border: 1px solid var(--border-subtle, #d4d4d8);
+  font-weight: 500;
+  font-size: 12px;
+  padding: 6px 12px;
+  border-radius: 6px;
+  transition: background 150ms ease, border-color 150ms ease;
+}
+
+.ipt-btn-exportar:hover:not(:disabled) {
+  background: var(--surface-muted, #f4f4f5);
+  border-color: var(--border-strong, #a1a1aa);
+}
+
+.ipt-btn-exportar:disabled {
+  opacity: 0.55;
+  pointer-events: none;
+}
+
+.ipt-btn-exportar__count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.4em;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: var(--surface-muted, #e4e4e7);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
 }
 
 /* --- Filtros: escopo + pílulas de categoria --- */
@@ -703,6 +747,7 @@ body[data-ipt-refine] aside[data-sidebar-shell] .sidebar-quick-access svg {
 }
 
 body[data-ipt-refine] .ipt-btn-atualizar,
+body[data-ipt-refine] .ipt-btn-exportar,
 body[data-ipt-refine] .ipt-lens-toggle__btn,
 body[data-ipt-refine] .ipt-map-card__fullscreen,
 body[data-ipt-refine] .ipt-scope-select {
@@ -713,6 +758,7 @@ body[data-ipt-refine] .ipt-scope-select {
 }
 
 body[data-ipt-refine] .ipt-btn-atualizar .cockpit-icon--sm,
+body[data-ipt-refine] .ipt-btn-exportar .cockpit-icon--sm,
 body[data-ipt-refine] .ipt-lens-toggle__btn .cockpit-icon--sm {
   width: 14px;
   height: 14px;

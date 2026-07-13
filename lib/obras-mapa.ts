@@ -399,7 +399,16 @@ export function listarMunicipiosComObras(
   const municipios = new Set<string>()
   for (const obra of fonte) {
     const municipio = obra.municipio?.trim()
-    if (municipio) municipios.add(municipio)
+    if (!municipio) continue
+    const norm = municipio
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/\s+/g, ' ')
+      .trim()
+    // Exclui agregados da planilha que não são município do PI.
+    if (/diversos\s+municipios/.test(norm) || /municipio nao informado/.test(norm)) continue
+    municipios.add(municipio)
   }
   return [...municipios].sort((a, b) => a.localeCompare(b, 'pt-BR'))
 }

@@ -57,9 +57,8 @@ export function classificarEvolucaoPesquisaPp(
 }
 
 export function classificarEvolucaoVisitas(atual: number, anterior: number): IptEvolucao {
-  // Sem visitas em 0–30d e 31–60d: estável (cobertura por histórico, sem tendência recente).
-  // Assim Todos = Cresceu + Estável + Diminuiu na lente Campo.
-  if (atual === 0 && anterior === 0) return 'estavel'
+  // Sem visitas em 0–30d e 31–60d: trata como diminuiu (sem presença recente).
+  if (atual === 0 && anterior === 0) return 'diminuiu'
   if (atual === anterior) return 'estavel'
   return atual > anterior ? 'cresceu' : 'diminuiu'
 }

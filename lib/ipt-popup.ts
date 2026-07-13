@@ -458,13 +458,15 @@ export function createIptMarkerHtml(
 ): string {
   const theme = iptChipTheme(m, indicador, evolucaoFiltro)
   const noVotesClass =
-    indicador != null
-      ? m.sinais[indicador] === 'sem_dado'
-        ? ' mapa-ipt-marker--no-votes'
-        : ''
-      : m.prioridade === 'sem_expectativa'
-        ? ' mapa-ipt-marker--no-votes'
-        : ''
+    indicador === 'visitas' && m.prioridade === 'sem_expectativa'
+      ? ' mapa-ipt-marker--no-votes'
+      : indicador != null
+        ? m.sinais[indicador] === 'sem_dado'
+          ? ' mapa-ipt-marker--no-votes'
+          : ''
+        : m.prioridade === 'sem_expectativa'
+          ? ' mapa-ipt-marker--no-votes'
+          : ''
   return `<div class="mapa-marker-dot mapa-ipt-marker${noVotesClass}" style="
     width:${size}px;height:${size}px;
     background:${theme.dot};

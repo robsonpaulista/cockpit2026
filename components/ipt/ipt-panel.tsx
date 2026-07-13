@@ -2,7 +2,7 @@
 
 import dynamic from 'next/dynamic'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Loader2, RefreshCw } from 'lucide-react'
+import { Download, Loader2, RefreshCw } from 'lucide-react'
 import { CockpitIcon } from '@/components/ui/cockpit-icon'
 import {
   DashboardPageChrome,
@@ -20,6 +20,7 @@ import {
   municipioPassaFiltroEvolucao,
   type IptEvolucaoFiltro,
 } from '@/lib/ipt-evolucao'
+import { exportarIptExcel } from '@/lib/ipt-export'
 import { filtrarIptMunicipiosPorTd } from '@/lib/ipt-td'
 import type { TerritorioDesenvolvimentoPI } from '@/lib/piaui-territorio-desenvolvimento'
 import { useTheme } from '@/contexts/theme-context'
@@ -85,30 +86,40 @@ export function IptPanel() {
       return municipiosFiltrados.filter((m) => iptMunicipioComCoberturaIndicador(m, 'obras'))
     }
 
-    // Lente específica: só municípios com dado daquele indicador.
+    // Visitas: sempre o escopo completo (224 / TD), sem filtrar pelos cards de prioridade.
+    // Demais lentes: só municípios com dado daquele indicador.
     // Geral: mantém o universo filtrado por prioridade/TD.
     const base =
-      indicadorAtivo == null
-        ? municipiosFiltrados
-        : municipiosFiltrados.filter((m) =>
-            iptMunicipioComCoberturaIndicador(m, indicadorAtivo)
-          )
+      filtroIndicador === 'visitas'
+        ? municipiosNoEscopo
+        : indicadorAtivo == null
+          ? municipiosFiltrados
+          : municipiosFiltrados.filter((m) =>
+              iptMunicipioComCoberturaIndicador(m, indicadorAtivo)
+            )
 
     // Evolução: Todos = base da lente; Cresceu/Estável/Diminuiu filtram a classificação
-    // (1 onda de pesquisa → estável).
+    // (1 onda de pesquisa → estável; sem visita → diminuiu).
     if (filtroEvolucao === 'todos') return base
     return base.filter((m) =>
       municipioPassaFiltroEvolucao(evolucaoDaLente(m, indicadorAtivo), filtroEvolucao)
     )
-  }, [municipiosFiltrados, filtroIndicador, filtroEvolucao, indicadorAtivo])
+  }, [
+    municipiosFiltrados,
+    municipiosNoEscopo,
+    filtroIndicador,
+    filtroEvolucao,
+    indicadorAtivo,
+  ])
 
   const baseEvolucao = useMemo(() => {
     if (filtroIndicador === 'obras') return []
+    if (filtroIndicador === 'visitas') return municipiosNoEscopo
     if (indicadorAtivo == null) return municipiosFiltrados
     return municipiosFiltrados.filter((m) =>
       iptMunicipioComCoberturaIndicador(m, indicadorAtivo)
     )
-  }, [municipiosFiltrados, filtroIndicador, indicadorAtivo])
+  }, [municipiosFiltrados, municipiosNoEscopo, filtroIndicador, indicadorAtivo])
 
   const contagemEvolucao = useMemo(() => {
     const counts: Record<IptEvolucaoFiltro, number> = {
@@ -158,16 +169,48 @@ export function IptPanel() {
     }
   }, [])
 
+  const handleExportar = useCallback(() => {
+    exportarIptExcel(municipiosNoMapa, {
+      prioridade: filtroIndicador === 'visitas' ? null : filtroPrioridade,
+      indicador: filtroIndicador,
+      evolucao: filtroIndicador === 'obras' ? 'todos' : filtroEvolucao,
+      td: filtroTd,
+    })
+  }, [
+    municipiosNoMapa,
+    filtroPrioridade,
+    filtroIndicador,
+    filtroEvolucao,
+    filtroTd,
+  ])
+
   const headerAction = (
-    <button
-      type="button"
-      onClick={() => void recarregar()}
-      className="ipt-btn-atualizar"
-      disabled={loading}
-    >
-      <CockpitIcon icon={RefreshCw} size="sm" className={loading ? 'animate-spin' : undefined} />
-      Atualizar
-    </button>
+    <div className="ipt-header-actions">
+      <button
+        type="button"
+        onClick={handleExportar}
+        className="ipt-btn-exportar"
+        disabled={loading || municipiosNoMapa.length === 0}
+        title={
+          municipiosNoMapa.length === 0
+            ? 'Nenhum município com os filtros atuais'
+            : `Exportar ${municipiosNoMapa.length} município(s) filtrado(s)`
+        }
+      >
+        <CockpitIcon icon={Download} size="sm" />
+        Exportar
+        <span className="ipt-btn-exportar__count">{municipiosNoMapa.length}</span>
+      </button>
+      <button
+        type="button"
+        onClick={() => void recarregar()}
+        className="ipt-btn-atualizar"
+        disabled={loading}
+      >
+        <CockpitIcon icon={RefreshCw} size="sm" className={loading ? 'animate-spin' : undefined} />
+        Atualizar
+      </button>
+    </div>
   )
 
   return (
@@ -219,6 +262,9 @@ export function IptPanel() {
             filtroIndicador={filtroIndicador}
             filtroEvolucao={filtroEvolucao}
             contagemEvolucao={contagemEvolucao}
+            contagemObrasMunicipios={
+              filtroIndicador === 'obras' ? municipiosNoMapa.length : undefined
+            }
             isNativeFullscreen={isNativeFullscreen}
             mapEmpty={municipiosNoMapa.length === 0}
             onIndicadorChange={handleIndicadorChange}

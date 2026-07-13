@@ -491,8 +491,11 @@ export function contagemIptComExpectativa(municipios: IptMunicipio[]): number {
   return municipios.filter((m) => m.prioridade !== 'sem_expectativa').length
 }
 
-/** Município com expectativa e dado registrado para o indicador (cobertura da lente). */
+/** Município com cobertura na lente (o que entra no mapa filtrado por status). */
 export function iptMunicipioComCoberturaIndicador(m: IptMunicipio, indicador: IptIndicador): boolean {
+  // Visitas: todos os 224 municípios (sem expectativa = cinza; sem visita = diminuiu).
+  if (indicador === 'visitas') return true
+
   if (indicador === 'digital') {
     return (
       (m.detalhes.digitalSeguidores != null && m.detalhes.digitalSeguidores > 0) ||
@@ -510,14 +513,13 @@ export function iptMunicipioComCoberturaIndicador(m: IptMunicipio, indicador: Ip
     )
   }
 
-  if (m.prioridade === 'sem_expectativa') return false
-
-  if (indicador === 'visitas') {
-    return m.detalhes.visitasNoPeriodo > 0 || m.detalhes.visitasHistorico > 0
-  }
+  // Obras: cobertura bruta (com obra cadastrada), independente da expectativa.
   if (indicador === 'obras') {
     return m.detalhes.obrasQuantidade > 0
   }
+
+  if (m.prioridade === 'sem_expectativa') return false
+
   return false
 }
 

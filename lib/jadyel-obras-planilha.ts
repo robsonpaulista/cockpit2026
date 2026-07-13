@@ -50,8 +50,40 @@ function normalizeText(value: string): string {
 function normalizeMunicipioName(value: string): string {
   const trimmed = value.trim().replace(/\s+/g, ' ')
   const norm = normalizeText(trimmed)
-  const match = MUNICIPIOS_PI.find((m) => normalizeText(m) === norm)
-  return match ?? trimmed
+  if (!norm) return trimmed
+
+  // Aliases / grafias incompletas da planilha
+  const aliases: Record<string, string> = {
+    valenca: 'Valença Do Piauí',
+  }
+  if (aliases[norm]) return aliases[norm]
+
+  const exact = MUNICIPIOS_PI.find((m) => normalizeText(m) === norm)
+  if (exact) return exact
+
+  // Prefixo único: "Valença" → "Valença Do Piauí"
+  const prefixMatches = MUNICIPIOS_PI.filter((m) => {
+    const nm = normalizeText(m)
+    return nm === norm || nm.startsWith(`${norm} `)
+  })
+  if (prefixMatches.length === 1) return prefixMatches[0]
+
+  return trimmed
+}
+
+/** Resolve nome de município da planilha para o cadastro do PI (quando possível). */
+export function resolveMunicipioObrasJadyel(value: string): string {
+  return normalizeMunicipioName(value)
+}
+
+/** Município contável em KPIs de cobertura (exclui agregados genéricos). */
+export function isMunicipioObrasContavel(value: string | null | undefined): boolean {
+  const nome = String(value ?? '').trim()
+  if (!nome) return false
+  const norm = normalizeText(nome)
+  if (/diversos\s+municipios/.test(norm)) return false
+  if (/municipio nao informado/.test(norm)) return false
+  return true
 }
 
 export function splitMunicipiosCell(value: string): string[] {
@@ -204,7 +236,7 @@ export function parsePlanilhaRows(
 export function toObraMapaRow(obra: JadyelObraPlanilhaRow): JadyelObraMapaRow {
   return {
     id: obra.id,
-    municipio: obra.municipio,
+    municipio: resolveMunicipioObrasJadyel(obra.municipio),
     obra: obra.obra,
     orgao: obra.orgao,
     sei: obra.sei,
