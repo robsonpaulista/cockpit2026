@@ -11,14 +11,6 @@ import {
 const CHROME_UA =
   'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36'
 
-type TrendingNowItem = {
-  keyword?: string
-  traffic?: number
-  trafficGrowthRate?: number
-  relatedKeywords?: readonly string[]
-  activeTime?: string
-}
-
 async function makeTrendsClient() {
   const mod = await import('trendsearch')
   return mod.createClient({
@@ -48,7 +40,7 @@ export async function runGoogleTrendingTopicsCollect(options?: {
       hours,
     })
 
-    const items = (response.data?.items ?? []) as TrendingNowItem[]
+    const items = response.data.items
     if (items.length === 0) {
       return {
         ok: false,
@@ -63,7 +55,7 @@ export async function runGoogleTrendingTopicsCollect(options?: {
 
     const rows = items
       .map((item, index) => {
-        const keyword = typeof item.keyword === 'string' ? item.keyword.trim() : ''
+        const keyword = item.keyword.trim()
         if (!keyword) return null
         return {
           collected_at: collectedAt,
@@ -71,15 +63,10 @@ export async function runGoogleTrendingTopicsCollect(options?: {
           hours,
           rank: index + 1,
           keyword,
-          traffic: typeof item.traffic === 'number' && Number.isFinite(item.traffic) ? Math.round(item.traffic) : null,
-          traffic_growth_rate:
-            typeof item.trafficGrowthRate === 'number' && Number.isFinite(item.trafficGrowthRate)
-              ? item.trafficGrowthRate
-              : null,
-          related_keywords: Array.isArray(item.relatedKeywords)
-            ? item.relatedKeywords.map((k) => String(k).trim()).filter(Boolean).slice(0, 12)
-            : [],
-          active_time: typeof item.activeTime === 'string' ? item.activeTime : null,
+          traffic: Number.isFinite(item.traffic) ? Math.round(item.traffic) : null,
+          traffic_growth_rate: Number.isFinite(item.trafficGrowthRate) ? item.trafficGrowthRate : null,
+          related_keywords: item.relatedKeywords.map((k) => k.trim()).filter(Boolean).slice(0, 12),
+          active_time: item.activeTime || null,
         }
       })
       .filter((row): row is NonNullable<typeof row> => row != null)
