@@ -508,7 +508,7 @@ export function MapWrapperLeaflet({
 
         const marker = L.marker([municipio.lat, municipio.lng], { icon, pane: 'markersPane' })
           .bindPopup(createIptPopupHtml(row, appearance, iptIndicadorFiltro), {
-            maxWidth: 320,
+            maxWidth: 660,
             className: appearance === 'dark' ? 'mapa-obras-popup-dark' : 'mapa-obras-popup-soft ipt-popup-shell',
           })
 

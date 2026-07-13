@@ -7,6 +7,7 @@ import {
   type IptPrioridade,
   type IptSinal,
 } from '@/lib/ipt'
+import type { IptEvolucao } from '@/lib/ipt-evolucao'
 
 export type IptChipZoom = 'far' | 'mid' | 'near'
 
@@ -23,6 +24,7 @@ const ICON = {
   visitas: `<svg class="ipt-chip-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 1 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>`,
   obras: `<svg class="ipt-chip-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 20h20"/><path d="M5 20V9l7-5 7 5v11"/><path d="M9 20v-6h6v6"/></svg>`,
   pesquisa: `<svg class="ipt-chip-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 3v18h18"/><path d="M7 14l4-4 3 3 5-6"/></svg>`,
+  digital: `<svg class="ipt-chip-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="14" height="20" x="5" y="2" rx="2" ry="2"/><path d="M12 18h.01"/></svg>`,
   ok: `<svg class="ipt-chip-ico ipt-chip-ico--glyph" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>`,
   mal: `<svg class="ipt-chip-ico ipt-chip-ico--glyph" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>`,
   neutro: `<svg class="ipt-chip-ico ipt-chip-ico--glyph" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M5 12h14"/></svg>`,
@@ -77,8 +79,15 @@ function chipGlyphItem(icone: string, glyph: string): string {
   return `<span class="ipt-chip-item ipt-chip-item--glyph">${icone}${glyph}</span>`
 }
 
-function textoVisitasOperacional(n: number): string {
-  return `${n} visita${n === 1 ? '' : 's'}`
+function evoMark(e: IptEvolucao): string {
+  if (e === 'cresceu') return ' ↑'
+  if (e === 'diminuiu') return ' ↓'
+  if (e === 'estavel') return ' →'
+  return ''
+}
+
+function textoVisitasOperacional(n: number, evo?: IptEvolucao): string {
+  return `${n} visita${n === 1 ? '' : 's'}${evo ? evoMark(evo) : ''}`
 }
 
 function textoObrasOperacional(valor: number): string {
@@ -89,9 +98,14 @@ function textoObrasOperacional(valor: number): string {
 function textoPesquisaOperacional(m: IptMunicipio): string {
   const { detalhes } = m
   if (detalhes.pesquisaTop5.length === 0) return 'Sem pesquisa'
+  const media =
+    detalhes.pesquisaMediaPct != null
+      ? `${detalhes.pesquisaMediaPct.toLocaleString('pt-BR', { maximumFractionDigits: 1 })}%`
+      : null
   const pos = detalhes.pesquisaPosicaoTop5
-  if (pos == null) return 'Fora do Top 5'
-  return `${pos}º ${iptLabelTipoPesquisa(detalhes.pesquisaBase)}`
+  const base = pos == null ? 'Fora do Top 5' : `${pos}º ${iptLabelTipoPesquisa(detalhes.pesquisaBase)}`
+  const mediaPart = media ? ` · ${media}` : ''
+  return `${base}${mediaPart}${evoMark(m.evolucao.pesquisa)}`
 }
 
 /** Posição no chip compacto (visão geral) — sem glyph de check. */
@@ -99,18 +113,32 @@ function textoPesquisaChipCompacto(m: IptMunicipio): string {
   const { detalhes, sinais } = m
   if (sinais.pesquisa === 'sem_dado' || detalhes.pesquisaTop5.length === 0) return 'Sem pesquisa'
   const pos = detalhes.pesquisaPosicaoTop5
-  if (pos == null) return 'Fora Top 5'
-  return `${pos}º`
+  if (pos == null) return `Fora Top 5${evoMark(m.evolucao.pesquisa)}`
+  return `${pos}º${evoMark(m.evolucao.pesquisa)}`
+}
+
+function textoDigitalOperacional(m: IptMunicipio): string {
+  const seg = m.detalhes.digitalSeguidores
+  if (seg == null || seg <= 0) return 'Sem dado'
+  const pct = m.detalhes.digitalSeguidoresPct
+  const pctTxt =
+    pct != null && Number.isFinite(pct)
+      ? ` · ${pct.toLocaleString('pt-BR', { maximumFractionDigits: 1 })}%`
+      : ''
+  return `${seg.toLocaleString('pt-BR')}${pctTxt}${evoMark(m.evolucao.digitalSeguidores)}`
 }
 
 /** Linha única quando há filtro por indicador. */
 export function iptChipLinhaIndicador(m: IptMunicipio, indicador: IptIndicador): string {
   const { detalhes } = m
   if (indicador === 'visitas') {
-    return chipItem(ICON.visitas, textoVisitasOperacional(detalhes.visitasNoPeriodo))
+    return chipItem(ICON.visitas, textoVisitasOperacional(detalhes.visitasNoPeriodo, m.evolucao.visitas))
   }
   if (indicador === 'obras') {
     return chipItem(ICON.obras, textoObrasOperacional(detalhes.obrasValorTotal))
+  }
+  if (indicador === 'digital') {
+    return chipItem(ICON.digital, textoDigitalOperacional(m))
   }
   return chipItem(ICON.pesquisa, textoPesquisaOperacional(m))
 }
@@ -118,7 +146,10 @@ export function iptChipLinhaIndicador(m: IptMunicipio, indicador: IptIndicador):
 /** Visão geral — três indicadores compactos. */
 export function iptChipLinhaGeral(m: IptMunicipio): string {
   const { detalhes, sinais } = m
-  const visitas = chipItem(ICON.visitas, textoVisitasOperacional(detalhes.visitasNoPeriodo))
+  const visitas = chipItem(
+    ICON.visitas,
+    textoVisitasOperacional(detalhes.visitasNoPeriodo, m.evolucao.visitas)
+  )
 
   const obras =
     sinais.obras === 'mal'
@@ -135,7 +166,8 @@ export function iptChipLinhaGeral(m: IptMunicipio): string {
   return `${visitas}<span class="ipt-chip-sep" aria-hidden="true"></span>${obras}<span class="ipt-chip-sep" aria-hidden="true"></span>${pesquisa}`
 }
 
-export function iptChipDeveExibir(m: IptMunicipio): boolean {
+export function iptChipDeveExibir(m: IptMunicipio, indicador: IptIndicador | null = null): boolean {
+  if (indicador === 'digital') return m.sinais.digital !== 'sem_dado'
   return m.prioridade !== 'sem_expectativa'
 }
 
@@ -145,9 +177,10 @@ export function createIptChipHtml(
   indicador: IptIndicador | null = null,
   opts?: { municipioKey?: string; animDelay?: number }
 ): string {
-  if (!iptChipDeveExibir(m)) return ''
+  if (!iptChipDeveExibir(m, indicador)) return ''
 
-  const theme = iptPrioridadeTheme(m.prioridade)
+  const theme =
+    indicador === 'digital' ? SINAL_THEME[m.sinais.digital] : iptPrioridadeTheme(m.prioridade)
   const linha = indicador ? iptChipLinhaIndicador(m, indicador) : iptChipLinhaGeral(m)
   const key = opts?.municipioKey ?? m.municipio
   const delay = opts?.animDelay ?? 0

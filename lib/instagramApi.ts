@@ -54,7 +54,10 @@ export interface InstagramMetrics {
       female: number
     }
     age?: Record<string, number>
+    /** Top cidades de seguidores (follower_demographics · breakdown=city). */
     topLocations?: Record<string, number>
+    /** Top cidades de quem engajou com publicações (engaged_audience_demographics · breakdown=city). */
+    engagedTopLocations?: Record<string, number>
   }
 }
 

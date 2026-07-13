@@ -1,7 +1,12 @@
 import { CANDIDATO_RESUMO_PESQUISAS } from '@/lib/resumo-operacional-pesquisas'
+import {
+  classificarEvolucaoPesquisaPp,
+  type IptEvolucao,
+} from '@/lib/ipt-evolucao'
 import { normalizeIptMunicipio, type IptPesquisaTopItem } from '@/lib/ipt'
 import {
   buildCidadesIntencaoTopoMedia,
+  chavePesquisaDistinta,
   type PollExecutiveInput,
 } from '@/lib/pesquisa-tendencia-executive'
 
@@ -20,6 +25,19 @@ export type PesquisaIptPorMunicipio = {
   intencaoPorMunicipio: Map<string, number>
   top5PorMunicipio: Map<string, IptPesquisaTopItem[]>
   basePorMunicipio: Map<string, 'estimulada' | 'espontanea'>
+  /** Comparativo onda mais recente vs anterior (mesmo tipo/base da cidade). */
+  evolucaoPorMunicipio: Map<string, PesquisaIptEvolucaoMunicipio>
+}
+
+export type PesquisaIptEvolucaoMunicipio = {
+  mediaPct: number
+  recentePct: number | null
+  anteriorPct: number | null
+  deltaPp: number | null
+  evolucao: IptEvolucao
+  ondasComparadas: number
+  dataRecente: string | null
+  dataAnterior: string | null
 }
 
 function nomeCidadePoll(poll: PollIptRow): string {
@@ -87,6 +105,9 @@ function buildMediaPorMunicipioETipo(
 /**
  * Por município: estimulada quando houver linhas estimuladas na cidade;
  * caso contrário, média da espontânea (mesma regra do Panorama territorial).
+ *
+ * A intenção exibida é **média aritmética de todas as linhas** do candidato nesse tipo
+ * (não só a última onda). Em paralelo, calcula evolução última onda vs penúltima.
  */
 export function buildPesquisaIptPorMunicipio(
   polls: PollIptRow[],
@@ -95,10 +116,13 @@ export function buildPesquisaIptPorMunicipio(
   const cidades = buildCidadesIntencaoTopoMedia(pollsParaExecutive(polls))
   const mediaEst = buildMediaPorMunicipioETipo(polls, candidato, 'estimulada')
   const mediaEsp = buildMediaPorMunicipioETipo(polls, candidato, 'espontanea')
+  const evolucaoEst = buildEvolucaoOndasPorMunicipio(polls, candidato, 'estimulada')
+  const evolucaoEsp = buildEvolucaoOndasPorMunicipio(polls, candidato, 'espontanea')
 
   const intencaoPorMunicipio = new Map<string, number>()
   const top5PorMunicipio = new Map<string, IptPesquisaTopItem[]>()
   const basePorMunicipio = new Map<string, 'estimulada' | 'espontanea'>()
+  const evolucaoPorMunicipio = new Map<string, PesquisaIptEvolucaoMunicipio>()
 
   for (const row of cidades) {
     if (row.cidadeLabel.startsWith('Estado')) continue
@@ -117,9 +141,96 @@ export function buildPesquisaIptPorMunicipio(
 
     const media = (usaEstimulada ? mediaEst : mediaEsp).get(key)
     if (media != null) intencaoPorMunicipio.set(key, media)
+
+    const evo = (usaEstimulada ? evolucaoEst : evolucaoEsp).get(key)
+    if (evo && media != null) {
+      evolucaoPorMunicipio.set(key, { ...evo, mediaPct: media })
+    } else if (media != null) {
+      evolucaoPorMunicipio.set(key, {
+        mediaPct: media,
+        recentePct: null,
+        anteriorPct: null,
+        deltaPp: null,
+        evolucao: 'sem_dado',
+        ondasComparadas: 0,
+        dataRecente: null,
+        dataAnterior: null,
+      })
+    }
   }
 
-  return { intencaoPorMunicipio, top5PorMunicipio, basePorMunicipio }
+  return { intencaoPorMunicipio, top5PorMunicipio, basePorMunicipio, evolucaoPorMunicipio }
+}
+
+/**
+ * Últimas duas ondas distintas (data|instituto|cidade) do candidato no tipo informado.
+ * Intenção por onda = média das linhas daquela onda.
+ */
+function buildEvolucaoOndasPorMunicipio(
+  polls: PollIptRow[],
+  candidato: string,
+  tipo: 'estimulada' | 'espontanea'
+): Map<string, Omit<PesquisaIptEvolucaoMunicipio, 'mediaPct'>> {
+  const alvo = candidatoNormalizado(candidato)
+  const porMun = new Map<string, Map<string, { sum: number; count: number; data: string }>>()
+
+  for (const poll of polls) {
+    if (poll.tipo !== tipo) continue
+    if (candidatoNormalizado(poll.candidato_nome) !== alvo) continue
+    if (!Number.isFinite(poll.intencao)) continue
+    const cidade = nomeCidadePoll(poll)
+    if (!cidade) continue
+
+    const munKey = normalizeIptMunicipio(cidade)
+    const executive: PollExecutiveInput = {
+      data: poll.data,
+      tipo: poll.tipo,
+      candidato_nome: poll.candidato_nome,
+      intencao: poll.intencao,
+      instituto: poll.instituto ?? '',
+      cidadeId: poll.cidade_id ?? null,
+      cidadeNome: cidade,
+    }
+    const ondaKey = chavePesquisaDistinta(executive)
+    const ondas = porMun.get(munKey) ?? new Map()
+    const cur = ondas.get(ondaKey) ?? {
+      sum: 0,
+      count: 0,
+      data: poll.data.includes('T') ? (poll.data.split('T')[0] ?? poll.data) : poll.data,
+    }
+    cur.sum += poll.intencao
+    cur.count += 1
+    ondas.set(ondaKey, cur)
+    porMun.set(munKey, ondas)
+  }
+
+  const out = new Map<string, Omit<PesquisaIptEvolucaoMunicipio, 'mediaPct'>>()
+  for (const [munKey, ondas] of porMun) {
+    const lista = [...ondas.entries()]
+      .map(([chave, v]) => ({
+        chave,
+        pct: Math.round((v.sum / v.count) * 10) / 10,
+        data: v.data,
+      }))
+      .sort((a, b) => a.data.localeCompare(b.data) || a.chave.localeCompare(b.chave))
+
+    if (lista.length === 0) continue
+    const recente = lista[lista.length - 1]!
+    const anterior = lista.length >= 2 ? lista[lista.length - 2]! : null
+    const deltaPp =
+      anterior != null ? Math.round((recente.pct - anterior.pct) * 10) / 10 : null
+
+    out.set(munKey, {
+      recentePct: recente.pct,
+      anteriorPct: anterior?.pct ?? null,
+      deltaPp,
+      evolucao: classificarEvolucaoPesquisaPp(recente.pct, anterior?.pct ?? null),
+      ondasComparadas: lista.length,
+      dataRecente: recente.data,
+      dataAnterior: anterior?.data ?? null,
+    })
+  }
+  return out
 }
 
 /** @deprecated Preferir `buildPesquisaIptPorMunicipio`. Mantido para compatibilidade. */

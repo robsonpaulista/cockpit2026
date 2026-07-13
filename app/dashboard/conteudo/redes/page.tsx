@@ -180,6 +180,7 @@ export default function ConteudoPage() {
   const sectionWrapClass = cn('mb-6 rounded-2xl border p-4', sectionShellClass)
 
   const [activeSubTab, setActiveSubTab] = useState<'posts' | 'audience' | 'locations'>('posts')
+  const [locationsMode, setLocationsMode] = useState<'followers' | 'engaged'>('followers')
   const [overviewThemeFilter, setOverviewThemeFilter] = useState<string>('all')
   const [overviewBoostedFilter, setOverviewBoostedFilter] = useState<string>('all')
   const [postClassifications, setPostClassifications] = useState<Record<string, { theme?: string; isBoosted?: boolean }>>({})
@@ -468,7 +469,10 @@ export default function ConteudoPage() {
           hasDemographics: !!data.demographics,
           hasTopLocations: !!data.demographics?.topLocations,
           topLocationsCount: data.demographics?.topLocations ? Object.keys(data.demographics.topLocations).length : 0,
-          topLocations: data.demographics?.topLocations
+          engagedTopLocationsCount: data.demographics?.engagedTopLocations
+            ? Object.keys(data.demographics.engagedTopLocations).length
+            : 0,
+          topLocations: data.demographics?.topLocations,
         })
         setMetrics(data)
         setIsConfigured(true)
@@ -1348,7 +1352,7 @@ export default function ConteudoPage() {
             </div>
           )}
 
-          {/* Conteúdo da sub-tab Seguidores por Cidade */}
+          {/* Conteúdo da sub-tab Por Cidade */}
           {activeSubTab === 'locations' && (
             <div className="space-y-6">
               {loading && !metrics ? (
@@ -1374,39 +1378,101 @@ export default function ConteudoPage() {
                 <>
                   <section className={sectionWrapClass}>
                     <PremiumSectionHeader
-                      title="Distribuição de Seguidores por Cidade"
-                      description="Visualize de quais cidades vêm seus seguidores do Instagram"
+                      title="Distribuição por cidade"
+                      description="Top ~45 cidades via Instagram Graph API · seguidores (base) e engajamento com publicações"
                     />
 
-                    {metrics?.demographics?.topLocations && Object.keys(metrics.demographics.topLocations).length > 0 ? (
-                      <>
-                        <div className="mb-4 grid grid-cols-2 gap-3 sm:max-w-lg">
-                          <PremiumMetricCard
-                            label="Total de cidades"
-                            value={Object.keys(metrics.demographics.topLocations).length}
-                            icon={IconMapPin}
-                          />
-                          <PremiumMetricCard
-                            label="Seguidores mapeados"
-                            value={Object.values(metrics.demographics.topLocations)
-                              .reduce((sum, count) => sum + count, 0)
-                              .toLocaleString('pt-BR')}
-                            icon={IconUsers}
-                          />
-                        </div>
+                    <div className="mb-4 flex flex-wrap gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => setLocationsMode('followers')}
+                        className={
+                          locationsMode === 'followers'
+                            ? conteudoRedesPillFilterActiveClass
+                            : cn(conteudoRedesGhostButtonClass, 'rounded-[99px] px-2.5 py-1 text-[13px]')
+                        }
+                      >
+                        Seguidores
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setLocationsMode('engaged')}
+                        className={
+                          locationsMode === 'engaged'
+                            ? conteudoRedesPillFilterActiveClass
+                            : cn(conteudoRedesGhostButtonClass, 'rounded-[99px] px-2.5 py-1 text-[13px]')
+                        }
+                      >
+                        Engajamento
+                      </button>
+                    </div>
 
-                        <div className="space-y-2">
-                          {Object.entries(metrics.demographics?.topLocations || {})
-                            .sort(([, a], [, b]) => b - a)
-                            .map(([city, count], index) => {
-                              const totalFollowers = metrics?.followers?.total || 0
-                              const percentage = totalFollowers > 0 ? ((count / totalFollowers) * 100).toFixed(1) : 0
-                              const topLocations = metrics?.demographics?.topLocations || {}
-                              const maxCount = Math.max(...Object.values(topLocations), 0)
+                    {(() => {
+                      const isEngaged = locationsMode === 'engaged'
+                      const locationMap = isEngaged
+                        ? metrics?.demographics?.engagedTopLocations
+                        : metrics?.demographics?.topLocations
+                      const entries = Object.entries(locationMap || {}).sort(([, a], [, b]) => b - a)
+                      const mappedTotal = entries.reduce((sum, [, count]) => sum + count, 0)
+                      const maxCount = Math.max(...entries.map(([, count]) => count), 0)
+                      const totalFollowers = metrics?.followers?.total || 0
+                      const unitLabel = isEngaged ? 'contas engajadas' : 'seguidores'
+                      const metricLabel = isEngaged ? 'Engajamento mapeado' : 'Seguidores mapeados'
+                      const pctBase = isEngaged ? mappedTotal : totalFollowers
+                      const pctSuffix = isEngaged
+                        ? 'do engajamento mapeado'
+                        : 'do total de seguidores'
+
+                      if (entries.length === 0) {
+                        return (
+                          <div className="py-12 text-center">
+                            <IconMapPin
+                              className={cn('mx-auto mb-4 h-12 w-12 opacity-70', conteudoRedesAmberTextClass)}
+                              stroke={1.5}
+                            />
+                            <p className="mb-2 font-medium">
+                              {isEngaged
+                                ? 'Engajamento por cidade não disponível'
+                                : 'Dados de localização não disponíveis'}
+                            </p>
+                            <p className="mx-auto max-w-lg text-sm">
+                              {isEngaged
+                                ? 'A API exige pelo menos 100 engajamentos no período (this_month) e pode atrasar até 48h. Use Atualizar para forçar nova coleta.'
+                                : 'A API exige conta profissional com 100+ seguidores e pode atrasar até 48h. Use Atualizar para forçar nova coleta.'}{' '}
+                              A Meta devolve só o top de cidades (não o histórico nem os 224 municípios).
+                            </p>
+                          </div>
+                        )
+                      }
+
+                      return (
+                        <>
+                          <p className="mb-3 text-[12px] text-black/60">
+                            {isEngaged
+                              ? 'Quem interagiu com publicações no período (engaged_audience_demographics · this_month).'
+                              : 'Base atual de seguidores (follower_demographics · last_30_days).'}
+                          </p>
+                          <div className="mb-4 grid grid-cols-2 gap-3 sm:max-w-lg">
+                            <PremiumMetricCard
+                              label="Total de cidades"
+                              value={entries.length}
+                              icon={IconMapPin}
+                            />
+                            <PremiumMetricCard
+                              label={metricLabel}
+                              value={mappedTotal.toLocaleString('pt-BR')}
+                              icon={IconUsers}
+                            />
+                          </div>
+
+                          <div className="space-y-2">
+                            {entries.map(([city, count], index) => {
+                              const percentage =
+                                pctBase > 0 ? ((count / pctBase) * 100).toFixed(1) : '0.0'
                               const barWidth = maxCount > 0 ? (count / maxCount) * 100 : 0
 
                               return (
-                                <div key={city} className={cn(municipalityCardClass, 'p-4')}>
+                                <div key={`${locationsMode}-${city}`} className={cn(municipalityCardClass, 'p-4')}>
                                   <div className="mb-2 flex items-center justify-between">
                                     <div className="flex min-w-0 flex-1 items-center gap-3">
                                       <div
@@ -1420,11 +1486,9 @@ export default function ConteudoPage() {
                                         {index + 1}
                                       </div>
                                       <div className="min-w-0 flex-1">
-                                        <p className="truncate text-[13.5px] font-medium">
-                                          {city}
-                                        </p>
+                                        <p className="truncate text-[13.5px] font-medium">{city}</p>
                                         <p className="text-[11px]">
-                                          {percentage}% do total de seguidores
+                                          {percentage}% {pctSuffix}
                                         </p>
                                       </div>
                                     </div>
@@ -1432,7 +1496,7 @@ export default function ConteudoPage() {
                                       <p className="text-base font-medium tabular-nums text-[#C8900A]">
                                         {count.toLocaleString('pt-BR')}
                                       </p>
-                                      <p className="text-[11px]">seguidores</p>
+                                      <p className="text-[11px]">{unitLabel}</p>
                                     </div>
                                   </div>
                                   <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-bg-app">
@@ -1444,19 +1508,10 @@ export default function ConteudoPage() {
                                 </div>
                               )
                             })}
-                        </div>
-                      </>
-                    ) : (
-                      <div className="py-12 text-center">
-                        <IconMapPin className={cn('mx-auto mb-4 h-12 w-12 opacity-70', conteudoRedesAmberTextClass)} stroke={1.5} />
-                        <p className="mb-2 font-medium">
-                          Dados de localização não disponíveis
-                        </p>
-                        <p className="mx-auto max-w-lg text-sm">
-                          Dados demográficos de localização podem não estar disponíveis para todas as contas. Verifique os insights diretamente no app do Instagram.
-                        </p>
-                      </div>
-                    )}
+                          </div>
+                        </>
+                      )
+                    })()}
                   </section>
                 </>
               )}

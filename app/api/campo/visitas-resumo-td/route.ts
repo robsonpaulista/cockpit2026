@@ -59,10 +59,25 @@ function isWithinLastDays(dateStr: string, days: number): boolean {
   return visitDate >= cutoff
 }
 
+function isWithinDayWindow(dateStr: string, days: number, offsetDays: number): boolean {
+  const normalized = parseDateOnly(dateStr)
+  if (!normalized || days <= 0) return true
+  const [y, m, d] = normalized.split('-').map(Number)
+  if (!y || !m || !d) return false
+  const visitDate = new Date(y, m - 1, d)
+  visitDate.setHours(0, 0, 0, 0)
+  const end = new Date()
+  end.setHours(0, 0, 0, 0)
+  end.setDate(end.getDate() - offsetDays)
+  const start = new Date(end)
+  start.setDate(start.getDate() - days)
+  return visitDate >= start && visitDate < end
+}
+
 /**
  * Agrega check-ins (registros em `visits` com `checkin_time`) em agendas concluídas,
  * por município oficial do PI (JSON TD) e por Território de Desenvolvimento.
- * Query opcional: `days=N` limita ao período (ex.: days=30 no IPT).
+ * Query: `days=N` janela; `offsetDays=M` desloca a janela para trás (ex.: days=30&offsetDays=30 → 31–60).
  */
 export async function GET(request: Request) {
   try {
@@ -73,6 +88,8 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url)
     const daysParam = parseInt(searchParams.get('days') ?? '0', 10)
     const days = Number.isFinite(daysParam) && daysParam > 0 ? daysParam : 0
+    const offsetParam = parseInt(searchParams.get('offsetDays') ?? '0', 10)
+    const offsetDays = Number.isFinite(offsetParam) && offsetParam > 0 ? offsetParam : 0
 
     const { data: agendasRaw, error } = await supabase
       .from('agendas')
@@ -113,7 +130,13 @@ export async function GET(request: Request) {
       for (const v of visitsArr) {
         if (v.checkin_time == null || String(v.checkin_time).length === 0) continue
         const refDate = parseDateOnly(String(v.checkin_time)) || parseDateOnly(agendaDate)
-        if (days > 0 && !isWithinLastDays(refDate, days)) continue
+        if (days > 0) {
+          if (offsetDays > 0) {
+            if (!isWithinDayWindow(refDate, days, offsetDays)) continue
+          } else if (!isWithinLastDays(refDate, days)) {
+            continue
+          }
+        }
         checkinsNoRecorte += 1
       }
       if (checkinsNoRecorte === 0) continue
@@ -180,6 +203,7 @@ export async function GET(request: Request) {
       foraDoMapaTd,
       totalVisitas,
       days: days > 0 ? days : null,
+      offsetDays: offsetDays > 0 ? offsetDays : null,
     })
   } catch (e) {
     if (isSupabaseNetworkError(e)) {

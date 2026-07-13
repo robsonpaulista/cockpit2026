@@ -59,7 +59,10 @@ interface InstagramMetrics {
       female: number
     }
     age?: Record<string, number>
+    /** Top cidades de seguidores (follower_demographics · breakdown=city). */
     topLocations?: Record<string, number>
+    /** Top cidades de quem engajou com publicações (engaged_audience_demographics · breakdown=city). */
+    engagedTopLocations?: Record<string, number>
   }
 }
 
@@ -342,78 +345,159 @@ export async function POST(request: Request) {
       return insight?.values?.[0]?.value || 0
     }
 
-    // 6. Buscar dados demográficos via follower_demographics (API v18+)
-    // Métricas antigas (audience_city, audience_country, audience_gender_age) foram deprecadas
+    // 6. Demográficos via follower_demographics + engaged_audience_demographics (API atual)
+    // audience_city foi deprecado. Uma dimensão por chamada; timeframe obrigatório.
+    // Resposta pode incluir "timeframe" em dimension_keys.
     let demographics: InstagramMetrics['demographics'] = undefined
     try {
-      // follower_demographics retorna gênero, idade, cidade e país em uma única chamada
-      const demoResponse = await fetch(
-        `https://graph.facebook.com/v18.0/${instagramBusinessId}/insights?metric=follower_demographics&period=lifetime&metric_type=total_value&breakdown=age,gender,city,country&access_token=${token}`
-      )
+      const DEMOGRAPHICS_API_VERSION = 'v21.0'
+      /** Seguidores: last_30_days ainda listado para follower_demographics. */
+      const FOLLOWER_TIMEFRAME = 'last_30_days'
+      /**
+       * Engajamento: a partir de v20, last_* / prev_month saíram para
+       * engaged_audience_demographics — usar this_month (~últimos 30 dias).
+       */
+      const ENGAGED_TIMEFRAME = 'this_month'
+      type DemoBreakdownName = 'city' | 'country' | 'age' | 'gender'
+      type DemoMetricName = 'follower_demographics' | 'engaged_audience_demographics'
+      type DemoResultRow = { dimension_values: string[]; value: number }
+      type DemoBreakdownBlock = { dimension_keys: string[]; results: DemoResultRow[] }
+      type DemoMetricPayload = {
+        data?: Array<{
+          name: string
+          total_value?: { breakdowns?: DemoBreakdownBlock[] }
+        }>
+        error?: { message?: string; code?: number }
+      }
 
-      if (demoResponse.ok) {
-        const demoData = await demoResponse.json()
+      const fetchInsightsBreakdown = async (
+        metric: DemoMetricName,
+        breakdown: DemoBreakdownName,
+        timeframe: string
+      ): Promise<DemoBreakdownBlock[]> => {
+        const url =
+          `https://graph.facebook.com/${DEMOGRAPHICS_API_VERSION}/${instagramBusinessId}/insights` +
+          `?metric=${metric}` +
+          `&period=lifetime` +
+          `&timeframe=${timeframe}` +
+          `&metric_type=total_value` +
+          `&breakdown=${breakdown}` +
+          `&access_token=${token}${cacheBuster}`
 
-        if (demoData.data && Array.isArray(demoData.data)) {
-          let maleCount = 0
-          let femaleCount = 0
-          const ageGroups: Record<string, number> = {}
-          const topLocations: Record<string, number> = {}
+        const response = await fetch(url)
+        const payload = (await response.json()) as DemoMetricPayload
 
-          demoData.data.forEach((metric: { name: string; total_value?: { breakdowns?: Array<{ dimension_keys: string[]; results: Array<{ dimension_values: string[]; value: number }> }> } }) => {
-            const breakdowns = metric.total_value?.breakdowns
-            if (!breakdowns || !Array.isArray(breakdowns)) return
-
-            breakdowns.forEach((breakdown) => {
-              const dimensionKeys = breakdown.dimension_keys || []
-              const results = breakdown.results || []
-
-              results.forEach((result) => {
-                const dimValues = result.dimension_values || []
-                const value = Number(result.value) || 0
-                if (value <= 0) return
-
-                // Gênero + Idade (dimension_keys: ['age', 'gender'])
-                if (dimensionKeys.includes('age') && dimensionKeys.includes('gender')) {
-                  const ageIdx = dimensionKeys.indexOf('age')
-                  const genderIdx = dimensionKeys.indexOf('gender')
-                  const age = dimValues[ageIdx]
-                  const gender = dimValues[genderIdx]
-
-                  if (gender === 'M' || gender === 'male') maleCount += value
-                  if (gender === 'F' || gender === 'female') femaleCount += value
-                  if (age) ageGroups[age] = (ageGroups[age] || 0) + value
-                }
-
-                // Cidade (dimension_keys: ['city'])
-                if (dimensionKeys.includes('city') && dimensionKeys.length === 1) {
-                  const city = dimValues[0]
-                  if (city) topLocations[city] = value
-                }
-
-                // País (dimension_keys: ['country'])
-                if (dimensionKeys.includes('country') && dimensionKeys.length === 1 && Object.keys(topLocations).length === 0) {
-                  const country = dimValues[0]
-                  if (country) topLocations[country] = value
-                }
-              })
-            })
+        if (!response.ok) {
+          logger.warn(`${metric} falhou`, {
+            breakdown,
+            timeframe,
+            status: response.status,
+            error: payload.error?.message,
+            code: payload.error?.code,
           })
+          return []
+        }
 
-          if (maleCount > 0 || femaleCount > 0 || Object.keys(ageGroups).length > 0 || Object.keys(topLocations).length > 0) {
-            demographics = {
-              gender: maleCount > 0 || femaleCount > 0 ? { male: maleCount, female: femaleCount } : undefined,
-              age: Object.keys(ageGroups).length > 0 ? ageGroups : undefined,
-              topLocations: Object.keys(topLocations).length > 0 ? topLocations : undefined,
-            }
+        const row = payload.data?.find((item) => item.name === metric)
+        return row?.total_value?.breakdowns ?? []
+      }
+
+      const readDimensionValue = (
+        keys: string[],
+        values: string[],
+        key: string
+      ): string | undefined => {
+        const idx = keys.indexOf(key)
+        if (idx < 0) return undefined
+        const raw = values[idx]
+        return raw?.trim() || undefined
+      }
+
+      const collectDimensionMap = (
+        blocks: DemoBreakdownBlock[],
+        dimension: 'city' | 'country' | 'age' | 'gender'
+      ): Record<string, number> => {
+        const map: Record<string, number> = {}
+        for (const block of blocks) {
+          const keys = block.dimension_keys || []
+          if (!keys.includes(dimension)) continue
+          for (const result of block.results || []) {
+            const label = readDimensionValue(keys, result.dimension_values || [], dimension)
+            const value = Number(result.value) || 0
+            if (!label || value <= 0) continue
+            map[label] = (map[label] || 0) + value
           }
         }
+        return map
+      }
+
+      const [
+        cityBlocks,
+        countryBlocks,
+        ageBlocks,
+        genderBlocks,
+        engagedCityBlocks,
+      ] = await Promise.all([
+        fetchInsightsBreakdown('follower_demographics', 'city', FOLLOWER_TIMEFRAME),
+        fetchInsightsBreakdown('follower_demographics', 'country', FOLLOWER_TIMEFRAME),
+        fetchInsightsBreakdown('follower_demographics', 'age', FOLLOWER_TIMEFRAME),
+        fetchInsightsBreakdown('follower_demographics', 'gender', FOLLOWER_TIMEFRAME),
+        fetchInsightsBreakdown('engaged_audience_demographics', 'city', ENGAGED_TIMEFRAME),
+      ])
+
+      let topLocations = collectDimensionMap(cityBlocks, 'city')
+      if (Object.keys(topLocations).length === 0) {
+        topLocations = collectDimensionMap(countryBlocks, 'country')
+      }
+
+      const engagedTopLocations = collectDimensionMap(engagedCityBlocks, 'city')
+      const ageGroups = collectDimensionMap(ageBlocks, 'age')
+
+      let maleCount = 0
+      let femaleCount = 0
+      for (const [gender, value] of Object.entries(collectDimensionMap(genderBlocks, 'gender'))) {
+        const normalized = gender.toUpperCase()
+        if (normalized === 'M' || normalized === 'MALE') maleCount += value
+        if (normalized === 'F' || normalized === 'FEMALE') femaleCount += value
+      }
+
+      if (
+        maleCount > 0 ||
+        femaleCount > 0 ||
+        Object.keys(ageGroups).length > 0 ||
+        Object.keys(topLocations).length > 0 ||
+        Object.keys(engagedTopLocations).length > 0
+      ) {
+        demographics = {
+          gender:
+            maleCount > 0 || femaleCount > 0
+              ? { male: maleCount, female: femaleCount }
+              : undefined,
+          age: Object.keys(ageGroups).length > 0 ? ageGroups : undefined,
+          topLocations: Object.keys(topLocations).length > 0 ? topLocations : undefined,
+          engagedTopLocations:
+            Object.keys(engagedTopLocations).length > 0 ? engagedTopLocations : undefined,
+        }
+        logger.info('Demográficos Instagram carregados', {
+          cities: Object.keys(topLocations).length,
+          engagedCities: Object.keys(engagedTopLocations).length,
+          ageBuckets: Object.keys(ageGroups).length,
+          maleCount,
+          femaleCount,
+          followerTimeframe: FOLLOWER_TIMEFRAME,
+          engagedTimeframe: ENGAGED_TIMEFRAME,
+        })
       } else {
-        // Se follower_demographics falhar, pular demográficos silenciosamente
-        console.log('[Instagram API] follower_demographics não disponível, pulando demográficos')
+        logger.warn('demográficos Instagram retornaram vazio', {
+          igUserId: instagramBusinessId,
+          followerTimeframe: FOLLOWER_TIMEFRAME,
+          engagedTimeframe: ENGAGED_TIMEFRAME,
+        })
       }
     } catch (error) {
-      console.error('Erro ao buscar dados demográficos:', error)
+      logError('Erro ao buscar demográficos Instagram', error, {
+        context: 'instagram_audience_demographics',
+      })
     }
 
     // Calcular período

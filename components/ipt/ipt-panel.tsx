@@ -14,6 +14,11 @@ import { IptPageHeader } from '@/components/ipt/ipt-page-header'
 import { useDashboardTopbarVisible } from '@/hooks/use-dashboard-topbar-visible'
 import { useIpt } from '@/hooks/use-ipt'
 import { type IptIndicador, type IptPrioridade } from '@/lib/ipt'
+import {
+  evolucaoDaLente,
+  municipioPassaFiltroEvolucao,
+  type IptEvolucaoFiltro,
+} from '@/lib/ipt-evolucao'
 import { filtrarIptMunicipiosPorTd } from '@/lib/ipt-td'
 import type { TerritorioDesenvolvimentoPI } from '@/lib/piaui-territorio-desenvolvimento'
 import { cn } from '@/lib/utils'
@@ -41,9 +46,11 @@ export function IptPanel() {
   const [isNativeFullscreen, setIsNativeFullscreen] = useState<boolean>(false)
   const [filtroPrioridade, setFiltroPrioridade] = useState<IptPrioridade | null>(null)
   const [filtroIndicador, setFiltroIndicador] = useState<IptIndicador | 'geral'>('geral')
+  const [filtroEvolucao, setFiltroEvolucao] = useState<IptEvolucaoFiltro>('todos')
   const [filtroTd, setFiltroTd] = useState<TerritorioDesenvolvimentoPI | null>(null)
   const topbarVisible = useDashboardTopbarVisible()
-  const { loading, error, conexaoInstavel, municipios, recarregar } = useIpt()
+  const { loading, error, conexaoInstavel, municipios, recarregar, presencaDigitalCobertura } =
+    useIpt()
 
   const municipiosNoEscopo = useMemo(
     () => filtrarIptMunicipiosPorTd(municipios, filtroTd),
@@ -68,7 +75,18 @@ export function IptPanel() {
   }, [municipiosNoEscopo, filtroPrioridade])
 
   const indicadorAtivo = filtroIndicador === 'geral' ? null : filtroIndicador
-  const municipiosNoMapa = municipiosFiltrados
+
+  const municipiosNoMapa = useMemo(() => {
+    if (filtroIndicador === 'obras' || filtroEvolucao === 'todos') return municipiosFiltrados
+    return municipiosFiltrados.filter((m) =>
+      municipioPassaFiltroEvolucao(evolucaoDaLente(m, indicadorAtivo), filtroEvolucao)
+    )
+  }, [municipiosFiltrados, filtroIndicador, filtroEvolucao, indicadorAtivo])
+
+  const handleIndicadorChange = useCallback((valor: IptIndicador | 'geral') => {
+    setFiltroIndicador(valor)
+    if (valor === 'obras') setFiltroEvolucao('todos')
+  }, [])
 
   const toggleFiltroPrioridade = useCallback((prioridade: IptPrioridade) => {
     setFiltroPrioridade((atual) => (atual === prioridade ? null : prioridade))
@@ -135,6 +153,31 @@ export function IptPanel() {
           <div className="ipt-page-alert rounded-lg bg-red-50 px-4 py-3 text-sm text-red-800">{error}</div>
         ) : null}
 
+        {presencaDigitalCobertura && presencaDigitalCobertura.totalLabels > 0 ? (
+          <div className="ipt-page-alert rounded-lg border border-[#C8900A]/30 bg-[#C8900A]/8 px-4 py-3 text-sm text-text-primary">
+            <p className="font-medium text-[#854F0B]">
+              Presença digital · Instagram → mapa PI:{' '}
+              {presencaDigitalCobertura.matchedPi}/{presencaDigitalCobertura.totalLabels} cidades
+              normalizadas
+              {presencaDigitalCobertura.todasNormalizadasNoMapa
+                ? ' (todas casaram com o mapa)'
+                : ''}
+            </p>
+            {!presencaDigitalCobertura.todasNormalizadasNoMapa ? (
+              <p className="mt-1 text-[12px] text-text-muted">
+                Fora do PI / sem match ({presencaDigitalCobertura.unmatched.length}):{' '}
+                {presencaDigitalCobertura.unmatched
+                  .slice(0, 12)
+                  .map((r) => r.labelInstagram)
+                  .join(' · ')}
+                {presencaDigitalCobertura.unmatched.length > 12
+                  ? ` · +${presencaDigitalCobertura.unmatched.length - 12}`
+                  : ''}
+              </p>
+            ) : null}
+          </div>
+        ) : null}
+
         {!isNativeFullscreen ? (
           <IptPageFilters
             loading={loading}
@@ -158,9 +201,11 @@ export function IptPanel() {
           <IptMapCardHeader
             loading={loading}
             filtroIndicador={filtroIndicador}
+            filtroEvolucao={filtroEvolucao}
             isNativeFullscreen={isNativeFullscreen}
             mapEmpty={municipiosNoMapa.length === 0}
-            onIndicadorChange={setFiltroIndicador}
+            onIndicadorChange={handleIndicadorChange}
+            onEvolucaoChange={setFiltroEvolucao}
             onToggleFullscreen={toggleFullscreen}
           />
 

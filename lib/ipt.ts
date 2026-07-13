@@ -20,12 +20,39 @@ export type IptDetalhes = {
   visitasNoPeriodo: number
   /** Total acumulado de visitas (planilha Território). */
   visitasHistorico: number
+  /** Visitas na janela anterior (ex.: dias 31–60). */
+  visitasPeriodoAnterior: number
   obrasQuantidade: number
   obrasValorTotal: number
   pesquisaPosicaoTop5: number | null
   pesquisaTop5: IptPesquisaTopItem[]
   /** Estimulada na cidade, ou espontânea quando não houver estimulada cadastrada. */
   pesquisaBase: IptPesquisaBase | null
+  /** Média de intenção do candidato (todas as ondas do tipo da base). */
+  pesquisaMediaPct: number | null
+  /** Intenção na onda mais recente. */
+  pesquisaRecentePct: number | null
+  /** Intenção na onda anterior (se houver). */
+  pesquisaAnteriorPct: number | null
+  /** Delta em p.p. (recente − anterior). */
+  pesquisaDeltaPp: number | null
+  /**
+   * Presença digital (Instagram Insights · top cidades).
+   * null = cidade fora do top Meta / sem match.
+   */
+  digitalSeguidores: number | null
+  digitalSeguidoresPct: number | null
+  digitalContasEngajadas: number | null
+  /** Snapshot anterior de seguidores (histórico diário). */
+  digitalSeguidoresAnterior: number | null
+  digitalContasEngajadasAnterior: number | null
+}
+
+export type IptEvolucaoMunicipio = {
+  pesquisa: import('@/lib/ipt-evolucao').IptEvolucao
+  digitalSeguidores: import('@/lib/ipt-evolucao').IptEvolucao
+  digitalEngajamento: import('@/lib/ipt-evolucao').IptEvolucao
+  visitas: import('@/lib/ipt-evolucao').IptEvolucao
 }
 
 export type IptMunicipio = {
@@ -39,18 +66,22 @@ export type IptMunicipio = {
     visitas: IptSinal
     obras: IptSinal
     pesquisa: IptSinal
+    /** Presença digital (Instagram) — não entra na prioridade geral. */
+    digital: IptSinal
   }
   /** Sinais calculados antes de override manual (quando houver). */
   sinaisOriginais?: {
     visitas: IptSinal
     obras: IptSinal
     pesquisa: IptSinal
+    digital: IptSinal
   }
   /** Indicadores com avaliação ajustada por insight de campo. */
   overridesAtivos?: Partial<
-    Record<IptIndicador, { sinal: IptSinal }>
+    Record<'visitas' | 'obras' | 'pesquisa', { sinal: IptSinal }>
   >
   detalhes: IptDetalhes
+  evolucao: IptEvolucaoMunicipio
   lat: number
   lng: number
 }
@@ -147,6 +178,16 @@ export function classificarPrioridade(
   return pesoMedio ? 'atencao' : 'estavel'
 }
 
+/** Tem dado no top Instagram → bem; senão sem_dado (não usa bem/mal operacional). */
+export function classificarSinalDigital(
+  seguidores: number | null | undefined,
+  contasEngajadas: number | null | undefined
+): IptSinal {
+  const seg = seguidores ?? 0
+  const eng = contasEngajadas ?? 0
+  return seg > 0 || eng > 0 ? 'bem' : 'sem_dado'
+}
+
 /** Resumo numérico para tooltip permanente — ex.: «0 visitas · R$ 100K obras». */
 export function formatObrasValorAbreviado(valor: number): string {
   if (!Number.isFinite(valor) || valor <= 0) return 'R$ 0 obras'
@@ -183,6 +224,17 @@ function partePesquisaTooltip(detalhes: IptDetalhes): string | null {
 
 /** Resumo do mini card na lente de um indicador. */
 export function iptTextoTooltipPorIndicador(m: IptMunicipio, indicador: IptIndicador): string | null {
+  if (indicador === 'digital') {
+    const seg = m.detalhes.digitalSeguidores
+    if (seg == null || seg <= 0) return 'sem dado Instagram'
+    const pct = m.detalhes.digitalSeguidoresPct
+    const pctTxt =
+      pct != null && Number.isFinite(pct)
+        ? ` (${pct.toLocaleString('pt-BR', { maximumFractionDigits: 1 })}%)`
+        : ''
+    return `${seg.toLocaleString('pt-BR')} seguidores${pctTxt}`
+  }
+
   if (m.prioridade === 'sem_expectativa') return null
   const { detalhes } = m
 
@@ -257,7 +309,8 @@ export function buildIptMunicipiosComTooltipAutomatico(
   if (indicador) {
     const porSinal = new Map<IptSinal, IptMunicipio[]>()
     for (const m of municipios) {
-      if (m.prioridade === 'sem_expectativa') continue
+      if (indicador !== 'digital' && m.prioridade === 'sem_expectativa') continue
+      if (indicador === 'digital' && m.sinais.digital === 'sem_dado') continue
       const sinal = m.sinais[indicador]
       const lista = porSinal.get(sinal) ?? []
       lista.push(m)
@@ -265,6 +318,9 @@ export function buildIptMunicipiosComTooltipAutomatico(
     }
     for (const lista of porSinal.values()) {
       const ordenados = [...lista].sort((a, b) => {
+        if (indicador === 'digital') {
+          return (b.detalhes.digitalSeguidores ?? 0) - (a.detalhes.digitalSeguidores ?? 0)
+        }
         if (b.expectativaVotos !== a.expectativaVotos) return b.expectativaVotos - a.expectativaVotos
         return a.municipio.localeCompare(b.municipio, 'pt-BR', { sensitivity: 'base' })
       })
@@ -333,12 +389,21 @@ export function calcularIptMunicipios(inputs: IptMunicipioInput[]): IptMunicipio
           input.pesquisaTop5.length > 0,
           input.intencaoPesquisa
         ),
+        digital: classificarSinalDigital(null, null),
       }
 
       const prioridade: IptPrioridade =
         input.expectativaVotos <= 0
           ? 'sem_expectativa'
-          : classificarPrioridade(pesoExpectativaPct, sinais, expectativaVotos)
+          : classificarPrioridade(
+              pesoExpectativaPct,
+              {
+                visitas: sinais.visitas,
+                obras: sinais.obras,
+                pesquisa: sinais.pesquisa,
+              },
+              expectativaVotos
+            )
       const geo = coords.get(normalizeIptMunicipio(input.municipio))
 
       return {
@@ -350,12 +415,28 @@ export function calcularIptMunicipios(inputs: IptMunicipioInput[]): IptMunicipio
         detalhes: {
           visitasNoPeriodo: input.visitasNoPeriodo,
           visitasHistorico: Math.max(0, input.visitas),
+          visitasPeriodoAnterior: 0,
           obrasQuantidade: input.obrasCount,
           obrasValorTotal: input.obrasValorTotal,
           pesquisaPosicaoTop5: input.pesquisaPosicaoTop5,
           pesquisaTop5: input.pesquisaTop5,
           pesquisaBase: input.pesquisaBase,
+          pesquisaMediaPct: null,
+          pesquisaRecentePct: null,
+          pesquisaAnteriorPct: null,
+          pesquisaDeltaPp: null,
+          digitalSeguidores: null,
+          digitalSeguidoresPct: null,
+          digitalContasEngajadas: null,
+          digitalSeguidoresAnterior: null,
+          digitalContasEngajadasAnterior: null,
         },
+        evolucao: {
+          pesquisa: 'sem_dado',
+          digitalSeguidores: 'sem_dado',
+          digitalEngajamento: 'sem_dado',
+          visitas: 'sem_dado',
+        } satisfies IptEvolucaoMunicipio,
         lat: geo?.lat ?? -6.5,
         lng: geo?.lng ?? -43,
       }
@@ -382,7 +463,7 @@ export function calcularIptResumo(municipios: IptMunicipio[]): IptResumo {
   }
 }
 
-export type IptIndicador = 'visitas' | 'obras' | 'pesquisa'
+export type IptIndicador = 'visitas' | 'obras' | 'pesquisa' | 'digital'
 
 export const IPT_INDICADOR_OPCOES: {
   id: IptIndicador | 'geral'
@@ -392,6 +473,7 @@ export const IPT_INDICADOR_OPCOES: {
   { id: 'visitas', label: 'Visitas de campo' },
   { id: 'obras', label: 'Obras destinadas' },
   { id: 'pesquisa', label: 'Pesquisa' },
+  { id: 'digital', label: 'Presença digital' },
 ]
 
 export function iptSinalCor(sinal: IptSinal): string {
@@ -412,6 +494,13 @@ export function contagemIptComExpectativa(municipios: IptMunicipio[]): number {
 
 /** Município com expectativa e dado registrado para o indicador (cobertura da lente). */
 export function iptMunicipioComCoberturaIndicador(m: IptMunicipio, indicador: IptIndicador): boolean {
+  if (indicador === 'digital') {
+    return (
+      (m.detalhes.digitalSeguidores != null && m.detalhes.digitalSeguidores > 0) ||
+      (m.detalhes.digitalContasEngajadas != null && m.detalhes.digitalContasEngajadas > 0)
+    )
+  }
+
   if (m.prioridade === 'sem_expectativa') return false
 
   if (indicador === 'visitas') {
@@ -435,6 +524,7 @@ export function buildContagemIptPorIndicador(municipios: IptMunicipio[]): Record
     visitas: contagemIptPorIndicador(municipios, 'visitas'),
     obras: contagemIptPorIndicador(municipios, 'obras'),
     pesquisa: contagemIptPorIndicador(municipios, 'pesquisa'),
+    digital: contagemIptPorIndicador(municipios, 'digital'),
   }
 }
 
@@ -443,6 +533,7 @@ export function buildContagemIptSinalMal(municipios: IptMunicipio[]): Record<Ipt
     visitas: contagemIptSinalMal(municipios, 'visitas'),
     obras: contagemIptSinalMal(municipios, 'obras'),
     pesquisa: contagemIptSinalMal(municipios, 'pesquisa'),
+    digital: contagemIptSinalMal(municipios, 'digital'),
   }
 }
 
@@ -513,6 +604,8 @@ export const IPT_SINAL_LABEL: Record<IptSinal, string> = {
 
 export function iptRotuloSinalIndicador(indicador: IptIndicador, sinal: IptSinal): string {
   if (indicador === 'obras' && sinal === 'bem') return 'Temos Obras'
+  if (indicador === 'digital' && sinal === 'bem') return 'No top Instagram'
+  if (indicador === 'digital' && sinal === 'sem_dado') return 'Sem dado'
   return IPT_SINAL_LABEL[sinal]
 }
 

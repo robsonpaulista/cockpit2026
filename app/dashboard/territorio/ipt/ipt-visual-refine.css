@@ -461,11 +461,58 @@ body[data-ipt-refine] .ipt-page-shell {
 
 .ipt-map-card__header {
   display: flex;
-  flex-wrap: wrap;
-  align-items: center;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
+}
+
+.ipt-map-card__header-top {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: flex-start;
   justify-content: space-between;
   gap: var(--space-3);
-  margin-bottom: var(--space-3);
+}
+
+.ipt-map-card__filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-4);
+}
+
+.ipt-filter-group {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.ipt-filter-group__label {
+  flex-shrink: 0;
+  font-size: 11px;
+  font-weight: 500;
+  color: rgb(var(--text-secondary));
+  white-space: nowrap;
+}
+
+.ipt-map-card__evolucao-hint {
+  margin: 0;
+  font-size: 11px;
+  color: rgb(var(--text-muted));
+}
+
+.ipt-lens-toggle--evolucao .ipt-evolucao-btn--up.ipt-lens-toggle__btn--active {
+  color: #059669;
+}
+
+.ipt-lens-toggle--evolucao .ipt-evolucao-btn--down.ipt-lens-toggle__btn--active {
+  color: #dc2626;
+}
+
+.ipt-lens-toggle--evolucao .ipt-evolucao-btn--flat.ipt-lens-toggle__btn--active {
+  color: #ca8a04;
 }
 
 .ipt-map-card__title {

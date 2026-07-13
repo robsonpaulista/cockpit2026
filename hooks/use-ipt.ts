@@ -23,6 +23,14 @@ import {
   aplicarOverridesIpt,
   type IptInsightOverrideMap,
 } from '@/lib/ipt-insights'
+import {
+  buildIptPresencaDigitalPorMunicipio,
+  mergePresencaDigitalNosMunicipiosIpt,
+  mergePesquisaEvolucaoNosMunicipiosIpt,
+  mergeVisitasEvolucaoNosMunicipiosIpt,
+  type IptPresencaDigitalCobertura,
+} from '@/lib/ipt-instagram-presenca-digital'
+import { loadInstagramConfigAsync } from '@/lib/instagramApi'
 
 type PrioridadeRow = {
   cidade: string
@@ -65,6 +73,8 @@ export function useIpt() {
   const [error, setError] = useState('')
   const [conexaoInstavel, setConexaoInstavel] = useState(false)
   const [municipios, setMunicipios] = useState<IptMunicipio[]>([])
+  const [presencaDigitalCobertura, setPresencaDigitalCobertura] =
+    useState<IptPresencaDigitalCobertura | null>(null)
   const [resumo, setResumo] = useState<IptResumo>({
     municipiosMonitorados: 0,
     criticos: 0,
@@ -89,18 +99,24 @@ export function useIpt() {
         if (saved) territorioConfig = JSON.parse(saved) as Record<string, unknown>
       }
 
-      const [territorioRes, pesquisaRes, obrasRes, visitasPeriodoRes, insightsRes] = await Promise.all([
-        fetch('/api/dashboard/territorios-frios', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ territorioConfig: territorioConfig ?? {} }),
-          cache: 'no-store',
-        }),
-        fetch('/api/pesquisa?limit=5000', { cache: 'no-store' }),
-        fetch(IPT_OBRAS_API, { cache: 'no-store' }),
-        fetch(`/api/campo/visitas-resumo-td?days=${IPT_VISITAS_JANELA_DIAS}`, { cache: 'no-store' }),
-        fetch('/api/ipt/insights?mode=overrides', { cache: 'no-store' }),
-      ])
+      const [territorioRes, pesquisaRes, obrasRes, visitasPeriodoRes, visitasAnteriorRes, insightsRes, igCfg] =
+        await Promise.all([
+          fetch('/api/dashboard/territorios-frios', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ territorioConfig: territorioConfig ?? {} }),
+            cache: 'no-store',
+          }),
+          fetch('/api/pesquisa?limit=5000', { cache: 'no-store' }),
+          fetch(IPT_OBRAS_API, { cache: 'no-store' }),
+          fetch(`/api/campo/visitas-resumo-td?days=${IPT_VISITAS_JANELA_DIAS}`, { cache: 'no-store' }),
+          fetch(
+            `/api/campo/visitas-resumo-td?days=${IPT_VISITAS_JANELA_DIAS}&offsetDays=${IPT_VISITAS_JANELA_DIAS}`,
+            { cache: 'no-store' }
+          ),
+          fetch('/api/ipt/insights?mode=overrides', { cache: 'no-store' }),
+          loadInstagramConfigAsync().catch(() => ({ token: '', businessAccountId: '' })),
+        ])
 
       const territorioJson = (await territorioRes.json()) as { retryable?: boolean }
       if (!territorioRes.ok) {
@@ -140,6 +156,25 @@ export function useIpt() {
           )
         : new Map<string, number>()
 
+      const visitasAnteriorJson = visitasAnteriorRes.ok
+        ? ((await visitasAnteriorRes.json()) as {
+            municipios?: Array<{ municipio: string; visitas: number }>
+          })
+        : ((await visitasAnteriorRes.json()) as { retryable?: boolean })
+      if (
+        !visitasAnteriorRes.ok &&
+        (visitasAnteriorRes.status === 503 ||
+          (visitasAnteriorJson as { retryable?: boolean }).retryable)
+      ) {
+        instavel = true
+      }
+      const visitasAnteriorPorMunicipio = visitasAnteriorRes.ok
+        ? mapVisitasNoPeriodo(
+            (visitasAnteriorJson as { municipios?: Array<{ municipio: string; visitas: number }> })
+              .municipios
+          )
+        : new Map<string, number>()
+
       const pesquisaJson = pesquisaRes.ok
         ? ((await pesquisaRes.json()) as PollIptRow[])
         : (await pesquisaRes.json()) as { retryable?: boolean }
@@ -149,7 +184,7 @@ export function useIpt() {
 
       const candidatoPesquisa = resolveCandidatoIpt()
       const polls: PollIptRow[] = pesquisaRes.ok ? (pesquisaJson as PollIptRow[]) : []
-      const { intencaoPorMunicipio, top5PorMunicipio, basePorMunicipio } =
+      const { intencaoPorMunicipio, top5PorMunicipio, basePorMunicipio, evolucaoPorMunicipio } =
         buildPesquisaIptPorMunicipio(polls, candidatoPesquisa)
 
       const prioridadeMap = new Map<string, PrioridadeRow>()
@@ -194,12 +229,61 @@ export function useIpt() {
       }
 
       const comOverrides = aplicarOverridesIpt(calculados, overrideMap)
-      setMunicipios(comOverrides)
-      setResumo(calcularIptResumo(comOverrides))
+      const comPesquisaEvo = mergePesquisaEvolucaoNosMunicipiosIpt(
+        comOverrides,
+        evolucaoPorMunicipio
+      )
+      const comVisitasEvo = mergeVisitasEvolucaoNosMunicipiosIpt(
+        comPesquisaEvo,
+        visitasAnteriorPorMunicipio
+      )
+
+      let comDigital = comVisitasEvo
+      let cobertura: IptPresencaDigitalCobertura | null = null
+
+      if (igCfg.token && igCfg.businessAccountId) {
+        try {
+          const demoRes = await fetch('/api/instagram/demographics', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              token: igCfg.token,
+              businessAccountId: igCfg.businessAccountId,
+            }),
+            cache: 'no-store',
+          })
+          if (demoRes.ok) {
+            const demoJson = (await demoRes.json()) as {
+              followersTotal?: number
+              topLocations?: Record<string, number>
+              engagedTopLocations?: Record<string, number>
+              previousByMunicipio?: Record<
+                string,
+                { followers: number; engaged: number; date: string }
+              >
+            }
+            const built = buildIptPresencaDigitalPorMunicipio({
+              topLocations: demoJson.topLocations,
+              engagedTopLocations: demoJson.engagedTopLocations,
+              followersTotal: demoJson.followersTotal,
+              previousByMunicipio: demoJson.previousByMunicipio,
+            })
+            cobertura = built.cobertura
+            comDigital = mergePresencaDigitalNosMunicipiosIpt(comVisitasEvo, built.porMunicipio)
+          }
+        } catch {
+          // Presença digital é complementar — não bloqueia o mapa IPT
+        }
+      }
+
+      setPresencaDigitalCobertura(cobertura)
+      setMunicipios(comDigital)
+      setResumo(calcularIptResumo(comDigital))
       setConexaoInstavel(instavel)
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Erro ao calcular prioridades.')
       setMunicipios([])
+      setPresencaDigitalCobertura(null)
       setResumo({ municipiosMonitorados: 0, criticos: 0, atencao: 0, estaveis: 0, fortes: 0, semExpectativa: 0 })
     } finally {
       setLoading(false)
@@ -222,5 +306,14 @@ export function useIpt() {
     return map
   }, [municipios])
 
-  return { loading, error, conexaoInstavel, municipios, resumo, porNome, recarregar: carregar }
+  return {
+    loading,
+    error,
+    conexaoInstavel,
+    municipios,
+    resumo,
+    porNome,
+    presencaDigitalCobertura,
+    recarregar: carregar,
+  }
 }

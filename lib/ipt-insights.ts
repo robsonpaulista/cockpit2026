@@ -10,7 +10,9 @@ import {
   type IptSinal,
 } from '@/lib/ipt'
 
-export const IPT_INDICADORES: IptIndicador[] = ['visitas', 'obras', 'pesquisa']
+export type IptIndicadorCampo = 'visitas' | 'obras' | 'pesquisa'
+
+export const IPT_INDICADORES: IptIndicadorCampo[] = ['visitas', 'obras', 'pesquisa']
 
 export const IPT_SINAIS: IptSinal[] = ['bem', 'mal', 'neutro', 'sem_dado']
 
@@ -18,7 +20,7 @@ export type IptMunicipioInsightRow = {
   id: string
   municipio: string
   municipio_normalizado: string
-  indicador: IptIndicador
+  indicador: IptIndicadorCampo
   body: string
   altera_avaliacao: boolean
   sinal_override: IptSinal | null
@@ -32,7 +34,7 @@ export type IptMunicipioInsightRow = {
   profiles?: { name: string | null; email: string | null } | null
 }
 
-export type IptInsightOverrideMap = Map<string, Partial<Record<IptIndicador, IptSinal>>>
+export type IptInsightOverrideMap = Map<string, Partial<Record<IptIndicadorCampo, IptSinal>>>
 
 export const createIptInsightSchema = z
   .object({
@@ -132,7 +134,15 @@ export function aplicarOverridesIpt(
     const prioridade: IptPrioridade =
       m.expectativaVotos <= 0
         ? 'sem_expectativa'
-        : classificarPrioridade(m.pesoExpectativaPct, sinais, m.expectativaVotos)
+        : classificarPrioridade(
+            m.pesoExpectativaPct,
+            {
+              visitas: sinais.visitas,
+              obras: sinais.obras,
+              pesquisa: sinais.pesquisa,
+            },
+            m.expectativaVotos
+          )
 
     return {
       ...m,
@@ -153,6 +163,6 @@ export function formatInsightAcaoLabel(row: IptMunicipioInsightRow): string | nu
   return null
 }
 
-export function formatInsightIndicadorLabel(indicador: IptIndicador): string {
-  return iptLabelIndicador(indicador)
+export function formatInsightIndicadorLabel(indicador: IptIndicadorCampo | IptIndicador): string {
+  return iptLabelIndicador(indicador as IptIndicador)
 }

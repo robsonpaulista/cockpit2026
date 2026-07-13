@@ -19,13 +19,13 @@ export type ConteudoRedesTab = 'posts' | 'audience' | 'locations'
 const TABS: { id: ConteudoRedesTab; label: string; icon: typeof BarChart3 }[] = [
   { id: 'posts', label: 'Posts & Insights', icon: BarChart3 },
   { id: 'audience', label: 'Audiência', icon: Users },
-  { id: 'locations', label: 'Seguidores por Cidade', icon: MapPin },
+  { id: 'locations', label: 'Por Cidade', icon: MapPin },
 ]
 
 const TAB_DESCRIPTIONS: Record<ConteudoRedesTab, string> = {
   posts: 'Histórico de seguidores, comparativos por tipo e tema, e posts campeões por indicador.',
   audience: 'Evolução da audiência, métricas do perfil e publicações classificadas por tema.',
-  locations: 'Distribuição de seguidores por cidade conforme insights do Instagram.',
+  locations: 'Top cidades de seguidores e de engajamento com publicações (Instagram Insights).',
 }
 
 interface ConteudoRedesShellProps {
