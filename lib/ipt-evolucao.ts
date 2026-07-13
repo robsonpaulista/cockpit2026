@@ -90,6 +90,7 @@ export function iptEvolucaoCor(e: IptEvolucao): string {
 /**
  * Evolução usada no filtro conforme a lente ativa.
  * Obras não entram (sem série eleitoral relevante).
+ * Geral: Pesquisa → Visitas (Digital não influencia o diagnóstico geral).
  */
 export function evolucaoDaLente(
   m: {
@@ -106,9 +107,8 @@ export function evolucaoDaLente(
   if (lente === 'pesquisa') return m.evolucao.pesquisa
   if (lente === 'digital') return m.evolucao.digitalSeguidores
   if (lente === 'visitas') return m.evolucao.visitas
-  // Geral: prioriza pesquisa → digital → visitas
+  // Geral: pesquisa tem maior peso; obras sem série; digital fora do geral.
   if (m.evolucao.pesquisa !== 'sem_dado') return m.evolucao.pesquisa
-  if (m.evolucao.digitalSeguidores !== 'sem_dado') return m.evolucao.digitalSeguidores
   return m.evolucao.visitas
 }
 

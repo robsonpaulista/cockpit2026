@@ -5,6 +5,7 @@ import { Check, Loader2, Save } from 'lucide-react'
 import {
   classificarObraFase,
   OBRA_FASE_LABEL,
+  valorExibidoMapaObra,
   type ObraFaseMapa,
 } from '@/lib/obras-mapa'
 import type { JadyelObraMapaRow, JadyelObraPeriodo } from '@/lib/jadyel-obras-planilha'
@@ -175,7 +176,7 @@ export function MapaObrasListaStatus({ onStatusSalvo }: MapaObrasListaStatusProp
                   <th className="px-3 py-2.5">Município</th>
                   <th className="px-3 py-2.5">Obra</th>
                   <th className="px-3 py-2.5">Tipo</th>
-                  <th className="px-3 py-2.5">Valor</th>
+                  <th className="px-3 py-2.5">Cota</th>
                   <th className="px-3 py-2.5">Órgão / SEI</th>
                   <th className="px-3 py-2.5">Status</th>
                   <th className="px-3 py-2.5">Fase no mapa</th>
@@ -195,7 +196,7 @@ export function MapaObrasListaStatus({ onStatusSalvo }: MapaObrasListaStatusProp
                         {obra.obs ? <p className={cn('mt-1', typographyBodyMutedClass)}>{obra.obs}</p> : null}
                       </td>
                       <td className="px-3 py-3 text-text-secondary">{TIPO_LABEL[obra.tipo] ?? obra.tipo}</td>
-                      <td className="px-3 py-3 tabular-nums text-text-secondary">{formatCurrency(obra.valor_total)}</td>
+                      <td className="px-3 py-3 tabular-nums text-text-secondary">{formatCurrency(valorExibidoMapaObra(obra))}</td>
                       <td className="px-3 py-3 text-text-secondary">
                         <div>{obra.orgao ?? '—'}</div>
                         <div className="text-xs text-text-muted">{obra.sei ?? '—'}</div>

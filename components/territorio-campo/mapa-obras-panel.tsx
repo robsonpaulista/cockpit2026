@@ -13,6 +13,7 @@ import {
   filtrarObrasPorTema,
   listarMunicipiosComObras,
   obraMapaTemaConfig,
+  valorExibidoMapaObra,
   type ObraFaseFiltro,
   type ObraMapaRow,
   type ObraMapaTemaFiltro,
@@ -462,7 +463,7 @@ export function MapaObrasPanel() {
                       {obra.orgao ?? 'Órgão não informado'} · {obra.status ?? 'Sem status'}
                     </p>
                   </div>
-                  <p className="shrink-0 text-sm tabular-nums text-text-secondary">{formatCurrency(obra.valor_total)}</p>
+                  <p className="shrink-0 text-sm tabular-nums text-text-secondary">{formatCurrency(valorExibidoMapaObra(obra))}</p>
                 </div>
                 <div className="mt-3">
                   {!obra.id.startsWith('jad-') ? (

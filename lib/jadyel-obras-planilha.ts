@@ -250,6 +250,16 @@ export function toObraMapaRow(obra: JadyelObraPlanilhaRow): JadyelObraMapaRow {
   }
 }
 
+/** OBS da planilha marca registro duplicado (não entra no mapa/KPIs). */
+export function isObraObsDuplicado(obs: string | null | undefined): boolean {
+  if (!obs) return false
+  return /\bduplicado\b/i.test(obs)
+}
+
+export function filtrarObrasSemDuplicadasObs<T extends { obs?: string | null }>(obras: T[]): T[] {
+  return obras.filter((obra) => !isObraObsDuplicado(obra.obs))
+}
+
 export function filtrarObrasMapaTemas(obras: JadyelObraMapaRow[]): JadyelObraMapaRow[] {
   return obras.filter((obra) => obra.tipo !== 'outros')
 }

@@ -67,8 +67,8 @@ export function iptChipTheme(
   if (indicador === 'visitas' && m.prioridade === 'sem_expectativa') {
     return PRIORIDADE_THEME.sem_expectativa
   }
-  // Filtro composto (ex.: Pesquisa + Estável): cor da evolução ativa.
-  if (indicador && evolucaoFiltro !== 'todos') {
+  // Filtro de evolução (Geral ou lente): cor da evolução, não do diagnóstico estático.
+  if (evolucaoFiltro !== 'todos') {
     return EVOLUCAO_THEME[evolucaoDaLente(m, indicador)]
   }
   // Só a lente: cor do sinal do indicador (não da prioridade geral).

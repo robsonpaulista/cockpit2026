@@ -62,7 +62,7 @@ export function IptMapCardHeader({
           ? 'Lente visitas · 0–30d vs 31–60d · sem visita = diminuiu · sem expectativa = cinza'
           : filtroIndicador === 'obras'
             ? 'Lente obras · sem série de evolução · municípios com obra destinada'
-            : 'Cores = diagnóstico geral · clique no município para detalhes'
+            : 'Geral · Pesquisa → Obras → Visitas (Digital fora) · evolução = pesquisa, senão visitas'
 
   return (
     <div className="ipt-map-card__header">

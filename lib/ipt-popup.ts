@@ -363,11 +363,12 @@ function quadroIndicadores(
     ${evoDentroColuna(m.evolucao.pesquisa, pesquisaEvoDetalhe, muted, line)}`
 
   type ColId = 'visitas' | 'obras' | 'digital' | 'pesquisa'
+  // Ordem de peso do diagnóstico Geral: Pesquisa → Obras → Visitas → Digital.
   const cols: Array<{ id: ColId; html: string }> = [
-    { id: 'visitas', html: colVisitas },
-    { id: 'obras', html: colObras },
-    { id: 'digital', html: colDigital },
     { id: 'pesquisa', html: colPesquisa },
+    { id: 'obras', html: colObras },
+    { id: 'visitas', html: colVisitas },
+    { id: 'digital', html: colDigital },
   ]
 
   const visiveis =

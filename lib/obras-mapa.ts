@@ -109,7 +109,21 @@ export interface ObraMapaRow {
   tipo?: string | null
   orgao?: string | null
   valor_total?: number | null
+  /** Cota parlamentar / parcela atribuída na planilha (preferida no mapa). */
+  cota?: number | null
   imagem_url?: string | null
+}
+
+/**
+ * Valor monetário exibido no Mapa de Obras: usa Cota quando existir;
+ * senão cai para Valor (total da obra).
+ */
+export function valorExibidoMapaObra(obra: Pick<ObraMapaRow, 'cota' | 'valor_total'>): number | null {
+  const cota = obra.cota
+  if (typeof cota === 'number' && Number.isFinite(cota)) return cota
+  const valor = obra.valor_total
+  if (typeof valor === 'number' && Number.isFinite(valor)) return valor
+  return null
 }
 
 export interface MunicipioObrasResumo {

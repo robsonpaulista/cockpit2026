@@ -1,6 +1,6 @@
 import demografiaData from '@/data/demografia-municipios-piaui.json'
 import { normalizeMunicipioNome } from '@/lib/fns-municipio-normalize'
-import { isObraPavimentacao, type ObraMapaRow } from '@/lib/obras-mapa'
+import { isObraPavimentacao, valorExibidoMapaObra, type ObraMapaRow } from '@/lib/obras-mapa'
 
 export interface ObrasMandatoSplashStats {
   totalObras: number
@@ -53,7 +53,7 @@ export function calcularObrasMandatoSplashStats(obras: ObraMapaRow[]): ObrasMand
     if (!municipio) continue
 
     municipios.add(municipio)
-    valorTotal += obra.valor_total ?? 0
+    valorTotal += valorExibidoMapaObra(obra) ?? 0
     if (isObraPavimentacao(obra)) {
       metrosQuadradosPavimentados += extrairMetrosQuadradosObra(obra.obra)
     }

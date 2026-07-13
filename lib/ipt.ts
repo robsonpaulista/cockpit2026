@@ -156,26 +156,29 @@ export function classificarSinalPesquisa(
   return 'sem_dado'
 }
 
+/**
+ * Diagnóstico Geral (cores dos cards) — Digital não entra.
+ * Peso: Pesquisa → Obras → Visitas.
+ * - bem nos 3 → Estamos bem (forte)
+ * - bem só nos 2 primeiros (Pesquisa + Obras) → Acompanhar (estavel)
+ * - bem em quaisquer outros 2 dos 3 → Precisa atenção (atencao)
+ * - bem em 1 ou 0 dos 3 → Prioridade crítica (critico)
+ */
 export function classificarPrioridade(
-  pesoExpectativaPct: number,
+  _pesoExpectativaPct: number,
   sinais: { visitas: IptSinal; obras: IptSinal; pesquisa: IptSinal },
-  expectativa: number
+  _expectativa: number
 ): IptPrioridade {
-  const avaliaveis = [sinais.visitas, sinais.obras, sinais.pesquisa].filter((s) => s !== 'sem_dado')
-  const mal = avaliaveis.filter((s) => s === 'mal').length
-  const bem = avaliaveis.filter((s) => s === 'bem').length
-  const pesoAlto = pesoExpectativaPct >= 2 || expectativa >= 1200
-  const pesoMedio = pesoExpectativaPct >= 0.8 || expectativa >= 400
+  const pesquisaBem = sinais.pesquisa === 'bem'
+  const obrasBem = sinais.obras === 'bem'
+  const visitasBem = sinais.visitas === 'bem'
+  const bemNosTres = [pesquisaBem, obrasBem, visitasBem].filter(Boolean).length
 
-  if (pesoAlto && mal >= 2) return 'critico'
-  if (pesoAlto && mal >= 1) return 'atencao'
-  if (pesoMedio && mal >= 2) return 'atencao'
-  if (mal >= 3) return 'critico'
-  if (mal >= 2) return 'atencao'
-  if (bem >= 2 && mal === 0) return 'forte'
-  if (bem >= 1 && mal === 0) return 'estavel'
-  if (mal === 1) return 'estavel'
-  return pesoMedio ? 'atencao' : 'estavel'
+  if (bemNosTres === 3) return 'forte'
+  // Somente os 2 de maior peso (Pesquisa + Obras), sem visita bem.
+  if (pesquisaBem && obrasBem && !visitasBem) return 'estavel'
+  if (bemNosTres === 2) return 'atencao'
+  return 'critico'
 }
 
 /** Tem dado no top Instagram → bem; senão sem_dado (não usa bem/mal operacional). */
@@ -469,9 +472,9 @@ export const IPT_INDICADOR_OPCOES: {
   label: string
 }[] = [
   { id: 'geral', label: 'Visão geral (prioridade)' },
-  { id: 'visitas', label: 'Visitas de campo' },
-  { id: 'obras', label: 'Obras destinadas' },
   { id: 'pesquisa', label: 'Pesquisa' },
+  { id: 'obras', label: 'Obras destinadas' },
+  { id: 'visitas', label: 'Visitas de campo' },
   { id: 'digital', label: 'Presença digital' },
 ]
 
