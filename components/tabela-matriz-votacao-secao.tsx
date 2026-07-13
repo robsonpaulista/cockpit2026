@@ -3,6 +3,7 @@
 import {
   forwardRef,
   useCallback,
+  useEffect,
   useImperativeHandle,
   useMemo,
   useState,
@@ -30,6 +31,12 @@ import {
   type LinhaMatrizSecao,
   type MatrizVotacaoSecao,
 } from '@/lib/votacao-secao-matriz'
+import {
+  chaveMetaBairro,
+  chaveMetaLocal,
+  somarMetasTerritorio,
+  type AtendimentoMetaTerritorioMap,
+} from '@/lib/atendimento-meta-territorio'
 import { isColunaExpectativaLideranca } from '@/lib/lideranca-expectativa-secao'
 import type {
   ExpectativaBairroDetalhe,
@@ -55,6 +62,13 @@ export type TabelaMatrizVotacaoSecaoHandle = {
   expandirTodos: () => void
 }
 
+/** Coluna editável (atendimento) para anotar valor em bairro/local. */
+export type ColunaManualTerritorioProps = {
+  label?: string
+  valores: AtendimentoMetaTerritorioMap
+  onChange: (chave: string, valor: number | null) => void
+}
+
 export type TabelaMatrizVotacaoSecaoProps = {
   matriz: MatrizVotacaoSecao
   agrupamento?: AgrupamentoMatriz
@@ -71,6 +85,8 @@ export type TabelaMatrizVotacaoSecaoProps = {
   compacto?: boolean
   detalhesExpectativaPorSecao?: Map<string, ExpectativaSecaoDetalhe>
   detalhesExpectativaPorBairro?: Map<string, ExpectativaBairroDetalhe>
+  /** Coluna para o usuário informar valor em bairro/local durante o atendimento. */
+  colunaManual?: ColunaManualTerritorioProps | null
 }
 
 type ContextoExpClick =
@@ -117,6 +133,7 @@ export const TabelaMatrizVotacaoSecao = forwardRef<
     compacto = false,
     detalhesExpectativaPorSecao,
     detalhesExpectativaPorBairro,
+    colunaManual = null,
   },
   ref,
 ) {
@@ -229,6 +246,12 @@ export const TabelaMatrizVotacaoSecao = forwardRef<
   }, [])
 
   useImperativeHandle(ref, () => ({ recolherTodos, expandirTodos }), [recolherTodos, expandirTodos])
+
+  const resumoManual = useMemo(
+    () => (colunaManual ? somarMetasTerritorio(colunaManual.valores) : null),
+    [colunaManual],
+  )
+  const labelManual = colunaManual?.label?.trim() || 'Meta'
 
   if (matriz.candidatos.length === 0) {
     return (
@@ -344,6 +367,18 @@ export const TabelaMatrizVotacaoSecao = forwardRef<
                   </div>
                 </th>
               ))}
+              {colunaManual ? (
+                <th
+                  className="min-w-[4.75rem] max-w-[5.5rem] bg-sky-50/80 px-1.5 py-2 text-right font-medium align-bottom"
+                  title="Meta do vereador selecionado · informada no atendimento (não altera Exp. 2026). Persistida no banco por município + nome do vereador."
+                >
+                  {modoComparar && (
+                    <div className="truncate text-[9px] font-normal uppercase text-sky-800/80">Atend.</div>
+                  )}
+                  <div className="truncate">{labelManual}</div>
+                  <div className="truncate font-normal text-[10px] text-text-secondary">editável</div>
+                </th>
+              ) : null}
             </tr>
           </thead>
           <tbody>
@@ -360,6 +395,7 @@ export const TabelaMatrizVotacaoSecao = forwardRef<
                     onToggleBairro={() => toggleBairro(grupo.id)}
                     onToggleLocal={(localId) => toggleLocal(localId, grupo.id)}
                     onAbrirExplicacaoExpectativa={abrirExplicacaoExpectativa}
+                    colunaManual={colunaManual}
                   />
                 ))
               : gruposLocalPagina.map((grupo) => {
@@ -376,6 +412,7 @@ export const TabelaMatrizVotacaoSecao = forwardRef<
                       destacarSemelhanca={destacarSemelhanca}
                       onToggle={() => toggleLocal(grupo.id)}
                       onAbrirExplicacaoExpectativa={abrirExplicacaoExpectativa}
+                      colunaManual={colunaManual}
                     />
                   )
                 })}
@@ -388,6 +425,14 @@ export const TabelaMatrizVotacaoSecao = forwardRef<
                   {c.totalVotos.toLocaleString('pt-BR')}
                 </td>
               ))}
+              {colunaManual && resumoManual ? (
+                <td
+                  className="bg-sky-50/80 px-2 py-2 text-right tabular-nums text-sky-950"
+                  title={`${resumoManual.preenchidos} bairro(s)/local(is) com valor`}
+                >
+                  {resumoManual.preenchidos > 0 ? resumoManual.soma.toLocaleString('pt-BR') : '—'}
+                </td>
+              ) : null}
             </tr>
           </tfoot>
         </table>
@@ -429,6 +474,82 @@ export const TabelaMatrizVotacaoSecao = forwardRef<
     </div>
   )
 })
+
+function CelulaMetaManual({
+  chave,
+  colunaManual,
+}: {
+  chave: string | null
+  colunaManual: ColunaManualTerritorioProps | null | undefined
+}) {
+  if (!colunaManual) return null
+
+  if (!chave) {
+    return <td className="bg-sky-50/40 px-1.5 py-2 text-right text-text-secondary/40">—</td>
+  }
+
+  return (
+    <td className="bg-sky-50/50 px-1 py-1 align-middle">
+      <CelulaMetaManualInput
+        chave={chave}
+        valor={colunaManual.valores[chave]}
+        onChange={colunaManual.onChange}
+      />
+    </td>
+  )
+}
+
+function CelulaMetaManualInput({
+  chave,
+  valor,
+  onChange,
+}: {
+  chave: string
+  valor: number | undefined
+  onChange: (chave: string, valor: number | null) => void
+}) {
+  const [texto, setTexto] = useState(valor != null && valor > 0 ? String(valor) : '')
+  const [focado, setFocado] = useState(false)
+
+  useEffect(() => {
+    if (focado) return
+    setTexto(valor != null && valor > 0 ? String(valor) : '')
+  }, [valor, focado])
+
+  return (
+    <input
+      type="text"
+      inputMode="numeric"
+      value={texto}
+      placeholder="—"
+      aria-label="Valor informado no atendimento"
+      onFocus={() => setFocado(true)}
+      onChange={(e) => {
+        setTexto(e.target.value.replace(/[^\d]/g, ''))
+      }}
+      onBlur={() => {
+        setFocado(false)
+        if (!texto.trim()) {
+          onChange(chave, null)
+          setTexto('')
+          return
+        }
+        const n = Number(texto)
+        if (!Number.isFinite(n) || n < 0) {
+          setTexto(valor != null && valor > 0 ? String(valor) : '')
+          return
+        }
+        const arred = Math.round(n)
+        onChange(chave, arred)
+        setTexto(String(arred))
+      }}
+      className={cn(
+        'w-full min-w-[3.25rem] rounded border border-sky-200/80 bg-white px-1.5 py-1 text-right text-[11px] tabular-nums text-text-primary outline-none',
+        'placeholder:text-text-secondary/35 focus:border-sky-400 focus:ring-1 focus:ring-sky-300/60',
+      )}
+    />
+  )
+}
 
 function PilulasSemelhanca({
   pares,
@@ -569,6 +690,7 @@ function GrupoBairroRows({
   onToggleBairro,
   onToggleLocal,
   onAbrirExplicacaoExpectativa,
+  colunaManual,
 }: {
   grupo: GrupoBairroMatriz
   candidatos: CandidatoMatrizColuna[]
@@ -579,10 +701,12 @@ function GrupoBairroRows({
   onToggleBairro: () => void
   onToggleLocal: (localId: string) => void
   onAbrirExplicacaoExpectativa?: (ctx: ContextoExpClick, event: MouseEvent<HTMLButtonElement>) => void
+  colunaManual?: ColunaManualTerritorioProps | null
 }) {
   const localUnico = grupo.totalLocais === 1 ? grupo.locais[0] : null
   const secoesGrupo = grupo.locais.flatMap((l) => l.secoes)
   const paresBairro = paresSemelhantesAgregados(secoesGrupo, paresPorSecao)
+  const chaveBairro = chaveMetaBairro(grupo.id)
 
   if (localUnico && localUnico.totalSecoes === 1) {
     const secao = localUnico.secoes[0]
@@ -614,6 +738,7 @@ function GrupoBairroRows({
           contextoExp={{ escopo: 'bairro', bairroId: grupo.id, rotulo: grupo.nmBairro }}
           onAbrirExplicacaoExpectativa={onAbrirExplicacaoExpectativa}
         />
+        <CelulaMetaManual chave={chaveBairro} colunaManual={colunaManual} />
       </tr>
     )
   }
@@ -660,6 +785,7 @@ function GrupoBairroRows({
           contextoExp={{ escopo: 'bairro', bairroId: grupo.id, rotulo: grupo.nmBairro }}
           onAbrirExplicacaoExpectativa={onAbrirExplicacaoExpectativa}
         />
+        <CelulaMetaManual chave={chaveBairro} colunaManual={colunaManual} />
       </tr>
       {bairroExpandido
         ? grupo.locais.map((local) => (
@@ -675,6 +801,7 @@ function GrupoBairroRows({
               indent={1}
               ocultarBairro
               onAbrirExplicacaoExpectativa={onAbrirExplicacaoExpectativa}
+              colunaManual={colunaManual}
             />
           ))
         : null}
@@ -693,6 +820,7 @@ function GrupoLocalRows({
   indent = 0,
   ocultarBairro = false,
   onAbrirExplicacaoExpectativa,
+  colunaManual,
 }: {
   grupo: GrupoLocalMatriz
   candidatos: CandidatoMatrizColuna[]
@@ -704,11 +832,13 @@ function GrupoLocalRows({
   indent?: number
   ocultarBairro?: boolean
   onAbrirExplicacaoExpectativa?: (ctx: ContextoExpClick, event: MouseEvent<HTMLButtonElement>) => void
+  colunaManual?: ColunaManualTerritorioProps | null
 }) {
   const tituloLocal = grupo.nmLocalVotacao || 'Local não informado'
   const endereco = grupo.dsEndereco?.trim()
   const padLeft = indent === 0 ? '' : indent === 1 ? 'pl-6' : 'pl-10'
   const paresLocal = paresSemelhantesAgregados(grupo.secoes, paresPorSecao)
+  const chaveLocal = chaveMetaLocal(grupo.id)
 
   if (!multiSecao) {
     const secao = grupo.secoes[0]
@@ -740,6 +870,7 @@ function GrupoLocalRows({
           }}
           onAbrirExplicacaoExpectativa={onAbrirExplicacaoExpectativa}
         />
+        <CelulaMetaManual chave={chaveLocal} colunaManual={colunaManual} />
       </tr>
     )
   }
@@ -800,6 +931,7 @@ function GrupoLocalRows({
           }
           onAbrirExplicacaoExpectativa={onAbrirExplicacaoExpectativa}
         />
+        <CelulaMetaManual chave={chaveLocal} colunaManual={colunaManual} />
       </tr>
       {expandido
         ? grupo.secoes.map((secao) => (
@@ -812,6 +944,7 @@ function GrupoLocalRows({
               indent={indent + 1}
               ocultarBairro={ocultarBairro}
               onAbrirExplicacaoExpectativa={onAbrirExplicacaoExpectativa}
+              colunaManual={colunaManual}
             />
           ))
         : null}
@@ -827,6 +960,7 @@ function LinhaSecaoMatriz({
   indent = 0,
   ocultarBairro = false,
   onAbrirExplicacaoExpectativa,
+  colunaManual,
 }: {
   secao: LinhaMatrizSecao
   candidatos: CandidatoMatrizColuna[]
@@ -835,6 +969,7 @@ function LinhaSecaoMatriz({
   indent?: number
   ocultarBairro?: boolean
   onAbrirExplicacaoExpectativa?: (ctx: ContextoExpClick, event: MouseEvent<HTMLButtonElement>) => void
+  colunaManual?: ColunaManualTerritorioProps | null
 }) {
   const padLeft = indent <= 0 ? 'pl-9' : indent === 1 ? 'pl-12' : 'pl-16'
 
@@ -864,6 +999,7 @@ function LinhaSecaoMatriz({
         }}
         onAbrirExplicacaoExpectativa={onAbrirExplicacaoExpectativa}
       />
+      <CelulaMetaManual chave={null} colunaManual={colunaManual} />
     </tr>
   )
 }

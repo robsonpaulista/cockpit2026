@@ -1,6 +1,6 @@
 'use client'
 
-import { forwardRef, useEffect, useMemo, useState } from 'react'
+import { forwardRef, useCallback, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { ChevronUp, Loader2, MapPin, X, ArrowUpRight } from 'lucide-react'
 import { TabelaMatrizVotacaoSecao } from '@/components/tabela-matriz-votacao-secao'
@@ -40,6 +40,10 @@ import {
   injetarColunaExpectativaLideranca,
   isColunaExpectativaLideranca,
 } from '@/lib/lideranca-expectativa-secao'
+import {
+  aplicarValorMeta,
+  type AtendimentoMetaTerritorioMap,
+} from '@/lib/atendimento-meta-territorio'
 import {
   resumoEleicoesHubHref,
   RESUMO_ELEICOES_TAB_SECAO,
@@ -97,6 +101,8 @@ type Props = {
   liderancasDetalhe?: readonly LiderancaExpectativaSecao[]
   cenarioVotos?: CenarioVotosLideranca
   labelExpectativa?: string
+  /** Exibe coluna editável Meta (bairro/local) — padrão no atendimento. */
+  habilitarMetaManual?: boolean
   onClose: () => void
 }
 
@@ -157,6 +163,7 @@ export const PainelVotacaoCandidatoResumo = forwardRef<HTMLElement, Props>(
       liderancasDetalhe = [],
       cenarioVotos = 'aferido_jadyel',
       labelExpectativa = 'Expectativa 2026',
+      habilitarMetaManual = true,
       onClose,
     },
     ref,
@@ -172,10 +179,113 @@ export const PainelVotacaoCandidatoResumo = forwardRef<HTMLElement, Props>(
     const [totalSecoes, setTotalSecoes] = useState(0)
     const [jadyelNome, setJadyelNome] = useState<string | null>(null)
     const [liderancaSelecionadaKey, setLiderancaSelecionadaKey] = useState<string>('')
+    const [metasManuais, setMetasManuais] = useState<AtendimentoMetaTerritorioMap>({})
+    const [metaSetupRequired, setMetaSetupRequired] = useState(false)
+    const [metaSaveError, setMetaSaveError] = useState('')
+    const [metaSaving, setMetaSaving] = useState(false)
 
     const chave = useMemo(() => chaveMatchFromResumo(candidato), [candidato])
     const compararComReferentes = useMemo(() => isVereadorResumo2024(candidato), [candidato])
     const nomeDepEstadualPlanilha = depEstadualLideranca?.trim() || null
+
+    const vereadorNomeMeta = useMemo(
+      () => nomeCandidatoResumoExibicao(candidato.nomeUrnaCandidato, candidato.numeroUrna),
+      [candidato.nomeUrnaCandidato, candidato.numeroUrna],
+    )
+    const vereadorNumeroMeta = String(candidato.numeroUrna ?? chave?.nrVotavel ?? '').trim()
+    const anoMeta = Number(chave?.ano ?? candidato.anoEleicao ?? 2024)
+
+    useEffect(() => {
+      if (!habilitarMetaManual || !municipio.trim() || !vereadorNomeMeta.trim()) {
+        setMetasManuais({})
+        setMetaSetupRequired(false)
+        return
+      }
+
+      const controller = new AbortController()
+      void (async () => {
+        try {
+          const params = new URLSearchParams({
+            cidade: municipio,
+            vereador: vereadorNomeMeta,
+            numero: vereadorNumeroMeta,
+            ano: String(anoMeta),
+          })
+          const res = await fetch(`/api/resumo-eleicoes/meta-territorio?${params}`, {
+            cache: 'no-store',
+            signal: controller.signal,
+          })
+          const json = (await res.json().catch(() => ({}))) as {
+            valores?: AtendimentoMetaTerritorioMap
+            setupRequired?: boolean
+            error?: string
+          }
+          if (controller.signal.aborted) return
+          if (!res.ok) {
+            setMetaSaveError(json.error ?? 'Falha ao carregar metas.')
+            return
+          }
+          setMetaSetupRequired(Boolean(json.setupRequired))
+          setMetasManuais(json.valores ?? {})
+          setMetaSaveError('')
+        } catch (e) {
+          if (e instanceof DOMException && e.name === 'AbortError') return
+          setMetaSaveError(e instanceof Error ? e.message : 'Falha ao carregar metas.')
+        }
+      })()
+
+      return () => controller.abort()
+    }, [habilitarMetaManual, municipio, vereadorNomeMeta, vereadorNumeroMeta, anoMeta])
+
+    const persistirMetas = useCallback(
+      async (valores: AtendimentoMetaTerritorioMap) => {
+        setMetaSaving(true)
+        setMetaSaveError('')
+        try {
+          const res = await fetch('/api/resumo-eleicoes/meta-territorio', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              cidade: municipio,
+              vereadorNome: vereadorNomeMeta,
+              vereadorNumero: vereadorNumeroMeta,
+              anoEleicao: anoMeta,
+              valores,
+            }),
+          })
+          const json = (await res.json().catch(() => ({}))) as {
+            error?: string
+            setupRequired?: boolean
+            valores?: AtendimentoMetaTerritorioMap
+          }
+          if (res.status === 503 || json.setupRequired) {
+            setMetaSetupRequired(true)
+            throw new Error(
+              json.error ??
+                'Execute database/create-atendimento-meta-territorio.sql no Supabase.',
+            )
+          }
+          if (!res.ok) throw new Error(json.error ?? 'Falha ao salvar meta.')
+          if (json.valores) setMetasManuais(json.valores)
+        } catch (e) {
+          setMetaSaveError(e instanceof Error ? e.message : 'Falha ao salvar meta.')
+        } finally {
+          setMetaSaving(false)
+        }
+      },
+      [municipio, vereadorNomeMeta, vereadorNumeroMeta, anoMeta],
+    )
+
+    const onMetaManualChange = useCallback(
+      (metaChave: string, valor: number | null) => {
+        setMetasManuais((prev) => {
+          const next = aplicarValorMeta(prev, metaChave, valor)
+          void persistirMetas(next)
+          return next
+        })
+      },
+      [persistirMetas],
+    )
 
     const depEstaduaisOpcoes = useMemo(
       () => listarDepEstaduais2022Secao(candidatosSecao),
@@ -645,6 +755,20 @@ export const PainelVotacaoCandidatoResumo = forwardRef<HTMLElement, Props>(
                 </p>
               )}
 
+              {habilitarMetaManual && metaSetupRequired ? (
+                <p className="mb-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
+                  Para salvar metas no banco, execute{' '}
+                  <code className="rounded bg-white/80 px-1">database/create-atendimento-meta-territorio.sql</code>{' '}
+                  no Supabase.
+                </p>
+              ) : null}
+              {habilitarMetaManual && metaSaveError ? (
+                <p className="mb-3 text-xs text-status-danger">{metaSaveError}</p>
+              ) : null}
+              {habilitarMetaManual && metaSaving ? (
+                <p className="mb-2 text-[11px] text-text-secondary">Salvando meta de {vereadorNomeMeta}…</p>
+              ) : null}
+
               {matriz && matriz.candidatos.length > 0 && (
                 <TabelaMatrizVotacaoSecao
                   matriz={matriz}
@@ -658,6 +782,15 @@ export const PainelVotacaoCandidatoResumo = forwardRef<HTMLElement, Props>(
                   compacto
                   detalhesExpectativaPorSecao={expectativaResult.detalhesPorSecao}
                   detalhesExpectativaPorBairro={expectativaResult.detalhesPorBairro}
+                  colunaManual={
+                    habilitarMetaManual
+                      ? {
+                          label: 'Meta',
+                          valores: metasManuais,
+                          onChange: onMetaManualChange,
+                        }
+                      : null
+                  }
                 />
               )}
 
