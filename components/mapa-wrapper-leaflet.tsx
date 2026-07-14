@@ -76,6 +76,8 @@ interface MapWrapperProps {
   iptFiltroTd?: TerritorioDesenvolvimentoPI | null
   /** Municípios do TD (sem filtro de prioridade) — base do enquadramento */
   iptMunicipiosBounds?: IptMunicipio[]
+  /** Modo missões do Diagnóstico Operacional — pins na cor da missão + multi-missão */
+  iptMissaoFiltro?: import('@/lib/ipt-missoes').IptMissaoFiltro | null
   /** Recarrega IPT após salvar insight no popup */
   onIptInsightSaved?: () => void
   /** Município selecionado no mapa IPT (abre perfil demográfico) */
@@ -92,6 +94,53 @@ const EMPTY_IPT_BOUNDS: IptMunicipio[] = []
 // ========== Helper Functions ==========
 function normalizeName(name: string): string {
   return name.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim()
+}
+
+/** Evita crash Leaflet `_leaflet_pos` ao remover mapa no meio de zoom animado. */
+function safeRemoveLeafletMap(map: L.Map | null | undefined): void {
+  if (!map) return
+  try {
+    map.stop()
+  } catch {
+    // ignore
+  }
+  try {
+    map.remove()
+  } catch {
+    // ignore
+  }
+}
+
+function isLeafletMapUsable(map: L.Map | null | undefined): map is L.Map {
+  if (!map) return false
+  try {
+    const container = map.getContainer()
+    return Boolean(container?.isConnected && (map as L.Map & { _loaded?: boolean })._loaded)
+  } catch {
+    return false
+  }
+}
+
+function safeIptFitView(map: L.Map, pts: Array<[number, number]>): void {
+  if (!isLeafletMapUsable(map)) return
+  try {
+    map.stop()
+    if (pts.length === 0) {
+      map.setView(IPT_MAP_VIEW_PI.center, IPT_MAP_VIEW_PI.zoom, { animate: false })
+      return
+    }
+    if (pts.length === 1) {
+      map.setView(pts[0], 10, { animate: false })
+      return
+    }
+    map.fitBounds(L.latLngBounds(pts), {
+      padding: [48, 48],
+      maxZoom: 10,
+      animate: false,
+    })
+  } catch {
+    // mapa destruído / transição inválida
+  }
 }
 
 function getMarkerSize(eleitorado: number, compact = false): number {
@@ -385,6 +434,7 @@ export function MapWrapperLeaflet({
   iptEvolucaoFiltro = 'todos',
   iptFiltroTd = null,
   iptMunicipiosBounds = EMPTY_IPT_BOUNDS,
+  iptMissaoFiltro = null,
   onIptInsightSaved,
   onIptMunicipioSelect,
 }: MapWrapperProps) {
@@ -544,14 +594,21 @@ export function MapWrapperLeaflet({
         const size = iptMarkerSize(row.pesoExpectativaPct, compactMarkers)
         const icon = L.divIcon({
           className: '',
-          html: createIptMarkerHtml(row, size, animDelay, iptIndicadorFiltro, iptEvolucaoFiltro),
+          html: createIptMarkerHtml(
+            row,
+            size,
+            animDelay,
+            iptIndicadorFiltro,
+            iptEvolucaoFiltro,
+            iptMissaoFiltro
+          ),
           iconSize: [size, size],
           iconAnchor: [size / 2, size / 2],
           popupAnchor: [0, -size / 2 - 4],
         })
 
         const marker = L.marker([municipio.lat, municipio.lng], { icon, pane: 'markersPane' })
-          .bindPopup(createIptPopupHtml(row, appearance, iptIndicadorFiltro), {
+          .bindPopup(createIptPopupHtml(row, appearance, iptIndicadorFiltro, iptMissaoFiltro), {
             maxWidth: 660,
             className: appearance === 'dark' ? 'mapa-obras-popup-dark' : 'mapa-obras-popup-soft ipt-popup-shell',
           })
@@ -572,7 +629,8 @@ export function MapWrapperLeaflet({
         })
         marker.on('popupclose', () => clearIptFocus())
 
-        if (tooltipsAutomaticos.has(municipioKey)) {
+        // Modo missões: só marcadores — labels permanentes geram sobreposição (bagunça visual).
+        if (iptMissaoFiltro == null && tooltipsAutomaticos.has(municipioKey)) {
           const chipHtml = createIptTooltipBasicoHtml(row, appearance, iptIndicadorFiltro, {
             municipioKey,
             animDelay,
@@ -631,7 +689,7 @@ export function MapWrapperLeaflet({
         window.removeEventListener('resize', scheduleInvalidateSize)
         document.removeEventListener('fullscreenchange', scheduleInvalidateSize)
         if (mapInstanceRef.current) {
-          mapInstanceRef.current.remove()
+          safeRemoveLeafletMap(mapInstanceRef.current)
           mapInstanceRef.current = null
           layersRef.current = {}
           statsCalculatedRef.current = false
@@ -961,13 +1019,13 @@ export function MapWrapperLeaflet({
       window.removeEventListener('resize', scheduleInvalidateSize)
       document.removeEventListener('fullscreenchange', scheduleInvalidateSize)
       if (mapInstanceRef.current) {
-        mapInstanceRef.current.remove()
+        safeRemoveLeafletMap(mapInstanceRef.current)
         mapInstanceRef.current = null
         layersRef.current = {}
         statsCalculatedRef.current = false
       }
     }
-  }, [cidadesComPresenca, cidadesVisitadas, municipiosPiaui, eleitoresPorCidade, onStatsCalculated, appearance, showRegionLabels, compactMarkers, iptMunicipios, iptIndicadorFiltro, iptEvolucaoFiltro])
+  }, [cidadesComPresenca, cidadesVisitadas, municipiosPiaui, eleitoresPorCidade, onStatsCalculated, appearance, showRegionLabels, compactMarkers, iptMunicipios, iptIndicadorFiltro, iptEvolucaoFiltro, iptMissaoFiltro])
 
   // ========== Handle filter changes ==========
   useEffect(() => {
@@ -1006,38 +1064,44 @@ export function MapWrapperLeaflet({
     }
   }, [filtroAtivo])
 
-  /** Zoom automático ao filtrar TD — recorte territorial sem depender da prioridade. */
+  /** Zoom automático ao filtrar TD ou missão — enquadra municípios visíveis. */
   useEffect(() => {
-    const map = mapInstanceRef.current
-    if (!map || !iptMunicipios) return
+    if (!iptMunicipios) return
+
+    let cancelled = false
+    let timeoutId = 0
+    let rafId = 0
 
     const applyView = () => {
+      if (cancelled) return
       const m = mapInstanceRef.current
-      if (!m) return
+      if (!isLeafletMapUsable(m)) return
 
-      if (!iptFiltroTd) {
-        m.setView(IPT_MAP_VIEW_PI.center, IPT_MAP_VIEW_PI.zoom, { animate: true })
-        return
-      }
-
-      const pts = iptLatLngPointsFromMunicipios(iptMunicipiosBounds)
-      if (pts.length === 0) return
-
-      if (pts.length === 1) {
-        m.setView(pts[0], 10, { animate: true })
-        return
-      }
-
-      m.fitBounds(L.latLngBounds(pts), {
-        padding: [48, 48],
-        maxZoom: 10,
-        animate: true,
-      })
+      const fonteBounds =
+        iptMunicipiosBounds.length > 0 ? iptMunicipiosBounds : iptMunicipios
+      const pts = iptLatLngPointsFromMunicipios(fonteBounds)
+      safeIptFitView(m, pts)
     }
 
-    const id = window.requestAnimationFrame(applyView)
-    return () => window.cancelAnimationFrame(id)
-  }, [iptMunicipios, iptFiltroTd, iptMunicipiosBounds])
+    // Espera o remount do mapa (mesmo ciclo de deps) concluir antes do enquadramento.
+    timeoutId = window.setTimeout(() => {
+      rafId = window.requestAnimationFrame(applyView)
+    }, 80)
+
+    return () => {
+      cancelled = true
+      window.clearTimeout(timeoutId)
+      window.cancelAnimationFrame(rafId)
+      const m = mapInstanceRef.current
+      if (m) {
+        try {
+          m.stop()
+        } catch {
+          // ignore
+        }
+      }
+    }
+  }, [iptMunicipios, iptFiltroTd, iptMunicipiosBounds, iptMissaoFiltro])
 
   const hostClass = appearance === 'dark' ? 'mapa-leaflet-host--dark' : 'mapa-leaflet-host--light'
 

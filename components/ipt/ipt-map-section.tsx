@@ -4,6 +4,7 @@ import { MapWrapperLeaflet } from '@/components/mapa-wrapper-leaflet'
 import municipiosPiaui from '@/lib/municipios-piaui.json'
 import type { IptIndicador, IptMunicipio } from '@/lib/ipt'
 import type { IptEvolucaoFiltro } from '@/lib/ipt-evolucao'
+import type { IptMissaoFiltro } from '@/lib/ipt-missoes'
 import type { TerritorioDesenvolvimentoPI } from '@/lib/piaui-territorio-desenvolvimento'
 import { useTheme } from '@/contexts/theme-context'
 
@@ -18,6 +19,7 @@ interface IptMapSectionProps {
   evolucaoFiltro?: IptEvolucaoFiltro
   filtroTd?: TerritorioDesenvolvimentoPI | null
   municipiosBoundsTd?: IptMunicipio[]
+  missaoFiltro?: IptMissaoFiltro | null
   isFullscreen?: boolean
   onInsightSaved?: () => void
   onMunicipioSelect?: (municipio: string) => void
@@ -29,6 +31,7 @@ export function IptMapSection({
   evolucaoFiltro = 'todos',
   filtroTd = null,
   municipiosBoundsTd = IPT_MUNICIPIOS_BOUNDS_VAZIOS,
+  missaoFiltro = null,
   isFullscreen: _isFullscreen = false,
   onInsightSaved,
   onMunicipioSelect,
@@ -48,6 +51,7 @@ export function IptMapSection({
         iptEvolucaoFiltro={evolucaoFiltro}
         iptFiltroTd={filtroTd}
         iptMunicipiosBounds={municipiosBoundsTd}
+        iptMissaoFiltro={missaoFiltro}
         onIptInsightSaved={onInsightSaved}
         onIptMunicipioSelect={onMunicipioSelect}
       />

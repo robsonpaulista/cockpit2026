@@ -1,0 +1,1611 @@
+/* Diagnóstico operacional — visual próximo ao mockup de missões */
+
+body[data-ipt-operacional] {
+  --page-bg: #f7f8fa;
+  --surface: #ffffff;
+  --surface-muted: #f7f8fa;
+  --border: #e5e7eb;
+  --text: #202124;
+  --text-muted: #77808d;
+  --cockpit-gold: #c99300;
+  --mission-field: #d79a19;
+  --mission-field-bg: #fff8e8;
+  --mission-research: #3269c8;
+  --mission-research-bg: #f1f6ff;
+  --mission-digital: #29935f;
+  --mission-digital-bg: #effaf4;
+  --mission-works: #7851b8;
+  --mission-works-bg: #f7f2fc;
+  --bg-app: 247 248 250;
+}
+
+body[data-ipt-operacional] .ipt-page-shell--operacional {
+  gap: 0;
+  background: var(--page-bg) !important;
+}
+
+body[data-ipt-operacional] .ipt-page-header-band--clean {
+  padding-top: 10px;
+  padding-bottom: 12px;
+  border-bottom: 0;
+  background: transparent;
+}
+
+body[data-ipt-operacional] .ipt-page-header-band--compact {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  border-bottom: 0;
+  background: transparent;
+}
+
+body[data-ipt-operacional] .ipt-page-header__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  min-width: 0;
+}
+
+body[data-ipt-operacional] .ipt-page-header__copy {
+  min-width: 0;
+  flex: 1;
+}
+
+body[data-ipt-operacional] .ipt-page-header__compact-left {
+  min-width: 0;
+  flex: 1;
+}
+
+body[data-ipt-operacional] .ipt-page-header__actions {
+  flex-shrink: 0;
+}
+
+body[data-ipt-operacional] .ipt-page-title {
+  margin: 0;
+  font-size: 11px;
+  font-weight: 750;
+  letter-spacing: 0.08em;
+  line-height: 1.2;
+  text-transform: uppercase;
+  color: #1c1917;
+}
+
+body[data-ipt-operacional] .ipt-page-title--compact {
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+}
+
+body[data-ipt-operacional] .ipt-page-body.ipt-operacional {
+  gap: 16px;
+  padding-top: 16px;
+  padding-bottom: 14px;
+  background: transparent !important;
+}
+
+/* Garante cinza claro mesmo se o atributo do body atrasar no hydrate */
+.ipt-page-shell--operacional {
+  background: #f7f8fa !important;
+}
+
+body[data-ipt-operacional] .ipt-page-shell--operacional,
+body[data-ipt-operacional] main {
+  background: #f7f8fa !important;
+}
+
+body[data-ipt-operacional] .ipt-page-lead {
+  display: block;
+  margin: 4px 0 0;
+  max-width: 44rem;
+  font-size: 13px;
+  line-height: 1.35;
+  color: var(--text-muted);
+}
+
+body[data-ipt-operacional] .ipt-page-lead--compact {
+  margin-top: 1px;
+  max-width: min(42vw, 420px);
+  font-size: 11.5px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+body[data-ipt-operacional] .ipt-page-lead__info {
+  display: none;
+}
+
+body[data-ipt-operacional] .ipt-header-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+body[data-ipt-operacional] .ipt-header-meta {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 1px;
+  padding: 0 4px;
+  margin: 0;
+  font-size: 10.5px;
+  font-weight: 550;
+  line-height: 1.25;
+  color: var(--text-muted);
+  text-align: right;
+  white-space: nowrap;
+}
+
+body[data-ipt-operacional] .ipt-btn-exportar,
+body[data-ipt-operacional] .ipt-btn-atualizar {
+  border-radius: 8px;
+  min-height: 34px;
+}
+
+body[data-ipt-operacional] .ipt-btn-exportar {
+  background: #fff;
+  border: 1px solid var(--border);
+  color: #44403c;
+  box-shadow: none;
+}
+
+body[data-ipt-operacional] .ipt-btn-exportar:hover:not(:disabled) {
+  background: #fafaf9;
+  border-color: #d6d3d1;
+}
+
+body[data-ipt-operacional] .ipt-btn-exportar__count {
+  background: #f5f5f4;
+  color: #44403c;
+}
+
+body[data-ipt-operacional] .ipt-btn-atualizar {
+  background: var(--cockpit-gold);
+  color: #fff;
+  font-weight: 650;
+}
+
+body[data-ipt-operacional] .ipt-btn-atualizar:hover:not(:disabled) {
+  filter: brightness(0.96);
+}
+
+body[data-ipt-operacional] .ipt-header-actions .ipt-scope-select {
+  min-height: 34px;
+  border-radius: 8px;
+  border-color: var(--border);
+  background: #fff;
+  font-size: 12.5px;
+  padding: 6px 10px;
+}
+
+/* ===== MISSOES ===== */
+.ipt-missoes__head {
+  margin-bottom: 10px;
+  padding-top: 2px;
+}
+
+.ipt-missoes__eyebrow {
+  margin-bottom: 3px;
+  font-size: 11px;
+  font-weight: 750;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #1c1917;
+}
+
+.ipt-missoes__sub {
+  margin: 0;
+  font-size: 13px;
+  color: var(--text-muted, #77808D);
+}
+
+.ipt-missoes__grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+
+@media (max-width: 1180px) {
+  .ipt-missoes__grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 640px) {
+  .ipt-missoes__grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.ipt-missao-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  overflow: hidden;
+  text-align: left;
+  min-height: 0;
+  border: 1px solid color-mix(in srgb, var(--missao-cor) 18%, #ebe7e0);
+  background:
+    radial-gradient(
+      140% 100% at 8% -10%,
+      color-mix(in srgb, var(--missao-cor) 22%, transparent) 0%,
+      transparent 52%
+    ),
+    linear-gradient(
+      165deg,
+      color-mix(in srgb, var(--missao-tint) 92%, #fff) 0%,
+      #ffffff 68%
+    );
+  border-radius: 14px;
+  padding: 12px 13px 11px;
+  box-shadow:
+    0 1px 1px rgba(28, 25, 23, 0.03),
+    0 6px 18px rgba(28, 25, 23, 0.035),
+    inset 0 1px 0 rgba(255, 255, 255, 0.72);
+  transition:
+    border-color 160ms ease,
+    box-shadow 160ms ease,
+    transform 160ms ease,
+    background 160ms ease;
+}
+
+.ipt-missao-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.55) 0%,
+    transparent 42%
+  );
+  pointer-events: none;
+}
+
+.ipt-missao-card > *:not(.ipt-missao-card__spark) {
+  position: relative;
+  z-index: 1;
+}
+
+.ipt-missao-card:hover:not(:disabled) {
+  border-color: color-mix(in srgb, var(--missao-cor) 42%, #e7e5e4);
+  box-shadow:
+    0 2px 4px rgba(28, 25, 23, 0.04),
+    0 10px 24px color-mix(in srgb, var(--missao-cor) 12%, rgba(28, 25, 23, 0.06)),
+    inset 0 1px 0 rgba(255, 255, 255, 0.8);
+  transform: translateY(-1px);
+}
+
+.ipt-missao-card--active {
+  border-color: color-mix(in srgb, var(--missao-cor) 70%, #d6d3d1);
+  background:
+    radial-gradient(
+      140% 100% at 8% -10%,
+      color-mix(in srgb, var(--missao-cor) 28%, transparent) 0%,
+      transparent 55%
+    ),
+    linear-gradient(
+      165deg,
+      var(--missao-tint) 0%,
+      color-mix(in srgb, var(--missao-tint) 55%, #fff) 100%
+    );
+  box-shadow:
+    0 0 0 2px color-mix(in srgb, var(--missao-cor) 18%, transparent),
+    0 10px 26px color-mix(in srgb, var(--missao-cor) 16%, rgba(28, 25, 23, 0.08)),
+    inset 0 1px 0 rgba(255, 255, 255, 0.75);
+}
+
+.ipt-missao-card--empty {
+  opacity: 0.78;
+}
+
+.ipt-missao-card--muted {
+  opacity: 0.55;
+  filter: saturate(0.55);
+}
+
+.ipt-missao-card--muted:hover:not(:disabled) {
+  opacity: 0.82;
+  filter: saturate(0.8);
+}
+
+.ipt-missao-card:disabled {
+  opacity: 0.42;
+  cursor: not-allowed;
+}
+
+.ipt-missao-card__variacao {
+  margin: 6px 0 0;
+  font-size: 11px;
+  font-weight: 650;
+  color: #44403c;
+}
+
+.ipt-missao-card__variacao--up {
+  color: #be123c;
+}
+
+.ipt-missao-card__variacao--down {
+  color: #047857;
+}
+
+.ipt-missao-card__top {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.ipt-missao-card__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  background: var(--missao-cor);
+  color: #fff;
+  flex-shrink: 0;
+  box-shadow:
+    0 0 0 3px color-mix(in srgb, var(--missao-cor) 14%, transparent),
+    0 6px 12px color-mix(in srgb, var(--missao-cor) 32%, transparent);
+}
+
+.ipt-missao-card__icon .cockpit-icon,
+.ipt-missao-card__icon svg {
+  width: 13px !important;
+  height: 13px !important;
+  stroke-width: 2.2 !important;
+  color: #fff !important;
+}
+
+.ipt-missao-card__badge {
+  font-size: 9px;
+  font-weight: 750;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--missao-cor);
+  opacity: 1;
+}
+
+.ipt-missao-card__titulo {
+  margin: 8px 0 0;
+  font-size: 16px;
+  font-weight: 750;
+  letter-spacing: -0.025em;
+  line-height: 1.15;
+  color: #000000;
+}
+
+.ipt-missao-card__count {
+  margin-top: 8px;
+  font-size: 12px;
+  font-weight: 550;
+  color: #000000;
+}
+
+.ipt-missao-card__count strong {
+  font-variant-numeric: tabular-nums;
+  font-size: 26px;
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  line-height: 1;
+  margin-right: 5px;
+  color: #000000;
+}
+
+.ipt-missao-card__desc {
+  margin-top: 6px;
+  max-width: 94%;
+  min-height: 2.6em;
+  font-size: 11.5px;
+  line-height: 1.35;
+  color: #000000;
+}
+
+.ipt-missao-card__spark {
+  position: absolute;
+  right: 12px;
+  bottom: 54px;
+  z-index: 0;
+  display: flex;
+  align-items: flex-end;
+  gap: 2.5px;
+  height: 28px;
+  opacity: 0.38;
+  pointer-events: none;
+}
+
+.ipt-missao-card__spark span {
+  width: 3.5px;
+  border-radius: 999px 999px 1px 1px;
+  background: var(--missao-cor);
+  opacity: 0.9;
+}
+
+.ipt-missao-card__cta {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  width: 100%;
+  margin-top: 10px;
+  padding: 6px 10px;
+  border: 1px solid color-mix(in srgb, var(--missao-cor) 28%, #e7e5e4);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--missao-tint) 40%, rgba(255, 255, 255, 0.7));
+  font-size: 11.5px;
+  font-weight: 700;
+  color: var(--missao-texto);
+  backdrop-filter: blur(4px);
+}
+
+.ipt-missao-card__cta span {
+  font-size: 12px;
+  line-height: 1;
+}
+
+.ipt-missao-card--active .ipt-missao-card__cta {
+  border-color: color-mix(in srgb, var(--missao-cor) 45%, #e7e5e4);
+  background: color-mix(in srgb, var(--missao-cor) 8%, #fff);
+}
+
+/* ===== TRIO: mapa | lista | detalhe ===== */
+.ipt-operacional__trio {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(420px, 1fr);
+  grid-template-rows: minmax(220px, 1fr) auto;
+  gap: 14px;
+  min-height: 0;
+  flex: 1;
+}
+
+/* Com missão ativa: lista ganha altura; detalhe não pode ser espremido (evita corte) */
+.ipt-operacional__trio--missao {
+  grid-template-rows: minmax(280px, 1fr) max-content;
+}
+
+.ipt-operacional__trio--fullscreen {
+  display: block;
+  border-radius: 20px;
+  overflow: hidden;
+  background: #fff;
+}
+
+.ipt-operacional__trio--fullscreen .ipt-bloco-mapa {
+  height: 100%;
+  border-radius: 0;
+}
+
+.ipt-bloco {
+  border: 1px solid #e7e5e4;
+  border-radius: 18px;
+  background: #fff;
+  box-shadow:
+    0 1px 2px rgba(28, 25, 23, 0.03),
+    0 10px 24px rgba(28, 25, 23, 0.035);
+  overflow: hidden;
+}
+
+.ipt-bloco__title {
+  font-size: 14px;
+  font-weight: 800;
+  letter-spacing: -0.015em;
+  text-transform: uppercase;
+  color: #1c1917;
+}
+
+.ipt-bloco__sub {
+  margin-top: 3px;
+  font-size: 12px;
+  color: #8a8578;
+}
+
+.ipt-bloco-mapa {
+  grid-row: 1 / -1;
+  display: flex;
+  min-height: 0;
+  flex-direction: column;
+}
+
+.ipt-bloco-mapa__head {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 14px;
+  padding: 16px 18px 14px;
+  border-bottom: 1px solid #f0eeea;
+}
+
+.ipt-bloco-mapa__intro {
+  min-width: 0;
+}
+
+.ipt-bloco-mapa__intro .ipt-bloco__title {
+  font-size: 13px;
+  letter-spacing: 0.06em;
+}
+
+.ipt-bloco-mapa__head .ipt-operacional__map-filters {
+  margin-left: 0;
+  width: 100%;
+}
+
+.ipt-bloco-mapa__body {
+  position: relative;
+  min-height: 0;
+  flex: 1;
+  background: #f7f6f2;
+}
+
+.ipt-bloco-mapa__body > div:first-child,
+.ipt-bloco-mapa__body .ipt-operacional__map-loading {
+  height: 100%;
+  min-height: 320px;
+}
+
+.ipt-operacional__map-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  color: #8a8578;
+}
+
+.ipt-mapa-legenda {
+  position: absolute;
+  left: 12px;
+  bottom: 12px;
+  z-index: 500;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.94);
+  border: 1px solid #e7e5e4;
+  box-shadow: 0 8px 20px rgba(28, 25, 23, 0.08);
+  backdrop-filter: blur(6px);
+}
+
+.ipt-mapa-legenda__item {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11.5px;
+  font-weight: 650;
+  color: #1c1917;
+}
+
+.ipt-mapa-legenda__dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  flex-shrink: 0;
+}
+
+.ipt-mapa-fullscreen {
+  position: absolute;
+  right: 12px;
+  bottom: 12px;
+  z-index: 500;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid #e7e5e4;
+  background: rgba(255, 255, 255, 0.96);
+  border-radius: 999px;
+  padding: 8px 12px;
+  font-size: 12px;
+  font-weight: 650;
+  color: #44403c;
+  box-shadow: 0 8px 20px rgba(28, 25, 23, 0.08);
+}
+
+.ipt-mapa-fullscreen:hover:not(:disabled) {
+  background: #fff;
+}
+
+.ipt-mapa-fullscreen:disabled {
+  opacity: 0.5;
+}
+
+.ipt-operacional__map-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.ipt-operacional__map-filter {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid transparent;
+  background: #f4f3ef;
+  border-radius: 8px;
+  padding: 7px 12px 7px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: #44403c;
+  box-shadow: none;
+  transition:
+    background 160ms ease,
+    border-color 160ms ease,
+    color 160ms ease,
+    box-shadow 160ms ease;
+}
+
+.ipt-operacional__map-filter-label {
+  white-space: nowrap;
+}
+
+.ipt-operacional__map-filter span.tabular-nums {
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  opacity: 0.55;
+}
+
+.ipt-operacional__map-filter-ico {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 15px;
+  height: 15px;
+  flex-shrink: 0;
+  color: var(--missao-cor);
+}
+
+.ipt-operacional__map-filter-ico svg,
+.ipt-operacional__map-filter-ico .cockpit-icon {
+  width: 13px !important;
+  height: 13px !important;
+  stroke-width: 2 !important;
+}
+
+.ipt-operacional__map-filter--missao:not(.ipt-operacional__map-filter--active) {
+  border-color: color-mix(in srgb, var(--missao-cor) 22%, transparent);
+  background: color-mix(in srgb, var(--missao-tint) 88%, #fff);
+  color: var(--missao-texto, var(--missao-cor));
+}
+
+.ipt-operacional__map-filter--missao:not(.ipt-operacional__map-filter--active):hover {
+  border-color: color-mix(in srgb, var(--missao-cor) 38%, transparent);
+  background: var(--missao-tint);
+}
+
+.ipt-operacional__map-filter--missao:not(.ipt-operacional__map-filter--active) .tabular-nums {
+  color: var(--missao-texto, var(--missao-cor));
+  opacity: 0.7;
+}
+
+.ipt-operacional__map-filter--active {
+  background: #1c1917 !important;
+  border-color: #1c1917 !important;
+  color: #fafaf9 !important;
+  box-shadow: 0 1px 2px rgba(28, 25, 23, 0.12);
+}
+
+.ipt-operacional__map-filter--missao.ipt-operacional__map-filter--active {
+  background: var(--missao-cor) !important;
+  border-color: var(--missao-cor) !important;
+  color: #fff !important;
+}
+
+.ipt-operacional__map-filter--active .ipt-operacional__map-filter-ico {
+  color: #fff;
+}
+
+.ipt-operacional__map-filter--active .tabular-nums {
+  color: inherit;
+  opacity: 0.82;
+}
+
+.ipt-bloco-lista {
+  grid-column: 2;
+  grid-row: 1;
+  display: flex;
+  min-height: 0;
+  flex-direction: column;
+  padding: 14px 14px 10px;
+}
+
+.ipt-bloco-lista__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.ipt-bloco-lista__badge {
+  flex-shrink: 0;
+  border-radius: 999px;
+  background: #f5f5f4;
+  border: 1px solid #e7e5e4;
+  padding: 5px 10px;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: #44403c;
+}
+
+.ipt-bloco-lista__badge strong {
+  font-weight: 800;
+  color: #1c1917;
+}
+
+.ipt-bloco-lista__empty {
+  padding: 28px 8px;
+  text-align: center;
+  font-size: 13px;
+  color: #8a8578;
+}
+
+.ipt-bloco-lista__rows {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  min-height: 0;
+  flex: 1;
+  overflow: auto;
+}
+
+.ipt-bloco-lista__row {
+  width: 100%;
+  display: grid;
+  grid-template-columns:
+    28px
+    minmax(88px, 1.15fr)
+    minmax(72px, 0.7fr)
+    minmax(88px, 0.95fr)
+    minmax(88px, 0.95fr)
+    auto;
+  align-items: center;
+  column-gap: 10px;
+  border: 0;
+  border-bottom: 1px solid #f0eeea;
+  background: transparent;
+  text-align: left;
+  padding: 11px 6px;
+  cursor: pointer;
+}
+
+.ipt-bloco-lista__cols {
+  display: grid;
+  grid-template-columns:
+    28px
+    minmax(88px, 1.15fr)
+    minmax(72px, 0.7fr)
+    minmax(88px, 0.95fr)
+    minmax(88px, 0.95fr)
+    auto;
+  column-gap: 10px;
+  align-items: end;
+  padding: 0 6px 6px;
+  font-size: 10px;
+  font-weight: 750;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #a8a29e;
+}
+
+.ipt-bloco-lista__cols span:last-child {
+  text-align: right;
+}
+
+.ipt-bloco-lista--missao {
+  min-height: 0;
+}
+
+.ipt-bloco-detalhe__missao-eyebrow {
+  margin: 4px 0 0;
+  font-size: 12px;
+  font-weight: 700;
+  color: #78716c;
+}
+
+.ipt-bloco-detalhe__complemento {
+  margin-top: 14px;
+}
+
+.ipt-bloco-detalhe__complemento-title {
+  margin: 0 0 8px;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #78716c;
+}
+
+.ipt-bloco-detalhe__complemento-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.ipt-bloco-detalhe__comp-card {
+  border-radius: 10px;
+  border: 1px solid #e8eaee;
+  background: #fff;
+  padding: 10px;
+}
+
+.ipt-bloco-detalhe__comp-label {
+  display: block;
+  font-size: 10px;
+  font-weight: 750;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: #a8a29e;
+}
+
+.ipt-bloco-detalhe__comp-card strong {
+  display: block;
+  margin-top: 6px;
+  font-size: 14px;
+  font-weight: 800;
+  color: #1c1917;
+}
+
+.ipt-bloco-detalhe__comp-card em {
+  display: block;
+  margin-top: 2px;
+  font-style: normal;
+  font-size: 11px;
+  font-weight: 650;
+  color: #78716c;
+}
+
+.ipt-bloco-detalhe--hierarquia .ipt-bloco-detalhe__inds {
+  display: none;
+}
+
+@media (max-width: 1100px) {
+  .ipt-bloco-detalhe__complemento-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .ipt-bloco-lista__cols {
+    display: none;
+  }
+}
+
+.ipt-bloco-lista__row:hover,
+.ipt-bloco-lista__row--active {
+  background: #fafaf9;
+}
+
+.ipt-bloco-lista__rank {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 999px;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 800;
+  flex-shrink: 0;
+  justify-self: center;
+}
+
+.ipt-bloco-lista__muni {
+  min-width: 0;
+  font-size: 13.5px;
+  font-weight: 750;
+  color: #000000;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ipt-bloco-lista__metric {
+  min-width: 0;
+  font-size: 12.5px;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+  color: #000000;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ipt-bloco-lista__metric em {
+  font-style: normal;
+  font-weight: 700;
+  color: #000000;
+}
+
+.ipt-bloco-lista__prio {
+  justify-self: end;
+  flex-shrink: 0;
+  border-radius: 999px;
+  padding: 4px 10px;
+  font-size: 11px;
+  font-weight: 750;
+}
+
+.ipt-bloco-lista__prio--alta {
+  background: #fff1f2;
+  color: #e11d48;
+}
+
+.ipt-bloco-lista__prio--media {
+  background: #fffbeb;
+  color: #d97706;
+}
+
+.ipt-bloco-lista__prio--baixa {
+  background: #f5f5f4;
+  color: #78716c;
+}
+
+.ipt-bloco-lista__more {
+  margin-top: 8px;
+  border: 0;
+  background: transparent;
+  color: #2563eb;
+  font-size: 12.5px;
+  font-weight: 700;
+  padding: 8px 4px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.ipt-bloco-lista__more:hover {
+  text-decoration: underline;
+}
+
+.ipt-bloco-detalhe {
+  grid-column: 2;
+  grid-row: 2;
+  padding: 14px 14px 16px;
+  background: #ffffff;
+  align-self: start;
+  width: 100%;
+  min-height: min-content;
+  overflow: visible;
+}
+
+.ipt-bloco-detalhe--hierarquia {
+  padding-bottom: 16px;
+}
+
+.ipt-bloco-detalhe--hierarquia .ipt-bloco-detalhe__stats {
+  margin-bottom: 0;
+}
+
+.ipt-bloco-detalhe--hierarquia .ipt-bloco-detalhe__complemento {
+  margin-top: 12px;
+}
+
+.ipt-bloco-detalhe--hierarquia .ipt-bloco-detalhe__demo {
+  margin-top: 10px;
+}
+
+.ipt-bloco-detalhe--empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 140px;
+  color: #8a8578;
+  font-size: 13px;
+  text-align: center;
+  padding: 20px;
+}
+
+.ipt-bloco-detalhe__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.ipt-bloco-detalhe__title {
+  font-size: 18px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: #000000;
+}
+
+.ipt-bloco-detalhe__title span {
+  margin-left: 6px;
+  color: #a8a29e;
+  font-weight: 650;
+  font-size: 14px;
+}
+
+.ipt-bloco-detalhe__head-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ipt-bloco-detalhe__badge {
+  border-radius: 8px;
+  padding: 5px 10px;
+  font-size: 11px;
+  font-weight: 750;
+}
+
+.ipt-bloco-detalhe__badge--alta {
+  background: #fff1f2;
+  color: #e11d48;
+}
+
+.ipt-bloco-detalhe__badge--media {
+  background: #fffbeb;
+  color: #d97706;
+}
+
+.ipt-bloco-detalhe__clear {
+  border: 1px solid #e7e5e4;
+  background: #fff;
+  border-radius: 8px;
+  padding: 5px 9px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #57534e;
+}
+
+.ipt-bloco-detalhe__stats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.ipt-bloco-detalhe__stats > div {
+  border-radius: 8px;
+  border: 1px solid #e8e4dc;
+  background: var(--page-bg, #f7f8fa);
+  padding: 10px;
+}
+
+.ipt-bloco-detalhe__stats span {
+  display: block;
+  font-size: 10px;
+  font-weight: 750;
+  letter-spacing: 0.06em;
+  text-transform: none;
+  color: #9c968b;
+}
+
+.ipt-bloco-detalhe__stats strong {
+  display: block;
+  margin-top: 4px;
+  font-size: 15px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: #000000;
+  font-variant-numeric: tabular-nums;
+}
+
+.ipt-bloco-detalhe__stats em {
+  display: block;
+  margin-top: 3px;
+  font-style: normal;
+  font-size: 11.5px;
+  font-weight: 700;
+  color: #000000;
+}
+
+.ipt-bloco-detalhe__inds {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.ipt-bloco-detalhe__ind {
+  border-radius: 8px;
+  border: 1px solid #eceae4;
+  background: #fff;
+  padding: 10px;
+}
+
+.ipt-bloco-detalhe__ind-top {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 10px;
+  font-weight: 750;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #a8a29e;
+}
+
+.ipt-bloco-detalhe__ind-ico {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 8px;
+  color: #fff;
+}
+
+.ipt-bloco-detalhe__ind-ico svg,
+.ipt-bloco-detalhe__ind-ico .cockpit-icon {
+  width: 13px !important;
+  height: 13px !important;
+  color: #fff !important;
+  stroke-width: 2.2 !important;
+}
+
+.ipt-bloco-detalhe__ind strong {
+  display: block;
+  margin-top: 8px;
+  font-size: 13.5px;
+  font-weight: 800;
+  color: #000000;
+}
+
+.ipt-bloco-detalhe__ind p {
+  margin-top: 2px;
+  font-size: 11px;
+  font-weight: 700;
+  color: #000000;
+}
+
+.ipt-bloco-detalhe__ind em {
+  display: inline-block;
+  margin-top: 6px;
+  font-style: normal;
+  font-size: 11px;
+  font-weight: 750;
+}
+
+.ipt-bloco-detalhe__ind--bem em { color: #10b981; }
+.ipt-bloco-detalhe__ind--mal em { color: #e11d48; }
+.ipt-bloco-detalhe__ind--neutro em { color: #f59e0b; }
+.ipt-bloco-detalhe__ind--sem_dado em { color: #78716c; }
+
+.ipt-bloco-detalhe__perfil {
+  width: 100%;
+  margin-top: 12px;
+  border: 1px solid #bfdbfe;
+  background: #eff6ff;
+  border-radius: 12px;
+  padding: 10px 12px;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: #1d4ed8;
+}
+
+@media (max-width: 1320px) {
+  .ipt-operacional__trio {
+    grid-template-columns: minmax(0, 1fr) minmax(400px, 1.08fr);
+  }
+}
+
+@media (max-width: 1100px) {
+  .ipt-operacional__trio {
+    grid-template-columns: 1fr;
+    grid-template-rows: minmax(280px, 42vh) auto auto;
+  }
+
+  .ipt-bloco-mapa,
+  .ipt-bloco-lista,
+  .ipt-bloco-detalhe {
+    grid-column: 1;
+    grid-row: auto;
+  }
+
+  .ipt-bloco-detalhe__stats,
+  .ipt-bloco-detalhe__inds {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* ===== RESUMO ===== */
+.ipt-resumo-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: stretch;
+  border: 1px solid #e5e7eb;
+  border-radius: 16px;
+  background: #eef0f3;
+  padding: 14px 14px 14px 16px;
+  box-shadow: none;
+}
+
+.ipt-resumo-bar__body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex: 1;
+  min-width: 0;
+}
+
+.ipt-resumo-bar__title {
+  margin: 0;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: #000000;
+}
+
+.ipt-resumo-bar__metrics {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 0;
+  flex: 1;
+  min-width: 0;
+  align-items: stretch;
+}
+
+@media (max-width: 1100px) {
+  .ipt-resumo-bar__metrics {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+.ipt-resumo-bar__metric {
+  min-width: 0;
+  padding: 4px 14px;
+  border-right: 1px solid #e5e2da;
+}
+
+.ipt-resumo-bar__metric:first-child {
+  padding-left: 4px;
+}
+
+.ipt-resumo-bar__metric:last-child {
+  border-right: 0;
+  padding-right: 4px;
+}
+
+.ipt-resumo-bar__metrics span {
+  display: block;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: #000000;
+  font-weight: 750;
+}
+
+.ipt-resumo-bar__metrics strong {
+  display: block;
+  margin-top: 6px;
+  font-size: 20px;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  font-variant-numeric: tabular-nums;
+  color: #000000;
+}
+
+.ipt-resumo-bar__metric-foot {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+.ipt-resumo-bar__metric-foot em {
+  font-style: normal;
+  font-size: 11.5px;
+  font-weight: 700;
+  color: #000000;
+}
+
+.ipt-resumo-bar__badge {
+  flex-shrink: 0;
+  font-size: 11px;
+  font-weight: 750;
+  color: #059669;
+}
+
+.ipt-resumo-bar__badge--warn {
+  color: #d97706;
+}
+
+.ipt-resumo-bar__foco {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 260px;
+  max-width: 340px;
+  border: 0;
+  border-radius: 12px;
+  background: #1c1917;
+  color: #fafaf9;
+  padding: 14px 14px 14px 16px;
+  text-align: left;
+  cursor: pointer;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+
+.ipt-resumo-bar__foco:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.ipt-resumo-bar__foco:hover:not(:disabled) {
+  filter: brightness(1.06);
+}
+
+.ipt-resumo-bar__foco-ico {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--cockpit-gold, #c99300) 22%, transparent);
+  color: var(--cockpit-gold, #c99300);
+  flex-shrink: 0;
+}
+
+.ipt-resumo-bar__foco-ico svg,
+.ipt-resumo-bar__foco-ico .cockpit-icon {
+  width: 16px !important;
+  height: 16px !important;
+  color: inherit !important;
+}
+
+.ipt-resumo-bar__foco-copy {
+  min-width: 0;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.ipt-resumo-bar__foco-label {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--cockpit-gold, #c99300);
+}
+
+.ipt-resumo-bar__foco-cidades {
+  font-size: 14px;
+  font-weight: 750;
+  line-height: 1.3;
+  letter-spacing: -0.01em;
+  color: #fff;
+}
+
+.ipt-resumo-bar__foco-copy em {
+  font-style: normal;
+  font-size: 11px;
+  line-height: 1.35;
+  color: #a8a29e;
+}
+
+.ipt-resumo-bar__foco-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  background: var(--cockpit-gold, #c99300);
+  color: #1c1917;
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.ipt-foco-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.ipt-foco-modal__backdrop {
+  position: absolute;
+  inset: 0;
+  border: 0;
+  background: rgba(28, 25, 23, 0.45);
+  cursor: pointer;
+}
+
+.ipt-foco-modal__panel {
+  position: relative;
+  z-index: 1;
+  width: min(480px, 100%);
+  border-radius: 14px;
+  background: #fff;
+  border: 1px solid #e7e5e4;
+  box-shadow: 0 24px 48px rgba(28, 25, 23, 0.18);
+  padding: 18px;
+}
+
+.ipt-foco-modal__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.ipt-foco-modal__eyebrow {
+  margin: 0;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--cockpit-gold, #c99300);
+}
+
+.ipt-foco-modal__title {
+  margin: 4px 0 0;
+  font-size: 18px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: #1c1917;
+}
+
+.ipt-foco-modal__close {
+  border: 1px solid #e7e5e4;
+  background: #fff;
+  border-radius: 8px;
+  width: 32px;
+  height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #57534e;
+  cursor: pointer;
+}
+
+.ipt-foco-modal__lead {
+  margin: 10px 0 0;
+  font-size: 13px;
+  line-height: 1.4;
+  color: #57534e;
+}
+
+.ipt-foco-modal__list {
+  list-style: none;
+  margin: 14px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.ipt-foco-modal__list button {
+  width: 100%;
+  display: grid;
+  grid-template-columns: 28px 1fr auto;
+  align-items: center;
+  gap: 10px;
+  border: 1px solid #e7e5e4;
+  border-radius: 10px;
+  background: #fafaf9;
+  padding: 10px 12px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.ipt-foco-modal__list button:hover {
+  border-color: #d6d3d1;
+  background: #fff;
+}
+
+.ipt-foco-modal__list button span {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 999px;
+  background: #1c1917;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.ipt-foco-modal__list button strong {
+  font-size: 14px;
+  font-weight: 750;
+  color: #1c1917;
+}
+
+.ipt-foco-modal__list button em {
+  font-style: normal;
+  font-size: 12px;
+  font-weight: 650;
+  color: #2563eb;
+}
+
+
+.ipt-bloco-detalhe__razoes,
+.ipt-bloco-detalhe__demo {
+  margin-top: 12px;
+  border: 1px solid #e7e5e4;
+  border-radius: 8px;
+  background: #fafaf9;
+  overflow: hidden;
+}
+
+.ipt-bloco-detalhe__razoes-toggle,
+.ipt-bloco-detalhe__demo-toggle {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  border: 0;
+  background: transparent;
+  padding: 10px 12px;
+  text-align: left;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: #1c1917;
+  cursor: pointer;
+}
+
+.ipt-bloco-detalhe__demo-toggle span {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.ipt-bloco-detalhe__demo-toggle strong {
+  font-size: 12.5px;
+  font-weight: 750;
+}
+
+.ipt-bloco-detalhe__demo-toggle em {
+  font-style: normal;
+  font-size: 11.5px;
+  font-weight: 450;
+  color: #8a8578;
+}
+
+.ipt-bloco-detalhe__razoes-body,
+.ipt-bloco-detalhe__demo-body {
+  padding: 0 12px 12px;
+  border-top: 1px solid #f0eeea;
+}
+
+.ipt-bloco-detalhe__razoes-body {
+  padding-top: 10px;
+}
+
+.ipt-bloco-detalhe__razoes-body p {
+  margin: 0 0 8px;
+  font-size: 12.5px;
+  color: #44403c;
+}
+
+.ipt-bloco-detalhe__razoes-body ul {
+  margin: 0;
+  padding-left: 18px;
+  font-size: 12.5px;
+  color: #57534e;
+}
+
+.ipt-bloco-detalhe__razoes-body li + li {
+  margin-top: 4px;
+}
+
+.ipt-bloco-detalhe__demo-body {
+  max-height: 320px;
+  overflow: auto;
+  padding-top: 0;
+}
+
+.ipt-bloco-detalhe__demo-body aside {
+  border: 0 !important;
+  background: transparent !important;
+}

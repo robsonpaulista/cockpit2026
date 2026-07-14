@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import municipiosPiaui from '@/lib/municipios-piaui.json'
 import { getEleitoradoByCity } from '@/lib/eleitores'
 import type { ObraMapaRow } from '@/lib/obras-mapa'
+import { valorExibidoMapaObra } from '@/lib/obras-mapa'
 import {
   calcularIptMunicipios,
   calcularIptResumo,
@@ -52,7 +53,7 @@ function agregarObrasPorMunicipio(obras: ObraMapaRow[]): Map<string, ObrasAgg> {
     const key = normalizeIptMunicipio(municipio)
     const cur = map.get(key) ?? { count: 0, valorTotal: 0 }
     cur.count += 1
-    cur.valorTotal += typeof obra.valor_total === 'number' && Number.isFinite(obra.valor_total) ? obra.valor_total : 0
+    cur.valorTotal += valorExibidoMapaObra(obra) ?? 0
     map.set(key, cur)
   }
   return map

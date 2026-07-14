@@ -33,6 +33,10 @@ body[data-ipt-refine] .ipt-page-shell {
   min-height: 0;
   flex: 1;
   overflow: hidden;
+  background: transparent;
+}
+
+body[data-ipt-refine] .ipt-page-body {
   background: var(--surface-0);
 }
 
@@ -732,14 +736,16 @@ body[data-ipt-refine] aside[data-sidebar-shell] .sidebar-quick-access a {
 body[data-ipt-refine] aside[data-sidebar-shell] .cockpit-sidebar-item > span,
 body[data-ipt-refine] aside[data-sidebar-shell] nav a > span,
 body[data-ipt-refine] aside[data-sidebar-shell] nav button > span,
-body[data-ipt-refine] aside[data-sidebar-shell] .sidebar-quick-access a > span {
+body[data-ipt-refine] aside[data-sidebar-shell] .sidebar-quick-access a > span,
+body[data-ipt-refine] aside[data-sidebar-shell] .sidebar-mapa-campanha a > span {
   font-size: 13px;
   line-height: 17px;
 }
 
 body[data-ipt-refine] aside[data-sidebar-shell] .cockpit-icon,
 body[data-ipt-refine] aside[data-sidebar-shell] nav svg,
-body[data-ipt-refine] aside[data-sidebar-shell] .sidebar-quick-access svg {
+body[data-ipt-refine] aside[data-sidebar-shell] .sidebar-quick-access svg,
+body[data-ipt-refine] aside[data-sidebar-shell] .sidebar-mapa-campanha svg {
   width: 17px;
   height: 17px;
   flex-shrink: 0;

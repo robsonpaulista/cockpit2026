@@ -63,3 +63,15 @@ export function getEleitoradoByCity(cityName: string): number | null {
 export function getAllEleitores(): EleitoradoData[] {
   return eleitoresData as EleitoradoData[]
 }
+
+let eleitoradoTotalPiauiCache: number | null = null
+
+/** Soma do eleitorado cadastrado para o Piauí. */
+export function getEleitoradoTotalPiaui(): number {
+  if (eleitoradoTotalPiauiCache != null) return eleitoradoTotalPiauiCache
+  eleitoradoTotalPiauiCache = getAllEleitores().reduce((sum, row) => {
+    const n = Number(row.eleitorado)
+    return sum + (Number.isFinite(n) ? n : 0)
+  }, 0)
+  return eleitoradoTotalPiauiCache
+}

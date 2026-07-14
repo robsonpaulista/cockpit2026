@@ -27,6 +27,13 @@ import {
   formatExpectativaCompact,
   formatPesoExpectativaPct,
 } from '@/lib/territorio-expectativa-visitas-cobertura'
+import {
+  iptMissaoConfig,
+  missaoPrincipal,
+  missoesDoMunicipio,
+  statusMissaoLinha,
+  type IptMissaoFiltro,
+} from '@/lib/ipt-missoes'
 
 function escapeHtml(value: string): string {
   return value
@@ -405,29 +412,76 @@ export function createIptTooltipBasicoHtml(
 export function createIptPopupHtml(
   m: IptMunicipio,
   appearance: 'light' | 'dark' = 'light',
-  indicador: IptIndicador | null = null
+  indicador: IptIndicador | null = null,
+  missaoFiltro: IptMissaoFiltro | null = null
 ): string {
   const isDark = appearance === 'dark'
   const text = isDark ? '#f1f5f9' : '#0f172a'
   const muted = isDark ? '#94a3b8' : '#64748b'
   const line = isDark ? 'rgba(148,163,184,0.22)' : '#e8edf3'
   const sinalContexto = indicador ? m.sinais[indicador] : null
+
+  // Tooltip enxuto da missão ativa: só motivo do eixo filtrado.
+  if (missaoFiltro != null && missaoFiltro !== 'todas') {
+    const cfg = iptMissaoConfig(missaoFiltro)
+    const motivo = statusMissaoLinha(m, missaoFiltro)
+    const expectativa = detalhePesoExpectativa(m)
+    return `<div style="min-width:220px;max-width:300px;width:min(300px,90vw);font-family:system-ui,-apple-system,sans-serif;padding:12px 14px;color:${text};box-sizing:border-box" class="ipt-popup-root">
+      <div style="font-weight:700;font-size:15px;letter-spacing:-0.02em;color:${text}">${escapeHtml(m.municipio)}</div>
+      <div style="margin-top:4px;font-size:12px;line-height:1.35;color:${muted}">${escapeHtml(expectativa)}</div>
+      <div style="margin-top:10px;padding-top:9px;border-top:1px solid ${line}">
+        <div style="font-size:10px;font-weight:700;letter-spacing:0.05em;text-transform:uppercase;color:${cfg.corTexto}">${escapeHtml(cfg.titulo)}</div>
+        <div style="margin-top:4px;font-size:12.5px;font-weight:600;color:${text};line-height:1.35">${escapeHtml(motivo)}</div>
+      </div>
+    </div>`
+  }
+
+  const missoesPopup = missaoFiltro != null ? missoesDoMunicipio(m) : []
+  const missaoCor =
+    missaoFiltro != null
+      ? (() => {
+          const id =
+            missaoFiltro !== 'todas' ? missaoFiltro : missaoPrincipal(m)
+          return id ? iptMissaoConfig(id).cor : null
+        })()
+      : null
   const cor =
-    indicador && sinalContexto != null
+    missaoCor ??
+    (indicador && sinalContexto != null
       ? iptSinalCor(sinalContexto)
-      : iptPrioridadeCor(m.prioridade)
+      : iptPrioridadeCor(m.prioridade))
   const status =
-    indicador && sinalContexto != null
-      ? iptRotuloSinalIndicador(indicador, sinalContexto)
-      : iptPrioridadeLabel(m.prioridade)
+    missaoFiltro != null && missoesPopup.length > 0
+      ? `${missoesPopup.length} missão${missoesPopup.length === 1 ? '' : 'ões'} relacionada${missoesPopup.length === 1 ? '' : 's'}`
+      : indicador && sinalContexto != null
+        ? iptRotuloSinalIndicador(indicador, sinalContexto)
+        : iptPrioridadeLabel(m.prioridade)
 
   const contextoLente =
-    indicador != null
+    indicador != null && missaoFiltro == null
       ? `<div style="margin-top:4px;font-size:11px;color:${muted}">${escapeHtml(iptLabelIndicador(indicador))} · prioridade geral: ${escapeHtml(iptPrioridadeLabel(m.prioridade))}</div>`
       : ''
 
+  const missoesHtml =
+    missaoFiltro != null && missoesPopup.length > 0
+      ? `<div style="margin-top:8px;padding-top:8px;border-top:1px solid ${line}">
+          <div style="font-size:11px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;color:${muted};margin-bottom:6px">Missões relacionadas</div>
+          <div style="display:flex;flex-direction:column;gap:4px">
+            ${missoesPopup
+              .map((id) => {
+                const cfg = iptMissaoConfig(id)
+                return `<div style="display:flex;align-items:center;gap:7px;font-size:12px;font-weight:600;color:${text}">
+                  <span style="width:8px;height:8px;border-radius:999px;background:${cfg.cor};flex-shrink:0"></span>
+                  ${escapeHtml(cfg.titulo)}
+                </div>`
+              })
+              .join('')}
+          </div>
+        </div>`
+      : ''
+
   const popupSize =
-    indicador != null
+    indicador != null || missaoFiltro != null
       ? 'min-width:280px;max-width:380px;width:min(380px,92vw)'
       : 'min-width:560px;max-width:640px;width:min(640px,92vw)'
 
@@ -436,6 +490,7 @@ export function createIptPopupHtml(
       <div style="min-width:0">
         <div style="font-weight:700;font-size:16px;letter-spacing:-0.02em;color:${text}">${escapeHtml(m.municipio)}</div>
         ${contextoLente}
+        ${missoesHtml}
         <div style="margin-top:4px;font-size:12px;line-height:1.35;color:${muted}">${escapeHtml(detalhePesoExpectativa(m))}</div>
       </div>
       <div style="display:inline-flex;align-items:center;gap:7px;padding:5px 10px;border-radius:999px;background:${cor}14;flex-shrink:0">
@@ -455,7 +510,8 @@ export function createIptMarkerHtml(
   size: number,
   animDelay = 0,
   indicador: IptIndicador | null = null,
-  evolucaoFiltro: import('@/lib/ipt-evolucao').IptEvolucaoFiltro = 'todos'
+  evolucaoFiltro: import('@/lib/ipt-evolucao').IptEvolucaoFiltro = 'todos',
+  missaoFiltro: IptMissaoFiltro | null = null
 ): string {
   const theme = iptChipTheme(m, indicador, evolucaoFiltro)
   const noVotesClass =
@@ -468,6 +524,23 @@ export function createIptMarkerHtml(
         : m.prioridade === 'sem_expectativa'
           ? ' mapa-ipt-marker--no-votes'
           : ''
+
+  if (missaoFiltro != null) {
+    const principalId =
+      missaoFiltro !== 'todas'
+        ? missaoFiltro
+        : missaoPrincipal(m)
+    const cor = principalId ? iptMissaoConfig(principalId).cor : theme.dot
+    // Só o ponto — sem rótulo/badge no mapa (mockup: marcadores limpos).
+    return `<div class="mapa-marker-dot mapa-ipt-marker mapa-ipt-marker--missao${noVotesClass}" style="
+      width:${size}px;height:${size}px;
+      background:${cor};
+      border:2px solid rgba(255,255,255,0.96);
+      box-shadow:0 1px 3px rgba(15,23,42,0.16);
+      animation-delay:${animDelay}ms;
+    "></div>`
+  }
+
   return `<div class="mapa-marker-dot mapa-ipt-marker${noVotesClass}" style="
     width:${size}px;height:${size}px;
     background:${theme.dot};

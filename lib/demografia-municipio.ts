@@ -77,6 +77,21 @@ export function getDemografiaMunicipio(municipio: string | null | undefined): De
   return getDemografiaIndex().get(normalizeMunicipioNome(municipio)) ?? null
 }
 
+let populacaoTotalPiauiCache: number | null = null
+
+/** Soma da população (estimativa preferida; censo como fallback) no Piauí. */
+export function getPopulacaoTotalPiaui(): number {
+  if (populacaoTotalPiauiCache != null) return populacaoTotalPiauiCache
+  let total = 0
+  for (const item of demografiaMunicipiosPiaui as DemografiaMunicipioRow[]) {
+    const pop =
+      item.populacao_estimada_ultimo_ano ?? item.populacao_censo_2022 ?? null
+    if (pop != null && Number.isFinite(pop)) total += pop
+  }
+  populacaoTotalPiauiCache = total
+  return total
+}
+
 export function calcularIndicadoresDemograficos(
   row: DemografiaMunicipioRow | null
 ): IndicadoresDemograficosPct | null {

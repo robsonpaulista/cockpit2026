@@ -31,6 +31,7 @@ import {
 } from '@/lib/premium-ui-classes'
 import { AppBrandHeader, SidebarBrandMark } from '@/components/app-brand-title'
 import { SidebarQuickAccess } from '@/components/sidebar/sidebar-quick-access'
+import { SidebarMapaCampanhaBlock } from '@/components/sidebar/sidebar-mapa-campanha'
 import { SIDEBAR_MENU_ITEMS, type SidebarMenuItemConfig } from '@/lib/sidebar-nav-routes'
 import {
   resolveSidebarTablerIcon,
@@ -834,6 +835,16 @@ export function Sidebar() {
           {navCollapsed && !navMobileOpen && !filmNav && showCollapsedSubnavSpacer ? (
             <div className={cn(dashboardSidebarCollapsedSubnavSpacerClass, '!bg-transparent !border-white/10')} aria-hidden />
           ) : null}
+
+          <SidebarMapaCampanhaBlock
+            collapsed={navCollapsed}
+            mobileOpen={navMobileOpen}
+            isGradientHome={isGradientHome}
+            onNavigate={(href) => {
+              if (href !== pathname) setNavigating(true)
+              setMobileOpen(false)
+            }}
+          />
 
           <SidebarQuickAccess
             collapsed={navCollapsed}
