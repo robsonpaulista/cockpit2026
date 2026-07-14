@@ -9,6 +9,7 @@ import {
   LineChart,
   RefreshCw,
   Smartphone,
+  Target,
   Users,
   Zap,
   X,
@@ -17,6 +18,7 @@ import {
 import { CockpitIcon } from '@/components/ui/cockpit-icon'
 import { formatObrasValorAbreviado } from '@/lib/ipt'
 import {
+  IPT_TOTAL_MUNICIPIOS_PI,
   textoAcaoRecomendada,
   textoFocoMissao,
   type IptMissaoFiltro,
@@ -44,6 +46,43 @@ type Metric = {
 }
 
 function metricsParaMissao(resumo: IptResumoCampanha, missao: IptMissaoFiltro): Metric[] {
+  if (missao === 'expectativa') {
+    return [
+      {
+        key: 'cobertura',
+        icon: Target,
+        cor: '#c98900',
+        value: formatInt(resumo.municipiosTotal),
+        valueSuffix: 'municípios',
+        descricao: 'já têm expectativa de votos 2026',
+        detalhe: `Universo Piauí: ${formatInt(IPT_TOTAL_MUNICIPIOS_PI)}`,
+      },
+      {
+        key: 'relevantes',
+        icon: Crosshair,
+        cor: '#ff9800',
+        value: formatInt(resumo.municipiosExpectativaRelevante),
+        valueSuffix: 'relevantes',
+        descricao: 'concentram o maior peso da expectativa',
+      },
+      {
+        key: 'expectativa',
+        icon: BarChart3,
+        cor: '#e28000',
+        value: formatInt(resumo.expectativaTotal),
+        descricao: 'é a expectativa total do grupo',
+        detalhe: `Meta estadual: ${formatInt(resumo.metaExpectativa)}`,
+      },
+      {
+        key: 'faltam',
+        icon: RefreshCw,
+        cor: '#8c8c8c',
+        value: formatInt(Math.max(0, IPT_TOTAL_MUNICIPIOS_PI - resumo.municipiosTotal)),
+        valueSuffix: 'municípios',
+        descricao: 'ainda sem expectativa cadastrada',
+      },
+    ]
+  }
   if (missao === 'campo') {
     return [
       {

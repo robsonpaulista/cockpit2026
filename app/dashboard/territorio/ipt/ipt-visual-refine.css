@@ -63,7 +63,7 @@ body[data-ipt-refine] .ipt-page-body {
 
 .ipt-page-title {
   font-size: 17px;
-  font-weight: 500;
+  font-weight: 400;
   letter-spacing: -0.01em;
   color: rgb(var(--text-primary));
   line-height: 1.25;
@@ -99,7 +99,7 @@ body[data-ipt-refine] .ipt-page-body {
   background: var(--brand-accent);
   color: var(--on-brand-accent);
   border: none;
-  font-weight: 500;
+  font-weight: 400;
   font-size: 12px;
   padding: 7px 13px;
   border-radius: 6px;
@@ -123,7 +123,7 @@ body[data-ipt-refine] .ipt-page-body {
   background: transparent;
   color: var(--text-primary, #1a1a1a);
   border: 1px solid var(--border-subtle, #d4d4d8);
-  font-weight: 500;
+  font-weight: 400;
   font-size: 12px;
   padding: 6px 12px;
   border-radius: 6px;
@@ -150,7 +150,7 @@ body[data-ipt-refine] .ipt-page-body {
   background: var(--surface-muted, #e4e4e7);
   font-size: 11px;
   font-variant-numeric: tabular-nums;
-  font-weight: 600;
+  font-weight: 400;
 }
 
 /* --- Filtros: escopo + pílulas de categoria --- */
@@ -175,7 +175,7 @@ body[data-ipt-refine] .ipt-page-body {
   min-height: 52px;
   border-radius: var(--space-2);
   font-size: 12px;
-  font-weight: 500;
+  font-weight: 400;
   line-height: 1.2;
   text-align: left;
 }
@@ -200,7 +200,7 @@ body[data-ipt-refine] .ipt-page-body {
   background: var(--surface-1);
   padding: var(--space-2) var(--space-3);
   font-size: 13px;
-  font-weight: 500;
+  font-weight: 400;
   line-height: 17px;
   color: rgb(var(--text-primary));
   cursor: pointer;
@@ -246,7 +246,7 @@ body[data-ipt-refine] .ipt-page-body {
   border-radius: 6px;
   padding: var(--space-1) var(--space-2);
   font-size: 11px;
-  font-weight: 500;
+  font-weight: 400;
   color: rgb(var(--text-secondary));
   cursor: pointer;
 }
@@ -361,7 +361,7 @@ body[data-ipt-refine] .ipt-page-body {
 .ipt-td-select-option--selected {
   background: rgba(200, 144, 10, 0.16);
   color: #6b3f09;
-  font-weight: 500;
+  font-weight: 400;
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35);
 }
 
@@ -475,7 +475,7 @@ body[data-ipt-refine] .ipt-page-body {
 
 .ipt-category-pill__count {
   font-size: 16px;
-  font-weight: 500;
+  font-weight: 400;
   font-variant-numeric: tabular-nums;
   line-height: 1.1;
 }
@@ -540,7 +540,7 @@ body[data-ipt-refine] .ipt-page-body {
 .ipt-filter-group__label {
   flex-shrink: 0;
   font-size: 11px;
-  font-weight: 500;
+  font-weight: 400;
   color: rgb(var(--text-secondary));
   white-space: nowrap;
 }
@@ -579,7 +579,7 @@ body[data-ipt-refine] .ipt-page-body {
 
 .ipt-map-card__title {
   font-size: 14px;
-  font-weight: 500;
+  font-weight: 400;
   color: rgb(var(--text-primary));
   line-height: 1.2;
 }
@@ -625,7 +625,7 @@ body[data-ipt-refine] .ipt-page-body {
   border-radius: 4px;
   background: rgba(15, 23, 42, 0.06);
   font-size: 10px;
-  font-weight: 600;
+  font-weight: 400;
   color: inherit;
   opacity: 0.85;
 }
@@ -638,7 +638,7 @@ body[data-ipt-refine] .ipt-page-body {
 .ipt-lens-toggle__btn--active {
   background: #fff;
   box-shadow: var(--shadow-chip);
-  font-weight: 500;
+  font-weight: 400;
   color: rgb(var(--text-primary));
 }
 
@@ -782,7 +782,7 @@ body[data-ipt-refine] aside[data-sidebar-shell] nav a.border-l-\[\#c99a2e\] {
   border-left-width: 3px !important;
   border-left-color: #c99a2e !important;
   background: rgba(255, 255, 255, 0.06) !important;
-  font-weight: 500;
+  font-weight: 400;
   color: #ffffff !important;
 }
 
@@ -790,7 +790,7 @@ body[data-ipt-refine] aside[data-sidebar-shell] .sidebar-quick-access a.border-l
   border-left-width: 3px !important;
   border-left-color: #c99a2e !important;
   background: rgba(255, 255, 255, 0.06) !important;
-  font-weight: 500;
+  font-weight: 400;
 }
 
 /* Seções da sidebar — mais respiro */

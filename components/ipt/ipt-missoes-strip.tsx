@@ -1,11 +1,12 @@
 'use client'
 
 import type { CSSProperties } from 'react'
-import { Building2, MapPin, Megaphone, Smartphone } from 'lucide-react'
+import { Building2, MapPin, Megaphone, Smartphone, Target } from 'lucide-react'
 import { CockpitIcon } from '@/components/ui/cockpit-icon'
 import {
   enrichMissaoCard,
   IPT_MISSOES,
+  IPT_TOTAL_MUNICIPIOS_PI,
   type IptMissaoFiltro,
   type IptMissaoId,
   type IptMissaoVariacao,
@@ -14,6 +15,7 @@ import type { IptMunicipio } from '@/lib/ipt'
 import { cn } from '@/lib/utils'
 
 const MISSAO_ICONE = {
+  expectativa: Target,
   campo: MapPin,
   pesquisa: Megaphone,
   digital: Smartphone,
@@ -21,6 +23,7 @@ const MISSAO_ICONE = {
 } as const
 
 const SPARK: Record<IptMissaoId, number[]> = {
+  expectativa: [48, 55, 60, 68, 72, 80, 88],
   campo: [28, 48, 36, 62, 44, 78, 55],
   pesquisa: [40, 32, 58, 46, 70, 52, 64],
   digital: [22, 38, 30, 55, 42, 68, 50],
@@ -114,7 +117,11 @@ export function IptMissoesStrip({
               {!vazia ? (
                 <ul className="ipt-missao-card__bullets">
                   <li>{enrich.tensao}</li>
-                  <li>{enrich.epicentros}</li>
+                  <li>
+                    {missao.id === 'expectativa'
+                      ? `Universo Piauí: ${IPT_TOTAL_MUNICIPIOS_PI} municípios`
+                      : enrich.epicentros}
+                  </li>
                   <li>{enrich.mudanca}</li>
                 </ul>
               ) : null}

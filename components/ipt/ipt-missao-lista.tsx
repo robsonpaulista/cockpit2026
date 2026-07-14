@@ -36,6 +36,7 @@ function intensidadeLabel(impacto: 'alta' | 'media' | 'baixa'): string {
 }
 
 function colunasMissao(missao: IptMissaoId | null): string[] {
+  if (missao === 'expectativa') return ['Exp. votos', 'Peso', 'Prioridade']
   if (missao === 'campo') return ['Última visita', 'Cobertura de campo', 'Prioridade']
   if (missao === 'pesquisa') return ['Posição', 'Média', 'Prioridade']
   if (missao === 'digital') return ['Seguidores', 'Engajamento', 'Cobertura', 'Prioridade']
@@ -60,6 +61,14 @@ function valoresLinha(m: IptMunicipio, missao: IptMissaoId | null): string[] {
   const intensidade = intensidadeLabel(impacto)
 
   if (missao == null) return valoresVisaoGeral(m)
+
+  if (missao === 'expectativa') {
+    return [
+      formatExpectativa(m.expectativaVotos),
+      `${m.pesoExpectativaPct.toLocaleString('pt-BR', { maximumFractionDigits: 1 })}%`,
+      intensidade,
+    ]
+  }
 
   if (missao === 'campo') {
     return [estimativaDiasSemVisita(m), coberturaCampoRotulo(m), intensidade]

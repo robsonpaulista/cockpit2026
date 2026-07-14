@@ -7,7 +7,7 @@ import {
 } from '@/lib/ipt'
 
 /** Missões estratégicas do Diagnóstico Operacional (README). */
-export type IptMissaoId = 'campo' | 'pesquisa' | 'digital' | 'obras'
+export type IptMissaoId = 'expectativa' | 'campo' | 'pesquisa' | 'digital' | 'obras'
 
 export type IptMissaoFiltro = IptMissaoId | 'todas'
 
@@ -25,7 +25,21 @@ export type IptMissaoConfig = {
   corTint: string
 }
 
+/** Total oficial de municípios do Piauí (municipios-piaui.json). */
+export const IPT_TOTAL_MUNICIPIOS_PI = 224
+
 export const IPT_MISSOES: IptMissaoConfig[] = [
+  {
+    id: 'expectativa',
+    label: 'EXPECTATIVA 2026',
+    titulo: 'Onde temos meta',
+    tagline: 'Expectativa',
+    descricao: 'Cobertura da expectativa de votos 2026 no território do Piauí.',
+    cor: '#c98900',
+    corSuave: '#fff8e8',
+    corTexto: '#a16207',
+    corTint: '#fff8e8',
+  },
   {
     id: 'campo',
     label: 'MISSÃO CAMPO',
@@ -74,21 +88,26 @@ export const IPT_MISSOES: IptMissaoConfig[] = [
 
 export const IPT_MISSAO_FILTRO_OPCOES: { id: IptMissaoFiltro; label: string }[] = [
   { id: 'todas', label: 'Todas' },
+  { id: 'expectativa', label: 'Onde temos meta' },
   { id: 'campo', label: 'Onde ir' },
   { id: 'pesquisa', label: 'Para onde olhar' },
   { id: 'digital', label: 'Para onde apontar' },
   { id: 'obras', label: 'Onde acelerar' },
 ]
 
-const CONTAGE_HISTORICO_KEY = 'ipt-missoes-contagem-snapshot-v1'
+const CONTAGE_HISTORICO_KEY = 'ipt-missoes-contagem-snapshot-v2'
 
 /** Mesmo limiar de “cidade pesada” de `classificarSinalVisitas`. */
 export function iptAltaExpectativa(m: IptMunicipio): boolean {
   return m.expectativaVotos >= 1200 || m.pesoExpectativaPct >= 2
 }
 
-function temExpectativa(m: IptMunicipio): boolean {
+export function temExpectativa(m: IptMunicipio): boolean {
   return m.prioridade !== 'sem_expectativa' && m.expectativaVotos > 0
+}
+
+export function municipioNaMissaoExpectativa(m: IptMunicipio): boolean {
+  return temExpectativa(m)
 }
 
 export function municipioNaMissaoCampo(m: IptMunicipio): boolean {
@@ -133,13 +152,14 @@ export function municipioNaMissaoObras(m: IptMunicipio): boolean {
 }
 
 export function municipioNaMissao(m: IptMunicipio, missao: IptMissaoId): boolean {
+  if (missao === 'expectativa') return municipioNaMissaoExpectativa(m)
   if (missao === 'campo') return municipioNaMissaoCampo(m)
   if (missao === 'pesquisa') return municipioNaMissaoPesquisa(m)
   if (missao === 'digital') return municipioNaMissaoDigital(m)
   return municipioNaMissaoObras(m)
 }
 
-/** Ordem de impacto quando a cidade entra em várias missões. */
+/** Ordem de impacto quando a cidade entra em várias missões (excluindo expectativa). */
 const MISSAO_PRIORIDADE: IptMissaoId[] = ['campo', 'pesquisa', 'obras', 'digital']
 
 export function missoesDoMunicipio(m: IptMunicipio): IptMissaoId[] {
@@ -174,7 +194,11 @@ export function relevanciaInternaMissao(m: IptMunicipio, missao: IptMissaoFiltro
   const alvo: IptMissaoId | null =
     missao === 'todas' ? missaoPrincipal(m) : missao
 
-  if (alvo === 'campo') {
+  if (alvo === 'expectativa') {
+    incompatibilidade = 10
+    recencia = 8
+    qualidade = iptAltaExpectativa(m) ? 18 : 12
+  } else if (alvo === 'campo') {
     incompatibilidade =
       m.sinais.visitas === 'mal' ? 35 : m.sinais.visitas === 'neutro' ? 28 : 18
     recencia = m.detalhes.visitasNoPeriodo === 0 ? 20 : Math.max(4, 16 - m.detalhes.visitasNoPeriodo * 3)
@@ -214,6 +238,16 @@ export function ordenarMunicipiosMissao(
   filtro: IptMissaoFiltro
 ): IptMunicipio[] {
   return [...municipios].sort((a, b) => {
+    // Expectativa 2026: sempre por votos esperados (relevância), maior primeiro.
+    if (filtro === 'expectativa') {
+      if (b.expectativaVotos !== a.expectativaVotos) {
+        return b.expectativaVotos - a.expectativaVotos
+      }
+      if (b.pesoExpectativaPct !== a.pesoExpectativaPct) {
+        return b.pesoExpectativaPct - a.pesoExpectativaPct
+      }
+      return a.municipio.localeCompare(b.municipio, 'pt-BR')
+    }
     const sa = relevanciaInternaMissao(a, filtro)
     const sb = relevanciaInternaMissao(b, filtro)
     if (sb !== sa) return sb - sa
@@ -223,6 +257,7 @@ export function ordenarMunicipiosMissao(
 
 export function contagemPorMissao(municipios: IptMunicipio[]): Record<IptMissaoId, number> {
   return {
+    expectativa: municipios.filter(municipioNaMissaoExpectativa).length,
     campo: municipios.filter(municipioNaMissaoCampo).length,
     pesquisa: municipios.filter(municipioNaMissaoPesquisa).length,
     digital: municipios.filter(municipioNaMissaoDigital).length,
@@ -439,6 +474,7 @@ export function buildResumoCampanha(
 export function indicadorDaMissao(
   filtro: IptMissaoFiltro
 ): import('@/lib/ipt').IptIndicador | null {
+  if (filtro === 'expectativa') return null
   if (filtro === 'campo') return 'visitas'
   if (filtro === 'pesquisa') return 'pesquisa'
   if (filtro === 'digital') return 'digital'
@@ -465,6 +501,9 @@ export function estimativaDiasSemVisita(m: IptMunicipio): string {
 
 /** Motivo curto para a lista da visão geral (coluna Motivo). */
 export function motivoCurtoMissao(m: IptMunicipio, missao: IptMissaoId): string {
+  if (missao === 'expectativa') {
+    return `${m.expectativaVotos.toLocaleString('pt-BR')} votos esperados`
+  }
   if (missao === 'campo') {
     if (m.detalhes.visitasNoPeriodo > 0) {
       const dias = Math.max(1, Math.round(15 / Math.max(1, m.detalhes.visitasNoPeriodo)))
@@ -529,6 +568,9 @@ export function coberturaCampoSuficiente(m: IptMunicipio): boolean {
 
 /** Frase curta: por que o município está na missão. */
 export function frasePorQueMissao(m: IptMunicipio, missao: IptMissaoId): string {
+  if (missao === 'expectativa') {
+    return `${m.municipio} entrou no recorte porque há expectativa de votos 2026 cadastrada (${m.expectativaVotos.toLocaleString('pt-BR')} votos).`
+  }
   if (missao === 'campo') {
     return `${m.municipio} combina potencial eleitoral com ausência recente de presença territorial.`
   }
@@ -547,6 +589,9 @@ export function frasePorQueMissao(m: IptMunicipio, missao: IptMissaoId): string 
 /** Resumo diagnóstico curto no cabeçalho do município. */
 export function resumoDiagnosticoMissao(m: IptMunicipio, missao: IptMissaoId): string {
   const relev = rotuloRelevanciaTerritorial(m)
+  if (missao === 'expectativa') {
+    return `${relev}, com ${m.expectativaVotos.toLocaleString('pt-BR')} votos esperados em 2026.`
+  }
   if (missao === 'campo') {
     return `${relev}, ${estimativaDiasSemVisita(m).toLowerCase()} e cobertura de campo ${coberturaCampoRotulo(m).toLowerCase()}.`
   }
@@ -605,7 +650,12 @@ export function rotuloEngajamentoDigital(
 export function chipsEvidenciaMissao(m: IptMunicipio, missao: IptMissaoId): string[] {
   const chips: string[] = []
   if (iptAltaExpectativa(m)) chips.push('Expectativa relevante')
-  if (missao === 'campo') {
+  if (missao === 'expectativa') {
+    chips.push(`${m.expectativaVotos.toLocaleString('pt-BR')} votos esperados`)
+    chips.push(
+      `${m.pesoExpectativaPct.toLocaleString('pt-BR', { maximumFractionDigits: 1 })}% do total estadual`
+    )
+  } else if (missao === 'campo') {
     chips.push(`Última visita: ${estimativaDiasSemVisita(m)}`)
     chips.push(`Cobertura de campo ${coberturaCampoRotulo(m).toLowerCase()}`)
     if (m.detalhes.visitasNoPeriodo === 0) chips.push('Janela de presença enfraquecida')
@@ -631,6 +681,9 @@ export function chipsEvidenciaMissao(m: IptMunicipio, missao: IptMissaoId): stri
 }
 
 export function textoFocoMissao(missao: IptMissaoFiltro): string {
+  if (missao === 'expectativa') {
+    return `Cobertura da expectativa 2026: quantos dos ${IPT_TOTAL_MUNICIPIOS_PI} municípios do Piauí já têm meta cadastrada.`
+  }
   if (missao === 'campo') {
     return 'Maior incompatibilidade: relevância territorial alta + baixa cobertura de campo.'
   }
@@ -647,6 +700,9 @@ export function textoFocoMissao(missao: IptMissaoFiltro): string {
 }
 
 export function subtituloListaMissao(missao: IptMissaoFiltro): string {
+  if (missao === 'expectativa') {
+    return `Municípios com expectativa de votos 2026 cadastrada (de ${IPT_TOTAL_MUNICIPIOS_PI} no Piauí)`
+  }
   if (missao === 'campo') return 'Municípios com maior risco de subaproveitamento em campo'
   if (missao === 'pesquisa') return 'Municípios em que a pesquisa ainda não acompanha o potencial'
   if (missao === 'digital') return 'Municípios com oportunidade mal aproveitada no digital'
@@ -655,6 +711,7 @@ export function subtituloListaMissao(missao: IptMissaoFiltro): string {
 }
 
 export function microcopyMapaMissao(missao: IptMissaoFiltro): string {
+  if (missao === 'expectativa') return 'Onde a campanha já tem expectativa de votos 2026'
   if (missao === 'campo') return 'Onde estamos deixando presença na mesa'
   if (missao === 'pesquisa') return 'Onde a campanha precisa olhar com mais atenção'
   if (missao === 'digital') return 'Onde existe oportunidade digital mal aproveitada'
@@ -687,24 +744,33 @@ export function enrichMissaoCard(
   const cfg = iptMissaoConfig(missao)
 
   const tensao =
-    missao === 'campo'
+    missao === 'expectativa'
       ? `${relevantes} com expectativa relevante`
-      : missao === 'pesquisa'
-        ? `${doGrupo.filter((m) => m.sinais.pesquisa === 'mal' || m.sinais.pesquisa === 'neutro').length} abaixo do potencial`
-        : missao === 'digital'
-          ? `${doGrupo.filter((m) => m.sinais.digital === 'sem_dado').length} sem cobertura na base`
-          : `${doGrupo.filter((m) => m.detalhes.obrasQuantidade > 0).length} com entrega em risco`
+      : missao === 'campo'
+        ? `${relevantes} com expectativa relevante`
+        : missao === 'pesquisa'
+          ? `${doGrupo.filter((m) => m.sinais.pesquisa === 'mal' || m.sinais.pesquisa === 'neutro').length} abaixo do potencial`
+          : missao === 'digital'
+            ? `${doGrupo.filter((m) => m.sinais.digital === 'sem_dado').length} sem cobertura na base`
+            : `${doGrupo.filter((m) => m.detalhes.obrasQuantidade > 0).length} com entrega em risco`
 
+  const semCobertura = IPT_TOTAL_MUNICIPIOS_PI - contagem
   const descricaoAtiva =
     contagem === 0
-      ? 'Nenhum município apresenta essa incompatibilidade no recorte atual.'
-      : missao === 'campo'
-        ? 'pedem presença de campo agora. Potencial alto com cobertura insuficiente.'
-        : missao === 'pesquisa'
-          ? 'pedem olhar analítico. A pesquisa ainda não acompanha o potencial.'
-          : missao === 'digital'
-            ? 'pedem apontamento digital. Há oportunidade mal aproveitada.'
-            : 'pedem aceleração de percepção sobre entregas.'
+      ? missao === 'expectativa'
+        ? `Nenhum dos ${IPT_TOTAL_MUNICIPIOS_PI} municípios do Piauí tem expectativa 2026 cadastrada.`
+        : 'Nenhum município apresenta essa incompatibilidade no recorte atual.'
+      : missao === 'expectativa'
+        ? `de ${IPT_TOTAL_MUNICIPIOS_PI} no Piauí têm expectativa de votos 2026.${
+            semCobertura > 0 ? ` Faltam ${semCobertura}.` : ''
+          }`
+        : missao === 'campo'
+          ? 'pedem presença de campo agora. Potencial alto com cobertura insuficiente.'
+          : missao === 'pesquisa'
+            ? 'pedem olhar analítico. A pesquisa ainda não acompanha o potencial.'
+            : missao === 'digital'
+              ? 'pedem apontamento digital. Há oportunidade mal aproveitada.'
+              : 'pedem aceleração de percepção sobre entregas.'
 
   return {
     tensao: `Tensão atual: ${tensao}`,
@@ -736,6 +802,12 @@ export function buildLeituraExecutivaHoje(
     return `Nenhuma tensão crítica na missão ${titulo} no recorte atual.`
   }
 
+  if (alvo === 'expectativa') {
+    const semMeta = IPT_TOTAL_MUNICIPIOS_PI - doGrupo.length
+    return `${doGrupo.length} de ${IPT_TOTAL_MUNICIPIOS_PI} municípios do Piauí têm expectativa 2026.${
+      semMeta > 0 ? ` Ainda faltam ${semMeta}.` : ''
+    } Destaques: ${foco || 'o recorte atual'}.`
+  }
   if (alvo === 'campo') {
     return `${relevantes || doGrupo.length} municípios com potencial relevante e baixa presença de campo. Priorize ${foco || 'os epicentros da missão'}.`
   }
@@ -754,6 +826,9 @@ export function textoAcaoRecomendada(
 ): string {
   const cidades = focoPrincipal.slice(0, 3).join(', ')
   if (!cidades) return 'Sem municípios prioritários no recorte atual.'
+  if (missao === 'expectativa') {
+    return `Priorizar acompanhamento de expectativa em ${cidades} e completar cobertura onde ainda falta meta 2026.`
+  }
   if (missao === 'campo' || missao === 'todas') {
     return `Abrir agenda regional em ${cidades}. Ativar líderes locais e roteiro de presença.`
   }
@@ -792,6 +867,9 @@ export function statusMissaoLinha(m: IptMunicipio, missao: IptMissaoFiltro): str
   const alvo: IptMissaoId | null =
     missao === 'todas' ? missaoPrincipal(m) : missao
 
+  if (alvo === 'expectativa') {
+    return `${m.expectativaVotos.toLocaleString('pt-BR')} votos esperados`
+  }
   if (alvo === 'campo') {
     return `Última visita: ${estimativaDiasSemVisita(m)}`
   }
@@ -822,6 +900,12 @@ export function razoesMissao(m: IptMunicipio, missao: IptMissaoId): string[] {
     reasons.push('possui alta relevância territorial')
   } else if (temExpectativa(m)) {
     reasons.push('possui relevância territorial cadastrada')
+  }
+
+  if (missao === 'expectativa') {
+    reasons.push(
+      `tem expectativa de ${m.expectativaVotos.toLocaleString('pt-BR')} votos em 2026`
+    )
   }
 
   if (missao === 'campo') {

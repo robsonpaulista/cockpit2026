@@ -12,6 +12,7 @@ import {
   Maximize2,
   Minimize2,
   RefreshCw,
+  Target,
   type LucideIcon,
 } from 'lucide-react'
 import { CockpitIcon } from '@/components/ui/cockpit-icon'
@@ -50,6 +51,7 @@ import '@/app/dashboard/territorio/ipt/ipt-visual-refine.css'
 import '@/app/dashboard/territorio/ipt/ipt-operacional.css'
 
 const MISSAO_FILTRO_ICONE: Record<IptMissaoId, LucideIcon> = {
+  expectativa: Target,
   campo: Crosshair,
   pesquisa: LineChart,
   digital: BarChart3,

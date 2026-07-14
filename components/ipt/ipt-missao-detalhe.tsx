@@ -5,6 +5,7 @@ import { createPortal } from 'react-dom'
 import { BarChart3, Building2, MapPin, Smartphone, X } from 'lucide-react'
 import { CockpitIcon } from '@/components/ui/cockpit-icon'
 import { PerfilPopulacaoPanel } from '@/components/perfil-populacao-panel'
+import { IptPesquisaRankingModal } from '@/components/ipt/ipt-pesquisa-ranking-modal'
 import { getEleitoradoByCity, getEleitoradoTotalPiaui } from '@/lib/eleitores'
 import {
   calcularIndicadoresDemograficos,
@@ -138,24 +139,32 @@ const INDICADOR_META: Record<
   IndicadorId,
   { label: string; cor: string; icon: typeof MapPin }
 > = {
-  pesquisa: { label: 'PESQUISA', cor: '#e28000', icon: BarChart3 },
-  campo: { label: 'CAMPO', cor: '#ff9800', icon: MapPin },
-  digital: { label: 'DIGITAL', cor: '#ffc340', icon: Smartphone },
-  obras: { label: 'OBRAS', cor: '#666666', icon: Building2 },
+  pesquisa: { label: 'Pesquisa', cor: '#e28000', icon: BarChart3 },
+  campo: { label: 'Campo', cor: '#ff9800', icon: MapPin },
+  digital: { label: 'Digital', cor: '#8c8c8c', icon: Smartphone },
+  obras: { label: 'Obras', cor: '#666666', icon: Building2 },
 }
 
 function sinalDoIndicador(m: IptMunicipio, id: IndicadorId): IptSinal {
-  if (id === 'campo') return m.sinais.visitas
   if (id === 'pesquisa') return m.sinais.pesquisa
+  if (id === 'campo') return m.sinais.visitas
   if (id === 'digital') return m.sinais.digital
   return m.sinais.obras
 }
 
 function evolucaoDoIndicador(m: IptMunicipio, id: IndicadorId): string {
-  if (id === 'campo') return evolucaoCampo(m)
   if (id === 'pesquisa') return evolucaoPesquisa(m)
+  if (id === 'campo') return evolucaoCampo(m)
   if (id === 'digital') return evolucaoDigital(m)
   return evolucaoObras(m)
+}
+
+function temPesquisaRanking(m: IptMunicipio): boolean {
+  return (
+    m.detalhes.pesquisaTop5.length > 0 ||
+    m.detalhes.pesquisaMediaPct != null ||
+    m.detalhes.pesquisaPosicaoTop5 != null
+  )
 }
 
 export function IptMissaoDetalhe({
@@ -165,6 +174,7 @@ export function IptMissaoDetalhe({
   onClear,
 }: Props) {
   const [modalPerfilAberto, setModalPerfilAberto] = useState(false)
+  const [modalPesquisaAberto, setModalPesquisaAberto] = useState(false)
   const perfilTituloId = useId()
 
   const missaoContexto: IptMissaoId | null = useMemo(() => {
@@ -177,7 +187,16 @@ export function IptMissaoDetalhe({
 
   useEffect(() => {
     setModalPerfilAberto(false)
+    setModalPesquisaAberto(false)
   }, [municipio?.municipio])
+
+  useEffect(() => {
+    if (missaoAtiva !== 'pesquisa' || !municipio) return
+    if (!temPesquisaRanking(municipio)) return
+    setModalPesquisaAberto(true)
+    // Abre ao trocar cidade ou entrar na Missão Pesquisa.
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- só reage a cidade/missão
+  }, [municipio?.municipio, missaoAtiva])
 
   if (!municipio) {
     return (
@@ -207,152 +226,189 @@ export function IptMissaoDetalhe({
       : demo?.urbanizacao?.taxa_urbana != null
         ? `${formatDemografiaPercent(demo.urbanizacao.taxa_urbana)} urbana`
         : '—'
+  const podeAbrirPesquisa = temPesquisaRanking(municipio)
+  const btnPesquisaLabel =
+    municipio.detalhes.pesquisaPosicaoTop5 != null
+      ? `Ver Top 5 da média · posição ${municipio.detalhes.pesquisaPosicaoTop5}º`
+      : municipio.detalhes.pesquisaMediaPct != null
+        ? 'Ver quem está no Top 5 da média'
+        : 'Ver ranking da pesquisa'
 
   return (
     <>
-    <section
-      className={cn(
-        'ipt-bloco ipt-bloco-detalhe',
-        hierarquiaAtiva && 'ipt-bloco-detalhe--hierarquia'
-      )}
-      style={
-        missaoCfg
-          ? ({
-              '--missao-cor': missaoCfg.cor,
-              '--missao-suave': missaoCfg.corSuave,
-              '--missao-texto': missaoCfg.corTexto,
-            } as CSSProperties)
-          : undefined
-      }
-    >
-      <div className="ipt-bloco-detalhe__head">
-        <h3 className="ipt-bloco-detalhe__title">
-          {municipio.municipio.toUpperCase()}
-          <span>— PI</span>
-        </h3>
-        {diagnostico ? <p className="ipt-bloco-detalhe__lead">{diagnostico}</p> : null}
-        {missaoTitulo && hierarquiaAtiva ? (
-          <p className="ipt-bloco-detalhe__missao-eyebrow">
-            Missão: {missaoTitulo}
-          </p>
+      <section
+        className={cn(
+          'ipt-bloco ipt-bloco-detalhe',
+          hierarquiaAtiva && 'ipt-bloco-detalhe--hierarquia'
+        )}
+        style={
+          missaoCfg
+            ? ({
+                '--missao-cor': missaoCfg.cor,
+                '--missao-suave': missaoCfg.corSuave,
+                '--missao-texto': missaoCfg.corTexto,
+              } as CSSProperties)
+            : undefined
+        }
+      >
+        <div className="ipt-bloco-detalhe__head">
+          <h3 className="ipt-bloco-detalhe__title">
+            {municipio.municipio.toUpperCase()}
+            <span>— PI</span>
+          </h3>
+          {diagnostico ? <p className="ipt-bloco-detalhe__lead">{diagnostico}</p> : null}
+          {missaoTitulo && hierarquiaAtiva ? (
+            <p className="ipt-bloco-detalhe__missao-eyebrow">
+              Missão: {missaoTitulo}
+            </p>
+          ) : null}
+          <div className="ipt-bloco-detalhe__head-actions">
+            {impacto !== 'baixa' ? (
+              <span
+                className={cn(
+                  'ipt-bloco-detalhe__badge',
+                  impacto === 'alta'
+                    ? 'ipt-bloco-detalhe__badge--alta'
+                    : 'ipt-bloco-detalhe__badge--media'
+                )}
+              >
+                Prioridade {impacto === 'alta' ? 'alta' : 'média'}
+              </span>
+            ) : null}
+            {onClear ? (
+              <button type="button" className="ipt-bloco-detalhe__clear" onClick={onClear}>
+                Fechar
+              </button>
+            ) : null}
+          </div>
+        </div>
+
+        <div className="ipt-bloco-detalhe__stats">
+          <div>
+            <span>Expectativa 2026</span>
+            {podeVerExpectativa ? (
+              <>
+                <strong>{formatInt(municipio.expectativaVotos)}</strong>
+                <em>
+                  {municipio.pesoExpectativaPct.toLocaleString('pt-BR', {
+                    maximumFractionDigits: 1,
+                  })}
+                  % do total estadual
+                </em>
+              </>
+            ) : (
+              <>
+                <strong>{rotuloRelevanciaTerritorial(municipio)}</strong>
+                <em>Classificação sem número</em>
+              </>
+            )}
+          </div>
+          <div>
+            <span>POPULAÇÃO</span>
+            <strong>{formatInt(pop)}</strong>
+            <em>{formatPctDoTotal(pop, getPopulacaoTotalPiaui())}</em>
+          </div>
+          <div>
+            <span>ELEITORADO</span>
+            <strong>{formatInt(eleitorado)}</strong>
+            <em>{formatPctDoTotal(eleitorado, getEleitoradoTotalPiaui())}</em>
+          </div>
+          <div>
+            <span>IDH / FAIXA</span>
+            <strong>{demografiaPrincipal}</strong>
+            <em>15–59 / urbanização</em>
+          </div>
+        </div>
+
+        {hierarquiaAtiva && porQue ? (
+          <div className="ipt-bloco-detalhe__por-que">
+            <h4>Por que entrou nesta missão?</h4>
+            <p>{porQue}</p>
+            {chips.length > 0 ? (
+              <ul className="ipt-bloco-detalhe__chips">
+                {chips.map((chip) => (
+                  <li key={chip}>{chip}</li>
+                ))}
+              </ul>
+            ) : null}
+            {podeAbrirPesquisa && (missaoContexto === 'pesquisa' || missaoAtiva === 'pesquisa') ? (
+              <button
+                type="button"
+                className="ipt-bloco-detalhe__pesquisa-btn"
+                onClick={() => setModalPesquisaAberto(true)}
+              >
+                <span>{btnPesquisaLabel}</span>
+                <em>Abrir →</em>
+              </button>
+            ) : null}
+          </div>
         ) : null}
-        <div className="ipt-bloco-detalhe__head-actions">
-          {impacto !== 'baixa' ? (
-            <span
-              className={cn(
-                'ipt-bloco-detalhe__badge',
-                impacto === 'alta'
-                  ? 'ipt-bloco-detalhe__badge--alta'
-                  : 'ipt-bloco-detalhe__badge--media'
-              )}
-            >
-              Prioridade {impacto === 'alta' ? 'alta' : 'média'}
+
+        {hierarquiaAtiva ? null : (
+          <div className="ipt-bloco-detalhe__inds">
+            {(['pesquisa', 'campo', 'digital', 'obras'] as IndicadorId[]).map((id) => {
+              const meta = INDICADOR_META[id]
+              const resumo = resumoIndicador(municipio, id)
+              const clickable = id === 'pesquisa' && podeAbrirPesquisa
+              return (
+                <Indicador
+                  key={id}
+                  icon={meta.icon}
+                  label={meta.label}
+                  cor={meta.cor}
+                  valor={resumo.valor}
+                  detalhe={resumo.detalhe}
+                  evolucao={evolucaoDoIndicador(municipio, id)}
+                  sinal={sinalDoIndicador(municipio, id)}
+                  onClick={clickable ? () => setModalPesquisaAberto(true) : undefined}
+                />
+              )
+            })}
+          </div>
+        )}
+
+        {!hierarquiaAtiva && podeAbrirPesquisa ? (
+          <button
+            type="button"
+            className="ipt-bloco-detalhe__pesquisa-btn"
+            onClick={() => setModalPesquisaAberto(true)}
+          >
+            <span>{btnPesquisaLabel}</span>
+            <em>Abrir →</em>
+          </button>
+        ) : null}
+
+        <div className="ipt-bloco-detalhe__demo">
+          <button
+            type="button"
+            className="ipt-bloco-detalhe__demo-toggle"
+            onClick={() => setModalPerfilAberto(true)}
+          >
+            <span>
+              <strong>Abrir perfil do município</strong>
+              <em>Contexto demográfico para compreender o público local.</em>
             </span>
-          ) : null}
-          {onClear ? (
-            <button type="button" className="ipt-bloco-detalhe__clear" onClick={onClear}>
-              Fechar
-            </button>
-          ) : null}
+            <span className="ipt-bloco-detalhe__demo-action" aria-hidden>
+              →
+            </span>
+          </button>
         </div>
-      </div>
+      </section>
 
-      <div className="ipt-bloco-detalhe__stats">
-        <div>
-          <span>Expectativa 2026</span>
-          {podeVerExpectativa ? (
-            <>
-              <strong>{formatInt(municipio.expectativaVotos)}</strong>
-              <em>
-                {municipio.pesoExpectativaPct.toLocaleString('pt-BR', {
-                  maximumFractionDigits: 1,
-                })}
-                % do total estadual
-              </em>
-            </>
-          ) : (
-            <>
-              <strong>{rotuloRelevanciaTerritorial(municipio)}</strong>
-              <em>Classificação sem número</em>
-            </>
-          )}
-        </div>
-        <div>
-          <span>POPULAÇÃO</span>
-          <strong>{formatInt(pop)}</strong>
-          <em>{formatPctDoTotal(pop, getPopulacaoTotalPiaui())}</em>
-        </div>
-        <div>
-          <span>ELEITORADO</span>
-          <strong>{formatInt(eleitorado)}</strong>
-          <em>{formatPctDoTotal(eleitorado, getEleitoradoTotalPiaui())}</em>
-        </div>
-        <div>
-          <span>IDH / FAIXA</span>
-          <strong>{demografiaPrincipal}</strong>
-          <em>15–59 / urbanização</em>
-        </div>
-      </div>
-
-      {hierarquiaAtiva && porQue ? (
-        <div className="ipt-bloco-detalhe__por-que">
-          <h4>Por que entrou nesta missão?</h4>
-          <p>{porQue}</p>
-          {chips.length > 0 ? (
-            <ul className="ipt-bloco-detalhe__chips">
-              {chips.map((chip) => (
-                <li key={chip}>{chip}</li>
-              ))}
-            </ul>
-          ) : null}
-        </div>
+      {modalPerfilAberto ? (
+        <PerfilMunicipioModal
+          tituloId={perfilTituloId}
+          municipio={municipio.municipio}
+          onClose={() => setModalPerfilAberto(false)}
+        />
       ) : null}
 
-      {hierarquiaAtiva ? null : (
-        <div className="ipt-bloco-detalhe__inds">
-          {(['pesquisa', 'campo', 'digital', 'obras'] as IndicadorId[]).map((id) => {
-            const meta = INDICADOR_META[id]
-            const resumo = resumoIndicador(municipio, id)
-            return (
-              <Indicador
-                key={id}
-                icon={meta.icon}
-                label={meta.label}
-                cor={meta.cor}
-                valor={resumo.valor}
-                detalhe={resumo.detalhe}
-                evolucao={evolucaoDoIndicador(municipio, id)}
-                sinal={sinalDoIndicador(municipio, id)}
-              />
-            )
-          })}
-        </div>
-      )}
-
-      <div className="ipt-bloco-detalhe__demo">
-        <button
-          type="button"
-          className="ipt-bloco-detalhe__demo-toggle"
-          onClick={() => setModalPerfilAberto(true)}
-        >
-          <span>
-            <strong>Abrir perfil do município</strong>
-            <em>Contexto demográfico para compreender o público local.</em>
-          </span>
-          <span className="ipt-bloco-detalhe__demo-action" aria-hidden>
-            →
-          </span>
-        </button>
-      </div>
-    </section>
-
-    {modalPerfilAberto ? (
-      <PerfilMunicipioModal
-        tituloId={perfilTituloId}
-        municipio={municipio.municipio}
-        onClose={() => setModalPerfilAberto(false)}
-      />
-    ) : null}
+      {modalPesquisaAberto ? (
+        <IptPesquisaRankingModal
+          municipio={municipio}
+          onClose={() => setModalPesquisaAberto(false)}
+        />
+      ) : null}
     </>
   )
 }
@@ -434,6 +490,7 @@ function Indicador({
   detalhe,
   evolucao,
   sinal,
+  onClick,
 }: {
   icon: typeof MapPin
   label: string
@@ -442,7 +499,32 @@ function Indicador({
   detalhe: string
   evolucao: string
   sinal: IptSinal
+  onClick?: () => void
 }) {
+  if (onClick) {
+    return (
+      <button
+        type="button"
+        className={cn(
+          'ipt-bloco-detalhe__ind',
+          `ipt-bloco-detalhe__ind--${sinal}`,
+          'ipt-bloco-detalhe__ind--clickable'
+        )}
+        onClick={onClick}
+      >
+        <div className="ipt-bloco-detalhe__ind-top">
+          <span className="ipt-bloco-detalhe__ind-ico" style={{ background: cor }} aria-hidden>
+            <CockpitIcon icon={icon} size="sm" />
+          </span>
+          <span>{label}</span>
+        </div>
+        <strong>{valor}</strong>
+        <p>{detalhe}</p>
+        <em>{evolucao}</em>
+      </button>
+    )
+  }
+
   return (
     <div className={cn('ipt-bloco-detalhe__ind', `ipt-bloco-detalhe__ind--${sinal}`)}>
       <div className="ipt-bloco-detalhe__ind-top">
