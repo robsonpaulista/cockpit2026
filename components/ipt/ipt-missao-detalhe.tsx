@@ -190,14 +190,6 @@ export function IptMissaoDetalhe({
     setModalPesquisaAberto(false)
   }, [municipio?.municipio])
 
-  useEffect(() => {
-    if (missaoAtiva !== 'pesquisa' || !municipio) return
-    if (!temPesquisaRanking(municipio)) return
-    setModalPesquisaAberto(true)
-    // Abre ao trocar cidade ou entrar na Missão Pesquisa.
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- só reage a cidade/missão
-  }, [municipio?.municipio, missaoAtiva])
-
   if (!municipio) {
     return (
       <section className="ipt-bloco ipt-bloco-detalhe ipt-bloco-detalhe--empty">
