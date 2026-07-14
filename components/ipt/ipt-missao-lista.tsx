@@ -7,6 +7,7 @@ import {
   missaoPrincipal,
   prioridadeImpactoMissao,
   relevanciaCurta,
+  subtituloListaMissao,
   type IptMissaoFiltro,
   type IptMissaoId,
 } from '@/lib/ipt-missoes'
@@ -38,11 +39,11 @@ function intensidadeLabel(impacto: 'alta' | 'media' | 'baixa'): string {
 }
 
 function colunasMissao(missao: IptMissaoId | null): [string, string, string] {
-  if (missao === 'campo') return ['Última visita', 'Cobertura de campo', 'Intensidade']
-  if (missao === 'pesquisa') return ['Posição', 'Média', 'Intensidade']
-  if (missao === 'digital') return ['Seguidores', 'Cobertura', 'Intensidade']
-  if (missao === 'obras') return ['Recursos', 'Obras', 'Intensidade']
-  return ['Evidência', 'Detalhe', 'Intensidade']
+  if (missao === 'campo') return ['Última visita', 'Cobertura de campo', 'Prioridade']
+  if (missao === 'pesquisa') return ['Posição', 'Média', 'Prioridade']
+  if (missao === 'digital') return ['Seguidores', 'Cobertura', 'Prioridade']
+  if (missao === 'obras') return ['Recursos', 'Obras', 'Prioridade']
+  return ['Evidência', 'Detalhe', 'Prioridade']
 }
 
 function valoresLinha(
@@ -118,12 +119,8 @@ export function IptMissaoLista({
     >
       <div className="ipt-bloco-lista__head">
         <div className="min-w-0">
-          <h3 className="ipt-bloco__title">Municípios da missão selecionada</h3>
-          <p className="ipt-bloco__sub">
-            {missaoLista
-              ? `Leitura específica de ${iptMissaoConfig(missaoLista).titulo}`
-              : 'Ordenados por prioridade de impacto'}
-          </p>
+          <h3 className="ipt-bloco__title">Prioridades da missão</h3>
+          <p className="ipt-bloco__sub">{subtituloListaMissao(missaoAtiva)}</p>
         </div>
         <span className="ipt-bloco-lista__badge">
           <strong>{municipios.length}</strong> municípios
@@ -153,7 +150,7 @@ export function IptMissaoLista({
                 missaoLista ?? principal
               const missaoCor = missaoLinha
                 ? iptMissaoConfig(missaoLinha).cor
-                : '#64748b'
+                : '#8c8c8c'
               const relevancia = podeVerExpectativa && missaoLista == null
                 ? formatExpectativa(m.expectativaVotos)
                 : relevanciaCurta(m)

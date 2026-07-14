@@ -1,17 +1,27 @@
 'use client'
 
-import { useEffect, useId, useMemo, useState } from 'react'
+import { useEffect, useId, useMemo, useState, type CSSProperties } from 'react'
 import { createPortal } from 'react-dom'
-import { Crosshair, X } from 'lucide-react'
+import {
+  BarChart3,
+  Building2,
+  Crosshair,
+  LineChart,
+  RefreshCw,
+  Smartphone,
+  Users,
+  Zap,
+  X,
+  type LucideIcon,
+} from 'lucide-react'
 import { CockpitIcon } from '@/components/ui/cockpit-icon'
 import { formatObrasValorAbreviado } from '@/lib/ipt'
 import {
-  iptMissaoConfig,
+  textoAcaoRecomendada,
   textoFocoMissao,
   type IptMissaoFiltro,
   type IptResumoCampanha,
 } from '@/lib/ipt-missoes'
-import { cn } from '@/lib/utils'
 
 type Props = {
   resumo: IptResumoCampanha
@@ -23,24 +33,14 @@ function formatInt(n: number): string {
   return n.toLocaleString('pt-BR')
 }
 
-function formatPctBadge(pct: number | null, withArrow = false): string | null {
-  if (pct == null || !Number.isFinite(pct)) return null
-  const abs = Math.abs(pct)
-  if (withArrow) {
-    if (pct > 0) return `↗ ${abs}%`
-    if (pct < 0) return `↘ ${abs}%`
-    return '0%'
-  }
-  return `${pct}%`
-}
-
 type Metric = {
   key: string
-  label: string
+  icon: LucideIcon
+  cor: string
   value: string
-  detalhe: string
-  badge: string | null
-  badgeTone: 'ok' | 'warn' | 'neutral'
+  valueSuffix?: string
+  descricao: string
+  detalhe?: string
 }
 
 function metricsParaMissao(resumo: IptResumoCampanha, missao: IptMissaoFiltro): Metric[] {
@@ -48,53 +48,42 @@ function metricsParaMissao(resumo: IptResumoCampanha, missao: IptMissaoFiltro): 
     return [
       {
         key: 'relevantes',
-        label: 'Expectativa relevante',
+        icon: Crosshair,
+        cor: '#ff9800',
         value: formatInt(resumo.municipiosExpectativaRelevante),
-        detalhe: `De ${formatInt(resumo.municipiosTotal)} no grupo`,
-        badge: null,
-        badgeTone: 'neutral',
+        valueSuffix: 'municípios',
+        descricao: 'concentram o maior potencial ainda pouco visitado',
       },
       {
-        key: 'cobertura-campo',
-        label: 'Cobertura de campo suficiente',
-        value: formatInt(resumo.municipiosCampoSuficiente),
-        detalhe: `${resumo.municipiosCampoSuficientePct}% do grupo`,
-        badge: `${resumo.municipiosCampoSuficientePct}%`,
-        badgeTone: resumo.municipiosCampoSuficientePct >= 40 ? 'ok' : 'warn',
+        key: 'cobertura',
+        icon: Users,
+        cor: '#e28000',
+        value: `${resumo.municipiosCampoSuficientePct}%`,
+        valueSuffix: 'do grupo',
+        descricao: 'tem cobertura de campo considerada suficiente',
       },
       {
         key: 'visitas',
-        label: 'Visitas realizadas',
+        icon: LineChart,
+        cor: '#ff9800',
         value: formatInt(resumo.visitasRealizadas),
-        detalhe: 'Últimos 30 dias',
-        badge: formatPctBadge(resumo.visitasVariacaoPct, true),
-        badgeTone:
-          resumo.visitasVariacaoPct == null
-            ? 'neutral'
-            : resumo.visitasVariacaoPct >= 0
-              ? 'ok'
-              : 'warn',
+        valueSuffix: 'visitas realizadas',
+        descricao: 'nos últimos 30 dias',
       },
       {
         key: 'tempo',
-        label: 'Tempo médio sem visita',
+        icon: RefreshCw,
+        cor: '#666666',
         value: resumo.tempoMedioSemVisita,
-        detalhe: 'Proxy no grupo da missão',
-        badge: null,
-        badgeTone: 'neutral',
+        descricao: 'é o tempo médio sem visita',
       },
       {
         key: 'expectativa',
-        label: 'Expectativa total do grupo',
+        icon: BarChart3,
+        cor: '#8c8c8c',
         value: formatInt(resumo.expectativaTotal),
+        descricao: 'é a expectativa total do grupo',
         detalhe: `Meta estadual: ${formatInt(resumo.metaExpectativa)}`,
-        badge: formatPctBadge(resumo.expectativaVsMetaPct),
-        badgeTone:
-          resumo.expectativaVsMetaPct == null
-            ? 'neutral'
-            : resumo.expectativaVsMetaPct >= 100
-              ? 'ok'
-              : 'warn',
       },
     ]
   }
@@ -103,40 +92,43 @@ function metricsParaMissao(resumo: IptResumoCampanha, missao: IptMissaoFiltro): 
     return [
       {
         key: 'relevantes',
-        label: 'Expectativa relevante',
+        icon: Crosshair,
+        cor: '#ff9800',
         value: formatInt(resumo.municipiosExpectativaRelevante),
-        detalhe: `De ${formatInt(resumo.municipiosTotal)} no grupo`,
-        badge: null,
-        badgeTone: 'neutral',
+        valueSuffix: 'municípios',
+        descricao: 'concentram potencial com pesquisa abaixo do esperado',
       },
       {
         key: 'pesquisa',
-        label: 'Com pesquisa disponível',
+        icon: LineChart,
+        cor: '#ff9800',
         value: formatInt(resumo.municipiosComPesquisa),
-        detalhe: `${resumo.municipiosComPesquisaPct}% do grupo`,
-        badge: `${resumo.municipiosComPesquisaPct}%`,
-        badgeTone: resumo.municipiosComPesquisaPct >= 40 ? 'ok' : 'warn',
+        valueSuffix: 'com pesquisa',
+        descricao: `${resumo.municipiosComPesquisaPct}% do grupo já tem leitura disponível`,
+      },
+      {
+        key: 'visitas',
+        icon: Users,
+        cor: '#e28000',
+        value: formatInt(resumo.visitasRealizadas),
+        valueSuffix: 'visitas',
+        descricao: 'realizadas nos últimos 30 dias no grupo',
+      },
+      {
+        key: 'grupo',
+        icon: RefreshCw,
+        cor: '#666666',
+        value: formatInt(resumo.municipiosTotal),
+        valueSuffix: 'municípios',
+        descricao: 'entram nesta missão hoje',
       },
       {
         key: 'expectativa',
-        label: 'Expectativa total do grupo',
+        icon: BarChart3,
+        cor: '#8c8c8c',
         value: formatInt(resumo.expectativaTotal),
+        descricao: 'é a expectativa total do grupo',
         detalhe: `Meta estadual: ${formatInt(resumo.metaExpectativa)}`,
-        badge: formatPctBadge(resumo.expectativaVsMetaPct),
-        badgeTone:
-          resumo.expectativaVsMetaPct == null
-            ? 'neutral'
-            : resumo.expectativaVsMetaPct >= 100
-              ? 'ok'
-              : 'warn',
-      },
-      {
-        key: 'cobertos',
-        label: 'Municípios no grupo',
-        value: formatInt(resumo.municipiosTotal),
-        detalhe: 'Missão Para onde olhar',
-        badge: null,
-        badgeTone: 'neutral',
       },
     ]
   }
@@ -145,40 +137,43 @@ function metricsParaMissao(resumo: IptResumoCampanha, missao: IptMissaoFiltro): 
     return [
       {
         key: 'relevantes',
-        label: 'Expectativa relevante',
+        icon: Crosshair,
+        cor: '#ff9800',
         value: formatInt(resumo.municipiosExpectativaRelevante),
-        detalhe: `De ${formatInt(resumo.municipiosTotal)} no grupo`,
-        badge: null,
-        badgeTone: 'neutral',
+        valueSuffix: 'municípios',
+        descricao: 'concentram oportunidade digital mal aproveitada',
       },
       {
         key: 'digital',
-        label: 'Presença digital no grupo',
-        value: formatInt(resumo.seguidoresDigitais),
-        detalhe: 'Seguidores somados',
-        badge: `${resumo.digitalCoberturaPct}%`,
-        badgeTone: resumo.digitalCoberturaPct >= 20 ? 'ok' : 'warn',
+        icon: Smartphone,
+        cor: '#666666',
+        value: `${resumo.digitalCoberturaPct}%`,
+        valueSuffix: 'do grupo',
+        descricao: 'já aparece na base digital da campanha',
       },
       {
-        key: 'cobertura',
-        label: 'Municípios com dado digital',
-        value: formatInt(resumo.municipiosComDigital),
-        detalhe: `${resumo.digitalCoberturaPct}% do grupo`,
-        badge: null,
-        badgeTone: 'neutral',
+        key: 'seguidores',
+        icon: Users,
+        cor: '#ff9800',
+        value: formatInt(resumo.seguidoresDigitais),
+        valueSuffix: 'seguidores',
+        descricao: 'concentrados nos municípios do recorte',
+      },
+      {
+        key: 'grupo',
+        icon: RefreshCw,
+        cor: '#e28000',
+        value: formatInt(resumo.municipiosTotal),
+        valueSuffix: 'municípios',
+        descricao: 'pedem apontamento digital agora',
       },
       {
         key: 'expectativa',
-        label: 'Expectativa total do grupo',
+        icon: BarChart3,
+        cor: '#8c8c8c',
         value: formatInt(resumo.expectativaTotal),
+        descricao: 'é a expectativa total do grupo',
         detalhe: `Meta estadual: ${formatInt(resumo.metaExpectativa)}`,
-        badge: formatPctBadge(resumo.expectativaVsMetaPct),
-        badgeTone:
-          resumo.expectativaVsMetaPct == null
-            ? 'neutral'
-            : resumo.expectativaVsMetaPct >= 100
-              ? 'ok'
-              : 'warn',
       },
     ]
   }
@@ -187,99 +182,86 @@ function metricsParaMissao(resumo: IptResumoCampanha, missao: IptMissaoFiltro): 
     return [
       {
         key: 'relevantes',
-        label: 'Expectativa relevante',
+        icon: Crosshair,
+        cor: '#ff9800',
         value: formatInt(resumo.municipiosExpectativaRelevante),
-        detalhe: `De ${formatInt(resumo.municipiosTotal)} no grupo`,
-        badge: null,
-        badgeTone: 'neutral',
+        valueSuffix: 'municípios',
+        descricao: 'concentram entregas ainda pouco aproveitadas',
       },
       {
         key: 'obras',
-        label: 'Obras e recursos no grupo',
+        icon: Building2,
+        cor: '#8c8c8c',
         value: formatObrasValorAbreviado(resumo.obrasValorTotal).replace(/ obras$/, ''),
-        detalhe: `Em ${formatInt(resumo.municipiosComObras)} municípios`,
-        badge: `${resumo.obrasCoberturaPct}%`,
-        badgeTone: resumo.obrasCoberturaPct >= 40 ? 'ok' : 'warn',
+        descricao: `em ${formatInt(resumo.municipiosComObras)} municípios do grupo`,
+      },
+      {
+        key: 'cobertura',
+        icon: Users,
+        cor: '#e28000',
+        value: `${resumo.obrasCoberturaPct}%`,
+        valueSuffix: 'do grupo',
+        descricao: 'já tem obra cadastrada no território',
+      },
+      {
+        key: 'grupo',
+        icon: RefreshCw,
+        cor: '#666666',
+        value: formatInt(resumo.municipiosTotal),
+        valueSuffix: 'municípios',
+        descricao: 'entram na missão Onde acelerar',
       },
       {
         key: 'expectativa',
-        label: 'Expectativa total do grupo',
+        icon: BarChart3,
+        cor: '#ff9800',
         value: formatInt(resumo.expectativaTotal),
+        descricao: 'é a expectativa total do grupo',
         detalhe: `Meta estadual: ${formatInt(resumo.metaExpectativa)}`,
-        badge: formatPctBadge(resumo.expectativaVsMetaPct),
-        badgeTone:
-          resumo.expectativaVsMetaPct == null
-            ? 'neutral'
-            : resumo.expectativaVsMetaPct >= 100
-              ? 'ok'
-              : 'warn',
-      },
-      {
-        key: 'visitas',
-        label: 'Visitas no grupo',
-        value: formatInt(resumo.visitasRealizadas),
-        detalhe: 'Últimos 30 dias',
-        badge: formatPctBadge(resumo.visitasVariacaoPct, true),
-        badgeTone:
-          resumo.visitasVariacaoPct == null
-            ? 'neutral'
-            : resumo.visitasVariacaoPct >= 0
-              ? 'ok'
-              : 'warn',
       },
     ]
   }
 
+  // Visão geral (Todas)
   return [
     {
       key: 'expectativa',
-      label: 'Expectativa total de votos',
+      icon: BarChart3,
+      cor: '#8c8c8c',
       value: formatInt(resumo.expectativaTotal),
-      detalhe: `Meta: ${formatInt(resumo.metaExpectativa)}`,
-      badge: formatPctBadge(resumo.expectativaVsMetaPct),
-      badgeTone:
-        resumo.expectativaVsMetaPct == null
-          ? 'neutral'
-          : resumo.expectativaVsMetaPct >= 100
-            ? 'ok'
-            : 'warn',
+      descricao: 'é a expectativa total de votos do recorte',
+      detalhe: `Meta estadual: ${formatInt(resumo.metaExpectativa)}`,
     },
     {
       key: 'cobertos',
-      label: 'Municípios cobertos',
+      icon: Users,
+      cor: '#e28000',
       value: formatInt(resumo.municipiosCobertos),
-      detalhe: `${resumo.municipiosCobertosPct}% do total`,
-      badge: `${resumo.municipiosCobertosPct}%`,
-      badgeTone: resumo.municipiosCobertosPct >= 40 ? 'ok' : 'warn',
+      valueSuffix: 'municípios',
+      descricao: `${resumo.municipiosCobertosPct}% do grupo com alguma cobertura`,
     },
     {
       key: 'visitas',
-      label: 'Visitas realizadas',
+      icon: LineChart,
+      cor: '#ff9800',
       value: formatInt(resumo.visitasRealizadas),
-      detalhe: 'Últimos 30 dias',
-      badge: formatPctBadge(resumo.visitasVariacaoPct, true),
-      badgeTone:
-        resumo.visitasVariacaoPct == null
-          ? 'neutral'
-          : resumo.visitasVariacaoPct >= 0
-            ? 'ok'
-            : 'warn',
+      valueSuffix: 'visitas realizadas',
+      descricao: 'nos últimos 30 dias',
     },
     {
       key: 'obras',
-      label: 'Obras e recursos',
+      icon: Building2,
+      cor: '#666666',
       value: formatObrasValorAbreviado(resumo.obrasValorTotal).replace(/ obras$/, ''),
-      detalhe: `Em ${formatInt(resumo.municipiosComObras)} municípios`,
-      badge: `${resumo.obrasCoberturaPct}%`,
-      badgeTone: resumo.obrasCoberturaPct >= 40 ? 'ok' : 'warn',
+      descricao: 'em obras e recursos no território',
     },
     {
       key: 'digital',
-      label: 'Presença digital',
+      icon: Smartphone,
+      cor: '#ff9800',
       value: formatInt(resumo.seguidoresDigitais),
-      detalhe: 'Seguidores totais',
-      badge: `${resumo.digitalCoberturaPct}%`,
-      badgeTone: resumo.digitalCoberturaPct >= 20 ? 'ok' : 'warn',
+      valueSuffix: 'seguidores',
+      descricao: 'na presença digital do grupo',
     },
   ]
 }
@@ -292,66 +274,62 @@ export function IptResumoCampanhaBar({
   const [modalAberto, setModalAberto] = useState(false)
   const tituloId = useId()
   const missao = missaoAtiva !== 'todas' ? missaoAtiva : resumo.missao
-  const focoLabel =
-    resumo.focoPrincipal.length > 0
-      ? resumo.focoPrincipal.join(', ')
-      : 'Sem municípios em missão'
   const metrics = useMemo(() => metricsParaMissao(resumo, missao), [resumo, missao])
-  const tituloResumo =
-    missao !== 'todas'
-      ? `Resumo · ${iptMissaoConfig(missao).titulo}`
-      : 'Resumo geral da campanha'
+  const tituloResumo = 'Leitura executiva da missão'
   const focoTexto = textoFocoMissao(missao)
+  const acaoTexto = textoAcaoRecomendada(missao, resumo.focoPrincipal)
 
   return (
     <>
       <section className="ipt-resumo-bar" aria-label={tituloResumo}>
         <div className="ipt-resumo-bar__body">
           <h2 className="ipt-resumo-bar__title">{tituloResumo}</h2>
-          <div className="ipt-resumo-bar__metrics">
-            {metrics.map((m) => (
-              <div key={m.key} className="ipt-resumo-bar__metric">
-                <span>{m.label}</span>
-                <strong>{m.value}</strong>
-                <div className="ipt-resumo-bar__metric-foot">
-                  <em>{m.detalhe}</em>
-                  {m.badge ? (
-                    <b
-                      className={cn(
-                        'ipt-resumo-bar__badge',
-                        m.badgeTone === 'ok' && 'ipt-resumo-bar__badge--ok',
-                        m.badgeTone === 'warn' && 'ipt-resumo-bar__badge--warn'
-                      )}
-                    >
-                      {m.badge}
-                    </b>
-                  ) : null}
-                </div>
-              </div>
-            ))}
+          <div className="ipt-resumo-bar__row">
+            <div className="ipt-resumo-bar__metrics">
+              {metrics.map((m) => {
+                const Icon = m.icon
+                return (
+                  <div
+                    key={m.key}
+                    className="ipt-resumo-bar__metric"
+                    style={{ '--metric-cor': m.cor } as CSSProperties}
+                  >
+                    <span className="ipt-resumo-bar__metric-ico" aria-hidden>
+                      <CockpitIcon icon={Icon} size="sm" />
+                    </span>
+                    <div className="ipt-resumo-bar__metric-copy">
+                      <strong>
+                        {m.value}
+                        {m.valueSuffix ? <span> {m.valueSuffix}</span> : null}
+                      </strong>
+                      <em>{m.descricao}</em>
+                      {m.detalhe ? <small>{m.detalhe}</small> : null}
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+
+            <button
+              type="button"
+              className="ipt-resumo-bar__foco"
+              onClick={() => setModalAberto(true)}
+              disabled={resumo.focoPrincipal.length === 0}
+            >
+              <span className="ipt-resumo-bar__foco-ico" aria-hidden>
+                <CockpitIcon icon={Zap} size="sm" />
+              </span>
+              <span className="ipt-resumo-bar__foco-copy">
+                <span className="ipt-resumo-bar__foco-label">Ação recomendada hoje</span>
+                <strong className="ipt-resumo-bar__foco-cidades">{acaoTexto}</strong>
+                <em className="ipt-resumo-bar__foco-alerta">{focoTexto}</em>
+              </span>
+              <span className="ipt-resumo-bar__foco-action" aria-hidden>
+                ›
+              </span>
+            </button>
           </div>
         </div>
-
-        <button
-          type="button"
-          className="ipt-resumo-bar__foco"
-          onClick={() => setModalAberto(true)}
-          disabled={resumo.focoPrincipal.length === 0}
-        >
-          <span className="ipt-resumo-bar__foco-ico" aria-hidden>
-            <CockpitIcon icon={Crosshair} size="sm" />
-          </span>
-          <span className="ipt-resumo-bar__foco-copy">
-            <span className="ipt-resumo-bar__foco-label">
-              Maiores incompatibilidades da missão
-            </span>
-            <strong className="ipt-resumo-bar__foco-cidades">{focoLabel}</strong>
-            <em>{focoTexto}</em>
-          </span>
-          <span className="ipt-resumo-bar__foco-action" aria-hidden>
-            ›
-          </span>
-        </button>
       </section>
 
       {modalAberto ? (

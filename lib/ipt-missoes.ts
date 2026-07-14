@@ -31,44 +31,44 @@ export const IPT_MISSOES: IptMissaoConfig[] = [
     label: 'MISSÃO CAMPO',
     titulo: 'Onde ir',
     tagline: 'Campo',
-    descricao: 'Alta expectativa de votos com baixa presença de campo.',
-    cor: '#D79A19',
-    corSuave: '#FFF8E8',
-    corTexto: '#9A6B0A',
-    corTint: '#FFF8E8',
+    descricao: 'Municípios pedem presença de campo agora. Potencial alto com cobertura insuficiente.',
+    cor: '#ff9800',
+    corSuave: '#fff4e5',
+    corTexto: '#e28000',
+    corTint: '#fff4e5',
   },
   {
     id: 'pesquisa',
     label: 'MISSÃO PESQUISA',
     titulo: 'Para onde olhar',
     tagline: 'Pesquisa',
-    descricao: 'Pesquisa abaixo do esperado considerando o potencial.',
-    cor: '#3269C8',
-    corSuave: '#F1F6FF',
-    corTexto: '#1E4A9A',
-    corTint: '#F1F6FF',
+    descricao: 'Desempenho em pesquisa abaixo do potencial esperado. Há hipótese a checar.',
+    cor: '#e28000',
+    corSuave: '#fff1e3',
+    corTexto: '#e28000',
+    corTint: '#fff1e3',
   },
   {
     id: 'digital',
     label: 'MISSÃO DIGITAL',
     titulo: 'Para onde apontar',
     tagline: 'Digital',
-    descricao: 'Expectativa de votos desproporcional à presença digital.',
-    cor: '#29935F',
-    corSuave: '#EFFAF4',
-    corTexto: '#1B6B45',
-    corTint: '#EFFAF4',
+    descricao: 'Oportunidade desproporcional à presença digital. É onde a campanha deixa cobertura na mesa.',
+    cor: '#8c8c8c',
+    corSuave: '#fff8e8',
+    corTexto: '#666666',
+    corTint: '#f5f5f5',
   },
   {
     id: 'obras',
     label: 'MISSÃO OBRAS',
     titulo: 'Onde acelerar',
     tagline: 'Obras',
-    descricao: 'Obras e entregas com baixa comunicação e aproveitamento.',
-    cor: '#7851B8',
-    corSuave: '#F7F2FC',
-    corTexto: '#5A3A91',
-    corTint: '#F7F2FC',
+    descricao: 'Entregas e obras ainda não se converteram em percepção no território.',
+    cor: '#666666',
+    corSuave: '#f0f0f0',
+    corTexto: '#666666',
+    corTint: '#f0f0f0',
   },
 ]
 
@@ -488,50 +488,205 @@ export function coberturaCampoSuficiente(m: IptMunicipio): boolean {
 
 /** Frase curta: por que o município está na missão. */
 export function frasePorQueMissao(m: IptMunicipio, missao: IptMissaoId): string {
-  const relevancia = iptAltaExpectativa(m)
-    ? 'Alta relevância territorial'
-    : temExpectativa(m)
-      ? 'Relevância territorial cadastrada'
-      : 'Potencial territorial limitado'
-
   if (missao === 'campo') {
-    return `${relevancia} com ${coberturaCampoRotulo(m).toLowerCase()} cobertura presencial.`
+    return `${m.municipio} combina potencial eleitoral com ausência recente de presença territorial.`
   }
   if (missao === 'pesquisa') {
-    if (m.sinais.pesquisa === 'sem_dado') {
-      return `${relevancia} sem pesquisa suficiente para o potencial.`
-    }
     if (m.detalhes.pesquisaPosicaoTop5 != null) {
-      return `${relevancia} com pesquisa em ${m.detalhes.pesquisaPosicaoTop5}º lugar, abaixo do potencial.`
+      return `${m.municipio} está em ${m.detalhes.pesquisaPosicaoTop5}º na pesquisa, abaixo do potencial esperado para o município.`
     }
-    return `${relevancia} com pesquisa abaixo do potencial esperado.`
+    return `${m.municipio} ainda não tem pesquisa alinhada ao potencial eleitoral da cidade.`
   }
   if (missao === 'digital') {
-    if (m.detalhes.digitalSeguidores == null || m.detalhes.digitalSeguidores <= 0) {
-      return `${relevancia} fora dos 45 da base digital.`
+    return `${m.municipio} concentra oportunidade territorial com presença digital abaixo do esperado.`
+  }
+  return `${m.municipio} concentra entregas e obras com aproveitamento ainda limitado no território.`
+}
+
+/** Resumo diagnóstico curto no cabeçalho do município. */
+export function resumoDiagnosticoMissao(m: IptMunicipio, missao: IptMissaoId): string {
+  const relev = rotuloRelevanciaTerritorial(m)
+  if (missao === 'campo') {
+    return `${relev}, ${estimativaDiasSemVisita(m).toLowerCase()} e cobertura de campo ${coberturaCampoRotulo(m).toLowerCase()}.`
+  }
+  if (missao === 'pesquisa') {
+    if (m.detalhes.pesquisaPosicaoTop5 != null) {
+      return `${relev}, ${m.detalhes.pesquisaPosicaoTop5}º na pesquisa e fora do potencial esperado.`
     }
-    return `${relevancia} com presença digital abaixo do potencial.`
+    return `${relev}, pesquisa ainda não alinhada ao potencial territorial.`
   }
-  if (m.detalhes.obrasQuantidade > 0) {
-    return `${relevancia} com obras de baixo aproveitamento comunicacional.`
+  if (missao === 'digital') {
+    return `${relev}, presença digital abaixo da oportunidade territorial.`
   }
-  return `${relevancia} com baixo aproveitamento de entregas no território.`
+  return `${relev}, entregas presentes com aproveitamento ainda limitado.`
+}
+
+export function chipsEvidenciaMissao(m: IptMunicipio, missao: IptMissaoId): string[] {
+  const chips: string[] = []
+  if (iptAltaExpectativa(m)) chips.push('Expectativa relevante')
+  if (missao === 'campo') {
+    chips.push(`Última visita: ${estimativaDiasSemVisita(m)}`)
+    chips.push(`Cobertura de campo ${coberturaCampoRotulo(m).toLowerCase()}`)
+    if (m.detalhes.visitasNoPeriodo === 0) chips.push('Janela de presença enfraquecida')
+  } else if (missao === 'pesquisa') {
+    if (m.detalhes.pesquisaPosicaoTop5 != null) {
+      chips.push(`${m.detalhes.pesquisaPosicaoTop5}º na pesquisa`)
+    } else {
+      chips.push('Fora do Top 5')
+    }
+    if (m.evolucao.pesquisa === 'diminuiu') chips.push('Intenção em queda')
+  } else if (missao === 'digital') {
+    if (m.detalhes.digitalSeguidores == null || m.detalhes.digitalSeguidores <= 0) {
+      chips.push('Fora dos 45 da base')
+    } else {
+      chips.push(`${m.detalhes.digitalSeguidores.toLocaleString('pt-BR')} seguidores`)
+    }
+    chips.push('Cobertura digital abaixo do potencial')
+  } else {
+    if (m.detalhes.obrasQuantidade > 0) {
+      chips.push(`${m.detalhes.obrasQuantidade} obra${m.detalhes.obrasQuantidade === 1 ? '' : 's'}`)
+    } else {
+      chips.push('Sem destinação cadastrada')
+    }
+    chips.push('Baixo aproveitamento comunicacional')
+  }
+  return chips.slice(0, 4)
 }
 
 export function textoFocoMissao(missao: IptMissaoFiltro): string {
   if (missao === 'campo') {
-    return 'Municípios com maior combinação de relevância territorial e baixa cobertura de campo.'
+    return 'Maior incompatibilidade: relevância territorial alta + baixa cobertura de campo.'
   }
   if (missao === 'pesquisa') {
-    return 'Municípios com maior combinação de relevância territorial e pesquisa abaixo do potencial.'
+    return 'Maior incompatibilidade: relevância territorial alta + pesquisa abaixo do potencial.'
   }
   if (missao === 'digital') {
-    return 'Municípios com maior combinação de relevância territorial e presença digital abaixo do potencial.'
+    return 'Maior incompatibilidade: relevância territorial alta + presença digital insuficiente.'
   }
   if (missao === 'obras') {
-    return 'Municípios com maior combinação de relevância territorial e baixo aproveitamento de obras.'
+    return 'Maior incompatibilidade: entregas presentes + percepção ainda limitada no território.'
   }
-  return 'Municípios com maior incompatibilidade e relevância territorial no recorte atual.'
+  return 'Maior incompatibilidade: relevância territorial alta + baixa cobertura operacional.'
+}
+
+export function subtituloListaMissao(missao: IptMissaoFiltro): string {
+  if (missao === 'campo') return 'Municípios com maior risco de subaproveitamento em campo'
+  if (missao === 'pesquisa') return 'Municípios em que a pesquisa ainda não acompanha o potencial'
+  if (missao === 'digital') return 'Municípios com oportunidade mal aproveitada no digital'
+  if (missao === 'obras') return 'Municípios em que entregas pedem valorização e aproveitamento'
+  return 'Municípios com maior prioridade de impacto no recorte atual'
+}
+
+export function microcopyMapaMissao(missao: IptMissaoFiltro): string {
+  if (missao === 'campo') return 'Onde estamos deixando presença na mesa'
+  if (missao === 'pesquisa') return 'Onde a campanha precisa olhar com mais atenção'
+  if (missao === 'digital') return 'Onde existe oportunidade digital mal aproveitada'
+  if (missao === 'obras') return 'Onde entregas pedem valorização no território'
+  return 'Visão geral dos municípios da campanha'
+}
+
+export type IptMissaoCardEnrichment = {
+  tensao: string
+  epicentros: string
+  mudanca: string
+  descricaoAtiva: string
+}
+
+export function enrichMissaoCard(
+  missao: IptMissaoId,
+  municipios: IptMunicipio[],
+  contagem: number,
+  variacao: IptMissaoVariacao
+): IptMissaoCardEnrichment {
+  const doGrupo = ordenarMunicipiosMissao(
+    filtrarMunicipiosPorMissao(municipios, missao),
+    missao
+  )
+  const epicentros = doGrupo
+    .slice(0, 3)
+    .map((m) => m.municipio)
+    .join(', ')
+  const relevantes = doGrupo.filter((m) => iptAltaExpectativa(m)).length
+  const cfg = iptMissaoConfig(missao)
+
+  const tensao =
+    missao === 'campo'
+      ? `${relevantes} com expectativa relevante`
+      : missao === 'pesquisa'
+        ? `${doGrupo.filter((m) => m.sinais.pesquisa === 'mal' || m.sinais.pesquisa === 'neutro').length} abaixo do potencial`
+        : missao === 'digital'
+          ? `${doGrupo.filter((m) => m.sinais.digital === 'sem_dado').length} sem cobertura na base`
+          : `${doGrupo.filter((m) => m.detalhes.obrasQuantidade > 0).length} com entrega em risco`
+
+  const descricaoAtiva =
+    contagem === 0
+      ? 'Nenhum município apresenta essa incompatibilidade no recorte atual.'
+      : missao === 'campo'
+        ? `${contagem} municípios pedem presença de campo agora. Potencial alto com cobertura insuficiente.`
+        : missao === 'pesquisa'
+          ? `${contagem} municípios pedem olhar analítico. A pesquisa ainda não acompanha o potencial.`
+          : missao === 'digital'
+            ? `${contagem} municípios pedem apontamento digital. Há oportunidade mal aproveitada.`
+            : `${contagem} municípios pedem aceleração de percepção sobre entregas.`
+
+  return {
+    tensao: `Tensão atual: ${tensao}`,
+    epicentros: epicentros
+      ? `Epicentros hoje: ${epicentros}`
+      : 'Epicentros hoje: sem municípios no grupo',
+    mudanca: `Mudança recente: ${variacao.rotulo}`,
+    descricaoAtiva: descricaoAtiva || cfg.descricao,
+  }
+}
+
+export function buildLeituraExecutivaHoje(
+  municipios: IptMunicipio[],
+  missao: IptMissaoFiltro = 'campo'
+): string {
+  const alvo: IptMissaoId = missao === 'todas' ? 'campo' : missao
+  const doGrupo = ordenarMunicipiosMissao(
+    filtrarMunicipiosPorMissao(municipios, alvo),
+    alvo
+  )
+  const relevantes = doGrupo.filter((m) => iptAltaExpectativa(m)).length
+  const foco = doGrupo
+    .slice(0, 3)
+    .map((m) => m.municipio)
+    .join(', ')
+  const titulo = iptMissaoConfig(alvo).titulo
+
+  if (doGrupo.length === 0) {
+    return `Nenhuma tensão crítica na missão ${titulo} no recorte atual.`
+  }
+
+  if (alvo === 'campo') {
+    return `${relevantes || doGrupo.length} municípios com potencial relevante e baixa presença de campo. Priorize ${foco || 'os epicentros da missão'}.`
+  }
+  if (alvo === 'pesquisa') {
+    return `${doGrupo.length} municípios em ${titulo}. A pesquisa ainda não acompanha o potencial — priorize ${foco}.`
+  }
+  if (alvo === 'digital') {
+    return `${doGrupo.length} municípios em ${titulo}. Há oportunidade digital mal aproveitada — priorize ${foco}.`
+  }
+  return `${doGrupo.length} municípios em ${titulo}. Entregas pedem valorização — priorize ${foco}.`
+}
+
+export function textoAcaoRecomendada(
+  missao: IptMissaoFiltro,
+  focoPrincipal: string[]
+): string {
+  const cidades = focoPrincipal.slice(0, 3).join(', ')
+  if (!cidades) return 'Sem municípios prioritários no recorte atual.'
+  if (missao === 'campo' || missao === 'todas') {
+    return `Abrir agenda regional em ${cidades}. Ativar líderes locais e roteiro de presença.`
+  }
+  if (missao === 'pesquisa') {
+    return `Aprofundar leitura de pesquisa em ${cidades}. Checar hipótese e validar tendência local.`
+  }
+  if (missao === 'digital') {
+    return `Encaminhar frente digital para ${cidades}. Priorizar cobertura e mobilização local.`
+  }
+  return `Acelerar valorização de entregas em ${cidades}. Conectar obras à presença no território.`
 }
 
 export function rotuloEvolucaoVisitas(m: IptMunicipio): string {

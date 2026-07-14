@@ -4,11 +4,13 @@ import type { CSSProperties } from 'react'
 import { Building2, MapPin, Megaphone, Smartphone } from 'lucide-react'
 import { CockpitIcon } from '@/components/ui/cockpit-icon'
 import {
+  enrichMissaoCard,
   IPT_MISSOES,
   type IptMissaoFiltro,
   type IptMissaoId,
   type IptMissaoVariacao,
 } from '@/lib/ipt-missoes'
+import type { IptMunicipio } from '@/lib/ipt'
 import { cn } from '@/lib/utils'
 
 const MISSAO_ICONE = {
@@ -18,7 +20,6 @@ const MISSAO_ICONE = {
   obras: Building2,
 } as const
 
-/** Barras decorativas (só visual) — ritmo diferente por missão. */
 const SPARK: Record<IptMissaoId, number[]> = {
   campo: [28, 48, 36, 62, 44, 78, 55],
   pesquisa: [40, 32, 58, 46, 70, 52, 64],
@@ -27,6 +28,7 @@ const SPARK: Record<IptMissaoId, number[]> = {
 }
 
 type Props = {
+  municipios: IptMunicipio[]
   contagem: Record<IptMissaoId, number>
   variacoes: Record<IptMissaoId, IptMissaoVariacao>
   missaoAtiva: IptMissaoFiltro
@@ -35,6 +37,7 @@ type Props = {
 }
 
 export function IptMissoesStrip({
+  municipios,
   contagem,
   variacoes,
   missaoAtiva,
@@ -53,7 +56,12 @@ export function IptMissoesStrip({
           const spark = SPARK[missao.id]
           const sparkMax = Math.max(...spark)
           const vazia = qtd === 0
-          const variacao = variacoes[missao.id]
+          const enrich = enrichMissaoCard(
+            missao.id,
+            municipios,
+            qtd,
+            variacoes[missao.id]
+          )
           return (
             <button
               key={missao.id}
@@ -75,6 +83,15 @@ export function IptMissoesStrip({
                 } as CSSProperties
               }
             >
+              <div className="ipt-missao-card__spark" aria-hidden>
+                {spark.map((v, i) => (
+                  <span
+                    key={`${missao.id}-${i}`}
+                    style={{ height: `${Math.max(22, (v / sparkMax) * 100)}%` }}
+                  />
+                ))}
+              </div>
+
               <div className="ipt-missao-card__top">
                 <span className="ipt-missao-card__icon" aria-hidden>
                   <CockpitIcon icon={Icon} size="sm" />
@@ -87,33 +104,19 @@ export function IptMissoesStrip({
               <p className="ipt-missao-card__count">
                 <strong>{qtd}</strong> municípios
               </p>
-              <p className="ipt-missao-card__desc">
-                {vazia
-                  ? 'Nenhum município apresenta essa incompatibilidade no recorte atual.'
-                  : missao.descricao}
-              </p>
 
-              <p
-                className={cn(
-                  'ipt-missao-card__variacao',
-                  variacao.delta != null && variacao.delta > 0 && 'ipt-missao-card__variacao--up',
-                  variacao.delta != null && variacao.delta < 0 && 'ipt-missao-card__variacao--down'
-                )}
-              >
-                {variacao.rotulo}
-              </p>
+              <p className="ipt-missao-card__desc">{enrich.descricaoAtiva}</p>
 
-              <div className="ipt-missao-card__spark" aria-hidden>
-                {spark.map((v, i) => (
-                  <span
-                    key={`${missao.id}-${i}`}
-                    style={{ height: `${Math.max(22, (v / sparkMax) * 100)}%` }}
-                  />
-                ))}
-              </div>
+              {!vazia ? (
+                <ul className="ipt-missao-card__bullets">
+                  <li>{enrich.tensao}</li>
+                  <li>{enrich.epicentros}</li>
+                  <li>{enrich.mudanca}</li>
+                </ul>
+              ) : null}
 
               <span className="ipt-missao-card__cta">
-                Ver municípios
+                Ver prioridades
                 <span aria-hidden>→</span>
               </span>
             </button>

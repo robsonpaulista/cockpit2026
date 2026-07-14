@@ -15,21 +15,18 @@ import {
   type LucideIcon,
 } from 'lucide-react'
 import { CockpitIcon } from '@/components/ui/cockpit-icon'
-import {
-  DashboardPageChrome,
-  DashboardPageShell,
-} from '@/components/dashboard/dashboard-page-chrome'
-import { IptPageHeader } from '@/components/ipt/ipt-page-header'
+import { DashboardPageShell } from '@/components/dashboard/dashboard-page-chrome'
+import { IptExecutiveBanner } from '@/components/ipt/ipt-executive-banner'
 import { IptMissoesStrip } from '@/components/ipt/ipt-missoes-strip'
 import { IptMissaoLista } from '@/components/ipt/ipt-missao-lista'
 import { IptMissaoDetalhe } from '@/components/ipt/ipt-missao-detalhe'
 import { IptResumoCampanhaBar } from '@/components/ipt/ipt-resumo-campanha-bar'
 import { IptTdSelect } from '@/components/ipt/ipt-td-select'
-import { useDashboardTopbarVisible } from '@/hooks/use-dashboard-topbar-visible'
 import { useIpt } from '@/hooks/use-ipt'
 import { usePermissions } from '@/hooks/use-permissions'
 import { exportarIptExcel } from '@/lib/ipt-export'
 import {
+  buildLeituraExecutivaHoje,
   buildResumoCampanha,
   contagemPorMissao,
   filtrarMunicipiosPorMissao,
@@ -38,6 +35,7 @@ import {
   IPT_MISSOES,
   iptMissaoConfig,
   lerContagemHistorico,
+  microcopyMapaMissao,
   ordenarMunicipiosMissao,
   salvarContagemHistorico,
   variacaoMissao,
@@ -50,9 +48,6 @@ import type { TerritorioDesenvolvimentoPI } from '@/lib/piaui-territorio-desenvo
 import { cn } from '@/lib/utils'
 import '@/app/dashboard/territorio/ipt/ipt-visual-refine.css'
 import '@/app/dashboard/territorio/ipt/ipt-operacional.css'
-
-const IPT_PAGE_TITLE = 'Missões estratégicas'
-const IPT_PAGE_DESCRIPTION = 'Onde sua atenção gera mais impacto agora'
 
 const MISSAO_FILTRO_ICONE: Record<IptMissaoId, LucideIcon> = {
   campo: Crosshair,
@@ -85,7 +80,6 @@ export function IptPanel() {
     IptMissaoId,
     number
   > | null>(null)
-  const topbarVisible = useDashboardTopbarVisible()
   const { loading, error, conexaoInstavel, municipios, recarregar } = useIpt()
   const { isAdmin, canAccess } = usePermissions()
   const podeVerExpectativa = isAdmin || canAccess('territorio')
@@ -127,6 +121,15 @@ export function IptPanel() {
 
   const resumo = useMemo(
     () => buildResumoCampanha(municipiosNoEscopo, missaoAtiva),
+    [municipiosNoEscopo, missaoAtiva]
+  )
+
+  const leituraHoje = useMemo(
+    () =>
+      buildLeituraExecutivaHoje(
+        municipiosNoEscopo,
+        missaoAtiva === 'todas' ? 'campo' : missaoAtiva
+      ),
     [municipiosNoEscopo, missaoAtiva]
   )
 
@@ -221,7 +224,7 @@ export function IptPanel() {
       })
     : '—'
 
-  const headerAction = (
+  const bannerActions = (
     <div className="ipt-header-actions">
       <IptTdSelect
         variant="inline"
@@ -232,10 +235,6 @@ export function IptPanel() {
         active={Boolean(filtroTd)}
         onChange={setFiltroTd}
       />
-      <div className="ipt-header-meta" title="Janela de campo e referência de atualização">
-        <span>30 / 31–60 dias</span>
-        <span>{atualizadoLabel}</span>
-      </div>
       <button
         type="button"
         onClick={handleExportar}
@@ -261,17 +260,6 @@ export function IptPanel() {
 
   return (
     <DashboardPageShell className="ipt-page-shell ipt-page-shell--operacional">
-      {!isNativeFullscreen ? (
-        <DashboardPageChrome>
-          <IptPageHeader
-            compact={topbarVisible}
-            title={IPT_PAGE_TITLE}
-            description={IPT_PAGE_DESCRIPTION}
-            action={headerAction}
-          />
-        </DashboardPageChrome>
-      ) : null}
-
       <div className="ipt-page-body ipt-operacional flex min-h-0 flex-1 flex-col gap-3">
         {conexaoInstavel && !error ? (
           <div className="ipt-page-alert flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
@@ -284,13 +272,22 @@ export function IptPanel() {
         ) : null}
 
         {!isNativeFullscreen ? (
-          <IptMissoesStrip
-            contagem={contagem}
-            variacoes={variacoes}
-            missaoAtiva={missaoAtiva}
-            loading={loading}
-            onSelect={handleMissaoSelect}
-          />
+          <>
+            <IptExecutiveBanner
+              texto={leituraHoje}
+              janela="30 / 31–60 dias"
+              atualizadoEm={atualizadoLabel}
+              actions={bannerActions}
+            />
+            <IptMissoesStrip
+              municipios={municipiosNoEscopo}
+              contagem={contagem}
+              variacoes={variacoes}
+              missaoAtiva={missaoAtiva}
+              loading={loading}
+              onSelect={handleMissaoSelect}
+            />
+          </>
         ) : null}
 
         <div
@@ -304,12 +301,13 @@ export function IptPanel() {
           <section className="ipt-bloco ipt-bloco-mapa">
             <div className="ipt-bloco-mapa__head">
               <div className="ipt-bloco-mapa__intro">
-                <h2 className="ipt-bloco__title">Mapa estratégico</h2>
+                <h2 className="ipt-bloco__title">Mapa Estratégico</h2>
                 <p className="ipt-bloco__sub">
                   {missaoAtiva === 'todas'
-                    ? 'Selecione uma missão para visualizar os municípios no mapa.'
-                    : `Exibindo somente municípios de ${iptMissaoConfig(missaoAtiva).titulo}.`}
+                    ? 'Visão geral dos municípios da campanha'
+                    : `Exibindo municípios da missão ${iptMissaoConfig(missaoAtiva).titulo}`}
                 </p>
+                <span className="ipt-bloco-mapa__seal">{microcopyMapaMissao(missaoAtiva)}</span>
               </div>
               <div
                 className="ipt-operacional__map-filters"

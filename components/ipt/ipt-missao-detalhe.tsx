@@ -1,7 +1,8 @@
 'use client'
 
-import { useMemo, useState } from 'react'
-import { BarChart3, Building2, ChevronDown, MapPin, Smartphone } from 'lucide-react'
+import { useEffect, useId, useMemo, useState, type CSSProperties } from 'react'
+import { createPortal } from 'react-dom'
+import { BarChart3, Building2, MapPin, Smartphone, X } from 'lucide-react'
 import { CockpitIcon } from '@/components/ui/cockpit-icon'
 import { PerfilPopulacaoPanel } from '@/components/perfil-populacao-panel'
 import { getEleitoradoByCity, getEleitoradoTotalPiaui } from '@/lib/eleitores'
@@ -17,10 +18,13 @@ import {
   type IptSinal,
 } from '@/lib/ipt'
 import {
+  chipsEvidenciaMissao,
   estimativaDiasSemVisita,
+  frasePorQueMissao,
   iptMissaoConfig,
   missaoPrincipal,
   prioridadeImpactoMissao,
+  resumoDiagnosticoMissao,
   rotuloRelevanciaTerritorial,
   rotuloSinalCurto,
   type IptMissaoFiltro,
@@ -140,10 +144,10 @@ const INDICADOR_META: Record<
   IndicadorId,
   { label: string; cor: string; icon: typeof MapPin }
 > = {
-  pesquisa: { label: 'PESQUISA', cor: '#3269C8', icon: BarChart3 },
-  campo: { label: 'CAMPO', cor: '#D79A19', icon: MapPin },
-  digital: { label: 'DIGITAL', cor: '#29935F', icon: Smartphone },
-  obras: { label: 'OBRAS', cor: '#7851B8', icon: Building2 },
+  pesquisa: { label: 'PESQUISA', cor: '#e28000', icon: BarChart3 },
+  campo: { label: 'CAMPO', cor: '#ff9800', icon: MapPin },
+  digital: { label: 'DIGITAL', cor: '#ffc340', icon: Smartphone },
+  obras: { label: 'OBRAS', cor: '#666666', icon: Building2 },
 }
 
 function sinalDoIndicador(m: IptMunicipio, id: IndicadorId): IptSinal {
@@ -166,7 +170,8 @@ export function IptMissaoDetalhe({
   podeVerExpectativa = false,
   onClear,
 }: Props) {
-  const [mostrarDemo, setMostrarDemo] = useState(false)
+  const [modalPerfilAberto, setModalPerfilAberto] = useState(false)
+  const perfilTituloId = useId()
 
   const missaoContexto: IptMissaoId | null = useMemo(() => {
     if (!municipio) return null
@@ -175,6 +180,10 @@ export function IptMissaoDetalhe({
   }, [municipio, missaoAtiva])
 
   const hierarquiaAtiva = missaoAtiva !== 'todas' && missaoContexto != null
+
+  useEffect(() => {
+    setModalPerfilAberto(false)
+  }, [municipio?.municipio])
 
   if (!municipio) {
     return (
@@ -190,7 +199,14 @@ export function IptMissaoDetalhe({
     demo?.populacao_estimada_ultimo_ano ?? demo?.populacao_censo_2022 ?? null
   const eleitorado = getEleitoradoByCity(municipio.municipio)
   const impacto = prioridadeImpactoMissao(municipio, missaoAtiva)
-  const missaoTitulo = missaoContexto ? iptMissaoConfig(missaoContexto).titulo : null
+  const missaoCfg = missaoContexto ? iptMissaoConfig(missaoContexto) : null
+  const missaoTitulo = missaoCfg?.titulo ?? null
+  const porQue =
+    missaoContexto != null ? frasePorQueMissao(municipio, missaoContexto) : null
+  const diagnostico =
+    missaoContexto != null ? resumoDiagnosticoMissao(municipio, missaoContexto) : null
+  const chips =
+    missaoContexto != null ? chipsEvidenciaMissao(municipio, missaoContexto) : []
   const demografiaPrincipal =
     indicadores?.pct1559 != null
       ? `${formatDemografiaPercent(indicadores.pct1559)} em idade ativa`
@@ -199,24 +215,33 @@ export function IptMissaoDetalhe({
         : '—'
 
   return (
+    <>
     <section
       className={cn(
         'ipt-bloco ipt-bloco-detalhe',
         hierarquiaAtiva && 'ipt-bloco-detalhe--hierarquia'
       )}
+      style={
+        missaoCfg
+          ? ({
+              '--missao-cor': missaoCfg.cor,
+              '--missao-suave': missaoCfg.corSuave,
+              '--missao-texto': missaoCfg.corTexto,
+            } as CSSProperties)
+          : undefined
+      }
     >
       <div className="ipt-bloco-detalhe__head">
-        <div className="min-w-0">
-          <h3 className="ipt-bloco-detalhe__title">
-            {municipio.municipio.toUpperCase()}
-            <span>— PI</span>
-          </h3>
-          {missaoTitulo && hierarquiaAtiva ? (
-            <p className="ipt-bloco-detalhe__missao-eyebrow">
-              Missão: {missaoTitulo}
-            </p>
-          ) : null}
-        </div>
+        <h3 className="ipt-bloco-detalhe__title">
+          {municipio.municipio.toUpperCase()}
+          <span>— PI</span>
+        </h3>
+        {diagnostico ? <p className="ipt-bloco-detalhe__lead">{diagnostico}</p> : null}
+        {missaoTitulo && hierarquiaAtiva ? (
+          <p className="ipt-bloco-detalhe__missao-eyebrow">
+            Missão: {missaoTitulo}
+          </p>
+        ) : null}
         <div className="ipt-bloco-detalhe__head-actions">
           {impacto !== 'baixa' ? (
             <span
@@ -240,7 +265,7 @@ export function IptMissaoDetalhe({
 
       <div className="ipt-bloco-detalhe__stats">
         <div>
-          <span>Expec. 2026</span>
+          <span>Expectativa 2026</span>
           {podeVerExpectativa ? (
             <>
               <strong>{formatInt(municipio.expectativaVotos)}</strong>
@@ -269,11 +294,25 @@ export function IptMissaoDetalhe({
           <em>{formatPctDoTotal(eleitorado, getEleitoradoTotalPiaui())}</em>
         </div>
         <div>
-          <span>IDH</span>
+          <span>IDH / FAIXA</span>
           <strong>{demografiaPrincipal}</strong>
           <em>15–59 / urbanização</em>
         </div>
       </div>
+
+      {hierarquiaAtiva && porQue ? (
+        <div className="ipt-bloco-detalhe__por-que">
+          <h4>Por que entrou nesta missão?</h4>
+          <p>{porQue}</p>
+          {chips.length > 0 ? (
+            <ul className="ipt-bloco-detalhe__chips">
+              {chips.map((chip) => (
+                <li key={chip}>{chip}</li>
+              ))}
+            </ul>
+          ) : null}
+        </div>
+      ) : null}
 
       {hierarquiaAtiva ? null : (
         <div className="ipt-bloco-detalhe__inds">
@@ -296,28 +335,100 @@ export function IptMissaoDetalhe({
         </div>
       )}
 
-      {!hierarquiaAtiva ? (
       <div className="ipt-bloco-detalhe__demo">
         <button
           type="button"
           className="ipt-bloco-detalhe__demo-toggle"
-          aria-expanded={mostrarDemo}
-          onClick={() => setMostrarDemo((v) => !v)}
+          onClick={() => setModalPerfilAberto(true)}
         >
           <span>
-            <strong>Perfil de quem vive no município</strong>
+            <strong>Abrir perfil do município</strong>
             <em>Contexto demográfico para compreender o público local.</em>
           </span>
-          <CockpitIcon icon={ChevronDown} size="sm" className={mostrarDemo ? 'rotate-180' : undefined} />
+          <span className="ipt-bloco-detalhe__demo-action" aria-hidden>
+            →
+          </span>
         </button>
-        {mostrarDemo ? (
-          <div className="ipt-bloco-detalhe__demo-body">
-            <PerfilPopulacaoPanel municipio={municipio.municipio} appearance="light" />
-          </div>
-        ) : null}
       </div>
-      ) : null}
     </section>
+
+    {modalPerfilAberto ? (
+      <PerfilMunicipioModal
+        tituloId={perfilTituloId}
+        municipio={municipio.municipio}
+        onClose={() => setModalPerfilAberto(false)}
+      />
+    ) : null}
+    </>
+  )
+}
+
+function PerfilMunicipioModal({
+  tituloId,
+  municipio,
+  onClose,
+}: {
+  tituloId: string
+  municipio: string
+  onClose: () => void
+}) {
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => {
+    setMounted(true)
+    const prev = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose()
+    }
+    window.addEventListener('keydown', onKey)
+    return () => {
+      document.body.style.overflow = prev
+      window.removeEventListener('keydown', onKey)
+    }
+  }, [onClose])
+
+  if (!mounted) return null
+
+  return createPortal(
+    <div className="ipt-foco-modal" role="presentation">
+      <button
+        type="button"
+        className="ipt-foco-modal__backdrop"
+        aria-label="Fechar"
+        onClick={onClose}
+      />
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={tituloId}
+        className="ipt-perfil-modal__panel"
+      >
+        <div className="ipt-foco-modal__head">
+          <div>
+            <p className="ipt-foco-modal__eyebrow">Demografia</p>
+            <h2 id={tituloId} className="ipt-foco-modal__title">
+              Perfil de quem vive em {municipio}
+            </h2>
+          </div>
+          <button
+            type="button"
+            className="ipt-foco-modal__close"
+            onClick={onClose}
+            aria-label="Fechar"
+          >
+            <CockpitIcon icon={X} size="sm" />
+          </button>
+        </div>
+        <p className="ipt-foco-modal__lead">
+          Contexto demográfico para compreender o público local.
+        </p>
+        <div className="ipt-perfil-modal__body">
+          <PerfilPopulacaoPanel municipio={municipio} appearance="light" />
+        </div>
+      </div>
+    </div>,
+    document.body
   )
 }
 
