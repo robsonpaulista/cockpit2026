@@ -156,10 +156,28 @@ export function buildIptPresencaDigitalPorMunicipio(input: {
   }
 }
 
+/** Menores contagens na base Instagram (seguidores e contas engajadas). */
+export function minimosBaseDigital(
+  porMunicipio: Map<string, IptPresencaDigitalMunicipio>
+): { seguidores: number | null; engajadas: number | null } {
+  let minSeg: number | null = null
+  let minEng: number | null = null
+  for (const row of porMunicipio.values()) {
+    if (row.seguidores > 0) {
+      minSeg = minSeg == null ? row.seguidores : Math.min(minSeg, row.seguidores)
+    }
+    if (row.contasEngajadas > 0) {
+      minEng = minEng == null ? row.contasEngajadas : Math.min(minEng, row.contasEngajadas)
+    }
+  }
+  return { seguidores: minSeg, engajadas: minEng }
+}
+
 export function mergePresencaDigitalNosMunicipiosIpt(
   municipios: IptMunicipio[],
   porMunicipio: Map<string, IptPresencaDigitalMunicipio>
 ): IptMunicipio[] {
+  const minBase = minimosBaseDigital(porMunicipio)
   return municipios.map((m) => {
     const digital = porMunicipio.get(normalizeIptMunicipio(m.municipio))
     if (!digital) {
@@ -176,6 +194,8 @@ export function mergePresencaDigitalNosMunicipiosIpt(
           digitalContasEngajadas: null,
           digitalSeguidoresAnterior: null,
           digitalContasEngajadasAnterior: null,
+          digitalSeguidoresMinBase: minBase.seguidores,
+          digitalContasEngajadasMinBase: minBase.engajadas,
         },
         evolucao: {
           ...m.evolucao,
@@ -197,6 +217,8 @@ export function mergePresencaDigitalNosMunicipiosIpt(
         digitalContasEngajadas: digital.contasEngajadas,
         digitalSeguidoresAnterior: digital.seguidoresAnterior,
         digitalContasEngajadasAnterior: digital.contasEngajadasAnterior,
+        digitalSeguidoresMinBase: minBase.seguidores,
+        digitalContasEngajadasMinBase: minBase.engajadas,
       },
       evolucao: {
         ...m.evolucao,

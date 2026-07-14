@@ -26,6 +26,7 @@ import {
   prioridadeImpactoMissao,
   resumoDiagnosticoMissao,
   rotuloRelevanciaTerritorial,
+  rotuloSeguidoresDigital,
   rotuloSinalCurto,
   type IptMissaoFiltro,
   type IptMissaoId,
@@ -117,14 +118,7 @@ function resumoIndicador(m: IptMunicipio, id: IndicadorId): { valor: string; det
   }
   if (id === 'digital') {
     return {
-      valor:
-        m.detalhes.digitalSeguidoresPct != null
-          ? `${m.detalhes.digitalSeguidoresPct.toLocaleString('pt-BR', {
-              maximumFractionDigits: 1,
-            })}%`
-          : m.detalhes.digitalSeguidores != null && m.detalhes.digitalSeguidores > 0
-            ? formatInt(m.detalhes.digitalSeguidores)
-            : 'Fora dos 45 da base',
+      valor: rotuloSeguidoresDigital(m, { compacto: true }),
       detalhe: 'Seguidores vs. exp. votos',
     }
   }

@@ -46,6 +46,16 @@ export type IptDetalhes = {
   /** Snapshot anterior de seguidores (histórico diário). */
   digitalSeguidoresAnterior: number | null
   digitalContasEngajadasAnterior: number | null
+  /**
+   * Menor contagem de seguidores entre municípios presentes na base Instagram.
+   * Usado para rotular cidades fora da base como "< X seguidores".
+   */
+  digitalSeguidoresMinBase: number | null
+  /**
+   * Menor contagem de contas engajadas entre municípios presentes na base.
+   * Usado para rotular cidades fora da base como "< X engajadas".
+   */
+  digitalContasEngajadasMinBase: number | null
 }
 
 export type IptEvolucaoMunicipio = {
@@ -432,6 +442,8 @@ export function calcularIptMunicipios(inputs: IptMunicipioInput[]): IptMunicipio
           digitalContasEngajadas: null,
           digitalSeguidoresAnterior: null,
           digitalContasEngajadasAnterior: null,
+          digitalSeguidoresMinBase: null,
+          digitalContasEngajadasMinBase: null,
         },
         evolucao: {
           pesquisa: 'sem_dado',

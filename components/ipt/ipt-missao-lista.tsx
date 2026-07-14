@@ -7,6 +7,8 @@ import {
   missaoPrincipal,
   prioridadeImpactoMissao,
   relevanciaCurta,
+  rotuloEngajamentoDigital,
+  rotuloSeguidoresDigital,
   subtituloListaMissao,
   type IptMissaoFiltro,
   type IptMissaoId,
@@ -26,30 +28,21 @@ function formatExpectativa(n: number): string {
   return n.toLocaleString('pt-BR')
 }
 
-function textoSeguidores(m: IptMunicipio): string {
-  const seg = m.detalhes.digitalSeguidores
-  if (seg == null || seg <= 0) return 'Fora dos 45 da base'
-  return seg.toLocaleString('pt-BR')
-}
-
 function intensidadeLabel(impacto: 'alta' | 'media' | 'baixa'): string {
   if (impacto === 'alta') return 'Alta'
   if (impacto === 'media') return 'Média'
   return 'Baixa'
 }
 
-function colunasMissao(missao: IptMissaoId | null): [string, string, string] {
+function colunasMissao(missao: IptMissaoId | null): string[] {
   if (missao === 'campo') return ['Última visita', 'Cobertura de campo', 'Prioridade']
   if (missao === 'pesquisa') return ['Posição', 'Média', 'Prioridade']
-  if (missao === 'digital') return ['Seguidores', 'Cobertura', 'Prioridade']
+  if (missao === 'digital') return ['Seguidores', 'Engajamento', 'Cobertura', 'Prioridade']
   if (missao === 'obras') return ['Recursos', 'Obras', 'Prioridade']
   return ['Evidência', 'Detalhe', 'Prioridade']
 }
 
-function valoresLinha(
-  m: IptMunicipio,
-  missao: IptMissaoId | null
-): [string, string, string] {
+function valoresLinha(m: IptMunicipio, missao: IptMissaoId | null): string[] {
   const impacto = prioridadeImpactoMissao(m, missao ?? 'todas')
   const intensidade = intensidadeLabel(impacto)
 
@@ -80,7 +73,12 @@ function valoresLinha(
         : m.sinais.digital === 'sem_dado'
           ? 'Abaixo'
           : '—'
-    return [textoSeguidores(m), cobertura, intensidade]
+    return [
+      rotuloSeguidoresDigital(m, { compacto: true }),
+      rotuloEngajamentoDigital(m, { compacto: true }),
+      cobertura,
+      intensidade,
+    ]
   }
   if (missao === 'obras') {
     const valor =
@@ -108,13 +106,15 @@ export function IptMissaoLista({
 }: Props) {
   const missaoLista: IptMissaoId | null =
     missaoAtiva === 'todas' ? null : missaoAtiva
-  const [colA, colB, colC] = colunasMissao(missaoLista)
+  const colunas = colunasMissao(missaoLista)
+  const isDigital = missaoLista === 'digital'
 
   return (
     <section
       className={cn(
         'ipt-bloco ipt-bloco-lista',
-        missaoAtiva !== 'todas' && 'ipt-bloco-lista--missao'
+        missaoAtiva !== 'todas' && 'ipt-bloco-lista--missao',
+        isDigital && 'ipt-bloco-lista--digital'
       )}
     >
       <div className="ipt-bloco-lista__head">
@@ -137,9 +137,9 @@ export function IptMissaoLista({
             <span />
             <span>Município</span>
             <span>{podeVerExpectativa && missaoLista == null ? 'Exp. votos' : 'Relevância'}</span>
-            <span>{colA}</span>
-            <span>{colB}</span>
-            <span>{colC}</span>
+            {colunas.map((col) => (
+              <span key={col}>{col}</span>
+            ))}
           </div>
           <ul className="ipt-bloco-lista__rows">
             {municipios.map((m, idx) => {
@@ -154,7 +154,9 @@ export function IptMissaoLista({
               const relevancia = podeVerExpectativa && missaoLista == null
                 ? formatExpectativa(m.expectativaVotos)
                 : relevanciaCurta(m)
-              const [vA, vB, vC] = valoresLinha(m, missaoLinha)
+              const valores = valoresLinha(m, missaoLinha)
+              const prio = valores[valores.length - 1]
+              const metricas = valores.slice(0, -1)
 
               return (
                 <li key={m.municipio}>
@@ -176,8 +178,11 @@ export function IptMissaoLista({
                     </span>
                     <span className="ipt-bloco-lista__muni">{m.municipio}</span>
                     <span className="ipt-bloco-lista__metric">{relevancia}</span>
-                    <span className="ipt-bloco-lista__metric">{vA}</span>
-                    <span className="ipt-bloco-lista__metric">{vB}</span>
+                    {metricas.map((valor, i) => (
+                      <span key={`${m.municipio}-${colunas[i]}`} className="ipt-bloco-lista__metric">
+                        {valor}
+                      </span>
+                    ))}
                     <span
                       className={cn(
                         'ipt-bloco-lista__prio',
@@ -186,7 +191,7 @@ export function IptMissaoLista({
                         impacto === 'baixa' && 'ipt-bloco-lista__prio--baixa'
                       )}
                     >
-                      {vC}
+                      {prio}
                     </span>
                   </button>
                 </li>

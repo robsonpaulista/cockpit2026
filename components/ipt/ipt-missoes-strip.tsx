@@ -101,11 +101,15 @@ export function IptMissoesStrip({
 
               <p className="ipt-missao-card__titulo">{missao.titulo}</p>
 
-              <p className="ipt-missao-card__count">
-                <strong>{qtd}</strong> municípios
+              <p className="ipt-missao-card__desc">
+                {vazia ? (
+                  enrich.descricaoAtiva
+                ) : (
+                  <>
+                    <strong>{qtd}</strong> municípios {enrich.descricaoAtiva}
+                  </>
+                )}
               </p>
-
-              <p className="ipt-missao-card__desc">{enrich.descricaoAtiva}</p>
 
               {!vazia ? (
                 <ul className="ipt-missao-card__bullets">

@@ -55,9 +55,9 @@ export const IPT_MISSOES: IptMissaoConfig[] = [
     tagline: 'Digital',
     descricao: 'Oportunidade desproporcional à presença digital. É onde a campanha deixa cobertura na mesa.',
     cor: '#8c8c8c',
-    corSuave: '#fff8e8',
+    corSuave: '#f0f0f0',
     corTexto: '#666666',
-    corTint: '#f5f5f5',
+    corTint: '#ececec',
   },
   {
     id: 'obras',
@@ -66,9 +66,9 @@ export const IPT_MISSOES: IptMissaoConfig[] = [
     tagline: 'Obras',
     descricao: 'Entregas e obras ainda não se converteram em percepção no território.',
     cor: '#666666',
-    corSuave: '#f0f0f0',
+    corSuave: '#ebebeb',
     corTexto: '#666666',
-    corTint: '#f0f0f0',
+    corTint: '#e4e4e4',
   },
 ]
 
@@ -521,6 +521,46 @@ export function resumoDiagnosticoMissao(m: IptMunicipio, missao: IptMissaoId): s
   return `${relev}, entregas presentes com aproveitamento ainda limitado.`
 }
 
+/**
+ * Rótulo de seguidores: valor da base ou "< X seguidores" quando fora dela.
+ * `compacto` omite a palavra "seguidores" quando o município está na base.
+ */
+export function rotuloSeguidoresDigital(
+  m: IptMunicipio,
+  opts?: { compacto?: boolean }
+): string {
+  const seg = m.detalhes.digitalSeguidores
+  if (seg != null && seg > 0) {
+    const n = seg.toLocaleString('pt-BR')
+    return opts?.compacto ? n : `${n} seguidores`
+  }
+  const minBase = m.detalhes.digitalSeguidoresMinBase
+  if (minBase != null && minBase > 0) {
+    return `< ${minBase.toLocaleString('pt-BR')} seguidores`
+  }
+  return 'Sem dado na base'
+}
+
+/**
+ * Rótulo de engajamento (contas engajadas): valor da base ou "< X" quando fora.
+ * `compacto` omite a palavra "engajadas" quando o município está na base.
+ */
+export function rotuloEngajamentoDigital(
+  m: IptMunicipio,
+  opts?: { compacto?: boolean }
+): string {
+  const eng = m.detalhes.digitalContasEngajadas
+  if (eng != null && eng > 0) {
+    const n = eng.toLocaleString('pt-BR')
+    return opts?.compacto ? n : `${n} engajadas`
+  }
+  const minBase = m.detalhes.digitalContasEngajadasMinBase
+  if (minBase != null && minBase > 0) {
+    return `< ${minBase.toLocaleString('pt-BR')} engajadas`
+  }
+  return 'Sem dado na base'
+}
+
 export function chipsEvidenciaMissao(m: IptMunicipio, missao: IptMissaoId): string[] {
   const chips: string[] = []
   if (iptAltaExpectativa(m)) chips.push('Expectativa relevante')
@@ -536,11 +576,7 @@ export function chipsEvidenciaMissao(m: IptMunicipio, missao: IptMissaoId): stri
     }
     if (m.evolucao.pesquisa === 'diminuiu') chips.push('Intenção em queda')
   } else if (missao === 'digital') {
-    if (m.detalhes.digitalSeguidores == null || m.detalhes.digitalSeguidores <= 0) {
-      chips.push('Fora dos 45 da base')
-    } else {
-      chips.push(`${m.detalhes.digitalSeguidores.toLocaleString('pt-BR')} seguidores`)
-    }
+    chips.push(rotuloSeguidoresDigital(m))
     chips.push('Cobertura digital abaixo do potencial')
   } else {
     if (m.detalhes.obrasQuantidade > 0) {
@@ -622,12 +658,12 @@ export function enrichMissaoCard(
     contagem === 0
       ? 'Nenhum município apresenta essa incompatibilidade no recorte atual.'
       : missao === 'campo'
-        ? `${contagem} municípios pedem presença de campo agora. Potencial alto com cobertura insuficiente.`
+        ? 'pedem presença de campo agora. Potencial alto com cobertura insuficiente.'
         : missao === 'pesquisa'
-          ? `${contagem} municípios pedem olhar analítico. A pesquisa ainda não acompanha o potencial.`
+          ? 'pedem olhar analítico. A pesquisa ainda não acompanha o potencial.'
           : missao === 'digital'
-            ? `${contagem} municípios pedem apontamento digital. Há oportunidade mal aproveitada.`
-            : `${contagem} municípios pedem aceleração de percepção sobre entregas.`
+            ? 'pedem apontamento digital. Há oportunidade mal aproveitada.'
+            : 'pedem aceleração de percepção sobre entregas.'
 
   return {
     tensao: `Tensão atual: ${tensao}`,
@@ -727,9 +763,7 @@ export function statusMissaoLinha(m: IptMunicipio, missao: IptMissaoFiltro): str
     return `${m.detalhes.pesquisaPosicaoTop5}º na pesquisa`
   }
   if (alvo === 'digital') {
-    const seg = m.detalhes.digitalSeguidores
-    if (seg == null || seg <= 0) return 'Fora dos 45 da base'
-    return `${seg.toLocaleString('pt-BR')} seguidores`
+    return rotuloSeguidoresDigital(m)
   }
   if (alvo === 'obras') {
     if (m.detalhes.obrasQuantidade > 0) {
