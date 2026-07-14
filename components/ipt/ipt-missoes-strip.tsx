@@ -1,14 +1,17 @@
 'use client'
 
-import type { CSSProperties } from 'react'
-import { Building2, MapPin, Megaphone, Smartphone, Target } from 'lucide-react'
+import { useEffect, useState, type CSSProperties } from 'react'
+import { createPortal } from 'react-dom'
+import { Building2, MapPin, Megaphone, Smartphone, Target, X } from 'lucide-react'
 import { CockpitIcon } from '@/components/ui/cockpit-icon'
 import {
   enrichMissaoCard,
   IPT_MISSOES,
   IPT_TOTAL_MUNICIPIOS_PI,
+  iptMissaoConfig,
   type IptMissaoFiltro,
   type IptMissaoId,
+  type IptMissaoMudancaItem,
   type IptMissaoVariacao,
 } from '@/lib/ipt-missoes'
 import type { IptMunicipio } from '@/lib/ipt'
@@ -48,6 +51,9 @@ export function IptMissoesStrip({
   onSelect,
 }: Props) {
   const temFiltro = missaoAtiva !== 'todas'
+  const [modalMissao, setModalMissao] = useState<IptMissaoId | null>(null)
+
+  const mudancasModal = modalMissao ? variacoes[modalMissao]?.mudancas ?? [] : []
 
   return (
     <section className="ipt-missoes" aria-label="Missões estratégicas">
@@ -59,12 +65,8 @@ export function IptMissoesStrip({
           const spark = SPARK[missao.id]
           const sparkMax = Math.max(...spark)
           const vazia = qtd === 0
-          const enrich = enrichMissaoCard(
-            missao.id,
-            municipios,
-            qtd,
-            variacoes[missao.id]
-          )
+          const variacao = variacoes[missao.id]
+          const enrich = enrichMissaoCard(missao.id, municipios, qtd, variacao)
           return (
             <button
               key={missao.id}
@@ -122,7 +124,13 @@ export function IptMissoesStrip({
                       ? `Universo Piauí: ${IPT_TOTAL_MUNICIPIOS_PI} municípios`
                       : enrich.epicentros}
                   </li>
-                  <li>{enrich.mudanca}</li>
+                  <li className="ipt-missao-card__mudanca">
+                    <MissaoMudancaLinha
+                      rotulo={variacao.rotulo}
+                      mudancas={variacao.mudancas}
+                      onVerMais={() => setModalMissao(missao.id)}
+                    />
+                  </li>
                 </ul>
               ) : null}
 
@@ -134,6 +142,136 @@ export function IptMissoesStrip({
           )
         })}
       </div>
+
+      {modalMissao && mudancasModal.length > 0 ? (
+        <MudancasRecentesModal
+          missao={modalMissao}
+          mudancas={mudancasModal}
+          onClose={() => setModalMissao(null)}
+        />
+      ) : null}
     </section>
+  )
+}
+
+function MissaoMudancaLinha({
+  rotulo,
+  mudancas,
+  onVerMais,
+}: {
+  rotulo: string
+  mudancas: IptMissaoMudancaItem[]
+  onVerMais: () => void
+}) {
+  const extras = Math.max(0, mudancas.length - 1)
+
+  return (
+    <span className="ipt-missao-card__mudanca-row">
+      <span className="ipt-missao-card__mudanca-text" title={`Mudança recente: ${rotulo}`}>
+        Mudança recente: {rotulo}
+      </span>
+      {extras > 0 ? (
+        <button
+          type="button"
+          className="ipt-missao-card__ver-mais"
+          onClick={(e) => {
+            e.preventDefault()
+            e.stopPropagation()
+            onVerMais()
+          }}
+        >
+          ver mais
+        </button>
+      ) : null}
+    </span>
+  )
+}
+
+function MudancasRecentesModal({
+  missao,
+  mudancas,
+  onClose,
+}: {
+  missao: IptMissaoId
+  mudancas: IptMissaoMudancaItem[]
+  onClose: () => void
+}) {
+  const [mounted, setMounted] = useState(false)
+  const cfg = iptMissaoConfig(missao)
+  const tituloId = `ipt-mudancas-${missao}`
+
+  useEffect(() => {
+    setMounted(true)
+    const prev = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose()
+    }
+    window.addEventListener('keydown', onKey)
+    return () => {
+      document.body.style.overflow = prev
+      window.removeEventListener('keydown', onKey)
+    }
+  }, [onClose])
+
+  if (!mounted) return null
+
+  return createPortal(
+    <div className="ipt-foco-modal" role="presentation">
+      <button
+        type="button"
+        className="ipt-foco-modal__backdrop"
+        aria-label="Fechar"
+        onClick={onClose}
+      />
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={tituloId}
+        className="ipt-foco-modal__panel"
+      >
+        <div className="ipt-foco-modal__head">
+          <div>
+            <p className="ipt-foco-modal__eyebrow">Mudanças recentes</p>
+            <h2 id={tituloId} className="ipt-foco-modal__title">
+              {cfg.titulo} · {cfg.label}
+            </h2>
+          </div>
+          <button
+            type="button"
+            className="ipt-foco-modal__close"
+            onClick={onClose}
+            aria-label="Fechar"
+          >
+            <CockpitIcon icon={X} size="sm" />
+          </button>
+        </div>
+        <p className="ipt-foco-modal__lead">
+          {mudancas.length} município{mudancas.length === 1 ? '' : 's'} alteraram o
+          recorte desde a última atualização.
+        </p>
+        <ul className="ipt-foco-modal__list ipt-mudancas-modal__list">
+          {mudancas.map((item) => (
+            <li key={`${item.sentido}-${item.municipio}`}>
+              <div className="ipt-mudancas-modal__item">
+                <span
+                  className={cn(
+                    'ipt-mudancas-modal__sentido',
+                    item.sentido === 'entrou'
+                      ? 'ipt-mudancas-modal__sentido--entrou'
+                      : 'ipt-mudancas-modal__sentido--saiu'
+                  )}
+                >
+                  {item.sentido === 'entrou' ? 'Entrou' : 'Saiu'}
+                </span>
+                <strong>{item.municipio}</strong>
+                <em>{item.resumo}</em>
+              </div>
+            </li>
+          ))}
+        </ul>
+      </div>
+    </div>,
+    document.body
   )
 }

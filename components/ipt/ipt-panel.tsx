@@ -37,6 +37,7 @@ import {
   IPT_MISSOES,
   iptMissaoConfig,
   lerContagemHistorico,
+  membrosPorMissao,
   microcopyMapaMissao,
   ordenarMunicipiosMissao,
   salvarContagemHistorico,
@@ -83,6 +84,10 @@ export function IptPanel() {
     IptMissaoId,
     number
   > | null>(null)
+  const [membrosAnterior, setMembrosAnterior] = useState<Record<
+    IptMissaoId,
+    string[]
+  > | null>(null)
   const { loading, error, conexaoInstavel, municipios, recarregar } = useIpt()
   const { isAdmin, canAccess } = usePermissions()
   const podeVerExpectativa = isAdmin || canAccess('territorio')
@@ -101,13 +106,24 @@ export function IptPanel() {
 
   const contagem = useMemo(() => contagemPorMissao(municipiosNoEscopo), [municipiosNoEscopo])
 
+  const membrosAtuais = useMemo(
+    () => membrosPorMissao(municipiosNoEscopo),
+    [municipiosNoEscopo]
+  )
+
   const variacoes = useMemo(() => {
     const out = {} as Record<IptMissaoId, IptMissaoVariacao>
     for (const m of IPT_MISSOES) {
-      out[m.id] = variacaoMissao(contagem[m.id], contagemAnterior?.[m.id] ?? null)
+      out[m.id] = variacaoMissao(
+        contagem[m.id],
+        contagemAnterior?.[m.id] ?? null,
+        m.id,
+        membrosAtuais[m.id],
+        membrosAnterior?.[m.id] ?? null
+      )
     }
     return out
-  }, [contagem, contagemAnterior])
+  }, [contagem, contagemAnterior, membrosAtuais, membrosAnterior])
 
   const municipiosEmMissaoTodas = useMemo(
     () => filtrarMunicipiosPorMissao(municipiosNoEscopo, 'todas'),
@@ -167,16 +183,25 @@ export function IptPanel() {
   }, [])
 
   useEffect(() => {
-    setContagemAnterior(lerContagemHistorico()?.counts ?? null)
+    const hist = lerContagemHistorico()
+    setContagemAnterior(hist?.counts ?? null)
+    setMembrosAnterior(hist?.membros ?? null)
   }, [])
 
   useEffect(() => {
     if (loading || municipios.length === 0) return
     setAtualizadoEm(new Date())
-    if (!lerContagemHistorico()) {
-      salvarContagemHistorico(contagem)
+    const hist = lerContagemHistorico()
+    if (!hist) {
+      salvarContagemHistorico(contagem, membrosAtuais)
+      return
     }
-  }, [loading, municipios.length, contagem])
+    // Migra snapshot antigo (só contagem) para incluir membros sem zerar o delta numérico.
+    if (!hist.membros) {
+      salvarContagemHistorico(hist.counts, membrosAtuais)
+      setMembrosAnterior(membrosAtuais)
+    }
+  }, [loading, municipios.length, contagem, membrosAtuais])
 
   useEffect(() => {
     setMunicipioSelecionado(primeiroMunicipio)
@@ -211,12 +236,13 @@ export function IptPanel() {
 
   const handleAtualizar = useCallback(() => {
     void Promise.resolve(recarregar()).then(() => {
-      // Snapshot da contagem atual vira a base da próxima variação.
-      salvarContagemHistorico(contagem)
+      // Snapshot atual vira a base da próxima variação (inclui membros).
+      salvarContagemHistorico(contagem, membrosAtuais)
       setContagemAnterior(contagem)
+      setMembrosAnterior(membrosAtuais)
       setAtualizadoEm(new Date())
     })
-  }, [contagem, recarregar])
+  }, [contagem, membrosAtuais, recarregar])
 
   const atualizadoLabel = atualizadoEm
     ? atualizadoEm.toLocaleString('pt-BR', {

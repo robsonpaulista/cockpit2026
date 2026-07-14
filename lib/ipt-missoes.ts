@@ -267,14 +267,43 @@ export function contagemPorMissao(municipios: IptMunicipio[]): Record<IptMissaoI
   }
 }
 
+/** Nomes dos municípios em cada missão (para diff de “Mudança recente”). */
+export function membrosPorMissao(municipios: IptMunicipio[]): Record<IptMissaoId, string[]> {
+  const sorted = (lista: IptMunicipio[]) =>
+    lista
+      .map((m) => m.municipio)
+      .sort((a, b) => a.localeCompare(b, 'pt-BR'))
+
+  return {
+    expectativa: sorted(municipios.filter(municipioNaMissaoExpectativa)),
+    campo: sorted(municipios.filter(municipioNaMissaoCampo)),
+    pesquisa: sorted(municipios.filter(municipioNaMissaoPesquisa)),
+    digital: sorted(municipios.filter(municipioNaMissaoDigital)),
+    obras: sorted(municipios.filter(municipioNaMissaoObras)),
+  }
+}
+
+export type IptMissaoMudancaSentido = 'entrou' | 'saiu'
+
+export type IptMissaoMudancaItem = {
+  municipio: string
+  sentido: IptMissaoMudancaSentido
+  /** Frase curta do que mudou (sem o nome do município). */
+  resumo: string
+}
+
 export type IptMissaoVariacao = {
   delta: number | null
+  /** Texto curto para o card (1 município + o que mudou, ou fallback numérico). */
   rotulo: string
+  mudancas: IptMissaoMudancaItem[]
 }
 
 export type IptContagemHistorico = {
   at: string
   counts: Record<IptMissaoId, number>
+  /** Snapshot opcional dos membros — necessário para citar municípios na mudança. */
+  membros?: Record<IptMissaoId, string[]>
 }
 
 export function lerContagemHistorico(): IptContagemHistorico | null {
@@ -290,12 +319,16 @@ export function lerContagemHistorico(): IptContagemHistorico | null {
   }
 }
 
-export function salvarContagemHistorico(counts: Record<IptMissaoId, number>): void {
+export function salvarContagemHistorico(
+  counts: Record<IptMissaoId, number>,
+  membros?: Record<IptMissaoId, string[]>
+): void {
   if (typeof window === 'undefined') return
   try {
     const payload: IptContagemHistorico = {
       at: new Date().toISOString(),
       counts,
+      ...(membros ? { membros } : {}),
     }
     window.localStorage.setItem(CONTAGE_HISTORICO_KEY, JSON.stringify(payload))
   } catch {
@@ -303,25 +336,95 @@ export function salvarContagemHistorico(counts: Record<IptMissaoId, number>): vo
   }
 }
 
-export function variacaoMissao(
-  atual: number,
-  anterior: number | null | undefined
-): IptMissaoVariacao {
-  if (anterior == null || !Number.isFinite(anterior)) {
-    return { delta: null, rotulo: 'Sem base de comparação ainda' }
+function resumoMudancaMissao(
+  missao: IptMissaoId,
+  sentido: IptMissaoMudancaSentido
+): string {
+  if (sentido === 'entrou') {
+    if (missao === 'expectativa') return 'passou a ter expectativa'
+    if (missao === 'campo') return 'passou a pedir campo'
+    if (missao === 'pesquisa') return 'pesquisa abaixo do potencial'
+    if (missao === 'digital') return 'entrou no gap digital'
+    return 'obras pedem divulgação'
   }
-  const delta = atual - anterior
-  if (delta === 0) return { delta: 0, rotulo: 'Sem alteração' }
-  if (delta > 0) {
-    return {
-      delta,
-      rotulo: `↑ ${delta} município${delta === 1 ? '' : 's'} desde a última atualização`,
+  if (missao === 'expectativa') return 'saiu da expectativa'
+  if (missao === 'campo') return 'saiu da missão campo'
+  if (missao === 'pesquisa') return 'saiu do gap de pesquisa'
+  if (missao === 'digital') return 'saiu do gap digital'
+  return 'saiu da missão obras'
+}
+
+export function diffMembrosMissao(
+  missao: IptMissaoId,
+  atuais: string[] | null | undefined,
+  anteriores: string[] | null | undefined
+): IptMissaoMudancaItem[] {
+  if (!atuais || !anteriores) return []
+  const setAtual = new Set(atuais)
+  const setAnterior = new Set(anteriores)
+  const mudancas: IptMissaoMudancaItem[] = []
+
+  for (const nome of atuais) {
+    if (!setAnterior.has(nome)) {
+      mudancas.push({
+        municipio: nome,
+        sentido: 'entrou',
+        resumo: resumoMudancaMissao(missao, 'entrou'),
+      })
     }
   }
+  for (const nome of anteriores) {
+    if (!setAtual.has(nome)) {
+      mudancas.push({
+        municipio: nome,
+        sentido: 'saiu',
+        resumo: resumoMudancaMissao(missao, 'saiu'),
+      })
+    }
+  }
+
+  return mudancas.sort((a, b) => {
+    if (a.sentido !== b.sentido) return a.sentido === 'entrou' ? -1 : 1
+    return a.municipio.localeCompare(b.municipio, 'pt-BR')
+  })
+}
+
+function rotuloFallbackDelta(delta: number): string {
+  if (delta === 0) return 'Sem alteração'
+  if (delta > 0) {
+    return `↑ ${delta} município${delta === 1 ? '' : 's'} desde a última atualização`
+  }
   const n = Math.abs(delta)
+  return `↓ ${n} município${n === 1 ? '' : 's'} desde a última atualização`
+}
+
+export function variacaoMissao(
+  atual: number,
+  anterior: number | null | undefined,
+  missao: IptMissaoId = 'campo',
+  membrosAtuais?: string[] | null,
+  membrosAnteriores?: string[] | null
+): IptMissaoVariacao {
+  if (anterior == null || !Number.isFinite(anterior)) {
+    return { delta: null, rotulo: 'Sem base de comparação ainda', mudancas: [] }
+  }
+
+  const mudancas = diffMembrosMissao(missao, membrosAtuais, membrosAnteriores)
+  const delta = atual - anterior
+
+  if (mudancas.length > 0) {
+    const primeira = mudancas[0]
+    return {
+      delta,
+      rotulo: `${primeira.municipio} — ${primeira.resumo}`,
+      mudancas,
+    }
+  }
+
   return {
     delta,
-    rotulo: `↓ ${n} município${n === 1 ? '' : 's'} desde a última atualização`,
+    rotulo: rotuloFallbackDelta(delta),
+    mudancas: [],
   }
 }
 
