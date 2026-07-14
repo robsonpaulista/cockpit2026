@@ -1,7 +1,7 @@
 /* Spatial Computing — Ficha de Atendimento (cores do sistema / Radar Eleitoral) */
 
 .spatial-ficha-page {
-  font-family: var(--font-sans), var(--font-sans-fallback), 'IBM Plex Sans', 'Inter', sans-serif;
+  font-family: var(--font-sans), var(--font-sans-fallback), 'Source Sans 3', 'Inter', sans-serif;
   background: rgb(var(--bg-app));
   color: rgb(var(--text-primary));
 }

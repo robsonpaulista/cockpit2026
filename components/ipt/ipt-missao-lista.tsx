@@ -5,6 +5,7 @@ import {
   estimativaDiasSemVisita,
   iptMissaoConfig,
   missaoPrincipal,
+  motivoCurtoMissao,
   prioridadeImpactoMissao,
   relevanciaCurta,
   rotuloEngajamentoDigital,
@@ -39,12 +40,26 @@ function colunasMissao(missao: IptMissaoId | null): string[] {
   if (missao === 'pesquisa') return ['Posição', 'Média', 'Prioridade']
   if (missao === 'digital') return ['Seguidores', 'Engajamento', 'Cobertura', 'Prioridade']
   if (missao === 'obras') return ['Recursos', 'Obras', 'Prioridade']
-  return ['Evidência', 'Detalhe', 'Prioridade']
+  return ['Motivo', 'Missão', 'Prioridade']
+}
+
+function valoresVisaoGeral(m: IptMunicipio): string[] {
+  const impacto = prioridadeImpactoMissao(m, 'todas')
+  const intensidade = intensidadeLabel(impacto)
+  const principal = missaoPrincipal(m)
+  if (!principal) return ['—', '—', intensidade]
+  return [
+    motivoCurtoMissao(m, principal),
+    iptMissaoConfig(principal).tagline,
+    intensidade,
+  ]
 }
 
 function valoresLinha(m: IptMunicipio, missao: IptMissaoId | null): string[] {
   const impacto = prioridadeImpactoMissao(m, missao ?? 'todas')
   const intensidade = intensidadeLabel(impacto)
+
+  if (missao == null) return valoresVisaoGeral(m)
 
   if (missao === 'campo') {
     return [estimativaDiasSemVisita(m), coberturaCampoRotulo(m), intensidade]
@@ -92,8 +107,6 @@ function valoresLinha(m: IptMunicipio, missao: IptMissaoId | null): string[] {
     return [valor, qtd, intensidade]
   }
 
-  const principal = missaoPrincipal(m)
-  if (principal) return valoresLinha(m, principal)
   return ['—', '—', intensidade]
 }
 
@@ -154,7 +167,7 @@ export function IptMissaoLista({
               const relevancia = podeVerExpectativa && missaoLista == null
                 ? formatExpectativa(m.expectativaVotos)
                 : relevanciaCurta(m)
-              const valores = valoresLinha(m, missaoLinha)
+              const valores = valoresLinha(m, missaoLista)
               const prio = valores[valores.length - 1]
               const metricas = valores.slice(0, -1)
 

@@ -28,7 +28,7 @@ export async function GET(
           color: '#ffffff',
           fontSize: Math.round(n * (n <= 192 ? 0.32 : 0.28)),
           fontWeight: 700,
-          fontFamily: "'IBM Plex Sans', 'Inter', sans-serif",
+          fontFamily: "'Inter', sans-serif",
           letterSpacing: '-0.04em',
         }}
       >

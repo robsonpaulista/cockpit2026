@@ -13,9 +13,9 @@ body[data-ipt-operacional] {
   --surface-muted: #f7f7f7;
   --border: #d9d9d9;
   --border-strong: #8c8c8c;
-  --text: #666666;
-  --text-muted: #8c8c8c;
-  --text-soft: #8c8c8c;
+  --text: #000000;
+  --text-muted: #000000;
+  --text-soft: #1a1a1a;
   --cockpit-gold: #ff9800;
   --mission-field: #ff9800;
   --mission-field-bg: #fff4e5;
@@ -28,6 +28,10 @@ body[data-ipt-operacional] {
   --bg-app: 243 243 243;
   --acao-bg: #666666;
   --alerta-texto: #e28000;
+  font-family: var(--font-sans), var(--font-sans-fallback), 'Source Sans 3', 'Inter', sans-serif;
+  letter-spacing: 0.005em;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
 }
 
 body[data-ipt-operacional] .ipt-page-shell--operacional {
@@ -386,13 +390,13 @@ body[data-ipt-operacional] .ipt-header-actions .ipt-scope-select {
   font-weight: 750;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: #1c1917;
+  color: #000000;
 }
 
 .ipt-missoes__sub {
   margin: 0;
   font-size: 13px;
-  color: var(--text-muted, #77808D);
+  color: #000000;
 }
 
 .ipt-missoes__grid {
@@ -571,7 +575,7 @@ body[data-ipt-operacional] .ipt-header-actions .ipt-scope-select {
   font-weight: 800;
   letter-spacing: -0.025em;
   line-height: 1.15;
-  color: #111827;
+  color: #000000;
 }
 
 .ipt-missao-card__desc {
@@ -579,7 +583,7 @@ body[data-ipt-operacional] .ipt-header-actions .ipt-scope-select {
   max-width: 100%;
   font-size: 13px;
   line-height: 1.4;
-  color: #4b5563;
+  color: #000000;
 }
 
 .ipt-missao-card__desc strong {
@@ -589,7 +593,7 @@ body[data-ipt-operacional] .ipt-header-actions .ipt-scope-select {
   letter-spacing: -0.04em;
   line-height: 1;
   margin-right: 4px;
-  color: #111827;
+  color: #000000;
 }
 
 .ipt-missao-card__bullets {
@@ -607,7 +611,7 @@ body[data-ipt-operacional] .ipt-header-actions .ipt-scope-select {
   font-size: 12px;
   line-height: 1.4;
   font-weight: 600;
-  color: #6b7280;
+  color: #000000;
 }
 
 .ipt-missao-card__bullets li::before {
@@ -720,13 +724,13 @@ body[data-ipt-operacional] .ipt-header-actions .ipt-scope-select {
   font-weight: 800;
   letter-spacing: -0.015em;
   text-transform: uppercase;
-  color: #1c1917;
+  color: #000000;
 }
 
 .ipt-bloco__sub {
   margin-top: 3px;
   font-size: 12px;
-  color: #8a8578;
+  color: #000000;
 }
 
 .ipt-bloco-mapa {
@@ -799,7 +803,7 @@ body[data-ipt-operacional] .ipt-header-actions .ipt-scope-select {
   align-items: center;
   justify-content: center;
   font-size: 13px;
-  color: #8a8578;
+  color: #000000;
 }
 
 .ipt-mapa-legenda {
@@ -824,7 +828,7 @@ body[data-ipt-operacional] .ipt-header-actions .ipt-scope-select {
   gap: 8px;
   font-size: 11.5px;
   font-weight: 650;
-  color: #1c1917;
+  color: #000000;
 }
 
 .ipt-mapa-legenda__dot {
@@ -848,7 +852,7 @@ body[data-ipt-operacional] .ipt-header-actions .ipt-scope-select {
   padding: 8px 12px;
   font-size: 12px;
   font-weight: 650;
-  color: #44403c;
+  color: #000000;
   box-shadow: 0 8px 20px rgba(28, 25, 23, 0.08);
 }
 
@@ -877,7 +881,7 @@ body[data-ipt-operacional] .ipt-header-actions .ipt-scope-select {
   font-size: 12px;
   font-weight: 600;
   letter-spacing: -0.01em;
-  color: #44403c;
+  color: #000000;
   box-shadow: none;
   transition:
     background 160ms ease,
@@ -931,7 +935,7 @@ body[data-ipt-operacional] .ipt-header-actions .ipt-scope-select {
 
 .ipt-operacional__map-filter--active {
   background: var(--ipt-gray) !important;
-  border-color: var(--ipt-gray) !important;
+  border-color: #000000 !important;
   color: #fff !important;
   box-shadow: 0 1px 2px rgba(102, 102, 102, 0.18);
 }
@@ -984,19 +988,19 @@ body[data-ipt-operacional] .ipt-header-actions .ipt-scope-select {
   padding: 5px 10px;
   font-size: 11.5px;
   font-weight: 600;
-  color: #44403c;
+  color: #000000;
 }
 
 .ipt-bloco-lista__badge strong {
   font-weight: 800;
-  color: #1c1917;
+  color: #000000;
 }
 
 .ipt-bloco-lista__empty {
   padding: 28px 8px;
   text-align: center;
   font-size: 13px;
-  color: #8a8578;
+  color: #000000;
 }
 
 .ipt-bloco-lista__rows {
@@ -1046,7 +1050,7 @@ body[data-ipt-operacional] .ipt-header-actions .ipt-scope-select {
   font-weight: 750;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  color: #a8a29e;
+  color: #000000;
   flex-shrink: 0;
 }
 
@@ -1075,7 +1079,7 @@ body[data-ipt-operacional] .ipt-header-actions .ipt-scope-select {
   flex-shrink: 0;
   font-size: 11.5px;
   font-weight: 700;
-  color: #78716c;
+  color: #000000;
   white-space: nowrap;
 }
 
@@ -1089,7 +1093,7 @@ body[data-ipt-operacional] .ipt-header-actions .ipt-scope-select {
   font-weight: 800;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: #78716c;
+  color: #000000;
 }
 
 .ipt-bloco-detalhe__complemento-grid {
@@ -1111,7 +1115,7 @@ body[data-ipt-operacional] .ipt-header-actions .ipt-scope-select {
   font-weight: 750;
   letter-spacing: 0.05em;
   text-transform: uppercase;
-  color: #a8a29e;
+  color: #000000;
 }
 
 .ipt-bloco-detalhe__comp-card strong {
@@ -1119,7 +1123,7 @@ body[data-ipt-operacional] .ipt-header-actions .ipt-scope-select {
   margin-top: 6px;
   font-size: 14px;
   font-weight: 800;
-  color: #1c1917;
+  color: #000000;
 }
 
 .ipt-bloco-detalhe__comp-card em {
@@ -1128,7 +1132,7 @@ body[data-ipt-operacional] .ipt-header-actions .ipt-scope-select {
   font-style: normal;
   font-size: 11px;
   font-weight: 650;
-  color: #78716c;
+  color: #000000;
 }
 
 .ipt-bloco-detalhe--hierarquia .ipt-bloco-detalhe__inds {
@@ -1266,7 +1270,7 @@ body[data-ipt-operacional] .ipt-header-actions .ipt-scope-select {
   align-items: center;
   justify-content: center;
   min-height: 140px;
-  color: #8a8578;
+  color: #000000;
   font-size: 13px;
   text-align: center;
   padding: 20px;
@@ -1291,7 +1295,7 @@ body[data-ipt-operacional] .ipt-header-actions .ipt-scope-select {
 
 .ipt-bloco-detalhe__title span {
   margin-left: 4px;
-  color: #a8a29e;
+  color: #000000;
   font-weight: 650;
   font-size: 12px;
 }
@@ -1329,7 +1333,7 @@ body[data-ipt-operacional] .ipt-header-actions .ipt-scope-select {
   padding: 3px 8px;
   font-size: 10.5px;
   font-weight: 600;
-  color: #57534e;
+  color: #000000;
   white-space: nowrap;
 }
 
@@ -1353,7 +1357,7 @@ body[data-ipt-operacional] .ipt-header-actions .ipt-scope-select {
   font-weight: 750;
   letter-spacing: 0.06em;
   text-transform: none;
-  color: #9c968b;
+  color: #000000;
 }
 
 .ipt-bloco-detalhe__stats strong {
@@ -1397,7 +1401,7 @@ body[data-ipt-operacional] .ipt-header-actions .ipt-scope-select {
   font-weight: 750;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  color: #a8a29e;
+  color: #000000;
 }
 
 .ipt-bloco-detalhe__ind-ico {
@@ -1444,7 +1448,7 @@ body[data-ipt-operacional] .ipt-header-actions .ipt-scope-select {
 .ipt-bloco-detalhe__ind--bem em { color: #10b981; }
 .ipt-bloco-detalhe__ind--mal em { color: #e11d48; }
 .ipt-bloco-detalhe__ind--neutro em { color: #f59e0b; }
-.ipt-bloco-detalhe__ind--sem_dado em { color: #78716c; }
+.ipt-bloco-detalhe__ind--sem_dado em { color: #000000; }
 
 .ipt-bloco-detalhe__perfil {
   width: 100%;
@@ -1763,7 +1767,7 @@ body[data-ipt-operacional] .ipt-header-actions .ipt-scope-select {
   font-size: 18px;
   font-weight: 800;
   letter-spacing: -0.02em;
-  color: #1c1917;
+  color: #000000;
 }
 
 .ipt-foco-modal__close {
@@ -1775,7 +1779,7 @@ body[data-ipt-operacional] .ipt-header-actions .ipt-scope-select {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  color: #57534e;
+  color: #000000;
   cursor: pointer;
 }
 
@@ -1783,7 +1787,7 @@ body[data-ipt-operacional] .ipt-header-actions .ipt-scope-select {
   margin: 10px 0 0;
   font-size: 13px;
   line-height: 1.4;
-  color: #57534e;
+  color: #000000;
 }
 
 .ipt-foco-modal__list {
@@ -1830,7 +1834,7 @@ body[data-ipt-operacional] .ipt-header-actions .ipt-scope-select {
 .ipt-foco-modal__list button strong {
   font-size: 14px;
   font-weight: 750;
-  color: #1c1917;
+  color: #000000;
 }
 
 .ipt-foco-modal__list button em {
@@ -1863,7 +1867,7 @@ body[data-ipt-operacional] .ipt-header-actions .ipt-scope-select {
   text-align: left;
   font-size: 12.5px;
   font-weight: 700;
-  color: #1c1917;
+  color: #000000;
   cursor: pointer;
 }
 
@@ -1883,7 +1887,7 @@ body[data-ipt-operacional] .ipt-header-actions .ipt-scope-select {
   font-style: normal;
   font-size: 11.5px;
   font-weight: 450;
-  color: #8a8578;
+  color: #000000;
 }
 
 .ipt-bloco-detalhe__demo-action {
@@ -1938,14 +1942,14 @@ body[data-ipt-operacional] .ipt-header-actions .ipt-scope-select {
 .ipt-bloco-detalhe__razoes-body p {
   margin: 0 0 8px;
   font-size: 12.5px;
-  color: #44403c;
+  color: #000000;
 }
 
 .ipt-bloco-detalhe__razoes-body ul {
   margin: 0;
   padding-left: 18px;
   font-size: 12.5px;
-  color: #57534e;
+  color: #000000;
 }
 
 .ipt-bloco-detalhe__razoes-body li + li {
@@ -1963,30 +1967,32 @@ body[data-ipt-operacional] .ipt-header-actions .ipt-scope-select {
   background: transparent !important;
 }
 
-/* ===== PALETA LARANJA + CINZA (escopo da página) ===== */
+/* ===== Tipografia em preto (headers, cards, detalhes) ===== */
 body[data-ipt-operacional] .ipt-page-title,
 body[data-ipt-operacional] .ipt-bloco__title,
 body[data-ipt-operacional] .ipt-bloco-detalhe__title,
 body[data-ipt-operacional] .ipt-bloco-lista__muni,
 body[data-ipt-operacional] .ipt-bloco-lista__metric,
 body[data-ipt-operacional] .ipt-bloco-lista__metric em,
-body[data-ipt-operacional] .ipt-resumo-bar__title {
-  color: var(--ipt-gray) !important;
-}
-
-body[data-ipt-operacional] .ipt-missao-card:not(.ipt-missao-card--active) .ipt-missao-card__titulo {
-  color: var(--ipt-gray) !important;
-}
-
+body[data-ipt-operacional] .ipt-resumo-bar__title,
+body[data-ipt-operacional] .ipt-missao-card:not(.ipt-missao-card--active) .ipt-missao-card__titulo,
+body[data-ipt-operacional] .ipt-missao-card:not(.ipt-missao-card--active) .ipt-missao-card__desc,
+body[data-ipt-operacional] .ipt-missao-card:not(.ipt-missao-card--active) .ipt-missao-card__desc strong,
+body[data-ipt-operacional] .ipt-missao-card:not(.ipt-missao-card--active) .ipt-missao-card__bullets li,
 body[data-ipt-operacional] .ipt-bloco__sub,
 body[data-ipt-operacional] .ipt-page-lead,
 body[data-ipt-operacional] .ipt-exec-banner__label,
 body[data-ipt-operacional] .ipt-exec-banner__meta,
+body[data-ipt-operacional] .ipt-exec-banner__text,
 body[data-ipt-operacional] .ipt-bloco-lista__cols,
 body[data-ipt-operacional] .ipt-bloco-mapa__seal,
 body[data-ipt-operacional] .ipt-bloco-detalhe__lead,
-body[data-ipt-operacional] .ipt-bloco-detalhe__missao-eyebrow {
-  color: var(--ipt-gray-mid) !important;
+body[data-ipt-operacional] .ipt-bloco-detalhe__missao-eyebrow,
+body[data-ipt-operacional] .ipt-bloco-detalhe__comp-label,
+body[data-ipt-operacional] .ipt-bloco-detalhe__comp-card em,
+body[data-ipt-operacional] .ipt-resumo-bar__metric-copy em,
+body[data-ipt-operacional] .ipt-resumo-bar__metric-copy small {
+  color: #000000 !important;
 }
 
 body[data-ipt-operacional] .ipt-bloco,

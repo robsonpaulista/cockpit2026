@@ -4,10 +4,10 @@
 
 @import './theme.css';
 
-/* Tipografia base — IBM Plex Sans + Inter (fallback) via next/font */
+/* Tipografia base — Source Sans 3 + Inter (fallback) via next/font */
 html {
   font-size: 16px;
-  font-family: var(--font-sans), var(--font-sans-fallback), 'IBM Plex Sans', 'Inter', sans-serif;
+  font-family: var(--font-sans), var(--font-sans-fallback), 'Source Sans 3', 'Inter', sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;

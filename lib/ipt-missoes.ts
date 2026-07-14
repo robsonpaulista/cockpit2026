@@ -463,6 +463,47 @@ export function estimativaDiasSemVisita(m: IptMunicipio): string {
   return 'sem visita registrada'
 }
 
+/** Motivo curto para a lista da visão geral (coluna Motivo). */
+export function motivoCurtoMissao(m: IptMunicipio, missao: IptMissaoId): string {
+  if (missao === 'campo') {
+    if (m.detalhes.visitasNoPeriodo > 0) {
+      const dias = Math.max(1, Math.round(15 / Math.max(1, m.detalhes.visitasNoPeriodo)))
+      return `Presença fraca · ${dias} dias`
+    }
+    if (m.detalhes.visitasPeriodoAnterior > 0) return 'Sem visitas 31–60 dias'
+    if (m.detalhes.visitasHistorico > 0) return 'Sem visitas 60 dias'
+    return 'Sem visita registrada'
+  }
+  if (missao === 'pesquisa') {
+    if (m.detalhes.pesquisaPosicaoTop5 != null && m.detalhes.pesquisaPosicaoTop5 > 5) {
+      return 'Fora do Top 5'
+    }
+    if (m.detalhes.pesquisaPosicaoTop5 == null) {
+      return m.sinais.pesquisa === 'sem_dado' ? 'Sem pesquisa suficiente' : 'Fora do Top 5'
+    }
+    if (m.evolucao.pesquisa === 'diminuiu') return 'Intenção em queda'
+    return `${m.detalhes.pesquisaPosicaoTop5}º na pesquisa`
+  }
+  if (missao === 'digital') {
+    const seg = m.detalhes.digitalSeguidores
+    if (seg == null || seg <= 0) {
+      const minBase = m.detalhes.digitalSeguidoresMinBase
+      if (minBase != null && minBase > 0) {
+        return `< ${minBase.toLocaleString('pt-BR')} seguidores`
+      }
+      return 'Presença digital baixa'
+    }
+    return `${seg.toLocaleString('pt-BR')} seguidores · cobertura baixa`
+  }
+  if (missao === 'obras') {
+    if (m.detalhes.obrasQuantidade > 0) {
+      return 'Obras com baixo aproveitamento'
+    }
+    return 'Sem aproveitamento de entregas'
+  }
+  return 'Incompatibilidade territorial'
+}
+
 /** Relevância curta para colunas da lista. */
 export function relevanciaCurta(m: IptMunicipio): string {
   if (iptAltaExpectativa(m) || m.prioridade === 'critico') return 'Alta'

@@ -1,24 +1,24 @@
 import type { Metadata, Viewport } from 'next'
-import { IBM_Plex_Sans, Inter } from 'next/font/google'
+import { Inter, Source_Sans_3 } from 'next/font/google'
 import './globals.css'
 import { RegisterPwa } from '@/components/register-pwa'
 import { DevChunkRecovery } from '@/components/dev-chunk-recovery'
 
-const ibmPlexSans = IBM_Plex_Sans({
+const sourceSans3 = Source_Sans_3({
   subsets: ['latin'],
-  weight: ['400', '500', '600', '700'],
+  weight: ['400', '500', '600', '700', '800'],
   variable: '--font-sans',
   display: 'swap',
 })
 
 const inter = Inter({
   subsets: ['latin'],
-  weight: ['400', '500', '600', '700'],
+  weight: ['400', '500', '600', '700', '800'],
   variable: '--font-sans-fallback',
   display: 'swap',
 })
 
-const appFontVariables = `${ibmPlexSans.variable} ${inter.variable}`
+const appFontVariables = `${sourceSans3.variable} ${inter.variable}`
 
 export const viewport: Viewport = {
   width: 'device-width',
@@ -84,7 +84,7 @@ export default function RootLayout({
           }}
         />
       </head>
-      <body className={`${ibmPlexSans.className} ${appFontVariables} font-sans antialiased`}>
+      <body className={`${sourceSans3.className} ${appFontVariables} font-sans antialiased`}>
         <RegisterPwa />
         <DevChunkRecovery />
         {children}

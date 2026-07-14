@@ -60,7 +60,7 @@ const config: Config = {
         sans: [
           'var(--font-sans)',
           'var(--font-sans-fallback)',
-          'IBM Plex Sans',
+          'Source Sans 3',
           'Inter',
           'sans-serif',
         ],

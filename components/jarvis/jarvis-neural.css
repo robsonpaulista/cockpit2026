@@ -1,6 +1,6 @@
 .font-jarvis-display { font-family: var(--font-jarvis-display), sans-serif; }
 .font-jarvis-mono { font-family: var(--font-jarvis-mono), monospace; }
-.font-jarvis-ui { font-family: var(--font-sans), var(--font-sans-fallback), 'IBM Plex Sans', 'Inter', sans-serif; }
+.font-jarvis-ui { font-family: var(--font-sans), var(--font-sans-fallback), 'Source Sans 3', 'Inter', sans-serif; }
 
 @keyframes jarvis-orbit-cw {
   to { transform: rotate(360deg); }
