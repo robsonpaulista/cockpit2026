@@ -546,6 +546,38 @@ body[data-ipt-operacional] .ipt-header-actions .ipt-scope-select {
   background: #fff;
 }
 
+.ipt-missao-card--na-muni {
+  box-shadow: 0 0 0 2px var(--missao-cor), 0 6px 16px rgba(0, 0, 0, 0.08);
+}
+
+.ipt-missao-card--fora-muni:not(.ipt-missao-card--active) {
+  opacity: 0.48;
+  filter: grayscale(0.15);
+}
+
+.ipt-missao-card__muni-tag {
+  margin-left: auto;
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--missao-texto, var(--missao-cor));
+  background: var(--missao-tint, rgba(255, 152, 0, 0.14));
+  border-radius: 4px;
+  padding: 0.12rem 0.35rem;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.ipt-missao-card--active .ipt-missao-card__muni-tag {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.22);
+}
+
+.ipt-operacional__map-filter--muni:not(.ipt-operacional__map-filter--active) {
+  box-shadow: inset 0 0 0 1.5px var(--missao-cor);
+}
+
 .ipt-missao-card:disabled {
   cursor: not-allowed;
   filter: grayscale(0.35);

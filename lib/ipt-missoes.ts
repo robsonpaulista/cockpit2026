@@ -172,6 +172,35 @@ export function missaoPrincipal(m: IptMunicipio): IptMissaoId | null {
   return missoesDoMunicipio(m)[0] ?? null
 }
 
+/** Missão a ativar ao filtrar a página por um município (dropdown / mapa). */
+export function missaoRecomendadaParaMunicipio(m: IptMunicipio): IptMissaoFiltro {
+  const principal = missaoPrincipal(m)
+  if (principal) return principal
+  if (municipioNaMissaoExpectativa(m)) return 'expectativa'
+  return 'todas'
+}
+
+/** IDs de missão em que a cidade entra (inclui Expectativa). */
+export function idsMissoesDoMunicipio(m: IptMunicipio): IptMissaoId[] {
+  const ids: IptMissaoId[] = []
+  if (municipioNaMissaoExpectativa(m)) ids.push('expectativa')
+  for (const id of missoesDoMunicipio(m)) ids.push(id)
+  return ids
+}
+
+/** Labels das missões em que a cidade entra (inclui Expectativa). */
+export function labelsMissoesDoMunicipio(m: IptMunicipio): string[] {
+  return idsMissoesDoMunicipio(m).map((id) => iptMissaoConfig(id).titulo)
+}
+
+export function buildLeituraMunicipioFiltro(m: IptMunicipio): string {
+  const labels = labelsMissoesDoMunicipio(m)
+  if (labels.length === 0) {
+    return `${m.municipio} não aparece em nenhuma missão crítica no recorte atual. O detalhe mostra o painel completo da cidade.`
+  }
+  return `${m.municipio} está em ${labels.join(', ')}. Mapa, prioridades e resumo filtrados para essa cidade.`
+}
+
 export function iptMissaoConfig(id: IptMissaoId): IptMissaoConfig {
   return IPT_MISSOES.find((m) => m.id === id) ?? IPT_MISSOES[0]
 }

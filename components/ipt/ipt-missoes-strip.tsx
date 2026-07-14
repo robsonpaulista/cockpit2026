@@ -38,6 +38,9 @@ type Props = {
   contagem: Record<IptMissaoId, number>
   variacoes: Record<IptMissaoId, IptMissaoVariacao>
   missaoAtiva: IptMissaoFiltro
+  /** Missões em que a cidade do filtro do header entra — destaque visual nos cards. */
+  missoesDoMunicipio?: IptMissaoId[]
+  municipioFiltro?: string | null
   loading?: boolean
   onSelect: (missao: IptMissaoId) => void
 }
@@ -47,21 +50,31 @@ export function IptMissoesStrip({
   contagem,
   variacoes,
   missaoAtiva,
+  missoesDoMunicipio = [],
+  municipioFiltro = null,
   loading,
   onSelect,
 }: Props) {
   const temFiltro = missaoAtiva !== 'todas'
+  const temMuni = Boolean(municipioFiltro)
   const [modalMissao, setModalMissao] = useState<IptMissaoId | null>(null)
 
   const mudancasModal = modalMissao ? variacoes[modalMissao]?.mudancas ?? [] : []
 
   return (
     <section className="ipt-missoes" aria-label="Missões estratégicas">
-      <div className={cn('ipt-missoes__grid', temFiltro && 'ipt-missoes__grid--filtrado')}>
+      <div
+        className={cn(
+          'ipt-missoes__grid',
+          temFiltro && 'ipt-missoes__grid--filtrado',
+          temMuni && 'ipt-missoes__grid--muni'
+        )}
+      >
         {IPT_MISSOES.map((missao) => {
           const Icon = MISSAO_ICONE[missao.id]
           const qtd = contagem[missao.id]
           const ativo = missaoAtiva === missao.id
+          const cidadeNesta = temMuni && missoesDoMunicipio.includes(missao.id)
           const spark = SPARK[missao.id]
           const sparkMax = Math.max(...spark)
           const vazia = qtd === 0
@@ -77,6 +90,8 @@ export function IptMissoesStrip({
                 'ipt-missao-card',
                 ativo && 'ipt-missao-card--active',
                 temFiltro && !ativo && 'ipt-missao-card--muted',
+                temMuni && !cidadeNesta && 'ipt-missao-card--fora-muni',
+                cidadeNesta && 'ipt-missao-card--na-muni',
                 vazia && 'ipt-missao-card--empty'
               )}
               style={
@@ -86,6 +101,13 @@ export function IptMissoesStrip({
                   '--missao-texto': missao.corTexto,
                   '--missao-tint': missao.corTint,
                 } as CSSProperties
+              }
+              title={
+                temMuni
+                  ? cidadeNesta
+                    ? `${municipioFiltro} está nesta missão`
+                    : `${municipioFiltro} não está nesta missão`
+                  : undefined
               }
             >
               <div className="ipt-missao-card__spark" aria-hidden>
@@ -102,12 +124,21 @@ export function IptMissoesStrip({
                   <CockpitIcon icon={Icon} size="sm" />
                 </span>
                 <span className="ipt-missao-card__badge">{missao.label}</span>
+                {cidadeNesta ? (
+                  <span className="ipt-missao-card__muni-tag">Nesta cidade</span>
+                ) : null}
               </div>
 
               <p className="ipt-missao-card__titulo">{missao.titulo}</p>
 
               <p className="ipt-missao-card__desc">
-                {vazia ? (
+                {temMuni && cidadeNesta ? (
+                  <>
+                    <strong>{municipioFiltro}</strong> entra nesta missão
+                  </>
+                ) : temMuni && !cidadeNesta ? (
+                  <>Fora do recorte de {municipioFiltro}</>
+                ) : vazia ? (
                   enrich.descricaoAtiva
                 ) : (
                   <>

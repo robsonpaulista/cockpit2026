@@ -39,9 +39,11 @@ import {
 } from '@/lib/ipt-missao-evolucao'
 import {
   buildLeituraExecutivaHoje,
+  buildLeituraMunicipioFiltro,
   buildResumoCampanha,
   contagemPorMissao,
   filtrarMunicipiosPorMissao,
+  idsMissoesDoMunicipio,
   indicadorDaMissao,
   IPT_MISSAO_FILTRO_OPCOES,
   IPT_MISSOES,
@@ -49,6 +51,8 @@ import {
   lerContagemHistorico,
   membrosPorMissao,
   microcopyMapaMissao,
+  missaoRecomendadaParaMunicipio,
+  municipioNaMissao,
   ordenarMunicipiosMissao,
   salvarContagemHistorico,
   variacaoMissao,
@@ -89,6 +93,8 @@ export function IptPanel() {
   const [missaoAtiva, setMissaoAtiva] = useState<IptMissaoFiltro>('todas')
   const [filtroTd, setFiltroTd] = useState<TerritorioDesenvolvimentoPI | null>(null)
   const [municipioSelecionado, setMunicipioSelecionado] = useState<string | null>(null)
+  /** Filtro explícito da página (dropdown / escolha deliberada) — não confundir com destaque automático do top da lista. */
+  const [escopoMunicipio, setEscopoMunicipio] = useState<string | null>(null)
   const [atualizadoEm, setAtualizadoEm] = useState<Date | null>(null)
   const [contagemAnterior, setContagemAnterior] = useState<Record<
     IptMissaoId,
@@ -151,40 +157,92 @@ export function IptPanel() {
     return ordenarMunicipiosMissao(filtrados, missaoAtiva)
   }, [municipiosNoEscopo, municipiosEmMissaoTodas, missaoAtiva])
 
-  const resumo = useMemo(
-    () => buildResumoCampanha(municipiosNoEscopo, missaoAtiva),
-    [municipiosNoEscopo, missaoAtiva]
+  /** Recorte efetivo da página: missão (+ TD) e, se houver, um único município. */
+  const municipiosVisao = useMemo(() => {
+    if (!escopoMunicipio) return municipiosMissao
+    const naMissao = municipiosMissao.filter((m) => m.municipio === escopoMunicipio)
+    if (naMissao.length > 0) return naMissao
+    const solto = municipiosNoEscopo.find((m) => m.municipio === escopoMunicipio)
+    return solto ? [solto] : []
+  }, [escopoMunicipio, municipiosMissao, municipiosNoEscopo])
+
+  const municipioEscopoObj = useMemo(() => {
+    if (!escopoMunicipio) return null
+    return (
+      municipiosNoEscopo.find((m) => m.municipio === escopoMunicipio) ??
+      municipios.find((m) => m.municipio === escopoMunicipio) ??
+      null
+    )
+  }, [escopoMunicipio, municipiosNoEscopo, municipios])
+
+  const missoesDoEscopo = useMemo(
+    () => (municipioEscopoObj ? idsMissoesDoMunicipio(municipioEscopoObj) : []),
+    [municipioEscopoObj]
   )
 
-  const leituraHoje = useMemo(
+  const resumo = useMemo(
     () =>
-      buildLeituraExecutivaHoje(
-        municipiosNoEscopo,
-        missaoAtiva === 'todas' ? 'campo' : missaoAtiva
+      buildResumoCampanha(
+        escopoMunicipio ? municipiosVisao : municipiosNoEscopo,
+        missaoAtiva
       ),
-    [municipiosNoEscopo, missaoAtiva]
+    [escopoMunicipio, municipiosVisao, municipiosNoEscopo, missaoAtiva]
   )
+
+  const leituraHoje = useMemo(() => {
+    if (municipioEscopoObj) return buildLeituraMunicipioFiltro(municipioEscopoObj)
+    return buildLeituraExecutivaHoje(
+      municipiosNoEscopo,
+      missaoAtiva === 'todas' ? 'campo' : missaoAtiva
+    )
+  }, [municipioEscopoObj, municipiosNoEscopo, missaoAtiva])
 
   const municipioDetalhe = useMemo(() => {
     if (!municipioSelecionado) return null
     return (
+      municipiosVisao.find((m) => m.municipio === municipioSelecionado) ??
       municipiosMissao.find((m) => m.municipio === municipioSelecionado) ??
       municipiosNoEscopo.find((m) => m.municipio === municipioSelecionado) ??
       null
     )
-  }, [municipioSelecionado, municipiosMissao, municipiosNoEscopo])
+  }, [municipioSelecionado, municipiosVisao, municipiosMissao, municipiosNoEscopo])
 
   const indicadorMapa = useMemo(() => indicadorDaMissao(missaoAtiva), [missaoAtiva])
 
-  const primeiroMunicipio = municipiosMissao[0]?.municipio ?? null
+  const primeiroMunicipio = municipiosVisao[0]?.municipio ?? municipiosMissao[0]?.municipio ?? null
+
+  const aplicarFiltroMunicipio = useCallback(
+    (nome: string | null) => {
+      setEscopoMunicipio(nome)
+      setMunicipioSelecionado(nome)
+      if (!nome) return
+      const m =
+        municipiosNoEscopo.find((row) => row.municipio === nome) ??
+        municipios.find((row) => row.municipio === nome)
+      if (!m) return
+      // Mantém a missão atual se a cidade já estiver nela; senão, aponta a mais relevante.
+      setMissaoAtiva((atual) => {
+        if (atual !== 'todas' && municipioNaMissao(m, atual)) return atual
+        return missaoRecomendadaParaMunicipio(m)
+      })
+    },
+    [municipiosNoEscopo, municipios]
+  )
 
   const handleMissaoSelect = useCallback((id: IptMissaoId) => {
     setMissaoAtiva((atual) => (atual === id ? 'todas' : id))
   }, [])
 
-  const handleMunicipioSelect = useCallback((nome: string) => {
-    setMunicipioSelecionado(nome)
+  const handleMapFiltro = useCallback((id: IptMissaoFiltro) => {
+    setMissaoAtiva(id)
   }, [])
+
+  const handleMunicipioSelect = useCallback(
+    (nome: string) => {
+      aplicarFiltroMunicipio(nome)
+    },
+    [aplicarFiltroMunicipio]
+  )
 
   useEffect(() => {
     document.body.dataset.iptRefine = 'true'
@@ -247,8 +305,29 @@ export function IptPanel() {
   }, [loading, municipios])
 
   useEffect(() => {
+    if (escopoMunicipio) {
+      const aindaNoEscopo = municipiosNoEscopo.some((m) => m.municipio === escopoMunicipio)
+      if (!aindaNoEscopo) {
+        setEscopoMunicipio(null)
+        setMunicipioSelecionado(primeiroMunicipio)
+        return
+      }
+      setMunicipioSelecionado(escopoMunicipio)
+      return
+    }
     setMunicipioSelecionado(primeiroMunicipio)
-  }, [missaoAtiva, filtroTd, primeiroMunicipio])
+  }, [missaoAtiva, filtroTd, primeiroMunicipio, escopoMunicipio, municipiosNoEscopo])
+
+  // Missão incompatível com a cidade filtrada → solta o filtro de município.
+  useEffect(() => {
+    if (!escopoMunicipio || missaoAtiva === 'todas') return
+    const m =
+      municipiosNoEscopo.find((row) => row.municipio === escopoMunicipio) ??
+      municipios.find((row) => row.municipio === escopoMunicipio)
+    if (m && !municipioNaMissao(m, missaoAtiva)) {
+      setEscopoMunicipio(null)
+    }
+  }, [missaoAtiva, escopoMunicipio, municipiosNoEscopo, municipios])
 
   useEffect(() => {
     const handleFullscreenChange = () => {
@@ -269,13 +348,13 @@ export function IptPanel() {
   }, [])
 
   const handleExportar = useCallback(() => {
-    exportarIptExcel(municipiosMissao, {
+    exportarIptExcel(municipiosVisao, {
       prioridade: null,
       indicador: indicadorMapa ?? 'geral',
       evolucao: 'todos',
       td: filtroTd,
     })
-  }, [municipiosMissao, indicadorMapa, filtroTd])
+  }, [municipiosVisao, indicadorMapa, filtroTd])
 
   const handleAtualizar = useCallback(() => {
     void Promise.resolve(recarregar()).then(() => {
@@ -320,10 +399,10 @@ export function IptPanel() {
         onChange={setFiltroTd}
       />
       <IptMunicipioSelect
-        value={municipioSelecionado}
+        value={escopoMunicipio}
         disabled={loading}
         opcoes={municipiosNoEscopo.map((m) => m.municipio)}
-        onChange={setMunicipioSelecionado}
+        onChange={aplicarFiltroMunicipio}
       />
       <button
         type="button"
@@ -338,12 +417,12 @@ export function IptPanel() {
         type="button"
         onClick={handleExportar}
         className="ipt-btn-exportar"
-        disabled={loading || municipiosMissao.length === 0}
-        title={`Exportar ${municipiosMissao.length} município(s) da missão`}
+        disabled={loading || municipiosVisao.length === 0}
+        title={`Exportar ${municipiosVisao.length} município(s) da visão`}
       >
         <CockpitIcon icon={Download} size="sm" />
         Exportar
-        <span className="ipt-btn-exportar__count">{municipiosMissao.length}</span>
+        <span className="ipt-btn-exportar__count">{municipiosVisao.length}</span>
       </button>
       <button
         type="button"
@@ -383,6 +462,8 @@ export function IptPanel() {
               contagem={contagem}
               variacoes={variacoes}
               missaoAtiva={missaoAtiva}
+              missoesDoMunicipio={missoesDoEscopo}
+              municipioFiltro={escopoMunicipio}
               loading={loading}
               onSelect={handleMissaoSelect}
             />
@@ -394,6 +475,7 @@ export function IptPanel() {
           className={cn(
             'ipt-operacional__trio',
             missaoAtiva !== 'todas' && 'ipt-operacional__trio--missao',
+            Boolean(escopoMunicipio) && 'ipt-operacional__trio--muni',
             isNativeFullscreen && 'ipt-operacional__trio--fullscreen'
           )}
         >
@@ -402,9 +484,17 @@ export function IptPanel() {
               <div className="ipt-bloco-mapa__intro">
                 <h2 className="ipt-bloco__title">Mapa Estratégico</h2>
                 <p className="ipt-bloco__sub">
-                  {missaoAtiva === 'todas'
-                    ? 'Visão geral dos municípios da campanha'
-                    : `Exibindo municípios da missão ${iptMissaoConfig(missaoAtiva).titulo}`}
+                  {escopoMunicipio
+                    ? `Foco em ${escopoMunicipio}${
+                        missoesDoEscopo.length > 0
+                          ? ` · ${missoesDoEscopo
+                              .map((id) => iptMissaoConfig(id).titulo)
+                              .join(', ')}`
+                          : ' · fora das missões críticas'
+                      }`
+                    : missaoAtiva === 'todas'
+                      ? 'Visão geral dos municípios da campanha'
+                      : `Exibindo municípios da missão ${iptMissaoConfig(missaoAtiva).titulo}`}
                 </p>
                 <span className="ipt-bloco-mapa__seal">{microcopyMapaMissao(missaoAtiva)}</span>
               </div>
@@ -418,6 +508,10 @@ export function IptPanel() {
                   const missaoCfg =
                     opcao.id === 'todas' ? null : IPT_MISSOES.find((m) => m.id === opcao.id) ?? null
                   const Icon = missaoCfg ? MISSAO_FILTRO_ICONE[missaoCfg.id] : null
+                  const cidadeNaMissao =
+                    Boolean(escopoMunicipio) &&
+                    opcao.id !== 'todas' &&
+                    missoesDoEscopo.includes(opcao.id)
                   return (
                     <button
                       key={opcao.id}
@@ -425,13 +519,12 @@ export function IptPanel() {
                       role="radio"
                       aria-checked={ativo}
                       disabled={loading}
-                      onClick={() => {
-                        setMissaoAtiva(opcao.id)
-                      }}
+                      onClick={() => handleMapFiltro(opcao.id)}
                       className={cn(
                         'ipt-operacional__map-filter',
                         ativo && 'ipt-operacional__map-filter--active',
-                        missaoCfg && 'ipt-operacional__map-filter--missao'
+                        missaoCfg && 'ipt-operacional__map-filter--missao',
+                        cidadeNaMissao && 'ipt-operacional__map-filter--muni'
                       )}
                       style={
                         missaoCfg
@@ -451,8 +544,14 @@ export function IptPanel() {
                       <span className="ipt-operacional__map-filter-label">{opcao.label}</span>
                       <span className="tabular-nums">
                         {opcao.id === 'todas'
-                          ? municipiosEmMissaoTodas.length
-                          : contagem[opcao.id]}
+                          ? escopoMunicipio
+                            ? municipiosVisao.length
+                            : municipiosEmMissaoTodas.length
+                          : escopoMunicipio
+                            ? missoesDoEscopo.includes(opcao.id)
+                              ? 1
+                              : 0
+                            : contagem[opcao.id]}
                       </span>
                     </button>
                   )
@@ -468,11 +567,11 @@ export function IptPanel() {
                 </div>
               ) : (
                 <IptMapSection
-                  municipios={municipiosMissao}
+                  municipios={municipiosVisao}
                   indicadorFiltro={indicadorMapa}
                   evolucaoFiltro="todos"
                   filtroTd={filtroTd}
-                  municipiosBoundsTd={municipiosMissao}
+                  municipiosBoundsTd={municipiosVisao}
                   missaoFiltro={missaoAtiva}
                   isFullscreen={isNativeFullscreen}
                   onInsightSaved={recarregar}
@@ -509,7 +608,7 @@ export function IptPanel() {
           {!isNativeFullscreen ? (
             <>
               <IptMissaoLista
-                municipios={municipiosMissao}
+                municipios={municipiosVisao}
                 missaoAtiva={missaoAtiva}
                 selecionado={municipioSelecionado}
                 onSelect={handleMunicipioSelect}
@@ -519,7 +618,13 @@ export function IptPanel() {
                 municipio={municipioDetalhe}
                 missaoAtiva={missaoAtiva}
                 podeVerExpectativa={podeVerExpectativa}
-                onClear={municipioDetalhe ? () => setMunicipioSelecionado(null) : undefined}
+                onClear={
+                  escopoMunicipio
+                    ? () => aplicarFiltroMunicipio(null)
+                    : municipioDetalhe
+                      ? () => setMunicipioSelecionado(null)
+                      : undefined
+                }
               />
             </>
           ) : null}
