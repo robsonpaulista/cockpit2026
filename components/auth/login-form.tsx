@@ -4,9 +4,9 @@ import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { APP_FONT_STACK_CSS } from '@/lib/app-font-stack'
 
-/** Paleta compartilhada com a splash ("ligar a máquina"). */
-const GOLD = '#c99a2e'
-const GOLD_HOVER = '#dcae42'
+/** Paleta compartilhada com a splash ("ligar a máquina") — laranja IPT. */
+const GOLD = '#ff9800'
+const GOLD_HOVER = '#e28000'
 const CAR_IMAGE = '/splash/cockpit-track-full.png'
 
 /** Credenciais em texto no dispositivo — útil em tablets; não usar em computadores compartilhados. */

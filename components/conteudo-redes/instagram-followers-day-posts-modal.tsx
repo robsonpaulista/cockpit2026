@@ -86,7 +86,7 @@ function PostCard({ post }: { post: InstagramDayPostRecord }) {
               icon={MessageCircle}
               label="Comentários"
               value={post.metrics.comments}
-              className="text-[#C8900A]"
+              className="text-[#ff9800]"
             />
             <MetricPill icon={Share2} label="Compartilhamentos" value={post.metrics.shares} className="text-green-600" />
             <MetricPill icon={Download} label="Salvamentos" value={post.metrics.saves} className="text-orange-600" />

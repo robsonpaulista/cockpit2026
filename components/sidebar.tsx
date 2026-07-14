@@ -939,8 +939,8 @@ export function Sidebar() {
                   'cockpit-icon shrink-0 transition-colors',
                   isGradientHome
                     ? cn(JARVIS_SIDEBAR_ICON, 'group-hover:!text-[#00D4FF]')
-                    : 'text-white/55 group-hover:text-[#c99a2e]',
-                  filmNav && !isGradientHome && 'group-hover:text-[#c99a2e]',
+                    : 'text-white/55 group-hover:text-[#ff9800]',
+                  filmNav && !isGradientHome && 'group-hover:text-[#ff9800]',
                 )}
                 aria-hidden
               />

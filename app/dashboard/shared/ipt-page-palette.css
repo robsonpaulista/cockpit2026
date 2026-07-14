@@ -1,0 +1,163 @@
+/* Paleta compartilhada do Diagnóstico IPT (laranja / cinza)
+   Ativar com body[data-ipt-palette] nas páginas do dashboard. */
+
+body[data-ipt-palette] {
+  --ipt-orange-deep: #e28000;
+  --ipt-orange: #ff9800;
+  --ipt-orange-light: #ffc340;
+  --ipt-gray: #666666;
+  --ipt-gray-mid: #8c8c8c;
+  --ipt-gray-soft: #ededed;
+  --ipt-gray-border: #d9d9d9;
+  --ipt-orange-tint: #fff4e5;
+  --ipt-orange-tint-strong: #ffe8c2;
+
+  --page-bg: #f3f3f3;
+  --surface: #ffffff;
+  --surface-muted: #f7f7f7;
+  --border: #d9d9d9;
+  --border-strong: #8c8c8c;
+  --text: #000000;
+  --text-muted: #666666;
+  --text-soft: #1a1a1a;
+  --cockpit-gold: #ff9800;
+  --brand-accent: #ff9800;
+  --brand-accent-hover: #e28000;
+  --on-brand-accent: #3d2a08;
+
+  --bg-app: 243 243 243;
+  --bg-surface: 255 255 255;
+  --text-primary: 0 0 0;
+  --text-secondary: 102 102 102;
+  --text-muted: 102 102 102;
+
+  --accent-gold: 255 152 0;
+  --accent-gold-soft: 255 244 229;
+  --accent-gold-dark: 226 128 0;
+  --strategic-yellow: 255 195 64;
+
+  --color-primary: 255 152 0;
+  --color-primary-tint: 255 244 229;
+  --color-primary-hover: 226 128 0;
+  --color-background-tertiary: 247 247 247;
+  --color-border-secondary: 140 140 140;
+  --color-border-tertiary: 217 217 217;
+
+  --mon-brand: #ff9800;
+  --mon-brand-deep: #e28000;
+  --mon-brand-soft: #fff4e5;
+  --mon-brand-border: #ffd59a;
+}
+
+/* Abas e ícones âmbar herdados (#C8900A / #c99a2e) → laranja IPT */
+body[data-ipt-palette] .border-\[\#C8900A\],
+body[data-ipt-palette] .border-\[\#c99a2e\] {
+  border-color: var(--mon-brand) !important;
+}
+
+body[data-ipt-palette] .text-\[\#C8900A\],
+body[data-ipt-palette] .text-\[\#c99a2e\],
+body[data-ipt-palette] .hover\:text-\[\#C8900A\]:hover {
+  color: var(--mon-brand) !important;
+}
+
+body[data-ipt-palette] .bg-\[\#C8900A\],
+body[data-ipt-palette] .hover\:bg-\[\#A87408\]:hover {
+  background-color: var(--mon-brand) !important;
+}
+
+body[data-ipt-palette] .bg-\[\#C8900A\]\/10,
+body[data-ipt-palette] .bg-\[\#C8900A\]\/12 {
+  background-color: color-mix(in srgb, var(--mon-brand) 12%, transparent) !important;
+}
+
+body[data-ipt-palette] .bg-\[\#C8900A\]\/6,
+body[data-ipt-palette] .hover\:bg-\[\#C8900A\]\/6:hover {
+  background-color: color-mix(in srgb, var(--mon-brand) 6%, transparent) !important;
+}
+
+body[data-ipt-palette] .bg-\[\#C8900A\]\/55 {
+  background-color: color-mix(in srgb, var(--mon-brand) 55%, transparent) !important;
+}
+
+body[data-ipt-palette] .bg-\[\#C8900A\]\/80,
+body[data-ipt-palette] .text-\[\#C8900A\]\/80 {
+  color: color-mix(in srgb, var(--mon-brand) 80%, transparent) !important;
+}
+
+body[data-ipt-palette] .ring-\[\#C8900A\]\/25,
+body[data-ipt-palette] .focus-visible\:ring-\[\#C8900A\]\/25:focus-visible,
+body[data-ipt-palette] .ring-\[\#C8900A\]\/35,
+body[data-ipt-palette] .focus\:ring-\[\#C8900A\]\/12:focus,
+body[data-ipt-palette] .focus\:ring-\[\#C8900A\]\/25:focus {
+  --tw-ring-color: color-mix(in srgb, var(--mon-brand) 25%, transparent) !important;
+}
+
+body[data-ipt-palette] .focus\:border-\[\#C8900A\]\/55:focus {
+  border-color: color-mix(in srgb, var(--mon-brand) 55%, transparent) !important;
+}
+
+body[data-ipt-palette] .border-l-\[\#C8900A\] {
+  border-left-color: var(--mon-brand) !important;
+}
+
+body[data-ipt-palette] .bg-\[\#FAEEDA\],
+body[data-ipt-palette] .hover\:bg-\[\#FAEEDA\]:hover {
+  background-color: var(--mon-brand-soft) !important;
+}
+
+body[data-ipt-palette] .border-\[\#C8900A\]\/30,
+body[data-ipt-palette] .border-\[\#C8900A\]\/35,
+body[data-ipt-palette] .border-\[\#E8D4A8\],
+body[data-ipt-palette] .border-\[\#E8D4A8\]\/50 {
+  border-color: color-mix(in srgb, var(--mon-brand) 35%, transparent) !important;
+}
+
+body[data-ipt-palette] .text-\[\#854F0B\],
+body[data-ipt-palette] .hover\:text-\[\#854F0B\]:hover,
+body[data-ipt-palette] .text-\[\#A87408\] {
+  color: var(--mon-brand-deep) !important;
+}
+
+/* Acentos azuis legados (#185FA5 / tint) → laranja IPT */
+body[data-ipt-palette] .bg-\[\#E6F1FB\],
+body[data-ipt-palette] .bg-\[\#E6F1FB\]\/40,
+body[data-ipt-palette] .hover\:bg-\[\#E6F1FB\]:hover {
+  background-color: var(--mon-brand-soft) !important;
+}
+
+body[data-ipt-palette] .border-\[\#B5D4F4\] {
+  border-color: var(--mon-brand-border) !important;
+}
+
+/* Callouts amber do Tailwind → tom IPT */
+body[data-ipt-palette] .border-amber-200,
+body[data-ipt-palette] .border-amber-200\/80 {
+  border-color: var(--mon-brand-border) !important;
+}
+
+body[data-ipt-palette] .bg-amber-50,
+body[data-ipt-palette] .bg-amber-50\/80 {
+  background-color: var(--mon-brand-soft) !important;
+}
+
+body[data-ipt-palette] .text-amber-900,
+body[data-ipt-palette] .text-amber-950,
+body[data-ipt-palette] .text-amber-800,
+body[data-ipt-palette] .text-amber-800\/80,
+body[data-ipt-palette] .text-amber-700 {
+  color: #9a5b00 !important;
+}
+
+body[data-ipt-palette] .text-amber-600 {
+  color: var(--mon-brand-deep) !important;
+}
+
+body[data-ipt-palette] .bg-amber-500 {
+  background-color: var(--mon-brand) !important;
+}
+
+/* Botões primary preenchidos: texto branco sobre laranja */
+body[data-ipt-palette] .bg-\[rgb\(var\(--color-primary\)\)\] {
+  color: #ffffff;
+}

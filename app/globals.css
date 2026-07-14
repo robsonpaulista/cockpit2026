@@ -2852,15 +2852,15 @@ table.td-resumo-table td.td-resumo-table__cell--estrategia {
   box-shadow: 0 8px 24px rgba(15, 23, 42, 0.06);
 }
 
-/* Topbar das páginas no mobile — mesmo âmbar da tela de descanso. */
+/* Topbar das páginas no mobile — mesmo laranja da tela de descanso / paleta IPT. */
 @media (max-width: 1023px) {
   header.dashboard-mobile-page-header,
   [data-theme='republicanos'][data-appearance='light'] header.dashboard-mobile-page-header.republicanos-premium-header,
   [data-theme='cockpit'] header.dashboard-mobile-page-header,
   [data-theme='agentes'] header.dashboard-mobile-page-header,
   [data-theme='premium'] header.dashboard-mobile-page-header {
-    background-color: #c8900a !important;
-    background-image: linear-gradient(145deg, #c8900a 0%, #c8900a 40%, #a87308 100%) !important;
+    background-color: #ff9800 !important;
+    background-image: linear-gradient(145deg, #ff9800 0%, #ff9800 40%, #e28000 100%) !important;
     border-bottom: 1px solid rgba(255, 255, 255, 0.15) !important;
     box-shadow: none !important;
   }

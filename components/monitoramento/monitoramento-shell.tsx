@@ -1,5 +1,6 @@
 'use client'
 
+import { useEffect } from 'react'
 import {
   Bell,
   Instagram,
@@ -25,6 +26,7 @@ import { MONITORAMENTO_TAB_LIDERES } from '@/lib/monitoramento-lideres-route'
 import { typographyContentRootClass, typographyPageLeadClass } from '@/lib/typography-chrome'
 import { cn } from '@/lib/utils'
 import { useDashboardTopbarVisible } from '@/hooks/use-dashboard-topbar-visible'
+import '@/app/dashboard/shared/ipt-page-palette.css'
 
 export type MonitoramentoTab =
   | 'geral'
@@ -85,6 +87,13 @@ export function MonitoramentoShell({
   const topbarVisible = useDashboardTopbarVisible()
   const pageTitle =
     activeTab === MONITORAMENTO_TAB_LIDERES ? 'Radar eleitoral · Eng. líderes' : 'Radar eleitoral'
+
+  useEffect(() => {
+    document.body.setAttribute('data-ipt-palette', '')
+    return () => {
+      document.body.removeAttribute('data-ipt-palette')
+    }
+  }, [])
 
   const description = panoramaMeta ? (
     <div className="flex flex-col gap-1 sm:flex-row sm:flex-wrap sm:items-center sm:gap-2">

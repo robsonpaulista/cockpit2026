@@ -1,5 +1,6 @@
 'use client'
 
+import { useEffect } from 'react'
 import { ClipboardList, LayoutGrid, LineChart, UsersRound } from 'lucide-react'
 import {
   DashboardHubTabBar,
@@ -11,6 +12,7 @@ import {
 } from '@/components/dashboard/dashboard-page-chrome'
 import { typographyContentRootClass, typographyPageLeadClass } from '@/lib/typography-chrome'
 import { useDashboardTopbarVisible } from '@/hooks/use-dashboard-topbar-visible'
+import '@/app/dashboard/shared/ipt-page-palette.css'
 
 export type PesquisaTab = 'panorama' | 'tendencia' | 'cadastradas' | 'gerar-publico'
 
@@ -38,6 +40,13 @@ export function PesquisaShell({
   const pageTitle = 'Pesquisa & Relato'
   const descriptionText =
     'Competitividade eleitoral por município. Os rankings mostram os candidatos mais bem posicionados em cada cidade e são consolidados pelo eleitorado local para formar uma visão territorial da disputa.'
+
+  useEffect(() => {
+    document.body.setAttribute('data-ipt-palette', '')
+    return () => {
+      document.body.removeAttribute('data-ipt-palette')
+    }
+  }, [])
 
   return (
     <DashboardPageShell>

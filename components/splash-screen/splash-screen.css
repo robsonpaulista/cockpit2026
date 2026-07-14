@@ -2,9 +2,9 @@
 
 .ss-root {
   --splash-bg: #0b0b0d;
-  --splash-gold: #c99a2e;
-  --splash-gold-glow: rgba(201, 154, 46, 0.55);
-  --splash-gold-soft: rgba(201, 154, 46, 0.18);
+  --splash-gold: #ff9800;
+  --splash-gold-glow: rgba(255, 152, 0, 0.55);
+  --splash-gold-soft: rgba(255, 152, 0, 0.18);
   --splash-graphite: #3a3d42;
   --splash-light: #f8f6f0;
 

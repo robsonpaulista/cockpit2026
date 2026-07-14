@@ -1,7 +1,7 @@
 import { cn } from '@/lib/utils'
 
-/** Marca dourada — mesma cor da splash e do login (#c99a2e). */
-export const SIDEBAR_BRAND_AMBER = '#c99a2e'
+/** Marca — mesma cor da splash, login e paleta IPT (#ff9800). */
+export const SIDEBAR_BRAND_AMBER = '#ff9800'
 
 /** Slogan institucional — igual splash / login. */
 export const APP_BRAND_TAGLINE = 'Comando Central de Eleições Dep Fed Jadyel Alencar'
@@ -36,67 +36,67 @@ export const sidebarBrandSectionLabelClass = cn(
 )
 
 /** Borda e foco do item ativo na sidebar */
-export const sidebarActiveBorderClass = 'border-l-[#c99a2e]'
+export const sidebarActiveBorderClass = 'border-l-[#ff9800]'
 
 export const sidebarActiveFocusRingClass =
-  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#c99a2e]/30 focus-visible:ring-offset-1 focus-visible:ring-offset-[#0b0b0d]'
+  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ff9800]/30 focus-visible:ring-offset-1 focus-visible:ring-offset-[#0b0b0d]'
 
 /** Divider entre seções */
 export const sidebarBrandDividerClass = 'mx-[14px] h-px bg-white/10'
 
-/** Abas horizontais das páginas (DashboardHubTabBar) — guia ativa âmbar. */
+/** Abas horizontais das páginas (DashboardHubTabBar) — guia ativa laranja IPT. */
 export const dashboardHubTabBaseClass =
-  'inline-flex items-center gap-1.5 rounded-none border-b-2 px-0.5 pb-3 pt-1 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C8900A]/25 focus-visible:ring-offset-1 focus-visible:ring-offset-bg-app'
+  'inline-flex items-center gap-1.5 rounded-none border-b-2 px-0.5 pb-3 pt-1 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ff9800]/25 focus-visible:ring-offset-1 focus-visible:ring-offset-bg-app'
 
-export const dashboardHubTabActiveClass = 'border-[#C8900A] text-text-primary'
+export const dashboardHubTabActiveClass = 'border-[#ff9800] text-text-primary'
 
 export const dashboardHubTabIdleClass =
   'border-transparent text-text-muted hover:text-text-primary'
 
-/** Ícone / destaque âmbar — mesma cor do logo mark (não usar accent-gold no tema republicanos). */
-export const brandAmberIconClass = 'text-[#C8900A]'
+/** Ícone / destaque — mesma cor do logo mark (não usar accent-gold do tema republicanos). */
+export const brandAmberIconClass = 'text-[#ff9800]'
 
 export const brandAmberIconWrapClass =
-  'rounded-lg bg-[#C8900A]/10 p-2 text-[#C8900A] shrink-0'
+  'rounded-lg bg-[#ff9800]/10 p-2 text-[#ff9800] shrink-0'
 
 export const brandAmberButtonClass =
-  'inline-flex items-center gap-2 rounded-lg bg-[#C8900A] px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-[#A87408] disabled:opacity-50'
+  'inline-flex items-center gap-2 rounded-lg bg-[#ff9800] px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-[#e28000] disabled:opacity-50'
 
 export const brandAmberCalloutClass =
-  'rounded-lg border border-[#C8900A]/30 bg-[#FAEEDA] px-3 py-2.5 text-sm text-text-primary'
+  'rounded-lg border border-[#ff9800]/30 bg-[#fff4e5] px-3 py-2.5 text-sm text-text-primary'
 
 export const brandAmberPillBaseClass =
   'cursor-pointer rounded-[99px] border px-2.5 py-1 text-[11.5px] transition-colors'
 
 export const brandAmberPillActiveClass =
-  'border-[#C8900A] bg-[#FAEEDA] font-medium text-[#854F0B]'
+  'border-[#ff9800] bg-[#fff4e5] font-medium text-[#e28000]'
 
 export const brandAmberPillIdleClass =
   'border-[rgb(var(--color-border-secondary)/0.85)] bg-transparent text-text-secondary'
 
 export const brandAmberFilterSelectClass =
-  'appearance-none rounded-[99px] border border-[rgb(var(--color-border-secondary)/0.85)] bg-transparent py-1 pl-2.5 pr-7 text-[11.5px] text-text-primary focus:outline-none focus:ring-2 focus:ring-[#C8900A]/25'
+  'appearance-none rounded-[99px] border border-[rgb(var(--color-border-secondary)/0.85)] bg-transparent py-1 pl-2.5 pr-7 text-[11.5px] text-text-primary focus:outline-none focus:ring-2 focus:ring-[#ff9800]/25'
 
 export const brandAmberChipClass =
-  'inline-flex items-center gap-1 rounded-[99px] border border-[#C8900A] bg-[#FAEEDA] px-2.5 py-1 text-[11.5px] font-medium text-[#854F0B]'
+  'inline-flex items-center gap-1 rounded-[99px] border border-[#ff9800] bg-[#fff4e5] px-2.5 py-1 text-[11.5px] font-medium text-[#e28000]'
 
 export const brandAmberCompactButtonClass =
-  'inline-flex items-center gap-1.5 rounded-[10px] border-none bg-[#C8900A] px-3 py-1.5 text-[12px] font-medium text-white transition-colors hover:bg-[#A87408]'
+  'inline-flex items-center gap-1.5 rounded-[10px] border-none bg-[#ff9800] px-3 py-1.5 text-[12px] font-medium text-white transition-colors hover:bg-[#e28000]'
 
 export const brandAmberBadgeClass =
-  'inline-flex flex-wrap items-center gap-x-1 gap-y-0.5 rounded-full border border-[#E8D4A8] bg-[#FAEEDA] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-[#854F0B]'
+  'inline-flex flex-wrap items-center gap-x-1 gap-y-0.5 rounded-full border border-[#ffd59a] bg-[#fff4e5] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-[#e28000]'
 
 export const brandAmberInfoButtonClass =
-  'inline-flex rounded-full p-0.5 text-[#A87408] transition-colors hover:bg-[#FAEEDA] hover:text-[#854F0B]'
+  'inline-flex rounded-full p-0.5 text-[#e28000] transition-colors hover:bg-[#fff4e5] hover:text-[#e28000]'
 
 export const brandAmberSortButtonClass =
-  'inline-flex items-center gap-1 select-none rounded transition-colors hover:text-[#C8900A] focus:outline-none focus:ring-2 focus:ring-[#C8900A]/40'
+  'inline-flex items-center gap-1 select-none rounded transition-colors hover:text-[#ff9800] focus:outline-none focus:ring-2 focus:ring-[#ff9800]/40'
 
-export const brandAmberSortIconClass = 'h-3.5 w-3.5 text-[#C8900A]'
+export const brandAmberSortIconClass = 'h-3.5 w-3.5 text-[#ff9800]'
 
-export const brandAmberMetricClass = 'font-semibold text-[#C8900A]'
+export const brandAmberMetricClass = 'font-semibold text-[#ff9800]'
 
 export const brandAmberPanelBorderClass =
-  'rounded-xl border border-[#E8D4A8]/50 bg-background/90 p-4'
+  'rounded-xl border border-[#ffd59a]/50 bg-background/90 p-4'
 
-export const brandAmberFocusRingClass = 'focus-visible:ring-2 focus-visible:ring-[#C8900A]/40'
+export const brandAmberFocusRingClass = 'focus-visible:ring-2 focus-visible:ring-[#ff9800]/40'

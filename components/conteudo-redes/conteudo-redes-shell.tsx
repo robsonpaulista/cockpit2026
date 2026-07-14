@@ -1,5 +1,6 @@
 'use client'
 
+import { useEffect } from 'react'
 import { BarChart3, MapPin, Users } from 'lucide-react'
 import {
   DashboardHubTabBar,
@@ -13,6 +14,7 @@ import { typographyContentRootClass, typographyPageLeadClass } from '@/lib/typog
 import { conteudoRedesTextClass } from '@/lib/conteudo-redes-styles'
 import { cn } from '@/lib/utils'
 import { useDashboardTopbarVisible } from '@/hooks/use-dashboard-topbar-visible'
+import '@/app/dashboard/shared/ipt-page-palette.css'
 
 export type ConteudoRedesTab = 'posts' | 'audience' | 'locations'
 
@@ -57,6 +59,13 @@ export function ConteudoRedesShell({
   ) : (
     tabDescription
   )
+
+  useEffect(() => {
+    document.body.setAttribute('data-ipt-palette', '')
+    return () => {
+      document.body.removeAttribute('data-ipt-palette')
+    }
+  }, [])
 
   return (
     <DashboardPageShell>

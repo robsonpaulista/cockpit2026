@@ -267,7 +267,7 @@ export function TerritorioPanelIconButton({
       className={cn(
         'inline-flex h-7 w-7 items-center justify-center rounded-md transition-colors',
         active
-          ? 'bg-[#C8900A]/12 text-[#C8900A] ring-1 ring-[#C8900A]/35'
+          ? 'bg-[#ff9800]/12 text-[#ff9800] ring-1 ring-[#ff9800]/35'
           : 'text-text-muted hover:bg-bg-surface hover:text-text-primary'
       )}
     >
@@ -319,7 +319,7 @@ export function TerritorioSearchField({
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
         className={cn(
-          'w-full rounded-md border border-[rgb(var(--color-border-secondary)/0.65)] bg-bg-surface outline-none transition-colors placeholder:text-text-muted focus:border-[#C8900A]/55 focus:ring-2 focus:ring-[#C8900A]/12',
+          'w-full rounded-md border border-[rgb(var(--color-border-secondary)/0.65)] bg-bg-surface outline-none transition-colors placeholder:text-text-muted focus:border-[#ff9800]/55 focus:ring-2 focus:ring-[#ff9800]/12',
           typographyBodyClass,
           compact ? 'py-1 pl-7 pr-2' : 'py-1.5 pl-8 pr-3'
         )}
@@ -373,7 +373,7 @@ export function TerritorioThinProgress({
       <div
         className={cn(
           'h-full rounded-full transition-all',
-          active ? 'bg-[#C8900A]' : 'bg-[#C8900A]/55'
+          active ? 'bg-[#ff9800]' : 'bg-[#ff9800]/55'
         )}
         style={{ width: `${width}%` }}
       />

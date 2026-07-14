@@ -71,7 +71,7 @@ import {
 } from '@tabler/icons-react'
 
 const producao = [
-  { etapa: 'Roteiro', quantidade: 3, cor: 'bg-[#C8900A]/10 border-[#C8900A]/30' },
+  { etapa: 'Roteiro', quantidade: 3, cor: 'bg-[#ff9800]/10 border-[#ff9800]/30' },
   { etapa: 'Gravação', quantidade: 2, cor: 'bg-status-warning/10 border-status-warning/30' },
   { etapa: 'Edição', quantidade: 4, cor: 'bg-status-warning/10 border-status-warning/30' },
   { etapa: 'Aprovação', quantidade: 1, cor: 'bg-status-success/10 border-status-success/30' },
@@ -850,7 +850,7 @@ export default function ConteudoPage() {
             <div className="space-y-6">
               {loading && !metrics ? (
                 <div className="py-12 text-center">
-                  <IconLoader2 className="mx-auto mb-4 h-8 w-8 animate-spin text-[#C8900A]" stroke={1.5} />
+                  <IconLoader2 className="mx-auto mb-4 h-8 w-8 animate-spin text-[#ff9800]" stroke={1.5} />
                   <p className="text-sm">Carregando dados do Instagram...</p>
                   </div>
               ) : !isConfigured ? (
@@ -991,7 +991,7 @@ export default function ConteudoPage() {
             <div className="space-y-6">
               {loading && !metrics ? (
                 <div className="py-12 text-center">
-                  <IconLoader2 className="mx-auto mb-4 h-8 w-8 animate-spin text-[#C8900A]" stroke={1.5} />
+                  <IconLoader2 className="mx-auto mb-4 h-8 w-8 animate-spin text-[#ff9800]" stroke={1.5} />
                   <p className="text-sm">Carregando dados do Instagram...</p>
                 </div>
               ) : !isConfigured ? (
@@ -1142,7 +1142,7 @@ export default function ConteudoPage() {
                                       ? 'bg-red-500'
                                       : post.type === 'carousel'
                                       ? 'bg-[#9A6B08]'
-                                      : 'bg-[#C8900A]'
+                                      : 'bg-[#ff9800]'
                                   }`}
                                 >
                                   {typeLabels[post.type as keyof typeof typeLabels] || post.type}
@@ -1178,7 +1178,7 @@ export default function ConteudoPage() {
                                   href={post.url}
                                   target="_blank"
                                   rel="noopener noreferrer"
-                                  className="flex items-center text-[11px] font-medium text-[#C8900A] hover:underline"
+                                  className="flex items-center text-[11px] font-medium text-[#ff9800] hover:underline"
                                 >
                                   <ExternalLink className="h-3 w-3 mr-1" /> Ver
                                 </a>
@@ -1210,7 +1210,7 @@ export default function ConteudoPage() {
                                         )
                                       }
                                     }}
-                                    className="h-7 text-xs w-full px-2 border border-card rounded-lg bg-surface focus:outline-none focus:ring-2 focus:ring-[#C8900A]/30"
+                                    className="h-7 text-xs w-full px-2 border border-card rounded-lg bg-surface focus:outline-none focus:ring-2 focus:ring-[#ff9800]/30"
                                   >
                                     <option value="">Tema</option>
                                     {availableThemes.map((theme) => (
@@ -1245,7 +1245,7 @@ export default function ConteudoPage() {
                                             }
                                           }}
                                           placeholder="Digite o nome do tema"
-                                          className="text-xs px-2 py-1.5 border border-card rounded bg-background focus:outline-none focus:ring-2 focus:ring-[#C8900A]/30"
+                                          className="text-xs px-2 py-1.5 border border-card rounded bg-background focus:outline-none focus:ring-2 focus:ring-[#ff9800]/30"
                                           autoFocus
                                         />
                                         {newTheme.trim() && availableThemes.includes(newTheme.trim()) && (
@@ -1261,7 +1261,7 @@ export default function ConteudoPage() {
                                               handleAddTheme(getPostIdentifier(post), classification?.isBoosted ?? false)
                                             }}
                                             disabled={!newTheme.trim() || availableThemes.includes(newTheme.trim())}
-                                            className="flex-1 rounded-[10px] bg-[#C8900A] px-2 py-1.5 text-xs font-medium text-white hover:bg-[#B07F09]"
+                                            className="flex-1 rounded-[10px] bg-[#ff9800] px-2 py-1.5 text-xs font-medium text-white hover:bg-[#e28000]"
                                           >
                                             Adicionar
                                           </button>
@@ -1292,7 +1292,7 @@ export default function ConteudoPage() {
                                         e.target.value || null
                                       )
                                     }
-                                    className="h-7 text-xs min-w-[160px] max-w-[220px] flex-[1.4] px-2 border border-card rounded-lg bg-surface focus:outline-none focus:ring-2 focus:ring-[#C8900A]/30"
+                                    className="h-7 text-xs min-w-[160px] max-w-[220px] flex-[1.4] px-2 border border-card rounded-lg bg-surface focus:outline-none focus:ring-2 focus:ring-[#ff9800]/30"
                                     title="Relacionar post à obra do Mapa / Diagnóstico"
                                   >
                                     <option value="">Obra (match)</option>
@@ -1318,7 +1318,7 @@ export default function ConteudoPage() {
                                       classification?.obraMapaId ?? null
                                     )
                                   }
-                                  className="h-7 text-xs w-[90px] px-2 border border-card rounded-lg bg-surface focus:outline-none focus:ring-2 focus:ring-[#C8900A]/30"
+                                  className="h-7 text-xs w-[90px] px-2 border border-card rounded-lg bg-surface focus:outline-none focus:ring-2 focus:ring-[#ff9800]/30"
                                   title="Impulsionado?"
                                 >
                                   <option value="nao">Não</option>
@@ -1344,7 +1344,7 @@ export default function ConteudoPage() {
               </div>
                                 <div>
                                   <div className="flex items-center justify-center">
-                                    <MessageCircle className="h-3 w-3 text-[#C8900A] mr-0.5" />
+                                    <MessageCircle className="h-3 w-3 text-[#ff9800] mr-0.5" />
                                     <span className="text-xs font-medium">
                                       {post.metrics.comments.toLocaleString('pt-BR')}
                                     </span>
@@ -1361,7 +1361,7 @@ export default function ConteudoPage() {
         </div>
                                 <div>
                                   <div className="flex items-center justify-center">
-                                    <Eye className="h-3 w-3 text-[#C8900A] mr-0.5" />
+                                    <Eye className="h-3 w-3 text-[#ff9800] mr-0.5" />
                                     <span className="text-xs font-medium">
                                       {post.metrics.views
                                         ? post.metrics.views.toLocaleString('pt-BR')
@@ -1435,7 +1435,7 @@ export default function ConteudoPage() {
             <div className="space-y-6">
               {loading && !metrics ? (
                 <div className="py-12 text-center">
-                  <IconLoader2 className="mx-auto mb-4 h-8 w-8 animate-spin text-[#C8900A]" stroke={1.5} />
+                  <IconLoader2 className="mx-auto mb-4 h-8 w-8 animate-spin text-[#ff9800]" stroke={1.5} />
                   <p className="text-sm">Carregando dados do Instagram...</p>
                 </div>
               ) : !isConfigured ? (
@@ -1557,8 +1557,8 @@ export default function ConteudoPage() {
                                         className={cn(
                                           'flex h-8 w-8 items-center justify-center rounded-full text-[12px] font-medium',
                                           index === 0
-                                            ? 'bg-[#C8900A] text-white'
-                                            : 'bg-[#C8900A]/12 text-[#C8900A]'
+                                            ? 'bg-[#ff9800] text-white'
+                                            : 'bg-[#ff9800]/12 text-[#ff9800]'
                                         )}
                                       >
                                         {index + 1}
@@ -1571,7 +1571,7 @@ export default function ConteudoPage() {
                                       </div>
                                     </div>
                                     <div className="ml-4 text-right">
-                                      <p className="text-base font-medium tabular-nums text-[#C8900A]">
+                                      <p className="text-base font-medium tabular-nums text-[#ff9800]">
                                         {count.toLocaleString('pt-BR')}
                                       </p>
                                       <p className="text-[11px]">{unitLabel}</p>
@@ -1579,7 +1579,7 @@ export default function ConteudoPage() {
                                   </div>
                                   <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-bg-app">
                                     <div
-                                      className="h-full rounded-full bg-[#C8900A] transition-all duration-500"
+                                      className="h-full rounded-full bg-[#ff9800] transition-all duration-500"
                                       style={{ width: `${barWidth}%` }}
                                     />
                                   </div>

@@ -1919,7 +1919,7 @@ export function ResumoEleicoesAtendimentoPanel() {
 
   const summaryCardBaseClass =
     'flex min-w-0 flex-col rounded-xl border border-[rgb(var(--color-border-tertiary)/0.85)] bg-bg-surface p-3'
-  const kpiIconClass = 'h-3.5 w-3.5 text-[#C8900A]'
+  const kpiIconClass = 'h-3.5 w-3.5 text-[#ff9800]'
   const kpiLabelClass = resumoKpiLabelClass()
   const kpiValueClass = resumoKpiValueClass()
   const kpiMetaClass = resumoKpiMetaClass()
@@ -2207,7 +2207,7 @@ export function ResumoEleicoesAtendimentoPanel() {
                       <tr
                         key={`${item.nomeUrnaCandidato}-${item.numeroUrna}`}
                         className={cn(
-                          'border-b border-card text-text-primary transition-colors hover:bg-[#C8900A]/6',
+                          'border-b border-card text-text-primary transition-colors hover:bg-[#ff9800]/6',
                           isSelected ? resumoTrSelecionado() : resumoTrZebra(rowIndex),
                         )}
                       >
@@ -2292,7 +2292,7 @@ export function ResumoEleicoesAtendimentoPanel() {
                       <tr
                         key={`${item.nomeUrnaCandidato}-${item.numeroUrna}`}
                         className={cn(
-                          'border-b border-card transition-colors hover:bg-[#C8900A]/6',
+                          'border-b border-card transition-colors hover:bg-[#ff9800]/6',
                           isJadyel && resumoTrDestaqueForte(),
                           !isJadyel && isSelected && resumoTrSelecionado(),
                           !isJadyel && !isSelected && resumoTrZebra(rowIndex),
@@ -2379,7 +2379,7 @@ export function ResumoEleicoesAtendimentoPanel() {
                       <tr
                         key={`${item.nomeUrnaCandidato}-${item.numeroUrna}`}
                         className={cn(
-                          'border-b border-card text-text-primary transition-colors hover:bg-[#C8900A]/6',
+                          'border-b border-card text-text-primary transition-colors hover:bg-[#ff9800]/6',
                           isSelected ? resumoTrSelecionado() : resumoTrZebra(rowIndex),
                         )}
                       >
@@ -2469,7 +2469,7 @@ export function ResumoEleicoesAtendimentoPanel() {
                         onDoubleClick={() => definirPresidenteCamara(item.nomeUrnaCandidato)}
                         title="Dê duplo clique para definir como Presidente da Câmara"
                         className={cn(
-                          'border-b border-card transition-colors hover:bg-[#C8900A]/6',
+                          'border-b border-card transition-colors hover:bg-[#ff9800]/6',
                           isPresidente && 'select-none',
                           isPresidente && resumoTrDestaqueForte(),
                           !isPresidente &&
@@ -2518,7 +2518,7 @@ export function ResumoEleicoesAtendimentoPanel() {
                                 'border border-white/40 bg-white/15 font-medium text-white',
                               !isPresidente &&
                                 isEleito &&
-                                'bg-[#C8900A]/12 font-medium text-[#C8900A]',
+                                'bg-[#ff9800]/12 font-medium text-[#ff9800]',
                               !isPresidente &&
                                 !isEleito &&
                                 'bg-background text-text-secondary',
@@ -2588,7 +2588,7 @@ export function ResumoEleicoesAtendimentoPanel() {
                         key={item.partido}
                         title="Dê duplo clique no partido para filtrar as demais tabelas"
                         className={cn(
-                          'border-b border-card transition-colors hover:bg-[#C8900A]/6',
+                          'border-b border-card transition-colors hover:bg-[#ff9800]/6',
                           isPartidoAtivo && resumoTrDestaqueForte(),
                           !isPartidoAtivo && isSelected && resumoTrSelecionado(),
                           !isPartidoAtivo && !isSelected && resumoTrZebra(rowIndex),

@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback, useMemo } from 'react'
 import { createPortal } from 'react-dom'
-import { X, AlertCircle, Loader2 } from 'lucide-react'
+import { X, AlertCircle, Loader2, ArrowDown, ArrowUp, ArrowUpDown } from 'lucide-react'
 import { useTheme } from '@/contexts/theme-context'
 import { cn } from '@/lib/utils'
 
@@ -74,22 +74,6 @@ function nomesLiderancaCombinam(nomeLista: string, nomeDemanda: string | undefin
   return false
 }
 
-function ordenarDemandas<T extends { status?: string; data_demanda?: string; created_at?: string }>(lista: T[]): T[] {
-  return [...lista].sort((a, b) => {
-    const statusA = a.status || ''
-    const statusB = b.status || ''
-    if (statusA !== statusB) return statusA.localeCompare(statusB)
-    const dataA = a.data_demanda || a.created_at || ''
-    const dataB = b.data_demanda || b.created_at || ''
-    if (dataA && dataB) {
-      const dateA = new Date(dataA).getTime()
-      const dateB = new Date(dataB).getTime()
-      if (!isNaN(dateA) && !isNaN(dateB)) return dateB - dateA
-    }
-    return 0
-  })
-}
-
 function getStatusBadgeClasses(status: string | undefined, isDark: boolean): string {
   const sl = (status || '').toLowerCase().trim()
   if (sl.includes('resolvido') || sl.includes('concluído') || sl.includes('concluido')) {
@@ -136,6 +120,167 @@ function formatPriorityLabel(priority?: string): string {
   return priority
 }
 
+function getSheetsField(demand: Demand, patterns: RegExp[]): string | null {
+  const raw = demand.sheets_data
+  if (!raw || typeof raw !== 'object') return null
+
+  const entries = Object.entries(raw)
+  const match = entries.find(([key]) => patterns.some((pattern) => pattern.test(key)))
+  if (!match) return null
+
+  const value = match[1]
+  if (value === null || value === undefined) return null
+  const text = String(value).trim()
+  return text || null
+}
+
+function normalizeNumber(value: unknown): number {
+  if (typeof value === 'number') return value
+
+  const str = String(value || '').trim()
+  if (!str) return 0
+
+  let cleaned = str.replace(/[^\d.,]/g, '')
+
+  if (cleaned.includes(',') && cleaned.includes('.')) {
+    if (cleaned.lastIndexOf(',') > cleaned.lastIndexOf('.')) {
+      cleaned = cleaned.replace(/\./g, '').replace(',', '.')
+    } else {
+      cleaned = cleaned.replace(/,/g, '')
+    }
+  } else if (cleaned.includes(',')) {
+    const parts = cleaned.split(',')
+    if (parts.length === 2) {
+      if (parts[1].length === 3) {
+        cleaned = cleaned.replace(/,/g, '')
+      } else if (parts[1].length <= 2) {
+        cleaned = cleaned.replace(',', '.')
+      } else {
+        cleaned = cleaned.replace(/,/g, '')
+      }
+    } else {
+      cleaned = cleaned.replace(/,/g, '')
+    }
+  }
+
+  const numValue = parseFloat(cleaned)
+  return isNaN(numValue) ? 0 : numValue
+}
+
+function getDemandValorNumero(demand: Demand): number {
+  const valorFromSheets = getSheetsField(demand, [
+    /^valor$/i,
+    /valor\s*\(?.*r\$.*\)?/i,
+    /custo|or[çc]amento/i,
+  ])
+  if (valorFromSheets) return normalizeNumber(valorFromSheets)
+
+  const demandRecord = demand as unknown as Record<string, unknown>
+  const directValue =
+    demandRecord.valor ??
+    demandRecord.value ??
+    demandRecord.custo ??
+    demandRecord.orcamento
+
+  return normalizeNumber(directValue)
+}
+
+function getDemandObservacoes(demand: Demand): string {
+  const seiRef = getSheetsField(demand, [/sei/i, /n[ºo°]?\s*sei/i])
+  return [seiRef, demand.theme, demand.description?.trim()]
+    .filter((s): s is string => Boolean(s && String(s).trim()))
+    .join(' · ')
+}
+
+type DemandSortCol =
+  | 'status'
+  | 'title'
+  | 'data'
+  | 'lideranca'
+  | 'prioridade'
+  | 'valor'
+  | 'observacoes'
+
+type DemandSortDir = 'asc' | 'desc'
+
+function parseDemandDateMs(dateString?: string): number | null {
+  if (!dateString) return null
+  const date = new Date(dateString)
+  if (isNaN(date.getTime())) return null
+  return date.getTime()
+}
+
+function compareTextPt(a: string, b: string): number {
+  return a.localeCompare(b, 'pt-BR', { sensitivity: 'base', numeric: true })
+}
+
+function ordenarDemandasPorColuna(
+  lista: Demand[],
+  col: DemandSortCol,
+  dir: DemandSortDir
+): Demand[] {
+  const mult = dir === 'asc' ? 1 : -1
+  return [...lista].sort((a, b) => {
+    if (col === 'valor') {
+      const va = getDemandValorNumero(a)
+      const vb = getDemandValorNumero(b)
+      const aEmpty = va <= 0
+      const bEmpty = vb <= 0
+      if (aEmpty && bEmpty) return 0
+      if (aEmpty) return 1
+      if (bEmpty) return -1
+      return (va - vb) * mult
+    }
+
+    if (col === 'data') {
+      const va = parseDemandDateMs(a.data_demanda || a.created_at)
+      const vb = parseDemandDateMs(b.data_demanda || b.created_at)
+      if (va == null && vb == null) return 0
+      if (va == null) return 1
+      if (vb == null) return -1
+      return (va - vb) * mult
+    }
+
+    const textA =
+      col === 'status'
+        ? a.status || ''
+        : col === 'title'
+          ? a.title || ''
+          : col === 'lideranca'
+            ? getDemandLiderancaParaFiltro(a)
+            : col === 'prioridade'
+              ? formatPriorityLabel(a.priority)
+              : getDemandObservacoes(a)
+    const textB =
+      col === 'status'
+        ? b.status || ''
+        : col === 'title'
+          ? b.title || ''
+          : col === 'lideranca'
+            ? getDemandLiderancaParaFiltro(b)
+            : col === 'prioridade'
+              ? formatPriorityLabel(b.priority)
+              : getDemandObservacoes(b)
+
+    const aEmpty = !textA.trim()
+    const bEmpty = !textB.trim()
+    if (aEmpty && bEmpty) return 0
+    if (aEmpty) return 1
+    if (bEmpty) return -1
+    return compareTextPt(textA, textB) * mult
+  })
+}
+
+const DEMAND_SORT_COLUMNS: { id: DemandSortCol; label: string; align?: 'right' }[] = [
+  { id: 'status', label: 'Status' },
+  { id: 'title', label: 'Demanda' },
+  { id: 'data', label: 'Data' },
+  { id: 'lideranca', label: 'Liderança' },
+  { id: 'prioridade', label: 'Prioridade' },
+  { id: 'valor', label: 'Valor', align: 'right' },
+  { id: 'observacoes', label: 'Observações' },
+]
+
 export function CityDemandsModal({ isOpen, onClose, cidade }: CityDemandsModalProps) {
   const { appearance } = useTheme()
   const isDarkAppearance = appearance === 'dark'
@@ -151,6 +296,8 @@ export function CityDemandsModal({ isOpen, onClose, cidade }: CityDemandsModalPr
   const [error, setError] = useState<string | null>(null)
   const [filtroStatus, setFiltroStatus] = useState<string>('todos')
   const [liderancasPermitidas, setLiderancasPermitidas] = useState<string[]>([])
+  const [sortCol, setSortCol] = useState<DemandSortCol>('status')
+  const [sortDir, setSortDir] = useState<DemandSortDir>('asc')
 
   const fetchDemands = useCallback(async () => {
     if (!cidade) return
@@ -207,6 +354,9 @@ export function CityDemandsModal({ isOpen, onClose, cidade }: CityDemandsModalPr
       setDemands([])
       setError(null)
       setLiderancasPermitidas([])
+      setFiltroStatus('todos')
+      setSortCol('status')
+      setSortDir('asc')
     }
   }, [isOpen, cidade, fetchDemands])
 
@@ -214,30 +364,42 @@ export function CityDemandsModal({ isOpen, onClose, cidade }: CityDemandsModalPr
     const porStatus = demands.filter(
       (d) => filtroStatus === 'todos' || d.status === filtroStatus
     )
+    let filtradas: Demand[]
+    let ignorou = false
     if (liderancasPermitidas.length === 0) {
-      return {
-        demandsFiltradasEOrdenadas: ordenarDemandas(porStatus),
-        ignorouFiltroLideranca: false,
-      }
-    }
-    const comLideranca = porStatus.filter((demand) => {
-      const raw = getDemandLiderancaParaFiltro(demand)
-      if (!raw) return true
-      return liderancasPermitidas.some((permitido) =>
-        nomesLiderancaCombinam(permitido, raw)
-      )
-    })
-    if (comLideranca.length === 0 && porStatus.length > 0) {
-      return {
-        demandsFiltradasEOrdenadas: ordenarDemandas(porStatus),
-        ignorouFiltroLideranca: true,
+      filtradas = porStatus
+    } else {
+      const comLideranca = porStatus.filter((demand) => {
+        const raw = getDemandLiderancaParaFiltro(demand)
+        if (!raw) return true
+        return liderancasPermitidas.some((permitido) =>
+          nomesLiderancaCombinam(permitido, raw)
+        )
+      })
+      if (comLideranca.length === 0 && porStatus.length > 0) {
+        filtradas = porStatus
+        ignorou = true
+      } else {
+        filtradas = comLideranca
       }
     }
     return {
-      demandsFiltradasEOrdenadas: ordenarDemandas(comLideranca),
-      ignorouFiltroLideranca: false,
+      demandsFiltradasEOrdenadas: ordenarDemandasPorColuna(filtradas, sortCol, sortDir),
+      ignorouFiltroLideranca: ignorou,
     }
-  }, [demands, filtroStatus, liderancasPermitidas])
+  }, [demands, filtroStatus, liderancasPermitidas, sortCol, sortDir])
+
+  const toggleSort = useCallback(
+    (col: DemandSortCol) => {
+      if (sortCol === col) {
+        setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'))
+        return
+      }
+      setSortCol(col)
+      setSortDir('asc')
+    },
+    [sortCol]
+  )
 
   useEffect(() => {
     if (!isOpen) return
@@ -254,53 +416,6 @@ export function CityDemandsModal({ isOpen, onClose, cidade }: CityDemandsModalPr
     return status || 'Sem status'
   }
 
-  const getSheetsField = (demand: Demand, patterns: RegExp[]): string | null => {
-    const raw = demand.sheets_data
-    if (!raw || typeof raw !== 'object') return null
-
-    const entries = Object.entries(raw)
-    const match = entries.find(([key]) => patterns.some((pattern) => pattern.test(key)))
-    if (!match) return null
-
-    const value = match[1]
-    if (value === null || value === undefined) return null
-    const text = String(value).trim()
-    return text || null
-  }
-
-  const normalizeNumber = (value: unknown): number => {
-    if (typeof value === 'number') return value
-
-    const str = String(value || '').trim()
-    if (!str) return 0
-
-    let cleaned = str.replace(/[^\d.,]/g, '')
-
-    if (cleaned.includes(',') && cleaned.includes('.')) {
-      if (cleaned.lastIndexOf(',') > cleaned.lastIndexOf('.')) {
-        cleaned = cleaned.replace(/\./g, '').replace(',', '.')
-      } else {
-        cleaned = cleaned.replace(/,/g, '')
-      }
-    } else if (cleaned.includes(',')) {
-      const parts = cleaned.split(',')
-      if (parts.length === 2) {
-        if (parts[1].length === 3) {
-          cleaned = cleaned.replace(/,/g, '')
-        } else if (parts[1].length <= 2) {
-          cleaned = cleaned.replace(',', '.')
-        } else {
-          cleaned = cleaned.replace(/,/g, '')
-        }
-      } else {
-        cleaned = cleaned.replace(/,/g, '')
-      }
-    }
-
-    const numValue = parseFloat(cleaned)
-    return isNaN(numValue) ? 0 : numValue
-  }
-
   const formatValorSemMoeda = (value: number): string => {
     if (!Number.isFinite(value) || value <= 0) return '-'
     return value.toLocaleString('pt-BR', {
@@ -309,31 +424,11 @@ export function CityDemandsModal({ isOpen, onClose, cidade }: CityDemandsModalPr
     })
   }
 
-  const getDemandValorNumero = (demand: Demand): number => {
-    const valorFromSheets = getSheetsField(demand, [
-      /^valor$/i,
-      /valor\s*\(?.*r\$.*\)?/i,
-      /custo|or[çc]amento/i,
-    ])
-    if (valorFromSheets) return normalizeNumber(valorFromSheets)
-
-    const demandRecord = demand as unknown as Record<string, unknown>
-    const directValue =
-      demandRecord.valor ??
-      demandRecord.value ??
-      demandRecord.custo ??
-      demandRecord.orcamento
-
-    return normalizeNumber(directValue)
-  }
-
   const formatDate = (dateString?: string) => {
     if (!dateString) return '-'
     try {
-      // Tentar parsear como data
       const date = new Date(dateString)
       if (isNaN(date.getTime())) {
-        // Se não for uma data válida, retornar o valor original
         return dateString
       }
       return date.toLocaleDateString('pt-BR', {
@@ -356,7 +451,12 @@ export function CityDemandsModal({ isOpen, onClose, cidade }: CityDemandsModalPr
 
   return createPortal(
     <div className="fixed inset-0 z-[1200] flex items-center justify-center bg-black/55 p-4">
-      <div className={cn('flex max-h-[85vh] w-full max-w-3xl flex-col overflow-hidden rounded-xl border font-sans', modalShellClass)}>
+      <div
+        className={cn(
+          'flex max-h-[90vh] w-full max-w-6xl flex-col overflow-hidden rounded-xl border font-sans',
+          modalShellClass
+        )}
+      >
         {/* Header Compacto */}
         <div className={cn('flex items-center justify-between border-b px-4 py-3', isCockpit ? 'border-white/10' : 'border-card')}>
           <div className="flex items-center gap-2">
@@ -441,15 +541,15 @@ export function CityDemandsModal({ isOpen, onClose, cidade }: CityDemandsModalPr
           </div>
         )}
 
-        {/* Content Compacto */}
-        <div className={cn('flex-1 overflow-y-auto p-3', contentClass)}>
+        {/* Content — tabela compacta */}
+        <div className={cn('min-h-0 flex-1 overflow-auto', contentClass)}>
           {loading ? (
             <div className="flex items-center justify-center py-8">
               <Loader2 className="w-5 h-5 text-accent-gold animate-spin" />
               <span className="ml-2 text-sm text-text-secondary">Carregando...</span>
             </div>
           ) : error ? (
-            <div className="p-3 bg-status-error/10 border border-status-error/30 rounded-lg">
+            <div className="m-3 rounded-lg border border-status-error/30 bg-status-error/10 p-3">
               <p className="text-xs text-status-error">{error}</p>
             </div>
           ) : demandsFiltradasEOrdenadas.length === 0 ? (
@@ -458,106 +558,132 @@ export function CityDemandsModal({ isOpen, onClose, cidade }: CityDemandsModalPr
               <p className="text-sm text-text-secondary">Nenhuma demanda encontrada</p>
             </div>
           ) : (
-            <ul className="space-y-2.5" role="list">
-              {demandsFiltradasEOrdenadas.map((demand, index) => {
-                const liderancaExibicao = getDemandLiderancaParaFiltro(demand)
-                const valorNum = getDemandValorNumero(demand)
-                const priorLabel = formatPriorityLabel(demand.priority)
-                const seiRef = getSheetsField(demand, [/sei/i, /n[ºo°]?\s*sei/i])
-                const refLinha = [seiRef, demand.theme, demand.description?.trim()]
-                  .filter((s): s is string => Boolean(s && String(s).trim()))
-                  .join(' · ')
-                const temMetaLinha =
-                  Boolean(demand.data_demanda) ||
-                  Boolean(liderancaExibicao) ||
-                  Boolean(priorLabel) ||
-                  valorNum > 0
+            <table className="w-full min-w-[920px] border-collapse text-left text-xs">
+              <thead
+                className={cn(
+                  'sticky top-0 z-10 border-b',
+                  isCockpit
+                    ? 'border-white/10 bg-[rgba(18,30,38,0.98)]'
+                    : isDarkAppearance
+                      ? 'border-white/10 bg-bg-app'
+                      : 'border-card bg-surface',
+                )}
+              >
+                <tr className="text-[11px] font-medium uppercase tracking-wide text-text-secondary">
+                  {DEMAND_SORT_COLUMNS.map((col) => {
+                    const active = sortCol === col.id
+                    const SortIcon = !active ? ArrowUpDown : sortDir === 'asc' ? ArrowUp : ArrowDown
+                    const thClass =
+                      col.id === 'title'
+                        ? 'min-w-[220px] px-3 py-2.5'
+                        : col.id === 'lideranca'
+                          ? 'min-w-[140px] px-3 py-2.5'
+                          : col.id === 'observacoes'
+                            ? 'min-w-[180px] px-3 py-2.5'
+                            : 'whitespace-nowrap px-3 py-2.5'
+                    return (
+                      <th key={col.id} className={cn(thClass, col.align === 'right' && 'text-right')}>
+                        <button
+                          type="button"
+                          onClick={() => toggleSort(col.id)}
+                          className={cn(
+                            'inline-flex max-w-full items-center gap-1 font-medium uppercase tracking-wide transition-colors',
+                            col.align === 'right' && 'ml-auto flex-row-reverse',
+                            active ? 'text-text-primary' : 'text-text-secondary hover:text-text-primary',
+                          )}
+                          title={
+                            active
+                              ? sortDir === 'asc'
+                                ? 'Ordenado A→Z — clique para Z→A'
+                                : 'Ordenado Z→A — clique para A→Z'
+                              : 'Ordenar A→Z'
+                          }
+                          aria-label={`Ordenar por ${col.label}`}
+                        >
+                          <span className="truncate">{col.label}</span>
+                          <SortIcon
+                            className={cn('h-3 w-3 shrink-0', active ? 'opacity-100' : 'opacity-45')}
+                            aria-hidden
+                          />
+                          {active ? (
+                            <span className="sr-only">{sortDir === 'asc' ? 'A a Z' : 'Z a A'}</span>
+                          ) : null}
+                        </button>
+                      </th>
+                    )
+                  })}
+                </tr>
+              </thead>
+              <tbody>
+                {demandsFiltradasEOrdenadas.map((demand, index) => {
+                  const liderancaExibicao = getDemandLiderancaParaFiltro(demand)
+                  const valorNum = getDemandValorNumero(demand)
+                  const priorLabel = formatPriorityLabel(demand.priority)
+                  const refLinha = getDemandObservacoes(demand)
 
-                return (
-                  <li
-                    key={demand.id || `demand-${index}`}
-                    className={cn(
-                      'list-none rounded-xl border px-3 py-2.5 transition-colors',
-                      isCockpit
-                        ? 'border-white/10 bg-white/[0.03] hover:bg-white/[0.06]'
-                        : isDarkAppearance
-                          ? 'border-white/10 bg-bg-app/50 hover:bg-bg-app/80'
-                          : 'border-border-card bg-surface shadow-sm hover:bg-background/60',
-                    )}
-                  >
-                    <div className="flex items-start justify-between gap-3">
-                      <h3 className="min-w-0 flex-1 text-sm font-semibold leading-snug text-text-primary sm:text-[15px]">
-                        <span className="line-clamp-2">{demand.title}</span>
-                      </h3>
-                      <span
-                        className={cn(
-                          'shrink-0 rounded-md border px-2 py-1 text-[11px] font-semibold leading-none sm:text-xs',
-                          getStatusBadgeClasses(demand.status, isDarkAppearance),
-                        )}
-                      >
-                        {getStatusLabel(demand.status)}
-                      </span>
-                    </div>
-                    {temMetaLinha ? (
-                      <p className="mt-2 flex min-w-0 flex-wrap items-baseline gap-x-1.5 gap-y-0.5 text-xs leading-relaxed text-text-secondary">
-                        {demand.data_demanda ? (
-                          <span className="shrink-0">{formatDate(demand.data_demanda)}</span>
-                        ) : null}
-                        {demand.data_demanda && liderancaExibicao ? (
-                          <span className="text-text-muted" aria-hidden>
-                            {' '}
-                            ·{' '}
-                          </span>
-                        ) : null}
-                        {liderancaExibicao ? (
-                          <span className="min-w-0 max-w-[14rem] truncate font-medium text-text-primary">
-                            {liderancaExibicao}
-                          </span>
-                        ) : null}
-                        {(demand.data_demanda || liderancaExibicao) && priorLabel ? (
-                          <span className="text-text-muted" aria-hidden>
-                            {' '}
-                            ·{' '}
-                          </span>
-                        ) : null}
+                  return (
+                    <tr
+                      key={demand.id || `demand-${index}`}
+                      className={cn(
+                        'border-b align-top transition-colors',
+                        isCockpit
+                          ? 'border-white/8 hover:bg-white/[0.04]'
+                          : isDarkAppearance
+                            ? 'border-white/8 hover:bg-white/[0.04]'
+                            : 'border-card/80 hover:bg-[#fff4e5]/55',
+                      )}
+                    >
+                      <td className="px-3 py-2">
+                        <span
+                          className={cn(
+                            'inline-flex max-w-[9.5rem] truncate rounded-md border px-1.5 py-0.5 text-[10px] font-medium leading-none',
+                            getStatusBadgeClasses(demand.status, isDarkAppearance),
+                          )}
+                          title={getStatusLabel(demand.status)}
+                        >
+                          {getStatusLabel(demand.status)}
+                        </span>
+                      </td>
+                      <td className="px-3 py-2">
+                        <span className="line-clamp-2 text-[13px] font-medium leading-snug text-text-primary">
+                          {demand.title}
+                        </span>
+                      </td>
+                      <td className="whitespace-nowrap px-3 py-2 tabular-nums text-text-secondary">
+                        {formatDate(demand.data_demanda)}
+                      </td>
+                      <td className="px-3 py-2 text-text-primary">
+                        <span className="line-clamp-2" title={liderancaExibicao || undefined}>
+                          {liderancaExibicao || '—'}
+                        </span>
+                      </td>
+                      <td className="whitespace-nowrap px-3 py-2">
                         {priorLabel ? (
-                          <span className="shrink-0">
-                            Prioridade{' '}
-                            <span
-                              className={cn(
-                                'font-semibold',
-                                priorityToneClass(demand.priority, isDarkAppearance),
-                              )}
-                            >
-                              {priorLabel}
-                            </span>
-                          </span>
-                        ) : null}
-                        {(demand.data_demanda || liderancaExibicao || priorLabel) && valorNum > 0 ? (
-                          <span className="text-text-muted" aria-hidden>
-                            {' '}
-                            ·{' '}
-                          </span>
-                        ) : null}
-                        {valorNum > 0 ? (
                           <span
                             className={cn(
-                              'shrink-0 font-semibold tabular-nums text-text-primary',
-                              isDarkAppearance ? 'text-zinc-100' : 'text-text-primary',
+                              'font-medium',
+                              priorityToneClass(demand.priority, isDarkAppearance),
                             )}
                           >
-                            R$ {formatValorSemMoeda(valorNum)}
+                            {priorLabel}
                           </span>
-                        ) : null}
-                      </p>
-                    ) : null}
-                    {refLinha ? (
-                      <p className="mt-1 line-clamp-1 text-[11px] leading-snug text-text-muted">{refLinha}</p>
-                    ) : null}
-                  </li>
-                )
-              })}
-            </ul>
+                        ) : (
+                          <span className="text-text-muted">—</span>
+                        )}
+                      </td>
+                      <td className="whitespace-nowrap px-3 py-2 text-right tabular-nums text-text-primary">
+                        {valorNum > 0 ? `R$ ${formatValorSemMoeda(valorNum)}` : '—'}
+                      </td>
+                      <td className="px-3 py-2 text-text-muted">
+                        <span className="line-clamp-2" title={refLinha || undefined}>
+                          {refLinha || '—'}
+                        </span>
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
           )}
         </div>
 

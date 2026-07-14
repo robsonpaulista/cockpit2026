@@ -1,5 +1,4 @@
 import { cn } from '@/lib/utils'
-import { SIDEBAR_BRAND_AMBER } from '@/lib/sidebar-brand-styles'
 import {
   cargoChipClass,
   ghostButtonClass,
@@ -7,7 +6,8 @@ import {
   pillInputClass,
 } from '@/lib/premium-ui-classes'
 
-export const TERRITORIO_BASE_AMBER = SIDEBAR_BRAND_AMBER
+/** Accent da aba Base — alinhado à paleta IPT (#ff9800). */
+export const TERRITORIO_BASE_AMBER = '#ff9800'
 
 /** Texto preto em toda a aba Base (evita cinza/azul do tema). */
 export const territorioBaseTextClass = 'text-black'
@@ -17,13 +17,13 @@ export const territorioBaseGhostButtonClass = cn(ghostButtonClass, territorioBas
 export const territorioBasePillInputClass = cn(
   pillInputClass,
   territorioBaseTextClass,
-  'placeholder:text-black/45 focus:ring-[#C8900A]/25',
+  'placeholder:text-black/45 focus:ring-[#ff9800]/25',
 )
 
 export const territorioBasePillFilterIdleClass = cn(pillFilterIdleClass, territorioBaseTextClass)
 
 export const territorioBasePillFilterActiveClass =
-  'inline-flex items-center gap-1 rounded-[99px] border border-[#C8900A] bg-[#C8900A]/10 px-2.5 py-1 text-[13px] font-medium text-black'
+  'inline-flex items-center gap-1 rounded-[99px] border border-[#ff9800] bg-[#ff9800]/10 px-2.5 py-1 text-[13px] font-medium text-black'
 
 export const territorioBaseCargoChipClass = cn(cargoChipClass, territorioBaseTextClass)
 

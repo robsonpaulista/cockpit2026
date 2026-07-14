@@ -57,7 +57,7 @@ export function ChampionPostCard({
                 Sem preview
               </div>
             )}
-            <div className="absolute right-1 top-1 rounded bg-[#C8900A] px-2 py-0.5 text-[10px] font-medium text-white tabular-nums">
+            <div className="absolute right-1 top-1 rounded bg-[#ff9800] px-2 py-0.5 text-[10px] font-medium text-white tabular-nums">
               {metricValue.toLocaleString('pt-BR')}
             </div>
           </div>

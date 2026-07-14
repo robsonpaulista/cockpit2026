@@ -66,7 +66,7 @@ export function TerritorioBasePanel() {
   const { theme } = useTheme()
   const isCockpit = false
   const accentTextClass = isCockpit ? 'text-[#2dd4bf]' : territorioBaseTextClass
-  const accentBorderClass = isCockpit ? 'border-[#2dd4bf]' : 'border-[#C8900A]'
+  const accentBorderClass = isCockpit ? 'border-[#2dd4bf]' : 'border-[#ff9800]'
   const sectionShellClass = isCockpit
     ? 'border-white/12 bg-[linear-gradient(165deg,rgba(22,34,44,0.82)_0%,rgba(18,30,38,0.86)_100%)] shadow-[0_10px_32px_rgba(3,12,20,0.28)]'
     : 'border-card bg-surface shadow-card'
@@ -1168,7 +1168,7 @@ export function TerritorioBasePanel() {
                         className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-xs hover:bg-background"
                       >
                         <span
-                          className={`flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded border ${checked ? `${accentBorderClass} ${isCockpit ? 'bg-[#2dd4bf]' : 'bg-[#C8900A]'}` : 'border-card bg-white'}`}
+                          className={`flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded border ${checked ? `${accentBorderClass} ${isCockpit ? 'bg-[#2dd4bf]' : 'bg-[#ff9800]'}` : 'border-card bg-white'}`}
                         >
                           {checked ? <IconCheck className="h-2.5 w-2.5 text-white" stroke={2.5} /> : null}
                         </span>
@@ -1252,7 +1252,7 @@ export function TerritorioBasePanel() {
           )}
 
           {filtroDepEstadual.length > 0 && (
-            <div className="mb-4 rounded-xl border border-[#C8900A]/30 bg-[#C8900A]/10 p-3">
+            <div className="mb-4 rounded-xl border border-[#ff9800]/30 bg-[#ff9800]/10 p-3">
               {(() => {
                 const cidades = new Set(liderancasFiltradas.map((l) => String(l[cidadeCol] || 'Sem cidade')))
                 const totalVotos = votosReferenciaCol

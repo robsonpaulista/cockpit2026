@@ -84,7 +84,7 @@ function MetricCell({
       </div>
       <div className="mt-1.5 h-1 overflow-hidden rounded-full bg-background">
         <div
-          className={cn('h-full rounded-full', isLeader ? 'bg-status-success' : 'bg-[#C8900A]/55')}
+          className={cn('h-full rounded-full', isLeader ? 'bg-status-success' : 'bg-[#ff9800]/55')}
           style={{ width: `${Math.max(ratio, value > 0 ? 8 : 0)}%` }}
         />
       </div>
@@ -177,7 +177,7 @@ export function InstagramThemeComparisonTable({
                     key={theme}
                     className={cn(
                       'border-b border-card transition-colors hover:bg-surface-secondary',
-                      isOverallLeader && 'bg-[#C8900A]/12'
+                      isOverallLeader && 'bg-[#ff9800]/12'
                     )}
                   >
                     <td className="p-4 align-top">

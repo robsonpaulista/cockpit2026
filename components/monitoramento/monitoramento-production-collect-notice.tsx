@@ -51,8 +51,8 @@ export function CollectSourcesProductionInfo({ status: statusProp }: CollectSour
         onClick={() => setOpen((v) => !v)}
         className={cn(
           'inline-flex h-7 w-7 items-center justify-center rounded-full',
-          'text-[rgb(var(--color-primary))] hover:bg-[#E6F1FB]',
-          open && 'bg-[#E6F1FB]'
+          'text-[rgb(var(--color-primary))] hover:bg-[rgb(var(--color-primary-tint))]',
+          open && 'bg-[rgb(var(--color-primary-tint))]'
         )}
         aria-label="Informações sobre coleta em produção"
         aria-expanded={open}

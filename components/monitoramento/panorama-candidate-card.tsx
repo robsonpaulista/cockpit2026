@@ -258,7 +258,7 @@ export function PanoramaCandidateCard({ column: col }: PanoramaCandidateCardProp
                         {ad.pageName ?? 'Página desconhecida'}
                       </p>
                       {ad.isActive ? (
-                        <span className="shrink-0 rounded-full bg-[#E6F1FB] px-1.5 py-px text-[9px] font-medium text-[rgb(var(--color-primary))]">
+                        <span className="shrink-0 rounded-full bg-[rgb(var(--color-primary-tint))] px-1.5 py-px text-[9px] font-medium text-[rgb(var(--color-primary))]">
                           ativo
                         </span>
                       ) : (

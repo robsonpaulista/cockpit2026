@@ -859,7 +859,7 @@ export default function PesquisaPage() {
           setCandidatoPadrao(novoCandidato)
           localStorage.setItem('candidatoPadraoPesquisa', novoCandidato)
         }}
-        className="appearance-none rounded-[99px] border border-[rgb(var(--color-border-secondary)/0.85)] bg-transparent py-1 pl-2.5 pr-7 text-[13px] font-medium text-text-primary transition-colors hover:border-[#C8900A] focus:outline-none focus:ring-2 focus:ring-[#C8900A]/25"
+        className="appearance-none rounded-[99px] border border-[rgb(var(--color-border-secondary)/0.85)] bg-transparent py-1 pl-2.5 pr-7 text-[13px] font-medium text-text-primary transition-colors hover:border-[#ff9800] focus:outline-none focus:ring-2 focus:ring-[#ff9800]/25"
       >
         <option value="">Selecione um candidato</option>
         {candidatosDisponiveis.map((candidato) => (
@@ -1166,7 +1166,7 @@ export default function PesquisaPage() {
                         onChange={(e) => setFiltroTextoCandidatoCadastradas(e.target.value)}
                         placeholder="Buscar nome…"
                         className={cn(
-                          'mt-2 w-full min-w-[8rem] max-w-[18rem] rounded-md border px-2 py-1.5 text-xs font-normal text-text-primary placeholder:text-secondary focus:outline-none focus:ring-2 focus:ring-[#C8900A]/40',
+                          'mt-2 w-full min-w-[8rem] max-w-[18rem] rounded-md border px-2 py-1.5 text-xs font-normal text-text-primary placeholder:text-secondary focus:outline-none focus:ring-2 focus:ring-[#ff9800]/40',
                           inputShellClass
                         )}
                         autoComplete="off"

@@ -25,7 +25,7 @@ import {
 } from '@/lib/typography-chrome'
 
 /** Âmbar fixo da marca — não usar `text-accent-gold` (azul no tema republicanos). */
-const agendaAmberIconClass = 'text-[#C8900A]'
+const agendaAmberIconClass = 'text-[#ff9800]'
 
 const agendaAmberButtonClass = cn(
   'inline-flex items-center justify-center gap-2 rounded-lg border border-accent-gold/40 bg-accent-gold/10 transition-colors hover:bg-accent-gold/15 disabled:cursor-not-allowed disabled:opacity-50',

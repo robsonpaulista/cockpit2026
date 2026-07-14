@@ -73,7 +73,7 @@ export function PanoramaTerritorioTopRow() {
 
       {insight ? (
         <div className="flex items-start gap-2.5 rounded-lg border border-[rgb(var(--color-border-secondary)/0.45)] bg-bg-app/60 px-4 py-2.5">
-          <Lightbulb className="mt-0.5 h-4 w-4 shrink-0 text-[#C8900A]" aria-hidden />
+          <Lightbulb className="mt-0.5 h-4 w-4 shrink-0 text-[#ff9800]" aria-hidden />
           <div className="min-w-0">
             <p className="text-[11px] font-semibold uppercase tracking-wide text-text-muted">Insight rápido</p>
             <p className={cn('mt-0.5 leading-snug text-text-secondary', typographyBodyClass)}>{insight}</p>

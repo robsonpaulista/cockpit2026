@@ -157,7 +157,7 @@ export function UserMenu({
           )}
           aria-hidden
         >
-          <div className="h-7 w-7 animate-pulse rounded-full bg-[#C8900A]/25" />
+          <div className="h-7 w-7 animate-pulse rounded-full bg-[#ff9800]/25" />
           {!collapsed ? (
             <div className="h-[10px] flex-1 animate-pulse rounded bg-bg-app" />
           ) : null}
@@ -166,7 +166,7 @@ export function UserMenu({
     }
     return (
       <div className="flex items-center gap-2 px-3 py-2">
-        <div className="h-8 w-8 animate-pulse rounded-full bg-[#C8900A]/25" aria-hidden />
+        <div className="h-8 w-8 animate-pulse rounded-full bg-[#ff9800]/25" aria-hidden />
         <div className="hidden md:block">
           <div className="h-4 w-24 animate-pulse rounded bg-background" />
         </div>

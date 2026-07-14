@@ -127,7 +127,7 @@ function MetricRow({
         <div
           className={cn(
             'h-full rounded-full transition-all',
-            isLeader ? 'bg-status-success' : 'bg-[#C8900A]/55'
+            isLeader ? 'bg-status-success' : 'bg-[#ff9800]/55'
           )}
           style={{ width: `${Math.max(ratio, value > 0 ? 8 : 0)}%` }}
         />

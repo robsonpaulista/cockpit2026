@@ -1,10 +1,8 @@
-import { SIDEBAR_BRAND_AMBER } from '@/lib/sidebar-brand-styles'
-
 export type HeatmapScaleMode = 'individual' | 'comparative'
 
-const EMPTY_CELL = '#EEF1F5'
-/** Cor padrão do modo comparativo — alinhada à marca (sidebar / abas). */
-const COMPARATIVE_BASE = SIDEBAR_BRAND_AMBER
+const EMPTY_CELL = '#EDEDED'
+/** Cor padrão do modo comparativo — paleta IPT (#ff9800). */
+const COMPARATIVE_BASE = '#ff9800'
 
 function parseHex(hex: string): { r: number; g: number; b: number } | null {
   const raw = hex.trim().replace('#', '')

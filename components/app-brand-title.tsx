@@ -47,17 +47,17 @@ function wordmarkTone({
 
 function wordmarkColors(tone: WordmarkTone) {
   if (tone === 'onGradient') {
-    return { cockpit: 'text-white', year: 'text-[#c99a2e]' }
+    return { cockpit: 'text-white', year: 'text-[#ff9800]' }
   }
   if (tone === 'onAmber') {
     // Mobile (header âmbar): texto claro. Desktop (header claro / sidebar light): COCKPIT preto + 2026 âmbar.
     return {
       cockpit: 'text-text-primary max-lg:text-white',
-      year: 'text-[#c99a2e] max-lg:text-white/90',
+      year: 'text-[#ff9800] max-lg:text-white/90',
     }
   }
   // Sidebar escura / superfícies escuras
-  return { cockpit: 'text-[#c99a2e]', year: 'text-white' }
+  return { cockpit: 'text-[#ff9800]', year: 'text-white' }
 }
 
 /** Wordmark COCK + PIT — tipografia bold, duas cores, sem ícone. */

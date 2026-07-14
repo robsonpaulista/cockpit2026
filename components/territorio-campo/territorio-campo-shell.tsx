@@ -1,5 +1,6 @@
 'use client'
 
+import { useEffect } from 'react'
 import { HardHat, LayoutGrid, MapPin, Route } from 'lucide-react'
 import {
   DashboardHubTabBar,
@@ -18,6 +19,7 @@ import {
 import { territorioBaseTextClass } from '@/lib/territorio-base-styles'
 import { cn } from '@/lib/utils'
 import { useDashboardTopbarVisible } from '@/hooks/use-dashboard-topbar-visible'
+import '@/app/dashboard/shared/ipt-page-palette.css'
 
 const TABS: { id: TerritorioCampoTab; label: string; icon: typeof LayoutGrid }[] = [
   { id: 'panorama', label: 'Panorama', icon: LayoutGrid },
@@ -44,6 +46,13 @@ export function TerritorioCampoShell({
   const isBaseTab = activeTab === TERRITORIO_CAMPO_TAB_BASE
   const descriptionText =
     'Base de lideranças, expectativa territorial e visitas de campo (Campo & Agenda).'
+
+  useEffect(() => {
+    document.body.setAttribute('data-ipt-palette', '')
+    return () => {
+      document.body.removeAttribute('data-ipt-palette')
+    }
+  }, [])
 
   return (
     <DashboardPageShell>

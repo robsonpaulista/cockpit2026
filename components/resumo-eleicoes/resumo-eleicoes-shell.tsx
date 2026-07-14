@@ -1,5 +1,6 @@
 'use client'
 
+import { useEffect } from 'react'
 import { BarChart3, Calendar, ClipboardList, MapPinned, Vote } from 'lucide-react'
 import {
   DashboardHubTabBar,
@@ -20,6 +21,7 @@ import {
   RESUMO_ELEICOES_TAB_SECAO,
 } from '@/lib/resumo-eleicoes-hub-route'
 import { useDashboardTopbarVisible } from '@/hooks/use-dashboard-topbar-visible'
+import '@/app/dashboard/shared/ipt-page-palette.css'
 
 const TABS: { id: ResumoEleicoesHubTab; label: string; icon: typeof ClipboardList }[] = [
   { id: RESUMO_ELEICOES_TAB_ATENDIMENTO, label: 'Atendimento', icon: ClipboardList },
@@ -58,6 +60,13 @@ export function ResumoEleicoesShell({
   const topbarVisible = useDashboardTopbarVisible()
   const pageTitle = 'Painel de Atendimentos'
   const description = TAB_DESCRIPTIONS[activeTab]
+
+  useEffect(() => {
+    document.body.setAttribute('data-ipt-palette', '')
+    return () => {
+      document.body.removeAttribute('data-ipt-palette')
+    }
+  }, [])
 
   return (
     <DashboardPageShell>
