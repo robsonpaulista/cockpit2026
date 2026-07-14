@@ -160,6 +160,7 @@ const defaultThemes = [
   'Família',
   'Hospital do Amor',
   'Informativo',
+  'Obras',
   "PL'S",
   'Pesquisas',
   'Promoção',
@@ -167,6 +168,23 @@ const defaultThemes = [
   'Segurança',
   'Outros'
 ]
+
+type PostClassification = {
+  theme?: string
+  isBoosted?: boolean
+  obraMapaId?: string | null
+}
+
+function isTemaObras(theme: string | undefined | null): boolean {
+  return String(theme || '').trim().toLowerCase() === 'obras'
+}
+
+function obraOptionLabel(obra: { municipio: string; obra?: string | null; tipo?: string | null }): string {
+  const nome = (obra.obra || obra.tipo || 'Obra').trim()
+  const muni = obra.municipio?.trim() || 'Município'
+  const curto = nome.length > 48 ? `${nome.slice(0, 48)}…` : nome
+  return `${muni} — ${curto}`
+}
 
 export default function ConteudoPage() {
   const { theme } = useTheme()
@@ -183,7 +201,7 @@ export default function ConteudoPage() {
   const [locationsMode, setLocationsMode] = useState<'followers' | 'engaged'>('followers')
   const [overviewThemeFilter, setOverviewThemeFilter] = useState<string>('all')
   const [overviewBoostedFilter, setOverviewBoostedFilter] = useState<string>('all')
-  const [postClassifications, setPostClassifications] = useState<Record<string, { theme?: string; isBoosted?: boolean }>>({})
+  const [postClassifications, setPostClassifications] = useState<Record<string, PostClassification>>({})
   
   // Estados para Instagram
   const [isConfigured, setIsConfigured] = useState(false)
@@ -199,6 +217,7 @@ export default function ConteudoPage() {
   // Estados para temas customizados
   const [customThemes, setCustomThemes] = useState<string[]>([])
   const [availableThemes, setAvailableThemes] = useState<string[]>(defaultThemes)
+  const [obrasMapa, setObrasMapa] = useState<import('@/lib/obras-mapa').ObraMapaRow[]>([])
   const [showAddTheme, setShowAddTheme] = useState<string | null>(null) // ID do post que está adicionando tema
   const [newTheme, setNewTheme] = useState('')
 
@@ -306,25 +325,45 @@ export default function ConteudoPage() {
     }
 
     loadClassifications()
+
+    const loadObrasMapa = async () => {
+      try {
+        const response = await fetch('/api/obras/mapa?escopo=lista&periodo=todos')
+        if (!response.ok) return
+        const data = await response.json()
+        const list = Array.isArray(data?.obras) ? data.obras : Array.isArray(data) ? data : []
+        setObrasMapa(list)
+      } catch {
+        // silencioso — seletor de obra fica vazio
+      }
+    }
+    void loadObrasMapa()
   }, [])
 
   // Função para salvar classificação
-  const saveClassification = async (post: { id: string; postedAt?: string; caption?: string }, theme: string, isBoosted: boolean) => {
+  const saveClassification = async (
+    post: { id: string; postedAt?: string; caption?: string },
+    theme: string,
+    isBoosted: boolean,
+    obraMapaId?: string | null
+  ) => {
     const identifier = getPostIdentifier(post)
-    
-    // Atualizar estado local imediatamente
+    const obraId = isTemaObras(theme) ? (obraMapaId ?? null) : null
+
     const updated = {
       ...postClassifications,
-      [identifier]: { theme: theme || undefined, isBoosted },
+      [identifier]: {
+        theme: theme || undefined,
+        isBoosted,
+        obraMapaId: obraId,
+      },
     }
     setPostClassifications(updated)
-    
-    // Salvar no localStorage como cache
+
     if (typeof window !== 'undefined') {
       localStorage.setItem('instagram_post_classifications', JSON.stringify(updated))
     }
-    
-    // Salvar no backend
+
     try {
       const response = await fetch('/api/instagram/classifications', {
         method: 'POST',
@@ -337,9 +376,10 @@ export default function ConteudoPage() {
           postCaption: post.caption || undefined,
           theme: theme || '',
           isBoosted,
+          obraMapaId: obraId,
         }),
       })
-      
+
       if (!response.ok) {
         // Erro silencioso
       }
@@ -1149,7 +1189,7 @@ export default function ConteudoPage() {
                               </p>
 
                               {/* Campos de classificação */}
-                              <div className="mb-2 flex gap-2 items-center flex-shrink-0">
+                              <div className="mb-2 flex gap-2 items-center flex-shrink-0 flex-wrap">
                                 <div className="flex-1 relative">
                                   <select
                                     value={classification?.theme || ''}
@@ -1158,7 +1198,16 @@ export default function ConteudoPage() {
                                         const postId = getPostIdentifier(post)
                                         setShowAddTheme(postId)
                                       } else {
-                                        saveClassification(post, e.target.value, classification?.isBoosted ?? false)
+                                        const nextTheme = e.target.value
+                                        const keepObra = isTemaObras(nextTheme)
+                                          ? classification?.obraMapaId ?? null
+                                          : null
+                                        saveClassification(
+                                          post,
+                                          nextTheme,
+                                          classification?.isBoosted ?? false,
+                                          keepObra
+                                        )
                                       }
                                     }}
                                     className="h-7 text-xs w-full px-2 border border-card rounded-lg bg-surface focus:outline-none focus:ring-2 focus:ring-[#C8900A]/30"
@@ -1232,16 +1281,45 @@ export default function ConteudoPage() {
                                     </div>
                                   )}
                                 </div>
+                                {isTemaObras(classification?.theme) ? (
+                                  <select
+                                    value={classification?.obraMapaId || ''}
+                                    onChange={(e) =>
+                                      saveClassification(
+                                        post,
+                                        classification?.theme || 'Obras',
+                                        classification?.isBoosted ?? false,
+                                        e.target.value || null
+                                      )
+                                    }
+                                    className="h-7 text-xs min-w-[160px] max-w-[220px] flex-[1.4] px-2 border border-card rounded-lg bg-surface focus:outline-none focus:ring-2 focus:ring-[#C8900A]/30"
+                                    title="Relacionar post à obra do Mapa / Diagnóstico"
+                                  >
+                                    <option value="">Obra (match)</option>
+                                    {[...obrasMapa]
+                                      .sort((a, b) =>
+                                        a.municipio.localeCompare(b.municipio, 'pt-BR') ||
+                                        String(a.obra || '').localeCompare(String(b.obra || ''), 'pt-BR')
+                                      )
+                                      .map((obra) => (
+                                        <option key={obra.id} value={obra.id}>
+                                          {obraOptionLabel(obra)}
+                                        </option>
+                                      ))}
+                                  </select>
+                                ) : null}
                                 <select
                                   value={classification?.isBoosted ? 'sim' : 'nao'}
                                   onChange={(e) =>
                                     saveClassification(
                                       post,
                                       classification?.theme || '',
-                                      e.target.value === 'sim'
+                                      e.target.value === 'sim',
+                                      classification?.obraMapaId ?? null
                                     )
                                   }
                                   className="h-7 text-xs w-[90px] px-2 border border-card rounded-lg bg-surface focus:outline-none focus:ring-2 focus:ring-[#C8900A]/30"
+                                  title="Impulsionado?"
                                 >
                                   <option value="nao">Não</option>
                                   <option value="sim">Sim</option>

@@ -140,6 +140,8 @@ export function municipioNaMissaoObras(m: IptMunicipio): boolean {
   if (!temExpectativa(m)) return false
   const temObra = m.detalhes.obrasQuantidade > 0 || m.sinais.obras === 'mal'
   if (!temObra) return false
+  // Com match post→obra em Redes, a cidade já tem divulgação contabilizada.
+  if ((m.detalhes.obrasDivulgacaoPosts ?? 0) > 0) return false
   const baixoAproveitamento =
     m.sinais.visitas === 'mal' ||
     m.sinais.visitas === 'neutro' ||
@@ -675,7 +677,13 @@ export function chipsEvidenciaMissao(m: IptMunicipio, missao: IptMissaoId): stri
     } else {
       chips.push('Sem destinação cadastrada')
     }
-    chips.push('Baixo aproveitamento comunicacional')
+    if ((m.detalhes.obrasDivulgacaoPosts ?? 0) > 0) {
+      chips.push(
+        `${m.detalhes.obrasDivulgacaoPosts} post${m.detalhes.obrasDivulgacaoPosts === 1 ? '' : 's'} de divulgação`
+      )
+    } else {
+      chips.push('Baixo aproveitamento comunicacional')
+    }
   }
   return chips.slice(0, 4)
 }

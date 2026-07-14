@@ -3,11 +3,23 @@ import { createClient } from '@/lib/supabase/server'
 export const dynamic = 'force-dynamic'
 import { NextResponse } from 'next/server'
 
+export type InstagramPostClassificationDto = {
+  theme: string
+  isBoosted: boolean
+  obraMapaId: string | null
+}
+
 // Função para gerar ID único baseado em data + legenda
 function generateIdFromDateAndCaption(date: string, caption: string): string {
   const dateStr = new Date(date).toISOString().split('T')[0]
   const captionHash = caption.substring(0, 50).replace(/[^a-zA-Z0-9]/g, '').toLowerCase()
   return `${dateStr}_${captionHash}`
+}
+
+function normalizeObraMapaId(value: unknown): string | null {
+  if (typeof value !== 'string') return null
+  const trimmed = value.trim()
+  return trimmed.length > 0 ? trimmed : null
 }
 
 // GET - Buscar todas as classificações do usuário
@@ -25,7 +37,7 @@ export async function GET() {
 
     const { data, error } = await supabase
       .from('instagram_post_classifications')
-      .select('identifier, theme, is_boosted')
+      .select('identifier, theme, is_boosted, obra_mapa_id')
       .eq('user_id', user.id)
 
     if (error) {
@@ -36,14 +48,14 @@ export async function GET() {
       )
     }
 
-    // Converter para o formato esperado pelo frontend
-    const classifications: Record<string, { theme: string; isBoosted: boolean }> = {}
-    
+    const classifications: Record<string, InstagramPostClassificationDto> = {}
+
     if (data) {
       data.forEach((item) => {
         classifications[item.identifier] = {
           theme: item.theme,
           isBoosted: item.is_boosted,
+          obraMapaId: item.obra_mapa_id ?? null,
         }
       })
     }
@@ -72,9 +84,8 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json()
-    const { postId, postDate, postCaption, theme, isBoosted } = body
+    const { postId, postDate, postCaption, theme, isBoosted, obraMapaId } = body
 
-    // Validações
     if (!theme || typeof isBoosted !== 'boolean') {
       return NextResponse.json(
         { success: false, error: 'Tema e isBoosted são obrigatórios' },
@@ -82,7 +93,6 @@ export async function POST(request: Request) {
       )
     }
 
-    // Determinar o identificador único
     let identifier: string
     if (postId) {
       identifier = postId
@@ -95,7 +105,9 @@ export async function POST(request: Request) {
       )
     }
 
-    // Verificar se já existe
+    const obraId =
+      String(theme).trim().toLowerCase() === 'obras' ? normalizeObraMapaId(obraMapaId) : null
+
     const { data: existing } = await supabase
       .from('instagram_post_classifications')
       .select('id')
@@ -111,10 +123,10 @@ export async function POST(request: Request) {
       post_caption: postCaption || null,
       theme,
       is_boosted: isBoosted,
+      obra_mapa_id: obraId,
     }
 
     if (existing) {
-      // Atualizar existente
       const { data, error } = await supabase
         .from('instagram_post_classifications')
         .update(classificationData)
@@ -137,34 +149,35 @@ export async function POST(request: Request) {
         data: {
           theme: data.theme,
           isBoosted: data.is_boosted,
-        },
-      })
-    } else {
-      // Criar novo
-      const { data, error } = await supabase
-        .from('instagram_post_classifications')
-        .insert(classificationData)
-        .select()
-        .single()
-
-      if (error) {
-        console.error('Erro ao criar classificação:', error)
-        return NextResponse.json(
-          { success: false, error: 'Erro ao criar classificação' },
-          { status: 500 }
-        )
-      }
-
-      return NextResponse.json({
-        success: true,
-        id: data.id,
-        identifier: data.identifier,
-        data: {
-          theme: data.theme,
-          isBoosted: data.is_boosted,
+          obraMapaId: data.obra_mapa_id ?? null,
         },
       })
     }
+
+    const { data, error } = await supabase
+      .from('instagram_post_classifications')
+      .insert(classificationData)
+      .select()
+      .single()
+
+    if (error) {
+      console.error('Erro ao criar classificação:', error)
+      return NextResponse.json(
+        { success: false, error: 'Erro ao criar classificação' },
+        { status: 500 }
+      )
+    }
+
+    return NextResponse.json({
+      success: true,
+      id: data.id,
+      identifier: data.identifier,
+      data: {
+        theme: data.theme,
+        isBoosted: data.is_boosted,
+        obraMapaId: data.obra_mapa_id ?? null,
+      },
+    })
   } catch (error) {
     console.error('Erro ao salvar classificação:', error)
     return NextResponse.json(
@@ -200,21 +213,23 @@ export async function PUT(request: Request) {
     const results = []
 
     for (const classification of classifications) {
-      const { postId, postDate, postCaption, theme, isBoosted } = classification
+      const { postId, postDate, postCaption, theme, isBoosted, obraMapaId } = classification
 
       if (!theme || typeof isBoosted !== 'boolean') {
-        continue // Pular classificações inválidas
+        continue
       }
 
-      // Determinar o identificador único
       let identifier: string
       if (postId) {
         identifier = postId
       } else if (postDate && postCaption) {
         identifier = generateIdFromDateAndCaption(postDate, postCaption)
       } else {
-        continue // Pular se não tiver identificador
+        continue
       }
+
+      const obraId =
+        String(theme).trim().toLowerCase() === 'obras' ? normalizeObraMapaId(obraMapaId) : null
 
       const classificationData = {
         user_id: user.id,
@@ -224,9 +239,9 @@ export async function PUT(request: Request) {
         post_caption: postCaption || null,
         theme,
         is_boosted: isBoosted,
+        obra_mapa_id: obraId,
       }
 
-      // Verificar se já existe
       const { data: existing } = await supabase
         .from('instagram_post_classifications')
         .select('id')
@@ -235,16 +250,12 @@ export async function PUT(request: Request) {
         .single()
 
       if (existing) {
-        // Atualizar
         await supabase
           .from('instagram_post_classifications')
           .update(classificationData)
           .eq('id', existing.id)
       } else {
-        // Criar
-        await supabase
-          .from('instagram_post_classifications')
-          .insert(classificationData)
+        await supabase.from('instagram_post_classifications').insert(classificationData)
       }
 
       results.push({ identifier, success: true })
@@ -263,16 +274,3 @@ export async function PUT(request: Request) {
     )
   }
 }
-
-
-
-
-
-
-
-
-
-
-
-
-

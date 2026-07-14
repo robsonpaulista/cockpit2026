@@ -24,6 +24,8 @@ export type IptDetalhes = {
   visitasPeriodoAnterior: number
   obrasQuantidade: number
   obrasValorTotal: number
+  /** Posts do Instagram classificados com vínculo a obra deste município. */
+  obrasDivulgacaoPosts: number
   pesquisaPosicaoTop5: number | null
   pesquisaTop5: IptPesquisaTopItem[]
   /** Estimulada na cidade, ou espontânea quando não houver estimulada cadastrada. */
@@ -114,6 +116,8 @@ export type IptMunicipioInput = {
   visitasNoPeriodo: number
   obrasCount: number
   obrasValorTotal: number
+  /** Posts vinculados a obras deste município (classificação Redes). */
+  obrasDivulgacaoPosts?: number
   intencaoPesquisa?: number | null
   /** Posição do candidato foco no top 5 local (1–5), ou null. */
   pesquisaPosicaoTop5: number | null
@@ -430,6 +434,7 @@ export function calcularIptMunicipios(inputs: IptMunicipioInput[]): IptMunicipio
           visitasPeriodoAnterior: 0,
           obrasQuantidade: input.obrasCount,
           obrasValorTotal: input.obrasValorTotal,
+          obrasDivulgacaoPosts: Math.max(0, input.obrasDivulgacaoPosts ?? 0),
           pesquisaPosicaoTop5: input.pesquisaPosicaoTop5,
           pesquisaTop5: input.pesquisaTop5,
           pesquisaBase: input.pesquisaBase,

@@ -23,6 +23,7 @@ import { IptMissaoLista } from '@/components/ipt/ipt-missao-lista'
 import { IptMissaoDetalhe } from '@/components/ipt/ipt-missao-detalhe'
 import { IptResumoCampanhaBar } from '@/components/ipt/ipt-resumo-campanha-bar'
 import { IptTdSelect } from '@/components/ipt/ipt-td-select'
+import { IptMunicipioSelect } from '@/components/ipt/ipt-municipio-select'
 import { useIpt } from '@/hooks/use-ipt'
 import { usePermissions } from '@/hooks/use-permissions'
 import { exportarIptExcel } from '@/lib/ipt-export'
@@ -236,6 +237,12 @@ export function IptPanel() {
         disabled={loading}
         active={Boolean(filtroTd)}
         onChange={setFiltroTd}
+      />
+      <IptMunicipioSelect
+        value={municipioSelecionado}
+        disabled={loading}
+        opcoes={municipiosNoEscopo.map((m) => m.municipio)}
+        onChange={setMunicipioSelecionado}
       />
       <button
         type="button"

@@ -59,6 +59,29 @@ function agregarObrasPorMunicipio(obras: ObraMapaRow[]): Map<string, ObrasAgg> {
   return map
 }
 
+/** Conta posts classificados com vínculo obra → município (fonte Redes). */
+function agregarDivulgacaoObrasPorMunicipio(
+  obras: ObraMapaRow[],
+  classifications: Record<string, { obraMapaId?: string | null }>
+): Map<string, number> {
+  const obraToMunicipio = new Map<string, string>()
+  for (const obra of obras) {
+    if (!obra.id) continue
+    const municipio = obra.municipio?.trim()
+    if (!municipio) continue
+    obraToMunicipio.set(obra.id, normalizeIptMunicipio(municipio))
+  }
+  const map = new Map<string, number>()
+  for (const row of Object.values(classifications)) {
+    const obraId = row.obraMapaId?.trim()
+    if (!obraId) continue
+    const key = obraToMunicipio.get(obraId)
+    if (!key) continue
+    map.set(key, (map.get(key) ?? 0) + 1)
+  }
+  return map
+}
+
 function mapVisitasNoPeriodo(
   rows: Array<{ municipio: string; visitas: number }> | undefined
 ): Map<string, number> {
@@ -100,7 +123,7 @@ export function useIpt() {
         if (saved) territorioConfig = JSON.parse(saved) as Record<string, unknown>
       }
 
-      const [territorioRes, pesquisaRes, obrasRes, visitasPeriodoRes, visitasAnteriorRes, insightsRes, igCfg] =
+      const [territorioRes, pesquisaRes, obrasRes, visitasPeriodoRes, visitasAnteriorRes, insightsRes, classifRes, igCfg] =
         await Promise.all([
           fetch('/api/dashboard/territorios-frios', {
             method: 'POST',
@@ -116,6 +139,7 @@ export function useIpt() {
             { cache: 'no-store' }
           ),
           fetch('/api/ipt/insights?mode=overrides', { cache: 'no-store' }),
+          fetch('/api/instagram/classifications', { cache: 'no-store' }),
           loadInstagramConfigAsync().catch(() => ({ token: '', businessAccountId: '' })),
         ])
 
@@ -138,9 +162,22 @@ export function useIpt() {
       if (!obrasRes.ok && (obrasRes.status === 503 || (obrasJson as { retryable?: boolean }).retryable)) {
         instavel = true
       }
+      const obrasLista = obrasRes.ok
+        ? ((obrasJson as { obras?: ObraMapaRow[] }).obras ?? [])
+        : []
       const obrasPorMunicipio = obrasRes.ok
-        ? agregarObrasPorMunicipio((obrasJson as { obras?: ObraMapaRow[] }).obras ?? [])
+        ? agregarObrasPorMunicipio(obrasLista)
         : new Map<string, ObrasAgg>()
+
+      const classifJson = classifRes.ok
+        ? ((await classifRes.json()) as {
+            classifications?: Record<string, { obraMapaId?: string | null }>
+          })
+        : { classifications: {} }
+      const divulgacaoPorMunicipio = agregarDivulgacaoObrasPorMunicipio(
+        obrasLista,
+        classifJson.classifications ?? {}
+      )
 
       const visitasJson = visitasPeriodoRes.ok
         ? ((await visitasPeriodoRes.json()) as { municipios?: Array<{ municipio: string; visitas: number }> })
@@ -209,6 +246,7 @@ export function useIpt() {
           visitasNoPeriodo: visitasPorMunicipio.get(key) ?? 0,
           obrasCount: obras?.count ?? 0,
           obrasValorTotal: obras?.valorTotal ?? 0,
+          obrasDivulgacaoPosts: divulgacaoPorMunicipio.get(key) ?? 0,
           intencaoPesquisa: intencaoPorMunicipio.get(key) ?? null,
           pesquisaPosicaoTop5: posicaoCandidatoNoTop5(top5, candidatoPesquisa),
           pesquisaTop5: top5,
