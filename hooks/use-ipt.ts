@@ -108,9 +108,12 @@ export function useIpt() {
     semExpectativa: 0,
   })
 
-  const carregar = useCallback(async () => {
-    setLoading(true)
-    setError('')
+  const carregar = useCallback(async (opts?: { silent?: boolean }) => {
+    const silent = opts?.silent === true
+    if (!silent) {
+      setLoading(true)
+      setError('')
+    }
     let instavel = false
     try {
       let territorioConfig: Record<string, unknown> | null = null
@@ -319,13 +322,26 @@ export function useIpt() {
       setMunicipios(comDigital)
       setResumo(calcularIptResumo(comDigital))
       setConexaoInstavel(instavel)
+      if (silent) setError('')
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Erro ao calcular prioridades.')
-      setMunicipios([])
-      setPresencaDigitalCobertura(null)
-      setResumo({ municipiosMonitorados: 0, criticos: 0, atencao: 0, estaveis: 0, fortes: 0, semExpectativa: 0 })
+      if (silent) {
+        // Mantém os dados atuais na tela; só sinaliza instabilidade.
+        setConexaoInstavel(true)
+      } else {
+        setError(e instanceof Error ? e.message : 'Erro ao calcular prioridades.')
+        setMunicipios([])
+        setPresencaDigitalCobertura(null)
+        setResumo({
+          municipiosMonitorados: 0,
+          criticos: 0,
+          atencao: 0,
+          estaveis: 0,
+          fortes: 0,
+          semExpectativa: 0,
+        })
+      }
     } finally {
-      setLoading(false)
+      if (!silent) setLoading(false)
     }
   }, [])
 

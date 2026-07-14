@@ -3,6 +3,7 @@
 import dynamic from 'next/dynamic'
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import {
+  Activity,
   BarChart3,
   Crosshair,
   Download,
@@ -24,9 +25,18 @@ import { IptMissaoDetalhe } from '@/components/ipt/ipt-missao-detalhe'
 import { IptResumoCampanhaBar } from '@/components/ipt/ipt-resumo-campanha-bar'
 import { IptTdSelect } from '@/components/ipt/ipt-td-select'
 import { IptMunicipioSelect } from '@/components/ipt/ipt-municipio-select'
+import { IptMissaoEvolucaoModal } from '@/components/ipt/ipt-missao-evolucao-modal'
 import { useIpt } from '@/hooks/use-ipt'
 import { usePermissions } from '@/hooks/use-permissions'
 import { exportarIptExcel } from '@/lib/ipt-export'
+import {
+  appendEventosLocais,
+  bootstrapMissaoSync,
+  buildEventosMissaoDiff,
+  lerMembrosSync,
+  persistirEventosMissao,
+  salvarMembrosSync,
+} from '@/lib/ipt-missao-evolucao'
 import {
   buildLeituraExecutivaHoje,
   buildResumoCampanha,
@@ -88,6 +98,9 @@ export function IptPanel() {
     IptMissaoId,
     string[]
   > | null>(null)
+  const [evolucaoModalOpen, setEvolucaoModalOpen] = useState<boolean>(false)
+  const [evolucaoRefreshToken, setEvolucaoRefreshToken] = useState<number>(0)
+  const syncEventosLockRef = useRef<string | null>(null)
   const { loading, error, conexaoInstavel, municipios, recarregar } = useIpt()
   const { isAdmin, canAccess } = usePermissions()
   const podeVerExpectativa = isAdmin || canAccess('territorio')
@@ -203,6 +216,36 @@ export function IptPanel() {
     }
   }, [loading, municipios.length, contagem, membrosAtuais])
 
+  // Timeline de evolução: grava entrada/saída com motivo a cada sync de dados.
+  useEffect(() => {
+    if (loading || municipios.length === 0) return
+    const fingerprint = municipios
+      .map((m) => `${m.municipio}:${m.prioridade}:${m.detalhes.visitasNoPeriodo}:${m.detalhes.obrasDivulgacaoPosts ?? 0}:${m.sinais.pesquisa}:${m.sinais.digital}`)
+      .join('|')
+    if (syncEventosLockRef.current === fingerprint) return
+    syncEventosLockRef.current = fingerprint
+
+    const syncAnterior = lerMembrosSync()
+    if (!syncAnterior) {
+      bootstrapMissaoSync(municipios)
+      return
+    }
+
+    const { membrosAtuais: syncAtuais, eventos } = buildEventosMissaoDiff(
+      municipios,
+      syncAnterior,
+      'sync'
+    )
+    if (eventos.length > 0) {
+      appendEventosLocais(eventos)
+      void persistirEventosMissao(eventos).then(() => {
+        setEvolucaoRefreshToken((n) => n + 1)
+      })
+      setEvolucaoRefreshToken((n) => n + 1)
+    }
+    salvarMembrosSync(syncAtuais)
+  }, [loading, municipios])
+
   useEffect(() => {
     setMunicipioSelecionado(primeiroMunicipio)
   }, [missaoAtiva, filtroTd, primeiroMunicipio])
@@ -244,6 +287,18 @@ export function IptPanel() {
     })
   }, [contagem, membrosAtuais, recarregar])
 
+  // Atualização silenciosa a cada 10 min (sem spinner / sem resetar “Mudança recente”).
+  useEffect(() => {
+    const DEZ_MINUTOS_MS = 10 * 60 * 1000
+    const id = window.setInterval(() => {
+      if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return
+      void Promise.resolve(recarregar({ silent: true })).then(() => {
+        setAtualizadoEm(new Date())
+      })
+    }, DEZ_MINUTOS_MS)
+    return () => window.clearInterval(id)
+  }, [recarregar])
+
   const atualizadoLabel = atualizadoEm
     ? atualizadoEm.toLocaleString('pt-BR', {
         day: '2-digit',
@@ -270,6 +325,15 @@ export function IptPanel() {
         opcoes={municipiosNoEscopo.map((m) => m.municipio)}
         onChange={setMunicipioSelecionado}
       />
+      <button
+        type="button"
+        onClick={() => setEvolucaoModalOpen(true)}
+        className="ipt-btn-exportar"
+        title="Evolução das missões: entradas, saídas e motivos"
+      >
+        <CockpitIcon icon={Activity} size="sm" />
+        Evolução
+      </button>
       <button
         type="button"
         onClick={handleExportar}
@@ -469,6 +533,13 @@ export function IptPanel() {
           />
         ) : null}
       </div>
+
+      <IptMissaoEvolucaoModal
+        open={evolucaoModalOpen}
+        onClose={() => setEvolucaoModalOpen(false)}
+        municipios={municipios}
+        refreshToken={evolucaoRefreshToken}
+      />
     </DashboardPageShell>
   )
 }
