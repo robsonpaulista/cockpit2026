@@ -123,3 +123,60 @@ export function normalizarLinhaEspontanea(
 
   return out
 }
+
+export type IntencaoNomeValor = { nome: string; intencao: number }
+
+export type RedistribuicaoVotosValidos = {
+  /** % redistribuídos sobre a base de válidos (excluídos branco/nenhum + não sei). */
+  ativos: IntencaoNomeValor[]
+  /** Soma original de branco/nenhum + não sei (sobre 100% da pesquisa). */
+  residuosPct: number
+  /** Soma original dos pontuantes antes da redistribuição. */
+  validosBrutosPct: number
+}
+
+/**
+ * Exclui "nenhum/branco/nulo" e "não sei/NS-NR" e redistribui os pontuantes sobre 100% dos válidos.
+ *
+ * Ex.: candidato 8,7% com resíduos 40% → 8,7 / 60 × 100 ≈ 14,5%.
+ * Se não houver resíduos (ou soma dos ativos ≤ 0), devolve os ativos inalterados.
+ */
+export function redistribuirSobreVotosValidos(
+  linhas: IntencaoNomeValor[]
+): RedistribuicaoVotosValidos {
+  const ativosBrutos: IntencaoNomeValor[] = []
+  let residuosPct = 0
+
+  for (const linha of linhas) {
+    if (!Number.isFinite(linha.intencao)) continue
+    const nome = linha.nome.trim()
+    if (!nome) continue
+    if (isNaoSabeOuNaoOpinaNome(nome) || isBrancoNuloOuNenhumNome(nome)) {
+      residuosPct += linha.intencao
+      continue
+    }
+    ativosBrutos.push({ nome, intencao: linha.intencao })
+  }
+
+  const validosBrutosPct = ativosBrutos.reduce((s, a) => s + a.intencao, 0)
+  if (validosBrutosPct <= 0) {
+    return { ativos: [], residuosPct: round1(residuosPct), validosBrutosPct: 0 }
+  }
+
+  if (residuosPct <= 0) {
+    return {
+      ativos: ativosBrutos.map((a) => ({ nome: a.nome, intencao: round1(a.intencao) })),
+      residuosPct: 0,
+      validosBrutosPct: round1(validosBrutosPct),
+    }
+  }
+
+  return {
+    ativos: ativosBrutos.map((a) => ({
+      nome: a.nome,
+      intencao: round1((a.intencao / validosBrutosPct) * 100),
+    })),
+    residuosPct: round1(residuosPct),
+    validosBrutosPct: round1(validosBrutosPct),
+  }
+}

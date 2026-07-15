@@ -101,7 +101,7 @@ function resumoIndicador(m: IptMunicipio, id: IndicadorId): { valor: string; det
         m.detalhes.pesquisaMediaPct != null
           ? `Média ${m.detalhes.pesquisaMediaPct.toLocaleString('pt-BR', {
               maximumFractionDigits: 1,
-            })}%`
+            })}% válidos`
           : 'Posição vs. potencial',
     }
   }

@@ -43,6 +43,7 @@ import {
   buildResumoCampanha,
   contagemPorMissao,
   filtrarMunicipiosPorMissao,
+  filtrarMunicipiosVisaoUniverso,
   idsMissoesDoMunicipio,
   indicadorDaMissao,
   IPT_MISSAO_FILTRO_OPCOES,
@@ -55,10 +56,12 @@ import {
   municipioNaMissao,
   ordenarMunicipiosMissao,
   salvarContagemHistorico,
+  temExpectativa,
   variacaoMissao,
   type IptMissaoFiltro,
   type IptMissaoId,
   type IptMissaoVariacao,
+  type IptVisaoUniverso,
 } from '@/lib/ipt-missoes'
 import { filtrarIptMunicipiosPorTd } from '@/lib/ipt-td'
 import type { TerritorioDesenvolvimentoPI } from '@/lib/piaui-territorio-desenvolvimento'
@@ -91,6 +94,7 @@ export function IptPanel() {
   const mapContainerRef = useRef<HTMLDivElement>(null)
   const [isNativeFullscreen, setIsNativeFullscreen] = useState(false)
   const [missaoAtiva, setMissaoAtiva] = useState<IptMissaoFiltro>('todas')
+  const [visaoUniverso, setVisaoUniverso] = useState<IptVisaoUniverso>('prioridade')
   const [filtroTd, setFiltroTd] = useState<TerritorioDesenvolvimentoPI | null>(null)
   const [municipioSelecionado, setMunicipioSelecionado] = useState<string | null>(null)
   /** Filtro explícito da página (dropdown / escolha deliberada) — não confundir com destaque automático do top da lista. */
@@ -150,12 +154,13 @@ export function IptPanel() {
   )
 
   const municipiosMissao = useMemo(() => {
-    const filtrados =
-      missaoAtiva === 'todas'
-        ? municipiosEmMissaoTodas
-        : filtrarMunicipiosPorMissao(municipiosNoEscopo, missaoAtiva)
-    return ordenarMunicipiosMissao(filtrados, missaoAtiva)
-  }, [municipiosNoEscopo, municipiosEmMissaoTodas, missaoAtiva])
+    const filtrados = filtrarMunicipiosVisaoUniverso(
+      municipiosNoEscopo,
+      missaoAtiva,
+      visaoUniverso
+    )
+    return ordenarMunicipiosMissao(filtrados, missaoAtiva, visaoUniverso)
+  }, [municipiosNoEscopo, missaoAtiva, visaoUniverso])
 
   /** Recorte efetivo da página: missão (+ TD) e, se houver, um único município. */
   const municipiosVisao = useMemo(() => {
@@ -220,13 +225,20 @@ export function IptPanel() {
         municipiosNoEscopo.find((row) => row.municipio === nome) ??
         municipios.find((row) => row.municipio === nome)
       if (!m) return
-      // Mantém a missão atual se a cidade já estiver nela; senão, aponta a mais relevante.
+      // Mantém a missão atual se a cidade já estiver nela (ou no universo com expectativa).
       setMissaoAtiva((atual) => {
         if (atual !== 'todas' && municipioNaMissao(m, atual)) return atual
+        if (
+          atual !== 'todas' &&
+          visaoUniverso === 'com_expectativa' &&
+          temExpectativa(m)
+        ) {
+          return atual
+        }
         return missaoRecomendadaParaMunicipio(m)
       })
     },
-    [municipiosNoEscopo, municipios]
+    [municipiosNoEscopo, municipios, visaoUniverso]
   )
 
   const handleMissaoSelect = useCallback((id: IptMissaoId) => {
@@ -324,10 +336,15 @@ export function IptPanel() {
     const m =
       municipiosNoEscopo.find((row) => row.municipio === escopoMunicipio) ??
       municipios.find((row) => row.municipio === escopoMunicipio)
-    if (m && !municipioNaMissao(m, missaoAtiva)) {
+    if (!m) return
+    if (visaoUniverso === 'com_expectativa') {
+      if (!temExpectativa(m)) setEscopoMunicipio(null)
+      return
+    }
+    if (!municipioNaMissao(m, missaoAtiva)) {
       setEscopoMunicipio(null)
     }
-  }, [missaoAtiva, escopoMunicipio, municipiosNoEscopo, municipios])
+  }, [missaoAtiva, escopoMunicipio, municipiosNoEscopo, municipios, visaoUniverso])
 
   useEffect(() => {
     const handleFullscreenChange = () => {
@@ -492,9 +509,11 @@ export function IptPanel() {
                               .join(', ')}`
                           : ' · fora das missões críticas'
                       }`
-                    : missaoAtiva === 'todas'
-                      ? 'Visão geral dos municípios da campanha'
-                      : `Exibindo municípios da missão ${iptMissaoConfig(missaoAtiva).titulo}`}
+                    : visaoUniverso === 'com_expectativa'
+                      ? 'Mapa com todos os municípios que têm expectativa 2026 (prioridades e saudáveis)'
+                      : missaoAtiva === 'todas'
+                        ? 'Visão geral dos municípios da campanha'
+                        : `Exibindo municípios da missão ${iptMissaoConfig(missaoAtiva).titulo}`}
                 </p>
                 <span className="ipt-bloco-mapa__seal">{microcopyMapaMissao(missaoAtiva)}</span>
               </div>
@@ -610,6 +629,8 @@ export function IptPanel() {
               <IptMissaoLista
                 municipios={municipiosVisao}
                 missaoAtiva={missaoAtiva}
+                visaoUniverso={visaoUniverso}
+                onVisaoUniversoChange={setVisaoUniverso}
                 selecionado={municipioSelecionado}
                 onSelect={handleMunicipioSelect}
                 podeVerExpectativa={podeVerExpectativa}

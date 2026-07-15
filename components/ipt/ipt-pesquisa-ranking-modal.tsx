@@ -27,10 +27,10 @@ function situacaoRanking(m: IptMunicipio, candidato: string): string {
     return 'Não há média de pesquisa cadastrada para este município.'
   }
   if (pos != null) {
-    return `${candidato} aparece em ${pos}º no Top 5 local (média ${media}).`
+    return `${candidato} aparece em ${pos}º no Top 5 local (média ${media} sobre válidos, excluindo nenhum/branco e não sei).`
   }
   if (m.detalhes.pesquisaMediaPct != null) {
-    return `${candidato} está fora do Top 5 em ${m.municipio} (média ${media}). Abaixo, quem lidera a média local.`
+    return `${candidato} está fora do Top 5 em ${m.municipio} (média ${media} sobre válidos). Abaixo, quem lidera a média local.`
   }
   return `Sem posição do candidato no Top 5 de ${m.municipio}. Veja quem compõe o ranking local.`
 }
