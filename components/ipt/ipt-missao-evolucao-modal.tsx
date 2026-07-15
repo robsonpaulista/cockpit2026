@@ -1,8 +1,8 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, type CSSProperties } from 'react'
 import { createPortal } from 'react-dom'
-import { ArrowDownRight, ArrowUpRight, Loader2, X } from 'lucide-react'
+import { ChevronDown, ChevronRight, Loader2, X } from 'lucide-react'
 import { CockpitIcon } from '@/components/ui/cockpit-icon'
 import type { IptMunicipio } from '@/lib/ipt'
 import {
@@ -14,6 +14,7 @@ import {
 import {
   carregarEventosMissao,
   labelSentidoMissao,
+  leituraComparativoEvento,
   type IptMissaoEvento,
 } from '@/lib/ipt-missao-evolucao'
 import { cn } from '@/lib/utils'
@@ -24,6 +25,13 @@ type Props = {
   municipios: IptMunicipio[]
   /** Quando muda (após sync), refaz o fetch. */
   refreshToken?: number
+}
+
+type GrupoMissao = {
+  missao: IptMissaoId
+  eventos: IptMissaoEvento[]
+  entrou: number
+  saiu: number
 }
 
 function formatWhen(iso: string): string {
@@ -44,6 +52,7 @@ export function IptMissaoEvolucaoModal({ open, onClose, municipios, refreshToken
   const [filtroSentido, setFiltroSentido] = useState<IptMissaoMudancaSentido | 'todos'>('todos')
   const [filtroMunicipio, setFiltroMunicipio] = useState<string>('')
   const [busca, setBusca] = useState<string>('')
+  const [gruposAbertos, setGruposAbertos] = useState<Partial<Record<IptMissaoId, boolean>>>({})
 
   const municipiosOpcoes = useMemo(
     () => [...municipios].map((m) => m.municipio).sort((a, b) => a.localeCompare(b, 'pt-BR')),
@@ -96,13 +105,48 @@ export function IptMissaoEvolucaoModal({ open, onClose, municipios, refreshToken
       .trim()
     if (!q) return eventos
     return eventos.filter((e) => {
-      const blob = `${e.municipio} ${e.motivo} ${e.missao}`
+      const comp = leituraComparativoEvento(e)
+      const blob = `${e.municipio} ${e.motivo} ${e.missao} ${comp.metrica} ${comp.anterior} ${comp.atual}`
         .toLowerCase()
         .normalize('NFD')
         .replace(/[\u0300-\u036f]/g, '')
       return blob.includes(q)
     })
   }, [eventos, busca])
+
+  const grupos = useMemo((): GrupoMissao[] => {
+    const byMissao = new Map<IptMissaoId, IptMissaoEvento[]>()
+    for (const e of filtrados) {
+      const list = byMissao.get(e.missao) ?? []
+      list.push(e)
+      byMissao.set(e.missao, list)
+    }
+    return IPT_MISSOES.map((cfg) => {
+      const lista = (byMissao.get(cfg.id) ?? []).slice().sort((a, b) => {
+        if (a.createdAt !== b.createdAt) return b.createdAt.localeCompare(a.createdAt)
+        return a.municipio.localeCompare(b.municipio, 'pt-BR')
+      })
+      let entrou = 0
+      let saiu = 0
+      for (const e of lista) {
+        if (e.sentido === 'entrou') entrou += 1
+        else saiu += 1
+      }
+      return { missao: cfg.id, eventos: lista, entrou, saiu }
+    }).filter((g) => g.eventos.length > 0)
+  }, [filtrados])
+
+  const gruposKey = grupos.map((g) => g.missao).join('|')
+  useEffect(() => {
+    if (!gruposKey) return
+    setGruposAbertos((prev) => {
+      const next: Partial<Record<IptMissaoId, boolean>> = { ...prev }
+      for (const id of gruposKey.split('|') as IptMissaoId[]) {
+        if (next[id] == null) next[id] = true
+      }
+      return next
+    })
+  }, [gruposKey])
 
   const resumo = useMemo(() => {
     let entrou = 0
@@ -113,6 +157,25 @@ export function IptMissaoEvolucaoModal({ open, onClose, municipios, refreshToken
     }
     return { entrou, saiu, total: filtrados.length }
   }, [filtrados])
+
+  const toggleGrupo = (missao: IptMissaoId) => {
+    setGruposAbertos((prev) => ({
+      ...prev,
+      [missao]: !(prev[missao] ?? true),
+    }))
+  }
+
+  const expandirTodos = () => {
+    const next: Partial<Record<IptMissaoId, boolean>> = {}
+    for (const g of grupos) next[g.missao] = true
+    setGruposAbertos(next)
+  }
+
+  const recolherTodos = () => {
+    const next: Partial<Record<IptMissaoId, boolean>> = {}
+    for (const g of grupos) next[g.missao] = false
+    setGruposAbertos(next)
+  }
 
   if (!open || !mounted) return null
 
@@ -138,8 +201,8 @@ export function IptMissaoEvolucaoModal({ open, onClose, municipios, refreshToken
         </div>
 
         <p className="ipt-foco-modal__lead">
-          Quando cada município entrou ou saiu de uma missão — e o porquê — a cada sincronização do
-          diagnóstico.
+          Tabela por missão: quando cada município entrou ou saiu, com o valor anterior e o atual que
+          motivaram a mudança.
         </p>
 
         <div className="ipt-evolucao-modal__filters">
@@ -190,7 +253,7 @@ export function IptMissaoEvolucaoModal({ open, onClose, municipios, refreshToken
               type="search"
               value={busca}
               onChange={(e) => setBusca(e.target.value)}
-              placeholder="Município ou motivo…"
+              placeholder="Município, métrica ou motivo…"
             />
           </label>
         </div>
@@ -203,6 +266,16 @@ export function IptMissaoEvolucaoModal({ open, onClose, municipios, refreshToken
           <span className="ipt-evolucao-modal__pill ipt-evolucao-modal__pill--out">
             {resumo.saiu} saíram
           </span>
+          {grupos.length > 0 ? (
+            <div className="ipt-evolucao-modal__group-actions">
+              <button type="button" onClick={expandirTodos}>
+                Expandir tudo
+              </button>
+              <button type="button" onClick={recolherTodos}>
+                Recolher tudo
+              </button>
+            </div>
+          ) : null}
         </div>
 
         <div className="ipt-evolucao-modal__body">
@@ -211,53 +284,102 @@ export function IptMissaoEvolucaoModal({ open, onClose, municipios, refreshToken
               <Loader2 className="h-5 w-5 animate-spin text-[#ff9800]" aria-hidden />
               Carregando evolução…
             </div>
-          ) : filtrados.length === 0 ? (
+          ) : grupos.length === 0 ? (
             <div className="ipt-evolucao-modal__empty">
               Nenhum movimento registrado ainda. Os eventos passam a ser gravados a cada atualização
-              (manual ou automática a cada 10 min).
+              (manual ou automática a cada 10 min). Novos eventos passam a registrar valor anterior e
+              atual.
             </div>
           ) : (
-            <ul className="ipt-evolucao-modal__list">
-              {filtrados.map((e) => {
-                const cfg = iptMissaoConfig(e.missao)
-                const entrou = e.sentido === 'entrou'
+            <div className="ipt-evolucao-modal__groups">
+              {grupos.map((grupo) => {
+                const cfg = iptMissaoConfig(grupo.missao)
+                const aberto = gruposAbertos[grupo.missao] ?? true
                 return (
-                  <li key={e.id} className="ipt-evolucao-modal__item">
-                    <div
-                      className={cn(
-                        'ipt-evolucao-modal__icon',
-                        entrou
-                          ? 'ipt-evolucao-modal__icon--in'
-                          : 'ipt-evolucao-modal__icon--out'
-                      )}
-                      aria-hidden
+                  <section
+                    key={grupo.missao}
+                    className="ipt-evolucao-modal__group"
+                    style={{ '--missao-cor': cfg.cor } as CSSProperties}
+                  >
+                    <button
+                      type="button"
+                      className="ipt-evolucao-modal__group-head"
+                      aria-expanded={aberto}
+                      onClick={() => toggleGrupo(grupo.missao)}
                     >
-                      <CockpitIcon icon={entrou ? ArrowUpRight : ArrowDownRight} size="sm" />
-                    </div>
-                    <div className="ipt-evolucao-modal__content">
-                      <div className="ipt-evolucao-modal__row">
-                        <strong>{e.municipio}</strong>
-                        <span
-                          className={cn(
-                            'ipt-evolucao-modal__badge',
-                            entrou
-                              ? 'ipt-evolucao-modal__badge--in'
-                              : 'ipt-evolucao-modal__badge--out'
-                          )}
-                        >
-                          {labelSentidoMissao(e.sentido)}
-                        </span>
-                        <span className="ipt-evolucao-modal__missao" style={{ color: cfg.cor }}>
-                          {cfg.titulo}
-                        </span>
-                        <time dateTime={e.createdAt}>{formatWhen(e.createdAt)}</time>
+                      <CockpitIcon icon={aberto ? ChevronDown : ChevronRight} size="sm" />
+                      <span
+                        className="ipt-evolucao-modal__group-dot"
+                        style={{ background: cfg.cor }}
+                        aria-hidden
+                      />
+                      <strong>{cfg.titulo}</strong>
+                      <span className="ipt-evolucao-modal__group-count">
+                        {grupo.eventos.length} evento{grupo.eventos.length === 1 ? '' : 's'}
+                      </span>
+                      <span className="ipt-evolucao-modal__pill ipt-evolucao-modal__pill--in">
+                        {grupo.entrou} in
+                      </span>
+                      <span className="ipt-evolucao-modal__pill ipt-evolucao-modal__pill--out">
+                        {grupo.saiu} out
+                      </span>
+                    </button>
+
+                    {aberto ? (
+                      <div className="ipt-evolucao-modal__table-wrap">
+                        <table className="ipt-evolucao-modal__table">
+                          <thead>
+                            <tr>
+                              <th>Município</th>
+                              <th>Movimento</th>
+                              <th>Métrica</th>
+                              <th>Anterior</th>
+                              <th>Atual</th>
+                              <th>Quando</th>
+                              <th>Motivo</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {grupo.eventos.map((e) => {
+                              const entrou = e.sentido === 'entrou'
+                              const comp = leituraComparativoEvento(e)
+                              return (
+                                <tr key={e.id}>
+                                  <td>
+                                    <strong className="ipt-evolucao-modal__muni">{e.municipio}</strong>
+                                  </td>
+                                  <td>
+                                    <span
+                                      className={cn(
+                                        'ipt-evolucao-modal__badge',
+                                        entrou
+                                          ? 'ipt-evolucao-modal__badge--in'
+                                          : 'ipt-evolucao-modal__badge--out'
+                                      )}
+                                    >
+                                      {labelSentidoMissao(e.sentido)}
+                                    </span>
+                                  </td>
+                                  <td className="ipt-evolucao-modal__metric">{comp.metrica}</td>
+                                  <td className="ipt-evolucao-modal__valor">{comp.anterior}</td>
+                                  <td className="ipt-evolucao-modal__valor ipt-evolucao-modal__valor--atual">
+                                    {comp.atual}
+                                  </td>
+                                  <td>
+                                    <time dateTime={e.createdAt}>{formatWhen(e.createdAt)}</time>
+                                  </td>
+                                  <td className="ipt-evolucao-modal__motivo">{e.motivo}</td>
+                                </tr>
+                              )
+                            })}
+                          </tbody>
+                        </table>
                       </div>
-                      <p>{e.motivo}</p>
-                    </div>
-                  </li>
+                    ) : null}
+                  </section>
                 )
               })}
-            </ul>
+            </div>
           )}
         </div>
       </div>

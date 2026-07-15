@@ -28,8 +28,10 @@ import {
   bootstrapMissaoSync,
   buildEventosMissaoDiff,
   lerMembrosSync,
+  lerMetricasSync,
   persistirEventosMissao,
   salvarMembrosSync,
+  salvarMetricasSync,
 } from '@/lib/ipt-missao-evolucao'
 import {
   buildLeituraExecutivaHoje,
@@ -49,7 +51,6 @@ import {
   municipioNaMissao,
   ordenarMunicipiosMissao,
   salvarContagemHistorico,
-  temExpectativa,
   variacaoMissao,
   type IptMissaoFiltro,
   type IptMissaoId,
@@ -78,7 +79,7 @@ const IptMapSection = dynamic(
 export function IptPanel() {
   const mapContainerRef = useRef<HTMLDivElement>(null)
   const [isNativeFullscreen, setIsNativeFullscreen] = useState(false)
-  const [missaoAtiva, setMissaoAtiva] = useState<IptMissaoFiltro>('todas')
+  const [missaoAtiva, setMissaoAtiva] = useState<IptMissaoFiltro>('expectativa')
   const [visaoUniverso, setVisaoUniverso] = useState<IptVisaoUniverso>('prioridade')
   const [filtroTd, setFiltroTd] = useState<TerritorioDesenvolvimentoPI | null>(null)
   const [municipioSelecionado, setMunicipioSelecionado] = useState<string | null>(null)
@@ -210,16 +211,10 @@ export function IptPanel() {
         municipiosNoEscopo.find((row) => row.municipio === nome) ??
         municipios.find((row) => row.municipio === nome)
       if (!m) return
-      // Mantém a missão atual se a cidade já estiver nela (ou no universo com expectativa).
+      // Mantém a missão atual se a cidade já estiver nela (ou no universo Ver todos).
       setMissaoAtiva((atual) => {
         if (atual !== 'todas' && municipioNaMissao(m, atual)) return atual
-        if (
-          atual !== 'todas' &&
-          visaoUniverso === 'com_expectativa' &&
-          temExpectativa(m)
-        ) {
-          return atual
-        }
+        if (atual !== 'todas' && visaoUniverso === 'com_expectativa') return atual
         return missaoRecomendadaParaMunicipio(m)
       })
     },
@@ -281,7 +276,7 @@ export function IptPanel() {
   useEffect(() => {
     if (loading || municipios.length === 0) return
     const fingerprint = municipios
-      .map((m) => `${m.municipio}:${m.prioridade}:${m.detalhes.visitasNoPeriodo}:${m.detalhes.obrasDivulgacaoPosts ?? 0}:${m.sinais.pesquisa}:${m.sinais.digital}`)
+      .map((m) => `${m.municipio}:${m.prioridade}:${m.detalhes.visitasNoPeriodo}:${m.detalhes.visitasUltimos15Dias}:${m.detalhes.obrasDivulgacaoPosts ?? 0}:${m.sinais.pesquisa}:${m.sinais.digital}`)
       .join('|')
     if (syncEventosLockRef.current === fingerprint) return
     syncEventosLockRef.current = fingerprint
@@ -292,11 +287,12 @@ export function IptPanel() {
       return
     }
 
-    const { membrosAtuais: syncAtuais, eventos } = buildEventosMissaoDiff(
-      municipios,
-      syncAnterior,
-      'sync'
-    )
+    const metricasAnteriores = lerMetricasSync()
+    const {
+      membrosAtuais: syncAtuais,
+      metricasAtuais,
+      eventos,
+    } = buildEventosMissaoDiff(municipios, syncAnterior, 'sync', metricasAnteriores)
     if (eventos.length > 0) {
       appendEventosLocais(eventos)
       void persistirEventosMissao(eventos).then(() => {
@@ -305,6 +301,7 @@ export function IptPanel() {
       setEvolucaoRefreshToken((n) => n + 1)
     }
     salvarMembrosSync(syncAtuais)
+    salvarMetricasSync(metricasAtuais)
   }, [loading, municipios])
 
   useEffect(() => {
@@ -329,7 +326,8 @@ export function IptPanel() {
       municipios.find((row) => row.municipio === escopoMunicipio)
     if (!m) return
     if (visaoUniverso === 'com_expectativa') {
-      if (!temExpectativa(m)) setEscopoMunicipio(null)
+      const aindaNoEscopo = municipiosNoEscopo.some((row) => row.municipio === escopoMunicipio)
+      if (!aindaNoEscopo) setEscopoMunicipio(null)
       return
     }
     if (!municipioNaMissao(m, missaoAtiva)) {
@@ -501,12 +499,18 @@ export function IptPanel() {
                           : ' · fora das missões críticas'
                       }`
                     : visaoUniverso === 'com_expectativa'
-                      ? 'Mapa com todos os municípios que têm expectativa 2026 (prioridades e saudáveis)'
+                      ? missaoAtiva === 'expectativa'
+                        ? 'Mapa com todos os municípios — com e sem expectativa 2026'
+                        : 'Mapa com todos os municípios que têm expectativa 2026 (prioridades e saudáveis)'
                       : missaoAtiva === 'todas'
                         ? 'Visão geral dos municípios da campanha'
                         : `Exibindo municípios da missão ${iptMissaoConfig(missaoAtiva).titulo}`}
                 </p>
-                <span className="ipt-bloco-mapa__seal">{microcopyMapaMissao(missaoAtiva)}</span>
+                <span className="ipt-bloco-mapa__seal">
+                  {visaoUniverso === 'com_expectativa' && missaoAtiva === 'expectativa'
+                    ? 'Onde a campanha tem — e ainda não tem — expectativa de votos 2026'
+                    : microcopyMapaMissao(missaoAtiva)}
+                </span>
               </div>
             </div>
 

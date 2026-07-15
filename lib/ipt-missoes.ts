@@ -15,7 +15,8 @@ export type IptMissaoFiltro = IptMissaoId | 'todas'
 /**
  * Universo listado dentro de uma seção de missão:
  * - `prioridade`: só os que estão na missão (incompatibilidade)
- * - `com_expectativa`: todos com expectativa 2026 (inclui saudáveis)
+ * - `com_expectativa`: universo amplo — na Expectativa inclui também cidades sem meta;
+ *   nas demais missões inclui saudáveis (com expectativa fora da missão)
  */
 export type IptVisaoUniverso = 'prioridade' | 'com_expectativa'
 
@@ -121,6 +122,8 @@ export function municipioNaMissaoExpectativa(m: IptMunicipio): boolean {
 
 export function municipioNaMissaoCampo(m: IptMunicipio): boolean {
   if (!temExpectativa(m)) return false
+  // ≥1 visita nos últimos 15 dias = coberto — fora da missão Campo.
+  if (municipioCobertoCampo(m)) return false
   if (!iptAltaExpectativa(m) && m.prioridade !== 'critico' && m.prioridade !== 'atencao') {
     return false
   }
@@ -131,11 +134,23 @@ export function municipioNaMissaoCampo(m: IptMunicipio): boolean {
   )
 }
 
+/** Município visitado ≥1x nos últimos 15 dias. */
+export function municipioCobertoCampo(m: IptMunicipio): boolean {
+  return m.detalhes.visitasUltimos15Dias >= 1
+}
+
 export function municipioNaMissaoPesquisa(m: IptMunicipio): boolean {
   if (!temExpectativa(m)) return false
-  // Sem média (já sobre válidos): cidade pesada sem pesquisa ainda pede olhar.
-  if (m.detalhes.pesquisaMediaPct == null || m.sinais.pesquisa === 'sem_dado') {
-    return iptAltaExpectativa(m)
+  // Ranking local existe e o candidato está fora do Top 5 → pede olhar.
+  if (m.detalhes.pesquisaTop5.length > 0 && m.detalhes.pesquisaPosicaoTop5 == null) {
+    return true
+  }
+  // Tem expectativa, mas ainda sem pesquisa → não é saudável; entra na missão.
+  if (
+    m.sinais.pesquisa === 'sem_dado' ||
+    (m.detalhes.pesquisaTop5.length === 0 && m.detalhes.pesquisaMediaPct == null)
+  ) {
+    return true
   }
   const projetados = votosProjetadosPesquisa(m)
   if (projetados == null) {
@@ -150,9 +165,16 @@ export function municipioNaMissaoPesquisa(m: IptMunicipio): boolean {
   return projetados < m.expectativaVotos
 }
 
-/** Votos projetados: eleitorado × média % (já sobre válidos no IPT). */
+/**
+ * Votos projetados: eleitorado × média % do candidato (já sobre válidos).
+ * Só com média própria — nunca projeta a partir do líder do Top 5.
+ */
 export function votosProjetadosPesquisa(m: IptMunicipio): number | null {
   if (m.detalhes.pesquisaMediaPct == null || !Number.isFinite(m.detalhes.pesquisaMediaPct)) {
+    return null
+  }
+  // Fora do Top 5 sem posição não deve gerar “voto projetado saudável”.
+  if (m.detalhes.pesquisaTop5.length > 0 && m.detalhes.pesquisaPosicaoTop5 == null) {
     return null
   }
   const eleitorado = getEleitoradoByCity(m.municipio)
@@ -245,13 +267,15 @@ export function filtrarMunicipiosPorMissao(
   return municipios.filter((m) => municipioNaMissao(m, filtro))
 }
 
-/** Universo da seção: prioridades da missão ou todos com expectativa (saudáveis inclusos). */
+/** Universo da seção: prioridades da missão ou visão ampliada (Ver todos). */
 export function filtrarMunicipiosVisaoUniverso(
   municipios: IptMunicipio[],
   filtro: IptMissaoFiltro,
   visao: IptVisaoUniverso
 ): IptMunicipio[] {
   if (visao === 'com_expectativa') {
+    // Expectativa: mapa/lista mostram também onde ainda não há meta cadastrada.
+    if (filtro === 'expectativa') return municipios
     return municipios.filter(temExpectativa)
   }
   return filtrarMunicipiosPorMissao(municipios, filtro)
@@ -321,8 +345,12 @@ export function ordenarMunicipiosMissao(
   visao: IptVisaoUniverso = 'prioridade'
 ): IptMunicipio[] {
   return [...municipios].sort((a, b) => {
-    // Ver todos: ordenação única por expectativa decrescente (missão e saudáveis misturados).
-    if (visao === 'com_expectativa' || filtro === 'expectativa') {
+    // Expectativa / Pesquisa / Ver todos: ordem por votos esperados (decrescente).
+    if (
+      visao === 'com_expectativa' ||
+      filtro === 'expectativa' ||
+      filtro === 'pesquisa'
+    ) {
       if (b.expectativaVotos !== a.expectativaVotos) {
         return b.expectativaVotos - a.expectativaVotos
       }
@@ -546,9 +574,8 @@ export type IptResumoCampanha = {
 export const IPT_META_EXPECTATIVA_VOTOS = 150_000
 
 function proxyDiasSemVisita(m: IptMunicipio): number | null {
-  if (m.detalhes.visitasNoPeriodo > 0) {
-    return Math.max(1, Math.round(15 / Math.max(1, m.detalhes.visitasNoPeriodo)))
-  }
+  if (m.detalhes.visitasUltimos15Dias > 0) return 7
+  if (m.detalhes.visitasNoPeriodo > 0) return 23
   if (m.detalhes.visitasPeriodoAnterior > 0) return 45
   if (m.detalhes.visitasHistorico > 0) return 75
   return null
@@ -679,10 +706,8 @@ export function rotuloSinalCurto(sinal: IptSinal): string {
 }
 
 export function estimativaDiasSemVisita(m: IptMunicipio): string {
-  if (m.detalhes.visitasNoPeriodo > 0) {
-    const dias = Math.max(1, Math.round(15 / Math.max(1, m.detalhes.visitasNoPeriodo)))
-    return `${dias} dias`
-  }
+  if (m.detalhes.visitasUltimos15Dias > 0) return '≤ 15 dias'
+  if (m.detalhes.visitasNoPeriodo > 0) return '16–30 dias'
   if (m.detalhes.visitasPeriodoAnterior > 0) return '31–60 dias'
   if (m.detalhes.visitasHistorico > 0) return '> 60 dias'
   return 'sem visita registrada'
@@ -694,10 +719,8 @@ export function motivoCurtoMissao(m: IptMunicipio, missao: IptMissaoId): string 
     return `${m.expectativaVotos.toLocaleString('pt-BR')} votos esperados`
   }
   if (missao === 'campo') {
-    if (m.detalhes.visitasNoPeriodo > 0) {
-      const dias = Math.max(1, Math.round(15 / Math.max(1, m.detalhes.visitasNoPeriodo)))
-      return `Presença fraca · ${dias} dias`
-    }
+    if (municipioCobertoCampo(m)) return 'Coberto · ≤ 15 dias'
+    if (m.detalhes.visitasNoPeriodo > 0) return 'Presença fraca · 16–30 dias'
     if (m.detalhes.visitasPeriodoAnterior > 0) return 'Sem visitas 31–60 dias'
     if (m.detalhes.visitasHistorico > 0) return 'Sem visitas 60 dias'
     return 'Sem visita registrada'
@@ -742,6 +765,7 @@ export function relevanciaCurta(m: IptMunicipio): string {
 
 /** Cobertura presencial relativa ao potencial da cidade. */
 export function coberturaCampoRotulo(m: IptMunicipio): string {
+  if (municipioCobertoCampo(m)) return 'Suficiente'
   if (m.detalhes.visitasHistorico === 0 && m.detalhes.visitasNoPeriodo === 0) {
     return 'Insuficiente'
   }
@@ -758,6 +782,9 @@ export function coberturaCampoSuficiente(m: IptMunicipio): boolean {
 /** Frase curta: por que o município está na missão. */
 export function frasePorQueMissao(m: IptMunicipio, missao: IptMissaoId): string {
   if (missao === 'expectativa') {
+    if (!temExpectativa(m)) {
+      return `${m.municipio} aparece no universo amplo porque ainda não há expectativa de votos 2026 cadastrada.`
+    }
     return `${m.municipio} entrou no recorte porque há expectativa de votos 2026 cadastrada (${m.expectativaVotos.toLocaleString('pt-BR')} votos).`
   }
   if (missao === 'campo') {
@@ -772,6 +799,16 @@ export function frasePorQueMissao(m: IptMunicipio, missao: IptMissaoId): string 
           })}%`
         : null
     const expLabel = m.expectativaVotos.toLocaleString('pt-BR')
+
+    if (m.detalhes.pesquisaTop5.length > 0 && m.detalhes.pesquisaPosicaoTop5 == null) {
+      return `${m.municipio} está fora do Top 5 na pesquisa local — a intenção do candidato não acompanha o potencial da cidade.`
+    }
+    if (
+      m.sinais.pesquisa === 'sem_dado' ||
+      (m.detalhes.pesquisaTop5.length === 0 && m.detalhes.pesquisaMediaPct == null)
+    ) {
+      return `${m.municipio} tem expectativa de votos, mas ainda não há pesquisa cadastrada para acompanhar o potencial.`
+    }
 
     if (m.detalhes.pesquisaPosicaoTop5 != null && projetados != null && media) {
       const pos = m.detalhes.pesquisaPosicaoTop5
@@ -799,12 +836,24 @@ export function frasePorQueMissao(m: IptMunicipio, missao: IptMissaoId): string 
 export function resumoDiagnosticoMissao(m: IptMunicipio, missao: IptMissaoId): string {
   const relev = rotuloRelevanciaTerritorial(m)
   if (missao === 'expectativa') {
+    if (!temExpectativa(m)) {
+      return `${relev}, ainda sem expectativa de votos 2026 cadastrada.`
+    }
     return `${relev}, com ${m.expectativaVotos.toLocaleString('pt-BR')} votos esperados em 2026.`
   }
   if (missao === 'campo') {
     return `${relev}, ${estimativaDiasSemVisita(m).toLowerCase()} e cobertura de campo ${coberturaCampoRotulo(m).toLowerCase()}.`
   }
   if (missao === 'pesquisa') {
+    if (m.detalhes.pesquisaTop5.length > 0 && m.detalhes.pesquisaPosicaoTop5 == null) {
+      return `${relev}, fora do Top 5 na pesquisa local.`
+    }
+    if (
+      m.sinais.pesquisa === 'sem_dado' ||
+      (m.detalhes.pesquisaTop5.length === 0 && m.detalhes.pesquisaMediaPct == null)
+    ) {
+      return `${relev}, ainda sem pesquisa cadastrada.`
+    }
     if (m.detalhes.pesquisaPosicaoTop5 != null) {
       const projetados = votosProjetadosPesquisa(m)
       if (projetados != null) {
@@ -870,21 +919,39 @@ export function chipsEvidenciaMissao(m: IptMunicipio, missao: IptMissaoId): stri
   const chips: string[] = []
   if (iptAltaExpectativa(m)) chips.push('Expectativa relevante')
   if (missao === 'expectativa') {
-    chips.push(`${m.expectativaVotos.toLocaleString('pt-BR')} votos esperados`)
-    chips.push(
-      `${m.pesoExpectativaPct.toLocaleString('pt-BR', { maximumFractionDigits: 1 })}% do total estadual`
-    )
+    if (!temExpectativa(m)) {
+      chips.push('Sem expectativa cadastrada')
+      chips.push('Fora da missão "Onde temos meta"')
+    } else {
+      chips.push(`${m.expectativaVotos.toLocaleString('pt-BR')} votos esperados`)
+      chips.push(
+        `${m.pesoExpectativaPct.toLocaleString('pt-BR', { maximumFractionDigits: 1 })}% do total estadual`
+      )
+    }
   } else if (missao === 'campo') {
     chips.push(`Última visita: ${estimativaDiasSemVisita(m)}`)
     chips.push(`Cobertura de campo ${coberturaCampoRotulo(m).toLowerCase()}`)
-    if (m.detalhes.visitasNoPeriodo === 0) chips.push('Janela de presença enfraquecida')
+    if (!municipioCobertoCampo(m) && m.detalhes.visitasNoPeriodo === 0) {
+      chips.push('Janela de presença enfraquecida')
+    }
   } else if (missao === 'pesquisa') {
     if (m.detalhes.pesquisaPosicaoTop5 != null) {
       chips.push(`${m.detalhes.pesquisaPosicaoTop5}º na pesquisa`)
-    } else {
+    } else if (
+      m.sinais.pesquisa === 'sem_dado' ||
+      (m.detalhes.pesquisaTop5.length === 0 && m.detalhes.pesquisaMediaPct == null)
+    ) {
+      chips.push('Sem pesquisa cadastrada')
+    } else if (m.detalhes.pesquisaTop5.length > 0) {
       chips.push('Fora do Top 5')
+    } else {
+      chips.push('Sem ranking local')
     }
-    if (m.detalhes.pesquisaMediaPct != null) {
+    // Só mostra média/projetados com intenção própria do candidato (não do 1º do ranking).
+    if (
+      m.detalhes.pesquisaPosicaoTop5 != null &&
+      m.detalhes.pesquisaMediaPct != null
+    ) {
       chips.push(
         `${m.detalhes.pesquisaMediaPct.toLocaleString('pt-BR', {
           maximumFractionDigits: 1,
@@ -940,8 +1007,11 @@ export function subtituloListaMissao(
   visao: IptVisaoUniverso = 'prioridade'
 ): string {
   if (visao === 'com_expectativa') {
-    if (missao === 'expectativa' || missao === 'todas') {
-      return `Todos os municípios com expectativa 2026 — prioridades e saudáveis`
+    if (missao === 'expectativa') {
+      return `Todos os ${IPT_TOTAL_MUNICIPIOS_PI} municípios do Piauí — com e sem expectativa 2026`
+    }
+    if (missao === 'todas') {
+      return `Universo amplo — com expectativa, saudáveis e sem meta`
     }
     return `Universo com expectativa na seção ${iptMissaoConfig(missao).titulo} — inclui saudáveis`
   }

@@ -2,7 +2,7 @@
 
 import { useEffect, useId, useMemo, useState, type CSSProperties } from 'react'
 import { createPortal } from 'react-dom'
-import { BarChart3, Building2, MapPin, Smartphone, X } from 'lucide-react'
+import { AlertTriangle, BarChart3, Building2, CheckCircle2, HelpCircle, MapPin, MinusCircle, Smartphone, TrendingDown, TrendingUp, X, type LucideIcon } from 'lucide-react'
 import { CockpitIcon } from '@/components/ui/cockpit-icon'
 import { PerfilPopulacaoPanel } from '@/components/perfil-populacao-panel'
 import { IptPesquisaRankingModal } from '@/components/ipt/ipt-pesquisa-ranking-modal'
@@ -30,6 +30,7 @@ import {
   rotuloRelevanciaTerritorial,
   rotuloSeguidoresDigital,
   rotuloSinalCurto,
+  temExpectativa,
   type IptMissaoFiltro,
   type IptMissaoId,
 } from '@/lib/ipt-missoes'
@@ -99,14 +100,22 @@ function resumoIndicador(m: IptMunicipio, id: IndicadorId): { valor: string; det
             ? 'Sem dado'
             : 'Fora do Top 5',
       detalhe:
-        m.detalhes.pesquisaMediaPct != null
+        m.detalhes.pesquisaPosicaoTop5 != null && m.detalhes.pesquisaMediaPct != null
           ? `Média ${m.detalhes.pesquisaMediaPct.toLocaleString('pt-BR', {
               maximumFractionDigits: 1,
             })}% válidos`
-          : 'Posição vs. potencial',
+          : m.detalhes.pesquisaTop5.length > 0 && m.detalhes.pesquisaPosicaoTop5 == null
+            ? 'Sem intenção própria no ranking'
+            : 'Posição vs. potencial',
     }
   }
   if (id === 'campo') {
+    if (m.detalhes.visitasUltimos15Dias > 0) {
+      return {
+        valor: `${m.detalhes.visitasUltimos15Dias} em 15d`,
+        detalhe: 'Coberto · visita recente',
+      }
+    }
     return {
       valor:
         m.detalhes.visitasNoPeriodo > 0
@@ -114,7 +123,7 @@ function resumoIndicador(m: IptMunicipio, id: IndicadorId): { valor: string; det
           : estimativaDiasSemVisita(m),
       detalhe:
         m.detalhes.visitasNoPeriodo > 0
-          ? `${m.detalhes.visitasPeriodoAnterior} em 31–60d`
+          ? 'Sem cobertura nos últimos 15 dias'
           : 'Sem visita recente',
     }
   }
@@ -184,9 +193,17 @@ export function IptMissaoDetalhe({
     return missaoPrincipal(municipio)
   }, [municipio, missaoAtiva])
 
-  const hierarquiaAtiva = missaoAtiva !== 'todas' && missaoContexto != null
+  // Expectativa 2026 é o ponto de partida da página: mostra o painel operacional
+  // (Pesquisa/Campo/Digital/Obras), como quando nenhuma missão está selecionada.
+  const missaoSelecionada = missaoAtiva !== 'todas'
+  const diagnosticoFocado =
+    missaoSelecionada && missaoAtiva !== 'expectativa' && missaoContexto != null
+  // Tint/eyebrow da missão selecionada (inclui Expectativa); o modo focado
+  // (sem os 4 KPIs) só vale para Campo/Pesquisa/Digital/Obras.
+  const hierarquiaAtiva = missaoSelecionada && missaoContexto != null
+  const mostrarIndicadoresGerais = !diagnosticoFocado
   const naMissaoAtiva =
-    missaoAtiva !== 'todas' && municipio != null
+    missaoSelecionada && municipio != null
       ? municipioNaMissao(municipio, missaoAtiva)
       : false
   const tituloPorQue = naMissaoAtiva
@@ -239,7 +256,8 @@ export function IptMissaoDetalhe({
       <section
         className={cn(
           'ipt-bloco ipt-bloco-detalhe',
-          hierarquiaAtiva && 'ipt-bloco-detalhe--hierarquia'
+          hierarquiaAtiva && 'ipt-bloco-detalhe--hierarquia',
+          mostrarIndicadoresGerais && 'ipt-bloco-detalhe--com-inds'
         )}
         style={
           missaoCfg
@@ -259,11 +277,15 @@ export function IptMissaoDetalhe({
           {diagnostico ? <p className="ipt-bloco-detalhe__lead">{diagnostico}</p> : null}
           {missaoTitulo && hierarquiaAtiva ? (
             <p className="ipt-bloco-detalhe__missao-eyebrow">
-              Missão: {missaoTitulo}
+              {naMissaoAtiva ? `Missão: ${missaoTitulo}` : `Fora da missão: ${missaoTitulo}`}
             </p>
           ) : null}
           <div className="ipt-bloco-detalhe__head-actions">
-            {impacto !== 'baixa' ? (
+            {missaoAtiva === 'expectativa' && !temExpectativa(municipio) ? (
+              <span className="ipt-bloco-detalhe__badge ipt-bloco-detalhe__badge--neutro">
+                Sem meta
+              </span>
+            ) : impacto !== 'baixa' ? (
               <span
                 className={cn(
                   'ipt-bloco-detalhe__badge',
@@ -320,7 +342,7 @@ export function IptMissaoDetalhe({
           </div>
         </div>
 
-        {hierarquiaAtiva && porQue ? (
+        {diagnosticoFocado && porQue ? (
           <div className="ipt-bloco-detalhe__por-que">
             <h4>{tituloPorQue}</h4>
             <p>{porQue}</p>
@@ -344,7 +366,7 @@ export function IptMissaoDetalhe({
           </div>
         ) : null}
 
-        {hierarquiaAtiva ? null : (
+        {mostrarIndicadoresGerais ? (
           <div className="ipt-bloco-detalhe__inds">
             {(['pesquisa', 'campo', 'digital', 'obras'] as IndicadorId[]).map((id) => {
               const meta = INDICADOR_META[id]
@@ -365,9 +387,9 @@ export function IptMissaoDetalhe({
               )
             })}
           </div>
-        )}
+        ) : null}
 
-        {!hierarquiaAtiva && podeAbrirPesquisa ? (
+        {mostrarIndicadoresGerais && podeAbrirPesquisa ? (
           <button
             type="button"
             className="ipt-bloco-detalhe__pesquisa-btn"
@@ -501,6 +523,24 @@ function Indicador({
   sinal: IptSinal
   onClick?: () => void
 }) {
+  const status = statusDoIndicador(sinal, evolucao)
+  const body = (
+    <>
+      <div className="ipt-bloco-detalhe__ind-top">
+        <span className="ipt-bloco-detalhe__ind-ico" style={{ background: cor }} aria-hidden>
+          <CockpitIcon icon={icon} size="sm" />
+        </span>
+        <span>{label}</span>
+      </div>
+      <strong>{valor}</strong>
+      <p>{detalhe}</p>
+      <em>
+        <CockpitIcon icon={status.Icon} size="sm" className="ipt-bloco-detalhe__ind-status-ico" />
+        <span>{status.label}</span>
+      </em>
+    </>
+  )
+
   if (onClick) {
     return (
       <button
@@ -512,30 +552,31 @@ function Indicador({
         )}
         onClick={onClick}
       >
-        <div className="ipt-bloco-detalhe__ind-top">
-          <span className="ipt-bloco-detalhe__ind-ico" style={{ background: cor }} aria-hidden>
-            <CockpitIcon icon={icon} size="sm" />
-          </span>
-          <span>{label}</span>
-        </div>
-        <strong>{valor}</strong>
-        <p>{detalhe}</p>
-        <em>{evolucao}</em>
+        {body}
       </button>
     )
   }
 
   return (
     <div className={cn('ipt-bloco-detalhe__ind', `ipt-bloco-detalhe__ind--${sinal}`)}>
-      <div className="ipt-bloco-detalhe__ind-top">
-        <span className="ipt-bloco-detalhe__ind-ico" style={{ background: cor }} aria-hidden>
-          <CockpitIcon icon={icon} size="sm" />
-        </span>
-        <span>{label}</span>
-      </div>
-      <strong>{valor}</strong>
-      <p>{detalhe}</p>
-      <em>{evolucao}</em>
+      {body}
     </div>
   )
+}
+
+function statusDoIndicador(
+  sinal: IptSinal,
+  evolucao: string
+): { Icon: LucideIcon; label: string } {
+  const texto = evolucao.trim()
+  if (texto.startsWith('↓')) {
+    return { Icon: TrendingDown, label: texto.replace(/^↓\s*/, '') }
+  }
+  if (texto.startsWith('↑')) {
+    return { Icon: TrendingUp, label: texto.replace(/^↑\s*/, '') }
+  }
+  if (sinal === 'mal') return { Icon: AlertTriangle, label: texto }
+  if (sinal === 'bem') return { Icon: CheckCircle2, label: texto }
+  if (sinal === 'neutro') return { Icon: MinusCircle, label: texto }
+  return { Icon: HelpCircle, label: texto }
 }

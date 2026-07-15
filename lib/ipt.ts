@@ -16,8 +16,13 @@ export type IptPesquisaBase = 'estimulada' | 'espontanea'
 /** Janela de avaliação de visitas de campo no IPT (dias corridos). */
 export const IPT_VISITAS_JANELA_DIAS = 30
 
+/** Cobertura recente de campo: ≥1 visita nesta janela = município coberto. */
+export const IPT_VISITAS_COBERTURA_DIAS = 15
+
 export type IptDetalhes = {
   visitasNoPeriodo: number
+  /** Visitas nos últimos {@link IPT_VISITAS_COBERTURA_DIAS} dias (cobertura recente). */
+  visitasUltimos15Dias: number
   /** Total acumulado de visitas (planilha Território). */
   visitasHistorico: number
   /** Visitas na janela anterior (ex.: dias 31–60). */
@@ -114,6 +119,8 @@ export type IptMunicipioInput = {
   liderancas: number
   visitas: number
   visitasNoPeriodo: number
+  /** Visitas nos últimos {@link IPT_VISITAS_COBERTURA_DIAS} dias. */
+  visitasUltimos15Dias?: number
   obrasCount: number
   obrasValorTotal: number
   /** Posts vinculados a obras deste município (classificação Redes). */
@@ -133,15 +140,22 @@ export function normalizeIptMunicipio(nome: string): string {
     .trim()
 }
 
-/** Sinal de visitas alinhado ao popup: recorte dos últimos {@link IPT_VISITAS_JANELA_DIAS} dias. Zero visitas = mal (nunca sem dado). */
+/**
+ * Sinal de visitas de campo.
+ * ≥1 visita nos últimos {@link IPT_VISITAS_COBERTURA_DIAS} dias = coberto (`bem`).
+ * Sem visita recente: usa a janela de {@link IPT_VISITAS_JANELA_DIAS} dias.
+ */
 export function classificarSinalVisitas(
   expectativa: number,
   visitasNoPeriodo: number,
-  pesoExpectativaPct: number
+  pesoExpectativaPct: number,
+  visitasUltimos15Dias = 0
 ): IptSinal {
+  if (visitasUltimos15Dias >= 1) return 'bem'
   if (visitasNoPeriodo <= 0) return 'mal'
+  // Visitas só entre 16–30d: potencial alto ainda pede atenção.
   if (expectativa >= 1200 || pesoExpectativaPct >= 2) {
-    return visitasNoPeriodo >= 2 ? 'bem' : 'neutro'
+    return 'neutro'
   }
   return 'bem'
 }
@@ -393,11 +407,13 @@ export function calcularIptMunicipios(inputs: IptMunicipioInput[]): IptMunicipio
       const expectativaVotos = Math.max(0, input.expectativaVotos)
       const pesoExpectativaPct = calcPesoExpectativaPct(expectativaVotos, totalExpectativa)
 
+      const visitasUltimos15Dias = Math.max(0, input.visitasUltimos15Dias ?? 0)
       const sinais = {
         visitas: classificarSinalVisitas(
           expectativaVotos,
           input.visitasNoPeriodo,
-          pesoExpectativaPct
+          pesoExpectativaPct,
+          visitasUltimos15Dias
         ),
         obras: classificarSinalObras(input.obrasCount),
         pesquisa: classificarSinalPesquisa(
@@ -430,6 +446,7 @@ export function calcularIptMunicipios(inputs: IptMunicipioInput[]): IptMunicipio
         sinais,
         detalhes: {
           visitasNoPeriodo: input.visitasNoPeriodo,
+          visitasUltimos15Dias,
           visitasHistorico: Math.max(0, input.visitas),
           visitasPeriodoAnterior: 0,
           obrasQuantidade: input.obrasCount,

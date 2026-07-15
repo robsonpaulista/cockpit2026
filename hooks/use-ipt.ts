@@ -8,6 +8,7 @@ import { valorExibidoMapaObra } from '@/lib/obras-mapa'
 import {
   calcularIptMunicipios,
   calcularIptResumo,
+  IPT_VISITAS_COBERTURA_DIAS,
   IPT_VISITAS_JANELA_DIAS,
   normalizeIptMunicipio,
   type IptMunicipio,
@@ -126,7 +127,17 @@ export function useIpt() {
         if (saved) territorioConfig = JSON.parse(saved) as Record<string, unknown>
       }
 
-      const [territorioRes, pesquisaRes, obrasRes, visitasPeriodoRes, visitasAnteriorRes, insightsRes, classifRes, igCfg] =
+      const [
+        territorioRes,
+        pesquisaRes,
+        obrasRes,
+        visitasPeriodoRes,
+        visitasCoberturaRes,
+        visitasAnteriorRes,
+        insightsRes,
+        classifRes,
+        igCfg,
+      ] =
         await Promise.all([
           fetch('/api/dashboard/territorios-frios', {
             method: 'POST',
@@ -137,6 +148,9 @@ export function useIpt() {
           fetch('/api/pesquisa?limit=5000', { cache: 'no-store' }),
           fetch(IPT_OBRAS_API, { cache: 'no-store' }),
           fetch(`/api/campo/visitas-resumo-td?days=${IPT_VISITAS_JANELA_DIAS}`, { cache: 'no-store' }),
+          fetch(`/api/campo/visitas-resumo-td?days=${IPT_VISITAS_COBERTURA_DIAS}`, {
+            cache: 'no-store',
+          }),
           fetch(
             `/api/campo/visitas-resumo-td?days=${IPT_VISITAS_JANELA_DIAS}&offsetDays=${IPT_VISITAS_JANELA_DIAS}`,
             { cache: 'no-store' }
@@ -197,6 +211,25 @@ export function useIpt() {
           )
         : new Map<string, number>()
 
+      const visitasCoberturaJson = visitasCoberturaRes.ok
+        ? ((await visitasCoberturaRes.json()) as {
+            municipios?: Array<{ municipio: string; visitas: number }>
+          })
+        : ((await visitasCoberturaRes.json()) as { retryable?: boolean })
+      if (
+        !visitasCoberturaRes.ok &&
+        (visitasCoberturaRes.status === 503 ||
+          (visitasCoberturaJson as { retryable?: boolean }).retryable)
+      ) {
+        instavel = true
+      }
+      const visitasUltimos15PorMunicipio = visitasCoberturaRes.ok
+        ? mapVisitasNoPeriodo(
+            (visitasCoberturaJson as { municipios?: Array<{ municipio: string; visitas: number }> })
+              .municipios
+          )
+        : new Map<string, number>()
+
       const visitasAnteriorJson = visitasAnteriorRes.ok
         ? ((await visitasAnteriorRes.json()) as {
             municipios?: Array<{ municipio: string; visitas: number }>
@@ -247,6 +280,7 @@ export function useIpt() {
           liderancas: 0,
           visitas: row?.visitas ?? 0,
           visitasNoPeriodo: visitasPorMunicipio.get(key) ?? 0,
+          visitasUltimos15Dias: visitasUltimos15PorMunicipio.get(key) ?? 0,
           obrasCount: obras?.count ?? 0,
           obrasValorTotal: obras?.valorTotal ?? 0,
           obrasDivulgacaoPosts: divulgacaoPorMunicipio.get(key) ?? 0,

@@ -30,7 +30,8 @@ export type PesquisaIptPorMunicipio = {
 }
 
 export type PesquisaIptEvolucaoMunicipio = {
-  mediaPct: number
+  /** Média do candidato foco; null quando ele não aparece nas ondas (ex.: fora do Top 5). */
+  mediaPct: number | null
   recentePct: number | null
   anteriorPct: number | null
   deltaPp: number | null
@@ -284,21 +285,33 @@ export function buildPesquisaIptPorMunicipio(
           ? evoAlt
           : evo ?? evoAlt ?? null
 
-    const mediaPct = media ?? top5[0]?.mediaPct ?? 0
+    // Nunca usar a média do 1º do Top 5 como se fosse do candidato foco.
     if (evoUsavel) {
       evolucaoPorMunicipio.set(key, {
         ...evoUsavel,
-        mediaPct,
+        mediaPct: media,
         evolucao: classificarEvolucaoPesquisaPp(evoUsavel.recentePct, evoUsavel.anteriorPct),
       })
-    } else {
+    } else if (media != null) {
       evolucaoPorMunicipio.set(key, {
-        mediaPct,
-        recentePct: mediaPct,
+        mediaPct: media,
+        recentePct: media,
         anteriorPct: null,
         deltaPp: null,
         evolucao: 'estavel',
         ondasComparadas: 1,
+        dataRecente: null,
+        dataAnterior: null,
+      })
+    } else {
+      // Fora do Top 5 / sem série do candidato: ranking local existe, média própria não.
+      evolucaoPorMunicipio.set(key, {
+        mediaPct: null,
+        recentePct: null,
+        anteriorPct: null,
+        deltaPp: null,
+        evolucao: 'sem_dado',
+        ondasComparadas: 0,
         dataRecente: null,
         dataAnterior: null,
       })

@@ -29,8 +29,11 @@ function situacaoRanking(m: IptMunicipio, candidato: string): string {
   if (pos != null) {
     return `${candidato} aparece em ${pos}º no Top 5 local (média ${media} sobre válidos, excluindo nenhum/branco e não sei).`
   }
+  if (m.detalhes.pesquisaTop5.length > 0) {
+    return `${candidato} está fora do Top 5 em ${m.municipio}. Abaixo, quem lidera a média local (sobre válidos).`
+  }
   if (m.detalhes.pesquisaMediaPct != null) {
-    return `${candidato} está fora do Top 5 em ${m.municipio} (média ${media} sobre válidos). Abaixo, quem lidera a média local.`
+    return `${candidato} tem média ${media} sobre válidos em ${m.municipio}, ainda sem composição de Top 5.`
   }
   return `Sem posição do candidato no Top 5 de ${m.municipio}. Veja quem compõe o ranking local.`
 }
@@ -126,9 +129,11 @@ export function IptPesquisaRankingModal({ municipio, onClose }: Props) {
           <em>
             {municipio.detalhes.pesquisaPosicaoTop5 != null
               ? `${municipio.detalhes.pesquisaPosicaoTop5}º · ${formatPct(municipio.detalhes.pesquisaMediaPct)}`
-              : municipio.detalhes.pesquisaMediaPct != null
-                ? `Fora do Top 5 · ${formatPct(municipio.detalhes.pesquisaMediaPct)}`
-                : 'Sem média cadastrada'}
+              : municipio.detalhes.pesquisaTop5.length > 0
+                ? 'Fora do Top 5'
+                : municipio.detalhes.pesquisaMediaPct != null
+                  ? formatPct(municipio.detalhes.pesquisaMediaPct)
+                  : 'Sem média cadastrada'}
           </em>
         </div>
       </div>

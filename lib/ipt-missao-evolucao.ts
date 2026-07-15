@@ -10,11 +10,37 @@ import {
   iptMissaoConfig,
   membrosPorMissao,
   municipioNaMissao,
+  votosProjetadosPesquisa,
   type IptMissaoId,
   type IptMissaoMudancaSentido,
 } from '@/lib/ipt-missoes'
 
 export type IptMissaoEventoFonte = 'sync' | 'manual' | 'bootstrap'
+
+/** Snapshot das métricas que explicam entrada/saída de missão. */
+export type IptMissaoMetricaSnap = {
+  expectativaVotos: number
+  pesoExpectativaPct: number
+  sinalVisitas: string
+  visitasPeriodo: number
+  visitasUltimos15Dias: number
+  evolucaoVisitas: string
+  sinalPesquisa: string
+  pesquisaPosicaoTop5: number | null
+  pesquisaMediaPct: number | null
+  votosProjetados: number | null
+  sinalDigital: string
+  digitalSeguidores: number | null
+  sinalObras: string
+  obrasQtd: number
+  obrasDivulgacaoPosts: number
+}
+
+export type IptMissaoComparativo = {
+  metrica: string
+  anterior: string
+  atual: string
+}
 
 export type IptMissaoEvento = {
   id: string
@@ -34,11 +60,166 @@ export type IptMissaoEventoInput = Omit<IptMissaoEvento, 'id' | 'createdAt'> & {
 }
 
 const SYNC_MEMBROS_KEY = 'ipt-missao-membros-sync-v1'
+const SYNC_METRICAS_KEY = 'ipt-missao-metricas-sync-v1'
 const EVENTOS_LOCAL_KEY = 'ipt-missao-eventos-local-v1'
 const MAX_EVENTOS_LOCAL = 800
 
 function sinalLabel(sinal: IptSinal): string {
   return IPT_SINAL_LABEL[sinal] ?? sinal
+}
+
+function fmtInt(n: number | null | undefined): string {
+  if (n == null || !Number.isFinite(n)) return '—'
+  return n.toLocaleString('pt-BR')
+}
+
+function fmtPct(n: number | null | undefined): string {
+  if (n == null || !Number.isFinite(n)) return '—'
+  return `${n.toLocaleString('pt-BR', { maximumFractionDigits: 1 })}%`
+}
+
+export function snapshotMetricasMunicipio(m: IptMunicipio): IptMissaoMetricaSnap {
+  return {
+    expectativaVotos: m.expectativaVotos,
+    pesoExpectativaPct: m.pesoExpectativaPct,
+    sinalVisitas: m.sinais.visitas,
+    visitasPeriodo: m.detalhes.visitasNoPeriodo,
+    visitasUltimos15Dias: m.detalhes.visitasUltimos15Dias,
+    evolucaoVisitas: m.evolucao.visitas,
+    sinalPesquisa: m.sinais.pesquisa,
+    pesquisaPosicaoTop5: m.detalhes.pesquisaPosicaoTop5,
+    pesquisaMediaPct: m.detalhes.pesquisaMediaPct,
+    votosProjetados: votosProjetadosPesquisa(m),
+    sinalDigital: m.sinais.digital,
+    digitalSeguidores: m.detalhes.digitalSeguidores,
+    sinalObras: m.sinais.obras,
+    obrasQtd: m.detalhes.obrasQuantidade,
+    obrasDivulgacaoPosts: m.detalhes.obrasDivulgacaoPosts ?? 0,
+  }
+}
+
+export function metricasPorMunicipio(
+  municipios: IptMunicipio[]
+): Record<string, IptMissaoMetricaSnap> {
+  const out: Record<string, IptMissaoMetricaSnap> = {}
+  for (const m of municipios) {
+    out[m.municipio] = snapshotMetricasMunicipio(m)
+  }
+  return out
+}
+
+function formatSnapMissao(
+  missao: IptMissaoId,
+  snap: IptMissaoMetricaSnap | null | undefined
+): string {
+  if (!snap) return '—'
+
+  if (missao === 'expectativa') {
+    if (snap.expectativaVotos <= 0) return 'Sem meta'
+    return `${fmtInt(snap.expectativaVotos)} votos · ${fmtPct(snap.pesoExpectativaPct)}`
+  }
+
+  if (missao === 'campo') {
+    const sinal = IPT_SINAL_LABEL[snap.sinalVisitas as IptSinal] ?? snap.sinalVisitas
+    const cob =
+      snap.visitasUltimos15Dias > 0
+        ? `${fmtInt(snap.visitasUltimos15Dias)} em 15d`
+        : 'sem cobertura 15d'
+    return `${cob} · ${fmtInt(snap.visitasPeriodo)} em 30d · ${sinal}`
+  }
+
+  if (missao === 'pesquisa') {
+    const pos =
+      snap.pesquisaPosicaoTop5 != null ? `${snap.pesquisaPosicaoTop5}º` : 'Fora do Top 5'
+    const media = fmtPct(snap.pesquisaMediaPct)
+    const proj =
+      snap.votosProjetados != null ? `≈ ${fmtInt(snap.votosProjetados)} proj.` : 'sem projetados'
+    return `${pos} · ${media} · ${proj}`
+  }
+
+  if (missao === 'digital') {
+    const sinal = IPT_SINAL_LABEL[snap.sinalDigital as IptSinal] ?? snap.sinalDigital
+    const seg =
+      snap.digitalSeguidores != null && snap.digitalSeguidores > 0
+        ? `${fmtInt(snap.digitalSeguidores)} seg.`
+        : 'fora da base'
+    return `${seg} · ${sinal}`
+  }
+
+  const sinal = IPT_SINAL_LABEL[snap.sinalObras as IptSinal] ?? snap.sinalObras
+  return `${fmtInt(snap.obrasQtd)} obra(s) · ${fmtInt(snap.obrasDivulgacaoPosts)} post(s) · ${sinal}`
+}
+
+export function metricaLabelMissao(missao: IptMissaoId): string {
+  if (missao === 'expectativa') return 'Expectativa 2026'
+  if (missao === 'campo') return 'Campo (visitas)'
+  if (missao === 'pesquisa') return 'Pesquisa vs potencial'
+  if (missao === 'digital') return 'Presença digital'
+  return 'Obras / divulgação'
+}
+
+export function comparativoMissao(
+  missao: IptMissaoId,
+  anterior: IptMissaoMetricaSnap | null | undefined,
+  atual: IptMissaoMetricaSnap | null | undefined
+): IptMissaoComparativo {
+  return {
+    metrica: metricaLabelMissao(missao),
+    anterior: formatSnapMissao(missao, anterior),
+    atual: formatSnapMissao(missao, atual),
+  }
+}
+
+/** Lê comparativo persistido no evento (novo) ou deriva do detalhe legado. */
+export function leituraComparativoEvento(e: IptMissaoEvento): IptMissaoComparativo {
+  const d = e.detalhes
+  const metrica =
+    typeof d.metrica === 'string' && d.metrica
+      ? d.metrica
+      : metricaLabelMissao(e.missao)
+  const anterior =
+    typeof d.valorAnterior === 'string' && d.valorAnterior
+      ? d.valorAnterior
+      : '—'
+  if (typeof d.valorAtual === 'string' && d.valorAtual) {
+    return { metrica, anterior, atual: d.valorAtual }
+  }
+
+  // Eventos antigos: só tinham o estado "atual" no momento do sync.
+  const snapAtual: IptMissaoMetricaSnap = {
+    expectativaVotos: Number(d.expectativaVotos ?? 0),
+    pesoExpectativaPct: Number(d.pesoExpectativaPct ?? 0),
+    sinalVisitas: String(d.sinalVisitas ?? 'sem_dado'),
+    visitasPeriodo: Number(d.visitasPeriodo ?? 0),
+    visitasUltimos15Dias: Number(d.visitasUltimos15Dias ?? 0),
+    evolucaoVisitas: String(d.evolucaoVisitas ?? 'sem_dado'),
+    sinalPesquisa: String(d.sinalPesquisa ?? 'sem_dado'),
+    pesquisaPosicaoTop5:
+      d.pesquisaPosicaoTop5 == null || d.pesquisaPosicaoTop5 === ''
+        ? null
+        : Number(d.pesquisaPosicaoTop5),
+    pesquisaMediaPct:
+      d.pesquisaMediaPct == null || d.pesquisaMediaPct === ''
+        ? null
+        : Number(d.pesquisaMediaPct),
+    votosProjetados:
+      d.votosProjetados == null || d.votosProjetados === ''
+        ? null
+        : Number(d.votosProjetados),
+    sinalDigital: String(d.sinalDigital ?? 'sem_dado'),
+    digitalSeguidores:
+      d.digitalSeguidores == null || d.digitalSeguidores === ''
+        ? null
+        : Number(d.digitalSeguidores),
+    sinalObras: String(d.sinalObras ?? 'sem_dado'),
+    obrasQtd: Number(d.obrasQtd ?? 0),
+    obrasDivulgacaoPosts: Number(d.obrasDivulgacaoPosts ?? 0),
+  }
+  return {
+    metrica,
+    anterior,
+    atual: formatSnapMissao(e.missao, snapAtual),
+  }
 }
 
 function newId(): string {
@@ -65,17 +246,24 @@ export function motivoMissaoDetalhado(
     }
   }
 
+  const snap = snapshotMetricasMunicipio(m)
   const detalhes: Record<string, string | number | boolean | null> = {
-    expectativaVotos: m.expectativaVotos,
-    pesoExpectativaPct: m.pesoExpectativaPct,
+    expectativaVotos: snap.expectativaVotos,
+    pesoExpectativaPct: snap.pesoExpectativaPct,
     prioridade: m.prioridade,
-    sinalVisitas: m.sinais.visitas,
-    sinalPesquisa: m.sinais.pesquisa,
-    sinalDigital: m.sinais.digital,
-    sinalObras: m.sinais.obras,
-    visitasPeriodo: m.detalhes.visitasNoPeriodo,
-    obrasQtd: m.detalhes.obrasQuantidade,
-    obrasDivulgacaoPosts: m.detalhes.obrasDivulgacaoPosts ?? 0,
+    sinalVisitas: snap.sinalVisitas,
+    sinalPesquisa: snap.sinalPesquisa,
+    sinalDigital: snap.sinalDigital,
+    sinalObras: snap.sinalObras,
+    visitasPeriodo: snap.visitasPeriodo,
+    visitasUltimos15Dias: snap.visitasUltimos15Dias,
+    evolucaoVisitas: snap.evolucaoVisitas,
+    pesquisaPosicaoTop5: snap.pesquisaPosicaoTop5,
+    pesquisaMediaPct: snap.pesquisaMediaPct,
+    votosProjetados: snap.votosProjetados,
+    digitalSeguidores: snap.digitalSeguidores,
+    obrasQtd: snap.obrasQtd,
+    obrasDivulgacaoPosts: snap.obrasDivulgacaoPosts,
   }
 
   if (missao === 'expectativa') {
@@ -234,6 +422,27 @@ export function salvarMembrosSync(membros: Record<IptMissaoId, string[]>): void 
   }
 }
 
+export function lerMetricasSync(): Record<string, IptMissaoMetricaSnap> | null {
+  if (typeof window === 'undefined') return null
+  try {
+    const raw = window.localStorage.getItem(SYNC_METRICAS_KEY)
+    if (!raw) return null
+    const parsed = JSON.parse(raw) as Record<string, IptMissaoMetricaSnap>
+    return parsed && typeof parsed === 'object' ? parsed : null
+  } catch {
+    return null
+  }
+}
+
+export function salvarMetricasSync(metricas: Record<string, IptMissaoMetricaSnap>): void {
+  if (typeof window === 'undefined') return
+  try {
+    window.localStorage.setItem(SYNC_METRICAS_KEY, JSON.stringify(metricas))
+  } catch {
+    // ignore
+  }
+}
+
 export function lerEventosLocais(): IptMissaoEvento[] {
   if (typeof window === 'undefined') return []
   try {
@@ -276,11 +485,17 @@ export function appendEventosLocais(novos: IptMissaoEvento[]): IptMissaoEvento[]
 export function buildEventosMissaoDiff(
   municipios: IptMunicipio[],
   membrosAnteriores: Record<IptMissaoId, string[]> | null,
-  fonte: IptMissaoEventoFonte = 'sync'
-): { membrosAtuais: Record<IptMissaoId, string[]>; eventos: IptMissaoEvento[] } {
+  fonte: IptMissaoEventoFonte = 'sync',
+  metricasAnteriores: Record<string, IptMissaoMetricaSnap> | null = null
+): {
+  membrosAtuais: Record<IptMissaoId, string[]>
+  metricasAtuais: Record<string, IptMissaoMetricaSnap>
+  eventos: IptMissaoEvento[]
+} {
   const membrosAtuais = membrosPorMissao(municipios)
+  const metricasAtuais = metricasPorMunicipio(municipios)
   if (!membrosAnteriores) {
-    return { membrosAtuais, eventos: [] }
+    return { membrosAtuais, metricasAtuais, eventos: [] }
   }
 
   const porNome = new Map(municipios.map((m) => [m.municipio, m]))
@@ -296,6 +511,9 @@ export function buildEventosMissaoDiff(
     for (const mud of mudancas) {
       const muni = porNome.get(mud.municipio)
       const { motivo, detalhes } = motivoMissaoDetalhado(muni, missao, mud.sentido)
+      const snapAnterior = metricasAnteriores?.[mud.municipio] ?? null
+      const snapAtual = muni ? metricasAtuais[mud.municipio] : null
+      const comp = comparativoMissao(missao, snapAnterior, snapAtual)
       eventos.push({
         id: newId(),
         municipio: mud.municipio,
@@ -303,7 +521,12 @@ export function buildEventosMissaoDiff(
         missao,
         sentido: mud.sentido,
         motivo,
-        detalhes,
+        detalhes: {
+          ...detalhes,
+          metrica: comp.metrica,
+          valorAnterior: comp.anterior,
+          valorAtual: comp.atual,
+        },
         fonte,
         createdAt: agora,
       })
@@ -315,12 +538,13 @@ export function buildEventosMissaoDiff(
     return a.municipio.localeCompare(b.municipio, 'pt-BR')
   })
 
-  return { membrosAtuais, eventos }
+  return { membrosAtuais, metricasAtuais, eventos }
 }
 
 /** Primeira carga: marca sync sem gerar eventos (bootstrap). */
 export function bootstrapMissaoSync(municipios: IptMunicipio[]): void {
   salvarMembrosSync(membrosPorMissao(municipios))
+  salvarMetricasSync(metricasPorMunicipio(municipios))
 }
 
 export async function persistirEventosMissao(

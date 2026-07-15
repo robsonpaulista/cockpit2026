@@ -12,6 +12,7 @@ import {
   rotuloEngajamentoDigital,
   rotuloSeguidoresDigital,
   subtituloListaMissao,
+  temExpectativa,
   type IptMissaoFiltro,
   type IptMissaoId,
   type IptVisaoUniverso,
@@ -67,17 +68,20 @@ function valoresVisaoGeral(m: IptMunicipio): string[] {
 function valoresLinha(
   m: IptMunicipio,
   missao: IptMissaoId | null,
-  saudavel: boolean
+  foraPrioridade: boolean
 ): string[] {
   const impacto = prioridadeImpactoMissao(m, missao ?? 'todas')
-  const intensidade = saudavel ? 'Saudável' : intensidadeLabel(impacto)
+  const intensidade = foraPrioridade ? 'Saudável' : intensidadeLabel(impacto)
 
   if (missao == null) {
-    if (saudavel) return ['Sem tensão crítica', '—', 'Saudável']
+    if (foraPrioridade) return ['Sem tensão crítica', '—', 'Saudável']
     return valoresVisaoGeral(m)
   }
 
   if (missao === 'expectativa') {
+    if (m.expectativaVotos <= 0) {
+      return ['—', '—', 'Sem meta']
+    }
     return [
       formatExpectativa(m.expectativaVotos),
       `${m.pesoExpectativaPct.toLocaleString('pt-BR', { maximumFractionDigits: 1 })}%`,
@@ -96,7 +100,7 @@ function valoresLinha(
           ? 'Sem dado'
           : 'Fora do Top 5'
     const media =
-      m.detalhes.pesquisaMediaPct != null
+      m.detalhes.pesquisaPosicaoTop5 != null && m.detalhes.pesquisaMediaPct != null
         ? `${m.detalhes.pesquisaMediaPct.toLocaleString('pt-BR', { maximumFractionDigits: 1 })}%`
         : '—'
     return [pos, media, intensidade]
@@ -138,7 +142,17 @@ export function IptMissaoLista({
   const qtdNaMissao = municipios.filter((m) =>
     municipioNoRecorteMissao(m, missaoAtiva)
   ).length
+  const qtdComMeta = municipios.filter((m) => temExpectativa(m)).length
+  const qtdSemMeta = Math.max(0, municipios.length - qtdComMeta)
   const qtdSaudaveis = Math.max(0, municipios.length - qtdNaMissao)
+  const badgeUniversoExpectativa =
+    visaoUniverso === 'com_expectativa' &&
+    missaoAtiva === 'expectativa' &&
+    qtdSemMeta > 0
+  const badgeUniversoSaudaveis =
+    visaoUniverso === 'com_expectativa' &&
+    missaoAtiva !== 'expectativa' &&
+    qtdSaudaveis > 0
 
   return (
     <section
@@ -153,7 +167,9 @@ export function IptMissaoLista({
         <div className="min-w-0">
           <h3 className="ipt-bloco__title">
             {visaoUniverso === 'com_expectativa'
-              ? 'Universo com expectativa'
+              ? missaoAtiva === 'expectativa'
+                ? 'Universo com e sem meta'
+                : 'Universo com expectativa'
               : 'Prioridades da missão'}
           </h3>
           <p className="ipt-bloco__sub">
@@ -172,7 +188,9 @@ export function IptMissaoLista({
               title={
                 visaoUniverso === 'com_expectativa'
                   ? 'Voltar a mostrar só as prioridades da missão'
-                  : 'Incluir também os municípios com expectativa (saudáveis)'
+                  : missaoAtiva === 'expectativa'
+                    ? 'Incluir também os municípios sem expectativa cadastrada'
+                    : 'Incluir também os municípios com expectativa (saudáveis)'
               }
               onClick={() =>
                 onVisaoUniversoChange?.(
@@ -186,12 +204,22 @@ export function IptMissaoLista({
           <span
             className="ipt-bloco-lista__badge"
             title={
-              visaoUniverso === 'com_expectativa' && qtdSaudaveis > 0
-                ? `${municipios.length} municípios · ${qtdNaMissao} na missão · ${qtdSaudaveis} saudáveis`
-                : `${municipios.length} municípios`
+              badgeUniversoExpectativa
+                ? `${municipios.length} municípios · ${qtdComMeta} com meta · ${qtdSemMeta} sem meta`
+                : badgeUniversoSaudaveis
+                  ? `${municipios.length} municípios · ${qtdNaMissao} na missão · ${qtdSaudaveis} saudáveis`
+                  : `${municipios.length} municípios`
             }
           >
-            {visaoUniverso === 'com_expectativa' && qtdSaudaveis > 0 ? (
+            {badgeUniversoExpectativa ? (
+              <>
+                <strong>{municipios.length}</strong>
+                <span>mun.</span>
+                <em>
+                  {qtdComMeta}+{qtdSemMeta}
+                </em>
+              </>
+            ) : badgeUniversoSaudaveis ? (
               <>
                 <strong>{municipios.length}</strong>
                 <span>mun.</span>
@@ -212,7 +240,7 @@ export function IptMissaoLista({
       {municipios.length === 0 ? (
         <p className="ipt-bloco-lista__empty">
           {visaoUniverso === 'com_expectativa'
-            ? 'Nenhum município com expectativa no recorte atual.'
+            ? 'Nenhum município no recorte atual.'
             : 'Nenhum município apresenta essa incompatibilidade no recorte atual.'}
         </p>
       ) : (
@@ -221,7 +249,10 @@ export function IptMissaoLista({
             <span />
             <span>Município</span>
             <span>
-              {podeVerExpectativa && missaoLista == null ? 'Exp. votos' : 'Relevância'}
+              {podeVerExpectativa &&
+              (missaoLista == null || missaoLista === 'pesquisa')
+                ? 'Exp. votos'
+                : 'Relevância'}
             </span>
             {colunas.map((col) => (
               <span key={col}>{col}</span>
@@ -231,26 +262,34 @@ export function IptMissaoLista({
             {municipios.map((m, idx) => {
               const ativo = selecionado === m.municipio
               const naMissao = municipioNoRecorteMissao(m, missaoAtiva)
+              const semMeta =
+                visaoUniverso === 'com_expectativa' &&
+                missaoAtiva === 'expectativa' &&
+                !temExpectativa(m)
               const saudavel =
                 visaoUniverso === 'com_expectativa' &&
                 missaoAtiva !== 'expectativa' &&
                 !naMissao
-              const impacto = saudavel
+              const impacto = semMeta || saudavel
                 ? 'baixa'
                 : prioridadeImpactoMissao(m, missaoAtiva)
               const principal = missaoPrincipal(m)
               const missaoLinha: IptMissaoId | null = missaoLista ?? principal
-              const missaoCor = saudavel
+              const missaoCor = semMeta || saudavel
                 ? '#8c8c8c'
                 : missaoLinha
                   ? iptMissaoConfig(missaoLinha).cor
                   : '#8c8c8c'
-              const relevancia =
-                podeVerExpectativa && missaoLista == null
-                  ? formatExpectativa(m.expectativaVotos)
+              const mostraExpVotos =
+                podeVerExpectativa &&
+                (missaoLista == null || missaoLista === 'pesquisa')
+              const relevancia = mostraExpVotos
+                ? formatExpectativa(m.expectativaVotos)
+                : semMeta
+                  ? 'Sem meta'
                   : relevanciaCurta(m)
-              const valores = valoresLinha(m, missaoLista, saudavel)
-              const prio = valores[valores.length - 1]
+              const valores = valoresLinha(m, missaoLista, saudavel || semMeta)
+              const prio = semMeta ? 'Sem meta' : valores[valores.length - 1]
               const metricas = valores.slice(0, -1)
 
               return (
@@ -261,7 +300,7 @@ export function IptMissaoLista({
                       'ipt-bloco-lista__row',
                       'ipt-bloco-lista__row--cols',
                       ativo && 'ipt-bloco-lista__row--active',
-                      saudavel && 'ipt-bloco-lista__row--saudavel'
+                      (saudavel || semMeta) && 'ipt-bloco-lista__row--saudavel'
                     )}
                     onClick={() => onSelect(m.municipio)}
                     onDoubleClick={(event) => {
@@ -283,7 +322,9 @@ export function IptMissaoLista({
                     </span>
                     <span className="ipt-bloco-lista__muni">
                       {m.municipio}
-                      {saudavel ? (
+                      {semMeta ? (
+                        <em className="ipt-bloco-lista__status">Sem meta</em>
+                      ) : saudavel ? (
                         <em className="ipt-bloco-lista__status">Saudável</em>
                       ) : visaoUniverso === 'com_expectativa' &&
                         missaoAtiva !== 'expectativa' &&
@@ -291,9 +332,22 @@ export function IptMissaoLista({
                         <em className="ipt-bloco-lista__status ipt-bloco-lista__status--missao">
                           Na missão
                         </em>
+                      ) : visaoUniverso === 'com_expectativa' &&
+                        missaoAtiva === 'expectativa' &&
+                        temExpectativa(m) ? (
+                        <em className="ipt-bloco-lista__status ipt-bloco-lista__status--missao">
+                          Com meta
+                        </em>
                       ) : null}
                     </span>
-                    <span className="ipt-bloco-lista__metric">{relevancia}</span>
+                    <span
+                      className={cn(
+                        'ipt-bloco-lista__metric',
+                        mostraExpVotos && 'ipt-bloco-lista__metric--exp'
+                      )}
+                    >
+                      {relevancia}
+                    </span>
                     {metricas.map((valor, i) => (
                       <span
                         key={`${m.municipio}-${colunas[i]}`}
@@ -308,7 +362,7 @@ export function IptMissaoLista({
                         impacto === 'alta' && 'ipt-bloco-lista__prio--alta',
                         impacto === 'media' && 'ipt-bloco-lista__prio--media',
                         impacto === 'baixa' && 'ipt-bloco-lista__prio--baixa',
-                        saudavel && 'ipt-bloco-lista__prio--saudavel'
+                        (saudavel || semMeta) && 'ipt-bloco-lista__prio--saudavel'
                       )}
                     >
                       {prio}

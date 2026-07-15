@@ -1305,10 +1305,10 @@ body[data-ipt-operacional] .ipt-header-actions .ipt-scope-select {
   display: grid;
   grid-template-columns:
     28px
-    minmax(88px, 1.15fr)
-    minmax(72px, 0.7fr)
-    minmax(88px, 0.95fr)
-    minmax(88px, 0.95fr)
+    minmax(96px, 1.25fr)
+    minmax(52px, 4.6rem)
+    minmax(96px, 1.05fr)
+    minmax(72px, 0.85fr)
     auto;
   align-items: center;
   column-gap: 10px;
@@ -1326,10 +1326,10 @@ body[data-ipt-operacional] .ipt-header-actions .ipt-scope-select {
   display: grid;
   grid-template-columns:
     28px
-    minmax(88px, 1.15fr)
-    minmax(72px, 0.7fr)
-    minmax(88px, 0.95fr)
-    minmax(88px, 0.95fr)
+    minmax(96px, 1.25fr)
+    minmax(52px, 4.6rem)
+    minmax(96px, 1.05fr)
+    minmax(72px, 0.85fr)
     auto;
   column-gap: 10px;
   align-items: end;
@@ -1423,7 +1423,9 @@ body[data-ipt-operacional] .ipt-header-actions .ipt-scope-select {
   color: #000000;
 }
 
-.ipt-bloco-detalhe--hierarquia .ipt-bloco-detalhe__inds {
+/* Só esconde KPIs no diagnóstico focado (Campo/Pesquisa/Digital/Obras).
+   Expectativa 2026 (ponto de partida) mantém os 4 cards operacionais. */
+.ipt-bloco-detalhe--hierarquia:not(.ipt-bloco-detalhe--com-inds) .ipt-bloco-detalhe__inds {
   display: none;
 }
 
@@ -1475,6 +1477,10 @@ body[data-ipt-operacional] .ipt-header-actions .ipt-scope-select {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.ipt-bloco-lista__metric--exp {
+  text-align: right;
 }
 
 .ipt-bloco-lista__metric em {
@@ -1614,6 +1620,11 @@ body[data-ipt-operacional] .ipt-header-actions .ipt-scope-select {
   color: #ff9800;
 }
 
+.ipt-bloco-detalhe__badge--neutro {
+  background: #f4f4f5;
+  color: #71717a;
+}
+
 .ipt-bloco-detalhe__clear {
   border: 1px solid #e7e5e4;
   background: #fff;
@@ -1726,17 +1737,64 @@ body[data-ipt-operacional] .ipt-header-actions .ipt-scope-select {
 }
 
 .ipt-bloco-detalhe__ind em {
-  display: inline-block;
-  margin-top: 6px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 7px;
   font-style: normal;
   font-size: 11px;
-  font-weight: 400;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  line-height: 1.3;
+  padding: 3px 8px 3px 6px;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  max-width: 100%;
 }
 
-.ipt-bloco-detalhe__ind--bem em { color: #10b981; }
-.ipt-bloco-detalhe__ind--mal em { color: #e11d48; }
-.ipt-bloco-detalhe__ind--neutro em { color: #f59e0b; }
-.ipt-bloco-detalhe__ind--sem_dado em { color: #000000; }
+.ipt-bloco-detalhe__ind em > span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ipt-bloco-detalhe__ind-status-ico {
+  flex-shrink: 0;
+  width: 12px !important;
+  height: 12px !important;
+}
+
+.ipt-bloco-detalhe__ind-status-ico svg,
+.ipt-bloco-detalhe__ind em .cockpit-icon {
+  width: 12px !important;
+  height: 12px !important;
+  stroke-width: 2.4 !important;
+}
+
+.ipt-bloco-detalhe__ind--bem em {
+  color: #047857;
+  background: #ecfdf5;
+  border-color: #a7f3d0;
+}
+
+.ipt-bloco-detalhe__ind--mal em {
+  color: #be123c;
+  background: #fff1f2;
+  border-color: #fecdd3;
+}
+
+.ipt-bloco-detalhe__ind--neutro em {
+  color: #b45309;
+  background: #fffbeb;
+  border-color: #fde68a;
+}
+
+.ipt-bloco-detalhe__ind--sem_dado em {
+  color: #44403c;
+  background: #f5f5f4;
+  border-color: #e7e5e4;
+}
 
 .ipt-bloco-detalhe__perfil {
   width: 100%;
@@ -2501,8 +2559,8 @@ body[data-ipt-operacional] .ipt-missao-card--active .ipt-missao-card__cta {
 
 /* --- Modal Evolução das missões --- */
 .ipt-evolucao-modal__panel {
-  width: min(820px, 100%);
-  max-height: min(88vh, 900px);
+  width: min(1100px, 100%);
+  max-height: min(90vh, 960px);
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -2590,73 +2648,158 @@ body[data-ipt-operacional] .ipt-missao-card--active .ipt-missao-card__cta {
   color: #666;
 }
 
-.ipt-evolucao-modal__list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
+.ipt-evolucao-modal__group-actions {
+  display: inline-flex;
+  gap: 6px;
+  margin-left: auto;
+}
+
+.ipt-evolucao-modal__group-actions button {
+  border: 1px solid #e0e0e0;
+  background: #fff;
+  border-radius: 999px;
+  padding: 2px 9px;
+  font-size: 11px;
+  color: #555;
+  cursor: pointer;
+}
+
+.ipt-evolucao-modal__group-actions button:hover {
+  border-color: #c9c9c9;
+  color: #111;
+}
+
+.ipt-evolucao-modal__groups {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-}
-
-.ipt-evolucao-modal__item {
-  display: flex;
   gap: 10px;
-  padding: 10px 12px;
-  border-radius: 10px;
+}
+
+.ipt-evolucao-modal__group {
   border: 1px solid #ebebeb;
+  border-radius: 10px;
   background: #fafafa;
+  overflow: hidden;
 }
 
-.ipt-evolucao-modal__icon {
-  flex-shrink: 0;
-  width: 28px;
-  height: 28px;
-  border-radius: 999px;
-  display: grid;
-  place-items: center;
-}
-
-.ipt-evolucao-modal__icon--in {
-  background: rgba(255, 152, 0, 0.18);
-  color: #e28000;
-}
-
-.ipt-evolucao-modal__icon--out {
-  background: rgba(102, 102, 102, 0.14);
-  color: #555;
-}
-
-.ipt-evolucao-modal__content {
-  min-width: 0;
-  flex: 1;
-}
-
-.ipt-evolucao-modal__row {
+.ipt-evolucao-modal__group-head {
+  width: 100%;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 6px 8px;
+  gap: 8px;
+  padding: 10px 12px;
+  border: 0;
+  border-left: 3px solid var(--missao-cor, #ff9800);
+  background: #fff;
+  text-align: left;
+  cursor: pointer;
+  color: #111;
 }
 
-.ipt-evolucao-modal__row strong {
+.ipt-evolucao-modal__group-head:hover {
+  background: #fcfcfc;
+}
+
+.ipt-evolucao-modal__group-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  flex-shrink: 0;
+}
+
+.ipt-evolucao-modal__group-head strong {
   font-size: 13px;
-  font-weight: 400;
-  color: #000;
+  font-weight: 600;
 }
 
-.ipt-evolucao-modal__row time {
-  margin-left: auto;
+.ipt-evolucao-modal__group-count {
+  font-size: 11px;
+  color: #666;
+}
+
+.ipt-evolucao-modal__table-wrap {
+  overflow-x: auto;
+  border-top: 1px solid #ebebeb;
+  background: #fff;
+}
+
+.ipt-evolucao-modal__table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 880px;
+  font-size: 12px;
+}
+
+.ipt-evolucao-modal__table th {
+  padding: 8px 10px;
+  text-align: left;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #666;
+  background: #f7f7f7;
+  border-bottom: 1px solid #ececec;
+  white-space: nowrap;
+}
+
+.ipt-evolucao-modal__table td {
+  padding: 9px 10px;
+  border-bottom: 1px solid #f0f0f0;
+  vertical-align: top;
+  color: #222;
+}
+
+.ipt-evolucao-modal__table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.ipt-evolucao-modal__table tbody tr:hover td {
+  background: #fffdf8;
+}
+
+.ipt-evolucao-modal__muni {
+  font-weight: 600;
+  color: #111;
+}
+
+.ipt-evolucao-modal__metric {
+  color: #555;
+  white-space: nowrap;
+}
+
+.ipt-evolucao-modal__valor {
+  font-variant-numeric: tabular-nums;
+  color: #444;
+  max-width: 180px;
+}
+
+.ipt-evolucao-modal__valor--atual {
+  color: #111;
+  font-weight: 500;
+}
+
+.ipt-evolucao-modal__motivo {
+  max-width: 260px;
+  line-height: 1.35;
+  color: #333;
+}
+
+.ipt-evolucao-modal__table time {
   font-size: 11px;
   color: #888;
   font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 
 .ipt-evolucao-modal__badge {
+  display: inline-flex;
   border-radius: 999px;
   padding: 2px 7px;
   font-size: 10px;
   border: 1px solid transparent;
+  white-space: nowrap;
 }
 
 .ipt-evolucao-modal__badge--in {
@@ -2669,15 +2812,4 @@ body[data-ipt-operacional] .ipt-missao-card--active .ipt-missao-card__cta {
   background: rgba(102, 102, 102, 0.1);
   border-color: rgba(102, 102, 102, 0.25);
   color: #444;
-}
-
-.ipt-evolucao-modal__missao {
-  font-size: 11px;
-}
-
-.ipt-evolucao-modal__content p {
-  margin: 4px 0 0;
-  font-size: 12px;
-  line-height: 1.4;
-  color: #333;
 }

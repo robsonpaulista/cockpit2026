@@ -32,8 +32,12 @@ import {
   missaoPrincipal,
   missoesDoMunicipio,
   statusMissaoLinha,
+  temExpectativa,
   type IptMissaoFiltro,
 } from '@/lib/ipt-missoes'
+
+/** Mesma cor dos chips "Sem meta" em Prioridades / Universo com e sem meta. */
+const IPT_COR_CHIP_SEM_META = '#666666'
 
 function escapeHtml(value: string): string {
   return value
@@ -530,7 +534,12 @@ export function createIptMarkerHtml(
       missaoFiltro !== 'todas'
         ? missaoFiltro
         : missaoPrincipal(m)
-    const cor = principalId ? iptMissaoConfig(principalId).cor : theme.dot
+    // Sem expectativa: cinza dos chips "Sem meta" (não a cor dourada da missão).
+    const cor = !temExpectativa(m)
+      ? IPT_COR_CHIP_SEM_META
+      : principalId
+        ? iptMissaoConfig(principalId).cor
+        : theme.dot
     // Só o ponto — sem rótulo/badge no mapa (mockup: marcadores limpos).
     return `<div class="mapa-marker-dot mapa-ipt-marker mapa-ipt-marker--missao${noVotesClass}" style="
       width:${size}px;height:${size}px;
