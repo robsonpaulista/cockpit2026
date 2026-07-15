@@ -23,6 +23,7 @@ interface IptMapSectionProps {
   isFullscreen?: boolean
   onInsightSaved?: () => void
   onMunicipioSelect?: (municipio: string) => void
+  onMunicipioToggleFiltro?: (municipio: string) => void
 }
 
 export function IptMapSection({
@@ -35,6 +36,7 @@ export function IptMapSection({
   isFullscreen: _isFullscreen = false,
   onInsightSaved,
   onMunicipioSelect,
+  onMunicipioToggleFiltro,
 }: IptMapSectionProps) {
   const { appearance } = useTheme()
 
@@ -54,6 +56,7 @@ export function IptMapSection({
         iptMissaoFiltro={missaoFiltro}
         onIptInsightSaved={onInsightSaved}
         onIptMunicipioSelect={onMunicipioSelect}
+        onIptMunicipioToggleFiltro={onMunicipioToggleFiltro}
       />
     </div>
   )

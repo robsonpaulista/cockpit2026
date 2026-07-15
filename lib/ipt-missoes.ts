@@ -321,14 +321,8 @@ export function ordenarMunicipiosMissao(
   visao: IptVisaoUniverso = 'prioridade'
 ): IptMunicipio[] {
   return [...municipios].sort((a, b) => {
-    // Com expectativa: quem está na missão (prioridade) sobe primeiro; saudáveis depois.
-    if (visao === 'com_expectativa') {
-      const aIn = municipioNoRecorteMissao(a, filtro) ? 1 : 0
-      const bIn = municipioNoRecorteMissao(b, filtro) ? 1 : 0
-      if (bIn !== aIn) return bIn - aIn
-    }
-    // Expectativa 2026: sempre por votos esperados (relevância), maior primeiro.
-    if (filtro === 'expectativa') {
+    // Ver todos: ordenação única por expectativa decrescente (missão e saudáveis misturados).
+    if (visao === 'com_expectativa' || filtro === 'expectativa') {
       if (b.expectativaVotos !== a.expectativaVotos) {
         return b.expectativaVotos - a.expectativaVotos
       }
@@ -770,18 +764,28 @@ export function frasePorQueMissao(m: IptMunicipio, missao: IptMissaoId): string 
     return `${m.municipio} combina potencial eleitoral com ausência recente de presença territorial.`
   }
   if (missao === 'pesquisa') {
-    if (m.detalhes.pesquisaPosicaoTop5 != null) {
-      const projetados = votosProjetadosPesquisa(m)
-      const media =
-        m.detalhes.pesquisaMediaPct != null
-          ? `${m.detalhes.pesquisaMediaPct.toLocaleString('pt-BR', {
-              maximumFractionDigits: 1,
-            })}%`
-          : null
-      if (projetados != null && media) {
-        return `${m.municipio} está em ${m.detalhes.pesquisaPosicaoTop5}º com ${media} sobre válidos (≈ ${projetados.toLocaleString('pt-BR')} votos), abaixo da expectativa de ${m.expectativaVotos.toLocaleString('pt-BR')}.`
+    const projetados = votosProjetadosPesquisa(m)
+    const media =
+      m.detalhes.pesquisaMediaPct != null
+        ? `${m.detalhes.pesquisaMediaPct.toLocaleString('pt-BR', {
+            maximumFractionDigits: 1,
+          })}%`
+        : null
+    const expLabel = m.expectativaVotos.toLocaleString('pt-BR')
+
+    if (m.detalhes.pesquisaPosicaoTop5 != null && projetados != null && media) {
+      const pos = m.detalhes.pesquisaPosicaoTop5
+      const projLabel = projetados.toLocaleString('pt-BR')
+      if (projetados < m.expectativaVotos) {
+        return `${m.municipio} está em ${pos}º com ${media} sobre válidos (≈ ${projLabel} votos), abaixo da expectativa de ${expLabel}.`
       }
-      return `${m.municipio} está em ${m.detalhes.pesquisaPosicaoTop5}º na pesquisa, abaixo do potencial esperado para o município.`
+      if (projetados > m.expectativaVotos) {
+        return `${m.municipio} está em ${pos}º com ${media} sobre válidos (≈ ${projLabel} votos), acima da expectativa de ${expLabel} — leitura saudável nesta missão.`
+      }
+      return `${m.municipio} está em ${pos}º com ${media} sobre válidos (≈ ${projLabel} votos), alinhado à expectativa de ${expLabel}.`
+    }
+    if (m.detalhes.pesquisaPosicaoTop5 != null) {
+      return `${m.municipio} está em ${m.detalhes.pesquisaPosicaoTop5}º na pesquisa; cruzamento com a expectativa ainda incompleto (sem eleitorado ou média).`
     }
     return `${m.municipio} ainda não tem pesquisa alinhada ao potencial eleitoral da cidade.`
   }
@@ -804,9 +808,15 @@ export function resumoDiagnosticoMissao(m: IptMunicipio, missao: IptMissaoId): s
     if (m.detalhes.pesquisaPosicaoTop5 != null) {
       const projetados = votosProjetadosPesquisa(m)
       if (projetados != null) {
-        return `${relev}, ${m.detalhes.pesquisaPosicaoTop5}º com ≈ ${projetados.toLocaleString('pt-BR')} votos projetados (sobre válidos) frente à expectativa.`
+        const rel =
+          projetados < m.expectativaVotos
+            ? 'abaixo'
+            : projetados > m.expectativaVotos
+              ? 'acima'
+              : 'no nível'
+        return `${relev}, ${m.detalhes.pesquisaPosicaoTop5}º com ≈ ${projetados.toLocaleString('pt-BR')} votos projetados — ${rel} da expectativa.`
       }
-      return `${relev}, ${m.detalhes.pesquisaPosicaoTop5}º na pesquisa e fora do potencial esperado.`
+      return `${relev}, ${m.detalhes.pesquisaPosicaoTop5}º na pesquisa; cruzamento com expectativa incompleto.`
     }
     return `${relev}, pesquisa ainda não alinhada ao potencial territorial.`
   }
@@ -1161,8 +1171,14 @@ export function razoesMissao(m: IptMunicipio, missao: IptMissaoId): string[] {
     }
     const projetados = votosProjetadosPesquisa(m)
     if (projetados != null) {
+      const rel =
+        projetados < m.expectativaVotos
+          ? 'abaixo'
+          : projetados > m.expectativaVotos
+            ? 'acima'
+            : 'no nível'
       reasons.push(
-        `a intenção projeta ≈ ${projetados.toLocaleString('pt-BR')} votos frente à expectativa de ${m.expectativaVotos.toLocaleString('pt-BR')}`
+        `a intenção projeta ≈ ${projetados.toLocaleString('pt-BR')} votos (${rel} da expectativa de ${m.expectativaVotos.toLocaleString('pt-BR')})`
       )
     } else if (m.evolucao.pesquisa === 'diminuiu') {
       reasons.push('mostra tendência de queda na intenção de votos')

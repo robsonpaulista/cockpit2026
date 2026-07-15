@@ -24,6 +24,7 @@ import {
   frasePorQueMissao,
   iptMissaoConfig,
   missaoPrincipal,
+  municipioNaMissao,
   prioridadeImpactoMissao,
   resumoDiagnosticoMissao,
   rotuloRelevanciaTerritorial,
@@ -184,6 +185,13 @@ export function IptMissaoDetalhe({
   }, [municipio, missaoAtiva])
 
   const hierarquiaAtiva = missaoAtiva !== 'todas' && missaoContexto != null
+  const naMissaoAtiva =
+    missaoAtiva !== 'todas' && municipio != null
+      ? municipioNaMissao(municipio, missaoAtiva)
+      : false
+  const tituloPorQue = naMissaoAtiva
+    ? 'Por que entrou nesta missão?'
+    : 'Leitura nesta missão'
 
   useEffect(() => {
     setModalPerfilAberto(false)
@@ -314,7 +322,7 @@ export function IptMissaoDetalhe({
 
         {hierarquiaAtiva && porQue ? (
           <div className="ipt-bloco-detalhe__por-que">
-            <h4>Por que entrou nesta missão?</h4>
+            <h4>{tituloPorQue}</h4>
             <p>{porQue}</p>
             {chips.length > 0 ? (
               <ul className="ipt-bloco-detalhe__chips">

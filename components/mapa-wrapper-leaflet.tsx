@@ -82,6 +82,8 @@ interface MapWrapperProps {
   onIptInsightSaved?: () => void
   /** Município selecionado no mapa IPT (abre perfil demográfico) */
   onIptMunicipioSelect?: (municipio: string) => void
+  /** Duplo clique no mapa IPT: aplica/limpa filtro de município na página */
+  onIptMunicipioToggleFiltro?: (municipio: string) => void
 }
 
 // ========== Constants ==========
@@ -437,14 +439,17 @@ export function MapWrapperLeaflet({
   iptMissaoFiltro = null,
   onIptInsightSaved,
   onIptMunicipioSelect,
+  onIptMunicipioToggleFiltro,
 }: MapWrapperProps) {
   const mapRef = useRef<HTMLDivElement>(null)
   const mapInstanceRef = useRef<L.Map | null>(null)
   const layersRef = useRef<Record<string, L.LayerGroup>>({})
   const statsCalculatedRef = useRef(false)
   const onIptMunicipioSelectRef = useRef(onIptMunicipioSelect)
+  const onIptMunicipioToggleFiltroRef = useRef(onIptMunicipioToggleFiltro)
   const onIptInsightSavedRef = useRef(onIptInsightSaved)
   onIptMunicipioSelectRef.current = onIptMunicipioSelect
+  onIptMunicipioToggleFiltroRef.current = onIptMunicipioToggleFiltro
   onIptInsightSavedRef.current = onIptInsightSaved
 
   // Build territory classification lookup
@@ -564,6 +569,10 @@ export function MapWrapperLeaflet({
         }
       }
 
+      const toggleFiltroIptMunicipio = (row: IptMunicipio) => {
+        onIptMunicipioToggleFiltroRef.current?.(row.municipio)
+      }
+
       map.on('zoomend', syncIptZoomClass)
       syncIptZoomClass()
 
@@ -582,7 +591,21 @@ export function MapWrapperLeaflet({
         event.stopPropagation()
         openIptMunicipio(row, key, marker)
       }
+      const onChipDblClick = (event: Event) => {
+        const target = event.target
+        if (!(target instanceof Element)) return
+        const chip = target.closest('[data-ipt-municipio]')
+        if (!chip) return
+        const key = chip.getAttribute('data-ipt-municipio')
+        if (!key) return
+        const row = iptByNome.get(key)
+        if (!row) return
+        event.preventDefault()
+        event.stopPropagation()
+        toggleFiltroIptMunicipio(row)
+      }
       mapContainer.addEventListener('click', onChipClick, true)
+      mapContainer.addEventListener('dblclick', onChipDblClick, true)
 
       municipiosPiaui.forEach((municipio, index) => {
         const row = iptByNome.get(normalizeName(municipio.nome))
@@ -617,6 +640,11 @@ export function MapWrapperLeaflet({
 
         marker.on('click', () => {
           openIptMunicipio(row, municipioKey, marker)
+        })
+
+        marker.on('dblclick', (e) => {
+          L.DomEvent.stopPropagation(e)
+          toggleFiltroIptMunicipio(row)
         })
 
         marker.on('popupopen', () => {
@@ -682,6 +710,7 @@ export function MapWrapperLeaflet({
       return () => {
         map.off('zoomend', syncIptZoomClass)
         mapContainer.removeEventListener('click', onChipClick, true)
+        mapContainer.removeEventListener('dblclick', onChipDblClick, true)
         clearIptFocus()
         mapContainer.classList.remove('ipt-map-mode', 'ipt-zoom-far', 'ipt-zoom-mid', 'ipt-zoom-near', 'ipt-map--focus')
         invalidateDelays.forEach((id) => window.clearTimeout(id))

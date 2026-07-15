@@ -4,17 +4,11 @@ import dynamic from 'next/dynamic'
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import {
   Activity,
-  BarChart3,
-  Crosshair,
   Download,
-  Hexagon,
-  LineChart,
   Loader2,
   Maximize2,
   Minimize2,
   RefreshCw,
-  Target,
-  type LucideIcon,
 } from 'lucide-react'
 import { CockpitIcon } from '@/components/ui/cockpit-icon'
 import { DashboardPageShell } from '@/components/dashboard/dashboard-page-chrome'
@@ -46,7 +40,6 @@ import {
   filtrarMunicipiosVisaoUniverso,
   idsMissoesDoMunicipio,
   indicadorDaMissao,
-  IPT_MISSAO_FILTRO_OPCOES,
   IPT_MISSOES,
   iptMissaoConfig,
   lerContagemHistorico,
@@ -68,14 +61,6 @@ import type { TerritorioDesenvolvimentoPI } from '@/lib/piaui-territorio-desenvo
 import { cn } from '@/lib/utils'
 import '@/app/dashboard/territorio/ipt/ipt-visual-refine.css'
 import '@/app/dashboard/territorio/ipt/ipt-operacional.css'
-
-const MISSAO_FILTRO_ICONE: Record<IptMissaoId, LucideIcon> = {
-  expectativa: Target,
-  campo: Crosshair,
-  pesquisa: LineChart,
-  digital: BarChart3,
-  obras: Hexagon,
-}
 
 const IptMapSection = dynamic(
   () => import('@/components/ipt/ipt-map-section').then((mod) => mod.IptMapSection),
@@ -245,15 +230,21 @@ export function IptPanel() {
     setMissaoAtiva((atual) => (atual === id ? 'todas' : id))
   }, [])
 
-  const handleMapFiltro = useCallback((id: IptMissaoFiltro) => {
-    setMissaoAtiva(id)
+  /** Clique simples: só destaca o detalhe, sem filtrar a página. */
+  const handleMunicipioSelect = useCallback((nome: string) => {
+    setMunicipioSelecionado(nome)
   }, [])
 
-  const handleMunicipioSelect = useCallback(
+  /** Duplo clique: aplica ou limpa o filtro de município na página. */
+  const handleMunicipioToggleFiltro = useCallback(
     (nome: string) => {
+      if (escopoMunicipio === nome) {
+        aplicarFiltroMunicipio(null)
+        return
+      }
       aplicarFiltroMunicipio(nome)
     },
-    [aplicarFiltroMunicipio]
+    [aplicarFiltroMunicipio, escopoMunicipio]
   )
 
   useEffect(() => {
@@ -517,65 +508,6 @@ export function IptPanel() {
                 </p>
                 <span className="ipt-bloco-mapa__seal">{microcopyMapaMissao(missaoAtiva)}</span>
               </div>
-              <div
-                className="ipt-operacional__map-filters"
-                role="radiogroup"
-                aria-label="Legenda e filtro de missão"
-              >
-                {IPT_MISSAO_FILTRO_OPCOES.map((opcao) => {
-                  const ativo = missaoAtiva === opcao.id
-                  const missaoCfg =
-                    opcao.id === 'todas' ? null : IPT_MISSOES.find((m) => m.id === opcao.id) ?? null
-                  const Icon = missaoCfg ? MISSAO_FILTRO_ICONE[missaoCfg.id] : null
-                  const cidadeNaMissao =
-                    Boolean(escopoMunicipio) &&
-                    opcao.id !== 'todas' &&
-                    missoesDoEscopo.includes(opcao.id)
-                  return (
-                    <button
-                      key={opcao.id}
-                      type="button"
-                      role="radio"
-                      aria-checked={ativo}
-                      disabled={loading}
-                      onClick={() => handleMapFiltro(opcao.id)}
-                      className={cn(
-                        'ipt-operacional__map-filter',
-                        ativo && 'ipt-operacional__map-filter--active',
-                        missaoCfg && 'ipt-operacional__map-filter--missao',
-                        cidadeNaMissao && 'ipt-operacional__map-filter--muni'
-                      )}
-                      style={
-                        missaoCfg
-                          ? ({
-                              '--missao-cor': missaoCfg.cor,
-                              '--missao-tint': missaoCfg.corTint,
-                              '--missao-texto': missaoCfg.corTexto,
-                            } as CSSProperties)
-                          : undefined
-                      }
-                    >
-                      {Icon ? (
-                        <span className="ipt-operacional__map-filter-ico" aria-hidden>
-                          <CockpitIcon icon={Icon} size="sm" />
-                        </span>
-                      ) : null}
-                      <span className="ipt-operacional__map-filter-label">{opcao.label}</span>
-                      <span className="tabular-nums">
-                        {opcao.id === 'todas'
-                          ? escopoMunicipio
-                            ? municipiosVisao.length
-                            : municipiosEmMissaoTodas.length
-                          : escopoMunicipio
-                            ? missoesDoEscopo.includes(opcao.id)
-                              ? 1
-                              : 0
-                            : contagem[opcao.id]}
-                      </span>
-                    </button>
-                  )
-                })}
-              </div>
             </div>
 
             <div className="ipt-bloco-mapa__body">
@@ -595,20 +527,82 @@ export function IptPanel() {
                   isFullscreen={isNativeFullscreen}
                   onInsightSaved={recarregar}
                   onMunicipioSelect={handleMunicipioSelect}
+                  onMunicipioToggleFiltro={handleMunicipioToggleFiltro}
                 />
               )}
 
-              <div className="ipt-mapa-legenda" aria-label="Legenda das missões">
-                {IPT_MISSOES.map((m) => (
-                  <div key={m.id} className="ipt-mapa-legenda__item">
-                    <span
-                      className="ipt-mapa-legenda__dot"
-                      style={{ background: m.cor }}
-                      aria-hidden
-                    />
-                    {m.titulo}
-                  </div>
-                ))}
+              <div
+                className="ipt-mapa-legenda"
+                role="radiogroup"
+                aria-label="Filtrar mapa por missão"
+              >
+                <button
+                  type="button"
+                  role="radio"
+                  aria-checked={missaoAtiva === 'todas'}
+                  disabled={loading}
+                  className={cn(
+                    'ipt-mapa-legenda__item',
+                    missaoAtiva === 'todas' && 'ipt-mapa-legenda__item--active'
+                  )}
+                  onClick={() => setMissaoAtiva('todas')}
+                >
+                  <span
+                    className="ipt-mapa-legenda__dot ipt-mapa-legenda__dot--todas"
+                    aria-hidden
+                  />
+                  <span className="ipt-mapa-legenda__label">Todas</span>
+                  <span className="ipt-mapa-legenda__count tabular-nums">
+                    {escopoMunicipio
+                      ? municipiosVisao.length
+                      : municipiosEmMissaoTodas.length}
+                  </span>
+                </button>
+                {IPT_MISSOES.map((m) => {
+                  const ativo = missaoAtiva === m.id
+                  const cidadeNaMissao =
+                    Boolean(escopoMunicipio) && missoesDoEscopo.includes(m.id)
+                  const qtd = escopoMunicipio
+                    ? cidadeNaMissao
+                      ? 1
+                      : 0
+                    : contagem[m.id]
+                  return (
+                    <button
+                      key={m.id}
+                      type="button"
+                      role="radio"
+                      aria-checked={ativo}
+                      disabled={loading}
+                      title={
+                        ativo
+                          ? 'Clique para limpar o filtro'
+                          : `Filtrar mapa: ${m.titulo}`
+                      }
+                      className={cn(
+                        'ipt-mapa-legenda__item',
+                        ativo && 'ipt-mapa-legenda__item--active',
+                        cidadeNaMissao && 'ipt-mapa-legenda__item--muni'
+                      )}
+                      style={
+                        {
+                          '--missao-cor': m.cor,
+                          '--missao-tint': m.corTint,
+                          '--missao-texto': m.corTexto,
+                        } as CSSProperties
+                      }
+                      onClick={() => handleMissaoSelect(m.id)}
+                    >
+                      <span
+                        className="ipt-mapa-legenda__dot"
+                        style={{ background: m.cor }}
+                        aria-hidden
+                      />
+                      <span className="ipt-mapa-legenda__label">{m.titulo}</span>
+                      <span className="ipt-mapa-legenda__count tabular-nums">{qtd}</span>
+                    </button>
+                  )
+                })}
               </div>
 
               <button
@@ -632,7 +626,9 @@ export function IptPanel() {
                 visaoUniverso={visaoUniverso}
                 onVisaoUniversoChange={setVisaoUniverso}
                 selecionado={municipioSelecionado}
+                municipioFiltro={escopoMunicipio}
                 onSelect={handleMunicipioSelect}
+                onToggleFiltro={handleMunicipioToggleFiltro}
                 podeVerExpectativa={podeVerExpectativa}
               />
               <IptMissaoDetalhe
@@ -656,6 +652,7 @@ export function IptPanel() {
             resumo={resumo}
             missaoAtiva={missaoAtiva}
             onSelectMunicipio={handleMunicipioSelect}
+            onToggleFiltroMunicipio={handleMunicipioToggleFiltro}
           />
         ) : null}
       </div>

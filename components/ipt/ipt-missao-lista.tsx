@@ -25,7 +25,11 @@ type Props = {
   visaoUniverso?: IptVisaoUniverso
   onVisaoUniversoChange?: (visao: IptVisaoUniverso) => void
   selecionado: string | null
+  /** Filtro explícito da página (diferente do destaque automático do top da lista). */
+  municipioFiltro?: string | null
   onSelect: (municipio: string) => void
+  /** Duplo clique: aplica/limpa o filtro de município na página. */
+  onToggleFiltro?: (municipio: string) => void
   podeVerExpectativa?: boolean
 }
 
@@ -121,7 +125,9 @@ export function IptMissaoLista({
   visaoUniverso = 'prioridade',
   onVisaoUniversoChange,
   selecionado,
+  municipioFiltro = null,
   onSelect,
+  onToggleFiltro,
   podeVerExpectativa = false,
 }: Props) {
   const missaoLista: IptMissaoId | null =
@@ -154,49 +160,54 @@ export function IptMissaoLista({
             {subtituloListaMissao(missaoAtiva, visaoUniverso)}
           </p>
         </div>
-        <span className="ipt-bloco-lista__badge">
-          <strong>{municipios.length}</strong> municípios
-          {visaoUniverso === 'com_expectativa' && qtdSaudaveis > 0 ? (
-            <em>
-              {qtdNaMissao} prioridade · {qtdSaudaveis} saudável
-              {qtdSaudaveis === 1 ? '' : 's'}
-            </em>
+        <div className="ipt-bloco-lista__head-actions">
+          {mostrarUniversoToggle ? (
+            <button
+              type="button"
+              aria-pressed={visaoUniverso === 'com_expectativa'}
+              className={cn(
+                'ipt-bloco-lista__ver-todos',
+                visaoUniverso === 'com_expectativa' && 'ipt-bloco-lista__ver-todos--active'
+              )}
+              title={
+                visaoUniverso === 'com_expectativa'
+                  ? 'Voltar a mostrar só as prioridades da missão'
+                  : 'Incluir também os municípios com expectativa (saudáveis)'
+              }
+              onClick={() =>
+                onVisaoUniversoChange?.(
+                  visaoUniverso === 'com_expectativa' ? 'prioridade' : 'com_expectativa'
+                )
+              }
+            >
+              Ver todos
+            </button>
           ) : null}
-        </span>
-      </div>
-
-      {mostrarUniversoToggle ? (
-        <div
-          className="ipt-bloco-lista__universo"
-          role="radiogroup"
-          aria-label="Universo da lista"
-        >
-          <button
-            type="button"
-            role="radio"
-            aria-checked={visaoUniverso === 'prioridade'}
-            className={cn(
-              'ipt-bloco-lista__universo-btn',
-              visaoUniverso === 'prioridade' && 'ipt-bloco-lista__universo-btn--active'
-            )}
-            onClick={() => onVisaoUniversoChange?.('prioridade')}
+          <span
+            className="ipt-bloco-lista__badge"
+            title={
+              visaoUniverso === 'com_expectativa' && qtdSaudaveis > 0
+                ? `${municipios.length} municípios · ${qtdNaMissao} na missão · ${qtdSaudaveis} saudáveis`
+                : `${municipios.length} municípios`
+            }
           >
-            Na missão
-          </button>
-          <button
-            type="button"
-            role="radio"
-            aria-checked={visaoUniverso === 'com_expectativa'}
-            className={cn(
-              'ipt-bloco-lista__universo-btn',
-              visaoUniverso === 'com_expectativa' && 'ipt-bloco-lista__universo-btn--active'
+            {visaoUniverso === 'com_expectativa' && qtdSaudaveis > 0 ? (
+              <>
+                <strong>{municipios.length}</strong>
+                <span>mun.</span>
+                <em>
+                  {qtdNaMissao}+{qtdSaudaveis}
+                </em>
+              </>
+            ) : (
+              <>
+                <strong>{municipios.length}</strong>
+                <span>mun.</span>
+              </>
             )}
-            onClick={() => onVisaoUniversoChange?.('com_expectativa')}
-          >
-            Com expectativa
-          </button>
+          </span>
         </div>
-      ) : null}
+      </div>
 
       {municipios.length === 0 ? (
         <p className="ipt-bloco-lista__empty">
@@ -253,6 +264,15 @@ export function IptMissaoLista({
                       saudavel && 'ipt-bloco-lista__row--saudavel'
                     )}
                     onClick={() => onSelect(m.municipio)}
+                    onDoubleClick={(event) => {
+                      event.preventDefault()
+                      onToggleFiltro?.(m.municipio)
+                    }}
+                    title={
+                      municipioFiltro === m.municipio
+                        ? 'Duplo clique para limpar o filtro'
+                        : 'Clique para detalhar · Duplo clique para filtrar a página'
+                    }
                   >
                     <span
                       className="ipt-bloco-lista__rank"

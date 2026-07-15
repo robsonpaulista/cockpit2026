@@ -29,6 +29,7 @@ type Props = {
   resumo: IptResumoCampanha
   missaoAtiva?: IptMissaoFiltro
   onSelectMunicipio?: (municipio: string) => void
+  onToggleFiltroMunicipio?: (municipio: string) => void
 }
 
 function formatInt(n: number): string {
@@ -309,6 +310,7 @@ export function IptResumoCampanhaBar({
   resumo,
   missaoAtiva = 'todas',
   onSelectMunicipio,
+  onToggleFiltroMunicipio,
 }: Props) {
   const [modalAberto, setModalAberto] = useState(false)
   const tituloId = useId()
@@ -379,6 +381,7 @@ export function IptResumoCampanhaBar({
           onClose={() => setModalAberto(false)}
           onSelect={(nome) => {
             onSelectMunicipio?.(nome)
+            onToggleFiltroMunicipio?.(nome)
             setModalAberto(false)
           }}
         />
