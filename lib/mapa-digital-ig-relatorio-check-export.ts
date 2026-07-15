@@ -206,6 +206,10 @@ export function exportRelatorioMapaDigitalIgParaXlsx(
 
     "Líder",
 
+    "Cargo",
+
+    "Instagram líder",
+
     "Telefone líder",
 
     "Liderado",
@@ -229,6 +233,10 @@ export function exportRelatorioMapaDigitalIgParaXlsx(
     d.municipio,
 
     d.liderNome,
+
+    d.cargo ?? "",
+
+    d.liderInstagram ?? "",
 
     d.liderTelefone,
 
@@ -740,13 +748,17 @@ export function exportRelatorioMapaDigitalIgParaPdf(
 
           "Líder",
 
+          "Cargo",
+
+          "IG líder",
+
           "Tel. líder",
 
           "Liderado",
 
           "WhatsApp",
 
-          "Instagram",
+          "IG liderado",
 
           "Status",
 
@@ -761,10 +773,12 @@ export function exportRelatorioMapaDigitalIgParaPdf(
         [
           "Município",
           "Líder",
+          "Cargo",
+          "IG líder",
           "Tel. líder",
           "Liderado",
           "WhatsApp",
-          "Instagram",
+          "IG liderado",
           "Status",
           "Com.",
           "Pf.",
@@ -780,6 +794,10 @@ export function exportRelatorioMapaDigitalIgParaPdf(
           d.municipio,
 
           d.liderNome,
+
+          d.cargo || "—",
+
+          d.liderInstagram || "—",
 
           d.liderTelefone,
 
@@ -801,6 +819,10 @@ export function exportRelatorioMapaDigitalIgParaPdf(
           d.municipio,
 
           d.liderNome,
+
+          d.cargo || "—",
+
+          d.liderInstagram || "—",
 
           d.liderTelefone,
 
@@ -859,48 +881,56 @@ export function exportRelatorioMapaDigitalIgParaPdf(
 
     columnStyles: colTd
       ? {
-          0: { cellWidth: 22, halign: "left" },
+          0: { cellWidth: 16, halign: "left" },
 
-          1: { cellWidth: 22, halign: "left" },
+          1: { cellWidth: 18, halign: "left" },
 
-          2: { cellWidth: 22, halign: "left" },
+          2: { cellWidth: 18, halign: "left" },
 
-          3: { cellWidth: 18, halign: "left" },
+          3: { cellWidth: 14, halign: "left" },
 
-          4: { cellWidth: 22, halign: "left" },
+          4: { cellWidth: 16, halign: "left" },
 
-          5: { cellWidth: 18, halign: "left" },
+          5: { cellWidth: 16, halign: "left" },
 
-          6: { cellWidth: 22, halign: "left" },
+          6: { cellWidth: 16, halign: "left" },
 
           7: { cellWidth: 16, halign: "left" },
 
-          8: { cellWidth: 9, halign: "right" },
+          8: { cellWidth: 16, halign: "left" },
 
-          9: { cellWidth: 9, halign: "right" },
+          9: { cellWidth: 12, halign: "left" },
 
-          10: { cellWidth: 20, halign: "center" },
+          10: { cellWidth: 8, halign: "right" },
+
+          11: { cellWidth: 8, halign: "right" },
+
+          12: { cellWidth: 16, halign: "center" },
         }
       : {
-          0: { cellWidth: 26, halign: "left" },
+          0: { cellWidth: 20, halign: "left" },
 
-          1: { cellWidth: 24, halign: "left" },
+          1: { cellWidth: 20, halign: "left" },
 
-          2: { cellWidth: 20, halign: "left" },
+          2: { cellWidth: 14, halign: "left" },
 
-          3: { cellWidth: 26, halign: "left" },
+          3: { cellWidth: 16, halign: "left" },
 
-          4: { cellWidth: 20, halign: "left" },
+          4: { cellWidth: 16, halign: "left" },
 
-          5: { cellWidth: 24, halign: "left" },
+          5: { cellWidth: 18, halign: "left" },
 
-          6: { cellWidth: 18, halign: "left" },
+          6: { cellWidth: 16, halign: "left" },
 
-          7: { cellWidth: 10, halign: "right" },
+          7: { cellWidth: 16, halign: "left" },
 
-          8: { cellWidth: 10, halign: "right" },
+          8: { cellWidth: 12, halign: "left" },
 
-          9: { cellWidth: 22, halign: "center" },
+          9: { cellWidth: 8, halign: "right" },
+
+          10: { cellWidth: 8, halign: "right" },
+
+          11: { cellWidth: 16, halign: "center" },
         },
 
     margin: tableMargins,

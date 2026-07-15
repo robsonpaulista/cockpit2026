@@ -3,13 +3,21 @@
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { IconTrendingDown, IconTrendingUp } from '@tabler/icons-react'
 import {
+  filterLeadersByCargo,
   filterLeadersByTab,
   formatInt,
   formatPct,
+  leaderCargoCounts,
   leaderTabCounts,
 } from '@/lib/mapa-exercito-digital-aggregator'
 import { PERIOD_BAR_LABELS } from '@/lib/mapa-exercito-digital-gamification'
-import type { ExercitoDigitalAccumulatedLeaderRow, ExercitoDigitalLeaderRow, LeaderFilterTab, LeaderStatusDot } from '@/lib/mapa-exercito-digital-types'
+import type {
+  ExercitoDigitalAccumulatedLeaderRow,
+  ExercitoDigitalLeaderRow,
+  LeaderCargoFilter,
+  LeaderFilterTab,
+  LeaderStatusDot,
+} from '@/lib/mapa-exercito-digital-types'
 import type { ExercitoDigitalAudience } from '@/lib/mandatos-instagram-piaui'
 import type { LideradoIgEngajamentoLinha } from '@/lib/mobilizacao-lideres-desempenho-ig-por-td-client'
 import {
@@ -29,6 +37,25 @@ function formatHandle(h: string): string {
   const t = h.trim()
   if (!t) return ''
   return t.startsWith('@') ? t : `@${t}`
+}
+
+function formatHandlesLine(handles: string[], max = 2): string {
+  const list = handles.map(formatHandle).filter(Boolean)
+  if (list.length === 0) return ''
+  if (list.length <= max) return list.join(' · ')
+  return `${list.slice(0, max).join(' · ')} +${list.length - max}`
+}
+
+function profileSubtitle(leader: ExercitoDigitalLeaderRow): string {
+  const parts: string[] = []
+  if (leader.cargo) parts.push(leader.cargo)
+  if (leader.municipio) parts.push(leader.municipio)
+  const handlesLine =
+    leader.tipo === 'mandato'
+      ? formatHandlesLine(leader.handles, 1)
+      : formatHandlesLine(leader.handles, 2)
+  if (handlesLine) parts.push(handlesLine)
+  return parts.join(' · ')
 }
 
 function formatarUltimaPub(iso: string | null | undefined): string {
@@ -174,10 +201,17 @@ export function ExercitoDigitalLeaderRanking({
   referenceMonthLabel,
 }: ExercitoDigitalLeaderRankingProps) {
   const [tab, setTab] = useState<LeaderFilterTab>('todos')
+  const [cargo, setCargo] = useState<LeaderCargoFilter>('todos')
   const [expandedId, setExpandedId] = useState<string | null>(null)
-  const counts = useMemo(() => leaderTabCounts(leaders), [leaders])
-  const filtered = useMemo(() => filterLeadersByTab(leaders, tab), [leaders, tab])
-  const accumulatedTop = useMemo(() => accumulatedLeaders.slice(0, 20), [accumulatedLeaders])
+
+  const byCargo = useMemo(() => filterLeadersByCargo(leaders, cargo), [leaders, cargo])
+  const counts = useMemo(() => leaderTabCounts(byCargo), [byCargo])
+  const cargoCounts = useMemo(() => leaderCargoCounts(leaders), [leaders])
+  const filtered = useMemo(() => filterLeadersByTab(byCargo, tab), [byCargo, tab])
+  const accumulatedTop = useMemo(
+    () => filterLeadersByCargo(accumulatedLeaders, cargo).slice(0, 20),
+    [accumulatedLeaders, cargo]
+  )
 
   const toggleRow = useCallback((id: string) => {
     setExpandedId((prev) => (prev === id ? null : id))
@@ -190,36 +224,60 @@ export function ExercitoDigitalLeaderRanking({
     { id: 'inativos', label: `Inativos (${counts.inativos})` },
   ]
 
+  const cargoTabs: { id: LeaderCargoFilter; label: string }[] = [
+    { id: 'todos', label: `Todos cargos (${cargoCounts.todos})` },
+    { id: 'rede', label: `Rede (${cargoCounts.rede})` },
+    { id: 'prefeito', label: `Prefeito (${cargoCounts.prefeito})` },
+    { id: 'vereador', label: `Vereador (${cargoCounts.vereador})` },
+  ]
+
   const entityLabel =
     audience === 'unificado' ? 'perfil' : audience === 'mandatos' ? 'mandatário' : 'líder'
 
   const listRows = filtered.slice(0, 20)
 
+  const pillClass = (active: boolean) =>
+    cn(
+      'rounded-[99px] border px-2.5 py-0.5 text-[11px] transition-colors',
+      active
+        ? 'border-[#C8900A]/50 bg-[#FAEEDA] font-medium text-[#854F0B]'
+        : 'border-[rgb(var(--color-border-secondary)/0.85)] text-text-secondary hover:bg-bg-app'
+    )
+
   return (
     <div className={cn(exercitoSectionCardClass, exercitoDualPanelItemClass)}>
-      <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <h2 className={exercitoSectionTitleClass}>Ranking de líderes</h2>
-          <p className={exercitoSectionSubtitleClass}>
-            Comentários em {referenceMonthLabel} · clique na linha para ver liderados
-          </p>
+      <div className="mb-3 flex flex-col gap-2">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <h2 className={exercitoSectionTitleClass}>Ranking de líderes</h2>
+            <p className={exercitoSectionSubtitleClass}>
+              Comentários em {referenceMonthLabel} · clique na linha para ver liderados
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-1" role="group" aria-label="Filtro por status">
+            {tabs.map((t) => (
+              <button key={t.id} type="button" onClick={() => setTab(t.id)} className={pillClass(tab === t.id)}>
+                {t.label}
+              </button>
+            ))}
+          </div>
         </div>
-        <div className="flex flex-wrap gap-1">
-          {tabs.map((t) => (
-            <button
-              key={t.id}
-              type="button"
-              onClick={() => setTab(t.id)}
-              className={cn(
-                'rounded-[99px] border px-2.5 py-0.5 text-[11px] transition-colors',
-                tab === t.id
-                  ? 'border-[#C8900A]/50 bg-[#FAEEDA] font-medium text-[#854F0B]'
-                  : 'border-[rgb(var(--color-border-secondary)/0.85)] text-text-secondary hover:bg-bg-app'
-              )}
-            >
-              {t.label}
-            </button>
-          ))}
+        <div className="flex flex-wrap items-center gap-1.5">
+          <span className="shrink-0 text-[10px] font-semibold uppercase tracking-wide text-text-muted">
+            Cargo
+          </span>
+          <div className="flex flex-wrap gap-1" role="group" aria-label="Filtro por cargo">
+            {cargoTabs.map((t) => (
+              <button
+                key={t.id}
+                type="button"
+                onClick={() => setCargo(t.id)}
+                className={pillClass(cargo === t.id)}
+              >
+                {t.label}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 
@@ -286,12 +344,20 @@ export function ExercitoDigitalLeaderRanking({
                           <span className="shrink-0 rounded-[99px] border border-[#C8900A]/45 bg-[#FAEEDA] px-1.5 py-0 text-[8.5px] font-semibold uppercase tracking-wide text-[#854F0B]">
                             Rede
                           </span>
-                        ) : audience === 'unificado' ? (
+                        ) : mandato ? (
                           <span className="shrink-0 rounded-[99px] border border-[rgb(var(--color-border-secondary)/0.85)] bg-bg-surface px-1.5 py-0 text-[8.5px] font-medium uppercase tracking-wide text-text-muted">
-                            Mandato
+                            {leader.cargo ?? 'Mandato'}
                           </span>
                         ) : null}
                       </div>
+                      {profileSubtitle(leader) ? (
+                        <p
+                          className="mt-0.5 truncate font-mono text-[10px] text-text-secondary"
+                          title={profileSubtitle(leader)}
+                        >
+                          {profileSubtitle(leader)}
+                        </p>
+                      ) : null}
                       <p className="mt-0.5 text-[10px] text-text-muted">
                         {formatInt(leader.publicacoes)}/{formatInt(leader.postsNoPeriodo)} posts ·{' '}
                         {formatPct(leader.ativacaoPct)} ativ.
@@ -506,9 +572,18 @@ export function ExercitoDigitalLeaderRanking({
                       >
                         {leader.rank}
                       </span>
-                      <p className="truncate text-[11px] font-medium text-text-primary" title={leader.nome}>
-                        {leader.nome}
-                      </p>
+                      <div className="min-w-0">
+                        <p className="truncate text-[11px] font-medium text-text-primary" title={leader.nome}>
+                          {leader.nome}
+                        </p>
+                        {(leader.cargo || leader.handles[0]) ? (
+                          <p className="truncate font-mono text-[9px] text-text-muted">
+                            {[leader.cargo, leader.handles[0] ? formatHandle(leader.handles[0]) : null]
+                              .filter(Boolean)
+                              .join(' · ')}
+                          </p>
+                        ) : null}
+                      </div>
                       <span className="text-right text-[12px] font-semibold tabular-nums text-[#854F0B]">
                         {formatInt(leader.comentarios)}
                       </span>

@@ -96,7 +96,8 @@ export function ExercitoDigitalHeader({
     }
   }, [cfg, lookbackDays, onSyncComplete])
 
-  const relatorioUrl = '/api/mobilizacao/relatorio-check-mapa-digital-ig?escopo=pi'
+  /** Unificado: rede (liderados) + mandatários (@ e cargo na planilha de detalhes). */
+  const relatorioUrl = '/api/mobilizacao/relatorio-check-mapa-digital-ig?escopo=pi&base=unificado'
 
   const carregarPi = useCallback(async (): Promise<RelatorioMapaDigitalIgTdPayload> => {
     const res = await fetch(relatorioUrl, { cache: 'no-store' })

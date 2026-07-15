@@ -14,6 +14,9 @@ export type LeaderStatusDot = 'green' | 'amber' | 'red' | 'gray'
 
 export type LeaderFilterTab = 'todos' | 'ativos' | 'em-queda' | 'inativos'
 
+/** Filtro por tipo/cargo no ranking unificado. */
+export type LeaderCargoFilter = 'todos' | 'rede' | 'prefeito' | 'vereador'
+
 export type ExercitoDigitalAlertPost = {
   id: string
   status: AlertPostStatus
@@ -31,6 +34,12 @@ export type ExercitoDigitalLeaderRow = {
   /** Rede de mobilização (líder) ou mandatário da planilha. */
   tipo: LeaderBaseTipo
   nome: string
+  /** @ normalizados do perfil (mandatário) ou da rede de liderados (líder). */
+  handles: string[]
+  /** Cargo do mandatário (`Prefeito` / `Vereador`); null para líder de rede. */
+  cargo: string | null
+  /** Município do mandatário, quando aplicável. */
+  municipio: string | null
   comentarios: number
   /** Posts em que o mandatário/liderado comentou no período */
   publicacoes: number
@@ -93,6 +102,8 @@ export type ExercitoDigitalAccumulatedLeaderRow = {
   rank: number
   nome: string
   tipo: LeaderBaseTipo
+  handles: string[]
+  cargo: string | null
   comentarios: number
 }
 

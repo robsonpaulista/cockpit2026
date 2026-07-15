@@ -501,6 +501,8 @@ function montarDetalhesLinhas(
         territorioTd: tdContext,
         municipio: mun,
         liderNome,
+        liderInstagram: '',
+        cargo: '',
         liderTelefone,
         lideradoNome: '',
         lideradoWhatsapp: '',
@@ -522,6 +524,8 @@ function montarDetalhesLinhas(
         territorioTd: tdContext,
         municipio: mun,
         liderNome,
+        liderInstagram: '',
+        cargo: '',
         liderTelefone,
         lideradoNome: row.nome,
         lideradoWhatsapp: row.whatsapp,
@@ -743,6 +747,8 @@ async function buildRelatorioPi(
         territorioTd: tdr,
         municipio: mun,
         liderNome,
+        liderInstagram: '',
+        cargo: '',
         liderTelefone,
         lideradoNome: '',
         lideradoWhatsapp: '',
@@ -764,6 +770,8 @@ async function buildRelatorioPi(
         territorioTd: tdr,
         municipio: mun,
         liderNome,
+        liderInstagram: '',
+        cargo: '',
         liderTelefone,
         lideradoNome: row.nome,
         lideradoWhatsapp: row.whatsapp,
@@ -844,16 +852,29 @@ export async function GET(request: Request) {
 
   const { searchParams } = new URL(request.url)
   const escopoPi = searchParams.get('escopo')?.trim().toLowerCase() === 'pi'
-  const baseMandatos = searchParams.get('base')?.trim().toLowerCase() === 'mandatos'
+  const base = searchParams.get('base')?.trim().toLowerCase() ?? ''
+  const baseMandatos = base === 'mandatos'
+  const baseUnificado = base === 'unificado'
 
   const admin = createAdminClient()
 
   try {
     if (escopoPi) {
-      const body = baseMandatos
-        ? await buildRelatorioPiMandatos(admin, userId, passarComentariosIg)
-        : await buildRelatorioPi(admin, userId)
-      return NextResponse.json(body)
+      if (baseMandatos) {
+        return NextResponse.json(await buildRelatorioPiMandatos(admin, userId, passarComentariosIg))
+      }
+      if (baseUnificado) {
+        const [rede, mandatos] = await Promise.all([
+          buildRelatorioPi(admin, userId),
+          buildRelatorioPiMandatos(admin, userId, passarComentariosIg),
+        ])
+        return NextResponse.json({
+          ...rede,
+          recorteDescricao: 'Piauí — base eleitoral (rede de líderes + prefeitos/vereadores)',
+          detalhes: [...rede.detalhes, ...mandatos.detalhes],
+        } satisfies RelatorioMapaDigitalIgTdPayload)
+      }
+      return NextResponse.json(await buildRelatorioPi(admin, userId))
     }
 
     const tdRaw = (searchParams.get('td') ?? '').trim()

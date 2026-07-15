@@ -21,6 +21,10 @@ export type RelatorioMapaDigitalIgDetalheLinha = {
   territorioTd?: TerritorioDesenvolvimentoPI
   municipio: string
   liderNome: string
+  /** Instagram do líder / mandatário (@). */
+  liderInstagram: string
+  /** Cargo do mandatário (Prefeito / Vereador); vazio para líder de rede. */
+  cargo: string
   liderTelefone: string
   lideradoNome: string
   lideradoWhatsapp: string

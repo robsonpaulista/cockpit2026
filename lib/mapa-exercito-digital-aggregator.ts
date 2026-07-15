@@ -2,6 +2,7 @@ import type { InstagramPostWithComments, InstagramStoredComment } from '@/lib/in
 import type { MandatoInstagramEnriquecido } from '@/lib/mandatos-instagram-piaui'
 import {
   buildMandatosHandleSet,
+  labelCargoMandato,
   mandatosToCoberturaDto,
   type ExercitoDigitalAudience,
 } from '@/lib/mandatos-instagram-piaui'
@@ -22,6 +23,7 @@ import type {
   ExercitoDigitalLeaderRow,
   ExercitoDigitalTrendPoint,
   ExercitoDigitalViewModel,
+  LeaderCargoFilter,
   LeaderFilterTab,
   LeaderStatusDot,
   LeaderTrendKind,
@@ -401,6 +403,14 @@ function handlesForLeaderRow(
   leader: ExercitoDigitalLeaderRow,
   mandatoHandles: Map<string, string>
 ): Set<string> {
+  if (leader.handles.length > 0) {
+    const handles = new Set<string>()
+    for (const raw of leader.handles) {
+      const h = normalizeInstagramHandle(raw)
+      if (h) handles.add(h)
+    }
+    if (handles.size > 0) return handles
+  }
   if (leader.tipo === 'lider') {
     const handles = new Set<string>()
     for (const raw of leader.lideradosInstagram ?? []) {
@@ -427,6 +437,8 @@ function buildAccumulatedLeaders(
     rank: 0,
     nome: leader.nome,
     tipo: leader.tipo,
+    handles: leader.handles,
+    cargo: leader.cargo,
     comentarios: countCommentsForHandlesSince(posts, handlesForLeaderRow(leader, mandatoHandles), cutoffMs),
   }))
 
@@ -671,12 +683,18 @@ function buildLeaders(
       const variacaoPct = pctChange(mesAtual, mesAnterior)
       const cobertura = coberturaById.get(l.id)
       const nome = cobertura?.nome ?? l.nome
+      const handlesRede = (cobertura?.handles?.length ? cobertura.handles : l.lideradosInstagram ?? [])
+        .map((h) => normalizeInstagramHandle(h))
+        .filter((h): h is string => Boolean(h))
       const lideradosQueComentaram = lideradosQueComentaramNoMes(posts, l.lideradosInstagram, ref)
       return {
         id: l.id,
         rank: 0,
         tipo: 'lider' as const,
         nome,
+        handles: handlesRede,
+        cargo: null,
+        municipio: null,
         comentarios,
         publicacoes,
         postsNoPeriodo,
@@ -743,6 +761,32 @@ export function leaderTabCounts(leaders: ExercitoDigitalLeaderRow[]): Record<Lea
   }
 }
 
+function cargoKey(leader: Pick<ExercitoDigitalLeaderRow, 'tipo' | 'cargo'>): 'rede' | 'prefeito' | 'vereador' {
+  if (leader.tipo === 'lider' || !leader.cargo) return 'rede'
+  const c = leader.cargo.trim().toLowerCase()
+  if (c.startsWith('pref')) return 'prefeito'
+  return 'vereador'
+}
+
+export function filterLeadersByCargo<T extends Pick<ExercitoDigitalLeaderRow, 'tipo' | 'cargo'>>(
+  leaders: T[],
+  cargo: LeaderCargoFilter
+): T[] {
+  if (cargo === 'todos') return leaders
+  return leaders.filter((l) => cargoKey(l) === cargo)
+}
+
+export function leaderCargoCounts(
+  leaders: Pick<ExercitoDigitalLeaderRow, 'tipo' | 'cargo'>[]
+): Record<LeaderCargoFilter, number> {
+  return {
+    todos: leaders.length,
+    rede: leaders.filter((l) => cargoKey(l) === 'rede').length,
+    prefeito: leaders.filter((l) => cargoKey(l) === 'prefeito').length,
+    vereador: leaders.filter((l) => cargoKey(l) === 'vereador').length,
+  }
+}
+
 function buildMandatarios(
   mandatos: MandatoInstagramEnriquecido[],
   posts: InstagramPostWithComments[],
@@ -760,12 +804,15 @@ function buildMandatarios(
     const ativacaoPct = postsNoPeriodo > 0 ? (postsComentados / postsNoPeriodo) * 100 : 0
     const trend = computeMonthlyTrend(monthlyCounts)
     const variacaoPct = pctChange(mesAtual, mesAnterior)
-    const nome = `${m.nome} · ${m.municipioOficial}${m.cargo === 'prefeito' ? ' (Pref.)' : ' (Ver.)'}`
+    const nome = m.nome
     return {
       id: m.id,
       rank: 0,
       tipo: 'mandato' as const,
       nome,
+      handles: [m.handle],
+      cargo: labelCargoMandato(m.cargo),
+      municipio: m.municipioOficial,
       comentarios,
       publicacoes: postsComentados,
       postsNoPeriodo,

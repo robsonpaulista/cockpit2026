@@ -1,6 +1,7 @@
 import type { createAdminClient } from '@/lib/supabase/admin'
 import {
   getMandatosInstagramEnriquecidos,
+  labelCargoMandato,
   type MandatoInstagramEnriquecido,
 } from '@/lib/mandatos-instagram-piaui'
 import {
@@ -118,11 +119,13 @@ function montarDetalhesMandatos(
     detalhes.push({
       territorioTd: m.territorioTd,
       municipio: m.municipioOficial,
-      liderNome: m.cargo === 'prefeito' ? 'Prefeito' : 'Vereador',
+      liderNome: m.nome,
+      liderInstagram: m.handle ? `@${m.handle}` : m.instagram ?? '',
+      cargo: labelCargoMandato(m.cargo),
       liderTelefone: m.partido ?? '',
-      lideradoNome: m.nome,
+      lideradoNome: '',
       lideradoWhatsapp: '',
-      lideradoInstagram: m.instagram ?? `@${m.handle}`,
+      lideradoInstagram: '',
       lideradoStatus: comentarios > 0 ? 'ativo' : 'inativo',
       comentarios,
       perfisUnicos: comentarios > 0 ? 1 : 0,
