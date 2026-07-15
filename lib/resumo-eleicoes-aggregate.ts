@@ -1,9 +1,5 @@
 import type { ResultadoEleicao } from '@/lib/resumo-eleicoes-dados'
-import { parseVotosEleicao } from '@/lib/resumo-eleicoes-dados'
-
-function includesNormalized(source: string, term: string): boolean {
-  return source.toLowerCase().includes(term.toLowerCase())
-}
+import { isSituacaoEleito, parseVotosEleicao } from '@/lib/resumo-eleicoes-dados'
 
 /** Chave estável para somar votos do mesmo candidato em vários municípios. */
 export function chaveAgregacaoResultado(row: ResultadoEleicao): string {
@@ -36,7 +32,7 @@ export function agregarResultadosEleicao(rows: ResultadoEleicao[]): ResultadoEle
 
     const total = parseVotosEleicao(existente.quantidadeVotosNominais) + votos
     existente.quantidadeVotosNominais = String(total)
-    if (includesNormalized(row.situacao, 'eleito') && !includesNormalized(existente.situacao, 'eleito')) {
+    if (isSituacaoEleito(row.situacao) && !isSituacaoEleito(existente.situacao)) {
       existente.situacao = row.situacao
     }
   }

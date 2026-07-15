@@ -20,7 +20,7 @@ import {
   PainelVotacaoCandidatoResumo,
   isMesmoCandidatoResumo,
 } from '@/components/painel-votacao-candidato-resumo'
-import { nomeCandidatoResumoExibicao } from '@/lib/resumo-eleicoes-dados'
+import { nomeCandidatoResumoExibicao, isSituacaoEleito } from '@/lib/resumo-eleicoes-dados'
 import {
   RESUMO_TODAS_CIDADES,
   RESUMO_TODAS_CIDADES_LABEL,
@@ -1348,7 +1348,10 @@ export function ResumoEleicoesAtendimentoPanel() {
       const key = item.partido || '-'
       const current = grouped.get(key) || { partido: key, votos: 0, eleitos: 0 }
       current.votos += parseVotos(item.quantidadeVotosNominais)
-      if (includesNormalized(item.situacao, 'eleito')) current.eleitos += 1
+      // Prefeito e vereador entram — só eleitos de fato (exclui "Não eleito").
+      if (isSituacaoEleito(item.situacao)) {
+        current.eleitos += 1
+      }
       grouped.set(key, current)
     }
 
@@ -2462,7 +2465,7 @@ export function ResumoEleicoesAtendimentoPanel() {
                     const isSelected = selectedVotes.vereador_2024[rowId] !== undefined
                     const isPresidente =
                       item.nomeUrnaCandidato?.trim().toUpperCase() === presidenteCamaraNome?.trim().toUpperCase()
-                    const isEleito = includesNormalized(item.situacao, 'eleito')
+                    const isEleito = isSituacaoEleito(item.situacao)
                     return (
                       <tr
                         key={`${item.nomeUrnaCandidato}-${item.numeroUrna}`}
@@ -2540,7 +2543,7 @@ export function ResumoEleicoesAtendimentoPanel() {
                         .toLocaleString('pt-BR')}
                     </td>
                     <td className="px-0.5 py-1 text-center text-[11px]">
-                      {vereador2024.filter((item) => includesNormalized(item.situacao, 'eleito')).length} eleitos
+                      {vereador2024.filter((item) => isSituacaoEleito(item.situacao)).length} eleitos
                     </td>
                   </tr>
                 </tbody>

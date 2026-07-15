@@ -15,6 +15,7 @@ import {
   filtrarPrefeito2024,
   filtrarVereador2024,
   includesNormalizedCargo,
+  isSituacaoEleito,
   parseVotosEleicao,
   type ResultadoEleicao,
 } from '@/lib/resumo-eleicoes-dados'
@@ -95,7 +96,7 @@ export function rotuloCargoFicha(
 }
 
 export function situacaoEleicaoCandidato(item: ResultadoEleicao): string {
-  if (includesNormalizedCargo(item.situacao, 'eleito')) return 'Eleito'
+  if (isSituacaoEleito(item.situacao)) return 'Eleito'
   if (includesNormalizedCargo(item.situacao, 'suplente')) return 'Suplente'
   return 'Oposição'
 }

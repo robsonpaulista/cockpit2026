@@ -12,6 +12,7 @@ import {
   filtrarPrefeito2024,
   filtrarVereador2024,
   includesNormalizedCargo,
+  isSituacaoEleito,
   parseVotosEleicao,
   type PartidoResumoEleicao,
   type ResultadoEleicao,
@@ -96,7 +97,7 @@ function TabelaCandidatos({
   const totalVotos = itens.reduce((acc, item) => acc + parseVotosEleicao(item.quantidadeVotosNominais), 0)
   const eleitosCount =
     colunaExtra === 'situacao'
-      ? itens.filter((item) => includesNormalizedCargo(item.situacao, 'eleito')).length
+      ? itens.filter((item) => isSituacaoEleito(item.situacao)).length
       : 0
 
   const interacaoCandidato = Boolean(cargoFoto && (onDuploCliqueCandidato || onVerFicha))
@@ -131,7 +132,7 @@ function TabelaCandidatos({
             const isDestaque =
               destaqueNome &&
               item.nomeUrnaCandidato?.trim().toUpperCase() === destaqueNome.trim().toUpperCase()
-            const isEleito = includesNormalizedCargo(item.situacao, 'eleito')
+            const isEleito = isSituacaoEleito(item.situacao)
             return (
               <tr
                 key={`${item.nomeUrnaCandidato}-${item.numeroUrna}`}

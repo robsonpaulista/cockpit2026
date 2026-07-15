@@ -65,6 +65,28 @@ export function includesNormalizedCargo(source: string, term: string): boolean {
   return source.toLowerCase().includes(term.toLowerCase())
 }
 
+/** Normaliza situação/cargo para comparação (sem acento). */
+export function normalizeSituacaoEleicao(source: string): string {
+  return String(source || '')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^\w\s]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
+/**
+ * Situação de eleito de fato (TSE: ELEITO, ELEITO POR QP, ELEITO POR MÉDIA…).
+ * Não confunde com "Não eleito" (substring "eleito").
+ */
+export function isSituacaoEleito(situacao: string): boolean {
+  const n = normalizeSituacaoEleicao(situacao)
+  if (!n) return false
+  if (/\bnao\s+eleito\b/.test(n)) return false
+  return /\beleito\b/.test(n)
+}
+
 export function filtrarDeputadoEstadual2022(dados: ResultadoEleicao[]): ResultadoEleicao[] {
   return dados
     .filter((item) => includesNormalizedCargo(item.cargo, 'estadual') && item.anoEleicao === '2022')
@@ -97,7 +119,10 @@ export function agruparPartido2024(dados: ResultadoEleicao[]): PartidoResumoElei
     const key = item.partido || '-'
     const current = grouped.get(key) || { partido: key, votos: 0, eleitos: 0 }
     current.votos += parseVotosEleicao(item.quantidadeVotosNominais)
-    if (includesNormalizedCargo(item.situacao, 'eleito')) current.eleitos += 1
+    // Prefeito e vereador entram — só se eleitos de fato (não "Não eleito").
+    if (isSituacaoEleito(item.situacao)) {
+      current.eleitos += 1
+    }
     grouped.set(key, current)
   }
 
