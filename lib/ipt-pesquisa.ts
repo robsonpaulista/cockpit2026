@@ -4,7 +4,7 @@ import {
   type IptEvolucao,
 } from '@/lib/ipt-evolucao'
 import { redistribuirSobreVotosValidos } from '@/lib/espontanea-normalize'
-import { normalizeIptMunicipio, type IptPesquisaTopItem } from '@/lib/ipt'
+import { normalizeIptMunicipio, type IptPesquisaComposicao, type IptPesquisaTopItem } from '@/lib/ipt'
 import {
   chavePesquisaDistinta,
   type PollExecutiveInput,
@@ -27,6 +27,8 @@ export type PesquisaIptPorMunicipio = {
   basePorMunicipio: Map<string, 'estimulada' | 'espontanea'>
   /** Comparativo onda mais recente vs anterior (mesmo tipo/base da cidade). */
   evolucaoPorMunicipio: Map<string, PesquisaIptEvolucaoMunicipio>
+  /** Metadados das ondas que entram na média do Top 5. */
+  composicaoPorMunicipio: Map<string, IptPesquisaComposicao>
 }
 
 export type PesquisaIptEvolucaoMunicipio = {
@@ -83,6 +85,7 @@ export type MediaEstimuladaIpt = {
 type OndaMunicipio = {
   chave: string
   data: string
+  instituto: string
   /** % sobre válidos por candidato normalizado. */
   porCandidato: Map<string, { nome: string; pct: number }>
   residuosPct: number
@@ -99,7 +102,7 @@ function buildOndasValidosPorMunicipio(
   type BucketLinha = { nome: string; intencao: number }
   const bruto = new Map<
     string,
-    Map<string, { data: string; linhas: BucketLinha[] }>
+    Map<string, { data: string; instituto: string; linhas: BucketLinha[] }>
   >()
 
   for (const poll of polls) {
@@ -122,7 +125,11 @@ function buildOndasValidosPorMunicipio(
     const ondas = bruto.get(munKey) ?? new Map()
     const bucket = ondas.get(ondaKey) ?? {
       data: dataCurta(poll.data),
+      instituto: (poll.instituto ?? '').trim(),
       linhas: [],
+    }
+    if (!bucket.instituto && poll.instituto) {
+      bucket.instituto = poll.instituto.trim()
     }
     bucket.linhas.push({
       nome: poll.candidato_nome,
@@ -155,6 +162,7 @@ function buildOndasValidosPorMunicipio(
       lista.push({
         chave,
         data: bucket.data,
+        instituto: bucket.instituto,
         porCandidato,
         residuosPct: redis.residuosPct,
       })
@@ -202,6 +210,18 @@ function top5MediasNasOndas(ondas: OndaMunicipio[]): IptPesquisaTopItem[] {
         : a.nome.localeCompare(b.nome, 'pt-BR', { sensitivity: 'base' })
     )
     .slice(0, 5)
+}
+
+function composicaoDasOndas(ondas: OndaMunicipio[]): IptPesquisaComposicao {
+  const datas = [...new Set(ondas.map((o) => o.data).filter(Boolean))].sort()
+  const institutos = [
+    ...new Set(ondas.map((o) => o.instituto.trim()).filter(Boolean)),
+  ].sort((a, b) => a.localeCompare(b, 'pt-BR', { sensitivity: 'base' }))
+  return {
+    quantidade: ondas.length,
+    datas,
+    institutos,
+  }
 }
 
 function evolucaoDoCandidatoNasOndas(
@@ -253,6 +273,7 @@ export function buildPesquisaIptPorMunicipio(
   const top5PorMunicipio = new Map<string, IptPesquisaTopItem[]>()
   const basePorMunicipio = new Map<string, 'estimulada' | 'espontanea'>()
   const evolucaoPorMunicipio = new Map<string, PesquisaIptEvolucaoMunicipio>()
+  const composicaoPorMunicipio = new Map<string, IptPesquisaComposicao>()
 
   for (const key of munKeys) {
     const est = ondasEst.get(key) ?? []
@@ -268,6 +289,7 @@ export function buildPesquisaIptPorMunicipio(
 
     basePorMunicipio.set(key, base)
     top5PorMunicipio.set(key, top5)
+    composicaoPorMunicipio.set(key, composicaoDasOndas(ondas))
 
     const media =
       mediaCandidatoNasOndas(ondas, alvo) ??
@@ -318,7 +340,13 @@ export function buildPesquisaIptPorMunicipio(
     }
   }
 
-  return { intencaoPorMunicipio, top5PorMunicipio, basePorMunicipio, evolucaoPorMunicipio }
+  return {
+    intencaoPorMunicipio,
+    top5PorMunicipio,
+    basePorMunicipio,
+    evolucaoPorMunicipio,
+    composicaoPorMunicipio,
+  }
 }
 
 /** @deprecated Preferir `buildPesquisaIptPorMunicipio`. Mantido para compatibilidade. */

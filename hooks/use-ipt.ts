@@ -98,6 +98,7 @@ export function useIpt() {
   const [error, setError] = useState('')
   const [conexaoInstavel, setConexaoInstavel] = useState(false)
   const [municipios, setMunicipios] = useState<IptMunicipio[]>([])
+  const [obras, setObras] = useState<ObraMapaRow[]>([])
   const [presencaDigitalCobertura, setPresencaDigitalCobertura] =
     useState<IptPresencaDigitalCobertura | null>(null)
   const [resumo, setResumo] = useState<IptResumo>({
@@ -182,6 +183,7 @@ export function useIpt() {
       const obrasLista = obrasRes.ok
         ? ((obrasJson as { obras?: ObraMapaRow[] }).obras ?? [])
         : []
+      setObras(obrasLista)
       const obrasPorMunicipio = obrasRes.ok
         ? agregarObrasPorMunicipio(obrasLista)
         : new Map<string, ObrasAgg>()
@@ -258,7 +260,7 @@ export function useIpt() {
 
       const candidatoPesquisa = resolveCandidatoIpt()
       const polls: PollIptRow[] = pesquisaRes.ok ? (pesquisaJson as PollIptRow[]) : []
-      const { intencaoPorMunicipio, top5PorMunicipio, basePorMunicipio, evolucaoPorMunicipio } =
+      const { intencaoPorMunicipio, top5PorMunicipio, basePorMunicipio, evolucaoPorMunicipio, composicaoPorMunicipio } =
         buildPesquisaIptPorMunicipio(polls, candidatoPesquisa)
 
       const prioridadeMap = new Map<string, PrioridadeRow>()
@@ -288,6 +290,7 @@ export function useIpt() {
           pesquisaPosicaoTop5: posicaoCandidatoNoTop5(top5, candidatoPesquisa),
           pesquisaTop5: top5,
           pesquisaBase: basePorMunicipio.get(key) ?? null,
+          pesquisaComposicao: composicaoPorMunicipio.get(key) ?? null,
         }
       })
 
@@ -364,6 +367,7 @@ export function useIpt() {
       } else {
         setError(e instanceof Error ? e.message : 'Erro ao calcular prioridades.')
         setMunicipios([])
+        setObras([])
         setPresencaDigitalCobertura(null)
         setResumo({
           municipiosMonitorados: 0,
@@ -400,6 +404,7 @@ export function useIpt() {
     error,
     conexaoInstavel,
     municipios,
+    obras,
     resumo,
     porNome,
     presencaDigitalCobertura,

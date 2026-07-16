@@ -8,6 +8,8 @@ import {
   ArrowLeft,
   ChevronDown,
   ChevronRight,
+  Download,
+  FileSpreadsheet,
   Loader2,
   RefreshCw,
   X,
@@ -88,6 +90,10 @@ import {
   isVereador2024,
   selecaoTemVereadorSemJadyel,
 } from '@/lib/votacao-secao-jadyel-comparacao'
+import {
+  exportarMatrizSecaoPdf,
+  exportarMatrizSecaoXls,
+} from '@/lib/votacao-secao-matriz-export'
 
 const LOCAIS_POR_PAGINA = 25
 const BAIRROS_POR_PAGINA = 20
@@ -641,6 +647,36 @@ export function ResumoEleicoesSecaoPanel({ embedded = false }: { embedded?: bool
     setLocaisExpandidos(new Set())
     setBairrosExpandidos(new Set())
   }
+
+  const opcoesExportMatriz = useMemo(
+    () => ({
+      matriz,
+      agrupamento,
+      municipio: cidade || resumo?.municipio || undefined,
+      filtroSoSemelhantes,
+      destacarSemelhanca,
+      paresPorSecao,
+      margemSemelhancaPct: Math.round(margemSemelhancaAtiva * 100),
+    }),
+    [
+      matriz,
+      agrupamento,
+      cidade,
+      resumo?.municipio,
+      filtroSoSemelhantes,
+      destacarSemelhanca,
+      paresPorSecao,
+      margemSemelhancaAtiva,
+    ],
+  )
+
+  const exportarXls = useCallback(() => {
+    exportarMatrizSecaoXls(opcoesExportMatriz)
+  }, [opcoesExportMatriz])
+
+  const exportarPdf = useCallback(() => {
+    exportarMatrizSecaoPdf(opcoesExportMatriz)
+  }, [opcoesExportMatriz])
 
   const candidatosDisponiveisFiltrados = useMemo(() => {
     const q = buscaCandidato.trim().toLowerCase()
@@ -1300,6 +1336,24 @@ export function ResumoEleicoesSecaoPanel({ embedded = false }: { embedded?: bool
                         : `Só semelhantes (${totalSecoesSemelhantes})`}
                     </button>
                   )}
+                  <button
+                    type="button"
+                    onClick={exportarXls}
+                    className="inline-flex items-center gap-1 rounded border border-card px-2 py-1 hover:bg-background"
+                    title="Exportar tabela em Excel"
+                  >
+                    <FileSpreadsheet className="h-3.5 w-3.5" aria-hidden />
+                    XLS
+                  </button>
+                  <button
+                    type="button"
+                    onClick={exportarPdf}
+                    className="inline-flex items-center gap-1 rounded border border-card px-2 py-1 hover:bg-background"
+                    title="Exportar tabela em PDF"
+                  >
+                    <Download className="h-3.5 w-3.5" aria-hidden />
+                    PDF
+                  </button>
                   <button
                     type="button"
                     onClick={expandirTodos}

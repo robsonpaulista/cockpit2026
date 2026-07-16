@@ -6,6 +6,8 @@ import { AlertTriangle, BarChart3, Building2, CheckCircle2, HelpCircle, MapPin, 
 import { CockpitIcon } from '@/components/ui/cockpit-icon'
 import { PerfilPopulacaoPanel } from '@/components/perfil-populacao-panel'
 import { IptPesquisaRankingModal } from '@/components/ipt/ipt-pesquisa-ranking-modal'
+import { IptObrasMunicipioModal } from '@/components/ipt/ipt-obras-municipio-modal'
+import { IptCampoUltimaVisitaModal } from '@/components/ipt/ipt-campo-ultima-visita-modal'
 import { getEleitoradoByCity, getEleitoradoTotalPiaui } from '@/lib/eleitores'
 import {
   calcularIndicadoresDemograficos,
@@ -35,11 +37,13 @@ import {
   type IptMissaoId,
 } from '@/lib/ipt-missoes'
 import { cn } from '@/lib/utils'
+import type { ObraMapaRow } from '@/lib/obras-mapa'
 
 type Props = {
   municipio: IptMunicipio | null
   missaoAtiva: IptMissaoFiltro
   podeVerExpectativa?: boolean
+  obras?: ObraMapaRow[]
   onClear?: () => void
 }
 
@@ -181,10 +185,13 @@ export function IptMissaoDetalhe({
   municipio,
   missaoAtiva,
   podeVerExpectativa = false,
+  obras = [],
   onClear,
 }: Props) {
   const [modalPerfilAberto, setModalPerfilAberto] = useState(false)
   const [modalPesquisaAberto, setModalPesquisaAberto] = useState(false)
+  const [modalObrasAberto, setModalObrasAberto] = useState(false)
+  const [modalCampoAberto, setModalCampoAberto] = useState(false)
   const perfilTituloId = useId()
 
   const missaoContexto: IptMissaoId | null = useMemo(() => {
@@ -199,9 +206,14 @@ export function IptMissaoDetalhe({
   const diagnosticoFocado =
     missaoSelecionada && missaoAtiva !== 'expectativa' && missaoContexto != null
   // Tint/eyebrow da missão selecionada (inclui Expectativa); o modo focado
-  // (sem os 4 KPIs) só vale para Campo/Pesquisa/Digital/Obras.
+  // (sem os 4 KPIs) só vale para Campo/Digital — Pesquisa e Obras mantêm
+  // os cards clicáveis (Top 5 / lista de obras).
   const hierarquiaAtiva = missaoSelecionada && missaoContexto != null
-  const mostrarIndicadoresGerais = !diagnosticoFocado
+  const mostrarIndicadoresGerais =
+    !diagnosticoFocado ||
+    missaoAtiva === 'pesquisa' ||
+    missaoAtiva === 'obras' ||
+    missaoAtiva === 'campo'
   const naMissaoAtiva =
     missaoSelecionada && municipio != null
       ? municipioNaMissao(municipio, missaoAtiva)
@@ -213,6 +225,8 @@ export function IptMissaoDetalhe({
   useEffect(() => {
     setModalPerfilAberto(false)
     setModalPesquisaAberto(false)
+    setModalObrasAberto(false)
+    setModalCampoAberto(false)
   }, [municipio?.municipio])
 
   if (!municipio) {
@@ -244,12 +258,7 @@ export function IptMissaoDetalhe({
         ? `${formatDemografiaPercent(demo.urbanizacao.taxa_urbana)} urbana`
         : '—'
   const podeAbrirPesquisa = temPesquisaRanking(municipio)
-  const btnPesquisaLabel =
-    municipio.detalhes.pesquisaPosicaoTop5 != null
-      ? `Ver Top 5 da média · posição ${municipio.detalhes.pesquisaPosicaoTop5}º`
-      : municipio.detalhes.pesquisaMediaPct != null
-        ? 'Ver quem está no Top 5 da média'
-        : 'Ver ranking da pesquisa'
+  const podeAbrirObras = municipio.detalhes.obrasQuantidade > 0
 
   return (
     <>
@@ -353,16 +362,6 @@ export function IptMissaoDetalhe({
                 ))}
               </ul>
             ) : null}
-            {podeAbrirPesquisa && (missaoContexto === 'pesquisa' || missaoAtiva === 'pesquisa') ? (
-              <button
-                type="button"
-                className="ipt-bloco-detalhe__pesquisa-btn"
-                onClick={() => setModalPesquisaAberto(true)}
-              >
-                <span>{btnPesquisaLabel}</span>
-                <em>Abrir →</em>
-              </button>
-            ) : null}
           </div>
         ) : null}
 
@@ -371,7 +370,10 @@ export function IptMissaoDetalhe({
             {(['pesquisa', 'campo', 'digital', 'obras'] as IndicadorId[]).map((id) => {
               const meta = INDICADOR_META[id]
               const resumo = resumoIndicador(municipio, id)
-              const clickable = id === 'pesquisa' && podeAbrirPesquisa
+              const clickable =
+                (id === 'pesquisa' && podeAbrirPesquisa) ||
+                (id === 'obras' && podeAbrirObras) ||
+                id === 'campo'
               return (
                 <Indicador
                   key={id}
@@ -382,22 +384,19 @@ export function IptMissaoDetalhe({
                   detalhe={resumo.detalhe}
                   evolucao={evolucaoDoIndicador(municipio, id)}
                   sinal={sinalDoIndicador(municipio, id)}
-                  onClick={clickable ? () => setModalPesquisaAberto(true) : undefined}
+                  onClick={
+                    clickable
+                      ? () => {
+                          if (id === 'pesquisa') setModalPesquisaAberto(true)
+                          else if (id === 'obras') setModalObrasAberto(true)
+                          else if (id === 'campo') setModalCampoAberto(true)
+                        }
+                      : undefined
+                  }
                 />
               )
             })}
           </div>
-        ) : null}
-
-        {mostrarIndicadoresGerais && podeAbrirPesquisa ? (
-          <button
-            type="button"
-            className="ipt-bloco-detalhe__pesquisa-btn"
-            onClick={() => setModalPesquisaAberto(true)}
-          >
-            <span>{btnPesquisaLabel}</span>
-            <em>Abrir →</em>
-          </button>
         ) : null}
 
         <div className="ipt-bloco-detalhe__demo">
@@ -429,6 +428,21 @@ export function IptMissaoDetalhe({
         <IptPesquisaRankingModal
           municipio={municipio}
           onClose={() => setModalPesquisaAberto(false)}
+        />
+      ) : null}
+
+      {modalObrasAberto ? (
+        <IptObrasMunicipioModal
+          municipio={municipio.municipio}
+          obras={obras}
+          onClose={() => setModalObrasAberto(false)}
+        />
+      ) : null}
+
+      {modalCampoAberto ? (
+        <IptCampoUltimaVisitaModal
+          municipio={municipio.municipio}
+          onClose={() => setModalCampoAberto(false)}
         />
       ) : null}
     </>

@@ -1,12 +1,13 @@
 'use client'
 
-import { useEffect, useId, useState } from 'react'
+import { useEffect, useId, useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { X } from 'lucide-react'
 import { CockpitIcon } from '@/components/ui/cockpit-icon'
 import {
   iptLabelTipoPesquisa,
   type IptMunicipio,
+  type IptPesquisaComposicao,
 } from '@/lib/ipt'
 import { resolveCandidatoIpt } from '@/lib/ipt-pesquisa'
 
@@ -18,6 +19,28 @@ type Props = {
 function formatPct(n: number | null | undefined): string {
   if (n == null || !Number.isFinite(n)) return '—'
   return `${n.toLocaleString('pt-BR', { maximumFractionDigits: 1 })}%`
+}
+
+function formatDataBr(iso: string): string {
+  const dia = iso.includes('T') ? (iso.split('T')[0] ?? iso) : iso
+  const [y, m, d] = dia.split('-')
+  if (!y || !m || !d) return dia
+  return `${d}/${m}/${y}`
+}
+
+function textoComposicao(c: IptPesquisaComposicao | null | undefined): {
+  quantidade: string
+  datas: string
+  institutos: string
+} | null {
+  if (!c || c.quantidade <= 0) return null
+  const q =
+    c.quantidade === 1 ? '1 pesquisa' : `${c.quantidade.toLocaleString('pt-BR')} pesquisas`
+  const datas =
+    c.datas.length > 0 ? c.datas.map(formatDataBr).join(' · ') : 'Datas não informadas'
+  const institutos =
+    c.institutos.length > 0 ? c.institutos.join(' · ') : 'Instituto não informado'
+  return { quantidade: q, datas, institutos }
 }
 
 function situacaoRanking(m: IptMunicipio, candidato: string): string {
@@ -45,6 +68,10 @@ export function IptPesquisaRankingModal({ municipio, onClose }: Props) {
   const top5 = municipio.detalhes.pesquisaTop5
   const baseLabel = iptLabelTipoPesquisa(municipio.detalhes.pesquisaBase)
   const maxPct = top5.reduce((acc, item) => Math.max(acc, item.mediaPct), 0)
+  const composicao = useMemo(
+    () => textoComposicao(municipio.detalhes.pesquisaComposicao),
+    [municipio.detalhes.pesquisaComposicao]
+  )
 
   useEffect(() => {
     setMounted(true)
@@ -94,6 +121,23 @@ export function IptPesquisaRankingModal({ municipio, onClose }: Props) {
         </div>
 
         <p className="ipt-foco-modal__lead">{situacaoRanking(municipio, candidato)}</p>
+
+        {composicao ? (
+          <dl className="ipt-pesquisa-modal__meta">
+            <div>
+              <dt>Pesquisas</dt>
+              <dd>{composicao.quantidade}</dd>
+            </div>
+            <div>
+              <dt>Datas</dt>
+              <dd>{composicao.datas}</dd>
+            </div>
+            <div>
+              <dt>Institutos</dt>
+              <dd>{composicao.institutos}</dd>
+            </div>
+          </dl>
+        ) : null}
 
         {top5.length === 0 ? (
           <p className="ipt-pesquisa-modal__empty">

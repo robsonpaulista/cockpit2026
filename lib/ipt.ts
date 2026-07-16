@@ -11,6 +11,16 @@ export type IptPesquisaTopItem = {
   mediaPct: number
 }
 
+/** Ondas (pesquisas distintas) que entram na média do Top 5 local. */
+export type IptPesquisaComposicao = {
+  /** Quantidade de pesquisas distintas (data + instituto). */
+  quantidade: number
+  /** Datas YYYY-MM-DD, ordenadas. */
+  datas: string[]
+  /** Institutos únicos, ordenados. */
+  institutos: string[]
+}
+
 export type IptPesquisaBase = 'estimulada' | 'espontanea'
 
 /** Janela de avaliação de visitas de campo no IPT (dias corridos). */
@@ -35,6 +45,8 @@ export type IptDetalhes = {
   pesquisaTop5: IptPesquisaTopItem[]
   /** Estimulada na cidade, ou espontânea quando não houver estimulada cadastrada. */
   pesquisaBase: IptPesquisaBase | null
+  /** Quantas pesquisas, datas e institutos compõem a média do Top 5. */
+  pesquisaComposicao: IptPesquisaComposicao | null
   /** Média de intenção do candidato (todas as ondas do tipo da base). */
   pesquisaMediaPct: number | null
   /** Intenção na onda mais recente. */
@@ -130,6 +142,7 @@ export type IptMunicipioInput = {
   pesquisaPosicaoTop5: number | null
   pesquisaTop5: IptPesquisaTopItem[]
   pesquisaBase: IptPesquisaBase | null
+  pesquisaComposicao?: IptPesquisaComposicao | null
 }
 
 export function normalizeIptMunicipio(nome: string): string {
@@ -455,6 +468,7 @@ export function calcularIptMunicipios(inputs: IptMunicipioInput[]): IptMunicipio
           pesquisaPosicaoTop5: input.pesquisaPosicaoTop5,
           pesquisaTop5: input.pesquisaTop5,
           pesquisaBase: input.pesquisaBase,
+          pesquisaComposicao: input.pesquisaComposicao ?? null,
           pesquisaMediaPct: null,
           pesquisaRecentePct: null,
           pesquisaAnteriorPct: null,

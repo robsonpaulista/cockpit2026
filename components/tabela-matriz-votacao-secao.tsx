@@ -9,7 +9,7 @@ import {
   useState,
   type MouseEvent,
 } from 'react'
-import { ChevronDown, ChevronRight } from 'lucide-react'
+import { ChevronDown, ChevronRight, Download, FileSpreadsheet } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import {
   resumoAccentTextClass,
@@ -46,6 +46,10 @@ import {
   ModalExplicacaoExpectativaSecao,
   type SelecaoExplicacaoExpectativa,
 } from '@/components/modal-explicacao-expectativa-secao'
+import {
+  exportarMatrizSecaoPdf,
+  exportarMatrizSecaoXls,
+} from '@/lib/votacao-secao-matriz-export'
 
 const LOCAIS_POR_PAGINA = 25
 const BAIRROS_POR_PAGINA = 20
@@ -87,6 +91,8 @@ export type TabelaMatrizVotacaoSecaoProps = {
   detalhesExpectativaPorBairro?: Map<string, ExpectativaBairroDetalhe>
   /** Coluna para o usuário informar valor em bairro/local durante o atendimento. */
   colunaManual?: ColunaManualTerritorioProps | null
+  /** Nome do município no arquivo exportado. */
+  municipioExportacao?: string
 }
 
 type ContextoExpClick =
@@ -134,6 +140,7 @@ export const TabelaMatrizVotacaoSecao = forwardRef<
     detalhesExpectativaPorSecao,
     detalhesExpectativaPorBairro,
     colunaManual = null,
+    municipioExportacao,
   },
   ref,
 ) {
@@ -247,6 +254,46 @@ export const TabelaMatrizVotacaoSecao = forwardRef<
 
   useImperativeHandle(ref, () => ({ recolherTodos, expandirTodos }), [recolherTodos, expandirTodos])
 
+  const exportarXls = useCallback(() => {
+    exportarMatrizSecaoXls({
+      matriz,
+      agrupamento,
+      municipio: municipioExportacao,
+      filtroSoSemelhantes,
+      destacarSemelhanca,
+      paresPorSecao,
+      margemSemelhancaPct,
+    })
+  }, [
+    matriz,
+    agrupamento,
+    municipioExportacao,
+    filtroSoSemelhantes,
+    destacarSemelhanca,
+    paresPorSecao,
+    margemSemelhancaPct,
+  ])
+
+  const exportarPdf = useCallback(() => {
+    exportarMatrizSecaoPdf({
+      matriz,
+      agrupamento,
+      municipio: municipioExportacao,
+      filtroSoSemelhantes,
+      destacarSemelhanca,
+      paresPorSecao,
+      margemSemelhancaPct,
+    })
+  }, [
+    matriz,
+    agrupamento,
+    municipioExportacao,
+    filtroSoSemelhantes,
+    destacarSemelhanca,
+    paresPorSecao,
+    margemSemelhancaPct,
+  ])
+
   const resumoManual = useMemo(
     () => (colunaManual ? somarMetasTerritorio(colunaManual.valores) : null),
     [colunaManual],
@@ -318,6 +365,24 @@ export const TabelaMatrizVotacaoSecao = forwardRef<
                 : `Só semelhantes (${totalSecoesSemelhantes})`}
             </button>
           )}
+          <button
+            type="button"
+            onClick={exportarXls}
+            className="inline-flex items-center gap-1 rounded border border-card px-2 py-1 hover:bg-background"
+            title="Exportar tabela em Excel"
+          >
+            <FileSpreadsheet className="h-3.5 w-3.5" aria-hidden />
+            XLS
+          </button>
+          <button
+            type="button"
+            onClick={exportarPdf}
+            className="inline-flex items-center gap-1 rounded border border-card px-2 py-1 hover:bg-background"
+            title="Exportar tabela em PDF"
+          >
+            <Download className="h-3.5 w-3.5" aria-hidden />
+            PDF
+          </button>
           <button
             type="button"
             onClick={expandirTodos}

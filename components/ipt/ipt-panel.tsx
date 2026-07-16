@@ -98,7 +98,7 @@ export function IptPanel() {
   const [evolucaoModalOpen, setEvolucaoModalOpen] = useState<boolean>(false)
   const [evolucaoRefreshToken, setEvolucaoRefreshToken] = useState<number>(0)
   const syncEventosLockRef = useRef<string | null>(null)
-  const { loading, error, conexaoInstavel, municipios, recarregar } = useIpt()
+  const { loading, error, conexaoInstavel, municipios, obras, recarregar } = useIpt()
   const { isAdmin, canAccess } = usePermissions()
   const podeVerExpectativa =
     isAdmin || canAccess('territorio') || canAccess('ipt')
@@ -662,6 +662,7 @@ export function IptPanel() {
                 municipio={municipioDetalhe}
                 missaoAtiva={missaoAtiva}
                 podeVerExpectativa={podeVerExpectativa}
+                obras={obras}
                 onClear={
                   escopoMunicipio
                     ? () => aplicarFiltroMunicipio(null)
