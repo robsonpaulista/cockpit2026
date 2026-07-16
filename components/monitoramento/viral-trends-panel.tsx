@@ -1,92 +1,117 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
-import { Flame, Loader2, RefreshCw } from 'lucide-react'
-import { chromeButtonClass, chromeFilterChipClass, chromePanelToolbarClass } from '@/lib/button-chrome'
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import { Loader2, RefreshCw } from 'lucide-react'
+import { TrendsCompareBoard } from '@/components/trends-radar/trends-compare-board'
+import { TrendsInterestChart } from '@/components/trends-radar/trends-interest-chart'
 import {
-  DEFAULT_GOOGLE_TRENDING_GEO,
-  DEFAULT_GOOGLE_TRENDING_HOURS,
-  GOOGLE_TRENDING_HOURS,
-  formatTrendingTraffic,
-  googleTrendingHoursLabel,
-  type GoogleTrendingHours,
-  type GoogleTrendingTopicRow,
-} from '@/lib/google-trending-topics-types'
+  CAMPAIGN_TRENDS_CIDADES,
+  CAMPAIGN_TRENDS_DEPUTADO,
+  CAMPAIGN_TRENDS_PAUTAS,
+  getAllCampaignTrendsKeywords,
+  labelCampaignTrendsGroup,
+  type CampaignTrendsKeyword,
+  type CampaignTrendsKeywordGroup,
+} from '@/lib/campaign-trends-keywords'
+import type {
+  GoogleTrendsCompareRow,
+  GoogleTrendsSeries,
+} from '@/lib/google-trends-types'
+import { buildTrendsChartData } from '@/lib/google-trends-aggregate'
+import {
+  DEFAULT_GOOGLE_TRENDS_TIMEFRAME,
+  GOOGLE_TRENDS_WINDOW_LABEL,
+} from '@/lib/google-trends-timeframe'
+import { chromeButtonClass, chromeFilterChipClass, chromePanelToolbarClass } from '@/lib/button-chrome'
 import { readResponseJson } from '@/lib/parse-response-json'
 import { typographyBodyMutedClass } from '@/lib/typography-chrome'
 import { cn } from '@/lib/utils'
 
-const GEO = DEFAULT_GOOGLE_TRENDING_GEO
+const GEO = 'BR-PI'
+const TIMEFRAME = DEFAULT_GOOGLE_TRENDS_TIMEFRAME
+const MAX_COMPARE = 5
 
-function formatCollectedAt(iso: string | null): string {
-  if (!iso) return '—'
-  return new Date(iso).toLocaleString('pt-BR', {
+function formatShortDate(iso: string): string {
+  return new Date(`${iso}T12:00:00`).toLocaleDateString('pt-BR', {
     day: '2-digit',
     month: 'short',
-    hour: '2-digit',
-    minute: '2-digit',
   })
 }
 
-function growthLabel(rate: number | null): string | null {
-  if (rate == null || !Number.isFinite(rate)) return null
-  const pct = Math.round(rate * 100)
-  if (pct === 0) return null
-  return pct > 0 ? `+${pct}%` : `${pct}%`
+function defaultSelectedTerms(keywords: CampaignTrendsKeyword[]): string[] {
+  return keywords.filter((k) => k.group === 'pauta').slice(0, MAX_COMPARE).map((k) => k.term)
 }
 
 export function ViralTrendsPanel() {
-  const [hours, setHours] = useState<GoogleTrendingHours>(DEFAULT_GOOGLE_TRENDING_HOURS)
-  const [items, setItems] = useState<GoogleTrendingTopicRow[]>([])
-  const [history, setHistory] = useState<string[]>([])
-  const [collectedAt, setCollectedAt] = useState<string | null>(null)
+  const allKeywords = useMemo(() => getAllCampaignTrendsKeywords(), [])
+  const [selectedTerms, setSelectedTerms] = useState<string[]>(() => defaultSelectedTerms(allKeywords))
+  const [groupFilter, setGroupFilter] = useState<CampaignTrendsKeywordGroup | 'todos'>('todos')
+  const [series, setSeries] = useState<GoogleTrendsSeries[]>([])
+  const [compare, setCompare] = useState<GoogleTrendsCompareRow[]>([])
   const [setupRequired, setSetupRequired] = useState(false)
   const [loading, setLoading] = useState(true)
   const [collecting, setCollecting] = useState(false)
   const [error, setError] = useState('')
   const [collectMessage, setCollectMessage] = useState('')
+  const [collectedAt, setCollectedAt] = useState<string | null>(null)
+  const [dateFrom, setDateFrom] = useState<string | null>(null)
+  const [dateTo, setDateTo] = useState<string | null>(null)
+  const [seriesStale, setSeriesStale] = useState(false)
   const [runnerAvailable, setRunnerAvailable] = useState(true)
   const [runnerMessage, setRunnerMessage] = useState<string | null>(null)
 
-  const carregar = useCallback(async (selectedHours: GoogleTrendingHours) => {
+  const carregar = useCallback(async () => {
     setLoading(true)
     setError('')
     try {
       const res = await fetch(
-        `/api/viral-trends/topics?geo=${encodeURIComponent(GEO)}&hours=${selectedHours}`,
+        `/api/trends/interest?geo=${encodeURIComponent(GEO)}&timeframe=${encodeURIComponent(TIMEFRAME)}&base=campanha`,
         { cache: 'no-store' }
       )
       const j = await readResponseJson<{
         error?: string
+        series?: GoogleTrendsSeries[]
+        compare?: GoogleTrendsCompareRow[]
         setupRequired?: boolean
         collectedAt?: string | null
-        items?: GoogleTrendingTopicRow[]
-        history?: string[]
+        dateFrom?: string | null
+        dateTo?: string | null
+        seriesStale?: boolean
       }>(res)
-      if (!res.ok) throw new Error(j.error ?? 'Falha ao carregar temas em alta.')
+      if (!res.ok) throw new Error(j.error ?? 'Falha ao carregar pautas da campanha.')
 
       setSetupRequired(Boolean(j.setupRequired))
+      setSeries(j.series ?? [])
+      setCompare(j.compare ?? [])
       setCollectedAt(j.collectedAt ?? null)
-      setItems(j.items ?? [])
-      setHistory(j.history ?? [])
+      setDateFrom(j.dateFrom ?? null)
+      setDateTo(j.dateTo ?? null)
+      setSeriesStale(Boolean(j.seriesStale))
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Erro ao carregar temas em alta.')
+      setError(e instanceof Error ? e.message : 'Erro ao carregar pautas da campanha.')
     } finally {
       setLoading(false)
     }
   }, [])
 
+  useEffect(() => {
+    void carregar()
+  }, [carregar])
+
   const pollCollectUntilDone = useCallback(async () => {
-    const maxMs = 90_000
+    const maxMs = 360_000
     const started = Date.now()
 
     while (Date.now() - started < maxMs) {
-      const res = await fetch('/api/viral-trends/status', { cache: 'no-store' })
+      const res = await fetch('/api/trends/status', { cache: 'no-store' })
       const j = await readResponseJson<{
         collectInProgress?: boolean
         lastCollectResult?: {
-          itemsUpserted?: number
-          keywords?: string[]
+          terms?: number
+          termsSucceeded?: number
+          rowsUpserted?: number
+          relatedRowsUpserted?: number
+          errors?: string[]
         } | null
         lastCollectError?: string | null
       }>(res)
@@ -95,27 +120,32 @@ export function ViralTrendsPanel() {
         if (j.lastCollectError) throw new Error(j.lastCollectError)
         const r = j.lastCollectResult
         if (r) {
+          const ok = r.termsSucceeded ?? 0
+          const total = r.terms ?? 0
+          const related = r.relatedRowsUpserted ?? 0
           setCollectMessage(
-            `Coleta concluída: ${r.itemsUpserted ?? 0} temas em alta no Brasil.`
+            ok === total
+              ? `Coleta concluída: ${ok} pautas · ${r.rowsUpserted ?? 0} pontos${
+                  related > 0 ? ` · ${related} relacionados/em ascensão` : ''
+                }`
+              : `Coleta parcial: ${ok}/${total} pautas · ${r.rowsUpserted ?? 0} pontos${
+                  related > 0 ? ` · ${related} relacionados` : ''
+                }${r.errors?.length ? `. Falhas: ${r.errors.join('; ')}` : ''}`
           )
         }
         return
       }
 
-      await new Promise((resolve) => setTimeout(resolve, 1_500))
+      await new Promise((resolve) => setTimeout(resolve, 2_000))
     }
 
-    throw new Error('Tempo esgotado na coleta de temas em alta.')
+    throw new Error('Tempo esgotado na coleta das pautas da campanha.')
   }, [])
-
-  useEffect(() => {
-    void carregar(hours)
-  }, [carregar, hours])
 
   useEffect(() => {
     void (async () => {
       try {
-        const res = await fetch('/api/viral-trends/status', { cache: 'no-store' })
+        const res = await fetch('/api/trends/status', { cache: 'no-store' })
         const j = await readResponseJson<{
           runnerAvailable?: boolean
           runnerMessage?: string | null
@@ -132,7 +162,7 @@ export function ViralTrendsPanel() {
           setCollecting(true)
           try {
             await pollCollectUntilDone()
-            await carregar(hours)
+            await carregar()
           } catch (e) {
             setError(e instanceof Error ? e.message : 'Erro na coleta.')
           } finally {
@@ -143,17 +173,22 @@ export function ViralTrendsPanel() {
         /* ignore */
       }
     })()
-  }, [carregar, hours, pollCollectUntilDone])
+  }, [carregar, pollCollectUntilDone])
 
   const coletar = useCallback(async () => {
     setCollecting(true)
     setCollectMessage('')
     setError('')
     try {
-      const res = await fetch('/api/viral-trends/collect', {
+      const res = await fetch('/api/trends/collect', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ geo: GEO, hours }),
+        body: JSON.stringify({
+          geo: GEO,
+          timeframe: TIMEFRAME,
+          skipRelated: false,
+          base: 'campanha',
+        }),
       })
       const j = await readResponseJson<{
         error?: string
@@ -165,20 +200,71 @@ export function ViralTrendsPanel() {
       if (!res.ok) throw new Error(j.error ?? 'Falha na coleta.')
 
       await pollCollectUntilDone()
-      await carregar(hours)
+      await carregar()
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Erro na coleta.')
     } finally {
       setCollecting(false)
     }
-  }, [carregar, hours, pollCollectUntilDone])
+  }, [carregar, pollCollectUntilDone])
+
+  const toggleTerm = useCallback((term: string) => {
+    setSelectedTerms((prev) => {
+      if (prev.includes(term)) return prev.filter((t) => t !== term)
+      if (prev.length >= MAX_COMPARE) return prev
+      return [...prev, term]
+    })
+  }, [])
+
+  const visibleKeywords = useMemo(() => {
+    if (groupFilter === 'todos') return allKeywords
+    return allKeywords.filter((k) => k.group === groupFilter)
+  }, [allKeywords, groupFilter])
+
+  const selectedSeries = useMemo(
+    () => series.filter((s) => selectedTerms.includes(s.searchTerm)),
+    [series, selectedTerms]
+  )
+
+  const selectedChartData = useMemo(
+    () => buildTrendsChartData(selectedSeries),
+    [selectedSeries]
+  )
+
+  const selectedCompare = useMemo(() => {
+    const selected = compare.filter((r) => selectedTerms.includes(r.searchTerm))
+    const rest = compare.filter((r) => !selectedTerms.includes(r.searchTerm))
+    if (groupFilter === 'todos') return [...selected, ...rest]
+    const allowed = new Set(visibleKeywords.map((k) => k.term))
+    return [...selected, ...rest].filter((r) => allowed.has(r.searchTerm))
+  }, [compare, selectedTerms, groupFilter, visibleKeywords])
+
+  const groups: { id: CampaignTrendsKeywordGroup | 'todos'; label: string }[] = [
+    { id: 'todos', label: 'Todos' },
+    { id: 'pauta', label: labelCampaignTrendsGroup('pauta') },
+    { id: 'deputado', label: labelCampaignTrendsGroup('deputado') },
+    { id: 'cidade', label: labelCampaignTrendsGroup('cidade') },
+  ]
 
   return (
     <div className="flex flex-col gap-4">
+      <div className="rounded-xl border border-[rgb(var(--color-border-secondary)/0.55)] bg-bg-app/60 px-4 py-3">
+        <p className={cn(typographyBodyMutedClass, 'text-sm leading-relaxed')}>
+          Virais das <strong>pautas da campanha</strong> no Piauí (BR-PI): Hospital de Amor, ECA Digital,
+          Atalaia, Jadyel e cidades-foco. O índice <strong>0–100</strong> é popularidade relativa no período —
+          não é quantidade de buscas. Selecione até {MAX_COMPARE} assuntos para comparar no gráfico. Expanda a
+          linha para ver consultas relacionadas e termos em ascensão.
+        </p>
+        <p className="mt-2 text-[11px] text-text-muted">
+          Mapa por cidade (onde o assunto aparece mais) ainda não está disponível nesta versão do Trends.
+        </p>
+      </div>
+
       {setupRequired ? (
         <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
           Execute{' '}
-          <code className="rounded bg-white/80 px-1">database/create-google-trending-topics.sql</code> no
+          <code className="rounded bg-white/80 px-1">database/create-google-trends-tables.sql</code> e{' '}
+          <code className="rounded bg-white/80 px-1">database/create-google-trends-related.sql</code> no
           Supabase antes da primeira coleta.
         </div>
       ) : null}
@@ -187,36 +273,12 @@ export function ViralTrendsPanel() {
         <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
           <p className="font-medium">Coleta indisponível em produção</p>
           <p className="mt-1">{runnerMessage}</p>
-          <p className="mt-1 text-amber-800/80">
-            Localmente: <code className="rounded bg-white/80 px-1">node scripts/collect-google-trending-topics.mjs</code>
-          </p>
         </div>
       ) : null}
 
-      <div className="rounded-xl border border-[rgb(var(--color-border-secondary)/0.55)] bg-bg-app/60 px-4 py-3">
-        <div className="flex items-start gap-2">
-          <Flame className="mt-0.5 h-4 w-4 shrink-0 text-text-muted" aria-hidden />
-          <p className={cn(typographyBodyMutedClass, 'text-sm leading-relaxed')}>
-            Temas mais buscados no Google no Brasil agora — sinal de pauta que pode alimentar Reels,
-            TikTok e posts. Não cobre áudio/dança (isso fica para a fase TikTok).
-          </p>
-        </div>
-      </div>
-
       <div className={chromePanelToolbarClass}>
-        <div className="flex flex-wrap items-center gap-1.5">
-          {GOOGLE_TRENDING_HOURS.map((option) => (
-            <button
-              key={option}
-              type="button"
-              disabled={collecting}
-              onClick={() => setHours(option)}
-              className={chromeFilterChipClass(hours === option)}
-            >
-              {googleTrendingHoursLabel(option)}
-            </button>
-          ))}
-        </div>
+        <span className={chromeFilterChipClass(true)}>{GOOGLE_TRENDS_WINDOW_LABEL}</span>
+        <span className={typographyBodyMutedClass}>· Piauí ({GEO})</span>
         <button
           type="button"
           disabled={collecting || setupRequired || !runnerAvailable}
@@ -228,69 +290,108 @@ export function ViralTrendsPanel() {
           ) : (
             <RefreshCw className="h-3.5 w-3.5" aria-hidden />
           )}
-          Atualizar
+          Atualizar pautas
         </button>
       </div>
 
       {collecting ? (
-        <p className="text-xs text-text-muted">Consultando temas em alta no Google Trends…</p>
+        <p className="text-xs text-text-muted">
+          Coletando interesse e consultas relacionadas das pautas da campanha (pode levar alguns minutos).
+        </p>
+      ) : null}
+
+      {seriesStale ? (
+        <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+          <p className="font-medium">Série desatualizada</p>
+          <p className="mt-1">
+            Clique em <strong>Atualizar pautas</strong> para recarregar os {GOOGLE_TRENDS_WINDOW_LABEL} mais
+            recentes do Google Trends no Piauí.
+          </p>
+        </div>
       ) : null}
 
       {collectedAt ? (
         <p className="text-xs text-text-muted">
-          Última coleta: {formatCollectedAt(collectedAt)}
-          {history.length > 1 ? ` · ${history.length} snapshots recentes` : null}
+          Última coleta:{' '}
+          {new Date(collectedAt).toLocaleString('pt-BR', {
+            day: '2-digit',
+            month: 'short',
+            hour: '2-digit',
+            minute: '2-digit',
+          })}
+          {dateFrom && dateTo ? (
+            <>
+              {' '}
+              · Período: {formatShortDate(dateFrom)} – {formatShortDate(dateTo)}
+            </>
+          ) : null}
         </p>
       ) : null}
       {collectMessage ? <p className="text-sm text-[#3B6D11]">{collectMessage}</p> : null}
       {error ? <p className="text-sm text-status-danger">{error}</p> : null}
 
-      {loading ? (
-        <div className="flex items-center justify-center gap-2 py-16 text-sm text-text-muted">
-          <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
-          Carregando temas…
+      <div className="rounded-xl border border-[rgb(var(--color-border-tertiary)/0.85)] bg-bg-surface p-4">
+        <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <h2 className="text-sm font-medium text-text-primary">Assuntos da campanha</h2>
+            <p className="text-xs text-text-muted">
+              Marque até {MAX_COMPARE} para o gráfico ({selectedTerms.length}/{MAX_COMPARE})
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-1">
+            {groups.map((g) => (
+              <button
+                key={g.id}
+                type="button"
+                onClick={() => setGroupFilter(g.id)}
+                className={chromeFilterChipClass(groupFilter === g.id)}
+              >
+                {g.label}
+              </button>
+            ))}
+          </div>
         </div>
-      ) : items.length === 0 ? (
-        <div className="rounded-xl border border-dashed border-border px-4 py-12 text-center text-sm text-text-muted">
-          Nenhum snapshot ainda. Clique em <strong>Atualizar</strong> para puxar os temas do momento.
-        </div>
-      ) : (
-        <ol className="divide-y divide-border/70 overflow-hidden rounded-xl border border-border/70 bg-white">
-          {items.map((item) => {
-            const growth = growthLabel(item.traffic_growth_rate)
+        <div className="flex flex-wrap gap-1.5">
+          {visibleKeywords.map((k) => {
+            const selected = selectedTerms.includes(k.term)
+            const hasSeries = series.some((s) => s.searchTerm === k.term)
             return (
-              <li key={item.id} className="flex gap-3 px-4 py-3">
-                <span className="w-7 shrink-0 pt-0.5 text-right text-sm font-semibold tabular-nums text-text-muted">
-                  {item.rank}
-                </span>
-                <div className="min-w-0 flex-1">
-                  <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
-                    <p className="text-sm font-medium text-text-primary">{item.keyword}</p>
-                    <span className="text-xs text-text-muted">
-                      ~{formatTrendingTraffic(item.traffic)} buscas
-                    </span>
-                    {growth ? (
-                      <span
-                        className={cn(
-                          'text-xs font-medium',
-                          growth.startsWith('+') ? 'text-[#3B6D11]' : 'text-status-danger'
-                        )}
-                      >
-                        {growth}
-                      </span>
-                    ) : null}
-                  </div>
-                  {item.related_keywords?.length ? (
-                    <p className="mt-1 text-xs leading-relaxed text-text-muted">
-                      {item.related_keywords.slice(0, 6).join(' · ')}
-                    </p>
-                  ) : null}
-                </div>
-              </li>
+              <button
+                key={k.term}
+                type="button"
+                onClick={() => toggleTerm(k.term)}
+                disabled={!selected && selectedTerms.length >= MAX_COMPARE}
+                title={hasSeries ? k.term : `${k.term} (sem série — rode Atualizar pautas)`}
+                className={cn(
+                  chromeFilterChipClass(selected),
+                  !hasSeries && 'opacity-70',
+                  !selected && selectedTerms.length >= MAX_COMPARE && 'cursor-not-allowed opacity-40'
+                )}
+              >
+                {k.label ?? k.term}
+              </button>
             )
           })}
-        </ol>
-      )}
+        </div>
+        <p className="mt-2 text-[11px] text-text-muted">
+          Coleta padrão: {CAMPAIGN_TRENDS_PAUTAS.length} pautas + {CAMPAIGN_TRENDS_DEPUTADO.length} variações do
+          deputado. Cidades-foco ({CAMPAIGN_TRENDS_CIDADES.length}) aparecem no filtro para comparação quando
+          houver dados.
+        </p>
+      </div>
+
+      <TrendsInterestChart
+        series={selectedSeries}
+        chartData={selectedChartData}
+        loading={loading}
+        description={`Índice relativo 0–100 (não é volume de buscas) · Google Trends · Piauí · ${GOOGLE_TRENDS_WINDOW_LABEL}`}
+        emptyMessage="Selecione até 5 pautas e rode Atualizar pautas para ver o interesse ao longo do tempo."
+      />
+      <TrendsCompareBoard
+        rows={selectedCompare}
+        loading={loading}
+        emptyMessage="Sem séries das pautas ainda. Clique em Atualizar pautas (interesse + consultas em ascensão)."
+      />
     </div>
   )
 }

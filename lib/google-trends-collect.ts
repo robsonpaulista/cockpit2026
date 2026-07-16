@@ -62,11 +62,16 @@ export function getGoogleTrendsCollectState(): GoogleTrendsCollectState {
 async function collectViaScript(
   geo: string,
   timeframe: GoogleTrendsTimeframe,
-  skipRelated: boolean
+  skipRelated: boolean,
+  terms?: string[]
 ): Promise<GoogleTrendsCollectResult> {
   const scriptPath = path.join(process.cwd(), 'scripts', 'collect-google-trends.mjs')
   const args = [scriptPath, '--geo', geo, '--timeframe', timeframe]
   if (skipRelated) args.push('--skip-related')
+  else args.push('--with-related')
+  if (terms?.length) {
+    args.push('--terms', JSON.stringify(terms))
+  }
   const { stdout, stderr } = await execFileAsync(process.execPath, args, {
     cwd: process.cwd(),
     timeout: 300_000,
@@ -92,19 +97,20 @@ async function runCollect(options: {
   geo: string
   timeframe: GoogleTrendsTimeframe
   skipRelated: boolean
+  terms?: string[]
 }): Promise<GoogleTrendsCollectResult> {
-  const { geo, timeframe, skipRelated } = options
+  const { geo, timeframe, skipRelated, terms } = options
 
   if (process.env.VERCEL === '1') {
     const { runGoogleTrendsCollect } = await import('@/lib/google-trends-collect-core')
-    const result = await runGoogleTrendsCollect({ geo, timeframe, skipRelated })
+    const result = await runGoogleTrendsCollect({ geo, timeframe, skipRelated, terms })
     if (!result.ok) {
       throw new Error(result.error ?? 'Falha na coleta Google Trends.')
     }
     return result
   }
 
-  return await collectViaScript(geo, timeframe, skipRelated)
+  return await collectViaScript(geo, timeframe, skipRelated, terms)
 }
 
 export type StartGoogleTrendsCollectResult =
@@ -115,6 +121,7 @@ export function startGoogleTrendsCollect(options: {
   geo?: string
   timeframe?: GoogleTrendsTimeframe
   skipRelated?: boolean
+  terms?: string[]
 }): StartGoogleTrendsCollectResult {
   if (!isGoogleTrendsRunnerAvailable()) {
     throw new GoogleTrendsRunnerUnavailableError()
@@ -130,12 +137,13 @@ export function startGoogleTrendsCollect(options: {
   const geo = options.geo ?? 'BR-PI'
   const skipRelated = options.skipRelated ?? true
   const timeframe = normalizeGoogleTrendsTimeframe(options.timeframe) ?? DEFAULT_GOOGLE_TRENDS_TIMEFRAME
+  const terms = options.terms
 
   collectInProgress = true
   collectStartedAt = Date.now()
   lastCollectError = null
 
-  void runCollect({ geo, timeframe, skipRelated })
+  void runCollect({ geo, timeframe, skipRelated, terms })
     .then((result) => {
       lastCollectResult = result
     })
@@ -157,6 +165,7 @@ export async function collectGoogleTrends(options: {
   timeframe?: GoogleTrendsTimeframe
   /** Pula related queries/topics — padrão true (coleta rápida ~1 min). */
   skipRelated?: boolean
+  terms?: string[]
 }): Promise<GoogleTrendsCollectResult> {
   if (!isGoogleTrendsRunnerAvailable()) {
     throw new GoogleTrendsRunnerUnavailableError()
@@ -170,9 +179,10 @@ export async function collectGoogleTrends(options: {
   const geo = options.geo ?? 'BR-PI'
   const skipRelated = options.skipRelated ?? true
   const timeframe = normalizeGoogleTrendsTimeframe(options.timeframe) ?? DEFAULT_GOOGLE_TRENDS_TIMEFRAME
+  const terms = options.terms
 
   try {
-    const result = await runCollect({ geo, timeframe, skipRelated })
+    const result = await runCollect({ geo, timeframe, skipRelated, terms })
     lastCollectResult = result
     return result
   } catch (e) {

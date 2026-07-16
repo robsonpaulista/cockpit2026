@@ -37,6 +37,10 @@ export async function GET(request: Request) {
     if (!timeframe) {
       return NextResponse.json({ error: 'timeframe inválido.' }, { status: 400 })
     }
+    const baseCampanha = searchParams.get('base')?.trim().toLowerCase() === 'campanha'
+    const campaignTerms = baseCampanha
+      ? (await import('@/lib/campaign-trends-keywords')).getCampaignTrendsTermSet()
+      : null
 
     const { data: actors, error: actorsError } = await supabase
       .from('political_actors')
@@ -80,7 +84,7 @@ export async function GET(request: Request) {
     const timeframeKeys = googleTrendsTimeframeQueryKeys(timeframe)
     const interestCutoffDay = googleTrendsInterestQueryCutoffDay()
 
-    const { data: interestRows, error: interestError } = await supabase
+    let interestQuery = supabase
       .from('google_trends_interest')
       .select('*')
       .eq('geo', geo)
@@ -89,12 +93,24 @@ export async function GET(request: Request) {
       .order('interest_date', { ascending: true })
       .limit(GOOGLE_TRENDS_INTEREST_QUERY_LIMIT)
 
-    const { data: relatedRowsRaw } = await supabase
+    if (campaignTerms) {
+      interestQuery = interestQuery.in('search_term', [...campaignTerms])
+    }
+
+    const { data: interestRows, error: interestError } = await interestQuery
+
+    let relatedQuery = supabase
       .from('google_trends_related')
       .select('*')
       .eq('geo', geo)
       .in('timeframe', timeframeKeys)
       .order('rank', { ascending: true })
+
+    if (campaignTerms) {
+      relatedQuery = relatedQuery.in('search_term', [...campaignTerms])
+    }
+
+    const { data: relatedRowsRaw } = await relatedQuery
 
     const relatedRows = (relatedRowsRaw ?? []) as GoogleTrendsRelatedRow[]
 
@@ -112,7 +128,7 @@ export async function GET(request: Request) {
       throw new Error(interestError.message)
     }
 
-    const typedActors = (actors ?? []) as PoliticalActorWithTerms[]
+    const typedActors = baseCampanha ? [] : ((actors ?? []) as PoliticalActorWithTerms[])
     const rowsRaw = (interestRows ?? []) as GoogleTrendsInterestRow[]
     const rows = normalizeGoogleTrendsInterestRows(rowsRaw)
     const series = buildGoogleTrendsSeries(typedActors, rows)
@@ -126,6 +142,10 @@ export async function GET(request: Request) {
       return acc
     }, null)
 
+    const keywords = baseCampanha
+      ? (await import('@/lib/campaign-trends-keywords')).getAllCampaignTrendsKeywords()
+      : undefined
+
     return NextResponse.json({
       actors: typedActors,
       rows,
@@ -133,6 +153,7 @@ export async function GET(request: Request) {
       series,
       compare,
       chartData,
+      keywords,
       geo,
       timeframe,
       dateFrom,
@@ -140,6 +161,7 @@ export async function GET(request: Request) {
       seriesStale,
       collectedAt: latestCollected,
       setupRequired: false,
+      base: baseCampanha ? 'campanha' : 'atores',
     })
   } catch (e) {
     const msg = e instanceof Error ? e.message : 'Erro ao carregar Trends'

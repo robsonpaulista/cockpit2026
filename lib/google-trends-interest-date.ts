@@ -32,10 +32,10 @@ type TimelinePoint = {
   value: number[]
 }
 
-type ActorRef = { id: string; name: string }
+type ActorRef = { id: string | null; name: string }
 
 type InterestRowDraft = {
-  politico_id: string
+  politico_id: string | null
   search_term: string
   interest_date: string
   interest_score: number

@@ -25,6 +25,7 @@ function formatGrowth(pct: number | null): string {
 interface TrendsCompareBoardProps {
   rows: GoogleTrendsCompareRow[]
   loading?: boolean
+  emptyMessage?: string
 }
 
 function Sparkline({ points }: { points: GoogleTrendsCompareRow['points'] }) {
@@ -56,7 +57,11 @@ function Sparkline({ points }: { points: GoogleTrendsCompareRow['points'] }) {
   )
 }
 
-export function TrendsCompareBoard({ rows, loading = false }: TrendsCompareBoardProps) {
+export function TrendsCompareBoard({
+  rows,
+  loading = false,
+  emptyMessage = 'Cadastre candidatos ativos e rode a coleta do Google Trends.',
+}: TrendsCompareBoardProps) {
   const [expandedTerm, setExpandedTerm] = useState<string | null>(null)
 
   if (loading) {
@@ -70,7 +75,7 @@ export function TrendsCompareBoard({ rows, loading = false }: TrendsCompareBoard
   if (rows.length === 0) {
     return (
       <div className="rounded-xl border border-dashed border-[rgb(var(--color-border-tertiary)/0.85)] bg-bg-surface px-6 py-12 text-center text-sm text-text-muted">
-        Cadastre candidatos ativos e rode a coleta do Google Trends.
+        {emptyMessage}
       </div>
     )
   }

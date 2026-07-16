@@ -28,6 +28,8 @@ const bodySchema = z.object({
   timeframe: timeframeSchema.optional().default(DEFAULT_GOOGLE_TRENDS_TIMEFRAME),
   /** Padrão true: só interesse comparativo (~1 min). Use false para consultas/tópicos relacionados (lento). */
   skipRelated: z.boolean().optional().default(true),
+  /** `campanha` = pautas Viral (Hospital de Amor, ECA Digital, Jadyel…). */
+  base: z.enum(['atores', 'campanha']).optional().default('atores'),
 })
 
 export async function POST(request: Request) {
@@ -36,10 +38,16 @@ export async function POST(request: Request) {
     if (!auth.ok) return auth.response
 
     const body = bodySchema.parse(await request.json().catch(() => ({})))
+    const terms =
+      body.base === 'campanha'
+        ? (await import('@/lib/campaign-trends-keywords')).getCampaignTrendsCollectTerms()
+        : undefined
+
     const started = startGoogleTrendsCollect({
       geo: body.geo,
       timeframe: body.timeframe,
       skipRelated: body.skipRelated,
+      terms,
     })
 
     if (started.status === 'already_running') {
@@ -53,6 +61,8 @@ export async function POST(request: Request) {
       geo: body.geo,
       timeframe: body.timeframe,
       skipRelated: body.skipRelated,
+      base: body.base,
+      terms: terms?.length ?? undefined,
     })
   } catch (e) {
     const msg = e instanceof Error ? e.message : 'Erro na coleta Google Trends'

@@ -15,12 +15,12 @@ const PAUSE_BETWEEN_ACTORS_MS = 5_000
 const CHROME_UA =
   'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36'
 
-type PoliticalActorRow = { id: string; name: string }
+type PoliticalActorRow = { id: string | null; name: string }
 
 type RelatedKind = 'query' | 'topic'
 
 type InterestRow = {
-  politico_id: string
+  politico_id: string | null
   search_term: string
   interest_date: string
   interest_score: number
@@ -30,7 +30,7 @@ type InterestRow = {
 }
 
 type RelatedInsertRow = {
-  politico_id: string
+  politico_id: string | null
   search_term: string
   kind: RelatedKind
   bucket: 'top' | 'rising'
@@ -277,25 +277,35 @@ export async function runGoogleTrendsCollect(options: {
   geo: string
   timeframe: GoogleTrendsTimeframe
   skipRelated?: boolean
+  /** Se definido, coleta só estes termos (politico_id null) — pautas da campanha. */
+  terms?: string[]
 }): Promise<GoogleTrendsCollectResult> {
-  const { geo, timeframe, skipRelated = true } = options
+  const { geo, timeframe, skipRelated = true, terms } = options
   const supabase = createAdminClient()
 
-  const { data: actors, error: actorsError } = await supabase
-    .from('political_actors')
-    .select('id, name')
-    .eq('active', true)
-    .order('name', { ascending: true })
+  let actors: PoliticalActorRow[] = []
 
-  if (actorsError) {
-    const msg = actorsError.message
-    if (msg.includes('does not exist') || actorsError.code === '42P01') {
-      return { ok: false, error: 'Tabelas ausentes.', setupRequired: true }
+  if (terms?.length) {
+    actors = terms.map((name) => ({ id: null, name }))
+  } else {
+    const { data, error: actorsError } = await supabase
+      .from('political_actors')
+      .select('id, name')
+      .eq('active', true)
+      .order('name', { ascending: true })
+
+    if (actorsError) {
+      const msg = actorsError.message
+      if (msg.includes('does not exist') || actorsError.code === '42P01') {
+        return { ok: false, error: 'Tabelas ausentes.', setupRequired: true }
+      }
+      return { ok: false, error: msg }
     }
-    return { ok: false, error: msg }
+
+    actors = (data ?? []) as PoliticalActorRow[]
   }
 
-  if (!actors?.length) {
+  if (!actors.length) {
     return {
       ok: true,
       terms: 0,

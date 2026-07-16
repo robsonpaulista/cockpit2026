@@ -66,13 +66,24 @@ function parseArgs() {
   let geo = 'BR-PI'
   let timeframe = 'today 1-m'
   let skipRelated = true
+  let termsJson = null
+  let base = 'atores'
   for (let i = 0; i < args.length; i++) {
     if (args[i] === '--geo' && args[i + 1]) geo = args[++i]
     if (args[i] === '--timeframe' && args[i + 1]) timeframe = args[++i]
     if (args[i] === '--skip-related') skipRelated = true
     if (args[i] === '--with-related') skipRelated = false
+    if (args[i] === '--terms' && args[i + 1]) termsJson = args[++i]
+    if (args[i] === '--base' && args[i + 1]) base = args[++i]
   }
-  return { geo, timeframe: normalizeTimeframe(timeframe), skipRelated }
+  let terms = null
+  if (termsJson) {
+    terms = JSON.parse(termsJson)
+  } else if (base === 'campanha') {
+    const raw = JSON.parse(fs.readFileSync(path.join(ROOT, 'data/campaign-trends-keywords.json'), 'utf8'))
+    terms = [...(raw.pautas ?? []), ...(raw.deputado ?? [])]
+  }
+  return { geo, timeframe: normalizeTimeframe(timeframe), skipRelated, terms }
 }
 
 function isRetryable(error) {
@@ -305,7 +316,7 @@ async function fetchActorRelated(actor, geo, timeframe, collectedAt) {
 
 async function main() {
   loadEnvLocal()
-  const { geo, timeframe, skipRelated } = parseArgs()
+  const { geo, timeframe, skipRelated, terms } = parseArgs()
 
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY
@@ -316,20 +327,26 @@ async function main() {
 
   const supabase = createSupabase(url, key)
 
-  const { data: actors, error: actorsError } = await supabase
-    .from('political_actors')
-    .select('id, name')
-    .eq('active', true)
-    .order('name', { ascending: true })
+  let actors = []
+  if (Array.isArray(terms) && terms.length > 0) {
+    actors = terms.map((name) => ({ id: null, name: String(name) }))
+  } else {
+    const { data, error: actorsError } = await supabase
+      .from('political_actors')
+      .select('id, name')
+      .eq('active', true)
+      .order('name', { ascending: true })
 
-  if (actorsError) {
-    const msg = actorsError.message
-    if (msg.includes('does not exist') || actorsError.code === '42P01') {
-      emit({ ok: false, error: 'Tabelas ausentes.', setupRequired: true })
+    if (actorsError) {
+      const msg = actorsError.message
+      if (msg.includes('does not exist') || actorsError.code === '42P01') {
+        emit({ ok: false, error: 'Tabelas ausentes.', setupRequired: true })
+        process.exit(1)
+      }
+      emit({ ok: false, error: msg })
       process.exit(1)
     }
-    emit({ ok: false, error: msg })
-    process.exit(1)
+    actors = data ?? []
   }
 
   if (!actors?.length) {

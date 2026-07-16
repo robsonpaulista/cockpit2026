@@ -25,9 +25,17 @@ interface TrendsInterestChartProps {
   series: GoogleTrendsSeries[]
   chartData: Array<Record<string, string | number>>
   loading?: boolean
+  description?: string
+  emptyMessage?: string
 }
 
-export function TrendsInterestChart({ series, chartData, loading = false }: TrendsInterestChartProps) {
+export function TrendsInterestChart({
+  series,
+  chartData,
+  loading = false,
+  description = 'Índice relativo 0–100 · Google Trends · últimos 30 dias',
+  emptyMessage = 'Sem dados de interesse ainda. Rode a coleta do Google Trends.',
+}: TrendsInterestChartProps) {
   if (loading) {
     return (
       <div className="rounded-xl border border-[rgb(var(--color-border-tertiary)/0.85)] bg-bg-surface px-4 py-10 text-center text-sm text-text-muted">
@@ -39,7 +47,7 @@ export function TrendsInterestChart({ series, chartData, loading = false }: Tren
   if (series.length === 0 || chartData.length === 0) {
     return (
       <div className="rounded-xl border border-dashed border-[rgb(var(--color-border-tertiary)/0.85)] bg-bg-surface px-6 py-10 text-center text-sm text-text-muted">
-        Sem dados de interesse ainda. Rode a coleta do Google Trends.
+        {emptyMessage}
       </div>
     )
   }
@@ -48,7 +56,7 @@ export function TrendsInterestChart({ series, chartData, loading = false }: Tren
     <div className="rounded-xl border border-[rgb(var(--color-border-tertiary)/0.85)] bg-bg-surface p-4">
       <div className="mb-3">
         <h2 className="text-sm font-medium text-text-primary">Interesse de busca ao longo do tempo</h2>
-        <p className="text-xs text-text-muted">Índice relativo 0–100 · Google Trends · últimos 30 dias</p>
+        <p className="text-xs text-text-muted">{description}</p>
       </div>
       <div className="h-[280px] w-full">
         <ResponsiveContainer width="100%" height="100%">
