@@ -337,3 +337,5 @@ export function exportarMatrizSecaoPdf(opts: OpcoesExportMatrizSecao): void {
 
   doc.save(`${nomeArquivoBase(opts.municipio)}.pdf`)
 }
+
+/** DEPLOY_MARKER: força rebuild Vercel */
