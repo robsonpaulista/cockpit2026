@@ -9,9 +9,19 @@ import {
   useState,
   type ReactNode,
 } from 'react'
+import { usePathname } from 'next/navigation'
 
 const TEMPO_INATIVIDADE = 10 * 60 * 1000 // 10 minutos
 const IDLE_SPLASH_LOCK_KEY = 'idle_splash_locked_v1'
+
+/** Nesta rota a tela de descanso por inatividade nunca deve aparecer. */
+function isIdleSplashDesabilitado(pathname: string | null): boolean {
+  if (!pathname) return false
+  return (
+    pathname === '/dashboard/resumo-eleicoes' ||
+    pathname.startsWith('/dashboard/resumo-eleicoes/')
+  )
+}
 
 type IdleSplashContextValue = {
   ativo: boolean
@@ -21,6 +31,9 @@ type IdleSplashContextValue = {
 const IdleSplashContext = createContext<IdleSplashContextValue | null>(null)
 
 export function IdleSplashProvider({ children }: { children: ReactNode }) {
+  const pathname = usePathname()
+  const idleDesabilitado = isIdleSplashDesabilitado(pathname)
+
   const [ativo, setAtivo] = useState<boolean>(false)
   const [dispensando, setDispensando] = useState<boolean>(false)
 
@@ -38,39 +51,61 @@ export function IdleSplashProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const ativar = useCallback(() => {
+    if (isIdleSplashDesabilitado(pathname)) return
     setAtivo(true)
     setDispensando(false)
     registrarBloqueioPersistente()
-  }, [registrarBloqueioPersistente])
+  }, [pathname, registrarBloqueioPersistente])
 
   const resetarTimer = useCallback(() => {
     if (timerInatividade.current) {
       clearTimeout(timerInatividade.current)
+      timerInatividade.current = null
     }
 
-    if (ativo || dispensando) return
+    if (idleDesabilitado || ativo || dispensando) return
 
     timerInatividade.current = setTimeout(() => {
       ativar()
     }, TEMPO_INATIVIDADE)
-  }, [ativo, dispensando, ativar])
+  }, [idleDesabilitado, ativo, dispensando, ativar])
 
   const dispensar = useCallback(() => {
-    if (!ativo) return
     limparBloqueioPersistente()
     setAtivo(false)
     setDispensando(false)
-  }, [ativo, limparBloqueioPersistente])
+  }, [limparBloqueioPersistente])
+
+  // Em /dashboard/resumo-eleicoes: limpa timer, dispensa splash e não restaura lock.
+  useEffect(() => {
+    if (!idleDesabilitado) return
+    if (timerInatividade.current) {
+      clearTimeout(timerInatividade.current)
+      timerInatividade.current = null
+    }
+    limparBloqueioPersistente()
+    setAtivo(false)
+    setDispensando(false)
+  }, [idleDesabilitado, limparBloqueioPersistente])
 
   useEffect(() => {
     if (typeof window === 'undefined') return
+    if (isIdleSplashDesabilitado(pathname)) return
     const bloqueado = sessionStorage.getItem(IDLE_SPLASH_LOCK_KEY) === '1'
     if (!bloqueado) return
     setAtivo(true)
     setDispensando(false)
-  }, [])
+  }, [pathname])
 
   useEffect(() => {
+    if (idleDesabilitado) {
+      if (timerInatividade.current) {
+        clearTimeout(timerInatividade.current)
+        timerInatividade.current = null
+      }
+      return
+    }
+
     const eventosAtividade = ['mousedown', 'keydown', 'touchstart', 'pointerdown', 'mousemove', 'scroll']
 
     const isAlvoSidebar = (event: Event): boolean => {
@@ -113,12 +148,12 @@ export function IdleSplashProvider({ children }: { children: ReactNode }) {
         clearTimeout(timerInatividade.current)
       }
     }
-  }, [ativo, dispensando, resetarTimer, ativar])
+  }, [idleDesabilitado, ativo, dispensando, resetarTimer, ativar])
 
   return (
     <IdleSplashContext.Provider
       value={{
-        ativo,
+        ativo: idleDesabilitado ? false : ativo,
         dispensar,
       }}
     >
