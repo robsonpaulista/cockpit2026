@@ -174,7 +174,7 @@ function pageKeyForItem(id: string): string {
   if (id === 'noticias-menu') {
     return 'noticias'
   }
-  if (id === 'territorio-ipt') return 'territorio'
+  if (id === 'territorio-ipt') return 'ipt'
   return id === 'home' ? 'dashboard' : id
 }
 

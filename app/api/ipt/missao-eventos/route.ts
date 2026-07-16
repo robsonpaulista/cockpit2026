@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { requireRouteUser } from '@/lib/supabase/route-auth'
 import { isSupabaseNetworkError } from '@/lib/supabase/network-error'
 import { normalizeIptMunicipio } from '@/lib/ipt'
@@ -16,7 +16,8 @@ export async function GET(request: NextRequest) {
     const auth = await requireRouteUser()
     if (!auth.ok) return auth.response
 
-    const supabase = createClient()
+    // Evolução é base compartilhada; admin client evita buracos de RLS/local.
+    const db = createAdminClient()
     const sp = request.nextUrl.searchParams
     const missao = sp.get('missao')?.trim()
     const municipio = sp.get('municipio')?.trim()
@@ -24,7 +25,7 @@ export async function GET(request: NextRequest) {
     const limitRaw = Number(sp.get('limit') ?? '300')
     const limit = Number.isFinite(limitRaw) ? Math.min(500, Math.max(1, limitRaw)) : 300
 
-    let q = supabase
+    let q = db
       .from('ipt_missao_eventos')
       .select(
         'id, municipio, municipio_normalizado, missao, sentido, motivo, detalhes, fonte, created_at'
@@ -108,8 +109,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Nenhum evento válido' }, { status: 400 })
     }
 
-    const supabase = createClient()
-    const { error } = await supabase.from('ipt_missao_eventos').upsert(rows, {
+    const db = createAdminClient()
+    const { error } = await db.from('ipt_missao_eventos').upsert(rows, {
       onConflict: 'id',
       ignoreDuplicates: true,
     })

@@ -16,7 +16,7 @@ export async function GET() {
     const { data, error } = await supabase
       .from('pages')
       .select('id, key, label, path')
-      .order('path')
+      .order('label')
 
     if (error) {
       console.error('Erro ao buscar páginas:', error)

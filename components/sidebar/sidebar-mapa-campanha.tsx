@@ -34,7 +34,11 @@ export function SidebarMapaCampanhaBlock({
   const { canAccess, loading } = usePermissions()
 
   const allowed =
-    loading || canAccess('territorio') || canAccess('campo') || canAccess('agenda')
+    loading ||
+    canAccess('ipt') ||
+    canAccess('territorio') ||
+    canAccess('campo') ||
+    canAccess('agenda')
   if (!allowed) return null
 
   const active = pathname.startsWith(MAPA_CAMPANHA_HREF)

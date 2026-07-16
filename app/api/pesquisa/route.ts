@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { requireRouteUser } from '@/lib/supabase/route-auth'
 import { isSupabaseNetworkError } from '@/lib/supabase/network-error'
+import { userCanReadSharedPolls } from '@/lib/auth-shared-polls'
 
 export const dynamic = 'force-dynamic'
 import { NextResponse } from 'next/server'
@@ -32,7 +33,9 @@ export async function GET(request: Request) {
       .eq('id', user.id)
       .single()
     const isAdmin = Boolean(profile?.is_admin)
-    const queryClient = isAdmin ? createAdminClient() : supabase
+    // Pesquisa/IPT/território: base de campanha compartilhada (não só polls do próprio user).
+    const sharedRead = await userCanReadSharedPolls(supabase, user.id, isAdmin)
+    const queryClient = sharedRead ? createAdminClient() : supabase
 
     const { searchParams } = new URL(request.url)
     const cargo = searchParams.get('cargo')
@@ -45,7 +48,7 @@ export async function GET(request: Request) {
         .from('polls')
         .select('data, instituto')
 
-      if (!isAdmin) {
+      if (!sharedRead) {
         countQuery = countQuery.eq('user_id', user.id)
       }
 
@@ -90,7 +93,7 @@ export async function GET(request: Request) {
       .order('data', { ascending: false })
       .limit(limit)
 
-    if (!isAdmin) {
+    if (!sharedRead) {
       dataQuery = dataQuery.eq('user_id', user.id) // user.id é o mesmo que auth.uid()
     }
 
