@@ -62,7 +62,9 @@ export type IptMissaoEventoInput = Omit<IptMissaoEvento, 'id' | 'createdAt'> & {
 const SYNC_MEMBROS_KEY = 'ipt-missao-membros-sync-v1'
 const SYNC_METRICAS_KEY = 'ipt-missao-metricas-sync-v1'
 const EVENTOS_LOCAL_KEY = 'ipt-missao-eventos-local-v1'
+const BASELINE_REMOTO_KEY = 'ipt-missao-baseline-remoto-v1'
 const MAX_EVENTOS_LOCAL = 800
+const POST_CHUNK = 150
 
 function sinalLabel(sinal: IptSinal): string {
   return IPT_SINAL_LABEL[sinal] ?? sinal
@@ -547,24 +549,150 @@ export function bootstrapMissaoSync(municipios: IptMunicipio[]): void {
   salvarMetricasSync(metricasPorMunicipio(municipios))
 }
 
+/** Snapshot inicial compartilhado (quando o banco ainda não tem histórico). */
+export function buildEventosBaseline(municipios: IptMunicipio[]): IptMissaoEvento[] {
+  const membros = membrosPorMissao(municipios)
+  const metricas = metricasPorMunicipio(municipios)
+  const porNome = new Map(municipios.map((m) => [m.municipio, m]))
+  const agora = new Date().toISOString()
+  const eventos: IptMissaoEvento[] = []
+
+  for (const missao of IPT_MISSOES.map((m) => m.id)) {
+    for (const municipio of membros[missao] ?? []) {
+      const muni = porNome.get(municipio)
+      const { motivo, detalhes } = motivoMissaoDetalhado(muni, missao, 'entrou')
+      const snap = metricas[municipio] ?? null
+      const comp = comparativoMissao(missao, null, snap)
+      eventos.push({
+        id: newId(),
+        municipio,
+        municipioNormalizado: normalizeIptMunicipio(municipio),
+        missao,
+        sentido: 'entrou',
+        motivo: `Registro inicial: ${motivo}`,
+        detalhes: {
+          ...detalhes,
+          metrica: comp.metrica,
+          valorAnterior: '—',
+          valorAtual: comp.atual,
+          baseline: true,
+        },
+        fonte: 'bootstrap',
+        createdAt: agora,
+      })
+    }
+  }
+
+  return eventos
+}
+
+function leuBaselineRemoto(): boolean {
+  if (typeof window === 'undefined') return true
+  try {
+    return Boolean(window.localStorage.getItem(BASELINE_REMOTO_KEY))
+  } catch {
+    return true
+  }
+}
+
+function marcarBaselineRemoto(): void {
+  if (typeof window === 'undefined') return
+  try {
+    window.localStorage.setItem(BASELINE_REMOTO_KEY, new Date().toISOString())
+  } catch {
+    // ignore
+  }
+}
+
 export async function persistirEventosMissao(
   eventos: IptMissaoEventoInput[]
-): Promise<{ ok: boolean; error?: string }> {
-  if (eventos.length === 0) return { ok: true }
+): Promise<{ ok: boolean; error?: string; inserted?: number }> {
+  if (eventos.length === 0) return { ok: true, inserted: 0 }
   try {
-    const res = await fetch('/api/ipt/missao-eventos', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ eventos }),
-    })
-    if (!res.ok) {
-      const json = (await res.json().catch(() => null)) as { error?: string } | null
-      return { ok: false, error: json?.error ?? `HTTP ${res.status}` }
+    let inserted = 0
+    for (let i = 0; i < eventos.length; i += POST_CHUNK) {
+      const chunk = eventos.slice(i, i + POST_CHUNK)
+      const res = await fetch('/api/ipt/missao-eventos', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ eventos: chunk }),
+      })
+      if (!res.ok) {
+        const json = (await res.json().catch(() => null)) as { error?: string } | null
+        return { ok: false, error: json?.error ?? `HTTP ${res.status}`, inserted }
+      }
+      inserted += chunk.length
     }
-    return { ok: true }
+    return { ok: true, inserted }
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : 'Falha de rede' }
   }
+}
+
+/** Envia histórico do localStorage para o banco (idempotente por id). */
+export async function sincronizarEventosLocaisComRemoto(): Promise<{
+  ok: boolean
+  synced: number
+  error?: string
+}> {
+  const locais = lerEventosLocais()
+  if (locais.length === 0) return { ok: true, synced: 0 }
+  const r = await persistirEventosMissao(locais)
+  if (!r.ok) return { ok: false, synced: r.inserted ?? 0, error: r.error }
+  return { ok: true, synced: r.inserted ?? locais.length }
+}
+
+async function remotoTemEventos(): Promise<boolean | null> {
+  try {
+    const res = await fetch('/api/ipt/missao-eventos?limit=1', { cache: 'no-store' })
+    if (!res.ok) return null
+    const json = (await res.json()) as { eventos?: unknown[]; pendingMigration?: boolean }
+    if (json.pendingMigration) return null
+    return (json.eventos ?? []).length > 0
+  } catch {
+    return null
+  }
+}
+
+/**
+ * Garante histórico no banco: migra localStorage e, se ainda vazio,
+ * grava um snapshot inicial das missões atuais (uma vez por browser).
+ */
+export async function garantirHistoricoMissaoRemoto(
+  municipios: IptMunicipio[]
+): Promise<{ ok: boolean; synced: number; baseline: number; error?: string }> {
+  const migrou = await sincronizarEventosLocaisComRemoto()
+  if (!migrou.ok) {
+    return { ok: false, synced: migrou.synced, baseline: 0, error: migrou.error }
+  }
+
+  const temRemoto = await remotoTemEventos()
+  if (temRemoto === null) {
+    return {
+      ok: false,
+      synced: migrou.synced,
+      baseline: 0,
+      error: 'Tabela de evolução indisponível ou offline',
+    }
+  }
+  if (temRemoto || leuBaselineRemoto()) {
+    if (temRemoto) marcarBaselineRemoto()
+    return { ok: true, synced: migrou.synced, baseline: 0 }
+  }
+
+  const baseline = buildEventosBaseline(municipios)
+  if (baseline.length === 0) {
+    marcarBaselineRemoto()
+    return { ok: true, synced: migrou.synced, baseline: 0 }
+  }
+
+  appendEventosLocais(baseline)
+  const r = await persistirEventosMissao(baseline)
+  if (!r.ok) {
+    return { ok: false, synced: migrou.synced, baseline: 0, error: r.error }
+  }
+  marcarBaselineRemoto()
+  return { ok: true, synced: migrou.synced, baseline: baseline.length }
 }
 
 export async function carregarEventosMissao(params?: {

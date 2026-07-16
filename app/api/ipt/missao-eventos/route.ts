@@ -91,7 +91,7 @@ export async function POST(request: NextRequest) {
           typeof e.motivo === 'string' &&
           e.motivo.trim()
       )
-      .slice(0, 200)
+      .slice(0, 400)
       .map((e) => ({
         ...(e.id ? { id: e.id } : {}),
         municipio: e.municipio.trim(),

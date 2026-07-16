@@ -27,6 +27,7 @@ import {
   appendEventosLocais,
   bootstrapMissaoSync,
   buildEventosMissaoDiff,
+  garantirHistoricoMissaoRemoto,
   lerMembrosSync,
   lerMetricasSync,
   persistirEventosMissao,
@@ -272,6 +273,27 @@ export function IptPanel() {
       setMembrosAnterior(membrosAtuais)
     }
   }, [loading, municipios.length, contagem, membrosAtuais])
+
+  // Migra localStorage → banco e, se ainda vazio, grava snapshot inicial (1x).
+  const historicoRemotoSyncRef = useRef(false)
+  useEffect(() => {
+    if (loading || municipios.length === 0 || historicoRemotoSyncRef.current) return
+    historicoRemotoSyncRef.current = true
+    let cancelled = false
+    void garantirHistoricoMissaoRemoto(municipios).then((r) => {
+      if (cancelled) return
+      if (!r.ok) {
+        historicoRemotoSyncRef.current = false
+        return
+      }
+      if (r.synced > 0 || r.baseline > 0) {
+        setEvolucaoRefreshToken((n) => n + 1)
+      }
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [loading, municipios])
 
   // Timeline de evolução: grava entrada/saída com motivo a cada sync de dados.
   useEffect(() => {
