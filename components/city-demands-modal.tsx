@@ -97,28 +97,7 @@ function getStatusBadgeClasses(status: string | undefined, isDark: boolean): str
   return isDark ? 'border-zinc-600 bg-zinc-900/50 text-zinc-300' : 'border-zinc-300 bg-zinc-50 text-zinc-800'
 }
 
-function priorityToneClass(priority: string | undefined, isDark: boolean): string {
-  const s = (priority || '').toLowerCase()
-  if (s === 'high' || s.includes('alta')) {
-    return isDark ? 'text-rose-200' : 'text-rose-800'
-  }
-  if (s === 'medium' || s.includes('média') || s.includes('media')) {
-    return isDark ? 'text-amber-200' : 'text-amber-900'
-  }
-  if (s === 'low' || s.includes('baixa')) {
-    return isDark ? 'text-emerald-200' : 'text-emerald-800'
-  }
-  return isDark ? 'text-zinc-400' : 'text-zinc-600'
-}
 
-function formatPriorityLabel(priority?: string): string {
-  if (!priority) return ''
-  const s = priority.toLowerCase().trim()
-  if (s === 'high' || s.includes('alta')) return 'Alta'
-  if (s === 'medium' || s.includes('média') || s.includes('media')) return 'Média'
-  if (s === 'low' || s.includes('baixa')) return 'Baixa'
-  return priority
-}
 
 function getSheetsField(demand: Demand, patterns: RegExp[]): string | null {
   const raw = demand.sheets_data
@@ -197,7 +176,6 @@ type DemandSortCol =
   | 'title'
   | 'data'
   | 'lideranca'
-  | 'prioridade'
   | 'valor'
   | 'observacoes'
 
@@ -248,9 +226,7 @@ function ordenarDemandasPorColuna(
           ? a.title || ''
           : col === 'lideranca'
             ? getDemandLiderancaParaFiltro(a)
-            : col === 'prioridade'
-              ? formatPriorityLabel(a.priority)
-              : getDemandObservacoes(a)
+            : getDemandObservacoes(a)
     const textB =
       col === 'status'
         ? b.status || ''
@@ -258,9 +234,7 @@ function ordenarDemandasPorColuna(
           ? b.title || ''
           : col === 'lideranca'
             ? getDemandLiderancaParaFiltro(b)
-            : col === 'prioridade'
-              ? formatPriorityLabel(b.priority)
-              : getDemandObservacoes(b)
+            : getDemandObservacoes(b)
 
     const aEmpty = !textA.trim()
     const bEmpty = !textB.trim()
@@ -276,7 +250,6 @@ const DEMAND_SORT_COLUMNS: { id: DemandSortCol; label: string; align?: 'right' }
   { id: 'title', label: 'Demanda' },
   { id: 'data', label: 'Data' },
   { id: 'lideranca', label: 'Liderança' },
-  { id: 'prioridade', label: 'Prioridade' },
   { id: 'valor', label: 'Valor', align: 'right' },
   { id: 'observacoes', label: 'Observações' },
 ]
@@ -618,7 +591,6 @@ export function CityDemandsModal({ isOpen, onClose, cidade }: CityDemandsModalPr
                 {demandsFiltradasEOrdenadas.map((demand, index) => {
                   const liderancaExibicao = getDemandLiderancaParaFiltro(demand)
                   const valorNum = getDemandValorNumero(demand)
-                  const priorLabel = formatPriorityLabel(demand.priority)
                   const refLinha = getDemandObservacoes(demand)
 
                   return (
@@ -656,20 +628,6 @@ export function CityDemandsModal({ isOpen, onClose, cidade }: CityDemandsModalPr
                         <span className="line-clamp-2" title={liderancaExibicao || undefined}>
                           {liderancaExibicao || '—'}
                         </span>
-                      </td>
-                      <td className="whitespace-nowrap px-3 py-2">
-                        {priorLabel ? (
-                          <span
-                            className={cn(
-                              'font-medium',
-                              priorityToneClass(demand.priority, isDarkAppearance),
-                            )}
-                          >
-                            {priorLabel}
-                          </span>
-                        ) : (
-                          <span className="text-text-muted">—</span>
-                        )}
                       </td>
                       <td className="whitespace-nowrap px-3 py-2 text-right tabular-nums text-text-primary">
                         {valorNum > 0 ? `R$ ${formatValorSemMoeda(valorNum)}` : '—'}
