@@ -12,10 +12,8 @@ import {
 import { JADYEL_URNA_DEP_FEDERAL_2022 } from '@/lib/jadyel-federal-2022-pi-votos'
 import { normalizeMunicipioNome } from '@/lib/piaui-regiao'
 import {
-  buildCitySummaries,
-  getTerritorioExpectativaSheetConfig,
-  getTerritorioExpectativaSheetCredentials,
-} from '@/lib/territorio-expectativa-sheet'
+  buildCitySummariesFromDb,
+} from '@/lib/territorio-liderancas-db'
 
 export const dynamic = 'force-dynamic'
 
@@ -59,21 +57,7 @@ export async function GET(request: NextRequest) {
     const modo = searchParams.get('modo') === 'lista' ? 'lista' : 'resumo'
     const limite = Math.min(Math.max(Number.parseInt(searchParams.get('limit') || '30', 10) || 30, 1), 224)
 
-    const { spreadsheetId, sheetName } = getTerritorioExpectativaSheetConfig({})
-    const credentials = getTerritorioExpectativaSheetCredentials(undefined, 'territorio')
-
-    if (!spreadsheetId || !sheetName || !credentials) {
-      return NextResponse.json(
-        {
-          error: 'Planilha de Território & Base não configurada no servidor.',
-          rows: [],
-          totalFiltrado: 0,
-        },
-        { status: 503 }
-      )
-    }
-
-    const { summaries } = await buildCitySummaries(spreadsheetId, sheetName, undefined, credentials)
+    const { summaries } = await buildCitySummariesFromDb()
     const expectativaMap = new Map<string, number>()
     summaries.forEach((summary, key) => {
       expectativaMap.set(key, pickExpectativaComparativo(summary, cenario))

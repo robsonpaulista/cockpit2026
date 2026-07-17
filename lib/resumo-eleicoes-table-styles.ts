@@ -57,19 +57,31 @@ export function resumoLinhaTabela(
 }
 
 export function resumoKpiValueClass(): string {
-  return 'text-lg font-bold leading-none tabular-nums text-text-primary'
+  return 'text-center text-xl font-bold leading-none tracking-tight tabular-nums text-text-primary'
 }
 
 export function resumoKpiLabelClass(): string {
-  return 'text-xs font-medium leading-tight text-text-muted'
+  return 'text-[11px] font-medium leading-none tracking-wide text-text-secondary'
 }
 
 export function resumoKpiMetaClass(): string {
-  return 'mt-0.5 text-xs leading-tight text-text-secondary'
+  return 'mt-1 text-center text-[11px] leading-tight text-text-secondary'
 }
 
 export function resumoKpiLinkClass(): string {
-  return 'text-xs font-medium text-[#C8900A] hover:underline disabled:cursor-not-allowed disabled:opacity-40'
+  return 'text-[11px] font-medium text-[#C8900A] hover:underline disabled:cursor-not-allowed disabled:opacity-40'
+}
+
+export function resumoKpiCardClass(): string {
+  return 'flex min-w-0 flex-col items-center rounded-xl border border-[rgb(var(--color-border-tertiary)/0.85)] bg-bg-surface px-2.5 py-2.5 text-center'
+}
+
+export function resumoKpiHeaderClass(): string {
+  return 'mb-1.5 flex w-full items-center justify-center gap-1.5'
+}
+
+export function resumoKpiIconClass(): string {
+  return 'h-3.5 w-3.5 shrink-0 text-[#C8900A]'
 }
 
 /** Âmbar fixo — substitui `accent-gold` (azul no tema republicanos) na aba Votação por Seção. */

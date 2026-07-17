@@ -9,11 +9,9 @@ import {
   sortThemesByAvgEngagement,
 } from '@/lib/conteudo-redes-theme-stats'
 import {
-  buildCitySummaries,
-  getTerritorioExpectativaSheetConfig,
-  getTerritorioExpectativaSheetCredentials,
   normalizeTerritorioExpectativaCityKey,
 } from '@/lib/territorio-expectativa-sheet'
+import { buildCitySummariesFromDb } from '@/lib/territorio-liderancas-db'
 import { resolverNomeMunicipioPIOficial } from '@/lib/piaui-territorio-desenvolvimento'
 import {
   buildPesquisasResumoItens,
@@ -241,26 +239,19 @@ async function fetchVisitAgendaIds(supabase: SupabaseClient, agendaIds: string[]
 
 async function loadExpectativaPorCidade(): Promise<Map<string, ExpectativaCidade>> {
   const map = new Map<string, ExpectativaCidade>()
-  const config = getTerritorioExpectativaSheetConfig({})
-  const credentials = getTerritorioExpectativaSheetCredentials(undefined, 'territorio')
-  if (!config.spreadsheetId || !credentials) return map
 
   try {
-    const { summaries } = await buildCitySummaries(
-      config.spreadsheetId,
-      config.sheetName,
-      config.range,
-      credentials
-    )
+    const { summaries } = await buildCitySummariesFromDb()
     for (const [key, summary] of summaries) {
       map.set(key, {
         cidade: resolveCidadeCanon(key) || key,
+        // Padrão do sistema: Legado (Expectativa de Votos 2026)
         expectativaVotos2026: Math.round(summary.expectativaLegadoVotos),
         liderancas: Math.round(summary.liderancas),
       })
     }
   } catch (error) {
-    console.error('[resumo-operacional] expectativa sheet', error)
+    console.error('[resumo-operacional] expectativa db', error)
   }
   return map
 }

@@ -2,11 +2,9 @@ import { NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { requireMobilizacaoAccess } from '@/lib/mobilizacao-require-access'
 import {
-  buildCitySummaries,
-  getTerritorioExpectativaSheetConfig,
-  getTerritorioExpectativaSheetCredentials,
   normalizeTerritorioExpectativaCityKey,
 } from '@/lib/territorio-expectativa-sheet'
+import { buildCitySummariesFromDb } from '@/lib/territorio-liderancas-db'
 import { getTerritorioDesenvolvimentoPI, getTodosMunicipiosPIOficiaisOrdenados } from '@/lib/piaui-territorio-desenvolvimento'
 import { normalizeMunicipioNome } from '@/lib/piaui-regiao'
 
@@ -39,22 +37,11 @@ export async function POST() {
   const ctx = await requireMobilizacaoAccess()
   if (!ctx.ok) return ctx.response
 
-  const sheetBody: Record<string, unknown> = {}
-  const { spreadsheetId, sheetName, range } = getTerritorioExpectativaSheetConfig(sheetBody)
-  const credentialsObj = getTerritorioExpectativaSheetCredentials(undefined, 'territorio')
-
-  if (!spreadsheetId || !sheetName || !credentialsObj) {
-    return NextResponse.json(
-      { error: 'Planilha do Território ou credenciais Google não configuradas (variáveis de ambiente).' },
-      { status: 400 }
-    )
-  }
-
   const admin = createAdminClient()
 
   const [{ data: coordinatorsRows, error: coordErr }, { leadersByCity }] = await Promise.all([
     admin.from('coordinators').select('id, regiao, nome').order('nome', { ascending: true }),
-    buildCitySummaries(spreadsheetId, sheetName, range, credentialsObj),
+    buildCitySummariesFromDb(),
   ])
 
   if (coordErr) {

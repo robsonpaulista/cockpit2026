@@ -1,11 +1,10 @@
 'use client'
 
-import { useMemo, useState, useEffect, useRef, useCallback } from 'react'
+import { useMemo, useState, useEffect, useRef, useCallback, type MouseEvent as ReactMouseEvent } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { resolverDepEstadualLiderancaCidade } from '@/lib/planilha-dep-estadual-lideranca'
 import { RefreshCw, AlertCircle, Crown, X, Users, Vote, BarChart3, UserCheck, ArrowUpRight, FileText, Loader2, MapPinned, Target } from 'lucide-react'
-import { dashboardChromeIconShellSmClass } from '@/lib/sidebar-apify-styles'
 import { getEleitoradoByCity } from '@/lib/eleitores'
 import { CityDemandsModal } from '@/components/city-demands-modal'
 import { PollReportsHistoryModal } from '@/components/poll-reports-history-modal'
@@ -33,6 +32,7 @@ import {
   resumoEleicoesHubHref,
   RESUMO_ELEICOES_TAB_SECAO,
 } from '@/lib/resumo-eleicoes-hub-route'
+import { ResumoLiderancasCrudModal, type LiderancaFormPrefill } from '@/components/resumo-eleicoes/resumo-liderancas-crud-modal'
 import {
   resumoTrZebra,
   resumoTrSelecionado,
@@ -42,6 +42,9 @@ import {
   resumoKpiLabelClass,
   resumoKpiMetaClass,
   resumoKpiLinkClass,
+  resumoKpiCardClass,
+  resumoKpiHeaderClass,
+  resumoKpiIconClass,
 } from '@/lib/resumo-eleicoes-table-styles'
 import {
   ResumoEleicoesCidadesTabela,
@@ -373,8 +376,12 @@ export function ResumoEleicoesAtendimentoPanel() {
   const [resumosCidadeMap, setResumosCidadeMap] = useState<ResumosCidadeMap>({})
   const [showLiderancasModal, setShowLiderancasModal] = useState(false)
   const [cidadeLiderancasModal, setCidadeLiderancasModal] = useState<string | null>(null)
-  const [resumoLiderancasModal, setResumoLiderancasModal] = useState<ResumoCidade | null>(null)
-  const [loadingLiderancasModal, setLoadingLiderancasModal] = useState(false)
+  const [prefillLiderancaModal, setPrefillLiderancaModal] = useState<LiderancaFormPrefill | null>(null)
+  const [menuIncluirLideranca, setMenuIncluirLideranca] = useState<{
+    x: number
+    y: number
+    prefill: LiderancaFormPrefill
+  } | null>(null)
   const [showDemandsLeaderSelector, setShowDemandsLeaderSelector] = useState(false)
   const [showCityDemands, setShowCityDemands] = useState(false)
   const [loadingDemandasLiderancas, setLoadingDemandasLiderancas] = useState(false)
@@ -823,30 +830,13 @@ export function ResumoEleicoesAtendimentoPanel() {
   const painelResumoCardsVisivel =
     buscaIniciada && !loadingDados && dados.length > 0 && resumoCidade !== null
 
-  const abrirLiderancasCidade = async (nomeCidade: string) => {
+  const abrirLiderancasCidade = async (
+    nomeCidade: string,
+    prefill?: LiderancaFormPrefill | null,
+  ) => {
+    setPrefillLiderancaModal(prefill ?? null)
     setCidadeLiderancasModal(nomeCidade)
     setShowLiderancasModal(true)
-
-    const cidadeResumoAtual = visaoTodasCidades ? cidadeFiltroLista : cidade
-    if (
-      resumoCidade &&
-      cidadeResumoAtual &&
-      normalizeCityName(cidadeResumoAtual) === normalizeCityName(nomeCidade) &&
-      resumoCidade.liderancasDetalhe.length > 0
-    ) {
-      setResumoLiderancasModal(resumoCidade)
-      setLoadingLiderancasModal(false)
-      return
-    }
-
-    setResumoLiderancasModal(null)
-    setLoadingLiderancasModal(true)
-    try {
-      const resumo = await buscarResumoCidadeDetalhe(nomeCidade)
-      setResumoLiderancasModal(resumo)
-    } finally {
-      setLoadingLiderancasModal(false)
-    }
   }
 
   const abrirDetalhesLiderancasDoCard = () => {
@@ -862,8 +852,80 @@ export function ResumoEleicoesAtendimentoPanel() {
   const fecharModalLiderancas = () => {
     setShowLiderancasModal(false)
     setCidadeLiderancasModal(null)
-    setResumoLiderancasModal(null)
-    setLoadingLiderancasModal(false)
+    setPrefillLiderancaModal(null)
+  }
+
+  const cargoLiderancaPorTabela = (table: TableKey, situacao?: string): string => {
+    if (table === 'vereador_2024') {
+      if (/suplente/i.test(String(situacao || ''))) return 'Suplente de Vereador'
+      return 'Vereador'
+    }
+    if (table === 'prefeito_2024') return 'Prefeito'
+    if (table === 'deputado_estadual') return 'Deputado Estadual'
+    if (table === 'deputado_federal') return 'Deputado Federal'
+    return 'Liderança'
+  }
+
+  const abrirMenuIncluirLideranca = (
+    event: ReactMouseEvent,
+    opts: {
+      table: TableKey
+      nome: string
+      situacao?: string
+      votos: number
+    },
+  ) => {
+    event.preventDefault()
+    event.stopPropagation()
+    const alvo = municipioAtivo || (cidade && cidade !== RESUMO_TODAS_CIDADES ? cidade : null)
+    if (!alvo) {
+      setFeedbackMarcacao('Selecione uma cidade antes de incluir a liderança.')
+      setMostrarFeedbackMarcacao(true)
+      return
+    }
+    const nome = String(opts.nome || '').trim()
+    if (!nome) return
+    setMenuIncluirLideranca({
+      x: Math.min(event.clientX, typeof window !== 'undefined' ? window.innerWidth - 200 : event.clientX),
+      y: Math.min(event.clientY, typeof window !== 'undefined' ? window.innerHeight - 56 : event.clientY),
+      prefill: {
+        nome,
+        cargo: cargoLiderancaPorTabela(opts.table, opts.situacao),
+        liderancaAtual: 'SIM',
+        expectativaLegado: opts.votos,
+        expectativaAferida: 0,
+        promessa: 0,
+      },
+    })
+  }
+
+  const confirmarIncluirComoLideranca = () => {
+    if (!menuIncluirLideranca) return
+    const alvo = municipioAtivo || (cidade && cidade !== RESUMO_TODAS_CIDADES ? cidade : null)
+    const prefill = menuIncluirLideranca.prefill
+    setMenuIncluirLideranca(null)
+    if (!alvo) return
+    void abrirLiderancasCidade(alvo, prefill)
+  }
+
+  const afterLiderancasCrudChanged = async () => {
+    const alvo = cidadeLiderancasModal
+    if (!alvo) return
+    const resumo = await buscarResumoCidadeDetalhe(alvo)
+    setResumoCidade(resumo)
+    const cityKey = normalizeCityName(alvo)
+    if (cityKey) {
+      setResumosCidadeMap((prev) => ({
+        ...prev,
+        [cityKey]: {
+          expectativaVotos: resumo.votos2026,
+          promessaVotos: resumo.promessa2026,
+          expectativaLegadoVotos: resumo.legado2026,
+          votacaoFinal2022: resumo.votacaoFinal2022,
+          liderancas: resumo.liderancas,
+        },
+      }))
+    }
   }
 
   const fecharModalPesquisas = () => {
@@ -1229,6 +1291,8 @@ export function ResumoEleicoesAtendimentoPanel() {
     setFiltroPartidoAtivo(null)
     setResumoCidade(null)
     setShowLiderancasModal(false)
+    setCidadeLiderancasModal(null)
+    setPrefillLiderancaModal(null)
     setFeedbackMarcacao(null)
     setMostrarFeedbackMarcacao(false)
     setPesquisaRecenteCidade(null)
@@ -1269,6 +1333,8 @@ export function ResumoEleicoesAtendimentoPanel() {
     setPresidenteCamaraNome(null)
     setFiltroPartidoAtivo(null)
     setShowLiderancasModal(false)
+    setCidadeLiderancasModal(null)
+    setPrefillLiderancaModal(null)
     setFeedbackMarcacao(null)
     setMostrarFeedbackMarcacao(false)
     setPesquisaRecenteCidade(null)
@@ -1991,35 +2057,13 @@ export function ResumoEleicoesAtendimentoPanel() {
 
   useRegisterJarvisHostProps(jarvisHostProps)
 
-  const summaryCardBaseClass =
-    'flex min-w-0 flex-col rounded-xl border border-[rgb(var(--color-border-tertiary)/0.85)] bg-bg-surface p-3'
-  const kpiIconClass = 'h-3.5 w-3.5 text-[#ff9800]'
+  const summaryCardBaseClass = resumoKpiCardClass()
+  const kpiHeaderClass = resumoKpiHeaderClass()
+  const kpiIconClass = resumoKpiIconClass()
   const kpiLabelClass = resumoKpiLabelClass()
   const kpiValueClass = resumoKpiValueClass()
   const kpiMetaClass = resumoKpiMetaClass()
   const kpiLinkClass = resumoKpiLinkClass()
-  const labelValorModalLiderancas =
-    cenarioVotos === 'promessa_lideranca'
-      ? 'Promessa 2026'
-      : cenarioVotos === 'legado_anterior'
-        ? 'Expectativa 2026'
-        : 'Aferido 2026'
-  const liderancasDetalheOrdenadasModal = useMemo(() => {
-    if (!resumoLiderancasModal) return []
-    return [...resumoLiderancasModal.liderancasDetalhe].sort((a, b) => {
-      const valorA = cenarioVotos === 'promessa_lideranca'
-        ? a.projecaoPromessa
-        : cenarioVotos === 'legado_anterior'
-          ? a.projecaoLegado
-          : a.projecaoAferida
-      const valorB = cenarioVotos === 'promessa_lideranca'
-        ? b.projecaoPromessa
-        : cenarioVotos === 'legado_anterior'
-          ? b.projecaoLegado
-          : b.projecaoAferida
-      return valorB - valorA || a.nome.localeCompare(b.nome, 'pt-BR')
-    })
-  }, [resumoLiderancasModal, cenarioVotos])
 
   return (
     <div className="w-full min-w-0">
@@ -2057,9 +2101,9 @@ export function ResumoEleicoesAtendimentoPanel() {
                 onChange={(e) => setCenarioVotos(e.target.value as CenarioVotos)}
                 className="h-10 w-full rounded-lg border border-card bg-background px-3 text-sm text-text-primary"
               >
+                <option value="legado_anterior">Anterior / Legado (Expectativa de Votos 2026)</option>
                 <option value="aferido_jadyel">Aferido (Expectativa Jadyel 2026)</option>
                 <option value="promessa_lideranca">Prometido (Promessa da Liderança 2026)</option>
-                <option value="legado_anterior">Anterior (Expectativa de Votos 2026)</option>
               </select>
             </div>
             <button
@@ -2130,10 +2174,8 @@ export function ResumoEleicoesAtendimentoPanel() {
             <div className={cn(innerPanelClass, 'mb-2')}>
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-5">
               <div className={summaryCardBaseClass}>
-                <div className="mb-2 flex items-center gap-2">
-                  <span className={dashboardChromeIconShellSmClass}>
-                    <Users className={kpiIconClass} aria-hidden />
-                  </span>
+                <div className={kpiHeaderClass}>
+                  <Users className={kpiIconClass} aria-hidden />
                   <p className={kpiLabelClass}>Eleitores</p>
                 </div>
                 <p className={kpiValueClass}>
@@ -2146,10 +2188,8 @@ export function ResumoEleicoesAtendimentoPanel() {
                 </p>
               </div>
               <div className={summaryCardBaseClass}>
-                <div className="mb-2 flex items-center gap-2">
-                  <span className={dashboardChromeIconShellSmClass}>
-                    <Target className={kpiIconClass} aria-hidden />
-                  </span>
+                <div className={kpiHeaderClass}>
+                  <Target className={kpiIconClass} aria-hidden />
                   <p className={kpiLabelClass}>{labelCenarioAtivo}</p>
                 </div>
                 <p className={kpiValueClass}>{votosCenarioAtivo.toLocaleString('pt-BR')}</p>
@@ -2167,24 +2207,20 @@ export function ResumoEleicoesAtendimentoPanel() {
                 </p>
               </div>
               <div className={summaryCardBaseClass}>
-                <div className="mb-2 flex items-center gap-2">
-                  <span className={dashboardChromeIconShellSmClass}>
-                    <Vote className={kpiIconClass} aria-hidden />
-                  </span>
+                <div className={kpiHeaderClass}>
+                  <Vote className={kpiIconClass} aria-hidden />
                   <p className={kpiLabelClass}>Votos 2022</p>
                 </div>
                 <p className={kpiValueClass}>{resumoCidade.votacaoFinal2022.toLocaleString('pt-BR')}</p>
               </div>
               <div className={summaryCardBaseClass}>
-                <div className="mb-2 flex items-center gap-2">
-                  <span className={dashboardChromeIconShellSmClass}>
-                    <Crown className={kpiIconClass} aria-hidden />
-                  </span>
+                <div className={kpiHeaderClass}>
+                  <Crown className={kpiIconClass} aria-hidden />
                   <p className={kpiLabelClass}>Lideranças</p>
                 </div>
                 <p className={kpiValueClass}>{resumoCidade.liderancas.toLocaleString('pt-BR')}</p>
                 {!visaoTodasCidades ? (
-                  <p className={cn(kpiMetaClass, 'flex flex-wrap gap-x-1.5')}>
+                  <p className={cn(kpiMetaClass, 'flex flex-wrap items-center justify-center gap-x-1.5')}>
                     <button type="button" onClick={marcarLiderancasDoCard} className={kpiLinkClass}>
                       Marcar
                     </button>
@@ -2196,17 +2232,19 @@ export function ResumoEleicoesAtendimentoPanel() {
                 ) : null}
               </div>
               <div className={summaryCardBaseClass}>
-                <div className="mb-2 flex items-center gap-2">
-                  <span className={dashboardChromeIconShellSmClass}>
-                    <BarChart3 className={kpiIconClass} aria-hidden />
-                  </span>
+                <div className={kpiHeaderClass}>
+                  <BarChart3 className={kpiIconClass} aria-hidden />
                   <p className={kpiLabelClass}>Pesquisas</p>
                 </div>
                 <p className={kpiValueClass}>
                   {pesquisaRecenteCidade ? `${pesquisaRecenteCidade.intencao.toFixed(1).replace('.', ',')}%` : '—'}
                 </p>
                 <p className={kpiMetaClass}>{metaPesquisaCurta}</p>
-                <button type="button" onClick={abrirDetalhesPesquisasDoCard} className={cn(kpiLinkClass, 'mt-0.5')}>
+                <button
+                  type="button"
+                  onClick={abrirDetalhesPesquisasDoCard}
+                  className={cn(kpiLinkClass, 'mt-0.5')}
+                >
                   Detalhes
                 </button>
               </div>
@@ -2292,6 +2330,15 @@ export function ResumoEleicoesAtendimentoPanel() {
                             type="checkbox"
                             checked={isSelected}
                             onChange={() => toggleSelection('deputado_estadual', rowId, votes)}
+                            onContextMenu={(event) =>
+                              abrirMenuIncluirLideranca(event, {
+                                table: 'deputado_estadual',
+                                nome: item.nomeUrnaCandidato,
+                                situacao: item.situacao,
+                                votos: votes,
+                              })
+                            }
+                            title="Botão direito: incluir como liderança"
                             className="h-3.5 w-3.5 accent-[rgb(var(--accent-gold))]"
                           />
                         </td>
@@ -2380,6 +2427,15 @@ export function ResumoEleicoesAtendimentoPanel() {
                             type="checkbox"
                             checked={isSelected}
                             onChange={() => toggleSelection('deputado_federal', rowId, votes)}
+                            onContextMenu={(event) =>
+                              abrirMenuIncluirLideranca(event, {
+                                table: 'deputado_federal',
+                                nome: item.nomeUrnaCandidato,
+                                situacao: item.situacao,
+                                votos: votes,
+                              })
+                            }
+                            title="Botão direito: incluir como liderança"
                             className="h-3.5 w-3.5 accent-[rgb(var(--accent-gold))]"
                           />
                         </td>
@@ -2464,6 +2520,15 @@ export function ResumoEleicoesAtendimentoPanel() {
                             type="checkbox"
                             checked={isSelected}
                             onChange={() => toggleSelection('prefeito_2024', rowId, votes)}
+                            onContextMenu={(event) =>
+                              abrirMenuIncluirLideranca(event, {
+                                table: 'prefeito_2024',
+                                nome: item.nomeUrnaCandidato,
+                                situacao: item.situacao,
+                                votos: votes,
+                              })
+                            }
+                            title="Botão direito: incluir como liderança"
                             className="h-3.5 w-3.5 accent-[rgb(var(--accent-gold))]"
                           />
                         </td>
@@ -2560,6 +2625,15 @@ export function ResumoEleicoesAtendimentoPanel() {
                             type="checkbox"
                             checked={isSelected}
                             onChange={() => toggleSelection('vereador_2024', rowId, votes)}
+                            onContextMenu={(event) =>
+                              abrirMenuIncluirLideranca(event, {
+                                table: 'vereador_2024',
+                                nome: item.nomeUrnaCandidato,
+                                situacao: item.situacao,
+                                votos: votes,
+                              })
+                            }
+                            title="Botão direito: incluir como liderança"
                             className="h-3.5 w-3.5 accent-[rgb(var(--accent-gold))]"
                           />
                         </td>
@@ -2936,90 +3010,46 @@ export function ResumoEleicoesAtendimentoPanel() {
         </div>
       )}
 
-      {showLiderancasModal && cidadeLiderancasModal && (
-        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
-          <div className="w-full max-w-3xl max-h-[85vh] bg-surface rounded-xl border border-card overflow-hidden flex flex-col">
-            <div className="flex items-center justify-between px-4 py-3 border-b border-card">
-              <div>
-                <h3 className="text-sm font-semibold text-text-primary">
-                  Lideranças de {cidadeLiderancasModal}
-                </h3>
-                <p className="text-xs text-text-secondary">
-                  {loadingLiderancasModal
-                    ? 'Carregando…'
-                    : `${resumoLiderancasModal?.liderancasDetalhe.length ?? 0} registro(s)`}
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={fecharModalLiderancas}
-                className="rounded p-1.5 transition-colors hover:bg-background"
-              >
-                <X className="h-4 w-4 text-text-secondary" />
-              </button>
-            </div>
+      {showLiderancasModal && cidadeLiderancasModal ? (
+        <ResumoLiderancasCrudModal
+          cidade={cidadeLiderancasModal}
+          cenarioVotos={cenarioVotos}
+          prefillNova={prefillLiderancaModal}
+          onClose={fecharModalLiderancas}
+          onChanged={() => {
+            void afterLiderancasCrudChanged()
+          }}
+        />
+      ) : null}
 
-            <div className="overflow-auto p-3">
-              {loadingLiderancasModal ? (
-                <div className="flex items-center justify-center gap-2 py-10 text-sm text-text-secondary">
-                  <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
-                  Carregando lideranças…
-                </div>
-              ) : !resumoLiderancasModal || resumoLiderancasModal.liderancasDetalhe.length === 0 ? (
-                <p className="text-sm text-text-secondary py-6 text-center">
-                  Nenhuma liderança encontrada para os filtros atuais.
-                </p>
-              ) : (
-                <table className="w-full text-xs">
-                  <thead>
-                    <tr>
-                      <th className="bg-background px-2 py-2 text-left text-text-secondary">Nome</th>
-                      <th className="bg-background px-2 py-2 text-left text-text-secondary">Cargo</th>
-                      <th className="bg-background px-2 py-2 text-right text-text-secondary">{labelValorModalLiderancas}</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {liderancasDetalheOrdenadasModal.map((lideranca, rowIndex) => {
-                      const emDialogo = Boolean(lideranca.emDialogo)
-                      return (
-                      <tr
-                        key={`${lideranca.nome}-${lideranca.cargo}`}
-                        className={cn(
-                          'border-b border-card transition-colors',
-                          emDialogo
-                            ? 'bg-red-50 text-red-700 hover:bg-red-100/80'
-                            : cn('text-text-primary hover:bg-background/50', resumoTrZebra(rowIndex)),
-                        )}
-                        title={emDialogo ? 'Liderança atual: Em diálogo' : undefined}
-                      >
-                        <td className="px-2 py-1.5">
-                          <span className={cn(emDialogo && 'font-semibold')}>
-                            {lideranca.nome || '-'}
-                          </span>
-                          {emDialogo ? (
-                            <span className="ml-1.5 inline-flex rounded px-1 py-0.5 text-[10px] font-semibold uppercase tracking-wide bg-red-600 text-white">
-                              Em diálogo
-                            </span>
-                          ) : null}
-                        </td>
-                        <td className="px-2 py-1.5">{lideranca.cargo || '-'}</td>
-                        <td className="px-2 py-1.5 text-right">
-                          {(cenarioVotos === 'promessa_lideranca'
-                            ? lideranca.projecaoPromessa
-                            : cenarioVotos === 'legado_anterior'
-                              ? lideranca.projecaoLegado
-                              : lideranca.projecaoAferida).toLocaleString('pt-BR')}
-                        </td>
-                      </tr>
-                      )
-                    })}
-                  </tbody>
-                </table>
-              )}
-            </div>
+      {menuIncluirLideranca ? (
+        <>
+          <button
+            type="button"
+            aria-label="Fechar menu"
+            className="fixed inset-0 z-[60] cursor-default bg-transparent"
+            onClick={() => setMenuIncluirLideranca(null)}
+            onContextMenu={(event) => {
+              event.preventDefault()
+              setMenuIncluirLideranca(null)
+            }}
+          />
+          <div
+            className="fixed z-[70] min-w-[11.5rem] overflow-hidden rounded-lg border border-card bg-surface py-1 shadow-[0_10px_30px_rgba(15,23,42,0.18)]"
+            style={{ left: menuIncluirLideranca.x, top: menuIncluirLideranca.y }}
+            role="menu"
+          >
+            <button
+              type="button"
+              role="menuitem"
+              onClick={confirmarIncluirComoLideranca}
+              className="block w-full px-3 py-2 text-left text-xs font-medium text-text-primary hover:bg-[#C8900A]/10"
+            >
+              Incluir como liderança
+            </button>
           </div>
-        </div>
-      )}
+        </>
+      ) : null}
 
       {showDemandsLeaderSelector && (
         <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">

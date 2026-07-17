@@ -1,11 +1,9 @@
 import { NextResponse } from 'next/server'
 import {
-  buildCitySummaries,
-  getTerritorioExpectativaSheetConfig,
-  getTerritorioExpectativaSheetCredentials,
+  buildCitySummariesFromDb,
   resolveCityLeaders,
   resolveCitySummary,
-} from '@/lib/territorio-expectativa-sheet'
+} from '@/lib/territorio-liderancas-db'
 
 export const dynamic = 'force-dynamic'
 
@@ -13,45 +11,14 @@ export async function POST(request: Request) {
   try {
     const body = (await request.json()) as Record<string, unknown>
     const cidade = body.cidade
-    const credentials = body.credentials as string | Record<string, unknown> | undefined
-    const range = body.range as string | undefined
+    const refresh = body.refresh === true || body.refresh === '1'
 
     if (!cidade || typeof cidade !== 'string') {
       return NextResponse.json({ error: 'cidade é obrigatória' }, { status: 400 })
     }
 
-    const { spreadsheetId, sheetName } = getTerritorioExpectativaSheetConfig(body)
-
-    if (!spreadsheetId || !sheetName) {
-      return NextResponse.json(
-        {
-          error:
-            'spreadsheet_id e sheet_name são obrigatórios. Configure nas variáveis de ambiente ou envie no corpo da requisição.',
-        },
-        { status: 400 }
-      )
-    }
-
-    const credentialsObj = getTerritorioExpectativaSheetCredentials(
-      credentials as string | Record<string, unknown> | undefined,
-      'territorio'
-    )
-
-    if (!credentialsObj) {
-      return NextResponse.json(
-        {
-          error:
-            'Credenciais não encontradas. Configure GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY e GOOGLE_SERVICE_ACCOUNT_EMAIL nas variáveis de ambiente ou envie no corpo da requisição.',
-        },
-        { status: 400 }
-      )
-    }
-
-    const { summaries: summariesByCity, leadersByCity } = await buildCitySummaries(
-      spreadsheetId,
-      sheetName,
-      range,
-      credentialsObj
+    const { summaries: summariesByCity, leadersByCity } = await buildCitySummariesFromDb(
+      Boolean(refresh),
     )
 
     if (summariesByCity.size === 0) {
@@ -61,7 +28,8 @@ export async function POST(request: Request) {
         expectativaLegadoVotos: 0,
         votacaoFinal2022: 0,
         liderancas: 0,
-        message: 'Planilha vazia',
+        message: 'Tabela territorio_liderancas vazia',
+        fonte: 'db',
       })
     }
 
@@ -70,6 +38,8 @@ export async function POST(request: Request) {
 
     return NextResponse.json({
       cidade,
+      fonte: 'db',
+      cenarioPadrao: 'legado_anterior',
       expectativaVotos: Math.round(citySummary.expectativaVotos),
       promessaVotos: Math.round(citySummary.promessaVotos),
       expectativaLegadoVotos: Math.round(citySummary.expectativaLegadoVotos || 0),
@@ -87,44 +57,24 @@ export async function POST(request: Request) {
       })),
     })
   } catch (error: unknown) {
-    console.error('Erro ao buscar expectativa de votos por cidade:', error)
-    const err = error as { code?: number; message?: string }
-
-    if (err.code === 403) {
-      return NextResponse.json(
-        { error: 'Acesso negado. Verifique se a planilha foi compartilhada com o email do Service Account.' },
-        { status: 403 }
-      )
-    }
-
-    if (err.code === 404) {
-      return NextResponse.json({ error: 'Planilha não encontrada. Verifique o ID da planilha.' }, { status: 404 })
-    }
-
+    console.error('Erro ao buscar expectativa de votos por cidade (DB):', error)
+    const err = error as { message?: string }
     return NextResponse.json(
-      { error: err.message || 'Erro ao processar dados da planilha' },
-      { status: 500 }
+      { error: err.message || 'Erro ao processar dados de territorio_liderancas' },
+      { status: 500 },
     )
   }
 }
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
-    const body: Record<string, unknown> = {}
-    const { spreadsheetId, sheetName, range } = getTerritorioExpectativaSheetConfig(body)
-    const credentialsObj = getTerritorioExpectativaSheetCredentials(undefined, 'territorio')
-
-    if (!spreadsheetId || !sheetName || !credentialsObj) {
-      return NextResponse.json(
-        { error: 'Configuração de planilha/credenciais não disponível para gerar resumo por cidade.' },
-        { status: 400 }
-      )
-    }
-
-    const { summaries: summariesByCity } = await buildCitySummaries(spreadsheetId, sheetName, range, credentialsObj)
+    const refresh = new URL(request.url).searchParams.get('refresh') === '1'
+    const { summaries: summariesByCity } = await buildCitySummariesFromDb(refresh)
     const summariesObject = Object.fromEntries(summariesByCity.entries())
 
     return NextResponse.json({
+      fonte: 'db',
+      cenarioPadrao: 'legado_anterior',
       totalCidades: summariesByCity.size,
       summaries: summariesObject,
     })
