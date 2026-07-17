@@ -60,7 +60,7 @@ export default function ResumoEleicoesHubPage() {
       const params = new URLSearchParams(searchParams.toString())
       if (tab === RESUMO_ELEICOES_TAB_ATENDIMENTO) {
         params.delete('tab')
-    } else {
+      } else {
         params.set('tab', tab)
       }
       if (tab !== RESUMO_ELEICOES_TAB_SECAO) {
@@ -91,7 +91,7 @@ export default function ResumoEleicoesHubPage() {
       case RESUMO_ELEICOES_TAB_SECAO:
         return <ResumoEleicoesSecaoPanel embedded />
       case RESUMO_ELEICOES_TAB_CHAPA_FEDERAL:
-  return (
+        return (
           <ChapasPanel
             embedded
             escopoOverride="federal"
@@ -99,7 +99,7 @@ export default function ResumoEleicoesHubPage() {
           />
         )
       case RESUMO_ELEICOES_TAB_CHAPA_ESTADUAL:
-                    return (
+        return (
           <ChapasPanel
             embedded
             escopoOverride="estadual"
@@ -112,11 +112,9 @@ export default function ResumoEleicoesHubPage() {
     }
   })()
 
-                    return (
+  return (
     <ResumoEleicoesShell activeTab={activeTab} onTabChange={onTabChange}>
-      <div key={activeTab} className="w-full min-w-0">
-        {tabPanel}
-              </div>
+      <div className="w-full min-w-0">{tabPanel}</div>
     </ResumoEleicoesShell>
   )
 }

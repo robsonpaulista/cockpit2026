@@ -1,7 +1,7 @@
 'use client'
 
 import { useMemo, useState, useEffect, useRef, useCallback } from 'react'
-import { useSearchParams } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { resolverDepEstadualLiderancaCidade } from '@/lib/planilha-dep-estadual-lideranca'
 import { RefreshCw, AlertCircle, Crown, X, Users, Vote, BarChart3, UserCheck, ArrowUpRight, FileText, Loader2, MapPinned, Target } from 'lucide-react'
@@ -25,6 +25,10 @@ import {
   RESUMO_TODAS_CIDADES,
   RESUMO_TODAS_CIDADES_LABEL,
 } from '@/lib/resumo-eleicoes-aggregate'
+import {
+  persistResumoEleicoesCidade,
+  readResumoEleicoesHubPersist,
+} from '@/lib/resumo-eleicoes-hub-persist'
 import {
   resumoEleicoesHubHref,
   RESUMO_ELEICOES_TAB_SECAO,
@@ -339,8 +343,10 @@ function Pagination({
 }
 
 export function ResumoEleicoesAtendimentoPanel() {
+  const router = useRouter()
   const searchParams = useSearchParams()
   const { theme } = useTheme()
+  const autoBuscaPersistRef = useRef(false)
   const isCockpit = false
   const pageShellClass = isCockpit ? 'sidebar-cockpit-shell' : 'bg-bg-surface'
   const sectionShellClass = isCockpit
@@ -1098,17 +1104,80 @@ export function ResumoEleicoesAtendimentoPanel() {
     }
   }, [cidades.length])
 
+  const syncCidadeHub = useCallback(
+    (novaCidade: string, opts?: { buscaIniciada?: boolean }) => {
+      const limpa = String(novaCidade || '').trim()
+      const cidadeUrl = limpa && limpa !== RESUMO_TODAS_CIDADES ? limpa : ''
+
+      persistResumoEleicoesCidade(limpa || null, {
+        ...(opts?.buscaIniciada !== undefined ? { buscaIniciada: opts.buscaIniciada } : {}),
+      })
+
+      const params = new URLSearchParams(searchParams.toString())
+      if (cidadeUrl) params.set('cidade', cidadeUrl)
+      else params.delete('cidade')
+
+      const qs = params.toString()
+      const next = qs ? `/dashboard/resumo-eleicoes?${qs}` : '/dashboard/resumo-eleicoes'
+      const currentQs = searchParams.toString()
+      const current = currentQs
+        ? `/dashboard/resumo-eleicoes?${currentQs}`
+        : '/dashboard/resumo-eleicoes'
+      if (next !== current) {
+        router.replace(next, { scroll: false })
+      }
+    },
+    [router, searchParams],
+  )
+
   useEffect(() => {
     if (cidades.length === 0) return
-    const cidadeParam = searchParams.get('cidade')
-    if (!cidadeParam) return
+    const cidadeParam = searchParams.get('cidade')?.trim()
+    const persistida = readResumoEleicoesHubPersist().cidade?.trim()
+    const alvo = cidadeParam || persistida
+    if (!alvo) return
 
-    const cidadeNormalizada = normalizeCityName(cidadeParam)
+    if (alvo === RESUMO_TODAS_CIDADES) {
+      setCidade(RESUMO_TODAS_CIDADES)
+      return
+    }
+
+    const cidadeNormalizada = normalizeCityName(alvo)
     const encontrada = cidades.find((item) => normalizeCityName(item) === cidadeNormalizada)
     if (encontrada) {
       setCidade(encontrada)
     }
   }, [cidades, searchParams])
+
+  useEffect(() => {
+    if (autoBuscaPersistRef.current) return
+    if (cidades.length === 0 || restaurouEstadoRetorno) return
+    if (searchParams.get('jarvisBuscar') === '1') return
+    if (searchParams.get('returnFromPesquisa') === '1') return
+
+    const persist = readResumoEleicoesHubPersist()
+    if (!persist.buscaIniciada) return
+
+    const cidadeParam = searchParams.get('cidade')?.trim()
+    const alvoRaw = cidadeParam || persist.cidade?.trim()
+    if (!alvoRaw) return
+
+    autoBuscaPersistRef.current = true
+
+    if (alvoRaw === RESUMO_TODAS_CIDADES) {
+      void buscarDadosTodasCidades()
+      return
+    }
+
+    const encontrada = cidades.find(
+      (item) => normalizeCityName(item) === normalizeCityName(alvoRaw),
+    )
+    if (encontrada) {
+      void buscarDadosParaCidade(encontrada)
+    }
+    // Funções de busca são recriadas a cada render; dispara só uma vez via ref.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cidades, restaurouEstadoRetorno, searchParams])
 
   useEffect(() => {
     if (!buscaIniciada || dados.length === 0) return
@@ -1150,6 +1219,7 @@ export function ResumoEleicoesAtendimentoPanel() {
     setCidadeFiltroLista(null)
     setDadosCidadeFiltro([])
     setCidade(alvo)
+    syncCidadeHub(alvo, { buscaIniciada: true })
     setBuscaIniciada(true)
     setLoadingDados(true)
     setError(null)
@@ -1190,6 +1260,7 @@ export function ResumoEleicoesAtendimentoPanel() {
     setCidadeFiltroLista(null)
     setDadosCidadeFiltro([])
     setCidade(RESUMO_TODAS_CIDADES)
+    syncCidadeHub(RESUMO_TODAS_CIDADES, { buscaIniciada: true })
     setBuscaIniciada(true)
     setLoadingDados(true)
     setError(null)
@@ -1959,9 +2030,11 @@ export function ResumoEleicoesAtendimentoPanel() {
               <select
                 value={cidade}
                 onChange={(e) => {
-                  setCidade(e.target.value)
+                  const next = e.target.value
+                  setCidade(next)
                   setCidadeFiltroLista(null)
                   setDadosCidadeFiltro([])
+                  syncCidadeHub(next)
                 }}
                 disabled={loadingCidades}
                 className="h-10 w-full rounded-lg border border-card bg-background px-3 text-sm text-text-primary"
