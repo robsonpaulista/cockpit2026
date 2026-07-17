@@ -51,6 +51,10 @@ function num(value: unknown): number {
   return Number.isFinite(n) ? n : 0
 }
 
+export async function listAllTerritorioLiderancas(): Promise<TerritorioLiderancaRow[]> {
+  return fetchAllLiderancasRows()
+}
+
 async function fetchAllLiderancasRows(): Promise<TerritorioLiderancaRow[]> {
   const admin = createAdminClient()
   const rows: TerritorioLiderancaRow[] = []

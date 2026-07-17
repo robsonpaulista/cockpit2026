@@ -118,16 +118,6 @@ export function useIpt() {
     }
     let instavel = false
     try {
-      let territorioConfig: Record<string, unknown> | null = null
-      const configRes = await fetch('/api/territorio/config', { cache: 'no-store' })
-      const configJson = (await configRes.json()) as { configured?: boolean }
-      if (configJson.configured) {
-        territorioConfig = {}
-      } else if (typeof window !== 'undefined') {
-        const saved = localStorage.getItem('territorio_sheets_config')
-        if (saved) territorioConfig = JSON.parse(saved) as Record<string, unknown>
-      }
-
       const [
         territorioRes,
         pesquisaRes,
@@ -143,7 +133,7 @@ export function useIpt() {
           fetch('/api/dashboard/territorios-frios', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ territorioConfig: territorioConfig ?? {} }),
+            body: JSON.stringify({}),
             cache: 'no-store',
           }),
           fetch('/api/pesquisa?limit=5000', { cache: 'no-store' }),

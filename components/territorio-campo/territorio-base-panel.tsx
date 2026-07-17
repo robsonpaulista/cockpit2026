@@ -4,7 +4,6 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } fr
 import { createPortal } from 'react-dom'
 import { TerritorioBaseKpiStrip } from '@/components/territorio-campo/territorio-base-kpi-strip'
 import { MunicipalityListItem } from '@/components/territorio/municipality-list-item'
-import { GoogleSheetsConfigModal } from '@/components/google-sheets-config-modal'
 import {
   IconAlertCircle,
   IconBriefcase,
@@ -13,7 +12,6 @@ import {
   IconNetwork,
   IconRefresh,
   IconSearch,
-  IconSettings,
   IconUsers,
   IconX,
 } from '@tabler/icons-react'
@@ -32,7 +30,6 @@ import {
   territorioBasePillInputClass,
   territorioBaseTextClass,
 } from '@/lib/territorio-base-styles'
-import { sidebarPrimaryCTAButtonClass } from '@/lib/sidebar-menu-active-style'
 import { useTheme } from '@/contexts/theme-context'
 import type { AIAgentPageContext } from '@/components/ai-agent'
 import { useRegisterJarvisHostProps } from '@/contexts/jarvis-host-props-context'
@@ -43,17 +40,9 @@ interface Lideranca {
   [key: string]: any
 }
 
-interface SheetsConfig {
-  spreadsheetId: string
-  sheetName: string
-  range?: string
-  serviceAccountEmail: string
-  credentials: string
-}
-
 type CenarioVotos = 'aferido_jadyel' | 'promessa_lideranca' | 'legado_anterior'
 
-/** Rótulo fixo na UI — o cenário só altera a coluna da planilha, não o texto exibido. */
+/** Rótulo fixo na UI — o cenário só altera a coluna de votos, não o texto exibido. */
 const LABEL_EXPECTATIVA_2026 = 'Expectativa 2026'
 
 function labelCenarioDados(cenario: CenarioVotos): string {
@@ -76,8 +65,6 @@ export function TerritorioBasePanel() {
   const [liderancas, setLiderancas] = useState<Lideranca[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [showConfig, setShowConfig] = useState(false)
-  const [config, setConfig] = useState<SheetsConfig | null>(null)
   const [headers, setHeaders] = useState<string[]>([])
   const [expandedCities, setExpandedCities] = useState<Set<string>>(new Set())
   const [filtroCidade, setFiltroCidade] = useState<string>('')
@@ -89,7 +76,7 @@ export function TerritorioBasePanel() {
   const [showMapaVotoCruzado, setShowMapaVotoCruzado] = useState(true)
   const [showMindMap, setShowMindMap] = useState(false)
   const [candidatoPadrao, setCandidatoPadrao] = useState<string>('')
-  const [serverConfigured, setServerConfigured] = useState(false)
+  const [baseCarregada, setBaseCarregada] = useState(false)
   const [showCityDemands, setShowCityDemands] = useState(false)
   const [selectedCityForDemands, setSelectedCityForDemands] = useState<string>('')
   const [showExecutiveBriefing, setShowExecutiveBriefing] = useState(false)
@@ -102,52 +89,42 @@ export function TerritorioBasePanel() {
   const depDropdownMenuRef = useRef<HTMLDivElement | null>(null)
   const [depMenuPos, setDepMenuPos] = useState<{ top: number; left: number; width: number } | null>(null)
 
-  useEffect(() => {
-    const initConfig = async () => {
-      // 1. Verificar se há configuração no servidor (variáveis de ambiente)
-      try {
-        const serverConfigRes = await fetch('/api/territorio/config')
-        const serverConfig = await serverConfigRes.json()
-        
-        if (serverConfig.configured) {
-          // Usar configuração do servidor
-          setServerConfigured(true)
-          fetchDataFromServer()
-          
-          // Carregar candidato padrão
-          const savedCandidato = localStorage.getItem('candidato_padrao')
-          if (savedCandidato) setCandidatoPadrao(savedCandidato)
-          return
-        }
-      } catch (e) {
-        console.log('Servidor sem configuração, usando localStorage')
+  const fetchBaseFromDb = useCallback(async (opts?: { refresh?: boolean }) => {
+    setLoading(true)
+    setError(null)
+
+    try {
+      const qs = opts?.refresh ? '?refresh=1' : ''
+      const response = await fetch(`/api/territorio/base${qs}`, { cache: 'no-store' })
+      const data = (await response.json()) as {
+        error?: string
+        records?: Lideranca[]
+        headers?: string[]
       }
 
-      // 2. Fallback: Verificar localStorage
-      const savedConfig = localStorage.getItem('territorio_sheets_config')
-      if (savedConfig) {
-        try {
-          const parsed = JSON.parse(savedConfig)
-          setConfig(parsed)
-          fetchData(parsed)
-        } catch (e) {
-          console.error('Erro ao carregar configuração:', e)
-          setLoading(false)
-        }
-      } else {
-        setLoading(false)
-        setShowConfig(true) // Mostrar modal se não houver configuração
+      if (!response.ok) {
+        setError(data.error || 'Erro ao buscar base territorial')
+        setBaseCarregada(false)
+        return
       }
 
-      // Carregar candidato padrão do localStorage
-      const savedCandidato = localStorage.getItem('candidato_padrao')
-      if (savedCandidato) {
-        setCandidatoPadrao(savedCandidato)
-      }
+      setLiderancas(data.records || [])
+      setHeaders(data.headers || [])
+      setBaseCarregada(true)
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Erro ao conectar com a base territorial'
+      setError(message)
+      setBaseCarregada(false)
+    } finally {
+      setLoading(false)
     }
-
-    initConfig()
   }, [])
+
+  useEffect(() => {
+    void fetchBaseFromDb()
+    const savedCandidato = localStorage.getItem('candidato_padrao')
+    if (savedCandidato) setCandidatoPadrao(savedCandidato)
+  }, [fetchBaseFromDb])
 
   const updateDepMenuPosition = useCallback(() => {
     const el = depDropdownButtonRef.current
@@ -199,71 +176,7 @@ export function TerritorioBasePanel() {
     }
   }, [showDepDropdown])
 
-  // Buscar dados usando configuração do servidor
-  const fetchDataFromServer = async () => {
-    setLoading(true)
-    setError(null)
-
-    try {
-      const response = await fetch('/api/territorio/google-sheets', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({}), // Servidor usa variáveis de ambiente
-      })
-
-      const data = await response.json()
-
-      if (response.ok) {
-        setLiderancas(data.records || [])
-        setHeaders(data.headers || [])
-      } else {
-        setError(data.error || 'Erro ao buscar dados')
-      }
-    } catch (err: any) {
-      setError(err.message || 'Erro ao conectar com Google Sheets')
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const fetchData = async (sheetsConfig: SheetsConfig) => {
-    setLoading(true)
-    setError(null)
-
-    try {
-      const response = await fetch('/api/territorio/google-sheets', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          spreadsheetId: sheetsConfig.spreadsheetId,
-          sheetName: sheetsConfig.sheetName,
-          range: sheetsConfig.range,
-          serviceAccountEmail: sheetsConfig.serviceAccountEmail,
-          credentials: sheetsConfig.credentials,
-        }),
-      })
-
-      const data = await response.json()
-
-      if (response.ok) {
-        setLiderancas(data.records || [])
-        setHeaders(data.headers || [])
-      } else {
-        setError(data.error || 'Erro ao buscar dados')
-      }
-    } catch (err: any) {
-      setError(err.message || 'Erro ao conectar com Google Sheets')
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const handleSaveConfig = (newConfig: SheetsConfig) => {
-    setConfig(newConfig)
-    localStorage.setItem('territorio_sheets_config', JSON.stringify(newConfig))
-    fetchData(newConfig)
-  }
-
+  // Buscar dados da base territorial (territorio_liderancas)
   // Identificar colunas importantes
   const liderancaAtualCol = headers.find((h) =>
     /liderança atual|lideranca atual|atual\?/i.test(h)
@@ -775,11 +688,7 @@ export function TerritorioBasePanel() {
       }
     },
     atualizarDados: () => {
-      if (serverConfigured) {
-        void fetchDataFromServer()
-      } else if (config) {
-        void fetchData(config)
-      }
+      void fetchBaseFromDb({ refresh: true })
     },
   }
 
@@ -801,7 +710,7 @@ export function TerritorioBasePanel() {
       kind: 'territorio',
       cidades: cidadesTerritorioLista,
       loading,
-      planilhaConfigurada: Boolean(config || serverConfigured),
+      planilhaConfigurada: baseCarregada,
       cidadesExpandidas: cidadesExpandidasLista,
       modalObrasAberto: showCityDemands,
       cidadeObrasAtual: selectedCityForDemands,
@@ -810,8 +719,7 @@ export function TerritorioBasePanel() {
     [
       cidadesTerritorioLista,
       loading,
-      config,
-      serverConfigured,
+      baseCarregada,
       cidadesExpandidasLista,
       showCityDemands,
       selectedCityForDemands,
@@ -839,13 +747,13 @@ export function TerritorioBasePanel() {
         <div className="mb-2 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div className="min-w-0">
             <p className="text-xs">
-              {(config || serverConfigured) && liderancas.length > 0
+              {baseCarregada && liderancas.length > 0
                 ? pageSubtitle
-                : 'Configure a planilha para carregar lideranças'}
+                : 'Carregando lideranças da base territorial…'}
             </p>
           </div>
           <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
-            {(config || serverConfigured) && liderancasFiltradas.length > 0 && (
+            {baseCarregada && liderancasFiltradas.length > 0 && (
               <>
                 <button
                   type="button"
@@ -869,28 +777,18 @@ export function TerritorioBasePanel() {
                 ) : null}
               </>
             )}
-            {(config || serverConfigured) && (
-              <button
-                type="button"
-                onClick={() => territorioAgentActionsRef.current.atualizarDados()}
-                disabled={loading}
-                className={cn(territorioBaseGhostButtonClass, 'disabled:opacity-50')}
-              >
-                <IconRefresh
-                  className={cn('h-[14px] w-[14px] opacity-70', loading && 'animate-spin')}
-                  stroke={1.5}
-                  aria-hidden
-                />
-                Atualizar
-              </button>
-            )}
             <button
               type="button"
-              onClick={() => setShowConfig(true)}
-              className={sidebarPrimaryCTAButtonClass(isCockpit)}
+              onClick={() => territorioAgentActionsRef.current.atualizarDados()}
+              disabled={loading}
+              className={cn(territorioBaseGhostButtonClass, 'disabled:opacity-50')}
             >
-              <IconSettings className="h-[14px] w-[14px] shrink-0 text-white" stroke={1.5} aria-hidden />
-              {(config || serverConfigured) ? 'Configurar planilha' : 'Conectar planilha'}
+              <IconRefresh
+                className={cn('h-[14px] w-[14px] opacity-70', loading && 'animate-spin')}
+                stroke={1.5}
+                aria-hidden
+              />
+              Atualizar
             </button>
           </div>
         </div>
@@ -906,8 +804,8 @@ export function TerritorioBasePanel() {
           </div>
         )}
 
-        {/* KPIs - Só mostrar se houver configuração e dados */}
-        {(config || serverConfigured) && liderancas.length > 0 && (
+        {/* KPIs - Só mostrar se houver dados */}
+        {baseCarregada && liderancas.length > 0 && (
           <section className="mb-2">
             <TerritorioBaseKpiStrip
               kpis={kpis}
@@ -934,7 +832,7 @@ export function TerritorioBasePanel() {
           </section>
         )}
 
-        {(config || serverConfigured) && liderancas.length > 0 && (
+        {baseCarregada && liderancas.length > 0 && (
           <div className="mb-4">
             <div className="flex flex-wrap items-center gap-2">
               <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2 overflow-x-auto pb-0.5 [scrollbar-width:thin]">
@@ -1245,7 +1143,7 @@ export function TerritorioBasePanel() {
         )}
 
         <div className="mt-2">
-          {(config || serverConfigured) && (liderancaAtualCol || votosReferenciaCol) && (
+          {baseCarregada && (liderancaAtualCol || votosReferenciaCol) && (
             <p className="mb-3 text-[11px]">
               Mostrando lideranças com liderança atual = sim ou com {LABEL_EXPECTATIVA_2026.toLowerCase()}
             </p>
@@ -1279,23 +1177,21 @@ export function TerritorioBasePanel() {
                 <div key={i} className="h-20 bg-background rounded-xl animate-pulse" />
               ))}
             </div>
-          ) : !(config || serverConfigured) ? (
+          ) : !baseCarregada ? (
             <div className="py-12 text-center">
               <IconUsers className="mx-auto mb-4 h-12 w-12 opacity-40" stroke={1.5} />
-              <p className="mb-4">
-                Configure uma planilha do Google Sheets para começar
-              </p>
+              <p className="mb-4">Não foi possível carregar a base territorial</p>
               <button
                 type="button"
-                onClick={() => setShowConfig(true)}
-                className={sidebarPrimaryCTAButtonClass(isCockpit)}
+                onClick={() => void fetchBaseFromDb({ refresh: true })}
+                className={territorioBaseGhostButtonClass}
               >
-                Conectar planilha
+                Tentar novamente
               </button>
             </div>
           ) : liderancas.length === 0 ? (
             <div className="text-center py-12">
-              <p>Nenhum dado encontrado na planilha</p>
+              <p>Nenhum registro em territorio_liderancas</p>
             </div>
           ) : liderancasFiltradas.length === 0 && liderancaAtualCol ? (
             <div className="text-center py-12">
@@ -1303,7 +1199,7 @@ export function TerritorioBasePanel() {
                 Nenhuma liderança atual encontrada
               </p>
               <p className="text-xs">
-                Verifique se há registros com "Liderança Atual?" = SIM na planilha
+                Verifique se há registros com Liderança Atual = SIM na base
               </p>
             </div>
           ) : (() => {
@@ -1371,15 +1267,6 @@ export function TerritorioBasePanel() {
             )
           })()}
         </div>
-
-      {/* Modal de Configuração */}
-      {showConfig && (
-        <GoogleSheetsConfigModal
-          onClose={() => setShowConfig(false)}
-          onSave={handleSaveConfig}
-          currentConfig={config || undefined}
-        />
-      )}
 
       {/* Modal de Mapa Mental */}
       <MindMapModal

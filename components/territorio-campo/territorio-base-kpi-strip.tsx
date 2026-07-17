@@ -46,17 +46,17 @@ function buildCards({
           id: kpi.id,
           icon: FileText,
           title: 'Total de registros',
-          metricLabel: 'BASE · PLANILHA',
+          metricLabel: 'BASE · BANCO',
           insights: [
             {
               badge: 'leader',
               badgeLabel: 'Volume',
-              text: `${kpi.value} registros na planilha`,
+              text: `${kpi.value} registros na base`,
             },
             {
               badge: 'growth',
               badgeLabel: 'Origem',
-              text: 'Planilha conectada ao cockpit',
+              text: 'territorio_liderancas no cockpit',
             },
           ],
         }
@@ -75,7 +75,7 @@ function buildCards({
             {
               badge: 'growth',
               badgeLabel: 'Cenário',
-              text: `Coluna ${cenarioLabel} da planilha`,
+              text: `Cenário ${cenarioLabel} (base territorial)`,
             },
           ],
         }

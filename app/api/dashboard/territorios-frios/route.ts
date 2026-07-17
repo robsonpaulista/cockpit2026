@@ -3,7 +3,7 @@ import { requireRouteUser } from '@/lib/supabase/route-auth'
 import { isSupabaseNetworkError } from '@/lib/supabase/network-error'
 import municipiosPiaui from '@/lib/municipios-piaui.json'
 import { getEleitoradoByCity } from '@/lib/eleitores'
-import { deveIncluirLiderancaPlanilha } from '@/lib/territorio-lideranca-atual'
+import { buildCitySummariesFromDb } from '@/lib/territorio-liderancas-db'
 
 export const dynamic = 'force-dynamic'
 import { NextResponse } from 'next/server'
@@ -39,40 +39,6 @@ function formatCityName(name: string): string {
     .replace(/^./, str => str.toUpperCase())
 }
 
-// Função para normalizar números (mesma lógica da página território)
-function normalizeNumber(value: any): number {
-  if (typeof value === 'number') return value
-  
-  const str = String(value).trim()
-  if (!str) return 0
-  
-  let cleaned = str.replace(/[^\d.,]/g, '')
-  
-  if (cleaned.includes(',') && cleaned.includes('.')) {
-    if (cleaned.lastIndexOf(',') > cleaned.lastIndexOf('.')) {
-      cleaned = cleaned.replace(/\./g, '').replace(',', '.')
-    } else {
-      cleaned = cleaned.replace(/,/g, '')
-    }
-  } else if (cleaned.includes(',')) {
-    const parts = cleaned.split(',')
-    if (parts.length === 2) {
-      if (parts[1].length === 3) {
-        cleaned = cleaned.replace(/,/g, '')
-      } else if (parts[1].length <= 2) {
-        cleaned = cleaned.replace(',', '.')
-      } else {
-        cleaned = cleaned.replace(/,/g, '')
-      }
-    } else {
-      cleaned = cleaned.replace(/,/g, '')
-    }
-  }
-  
-  const numValue = parseFloat(cleaned)
-  return isNaN(numValue) ? 0 : numValue
-}
-
 export async function POST(request: Request) {
   try {
     const auth = await requireRouteUser()
@@ -80,184 +46,33 @@ export async function POST(request: Request) {
 
     const supabase = createClient()
 
-    const body = await request.json().catch(() => ({}))
-    let { territorioConfig } = body
+    // Body opcional (legado do cliente Sheets); expectativa vem do banco.
+    await request.json().catch(() => ({}))
 
-    // 1. Buscar expectativa de votos por cidade do Território & Base
-    // Usar chave normalizada para comparação, manter nome original para exibição
-    let expectativaPorCidade: Record<string, number> = {}
-    let liderancasPorCidade: Record<string, number> = {}
-    let nomeOriginalCidade: Record<string, string> = {} // Mapeia chave normalizada -> nome para exibição
+    // 1. Expectativa de votos (padrão Legado) + lideranças via territorio_liderancas
+    const expectativaPorCidade: Record<string, number> = {}
+    const liderancasPorCidade: Record<string, number> = {}
+    const nomeOriginalCidade: Record<string, string> = {}
 
-    // Função auxiliar para formatar a chave privada
-    const formatPrivateKey = (key: string): string => {
-      // Primeiro, substituir \\n (escape duplo) por quebra de linha real
-      let formattedKey = key.replace(/\\\\n/g, '\n')
-      // Depois, substituir \n literal por quebra de linha real
-      formattedKey = formattedKey.replace(/\\n/g, '\n')
-      return formattedKey
-    }
-
-    // Verificar se há configuração nas variáveis de ambiente
-    // Prioridade: variáveis específicas para Território
-    let envPrivateKey = process.env.GOOGLE_SERVICE_ACCOUNT_TERRITORIO_PRIVATE_KEY
-    let envEmail = process.env.GOOGLE_SERVICE_ACCOUNT_TERRITORIO_EMAIL
-    
-    // Fallback: variáveis genéricas (compatibilidade)
-    if (!envPrivateKey || !envEmail) {
-      envPrivateKey = process.env.GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY
-      envEmail = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL
-    }
-    
-    const envSpreadsheetId = process.env.GOOGLE_SHEETS_SPREADSHEET_ID
-    const envSheetName = process.env.GOOGLE_SHEETS_NAME || 'Sheet1'
-    const envRange = process.env.GOOGLE_SHEETS_RANGE
-
-    const hasEnvConfig = !!(envPrivateKey && envEmail && envSpreadsheetId)
-
-    // Se não tiver config do localStorage ou estiver incompleto, usar do servidor
-    if (hasEnvConfig && envPrivateKey && envEmail) {
-      // Criar config do servidor
-      const serverConfig = {
-        spreadsheetId: envSpreadsheetId,
-        sheetName: envSheetName,
-        range: envRange,
-        credentials: {
-          type: 'service_account',
-          private_key: formatPrivateKey(envPrivateKey),
-          client_email: envEmail,
-          token_uri: 'https://oauth2.googleapis.com/token',
-        },
-      }
-      
-      // Se não tiver config do cliente, usar o do servidor
-      // Se tiver config do cliente mas sem spreadsheetId, fazer merge com servidor
-      if (!territorioConfig) {
-        territorioConfig = serverConfig
-      } else if (!territorioConfig.spreadsheetId) {
-        // Merge: usar dados do servidor mas permitir override do cliente
-        territorioConfig = {
-          ...serverConfig,
-          ...territorioConfig,
-          spreadsheetId: serverConfig.spreadsheetId, // Garantir que sempre use do servidor se cliente não tem
+    try {
+      const { summaries } = await buildCitySummariesFromDb()
+      for (const [rawKey, summary] of summaries.entries()) {
+        const cidadeKey = normalizeCityName(rawKey)
+        if (!cidadeKey) continue
+        const legado = Number(summary.expectativaLegadoVotos || 0)
+        if (legado > 0) {
+          expectativaPorCidade[cidadeKey] = (expectativaPorCidade[cidadeKey] || 0) + legado
+        }
+        const liderancas = Number(summary.liderancas || 0)
+        if (liderancas > 0) {
+          liderancasPorCidade[cidadeKey] = (liderancasPorCidade[cidadeKey] || 0) + liderancas
+        }
+        if (!nomeOriginalCidade[cidadeKey]) {
+          nomeOriginalCidade[cidadeKey] = formatCityName(rawKey)
         }
       }
-    }
-
-    if (territorioConfig) {
-      try {
-        const config = territorioConfig
-        
-        // Validar que spreadsheetId existe
-        if (!config.spreadsheetId || !config.sheetName) {
-          // Sem spreadsheetId, não é possível buscar dados - pular silenciosamente
-          throw new Error('Configuração incompleta')
-        }
-        
-        // Validar formato das credenciais JSON
-        let credentialsObj
-        if (typeof config.credentials === 'object') {
-          credentialsObj = config.credentials
-        } else {
-          try {
-            credentialsObj = typeof config.credentials === 'string' 
-              ? JSON.parse(config.credentials) 
-              : config.credentials
-          } catch (e) {
-            throw new Error('Credenciais JSON inválidas')
-          }
-        }
-
-        // Importar googleapis dinamicamente
-        const { google } = await import('googleapis')
-
-        // Autenticar usando Service Account
-        const auth = new google.auth.GoogleAuth({
-          credentials: credentialsObj,
-          scopes: ['https://www.googleapis.com/auth/spreadsheets.readonly'],
-        })
-
-        const sheets = google.sheets({ version: 'v4', auth })
-        // Aspas simples só são necessárias quando há range de células
-        const rangeToRead = config.range 
-          ? (config.sheetName.includes(' ') ? `'${config.sheetName}'!${config.range}` : `${config.sheetName}!${config.range}`)
-          : config.sheetName
-
-        const response = await sheets.spreadsheets.values.get({
-          spreadsheetId: config.spreadsheetId,
-          range: rangeToRead,
-        })
-
-        const rows = response.data.values || []
-
-        if (rows.length > 0) {
-          const headers = rows[0].map((h: any) => String(h || '').trim())
-          
-          const liderancaAtualCol = headers.find((h) =>
-            /liderança atual|lideranca atual|atual\?/i.test(h)
-          )
-          const expectativaVotosCol = headers.find((h) => {
-            const normalized = h.toLowerCase().trim()
-            if (/jadyel|nome|pessoa|candidato/i.test(normalized)) {
-              return false
-            }
-            return /^expectativa\s+de\s+votos\s+2026$/i.test(h) || 
-                   /expectativa\s+de\s+votos\s+2026/i.test(h) ||
-                   (/expectativa.*votos.*2026/i.test(h) && !/jadyel|nome|pessoa|candidato/i.test(h))
-          })
-          const cidadeCol = headers.find((h) =>
-            /cidade|city|município|municipio/i.test(h)
-          ) || headers[1] || 'Coluna 2'
-
-          if (cidadeCol) {
-            const liderancas = rows.slice(1).map((row: any[]) => {
-              const record: Record<string, any> = {}
-              headers.forEach((header, index) => {
-                record[header] = row[index] || null
-              })
-              return record
-            })
-
-            // Filtrar lideranças (exclui LIDERANCA ATUAL = N/Não)
-            let liderancasFiltradas = liderancas
-            if (liderancaAtualCol || expectativaVotosCol) {
-              liderancasFiltradas = liderancas.filter((l) =>
-                deveIncluirLiderancaPlanilha(l, {
-                  liderancaAtualCol,
-                  colunasVotos: [expectativaVotosCol],
-                })
-              )
-            }
-
-            // Agrupar por cidade e somar expectativa + contar lideranças
-            liderancasFiltradas.forEach((lider) => {
-              const cidadeOriginal = String(lider[cidadeCol] || '').trim()
-              if (cidadeOriginal) {
-                // Normalizar para usar como chave
-                const cidadeKey = normalizeCityName(cidadeOriginal)
-                
-                // Guardar nome formatado para exibição (só se não existir)
-                if (!nomeOriginalCidade[cidadeKey]) {
-                  nomeOriginalCidade[cidadeKey] = formatCityName(cidadeOriginal)
-                }
-                
-                // Contar lideranças
-                liderancasPorCidade[cidadeKey] = (liderancasPorCidade[cidadeKey] || 0) + 1
-                
-                // Somar expectativa
-                if (expectativaVotosCol) {
-                  const expectativa = normalizeNumber(lider[expectativaVotosCol])
-                  if (expectativa > 0) {
-                    expectativaPorCidade[cidadeKey] = (expectativaPorCidade[cidadeKey] || 0) + expectativa
-                  }
-                }
-              }
-            })
-          }
-        }
-      } catch (error) {
-        console.error('Erro ao buscar dados do Território:', error)
-      }
+    } catch (error) {
+      console.error('Erro ao buscar expectativa de votos (territorio_liderancas):', error)
     }
 
     // 2. Buscar TODAS as agendas (não apenas concluídas)
@@ -505,7 +320,7 @@ export async function POST(request: Request) {
         expectativaVotos: Math.round(expectativa),
       }))
 
-    // Painel tela cheia: cruza TODOS os municípios do PI (mesma base do mapa Território) com previsão da planilha + visitas/check-ins de campo
+    // Painel tela cheia: cruza TODOS os municípios do PI com expectativa (DB Legado) + visitas/check-ins de campo
     const nomeCanonPorChave = new Map<string, string>()
     for (const m of municipiosPiaui as Array<{ nome: string }>) {
       const k = normalizeCityName(m.nome)
