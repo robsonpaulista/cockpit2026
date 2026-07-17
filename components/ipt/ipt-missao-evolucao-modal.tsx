@@ -313,7 +313,9 @@ export function IptMissaoEvolucaoModal({ open, onClose, municipios, refreshToken
                         style={{ background: cfg.cor }}
                         aria-hidden
                       />
-                      <strong>{cfg.titulo}</strong>
+                      <strong>
+                        Missão {cfg.tagline} - {cfg.titulo}
+                      </strong>
                       <span className="ipt-evolucao-modal__group-count">
                         {grupo.eventos.length} evento{grupo.eventos.length === 1 ? '' : 's'}
                       </span>
