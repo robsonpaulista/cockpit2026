@@ -31,6 +31,8 @@ import {
   iptMissaoConfig,
   missaoPrincipal,
   missoesDoMunicipio,
+  rotuloPosicaoPesquisa,
+  rotuloRelacaoExpectativaPesquisa,
   statusMissaoLinha,
   temExpectativa,
   type IptMissaoFiltro,
@@ -430,6 +432,19 @@ export function createIptPopupHtml(
     const cfg = iptMissaoConfig(missaoFiltro)
     const motivo = statusMissaoLinha(m, missaoFiltro)
     const expectativa = detalhePesoExpectativa(m)
+    const blocoPesquisa =
+      missaoFiltro === 'pesquisa'
+        ? `<div style="margin-top:10px;padding-top:9px;border-top:1px solid ${line};display:grid;gap:6px">
+            <div style="display:flex;justify-content:space-between;gap:10px;font-size:12px">
+              <span style="color:${muted}">Posição</span>
+              <strong style="color:${text};font-variant-numeric:tabular-nums">${escapeHtml(rotuloPosicaoPesquisa(m))}</strong>
+            </div>
+            <div style="display:flex;justify-content:space-between;gap:10px;font-size:12px">
+              <span style="color:${muted}">Exp. × pesquisa</span>
+              <strong style="color:${text};text-align:right;line-height:1.3">${escapeHtml(rotuloRelacaoExpectativaPesquisa(m))}</strong>
+            </div>
+          </div>`
+        : ''
     return `<div style="min-width:220px;max-width:300px;width:min(300px,90vw);font-family:system-ui,-apple-system,sans-serif;padding:12px 14px;color:${text};box-sizing:border-box" class="ipt-popup-root">
       <div style="font-weight:700;font-size:15px;letter-spacing:-0.02em;color:${text}">${escapeHtml(m.municipio)}</div>
       <div style="margin-top:4px;font-size:12px;line-height:1.35;color:${muted}">${escapeHtml(expectativa)}</div>
@@ -437,6 +452,7 @@ export function createIptPopupHtml(
         <div style="font-size:10px;font-weight:700;letter-spacing:0.05em;text-transform:uppercase;color:${cfg.corTexto}">${escapeHtml(cfg.titulo)}</div>
         <div style="margin-top:4px;font-size:12.5px;font-weight:600;color:${text};line-height:1.35">${escapeHtml(motivo)}</div>
       </div>
+      ${blocoPesquisa}
     </div>`
   }
 

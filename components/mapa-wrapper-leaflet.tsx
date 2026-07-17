@@ -10,6 +10,7 @@ import { buildIptMunicipiosComTooltipAutomatico, iptMarkerSize } from '@/lib/ipt
 import { iptZoomLevel } from '@/lib/ipt-chip'
 import { IPT_MAP_VIEW_PI, iptLatLngPointsFromMunicipios } from '@/lib/ipt-td'
 import { createIptMarkerHtml, createIptPopupHtml, createIptTooltipBasicoHtml } from '@/lib/ipt-popup'
+import { createIptPesquisaFullscreenChipHtml } from '@/lib/ipt-chip'
 import { hydrateIptPopupInsights } from '@/lib/ipt-popup-insights'
 
 // ========== Types ==========
@@ -78,6 +79,8 @@ interface MapWrapperProps {
   iptMunicipiosBounds?: IptMunicipio[]
   /** Modo missões do Diagnóstico Operacional — pins na cor da missão + multi-missão */
   iptMissaoFiltro?: import('@/lib/ipt-missoes').IptMissaoFiltro | null
+  /** Tela cheia do Mapa Estratégico — habilita labels extras (ex.: Missão Pesquisa) */
+  iptFullscreen?: boolean
   /** Recarrega IPT após salvar insight no popup */
   onIptInsightSaved?: () => void
   /** Município selecionado no mapa IPT (abre perfil demográfico) */
@@ -437,6 +440,7 @@ export function MapWrapperLeaflet({
   iptFiltroTd = null,
   iptMunicipiosBounds = EMPTY_IPT_BOUNDS,
   iptMissaoFiltro = null,
+  iptFullscreen = false,
   onIptInsightSaved,
   onIptMunicipioSelect,
   onIptMunicipioToggleFiltro,
@@ -576,6 +580,14 @@ export function MapWrapperLeaflet({
       map.on('zoomend', syncIptZoomClass)
       syncIptZoomClass()
 
+      const showPesquisaFullscreenLabels =
+        Boolean(iptFullscreen) && iptMissaoFiltro === 'pesquisa'
+      if (showPesquisaFullscreenLabels) {
+        mapContainer.classList.add('ipt-map--pesquisa-fs')
+      } else {
+        mapContainer.classList.remove('ipt-map--pesquisa-fs')
+      }
+
       // Clique no chip (tooltip interativo) → mesmo fluxo do marcador: perfil + popup.
       const onChipClick = (event: Event) => {
         const target = event.target
@@ -657,8 +669,22 @@ export function MapWrapperLeaflet({
         })
         marker.on('popupclose', () => clearIptFocus())
 
-        // Modo missões: só marcadores — labels permanentes geram sobreposição (bagunça visual).
-        if (iptMissaoFiltro == null && tooltipsAutomaticos.has(municipioKey)) {
+        // Modo missões: labels permanentes só em tela cheia da Missão Pesquisa
+        // (posição + expectativa × pesquisa). Nas demais missões, só marcadores.
+        if (showPesquisaFullscreenLabels) {
+          const chipHtml = createIptPesquisaFullscreenChipHtml(row, {
+            municipioKey,
+            animDelay,
+          })
+          marker.bindTooltip(chipHtml, {
+            permanent: true,
+            direction: 'top',
+            offset: [0, -(size / 2 + 6)],
+            className: 'ipt-chip-tooltip',
+            opacity: 1,
+            interactive: true,
+          })
+        } else if (iptMissaoFiltro == null && tooltipsAutomaticos.has(municipioKey)) {
           const chipHtml = createIptTooltipBasicoHtml(row, appearance, iptIndicadorFiltro, {
             municipioKey,
             animDelay,
@@ -712,7 +738,14 @@ export function MapWrapperLeaflet({
         mapContainer.removeEventListener('click', onChipClick, true)
         mapContainer.removeEventListener('dblclick', onChipDblClick, true)
         clearIptFocus()
-        mapContainer.classList.remove('ipt-map-mode', 'ipt-zoom-far', 'ipt-zoom-mid', 'ipt-zoom-near', 'ipt-map--focus')
+        mapContainer.classList.remove(
+          'ipt-map-mode',
+          'ipt-zoom-far',
+          'ipt-zoom-mid',
+          'ipt-zoom-near',
+          'ipt-map--focus',
+          'ipt-map--pesquisa-fs'
+        )
         invalidateDelays.forEach((id) => window.clearTimeout(id))
         resizeObserver?.disconnect()
         window.removeEventListener('resize', scheduleInvalidateSize)
@@ -1054,7 +1087,7 @@ export function MapWrapperLeaflet({
         statsCalculatedRef.current = false
       }
     }
-  }, [cidadesComPresenca, cidadesVisitadas, municipiosPiaui, eleitoresPorCidade, onStatsCalculated, appearance, showRegionLabels, compactMarkers, iptMunicipios, iptIndicadorFiltro, iptEvolucaoFiltro, iptMissaoFiltro])
+  }, [cidadesComPresenca, cidadesVisitadas, municipiosPiaui, eleitoresPorCidade, onStatsCalculated, appearance, showRegionLabels, compactMarkers, iptMunicipios, iptIndicadorFiltro, iptEvolucaoFiltro, iptMissaoFiltro, iptFullscreen])
 
   // ========== Handle filter changes ==========
   useEffect(() => {

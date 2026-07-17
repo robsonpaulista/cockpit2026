@@ -33,7 +33,7 @@ export function IptMapSection({
   filtroTd = null,
   municipiosBoundsTd = IPT_MUNICIPIOS_BOUNDS_VAZIOS,
   missaoFiltro = null,
-  isFullscreen: _isFullscreen = false,
+  isFullscreen = false,
   onInsightSaved,
   onMunicipioSelect,
   onMunicipioToggleFiltro,
@@ -54,6 +54,7 @@ export function IptMapSection({
         iptFiltroTd={filtroTd}
         iptMunicipiosBounds={municipiosBoundsTd}
         iptMissaoFiltro={missaoFiltro}
+        iptFullscreen={isFullscreen}
         onIptInsightSaved={onInsightSaved}
         onIptMunicipioSelect={onMunicipioSelect}
         onIptMunicipioToggleFiltro={onMunicipioToggleFiltro}

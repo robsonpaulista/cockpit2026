@@ -182,6 +182,44 @@ export function votosProjetadosPesquisa(m: IptMunicipio): number | null {
   return Math.round((eleitorado * m.detalhes.pesquisaMediaPct) / 100)
 }
 
+/** Posição na pesquisa (mesma leitura da lista da Missão Pesquisa). */
+export function rotuloPosicaoPesquisa(m: IptMunicipio): string {
+  if (m.detalhes.pesquisaPosicaoTop5 != null) {
+    return `${m.detalhes.pesquisaPosicaoTop5}º`
+  }
+  if (
+    m.sinais.pesquisa === 'sem_dado' ||
+    (m.detalhes.pesquisaTop5.length === 0 && m.detalhes.pesquisaMediaPct == null)
+  ) {
+    return 'Sem dado'
+  }
+  return 'Fora do Top 5'
+}
+
+/**
+ * Relação votos projetados (pesquisa) × expectativa 2026.
+ * Usado no mapa em tela cheia e no popup da Missão Pesquisa.
+ */
+export function rotuloRelacaoExpectativaPesquisa(m: IptMunicipio): string {
+  const projetados = votosProjetadosPesquisa(m)
+  const exp = m.expectativaVotos
+  const mediaLabel =
+    m.detalhes.pesquisaMediaPct != null
+      ? `${m.detalhes.pesquisaMediaPct.toLocaleString('pt-BR', { maximumFractionDigits: 1 })}%`
+      : null
+
+  if (projetados == null || exp <= 0) {
+    if (mediaLabel) return `${mediaLabel} válidos · sem cruzamento`
+    return 'Sem cruzamento com expectativa'
+  }
+
+  const projLabel = projetados.toLocaleString('pt-BR')
+  const expLabel = exp.toLocaleString('pt-BR')
+  if (projetados < exp) return `${projLabel} proj. · abaixo de ${expLabel}`
+  if (projetados > exp) return `${projLabel} proj. · acima de ${expLabel}`
+  return `${projLabel} proj. · alinhado a ${expLabel}`
+}
+
 export function municipioNaMissaoDigital(m: IptMunicipio): boolean {
   if (!temExpectativa(m)) return false
   if (!iptAltaExpectativa(m) && m.pesoExpectativaPct < 1) return false

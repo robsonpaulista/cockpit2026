@@ -147,6 +147,11 @@ export function ResumoLiderancasCrudModal({
     )
   }, [rows, cenarioVotos])
 
+  const totalExpectativa = useMemo(
+    () => ordenadas.reduce((acc, row) => acc + valorCenario(row, cenarioVotos), 0),
+    [ordenadas, cenarioVotos],
+  )
+
   const iniciarCriacao = () => {
     setCreating(true)
     setEditingId(null)
@@ -441,6 +446,17 @@ export function ResumoLiderancasCrudModal({
                   )
                 })}
               </tbody>
+              <tfoot>
+                <tr className="border-t border-card bg-background/90 font-semibold text-text-primary">
+                  <td className="px-2 py-1.5" colSpan={2}>
+                    TOTAL
+                  </td>
+                  <td className="px-2 py-1.5 text-right tabular-nums">
+                    {totalExpectativa.toLocaleString('pt-BR')}
+                  </td>
+                  <td className="px-2 py-1.5" aria-hidden />
+                </tr>
+              </tfoot>
             </table>
           )}
         </div>

@@ -13,6 +13,10 @@ import {
   type IptEvolucao,
   type IptEvolucaoFiltro,
 } from '@/lib/ipt-evolucao'
+import {
+  rotuloPosicaoPesquisa,
+  rotuloRelacaoExpectativaPesquisa,
+} from '@/lib/ipt-missoes'
 
 export type IptChipZoom = 'far' | 'mid' | 'near'
 
@@ -212,6 +216,32 @@ export function createIptChipHtml(
   return `<div class="ipt-chip ipt-chip--enter" data-ipt-municipio="${escapeHtml(key)}" style="--ipt-chip-delay:${delay}ms;--ipt-chip-bg:${theme.bg};--ipt-chip-text:${theme.text};--ipt-chip-sub:${theme.sub};--ipt-chip-border:${theme.border};--ipt-chip-dot:${theme.dot}">
     <div class="ipt-chip__nome">${escapeHtml(m.municipio)}</div>
     <div class="ipt-chip__linha">${linha}</div>
+  </div>`
+}
+
+/** Chip permanente no mapa (tela cheia · Missão Pesquisa): posição + expectativa × pesquisa. */
+export function createIptPesquisaFullscreenChipHtml(
+  m: IptMunicipio,
+  opts?: { municipioKey?: string; animDelay?: number }
+): string {
+  const theme = SINAL_THEME[m.sinais.pesquisa] ?? SINAL_THEME.sem_dado
+  const pos = rotuloPosicaoPesquisa(m)
+  const media =
+    m.detalhes.pesquisaPosicaoTop5 != null && m.detalhes.pesquisaMediaPct != null
+      ? `${m.detalhes.pesquisaMediaPct.toLocaleString('pt-BR', { maximumFractionDigits: 1 })}%`
+      : null
+  const posLinha = media ? `${pos} · ${media}` : pos
+  const relacao = rotuloRelacaoExpectativaPesquisa(m)
+  const key = opts?.municipioKey ?? m.municipio
+  const delay = opts?.animDelay ?? 0
+
+  return `<div class="ipt-chip ipt-chip--enter ipt-chip--pesquisa" data-ipt-municipio="${escapeHtml(key)}" style="--ipt-chip-delay:${delay}ms;--ipt-chip-bg:${theme.bg};--ipt-chip-text:${theme.text};--ipt-chip-sub:${theme.sub};--ipt-chip-border:${theme.border};--ipt-chip-dot:${theme.dot}">
+    <div class="ipt-chip__nome">${escapeHtml(m.municipio)}</div>
+    <div class="ipt-chip__linha">
+      <span class="ipt-chip-item"><span class="ipt-chip-item__txt">${escapeHtml(posLinha)}</span></span>
+      <span class="ipt-chip-sep" aria-hidden="true"></span>
+      <span class="ipt-chip-item"><span class="ipt-chip-item__txt">${escapeHtml(relacao)}</span></span>
+    </div>
   </div>`
 }
 

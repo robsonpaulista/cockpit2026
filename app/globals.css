@@ -1244,6 +1244,11 @@ table.td-resumo-table--premium .td-resumo-table__rank--first {
   font-size: 9px;
 }
 
+/* Em tela cheia da Missão Pesquisa, mantém posição + relação mesmo no zoom afastado. */
+.leaflet-container.ipt-map-mode.ipt-map--pesquisa-fs.ipt-zoom-far .ipt-chip__linha {
+  display: inline-flex;
+}
+
 .leaflet-container.ipt-map-mode.ipt-map--focus .ipt-chip:not(.ipt-chip--active) {
   opacity: 0.42;
   transition: opacity var(--ipt-chip-enter-ms) ease;
@@ -1315,6 +1320,17 @@ table.td-resumo-table--premium .td-resumo-table__rank--first {
   white-space: nowrap;
   width: max-content;
   max-width: none;
+}
+
+.ipt-chip--pesquisa {
+  max-width: 240px;
+}
+
+.ipt-chip--pesquisa .ipt-chip__linha {
+  flex-wrap: wrap;
+  white-space: normal;
+  row-gap: 2px;
+  max-width: 220px;
 }
 
 .ipt-chip-item {
