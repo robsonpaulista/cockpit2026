@@ -10,6 +10,7 @@ export function getCockpitPageLabel(pathname: string): string {
   if (p.startsWith('/dashboard/territorio/mapa-tds')) return 'Mapa TDs'
   if (p.startsWith('/dashboard/mobilizacao/mapa-digital-ig')) return 'Engajamento Líderes'
   if (p.startsWith('/dashboard/noticias/monitoramento')) return 'Monitoramento'
+  if (p.startsWith('/dashboard/radar-224')) return 'Radar 224'
   if (p.startsWith('/dashboard/conteudo/redes')) return 'Instagram'
   if (p.startsWith('/dashboard/conteudo/obras')) return 'Obras cards'
   if (p.startsWith('/dashboard/conteudo/agenda')) return 'Agenda campo'

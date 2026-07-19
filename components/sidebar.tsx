@@ -171,7 +171,7 @@ function pageKeyForItem(id: string): string {
   ) {
     return 'conteudo'
   }
-  if (id === 'noticias-menu') {
+  if (id === 'noticias-menu' || id === 'noticias-monitoramento' || id === 'radar-224') {
     return 'noticias'
   }
   if (id === 'territorio-ipt') return 'ipt'
@@ -871,7 +871,8 @@ export function Sidebar() {
                   : item.id === 'ficha-atendimento'
                       ? pathname.startsWith('/dashboard/ficha-atendimento')
                       : item.id === 'noticias-menu'
-                        ? pathname.startsWith('/dashboard/noticias')
+                        ? pathname.startsWith('/dashboard/noticias') ||
+                          pathname.startsWith('/dashboard/radar-224')
                         : pathname === item.href
 
                 return (

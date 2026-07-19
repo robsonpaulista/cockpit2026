@@ -30,6 +30,7 @@ const pathToTitle: Record<string, string> = {
   '/dashboard/conteudo': 'Redes Sociais',
   '/dashboard/noticias': 'Radar eleitoral',
   '/dashboard/noticias/monitoramento': 'Radar eleitoral',
+  '/dashboard/radar-224': 'Radar 224',
   '/dashboard/mobilizacao': 'Mobilização',
   '/dashboard/mobilizacao/config': 'Mobilização · Config',
   '/dashboard/mobilizacao/mapa-digital-ig': 'Central de monitoramento · Engajamento Líderes',

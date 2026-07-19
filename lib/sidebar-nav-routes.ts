@@ -116,6 +116,20 @@ export const SIDEBAR_MENU_ITEMS: SidebarMenuItemConfig[] = [
     label: 'Radar Eleitoral',
     icon: 'Radar',
     href: '/dashboard/noticias/monitoramento',
+    children: [
+      {
+        id: 'noticias-monitoramento',
+        label: 'Monitoramento',
+        icon: 'Activity',
+        href: '/dashboard/noticias/monitoramento',
+      },
+      {
+        id: 'radar-224',
+        label: 'Radar 224',
+        icon: 'MapPinned',
+        href: '/dashboard/radar-224',
+      },
+    ],
   },
   {
     id: 'mobilizacao-menu',
@@ -214,7 +228,9 @@ const EXTRA_ALIASES: Record<string, string[]> = {
   'conteudo-analise': ['analise conteudo'],
   'conteudo-redes': ['instagram', 'redes sociais', 'redes instagram'],
   noticias: ['noticias', 'crises', 'noticias e crises', 'radar'],
-  'noticias-menu': ['noticias', 'crises', 'radar', 'engajamento lideres', 'exercito digital', 'mapa ig'],
+  'noticias-menu': ['noticias', 'crises', 'radar', 'radar 224', 'engajamento lideres', 'exercito digital', 'mapa ig'],
+  'noticias-monitoramento': ['monitoramento', 'google alerts', 'panorama', 'radar eleitoral'],
+  'radar-224': ['radar 224', 'radar municipios', 'cobertura noticias', 'fontes regionais'],
   'noticias-youtube': ['youtube', 'radar youtube', 'menções youtube'],
   'mobilizacao-captacao': ['captacao', 'mobilizacao captacao'],
   'mobilizacao-config': ['config mobilizacao', 'mobilizacao config'],

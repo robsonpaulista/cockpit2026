@@ -88,7 +88,7 @@ export const IPT_MISSOES: IptMissaoConfig[] = [
     label: 'MISSÃO OBRAS',
     titulo: 'Onde acelerar',
     tagline: 'Obras',
-    descricao: 'Entregas e obras ainda não se converteram em percepção no território.',
+    descricao: 'Obras e entregas relevantes com baixa repercussão.',
     cor: '#666666',
     corSuave: '#ebebeb',
     corTexto: '#666666',
@@ -868,6 +868,32 @@ export function frasePorQueMissao(m: IptMunicipio, missao: IptMissaoId): string 
     return `${m.municipio} concentra oportunidade territorial com presença digital abaixo do esperado.`
   }
   return `${m.municipio} concentra entregas e obras com aproveitamento ainda limitado no território.`
+}
+
+/**
+ * Motivo de inclusão em uma linha — para o destaque no detalhe do município.
+ * Ex.: "alta expectativa com baixa cobertura de campo."
+ */
+export function motivoInclusaoCurto(m: IptMunicipio, missao: IptMissaoId): string {
+  if (missao === 'expectativa') {
+    if (!temExpectativa(m)) {
+      return 'ainda sem expectativa de votos 2026 cadastrada.'
+    }
+    return `expectativa de ${m.expectativaVotos.toLocaleString('pt-BR')} votos cadastrada.`
+  }
+  if (missao === 'campo') {
+    return 'alta expectativa com baixa cobertura de campo.'
+  }
+  if (missao === 'pesquisa') {
+    if (m.sinais.pesquisa === 'sem_dado') {
+      return 'potencial eleitoral sem pesquisa cadastrada para acompanhar.'
+    }
+    return 'pesquisa ainda não acompanha o potencial eleitoral.'
+  }
+  if (missao === 'digital') {
+    return 'oportunidade territorial com presença digital abaixo do esperado.'
+  }
+  return 'obras e entregas relevantes com baixa repercussão.'
 }
 
 /** Resumo diagnóstico curto no cabeçalho do município. */

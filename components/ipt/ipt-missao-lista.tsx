@@ -19,6 +19,10 @@ import {
 } from '@/lib/ipt-missoes'
 import { formatObrasValorAbreviado, type IptMunicipio } from '@/lib/ipt'
 import { cn } from '@/lib/utils'
+import {
+  IptTerritorioVisaoToggle,
+  type IptTerritorioVisao,
+} from '@/components/ipt/ipt-territorio-visao-toggle'
 
 type Props = {
   municipios: IptMunicipio[]
@@ -32,6 +36,10 @@ type Props = {
   /** Duplo clique: aplica/limpa o filtro de município na página. */
   onToggleFiltro?: (municipio: string) => void
   podeVerExpectativa?: boolean
+  visaoTerritorio?: IptTerritorioVisao
+  onVisaoTerritorioChange?: (visao: IptTerritorioVisao) => void
+  /** Sem card próprio — usado dentro de ipt-bloco-territorio. */
+  embedded?: boolean
 }
 
 function formatExpectativa(n: number): string {
@@ -133,6 +141,9 @@ export function IptMissaoLista({
   onSelect,
   onToggleFiltro,
   podeVerExpectativa = false,
+  visaoTerritorio,
+  onVisaoTerritorioChange,
+  embedded = false,
 }: Props) {
   const missaoLista: IptMissaoId | null =
     missaoAtiva === 'todas' ? null : missaoAtiva
@@ -157,7 +168,9 @@ export function IptMissaoLista({
   return (
     <section
       className={cn(
-        'ipt-bloco ipt-bloco-lista',
+        !embedded && 'ipt-bloco',
+        'ipt-bloco-lista',
+        embedded && 'ipt-bloco-lista--embedded',
         missaoAtiva !== 'todas' && 'ipt-bloco-lista--missao',
         visaoUniverso === 'com_expectativa' && 'ipt-bloco-lista--universo',
         isDigital && 'ipt-bloco-lista--digital'
@@ -177,6 +190,12 @@ export function IptMissaoLista({
           </p>
         </div>
         <div className="ipt-bloco-lista__head-actions">
+          {visaoTerritorio && onVisaoTerritorioChange ? (
+            <IptTerritorioVisaoToggle
+              value={visaoTerritorio}
+              onChange={onVisaoTerritorioChange}
+            />
+          ) : null}
           {mostrarUniversoToggle ? (
             <button
               type="button"

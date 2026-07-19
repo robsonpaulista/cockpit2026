@@ -52,6 +52,7 @@ function getPageKey(pathname: string): string | null {
   // em `pageKeyForItem`). Anteriormente esta rota era tratada como 'juridico',
   // o que fazia o guard redirecionar para /dashboard quando o usuário tinha
   // apenas 'emendas' liberado nas permissões.
+  if (pathname.startsWith('/dashboard/radar-224')) return 'noticias'
   if (pathname.startsWith('/dashboard/emendas')) return 'emendas'
   if (pathname.startsWith('/dashboard/ficha-atendimento')) return 'ficha-atendimento'
   if (pathname.startsWith('/dashboard/resumo-eleicoes')) return 'resumo-eleicoes'

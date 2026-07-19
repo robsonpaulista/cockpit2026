@@ -5,7 +5,6 @@ export const SIDEBAR_HIDDEN_MENU_IDS = new Set([
   'pesquisa',
   'chapas-menu',
   'resumo-eleicoes-menu',
-  'noticias-menu',
   'conteudo-menu',
   'agenda',
   'gestao-pesquisas-menu',

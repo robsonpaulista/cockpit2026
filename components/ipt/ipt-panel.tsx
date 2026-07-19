@@ -16,6 +16,11 @@ import { IptExecutiveBanner } from '@/components/ipt/ipt-executive-banner'
 import { IptMissoesStrip } from '@/components/ipt/ipt-missoes-strip'
 import { IptMissaoLista } from '@/components/ipt/ipt-missao-lista'
 import { IptMissaoDetalhe } from '@/components/ipt/ipt-missao-detalhe'
+import { IptRadarNoticias } from '@/components/ipt/ipt-radar-noticias'
+import {
+  IptTerritorioVisaoToggle,
+  type IptTerritorioVisao,
+} from '@/components/ipt/ipt-territorio-visao-toggle'
 import { IptResumoCampanhaBar } from '@/components/ipt/ipt-resumo-campanha-bar'
 import { IptTdSelect } from '@/components/ipt/ipt-td-select'
 import { IptMunicipioSelect } from '@/components/ipt/ipt-municipio-select'
@@ -80,6 +85,8 @@ const IptMapSection = dynamic(
 export function IptPanel() {
   const mapContainerRef = useRef<HTMLDivElement>(null)
   const [isNativeFullscreen, setIsNativeFullscreen] = useState(false)
+  /** Visão da coluna território: tabela (principal) ou mapa. */
+  const [visaoTerritorio, setVisaoTerritorio] = useState<IptTerritorioVisao>('lista')
   const [missaoAtiva, setMissaoAtiva] = useState<IptMissaoFiltro>('expectativa')
   const [visaoUniverso, setVisaoUniverso] = useState<IptVisaoUniverso>('prioridade')
   const [filtroTd, setFiltroTd] = useState<TerritorioDesenvolvimentoPI | null>(null)
@@ -496,182 +503,213 @@ export function IptPanel() {
               loading={loading}
               onSelect={handleMissaoSelect}
             />
+            <p className="ipt-fluxo-hint">
+              Selecione uma missão para identificar os municípios relacionados e aprofundar o
+              contexto local.
+            </p>
           </>
         ) : null}
 
         <div
           ref={mapContainerRef}
           className={cn(
-            'ipt-operacional__trio',
-            missaoAtiva !== 'todas' && 'ipt-operacional__trio--missao',
-            Boolean(escopoMunicipio) && 'ipt-operacional__trio--muni',
-            isNativeFullscreen && 'ipt-operacional__trio--fullscreen'
+            'ipt-operacional__workspace',
+            isNativeFullscreen && 'ipt-operacional__workspace--fullscreen'
           )}
         >
-          <section className="ipt-bloco ipt-bloco-mapa">
-            <div className="ipt-bloco-mapa__head">
-              <div className="ipt-bloco-mapa__intro">
-                <h2 className="ipt-bloco__title">Mapa Estratégico</h2>
-                <p className="ipt-bloco__sub">
-                  {escopoMunicipio
-                    ? `Foco em ${escopoMunicipio}${
-                        missoesDoEscopo.length > 0
-                          ? ` · ${missoesDoEscopo
-                              .map((id) => iptMissaoConfig(id).titulo)
-                              .join(', ')}`
-                          : ' · fora das missões críticas'
-                      }`
-                    : visaoUniverso === 'com_expectativa'
-                      ? missaoAtiva === 'expectativa'
-                        ? 'Mapa com todos os municípios — com e sem expectativa 2026'
-                        : 'Mapa com todos os municípios que têm expectativa 2026 (prioridades e saudáveis)'
-                      : missaoAtiva === 'todas'
-                        ? 'Visão geral dos municípios da campanha'
-                        : `Exibindo municípios da missão ${iptMissaoConfig(missaoAtiva).titulo}`}
-                </p>
-                <span className="ipt-bloco-mapa__seal">
-                  {visaoUniverso === 'com_expectativa' && missaoAtiva === 'expectativa'
-                    ? 'Onde a campanha tem — e ainda não tem — expectativa de votos 2026'
-                    : microcopyMapaMissao(missaoAtiva)}
-                </span>
-              </div>
-            </div>
-
-            <div className="ipt-bloco-mapa__body">
-              {loading ? (
-                <div className="ipt-operacional__map-loading">
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden />
-                  Calculando missões…
-                </div>
-              ) : (
-                <IptMapSection
-                  municipios={municipiosVisao}
-                  indicadorFiltro={indicadorMapa}
-                  evolucaoFiltro="todos"
-                  filtroTd={filtroTd}
-                  municipiosBoundsTd={municipiosVisao}
-                  missaoFiltro={missaoAtiva}
-                  isFullscreen={isNativeFullscreen}
-                  onInsightSaved={recarregar}
-                  onMunicipioSelect={handleMunicipioSelect}
-                  onMunicipioToggleFiltro={handleMunicipioToggleFiltro}
-                />
-              )}
-
-              <div
-                className="ipt-mapa-legenda"
-                role="radiogroup"
-                aria-label="Filtrar mapa por missão"
+          <div className="ipt-operacional__col ipt-operacional__col--territorio">
+            {!isNativeFullscreen && visaoTerritorio === 'lista' ? (
+              <section
+                className={cn(
+                  'ipt-bloco ipt-bloco-territorio',
+                  Boolean(escopoMunicipio) && 'ipt-bloco-territorio--muni-foco'
+                )}
               >
+                <IptMissaoLista
+                  municipios={municipiosVisao}
+                  missaoAtiva={missaoAtiva}
+                  visaoUniverso={visaoUniverso}
+                  onVisaoUniversoChange={setVisaoUniverso}
+                  selecionado={municipioSelecionado}
+                  municipioFiltro={escopoMunicipio}
+                  onSelect={handleMunicipioSelect}
+                  onToggleFiltro={handleMunicipioToggleFiltro}
+                  podeVerExpectativa={podeVerExpectativa}
+                  visaoTerritorio={visaoTerritorio}
+                  onVisaoTerritorioChange={setVisaoTerritorio}
+                  embedded
+                />
+                <IptMissaoDetalhe
+                  municipio={municipioDetalhe}
+                  missaoAtiva={missaoAtiva}
+                  podeVerExpectativa={podeVerExpectativa}
+                  obras={obras}
+                  embedded
+                  onClear={
+                    escopoMunicipio
+                      ? () => aplicarFiltroMunicipio(null)
+                      : municipioDetalhe
+                        ? () => setMunicipioSelecionado(null)
+                        : undefined
+                  }
+                />
+              </section>
+            ) : null}
+
+            {isNativeFullscreen || visaoTerritorio === 'mapa' ? (
+            <section className="ipt-bloco ipt-bloco-mapa">
+              <div className="ipt-bloco-mapa__head">
+                <div className="ipt-bloco-mapa__intro">
+                  <h2 className="ipt-bloco__title">Mapa Estratégico</h2>
+                  <p className="ipt-bloco__sub">
+                    {escopoMunicipio
+                      ? `Foco em ${escopoMunicipio}${
+                          missoesDoEscopo.length > 0
+                            ? ` · ${missoesDoEscopo
+                                .map((id) => iptMissaoConfig(id).titulo)
+                                .join(', ')}`
+                            : ' · fora das missões críticas'
+                        }`
+                      : visaoUniverso === 'com_expectativa'
+                        ? missaoAtiva === 'expectativa'
+                          ? 'Mapa com todos os municípios — com e sem expectativa 2026'
+                          : 'Mapa com todos os municípios que têm expectativa 2026 (prioridades e saudáveis)'
+                        : missaoAtiva === 'todas'
+                          ? 'Visão geral dos municípios da campanha'
+                          : `Exibindo municípios da missão ${iptMissaoConfig(missaoAtiva).titulo}`}
+                  </p>
+                  <span className="ipt-bloco-mapa__seal">
+                    {visaoUniverso === 'com_expectativa' && missaoAtiva === 'expectativa'
+                      ? 'Onde a campanha tem — e ainda não tem — expectativa de votos 2026'
+                      : microcopyMapaMissao(missaoAtiva)}
+                  </span>
+                </div>
+                {!isNativeFullscreen ? (
+                  <IptTerritorioVisaoToggle
+                    value={visaoTerritorio}
+                    onChange={setVisaoTerritorio}
+                    className="ipt-territorio-visao--in-mapa"
+                  />
+                ) : null}
+              </div>
+
+              <div className="ipt-bloco-mapa__body">
+                {loading ? (
+                  <div className="ipt-operacional__map-loading">
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden />
+                    Calculando missões…
+                  </div>
+                ) : (
+                  <IptMapSection
+                    municipios={municipiosVisao}
+                    indicadorFiltro={indicadorMapa}
+                    evolucaoFiltro="todos"
+                    filtroTd={filtroTd}
+                    municipiosBoundsTd={municipiosVisao}
+                    missaoFiltro={missaoAtiva}
+                    isFullscreen={isNativeFullscreen}
+                    onInsightSaved={recarregar}
+                    onMunicipioSelect={handleMunicipioSelect}
+                    onMunicipioToggleFiltro={handleMunicipioToggleFiltro}
+                  />
+                )}
+
+                <div
+                  className="ipt-mapa-legenda"
+                  role="radiogroup"
+                  aria-label="Filtrar mapa por missão"
+                >
+                  <button
+                    type="button"
+                    role="radio"
+                    aria-checked={missaoAtiva === 'todas'}
+                    disabled={loading}
+                    className={cn(
+                      'ipt-mapa-legenda__item',
+                      missaoAtiva === 'todas' && 'ipt-mapa-legenda__item--active'
+                    )}
+                    onClick={() => setMissaoAtiva('todas')}
+                  >
+                    <span
+                      className="ipt-mapa-legenda__dot ipt-mapa-legenda__dot--todas"
+                      aria-hidden
+                    />
+                    <span className="ipt-mapa-legenda__label">Todas</span>
+                    <span className="ipt-mapa-legenda__count tabular-nums">
+                      {escopoMunicipio
+                        ? municipiosVisao.length
+                        : municipiosEmMissaoTodas.length}
+                    </span>
+                  </button>
+                  {IPT_MISSOES.map((m) => {
+                    const ativo = missaoAtiva === m.id
+                    const cidadeNaMissao =
+                      Boolean(escopoMunicipio) && missoesDoEscopo.includes(m.id)
+                    const qtd = escopoMunicipio
+                      ? cidadeNaMissao
+                        ? 1
+                        : 0
+                      : contagem[m.id]
+                    return (
+                      <button
+                        key={m.id}
+                        type="button"
+                        role="radio"
+                        aria-checked={ativo}
+                        disabled={loading}
+                        title={
+                          ativo
+                            ? 'Clique para limpar o filtro'
+                            : `Filtrar mapa: ${m.titulo}`
+                        }
+                        className={cn(
+                          'ipt-mapa-legenda__item',
+                          ativo && 'ipt-mapa-legenda__item--active',
+                          cidadeNaMissao && 'ipt-mapa-legenda__item--muni'
+                        )}
+                        style={
+                          {
+                            '--missao-cor': m.cor,
+                            '--missao-tint': m.corTint,
+                            '--missao-texto': m.corTexto,
+                          } as CSSProperties
+                        }
+                        onClick={() => handleMissaoSelect(m.id)}
+                      >
+                        <span
+                          className="ipt-mapa-legenda__dot"
+                          style={{ background: m.cor }}
+                          aria-hidden
+                        />
+                        <span className="ipt-mapa-legenda__label">{m.titulo}</span>
+                        <span className="ipt-mapa-legenda__count tabular-nums">{qtd}</span>
+                      </button>
+                    )
+                  })}
+                </div>
+
                 <button
                   type="button"
-                  role="radio"
-                  aria-checked={missaoAtiva === 'todas'}
+                  onClick={toggleFullscreen}
+                  className="ipt-mapa-fullscreen"
+                  title={isNativeFullscreen ? 'Sair da tela cheia' : 'Tela cheia'}
                   disabled={loading}
-                  className={cn(
-                    'ipt-mapa-legenda__item',
-                    missaoAtiva === 'todas' && 'ipt-mapa-legenda__item--active'
-                  )}
-                  onClick={() => setMissaoAtiva('todas')}
                 >
-                  <span
-                    className="ipt-mapa-legenda__dot ipt-mapa-legenda__dot--todas"
-                    aria-hidden
-                  />
-                  <span className="ipt-mapa-legenda__label">Todas</span>
-                  <span className="ipt-mapa-legenda__count tabular-nums">
-                    {escopoMunicipio
-                      ? municipiosVisao.length
-                      : municipiosEmMissaoTodas.length}
-                  </span>
+                  <CockpitIcon icon={isNativeFullscreen ? Minimize2 : Maximize2} size="sm" />
+                  {isNativeFullscreen ? 'Sair' : 'Tela cheia'}
                 </button>
-                {IPT_MISSOES.map((m) => {
-                  const ativo = missaoAtiva === m.id
-                  const cidadeNaMissao =
-                    Boolean(escopoMunicipio) && missoesDoEscopo.includes(m.id)
-                  const qtd = escopoMunicipio
-                    ? cidadeNaMissao
-                      ? 1
-                      : 0
-                    : contagem[m.id]
-                  return (
-                    <button
-                      key={m.id}
-                      type="button"
-                      role="radio"
-                      aria-checked={ativo}
-                      disabled={loading}
-                      title={
-                        ativo
-                          ? 'Clique para limpar o filtro'
-                          : `Filtrar mapa: ${m.titulo}`
-                      }
-                      className={cn(
-                        'ipt-mapa-legenda__item',
-                        ativo && 'ipt-mapa-legenda__item--active',
-                        cidadeNaMissao && 'ipt-mapa-legenda__item--muni'
-                      )}
-                      style={
-                        {
-                          '--missao-cor': m.cor,
-                          '--missao-tint': m.corTint,
-                          '--missao-texto': m.corTexto,
-                        } as CSSProperties
-                      }
-                      onClick={() => handleMissaoSelect(m.id)}
-                    >
-                      <span
-                        className="ipt-mapa-legenda__dot"
-                        style={{ background: m.cor }}
-                        aria-hidden
-                      />
-                      <span className="ipt-mapa-legenda__label">{m.titulo}</span>
-                      <span className="ipt-mapa-legenda__count tabular-nums">{qtd}</span>
-                    </button>
-                  )
-                })}
               </div>
-
-              <button
-                type="button"
-                onClick={toggleFullscreen}
-                className="ipt-mapa-fullscreen"
-                title={isNativeFullscreen ? 'Sair da tela cheia' : 'Tela cheia'}
-                disabled={loading}
-              >
-                <CockpitIcon icon={isNativeFullscreen ? Minimize2 : Maximize2} size="sm" />
-                {isNativeFullscreen ? 'Sair' : 'Tela cheia'}
-              </button>
-            </div>
-          </section>
+            </section>
+            ) : null}
+          </div>
 
           {!isNativeFullscreen ? (
-            <>
-              <IptMissaoLista
-                municipios={municipiosVisao}
-                missaoAtiva={missaoAtiva}
-                visaoUniverso={visaoUniverso}
-                onVisaoUniversoChange={setVisaoUniverso}
-                selecionado={municipioSelecionado}
-                municipioFiltro={escopoMunicipio}
-                onSelect={handleMunicipioSelect}
-                onToggleFiltro={handleMunicipioToggleFiltro}
-                podeVerExpectativa={podeVerExpectativa}
+            <div className="ipt-operacional__col ipt-operacional__col--noticias">
+              <IptRadarNoticias
+                municipio={municipioSelecionado}
+                entregasMandato={municipioDetalhe?.detalhes.obrasQuantidade ?? 0}
               />
-              <IptMissaoDetalhe
-                municipio={municipioDetalhe}
-                missaoAtiva={missaoAtiva}
-                podeVerExpectativa={podeVerExpectativa}
-                obras={obras}
-                onClear={
-                  escopoMunicipio
-                    ? () => aplicarFiltroMunicipio(null)
-                    : municipioDetalhe
-                      ? () => setMunicipioSelecionado(null)
-                      : undefined
-                }
-              />
-            </>
+            </div>
           ) : null}
         </div>
 

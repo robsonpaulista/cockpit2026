@@ -61,117 +61,136 @@ export function IptMissoesStrip({
 
   const mudancasModal = modalMissao ? variacoes[modalMissao]?.mudancas ?? [] : []
 
+  const renderCard = (missao: (typeof IPT_MISSOES)[number], opts?: { base?: boolean }) => {
+    const Icon = MISSAO_ICONE[missao.id]
+    const qtd = contagem[missao.id]
+    const ativo = missaoAtiva === missao.id
+    const cidadeNesta = temMuni && missoesDoMunicipio.includes(missao.id)
+    const spark = SPARK[missao.id]
+    const sparkMax = Math.max(...spark)
+    const vazia = qtd === 0
+    const variacao = variacoes[missao.id]
+    const enrich = enrichMissaoCard(missao.id, municipios, qtd, variacao)
+    return (
+      <button
+        key={missao.id}
+        type="button"
+        disabled={loading}
+        onClick={() => onSelect(missao.id)}
+        className={cn(
+          'ipt-missao-card',
+          opts?.base && 'ipt-missao-card--base',
+          ativo && 'ipt-missao-card--active',
+          temFiltro && !ativo && 'ipt-missao-card--muted',
+          temMuni && !cidadeNesta && 'ipt-missao-card--fora-muni',
+          cidadeNesta && 'ipt-missao-card--na-muni',
+          vazia && 'ipt-missao-card--empty'
+        )}
+        style={
+          {
+            '--missao-cor': missao.cor,
+            '--missao-suave': missao.corSuave,
+            '--missao-texto': missao.corTexto,
+            '--missao-tint': missao.corTint,
+          } as CSSProperties
+        }
+        title={
+          temMuni
+            ? cidadeNesta
+              ? `${municipioFiltro} está nesta missão`
+              : `${municipioFiltro} não está nesta missão`
+            : undefined
+        }
+      >
+        <div className="ipt-missao-card__spark" aria-hidden>
+          {spark.map((v, i) => (
+            <span
+              key={`${missao.id}-${i}`}
+              style={{ height: `${Math.max(22, (v / sparkMax) * 100)}%` }}
+            />
+          ))}
+        </div>
+
+        <div className="ipt-missao-card__top">
+          <span className="ipt-missao-card__icon" aria-hidden>
+            <CockpitIcon icon={Icon} size="sm" />
+          </span>
+          <span className="ipt-missao-card__badge">{missao.label}</span>
+          {cidadeNesta ? (
+            <span className="ipt-missao-card__muni-tag">Nesta cidade</span>
+          ) : null}
+        </div>
+
+        <p className="ipt-missao-card__titulo">{missao.titulo}</p>
+
+        <p className="ipt-missao-card__desc">
+          {temMuni && cidadeNesta ? (
+            <>
+              <strong>{municipioFiltro}</strong> entra nesta missão
+            </>
+          ) : temMuni && !cidadeNesta ? (
+            <>Fora do recorte de {municipioFiltro}</>
+          ) : vazia ? (
+            enrich.descricaoAtiva
+          ) : (
+            <>
+              <strong>{qtd}</strong> municípios {enrich.descricaoAtiva}
+            </>
+          )}
+        </p>
+
+        {!vazia ? (
+          <ul className="ipt-missao-card__bullets">
+            <li>
+              {missao.id === 'expectativa'
+                ? `Universo Piauí: ${IPT_TOTAL_MUNICIPIOS_PI} municípios`
+                : enrich.epicentros}
+            </li>
+            <li className="ipt-missao-card__mudanca">
+              <MissaoMudancaLinha
+                rotulo={variacao.rotulo}
+                mudancas={variacao.mudancas}
+                onVerMais={() => setModalMissao(missao.id)}
+              />
+            </li>
+          </ul>
+        ) : null}
+
+        <span className="ipt-missao-card__cta">
+          Ver prioridades
+          <span aria-hidden>→</span>
+        </span>
+      </button>
+    )
+  }
+
+  const baseMissao = IPT_MISSOES.find((m) => m.id === 'expectativa')
+  const missoesOperacionais = IPT_MISSOES.filter((m) => m.id !== 'expectativa')
+
   return (
-    <section className="ipt-missoes" aria-label="Missões estratégicas">
+    <section className="ipt-missoes" aria-label="Base da análise e missões estratégicas">
       <div
         className={cn(
-          'ipt-missoes__grid',
-          temFiltro && 'ipt-missoes__grid--filtrado',
-          temMuni && 'ipt-missoes__grid--muni'
+          'ipt-missoes__layout',
+          temFiltro && 'ipt-missoes__layout--filtrado',
+          temMuni && 'ipt-missoes__layout--muni'
         )}
       >
-        {IPT_MISSOES.map((missao) => {
-          const Icon = MISSAO_ICONE[missao.id]
-          const qtd = contagem[missao.id]
-          const ativo = missaoAtiva === missao.id
-          const cidadeNesta = temMuni && missoesDoMunicipio.includes(missao.id)
-          const spark = SPARK[missao.id]
-          const sparkMax = Math.max(...spark)
-          const vazia = qtd === 0
-          const variacao = variacoes[missao.id]
-          const enrich = enrichMissaoCard(missao.id, municipios, qtd, variacao)
-          return (
-            <button
-              key={missao.id}
-              type="button"
-              disabled={loading}
-              onClick={() => onSelect(missao.id)}
-              className={cn(
-                'ipt-missao-card',
-                ativo && 'ipt-missao-card--active',
-                temFiltro && !ativo && 'ipt-missao-card--muted',
-                temMuni && !cidadeNesta && 'ipt-missao-card--fora-muni',
-                cidadeNesta && 'ipt-missao-card--na-muni',
-                vazia && 'ipt-missao-card--empty'
-              )}
-              style={
-                {
-                  '--missao-cor': missao.cor,
-                  '--missao-suave': missao.corSuave,
-                  '--missao-texto': missao.corTexto,
-                  '--missao-tint': missao.corTint,
-                } as CSSProperties
-              }
-              title={
-                temMuni
-                  ? cidadeNesta
-                    ? `${municipioFiltro} está nesta missão`
-                    : `${municipioFiltro} não está nesta missão`
-                  : undefined
-              }
-            >
-              <div className="ipt-missao-card__spark" aria-hidden>
-                {spark.map((v, i) => (
-                  <span
-                    key={`${missao.id}-${i}`}
-                    style={{ height: `${Math.max(22, (v / sparkMax) * 100)}%` }}
-                  />
-                ))}
-              </div>
+        {baseMissao ? (
+          <div className="ipt-missoes__base">
+            <p className="ipt-missoes__grupo-label">Base da análise</p>
+            <div className="ipt-missoes__base-card">{renderCard(baseMissao, { base: true })}</div>
+          </div>
+        ) : null}
 
-              <div className="ipt-missao-card__top">
-                <span className="ipt-missao-card__icon" aria-hidden>
-                  <CockpitIcon icon={Icon} size="sm" />
-                </span>
-                <span className="ipt-missao-card__badge">{missao.label}</span>
-                {cidadeNesta ? (
-                  <span className="ipt-missao-card__muni-tag">Nesta cidade</span>
-                ) : null}
-              </div>
+        <div className="ipt-missoes__divider" aria-hidden />
 
-              <p className="ipt-missao-card__titulo">{missao.titulo}</p>
-
-              <p className="ipt-missao-card__desc">
-                {temMuni && cidadeNesta ? (
-                  <>
-                    <strong>{municipioFiltro}</strong> entra nesta missão
-                  </>
-                ) : temMuni && !cidadeNesta ? (
-                  <>Fora do recorte de {municipioFiltro}</>
-                ) : vazia ? (
-                  enrich.descricaoAtiva
-                ) : (
-                  <>
-                    <strong>{qtd}</strong> municípios {enrich.descricaoAtiva}
-                  </>
-                )}
-              </p>
-
-              {!vazia ? (
-                <ul className="ipt-missao-card__bullets">
-                  <li>{enrich.tensao}</li>
-                  <li>
-                    {missao.id === 'expectativa'
-                      ? `Universo Piauí: ${IPT_TOTAL_MUNICIPIOS_PI} municípios`
-                      : enrich.epicentros}
-                  </li>
-                  <li className="ipt-missao-card__mudanca">
-                    <MissaoMudancaLinha
-                      rotulo={variacao.rotulo}
-                      mudancas={variacao.mudancas}
-                      onVerMais={() => setModalMissao(missao.id)}
-                    />
-                  </li>
-                </ul>
-              ) : null}
-
-              <span className="ipt-missao-card__cta">
-                Ver prioridades
-                <span aria-hidden>→</span>
-              </span>
-            </button>
-          )
-        })}
+        <div className="ipt-missoes__missoes">
+          <p className="ipt-missoes__grupo-label">Missões</p>
+          <div className="ipt-missoes__grid ipt-missoes__grid--operacionais">
+            {missoesOperacionais.map((m) => renderCard(m))}
+          </div>
+        </div>
       </div>
 
       {modalMissao && mudancasModal.length > 0 ? (

@@ -26,6 +26,7 @@ import {
   frasePorQueMissao,
   iptMissaoConfig,
   missaoPrincipal,
+  motivoInclusaoCurto,
   municipioNaMissao,
   prioridadeImpactoMissao,
   resumoDiagnosticoMissao,
@@ -45,6 +46,8 @@ type Props = {
   podeVerExpectativa?: boolean
   obras?: ObraMapaRow[]
   onClear?: () => void
+  /** Sem card próprio — usado abaixo da tabela no mesmo bloco. */
+  embedded?: boolean
 }
 
 type IndicadorId = 'pesquisa' | 'campo' | 'digital' | 'obras'
@@ -187,6 +190,7 @@ export function IptMissaoDetalhe({
   podeVerExpectativa = false,
   obras = [],
   onClear,
+  embedded = false,
 }: Props) {
   const [modalPerfilAberto, setModalPerfilAberto] = useState(false)
   const [modalPesquisaAberto, setModalPesquisaAberto] = useState(false)
@@ -200,26 +204,24 @@ export function IptMissaoDetalhe({
     return missaoPrincipal(municipio)
   }, [municipio, missaoAtiva])
 
-  // Expectativa 2026 é o ponto de partida da página: mostra o painel operacional
-  // (Pesquisa/Campo/Digital/Obras), como quando nenhuma missão está selecionada.
+  // Expectativa 2026 é a base estrutural: mostra painel operacional completo.
   const missaoSelecionada = missaoAtiva !== 'todas'
-  const diagnosticoFocado =
-    missaoSelecionada && missaoAtiva !== 'expectativa' && missaoContexto != null
-  // Tint/eyebrow da missão selecionada (inclui Expectativa); o modo focado
-  // (sem os 4 KPIs) só vale para Campo/Digital — Pesquisa e Obras mantêm
-  // os cards clicáveis (Top 5 / lista de obras).
-  const hierarquiaAtiva = missaoSelecionada && missaoContexto != null
-  const mostrarIndicadoresGerais =
-    !diagnosticoFocado ||
+  const missaoOperacional =
+    missaoAtiva === 'campo' ||
     missaoAtiva === 'pesquisa' ||
-    missaoAtiva === 'obras' ||
-    missaoAtiva === 'campo'
+    missaoAtiva === 'digital' ||
+    missaoAtiva === 'obras'
+      ? missaoAtiva
+      : null
+  const indicadorFoco: IndicadorId | null = missaoOperacional
+  const hierarquiaAtiva = missaoSelecionada && missaoContexto != null
+  const mostrarIndicadoresGerais = true
   const naMissaoAtiva =
     missaoSelecionada && municipio != null
       ? municipioNaMissao(municipio, missaoAtiva)
       : false
   const tituloPorQue = naMissaoAtiva
-    ? 'Por que entrou nesta missão?'
+    ? 'Motivo da inclusão'
     : 'Leitura nesta missão'
 
   useEffect(() => {
@@ -231,8 +233,23 @@ export function IptMissaoDetalhe({
 
   if (!municipio) {
     return (
-      <section className="ipt-bloco ipt-bloco-detalhe ipt-bloco-detalhe--empty">
-        <p>Selecione um município na lista ou no mapa para ver o diagnóstico.</p>
+      <section
+        className={cn(
+          !embedded && 'ipt-bloco',
+          'ipt-bloco-detalhe ipt-bloco-detalhe--empty',
+          embedded && 'ipt-bloco-detalhe--embedded'
+        )}
+      >
+        <div className="ipt-bloco-detalhe__section-head">
+          <h2 className="ipt-bloco__title">
+            <MapPin className="ipt-bloco-detalhe__section-ico" aria-hidden />
+            Detalhe do município
+          </h2>
+        </div>
+        <p className="ipt-bloco-detalhe__empty-msg">
+          Selecione um município nas prioridades ou no mapa para ver expectativa, população,
+          eleitorado e os sinais da missão.
+        </p>
       </section>
     )
   }
@@ -247,10 +264,22 @@ export function IptMissaoDetalhe({
   const missaoTitulo = missaoCfg?.titulo ?? null
   const porQue =
     missaoContexto != null ? frasePorQueMissao(municipio, missaoContexto) : null
+  const motivoInclusao =
+    missaoContexto != null && naMissaoAtiva
+      ? motivoInclusaoCurto(municipio, missaoContexto)
+      : null
   const diagnostico =
     missaoContexto != null ? resumoDiagnosticoMissao(municipio, missaoContexto) : null
   const chips =
     missaoContexto != null ? chipsEvidenciaMissao(municipio, missaoContexto) : []
+  const indicadoresOrdem: IndicadorId[] = indicadorFoco
+    ? [
+        indicadorFoco,
+        ...(['pesquisa', 'campo', 'digital', 'obras'] as IndicadorId[]).filter(
+          (id) => id !== indicadorFoco
+        ),
+      ]
+    : ['pesquisa', 'campo', 'digital', 'obras']
   const demografiaPrincipal =
     indicadores?.pct1559 != null
       ? `${formatDemografiaPercent(indicadores.pct1559)} em idade ativa`
@@ -264,7 +293,9 @@ export function IptMissaoDetalhe({
     <>
       <section
         className={cn(
-          'ipt-bloco ipt-bloco-detalhe',
+          !embedded && 'ipt-bloco',
+          'ipt-bloco-detalhe',
+          embedded && 'ipt-bloco-detalhe--embedded',
           hierarquiaAtiva && 'ipt-bloco-detalhe--hierarquia',
           mostrarIndicadoresGerais && 'ipt-bloco-detalhe--com-inds'
         )}
@@ -278,17 +309,11 @@ export function IptMissaoDetalhe({
             : undefined
         }
       >
-        <div className="ipt-bloco-detalhe__head">
-          <h3 className="ipt-bloco-detalhe__title">
-            {municipio.municipio.toUpperCase()}
-            <span>— PI</span>
-          </h3>
-          {diagnostico ? <p className="ipt-bloco-detalhe__lead">{diagnostico}</p> : null}
-          {missaoTitulo && hierarquiaAtiva ? (
-            <p className="ipt-bloco-detalhe__missao-eyebrow">
-              {naMissaoAtiva ? `Missão: ${missaoTitulo}` : `Fora da missão: ${missaoTitulo}`}
-            </p>
-          ) : null}
+        <div className="ipt-bloco-detalhe__section-head">
+          <h2 className="ipt-bloco__title">
+            <MapPin className="ipt-bloco-detalhe__section-ico" aria-hidden />
+            Detalhe do município
+          </h2>
           <div className="ipt-bloco-detalhe__head-actions">
             {missaoAtiva === 'expectativa' && !temExpectativa(municipio) ? (
               <span className="ipt-bloco-detalhe__badge ipt-bloco-detalhe__badge--neutro">
@@ -314,66 +339,94 @@ export function IptMissaoDetalhe({
           </div>
         </div>
 
-        <div className="ipt-bloco-detalhe__stats">
-          <div>
-            <span>Expectativa 2026</span>
-            {podeVerExpectativa ? (
-              <>
-                <strong>{formatInt(municipio.expectativaVotos)}</strong>
-                <em>
-                  {municipio.pesoExpectativaPct.toLocaleString('pt-BR', {
-                    maximumFractionDigits: 1,
-                  })}
-                  % do total estadual
-                </em>
-              </>
-            ) : (
-              <>
-                <strong>{rotuloRelevanciaTerritorial(municipio)}</strong>
-                <em>Classificação sem número</em>
-              </>
-            )}
+        <div className="ipt-bloco-detalhe__body">
+          <div className="ipt-bloco-detalhe__head">
+            <div className="ipt-bloco-detalhe__muni">
+              {!embedded ? (
+                <div className="ipt-bloco-detalhe__muni-top">
+                  <h3 className="ipt-bloco-detalhe__title">
+                    {municipio.municipio.toUpperCase()}
+                    <span>— PI</span>
+                  </h3>
+                </div>
+              ) : null}
+              {diagnostico ? <p className="ipt-bloco-detalhe__lead">{diagnostico}</p> : null}
+              {missaoTitulo && hierarquiaAtiva ? (
+                <p className="ipt-bloco-detalhe__missao-eyebrow">
+                  {naMissaoAtiva ? `Missão: ${missaoTitulo}` : `Fora da missão: ${missaoTitulo}`}
+                </p>
+              ) : null}
+            </div>
           </div>
-          <div>
-            <span>POPULAÇÃO</span>
-            <strong>{formatInt(pop)}</strong>
-            <em>{formatPctDoTotal(pop, getPopulacaoTotalPiaui())}</em>
-          </div>
-          <div>
-            <span>ELEITORADO</span>
-            <strong>{formatInt(eleitorado)}</strong>
-            <em>{formatPctDoTotal(eleitorado, getEleitoradoTotalPiaui())}</em>
-          </div>
-          <div>
-            <span>IDH / FAIXA</span>
-            <strong>{demografiaPrincipal}</strong>
-            <em>15–59 / urbanização</em>
-          </div>
-        </div>
 
-        {diagnosticoFocado && porQue ? (
-          <div className="ipt-bloco-detalhe__por-que">
-            <h4>{tituloPorQue}</h4>
-            <p>{porQue}</p>
-            {chips.length > 0 ? (
-              <ul className="ipt-bloco-detalhe__chips">
-                {chips.map((chip) => (
-                  <li key={chip}>{chip}</li>
-                ))}
-              </ul>
-            ) : null}
+          <div className="ipt-bloco-detalhe__stats">
+            <div>
+              <span>Expectativa 2026</span>
+              {podeVerExpectativa ? (
+                <>
+                  <strong>{formatInt(municipio.expectativaVotos)}</strong>
+                  <em>
+                    {municipio.pesoExpectativaPct.toLocaleString('pt-BR', {
+                      maximumFractionDigits: 1,
+                    })}
+                    % do total estadual
+                  </em>
+                </>
+              ) : (
+                <>
+                  <strong>{rotuloRelevanciaTerritorial(municipio)}</strong>
+                  <em>Classificação sem número</em>
+                </>
+              )}
+            </div>
+            <div>
+              <span>POPULAÇÃO</span>
+              <strong>{formatInt(pop)}</strong>
+              <em>{formatPctDoTotal(pop, getPopulacaoTotalPiaui())}</em>
+            </div>
+            <div>
+              <span>ELEITORADO</span>
+              <strong>{formatInt(eleitorado)}</strong>
+              <em>{formatPctDoTotal(eleitorado, getEleitoradoTotalPiaui())}</em>
+            </div>
+            <div>
+              <span>IDH / FAIXA</span>
+              <strong>{demografiaPrincipal}</strong>
+              <em>15–59 / urbanização</em>
+            </div>
           </div>
-        ) : null}
+
+          {motivoInclusao || (hierarquiaAtiva && porQue) ? (
+            <div className="ipt-bloco-detalhe__por-que">
+              <h4>{tituloPorQue}</h4>
+              <p>
+                {motivoInclusao ?? porQue}
+              </p>
+              {chips.length > 0 ? (
+                <ul className="ipt-bloco-detalhe__chips">
+                  {chips.map((chip) => (
+                    <li key={chip}>{chip}</li>
+                  ))}
+                </ul>
+              ) : null}
+            </div>
+          ) : null}
 
         {mostrarIndicadoresGerais ? (
-          <div className="ipt-bloco-detalhe__inds">
-            {(['pesquisa', 'campo', 'digital', 'obras'] as IndicadorId[]).map((id) => {
+          <div
+            className={cn(
+              'ipt-bloco-detalhe__inds',
+              indicadorFoco && 'ipt-bloco-detalhe__inds--com-foco'
+            )}
+          >
+            {indicadoresOrdem.map((id) => {
               const meta = INDICADOR_META[id]
               const resumo = resumoIndicador(municipio, id)
               const clickable =
                 (id === 'pesquisa' && podeAbrirPesquisa) ||
                 (id === 'obras' && podeAbrirObras) ||
                 id === 'campo'
+              const emFoco = indicadorFoco === id
               return (
                 <Indicador
                   key={id}
@@ -384,6 +437,8 @@ export function IptMissaoDetalhe({
                   detalhe={resumo.detalhe}
                   evolucao={evolucaoDoIndicador(municipio, id)}
                   sinal={sinalDoIndicador(municipio, id)}
+                  destaque={emFoco}
+                  complementar={Boolean(indicadorFoco) && !emFoco}
                   onClick={
                     clickable
                       ? () => {
@@ -413,6 +468,7 @@ export function IptMissaoDetalhe({
               →
             </span>
           </button>
+        </div>
         </div>
       </section>
 
@@ -526,6 +582,8 @@ function Indicador({
   detalhe,
   evolucao,
   sinal,
+  destaque = false,
+  complementar = false,
   onClick,
 }: {
   icon: typeof MapPin
@@ -535,6 +593,8 @@ function Indicador({
   detalhe: string
   evolucao: string
   sinal: IptSinal
+  destaque?: boolean
+  complementar?: boolean
   onClick?: () => void
 }) {
   const status = statusDoIndicador(sinal, evolucao)
@@ -545,6 +605,9 @@ function Indicador({
           <CockpitIcon icon={icon} size="sm" />
         </span>
         <span>{label}</span>
+        {destaque ? (
+          <span className="ipt-bloco-detalhe__ind-foco-tag">Motivo</span>
+        ) : null}
       </div>
       <strong>{valor}</strong>
       <p>{detalhe}</p>
@@ -555,27 +618,23 @@ function Indicador({
     </>
   )
 
+  const className = cn(
+    'ipt-bloco-detalhe__ind',
+    `ipt-bloco-detalhe__ind--${sinal}`,
+    destaque && 'ipt-bloco-detalhe__ind--destaque',
+    complementar && 'ipt-bloco-detalhe__ind--complementar',
+    onClick && 'ipt-bloco-detalhe__ind--clickable'
+  )
+
   if (onClick) {
     return (
-      <button
-        type="button"
-        className={cn(
-          'ipt-bloco-detalhe__ind',
-          `ipt-bloco-detalhe__ind--${sinal}`,
-          'ipt-bloco-detalhe__ind--clickable'
-        )}
-        onClick={onClick}
-      >
+      <button type="button" className={className} onClick={onClick}>
         {body}
       </button>
     )
   }
 
-  return (
-    <div className={cn('ipt-bloco-detalhe__ind', `ipt-bloco-detalhe__ind--${sinal}`)}>
-      {body}
-    </div>
-  )
+  return <div className={className}>{body}</div>
 }
 
 function statusDoIndicador(
