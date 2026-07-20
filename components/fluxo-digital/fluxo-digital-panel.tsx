@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import {
   ArrowUpRight,
   Calendar,
@@ -29,9 +29,11 @@ import {
 import { useDashboardTopbarVisible } from '@/hooks/use-dashboard-topbar-visible'
 import { FLUXO_DIGITAL_DEMO } from '@/lib/fluxo-digital/demo-data'
 import type {
+  FluxoDigitalResumo,
   FluxoEngajamentoNivel,
   FluxoEtapaId,
   FluxoEtapaStatus,
+  PlanejamentoFluxoFromAgenda,
 } from '@/lib/fluxo-digital/types'
 import { ghostButtonClass, primaryButtonClass } from '@/lib/premium-ui-classes'
 import { typographyPageLeadClass } from '@/lib/typography-chrome'
@@ -95,7 +97,51 @@ function redeLabel(rede: 'instagram' | 'facebook' | 'tiktok'): string {
 
 export function FluxoDigitalPanel() {
   const topbarVisible = useDashboardTopbarVisible()
-  const data = FLUXO_DIGITAL_DEMO
+  const [data, setData] = useState<FluxoDigitalResumo>(FLUXO_DIGITAL_DEMO)
+  const [planejamento, setPlanejamento] = useState<PlanejamentoFluxoFromAgenda | null>(
+    null
+  )
+  const [agendaErro, setAgendaErro] = useState<string | null>(null)
+  const [agendaLoading, setAgendaLoading] = useState(true)
+
+  const carregarAgenda = useCallback(async () => {
+    setAgendaLoading(true)
+    setAgendaErro(null)
+    try {
+      const res = await fetch('/api/fluxo-digital/planejamento', { cache: 'no-store' })
+      const json = (await res.json()) as PlanejamentoFluxoFromAgenda & { error?: string }
+      if (!res.ok) {
+        throw new Error(json.error || 'Falha ao carregar agenda')
+      }
+      setPlanejamento(json)
+      setData((prev) => {
+        const cidades = json.municipiosUnicos
+        const pct = Math.round((cidades / 224) * 1000) / 10
+        return {
+          ...prev,
+          atualizadoEm: new Date().toLocaleString('pt-BR', {
+            day: '2-digit',
+            month: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit',
+          }),
+          etapas: prev.etapas.map((etapa) =>
+            etapa.id === 'planejado'
+              ? {
+                  ...etapa,
+                  cidades,
+                  pct: Number.isFinite(pct) ? pct : 0,
+                }
+              : etapa
+          ),
+        }
+      })
+    } catch (e) {
+      setAgendaErro(e instanceof Error ? e.message : 'Erro ao carregar agenda')
+    } finally {
+      setAgendaLoading(false)
+    }
+  }, [])
 
   useEffect(() => {
     document.body.setAttribute('data-ipt-palette', '')
@@ -103,6 +149,10 @@ export function FluxoDigitalPanel() {
       document.body.removeAttribute('data-ipt-palette')
     }
   }, [])
+
+  useEffect(() => {
+    void carregarAgenda()
+  }, [carregarAgenda])
 
   let tipoAcc = 0
   const tipoStops = data.tipos.map((t) => {
@@ -148,8 +198,16 @@ export function FluxoDigitalPanel() {
                   <Filter className="h-3.5 w-3.5" aria-hidden />
                   Filtros
                 </button>
-                <button type="button" className={primaryButtonClass} disabled title="Em breve">
-                  <RefreshCw className="h-3.5 w-3.5" aria-hidden />
+                <button
+                  type="button"
+                  className={primaryButtonClass}
+                  onClick={() => void carregarAgenda()}
+                  disabled={agendaLoading}
+                >
+                  <RefreshCw
+                    className={cn('h-3.5 w-3.5', agendaLoading && 'animate-spin')}
+                    aria-hidden
+                  />
                   Atualizar dados
                 </button>
               </div>
@@ -160,8 +218,21 @@ export function FluxoDigitalPanel() {
 
       <DashboardPageContent className="fluxo-digital-page__content">
         <p className="fd-banner-demo">
-          Layout operacional com dados de demonstração. Em breve: agenda, obras, conteúdo,
-          Instagram pessoal e impulsionamentos alimentando cada etapa.
+          Etapa <strong>Planejado</strong> alimentada pela agenda (visitas). Demais blocos ainda
+          usam dados de demonstração até conectarmos conteúdo, Instagram e impulsionamentos.
+          {agendaErro ? (
+            <>
+              {' '}
+              <span className="text-red-600">Agenda: {agendaErro}</span>
+            </>
+          ) : null}
+          {planejamento && !agendaErro ? (
+            <>
+              {' '}
+              · {planejamento.visitasPlanejadas} visita(s) · {planejamento.municipiosUnicos}{' '}
+              município(s) a partir de {planejamento.de}
+            </>
+          ) : null}
         </p>
 
         <section className="fd-card">
@@ -186,6 +257,56 @@ export function FluxoDigitalPanel() {
               )
             })}
           </ol>
+        </section>
+
+        <section className="fd-card">
+          <div className="fd-table-head">
+            <h2 className="fd-card__title">Visitas na agenda (planejado)</h2>
+            <span className="fd-meta-fresh">
+              {agendaLoading
+                ? 'Carregando…'
+                : planejamento
+                  ? `${planejamento.eventos.length} evento(s)`
+                  : '—'}
+            </span>
+          </div>
+          {planejamento && planejamento.eventos.length > 0 ? (
+            <div className="fd-table-wrap">
+              <table className="fd-table">
+                <thead>
+                  <tr>
+                    <th>Data</th>
+                    <th>Município</th>
+                    <th>Descrição</th>
+                    <th>Obra</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {planejamento.eventos.slice(0, 12).map((ev) => (
+                    <tr key={ev.id}>
+                      <td>
+                        {ev.date
+                          ? new Date(`${ev.date}T12:00:00`).toLocaleDateString('pt-BR')
+                          : '—'}
+                        {ev.hora_evento ? ` · ${ev.hora_evento.slice(0, 5)}` : ''}
+                      </td>
+                      <td>
+                        <strong>{ev.cidade}</strong>
+                      </td>
+                      <td>{ev.description || '—'}</td>
+                      <td>{ev.obra_nome || '—'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <p className="fd-empty-agenda">
+              {agendaLoading
+                ? 'Buscando visitas planejadas na agenda…'
+                : 'Nenhuma visita planejada a partir de hoje. Crie eventos no Atendimento/Agenda para alimentar esta etapa.'}
+            </p>
+          )}
         </section>
 
         <div className="fd-grid-perf">

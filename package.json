@@ -26,6 +26,7 @@
     "recface:server": "bash scripts/run-recface-server.sh"
   },
   "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.26.0",
     "@react-three/drei": "^9.122.0",
     "@react-three/fiber": "^8.18.0",
     "@resvg/resvg-js": "^2.6.2",
@@ -49,6 +50,7 @@
     "kokoro-js": "^1.2.1",
     "leaflet": "^1.9.4",
     "lucide-react": "^0.303.0",
+    "mcp-handler": "^1.1.0",
     "next": "14.2.35",
     "pdf-parse": "^1.1.1",
     "pdfjs-dist": "^5.5.207",

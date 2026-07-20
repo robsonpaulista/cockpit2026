@@ -85,3 +85,24 @@ export type FluxoDigitalResumo = {
   destaques: FluxoDestaque[]
   acoes: FluxoAcao[]
 }
+
+export type VisitaPlanejadaFluxo = {
+  id: string
+  date: string | null
+  cidade: string
+  description: string | null
+  hora_evento: string | null
+  obra_nome: string | null
+  status: string | null
+}
+
+export type PlanejamentoFluxoFromAgenda = {
+  fonte: 'agendas'
+  atualizadoEm: string
+  de: string
+  ate: string | null
+  visitasPlanejadas: number
+  municipiosUnicos: number
+  municipios: string[]
+  eventos: VisitaPlanejadaFluxo[]
+}
