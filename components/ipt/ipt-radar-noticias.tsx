@@ -22,12 +22,14 @@ type Props = {
   municipio: string | null
   /** Entregas/obras do município (para linha “Relacionado ao mandato”). */
   entregasMandato?: number
+  /** Dentro do painel cidade: título mais curto, sem card próprio. */
+  compact?: boolean
 }
 
 /**
  * Notícias do Radar 224 com leitura de contexto derivada dos títulos.
  */
-export function IptRadarNoticias({ municipio, entregasMandato = 0 }: Props) {
+export function IptRadarNoticias({ municipio, entregasMandato = 0, compact = false }: Props) {
   const [itens, setItens] = useState<RadarNoticiaItem[]>([])
   const [loading, setLoading] = useState(false)
   const [erro, setErro] = useState<string | null>(null)
@@ -89,23 +91,34 @@ export function IptRadarNoticias({ municipio, entregasMandato = 0 }: Props) {
     return () => window.clearTimeout(t)
   }, [municipio, buscar])
 
-  const tituloMunicipio = municipio?.trim()
-    ? `Contexto local — ${municipio.trim()}`
-    : 'Contexto local'
+  const tituloMunicipio = compact
+    ? 'Contexto local · Radar 224'
+    : municipio?.trim()
+      ? `Contexto local — ${municipio.trim()}`
+      : 'Contexto local'
 
   return (
-    <section className="ipt-bloco ipt-bloco-noticias" aria-label="Contexto local do município">
+    <section
+      className={cn(
+        !compact && 'ipt-bloco',
+        'ipt-bloco-noticias',
+        compact && 'ipt-bloco-noticias--compact'
+      )}
+      aria-label="Contexto local do município"
+    >
       <div className="ipt-bloco-noticias__head">
         <div className="ipt-bloco-noticias__intro">
-          <h2 className="ipt-bloco__title">
-            <Newspaper className="ipt-bloco-noticias__ico" aria-hidden />
+          <h2 className={compact ? 'ipt-painel-cidade__section-label' : 'ipt-bloco__title'}>
+            {!compact ? <Newspaper className="ipt-bloco-noticias__ico" aria-hidden /> : null}
             {tituloMunicipio}
           </h2>
           <p className="ipt-bloco__sub">
             {municipio && enriquecidas.length > 0
-              ? `Notícias e temas que ajudam a compreender o ambiente atual · Radar 224 · ${leitura.acontecimentos} acontecimento${leitura.acontecimentos === 1 ? '' : 's'} · ${leitura.materias} matéria${leitura.materias === 1 ? '' : 's'}`
+              ? compact
+                ? `${leitura.acontecimentos} acontecimento${leitura.acontecimentos === 1 ? '' : 's'} · ${leitura.materias} matéria${leitura.materias === 1 ? '' : 's'}`
+                : `Notícias e temas que ajudam a compreender o ambiente atual · Radar 224 · ${leitura.acontecimentos} acontecimento${leitura.acontecimentos === 1 ? '' : 's'} · ${leitura.materias} matéria${leitura.materias === 1 ? '' : 's'}`
               : municipio
-                ? 'Notícias e temas que ajudam a compreender o ambiente atual do município'
+                ? 'Notícias e temas do município'
                 : 'Selecione um município na lista ou no mapa'}
           </p>
         </div>

@@ -371,7 +371,7 @@ export function IptMissaoLista({
                     title={
                       municipioFiltro === m.municipio
                         ? 'Duplo clique para limpar o filtro'
-                        : 'Clique para detalhar · Duplo clique para filtrar a página'
+                        : 'Clique para abrir o painel da cidade · Duplo clique filtra a página'
                     }
                   >
                     <span

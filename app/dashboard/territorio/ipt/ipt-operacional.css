@@ -993,13 +993,14 @@ body[data-ipt-operacional] .ipt-header-actions .ipt-scope-select {
   padding: 0;
 }
 
+/* Lista embutida ocupa todo o card de Prioridades (detalhe foi para o painel direito) */
 .ipt-bloco-territorio .ipt-bloco-lista--embedded {
   flex: 1 1 0;
   min-height: 180px;
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  padding: 12px 12px 0;
+  padding: 12px 12px 12px;
 }
 
 .ipt-bloco-territorio .ipt-bloco-lista__rows {
@@ -1079,7 +1080,8 @@ body[data-ipt-operacional] .ipt-header-actions .ipt-scope-select {
   align-self: stretch;
 }
 
-.ipt-operacional__col--noticias {
+.ipt-operacional__col--noticias,
+.ipt-operacional__col--cidade {
   display: flex;
   flex-direction: column;
   min-width: 0;
@@ -1087,7 +1089,8 @@ body[data-ipt-operacional] .ipt-header-actions .ipt-scope-select {
   overflow: hidden;
 }
 
-.ipt-operacional__col--noticias .ipt-bloco-noticias {
+.ipt-operacional__col--noticias .ipt-bloco-noticias,
+.ipt-operacional__col--cidade .ipt-painel-cidade {
   flex: 1 1 0;
   min-height: 0;
   height: 100%;
@@ -1101,6 +1104,194 @@ body[data-ipt-operacional] .ipt-header-actions .ipt-scope-select {
   min-height: 0;
   max-height: none;
   overflow-y: auto;
+}
+
+/* Painel cidade (master–detail à direita) */
+.ipt-painel-cidade {
+  padding: 0;
+}
+
+.ipt-painel-cidade__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px 12px;
+  padding: 14px 14px 12px;
+  border-bottom: 1px solid #ebe7e0;
+  flex-shrink: 0;
+  background: #fff;
+}
+
+.ipt-painel-cidade__eyebrow {
+  margin: 0;
+  font-size: 10px;
+  font-weight: 650;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #a8a29e;
+}
+
+.ipt-painel-cidade__title {
+  margin: 2px 0 0;
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: #1c1917;
+  line-height: 1.2;
+}
+
+.ipt-painel-cidade__actions {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.ipt-painel-cidade__btn {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  border: 1px solid #e7e5e4;
+  background: #fff;
+  border-radius: 8px;
+  padding: 5px 9px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #44403c;
+  cursor: pointer;
+}
+
+.ipt-painel-cidade__btn:hover {
+  background: #fafaf9;
+  border-color: #d6d3d1;
+}
+
+.ipt-painel-cidade__btn--active {
+  border-color: #fdba74;
+  background: #fff7ed;
+  color: #c2410c;
+}
+
+.ipt-painel-cidade__btn--ghost {
+  color: #78716c;
+}
+
+.ipt-painel-cidade__scroll {
+  flex: 1 1 0;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  background: #fafaf9;
+}
+
+.ipt-painel-cidade__bloco {
+  padding: 12px 14px 14px;
+  border-bottom: 1px solid #ebe7e0;
+  background: #fff;
+}
+
+.ipt-painel-cidade__bloco--radar {
+  background: #fafaf9;
+  border-bottom: 0;
+  flex: 1 1 auto;
+  min-height: 200px;
+  display: flex;
+  flex-direction: column;
+}
+
+.ipt-painel-cidade__section-label {
+  margin: 0 0 8px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: #a8a29e;
+}
+
+.ipt-painel-cidade--empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 28px 20px;
+  background: #fff;
+}
+
+.ipt-painel-cidade__empty {
+  max-width: 280px;
+  text-align: center;
+}
+
+.ipt-painel-cidade__empty-ico {
+  width: 22px;
+  height: 22px;
+  color: #e28000;
+  margin: 0 auto 10px;
+}
+
+.ipt-painel-cidade__empty-title {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 700;
+  color: #1c1917;
+}
+
+.ipt-painel-cidade__empty-text {
+  margin: 8px 0 0;
+  font-size: 13px;
+  line-height: 1.45;
+  color: #78716c;
+}
+
+.ipt-bloco-detalhe--panel {
+  border: 0;
+  box-shadow: none;
+  background: transparent;
+  padding: 0;
+  max-height: none;
+  overflow: visible;
+}
+
+.ipt-bloco-detalhe--panel .ipt-bloco-detalhe__head {
+  padding: 0 0 8px;
+}
+
+.ipt-bloco-detalhe--panel .ipt-bloco-detalhe__por-que,
+.ipt-bloco-detalhe--panel .ipt-bloco-detalhe__inds,
+.ipt-bloco-detalhe--panel .ipt-bloco-detalhe__complemento,
+.ipt-bloco-detalhe--panel .ipt-bloco-detalhe__demo {
+  margin-left: 0;
+  margin-right: 0;
+}
+
+.ipt-bloco-noticias--compact {
+  border: 0;
+  box-shadow: none;
+  background: transparent;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  flex: 1 1 auto;
+}
+
+.ipt-bloco-noticias--compact .ipt-bloco-noticias__head {
+  padding: 0 0 8px;
+  align-items: flex-start;
+}
+
+.ipt-bloco-noticias--compact .ipt-bloco-noticias__body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: visible;
+  padding: 0;
+}
+
+.ipt-bloco-noticias--compact .ipt-bloco__sub {
+  margin-top: 2px;
 }
 
 .ipt-operacional__workspace--fullscreen {
@@ -2208,17 +2399,20 @@ body[data-ipt-operacional] .ipt-header-actions .ipt-scope-select {
     min-height: 360px;
   }
 
-  .ipt-operacional__col--noticias {
+  .ipt-operacional__col--noticias,
+  .ipt-operacional__col--cidade {
     overflow: visible;
     min-height: 360px;
   }
 
-  .ipt-operacional__col--noticias .ipt-bloco-noticias {
+  .ipt-operacional__col--noticias .ipt-bloco-noticias,
+  .ipt-operacional__col--cidade .ipt-painel-cidade {
     flex: none;
     min-height: 360px;
   }
 
-  .ipt-operacional__col--noticias .ipt-bloco-noticias__body {
+  .ipt-operacional__col--noticias .ipt-bloco-noticias__body,
+  .ipt-painel-cidade__scroll {
     max-height: 420px;
   }
 

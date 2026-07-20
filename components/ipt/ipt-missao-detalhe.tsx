@@ -39,6 +39,8 @@ type Props = {
   onClear?: () => void
   /** Sem card próprio — usado abaixo da tabela no mesmo bloco. */
   embedded?: boolean
+  /** Dentro do painel cidade (direita): sem header duplicado. */
+  panel?: boolean
 }
 
 type IndicadorId = 'pesquisa' | 'campo' | 'digital' | 'obras'
@@ -170,6 +172,7 @@ export function IptMissaoDetalhe({
   obras = [],
   onClear,
   embedded = false,
+  panel = false,
 }: Props) {
   const [modalPerfilAberto, setModalPerfilAberto] = useState(false)
   const [modalPesquisaAberto, setModalPesquisaAberto] = useState(false)
@@ -211,6 +214,7 @@ export function IptMissaoDetalhe({
   }, [municipio?.municipio])
 
   if (!municipio) {
+    if (panel) return null
     return (
       <section
         className={cn(
@@ -261,9 +265,10 @@ export function IptMissaoDetalhe({
     <>
       <section
         className={cn(
-          !embedded && 'ipt-bloco',
+          !embedded && !panel && 'ipt-bloco',
           'ipt-bloco-detalhe',
-          embedded && 'ipt-bloco-detalhe--embedded',
+          embedded && !panel && 'ipt-bloco-detalhe--embedded',
+          panel && 'ipt-bloco-detalhe--panel',
           hierarquiaAtiva && 'ipt-bloco-detalhe--hierarquia',
           mostrarIndicadoresGerais && 'ipt-bloco-detalhe--com-inds'
         )}
@@ -277,45 +282,49 @@ export function IptMissaoDetalhe({
             : undefined
         }
       >
-        <div className="ipt-bloco-detalhe__section-head">
-          <h2 className="ipt-bloco__title">
-            <MapPin className="ipt-bloco-detalhe__section-ico" aria-hidden />
-            Detalhe do município
-          </h2>
-          <div className="ipt-bloco-detalhe__head-actions">
-            {missaoAtiva === 'expectativa' && !temExpectativa(municipio) ? (
-              <span className="ipt-bloco-detalhe__badge ipt-bloco-detalhe__badge--neutro">
-                Sem meta
-              </span>
-            ) : impacto !== 'baixa' ? (
-              <span
-                className={cn(
-                  'ipt-bloco-detalhe__badge',
-                  impacto === 'alta'
-                    ? 'ipt-bloco-detalhe__badge--alta'
-                    : 'ipt-bloco-detalhe__badge--media'
-                )}
-              >
-                Prioridade {impacto === 'alta' ? 'alta' : 'média'}
-              </span>
-            ) : null}
-            {onClear ? (
-              <button type="button" className="ipt-bloco-detalhe__clear" onClick={onClear}>
-                Fechar
-              </button>
-            ) : null}
+        {!panel ? (
+          <div className="ipt-bloco-detalhe__section-head">
+            <h2 className="ipt-bloco__title">
+              <MapPin className="ipt-bloco-detalhe__section-ico" aria-hidden />
+              Detalhe do município
+            </h2>
+            <div className="ipt-bloco-detalhe__head-actions">
+              {missaoAtiva === 'expectativa' && !temExpectativa(municipio) ? (
+                <span className="ipt-bloco-detalhe__badge ipt-bloco-detalhe__badge--neutro">
+                  Sem meta
+                </span>
+              ) : impacto !== 'baixa' ? (
+                <span
+                  className={cn(
+                    'ipt-bloco-detalhe__badge',
+                    impacto === 'alta'
+                      ? 'ipt-bloco-detalhe__badge--alta'
+                      : 'ipt-bloco-detalhe__badge--media'
+                  )}
+                >
+                  Prioridade {impacto === 'alta' ? 'alta' : 'média'}
+                </span>
+              ) : null}
+              {onClear ? (
+                <button type="button" className="ipt-bloco-detalhe__clear" onClick={onClear}>
+                  Fechar
+                </button>
+              ) : null}
+            </div>
           </div>
-        </div>
+        ) : null}
 
         <div className="ipt-bloco-detalhe__body">
           <div className="ipt-bloco-detalhe__head">
             <div className="ipt-bloco-detalhe__muni">
-              {!embedded ? (
+              {!embedded || panel ? (
                 <div className="ipt-bloco-detalhe__muni-top">
-                  <h3 className="ipt-bloco-detalhe__title">
-                    {municipio.municipio.toUpperCase()}
-                    <span>— PI</span>
-                  </h3>
+                  {!panel ? (
+                    <h3 className="ipt-bloco-detalhe__title">
+                      {municipio.municipio.toUpperCase()}
+                      <span>— PI</span>
+                    </h3>
+                  ) : null}
                 </div>
               ) : null}
               {diagnostico ? <p className="ipt-bloco-detalhe__lead">{diagnostico}</p> : null}

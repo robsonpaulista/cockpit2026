@@ -15,8 +15,7 @@ import { DashboardPageShell } from '@/components/dashboard/dashboard-page-chrome
 import { IptExecutiveBanner } from '@/components/ipt/ipt-executive-banner'
 import { IptMissoesStrip } from '@/components/ipt/ipt-missoes-strip'
 import { IptMissaoLista } from '@/components/ipt/ipt-missao-lista'
-import { IptMissaoDetalhe } from '@/components/ipt/ipt-missao-detalhe'
-import { IptRadarNoticias } from '@/components/ipt/ipt-radar-noticias'
+import { IptPainelCidade } from '@/components/ipt/ipt-painel-cidade'
 import {
   IptTerritorioVisaoToggle,
   type IptTerritorioVisao,
@@ -519,12 +518,7 @@ export function IptPanel() {
         >
           <div className="ipt-operacional__col ipt-operacional__col--territorio">
             {!isNativeFullscreen && visaoTerritorio === 'lista' ? (
-              <section
-                className={cn(
-                  'ipt-bloco ipt-bloco-territorio',
-                  Boolean(escopoMunicipio) && 'ipt-bloco-territorio--muni-foco'
-                )}
-              >
+              <section className="ipt-bloco ipt-bloco-territorio">
                 <IptMissaoLista
                   municipios={municipiosVisao}
                   missaoAtiva={missaoAtiva}
@@ -538,19 +532,6 @@ export function IptPanel() {
                   visaoTerritorio={visaoTerritorio}
                   onVisaoTerritorioChange={setVisaoTerritorio}
                   embedded
-                />
-                <IptMissaoDetalhe
-                  municipio={municipioDetalhe}
-                  missaoAtiva={missaoAtiva}
-                  obras={obras}
-                  embedded
-                  onClear={
-                    escopoMunicipio
-                      ? () => aplicarFiltroMunicipio(null)
-                      : municipioDetalhe
-                        ? () => setMunicipioSelecionado(null)
-                        : undefined
-                  }
                 />
               </section>
             ) : null}
@@ -703,10 +684,28 @@ export function IptPanel() {
           </div>
 
           {!isNativeFullscreen ? (
-            <div className="ipt-operacional__col ipt-operacional__col--noticias">
-              <IptRadarNoticias
-                municipio={municipioSelecionado}
-                entregasMandato={municipioDetalhe?.detalhes.obrasQuantidade ?? 0}
+            <div className="ipt-operacional__col ipt-operacional__col--cidade">
+              <IptPainelCidade
+                municipio={municipioDetalhe}
+                missaoAtiva={missaoAtiva}
+                obras={obras}
+                filtradoNaPagina={Boolean(
+                  escopoMunicipio &&
+                    municipioDetalhe &&
+                    escopoMunicipio === municipioDetalhe.municipio
+                )}
+                onFiltrarPagina={() => {
+                  if (!municipioDetalhe) return
+                  if (escopoMunicipio === municipioDetalhe.municipio) {
+                    aplicarFiltroMunicipio(null)
+                  } else {
+                    aplicarFiltroMunicipio(municipioDetalhe.municipio)
+                  }
+                }}
+                onLimpar={() => {
+                  if (escopoMunicipio) aplicarFiltroMunicipio(null)
+                  setMunicipioSelecionado(null)
+                }}
               />
             </div>
           ) : null}

@@ -42,15 +42,15 @@ Definidos em `lib/conteudo/agenda-pack.ts`:
 3. `listar_conteudos_fluxo` — acompanhar status
 4. (próxima fase) Claude usa o **Canva Connector** com título/cidade/template e devolve o link/export; o Cockpit grava `imagem_url` / status `gerado`
 
-## Canva → Cockpit (já disponível)
+## Canva → Cockpit (template mestre, não genérico)
 
-Depois de criar a arte no Canva:
+O Claude **não** deve inventar layout. Fluxo:
 
-1. `listar_conteudos_fluxo` (status `rascunho`) para pegar o `id` da peça
-2. `registrar_arte_gerada` com:
-   - `conteudoId`
-   - `imagemUrl` (export/preview ou link do design)
-   - opcional: `canvaEditUrl`, `titulo`, `textoArte`, `legenda`
+1. `obter_brief_producao(conteudoId)` — textos, cidade, imagem, `nomeCanva`
+2. No Canva: **duplicar** o template mestre e alterar só os campos do brief
+3. `registrar_arte_gerada`
+
+Detalhes e nomes dos mestres: [canva-templates-mestres.md](./canva-templates-mestres.md).
 
 API HTTP equivalente:
 

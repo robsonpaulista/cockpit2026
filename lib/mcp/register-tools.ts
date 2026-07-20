@@ -8,6 +8,10 @@ import {
   listarPendentesProducaoMcp,
   registrarArteGeradaMcp,
 } from '@/lib/mcp/data/conteudos'
+import {
+  listarCatalogoTemplatesCanva,
+  obterBriefProducao,
+} from '@/lib/fluxo-digital/canva-brief'
 import { mcpErrorText, mcpJsonText } from '@/lib/mcp/format'
 
 type McpServerLike = {
@@ -251,7 +255,7 @@ export function registerCockpitMcpTools(server: McpServerLike): void {
     {
       title: 'Registrar arte gerada',
       description:
-        'Após criar a peça no Canva, registre aqui a URL (export/preview ou link do design). Atualiza conteudos_planejados: imagem_url, fundo_origem=canva, status=gerado. Assim o KPI Produzido do Fluxo Digital sobe.',
+        'Após preencher o template mestre no Canva (não criar layout do zero), registre a URL. Atualiza imagem_url, fundo_origem=canva, status=gerado.',
       inputSchema: {
         conteudoId: z.string().uuid().describe('ID da peça em conteudos_planejados'),
         imagemUrl: z
@@ -284,6 +288,45 @@ export function registerCockpitMcpTools(server: McpServerLike): void {
         return mcpErrorText(
           e instanceof Error ? e.message : 'Erro ao registrar arte gerada'
         )
+      }
+    }
+  )
+
+  server.registerTool(
+    'listar_templates_canva',
+    {
+      title: 'Biblioteca de Comunicação',
+      description:
+        'Catálogo oficial: categorias (OBRA_IMPACTO…), códigos TPL*, pastas Canva por objetivo, slots e regra anti-genérico. Canva é só repositório visual.',
+      inputSchema: {},
+    },
+    async () => {
+      try {
+        return mcpJsonText(await listarCatalogoTemplatesCanva())
+      } catch (e) {
+        return mcpErrorText(e instanceof Error ? e.message : 'Erro ao listar biblioteca')
+      }
+    }
+  )
+
+  server.registerTool(
+    'obter_brief_producao',
+    {
+      title: 'Obter brief de produção',
+      description:
+        'Brief para preencher template da Biblioteca (codigo TPL, nomeCanva, pasta, slots). NÃO invente layout — duplique o mestre e preencha só os slots.',
+      inputSchema: {
+        conteudoId: z.string().uuid().describe('ID da peça em conteudos_planejados'),
+      },
+    },
+    async (args) => {
+      try {
+        const conteudoId = typeof args.conteudoId === 'string' ? args.conteudoId : ''
+        if (!conteudoId) return mcpErrorText('conteudoId é obrigatório')
+        const result = await obterBriefProducao(conteudoId)
+        return mcpJsonText(result)
+      } catch (e) {
+        return mcpErrorText(e instanceof Error ? e.message : 'Erro ao montar brief')
       }
     }
   )
