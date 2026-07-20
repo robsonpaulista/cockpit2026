@@ -6,6 +6,10 @@ export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 export const maxDuration = 60
 
+/**
+ * MCP Streamable HTTP em /api/mcp (padrão mcp-handler).
+ * Rotas estáticas como /api/obras têm prioridade sobre este [transport].
+ */
 const handler = createMcpHandler(
   (server) => {
     registerCockpitMcpTools(server as Parameters<typeof registerCockpitMcpTools>[0])
@@ -17,7 +21,7 @@ const handler = createMcpHandler(
     },
   },
   {
-    basePath: '/api/mcp',
+    basePath: '/api',
     maxDuration: 60,
     verboseLogs: process.env.NODE_ENV === 'development',
   }

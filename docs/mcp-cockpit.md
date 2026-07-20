@@ -14,29 +14,25 @@ Em local:
 http://localhost:3000/api/mcp
 ```
 
-A rota dinâmica é `/api/mcp/[transport]` (`mcp` ou `sse`).
-
 ## Variável de ambiente
 
 ```bash
 MCP_API_TOKEN=um-token-longo-e-secreto
 ```
 
-Com `MCP_API_TOKEN` definido, todas as chamadas exigem:
+Com `MCP_API_TOKEN` definido, as chamadas exigem (por padrão):
 
 ```http
 Authorization: Bearer um-token-longo-e-secreto
 ```
 
-Sem a variável, o protótipo aceita conexões sem auth (apenas para desenvolvimento local).
-
-Também é necessário:
+Se o Claude web **não** oferecer campo de Request headers e falhar no vínculo com 401, defina temporariamente na Vercel:
 
 ```bash
-NEXT_PUBLIC_SUPABASE_URL=...
-SUPABASE_SERVICE_ROLE_KEY=...
+MCP_AUTH_REQUIRED=false
 ```
 
+Assim o conector consegue vincular. Depois reative auth (`true` ou remova a variável) quando houver header Bearer ou OAuth.
 ## Tools (fase 1 — leitura)
 
 | Tool | Função |
