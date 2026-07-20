@@ -1,5 +1,4 @@
-import { createMcpHandler, withMcpAuth } from 'mcp-handler'
-import { mcpAuthRequired, verifyMcpBearerToken } from '@/lib/mcp/auth'
+import { createMcpHandler } from 'mcp-handler'
 import { registerCockpitMcpTools } from '@/lib/mcp/register-tools'
 
 export const runtime = 'nodejs'
@@ -7,8 +6,11 @@ export const dynamic = 'force-dynamic'
 export const maxDuration = 60
 
 /**
- * MCP Streamable HTTP em /api/mcp (padrão mcp-handler).
- * Rotas estáticas como /api/obras têm prioridade sobre este [transport].
+ * MCP Streamable HTTP em /api/mcp (padrão mcp-handler / Claude).
+ *
+ * Sem `withMcpAuth`: o Claude web tenta OAuth DCR quando recebe
+ * WWW-Authenticate + resource_metadata, e nosso protótipo ainda não tem OAuth.
+ * Auth Bearer/OAuth volta na próxima fase; até lá proteger por rede/Vercel se necessário.
  */
 const handler = createMcpHandler(
   (server) => {
@@ -27,9 +29,4 @@ const handler = createMcpHandler(
   }
 )
 
-const authHandler = withMcpAuth(handler, verifyMcpBearerToken, {
-  required: mcpAuthRequired(),
-  requiredScopes: mcpAuthRequired() ? ['cockpit:read'] : undefined,
-})
-
-export { authHandler as GET, authHandler as POST, authHandler as DELETE }
+export { handler as GET, handler as POST, handler as DELETE }

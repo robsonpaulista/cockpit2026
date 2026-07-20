@@ -14,25 +14,16 @@ Em local:
 http://localhost:3000/api/mcp
 ```
 
-## Variável de ambiente
+## Autenticação (fase atual)
 
-```bash
-MCP_API_TOKEN=um-token-longo-e-secreto
-```
+O Claude web, ao receber `401` + `WWW-Authenticate` apontando para OAuth, tenta
+**registrar no serviço de login** (DCR). Nosso protótipo ainda não tem OAuth —
+por isso o vínculo falhava.
 
-Com `MCP_API_TOKEN` definido, as chamadas exigem (por padrão):
+Nesta fase o `/api/mcp` está **aberto para leitura** (sem `withMcpAuth`).
+`MCP_API_TOKEN` fica para a próxima fase (OAuth ou Request headers).
+Não compartilhe a URL publicamente.
 
-```http
-Authorization: Bearer um-token-longo-e-secreto
-```
-
-Se o Claude web **não** oferecer campo de Request headers e falhar no vínculo com 401, defina temporariamente na Vercel:
-
-```bash
-MCP_AUTH_REQUIRED=false
-```
-
-Assim o conector consegue vincular. Depois reative auth (`true` ou remova a variável) quando houver header Bearer ou OAuth.
 ## Tools (fase 1 — leitura)
 
 | Tool | Função |
