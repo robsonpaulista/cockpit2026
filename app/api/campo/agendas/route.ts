@@ -12,6 +12,7 @@ const agendaSchema = z.object({
   description: z.string().optional(),
   google_event_id: z.string().optional(),
   hora_evento: z.string().optional(),
+  incluir_fluxo_digital: z.boolean().optional(),
 })
 
 export async function GET() {
@@ -87,6 +88,7 @@ export async function POST(request: Request) {
         ...validated,
         candidate_id: user.id,
         status: validated.status || 'planejada',
+        incluir_fluxo_digital: validated.incluir_fluxo_digital ?? false,
       })
       .select(`
         *,
@@ -99,10 +101,34 @@ export async function POST(request: Request) {
       .single()
 
     if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 })
+      const msg = error.message
+      if (msg.includes('incluir_fluxo_digital')) {
+        return NextResponse.json(
+          {
+            error:
+              'Falta a coluna incluir_fluxo_digital em agendas. Execute database/add-agendas-fluxo-digital.sql no SQL Editor do Supabase.',
+          },
+          { status: 500 }
+        )
+      }
+      return NextResponse.json({ error: msg }, { status: 500 })
     }
 
-    return NextResponse.json(data, { status: 201 })
+    let pacoteCriado = 0
+    if (data && (validated.incluir_fluxo_digital ?? false)) {
+      try {
+        const { seedProducaoFromAgenda } = await import('@/lib/fluxo-digital/seed-producao')
+        const seed = await seedProducaoFromAgenda(String(data.id))
+        pacoteCriado = seed.criados || (seed.jaExistia ? seed.total : 0)
+      } catch (seedErr) {
+        console.error('[campo/agendas] seed produção:', seedErr)
+      }
+    }
+
+    return NextResponse.json(
+      { ...data, pacote_conteudos: pacoteCriado },
+      { status: 201 }
+    )
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json(

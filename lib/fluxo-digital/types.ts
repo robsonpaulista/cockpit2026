@@ -106,3 +106,33 @@ export type PlanejamentoFluxoFromAgenda = {
   municipios: string[]
   eventos: VisitaPlanejadaFluxo[]
 }
+
+export type ConteudoFluxoItem = {
+  id: string
+  agendaId: string
+  cidade: string
+  fase: string | null
+  formato: string | null
+  template: string | null
+  titulo: string | null
+  status: string
+  dataSugerida: string | null
+  agendaDescricao: string | null
+  imagemUrl: string | null
+  fundoOrigem: string | null
+}
+
+export type ProducaoFluxoResumo = {
+  fonte: 'conteudos_planejados'
+  atualizadoEm: string
+  totalPecas: number
+  rascunho: number
+  gerado: number
+  aprovado: number
+  publicado: number
+  /** gerado + aprovado + publicado */
+  produzidos: number
+  municipiosUnicos: number
+  municipios: string[]
+  itens: ConteudoFluxoItem[]
+}

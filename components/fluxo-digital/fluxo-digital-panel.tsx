@@ -17,6 +17,7 @@ import {
   Send,
   TrendingUp,
   UserRound,
+  Wand2,
   X,
 } from 'lucide-react'
 import {
@@ -34,10 +35,13 @@ import type {
   FluxoEtapaId,
   FluxoEtapaStatus,
   PlanejamentoFluxoFromAgenda,
+  ProducaoFluxoResumo,
 } from '@/lib/fluxo-digital/types'
 import { ghostButtonClass, primaryButtonClass } from '@/lib/premium-ui-classes'
 import { typographyPageLeadClass } from '@/lib/typography-chrome'
 import { cn } from '@/lib/utils'
+import { FluxoDigitalNovaVisita } from '@/components/fluxo-digital/fluxo-digital-nova-visita'
+import Link from 'next/link'
 import '@/app/dashboard/shared/ipt-page-palette.css'
 import '@/app/dashboard/fluxo-digital/fluxo-digital.css'
 
@@ -101,22 +105,42 @@ export function FluxoDigitalPanel() {
   const [planejamento, setPlanejamento] = useState<PlanejamentoFluxoFromAgenda | null>(
     null
   )
+  const [producao, setProducao] = useState<ProducaoFluxoResumo | null>(null)
   const [agendaErro, setAgendaErro] = useState<string | null>(null)
   const [agendaLoading, setAgendaLoading] = useState(true)
+  const [removendoId, setRemovendoId] = useState<string | null>(null)
+  const [gerandoId, setGerandoId] = useState<string | null>(null)
 
   const carregarAgenda = useCallback(async () => {
     setAgendaLoading(true)
     setAgendaErro(null)
     try {
-      const res = await fetch('/api/fluxo-digital/planejamento', { cache: 'no-store' })
-      const json = (await res.json()) as PlanejamentoFluxoFromAgenda & { error?: string }
-      if (!res.ok) {
-        throw new Error(json.error || 'Falha ao carregar agenda')
+      const [resPlan, resProd] = await Promise.all([
+        fetch('/api/fluxo-digital/planejamento', { cache: 'no-store' }),
+        fetch('/api/fluxo-digital/producao', { cache: 'no-store' }),
+      ])
+      const jsonPlan = (await resPlan.json()) as PlanejamentoFluxoFromAgenda & {
+        error?: string
       }
-      setPlanejamento(json)
+      const jsonProd = (await resProd.json()) as ProducaoFluxoResumo & { error?: string }
+
+      if (!resPlan.ok) {
+        throw new Error(jsonPlan.error || 'Falha ao carregar agenda')
+      }
+      setPlanejamento(jsonPlan)
+
+      if (resProd.ok) {
+        setProducao(jsonProd)
+      } else {
+        setProducao(null)
+        if (jsonProd.error) setAgendaErro(jsonProd.error)
+      }
+
       setData((prev) => {
-        const cidades = json.municipiosUnicos
-        const pct = Math.round((cidades / 224) * 1000) / 10
+        const cidadesPlan = jsonPlan.municipiosUnicos
+        const pctPlan = Math.round((cidadesPlan / 224) * 1000) / 10
+        const cidadesProd = resProd.ok ? jsonProd.municipiosUnicos : 0
+        const pctProd = Math.round((cidadesProd / 224) * 1000) / 10
         return {
           ...prev,
           atualizadoEm: new Date().toLocaleString('pt-BR', {
@@ -125,15 +149,23 @@ export function FluxoDigitalPanel() {
             hour: '2-digit',
             minute: '2-digit',
           }),
-          etapas: prev.etapas.map((etapa) =>
-            etapa.id === 'planejado'
-              ? {
-                  ...etapa,
-                  cidades,
-                  pct: Number.isFinite(pct) ? pct : 0,
-                }
-              : etapa
-          ),
+          etapas: prev.etapas.map((etapa) => {
+            if (etapa.id === 'planejado') {
+              return {
+                ...etapa,
+                cidades: cidadesPlan,
+                pct: Number.isFinite(pctPlan) ? pctPlan : 0,
+              }
+            }
+            if (etapa.id === 'produzido' && resProd.ok) {
+              return {
+                ...etapa,
+                cidades: cidadesProd,
+                pct: Number.isFinite(pctProd) ? pctProd : 0,
+              }
+            }
+            return etapa
+          }),
         }
       })
     } catch (e) {
@@ -153,6 +185,50 @@ export function FluxoDigitalPanel() {
   useEffect(() => {
     void carregarAgenda()
   }, [carregarAgenda])
+
+  const removerDaProgramacao = async (agendaId: string) => {
+    setRemovendoId(agendaId)
+    try {
+      const res = await fetch(`/api/campo/agendas/${agendaId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ incluir_fluxo_digital: false }),
+      })
+      if (!res.ok) {
+        const json = (await res.json()) as { error?: string }
+        throw new Error(json.error || 'Falha ao remover')
+      }
+      await carregarAgenda()
+    } catch (e) {
+      setAgendaErro(e instanceof Error ? e.message : 'Erro ao remover da programação')
+    } finally {
+      setRemovendoId(null)
+    }
+  }
+
+  const gerarPecas = async (agendaId: string) => {
+    setGerandoId(agendaId)
+    setAgendaErro(null)
+    try {
+      const res = await fetch('/api/fluxo-digital/producao', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ agendaId }),
+      })
+      const json = (await res.json()) as { error?: string; total?: number; jaExistia?: boolean }
+      if (!res.ok) throw new Error(json.error || 'Falha ao gerar peças')
+      await carregarAgenda()
+    } catch (e) {
+      setAgendaErro(e instanceof Error ? e.message : 'Erro ao gerar peças')
+    } finally {
+      setGerandoId(null)
+    }
+  }
+
+  const pecasPorAgenda = new Map<string, number>()
+  for (const item of producao?.itens ?? []) {
+    pecasPorAgenda.set(item.agendaId, (pecasPorAgenda.get(item.agendaId) ?? 0) + 1)
+  }
 
   let tipoAcc = 0
   const tipoStops = data.tipos.map((t) => {
@@ -218,22 +294,181 @@ export function FluxoDigitalPanel() {
 
       <DashboardPageContent className="fluxo-digital-page__content">
         <p className="fd-banner-demo">
-          Etapa <strong>Planejado</strong> alimentada pela agenda (visitas). Demais blocos ainda
-          usam dados de demonstração até conectarmos conteúdo, Instagram e impulsionamentos.
+          Pipeline: <strong>Planejado</strong> → <strong>Produzido</strong> (pacote de templates) →
+          Canva/Claude gera a arte. Demais etapas ainda usam demonstração.
           {agendaErro ? (
             <>
               {' '}
-              <span className="text-red-600">Agenda: {agendaErro}</span>
+              <span className="text-red-600">{agendaErro}</span>
             </>
           ) : null}
           {planejamento && !agendaErro ? (
             <>
               {' '}
-              · {planejamento.visitasPlanejadas} visita(s) · {planejamento.municipiosUnicos}{' '}
-              município(s) a partir de {planejamento.de}
+              · {planejamento.visitasPlanejadas} na programação
+              {producao
+                ? ` · ${producao.totalPecas} peça(s) · ${producao.produzidos} produzida(s)`
+                : null}
             </>
           ) : null}
         </p>
+
+        <section className="fd-card">
+          <div className="fd-table-head">
+            <h2 className="fd-card__title">Programação (planejado)</h2>
+            <span className="fd-meta-fresh">
+              {agendaLoading
+                ? 'Carregando…'
+                : planejamento
+                  ? `${planejamento.eventos.length} evento(s)`
+                  : '—'}
+            </span>
+          </div>
+
+          <FluxoDigitalNovaVisita onCreated={() => void carregarAgenda()} />
+
+          {planejamento && planejamento.eventos.length > 0 ? (
+            <div className="fd-table-wrap" style={{ marginTop: 12 }}>
+              <table className="fd-table">
+                <thead>
+                  <tr>
+                    <th>Data</th>
+                    <th>Município</th>
+                    <th>Descrição</th>
+                    <th>Peças</th>
+                    <th />
+                  </tr>
+                </thead>
+                <tbody>
+                  {planejamento.eventos.slice(0, 40).map((ev) => {
+                    const nPecas = pecasPorAgenda.get(ev.id) ?? 0
+                    return (
+                      <tr key={ev.id}>
+                        <td>
+                          {ev.date
+                            ? new Date(`${ev.date}T12:00:00`).toLocaleDateString('pt-BR')
+                            : '—'}
+                          {ev.hora_evento ? ` · ${ev.hora_evento.slice(0, 5)}` : ''}
+                        </td>
+                        <td>
+                          <strong>{ev.cidade}</strong>
+                        </td>
+                        <td>{ev.description || '—'}</td>
+                        <td>{nPecas > 0 ? `${nPecas} template(s)` : '—'}</td>
+                        <td>
+                          <div className="fd-row-actions">
+                            {nPecas === 0 ? (
+                              <button
+                                type="button"
+                                className="fd-btn-acao"
+                                disabled={gerandoId === ev.id}
+                                onClick={() => void gerarPecas(ev.id)}
+                              >
+                                <Wand2 className="h-3 w-3" aria-hidden />
+                                {gerandoId === ev.id ? 'Gerando…' : 'Gerar peças'}
+                              </button>
+                            ) : (
+                              <Link
+                                href="/dashboard/conteudo/cards"
+                                className="fd-btn-acao"
+                              >
+                                Ver em Conteúdo
+                              </Link>
+                            )}
+                            <button
+                              type="button"
+                              className="fd-btn-remover"
+                              disabled={removendoId === ev.id}
+                              onClick={() => void removerDaProgramacao(ev.id)}
+                            >
+                              {removendoId === ev.id ? '…' : 'Tirar'}
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <p className="fd-empty-agenda" style={{ marginTop: 12 }}>
+              {agendaLoading
+                ? 'Buscando programação…'
+                : 'Nenhum compromisso na programação. Use “Nova visita na programação” ou marque a opção em Território → Visitas.'}
+            </p>
+          )}
+        </section>
+
+        <section className="fd-card">
+          <div className="fd-table-head">
+            <h2 className="fd-card__title">Produção (templates)</h2>
+            <span className="fd-meta-fresh">
+              {agendaLoading
+                ? 'Carregando…'
+                : producao
+                  ? `${producao.rascunho} rascunho · ${producao.produzidos} produzido(s)`
+                  : '—'}
+            </span>
+          </div>
+          <p className="fd-producao-hint">
+            Cada visita gera 6 templates (antes / durante / depois). Claude + Canva entram na geração
+            da arte; no Cockpit você acompanha o status e aprova.
+          </p>
+          {producao && producao.itens.length > 0 ? (
+            <div className="fd-table-wrap">
+              <table className="fd-table">
+                <thead>
+                  <tr>
+                    <th>Município</th>
+                    <th>Fase</th>
+                    <th>Template</th>
+                    <th>Formato</th>
+                    <th>Status</th>
+                    <th>Arte</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {producao.itens.slice(0, 24).map((item) => (
+                    <tr key={item.id}>
+                      <td>
+                        <strong>{item.cidade}</strong>
+                      </td>
+                      <td>{item.fase || '—'}</td>
+                      <td>{item.template || '—'}</td>
+                      <td>{item.formato || '—'}</td>
+                      <td>
+                        <span className={cn('fd-status-pill', `fd-status-pill--${item.status}`)}>
+                          {item.status}
+                        </span>
+                      </td>
+                      <td>
+                        {item.imagemUrl ? (
+                          <a
+                            href={item.imagemUrl}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="fd-btn-acao"
+                          >
+                            {item.fundoOrigem === 'canva' ? 'Canva' : 'Abrir'}
+                          </a>
+                        ) : (
+                          '—'
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <p className="fd-empty-agenda">
+              {agendaLoading
+                ? 'Buscando peças…'
+                : 'Nenhuma peça ainda. Na programação, clique em “Gerar peças” na visita de Altos (ou peça ao Claude: criar_pacote_conteudo).'}
+            </p>
+          )}
+        </section>
 
         <section className="fd-card">
           <h2 className="fd-card__title">Fluxo do conteúdo</h2>
@@ -257,56 +492,6 @@ export function FluxoDigitalPanel() {
               )
             })}
           </ol>
-        </section>
-
-        <section className="fd-card">
-          <div className="fd-table-head">
-            <h2 className="fd-card__title">Visitas na agenda (planejado)</h2>
-            <span className="fd-meta-fresh">
-              {agendaLoading
-                ? 'Carregando…'
-                : planejamento
-                  ? `${planejamento.eventos.length} evento(s)`
-                  : '—'}
-            </span>
-          </div>
-          {planejamento && planejamento.eventos.length > 0 ? (
-            <div className="fd-table-wrap">
-              <table className="fd-table">
-                <thead>
-                  <tr>
-                    <th>Data</th>
-                    <th>Município</th>
-                    <th>Descrição</th>
-                    <th>Obra</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {planejamento.eventos.slice(0, 12).map((ev) => (
-                    <tr key={ev.id}>
-                      <td>
-                        {ev.date
-                          ? new Date(`${ev.date}T12:00:00`).toLocaleDateString('pt-BR')
-                          : '—'}
-                        {ev.hora_evento ? ` · ${ev.hora_evento.slice(0, 5)}` : ''}
-                      </td>
-                      <td>
-                        <strong>{ev.cidade}</strong>
-                      </td>
-                      <td>{ev.description || '—'}</td>
-                      <td>{ev.obra_nome || '—'}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          ) : (
-            <p className="fd-empty-agenda">
-              {agendaLoading
-                ? 'Buscando visitas planejadas na agenda…'
-                : 'Nenhuma visita planejada a partir de hoje. Crie eventos no Atendimento/Agenda para alimentar esta etapa.'}
-            </p>
-          )}
         </section>
 
         <div className="fd-grid-perf">

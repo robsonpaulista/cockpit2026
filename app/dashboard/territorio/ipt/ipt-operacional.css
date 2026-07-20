@@ -1015,8 +1015,12 @@ body[data-ipt-operacional] .ipt-header-actions .ipt-scope-select {
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  border-top: 1px solid #ebe7e0;
-  border-radius: 0;
+  width: auto;
+  max-width: 100%;
+  box-sizing: border-box;
+  margin: 0 12px 12px;
+  border: 1px solid #ebe7e0;
+  border-radius: 12px;
   box-shadow: none;
   background: #fafaf9;
 }
@@ -1025,11 +1029,23 @@ body[data-ipt-operacional] .ipt-header-actions .ipt-scope-select {
   flex: 1 1 auto;
   min-height: 0;
   overflow-y: auto;
+  overflow-x: hidden;
   padding-bottom: 12px;
 }
 
 .ipt-bloco-territorio .ipt-bloco-detalhe--embedded .ipt-bloco-detalhe__section-head {
   background: #fff;
+  min-width: 0;
+  padding: 10px 12px;
+  border-bottom: 1px solid #ebe7e0;
+}
+
+.ipt-bloco-territorio .ipt-bloco-detalhe--embedded .ipt-bloco-detalhe__section-head .ipt-bloco__title {
+  min-width: 0;
+}
+
+.ipt-bloco-territorio .ipt-bloco-detalhe--embedded .ipt-bloco-detalhe__head-actions {
+  flex-shrink: 0;
 }
 
 .ipt-bloco-territorio .ipt-bloco-detalhe__stats {
@@ -1052,6 +1068,7 @@ body[data-ipt-operacional] .ipt-header-actions .ipt-scope-select {
   flex: 1 1 0;
   max-height: none;
   min-height: 220px;
+  margin-bottom: 12px;
 }
 
 .ipt-operacional__col--territorio .ipt-bloco-mapa {

@@ -8,7 +8,8 @@ import type {
 export type { PlanejamentoFluxoFromAgenda, VisitaPlanejadaFluxo }
 
 /**
- * Agrega visitas planejadas da tabela `agendas` para a etapa Planejado do Fluxo Digital.
+ * Agrega compromissos marcados (`incluir_fluxo_digital`) da tabela `agendas`
+ * para a etapa Planejado do Fluxo Digital.
  */
 export async function buildPlanejamentoFromAgenda(opts?: {
   de?: string
@@ -35,8 +36,8 @@ export async function buildPlanejamentoFromAgenda(opts?: {
       obras ( obra, municipio )
     `
     )
-    .eq('type', 'visita')
     .eq('status', 'planejada')
+    .eq('incluir_fluxo_digital', true)
     .gte('date', de)
     .order('date', { ascending: true })
     .limit(limite)
@@ -44,7 +45,14 @@ export async function buildPlanejamentoFromAgenda(opts?: {
   if (ate) query = query.lte('date', ate)
 
   const { data, error } = await query
-  if (error) throw new Error(`Erro ao ler agenda para o Fluxo Digital: ${error.message}`)
+  if (error) {
+    if (error.message.includes('incluir_fluxo_digital')) {
+      throw new Error(
+        'Falta a coluna incluir_fluxo_digital em agendas. Execute database/add-agendas-fluxo-digital.sql no SQL Editor do Supabase.'
+      )
+    }
+    throw new Error(`Erro ao ler agenda para o Fluxo Digital: ${error.message}`)
+  }
 
   const municipiosSet = new Map<string, string>()
   const eventos: VisitaPlanejadaFluxo[] = []

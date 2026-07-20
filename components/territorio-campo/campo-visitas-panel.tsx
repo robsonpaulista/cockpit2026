@@ -31,6 +31,7 @@ interface Agenda {
   type: string
   status: string
   description?: string
+  incluir_fluxo_digital?: boolean
   cities?: {
     id: string
     name: string
@@ -56,6 +57,7 @@ interface AgendaFormData {
   type: 'visita' | 'evento' | 'reuniao' | 'outro'
   status: 'planejada' | 'concluida' | 'cancelada'
   description: string
+  incluir_fluxo_digital: boolean
 }
 
 type TerritorioMapaItem = {
@@ -71,6 +73,7 @@ const emptyForm: AgendaFormData = {
   type: 'visita',
   status: 'planejada',
   description: '',
+  incluir_fluxo_digital: false,
 }
 
 export function CampoVisitasPanel() {
@@ -282,6 +285,7 @@ export function CampoVisitasPanel() {
       type: (agenda.type as AgendaFormData['type']) ?? 'visita',
       status: (agenda.status as AgendaFormData['status']) ?? 'planejada',
       description: agenda.description ?? '',
+      incluir_fluxo_digital: Boolean(agenda.incluir_fluxo_digital),
     })
   }
 
@@ -295,7 +299,13 @@ export function CampoVisitasPanel() {
       const method = isEditing ? 'PUT' : 'POST'
       const payload = isEditing
         ? { ...formData, city_id: formData.city_id || undefined }
-        : { date: formData.date, city_id: formData.city_id || undefined, type: formData.type, description: formData.description }
+        : {
+            date: formData.date,
+            city_id: formData.city_id || undefined,
+            type: formData.type,
+            description: formData.description,
+            incluir_fluxo_digital: formData.incluir_fluxo_digital,
+          }
       const response = await fetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
@@ -501,6 +511,22 @@ export function CampoVisitasPanel() {
                   <div className="xl:col-span-12">
                     <label className="mb-2 block text-xs font-semibold uppercase tracking-wide text-text-muted">Descrição</label>
                     <textarea rows={2} value={formData.description} onChange={(e) => setFormData((prev) => ({ ...prev, description: e.target.value }))} placeholder="Detalhes da agenda, objetivos e observações." className="w-full rounded-xl border border-border-card bg-bg-surface px-3 py-2 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-accent-gold/40" />
+                  </div>
+                  <div className="xl:col-span-12">
+                    <label className="inline-flex items-center gap-2 text-sm text-text-primary">
+                      <input
+                        type="checkbox"
+                        checked={formData.incluir_fluxo_digital}
+                        onChange={(e) =>
+                          setFormData((prev) => ({
+                            ...prev,
+                            incluir_fluxo_digital: e.target.checked,
+                          }))
+                        }
+                        className="h-4 w-4 rounded border-border-card"
+                      />
+                      Incluir no Fluxo Digital (programação)
+                    </label>
                   </div>
                 </form>
                 {formError ? (

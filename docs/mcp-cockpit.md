@@ -24,7 +24,7 @@ Nesta fase o `/api/mcp` está **aberto para leitura** (sem `withMcpAuth`).
 `MCP_API_TOKEN` fica para a próxima fase (OAuth ou Request headers).
 Não compartilhe a URL publicamente.
 
-## Tools (fase 1 — leitura)
+## Tools (fase 1 — leitura + produção)
 
 | Tool | Função |
 |------|--------|
@@ -33,6 +33,12 @@ Não compartilhe a URL publicamente.
 | `buscar_obras` | Obras por município/tipo/status |
 | `buscar_obras_sem_divulgacao` | Obras sem conteúdo publicado |
 | `listar_agenda` | Visitas/eventos da agenda (padrão: planejadas a partir de hoje) |
+| `listar_pendentes_producao` | Visitas do Fluxo Digital sem pacote de templates |
+| `criar_pacote_conteudo` | Cria 6 templates em `conteudos_planejados` para uma agenda |
+| `listar_conteudos_fluxo` | Peças do Fluxo Digital com status |
+| `registrar_arte_gerada` | Grava URL do Canva/export e marca status `gerado` |
+
+Ver também: [fluxo-digital-producao.md](./fluxo-digital-producao.md).
 
 ## Claude (conector personalizado)
 
@@ -73,7 +79,6 @@ curl -s -X POST "http://localhost:3000/api/mcp/mcp" \
 
 ## Próximas fases
 
-- Escrita: criar `conteudos_planejados` / salvar arte
-- Agenda → etapa Planejado do Fluxo Digital
-- Canva Connector
-- OAuth por usuário (substituir Bearer estático)
+- OAuth por usuário (substituir endpoint aberto)
+- Enviado / Divulgado a partir de `publicacoes_conteudo`
+- Mapear Brand Templates do Canva por `CardTemplate`

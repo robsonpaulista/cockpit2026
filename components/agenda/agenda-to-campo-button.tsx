@@ -35,6 +35,7 @@ interface FormState {
   type: CampoAgendaType
   description: string
   hora_evento: string
+  incluir_fluxo_digital: boolean
 }
 
 export function AgendaToCampoButton({ event, linked, onLinked }: AgendaToCampoButtonProps) {
@@ -50,6 +51,7 @@ export function AgendaToCampoButton({ event, linked, onLinked }: AgendaToCampoBu
     type: 'visita',
     description: '',
     hora_evento: '',
+    incluir_fluxo_digital: false,
   })
   const [cidadeSugerida, setCidadeSugerida] = useState<string | undefined>()
 
@@ -89,6 +91,7 @@ export function AgendaToCampoButton({ event, linked, onLinked }: AgendaToCampoBu
       type: prefill.type,
       description: prefill.description,
       hora_evento: prefill.hora_evento?.slice(0, 5) ?? '',
+      incluir_fluxo_digital: false,
     })
     setCidadeSugerida(prefill.cidadeSugerida)
   }, [prefill])
@@ -104,11 +107,12 @@ export function AgendaToCampoButton({ event, linked, onLinked }: AgendaToCampoBu
     setError(null)
     setSaving(true)
     try {
-      const payload: Record<string, string> = {
+      const payload: Record<string, string | boolean> = {
         date: form.date,
         type: form.type,
         description: form.description,
         google_event_id: event.id,
+        incluir_fluxo_digital: form.incluir_fluxo_digital,
       }
       if (form.city_id) payload.city_id = form.city_id
       if (form.hora_evento) payload.hora_evento = `${form.hora_evento}:00`
@@ -280,6 +284,18 @@ export function AgendaToCampoButton({ event, linked, onLinked }: AgendaToCampoBu
                         className="w-full resize-y rounded-lg border border-card bg-background px-3 py-2 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-accent-gold-soft"
                       />
                     </div>
+
+                    <label className="inline-flex items-center gap-2 text-sm text-text-primary">
+                      <input
+                        type="checkbox"
+                        checked={form.incluir_fluxo_digital}
+                        onChange={(e) =>
+                          setForm((f) => ({ ...f, incluir_fluxo_digital: e.target.checked }))
+                        }
+                        className="h-4 w-4 rounded border-card"
+                      />
+                      Incluir no Fluxo Digital (programação)
+                    </label>
 
                     {error ? (
                       <p className="rounded-lg border border-status-error/30 bg-status-error/10 px-3 py-2 text-sm text-status-error">
