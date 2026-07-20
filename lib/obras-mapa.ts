@@ -126,6 +126,29 @@ export function valorExibidoMapaObra(obra: Pick<ObraMapaRow, 'cota' | 'valor_tot
   return null
 }
 
+/**
+ * Linha de total/subtotal da planilha (ex.: obra === "Total").
+ * Não é entrega — só agrega valores e infla KPIs/listas.
+ */
+export function isObraLinhaTotalPlanilha(
+  obra: { obra?: string | null } | string | null | undefined
+): boolean {
+  const nome =
+    typeof obra === 'string'
+      ? obra
+      : String((obra as { obra?: string | null } | null | undefined)?.obra ?? '')
+  const norm = nome
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+  if (!norm) return false
+  if (norm === 'total' || norm === 'subtotal') return true
+  if (/^total\b/.test(norm) && norm.length <= 24) return true
+  return false
+}
+
 export interface MunicipioObrasResumo {
   municipio: string
   fase: ObraFaseMapa

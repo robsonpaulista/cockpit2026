@@ -2,6 +2,7 @@ import { createHash } from 'crypto'
 import municipiosPiaui from '@/lib/municipios-piaui.json'
 import {
   isObraAsfalto,
+  isObraLinhaTotalPlanilha,
   isObraMaquinarioAgricola,
   isObraParalelepipedo,
   isObraPassagensCisternas,
@@ -256,8 +257,27 @@ export function isObraObsDuplicado(obs: string | null | undefined): boolean {
   return /\bduplicado\b/i.test(obs)
 }
 
+/**
+ * Linha de total/subtotal da planilha (ex.: obra === "Total").
+ * Não é entrega — só agrega valores e infla KPIs/listas.
+ */
+export { isObraLinhaTotalPlanilha }
+
 export function filtrarObrasSemDuplicadasObs<T extends { obs?: string | null }>(obras: T[]): T[] {
   return obras.filter((obra) => !isObraObsDuplicado(obra.obs))
+}
+
+export function filtrarObrasSemTotaisPlanilha<T extends { obra?: string | null }>(obras: T[]): T[] {
+  return obras.filter((obra) => !isObraLinhaTotalPlanilha(obra))
+}
+
+/** Remove duplicados e linhas de total da planilha. */
+export function filtrarObrasPlanilhaValidas<
+  T extends { obra?: string | null; obs?: string | null },
+>(obras: T[]): T[] {
+  return obras.filter(
+    (obra) => !isObraObsDuplicado(obra.obs) && !isObraLinhaTotalPlanilha(obra)
+  )
 }
 
 export function filtrarObrasMapaTemas(obras: JadyelObraMapaRow[]): JadyelObraMapaRow[] {

@@ -2,7 +2,7 @@ import obrasJadyelData from '@/data/obras-jadyel.json'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import {
   filtrarObrasMapaTemas,
-  filtrarObrasSemDuplicadasObs,
+  filtrarObrasPlanilhaValidas,
   toObraMapaRow,
   type JadyelObraMapaRow,
   type JadyelObraPeriodo,
@@ -31,7 +31,7 @@ export function listarObrasJadyelBase(): JadyelObraPlanilhaRow[] {
 }
 
 export function listarObrasJadyelMapaBase(): JadyelObraMapaRow[] {
-  return filtrarObrasSemDuplicadasObs(BASE_OBRAS.map(toObraMapaRow))
+  return filtrarObrasPlanilhaValidas(BASE_OBRAS.map(toObraMapaRow))
 }
 
 async function carregarStatusMapa(
@@ -73,7 +73,7 @@ export async function carregarObrasJadyelLista(
   opts?: { incluirOutros?: boolean; periodo?: JadyelObraPeriodo | 'todos' }
 ): Promise<JadyelObraMapaRow[]> {
   const statusPorId = await carregarStatusMapa(supabase)
-  let fonte = filtrarObrasSemDuplicadasObs(BASE_OBRAS.map(toObraMapaRow))
+  let fonte = filtrarObrasPlanilhaValidas(BASE_OBRAS.map(toObraMapaRow))
   if (!opts?.incluirOutros) fonte = filtrarObrasMapaTemas(fonte)
   if (opts?.periodo && opts.periodo !== 'todos') {
     fonte = fonte.filter((obra) => obra.periodo === opts.periodo)

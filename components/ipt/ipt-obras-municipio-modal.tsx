@@ -7,6 +7,7 @@ import { CockpitIcon } from '@/components/ui/cockpit-icon'
 import { normalizeIptMunicipio } from '@/lib/ipt'
 import {
   classificarObraFase,
+  isObraLinhaTotalPlanilha,
   OBRA_FASE_LABEL,
   valorExibidoMapaObra,
   type ObraMapaRow,
@@ -43,6 +44,7 @@ export function IptObrasMunicipioModal({ municipio, obras, onClose }: Props) {
     const key = normalizeIptMunicipio(municipio)
     return obras
       .filter((o) => normalizeIptMunicipio(o.municipio ?? '') === key)
+      .filter((o) => !isObraLinhaTotalPlanilha(o))
       .slice()
       .sort((a, b) => {
         const va = valorExibidoMapaObra(a) ?? 0

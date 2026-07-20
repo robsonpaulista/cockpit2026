@@ -9,12 +9,14 @@ import {
   IconBriefcase,
   IconCheck,
   IconChevronDown,
+  IconDownload,
   IconNetwork,
   IconRefresh,
   IconSearch,
   IconUsers,
   IconX,
 } from '@tabler/icons-react'
+import { TerritorioBaseExportModal } from '@/components/territorio-campo/territorio-base-export-modal'
 import { MindMapModal } from '@/components/mind-map-modal'
 import { CityDemandsModal } from '@/components/city-demands-modal'
 import { ExecutiveBriefingModal } from '@/components/executive-briefing-modal'
@@ -75,6 +77,7 @@ export function TerritorioBasePanel() {
   const [showDepDropdown, setShowDepDropdown] = useState(false)
   const [showMapaVotoCruzado, setShowMapaVotoCruzado] = useState(true)
   const [showMindMap, setShowMindMap] = useState(false)
+  const [showExportModal, setShowExportModal] = useState(false)
   const [candidatoPadrao, setCandidatoPadrao] = useState<string>('')
   const [baseCarregada, setBaseCarregada] = useState(false)
   const [showCityDemands, setShowCityDemands] = useState(false)
@@ -741,6 +744,28 @@ export function TerritorioBasePanel() {
 
   useRegisterJarvisHostProps(jarvisHostProps)
 
+  const exportFiltrosResumo = useMemo(() => {
+    const rows: Array<{ Campo: string; Valor: string }> = [
+      { Campo: 'Cenário de votos', Valor: labelCenarioDadosAtivo },
+    ]
+    if (filtroCidade.trim()) rows.push({ Campo: 'Filtro cidade', Valor: filtroCidade.trim() })
+    if (filtroNome.trim()) rows.push({ Campo: 'Filtro liderança', Valor: filtroNome.trim() })
+    if (filtroCargo.trim()) rows.push({ Campo: 'Filtro cargo', Valor: filtroCargo.trim() })
+    if (filtroDepEstadual.length > 0) {
+      rows.push({ Campo: 'Filtro dep. estadual', Valor: filtroDepEstadual.join(', ') })
+    }
+    if (filtroFaixaVotos.trim()) {
+      rows.push({ Campo: 'Faixa de votos', Valor: filtroFaixaVotos.trim() })
+    }
+    return rows
+  }, [
+    labelCenarioDadosAtivo,
+    filtroCidade,
+    filtroNome,
+    filtroCargo,
+    filtroDepEstadual,
+    filtroFaixaVotos,
+  ])
 
   return (
     <div className={cn('flex flex-col gap-4', territorioBaseTextClass)}>
@@ -755,6 +780,15 @@ export function TerritorioBasePanel() {
           <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
             {baseCarregada && liderancasFiltradas.length > 0 && (
               <>
+                <button
+                  type="button"
+                  onClick={() => setShowExportModal(true)}
+                  className={territorioBaseGhostButtonClass}
+                  title="Exportar lideranças filtradas (Excel)"
+                >
+                  <IconDownload className="h-[14px] w-[14px] opacity-70" stroke={1.5} aria-hidden />
+                  Exportar
+                </button>
                 <button
                   type="button"
                   onClick={() => setShowMindMap(true)}
@@ -1277,6 +1311,13 @@ export function TerritorioBasePanel() {
         cidadeCol={cidadeCol || 'cidade'}
         nomeCol={nomeCol || 'nome'}
         expectativaVotosCol={votosReferenciaCol || null}
+      />
+
+      <TerritorioBaseExportModal
+        isOpen={showExportModal}
+        onClose={() => setShowExportModal(false)}
+        records={liderancasFiltradas}
+        filtrosResumo={exportFiltrosResumo}
       />
 
       {/* Modal de Demandas por Cidade */}
