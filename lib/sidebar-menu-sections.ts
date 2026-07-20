@@ -28,6 +28,8 @@ export const DASHBOARD_KANBAN_CARD_HINTS: Record<string, string> = {
   'noticias-menu': 'Monitoramento de mídia e Radar 224 (cobertura municipal)',
   'noticias-monitoramento': 'Panorama, Google Alerts, YouTube, Trends e Instagram',
   'radar-224': 'Top 50 municípios e catálogo de fontes noticiosas',
+  'fluxo-digital': 'Fluxo do conteúdo — planejamento à pós-visita',
+  cobertura: 'Fluxo do conteúdo — planejamento à pós-visita',
   noticias: 'Mídia, crises e notícias em destaque',
   'mobilizacao-menu': 'Ativação de base e coordenação',
   whatsapp: 'Disparos e comunicação direta',

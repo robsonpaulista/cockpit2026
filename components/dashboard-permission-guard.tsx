@@ -5,7 +5,7 @@ import { usePathname, useRouter } from 'next/navigation'
 import { usePermissions } from '@/hooks/use-permissions'
 
 const PAGE_KEYS = new Set([
-  'dashboard', 'fases', 'narrativas', 'campo', 'agenda', 'territorio', 'ipt',
+  'dashboard', 'fases', 'narrativas', 'campo', 'agenda', 'territorio', 'ipt', 'fluxo-digital', 'cobertura',
   'ficha-atendimento', 'chapas', 'conteudo', 'noticias', 'mobilizacao', 'whatsapp',
   'pesquisa', 'operacao', 'juridico', 'obras', 'usuarios', 'log_system', 'gestao_pesquisas',
   'emendas', 'proposicoes', 'sei-pesquisa', 'resumo-operacional', 'resumo-eleicoes', 'arquivos',
@@ -24,6 +24,17 @@ function canAccessPageKey(
       canAccess('territorio') ||
       canAccess('campo') ||
       canAccess('agenda')
+    )
+  }
+  if (key === 'cobertura' || key === 'fluxo-digital') {
+    return (
+      canAccess('fluxo-digital') ||
+      canAccess('cobertura') ||
+      canAccess('ipt') ||
+      canAccess('territorio') ||
+      canAccess('campo') ||
+      canAccess('agenda') ||
+      canAccess('conteudo')
     )
   }
   if (key === 'territorio' || key === 'campo' || key === 'agenda') {
@@ -48,6 +59,8 @@ function getPageKey(pathname: string): string | null {
   if (pathname.startsWith('/dashboard/log-system')) return 'log_system'
   // Diagnóstico IPT: chave própria (antes caía em `territorio` e não aparecia no modal).
   if (pathname.startsWith('/dashboard/territorio/ipt')) return 'ipt'
+  if (pathname.startsWith('/dashboard/fluxo-digital')) return 'fluxo-digital'
+  if (pathname.startsWith('/dashboard/cobertura')) return 'fluxo-digital'
   // A página de Emendas usa a chave própria 'emendas' (mesma que a sidebar usa
   // em `pageKeyForItem`). Anteriormente esta rota era tratada como 'juridico',
   // o que fazia o guard redirecionar para /dashboard quando o usuário tinha

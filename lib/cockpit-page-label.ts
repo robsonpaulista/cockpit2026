@@ -7,6 +7,9 @@ export function getCockpitPageLabel(pathname: string): string {
   if (p.startsWith('/dashboard/resumo-eleicoes/secao')) return 'Por seção'
   if (p.startsWith('/dashboard/resumo-eleicoes/historico')) return 'Hist. federal'
   if (p.startsWith('/dashboard/territorio/ipt')) return 'Mapa Diagnóstico Campanha'
+  if (p.startsWith('/dashboard/fluxo-digital') || p.startsWith('/dashboard/cobertura')) {
+    return 'Fluxo Digital'
+  }
   if (p.startsWith('/dashboard/territorio/mapa-tds')) return 'Mapa TDs'
   if (p.startsWith('/dashboard/mobilizacao/mapa-digital-ig')) return 'Engajamento Líderes'
   if (p.startsWith('/dashboard/noticias/monitoramento')) return 'Monitoramento'
@@ -27,6 +30,8 @@ export function getCockpitPageLabel(pathname: string): string {
     '/dashboard/agenda': 'Agenda',
     '/dashboard/territorio': 'Terr. & Campo',
     '/dashboard/territorio/ipt': 'Mapa Diagnóstico Campanha',
+    '/dashboard/fluxo-digital': 'Fluxo Digital',
+    '/dashboard/cobertura': 'Fluxo Digital',
     '/dashboard/ficha-atendimento': 'Ficha',
     '/dashboard/chapas': 'Federal',
     '/dashboard/chapas-estaduais': 'Estadual',

@@ -13,8 +13,18 @@ import { sidebarApifyDividerClass, sidebarApifyTooltipClass } from '@/lib/sideba
 import { JARVIS_SIDEBAR_DIVIDER } from '@/lib/jarvis-sidebar-styles'
 import { resolveSidebarTablerIcon, SidebarTablerIcon } from '@/lib/sidebar-tabler-icons'
 
-const MAPA_CAMPANHA_HREF = '/dashboard/territorio/ipt'
-const MAPA_CAMPANHA_LABEL = 'Diagnóstico Operacional'
+const CAMPANHA_LINKS = [
+  {
+    href: '/dashboard/territorio/ipt',
+    label: 'Diagnóstico Operacional',
+    icon: 'MapPin' as const,
+  },
+  {
+    href: '/dashboard/fluxo-digital',
+    label: 'Fluxo Digital',
+    icon: 'Target' as const,
+  },
+]
 
 type Props = {
   collapsed: boolean
@@ -23,7 +33,7 @@ type Props = {
   onNavigate: (href: string) => void
 }
 
-/** Bloco exclusivo do Mapa Campanha, acima de Acesso rápido. */
+/** Bloco exclusivo Diagnóstico + Fluxo Digital, acima de Acesso rápido. */
 export function SidebarMapaCampanhaBlock({
   collapsed,
   mobileOpen,
@@ -36,14 +46,15 @@ export function SidebarMapaCampanhaBlock({
   const allowed =
     loading ||
     canAccess('ipt') ||
+    canAccess('fluxo-digital') ||
+    canAccess('cobertura') ||
     canAccess('territorio') ||
     canAccess('campo') ||
-    canAccess('agenda')
+    canAccess('agenda') ||
+    canAccess('conteudo')
   if (!allowed) return null
 
-  const active = pathname.startsWith(MAPA_CAMPANHA_HREF)
   const iconOnly = collapsed && !mobileOpen
-  const Icon = resolveSidebarTablerIcon('MapPin', false)
 
   return (
     <div
@@ -69,34 +80,44 @@ export function SidebarMapaCampanhaBlock({
         </div>
       ) : null}
 
-      <div className="group relative">
-        <Link
-          href={MAPA_CAMPANHA_HREF}
-          onClick={() => onNavigate(MAPA_CAMPANHA_HREF)}
-          title={iconOnly ? MAPA_CAMPANHA_LABEL : undefined}
-          aria-label={MAPA_CAMPANHA_LABEL}
-          className={cn(
-            sidebarNavItemClass(active),
-            sidebarItemIconOnlyClass(collapsed, mobileOpen),
-            iconOnly && 'justify-center px-1.5',
-          )}
-        >
-          <SidebarTablerIcon icon={Icon} className={sidebarNavIconClass(active)} />
-          {!iconOnly ? (
-            <span className="truncate text-[13px] leading-[17px] font-medium">{MAPA_CAMPANHA_LABEL}</span>
-          ) : null}
-        </Link>
-        {iconOnly ? (
-          <span
-            className={cn(
-              sidebarApifyTooltipClass,
-              'pointer-events-none absolute left-full top-1/2 z-[200] ml-2 -translate-y-1/2 opacity-0 transition-opacity group-hover:opacity-100',
-            )}
-            role="tooltip"
-          >
-            {MAPA_CAMPANHA_LABEL}
-          </span>
-        ) : null}
+      <div className={cn('flex flex-col', iconOnly ? 'gap-1' : 'gap-0.5')}>
+        {CAMPANHA_LINKS.map((link) => {
+          const active = pathname.startsWith(link.href)
+          const Icon = resolveSidebarTablerIcon(link.icon, false)
+          return (
+            <div key={link.href} className="group relative">
+              <Link
+                href={link.href}
+                onClick={() => onNavigate(link.href)}
+                title={iconOnly ? link.label : undefined}
+                aria-label={link.label}
+                className={cn(
+                  sidebarNavItemClass(active),
+                  sidebarItemIconOnlyClass(collapsed, mobileOpen),
+                  iconOnly && 'justify-center px-1.5',
+                )}
+              >
+                <SidebarTablerIcon icon={Icon} className={sidebarNavIconClass(active)} />
+                {!iconOnly ? (
+                  <span className="truncate text-[13px] leading-[17px] font-medium">
+                    {link.label}
+                  </span>
+                ) : null}
+              </Link>
+              {iconOnly ? (
+                <span
+                  className={cn(
+                    sidebarApifyTooltipClass,
+                    'pointer-events-none absolute left-full top-1/2 z-[200] ml-2 -translate-y-1/2 opacity-0 transition-opacity group-hover:opacity-100',
+                  )}
+                  role="tooltip"
+                >
+                  {link.label}
+                </span>
+              ) : null}
+            </div>
+          )
+        })}
       </div>
     </div>
   )
