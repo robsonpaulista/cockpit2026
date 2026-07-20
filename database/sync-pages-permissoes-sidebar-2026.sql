@@ -12,7 +12,9 @@ INSERT INTO pages (key, label, path) VALUES
   ('emendas', 'Emendas', '/dashboard/emendas'),
   ('arquivos', 'Arquivos', '/dashboard/arquivos'),
   ('resumo-operacional', 'Resumo Operacional', '/dashboard/resumo-operacional'),
-  ('log_system', 'Log System', '/dashboard/log-system')
+  ('log_system', 'Log System', '/dashboard/log-system'),
+  ('material-campanha', 'Gestão de Material', '/dashboard/material-campanha'),
+  ('fluxo-digital', 'Fluxo Digital', '/dashboard/fluxo-digital')
 ON CONFLICT (key) DO NOTHING;
 
 -- 2) Atualiza rótulos/paths das chaves já usadas (preserva a chave)
@@ -40,6 +42,8 @@ UPDATE pages SET label = 'Arquivos', path = '/dashboard/arquivos' WHERE key = 'a
 UPDATE pages SET label = 'Diagnóstico Operacional', path = '/dashboard/territorio/ipt' WHERE key = 'ipt';
 UPDATE pages SET label = 'Gestão de Usuários', path = '/dashboard/usuarios' WHERE key = 'usuarios';
 UPDATE pages SET label = 'Log System', path = '/dashboard/log-system' WHERE key = 'log_system';
+UPDATE pages SET label = 'Gestão de Material', path = '/dashboard/material-campanha' WHERE key = 'material-campanha';
+UPDATE pages SET label = 'Fluxo Digital', path = '/dashboard/fluxo-digital' WHERE key = 'fluxo-digital';
 
 -- Chaves legadas mantidas (ainda aparecem no modal; não apagar):
 -- campo, fases, narrativas antigas, pesquisador_campo, etc.

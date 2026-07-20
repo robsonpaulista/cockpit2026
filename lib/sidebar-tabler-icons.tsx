@@ -19,6 +19,7 @@ import {
   IconMessage,
   IconMessageCircle,
   IconNews,
+  IconPackage,
   IconPhoto,
   IconRadar2,
   IconRosette,
@@ -69,6 +70,7 @@ export const sidebarTablerIconMap: Record<string, Icon> = {
   Youtube: IconBrandYoutube,
   Radar: IconRadar2,
   FolderOpen: IconFolderOpen,
+  Package: IconPackage,
 }
 
 /** Variantes Cockpit (não usadas hoje — sidebar Apify). */
