@@ -1,8 +1,12 @@
 'use client'
 
 import { Filter, MapPin, X } from 'lucide-react'
-import type { IptMissaoFiltro, IptMunicipio } from '@/lib/ipt'
-import { prioridadeImpactoMissao, temExpectativa } from '@/lib/ipt-missoes'
+import type { IptMunicipio } from '@/lib/ipt'
+import {
+  prioridadeImpactoMissao,
+  temExpectativa,
+  type IptMissaoFiltro,
+} from '@/lib/ipt-missoes'
 import type { ObraMapaRow } from '@/lib/obras-mapa'
 import { IptMissaoDetalhe } from '@/components/ipt/ipt-missao-detalhe'
 import { IptRadarNoticias } from '@/components/ipt/ipt-radar-noticias'
