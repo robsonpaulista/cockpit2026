@@ -355,6 +355,7 @@ export async function POST(request: Request) {
         visitas,
         agendas,
         ultimaVisita,
+        liderancas: liderancasPorCidade[cidadeKey] || 0,
         score,
       }
     })
@@ -367,13 +368,14 @@ export async function POST(request: Request) {
         if (b.expectativaVotos !== a.expectativaVotos) return b.expectativaVotos - a.expectativaVotos
         return a.visitas - b.visitas
       })
-      .map(({ cidade, expectativaVotos, eleitorado, semExpectativa, visitas, agendas, ultimaVisita }) => ({
+      .map(({ cidade, expectativaVotos, eleitorado, semExpectativa, visitas, agendas, ultimaVisita, liderancas }) => ({
         cidade,
         expectativaVotos,
         eleitorado,
         semExpectativa,
         visitas,
         agendas,
+        liderancas,
         motivo: semExpectativa ? 'Sem liderança mapeada' : '',
         ultimaVisita,
       }))

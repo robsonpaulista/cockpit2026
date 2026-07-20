@@ -1559,13 +1559,11 @@ body[data-ipt-operacional] .ipt-header-actions .ipt-scope-select {
   display: grid;
   grid-template-columns:
     28px
-    minmax(96px, 1.25fr)
-    minmax(52px, 4.6rem)
-    minmax(96px, 1.05fr)
-    minmax(72px, 0.85fr)
+    minmax(88px, 1.15fr)
+    repeat(var(--ipt-lista-metricas, 5), minmax(52px, 0.72fr))
     auto;
   align-items: center;
-  column-gap: 10px;
+  column-gap: 8px;
   border: 0;
   border-bottom: 1px solid #f0eeea;
   background: transparent;
@@ -1580,12 +1578,10 @@ body[data-ipt-operacional] .ipt-header-actions .ipt-scope-select {
   display: grid;
   grid-template-columns:
     28px
-    minmax(96px, 1.25fr)
-    minmax(52px, 4.6rem)
-    minmax(96px, 1.05fr)
-    minmax(72px, 0.85fr)
+    minmax(88px, 1.15fr)
+    repeat(var(--ipt-lista-metricas, 5), minmax(52px, 0.72fr))
     auto;
-  column-gap: 10px;
+  column-gap: 8px;
   align-items: end;
   padding: 0 6px 4px;
   font-size: 10px;
@@ -1605,10 +1601,7 @@ body[data-ipt-operacional] .ipt-header-actions .ipt-scope-select {
   grid-template-columns:
     28px
     minmax(72px, 1fr)
-    minmax(64px, 0.65fr)
-    minmax(72px, 0.85fr)
-    minmax(72px, 0.85fr)
-    minmax(64px, 0.7fr)
+    repeat(var(--ipt-lista-metricas, 7), minmax(48px, 0.65fr))
     auto;
 }
 
@@ -1675,8 +1668,7 @@ body[data-ipt-operacional] .ipt-header-actions .ipt-scope-select {
   color: #000000;
 }
 
-/* Só esconde KPIs no diagnóstico focado (Campo/Pesquisa/Digital/Obras).
-   Expectativa 2026 (ponto de partida) mantém os 4 cards operacionais. */
+/* KPIs territoriais (exp./pop./eleitorado/faixa) ficam na tabela de prioridades. */
 .ipt-bloco-detalhe--hierarquia:not(.ipt-bloco-detalhe--com-inds) .ipt-bloco-detalhe__inds {
   display: none;
 }
@@ -1758,7 +1750,7 @@ body[data-ipt-operacional] .ipt-header-actions .ipt-scope-select {
 }
 
 .ipt-bloco-lista__metric--exp {
-  text-align: right;
+  text-align: left;
 }
 
 .ipt-bloco-lista__metric em {

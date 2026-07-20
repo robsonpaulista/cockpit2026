@@ -8,13 +8,6 @@ import { PerfilPopulacaoPanel } from '@/components/perfil-populacao-panel'
 import { IptPesquisaRankingModal } from '@/components/ipt/ipt-pesquisa-ranking-modal'
 import { IptObrasMunicipioModal } from '@/components/ipt/ipt-obras-municipio-modal'
 import { IptCampoUltimaVisitaModal } from '@/components/ipt/ipt-campo-ultima-visita-modal'
-import { getEleitoradoByCity, getEleitoradoTotalPiaui } from '@/lib/eleitores'
-import {
-  calcularIndicadoresDemograficos,
-  formatDemografiaPercent,
-  getDemografiaMunicipio,
-  getPopulacaoTotalPiaui,
-} from '@/lib/demografia-municipio'
 import {
   formatObrasValorAbreviado,
   type IptMunicipio,
@@ -30,7 +23,6 @@ import {
   municipioNaMissao,
   prioridadeImpactoMissao,
   resumoDiagnosticoMissao,
-  rotuloRelevanciaTerritorial,
   rotuloSeguidoresDigital,
   rotuloSinalCurto,
   temExpectativa,
@@ -43,7 +35,6 @@ import type { ObraMapaRow } from '@/lib/obras-mapa'
 type Props = {
   municipio: IptMunicipio | null
   missaoAtiva: IptMissaoFiltro
-  podeVerExpectativa?: boolean
   obras?: ObraMapaRow[]
   onClear?: () => void
   /** Sem card próprio — usado abaixo da tabela no mesmo bloco. */
@@ -51,17 +42,6 @@ type Props = {
 }
 
 type IndicadorId = 'pesquisa' | 'campo' | 'digital' | 'obras'
-
-function formatInt(n: number | null | undefined): string {
-  if (n == null || !Number.isFinite(n)) return '—'
-  return n.toLocaleString('pt-BR')
-}
-
-function formatPctDoTotal(parte: number | null | undefined, total: number): string {
-  if (parte == null || !Number.isFinite(parte) || total <= 0) return '—'
-  const pct = (parte / total) * 100
-  return `${pct.toLocaleString('pt-BR', { maximumFractionDigits: 1 })}% do total estadual`
-}
 
 function evolucaoPesquisa(m: IptMunicipio): string {
   if (m.evolucao.pesquisa === 'diminuiu') {
@@ -187,7 +167,6 @@ function temPesquisaRanking(m: IptMunicipio): boolean {
 export function IptMissaoDetalhe({
   municipio,
   missaoAtiva,
-  podeVerExpectativa = false,
   obras = [],
   onClear,
   embedded = false,
@@ -247,18 +226,13 @@ export function IptMissaoDetalhe({
           </h2>
         </div>
         <p className="ipt-bloco-detalhe__empty-msg">
-          Selecione um município nas prioridades ou no mapa para ver expectativa, população,
-          eleitorado e os sinais da missão.
+          Selecione um município nas prioridades ou no mapa para ver o motivo da
+          inclusão e os sinais da missão.
         </p>
       </section>
     )
   }
 
-  const demo = getDemografiaMunicipio(municipio.municipio)
-  const indicadores = calcularIndicadoresDemograficos(demo)
-  const pop =
-    demo?.populacao_estimada_ultimo_ano ?? demo?.populacao_censo_2022 ?? null
-  const eleitorado = getEleitoradoByCity(municipio.municipio)
   const impacto = prioridadeImpactoMissao(municipio, missaoAtiva)
   const missaoCfg = missaoContexto ? iptMissaoConfig(missaoContexto) : null
   const missaoTitulo = missaoCfg?.titulo ?? null
@@ -280,12 +254,6 @@ export function IptMissaoDetalhe({
         ),
       ]
     : ['pesquisa', 'campo', 'digital', 'obras']
-  const demografiaPrincipal =
-    indicadores?.pct1559 != null
-      ? `${formatDemografiaPercent(indicadores.pct1559)} em idade ativa`
-      : demo?.urbanizacao?.taxa_urbana != null
-        ? `${formatDemografiaPercent(demo.urbanizacao.taxa_urbana)} urbana`
-        : '—'
   const podeAbrirPesquisa = temPesquisaRanking(municipio)
   const podeAbrirObras = municipio.detalhes.obrasQuantidade > 0
 
@@ -356,43 +324,6 @@ export function IptMissaoDetalhe({
                   {naMissaoAtiva ? `Missão: ${missaoTitulo}` : `Fora da missão: ${missaoTitulo}`}
                 </p>
               ) : null}
-            </div>
-          </div>
-
-          <div className="ipt-bloco-detalhe__stats">
-            <div>
-              <span>Expectativa 2026</span>
-              {podeVerExpectativa ? (
-                <>
-                  <strong>{formatInt(municipio.expectativaVotos)}</strong>
-                  <em>
-                    {municipio.pesoExpectativaPct.toLocaleString('pt-BR', {
-                      maximumFractionDigits: 1,
-                    })}
-                    % do total estadual
-                  </em>
-                </>
-              ) : (
-                <>
-                  <strong>{rotuloRelevanciaTerritorial(municipio)}</strong>
-                  <em>Classificação sem número</em>
-                </>
-              )}
-            </div>
-            <div>
-              <span>POPULAÇÃO</span>
-              <strong>{formatInt(pop)}</strong>
-              <em>{formatPctDoTotal(pop, getPopulacaoTotalPiaui())}</em>
-            </div>
-            <div>
-              <span>ELEITORADO</span>
-              <strong>{formatInt(eleitorado)}</strong>
-              <em>{formatPctDoTotal(eleitorado, getEleitoradoTotalPiaui())}</em>
-            </div>
-            <div>
-              <span>IDH / FAIXA</span>
-              <strong>{demografiaPrincipal}</strong>
-              <em>15–59 / urbanização</em>
             </div>
           </div>
 

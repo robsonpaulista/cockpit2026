@@ -39,6 +39,7 @@ type PrioridadeRow = {
   expectativaVotos: number
   eleitorado?: number
   visitas: number
+  liderancas?: number
 }
 
 type ObrasAgg = { count: number; valorTotal: number }
@@ -269,7 +270,7 @@ export function useIpt() {
           municipio: m.nome,
           expectativaVotos: row?.expectativaVotos ?? 0,
           eleitorado: row?.eleitorado ?? getEleitoradoByCity(m.nome) ?? 0,
-          liderancas: 0,
+          liderancas: row?.liderancas ?? 0,
           visitas: row?.visitas ?? 0,
           visitasNoPeriodo: visitasPorMunicipio.get(key) ?? 0,
           visitasUltimos15Dias: visitasUltimos15PorMunicipio.get(key) ?? 0,

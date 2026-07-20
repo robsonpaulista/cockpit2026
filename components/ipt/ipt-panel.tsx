@@ -542,7 +542,6 @@ export function IptPanel() {
                 <IptMissaoDetalhe
                   municipio={municipioDetalhe}
                   missaoAtiva={missaoAtiva}
-                  podeVerExpectativa={podeVerExpectativa}
                   obras={obras}
                   embedded
                   onClear={

@@ -91,6 +91,8 @@ export type IptMunicipio = {
   expectativaVotos: number
   /** Peso da cidade na expectativa total (0–100). Define relevância estratégica. */
   pesoExpectativaPct: number
+  /** Quantidade de lideranças mapeadas no município. */
+  liderancas: number
   sinais: {
     visitas: IptSinal
     obras: IptSinal
@@ -456,6 +458,7 @@ export function calcularIptMunicipios(inputs: IptMunicipioInput[]): IptMunicipio
         prioridade,
         expectativaVotos,
         pesoExpectativaPct,
+        liderancas: Math.max(0, Math.round(input.liderancas || 0)),
         sinais,
         detalhes: {
           visitasNoPeriodo: input.visitasNoPeriodo,

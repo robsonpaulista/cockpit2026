@@ -5,6 +5,7 @@ export type PrioridadeCampoApiRow = {
   semExpectativa?: boolean
   visitas: number
   agendas?: number
+  liderancas?: number
   motivo?: string
   ultimaVisita?: string | null
 }

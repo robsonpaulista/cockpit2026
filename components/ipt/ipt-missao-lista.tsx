@@ -1,5 +1,6 @@
 'use client'
 
+import type { CSSProperties } from 'react'
 import {
   coberturaCampoRotulo,
   estimativaDiasSemVisita,
@@ -18,6 +19,10 @@ import {
   type IptVisaoUniverso,
 } from '@/lib/ipt-missoes'
 import { formatObrasValorAbreviado, type IptMunicipio } from '@/lib/ipt'
+import { getEleitoradoByCity } from '@/lib/eleitores'
+import {
+  getDemografiaMunicipio,
+} from '@/lib/demografia-municipio'
 import { cn } from '@/lib/utils'
 import {
   IptTerritorioVisaoToggle,
@@ -42,7 +47,8 @@ type Props = {
   embedded?: boolean
 }
 
-function formatExpectativa(n: number): string {
+function formatInt(n: number | null | undefined): string {
+  if (n == null || !Number.isFinite(n)) return '—'
   return n.toLocaleString('pt-BR')
 }
 
@@ -52,53 +58,83 @@ function intensidadeLabel(impacto: 'alta' | 'media' | 'baixa'): string {
   return 'Baixa'
 }
 
+/** Colunas de contexto territorial (antes das métricas da missão). */
+function colunasContexto(podeVerExpectativa: boolean): string[] {
+  return podeVerExpectativa
+    ? ['Exp. 2026', 'População', 'Eleitorado', 'Lideranças']
+    : ['Relevância', 'População', 'Eleitorado', 'Lideranças']
+}
+
+/** Métricas específicas da missão (sem a coluna Prioridade). */
 function colunasMissao(missao: IptMissaoId | null): string[] {
-  if (missao === 'expectativa') return ['Exp. votos', 'Peso', 'Prioridade']
-  if (missao === 'campo') return ['Última visita', 'Cobertura de campo', 'Prioridade']
-  if (missao === 'pesquisa') return ['Posição', 'Média (válidos)', 'Prioridade']
-  if (missao === 'digital') return ['Seguidores', 'Engajamento', 'Cobertura', 'Prioridade']
-  if (missao === 'obras') return ['Recursos', 'Obras', 'Prioridade']
-  return ['Motivo', 'Missão', 'Prioridade']
+  if (missao === 'expectativa') return ['Peso']
+  if (missao === 'campo') return ['Última visita', 'Cobertura']
+  if (missao === 'pesquisa') return ['Posição', 'Média']
+  if (missao === 'digital') return ['Seguidores', 'Engaj.', 'Cobertura']
+  if (missao === 'obras') return ['Recursos', 'Obras']
+  return ['Motivo', 'Missão']
+}
+
+function contextoMunicipio(
+  m: IptMunicipio,
+  podeVerExpectativa: boolean,
+  semMeta: boolean
+): { valores: string[]; titulos: string[] } {
+  const demo = getDemografiaMunicipio(m.municipio)
+  const pop =
+    demo?.populacao_estimada_ultimo_ano ?? demo?.populacao_censo_2022 ?? null
+  const eleitorado = getEleitoradoByCity(m.municipio)
+  const liderancas = m.liderancas
+
+  const expValor = podeVerExpectativa
+    ? formatInt(m.expectativaVotos)
+    : semMeta
+      ? 'Sem meta'
+      : relevanciaCurta(m)
+  const expTitulo = podeVerExpectativa
+    ? `${m.pesoExpectativaPct.toLocaleString('pt-BR', { maximumFractionDigits: 1 })}% do total estadual`
+    : 'Relevância territorial'
+
+  return {
+    valores: [expValor, formatInt(pop), formatInt(eleitorado), formatInt(liderancas)],
+    titulos: [
+      expTitulo,
+      pop != null ? `População ${formatInt(pop)}` : 'População indisponível',
+      eleitorado != null
+        ? `Eleitorado ${formatInt(eleitorado)}`
+        : 'Eleitorado indisponível',
+      liderancas > 0
+        ? `${formatInt(liderancas)} liderança${liderancas === 1 ? '' : 's'} mapeada${liderancas === 1 ? '' : 's'}`
+        : 'Nenhuma liderança mapeada',
+    ],
+  }
 }
 
 function valoresVisaoGeral(m: IptMunicipio): string[] {
-  const impacto = prioridadeImpactoMissao(m, 'todas')
-  const intensidade = intensidadeLabel(impacto)
   const principal = missaoPrincipal(m)
-  if (!principal) return ['—', '—', intensidade]
-  return [
-    motivoCurtoMissao(m, principal),
-    iptMissaoConfig(principal).tagline,
-    intensidade,
-  ]
+  if (!principal) return ['—', '—']
+  return [motivoCurtoMissao(m, principal), iptMissaoConfig(principal).tagline]
 }
 
-function valoresLinha(
+function valoresMissao(
   m: IptMunicipio,
   missao: IptMissaoId | null,
   foraPrioridade: boolean
 ): string[] {
-  const impacto = prioridadeImpactoMissao(m, missao ?? 'todas')
-  const intensidade = foraPrioridade ? 'Saudável' : intensidadeLabel(impacto)
-
   if (missao == null) {
-    if (foraPrioridade) return ['Sem tensão crítica', '—', 'Saudável']
+    if (foraPrioridade) return ['Sem tensão crítica', '—']
     return valoresVisaoGeral(m)
   }
 
   if (missao === 'expectativa') {
-    if (m.expectativaVotos <= 0) {
-      return ['—', '—', 'Sem meta']
-    }
+    if (m.expectativaVotos <= 0) return ['—']
     return [
-      formatExpectativa(m.expectativaVotos),
       `${m.pesoExpectativaPct.toLocaleString('pt-BR', { maximumFractionDigits: 1 })}%`,
-      intensidade,
     ]
   }
 
   if (missao === 'campo') {
-    return [estimativaDiasSemVisita(m), coberturaCampoRotulo(m), intensidade]
+    return [estimativaDiasSemVisita(m), coberturaCampoRotulo(m)]
   }
   if (missao === 'pesquisa') {
     const pos =
@@ -111,24 +147,34 @@ function valoresLinha(
       m.detalhes.pesquisaPosicaoTop5 != null && m.detalhes.pesquisaMediaPct != null
         ? `${m.detalhes.pesquisaMediaPct.toLocaleString('pt-BR', { maximumFractionDigits: 1 })}%`
         : '—'
-    return [pos, media, intensidade]
+    return [pos, media]
   }
   if (missao === 'digital') {
     return [
       rotuloSeguidoresDigital(m, { compacto: true }),
       rotuloEngajamentoDigital(m, { compacto: true }),
       m.sinais.digital === 'sem_dado' ? 'Fora da base' : 'Na base',
-      intensidade,
     ]
   }
   if (missao === 'obras') {
     return [
       formatObrasValorAbreviado(m.detalhes.obrasValorTotal).replace(/ obras$/, ''),
       `${m.detalhes.obrasQuantidade}`,
-      intensidade,
     ]
   }
   return valoresVisaoGeral(m)
+}
+
+function rotuloPrioridade(
+  m: IptMunicipio,
+  missao: IptMissaoId | null,
+  foraPrioridade: boolean,
+  semMeta: boolean
+): string {
+  if (semMeta) return 'Sem meta'
+  if (foraPrioridade) return 'Saudável'
+  if (missao === 'expectativa' && m.expectativaVotos <= 0) return 'Sem meta'
+  return intensidadeLabel(prioridadeImpactoMissao(m, missao ?? 'todas'))
 }
 
 export function IptMissaoLista({
@@ -147,7 +193,10 @@ export function IptMissaoLista({
 }: Props) {
   const missaoLista: IptMissaoId | null =
     missaoAtiva === 'todas' ? null : missaoAtiva
-  const colunas = colunasMissao(missaoLista)
+  const colsContexto = colunasContexto(podeVerExpectativa)
+  const colsMissao = colunasMissao(missaoLista)
+  const colunas = [...colsContexto, ...colsMissao]
+  const nMetricas = colunas.length
   const isDigital = missaoLista === 'digital'
   const mostrarUniversoToggle = Boolean(onVisaoUniversoChange)
   const qtdNaMissao = municipios.filter((m) =>
@@ -175,6 +224,7 @@ export function IptMissaoLista({
         visaoUniverso === 'com_expectativa' && 'ipt-bloco-lista--universo',
         isDigital && 'ipt-bloco-lista--digital'
       )}
+      style={{ '--ipt-lista-metricas': nMetricas } as CSSProperties}
     >
       <div className="ipt-bloco-lista__head">
         <div className="min-w-0">
@@ -267,15 +317,10 @@ export function IptMissaoLista({
           <div className="ipt-bloco-lista__cols" aria-hidden>
             <span />
             <span>Município</span>
-            <span>
-              {podeVerExpectativa &&
-              (missaoLista == null || missaoLista === 'pesquisa')
-                ? 'Exp. votos'
-                : 'Relevância'}
-            </span>
             {colunas.map((col) => (
               <span key={col}>{col}</span>
             ))}
+            <span>Prioridade</span>
           </div>
           <ul className="ipt-bloco-lista__rows">
             {municipios.map((m, idx) => {
@@ -299,17 +344,14 @@ export function IptMissaoLista({
                 : missaoLinha
                   ? iptMissaoConfig(missaoLinha).cor
                   : '#8c8c8c'
-              const mostraExpVotos =
-                podeVerExpectativa &&
-                (missaoLista == null || missaoLista === 'pesquisa')
-              const relevancia = mostraExpVotos
-                ? formatExpectativa(m.expectativaVotos)
-                : semMeta
-                  ? 'Sem meta'
-                  : relevanciaCurta(m)
-              const valores = valoresLinha(m, missaoLista, saudavel || semMeta)
-              const prio = semMeta ? 'Sem meta' : valores[valores.length - 1]
-              const metricas = valores.slice(0, -1)
+              const contexto = contextoMunicipio(m, podeVerExpectativa, semMeta)
+              const metricasMissao = valoresMissao(m, missaoLista, saudavel || semMeta)
+              const prio = rotuloPrioridade(
+                m,
+                missaoLista,
+                saudavel,
+                semMeta
+              )
 
               return (
                 <li key={m.municipio}>
@@ -359,17 +401,21 @@ export function IptMissaoLista({
                         </em>
                       ) : null}
                     </span>
-                    <span
-                      className={cn(
-                        'ipt-bloco-lista__metric',
-                        mostraExpVotos && 'ipt-bloco-lista__metric--exp'
-                      )}
-                    >
-                      {relevancia}
-                    </span>
-                    {metricas.map((valor, i) => (
+                    {contexto.valores.map((valor, i) => (
                       <span
-                        key={`${m.municipio}-${colunas[i]}`}
+                        key={`${m.municipio}-ctx-${colsContexto[i]}`}
+                        className={cn(
+                          'ipt-bloco-lista__metric',
+                          i === 0 && podeVerExpectativa && 'ipt-bloco-lista__metric--exp'
+                        )}
+                        title={contexto.titulos[i]}
+                      >
+                        {valor}
+                      </span>
+                    ))}
+                    {metricasMissao.map((valor, i) => (
+                      <span
+                        key={`${m.municipio}-${colsMissao[i]}`}
                         className="ipt-bloco-lista__metric"
                       >
                         {valor}
