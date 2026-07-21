@@ -9,6 +9,7 @@ import { TerritorioCampoPanoramaPanel } from '@/components/territorio-campo/terr
 import { VisitasPanel } from '@/components/territorio-campo/visitas-panel'
 import {
   TERRITORIO_CAMPO_TAB_BASE,
+  TERRITORIO_CAMPO_TAB_LIDERANCAS,
   TERRITORIO_CAMPO_TAB_MAPA_OBRAS,
   TERRITORIO_CAMPO_TAB_PANORAMA,
   TERRITORIO_CAMPO_TAB_VISITAS,
@@ -41,6 +42,22 @@ const MapaObrasPanel = dynamic(
       </div>
     ),
   }
+)
+
+const LiderancasPanel = dynamic(
+  () =>
+    import('@/components/territorio-campo/liderancas-panel').then(
+      (mod) => mod.LiderancasPanel,
+    ),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="flex items-center justify-center gap-2 py-16 text-sm text-text-muted">
+        <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+        Carregando lideranças…
+      </div>
+    ),
+  },
 )
 
 export default function TerritorioCampoPage() {
@@ -77,6 +94,8 @@ export default function TerritorioCampoPage() {
         <TerritorioCampoPanoramaPanel />
       ) : activeTab === TERRITORIO_CAMPO_TAB_BASE ? (
         <TerritorioBasePanel />
+      ) : activeTab === TERRITORIO_CAMPO_TAB_LIDERANCAS ? (
+        <LiderancasPanel />
       ) : activeTab === TERRITORIO_CAMPO_TAB_MAPA_OBRAS ? (
         <MapaObrasPanel />
       ) : (

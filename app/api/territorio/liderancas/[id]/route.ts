@@ -36,6 +36,7 @@ function mapRow(row: Record<string, unknown>) {
     expectativaLegado: Number(row.expectativa_votos_2026 || 0),
     expectativaAferida: Number(row.expectativa_jadyel_2026 || 0),
     promessa: Number(row.promessa_lideranca_2026 || 0),
+    votos2024: Number(row.votos_2024 || 0),
     votacaoFinal2022: Number(row.votacao_final_2022 || 0),
   }
 }

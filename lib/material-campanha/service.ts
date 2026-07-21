@@ -6,7 +6,7 @@ import type {
   MaterialMovimentoTipo,
   MaterialPedidoStatus,
 } from '@/lib/material-campanha/types'
-import { MATERIAL_PEDIDO_STATUS_ANDAMENTO } from '@/lib/material-campanha/types'
+import { MATERIAL_PEDIDO_STATUS_ANDAMENTO, ordenarMateriaisExibicao } from '@/lib/material-campanha/types'
 
 type Db = SupabaseClient
 
@@ -45,7 +45,7 @@ export async function listarMateriais(
 
   const { data, error } = await q
   if (error) throw error
-  return (data ?? []) as CampanhaMaterial[]
+  return ordenarMateriaisExibicao((data ?? []) as CampanhaMaterial[])
 }
 
 export async function criarMaterial(

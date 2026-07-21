@@ -5,6 +5,7 @@ import { requireRouteUser } from '@/lib/supabase/route-auth'
 import { isLiderancaAtualEmDialogo } from '@/lib/territorio-lideranca-atual'
 import {
   invalidateTerritorioLiderancasDbCache,
+  listAllTerritorioLiderancas,
   listTerritorioLiderancasByCidade,
   normalizeTerritorioExpectativaCityKey,
 } from '@/lib/territorio-liderancas-db'
@@ -36,6 +37,7 @@ function mapRow(row: Record<string, unknown>) {
     expectativaLegado: Number(row.expectativa_votos_2026 || 0),
     expectativaAferida: Number(row.expectativa_jadyel_2026 || 0),
     promessa: Number(row.promessa_lideranca_2026 || 0),
+    votos2024: Number(row.votos_2024 || 0),
     votacaoFinal2022: Number(row.votacao_final_2022 || 0),
   }
 }
@@ -46,13 +48,11 @@ export async function GET(request: NextRequest) {
 
   try {
     const cidade = request.nextUrl.searchParams.get('cidade')?.trim()
-    if (!cidade) {
-      return NextResponse.json({ error: 'cidade é obrigatória' }, { status: 400 })
-    }
-
-    const rows = await listTerritorioLiderancasByCidade(cidade)
+    const rows = cidade
+      ? await listTerritorioLiderancasByCidade(cidade)
+      : await listAllTerritorioLiderancas()
     return NextResponse.json({
-      cidade,
+      cidade: cidade || null,
       total: rows.length,
       rows: rows.map((row) => mapRow(row as unknown as Record<string, unknown>)),
     })

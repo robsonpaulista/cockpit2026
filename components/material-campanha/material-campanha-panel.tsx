@@ -412,7 +412,7 @@ export function MaterialCampanhaPanel() {
                         </p>
                       </div>
                       {baixo ? (
-                        <span className="inline-flex items-center gap-0.5 rounded-full bg-amber-500/15 px-1.5 py-0.5 text-[9px] font-medium text-amber-800 dark:text-amber-200">
+                        <span className="inline-flex items-center gap-0.5 rounded-full bg-amber-500/15 px-1.5 py-0.5 text-[9px] font-medium text-text-primary">
                           <IconAlertTriangle className="h-2.5 w-2.5" stroke={1.5} />
                           Mín. {m.estoque_minimo}
                         </span>
@@ -482,7 +482,7 @@ export function MaterialCampanhaPanel() {
                 </button>
               ) : null}
               {usandoMockPedidos ? (
-                <span className="rounded-full bg-amber-500/15 px-2.5 py-0.5 text-[10px] font-medium text-amber-800">
+                <span className="rounded-full bg-amber-500/15 px-2.5 py-0.5 text-[10px] font-medium text-text-primary">
                   Demonstração
                 </span>
               ) : null}

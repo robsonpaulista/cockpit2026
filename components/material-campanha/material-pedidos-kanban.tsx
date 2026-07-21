@@ -15,7 +15,6 @@ const COLUNAS: Array<{
   status: MaterialPedidoStatus
   cor: string
   chipBg: string
-  chipText: string
   chipBorder: string
 }> = MATERIAL_PEDIDO_STATUS_ANDAMENTO.map((status) => {
   if (status === 'novo') {
@@ -23,7 +22,6 @@ const COLUNAS: Array<{
       status,
       cor: '#3b82f6',
       chipBg: 'bg-blue-50 dark:bg-blue-500/15',
-      chipText: 'text-blue-700 dark:text-blue-300',
       chipBorder: 'border-blue-200/80 dark:border-blue-500/30',
     }
   }
@@ -32,7 +30,6 @@ const COLUNAS: Array<{
       status,
       cor: '#f59e0b',
       chipBg: 'bg-amber-50 dark:bg-amber-500/15',
-      chipText: 'text-amber-800 dark:text-amber-300',
       chipBorder: 'border-amber-200/80 dark:border-amber-500/30',
     }
   }
@@ -41,7 +38,6 @@ const COLUNAS: Array<{
       status,
       cor: '#10b981',
       chipBg: 'bg-emerald-50 dark:bg-emerald-500/15',
-      chipText: 'text-emerald-800 dark:text-emerald-300',
       chipBorder: 'border-emerald-200/80 dark:border-emerald-500/30',
     }
   }
@@ -49,7 +45,6 @@ const COLUNAS: Array<{
     status,
     cor: '#ff9800',
     chipBg: 'bg-orange-50 dark:bg-orange-500/15',
-    chipText: 'text-orange-800 dark:text-orange-300',
     chipBorder: 'border-orange-200/80 dark:border-orange-500/30',
   }
 })
@@ -96,9 +91,8 @@ export function MaterialPedidosKanban({
               <div className="mb-2.5">
                 <span
                   className={cn(
-                    'inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[12.5px] font-semibold leading-tight',
+                    'inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[12.5px] font-semibold leading-tight text-text-primary',
                     col.chipBg,
-                    col.chipText,
                     col.chipBorder
                   )}
                 >
@@ -108,7 +102,7 @@ export function MaterialPedidosKanban({
                     aria-hidden
                   />
                   {MATERIAL_PEDIDO_STATUS_LABEL[col.status]}
-                  <span className="ml-0.5 tabular-nums opacity-80">
+                  <span className="ml-0.5 tabular-nums text-text-secondary">
                     {cards.length}
                   </span>
                 </span>

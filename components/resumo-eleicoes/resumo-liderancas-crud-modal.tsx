@@ -18,6 +18,7 @@ export type LiderancaCrudRow = {
   expectativaLegado: number
   expectativaAferida: number
   promessa: number
+  votos2024?: number
   votacaoFinal2022: number
 }
 
@@ -88,6 +89,8 @@ type ResumoLiderancasCrudModalProps = {
   cidade: string
   cenarioVotos: CenarioVotosLiderancasModal
   prefillNova?: LiderancaFormPrefill | null
+  initialEditingId?: number | null
+  startCreating?: boolean
   onClose: () => void
   onChanged?: () => void
 }
@@ -96,6 +99,8 @@ export function ResumoLiderancasCrudModal({
   cidade,
   cenarioVotos,
   prefillNova = null,
+  initialEditingId = null,
+  startCreating = false,
   onClose,
   onChanged,
 }: ResumoLiderancasCrudModalProps) {
@@ -107,6 +112,7 @@ export function ResumoLiderancasCrudModal({
   const [creating, setCreating] = useState(false)
   const [form, setForm] = useState<FormState>(EMPTY_FORM)
   const prefillAppliedRef = useRef<string | null>(null)
+  const initialActionAppliedRef = useRef(false)
 
   const loadRows = useCallback(async () => {
     setLoading(true)
@@ -138,6 +144,33 @@ export function ResumoLiderancasCrudModal({
     setForm(formFromPrefill(prefillNova))
     setError(null)
   }, [cidade, prefillNova])
+
+  useEffect(() => {
+    if (initialActionAppliedRef.current || loading) return
+    if (initialEditingId != null) {
+      const row = rows.find((item) => item.id === initialEditingId)
+      if (!row) return
+      initialActionAppliedRef.current = true
+      setCreating(false)
+      setEditingId(row.id)
+      setForm({
+        nome: row.nome,
+        cargo: row.cargo === '-' ? '' : row.cargo,
+        depEstadual: row.depEstadual,
+        liderancaAtual: row.liderancaAtual,
+        expectativaLegado: String(row.expectativaLegado || 0),
+        expectativaAferida: String(row.expectativaAferida || 0),
+        promessa: String(row.promessa || 0),
+      })
+      return
+    }
+    if (startCreating) {
+      initialActionAppliedRef.current = true
+      setCreating(true)
+      setEditingId(null)
+      setForm(EMPTY_FORM)
+    }
+  }, [initialEditingId, loading, rows, startCreating])
 
   const ordenadas = useMemo(() => {
     return [...rows].sort(

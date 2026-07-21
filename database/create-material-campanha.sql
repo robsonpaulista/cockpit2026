@@ -214,10 +214,14 @@ SET label = EXCLUDED.label, path = EXCLUDED.path;
 -- Seed inicial (opcional)
 INSERT INTO campanha_materiais (codigo, nome, categoria, unidade, estoque_minimo, saldo)
 SELECT * FROM (VALUES
-  ('PANF-01', 'Panfleto institucional', 'panfleto', 'un', 500, 0),
-  ('PRAG-01', 'Praguinha de rua', 'praguinha', 'un', 100, 0),
-  ('ADES-01', 'Adesivo carro', 'adesivo', 'un', 200, 0),
-  ('BAND-01', 'Bandeira de mão', 'bandeira', 'un', 50, 0),
-  ('BANN-01', 'Banner 3x1', 'banner', 'un', 10, 0)
+  ('PRAG-01', 'Praguinha', 'praguinha', 'un', 100, 0),
+  ('ADES-MOTO', 'Adesivo de moto', 'adesivo', 'un', 200, 0),
+  ('ADES-CARRO', 'Adesivo de carro', 'adesivo', 'un', 200, 0),
+  ('SANT-01', 'Santinhos', 'panfleto', 'un', 500, 0),
+  ('PERF-01', 'Perfurados', 'outro', 'un', 100, 0),
+  ('BAND-01', 'Bandeiras', 'bandeira', 'un', 50, 0),
+  ('PRAGAO-01', 'Pragão de rua', 'banner', 'un', 20, 0),
+  ('CART-02', 'Cartaz formato 2', 'outro', 'un', 50, 0),
+  ('CART-04', 'Cartaz formato 4', 'outro', 'un', 50, 0)
 ) AS v(codigo, nome, categoria, unidade, estoque_minimo, saldo)
 WHERE NOT EXISTS (SELECT 1 FROM campanha_materiais LIMIT 1);

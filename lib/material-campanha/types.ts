@@ -173,6 +173,42 @@ export function isMaterialBaixoEstoque(m: Pick<CampanhaMaterial, 'saldo' | 'esto
   return m.saldo <= m.estoque_minimo
 }
 
+/** Ordem preferida dos cards de estoque (match por trecho do nome, sem acento). */
+export const MATERIAL_ORDEM_EXIBICAO = [
+  'praguinha',
+  'adesivo de moto',
+  'adesivo de carro',
+  'santinho',
+  'perfurado',
+  'bandeira',
+  'pragao',
+  'cartaz formato 2',
+  'cartaz formato 4',
+] as const
+
+function normalizarNomeMaterial(nome: string): string {
+  return nome
+    .normalize('NFD')
+    .replace(/\p{M}/gu, '')
+    .toLowerCase()
+    .trim()
+}
+
+export function indiceOrdemMaterial(nome: string): number {
+  const n = normalizarNomeMaterial(nome)
+  const i = MATERIAL_ORDEM_EXIBICAO.findIndex((chave) => n.includes(chave))
+  return i === -1 ? Number.MAX_SAFE_INTEGER : i
+}
+
+export function ordenarMateriaisExibicao<T extends { nome: string }>(lista: T[]): T[] {
+  return [...lista].sort((a, b) => {
+    const oa = indiceOrdemMaterial(a.nome)
+    const ob = indiceOrdemMaterial(b.nome)
+    if (oa !== ob) return oa - ob
+    return a.nome.localeCompare(b.nome, 'pt-BR')
+  })
+}
+
 export function formatMaterialPreco(value: number | null | undefined): string {
   const n = Number(value ?? 0)
   if (!Number.isFinite(n)) return 'R$ 0,00'

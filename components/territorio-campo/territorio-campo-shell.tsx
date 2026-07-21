@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect } from 'react'
-import { HardHat, LayoutGrid, MapPin, Route } from 'lucide-react'
+import { HardHat, LayoutGrid, MapPin, Route, Users } from 'lucide-react'
 import {
   DashboardHubTabBar,
   DashboardPageChrome,
@@ -14,6 +14,7 @@ import { typographyContentRootClass, typographyPageLeadClass } from '@/lib/typog
 import {
   TERRITORIO_CAMPO_PAGE_TITLE,
   TERRITORIO_CAMPO_TAB_BASE,
+  TERRITORIO_CAMPO_TAB_LIDERANCAS,
   type TerritorioCampoTab,
 } from '@/lib/territorio-campo-route'
 import { territorioBaseTextClass } from '@/lib/territorio-base-styles'
@@ -26,6 +27,7 @@ const TABS: { id: TerritorioCampoTab; label: string; icon: typeof LayoutGrid }[]
   { id: 'base', label: 'Base', icon: MapPin },
   { id: 'mapa-obras', label: 'Mapa de Obras', icon: HardHat },
   { id: 'visitas', label: 'Visitas', icon: Route },
+  { id: TERRITORIO_CAMPO_TAB_LIDERANCAS, label: 'Lideranças', icon: Users },
 ]
 
 interface TerritorioCampoShellProps {
