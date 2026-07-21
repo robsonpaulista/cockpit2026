@@ -12,9 +12,13 @@ import {
   type IptMissaoMudancaSentido,
 } from '@/lib/ipt-missoes'
 import {
+  alertaMissaoEvento,
   carregarEventosMissao,
+  IPT_MISSAO_ALERTA_COR,
+  IPT_MISSAO_ALERTA_LABEL,
   labelSentidoMissao,
   leituraComparativoEvento,
+  type IptMissaoAlertaNivel,
   type IptMissaoEvento,
 } from '@/lib/ipt-missao-evolucao'
 import { cn } from '@/lib/utils'
@@ -50,6 +54,7 @@ export function IptMissaoEvolucaoModal({ open, onClose, municipios, refreshToken
   const [eventos, setEventos] = useState<IptMissaoEvento[]>([])
   const [filtroMissao, setFiltroMissao] = useState<IptMissaoId | 'todas'>('todas')
   const [filtroSentido, setFiltroSentido] = useState<IptMissaoMudancaSentido | 'todos'>('todos')
+  const [filtroAlerta, setFiltroAlerta] = useState<IptMissaoAlertaNivel | 'todos'>('todos')
   const [filtroMunicipio, setFiltroMunicipio] = useState<string>('')
   const [busca, setBusca] = useState<string>('')
   const [gruposAbertos, setGruposAbertos] = useState<Partial<Record<IptMissaoId, boolean>>>({})
@@ -103,16 +108,18 @@ export function IptMissaoEvolucaoModal({ open, onClose, municipios, refreshToken
       .normalize('NFD')
       .replace(/[\u0300-\u036f]/g, '')
       .trim()
-    if (!q) return eventos
     return eventos.filter((e) => {
+      if (filtroAlerta !== 'todos' && alertaMissaoEvento(e).nivel !== filtroAlerta) return false
+      if (!q) return true
       const comp = leituraComparativoEvento(e)
-      const blob = `${e.municipio} ${e.motivo} ${e.missao} ${comp.metrica} ${comp.anterior} ${comp.atual}`
+      const alerta = alertaMissaoEvento(e)
+      const blob = `${e.municipio} ${e.motivo} ${e.missao} ${comp.metrica} ${comp.anterior} ${comp.atual} ${alerta.titulo}`
         .toLowerCase()
         .normalize('NFD')
         .replace(/[\u0300-\u036f]/g, '')
       return blob.includes(q)
     })
-  }, [eventos, busca])
+  }, [eventos, busca, filtroAlerta])
 
   const grupos = useMemo((): GrupoMissao[] => {
     const byMissao = new Map<IptMissaoId, IptMissaoEvento[]>()
@@ -151,11 +158,18 @@ export function IptMissaoEvolucaoModal({ open, onClose, municipios, refreshToken
   const resumo = useMemo(() => {
     let entrou = 0
     let saiu = 0
+    let criticos = 0
+    let atencoes = 0
+    let positivos = 0
     for (const e of filtrados) {
       if (e.sentido === 'entrou') entrou += 1
       else saiu += 1
+      const nivel = alertaMissaoEvento(e).nivel
+      if (nivel === 'critico') criticos += 1
+      else if (nivel === 'atencao') atencoes += 1
+      else positivos += 1
     }
-    return { entrou, saiu, total: filtrados.length }
+    return { entrou, saiu, criticos, atencoes, positivos, total: filtrados.length }
   }, [filtrados])
 
   const toggleGrupo = (missao: IptMissaoId) => {
@@ -190,7 +204,7 @@ export function IptMissaoEvolucaoModal({ open, onClose, municipios, refreshToken
       >
         <div className="ipt-foco-modal__head">
           <div>
-            <p className="ipt-foco-modal__eyebrow">Insight contínuo</p>
+            <p className="ipt-foco-modal__eyebrow">Sala de guerra</p>
             <h2 id="ipt-evolucao-titulo" className="ipt-foco-modal__title">
               Evolução das missões
             </h2>
@@ -201,8 +215,8 @@ export function IptMissaoEvolucaoModal({ open, onClose, municipios, refreshToken
         </div>
 
         <p className="ipt-foco-modal__lead">
-          Tabela por missão: quando cada município entrou ou saiu, com o valor anterior e o atual que
-          motivaram a mudança.
+          Alertas automáticos por município: 🔴 crítico pede ação imediata, 🟡 atenção pede
+          acompanhamento e 🟢 positivo registra vitória — sempre com o valor anterior e o atual.
         </p>
 
         <div className="ipt-evolucao-modal__filters">
@@ -233,6 +247,18 @@ export function IptMissaoEvolucaoModal({ open, onClose, municipios, refreshToken
               <option value="saiu">Saiu</option>
             </select>
           </label>
+          <label className="ipt-evolucao-modal__field">
+            <span>Alerta</span>
+            <select
+              value={filtroAlerta}
+              onChange={(e) => setFiltroAlerta(e.target.value as IptMissaoAlertaNivel | 'todos')}
+            >
+              <option value="todos">Todos</option>
+              <option value="critico">🔴 Crítico</option>
+              <option value="atencao">🟡 Atenção</option>
+              <option value="positivo">🟢 Positivo</option>
+            </select>
+          </label>
           <label className="ipt-evolucao-modal__field ipt-evolucao-modal__field--wide">
             <span>Município</span>
             <select
@@ -260,6 +286,15 @@ export function IptMissaoEvolucaoModal({ open, onClose, municipios, refreshToken
 
         <div className="ipt-evolucao-modal__summary">
           <span>{resumo.total} eventos</span>
+          <span className="ipt-evolucao-modal__pill ipt-evolucao-modal__pill--critico">
+            🔴 {resumo.criticos} crítico{resumo.criticos === 1 ? '' : 's'}
+          </span>
+          <span className="ipt-evolucao-modal__pill ipt-evolucao-modal__pill--atencao">
+            🟡 {resumo.atencoes} atenção
+          </span>
+          <span className="ipt-evolucao-modal__pill ipt-evolucao-modal__pill--positivo">
+            🟢 {resumo.positivos} positivo{resumo.positivos === 1 ? '' : 's'}
+          </span>
           <span className="ipt-evolucao-modal__pill ipt-evolucao-modal__pill--in">
             {resumo.entrou} entraram
           </span>
@@ -332,6 +367,7 @@ export function IptMissaoEvolucaoModal({ open, onClose, municipios, refreshToken
                         <table className="ipt-evolucao-modal__table">
                           <thead>
                             <tr>
+                              <th>Alerta</th>
                               <th>Município</th>
                               <th>Movimento</th>
                               <th>Métrica</th>
@@ -345,8 +381,31 @@ export function IptMissaoEvolucaoModal({ open, onClose, municipios, refreshToken
                             {grupo.eventos.map((e) => {
                               const entrou = e.sentido === 'entrou'
                               const comp = leituraComparativoEvento(e)
+                              const alerta = alertaMissaoEvento(e)
+                              const cor = IPT_MISSAO_ALERTA_COR[alerta.nivel]
                               return (
-                                <tr key={e.id}>
+                                <tr
+                                  key={e.id}
+                                  className={cn(
+                                    'ipt-evolucao-modal__row',
+                                    `ipt-evolucao-modal__row--${alerta.nivel}`
+                                  )}
+                                >
+                                  <td>
+                                    <span
+                                      className="ipt-evolucao-modal__alerta"
+                                      title={IPT_MISSAO_ALERTA_LABEL[alerta.nivel]}
+                                    >
+                                      <span
+                                        className="ipt-evolucao-modal__alerta-dot"
+                                        style={{ background: cor }}
+                                        aria-hidden
+                                      />
+                                      <span className="ipt-evolucao-modal__alerta-txt">
+                                        {alerta.titulo}
+                                      </span>
+                                    </span>
+                                  </td>
                                   <td>
                                     <strong className="ipt-evolucao-modal__muni">{e.municipio}</strong>
                                   </td>

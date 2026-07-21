@@ -765,6 +765,72 @@ export function labelSentidoMissao(sentido: IptMissaoMudancaSentido): string {
   return sentido === 'entrou' ? 'Entrou' : 'Saiu'
 }
 
+/** Nível de alerta estilo "sala de guerra": 🔴 crítico, 🟡 atenção, 🟢 positivo. */
+export type IptMissaoAlertaNivel = 'critico' | 'atencao' | 'positivo'
+
+export type IptMissaoAlerta = {
+  nivel: IptMissaoAlertaNivel
+  titulo: string
+}
+
+export const IPT_MISSAO_ALERTA_LABEL: Record<IptMissaoAlertaNivel, string> = {
+  critico: 'Crítico',
+  atencao: 'Atenção',
+  positivo: 'Positivo',
+}
+
+export const IPT_MISSAO_ALERTA_COR: Record<IptMissaoAlertaNivel, string> = {
+  critico: '#e53935',
+  atencao: '#f59e0b',
+  positivo: '#2e9e5b',
+}
+
+/**
+ * Classifica o evento como alerta de sala de guerra.
+ * Missões de problema (campo, pesquisa, digital, obras): entrar = alerta; sair = vitória.
+ * Expectativa: ganhar meta = vitória; perder meta = crítico.
+ */
+export function alertaMissaoEvento(e: IptMissaoEvento): IptMissaoAlerta {
+  const d = e.detalhes
+  const entrou = e.sentido === 'entrou'
+
+  if (e.missao === 'expectativa') {
+    if (entrou) return { nivel: 'positivo', titulo: 'Município ganhou expectativa 2026' }
+    return { nivel: 'critico', titulo: 'Perdeu expectativa 2026' }
+  }
+
+  if (e.missao === 'campo') {
+    if (!entrou) return { nivel: 'positivo', titulo: 'Cobertura de campo recuperada' }
+    if (String(d.prioridade ?? '') === 'critico') {
+      return { nivel: 'critico', titulo: 'Campo crítico — potencial sem presença' }
+    }
+    if (String(d.evolucaoVisitas ?? '') === 'diminuiu') {
+      return { nivel: 'critico', titulo: 'Visitas em queda' }
+    }
+    return { nivel: 'atencao', titulo: 'Campo descoberto' }
+  }
+
+  if (e.missao === 'pesquisa') {
+    if (!entrou) return { nivel: 'positivo', titulo: 'Pesquisa recuperada' }
+    if (String(d.sinalPesquisa ?? '') === 'mal') {
+      return { nivel: 'critico', titulo: 'Pesquisa caiu' }
+    }
+    return { nivel: 'atencao', titulo: 'Pesquisa abaixo do potencial' }
+  }
+
+  if (e.missao === 'digital') {
+    if (!entrou) return { nivel: 'positivo', titulo: 'Presença digital recuperada' }
+    return { nivel: 'atencao', titulo: 'Digital descoberto' }
+  }
+
+  // obras
+  if (!entrou) return { nivel: 'positivo', titulo: 'Obras valorizadas' }
+  if (String(d.sinalObras ?? '') === 'mal') {
+    return { nivel: 'critico', titulo: 'Obra parada ou sem entrega' }
+  }
+  return { nivel: 'atencao', titulo: 'Obra sem divulgação' }
+}
+
 /** Ainda está na missão? (útil no modal) */
 export function municipioAindaNaMissao(
   municipios: IptMunicipio[],

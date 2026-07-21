@@ -496,8 +496,9 @@ body[data-ipt-operacional] .ipt-header-actions .ipt-scope-select {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
+  /* Mantém as 4 missões lado a lado; só empilha em telas estreitas (≤900px). */
   .ipt-missoes__grid--operacionais {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 }
 
@@ -3651,6 +3652,21 @@ body[data-ipt-operacional] .ipt-missao-card--active .ipt-missao-card__cta {
   color: #444;
 }
 
+.ipt-evolucao-modal__pill--critico {
+  background: rgba(229, 57, 53, 0.12);
+  color: #b3261e;
+}
+
+.ipt-evolucao-modal__pill--atencao {
+  background: rgba(245, 158, 11, 0.14);
+  color: #92600a;
+}
+
+.ipt-evolucao-modal__pill--positivo {
+  background: rgba(46, 158, 91, 0.14);
+  color: #1d6f42;
+}
+
 .ipt-evolucao-modal__body {
   margin-top: 12px;
   min-height: 0;
@@ -3833,4 +3849,36 @@ body[data-ipt-operacional] .ipt-missao-card--active .ipt-missao-card__cta {
   background: rgba(102, 102, 102, 0.1);
   border-color: rgba(102, 102, 102, 0.25);
   color: #444;
+}
+
+.ipt-evolucao-modal__row--critico > td:first-child {
+  box-shadow: inset 3px 0 0 #e53935;
+}
+
+.ipt-evolucao-modal__row--atencao > td:first-child {
+  box-shadow: inset 3px 0 0 #f59e0b;
+}
+
+.ipt-evolucao-modal__row--positivo > td:first-child {
+  box-shadow: inset 3px 0 0 #2e9e5b;
+}
+
+.ipt-evolucao-modal__alerta {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+
+.ipt-evolucao-modal__alerta-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 999px;
+  flex-shrink: 0;
+}
+
+.ipt-evolucao-modal__alerta-txt {
+  font-size: 11px;
+  font-weight: 600;
+  color: #222;
 }
