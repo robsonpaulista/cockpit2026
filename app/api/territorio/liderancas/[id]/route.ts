@@ -16,6 +16,7 @@ const patchSchema = z.object({
   cargo_2024: z.string().optional().nullable(),
   dep_estadual: z.string().optional().nullable(),
   lideranca_atual: z.string().optional().nullable(),
+  votos_2024: z.coerce.number().optional().nullable(),
   expectativa_votos_2026: z.coerce.number().optional().nullable(),
   expectativa_jadyel_2026: z.coerce.number().optional().nullable(),
   promessa_lideranca_2026: z.coerce.number().optional().nullable(),
@@ -76,6 +77,9 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
       const liderancaAtual = body.lideranca_atual?.trim() || null
       patch.lideranca_atual = liderancaAtual
       patch.em_dialogo = isLiderancaAtualEmDialogo(liderancaAtual)
+    }
+    if (body.votos_2024 !== undefined) {
+      patch.votos_2024 = body.votos_2024 ?? 0
     }
     if (body.expectativa_votos_2026 !== undefined) {
       patch.expectativa_votos_2026 = body.expectativa_votos_2026 ?? 0
