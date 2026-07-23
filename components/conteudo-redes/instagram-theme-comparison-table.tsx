@@ -2,16 +2,6 @@
 
 import { PremiumSectionHeader } from '@/components/conteudo-redes/premium-section-header'
 import {
-  Crown,
-  Download,
-  Eye,
-  Heart,
-  MessageCircle,
-  Share2,
-  TrendingUp,
-  Trophy,
-} from 'lucide-react'
-import {
   COMPARISON_METRICS,
   formatMetricValue,
   getMetricRatio,
@@ -19,29 +9,6 @@ import {
 } from '@/lib/instagram-metric-comparison'
 import { computeThemeComparison, type ThemeStatsBundle } from '@/lib/instagram-theme-comparison'
 import { cn } from '@/lib/utils'
-import {
-  conteudoRedesAmberBorderTintClass,
-  conteudoRedesAmberTextClass,
-  conteudoRedesTextClass,
-} from '@/lib/conteudo-redes-styles'
-
-const METRIC_ICONS = {
-  avgLikes: Heart,
-  avgComments: MessageCircle,
-  avgViews: Eye,
-  avgShares: Share2,
-  avgSaves: Download,
-  avgEngagement: TrendingUp,
-} as const
-
-const METRIC_ICON_CLASS = {
-  avgLikes: 'text-red-500',
-  avgComments: conteudoRedesAmberTextClass,
-  avgViews: conteudoRedesAmberTextClass,
-  avgShares: 'text-green-500',
-  avgSaves: 'text-orange-500',
-  avgEngagement: conteudoRedesAmberTextClass,
-} as const
 
 type InstagramThemeComparisonTableProps = {
   themeStats: ThemeStatsBundle
@@ -60,32 +27,25 @@ function MetricCell({
   max: number
   isLeader: boolean
 }) {
-  const Icon = METRIC_ICONS[metricKey]
   const ratio = getMetricRatio(value, max)
 
   return (
-    <div
-      className={cn(
-        'min-w-[7.5rem] rounded-lg px-2 py-1.5',
-        isLeader ? 'border border-status-success/25 bg-status-success/8' : ''
-      )}
-    >
-      <div className="flex items-center justify-end gap-1.5">
-        <Icon className={cn('h-3 w-3 shrink-0', METRIC_ICON_CLASS[metricKey])} />
-        <span
-          className={cn(
-            'font-semibold tabular-nums',
-            isLeader ? 'text-status-success' : conteudoRedesTextClass
-          )}
-        >
-          {formatMetricValue(metricKey, value)}
-        </span>
-        {isLeader && <Trophy className="h-3 w-3 shrink-0 text-status-success" />}
-      </div>
-      <div className="mt-1.5 h-1 overflow-hidden rounded-full bg-background">
+    <div className="min-w-[6.5rem]">
+      <p
+        className={cn(
+          'text-right text-[13px] tabular-nums',
+          isLeader ? 'font-semibold text-[#1c1917]' : 'font-medium text-[#1c1917]'
+        )}
+      >
+        {formatMetricValue(metricKey, value)}
+      </p>
+      <div className="mt-1.5 h-1 overflow-hidden rounded-full bg-[#f3f1ec]">
         <div
-          className={cn('h-full rounded-full', isLeader ? 'bg-status-success' : 'bg-[#ff9800]/55')}
-          style={{ width: `${Math.max(ratio, value > 0 ? 8 : 0)}%` }}
+          className={cn(
+            'ml-auto h-full rounded-full',
+            isLeader ? 'bg-[#ff9800]' : 'bg-[#d6d3d1]'
+          )}
+          style={{ width: `${Math.max(ratio, value > 0 ? 6 : 0)}%` }}
         />
       </div>
     </div>
@@ -95,7 +55,7 @@ function MetricCell({
 export function InstagramThemeComparisonTable({
   themeStats,
   sectionClassName = '',
-  panelClassName = 'rounded-xl border border-[rgb(var(--color-border-tertiary)/0.85)] bg-background/50 overflow-hidden',
+  panelClassName = 'overflow-hidden rounded-[18px] border border-[#ebe8e4] bg-white shadow-[0_1px_2px_rgba(28,25,23,0.03)]',
 }: InstagramThemeComparisonTableProps) {
   const comparison = computeThemeComparison(themeStats)
 
@@ -109,34 +69,23 @@ export function InstagramThemeComparisonTable({
   return (
     <div className={sectionClassName}>
       <PremiumSectionHeader
-        title="Tabela Comparativa Detalhada por tema"
-        description="Métricas completas de cada tema classificado"
+        title="Comparativo por tema"
+        description="Médias por postagem em cada tema classificado"
       />
 
-      <div className="mb-5 rounded-xl border border-[rgb(var(--color-border-tertiary)/0.85)] bg-bg-app/60 p-4">
-        <p className={cn('mb-3 text-xs font-semibold uppercase tracking-wide', conteudoRedesTextClass)}>
+      <div className="mb-5 rounded-[14px] border border-[#ebe8e4] bg-[#fafaf8] px-4 py-3">
+        <p className="mb-2.5 text-[11px] font-medium uppercase tracking-[0.04em] text-[#a8a29e]">
           Melhor tema por indicador
         </p>
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap gap-x-5 gap-y-2">
           {COMPARISON_METRICS.map((metric) => {
             const winner = comparison.winnersByMetric[metric.key]
-            const MetricIcon = METRIC_ICONS[metric.key]
-
             return (
-              <div
-                key={metric.key}
-                className={cn(
-                  'inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs',
-                  winner
-                    ? cn('text-black', conteudoRedesAmberBorderTintClass)
-                    : cn('border-[rgb(var(--color-border-tertiary)/0.85)] bg-bg-surface', conteudoRedesTextClass)
-                )}
-              >
-                <MetricIcon className={cn('h-3.5 w-3.5', METRIC_ICON_CLASS[metric.key])} />
-                <span className="font-medium">{metric.label}</span>
-                <span className={conteudoRedesTextClass}>→</span>
-                <span className="font-semibold">{winner ?? 'Empate / sem dados'}</span>
-              </div>
+              <p key={metric.key} className="text-[13px] text-[#57534e]">
+                <span className="text-[#a8a29e]">{metric.label}</span>
+                <span className="mx-1.5 text-[#d6d3d1]">·</span>
+                <span className="font-medium text-[#1c1917]">{winner ?? 'Empate'}</span>
+              </p>
             )
           })}
         </div>
@@ -146,12 +95,19 @@ export function InstagramThemeComparisonTable({
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-card bg-surface-secondary">
-                <th className={cn('p-4 text-left font-semibold', conteudoRedesTextClass)}>Tema</th>
-                <th className={cn('p-4 text-right font-semibold', conteudoRedesTextClass)}>Postagens</th>
+              <tr className="border-b border-[#ebe8e4]">
+                <th className="px-4 py-3 text-left text-[11px] font-medium uppercase tracking-[0.04em] text-[#a8a29e]">
+                  Tema
+                </th>
+                <th className="px-4 py-3 text-right text-[11px] font-medium uppercase tracking-[0.04em] text-[#a8a29e]">
+                  Posts
+                </th>
                 {COMPARISON_METRICS.map((metric) => (
-                  <th key={metric.key} className={cn('p-4 text-right font-semibold', conteudoRedesTextClass)}>
-                    {metric.label} (média)
+                  <th
+                    key={metric.key}
+                    className="px-4 py-3 text-right text-[11px] font-medium uppercase tracking-[0.04em] text-[#a8a29e]"
+                  >
+                    {metric.label}
                   </th>
                 ))}
               </tr>
@@ -176,54 +132,48 @@ export function InstagramThemeComparisonTable({
                   <tr
                     key={theme}
                     className={cn(
-                      'border-b border-card transition-colors hover:bg-surface-secondary',
-                      isOverallLeader && 'bg-[#ff9800]/12'
+                      'border-b border-[#f3f1ec] last:border-0',
+                      isOverallLeader ? 'bg-[#fffdf8]' : 'hover:bg-[#fafaf8]'
                     )}
                   >
-                    <td className="p-4 align-top">
-                      <div className="min-w-[10rem] space-y-2">
-                        <div className="flex items-start justify-between gap-2">
+                    <td className="px-4 py-3.5 align-top">
+                      <div className="min-w-[9rem] space-y-1">
+                        <div className="flex items-baseline gap-2">
                           <span
                             className={cn(
-                              conteudoRedesTextClass,
-                              isOverallLeader && cn('font-semibold', conteudoRedesAmberTextClass)
+                              'text-[13px] font-medium text-[#1c1917]',
+                              isOverallLeader && 'font-semibold'
                             )}
                           >
                             {theme}
                           </span>
-                          {isOverallLeader && (
-                            <span className={cn('inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide', conteudoRedesAmberBorderTintClass, conteudoRedesAmberTextClass)}>
-                              <Crown className="h-3 w-3" />
+                          {isOverallLeader ? (
+                            <span className="text-[10px] font-medium uppercase tracking-[0.04em] text-[#c27803]">
                               Destaque
                             </span>
-                          )}
+                          ) : null}
                         </div>
-                        {strengthLabel && (
-                          <p className={cn('text-xs font-medium', conteudoRedesTextClass)}>{strengthLabel}</p>
-                        )}
-                        {highlights.length > 0 && (
-                          <div className="flex flex-wrap gap-1">
-                            {highlights.map((metricKey) => {
-                              const metric = COMPARISON_METRICS.find(
-                                (item) => item.key === metricKey
+                        {strengthLabel ? (
+                          <p className="text-[12px] text-[#78716c]">{strengthLabel}</p>
+                        ) : null}
+                        {highlights.length > 0 ? (
+                          <p className="text-[12px] text-[#a8a29e]">
+                            {highlights
+                              .map(
+                                (metricKey) =>
+                                  COMPARISON_METRICS.find((item) => item.key === metricKey)?.label
                               )
-                              if (!metric) return null
-                              return (
-                                <span
-                                  key={metricKey}
-                                  className="rounded-full border border-status-success/20 bg-status-success/10 px-2 py-0.5 text-[10px] font-semibold text-status-success"
-                                >
-                                  {metric.label}
-                                </span>
-                              )
-                            })}
-                          </div>
-                        )}
+                              .filter(Boolean)
+                              .join(' · ')}
+                          </p>
+                        ) : null}
                       </div>
                     </td>
-                    <td className={cn('p-4 text-right align-top', conteudoRedesTextClass)}>{stats.posts}</td>
+                    <td className="px-4 py-3.5 text-right align-top text-[13px] tabular-nums text-[#57534e]">
+                      {stats.posts}
+                    </td>
                     {COMPARISON_METRICS.map((metric) => (
-                      <td key={metric.key} className="p-4 text-right align-top">
+                      <td key={metric.key} className="px-4 py-3.5 text-right align-top">
                         <MetricCell
                           metricKey={metric.key}
                           value={stats[metric.key]}

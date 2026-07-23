@@ -1,0 +1,382 @@
+/**
+ * Visual clean — overlay no Diagnóstico (IPT)
+ * Mantém a paleta laranja; reduz ruído, abre espaço e suaviza tipografia.
+ * Escopo: body[data-ipt-operacional]
+ */
+
+body[data-ipt-operacional] {
+  --page-bg: #f6f5f2;
+  --surface: #ffffff;
+  --surface-muted: #fafaf8;
+  --border: #ebe8e4;
+  --border-strong: #ddd9d3;
+  --text: #1c1917;
+  --text-muted: #78716c;
+  --text-soft: #a8a29e;
+  --ipt-gray: #78716c;
+  --ipt-gray-mid: #a8a29e;
+  --ipt-gray-soft: #f3f1ec;
+  --ipt-gray-border: #ebe8e4;
+  --bg-app: 246 245 242;
+}
+
+body[data-ipt-operacional] .ipt-page-shell--operacional {
+  background: var(--page-bg) !important;
+}
+
+body[data-ipt-operacional] .ipt-page-body.ipt-operacional {
+  gap: 18px;
+  padding: 16px 20px 20px;
+}
+
+/* --- Tipografia: hierarquia real (não tudo preto) --- */
+body[data-ipt-operacional] .ipt-page-lead,
+body[data-ipt-operacional] .ipt-page-lead--compact,
+body[data-ipt-operacional] .ipt-exec-banner__label,
+body[data-ipt-operacional] .ipt-exec-banner__meta,
+body[data-ipt-operacional] .ipt-bloco__sub,
+body[data-ipt-operacional] .ipt-missoes__grupo-label,
+body[data-ipt-operacional] .ipt-painel-cidade__eyebrow,
+body[data-ipt-operacional] .ipt-painel-cidade__section-label,
+body[data-ipt-operacional] .ipt-bloco-lista__cols,
+body[data-ipt-operacional] .ipt-bloco-detalhe__lead,
+body[data-ipt-operacional] .ipt-bloco-detalhe__missao-eyebrow,
+body[data-ipt-operacional] .ipt-bloco-detalhe__comp-label {
+  color: var(--text-muted) !important;
+}
+
+body[data-ipt-operacional] .ipt-page-title,
+body[data-ipt-operacional] .ipt-page-title--compact {
+  color: var(--text);
+  letter-spacing: -0.02em;
+  font-weight: 600;
+}
+
+body[data-ipt-operacional] strong,
+body[data-ipt-operacional] b {
+  font-weight: 600;
+}
+
+/* --- Banner executivo: mais leve --- */
+body[data-ipt-operacional] .ipt-exec-banner {
+  padding: 12px 16px;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: var(--surface);
+  box-shadow: 0 1px 2px rgba(28, 25, 23, 0.03);
+}
+
+body[data-ipt-operacional] .ipt-exec-banner__text {
+  font-size: 13px;
+  color: var(--text);
+  font-weight: 500;
+}
+
+/* --- Missões: cards clean --- */
+body[data-ipt-operacional] .ipt-missoes__layout {
+  gap: 16px;
+}
+
+body[data-ipt-operacional] .ipt-missoes__grupo-label {
+  margin-bottom: 8px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  color: var(--text-soft) !important;
+}
+
+body[data-ipt-operacional] .ipt-missoes__divider {
+  background: var(--border);
+  opacity: 0.7;
+}
+
+body[data-ipt-operacional] .ipt-missoes__grid,
+body[data-ipt-operacional] .ipt-missoes__grid--operacionais {
+  gap: 12px;
+}
+
+body[data-ipt-operacional] .ipt-missao-card {
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  padding: 14px 16px 14px;
+  background: var(--surface);
+  box-shadow: 0 1px 2px rgba(28, 25, 23, 0.03);
+  min-height: 148px;
+}
+
+body[data-ipt-operacional] .ipt-missao-card:hover:not(:disabled) {
+  border-color: color-mix(in srgb, var(--missao-cor) 45%, var(--border));
+  box-shadow: 0 4px 14px rgba(28, 25, 23, 0.05);
+  transform: translateY(-1px);
+}
+
+/* Remove spark (ruído visual) */
+body[data-ipt-operacional] .ipt-missao-card__spark {
+  display: none !important;
+}
+
+body[data-ipt-operacional] .ipt-missao-card__top {
+  padding-right: 0;
+  gap: 10px;
+}
+
+body[data-ipt-operacional] .ipt-missao-card__icon {
+  width: 28px;
+  height: 28px;
+  border-radius: 9px;
+  background: color-mix(in srgb, var(--missao-cor) 12%, #fff);
+}
+
+body[data-ipt-operacional] .ipt-missao-card__icon .cockpit-icon,
+body[data-ipt-operacional] .ipt-missao-card__icon svg {
+  width: 14px !important;
+  height: 14px !important;
+}
+
+body[data-ipt-operacional] .ipt-missao-card__badge {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  opacity: 0.9;
+}
+
+body[data-ipt-operacional] .ipt-missao-card__titulo {
+  margin-top: 10px;
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--text);
+}
+
+body[data-ipt-operacional] .ipt-missao-card:not(.ipt-missao-card--active) .ipt-missao-card__titulo,
+body[data-ipt-operacional] .ipt-missao-card:not(.ipt-missao-card--active) .ipt-missao-card__desc,
+body[data-ipt-operacional] .ipt-missao-card:not(.ipt-missao-card--active) .ipt-missao-card__desc strong {
+  color: var(--text) !important;
+}
+
+body[data-ipt-operacional] .ipt-missao-card__desc {
+  margin-top: 6px;
+  font-size: 12.5px;
+  line-height: 1.45;
+  color: var(--text-muted) !important;
+}
+
+body[data-ipt-operacional] .ipt-missao-card__desc strong {
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--text) !important;
+  margin-right: 6px;
+}
+
+body[data-ipt-operacional] .ipt-missao-card__bullets {
+  margin-top: 10px;
+  gap: 5px;
+}
+
+body[data-ipt-operacional] .ipt-missao-card__bullets li {
+  font-size: 11.5px;
+  line-height: 1.35;
+  color: var(--text-muted) !important;
+  padding-left: 0;
+}
+
+body[data-ipt-operacional] .ipt-missao-card__bullets li::before {
+  display: none;
+}
+
+body[data-ipt-operacional] .ipt-missao-card__cta {
+  margin-top: auto;
+  padding-top: 12px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ipt-orange);
+  opacity: 0.95;
+}
+
+body[data-ipt-operacional] .ipt-missao-card--base {
+  border-style: solid !important;
+  border-color: #c98900 !important;
+  border-width: 1.5px !important;
+  background: #ffffff !important;
+}
+
+/* Todos os cards: fundo branco; selecionado = borda em destaque (sem fill sólido) */
+body[data-ipt-operacional] .ipt-missao-card--active,
+body[data-ipt-operacional] .ipt-missao-card--base.ipt-missao-card--active,
+body[data-ipt-operacional] .ipt-missao-card--active:hover:not(:disabled),
+body[data-ipt-operacional] .ipt-missao-card--base.ipt-missao-card--active:hover:not(:disabled),
+body[data-ipt-operacional] .ipt-missao-card--muted:hover:not(:disabled) {
+  border-color: var(--missao-cor) !important;
+  border-width: 2px !important;
+  background: #ffffff !important;
+  color: inherit !important;
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--missao-cor) 35%, transparent),
+    0 4px 14px color-mix(in srgb, var(--missao-cor) 14%, transparent) !important;
+}
+
+body[data-ipt-operacional] .ipt-missao-card--base.ipt-missao-card--active,
+body[data-ipt-operacional] .ipt-missao-card--base:hover:not(:disabled) {
+  border-color: #c98900 !important;
+}
+
+body[data-ipt-operacional] .ipt-missao-card--active .ipt-missao-card__icon,
+body[data-ipt-operacional] .ipt-missao-card--muted:hover:not(:disabled) .ipt-missao-card__icon {
+  background: color-mix(in srgb, var(--missao-cor) 12%, #fff) !important;
+  color: var(--missao-cor) !important;
+}
+
+body[data-ipt-operacional] .ipt-missao-card--active .ipt-missao-card__icon .cockpit-icon,
+body[data-ipt-operacional] .ipt-missao-card--active .ipt-missao-card__icon svg,
+body[data-ipt-operacional] .ipt-missao-card--muted:hover:not(:disabled) .ipt-missao-card__icon .cockpit-icon,
+body[data-ipt-operacional] .ipt-missao-card--muted:hover:not(:disabled) .ipt-missao-card__icon svg {
+  color: var(--missao-cor) !important;
+}
+
+body[data-ipt-operacional] .ipt-missao-card--active .ipt-missao-card__badge,
+body[data-ipt-operacional] .ipt-missao-card--active .ipt-missao-card__titulo,
+body[data-ipt-operacional] .ipt-missao-card--active .ipt-missao-card__desc strong,
+body[data-ipt-operacional] .ipt-missao-card--active .ipt-missao-card__bullets li,
+body[data-ipt-operacional] .ipt-missao-card--muted:hover:not(:disabled) .ipt-missao-card__badge,
+body[data-ipt-operacional] .ipt-missao-card--muted:hover:not(:disabled) .ipt-missao-card__titulo,
+body[data-ipt-operacional] .ipt-missao-card--muted:hover:not(:disabled) .ipt-missao-card__desc strong,
+body[data-ipt-operacional] .ipt-missao-card--muted:hover:not(:disabled) .ipt-missao-card__bullets li {
+  color: var(--text) !important;
+}
+
+body[data-ipt-operacional] .ipt-missao-card--active .ipt-missao-card__desc,
+body[data-ipt-operacional] .ipt-missao-card--muted:hover:not(:disabled) .ipt-missao-card__desc {
+  color: var(--text-muted) !important;
+}
+
+body[data-ipt-operacional] .ipt-missao-card--active .ipt-missao-card__cta,
+body[data-ipt-operacional] .ipt-missao-card--active .ipt-missao-card__ver-mais,
+body[data-ipt-operacional] .ipt-missao-card--muted:hover:not(:disabled) .ipt-missao-card__cta {
+  color: var(--missao-cor, var(--ipt-orange-deep)) !important;
+}
+
+body[data-ipt-operacional] .ipt-missao-card--active .ipt-missao-card__bullets li::before {
+  background: var(--missao-cor) !important;
+}
+
+body[data-ipt-operacional] .ipt-missao-card--na-muni {
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--missao-cor) 55%, transparent);
+}
+
+body[data-ipt-operacional] .ipt-missao-card--fora-muni:not(.ipt-missao-card--active) {
+  opacity: 0.55;
+  filter: none;
+}
+
+/* --- Workspace: painéis mais arejados --- */
+body[data-ipt-operacional] .ipt-operacional__workspace {
+  gap: 16px;
+}
+
+body[data-ipt-operacional] .ipt-bloco-territorio,
+body[data-ipt-operacional] .ipt-operacional__col--territorio .ipt-bloco-mapa,
+body[data-ipt-operacional] .ipt-operacional__col--noticias .ipt-bloco-noticias,
+body[data-ipt-operacional] .ipt-operacional__col--cidade .ipt-painel-cidade {
+  border: 1px solid var(--border) !important;
+  border-radius: 18px !important;
+  background: var(--surface) !important;
+  box-shadow: 0 1px 2px rgba(28, 25, 23, 0.03) !important;
+}
+
+body[data-ipt-operacional] .ipt-painel-cidade__head,
+body[data-ipt-operacional] .ipt-bloco-mapa__head,
+body[data-ipt-operacional] .ipt-bloco__head {
+  border-bottom-color: var(--border) !important;
+  padding: 12px 14px !important;
+}
+
+body[data-ipt-operacional] .ipt-bloco__title,
+body[data-ipt-operacional] .ipt-painel-cidade__title,
+body[data-ipt-operacional] .ipt-bloco-detalhe__title {
+  color: var(--text) !important;
+  font-weight: 600 !important;
+  letter-spacing: -0.01em;
+}
+
+/* Lista de prioridades: linhas mais limpas */
+body[data-ipt-operacional] .ipt-bloco-lista__row {
+  border-color: var(--border) !important;
+}
+
+body[data-ipt-operacional] .ipt-bloco-lista__row:hover {
+  background: #fafaf8 !important;
+}
+
+body[data-ipt-operacional] .ipt-bloco-lista__muni {
+  color: var(--text) !important;
+  font-weight: 600 !important;
+}
+
+body[data-ipt-operacional] .ipt-bloco-lista__metric,
+body[data-ipt-operacional] .ipt-bloco-lista__metric em {
+  color: var(--text-muted) !important;
+  text-align: right !important;
+}
+
+body[data-ipt-operacional] .ipt-bloco-lista__cols span:nth-child(n + 3) {
+  text-align: right !important;
+}
+
+/* Chips / badges: menos peso */
+body[data-ipt-operacional] .ipt-bloco-detalhe__chips li,
+body[data-ipt-operacional] .ipt-bloco-detalhe__badge {
+  border-radius: 999px !important;
+  border-color: var(--border) !important;
+  background: var(--surface-muted) !important;
+}
+
+body[data-ipt-operacional] .ipt-territorio-visao {
+  border-color: var(--border);
+  background: var(--surface-muted);
+  padding: 3px;
+}
+
+body[data-ipt-operacional] .ipt-operacional__map-filter {
+  border-radius: 999px !important;
+  border-color: var(--border) !important;
+}
+
+body[data-ipt-operacional] .ipt-btn-exportar,
+body[data-ipt-operacional] .ipt-btn-atualizar,
+body[data-ipt-operacional] .ipt-lens-toggle__btn {
+  border-radius: 999px !important;
+}
+
+body[data-ipt-operacional] .ipt-btn-atualizar {
+  box-shadow: 0 2px 8px rgba(255, 152, 0, 0.28);
+}
+
+body[data-ipt-operacional] .ipt-btn-exportar {
+  background: var(--surface) !important;
+  border: 1px solid var(--border) !important;
+  color: var(--text) !important;
+}
+
+body[data-ipt-operacional] .ipt-btn-exportar:hover:not(:disabled) {
+  background: var(--surface-muted) !important;
+  border-color: var(--border-strong) !important;
+}
+
+/* Resumo inferior: mais suave */
+body[data-ipt-operacional] .ipt-resumo-bar {
+  border: 1px solid var(--border) !important;
+  border-radius: 16px !important;
+  background: var(--surface) !important;
+  box-shadow: 0 1px 2px rgba(28, 25, 23, 0.03) !important;
+}
+
+body[data-ipt-operacional] .ipt-resumo-bar__title,
+body[data-ipt-operacional] .ipt-resumo-bar__label {
+  color: var(--text-muted) !important;
+}
+
+/* Foco / selo do mapa */
+body[data-ipt-operacional] .ipt-bloco-mapa__seal {
+  border-color: var(--border);
+  background: var(--surface-muted);
+  color: var(--text-muted);
+}

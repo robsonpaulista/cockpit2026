@@ -377,11 +377,11 @@ export function construirLeituraContexto(
   }
 }
 
-/** Ordena: alertas → oportunidades → contexto; depois data. */
+/** Ordena: oportunidades → alertas → contexto; depois data. */
 export function ordenarNoticiasEnriquecidas(
   itens: RadarNoticiaEnriquecida[],
 ): RadarNoticiaEnriquecida[] {
-  const peso = { alerta: 0, oportunidade: 1, contexto: 2 }
+  const peso = { oportunidade: 0, alerta: 1, contexto: 2 }
   return [...itens].sort((a, b) => {
     const pa = peso[a.papel] - peso[b.papel]
     if (pa !== 0) return pa
@@ -416,7 +416,10 @@ export function agruparAcontecimentos(
     map.set(item.eventoKey, list)
   }
 
-  const peso = { alerta: 0, oportunidade: 1, contexto: 2 }
+  // Severidade do grupo (badge): alerta > oportunidade > contexto
+  const severidade = { alerta: 0, oportunidade: 1, contexto: 2 }
+  // Ordem de exibição: oportunidade primeiro
+  const ordemLista = { oportunidade: 0, alerta: 1, contexto: 2 }
   const grupos: RadarAcontecimento[] = []
 
   for (const [key, materias] of map) {
@@ -424,7 +427,7 @@ export function agruparAcontecimentos(
       ...new Set(materias.map((m) => m.fonteNome || m.sourceName || 'Fonte').filter(Boolean)),
     ]
     const papel = materias.reduce(
-      (best, m) => (peso[m.papel] < peso[best] ? m.papel : best),
+      (best, m) => (severidade[m.papel] < severidade[best] ? m.papel : best),
       materias[0].papel,
     )
     const principal =
@@ -450,7 +453,7 @@ export function agruparAcontecimentos(
   }
 
   return grupos.sort((a, b) => {
-    const pa = peso[a.papel] - peso[b.papel]
+    const pa = ordemLista[a.papel] - ordemLista[b.papel]
     if (pa !== 0) return pa
     const da = a.publishedAt ? Date.parse(a.publishedAt) : 0
     const db = b.publishedAt ? Date.parse(b.publishedAt) : 0

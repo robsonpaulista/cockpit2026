@@ -1,0 +1,82 @@
+/**
+ * Visual clean — Instagram Pessoal (/dashboard/conteudo/redes)
+ * Identidade leve alinhada ao IPT/Radar. Escopo: só main.
+ */
+
+body[data-redes-clean] {
+  --redes-page-bg: #f6f5f2;
+  --redes-surface: #ffffff;
+  --redes-border: #ebe8e4;
+  --redes-text: #1c1917;
+  --redes-muted: #78716c;
+  --redes-soft: #a8a29e;
+}
+
+body[data-redes-clean] main {
+  --page-bg: var(--redes-page-bg);
+  --surface: var(--redes-surface);
+  --border: var(--redes-border);
+  --text: var(--redes-text);
+  --text-muted: var(--redes-muted);
+  --text-soft: var(--redes-soft);
+
+  --bg-app: 246 245 242;
+  --bg-surface: 255 255 255;
+  --text-primary: 28 25 23;
+  --text-secondary: 120 113 108;
+  --text-muted: 120 113 108;
+  --color-border-tertiary: 235 232 228;
+  --color-border-secondary: 221 217 211;
+
+  background-color: var(--redes-page-bg) !important;
+}
+
+body[data-redes-clean] main .flex.min-h-0.flex-1.flex-col.overflow-hidden.bg-bg-surface {
+  background-color: var(--redes-page-bg) !important;
+}
+
+body[data-redes-clean] main .border-b.bg-bg-surface,
+body[data-redes-clean] main .border-b.bg-bg-app {
+  background-color: #ffffff !important;
+  border-color: var(--redes-border) !important;
+}
+
+body[data-redes-clean] main .text-text-muted {
+  color: var(--redes-muted) !important;
+}
+
+body[data-redes-clean] main .text-text-secondary {
+  color: #57534e !important;
+}
+
+body[data-redes-clean] main .text-text-primary,
+body[data-redes-clean] main .text-black {
+  color: var(--redes-text) !important;
+}
+
+body[data-redes-clean] main h1 {
+  color: var(--redes-text);
+  letter-spacing: -0.02em;
+  font-weight: 600;
+}
+
+/* Seções da aba Posts & Insights */
+body[data-redes-clean] main .rounded-2xl.border {
+  border-color: var(--redes-border) !important;
+  border-radius: 18px !important;
+  background: var(--redes-surface) !important;
+  box-shadow: 0 1px 2px rgba(28, 25, 23, 0.03) !important;
+}
+
+body[data-redes-clean] main .shadow-card,
+body[data-redes-clean] main .shadow-sm {
+  box-shadow: 0 1px 2px rgba(28, 25, 23, 0.03) !important;
+}
+
+body[data-redes-clean] main nav[aria-label='Seções'] button {
+  color: var(--redes-muted);
+}
+
+body[data-redes-clean] main nav[aria-label='Seções'] button[aria-current='page'] {
+  color: var(--redes-text) !important;
+}

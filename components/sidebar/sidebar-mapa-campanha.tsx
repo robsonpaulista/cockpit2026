@@ -12,47 +12,106 @@ import { sidebarItemIconOnlyClass } from '@/lib/sidebar-layout'
 import { sidebarApifyDividerClass, sidebarApifyTooltipClass } from '@/lib/sidebar-apify-styles'
 import { JARVIS_SIDEBAR_DIVIDER } from '@/lib/jarvis-sidebar-styles'
 import { resolveSidebarTablerIcon, SidebarTablerIcon } from '@/lib/sidebar-tabler-icons'
+import {
+  RESUMO_ELEICOES_TAB_ATENDIMENTO,
+  resumoEleicoesHubHref,
+} from '@/lib/resumo-eleicoes-hub-route'
 
-const CAMPANHA_LINKS = [
+type CampanhaLink = {
+  id: string
+  href: string
+  label: string
+  icon: 'MapPin' | 'Target' | 'Radar' | 'ClipboardList' | 'MessageSquare' | 'Package'
+  pageKeys: string[]
+}
+
+const CAMPANHA_LINKS: CampanhaLink[] = [
   {
+    id: 'diagnostico',
     href: '/dashboard/territorio/ipt',
     label: 'Diagnóstico Operacional',
-    icon: 'MapPin' as const,
+    icon: 'MapPin',
+    pageKeys: ['ipt', 'territorio', 'campo', 'agenda'],
   },
   {
+    id: 'fluxo-digital',
     href: '/dashboard/fluxo-digital',
     label: 'Fluxo Digital',
-    icon: 'Target' as const,
+    icon: 'Target',
+    pageKeys: ['fluxo-digital', 'cobertura', 'conteudo'],
+  },
+  {
+    id: 'radar-eleitoral',
+    href: '/dashboard/noticias/monitoramento',
+    label: 'Radar Eleitoral',
+    icon: 'Radar',
+    pageKeys: ['noticias'],
+  },
+  {
+    id: 'atendimentos',
+    href: resumoEleicoesHubHref(RESUMO_ELEICOES_TAB_ATENDIMENTO),
+    label: 'Atendimentos',
+    icon: 'ClipboardList',
+    pageKeys: ['resumo-eleicoes'],
+  },
+  {
+    id: 'instagram-pessoal',
+    href: '/dashboard/conteudo/redes',
+    label: 'Instagram Pessoal',
+    icon: 'MessageSquare',
+    pageKeys: ['conteudo'],
+  },
+  {
+    id: 'gestao-material',
+    href: '/dashboard/material-campanha',
+    label: 'Gestão de Material',
+    icon: 'Package',
+    pageKeys: ['material-campanha'],
   },
 ]
+
+function isCampanhaLinkActive(link: CampanhaLink, pathname: string, search: string): boolean {
+  if (link.id === 'radar-eleitoral') {
+    return pathname.startsWith('/dashboard/noticias')
+  }
+  if (link.id === 'atendimentos') {
+    if (!pathname.startsWith('/dashboard/resumo-eleicoes')) return false
+    const tab = new URLSearchParams(search).get('tab')
+    return !tab || tab === RESUMO_ELEICOES_TAB_ATENDIMENTO
+  }
+  if (link.id === 'instagram-pessoal') {
+    return pathname.startsWith('/dashboard/conteudo/redes')
+  }
+  if (link.id === 'gestao-material') {
+    return pathname.startsWith('/dashboard/material-campanha')
+  }
+  return pathname.startsWith(link.href)
+}
 
 type Props = {
   collapsed: boolean
   mobileOpen: boolean
   isGradientHome: boolean
+  searchKey: string
   onNavigate: (href: string) => void
 }
 
-/** Bloco exclusivo Diagnóstico + Fluxo Digital, acima de Acesso rápido. */
+/** Bloco superior: atalhos principais da campanha — acima de Acesso rápido. */
 export function SidebarMapaCampanhaBlock({
   collapsed,
   mobileOpen,
   isGradientHome,
+  searchKey,
   onNavigate,
 }: Props) {
   const pathname = usePathname() ?? ''
   const { canAccess, loading } = usePermissions()
 
-  const allowed =
-    loading ||
-    canAccess('ipt') ||
-    canAccess('fluxo-digital') ||
-    canAccess('cobertura') ||
-    canAccess('territorio') ||
-    canAccess('campo') ||
-    canAccess('agenda') ||
-    canAccess('conteudo')
-  if (!allowed) return null
+  const links = loading
+    ? CAMPANHA_LINKS
+    : CAMPANHA_LINKS.filter((link) => link.pageKeys.some((key) => canAccess(key)))
+
+  if (links.length === 0) return null
 
   const iconOnly = collapsed && !mobileOpen
 
@@ -81,11 +140,11 @@ export function SidebarMapaCampanhaBlock({
       ) : null}
 
       <div className={cn('flex flex-col', iconOnly ? 'gap-1' : 'gap-0.5')}>
-        {CAMPANHA_LINKS.map((link) => {
-          const active = pathname.startsWith(link.href)
+        {links.map((link) => {
+          const active = isCampanhaLinkActive(link, pathname, searchKey)
           const Icon = resolveSidebarTablerIcon(link.icon, false)
           return (
-            <div key={link.href} className="group relative">
+            <div key={link.id} className="group relative">
               <Link
                 href={link.href}
                 onClick={() => onNavigate(link.href)}

@@ -27,6 +27,7 @@ import { typographyContentRootClass, typographyPageLeadClass } from '@/lib/typog
 import { cn } from '@/lib/utils'
 import { useDashboardTopbarVisible } from '@/hooks/use-dashboard-topbar-visible'
 import '@/app/dashboard/shared/ipt-page-palette.css'
+import '@/app/dashboard/noticias/radar-eleitoral-clean.css'
 
 export type MonitoramentoTab =
   | 'geral'
@@ -90,8 +91,10 @@ export function MonitoramentoShell({
 
   useEffect(() => {
     document.body.setAttribute('data-ipt-palette', '')
+    document.body.setAttribute('data-radar-clean', '')
     return () => {
       document.body.removeAttribute('data-ipt-palette')
+      document.body.removeAttribute('data-radar-clean')
     }
   }, [])
 

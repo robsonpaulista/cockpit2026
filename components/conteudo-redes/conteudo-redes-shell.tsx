@@ -15,6 +15,7 @@ import { conteudoRedesTextClass } from '@/lib/conteudo-redes-styles'
 import { cn } from '@/lib/utils'
 import { useDashboardTopbarVisible } from '@/hooks/use-dashboard-topbar-visible'
 import '@/app/dashboard/shared/ipt-page-palette.css'
+import '@/app/dashboard/conteudo/redes/conteudo-redes-clean.css'
 
 export type ConteudoRedesTab = 'posts' | 'audience' | 'locations'
 
@@ -62,8 +63,10 @@ export function ConteudoRedesShell({
 
   useEffect(() => {
     document.body.setAttribute('data-ipt-palette', '')
+    document.body.setAttribute('data-redes-clean', '')
     return () => {
       document.body.removeAttribute('data-ipt-palette')
+      document.body.removeAttribute('data-redes-clean')
     }
   }, [])
 

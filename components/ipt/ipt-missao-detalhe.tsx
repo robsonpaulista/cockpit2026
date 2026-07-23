@@ -315,28 +315,28 @@ export function IptMissaoDetalhe({
         ) : null}
 
         <div className="ipt-bloco-detalhe__body">
-          <div className="ipt-bloco-detalhe__head">
-            <div className="ipt-bloco-detalhe__muni">
-              {!embedded || panel ? (
-                <div className="ipt-bloco-detalhe__muni-top">
-                  {!panel ? (
+          {!panel ? (
+            <div className="ipt-bloco-detalhe__head">
+              <div className="ipt-bloco-detalhe__muni">
+                {!embedded ? (
+                  <div className="ipt-bloco-detalhe__muni-top">
                     <h3 className="ipt-bloco-detalhe__title">
                       {municipio.municipio.toUpperCase()}
                       <span>— PI</span>
                     </h3>
-                  ) : null}
-                </div>
-              ) : null}
-              {diagnostico ? <p className="ipt-bloco-detalhe__lead">{diagnostico}</p> : null}
-              {missaoTitulo && hierarquiaAtiva ? (
-                <p className="ipt-bloco-detalhe__missao-eyebrow">
-                  {naMissaoAtiva ? `Missão: ${missaoTitulo}` : `Fora da missão: ${missaoTitulo}`}
-                </p>
-              ) : null}
+                  </div>
+                ) : null}
+                {diagnostico ? <p className="ipt-bloco-detalhe__lead">{diagnostico}</p> : null}
+                {missaoTitulo && hierarquiaAtiva ? (
+                  <p className="ipt-bloco-detalhe__missao-eyebrow">
+                    {naMissaoAtiva ? `Missão: ${missaoTitulo}` : `Fora da missão: ${missaoTitulo}`}
+                  </p>
+                ) : null}
+              </div>
             </div>
-          </div>
+          ) : null}
 
-          {motivoInclusao || (hierarquiaAtiva && porQue) ? (
+          {!panel && (motivoInclusao || (hierarquiaAtiva && porQue)) ? (
             <div className="ipt-bloco-detalhe__por-que">
               <h4>{tituloPorQue}</h4>
               <p>

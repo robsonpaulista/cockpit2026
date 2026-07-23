@@ -1,0 +1,172 @@
+/**
+ * Visual clean — Pesquisa & Relato (/dashboard/pesquisa)
+ * Identidade leve alinhada ao IPT/Radar. Escopo: só main.
+ */
+
+body[data-pesquisa-clean] {
+  --pesquisa-page-bg: #f6f5f2;
+  --pesquisa-surface: #ffffff;
+  --pesquisa-surface-muted: #fafaf8;
+  --pesquisa-border: #ebe8e4;
+  --pesquisa-text: #1c1917;
+  --pesquisa-muted: #78716c;
+  --pesquisa-soft: #a8a29e;
+}
+
+body[data-pesquisa-clean] main {
+  --page-bg: var(--pesquisa-page-bg);
+  --surface: var(--pesquisa-surface);
+  --surface-muted: var(--pesquisa-surface-muted);
+  --border: var(--pesquisa-border);
+  --border-strong: #ddd9d3;
+  --text: var(--pesquisa-text);
+  --text-muted: var(--pesquisa-muted);
+  --text-soft: var(--pesquisa-soft);
+
+  --ipt-gray: #78716c;
+  --ipt-gray-mid: #a8a29e;
+  --ipt-gray-soft: #f3f1ec;
+  --ipt-gray-border: #ebe8e4;
+
+  --bg-app: 246 245 242;
+  --bg-surface: 255 255 255;
+  --text-primary: 28 25 23;
+  --text-secondary: 120 113 108;
+  --text-muted: 120 113 108;
+  --color-border-tertiary: 235 232 228;
+  --color-border-secondary: 221 217 211;
+  --color-background-tertiary: 250 250 248;
+
+  background-color: var(--pesquisa-page-bg) !important;
+}
+
+body[data-pesquisa-clean] main .flex.min-h-0.flex-1.flex-col.overflow-hidden.bg-bg-surface {
+  background-color: var(--pesquisa-page-bg) !important;
+}
+
+body[data-pesquisa-clean] main .border-b.bg-bg-surface,
+body[data-pesquisa-clean] main .border-b.bg-bg-app {
+  background-color: #ffffff !important;
+  border-color: var(--pesquisa-border) !important;
+}
+
+body[data-pesquisa-clean] main .flex.min-h-0.flex-1.flex-col.gap-4.overflow-y-auto {
+  gap: 1.25rem;
+  padding-top: 1.125rem;
+}
+
+body[data-pesquisa-clean] main .text-text-muted,
+body[data-pesquisa-clean] main .text-secondary {
+  color: var(--pesquisa-muted) !important;
+}
+
+body[data-pesquisa-clean] main .text-text-secondary {
+  color: #57534e !important;
+}
+
+body[data-pesquisa-clean] main .text-text-primary {
+  color: var(--pesquisa-text) !important;
+}
+
+body[data-pesquisa-clean] main h1 {
+  color: var(--pesquisa-text);
+  letter-spacing: -0.02em;
+  font-weight: 600;
+}
+
+body[data-pesquisa-clean] main h2,
+body[data-pesquisa-clean] main h3 {
+  letter-spacing: -0.01em;
+}
+
+body[data-pesquisa-clean] main .uppercase.tracking-wide,
+body[data-pesquisa-clean] main .uppercase.tracking-wider {
+  color: var(--pesquisa-soft) !important;
+  font-weight: 500 !important;
+}
+
+/* Cards / painéis */
+body[data-pesquisa-clean] main .rounded-xl.border,
+body[data-pesquisa-clean] main .rounded-2xl.border,
+body[data-pesquisa-clean] main article.rounded-xl {
+  border-color: var(--pesquisa-border) !important;
+  border-radius: 18px !important;
+  background: var(--pesquisa-surface) !important;
+  box-shadow: 0 1px 2px rgba(28, 25, 23, 0.03) !important;
+}
+
+body[data-pesquisa-clean] main .bg-bg-app {
+  background-color: var(--pesquisa-surface-muted) !important;
+}
+
+body[data-pesquisa-clean] main .bg-bg-surface {
+  background-color: var(--pesquisa-surface) !important;
+}
+
+/* Filtros / pills */
+body[data-pesquisa-clean] main input,
+body[data-pesquisa-clean] main select {
+  border-color: var(--pesquisa-border) !important;
+}
+
+body[data-pesquisa-clean] main .rounded-\[99px\],
+body[data-pesquisa-clean] main .rounded-full {
+  box-shadow: none;
+}
+
+/* Tabelas */
+body[data-pesquisa-clean] main table thead th {
+  color: var(--pesquisa-muted) !important;
+  font-weight: 500 !important;
+  border-color: var(--pesquisa-border) !important;
+  letter-spacing: 0.04em;
+}
+
+body[data-pesquisa-clean] main table tbody td {
+  border-color: #f3f1ec !important;
+  color: var(--pesquisa-text);
+}
+
+body[data-pesquisa-clean] main table tbody tr:hover td {
+  background: #fafaf8 !important;
+}
+
+body[data-pesquisa-clean] main .sticky.bg-bg-surface {
+  background: var(--pesquisa-surface) !important;
+}
+
+/* Avisos / callouts */
+body[data-pesquisa-clean] main .border-amber-200,
+body[data-pesquisa-clean] main .bg-amber-50,
+body[data-pesquisa-clean] main .border-l-2.border-amber-500 {
+  border-color: #f0e6d4 !important;
+  background: #fffdf8 !important;
+  color: #57534e !important;
+  border-radius: 12px;
+}
+
+body[data-pesquisa-clean] main .text-amber-900 {
+  color: #57534e !important;
+}
+
+/* Empty / dashed */
+body[data-pesquisa-clean] main .border-dashed {
+  border-color: var(--pesquisa-border) !important;
+  background: var(--pesquisa-surface) !important;
+  border-radius: 18px !important;
+}
+
+/* Abas */
+body[data-pesquisa-clean] main nav[aria-label='Seções'] button {
+  color: var(--pesquisa-muted);
+}
+
+body[data-pesquisa-clean] main nav[aria-label='Seções'] button[aria-current='page'] {
+  color: var(--pesquisa-text) !important;
+}
+
+/* Sombras */
+body[data-pesquisa-clean] main .shadow-sm,
+body[data-pesquisa-clean] main .shadow-card {
+  box-shadow: 0 1px 2px rgba(28, 25, 23, 0.03) !important;
+}

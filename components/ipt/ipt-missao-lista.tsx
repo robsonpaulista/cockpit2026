@@ -8,7 +8,6 @@ import {
   missaoPrincipal,
   motivoCurtoMissao,
   municipioNoRecorteMissao,
-  prioridadeImpactoMissao,
   relevanciaCurta,
   rotuloEngajamentoDigital,
   rotuloSeguidoresDigital,
@@ -50,12 +49,6 @@ type Props = {
 function formatInt(n: number | null | undefined): string {
   if (n == null || !Number.isFinite(n)) return '—'
   return n.toLocaleString('pt-BR')
-}
-
-function intensidadeLabel(impacto: 'alta' | 'media' | 'baixa'): string {
-  if (impacto === 'alta') return 'Alta'
-  if (impacto === 'media') return 'Média'
-  return 'Baixa'
 }
 
 /** Colunas de contexto territorial (antes das métricas da missão). */
@@ -163,18 +156,6 @@ function valoresMissao(
     ]
   }
   return valoresVisaoGeral(m)
-}
-
-function rotuloPrioridade(
-  m: IptMunicipio,
-  missao: IptMissaoId | null,
-  foraPrioridade: boolean,
-  semMeta: boolean
-): string {
-  if (semMeta) return 'Sem meta'
-  if (foraPrioridade) return 'Saudável'
-  if (missao === 'expectativa' && m.expectativaVotos <= 0) return 'Sem meta'
-  return intensidadeLabel(prioridadeImpactoMissao(m, missao ?? 'todas'))
 }
 
 export function IptMissaoLista({
@@ -320,7 +301,6 @@ export function IptMissaoLista({
             {colunas.map((col) => (
               <span key={col}>{col}</span>
             ))}
-            <span>Prioridade</span>
           </div>
           <ul className="ipt-bloco-lista__rows">
             {municipios.map((m, idx) => {
@@ -334,9 +314,6 @@ export function IptMissaoLista({
                 visaoUniverso === 'com_expectativa' &&
                 missaoAtiva !== 'expectativa' &&
                 !naMissao
-              const impacto = semMeta || saudavel
-                ? 'baixa'
-                : prioridadeImpactoMissao(m, missaoAtiva)
               const principal = missaoPrincipal(m)
               const missaoLinha: IptMissaoId | null = missaoLista ?? principal
               const missaoCor = semMeta || saudavel
@@ -346,12 +323,6 @@ export function IptMissaoLista({
                   : '#8c8c8c'
               const contexto = contextoMunicipio(m, podeVerExpectativa, semMeta)
               const metricasMissao = valoresMissao(m, missaoLista, saudavel || semMeta)
-              const prio = rotuloPrioridade(
-                m,
-                missaoLista,
-                saudavel,
-                semMeta
-              )
 
               return (
                 <li key={m.municipio}>
@@ -421,17 +392,6 @@ export function IptMissaoLista({
                         {valor}
                       </span>
                     ))}
-                    <span
-                      className={cn(
-                        'ipt-bloco-lista__prio',
-                        impacto === 'alta' && 'ipt-bloco-lista__prio--alta',
-                        impacto === 'media' && 'ipt-bloco-lista__prio--media',
-                        impacto === 'baixa' && 'ipt-bloco-lista__prio--baixa',
-                        (saudavel || semMeta) && 'ipt-bloco-lista__prio--saudavel'
-                      )}
-                    >
-                      {prio}
-                    </span>
                   </button>
                 </li>
               )

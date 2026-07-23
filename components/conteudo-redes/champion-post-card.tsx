@@ -1,11 +1,6 @@
 import type { LucideIcon } from 'lucide-react'
 import { ExternalLink } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import {
-  conteudoRedesAmberTextClass,
-  conteudoRedesAmberTintBgClass,
-  conteudoRedesTextClass,
-} from '@/lib/conteudo-redes-styles'
 
 type ChampionPost = {
   thumbnail?: string
@@ -35,40 +30,40 @@ export function ChampionPostCard({
   icon: Icon,
   post,
   metricValue,
-  panelClassName = 'rounded-xl border border-[rgb(var(--color-border-tertiary)/0.85)] bg-bg-surface p-3',
+  panelClassName = 'rounded-[18px] border border-[#ebe8e4] bg-white p-3.5 shadow-[0_1px_2px_rgba(28,25,23,0.03)]',
   emptyMessage = 'Sem dados',
 }: ChampionPostCardProps) {
   return (
     <div className={cn(panelClassName, 'overflow-hidden')}>
-      <div className="mb-2 flex items-center gap-2 border-b border-[rgb(var(--color-border-tertiary)/0.85)] pb-2">
-        <Icon className={cn('h-3.5 w-3.5 shrink-0', conteudoRedesAmberTextClass)} />
-        <span className={cn('text-[12px] font-medium', conteudoRedesTextClass)}>{title}</span>
+      <div className="mb-3 flex items-center gap-2 border-b border-[#ebe8e4] pb-2.5">
+        <Icon className="h-3.5 w-3.5 shrink-0 text-[#78716c]" strokeWidth={1.75} />
+        <span className="text-[12px] font-medium text-[#57534e]">{title}</span>
       </div>
 
       {!post || metricValue == null || metricValue <= 0 ? (
-        <p className={cn('py-6 text-center text-[11px]', conteudoRedesTextClass)}>{emptyMessage}</p>
+        <p className="py-6 text-center text-[12px] text-[#a8a29e]">{emptyMessage}</p>
       ) : (
-        <div className="space-y-2">
-          <div className="relative h-24 w-full overflow-hidden rounded-lg bg-background">
+        <div className="space-y-2.5">
+          <div className="relative h-24 w-full overflow-hidden rounded-xl bg-[#fafaf8]">
             {post.thumbnail ? (
               <img src={post.thumbnail} alt="" className="h-full w-full object-cover" />
             ) : (
-              <div className={cn('flex h-full items-center justify-center text-[11px]', conteudoRedesTextClass)}>
+              <div className="flex h-full items-center justify-center text-[12px] text-[#a8a29e]">
                 Sem preview
               </div>
             )}
-            <div className="absolute right-1 top-1 rounded bg-[#ff9800] px-2 py-0.5 text-[10px] font-medium text-white tabular-nums">
+            <div className="absolute right-1.5 top-1.5 rounded-md bg-white/95 px-2 py-0.5 text-[11px] font-semibold tabular-nums text-[#1c1917] shadow-sm">
               {metricValue.toLocaleString('pt-BR')}
             </div>
           </div>
-          <p className={cn('line-clamp-2 text-[11px]', conteudoRedesTextClass)}>
+          <p className="line-clamp-2 text-[12px] leading-snug text-[#57534e]">
             {post.caption || 'Sem legenda'}
           </p>
           <a
             href={post.url}
             target="_blank"
             rel="noopener noreferrer"
-            className={cn('inline-flex items-center gap-1 text-[11px] font-medium hover:underline', conteudoRedesAmberTextClass)}
+            className="inline-flex items-center gap-1 text-[12px] font-medium text-[#c27803] hover:text-[#a16207]"
           >
             <ExternalLink className="h-3 w-3" />
             Ver postagem

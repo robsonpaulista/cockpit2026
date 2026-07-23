@@ -1,4 +1,4 @@
-/** Itens ocultos na sidebar — acessíveis via Acesso rápido ou URL direta. */
+/** Itens ocultos na sidebar — acessíveis via bloco superior, Acesso rápido ou URL direta. */
 export const SIDEBAR_HIDDEN_MENU_IDS = new Set([
   'home',
   'territorio',
@@ -10,6 +10,7 @@ export const SIDEBAR_HIDDEN_MENU_IDS = new Set([
   'gestao-pesquisas-menu',
   'emendas',
   'proposicoes',
+  'material-campanha',
 ])
 
 export function isSidebarMenuItemHidden(id: string): boolean {

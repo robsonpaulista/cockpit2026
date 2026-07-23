@@ -97,6 +97,6 @@ export const brandAmberSortIconClass = 'h-3.5 w-3.5 text-[#ff9800]'
 export const brandAmberMetricClass = 'font-semibold text-[#ff9800]'
 
 export const brandAmberPanelBorderClass =
-  'rounded-xl border border-[#ffd59a]/50 bg-background/90 p-4'
+  'rounded-[18px] border border-[#ebe8e4] bg-white p-4 shadow-[0_1px_2px_rgba(28,25,23,0.03)]'
 
 export const brandAmberFocusRingClass = 'focus-visible:ring-2 focus-visible:ring-[#ff9800]/40'

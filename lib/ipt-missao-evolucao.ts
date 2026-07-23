@@ -765,7 +765,7 @@ export function labelSentidoMissao(sentido: IptMissaoMudancaSentido): string {
   return sentido === 'entrou' ? 'Entrou' : 'Saiu'
 }
 
-/** Nível de alerta estilo "sala de guerra": 🔴 crítico, 🟡 atenção, 🟢 positivo. */
+/** Nível de impacto operacional: crítico, atenção ou positivo. */
 export type IptMissaoAlertaNivel = 'critico' | 'atencao' | 'positivo'
 
 export type IptMissaoAlerta = {
@@ -780,9 +780,9 @@ export const IPT_MISSAO_ALERTA_LABEL: Record<IptMissaoAlertaNivel, string> = {
 }
 
 export const IPT_MISSAO_ALERTA_COR: Record<IptMissaoAlertaNivel, string> = {
-  critico: '#e53935',
-  atencao: '#f59e0b',
-  positivo: '#2e9e5b',
+  critico: '#9f1239',
+  atencao: '#92400e',
+  positivo: '#166534',
 }
 
 /**

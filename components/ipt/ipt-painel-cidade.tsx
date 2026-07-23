@@ -22,8 +22,7 @@ type Props = {
 }
 
 /**
- * Painel master–detail da cidade: diagnóstico da missão + contexto local (Radar)
- * num único bloco à direita das Prioridades.
+ * Painel master–detail da cidade: indicadores da missão + contexto local (Radar).
  */
 export function IptPainelCidade({
   municipio,
@@ -40,7 +39,7 @@ export function IptPainelCidade({
           <MapPin className="ipt-painel-cidade__empty-ico" aria-hidden />
           <h2 className="ipt-painel-cidade__empty-title">Município</h2>
           <p className="ipt-painel-cidade__empty-text">
-            Clique em um município nas prioridades para ver o diagnóstico da missão e o
+            Clique em um município nas prioridades para ver os indicadores e o
             contexto local (Radar 224).
           </p>
         </div>
@@ -103,7 +102,7 @@ export function IptPainelCidade({
 
       <div className="ipt-painel-cidade__scroll">
         <div className="ipt-painel-cidade__bloco">
-          <h3 className="ipt-painel-cidade__section-label">Diagnóstico da missão</h3>
+          <h3 className="ipt-painel-cidade__section-label">Indicadores</h3>
           <IptMissaoDetalhe
             municipio={municipio}
             missaoAtiva={missaoAtiva}

@@ -14,7 +14,6 @@ import {
 import {
   alertaMissaoEvento,
   carregarEventosMissao,
-  IPT_MISSAO_ALERTA_COR,
   IPT_MISSAO_ALERTA_LABEL,
   labelSentidoMissao,
   leituraComparativoEvento,
@@ -215,8 +214,8 @@ export function IptMissaoEvolucaoModal({ open, onClose, municipios, refreshToken
         </div>
 
         <p className="ipt-foco-modal__lead">
-          Alertas automáticos por município: 🔴 crítico pede ação imediata, 🟡 atenção pede
-          acompanhamento e 🟢 positivo registra vitória — sempre com o valor anterior e o atual.
+          Movimentos recentes por missão, com leitura de impacto (crítico, atenção ou positivo) e o
+          valor anterior versus o atual.
         </p>
 
         <div className="ipt-evolucao-modal__filters">
@@ -248,15 +247,15 @@ export function IptMissaoEvolucaoModal({ open, onClose, municipios, refreshToken
             </select>
           </label>
           <label className="ipt-evolucao-modal__field">
-            <span>Alerta</span>
+            <span>Impacto</span>
             <select
               value={filtroAlerta}
               onChange={(e) => setFiltroAlerta(e.target.value as IptMissaoAlertaNivel | 'todos')}
             >
               <option value="todos">Todos</option>
-              <option value="critico">🔴 Crítico</option>
-              <option value="atencao">🟡 Atenção</option>
-              <option value="positivo">🟢 Positivo</option>
+              <option value="critico">Crítico</option>
+              <option value="atencao">Atenção</option>
+              <option value="positivo">Positivo</option>
             </select>
           </label>
           <label className="ipt-evolucao-modal__field ipt-evolucao-modal__field--wide">
@@ -285,15 +284,18 @@ export function IptMissaoEvolucaoModal({ open, onClose, municipios, refreshToken
         </div>
 
         <div className="ipt-evolucao-modal__summary">
-          <span>{resumo.total} eventos</span>
+          <span className="ipt-evolucao-modal__summary-total">{resumo.total} eventos</span>
           <span className="ipt-evolucao-modal__pill ipt-evolucao-modal__pill--critico">
-            🔴 {resumo.criticos} crítico{resumo.criticos === 1 ? '' : 's'}
+            <span className="ipt-evolucao-modal__pill-dot" aria-hidden />
+            {resumo.criticos} crítico{resumo.criticos === 1 ? '' : 's'}
           </span>
           <span className="ipt-evolucao-modal__pill ipt-evolucao-modal__pill--atencao">
-            🟡 {resumo.atencoes} atenção
+            <span className="ipt-evolucao-modal__pill-dot" aria-hidden />
+            {resumo.atencoes} atenção
           </span>
           <span className="ipt-evolucao-modal__pill ipt-evolucao-modal__pill--positivo">
-            🟢 {resumo.positivos} positivo{resumo.positivos === 1 ? '' : 's'}
+            <span className="ipt-evolucao-modal__pill-dot" aria-hidden />
+            {resumo.positivos} positivo{resumo.positivos === 1 ? '' : 's'}
           </span>
           <span className="ipt-evolucao-modal__pill ipt-evolucao-modal__pill--in">
             {resumo.entrou} entraram
@@ -355,10 +357,10 @@ export function IptMissaoEvolucaoModal({ open, onClose, municipios, refreshToken
                         {grupo.eventos.length} evento{grupo.eventos.length === 1 ? '' : 's'}
                       </span>
                       <span className="ipt-evolucao-modal__pill ipt-evolucao-modal__pill--in">
-                        {grupo.entrou} in
+                        {grupo.entrou} entraram
                       </span>
                       <span className="ipt-evolucao-modal__pill ipt-evolucao-modal__pill--out">
-                        {grupo.saiu} out
+                        {grupo.saiu} saíram
                       </span>
                     </button>
 
@@ -367,7 +369,7 @@ export function IptMissaoEvolucaoModal({ open, onClose, municipios, refreshToken
                         <table className="ipt-evolucao-modal__table">
                           <thead>
                             <tr>
-                              <th>Alerta</th>
+                              <th>Impacto</th>
                               <th>Município</th>
                               <th>Movimento</th>
                               <th>Métrica</th>
@@ -382,7 +384,6 @@ export function IptMissaoEvolucaoModal({ open, onClose, municipios, refreshToken
                               const entrou = e.sentido === 'entrou'
                               const comp = leituraComparativoEvento(e)
                               const alerta = alertaMissaoEvento(e)
-                              const cor = IPT_MISSAO_ALERTA_COR[alerta.nivel]
                               return (
                                 <tr
                                   key={e.id}
@@ -392,19 +393,19 @@ export function IptMissaoEvolucaoModal({ open, onClose, municipios, refreshToken
                                   )}
                                 >
                                   <td>
-                                    <span
-                                      className="ipt-evolucao-modal__alerta"
-                                      title={IPT_MISSAO_ALERTA_LABEL[alerta.nivel]}
-                                    >
+                                    <div className="ipt-evolucao-modal__alerta">
                                       <span
-                                        className="ipt-evolucao-modal__alerta-dot"
-                                        style={{ background: cor }}
-                                        aria-hidden
-                                      />
+                                        className={cn(
+                                          'ipt-evolucao-modal__alerta-tag',
+                                          `ipt-evolucao-modal__alerta-tag--${alerta.nivel}`
+                                        )}
+                                      >
+                                        {IPT_MISSAO_ALERTA_LABEL[alerta.nivel]}
+                                      </span>
                                       <span className="ipt-evolucao-modal__alerta-txt">
                                         {alerta.titulo}
                                       </span>
-                                    </span>
+                                    </div>
                                   </td>
                                   <td>
                                     <strong className="ipt-evolucao-modal__muni">{e.municipio}</strong>

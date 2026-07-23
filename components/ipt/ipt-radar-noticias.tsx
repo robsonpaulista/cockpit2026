@@ -163,15 +163,15 @@ export function IptRadarNoticias({ municipio, entregasMandato = 0, compact = fal
             <div className="ipt-bloco-noticias__leitura">
               <h3 className="ipt-bloco-noticias__leitura-title">Leitura de contexto</h3>
               <ul className="ipt-bloco-noticias__leitura-list">
-                <li>{leitura.movimentacaoLabel}</li>
-                <li>
-                  Assunto dominante:{' '}
-                  <strong>{leitura.assuntoDominante ?? 'Diversos'}</strong>
-                </li>
                 <li>
                   Oportunidade:{' '}
                   <strong>{leitura.oportunidade ?? 'Sem sinal claro'}</strong>
                 </li>
+                <li>
+                  Assunto dominante:{' '}
+                  <strong>{leitura.assuntoDominante ?? 'Diversos'}</strong>
+                </li>
+                <li>{leitura.movimentacaoLabel}</li>
               </ul>
             </div>
 

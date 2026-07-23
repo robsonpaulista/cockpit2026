@@ -191,11 +191,11 @@ export default function ConteudoPage() {
   const isCockpit = false
   const sectionShellClass = isCockpit
     ? 'border-white/12 bg-[linear-gradient(165deg,rgba(22,34,44,0.82)_0%,rgba(18,30,38,0.86)_100%)] shadow-[0_10px_32px_rgba(3,12,20,0.28)]'
-    : 'border-card bg-surface shadow-card'
+    : 'border-[#ebe8e4] bg-white shadow-[0_1px_2px_rgba(28,25,23,0.03)]'
   const innerPanelClass = isCockpit
     ? 'border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.04)_0%,rgba(255,255,255,0.02)_100%)]'
-    : 'border-card bg-background/50'
-  const sectionWrapClass = cn('mb-6 rounded-2xl border p-4', sectionShellClass)
+    : 'rounded-[18px] border border-[#ebe8e4] bg-white p-4 shadow-[0_1px_2px_rgba(28,25,23,0.03)]'
+  const sectionWrapClass = cn('mb-6 rounded-[18px] border p-4 md:p-5', sectionShellClass)
 
   const [activeSubTab, setActiveSubTab] = useState<'posts' | 'audience' | 'locations'>('posts')
   const [locationsMode, setLocationsMode] = useState<'followers' | 'engaged'>('followers')

@@ -67,6 +67,7 @@ import type { TerritorioDesenvolvimentoPI } from '@/lib/piaui-territorio-desenvo
 import { cn } from '@/lib/utils'
 import '@/app/dashboard/territorio/ipt/ipt-visual-refine.css'
 import '@/app/dashboard/territorio/ipt/ipt-operacional.css'
+import '@/app/dashboard/territorio/ipt/ipt-clean.css'
 
 const IptMapSection = dynamic(
   () => import('@/components/ipt/ipt-map-section').then((mod) => mod.IptMapSection),

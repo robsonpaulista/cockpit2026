@@ -841,6 +841,7 @@ export function Sidebar() {
             collapsed={navCollapsed}
             mobileOpen={navMobileOpen}
             isGradientHome={isGradientHome}
+            searchKey={searchKey}
             onNavigate={(href) => {
               if (href !== pathname) setNavigating(true)
               setMobileOpen(false)

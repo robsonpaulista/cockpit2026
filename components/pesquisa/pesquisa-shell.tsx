@@ -13,6 +13,7 @@ import {
 import { typographyContentRootClass, typographyPageLeadClass } from '@/lib/typography-chrome'
 import { useDashboardTopbarVisible } from '@/hooks/use-dashboard-topbar-visible'
 import '@/app/dashboard/shared/ipt-page-palette.css'
+import '@/app/dashboard/pesquisa/pesquisa-clean.css'
 
 export type PesquisaTab = 'panorama' | 'tendencia' | 'cadastradas' | 'gerar-publico'
 
@@ -43,8 +44,10 @@ export function PesquisaShell({
 
   useEffect(() => {
     document.body.setAttribute('data-ipt-palette', '')
+    document.body.setAttribute('data-pesquisa-clean', '')
     return () => {
       document.body.removeAttribute('data-ipt-palette')
+      document.body.removeAttribute('data-pesquisa-clean')
     }
   }, [])
 

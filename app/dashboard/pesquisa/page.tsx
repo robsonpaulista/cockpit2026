@@ -189,13 +189,13 @@ export default function PesquisaPage() {
   const isCockpit = false
   const sectionShellClass = isCockpit
     ? 'border-white/12 bg-[linear-gradient(165deg,rgba(22,34,44,0.82)_0%,rgba(18,30,38,0.86)_100%)] shadow-[0_10px_32px_rgba(3,12,20,0.28)]'
-    : 'border-card bg-surface shadow-card'
+    : 'border-[#ebe8e4] bg-white shadow-[0_1px_2px_rgba(28,25,23,0.03)]'
   const innerPanelClass = isCockpit
     ? 'border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.04)_0%,rgba(255,255,255,0.02)_100%)]'
-    : 'border-card bg-background/50'
+    : 'rounded-[18px] border border-[#ebe8e4] bg-white p-4 shadow-[0_1px_2px_rgba(28,25,23,0.03)]'
   const inputShellClass = isCockpit
     ? 'border-white/12 bg-white/[0.03]'
-    : 'border-card bg-surface'
+    : 'border-[#ebe8e4] bg-white'
   const [polls, setPolls] = useState<Poll[]>([])
   const [loading, setLoading] = useState(true)
   const [showModal, setShowModal] = useState(false)
