@@ -21,11 +21,18 @@ type CampanhaLink = {
   id: string
   href: string
   label: string
-  icon: 'MapPin' | 'Target' | 'Radar' | 'ClipboardList' | 'MessageSquare' | 'Package'
+  icon: 'Activity' | 'MapPin' | 'Target' | 'Radar' | 'ClipboardList' | 'MessageSquare' | 'Package'
   pageKeys: string[]
 }
 
 const CAMPANHA_LINKS: CampanhaLink[] = [
+  {
+    id: 'war-room',
+    href: '/dashboard/war-room',
+    label: 'War Room',
+    icon: 'Activity',
+    pageKeys: ['war-room', 'conteudo', 'material-campanha', 'fluxo-digital', 'ipt', 'whatsapp'],
+  },
   {
     id: 'diagnostico',
     href: '/dashboard/territorio/ipt',
@@ -71,6 +78,9 @@ const CAMPANHA_LINKS: CampanhaLink[] = [
 ]
 
 function isCampanhaLinkActive(link: CampanhaLink, pathname: string, search: string): boolean {
+  if (link.id === 'war-room') {
+    return pathname.startsWith('/dashboard/war-room')
+  }
   if (link.id === 'radar-eleitoral') {
     return pathname.startsWith('/dashboard/noticias')
   }

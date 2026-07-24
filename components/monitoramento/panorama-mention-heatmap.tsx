@@ -51,6 +51,8 @@ interface PanoramaMentionHeatmapProps {
   onScaleModeChange?: (mode: HeatmapScaleMode) => void
   /** Oculta os botões de escala (use com toggle no cabeçalho do card). */
   hideScaleControls?: boolean
+  /** Layout mais estreito (ex.: War Room com 7 dias). */
+  compact?: boolean
 }
 
 export function PanoramaHeatmapScaleToggle({
@@ -89,6 +91,7 @@ export function PanoramaMentionHeatmap({
   scaleMode: scaleModeProp,
   onScaleModeChange,
   hideScaleControls = false,
+  compact = false,
 }: PanoramaMentionHeatmapProps) {
   const [internalScaleMode, setInternalScaleMode] = useState<HeatmapScaleMode>('comparative')
   const scaleMode = scaleModeProp ?? internalScaleMode
@@ -111,30 +114,54 @@ export function PanoramaMentionHeatmap({
     }
   })
 
+  const dayTicks = compact
+    ? dates.map((date, index) => ({
+        index,
+        label: new Date(`${date}T12:00:00`).toLocaleDateString('pt-BR', { day: '2-digit' }),
+      }))
+    : []
+
   const metricWord = metricLabel.toLowerCase()
   const lessLabel = 'Menos'
   const moreLabel = scaleMode === 'comparative' ? 'Mais' : 'Pico'
+  const nameColClass = compact ? 'w-[104px]' : 'w-[120px]'
+  const axisPadClass = compact ? 'pl-[112px]' : 'pl-[128px]'
+  const nameTypeClass = compact
+    ? 'text-[12px] font-medium leading-snug text-[#57534e]'
+    : cn(typographyBodyMediumClass, 'text-text-secondary')
+  const mutedTypeClass = compact
+    ? 'text-[10px] leading-snug text-[#a8a29e]'
+    : typographyBodyMutedClass
+  const rowGapClass = compact ? 'mb-1.5' : 'mb-2'
 
   return (
-    <div className={cn('flex h-full min-h-0 flex-col gap-2', className)}>
+    <div className={cn('flex h-full min-h-0 flex-col', compact ? 'gap-1.5' : 'gap-2', className)}>
       {!hideScaleControls ? (
         <PanoramaHeatmapScaleToggle scaleMode={scaleMode} onScaleModeChange={setScaleMode} />
       ) : null}
 
-      {enableNewsModal ? (
+      {enableNewsModal && !compact ? (
         <p className={cn('shrink-0 leading-snug', typographyBodyMutedClass)}>
           Clique em um dia para ver as matérias
         </p>
       ) : null}
 
-      <div className="flex min-h-0 flex-1 flex-col justify-center overflow-x-auto">
-        <div className="min-w-[520px]">
+      <div
+        className={cn(
+          'flex min-h-0 flex-1 flex-col overflow-x-auto',
+          compact ? 'justify-start overflow-y-auto pr-0.5' : 'justify-center',
+        )}
+      >
+        <div className={cn(compact ? 'min-w-0' : 'min-w-[520px]')}>
           {rows.map((row, rowIndex) => {
             const scaleMax = scaleMode === 'comparative' ? globalMax : heatmapRowMax(row.values)
             return (
-              <div key={row.slug} className="mb-2 flex items-center gap-2 last:mb-0">
+              <div
+                key={row.slug}
+                className={cn('flex items-center gap-2 last:mb-0', rowGapClass)}
+              >
                 <span
-                  className={cn('w-[120px] shrink-0 truncate text-text-secondary', typographyBodyMediumClass)}
+                  className={cn('shrink-0 truncate', nameColClass, nameTypeClass)}
                   title={row.name}
                 >
                   {row.name}
@@ -182,13 +209,27 @@ export function PanoramaMentionHeatmap({
             )
           })}
 
-          {monthTicks.length > 0 ? (
-            <div className="mt-1 flex gap-2 pl-[128px]">
+          {dayTicks.length > 0 ? (
+            <div className={cn('mt-1 flex h-4 gap-2', axisPadClass)}>
+              <div className="relative flex min-w-0 flex-1">
+                {dayTicks.map((tick) => (
+                  <span
+                    key={tick.index}
+                    className={cn('absolute -translate-x-1/2', mutedTypeClass)}
+                    style={{ left: `${((tick.index + 0.5) / Math.max(dates.length, 1)) * 100}%` }}
+                  >
+                    {tick.label}
+                  </span>
+                ))}
+              </div>
+            </div>
+          ) : monthTicks.length > 0 ? (
+            <div className={cn('mt-1 flex gap-2', axisPadClass)}>
               <div className="relative flex min-w-0 flex-1">
                 {monthTicks.map((tick) => (
                   <span
                     key={tick.index}
-                    className={cn('absolute', typographyBodyMutedClass)}
+                    className={cn('absolute', mutedTypeClass)}
                     style={{ left: `${(tick.index / Math.max(dates.length - 1, 1)) * 100}%` }}
                   >
                     {tick.label}
@@ -200,7 +241,7 @@ export function PanoramaMentionHeatmap({
         </div>
       </div>
 
-      <div className={cn('mt-auto flex shrink-0 flex-wrap items-center gap-2', typographyBodyMutedClass)}>
+      <div className={cn('mt-0 flex shrink-0 flex-wrap items-center gap-2', mutedTypeClass)}>
         <span>{lessLabel}</span>
         <div className="flex gap-[2px]">
           {[0.15, 0.35, 0.55, 0.75, 1].map((t) => (

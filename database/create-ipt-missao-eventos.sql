@@ -10,7 +10,7 @@ CREATE TABLE IF NOT EXISTS ipt_missao_eventos (
   fonte TEXT NOT NULL DEFAULT 'sync' CHECK (fonte IN ('sync', 'manual', 'bootstrap')),
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
-
+  
 CREATE INDEX IF NOT EXISTS idx_ipt_missao_eventos_created
   ON ipt_missao_eventos (created_at DESC);
 

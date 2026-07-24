@@ -1736,7 +1736,8 @@ body[data-ipt-operacional] .ipt-header-actions .ipt-scope-select {
 
 .ipt-bloco-lista__status {
   display: inline-block;
-  margin-left: 6px;
+  flex-shrink: 0;
+  margin-left: 0;
   font-style: normal;
   font-size: 10px;
   font-weight: 700;
@@ -1952,13 +1953,21 @@ body[data-ipt-operacional] .ipt-header-actions .ipt-scope-select {
 }
 
 .ipt-bloco-lista__muni {
+  display: flex;
+  align-items: center;
+  gap: 6px;
   min-width: 0;
   font-size: 13px;
   font-weight: 400;
   color: #000000;
-  white-space: nowrap;
+  overflow: hidden;
+}
+
+.ipt-bloco-lista__muni-name {
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .ipt-bloco-lista__metric {

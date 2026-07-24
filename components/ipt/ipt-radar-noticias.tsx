@@ -24,12 +24,19 @@ type Props = {
   entregasMandato?: number
   /** Dentro do painel cidade: título mais curto, sem card próprio. */
   compact?: boolean
+  /** Oculta o bloco “Leitura de contexto” (ex.: War Room). */
+  ocultarLeituraContexto?: boolean
 }
 
 /**
  * Notícias do Radar 224 com leitura de contexto derivada dos títulos.
  */
-export function IptRadarNoticias({ municipio, entregasMandato = 0, compact = false }: Props) {
+export function IptRadarNoticias({
+  municipio,
+  entregasMandato = 0,
+  compact = false,
+  ocultarLeituraContexto = false,
+}: Props) {
   const [itens, setItens] = useState<RadarNoticiaItem[]>([])
   const [loading, setLoading] = useState(false)
   const [erro, setErro] = useState<string | null>(null)
@@ -160,6 +167,7 @@ export function IptRadarNoticias({ municipio, entregasMandato = 0, compact = fal
           </p>
         ) : (
           <>
+            {ocultarLeituraContexto ? null : (
             <div className="ipt-bloco-noticias__leitura">
               <h3 className="ipt-bloco-noticias__leitura-title">Leitura de contexto</h3>
               <ul className="ipt-bloco-noticias__leitura-list">
@@ -174,6 +182,7 @@ export function IptRadarNoticias({ municipio, entregasMandato = 0, compact = fal
                 <li>{leitura.movimentacaoLabel}</li>
               </ul>
             </div>
+            )}
 
             <ul className="ipt-bloco-noticias__list">
               {acontecimentos.map((a) => (

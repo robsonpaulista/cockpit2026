@@ -9,6 +9,7 @@ const PAGE_KEYS = new Set([
   'ficha-atendimento', 'chapas', 'conteudo', 'noticias', 'mobilizacao', 'whatsapp', 'material-campanha',
   'pesquisa', 'operacao', 'juridico', 'obras', 'usuarios', 'log_system', 'gestao_pesquisas',
   'emendas', 'proposicoes', 'sei-pesquisa', 'resumo-operacional', 'resumo-eleicoes', 'arquivos',
+  'war-room',
 ])
 
 function canAccessPageKey(
@@ -49,6 +50,17 @@ function canAccessPageKey(
       canAccess('conteudo')
     )
   }
+  if (key === 'war-room') {
+    return (
+      canAccess('war-room') ||
+      canAccess('conteudo') ||
+      canAccess('material-campanha') ||
+      canAccess('fluxo-digital') ||
+      canAccess('ipt') ||
+      canAccess('whatsapp') ||
+      canAccess('resumo-operacional')
+    )
+  }
   return canAccess(key)
 }
 
@@ -61,6 +73,7 @@ function getPageKey(pathname: string): string | null {
   if (pathname.startsWith('/dashboard/territorio/ipt')) return 'ipt'
   if (pathname.startsWith('/dashboard/fluxo-digital')) return 'fluxo-digital'
   if (pathname.startsWith('/dashboard/cobertura')) return 'fluxo-digital'
+  if (pathname.startsWith('/dashboard/war-room')) return 'war-room'
   // A página de Emendas usa a chave própria 'emendas' (mesma que a sidebar usa
   // em `pageKeyForItem`). Anteriormente esta rota era tratada como 'juridico',
   // o que fazia o guard redirecionar para /dashboard quando o usuário tinha

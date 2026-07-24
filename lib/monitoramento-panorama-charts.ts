@@ -124,7 +124,7 @@ function slugFromMention<T extends { political_actors?: { slug?: string } | null
 
 function buildDailyBuckets(
   dates: string[],
-  columns: PanoramaCandidateColumn[],
+  columns: Array<{ slug: string }>,
   items: Array<{ slug: string; date: string; value: number }>
 ): Array<{ date: string } & Record<string, number | string>> {
   const bySlugDate = new Map<string, number>()
@@ -144,7 +144,7 @@ function buildDailyBuckets(
 
 function chartHasData(
   chartData: Array<Record<string, number | string>>,
-  columns: PanoramaCandidateColumn[]
+  columns: Array<{ slug: string }>
 ): boolean {
   return chartData.some((row) => columns.some((c) => Number(row[c.slug] ?? 0) > 0))
 }
@@ -182,11 +182,24 @@ function buildYoutubeChart(
   }
 }
 
-function buildGoogleNewsChart(
-  columns: PanoramaCandidateColumn[],
-  mentions: GoogleNewsMentionWithActor[]
-): PanoramaPlatformChart {
-  const dates = lastNDays(CHART_WINDOW)
+export type GoogleNewsHeatmapColumn = {
+  slug: string
+  name: string
+  accentColor: string
+}
+
+/** Heatmap de menções Google News (mesmo do Radar), com janela configurável. */
+export function buildGoogleNewsRelatedHeatmap(
+  columns: GoogleNewsHeatmapColumn[],
+  mentions: GoogleNewsMentionWithActor[],
+  windowDays: number = PANORAMA_WINDOW_DAYS
+): {
+  dates: string[]
+  rows: PanoramaHeatmapRow[]
+  chartData: Array<{ date: string } & Record<string, number | string>>
+  empty: boolean
+} {
+  const dates = lastNDays(windowDays)
   const items: Array<{ slug: string; date: string; value: number }> = []
 
   for (const m of mentions) {
@@ -197,12 +210,30 @@ function buildGoogleNewsChart(
   }
 
   const chartData = buildDailyBuckets(dates, columns, items)
-  const heatmapRows: PanoramaHeatmapRow[] = columns.map((col) => ({
+  const rows: PanoramaHeatmapRow[] = columns.map((col) => ({
     slug: col.slug,
     name: col.name,
     color: col.accentColor,
     values: dates.map((date) => Number(chartData.find((row) => row.date === date)?.[col.slug] ?? 0)),
   }))
+
+  return {
+    dates,
+    rows,
+    chartData,
+    empty: !chartHasData(chartData, columns),
+  }
+}
+
+function buildGoogleNewsChart(
+  columns: PanoramaCandidateColumn[],
+  mentions: GoogleNewsMentionWithActor[]
+): PanoramaPlatformChart {
+  const { dates, rows: heatmapRows, chartData, empty } = buildGoogleNewsRelatedHeatmap(
+    columns,
+    mentions,
+    CHART_WINDOW
+  )
 
   return {
     id: 'google-news',
@@ -215,7 +246,7 @@ function buildGoogleNewsChart(
     chartData,
     heatmapDates: dates,
     heatmapRows,
-    empty: !chartHasData(chartData, columns),
+    empty,
   }
 }
 

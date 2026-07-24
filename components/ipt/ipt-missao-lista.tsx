@@ -44,6 +44,12 @@ type Props = {
   onVisaoTerritorioChange?: (visao: IptTerritorioVisao) => void
   /** Sem card próprio — usado dentro de ipt-bloco-territorio. */
   embedded?: boolean
+  /** Oculta título/subtítulo/badge do cabeçalho (ex.: War Room com SectionHead externo). */
+  hideHead?: boolean
+  /** Oculta a coluna População (ex.: War Room Expectativa de Votos). */
+  ocultarPopulacao?: boolean
+  /** Municípios com destaque visual (ex.: mudaram no último refresh). */
+  destaqueMunicipios?: ReadonlySet<string>
 }
 
 function formatInt(n: number | null | undefined): string {
@@ -52,10 +58,14 @@ function formatInt(n: number | null | undefined): string {
 }
 
 /** Colunas de contexto territorial (antes das métricas da missão). */
-function colunasContexto(podeVerExpectativa: boolean): string[] {
-  return podeVerExpectativa
+function colunasContexto(
+  podeVerExpectativa: boolean,
+  ocultarPopulacao: boolean
+): string[] {
+  const base = podeVerExpectativa
     ? ['Exp. 2026', 'População', 'Eleitorado', 'Lideranças']
     : ['Relevância', 'População', 'Eleitorado', 'Lideranças']
+  return ocultarPopulacao ? base.filter((c) => c !== 'População') : base
 }
 
 /** Métricas específicas da missão (sem a coluna Prioridade). */
@@ -71,7 +81,8 @@ function colunasMissao(missao: IptMissaoId | null): string[] {
 function contextoMunicipio(
   m: IptMunicipio,
   podeVerExpectativa: boolean,
-  semMeta: boolean
+  semMeta: boolean,
+  ocultarPopulacao: boolean
 ): { valores: string[]; titulos: string[] } {
   const demo = getDemografiaMunicipio(m.municipio)
   const pop =
@@ -88,18 +99,22 @@ function contextoMunicipio(
     ? `${m.pesoExpectativaPct.toLocaleString('pt-BR', { maximumFractionDigits: 1 })}% do total estadual`
     : 'Relevância territorial'
 
+  const valores = [expValor, formatInt(pop), formatInt(eleitorado), formatInt(liderancas)]
+  const titulos = [
+    expTitulo,
+    pop != null ? `População ${formatInt(pop)}` : 'População indisponível',
+    eleitorado != null
+      ? `Eleitorado ${formatInt(eleitorado)}`
+      : 'Eleitorado indisponível',
+    liderancas > 0
+      ? `${formatInt(liderancas)} liderança${liderancas === 1 ? '' : 's'} mapeada${liderancas === 1 ? '' : 's'}`
+      : 'Nenhuma liderança mapeada',
+  ]
+
+  if (!ocultarPopulacao) return { valores, titulos }
   return {
-    valores: [expValor, formatInt(pop), formatInt(eleitorado), formatInt(liderancas)],
-    titulos: [
-      expTitulo,
-      pop != null ? `População ${formatInt(pop)}` : 'População indisponível',
-      eleitorado != null
-        ? `Eleitorado ${formatInt(eleitorado)}`
-        : 'Eleitorado indisponível',
-      liderancas > 0
-        ? `${formatInt(liderancas)} liderança${liderancas === 1 ? '' : 's'} mapeada${liderancas === 1 ? '' : 's'}`
-        : 'Nenhuma liderança mapeada',
-    ],
+    valores: [valores[0], valores[2], valores[3]],
+    titulos: [titulos[0], titulos[2], titulos[3]],
   }
 }
 
@@ -171,10 +186,13 @@ export function IptMissaoLista({
   visaoTerritorio,
   onVisaoTerritorioChange,
   embedded = false,
+  hideHead = false,
+  ocultarPopulacao = false,
+  destaqueMunicipios,
 }: Props) {
   const missaoLista: IptMissaoId | null =
     missaoAtiva === 'todas' ? null : missaoAtiva
-  const colsContexto = colunasContexto(podeVerExpectativa)
+  const colsContexto = colunasContexto(podeVerExpectativa, ocultarPopulacao)
   const colsMissao = colunasMissao(missaoLista)
   const colunas = [...colsContexto, ...colsMissao]
   const nMetricas = colunas.length
@@ -207,6 +225,7 @@ export function IptMissaoLista({
       )}
       style={{ '--ipt-lista-metricas': nMetricas } as CSSProperties}
     >
+      {hideHead ? null : (
       <div className="ipt-bloco-lista__head">
         <div className="min-w-0">
           <h3 className="ipt-bloco__title">
@@ -286,6 +305,7 @@ export function IptMissaoLista({
           </span>
         </div>
       </div>
+      )}
 
       {municipios.length === 0 ? (
         <p className="ipt-bloco-lista__empty">
@@ -306,10 +326,11 @@ export function IptMissaoLista({
             {municipios.map((m, idx) => {
               const ativo = selecionado === m.municipio
               const naMissao = municipioNoRecorteMissao(m, missaoAtiva)
+              const comMeta = m.expectativaVotos > 0
               const semMeta =
                 visaoUniverso === 'com_expectativa' &&
                 missaoAtiva === 'expectativa' &&
-                !temExpectativa(m)
+                !comMeta
               const saudavel =
                 visaoUniverso === 'com_expectativa' &&
                 missaoAtiva !== 'expectativa' &&
@@ -321,7 +342,12 @@ export function IptMissaoLista({
                 : missaoLinha
                   ? iptMissaoConfig(missaoLinha).cor
                   : '#8c8c8c'
-              const contexto = contextoMunicipio(m, podeVerExpectativa, semMeta)
+              const contexto = contextoMunicipio(
+                m,
+                podeVerExpectativa,
+                semMeta,
+                ocultarPopulacao
+              )
               const metricasMissao = valoresMissao(m, missaoLista, saudavel || semMeta)
 
               return (
@@ -332,7 +358,8 @@ export function IptMissaoLista({
                       'ipt-bloco-lista__row',
                       'ipt-bloco-lista__row--cols',
                       ativo && 'ipt-bloco-lista__row--active',
-                      (saudavel || semMeta) && 'ipt-bloco-lista__row--saudavel'
+                      (saudavel || semMeta) && 'ipt-bloco-lista__row--saudavel',
+                      destaqueMunicipios?.has(m.municipio) && 'wr-row--changed',
                     )}
                     onClick={() => onSelect(m.municipio)}
                     onDoubleClick={(event) => {
@@ -353,22 +380,14 @@ export function IptMissaoLista({
                       {idx + 1}
                     </span>
                     <span className="ipt-bloco-lista__muni">
-                      {m.municipio}
-                      {semMeta ? (
-                        <em className="ipt-bloco-lista__status">Sem meta</em>
-                      ) : saudavel ? (
+                      <span className="ipt-bloco-lista__muni-name">{m.municipio}</span>
+                      {saudavel ? (
                         <em className="ipt-bloco-lista__status">Saudável</em>
                       ) : visaoUniverso === 'com_expectativa' &&
                         missaoAtiva !== 'expectativa' &&
                         naMissao ? (
                         <em className="ipt-bloco-lista__status ipt-bloco-lista__status--missao">
                           Na missão
-                        </em>
-                      ) : visaoUniverso === 'com_expectativa' &&
-                        missaoAtiva === 'expectativa' &&
-                        temExpectativa(m) ? (
-                        <em className="ipt-bloco-lista__status ipt-bloco-lista__status--missao">
-                          Com meta
                         </em>
                       ) : null}
                     </span>

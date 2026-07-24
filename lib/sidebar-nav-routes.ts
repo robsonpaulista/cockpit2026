@@ -143,6 +143,12 @@ export const SIDEBAR_MENU_ITEMS: SidebarMenuItemConfig[] = [
   },
   { id: 'whatsapp', label: 'WhatsApp', icon: 'MessageCircle', href: '/dashboard/whatsapp' },
   {
+    id: 'war-room',
+    label: 'War Room',
+    icon: 'Activity',
+    href: '/dashboard/war-room',
+  },
+  {
     id: 'material-campanha',
     label: 'Gestão de Material',
     icon: 'Package',
@@ -242,6 +248,13 @@ const EXTRA_ALIASES: Record<string, string[]> = {
   'mobilizacao-config': ['config mobilizacao', 'mobilizacao config'],
   'mobilizacao-menu': ['mobilizacao'],
   whatsapp: ['zap', 'whats'],
+  'war-room': [
+    'war room',
+    'sala de guerra',
+    'monitoramento',
+    'tempo real',
+    'cockpit war',
+  ],
   'material-campanha': [
     'material',
     'materiais',

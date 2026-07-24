@@ -11,6 +11,7 @@ export const SIDEBAR_HIDDEN_MENU_IDS = new Set([
   'emendas',
   'proposicoes',
   'material-campanha',
+  'war-room',
 ])
 
 export function isSidebarMenuItemHidden(id: string): boolean {

@@ -12,6 +12,7 @@ import {
 } from '@/lib/territorio-campo-route'
 import { cn } from '@/lib/utils'
 import { useDashboardTopbarVisible } from '@/hooks/use-dashboard-topbar-visible'
+import { useDashboardTopbarExtras } from '@/contexts/dashboard-topbar-extras-context'
 import { AppBrandTitle } from '@/components/app-brand-title'
 import { useDashboardHomeChrome } from '@/contexts/dashboard-home-chrome-context'
 import { isDashboardHomePath } from '@/lib/dashboard-home-chrome'
@@ -37,6 +38,8 @@ const pathToTitle: Record<string, string> = {
   '/dashboard/mobilizacao/config': 'Mobilização · Config',
   '/dashboard/mobilizacao/mapa-digital-ig': 'Central de monitoramento · Engajamento Líderes',
   '/dashboard/whatsapp': 'WhatsApp',
+  '/dashboard/war-room': 'War Room',
+  '/dashboard/material-campanha': 'Gestão de Material',
   '/dashboard/pesquisa': 'Pesquisa & Relato',
   '/dashboard/operacao': 'Operação & Equipe',
   '/dashboard/juridico': 'Jurídico',
@@ -94,6 +97,7 @@ export function DashboardHeader() {
   }, [mapaFuturisticShell, searchParams, appearance, setAppearance])
 
   const showTopbar = useDashboardTopbarVisible()
+  const topbarExtras = useDashboardTopbarExtras()
   const isRepublicanosPremium = theme === 'republicanos' && appearance === 'light'
   const isGradientHome = useDashboardHomeChrome()
   const isHome = isDashboardHomePath(p)
@@ -145,18 +149,39 @@ export function DashboardHeader() {
           >
             |
           </span>
-          <h1
-            className={cn(
-              'min-w-0 flex-1 truncate text-sm font-bold tracking-tight sm:text-base',
-              isGradientHome ? 'text-white max-lg:hidden' : 'text-text-primary',
-              mobileAmberHeader && 'max-lg:text-white/95',
+          <div className="min-w-0 flex-1">
+            {topbarExtras?.hidePageTitle ? null : (
+              <h1
+                className={cn(
+                  'truncate text-sm font-bold tracking-tight sm:text-base',
+                  isGradientHome ? 'text-white max-lg:hidden' : 'text-text-primary',
+                  mobileAmberHeader && 'max-lg:text-white/95',
+                )}
+                title={pageTitle}
+              >
+                {pageTitle}
+              </h1>
             )}
-            title={pageTitle}
-          >
-            {pageTitle}
-          </h1>
+            {topbarExtras?.description ? (
+              <div
+                className={cn(
+                  'truncate',
+                  topbarExtras.hidePageTitle
+                    ? 'block text-[13px] sm:text-sm'
+                    : 'mt-0.5 hidden text-[12px] lg:block',
+                  isGradientHome ? 'text-white/65' : 'text-text-muted',
+                  mobileAmberHeader && 'max-lg:text-white/75',
+                )}
+              >
+                {topbarExtras.description}
+              </div>
+            ) : null}
+          </div>
         </div>
         <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
+          {topbarExtras?.actions ? (
+            <div className="flex items-center gap-1.5">{topbarExtras.actions}</div>
+          ) : null}
           <UserMenu amberMobileChrome={mobileAmberHeader} />
         </div>
       </div>

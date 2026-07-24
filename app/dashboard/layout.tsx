@@ -24,6 +24,7 @@ import './territorio/mapa-tds/mapa-dom-fut-theme.css' // tema base neutra + lara
 
 import { pathnameUsesMapaFuturisticShell } from '@/lib/dashboard-mapa-futuristic-chrome'
 import { DashboardPageChromeProvider } from '@/contexts/dashboard-page-chrome-context'
+import { DashboardTopbarExtrasProvider } from '@/contexts/dashboard-topbar-extras-context'
 import { DashboardHomeChromeProvider } from '@/contexts/dashboard-home-chrome-context'
 import { JarvisHostPropsProvider } from '@/contexts/jarvis-host-props-context'
 import { JarvisVisibilityProvider } from '@/contexts/jarvis-visibility-context'
@@ -49,6 +50,7 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
     <CockpitStatusProvider>
       <DashboardHomeChromeProvider value={isHomeAccentChrome}>
         <DashboardPageChromeProvider>
+        <DashboardTopbarExtrasProvider>
         <div
           className={cn(
             'relative flex h-screen overflow-hidden bg-bg-surface',
@@ -86,6 +88,7 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
             </div>
           </div>
         </div>
+        </DashboardTopbarExtrasProvider>
         </DashboardPageChromeProvider>
       </DashboardHomeChromeProvider>
     </CockpitStatusProvider>

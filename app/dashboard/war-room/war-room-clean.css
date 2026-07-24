@@ -1,0 +1,643 @@
+/**
+ * Visual clean — War Room (/dashboard/war-room)
+ * Alinhado ao Instagram Pessoal / IPT (fundo #f6f5f2, cards claros).
+ *
+ * Escala tipográfica (mesma família do app: Source Sans 3 / Inter):
+ *   título de card ………… 12px / 600 / uppercase
+ *   link de card …………… 12px / 500
+ *   corpo / célula ……… 12px
+ *   meta / secundário …… 11px
+ *   thead / micro ……… 10px / uppercase
+ *   label de KPI ……… 9px / 600 / uppercase
+ *   valor de KPI ……… 15px / 600
+ *
+ * Paleta experimental (somente esta página):
+ *   #b87400  #f6a700  #fed353  #1465bb  #2196f3
+ */
+
+body[data-war-room-clean] {
+  --wr-page-bg: #f6f5f2;
+  --wr-surface: #ffffff;
+  --wr-border: #ebe8e4;
+  --wr-text: #1c1917;
+  --wr-muted: #78716c;
+  --wr-soft: #a8a29e;
+
+  /* Paleta de teste */
+  --wr-ochre: #b87400;
+  --wr-orange: #f6a700;
+  --wr-yellow: #fed353;
+  --wr-blue: #1465bb;
+  --wr-sky: #2196f3;
+  --wr-orange-tint: color-mix(in srgb, #f6a700 16%, #ffffff);
+  --wr-yellow-tint: color-mix(in srgb, #fed353 28%, #ffffff);
+  --wr-blue-tint: color-mix(in srgb, #2196f3 14%, #ffffff);
+
+  --wr-positive: var(--wr-blue);
+  --wr-neutral: var(--wr-ochre);
+  --wr-negative: #dc2626;
+  --wr-fs-title: 12px;
+  --wr-fs-body: 12px;
+  --wr-fs-meta: 11px;
+  --wr-fs-thead: 10px;
+  --wr-fs-kpi-label: 9px;
+  --wr-fs-kpi-value: 15px;
+
+  /* Sobrescreve o laranja IPT só na War Room */
+  --color-primary: 246 167 0; /* #f6a700 */
+  --color-primary-hover: 184 116 0; /* #b87400 */
+  --color-primary-tint: 254 211 83; /* #fed353 approx soft */
+  --brand-accent: #f6a700;
+  --brand-accent-hover: #b87400;
+  --cockpit-gold: #f6a700;
+  --mon-brand: #f6a700;
+  --mon-brand-deep: #b87400;
+  --mon-brand-soft: var(--wr-orange-tint);
+  --accent-gold: 246 167 0;
+  --accent-gold-dark: 184 116 0;
+  --accent-gold-soft: 255 248 224;
+  --strategic-yellow: 254 211 83;
+}
+
+body[data-war-room-clean] main {
+  --page-bg: var(--wr-page-bg);
+  --surface: var(--wr-surface);
+  --border: var(--wr-border);
+  --text: var(--wr-text);
+  --text-muted: var(--wr-muted);
+  --color-primary: 246 167 0;
+  --color-primary-hover: 184 116 0;
+
+  --bg-app: 246 245 242;
+  --bg-surface: 255 255 255;
+  --text-primary: 28 25 23;
+  --text-secondary: 120 113 108;
+  --text-muted: 120 113 108;
+  --color-border-tertiary: 235 232 228;
+  --color-border-secondary: 221 217 211;
+
+  background-color: var(--wr-page-bg) !important;
+}
+
+body[data-war-room-clean] main .flex.min-h-0.flex-1.flex-col.overflow-hidden.bg-bg-surface {
+  background-color: var(--wr-page-bg) !important;
+}
+
+body[data-war-room-clean] main .border-b.bg-bg-surface,
+body[data-war-room-clean] main .border-b.bg-bg-app {
+  background-color: #ffffff !important;
+  border-color: var(--wr-border) !important;
+}
+
+body[data-war-room-clean] main h1 {
+  color: var(--wr-text);
+  letter-spacing: -0.02em;
+  font-weight: 600;
+}
+
+/* Funil CRM em formato de fluxo (chevron) */
+.wr-funnel {
+  display: flex;
+  width: 100%;
+  gap: 0;
+}
+
+.wr-funnel__step {
+  position: relative;
+  flex: 1 1 0;
+  min-width: 0;
+  margin-left: -10px;
+  padding: 8px 14px 8px 18px;
+  text-align: center;
+  clip-path: polygon(0 0, calc(100% - 10px) 0, 100% 50%, calc(100% - 10px) 100%, 0 100%, 10px 50%);
+  background: #faf9f7;
+  color: #1c1917;
+}
+
+.wr-funnel__step:first-child {
+  margin-left: 0;
+  padding-left: 10px;
+  clip-path: polygon(0 0, calc(100% - 10px) 0, 100% 50%, calc(100% - 10px) 100%, 0 100%);
+  border-radius: 8px 0 0 8px;
+}
+
+.wr-funnel__step:last-child {
+  clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%, 10px 50%);
+  border-radius: 0 8px 8px 0;
+  padding-right: 10px;
+}
+
+.wr-funnel__step--accent {
+  background: var(--wr-orange-tint);
+  z-index: 1;
+}
+
+.wr-funnel__step--btn {
+  appearance: none;
+  border: 0;
+  cursor: pointer;
+  font: inherit;
+  transition: background-color 0.15s ease;
+}
+
+.wr-funnel__step--btn:hover {
+  background: var(--wr-yellow-tint);
+}
+
+.wr-funnel__step--btn.wr-funnel__step--accent:hover {
+  background: color-mix(in srgb, var(--wr-orange) 22%, #ffffff);
+}
+
+.wr-funnel__step--btn .wr-funnel__label,
+.wr-funnel__step--btn .wr-funnel__value {
+  display: block;
+}
+
+/* KPIs CRM / Evolução — cores vivas da paleta War Room */
+.wr-funnel--vivid .wr-funnel__step {
+  z-index: 1;
+}
+
+.wr-funnel--vivid .wr-funnel__step:nth-child(1) {
+  background: var(--wr-orange);
+  z-index: 4;
+}
+
+.wr-funnel--vivid .wr-funnel__step:nth-child(2) {
+  background: var(--wr-yellow);
+  z-index: 3;
+}
+
+.wr-funnel--vivid .wr-funnel__step:nth-child(3) {
+  background: var(--wr-sky);
+  z-index: 2;
+}
+
+.wr-funnel--vivid .wr-funnel__step:nth-child(4) {
+  background: var(--wr-blue);
+  z-index: 1;
+}
+
+.wr-funnel--vivid .wr-funnel__step:nth-child(1) .wr-funnel__label,
+.wr-funnel--vivid .wr-funnel__step:nth-child(2) .wr-funnel__label {
+  color: color-mix(in srgb, var(--wr-ochre) 70%, #1c1917);
+}
+
+.wr-funnel--vivid .wr-funnel__step:nth-child(1) .wr-funnel__value,
+.wr-funnel--vivid .wr-funnel__step:nth-child(2) .wr-funnel__value {
+  color: #1c1917;
+}
+
+.wr-funnel--vivid .wr-funnel__step:nth-child(3) .wr-funnel__label,
+.wr-funnel--vivid .wr-funnel__step:nth-child(4) .wr-funnel__label {
+  color: rgb(255 255 255 / 0.88);
+}
+
+.wr-funnel--vivid .wr-funnel__step:nth-child(3) .wr-funnel__value,
+.wr-funnel--vivid .wr-funnel__step:nth-child(4) .wr-funnel__value {
+  color: #ffffff;
+}
+
+.wr-funnel--vivid .wr-funnel__step--accent {
+  box-shadow:
+    inset 0 0 0 2px rgb(28 25 23 / 0.22),
+    0 2px 8px rgb(28 25 23 / 0.12);
+  filter: saturate(1.08) brightness(1.04);
+  z-index: 5;
+}
+
+.wr-funnel--vivid .wr-funnel__step--btn:hover {
+  filter: brightness(1.06);
+}
+
+.wr-funnel--vivid .wr-funnel__step--btn.wr-funnel__step--accent:hover {
+  filter: saturate(1.1) brightness(1.06);
+}
+
+.wr-funnel__label {
+  margin: 0;
+  font-size: var(--wr-fs-kpi-label, 9px);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #78716c;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.wr-funnel__value {
+  margin: 2px 0 0;
+  font-size: var(--wr-fs-kpi-value, 15px);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.1;
+  color: #1c1917;
+}
+
+/* Board: Expectativa (largo) + bloco reservado + Agenda + Redes */
+.wr-board {
+  width: 100%;
+}
+
+@media (min-width: 1024px) {
+  .wr-board {
+    grid-template-columns:
+      minmax(0, 1fr)
+      minmax(300px, 0.95fr)
+      minmax(260px, 340px)
+      minmax(280px, 380px);
+  }
+}
+
+@media (min-width: 1400px) {
+  .wr-board {
+    grid-template-columns:
+      minmax(0, 1fr)
+      minmax(320px, 1fr)
+      minmax(280px, 360px)
+      minmax(300px, 400px);
+  }
+}
+
+/* Bloco 1 — coluna IPT (Universo 70% + card secundário 30%) */
+.wr-col-bloco1 {
+  display: flex;
+  height: 100%;
+  min-height: 0;
+  flex-direction: column;
+  gap: 14px;
+}
+
+@media (min-width: 1024px) {
+  .wr-col-bloco1 {
+    grid-row: 1 / span 3;
+  }
+}
+
+.wr-col-bloco1__universo {
+  flex: 7 1 0;
+  min-height: 0;
+  overflow: hidden;
+  padding: 0;
+}
+
+.wr-col-bloco1__secundario {
+  flex: 3 1 0;
+  min-height: 0;
+}
+
+/* Bloco 2 — Consolidadas 58% + andamento + reservado */
+.wr-col-bloco2 {
+  display: flex;
+  height: 100%;
+  min-height: 0;
+  flex-direction: column;
+  gap: 14px;
+}
+
+@media (min-width: 1024px) {
+  .wr-col-bloco2 {
+    grid-row: 1 / span 3;
+  }
+}
+
+.wr-col-bloco2__consolidadas {
+  flex: 0 1 auto;
+  min-height: 0;
+}
+
+.wr-col-bloco2__andamento {
+  flex: 0 0 auto;
+  min-height: 0;
+}
+
+.wr-andamento-table table {
+  border-collapse: collapse;
+}
+
+.wr-andamento-table__row td {
+  vertical-align: middle;
+  padding-top: 0;
+  padding-bottom: 0;
+}
+
+.wr-col-bloco2__reservado {
+  flex: 1 1 0;
+  min-height: 0;
+}
+
+.wr-ipt-universo {
+  display: flex;
+  min-height: 0;
+  flex: 1 1 0;
+  flex-direction: column;
+  overflow: hidden;
+  height: 100%;
+}
+
+.wr-ipt-universo .ipt-bloco-lista--embedded {
+  display: flex;
+  min-height: 0;
+  flex: 1 1 0;
+  flex-direction: column;
+  overflow: hidden;
+  padding: 0 12px 4px;
+}
+
+.wr-ipt-universo .ipt-bloco-lista__rows {
+  flex: 1 1 0;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+/* Expectativa embutida — mesma escala da War Room */
+.wr-ipt-universo .ipt-bloco-lista__cols {
+  font-size: var(--wr-fs-thead, 10px);
+  color: #a8a29e;
+}
+
+.wr-ipt-universo .ipt-bloco-lista__muni {
+  font-size: var(--wr-fs-body, 12px);
+  color: #1c1917;
+}
+
+.wr-ipt-universo .ipt-bloco-lista__metric {
+  font-size: var(--wr-fs-body, 12px);
+}
+
+/* Badge de posição — paleta War Room (sobrescreve a cor inline da missão) */
+.wr-ipt-universo .ipt-bloco-lista__rank {
+  background: var(--wr-orange) !important;
+  color: #1c1917;
+  font-weight: 600;
+}
+
+.wr-ipt-universo .ipt-bloco-lista__row--active .ipt-bloco-lista__rank {
+  background: var(--wr-ochre) !important;
+  color: #ffffff;
+}
+
+/* Card Evolução — badges de impacto / movimento */
+.wr-evolucao-tag {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  padding: 1px 7px;
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.wr-evolucao-tag--critico {
+  border-color: #fecdd3;
+  background: #fff1f2;
+  color: #9f1239;
+}
+
+.wr-evolucao-tag--atencao {
+  border-color: #fde68a;
+  background: #fffbeb;
+  color: #92400e;
+}
+
+.wr-evolucao-tag--positivo {
+  border-color: color-mix(in srgb, var(--wr-sky) 40%, #ffffff);
+  background: var(--wr-blue-tint);
+  color: var(--wr-blue);
+}
+
+.wr-evolucao-badge {
+  display: inline-flex;
+  border-radius: 999px;
+  border: 1px solid #e7e5e4;
+  padding: 1px 6px;
+  font-size: 10px;
+  white-space: nowrap;
+}
+
+.wr-evolucao-badge--in {
+  background: #f5f5f4;
+  color: #44403c;
+}
+
+.wr-evolucao-badge--out {
+  background: #fafafa;
+  color: #78716c;
+}
+
+/* Card notícias (bloco 2 · card 3) — título em no máx. 2 linhas */
+.wr-noticias-list__title {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  word-break: break-word;
+}
+
+/* Heatmap notícias — tipografia alinhada à War Room */
+.wr-noticias-scale button {
+  font-family: inherit;
+  font-size: var(--wr-fs-meta, 11px);
+  font-weight: 600;
+  line-height: 1.2;
+  padding: 3px 8px;
+  border-radius: 8px;
+}
+
+.wr-noticias-heatmap {
+  font-family: inherit;
+  min-height: 0;
+}
+
+/* Filtro Com/Sem meta — ao lado de Ver detalhes */
+.wr-meta-filtro {
+  display: inline-flex;
+  align-items: center;
+  gap: 0;
+  border: 1px solid #ebe8e4;
+  border-radius: 8px;
+  background: #faf9f7;
+  overflow: hidden;
+}
+
+.wr-meta-filtro__btn {
+  appearance: none;
+  border: 0;
+  margin: 0;
+  padding: 4px 8px;
+  background: transparent;
+  color: #78716c;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.2;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background 0.12s ease, color 0.12s ease;
+}
+
+.wr-meta-filtro__btn + .wr-meta-filtro__btn {
+  border-left: 1px solid #ebe8e4;
+}
+
+.wr-meta-filtro__btn:hover {
+  background: #f3f1ec;
+  color: #57534e;
+}
+
+.wr-meta-filtro__btn--active {
+  background: var(--wr-orange-tint);
+  color: var(--wr-ochre);
+}
+
+.wr-meta-filtro__btn--active:hover {
+  background: color-mix(in srgb, var(--wr-orange) 24%, #ffffff);
+  color: var(--wr-ochre);
+}
+
+/* Agenda — linha do tempo do dia */
+.wr-agenda-timeline {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  padding-left: 2px;
+}
+
+.wr-agenda-timeline__item {
+  position: relative;
+  display: grid;
+  grid-template-columns: 16px 40px minmax(0, 1fr) auto;
+  align-items: start;
+  column-gap: 8px;
+  min-height: 40px;
+  padding-bottom: 12px;
+}
+
+.wr-agenda-timeline__item:last-child {
+  padding-bottom: 0;
+}
+
+.wr-agenda-timeline__rail {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  height: 100%;
+  min-height: 100%;
+}
+
+.wr-agenda-timeline__rail::before {
+  content: '';
+  position: absolute;
+  top: 10px;
+  bottom: -14px;
+  left: 50%;
+  width: 1.5px;
+  transform: translateX(-50%);
+  background: #e7e5e0;
+}
+
+.wr-agenda-timeline__item:last-child .wr-agenda-timeline__rail::before {
+  display: none;
+}
+
+.wr-agenda-timeline__dot {
+  position: relative;
+  z-index: 1;
+  margin-top: 5px;
+  width: 9px;
+  height: 9px;
+  border-radius: 999px;
+  background: #c4c0b8;
+  box-shadow: 0 0 0 3px #fff;
+}
+
+.wr-agenda-timeline__item--live .wr-agenda-timeline__dot {
+  width: 11px;
+  height: 11px;
+  margin-top: 4px;
+  background: rgb(var(--color-primary));
+  box-shadow:
+    0 0 0 3px #fff,
+    0 0 0 5px rgb(var(--color-primary) / 0.22);
+}
+
+.wr-agenda-timeline__item--done .wr-agenda-timeline__dot {
+  background: #a8a29e;
+}
+
+.wr-agenda-timeline__time {
+  padding-top: 2px;
+  font-size: var(--wr-fs-body, 12px);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.2;
+  color: #57534e;
+}
+
+.wr-agenda-timeline__item--live .wr-agenda-timeline__time {
+  color: rgb(var(--color-primary));
+}
+
+.wr-agenda-timeline__body {
+  min-width: 0;
+  padding-top: 1px;
+}
+
+.wr-agenda-timeline__title {
+  margin: 0;
+  font-size: var(--wr-fs-body, 12px);
+  font-weight: 600;
+  line-height: 1.25;
+  color: #1c1917;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.wr-agenda-timeline__meta {
+  margin: 2px 0 0;
+  font-size: var(--wr-fs-meta, 11px);
+  line-height: 1.25;
+  color: #78716c;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.wr-agenda-timeline__badge {
+  margin-top: 1px;
+  display: inline-flex;
+  align-items: center;
+  height: 20px;
+  padding: 0 8px;
+  border-radius: 999px;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.wr-agenda-timeline__badge--done {
+  background: var(--wr-blue-tint);
+  color: var(--wr-blue);
+}
+
+.wr-agenda-timeline__badge--live {
+  background: var(--wr-orange-tint);
+  color: var(--wr-ochre);
+}
+
+/* Linha alterada no último refresh silencioso */
+.wr-row--changed {
+  background: var(--wr-yellow-tint, #fff8e0) !important;
+  box-shadow: inset 3px 0 0 var(--wr-orange, #f6a700);
+}
+
+.wr-row--changed > td {
+  background: transparent;
+}

@@ -695,6 +695,72 @@ export async function garantirHistoricoMissaoRemoto(
   return { ok: true, synced: migrou.synced, baseline: baseline.length }
 }
 
+type IptMissaoEventoDto = {
+  id: string
+  municipio: string
+  municipio_normalizado: string
+  missao: IptMissaoId
+  sentido: IptMissaoMudancaSentido
+  motivo: string
+  detalhes?: Record<string, string | number | boolean | null>
+  fonte?: IptMissaoEventoFonte
+  created_at: string
+}
+
+function dtoToEvento(row: IptMissaoEventoDto): IptMissaoEvento {
+  return {
+    id: row.id,
+    municipio: row.municipio,
+    municipioNormalizado: row.municipio_normalizado,
+    missao: row.missao,
+    sentido: row.sentido,
+    motivo: row.motivo,
+    detalhes: row.detalhes ?? {},
+    fonte: row.fonte ?? 'sync',
+    createdAt: row.created_at,
+  }
+}
+
+/** Chave lógica para colapsar o mesmo movimento gravado com IDs diferentes (local + remoto). */
+function chaveDedupEvento(e: IptMissaoEvento): string {
+  const dia = (e.createdAt || '').slice(0, 10)
+  const valor = String(e.detalhes?.valorAtual ?? '')
+  return [
+    e.municipioNormalizado || normalizeIptMunicipio(e.municipio),
+    e.missao,
+    e.sentido,
+    dia,
+    valor,
+    e.motivo.trim(),
+  ].join('|')
+}
+
+/**
+ * Remove eventos repetidos (mesmo município/missão/sentido/dia/valor),
+ * preferindo o mais recente e, em empate, a versão remota já presente.
+ */
+export function dedupeEventosMissao(eventos: IptMissaoEvento[]): IptMissaoEvento[] {
+  const byId = new Map<string, IptMissaoEvento>()
+  for (const e of eventos) {
+    if (!e?.id) continue
+    byId.set(e.id, e)
+  }
+
+  const byLogic = new Map<string, IptMissaoEvento>()
+  for (const e of byId.values()) {
+    const key = chaveDedupEvento(e)
+    const prev = byLogic.get(key)
+    if (!prev) {
+      byLogic.set(key, e)
+      continue
+    }
+    if (e.createdAt > prev.createdAt) {
+      byLogic.set(key, e)
+    }
+  }
+  return [...byLogic.values()]
+}
+
 export async function carregarEventosMissao(params?: {
   missao?: IptMissaoId | 'todas'
   municipio?: string
@@ -728,37 +794,10 @@ export async function carregarEventosMissao(params?: {
     return true
   })
 
-  const byId = new Map<string, IptMissaoEvento>()
-  for (const e of [...remotos, ...locais]) byId.set(e.id, e)
-  return [...byId.values()]
+  // Remotos primeiro: locais só entram se não forem o mesmo movimento lógico.
+  return dedupeEventosMissao([...remotos, ...locais])
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
     .slice(0, params?.limit ?? 300)
-}
-
-type IptMissaoEventoDto = {
-  id: string
-  municipio: string
-  municipio_normalizado: string
-  missao: IptMissaoId
-  sentido: IptMissaoMudancaSentido
-  motivo: string
-  detalhes?: Record<string, string | number | boolean | null>
-  fonte?: IptMissaoEventoFonte
-  created_at: string
-}
-
-function dtoToEvento(row: IptMissaoEventoDto): IptMissaoEvento {
-  return {
-    id: row.id,
-    municipio: row.municipio,
-    municipioNormalizado: row.municipio_normalizado,
-    missao: row.missao,
-    sentido: row.sentido,
-    motivo: row.motivo,
-    detalhes: row.detalhes ?? {},
-    fonte: row.fonte ?? 'sync',
-    createdAt: row.created_at,
-  }
 }
 
 export function labelSentidoMissao(sentido: IptMissaoMudancaSentido): string {

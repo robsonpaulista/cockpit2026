@@ -113,7 +113,7 @@ export function iptAltaExpectativa(m: IptMunicipio): boolean {
 }
 
 export function temExpectativa(m: IptMunicipio): boolean {
-  return m.prioridade !== 'sem_expectativa' && m.expectativaVotos > 0
+  return m.expectativaVotos > 0
 }
 
 export function municipioNaMissaoExpectativa(m: IptMunicipio): boolean {

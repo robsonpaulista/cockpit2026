@@ -166,6 +166,28 @@ function assignAccentColor(actorType: PoliticalActorType, competitorIndex: numbe
   return COMPETITOR_COLORS[competitorIndex % COMPETITOR_COLORS.length]
 }
 
+/** Colunas coloridas na mesma ordem/paleta do Radar Eleitoral (só ativos). */
+export function buildPanoramaHeatmapActorColumns(
+  actors: PoliticalActorWithTerms[]
+): Array<{ slug: string; name: string; accentColor: string }> {
+  const active = actors.filter((a) => a.active)
+  const sorted = [...active].sort((a, b) => {
+    const ta = ACTOR_TYPE_ORDER[a.actor_type] ?? 9
+    const tb = ACTOR_TYPE_ORDER[b.actor_type] ?? 9
+    if (ta !== tb) return ta - tb
+    return a.name.localeCompare(b.name, 'pt-BR')
+  })
+  let competitorIdx = 0
+  return sorted.map((actor) => ({
+    slug: actor.slug,
+    name: actor.name,
+    accentColor:
+      actor.actor_type === 'own_candidate'
+        ? OWN_CANDIDATE_COLOR
+        : assignAccentColor(actor.actor_type, competitorIdx++),
+  }))
+}
+
 function formatPeakDate(iso: string | null): string {
   if (!iso) return 'data desconhecida'
   return new Date(`${iso}T12:00:00`).toLocaleDateString('pt-BR', {

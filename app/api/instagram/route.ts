@@ -503,6 +503,9 @@ export async function POST(request: Request) {
     // Calcular período
     const periodStart = new Date()
     switch (timeRange) {
+      case '1d':
+        periodStart.setHours(0, 0, 0, 0)
+        break
       case '7d':
         periodStart.setDate(periodStart.getDate() - 7)
         break
