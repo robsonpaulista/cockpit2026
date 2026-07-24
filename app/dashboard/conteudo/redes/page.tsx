@@ -45,6 +45,8 @@ import { useTheme } from '@/contexts/theme-context'
 import { InstagramFollowersHistoryChart } from '@/components/conteudo-redes/instagram-followers-history-chart'
 import { InstagramContentTypeComparison } from '@/components/conteudo-redes/instagram-content-type-comparison'
 import { InstagramThemeComparisonTable } from '@/components/conteudo-redes/instagram-theme-comparison-table'
+import { InstagramCaptionCityRanking } from '@/components/conteudo-redes/instagram-caption-city-ranking'
+import { aggregateInstagramMetricsByCaptionCity } from '@/lib/instagram-city-caption-stats'
 import { mapMetricsPostsToDayRecords } from '@/lib/instagram-day-posts'
 import { cn } from '@/lib/utils'
 import { municipalityCardClass } from '@/lib/premium-ui-classes'
@@ -198,7 +200,7 @@ export default function ConteudoPage() {
   const sectionWrapClass = cn('mb-6 rounded-[18px] border p-4 md:p-5', sectionShellClass)
 
   const [activeSubTab, setActiveSubTab] = useState<'posts' | 'audience' | 'locations'>('posts')
-  const [locationsMode, setLocationsMode] = useState<'followers' | 'engaged'>('followers')
+  const [locationsMode, setLocationsMode] = useState<'followers' | 'engaged' | 'caption'>('caption')
   const [overviewThemeFilter, setOverviewThemeFilter] = useState<string>('all')
   const [overviewBoostedFilter, setOverviewBoostedFilter] = useState<string>('all')
   const [postClassifications, setPostClassifications] = useState<Record<string, PostClassification>>({})
@@ -725,6 +727,11 @@ export default function ConteudoPage() {
     
     return stats
   }, [postsToDisplay, postClassifications])
+
+  const captionCityAggregate = useMemo(
+    () => aggregateInstagramMetricsByCaptionCity(postsToDisplay),
+    [postsToDisplay],
+  )
 
   // Filtrar posts
   const filteredPosts = useMemo(() => {
@@ -1457,10 +1464,21 @@ export default function ConteudoPage() {
                   <section className={sectionWrapClass}>
                     <PremiumSectionHeader
                       title="Distribuição por cidade"
-                      description="Top ~45 cidades via Instagram Graph API · seguidores (base) e engajamento com publicações"
+                      description="Demografia Meta (seguidores/engajados) ou engajamento das postagens por município citado na legenda"
                     />
 
                     <div className="mb-4 flex flex-wrap gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => setLocationsMode('caption')}
+                        className={
+                          locationsMode === 'caption'
+                            ? conteudoRedesPillFilterActiveClass
+                            : cn(conteudoRedesGhostButtonClass, 'rounded-[99px] px-2.5 py-1 text-[13px]')
+                        }
+                      >
+                        Posts (legenda)
+                      </button>
                       <button
                         type="button"
                         onClick={() => setLocationsMode('followers')}
@@ -1470,7 +1488,7 @@ export default function ConteudoPage() {
                             : cn(conteudoRedesGhostButtonClass, 'rounded-[99px] px-2.5 py-1 text-[13px]')
                         }
                       >
-                        Seguidores
+                        Seguidores (API)
                       </button>
                       <button
                         type="button"
@@ -1481,11 +1499,17 @@ export default function ConteudoPage() {
                             : cn(conteudoRedesGhostButtonClass, 'rounded-[99px] px-2.5 py-1 text-[13px]')
                         }
                       >
-                        Engajamento
+                        Engajados (API)
                       </button>
                     </div>
 
-                    {(() => {
+                    {locationsMode === 'caption' ? (
+                      <InstagramCaptionCityRanking
+                        aggregate={captionCityAggregate}
+                        cardClassName={municipalityCardClass}
+                      />
+                    ) : (
+                    (() => {
                       const isEngaged = locationsMode === 'engaged'
                       const locationMap = isEngaged
                         ? metrics?.demographics?.engagedTopLocations
@@ -1589,7 +1613,8 @@ export default function ConteudoPage() {
                           </div>
                         </>
                       )
-                    })()}
+                    })()
+                    )}
                   </section>
                 </>
               )}
