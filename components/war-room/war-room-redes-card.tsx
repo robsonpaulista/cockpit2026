@@ -57,6 +57,7 @@ type ThemeRow = {
   label: string
   engagement: number
   posts: number
+  avgEngagement: number
 }
 
 type Props = {
@@ -263,10 +264,18 @@ export function WarRoomRedesCard({ className }: Props) {
       })
     }
     return [...byTheme.entries()]
-      .map(([label, data]) => ({ label, ...data }))
+      .map(([label, data]) => ({
+        label,
+        engagement: data.engagement,
+        posts: data.posts,
+        avgEngagement:
+          data.posts > 0 ? Math.round(data.engagement / data.posts) : 0,
+      }))
       .sort(
         (a, b) =>
-          b.engagement - a.engagement || a.label.localeCompare(b.label, 'pt-BR'),
+          b.avgEngagement - a.avgEngagement ||
+          b.engagement - a.engagement ||
+          a.label.localeCompare(b.label, 'pt-BR'),
       )
       .slice(0, THEMES_VISIBLE)
   }, [postsInWindow, classifications])
@@ -302,7 +311,7 @@ export function WarRoomRedesCard({ className }: Props) {
       `filtro\t${filtro}`,
       ...postsHoje.map((p) => `hoje\t${p.id}\t${p.engagement}\t${p.header}`),
       ...postsAnteriores.map((p) => `post\t${p.id}\t${p.engagement}\t${p.header}`),
-      ...themeRows.map((t) => `tema\t${t.label}\t${t.engagement}\t${t.posts}`),
+      ...themeRows.map((t) => `tema\t${t.label}\t${t.avgEngagement}\t${t.posts}`),
     ]
   }, [metrics, filtro, postsHoje, postsAnteriores, themeRows])
 
@@ -329,7 +338,7 @@ export function WarRoomRedesCard({ className }: Props) {
             <p className="wr-redes-clean__sub">
               {showPostagens
                 ? `Últimos ${LOOKBACK_DAYS} dias`
-                : `Por tema · últimos ${LOOKBACK_DAYS} dias`}
+                : `Média por post · últimos ${LOOKBACK_DAYS} dias`}
             </p>
           </div>
           {change ? (
@@ -449,23 +458,23 @@ export function WarRoomRedesCard({ className }: Props) {
           Sem temas classificados nos últimos {LOOKBACK_DAYS} dias.
         </p>
       ) : (
-        <ul className="wr-redes-clean__list" aria-label="Engajamento por tema">
+        <ul className="wr-redes-clean__list" aria-label="Engajamento médio por tema">
           <li className="wr-redes-clean__row wr-redes-clean__row--head wr-redes-clean__row--temas" aria-hidden>
             <span>Tema</span>
             <span className="text-right">Posts</span>
-            <span className="text-right">Eng.</span>
+            <span className="text-right">Média</span>
           </li>
           {themeRows.map((theme) => (
             <li
               key={theme.label}
               className="wr-redes-clean__row wr-redes-clean__row--temas"
-              title={`${theme.label} · ${theme.posts} posts · ${formatWarRoomNumber(theme.engagement)} eng.`}
+              title={`${theme.label} · ${theme.posts} posts · média ${formatWarRoomNumber(theme.avgEngagement)} · total ${formatWarRoomNumber(theme.engagement)}`}
             >
               <span className="wr-redes-clean__theme truncate">{theme.label}</span>
               <span className="wr-redes-clean__posts tabular-nums">{theme.posts}</span>
               <span className="wr-redes-clean__eng tabular-nums">
                 <IconHeart className="h-3 w-3 shrink-0 opacity-70" stroke={1.75} aria-hidden />
-                {formatWarRoomNumber(theme.engagement)}
+                {formatWarRoomNumber(theme.avgEngagement)}
               </span>
             </li>
           ))}
