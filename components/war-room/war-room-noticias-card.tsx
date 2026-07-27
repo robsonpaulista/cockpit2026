@@ -3,10 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { IconChevronRight, IconLoader2 } from '@tabler/icons-react'
-import {
-  PanoramaHeatmapScaleToggle,
-  PanoramaMentionHeatmap,
-} from '@/components/monitoramento/panorama-mention-heatmap'
+import { PanoramaMentionHeatmap } from '@/components/monitoramento/panorama-mention-heatmap'
 import { WarRoomChangeBadge } from '@/components/war-room/war-room-change-badge'
 import {
   useWarRoomCardChange,
@@ -25,6 +22,23 @@ const LOOKBACK_DAYS = 7
 const FETCH_LIMIT = 500
 /** Perfil temático — fora do comparativo de candidatos na War Room. */
 const HIDDEN_ACTOR_SLUGS = new Set(['instagram-causa-animal'])
+
+const ESCALA_OPCOES: Array<{
+  id: HeatmapScaleMode
+  label: string
+  title: string
+}> = [
+  {
+    id: 'comparative',
+    label: 'Todos',
+    title: 'Mesma escala entre candidatos',
+  },
+  {
+    id: 'individual',
+    label: 'Por candidato',
+    title: 'Escala relativa ao pico de cada candidato',
+  },
+]
 
 type MentionsApiPayload = {
   ok?: boolean
@@ -139,7 +153,7 @@ export function WarRoomNoticiasCard({ className }: Props) {
       className={cn('wr-noticias-clean', 'wr-cell--noticias', className)}
       aria-label="Notícias relacionadas"
     >
-      <header className="wr-noticias-clean__header">
+      <header className="wr-noticias-clean__header wr-noticias-clean__header--filtros">
         <div className="wr-noticias-clean__title-row">
           <div>
             <h2 className="wr-noticias-clean__heading">Notícias relacionadas</h2>
@@ -147,17 +161,33 @@ export function WarRoomNoticiasCard({ className }: Props) {
               Menções por dia · {LOOKBACK_DAYS} dias
             </p>
           </div>
-          <div className="wr-noticias-clean__header-actions">
+          {change ? (
             <WarRoomChangeBadge change={change} className="wr-noticias-clean__badge" />
-            {showHeatmap ? (
-              <PanoramaHeatmapScaleToggle
-                className="wr-noticias-clean__scale"
-                scaleMode={scaleMode}
-                onScaleModeChange={setScaleMode}
-              />
-            ) : null}
-          </div>
+          ) : null}
         </div>
+        {showHeatmap ? (
+          <div
+            className="wr-noticias-clean__filtros"
+            role="group"
+            aria-label="Escala do heatmap"
+          >
+            {ESCALA_OPCOES.map((opcao) => (
+              <button
+                key={opcao.id}
+                type="button"
+                title={opcao.title}
+                aria-pressed={scaleMode === opcao.id}
+                className={cn(
+                  'wr-noticias-clean__filtro',
+                  scaleMode === opcao.id && 'wr-noticias-clean__filtro--ativo',
+                )}
+                onClick={() => setScaleMode(opcao.id)}
+              >
+                {opcao.label}
+              </button>
+            ))}
+          </div>
+        ) : null}
       </header>
 
       {initialLoading ? (

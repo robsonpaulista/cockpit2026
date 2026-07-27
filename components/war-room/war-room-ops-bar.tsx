@@ -6,9 +6,10 @@ import {
   IconSunHigh,
 } from '@tabler/icons-react'
 import { cn } from '@/lib/utils'
+import { WAR_ROOM_AUTO_REFRESH_MS } from '@/lib/war-room/change-snapshots'
 
 const TZ = 'America/Sao_Paulo'
-const NEXT_REFRESH_MINUTES = 15
+const NEXT_REFRESH_MINUTES = Math.round(WAR_ROOM_AUTO_REFRESH_MS / 60_000)
 
 type Props = {
   alertCount: number

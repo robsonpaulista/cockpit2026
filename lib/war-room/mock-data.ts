@@ -161,6 +161,24 @@ export const WAR_ROOM_DISPAROS: WarRoomDisparo[] = [
     enviados: 890,
     clicksPct: 21,
   }),
+  buildDisparo({
+    campanha: 'Convite Audiência',
+    publico: 'Coordenadores',
+    enviados: 1560,
+    clicksPct: 27,
+  }),
+  buildDisparo({
+    campanha: 'Enquete Semanal',
+    publico: 'Base',
+    enviados: 6340,
+    clicksPct: 12,
+  }),
+  buildDisparo({
+    campanha: 'Alerta Operação',
+    publico: 'Lideranças',
+    enviados: 412,
+    clicksPct: 41,
+  }),
 ]
 
 export const WAR_ROOM_MATERIAIS: WarRoomMaterial[] = [

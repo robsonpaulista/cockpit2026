@@ -129,7 +129,7 @@ export function DashboardHeader() {
       <div
         className={cn(
           'flex items-center justify-between gap-2 max-lg:pl-[4.5rem] max-lg:pr-2 sm:gap-3 lg:h-16 lg:gap-3 lg:px-6',
-          isGradientHome || isWarRoom ? 'h-12 lg:h-14' : 'h-16',
+          isGradientHome ? 'h-12 lg:h-14' : 'h-16',
         )}
       >
         <div className="flex min-w-0 flex-1 items-center gap-2 sm:gap-3">

@@ -42,7 +42,7 @@ export function WarRoomMiniPager({
       >
         <IconChevronLeft className="h-3.5 w-3.5" stroke={1.5} />
       </button>
-      <span className="min-w-[2.5rem] text-center text-[11px] tabular-nums text-[var(--wr-muted)]">
+      <span className="wr-mini-pager__label min-w-[2.5rem] text-center tabular-nums">
         {page + 1}/{pages}
       </span>
       <button

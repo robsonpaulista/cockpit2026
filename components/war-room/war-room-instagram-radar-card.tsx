@@ -218,11 +218,16 @@ export function WarRoomInstagramRadarCard({ className }: Props) {
     void carregarTudo({ silent: false })
   }, [carregarTudo])
 
+  /**
+   * Engajamento (Apify/IG) NÃO entra no refresh da War Room —
+   * coleta só no Radar Eleitoral (limite free do Apify).
+   * Aqui só reatualiza a aba Anúncios.
+   */
   useEffect(() => {
     return register('instagram-radar', async ({ silent }) => {
-      await carregarTudo({ silent })
+      await carregarAnuncios({ silent })
     })
-  }, [register, carregarTudo])
+  }, [register, carregarAnuncios])
 
   const engajamentoRows = useMemo((): EngajamentoRow[] => {
     const visibleActors = igActors.filter((a) => !HIDDEN_ACTOR_SLUGS.has(a.slug))

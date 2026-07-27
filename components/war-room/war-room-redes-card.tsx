@@ -4,11 +4,8 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import {
   IconChevronRight,
-  IconEye,
   IconHeart,
   IconLoader2,
-  IconPhoto,
-  IconTags,
 } from '@tabler/icons-react'
 import {
   fetchInstagramData,
@@ -24,7 +21,6 @@ import {
   useWarRoomRefresh,
 } from '@/components/war-room/war-room-refresh-context'
 import { useWarRoomSnapshot } from '@/components/war-room/use-war-room-snapshot'
-import { WarRoomHBar } from '@/components/war-room/war-room-ui'
 import {
   WarRoomPostagensDiaModal,
   type WarRoomPostagemDiaItem,
@@ -32,11 +28,39 @@ import {
 import { cn } from '@/lib/utils'
 
 const WAR_ROOM_TZ = 'America/Sao_Paulo'
-const THEME_VISIBLE = 5
+const LOOKBACK_DAYS = 7
+const POSTS_VISIBLE = 5
+const THEMES_VISIBLE = 6
+
+type FiltroId = 'postagens' | 'temas'
+
+const FILTRO_OPCOES: Array<{ id: FiltroId; label: string }> = [
+  { id: 'postagens', label: 'Postagens' },
+  { id: 'temas', label: 'Temas' },
+]
 
 type PostClassification = {
   theme?: string
   isBoosted?: boolean
+}
+
+type TopPost = {
+  id: string
+  dateLabel: string
+  header: string
+  engagement: number
+  isToday: boolean
+  dayKey: string
+}
+
+type ThemeRow = {
+  label: string
+  engagement: number
+  posts: number
+}
+
+type Props = {
+  className?: string
 }
 
 function calendarDateInTz(iso: string | Date, timeZone: string = WAR_ROOM_TZ): string {
@@ -54,6 +78,16 @@ function todayKeyInTz(timeZone: string = WAR_ROOM_TZ): string {
   return calendarDateInTz(new Date(), timeZone)
 }
 
+function formatDataCurta(iso: string, timeZone: string = WAR_ROOM_TZ): string {
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return '—'
+  return new Intl.DateTimeFormat('pt-BR', {
+    timeZone,
+    day: '2-digit',
+    month: '2-digit',
+  }).format(d)
+}
+
 function formatPostTime(iso: string, timeZone: string = WAR_ROOM_TZ): string {
   const d = new Date(iso)
   if (Number.isNaN(d.getTime())) return ''
@@ -62,6 +96,12 @@ function formatPostTime(iso: string, timeZone: string = WAR_ROOM_TZ): string {
     hour: '2-digit',
     minute: '2-digit',
   }).format(d)
+}
+
+function cutoffKeyDaysAgo(days: number, timeZone: string = WAR_ROOM_TZ): string {
+  const now = new Date()
+  const cutoff = new Date(now.getTime() - (days - 1) * 24 * 60 * 60 * 1000)
+  return calendarDateInTz(cutoff, timeZone)
 }
 
 function getPostIdentifier(post: { id: string; postedAt?: string; caption?: string }): string {
@@ -74,14 +114,11 @@ function getPostIdentifier(post: { id: string; postedAt?: string; caption?: stri
   return `post_${Date.now()}`
 }
 
-type Props = {
-  className?: string
-}
-
-/** Redes sociais — 3 KPIs em linha + ranking por tema. */
+/** Redes sociais — postagens top engajamento e desempenho por tema (últimos 7 dias). */
 export function WarRoomRedesCard({ className }: Props) {
   const { register } = useWarRoomRefresh()
   const change = useWarRoomCardChange('redes')
+  const [filtro, setFiltro] = useState<FiltroId>('postagens')
   const [metrics, setMetrics] = useState<InstagramMetrics | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -143,7 +180,7 @@ export function WarRoomRedesCard({ className }: Props) {
       const data = await fetchInstagramData(
         cfg.token,
         cfg.businessAccountId,
-        '1d',
+        '7d',
         forceRefresh,
       )
       if (!data) {
@@ -175,16 +212,69 @@ export function WarRoomRedesCard({ className }: Props) {
     })
   }, [register, loadInstagram])
 
-  const todayPosts = useMemo(() => {
-    const today = todayKeyInTz()
-    return (metrics?.posts ?? []).filter((post) => calendarDateInTz(post.postedAt) === today)
+  const postsInWindow = useMemo(() => {
+    const cutoff = cutoffKeyDaysAgo(LOOKBACK_DAYS)
+    return [...(metrics?.posts ?? [])].filter((post) => {
+      const day = calendarDateInTz(post.postedAt)
+      return day !== '' && day >= cutoff
+    })
   }, [metrics])
 
-  const socialKpis = useMemo(() => {
-    const views = todayPosts.reduce((s, p) => s + (p.metrics.views || 0), 0)
-    const engagement = todayPosts.reduce((s, p) => s + (p.metrics.engagement || 0), 0)
-    return { views, engagement, postsCount: todayPosts.length }
-  }, [todayPosts])
+  const topPosts = useMemo((): TopPost[] => {
+    const today = todayKeyInTz()
+    return postsInWindow
+      .map((post) => {
+        const dayKey = calendarDateInTz(post.postedAt)
+        const isToday = dayKey === today
+        return {
+          id: getPostIdentifier(post),
+          dateLabel: isToday ? formatPostTime(post.postedAt) || 'Hoje' : formatDataCurta(post.postedAt),
+          header: instagramCaptionHeader(post.caption) || 'Sem cabeçalho',
+          engagement: post.metrics.engagement || 0,
+          isToday,
+          dayKey,
+        }
+      })
+      .sort((a, b) => {
+        if (a.isToday !== b.isToday) return a.isToday ? -1 : 1
+        return b.engagement - a.engagement
+      })
+  }, [postsInWindow])
+
+  const postsHoje = useMemo(
+    () => topPosts.filter((p) => p.isToday).slice(0, POSTS_VISIBLE),
+    [topPosts],
+  )
+
+  const postsAnteriores = useMemo(
+    () => topPosts.filter((p) => !p.isToday).slice(0, POSTS_VISIBLE),
+    [topPosts],
+  )
+
+  const themeRows = useMemo((): ThemeRow[] => {
+    const byTheme = new Map<string, { engagement: number; posts: number }>()
+    for (const post of postsInWindow) {
+      const id = getPostIdentifier(post)
+      const theme = classifications[id]?.theme?.trim() || 'Sem tema'
+      const prev = byTheme.get(theme) ?? { engagement: 0, posts: 0 }
+      byTheme.set(theme, {
+        engagement: prev.engagement + (post.metrics.engagement || 0),
+        posts: prev.posts + 1,
+      })
+    }
+    return [...byTheme.entries()]
+      .map(([label, data]) => ({ label, ...data }))
+      .sort(
+        (a, b) =>
+          b.engagement - a.engagement || a.label.localeCompare(b.label, 'pt-BR'),
+      )
+      .slice(0, THEMES_VISIBLE)
+  }, [postsInWindow, classifications])
+
+  const todayPosts = useMemo(() => {
+    const today = todayKeyInTz()
+    return postsInWindow.filter((post) => calendarDateInTz(post.postedAt) === today)
+  }, [postsInWindow])
 
   const postagensDia = useMemo((): WarRoomPostagemDiaItem[] => {
     return [...todayPosts]
@@ -206,37 +296,15 @@ export function WarRoomRedesCard({ className }: Props) {
       .sort((a, b) => b.engagement - a.engagement)
   }, [todayPosts, classifications])
 
-  const themePerformance = useMemo(() => {
-    const byTheme = new Map<string, number>()
-    for (const post of postagensDia) {
-      byTheme.set(post.theme, (byTheme.get(post.theme) || 0) + post.engagement)
-    }
-    const entries = [...byTheme.entries()]
-    if (entries.length === 0) return []
-    const maxEngagement = Math.max(...entries.map(([, eng]) => eng), 0)
-    return entries
-      .map(([label, engagement]) => ({
-        label,
-        engagement,
-        pct: maxEngagement > 0 ? Math.round((engagement / maxEngagement) * 100) : 0,
-      }))
-      .sort(
-        (a, b) =>
-          b.engagement - a.engagement || a.label.localeCompare(b.label, 'pt-BR'),
-      )
-      .slice(0, THEME_VISIBLE)
-  }, [postagensDia])
-
   const snapshotLines = useMemo(() => {
     if (!metrics) return null
-    const posts = (metrics.posts ?? []).map(
-      (p) => `${p.id}\t${p.metrics.engagement}\t${p.metrics.views}`,
-    )
     return [
-      `kpis\t${socialKpis.views}\t${socialKpis.engagement}\t${socialKpis.postsCount}`,
-      ...posts,
+      `filtro\t${filtro}`,
+      ...postsHoje.map((p) => `hoje\t${p.id}\t${p.engagement}\t${p.header}`),
+      ...postsAnteriores.map((p) => `post\t${p.id}\t${p.engagement}\t${p.header}`),
+      ...themeRows.map((t) => `tema\t${t.label}\t${t.engagement}\t${t.posts}`),
     ]
-  }, [metrics, socialKpis])
+  }, [metrics, filtro, postsHoje, postsAnteriores, themeRows])
 
   useWarRoomSnapshot({
     cardId: 'redes',
@@ -245,8 +313,8 @@ export function WarRoomRedesCard({ className }: Props) {
     ready: !loading || metrics != null,
   })
 
-  const themes = themePerformance
-  const emptyConfigured = configured && !loading && socialKpis.postsCount === 0
+  const initialLoading = loading && !metrics
+  const showPostagens = filtro === 'postagens'
 
   return (
     <section
@@ -254,115 +322,173 @@ export function WarRoomRedesCard({ className }: Props) {
       className={cn('wr-redes-clean', 'wr-cell--redes', className)}
       aria-label="Redes sociais"
     >
-      <header className="wr-redes-clean__header">
-        <div>
-          <h2 className="wr-redes-clean__heading">Redes sociais</h2>
-          <p className="wr-redes-clean__sub">Desempenho de hoje</p>
+      <header className="wr-redes-clean__header wr-redes-clean__header--filtros">
+        <div className="wr-redes-clean__title-row">
+          <div>
+            <h2 className="wr-redes-clean__heading">Redes sociais</h2>
+            <p className="wr-redes-clean__sub">
+              {showPostagens
+                ? `Últimos ${LOOKBACK_DAYS} dias`
+                : `Por tema · últimos ${LOOKBACK_DAYS} dias`}
+            </p>
+          </div>
+          {change ? (
+            <WarRoomChangeBadge change={change} className="wr-redes-clean__badge" />
+          ) : null}
         </div>
-        <Link href="/dashboard/conteudo/redes" className="wr-redes-clean__header-link">
-          Ver todas
-        </Link>
+        <div className="wr-redes-clean__filtros" role="group" aria-label="Filtrar redes sociais">
+          {FILTRO_OPCOES.map((opcao) => (
+            <button
+              key={opcao.id}
+              type="button"
+              aria-pressed={filtro === opcao.id}
+              className={cn(
+                'wr-redes-clean__filtro',
+                filtro === opcao.id && 'wr-redes-clean__filtro--ativo',
+              )}
+              onClick={() => setFiltro(opcao.id)}
+            >
+              {opcao.label}
+            </button>
+          ))}
+        </div>
       </header>
 
-      {change ? (
-        <div className="wr-redes-clean__badge">
-          <WarRoomChangeBadge change={change} />
-        </div>
-      ) : null}
-
-      {loading && !metrics ? (
+      {initialLoading ? (
         <div className="wr-redes-clean__state">
-          <IconLoader2 className="h-5 w-5 animate-spin text-[var(--wr-muted)]" stroke={1.5} />
+          <IconLoader2 className="h-4 w-4 animate-spin" stroke={1.5} />
+          Carregando Instagram…
         </div>
       ) : !configured ? (
         <p className="wr-redes-clean__state">
-          Configure o Instagram Pessoal para ver visualizações e engajamentos.{' '}
+          Configure o Instagram Pessoal para ver o desempenho.{' '}
           <Link href="/dashboard/conteudo/redes" className="font-medium text-[var(--wr-gold)]">
-            Abrir Instagram Pessoal
+            Abrir Instagram
           </Link>
         </p>
-      ) : (
-        <>
-          {error ? (
-            <p className="wr-redes-clean__hint wr-redes-clean__hint--error">{error}</p>
-          ) : null}
-          {emptyConfigured ? (
-            <p className="wr-redes-clean__hint">Nenhuma publicação de hoje ainda.</p>
-          ) : null}
-
-          <div className="wr-redes-clean__kpis" aria-label="Indicadores de hoje">
-            <div className="wr-redes-clean__kpi wr-redes-clean__kpi--gold">
-              <span className="wr-redes-clean__kpi-value tabular-nums">
-                {loading ? '…' : formatWarRoomNumber(socialKpis.views)}
-              </span>
-              <span className="wr-redes-clean__kpi-label">
-                <IconEye className="h-3 w-3 shrink-0" stroke={1.75} aria-hidden />
-                Visualizações
-              </span>
-            </div>
-            <div className="wr-redes-clean__kpi wr-redes-clean__kpi--slate">
-              <span className="wr-redes-clean__kpi-value tabular-nums">
-                {loading ? '…' : formatWarRoomNumber(socialKpis.engagement)}
-              </span>
-              <span className="wr-redes-clean__kpi-label">
-                <IconHeart className="h-3 w-3 shrink-0" stroke={1.75} aria-hidden />
-                Engajamentos
-              </span>
-            </div>
-            <button
-              type="button"
-              className="wr-redes-clean__kpi wr-redes-clean__kpi--mist wr-redes-clean__kpi--btn"
-              onClick={() => setPostagensModalAberto(true)}
-              aria-label="Ver postagens do dia"
-              title="Ver postagens do dia"
-            >
-              <span className="wr-redes-clean__kpi-value tabular-nums">
-                {loading ? '…' : formatWarRoomNumber(socialKpis.postsCount)}
-              </span>
-              <span className="wr-redes-clean__kpi-label">
-                <IconPhoto className="h-3 w-3 shrink-0" stroke={1.75} aria-hidden />
-                Postagens
-              </span>
-            </button>
-          </div>
-
-          <p className="wr-redes-clean__section">
-            <IconTags className="h-3 w-3" stroke={1.75} aria-hidden />
-            Por tema
+      ) : error && topPosts.length === 0 && themeRows.length === 0 ? (
+        <p className="wr-redes-clean__state wr-redes-clean__state--erro">{error}</p>
+      ) : showPostagens ? (
+        topPosts.length === 0 ? (
+          <p className="wr-redes-clean__state">
+            Nenhuma publicação nos últimos {LOOKBACK_DAYS} dias.
           </p>
+        ) : (
+          <div className="wr-redes-clean__groups" aria-label="Postagens por período">
+            {postsHoje.length > 0 ? (
+              <ul className="wr-redes-clean__list" aria-label="Postagens de hoje">
+                <li className="wr-redes-clean__section" aria-hidden>
+                  <span>Hoje</span>
+                  <span className="wr-redes-clean__section-count">{postsHoje.length}</span>
+                </li>
+                <li className="wr-redes-clean__row wr-redes-clean__row--head wr-redes-clean__row--posts" aria-hidden>
+                  <span>Hora</span>
+                  <span>Header</span>
+                  <span className="text-right">Eng.</span>
+                </li>
+                {postsHoje.map((post) => (
+                  <li
+                    key={post.id}
+                    className="wr-redes-clean__row wr-redes-clean__row--posts wr-redes-clean__row--hoje"
+                    title={`${post.dateLabel} · ${post.header} · ${formatWarRoomNumber(post.engagement)}`}
+                  >
+                    <span className="wr-redes-clean__date tabular-nums">{post.dateLabel}</span>
+                    <span className="wr-redes-clean__header-text truncate">{post.header}</span>
+                    <span className="wr-redes-clean__eng tabular-nums">
+                      <IconHeart className="h-3 w-3 shrink-0 opacity-70" stroke={1.75} aria-hidden />
+                      {formatWarRoomNumber(post.engagement)}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="wr-redes-clean__empty-hoje">Nenhuma postagem hoje.</p>
+            )}
 
-          {loading && themes.length === 0 ? (
-            <div className="wr-redes-clean__state wr-redes-clean__state--compact">
-              <IconLoader2 className="h-5 w-5 animate-spin text-[var(--wr-muted)]" stroke={1.5} />
-            </div>
-          ) : themes.length === 0 ? (
-            <p className="wr-redes-clean__empty">Sem temas de hoje.</p>
-          ) : (
-            <ul className="wr-redes-clean__list">
-              {themes.map((theme) => (
-                <li key={theme.label} className="wr-redes-clean__row">
-                  <div className="wr-redes-clean__row-main min-w-0">
-                    <span className="wr-redes-clean__theme truncate">{theme.label}</span>
-                    <WarRoomHBar pct={theme.pct} tone="teal" className="mt-1.5" />
-                  </div>
-                  <span className="wr-redes-clean__value shrink-0 tabular-nums">
-                    {formatWarRoomNumber(theme.engagement)}
+            {postsAnteriores.length > 0 ? (
+              <ul className="wr-redes-clean__list" aria-label="Postagens anteriores">
+                <li
+                  className={cn(
+                    'wr-redes-clean__section',
+                    postsHoje.length > 0 && 'wr-redes-clean__section--separada',
+                  )}
+                  aria-hidden
+                >
+                  <span>Anteriores</span>
+                  <span className="wr-redes-clean__section-count">
+                    top {postsAnteriores.length}
                   </span>
                 </li>
-              ))}
-            </ul>
-          )}
-        </>
+                {postsHoje.length === 0 ? (
+                  <li className="wr-redes-clean__row wr-redes-clean__row--head wr-redes-clean__row--posts" aria-hidden>
+                    <span>Data</span>
+                    <span>Header</span>
+                    <span className="text-right">Eng.</span>
+                  </li>
+                ) : null}
+                {postsAnteriores.map((post) => (
+                  <li
+                    key={post.id}
+                    className="wr-redes-clean__row wr-redes-clean__row--posts"
+                    title={`${post.dateLabel} · ${post.header} · ${formatWarRoomNumber(post.engagement)}`}
+                  >
+                    <span className="wr-redes-clean__date tabular-nums">{post.dateLabel}</span>
+                    <span className="wr-redes-clean__header-text truncate">{post.header}</span>
+                    <span className="wr-redes-clean__eng tabular-nums">
+                      <IconHeart className="h-3 w-3 shrink-0 opacity-70" stroke={1.75} aria-hidden />
+                      {formatWarRoomNumber(post.engagement)}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            ) : null}
+          </div>
+        )
+      ) : themeRows.length === 0 ? (
+        <p className="wr-redes-clean__state">
+          Sem temas classificados nos últimos {LOOKBACK_DAYS} dias.
+        </p>
+      ) : (
+        <ul className="wr-redes-clean__list" aria-label="Engajamento por tema">
+          <li className="wr-redes-clean__row wr-redes-clean__row--head wr-redes-clean__row--temas" aria-hidden>
+            <span>Tema</span>
+            <span className="text-right">Posts</span>
+            <span className="text-right">Eng.</span>
+          </li>
+          {themeRows.map((theme) => (
+            <li
+              key={theme.label}
+              className="wr-redes-clean__row wr-redes-clean__row--temas"
+              title={`${theme.label} · ${theme.posts} posts · ${formatWarRoomNumber(theme.engagement)} eng.`}
+            >
+              <span className="wr-redes-clean__theme truncate">{theme.label}</span>
+              <span className="wr-redes-clean__posts tabular-nums">{theme.posts}</span>
+              <span className="wr-redes-clean__eng tabular-nums">
+                <IconHeart className="h-3 w-3 shrink-0 opacity-70" stroke={1.75} aria-hidden />
+                {formatWarRoomNumber(theme.engagement)}
+              </span>
+            </li>
+          ))}
+        </ul>
       )}
 
-      <Link href="/dashboard/conteudo/redes" className="wr-redes-clean__footer">
-        <span>
-          {configured && socialKpis.postsCount > 0
-            ? `Ver Instagram (${socialKpis.postsCount} hoje)`
-            : 'Abrir Instagram Pessoal'}
-        </span>
-        <IconChevronRight className="h-4 w-4" stroke={1.75} aria-hidden />
-      </Link>
+      <div className="wr-redes-clean__footer-row">
+        {configured && todayPosts.length > 0 ? (
+          <button
+            type="button"
+            className="wr-redes-clean__footer-btn"
+            onClick={() => setPostagensModalAberto(true)}
+          >
+            <span>{todayPosts.length} hoje</span>
+          </button>
+        ) : (
+          <span className="wr-redes-clean__footer-spacer" aria-hidden />
+        )}
+        <Link href="/dashboard/conteudo/redes" className="wr-redes-clean__footer">
+          <span>Abrir Instagram</span>
+          <IconChevronRight className="h-4 w-4" stroke={1.75} aria-hidden />
+        </Link>
+      </div>
 
       {postagensModalAberto ? (
         <WarRoomPostagensDiaModal

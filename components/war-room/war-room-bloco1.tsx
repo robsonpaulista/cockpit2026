@@ -34,14 +34,18 @@ import { formatWarRoomNumber } from '@/lib/war-room/format'
 import { WarRoomUltimaVisitaModal } from '@/components/war-room/war-room-ultima-visita-modal'
 import {
   WarRoomAgendaProximosModal,
-  type WarRoomAgendaProximoItem,
 } from '@/components/war-room/war-room-agenda-proximos-modal'
+import type { WarRoomAgendaProximoItem } from '@/lib/war-room/agenda-proximos'
+import {
+  WarRoomMiniPager,
+  warRoomPageCount,
+} from '@/components/war-room/war-room-mini-pager'
 import { cn } from '@/lib/utils'
 
 type MetaFiltro = 'todos' | 'com' | 'sem'
 
-/** Ranking compacto — cabem mais linhas sem o subtítulo de diagnóstico. */
-const TOP_N = 10
+/** Ranking paginado — 10 municípios por página. */
+const PAGE_SIZE = 10
 const AGENDA_JANELA_DIAS = 7
 const WAR_ROOM_TZ = 'America/Sao_Paulo'
 
@@ -93,13 +97,21 @@ function normalizeAgendaHora(hora: string | null | undefined): string {
   return trimmed
 }
 
-/** Extrai município da location (ex.: "Luís Correia, PI, Brasil"). */
+/** Extrai município da location ou do badge de origem no título (ex.: "(DEMERVAL LOBÃO - PI)"). */
 function municipioKeyFromAgendaEvent(event: CalendarEventRow): string | null {
   const loc = event.location?.trim()
   if (loc) {
     const first = loc.split(',')[0]?.trim()
     if (first && first !== '—') return normalizeIptMunicipio(first)
   }
+
+  const { origin } = parseEventOriginFromSummary(event.summary || '')
+  if (origin) {
+    // "DEMERVAL LOBÃO - PI" | "BSB" | "PIAUÍ"
+    const beforeState = origin.split(/\s*-\s*/)[0]?.trim()
+    if (beforeState) return normalizeIptMunicipio(beforeState)
+  }
+
   return null
 }
 
@@ -120,14 +132,14 @@ function buildAgendaProximosPorMunicipio(
     const cityKey = municipioKeyFromAgendaEvent(event)
     if (!cityKey) continue
 
-    const { title } = parseEventOriginFromSummary(event.summary || '')
+    const { origin, title } = parseEventOriginFromSummary(event.summary || '')
     const item: WarRoomAgendaProximoItem = {
       id: event.id || `${cityKey}-${dayKey}-${title}`,
       titulo: title || 'Sem título',
       dataKey: dayKey,
       dataLabel: formatDataLabelBr(dayKey),
       horario: normalizeAgendaHora(formatAgendaTimePt(event)),
-      local: event.location?.trim() || '—',
+      local: event.location?.trim() || origin || '—',
     }
 
     const list = byCity.get(cityKey) ?? []
@@ -272,6 +284,7 @@ export function WarRoomExpectativaCard({ className }: Props) {
   const { municipio: selecionado, setMunicipio: setSelecionado } =
     useWarRoomCidade()
   const [metaFiltro, setMetaFiltro] = useState<MetaFiltro>('todos')
+  const [page, setPage] = useState(0)
   const [visitaModalMunicipio, setVisitaModalMunicipio] = useState<string | null>(null)
   const [agendaModalMunicipio, setAgendaModalMunicipio] = useState<string | null>(null)
   const [agendaPorMunicipio, setAgendaPorMunicipio] = useState<
@@ -322,7 +335,19 @@ export function WarRoomExpectativaCard({ className }: Props) {
     return ordenados
   }, [municipios, metaFiltro])
 
-  const top5 = useMemo(() => universo.slice(0, TOP_N), [universo])
+  useEffect(() => {
+    setPage(0)
+  }, [metaFiltro])
+
+  useEffect(() => {
+    const pages = warRoomPageCount(universo.length, PAGE_SIZE)
+    if (page > pages - 1) setPage(Math.max(0, pages - 1))
+  }, [universo.length, page])
+
+  const pagina = useMemo(() => {
+    const start = page * PAGE_SIZE
+    return universo.slice(start, start + PAGE_SIZE)
+  }, [universo, page])
 
   const snapshotLines = useMemo(
     () =>
@@ -364,7 +389,11 @@ export function WarRoomExpectativaCard({ className }: Props) {
         <div className="wr-expectativa-clean__title-row">
           <div>
             <h2 className="wr-decisoes-fila__heading">Expectativa de votos</h2>
-            <p className="wr-decisoes-fila__sub">Top municípios do recorte</p>
+            <p className="wr-decisoes-fila__sub">
+              {universo.length > 0
+                ? `${universo.length} municípios · ${PAGE_SIZE} por página`
+                : 'Top municípios do recorte'}
+            </p>
           </div>
           {change ? <WarRoomChangeBadge change={change} /> : null}
         </div>
@@ -392,18 +421,19 @@ export function WarRoomExpectativaCard({ className }: Props) {
         </div>
       ) : error ? (
         <p className="wr-decisoes-fila__empty text-[var(--wr-critical)]">{error}</p>
-      ) : top5.length === 0 ? (
+      ) : pagina.length === 0 ? (
         <p className="wr-decisoes-fila__empty">Nenhum município no recorte atual.</p>
       ) : (
         <ul className="wr-decisoes-fila__list" aria-label="Ranking de municípios por expectativa">
-          {top5.map((m, index) => {
+          {pagina.map((m, index) => {
+            const rankIndex = page * PAGE_SIZE + index
             const cityKey = normalizeIptMunicipio(m.municipio)
             const temAgendaProxima = (agendaPorMunicipio.get(cityKey)?.length ?? 0) > 0
             return (
               <ExpectativaItem
                 key={m.municipio}
                 municipio={m}
-                index={index}
+                index={rankIndex}
                 ativo={m.municipio === selecionado}
                 podeVerExpectativa={podeVerExpectativa}
                 temAgendaProxima={temAgendaProxima}
@@ -416,13 +446,22 @@ export function WarRoomExpectativaCard({ className }: Props) {
         </ul>
       )}
 
-      <Link href="/dashboard/territorio/ipt" className="wr-decisoes-fila__footer">
-        <span>
-          Ver ranking completo
-          {universo.length > 0 ? ` (${universo.length})` : ''}
-        </span>
-        <IconChevronRight className="h-4 w-4" stroke={1.75} aria-hidden />
-      </Link>
+      <div className="wr-expectativa-clean__footer-bar">
+        <WarRoomMiniPager
+          page={page}
+          total={universo.length}
+          pageSize={PAGE_SIZE}
+          onChange={setPage}
+          className="wr-expectativa-clean__pager"
+        />
+        <Link href="/dashboard/territorio/ipt" className="wr-decisoes-fila__footer wr-expectativa-clean__footer-link">
+          <span>
+            Ver ranking completo
+            {universo.length > 0 ? ` (${universo.length})` : ''}
+          </span>
+          <IconChevronRight className="h-4 w-4" stroke={1.75} aria-hidden />
+        </Link>
+      </div>
 
       {visitaModalMunicipio ? (
         <WarRoomUltimaVisitaModal
@@ -435,6 +474,9 @@ export function WarRoomExpectativaCard({ className }: Props) {
         <WarRoomAgendaProximosModal
           municipio={agendaModalMunicipio}
           itens={agendaModalItens}
+          hojeKey={todayKeyInTz()}
+          municipiosIpt={municipios}
+          agendaPorMunicipio={agendaPorMunicipio}
           onClose={() => setAgendaModalMunicipio(null)}
         />
       ) : null}

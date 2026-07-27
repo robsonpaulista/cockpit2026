@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
   IconActivity,
-  IconPackage,
   IconRefresh,
   IconSearch,
   IconBell,
@@ -19,8 +18,6 @@ import { dashboardPageMetaStripClass } from '@/lib/dashboard-chrome-layout'
 import {
   WAR_ROOM_CRM_FUNNEL,
   WAR_ROOM_DECISOES_TOTAL,
-  WAR_ROOM_MATERIAIS,
-  WAR_ROOM_MOBILIZACAO_MOCK,
   type WarRoomAgendaItem,
 } from '@/lib/war-room/mock-data'
 import {
@@ -29,16 +26,10 @@ import {
   type CalendarEventRow,
 } from '@/lib/agenda/calendar-event-utils'
 import { parseEventOriginFromSummary } from '@/lib/agenda/event-present'
-import { formatWarRoomPct } from '@/lib/war-room/format'
-import {
-  resolveCrmCardStatus,
-  resolveMobilizacaoCardStatus,
-} from '@/lib/war-room/card-status'
+import { resolveCrmCardStatus } from '@/lib/war-room/card-status'
 import { useDashboardTopbarVisible } from '@/hooks/use-dashboard-topbar-visible'
 import { useSetDashboardTopbarExtras } from '@/contexts/dashboard-topbar-extras-context'
 import { WarRoomExpectativaCard } from '@/components/war-room/war-room-bloco1'
-import { WarRoomEvolucaoCard } from '@/components/war-room/war-room-evolucao-card'
-import { WarRoomCardShell } from '@/components/war-room/war-room-card-shell'
 import { WarRoomOpsBar } from '@/components/war-room/war-room-ops-bar'
 import { WarRoomCidadeProvider } from '@/components/war-room/war-room-cidade-context'
 import { WarRoomChangeBadge } from '@/components/war-room/war-room-change-badge'
@@ -56,13 +47,10 @@ import { WarRoomDecisoesCard } from '@/components/war-room/war-room-decisoes-car
 import { WarRoomAgendaCard, parseAgendaMinutes } from '@/components/war-room/war-room-agenda-card'
 import { WarRoomCrmCard } from '@/components/war-room/war-room-crm-card'
 import { WarRoomDisparosCard } from '@/components/war-room/war-room-disparos-card'
-import { WarRoomMobilizacaoCard } from '@/components/war-room/war-room-mobilizacao-card'
 import { WarRoomFeedCard } from '@/components/war-room/war-room-feed-card'
 import { WarRoomRedesCard } from '@/components/war-room/war-room-redes-card'
-import { WarRoomTopEngajamentoCard } from '@/components/war-room/war-room-top-engajamento-card'
 import { WarRoomInstagramRadarCard } from '@/components/war-room/war-room-instagram-radar-card'
 import { WarRoomVisitasCidadeCard } from '@/components/war-room/war-room-visitas-cidade-card'
-import { WarRoomHBar, WarRoomStatusBadge } from '@/components/war-room/war-room-ui'
 import '@/app/dashboard/shared/ipt-page-palette.css'
 import '@/app/dashboard/war-room/war-room-clean.css'
 
@@ -232,34 +220,6 @@ function WarRoomPanelInner() {
     return () => window.clearInterval(id)
   }, [])
 
-  /** Limite vertical = altura do stack Redes (termina no Comparativo Candidatos). */
-  useEffect(() => {
-    const layout = document.querySelector('.wr-layout') as HTMLElement | null
-    const redesStack = document.querySelector('.wr-cell--redes') as HTMLElement | null
-    if (!layout || !redesStack) return
-
-    const sync = () => {
-      if (window.matchMedia('(min-width: 1100px)').matches) {
-        const h = Math.round(redesStack.getBoundingClientRect().height)
-        if (h > 0) {
-          layout.style.setProperty('--wr-redes-stack-h', `${h}px`)
-        }
-      } else {
-        layout.style.removeProperty('--wr-redes-stack-h')
-      }
-    }
-
-    const ro = new ResizeObserver(sync)
-    ro.observe(redesStack)
-    window.addEventListener('resize', sync)
-    sync()
-    return () => {
-      ro.disconnect()
-      window.removeEventListener('resize', sync)
-      layout.style.removeProperty('--wr-redes-stack-h')
-    }
-  }, [agendaLoading])
-
   const agendaSnapshotLines = useMemo(
     () =>
       agendaItems.map(
@@ -331,15 +291,9 @@ function WarRoomPanelInner() {
 
   useSetDashboardTopbarExtras(topbarExtras)
 
-  const mobilizacao = WAR_ROOM_MOBILIZACAO_MOCK
-  const confirmadosMetric = mobilizacao.metricas.find((m) => m.label === 'Confirmados')
-  const confirmados = confirmadosMetric?.value ?? 0
-  const mobilizacaoMeta = confirmadosMetric?.meta ?? 0
   const crmPendentes = WAR_ROOM_CRM_FUNNEL.pendentes
-
   const crmStatus = resolveCrmCardStatus(crmPendentes)
-  const mobilizacaoStatus = resolveMobilizacaoCardStatus(confirmados, mobilizacaoMeta)
-  const alertCount = [crmStatus === 'critico', mobilizacaoStatus === 'critico'].filter(Boolean).length
+  const alertCount = crmStatus === 'critico' ? 1 : 0
 
   return (
     <DashboardPageShell>
@@ -398,84 +352,14 @@ function WarRoomPanelInner() {
 
               <div className="wr-board-stack wr-cell--redes">
                 <WarRoomRedesCard />
-                <WarRoomTopEngajamentoCard />
                 <WarRoomInstagramRadarCard />
               </div>
 
               <div className="wr-board-stack wr-cell--crm-evolucao">
                 <WarRoomCrmCard />
                 <WarRoomDisparosCard />
-                <WarRoomEvolucaoCard />
+                {/* Ocultos por enquanto: Evolução no IPT, Mobilização, Materiais */}
               </div>
-              <WarRoomMobilizacaoCard />
-
-              <WarRoomCardShell
-                id="wr-materiais"
-                className="wr-cell--materiais"
-                title="Materiais de campanha"
-                subtitle="Estoque e trânsito"
-                href="/dashboard/material-campanha"
-                linkLabel="Ver todos"
-                icon={IconPackage}
-                scrollable
-              >
-                <div className="overflow-x-auto">
-                  <table className="wr-table min-w-[380px]">
-                    <thead>
-                      <tr>
-                        <th>Item</th>
-                        <th className="text-right wr-col-hide-sm">Trânsito</th>
-                        <th className="text-right wr-col-hide-sm">Solic.</th>
-                        <th>Estoque</th>
-                        <th className="text-right">Status</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {WAR_ROOM_MATERIAIS.map((row) => (
-                        <tr key={row.item}>
-                          <td className="font-medium text-[var(--wr-text)]">{row.item}</td>
-                          <td className="wr-col-hide-sm text-right tabular-nums text-[var(--wr-muted)]">
-                            {row.emTransito.toLocaleString('pt-BR')}
-                          </td>
-                          <td className="wr-col-hide-sm text-right tabular-nums text-[var(--wr-muted)]">
-                            {row.solicitado.toLocaleString('pt-BR')}
-                          </td>
-                          <td>
-                            <div className="flex items-center gap-2">
-                              <WarRoomHBar
-                                pct={row.estoquePct ?? 0}
-                                tone={
-                                  row.status === 'critico'
-                                    ? 'critical'
-                                    : row.status === 'baixo'
-                                      ? 'warn'
-                                      : 'positive'
-                                }
-                                className="w-14"
-                              />
-                              <span className="shrink-0 tabular-nums text-[10px] text-[var(--wr-muted)]">
-                                {formatWarRoomPct(row.estoquePct ?? 0)}
-                              </span>
-                            </div>
-                          </td>
-                          <td className="text-right">
-                            <WarRoomStatusBadge
-                              status={row.status ?? 'ok'}
-                              label={
-                                row.status === 'critico'
-                                  ? 'Crítico'
-                                  : row.status === 'baixo'
-                                    ? 'Baixo'
-                                    : 'OK'
-                              }
-                            />
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </WarRoomCardShell>
             </div>
 
             <aside className="wr-aside" aria-label="Prioridades e linha viva">

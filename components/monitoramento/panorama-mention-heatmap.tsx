@@ -127,10 +127,10 @@ export function PanoramaMentionHeatmap({
   const nameColClass = compact ? 'w-[104px]' : 'w-[120px]'
   const axisPadClass = compact ? 'pl-[112px]' : 'pl-[128px]'
   const nameTypeClass = compact
-    ? 'text-[12px] font-medium leading-snug text-[#57534e]'
+    ? 'pmh-name leading-snug'
     : cn(typographyBodyMediumClass, 'text-text-secondary')
   const mutedTypeClass = compact
-    ? 'text-[10px] leading-snug text-[#a8a29e]'
+    ? 'pmh-muted leading-snug'
     : typographyBodyMutedClass
   const rowGapClass = compact ? 'mb-1.5' : 'mb-2'
 
