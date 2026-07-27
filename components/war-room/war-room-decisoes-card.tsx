@@ -1,5 +1,6 @@
 'use client'
 
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import {
   IconAlertTriangleFilled,
@@ -7,17 +8,32 @@ import {
   IconFileText,
   IconFlag,
   IconInfoCircle,
+  IconLoader2,
   IconMessageCircle,
   type Icon,
 } from '@tabler/icons-react'
 import {
-  WAR_ROOM_DECISOES,
-  WAR_ROOM_DECISOES_TOTAL,
-  type WarRoomDecisao,
-  type WarRoomDecisaoIcone,
-  type WarRoomDecisaoPrioridade,
-} from '@/lib/war-room/mock-data'
+  useWarRoomRefresh,
+} from '@/components/war-room/war-room-refresh-context'
+import { useWarRoomSnapshot } from '@/components/war-room/use-war-room-snapshot'
+import type {
+  WarRoomDecisao,
+  WarRoomDecisaoIcone,
+  WarRoomDecisaoPrioridade,
+} from '@/lib/war-room/decisoes'
+import {
+  AGENDA_FLUXO_CHANGED_EVENT,
+  WR_OPEN_AGENDA_FLUXO_EVENT,
+} from '@/lib/war-room/agenda-fluxo'
+import { buildDecisoesVisitasFluxoIncompleto } from '@/lib/war-room/decisoes-visitas-fluxo'
+import { WAR_ROOM_DISPAROS } from '@/lib/war-room/mock-data'
+import { useIpt } from '@/hooks/use-ipt'
+import { normalizeIptMunicipio } from '@/lib/ipt'
+import { filtrarMunicipiosVisaoUniverso } from '@/lib/ipt-missoes'
+import type { CalendarEventRow } from '@/lib/agenda/calendar-event-utils'
 import { cn } from '@/lib/utils'
+
+const CARD_LIMIT = 5
 
 const PRIORIDADE_LABEL: Record<WarRoomDecisaoPrioridade, string> = {
   critica: 'Crítica',
@@ -25,6 +41,14 @@ const PRIORIDADE_LABEL: Record<WarRoomDecisaoPrioridade, string> = {
   media: 'Média',
   baixa: 'Baixa',
   info: 'Info',
+}
+
+const PRIORIDADE_RANK: Record<WarRoomDecisaoPrioridade, number> = {
+  critica: 0,
+  alta: 1,
+  media: 2,
+  baixa: 3,
+  info: 4,
 }
 
 const ICON_BY_TIPO: Record<WarRoomDecisaoIcone, Icon> = {
@@ -35,7 +59,32 @@ const ICON_BY_TIPO: Record<WarRoomDecisaoIcone, Icon> = {
   info: IconInfoCircle,
 }
 
-function DecisaoItem({ decisao }: { decisao: WarRoomDecisao }) {
+type ApiPayload = {
+  error?: string
+  decisoes?: WarRoomDecisao[]
+  total?: number
+  pendingMigration?: boolean
+  message?: string
+}
+
+function sortFila(a: WarRoomDecisao, b: WarRoomDecisao): number {
+  const aVisita = a.categoria === 'Visita agendada' ? 0 : 1
+  const bVisita = b.categoria === 'Visita agendada' ? 0 : 1
+  if (aVisita !== bVisita) return aVisita - bVisita
+  const rank =
+    (PRIORIDADE_RANK[a.prioridade] ?? 99) - (PRIORIDADE_RANK[b.prioridade] ?? 99)
+  if (rank !== 0) return rank
+  if (Boolean(a.destaque) !== Boolean(b.destaque)) return a.destaque ? -1 : 1
+  return (b.createdAt ?? '').localeCompare(a.createdAt ?? '')
+}
+
+function DecisaoItem({
+  decisao,
+  onActivate,
+}: {
+  decisao: WarRoomDecisao
+  onActivate?: (decisao: WarRoomDecisao) => void
+}) {
   const ItemIcon = ICON_BY_TIPO[decisao.icone]
   const content = (
     <>
@@ -54,11 +103,14 @@ function DecisaoItem({ decisao }: { decisao: WarRoomDecisao }) {
         <p className="wr-decisoes-fila__meta truncate">
           Prioridade: {PRIORIDADE_LABEL[decisao.prioridade]}
           <span aria-hidden> • </span>
-          {decisao.categoria}
+          {decisao.acao || decisao.categoria}
         </p>
       </div>
 
-      <time className="wr-decisoes-fila__hora shrink-0 tabular-nums" dateTime={decisao.hora}>
+      <time
+        className="wr-decisoes-fila__hora shrink-0 tabular-nums"
+        dateTime={decisao.createdAt ?? decisao.hora}
+      >
         {decisao.hora}
       </time>
     </>
@@ -68,6 +120,16 @@ function DecisaoItem({ decisao }: { decisao: WarRoomDecisao }) {
     'wr-decisoes-fila__item',
     decisao.destaque && 'wr-decisoes-fila__item--destaque',
   )
+
+  if (onActivate) {
+    return (
+      <li>
+        <button type="button" className={itemClass} onClick={() => onActivate(decisao)}>
+          {content}
+        </button>
+      </li>
+    )
+  }
 
   if (decisao.href) {
     return (
@@ -84,10 +146,158 @@ function DecisaoItem({ decisao }: { decisao: WarRoomDecisao }) {
 
 type Props = {
   className?: string
+  onTotalChange?: (total: number) => void
 }
 
-/** Fila de decisões / alertas — lista clean com destaque na prioridade mais urgente. */
-export function WarRoomDecisoesCard({ className }: Props) {
+/** Fila de decisões / alertas — visitas com fluxo incompleto + Supabase. */
+export function WarRoomDecisoesCard({ className, onTotalChange }: Props) {
+  const { register } = useWarRoomRefresh()
+  const { municipios } = useIpt()
+  const [apiItems, setApiItems] = useState<WarRoomDecisao[]>([])
+  const [apiTotal, setApiTotal] = useState(0)
+  const [visitaItems, setVisitaItems] = useState<WarRoomDecisao[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  /** Mesmo universo do card Expectativa de votos (onde o ícone de agenda aparece). */
+  const municipiosExpectativa = useMemo(() => {
+    const filtrados = filtrarMunicipiosVisaoUniverso(
+      municipios,
+      'expectativa',
+      'com_expectativa',
+    )
+    return new Map(
+      filtrados.map((m) => [normalizeIptMunicipio(m.municipio), m.municipio] as const),
+    )
+  }, [municipios])
+
+  const carregarVisitasFluxo = useCallback(async () => {
+    if (municipiosExpectativa.size === 0) {
+      setVisitaItems([])
+      return
+    }
+    try {
+      const res = await fetch('/api/agenda/events', { cache: 'no-store' })
+      if (!res.ok) {
+        setVisitaItems([])
+        return
+      }
+      const data = (await res.json()) as { events?: CalendarEventRow[] }
+      setVisitaItems(
+        buildDecisoesVisitasFluxoIncompleto(data.events ?? [], WAR_ROOM_DISPAROS, {
+          municipiosExpectativa,
+        }),
+      )
+    } catch {
+      setVisitaItems([])
+    }
+  }, [municipiosExpectativa])
+
+  const carregarApi = useCallback(async (opts?: { silent?: boolean }) => {
+    const silent = opts?.silent === true
+    if (!silent) {
+      setLoading(true)
+      setError(null)
+    }
+    try {
+      const res = await fetch(
+        `/api/war-room/decisoes?limit=${CARD_LIMIT}&status=pendente,em_andamento`,
+        { cache: 'no-store' },
+      )
+      const json = (await res.json()) as ApiPayload
+      if (!res.ok) {
+        throw new Error(json.error || 'Falha ao carregar decisões')
+      }
+      if (json.pendingMigration) {
+        setApiItems([])
+        setApiTotal(0)
+        if (!silent) {
+          setError(json.message || 'Tabela war_room_decisoes ainda não criada.')
+        }
+        return
+      }
+      setApiItems(json.decisoes ?? [])
+      setApiTotal(json.total ?? json.decisoes?.length ?? 0)
+      setError(null)
+    } catch (e) {
+      if (!silent) {
+        setError(e instanceof Error ? e.message : 'Erro na busca')
+        setApiItems([])
+        setApiTotal(0)
+      }
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
+  const carregar = useCallback(
+    async (opts?: { silent?: boolean }) => {
+      await Promise.all([carregarApi(opts), carregarVisitasFluxo()])
+    },
+    [carregarApi, carregarVisitasFluxo],
+  )
+
+  useEffect(() => {
+    void carregar({ silent: false })
+  }, [carregar])
+
+  useEffect(() => {
+    return register('decisoes', async ({ silent }) => {
+      await carregar({ silent })
+    })
+  }, [register, carregar])
+
+  useEffect(() => {
+    const onFluxoChanged = () => {
+      void carregarVisitasFluxo()
+    }
+    window.addEventListener(AGENDA_FLUXO_CHANGED_EVENT, onFluxoChanged)
+    return () => {
+      window.removeEventListener(AGENDA_FLUXO_CHANGED_EVENT, onFluxoChanged)
+    }
+  }, [carregarVisitasFluxo])
+
+  const items = useMemo(() => {
+    const merged = [...visitaItems, ...apiItems].sort(sortFila)
+    return merged.slice(0, CARD_LIMIT)
+  }, [visitaItems, apiItems])
+
+  const total = visitaItems.length + apiTotal
+
+  useEffect(() => {
+    onTotalChange?.(total)
+  }, [total, onTotalChange])
+
+  const snapshotLines = useMemo(
+    () =>
+      items.map(
+        (d) =>
+          `dec\t${d.id}\t${d.prioridade}\t${d.problema}\t${d.status ?? ''}`,
+      ),
+    [items],
+  )
+
+  useWarRoomSnapshot({
+    cardId: 'decisoes',
+    lines: loading && items.length === 0 ? null : snapshotLines,
+    noun: 'decisão',
+    ready: !loading || items.length > 0 || error != null,
+  })
+
+  const onActivate = useCallback((decisao: WarRoomDecisao) => {
+    if (decisao.categoria === 'Visita agendada' && decisao.contexto) {
+      window.dispatchEvent(
+        new CustomEvent(WR_OPEN_AGENDA_FLUXO_EVENT, {
+          detail: { municipioKey: decisao.contexto },
+        }),
+      )
+      return
+    }
+    if (decisao.href) {
+      window.location.assign(decisao.href)
+    }
+  }, [])
+
   return (
     <section
       id="wr-decisoes"
@@ -96,21 +306,38 @@ export function WarRoomDecisoesCard({ className }: Props) {
     >
       <header className="wr-decisoes-fila__header">
         <h2 className="wr-decisoes-fila__heading">Fila de decisões / alertas</h2>
-        <p className="wr-decisoes-fila__sub">Prioridades operacionais</p>
+        <p className="wr-decisoes-fila__sub">
+          Pendências do banco e visitas com fluxo incompleto
+        </p>
       </header>
 
-      {WAR_ROOM_DECISOES.length === 0 ? (
+      {loading && items.length === 0 ? (
+        <div className="wr-decisoes-fila__empty flex items-center justify-center gap-2">
+          <IconLoader2 className="h-4 w-4 animate-spin" stroke={1.5} />
+          Carregando…
+        </div>
+      ) : error && items.length === 0 ? (
+        <p className="wr-decisoes-fila__empty text-[var(--wr-critical)]">{error}</p>
+      ) : items.length === 0 ? (
         <p className="wr-decisoes-fila__empty">Nenhuma decisão pendente no momento.</p>
       ) : (
         <ul className="wr-decisoes-fila__list">
-          {WAR_ROOM_DECISOES.map((decisao) => (
-            <DecisaoItem key={decisao.id} decisao={decisao} />
+          {items.map((decisao) => (
+            <DecisaoItem
+              key={decisao.id}
+              decisao={decisao}
+              onActivate={
+                decisao.categoria === 'Visita agendada' || decisao.href
+                  ? onActivate
+                  : undefined
+              }
+            />
           ))}
         </ul>
       )}
 
       <Link href="/dashboard/operacao" className="wr-decisoes-fila__footer">
-        <span>Ver todas ({WAR_ROOM_DECISOES_TOTAL})</span>
+        <span>Ver todas ({total})</span>
         <IconChevronRight className="h-4 w-4" stroke={1.75} aria-hidden />
       </Link>
     </section>

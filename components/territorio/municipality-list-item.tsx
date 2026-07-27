@@ -31,6 +31,8 @@ interface MunicipalityListItemProps {
   cargoCol?: string
   votosReferenciaCol?: string
   normalizeNumber: (value: unknown) => number
+  /** Quando false (padrão), maior expectativa primeiro. */
+  expectativaSortAsc?: boolean
 }
 
 export function MunicipalityListItem({
@@ -46,11 +48,14 @@ export function MunicipalityListItem({
   cargoCol,
   votosReferenciaCol,
   normalizeNumber,
+  expectativaSortAsc = false,
 }: MunicipalityListItemProps) {
   const liderancasOrdenadas = [...liderancasCidade].sort((a, b) => {
     const expectativaA = votosReferenciaCol ? normalizeNumber(a[votosReferenciaCol]) : 0
     const expectativaB = votosReferenciaCol ? normalizeNumber(b[votosReferenciaCol]) : 0
-    return expectativaB - expectativaA
+    const byExp = expectativaSortAsc ? expectativaA - expectativaB : expectativaB - expectativaA
+    if (byExp !== 0) return byExp
+    return String(a[nomeCol] ?? '').localeCompare(String(b[nomeCol] ?? ''), 'pt-BR')
   })
 
   return (

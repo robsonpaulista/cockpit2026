@@ -4,7 +4,10 @@
  */
 
 import { createAdminClient } from '@/lib/supabase/admin'
-import { deveIncluirLiderancaPlanilha } from '@/lib/territorio-lideranca-atual'
+import {
+  deveIncluirLiderancaPlanilha,
+  resolveLiderancaEmDialogo,
+} from '@/lib/territorio-lideranca-atual'
 import { extrairDepEstadualDeLideranca } from '@/lib/planilha-dep-estadual-lideranca'
 import {
   normalizeTerritorioExpectativaCityKey,
@@ -222,7 +225,7 @@ export async function buildCitySummariesFromDb(forceRefresh = false): Promise<{
       cargo,
       depEstadual: String(row.dep_estadual || '').trim(),
     })
-    const emDialogo = Boolean(row.em_dialogo) || /di[aá]logo/i.test(String(row.lideranca_atual || ''))
+    const emDialogo = resolveLiderancaEmDialogo(row.lideranca_atual, row.em_dialogo)
     const key = `${nome.toUpperCase()}|${cargo.toUpperCase()}`
     const cityLeaders = leadersAccumulator.get(cidadeKey) || new Map<string, LiderancaResumo>()
     const leaderCurrent = cityLeaders.get(key) || {

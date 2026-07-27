@@ -17,7 +17,6 @@ import { cn } from '@/lib/utils'
 import { dashboardPageMetaStripClass } from '@/lib/dashboard-chrome-layout'
 import {
   WAR_ROOM_CRM_FUNNEL,
-  WAR_ROOM_DECISOES_TOTAL,
   type WarRoomAgendaItem,
 } from '@/lib/war-room/mock-data'
 import {
@@ -235,7 +234,8 @@ function WarRoomPanelInner() {
     ready: !agendaLoading,
   })
 
-  const notificationCount = WAR_ROOM_DECISOES_TOTAL
+  const [decisoesTotal, setDecisoesTotal] = useState(0)
+  const notificationCount = decisoesTotal
 
   const refreshButton = useMemo(
     () => (
@@ -356,16 +356,16 @@ function WarRoomPanelInner() {
               </div>
 
               <div className="wr-board-stack wr-cell--crm-evolucao">
-                <WarRoomCrmCard />
                 <WarRoomDisparosCard />
+                <WarRoomCrmCard />
                 {/* Ocultos por enquanto: Evolução no IPT, Mobilização, Materiais */}
               </div>
-            </div>
 
-            <aside className="wr-aside" aria-label="Prioridades e linha viva">
-              <WarRoomDecisoesCard />
-              <WarRoomFeedCard />
-            </aside>
+              <div className="wr-board-stack wr-cell--prioridades" aria-label="Prioridades e linha viva">
+                <WarRoomDecisoesCard onTotalChange={setDecisoesTotal} />
+                <WarRoomFeedCard />
+              </div>
+            </div>
           </div>
 
           <p className="mb-4 flex items-center gap-1.5 text-[11px] text-[var(--wr-muted)]">

@@ -53,6 +53,11 @@ export function WarRoomAgendaSugestaoTdModal({
   const [mounted, setMounted] = useState(false)
   const [ordenacao, setOrdenacao] = useState<WarRoomAgendaSugestaoOrdenacao>('expectativa')
   const [origemRota, setOrigemRota] = useState<WarRoomAgendaSugestaoOrigem>('referencia')
+  const [distanciasEstrada, setDistanciasEstrada] = useState<Record<string, number> | null>(
+    null,
+  )
+  const [distanciasLoading, setDistanciasLoading] = useState(false)
+  const [distanciasErro, setDistanciasErro] = useState<string | null>(null)
 
   const origemOpcoes = useMemo(
     (): Array<{ id: WarRoomAgendaSugestaoOrigem; label: string }> => [
@@ -62,7 +67,7 @@ export function WarRoomAgendaSugestaoTdModal({
     [cidadePai],
   )
 
-  const plano = useMemo(
+  const planoBase = useMemo(
     (): WarRoomAgendaSugestaoTdResult =>
       buildSugestoesAgendaTd({
         cidadePai,
@@ -77,6 +82,91 @@ export function WarRoomAgendaSugestaoTdModal({
   )
 
   const showRota = ordenacao === 'rota'
+
+  const municipiosParaMatrizKey = useMemo(() => {
+    const nomes = new Set<string>()
+    nomes.add(planoBase.origemLabel)
+    for (const s of planoBase.sugestoes) nomes.add(s.municipio)
+    return [...nomes]
+      .sort((a, b) => a.localeCompare(b, 'pt-BR'))
+      .join('|')
+  }, [planoBase.origemLabel, planoBase.sugestoes])
+
+  useEffect(() => {
+    const municipiosParaMatriz = municipiosParaMatrizKey
+      ? municipiosParaMatrizKey.split('|').filter(Boolean)
+      : []
+
+    if (!showRota || municipiosParaMatriz.length < 2) {
+      setDistanciasEstrada(null)
+      setDistanciasErro(null)
+      setDistanciasLoading(false)
+      return
+    }
+
+    let cancelled = false
+    setDistanciasLoading(true)
+    setDistanciasErro(null)
+
+    void (async () => {
+      try {
+        const res = await fetch('/api/geo/municipio-distancias', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ municipios: municipiosParaMatriz }),
+        })
+        const json = (await res.json()) as {
+          distancias?: Record<string, number>
+          erro?: string | null
+          error?: string
+        }
+        if (cancelled) return
+        if (!res.ok) {
+          setDistanciasEstrada(null)
+          setDistanciasErro(json.error || 'Falha ao carregar km de estrada')
+          return
+        }
+        setDistanciasEstrada(json.distancias ?? {})
+        setDistanciasErro(json.erro ?? null)
+      } catch {
+        if (!cancelled) {
+          setDistanciasEstrada(null)
+          setDistanciasErro('Falha de rede ao carregar km de estrada')
+        }
+      } finally {
+        if (!cancelled) setDistanciasLoading(false)
+      }
+    })()
+
+    return () => {
+      cancelled = true
+    }
+  }, [showRota, municipiosParaMatrizKey])
+
+  const plano = useMemo((): WarRoomAgendaSugestaoTdResult => {
+    if (!showRota || !distanciasEstrada) return planoBase
+    return buildSugestoesAgendaTd({
+      cidadePai,
+      dataPaiKey,
+      hojeKey,
+      municipios,
+      agendaPorMunicipio,
+      ordenacao,
+      origemRota,
+      distanciasEstrada,
+    })
+  }, [
+    showRota,
+    distanciasEstrada,
+    planoBase,
+    cidadePai,
+    dataPaiKey,
+    hojeKey,
+    municipios,
+    agendaPorMunicipio,
+    ordenacao,
+    origemRota,
+  ])
 
   useEffect(() => {
     setMounted(true)
@@ -93,6 +183,13 @@ export function WarRoomAgendaSugestaoTdModal({
   }, [onClose])
 
   if (!mounted) return null
+
+  const modoRotaLabel =
+    distanciasLoading
+      ? 'carregando km de estrada…'
+      : plano.distanciaModo === 'estrada'
+        ? 'km de estrada (cache/ORS)'
+        : 'linha reta (fallback)'
 
   return createPortal(
     <div className="wr-visita-modal" role="presentation">
@@ -136,11 +233,17 @@ export function WarRoomAgendaSugestaoTdModal({
           {showRota ? (
             <>
               {' '}
-              Rota por distância em linha reta a partir de <strong>{plano.origemLabel}</strong>{' '}
-              (vizinho mais próximo).
+              Rota por <strong>{modoRotaLabel}</strong> a partir de{' '}
+              <strong>{plano.origemLabel}</strong> (vizinho mais próximo).
             </>
           ) : null}
         </p>
+
+        {showRota && distanciasErro ? (
+          <p className="wr-visita-modal__lead" style={{ color: 'var(--wr-warn)' }}>
+            {distanciasErro}
+          </p>
+        ) : null}
 
         <div className="wr-agenda-sugestao__filtros" role="group" aria-label="Ordenação">
           {ORDENACAO_OPCOES.map((opcao) => (
@@ -223,7 +326,6 @@ export function WarRoomAgendaSugestaoTdModal({
                     'wr-agenda-sugestao__row wr-agenda-sugestao__row--head',
                     showRota && 'wr-agenda-sugestao__row--rota',
                   )}
-                  aria-hidden
                 >
                   <span>#</span>
                   <span>Município</span>
@@ -234,7 +336,7 @@ export function WarRoomAgendaSugestaoTdModal({
                     </>
                   ) : (
                     <>
-                      <span className="text-right">Exp.</span>
+                      <span className="text-right">Votos</span>
                       <span className="text-right">Peso</span>
                     </>
                   )}
@@ -264,13 +366,13 @@ export function WarRoomAgendaSugestaoTdModal({
                       <>
                         <span
                           className="wr-agenda-sugestao__km tabular-nums text-right"
-                          title="Distância desde o ponto anterior na rota"
+                          title="Distância do ponto anterior"
                         >
                           {formatKm(item.distanciaKmTrecho)}
                         </span>
                         <span
                           className="wr-agenda-sugestao__km wr-agenda-sugestao__km--soft tabular-nums text-right"
-                          title={`Distância em linha reta até ${plano.origemLabel}`}
+                          title="Distância acumulada desde a origem"
                         >
                           {formatKm(item.distanciaKmOrigem)}
                         </span>

@@ -2,7 +2,10 @@ import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { requireRouteUser } from '@/lib/supabase/route-auth'
-import { isLiderancaAtualEmDialogo } from '@/lib/territorio-lideranca-atual'
+import {
+  canonicalizeLiderancaAtual,
+  resolveLiderancaEmDialogo,
+} from '@/lib/territorio-lideranca-atual'
 import {
   invalidateTerritorioLiderancasDbCache,
   normalizeTerritorioExpectativaCityKey,
@@ -25,6 +28,7 @@ const patchSchema = z.object({
 })
 
 function mapRow(row: Record<string, unknown>) {
+  const liderancaAtual = String(row.lideranca_atual || '')
   return {
     id: Number(row.id),
     municipio: String(row.municipio || ''),
@@ -32,8 +36,8 @@ function mapRow(row: Record<string, unknown>) {
     nome: String(row.lideranca || ''),
     cargo: String(row.cargo_2024 || row.cargo_2020 || '-'),
     depEstadual: String(row.dep_estadual || ''),
-    liderancaAtual: String(row.lideranca_atual || ''),
-    emDialogo: Boolean(row.em_dialogo) || isLiderancaAtualEmDialogo(row.lideranca_atual),
+    liderancaAtual,
+    emDialogo: resolveLiderancaEmDialogo(liderancaAtual, row.em_dialogo),
     expectativaLegado: Number(row.expectativa_votos_2026 || 0),
     expectativaAferida: Number(row.expectativa_jadyel_2026 || 0),
     promessa: Number(row.promessa_lideranca_2026 || 0),
@@ -74,9 +78,9 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
     if (body.cargo_2024 !== undefined) patch.cargo_2024 = body.cargo_2024?.trim() || null
     if (body.dep_estadual !== undefined) patch.dep_estadual = body.dep_estadual?.trim() || null
     if (body.lideranca_atual !== undefined) {
-      const liderancaAtual = body.lideranca_atual?.trim() || null
+      const liderancaAtual = canonicalizeLiderancaAtual(body.lideranca_atual)
       patch.lideranca_atual = liderancaAtual
-      patch.em_dialogo = isLiderancaAtualEmDialogo(liderancaAtual)
+      patch.em_dialogo = resolveLiderancaEmDialogo(liderancaAtual, false)
     }
     if (body.votos_2024 !== undefined) {
       patch.votos_2024 = body.votos_2024 ?? 0

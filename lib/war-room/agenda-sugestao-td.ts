@@ -1,6 +1,7 @@
 import { IPT_VISITAS_COBERTURA_DIAS, normalizeIptMunicipio, type IptMunicipio } from '@/lib/ipt'
 import { municipioCobertoCampo } from '@/lib/ipt-missoes'
 import municipiosPiaui from '@/lib/municipios-piaui.json'
+import { municipioDistanciaPairKey } from '@/lib/municipio-distancia-estrada'
 import {
   getMunicipiosPorTerritorioDesenvolvimentoPI,
   getTerritorioDesenvolvimentoPI,
@@ -10,15 +11,16 @@ import type { WarRoomAgendaProximoItem } from '@/lib/war-room/agenda-proximos'
 
 export type WarRoomAgendaSugestaoOrdenacao = 'expectativa' | 'rota'
 export type WarRoomAgendaSugestaoOrigem = 'teresina' | 'referencia'
+export type WarRoomAgendaSugestaoDistanciaModo = 'estrada' | 'linha_reta'
 
 export type WarRoomAgendaSugestaoTdItem = {
   municipio: string
   expectativaVotos: number
   pesoExpectativaPct: number
   visitasUltimos15Dias: number
-  /** km em linha reta desde a origem até este município */
+  /** km desde a origem até este município */
   distanciaKmOrigem: number | null
-  /** km em linha reta desde o ponto anterior na rota (origem no 1º) */
+  /** km desde o ponto anterior na rota (origem no 1º) */
   distanciaKmTrecho: number | null
   /** Cidade-pai da agenda (incluída quando a origem da rota é Teresina) */
   ehReferenciaAgenda?: boolean
@@ -36,6 +38,7 @@ export type WarRoomAgendaSugestaoTdResult = {
   sugestoes: WarRoomAgendaSugestaoTdItem[]
   /** Soma dos trechos da rota (somente quando ordenacao === 'rota') */
   distanciaTotalKm: number | null
+  distanciaModo: WarRoomAgendaSugestaoDistanciaModo
   totalNoTd: number
   excluidosComVisita: number
   excluidosComAgenda: number
@@ -85,36 +88,79 @@ function coordOf(nome: string): Coord | null {
   return COORDS_BY_NORM.get(normalizeIptMunicipio(nome)) ?? null
 }
 
+function lookupKm(
+  de: string,
+  para: string,
+  distanciasEstrada: Record<string, number> | undefined,
+): number | null {
+  if (!distanciasEstrada) return null
+  const key = municipioDistanciaPairKey(de, para)
+  const km = distanciasEstrada[key]
+  return typeof km === 'number' && Number.isFinite(km) ? km : null
+}
+
+function distanciaEntre(
+  deNome: string,
+  paraNome: string,
+  deCoord: Coord | null,
+  paraCoord: Coord | null,
+  distanciasEstrada: Record<string, number> | undefined,
+): { km: number | null; modo: WarRoomAgendaSugestaoDistanciaModo } {
+  const estrada = lookupKm(deNome, paraNome, distanciasEstrada)
+  if (estrada != null) return { km: estrada, modo: 'estrada' }
+  if (deCoord && paraCoord) {
+    return { km: haversineKm(deCoord, paraCoord), modo: 'linha_reta' }
+  }
+  return { km: null, modo: 'linha_reta' }
+}
+
 /**
  * Vizinho mais próximo: partindo da origem, sempre escolhe o elegível mais perto
- * do ponto atual. Heurística boa para “melhor rota pensando em distância”
- * sem custo de TSP exato.
+ * do ponto atual (estrada se houver; senão linha reta).
  */
 function ordenarPorRotaNearestNeighbor(
   itens: WarRoomAgendaSugestaoTdItem[],
-  origem: Coord,
-): { ordenados: WarRoomAgendaSugestaoTdItem[]; totalKm: number; semCoord: number } {
+  origemNome: string,
+  origemCoord: Coord,
+  distanciasEstrada: Record<string, number> | undefined,
+): {
+  ordenados: WarRoomAgendaSugestaoTdItem[]
+  totalKm: number
+  semCoord: number
+  usouEstrada: boolean
+} {
   const restantes = [...itens]
   const ordenados: WarRoomAgendaSugestaoTdItem[] = []
-  let atual = origem
+  let atualNome = origemNome
+  let atualCoord = origemCoord
   let totalKm = 0
   let semCoord = 0
+  let usouEstrada = false
 
   while (restantes.length > 0) {
     let bestIdx = -1
     let bestKm = Infinity
+    let bestModo: WarRoomAgendaSugestaoDistanciaModo = 'linha_reta'
+
     for (let i = 0; i < restantes.length; i += 1) {
       const c = coordOf(restantes[i].municipio)
       if (!c) continue
-      const km = haversineKm(atual, c)
-      if (km < bestKm) {
-        bestKm = km
+      const d = distanciaEntre(
+        atualNome,
+        restantes[i].municipio,
+        atualCoord,
+        c,
+        distanciasEstrada,
+      )
+      if (d.km == null) continue
+      if (d.km < bestKm) {
+        bestKm = d.km
         bestIdx = i
+        bestModo = d.modo
       }
     }
 
     if (bestIdx < 0) {
-      // Sem coordenada: empurra o restante ao fim, sem trecho
       for (const item of restantes) {
         ordenados.push({
           ...item,
@@ -128,17 +174,30 @@ function ordenarPorRotaNearestNeighbor(
 
     const [picked] = restantes.splice(bestIdx, 1)
     const pickedCoord = coordOf(picked.municipio)!
-    const kmOrigem = haversineKm(origem, pickedCoord)
+    const origemD = distanciaEntre(
+      origemNome,
+      picked.municipio,
+      origemCoord,
+      pickedCoord,
+      distanciasEstrada,
+    )
+    if (bestModo === 'estrada' || origemD.modo === 'estrada') usouEstrada = true
     totalKm += bestKm
     ordenados.push({
       ...picked,
-      distanciaKmOrigem: Math.round(kmOrigem),
+      distanciaKmOrigem: origemD.km != null ? Math.round(origemD.km) : null,
       distanciaKmTrecho: Math.round(bestKm),
     })
-    atual = pickedCoord
+    atualNome = picked.municipio
+    atualCoord = pickedCoord
   }
 
-  return { ordenados, totalKm: Math.round(totalKm), semCoord }
+  return {
+    ordenados,
+    totalKm: Math.round(totalKm),
+    semCoord,
+    usouEstrada,
+  }
 }
 
 /**
@@ -148,7 +207,7 @@ function ordenarPorRotaNearestNeighbor(
  *
  * Ordenação:
  * - expectativa: maior expectativa primeiro;
- * - rota: vizinho mais próximo a partir de Teresina ou da cidade-pai.
+ * - rota: vizinho mais próximo (km estrada se `distanciasEstrada` informado).
  */
 export function buildSugestoesAgendaTd(opts: {
   cidadePai: string
@@ -158,6 +217,8 @@ export function buildSugestoesAgendaTd(opts: {
   agendaPorMunicipio: Map<string, WarRoomAgendaProximoItem[]>
   ordenacao?: WarRoomAgendaSugestaoOrdenacao
   origemRota?: WarRoomAgendaSugestaoOrigem
+  /** Mapa `${origemNorm}|${destinoNorm}` → km rodoviário (cache/ORS). */
+  distanciasEstrada?: Record<string, number>
 }): WarRoomAgendaSugestaoTdResult {
   const {
     cidadePai,
@@ -167,6 +228,7 @@ export function buildSugestoesAgendaTd(opts: {
     agendaPorMunicipio,
     ordenacao = 'expectativa',
     origemRota = 'referencia',
+    distanciasEstrada,
   } = opts
   const td = getTerritorioDesenvolvimentoPI(cidadePai)
   const dataPaiLabel = formatDataLabelBr(dataPaiKey)
@@ -182,6 +244,7 @@ export function buildSugestoesAgendaTd(opts: {
     origemLabel,
     sugestoes: [],
     distanciaTotalKm: null,
+    distanciaModo: 'linha_reta',
     totalNoTd: 0,
     excluidosComVisita: 0,
     excluidosComAgenda: 0,
@@ -199,7 +262,6 @@ export function buildSugestoesAgendaTd(opts: {
   let excluidosComVisita = 0
   let excluidosComAgenda = 0
   const base: WarRoomAgendaSugestaoTdItem[] = []
-  /** Com origem Teresina, a cidade da agenda entra na rota (não é ponto de partida). */
   const incluirCidadePai = origemRota === 'teresina'
   const origemCoord =
     origemRota === 'teresina' ? coordOf(TERESINA_NOME) : coordOf(cidadePai)
@@ -212,8 +274,8 @@ export function buildSugestoesAgendaTd(opts: {
 
     const ipt = iptByNorm.get(norm)
     if (!ipt) continue
+    if (ipt.expectativaVotos <= 0) continue
 
-    // Cidade-pai: mantém na lista mesmo com agenda/visita (é o compromisso de referência)
     if (!ehPai) {
       if (municipioCobertoCampo(ipt)) {
         excluidosComVisita += 1
@@ -228,15 +290,20 @@ export function buildSugestoesAgendaTd(opts: {
     }
 
     const munCoord = coordOf(ipt.municipio)
-    const distanciaKmOrigem =
-      origemCoord && munCoord ? Math.round(haversineKm(origemCoord, munCoord)) : null
+    const dOrigem = distanciaEntre(
+      origemLabel,
+      ipt.municipio,
+      origemCoord,
+      munCoord,
+      distanciasEstrada,
+    )
 
     base.push({
       municipio: ipt.municipio,
       expectativaVotos: ipt.expectativaVotos,
       pesoExpectativaPct: ipt.pesoExpectativaPct,
       visitasUltimos15Dias: ipt.detalhes.visitasUltimos15Dias,
-      distanciaKmOrigem,
+      distanciaKmOrigem: dOrigem.km != null ? Math.round(dOrigem.km) : null,
       distanciaKmTrecho: null,
       ehReferenciaAgenda: ehPai,
     })
@@ -245,13 +312,20 @@ export function buildSugestoesAgendaTd(opts: {
   let sugestoes = base
   let distanciaTotalKm: number | null = null
   let semCoordenada = 0
+  let distanciaModo: WarRoomAgendaSugestaoDistanciaModo = 'linha_reta'
 
   if (ordenacao === 'rota') {
     if (origemCoord) {
-      const rota = ordenarPorRotaNearestNeighbor(base, origemCoord)
+      const rota = ordenarPorRotaNearestNeighbor(
+        base,
+        origemLabel,
+        origemCoord,
+        distanciasEstrada,
+      )
       sugestoes = rota.ordenados
       distanciaTotalKm = rota.totalKm
       semCoordenada = rota.semCoord
+      distanciaModo = rota.usouEstrada ? 'estrada' : 'linha_reta'
     } else {
       sugestoes = [...base].sort((a, b) =>
         a.municipio.localeCompare(b.municipio, 'pt-BR', { sensitivity: 'base' }),
@@ -279,6 +353,7 @@ export function buildSugestoesAgendaTd(opts: {
     origemLabel,
     sugestoes,
     distanciaTotalKm,
+    distanciaModo,
     totalNoTd: incluirCidadePai
       ? nomesTd.length
       : Math.max(0, nomesTd.length - 1),

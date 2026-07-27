@@ -20,7 +20,42 @@ import {
   ResumoLiderancasCrudModal,
   type LiderancaCrudRow,
 } from '@/components/resumo-eleicoes/resumo-liderancas-crud-modal'
+import {
+  compareTerritorioNumber,
+  compareTerritorioText,
+  TerritorioCidadeExpectativaSortBar,
+  TerritorioSortableHeaderButton,
+  toggleTerritorioSort,
+} from '@/components/territorio-campo/territorio-sortable-header'
+import {
+  canonicalizeLiderancaAtual,
+  isLiderancaAtualEmDialogo,
+  isLiderancaAtualNao,
+  isLiderancaAtualSim,
+} from '@/lib/territorio-lideranca-atual'
 import { cn } from '@/lib/utils'
+
+type FiltroLiderancaAtual = 'todos' | 'sim' | 'em_dialogo' | 'nao'
+type SortCidadeCol = 'cidade' | 'expectativa'
+
+const FILTRO_LIDERANCA_OPCOES: Array<{ id: FiltroLiderancaAtual; label: string }> = [
+  { id: 'todos', label: 'Todos' },
+  { id: 'sim', label: 'Liderança SIM' },
+  { id: 'em_dialogo', label: 'Em diálogo' },
+  { id: 'nao', label: 'Liderança NÃO' },
+]
+
+function filtrarPorLiderancaAtual(
+  row: LiderancaCrudRow,
+  filtro: FiltroLiderancaAtual,
+): boolean {
+  if (filtro === 'sim') return isLiderancaAtualSim(row.liderancaAtual)
+  if (filtro === 'em_dialogo') {
+    return isLiderancaAtualEmDialogo(row.liderancaAtual) || row.emDialogo
+  }
+  if (filtro === 'nao') return isLiderancaAtualNao(row.liderancaAtual)
+  return true
+}
 
 type GrupoCidade = {
   cidade: string
@@ -68,6 +103,9 @@ export function LiderancasPanel() {
   const [loading, setLoading] = useState<boolean>(true)
   const [error, setError] = useState<string | null>(null)
   const [busca, setBusca] = useState<string>('')
+  const [filtroLideranca, setFiltroLideranca] = useState<FiltroLiderancaAtual>('todos')
+  const [sortCol, setSortCol] = useState<SortCidadeCol>('expectativa')
+  const [sortAsc, setSortAsc] = useState(false)
   const [cidadesRecolhidas, setCidadesRecolhidas] = useState<Set<string>>(new Set())
   const [modal, setModal] = useState<ModalState | null>(null)
   const [selecionandoCidade, setSelecionandoCidade] = useState<boolean>(false)
@@ -96,10 +134,9 @@ export function LiderancasPanel() {
     void carregar()
   }, [carregar])
 
-  // Exibe apenas lideranças confirmadas (Liderança atual = SIM).
-  const rowsSim = useMemo(
-    () => rows.filter((row) => row.liderancaAtual.trim().toUpperCase() === 'SIM'),
-    [rows],
+  const rowsFiltradas = useMemo(
+    () => rows.filter((row) => filtrarPorLiderancaAtual(row, filtroLideranca)),
+    [rows, filtroLideranca],
   )
 
   const cidades = useMemo(
@@ -114,7 +151,7 @@ export function LiderancasPanel() {
     const termo = normalizarBusca(busca)
     const agrupados = new Map<string, LiderancaCrudRow[]>()
 
-    for (const row of rowsSim) {
+    for (const row of rowsFiltradas) {
       const cidade = row.municipio.trim() || 'Município não informado'
       if (
         termo &&
@@ -131,11 +168,16 @@ export function LiderancasPanel() {
 
     return Array.from(agrupados.entries())
       .map(([cidade, liderancas]) => {
-        const ordenadas = [...liderancas].sort(
-          (a, b) =>
-            b.expectativaLegado - a.expectativaLegado ||
-            a.nome.localeCompare(b.nome, 'pt-BR'),
-        )
+        const ordenadas = [...liderancas].sort((a, b) => {
+          if (sortCol === 'cidade') {
+            const byNome = compareTerritorioText(a.nome, b.nome, true)
+            if (byNome !== 0) return byNome
+            return compareTerritorioNumber(a.expectativaLegado, b.expectativaLegado, false)
+          }
+          const byExp = compareTerritorioNumber(a.expectativaLegado, b.expectativaLegado, sortAsc)
+          if (byExp !== 0) return byExp
+          return compareTerritorioText(a.nome, b.nome, true)
+        })
         return {
           cidade,
           rows: ordenadas,
@@ -145,16 +187,27 @@ export function LiderancasPanel() {
           ),
         }
       })
-      .sort(
-        (a, b) =>
-          b.totalExpectativa - a.totalExpectativa ||
-          a.cidade.localeCompare(b.cidade, 'pt-BR'),
-      )
-  }, [busca, rowsSim])
+      .sort((a, b) => {
+        if (sortCol === 'cidade') {
+          const byCidade = compareTerritorioText(a.cidade, b.cidade, sortAsc)
+          if (byCidade !== 0) return byCidade
+          return compareTerritorioNumber(a.totalExpectativa, b.totalExpectativa, false)
+        }
+        const byExp = compareTerritorioNumber(a.totalExpectativa, b.totalExpectativa, sortAsc)
+        if (byExp !== 0) return byExp
+        return compareTerritorioText(a.cidade, b.cidade, true)
+      })
+  }, [busca, rowsFiltradas, sortAsc, sortCol])
+
+  const alternarSort = (column: SortCidadeCol) => {
+    const next = toggleTerritorioSort(sortCol, sortAsc, column, ['cidade'] as const)
+    setSortCol(next.column)
+    setSortAsc(next.asc)
+  }
 
   const totalExpectativa = useMemo(
-    () => rowsSim.reduce((total, row) => total + row.expectativaLegado, 0),
-    [rowsSim],
+    () => rowsFiltradas.reduce((total, row) => total + row.expectativaLegado, 0),
+    [rowsFiltradas],
   )
   const todasRecolhidas =
     grupos.length > 0 && grupos.every((grupo) => cidadesRecolhidas.has(grupo.cidade))
@@ -213,7 +266,7 @@ export function LiderancasPanel() {
           lideranca: inlineForm.nome.trim(),
           cargo_2024: inlineForm.cargo.trim() || null,
           dep_estadual: inlineForm.depEstadual.trim() || null,
-          lideranca_atual: inlineForm.liderancaAtual.trim() || null,
+          lideranca_atual: canonicalizeLiderancaAtual(inlineForm.liderancaAtual),
           votos_2024: parseNumero(inlineForm.votos2024),
           promessa_lideranca_2026: parseNumero(inlineForm.promessa),
           expectativa_votos_2026: parseNumero(inlineForm.expectativaLegado),
@@ -260,11 +313,15 @@ export function LiderancasPanel() {
   return (
     <section className="space-y-4">
       <div className="grid gap-3 sm:grid-cols-3">
-        <Indicador icon={Users} label="Lideranças" valor={rowsSim.length.toLocaleString('pt-BR')} />
+        <Indicador
+          icon={Users}
+          label="Lideranças"
+          valor={rowsFiltradas.length.toLocaleString('pt-BR')}
+        />
         <Indicador
           icon={MapPin}
           label="Cidades"
-          valor={new Set(rowsSim.map((row) => row.municipio.trim()).filter(Boolean)).size.toLocaleString('pt-BR')}
+          valor={new Set(rowsFiltradas.map((row) => row.municipio.trim()).filter(Boolean)).size.toLocaleString('pt-BR')}
         />
         <Indicador
           icon={Vote}
@@ -274,28 +331,56 @@ export function LiderancasPanel() {
       </div>
 
       <div className="flex flex-col gap-3 rounded-xl border border-card bg-surface p-3 sm:flex-row sm:items-center sm:justify-between">
-        <label className="relative min-w-0 flex-1 sm:max-w-md">
-          <Search
-            className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-text-secondary"
-            aria-hidden
-          />
-          <input
-            value={busca}
-            onChange={(event) => setBusca(event.target.value)}
-            placeholder="Buscar cidade, liderança ou cargo"
-            className="h-9 w-full rounded-lg border border-card bg-background pl-9 pr-9 text-sm text-text-primary outline-none focus:border-[#ff9800]"
-          />
-          {busca ? (
-            <button
-              type="button"
-              onClick={() => setBusca('')}
-              className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-1 text-text-secondary hover:text-text-primary"
-              aria-label="Limpar busca"
-            >
-              <X className="h-3.5 w-3.5" aria-hidden />
-            </button>
-          ) : null}
-        </label>
+        <div className="flex min-w-0 flex-1 flex-col gap-2 sm:flex-row sm:items-center">
+          <label className="relative min-w-0 flex-1 sm:max-w-md">
+            <Search
+              className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-text-secondary"
+              aria-hidden
+            />
+            <input
+              value={busca}
+              onChange={(event) => setBusca(event.target.value)}
+              placeholder="Buscar cidade, liderança ou cargo"
+              className="h-9 w-full rounded-lg border border-card bg-background pl-9 pr-9 text-sm text-text-primary outline-none focus:border-[#ff9800]"
+            />
+            {busca ? (
+              <button
+                type="button"
+                onClick={() => setBusca('')}
+                className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-1 text-text-secondary hover:text-text-primary"
+                aria-label="Limpar busca"
+              >
+                <X className="h-3.5 w-3.5" aria-hidden />
+              </button>
+            ) : null}
+          </label>
+
+          <div
+            className="inline-flex h-9 shrink-0 items-center rounded-lg border border-card bg-background p-0.5"
+            role="group"
+            aria-label="Filtrar por liderança atual"
+          >
+            {FILTRO_LIDERANCA_OPCOES.map((opcao) => {
+              const ativo = filtroLideranca === opcao.id
+              return (
+                <button
+                  key={opcao.id}
+                  type="button"
+                  onClick={() => setFiltroLideranca(opcao.id)}
+                  aria-pressed={ativo}
+                  className={cn(
+                    'h-8 rounded-md px-2.5 text-[11px] font-semibold transition-colors sm:px-3 sm:text-xs',
+                    ativo
+                      ? 'bg-[#ff9800] text-black'
+                      : 'text-text-secondary hover:text-text-primary',
+                  )}
+                >
+                  {opcao.label}
+                </button>
+              )
+            })}
+          </div>
+        </div>
 
         <div className="flex items-center gap-2">
           <button
@@ -348,6 +433,14 @@ export function LiderancasPanel() {
         </div>
       ) : (
         <div className="space-y-3">
+          <TerritorioCidadeExpectativaSortBar
+            cidadeActive={sortCol === 'cidade'}
+            cidadeAsc={sortAsc}
+            expectativaActive={sortCol === 'expectativa'}
+            expectativaAsc={sortAsc}
+            onSortCidade={() => alternarSort('cidade')}
+            onSortExpectativa={() => alternarSort('expectativa')}
+          />
           {grupos.map((grupo) => {
             const recolhida = cidadesRecolhidas.has(grupo.cidade)
             return (
@@ -407,7 +500,17 @@ export function LiderancasPanel() {
                           <th className="px-3 py-2 text-left font-medium">Situação</th>
                           <th className="px-3 py-2 text-right font-medium">Votos 2024</th>
                           <th className="px-3 py-2 text-right font-medium">Promessa 2026</th>
-                          <th className="px-3 py-2 text-right font-medium">Expectativa de votos</th>
+                          <th className="px-3 py-2 text-right font-medium">
+                            <TerritorioSortableHeaderButton
+                              label="Expectativa de votos"
+                              active={sortCol === 'expectativa'}
+                              asc={sortAsc}
+                              onClick={() => alternarSort('expectativa')}
+                              align="right"
+                              compact
+                              className="w-full"
+                            />
+                          </th>
                           <th className="w-16 px-3 py-2 text-right font-medium">Ações</th>
                         </tr>
                       </thead>

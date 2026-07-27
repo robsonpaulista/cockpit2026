@@ -24,18 +24,18 @@ import {
   ordenarMunicipiosMissao,
 } from '@/lib/ipt-missoes'
 import { normalizeIptMunicipio, type IptMunicipio } from '@/lib/ipt'
-import {
-  formatAgendaTimePt,
-  getCalendarEventDate,
-  type CalendarEventRow,
-} from '@/lib/agenda/calendar-event-utils'
-import { parseEventOriginFromSummary } from '@/lib/agenda/event-present'
+import { type CalendarEventRow } from '@/lib/agenda/calendar-event-utils'
 import { formatWarRoomNumber } from '@/lib/war-room/format'
 import { WarRoomUltimaVisitaModal } from '@/components/war-room/war-room-ultima-visita-modal'
 import {
   WarRoomAgendaProximosModal,
 } from '@/components/war-room/war-room-agenda-proximos-modal'
 import type { WarRoomAgendaProximoItem } from '@/lib/war-room/agenda-proximos'
+import {
+  buildAgendaProximosPorMunicipio,
+  todayKeyInTz,
+} from '@/lib/war-room/agenda-proximos'
+import { WR_OPEN_AGENDA_FLUXO_EVENT } from '@/lib/war-room/agenda-fluxo'
 import {
   WarRoomMiniPager,
   warRoomPageCount,
@@ -46,8 +46,6 @@ type MetaFiltro = 'todos' | 'com' | 'sem'
 
 /** Ranking paginado — 10 municípios por página. */
 const PAGE_SIZE = 10
-const AGENDA_JANELA_DIAS = 7
-const WAR_ROOM_TZ = 'America/Sao_Paulo'
 
 const META_FILTRO_OPCOES: Array<{ id: MetaFiltro; label: string }> = [
   { id: 'todos', label: 'Todos' },
@@ -60,103 +58,6 @@ function formatPesoPct(pct: number): string {
     minimumFractionDigits: 1,
     maximumFractionDigits: 1,
   })}%`
-}
-
-function calendarDateInTz(iso: string | Date, timeZone: string = WAR_ROOM_TZ): string {
-  const d = typeof iso === 'string' ? new Date(iso) : iso
-  if (Number.isNaN(d.getTime())) return ''
-  return new Intl.DateTimeFormat('en-CA', {
-    timeZone,
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-  }).format(d)
-}
-
-function todayKeyInTz(timeZone: string = WAR_ROOM_TZ): string {
-  return calendarDateInTz(new Date(), timeZone)
-}
-
-function addDaysToKey(dayKey: string, days: number): string {
-  const [y, m, d] = dayKey.split('-').map(Number)
-  if (!y || !m || !d) return dayKey
-  const dt = new Date(Date.UTC(y, m - 1, d + days))
-  return dt.toISOString().slice(0, 10)
-}
-
-function formatDataLabelBr(dayKey: string): string {
-  const [y, m, d] = dayKey.split('-')
-  if (!y || !m || !d) return dayKey
-  return `${d}/${m}`
-}
-
-function normalizeAgendaHora(hora: string | null | undefined): string {
-  if (!hora) return '—'
-  const trimmed = String(hora).trim()
-  if (/^\d{2}:\d{2}/.test(trimmed)) return trimmed.slice(0, 5)
-  return trimmed
-}
-
-/** Extrai município da location ou do badge de origem no título (ex.: "(DEMERVAL LOBÃO - PI)"). */
-function municipioKeyFromAgendaEvent(event: CalendarEventRow): string | null {
-  const loc = event.location?.trim()
-  if (loc) {
-    const first = loc.split(',')[0]?.trim()
-    if (first && first !== '—') return normalizeIptMunicipio(first)
-  }
-
-  const { origin } = parseEventOriginFromSummary(event.summary || '')
-  if (origin) {
-    // "DEMERVAL LOBÃO - PI" | "BSB" | "PIAUÍ"
-    const beforeState = origin.split(/\s*-\s*/)[0]?.trim()
-    if (beforeState) return normalizeIptMunicipio(beforeState)
-  }
-
-  return null
-}
-
-function buildAgendaProximosPorMunicipio(
-  events: CalendarEventRow[],
-): Map<string, WarRoomAgendaProximoItem[]> {
-  const today = todayKeyInTz()
-  const endKey = addDaysToKey(today, AGENDA_JANELA_DIAS - 1)
-  const byCity = new Map<string, WarRoomAgendaProximoItem[]>()
-
-  for (const event of events) {
-    if (event.status === 'cancelled') continue
-    const date = getCalendarEventDate(event)
-    if (!date) continue
-    const dayKey = calendarDateInTz(date)
-    if (!dayKey || dayKey < today || dayKey > endKey) continue
-
-    const cityKey = municipioKeyFromAgendaEvent(event)
-    if (!cityKey) continue
-
-    const { origin, title } = parseEventOriginFromSummary(event.summary || '')
-    const item: WarRoomAgendaProximoItem = {
-      id: event.id || `${cityKey}-${dayKey}-${title}`,
-      titulo: title || 'Sem título',
-      dataKey: dayKey,
-      dataLabel: formatDataLabelBr(dayKey),
-      horario: normalizeAgendaHora(formatAgendaTimePt(event)),
-      local: event.location?.trim() || origin || '—',
-    }
-
-    const list = byCity.get(cityKey) ?? []
-    list.push(item)
-    byCity.set(cityKey, list)
-  }
-
-  for (const [key, list] of byCity) {
-    list.sort((a, b) => {
-      const byDate = a.dataKey.localeCompare(b.dataKey)
-      if (byDate !== 0) return byDate
-      return a.horario.localeCompare(b.horario, 'pt-BR')
-    })
-    byCity.set(key, list)
-  }
-
-  return byCity
 }
 
 type Props = {
@@ -314,6 +215,32 @@ export function WarRoomExpectativaCard({ className }: Props) {
       await Promise.all([recarregar({ silent }), loadAgendaProximos()])
     })
   }, [register, recarregar, loadAgendaProximos])
+
+  useEffect(() => {
+    const onOpenAgenda = (event: Event) => {
+      const detail = (event as CustomEvent<{ municipioKey?: string }>).detail
+      const key = detail?.municipioKey?.trim()
+      if (!key) return
+
+      const match = municipios.find(
+        (m) => normalizeIptMunicipio(m.municipio) === key,
+      )
+      const label = match?.municipio
+      if (!label) return
+
+      setSelecionado(label)
+      setAgendaModalMunicipio(label)
+      document.getElementById('wr-expectativa')?.scrollIntoView({
+        behavior: 'smooth',
+        block: 'nearest',
+      })
+    }
+
+    window.addEventListener(WR_OPEN_AGENDA_FLUXO_EVENT, onOpenAgenda)
+    return () => {
+      window.removeEventListener(WR_OPEN_AGENDA_FLUXO_EVENT, onOpenAgenda)
+    }
+  }, [municipios, setSelecionado])
 
   const universo = useMemo(() => {
     const filtrados = filtrarMunicipiosVisaoUniverso(

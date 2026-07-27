@@ -37,12 +37,19 @@ import type { AIAgentPageContext } from '@/components/ai-agent'
 import { useRegisterJarvisHostProps } from '@/contexts/jarvis-host-props-context'
 import { resolverColunaDepEstadualLideranca, extrairDepEstadualDeLideranca } from '@/lib/planilha-dep-estadual-lideranca'
 import { deveIncluirLiderancaPlanilha } from '@/lib/territorio-lideranca-atual'
+import {
+  compareTerritorioNumber,
+  compareTerritorioText,
+  TerritorioCidadeExpectativaSortBar,
+  toggleTerritorioSort,
+} from '@/components/territorio-campo/territorio-sortable-header'
 
 interface Lideranca {
   [key: string]: any
 }
 
 type CenarioVotos = 'aferido_jadyel' | 'promessa_lideranca' | 'legado_anterior'
+type SortCidadeCol = 'cidade' | 'expectativa'
 
 /** Rótulo fixo na UI — o cenário só altera a coluna de votos, não o texto exibido. */
 const LABEL_EXPECTATIVA_2026 = 'Expectativa 2026'
@@ -87,6 +94,8 @@ export function TerritorioBasePanel() {
   const [selectedCityForBriefing, setSelectedCityForBriefing] = useState<string>('')
   const [selectedCityLiderancas, setSelectedCityLiderancas] = useState<Lideranca[]>([])
   const [cenarioVotos, setCenarioVotos] = useState<CenarioVotos>('legado_anterior')
+  const [sortCol, setSortCol] = useState<SortCidadeCol>('expectativa')
+  const [sortAsc, setSortAsc] = useState(false)
   const depDropdownRef = useRef<HTMLDivElement | null>(null)
   const depDropdownButtonRef = useRef<HTMLButtonElement | null>(null)
   const depDropdownMenuRef = useRef<HTMLDivElement | null>(null)
@@ -1245,6 +1254,10 @@ export function TerritorioBasePanel() {
             }, {} as Record<string, typeof liderancasFiltradas>)
 
             const cidadesOrdenadas = Object.keys(liderancasPorCidade).sort((a, b) => {
+              if (sortCol === 'cidade') {
+                const byCidade = compareTerritorioText(a, b, sortAsc)
+                if (byCidade !== 0) return byCidade
+              }
               const totalA = liderancasPorCidade[a].reduce(
                 (sum: number, l: Lideranca) =>
                   sum + (votosReferenciaCol ? normalizeNumber(l[votosReferenciaCol]) : 0),
@@ -1255,11 +1268,38 @@ export function TerritorioBasePanel() {
                   sum + (votosReferenciaCol ? normalizeNumber(l[votosReferenciaCol]) : 0),
                 0
               )
-              return totalB - totalA
+              if (sortCol === 'expectativa') {
+                const byExp = compareTerritorioNumber(totalA, totalB, sortAsc)
+                if (byExp !== 0) return byExp
+                return compareTerritorioText(a, b, true)
+              }
+              return compareTerritorioNumber(totalA, totalB, false)
             })
 
             return (
               <div>
+                <TerritorioCidadeExpectativaSortBar
+                  cidadeActive={sortCol === 'cidade'}
+                  cidadeAsc={sortAsc}
+                  expectativaActive={sortCol === 'expectativa'}
+                  expectativaAsc={sortAsc}
+                  expectativaLabel={LABEL_EXPECTATIVA_2026}
+                  onSortCidade={() => {
+                    const next = toggleTerritorioSort(sortCol, sortAsc, 'cidade', ['cidade'] as const)
+                    setSortCol(next.column)
+                    setSortAsc(next.asc)
+                  }}
+                  onSortExpectativa={() => {
+                    const next = toggleTerritorioSort(
+                      sortCol,
+                      sortAsc,
+                      'expectativa',
+                      ['cidade'] as const,
+                    )
+                    setSortCol(next.column)
+                    setSortAsc(next.asc)
+                  }}
+                />
                 {cidadesOrdenadas.map((cidade) => {
                   const liderancasCidade = liderancasPorCidade[cidade]
                   const totalExpectativaCidade = liderancasCidade.reduce(
@@ -1294,6 +1334,7 @@ export function TerritorioBasePanel() {
                       cargoCol={cargoCol}
                       votosReferenciaCol={votosReferenciaCol}
                       normalizeNumber={normalizeNumber}
+                      expectativaSortAsc={sortCol === 'expectativa' ? sortAsc : false}
                     />
                   )
                 })}

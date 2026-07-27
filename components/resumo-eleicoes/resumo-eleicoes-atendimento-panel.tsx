@@ -24,6 +24,7 @@ import {
   RESUMO_TODAS_CIDADES,
   RESUMO_TODAS_CIDADES_LABEL,
 } from '@/lib/resumo-eleicoes-aggregate'
+import { fetchJadyelFederal2022VotosPorMunicipioPI } from '@/lib/jadyel-federal-2022-pi-votos'
 import {
   persistResumoEleicoesCidade,
   readResumoEleicoesHubPersist,
@@ -374,6 +375,9 @@ export function ResumoEleicoesAtendimentoPanel() {
   const [filtroPartidoAtivo, setFiltroPartidoAtivo] = useState<string | null>(null)
   const [resumoCidade, setResumoCidade] = useState<ResumoCidade | null>(null)
   const [resumosCidadeMap, setResumosCidadeMap] = useState<ResumosCidadeMap>({})
+  /** Votos nominais TSE Dep. Federal 2022 (Jadyel) — mesma base da tabela Federal. */
+  const [votosTse2022PorCidade, setVotosTse2022PorCidade] = useState<Record<string, number>>({})
+  const [votosTse2022Total, setVotosTse2022Total] = useState<number | null>(null)
   const [showLiderancasModal, setShowLiderancasModal] = useState(false)
   const [cidadeLiderancasModal, setCidadeLiderancasModal] = useState<string | null>(null)
   const [prefillLiderancaModal, setPrefillLiderancaModal] = useState<LiderancaFormPrefill | null>(null)
@@ -565,7 +569,34 @@ export function ResumoEleicoesAtendimentoPanel() {
     const normalized = normalizeCityName(cidadeAlvo)
     if (!normalized) return null
 
-    if (resumosCidadeMap[normalized]) return resumosCidadeMap[normalized]
+    const comVotosTse = (
+      base: {
+        expectativaVotos: number
+        promessaVotos: number
+        expectativaLegadoVotos: number
+        votacaoFinal2022: number
+        liderancas: number
+      },
+      cidadeKey: string,
+    ) => {
+      if (votosTse2022Total === null) return base
+      if (Object.prototype.hasOwnProperty.call(votosTse2022PorCidade, cidadeKey)) {
+        return { ...base, votacaoFinal2022: votosTse2022PorCidade[cidadeKey] ?? 0 }
+      }
+      let votosTse = 0
+      let achouTse = false
+      for (const [key, votos] of Object.entries(votosTse2022PorCidade)) {
+        if (key.includes(cidadeKey) || cidadeKey.includes(key)) {
+          votosTse += votos
+          achouTse = true
+        }
+      }
+      return { ...base, votacaoFinal2022: achouTse ? votosTse : 0 }
+    }
+
+    if (resumosCidadeMap[normalized]) {
+      return comVotosTse(resumosCidadeMap[normalized], normalized)
+    }
 
     let fallback: { expectativaVotos: number; promessaVotos: number; expectativaLegadoVotos: number; votacaoFinal2022: number; liderancas: number } | null = null
     Object.entries(resumosCidadeMap).forEach(([key, value]) => {
@@ -579,7 +610,21 @@ export function ResumoEleicoesAtendimentoPanel() {
         }
       }
     })
-    return fallback
+    if (!fallback) return null
+    if (votosTse2022Total === null) return fallback
+
+    let votosTse = 0
+    let achouTse = false
+    for (const [key, votos] of Object.entries(votosTse2022PorCidade)) {
+      if (key.includes(normalized) || normalized.includes(key)) {
+        votosTse += votos
+        achouTse = true
+      }
+    }
+    return {
+      ...fallback,
+      votacaoFinal2022: achouTse ? votosTse : 0,
+    }
   }
 
   const montarResumoAgregado = (): ResumoCidade => {
@@ -607,7 +652,8 @@ export function ResumoEleicoesAtendimentoPanel() {
       votos2026,
       promessa2026,
       legado2026,
-      votacaoFinal2022,
+      votacaoFinal2022:
+        votosTse2022Total !== null ? votosTse2022Total : votacaoFinal2022,
       liderancas,
       liderancasDetalhe: [],
     }
@@ -634,6 +680,12 @@ export function ResumoEleicoesAtendimentoPanel() {
       const json = await res.json()
       if (!res.ok) throw new Error(json.error || 'Erro ao buscar resumo da cidade')
       const cityKey = normalizeCityName(cidadeAlvo)
+      const votosTse =
+        votosTse2022Total !== null && cityKey
+          ? (Object.prototype.hasOwnProperty.call(votosTse2022PorCidade, cityKey)
+              ? (votosTse2022PorCidade[cityKey] ?? 0)
+              : 0)
+          : null
       if (cityKey) {
         setResumosCidadeMap((prev) => ({
           ...prev,
@@ -641,7 +693,8 @@ export function ResumoEleicoesAtendimentoPanel() {
             expectativaVotos: Number(json.expectativaVotos || 0),
             promessaVotos: Number(json.promessaVotos || 0),
             expectativaLegadoVotos: Number(json.expectativaLegadoVotos || 0),
-            votacaoFinal2022: Number(json.votacaoFinal2022 || 0),
+            votacaoFinal2022:
+              votosTse !== null ? votosTse : Number(json.votacaoFinal2022 || 0),
             liderancas: Number(json.liderancas || 0),
           },
         }))
@@ -651,7 +704,8 @@ export function ResumoEleicoesAtendimentoPanel() {
         votos2026: Number(json.expectativaVotos || 0),
         promessa2026: Number(json.promessaVotos || 0),
         legado2026: Number(json.expectativaLegadoVotos || 0),
-        votacaoFinal2022: Number(json.votacaoFinal2022 || 0),
+        votacaoFinal2022:
+          votosTse !== null ? votosTse : Number(json.votacaoFinal2022 || 0),
         liderancas: Number(json.liderancas || 0),
         liderancasDetalhe: Array.isArray(json.liderancasDetalhe)
           ? (json.liderancasDetalhe as LiderancaDetalheResponse[]).map((item) => ({
@@ -1165,6 +1219,73 @@ export function ResumoEleicoesAtendimentoPanel() {
       active = false
     }
   }, [cidades.length])
+
+  useEffect(() => {
+    let active = true
+
+    const preloadVotosTse2022 = async () => {
+      try {
+        const result = await fetchJadyelFederal2022VotosPorMunicipioPI()
+        if (!active || !result) return
+        const mapa: Record<string, number> = {}
+        for (const [key, votos] of result.mapaNormalizado.entries()) {
+          mapa[key] = votos
+        }
+        setVotosTse2022PorCidade(mapa)
+        setVotosTse2022Total(result.totalVotos)
+      } catch {
+        // mantém fallback da planilha/DB até o TSE carregar
+      }
+    }
+
+    void preloadVotosTse2022()
+    return () => {
+      active = false
+    }
+  }, [])
+
+  useEffect(() => {
+    if (votosTse2022Total === null || !buscaIniciada) return
+
+    if (visaoTodasCidades && !cidadeFiltroLista) {
+      setResumoCidade((prev) => {
+        if (!prev) return prev
+        if (prev.votacaoFinal2022 === votosTse2022Total) return prev
+        return { ...prev, votacaoFinal2022: votosTse2022Total }
+      })
+      return
+    }
+
+    const alvo = municipioAtivo
+    if (!alvo) return
+    const key = normalizeCityName(alvo)
+    const votos =
+      key && Object.prototype.hasOwnProperty.call(votosTse2022PorCidade, key)
+        ? (votosTse2022PorCidade[key] ?? 0)
+        : (() => {
+            if (!key) return 0
+            let s = 0
+            let found = false
+            for (const [k, v] of Object.entries(votosTse2022PorCidade)) {
+              if (k.includes(key) || key.includes(k)) {
+                s += v
+                found = true
+              }
+            }
+            return found ? s : 0
+          })()
+    setResumoCidade((prev) => {
+      if (!prev || prev.votacaoFinal2022 === votos) return prev
+      return { ...prev, votacaoFinal2022: votos }
+    })
+  }, [
+    votosTse2022Total,
+    votosTse2022PorCidade,
+    buscaIniciada,
+    visaoTodasCidades,
+    cidadeFiltroLista,
+    municipioAtivo,
+  ])
 
   const syncCidadeHub = useCallback(
     (novaCidade: string, opts?: { buscaIniciada?: boolean }) => {

@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Loader2, Pencil, Plus, Trash2, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { resumoTrZebra } from '@/lib/resumo-eleicoes-table-styles'
+import { canonicalizeLiderancaAtual } from '@/lib/territorio-lideranca-atual'
 
 export type CenarioVotosLiderancasModal = 'aferido_jadyel' | 'promessa_lideranca' | 'legado_anterior'
 
@@ -46,7 +47,8 @@ const EMPTY_FORM: FormState = {
   nome: '',
   cargo: '',
   depEstadual: '',
-  liderancaAtual: '',
+  // Default SIM para a nova liderança entrar na lista/soma da cidade (aba Lideranças).
+  liderancaAtual: 'SIM',
   expectativaLegado: '0',
   expectativaAferida: '0',
   promessa: '0',
@@ -57,7 +59,7 @@ function formFromPrefill(prefill: LiderancaFormPrefill): FormState {
     nome: String(prefill.nome || '').trim(),
     cargo: String(prefill.cargo || '').trim(),
     depEstadual: String(prefill.depEstadual || '').trim(),
-    liderancaAtual: String(prefill.liderancaAtual || '').trim(),
+    liderancaAtual: canonicalizeLiderancaAtual(prefill.liderancaAtual) ?? 'SIM',
     expectativaLegado: String(prefill.expectativaLegado ?? 0),
     expectativaAferida: String(prefill.expectativaAferida ?? 0),
     promessa: String(prefill.promessa ?? 0),
@@ -157,7 +159,7 @@ export function ResumoLiderancasCrudModal({
         nome: row.nome,
         cargo: row.cargo === '-' ? '' : row.cargo,
         depEstadual: row.depEstadual,
-        liderancaAtual: row.liderancaAtual,
+        liderancaAtual: canonicalizeLiderancaAtual(row.liderancaAtual) ?? '',
         expectativaLegado: String(row.expectativaLegado || 0),
         expectativaAferida: String(row.expectativaAferida || 0),
         promessa: String(row.promessa || 0),
@@ -199,7 +201,7 @@ export function ResumoLiderancasCrudModal({
       nome: row.nome,
       cargo: row.cargo === '-' ? '' : row.cargo,
       depEstadual: row.depEstadual,
-      liderancaAtual: row.liderancaAtual,
+      liderancaAtual: canonicalizeLiderancaAtual(row.liderancaAtual) ?? '',
       expectativaLegado: String(row.expectativaLegado || 0),
       expectativaAferida: String(row.expectativaAferida || 0),
       promessa: String(row.promessa || 0),
@@ -227,7 +229,7 @@ export function ResumoLiderancasCrudModal({
       lideranca: nome,
       cargo_2024: form.cargo.trim() || null,
       dep_estadual: form.depEstadual.trim() || null,
-      lideranca_atual: form.liderancaAtual.trim() || null,
+      lideranca_atual: canonicalizeLiderancaAtual(form.liderancaAtual),
       expectativa_votos_2026: parseNum(form.expectativaLegado),
       expectativa_jadyel_2026: parseNum(form.expectativaAferida),
       promessa_lideranca_2026: parseNum(form.promessa),

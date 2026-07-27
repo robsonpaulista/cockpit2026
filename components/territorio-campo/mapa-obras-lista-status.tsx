@@ -13,6 +13,12 @@ import { JADYEL_OBRA_STATUS_SUGESTOES } from '@/lib/jadyel-obras-mapa'
 import { chromeButtonClass, chromeFilterChipClass } from '@/lib/button-chrome'
 import { typographyBodyMutedClass } from '@/lib/typography-chrome'
 import { cn } from '@/lib/utils'
+import {
+  compareTerritorioNumber,
+  compareTerritorioText,
+  TerritorioSortableHeaderButton,
+  toggleTerritorioSort,
+} from '@/components/territorio-campo/territorio-sortable-header'
 
 const PERIODOS: Array<{ id: JadyelObraPeriodo | 'todos'; label: string }> = [
   { id: 'todos', label: 'Todos os mandatos' },
@@ -20,6 +26,8 @@ const PERIODOS: Array<{ id: JadyelObraPeriodo | 'todos'; label: string }> = [
   { id: '2025', label: '2025' },
   { id: '2023-24', label: '2023–24' },
 ]
+
+type SortObraCol = 'municipio' | 'cota'
 
 const TIPO_LABEL: Record<string, string> = {
   asfalto: 'Asfalto',
@@ -48,6 +56,8 @@ export function MapaObrasListaStatus({ onStatusSalvo }: MapaObrasListaStatusProp
   const [draftStatus, setDraftStatus] = useState<Record<string, string>>({})
   const [savingId, setSavingId] = useState<string | null>(null)
   const [savedId, setSavedId] = useState<string | null>(null)
+  const [sortCol, setSortCol] = useState<SortObraCol>('municipio')
+  const [sortAsc, setSortAsc] = useState(true)
 
   const carregar = useCallback(async () => {
     setLoading(true)
@@ -85,15 +95,41 @@ export function MapaObrasListaStatus({ onStatusSalvo }: MapaObrasListaStatusProp
 
   const filtradas = useMemo(() => {
     const q = busca.trim().toLowerCase()
-    if (!q) return obras
-    return obras.filter((obra) => {
-      const blob = [obra.municipio, obra.obra, obra.orgao, obra.sei, obra.status, obra.obs]
-        .filter(Boolean)
-        .join(' ')
-        .toLowerCase()
-      return blob.includes(q)
+    const base = !q
+      ? obras
+      : obras.filter((obra) => {
+          const blob = [obra.municipio, obra.obra, obra.orgao, obra.sei, obra.status, obra.obs]
+            .filter(Boolean)
+            .join(' ')
+            .toLowerCase()
+          return blob.includes(q)
+        })
+
+    return [...base].sort((a, b) => {
+      if (sortCol === 'municipio') {
+        const byMun = compareTerritorioText(a.municipio || '', b.municipio || '', sortAsc)
+        if (byMun !== 0) return byMun
+        return compareTerritorioNumber(
+          valorExibidoMapaObra(a) ?? 0,
+          valorExibidoMapaObra(b) ?? 0,
+          false,
+        )
+      }
+      const byCota = compareTerritorioNumber(
+        valorExibidoMapaObra(a) ?? 0,
+        valorExibidoMapaObra(b) ?? 0,
+        sortAsc,
+      )
+      if (byCota !== 0) return byCota
+      return compareTerritorioText(a.municipio || '', b.municipio || '', true)
     })
-  }, [busca, obras])
+  }, [busca, obras, sortAsc, sortCol])
+
+  const alternarSort = (column: SortObraCol) => {
+    const next = toggleTerritorioSort(sortCol, sortAsc, column, ['municipio'] as const)
+    setSortCol(next.column)
+    setSortAsc(next.asc)
+  }
 
   const salvarStatus = useCallback(
     async (obraId: string) => {
@@ -173,10 +209,27 @@ export function MapaObrasListaStatus({ onStatusSalvo }: MapaObrasListaStatusProp
               <thead className="border-b border-card bg-bg-app/60 text-xs uppercase tracking-wide text-text-secondary">
                 <tr>
                   <th className="px-3 py-2.5">Mandato</th>
-                  <th className="px-3 py-2.5">Município</th>
+                  <th className="px-3 py-2.5">
+                    <TerritorioSortableHeaderButton
+                      label="Município"
+                      active={sortCol === 'municipio'}
+                      asc={sortAsc}
+                      onClick={() => alternarSort('municipio')}
+                      compact
+                    />
+                  </th>
                   <th className="px-3 py-2.5">Obra</th>
                   <th className="px-3 py-2.5">Tipo</th>
-                  <th className="px-3 py-2.5">Cota</th>
+                  <th className="px-3 py-2.5">
+                    <TerritorioSortableHeaderButton
+                      label="Cota"
+                      active={sortCol === 'cota'}
+                      asc={sortAsc}
+                      onClick={() => alternarSort('cota')}
+                      align="left"
+                      compact
+                    />
+                  </th>
                   <th className="px-3 py-2.5">Órgão / SEI</th>
                   <th className="px-3 py-2.5">Status</th>
                   <th className="px-3 py-2.5">Fase no mapa</th>

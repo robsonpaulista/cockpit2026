@@ -31,6 +31,8 @@ export type WarRoomDisparo = {
   entregues?: number
   clicksPct: number
   status?: WarRoomDisparoStatus
+  /** Município alvo do disparo (quando aplicável). */
+  cidade?: string | null
 }
 
 export type WarRoomMaterialStatus = 'ok' | 'baixo' | 'critico'
@@ -50,9 +52,12 @@ function resolveDisparoStatus(clicksPct: number): WarRoomDisparoStatus {
   return 'ok'
 }
 
-function buildDisparo(base: Omit<WarRoomDisparo, 'entregues' | 'status'>): WarRoomDisparo {
+function buildDisparo(
+  base: Omit<WarRoomDisparo, 'entregues' | 'status'> & { cidade?: string | null },
+): WarRoomDisparo {
   return {
     ...base,
+    cidade: base.cidade ?? null,
     entregues: Math.round(base.enviados * 0.9),
     status: resolveDisparoStatus(base.clicksPct),
   }
@@ -136,6 +141,7 @@ export const WAR_ROOM_DISPAROS: WarRoomDisparo[] = [
     publico: 'Lideranças',
     enviados: 1248,
     clicksPct: 24,
+    cidade: 'Picos',
   }),
   buildDisparo({
     campanha: 'Novo Vídeo',
@@ -148,6 +154,7 @@ export const WAR_ROOM_DISPAROS: WarRoomDisparo[] = [
     publico: 'Coordenadores',
     enviados: 224,
     clicksPct: 32,
+    cidade: 'Teresina',
   }),
   buildDisparo({
     campanha: 'Lives Regionais',
@@ -160,6 +167,7 @@ export const WAR_ROOM_DISPAROS: WarRoomDisparo[] = [
     publico: 'Lideranças',
     enviados: 890,
     clicksPct: 21,
+    cidade: 'Campo Maior',
   }),
   buildDisparo({
     campanha: 'Convite Audiência',
@@ -368,84 +376,6 @@ export const WAR_ROOM_PESQUISAS_ANDAMENTO: WarRoomPesquisaAndamento[] = [
     status: 'entregue',
   },
 ]
-
-export type WarRoomDecisaoPrioridade = 'critica' | 'alta' | 'media' | 'baixa' | 'info'
-
-export type WarRoomDecisaoIcone =
-  | 'alerta'
-  | 'mensagem'
-  | 'bandeira'
-  | 'documento'
-  | 'info'
-
-export type WarRoomDecisao = {
-  id: string
-  prioridade: WarRoomDecisaoPrioridade
-  problema: string
-  categoria: string
-  hora: string
-  icone: WarRoomDecisaoIcone
-  destaque?: boolean
-  contexto?: string
-  responsavel?: string
-  prazo?: string
-  acao?: string
-  href?: string
-}
-
-/** Fila de decisões — o que precisa de atenção do coordenador agora. */
-export const WAR_ROOM_DECISOES: WarRoomDecisao[] = [
-  {
-    id: 'dec-1',
-    prioridade: 'alta',
-    problema: 'Aprovar nova peça – Rádio',
-    categoria: 'Campanha',
-    hora: '09:31',
-    icone: 'alerta',
-    destaque: true,
-    href: '/dashboard/conteudo',
-  },
-  {
-    id: 'dec-2',
-    prioridade: 'alta',
-    problema: 'Responder à pesquisa crítica',
-    categoria: 'Pesquisas',
-    hora: '09:18',
-    icone: 'mensagem',
-    href: '/dashboard/pesquisa',
-  },
-  {
-    id: 'dec-3',
-    prioridade: 'media',
-    problema: 'Definir agenda – Zona Sul',
-    categoria: 'Mobilização',
-    hora: '08:52',
-    icone: 'bandeira',
-    href: '/dashboard/agenda',
-  },
-  {
-    id: 'dec-4',
-    prioridade: 'media',
-    problema: 'Revisar plano de mídia',
-    categoria: 'Marketing',
-    hora: '08:41',
-    icone: 'documento',
-    href: '/dashboard/conteudo',
-  },
-  {
-    id: 'dec-5',
-    prioridade: 'baixa',
-    problema: 'Atualizar materiais – Propostas',
-    categoria: 'Materiais',
-    hora: '08:15',
-    icone: 'info',
-    href: '/dashboard/material-campanha',
-  },
-]
-
-/** Total da fila (inclui itens além dos 5 em destaque no card). */
-export const WAR_ROOM_DECISOES_TOTAL = 12
-
 
 export type WarRoomFeedTipo =
   | 'pesquisa'

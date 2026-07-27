@@ -32,7 +32,7 @@ const IG_LOOKBACK_DAYS = 7
 const ADS_LOOKBACK_DAYS = 30
 const IG_FETCH_LIMIT = 400
 const ADS_FETCH_LIMIT = 500
-const LIST_VISIBLE = 6
+const LIST_VISIBLE = 9
 const HIDDEN_ACTOR_SLUGS = new Set(['instagram-causa-animal'])
 
 type FiltroId = 'engajamento' | 'anuncios'

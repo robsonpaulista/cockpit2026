@@ -17,8 +17,16 @@ import {
   territorioPanoramaTableTotalClass,
   TERRITORIO_PANORAMA_PREVIEW_ROWS,
 } from '@/components/territorio-campo/territorio-panorama-panel-chrome'
+import {
+  compareTerritorioNumber,
+  compareTerritorioText,
+  TerritorioSortableHeaderButton,
+  toggleTerritorioSort,
+} from '@/components/territorio-campo/territorio-sortable-header'
 import { typographyBodyClass, typographyBodyMediumClass, typographyBodyMutedClass, typographySectionLabelClass } from '@/lib/typography-chrome'
 import { cn } from '@/lib/utils'
+
+type SortCargoCol = 'cargo' | 'expectativa'
 
 function formatVotos(value: number): string {
   return value.toLocaleString('pt-BR')
@@ -46,6 +54,8 @@ export function LiderancasCargoPorCidadeCard({
   const [error, setError] = useState<string | null>(null)
   const [resumo, setResumo] = useState<LiderancasCargoPorCidadeResumo | null>(null)
   const [showAll, setShowAll] = useState(false)
+  const [sortCol, setSortCol] = useState<SortCargoCol>('expectativa')
+  const [sortAsc, setSortAsc] = useState(false)
   const onRowsLoadedRef = useRef(onRowsLoaded)
   const onResumoLoadedRef = useRef(onResumoLoaded)
   onRowsLoadedRef.current = onRowsLoaded
@@ -93,11 +103,29 @@ export function LiderancasCargoPorCidadeCard({
     }
   }, [])
 
-  const cargos = useMemo(() => resumo?.cargosDetalhe ?? [], [resumo])
+  const cargos = useMemo(() => {
+    const list = resumo?.cargosDetalhe ?? []
+    return [...list].sort((a, b) => {
+      if (sortCol === 'cargo') {
+        const byCargo = compareTerritorioText(a.cargo, b.cargo, sortAsc)
+        if (byCargo !== 0) return byCargo
+        return compareTerritorioNumber(a.expectativaVotos, b.expectativaVotos, false)
+      }
+      const byExp = compareTerritorioNumber(a.expectativaVotos, b.expectativaVotos, sortAsc)
+      if (byExp !== 0) return byExp
+      return compareTerritorioText(a.cargo, b.cargo, true)
+    })
+  }, [resumo, sortAsc, sortCol])
   const totalExpectativa = resumo?.totalExpectativaVotos ?? 0
   const totalLiderancas = resumo?.totalLiderancas ?? cargos.reduce((s, c) => s + c.totalLiderancas, 0)
 
   const cargosVisiveis = showAll ? cargos : cargos.slice(0, TERRITORIO_PANORAMA_PREVIEW_ROWS)
+
+  const alternarSort = (column: SortCargoCol) => {
+    const next = toggleTerritorioSort(sortCol, sortAsc, column, ['cargo'] as const)
+    setSortCol(next.column)
+    setSortAsc(next.asc)
+  }
 
   if (loading) {
     return (
@@ -175,8 +203,26 @@ export function LiderancasCargoPorCidadeCard({
         <table className="w-full border-collapse">
           <thead className="sticky top-0 z-10 bg-bg-surface">
             <tr>
-              <th className={cn('pb-1 text-left', typographySectionLabelClass)}>Cargo</th>
-              <th className={cn('pb-1', typographySectionLabelClass)}>Peso (expectativa)</th>
+              <th className={cn('pb-1 text-left', typographySectionLabelClass)}>
+                <TerritorioSortableHeaderButton
+                  label="Cargo"
+                  active={sortCol === 'cargo'}
+                  asc={sortAsc}
+                  onClick={() => alternarSort('cargo')}
+                  compact
+                />
+              </th>
+              <th className={cn('pb-1', typographySectionLabelClass)}>
+                <TerritorioSortableHeaderButton
+                  label="Peso (expectativa)"
+                  active={sortCol === 'expectativa'}
+                  asc={sortAsc}
+                  onClick={() => alternarSort('expectativa')}
+                  align="center"
+                  compact
+                  className="w-full"
+                />
+              </th>
               <th className={cn('pb-1 text-right', typographySectionLabelClass)}>%</th>
               <th className={cn('pb-1 text-right', typographySectionLabelClass)}>Lid.</th>
             </tr>
