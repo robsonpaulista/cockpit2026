@@ -6,6 +6,11 @@ import {
 } from '@/lib/pesquisa-tendencia-executive'
 import type { PollIptRow } from '@/lib/ipt-pesquisa'
 
+export type WarRoomPesquisaRankingItem = {
+  nome: string
+  pct: number
+}
+
 export type WarRoomPesquisaConsolidadaReal = {
   id: string
   cidade: string
@@ -14,9 +19,13 @@ export type WarRoomPesquisaConsolidadaReal = {
   dataLabel: string
   cenario: 'Estimulada' | 'Espontânea'
   jadyelPct: number | null
+  /** Posição do candidato foco no ranking da onda (1 = líder). */
+  jadyelPosicao: number | null
   liderPct: number
   liderNome: string
   diferencaPp: number | null
+  /** Ranking completo da onda, % desc. */
+  ranking: WarRoomPesquisaRankingItem[]
 }
 
 function candidatoNormalizado(nome: string): string {
@@ -156,6 +165,15 @@ export function buildWarRoomPesquisasConsolidadas(
     const jadyel = porCandidato.get(candidatoNorm)?.pct ?? null
     const diferencaPp = jadyel != null ? round1(jadyel - liderPct) : null
 
+    const ranking = [...porCandidato.values()].sort((a, b) => {
+      if (b.pct !== a.pct) return b.pct - a.pct
+      return a.nome.localeCompare(b.nome, 'pt-BR')
+    })
+    const jadyelPosicaoIdx = ranking.findIndex(
+      (row) => candidatoNormalizado(row.nome) === candidatoNorm,
+    )
+    const jadyelPosicao = jadyelPosicaoIdx >= 0 ? jadyelPosicaoIdx + 1 : null
+
     rows.push({
       id: ondaKey,
       cidade: bucket.cidade,
@@ -164,9 +182,11 @@ export function buildWarRoomPesquisasConsolidadas(
       dataLabel: formatDataLabel(bucket.data),
       cenario: bucket.tipo === 'estimulada' ? 'Estimulada' : 'Espontânea',
       jadyelPct: jadyel,
+      jadyelPosicao,
       liderPct: round1(liderPct),
       liderNome,
       diferencaPp,
+      ranking,
     })
   }
 

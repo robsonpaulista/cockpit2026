@@ -1,7 +1,8 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { IconLoader2, IconNews } from '@tabler/icons-react'
+import Link from 'next/link'
+import { IconChevronRight, IconLoader2 } from '@tabler/icons-react'
 import {
   PanoramaHeatmapScaleToggle,
   PanoramaMentionHeatmap,
@@ -41,8 +42,8 @@ type Props = {
 }
 
 /**
- * Card 3 do bloco pesquisas — mesmo heatmap de “Notícias relacionadas”
- * do Radar Eleitoral, com janela de 7 dias.
+ * Mesmo heatmap de “Notícias relacionadas” do Radar Eleitoral / IPT,
+ * com shell clean da War Room e janela de 7 dias.
  */
 export function WarRoomNoticiasCard({ className }: Props) {
   const { register } = useWarRoomRefresh()
@@ -129,66 +130,74 @@ export function WarRoomNoticiasCard({ className }: Props) {
     ready: !loading || actors.length > 0 || mentions.length > 0,
   })
 
+  const initialLoading = loading && actors.length === 0 && mentions.length === 0
+  const showHeatmap = !initialLoading && !erro && columns.length > 0 && !heatmap.empty
+
   return (
     <section
-      className={cn(
-        'flex h-full min-h-0 flex-col overflow-hidden rounded-[18px] border border-[#ebe8e4] bg-white p-3.5 shadow-[0_1px_2px_rgba(28,25,23,0.03)] md:p-4',
-        className,
-      )}
-      aria-label="Notícias relacionadas aos candidatos"
+      id="wr-noticias"
+      className={cn('wr-noticias-clean', 'wr-cell--noticias', className)}
+      aria-label="Notícias relacionadas"
     >
-      <div className="mb-2 flex shrink-0 items-start justify-between gap-2">
-        <div className="min-w-0">
-          <h2 className="flex min-w-0 items-center gap-1.5 text-[12px] font-semibold uppercase tracking-[0.06em] text-[#57534e]">
-            <IconNews
-              className="h-3.5 w-3.5 shrink-0 text-[rgb(var(--color-primary))]"
-              stroke={1.5}
-              aria-hidden
-            />
-            <span className="truncate">Notícias relacionadas</span>
-            <WarRoomChangeBadge change={change} />
-          </h2>
-          <p className="mt-0.5 text-[10px] text-[#a8a29e]">
-            Menções por dia · {LOOKBACK_DAYS} dias
-          </p>
+      <header className="wr-noticias-clean__header">
+        <div className="wr-noticias-clean__title-row">
+          <div>
+            <h2 className="wr-noticias-clean__heading">Notícias relacionadas</h2>
+            <p className="wr-noticias-clean__sub">
+              Menções por dia · {LOOKBACK_DAYS} dias
+            </p>
+          </div>
+          <div className="wr-noticias-clean__header-actions">
+            <WarRoomChangeBadge change={change} className="wr-noticias-clean__badge" />
+            {showHeatmap ? (
+              <PanoramaHeatmapScaleToggle
+                className="wr-noticias-clean__scale"
+                scaleMode={scaleMode}
+                onScaleModeChange={setScaleMode}
+              />
+            ) : null}
+          </div>
         </div>
-        {!loading && !erro && !heatmap.empty ? (
-          <PanoramaHeatmapScaleToggle
-            className="wr-noticias-scale"
-            scaleMode={scaleMode}
-            onScaleModeChange={setScaleMode}
-          />
-        ) : null}
-      </div>
+      </header>
 
-      {loading && actors.length === 0 && mentions.length === 0 ? (
-        <div className="flex flex-1 items-center justify-center gap-2 py-4 text-[12px] text-[#78716c]">
+      {initialLoading ? (
+        <div className="wr-noticias-clean__state">
           <IconLoader2 className="h-4 w-4 animate-spin" stroke={1.5} />
           Carregando notícias…
         </div>
       ) : erro ? (
-        <p className="py-4 text-center text-[12px] text-[#dc2626]">{erro}</p>
+        <p className="wr-noticias-clean__state wr-noticias-clean__state--erro">{erro}</p>
       ) : columns.length === 0 ? (
-        <p className="py-4 text-center text-[12px] text-[#78716c]">
+        <p className="wr-noticias-clean__state">
           Cadastre candidatos no Radar Eleitoral para ver o comparativo.
         </p>
       ) : heatmap.empty ? (
-        <p className="py-4 text-center text-[12px] text-[#78716c]">
+        <p className="wr-noticias-clean__state">
           Nenhuma menção nos últimos {LOOKBACK_DAYS} dias.
         </p>
       ) : (
-        <PanoramaMentionHeatmap
-          dates={heatmap.dates}
-          rows={heatmap.rows}
-          metricLabel="Matérias"
-          enableNewsModal
-          scaleMode={scaleMode}
-          onScaleModeChange={setScaleMode}
-          hideScaleControls
-          compact
-          className="wr-noticias-heatmap min-h-0 flex-1"
-        />
+        <div className="wr-noticias-clean__body">
+          <PanoramaMentionHeatmap
+            dates={heatmap.dates}
+            rows={heatmap.rows}
+            metricLabel="Matérias"
+            enableNewsModal
+            scaleMode={scaleMode}
+            onScaleModeChange={setScaleMode}
+            hideScaleControls
+            compact
+            className="wr-noticias-clean__heatmap"
+          />
+        </div>
       )}
+
+      <Link
+        href="/dashboard/noticias/monitoramento?tab=google-news"
+        className="wr-noticias-clean__footer"
+      >
+        <span>Abrir radar</span>
+        <IconChevronRight className="h-4 w-4" stroke={1.75} aria-hidden />
+      </Link>
     </section>
   )
 }

@@ -1,31 +1,38 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import Link from 'next/link'
 import { IconLoader2, IconTimeline } from '@tabler/icons-react'
 import {
-  alertaMissaoEvento,
+  CartesianGrid,
+  Legend,
+  Line,
+  LineChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from 'recharts'
+import {
   carregarEventosMissao,
-  IPT_MISSAO_ALERTA_LABEL,
   labelSentidoMissao,
-  leituraComparativoEvento,
   type IptMissaoEvento,
 } from '@/lib/ipt-missao-evolucao'
 import type { IptMissaoId } from '@/lib/ipt-missoes'
+import { WarRoomCardShell } from '@/components/war-room/war-room-card-shell'
 import { WarRoomChangeBadge } from '@/components/war-room/war-room-change-badge'
-import {
-  WarRoomMiniPager,
-  warRoomPageCount,
-} from '@/components/war-room/war-room-mini-pager'
 import {
   useWarRoomCardChange,
   useWarRoomRefresh,
 } from '@/components/war-room/war-room-refresh-context'
 import { useWarRoomSnapshot } from '@/components/war-room/use-war-room-snapshot'
+import { resolveGenericLoadingStatus } from '@/lib/war-room/card-status'
 import { cn } from '@/lib/utils'
 
-const PAGE_SIZE = 5
 const FETCH_LIMIT = 120
+const DIAS_GRAFICO = 14
+const MAX_MOVIMENTOS_RECENTES = 4
+
+type SerieId = 'expectativa' | 'visitas' | 'pesquisas'
 
 const FLUXO_MISSOES: Array<{ id: IptMissaoId; label: string }> = [
   { id: 'expectativa', label: 'Exp Votos' },
@@ -33,32 +40,97 @@ const FLUXO_MISSOES: Array<{ id: IptMissaoId; label: string }> = [
   { id: 'pesquisa', label: 'Pesquisas' },
 ]
 
-type FluxoFiltro = IptMissaoId | 'todas'
+const SERIE_CONFIG: Array<{ id: SerieId; label: string; cor: string }> = [
+  { id: 'expectativa', label: 'Expectativa', cor: '#2FD1C5' },
+  { id: 'visitas', label: 'Visitas', cor: '#5AA7FF' },
+  { id: 'pesquisas', label: 'Pesquisas', cor: '#B38CFF' },
+]
 
-const thClass =
-  'pb-1 pr-1.5 font-medium text-[10px] uppercase tracking-wide text-[#a8a29e]'
-const tdClass = 'h-7 py-0 pr-1.5 text-[12px]'
+type ChartPoint = {
+  date: string
+  label: string
+  expectativa: number
+  visitas: number
+  pesquisas: number
+  movimentacoes: number
+}
+
+function missaoLabel(missao: IptMissaoId): string {
+  return FLUXO_MISSOES.find((m) => m.id === missao)?.label ?? missao
+}
 
 function formatWhen(iso: string): string {
   return new Date(iso).toLocaleDateString('pt-BR', {
     day: '2-digit',
     month: '2-digit',
-    year: '2-digit',
   })
+}
+
+/** Últimos 14 dias corridos, com contagem de eventos por missão em cada dia. */
+function buildChartData(eventos: IptMissaoEvento[]): ChartPoint[] {
+  const hoje = new Date()
+  hoje.setHours(0, 0, 0, 0)
+
+  const dias: ChartPoint[] = []
+  for (let i = DIAS_GRAFICO - 1; i >= 0; i -= 1) {
+    const d = new Date(hoje)
+    d.setDate(d.getDate() - i)
+    dias.push({
+      date: d.toISOString().slice(0, 10),
+      label: d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }),
+      expectativa: 0,
+      visitas: 0,
+      pesquisas: 0,
+      movimentacoes: 0,
+    })
+  }
+
+  const porData = new Map(dias.map((d) => [d.date, d]))
+  for (const evento of eventos) {
+    const chave = evento.createdAt.slice(0, 10)
+    const bucket = porData.get(chave)
+    if (!bucket) continue
+    if (evento.missao === 'expectativa') bucket.expectativa += 1
+    else if (evento.missao === 'campo') bucket.visitas += 1
+    else if (evento.missao === 'pesquisa') bucket.pesquisas += 1
+    else continue
+    bucket.movimentacoes += 1
+  }
+
+  return dias
+}
+
+type Variacao3d = {
+  delta: number
+  pct: number | null
+}
+
+function calcularVariacao3d(chartData: ChartPoint[]): Variacao3d | null {
+  if (chartData.length < DIAS_GRAFICO) return null
+  const soma = (pontos: ChartPoint[]) =>
+    pontos.reduce((acc, p) => acc + p.movimentacoes, 0)
+  const recentes = soma(chartData.slice(-3))
+  const anteriores = soma(chartData.slice(-6, -3))
+  const delta = recentes - anteriores
+  if (anteriores === 0) return { delta, pct: null }
+  return { delta, pct: Math.round((delta / anteriores) * 100) }
 }
 
 type Props = {
   className?: string
 }
 
-/** Card secundário do bloco 1 — KPIs de fluxo (missões) + movimentos em tabela. */
+/** Card secundário do bloco 1 — evolução no IPT em gráfico de linha + KPIs de fluxo. */
 export function WarRoomEvolucaoCard({ className }: Props) {
   const { register } = useWarRoomRefresh()
   const change = useWarRoomCardChange('evolucao')
   const [eventos, setEventos] = useState<IptMissaoEvento[]>([])
   const [loading, setLoading] = useState(true)
-  const [page, setPage] = useState(0)
-  const [missaoAtiva, setMissaoAtiva] = useState<FluxoFiltro>('todas')
+  const [seriesVisiveis, setSeriesVisiveis] = useState<Record<SerieId, boolean>>({
+    expectativa: true,
+    visitas: true,
+    pesquisas: true,
+  })
 
   const carregar = useCallback(async (opts?: { silent?: boolean }) => {
     const silent = opts?.silent === true
@@ -66,7 +138,6 @@ export function WarRoomEvolucaoCard({ className }: Props) {
     try {
       const lista = await carregarEventosMissao({ limit: FETCH_LIMIT })
       setEventos(lista)
-      if (!silent) setPage(0)
     } finally {
       setLoading(false)
     }
@@ -107,199 +178,209 @@ export function WarRoomEvolucaoCard({ className }: Props) {
 
   const changedSet = useMemo(() => new Set(changedKeys), [changedKeys])
 
-  const fluxoKpis = useMemo(() => {
-    const porMissao = FLUXO_MISSOES.map((missao) => ({
-      id: missao.id as FluxoFiltro,
-      label: missao.label,
-      total: eventosFluxo.filter((e) => e.missao === missao.id).length,
-    }))
-    return [
-      {
-        id: 'todas' as const,
-        label: 'Todos',
-        total: eventosFluxo.length,
-      },
-      ...porMissao,
-    ]
-  }, [eventosFluxo])
-
-  const eventosFiltrados = useMemo(
+  const fluxoKpis = useMemo(
     () =>
-      missaoAtiva === 'todas'
-        ? eventosFluxo
-        : eventosFluxo.filter((e) => e.missao === missaoAtiva),
-    [eventosFluxo, missaoAtiva],
+      FLUXO_MISSOES.map((missao) => ({
+        id: missao.id,
+        label: missao.label,
+        total: eventosFluxo.filter((e) => e.missao === missao.id).length,
+      })),
+    [eventosFluxo],
   )
 
-  useEffect(() => {
-    setPage(0)
-  }, [missaoAtiva])
+  const chartData = useMemo(() => buildChartData(eventosFluxo), [eventosFluxo])
+  const variacao3d = useMemo(() => calcularVariacao3d(chartData), [chartData])
 
-  useEffect(() => {
-    const max = warRoomPageCount(eventosFiltrados.length, PAGE_SIZE) - 1
-    if (page > max) setPage(Math.max(0, max))
-  }, [page, eventosFiltrados.length])
+  const movimentosRecentes = useMemo(
+    () => eventosFluxo.slice(0, MAX_MOVIMENTOS_RECENTES),
+    [eventosFluxo],
+  )
 
-  const pageRows = useMemo(() => {
-    const start = page * PAGE_SIZE
-    return eventosFiltrados.slice(start, start + PAGE_SIZE)
-  }, [eventosFiltrados, page])
+  const toggleSerie = (id: SerieId) => {
+    setSeriesVisiveis((prev) => ({ ...prev, [id]: !prev[id] }))
+  }
 
   return (
-    <section
-      className={cn(
-        'flex h-full min-h-0 flex-col overflow-hidden rounded-[18px] border border-[#ebe8e4] bg-white p-3.5 shadow-[0_1px_2px_rgba(28,25,23,0.03)] md:p-4',
-        className,
-      )}
-      aria-label="Evolução das missões"
+    <WarRoomCardShell
+      id="wr-evolucao"
+      className={cn('wr-cell--evolucao', className)}
+      title="Evolução no IPT"
+      subtitle="Movimentos das missões"
+      status={resolveGenericLoadingStatus(loading, !loading && eventos.length === 0)}
+      href="/dashboard/territorio/ipt"
+      linkLabel="Ver no IPT"
+      icon={IconTimeline}
+      badge={<WarRoomChangeBadge change={change} />}
     >
-      <div className="mb-2.5 flex shrink-0 items-center justify-between gap-3">
-        <h2 className="flex min-w-0 items-center gap-1.5 text-[12px] font-semibold uppercase tracking-[0.06em] text-[#57534e]">
-          <IconTimeline
-            className="h-3.5 w-3.5 shrink-0 text-[rgb(var(--color-primary))]"
-            stroke={1.5}
-            aria-hidden
-          />
-          <span className="truncate">Evolução</span>
-          <WarRoomChangeBadge change={change} />
-        </h2>
-        <Link
-          href="/dashboard/territorio/ipt"
-          className="shrink-0 text-[12px] font-medium text-[rgb(var(--color-primary))] transition-opacity hover:opacity-80"
-        >
-          Ver no IPT
-        </Link>
-      </div>
-
       {loading && eventos.length === 0 ? (
-        <div className="flex flex-1 items-center justify-center gap-2 py-4 text-[12px] text-[#78716c]">
+        <div className="flex flex-1 items-center justify-center gap-2 py-4 text-[12px] text-[var(--wr-muted)]">
           <IconLoader2 className="h-4 w-4 animate-spin" stroke={1.5} />
           Carregando movimentos…
         </div>
+      ) : eventosFluxo.length === 0 ? (
+        <p className="py-6 text-center text-[12px] text-[var(--wr-muted)]">
+          Nenhum movimento registrado nas missões acompanhadas.
+        </p>
       ) : (
         <>
-          <div
-            className="wr-funnel wr-funnel--vivid mb-3 shrink-0"
-            role="tablist"
-            aria-label="Filtrar por missão"
-          >
-            {fluxoKpis.map((step) => {
-              const ativo = missaoAtiva === step.id
+          <div className="mb-2 flex shrink-0 flex-wrap gap-1.5" role="group" aria-label="Séries do gráfico">
+            {SERIE_CONFIG.map((serie) => {
+              const ativa = seriesVisiveis[serie.id]
               return (
                 <button
-                  key={step.id}
+                  key={serie.id}
                   type="button"
-                  role="tab"
-                  aria-selected={ativo}
-                  className={cn(
-                    'wr-funnel__step wr-funnel__step--btn',
-                    ativo && 'wr-funnel__step--accent',
-                  )}
-                  onClick={() => setMissaoAtiva(step.id)}
+                  aria-pressed={ativa}
+                  onClick={() => toggleSerie(serie.id)}
+                  className="wr-badge"
+                  style={{
+                    borderColor: serie.cor,
+                    color: ativa ? '#06110f' : serie.cor,
+                    background: ativa ? serie.cor : 'transparent',
+                  }}
                 >
-                  <span className="wr-funnel__label">{step.label}</span>
-                  <span className="wr-funnel__value">{step.total}</span>
+                  {serie.label}
                 </button>
               )
             })}
           </div>
 
-          {eventosFiltrados.length === 0 ? (
-            <p className="py-3 text-center text-[12px] text-[#78716c]">
-              Nenhum movimento nesta missão.
-            </p>
-          ) : (
-            <>
-              <div className="min-h-0 flex-1 overflow-x-auto overflow-y-auto border-t border-[#f0eeea] pt-2">
-                <table className="w-full min-w-[320px] text-left" aria-label="Movimentos recentes">
-                  <thead>
-                    <tr className="border-b border-[#ebe8e4]">
-                      <th className={cn(thClass, 'text-left')}>Impacto</th>
-                      <th className={cn(thClass, 'text-left')}>Município</th>
-                      <th className={cn(thClass, 'text-left')}>Mov.</th>
-                      <th className={cn(thClass, 'text-left')}>Atual</th>
-                      <th className={cn(thClass, 'pr-0 text-right')}>Quando</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {pageRows.map((evento) => {
-                      const alerta = alertaMissaoEvento(evento)
-                      const comp = leituraComparativoEvento(evento)
-                      const entrou = evento.sentido === 'entrou'
-                      return (
-                        <tr
-                          key={evento.id}
-                          className={cn(
-                            'border-b border-[#f3f1ec] last:border-0',
-                            changedSet.has(evento.id) && 'wr-row--changed',
-                          )}
-                        >
-                          <td className={cn(tdClass, 'align-middle')}>
-                            <span
-                              className={cn(
-                                'wr-evolucao-tag',
-                                `wr-evolucao-tag--${alerta.nivel}`,
-                              )}
-                              title={alerta.titulo}
-                            >
-                              {IPT_MISSAO_ALERTA_LABEL[alerta.nivel]}
-                            </span>
-                          </td>
-                          <td
-                            className={cn(
-                              tdClass,
-                              'max-w-[88px] truncate font-medium text-[#1c1917]',
-                            )}
-                            title={evento.municipio}
-                          >
-                            {evento.municipio}
-                          </td>
-                          <td className={cn(tdClass, 'align-middle')}>
-                            <span
-                              className={cn(
-                                'wr-evolucao-badge',
-                                entrou
-                                  ? 'wr-evolucao-badge--in'
-                                  : 'wr-evolucao-badge--out',
-                              )}
-                            >
-                              {labelSentidoMissao(evento.sentido)}
-                            </span>
-                          </td>
-                          <td
-                            className={cn(
-                              tdClass,
-                              'max-w-[110px] truncate font-medium text-[#1c1917]',
-                            )}
-                            title={`${comp.metrica}: ${comp.anterior} → ${comp.atual}`}
-                          >
-                            {comp.atual}
-                          </td>
-                          <td
-                            className={cn(
-                              tdClass,
-                              'pr-0 text-right tabular-nums text-[#78716c]',
-                            )}
-                          >
-                            {formatWhen(evento.createdAt)}
-                          </td>
-                        </tr>
-                      )
-                    })}
-                  </tbody>
-                </table>
+          <div className="wr-chart">
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={chartData} margin={{ top: 4, right: 6, left: -20, bottom: 0 }}>
+                <CartesianGrid stroke="#263648" strokeDasharray="3 3" vertical={false} />
+                <XAxis
+                  dataKey="label"
+                  tick={{ fill: '#7F8C9C', fontSize: 10 }}
+                  axisLine={{ stroke: '#263648' }}
+                  tickLine={false}
+                  interval="preserveStartEnd"
+                />
+                <YAxis
+                  tick={{ fill: '#7F8C9C', fontSize: 10 }}
+                  axisLine={false}
+                  tickLine={false}
+                  width={30}
+                  allowDecimals={false}
+                />
+                <Tooltip
+                  contentStyle={{
+                    background: '#152231',
+                    border: '1px solid #263648',
+                    borderRadius: 8,
+                    color: '#F5F7FA',
+                    fontSize: 12,
+                  }}
+                  labelStyle={{ color: '#F5F7FA' }}
+                  itemStyle={{ color: '#F5F7FA' }}
+                />
+                <Legend wrapperStyle={{ fontSize: 10, color: '#7F8C9C' }} />
+                {seriesVisiveis.expectativa ? (
+                  <Line
+                    type="monotone"
+                    dataKey="expectativa"
+                    name="Expectativa"
+                    stroke="#2FD1C5"
+                    strokeWidth={2}
+                    dot={false}
+                    activeDot={{ r: 3 }}
+                  />
+                ) : null}
+                {seriesVisiveis.visitas ? (
+                  <Line
+                    type="monotone"
+                    dataKey="visitas"
+                    name="Visitas"
+                    stroke="#5AA7FF"
+                    strokeWidth={2}
+                    dot={false}
+                    activeDot={{ r: 3 }}
+                  />
+                ) : null}
+                {seriesVisiveis.pesquisas ? (
+                  <Line
+                    type="monotone"
+                    dataKey="pesquisas"
+                    name="Pesquisas"
+                    stroke="#B38CFF"
+                    strokeWidth={2}
+                    dot={false}
+                    activeDot={{ r: 3 }}
+                  />
+                ) : null}
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+
+          <div className="wr-metrics-grid mt-3 shrink-0">
+            {fluxoKpis.map((kpi) => (
+              <div key={kpi.id} className="wr-kpi-tile">
+                <p className="wr-kpi-tile__label">{kpi.label}</p>
+                <p className="wr-kpi-tile__value">{kpi.total}</p>
               </div>
-              <WarRoomMiniPager
-                className="mt-1.5"
-                page={page}
-                total={eventosFiltrados.length}
-                pageSize={PAGE_SIZE}
-                onChange={setPage}
-              />
-            </>
-          )}
+            ))}
+            <div className="wr-kpi-tile">
+              <p className="wr-kpi-tile__label">Variação 3d</p>
+              <p
+                className="wr-kpi-tile__value"
+                style={{
+                  color:
+                    variacao3d == null || variacao3d.delta === 0
+                      ? undefined
+                      : variacao3d.delta > 0
+                        ? 'var(--wr-blue)'
+                        : 'var(--wr-positive)',
+                }}
+              >
+                {variacao3d == null
+                  ? '—'
+                  : variacao3d.pct != null
+                    ? `${variacao3d.delta >= 0 ? '+' : ''}${variacao3d.pct}%`
+                    : `${variacao3d.delta >= 0 ? '+' : ''}${variacao3d.delta}`}
+              </p>
+            </div>
+          </div>
+
+          <div className="mt-3 flex min-h-0 flex-1 flex-col gap-1.5 overflow-y-auto border-t border-[var(--wr-border)] pt-2">
+            <p className="text-[10px] font-semibold uppercase tracking-wide text-[var(--wr-muted)]">
+              Movimentos recentes
+            </p>
+            {movimentosRecentes.map((evento) => {
+              const entrou = evento.sentido === 'entrou'
+              return (
+                <div
+                  key={evento.id}
+                  className={cn(
+                    'flex items-center justify-between gap-2 text-[12px]',
+                    changedSet.has(evento.id) && 'wr-row--changed rounded-md px-1.5',
+                  )}
+                >
+                  <span
+                    className="min-w-0 flex-1 truncate font-medium text-[var(--wr-text)]"
+                    title={evento.municipio}
+                  >
+                    {evento.municipio}
+                  </span>
+                  <span className="shrink-0 text-[var(--wr-muted)]">
+                    {missaoLabel(evento.missao)}
+                  </span>
+                  <span
+                    className={cn(
+                      'wr-evolucao-badge shrink-0',
+                      entrou ? 'wr-evolucao-badge--in' : 'wr-evolucao-badge--out',
+                    )}
+                  >
+                    {labelSentidoMissao(evento.sentido)}
+                  </span>
+                  <span className="shrink-0 tabular-nums text-[var(--wr-muted)]">
+                    {formatWhen(evento.createdAt)}
+                  </span>
+                </div>
+              )
+            })}
+          </div>
         </>
       )}
-    </section>
+    </WarRoomCardShell>
   )
 }

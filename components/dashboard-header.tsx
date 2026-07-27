@@ -101,37 +101,42 @@ export function DashboardHeader() {
   const isRepublicanosPremium = theme === 'republicanos' && appearance === 'light'
   const isGradientHome = useDashboardHomeChrome()
   const isHome = isDashboardHomePath(p)
+  const isWarRoom = p.startsWith('/dashboard/war-room')
 
   if (!showTopbar || isHome) {
     return null
   }
 
-  const mobileAmberHeader = !isGradientHome
+  const mobileAmberHeader = !isGradientHome && !isWarRoom
+  const lightBrand = isGradientHome
 
   return (
     <header
       className={cn(
         'sticky top-0 z-30',
+        isWarRoom &&
+          'wr-topbar-clean border-b border-[color-mix(in_srgb,var(--wr-slate,#424E5C)_12%,transparent)] bg-[var(--wr-header-bg,#FFFFFF)]',
         isGradientHome
           ? 'bg-transparent backdrop-blur-md'
-          : cn(
-              'lg:bg-[rgb(var(--bg-sidebar))]',
-              isRepublicanosPremium && 'republicanos-premium-header',
-              mobileAmberHeader && dashboardMobilePageHeaderClass,
-            ),
+          : !isWarRoom &&
+              cn(
+                'lg:bg-[rgb(var(--bg-sidebar))]',
+                isRepublicanosPremium && 'republicanos-premium-header',
+                mobileAmberHeader && dashboardMobilePageHeaderClass,
+              ),
       )}
     >
       <div
         className={cn(
           'flex items-center justify-between gap-2 max-lg:pl-[4.5rem] max-lg:pr-2 sm:gap-3 lg:h-16 lg:gap-3 lg:px-6',
-          isGradientHome ? 'h-12' : 'h-16',
+          isGradientHome || isWarRoom ? 'h-12 lg:h-14' : 'h-16',
         )}
       >
         <div className="flex min-w-0 flex-1 items-center gap-2 sm:gap-3">
           <AppBrandTitle
             isCockpit={false}
-            lightOnGradient={isGradientHome}
-            lightOnAmber={mobileAmberHeader}
+            lightOnGradient={lightBrand}
+            lightOnAmber={mobileAmberHeader || isWarRoom}
             size="md"
             className={cn(
               'min-w-0',
@@ -142,7 +147,11 @@ export function DashboardHeader() {
           <span
             className={cn(
               'hidden shrink-0 sm:inline',
-              isGradientHome ? 'text-white/35' : 'text-border-card/70',
+              isWarRoom
+                ? 'wr-topbar-clean__sep text-[var(--wr-slate)]/35'
+                : lightBrand
+                  ? 'text-white/35'
+                  : 'text-border-card/70',
               mobileAmberHeader && 'max-lg:text-white/40',
             )}
             aria-hidden
@@ -153,8 +162,11 @@ export function DashboardHeader() {
             {topbarExtras?.hidePageTitle ? null : (
               <h1
                 className={cn(
-                  'truncate text-sm font-bold tracking-tight sm:text-base',
-                  isGradientHome ? 'text-white max-lg:hidden' : 'text-text-primary',
+                  'truncate font-bold tracking-tight',
+                  isWarRoom
+                    ? 'wr-topbar-clean__title text-base uppercase text-[var(--wr-black,#000)] sm:text-lg max-lg:text-[var(--wr-black,#000)]'
+                    : 'text-sm sm:text-base',
+                  lightBrand ? 'text-white max-lg:hidden' : !isWarRoom && 'text-text-primary',
                   mobileAmberHeader && 'max-lg:text-white/95',
                 )}
                 title={pageTitle}
@@ -162,14 +174,14 @@ export function DashboardHeader() {
                 {pageTitle}
               </h1>
             )}
-            {topbarExtras?.description ? (
+            {topbarExtras?.description && !isWarRoom ? (
               <div
                 className={cn(
                   'truncate',
                   topbarExtras.hidePageTitle
                     ? 'block text-[13px] sm:text-sm'
                     : 'mt-0.5 hidden text-[12px] lg:block',
-                  isGradientHome ? 'text-white/65' : 'text-text-muted',
+                  lightBrand ? 'text-white/65' : 'text-text-muted',
                   mobileAmberHeader && 'max-lg:text-white/75',
                 )}
               >
@@ -180,7 +192,7 @@ export function DashboardHeader() {
         </div>
         <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
           {topbarExtras?.actions ? (
-            <div className="flex items-center gap-1.5">{topbarExtras.actions}</div>
+            <div className="flex items-center gap-1.5 sm:gap-2">{topbarExtras.actions}</div>
           ) : null}
           <UserMenu amberMobileChrome={mobileAmberHeader} />
         </div>

@@ -10,6 +10,9 @@ export type WarRoomCardId =
   | 'noticias'
   | 'agenda'
   | 'redes'
+  | 'top-engajamento'
+  | 'instagram-radar'
+  | 'visitas-cidade'
 
 export type WarRoomCardChange = {
   summary: string

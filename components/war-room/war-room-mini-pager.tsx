@@ -38,11 +38,11 @@ export function WarRoomMiniPager({
         aria-label="Página anterior"
         disabled={page <= 0}
         onClick={() => onChange(page - 1)}
-        className="inline-flex h-6 w-6 items-center justify-center rounded-md border border-[#ebe8e4] text-[#57534e] transition-colors hover:bg-[#f6f5f2] disabled:pointer-events-none disabled:opacity-35"
+        className="wr-pager-btn"
       >
         <IconChevronLeft className="h-3.5 w-3.5" stroke={1.5} />
       </button>
-      <span className="min-w-[2.5rem] text-center text-[11px] tabular-nums text-[#78716c]">
+      <span className="min-w-[2.5rem] text-center text-[11px] tabular-nums text-[var(--wr-muted)]">
         {page + 1}/{pages}
       </span>
       <button
@@ -50,7 +50,7 @@ export function WarRoomMiniPager({
         aria-label="Próxima página"
         disabled={page >= pages - 1}
         onClick={() => onChange(page + 1)}
-        className="inline-flex h-6 w-6 items-center justify-center rounded-md border border-[#ebe8e4] text-[#57534e] transition-colors hover:bg-[#f6f5f2] disabled:pointer-events-none disabled:opacity-35"
+        className="wr-pager-btn"
       >
         <IconChevronRight className="h-3.5 w-3.5" stroke={1.5} />
       </button>

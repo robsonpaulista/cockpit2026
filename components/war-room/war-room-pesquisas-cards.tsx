@@ -1,25 +1,20 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
+import { IconChevronRight, IconLoader2 } from '@tabler/icons-react'
 import {
-  IconChartDots3,
-  IconChevronLeft,
-  IconChevronRight,
-  IconClipboardList,
-  IconLoader2,
-  type Icon,
-} from '@tabler/icons-react'
-import { WAR_ROOM_PESQUISAS_ANDAMENTO } from '@/lib/war-room/mock-data'
+  WAR_ROOM_PESQUISAS_ANDAMENTO,
+  type WarRoomPesquisaAndamento,
+  type WarRoomPesquisaAndamentoStatus,
+} from '@/lib/war-room/mock-data'
 import {
   buildWarRoomPesquisasConsolidadas,
   type WarRoomPesquisaConsolidadaReal,
 } from '@/lib/war-room/pesquisas-consolidadas'
-import {
-  resolveCandidatoIpt,
-  type PollIptRow,
-} from '@/lib/ipt-pesquisa'
+import { resolveCandidatoIpt, type PollIptRow } from '@/lib/ipt-pesquisa'
 import { WarRoomChangeBadge } from '@/components/war-room/war-room-change-badge'
+import { WarRoomPesquisaRankingModal } from '@/components/war-room/war-room-pesquisa-ranking-modal'
 import {
   useWarRoomCardChange,
   useWarRoomRefresh,
@@ -27,147 +22,64 @@ import {
 import { useWarRoomSnapshot } from '@/components/war-room/use-war-room-snapshot'
 import { cn } from '@/lib/utils'
 
-const PAGE_SIZE_CONSOLIDADAS = 10
-const PAGE_SIZE_ANDAMENTO = 4
+const HIGHLIGHTS_COUNT = 3
+const LIST_VISIBLE = 8
 
-function pageCount(total: number, pageSize: number): number {
-  return Math.max(1, Math.ceil(total / pageSize))
+type PesquisaFiltro = 'finalizadas' | 'andamento'
+
+const FILTRO_OPCOES: Array<{ id: PesquisaFiltro; label: string }> = [
+  { id: 'finalizadas', label: 'Finalizadas' },
+  { id: 'andamento', label: 'Em andamento' },
+]
+
+const ANDAMENTO_STATUS_LABEL: Record<WarRoomPesquisaAndamentoStatus, string> = {
+  planejada: 'Planejada',
+  em_campo: 'Em campo',
+  processando: 'Processando',
+  entregue: 'Entregue',
+  atrasada: 'Atrasada',
 }
 
-function MiniPager({
-  page,
-  total,
-  pageSize,
-  onChange,
-  className,
-}: {
-  page: number
-  total: number
-  pageSize: number
-  onChange: (page: number) => void
-  className?: string
-}) {
-  const pages = pageCount(total, pageSize)
-  if (total <= pageSize) {
-    return null
+const KPI_TONES = ['gold', 'slate', 'mist'] as const
+
+function formatPct0(value: number): string {
+  return `${Math.round(value)}%`
+}
+
+function formatPosicao(value: number | null | undefined): string {
+  if (value == null || !Number.isFinite(value) || value < 1) return '—'
+  return `${Math.round(value)}º`
+}
+
+function shortCityLabel(cidade: string): string {
+  const upper = cidade.trim().toUpperCase()
+  if (upper.length <= 14) return upper
+  const parts = upper.split(/\s+/)
+  if (parts.length >= 2) {
+    const first = parts[0].length > 4 ? `${parts[0].slice(0, 3)}.` : parts[0]
+    return `${first} ${parts.slice(1).join(' ')}`.slice(0, 16)
   }
-
-  return (
-    <div
-      className={cn(
-        'flex h-7 shrink-0 items-center justify-end gap-1.5',
-        className,
-      )}
-    >
-      <button
-        type="button"
-        aria-label="Página anterior"
-        disabled={page <= 0}
-        onClick={() => onChange(page - 1)}
-        className="inline-flex h-6 w-6 items-center justify-center rounded-md border border-[#ebe8e4] text-[#57534e] transition-colors hover:bg-[#f6f5f2] disabled:pointer-events-none disabled:opacity-35"
-      >
-        <IconChevronLeft className="h-3.5 w-3.5" stroke={1.5} />
-      </button>
-      <span className="min-w-[2.5rem] text-center text-[11px] tabular-nums text-[#78716c]">
-        {page + 1}/{pages}
-      </span>
-      <button
-        type="button"
-        aria-label="Próxima página"
-        disabled={page >= pages - 1}
-        onClick={() => onChange(page + 1)}
-        className="inline-flex h-6 w-6 items-center justify-center rounded-md border border-[#ebe8e4] text-[#57534e] transition-colors hover:bg-[#f6f5f2] disabled:pointer-events-none disabled:opacity-35"
-      >
-        <IconChevronRight className="h-3.5 w-3.5" stroke={1.5} />
-      </button>
-    </div>
-  )
+  return upper.slice(0, 14)
 }
 
-function formatPct1(value: number): string {
-  return `${value.toLocaleString('pt-BR', {
-    minimumFractionDigits: 1,
-    maximumFractionDigits: 1,
-  })}%`
+function andamentoAtivos(rows: WarRoomPesquisaAndamento[]): WarRoomPesquisaAndamento[] {
+  return rows.filter((r) => r.status !== 'entregue')
 }
 
-function formatDiffPp(value: number): string {
-  const abs = Math.abs(value).toLocaleString('pt-BR', {
-    minimumFractionDigits: 1,
-    maximumFractionDigits: 1,
-  })
-  if (value > 0) return `+${abs} pp`
-  if (value < 0) return `-${abs} pp`
-  return `0,0 pp`
-}
-
-function CardHead({
-  title,
-  href,
-  linkLabel,
-  icon: Icon,
-  badge,
-}: {
-  title: string
-  href: string
-  linkLabel: string
-  icon: Icon
-  badge?: ReactNode
-}) {
-  return (
-    <div className="mb-2 flex shrink-0 items-center justify-between gap-3">
-      <h2 className="flex min-w-0 items-center gap-1.5 text-[12px] font-semibold uppercase tracking-[0.06em] text-[#57534e]">
-        <Icon
-          className="h-3.5 w-3.5 shrink-0 text-[rgb(var(--color-primary))]"
-          stroke={1.5}
-          aria-hidden
-        />
-        <span className="truncate">{title}</span>
-        {badge}
-      </h2>
-      <Link
-        href={href}
-        className="shrink-0 text-[12px] font-medium text-[rgb(var(--color-primary))] transition-opacity hover:opacity-80"
-      >
-        {linkLabel}
-      </Link>
-    </div>
-  )
-}
-
-const thClass =
-  'pb-1 pr-1.5 font-medium text-[10px] uppercase tracking-wide text-[#a8a29e]'
-const tdClass = 'h-7 py-0 pr-1.5 text-[12px]'
-
-type CardShellProps = {
-  className?: string
-  children: ReactNode
-  'aria-label': string
-}
-
-function CardShell({ className, children, 'aria-label': ariaLabel }: CardShellProps) {
-  return (
-    <section
-      className={cn(
-        'flex h-full min-h-0 flex-col overflow-hidden rounded-[18px] border border-[#ebe8e4] bg-white p-3.5 shadow-[0_1px_2px_rgba(28,25,23,0.03)] md:p-4',
-        className,
-      )}
-      aria-label={ariaLabel}
-    >
-      {children}
-    </section>
-  )
-}
-
-/** Card 1 do bloco 2 — pesquisas consolidadas (API real). */
+/** Pesquisas consolidadas — filtros clean + finalizadas / em andamento. */
 export function WarRoomPesquisasConsolidadasCard({ className }: { className?: string }) {
   const { register } = useWarRoomRefresh()
   const change = useWarRoomCardChange('pesquisas')
   const [rows, setRows] = useState<WarRoomPesquisaConsolidadaReal[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [candidato, setCandidato] = useState(() => resolveCandidatoIpt())
-  const [page, setPage] = useState(0)
+  const [filtro, setFiltro] = useState<PesquisaFiltro>('finalizadas')
+  const [rankingModal, setRankingModal] = useState<WarRoomPesquisaConsolidadaReal | null>(null)
+
+  const andamentoRows = useMemo(
+    () => andamentoAtivos(WAR_ROOM_PESQUISAS_ANDAMENTO),
+    [],
+  )
 
   const load = useCallback(async (opts?: { silent?: boolean }) => {
     const silent = opts?.silent === true
@@ -177,7 +89,6 @@ export function WarRoomPesquisasConsolidadasCard({ className }: { className?: st
     }
     try {
       const foco = resolveCandidatoIpt()
-      setCandidato(foco)
       const res = await fetch('/api/pesquisa?limit=5000', { cache: 'no-store' })
       if (!res.ok) throw new Error('pesquisa')
       const data = (await res.json()) as PollIptRow[]
@@ -187,12 +98,10 @@ export function WarRoomPesquisasConsolidadasCard({ className }: { className?: st
         200,
       )
       setRows(built)
-      if (!silent) setPage(0)
     } catch {
       if (!silent) {
         setRows([])
         setError('Não foi possível carregar as pesquisas.')
-        setPage(0)
       }
     } finally {
       setLoading(false)
@@ -213,7 +122,7 @@ export function WarRoomPesquisasConsolidadasCard({ className }: { className?: st
     () =>
       rows.map(
         (r) =>
-          `${r.id}\t${r.cidade}\t${r.jadyelPct ?? ''}\t${r.liderPct}\t${r.diferencaPp ?? ''}`,
+          `${r.id}\t${r.cidade}\t${r.jadyelPosicao ?? ''}\t${r.jadyelPct ?? ''}\t${r.liderPct}\t${r.diferencaPp ?? ''}`,
       ),
     [rows],
   )
@@ -226,190 +135,198 @@ export function WarRoomPesquisasConsolidadasCard({ className }: { className?: st
   })
   const changedSet = useMemo(() => new Set(changedKeys), [changedKeys])
 
-  useEffect(() => {
-    const max = pageCount(rows.length, PAGE_SIZE_CONSOLIDADAS) - 1
-    if (page > max) setPage(Math.max(0, max))
-  }, [page, rows.length])
+  const highlights = useMemo(() => rows.slice(0, HIGHLIGHTS_COUNT), [rows])
 
-  const pageRows = useMemo(() => {
-    const start = page * PAGE_SIZE_CONSOLIDADAS
-    return rows.slice(start, start + PAGE_SIZE_CONSOLIDADAS)
-  }, [rows, page])
+  const finalizadasList = useMemo(() => rows.slice(0, LIST_VISIBLE), [rows])
+  const andamentoList = useMemo(
+    () => andamentoRows.slice(0, LIST_VISIBLE),
+    [andamentoRows],
+  )
+
+  const showFinalizadas = filtro === 'finalizadas'
+  const showAndamento = filtro === 'andamento'
+  const showKpis = filtro === 'finalizadas'
+
+  const emptyFinalizadas = !loading && rows.length === 0
+  const emptyAndamento = andamentoList.length === 0
 
   return (
-    <CardShell className={cn('h-auto', className)} aria-label="Pesquisas consolidadas">
-      <CardHead
-        title="Pesquisas consolidadas"
-        href="/dashboard/pesquisa"
-        linkLabel="Ver todos"
-        icon={IconChartDots3}
-        badge={<WarRoomChangeBadge change={change} />}
-      />
-      {loading && rows.length === 0 ? (
-        <div className="flex flex-1 items-center justify-center py-6">
-          <IconLoader2 className="h-5 w-5 animate-spin text-[#a8a29e]" stroke={1.5} />
+    <section
+      id="wr-pesquisas"
+      className={cn('wr-pesquisas-clean', 'wr-cell--pesquisas', className)}
+      aria-label="Pesquisas eleitorais"
+    >
+      <header className="wr-pesquisas-clean__header wr-pesquisas-clean__header--filtros">
+        <div className="wr-pesquisas-clean__title-row">
+          <div>
+            <h2 className="wr-pesquisas-clean__heading">Pesquisas eleitorais</h2>
+            <p className="wr-pesquisas-clean__sub">Resultados e campo</p>
+          </div>
+          {change ? <WarRoomChangeBadge change={change} /> : null}
         </div>
-      ) : rows.length === 0 ? (
-        <p className="py-6 text-center text-[12px] text-[#78716c]">
-          {error ?? 'Nenhuma pesquisa consolidada no momento.'}
+        <div
+          className="wr-pesquisas-clean__filtros"
+          role="group"
+          aria-label="Filtrar pesquisas"
+        >
+          {FILTRO_OPCOES.map((opcao) => (
+            <button
+              key={opcao.id}
+              type="button"
+              aria-pressed={filtro === opcao.id}
+              className={cn(
+                'wr-pesquisas-clean__filtro',
+                filtro === opcao.id && 'wr-pesquisas-clean__filtro--ativo',
+              )}
+              onClick={() => setFiltro(opcao.id)}
+            >
+              {opcao.label}
+            </button>
+          ))}
+        </div>
+      </header>
+
+      {loading && rows.length === 0 && filtro !== 'andamento' ? (
+        <div className="wr-pesquisas-clean__state">
+          <IconLoader2 className="h-5 w-5 animate-spin text-[var(--wr-muted)]" stroke={1.5} />
+        </div>
+      ) : emptyFinalizadas && filtro === 'finalizadas' ? (
+        <p className="wr-pesquisas-clean__state">
+          {error ?? 'Nenhuma pesquisa finalizada no momento.'}
+        </p>
+      ) : emptyAndamento && filtro === 'andamento' ? (
+        <p className="wr-pesquisas-clean__state">Nenhuma pesquisa em andamento.</p>
+      ) : emptyFinalizadas && emptyAndamento ? (
+        <p className="wr-pesquisas-clean__state">
+          {error ?? 'Nenhuma pesquisa no momento.'}
         </p>
       ) : (
         <>
-          <div className="min-h-0 shrink overflow-x-auto">
-            <table className="w-full min-w-[360px] text-left">
-              <thead>
-                <tr className="border-b border-[#ebe8e4]">
-                  <th className={cn(thClass, 'text-left')}>Cidade</th>
-                  <th className={cn(thClass, 'text-left')}>Instituto</th>
-                  <th className={cn(thClass, 'text-left')}>Data</th>
-                  <th className={cn(thClass, 'text-left')}>Cen.</th>
-                  <th className={cn(thClass, 'text-right')}>Jadyel</th>
-                  <th className={cn(thClass, 'text-right')}>Líder</th>
-                  <th className={cn(thClass, 'pr-0 text-right')}>Diferença</th>
-                </tr>
-              </thead>
-              <tbody>
-                {pageRows.map((row) => {
-                  const jadyelNaFrente =
-                    row.jadyelPct != null &&
-                    row.diferencaPp != null &&
-                    row.diferencaPp >= 0
+          {showKpis && highlights.length > 0 ? (
+            <div className="wr-pesquisas-clean__kpis" aria-label="Pesquisas recentes">
+              {highlights.map((row, index) => {
+                const tone = KPI_TONES[index % KPI_TONES.length]
+                return (
+                  <div
+                    key={row.id}
+                    className={cn(
+                      'wr-pesquisas-clean__kpi',
+                      `wr-pesquisas-clean__kpi--${tone}`,
+                      changedSet.has(row.id) && 'wr-row--changed',
+                    )}
+                    title={`${row.cidade} · ${formatPosicao(row.jadyelPosicao)} · ${row.instituto} · ${row.dataLabel}`}
+                  >
+                    <span className="wr-pesquisas-clean__kpi-value tabular-nums">
+                      {row.jadyelPct != null ? formatPct0(row.jadyelPct) : '—'}
+                    </span>
+                    <span className="wr-pesquisas-clean__kpi-label">
+                      {formatPosicao(row.jadyelPosicao)} · {shortCityLabel(row.cidade)}
+                    </span>
+                  </div>
+                )
+              })}
+            </div>
+          ) : null}
+
+          {showAndamento && andamentoList.length > 0 ? (
+            <>
+              <p className="wr-pesquisas-clean__section">
+                Em andamento
+                {andamentoRows.length > 0 ? ` (${andamentoRows.length})` : ''}
+              </p>
+              <ul className="wr-pesquisas-clean__list" aria-label="Pesquisas em andamento">
+                <li className="wr-pesquisas-clean__row wr-pesquisas-clean__row--head wr-pesquisas-clean__row--andamento" aria-hidden>
+                  <span>Município</span>
+                  <span className="wr-col-hide-sm">Instituto</span>
+                  <span>Entrega</span>
+                  <span className="text-right">Status</span>
+                </li>
+                {andamentoList.map((row) => {
+                  const status = row.status ?? 'planejada'
                   return (
-                    <tr
-                      key={row.id}
-                      className={cn(
-                        'border-b border-[#f3f1ec] last:border-0',
-                        changedSet.has(row.id) && 'wr-row--changed',
-                      )}
+                    <li
+                      key={`${row.cidade}-${row.instituto}-${row.termino}`}
+                      className="wr-pesquisas-clean__row wr-pesquisas-clean__row--andamento"
+                      title={`${row.cidade} · ${row.instituto} · ${ANDAMENTO_STATUS_LABEL[status]}`}
                     >
-                      <td className={cn(tdClass, 'max-w-[88px] truncate font-medium text-[#1c1917]')}>
-                        {row.cidade}
-                      </td>
-                      <td className={cn(tdClass, 'max-w-[100px] truncate text-[#78716c]')}>
+                      <span className="wr-pesquisas-clean__city truncate">{row.cidade}</span>
+                      <span className="wr-pesquisas-clean__meta truncate wr-col-hide-sm">
                         {row.instituto}
-                      </td>
-                      <td className={cn(tdClass, 'tabular-nums text-[#78716c]')}>
-                        {row.dataLabel}
-                      </td>
-                      <td className={cn(tdClass, 'text-[#78716c]')} title={row.cenario}>
-                        {row.cenario === 'Estimulada' ? 'Est.' : 'Esp.'}
-                      </td>
-                      <td
+                      </span>
+                      <span className="wr-pesquisas-clean__meta tabular-nums">
+                        {row.entrega}
+                      </span>
+                      <span
                         className={cn(
-                          tdClass,
-                          'text-right tabular-nums font-semibold',
-                          jadyelNaFrente
-                            ? 'wr-pesquisa-cell--lider text-[var(--wr-blue)]'
-                            : 'text-[#1c1917]',
+                          'wr-pesquisas-clean__status',
+                          `wr-pesquisas-clean__status--${status}`,
                         )}
                       >
-                        {row.jadyelPct != null ? formatPct1(row.jadyelPct) : '—'}
-                      </td>
-                      <td
-                        className={cn(tdClass, 'text-right tabular-nums font-semibold text-[#1c1917]')}
-                        title={row.liderNome}
-                      >
-                        {formatPct1(row.liderPct)}
-                      </td>
-                      <td
-                        className={cn(
-                          tdClass,
-                          'pr-0 text-right tabular-nums font-semibold',
-                          row.diferencaPp == null
-                            ? 'text-[#78716c]'
-                            : row.diferencaPp < 0
-                              ? 'text-[#dc2626]'
-                              : 'text-[var(--wr-blue)]',
-                        )}
-                      >
-                        {row.diferencaPp != null ? formatDiffPp(row.diferencaPp) : '—'}
-                      </td>
-                    </tr>
+                        {ANDAMENTO_STATUS_LABEL[status]}
+                      </span>
+                    </li>
                   )
                 })}
-              </tbody>
-            </table>
-          </div>
-          <div className="mt-1.5 flex shrink-0 items-center justify-between gap-2">
-            <p
-              className={cn(
-                'min-w-0 truncate text-[11px]',
-                error ? 'text-[#dc2626]' : 'text-[#a8a29e]',
-              )}
-            >
-              {error ?? `${rows.length} onda(s) · foco ${candidato}`}
-            </p>
-            <MiniPager
-              page={page}
-              total={rows.length}
-              pageSize={PAGE_SIZE_CONSOLIDADAS}
-              onChange={setPage}
-            />
-          </div>
+              </ul>
+            </>
+          ) : null}
+
+          {showFinalizadas && finalizadasList.length > 0 ? (
+            <>
+              <p className="wr-pesquisas-clean__section">Últimas pesquisas</p>
+              <ul className="wr-pesquisas-clean__list" aria-label="Pesquisas finalizadas">
+                <li className="wr-pesquisas-clean__row wr-pesquisas-clean__row--head" aria-hidden>
+                  <span>Município</span>
+                  <span className="wr-col-hide-sm">Instituto</span>
+                  <span>Data</span>
+                  <span className="text-right">%</span>
+                  <span className="text-right">Pos.</span>
+                </li>
+                {finalizadasList.map((row) => (
+                  <li
+                    key={row.id}
+                    role="button"
+                    tabIndex={0}
+                    className={cn(
+                      'wr-pesquisas-clean__row wr-pesquisas-clean__row--clickable',
+                      changedSet.has(row.id) && 'wr-row--changed',
+                    )}
+                    title={`${row.cidade} · ${formatPosicao(row.jadyelPosicao)} · ${row.instituto} · ${row.dataLabel} · ${row.cenario} · duplo clique para ver ranking`}
+                    onDoubleClick={() => setRankingModal(row)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') setRankingModal(row)
+                    }}
+                  >
+                    <span className="wr-pesquisas-clean__city truncate">{row.cidade}</span>
+                    <span className="wr-pesquisas-clean__meta truncate wr-col-hide-sm">
+                      {row.instituto}
+                    </span>
+                    <span className="wr-pesquisas-clean__meta tabular-nums">{row.dataLabel}</span>
+                    <span className="wr-pesquisas-clean__pct tabular-nums">
+                      {row.jadyelPct != null ? formatPct0(row.jadyelPct) : '—'}
+                    </span>
+                    <span className="wr-pesquisas-clean__pos tabular-nums">
+                      {formatPosicao(row.jadyelPosicao)}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </>
+          ) : null}
         </>
       )}
-    </CardShell>
-  )
-}
 
-/** Card 2 do bloco 2 — pesquisas em andamento (mock). */
-export function WarRoomPesquisasAndamentoCard({ className }: { className?: string }) {
-  const [page, setPage] = useState(0)
-  const total = WAR_ROOM_PESQUISAS_ANDAMENTO.length
-  const pageRows = useMemo(() => {
-    const start = page * PAGE_SIZE_ANDAMENTO
-    return WAR_ROOM_PESQUISAS_ANDAMENTO.slice(start, start + PAGE_SIZE_ANDAMENTO)
-  }, [page])
+      <Link href="/dashboard/pesquisa" className="wr-pesquisas-clean__footer">
+        <span>Ver todas as pesquisas</span>
+        <IconChevronRight className="h-4 w-4" stroke={1.75} aria-hidden />
+      </Link>
 
-  useEffect(() => {
-    const max = pageCount(total, PAGE_SIZE_ANDAMENTO) - 1
-    if (page > max) setPage(Math.max(0, max))
-  }, [page, total])
-
-  return (
-    <CardShell className={cn('h-auto', className)} aria-label="Pesquisas em andamento">
-      <CardHead
-        title="Pesquisas em andamento"
-        href="/dashboard/pesquisa"
-        linkLabel="Ver todas"
-        icon={IconClipboardList}
-      />
-      <div className="wr-andamento-table min-h-0 shrink overflow-x-auto">
-        <table className="w-full min-w-[260px] text-left">
-          <thead>
-            <tr className="border-b border-[#ebe8e4]">
-              <th className={cn(thClass, 'text-left')}>Cidade</th>
-              <th className={cn(thClass, 'text-left')}>Instituto</th>
-              <th className={cn(thClass, 'text-right')}>Término</th>
-              <th className={cn(thClass, 'pr-0 text-right')}>Entrega</th>
-            </tr>
-          </thead>
-          <tbody>
-            {pageRows.map((row) => (
-              <tr
-                key={`${row.cidade}-${row.instituto}-${row.termino}`}
-                className="wr-andamento-table__row border-b border-[#f3f1ec] last:border-0"
-              >
-                <td className={cn(tdClass, 'font-medium text-[#1c1917]')}>{row.cidade}</td>
-                <td className={cn(tdClass, 'text-[#78716c]')}>{row.instituto}</td>
-                <td className={cn(tdClass, 'text-right tabular-nums text-[#78716c]')}>
-                  {row.termino}
-                </td>
-                <td className={cn(tdClass, 'pr-0 text-right tabular-nums text-[#78716c]')}>
-                  {row.entrega}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-      <MiniPager
-        className="mt-1.5"
-        page={page}
-        total={total}
-        pageSize={PAGE_SIZE_ANDAMENTO}
-        onChange={setPage}
-      />
-    </CardShell>
+      {rankingModal ? (
+        <WarRoomPesquisaRankingModal
+          pesquisa={rankingModal}
+          onClose={() => setRankingModal(null)}
+        />
+      ) : null}
+    </section>
   )
 }

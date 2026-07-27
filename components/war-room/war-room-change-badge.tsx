@@ -16,7 +16,7 @@ export function WarRoomChangeBadge({ change, className }: Props) {
     <span
       className={cn(
         'inline-flex max-w-[9.5rem] items-center gap-1 truncate rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide',
-        'bg-[var(--wr-yellow-tint,#fff4cc)] text-[var(--wr-ochre,#b87400)]',
+        'bg-[var(--wr-orange-tint)] text-[var(--wr-orange)]',
         className,
       )}
       title={change.summary}
