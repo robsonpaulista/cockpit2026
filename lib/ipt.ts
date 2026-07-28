@@ -93,6 +93,8 @@ export type IptMunicipio = {
   pesoExpectativaPct: number
   /** Quantidade de lideranças mapeadas no município. */
   liderancas: number
+  /** Data ISO da última visita de campo (quando conhecida). */
+  ultimaVisita?: string | null
   sinais: {
     visitas: IptSinal
     obras: IptSinal

@@ -40,6 +40,7 @@ type PrioridadeRow = {
   eleitorado?: number
   visitas: number
   liderancas?: number
+  ultimaVisita?: string | null
 }
 
 type ObrasAgg = { count: number; valorTotal: number }
@@ -347,8 +348,13 @@ export function useIpt() {
       }
 
       setPresencaDigitalCobertura(cobertura)
-      setMunicipios(comDigital)
-      setResumo(calcularIptResumo(comDigital))
+      const comUltimaVisita = comDigital.map((m) => {
+        const key = normalizeIptMunicipio(m.municipio)
+        const ultima = prioridadeMap.get(key)?.ultimaVisita ?? null
+        return { ...m, ultimaVisita: ultima }
+      })
+      setMunicipios(comUltimaVisita)
+      setResumo(calcularIptResumo(comUltimaVisita))
       setConexaoInstavel(instavel)
       if (silent) setError('')
     } catch (e) {

@@ -19,6 +19,10 @@ import {
   type ObraMapaTemaFiltro,
   type ObraMapaVisao,
 } from '@/lib/obras-mapa'
+import {
+  demandasToObrasMapa,
+  type CampoDemandaObraRow,
+} from '@/lib/campo-demandas-obras'
 import { MapaObrasKpiStrip } from '@/components/territorio-campo/mapa-obras-kpi-strip'
 import { MapaObrasListaStatus } from '@/components/territorio-campo/mapa-obras-lista-status'
 import { MapaObrasSplash } from '@/components/territorio-campo/mapa-obras-splash'
@@ -88,16 +92,16 @@ export function MapaObrasPanel() {
     setLoading(true)
     setError('')
     try {
-      const res = await fetch('/api/obras/mapa?escopo=mapa', { cache: 'no-store' })
-      const json = (await res.json()) as { obras?: ObraMapaRow[]; error?: string; retryable?: boolean }
+      const res = await fetch('/api/campo/demands', { cache: 'no-store' })
+      const json = (await res.json()) as CampoDemandaObraRow[] | { error?: string }
       if (!res.ok) {
-        if (json.retryable) {
-          setError('Conexão instável com o Supabase. Tente atualizar em instantes.')
-          return
-        }
-        throw new Error(json.error ?? 'Falha ao carregar obras.')
+        const msg =
+          json && typeof json === 'object' && 'error' in json
+            ? json.error
+            : 'Falha ao carregar obras da planilha de demandas.'
+        throw new Error(msg || 'Falha ao carregar obras da planilha de demandas.')
       }
-      setObras(json.obras ?? [])
+      setObras(demandasToObrasMapa(Array.isArray(json) ? json : []))
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Erro ao carregar obras.')
       setObras([])
@@ -314,7 +318,7 @@ export function MapaObrasPanel() {
       </div>
 
       {visaoPainel === 'lista' ? (
-        <MapaObrasListaStatus onStatusSalvo={() => void carregar()} />
+        <MapaObrasListaStatus obras={obras} onStatusSalvo={() => void carregar()} />
       ) : (
         <>
       <section>

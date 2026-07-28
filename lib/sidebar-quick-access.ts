@@ -1,15 +1,8 @@
-import { TERRITORIO_CAMPO_TAB_BASE, territorioCampoHref } from '@/lib/territorio-campo-route'
-
 export type SidebarQuickAccessItem = {
   id: string
   label: string
   href: string
-  icon:
-    | 'MapPin'
-    | 'BarChart3'
-    | 'FolderOpen'
-    | 'FileSpreadsheet'
-    | 'ScrollText'
+  icon: 'FolderOpen' | 'FileSpreadsheet' | 'ScrollText'
   pageKey: string
 }
 
@@ -23,25 +16,11 @@ export const SIDEBAR_QUICK_ACCESS_ITEMS: SidebarQuickAccessItem[] = [
     pageKey: 'arquivos',
   },
   {
-    id: 'quick-base-eleitoral',
-    label: 'Base Eleitoral',
-    href: territorioCampoHref(TERRITORIO_CAMPO_TAB_BASE),
-    icon: 'MapPin',
-    pageKey: 'territorio',
-  },
-  {
     id: 'quick-emendas',
     label: 'Emendas',
     href: '/dashboard/emendas',
     icon: 'FileSpreadsheet',
     pageKey: 'emendas',
-  },
-  {
-    id: 'quick-pesquisas-opiniao',
-    label: 'Pesquisas de Opinião',
-    href: '/dashboard/pesquisa',
-    icon: 'BarChart3',
-    pageKey: 'pesquisa',
   },
   {
     id: 'quick-proposicoes',
@@ -57,13 +36,9 @@ export function isSidebarQuickAccessActive(
   pathname: string,
   search: string,
 ): boolean {
-  const params = new URLSearchParams(search)
+  void search
 
   switch (item.id) {
-    case 'quick-base-eleitoral':
-      return pathname.startsWith('/dashboard/territorio') && params.get('tab') === TERRITORIO_CAMPO_TAB_BASE
-    case 'quick-pesquisas-opiniao':
-      return pathname.startsWith('/dashboard/pesquisa')
     case 'quick-arquivos':
       return pathname.startsWith('/dashboard/arquivos')
     case 'quick-emendas':

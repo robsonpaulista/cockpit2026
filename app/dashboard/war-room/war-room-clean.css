@@ -692,7 +692,7 @@ body[data-war-room-clean] [data-sidebar-mobile-toggle='true'] {
   gap: 0;
   margin-bottom: var(--wr-gap);
   border: 1px solid color-mix(in srgb, var(--wr-slate) 10%, var(--wr-mist));
-  border-radius: 14px;
+  border-radius: 10px;
   background: var(--wr-white);
   box-shadow: 0 1px 2px color-mix(in srgb, var(--wr-black) 3%, transparent);
   overflow: hidden;
@@ -702,9 +702,9 @@ body[data-war-room-clean] [data-sidebar-mobile-toggle='true'] {
   display: flex;
   flex-direction: column;
   justify-content: center;
-  gap: 6px;
+  gap: 2px;
   min-width: 0;
-  padding: 12px 14px;
+  padding: 6px 12px;
   border-right: 1px solid color-mix(in srgb, var(--wr-slate) 10%, var(--wr-mist));
   background: transparent;
   text-align: left;
@@ -728,9 +728,9 @@ body[data-war-room-clean] [data-sidebar-mobile-toggle='true'] {
 }
 
 .wr-status-bar__label {
-  font-size: 10px;
+  font-size: 9px;
   font-weight: 600;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.05em;
   text-transform: uppercase;
   color: color-mix(in srgb, var(--wr-slate) 55%, var(--wr-mist));
 }
@@ -738,26 +738,26 @@ body[data-war-room-clean] [data-sidebar-mobile-toggle='true'] {
 .wr-status-bar__value {
   display: inline-flex;
   align-items: center;
-  gap: 7px;
+  gap: 5px;
   min-width: 0;
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 700;
-  line-height: 1.2;
+  line-height: 1.15;
   color: var(--wr-black);
 }
 
 .wr-status-bar__dot {
-  width: 8px;
-  height: 8px;
+  width: 6px;
+  height: 6px;
   border-radius: 999px;
   background: var(--wr-gold);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--wr-gold) 22%, transparent);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--wr-gold) 22%, transparent);
   flex-shrink: 0;
 }
 
 .wr-status-bar__icon {
-  width: 15px;
-  height: 15px;
+  width: 13px;
+  height: 13px;
   flex-shrink: 0;
   color: var(--wr-slate);
 }
@@ -770,9 +770,9 @@ body[data-war-room-clean] [data-sidebar-mobile-toggle='true'] {
   display: inline-flex;
   align-items: center;
   width: fit-content;
-  padding: 3px 10px;
-  border-radius: 8px;
-  font-size: 11px;
+  padding: 1px 8px;
+  border-radius: 6px;
+  font-size: 10px;
   font-weight: 700;
   letter-spacing: 0.04em;
   text-transform: uppercase;
@@ -5998,4 +5998,225 @@ body[data-war-room-clean] .wr-ipt-universo .ipt-bloco-lista__row--active {
 
 .wr-decisoes-modal__chevron {
   color: color-mix(in srgb, var(--wr-slate) 45%, var(--wr-mist));
+}
+
+/* Modal ranking completo — Expectativa de votos */
+.wr-expectativa-ranking-modal__panel {
+  width: min(100%, 1080px);
+  max-height: min(92vh, 820px);
+}
+
+.wr-expectativa-ranking-modal__toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 8px 16px 10px;
+  border-bottom: 1px solid color-mix(in srgb, var(--wr-slate) 8%, var(--wr-mist));
+}
+
+.wr-expectativa-ranking-modal__search {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  flex: 1;
+  max-width: 280px;
+  padding: 6px 10px;
+  border: 1px solid color-mix(in srgb, var(--wr-slate) 12%, var(--wr-mist));
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--wr-mist) 40%, var(--wr-white));
+  color: color-mix(in srgb, var(--wr-slate) 55%, var(--wr-mist));
+}
+
+.wr-expectativa-ranking-modal__search input {
+  width: 100%;
+  min-width: 0;
+  border: 0;
+  background: transparent;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--wr-black);
+  outline: none;
+}
+
+.wr-expectativa-ranking-modal__export {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.wr-expectativa-ranking-modal__export-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-right: 2px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--wr-slate) 55%, var(--wr-mist));
+}
+
+.wr-expectativa-ranking-modal__export-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 5px 8px;
+  border: 1px solid color-mix(in srgb, var(--wr-slate) 12%, var(--wr-mist));
+  border-radius: 7px;
+  background: var(--wr-white);
+  font: inherit;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--wr-slate);
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.wr-expectativa-ranking-modal__export-btn:hover:not(:disabled) {
+  color: var(--wr-black);
+  background: color-mix(in srgb, var(--wr-mist) 40%, var(--wr-white));
+}
+
+.wr-expectativa-ranking-modal__export-btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.wr-expectativa-ranking-modal__count {
+  font-size: 11px;
+  font-weight: 600;
+  color: color-mix(in srgb, var(--wr-slate) 60%, var(--wr-mist));
+  margin-left: auto;
+}
+
+.wr-expectativa-ranking-modal__filtros {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 0 16px 10px;
+}
+
+.wr-expectativa-ranking-modal__filtro-grupo {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 3px;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--wr-mist) 55%, var(--wr-white));
+}
+
+.wr-expectativa-ranking-modal__filtro {
+  appearance: none;
+  border: 0;
+  margin: 0;
+  padding: 5px 9px;
+  border-radius: 7px;
+  background: transparent;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 600;
+  color: color-mix(in srgb, var(--wr-slate) 65%, var(--wr-mist));
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.wr-expectativa-ranking-modal__filtro:hover {
+  color: var(--wr-black);
+}
+
+.wr-expectativa-ranking-modal__filtro--ativo {
+  background: var(--wr-white);
+  color: var(--wr-black);
+  box-shadow: 0 1px 2px color-mix(in srgb, var(--wr-black) 6%, transparent);
+}
+
+.wr-expectativa-ranking-modal__table-wrap {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding-bottom: 8px;
+}
+
+.wr-expectativa-ranking-modal__table {
+  width: 100%;
+  min-width: 920px;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+.wr-expectativa-ranking-modal__table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  padding: 8px 10px;
+  border-bottom: 1px solid color-mix(in srgb, var(--wr-slate) 10%, var(--wr-mist));
+  background: color-mix(in srgb, var(--wr-white) 94%, transparent);
+  backdrop-filter: blur(6px);
+  text-align: left;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--wr-slate) 55%, var(--wr-mist));
+  white-space: nowrap;
+}
+
+.wr-expectativa-ranking-modal__table tbody td {
+  padding: 7px 10px;
+  border-bottom: 1px solid color-mix(in srgb, var(--wr-slate) 7%, var(--wr-mist));
+  color: color-mix(in srgb, var(--wr-slate) 78%, var(--wr-mist));
+  white-space: nowrap;
+}
+
+.wr-expectativa-ranking-modal__table tbody tr:hover td {
+  background: color-mix(in srgb, var(--wr-mist) 35%, var(--wr-white));
+}
+
+.wr-expectativa-ranking-modal__cidade {
+  font-weight: 700;
+  color: var(--wr-black) !important;
+}
+
+.wr-expectativa-ranking-modal__num {
+  text-align: right;
+}
+
+.wr-expectativa-ranking-modal__flag {
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 7px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.wr-expectativa-ranking-modal__flag--sim {
+  background: color-mix(in srgb, var(--wr-positive) 16%, var(--wr-white));
+  color: var(--wr-positive);
+}
+
+.wr-expectativa-ranking-modal__flag--nao {
+  background: color-mix(in srgb, var(--wr-mist) 55%, var(--wr-white));
+  color: color-mix(in srgb, var(--wr-slate) 55%, var(--wr-mist));
+}
+
+.wr-expectativa-ranking-modal__totais td {
+  position: sticky;
+  bottom: 0;
+  z-index: 1;
+  padding-top: 10px;
+  padding-bottom: 10px;
+  border-top: 1px solid color-mix(in srgb, var(--wr-slate) 14%, var(--wr-mist));
+  border-bottom: 0;
+  background: color-mix(in srgb, var(--wr-mist) 45%, var(--wr-white));
+  font-weight: 700;
+  color: var(--wr-black);
 }

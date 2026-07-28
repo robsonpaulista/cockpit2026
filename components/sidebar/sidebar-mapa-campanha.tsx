@@ -16,12 +16,16 @@ import {
   RESUMO_ELEICOES_TAB_ATENDIMENTO,
   resumoEleicoesHubHref,
 } from '@/lib/resumo-eleicoes-hub-route'
+import {
+  TERRITORIO_CAMPO_TAB_PANORAMA,
+  territorioCampoHref,
+} from '@/lib/territorio-campo-route'
 
 type CampanhaLink = {
   id: string
   href: string
   label: string
-  icon: 'Activity' | 'MapPin' | 'Target' | 'Radar' | 'ClipboardList' | 'MessageSquare' | 'Package'
+  icon: 'Activity' | 'MapPin' | 'Target' | 'Radar' | 'ClipboardList' | 'MessageSquare' | 'Package' | 'BarChart3'
   pageKeys: string[]
 }
 
@@ -39,6 +43,20 @@ const CAMPANHA_LINKS: CampanhaLink[] = [
     label: 'Diagnóstico Operacional',
     icon: 'MapPin',
     pageKeys: ['ipt', 'territorio', 'campo', 'agenda'],
+  },
+  {
+    id: 'base-eleitoral',
+    href: territorioCampoHref(TERRITORIO_CAMPO_TAB_PANORAMA),
+    label: 'Base Eleitoral',
+    icon: 'MapPin',
+    pageKeys: ['territorio', 'campo', 'agenda'],
+  },
+  {
+    id: 'pesquisas-opiniao',
+    href: '/dashboard/pesquisa',
+    label: 'Pesquisas de Opinião',
+    icon: 'BarChart3',
+    pageKeys: ['pesquisa'],
   },
   {
     id: 'fluxo-digital',
@@ -80,6 +98,18 @@ const CAMPANHA_LINKS: CampanhaLink[] = [
 function isCampanhaLinkActive(link: CampanhaLink, pathname: string, search: string): boolean {
   if (link.id === 'war-room') {
     return pathname.startsWith('/dashboard/war-room')
+  }
+  if (link.id === 'diagnostico') {
+    return pathname.startsWith('/dashboard/territorio/ipt')
+  }
+  if (link.id === 'base-eleitoral') {
+    return (
+      pathname.startsWith('/dashboard/territorio') &&
+      !pathname.startsWith('/dashboard/territorio/ipt')
+    )
+  }
+  if (link.id === 'pesquisas-opiniao') {
+    return pathname.startsWith('/dashboard/pesquisa')
   }
   if (link.id === 'radar-eleitoral') {
     return pathname.startsWith('/dashboard/noticias')

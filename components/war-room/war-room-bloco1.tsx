@@ -1,7 +1,6 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import Link from 'next/link'
 import {
   IconCalendarEvent,
   IconChevronRight,
@@ -27,6 +26,7 @@ import { normalizeIptMunicipio, type IptMunicipio } from '@/lib/ipt'
 import { type CalendarEventRow } from '@/lib/agenda/calendar-event-utils'
 import { formatWarRoomNumber } from '@/lib/war-room/format'
 import { WarRoomUltimaVisitaModal } from '@/components/war-room/war-room-ultima-visita-modal'
+import { WarRoomExpectativaRankingModal } from '@/components/war-room/war-room-expectativa-ranking-modal'
 import {
   WarRoomAgendaProximosModal,
 } from '@/components/war-room/war-room-agenda-proximos-modal'
@@ -188,6 +188,7 @@ export function WarRoomExpectativaCard({ className }: Props) {
   const [page, setPage] = useState(0)
   const [visitaModalMunicipio, setVisitaModalMunicipio] = useState<string | null>(null)
   const [agendaModalMunicipio, setAgendaModalMunicipio] = useState<string | null>(null)
+  const [rankingModalOpen, setRankingModalOpen] = useState(false)
   const [agendaPorMunicipio, setAgendaPorMunicipio] = useState<
     Map<string, WarRoomAgendaProximoItem[]>
   >(() => new Map())
@@ -381,14 +382,27 @@ export function WarRoomExpectativaCard({ className }: Props) {
           onChange={setPage}
           className="wr-expectativa-clean__pager"
         />
-        <Link href="/dashboard/territorio/ipt" className="wr-decisoes-fila__footer wr-expectativa-clean__footer-link">
+        <button
+          type="button"
+          className="wr-decisoes-fila__footer wr-expectativa-clean__footer-link"
+          onClick={() => setRankingModalOpen(true)}
+          disabled={universo.length === 0}
+        >
           <span>
             Ver ranking completo
             {universo.length > 0 ? ` (${universo.length})` : ''}
           </span>
           <IconChevronRight className="h-4 w-4" stroke={1.75} aria-hidden />
-        </Link>
+        </button>
       </div>
+
+      {rankingModalOpen ? (
+        <WarRoomExpectativaRankingModal
+          municipios={universo}
+          agendaPorMunicipio={agendaPorMunicipio}
+          onClose={() => setRankingModalOpen(false)}
+        />
+      ) : null}
 
       {visitaModalMunicipio ? (
         <WarRoomUltimaVisitaModal

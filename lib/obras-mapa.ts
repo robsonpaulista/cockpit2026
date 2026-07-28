@@ -78,7 +78,7 @@ export const OBRA_MAPA_TEMAS: ObraMapaTemaConfig[] = [
     label: 'Outros',
     titulo: 'Mapa de Obras · Outros',
     descricao:
-      'Demais obras da planilha Jadyel (praças, estradas vicinais, cofinanciamentos e outras entregas por município).',
+      'Demais obras da planilha de Demandas (praças, estradas vicinais, cofinanciamentos e outras entregas por município).',
     kpiEscopo: 'municípios com outras obras',
     kpiTipo: 'Obras diversas do mandato',
   },
@@ -317,11 +317,11 @@ export function classificarObraFase(status: string | null | undefined): ObraFase
   const s = normalizeObraText(status ?? '')
   if (!s) return 'a_iniciar'
 
-  if (/conclu|finaliz|executad|encerrad|concluida/.test(s)) return 'finalizada'
-  if (/andamento|execu|em curso|o\.?s\.?\s*public|publicada|medicao|medicao|em exec/.test(s)) {
+  if (/conclu|finaliz|executad|encerrad|concluida|resolvid/.test(s)) return 'finalizada'
+  if (/andamento|execu|em curso|o\.?s\.?\s*public|publicada|medicao|medicao|em exec|encaminhad/.test(s)) {
     return 'em_andamento'
   }
-  if (/aguard|a iniciar|planej|licit|orcament|paralis|nao inici|não inici|em projeto/.test(s)) {
+  if (/aguard|a iniciar|planej|licit|orcament|paralis|nao inici|não inici|em projeto|nova|pendente/.test(s)) {
     return 'a_iniciar'
   }
 
