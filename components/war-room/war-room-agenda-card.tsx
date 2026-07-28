@@ -1,12 +1,18 @@
 'use client'
 
-import { useMemo, type ReactNode } from 'react'
+import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import Link from 'next/link'
 import { IconCheck, IconChevronRight, IconLoader2 } from '@tabler/icons-react'
+import {
+  WarRoomMiniPager,
+  warRoomPageCount,
+} from '@/components/war-room/war-room-mini-pager'
 import type { WarRoomAgendaItem } from '@/lib/war-room/mock-data'
 import { cn } from '@/lib/utils'
 
 export type AgendaLiveStatus = 'concluido' | 'ao_vivo' | 'proximo'
+
+const PAGE_SIZE = 4
 
 export function parseAgendaMinutes(horario: string): number | null {
   const match = /^(\d{1,2}):(\d{2})/.exec(horario.trim())
@@ -66,23 +72,21 @@ export function resolveAgendaLiveStatus(
 
 function AgendaTimeline({
   items,
+  allItems,
   nowMinutes,
 }: {
   items: WarRoomAgendaItem[]
+  allItems: WarRoomAgendaItem[]
   nowMinutes: number
 }) {
   const statuses = useMemo(
-    () => resolveAgendaLiveStatus(items, nowMinutes),
-    [items, nowMinutes],
-  )
-  const sorted = useMemo(
-    () => [...items].sort((a, b) => a.horario.localeCompare(b.horario, 'pt-BR')),
-    [items],
+    () => resolveAgendaLiveStatus(allItems, nowMinutes),
+    [allItems, nowMinutes],
   )
 
   return (
     <ol className="wr-agenda-dia__list" aria-label="Linha do tempo da agenda do dia">
-      {sorted.map((item) => {
+      {items.map((item) => {
         const status = statuses.get(item.id) ?? 'proximo'
         return (
           <li
@@ -135,6 +139,23 @@ export function WarRoomAgendaCard({
   badge,
   className,
 }: Props) {
+  const [page, setPage] = useState(0)
+
+  const sorted = useMemo(
+    () => [...items].sort((a, b) => a.horario.localeCompare(b.horario, 'pt-BR')),
+    [items],
+  )
+
+  useEffect(() => {
+    const pages = warRoomPageCount(sorted.length, PAGE_SIZE)
+    if (page > pages - 1) setPage(Math.max(0, pages - 1))
+  }, [page, sorted.length])
+
+  const pagina = useMemo(() => {
+    const start = page * PAGE_SIZE
+    return sorted.slice(start, start + PAGE_SIZE)
+  }, [page, sorted])
+
   return (
     <section
       id="wr-agenda"
@@ -144,7 +165,11 @@ export function WarRoomAgendaCard({
       <header className="wr-agenda-dia__header">
         <div>
           <h2 className="wr-agenda-dia__heading">Agenda do dia</h2>
-          <p className="wr-agenda-dia__sub">Compromissos de hoje</p>
+          <p className="wr-agenda-dia__sub">
+            {sorted.length > 0
+              ? `Compromissos de hoje · ${PAGE_SIZE} por página`
+              : 'Compromissos de hoje'}
+          </p>
         </div>
         {badge}
       </header>
@@ -156,17 +181,26 @@ export function WarRoomAgendaCard({
           </div>
         ) : error ? (
           <p className="wr-agenda-dia__state wr-agenda-dia__state--error">{error}</p>
-        ) : items.length === 0 ? (
+        ) : sorted.length === 0 ? (
           <p className="wr-agenda-dia__state">Nenhum compromisso para hoje.</p>
         ) : (
-          <AgendaTimeline items={items} nowMinutes={nowMinutes} />
+          <AgendaTimeline items={pagina} allItems={sorted} nowMinutes={nowMinutes} />
         )}
       </div>
 
-      <Link href="/dashboard/agenda" className="wr-agenda-dia__footer">
-        <span>Ver agenda completa</span>
-        <IconChevronRight className="h-4 w-4" stroke={1.75} aria-hidden />
-      </Link>
+      <div className="wr-agenda-dia__footer-bar">
+        <WarRoomMiniPager
+          page={page}
+          total={sorted.length}
+          pageSize={PAGE_SIZE}
+          onChange={setPage}
+          className="wr-agenda-dia__pager"
+        />
+        <Link href="/dashboard/agenda" className="wr-agenda-dia__footer">
+          <span>Ver agenda completa</span>
+          <IconChevronRight className="h-4 w-4" stroke={1.75} aria-hidden />
+        </Link>
+      </div>
     </section>
   )
 }

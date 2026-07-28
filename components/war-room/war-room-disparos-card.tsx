@@ -30,7 +30,7 @@ export function WarRoomDisparosCard({ className }: Props) {
       </header>
 
       <ul className="wr-disparos-clean__list" aria-label="Últimos disparos">
-        {WAR_ROOM_DISPAROS.slice(0, 8).map((row) => (
+        {WAR_ROOM_DISPAROS.slice(0, 6).map((row) => (
           <li
             key={row.campanha}
             className="wr-disparos-clean__row"

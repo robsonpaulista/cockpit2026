@@ -16,6 +16,10 @@ import {
   useWarRoomRefresh,
 } from '@/components/war-room/war-room-refresh-context'
 import { useWarRoomSnapshot } from '@/components/war-room/use-war-room-snapshot'
+import {
+  WarRoomMiniPager,
+  warRoomPageCount,
+} from '@/components/war-room/war-room-mini-pager'
 import type {
   WarRoomDecisao,
   WarRoomDecisaoIcone,
@@ -33,7 +37,7 @@ import { filtrarMunicipiosVisaoUniverso } from '@/lib/ipt-missoes'
 import type { CalendarEventRow } from '@/lib/agenda/calendar-event-utils'
 import { cn } from '@/lib/utils'
 
-const CARD_LIMIT = 5
+const PAGE_SIZE = 4
 
 const PRIORIDADE_LABEL: Record<WarRoomDecisaoPrioridade, string> = {
   critica: 'Crítica',
@@ -99,8 +103,8 @@ function DecisaoItem({
       </span>
 
       <div className="wr-decisoes-fila__body min-w-0 flex-1">
-        <p className="wr-decisoes-fila__title truncate">{decisao.problema}</p>
-        <p className="wr-decisoes-fila__meta truncate">
+        <p className="wr-decisoes-fila__title">{decisao.problema}</p>
+        <p className="wr-decisoes-fila__meta">
           Prioridade: {PRIORIDADE_LABEL[decisao.prioridade]}
           <span aria-hidden> • </span>
           {decisao.acao || decisao.categoria}
@@ -158,6 +162,7 @@ export function WarRoomDecisoesCard({ className, onTotalChange }: Props) {
   const [visitaItems, setVisitaItems] = useState<WarRoomDecisao[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [page, setPage] = useState(0)
 
   /** Mesmo universo do card Expectativa de votos (onde o ícone de agenda aparece). */
   const municipiosExpectativa = useMemo(() => {
@@ -201,7 +206,7 @@ export function WarRoomDecisoesCard({ className, onTotalChange }: Props) {
     }
     try {
       const res = await fetch(
-        `/api/war-room/decisoes?limit=${CARD_LIMIT}&status=pendente,em_andamento`,
+        `/api/war-room/decisoes?limit=50&status=pendente,em_andamento`,
         { cache: 'no-store' },
       )
       const json = (await res.json()) as ApiPayload
@@ -257,10 +262,20 @@ export function WarRoomDecisoesCard({ className, onTotalChange }: Props) {
     }
   }, [carregarVisitasFluxo])
 
+  const fila = useMemo(
+    () => [...visitaItems, ...apiItems].sort(sortFila),
+    [visitaItems, apiItems],
+  )
+
+  useEffect(() => {
+    const pages = warRoomPageCount(fila.length, PAGE_SIZE)
+    if (page > pages - 1) setPage(Math.max(0, pages - 1))
+  }, [fila.length, page])
+
   const items = useMemo(() => {
-    const merged = [...visitaItems, ...apiItems].sort(sortFila)
-    return merged.slice(0, CARD_LIMIT)
-  }, [visitaItems, apiItems])
+    const start = page * PAGE_SIZE
+    return fila.slice(start, start + PAGE_SIZE)
+  }, [fila, page])
 
   const total = visitaItems.length + apiTotal
 
@@ -270,18 +285,18 @@ export function WarRoomDecisoesCard({ className, onTotalChange }: Props) {
 
   const snapshotLines = useMemo(
     () =>
-      items.map(
+      fila.map(
         (d) =>
           `dec\t${d.id}\t${d.prioridade}\t${d.problema}\t${d.status ?? ''}`,
       ),
-    [items],
+    [fila],
   )
 
   useWarRoomSnapshot({
     cardId: 'decisoes',
-    lines: loading && items.length === 0 ? null : snapshotLines,
+    lines: loading && fila.length === 0 ? null : snapshotLines,
     noun: 'decisão',
-    ready: !loading || items.length > 0 || error != null,
+    ready: !loading || fila.length > 0 || error != null,
   })
 
   const onActivate = useCallback((decisao: WarRoomDecisao) => {
@@ -311,14 +326,14 @@ export function WarRoomDecisoesCard({ className, onTotalChange }: Props) {
         </p>
       </header>
 
-      {loading && items.length === 0 ? (
+      {loading && fila.length === 0 ? (
         <div className="wr-decisoes-fila__empty flex items-center justify-center gap-2">
           <IconLoader2 className="h-4 w-4 animate-spin" stroke={1.5} />
           Carregando…
         </div>
-      ) : error && items.length === 0 ? (
+      ) : error && fila.length === 0 ? (
         <p className="wr-decisoes-fila__empty text-[var(--wr-critical)]">{error}</p>
-      ) : items.length === 0 ? (
+      ) : fila.length === 0 ? (
         <p className="wr-decisoes-fila__empty">Nenhuma decisão pendente no momento.</p>
       ) : (
         <ul className="wr-decisoes-fila__list">
@@ -336,10 +351,19 @@ export function WarRoomDecisoesCard({ className, onTotalChange }: Props) {
         </ul>
       )}
 
-      <Link href="/dashboard/operacao" className="wr-decisoes-fila__footer">
-        <span>Ver todas ({total})</span>
-        <IconChevronRight className="h-4 w-4" stroke={1.75} aria-hidden />
-      </Link>
+      <div className="wr-decisoes-fila__footer-bar">
+        <WarRoomMiniPager
+          page={page}
+          total={fila.length}
+          pageSize={PAGE_SIZE}
+          onChange={setPage}
+          className="wr-decisoes-fila__pager"
+        />
+        <Link href="/dashboard/operacao" className="wr-decisoes-fila__footer">
+          <span>Ver todas ({total})</span>
+          <IconChevronRight className="h-4 w-4" stroke={1.75} aria-hidden />
+        </Link>
+      </div>
     </section>
   )
 }

@@ -5,6 +5,10 @@ import Link from 'next/link'
 import { IconChevronRight, IconLoader2, IconMapPin } from '@tabler/icons-react'
 import { WarRoomChangeBadge } from '@/components/war-room/war-room-change-badge'
 import {
+  WarRoomMiniPager,
+  warRoomPageCount,
+} from '@/components/war-room/war-room-mini-pager'
+import {
   useWarRoomCardChange,
   useWarRoomRefresh,
 } from '@/components/war-room/war-room-refresh-context'
@@ -13,7 +17,7 @@ import { formatWarRoomNumber } from '@/lib/war-room/format'
 import { cn } from '@/lib/utils'
 
 const LOOKBACK_DAYS = 7
-const LIST_VISIBLE = 6
+const PAGE_SIZE = 6
 
 type MunicipioVisitas = {
   municipio: string
@@ -50,6 +54,7 @@ export function WarRoomVisitasCidadeCard({ className }: Props) {
   const [totalVisitas, setTotalVisitas] = useState(0)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [page, setPage] = useState(0)
 
   const loadVisitas = useCallback(async (opts?: { silent?: boolean }) => {
     const silent = opts?.silent === true
@@ -121,8 +126,15 @@ export function WarRoomVisitasCidadeCard({ className }: Props) {
     })
   }, [register, loadVisitas])
 
-  const visibleRows = useMemo(() => rows.slice(0, LIST_VISIBLE), [rows])
-  const hiddenCount = Math.max(0, rows.length - LIST_VISIBLE)
+  useEffect(() => {
+    const pages = warRoomPageCount(rows.length, PAGE_SIZE)
+    if (page > pages - 1) setPage(Math.max(0, pages - 1))
+  }, [page, rows.length])
+
+  const pagina = useMemo(() => {
+    const start = page * PAGE_SIZE
+    return rows.slice(start, start + PAGE_SIZE)
+  }, [page, rows])
 
   const snapshotLines = useMemo(
     () => rows.map((r) => `${r.key}\t${r.visitas}\t${r.cidade}`),
@@ -172,44 +184,46 @@ export function WarRoomVisitasCidadeCard({ className }: Props) {
           Nenhuma visita nos últimos {LOOKBACK_DAYS} dias.
         </p>
       ) : (
-        <>
-          <ul className="wr-visitas-cidade__list" aria-label="Visitas por cidade">
-            <li className="wr-visitas-cidade__row wr-visitas-cidade__row--head" aria-hidden>
-              <span>Cidade</span>
-              <span className="text-right">Visitas</span>
+        <ul className="wr-visitas-cidade__list" aria-label="Visitas por cidade">
+          <li className="wr-visitas-cidade__row wr-visitas-cidade__row--head" aria-hidden>
+            <span>Cidade</span>
+            <span className="text-right">Visitas</span>
+          </li>
+          {pagina.map((row) => (
+            <li
+              key={row.key}
+              className="wr-visitas-cidade__row"
+              title={`${row.cidade} · ${formatWarRoomNumber(row.visitas)} visitas`}
+            >
+              <span className="wr-visitas-cidade__cidade truncate">
+                <IconMapPin
+                  className="h-3 w-3 shrink-0 opacity-60"
+                  stroke={1.75}
+                  aria-hidden
+                />
+                {row.cidade}
+              </span>
+              <span className="wr-visitas-cidade__count tabular-nums">
+                {formatWarRoomNumber(row.visitas)}
+              </span>
             </li>
-            {visibleRows.map((row) => (
-              <li
-                key={row.key}
-                className="wr-visitas-cidade__row"
-                title={`${row.cidade} · ${formatWarRoomNumber(row.visitas)} visitas`}
-              >
-                <span className="wr-visitas-cidade__cidade truncate">
-                  <IconMapPin
-                    className="h-3 w-3 shrink-0 opacity-60"
-                    stroke={1.75}
-                    aria-hidden
-                  />
-                  {row.cidade}
-                </span>
-                <span className="wr-visitas-cidade__count tabular-nums">
-                  {formatWarRoomNumber(row.visitas)}
-                </span>
-              </li>
-            ))}
-          </ul>
-          {hiddenCount > 0 ? (
-            <p className="wr-visitas-cidade__more">
-              +{hiddenCount} {hiddenCount === 1 ? 'cidade' : 'cidades'}
-            </p>
-          ) : null}
-        </>
+          ))}
+        </ul>
       )}
 
-      <Link href="/dashboard/campo" className="wr-visitas-cidade__footer">
-        <span>Abrir Campo</span>
-        <IconChevronRight className="h-4 w-4" stroke={1.75} aria-hidden />
-      </Link>
+      <div className="wr-visitas-cidade__footer-bar">
+        <WarRoomMiniPager
+          page={page}
+          total={rows.length}
+          pageSize={PAGE_SIZE}
+          onChange={setPage}
+          className="wr-visitas-cidade__pager"
+        />
+        <Link href="/dashboard/campo" className="wr-visitas-cidade__footer">
+          <span>Abrir Campo</span>
+          <IconChevronRight className="h-4 w-4" stroke={1.75} aria-hidden />
+        </Link>
+      </div>
     </section>
   )
 }

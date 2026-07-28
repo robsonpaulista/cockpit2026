@@ -1,5 +1,6 @@
 'use client'
 
+import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import {
   IconAlertTriangleFilled,
@@ -14,13 +15,17 @@ import {
   type Icon,
 } from '@tabler/icons-react'
 import {
+  WarRoomMiniPager,
+  warRoomPageCount,
+} from '@/components/war-room/war-room-mini-pager'
+import {
   WAR_ROOM_FEED,
   type WarRoomFeedItem,
   type WarRoomFeedTipo,
 } from '@/lib/war-room/mock-data'
 import { cn } from '@/lib/utils'
 
-const FEED_VISIBLE = 5
+const PAGE_SIZE = 4
 
 const FEED_ICON_BY_TIPO: Record<WarRoomFeedTipo, Icon> = {
   pesquisa: IconChartDots3,
@@ -62,8 +67,8 @@ function FeedItem({
         </span>
 
         <div className="wr-decisoes-fila__body min-w-0 flex-1">
-          <p className="wr-decisoes-fila__title truncate">{item.acao}</p>
-          <p className="wr-decisoes-fila__meta truncate">
+          <p className="wr-decisoes-fila__title">{item.acao}</p>
+          <p className="wr-decisoes-fila__meta">
             {item.responsavel ?? 'Sistema'}
             <span aria-hidden> • </span>
             {item.modulo}
@@ -84,8 +89,18 @@ type Props = {
 
 /** Linha viva — mesmo design clean da fila de decisões / alertas. */
 export function WarRoomFeedCard({ className }: Props) {
-  const visible = WAR_ROOM_FEED.slice(0, FEED_VISIBLE)
+  const [page, setPage] = useState(0)
   const total = WAR_ROOM_FEED.length
+
+  useEffect(() => {
+    const pages = warRoomPageCount(total, PAGE_SIZE)
+    if (page > pages - 1) setPage(Math.max(0, pages - 1))
+  }, [page, total])
+
+  const visible = useMemo(() => {
+    const start = page * PAGE_SIZE
+    return WAR_ROOM_FEED.slice(start, start + PAGE_SIZE)
+  }, [page])
 
   return (
     <section
@@ -103,15 +118,28 @@ export function WarRoomFeedCard({ className }: Props) {
       ) : (
         <ul className="wr-decisoes-fila__list" aria-label="Linha do tempo de eventos operacionais">
           {visible.map((item, index) => (
-            <FeedItem key={item.id} item={item} destaque={index === 0} />
+            <FeedItem
+              key={item.id}
+              item={item}
+              destaque={page === 0 && index === 0}
+            />
           ))}
         </ul>
       )}
 
-      <Link href="/dashboard/operacao" className="wr-decisoes-fila__footer">
-        <span>Ver todas ({total})</span>
-        <IconChevronRight className="h-4 w-4" stroke={1.75} aria-hidden />
-      </Link>
+      <div className="wr-decisoes-fila__footer-bar">
+        <WarRoomMiniPager
+          page={page}
+          total={total}
+          pageSize={PAGE_SIZE}
+          onChange={setPage}
+          className="wr-decisoes-fila__pager"
+        />
+        <Link href="/dashboard/operacao" className="wr-decisoes-fila__footer">
+          <span>Ver todas ({total})</span>
+          <IconChevronRight className="h-4 w-4" stroke={1.75} aria-hidden />
+        </Link>
+      </div>
     </section>
   )
 }

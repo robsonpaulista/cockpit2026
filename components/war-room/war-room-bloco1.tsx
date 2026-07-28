@@ -45,7 +45,7 @@ import { cn } from '@/lib/utils'
 type MetaFiltro = 'todos' | 'com' | 'sem'
 
 /** Ranking paginado — 10 municípios por página. */
-const PAGE_SIZE = 10
+const PAGE_SIZE = 8
 
 const META_FILTRO_OPCOES: Array<{ id: MetaFiltro; label: string }> = [
   { id: 'todos', label: 'Todos' },
