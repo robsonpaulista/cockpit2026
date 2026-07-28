@@ -1,0 +1,302 @@
+'use client'
+
+import { useEffect, useId, useMemo, useState } from 'react'
+import { createPortal } from 'react-dom'
+import {
+  IconAlertTriangleFilled,
+  IconChevronDown,
+  IconChevronRight,
+  IconFileText,
+  IconFlag,
+  IconInfoCircle,
+  IconListDetails,
+  IconMessageCircle,
+  IconX,
+  type Icon,
+} from '@tabler/icons-react'
+import type {
+  WarRoomDecisao,
+  WarRoomDecisaoIcone,
+  WarRoomDecisaoPrioridade,
+} from '@/lib/war-room/decisoes'
+import { cn } from '@/lib/utils'
+
+type Props = {
+  items: WarRoomDecisao[]
+  onClose: () => void
+  onActivate?: (decisao: WarRoomDecisao) => void
+}
+
+const PRIORIDADE_LABEL: Record<WarRoomDecisaoPrioridade, string> = {
+  critica: 'Crítica',
+  alta: 'Alta',
+  media: 'Média',
+  baixa: 'Baixa',
+  info: 'Info',
+}
+
+/** Ordem dos grupos = cards de origem na War Room. */
+const CATEGORIA_ORDER: string[] = [
+  'Visita agendada',
+  'Pesquisas',
+  'Notícias',
+  'Redes sociais',
+]
+
+const ICON_BY_TIPO: Record<WarRoomDecisaoIcone, Icon> = {
+  alerta: IconAlertTriangleFilled,
+  mensagem: IconMessageCircle,
+  bandeira: IconFlag,
+  documento: IconFileText,
+  info: IconInfoCircle,
+}
+
+type Grupo = {
+  categoria: string
+  items: WarRoomDecisao[]
+}
+
+function groupByCategoria(items: WarRoomDecisao[]): Grupo[] {
+  const map = new Map<string, WarRoomDecisao[]>()
+  for (const item of items) {
+    const key = item.categoria?.trim() || 'Outros'
+    const list = map.get(key)
+    if (list) list.push(item)
+    else map.set(key, [item])
+  }
+
+  const keys = [...map.keys()].sort((a, b) => {
+    const ia = CATEGORIA_ORDER.indexOf(a)
+    const ib = CATEGORIA_ORDER.indexOf(b)
+    const ra = ia === -1 ? 1000 : ia
+    const rb = ib === -1 ? 1000 : ib
+    if (ra !== rb) return ra - rb
+    return a.localeCompare(b, 'pt-BR')
+  })
+
+  return keys.map((categoria) => ({
+    categoria,
+    items: map.get(categoria) ?? [],
+  }))
+}
+
+/** Modal com todos os alertas da fila, agrupados pelo card de origem. */
+export function WarRoomDecisoesModal({ items, onClose, onActivate }: Props) {
+  const tituloId = useId()
+  const [mounted, setMounted] = useState(false)
+  const grupos = useMemo(() => groupByCategoria(items), [items])
+  /** Origens expandidas — inicia tudo recolhido. */
+  const [expanded, setExpanded] = useState<Set<string>>(() => new Set())
+
+  useEffect(() => {
+    setMounted(true)
+    const prev = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose()
+    }
+    window.addEventListener('keydown', onKey)
+    return () => {
+      document.body.style.overflow = prev
+      window.removeEventListener('keydown', onKey)
+    }
+  }, [onClose])
+
+  const toggleGrupo = (categoria: string) => {
+    setExpanded((prev) => {
+      const next = new Set(prev)
+      if (next.has(categoria)) next.delete(categoria)
+      else next.add(categoria)
+      return next
+    })
+  }
+
+  if (!mounted) return null
+
+  return createPortal(
+    <div className="wr-visita-modal" role="presentation">
+      <button
+        type="button"
+        className="wr-visita-modal__backdrop"
+        aria-label="Fechar"
+        onClick={onClose}
+      />
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={tituloId}
+        className="wr-visita-modal__panel wr-decisoes-modal__panel"
+      >
+        <header className="wr-visita-modal__head">
+          <div className="wr-visita-modal__head-main min-w-0">
+            <span className="wr-visita-modal__icon" aria-hidden>
+              <IconListDetails className="h-4 w-4" stroke={1.75} />
+            </span>
+            <div className="min-w-0">
+              <p className="wr-visita-modal__eyebrow">War Room · Alertas</p>
+              <h2 id={tituloId} className="wr-visita-modal__title truncate">
+                Fila de decisões ({items.length})
+              </h2>
+            </div>
+          </div>
+          <button
+            type="button"
+            className="wr-visita-modal__close"
+            aria-label="Fechar"
+            onClick={onClose}
+          >
+            <IconX className="h-4 w-4" stroke={1.75} />
+          </button>
+        </header>
+
+        <p className="wr-visita-modal__lead">
+          Todos os registros pendentes, agrupados pelo card de origem.
+        </p>
+
+        {items.length === 0 ? (
+          <p className="wr-visita-modal__state">Nenhuma decisão pendente no momento.</p>
+        ) : (
+          <div className="wr-decisoes-modal__body">
+            {grupos.map((grupo) => {
+              const aberto = expanded.has(grupo.categoria)
+              const panelId = `wr-decisoes-grupo-${grupo.categoria
+                .toLowerCase()
+                .normalize('NFD')
+                .replace(/[\u0300-\u036f]/g, '')
+                .replace(/[^a-z0-9]+/g, '-')
+                .replace(/^-|-$/g, '')}`
+
+              return (
+                <section
+                  key={grupo.categoria}
+                  className={cn(
+                    'wr-decisoes-modal__group',
+                    !aberto && 'wr-decisoes-modal__group--collapsed',
+                  )}
+                  aria-label={grupo.categoria}
+                >
+                  <button
+                    type="button"
+                    className="wr-decisoes-modal__group-head"
+                    aria-expanded={aberto}
+                    aria-controls={panelId}
+                    onClick={() => toggleGrupo(grupo.categoria)}
+                  >
+                    <IconChevronDown
+                      className={cn(
+                        'wr-decisoes-modal__group-chevron h-4 w-4 shrink-0',
+                        !aberto && 'wr-decisoes-modal__group-chevron--closed',
+                      )}
+                      stroke={1.75}
+                      aria-hidden
+                    />
+                    <h3 className="wr-decisoes-modal__group-title min-w-0 flex-1 text-left">
+                      {grupo.categoria}
+                    </h3>
+                    <span className="wr-decisoes-modal__group-count tabular-nums">
+                      {grupo.items.length}
+                    </span>
+                  </button>
+                  {aberto ? (
+                    <ul
+                      id={panelId}
+                      className="wr-decisoes-modal__list"
+                      role="list"
+                    >
+                      {grupo.items.map((decisao) => {
+                        const ItemIcon = ICON_BY_TIPO[decisao.icone]
+                        const canActivate =
+                          Boolean(onActivate) &&
+                          (decisao.categoria === 'Visita agendada' ||
+                            Boolean(decisao.href))
+                        const quando = decisao.prazo || decisao.hora || null
+                        const metaParts = [
+                          PRIORIDADE_LABEL[decisao.prioridade],
+                          decisao.acao,
+                          decisao.responsavel
+                            ? `Resp.: ${decisao.responsavel}`
+                            : null,
+                        ].filter(Boolean)
+
+                        const body = (
+                          <>
+                            <span
+                              className={cn(
+                                'wr-decisoes-modal__icon',
+                                decisao.destaque && 'wr-decisoes-modal__icon--alerta',
+                              )}
+                              aria-hidden
+                            >
+                              <ItemIcon className="h-3.5 w-3.5" stroke={1.6} />
+                            </span>
+                            <div className="wr-decisoes-modal__content min-w-0 flex-1">
+                              <div className="wr-decisoes-modal__row">
+                                <p className="wr-decisoes-modal__title truncate">
+                                  {decisao.problema}
+                                </p>
+                                {quando ? (
+                                  <time
+                                    className="wr-decisoes-modal__hora shrink-0 tabular-nums"
+                                    dateTime={decisao.createdAt ?? quando}
+                                  >
+                                    {quando}
+                                  </time>
+                                ) : null}
+                              </div>
+                              {metaParts.length > 0 ? (
+                                <p className="wr-decisoes-modal__meta truncate">
+                                  {metaParts.join(' · ')}
+                                </p>
+                              ) : null}
+                            </div>
+                            {canActivate ? (
+                              <IconChevronRight
+                                className="wr-decisoes-modal__chevron h-4 w-4 shrink-0"
+                                stroke={1.75}
+                                aria-hidden
+                              />
+                            ) : null}
+                          </>
+                        )
+
+                        return (
+                          <li key={decisao.id}>
+                            {canActivate ? (
+                              <button
+                                type="button"
+                                className={cn(
+                                  'wr-decisoes-modal__item',
+                                  'wr-decisoes-modal__item--action',
+                                  decisao.destaque &&
+                                    'wr-decisoes-modal__item--destaque',
+                                )}
+                                onClick={() => onActivate?.(decisao)}
+                              >
+                                {body}
+                              </button>
+                            ) : (
+                              <div
+                                className={cn(
+                                  'wr-decisoes-modal__item',
+                                  decisao.destaque &&
+                                    'wr-decisoes-modal__item--destaque',
+                                )}
+                              >
+                                {body}
+                              </div>
+                            )}
+                          </li>
+                        )
+                      })}
+                    </ul>
+                  ) : null}
+                </section>
+              )
+            })}
+          </div>
+        )}
+      </div>
+    </div>,
+    document.body,
+  )
+}

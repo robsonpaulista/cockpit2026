@@ -1,7 +1,6 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import Link from 'next/link'
 import {
   IconAlertTriangleFilled,
   IconChevronRight,
@@ -20,6 +19,7 @@ import {
   WarRoomMiniPager,
   warRoomPageCount,
 } from '@/components/war-room/war-room-mini-pager'
+import { WarRoomDecisoesModal } from '@/components/war-room/war-room-decisoes-modal'
 import type {
   WarRoomDecisao,
   WarRoomDecisaoIcone,
@@ -30,14 +30,30 @@ import {
   WR_OPEN_AGENDA_FLUXO_EVENT,
 } from '@/lib/war-room/agenda-fluxo'
 import { buildDecisoesVisitasFluxoIncompleto } from '@/lib/war-room/decisoes-visitas-fluxo'
+import { buildDecisoesPesquisasForaTop5 } from '@/lib/war-room/decisoes-pesquisas'
+import { buildDecisaoNoticiasLiderPeriodo } from '@/lib/war-room/decisoes-noticias'
+import { buildDecisaoPostEngajamentoDestaque } from '@/lib/war-room/decisoes-redes-engajamento'
+import { buildWarRoomPesquisasConsolidadas } from '@/lib/war-room/pesquisas-consolidadas'
 import { WAR_ROOM_DISPAROS } from '@/lib/war-room/mock-data'
+import {
+  fetchInstagramData,
+  loadInstagramConfig,
+  loadInstagramConfigAsync,
+} from '@/lib/instagramApi'
 import { useIpt } from '@/hooks/use-ipt'
 import { normalizeIptMunicipio } from '@/lib/ipt'
+import { resolveCandidatoIpt, type PollIptRow } from '@/lib/ipt-pesquisa'
 import { filtrarMunicipiosVisaoUniverso } from '@/lib/ipt-missoes'
 import type { CalendarEventRow } from '@/lib/agenda/calendar-event-utils'
+import type { GoogleNewsMentionWithActor } from '@/lib/google-news-types'
+import { buildPanoramaHeatmapActorColumns } from '@/lib/monitoramento-panorama'
+import type { PoliticalActorWithTerms } from '@/lib/youtube-radar-types'
 import { cn } from '@/lib/utils'
 
 const PAGE_SIZE = 4
+const NOTICIAS_LOOKBACK_DAYS = 7
+const NOTICIAS_FETCH_LIMIT = 500
+const HIDDEN_NOTICIAS_SLUGS = new Set(['instagram-causa-animal'])
 
 const PRIORIDADE_LABEL: Record<WarRoomDecisaoPrioridade, string> = {
   critica: 'Crítica',
@@ -160,9 +176,13 @@ export function WarRoomDecisoesCard({ className, onTotalChange }: Props) {
   const [apiItems, setApiItems] = useState<WarRoomDecisao[]>([])
   const [apiTotal, setApiTotal] = useState(0)
   const [visitaItems, setVisitaItems] = useState<WarRoomDecisao[]>([])
+  const [pesquisaItems, setPesquisaItems] = useState<WarRoomDecisao[]>([])
+  const [noticiaItems, setNoticiaItems] = useState<WarRoomDecisao[]>([])
+  const [redesItems, setRedesItems] = useState<WarRoomDecisao[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [page, setPage] = useState(0)
+  const [modalOpen, setModalOpen] = useState(false)
 
   /** Mesmo universo do card Expectativa de votos (onde o ícone de agenda aparece). */
   const municipiosExpectativa = useMemo(() => {
@@ -235,11 +255,100 @@ export function WarRoomDecisoesCard({ className, onTotalChange }: Props) {
     }
   }, [])
 
+  const carregarPesquisasForaTop5 = useCallback(async () => {
+    try {
+      const res = await fetch('/api/pesquisa?limit=5000', { cache: 'no-store' })
+      if (!res.ok) {
+        setPesquisaItems([])
+        return
+      }
+      const data = (await res.json()) as PollIptRow[]
+      const foco = resolveCandidatoIpt()
+      const built = buildWarRoomPesquisasConsolidadas(
+        Array.isArray(data) ? data : [],
+        foco,
+        5000,
+      )
+      const label = foco.trim().split(/\s+/)[0] || 'Jadyel'
+      setPesquisaItems(buildDecisoesPesquisasForaTop5(built, { candidatoLabel: label }))
+    } catch {
+      setPesquisaItems([])
+    }
+  }, [])
+
+  const carregarNoticiasLider = useCallback(async () => {
+    try {
+      const [actorsRes, mentionsRes] = await Promise.all([
+        fetch('/api/monitoramento/actors', { cache: 'no-store' }),
+        fetch(
+          `/api/google-news/mentions?politico=all&days=${NOTICIAS_LOOKBACK_DAYS}&limit=${NOTICIAS_FETCH_LIMIT}&channel=news`,
+          { cache: 'no-store' },
+        ),
+      ])
+      if (!actorsRes.ok || !mentionsRes.ok) {
+        setNoticiaItems([])
+        return
+      }
+      const actorsJson = (await actorsRes.json()) as {
+        actors?: PoliticalActorWithTerms[]
+      }
+      const mentionsJson = (await mentionsRes.json()) as {
+        mentions?: GoogleNewsMentionWithActor[]
+      }
+      const columns = buildPanoramaHeatmapActorColumns(
+        (actorsJson.actors ?? []).filter((a) => !HIDDEN_NOTICIAS_SLUGS.has(a.slug)),
+      )
+      const lider = buildDecisaoNoticiasLiderPeriodo(
+        columns,
+        mentionsJson.mentions ?? [],
+        { windowDays: NOTICIAS_LOOKBACK_DAYS },
+      )
+      setNoticiaItems(lider ? [lider] : [])
+    } catch {
+      setNoticiaItems([])
+    }
+  }, [])
+
+  const carregarRedesEngajamento = useCallback(async () => {
+    try {
+      let cfg = loadInstagramConfig()
+      if (!cfg.token || !cfg.businessAccountId) {
+        cfg = await loadInstagramConfigAsync()
+      }
+      if (!cfg.token || !cfg.businessAccountId) {
+        setRedesItems([])
+        return
+      }
+      const data = await fetchInstagramData(
+        cfg.token,
+        cfg.businessAccountId,
+        '7d',
+        false,
+      )
+      const destaque = buildDecisaoPostEngajamentoDestaque(data?.posts ?? [])
+      setRedesItems(destaque ? [destaque] : [])
+    } catch {
+      setRedesItems([])
+    }
+  }, [])
+
   const carregar = useCallback(
     async (opts?: { silent?: boolean }) => {
-      await Promise.all([carregarApi(opts), carregarVisitasFluxo()])
+      await Promise.all([
+        carregarApi(opts),
+        carregarVisitasFluxo(),
+        carregarPesquisasForaTop5(),
+        carregarNoticiasLider(),
+        carregarRedesEngajamento(),
+      ])
     },
-    [carregarApi, carregarVisitasFluxo],
+    [
+      carregarApi,
+      carregarVisitasFluxo,
+      carregarPesquisasForaTop5,
+      carregarNoticiasLider,
+      carregarRedesEngajamento,
+    ],
   )
 
   useEffect(() => {
@@ -263,8 +372,15 @@ export function WarRoomDecisoesCard({ className, onTotalChange }: Props) {
   }, [carregarVisitasFluxo])
 
   const fila = useMemo(
-    () => [...visitaItems, ...apiItems].sort(sortFila),
-    [visitaItems, apiItems],
+    () =>
+      [
+        ...visitaItems,
+        ...pesquisaItems,
+        ...noticiaItems,
+        ...redesItems,
+        ...apiItems,
+      ].sort(sortFila),
+    [visitaItems, pesquisaItems, noticiaItems, redesItems, apiItems],
   )
 
   useEffect(() => {
@@ -277,7 +393,12 @@ export function WarRoomDecisoesCard({ className, onTotalChange }: Props) {
     return fila.slice(start, start + PAGE_SIZE)
   }, [fila, page])
 
-  const total = visitaItems.length + apiTotal
+  const total =
+    visitaItems.length +
+    pesquisaItems.length +
+    noticiaItems.length +
+    redesItems.length +
+    apiTotal
 
   useEffect(() => {
     onTotalChange?.(total)
@@ -301,6 +422,7 @@ export function WarRoomDecisoesCard({ className, onTotalChange }: Props) {
 
   const onActivate = useCallback((decisao: WarRoomDecisao) => {
     if (decisao.categoria === 'Visita agendada' && decisao.contexto) {
+      setModalOpen(false)
       window.dispatchEvent(
         new CustomEvent(WR_OPEN_AGENDA_FLUXO_EVENT, {
           detail: { municipioKey: decisao.contexto },
@@ -309,6 +431,7 @@ export function WarRoomDecisoesCard({ className, onTotalChange }: Props) {
       return
     }
     if (decisao.href) {
+      setModalOpen(false)
       window.location.assign(decisao.href)
     }
   }, [])
@@ -322,7 +445,7 @@ export function WarRoomDecisoesCard({ className, onTotalChange }: Props) {
       <header className="wr-decisoes-fila__header">
         <h2 className="wr-decisoes-fila__heading">Fila de decisões / alertas</h2>
         <p className="wr-decisoes-fila__sub">
-          Pendências do banco e visitas com fluxo incompleto
+          Visitas, pesquisas, notícias e redes
         </p>
       </header>
 
@@ -359,11 +482,24 @@ export function WarRoomDecisoesCard({ className, onTotalChange }: Props) {
           onChange={setPage}
           className="wr-decisoes-fila__pager"
         />
-        <Link href="/dashboard/operacao" className="wr-decisoes-fila__footer">
+        <button
+          type="button"
+          className="wr-decisoes-fila__footer"
+          onClick={() => setModalOpen(true)}
+          disabled={fila.length === 0 && !loading}
+        >
           <span>Ver todas ({total})</span>
           <IconChevronRight className="h-4 w-4" stroke={1.75} aria-hidden />
-        </Link>
+        </button>
       </div>
+
+      {modalOpen ? (
+        <WarRoomDecisoesModal
+          items={fila}
+          onClose={() => setModalOpen(false)}
+          onActivate={onActivate}
+        />
+      ) : null}
     </section>
   )
 }

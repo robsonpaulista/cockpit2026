@@ -3156,23 +3156,33 @@ body[data-war-room-clean] .wr-page-canvas .wr-ig-radar__avg--worst {
   align-items: center;
   justify-content: space-between;
   gap: 8px;
+  width: 100%;
   flex-shrink: 0;
   position: relative;
   z-index: 1;
   margin-top: 0;
   padding: 12px 16px 14px;
+  border: 0;
   border-top: 0;
   background: var(--wr-white);
+  font: inherit;
   font-size: 13px;
   font-weight: 600;
   color: var(--wr-slate);
+  text-align: left;
   text-decoration: none;
+  cursor: pointer;
   transition: color 0.15s ease, background 0.15s ease;
 }
 
-.wr-decisoes-fila__footer:hover {
+.wr-decisoes-fila__footer:hover:not(:disabled) {
   color: var(--wr-black);
   background: color-mix(in srgb, var(--wr-mist) 40%, var(--wr-white));
+}
+
+.wr-decisoes-fila__footer:disabled {
+  cursor: default;
+  opacity: 0.55;
 }
 
 /* Expectativa — extras sobre o shell da fila clean */
@@ -5820,4 +5830,172 @@ body[data-war-room-clean] .wr-ipt-universo .ipt-bloco-lista__row {
 body[data-war-room-clean] .wr-ipt-universo .ipt-bloco-lista__row:hover,
 body[data-war-room-clean] .wr-ipt-universo .ipt-bloco-lista__row--active {
   background: var(--wr-surface-hover) !important;
+}
+
+/* Modal Fila de decisões — todos os alertas por card de origem */
+.wr-decisoes-modal__panel {
+  width: min(100%, 560px);
+  max-height: min(90vh, 720px);
+}
+
+.wr-decisoes-modal__body {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 0 0 14px;
+  max-height: min(68vh, 560px);
+  overflow-y: auto;
+}
+
+.wr-decisoes-modal__group {
+  display: flex;
+  flex-direction: column;
+}
+
+.wr-decisoes-modal__group-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  margin: 0;
+  padding: 10px 16px 6px;
+  border: 0;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  color: inherit;
+  background: color-mix(in srgb, var(--wr-white) 92%, transparent);
+  backdrop-filter: blur(6px);
+  transition: background 0.15s ease;
+}
+
+.wr-decisoes-modal__group-head:hover {
+  background: color-mix(in srgb, var(--wr-mist) 35%, var(--wr-white));
+}
+
+.wr-decisoes-modal__group-chevron {
+  color: color-mix(in srgb, var(--wr-slate) 55%, var(--wr-mist));
+  transition: transform 0.15s ease;
+}
+
+.wr-decisoes-modal__group-chevron--closed {
+  transform: rotate(-90deg);
+}
+
+.wr-decisoes-modal__group-title {
+  margin: 0;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--wr-slate) 60%, var(--wr-mist));
+}
+
+.wr-decisoes-modal__group-count {
+  margin-left: auto;
+  font-size: 11px;
+  font-weight: 700;
+  color: color-mix(in srgb, var(--wr-slate) 55%, var(--wr-mist));
+}
+
+.wr-decisoes-modal__list {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.wr-decisoes-modal__item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  margin: 0;
+  padding: 8px 16px;
+  border: 0;
+  border-top: 1px solid color-mix(in srgb, var(--wr-slate) 8%, var(--wr-mist));
+  text-align: left;
+  color: inherit;
+  background: transparent;
+}
+
+.wr-decisoes-modal__item--destaque {
+  background: color-mix(in srgb, var(--wr-gold) 8%, var(--wr-white));
+}
+
+.wr-decisoes-modal__item--action {
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.wr-decisoes-modal__item--action:hover {
+  background: color-mix(in srgb, var(--wr-mist) 45%, var(--wr-white));
+}
+
+.wr-decisoes-modal__item--action.wr-decisoes-modal__item--destaque:hover {
+  background: color-mix(in srgb, var(--wr-gold) 14%, var(--wr-white));
+}
+
+.wr-decisoes-modal__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  flex-shrink: 0;
+  border-radius: 7px;
+  color: var(--wr-slate);
+  background: color-mix(in srgb, var(--wr-mist) 55%, var(--wr-white));
+}
+
+.wr-decisoes-modal__icon--alerta {
+  color: var(--wr-black);
+  background: color-mix(in srgb, var(--wr-gold) 28%, var(--wr-white));
+}
+
+.wr-decisoes-modal__content {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.wr-decisoes-modal__row {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+}
+
+.wr-decisoes-modal__title {
+  margin: 0;
+  min-width: 0;
+  flex: 1;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.25;
+  color: var(--wr-black);
+}
+
+.wr-decisoes-modal__hora {
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.25;
+  color: color-mix(in srgb, var(--wr-slate) 55%, var(--wr-mist));
+}
+
+.wr-decisoes-modal__meta {
+  margin: 0;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.3;
+  color: color-mix(in srgb, var(--wr-slate) 68%, var(--wr-mist));
+}
+
+.wr-decisoes-modal__chevron {
+  color: color-mix(in srgb, var(--wr-slate) 45%, var(--wr-mist));
 }

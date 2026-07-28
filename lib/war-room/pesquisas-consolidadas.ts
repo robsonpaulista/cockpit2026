@@ -196,5 +196,6 @@ export function buildWarRoomPesquisasConsolidadas(
     return a.cidade.localeCompare(b.cidade, 'pt-BR')
   })
 
+  if (!Number.isFinite(limit) || limit <= 0) return rows
   return rows.slice(0, Math.max(1, limit))
 }
