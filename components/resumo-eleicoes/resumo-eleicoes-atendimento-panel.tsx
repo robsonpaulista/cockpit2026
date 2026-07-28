@@ -598,19 +598,29 @@ export function ResumoEleicoesAtendimentoPanel() {
       return comVotosTse(resumosCidadeMap[normalized], normalized)
     }
 
-    let fallback: { expectativaVotos: number; promessaVotos: number; expectativaLegadoVotos: number; votacaoFinal2022: number; liderancas: number } | null = null
-    Object.entries(resumosCidadeMap).forEach(([key, value]) => {
-      if (key.includes(normalized) || normalized.includes(key)) {
-        fallback = {
-          expectativaVotos: (fallback?.expectativaVotos || 0) + value.expectativaVotos,
-          promessaVotos: (fallback?.promessaVotos || 0) + (value.promessaVotos || 0),
-          expectativaLegadoVotos: (fallback?.expectativaLegadoVotos || 0) + (value.expectativaLegadoVotos || 0),
-          votacaoFinal2022: (fallback?.votacaoFinal2022 || 0) + value.votacaoFinal2022,
-          liderancas: (fallback?.liderancas || 0) + value.liderancas,
-        }
-      }
-    })
-    if (!fallback) return null
+    const matches = Object.entries(resumosCidadeMap).filter(
+      ([key]) => key.includes(normalized) || normalized.includes(key),
+    )
+    if (matches.length === 0) return null
+
+    const fallback = matches.reduce(
+      (acc, [, value]) => ({
+        expectativaVotos: acc.expectativaVotos + value.expectativaVotos,
+        promessaVotos: acc.promessaVotos + (value.promessaVotos || 0),
+        expectativaLegadoVotos:
+          acc.expectativaLegadoVotos + (value.expectativaLegadoVotos || 0),
+        votacaoFinal2022: acc.votacaoFinal2022 + value.votacaoFinal2022,
+        liderancas: acc.liderancas + value.liderancas,
+      }),
+      {
+        expectativaVotos: 0,
+        promessaVotos: 0,
+        expectativaLegadoVotos: 0,
+        votacaoFinal2022: 0,
+        liderancas: 0,
+      },
+    )
+
     if (votosTse2022Total === null) return fallback
 
     let votosTse = 0
@@ -621,6 +631,7 @@ export function ResumoEleicoesAtendimentoPanel() {
         achouTse = true
       }
     }
+
     return {
       ...fallback,
       votacaoFinal2022: achouTse ? votosTse : 0,

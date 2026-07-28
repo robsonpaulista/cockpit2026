@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useState, type ComponentType } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import {
   IconBuildingBridge,
   IconCalendarEvent,
@@ -13,6 +13,7 @@ import {
   IconTruck,
   IconUsers,
   IconUsersGroup,
+  type Icon,
 } from '@tabler/icons-react'
 import {
   AGENDA_FLUXO_PRIORIDADE_LABEL,
@@ -55,10 +56,7 @@ const PRESENCA_STEPS: AgendaFluxoStepId[] = [
   'comunicacao_lideres',
 ]
 
-const STEP_ICONS: Record<
-  AgendaFluxoStepId,
-  ComponentType<{ className?: string; stroke?: number }>
-> = {
+const STEP_ICONS: Record<AgendaFluxoStepId, Icon> = {
   agendamento: IconCalendarEvent,
   comunicacao_lideres: IconUsers,
   obras_cidade: IconBuildingBridge,
